@@ -613,7 +613,8 @@ enum Capability {
     CapabilityMemoryAccessAliasingINTEL = 5910,
     CapabilityLongConstantCompositeINTEL = 6089,
     CapabilityOptNoneINTEL = 6094,
-    CapabilityTokenTypeINTEL = 6112
+    CapabilityTokenTypeINTEL = 6112,
+    CapabilityDebugInfoModuleINTEL = 6114
 };
 
 enum Op {

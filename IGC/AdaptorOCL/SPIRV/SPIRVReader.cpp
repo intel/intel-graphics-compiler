@@ -1088,6 +1088,35 @@ public:
       return addMDNode(inst, createLocation(line, 0, scope, iat));
   }
 
+  DIModule* createModuleINTEL(SPIRVExtInst* inst)
+  {
+      if (auto n = getExistingNode<DIModule*>(inst))
+          return n;
+
+      OpDebugModuleINTEL moduleINTEL(inst);
+
+      auto scope = createScope(BM->get<SPIRVExtInst>(moduleINTEL.getParent()));
+      auto& name = BM->get<SPIRVString>(moduleINTEL.getName())->getStr();
+      auto cfgMacros = BM->get<SPIRVString>(moduleINTEL.getConfigurationMacros())->getStr();
+      auto inclPath = BM->get<SPIRVString>(moduleINTEL.getIncludePath())->getStr();
+
+      ///ModuleINTELIDToDISP[funcSPIRVId] = diSP;
+#if LLVM_VERSION_MAJOR <= 10
+      llvm::StringRef iSysRoot = StringRef();  // Empty string
+      return Builder.createModule(scope, name, cfgMacros, inclPath, iSysRoot);
+#else  // LLVM_VERSION_MAJOR >= 11
+      auto file = getDIFile(BM->get<SPIRVExtInst>(moduleINTEL.getSource()));
+      auto line = moduleINTEL.getLine();
+      auto apiNotesFile = BM->get<SPIRVString>(moduleINTEL.getAPINotesFile())->getStr();
+#if LLVM_VERSION_MAJOR == 11
+      return Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line);
+#elif LLVM_VERSION_MAJOR >= 12
+      bool isDecl = moduleINTEL.getIsDecl() ? true : false;
+      return Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line, isDecl);
+#endif
+#endif  // LLVM_VERSION_MAJOR >= 11
+  }
+
   DIScope* createScope(SPIRVExtInst* inst)
   {
       if (!inst)
@@ -1127,6 +1156,10 @@ public:
           inst->getExtOp() == OCLExtOpDbgKind::TypeTemplate)
       {
           return createType(inst);
+      }
+      else if (inst->getExtOp() == OCLExtOpDbgKind::ModuleINTEL)
+      {
+          return createModuleINTEL(inst);
       }
       else
       {
@@ -1243,6 +1276,12 @@ public:
       for (auto& gvar : globalVars)
       {
           (void)createGlobalVar(gvar);
+      }
+
+      auto moduleINTELInstructions = BM->getModuleINTELInstructions();
+      for (auto& moduleInstruction : moduleINTELInstructions)
+      {
+          (void)createModuleINTEL(moduleInstruction);
       }
   }
 
@@ -2612,7 +2651,6 @@ void SPIRVToLLVM::addMemAliasMetadata(Instruction* I, SPIRVId AliasListId,
 Value *
 SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     BasicBlock *BB, bool CreatePlaceHolder){
-
   auto OC = BV->getOpCode();
   IntBoolOpMap::rfind(OC, &OC);
 

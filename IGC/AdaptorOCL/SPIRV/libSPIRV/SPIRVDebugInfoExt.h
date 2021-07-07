@@ -25,7 +25,7 @@ namespace igc_spv {
     // SPIRVDebug is shared with common clang's SPIRV emitter
     namespace SPIRVDebug {
 
-        const unsigned int DebugInfoVersion = 10000;
+        const unsigned int DebugInfoVersion = 10001;
 
         enum Instruction {
             DebugInfoNone = 0,
@@ -64,7 +64,8 @@ namespace igc_spv {
             MacroUndef = 33,
             ImportedEntity = 34,
             Source = 35,
-            InstCount = 36
+            ModuleINTEL = 36,
+            InstCount = 37
         };
 
         enum Flag {
@@ -785,6 +786,7 @@ namespace igc_spv {
                     { Fragment,   3 }
                 };
             }
+
             namespace ImportedEntity {
                 enum {
                     NameIdx = 0,
@@ -798,6 +800,19 @@ namespace igc_spv {
                 };
             }
 
+            namespace ModuleINTEL {
+                enum {
+                    NameIdx = 0,
+                    SourceIdx = 1,
+                    LineIdx = 2,
+                    ParentIdx = 3,
+                    ConfigurationMacrosIdx = 4,
+                    IncludePathIdx = 5,
+                    APINotesFileIdx = 6,
+                    IsDeclIdx = 7,
+                    OperandCount = 8
+                };
+            }
         } // namespace Operand
     } // namespace SPIRVDebug
 
@@ -1196,6 +1211,20 @@ namespace igc_spv {
         unsigned int getNumLiterals() { return getNumArgs() - SPIRVDebug::Operand::Operation::OpCodeIdx - 1; }
         unsigned int getLiteral(unsigned int idx) { return arg<SPIRVWord>(idx + SPIRVDebug::Operand::Operation::OpCodeIdx); }
         SPIRVWord getOperation() { return arg<SPIRVWord>(SPIRVDebug::Operand::Operation::OpCodeIdx); }
+    };
+
+    class OpDebugModuleINTEL : OpDebugInfoBase
+    {
+    public:
+        OpDebugModuleINTEL(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
+        SPIRVId getName() { return arg<SPIRVId>(SPIRVDebug::Operand::ModuleINTEL::NameIdx); }
+        SPIRVId getSource() { return arg<SPIRVId>(SPIRVDebug::Operand::ModuleINTEL::SourceIdx); }
+        SPIRVWord getLine() { return arg<SPIRVWord>(SPIRVDebug::Operand::ModuleINTEL::LineIdx); }
+        SPIRVId getParent() { return arg<SPIRVId>(SPIRVDebug::Operand::ModuleINTEL::ParentIdx); }
+        SPIRVId getConfigurationMacros() { return arg<SPIRVId>(SPIRVDebug::Operand::ModuleINTEL::ConfigurationMacrosIdx); }
+        SPIRVId getIncludePath() { return arg<SPIRVId>(SPIRVDebug::Operand::ModuleINTEL::IncludePathIdx); }
+        SPIRVId getAPINotesFile() { return arg<SPIRVId>(SPIRVDebug::Operand::ModuleINTEL::APINotesFileIdx); }
+        SPIRVWord getIsDecl() { return arg<SPIRVWord>(SPIRVDebug::Operand::ModuleINTEL::IsDeclIdx); }
     };
 }
 #endif

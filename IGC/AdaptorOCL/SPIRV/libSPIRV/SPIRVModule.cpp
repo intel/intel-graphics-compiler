@@ -249,6 +249,27 @@ public:
       return globalVars;
   }
 
+  virtual std::vector<SPIRVExtInst*> getModuleINTELInstructions() override
+  {
+      std::vector<SPIRVExtInst*> moduleINTELInstructions;
+
+      for (auto& item : IdEntryMap)
+      {
+          if (item.second->getOpCode() == igc_spv::Op::OpExtInst)
+          {
+              auto extInst = static_cast<SPIRVExtInst*>(item.second);
+              if ((extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
+                  extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
+                  extInst->getExtOp() == OCLExtOpDbgKind::ModuleINTEL)
+              {
+                  moduleINTELInstructions.push_back(extInst);
+              }
+          }
+      }
+
+      return moduleINTELInstructions;
+  }
+
   virtual std::vector<SPIRVValue*> parseSpecConstants() override
   {
       std::vector<SPIRVValue*> specConstants;
