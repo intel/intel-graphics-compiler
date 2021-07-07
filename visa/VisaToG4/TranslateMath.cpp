@@ -157,6 +157,42 @@ void IR_Builder::expandPow(
     createMathInst(duplicateOperand(predOpnd), saturate, exsize, dstOpnd, expSrc, createNullSrc(mathType), MATH_EXP, instOpt, true);
 }
 
+static void setDefaultRoundDenorm(
+    IR_Builder& builder,
+    bool hasDefaultRoundDenorm,
+    G4_Declare* regCR0)
+{
+    if (!hasDefaultRoundDenorm)
+    {
+        // save cr0.0: mov (1) r116.2<1>:ud cr0.0<0;1,0>:ud {NoMask}
+        G4_SrcRegRegion* cr0SrcRegOpndForSaveInst = builder.createSrc(builder.phyregpool.getCr0Reg(), 0, 0, builder.getRegionScalar(), Type_UD);
+        builder.createMov(g4::SIMD1, builder.Create_Dst_Opnd_From_Dcl(regCR0, 1),
+            cr0SrcRegOpndForSaveInst, InstOpt_WriteEnable, true);
+
+        // set rounding mod in CR0 to RNE: and (1) cr0.0<1>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
+        G4_DstRegRegion* cr0DstRegOpndForAndInst = builder.createDst(builder.phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
+        G4_SrcRegRegion* cr0SrcRegOpndForAndInst = builder.createSrc(builder.phyregpool.getCr0Reg(), 0, 0, builder.getRegionScalar(), Type_UD);
+        builder.createBinOp(nullptr, G4_and, g4::SIMD1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
+            builder.createImm(0xffffffcf, Type_UD), InstOpt_WriteEnable, true);
+    }
+}
+
+static void restoreCR0_0(
+    IR_Builder& builder,
+    bool hasDefaultRoundDenorm,
+    G4_Declare* regCR0)
+{
+    if (!hasDefaultRoundDenorm)
+    {
+        G4_DstRegRegion* cr0DstRegOpndForRestoreIfInst = builder.createDst(builder.phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
+        auto tmpSrcOpndForCR0OnIf = builder.Create_Src_Opnd_From_Dcl(regCR0, builder.getRegionScalar());
+
+        // restore cr0.0
+        builder.createMov(g4::SIMD1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
+            InstOpt_WriteEnable, true);
+    }
+}
+
 int IR_Builder::translateVISAArithmeticDoubleInst(
     ISA_Opcode opcode, VISA_Exec_Size executionSize,
     VISA_EMask_Ctrl emask, G4_Predicate *predOpnd, G4_Sat saturate,
@@ -249,6 +285,10 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             instOpt, true); // mov (element_size) t7_dst_src1_opnd, src1RR {Q1/N1}
     }
 
+    bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
+    // cr0.0 register
+    G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
+
     // each madm only handles 4 channel double data
     VISA_EMask_Ctrl currEMask = emask;
     uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_DF) * exsize + getGRFSize() - 1) / getGRFSize());
@@ -332,6 +372,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         G4_SrcRegRegion *t12SrcOpnd0x3 = createSrcRegRegion(tsrc12);
         G4_SrcRegRegion *t12SrcOpnd1 = createSrcRegRegion(tsrc12);
         G4_SrcRegRegion *t13SrcOpnd0 = createSrcRegRegion(tsrc13);
+
+        // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
+        setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
 
         if (needsSrc0Move)
         {
@@ -480,6 +523,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             inst = createMadm(exsize, t11DstOpnd1, t6SrcOpnd3,
                 t7SrcOpndNeg3, t9SrcOpnd1x0, madmInstOpt);
 
+            // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
+            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+
             // madm (4) r8.noacc r9.acc9 r11.acc3 r12.acc2 {Align16, N1/N2}
             t8DstOpnd2->setAccRegSel(NOACC);
             t9SrcOpnd1x1->setAccRegSel(ACC9);
@@ -492,6 +538,15 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
         if (generateIf)
         {
+            if (!hasDefaultRoundDenorm)
+            {
+                // else (8) {Q1/Q2}
+                createElse(exsize, instOpt);
+
+                // restore Rounding Mode in CR
+                restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+            }
+
             // endif (8) {Q1/Q2}
             inst = createEndif(exsize, instOpt);
         }
@@ -599,6 +654,10 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         getRegionStride1(), t8->getElemType());
     G4_SrcRegRegion *t8_src_opnd_final = createSrcRegRegion(tsrc8_final);
 
+    bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
+    // cr0.0 register
+    G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
+
     VISA_EMask_Ctrl currEMask = emask;
     uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_F) * exsize + getGRFSize() - 1) / getGRFSize());
     for (uint16_t loopIndex = 0; currEMask != vISA_NUM_EMASK && loopIndex < loopCount;
@@ -658,6 +717,9 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         G4_SrcRegRegion *t9SrcOpnd1x1 = createSrcRegRegion(tsrc9);
         G4_SrcRegRegion *t10SrcOpnd0 = createSrcRegRegion(tsrc10);
         G4_SrcRegRegion *t11SrcOpnd0 = createSrcRegRegion(tsrc11);
+
+        // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
+        setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
 
         t6SrcOpnd0 = createSrcRegRegion(fsrc0);
         t6SrcOpnd1 = createSrcRegRegion(fsrc0);
@@ -752,6 +814,9 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
             t6DstOpnd0, t6SrcOpnd3,
             t4SrcOpndNeg2, t9SrcOpnd1x0, madmInstOpt);
 
+        // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
+        restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+
         // madm (8) r8.noacc r9.acc7 r6.acc8 r1.acc5 {Align16, Q1/Q2}
         t8DstOpnd1->setAccRegSel(NOACC);
         t9SrcOpnd1x1->setAccRegSel(ACC7);
@@ -760,6 +825,15 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         inst = createMadm(exsize,
             t8DstOpnd1, t9SrcOpnd1x1,
             t6SrcOpnd4, t1SrcOpnd1, madmInstOpt);
+
+        if (!hasDefaultRoundDenorm)
+        {
+            // else (8) {Q1/Q2}
+            createElse(exsize, instOpt);
+
+            // restore Rounding Mode in CR
+            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+        }
 
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
@@ -841,6 +915,10 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         getRegionStride1(), t7->getElemType());
     G4_SrcRegRegion *t7_src_opnd_final = createSrcRegRegion(tsrc7_final);
 
+    bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
+    // cr0.0 register
+    G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
+
     VISA_EMask_Ctrl currEMask = emask;
     uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_F) * exsize + getGRFSize() - 1) / getGRFSize());
     for (uint16_t loopIndex = 0; currEMask != vISA_NUM_EMASK && loopIndex < loopCount;
@@ -896,6 +974,9 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         G4_SrcRegRegion *t11SrcOpnd0 = createSrcRegRegion(tsrc11);
         G4_SrcRegRegion *t11SrcOpnd1x0 = createSrcRegRegion(tsrc11);
         G4_SrcRegRegion *t11SrcOpnd1x1 = createSrcRegRegion(tsrc11);
+
+        // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
+        setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
 
         t6SrcOpnd0 = createSrcRegRegion(fsrc0);
         t6SrcOpnd1 = createSrcRegRegion(fsrc0);
@@ -992,6 +1073,9 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         inst = createMadm( exsize, t10DstOpnd1, t6SrcOpnd2,
             t7SrcOpndNeg0, t7SrcOpnd2x1, madmInstOpt);
 
+        // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
+        restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+
         //madm (8) r7.noacc r7.acc7 r9.acc6 r10.acc8 {Aligned16, Q1/Q2}
         t7DstOpnd2->setAccRegSel(NOACC);
         t7SrcOpnd3->setAccRegSel(ACC7);
@@ -999,6 +1083,15 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t10SrcOpnd2->setAccRegSel(ACC8);
         inst = createMadm(exsize, t7DstOpnd2, t7SrcOpnd3,
             t9SrcOpnd2, t10SrcOpnd2, madmInstOpt);
+
+        if (!hasDefaultRoundDenorm)
+        {
+            // else (8) {Q1/Q2}
+            createElse(exsize, instOpt);
+
+            // restore Rounding Mode in CR
+            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+        }
 
         // endif (exsize) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
@@ -1097,6 +1190,10 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_SrcRegRegion csrc2(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
     G4_SrcRegRegion csrc3(Mod_src_undef, Direct, t3->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
 
+    bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
+    // cr0.0 register
+    G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
+
     // each madm only handles 4 channel double data
     VISA_EMask_Ctrl currEMask = emask;
     uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_DF) * exsize + getGRFSize() - 1) / getGRFSize());
@@ -1129,6 +1226,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc11(Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+
+        // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
+        setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
 
         // math.e0.f0.0 (4) r7.acc2 r6.noacc NULL 0xf {Align16, N1/N2}
         dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC2);
@@ -1263,6 +1363,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             inst = createMadm(exsize,
                 dst0, src0, neg_src1, src2, madmInstOpt);
 
+            // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
+            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+
             // madm (4) r7.noacc r7.acc8 r9.acc3 r8.acc7 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(NOACC);
             src0 = createSrcRegRegion(tsrc7); src0->setAccRegSel(ACC8);
@@ -1275,6 +1378,15 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
         if (generateIf)
         {
+            if (!hasDefaultRoundDenorm)
+            {
+                // else (8) {Q1/Q2}
+                createElse(exsize, instOpt);
+
+                // restore Rounding Mode in CR
+                restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+            }
+
             // endif (8) {Q1/Q2}
             inst = createEndif(exsize, instOpt);
         }
