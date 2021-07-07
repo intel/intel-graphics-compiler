@@ -102,6 +102,8 @@ struct GenXBackendOptions {
   bool EmitDebuggableKernels = false;
   // Enable emission of DWARF debug information
   bool EmitDebugInformation = false;
+  // Generate Debug Info in a format compatible with zebin
+  bool DebugInfoForZeBin = false;
   // Enable/disable regalloc dump.
   bool DumpRegAlloc;
   // Maximum available memory for stack (in bytes).
@@ -206,6 +208,7 @@ public:
 
   bool emitDebugInformation() const { return Options.EmitDebugInformation; }
   bool emitDebuggableKernels() const { return Options.EmitDebuggableKernels; }
+  bool emitDebugInfoForZeBin() const { return Options.DebugInfoForZeBin; }
   // Return whether shader dumper is installed.
   bool hasShaderDumper() const { return Options.Dumper; }
 

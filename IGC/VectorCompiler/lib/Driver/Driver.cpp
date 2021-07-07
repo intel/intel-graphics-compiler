@@ -228,6 +228,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   }
   BackendOpts.EmitDebugInformation = Opts.EmitDebugInformation;
   BackendOpts.EmitDebuggableKernels = Opts.EmitDebuggableKernels;
+  BackendOpts.DebugInfoForZeBin = (Opts.Binary == vc::BinaryKind::ZE);
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();

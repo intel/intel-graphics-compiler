@@ -212,12 +212,6 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
   adjustDumpOptions(Opts);
   adjustStackCalls(Opts, Diag);
 
-  // ZE Binary does not support debug info
-  if (Opts.Binary == vc::BinaryKind::ZE && Opts.EmitDebuggableKernels) {
-    Opts.EmitDebuggableKernels = false;
-    Diag.addWarning("ZEBinary does not support debuggable kernels! "
-                    "Emission of debuggable kernels disabled");
-  }
   adjustTransformationsAndOptimizations(Opts);
 }
 

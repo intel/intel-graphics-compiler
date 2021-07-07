@@ -1110,10 +1110,17 @@ void GenXDebugInfo::processPrimaryFunction(
   processKernel(Opts, ProgramInfo{MVTI, std::move(FIs)});
 }
 
-static void fillDbgInfoOptions(IGC::DebugEmitterOpts &DebugOpts) {
+static void fillDbgInfoOptions(const GenXBackendConfig &BC,
+                               IGC::DebugEmitterOpts &DebugOpts) {
   DebugOpts.DebugEnabled = true;
   DebugOpts.isDirectElf = true;
   DebugOpts.UseNewRegisterEncoding = true;
+
+  if (BC.emitDebugInfoForZeBin()) {
+    DebugOpts.ZeBinCompatible = true;
+    DebugOpts.EnableRelocation = true;
+    DebugOpts.EnforceAMD64Machine = true;
+  }
 }
 
 bool GenXDebugInfo::runOnModule(Module &M) {
@@ -1141,7 +1148,7 @@ bool GenXDebugInfo::runOnModule(Module &M) {
   LLVM_DEBUG(MVTI.print(dbgs()); dbgs() << "\n");
 
   IGC::DebugEmitterOpts DebugInfoOpts;
-  fillDbgInfoOptions(DebugInfoOpts);
+  fillDbgInfoOptions(BC, DebugInfoOpts);
 
   for (const Function *PF : MVTI.getPrimaryFunctions())
     processPrimaryFunction(DebugInfoOpts, MVTI, GM, *VB, *PF);
