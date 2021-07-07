@@ -226,7 +226,7 @@ unsigned GenXNumbering::getArgIndirectionNumber(CallInst *CI, unsigned OperandNu
  */
 unsigned GenXNumbering::getKernelArgCopyNumber(Argument *Arg)
 {
-  IGC_ASSERT(isKernel(Arg->getParent()));
+  IGC_ASSERT(genx::isKernel(Arg->getParent()));
   return Numbers[&Arg->getParent()->front()] + 1 + Arg->getArgNo();
 }
 

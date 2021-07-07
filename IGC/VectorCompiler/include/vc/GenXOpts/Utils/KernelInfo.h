@@ -24,6 +24,25 @@ namespace genx {
 
 enum { VISA_MAJOR_VERSION = 3, VISA_MINOR_VERSION = 6 };
 
+// Utility function to tell if a Function needs to be called using
+// vISA stack call ABI.
+inline bool requiresStackCall(const Function *F) {
+  IGC_ASSERT(F);
+  return F->hasFnAttribute(genx::FunctionMD::CMStackCall);
+}
+
+// Utility function to tell if a Function referenced indirectly.
+inline bool isReferencedIndirectly(const Function *F) {
+  IGC_ASSERT(F);
+  bool HasIndirectReference =
+      F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
+  // Note: currently, all indirectly-referenced functions are expected to
+  // have FunctionMD::CMStackCall.
+  // The assert should be removed if this property becomes obsolete.
+  IGC_ASSERT(!HasIndirectReference ||
+             F->hasFnAttribute(genx::FunctionMD::CMStackCall));
+  return HasIndirectReference;
+}
 
 // Utility function to tell whether a Function is a vISA kernel.
 inline bool isKernel(const Function *F) {

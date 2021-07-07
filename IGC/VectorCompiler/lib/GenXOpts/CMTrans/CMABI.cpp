@@ -640,7 +640,7 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
 
   // Convert non-kernel to stack call if applicable
   if (Info->FCtrl == FunctionControl::StackCall &&
-      !F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
+      !genx::requiresStackCall(F)) {
     LLVM_DEBUG(dbgs() << "Adding stack call to: " << F->getName() << "\n");
     F->addFnAttr(genx::FunctionMD::CMStackCall);
   }

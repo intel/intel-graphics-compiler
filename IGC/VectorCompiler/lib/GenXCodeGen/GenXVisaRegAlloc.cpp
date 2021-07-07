@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "GenXNumbering.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/General/Types.h"
 #include "visa_igc_common_header.h"
@@ -124,7 +125,7 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
 
   for (auto &F : *FG) {
     if (F->hasFnAttribute(genx::FunctionMD::CMGenXMain) ||
-        F->hasFnAttribute(genx::FunctionMD::CMStackCall))
+        genx::requiresStackCall(F))
       RegMap[F] = KernRegMap_t();
   }
   // Reserve the reserved registers.

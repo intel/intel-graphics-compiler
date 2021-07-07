@@ -144,7 +144,10 @@ SPDX-License-Identifier: MIT
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
+
+#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
+
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Constants.h"
@@ -481,7 +484,7 @@ void GenXArgIndirection::gatherArgLRs()
     Seen.insert(Liveness->getLiveRange(&*ai));
   // For a subroutine arg, add its LR to the list if it is not already in Seen.
   for (auto fgi = FG->begin() + 1, fge = FG->end(); fgi != fge; ++fgi) {
-    if ((*fgi)->hasFnAttribute(genx::FunctionMD::CMStackCall))
+    if (genx::requiresStackCall(*fgi))
       continue;
     for (auto ai = (*fgi)->arg_begin(), ae = (*fgi)->arg_end(); ai != ae; ++ai) {
       Argument *Arg = &*ai;
@@ -731,7 +734,7 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
  */
 Indirectability SubroutineArg::checkIndirectability()
 {
-  if (F->hasFnAttribute(genx::FunctionMD::CMStackCall))
+  if (genx::requiresStackCall(F))
     return CANNOT_INDIRECT;
   // See if there is a return value that is coalesced with the arg.
   CoalescedRetIdx = -1;

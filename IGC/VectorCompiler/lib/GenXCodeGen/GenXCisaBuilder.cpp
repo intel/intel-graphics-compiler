@@ -1148,8 +1148,7 @@ bool GenXKernelBuilder::run() {
   std::string FuncName;
   for (auto &F : *FG) {
     Func = F;
-    if (F->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
-        F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
+    if (genx::requiresStackCall(F) || genx::isReferencedIndirectly(F)) {
       VISAFunction *stackFunc = nullptr;
 
       FuncName = F->getName();
@@ -1320,8 +1319,7 @@ void GenXKernelBuilder::buildInstructions() {
     LastUsedAliasMap.clear();
 
     if (Func->hasFnAttribute(genx::FunctionMD::CMGenXMain) ||
-        Func->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
-        Func->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
+        genx::requiresStackCall(Func) || genx::isReferencedIndirectly(Func)) {
       KernFunc = Func;
     } else {
       KernFunc = FGA->getSubGroup(Func) ? FGA->getSubGroup(Func)->getHead()
@@ -2652,10 +2650,12 @@ static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
 static bool checkInsertToRetv(InsertValueInst *Inst) {
   if (auto IVI = dyn_cast<InsertValueInst>(Inst->use_begin()->getUser()))
     return checkInsertToRetv(IVI);
-  else if (auto RI = dyn_cast<ReturnInst>(Inst->use_begin()->getUser()))
-    return RI->getFunction()->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
-           RI->getFunction()->hasFnAttribute(
-               genx::FunctionMD::ReferencedIndirectly);
+
+  if (auto RI = dyn_cast<ReturnInst>(Inst->use_begin()->getUser())) {
+    const auto *F = RI->getFunction();
+    return genx::requiresStackCall(F) || genx::isReferencedIndirectly(F);
+  }
+
   return false;
 }
 
@@ -2698,8 +2698,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     if (auto *CI = dyn_cast<CallInst>(Inst->getOperand(0)))
       // translate extraction of structured type from retv
       if (!UseNewStackBuilder && !CI->isInlineAsm() &&
-          (CI->getCalledFunction()->hasFnAttribute(
-               genx::FunctionMD::CMStackCall) ||
+          (genx::requiresStackCall(CI->getCalledFunction()) ||
            IGCLLVM::isIndirectCall(*CI)))
         buildExtractRetv(EVI);
     // no code generated
@@ -3112,8 +3111,7 @@ void GenXKernelBuilder::collectKernelInfo() {
   for (auto It = FG->begin(), E = FG->end(); It != E; ++It) {
     auto Func = *It;
     HasStackcalls |=
-        Func->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
-        Func->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
+        genx::requiresStackCall(Func) || genx::isReferencedIndirectly(Func);
     for (auto &BB : *Func) {
       for (auto &I : BB) {
         if (CallInst *CI = dyn_cast<CallInst>(&I)) {
@@ -5187,7 +5185,7 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
       !Callee || !Callee->isDeclaration(),
       "Currently VC backend does not support modules with external functions");
 
-  if (!Callee || Callee->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
+  if (!Callee || genx::requiresStackCall(Callee)) {
     if (UseNewStackBuilder)
       buildStackCallLight(CI, DstDesc);
     else
@@ -5245,9 +5243,8 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
       buildControlRegUpdate(DefaultFloatControl, false);
   }
   addDebugInfo();
-  if (!isKernel(F) &&
-      (F->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
-       F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly))) {
+  if (!genx::isKernel(F) &&
+      (genx::requiresStackCall(Func) || genx::isReferencedIndirectly(F))) {
     CISA_CALL(Kernel->AppendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1,
                                                   EXEC_SIZE_16));
   } else {
@@ -5651,7 +5648,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
   CISA_CALL(
       Kernel->CreateVISASrcOperand(FpOpSrc, Fp, MODIFIER_NONE, 0, 1, 0, 0, 0));
 
-  if (isKernel(Func) && (HasStackcalls || HasAlloca)) {
+  if (genx::isKernel(Func) && (HasStackcalls || HasAlloca)) {
     // init kernel stack
     VISA_GenVar *Hwtid = nullptr;
     CISA_CALL(Kernel->GetPredefinedVar(Hwtid, PREDEFINED_HW_TID));
@@ -5716,9 +5713,9 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
         EXEC_SIZE_1, FpOpDst, SpOpSrc));
     unsigned SMO = BackendConfig->getStackSurfaceMaxSize();
     Kernel->AddKernelAttribute("SpillMemOffset", 4, &SMO);
-  } else if (Func->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
-             Func->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
-    if (Func->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
+  } else if (genx::requiresStackCall(Func) ||
+             genx::isReferencedIndirectly(Func)) {
+    if (genx::isReferencedIndirectly(Func)) {
       int ExtVal = 1;
       Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
     }
@@ -5817,12 +5814,11 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
 }
 
 void GenXKernelBuilder::beginFunctionLight(Function *Func) {
-  if (isKernel(Func))
+  if (genx::isKernel(Func))
     return;
-  if (!Func->hasFnAttribute(genx::FunctionMD::CMStackCall) &&
-      !Func->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly))
+  if (!genx::requiresStackCall(Func) && !genx::isReferencedIndirectly(Func))
     return;
-  if (Func->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
+  if (genx::isReferencedIndirectly(Func)) {
     int ExtVal = 1;
     Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
   }
@@ -5856,9 +5852,8 @@ void GenXKernelBuilder::beginFunctionLight(Function *Func) {
  * also see build[Extract|Insert]Value).
  */
 void GenXKernelBuilder::endFunction(Function *Func, ReturnInst *RI) {
-  if (!isKernel(Func) &&
-      (Func->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
-       Func->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly))) {
+  if (!genx::isKernel(Func) &&
+      (genx::requiresStackCall(Func) || genx::isReferencedIndirectly(Func))) {
     VISA_GenVar *Sp = nullptr, *Fp = nullptr;
     CISA_CALL(Kernel->GetPredefinedVar(Sp, PREDEFINED_FE_SP));
     CISA_CALL(Kernel->GetPredefinedVar(Fp, PREDEFINED_FE_FP));

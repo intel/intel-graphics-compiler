@@ -583,7 +583,7 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
   VISAKernel *BuiltKernel = VB.GetVISAKernel(FG.getHead()->getName().str());
   appendFuncBinary(GenBinary, *FG.getHead(), *BuiltKernel);
   for (Function *F : FG) {
-    if (F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
+    if (genx::isReferencedIndirectly(F)) {
       VISAKernel *ExtKernel = VB.GetVISAKernel(F->getName().str());
       IGC_ASSERT_MESSAGE(ExtKernel, "Kernel is null");
       appendFuncBinary(GenBinary, *F, *ExtKernel);
@@ -733,7 +733,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   for (Function *F: FG) {
     if (F == KernelFunction)
       continue;
-    if (F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
+    if (genx::requiresStackCall(F)) {
       const std::string FuncName = F->getName().str();
       VISAKernel *VF = VB.GetVISAKernel(FuncName);
       IGC_ASSERT_MESSAGE(VF, "Function is null");

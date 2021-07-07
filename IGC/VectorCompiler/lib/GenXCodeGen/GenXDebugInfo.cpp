@@ -234,11 +234,6 @@ static void debugDump(const Twine &Name, const char *Content, size_t Size) {
   OS << StringRef(Content, Size);
 }
 
-static bool isReferencedIndirectly(const Function *F) {
-  IGC_ASSERT(F);
-  return F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
-}
-
 template <typename ContainerT, class... ArgsT>
 static void checkedEmplace(ContainerT &Container, ArgsT &&... Args) {
   auto Result = Container.emplace(std::forward<ArgsT>(Args)...);
@@ -434,7 +429,7 @@ void ModuleToVisaTransformInfo::extractSubroutineInfo(
   for (const Function *SF : *SubGr) {
     if (isKernelFunction(SF))
       continue;
-    if (SF->hasFnAttribute(genx::FunctionMD::CMStackCall))
+    if (genx::requiresStackCall(SF))
       continue;
     checkedEmplace(SubroutineOwnersInfo, SF, &F);
   }
@@ -464,7 +459,7 @@ bool ModuleToVisaTransformInfo::tryToProcessCallToVisaEmitter(
     const CallInst &CI, const Function &F, VISABuilder &VB) {
   const Function *Callee = CI.getCalledFunction();
   IGC_ASSERT(Callee == &F);
-  IGC_ASSERT(F.hasFnAttribute(genx::FunctionMD::CMStackCall));
+  IGC_ASSERT(genx::requiresStackCall(&F));
 
   const Function *Caller = CI.getCaller();
   IGC_ASSERT(Caller);
@@ -495,7 +490,7 @@ bool ModuleToVisaTransformInfo::tryToProcessCallToVisaEmitter(
 bool ModuleToVisaTransformInfo::tryToProcessVisaEmitter(const Function &F,
                                                         VISABuilder &VB) {
   // Only stack-callee are accepted for now
-  IGC_ASSERT(F.hasFnAttribute(genx::FunctionMD::CMStackCall));
+  IGC_ASSERT(genx::requiresStackCall(&F));
 
   LLVM_DEBUG(dbgs() << "searching for the host of a stack-callee "
                     << "<" << F.getName() << ">\n");
@@ -518,8 +513,7 @@ void ModuleToVisaTransformInfo::extractVisaFunctionsEmitters(
   std::unordered_set<const Function *> ToProcess;
   for (const auto *FG : FGA) {
     for (const Function *F : *FG) {
-      if (F->hasFnAttribute(genx::FunctionMD::CMStackCall) &&
-          !isReferencedIndirectly(F)) {
+      if (genx::requiresStackCall(F) && !genx::isReferencedIndirectly(F)) {
         checkedEmplace(ToProcess, F);
       }
     }
@@ -549,7 +543,7 @@ void ModuleToVisaTransformInfo::extractKernelFunctions(
 
     for (const Function *F : *FG) {
       bool TrueKernel = (F == KF);
-      if (isReferencedIndirectly(F) || TrueKernel) {
+      if (genx::isReferencedIndirectly(F) || TrueKernel) {
         VISAKernel *VF = VB.GetVISAKernel(F->getName().str());
         if (TrueKernel)
           checkedEmplace(SourceLevelKernels, F);

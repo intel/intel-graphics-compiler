@@ -222,10 +222,10 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   UseGlobalMem =
       F.getParent()->getModuleFlag(ModuleMD::UseSVMStack) != nullptr;
   visit(F);
-  if (isKernel(&F)) {
+  if (genx::isKernel(&F)) {
     generateKernelProlog(F);
     // no epilog is required for kernels
-  } else if (F.hasFnAttribute(genx::FunctionMD::CMStackCall)) {
+  } else if (genx::requiresStackCall(&F)) {
     generateFunctionProlog(F);
     // function epilog is generated when RetInst is met
   }
@@ -237,8 +237,8 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
   if (I.isInlineAsm())
     return;
   bool IsIndirectCall = IGCLLVM::isIndirectCall(I);
-  bool IsStackCall = IsIndirectCall || I.getCalledFunction()->hasFnAttribute(
-                                           genx::FunctionMD::CMStackCall);
+  bool IsStackCall =
+      IsIndirectCall || genx::requiresStackCall(I.getCalledFunction());
   if (IsStackCall)
     generateStackCall(&I);
   if (!IsIndirectCall) {
@@ -254,7 +254,7 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
 }
 
 void GenXPrologEpilogInsertion::visitReturnInst(ReturnInst &I) {
-  if (I.getFunction()->hasFnAttribute(genx::FunctionMD::CMStackCall))
+  if (genx::requiresStackCall(I.getFunction()))
     generateFunctionEpilog(*I.getFunction(), I);
 }
 

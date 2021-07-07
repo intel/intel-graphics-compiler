@@ -1496,7 +1496,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
 void GenXCoalescing::processKernelArgs(FunctionGroup *FG)
 {
   auto F = FG->getHead();
-  if (!isKernel(F))
+  if (!genx::isKernel(F))
     return;
   Instruction *InsertBefore = F->front().getFirstNonPHIOrDbg();
   KernelMetadata KM(F);
@@ -1530,7 +1530,7 @@ void GenXCoalescing::processKernelArgs(FunctionGroup *FG)
 
 void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
   auto *F = FG->getHead();
-  if (!isKernel(F))
+  if (!genx::isKernel(F))
     return;
 
   KernelMetadata KM(F);
@@ -1639,7 +1639,7 @@ void GenXCoalescing::coalesceCallables() {
       CI->getContext().diagnose(Err);
     }
     Function *F = CI->getParent()->getParent();
-    IGC_ASSERT(isKernel(F));
+    IGC_ASSERT(genx::isKernel(F));
     KernelMetadata KM(F);
     unsigned Idx = 0; // kernel argument index
     unsigned i = 0;   // call argument index
