@@ -1875,6 +1875,7 @@ public:
     void setLiveIn() { liveIn = true; }
     bool isLiveIn() const { return liveIn; }
     void setLiveOut() { liveOut = true; }
+    void resetLiveOut() { liveOut = false; }
     void setPayloadLiveOut() { payloadLiveOut = true; }
 
     void setDoNotWiden() { noWidening = true; }

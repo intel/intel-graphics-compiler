@@ -1044,6 +1044,24 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 stopTimer(TimerID::TOTAL);
                 return status;
             }
+            if (kernel->getIsPayload())
+            {
+                // Remove payload live-outs from the kernel after the compilation since
+                // they will not be outputs anymore after stitching.
+                mainKernel->getIRBuilder()->getRealR0()->resetLiveOut();
+                std::vector<input_info_t*>& inputs = mainKernel->getIRBuilder()->m_inputVect;
+                std::vector<input_info_t*>::iterator it = inputs.begin();
+                while (it != inputs.end())
+                {
+                    input_info_t* input_info = *it;
+                    vISA::G4_Declare* dcl = input_info->dcl;
+                    if (dcl->isPayloadLiveOut())
+                    {
+                        dcl->resetLiveOut();
+                    }
+                    ++it;
+                }
+            }
         }
         // Here we change the payload section as the main kernel in m_kernelsAndFunctions
         // During stitching, all functions will be cloned and stitched to the main kernel.
@@ -1073,9 +1091,24 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             {
                 m_kernelsAndFunctions.push_back(oldMainKernel);
             }
-            *m_kernelsAndFunctions.front()->getIRBuilder()->getJitInfo() =
-                *m_kernelsAndFunctions.back()->getIRBuilder()->getJitInfo();
+            // payloadSection is the main kernel at this point
+            // We need to copy essential info from the shader body to the main kernel
+            auto payloadSection = m_kernelsAndFunctions.front()->getIRBuilder();
+            auto shaderBody = m_kernelsAndFunctions.back()->getIRBuilder();
+            *payloadSection->getJitInfo() = *shaderBody->getJitInfo();
 
+            payloadSection->m_inputVect = shaderBody->m_inputVect;
+            if (shaderBody->kernel.hasKernelDebugInfo())
+            {
+                payloadSection->kernel.setKernelDebugInfo(
+                    shaderBody->kernel.getKernelDebugInfo());
+            }
+
+            if (shaderBody->kernel.hasGTPinInit())
+            {
+                payloadSection->kernel.setGTPinData(
+                    shaderBody->kernel.getGTPinData());
+            }
         }
 
         // Preparing for stitching some functions to other functions

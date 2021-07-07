@@ -398,6 +398,8 @@ G4_Kernel::G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
     numThreads = 0;
     hasAddrTaken = false;
     kernelDbgInfo = nullptr;
+    sharedDebugInfo = false;
+    sharedGTPinInfo = false;
     if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
         options->getOption(vISAOptions::vISA_GetFreeGRFInfo) ||
         options->getuInt32Option(vISAOptions::vISA_GTPinScratchAreaSize))
@@ -412,12 +414,12 @@ G4_Kernel::G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
 
 G4_Kernel::~G4_Kernel()
 {
-    if (kernelDbgInfo)
+    if (kernelDbgInfo && !sharedDebugInfo)
     {
         kernelDbgInfo->~KernelDebugInfo();
     }
 
-    if (gtPinInfo)
+    if (gtPinInfo && !sharedGTPinInfo)
     {
         gtPinInfo->~gtPinData();
     }
@@ -429,6 +431,27 @@ G4_Kernel::~G4_Kernel()
     }
 
     Declares.clear();
+}
+
+void G4_Kernel::setKernelDebugInfo(KernelDebugInfo* k)
+{
+    assert(k);
+    if (kernelDbgInfo)
+    {
+        kernelDbgInfo->~KernelDebugInfo();
+    }
+    kernelDbgInfo = k;
+    sharedDebugInfo = true;
+}
+
+void G4_Kernel::setGTPinData(gtPinData* p) {
+    assert(p);
+    if (gtPinInfo == nullptr)
+    {
+        gtPinInfo->~gtPinData();
+    }
+    gtPinInfo = p;
+    sharedGTPinInfo = true;
 }
 
 void G4_Kernel::computeChannelSlicing()

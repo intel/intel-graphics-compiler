@@ -181,6 +181,9 @@ private:
     std::string            lastG4Asm;
     int                    nextDumpIndex = 0;
 
+    bool sharedDebugInfo = false;
+    bool sharedGTPinInfo = false;
+
 public:
     FlowGraph              fg;
     DECLARE_LIST           Declares;
@@ -247,9 +250,11 @@ public:
     void setRAType(RA_Type type) { RAType = type; }
     RA_Type getRAType() { return RAType; }
 
-    void setKernelDebugInfo(KernelDebugInfo* k) { kernelDbgInfo = k; }
+    bool hasKernelDebugInfo() {return kernelDbgInfo;}
+    void setKernelDebugInfo(KernelDebugInfo* k);
     KernelDebugInfo* getKernelDebugInfo();
 
+    void setGTPinData(gtPinData* p);
     bool hasGTPinInit() const {return gtPinInfo && gtPinInfo->getGTPinInit();}
     gtPinData* getGTPinData() {
         if (!gtPinInfo)
