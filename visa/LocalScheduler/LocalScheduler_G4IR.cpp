@@ -1486,6 +1486,11 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
                     bool curKillsLive = curMask.kills(liveMask);
                     bool hasOverlap = curMask.hasOverlap(liveMask);
 
+                    //Acc1 and Acc3 may crash acc0 data
+                    if (curBucket == ACC_BUCKET)
+                    {
+                        hasOverlap = true;
+                    }
                     // 1. Find DEP type
                     DepType dep = DEPTYPE_MAX;
                     if (curBucket < ACC_BUCKET) {
