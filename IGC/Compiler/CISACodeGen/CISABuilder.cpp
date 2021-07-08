@@ -4327,6 +4327,11 @@ namespace IGC
             SaveOption(vISA_SWSBTokenNum, IGC_GET_FLAG_VALUE(SWSBTokenNum));
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableAccSubBeforeRA))
+        {
+            SaveOption(vISA_accSubBeforeRA, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableAccSub))
         {
             SaveOption(vISA_accSubstitution, true);

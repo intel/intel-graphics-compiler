@@ -428,6 +428,12 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, i
         return false;
     }
 
+    std::vector<G4_RegVar*>::iterator addrDst = std::find(addrTakenDsts.begin(), addrTakenDsts.end(), dst->getBase()->asRegVar());
+    if (addrDst != addrTakenDsts.end())
+    {
+        return false;
+    }
+
     if (inst->getCondMod() && inst->opcode() != G4_sel)
     {
         // since our du-chain is on inst instead of operand, the presence of conditional modifier complicates the checks later.

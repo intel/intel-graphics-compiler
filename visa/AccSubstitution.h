@@ -32,13 +32,32 @@ class AccSubPass
 
     int numAccSubDef = 0;
     int numAccSubUse = 0;
+    std::vector<G4_RegVar*> addrTakenDsts;
 
     bool replaceDstWithAcc(G4_INST* inst, int accNum);
 
 
 public:
 
-    AccSubPass(IR_Builder& B, G4_Kernel& K) : builder(B), kernel(K) {}
+    AccSubPass(IR_Builder& B, G4_Kernel& K) : builder(B), kernel(K)
+    {
+        addrTakenDsts.clear();
+
+        for (G4_BB* bb : kernel.fg)
+        {
+            for (const G4_INST* inst : *bb)
+            {
+                for (int i = 0; i < G4_MAX_SRCS; i++)
+                {
+                    G4_Operand* src = inst->getSrc(i);
+                    if (src != NULL && src->isAddrExp())
+                    {
+                        addrTakenDsts.push_back(src->asAddrExp()->getRegVar());
+                    }
+                }
+            }
+        }
+    }
 
     AccSubPass(const AccSubPass&) = delete;
 
