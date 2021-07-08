@@ -636,7 +636,8 @@ void runIfCvt(FlowGraph &fg) {
                 [](G4_DstRegRegion* A, G4_Operand* B, unsigned ExecSize)
                 -> G4_CmpRelation {
                 G4_CmpRelation Res = A->compareOperand(B);
-                if ((A->isAreg() && A->isFlag()) || (B->isAreg() && B->isFlag()))
+                if ((A->isAreg() && A->isFlag()) || (B->isAreg() && B->isFlag()) ||
+                    (A->isAreg() && A->isAccReg()) || (B->isAreg() && B->isAccReg()))
                 {
                     // compareOperand() not working for flag physical registers.
                     return Rel_disjoint;
