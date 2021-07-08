@@ -26,6 +26,7 @@ using namespace IGC;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ResolveOCLAtomics, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ResolveOCLAtomics, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ResolveOCLAtomics::ID = 0;
@@ -77,23 +78,12 @@ void ResolveOCLAtomics::initOCLAtomicsMap()
 
 bool ResolveOCLAtomics::runOnModule(Module& M)
 {
+    m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_pModule  = (IGCLLVM::Module*)&M;
     m_Int32Ty = Type::getInt32Ty(m_pModule->getContext());
 
     llvm::IGCIRBuilder<> builder(M.getContext());
     m_builder = &builder;
-
-    int pointerSize = M.getDataLayout().getPointerSizeInBits();
-    IGC_ASSERT(pointerSize == 64 || pointerSize == 32);
-
-    if (pointerSize == 64)
-    {
-        m_64bitPointer = true;
-    }
-    else
-    {
-        m_64bitPointer = false;
-    }
 
     m_changed = false;
 
@@ -147,7 +137,10 @@ void ResolveOCLAtomics::processOCLAtomic(CallInst& callInst, AtomicOp op, Buffer
         callInst.getOperand(1);
 
     const bool floatArgs = !noSources && src0->getType()->isFloatingPointTy();
-    const bool is64bit = m_64bitPointer && bufType != SLM;
+
+    Value* dstBuffer = callInst.getOperand(0);
+    PointerType* PtrTy = dyn_cast<PointerType>(dstBuffer->getType());
+    const bool is64bit = PtrTy && isA64Ptr(PtrTy, m_CGCtx) && bufType != SLM;
 
     // Cmpxchg intrinsic has 2 sources.
     if (op == EATOMIC_CMPXCHG ||
@@ -188,7 +181,6 @@ void ResolveOCLAtomics::processOCLAtomic(CallInst& callInst, AtomicOp op, Buffer
         }
     }
 
-    Value* dstBuffer = callInst.getOperand(0);
     Value* dst = callInst.getOperand(0);
 
     // We will use 64-bit dst only for 64-bit global pointers.
