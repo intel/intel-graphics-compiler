@@ -559,8 +559,8 @@ void CGen8OpenCLProgram::GetZEBinary(
                     int writeFD = 0;
                     sys::fs::CreationDisposition disp = sys::fs::CreationDisposition::CD_CreateAlways;
                     sys::fs::OpenFlags flags = sys::fs::OpenFlags::OF_None;
-                    unsigned int mode = sys::fs::all_write;
-                    auto EC = sys::fs::openFileForWrite(Twine(elfFileNameStr), writeFD, disp, flags, mode);
+                    unsigned int mode = sys::fs::all_read | sys::fs::all_write;
+                    auto EC = sys::fs::openFileForReadWrite(Twine(elfFileNameStr), writeFD, disp, flags, mode);
                     if (!EC)
                     {
                         raw_fd_ostream OS(writeFD, true, true); // shouldClose=true, unbuffered=true
