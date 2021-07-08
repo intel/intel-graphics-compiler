@@ -476,6 +476,17 @@ void ConstantCoalescing::ProcessBlock(
                             indcb_gathers);
                     }
                 }
+                else if (bufType == BINDLESS_TEXTURE && IGC_IS_FLAG_ENABLED(EnableTextureLoadCoalescing))
+                {
+                    MergeScatterLoad(
+                        ldRaw,
+                        ldRaw->getResourceValue(),
+                        addrSpace,
+                        baseOffsetInBytes,
+                        offsetInBytes,
+                        maxEltPlus,
+                        indcb_gathers);
+                }
             }
             continue;
         }
