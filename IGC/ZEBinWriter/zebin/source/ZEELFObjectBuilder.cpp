@@ -226,6 +226,34 @@ ZEELFObjectBuilder::addSectionGTPinInfo(std::string name, const uint8_t* data, u
 }
 
 void
+ZEELFObjectBuilder::addSectionVISAAsm(std::string name, const uint8_t* data, uint64_t size)
+{
+    // adjust the section name
+    std::string sectName;
+    if (name != "")
+        sectName = m_VISAAsmName + "." + name;
+    else
+        sectName = m_VISAAsmName;
+
+    addStandardSection(sectName,
+        data, size, SHT_ZEBIN_VISAASM, 0, 0, m_otherStdSections);
+}
+
+void
+ZEELFObjectBuilder::addSectionMisc(std::string name, const uint8_t* data, uint64_t size)
+{
+    // adjust the section name
+    std::string sectName;
+    if (name != "")
+        sectName = m_MiscName + "." + name;
+    else
+        sectName = m_MiscName;
+
+    addStandardSection(sectName,
+        data, size, SHT_ZEBIN_MISC, 0, 0, m_otherStdSections);
+}
+
+void
 ZEELFObjectBuilder::addSectionSpirv(std::string name, const uint8_t* data, uint64_t size)
 {
     if (name.empty())

@@ -144,6 +144,28 @@ public:
     //   ZEELFObjectBuilder
     void addSectionGTPinInfo(std::string name, const uint8_t* data, uint64_t size);
 
+    // add .visaasm section
+    // - name: section name. Do not includes leading .visaasm in the given
+    //         name. For example, giving "func", the section name will be
+    //         ".visaasm.func". The default name is .visaasm. It'll be apply
+    //         if the given name is empty.
+    // - size in byte
+    // - Note that the alignment requirement of the section should be satisfied
+    //   by the given data and size
+    // - Note that the given data buffer have to be alive through ZEELFObjectBuilder
+    void addSectionVISAAsm(std::string name, const uint8_t* data, uint64_t size);
+
+    // add .misc section
+    // - name: section name. Do not includes leading .misc in the given
+    //         name. For example, giving "func", the section name will be
+    //         ".misc.func". The default name is .misc. It'll be apply
+    //         if the given name is empty.
+    // - size in byte
+    // - Note that the alignment requirement of the section should be satisfied
+    //   by the given data and size
+    // - Note that the given data buffer have to be alive through ZEELFObjectBuilder
+    void addSectionMisc(std::string name, const uint8_t* data, uint64_t size);
+
     // .debug_info section in DWARF format
     // - name: section name. The default name is .debug_info
     // - size in byte
@@ -341,9 +363,11 @@ private:
     const std::string m_RelName       = ".rel";
     const std::string m_RelaName      = ".rela";
     const std::string m_SpvName       = ".spv";
+    const std::string m_VISAAsmName   = ".visaasm";
     const std::string m_DebugName     = ".debug_info";
     const std::string m_ZEInfoName    = ".ze_info";
     const std::string m_GTPinInfoName = ".gtpin_info";
+    const std::string m_MiscName      = ".misc";
     const std::string m_StrTabName    = ".strtab";
 
 private:

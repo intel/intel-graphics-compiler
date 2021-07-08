@@ -20,9 +20,11 @@ SPDX-License-Identifier: MIT
 | .symtab | Symbol table (if any) | SHT_SYMTAB |
 | .rel.{*kernel_name*} | Relocation table (if any) | SHT_REL |
 | .spv | Spir-v of the module (if required) | SHT_ZEBIN_SPIRV |
-| .debug_info | the debug information (if required) | SHT_PROGBITS |
+| .visaasm.{*visa_module_name*} | vISA asm of the module (if required) | SHT_ZEBIN_VISAASM |
+| .debug_* | the debug information (if required) | SHT_PROGBITS |
 | .ze_info | the metadata section for runtime information | SHT_ZEBIN_ZEINFO |
 | .gtpin_info | the metadata section for gtpin information (if any) | SHT_ZEBIN_GTPIN_INFO |
+| .misc | the miscellaneous data for multiple purposes (if required) | SHT_ZEBIN_MISC |
 | .strtab | the string table for section/symbol names | SHT_STRTAB |
 
 An ZE binary contains information of one compiled module.
@@ -123,7 +125,9 @@ enum SHT_ZEBIN : uint32_t
 {
     SHT_ZEBIN_SPIRV      = 0xff000009, // .spv.kernel section, value the same as SHT_OPENCL_SPIRV
     SHT_ZEBIN_ZEINFO     = 0xff000011, // .ze_info section
-    SHT_ZEBIN_GTPIN_INFO = 0xff000012  // .gtpin_info section
+    SHT_ZEBIN_GTPIN_INFO = 0xff000012, // .gtpin_info section
+    SHT_ZEBIN_VISAASM    = 0xff000013  // .visaasm section
+    SHT_ZEBIN_MISC       = 0xff000014  // .misc section
 }
 ~~~
 

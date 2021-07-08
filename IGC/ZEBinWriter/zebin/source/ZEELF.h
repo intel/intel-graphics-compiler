@@ -33,9 +33,11 @@ enum ELF_TYPE_ZEBIN
 // ELF section type for ELF32_Shdr::sh_type
 enum SHT_ZEBIN : uint32_t
 {
-    SHT_ZEBIN_SPIRV      = 0xff000009, // .spv.kernel section, value the same as SHT_OPENCL_SPIRV
+    SHT_ZEBIN_SPIRV      = 0xff000009, // .spv section, value the same as SHT_OPENCL_SPIRV
     SHT_ZEBIN_ZEINFO     = 0xff000011, // .ze.info section
-    SHT_ZEBIN_GTPIN_INFO = 0xff000012  // .gtpin_info section
+    SHT_ZEBIN_GTPIN_INFO = 0xff000012, // .gtpin_info section
+    SHT_ZEBIN_VISAASM    = 0xff000013, // .visaasm section
+    SHT_ZEBIN_MISC       = 0xff000014  // .misc section
 };
 
 // ELF relocation type for ELF32_Rel::ELF32_R_TYPE
