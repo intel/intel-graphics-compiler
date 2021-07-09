@@ -4830,13 +4830,6 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
                 return Rel_disjoint;
             }
 
-            //For ACC regsiter, current mechanism doesn't support accurate comparision
-            //return Rel_interfere so that no opt will be applied
-            if (myPhyReg->isAccReg() && opndPhyReg->isAccReg())
-            {
-                return Rel_interfere;
-            }
-
             // TODO: this is not accurate for flag/acc/address.
             return (myPhyReg->asAreg()->getArchRegType() ==
                   opndPhyReg->asAreg()->getArchRegType()) ? Rel_eq : Rel_disjoint;
