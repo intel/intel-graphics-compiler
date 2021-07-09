@@ -230,6 +230,7 @@ public:
         return false;
     }
 
+
     inline unsigned int getTextureIndex() const { return getNumOperands() - 7; }
     inline unsigned int getSamplerIndex() const { return getNumOperands() - 6; }
     inline Value* getTextureValue() const { return getOperand(getTextureIndex()); }

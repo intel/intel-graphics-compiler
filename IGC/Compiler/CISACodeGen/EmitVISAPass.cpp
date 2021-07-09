@@ -7629,6 +7629,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     uint channel = int_cast<uint>(GetImmediateVal(inst->getOperand(channelIndx)));
     SmallVector<CVariable*, 4> payload;
 
+
     //create send payload for numSources
     for (uint i = 0; i < numSources; i++)
     {
