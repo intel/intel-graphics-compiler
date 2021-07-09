@@ -208,7 +208,7 @@ bool IGC::OpenCLPrintfResolution::doInitialization(Module& M)
     m_context = &M.getContext();
     m_CGContext = nullptr;
     m_stringIndex = 0;
-    m_ptrSizeIntType = M.getDataLayout().getIntPtrType(*m_context);
+    m_ptrSizeIntType = M.getDataLayout().getIntPtrType(*m_context, ADDRESS_SPACE_GLOBAL);
     m_int32Type = Type::getInt32Ty(*m_context);
 
     return FunctionPass::doInitialization(M);
