@@ -133,8 +133,8 @@ static void getContainedStructType(Type *T, SmallPtrSetImpl<StructType *> &Tys)
     }
 }
 
-// Check the existence of an opaque type.
-static bool containsOpaque(llvm::Type *T)
+// Check the existence of an image type.
+static bool containsImageType(llvm::Type *T)
 {
     // All (nested) struct types in T.
     SmallPtrSet<StructType *, 8> StructTys;
@@ -145,7 +145,10 @@ static bool containsOpaque(llvm::Type *T)
         StructType *ST = *I;
         if (ST->isOpaque())
         {
-            return true;
+            auto typeName = ST->getName();
+            llvm::SmallVector<llvm::StringRef, 3> buf;
+            typeName.split(buf, ".");
+            return buf.size() >= 2 && buf[0].equals("opencl") && buf[1].startswith("image") && buf[1].endswith("_t");
         }
     }
 
@@ -516,10 +519,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
         else
         {
-            // Add always attribute if function has an argument with opaque type
+            // Curently, ExtensionArgAnalysis assumes that all functions with image arguments
+            // to be inlined. We add always inline for such cases.
             for (auto& arg : F->args())
             {
-                if (containsOpaque(arg.getType()))
+                if (containsImageType(arg.getType()))
                 {
                     mustAlwaysInline = true;
                     break;
