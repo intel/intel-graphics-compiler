@@ -216,6 +216,7 @@ class FlowGraph
     std::unordered_map<G4_Label*, std::vector<G4_BB*>> subroutines;
 
     vISA::Dominator dom;
+    vISA::ImmDominator immDom;
     vISA::PostDom pDom;
     vISA::LoopDetection loops;
 
@@ -448,7 +449,7 @@ public:
       pKernel(kernel), mem(m), instListAlloc(alloc),
       kernelInfo(NULL), builder(NULL), globalOpndHT(m), framePtrDcl(NULL),
       stackPtrDcl(NULL), scratchRegDcl(NULL), pseudoVCEDcl(NULL),
-      dom(*kernel), pDom(*kernel), loops(*kernel) {}
+      dom(*kernel), immDom(*kernel), pDom(*kernel), loops(*kernel) {}
 
     ~FlowGraph();
 
@@ -637,6 +638,7 @@ public:
     void dump() const;  // used in debugger
 
     Dominator& getDominator() { return dom; }
+    ImmDominator& getImmDominator() { return immDom; }
     PostDom& getPostDominator() { return pDom; }
     LoopDetection& getLoops() { return loops; }
     void markStale();

@@ -1213,7 +1213,7 @@ void SWSB::genSWSBPatchInfo() {
 #endif
 }
 
-void SWSB::getDominators(Dominator* dom)
+void SWSB::getDominators(ImmDominator* dom)
 {
     //BBVector[bb->getId()]->tokenAssigned = true;
     bool changed = true;
@@ -1265,7 +1265,7 @@ void SWSB::SWSBGenerator()
     if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation) ||
         fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation))
     {
-        auto& dom = fg.getDominator();
+        auto& dom = fg.getImmDominator();
 
         //Build dom tree
         for (size_t i = 0; i < BBVector.size(); i++)
@@ -7080,7 +7080,7 @@ void vISA::singleInstStallSWSB(G4_Kernel* kernel, uint32_t instID, uint32_t endI
     }
 }
 
-void SWSB::dumpImmDom(Dominator* dom) const
+void SWSB::dumpImmDom(ImmDominator* dom) const
 {
     for (auto bb : fg)
     {

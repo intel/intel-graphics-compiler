@@ -1520,7 +1520,7 @@ namespace vISA
 
         void removePredsEdges(SBNode * node, SBNode * pred);
 
-        void dumpImmDom(Dominator* dom) const;
+        void dumpImmDom(ImmDominator* dom) const;
 
         void setDefaultDistanceAtFirstInstruction();
 
@@ -1599,7 +1599,7 @@ namespace vISA
         // Fast-composite support.
         void genSWSBPatchInfo();
 
-        void getDominators(Dominator* dom);
+        void getDominators(ImmDominator* dom);
 
 
     public:

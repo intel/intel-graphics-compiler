@@ -3984,6 +3984,7 @@ void vISA::FlowGraph::markStale()
     // mark analysis passes as stale so getters lazily re-run
     // analysis when queried.
     dom.setStale();
+    immDom.setStale();
     pDom.setStale();
     loops.setStale();
 
