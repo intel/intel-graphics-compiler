@@ -8001,7 +8001,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             auto src0 = builder.createImm(0, Type_UD);
             auto dst = builder.Create_Dst_Opnd_From_Dcl(rtail, 1);
-            auto movInst = builder.createMov(g4::SIMD8, dst, src0, InstOpt_WriteEnable, false);
+            G4_ExecSize execSize(getGRFSize() / 4);
+            auto movInst = builder.createMov(execSize, dst, src0, InstOpt_WriteEnable, false);
             instBuffer.push_back(movInst);
         };
 
