@@ -594,7 +594,7 @@ namespace IGC
         return llvmCtxWrapper;
     }
 
-    IGC::IGCMD::MetaDataUtils* CodeGenContext::getMetaDataUtils()
+    IGC::IGCMD::MetaDataUtils* CodeGenContext::getMetaDataUtils() const
     {
         IGC_ASSERT_MESSAGE(nullptr != m_pMdUtils, "Metadata Utils is not initialized");
         return m_pMdUtils;

@@ -177,6 +177,15 @@ namespace IGC
     };
 
 
+    struct ConstantAddress
+    {
+        unsigned int bufId = 0;
+        unsigned int eltId = 0;
+        unsigned int size = 0;
+    };
+
+    bool operator < (const ConstantAddress &a, const ConstantAddress &b);
+
     //to hold metadata of every function
     struct FunctionMetaData
     {
@@ -184,6 +193,7 @@ namespace IGC
         WorkGroupWalkOrderMD workGroupWalkOrder;
         std::vector<FuncArgMD> funcArgs;
         FunctionTypeMD functionType = KernelFunction;
+        std::map<ConstantAddress, uint32_t> inlineDynConstants;
         ResourceAllocMD resAllocMD;
         std::vector<unsigned> maxByteOffsets;
         bool IsInitializer = false;
@@ -349,15 +359,6 @@ namespace IGC
         std::map<unsigned int, int> simplePushLoads;
     };
 
-    struct ConstantAddress
-    {
-        unsigned int bufId = 0;
-        unsigned int eltId = 0;
-        unsigned int size = 0;
-    };
-
-    bool operator < (const ConstantAddress &a, const ConstantAddress &b);
-
     struct StatelessPushInfo
     {
         unsigned int addressOffset = 0;
@@ -449,7 +450,6 @@ namespace IGC
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
         uint32_t CurUniqueIndirectIdx = DefaultIndirectIdx;
-        std::map<ConstantAddress, uint32_t>   inlineDynConstants;
         std::map<uint32_t, std::array<uint32_t, 4>> inlineDynTextures;
         std::vector<InlineResInfo> inlineResInfoData;
         ImmConstantInfo immConstant;

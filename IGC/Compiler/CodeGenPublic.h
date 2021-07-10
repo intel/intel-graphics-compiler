@@ -1004,7 +1004,7 @@ namespace IGC
 
         void initLLVMContextWrapper(bool createResourceDimTypes = true);
         llvm::LLVMContext* getLLVMContext() const;
-        IGC::IGCMD::MetaDataUtils* getMetaDataUtils();
+        IGC::IGCMD::MetaDataUtils* getMetaDataUtils() const;
         IGCLLVM::Module* getModule() const;
 
         void setModule(llvm::Module* m);
