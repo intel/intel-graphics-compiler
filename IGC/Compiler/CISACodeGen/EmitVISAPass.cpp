@@ -1431,7 +1431,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                 return Val->srcRootV == (*It)->dstRootV;
             };
 
-            if (0 == std::count_if(phiSrcDstList.begin(), phiSrcDstList.end(), Cmp))
+            if (0 == std::count_if (phiSrcDstList.begin(), phiSrcDstList.end(), Cmp))
             {
                 break;
             }
@@ -5121,8 +5121,8 @@ void EmitPass::emitPatchInstanceId(llvm::Instruction* inst)
 
 void EmitPass::emitSimdSize(llvm::Instruction* inst)
 {
-    //CVariable* simdSize = m_currShader->ImmToVariable( numLanes( m_SimdMode ), ISA_TYPE_UD );
-    //m_encoder->Cast( m_destination, simdSize );
+    //CVariable* simdSize = m_currShader->ImmToVariable(numLanes(m_SimdMode), ISA_TYPE_UD);
+    //m_encoder->Cast(m_destination, simdSize);
     //m_encoder->Push();
 }
 
@@ -5783,10 +5783,10 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
         // but since this is a SIMD opcode and we're  compiling SIMD8, SIMD16,
         // we don't expect to see a 1 OWORD write.
 
-        // shr( 1 ) r64.2<1>:ud r60.0<0; 1, 0>:ud 0x4:uw{ Align1, H1, NoMask }
-        // mov( 16 ) r65.0<1>:ud r54.0<8; 8, 1>:ud{ Align1, NoMask, Compacted }
-        // and( 1 ) r64.5<1>:ud r0.5<0; 1, 0>:ud 0x3ff:ud{ Align1, NoMask }
-        // send( 16 ) null<1>:uw r64 0xa 0x60a03ff:ud{ Align1, NoMask } oword block write
+        // shr   (1) r64.2<1>:ud r60.0<0; 1, 0>:ud 0x4:uw{ Align1, H1, NoMask }
+        // mov  (16) r65.0<1>:ud r54.0<8; 8, 1>:ud{ Align1, NoMask, Compacted }
+        // and   (1) r64.5<1>:ud r0.5<0; 1, 0>:ud 0x3ff:ud{ Align1, NoMask }
+        // send (16) null<1>:uw r64 0xa 0x60a03ff:ud{ Align1, NoMask } oword block write
 
         CVariable* src0shifted = m_currShader->GetNewVariable(
             numLanes(SIMDMode::SIMD1),
@@ -6298,16 +6298,16 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
 
     // Emits a MEDIA_BLOCK_READ instruction.
     // Considering block width as x-axis and block height as y axis:
-    // Pass 0 reads from (xOffset,yOffset ) to (xOffset+31, yOffset+blockheight)
+    // Pass 0 reads from (xOffset,yOffset) to (xOffset+31, yOffset+blockheight)
     // Pass 1 reads from (xOffset+32, yOffset) to (xOffset+63, yOffset+blockheight)
     // Instructions generated:
-    // mov( 1 ) r36.1<1>:d r16.0<0; 1, 0>:d{ Align1, NoMask }
-    // mov( 1 ) r36.2<1>:ud 0x3001f:ud{ Align1, NoMask }
-    // mov( 1 ) r36.0<1>:ud r15.0<0; 1, 0>:ud{ Align1, NoMask, Compacted }
-    // send( 8 ) r28.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
-    // add( 1 ) r36.0<1>:ud r15.0<0; 1, 0>:ud 0x20:uw{ Align1, NoMask }
-    // mov( 1 ) r36.1<1>:d r13.1<0; 1, 0>:d{ Align1, NoMask }
-    // send( 8 ) r32.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
+    // mov(1) r36.1<1>:d r16.0<0; 1, 0>:d{ Align1, NoMask }
+    // mov(1) r36.2<1>:ud 0x3001f:ud{ Align1, NoMask }
+    // mov(1) r36.0<1>:ud r15.0<0; 1, 0>:ud{ Align1, NoMask, Compacted }
+    // send(8) r28.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
+    // add(1) r36.0<1>:ud r15.0<0; 1, 0>:ud 0x20:uw{ Align1, NoMask }
+    // mov(1) r36.1<1>:d r13.1<0; 1, 0>:d{ Align1, NoMask }
+    // send(8) r32.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
     //      -----------------
     //      |       |       |
     //      |       |       |
@@ -6601,7 +6601,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
         }
         // Emits a MEDIA_BLOCK_WRITE instruction.
         // Considering block width as x-axis and block height as y axis:
-        // Pass 0 writes from (xOffset,yOffset ) to (xOffset+31, yOffset+blockheight)
+        // Pass 0 writes from (xOffset,yOffset) to (xOffset+31, yOffset+blockheight)
         // Pass 1 writes from (xOffset+32, yOffset) to (xOffset+63, yOffset+blockheight)
         // mov (8) r28.0<1>:ud r0.0<8;8,1>:ud {Align1, NoMask, Compacted}
         // mov (1) r28.2<1>:ud 0x3001f:ud {Align1, NoMask}
@@ -7082,7 +7082,7 @@ void EmitPass::interceptSamplePayloadCoalescing(
         //out:
         payloadToCCTupleRelativeOffset,
         representativeValPtr
-    );
+   );
 
     payloadCovered = m_CE->IsPayloadCovered(inst,
         ccTuple,
@@ -11426,7 +11426,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     }
                     m_encoder->SetSrcRegion(0, 0, 1, 0);
                     m_encoder->SetDstSubReg(lane);
-                    if(bWAMultiGRF)
+                    if (bWAMultiGRF)
                     {
                         m_encoder->SetMask((lane / 8) % 2 ? EMASK_Q2 : EMASK_Q1);
                         if (execSizeNew == SIMDMode::SIMD4)
@@ -12501,7 +12501,7 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
     const unsigned int dispatchSize = numLanes(m_currShader->m_dispatchSize);
     const bool useReduceAll = clusterSize >= dispatchSize;
 
-    if(clusterSize == 1)
+    if (clusterSize == 1)
     {
         IGC_ASSERT_MESSAGE(0, "Simple copy. For performance reasons handle it somehow at earlier stage.");
         for (uint half = 0; half < m_currShader->m_numberInstance; ++half)
@@ -16954,7 +16954,7 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     }
 
     // Since we use unaligned oword writes, pushSize should be OW aligned address
-    if(pushSize%SIZE_OWORD > 0)
+    if (pushSize % SIZE_OWORD > 0)
         pushSize += (SIZE_OWORD - (pushSize % SIZE_OWORD));
 
     // Update SP by pushSize

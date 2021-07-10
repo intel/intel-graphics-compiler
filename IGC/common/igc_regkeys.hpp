@@ -18,11 +18,11 @@ PURPOSE: Defines meta data for holding/defining regkey variables
 
 typedef char debugString[256];
 
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined(_DEBUG) || defined(_INTERNAL)
 #define IGC_DEBUG_VARIABLES
 #endif
 
-#if defined( __linux__ )
+#if defined(__linux__)
 #define IGC_DEBUG_VARIABLES
 #endif
 
@@ -52,7 +52,7 @@ struct SRegKeyVariableMetaData
     }
 };
 
-#if defined ( __linux__ ) && !defined( _DEBUG ) && !defined( _INTERNAL )
+#if defined (__linux__) && !defined(_DEBUG) && !defined(_INTERNAL)
 #define LINUX_RELEASE_MODE
 #endif
 
@@ -60,7 +60,7 @@ struct SRegKeyVariableMetaData
 MACRO: IGC_REGKEY
 PURPOSE: Declares a new regkey variable.
 \*****************************************************************************/
-#define IGC_REGKEY( dataType, regkeyName, defaultValue, description, releaseMode )    \
+#define IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)    \
 struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
 {                                                   \
     SRegKeyVariableMetaData_##regkeyName()          \
@@ -101,40 +101,40 @@ struct SRegKeysList
 bool CheckHashRange(const std::vector<HashRange>&);
 extern SRegKeysList g_RegKeyList;
 #if defined(LINUX_RELEASE_MODE)
-#define IGC_GET_FLAG_VALUE( name )                 \
-( ( CheckHashRange(g_RegKeyList.name.hashes) && g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
-#define IGC_IS_FLAG_ENABLED( name )                ( IGC_GET_FLAG_VALUE(name) != 0 )
-#define IGC_IS_FLAG_DISABLED( name )               ( !IGC_IS_FLAG_ENABLED(name) )
-#define IGC_SET_FLAG_VALUE( name, regkeyValue )    ( g_RegKeyList.name.m_Value = regkeyValue )
-#define IGC_GET_REGKEYSTRING( name )               \
-( ( CheckHashRange(g_RegKeyList.name.hashes) && g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_string : "" )
+#define IGC_GET_FLAG_VALUE(name)                 \
+  ((CheckHashRange(g_RegKeyList.name.hashes) && g_RegKeyList.name.IsReleaseMode()) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
+#define IGC_IS_FLAG_ENABLED(name)                (IGC_GET_FLAG_VALUE(name) != 0)
+#define IGC_IS_FLAG_DISABLED(name)               (!IGC_IS_FLAG_ENABLED(name))
+#define IGC_SET_FLAG_VALUE(name, regkeyValue)    (g_RegKeyList.name.m_Value = regkeyValue)
+#define IGC_GET_REGKEYSTRING(name)               \
+  ((CheckHashRange(g_RegKeyList.name.hashes) && g_RegKeyList.name.IsReleaseMode()) ? g_RegKeyList.name.m_string : "")
 #else
-#define IGC_GET_FLAG_VALUE( name )                 \
-( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
-#define IGC_IS_FLAG_ENABLED( name )                ( IGC_GET_FLAG_VALUE(name) != 0 )
-#define IGC_IS_FLAG_DISABLED( name )               ( !IGC_IS_FLAG_ENABLED(name) )
-#define IGC_SET_FLAG_VALUE( name, regkeyValue )    ( g_RegKeyList.name.m_Value = regkeyValue )
-#define IGC_GET_REGKEYSTRING( name )               \
-( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_string : "" )
+#define IGC_GET_FLAG_VALUE(name)                 \
+  (CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
+#define IGC_IS_FLAG_ENABLED(name)                (IGC_GET_FLAG_VALUE(name) != 0)
+#define IGC_IS_FLAG_DISABLED(name)               (!IGC_IS_FLAG_ENABLED(name))
+#define IGC_SET_FLAG_VALUE(name, regkeyValue)    (g_RegKeyList.name.m_Value = regkeyValue)
+#define IGC_GET_REGKEYSTRING(name)               \
+  (CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_string : "")
 #endif
 
-#define IGC_REGKEY_OR_FLAG_ENABLED( name, flag ) ( IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
+#define IGC_REGKEY_OR_FLAG_ENABLED(name, flag) (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
 
 #if defined(_WIN64) || defined(_WIN32)
 struct DEVICE_INFO
-    {
-        std::string description;
-        DWORD deviceID;
-        DWORD revisionID;
-        DWORD pciBus;
-        DWORD pciDevice;
-        DWORD pciFunction;
-        std::string driverRegistryPath;
+{
+    std::string description;
+    DWORD deviceID;
+    DWORD revisionID;
+    DWORD pciBus;
+    DWORD pciDevice;
+    DWORD pciFunction;
+    std::string driverRegistryPath;
 
-        DEVICE_INFO(DEVINST deviceInstance);
+    DEVICE_INFO(DEVINST deviceInstance);
 
-        void get_device_property(DEVINST deviceInstace, DWORD property);
-    };
+    void get_device_property(DEVINST deviceInstace, DWORD property);
+};
 #endif
 
 void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys);
@@ -147,7 +147,7 @@ void SetCurrentDebugHash(unsigned long long hash);
 static inline void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys) {}
 static inline void SetCurrentDebugHash(unsigned long long hash) {}
 static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError=nullptr) {}
-#define IGC_SET_FLAG_VALUE( name, regkeyValue ) ;
+#define IGC_SET_FLAG_VALUE(name, regkeyValue)
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
     static const unsigned int regkeyName##default = (unsigned int)defaultValue;
 namespace IGC
@@ -160,9 +160,10 @@ namespace IGC
 };
 #undef DECLARE_IGC_REGKEY
 
-#define IGC_IS_FLAG_ENABLED( name )     (IGC::DebugVariable::name##default != 0)
-#define IGC_IS_FLAG_DISABLED( name )    (IGC::DebugVariable::name##default == 0)
-#define IGC_GET_FLAG_VALUE( name )      (IGC::DebugVariable::name##default)
-#define IGC_GET_REGKEYSTRING( name )    ("")
-#define IGC_REGKEY_OR_FLAG_ENABLED( name, flag ) ( IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
+#define IGC_IS_FLAG_ENABLED(name)     (IGC::DebugVariable::name##default != 0)
+#define IGC_IS_FLAG_DISABLED(name)    (IGC::DebugVariable::name##default == 0)
+#define IGC_GET_FLAG_VALUE(name)      (IGC::DebugVariable::name##default)
+#define IGC_GET_REGKEYSTRING(name)    ("")
+#define IGC_REGKEY_OR_FLAG_ENABLED(name, flag) \
+  (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
 #endif

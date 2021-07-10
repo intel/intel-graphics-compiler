@@ -89,7 +89,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/GenUpdateCB.h"
 #include "Compiler/PromoteResourceToDirectAS.h"
 #include "Compiler/PromoteStatelessToBindless.h"
-#if defined( _DEBUG ) && !defined( ANDROID )
+#if defined(_DEBUG) && !defined(ANDROID)
 #include "Compiler/VerificationPass.hpp"
 #endif
 #include "Compiler/LegalizationPass.hpp"
@@ -177,28 +177,28 @@ static void AddURBWriteRelatedPass(CodeGenContext& ctx, IGCPassManager& mpm)
 {
 // 3D MergeURBWrite pass
     switch (ctx.type)
-{
-case ShaderType::GEOMETRY_SHADER:
-case ShaderType::VERTEX_SHADER:
-case ShaderType::HULL_SHADER:
-case ShaderType::DOMAIN_SHADER:
-    if (IGC_IS_FLAG_DISABLED(DisableURBWriteMerge))
     {
-        mpm.add(createMergeURBWritesPass());
-
-        if (IGC_IS_FLAG_ENABLED(EnableTEFactorsClear) && (ctx.type == ShaderType::HULL_SHADER))
+    case ShaderType::GEOMETRY_SHADER:
+    case ShaderType::VERTEX_SHADER:
+    case ShaderType::HULL_SHADER:
+    case ShaderType::DOMAIN_SHADER:
+        if (IGC_IS_FLAG_DISABLED(DisableURBWriteMerge))
         {
-            mpm.add(createClearTessFactorsPass());
+            mpm.add(createMergeURBWritesPass());
+
+            if (IGC_IS_FLAG_ENABLED(EnableTEFactorsClear) && (ctx.type == ShaderType::HULL_SHADER))
+            {
+                mpm.add(createClearTessFactorsPass());
+            }
         }
+        if (IGC_IS_FLAG_DISABLED(DisableCodeHoisting))
+        {
+            mpm.add(new CodeHoisting());
+        }
+        break;
+    default:
+        break;
     }
-    if (IGC_IS_FLAG_DISABLED(DisableCodeHoisting))
-    {
-        mpm.add(new CodeHoisting());
-    }
-    break;
-default:
-    break;
-}
 }
 
 static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
@@ -789,7 +789,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(llvm::createDeadCodeEliminationPass());
         mpm.add(createEmu64OpsPass());
         ctx.m_hasEmu64BitInsts = true;
-        if(!isOptDisabled)
+        if (!isOptDisabled)
         {
             mpm.add(new GenSpecificPattern());
         }
@@ -1522,7 +1522,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         });
 
         mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
-#if defined( _DEBUG ) && !defined( ANDROID )
+#if defined(_DEBUG) && !defined(ANDROID)
         // IGC IR Verification pass checks that we get a correct IR after the Unification.
         mpm.add(new VerificationPass());
 #endif
@@ -1625,9 +1625,9 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(new SampleMultiversioning(pContext));
         }
 
-        bool disableGOPT = ( ( IsStage1FastestCompile( pContext->m_CgFlag, pContext->m_StagingCtx ) ||
-                               IGC_GET_FLAG_VALUE( ForceFastestSIMD ) ) &&
-                             ( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_DISABLE_GOPT ) );
+        bool disableGOPT = ((IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
+                               IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
+                             (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT));
 
         if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
         {

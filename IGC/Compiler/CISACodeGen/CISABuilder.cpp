@@ -220,12 +220,12 @@ namespace IGC
             const unsigned vstride = mod.specialRegion ? mod.region[0] : 1;
             const unsigned width = mod.specialRegion ? mod.region[1] : 1;
             const unsigned hstride = mod.specialRegion ? mod.region[2] : 0;
-            if(0 == width)
+            if (0 == width)
             {
                 return unsigned(-1);
             }
             const unsigned height = visaNumLanes(execSize) / width;
-            if(0 == height)
+            if (0 == height)
             {
                 return unsigned(-1);
             }
@@ -2994,7 +2994,7 @@ namespace IGC
                 || platform->getPlatformInfo().eProductFamily == IGFX_DG1
                 || platform->getPlatformInfo().eProductFamily == IGFX_ROCKETLAKE
                 || platform->getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_S
-                )
+               )
             {
                 return GENX_TGLLP;
             }
@@ -3699,7 +3699,9 @@ namespace IGC
                 }
             }
         }
-        if ( IGC_IS_FLAG_DISABLED(ForceDisableShaderDebugHashCodeInKernel) && (context->m_DriverInfo.EnableShaderDebugHashCodeInKernel() || IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel)))
+        if (IGC_IS_FLAG_DISABLED(ForceDisableShaderDebugHashCodeInKernel) &&
+          (context->m_DriverInfo.EnableShaderDebugHashCodeInKernel() ||
+            IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel)))
         {
             QWORD AssemblyHash = { 0 };
             AssemblyHash = context->hash.getAsmHash();
@@ -4411,56 +4413,48 @@ namespace IGC
         SaveOption(vISA_noStitchExternFunc, false);
 
         // Turning off optimizations as much as possible to have the fastest compilation
-        if( IsStage1FastestCompile( context->m_CgFlag, context->m_StagingCtx ) ||
-            IGC_GET_FLAG_VALUE( ForceFastestSIMD ) )
+        if (IsStage1FastestCompile(context->m_CgFlag, context->m_StagingCtx) ||
+            IGC_GET_FLAG_VALUE(ForceFastestSIMD))
         {
-            if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) == FCEXP_NO_EXPRIMENT )
+            if (IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT)
             {
-                SaveOption( vISA_LocalScheduling, false );
+                SaveOption(vISA_LocalScheduling, false);
                 // temporarily enabling preRA_schedule due to the ACOdyssey regression in IGC-4149.  May be re-disenabled later
-                // SaveOption( vISA_preRA_Schedule, false );
-                SaveOption( vISA_SpillSpaceCompression, false );
-                SaveOption( vISA_LVN, false );
-                SaveOption( vISA_QuickTokenAllocation, true );
-                SaveOption( vISA_LinearScan, true );
+                // SaveOption(vISA_preRA_Schedule, false);
+                SaveOption(vISA_SpillSpaceCompression, false);
+                SaveOption(vISA_LVN, false);
+                SaveOption(vISA_QuickTokenAllocation, true);
+                SaveOption(vISA_LinearScan, true);
             }
             else
             {
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_FASTSPILL )
-                    SaveOption( vISA_FastSpill, true );
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_FASTSPILL)
+                    SaveOption(vISA_FastSpill, true);
 
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_LOCAL_SCHEDULING )
-                    SaveOption( vISA_LocalScheduling, false );
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LOCAL_SCHEDULING)
+                    SaveOption(vISA_LocalScheduling, false);
 
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_PRERA_SCHEDULING )
-                    SaveOption( vISA_preRA_Schedule, false );
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_PRERA_SCHEDULING)
+                    SaveOption(vISA_preRA_Schedule, false);
 
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_NO_REMAT )
-                    SaveOption( vISA_NoRemat, true );
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_NO_REMAT)
+                    SaveOption(vISA_NoRemat, true);
 
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_SPILL_COMPRESSION )
-                    SaveOption( vISA_SpillSpaceCompression, false );
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_SPILL_COMPRESSION)
+                    SaveOption(vISA_SpillSpaceCompression, false);
 
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_LOCAL_DECL_SPLIT_GLOBAL_RA )
-                    SaveOption( vISA_LocalDeclareSplitInGlobalRA, false );
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LOCAL_DECL_SPLIT_GLOBAL_RA)
+                    SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
 
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_DISABLE_LVN )
-                {
-                    SaveOption( vISA_LVN, false );
-                }
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_QUICKTOKEN_ALLOC )
-                {
-                    SaveOption( vISA_QuickTokenAllocation, true );
-                }
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_LINEARSCAN )
-                { // use linearScan
-                    SaveOption( vISA_LinearScan, true );
-                }
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_LVN)
+                    SaveOption(vISA_LVN, false);
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_QUICKTOKEN_ALLOC)
+                    SaveOption(vISA_QuickTokenAllocation, true);
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LINEARSCAN)
+                    SaveOption(vISA_LinearScan, true); // use linearScan
 
-                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_1PASSRA )
-                { // use 1 iteration RA
-                    SaveOption( vISA_FastCompileRA, true );
-                }
+                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_1PASSRA)
+                    SaveOption(vISA_FastCompileRA, true); // use 1 iteration RA
             }
         }
 
@@ -5269,7 +5263,7 @@ namespace IGC
         if (m_hasInlineAsm || visaAsmOverride)
         {
             llvm::SmallVector<const char*, 10> params;
-            llvm::SmallVector<std::unique_ptr< char, std::function<void( char*)>>, 10> params2;
+            llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> params2;
             InitBuildParams(params2);
             for (size_t i = 0; i < params2.size(); i++)
             {
@@ -5511,7 +5505,7 @@ namespace IGC
         size = binSize;
 
         // the kernel has to be padded to have a size aligned on 64 bytes
-        size_t padding = iSTD::GetAlignmentOffset(size, 64);//m_program->m_Platform->getKernelPointerAlignSize() );
+        size_t padding = iSTD::GetAlignmentOffset(size, 64);//m_program->m_Platform->getKernelPointerAlignSize());
         void* kernel = nullptr;
         if (size!=0)
         {
