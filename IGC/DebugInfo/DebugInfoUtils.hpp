@@ -109,11 +109,7 @@ namespace IGC
                     GV->getDisplayName(),
                     Builder.createFile(GV->getFilename(), GV->getDirectory()),
                     GV->getLine(),
-                    GV->getType()
-#if LLVM_VERSION_MAJOR <= 8
-                    .resolve()
-#endif
-                    ,
+                    GV->getType(),
                     false,
                     flags
                 );

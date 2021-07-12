@@ -200,18 +200,9 @@ namespace IGC
         }
 
     private:
-#if LLVM_VERSION_MAJOR <= 8
-        /// resolve - Look in the DwarfDebug map for the MDNode that
-        /// corresponds to the reference.
-        /// Find the MDNode for the given reference.
-        template <typename T> T * resolve(llvm::TypedDINodeRef<T> Ref) const {
-            return Ref.resolve();
-        }
-#else
         template <typename T> inline T* resolve(T* Ref) const {
             return Ref;
         }
-#endif
     };
 
     /// \brief Helper used to pair up a symbol and its DWARF compile unit.
@@ -554,17 +545,10 @@ namespace IGC
         unsigned getDwarfVersion() const { return DwarfVersion; }
 
         /// Find the MDNode for the given reference.
-#if LLVM_VERSION_MAJOR <= 8
-        template <typename T> T * resolve(llvm::TypedDINodeRef<T> Ref) const
-        {
-            return Ref.resolve();
-        }
-#else
         template <typename T> inline T* resolve(T* Ref) const
         {
             return Ref;
         }
-#endif
         /// \brief Returns the entry into the start of the pool.
         llvm::MCSymbol* getStringPoolSym();
 

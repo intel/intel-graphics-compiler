@@ -209,9 +209,6 @@ namespace IGC
         void addSourceLine(DIE* Die, llvm::DIVariable* V);
         void addSourceLine(DIE* Die, llvm::DISubprogram* SP);
         void addSourceLine(DIE* Die, llvm::DIType* Ty);
-#if LLVM_VERSION_MAJOR == 4
-        void addSourceLine(DIE * Die, llvm::DINamespace * NS);
-#endif
 
         /// addConstantValue - Add constant value entry in variable DIE.
         void addConstantValue(DIE* Die, const llvm::ConstantInt* CI, bool Unsigned);
@@ -407,17 +404,10 @@ namespace IGC
 
         /// resolve - Look in the DwarfDebug map for the llvm::MDNode that
         /// corresponds to the reference.
-#if LLVM_VERSION_MAJOR <= 8
-        template <typename T> T * resolve(llvm::TypedDINodeRef<T> Ref) const
-        {
-            return DD->resolve(Ref);
-        }
-#else
         template <typename T> inline T* resolve(T* Ref) const
         {
             return DD->resolve(Ref);
         }
-#endif
 
      public:
         // Added for 1-step elf

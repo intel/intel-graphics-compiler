@@ -195,15 +195,10 @@ int64_t CompileUnit::getDefaultLowerBound() const
 }
 
 static bool HasImplicitLocation(const DbgVariable& var) {
-#if LLVM_VERSION_MAJOR >= 9
     if (auto* dbgInst = dyn_cast_or_null<IGCLLVM::DbgVariableIntrinsic>(var.getDbgInst()))
         if (auto* expr = dbgInst->getExpression())
             return expr->isImplicit();
     return false;
-#else
-    // We don't support implicit locations for LLVM less than 9
-    return false;
-#endif
 }
 /// Check whether the DIE for this MDNode can be shared across CUs.
 static bool isShareableAcrossCUs(llvm::MDNode* D)
@@ -482,18 +477,6 @@ void CompileUnit::addSourceLine(DIE* Die, DIType* Ty)
 
     addSourceLine(Die, Ty, Ty->getLine());
 }
-
-#if LLVM_VERSION_MAJOR == 4
-/// addSourceLine - Add location information to specified debug information
-/// entry.
-void CompileUnit::addSourceLine(DIE * Die, DINamespace * NS)
-{
-    // Verify namespace.
-    if (!isa<DINamespace>(NS)) return;
-
-    addSourceLine(Die, NS, NS->getLine());
-}
-#endif
 
 void CompileUnit::addRegisterLoc(IGC::DIEBlock* TheDie, unsigned DWReg, int64_t Offset, const llvm::Instruction* dbgInst)
 {
@@ -2040,9 +2023,6 @@ IGC::DIE* CompileUnit::getOrCreateNameSpace(DINamespace* NS)
     {
         addString(NDie, dwarf::DW_AT_name, NS->getName());
     }
-#if LLVM_VERSION_MAJOR == 4
-    addSourceLine(NDie, NS);
-#endif
     return NDie;
 }
 
@@ -2199,11 +2179,7 @@ void CompileUnit::constructSubrangeDIE(DIE& Buffer, DISubrange* SR, DIE* IndexTy
     int64_t LowerBound = SR->getLowerBound();
 #endif
     int64_t DefaultLowerBound = getDefaultLowerBound();
-    int64_t Count = SR->getCount()
-#if LLVM_VERSION_MAJOR >= 7
-        .dyn_cast<ConstantInt*>()->getSExtValue()
-#endif
-        ;
+    int64_t Count = SR->getCount().dyn_cast<ConstantInt*>()->getSExtValue();
 
 #if LLVM_VERSION_MAJOR >= 11
     auto addBoundTypeEntry = [&](dwarf::Attribute Attr,

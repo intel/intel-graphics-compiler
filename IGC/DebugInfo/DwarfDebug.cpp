@@ -69,11 +69,7 @@ const char* endSymbol = ".end";
 bool DbgVariable::isBlockByrefVariable() const {
 #if LLVM_VERSION_MAJOR < 10
     IGC_ASSERT_MESSAGE(Var, "Invalid complex DbgVariable!");
-    return Var->getType()
-#if LLVM_VERSION_MAJOR <= 8
-        .resolve()
-#endif
-        ->isBlockByrefStruct();
+    return Var->getType()->isBlockByrefStruct();
 #else
     // isBlockByrefStruct is no more support by LLVM10 IR - more info in this commit below:
     // https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
@@ -196,56 +192,6 @@ uint64_t DbgVariable::getBasicSize(DwarfDebug* DD)
 
 DIType* DbgVariable::getType() const
 {
-    //DIType* Ty = Var->getType()
-//#if LLVM_VERSION_MAJOR <= 8
-    //    .resolve()
-//#endif
-    //    ;
-// #if LLVM_VERSION_MAJOR < 10
-    // isBlockByrefStruct is no more support by LLVM10 IR - more info in this commit below:
-    // https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
-    // FIXME: isBlockByrefVariable should be reformulated in terms of complex
-    // addresses instead.
-    //if (Ty->isBlockByrefStruct()) {
-        /* Byref variables, in Blocks, are declared by the programmer as
-        "SomeType VarName;", but the compiler creates a
-        __Block_byref_x_VarName struct, and gives the variable VarName
-        either the struct, or a pointer to the struct, as its type.  This
-        is necessary for various behind-the-scenes things the compiler
-        needs to do with by-reference variables in blocks.
-
-        However, as far as the original *programmer* is concerned, the
-        variable should still have type 'SomeType', as originally declared.
-
-        The following function dives into the __Block_byref_x_VarName
-        struct to find the original type of the variable.  This will be
-        passed back to the code generating the type for the Debug
-        Information Entry for the variable 'VarName'.  'VarName' will then
-        have the original type 'SomeType' in its debug information.
-
-        The original type 'SomeType' will be the type of the field named
-        'VarName' inside the __Block_byref_x_VarName struct.
-
-        NOTE: In order for this to not completely fail on the debugger
-        side, the Debug Information Entry for the variable VarName needs to
-        have a DW_AT_location that tells the debugger how to unwind through
-        the pointers and __Block_byref_x_VarName struct to find the actual
-        value of the variable.  The function addBlockByrefType does this.  */
-        //DIType* subType = Ty;
-        //uint16_t tag = (uint16_t)Ty->getTag();
-
-        //if (tag == dwarf::DW_TAG_pointer_type)
-        //    subType = resolve(cast<DIDerivedType>(Ty)->getBaseType());
-
-        //auto Elements = cast<DICompositeType>(subType)->getElements();
-        //for (unsigned i = 0, N = Elements.size(); i < N; ++i) {
-        //    auto* DT = cast<DIDerivedType>(Elements[i]);
-        //    if (getName() == DT->getName())
-        //        return resolve(DT->getBaseType());
-        //}
-    //}
-//#endif
-    //return Ty;
     return resolve(getVariable()->getType());
 }
 
@@ -1162,11 +1108,7 @@ void DwarfDebug::collectDeadVariables()
             {
                 continue;
             }
-#if LLVM_VERSION_MAJOR == 4
-            DILocalVariableArray Variables = SP->getVariables();
-#elif LLVM_VERSION_MAJOR >= 7
             auto Variables = SP->getRetainedNodes();
-#endif
             if (Variables.size() == 0)
                 continue;
 
@@ -1882,11 +1824,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
     // Collect info for variables that were optimized out.
     LexicalScope* FnScope = LScopes.getCurrentFunctionScope();
-#if LLVM_VERSION_MAJOR == 4
-    DILocalVariableArray Variables = cast<DISubprogram>(FnScope->getScopeNode())->getVariables();
-#elif LLVM_VERSION_MAJOR >= 7
     auto Variables = cast<DISubprogram>(FnScope->getScopeNode())->getRetainedNodes();
-#endif
 
     for (unsigned i = 0, e = Variables.size(); i != e; ++i)
     {
@@ -2358,12 +2296,7 @@ void DwarfDebug::endFunction(const Function* MF)
         if (SP)
         {
             // Collect info for variables that were optimized out.
-#if LLVM_VERSION_MAJOR == 4
-            DILocalVariableArray Variables = SP->getVariables();
-#elif LLVM_VERSION_MAJOR >= 7
             auto Variables = SP->getRetainedNodes();
-#endif
-
             for (unsigned i = 0, e = Variables.size(); i != e; ++i)
             {
                 DILocalVariable* DV = cast_or_null<DILocalVariable>(Variables[i]);

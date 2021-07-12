@@ -57,11 +57,7 @@ namespace IGC
         VISAMCAsmInfo(unsigned int pointerSize) : MCAsmInfoELF()
         {
             DwarfUsesRelocationsAcrossSections = true;
-#if LLVM_VERSION_MAJOR >= 7
             CodePointerSize = pointerSize;
-#else
-            PointerSize = pointerSize;
-#endif
         }
     };
 
@@ -282,29 +278,10 @@ namespace IGC
             }
         }
 
-#if LLVM_VERSION_MAJOR == 4
-        void applyFixup(const MCFixup & fixup, char* pData, unsigned dataSize, uint64_t value, bool isPCRel) const override
-        {
-            unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
-
-            IGC_ASSERT_MESSAGE(fixup.getOffset() + size <= dataSize, "Invalid fixup offset!");
-
-            // Check that uppper bits are either all zeros or all ones.
-            // Specifically ignore overflow/underflow as long as the leakage is
-            // limited to the lower bits. This is to remain compatible with
-            // other assemblers.
-            IGC_ASSERT_MESSAGE(isIntN(size * 8 + 1, value), "value does not fit in the fixup field");
-
-            for (unsigned i = 0; i != size; ++i)
-            {
-                pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
-            }
-        }
-#elif LLVM_VERSION_MAJOR >= 7
         void applyFixup(const MCAssembler & Asm, const MCFixup & fixup,
-            const MCValue & Target, MutableArrayRef<char> Data,
-            uint64_t value, bool IsResolved,
-            const MCSubtargetInfo * STI) const override
+                        const MCValue & Target, MutableArrayRef<char> Data,
+                        uint64_t value, bool IsResolved,
+                        const MCSubtargetInfo * STI) const override
         {
             unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
@@ -321,13 +298,8 @@ namespace IGC
                 Data[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
             }
         }
-#endif
 
-#if LLVM_VERSION_MAJOR == 4
-        bool mayNeedRelaxation(const MCInst & inst) const override
-#elif LLVM_VERSION_MAJOR >= 7
         bool mayNeedRelaxation(const MCInst & inst, const MCSubtargetInfo & STI) const override
-#endif
         {
             // TODO: implement this
             IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
@@ -353,16 +325,6 @@ namespace IGC
         }
 #endif
 
-#if LLVM_VERSION_MAJOR == 4
-        bool writeNopData(uint64_t count, MCObjectWriter * pOW) const override
-        {
-            for (uint64_t i = 0; i < count; ++i)
-            {
-                pOW->write8(0x90);
-            }
-            return true;
-        }
-#elif LLVM_VERSION_MAJOR >= 7
         bool writeNopData(raw_ostream & OS, uint64_t Count) const override
         {
             const char nop = (char)0x90;
@@ -372,22 +334,9 @@ namespace IGC
             }
             return true;
         }
-#endif
 
         /// createObjectWriter - Create a new MCObjectWriter instance for use by the
         /// assembler backend to emit the final object file.
-#if LLVM_VERSION_MAJOR == 4
-        MCObjectWriter * createObjectWriter(llvm::raw_pwrite_stream & os) const override
-        {
-            Triple triple(m_targetTriple);
-            uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
-            uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-            // Only i386 uses Rel instead of RelA.
-            bool hasRelocationAddend = eMachine != ELF::EM_386;
-            MCELFObjectTargetWriter* pMOTW = new VISAELFObjectWriter(m_is64Bit, osABI, eMachine, hasRelocationAddend);
-            return createELFObjectWriter(pMOTW, os,  /*IsLittleEndian=*/true);
-        }
-#elif LLVM_VERSION_MAJOR >= 7
         std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream & os) const
         {
             Triple triple(m_targetTriple);
@@ -399,15 +348,12 @@ namespace IGC
                 = IGCLLVM::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
             return createELFObjectWriter(std::move(pMOTW), os,  /*IsLittleEndian=*/true);
         }
-#endif
 
-#if LLVM_VERSION_MAJOR >= 7
         std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
         {
             // TODO: implement this
             IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
-#endif
     };
 
     class VISAMCCodeEmitter : public MCCodeEmitter
@@ -438,35 +384,6 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream,
     m_targetTriple(targetTriple), m_setCounter(0),
     StreamOptions(Options)
 {
-#if LLVM_VERSION_MAJOR == 4
-    m_pDataLayout = new DataLayout(dataLayout);
-    m_pSrcMgr = new SourceMgr();
-    m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
-    m_pObjFileInfo = new MCObjectFileInfo();
-
-    MCRegisterInfo* regInfo = nullptr;
-
-    // Create new MC context
-    m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
-
-    Triple triple = Triple(GetTargetTriple());
-
-    m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, CodeModel::Default, *m_pContext);
-
-    VISAMCCodeEmitter* pCodeEmitter = new VISAMCCodeEmitter();
-    bool is64Bit = GetPointerSize() == 8;
-    VISAAsmBackend* pAsmBackend = new VISAAsmBackend(GetTargetTriple(), is64Bit);
-
-    bool isRelaxAll = false;
-    bool isNoExecStack = false;
-    m_pMCStreamer = createELFStreamer(*m_pContext,
-#ifdef LLVM_3400
-        // /*MCTargetStreamer* */ nullptr,
-#endif
-        * pAsmBackend, outStream, pCodeEmitter, isRelaxAll);
-
-    m_pMCStreamer->InitSections(isNoExecStack);
-#elif LLVM_VERSION_MAJOR >= 7
     m_pDataLayout = new DataLayout(dataLayout);
     m_pSrcMgr = new SourceMgr();
     m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
@@ -487,8 +404,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream,
     // which is an encoding reserved for Intel. It is not part of
     // the enum so its value in inlined.
 #define EM_INTEL_GEN 182
-    uint16_t eMachine =
-        StreamOptions.isDirectElf ? EM_INTEL_GEN :
+    uint16_t eMachine = StreamOptions.isDirectElf ? EM_INTEL_GEN :
         is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
     if (StreamOptions.EnforceAMD64Machine)
         eMachine = ELF::EM_X86_64;
@@ -508,7 +424,6 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream,
         std::move(pAsmBackend), std::move(pObjectWriter), std::move(pCodeEmitter), isRelaxAll);
 
     m_pMCStreamer->InitSections(isNoExecStack);
-#endif
 }
 
 StreamEmitter::~StreamEmitter()
@@ -626,31 +541,29 @@ void StreamEmitter::SetDwarfCompileUnitID(unsigned cuIndex) const
 
 void StreamEmitter::EmitBytes(StringRef data, unsigned addrSpace) const
 {
-    m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-        EmitBytes(data);
+    m_pMCStreamer->EmitBytes(data);
 #else
-        emitBytes(data);
+    m_pMCStreamer->emitBytes(data);
 #endif
 }
 
 void StreamEmitter::EmitValue(const MCExpr* value, unsigned size, unsigned addrSpace) const
 {
-    m_pMCStreamer->
+
 #if LLVM_VERSION_MAJOR <= 10
-        EmitValue(value, size);
+    m_pMCStreamer->EmitValue(value, size);
 #else
-        emitValue(value, size);
+    m_pMCStreamer->emitValue(value, size);
 #endif
 }
 
 void StreamEmitter::EmitIntValue(uint64_t value, unsigned size, unsigned addrSpace) const
 {
-    m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-        EmitIntValue(value, size);
+    m_pMCStreamer->EmitIntValue(value, size);
 #else
-        emitIntValue(value, size);
+    m_pMCStreamer->emitIntValue(value, size);
 #endif
 }
 
@@ -671,33 +584,28 @@ void StreamEmitter::EmitInt32(int value) const
 
 void StreamEmitter::EmitSLEB128(int64_t value, const char* /*desc*/) const
 {
-    m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-        EmitSLEB128IntValue(value);
+    m_pMCStreamer->EmitSLEB128IntValue(value);
 #else
-        emitSLEB128IntValue(value);
+    m_pMCStreamer->emitSLEB128IntValue(value);
 #endif
 }
 
 void StreamEmitter::EmitULEB128(uint64_t value, llvm::StringRef /*desc*/, unsigned padTo) const
 {
-    m_pMCStreamer->
-#if LLVM_VERSION_MAJOR == 4
-        EmitULEB128IntValue(value, padTo);
-#elif LLVM_VERSION_MAJOR <= 10
-        EmitULEB128IntValue(value);
+#if LLVM_VERSION_MAJOR <= 10
+        m_pMCStreamer->EmitULEB128IntValue(value);
 #else
-        emitULEB128IntValue(value);
+        m_pMCStreamer->emitULEB128IntValue(value);
 #endif
 }
 
 void StreamEmitter::EmitLabel(MCSymbol* pLabel) const
 {
-    m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-        EmitLabel(pLabel);
+        m_pMCStreamer->EmitLabel(pLabel);
 #else
-        emitLabel(pLabel);
+        m_pMCStreamer->emitLabel(pLabel);
 #endif
 }
 
@@ -711,28 +619,27 @@ void StreamEmitter::EmitLabelDifference(const MCSymbol* pHi, const MCSymbol* pLo
 
     if (!m_pAsmInfo->doesSetDirectiveSuppressReloc())
     {
-        m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-            EmitValue(pDiff, size);
+        m_pMCStreamer->EmitValue(pDiff, size);
 #else
-            emitValue(pDiff, size);
+        m_pMCStreamer->emitValue(pDiff, size);
 #endif
         return;
     }
 
     // Otherwise, emit with .set (aka assignment).
     MCSymbol* pSetLabel = GetTempSymbol("set", m_setCounter++);
-    m_pMCStreamer->
+
 #if LLVM_VERSION_MAJOR <= 10
-        EmitAssignment(pSetLabel, pDiff);
+    m_pMCStreamer->EmitAssignment(pSetLabel, pDiff);
 #else
-        emitAssignment(pSetLabel, pDiff);
+    m_pMCStreamer->emitAssignment(pSetLabel, pDiff);
 #endif
-    m_pMCStreamer->
+
 #if LLVM_VERSION_MAJOR <= 10
-        EmitSymbolValue(pSetLabel, size);
+        m_pMCStreamer->EmitSymbolValue(pSetLabel, size);
 #else
-        emitSymbolValue(pSetLabel, size);
+        m_pMCStreamer->emitSymbolValue(pSetLabel, size);
 #endif
 }
 
@@ -751,27 +658,26 @@ void StreamEmitter::EmitLabelOffsetDifference(const MCSymbol* pHi, uint64_t Offs
 
     if (!m_pAsmInfo->doesSetDirectiveSuppressReloc())
     {
-        m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-            EmitValue(pDiff, size);
+        m_pMCStreamer->EmitValue(pDiff, size);
 #else
-            emitValue(pDiff, size);
+        m_pMCStreamer->emitValue(pDiff, size);
 #endif
         return;
     }
     // Otherwise, emit with .set (aka assignment).
     MCSymbol* pSetLabel = GetTempSymbol("set", m_setCounter++);
-    m_pMCStreamer->
+
 #if LLVM_VERSION_MAJOR <= 10
-        EmitAssignment(pSetLabel, pDiff);
+    m_pMCStreamer->EmitAssignment(pSetLabel, pDiff);
 #else
-        emitAssignment(pSetLabel, pDiff);
+    m_pMCStreamer->emitAssignment(pSetLabel, pDiff);
 #endif
-    m_pMCStreamer->
+
 #if LLVM_VERSION_MAJOR <= 10
-        EmitSymbolValue(pSetLabel, size);
+    m_pMCStreamer->EmitSymbolValue(pSetLabel, size);
 #else
-        emitSymbolValue(pSetLabel, size);
+    m_pMCStreamer->emitSymbolValue(pSetLabel, size);
 #endif
 }
 
@@ -783,11 +689,10 @@ void StreamEmitter::EmitLabelPlusOffset(const MCSymbol* pLabel, uint64_t Offset,
 
     const MCExpr* pExpr = (Offset) ? MCBinaryExpr::createAdd(pLabelExpr, pOffsetExpr, *m_pContext) : pLabelExpr;
 
-    m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-        EmitValue(pExpr, size);
+    m_pMCStreamer->EmitValue(pExpr, size);
 #else
-        emitValue(pExpr, size);
+    m_pMCStreamer->emitValue(pExpr, size);
 #endif
 }
 
@@ -809,11 +714,10 @@ void StreamEmitter::EmitELFDiffSize(MCSymbol* pLabel, const MCSymbol* pHi, const
 
 void StreamEmitter::EmitSymbolValue(const MCSymbol* pSym, unsigned size, unsigned addrSpace) const
 {
-    m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-        EmitSymbolValue(pSym, size);
+    m_pMCStreamer->EmitSymbolValue(pSym, size);
 #else
-        emitSymbolValue(pSym, size);
+    m_pMCStreamer->emitSymbolValue(pSym, size);
 #endif
 }
 
@@ -875,11 +779,7 @@ void StreamEmitter::EmitDwarfRegOp(unsigned reg, unsigned offset, bool indirect)
 
 bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, StringRef directory, StringRef filename, unsigned cuID) const
 {
-#if LLVM_VERSION_MAJOR == 4
-    return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, cuID) != 0);
-#elif LLVM_VERSION_MAJOR == 7 || LLVM_VERSION_MAJOR == 8
-    return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, nullptr, llvm::None, cuID) != 0);
-#elif LLVM_VERSION_MAJOR <= 10
+#if LLVM_VERSION_MAJOR <= 10
     return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, llvm::None, llvm::None, cuID) != 0);
 #else
     return (m_pMCStreamer->emitDwarfFileDirective(fileNo, directory, filename, llvm::None, llvm::None, cuID) != 0);
@@ -889,11 +789,10 @@ bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, StringRef directory,
 void StreamEmitter::EmitDwarfLocDirective(unsigned fileNo, unsigned line, unsigned column, unsigned flags,
     unsigned isa, unsigned discriminator, StringRef fileName) const
 {
-    m_pMCStreamer->
 #if LLVM_VERSION_MAJOR <= 10
-        EmitDwarfLocDirective(fileNo, line, column, flags, isa, discriminator, fileName);
+    m_pMCStreamer->EmitDwarfLocDirective(fileNo, line, column, flags, isa, discriminator, fileName);
 #else
-        emitDwarfLocDirective(fileNo, line, column, flags, isa, discriminator, fileName);
+    m_pMCStreamer->emitDwarfLocDirective(fileNo, line, column, flags, isa, discriminator, fileName);
 #endif
 }
 

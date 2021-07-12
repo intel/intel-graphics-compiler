@@ -20,11 +20,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/Verifier.h"
 #include "llvm/MC/MCDwarf.h"
 #include "llvm/MC/MCSymbol.h"
-#if LLVM_VERSION_MAJOR == 4
-#include "llvm/Support/ELF.h"
-#elif LLVM_VERSION_MAJOR >= 7
 #include "llvm/BinaryFormat/ELF.h"
-#endif
 #include "common/LLVMWarningsPop.hpp"
 
 #include "DebugInfoUtils.hpp"
