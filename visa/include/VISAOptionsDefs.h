@@ -24,8 +24,9 @@ SPDX-License-Identifier: MIT
 
 //=== Debugging options ===
 DEF_VISA_OPTION(vISA_DumpPasses,            ET_BOOL, "-dumpPassesAll",   UNUSED, false)
-// subsumes the above (should replace; 0 = none, 1 = some, 2 = all)
-DEF_VISA_OPTION(vISA_DumpPassesSubset,      ET_INT32, "-dumpPassesSubset", UNUSED, 0)
+// subsumes the above (should replace; 0 = none, 1 = only when modifications are present, 2 = all)
+DEF_VISA_OPTION(vISA_DumpPassesSubset,      ET_INT32, "-dumpPassesSubset",
+  "0 means none; 1 means only when modifications happen; 2 means all passes", 0)
 // dump out dot file for debugging
 DEF_VISA_OPTION(vISA_DumpDot,               ET_BOOL, "-dot",             UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpDotAll,            ET_BOOL, "-dotAll",          UNUSED, false)

@@ -75,6 +75,7 @@ bool Options::parseOptions(int argc, const char* argv[])
     {
         if (argv[i] == NULL)
         {
+            std::cerr << "INTERNAL ERROR: nullptr argv element\n";
             return false;
         }
         // If arg not defined in the .def file, exit with an error
@@ -96,7 +97,7 @@ bool Options::parseOptions(int argc, const char* argv[])
             }
             if (*end != 0) {
                 parseError = true;
-                std::cerr << argv[i] << ": malformed integer\n";
+                std::cerr << it->first << ": " << argv[i] << ": malformed integer\n";
                 return false;
             }
             val = x;
@@ -108,7 +109,7 @@ bool Options::parseOptions(int argc, const char* argv[])
                 return false;
             if (val64 > (uint64_t)std::numeric_limits<uint32_t>::max()) {
                 parseError = true;
-                std::cerr << argv[i] << ": malformed integer (value too large for 32b)\n";
+                std::cerr << it->first << ": " << argv[i] << ": malformed integer (value too large for 32b)\n";
                 return false;
             }
             val = (uint32_t)val64;
@@ -134,7 +135,7 @@ bool Options::parseOptions(int argc, const char* argv[])
             i++;
             if (i >= argc) {
                 const char *errorMsg = m_vISAOptions.getErrorMsg(vISAOpt);
-                std::cerr << errorMsg << "\n";
+                std::cerr << it->first << ": argument expected: " << errorMsg << "\n";
                 return false;
             }
             switch (type) {
@@ -167,7 +168,7 @@ bool Options::parseOptions(int argc, const char* argv[])
                 }
                 i++;
                 if (i >= argc) {
-                    std::cerr << "vISA option type ET_2xINT32 requires two integer arguments\n";
+                    std::cerr << it->first << ": vISA option type ET_2xINT32 requires two integer arguments\n";
                     return false;
                 }
                 uint32_t lo32 = 0;
