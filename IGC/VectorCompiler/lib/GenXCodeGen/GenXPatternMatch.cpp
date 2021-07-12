@@ -1187,7 +1187,7 @@ MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
   IGC_ASSERT_MESSAGE(ScalarType->isIntegerTy(32), "I32 is expected!");
   if (auto Ext = dyn_cast<ExtOperator>(V)) {
     V = Ext->getOperand(0);
-    if (ScalarType->isIntegerTy(8)) {
+    if (V->getType()->getScalarType()->isIntegerTy(8)) {
       Type *DstTy = Builder.getInt16Ty();
       if (auto VTy = dyn_cast<VectorType>(V->getType()))
         DstTy = IGCLLVM::FixedVectorType::get(DstTy, VTy->getNumElements());
@@ -1424,6 +1424,7 @@ bool MadMatcher::emit() {
         Module *M = AInst->getParent()->getParent()->getParent();
         Type *Tys[2] = {VTy, V0->getType()};
         Function *Fn = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
+        IGC_ASSERT(V0->getType() == V1->getType());
         Value *Vals[2] = {V0, V1};
         CallInst *CI = Builder.CreateCall(Fn, Vals, "mul");
         Srcs[2] = CI;
