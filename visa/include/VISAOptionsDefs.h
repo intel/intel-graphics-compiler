@@ -93,7 +93,7 @@ DEF_VISA_OPTION(vISA_divergentBB,           ET_BOOL, "-divergentBB", UNUSED, tru
 DEF_VISA_OPTION(vISA_splitInstructions,     ET_BOOL, "-noSplitInstructions", UNUSED, true)
 DEF_VISA_OPTION(vISA_ignoreBFRounding,      ET_BOOL, (IGC_MANGLE("-ignoreBFRounding")), UNUSED, false)
 DEF_VISA_OPTION(vISA_scheduleFenceCommit,   ET_BOOL, NULLSTR, UNUSED, true)
-DEF_VISA_OPTION(vISA_SkipRedundantFillInRMW,ET_BOOL, "-normwopt", UNUSED, true)
+DEF_VISA_OPTION(vISA_SkipRedundantFillInRMW,ET_BOOL, "-rmwopt", UNUSED, false)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte,          ET_BOOL, "-nosrc1byte",         UNUSED, false)
