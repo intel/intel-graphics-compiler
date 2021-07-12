@@ -1587,7 +1587,7 @@ int Optimizer::optimization()
     // HW workaround before RA (assume no pseudo inst)
     runPass(PI_preRA_HWWorkaround);
 
-    if (builder.getOption(vISA_accSubBeforeRA))
+    if (builder.getOption(vISA_accSubBeforeRA) && (kernel.getNumAcc() > 2))
     {
         runPass(PI_expandMulPostSchedule);
 
@@ -1631,7 +1631,7 @@ int Optimizer::optimization()
         runPass(PI_localSchedule);
     }
 
-    if (!builder.getOption(vISA_accSubBeforeRA))
+    if (!(builder.getOption(vISA_accSubBeforeRA) && (kernel.getNumAcc() > 2)))
     {
         runPass(PI_expandMulPostSchedule);
 
