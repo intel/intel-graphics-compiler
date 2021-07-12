@@ -39,7 +39,7 @@ extern const char* HeaderPresentEnumeration[3];
 extern const char* MaskCtrlEnumeration[3];
 extern const char* MathFCEnumeration[15];
 extern const char* MathMacroExtEnumeration[10];
-extern const char* MessageTypeEnumeration[71];
+extern const char* MessageTypeEnumeration[77];
 extern const char* NoSrcDepSetEnumeration[3];
 extern const char* OpcodeEnumeration[80];
 extern const char* PrecisionEnumeration[11];

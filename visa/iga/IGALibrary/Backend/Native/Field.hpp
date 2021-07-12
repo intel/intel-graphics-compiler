@@ -415,11 +415,11 @@ namespace iga
 //
 // utilizes all of the following:
 //
-//   constexpr static Field    iga::g12::CMP_CTRLIX_2SRC_TGL {...}
-//   std::string               iga::g12::Format_CTRLIX_2SRC_TGL (Op, uint64_t)
-//   const const Field         iga::g12::CTRLIX_2SRC_MAPPINGS_TGL  [M] {...}
-//   const const uint64_t      iga::g12::CTRLIX_2SRC_VALUES_TGL    [N] {...}
-//   const const const char *  iga::g12::CTRLIX_2SRC_MEANINGS_TGL  [N] {...}
+//   constexpr static Field    iga::xe::CMP_CTRLIX_2SRC_TGL {...}
+//   std::string               iga::xe::Format_CTRLIX_2SRC_TGL (Op, uint64_t)
+//   const const Field         iga::xe::CTRLIX_2SRC_MAPPINGS_TGL  [M] {...}
+//   const const uint64_t      iga::xe::CTRLIX_2SRC_VALUES_TGL    [N] {...}
+//   const const const char *  iga::xe::CTRLIX_2SRC_MEANINGS_TGL  [N] {...}
 #define MAKE_COMPACTION_MAPPING(SYM, PLATFORM)\
     extern std::string Format_ ## SYM ## _ ## PLATFORM (Op, uint64_t);\
     \

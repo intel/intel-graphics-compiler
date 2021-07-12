@@ -1384,6 +1384,12 @@ static GED_MESSAGE_TYPE MessageTypeVar66 = (GED_MESSAGE_TYPE)66;
 static GED_MESSAGE_TYPE MessageTypeVar67 = (GED_MESSAGE_TYPE)67;
 static GED_MESSAGE_TYPE MessageTypeVar68 = (GED_MESSAGE_TYPE)68;
 static GED_MESSAGE_TYPE MessageTypeVar69 = (GED_MESSAGE_TYPE)69;
+static GED_MESSAGE_TYPE MessageTypeVar70 = (GED_MESSAGE_TYPE)70;
+static GED_MESSAGE_TYPE MessageTypeVar71 = (GED_MESSAGE_TYPE)71;
+static GED_MESSAGE_TYPE MessageTypeVar72 = (GED_MESSAGE_TYPE)72;
+static GED_MESSAGE_TYPE MessageTypeVar73 = (GED_MESSAGE_TYPE)73;
+static GED_MESSAGE_TYPE MessageTypeVar74 = (GED_MESSAGE_TYPE)74;
+static GED_MESSAGE_TYPE MessageTypeVar75 = (GED_MESSAGE_TYPE)75;
 const GED_MESSAGE_TYPE* MessageTypeTable0[2] =
 {
     &MessageTypeVar0, // 0
@@ -1548,7 +1554,96 @@ const GED_MESSAGE_TYPE* MessageTypeTable5[32] =
     NULL, // 30
     NULL // 31
 }; // MessageTypeTable5[]
-const GED_MESSAGE_TYPE* MessageTypeTable6[32] =
+const GED_MESSAGE_TYPE* MessageTypeTable6[16] =
+{
+    &MessageTypeVar2, // 0
+    &MessageTypeVar3, // 1
+    NULL, // 2
+    &MessageTypeVar5, // 3
+    &MessageTypeVar6, // 4
+    NULL, // 5
+    NULL, // 6
+    &MessageTypeVar7, // 7
+    &MessageTypeVar8, // 8
+    NULL, // 9
+    NULL, // 10
+    &MessageTypeVar10, // 11
+    &MessageTypeVar11, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // MessageTypeTable6[]
+const GED_MESSAGE_TYPE* MessageTypeTable7[32] =
+{
+    NULL, // 0
+    &MessageTypeVar13, // 1
+    &MessageTypeVar14, // 2
+    &MessageTypeVar50, // 3
+    &MessageTypeVar16, // 4
+    &MessageTypeVar17, // 5
+    &MessageTypeVar18, // 6
+    &MessageTypeVar51, // 7
+    NULL, // 8
+    &MessageTypeVar20, // 9
+    &MessageTypeVar21, // 10
+    &MessageTypeVar22, // 11
+    &MessageTypeVar52, // 12
+    &MessageTypeVar24, // 13
+    NULL, // 14
+    NULL, // 15
+    &MessageTypeVar25, // 16
+    &MessageTypeVar26, // 17
+    &MessageTypeVar27, // 18
+    &MessageTypeVar53, // 19
+    &MessageTypeVar29, // 20
+    &MessageTypeVar30, // 21
+    NULL, // 22
+    NULL, // 23
+    NULL, // 24
+    &MessageTypeVar31, // 25
+    &MessageTypeVar32, // 26
+    &MessageTypeVar54, // 27
+    &MessageTypeVar55, // 28
+    &MessageTypeVar56, // 29
+    &MessageTypeVar57, // 30
+    NULL // 31
+}; // MessageTypeTable7[]
+const GED_MESSAGE_TYPE* MessageTypeTable8[32] =
+{
+    NULL, // 0
+    &MessageTypeVar33, // 1
+    NULL, // 2
+    NULL, // 3
+    &MessageTypeVar36, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    &MessageTypeVar37, // 9
+    NULL, // 10
+    NULL, // 11
+    &MessageTypeVar40, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    NULL, // 16
+    NULL, // 17
+    NULL, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    NULL, // 23
+    NULL, // 24
+    NULL, // 25
+    NULL, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL // 31
+}; // MessageTypeTable8[]
+const GED_MESSAGE_TYPE* MessageTypeTable9[32] =
 {
     &MessageTypeVar41, // 0
     &MessageTypeVar42, // 1
@@ -1582,8 +1677,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable6[32] =
     NULL, // 29
     NULL, // 30
     NULL // 31
-}; // MessageTypeTable6[]
-const GED_MESSAGE_TYPE* MessageTypeTable7[32] =
+}; // MessageTypeTable9[]
+const GED_MESSAGE_TYPE* MessageTypeTable10[32] =
 {
     &MessageTypeVar41, // 0
     &MessageTypeVar42, // 1
@@ -1593,12 +1688,12 @@ const GED_MESSAGE_TYPE* MessageTypeTable7[32] =
     &MessageTypeVar46, // 5
     &MessageTypeVar47, // 6
     NULL, // 7
-    &MessageTypeVar50, // 8
-    &MessageTypeVar51, // 9
+    &MessageTypeVar58, // 8
+    &MessageTypeVar59, // 9
     NULL, // 10
     NULL, // 11
-    &MessageTypeVar52, // 12
-    &MessageTypeVar53, // 13
+    &MessageTypeVar60, // 12
+    &MessageTypeVar61, // 13
     NULL, // 14
     NULL, // 15
     NULL, // 16
@@ -1608,17 +1703,17 @@ const GED_MESSAGE_TYPE* MessageTypeTable7[32] =
     NULL, // 20
     NULL, // 21
     NULL, // 22
-    &MessageTypeVar54, // 23
-    &MessageTypeVar55, // 24
-    &MessageTypeVar56, // 25
+    &MessageTypeVar62, // 23
+    &MessageTypeVar63, // 24
+    &MessageTypeVar64, // 25
     NULL, // 26
     NULL, // 27
     NULL, // 28
     NULL, // 29
     NULL, // 30
     NULL // 31
-}; // MessageTypeTable7[]
-const GED_MESSAGE_TYPE* MessageTypeTable8[16] =
+}; // MessageTypeTable10[]
+const GED_MESSAGE_TYPE* MessageTypeTable11[16] =
 {
     NULL, // 0
     &MessageTypeVar45, // 1
@@ -1636,27 +1731,27 @@ const GED_MESSAGE_TYPE* MessageTypeTable8[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable8[]
-const GED_MESSAGE_TYPE* MessageTypeTable9[16] =
+}; // MessageTypeTable11[]
+const GED_MESSAGE_TYPE* MessageTypeTable12[16] =
 {
     NULL, // 0
     NULL, // 1
     NULL, // 2
     NULL, // 3
-    &MessageTypeVar57, // 4
-    &MessageTypeVar58, // 5
-    &MessageTypeVar59, // 6
-    &MessageTypeVar60, // 7
+    &MessageTypeVar65, // 4
+    &MessageTypeVar66, // 5
+    &MessageTypeVar67, // 6
+    &MessageTypeVar68, // 7
     NULL, // 8
     NULL, // 9
-    &MessageTypeVar61, // 10
+    &MessageTypeVar69, // 10
     NULL, // 11
     &MessageTypeVar48, // 12
-    &MessageTypeVar62, // 13
+    &MessageTypeVar70, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable9[]
-const GED_MESSAGE_TYPE* MessageTypeTable10[16] =
+}; // MessageTypeTable12[]
+const GED_MESSAGE_TYPE* MessageTypeTable13[16] =
 {
     &MessageTypeVar41, // 0
     &MessageTypeVar42, // 1
@@ -1674,27 +1769,27 @@ const GED_MESSAGE_TYPE* MessageTypeTable10[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable10[]
-const GED_MESSAGE_TYPE* MessageTypeTable11[16] =
+}; // MessageTypeTable13[]
+const GED_MESSAGE_TYPE* MessageTypeTable14[16] =
 {
     &MessageTypeVar2, // 0
     &MessageTypeVar3, // 1
     &MessageTypeVar4, // 2
     &MessageTypeVar5, // 3
     &MessageTypeVar6, // 4
-    &MessageTypeVar63, // 5
-    &MessageTypeVar64, // 6
+    &MessageTypeVar71, // 5
+    &MessageTypeVar72, // 6
     &MessageTypeVar7, // 7
     &MessageTypeVar8, // 8
     NULL, // 9
     &MessageTypeVar9, // 10
     &MessageTypeVar10, // 11
     &MessageTypeVar11, // 12
-    &MessageTypeVar65, // 13
+    &MessageTypeVar73, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable11[]
-const GED_MESSAGE_TYPE* MessageTypeTable12[16] =
+}; // MessageTypeTable14[]
+const GED_MESSAGE_TYPE* MessageTypeTable15[16] =
 {
     &MessageTypeVar47, // 0
     &MessageTypeVar45, // 1
@@ -1712,27 +1807,27 @@ const GED_MESSAGE_TYPE* MessageTypeTable12[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable12[]
-const GED_MESSAGE_TYPE* MessageTypeTable13[16] =
+}; // MessageTypeTable15[]
+const GED_MESSAGE_TYPE* MessageTypeTable16[16] =
 {
     NULL, // 0
     NULL, // 1
     NULL, // 2
     NULL, // 3
-    &MessageTypeVar57, // 4
+    &MessageTypeVar65, // 4
     NULL, // 5
     NULL, // 6
-    &MessageTypeVar60, // 7
+    &MessageTypeVar68, // 7
     NULL, // 8
     NULL, // 9
-    &MessageTypeVar61, // 10
+    &MessageTypeVar69, // 10
     NULL, // 11
     &MessageTypeVar48, // 12
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable13[]
-const GED_MESSAGE_TYPE* MessageTypeTable14[16] =
+}; // MessageTypeTable16[]
+const GED_MESSAGE_TYPE* MessageTypeTable17[16] =
 {
     NULL, // 0
     &MessageTypeVar13, // 1
@@ -1750,8 +1845,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable14[16] =
     &MessageTypeVar24, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable14[]
-const GED_MESSAGE_TYPE* MessageTypeTable15[16] =
+}; // MessageTypeTable17[]
+const GED_MESSAGE_TYPE* MessageTypeTable18[16] =
 {
     NULL, // 0
     NULL, // 1
@@ -1769,8 +1864,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable15[16] =
     &MessageTypeVar49, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable15[]
-const GED_MESSAGE_TYPE* MessageTypeTable16[32] =
+}; // MessageTypeTable18[]
+const GED_MESSAGE_TYPE* MessageTypeTable19[32] =
 {
     &MessageTypeVar12, // 0
     &MessageTypeVar13, // 1
@@ -1796,7 +1891,7 @@ const GED_MESSAGE_TYPE* MessageTypeTable16[32] =
     &MessageTypeVar30, // 21
     NULL, // 22
     NULL, // 23
-    &MessageTypeVar66, // 24
+    &MessageTypeVar74, // 24
     &MessageTypeVar31, // 25
     &MessageTypeVar32, // 26
     NULL, // 27
@@ -1804,8 +1899,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable16[32] =
     NULL, // 29
     NULL, // 30
     NULL // 31
-}; // MessageTypeTable16[]
-const GED_MESSAGE_TYPE* MessageTypeTable17[32] =
+}; // MessageTypeTable19[]
+const GED_MESSAGE_TYPE* MessageTypeTable20[32] =
 {
     &MessageTypeVar12, // 0
     &MessageTypeVar13, // 1
@@ -1834,12 +1929,12 @@ const GED_MESSAGE_TYPE* MessageTypeTable17[32] =
     NULL, // 24
     &MessageTypeVar31, // 25
     &MessageTypeVar32, // 26
-    &MessageTypeVar67, // 27
-    &MessageTypeVar66, // 28
-    &MessageTypeVar68, // 29
-    &MessageTypeVar69, // 30
+    &MessageTypeVar54, // 27
+    &MessageTypeVar74, // 28
+    &MessageTypeVar56, // 29
+    &MessageTypeVar75, // 30
     NULL // 31
-}; // MessageTypeTable17[]
+}; // MessageTypeTable20[]
 static GED_NO_SRC_DEP_SET NoSrcDepSetVar0 = (GED_NO_SRC_DEP_SET)0;
 static GED_NO_SRC_DEP_SET NoSrcDepSetVar1 = (GED_NO_SRC_DEP_SET)1;
 const GED_NO_SRC_DEP_SET* NoSrcDepSetTable0[2] =

@@ -66,7 +66,7 @@ static size_t encodeInst(
 
     CompactionDebugInfo *cbdi = nullptr;
     CompactionDebugInfo mustCompactDebugInfo;
-    if (mustCompact) {
+    if (mustCompact || (opts.autoCompact && !mustntCompact)) {
         // if {Compacted} is on we will raise a warning or error, we hope
         // to give them good info on why this failed
         cbdi = &mustCompactDebugInfo;

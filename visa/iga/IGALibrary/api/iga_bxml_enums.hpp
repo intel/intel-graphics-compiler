@@ -183,10 +183,10 @@ namespace iga
         DpasFC sf, uint32_t divisor)
     {
         switch (GetDpasSystolicDepth(sf)/divisor) {
-        case 1: return 0;
-        case 2: return 1;
-        case 4: return 2;
-        case 8: return 3;
+        case 1:  return 0;
+        case 2:  return 1;
+        case 4:  return 2;
+        case 8:  return 3;
         default: return 0xFFFFFFFF; // unreachable
         }
     }

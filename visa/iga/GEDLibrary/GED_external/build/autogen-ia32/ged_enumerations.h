@@ -265,43 +265,43 @@ typedef enum
     GED_MESSAGE_TYPE_MSD0R_HWB,        ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MSD0W_HWB,        ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT0R_OWB,         ///< all
-    GED_MESSAGE_TYPE_MT0R_OWUB,        ///< all
-    GED_MESSAGE_TYPE_MT0R_OWDB,        ///< all
+    GED_MESSAGE_TYPE_MT0R_OWAB,        ///< all
+    GED_MESSAGE_TYPE_MT0R_OWDB,        ///< 10, 11, 7, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT0R_DWS,         ///< all
     GED_MESSAGE_TYPE_MT0R_BS,          ///< all
     GED_MESSAGE_TYPE_MT0_MEMFENCE,     ///< all
     GED_MESSAGE_TYPE_MT0W_OWB,         ///< all
-    GED_MESSAGE_TYPE_MT0W_OWDB,        ///< all
+    GED_MESSAGE_TYPE_MT0W_OWDB,        ///< 10, 11, 7, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT0W_DWS,         ///< all
     GED_MESSAGE_TYPE_MT0W_BS,          ///< all
-    GED_MESSAGE_TYPE_MT1R_T,           ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1R_T,           ///< 10, 11, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1R_US,          ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1A_UI,          ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_UI4x2,       ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_UI4x2,       ///< 10, 11, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1R_MB,          ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1R_TS,          ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1A_TA,          ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_TA4x2,       ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_TA4x2,       ///< 10, 11, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1W_US,          ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1W_MB,          ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1A_TC,          ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_TC4x2,       ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_TC4x2,       ///< 10, 11, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1W_TS,          ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1R_A64_SB,      ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1R_A64_US,      ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1A_A64_UI,      ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_A64_UI4x2,   ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_A64_UI4x2,   ///< 10, 11, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1R_A64_B,       ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1W_A64_B,       ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1W_A64_US,      ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1W_A64_SB,      ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT2R_US,          ///< 10, 11, TGL, XE.HP, 9
-    GED_MESSAGE_TYPE_MT2R_A64_SB,      ///< 10, 11, TGL, XE.HP, 9
-    GED_MESSAGE_TYPE_MT2R_A64_US,      ///< 10, 11, TGL, XE.HP, 9
+    GED_MESSAGE_TYPE_MT2R_A64_SB,      ///< 10, 11, 9
+    GED_MESSAGE_TYPE_MT2R_A64_US,      ///< 10, 11, 9
     GED_MESSAGE_TYPE_MT2R_BS,          ///< 10, 11, TGL, XE.HP, 9
     GED_MESSAGE_TYPE_MT2W_US,          ///< 10, 11, TGL, XE.HP, 9
-    GED_MESSAGE_TYPE_MT2W_A64_US,      ///< 10, 11, TGL, XE.HP, 9
-    GED_MESSAGE_TYPE_MT2W_A64_SB,      ///< 10, 11, TGL, XE.HP, 9
+    GED_MESSAGE_TYPE_MT2W_A64_US,      ///< 10, 11, 9
+    GED_MESSAGE_TYPE_MT2W_A64_SB,      ///< 10, 11, 9
     GED_MESSAGE_TYPE_MT2W_BS,          ///< 10, 11, TGL, XE.HP, 9
     GED_MESSAGE_TYPE_MT_CC_OWB,        ///< all
     GED_MESSAGE_TYPE_MT_CC_OWUB,       ///< all
@@ -312,6 +312,14 @@ typedef enum
     GED_MESSAGE_TYPE_MT_RSI,           ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT_RTW,           ///< all
     GED_MESSAGE_TYPE_MT_RTR,           ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_UHI,         ///< TGL, XE.HP
+    GED_MESSAGE_TYPE_MT1A_TAH,         ///< TGL, XE.HP
+    GED_MESSAGE_TYPE_MT1A_TCH,         ///< TGL, XE.HP
+    GED_MESSAGE_TYPE_MT1A_A64_UHI,     ///< TGL, XE.HP
+    GED_MESSAGE_TYPE_MT1A_UF,          ///< TGL, XE.HP, 9
+    GED_MESSAGE_TYPE_MT1A_UHF,         ///< TGL, XE.HP
+    GED_MESSAGE_TYPE_MT1A_A64_UF,      ///< TGL, XE.HP, 9
+    GED_MESSAGE_TYPE_MT1A_A64_UHF,     ///< TGL, XE.HP
     GED_MESSAGE_TYPE_MT_US_CCS_OP,     ///< XE.HP
     GED_MESSAGE_TYPE_MT_US_UCW,        ///< XE.HP
     GED_MESSAGE_TYPE_MT_TS_CCS_OP,     ///< XE.HP
@@ -329,8 +337,6 @@ typedef enum
     GED_MESSAGE_TYPE_MT0A_UI,          ///< 7
     GED_MESSAGE_TYPE_MT0W_US,          ///< 7
     GED_MESSAGE_TYPE_MT1A_UF4x2,       ///< 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_UF,          ///< 9
-    GED_MESSAGE_TYPE_MT1A_A64_UF,      ///< 9
     GED_MESSAGE_TYPE_MT1A_A64_UF4x2,   ///< 9
     GED_MESSAGE_TYPE_INVALID
 } GED_MESSAGE_TYPE;

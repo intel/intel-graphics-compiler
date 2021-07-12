@@ -999,7 +999,8 @@ void Decoder::decodeTernarySourceAlign1(Instruction *inst)
 
         // only ARF_NULL is allowed at src0 if it's not GRF
         if (S == SourceIndex::SRC0 && regFile == GED_REG_FILE_ARF)
-            if (regName != RegName::ARF_NULL)
+            if (regName != RegName::ARF_NULL
+                )
                 fatalT("non grf src0 register file must be null for this op");
 
         Type ty = decodeSrcType<S>();
@@ -2142,6 +2143,7 @@ void Decoder::decodeOptions(Instruction *inst)
     if (GED_IsCompact(&m_currGedInst)) {
         inst->addInstOpt(InstOpt::COMPACTED);
     }
+
 }
 
 

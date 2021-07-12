@@ -383,7 +383,7 @@ namespace iga
         case GED_MESSAGE_TYPE_MSD0R_HWB:       return SFMessageType::MSD0R_HWB;
         case GED_MESSAGE_TYPE_MSD0W_HWB:       return SFMessageType::MSD0W_HWB;
         case GED_MESSAGE_TYPE_MT0R_OWB:        return SFMessageType::MT0R_OWB;
-        case GED_MESSAGE_TYPE_MT0R_OWUB:       return SFMessageType::MT0R_OWUB;
+        case GED_MESSAGE_TYPE_MT0R_OWAB:       return SFMessageType::MT0R_OWUB;
         case GED_MESSAGE_TYPE_MT0R_OWDB:       return SFMessageType::MT0R_OWDB;
         case GED_MESSAGE_TYPE_MT0R_DWS:        return SFMessageType::MT0R_DWS;
         case GED_MESSAGE_TYPE_MT0R_BS:         return SFMessageType::MT0R_BS;

@@ -329,12 +329,12 @@ const char* MathMacroExtEnumeration[10] =
 #endif // GED_MATH_MACRO_EXT_HIDDEN
 
 #ifndef GED_MESSAGE_TYPE_HIDDEN
-const char* MessageTypeEnumeration[71] =
+const char* MessageTypeEnumeration[77] =
 {
     "MSD0R_HWB", // 0
     "MSD0W_HWB", // 1
     "MT0R_OWB", // 2
-    "MT0R_OWUB", // 3
+    "MT0R_OWAB", // 3
     "MT0R_OWDB", // 4
     "MT0R_DWS", // 5
     "MT0R_BS", // 6
@@ -381,27 +381,33 @@ const char* MessageTypeEnumeration[71] =
     "MT_RSI", // 47
     "MT_RTW", // 48
     "MT_RTR", // 49
-    "MT_US_CCS_OP", // 50
-    "MT_US_UCW", // 51
-    "MT_TS_CCS_OP", // 52
-    "MT_TS_UCW", // 53
-    "MT_A64_CCS_PG_OP", // 54
-    "MT_A64_US_CCS_OP", // 55
-    "MT_A64_US_UCW", // 56
-    "MTR_MB", // 57
-    "MTRR_TS", // 58
-    "MTRA_TA", // 59
-    "MT_MEMFENCE", // 60
-    "MTW_MB", // 61
-    "MTRW_TS", // 62
-    "MT0R_US", // 63
-    "MT0A_UI", // 64
-    "MT0W_US", // 65
-    "MT1A_UF4x2", // 66
-    "MT1A_UF", // 67
-    "MT1A_A64_UF", // 68
-    "MT1A_A64_UF4x2", // 69
-    NULL // 70
+    "MT1A_UHI", // 50
+    "MT1A_TAH", // 51
+    "MT1A_TCH", // 52
+    "MT1A_A64_UHI", // 53
+    "MT1A_UF", // 54
+    "MT1A_UHF", // 55
+    "MT1A_A64_UF", // 56
+    "MT1A_A64_UHF", // 57
+    "MT_US_CCS_OP", // 58
+    "MT_US_UCW", // 59
+    "MT_TS_CCS_OP", // 60
+    "MT_TS_UCW", // 61
+    "MT_A64_CCS_PG_OP", // 62
+    "MT_A64_US_CCS_OP", // 63
+    "MT_A64_US_UCW", // 64
+    "MTR_MB", // 65
+    "MTRR_TS", // 66
+    "MTRA_TA", // 67
+    "MT_MEMFENCE", // 68
+    "MTW_MB", // 69
+    "MTRW_TS", // 70
+    "MT0R_US", // 71
+    "MT0A_UI", // 72
+    "MT0W_US", // 73
+    "MT1A_UF4x2", // 74
+    "MT1A_A64_UF4x2", // 75
+    NULL // 76
 }; // MessageTypeEnumeration[]
 #endif // GED_MESSAGE_TYPE_HIDDEN
 

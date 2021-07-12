@@ -186,4 +186,7 @@ extern const ged_field_restriction_t* RestrictionTable165[2];
 extern const ged_field_restriction_t* RestrictionTable166[2];
 extern const ged_field_restriction_t* RestrictionTable167[2];
 extern const ged_field_restriction_t* RestrictionTable168[2];
+extern const ged_field_restriction_t* RestrictionTable169[2];
+extern const ged_field_restriction_t* RestrictionTable170[2];
+extern const ged_field_restriction_t* RestrictionTable171[2];
 #endif // GED_RESTRICTIONS_H

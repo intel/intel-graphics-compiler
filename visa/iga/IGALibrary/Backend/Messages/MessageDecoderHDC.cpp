@@ -189,19 +189,31 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         return (1 << (int)bits);
     }
 
-    int decodeMDC_SM2R(int off) {
-        int bits =
-            decodeDescBitField("SimdMode:MDC_SM2R", off, "SIMD16", "SIMD8");
-        return bits ? 8 : 16;
+    int decodeMDC_SM2X(int off, bool reversed) {
+
+        int simd = 0;
+        if (reversed) {
+            int bits =
+                decodeDescBitField("SimdMode:MDC_SM2R", off, "SIMD8", "SIMD16");
+            simd = bits ? 8 : 16;
+        } else {
+            int bits =
+                decodeDescBitField("SimdMode:MDC_SM2R", off, "SIMD16", "SIMD8");
+            simd = bits ? 16 : 8;
+        }
+
+        return simd;
     }
+    int decodeMDC_SM2R(int off) {return decodeMDC_SM2X(off, true);}
+    int decodeMDC_SM2S(int off) {return decodeMDC_SM2X(off, false);}
     int decodeMDC_SM3(int off) {
-        auto bits = getDescBits(off,2);
+        auto bits = getDescBits(off, 2);
         int simd = 0;
         const char *simdStr = "?";
         switch (bits) {
         case 1: simd = 16; simdStr = "SIMD16"; break;
         case 2: simd = 8;  simdStr = "SIMD8"; break;
-        default: error(off,2,"invalid MDC_SM3"); break;
+        default: error(off, 2, "invalid value"); break;
         }
         addField("SimdMode:MDC_SM3", off, 2, bits, simdStr);
         return simd;
@@ -626,7 +638,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
                 addrSize,
                 dataSize,
                 1,
-                decodeMDC_SM2R(12),
+                addrSize == 64 ? decodeMDC_SM2S(12) : decodeMDC_SM2R(12),
                 extraAttrs);
         }
     } // setHdcFloatAtomicMessage
