@@ -62,6 +62,10 @@ namespace IGC
         virtual ~CatchAllLineNumber();
         static char ID;
 
+        llvm::StringRef getPassName() const override {
+            return "CatchAllLineNumber";
+        }
+
     private:
 
         virtual bool runOnFunction(llvm::Function& F) override;

@@ -64,6 +64,10 @@ namespace {
 
         bool runOnModule(Module&) override;
 
+        llvm::StringRef getPassName() const override {
+            return "KernelFunctionCloning";
+        }
+
     private:
         void getAnalysisUsage(AnalysisUsage& AU) const override {
             AU.setPreservesCFG();

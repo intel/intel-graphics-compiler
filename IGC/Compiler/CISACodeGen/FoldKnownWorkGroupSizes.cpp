@@ -32,10 +32,14 @@ namespace IGC
     public:
         static char ID;
         FoldKnownWorkGroupSizes() : FunctionPass(ID) {}
-        bool runOnFunction(llvm::Function& F);
+        bool runOnFunction(llvm::Function& F) override;
         void visitCallInst(llvm::CallInst& I);
 
-        void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+        llvm::StringRef getPassName() const override {
+            return "FoldKnownWorkGroupSizes";
+        }
+
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<IGC::CodeGenContextWrapper>();
         }

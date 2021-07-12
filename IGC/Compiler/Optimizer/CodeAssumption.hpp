@@ -39,6 +39,10 @@ namespace IGC
 
         CodeAssumption() : ModulePass(ID), m_changed(false) {}
 
+        llvm::StringRef getPassName() const override {
+            return "CodeAssumption";
+        }
+
         bool runOnModule(llvm::Module&) override;
 
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
