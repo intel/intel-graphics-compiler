@@ -66,6 +66,8 @@ bool ResourceAllocator::runOnModule(Module& M)
         runOnFunction(*(i->first));
     }
 
+    pMdUtils->save(M.getContext());
+
     return true;
 }
 
@@ -342,7 +344,6 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
     }
 
     // Param allocations must be inserted to the Metadata Utils in order.
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     for (auto i : paramAllocations)
     {
         resAllocMD->argAllocMDList.push_back(i);
@@ -351,8 +352,6 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
     resAllocMD->uavsNumType = numUAVs;
     resAllocMD->srvsNumType = numResources;
     resAllocMD->samplersNumType = numSamplers;
-
-    pMdUtils->save(F.getContext());
 
     return true;
 }

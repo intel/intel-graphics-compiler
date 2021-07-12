@@ -10366,7 +10366,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     {
         uint32_t allocMemSize = 0;
         uint32_t largest = 0;
-        for (auto iter : pModuleMetadata->FuncMD)
+        for (auto& iter : pModuleMetadata->FuncMD)
         {
             Function* pF = iter.first;
             if (pF == pKernel)

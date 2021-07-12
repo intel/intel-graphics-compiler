@@ -159,7 +159,10 @@ bool Image3dToImage2darray::runOnFunction(Function& F)
 
     visit(F);
 
-    m_MetadataUtils->save(F.getContext());
+    if (m_Changed)
+    {
+        m_MetadataUtils->save(F.getContext());
+    }
 
     return m_Changed;
 }
