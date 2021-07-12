@@ -22,9 +22,12 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
+#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
+
 
 using namespace llvm;
 using namespace IGC;
@@ -1901,6 +1904,47 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             Val = Builder.CreateFPTrunc(Val, I.getType());
             I.replaceAllUsesWith(Val);
             I.eraseFromParent();
+        }
+        else if (I.getType()->isDoubleTy())
+        {
+            auto lowerIntrinsicWithFunc = [&I, this](Value* (LLVM3DBuilder<>::* replacementFunc)(Value*))
+            {
+                PLATFORM platform = m_ctx->platform.getPlatformInfo();
+                LLVM3DBuilder<> llvmBuilder(I.getParent()->getParent()->getParent()->getContext(), platform);
+                llvmBuilder.SetInsertPoint(&I);
+                Value* argument = I.getArgOperand(0);
+                if (argument->getType()->isDoubleTy())
+                {
+                    Value* result = (llvmBuilder.*replacementFunc)(argument);
+                    InlineFunctionInfo IFI;
+                    I.replaceAllUsesWith(result);
+                    IGCLLVM::InlineFunction(static_cast<CallInst*>(result), IFI, nullptr, false);
+                    I.eraseFromParent();
+                }
+            };
+            switch(intrinsicID)
+            {
+            case Intrinsic::trunc:
+            {
+                lowerIntrinsicWithFunc(&LLVM3DBuilder<>::CreateRoundZ);
+                break;
+            }
+            case Intrinsic::floor:
+            {
+                lowerIntrinsicWithFunc(&LLVM3DBuilder<>::CreateFloor);
+                break;
+            }
+            case Intrinsic::ceil:
+            {
+                lowerIntrinsicWithFunc(&LLVM3DBuilder<>::CreateCeil);
+                break;
+            }
+            default:
+            {
+                IGC_ASSERT_MESSAGE(0, "Incorrect intrinsic");
+                break;
+            }
+            }
         }
     }
     break;
