@@ -107,33 +107,6 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
         }
     };
 
-    if (!m_pVISAModule->isDirectElfInput) {
-        // Legacy path
-        unsigned int prevOffset = 0;
-        for (const Instruction *pInst : *m_pVISAModule)
-        {
-            unsigned int currOffset = m_pVISAModule->GetVisaOffset(pInst);
-
-            int currSize = (int)m_pVISAModule->GetVisaSize(pInst);
-            bool recordSrcLine = (currSize == 0) ? false : true;
-
-            // Emit bytes up to the current instruction
-            for (; prevOffset < currOffset; prevOffset++)
-            {
-                m_pStreamEmitter->EmitInt8(0);
-            }
-            m_pDwarfDebug->beginInstruction(pInst, recordSrcLine);
-            // Emit bytes of the current instruction
-            for (int i = 0; i < currSize; i++)
-            {
-                m_pStreamEmitter->EmitInt8(0);
-            }
-            m_pDwarfDebug->endInstruction(pInst);
-            prevOffset += currSize;
-        }
-        return;
-    }
-
     m_pVISAModule->buildDirectElfMaps(*decodedDbg);
     auto co = m_pVISAModule->getCompileUnit(*decodedDbg);
 
@@ -291,10 +264,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
     }
 
     IGC_ASSERT_MESSAGE(m_pVISAModule, "active visa object must be selected before finalization");
-    if (m_pVISAModule->isDirectElfInput)
-    {
-        m_pDwarfDebug->setDecodedDbg(decodedDbg);
-    }
+    m_pDwarfDebug->setDecodedDbg(decodedDbg);
 
     if (!doneOnce)
     {
@@ -366,9 +336,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
     }
 
     writeProgramHeaderTable(is64Bit, Result.data(), m_str.size() + kernelNameSizeWithDot);
-
-    if (m_pVISAModule->isDirectElfInput)
-        setElfType(is64Bit, Result.data());
+    setElfType(is64Bit, Result.data());
 
     // Reset all members and prepare for next beginModule() call.
     Reset();

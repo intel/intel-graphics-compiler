@@ -576,14 +576,6 @@ namespace IGC
             return nullptr;
         }
 
-        bool IsDirectElfInput() const
-        {
-            if (!m_pModule)
-                return false;
-
-            return m_pModule->isDirectElfInput;
-        }
-
     private:
         // Store all DISubprogram nodes from LLVM IR as they are no longer available
         // in DICompileUnit

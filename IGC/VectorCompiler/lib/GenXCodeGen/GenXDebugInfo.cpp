@@ -744,7 +744,6 @@ public:
        SetType(ObjectType::KERNEL);
     else
        SetType(ObjectType::STACKCALL_FUNC);
-    isDirectElfInput = true;
   }
 
   const IGC::DbgDecoder::DbgInfoFormat*
@@ -1107,7 +1106,6 @@ void GenXDebugInfo::processPrimaryFunction(
 static void fillDbgInfoOptions(const GenXBackendConfig &BC,
                                IGC::DebugEmitterOpts &DebugOpts) {
   DebugOpts.DebugEnabled = true;
-  DebugOpts.isDirectElf = true;
   DebugOpts.UseNewRegisterEncoding = true;
 
   if (BC.emitDebugInfoForZeBin()) {

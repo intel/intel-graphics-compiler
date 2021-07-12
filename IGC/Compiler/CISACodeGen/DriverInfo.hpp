@@ -188,7 +188,6 @@ namespace IGC
         /// pick behavior whether we need to keep discarded helper pixels to calculate
         /// gradient correctly for sampler or we need to force early out discarded pixels
         virtual bool KeepDiscardHelperPixels() const { return false; }
-        virtual bool SupportElfFormat() const { return false; }
 
         // Choose to support parsing inlined asm instructions on specific platforms
         virtual bool SupportInlineAssembly() const { return false; }

@@ -49,7 +49,6 @@ bool DebugInfoPass::doFinalization(llvm::Module& M)
 bool DebugInfoPass::runOnModule(llvm::Module& M)
 {
     std::vector<CShader*> units;
-    bool isOneStepElf = false;
 
     auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE)
     {
@@ -254,7 +253,6 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         auto SPDiesToBuild = getSPDiesCollection(functions);
         for (auto& m : sortedVISAModules)
         {
-            isOneStepElf |= m.second.second->isDirectElfInput;
             m_pDebugEmitter->setCurrentVISA(m.second.second);
 
             if (--size == 0)
@@ -264,11 +262,8 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         }
 
         // set VISA dbg info to nullptr to indicate 1-step debug is enabled
-        if (isOneStepElf)
-        {
-            currShader->ProgramOutput()->m_debugDataGenISASize = 0;
-            currShader->ProgramOutput()->m_debugDataGenISA = nullptr;
-        }
+        currShader->ProgramOutput()->m_debugDataGenISASize = 0;
+        currShader->ProgramOutput()->m_debugDataGenISA = nullptr;
 
         if (finalize)
         {

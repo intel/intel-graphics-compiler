@@ -467,7 +467,6 @@ DECLARE_IGC_REGKEY(DWORD, InlinedEmulationThreshold,    125000, "Inlined instruc
 DECLARE_IGC_REGKEY(int, ByPassAllocaSizeHeuristic,   0,  "Force some Alloca to pass the pressure heuristic until the given size", false)
 DECLARE_IGC_REGKEY(DWORD, MemOptWindowSize,   150,  "Size of the window in unit of instructions in which load/stores are allowed to be coalesced. Keep it limited in order to avoid creating long liveranges. Default value is 150", false)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
-DECLARE_IGC_REGKEY(bool, EnableOneStepElf, true, "Enable generation of direct elf mapping src->Gen ISA", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugRanges, true, "Emit .debug_ranges section when instructions in a block are non-consecutive", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugLoc, true, "Enable generation of .debug_loc section", false)
 DECLARE_IGC_REGKEY(bool, UseNewRegEncoding, true, "Use new location encoding for register numbers in dwarf", true)

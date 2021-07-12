@@ -426,8 +426,6 @@ namespace IGC
         ///  @brief return false if inst is a placeholder instruction
         bool IsExecutableInst(const llvm::Instruction& inst);
 
-        bool isDirectElfInput = false;
-
         // Store VISA index->[header VISA index, #VISA instructions] corresponding
         // to same llvm::Instruction. If llvm inst A generates VISA 3,4,5 then
         // this structure will have 3 entries:

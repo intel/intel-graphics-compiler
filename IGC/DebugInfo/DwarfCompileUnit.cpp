@@ -299,21 +299,11 @@ void CompileUnit::addSInt(IGC::DIEBlock* Die, Optional<dwarf::Form> Form, int64_
 /// table.
 void CompileUnit::addString(DIE* Die, dwarf::Attribute Attribute, StringRef String)
 {
-    if (DD->IsDirectElfInput())
-    {
-        // Emit string inlined
-        auto Str = new (DIEValueAllocator) DIEInlinedString(String);
-        // Collect all inlined string DIEs to later call dtor
-        DIEInlinedStrings.push_back(Str);
-        Die->addValue(Attribute, dwarf::DW_FORM_string, Str);
-    }
-    else
-    {
-        MCSymbol* Symb = DD->getStringPoolEntry(String);
-        DIEValue* Value = new (DIEValueAllocator)DIELabel(Symb);
-        DIEValue* Str = new (DIEValueAllocator)DIEString(Value, String);
-        Die->addValue(Attribute, dwarf::DW_FORM_strp, Str);
-    }
+    // Emit string inlined
+    auto Str = new (DIEValueAllocator) DIEInlinedString(String);
+    // Collect all inlined string DIEs to later call dtor
+    DIEInlinedStrings.push_back(Str);
+    Die->addValue(Attribute, dwarf::DW_FORM_string, Str);
 }
 
 /// addExpr - Add a Dwarf expression attribute data and value.
@@ -2356,32 +2346,23 @@ IGC::DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstrac
     unsigned Offset = DV.getDotDebugLocOffset();
     if (Offset != ~0U)
     {
-        if (DD->IsDirectElfInput())
+        // Copy over references ranges to DotLocDebugEntries
+        if (EmitSettings.EnableRelocation)
         {
-            // Copy over references ranges to DotLocDebugEntries
-            if (EmitSettings.EnableRelocation)
-            {
-                // Retrieve correct location value based on Offset.
-                // Then attach label corresponding to this offset
-                // to DW_AT_location attribute.
-                auto LocLabel = DD->CopyDebugLoc(Offset);
-                addLabelLoc(VariableDie, dwarf::DW_AT_location, LocLabel);
-            }
-            else
-            {
-                Offset = DD->CopyDebugLocNoReloc(Offset);
-                addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
-            }
-            if (DV.getDecorations().size() > 0)
-            {
-                addString(VariableDie, dwarf::DW_AT_description, DV.getDecorations());
-            }
+            // Retrieve correct location value based on Offset.
+            // Then attach label corresponding to this offset
+            // to DW_AT_location attribute.
+            auto LocLabel = DD->CopyDebugLoc(Offset);
+            addLabelLoc(VariableDie, dwarf::DW_AT_location, LocLabel);
         }
         else
         {
-            addLabel(VariableDie, dwarf::DW_AT_location,
-                DD->getDwarfVersion() >= 4 ? dwarf::DW_FORM_sec_offset : dwarf::DW_FORM_data4,
-                Asm->GetTempSymbol("debug_loc", Offset));
+            Offset = DD->CopyDebugLocNoReloc(Offset);
+            addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
+        }
+        if (DV.getDecorations().size() > 0)
+        {
+            addString(VariableDie, dwarf::DW_AT_description, DV.getDecorations());
         }
         DV.setDIE(VariableDie);
         return VariableDie;
@@ -2429,94 +2410,27 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
         return;
     }
 
-    bool addDecoration = false;
-    if (VISAModule->isDirectElfInput)
+    if (FirstLoc.HasSurface())
     {
-        if (FirstLoc.HasSurface())
-        {
-            IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
-            addRegisterOp(Block, FirstLoc.GetSurface());
-            // Now attach the surface information to the DIE.
-            addBlock(VariableDie, dwarf::DW_AT_segment, Block);
-        }
-
-        IGC::DIEBlock* locationAT = nullptr;
-        if (FirstLoc.IsSLM())
-            locationAT = buildSLM(DV, &FirstLoc);
-        else if (FirstLoc.IsSampler())
-            locationAT = buildSampler(DV, &FirstLoc);
-        else if (FirstLoc.HasSurface() &&
-            (DV.getType() && DV.getType()->getTag() == dwarf::DW_TAG_pointer_type))
-            locationAT = buildPointer(DV, &FirstLoc);
-        else
-            locationAT = buildGeneral(DV, &Locs, nullptr);
-
-        if (locationAT)
-            addBlock(VariableDie, dwarf::DW_AT_location, locationAT);
-        addDecoration = true;
+        IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
+        addRegisterOp(Block, FirstLoc.GetSurface());
+        // Now attach the surface information to the DIE.
+        addBlock(VariableDie, dwarf::DW_AT_segment, Block);
     }
+
+    IGC::DIEBlock* locationAT = nullptr;
+    if (FirstLoc.IsSLM())
+        locationAT = buildSLM(DV, &FirstLoc);
+    else if (FirstLoc.IsSampler())
+        locationAT = buildSampler(DV, &FirstLoc);
+    else if (FirstLoc.HasSurface() &&
+             (DV.getType() && DV.getType()->getTag() == dwarf::DW_TAG_pointer_type))
+        locationAT = buildPointer(DV, &FirstLoc);
     else
-    {
-        // Variable which is not immediate can have surface, location or both.
-        if (FirstLoc.HasSurface())
-        {
-            IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
-            addRegisterOp(Block, FirstLoc.GetSurface());
-            // Now attach the surface information to the DIE.
-            addBlock(VariableDie, dwarf::DW_AT_segment, Block);
-            if (!FirstLoc.HasLocation())
-            {
-                // Make sure there is always a location attribute when there is a surface attribute.
-                // In this case, attach an zero address opcode location information to the DIE.
-                IGC::DIEBlock* nBlock = new (DIEValueAllocator)IGC::DIEBlock();
-                addUInt(nBlock, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
-                dwarf::Form form = (Asm->GetPointerSize() == 8) ? dwarf::DW_FORM_data8 : dwarf::DW_FORM_data4;
-                addUInt(nBlock, form, 0);
+        locationAT = buildGeneral(DV, &Locs, nullptr);
 
-                addBlock(VariableDie, dwarf::DW_AT_location, nBlock);
-            }
-        }
-
-        if (FirstLoc.HasLocation())
-        {
-#if 0
-            /* This has been disabled because of following kind of metadata node generated:
-            !98 = metadata !{i32 786688, metadata !11, metadata !"adder", metadata !6, i32 4, metadata !14, i32 0, metadata !56, i64
-            2, i64 1, i64 32}
-
-            numOperands here indicates complex addressing is used. But for complex addressing,
-            9th operand should be a metadata node whereas here integer nodes are added.
-            */
-            IGC_ASSERT_MESSAGE(!(DV.variableHasComplexAddress() || DV.isBlockByrefVariable()), "Should handle complex address");
-#endif
-            IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
-
-            if (!FirstLoc.IsInMemory())
-            {
-                IGC_ASSERT_MESSAGE(FirstLoc.IsRegister(), "Direct location must be register");
-                addRegisterOp(Block, FirstLoc.GetRegister());
-            }
-            else
-            {
-                if (FirstLoc.IsRegister())
-                {
-                    addRegisterOffset(Block, FirstLoc.GetRegister(), FirstLoc.GetOffset());
-                }
-                else
-                {
-                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);
-                    addSInt(Block, dwarf::DW_FORM_udata, FirstLoc.GetOffset());
-                }
-            }
-
-            // Now attach the location information to the DIE.
-            addBlock(VariableDie, dwarf::DW_AT_location, Block);
-
-            addDecoration = true;
-        }
-
-        DV.setDIE(VariableDie);
-    }
+    if (locationAT)
+        addBlock(VariableDie, dwarf::DW_AT_location, locationAT);
 }
 
 IGC::DIEBlock* CompileUnit::buildPointer(DbgVariable& var, const VISAVariableLocation* loc)

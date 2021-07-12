@@ -95,15 +95,7 @@ ScalarVisaModule::ScalarVisaModule(CShader* TheShader, llvm::Function *TheFuncti
 
 std::unique_ptr<IGC::VISAModule> ScalarVisaModule::BuildNew(CShader* S, llvm::Function *F)
 {
-    auto n = new ScalarVisaModule(S, F);
-
-    if (n->m_pShader->GetContext()->m_DriverInfo.SupportElfFormat() ||
-        isLineTableOnly(S) ||
-        IGC_GET_FLAG_VALUE(EnableOneStepElf))
-    {
-        n->isDirectElfInput = true;
-    }
-
+    auto* n = new ScalarVisaModule(S, F);
     return std::unique_ptr<IGC::VISAModule>(n);
 }
 

@@ -809,7 +809,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         auto vMod = IGC::ScalarVisaModule::BuildNew(m_currShader, Entry);
         IGC::DebugEmitterOpts DebugOpts;
         DebugOpts.DebugEnabled = DebugInfoData::hasDebugInfo(m_currShader);
-        DebugOpts.isDirectElf = vMod->isDirectElfInput;
         DebugOpts.UseNewRegisterEncoding = IGC_IS_FLAG_ENABLED(UseNewRegEncoding);
         DebugOpts.EnableSIMDLaneDebugging = IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging);
         DebugOpts.EnableGTLocationDebugging = IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging);

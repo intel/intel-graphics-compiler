@@ -361,48 +361,19 @@ DIE* DwarfDebug::updateSubprogramScopeDIE(CompileUnit* SPCU, DISubprogram* SP)
         }
     }
 
-#if 1
-    if (m_pModule->isDirectElfInput)
-    {
-        if (EmitSettings.EnableRelocation)
-        {
-            auto Id = m_pModule->GetFuncId();
-            SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
-                Asm->GetTempSymbol("func_begin", Id));
-            SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
-                Asm->GetTempSymbol("func_end", Id));
-        }
-        else
-        {
-            SPCU->addUInt(SPDie, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, lowPc);
-            SPCU->addUInt(SPDie, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, highPc);
-        }
-    }
-    else
+    if (EmitSettings.EnableRelocation)
     {
         auto Id = m_pModule->GetFuncId();
         SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
-            Asm->GetTempSymbol("func_begin", Id));
+                              Asm->GetTempSymbol("func_begin", Id));
         SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
-            Asm->GetTempSymbol("func_end", Id));
-
-        if (EmitSettings.EnableSIMDLaneDebugging)
-        {
-            // Emit SIMD width
-            SPCU->addUInt(SPDie, (dwarf::Attribute)DW_AT_INTEL_simd_width, dwarf::DW_FORM_data2,
-                m_pModule->GetSIMDSize());
-        }
+                              Asm->GetTempSymbol("func_end", Id));
     }
-#else
-    // Following existed before supporting stack calls. GetFunctionNumber() was hard
-    // coded to return 0 always so for single function this worked. With stackcall
-    // functions though we need this to change. Primarily because SP.getFunction()
-    // is nullptr and there is no way to get Function* from SP directly.
-    SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
-        Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(SP.getFunction())));
-    SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
-        Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP.getFunction())));
-#endif
+    else
+    {
+        SPCU->addUInt(SPDie, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, lowPc);
+        SPCU->addUInt(SPDie, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, highPc);
+    }
 
     return SPDie;
 }
@@ -422,14 +393,7 @@ bool DwarfDebug::isLexicalScopeDIENull(LexicalScope* Scope)
     if (Ranges.size() > 1)
         return false;
 
-    if (m_pModule->isDirectElfInput)
-        return false;
-
-    // We don't create a DIE if we have a single Range and the end label
-    // is null.
-    SmallVectorImpl<InsnRange>::const_iterator RI = Ranges.begin();
-    MCSymbol* End = getLabelAfterInsn(RI->second);
-    return !End;
+    return false;
 }
 
 // Construct new DW_TAG_lexical_block for this scope and attach
@@ -450,71 +414,50 @@ DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
     const SmallVectorImpl<InsnRange>& Ranges = Scope->getRanges();
     IGC_ASSERT_MESSAGE(Ranges.empty() == false, "LexicalScope does not have instruction markers!");
 
-    if (m_pModule->isDirectElfInput)
+    if (Scope->getInlinedAt())
     {
-        if (Scope->getInlinedAt())
+        auto abstractScope = LScopes.findAbstractScope(dyn_cast_or_null<DILocalScope>(Scope->getScopeNode()));
+        if (abstractScope)
         {
-            auto abstractScope = LScopes.findAbstractScope(dyn_cast_or_null<DILocalScope>(Scope->getScopeNode()));
-            if (abstractScope)
+            auto AbsDIE = AbsLexicalScopeDIEMap.lookup(abstractScope);
+            if (AbsDIE)
             {
-                auto AbsDIE = AbsLexicalScopeDIEMap.lookup(abstractScope);
-                if (AbsDIE)
-                {
-                    // Point to corresponding abstract instance of DW_TAG_lexical_block
-                    TheCU->addDIEEntry(ScopeDIE, dwarf::DW_AT_abstract_origin, AbsDIE);
-                }
+                // Point to corresponding abstract instance of DW_TAG_lexical_block
+                TheCU->addDIEEntry(ScopeDIE, dwarf::DW_AT_abstract_origin, AbsDIE);
             }
         }
-
-        if (EmitSettings.EmitDebugRanges)
-        {
-            encodeRange(TheCU, ScopeDIE, &Ranges);
-        }
-        else
-        {
-            // This makes sense only for full debug info.
-            // Resolve VISA index to Gen IP here.
-            auto start = Ranges.front().first;
-            auto end = Ranges.back().second;
-            InsnRange RI(start, end);
-            auto GenISARanges = m_pModule->getGenISARange(RI);
-
-            if (GenISARanges.size() > 0)
-            {
-                // Emit loc/high_pc
-                if (EmitSettings.EnableRelocation)
-                {
-                    auto StartLabel = GetLabelBeforeIp(GenISARanges.front().first);
-                    auto EndLabel = GetLabelBeforeIp(GenISARanges.back().second);
-                    TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_low_pc, StartLabel);
-                    TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
-                }
-                else
-                {
-                    TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
-                    TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
-                }
-            }
-        }
-        return ScopeDIE;
     }
 
-    // CQ#: 21731
-    // Emit lowpc/highpc only
-    // If several ranges were discovered from lexical info, then emit lowpc from
-    // first subrange and highpc from last one
-    auto start = Ranges.front().first;
-    auto end = Ranges.back().second;
-    DebugRangeSymbols.push_back(getLabelBeforeInsn(start));
-    DebugRangeSymbols.push_back(getLabelAfterInsn(end));
+    if (EmitSettings.EmitDebugRanges)
+    {
+        encodeRange(TheCU, ScopeDIE, &Ranges);
+    }
+    else
+    {
+        // This makes sense only for full debug info.
+        // Resolve VISA index to Gen IP here.
+        auto start = Ranges.front().first;
+        auto end = Ranges.back().second;
+        InsnRange RI(start, end);
+        auto GenISARanges = m_pModule->getGenISARange(RI);
 
-    MCSymbol* StartLabel = getLabelBeforeInsn(start);
-    MCSymbol* EndLabel = getLabelAfterInsn(end);
-    TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_low_pc, StartLabel);
-    TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
-
-    DebugRangeSymbols.push_back(NULL);
-    DebugRangeSymbols.push_back(NULL);
+        if (GenISARanges.size() > 0)
+        {
+            // Emit loc/high_pc
+            if (EmitSettings.EnableRelocation)
+            {
+                auto StartLabel = GetLabelBeforeIp(GenISARanges.front().first);
+                auto EndLabel = GetLabelBeforeIp(GenISARanges.back().second);
+                TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_low_pc, StartLabel);
+                TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
+            }
+            else
+            {
+                TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
+                TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
+            }
+        }
+    }
     return ScopeDIE;
 }
 
@@ -657,34 +600,12 @@ DIE* DwarfDebug::constructInlinedScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
     TheCU->addUInt(ScopeDIE, dwarf::DW_AT_call_file, None, fileId);
     TheCU->addUInt(ScopeDIE, dwarf::DW_AT_call_line, None, DL->getLine());
 
-    if (!m_pModule->isDirectElfInput)
-    {
-        // Emit lowpc/highpc only
-        // If several ranges were discovered from lexical info, then emit lowpc from
-        // first subrange and highpc from last one
-        auto start = Ranges.front().first;
-        auto end = Ranges.back().second;
-        DebugRangeSymbols.push_back(getLabelBeforeInsn(start));
-        DebugRangeSymbols.push_back(getLabelAfterInsn(end));
+    // .debug_range section has not been laid out yet. Emit offset in
+    // .debug_range as a uint, size 4, for now. emitDIE will handle
+    // DW_AT_ranges appropriately.
+    encodeRange(TheCU, ScopeDIE, &Ranges);
 
-        MCSymbol* StartLabel = getLabelBeforeInsn(start);
-        MCSymbol* EndLabel = getLabelAfterInsn(end);
-        TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_low_pc, StartLabel);
-        TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
-
-        DebugRangeSymbols.push_back(NULL);
-        DebugRangeSymbols.push_back(NULL);
-        return ScopeDIE;
-    }
-    else
-    {
-        // .debug_range section has not been laid out yet. Emit offset in
-        // .debug_range as a uint, size 4, for now. emitDIE will handle
-        // DW_AT_ranges appropriately.
-        encodeRange(TheCU, ScopeDIE, &Ranges);
-
-        return ScopeDIE;
-    }
+    return ScopeDIE;
 }
 
 DIE* DwarfDebug::createScopeChildrenDIE(CompileUnit* TheCU, LexicalScope* Scope, SmallVectorImpl<DIE*>& Children)
@@ -886,42 +807,25 @@ CompileUnit* DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
     // 2.17.1 requires that we use DW_AT_low_pc for a single entry point
     // into an entity. We're using 0 (or a NULL label) for this.
 
-    if (m_pModule->isDirectElfInput)
-    {
-        if (EmitSettings.EnableRelocation)
-        {
-            NewCU->addLabelAddress(Die, dwarf::DW_AT_low_pc, ModuleBeginSym);
-            NewCU->addLabelAddress(Die, dwarf::DW_AT_high_pc, ModuleEndSym);
-
-            NewCU->addLabelLoc(Die, dwarf::DW_AT_stmt_list, DwarfLineSectionSym);
-        }
-        else
-        {
-            auto highPC = m_pModule->getUnpaddedProgramSize();
-            NewCU->addUInt(Die, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, 0);
-            NewCU->addUInt(Die, dwarf::DW_AT_high_pc, Optional<dwarf::Form>(), highPC);
-
-            // DW_AT_stmt_list is a offset of line number information for this
-            // compile unit in debug_line section. For split dwarf this is
-            // left in the skeleton CU and so not included.
-            // The line table entries are not always emitted in assembly, so it
-            // is not okay to use line_table_start here.
-            NewCU->addUInt(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset, 0);
-        }
-    }
-    else
+    if (EmitSettings.EnableRelocation)
     {
         NewCU->addLabelAddress(Die, dwarf::DW_AT_low_pc, ModuleBeginSym);
         NewCU->addLabelAddress(Die, dwarf::DW_AT_high_pc, ModuleEndSym);
 
-        // Define start line table label for each Compile Unit.
-        MCSymbol* LineTableStartSym = Asm->GetTempSymbol("line_table_start", NewCU->getUniqueID());
-        Asm->SetMCLineTableSymbol(LineTableStartSym, NewCU->getUniqueID());
+        NewCU->addLabelLoc(Die, dwarf::DW_AT_stmt_list, DwarfLineSectionSym);
+    }
+    else
+    {
+        auto highPC = m_pModule->getUnpaddedProgramSize();
+        NewCU->addUInt(Die, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, 0);
+        NewCU->addUInt(Die, dwarf::DW_AT_high_pc, Optional<dwarf::Form>(), highPC);
 
-        // Use a single line table if we are using .loc and generating assembly.
-        bool UseTheFirstCU = (NewCU->getUniqueID() == 0);
-        NewCU->addLabel(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset,
-            UseTheFirstCU ? Asm->GetTempSymbol("section_line") : LineTableStartSym);
+        // DW_AT_stmt_list is a offset of line number information for this
+        // compile unit in debug_line section. For split dwarf this is
+        // left in the skeleton CU and so not included.
+        // The line table entries are not always emitted in assembly, so it
+        // is not okay to use line_table_start here.
+        NewCU->addUInt(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset, 0);
     }
 
     simdWidth = m_pModule->GetSIMDSize();
@@ -1597,7 +1501,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             // Conditions below decide whether we want to emit location to debug_loc or inline it
             // in the DIE. To inline in DIE, we simply dont emit anything here and continue the loop.
             bool needsCallerSave = m_pModule->getCompileUnit(*decodedDbg)->cfi.numCallerSaveEntries > 0;
-            if ((!m_pModule->isDirectElfInput || !EmitSettings.EmitDebugLoc) && !needsCallerSave)
+            if (!EmitSettings.EmitDebugLoc && !needsCallerSave)
                 continue;
 
             if (EmitSettings.UseOffsetInLocation && isa<DbgDeclareInst>(pInst))
@@ -2815,35 +2719,14 @@ void DwarfDebug::emitDebugRanges()
     Asm->SwitchSection(Asm->GetDwarfRangesSection());
     unsigned char size = (unsigned char)Asm->GetPointerSize();
 
-    if (m_pModule->isDirectElfInput)
+    for (auto& Entry : GenISADebugRangeSymbols)
     {
-        for (auto& Entry : GenISADebugRangeSymbols)
+        auto Label = Entry.first;
+        if (Label)
+            Asm->EmitLabel(Label);
+        for (auto Data : Entry.second)
         {
-            auto Label = Entry.first;
-            if (Label)
-                Asm->EmitLabel(Label);
-            for (auto Data : Entry.second)
-            {
-                Asm->EmitIntValue(Data, size);
-            }
-        }
-    }
-    else
-    {
-        for (SmallVectorImpl<const MCSymbol*>::iterator
-            I = DebugRangeSymbols.begin(), E = DebugRangeSymbols.end();
-            I != E; ++I)
-        {
-            if (*I)
-            {
-#if 0
-                Asm->EmitIntValue((*I)->getOffset(), size);
-#else
-                Asm->EmitSymbolValue(const_cast<MCSymbol*>(*I), size);
-#endif
-            }
-            else
-                Asm->EmitIntValue(0, size);
+            Asm->EmitIntValue(Data, size);
         }
     }
 }

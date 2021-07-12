@@ -404,8 +404,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream,
     // which is an encoding reserved for Intel. It is not part of
     // the enum so its value in inlined.
 #define EM_INTEL_GEN 182
-    uint16_t eMachine = StreamOptions.isDirectElf ? EM_INTEL_GEN :
-        is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+    uint16_t eMachine = EM_INTEL_GEN;
     if (StreamOptions.EnforceAMD64Machine)
         eMachine = ELF::EM_X86_64;
     bool hasRelocationAddend = is64Bit;
