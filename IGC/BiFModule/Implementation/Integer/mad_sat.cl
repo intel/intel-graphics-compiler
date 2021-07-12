@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 #include "../include/mul_hilo.cl"
+#include "../ExternalLibraries/libclc/mad_sat.cl"
 
 INLINE
 char2 __builtin_spirv_OpenCL_s_mad_sat_v2i8_v2i8_v2i8( char2 a,
@@ -490,23 +491,7 @@ long __builtin_spirv_OpenCL_s_mad_sat_i64_i64_i64( long a,
                                             long b,
                                             long c )
 {
-    long lo;
-    long hi;
-    hi = __builtin_spirv___intc_mul_hilo_i64_i64_p0i64(a, b, &lo);
-    long result_lo = lo + c;
-    if (c >= 0)
-    {
-        if (result_lo < lo)
-            hi++;
-    }
-    else
-    {
-        if (result_lo > lo)
-            hi--;
-    }
-    return  (hi == 0)  ?    result_lo    :
-            (hi <  0)  ?    LONG_MIN :
-                            LONG_MAX;
+    return libclc_mad_sat(a, b, c);
 }
 
 INLINE
