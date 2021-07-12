@@ -426,6 +426,8 @@ _SPIRV_OP(OpSatConvertUToS)
 _SPIRV_OP(OpSatConvertSToU)
 _SPIRV_OP(OpConvertFToBF16INTEL)
 _SPIRV_OP(OpConvertBF16ToFINTEL)
+// SPV_INTEL_arithmetic_fence
+_SPIRV_OP(OpArithmeticFenceINTEL)
 // Arithmetic Instructions
 _SPIRV_OP(OpFRem)
 _SPIRV_OP(OpFMod)

@@ -3549,6 +3549,13 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
       return mapValue(BV, sel);
   }
+  case OpArithmeticFenceINTEL:
+  {
+    // Translate arithmetic fence to it's operand to avoid crash on unknown opcode.
+    // It is planned to be translated into @llvm.arithmetic.fence.f64 in the future.
+    auto* BC = static_cast<SPIRVUnary*>(BV);
+    return mapValue(BV, transValue(BC->getOperand(0), F, BB));
+  }
   default: {
     auto OC = BV->getOpCode();
     if (isSPIRVCmpInstTransToLLVMInst(static_cast<SPIRVInstruction*>(BV))) {

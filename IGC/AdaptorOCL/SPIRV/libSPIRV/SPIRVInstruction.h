@@ -1054,6 +1054,7 @@ _SPIRV_OP(Any)
 _SPIRV_OP(All)
 _SPIRV_OP(ConvertFToBF16INTEL)
 _SPIRV_OP(ConvertBF16ToFINTEL)
+_SPIRV_OP(ArithmeticFenceINTEL)
 #undef _SPIRV_OP
 
 class SPIRVAccessChainBase :public SPIRVInstTemplateBase {

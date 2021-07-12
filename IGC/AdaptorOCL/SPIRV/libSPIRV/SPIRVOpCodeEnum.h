@@ -508,3 +508,5 @@ _SPIRV_OP(TypeTokenINTEL, 6113)
 //_SPIRV_OP(DebugInfoModuleINTEL, 6114)
 _SPIRV_OP(ConvertFToBF16INTEL, 6116)
 _SPIRV_OP(ConvertBF16ToFINTEL, 6117)
+// SPV_INTEL_arithmetic_fence
+_SPIRV_OP(ArithmeticFenceINTEL, 6145)
