@@ -5889,7 +5889,7 @@ void GenXKernelBuilder::endFunction(Function *Func, ReturnInst *RI) {
 
     if (!Func->getReturnType()->isVoidTy() &&
         !Func->getReturnType()->isAggregateType() &&
-        Liveness->getLiveRange(RI->getReturnValue()) &&
+        Liveness->getLiveRangeOrNull(RI->getReturnValue()) &&
         (Liveness->getLiveRange(RI->getReturnValue())->getCategory() !=
              RegCategory::EM &&
          Liveness->getLiveRange(RI->getReturnValue())->getCategory() !=
