@@ -227,6 +227,12 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         {
             setType(m.second);
             auto lastVISAId = getLastGenOff(m.second);
+            // getLastGenOffset returns zero iff debug info for given function
+            // was not found, skip the function in such case. This can happen,
+            // when the function was optimized away but the definition is still
+            // present inside the module.
+            if (lastVISAId == 0)
+              continue;
             sortedVISAModules.push_back(std::make_pair(lastVISAId, std::make_pair(m.first, m.second)));
         }
 
