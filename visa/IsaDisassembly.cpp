@@ -909,11 +909,11 @@ static std::string printInstructionCommon(
 static std::string printInstructionControlFlow(
     const print_format_provider_t* header,
     const CISA_INST* inst,
-    const Options *opt)
+    const Options* opt)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     unsigned i = 0;
-    uint16_t label_id  = 0;
+    uint16_t label_id = 0;
 
     std::stringstream sstr;
 
@@ -965,11 +965,14 @@ static std::string printInstructionControlFlow(
     }
     else
     {
-        sstr << printPredicate(inst->opcode, inst->pred)
-             << ISA_Inst_Table[opcode].str
-             << " "
-             << printExecutionSize(inst->opcode, inst->execsize);
+        auto printInstName = [](std::stringstream& SS, const CISA_INST* I, const char* IName) {
+            SS << printPredicate(I->opcode, I->pred)
+                << ISA_Inst_Table[I->opcode].str
+                << " "
+                << printExecutionSize(I->opcode, I->execsize);
+        };
 
+        const char* InstName = ISA_Inst_Table[opcode].str;
         switch (opcode)
         {
             case ISA_JMP:
@@ -979,6 +982,13 @@ static std::string printInstructionControlFlow(
             {
                 /// label / function id to jump / call to.
                 label_id = getPrimitiveOperand<uint16_t>(inst, i++);
+
+                // If it is fccall, using "fccall" as text name.
+                bool is_fccall = false; // (opcode == ISA_CALL && header->getLabel(label_id)->kind == LABEL_FC);
+                InstName = is_fccall ? "fccall" : InstName;
+
+                // print instruction name, etc
+                printInstName(sstr, inst, InstName);
 
                 if (opcode == ISA_FCALL)
                 {
@@ -1005,6 +1015,9 @@ static std::string printInstructionControlFlow(
             }
             case ISA_IFCALL:
             {
+                // print instruction name, etc
+                printInstName(sstr, inst, InstName);
+
                 sstr << printOperand(header, inst, i++, opt);
                 /// arg size
                 sstr << " " << getPrimitiveOperand<unsigned>(inst, i++);
@@ -1014,6 +1027,9 @@ static std::string printInstructionControlFlow(
             }
             case ISA_FADDR:
             {
+                // print instruction name, etc
+                printInstName(sstr, inst, InstName);
+
                 /// symbol name in string
                 sstr << header->getString(getPrimitiveOperand<uint16_t>(inst, i++));
                 /// dst
@@ -1022,6 +1038,9 @@ static std::string printInstructionControlFlow(
             }
             case ISA_SWITCHJMP:
             {
+                // print instruction name, etc
+                printInstName(sstr, inst, InstName);
+
                 /// skip num_labels
                 i++;
                 /// index
