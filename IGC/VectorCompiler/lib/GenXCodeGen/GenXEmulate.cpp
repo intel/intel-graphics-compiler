@@ -141,6 +141,8 @@ class GenXEmulate : public ModulePass {
     Value *visitGenxAbsi(CallInst &CI);
     // handles genx_{XX}add_sat cases
     Value *visitGenxAddSat(CallInst &CI);
+    // handles genx_fpto{X}i_sat cases
+    Value *visitGenxFPToISat(CallInst &CI);
 
     // [+] bitcast
     // [-] genx.constanti ?
@@ -1138,6 +1140,23 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
   }
   return nullptr;
 }
+
+Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
+  if (CI.getType()->getScalarType() == Type::getDoubleTy(CI.getContext()))
+    report_fatal_error("int_emu: double->UI conversions are not supported");
+
+  auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
+  IGC_ASSERT_MESSAGE(IID == GenXIntrinsic::genx_fptosi_sat ||
+                         IID == GenXIntrinsic::genx_fptoui_sat,
+                     "unknown intrinsic passed to fptoi_sat emu");
+  const bool IsSigned = (IID == GenXIntrinsic::genx_fptosi_sat) ? true : false;
+
+  auto Builder = getIRBuilder();
+  auto *V = buildFPToI64(*CI.getModule(), Builder, SplitBuilder,
+                         CI.getOperand(0), IsSigned);
+  return Builder.CreateBitCast(V, CI.getType(), Twine(CI.getName()) + ".emu");
+}
+
 Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
   switch (GenXIntrinsic::getAnyIntrinsicID(&Inst)) {
   case GenXIntrinsic::genx_uutrunc_sat:
@@ -1157,6 +1176,9 @@ Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
   case GenXIntrinsic::genx_uuadd_sat:
   case GenXIntrinsic::genx_ssadd_sat:
     return visitGenxAddSat(CI);
+  case GenXIntrinsic::genx_fptosi_sat:
+  case GenXIntrinsic::genx_fptoui_sat:
+    return visitGenxFPToISat(CI);
   }
   return nullptr;
 }
