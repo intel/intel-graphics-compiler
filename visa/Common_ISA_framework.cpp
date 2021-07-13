@@ -463,7 +463,7 @@ int CisaBinary::isaDump(
     std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
 
     std::vector<std::string> failedFiles;
-    VISAKernelImpl* mainKernel = nullptr;
+    VISAKernelImpl* mainKernel = *iter;
     for (; iter != end; iter++)
     {
         VISAKernelImpl * kTemp = *iter;
