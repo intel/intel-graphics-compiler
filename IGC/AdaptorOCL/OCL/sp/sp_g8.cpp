@@ -1109,7 +1109,7 @@ DWORD CGen8OpenCLStateProcessor::AllocateSamplerIndirectState(
 #if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
     {
         G6HWC::DebugSamplerIndirectStateCommand(
-            membuf.GetLinearPointer() + samplerIndirectStateOffset,
+            &samplerIndirectStateOffset,
             m_Platform,
             m_oclStateDebugMessagePrintOut );
     }
