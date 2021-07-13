@@ -525,70 +525,81 @@ appendFuncBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
   freeBlock(GenBin);
 }
 
-// Loads if it is possible external files
-static Optional<genx::BinaryDataAccumulator<const Function *>>
-loadGenBinaryFromFile(const FunctionGroup &FG,
+// Loads if it is possible external files.
+// Returns the success status of the loading.
+static bool
+loadGenBinaryFromFile(genx::BinaryDataAccumulator<const Function *> &GenBinary,
+                      const Function &Kernel, const Function &F,
                       vc::ShaderOverrider const &Loader,
                       vc::ShaderOverrider::Extensions Ext) {
-  StringRef KernelName = FG.getHead()->getName();
-
   void *GenBin = nullptr;
   int GenBinSize = 0;
 
-  if (!Loader.override(GenBin, GenBinSize, KernelName, Ext))
-    return None;
+  if (!Loader.override(GenBin, GenBinSize, Kernel.getName(), F.getName(), Ext))
+    return false;
 
   if (!GenBin || !GenBinSize) {
     llvm::errs()
         << "Unexpected null buffer or zero-sized kernel (loading failed?)\n";
-    return None;
+    return false;
   }
 
-  genx::BinaryDataAccumulator<const Function *> GenBinary;
-  GenBinary.append(FG.getHead(),
-                   ArrayRef<char>{reinterpret_cast<char *>(GenBin),
-                                  static_cast<size_t>(GenBinSize)});
+  GenBinary.append(&F, ArrayRef<char>{reinterpret_cast<char *>(GenBin),
+                                      static_cast<size_t>(GenBinSize)});
   freeBlock(GenBin);
-
-  return GenBinary;
+  return true;
 }
 
-// Constructs gen binary for FG but loading is from injected file
-static Optional<genx::BinaryDataAccumulator<const Function *>>
-tryOverrideBinary(const FunctionGroup &FG, GenXBackendConfig const &BC) {
+// Constructs gen binary for Function but loading is from injected file.
+// Returns the success status of the overriding.
+static bool
+tryOverrideBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
+                  const Function &Kernel, const Function &F,
+                  vc::ShaderOverrider const &Loader) {
   using Extensions = vc::ShaderOverrider::Extensions;
 
-  if (!BC.hasShaderOverrider())
-    return None;
-  vc::ShaderOverrider const &Loader = BC.getShaderOverrider();
-
   // Attempts to override .asm
-  if (auto GenBinary = loadGenBinaryFromFile(FG, Loader, Extensions::ASM))
-    return GenBinary.getValue();
+  if (loadGenBinaryFromFile(GenBinary, Kernel, F, Loader, Extensions::ASM))
+    return true;
 
   // If it has failed then attempts to override .dat file
-  // loadGenBinaryFromFile returns emtpy if it also failed
-  return loadGenBinaryFromFile(FG, Loader, Extensions::DAT);
+  return loadGenBinaryFromFile(GenBinary, Kernel, F, Loader, Extensions::DAT);
+}
+
+// Either loads binaries from VISABuilder or overrides from files.
+// \p Kernel should always be kernel function, meanwhile if \p F is actually a
+// kernel means we are loading kernel, and if \p F is a function means we are
+// loading function.
+static void
+loadBinaries(genx::BinaryDataAccumulator<const Function *> &GenBinary,
+             VISABuilder &VB, const Function &Kernel, const Function &F,
+             GenXBackendConfig const &BC) {
+  // Attempt to override
+  if (BC.hasShaderOverrider() &&
+      tryOverrideBinary(GenBinary, Kernel, F, BC.getShaderOverrider()))
+    return;
+
+  // If there is no overriding or attemp fails, then gets binary from compilation
+  VISAKernel *BuiltKernel = VB.GetVISAKernel(F.getName().str());
+  IGC_ASSERT_MESSAGE(BuiltKernel, "Kernel is null");
+  appendFuncBinary(GenBinary, F, *BuiltKernel);
+  
 }
 
 // Constructs gen binary for provided function group \p FG.
 static genx::BinaryDataAccumulator<const Function *>
 getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
              GenXBackendConfig const &BC) {
-  // Tries to inject binary from external source
-  if (auto GenBinary = tryOverrideBinary(FG, BC))
-    return GenBinary.getValue();
-
+  Function const *Kernel = FG.getHead();
   genx::BinaryDataAccumulator<const Function *> GenBinary;
-  VISAKernel *BuiltKernel = VB.GetVISAKernel(FG.getHead()->getName().str());
-  appendFuncBinary(GenBinary, *FG.getHead(), *BuiltKernel);
-  for (Function *F : FG) {
-    if (genx::isReferencedIndirectly(F)) {
-      VISAKernel *ExtKernel = VB.GetVISAKernel(F->getName().str());
-      IGC_ASSERT_MESSAGE(ExtKernel, "Kernel is null");
-      appendFuncBinary(GenBinary, *F, *ExtKernel);
-    }
-  }
+  // load kernel
+  loadBinaries(GenBinary, VB, *Kernel, *Kernel, BC);
+
+  for (Function *F : FG)
+    if (genx::isReferencedIndirectly(F))
+      // load functions
+      loadBinaries(GenBinary, VB, *Kernel, *F, BC);
+
   return std::move(GenBinary);
 }
 
