@@ -7177,6 +7177,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     void Optimizer::HWWorkaround()
     {
+        if ((kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) &&
+            builder.getJitInfo()->spillMemUsed > 0 && builder.hasFusedEUWA())
+        {
+            // For now, do it for CM/VC. Will turn it on for all.
+            doNoMaskWA_postRA();
+        }
+
         // Ensure the first instruction of a stack function has switch option.
         if (fg.getIsStackCallFunc() &&
             VISA_WA_CHECK(builder.getPWaTable(), WaThreadSwitchAfterCall) &&
@@ -10543,6 +10550,7 @@ void Optimizer::removeInstrinsics()
     for (auto bb : kernel.fg)
     {
         bb->removeIntrinsics(Intrinsic::MemFence);
+        bb->removeIntrinsics(Intrinsic::FlagSpill);
     }
 }
 
@@ -12017,6 +12025,185 @@ void Optimizer::doNoMaskWA()
         }
         // Clear it to prepare for the next BB
         NoMaskCandidates.clear();
+    }
+}
+
+// Need to apply NoMaskWA on spill.  For example,
+//   Think of scenario that fusedMask should be off, but it is on due to the HW bug.
+//   Instruction with NoMask will run, and all the others do not.
+//
+//   V77 (2GRF) spills at offset[4x32]. The following code reads V77 from spill
+//   location, and modifies it, and finally write the result back into offset[4xi32].
+//   If the code can keep the content at this location unchanged, no WA is needed;
+//   otherwise, we must have WA.
+//
+//   But write at (3) will write whatever in r4 into offset[4x32],  which is undefined,
+//   definitely not guaranteed to be the same as r1 just read from the same location.
+//   (Note that mul at (2) will not run because the channel enable is off [only fusedMask
+//   is on].)  This shows the code modifies the content at offset[4x32], which is wrong.
+//
+//   With this, the WA must be applied. It is enough to apply on spill (write) only.
+//
+//   Before RA:
+//     BB1:
+//       mul (M1, 16) V77(0,0)<1> V141(0,0)<0;1,0> V77(0,0)<1;1,0>
+//     BB2:
+//       svm_block_st (4) V154(0,0)<0;1,0> V77.0
+//
+//   After RA
+//     BB1:
+//      (1)  // wr:1h+0, rd:2; hword scratch block read x2
+//           // scratch space fill: FL_GRF_V77_6 from offset[4x32]
+//           (W) send.dc0 (16|M0)  r1  r0  null  0x0  0x022C1004
+//      (2)  mul (16|M0)  r4.0<1>:f  r3.0<0;1,0>:f  r1.0<8;8,1>:f
+//      (3)  // wr:1h+2, rd:0; hword scratch block write x2
+//           //  scratch space spill: SP_GRF_V77_3 from offset[4x32];
+//           (W) send.dc0 (16|M0)  null  r0  r4  0x80  0x020F1004
+//
+// Note this works only for NoMaskWA=2
+//
+void Optimizer::doNoMaskWA_postRA()
+{
+    std::vector<INST_LIST_ITER> NoMaskCandidates;
+    G4_ExecSize simdsize = fg.getKernel()->getSimdSize();
+
+    auto isCandidate = [](G4_INST* I) {
+        if (I->isSend() && I->isWriteEnableInst() &&
+            I->getPredicate() == nullptr &&
+            (I->getDst() == nullptr || I->getDst()->isNullReg()))
+        {
+            // This shall be a spill (write).
+            // May check if the spilled var is global. We only need
+            // to do WA for global spill!
+            return true;
+        }
+        return false;
+    };
+
+    auto createFlagFromCmp = [&](G4_BB* BB, INST_LIST_ITER& InsertPos,
+        G4_RegVar* flag, unsigned flagOff, G4_Type Ty)
+    {
+        //    I0:               (W) mov (1|M0)  flag:Ty,  0
+        //    flagDefInst:          cmp (simdsize|M0) (eq)flag  r0:uw  r0:uw
+        G4_DstRegRegion* D = builder.createDst(flag, 0, flagOff, 1, Ty);
+        G4_INST* I0 = builder.createMov(g4::SIMD1, D, builder.createImm(0, Ty), InstOpt_WriteEnable, false);
+        BB->insertBefore(InsertPos, I0);
+
+        G4_SrcRegRegion* r0_0 = builder.createSrc(
+            builder.getRealR0()->getRegVar(), 0, 0,
+            builder.getRegionScalar(), Type_UW);
+        G4_SrcRegRegion* r0_1 = builder.createSrc(
+            builder.getRealR0()->getRegVar(), 0, 0,
+            builder.getRegionScalar(), Type_UW);
+        G4_CondMod* flagCM = builder.createCondMod(Mod_e, flag, flagOff);
+        G4_DstRegRegion* nullDst = builder.createNullDst(Type_UW);
+        G4_INST* I1 = builder.createInternalInst(
+            NULL, G4_cmp, flagCM, g4::NOSAT, simdsize,
+            nullDst, r0_0, r0_1, InstOpt_M0);
+        BB->insertBefore(InsertPos, I1);
+    };
+
+    auto createMov1 = [&](G4_BB* BB, INST_LIST_ITER& InsertPos,
+        G4_RegVar* Dst, unsigned Dst_off, G4_RegVar* Src, unsigned Src_off, G4_Type Ty)
+    {
+        G4_DstRegRegion* D = builder.createDst(Dst, 0, Dst_off, 1, Ty);
+        G4_SrcRegRegion* S = builder.createSrc(Src, 0, Src_off, builder.getRegionScalar(), Ty);
+        G4_INST* tI = builder.createMov(g4::SIMD1, D, S, InstOpt_WriteEnable, false);
+        BB->insertBefore(InsertPos, tI);
+    };
+
+    // Assuming all flags are used, thus need to spill one.
+    // RA reserves two DW for this purpose:
+    //    DW0:  <original flag>
+    //    DW1:  <WA flag>        // set once and reuse it in the same BB
+    // For example,  the following spill send needs WA:
+    //    (W) send  (16|M0) ...
+    // Let's say we use f0.0, WA sequence is as follows:
+    //    1.  (W) mov (1|M0)  DW0:uw   f0.0<0;1,0>:uw         // save
+    //    2.  (W) mov (1|M0)  f0.0<1>:uw  0:uw
+    //    3.  cmp (16|M0)   (eq)f0.0   null<1>:uw  r0.0<0;1,0>:uw  r0.0<0;1,0>:uw
+    //    4.  (W) mov (1|M0)  DW1:uw   f0.0<0;1,0>:uw         // WASave
+    //        (W & f0.0.any16h) send (16|M0) ...
+    //    5.  (W) mov (1|M0) f0.0<1>:uw  DW0:uw               // restore
+    // Note that 2,3, and 4 are needed once per BB. They are done for the first WA send.
+    // If there are more WA sends in the same BB, the WA send after the 1st needs to have
+    //    1.  (W) mov (1|M0)  DW0:uw   f0.0<0;1,0>:uw         // save
+    //    2.  (W) mov (1|M0)  f0.0<1>:uw   DW1:uw             // WARestore
+    //        (W & f0.0.any16h) send (16|M0) ...
+    //    3.  (W) mov (1|M0) f0.0<1>:uw  DW0:uw               // restore
+    //
+    // Todo:  check if save/restore is needed to avoid redundant save/restore.
+    //
+    G4_Declare* saveTmp = builder.getEUFusionWATmpVar(); // 2DW;
+    G4_RegVar* saveVar = saveTmp->getRegVar();
+    G4_Predicate_Control waPredCtrl =
+        (simdsize == 8 ? PRED_ANY8H
+                       : (simdsize == 16 ? PRED_ANY16H : PRED_ANY32H));
+    unsigned saveOff = 0, waSaveOff = (simdsize == 32 ? 1 : 2);
+
+    for (auto BI : fg)
+    {
+        G4_BB* BB = BI;
+        if ((BB->getBBType() & G4_BB_NM_WA_TYPE) == 0)
+        {
+            continue;
+        }
+
+        // per-BB insts that need NoMaskWA (aka WA inst)
+        std::vector<INST_LIST_ITER> WAInsts;
+
+        // First collect all candidates and also check if there is
+        // any free flag registers
+        for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+        {
+            G4_INST* I = *II;
+            if (!isCandidate(I))
+            {
+                continue;
+            }
+            WAInsts.push_back(II);
+        }
+
+        if (WAInsts.empty())
+        {
+            continue;
+        }
+
+        // Without optimization, always do save/restore
+        bool needSave = true;
+        bool needRestore = true;
+        G4_Type Ty = (simdsize > 16) ? Type_UD : Type_UW;
+        G4_Declare* flagDcl = builder.createTempFlag((Ty == Type_UW ? 1 : 2), "waflag");
+        G4_RegVar* flagVar = flagDcl->getRegVar();
+        flagVar->setPhyReg(builder.phyregpool.getFlagAreg(0), 0);
+
+        // Save flag, create WA mask, save WAflag
+        createMov1(BB, WAInsts[0], saveVar, saveOff, flagVar, 0, Ty);  // save
+        createFlagFromCmp(BB, WAInsts[0], flagVar, 0, Ty);
+        if (WAInsts.size() > 1) {
+            createMov1(BB, WAInsts[0], saveVar, waSaveOff, flagVar, 0, Ty); // WASave
+        }
+
+        for (int i = 0, sz = (int)WAInsts.size(); i < sz; ++i)
+        {
+            auto& currII = WAInsts[i];
+
+            if (i > 0 && needSave) {
+                createMov1(BB, currII, saveVar, saveOff, flagVar, 0, Ty);    // save
+                createMov1(BB, currII, flagVar, 0, saveVar, waSaveOff, Ty);  // WARestore
+            }
+
+            G4_INST* I = *currII;
+            G4_Predicate* newPred = builder.createPredicate(
+                PredState_Plus, flagVar, 0, waPredCtrl);
+            I->setPredicate(newPred);
+
+            if (i == (sz - 1) || needRestore) {
+                auto nextII = currII;
+                ++nextII;
+                createMov1(BB, nextII, flagVar, 0, saveVar, saveOff, Ty);   // restore
+            }
+        }
     }
 }
 
