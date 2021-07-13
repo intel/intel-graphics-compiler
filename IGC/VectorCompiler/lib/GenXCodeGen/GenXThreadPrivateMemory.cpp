@@ -314,7 +314,7 @@ private:
   llvm::SetVector<Argument *> m_args;
   std::vector<CallInst *> m_gather;
   std::vector<CallInst *> m_scatter;
-  std::map<AllocaInst *, CallInst *> m_allocaToIntrinsic;
+  std::unordered_map<AllocaInst *, CallInst *> m_allocaToIntrinsic;
   std::queue<std::pair<Instruction *, bool>> m_AIUsers;
   std::set<Instruction *> m_AlreadyAdded;
   PreDefined_Surface m_stack;
@@ -611,8 +611,7 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
     return ITP->getOperand(0);
   else if (auto AI = dyn_cast<AllocaInst>(Ptr)) {
     auto AllocaIntr = m_allocaToIntrinsic.find(AI);
-    IGC_ASSERT_MESSAGE(AllocaIntr != m_allocaToIntrinsic.end(),
-      "Each alloca must be here");
+    IGC_ASSERT(AllocaIntr != m_allocaToIntrinsic.end());
     return AllocaIntr->second;
   } else if (isa<Argument>(Ptr)) {
     if (PtrTy->isPointerTy()) {
@@ -1530,9 +1529,8 @@ void GenXThreadPrivateMemory::collectEachPossibleTPMUsers() {
 void GenXThreadPrivateMemory::collectAllocaUsers() {
   IGC_ASSERT(m_AIUsers.empty());
   // At first collect every alloca user
-  for (auto B = m_allocaToIntrinsic.begin(), E = m_allocaToIntrinsic.end();
-       B != E; ++B) {
-    Instruction *I = dyn_cast<Instruction>(B->first);
+  for (auto Alloca : m_alloca) {
+    Instruction *I = dyn_cast<Instruction>(Alloca);
     IGC_ASSERT(I);
     addUsers(I);
   }
@@ -1851,11 +1849,11 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   collectArgUsers(!genx::isKernel(&F));
   Changed |= processUsers();
 
-  for (auto AllocaPair : m_allocaToIntrinsic) {
-    EraseUsers(AllocaPair.first);
-    IGC_ASSERT_MESSAGE(AllocaPair.first->use_empty(),
-      "uses of replaced alloca aren't empty");
-    AllocaPair.first->eraseFromParent();
+  for (auto Alloca : m_alloca) {
+    EraseUsers(Alloca);
+    IGC_ASSERT_MESSAGE(Alloca->use_empty(),
+                       "uses of replaced alloca aren't empty");
+    Alloca->eraseFromParent();
   }
 
   // TODO: Rewrite split conditions due to possible exec sizes are 1, 2, 4, 8,
