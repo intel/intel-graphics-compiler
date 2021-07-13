@@ -2078,7 +2078,7 @@
     },
     "genx_ssdp4a": {
       "opc": "ISA_DP4A",
-      "exec_size": [ "EXECSIZE_GE4" ],
+      "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ],
@@ -2087,7 +2087,7 @@
     },
     "genx_sudp4a": {
       "opc": "ISA_DP4A",
-      "exec_size": [ "EXECSIZE_GE4" ],
+      "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2096,7 +2096,7 @@
     },
     "genx_usdp4a": {
       "opc": "ISA_DP4A",
-      "exec_size": [ "EXECSIZE_GE4" ],
+      "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ],
@@ -2105,7 +2105,7 @@
     },
     "genx_uudp4a": {
       "opc": "ISA_DP4A",
-      "exec_size": [ "EXECSIZE_GE4" ],
+      "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2114,7 +2114,7 @@
     },
     "genx_ssdp4a_sat": {
       "opc": "ISA_DP4A",
-      "exec_size": [ "EXECSIZE_GE4" ],
+      "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ],
@@ -2123,7 +2123,7 @@
     },
     "genx_sudp4a_sat": {
       "opc": "ISA_DP4A",
-      "exec_size": [ "EXECSIZE_GE4" ],
+      "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2132,7 +2132,7 @@
     },
     "genx_usdp4a_sat": {
       "opc": "ISA_DP4A",
-      "exec_size": [ "EXECSIZE_GE4" ],
+      "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ],
@@ -2141,7 +2141,7 @@
     },
     "genx_uudp4a_sat": {
       "opc": "ISA_DP4A",
-      "exec_size": [ "EXECSIZE_GE4" ],
+      "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
