@@ -52,6 +52,11 @@ namespace IGC
         return "ResolveOCLAtomics";
     }
 
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+    {
+        AU.addRequired<CodeGenContextWrapper>();
+    }
+
     // Entry point of the pass.
         virtual bool runOnModule(llvm::Module& M) override;
 
@@ -61,10 +66,10 @@ namespace IGC
     static const unsigned int ATTR_BUFFER_TYPE_SHIFT = 8;
 
     protected:
-        IGCLLVM::Module* m_pModule;
-        llvm::IGCIRBuilder<>* m_builder;
-        llvm::IntegerType* m_Int32Ty;
-        bool               m_64bitPointer;
+        CodeGenContext* m_CGCtx = nullptr;
+        IGCLLVM::Module* m_pModule = nullptr;
+        llvm::IGCIRBuilder<>* m_builder = nullptr;
+        llvm::IntegerType* m_Int32Ty = nullptr;
 
         // A map that keeps attributes for each "__builtin_IB_atomic_*" function name.
         std::map<llvm::StringRef, OCLAtomicAttrs>  m_AtomicDescMap;
