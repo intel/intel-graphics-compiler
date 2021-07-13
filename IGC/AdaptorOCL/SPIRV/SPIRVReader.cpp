@@ -55,6 +55,7 @@ THE SOFTWARE.
 
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include <llvm/Analysis/CFG.h>
 #include "libSPIRV/SPIRVDebugInfoExt.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -1433,6 +1434,9 @@ public:
   // which are supposed to be replaced by the real values later.
   typedef std::map<SPIRVValue *, LoadInst*> SPIRVToLLVMPlaceholderMap;
 
+  typedef std::map<const BasicBlock*, const SPIRVValue*>
+      SPIRVToLLVMLoopMetadataMap;
+
   Value *getTranslatedValue(SPIRVValue *BV);
 
 private:
@@ -1454,6 +1458,11 @@ private:
   SPIRVToLLVMMDAliasInstMap MDAliasDomainMap;
   SPIRVToLLVMMDAliasInstMap MDAliasScopeMap;
   SPIRVToLLVMMDAliasInstMap MDAliasListMap;
+
+  // Loops metadata is translated in the end of a function translation.
+  // This storage contains pairs of translated loop header basic block and loop
+  // metadata SPIR-V instruction in SPIR-V representation of this basic block.
+  SPIRVToLLVMLoopMetadataMap FuncLoopMetadataMap;
 
   Type *mapType(SPIRVType *BT, Type *T) {
     TypeMap[BT] = T;
@@ -1534,7 +1543,8 @@ private:
   bool foreachFuncCtlMask(Source, Func);
 
   template <typename LoopInstType>
-  void setLLVMLoopMetadata(LoopInstType* LM, BranchInst* BI);
+  void setLLVMLoopMetadata(const LoopInstType* LM, Instruction* BI);
+  void transLLVMLoopMetadata(const Function* F);
   inline llvm::Metadata *getMetadataFromName(std::string Name);
   inline std::vector<llvm::Metadata *>
     getMetadataFromNameAndParameter(std::string Name, SPIRVWord Parameter);
@@ -1823,9 +1833,12 @@ SPIRVToLLVM::getMetadataFromNameAndParameter(std::string Name,
 
 
 template <typename LoopInstType>
-void SPIRVToLLVM::setLLVMLoopMetadata(LoopInstType* LM, BranchInst* BI) {
+void SPIRVToLLVM::setLLVMLoopMetadata(const LoopInstType* LM, Instruction* BI) {
   if (!LM)
     return;
+
+  IGC_ASSERT(BI && isa<BranchInst>(BI));
+
   auto Temp = MDNode::getTemporary(*Context, None);
   auto Self = MDNode::get(*Context, Temp.get());
   Self->replaceOperandWith(0, Self);
@@ -1896,6 +1909,40 @@ void SPIRVToLLVM::setLLVMLoopMetadata(LoopInstType* LM, BranchInst* BI) {
   // Set the first operand to refer itself
   Node->replaceOperandWith(0, Node);
   BI->setMetadata("llvm.loop", Node);
+}
+
+void SPIRVToLLVM::transLLVMLoopMetadata(const Function *F) {
+  assert(F);
+
+  if (!FuncLoopMetadataMap.empty()) {
+    // In SPIRV loop metadata is linked to a header basic block of a loop
+    // whilst in LLVM IR it is linked to a latch basic block (the one
+    // whose back edge goes to a header basic block) of the loop.
+
+    using Edge = std::pair<const BasicBlock *, const BasicBlock *>;
+    SmallVector<Edge, 32> Edges;
+    FindFunctionBackedges(*F, Edges);
+
+    for (const auto &BkEdge : Edges) {
+      // Check that loop header BB contains loop metadata.
+      const auto LMDItr = FuncLoopMetadataMap.find(BkEdge.second);
+      if (LMDItr == FuncLoopMetadataMap.end())
+        continue;
+
+      auto *BI = const_cast<Instruction *>(BkEdge.first->getTerminator());
+      const auto *LMD = LMDItr->second;
+      if (LMD->getOpCode() == OpLoopMerge) {
+        const auto *LM = static_cast<const SPIRVLoopMerge *>(LMD);
+        setLLVMLoopMetadata<SPIRVLoopMerge>(LM, BI);
+      } else if (LMD->getOpCode() == OpLoopControlINTEL) {
+        const auto *LCI = static_cast<const SPIRVLoopControlINTEL *>(LMD);
+        setLLVMLoopMetadata<SPIRVLoopControlINTEL>(LCI, BI);
+      }
+    }
+
+    // Loop metadata map should be re-filled during each function translation.
+    FuncLoopMetadataMap.clear();
+  }
 }
 
 GlobalValue::LinkageTypes
@@ -2997,46 +3044,22 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   // Translation of instructions
   switch (BV->getOpCode()) {
   case OpBranch: {
-    auto BR = static_cast<SPIRVBranch *>(BV);
-    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-
-    auto BI = BranchInst::Create(
-      dyn_cast<BasicBlock>(transValue(BR->getTargetLabel(), F, BB)), BB);
-
-    SPIRVInstruction *Prev = BR->getPrevious();
-    if(Prev && Prev->getOpCode() == OpLoopMerge) {
-      auto LM = static_cast<SPIRVLoopMerge*>(Prev);
-      setLLVMLoopMetadata<SPIRVLoopMerge>(LM, BI);
-    }
-    else if (Prev && Prev->getOpCode() == OpLoopControlINTEL) {
-      auto LCI = static_cast<SPIRVLoopControlINTEL*>(Prev);
-      setLLVMLoopMetadata<SPIRVLoopControlINTEL>(LCI, BI);
-    }
-
+    auto *BR = static_cast<SPIRVBranch *>(BV);
+    auto *BI = BranchInst::Create(
+        cast<BasicBlock>(transValue(BR->getTargetLabel(), F, BB)), BB);
+    // Loop metadata will be translated in the end of function translation.
     return mapValue(BV, BI);
     }
     break;
 
   case OpBranchConditional: {
-    auto BR = static_cast<SPIRVBranchConditional *>(BV);
-    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-    auto BC = BranchInst::Create(
-      dyn_cast<BasicBlock>(transValue(BR->getTrueLabel(), F, BB)),
-      dyn_cast<BasicBlock>(transValue(BR->getFalseLabel(), F, BB)),
-      // cond must be an i1, truncate bool to i1 if it was an i8.
-      transValue(BR->getCondition(), F, BB, true, BoolAction::Truncate),
-      BB);
-
-    SPIRVInstruction *Prev = BR->getPrevious();
-    if (Prev && Prev->getOpCode() == OpLoopMerge) {
-      if (auto LM = static_cast<SPIRVLoopMerge *>(Prev))
-        setLLVMLoopMetadata<SPIRVLoopMerge>(LM, BC);
-    }
-    else if (Prev && Prev->getOpCode() == OpLoopControlINTEL) {
-      if (auto LCI = static_cast<SPIRVLoopControlINTEL *>(Prev))
-        setLLVMLoopMetadata<SPIRVLoopControlINTEL>(LCI, BC);
-    }
-
+    auto *BR = static_cast<SPIRVBranchConditional *>(BV);
+    auto *BC = BranchInst::Create(
+        cast<BasicBlock>(transValue(BR->getTrueLabel(), F, BB)),
+        cast<BasicBlock>(transValue(BR->getFalseLabel(), F, BB)),
+        // cond must be an i1, truncate bool to i1 if it was an i8.
+        transValue(BR->getCondition(), F, BB, true, BoolAction::Truncate), BB);
+    // Loop metadata will be translated in the end of function translation.
     return mapValue(BV, BC);
     }
     break;
@@ -3217,11 +3240,10 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       BV->getName(), BB));
     }
     break;
-  // OpenCL Compiler does not use this instruction
-  // Should be translated at OpBranch or OpBranchConditional cases
-  case OpLoopMerge:
-  case OpLoopControlINTEL:
+  case OpLoopMerge:          // Will be translated after all other function's
+  case OpLoopControlINTEL:   // instructions are translated.
     {
+    FuncLoopMetadataMap[BB] = BV;
     return nullptr;
     }
     break;
@@ -3655,6 +3677,9 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
       transValue(BInst, F, BB, false, BoolAction::Noop);
     }
   }
+
+  transLLVMLoopMetadata(F);
+
   return F;
 }
 
