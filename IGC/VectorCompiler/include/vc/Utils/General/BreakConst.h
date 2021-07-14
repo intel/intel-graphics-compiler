@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef VC_UTILS_GENX_BREAK_CONST_H
-#define VC_UTILS_GENX_BREAK_CONST_H
+#ifndef VC_UTILS_GENERAL_BREAK_CONST_H
+#define VC_UTILS_GENERAL_BREAK_CONST_H
 
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Operator.h>
@@ -32,4 +32,5 @@ bool breakConstantExprs(llvm::Instruction *I);
 bool breakConstantExprs(llvm::Function *F);
 
 } // namespace vc
-#endif // VC_UTILS_GENX_BREAK_CONST_H
+
+#endif // VC_UTILS_GENERAL_BREAK_CONST_H
