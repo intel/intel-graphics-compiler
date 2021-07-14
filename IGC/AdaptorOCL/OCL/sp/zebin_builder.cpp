@@ -739,8 +739,18 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
                                     zeBinSymbols.push_back(zeSym.s_name);
                                 }
 
+                                unsigned int relocType = relocEntry.r_info & 0xF;
+                                zebin::R_TYPE_ZEBIN zebinType = R_ZE_NONE;
+
+                                if (relocType == ELF::R_X86_64_64)
+                                    zebinType = R_ZE_SYM_ADDR;
+                                else if (relocType == ELF::R_X86_64_32)
+                                    zebinType = R_ZE_SYM_ADDR_32;
+                                else
+                                    IGC_ASSERT_MESSAGE(false, "Unsupported ELF relocation type");
+
                                 mBuilder.addRelaRelocation(
-                                    relocEntry.r_offset, zeSym.s_name, (R_TYPE_ZEBIN)(relocEntry.r_info & 0xF), relocEntry.r_addend, nonRelaSectionID);
+                                    relocEntry.r_offset, zeSym.s_name, zebinType, relocEntry.r_addend, nonRelaSectionID);
                             }
                         }
                     }

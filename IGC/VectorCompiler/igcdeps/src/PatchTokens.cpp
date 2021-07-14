@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FileUtilities.h>
 #include <llvm/Support/ToolOutputFile.h>
+#include <llvm/BinaryFormat/ELF.h>
 
 using namespace vc;
 
@@ -179,7 +180,7 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   llvm::raw_string_ostream ErrLog{m_ErrorLog};
   iOpenCL::ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8,
                                      *m_programInfo, nullptr, 0};
-  zebuilder.setGfxCoreFamilyToELFMachine(m_Platform.eRenderCoreFamily);
+  zebuilder.setGfxCoreFamilyToELFMachine(llvm::ELF::EM_INTEL205);
 
   for (const auto &kernel : m_kernels) {
     zebuilder.createKernel(
