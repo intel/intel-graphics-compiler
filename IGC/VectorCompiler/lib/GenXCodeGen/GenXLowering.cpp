@@ -481,19 +481,19 @@ static Value *generatePredicatedWrregion(Value *OldVal, Value *NewVal,
 // Bale markers show how this will be baled later.
 static Value *generate1ChannelWrrregion(Value *Target, unsigned InitialOffset,
                                         CallInst *Load, Value *OldPred,
-                                        unsigned SplitNum,
+                                        unsigned AccumulatedOffset,
                                         Instruction *InsertBefore) {
   const DebugLoc &DL = Load->getDebugLoc();
   Type *LoadType = Load->getType();
   unsigned LoadWidth = cast<VectorType>(LoadType)->getNumElements();
 
   Value *Pred =
-      generatePredicateForLoadWrregion(OldPred, LoadWidth * SplitNum, LoadWidth,
-                                       1, InsertBefore, DL, "load1.pred.split");
+      generatePredicateForLoadWrregion(OldPred, AccumulatedOffset, LoadWidth, 1,
+                                       InsertBefore, DL, "load1.pred.split");
   Region WrR(LoadType);
   WrR.Mask = Pred;
-  WrR.Offset = InitialOffset +
-               LoadWidth * SplitNum * (LoadType->getScalarSizeInBits() / 8);
+  WrR.Offset =
+      InitialOffset + AccumulatedOffset * (LoadType->getScalarSizeInBits() / 8);
   return WrR.createWrRegion(Target, Load, "load1.join", InsertBefore, DL);
 }
 
@@ -653,6 +653,29 @@ getLoadTarget(CallInst *Load, const GenXSubtarget *ST) {
   return {Target, LoadPred, 0, Load};
 }
 
+// Get a vector of widths that are considered legal.
+// InstWidth is the width of an instruction.
+// InitWidth is the max legal width for that instruction, must be a power of 2.
+// Currently, a width considered legal if it is less than or equal to InitWidth
+// and is power of 2.
+static std::vector<unsigned> calculateLegalWidths(unsigned InstWidth,
+                                                  unsigned InitWidth) {
+  IGC_ASSERT_MESSAGE(InstWidth, "InstWidth cannot be 0");
+  IGC_ASSERT_MESSAGE(isPowerOf2_32(InitWidth), "InitWidth must be power of 2");
+  std::vector<unsigned> Widths;
+  while (InstWidth) {
+    if (InstWidth >= InitWidth) {
+      Widths.push_back(InitWidth);
+      InstWidth -= InitWidth;
+    } else
+      // TODO: some intrinsics support very limited exec size range. Legal exec
+      // sizes must be calculated more accurately.
+      InitWidth /= 2;
+  }
+
+  return Widths;
+}
+
 /***********************************************************************
  * splitGatherScatter : lower gather/scatter/atomic to the width support
  * by the hardware platform.
@@ -661,6 +684,9 @@ getLoadTarget(CallInst *Load, const GenXSubtarget *ST) {
  *
  * 1. If the operation is wider than what hardware can support, splits it
  *    into the legal width.
+ *    gather4/scatter4_* are split into instructions of the same width. Whereas
+ *    others supported by this function intrinsics are split in a more flexible
+ *    way with the legal width variation.
  *
  * 2. For typed gather4/scatter4, when r or both v and r are zero, replace
  *    with undef so that they are not encoded in the vISA instruction and the
@@ -867,18 +893,23 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   auto Width = cast<VectorType>(CI->getArgOperand(WidthOperand)->getType())
                    ->getNumElements();
   unsigned TargetWidth = IsTyped ? 8 : 16;
-  if (Width <= TargetWidth)
+  // If exec size isn't a power of 2, it must be split. For example, exec size
+  // 12 -> 8 and 4.
+  if (Width <= TargetWidth && isPowerOf2_64(Width))
     return false;
   IGC_ASSERT(TargetWidth);
-  IGC_ASSERT((Width % TargetWidth) == 0);
-  auto NumSplits = Width / TargetWidth;
-  IGC_ASSERT(NumSplits == 2 || NumSplits == 4);
+  const std::vector<unsigned> Widths = calculateLegalWidths(Width, TargetWidth);
+  IGC_ASSERT(!Widths.empty());
   unsigned NumChannels = NumVectorElements;
   if (MaskIdx != NONEED) {
     NumChannels = (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))
                       ->getZExtValue();
     NumChannels = (NumChannels & 1) + ((NumChannels & 2) >> 1) +
                   ((NumChannels & 4) >> 2) + ((NumChannels & 8) >> 3);
+    IGC_ASSERT(std::all_of(Widths.begin(), Widths.end(),
+                           [FirstWidth = Widths.front()](unsigned NextWidth) {
+                             return FirstWidth == NextWidth;
+                           }));
   }
 
   unsigned NumBlks = 1;
@@ -911,7 +942,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     std::tie(NewResult, LoadPred, InitialOffset, InstToReplace) =
         getLoadTarget(CI, ST);
 
-  for (unsigned i = 0; i < NumSplits; ++i) {
+  unsigned AccumulatedOffset = 0;
+  for (auto CurWidth : Widths) {
     SmallVector<Value *, 8> Args;
     // initialize the args with the old values
     for (unsigned ArgI = 0; ArgI < CI->getNumArgOperands(); ++ArgI)
@@ -920,10 +952,10 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     if (PredIdx != NONEED) {
       Value *V = CI->getArgOperand(PredIdx);
       if (auto C = dyn_cast<Constant>(V))
-        Args[PredIdx] = getConstantSubvector(C, i * TargetWidth, TargetWidth);
+        Args[PredIdx] = getConstantSubvector(C, AccumulatedOffset, CurWidth);
       else
         Args[PredIdx] = Region::createRdPredRegion(
-          V, i * TargetWidth, TargetWidth, "predsplit", CI, DL);
+            V, AccumulatedOffset, CurWidth, "predsplit", CI, DL);
     }
     // address source
     unsigned NumAddrs = 1;
@@ -932,8 +964,9 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     for (unsigned AddrI = 0; AddrI < NumAddrs; ++AddrI) {
       Value *V = CI->getArgOperand(AddrIdx + AddrI);
       Region R(V);
-      R.Width = R.NumElements = TargetWidth;
-      R.Offset = i * TargetWidth * V->getType()->getScalarSizeInBits()/8; // in bytes
+      R.Width = R.NumElements = CurWidth;
+      R.Offset = AccumulatedOffset * V->getType()->getScalarSizeInBits() /
+                 8; // in bytes
       Args[AddrIdx + AddrI] = R.createRdRegion(V, "addrsplit", CI, DL);
     }
     // data source
@@ -942,19 +975,20 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     if (DataIdx != NONEED) {
       Value *V = CI->getArgOperand(DataIdx);
       auto DataTy = IGCLLVM::FixedVectorType::get(
-          V->getType()->getScalarType(), TargetWidth * NumChannels * NumBlks);
+          V->getType()->getScalarType(), CurWidth * NumChannels * NumBlks);
       auto ElmSz = V->getType()->getScalarSizeInBits() / 8;
       Value *NewVec = UndefValue::get(DataTy);
       if (!isa<UndefValue>(V)) {
         for (unsigned Channel = 0; Channel < NumChannels; ++Channel) {
           Region RdR(V);
-          RdR.Width = RdR.NumElements = TargetWidth * NumBlks;
-          RdR.Offset = 4 * (Width * NumBlks * Channel + TargetWidth * NumBlks * i);
+          RdR.Width = RdR.NumElements = CurWidth * NumBlks;
+          RdR.Offset =
+              ElmSz * (Width * NumBlks * Channel + AccumulatedOffset * NumBlks);
           auto Rd = RdR.createRdRegion(V, "datasplit", CI, DL);
           if (NumChannels > 1) {
             Region WrR(DataTy);
-            WrR.Width = WrR.NumElements = TargetWidth * NumBlks;
-            WrR.Offset = ElmSz * TargetWidth * NumBlks * Channel;
+            WrR.Width = WrR.NumElements = CurWidth * NumBlks;
+            WrR.Offset = ElmSz * CurWidth * NumBlks * Channel;
             NewVec = WrR.createWrRegion(NewVec, Rd, "datasplit", CI, DL);
           } else
             NewVec = Rd;
@@ -967,8 +1001,9 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       for (int SrcI = 0; SrcI < AtomicNumSrc; ++SrcI) {
         Value *V = CI->getArgOperand(AtomicSrcIdx + SrcI);
         Region R(V);
-        R.Width = R.NumElements = TargetWidth;
-        R.Offset = i * TargetWidth * V->getType()->getScalarSizeInBits()/8; // in bytes
+        R.Width = R.NumElements = CurWidth;
+        R.Offset = AccumulatedOffset * V->getType()->getScalarSizeInBits() /
+                   8; // in bytes
         Args[AtomicSrcIdx + SrcI] = R.createRdRegion(V, "addrsplit", CI, DL);
         }
     }
@@ -978,9 +1013,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       if (DataIdx != NONEED)
         DstTy = Args[DataIdx]->getType();
       else {
-        DstTy =
-            IGCLLVM::FixedVectorType::get(CI->getType()->getScalarType(),
-                                          TargetWidth * NumBlks * NumChannels);
+        DstTy = IGCLLVM::FixedVectorType::get(CI->getType()->getScalarType(),
+                                              CurWidth * NumBlks * NumChannels);
       }
       SmallVector<Type *, 4> Tys = {DstTy};
 
@@ -996,34 +1030,39 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       auto Decl = GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, Tys);
       auto *Gather = CallInst::Create(Decl, Args, CI->getName() + ".split", CI);
       Gather->setDebugLoc(DL);
+      Gather->copyMetadata(*CI);
       if (IsNewLoad) {
         if (NumChannels == 1)
-          NewResult = generate1ChannelWrrregion(NewResult, InitialOffset,
-                                                Gather, LoadPred, i, CI);
-        else
           NewResult =
-              generateNChannelWrregion(NewResult, InitialOffset, Gather,
-                                       LoadPred, i, NumSplits, NumChannels, CI);
+              generate1ChannelWrrregion(NewResult, InitialOffset, Gather,
+                                        LoadPred, AccumulatedOffset, CI);
+        else
+          NewResult = generateNChannelWrregion(
+              NewResult, InitialOffset, Gather, LoadPred,
+              AccumulatedOffset / CurWidth, Widths.size(), NumChannels, CI);
+
+        AccumulatedOffset += CurWidth;
         continue;
       }
       // Join the results together, starting with the old value.
       auto ElmSz = DstTy->getScalarSizeInBits() / 8;
       if (NumChannels > 1) {
         Region RdR(Gather);
-        RdR.Width = RdR.NumElements = TargetWidth * NumBlks;
+        RdR.Width = RdR.NumElements = CurWidth * NumBlks;
         Region WrR(NewResult);
-        WrR.Width = WrR.NumElements = TargetWidth * NumBlks;
+        WrR.Width = WrR.NumElements = CurWidth * NumBlks;
         WrR.Mask = Args[PredIdx];
         for (unsigned Channel = 0; Channel != NumChannels; ++Channel) {
-          RdR.Offset = ElmSz * TargetWidth * NumBlks * Channel;
+          RdR.Offset = ElmSz * CurWidth * NumBlks * Channel;
           auto Rd = RdR.createRdRegion(Gather, "joint", CI, DL);
-          WrR.Offset = 4 * (Width * NumBlks * Channel + TargetWidth * NumBlks * i);
+          WrR.Offset =
+              ElmSz * (Width * NumBlks * Channel + NumBlks * AccumulatedOffset);
           NewResult = WrR.createWrRegion(NewResult, Rd, "join", CI, DL);
         }
       } else {
         Region WrR(NewResult);
-        WrR.Width = WrR.NumElements = TargetWidth * NumBlks;
-        WrR.Offset = ElmSz * TargetWidth * NumBlks * i;
+        WrR.Width = WrR.NumElements = CurWidth * NumBlks;
+        WrR.Offset = ElmSz * AccumulatedOffset * NumBlks;
         WrR.Mask = Args[PredIdx];
         NewResult = WrR.createWrRegion(NewResult, Gather, "join", CI, DL);
       }
@@ -1036,7 +1075,9 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       auto Decl = GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, Tys);
       auto NewInst = CallInst::Create(Decl, Args, "", CI);
       NewInst->setDebugLoc(DL);
+      NewInst->copyMetadata(*CI);
     }
+    AccumulatedOffset += CurWidth;
   }
 
   if (NewResult)

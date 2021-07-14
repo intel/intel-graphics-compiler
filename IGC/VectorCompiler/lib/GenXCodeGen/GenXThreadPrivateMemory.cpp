@@ -312,8 +312,6 @@ private:
   const DataLayout *m_DL;
   std::vector<AllocaInst *> m_alloca;
   llvm::SetVector<Argument *> m_args;
-  std::vector<CallInst *> m_gather;
-  std::vector<CallInst *> m_scatter;
   std::unordered_map<AllocaInst *, CallInst *> m_allocaToIntrinsic;
   std::queue<std::pair<Instruction *, bool>> m_AIUsers;
   std::set<Instruction *> m_AlreadyAdded;
@@ -815,7 +813,6 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
                                    EltsOffset, OldValOfTheDataRead},
                                   LdI->getName());
   Gather->insertAfter(LdI);
-  m_gather.push_back(Gather);
   Instruction *ProperGather = RestoreVectorAfterNormalization(Gather, LdTy);
 
   if (!isa<VectorType>(LdI->getType()) &&
@@ -908,7 +905,6 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
                               UndefValue::get(ValueOpTy->getScalarType()))));
 
   LLVM_DEBUG(dbgs() << *Scatter << "\n");
-  m_scatter.push_back(Scatter);
 
   return true;
 }
@@ -1019,7 +1015,6 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
                                    EltsOffset, OldValue},
                                   CI->getName());
   Gather->insertAfter(CI);
-  m_gather.push_back(Gather);
   LLVM_DEBUG(dbgs() << *Gather << "\n");
 
   Instruction *ProperGather =
@@ -1083,7 +1078,6 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
           : IntrinsicInst::Create(F, {Pred, LogNumBlocks, Scale, Surface,
                                       Offset, EltsOffset, ValueOp});
   ScatterStScaled->insertAfter(CI);
-  m_scatter.push_back(ScatterStScaled);
   LLVM_DEBUG(dbgs() << *ScatterStScaled << "\n");
   CI->replaceAllUsesWith(ScatterStScaled);
   CI->eraseFromParent();
@@ -1255,170 +1249,6 @@ static void EraseUsers(Instruction *Inst) {
                        "Cannot recursively remove users of a replaced alloca");
     PotentiallyDeadInst->eraseFromParent();
   }
-}
-
-void SplitScatter(CallInst *CI) {
-  auto IID = static_cast<llvm::GenXIntrinsic::ID>(
-      GenXIntrinsic::getAnyIntrinsicID(CI));
-  IGC_ASSERT((IID == llvm::GenXIntrinsic::genx_scatter_scaled) ||
-             (IID == llvm::GenXIntrinsic::genx_svm_scatter));
-  Type *DataTy = nullptr;
-  if (IID == llvm::GenXIntrinsic::genx_scatter_scaled) {
-    DataTy = CI->getArgOperand(5)->getType();
-  } else if (IID == llvm::GenXIntrinsic::genx_svm_scatter) {
-    DataTy = CI->getArgOperand(2)->getType();
-  }
-  unsigned NumElts = cast<VectorType>(DataTy)->getNumElements();
-  IGC_ASSERT(NumElts % 2 == 0);
-
-  Type *I32Ty = Type::getInt32Ty(CI->getContext());
-  std::pair<Value *, Value *> Splitters = GetUndefPair(I32Ty, NumElts / 2);
-  Splitters.first = FillVecWithSeqVals(Splitters.first, 0, CI);
-  Splitters.second = FillVecWithSeqVals(Splitters.second, NumElts / 2, CI);
-
-  Value *Pred = nullptr;
-  Value *EltOffsets = nullptr;
-  Value *OldVal = nullptr;
-  if (IID == llvm::GenXIntrinsic::genx_scatter_scaled) {
-    Pred = CI->getArgOperand(0);
-    EltOffsets = CI->getArgOperand(5);
-    OldVal = CI->getArgOperand(6);
-  } else if (IID == llvm::GenXIntrinsic::genx_svm_scatter) {
-    Pred = CI->getArgOperand(0);
-    EltOffsets = CI->getArgOperand(2);
-    OldVal = CI->getArgOperand(3);
-  }
-  IGC_ASSERT(Pred && EltOffsets && OldVal);
-
-  std::pair<Value *, Value *> NewPreds = SplitVec(Pred, NumElts, CI, Splitters);
-
-  std::pair<Value *, Value *> NewEltOffsets =
-      SplitVec(EltOffsets, NumElts, CI, Splitters);
-
-  std::pair<Value *, Value *> OldVals =
-      SplitVec(OldVal, NumElts, CI, Splitters);
-
-  Function *F = GenXIntrinsic::getGenXDeclaration(CI->getModule(), IID,
-                                          {NewPreds.first->getType(),
-                                           NewEltOffsets.first->getType(),
-                                           OldVals.first->getType()});
-
-  CallInst *FirstScatter = nullptr;
-  CallInst *SecondScatter = nullptr;
-  if (IID == llvm::GenXIntrinsic::genx_scatter_scaled) {
-    Value *LogNumBlock = CI->getArgOperand(1);
-    Value *Scale = CI->getArgOperand(2);
-    Value *Surface = CI->getArgOperand(3);
-    Value *Offset = CI->getArgOperand(4);
-
-    FirstScatter =
-        IntrinsicInst::Create(F, {NewPreds.first, LogNumBlock, Scale, Surface,
-                                  Offset, NewEltOffsets.first, OldVals.first});
-    SecondScatter = IntrinsicInst::Create(
-        F, {NewPreds.second, LogNumBlock, Scale, Surface, Offset,
-            NewEltOffsets.second, OldVals.second});
-  } else if (IID == llvm::GenXIntrinsic::genx_svm_scatter) {
-    Value *LogNumBlock = CI->getArgOperand(1);
-    FirstScatter = IntrinsicInst::Create(
-        F, {NewPreds.first, LogNumBlock, NewEltOffsets.first, OldVals.first});
-    SecondScatter =
-        IntrinsicInst::Create(F, {NewPreds.second, LogNumBlock,
-                                  NewEltOffsets.second, OldVals.second});
-  }
-  IGC_ASSERT(FirstScatter && SecondScatter);
-
-  auto *MD = CI->getMetadata(InstMD::SVMBlockType);
-  if (MD) {
-    FirstScatter->setMetadata(InstMD::SVMBlockType, MD);
-    SecondScatter->setMetadata(InstMD::SVMBlockType, MD);
-  }
-
-  FirstScatter->insertAfter(CI);
-  SecondScatter->insertAfter(FirstScatter);
-
-  CI->eraseFromParent();
-}
-
-void SplitGather(CallInst *CI) {
-  auto IID = static_cast<llvm::GenXIntrinsic::ID>(
-      GenXIntrinsic::getAnyIntrinsicID(CI));
-  IGC_ASSERT((IID == llvm::GenXIntrinsic::genx_gather_scaled) ||
-             (IID == llvm::GenXIntrinsic::genx_svm_gather));
-  Type *DstTy = CI->getType();
-  unsigned NumElts = cast<VectorType>(DstTy)->getNumElements();
-  IGC_ASSERT(NumElts % 2 == 0);
-
-  Type *I32Ty = Type::getInt32Ty(CI->getContext());
-  std::pair<Value *, Value *> Splitters = GetUndefPair(I32Ty, NumElts / 2);
-  Splitters.first = FillVecWithSeqVals(Splitters.first, 0, CI);
-  Splitters.second = FillVecWithSeqVals(Splitters.second, NumElts / 2, CI);
-
-  Value *Pred = nullptr;
-  Value *EltOffsets = nullptr;
-  Value *OldVal = nullptr;
-  if (IID == llvm::GenXIntrinsic::genx_gather_scaled) {
-    Pred = CI->getArgOperand(0);
-    EltOffsets = CI->getArgOperand(5);
-    OldVal = CI->getArgOperand(6);
-  } else if (IID == llvm::GenXIntrinsic::genx_svm_gather) {
-    Pred = CI->getArgOperand(0);
-    EltOffsets = CI->getArgOperand(2);
-    OldVal = CI->getArgOperand(3);
-  }
-  IGC_ASSERT(Pred && EltOffsets && OldVal);
-
-  std::pair<Value *, Value *> NewPreds = SplitVec(Pred, NumElts, CI, Splitters);
-
-  std::pair<Value *, Value *> NewEltOffsets =
-      SplitVec(EltOffsets, NumElts, CI, Splitters);
-  std::pair<Value *, Value *> OldVals =
-      SplitVec(OldVal, NumElts, CI, Splitters);
-  Function *F = GenXIntrinsic::getGenXDeclaration(CI->getModule(), IID,
-                                          {OldVals.first->getType(),
-                                           NewPreds.first->getType(),
-                                           NewEltOffsets.first->getType()});
-
-  CallInst *FirstGather = nullptr;
-  CallInst *SecondGather = nullptr;
-  if (IID == llvm::GenXIntrinsic::genx_gather_scaled) {
-    Value *LogNumBlock = CI->getArgOperand(1);
-    Value *Scale = CI->getArgOperand(2);
-    Value *Surface = CI->getArgOperand(3);
-    Value *Offset = CI->getArgOperand(4);
-
-    FirstGather =
-        IntrinsicInst::Create(F, {NewPreds.first, LogNumBlock, Scale, Surface,
-                                  Offset, NewEltOffsets.first, OldVals.first});
-    SecondGather = IntrinsicInst::Create(
-        F, {NewPreds.second, LogNumBlock, Scale, Surface, Offset,
-            NewEltOffsets.second, OldVals.second});
-  } else if (IID == llvm::GenXIntrinsic::genx_svm_gather) {
-    Value *LogNumBlock = CI->getArgOperand(1);
-    FirstGather = IntrinsicInst::Create(
-        F, {NewPreds.first, LogNumBlock, NewEltOffsets.first, OldVals.first});
-    SecondGather =
-        IntrinsicInst::Create(F, {NewPreds.second, LogNumBlock,
-                                  NewEltOffsets.second, OldVals.second});
-  }
-  IGC_ASSERT(FirstGather && SecondGather);
-
-  auto *MD = CI->getMetadata(InstMD::SVMBlockType);
-  if (MD) {
-    FirstGather->setMetadata(InstMD::SVMBlockType, MD);
-    SecondGather->setMetadata(InstMD::SVMBlockType, MD);
-  }
-
-  FirstGather->insertAfter(CI);
-  SecondGather->insertAfter(FirstGather);
-
-  Value *Joiner = FillVecWithSeqVals(GetUndefVec(I32Ty, NumElts), 0, CI);
-  IRBuilder<> Builder(CI);
-  Builder.SetInsertPoint(SecondGather->getNextNode());
-  Value *JointGather =
-      Builder.CreateShuffleVector(FirstGather, SecondGather, Joiner);
-
-  CI->replaceAllUsesWith(JointGather);
-  CI->eraseFromParent();
 }
 
 class SVMChecker {
@@ -1800,8 +1630,6 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   m_ctx = &F.getContext();
   m_alloca.clear();
   m_args.clear();
-  m_gather.clear();
-  m_scatter.clear();
   m_allocaToIntrinsic.clear();
   m_AIUsers = {};
   m_AlreadyAdded.clear();
@@ -1854,31 +1682,6 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
     IGC_ASSERT_MESSAGE(Alloca->use_empty(),
                        "uses of replaced alloca aren't empty");
     Alloca->eraseFromParent();
-  }
-
-  // TODO: Rewrite split conditions due to possible exec sizes are 1, 2, 4, 8,
-  // 16 and 32.
-  for (auto CI : m_gather) {
-    Type *DstTy = CI->getType();
-    unsigned NumElts = cast<VectorType>(DstTy)->getNumElements();
-    unsigned EltSz =
-        getTypeSize<genx::ByteBits>(cast<VectorType>(DstTy)->getElementType(), m_DL);
-    unsigned ExecSz = NumElts * EltSz;
-
-    if (ExecSz > 2 * m_ST->getGRFWidth() || NumElts > 32)
-      SplitGather(CI);
-  }
-
-  for (auto CI : m_scatter) {
-    Type *DataTy =
-        CI->getArgOperand(m_useGlobalMem ? 3 : 5)->getType();
-    unsigned NumElts = cast<VectorType>(DataTy)->getNumElements();
-    unsigned EltSz =
-        getTypeSize<genx::ByteBits>(cast<VectorType>(DataTy)->getElementType(), m_DL);
-    unsigned ExecSz = NumElts * EltSz;
-
-    if (ExecSz > 2 * m_ST->getGRFWidth() || NumElts > 32)
-      SplitScatter(CI);
   }
 
   return !m_allocaToIntrinsic.empty();
