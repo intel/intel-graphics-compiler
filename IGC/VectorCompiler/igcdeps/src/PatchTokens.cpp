@@ -92,6 +92,7 @@ buildZeDebugInfo(const CGen8CMProgram::CMKernelsStorage &Kernels,
   }
 
   std::vector<const char *> LldArgs;
+  LldArgs.push_back("lld");
   std::transform(TmpFiles.begin(), TmpFiles.end(), std::back_inserter(LldArgs),
                  [](const auto &TmpFile) { return TmpFile.first.c_str(); });
   LldArgs.push_back("--relocatable");
@@ -99,7 +100,6 @@ buildZeDebugInfo(const CGen8CMProgram::CMKernelsStorage &Kernels,
   LldArgs.push_back(OutputPath.c_str());
 
   if (IGC_IS_FLAG_ENABLED(VCEnableExtraDebugLogging)) {
-    llvm::errs() << "lld ";
     for (const auto *Arg : LldArgs)
       llvm::errs() << " " << Arg;
     llvm::errs() << "\n";
