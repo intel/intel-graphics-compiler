@@ -365,6 +365,12 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         IGC_SET_FLAG_VALUE(FastCompileRA, 1);
         IGC_SET_FLAG_VALUE(HybridRAWithSpill, 1);
     }
+    // Disable loop invariant motion after Unmasked functions are inlined
+    // at optimization phase
+    if (IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
+        IGC_IS_FLAG_DISABLED(LateInlineUnmaskedFunc)) {
+        IGC_SET_FLAG_VALUE(allowLICM, false);
+    }
 
     if (IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||
         IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers))
