@@ -911,7 +911,7 @@ static std::string printInstructionControlFlow(
     const CISA_INST* inst,
     const Options *opt)
 {
-    ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
+    const ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     unsigned i = 0;
     uint16_t label_id  = 0;
 
@@ -963,6 +963,22 @@ static std::string printInstructionControlFlow(
 
         sstr << ":";
     }
+    else if (opcode == ISA_CALL)
+    {
+        // Special handlling of CALL to distinguish fc_call from subroutine call
+        label_id = getPrimitiveOperand<uint16_t>(inst, i++);
+
+        const label_info_t* lblinfo = header->getLabel(label_id);
+        const char* instName = ((false && lblinfo->kind == LABEL_FC) ? "fccall" : ISA_Inst_Table[opcode].str);
+        sstr << printPredicate(opcode, inst->pred)
+             << instName
+             << " "
+             << printExecutionSize(opcode, inst->execsize)
+             << " "
+             << replaceInvalidCharToUnderline(header->getString(lblinfo->name_index))
+             << "_"
+             << label_id;
+    }
     else
     {
         sstr << printPredicate(inst->opcode, inst->pred)
@@ -973,7 +989,6 @@ static std::string printInstructionControlFlow(
         switch (opcode)
         {
             case ISA_JMP:
-            case ISA_CALL:
             case ISA_GOTO:
             case ISA_FCALL:
             {
