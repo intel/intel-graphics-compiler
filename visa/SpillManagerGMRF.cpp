@@ -2909,6 +2909,83 @@ bool SpillManagerGRF::checkUniqueDefAligned(G4_DstRegRegion* dst, G4_BB* defBB)
     return true;
 }
 
+// This function checks whether each spill dst region requires a read-modify-write operation
+// when inserting spill code. Dominator/unique defs dont require redundant read operation.
+// Dst regions that do not need RMW are added to a set. This functionality isnt needed for
+// functional correctness. This function is executed before inserting spill code because
+// we need all dst regions of dcl available to decide whether read is redundant. If this is
+// executed when inserting spill then dst regions of dcl appearing earlier than current one
+// would be translated to spill code already. Spill/fill code insertion replaces dst region
+// of spills with new temp region. This makes it difficult to check whether current dst and
+// an earlier spilled dst write to same GRF row.
+void SpillManagerGRF::updateRMWNeeded()
+{
+    if (!gra.kernel.getOption(vISA_SkipRedundantFillInRMW))
+        return;
+
+    auto isRMWNeededForSpilledDst = [&](G4_BB* bb, G4_DstRegRegion* spilledRegion)
+    {
+        auto isUniqueDef = checkUniqueDefAligned(spilledRegion, bb);
+
+        // Check0 : Def is NoMask, -- checked in isPartialWriteForSpill()
+        // Check1 : Def is unique def,
+        // Check2 : Def is in loop L and all use(s) of dcl are in loop L or it's inner loop nest,
+        // Check3 : Flowgraph is reducible
+        // RMW_Not_Needed = Check0 || (Check1 && Check2 && Check3)
+        bool RMW_Needed = true;
+
+        if (isUniqueDef && builder_->kernel.fg.isReducible() && checkDefUseDomRel(spilledRegion, bb))
+        {
+            RMW_Needed = false;
+        }
+
+        return RMW_Needed;
+    };
+
+    // First pass to setup lexical ids of instruction so dominator relation can be
+    // computed correctly intra-BB.
+    unsigned int lexId = 0;
+    for (auto bb : gra.kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            inst->setLexicalId(lexId++);
+        }
+    }
+
+    for (auto bb : gra.kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            if (inst->isPseudoKill())
+                continue;
+
+            auto dst = inst->getDst();
+            if (dst)
+            {
+                if (dst->getBase()->isRegVar())
+                {
+                    auto dstRegVar = dst->getBase()->asRegVar();
+                    if (dstRegVar && shouldSpillRegister(dstRegVar))
+                    {
+                        if (getRFType(dstRegVar) == G4_GRF)
+                        {
+                            auto RMW_Needed = isRMWNeededForSpilledDst(bb, dst);
+                            if (!RMW_Needed)
+                            {
+                                // Any spilled dst region that doesnt need RMW
+                                // is added to noRMWNeeded set. This set is later
+                                // checked when inserting spill/fill code.
+                                noRMWNeeded.insert(dst);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Create the code to create the spill range and save it to spill memory.
 void SpillManagerGRF::insertSpillRangeCode(
     INST_LIST::iterator spilledInstIter, G4_BB* bb)
@@ -2930,29 +3007,9 @@ void SpillManagerGRF::insertSpillRangeCode(
         return;
     }
 
-    auto isUniqueDef = gra.kernel.getOption(vISA_SkipRedundantFillInRMW) &&
-        checkUniqueDefAligned(spilledRegion, bb);
-
-    auto checkRMWNeeded = [this, bb, spilledRegion, isUniqueDef]()
+    auto checkRMWNeeded = [this, spilledRegion]()
     {
-        // Check0 : Def is NoMask, -- checked in isPartialWriteForSpill()
-        // Check1 : Def is unique def,
-        // Check2 : Def is in loop L and all use(s) of dcl are in loop L or it?s inner loop nest,
-        // Check3 : Flowgraph is reducible
-        // RMW_Not_Needed = Check0 || (Check1 && Check2 && Check3)
-        // return !RMW_Not_Needed
-
-        if (!gra.kernel.getOption(vISA_SkipRedundantFillInRMW))
-            return true;
-
-        bool RMW_Needed = true;
-
-        if (builder_->kernel.fg.isReducible() && isUniqueDef && checkDefUseDomRel(spilledRegion, bb))
-        {
-            RMW_Needed = false;
-        }
-
-        return RMW_Needed;
+        return noRMWNeeded.find(spilledRegion) == noRMWNeeded.end();
     };
 
     //subreg offset for new dst that replaces the spilled dst
@@ -4086,7 +4143,7 @@ bool SpillManagerGRF::insertSpillFillCode(
     }
 
     // Insert spill/fill code for all basic blocks.
-
+    updateRMWNeeded();
     FlowGraph& fg = kernel->fg;
 
     unsigned int id = 0;

@@ -605,6 +605,7 @@ private:
     unsigned                 indrSpillRegStart_;
     unsigned                 spillRegOffset_;
     LSLR_LIST                activeLR_;
+    std::unordered_set<G4_DstRegRegion*> noRMWNeeded;
 
     const Interference *     spillIntf_;
     vISA::Mem_Manager              mem_;
@@ -638,6 +639,7 @@ private:
 
     bool checkUniqueDefAligned(G4_DstRegRegion* dst, G4_BB* defBB);
     bool checkDefUseDomRel(G4_DstRegRegion* dst, G4_BB* bb);
+    void updateRMWNeeded();
 
 
     bool headerNeeded() const
