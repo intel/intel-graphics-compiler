@@ -566,13 +566,11 @@ public:
 
     void bindInputDecl(G4_Declare* dcl, int grfOffset);
 
-    uint32_t getPerThreadInputSize() const
-    {
+    uint32_t getPerThreadInputSize() const {
         return kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
     }
 
-    int32_t getCrossThreadInputSize() const
-    {
+    int32_t getCrossThreadInputSize() const {
         return kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
     }
 
@@ -1336,7 +1334,7 @@ public:
         G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd);
     G4_INST *makeSplittingInst(G4_INST *inst, G4_ExecSize execSize);
 
-    G4_InstSend *Create_Send_Inst_For_CISA(
+    G4_InstSend *createSendInst(
         G4_Predicate *pred,
         G4_DstRegRegion *postDst, G4_SrcRegRegion *payload,
         G4_ExecSize execSize,
@@ -1344,7 +1342,7 @@ public:
         G4_InstOpts options,
         bool is_sendc);
 
-    G4_InstSend *Create_SplitSend_Inst(
+    G4_InstSend *createSplitSendInst(
         G4_Predicate *pred,
         G4_DstRegRegion *dst, G4_SrcRegRegion *src1, G4_SrcRegRegion *src2,
         G4_ExecSize execSize,
@@ -1353,7 +1351,7 @@ public:
         bool is_sendc);
 
 
-    G4_InstSend *Create_SplitSend_Inst_For_RT(
+    G4_InstSend *createSplitSendToRenderTarget(
         G4_Predicate *pred,
         G4_DstRegRegion *dst,
         G4_SrcRegRegion *src1,
@@ -1363,7 +1361,7 @@ public:
         G4_SendDescRaw *msgDesc,
         G4_InstOpts option);
 
-    G4_InstSend* Create_Send_Inst_For_CISA(
+    G4_InstSend* createSendInst(
         G4_Predicate* pred,
         G4_DstRegRegion* postDst,
         G4_SrcRegRegion* payload,
@@ -1379,7 +1377,7 @@ public:
         G4_InstOpts options,
         bool is_sendc);
 
-    G4_InstSend* Create_SplitSend_Inst_For_CISA(
+    G4_InstSend* createSplitSendInst(
         G4_Predicate* pred, G4_DstRegRegion* dst,
         G4_SrcRegRegion* src1, unsigned regs2snd1,
         G4_SrcRegRegion* src2, unsigned regs2snd2,
@@ -1395,12 +1393,14 @@ public:
 
     // helper functions
     G4_Declare *createSendPayloadDcl(unsigned num_elt, G4_Type type);
-    void Create_MOVR0_Inst(
+
+    void createMovR0Inst(
         G4_Declare* dcl,
         short refOff,
         short subregOff,
         bool use_nomask = false);
-    void Create_MOV_Inst(
+
+    void createMovInst(
         G4_Declare* dcl,
         short refOff,
         short subregOff,
@@ -1410,7 +1410,7 @@ public:
         G4_Operand* src_opnd,
         bool use_nomask = false,
         G4_InstOpts options = InstOpt_NoOpt);
-    void Create_ADD_Inst(
+    void createAddInst(
         G4_Declare* dcl,
         short         regOff,
         short         subregOff,
@@ -1420,7 +1420,7 @@ public:
         G4_Operand*   src0_opnd,
         G4_Operand*   src1_opnd,
         G4_InstOption options);
-    void Create_MOV_Send_Src_Inst(
+    void createMovSendSrcInst(
         G4_Declare* dcl,
         short refOff,
         short subregOff,
@@ -1428,11 +1428,9 @@ public:
         G4_Operand* src_opnd,
         G4_InstOpts options);
 
-
-
     // short hand for creating a dstRegRegion
-    G4_DstRegRegion* Create_Dst_Opnd_From_Dcl(G4_Declare* dcl, unsigned short hstride);
-    G4_SrcRegRegion* Create_Src_Opnd_From_Dcl(G4_Declare* dcl, const RegionDesc* rd);
+    G4_DstRegRegion* createDstRegRegion(G4_Declare* dcl, unsigned short hstride);
+    G4_SrcRegRegion* createSrcRegRegion(G4_Declare* dcl, const RegionDesc* rd);
 
     // Create a null dst with scalar region and the given type
     G4_DstRegRegion* createNullDst(G4_Type dstType);
@@ -1440,8 +1438,7 @@ public:
     // Create a null src with scalar region and the given type
     G4_SrcRegRegion* createNullSrc(G4_Type dstType);
 
-    G4_DstRegRegion* Check_Send_Dst(G4_DstRegRegion *dst_opnd);
-
+    G4_DstRegRegion* checkSendDst(G4_DstRegRegion *dst_opnd);
 
     G4_INST* createDpasInst(
         G4_opcode opc,

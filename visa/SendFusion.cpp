@@ -1424,7 +1424,7 @@ void SendFusion::doFusion(
             DstTy = Type_UD;
         }
         DstD = Builder->createTempVar(newRspLen * 8, DstTy, Any, "dst");
-        Dst = Builder->Create_Dst_Opnd_From_Dcl(DstD, 1);
+        Dst = Builder->createDstRegRegion(DstD, 1);
     }
     else
     {
@@ -1534,7 +1534,7 @@ void SendFusion::doFusion(
         P0Ty = Type_UD;
     }
     G4_Declare* P0 = Builder->createTempVar(newMsgLen * 8, P0Ty, Any, "payload0");
-    G4_SrcRegRegion* Src0 = Builder->Create_Src_Opnd_From_Dcl(P0, region);
+    G4_SrcRegRegion* Src0 = Builder->createSrcRegRegion(P0, region);
 
     G4_Declare* P1 = nullptr;
     G4_INST* sendInst = nullptr;
@@ -1546,7 +1546,7 @@ void SendFusion::doFusion(
             P1Ty = Type_UD;
         }
         P1 = Builder->createTempVar(newExtMsgLen * 8, P1Ty, Any, "payload1");
-        G4_SrcRegRegion* Src1 = Builder->Create_Src_Opnd_From_Dcl(P1, region);
+        G4_SrcRegRegion* Src1 = Builder->createSrcRegRegion(P1, region);
         sendInst = Builder->createSplitSendInst(
             Pred, G4_sends, G4_ExecSize(execSize*2), Dst, Src0, Src1,
             Builder->createImm(newDesc->getDesc(), Type_UD),

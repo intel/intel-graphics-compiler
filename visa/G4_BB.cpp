@@ -1407,8 +1407,8 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // send (8) null r1 0x27 desc
     IR_Builder* builder = parent->builder;
     G4_Declare *dcl = builder->createSendPayloadDcl(numEltPerGRF<Type_UD>(), Type_UD);
-    G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
-    G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
+    G4_DstRegRegion* movDst = builder->createDstRegRegion(dcl, 1);
+    G4_SrcRegRegion* r0Src = builder->createSrcRegRegion(
         builder->getBuiltinR0(), builder->getRegionStride1());
     G4_INST *movInst = builder->createMov(
         G4_ExecSize(numEltPerGRF<Type_UD>()), movDst, r0Src, InstOpt_WriteEnable, false);
@@ -1424,7 +1424,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // response len = 0, msg len = 1
     int desc = (0x1 << 25) + (0x1 << 4);
 
-    G4_SrcRegRegion* sendSrc = builder->Create_Src_Opnd_From_Dcl(
+    G4_SrcRegRegion* sendSrc = builder->createSrcRegRegion(
         dcl, builder->getRegionStride1());
 
     G4_DstRegRegion *sendDst = builder->createNullDst(Type_UD);
@@ -1568,7 +1568,7 @@ void G4_BB::addSamplerFlushBeforeEOT()
     // null return version
     {
         int desc = G4_SendDescRaw::createDesc(samplerFlushFC, true, 1, 0);
-        G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
+        G4_SrcRegRegion* sendMsgOpnd = builder->createSrcRegRegion(
             builder->getBuiltinR0(),
             builder->getRegionStride1());
 
@@ -1585,12 +1585,12 @@ void G4_BB::addSamplerFlushBeforeEOT()
     // valid return version
     {
         int desc = G4_SendDescRaw::createDesc(samplerFlushFC, true, 1, 1);
-        G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
+        G4_SrcRegRegion* sendMsgOpnd = builder->createSrcRegRegion(
             builder->getBuiltinR0(),
             builder->getRegionStride1());
         G4_Declare *tmpDest = builder->createTempVar(g4::SIMD8, Type_UD, GRFALIGN);
         tmpDest->setDoNotSpill();
-        G4_DstRegRegion* sendMsgDst = builder->Create_Dst_Opnd_From_Dcl(tmpDest, 1);
+        G4_DstRegRegion* sendMsgDst = builder->createDstRegRegion(tmpDest, 1);
         auto msgDesc = builder->createSyncMsgDesc(SFID::SAMPLER, desc);
         G4_INST* samplerFlushInst = builder->createSendInst(
             nullptr, G4_send, g4::SIMD8,

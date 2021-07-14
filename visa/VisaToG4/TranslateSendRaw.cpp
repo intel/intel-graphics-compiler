@@ -32,9 +32,9 @@ int IR_Builder::translateVISARawSendInst(
     if (msgDescOpnd->isSrcRegRegion())
     {
         // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
-        G4_DstRegRegion *dstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
+        G4_DstRegRegion *dstOpnd = createDstRegRegion(builtinA0, 1);
         createMov(g4::SIMD1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true);
-        msgDescOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
+        msgDescOpnd = createSrcRegRegion(builtinA0, getRegionScalar());
     }
 
     uint32_t desc = 0;
@@ -90,9 +90,9 @@ int IR_Builder::translateVISARawSendsInst(
     if (msgDescOpnd->isSrcRegRegion())
     {
         // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
-        G4_DstRegRegion* dstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
+        G4_DstRegRegion* dstOpnd = createDstRegRegion(builtinA0, 1);
         createMov(g4::SIMD1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true);
-        msgDescOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
+        msgDescOpnd = createSrcRegRegion(builtinA0, getRegionScalar());
     }
 
     uint32_t exDescVal = 0;
@@ -108,9 +108,9 @@ int IR_Builder::translateVISARawSendsInst(
     {
         // mov (1) a0.2<1>:ud src<0;1,0>:ud {NoMask}
         // to hold the dynamic ext msg descriptor
-        G4_DstRegRegion* exDescDst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
+        G4_DstRegRegion* exDescDst = createDstRegRegion(getBuiltinA0Dot2(), 1);
         createMov(g4::SIMD1, exDescDst, ex, InstOpt_WriteEnable, true);
-        temp_exdesc_src = Create_Src_Opnd_From_Dcl(getBuiltinA0Dot2(), getRegionScalar());
+        temp_exdesc_src = createSrcRegRegion(getBuiltinA0Dot2(), getRegionScalar());
 
         if (exDescVal == 0)
         {

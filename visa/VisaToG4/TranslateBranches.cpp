@@ -32,17 +32,17 @@ int IR_Builder::translateVISACFSwitchInst(
     else
     {
         G4_Declare *tmpVar = createTempVar(1, Type_D, Any);
-        G4_DstRegRegion* dstOpnd = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
+        G4_DstRegRegion* dstOpnd = createDstRegRegion(tmpVar, 1);
         (void)createBinOp(G4_shl, g4::SIMD1, dstOpnd, indexOpnd,
             createImm(4, Type_UW), InstOpt_WriteEnable, true);
         if (preIncIP)
         {
-            auto src0 = Create_Src_Opnd_From_Dcl(tmpVar, getRegionScalar());
+            auto src0 = createSrcRegRegion(tmpVar, getRegionScalar());
             auto src1 = createImm(16, Type_UW);
-            (void) createBinOp(G4_add, g4::SIMD1, Create_Dst_Opnd_From_Dcl(tmpVar, 1), src0, src1, InstOpt_WriteEnable, true);
+            (void) createBinOp(G4_add, g4::SIMD1, createDstRegRegion(tmpVar, 1), src0, src1, InstOpt_WriteEnable, true);
         }
 
-        indexOpnd = Create_Src_Opnd_From_Dcl(tmpVar, getRegionScalar());
+        indexOpnd = createSrcRegRegion(tmpVar, getRegionScalar());
     }
     G4_INST* indirectJmp = createJmp(nullptr, indexOpnd, InstOpt_NoOpt, true);
 
@@ -87,7 +87,7 @@ int IR_Builder::translateVISACFCallInst(
         input_info_t *RetIP = getRetIPArg();
         G4_Declare *FCRet = createTempVar(2, Type_UD, Four_Word);
         FCRet->setAliasDeclare(RetIP->dcl, 0);
-        dstOpndToUse = Create_Dst_Opnd_From_Dcl(FCRet, 1);
+        dstOpndToUse = createDstRegRegion(FCRet, 1);
 
         execSize = g4::SIMD2;
     }
@@ -193,8 +193,8 @@ int IR_Builder::translateVISACFIFCallInst(
         (src0->isSrcRegRegion() && (src0->asSrcRegRegion()->getModifier() != Mod_src_undef)))
     {
         auto tmpSrc0 = createTempVar(1, Type_D, Any);
-        createMov(g4::SIMD1, Create_Dst_Opnd_From_Dcl(tmpSrc0, 1), src0, InstOpt_WriteEnable, true);
-        src0 = Create_Src_Opnd_From_Dcl(tmpSrc0, getRegionScalar());
+        createMov(g4::SIMD1, createDstRegRegion(tmpSrc0, 1), src0, InstOpt_WriteEnable, true);
+        src0 = createSrcRegRegion(tmpSrc0, getRegionScalar());
     }
 
     auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, g4::NOSAT, exsize,

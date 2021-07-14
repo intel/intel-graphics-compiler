@@ -79,18 +79,18 @@ int IR_Builder::translateVISAMediaLoadInst(
     G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
     // create MOV inst
-    Create_MOVR0_Inst(dcl, 0, 0, true);
+    createMovR0Inst(dcl, 0, 0, true);
     /* mov (1)      VX(0,2)<1>,    CONST[R,C]  */
     temp = (blockHeight - 1) << 16 | (blockWidth - 1);
-    Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(temp, Type_UD), true);
+    createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(temp, Type_UD), true);
     /* mov (1)     VX(0,0)<1>,    X  */
-    Create_MOV_Inst(dcl, 0, 0, g4::SIMD1, NULL, NULL, xOffOpnd, true);
+    createMovInst(dcl, 0, 0, g4::SIMD1, NULL, NULL, xOffOpnd, true);
     /* mov (1)     VX(0,1)<1>,   Y  */
-    Create_MOV_Inst(dcl, 0, 1, g4::SIMD1, NULL, NULL, yOffOpnd, true);
+    createMovInst(dcl, 0, 1, g4::SIMD1, NULL, NULL, yOffOpnd, true);
 
     // send's operands preparation
     // create a currDst for VX
-    G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
 
     // mediaread overwrites entire GRF
     bool via_temp = false;
@@ -144,7 +144,7 @@ int IR_Builder::translateVISAMediaLoadInst(
         dstOpnd = tmp_dst_opnd;
     }
 
-    G4_DstRegRegion* d = Check_Send_Dst(dstOpnd->asDstRegRegion());
+    G4_DstRegRegion* d = checkSendDst(dstOpnd->asDstRegRegion());
 
     temp = 0;
     if ((mod == MEDIA_LD_top) || (mod == MEDIA_LD_top_mod)) {
@@ -163,7 +163,7 @@ int IR_Builder::translateVISAMediaLoadInst(
         send_exec_size *= 2;
     }
 
-    Create_Send_Inst_For_CISA(
+    createSendInst(
         NULL,
         d,
         payload,
@@ -293,18 +293,18 @@ int IR_Builder::translateVISAMediaStoreInst(
     {
         // use split send
         G4_Declare *headerDcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
-        Create_MOVR0_Inst(headerDcl, 0, 0, true);
+        createMovR0Inst(headerDcl, 0, 0, true);
         /* mov (1)      VX(0,2)<1>,    CONST[R,C]  */
         uint32_t temp = (blockHeight - 1) << 16 | (blockWidth - 1);
-        Create_MOV_Inst(headerDcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(temp, Type_UD), true);
+        createMovInst(headerDcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(temp, Type_UD), true);
 
         /* mov (1)     VX(0,0)<1>,    X  */
-        Create_MOV_Inst(headerDcl, 0, 0, g4::SIMD1, NULL, NULL, xOffOpnd, true);
+        createMovInst(headerDcl, 0, 0, g4::SIMD1, NULL, NULL, xOffOpnd, true);
 
         /* mov (1)     VX(0,1)<1>,   Y  */
-        Create_MOV_Inst(headerDcl, 0, 1, g4::SIMD1, NULL, NULL, yOffOpnd, true);
+        createMovInst(headerDcl, 0, 1, g4::SIMD1, NULL, NULL, yOffOpnd, true);
 
-        G4_SrcRegRegion* headerOpnd = Create_Src_Opnd_From_Dcl(headerDcl, getRegionStride1());
+        G4_SrcRegRegion* headerOpnd = createSrcRegRegion(headerDcl, getRegionStride1());
 
         unsigned msgDesc = setTopBottomForDesc(0, mod);
         SET_DATAPORT_MESSAGE_TYPE(msgDesc, DC1_MEDIA_BLOCK_WRITE)
@@ -320,7 +320,7 @@ int IR_Builder::translateVISAMediaStoreInst(
         G4_SendDescRaw * desc = createSendMsgDesc(msgDesc, 0, 1, SFID::DP_DC1,
             extMsgLength, extFuncCtrl, SendAccess::WRITE_ONLY, surface);
 
-        Create_SplitSend_Inst(
+        createSplitSendInst(
             nullptr, dstOpnd, headerOpnd, srcOpnd, g4::SIMD8, desc, InstOpt_WriteEnable, false);
     }
     else
@@ -333,23 +333,23 @@ int IR_Builder::translateVISAMediaStoreInst(
         /* decl for data to write */
         temp =  obj_size/TypeSize(Type_UD);
 
-        Create_MOV_Send_Src_Inst(dcl, 1, 0, temp, srcOpnd, InstOpt_WriteEnable);
+        createMovSendSrcInst(dcl, 1, 0, temp, srcOpnd, InstOpt_WriteEnable);
 
-        Create_MOVR0_Inst(dcl, 0, 0, true);
+        createMovR0Inst(dcl, 0, 0, true);
 
         /* mov (1)      VX(0,2)<1>,    CONST[R,C]  */
         temp = (blockHeight - 1) << 16 | (blockWidth - 1);
-        Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(temp, Type_UD), true);
+        createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(temp, Type_UD), true);
 
         /* mov (1)     VX(0,0)<1>,    X  */
-        Create_MOV_Inst(dcl, 0, 0, g4::SIMD1, NULL, NULL, xOffOpnd, true);
+        createMovInst(dcl, 0, 0, g4::SIMD1, NULL, NULL, xOffOpnd, true);
 
         /* mov (1)     VX(0,1)<1>,   Y  */
-        Create_MOV_Inst(dcl, 0, 1, g4::SIMD1, NULL, NULL, yOffOpnd, true);
+        createMovInst(dcl, 0, 1, g4::SIMD1, NULL, NULL, yOffOpnd, true);
 
         // send's operands preparation
         /* Size of whole operand in UINT elements */
-        G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
 
         uint32_t funcCtrl = setTopBottomForDesc(0, mod);
         SET_DATAPORT_MESSAGE_TYPE(funcCtrl, DC1_MEDIA_BLOCK_WRITE);
@@ -357,7 +357,7 @@ int IR_Builder::translateVISAMediaStoreInst(
         funcCtrl += planeID;
         G4_DstRegRegion *post_dst_opnd = createNullDst(Type_UD);
 
-        Create_Send_Inst_For_CISA(
+        createSendInst(
             NULL,
             post_dst_opnd,
             payload,
@@ -411,12 +411,12 @@ int IR_Builder::translateVISAVmeImeInst(
     G4_Declare *dcl = createSendPayloadDcl(input_size_dw, Type_UD);
 
     // mov  (96)    VX(0,0)<1>,  UNIInput
-    Create_MOV_Send_Src_Inst(dcl, 0, 0,
+    createMovSendSrcInst(dcl, 0, 0,
         uni_input_size*32/TypeSize(Type_UD),
         uniInputOpnd, InstOpt_WriteEnable);
 
     // mov  (192)   VX(3,0)<1>,  IMEInput
-    Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0,
+    createMovSendSrcInst(dcl, (short) uni_input_size, 0,
         (input_size_dw - uni_input_size*32/TypeSize(Type_UD)),
         imeInputOpnd, InstOpt_WriteEnable);
 
@@ -458,17 +458,17 @@ int IR_Builder::translateVISAVmeImeInst(
 
     // mov  (2)     VA(0,0)<1>,  ref0
     // since ref0 is converted from UW to UD, move it as 1 UD
-    Create_MOV_Send_Src_Inst(dcl, 0, 0, 1, ref0Opnd, InstOpt_WriteEnable);
+    createMovSendSrcInst(dcl, 0, 0, 1, ref0Opnd, InstOpt_WriteEnable);
 
-    Create_MOV_Send_Src_Inst(dcl, 0, 1, 1, ref1Opnd, InstOpt_WriteEnable);
+    createMovSendSrcInst(dcl, 0, 1, 1, ref1Opnd, InstOpt_WriteEnable);
 
-    Create_MOV_Send_Src_Inst(dcl, 3, 0, 8, costCenterOpnd, InstOpt_WriteEnable);
+    createMovSendSrcInst(dcl, 3, 0, 8, costCenterOpnd, InstOpt_WriteEnable);
 
     // send's operands preparation
     // create a currDst for VX
-    G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
 
-    G4_DstRegRegion* d = Check_Send_Dst(outputOpnd->asDstRegRegion());
+    G4_DstRegRegion* d = checkSendDst(outputOpnd->asDstRegRegion());
 
     unsigned temp = 0;            // Bit 7-0 of message descriptor
     temp += 0x2 << 13;            // Bit 14-13 of message descriptor
@@ -485,7 +485,7 @@ int IR_Builder::translateVISAVmeImeInst(
         regs2rcv = 288/numEltPerGRF<Type_UB>();
     }
 
-    Create_Send_Inst_For_CISA(
+    createSendInst(
         NULL,
         d,
         payload,
@@ -535,23 +535,23 @@ int IR_Builder::translateVISAVmeSicInst(
     {
         dcl = createSendPayloadDcl(input_size_dw, Type_UD);
         // mov  (96)    VX(0,0)<1>,  UNIInput
-        Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), uniInputOpnd, InstOpt_WriteEnable);
+        createMovSendSrcInst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), uniInputOpnd, InstOpt_WriteEnable);
         // mov  (128)   VX(3,0)<1>,  SICInput
-        Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 128/TypeSize(Type_UD), sicInputOpnd, InstOpt_WriteEnable);
+        createMovSendSrcInst(dcl, (short) uni_input_size, 0, 128/TypeSize(Type_UD), sicInputOpnd, InstOpt_WriteEnable);
     }
 
     // send's operands preparation
     // create a currDst for VX
-    G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
 
-    G4_DstRegRegion* d = Check_Send_Dst(outputOpnd->asDstRegRegion());
+    G4_DstRegRegion* d = checkSendDst(outputOpnd->asDstRegRegion());
 
     unsigned temp = 0;            // Bit 7-0 of message descriptor
     temp += 0x1 << 13;            // Bit 14-13 of message descriptor
 
     unsigned regs2rcv = 7;
 
-    Create_Send_Inst_For_CISA(
+    createSendInst(
         NULL,
         d,
         payload,
@@ -591,10 +591,10 @@ int IR_Builder::translateVISAVmeFbrInst(
     G4_Declare *dcl = createSendPayloadDcl(input_size_dw, Type_UD);
 
     // mov  (96)    VX(0,0)<1>,  UNIInput
-    Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), unitInputOpnd, InstOpt_WriteEnable);
+    createMovSendSrcInst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), unitInputOpnd, InstOpt_WriteEnable);
 
     // mov  (128)   VX(3,0)<1>,  FBRInput
-    Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 128/TypeSize(Type_UD), fbrInputOpnd, InstOpt_WriteEnable);
+    createMovSendSrcInst(dcl, (short) uni_input_size, 0, 128/TypeSize(Type_UD), fbrInputOpnd, InstOpt_WriteEnable);
 
     // mov  (1)     VX(2,20)<1>, FBRMbMode
     G4_DstRegRegion* tmp_dst1_opnd = createDst(
@@ -643,16 +643,16 @@ int IR_Builder::translateVISAVmeFbrInst(
 
     // send's operands preparation
     // create a currDst for VX
-    G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
 
-    G4_DstRegRegion* d = Check_Send_Dst(outputOpnd->asDstRegRegion());
+    G4_DstRegRegion* d = checkSendDst(outputOpnd->asDstRegRegion());
 
     unsigned temp = 0;            // Bit 7-0 of message descriptor
     temp += 0x3 << 13;            // Bit 14-13 of message descriptor
 
     unsigned regs2rcv = 7;
 
-    Create_Send_Inst_For_CISA(
+    createSendInst(
         NULL,
         d,
         payload,
@@ -689,16 +689,16 @@ int IR_Builder::translateVISAVmeIdmInst(
     G4_Declare *dcl = createSendPayloadDcl(input_size_dw, Type_UD);
 
     // mov  (128)    VX(0,0)<1>,  UNIInput
-    Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), unitInputOpnd, InstOpt_WriteEnable);
+    createMovSendSrcInst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), unitInputOpnd, InstOpt_WriteEnable);
 
     // mov  (32)   VX(3,0)<1>,  IDMInput
-    Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 32/TypeSize(Type_UD), idmInputOpnd, InstOpt_WriteEnable);
+    createMovSendSrcInst(dcl, (short) uni_input_size, 0, 32/TypeSize(Type_UD), idmInputOpnd, InstOpt_WriteEnable);
 
     // send's operands preparation
     // create a currDst for VX
-    G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
 
-    G4_DstRegRegion* d = Check_Send_Dst(outputOpnd->asDstRegRegion());
+    G4_DstRegRegion* d = checkSendDst(outputOpnd->asDstRegRegion());
 
     unsigned temp = 0;            // Bit 7-0 of message descriptor
                                   // temp += 0x0 << 13;            // Bit 14-13 of message descriptor
@@ -706,7 +706,7 @@ int IR_Builder::translateVISAVmeIdmInst(
     unsigned regs2rcv = 16;
 
     // dst is already UW
-    Create_Send_Inst_For_CISA(
+    createSendInst(
         NULL,
         d,
         payload,
@@ -805,8 +805,8 @@ int IR_Builder::translateVISASamplerVAGenericInst(
     /// Message Descriptor Setup
     unsigned msg_descriptor = (0x3 << 17) + (0xB  << 12);
 
-    Create_MOVR0_Inst(dcl, 0, 0, true);
-    Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(msg_header, Type_UD), true); /// mov msg_header
+    createMovR0Inst(dcl, 0, 0, true);
+    createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(msg_header, Type_UD), true); /// mov msg_header
     if (hasBindlessSampler())
     {
         // clear M0.3 bit 0 (sampler state base address select)
@@ -817,15 +817,15 @@ int IR_Builder::translateVISASamplerVAGenericInst(
         G4_DstRegRegion* dst = createDst(dcl->getRegVar(), 0, 3, 1, Type_UD);
         (void) createBinOp(G4_and, g4::SIMD1, dst, src0, src1, InstOpt_WriteEnable, true);
     }
-    Create_MOV_Inst(dcl1, 0, 0, g4::SIMD8, NULL, NULL, createImm(0, Type_UD), true); /// zero out
-    Create_MOV_Inst(dclF, 0, 2, g4::SIMD1, NULL, NULL, uOffOpnd, true); /// mov u opnd
-    Create_MOV_Inst(dclF, 0, 3, g4::SIMD1, NULL, NULL, vOffOpnd, true); /// mov v opnd
-    Create_ADD_Inst(dcl1, 0, 7, g4::SIMD1, NULL, NULL, mediaPayld_var, mediaPayld_imm, InstOpt_WriteEnable); /// store payload bits
+    createMovInst(dcl1, 0, 0, g4::SIMD8, NULL, NULL, createImm(0, Type_UD), true); /// zero out
+    createMovInst(dclF, 0, 2, g4::SIMD1, NULL, NULL, uOffOpnd, true); /// mov u opnd
+    createMovInst(dclF, 0, 3, g4::SIMD1, NULL, NULL, vOffOpnd, true); /// mov v opnd
+    createAddInst(dcl1, 0, 7, g4::SIMD1, NULL, NULL, mediaPayld_var, mediaPayld_imm, InstOpt_WriteEnable); /// store payload bits
     G4_SrcRegRegion* src = createSrc(dcl1->getRegVar(), 0, 7,
         getRegionScalar(), Type_UD);
 
-    Create_ADD_Inst(dcl1, 0, 7, g4::SIMD1, NULL, NULL, src,
-        Create_Src_Opnd_From_Dcl(builtinHWTID, getRegionScalar()), InstOpt_WriteEnable);
+    createAddInst(dcl1, 0, 7, g4::SIMD1, NULL, NULL, src,
+        createSrcRegRegion(builtinHWTID, getRegionScalar()), InstOpt_WriteEnable);
     // later phases need FFTID
     preDefVars.setHasPredefined(PreDefinedVarsInternal::HW_TID, true);
     /// M1.0: [DevBDW+] Function = Centroid/BoolCentroid v/h direction size.
@@ -842,15 +842,15 @@ int IR_Builder::translateVISASamplerVAGenericInst(
             createBinOp(G4_shl, g4::SIMD1, temp_dst, hSizeOpnd,
                 createImm(4, Type_UD), InstOpt_WriteEnable, true);
         }
-        Create_ADD_Inst(dcl1, 0, 0, g4::SIMD1, NULL, NULL, vSizeOpnd, h_sz_shl_opnd, InstOpt_WriteEnable);
+        createAddInst(dcl1, 0, 0, g4::SIMD1, NULL, NULL, vSizeOpnd, h_sz_shl_opnd, InstOpt_WriteEnable);
     }
 
-    G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
-    G4_DstRegRegion* post_dst = Check_Send_Dst(dstOpnd->asDstRegRegion());
+    G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
+    G4_DstRegRegion* post_dst = checkSendDst(dstOpnd->asDstRegRegion());
     int reg_receive = dstSize/numEltPerGRF<Type_UB>();
     if (reg_receive < 1)
         reg_receive = 1;
-    Create_Send_Inst_For_CISA(NULL, post_dst, payload, 2, reg_receive, g4::SIMD8,
+    createSendInst(NULL, post_dst, payload, 2, reg_receive, g4::SIMD8,
         msg_descriptor, SFID::SAMPLER, 1, SendAccess::READ_ONLY, surface, sampler, InstOpt_WriteEnable, false);
 
     return VISA_SUCCESS;
@@ -974,11 +974,11 @@ int IR_Builder::translateVISAAvsInst(
         G4_Declare *dcl = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ, Type_UD);
 
         // mov  VX(0,0)<1>, r0
-        Create_MOVR0_Inst(dcl, 0, 0, true);
+        createMovR0Inst(dcl, 0, 0, true);
         /* mov (1)     VX(0,2)<1>,   0  */
         unsigned cmask = channel.getHWEncoding() << 12;
         cmask += cntrl << 18;
-        Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(cmask, Type_UD), true);
+        createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(cmask, Type_UD), true);
 
         G4_Declare *dcl1 = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_F);
         dcl1->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
@@ -991,20 +991,20 @@ int IR_Builder::translateVISAAvsInst(
         dcl1_ud->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
 
         // mov  (1)     VA(0,0)<1>,  v2d
-        Create_MOV_Inst(dcl1, 0, 0, g4::SIMD1, NULL, NULL, v2dOpnd, true);
+        createMovInst(dcl1, 0, 0, g4::SIMD1, NULL, NULL, v2dOpnd, true);
 
         // mov  (1)     VA(0,1)<1>,  vertical block number
-        Create_MOV_Inst(dcl1_ud, 0, 1, g4::SIMD1, NULL, NULL, verticalBlockNumberOpnd, true);
+        createMovInst(dcl1_ud, 0, 1, g4::SIMD1, NULL, NULL, verticalBlockNumberOpnd, true);
         // mov  (1)     VA(1,2)<1>,  u
-        Create_MOV_Inst(dcl1, 0, 2, g4::SIMD1, NULL, NULL, uOffOpnd, true);
+        createMovInst(dcl1, 0, 2, g4::SIMD1, NULL, NULL, uOffOpnd, true);
         // mov  (1)     VA(1,3)<1>,  v
-        Create_MOV_Inst(dcl1, 0, 3, g4::SIMD1, NULL, NULL, vOffOpnd, true);
+        createMovInst(dcl1, 0, 3, g4::SIMD1, NULL, NULL, vOffOpnd, true);
         // mov  (1)     VA(1,4)<1>,  deltaU
-        Create_MOV_Inst(dcl1, 0, 4, g4::SIMD1, NULL, NULL, deltaUOpnd, true);
+        createMovInst(dcl1, 0, 4, g4::SIMD1, NULL, NULL, deltaUOpnd, true);
         // mov  (1)     VA(1,5)<1>,  deltaV
-        Create_MOV_Inst(dcl1, 0, 5, g4::SIMD1, NULL, NULL, deltaVOpnd, true);
+        createMovInst(dcl1, 0, 5, g4::SIMD1, NULL, NULL, deltaVOpnd, true);
         // mov  (1)     VA(0,6)<1>,  U2d
-        Create_MOV_Inst(dcl1, 0, 6, g4::SIMD1, NULL, NULL, u2dOpnd, true);
+        createMovInst(dcl1, 0, 6, g4::SIMD1, NULL, NULL, u2dOpnd, true);
 
         {
             /*
@@ -1069,11 +1069,11 @@ int IR_Builder::translateVISAAvsInst(
 
                             // send's operands preparation
                             // create a currDst for VX
-        G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
 
-        G4_DstRegRegion* d = Check_Send_Dst(dstOpnd->asDstRegRegion());
+        G4_DstRegRegion* d = checkSendDst(dstOpnd->asDstRegRegion());
 
-        Create_Send_Inst_For_CISA(
+        createSendInst(
             NULL,
             d,
             payload,
@@ -1164,11 +1164,11 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     //can still be not initialized and then used for payload
     if (m_options->getOption(vISA_InitPayload))
     {
-        Create_MOV_Inst(dcl_payload_UD, 0, 0, g4::SIMD8, NULL, NULL, createImm(0, Type_UD));
+        createMovInst(dcl_payload_UD, 0, 0, g4::SIMD8, NULL, NULL, createImm(0, Type_UD));
     }
     // mov  VX(0,0)<1>, r0
-    Create_MOVR0_Inst(dcl, 0, 0);
-    Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(msg_header, Type_UD));
+    createMovR0Inst(dcl, 0, 0);
+    createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(msg_header, Type_UD));
 
     //set dst BTI, In M0.2 bits 24:31
     if (hdcMode)
@@ -1228,13 +1228,13 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
             ASSERT_USER(false,
                 "Invalid surface format for SKL+ VA HDC");
         }
-        Create_MOV_Inst(dcl, 0, 5, g4::SIMD1, NULL, NULL, createImm(surface_format, Type_UD));
+        createMovInst(dcl, 0, 5, g4::SIMD1, NULL, NULL, createImm(surface_format, Type_UD));
     }
 
     // setting M2.1 vertical  block offset to 0
     // for LBP correlation setting M2.0 to 0, since only upper 16 bits are set
     // later by adding to shl result
-    Create_MOV_Inst(dcl_payload_UD, 0, 1, g4::SIMD1, NULL, NULL, createImm(0, Type_UD));
+    createMovInst(dcl_payload_UD, 0, 1, g4::SIMD1, NULL, NULL, createImm(0, Type_UD));
 
     // setting up M1.7
     unsigned int m1_7 = sampler8x8_group_id++;
@@ -1286,7 +1286,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
 
     //setting functionality
     m1_7 |= (functionality & 0x3) << 23;
-    Create_MOV_Inst(dcl_payload_UD, 0, 7, g4::SIMD1, NULL, NULL, createImm(m1_7, Type_UD));
+    createMovInst(dcl_payload_UD, 0, 7, g4::SIMD1, NULL, NULL, createImm(m1_7, Type_UD));
 
     /*
     case VA_OP_CODE_1D_CONVOLVE_HORIZONTAL:
@@ -1301,25 +1301,25 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     //setting m1_5 and m1_4
     if (sub_opcode == VA_OP_CODE_CORRELATION_SEARCH)
     {
-        Create_MOV_Inst(dcl_payload_F, 0, 5, g4::SIMD1, NULL, NULL, verticalOriginOpnd);
-        Create_MOV_Inst(dcl_payload_F, 0, 4, g4::SIMD1, NULL, NULL, horizontalOriginOpnd);
+        createMovInst(dcl_payload_F, 0, 5, g4::SIMD1, NULL, NULL, verticalOriginOpnd);
+        createMovInst(dcl_payload_F, 0, 4, g4::SIMD1, NULL, NULL, horizontalOriginOpnd);
     }
 
     //setting m1_3
     if (vOffOpnd != NULL)
     {
-        Create_MOV_Inst(dcl_payload_F, 0, 3, g4::SIMD1, NULL, NULL, vOffOpnd);
+        createMovInst(dcl_payload_F, 0, 3, g4::SIMD1, NULL, NULL, vOffOpnd);
     }
 
     //setting m1_2
     if (uOffOpnd != NULL)
     {
-        Create_MOV_Inst(dcl_payload_F, 0, 2, g4::SIMD1, NULL, NULL, uOffOpnd);
+        createMovInst(dcl_payload_F, 0, 2, g4::SIMD1, NULL, NULL, uOffOpnd);
     }
 
     if (sub_opcode == VA_OP_CODE_FLOOD_FILL)
     {
-        Create_MOV_Send_Src_Inst(dcl_payload_UD, 0, 2, 5, pixelHMaskOpnd, 0);
+        createMovSendSrcInst(dcl_payload_UD, 0, 2, 5, pixelHMaskOpnd, 0);
     }
 
     if ((sub_opcode == VA_OP_CODE_1PIXEL_CONVOLVE  && mode == VA_CONV_16x1) ||
@@ -1333,7 +1333,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
             rd,
             Type_W);
 
-        Create_MOV_Inst(dcl_offsets, 0, 0, g4::SIMD32, NULL, NULL, offsets_opnd_temp);
+        createMovInst(dcl_offsets, 0, 0, g4::SIMD32, NULL, NULL, offsets_opnd_temp);
     }
 
     //creating temp for intermediate computations
@@ -1357,7 +1357,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     {
     case VA_OP_CODE_FLOOD_FILL:
     {
-        Create_MOV_Inst(dcl_payload_UD, 0, 0, g4::SIMD1, NULL, NULL, pixelVMaskLeftOpnd);
+        createMovInst(dcl_payload_UD, 0, 0, g4::SIMD1, NULL, NULL, pixelVMaskLeftOpnd);
 
         if (pixelVMaskRightOpnd->isImm())
         {
@@ -1407,7 +1407,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         G4_Operand* xDirectionSizeOpnd   , G4_Operand* yDirectionSizeOpnd   ,
         G4_Operand* xDirectionSearchSizeOpnd , G4_Operand* yDirectionSearchSizeOpnd ,
         */
-        Create_MOV_Inst(dcl_payload_UD, 0, 0, g4::SIMD1, NULL, NULL, xDirectionSizeOpnd);
+        createMovInst(dcl_payload_UD, 0, 0, g4::SIMD1, NULL, NULL, xDirectionSizeOpnd);
 
         //setting y-direction size of the source for correlation.
         if (yDirectionSizeOpnd->isImm())
@@ -1451,14 +1451,14 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         break; // Prevent gcc warning
     }
 
-    G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
     G4_DstRegRegion* post_dst = NULL;
 
     unsigned int reg_to_receive = 0;
 
     if (!hdcMode)
     {
-        post_dst = Check_Send_Dst(dstOpnd);
+        post_dst = checkSendDst(dstOpnd);
         if ((dstSize %  numEltPerGRF<Type_UB>()) != 0)
         {
             reg_to_receive = (unsigned int) std::ceil((double)dstSize/numEltPerGRF<Type_UB>());
@@ -1474,7 +1474,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     /// Message Descriptor Setup
     /// 18:17 SIMD Mode (SIMD32/64 = 3)  |  16:12 Message Type (sampler8x8 = 01011 = 0xB)
     unsigned msg_descriptor = (0x3 << 17) + (0xB  << 12);
-    Create_Send_Inst_For_CISA(NULL, post_dst, payload, reg_to_send, reg_to_receive, g4::SIMD8,
+    createSendInst(NULL, post_dst, payload, reg_to_send, reg_to_receive, g4::SIMD8,
         msg_descriptor, SFID::SAMPLER, 1, SendAccess::READ_ONLY, surface, sampler, 0, false);
 
     return VISA_SUCCESS;

@@ -47,8 +47,8 @@ G4_INST* IR_Builder::createFenceInstruction(
 
     G4_Declare *srcDcl = getBuiltinR0();
     G4_Declare *dstDcl = createTempVar(8, Type_UD, Any);
-    G4_DstRegRegion *sendDstOpnd = commitEnable ? Create_Dst_Opnd_From_Dcl(dstDcl, 1) : createNullDst(Type_UD);
-    G4_SrcRegRegion *sendSrcOpnd = Create_Src_Opnd_From_Dcl(srcDcl, getRegionStride1());
+    G4_DstRegRegion *sendDstOpnd = commitEnable ? createDstRegRegion(dstDcl, 1) : createNullDst(Type_UD);
+    G4_SrcRegRegion *sendSrcOpnd = createSrcRegRegion(srcDcl, getRegionStride1());
     uint8_t BTI = 0x0;
 
     if (hasSLMFence())
@@ -59,7 +59,7 @@ G4_INST* IR_Builder::createFenceInstruction(
 
     // commitEnable = true: msg length = 1, response length = 1, dst == src
     // commitEnable = false: msg length = 1, response length = 0, dst == null
-    return Create_Send_Inst_For_CISA(nullptr, sendDstOpnd, sendSrcOpnd, 1, (commitEnable ? 1 : 0), g4::SIMD8,
+    return createSendInst(nullptr, sendDstOpnd, sendSrcOpnd, 1, (commitEnable ? 1 : 0), g4::SIMD8,
         desc, SFID::DP_DC0, true, SendAccess::READ_WRITE, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
 }
 
@@ -80,7 +80,7 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
     {
         // mov (1) f0.0<1>:uw <TDR_bits>:ub {NoMask}
         G4_Declare* tmpFlagDcl = createTempFlag(1);
-        G4_DstRegRegion* newPredDef = Create_Dst_Opnd_From_Dcl(tmpFlagDcl, 1);
+        G4_DstRegRegion* newPredDef = createDstRegRegion(tmpFlagDcl, 1);
         createMov(g4::SIMD1, newPredDef, mask, InstOpt_WriteEnable, true);
 
         // (f0.0) and (8) tdr0.0<1>:uw tdr0.0<8;8,1>:uw 0x7FFF:uw {NoMask}
@@ -115,7 +115,7 @@ void IR_Builder::generateBarrierSend()
         getRegionScalar(),
         Type_UD);
 
-    G4_DstRegRegion *dst1_opnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
+    G4_DstRegRegion *dst1_opnd = createDstRegRegion(dcl, 1);
 
     bool enableBarrierInstCounterBits = kernel.getOption(VISA_EnableBarrierInstCounterBits);
     int mask = getBarrierMask(enableBarrierInstCounterBits);
@@ -138,7 +138,7 @@ void IR_Builder::generateBarrierSend()
         G4_send,
         g4::SIMD1,
         createNullDst(Type_UD),
-        Create_Src_Opnd_From_Dcl(dcl, getRegionStride1()),
+        createSrcRegRegion(dcl, getRegionStride1()),
         createImm(desc, Type_UD),
         InstOpt_WriteEnable,
         msgDesc,
@@ -184,15 +184,15 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
 
         G4_Declare *dcl = getBuiltinR0();
         G4_Declare *dstDcl = createTempVar(8, Type_UD, Any);
-        G4_DstRegRegion* sendDstOpnd = Create_Dst_Opnd_From_Dcl(dstDcl, 1);
-        G4_SrcRegRegion* sendMsgOpnd = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        G4_DstRegRegion* sendDstOpnd = createDstRegRegion(dstDcl, 1);
+        G4_SrcRegRegion* sendMsgOpnd = createSrcRegRegion(dcl, getRegionStride1());
 
         auto msgDesc = createSyncMsgDesc(SFID::SAMPLER, desc);
         createSendInst(nullptr, G4_send, g4::SIMD8, sendDstOpnd, sendMsgOpnd,
             createImm(desc, Type_UD), 0, msgDesc, true);
 
         G4_SrcRegRegion* moveSrcOpnd = createSrc(dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
-        Create_MOV_Inst(dstDcl, 0, 0, g4::SIMD8, NULL, NULL, moveSrcOpnd);
+        createMovInst(dstDcl, 0, 0, g4::SIMD8, NULL, NULL, moveSrcOpnd);
     }
     break;
     case ISA_WAIT:
@@ -245,9 +245,9 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
             createFenceInstruction((uint8_t) mask & 0xFF, false, globalFence);
             G4_Imm* surface = createImm(0, Type_UD);
             G4_Declare* zeroLOD = createTempVar(8, Type_UD, Any);
-            Create_MOV_Inst(zeroLOD, 0, 0, g4::SIMD8, NULL, NULL, createImm(0, Type_UD));
-            G4_SrcRegRegion* sendSrc = Create_Src_Opnd_From_Dcl(zeroLOD, getRegionStride1());
-            G4_DstRegRegion* sendDst = Create_Dst_Opnd_From_Dcl(zeroLOD, 1);
+            createMovInst(zeroLOD, 0, 0, g4::SIMD8, NULL, NULL, createImm(0, Type_UD));
+            G4_SrcRegRegion* sendSrc = createSrcRegRegion(zeroLOD, getRegionStride1());
+            G4_DstRegRegion* sendDst = createDstRegRegion(zeroLOD, 1);
             ChannelMask maskR = ChannelMask::createFromAPI(CHANNEL_MASK_R);
             translateVISAResInfoInst(EXEC_SIZE_8, vISA_EMASK_M1, maskR, surface, sendSrc, sendDst);
         }

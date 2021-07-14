@@ -60,7 +60,7 @@ G4_Declare* IR_Builder::getImmDcl(G4_Imm* val, int numElt)
         return dcl;
     }
     dcl = createTempVarWithNoSpill(numElt, val->getType(), Any);
-    createMov(G4_ExecSize(numElt), Create_Dst_Opnd_From_Dcl(dcl, 1), val,
+    createMov(G4_ExecSize(numElt), createDstRegRegion(dcl, 1), val,
         InstOpt_WriteEnable, true);
     return dcl;
 }
@@ -290,7 +290,7 @@ void IR_Builder::preparePayload(
         sizes[i] = msgSizes[0] / numEltPerGRF<Type_UB>();
         ++i;
     }
-    msgs[i] = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
+    msgs[i] = createSrcRegRegion(msg, getRegionStride1());
     sizes[i] = msgSizes[current] / numEltPerGRF<Type_UB>();
 }
 
@@ -398,7 +398,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
         }
     }
 
-    return Create_Src_Opnd_From_Dcl(payloadDeclUD, getRegionStride1());
+    return createSrcRegRegion(payloadDeclUD, getRegionStride1());
 }
 
 

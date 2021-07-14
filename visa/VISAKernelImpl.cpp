@@ -2346,7 +2346,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
                 if (immVal == PREDEF_SURF_252)
                 {
                     // we have to keep it as a variable
-                    cisa_opnd->g4opnd = m_builder->Create_Src_Opnd_From_Dcl(m_builder->getBuiltinT252(), m_builder->getRegionScalar());
+                    cisa_opnd->g4opnd = m_builder->createSrcRegRegion(m_builder->getBuiltinT252(), m_builder->getRegionScalar());
                 }
                 else
                 {
@@ -2534,12 +2534,12 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
         {
             if (dcl == m_builder->getBuiltinT252())
             {
-                cisa_opnd->g4opnd = m_builder->Create_Src_Opnd_From_Dcl(m_builder->getBuiltinT252(),
+                cisa_opnd->g4opnd = m_builder->createSrcRegRegion(m_builder->getBuiltinT252(),
                     m_builder->getRegionScalar());
             }
             else if (dcl == m_builder->getBuiltinScratchSurface())
             {
-                cisa_opnd->g4opnd = m_builder->Create_Src_Opnd_From_Dcl(m_builder->getBuiltinScratchSurface(),
+                cisa_opnd->g4opnd = m_builder->createSrcRegRegion(m_builder->getBuiltinScratchSurface(),
                     m_builder->getRegionScalar());
             }
             else

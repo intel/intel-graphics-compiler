@@ -380,7 +380,7 @@ int IR_Builder::translateVISALogicInst(
 
             createMov(exsize, tmp_dst_opnd, g4Srcs[i], inst_opt, true);
 
-            g4Srcs[i] = Create_Src_Opnd_From_Dcl(tempDcl, getRegionStride1());
+            g4Srcs[i] = createSrcRegRegion(tempDcl, getRegionStride1());
         }
     }
 
@@ -415,7 +415,7 @@ int IR_Builder::translateVISALogicInst(
         // bfi1 tmp src0 src1
         // bfi2 dst tmp src2 src3
         G4_Declare* tmpDcl = createTempVar(exsize, g4Srcs[0]->getType(), GRFALIGN);
-        G4_DstRegRegion* tmpDst = Create_Dst_Opnd_From_Dcl(tmpDcl, 1);
+        G4_DstRegRegion* tmpDst = createDstRegRegion(tmpDcl, 1);
         createInst(
             predOpnd,
             g4_op,
@@ -428,7 +428,7 @@ int IR_Builder::translateVISALogicInst(
             inst_opt,
             true);
 
-        G4_SrcRegRegion* src0 = Create_Src_Opnd_From_Dcl(tmpDcl,
+        G4_SrcRegRegion* src0 = createSrcRegRegion(tmpDcl,
             (exsize == 1) ? getRegionScalar() : getRegionStride1());
         createInst(
             predOpnd,

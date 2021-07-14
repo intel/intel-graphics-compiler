@@ -198,7 +198,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
                 G4_SrcModifier modifier = origSrc->getModifier();
                 origSrc->setModifier(Mod_src_undef);
 
-                G4_INST* movInst = m_builder->createMov(execSize, m_builder->Create_Dst_Opnd_From_Dcl(dcl, 1),
+                G4_INST* movInst = m_builder->createMov(execSize, m_builder->createDstRegRegion(dcl, 1),
                     origSrc, InstOpt_WriteEnable, false);
                 movInst->inheritDIFrom(inst);
 

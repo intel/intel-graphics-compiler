@@ -1043,7 +1043,7 @@ void IR_Builder::materializeGlobalImm(G4_BB* entryBB)
         auto dcl = immPool.getImmDcl(i);
         G4_INST* inst = createMov(
             G4_ExecSize((unsigned)immVal.numElt),
-            Create_Dst_Opnd_From_Dcl(dcl, 1), immVal.imm, InstOpt_WriteEnable, false);
+            createDstRegRegion(dcl, 1), immVal.imm, InstOpt_WriteEnable, false);
         auto iter = std::find_if(entryBB->begin(), entryBB->end(),
             [](G4_INST* inst) { return !inst->isLabel(); });
         INST_LIST_ITER newMov = entryBB->insertBefore(iter, inst);

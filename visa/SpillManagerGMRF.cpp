@@ -2313,7 +2313,7 @@ void SpillManagerGRF::preloadSpillRange(
 
 G4_SrcRegRegion* vISA::getSpillFillHeader(IR_Builder& builder, G4_Declare * decl)
 {
-    return builder.Create_Src_Opnd_From_Dcl(decl, builder.getRegionStride1());
+    return builder.createSrcRegRegion(decl, builder.getRegionStride1());
 }
 
 // Create the send instruction to perform the spill of the spilled regvars's
@@ -2375,7 +2375,7 @@ G4_INST *SpillManagerGRF::createSpillSendInstr(
                     fp = builder_->kernel.fg.getFramePtrDcl();
 
                 if (!fp && offset < SCRATCH_MSG_LIMIT)
-                    headerOpnd = builder_->Create_Src_Opnd_From_Dcl(builder_->getBuiltinR0(), builder_->getRegionStride1());
+                    headerOpnd = builder_->createSrcRegRegion(builder_->getBuiltinR0(), builder_->getRegionStride1());
             }
         }
         sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, fp, InstOpt_WriteEnable, true);
@@ -2410,7 +2410,7 @@ G4_INST *SpillManagerGRF::createSpillSendInstr(
         unsigned extMsgLength = spillRangeDcl->getNumRows();
         const RegionDesc* region = builder_->getRegionStride1();
         auto headerOpnd = getSpillFillHeader(*builder_, mRangeDcl);
-        G4_SrcRegRegion* srcOpnd = builder_->Create_Src_Opnd_From_Dcl(spillRangeDcl, region);
+        G4_SrcRegRegion* srcOpnd = builder_->createSrcRegRegion(spillRangeDcl, region);
 
         auto off = G4_SpillIntrinsic::InvalidOffset;
         G4_Declare* fp = nullptr;
@@ -2437,7 +2437,7 @@ G4_INST *SpillManagerGRF::createSpillSendInstr(
                     fp = builder_->kernel.fg.getFramePtrDcl();
 
                 if (!fp && offset < SCRATCH_MSG_LIMIT)
-                    headerOpnd = builder_->Create_Src_Opnd_From_Dcl(builder_->getBuiltinR0(), builder_->getRegionStride1());
+                    headerOpnd = builder_->createSrcRegRegion(builder_->getBuiltinR0(), builder_->getRegionStride1());
             }
         }
         sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, spillExecSize, (uint16_t)extMsgLength,
@@ -2621,7 +2621,7 @@ G4_INST * SpillManagerGRF::createFillSendInstr (
                 fp = builder_->kernel.fg.getFramePtrDcl();
 
             if (!fp && offset < SCRATCH_MSG_LIMIT)
-                payload = builder_->Create_Src_Opnd_From_Dcl(builder_->getBuiltinR0(), builder_->getRegionStride1());
+                payload = builder_->createSrcRegRegion(builder_->getBuiltinR0(), builder_->getRegionStride1());
         }
     }
     auto fillInst = builder_->createFill(payload, postDst, execSize, height, off, fp, InstOpt_WriteEnable, true);
@@ -2677,7 +2677,7 @@ G4_INST * SpillManagerGRF::createFillSendInstr(
                 fp = builder_->kernel.fg.getFramePtrDcl();
 
             if (!fp && offset < SCRATCH_MSG_LIMIT)
-                payload = builder_->Create_Src_Opnd_From_Dcl(builder_->getBuiltinR0(), builder_->getRegionStride1());
+                payload = builder_->createSrcRegRegion(builder_->getBuiltinR0(), builder_->getRegionStride1());
         }
     }
 
@@ -3233,7 +3233,7 @@ void SpillManagerGRF::insertFillGRFRangeCode(
         //re-materialize the scalar immediate value
         auto imm = sisIt->second;
         auto tempDcl = builder_->createTempVar(1, imm->getType(), spillDcl->getSubRegAlign());
-        auto movInst = builder_->createMov(g4::SIMD1, builder_->Create_Dst_Opnd_From_Dcl(tempDcl, 1), imm, InstOpt_WriteEnable, false);
+        auto movInst = builder_->createMov(g4::SIMD1, builder_->createDstRegRegion(tempDcl, 1), imm, InstOpt_WriteEnable, false);
         bb->insertBefore(filledInstIter, movInst);
         assert(!filledRegion->isIndirect());
         auto newSrc = builder_->createSrc(tempDcl->getRegVar(), filledRegion->getRegOff(), filledRegion->getSubRegOff(), filledRegion->getRegion(),
@@ -4553,7 +4553,7 @@ void GlobalRA::saveRestoreA0(G4_BB * bb)
 
     auto a0RestoreMov = [this, tmpDcl, subReg]()
     {
-        auto dstRestore = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinA0Dot2(), 1);
+        auto dstRestore = builder.createDstRegRegion(builder.getBuiltinA0Dot2(), 1);
         auto srcRestore = builder.createSrc(tmpDcl->getRegVar(), 0, subReg, builder.getRegionScalar(), Type_UD);
         auto restoreInst = builder.createMov(g4::SIMD1, dstRestore, srcRestore, InstOpt_WriteEnable, false);
         return restoreInst;
@@ -4563,7 +4563,7 @@ void GlobalRA::saveRestoreA0(G4_BB * bb)
     {
         // shr (1) a0.2   SSO   0x4 {NM}
         // SSO is stored in r126.7
-        auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinA0Dot2(), 1);
+        auto dst = builder.createDstRegRegion(builder.getBuiltinA0Dot2(), 1);
         auto SSOsrc = builder.createSrc(builder.getSpillSurfaceOffset()->getRegVar(),
             0, 0, builder.getRegionScalar(), Type_UD);
         auto imm4 = builder.createImm(4, Type_UD);
@@ -4718,10 +4718,10 @@ static G4_INST* createSpillFillAddr(
     IR_Builder& builder, G4_Declare* addr, G4_Declare* fp, int offset)
 {
     auto imm = builder.createImm(offset, Type_UD);
-    auto dst = builder.Create_Dst_Opnd_From_Dcl(addr, 1);
+    auto dst = builder.createDstRegRegion(addr, 1);
     if (fp)
     {
-        auto src0 = builder.Create_Src_Opnd_From_Dcl(fp, builder.getRegionScalar());
+        auto src0 = builder.createSrcRegRegion(fp, builder.getRegionScalar());
         return builder.createBinOp(G4_add, g4::SIMD1, dst, src0, imm, InstOpt_WriteEnable, true);
     }
     else
@@ -4759,7 +4759,7 @@ void GlobalRA::expandSpillNonStackcall(
             G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
             // a0 is set by saveRestoreA0()
-            auto a0Src = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinA0Dot2(), builder->getRegionScalar());
+            auto a0Src = builder->createSrcRegRegion(builder->getBuiltinA0Dot2(), builder->getRegionScalar());
             sendInst = builder->createInternalSplitSendInst(execSize, inst->getDst(),
                 header, payloadToUse, msgDescImm, inst->getOption(), msgDesc, a0Src);
         }
@@ -4788,7 +4788,7 @@ void GlobalRA::expandSpillNonStackcall(
             auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC0, spillMsgDesc, getPayloadSizeGRF(numRows));
             G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
-            G4_SrcRegRegion* headerOpnd = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinR0(), region);
+            G4_SrcRegRegion* headerOpnd = builder->createSrcRegRegion(builder->getBuiltinR0(), region);
             G4_Imm* extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
             G4_ExecSize execSize = numRows > 1 ? g4::SIMD16 : g4::SIMD8;
 
@@ -4854,7 +4854,7 @@ void GlobalRA::expandSpillStackcall(
                 G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
                 // a0 is set by saveRestoreA0()
-                auto a0Src = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinA0Dot2(), builder->getRegionScalar());
+                auto a0Src = builder->createSrcRegRegion(builder->getBuiltinA0Dot2(), builder->getRegionScalar());
                 sendInst = builder->createInternalSplitSendInst(execSize, inst->getDst(),
                     sendSrc0, payloadToUse, msgDescImm, inst->getOption(), msgDesc, a0Src);
             }
@@ -5009,7 +5009,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
                  0, resultRgn->getHorzStride(), resultRgn->getType());
 
              auto region = builder->getRegionStride1();
-             G4_SrcRegRegion* headerOpnd = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinR0(), region);
+             G4_SrcRegRegion* headerOpnd = builder->createSrcRegRegion(builder->getBuiltinR0(), region);
 
              uint32_t fillMsgDesc = computeFillMsgDesc(getPayloadSizeGRF(numRows), offset);
 

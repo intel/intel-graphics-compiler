@@ -1581,7 +1581,7 @@ void HWConformity::saveDst(INST_LIST_ITER& it, uint8_t stride, G4_BB *bb)
     G4_SrcRegRegion *srcRegion = builder.createSrc(dst->getBase(), dst->getRegOff(),
         dst->getSubRegOff(), region, dstType);
 
-    G4_DstRegRegion *tmpDstOpnd = builder.Create_Dst_Opnd_From_Dcl(dcl, stride);
+    G4_DstRegRegion *tmpDstOpnd = builder.createDstRegRegion(dcl, stride);
 
     unsigned int new_option = inst->getOption();
 
@@ -1638,8 +1638,8 @@ void HWConformity::insertMovAfter(INST_LIST_ITER& it, uint16_t stride, G4_BB* bb
     G4_Declare* dcl = builder.createTempVar(execSize * stride, dstType, subAlign);
 
     const RegionDesc* region = builder.createRegionDesc(stride, 1, 0);
-    G4_SrcRegRegion *srcRegion = builder.Create_Src_Opnd_From_Dcl(dcl, region);
-    G4_DstRegRegion *tmpDstOpnd = builder.Create_Dst_Opnd_From_Dcl(dcl, stride);
+    G4_SrcRegRegion *srcRegion = builder.createSrcRegRegion(dcl, region);
+    G4_DstRegRegion *tmpDstOpnd = builder.createDstRegRegion(dcl, stride);
 
     G4_Predicate *pred = NULL;
     if (inst->opcode() != G4_sel) {

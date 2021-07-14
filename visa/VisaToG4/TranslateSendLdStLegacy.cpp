@@ -66,7 +66,7 @@ int IR_Builder::translateVISAQWGatherInst(
     uint32_t desc = buildDescForScatter(DC_QWORD_SCATTERED_READ, numBlocks,
         (execSize == EXEC_SIZE_8 ? MDC_SM2_SIMD8 : MDC_SM2_SIMD16));
 
-    Create_Send_Inst_For_CISA(
+    createSendInst(
         pred, dst, addresses, messageLength, responseLength, instExSize, desc,
         SFID::DP_DC0, false, SendAccess::READ_ONLY, surface, nullptr, instOpt, false);
 
@@ -118,7 +118,7 @@ int IR_Builder::translateVISAQWScatterInst(
     if (msgs[1] == 0)
     {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(
+        createSendInst(
             pred, dst,
             msgs[0], sizes[0],
             0, instExSize,
@@ -130,7 +130,7 @@ int IR_Builder::translateVISAQWScatterInst(
     }
     else
     {
-        Create_SplitSend_Inst_For_CISA(
+        createSplitSendInst(
             pred, dst,
             msgs[0], sizes[0],
             msgs[1], sizes[1],
@@ -287,7 +287,7 @@ int IR_Builder::translateVISAOwordLoadInst(
             // imm type must be UD as the result of shift could overflow word type
             G4_Imm *new_src_opnd1 = createImm(
                 offOpnd->asImm()->getInt() << 2, Type_UD);
-            Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, new_src_opnd1, true);
+            createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, new_src_opnd1, true);
         }
         else
         {
@@ -299,11 +299,11 @@ int IR_Builder::translateVISAOwordLoadInst(
     else
     {
         dcl->setCapableOfReuse();
-        Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, offOpnd, true);
+        createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, offOpnd, true);
     }
     // send's operands preparation
-    G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
-    G4_DstRegRegion* d = Check_Send_Dst(dstOpnd->asDstRegRegion());
+    G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
+    G4_DstRegRegion* d = checkSendDst(dstOpnd->asDstRegRegion());
 
     uint32_t temp = 0;
 
@@ -343,7 +343,7 @@ int IR_Builder::translateVISAOwordLoadInst(
 
     if (!forceSplitSend)
     {
-        Create_Send_Inst_For_CISA(
+        createSendInst(
             NULL, d,
             payload,
             1,
@@ -359,8 +359,8 @@ int IR_Builder::translateVISAOwordLoadInst(
             false);
     }
     else {
-        G4_SrcRegRegion *m0 = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
-        Create_SplitSend_Inst_For_CISA(
+        G4_SrcRegRegion *m0 = createSrcRegRegion(dcl, getRegionStride1());
+        createSplitSendInst(
             NULL, d, m0, 1,
             createNullSrc(Type_UD), 0,
             (num_oword * 16 + getGRFSize() - 1) / getGRFSize(),
@@ -440,7 +440,7 @@ int IR_Builder::translateVISAOwordStoreInst(
         }
 
         /* mov (1)     VX(0,2)<1>,   P  */
-        Create_MOV_Inst(headerDcl, 0, 2, g4::SIMD1, nullptr, nullptr, offOpnd, true);
+        createMovInst(headerDcl, 0, 2, g4::SIMD1, nullptr, nullptr, offOpnd, true);
 
         unsigned msgDesc = funcCtrl;
         unsigned extMsgLength = payloadGRFSize;
@@ -454,10 +454,10 @@ int IR_Builder::translateVISAOwordStoreInst(
 
         G4_ExecSize sendSize = G4_ExecSize(FIX_OWORD_SEND_EXEC_SIZE(num_oword));
 
-        G4_SrcRegRegion* src0 = Create_Src_Opnd_From_Dcl(headerDcl, getRegionStride1());
+        G4_SrcRegRegion* src0 = createSrcRegRegion(headerDcl, getRegionStride1());
         G4_DstRegRegion* dst = createNullDst(sendSize > 8 ? Type_UW: Type_UD);
 
-        Create_SplitSend_Inst(
+        createSplitSendInst(
             nullptr, dst, src0, srcOpnd, sendSize, desc, InstOpt_WriteEnable, false);
     }
     else
@@ -469,27 +469,27 @@ int IR_Builder::translateVISAOwordStoreInst(
         /* mov  (c*r)    VX(1,0)<1>,  V */
         temp =  obj_size/TypeSize(Type_UD);
 
-        Create_MOV_Send_Src_Inst(dcl, 1, 0, temp, srcOpnd, InstOpt_WriteEnable);
+        createMovSendSrcInst(dcl, 1, 0, temp, srcOpnd, InstOpt_WriteEnable);
 
         if (isStatelessSurface(surface)) {
             // Build stateless surface message header.
             BuildStatelessSurfaceMessageHeader(this, dcl);
         } else {
             // Copy R0 header.
-            Create_MOVR0_Inst(dcl, 0, 0, true);
+            createMovR0Inst(dcl, 0, 0, true);
         }
 
         /* mov (1)     VX(0,2)<1>,   P  */
-        Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, offOpnd, true);
+        createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, offOpnd, true);
 
         // send's operands preparation
         /* Size of whole operand in UINT elements */
-        G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        G4_SrcRegRegion* payload = createSrcRegRegion(dcl, getRegionStride1());
 
         unsigned send_size = FIX_OWORD_SEND_EXEC_SIZE(num_oword);
         G4_DstRegRegion *post_dst_opnd = createNullDst(send_size > 8 ? Type_UW: Type_UD);
 
-        Create_Send_Inst_For_CISA(
+        createSendInst(
             NULL,
             post_dst_opnd,
             payload,
@@ -589,9 +589,9 @@ int IR_Builder::translateVISAGatherInst(
         // adding global offset and force headerLess.
         G4_Declare *dcl = createSendPayloadDcl(numElt, eltOffOpnd->getType());
         dcl->setSubRegAlign(GRFALIGN);
-        G4_DstRegRegion *newEltOffOpnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
+        G4_DstRegRegion *newEltOffOpnd = createDstRegRegion(dcl, 1);
         createBinOp(G4_add, G4_ExecSize(numElt), newEltOffOpnd, eltOffOpnd, gOffOpnd, instOpt, true);
-        eltOffOpnd = Create_Src_Opnd_From_Dcl(dcl, numElt == 1 ? getRegionScalar() : getRegionStride1());
+        eltOffOpnd = createSrcRegRegion(dcl, numElt == 1 ? getRegionScalar() : getRegionStride1());
         headerLess = true;
     }
 
@@ -631,10 +631,10 @@ int IR_Builder::translateVISAGatherInst(
             // need a shift to make the offset to be byte offset
             // shl (8) tmp<1>:ud elt_off<8;8,1>:ud 0x2:uw
             // Don't do this for Dword because we use the dword scatter message instead
-            G4_DstRegRegion* tmpDstOpnd = Create_Dst_Opnd_From_Dcl(offset, 1);
+            G4_DstRegRegion* tmpDstOpnd = createDstRegRegion(offset, 1);
             createBinOp(G4_shl, G4_ExecSize(numElt), tmpDstOpnd, eltOffOpnd,
                 createImm(unsigned(eltSize), Type_UD), instOpt, true);
-            msgSrcOpnd = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
+            msgSrcOpnd = createSrcRegRegion(offset, getRegionStride1());
             msgEltSize = GATHER_SCATTER_BYTE;
         }
         else
@@ -649,7 +649,7 @@ int IR_Builder::translateVISAGatherInst(
             BuildStatelessSurfaceMessageHeader(this, header);
         } else {
             // Copy R0 header.
-            Create_MOVR0_Inst(header, 0, 0, true);
+            createMovR0Inst(header, 0, 0, true);
         }
 
         G4_DstRegRegion* dst1_opnd = createDst(offset->getRegVar(), 0, 0, 1, offset->getElemType());
@@ -668,7 +668,7 @@ int IR_Builder::translateVISAGatherInst(
                 G4_Imm *new_src_opnd1 = createImm(
                     gOffOpnd->asImm()->getInt() * (eltSize == GATHER_SCATTER_WORD ? 2 : 4),
                     gOffOpnd->getType());
-                Create_MOV_Inst(header, 0, 2, g4::SIMD1, NULL, NULL, new_src_opnd1, true);
+                createMovInst(header, 0, 2, g4::SIMD1, NULL, NULL, new_src_opnd1, true);
             }
             else
             {
@@ -684,14 +684,14 @@ int IR_Builder::translateVISAGatherInst(
         else
         {
             /* mov (1)     VX(0,2)<1>,   P  */
-            Create_MOV_Inst(header, 0, 2, g4::SIMD1, NULL, NULL, gOffOpnd, true);
+            createMovInst(header, 0, 2, g4::SIMD1, NULL, NULL, gOffOpnd, true);
             /* mov  (numElt)    VX(1,0)<1>,  E */
             createMov(G4_ExecSize(numElt), dst1_opnd,
                 eltOffOpnd, instOpt, true);
         }
 
         // Create a <8;8,1> src region for the send payload
-        msgSrcOpnd = Create_Src_Opnd_From_Dcl(header, getRegionStride1());
+        msgSrcOpnd = createSrcRegRegion(header, getRegionStride1());
     }
 
     G4_DstRegRegion* d = dstOpnd->asDstRegRegion();
@@ -724,9 +724,9 @@ int IR_Builder::translateVISAGatherInst(
     {
         ASSERT_USER(!headerLess, "SplitSend should only be used when header is required!");
 
-        G4_SrcRegRegion *m0 = Create_Src_Opnd_From_Dcl(header, getRegionStride1());
-        G4_SrcRegRegion *m1 = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
-        Create_SplitSend_Inst_For_CISA(pred, d,
+        G4_SrcRegRegion *m0 = createSrcRegRegion(header, getRegionStride1());
+        G4_SrcRegRegion *m1 = createSrcRegRegion(offset, getRegionStride1());
+        createSplitSendInst(pred, d,
             m0, 1,
             m1, effectiveNumElt / GENX_DATAPORT_IO_SZ,
             effectiveNumElt / GENX_DATAPORT_IO_SZ,
@@ -738,7 +738,7 @@ int IR_Builder::translateVISAGatherInst(
     }
     else
     {
-        Create_Send_Inst_For_CISA(
+        createSendInst(
             pred,
             d,
             msgSrcOpnd,
@@ -837,9 +837,9 @@ int IR_Builder::translateVISAScatterInst(
         // From SKL, SLM messages forbid message header. Recalculate offset by
         // adding global offset and force headerLess.
         G4_Declare *dcl = createSendPayloadDcl(numElt, eltOffOpnd->getType());
-        G4_DstRegRegion *newEltOffOpnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
+        G4_DstRegRegion *newEltOffOpnd = createDstRegRegion(dcl, 1);
         createBinOp(G4_add, G4_ExecSize(numElt), newEltOffOpnd, eltOffOpnd, gOffOpnd, instOpt, true);
-        eltOffOpnd = Create_Src_Opnd_From_Dcl(dcl, numElt == 1 ? getRegionScalar() : getRegionStride1());
+        eltOffOpnd = createSrcRegRegion(dcl, numElt == 1 ? getRegionScalar() : getRegionStride1());
         headerLess = true;
     }
 
@@ -847,7 +847,7 @@ int IR_Builder::translateVISAScatterInst(
     {
         // header size = 2 * #elt
         G4_Declare *dcl = createSendPayloadDcl(effectiveNumElt * 2, Type_UD);
-        G4_DstRegRegion* tmpDstOpnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
+        G4_DstRegRegion* tmpDstOpnd = createDstRegRegion(dcl, 1);
         if (eltSize == GATHER_SCATTER_WORD ||
             (eltSize != GATHER_SCATTER_BYTE && IsSLMSurface(surface)))
         {
@@ -867,8 +867,8 @@ int IR_Builder::translateVISAScatterInst(
             createMov(G4_ExecSize(numElt), tmpDstOpnd, eltOffOpnd, instOpt, true);
         }
 
-        Create_MOV_Send_Src_Inst(dcl, effectiveNumElt/8, 0, numElt, srcOpnd, instOpt);
-        msgSrcOpnd = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        createMovSendSrcInst(dcl, effectiveNumElt/8, 0, numElt, srcOpnd, instOpt);
+        msgSrcOpnd = createSrcRegRegion(dcl, getRegionStride1());
     }
     else
     {
@@ -881,7 +881,7 @@ int IR_Builder::translateVISAScatterInst(
             BuildStatelessSurfaceMessageHeader(this, dcl);
         } else {
             // Copy R0 header.
-            Create_MOVR0_Inst(dcl, 0, 0, true);
+            createMovR0Inst(dcl, 0, 0, true);
         }
 
         auto dst1_opnd = createDst(dcl->getRegVar(), 1, 0, 1, dcl->getElemType());
@@ -900,7 +900,7 @@ int IR_Builder::translateVISAScatterInst(
                 G4_Imm *new_src_opnd1 = createImm(
                     gOffOpnd->asImm()->getInt() * (eltSize == GATHER_SCATTER_WORD ? 2 : 4),
                     gOffOpnd->getType());
-                Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, new_src_opnd1, true);
+                createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, new_src_opnd1, true);
             }
             else
             {
@@ -915,18 +915,18 @@ int IR_Builder::translateVISAScatterInst(
         else
         {
             /* mov (1)     VX(0,2)<1>,   P  */
-            Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, gOffOpnd, true);
+            createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, gOffOpnd, true);
             /* mov  (numElt)    VX(1,0)<1>,  E */
             createMov(G4_ExecSize(numElt), dst1_opnd,
                 eltOffOpnd, instOpt, true);
         }
 
         /* mov  (numElt)    VX(numElt/8+1,0)<1>,  V */
-        Create_MOV_Send_Src_Inst(dcl, (effectiveNumElt/8+1), 0, numElt, srcOpnd, instOpt);
+        createMovSendSrcInst(dcl, (effectiveNumElt/8+1), 0, numElt, srcOpnd, instOpt);
 
         // send's operands preparation
         // create a currDst for VX
-        msgSrcOpnd = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        msgSrcOpnd = createSrcRegRegion(dcl, getRegionStride1());
     }
 
     unsigned temp = 0;
@@ -955,7 +955,7 @@ int IR_Builder::translateVISAScatterInst(
 
     G4_DstRegRegion *post_dst_opnd = createNullDst(effectiveNumElt > 8 ? Type_UW : Type_UD);
 
-    Create_Send_Inst_For_CISA(
+    createSendInst(
         pred,
         post_dst_opnd,
         msgSrcOpnd,
@@ -1114,7 +1114,7 @@ int IR_Builder::translateVISAGather4Inst(
 
     // send's operands preparation
 
-    G4_DstRegRegion* d = Check_Send_Dst(dstOpnd->asDstRegRegion());
+    G4_DstRegRegion* d = checkSendDst(dstOpnd->asDstRegRegion());
 
     unsigned temp = 0;
 
@@ -1143,9 +1143,9 @@ int IR_Builder::translateVISAGather4Inst(
     if (useSplitSend) {
         ASSERT_USER(header, "'header' should be allocated when split-send is to be used.");
 
-        G4_SrcRegRegion *m0 = Create_Src_Opnd_From_Dcl(header, getRegionStride1());
-        G4_SrcRegRegion *m1 = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
-        Create_SplitSend_Inst_For_CISA(NULL, d,
+        G4_SrcRegRegion *m0 = createSrcRegRegion(header, getRegionStride1());
+        G4_SrcRegRegion *m1 = createSrcRegRegion(offset, getRegionStride1());
+        createSplitSendInst(NULL, d,
             m0, 1, m1, numElt / GENX_DATAPORT_IO_SZ,
             (numElt / GENX_DATAPORT_IO_SZ)* num_channel,
             G4_ExecSize(numElt), temp, tf_id, hdrSize != 0,
@@ -1154,8 +1154,8 @@ int IR_Builder::translateVISAGather4Inst(
     }
     else
     {
-        G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(header ? header : offset, getRegionStride1());
-        Create_Send_Inst_For_CISA(
+        G4_SrcRegRegion* payload = createSrcRegRegion(header ? header : offset, getRegionStride1());
+        createSendInst(
             NULL,
             d,
             payload,
@@ -1283,12 +1283,12 @@ int IR_Builder::translateVISAScatter4Inst(
             G4_SrcRegRegion* s2_opnd =
                 createSrc(
                     src_dcl->getRegVar(), (i * numElt) / 8, 0, getRegionStride1(), src_dcl->getElemType());
-            Create_MOV_Send_Src_Inst(data, (i * numElt) / 8, 0, numElt, s2_opnd, instOpt);
+            createMovSendSrcInst(data, (i * numElt) / 8, 0, numElt, s2_opnd, instOpt);
         }
     }
 
     // mov  VX(0,0)<1>, r0
-    // Create_MOVR0_Inst(header, 0, 0, true);
+    // createMovR0Inst(header, 0, 0, true);
 
     G4_DstRegRegion* dst1_opnd = createDst(offset->getRegVar(), 0, 0, 1, offset->getElemType());
 
@@ -1356,17 +1356,17 @@ int IR_Builder::translateVISAScatter4Inst(
         G4_SrcRegRegion *m0 = 0; unsigned m0Len = 0;
         G4_SrcRegRegion *m1 = 0; unsigned m1Len = 0;
         if (header) {
-            m0 = Create_Src_Opnd_From_Dcl(header, getRegionStride1());
+            m0 = createSrcRegRegion(header, getRegionStride1());
             m0Len = 1;
-            m1 = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
+            m1 = createSrcRegRegion(offset, getRegionStride1());
             m1Len = payload_size / GENX_DATAPORT_IO_SZ;
         } else {
-            m0 = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
+            m0 = createSrcRegRegion(offset, getRegionStride1());
             m0Len = numElt / GENX_DATAPORT_IO_SZ;
-            m1 = Create_Src_Opnd_From_Dcl(data, getRegionStride1());
+            m1 = createSrcRegRegion(data, getRegionStride1());
             m1Len = data_size / GENX_DATAPORT_IO_SZ;
         }
-        Create_SplitSend_Inst_For_CISA(NULL, post_dst_opnd,
+        createSplitSendInst(NULL, post_dst_opnd,
             m0, m0Len, m1, m1Len, 0,
             G4_ExecSize(numElt),
             temp, tf_id, hdrSize != 0,
@@ -1376,8 +1376,8 @@ int IR_Builder::translateVISAScatter4Inst(
     }
     else
     {
-        G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(header ? header : offset, getRegionStride1());
-        Create_Send_Inst_For_CISA(
+        G4_SrcRegRegion* payload = createSrcRegRegion(header ? header : offset, getRegionStride1());
+        createSendInst(
             NULL,
             post_dst_opnd,
             payload,
@@ -1481,7 +1481,7 @@ int IR_Builder::translateVISADwordAtomicInst(
         BuildMH1_A32_PSM(this, dcl);
 
         G4_SrcRegRegion *header
-            = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+            = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
         sources[len].execSize = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
@@ -1536,7 +1536,7 @@ int IR_Builder::translateVISADwordAtomicInst(
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0],
             resLen,
             instExSize,
@@ -1546,7 +1546,7 @@ int IR_Builder::translateVISADwordAtomicInst(
             surface, NULL,
             instOpt, false);
     } else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
             instExSize,
@@ -1666,7 +1666,7 @@ int IR_Builder::translateVISAGather4TypedInst(
 
         // Append header
         G4_SrcRegRegion *header
-            = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+            = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
         sources[len].execSize = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
@@ -1692,7 +1692,7 @@ int IR_Builder::translateVISAGather4TypedInst(
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dstOpnd,
+        createSendInst(pred, dstOpnd,
             msgs[0], sizes[0],
             numEnabledChannels,
             exSize,
@@ -1702,7 +1702,7 @@ int IR_Builder::translateVISAGather4TypedInst(
             surface, nullptr,
             instOpt, false);
     } else {
-        Create_SplitSend_Inst_For_CISA(pred, dstOpnd,
+        createSplitSendInst(pred, dstOpnd,
             msgs[0], sizes[0], msgs[1], sizes[1],
             numEnabledChannels,
             exSize,
@@ -1752,7 +1752,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
 
         // Append header
         G4_SrcRegRegion *header
-            = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+            = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
         sources[len].execSize = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
@@ -1789,7 +1789,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(
+        createSendInst(
             pred, dstOpnd,
             msgs[0], sizes[0],
             0,
@@ -1801,7 +1801,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
             instOpt, false);
     } else
     {
-        Create_SplitSend_Inst_For_CISA(
+        createSplitSendInst(
             pred, dstOpnd,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
@@ -1898,7 +1898,7 @@ int IR_Builder::translateVISATypedAtomicInst(
     if (msgs[1] == 0 && !forceSplitSend)
     {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0], dstLength, exSize,
             msgDesc, SFID::DP_DC1,
             false,
@@ -1908,7 +1908,7 @@ int IR_Builder::translateVISATypedAtomicInst(
     }
     else
     {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             dstLength, exSize,
             msgDesc, SFID::DP_DC1,
@@ -1961,21 +1961,21 @@ void IR_Builder::applySideBandOffset(
     {
         // mov (1) a0.0 sideband << 0xC
         uint32_t sidebandInDesc = (uint32_t)(sideBand->asImm()->getImm() << SIDEBAND_OFFSET_IN_EXDESC);
-        G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
+        G4_DstRegRegion* dst = createDstRegRegion(builtinA0, 1);
         createMov(g4::SIMD1, dst, createImm(sidebandInDesc, Type_UD), InstOpt_WriteEnable, true);
     }
     else
     {
         MUST_BE_TRUE(sideBand->isSrcRegRegion(), "sideband offset should be a srcRegRegion");
         // shl (1) a0.0 sideband 0xC
-        G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
+        G4_DstRegRegion* dst = createDstRegRegion(builtinA0, 1);
         createBinOp(G4_shl, g4::SIMD1, dst, sideBand,
             createImm(SIDEBAND_OFFSET_IN_EXDESC, Type_UW), InstOpt_WriteEnable, true);
     }
 
     // add (1) a0.0 a0.0 MD
-    G4_DstRegRegion* a0Dst = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
-    G4_SrcRegRegion* a0Src = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
+    G4_DstRegRegion* a0Dst = createDstRegRegion(builtinA0, 1);
+    G4_SrcRegRegion* a0Src = createSrcRegRegion(builtinA0, getRegionScalar());
     createBinOp(G4_add, g4::SIMD1, a0Dst, a0Src,
         createImm(sendMsgDesc->getExtendedDesc(), Type_UD), InstOpt_WriteEnable, true);
 }
@@ -2064,9 +2064,9 @@ int IR_Builder::translateGather4Inst(
     // offsets.
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
         G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
-        G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
+        G4_DstRegRegion *tmp = createDstRegRegion(dcl, 1);
         createInst(pred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt, true);
-        offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        offsets = createSrcRegRegion(dcl, getRegionStride1());
     }
 
     PayloadSource sources[2]; // Maximal 2 sources, optional header + offsets
@@ -2078,7 +2078,7 @@ int IR_Builder::translateGather4Inst(
         BuildMH1_A32_PSM(this, dcl);
 
         G4_SrcRegRegion *header
-            = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+            = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
         sources[len].execSize = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
@@ -2108,7 +2108,7 @@ int IR_Builder::translateGather4Inst(
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0],
             resLen,
             instExSize,
@@ -2118,7 +2118,7 @@ int IR_Builder::translateGather4Inst(
             surface, NULL,
             instOpt, false);
     } else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
             instExSize,
@@ -2165,9 +2165,9 @@ int IR_Builder::translateScatter4Inst(
     // offsets.
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
         G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
-        G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
+        G4_DstRegRegion *tmp = createDstRegRegion(dcl, 1);
         createInst(pred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt, true);
-        offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        offsets = createSrcRegRegion(dcl, getRegionStride1());
     }
 
     PayloadSource sources[3]; // Maximal 3 sources, optional header + offsets + src
@@ -2180,7 +2180,7 @@ int IR_Builder::translateScatter4Inst(
         BuildMH1_A32_PSM(this, dcl);
 
         G4_SrcRegRegion *header
-            = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+            = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
         sources[len].execSize = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
@@ -2212,7 +2212,7 @@ int IR_Builder::translateScatter4Inst(
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0],
             0,
             instExSize,
@@ -2223,7 +2223,7 @@ int IR_Builder::translateScatter4Inst(
             instOpt, false);
     }
     else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
             instExSize,
@@ -2355,9 +2355,9 @@ int IR_Builder::translateByteGatherInst(
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0)
     {
         G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
-        G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
+        G4_DstRegRegion *tmp = createDstRegRegion(dcl, 1);
         createBinOp(G4_add, instExSize, tmp, offsets, globalOffset, instOpt, true);
-        offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        offsets = createSrcRegRegion(dcl, getRegionStride1());
     }
 
     PayloadSource sources[2]; // Maximal 2 sources, optional header + offsets
@@ -2370,7 +2370,7 @@ int IR_Builder::translateByteGatherInst(
         BuildMH_A32_GO(this, dcl);
 
         G4_SrcRegRegion *header
-            = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+            = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
         sources[len].execSize = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
@@ -2397,7 +2397,7 @@ int IR_Builder::translateByteGatherInst(
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0],
             resLen,
             instExSize,
@@ -2408,7 +2408,7 @@ int IR_Builder::translateByteGatherInst(
             instOpt, false);
     }
     else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
             instExSize,
@@ -2465,9 +2465,9 @@ int IR_Builder::translateByteScatterInst(
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0)
     {
         G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
-        G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
+        G4_DstRegRegion *tmp = createDstRegRegion(dcl, 1);
         createBinOp(G4_add, instExSize, tmp, offsets, globalOffset, instOpt, true);
-        offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+        offsets = createSrcRegRegion(dcl, getRegionStride1());
     }
 
     PayloadSource sources[3]; // Maximal 2 sources, optional header + offsets + src
@@ -2480,7 +2480,7 @@ int IR_Builder::translateByteScatterInst(
         BuildMH_A32_GO(this, dcl);
 
         G4_SrcRegRegion *header
-            = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+            = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
         sources[len].execSize = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
@@ -2512,7 +2512,7 @@ int IR_Builder::translateByteScatterInst(
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0],
             0,
             instExSize,
@@ -2522,7 +2522,7 @@ int IR_Builder::translateByteScatterInst(
             surface, NULL,
             instOpt, false);
     } else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
             instExSize,
@@ -2567,23 +2567,23 @@ int IR_Builder::translateVISASVMBlockReadInst(
             region->getRegOff(),
             region->getSubRegOff() * 2,
             region->getRegion(), Type_UD);
-        Create_MOV_Inst(dcl, 0, 0, g4::SIMD1, NULL, NULL, tmp, true);
+        createMovInst(dcl, 0, 0, g4::SIMD1, NULL, NULL, tmp, true);
         tmp = createSrcRegRegion(Mod_src_undef,
             region->getRegAccess(),
             region->getBase(),
             region->getRegOff(),
             region->getSubRegOff() * 2 + 1,
             region->getRegion(), Type_UD);
-        Create_MOV_Inst(dcl, 0, 1, g4::SIMD1, NULL, NULL, tmp, true);
+        createMovInst(dcl, 0, 1, g4::SIMD1, NULL, NULL, tmp, true);
     }
     else
     {
         G4_Declare* dclAsUQ = createSendPayloadDcl(GENX_DATAPORT_IO_SZ / 2, Type_UQ);
         dclAsUQ->setAliasDeclare(dcl, 0);
-        Create_MOV_Inst(dclAsUQ, 0, 0, g4::SIMD1, NULL, NULL, address, true);
+        createMovInst(dclAsUQ, 0, 0, g4::SIMD1, NULL, NULL, address, true);
     }
 
-    G4_SrcRegRegion* src = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    G4_SrcRegRegion* src = createSrcRegRegion(dcl, getRegionStride1());
 
     DATA_CACHE1_MESSAGES msgSubOpcode = DC1_A64_BLOCK_READ;
     unsigned rspLength = ((numOword * 16 - 1) / getGRFSize() + 1);
@@ -2597,7 +2597,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     G4_ExecSize sendExecSize {FIX_OWORD_SEND_EXEC_SIZE(numOword)};
     dst->setType(Type_UD);
 
-    Create_Send_Inst_For_CISA(
+    createSendInst(
         NULL, dst, src, 1, rspLength, sendExecSize, desc,
         SFID::DP_DC1, true, SendAccess::READ_ONLY, NULL, NULL, InstOpt_WriteEnable, false);
 
@@ -2632,25 +2632,25 @@ int IR_Builder::translateVISASVMBlockWriteInst(
             region->getRegOff(),
             region->getSubRegOff() * 2,
             region->getRegion(), Type_UD);
-        Create_MOV_Inst(dcl, 0, 0, g4::SIMD1, NULL, NULL, tmp, true);
+        createMovInst(dcl, 0, 0, g4::SIMD1, NULL, NULL, tmp, true);
         tmp = createSrcRegRegion(Mod_src_undef,
             region->getRegAccess(),
             region->getBase(),
             region->getRegOff(),
             region->getSubRegOff() * 2 + 1,
             region->getRegion(), Type_UD);
-        Create_MOV_Inst(dcl, 0, 1, g4::SIMD1, NULL, NULL, tmp, true);
+        createMovInst(dcl, 0, 1, g4::SIMD1, NULL, NULL, tmp, true);
     } else {
         G4_Declare* dclAsUQ = createSendPayloadDcl(GENX_DATAPORT_IO_SZ / 2, Type_UQ);
         dclAsUQ->setAliasDeclare(dcl, 0);
-        Create_MOV_Inst(dclAsUQ, 0, 0, g4::SIMD1, NULL, NULL, address, true);
+        createMovInst(dclAsUQ, 0, 0, g4::SIMD1, NULL, NULL, address, true);
     }
 
     bool useSplitSend = useSends();
     PayloadSource sources[2];
     unsigned len = 0;
 
-    sources[len].opnd = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    sources[len].opnd = createSrcRegRegion(dcl, getRegionStride1());
     sources[len].execSize = g4::SIMD8;
     sources[len].instOpt = InstOpt_WriteEnable;
     ++len;
@@ -2696,7 +2696,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
 
     if (msgs[1] == 0)
     {
-        Create_Send_Inst_For_CISA(NULL, sendDst,
+        createSendInst(NULL, sendDst,
             msgs[0], sizes[0],
             0, sendExecSize,
             desc, SFID::DP_DC1,
@@ -2707,7 +2707,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     }
     else
     {
-        Create_SplitSend_Inst_For_CISA(NULL, sendDst,
+        createSplitSendInst(NULL, sendDst,
             msgs[0], sizes[0],
             msgs[1], sizes[1],
             0, sendExecSize,
@@ -2790,7 +2790,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
     desc |= (exSize == 8 ? 0 : 1) << 12;
     desc |= DC1_A64_SCATTERED_READ << 14;
 
-    Create_Send_Inst_For_CISA(pred, dst, addresses, messageLength, responseLength, instExSize, desc,
+    createSendInst(pred, dst, addresses, messageLength, responseLength, instExSize, desc,
         SFID::DP_DC1, false, SendAccess::READ_ONLY, NULL, NULL, instOpt, false);
 
     return VISA_SUCCESS;
@@ -2874,7 +2874,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
     G4_DstRegRegion* dst = createNullDst(Type_UD);
     if (msgs[1] == 0) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0],
             0, instExSize,
             desc, SFID::DP_DC1,
@@ -2884,7 +2884,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
             instOpt, false);
     }
     else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0],
             msgs[1], sizes[1],
             0, instExSize,
@@ -3009,7 +3009,7 @@ int IR_Builder::translateVISASVMAtomicInst(
     FillSVMAtomicMsgDesc(bitwidth == 16, IsFloatAtomicOps(atomicOp), msgDesc);
 
     if (msgs[1] == 0) {
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0], dstLength,
             instExSize,
             msgDesc, SFID::DP_DC1,
@@ -3019,7 +3019,7 @@ int IR_Builder::translateVISASVMAtomicInst(
             instOpt, false);
     }
     else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0],
             msgs[1], sizes[1],
             dstLength,
@@ -3039,7 +3039,7 @@ G4_SrcRegRegion* IR_Builder::getSVMOffset(
     G4_Predicate* pred, uint32_t mask)
 {
     G4_Declare* dcl = createSendPayloadDcl(exSize, offsets->getType());
-    G4_DstRegRegion* tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
+    G4_DstRegRegion* tmp = createDstRegRegion(dcl, 1);
     createInst(pred, G4_add, 0, g4::NOSAT, g4::SIMD8, tmp, offsets, globalOffset, mask, true);
     if (exSize == 16)
     {
@@ -3051,7 +3051,7 @@ G4_SrcRegRegion* IR_Builder::getSVMOffset(
         createInst(duplicateOperand(pred), G4_add, 0, g4::NOSAT, g4::SIMD8, dst, src,
             duplicateOperand(globalOffset), getSplitHiEMask(16, mask), true);
     }
-    return Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    return createSrcRegRegion(dcl, getRegionStride1());
 }
 
 int IR_Builder::translateSVMGather4Inst(
@@ -3105,7 +3105,7 @@ int IR_Builder::translateSVMGather4Inst(
         chMask.getNumEnabledChannels();
     if (msgs[1] == 0) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0],
             resLen,
             exSize,
@@ -3116,7 +3116,7 @@ int IR_Builder::translateSVMGather4Inst(
             instOpt, false);
     }
     else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
             exSize,
@@ -3183,7 +3183,7 @@ int IR_Builder::translateSVMScatter4Inst(
     G4_DstRegRegion *dst = createNullDst(Type_UD);
     if (msgs[1] == 0) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        Create_Send_Inst_For_CISA(pred, dst,
+        createSendInst(pred, dst,
             msgs[0], sizes[0],
             0,
             exSize,
@@ -3194,7 +3194,7 @@ int IR_Builder::translateSVMScatter4Inst(
             instOpt, false);
     }
     else {
-        Create_SplitSend_Inst_For_CISA(pred, dst,
+        createSplitSendInst(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
             exSize,

@@ -29,25 +29,25 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
                 if (oldSize == g4::SIMD1)
                 {
                     srcRegion->setRegion(builder.getRegionScalar());
-                    builder.createMov(newSize, builder.Create_Dst_Opnd_From_Dcl(dcl, 1), srcRegion,
+                    builder.createMov(newSize, builder.createDstRegRegion(dcl, 1), srcRegion,
                         InstOpt_WriteEnable, true);
                 }
                 else
                 {
                     // ToDo: i think this is needed for all regions
-                    auto tmpDst = builder.Create_Dst_Opnd_From_Dcl(dcl, 1);
+                    auto tmpDst = builder.createDstRegRegion(dcl, 1);
                     builder.createMov(oldSize, tmpDst, src, InstOpt_WriteEnable, true);
                     auto tmpSrc = builder.createSrc(dcl->getRegVar(), 0, 0,
                         builder.createRegionDesc(0, oldSize, 1), src->getType());
-                    builder.createMov(newSize, builder.Create_Dst_Opnd_From_Dcl(dcl, 1), tmpSrc,
+                    builder.createMov(newSize, builder.createDstRegRegion(dcl, 1), tmpSrc,
                         InstOpt_WriteEnable, true);
                 }
             }
             else
             {
-                builder.Create_MOV_Inst(dcl, 0, 0, newSize, nullptr, nullptr, src, true);
+                builder.createMovInst(dcl, 0, 0, newSize, nullptr, nullptr, src, true);
             }
-            return builder.Create_Src_Opnd_From_Dcl(dcl, builder.getRegionStride1());
+            return builder.createSrcRegRegion(dcl, builder.getRegionStride1());
         }
         return src->asSrcRegRegion();
     }
@@ -56,8 +56,8 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
         // src is an immediate
         MUST_BE_TRUE(src->isImm(), "expected an immediate operand");
         G4_Declare *tmpSrc = builder.createTempVarWithNoSpill(newSize, G4_Operand::GetNonVectorImmType(src->getType()), Any);
-        builder.Create_MOV_Inst(tmpSrc, 0, 0, newSize, nullptr, nullptr, src, true);
-        return builder.Create_Src_Opnd_From_Dcl(tmpSrc, builder.getRegionStride1());
+        builder.createMovInst(tmpSrc, 0, 0, newSize, nullptr, nullptr, src, true);
+        return builder.createSrcRegRegion(tmpSrc, builder.getRegionStride1());
     }
 }
 
@@ -77,9 +77,9 @@ void IR_Builder::expandFdiv(
         invType = Type_F;
     }
     G4_Declare* invResult = createTempVar(exsize, invType, Any);
-    G4_DstRegRegion* invDst = Create_Dst_Opnd_From_Dcl(invResult, 1);
+    G4_DstRegRegion* invDst = createDstRegRegion(invResult, 1);
     createMathInst(predOpnd, g4::NOSAT, exsize, invDst, src1Opnd, createNullSrc(invType), mathOp, instOpt, true);
-    G4_SrcRegRegion* invSrc = Create_Src_Opnd_From_Dcl(invResult, getRegionStride1());
+    G4_SrcRegRegion* invSrc = createSrcRegRegion(invResult, getRegionStride1());
     createInst(duplicateOperand(predOpnd), G4_mul, nullptr, saturate, exsize, dstOpnd, src0Opnd, invSrc, instOpt, true);
 }
 
@@ -95,7 +95,7 @@ void IR_Builder::expandPow(
     // math.exp dst tmp
     G4_Type mathType = G4_Operand::GetNonVectorImmType(src0Opnd->getType());
     G4_Declare* tmpVar = createTempVar(exsize, mathType, Any);
-    G4_DstRegRegion* logDst = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
+    G4_DstRegRegion* logDst = createDstRegRegion(tmpVar, 1);
     G4_Operand* logSrc = src0Opnd;
     // make sure log source is positive
     if (src0Opnd->isSrcRegRegion())
@@ -112,8 +112,8 @@ void IR_Builder::expandPow(
         default:
         {
             G4_Declare* tmpLogSrc = createTempVar(exsize, src0Opnd->getType(), Any);
-            Create_MOV_Inst(tmpLogSrc, 0, 0, exsize, nullptr, nullptr, src0Opnd, false, instOpt);
-            logSrc = Create_Src_Opnd_From_Dcl(tmpLogSrc, getRegionStride1());
+            createMovInst(tmpLogSrc, 0, 0, exsize, nullptr, nullptr, src0Opnd, false, instOpt);
+            logSrc = createSrcRegRegion(tmpLogSrc, getRegionStride1());
             logSrc->asSrcRegRegion()->setModifier(Mod_Abs);
         }
         }
@@ -149,11 +149,11 @@ void IR_Builder::expandPow(
     }
     createMathInst(predOpnd, g4::NOSAT, exsize,
         logDst, logSrc, createNullSrc(mathType), MATH_LOG, instOpt, true);
-    G4_SrcRegRegion* mulSrc = Create_Src_Opnd_From_Dcl(tmpVar, getRegionStride1());
-    G4_DstRegRegion* mulDst = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
+    G4_SrcRegRegion* mulSrc = createSrcRegRegion(tmpVar, getRegionStride1());
+    G4_DstRegRegion* mulDst = createDstRegRegion(tmpVar, 1);
     createInst(duplicateOperand(predOpnd), G4_mul,
         nullptr, g4::NOSAT, exsize, mulDst, mulSrc, src1Opnd, instOpt, true);
-    G4_SrcRegRegion* expSrc = Create_Src_Opnd_From_Dcl(tmpVar, getRegionStride1());
+    G4_SrcRegRegion* expSrc = createSrcRegRegion(tmpVar, getRegionStride1());
     createMathInst(duplicateOperand(predOpnd), saturate, exsize, dstOpnd, expSrc, createNullSrc(mathType), MATH_EXP, instOpt, true);
 }
 
@@ -166,7 +166,7 @@ static void setDefaultRoundDenorm(
     {
         // save cr0.0: mov (1) r116.2<1>:ud cr0.0<0;1,0>:ud {NoMask}
         G4_SrcRegRegion* cr0SrcRegOpndForSaveInst = builder.createSrc(builder.phyregpool.getCr0Reg(), 0, 0, builder.getRegionScalar(), Type_UD);
-        builder.createMov(g4::SIMD1, builder.Create_Dst_Opnd_From_Dcl(regCR0, 1),
+        builder.createMov(g4::SIMD1, builder.createDstRegRegion(regCR0, 1),
             cr0SrcRegOpndForSaveInst, InstOpt_WriteEnable, true);
 
         // set rounding mod in CR0 to RNE: and (1) cr0.0<1>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
@@ -185,7 +185,7 @@ static void restoreCR0_0(
     if (!hasDefaultRoundDenorm)
     {
         G4_DstRegRegion* cr0DstRegOpndForRestoreIfInst = builder.createDst(builder.phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
-        auto tmpSrcOpndForCR0OnIf = builder.Create_Src_Opnd_From_Dcl(regCR0, builder.getRegionScalar());
+        auto tmpSrcOpndForCR0OnIf = builder.createSrcRegRegion(regCR0, builder.getRegionScalar());
 
         // restore cr0.0
         builder.createMov(g4::SIMD1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
@@ -633,17 +633,17 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
 
     if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef)
     {
-        G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(t6, 1);
+        G4_DstRegRegion *tmp = createDstRegRegion(t6, 1);
         inst = createMov(G4_ExecSize(element_size), tmp, src0RR,
             instOpt, true); // mov (element_size) t6, src0RR {Q1/H1}
-        src0RR = Create_Src_Opnd_From_Dcl(t6, getRegionStride1());
+        src0RR = createSrcRegRegion(t6, getRegionStride1());
     }
     if (src1RR->isScalar() || src1RR->getModifier() != Mod_src_undef)
     {
-        G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(t4, 1);
+        G4_DstRegRegion *tmp = createDstRegRegion(t4, 1);
         inst = createMov(G4_ExecSize(element_size), tmp, src1RR,
             instOpt, true); // mov (element_size) t4, src1RR {Q1/H1}
-        src1RR = Create_Src_Opnd_From_Dcl(t4, getRegionStride1());
+        src1RR = createSrcRegRegion(t4, getRegionStride1());
     }
 
     // t2 and t5 are constants
@@ -900,11 +900,11 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef)
     {
         // expand src0 to vector src
-        G4_DstRegRegion *t6_dst_src0_opnd = Create_Dst_Opnd_From_Dcl(t6, 1);
+        G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(t6, 1);
         inst = createMov(element_size, t6_dst_src0_opnd, src0RR,
             instOpt, true); // mov (element_size) t6, src0RR {Q1/H1}
 
-        src0RR = Create_Src_Opnd_From_Dcl(t6, getRegionStride1());
+        src0RR = createSrcRegRegion(t6, getRegionStride1());
     }
 
     G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_F);
@@ -1172,7 +1172,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     if (IsSrc0Moved)
     {
         // expand scale src0 to vector src
-        dst0 = Create_Dst_Opnd_From_Dcl(t6, 1);
+        dst0 = createDstRegRegion(t6, 1);
         // mov (element_size) t6_dst_src0_opnd, src0RR {Q1/H1}
         inst = createMov(element_size, dst0, src0RR, instOpt, true);
     }

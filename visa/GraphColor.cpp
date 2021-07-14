@@ -7350,7 +7350,7 @@ void GlobalRA::stackCallProlog()
         // emit frame descriptor
         auto payload = builder.createHardwiredDeclare(8, Type_UD, kernel.getFPSPGRF(), 0);
         payload->setName(builder.getNameString(builder.kernel.fg.mem, 24, "FrameDescriptorGRF"));
-        auto payloadSrc = builder.Create_Src_Opnd_From_Dcl(payload, builder.getRegionStride1());
+        auto payloadSrc = builder.createSrcRegRegion(payload, builder.getRegionStride1());
         const unsigned execSize = 8;
         G4_DstRegRegion* postDst = builder.createNullDst(Type_UD);
         G4_INST* store = nullptr;
@@ -7364,8 +7364,8 @@ void GlobalRA::stackCallProlog()
         return;
     }
 
-    auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
-    auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
+    auto dstRgn = builder.createDstRegRegion(builder.kernel.fg.scratchRegDcl, 1);
+    auto srcRgn = builder.createSrcRegRegion(builder.getBuiltinR0(), builder.getRegionStride1());
 
     G4_INST* mov = builder.createMov(G4_ExecSize(numEltPerGRF<Type_UD>()), dstRgn, srcRgn, InstOpt_WriteEnable, false);
 
@@ -7461,7 +7461,7 @@ G4_SrcRegRegion* GraphColor::getScratchSurface() const
 {
     if (builder.hasScratchSurface())
     {
-        return builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinScratchSurface(), builder.getRegionScalar());
+        return builder.createSrcRegRegion(builder.getBuiltinScratchSurface(), builder.getRegionScalar());
     }
     return nullptr; // use stateless access
 }
@@ -8851,7 +8851,7 @@ void VarSplit::insertMovesToTemp(
         if (!(dstOpnd->getRightBound() < leftBound || rightBound < dstOpnd->getLeftBound()))
         {
             unsigned maskFlag = (inst->getOption() & 0xFFF010C);
-            G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(subDcl, 1);
+            G4_DstRegRegion* dst = builder.createDstRegRegion(subDcl, 1);
             auto src = builder.createSrc(oldDcl->getRegVar(),
                 (gra.getSubOffset(subDcl)) / numEltPerGRF<Type_UB>(), 0, builder.getRegionStride1(), oldDcl->getElemType());
             G4_INST* splitInst = builder.createMov(G4_ExecSize(subDcl->getTotalElems()), dst, src, maskFlag, false);

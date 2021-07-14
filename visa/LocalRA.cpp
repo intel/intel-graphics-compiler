@@ -2993,8 +2993,8 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
 
                                     // FIXME: The following code does not handle QWord variable spilling completely.
                                     // See the last condition of this if-stmt.
-                                    G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(splitDcl, 1);
-                                    G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(oldDcl, builder.getRegionStride1());
+                                    G4_DstRegRegion* dst = builder.createDstRegRegion(splitDcl, 1);
+                                    G4_SrcRegRegion* src = builder.createSrcRegRegion(oldDcl, builder.getRegionStride1());
                                     G4_ExecSize splitInstExecSize (oldDcl->getTotalElems() > 16 ? 16 : oldDcl->getTotalElems());
                                     G4_INST* splitInst = builder.createMov(
                                         splitInstExecSize,
@@ -3024,8 +3024,8 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
 
                                     iter = useIt;
 
-                                    dst = builder.Create_Dst_Opnd_From_Dcl(newDcl, 1);
-                                    src = builder.Create_Src_Opnd_From_Dcl(splitDcl, builder.getRegionStride1());
+                                    dst = builder.createDstRegRegion(newDcl, 1);
+                                    src = builder.createSrcRegRegion(splitDcl, builder.getRegionStride1());
                                     G4_INST* movInst = builder.createMov(
                                         G4_ExecSize(splitDcl->getTotalElems() > 16 ? 16 : splitDcl->getTotalElems()),
                                         dst, src, InstOpt_WriteEnable, false);
