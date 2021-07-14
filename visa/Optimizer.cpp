@@ -5864,7 +5864,15 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 }
                 else
                 {
-                    values.deleteValue(inst);
+                    G4_DstRegRegion* dst = inst->getDst();
+                    if (dst && dst->isAddress()) // If the address register is used for none extdesc
+                    {
+                        values.clear();
+                    }
+                    else
+                    {
+                        values.deleteValue(inst);
+                    }
                 }
                 ++iter;
             }
