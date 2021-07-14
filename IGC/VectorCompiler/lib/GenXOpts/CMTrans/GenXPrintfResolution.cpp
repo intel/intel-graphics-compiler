@@ -84,7 +84,7 @@ private:
   void handlePrintfCall(CallInst &OrigPrintf);
   void addPrintfImplDeclarations(Module &M);
   void updatePrintfImplDeclarations(Module &M);
-  void setAlwaysInlineForPrintfImpl();
+  void preparePrintfImplForInlining();
   CallInst &createPrintfInitCall(CallInst &OrigPrintf, int FmtStrSize,
                                  const PrintfArgInfoSeq &ArgsInfo);
   CallInst &createPrintfFmtCall(CallInst &OrigPrintf, CallInst &InitCall);
@@ -163,7 +163,7 @@ bool GenXPrintfResolution::runOnModule(Module &M) {
     IGC_ASSERT_MESSAGE(0, "Error linking printf implementation builtin module");
   }
   updatePrintfImplDeclarations(M);
-  setAlwaysInlineForPrintfImpl();
+  preparePrintfImplForInlining();
   return true;
 }
 
@@ -264,11 +264,14 @@ void GenXPrintfResolution::addPrintfImplDeclarations(Module &M) {
                                                    PrintfImplTy[FuncID]);
 }
 
-void GenXPrintfResolution::setAlwaysInlineForPrintfImpl() {
+// The function must be internal and have always inline attribute for
+// always-inline pass to inline it and remove the original function body
+// (the both are critical for GenXPrintfLegalization to work correctly).
+void GenXPrintfResolution::preparePrintfImplForInlining() {
   for (auto Callee : PrintfImplDecl) {
     auto *Func = cast<Function>(Callee.getCallee());
-    if (!Func->hasFnAttribute(Attribute::AlwaysInline))
-      Func->addFnAttr(Attribute::AlwaysInline);
+    Func->setLinkage(GlobalValue::LinkageTypes::InternalLinkage);
+    Func->addFnAttr(Attribute::AlwaysInline);
   }
 }
 
