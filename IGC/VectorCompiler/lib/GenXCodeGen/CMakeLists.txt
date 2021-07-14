@@ -61,6 +61,7 @@ set(CODEGEN_SOURCES
   GenXPressureTracker.cpp
   GenXPrologEpilogInsertion.cpp
   GenXPromoteArray.cpp
+  GenXPromoteStatefulToBindless.cpp
   GenXThreadPrivateMemory.cpp
   GenXPromotePredicate.cpp
   GenXRawSendRipper.cpp

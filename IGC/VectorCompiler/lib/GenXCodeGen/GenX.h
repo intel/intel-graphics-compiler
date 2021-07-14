@@ -103,6 +103,7 @@ FunctionGroupPass *createGenXCisaBuilderPass();
 ModulePass *createGenXFinalizerPass(raw_pwrite_stream &o);
 ModulePass *createGenXDebugInfoPass();
 ModulePass *createGenXGlobalValueLoweringPass();
+ModulePass *createGenXPromoteStatefulToBindlessPass();
 
 namespace genx {
 

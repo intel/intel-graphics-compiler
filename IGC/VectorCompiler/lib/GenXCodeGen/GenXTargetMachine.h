@@ -180,6 +180,7 @@ void initializeGenXLowerJmpTableSwitchPass(PassRegistry &);
 void initializeGenXGlobalValueLoweringPass(PassRegistry &);
 void initializeGenXAggregatePseudoLoweringPass(PassRegistry &);
 void initializeGenXVectorCombinerPass(PassRegistry &);
+void initializeGenXPromoteStatefulToBindlessPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

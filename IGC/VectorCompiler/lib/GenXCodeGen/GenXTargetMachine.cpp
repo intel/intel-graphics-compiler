@@ -137,6 +137,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXPrintfLegalizationPass(registry);
   initializeGenXAggregatePseudoLoweringPass(registry);
   initializeGenXBTIAssignmentPass(registry);
+  initializeGenXPromoteStatefulToBindlessPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -398,6 +399,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
     PM.add(createGenXEmulationImportPass());
   /// .. include:: GenXEmulate.cpp
   PM.add(createGenXEmulatePass());
+  /// .. include:: GenXPromoteStatefulToBindless.cpp
+  PM.add(createGenXPromoteStatefulToBindlessPass());
   /// .. include:: GenXDeadVectorRemoval.cpp
   PM.add(createGenXDeadVectorRemovalPass());
   /// DeadCodeElimination
