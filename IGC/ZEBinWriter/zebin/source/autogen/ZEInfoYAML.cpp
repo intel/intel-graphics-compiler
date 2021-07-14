@@ -42,6 +42,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapRequired("grf_count", info.grf_count);
     io.mapOptional("has_4gb_buffers", info.has_4gb_buffers, false);
     io.mapOptional("has_device_enqueue", info.has_device_enqueue, false);
+    io.mapOptional("has_dpas", info.has_dpas, false);
     io.mapOptional("has_fence_for_image_access", info.has_fence_for_image_access, false);
     io.mapOptional("has_global_atomics", info.has_global_atomics, false);
     io.mapOptional("has_multi_scratch_spaces", info.has_multi_scratch_spaces, false);

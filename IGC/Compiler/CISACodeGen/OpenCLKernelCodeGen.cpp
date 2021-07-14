@@ -533,6 +533,12 @@ namespace IGC
                  payloadPosition, iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
              break;
 
+         case KernelArg::ArgType::IMPLICIT_WORK_DIM:
+             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                 zebin::PreDefinedAttrGetter::ArgType::work_dimensions,
+                 payloadPosition, iOpenCL::DATA_PARAMETER_DATA_SIZE);
+             break;
+
         // pointer args
         case KernelArg::ArgType::PTR_GLOBAL:
         case KernelArg::ArgType::PTR_CONSTANT: {

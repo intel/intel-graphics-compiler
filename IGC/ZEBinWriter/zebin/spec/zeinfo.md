@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.4
+Version 1.5
 
 ## Grammar
 
@@ -138,6 +138,7 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | local_id | int16 x N x n | N is the simd_size <br> n is the number of dimensions derived from work_group_walk_order_dimensions <br> Per id have to be GRF aligned |
 | local_size | int32x3 | Number of work-items in a group |
 | group_count | int32x3 | Number of group |
+| work_dimensions | int32 | Work dimensions |
 | global_size | int32x3 | OpenCL specific feacture. The total number of work-items in each dimension |
 | enqueued_local_size | int32x3 | OpenCL specific feature. The size returned by OCL get_enqueued_local_size API  |
 | global_id_offset | int32x3 | |
@@ -256,6 +257,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.5**: Add payload_argument type work_dimensions.
 - **Version 1.4**: Add sampler_index to payload arguments.
 - **Version 1.3**: Add printf_buffer to argument_type.
 - **Version 1.2**: Add buffer_offset to argument_type.

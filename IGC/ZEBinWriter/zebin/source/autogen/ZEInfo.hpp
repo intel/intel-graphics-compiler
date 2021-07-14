@@ -36,6 +36,7 @@ struct zeInfoExecutionEnv
     zeinfo_int32_t grf_count = 0;
     zeinfo_bool_t has_4gb_buffers = false;
     zeinfo_bool_t has_device_enqueue = false;
+    zeinfo_bool_t has_dpas = false;
     zeinfo_bool_t has_fence_for_image_access = false;
     zeinfo_bool_t has_global_atomics = false;
     zeinfo_bool_t has_multi_scratch_spaces = false;
@@ -107,13 +108,14 @@ struct zeInfoContainer
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.4"; }
+    static zeinfo_str_t getVersionNumber() { return "1.5"; }
 
     enum class ArgType {
         packed_local_ids,
         local_id,
         local_size,
         group_count,
+        work_dimensions,
         global_size,
         enqueued_local_size,
         global_id_offset,
@@ -161,6 +163,8 @@ struct PreDefinedAttrGetter{
             return "local_size";
         case ArgType::group_count:
             return "group_count";
+        case ArgType::work_dimensions:
+            return "work_dimensions";
         case ArgType::global_size:
             return "global_size";
         case ArgType::enqueued_local_size:
