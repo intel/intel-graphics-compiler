@@ -14111,6 +14111,7 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
     }
 }
 
+
 void EmitPass::emitMemoryFence(llvm::Instruction* inst)
 {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
