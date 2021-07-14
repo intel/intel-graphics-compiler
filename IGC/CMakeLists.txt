@@ -1841,6 +1841,7 @@ if(UNIX)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_interface DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/common/StateSaveAreaHeader.h DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc/common COMPONENT igc-opencl-devel)
 
   if(IGC_BUILD__LLVM_SOURCES AND IGC_OPTION__LLVM_LLD)
     # For now lld could be included only via building from LLVM sources
