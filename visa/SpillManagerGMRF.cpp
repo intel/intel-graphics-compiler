@@ -4496,7 +4496,7 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel * kernel)
 }
 
 //
-// For XeHP_SDV+ scratch surface is used for the vISA stack.  This means when
+// For Xe_HP+ scratch surface is used for the vISA stack.  This means when
 // the scratch message cannot be used for spill/fill (e.g., stack call),
 // a0.2 will be used as the message descriptor for the spill/fill.
 // As address RA is done before GRF, we don't know if a0.2 is live at the
@@ -4746,7 +4746,7 @@ void GlobalRA::expandSpillNonStackcall(
         auto payloadToUse = builder->createSrcRegRegion(*payload);
         auto [spillMsgDesc, execSize] = SpillManagerGRF::createSpillSendMsgDescOWord(numRows);
         G4_INST* sendInst = nullptr;
-        // Use bindless for XeHP_SDV+
+        // Use bindless for Xe_HP+
         if (builder->hasScratchSurface())
         {
             G4_Imm* descImm = createMsgDesc(GRFSizeToOwords(numRows), true, true);
@@ -4842,8 +4842,8 @@ void GlobalRA::expandSpillStackcall(
             unsigned messageLength = owordToGRFSize(owordSize);
             G4_Imm* descImm = createMsgDesc(owordSize, true, true);
             G4_INST* sendInst = nullptr;
-            // Use bindless for XeHP_SDV+
-            if (builder->getPlatform() >= XeHP_SDV)
+            // Use bindless for Xe_HP+
+            if (builder->getPlatform() >= XE_HP)
             {
                 // Update BTI to 251
                 auto spillMsgDesc = descImm->getInt();
@@ -4974,7 +4974,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
          G4_INST* sendInst = nullptr;
          auto sfId = SFID::DP_DC0;
 
-         // Use bindless for XeHP_SDV+
+         // Use bindless for Xe_HP+
          if (builder->hasScratchSurface())
          {
              // Update BTI to 251
@@ -5065,8 +5065,8 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
             G4_INST* sendInst = nullptr;
             auto sfId = SFID::DP_DC0;
 
-            // Use bindless for XeHP_SDV+
-            if (builder->getPlatform() >= XeHP_SDV)
+            // Use bindless for Xe_HP+
+            if (builder->getPlatform() >= XE_HP)
             {
                 // Update BTI to 251
                 auto newDesc = desc->getInt() & 0xffffff00;

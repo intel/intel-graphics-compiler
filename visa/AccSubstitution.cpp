@@ -864,7 +864,7 @@ void AccSubPass::multiAccSub(G4_BB* bb)
 
     std::map<G4_INST*, unsigned int> BCInfo;
 
-    if (builder.getPlatform() == XeHP_SDV)
+    if (builder.getPlatform() == XE_HP)
     {
         int suppressRegs[4];
         for (int i = 0; i < 3; i++)

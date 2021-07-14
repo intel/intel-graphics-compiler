@@ -3501,7 +3501,7 @@ void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER ins
         }
     }
 
-    if (fg.builder->hasThreeALUPipes()) //XeHP_SDV
+    if (fg.builder->hasThreeALUPipes()) //Xe_HP
     {
         insertedSync = insertSyncXe(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens);
     }
