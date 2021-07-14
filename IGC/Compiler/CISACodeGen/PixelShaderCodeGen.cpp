@@ -33,16 +33,6 @@ CVariable* CPixelShader::GetR1()
     return m_R1;
 }
 
-std::vector<CVariable*>& CPixelShader::GetR1Lo()
-{
-    return m_R1Lo;
-}
-
-void CPixelShader::AppendR1Lo(CVariable* var)
-{
-    m_R1Lo.push_back(var);
-}
-
 CVariable* CPixelShader::GetCoarseR1()
 {
     IGC_ASSERT(m_phase == PSPHASE_PIXEL);
@@ -145,10 +135,6 @@ void CPixelShader::AllocatePSPayload()
         for (uint i = 0; i < GetR1()->GetNumberInstance(); i++)
         {
             AllocateInput(GetR1(), offset, i, forceLiveOut);
-            for (auto R1Lo: GetR1Lo()) {
-                AllocateInput(R1Lo, offset, i, forceLiveOut);
-            }
-
             offset += getGRFSize();
         }
     }
