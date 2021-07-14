@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/BreakConst.h"
+#include "vc/Utils/General/FunctionAttrs.h"
 #include "vc/Utils/General/InstRebuilder.h"
 #include "vc/Utils/General/STLExtras.h"
 #include "vc/Utils/General/Types.h"
@@ -62,6 +63,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
@@ -794,12 +796,12 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
 
   // Create the new function body and insert it into the module.
   Function *NF = Function::Create(NFTy, F->getLinkage(), F->getName());
-  NF->setAttributes(AttrVec);
-  LLVM_DEBUG(dbgs() << "CMABI:  Transforming to:" << *NF << "\n" << "From: " << *F);
+
+  LLVM_DEBUG(dbgs() << "\nCMABI: Transforming From:" << *F);
+  vc::transferNameAndCCWithNewAttr(AttrVec, *F, *NF);
   F->getParent()->getFunctionList().insert(F->getIterator(), NF);
-  NF->takeName(F);
-  NF->setSubprogram(F->getSubprogram()); // tranfer debug-info
-  NF->setCallingConv(F->getCallingConv());
+  vc::transferDISubprogram(*F, *NF);
+  LLVM_DEBUG(dbgs() << "  --> To: " << *NF << "\n");
 
   // Since we have now created the new function, splice the body of the old
   // function right into the new function.
@@ -1016,13 +1018,15 @@ Function *createTransformedFuncDecl(Function &OrigFunc,
   // Create the new function body and insert it into the module.
   Function *NewFunc =
       Function::Create(NewFuncTy, OrigFunc.getLinkage(), OrigFunc.getName());
-  NewFunc->setAttributes(TFuncInfo.getAttributes());
-  LLVM_DEBUG(dbgs() << "CMABI:  Transforming to:" << *NewFunc << "\n"
-                    << "From: " << OrigFunc);
+
+  LLVM_DEBUG(dbgs() << "\nCMABI: Transforming From:" << OrigFunc);
+  vc::transferNameAndCCWithNewAttr(TFuncInfo.getAttributes(), OrigFunc,
+                                   *NewFunc);
   OrigFunc.getParent()->getFunctionList().insert(OrigFunc.getIterator(),
                                                  NewFunc);
-  NewFunc->takeName(&OrigFunc);
-  NewFunc->setCallingConv(OrigFunc.getCallingConv());
+  vc::transferDISubprogram(OrigFunc, *NewFunc);
+  LLVM_DEBUG(dbgs() << "  --> To: " << *NewFunc << "\n");
+
   return NewFunc;
 }
 

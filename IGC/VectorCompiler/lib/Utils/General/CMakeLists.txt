@@ -11,6 +11,7 @@ set(GENERAL_UTILS_SOURCES
   InstRebuilder.cpp
   BreakConst.cpp
   Types.cpp
+  FunctionAttrs.cpp
   )
 
 add_library(VCGeneralUtils ${GENERAL_UTILS_SOURCES})

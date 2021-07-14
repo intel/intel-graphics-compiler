@@ -94,8 +94,12 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "cmimpparam"
+
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+
+#include "vc/Utils/General/FunctionAttrs.h"
+
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -732,16 +736,12 @@ CallGraphNode *CMImpParam::ProcessKernel(Function *F) {
 
   // Create new function body and insert into the module
   Function *NF = Function::Create(NFTy, F->getLinkage(), F->getName());
-  NF->setAttributes(AttrVec);
-  LLVM_DEBUG(dbgs() << "CMImpParam: Transforming to: " << *NF << "\n" << "From: "
-        << *F);
+
+  LLVM_DEBUG(dbgs() << "CMImpParam: Transforming From:" << *F);
+  vc::transferNameAndCCWithNewAttr(AttrVec, *F, *NF);
   F->getParent()->getFunctionList().insert(F->getIterator(), NF);
-  NF->takeName(F);
-  NF->setSubprogram(F->getSubprogram()); // tranfer debug-info
-  // DISubprogram must be unique to the module.
-  // Since F can be left as a "hanging" entity in the module - we preserve
-  // IR correctness by detaching DISubprogram node from it
-  F->setSubprogram(nullptr);
+  vc::transferDISubprogram(*F, *NF);
+  LLVM_DEBUG(dbgs() << "  --> To: " << *NF << "\n");
 
   // Now to splice the body of the old function into the new function
   NF->getBasicBlockList().splice(NF->begin(), F->getBasicBlockList());
