@@ -52,8 +52,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/DiagnosticInfo.h"
-#include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -94,23 +92,6 @@ inline unsigned calcPadding(unsigned Val, unsigned Align) {
     return 0;
   return Align - Val % Align;
 }
-
-// Diagnostic information for error/warning relating prolog/epilog insertion.
-class DiagnosticInfoPrologEpilogInsertion : public DiagnosticInfo {
-private:
-  std::string Description;
-
-public:
-  // Initialize from description
-  DiagnosticInfoPrologEpilogInsertion(const Twine &Desc,
-                                      DiagnosticSeverity Severity = DS_Error)
-      : DiagnosticInfo(llvm::getNextAvailablePluginDiagnosticKind(), Severity),
-        Description(Desc.str()) {}
-
-  void print(DiagnosticPrinter &DP) const override {
-    DP << "GenXPrologEpilogInsertion: " << Description;
-  }
-};
 
 class GenXPrologEpilogInsertion
     : public FunctionPass,
@@ -682,15 +663,6 @@ void GenXPrologEpilogInsertion::generateAlloca(CallInst *CI) {
       IRB.CreateAdd(AllocaBase, ConstantInt::get(CI->getType(), AllocaOffset));
   IGC_ASSERT(AllocaOffset % visa::BytesPerSVMPtr == 0);
   PrivMemSize += AllocaOffset;
-
-  if (PrivMemSize > (UseGlobalMem ? BEConf->getStatelessPrivateMemSize()
-                                  : visa::StackPerThreadScratch)) {
-    DiagnosticInfoPrologEpilogInsertion Warn{
-        CI->getFunction()->getName() +
-            " frame allocation size is too big for TPM",
-        DS_Warning};
-    CI->getContext().diagnose(Warn);
-  }
 
   buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, Add);
   CI->replaceAllUsesWith(AllocaBase);
