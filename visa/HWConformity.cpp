@@ -5576,6 +5576,8 @@ void HWConformity::conformBB(G4_BB* bb)
         {
             fixPackedHFConversions(i, bb);
         }
+
+        fixFloatARFDst(i, bb);
     }
 
     if (!builder.supportFloatOr64bRegioning())
@@ -8081,4 +8083,111 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
     }
 
     return retIter;
+}
+
+// Currently the local copy propagation phase (newLocalDefHoisting) might be
+// too aggressive and could fold a0 register into a select in the float pipe
+// which is illegal. We try to fix the instruction in HWConformity because we
+// may fix it easily by just flipping the types when it is a raw MOV or a raw
+// SEL. This would keep the fp semantics and still save one MOV. Here's an
+// example pattern being dealt with.
+//
+// BEFORE:
+// (W&f0.0) sel (1|M0) a0.0<1>:f  r5.2<0;1,0>:f  r3.3<0;1,0>:f
+// =>
+// AFTER:
+// (W&f0.0) sel (1|M0) a0.0<1>:ud r5.2<0;1,0>:ud r3.3<0;1,0>:ud
+//
+// For others cases, to keep the fp semantics first we create a temp GRF and
+// set it as the new dst of the inst. Then we insert a MOV to the old dst (ARF)
+// using the int pipe.
+//
+// BEFORE:
+// (W&f0.0) sel (1|M0) (lt)f0.0 a0.0<1>:f  r5.2<0;1,0>:f  r3.3<0;1,0>:f
+// =>
+// AFTER:
+// (W&f0.0) sel (1|M0) (lt)f0.0 r2.0<0;1,0>:f r5.2<0;1,0>:f r3.3<0;1,0>:f
+// (W&f0.0) mov (1|M0) a0.0<1>:ud  r2.0<0;1,0>:ud
+void HWConformity::fixFloatARFDst(INST_LIST_ITER it, G4_BB* bb)
+{
+    auto isDstTargetedARFInFloat = [](G4_DstRegRegion* dst) -> bool {
+        if (!dst || !dst->getTopDcl())
+            return false;
+
+        auto regFile = dst->getTopDcl()->getRegFile();
+        return IS_TYPE_FLOAT_ALL(dst->getType()) &&
+               (regFile == G4_ADDRESS || regFile == G4_FLAG);
+    };
+
+    auto isRawSel = [](G4_INST* inst) -> bool {
+        return inst->opcode() == G4_sel &&
+            inst->getDst()->getType() == inst->getSrc(0)->getType() &&
+            inst->getDst()->getType() == inst->getSrc(1)->getType() &&
+            inst->getCondMod() == nullptr &&
+            (inst->getSrc(0)->isSrcRegRegion() &&
+             inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef) &&
+            (inst->getSrc(1)->isImm() ||
+             (inst->getSrc(1)->isSrcRegRegion() &&
+              inst->getSrc(1)->asSrcRegRegion()->getModifier() == Mod_src_undef));
+    };
+
+    auto getFlippedIntType = [](G4_Type floatTy) -> G4_Type {
+        assert(IS_TYPE_FLOAT_ALL(floatTy));
+        switch (TypeSize(floatTy)) {
+            case 2:
+                return Type_UW;
+            case 4:
+                return Type_UD;
+            case 8:
+                return Type_UQ;
+            default:
+                assert(false && "unexpected float type size.");
+                return Type_UNDEF;
+        }
+    };
+
+    G4_INST* inst = *it;
+    G4_DstRegRegion* dst = inst->getDst();
+    if (!isDstTargetedARFInFloat(dst))
+        return;
+
+    G4_Type floatTy = dst->getType();
+    G4_Type intTy = getFlippedIntType(floatTy);
+    if (inst->isRawMov() || isRawSel(inst))
+    {
+        // For raw MOV and raw predicate-based SEL (w/o conditional modifier),
+        // we can just flip the types.
+        dst->setType(intTy);
+        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+        {
+            auto src = inst->getSrc(i);
+            if (src->isSrcRegRegion())
+            {
+                src->asSrcRegRegion()->setType(intTy);
+            }
+            else if (src->isImm())
+            {
+                inst->setSrc(builder.createImm(src->asImm()->getImm(), intTy), i);
+            }
+        }
+    }
+    else
+    {
+        // For others, 2 steps are required.
+        // 1. Replace the dst with a temp var in float type.
+        G4_Declare* newDefDcl =
+            builder.createTempVar(1, floatTy, dst->getTopDcl()->getSubRegAlign());
+        inst->setDest(builder.createDstRegRegion(newDefDcl, 1));
+
+        // 2. Create a MOV that moves the temp var to the old dst (ARF).
+        G4_Declare* newUseDcl = builder.createTempVar(1, intTy,
+                                                      dst->getTopDcl()->getSubRegAlign());
+        newUseDcl->setAliasDeclare(newDefDcl, 0);
+        const RegionDesc* rd = inst->getExecSize() == 1 ?
+            builder.getRegionScalar() : builder.getRegionStride1();
+        G4_SrcRegRegion* newSrcRegion = builder.createSrcRegRegion(newUseDcl, rd);
+        dst->setType(intTy);
+        G4_INST* movInst = builder.createMov(inst->getExecSize(), dst, newSrcRegion, inst->getMaskOption(), false);
+        bb->insertAfter(it, movInst);
+    }
 }
