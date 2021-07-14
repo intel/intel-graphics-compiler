@@ -507,7 +507,10 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
       // Not a candidate.
       return false;
     } else if (PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(*use_it)) {
-      return CheckPtrToIntCandidate(PTI);
+      if (CheckPtrToIntCandidate(PTI))
+        continue;
+      // Not a candidate.
+      return false;
     } else if (IntrinsicInst *intr = dyn_cast<IntrinsicInst>(*use_it)) {
       auto IID = GenXIntrinsic::getAnyIntrinsicID(intr);
       if (IID == llvm::Intrinsic::lifetime_start ||
