@@ -668,7 +668,7 @@ static iga_gen_t getIGAPlatform()
     case GENX_BXT: platform = IGA_GEN9lp; break;
     case GENX_ICLLP: platform = IGA_GEN11; break;
     case GENX_TGLLP:platform = IGA_GEN12p1; break;
-    case XE_HP: platform = IGA_XE_HP; break;
+    case XeHP_SDV: platform = IGA_XE_HP; break;
     default:
         break;
     }
@@ -853,7 +853,7 @@ void G4_Kernel::setKernelParameters()
     {
         switch (platform)
         {
-        case XE_HP:
+        case XeHP_SDV:
             switch (overrideNumThreads)
             {
             case 4:
@@ -907,7 +907,7 @@ void G4_Kernel::setKernelParameters()
     {
         switch (platform)
         {
-        case XE_HP:
+        case XeHP_SDV:
             switch (overrideNumThreads)
             {
             case 4:
@@ -926,7 +926,7 @@ void G4_Kernel::setKernelParameters()
         // Default value based on platform
         switch (platform)
         {
-        case XE_HP:
+        case XeHP_SDV:
             numAcc = 4;
             if (numRegTotal == 256)
             {
@@ -949,7 +949,7 @@ void G4_Kernel::setKernelParameters()
         {
             switch (platform)
             {
-            case XE_HP:
+            case XeHP_SDV:
                 switch (numRegTotal)
                 {
                 case 256:

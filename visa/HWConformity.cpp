@@ -5585,7 +5585,7 @@ void HWConformity::conformBB(G4_BB* bb)
             // pre-compute nextIter as the call may destroy iter
             auto nextIter = std::next(iter);
             // since insertMovBefore/After and similar helper instructions do not
-            // understand Xe_HP regioning restrictions, they may produce illegal moves
+            // understand XeHP_SDV regioning restrictions, they may produce illegal moves
             // We do a catch call pass here to catch them
             fixUnalignedRegions(iter, bb);
             iter = nextIter;
@@ -7542,7 +7542,7 @@ void HWConformity::change64bStride2CopyToUD(INST_LIST_ITER it, G4_BB* bb)
     bb->insertBefore(it, movInst);
 }
 
-// on Xe_HP we have to make sure each source element is alignd to each dst element
+// on XeHP_SDV we have to make sure each source element is alignd to each dst element
 // for all float/64b inst (packed HF is ok in mixed mode inst)
 // For all violating instructions, we align each operand to the execution type
 // for float copy moves we could directly convert their type to int

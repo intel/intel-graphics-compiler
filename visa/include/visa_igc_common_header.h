@@ -469,7 +469,7 @@ typedef enum {
     GENX_CNL,
     GENX_ICLLP,
     GENX_TGLLP,
-    XE_HP,
+    XeHP_SDV,
     ALL
 } TARGET_PLATFORM;
 
