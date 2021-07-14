@@ -55,7 +55,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
@@ -486,19 +485,6 @@ static void CommonOCLBasedPasses(
             mpm.add(createPromoteConstantPass());
         }
         mpm.add(createIGCInstructionCombiningPass());
-
-        // Instcombine can create constant expressions, which are not handled by the program scope constant resolution pass
-        mpm.add(new BreakConstantExpr());
-
-        // Run constant lowering conservatively for tests where constant
-        // objects are over-written after casting pointers in constant address
-        // space into ones in private address.
-        //
-        // NOTE: Per OpenCL C standard (both 1.2 and 2.0), that's illegal.
-        //
-        // This has to be run after instcombine to allow memcpy from GlobalVariable arrays private
-        // allocs to be optimized away.
-        mpm.add(new ProgramScopeConstantResolution(true));
     }
 
     // TODO: Run CheckInstrTypes after builtin import to determine if builtins have allocas.
