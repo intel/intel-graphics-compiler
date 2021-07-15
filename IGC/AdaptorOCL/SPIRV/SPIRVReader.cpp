@@ -4110,9 +4110,11 @@ SPIRVToLLVM::decodeVecTypeHint(LLVMContext &C, unsigned code) {
 // 'OpString "kernel_arg_type.%kernel_name%.type1,type2,type3,..' instruction.
 // Try to find such instruction and generate metadata based on it.
 static bool transKernelArgTypeMedataFromString(
-    LLVMContext *Ctx, std::vector<llvm::Metadata*> &KernelMD, SPIRVModule *BM, Function *Kernel) {
+    LLVMContext *Ctx, std::vector<llvm::Metadata*> &KernelMD, SPIRVModule *BM,
+    Function *Kernel, std::string MDName)
+    {
     std::string ArgTypePrefix =
-        std::string(SPIR_MD_KERNEL_ARG_TYPE) + "." + Kernel->getName().str() + ".";
+        std::string(MDName) + "." + Kernel->getName().str() + ".";
     auto ArgTypeStrIt = std::find_if(
         BM->getStringVec().begin(), BM->getStringVec().end(),
         [=](SPIRVString *S) { return S->getStr().find(ArgTypePrefix) == 0; });
@@ -4123,7 +4125,7 @@ static bool transKernelArgTypeMedataFromString(
     std::string ArgTypeStr =
         (*ArgTypeStrIt)->getStr().substr(ArgTypePrefix.size());
     std::vector<Metadata *> TypeMDs;
-    TypeMDs.push_back(MDString::get(*Ctx, SPIR_MD_KERNEL_ARG_TYPE));
+    TypeMDs.push_back(MDString::get(*Ctx, MDName));
 
     int countBraces = 0;
     std::string::size_type start = 0;
@@ -4227,13 +4229,16 @@ SPIRVToLLVM::transKernelMetadata()
             return MDString::get(*Context, Qual);
         });
         // Generate metadata for kernel_arg_type
-        if (!transKernelArgTypeMedataFromString(Context, KernelMD, BM, F)) {
+        if (!transKernelArgTypeMedataFromString(Context, KernelMD, BM, F,
+                                                SPIR_MD_KERNEL_ARG_TYPE)) {
             addOCLKernelArgumentMetadata(Context, KernelMD,
                 SPIR_MD_KERNEL_ARG_TYPE, BF,
                 [=](SPIRVFunctionParameter *Arg) {
                 return transOCLKernelArgTypeName(Arg);
             });
         }
+        if (!transKernelArgTypeMedataFromString(Context, KernelMD, BM, F,
+                                                SPIR_MD_KERNEL_ARG_TYPE_QUAL))
         // Generate metadata for kernel_arg_type_qual
         addOCLKernelArgumentMetadata(Context, KernelMD,
             SPIR_MD_KERNEL_ARG_TYPE_QUAL, BF,
