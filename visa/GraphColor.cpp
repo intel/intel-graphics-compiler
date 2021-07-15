@@ -10375,7 +10375,7 @@ int GlobalRA::coloringRegAlloc()
             builder.kernel.fg.frameSizeInOWord > 0;
         jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
 
-        if (builder.kernel.fg.frameSizeInOWord != 0) {
+        if (jitInfo->hasStackcalls && builder.getIsKernel()) {
             // jitInfo->spillMemUsed is the entire visa stack size. Consider the caller/callee
             // save size if having caller/callee save
             // globalScratchOffset in unit of byte, others in Oword
@@ -10389,12 +10389,16 @@ int GlobalRA::coloringRegAlloc()
             //  callerSaveAreaOffset    -> ---------------------
             //                             |  caller save      |
             //  paramOverflowAreaOffset -> ---------------------
-            jitInfo->spillMemUsed =
-                builder.kernel.fg.frameSizeInOWord * 16;
 
-            // reserve spillMemUsed #bytes before 8kb boundary
-            kernel.getGTPinData()->setScratchNextFree(8*1024 - kernel.getGTPinData()->getNumBytesScratchUse());
-        } else {
+            // Since it is difficult to predict amount of space needed to store stack, we
+            // reserve maximum possible PTSS supported by platform.
+            auto maxPTSS = kernel.fg.builder->getMaxPTSS();
+            jitInfo->spillMemUsed = maxPTSS;
+
+            // reserve spillMemUsed #bytes at upper end of PTSS
+            kernel.getGTPinData()->setScratchNextFree(maxPTSS - kernel.getGTPinData()->getNumBytesScratchUse());
+        }
+        else {
             jitInfo->spillMemUsed = spillMemUsed;
             kernel.getGTPinData()->setScratchNextFree(spillMemUsed);
         }
