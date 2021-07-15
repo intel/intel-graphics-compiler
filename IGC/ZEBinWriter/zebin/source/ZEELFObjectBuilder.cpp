@@ -246,7 +246,7 @@ ZEELFObjectBuilder::addSectionDebug(std::string name, const uint8_t* data, uint6
 void
 ZEELFObjectBuilder::addSectionZEInfo(zeInfoContainer& zeInfo)
 {
-    // every object should have exactly one ze_info section
+    // every object should have at most one ze_info section
     IGC_ASSERT(!m_zeInfoSection);
     m_zeInfoSection.reset(new ZEInfoSection(zeInfo, m_sectionIdCount));
     ++m_sectionIdCount;
@@ -803,14 +803,11 @@ void ELFWriter::createSectionHdrEntries()
     }
 
     // .ze_info
-    // every object must have exactly one ze_info section
     if (m_ObjBuilder.m_zeInfoSection) {
         createSectionHdrEntry(m_ObjBuilder.m_ZEInfoName, SHT_ZEBIN_ZEINFO,
             m_ObjBuilder.m_zeInfoSection.get());
         ++index;
     }
-    else
-        IGC_ASSERT(0);
 
     // .strtab
     m_StringTableIndex = index;
@@ -824,6 +821,11 @@ zeInfoKernel& ZEInfoBuilder::createKernel(const std::string& name)
     zeInfoKernel& k = mContainer.kernels.back();
     k.name = name;
     return k;
+}
+
+bool ZEInfoBuilder::empty() const
+{
+    return mContainer.kernels.empty();
 }
 
 // addPayloadArgumentByPointer - add explicit kernel argument with pointer

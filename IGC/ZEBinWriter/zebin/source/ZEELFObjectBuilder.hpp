@@ -363,7 +363,7 @@ private:
     // current section id
     SectionID m_sectionIdCount = 0;
 
-    // every ze object contains only one ze_info section
+    // every ze object contains at most one ze_info section
     std::unique_ptr<ZEInfoSection> m_zeInfoSection;
     SymbolListTy m_localSymbols;
     SymbolListTy m_globalSymbols;
@@ -380,6 +380,9 @@ public:
 
     zeInfoContainer& getZEInfoContainer()             { return mContainer; }
     const zeInfoContainer& getZEInfoContainer() const { return mContainer; }
+
+    // empty - return true if there is no kernel/function info in it
+    bool empty() const;
 
     /// --------- Helper functions for setup zeinfo contents -------------- ///
     // createKernel - create a zeInfoKernel and add it into zeInfoContainer

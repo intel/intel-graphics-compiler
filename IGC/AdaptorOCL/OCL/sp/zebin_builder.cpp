@@ -774,7 +774,8 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
 
 void ZEBinaryBuilder::getBinaryObject(llvm::raw_pwrite_stream& os)
 {
-    mBuilder.addSectionZEInfo(mZEInfoBuilder.getZEInfoContainer());
+    if (!mZEInfoBuilder.empty())
+        mBuilder.addSectionZEInfo(mZEInfoBuilder.getZEInfoContainer());
     mBuilder.finalize(os);
 }
 
