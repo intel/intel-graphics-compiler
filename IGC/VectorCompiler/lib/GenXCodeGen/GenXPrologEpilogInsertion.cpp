@@ -16,7 +16,26 @@ SPDX-License-Identifier: MIT
 /// VISA regalloc makes sure that dests & sources of the generated instructions
 /// are allocated to the proper predefined VISA regs
 ///
+/// Lets say before transformation we have call with arg loaded from surface:
+/// %arg = call <8 x float> @llvm.genx.oword.ld.v8f32(i32 0, i32 1, i32 %addr)
+/// %ret = call spir_func <8 x float> @foo(<8 x float> %arg)
+///
+/// Then after we will see something like this:
+/// %arg = call <8 x float> @llvm.genx.oword.ld.v8f32(i32 0, i32 1, i32 %addr)
+/// %R8 = call <256 x float> read.predef.reg(i32 PREDEFINED_ARG, undef)
+/// %NEWR8 = <256 x float> wrregion(<256 x float> %R8, <8 x float> %arg,
+///                                 i32 0, i32 8, i32 1, OFFSET, ...)
+/// ; Here OFFSET starts from 0 and is argument offset in predef register
+/// %newarg = call <8 x float> write.predef.reg(i32 PREDEFINED_ARG,
+///                                             <256 x float> %NEWR8)
+/// %ret = call spir_func <8 x float> @foo(<8 x float> %newarg)
+///
+/// So we have explicit stack layout relatively early to use 64-bit splitting
+/// on later stages if 64-bit pointers are used as SP/FP
+///
 //===----------------------------------------------------------------------===//
+
+#define DEBUG_TYPE "GENX_PROLOGUE"
 
 #include "GenX.h"
 #include "GenXIntrinsics.h"
@@ -42,6 +61,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/MathExtras.h"
 
 #include "Probe/Assertion.h"
@@ -111,7 +131,13 @@ class GenXPrologEpilogInsertion
   void generateKernelProlog(Function &F);
   void generateFunctionProlog(Function &F);
   void generateFunctionEpilog(Function &F, ReturnInst &I);
+
+  // caller side argument layout
   void generateStackCall(CallInst *CI);
+
+  // generateStackCall subroutine
+  unsigned writeArgs(CallInst *CI, Value *SpArgs, IRBuilder<> &IRB);
+
   void generateAlloca(CallInst *CI);
 
   Value *push(Value *V, IRBuilder<> &IRB, Value *InitSP);
@@ -216,12 +242,16 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
             .getGenXSubtarget();
   ArgRegSize = visa::ArgRegSizeInGRFs * ST->getGRFWidth();
   RetRegSize = visa::RetRegSizeInGRFs * ST->getGRFWidth();
-  if (!(BEConf->useNewStackBuilder() && ST->isOCLRuntime()))
+  if (!(BEConf->useNewStackBuilder() && ST->isOCLRuntime())) {
+    LLVM_DEBUG(dbgs() << "Old builder or CMRT used in " << F.getName() << "\n");
     return false;
+  }
   NumCalls = CallsCalculator().getNumCalls(F);
   UseGlobalMem =
       F.getParent()->getModuleFlag(ModuleMD::UseSVMStack) != nullptr;
+  LLVM_DEBUG(dbgs() << "Visiting all calls in " << F.getName() << "\n");
   visit(F);
+  LLVM_DEBUG(dbgs() << "Visiting finished\n");
   if (genx::isKernel(&F)) {
     generateKernelProlog(F);
     // no epilog is required for kernels
@@ -260,6 +290,8 @@ void GenXPrologEpilogInsertion::visitReturnInst(ReturnInst &I) {
 
 // FE_SP = PrivateBase + HWTID * PrivMemPerThread
 void GenXPrologEpilogInsertion::generateKernelProlog(Function &F) {
+  LLVM_DEBUG(dbgs() << "Generating kernel prologue for " << F.getName()
+                    << "\n");
   IRBuilder<> IRB(&F.getEntryBlock().front());
   Function *HWID = GenXIntrinsic::getGenXDeclaration(
       F.getParent(), llvm::GenXIntrinsic::genx_get_hwid, {});
@@ -289,6 +321,8 @@ void GenXPrologEpilogInsertion::generateKernelProlog(Function &F) {
 //  else:
 //    read from stackmem
 void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
+  LLVM_DEBUG(dbgs() << "Generating function prologue for " << F.getName()
+                    << "\n");
   IRBuilder<> IRB(&F.getEntryBlock().front());
   unsigned Offset = 0;
   Value *Sp = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
@@ -346,6 +380,8 @@ void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
 //    write to stackmem
 void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
                                                        ReturnInst &I) {
+  LLVM_DEBUG(dbgs() << "Generating function epilogue for " << F.getName()
+                    << "\n");
   IRBuilder<> IRB(&I);
   unsigned RetSize = 0;
   if (!F.getReturnType()->isVoidTy()) {
@@ -423,14 +459,20 @@ void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
                                 divideCeil(RetSize, ST->getGRFWidth())))));
 }
 
-void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
-  IRBuilder<> IRB(CI);
+// write stack call args
+// returns total offset
+unsigned GenXPrologEpilogInsertion::writeArgs(CallInst *CI, Value *SpArgs,
+                                              IRBuilder<> &IRB) {
   unsigned Offset = 0;
-  Value *OrigSp = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                                     IRB.getInt64Ty(), true);
-  auto *SpArgs = OrigSp;
-  // write args
+  std::map<Value *, Value *> ReplaceArgs;
+
   for (auto &Arg : CI->arg_operands()) {
+    // it is tempting to skip here if Arg already is in ReplaceArgs map
+    // but it will be wrong to do so, because consider:
+    // foo(x, x, y, y, x, y)
+    // on callee side we are expecting 6 positions in predef args
+    // we can not optimize these out on caller side
+
     auto *OrigTy = Arg->getType();
     if (OrigTy->getScalarType()->isIntegerTy(1)) {
       if (!HandleMaskArgs)
@@ -460,10 +502,26 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
       if (OrigTy->getScalarType()->isIntegerTy(1))
         ArgRegWrite = cast<Instruction>(
             IRB.CreateBitOrPointerCast(ArgRegWrite,OrigTy));
-      CI->replaceUsesOfWith(Arg, ArgRegWrite);
+      ReplaceArgs[Arg] = ArgRegWrite;
       Offset += ArgSize;
     }
   }
+
+  for (auto &&Pair : ReplaceArgs)
+    CI->replaceUsesOfWith(Pair.first, Pair.second);
+  return Offset;
+}
+
+// generate caller site of stack call
+void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
+  LLVM_DEBUG(dbgs() << "Generating stack call for:\n");
+  LLVM_DEBUG(CI->dump());
+  LLVM_DEBUG(dbgs() << "\n");
+  IRBuilder<> IRB(CI);
+  Value *OrigSp = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                                     IRB.getInt64Ty(), true);
+  // write args, return total offset in arg register
+  unsigned Offset = writeArgs(CI, OrigSp, IRB);
 
   CI->setMetadata(
       InstMD::FuncArgSize,
