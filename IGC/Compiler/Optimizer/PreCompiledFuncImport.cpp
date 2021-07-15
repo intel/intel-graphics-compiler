@@ -37,7 +37,8 @@ SPDX-License-Identifier: MIT
 #include "AdaptorOCL/OCL/BuiltinResource.h"
 #include "AdaptorOCL/OCL/LoadBuffer.h"
 
-#include <unordered_map>
+#include <vector>
+#include <utility>
 
 using namespace llvm;
 using namespace IGC;
@@ -500,7 +501,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
     //post-process the Int32 precompiled emulation function for div/rem
     if (isI32DivRem() || isI32DivRemSP() || isSPDiv())
     {
-        std::unordered_map<CallInst*, CallInst*> replaceInsts;
+        std::vector<std::pair<CallInst*,CallInst*>> replaceInsts;
         for (auto FI = M.begin(), FE = M.end(); FI != FE; )
         {
             llvm::Function* func = &(*FI);
@@ -515,41 +516,41 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                     {
                         if (CallInst * CI = dyn_cast<CallInst>(I))
                         {
-                            Function* pFunc = nullptr;
-                            GenISAIntrinsic::ID GISAIntr = GenISAIntrinsic::no_intrinsic;
-                            //ATTN: This can be made generic/cleaned up through an enum or something
-                            if (CI->getCalledFunction()->getName().equals("GenISA_fma_rtz"))
-                            {
-                                GISAIntr = GenISAIntrinsic::GenISA_fma_rtz;
-                            }
-                            else if (CI->getCalledFunction()->getName().equals("GenISA_mul_rtz"))
-                            {
-                                GISAIntr = GenISAIntrinsic::GenISA_mul_rtz;
-                            }
-                            else if (CI->getCalledFunction()->getName().equals("GenISA_add_rtz"))
-                            {
-                                GISAIntr = GenISAIntrinsic::GenISA_add_rtz;
-                            }
-                            else if (CI->getCalledFunction()->getName().equals("GenISA_uitof_rtz"))
-                            {
-                                GISAIntr = GenISAIntrinsic::GenISA_uitof_rtz;
-                            }
-                            if (GISAIntr != GenISAIntrinsic::no_intrinsic)
-                            {
-                                IRBuilder<> builder(CI);
-                                std::vector<Value*> args;
-                                std::vector<Type*> types;
-
-                                types.push_back(CI->getType());
-
-                                for (unsigned int i = 0; i < CI->getNumArgOperands(); i++)
+                            if (const llvm::Function *calledFunc = CI->getCalledFunction()) {
+                                GenISAIntrinsic::ID GISAIntr = GenISAIntrinsic::no_intrinsic;
+                                if (calledFunc->getName().equals("GenISA_fma_rtz"))
                                 {
-                                    types.push_back(CI->getArgOperand(i)->getType());
-                                    args.push_back(CI->getArgOperand(i));
+                                    GISAIntr = GenISAIntrinsic::GenISA_fma_rtz;
                                 }
-                                pFunc = GenISAIntrinsic::getDeclaration(&M, GISAIntr, types);
-                                CallInst* pCall = builder.CreateCall(pFunc, args);
-                                replaceInsts.insert(std::make_pair(CI, pCall));
+                                else if (calledFunc->getName().equals("GenISA_mul_rtz"))
+                                {
+                                    GISAIntr = GenISAIntrinsic::GenISA_mul_rtz;
+                                }
+                                else if (calledFunc->getName().equals("GenISA_add_rtz"))
+                                {
+                                    GISAIntr = GenISAIntrinsic::GenISA_add_rtz;
+                                }
+                                else if (calledFunc->getName().equals("GenISA_uitof_rtz"))
+                                {
+                                    GISAIntr = GenISAIntrinsic::GenISA_uitof_rtz;
+                                }
+                                if (GISAIntr != GenISAIntrinsic::no_intrinsic)
+                                {
+                                    IRBuilder<> builder(CI);
+                                    std::vector<Value*> args;
+                                    std::vector<Type*> types;
+
+                                    types.push_back(CI->getType());
+
+                                    for (unsigned i = 0; i < CI->getNumArgOperands(); i++)
+                                    {
+                                        types.push_back(CI->getArgOperand(i)->getType());
+                                        args.push_back(CI->getArgOperand(i));
+                                    }
+                                    Function* pFunc = GenISAIntrinsic::getDeclaration(&M, GISAIntr, types);
+                                    CallInst* pCall = builder.CreateCall(pFunc, args);
+                                    replaceInsts.emplace_back(CI, pCall);
+                                }
                             }
                         }
                     }
