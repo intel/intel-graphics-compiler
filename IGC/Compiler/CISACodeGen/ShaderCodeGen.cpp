@@ -64,6 +64,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BreakConstantExpr/BreakConstantExpr.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ReplaceUnsupportedIntrinsics/ReplaceUnsupportedIntrinsics.hpp"
@@ -446,6 +447,15 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(llvm::createLICMPass());
         }
         mpm.add(llvm::createLoopSimplifyPass());
+    }
+
+
+    // Lower/Resolve OCL inlined constants.
+    if (ctx.m_DriverInfo.NeedLoweringInlinedConstants()) {
+        // Run additional constant breaking which is assumed by the constant
+        // resolver.
+        mpm.add(new BreakConstantExpr());
+        mpm.add(new ProgramScopeConstantResolution());
     }
 
     bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||

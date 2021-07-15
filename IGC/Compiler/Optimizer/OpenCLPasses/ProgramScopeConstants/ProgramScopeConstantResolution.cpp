@@ -161,12 +161,12 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
 
             Function* userFunc = user->getParent()->getParent();
 
-            // The implicit args have been deprecated for all uses except in the kernels, so
-            // skip processing non-kernel functions since they will be resolved with relocation instead.
-            if (!isEntryFunc(mdUtils, userFunc))
-            {
+            // Don't have implicit arg if doing relocation
+            if (userFunc->hasFnAttribute("visaStackCall"))
                 continue;
-            }
+            // Skip functions called from function marked with IndirectlyCalled attribute
+            if (AddImplicitArgs::hasIndirectlyCalledParent(userFunc))
+                continue;
 
             // Skip unused internal functions.
             if (mdUtils->findFunctionsInfoItem(userFunc) == mdUtils->end_FunctionsInfo())
