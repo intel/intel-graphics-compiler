@@ -227,8 +227,6 @@ namespace vISA
 
         INST_LIST_ITER fixMadwInst(INST_LIST_ITER i, G4_BB* bb);
 
-        void fixFloatARFDst(INST_LIST_ITER it, G4_BB* bb);
-
     public:
         HWConformity(IR_Builder& b, G4_Kernel &k, vISA::Mem_Manager& m) :
             builder(b), kernel(k), mem(m)
