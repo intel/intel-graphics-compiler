@@ -368,6 +368,7 @@ bool FGPassManager::doFGInitialization(unsigned Begin, unsigned End,
       // TODO: SCC PassManager?
       IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_FunctionPassManager,
         "Invalid FGPassManager member");
+      IGC_ASSERT(FGA.getModule());
       Changed |= ((FPPassManager*)PM)->doInitialization(*FGA.getModule());
     } else {
       Changed |=
@@ -408,6 +409,12 @@ bool FGPassManager::runFGPassSequence(unsigned &Pass) {
   // module passes so we will need to query it every time we
   // execute sequence of passes.
   FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
+  if (!FGA.getModule()) {
+#ifndef NDEBUG
+    llvm::errs() << "warning, trying to access stale FGA!\n";
+#endif
+    return false;
+  }
   bool Changed = false;
 
   Changed |= doFGInitialization(BeginPass, Pass, FGA);

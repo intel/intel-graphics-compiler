@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "SPIRVWrapper.h"
+#include "VCPassManager.h"
 
 #include "vc/Driver/Driver.h"
 
@@ -31,7 +32,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/InitializePasses.h"
@@ -246,7 +246,7 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
 static void optimizeIR(const vc::CompileOptions &Opts,
                        const vc::ExternalData &ExtData, TargetMachine &TM,
                        Module &M) {
-  legacy::PassManager PerModulePasses;
+  VCPassManager PerModulePasses;
   legacy::FunctionPassManager PerFunctionPasses(&M);
 
   PerModulePasses.add(
@@ -317,6 +317,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
 #endif
 
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
+
   bool AddPasses =
       TM.addPassesToEmitFile(PM, OS, nullptr, FileType, DisableIrVerifier);
   IGC_ASSERT_MESSAGE(!AddPasses, "Bad filetype for vc-codegen");
@@ -325,7 +326,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
 static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
                                             const vc::ExternalData &ExtData,
                                             TargetMachine &TM, Module &M) {
-  legacy::PassManager PM;
+  VCPassManager PM;
 
   SmallString<32> IsaBinary;
   raw_svector_ostream OS(IsaBinary);
@@ -347,7 +348,8 @@ static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
 static vc::cm::CompileOutput runCmCodeGen(const vc::CompileOptions &Opts,
                                           const vc::ExternalData &ExtData,
                                           TargetMachine &TM, Module &M) {
-  legacy::PassManager PM;
+  VCPassManager PM;
+
   SmallString<32> IsaBinary;
   raw_svector_ostream OS(IsaBinary);
   populateCodeGenPassManager(Opts, ExtData, TM, OS, PM);
@@ -414,7 +416,7 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpModule(M, "after_spirv_reader.ll");
 
-  legacy::PassManager PerModulePasses;
+  VCPassManager PerModulePasses;
   PerModulePasses.add(createGenXSPIRVReaderAdaptorPass());
   PerModulePasses.add(createGenXRestoreIntrAttrPass());
   PerModulePasses.run(M);
