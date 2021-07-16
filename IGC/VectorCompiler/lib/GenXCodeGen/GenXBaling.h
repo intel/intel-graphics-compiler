@@ -214,14 +214,15 @@ SPDX-License-Identifier: MIT
 
 #include "FunctionGroup.h"
 #include "GenX.h"
-#include "GenXRegion.h"
 #include "GenXAlignmentInfo.h"
+#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "IgnoreRAUWValueMap.h"
+#include "Probe/Assertion.h"
 #include "llvm/ADT/Hashing.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/Pass.h"
 #include <string>
-#include "Probe/Assertion.h"
 
 namespace llvm {
   class BranchInst;
@@ -382,6 +383,7 @@ class GenXBaling {
   NeedCloneStack_t NeedCloneStack;
   SmallVector<CallInst *, 4> TwoAddrSends;
 protected:
+  DominatorTree *DT;
   GenXLiveness *Liveness; // only in group baling
 public:
   genx::AlignmentInfo AlignInfo;
@@ -391,8 +393,6 @@ public:
         Liveness(nullptr) {}
   // clear : clear out the analysis
   void clear() { InstMap.clear(); }
-  // processFunctionGroup : process all the Functions in a FunctionGroup
-  bool processFunctionGroup(FunctionGroup *FG);
   // processFunction : process one Function
   bool processFunction(Function *F);
   // processInst : recalculate the baling info for an instruction
@@ -492,6 +492,7 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override {
     clear();
+    DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     return processFunction(&F);
   }
   // createPrinterPass : get a pass to print the IR, together with the GenX
@@ -517,7 +518,7 @@ public:
   virtual StringRef getPassName() const {
     return "GenX instruction baling analysis for a function group";
   }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunctionGroup(FunctionGroup &FG);
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
@@ -525,6 +526,8 @@ public:
                                   const std::string &Banner) const {
     return createGenXGroupPrinterPass(O, Banner);
   }
+  // processFunctionGroup : process all the Functions in a FunctionGroup
+  bool processFunctionGroup(FunctionGroup *FG);
 };
 void initializeGenXGroupBalingPass(PassRegistry &);
 
