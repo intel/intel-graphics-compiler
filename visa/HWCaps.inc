@@ -730,14 +730,12 @@ SPDX-License-Identifier: MIT
 
     bool hasTwoGRFBank16Bundles() const
     {
-        const TARGET_PLATFORM P = getPlatform();
-        return P == XE_HP;
+        return getPlatform() == XE_HP;
     }
 
     bool hasOneGRFBank16Bundles() const
     {
-    const TARGET_PLATFORM P = getPlatform();
-        return P != XE_HP;
+        return getPlatform() != XE_HP;
     }
 
     bool hasDPASSrc0Src1BankConflict() const
@@ -778,8 +776,7 @@ SPDX-License-Identifier: MIT
     // Note that this function is intentionally omitted from HWCapsOpen.inc to avoid IP leak
     bool hasThreeALUPipes() const
     {
-        const TARGET_PLATFORM P = getPlatform();
-        return (P == XE_HP);
+        return (getPlatform() == XE_HP);
     }
 
     bool hasFusedEUWA() const
