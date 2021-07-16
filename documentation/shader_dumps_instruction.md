@@ -65,7 +65,7 @@ You can learn more about dumping options in configuration flags documentation [h
 
 ## Shader overriding
 
-This is a more advanced debugging functionality that allows overriding most of the compilation steps with own dumps during IGC runtime.
+This is a more advanced debugging functionality that allows overriding most of the compilation steps with own dumps during IGC runtime. This option requires Debug IGC build.
 
 ### Basic overview
 
