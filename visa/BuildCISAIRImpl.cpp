@@ -1829,6 +1829,7 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
     const char *target_label,
+    bool is_fccall,
     int lineNum)
 {
     VISA_LabelOpnd * opnd[1];
@@ -1842,10 +1843,12 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             //determine correct IDs since function directive might not have been
             //encountered yet
             opnd[i] = m_kernel->getLabelOperandFromFunctionName(std::string(target_label));
+
+            VISA_Label_Kind lblKind = is_fccall ? LABEL_FC : LABEL_SUBROUTINE;
             if (!opnd[i])
             {
-                VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, LABEL_SUBROUTINE);
-                opnd[i]->tag = ISA_SUBROUTINE;
+                VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, lblKind);
+                opnd[i]->tag = lblKind;
             }
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
             VISA_CALL_TO_BOOL(AppendVISACFCallInst,

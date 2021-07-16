@@ -969,7 +969,7 @@ static std::string printInstructionControlFlow(
         label_id = getPrimitiveOperand<uint16_t>(inst, i++);
 
         const label_info_t* lblinfo = header->getLabel(label_id);
-        const char* instName = ((false && lblinfo->kind == LABEL_FC) ? "fccall" : ISA_Inst_Table[opcode].str);
+        const char* instName = (lblinfo->kind == LABEL_FC ? "fccall" : ISA_Inst_Table[opcode].str);
         sstr << printPredicate(opcode, inst->pred)
              << instName
              << " "

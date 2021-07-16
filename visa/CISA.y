@@ -105,6 +105,12 @@ std::vector<attr_gen_struct*> AttrOptVar;
     VISA_PREDICATE_STATE   pred_sign;
     VISA_PREDICATE_CONTROL pred_ctrl;
 
+    // to tell call is fc_call or subroutine call
+    struct call_sub_or_fc {
+        ISA_Opcode opcode;
+        bool       is_fccall;
+    } cisa_call;
+
     struct {
         VISA_Modifier mod;
     } src_mod;
@@ -384,6 +390,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token <opcode> LIFETIME_START_OP
 %token <opcode> LIFETIME_END_OP
 %token <opcode> AVS_OP
+%token <cisa_call> CALL_OP
 
 %type <string> RTWriteModeOpt
 
@@ -1383,7 +1390,11 @@ SwitchLabels:
                    // 1        2         3          4
 BranchInstruction: Predicate BRANCH_OP ExecSize IdentOrStringLit
     {
-        pBuilder->CISA_create_branch_instruction($1, $2, $3.emask, $3.exec_size, $4, CISAlineno);
+        pBuilder->CISA_create_branch_instruction($1, $2, $3.emask, $3.exec_size, $4, false, CISAlineno);
+    }
+    | Predicate CALL_OP ExecSize IdentOrStringLit
+    {
+        pBuilder->CISA_create_branch_instruction($1, $2.opcode, $3.emask, $3.exec_size, $4, $2.is_fccall, CISAlineno);
     }
     | Predicate RET_OP ExecSize
     {

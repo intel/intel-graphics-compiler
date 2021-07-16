@@ -269,6 +269,7 @@ public:
         VISA_EMask_Ctrl emask,
         unsigned exec_size,
         const char *target_label,
+        bool is_fccall,
         int lineNum);
 
 

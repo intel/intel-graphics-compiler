@@ -3122,7 +3122,11 @@ void vISAVerifier::finalize()
     {
         if (!(iter.second))
         {
-            REPORT_HEADER(options, false, "undefined label: %s", header->getString(header->getLabel(iter.first)->name_index));
+            const label_info_t* lblInfo = header->getLabel(iter.first);
+            if (lblInfo->kind != LABEL_FC)
+            {
+                REPORT_HEADER(options, false, "undefined label: %s", header->getString(lblInfo->name_index));
+            }
         }
     }
 }
