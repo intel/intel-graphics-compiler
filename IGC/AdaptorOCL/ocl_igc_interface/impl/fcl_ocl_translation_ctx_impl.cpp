@@ -179,16 +179,19 @@ static llvm::Optional<std::string> MakeTemporaryCMSource(
     std::string tmpFilename,
     OclTranslationOutputBase& outI);
 
-static std::string processCmSrcOptions(llvm::SmallVectorImpl<const char*> &userArgs) {
+static bool processCmSrcOptions(
+    llvm::SmallVectorImpl<const char*> &userArgs,
+    std::string &inputFile) {
+
     std::string optname = "-cm-src";
     auto toErase = std::find_if(userArgs.begin(), userArgs.end(),
         [&optname](const auto& Item) { return std::strcmp(Item, optname.c_str()) == 0; });
     if (toErase != userArgs.end()) {
         auto itFilename = toErase + 1;
         if (itFilename != userArgs.end() && *itFilename != "--") {
-            std::string inputFile = *itFilename;
+            inputFile = *itFilename;
             userArgs.erase(toErase, toErase + 2);
-            return inputFile;
+            return true;
         }
     }
 
@@ -199,13 +202,13 @@ static std::string processCmSrcOptions(llvm::SmallVectorImpl<const char*> &userA
           return S.startswith(optname);
         });
     if (toErase != userArgs.end()) {
-        std::string inputFile = *toErase;
+        inputFile = *toErase;
         inputFile = inputFile.substr(optname.length());
         userArgs.erase(toErase);
-        return inputFile;
+        return true;
     }
 
-    return "src.cm";
+    return false;
 }
 
 static std::vector<const char*>
@@ -235,14 +238,18 @@ static std::vector<const char*>
     const std::string& cmfeDefaultArch =
         cmfeDefaultArchOpt ? cmfeDefaultArchOpt.getValue() : "SKL";
 
-    auto OptSrc = MakeTemporaryCMSource(Src, processCmSrcOptions(userArgs), outI);
-    if (!OptSrc)
-        return {};
+    std::string inputFile = "src.cm";
+    if (!processCmSrcOptions(userArgs, inputFile)) {
+        auto OptSrc = MakeTemporaryCMSource(Src, inputFile, outI);
+        if (!OptSrc)
+            return {};
+        inputFile = OptSrc.getValue();
+    }
 
     std::vector<const char*> result = {
         "-emit-spirv",
         "-fcmocl",
-        stringSaver.save(OptSrc.getValue()).data()
+        stringSaver.save(inputFile).data()
     };
     auto ItArchScanEnd = std::find_if(userArgs.begin(), userArgs.end(),
         [](const auto& Arg) { return std::strcmp(Arg, "--") == 0; });
@@ -481,6 +488,7 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
 
     IGC::AdaptorCM::Frontend::InputArgs InputArgs;
     InputArgs.CompilationOpts = Drv->getFEArgs();
+    InputArgs.InputText = src->GetMemory<char>();
     auto FEOutput = FE.translate(InputArgs);
     if (!FEOutput)
     {
