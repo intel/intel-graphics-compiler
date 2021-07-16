@@ -48,14 +48,5 @@ def : PlainJoined<"runtime=">, Alias<binary_format>,
 def ftime_report : PlainFlag<"ftime-report">,
   HelpText<"Print timing summary of each stage of compilation">;
 
-def vc_globals_localization : PlainSeparate<"globals-localization">,
-  HelpText<"globals localization optimization configuration; values:\n"
-           "\t'all' - localize all globals,\n\t'no' - don't localize globals,\n"
-           "\t'vector' - localize all vector globals the rest is partially "
-           "localized,\n\t'partial' - compiler may localize some globals "
-           "according to its heuristics">;
-def : PlainJoined<"globals-localization=">, Alias<vc_globals_localization>,
-  HelpText<"Alias for -globals-localization <value>">;
-
 }
 // }} VC internal options

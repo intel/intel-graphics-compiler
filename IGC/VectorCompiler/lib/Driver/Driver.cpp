@@ -198,26 +198,6 @@ createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
   return {std::move(TM)};
 }
 
-static GlobalsLocalizationConfig
-defineGlobalsLocalizationConfig(vc::GlobalsLocalizationMode GLMode,
-                                vc::BinaryKind Binary) {
-  // Globals must be forced for CMRT binary.
-  if (Binary == vc::BinaryKind::CM)
-    return GlobalsLocalizationConfig::CreateForcedLocalization();
-  switch (GLMode) {
-  case vc::GlobalsLocalizationMode::All:
-    return GlobalsLocalizationConfig::CreateForcedLocalization();
-  case vc::GlobalsLocalizationMode::No:
-    return GlobalsLocalizationConfig::CreateLocalizationWithLimit(0);
-  case vc::GlobalsLocalizationMode::Vector:
-    return GlobalsLocalizationConfig::CreateForcedVectorLocalization();
-  default:
-    IGC_ASSERT_MESSAGE(GLMode == vc::GlobalsLocalizationMode::Partial,
-                       "unexpected globals localization mode");
-    return GlobalsLocalizationConfig::CreateLocalizationWithLimit();
-  }
-}
-
 // Create backend options for immutable config pass. Override default
 // values with provided ones.
 static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
@@ -233,8 +213,6 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();
   BackendOpts.ShaderOverrider = Opts.ShaderOverrider.get();
-  BackendOpts.GlobalsLocalization =
-      defineGlobalsLocalizationConfig(Opts.GlobalsLocalization, Opts.Binary);
   BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
   if (Opts.ForceLiveRangesLocalizationForAccUsage)
     BackendOpts.LocalizeLRsForAccUsage = true;
@@ -617,21 +595,6 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     if (!MaybeBinary)
       return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
     Opts.Binary = MaybeBinary.getValue();
-  }
-
-  if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_globals_localization)) {
-    StringRef Val = A->getValue();
-    auto MaybeGLM = StringSwitch<Optional<vc::GlobalsLocalizationMode>>(Val)
-                        .Case("all", vc::GlobalsLocalizationMode::All)
-                        .Case("no", vc::GlobalsLocalizationMode::No)
-                        .Case("vector", vc::GlobalsLocalizationMode::Vector)
-                        .Case("partial", vc::GlobalsLocalizationMode::Partial)
-                        .Default(None);
-    // FIXME: -globals-localization=no is ignored when cm binary is used, throw
-    //        a warning here.
-    if (!MaybeGLM)
-      return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
-    Opts.GlobalsLocalization = MaybeGLM.getValue();
   }
 
   Opts.FeaturesString =

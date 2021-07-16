@@ -86,7 +86,6 @@ struct CompileOptions {
   bool DumpAsm = false;
   bool DumpDebugInfo = false;
   bool TimePasses = false;
-  GlobalsLocalizationMode GlobalsLocalization = GlobalsLocalizationMode::Vector;
   std::string LLVMOptions;
   bool UseBindlessBuffers = false;
 

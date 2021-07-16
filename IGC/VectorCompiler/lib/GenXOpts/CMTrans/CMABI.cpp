@@ -239,8 +239,6 @@ int DiagnosticInfoOverlappingArgs::KindID = 0;
 class CMABIAnalysis : public ModulePass {
   // This map captures all global variables to be localized.
   std::vector<LocalizationInfo *> LocalizationInfoObjs;
-  GlobalsLocalizationConfig::LimitT GlobalsLocalizationLimit = 0;
-  bool LocalizeVectorGlobals = false;
 
 public:
   static char ID;
@@ -355,116 +353,12 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(CMABIAnalysis, "cmabi-analysis",
                     "Fix ABI issues for the genx backend", false, true)
 
-static std::size_t
-defineGlobalsLocalizationLimit(const GenXBackendConfig &Config) {
-  if (Config.isGlobalsLocalizationForced())
-    return GlobalsLocalizationConfig::NoLimit;
-
-  // Half of a size of standard GenX register file in bytes.
-  // 128 * 32 / 2
-  constexpr std::size_t HalfGRF = 2048;
-  std::size_t Limit = Config.getGlobalsLocalizationLimit();
-  return std::min(Limit, HalfGRF);
-}
-
 bool CMABIAnalysis::runOnModule(Module &M) {
   auto &&BCfg = getAnalysis<GenXBackendConfig>();
-  GlobalsLocalizationLimit = defineGlobalsLocalizationLimit(BCfg);
-  LocalizeVectorGlobals = BCfg.isVectorGlobalsLocalizationForced();
   FCtrl = BCfg.getFCtrl();
 
   runOnCallGraph(getAnalysis<CallGraphWrapperPass>().getCallGraph());
   return false;
-}
-
-// Currently weight of the global defines by its size
-static int calcGVWeight(const GlobalVariable &GV, const DataLayout &DL) {
-  if (!GV.getValueType()->isVectorTy())
-    return DL.getTypeAllocSize(GV.getValueType());
-  // Alignment rules are too restrictive for vectors and cannot be reduced
-  // (even though LangRef says that they can).
-  // GRF width (32) alignment was taken as it is considered that localized
-  // global vectors should be eventually promoted to GRF.
-  return alignTo(DL.getTypeStoreSize(GV.getValueType()), 32);
-}
-
-// selectGlobalsToLocalize - chooses which globals to localize.
-// Returns std::vector of std::reference_wrapper to such globals.
-//
-// Algorithm: exclude globals that definitely should not be localized, include
-// those that definitely should. If the total weight of the already chosen
-// globals doesn't exceed \p Bound, sort the remaining globals by weight,
-// choose first lightest ones, so the total weight is under \p Bound.
-//
-// \p Globals - range of globals to choose from
-// \p Bound - bound not to overcome
-// \p ExcludePred - functor : GVRef -> bool, true if global should not be
-//                  localized
-// \p InlcudePred - functor : GVRef -> bool, true if the provided global must
-//                  be localized
-// \p WeightCalculator - functor : GVRef -> decltype(Bound), returns
-// weight of global
-template <typename ForwardRange, typename ExcludePredT, typename IncludePredT,
-          typename T, typename WeightCalculatorT>
-auto selectGlobalsToLocalize(ForwardRange Globals, T Bound,
-                             ExcludePredT ExcludePred, IncludePredT IncludePred,
-                             WeightCalculatorT WeightCalculator) {
-  IGC_ASSERT_MESSAGE(Bound >= 0, "bound must be nonnegative");
-  using GVRef = vc::ranges::range_reference_t<ForwardRange>;
-  using GVT = std::remove_reference_t<GVRef>;
-  using GVRefWrapper = std::reference_wrapper<GVT>;
-
-  IGC_ASSERT_MESSAGE(std::none_of(Globals.begin(), Globals.end(),
-                                  [ExcludePred, IncludePred](GVRef GV) {
-                                    return ExcludePred(GV) && IncludePred(GV);
-                                  }),
-                     "'must include' and 'must exclude' sets must be disjoint");
-
-  if (Bound == GlobalsLocalizationConfig::NoLimit) {
-    std::vector<GVRefWrapper> ToLocalize;
-    // filter out those, that we must exclude
-    std::copy_if(Globals.begin(), Globals.end(), std::back_inserter(ToLocalize),
-                 [ExcludePred](GVRef GV) { return !ExcludePred(GV); });
-    return ToLocalize;
-  }
-
-  std::vector<GVRefWrapper> ToLocalize;
-  // Adding those that we must include.
-  std::copy_if(Globals.begin(), Globals.end(), std::back_inserter(ToLocalize),
-               IncludePred);
-  if (Bound == 0)
-    return ToLocalize;
-
-  T IncludeWeight =
-      std::accumulate(ToLocalize.begin(), ToLocalize.end(), static_cast<T>(0),
-                      [WeightCalculator](T Prev, GVRef GV) {
-                        return Prev + WeightCalculator(GV);
-                      });
-  if (IncludeWeight >= Bound)
-    return ToLocalize;
-
-  std::vector<GVRefWrapper> Remainder;
-  std::copy_if(Globals.begin(), Globals.end(), std::back_inserter(Remainder),
-               [IncludePred, ExcludePred](GVRef GV) {
-                 return !IncludePred(GV) && !ExcludePred(GV);
-               });
-  // Sorting remaining globals by weight.
-  std::sort(Remainder.begin(), Remainder.end(),
-            [WeightCalculator](GVRef LHS, GVRef RHS) {
-              return WeightCalculator(LHS) < WeightCalculator(RHS);
-            });
-
-  T RemainderBound = Bound - IncludeWeight;
-  // filter max number of lightest ones, which weight sum is under the bound
-  auto FirstNotToLocalize = vc::upper_partial_sum_bound(
-      Remainder.begin(), Remainder.end(), RemainderBound,
-      [WeightCalculator](T Base, GVRef Inc) {
-        return Base + WeightCalculator(Inc);
-      });
-
-  std::copy(Remainder.begin(), FirstNotToLocalize,
-            std::back_inserter(ToLocalize));
-  return ToLocalize;
 }
 
 bool CMABIAnalysis::runOnCallGraph(CallGraph &CG) {
@@ -541,45 +435,25 @@ bool CMABI::runOnSCC(CallGraphSCC &SCC) {
   return Changed;
 }
 
-// Whether \p Inst is an instruction on which IR rebuild caused by addrspace
-// change will stop.
-static bool isRebuildTerminal(const Instruction &Inst) {
-  // Result of a load inst is no longer a pointer so here propogation will stop.
-  if (isa<LoadInst>(Inst) || isa<AddrSpaceCastInst>(Inst) ||
-      isa<StoreInst>(Inst))
-    return true;
-  if (!isa<IntrinsicInst>(Inst))
-    return false;
-  auto IID = cast<IntrinsicInst>(Inst).getIntrinsicID();
-  return IID == Intrinsic::masked_gather || IID == Intrinsic::masked_scatter;
-}
-
 // Replaces uses of global variables with the corresponding allocas inside a
 // specified function. More insts can be rebuild if global variable addrspace
 // wasn't private.
 static void replaceUsesWithinFunction(
     const SmallDenseMap<Value *, Value *> &GlobalsToReplace, Function *F) {
-  auto ToRebuild = vc::MakeRebuildInfoBuilder(
-      [](const Instruction &Inst) { return isRebuildTerminal(Inst); });
-  ReversePostOrderTraversal<Function *> RPOT(F);
-  for (auto *BB : RPOT) {
-    for (auto &Inst : *BB) {
+  for (auto &BB : *F) {
+    for (auto &Inst : BB) {
       for (unsigned i = 0, e = Inst.getNumOperands(); i < e; ++i) {
         Value *Op = Inst.getOperand(i);
         auto Iter = GlobalsToReplace.find(Op);
         if (Iter != GlobalsToReplace.end()) {
-          if (Op->getType() == Iter->second->getType())
-            Inst.setOperand(i, Iter->second);
-          else {
-            ToRebuild.addEntry(Inst, i, *Iter->second);
-          }
-        } else {
-          ToRebuild.addNodeIfRequired(Inst, i);
+          IGC_ASSERT_MESSAGE(Op->getType() == Iter->second->getType(),
+                             "only global variables in private addrspace are "
+                             "localized, so types must match");
+          Inst.setOperand(i, Iter->second);
         }
       }
     }
   }
-  vc::MakeInstructionRebuilder(std::move(ToRebuild).emit()).rebuild();
 }
 
 // \brief Create allocas for globals directly used in this kernel and
@@ -1534,21 +1408,15 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   if (M.global_empty())
     return;
 
-  const auto &DL = M.getDataLayout();
-  auto ToLocalize = selectGlobalsToLocalize(
-      M.globals(), GlobalsLocalizationLimit,
-      [](const GlobalVariable &GV) {
-        // Don't localize global constant format string, as it must be
-        // relocated in case of zebin printf.
-        // FIXME: what if we force localization.
-        return GV.hasAttribute(genx::FunctionMD::GenXVolatile) ||
-               vc::isConstantString(GV);
-      },
-      [IncludeVectors = LocalizeVectorGlobals](const GlobalVariable &GV) {
-        return IncludeVectors && GV.getValueType()->isVectorTy() &&
-               !GV.hasAttribute(genx::FunctionMD::GenXVolatile);
-      },
-      [&DL](const GlobalVariable &GV) { return calcGVWeight(GV, DL); });
+  // FIXME: String constants must be localized too. Excluding them there
+  //        to WA legacy printf implementation in CM FE (printf strings are
+  //        not in constant addrspace in legacy printf).
+  auto ToLocalize =
+      make_filter_range(M.globals(), [](const GlobalVariable &GV) {
+        return GV.getAddressSpace() == PrivateAddrSpace &&
+               !GV.hasAttribute(genx::FunctionMD::GenXVolatile) &&
+               !vc::isConstantString(GV);
+      });
 
   // Collect direct and indirect (GV is used in a called function)
   // uses of globals.

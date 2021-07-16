@@ -69,19 +69,6 @@ static cl::opt<std::string>
                              "precompiled printf implementation"),
                     cl::init(""));
 
-static cl::opt<bool> ForceGlobalsLocalizationOpt(
-    "vc-force-globals-localization",
-    cl::desc("all global variables must be localized"), cl::init(true));
-
-static cl::opt<bool> ForceVectorGlobalsLocalizationOpt(
-    "vc-force-vector-globals-localization",
-    cl::desc("vector global variables must be localized"), cl::init(true));
-
-static cl::opt<GlobalsLocalizationConfig::LimitT> GlobalsLocalizationLimitOpt(
-    "vc-globals-localization-limit",
-    cl::desc("maximum size (in bytes) used to localize global variables"),
-    cl::init(GlobalsLocalizationConfig::NoLimit));
-
 static cl::opt<bool> LocalizeLRsForAccUsageOpt(
     "vc-acc-split", cl::init(false), cl::Hidden,
     cl::desc("Localize arithmetic chain to reduce accumulator usages"));
@@ -129,9 +116,6 @@ GenXBackendOptions::GenXBackendOptions()
       EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
       UseNewStackBuilder(UseNewStackBuilderOpt),
-      GlobalsLocalization{ForceGlobalsLocalizationOpt.getValue(),
-                          ForceVectorGlobalsLocalizationOpt.getValue(),
-                          GlobalsLocalizationLimitOpt.getValue()},
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
       FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
