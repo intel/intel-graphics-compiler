@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/General/BiF.h"
 
 #include <llvm/ADT/STLExtras.h>
@@ -165,6 +166,20 @@ BIConvert::BIConvert() {
       std::make_pair(Intrinsic::fma, GenXIntrinsic::genx_rndz);
 }
 
+// Get intrinsic declaration for given base call instruction and intrinsic ID.
+// Specialized for OneMap IID usage -- in case IID is not genx intrinsic id,
+// assume that this is intrinsic with only one overloaded type (fma).
+static Function *getOneMapIntrinsicDeclaration(CallInst &CI, const unsigned IID,
+                                               Module &M) {
+  if (GenXIntrinsic::isGenXIntrinsic(IID))
+    return vc::getGenXDeclarationForIdFromArgs(
+        CI.getType(), CI.args(), static_cast<GenXIntrinsic::ID>(IID), M);
+
+  IGC_ASSERT_MESSAGE(IID == Intrinsic::fma, "Expected fma intrinsic");
+  return Intrinsic::getDeclaration(&M, static_cast<Intrinsic::ID>(IID),
+                                   {CI.getType()});
+}
+
 void BIConvert::runOnModule(Module &M) {
   std::vector<Instruction *> ListDelete;
   for (Function &func : M) {
@@ -206,28 +221,12 @@ void BIConvert::runOnModule(Module &M) {
         StringRef CalleeName = callee->getName();
         // Check if it exists in the one-intrinsic map.
         if (OneMap.count(CalleeName)) {
-          // Some of OneMap intrinsics require only ret type, but others require
-          // arg types (currently only arg0) as well.
-          std::vector<Type *> tys;
-          tys.reserve(InstCall->getNumArgOperands() + 1 /* RetTy */);
-          SmallVector<llvm::Value *, 3> args;
-          unsigned IID = OneMap[CalleeName];
-          // build type-list
-          if (GenXIntrinsic::isGenXIntrinsic(IID)) {
-            if (GenXIntrinsic::isOverloadedRet(IID))
-              tys.push_back(callee->getReturnType());
-            for (unsigned i = 0; i < InstCall->getNumArgOperands(); ++i)
-              if (GenXIntrinsic::isOverloadedArg(IID, i))
-                tys.push_back(InstCall->getArgOperand(i)->getType());
-          } else
-            tys.push_back(callee->getReturnType());
-
-          // build argument list
-          args.append(InstCall->op_begin(),
-                      InstCall->op_begin() + InstCall->getNumArgOperands());
-          Function *IntrinFunc = GenXIntrinsic::getAnyDeclaration(&M, IID, tys);
-          Instruction *IntrinCall =
-              CallInst::Create(IntrinFunc, args, InstCall->getName(), InstCall);
+          const unsigned IID = OneMap[CalleeName];
+          Function *const IntrinFunc =
+              getOneMapIntrinsicDeclaration(*InstCall, IID, M);
+          const SmallVector<llvm::Value *, 3> Args{InstCall->args()};
+          Instruction *const IntrinCall =
+              CallInst::Create(IntrinFunc, Args, InstCall->getName(), InstCall);
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(IntrinCall);
           ListDelete.push_back(InstCall);
