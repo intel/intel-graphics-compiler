@@ -82,15 +82,9 @@ static cl::opt<bool>
     ForceRetMemPassing("vc-stack-force-ret-mem",
                        cl::desc("Pass all stackcall retval via stackmem"),
                        cl::init(false));
-static cl::opt<bool>
-    DefaultMaskArgsProcessingPolicy("vc-stack-handle-mask-args",
+static cl::opt<bool> HandleMaskArgs("vc-stack-handle-mask-args",
                                     cl::desc("Pass i1 arguments of stackcalls"),
                                     cl::init(true));
-static cl::opt<bool>
-    AbortOnSIMDCF("vc-prologue-insertion-aborts-on-simdcf",
-                  cl::desc("fatal error is reported on simdcf detection by "
-                           "prologue insertion pass"),
-                  cl::init(false));
 
 namespace {
 
@@ -132,7 +126,6 @@ class GenXPrologEpilogInsertion
   unsigned ArgRegSize = 0;
   unsigned RetRegSize = 0;
 
-  bool HandleMaskArgs = true;
   bool UseGlobalMem = true;
 
   void generateKernelProlog(Function &F);
@@ -256,7 +249,6 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   NumCalls = CallsCalculator().getNumCalls(F);
   UseGlobalMem =
       F.getParent()->getModuleFlag(ModuleMD::UseSVMStack) != nullptr;
-  HandleMaskArgs = DefaultMaskArgsProcessingPolicy;
   LLVM_DEBUG(dbgs() << "Visiting all calls in " << F.getName() << "\n");
   visit(F);
   LLVM_DEBUG(dbgs() << "Visiting finished\n");
@@ -281,21 +273,13 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
     generateStackCall(&I);
   if (!IsIndirectCall) {
     auto IID = GenXIntrinsic::getAnyIntrinsicID(I.getCalledFunction());
-    if (IID == GenXIntrinsic::genx_alloca) {
+    if (IID == GenXIntrinsic::genx_alloca)
       generateAlloca(&I);
-      return;
-    }
     // TODO: conformance fails when we pass i1 args in presence of SIMDCF. Funny
     // thing is that ISPC doesn't use goto/join in its recursion tests so
     // they're fine (i.e. they're not affected by this option) unlike CM
-    if (IID == GenXIntrinsic::genx_simdcf_goto) {
+    else if (IID == GenXIntrinsic::genx_simdcf_goto)
       HandleMaskArgs = false;
-      DiagnosticInfoPrologEpilogInsertion DiagErr(
-          I.getFunction()->getName() + ": simdcf may not be properly supported",
-          AbortOnSIMDCF ? DS_Error : DS_Warning);
-      I.getContext().diagnose(DiagErr);
-      return;
-    }
   }
 }
 
