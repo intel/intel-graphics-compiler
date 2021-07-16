@@ -5225,7 +5225,7 @@ namespace IGC
             for (int i = 0; i < functionCount; i++)
             {
                 std::string tmpVisaFile = name.AbsolutePath(folder);
-                std::string::size_type asmNameEnd = tmpVisaFile.find_last_of("_");
+                std::string::size_type asmNameEnd = tmpVisaFile.find_last_of(".");
                 tmpVisaFile = tmpVisaFile.substr(0, asmNameEnd);
                 std::stringstream asmName;
                 asmName << tmpVisaFile;
