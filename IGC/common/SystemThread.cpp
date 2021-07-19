@@ -489,7 +489,19 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     {
         if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
-            SIPIndex = bindlessMode ? GEN12_LP_CSR_DEBUG_BINDLESS : GEN12_LP_CSR_DEBUG;
+            switch (platform.getPlatformInfo().eProductFamily)
+            {
+            case IGFX_TIGERLAKE_LP:
+            case IGFX_DG1:
+            case IGFX_ROCKETLAKE:
+            case IGFX_ALDERLAKE_S:
+                SIPIndex = bindlessMode ? GEN12_LP_CSR_DEBUG_BINDLESS : GEN12_LP_CSR_DEBUG; 
+                break;
+
+
+            default:
+                break;
+            }
         }
         else if (bindlessMode)
         {
