@@ -69,7 +69,7 @@ public:
   // add a pointer patch token.
   void createPointerGlobalAnnotation(unsigned index, unsigned offset,
                                      unsigned sizeInBytes, unsigned BTI,
-                                     ArgAccessKind access);
+                                     ArgAccessKind access, bool isBindless);
 
   void createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
                                    unsigned payloadPosition, int BTI,

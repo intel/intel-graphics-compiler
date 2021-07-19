@@ -125,6 +125,7 @@ class KernelArgInfoBuilder
                 case ArgKind::Image1D:
                 case ArgKind::Image2D:
                 case ArgKind::Image3D:
+                case ArgKind::BindlessBuffer:
                     return Global;
                 case ArgKind::Sampler:
                     return Constant;
@@ -284,11 +285,11 @@ void CMKernel::createImplicitArgumentsAnnotation(unsigned payloadPosition)
 
 void CMKernel::createPointerGlobalAnnotation(unsigned index, unsigned offset,
                                              unsigned sizeInBytes, unsigned BTI,
-                                             ArgAccessKind access)
+                                             ArgAccessKind access, bool isBindless)
 {
     auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
-    ptrAnnotation->IsStateless = true;
-    ptrAnnotation->IsBindlessAccess = false;
+    ptrAnnotation->IsStateless = !isBindless;
+    ptrAnnotation->IsBindlessAccess = isBindless;
     ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
     ptrAnnotation->ArgumentNumber = index;
     ptrAnnotation->BindingTableIndex = BTI;
@@ -299,11 +300,14 @@ void CMKernel::createPointerGlobalAnnotation(unsigned index, unsigned offset,
     ptrAnnotation->IsEmulationArgument = false;
     m_kernelInfo.m_pointerArgument.push_back(std::move(ptrAnnotation));
 
+    const auto zeAddrMode = isBindless ?
+      zebin::PreDefinedAttrGetter::ArgAddrMode::bindless :
+      zebin::PreDefinedAttrGetter::ArgAddrMode::stateless;
+
     // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
         m_kernelInfo.m_zePayloadArgs, offset, sizeInBytes, index,
-        zebin::PreDefinedAttrGetter::ArgAddrMode::stateless,
-        zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
+        zeAddrMode, zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
         getZEArgAccessType(access));
     zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI,
                                                index);
@@ -482,6 +486,7 @@ static void generateKernelArgInfo(
     case KindType::Image1D:
     case KindType::Image2D:
     case KindType::Image3D:
+    case KindType::BindlessBuffer:
       ArgsAnnotationBuilder.insert(Arg.getIndex(), Arg.getKind(),
                                    Arg.getAccessKind());
       break;
@@ -543,15 +548,21 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
     case ArgKind::Buffer:
       Kernel.createPointerGlobalAnnotation(Arg.getIndex(), ArgOffset,
                                            Arg.getSizeInBytes(), Arg.getBTI(),
-                                           Arg.getAccessKind());
+                                           Arg.getAccessKind(), /*isBindless=*/false);
       Kernel.createBufferStatefulAnnotation(Arg.getIndex(),
                                             Arg.getAccessKind());
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
+      break;
+    case ArgKind::BindlessBuffer:
+      Kernel.createPointerGlobalAnnotation(Arg.getIndex(), ArgOffset,
+                                           Arg.getSizeInBytes(), Arg.getBTI(),
+                                           Arg.getAccessKind(), /*isBindless=*/true);
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::SVM:
       Kernel.createPointerGlobalAnnotation(Arg.getIndex(), ArgOffset,
                                            Arg.getSizeInBytes(), Arg.getBTI(),
-                                           Arg.getAccessKind());
+                                           Arg.getAccessKind(), /*isBindless=*/false);
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::Sampler:

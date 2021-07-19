@@ -46,7 +46,8 @@ public:
       Image3D,
       PrintBuffer,
       PrivateBase,
-      ByValSVM
+      ByValSVM,
+      BindlessBuffer,
     };
 
     enum class AccessKindType { None, ReadOnly, WriteOnly, ReadWrite };

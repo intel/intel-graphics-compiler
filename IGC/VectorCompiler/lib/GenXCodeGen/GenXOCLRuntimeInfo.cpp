@@ -218,6 +218,9 @@ static ArgKindType getOCLArgKind(const SmallVectorImpl<StringRef> &Tokens,
   case genx::RegCategory::GENERAL:
     if (any_of(Tokens, GetStrPred(OCLAttributes::SVM)))
       return ArgKindType::SVM;
+    // Bindless buffers have general category but buffer annotation.
+    if (any_of(Tokens, GetStrPred(OCLAttributes::Buffer)))
+      return ArgKindType::BindlessBuffer;
     return ArgKindType::General;
   case genx::RegCategory::SURFACE:
     if (any_of(Tokens, GetStrPred(OCLAttributes::Image1d)))
@@ -246,6 +249,7 @@ getOCLArgAccessKind(const SmallVectorImpl<StringRef> &Tokens,
   case ArgKindType::Image2D:
   case ArgKindType::Image3D:
   case ArgKindType::SVM:
+  case ArgKindType::BindlessBuffer:
     if (any_of(Tokens, GetStrPred(OCLAttributes::ReadOnly)))
       return ArgAccessKindType::ReadOnly;
     if (any_of(Tokens, GetStrPred(OCLAttributes::WriteOnly)))
