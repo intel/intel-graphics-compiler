@@ -128,6 +128,7 @@ iga_gen_t GetIGAPlatform(PLATFORM const & platform)
             || ProductFamily == IGFX_DG1
             || ProductFamily == IGFX_ROCKETLAKE
             || ProductFamily == IGFX_ALDERLAKE_S
+            || ProductFamily == IGFX_ALDERLAKE_P
            )
         {
             return IGA_GEN12p1;

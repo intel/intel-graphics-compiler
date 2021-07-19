@@ -90,6 +90,8 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/irkl_sw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadls_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadls_sw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadlp_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadlp_sw_wa.c"
     ${IGC_BUILD__SRC__Compiler_CISACodeGen}
     ${IGC_BUILD__SRC__Compiler_DebugInfo}
     ${IGC_BUILD__SRC__Compiler_Legalizer}

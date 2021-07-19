@@ -595,6 +595,7 @@ bool hasNoInt64Inst() const {
         m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
         m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
         m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
         m_platformInfo.eProductFamily == IGFX_DG1;
 }
 
@@ -607,6 +608,7 @@ bool hasNoFP64Inst() const {
         m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
         m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
         m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
         m_platformInfo.eProductFamily == IGFX_DG1;
 }
 
@@ -618,7 +620,8 @@ bool hasCorrectlyRoundedMacros() const {
         m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP &&
         m_platformInfo.eProductFamily != IGFX_ROCKETLAKE &&
         m_platformInfo.eProductFamily != IGFX_DG1 &&
-        m_platformInfo.eProductFamily != IGFX_ALDERLAKE_S;
+        m_platformInfo.eProductFamily != IGFX_ALDERLAKE_S &&
+        m_platformInfo.eProductFamily != IGFX_ALDERLAKE_P;
 }
 
 bool hasFusedEU() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }

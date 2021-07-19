@@ -28,6 +28,7 @@ typedef enum {
     IGFX_TIGERLAKE_LP,
     IGFX_ROCKETLAKE,
     IGFX_ALDERLAKE_S,
+    IGFX_ALDERLAKE_P,
     IGFX_DG1 = 1210,
     IGFX_XE_HP_SDV = 1250,
     IGFX_MAX_PRODUCT,
@@ -614,5 +615,25 @@ typedef enum __NATIVEGTTYPE
 #define IADLS_GT0_DEVICE_A0_ID                                  0x469F
 #define DEV_ID_4600                                             0x4600
 #define DEV_ID_461F                                             0x461F
+
+// ADL-P
+#define DEV_ID_46A0                             0x46A0
+#define DEV_ID_46A1                             0x46A1
+#define DEV_ID_46A2                             0x46A2
+#define DEV_ID_46A3                             0x46A3
+#define DEV_ID_46A6                             0x46A6
+#define DEV_ID_46A8                             0x46A8
+#define DEV_ID_46AA                             0x46AA
+#define DEV_ID_4626                             0x4626
+#define DEV_ID_4628                             0x4628
+#define DEV_ID_462A                             0x462A
+#define DEV_ID_46B0                             0x46B0
+#define DEV_ID_46B1                             0x46B1
+#define DEV_ID_46B2                             0x46B2
+#define DEV_ID_46B3                             0x46B3
+#define DEV_ID_46C0                             0x46C0
+#define DEV_ID_46C1                             0x46C1
+#define DEV_ID_46C2                             0x46C2
+#define DEV_ID_46C3                             0x46C3
 
 #endif

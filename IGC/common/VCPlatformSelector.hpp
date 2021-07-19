@@ -43,6 +43,12 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
       return "TGLLP";
     if (Product == IGFX_DG1)
       return "DG1";
+    if (Product == IGFX_ROCKETLAKE)
+      return IGC_MANGLE("RKL");
+    if (Product == IGFX_ALDERLAKE_S)
+      return IGC_MANGLE("ADLS");
+    if (Product == IGFX_ALDERLAKE_P)
+        return IGC_MANGLE("ADLP");
     else if (Product == IGFX_XE_HP_SDV)
       return "XEHP";
     else if (Product == IGFX_XE_HP_SDV)

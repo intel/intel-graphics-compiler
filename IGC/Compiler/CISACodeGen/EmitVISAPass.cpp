@@ -691,6 +691,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     ++I;
                 }
             }
+            if ((IGC_GET_FLAG_VALUE(CodePatchFilter) & (0x1 << 0x4)) &&
+                    m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_P) {
+                m_encoder->SetIsCodePatchCandidate(false);
+            }
         }
         else
         {

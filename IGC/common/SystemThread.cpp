@@ -503,6 +503,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_DG1:
             case IGFX_ROCKETLAKE:
             case IGFX_ALDERLAKE_S:
+            case IGFX_ALDERLAKE_P:
                 SIPIndex = GEN12_LP_CSR;
                 break;
 

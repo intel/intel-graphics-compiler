@@ -94,6 +94,10 @@ namespace IGC
             InitAdlsHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             InitAdlsSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
+        case IGFX_ALDERLAKE_P:
+            InitAdlpHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitAdlpSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
         default:
             IGC_ASSERT(0);
             break;
