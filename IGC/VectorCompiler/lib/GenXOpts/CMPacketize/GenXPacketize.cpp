@@ -1029,6 +1029,12 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     // create an write-region
     CMRegion R(Vec->getType());
     if (ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
+      // special case, this is really just like a bitcast
+      if (CI->getZExtValue() == 0 && N == 1 && isa<UndefValue>(OldVec)) {
+        auto pRetTy = B->GetVectorType(pInst->getType());
+        pReplacedInst = B->BITCAST(ElmVec, pRetTy);
+        break;
+      }
       R.Offset = CI->getSExtValue() * ElemType->getPrimitiveSizeInBits() / 8;
       R.Indirect = nullptr;
     } else {
