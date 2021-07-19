@@ -7965,6 +7965,8 @@ void GlobalRA::addGenxMainStackSetupCode()
         G4_INST* fpInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
         insertIt = entryBB->insertBefore(insertIt, fpInst);
 
+        setBEFPSetupInst(fpInst);
+
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
             builder.kernel.getKernelDebugInfo()->setBEFPSetupInst(fpInst);
@@ -8021,6 +8023,8 @@ void GlobalRA::addCalleeStackSetupCode()
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
         auto insertIt = std::find(entryBB->begin(), entryBB->end(), getSaveBE_FPInst());
         MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find BE_FP store inst");
+
+        setBEFPSetupInst(createBEFP);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {

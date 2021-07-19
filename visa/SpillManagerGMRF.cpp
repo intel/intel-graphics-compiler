@@ -4726,10 +4726,9 @@ static G4_INST* createSpillFillAddr(
     }
     else
     {
-        // ToDo: make all spill/fill relative to FP (kernel FP = 0)
         return builder.createMov(g4::SIMD1, dst, imm, InstOpt_WriteEnable, true);
     }
-};
+}
 
 
 void GlobalRA::expandSpillNonStackcall(
