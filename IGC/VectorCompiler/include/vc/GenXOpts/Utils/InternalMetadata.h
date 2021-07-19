@@ -14,6 +14,10 @@ SPDX-License-Identifier: MIT
 namespace llvm {
 namespace genx {
 
+namespace VariableMD {
+inline constexpr const char VCPredefinedVariable[] = "VCPredefinedVariable";
+} // namespace VariableMD
+
 namespace FunctionMD {
 inline constexpr const char GenXKernelInternal[] = "genx.kernel.internal";
 inline constexpr const char VCEmulationRoutine[] = "VC.Emulation.Routine";
