@@ -330,6 +330,7 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
     unsigned int numBB = ctx.m_instrTypes.numBB;
     unsigned int numSample = ctx.m_instrTypes.numSample;
     unsigned int numInsts = ctx.m_instrTypes.numInsts;
+    bool hasUnmaskedRegion = ctx.m_instrTypes.hasUnmaskedRegion;
     IGCPassManager mpm(&ctx, "UpdateOptPre");
     mpm.add(new CheckInstrTypes(&(ctx.m_instrTypes)));
     mpm.run(*ctx.getModule());
@@ -337,6 +338,7 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
     ctx.m_instrTypes.numSample = numSample;
     ctx.m_instrTypes.numInsts = numInsts;
     ctx.m_instrTypes.hasLoadStore = true;
+    ctx.m_instrTypes.hasUnmaskedRegion = hasUnmaskedRegion;
 }
 
 // forward declaration
@@ -364,6 +366,13 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     {
         IGC_SET_FLAG_VALUE(FastCompileRA, 1);
         IGC_SET_FLAG_VALUE(HybridRAWithSpill, 1);
+    }
+    // In case of presence of Unmasked regions disable loop invariant motion after
+    // Unmasked functions are inlined at the end of optimization phase
+    if (IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
+        IGC_IS_FLAG_DISABLED(LateInlineUnmaskedFunc) &&
+        ctx.m_instrTypes.hasUnmaskedRegion) {
+        IGC_SET_FLAG_VALUE(allowLICM, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||

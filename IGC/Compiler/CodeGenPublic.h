@@ -278,6 +278,7 @@ namespace IGC
         unsigned int numAllocaInsts;
         unsigned int numPsInputs;
         bool hasDynamicGenericLoadStore;
+        bool hasUnmaskedRegion;
         unsigned int numGlobalInsts;
         unsigned int numLocalInsts;
     };

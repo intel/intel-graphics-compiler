@@ -90,6 +90,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
     instrList->hasPullBary = false;
     instrList->hasDynamicGenericLoadStore = false;  /* may use hasGenericAddressSpacePointers instead */
+    instrList->hasUnmaskedRegion = false;
 }
 
 void CheckInstrTypes::SetLoopFlags(Function& F)

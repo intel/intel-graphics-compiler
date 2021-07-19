@@ -353,9 +353,12 @@ bool InlineUnmaskedFunctionsPass::runOnModule(llvm::Module& M)
 
     } while (changed);
 
-    if (changed)
+    if (changed) {
         pMdUtils->save(*pContext->getLLVMContext());
-
+        // The module has functions with unmasked region(s). Keep this info
+        // for later optimizations tuning (at least disabling).
+        pContext->m_instrTypes.hasUnmaskedRegion = true;
+    }
     return changed;
 }
 
