@@ -107,7 +107,7 @@ struct DebugSurfaceLayout
     static constexpr size_t SP_COUNT = 1;
     static constexpr size_t SP_ELEMENTS = 2;
     static constexpr size_t SP_ELEMENT_SIZE = 8;
-    static constexpr size_t SP_ALIGN = 0;
+    static constexpr size_t SP_ALIGN = 16;
 
     static constexpr size_t DBG_COUNT = 1;
     static constexpr size_t DBG_ELEMENTS = 1;
@@ -116,7 +116,7 @@ struct DebugSurfaceLayout
 
     static constexpr size_t VERSION_COUNT = 1;
     static constexpr size_t VERSION_ELEMENTS = 1;
-    static constexpr size_t VERSION_ELEMENT_SIZE = 12;
+    static constexpr size_t VERSION_ELEMENT_SIZE = 20;
     static constexpr size_t VERSION_ALIGN = 0;
 
     uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];

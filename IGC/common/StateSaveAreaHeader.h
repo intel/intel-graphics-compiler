@@ -27,6 +27,8 @@ struct alignas(8) StateSaveArea {
 struct sr_ident {
     char magic[8] = "srmagic";
     struct version version;
+    uint8_t count;
+    uint8_t reserved[7];
 };
 
 struct alignas(8) regset_desc {
