@@ -106,7 +106,8 @@ FunctionGroupPass *llvm::createGenXGroupBalingPass(BalingKind Kind, GenXSubtarge
 void GenXGroupBaling::getAnalysisUsage(AnalysisUsage &AU) const
 {
   FunctionGroupPass::getAnalysisUsage(AU);
-  AU.addRequired<GenXLiveness>();
+  if (GenXBaling::Kind == BK_CodeGen)
+    AU.addRequired<GenXLiveness>();
   AU.addRequired<DominatorTreeGroupWrapperPass>();
   AU.setPreservesCFG();
   AU.addPreserved<GenXModule>();
@@ -120,7 +121,7 @@ void GenXGroupBaling::getAnalysisUsage(AnalysisUsage &AU) const
 bool GenXGroupBaling::runOnFunctionGroup(FunctionGroup &FG)
 {
   clear();
-  Liveness = &getAnalysis<GenXLiveness>();
+  Liveness = getAnalysisIfAvailable<GenXLiveness>();
   return processFunctionGroup(&FG);
 }
 

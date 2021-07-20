@@ -432,8 +432,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXModule.h
   PM.add(createGenXModulePass());
   /// .. include:: GenXLiveness.h
-  PM.add(createGenXLivenessPass());
   PM.add(createGenXGroupBalingPass(BalingKind::BK_Analysis, &Subtarget));
+  PM.add(createGenXLivenessPass());
   PM.add(createGenXNumberingPass());
   PM.add(createGenXLiveRangesPass());
   /// .. include:: GenXRematerialization.cpp

@@ -364,7 +364,6 @@ inline raw_ostream &operator<<(raw_ostream &OS, const Bale &B) {
 // GenXBaling : the baling information for a Function or FunctionGroup (depending
 // on whether GenXFuncBaling or GenXGroupBaling created it)
 class GenXBaling {
-  BalingKind Kind;
   typedef llvm::ValueMap<const Value*, genx::BaleInfo,
                          IgnoreRAUWValueMapConfig<const Value *>>
       InstMap_t;
@@ -383,6 +382,7 @@ class GenXBaling {
   NeedCloneStack_t NeedCloneStack;
   SmallVector<CallInst *, 4> TwoAddrSends;
 protected:
+  BalingKind Kind;
   DominatorTree *DT;
   GenXLiveness *Liveness; // only in group baling
 public:
