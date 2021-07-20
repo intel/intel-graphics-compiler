@@ -274,10 +274,20 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(createInferAddressSpacesPass());
   PM.add(createTransformPrivMemPass());
   PM.add(createPromoteMemoryToRegisterPass());
-    // All passes which modify the LLVM IR are now complete; run the verifier
+  // All passes which modify the LLVM IR are now complete; run the verifier
   // to ensure that the IR is valid.
   if (!DisableVerify) PM.add(createVerifierPass());
   // Run passes to generate vISA.
+
+  /// .. include:: GenXAggregatePseudoLowering.cpp
+  PM.add(createGenXAggregatePseudoLoweringPass());
+  /// InstructionCombining
+  /// --------------------
+  /// This is a standard LLVM pass, used at this point in the GenX backend.
+  ///
+  PM.add(createInstructionCombiningPass());
+
+  // Aggregate pseudo lowering may create GEPs to be lowered before TPM
 
   /// .. include:: GenXGEPLowering.cpp
   PM.add(createGenXGEPLoweringPass());
@@ -327,8 +337,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(createGenXReduceIntSizePass());
   /// .. include:: GenXGlobalValueLowering.cpp
   PM.add(createGenXGlobalValueLoweringPass());
-  /// .. include:: GenXAggregatePseudoLowering.cpp
-  PM.add(createGenXAggregatePseudoLoweringPass());
   /// InstructionCombining
   /// --------------------
   /// This is a standard LLVM pass, used at this point in the GenX backend.
