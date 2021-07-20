@@ -434,7 +434,7 @@ static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtE
 
 void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
 {
-    /* Replace a printf call with IR instructions that fill the rintf
+    /* Replace a printf call with IR instructions that fill the printf
        output buffer created by the Runtime:
        --------------------------------------------------------------------------
              bufferPtr      - pointer to the printf output buffer. This pointer
@@ -602,7 +602,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
         {
             printfArg = CastInst::Create(Instruction::CastOps::PtrToInt,
                 argDesc->value,
-                m_int32Type,
+                m_ptrSizeIntType,
                 "",
                 bblockTrue);
         }
@@ -804,6 +804,17 @@ unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argT
     case IGC::SHADER_PRINTF_VECTOR_DOUBLE:
         return vecSize * 8;
 
+    case IGC::SHADER_PRINTF_STRING_LITERAL: {
+        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary) {
+            // The size of the format string address
+            return 8;
+        } else {
+            // The size of the format string index
+            return 4;
+        }
+    }
+
     default:
         if (vecSize > 0) {
             return vecSize * 4;
@@ -818,14 +829,15 @@ unsigned int OpenCLPrintfResolution::getTotalDataSize()
 {
     IGC_ASSERT_MESSAGE(m_argDescriptors.size() > 0, "Empty printf arguments list.");
     unsigned int dataSize = 0;
-    // Add size of the format string index.
-    dataSize += 4;
+    SPrintfArgDescriptor* argDesc = &m_argDescriptors[0];
+    // Add the size that represents a format string.
+    dataSize += getArgTypeSize(argDesc->argType, argDesc->vecSize);
 
     // Skip 0-th operand (format string) and count total size of
     // the remaining arguments.
     for (size_t i = 1, size = m_argDescriptors.size(); i < size; ++i)
     {
-        SPrintfArgDescriptor* argDesc = &m_argDescriptors[i];
+        argDesc = &m_argDescriptors[i];
         // Add size of the data type identifier.
         dataSize += 4;
         // Vector arguments require additional type identifier - number of elements.
