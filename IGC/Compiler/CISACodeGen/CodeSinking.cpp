@@ -214,13 +214,6 @@ namespace IGC {
             return false;
         }
 
-        // Keep track of fat loop. Might need to reverse LICM if
-        // a loop has excessive register-pressure at its preheader because
-        // there are a lot of loop-invariant insts that have been moved
-        // out of the loop.
-        m_fatLoopPressure = 0;
-        m_fatLoop = nullptr;
-
         DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
         PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -257,15 +250,18 @@ namespace IGC {
 
         uint32_t GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
         uint32_t ngrf = CTX->getNumGRFPerThread();
-        if (m_fatLoopPressure > (ngrf + GRFThresholdDelta) &&
-            CTX->type == ShaderType::OPENCL_SHADER)
+        for (unsigned i = 0, n = m_fatLoops.size(); i < n; ++i)
         {
+            auto FatLoop = m_fatLoops[i];
+            auto Pressure = m_fatLoopPressures[i];
             // Enable multiple-level loop sink if pressure is high enough
-            bool sinkMultiLevel = (m_fatLoopPressure > (ngrf + 2 * GRFThresholdDelta));
-            if (loopSink(m_fatLoop, sinkMultiLevel)) {
+            bool sinkMultiLevel = (Pressure > (ngrf + 2 * GRFThresholdDelta));
+            if (loopSink(FatLoop, sinkMultiLevel)) {
                 changed = true;
             }
         }
+        m_fatLoopPressures.clear();
+        m_fatLoops.clear();
 
         // diagnosis code: printf("%d:%d:%x\n", sinkCounter, sinkLimit, CTX->hash.getAsmHash());
         //F.viewCFG();
@@ -356,11 +352,15 @@ namespace IGC {
         {
             // estimate live-out register pressure for this blk
             pressure0 = EstimateLiveOutPressure(&blk, DL);
-            // Track the loop with the highest live-out pressure BB
-            if (pressure0 > m_fatLoopPressure) {
-                if (auto L = findLoopAsPreheader(blk)) {
-                    m_fatLoopPressure = pressure0;
-                    m_fatLoop = L;
+            uint32_t GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
+            uint32_t ngrf = CTX->getNumGRFPerThread();
+            if (pressure0 > (ngrf + GRFThresholdDelta) &&
+                CTX->type == ShaderType::OPENCL_SHADER)
+            {
+                if (auto L = findLoopAsPreheader(blk))
+                {
+                    m_fatLoopPressures.push_back(pressure0);
+                    m_fatLoops.push_back(L);
                 }
             }
         }

@@ -77,10 +77,12 @@ namespace IGC {
         bool generalCodeSinking;
         // diagnosis variable: int numChanges;
 
-        // fat loop is the loop with the highest live-out
-        // register pressure in its preheader
-        llvm::Loop* m_fatLoop;
-        uint32_t m_fatLoopPressure;
+        // Keep track of fat loop. Might need to reverse LICM if
+        // a loop has excessive register-pressure at its preheader because
+        // there are a lot of loop-invariant insts that have been moved
+        // out of the loop.
+        std::vector<llvm::Loop*> m_fatLoops;
+        std::vector<uint32_t> m_fatLoopPressures;
 
         // try to hoist phi nodes with congruent incoming values
         typedef std::pair<llvm::Instruction*, llvm::Instruction*> InstPair;
