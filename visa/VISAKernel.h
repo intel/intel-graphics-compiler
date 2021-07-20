@@ -1059,7 +1059,7 @@ private:
 class VISAKernel_format_provider : public print_format_provider_t
 {
 protected:
-    const VISAKernelImpl* m_kernel;
+    const VISAKernelImpl* const m_kernel;
 
 public:
     VISAKernel_format_provider(const VISAKernelImpl* kernel)

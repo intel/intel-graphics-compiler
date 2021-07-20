@@ -459,15 +459,10 @@ int CisaBinary::isaDump(
         }
     }
 
-    std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
-    std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
-
     std::vector<std::string> failedFiles;
-    VISAKernelImpl* mainKernel = *iter;
-    for (; iter != end; iter++)
+    VISAKernelImpl* mainKernel = m_kernels.front();
+    for (VISAKernelImpl* kTemp : m_kernels)
     {
-        VISAKernelImpl * kTemp = *iter;
-
         std::list<CisaFramework::CisaInst *>::iterator inst_iter = kTemp->getInstructionListBegin();
         std::list<CisaFramework::CisaInst *>::iterator inst_iter_end = kTemp->getInstructionListEnd();
 

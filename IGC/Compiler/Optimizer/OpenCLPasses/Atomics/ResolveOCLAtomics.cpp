@@ -40,29 +40,6 @@ ResolveOCLAtomics::ResolveOCLAtomics() : ModulePass(ID)
     initResolveOCLAtomics();
 }
 
-OCLAtomicAttrs ResolveOCLAtomics::genAtomicAttrs(AtomicOp   op,
-                                                 BufferType bufType)
-{
-    //              bufType
-    //                 |
-    //       not used  V   op
-    //       |-------|---|---|
-    //    0 x 0 0 0 0 0 0 0 0
-    return op | (bufType << ATTR_BUFFER_TYPE_SHIFT);
-}
-
-AtomicOp ResolveOCLAtomics::getAtomicOp(StringRef name)
-{
-    OCLAtomicAttrs  attrs = m_AtomicDescMap[name];
-    return (AtomicOp)(attrs & 0xFF);
-}
-
-BufferType ResolveOCLAtomics::getBufType(StringRef name)
-{
-    OCLAtomicAttrs  attrs = m_AtomicDescMap[name];
-    return (BufferType)((attrs >> ATTR_BUFFER_TYPE_SHIFT) & 0xFF);
-}
-
 void ResolveOCLAtomics::initResolveOCLAtomics()
 {
     initOCLAtomicsMap();
@@ -71,7 +48,7 @@ void ResolveOCLAtomics::initResolveOCLAtomics()
 void ResolveOCLAtomics::initOCLAtomicsMap()
 {
 #define DEF_OCL_IGC_ATOMIC(name, op, buf_type) \
-    m_AtomicDescMap[StringRef(name)] = genAtomicAttrs(op, buf_type);
+    m_AtomicDescMap[StringRef(name)] = OCLAtomicAttrs{op, buf_type};
 #include "OCLAtomicsDef.hpp"
 #undef DEF_OCL_IGC_ATOMIC
 }
@@ -79,7 +56,7 @@ void ResolveOCLAtomics::initOCLAtomicsMap()
 bool ResolveOCLAtomics::runOnModule(Module& M)
 {
     m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_pModule  = (IGCLLVM::Module*)&M;
+    m_pModule  = static_cast<IGCLLVM::Module*>(&M);
     m_Int32Ty = Type::getInt32Ty(m_pModule->getContext());
 
     llvm::IGCIRBuilder<> builder(M.getContext());
@@ -115,7 +92,8 @@ void ResolveOCLAtomics::visitCallInst(CallInst& callInst)
     if (funcName.startswith("__builtin_IB_atomic"))
     {
         IGC_ASSERT_MESSAGE(m_AtomicDescMap.count(funcName), "Unexpected IGC atomic function name.");
-        processOCLAtomic(callInst, getAtomicOp(funcName), getBufType(funcName));
+        const OCLAtomicAttrs& attrs = m_AtomicDescMap[funcName];
+        processOCLAtomic(callInst, attrs.op, attrs.bufType);
         m_changed = true;
     }
 }
