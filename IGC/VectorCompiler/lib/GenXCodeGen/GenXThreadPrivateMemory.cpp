@@ -89,6 +89,14 @@ public:
     Description = (Twine("TPM failed for: <") + Str + ">: " + Desc).str();
   }
 
+  // Initialize with Type
+  DiagnosticInfoTPM(Type *Ty, const Twine &Desc, DiagnosticSeverity Severity)
+      : DiagnosticInfo(getKindID(), Severity) {
+    std::string Str;
+    llvm::raw_string_ostream(Str) << *Ty;
+    Description = (Twine("TPM failed for: <") + Str + ">: " + Desc).str();
+  }
+
   void print(DiagnosticPrinter &DP) const override { DP << Description; }
 
   static bool classof(const DiagnosticInfo *DI) {
@@ -763,8 +771,15 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
   Type *LdEltTy = LdTy;
   if (isa<VectorType>(LdEltTy))
     LdEltTy = cast<VectorType>(LdEltTy)->getElementType();
-  else
+  // we can make one-element vectors from primitive types
+  else if (LdTy->isIntegerTy() || LdTy->isFloatingPointTy() ||
+           LdTy->isPointerTy())
     LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
+  else {
+    DiagnosticInfoTPM Err{LdTy, "Unsupported type inside replaceLoad",
+                          DS_Error};
+    LdI->getContext().diagnose(Err);
+  }
 
   unsigned NumEltsToLoad = cast<VectorType>(LdTy)->getNumElements();
   unsigned ValueEltSz = m_DL->getTypeSizeInBits(LdEltTy) / genx::ByteBits;
@@ -852,7 +867,11 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
     ValueOp = Builder.CreateVectorSplat(1, ValueOp);
     ValueOpTy = ValueOp->getType();
   }
-  IGC_ASSERT(ValueOpTy->isVectorTy());
+  if (!ValueOpTy->isVectorTy()) {
+    DiagnosticInfoTPM Err{ValueOpTy, "Unsupported type inside replaceStore",
+                          DS_Error};
+    StI->getContext().diagnose(Err);
+  }
 
   unsigned ValueEltSz = 0;
   std::tie(ValueOp, ValueEltSz) = NormalizeVector(ValueOp, ValueOpTy, StI);
