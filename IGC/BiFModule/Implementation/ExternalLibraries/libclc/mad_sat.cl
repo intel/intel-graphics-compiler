@@ -1,3 +1,11 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2021 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
 #include "../../include/BiF_Definitions.cl"
 #include "../../../Headers/spirv.h"
 #include "mul_hi.cl"
