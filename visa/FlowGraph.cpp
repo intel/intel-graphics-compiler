@@ -3693,9 +3693,11 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
             G4_INST* lastInst = BB->back();
 
             // Need to check whether to propagate WA marking to entire loop!
+            //
             // Do it for CM now, need to apply to all!
-            if (nestedDivergentBBs.count(BB) > 0 && nestedDivergentBBs[BB] >= 2 &&
-                getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+            // if (nestedDivergentBBs.count(BB) > 0 && nestedDivergentBBs[BB] >= 2 &&
+            //    getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+            if (nestedDivergentBBs.count(BB) > 0 && nestedDivergentBBs[BB] >= 2)
             {
                 if (lastInst->opcode() == G4_while ||
                     ((lastInst->opcode() == G4_goto || lastInst->opcode() == G4_jmpi) &&
