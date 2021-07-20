@@ -4404,6 +4404,54 @@ TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v2i64, 
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE Value, int LocalId);      \
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i64, )(int Execution, TYPE Value, long LocalId);
 
+char   __builtin_spirv_OpSubgroupShuffleINTEL_i8_i32(char Data, int InvocationId);
+short  __builtin_spirv_OpSubgroupShuffleINTEL_i16_i32(short Data, int InvocationId);
+int    __builtin_spirv_OpSubgroupShuffleINTEL_i32_i32(int Data, int InvocationId);
+long   __builtin_spirv_OpSubgroupShuffleINTEL_i64_i32(long Data, int InvocationId);
+#if defined(cl_khr_fp16)
+half   __builtin_spirv_OpSubgroupShuffleINTEL_f16_i32(half Data, int InvocationId);
+#endif // defined(cl_khr_fp16)
+float  __builtin_spirv_OpSubgroupShuffleINTEL_f32_i32(float Data, int InvocationId);
+#if defined(cl_khr_fp64)
+double __builtin_spirv_OpSubgroupShuffleINTEL_f64_i32(double Data, int InvocationId);
+#endif // defined(cl_khr_fp64)
+
+char   __builtin_spirv_OpSubgroupShuffleDownINTEL_i8_i8_i32(char Current, char Next, int Delta);
+short  __builtin_spirv_OpSubgroupShuffleDownINTEL_i16_i16_i32(short Current, short Next, int Delta);
+int    __builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(int Current, int Next, int Delta);
+long   __builtin_spirv_OpSubgroupShuffleDownINTEL_i64_i64_i32(long Current, long Next, int Delta);
+#if defined(cl_khr_fp16)
+half   __builtin_spirv_OpSubgroupShuffleDownINTEL_f16_f16_i32(half Current, half Next, int Delta);
+#endif // defined(cl_khr_fp16)
+float  __builtin_spirv_OpSubgroupShuffleDownINTEL_f32_f32_i32(float Current, float Next, int Delta);
+#if defined(cl_khr_fp64)
+double __builtin_spirv_OpSubgroupShuffleDownINTEL_f64_f64_i32(double Current, double Next, int Delta);
+#endif // defined(cl_khr_fp64)
+
+char   __builtin_spirv_OpSubgroupShuffleUpINTEL_i8_i8_i32(char Previous, char Current, int Delta);
+short  __builtin_spirv_OpSubgroupShuffleUpINTEL_i16_i16_i32(short Previous, short Current, int Delta);
+int    __builtin_spirv_OpSubgroupShuffleUpINTEL_i32_i32_i32(int Previous, int Current, int Delta);
+long   __builtin_spirv_OpSubgroupShuffleUpINTEL_i64_i64_i32(long Previous, long Current, int Delta);
+#if defined(cl_khr_fp16)
+half   __builtin_spirv_OpSubgroupShuffleUpINTEL_f16_f16_i32(half Previous, half Current, int Delta);
+#endif // defined(cl_khr_fp16)
+float  __builtin_spirv_OpSubgroupShuffleUpINTEL_f32_f32_i32(float Previous, float Current, int Delta);
+#if defined(cl_khr_fp64)
+double __builtin_spirv_OpSubgroupShuffleUpINTEL_f64_f64_i32(double Previous, double Current, int Delta);
+#endif // defined(cl_khr_fp64)
+
+char   __builtin_spirv_OpSubgroupShuffleXorINTEL_i8_i32(char Data, int Value);
+short  __builtin_spirv_OpSubgroupShuffleXorINTEL_i16_i32(short Data, int Value);
+int    __builtin_spirv_OpSubgroupShuffleXorINTEL_i32_i32(int Data, int Value);
+long   __builtin_spirv_OpSubgroupShuffleXorINTEL_i64_i32(long Data, int Value);
+#if defined(cl_khr_fp16)
+half   __builtin_spirv_OpSubgroupShuffleXorINTEL_f16_i32(half Data, int Value);
+#endif // defined(cl_khr_fp16)
+float  __builtin_spirv_OpSubgroupShuffleXorINTEL_f32_i32(float Data, int Value);
+#if defined(cl_khr_fp64)
+double __builtin_spirv_OpSubgroupShuffleXorINTEL_f64_i32(double Data, int Value);
+#endif // defined(cl_khr_fp64)
+
 #define DECL_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)       \
 DECL_SUB_GROUP_BROADCAST_BASE(TYPE, TYPE_ABBR)          \
 DECL_SUB_GROUP_BROADCAST_BASE(TYPE##2, v2##TYPE_ABBR)   \

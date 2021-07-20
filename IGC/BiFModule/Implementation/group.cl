@@ -1543,6 +1543,168 @@ DEFN_SUB_GROUP_BROADCAST_VEC(half,   f16)
 DEFN_SUB_GROUP_BROADCAST_VEC(double, f64)
 #endif // defined(cl_khr_fp64)
 
+// OpSubgroupShuffleINTEL
+//
+// Allows data to be arbitrarily transferred between invocations in a subgroup.
+// The data that is returned for this invocation is the value of 'Data' for the invocation identified by 'InvocationId'.
+char __builtin_spirv_OpSubgroupShuffleINTEL_i8_i32(char Data, int InvocationId)
+{
+    return __builtin_IB_simd_shuffle_c(Data, InvocationId);
+}
+
+short __builtin_spirv_OpSubgroupShuffleINTEL_i16_i32(short Data, int InvocationId)
+{
+    return __builtin_IB_simd_shuffle_us(as_ushort(Data), InvocationId);
+}
+
+int __builtin_spirv_OpSubgroupShuffleINTEL_i32_i32(int Data, int InvocationId)
+{
+    return __builtin_IB_simd_shuffle(as_uint(Data), InvocationId);
+}
+
+long __builtin_spirv_OpSubgroupShuffleINTEL_i64_i32(long Data, int InvocationId)
+{
+    int2 DataXY = as_int2(Data);
+    int2 Result;
+    Result.s0 = __builtin_spirv_OpSubgroupShuffleINTEL_i32_i32(DataXY.s0, InvocationId);
+    Result.s1 = __builtin_spirv_OpSubgroupShuffleINTEL_i32_i32(DataXY.s1, InvocationId);
+    return as_long(Result);
+}
+
+#ifdef cl_khr_fp16
+half __builtin_spirv_OpSubgroupShuffleINTEL_f16_i32(half Data, int InvocationId)
+{
+    return __builtin_IB_simd_shuffle_h(Data, InvocationId);
+}
+#endif // cl_khr_fp16
+
+float __builtin_spirv_OpSubgroupShuffleINTEL_f32_i32(float Data, int InvocationId)
+{
+    return __builtin_IB_simd_shuffle_f(Data, InvocationId);
+}
+
+#if defined(cl_khr_fp64)
+double __builtin_spirv_OpSubgroupShuffleINTEL_f64_i32(double Data, int InvocationId)
+{
+    return __builtin_IB_simd_shuffle_df(Data, InvocationId);
+}
+#endif // cl_khr_fp64
+
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleINTEL, char,  char,  int, i8,  i32)
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleINTEL, short, short, int, i16, i32)
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleINTEL, int,   int,   int, i32, i32)
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleINTEL, float, float, int, f32, i32)
+
+// OpSubgroupShuffleDownINTEL
+//
+// Allows data to be transferred from an invocation in the subgroup with a higher SubgroupLocalInvocationId down to
+// a invocation in the subgroup with a lower SubgroupLocalInvocationId.
+char __builtin_spirv_OpSubgroupShuffleDownINTEL_i8_i8_i32(char Current, char Next, int Delta)
+{
+    return __builtin_IB_simd_shuffle_down_uc(Current, Next, Delta);
+}
+
+short __builtin_spirv_OpSubgroupShuffleDownINTEL_i16_i16_i32(short Current, short Next, int Delta)
+{
+    return __builtin_IB_simd_shuffle_down_us(Current, Next, Delta);
+}
+
+int __builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(int Current, int Next, int Delta)
+{
+    return __builtin_IB_simd_shuffle_down(Current, Next, Delta);
+}
+
+long __builtin_spirv_OpSubgroupShuffleDownINTEL_i64_i64_i32(long Current, long Next, int Delta)
+{
+    int2 CurrentXY = as_int2(Current);
+    int2 NextXY = as_int2(Next);
+    int2 Result;
+    Result.s0 = __builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(CurrentXY.s0, NextXY.s0, Delta);
+    Result.s1 = __builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(CurrentXY.s1, NextXY.s1, Delta);
+    return as_long(Result);
+}
+
+#ifdef cl_khr_fp16
+half __builtin_spirv_OpSubgroupShuffleDownINTEL_f16_f16_i32(half Current, half Next, int Delta)
+{
+    return as_half(__builtin_spirv_OpSubgroupShuffleDownINTEL_i16_i16_i32(as_short(Current), as_short(Next), Delta));
+}
+#endif // cl_khr_fp16
+
+float __builtin_spirv_OpSubgroupShuffleDownINTEL_f32_f32_i32(float Current, float Next, int Delta)
+{
+    return as_float(__builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(as_int(Current), as_int(Next), Delta));
+}
+
+#ifdef cl_khr_fp64
+double __builtin_spirv_OpSubgroupShuffleDownINTEL_f64_f64_i32(double Current, double Next, int Delta)
+{
+    return as_double(__builtin_spirv_OpSubgroupShuffleDownINTEL_i64_i64_i32(as_long(Current), as_long(Next), Delta));
+}
+#endif // cl_khr_fp64
+
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleDownINTEL, char,  char,  int, i8,  i32)
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleDownINTEL, short, short, int, i16, i32)
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleDownINTEL, int,   int,   int, i32, i32)
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleDownINTEL, float, float, int, f32, i32)
+
+// OpSubgroupShuffleUpINTEL
+//
+// Allows data to be transferred from an invocation in the subgroup with a lower SubgroupLocalInvocationId up to
+// an invocation in the subgroup with a higher SubgroupLocalInvocationId.
+#define DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(TYPE, TYPE_ABBR)                                                                \
+TYPE __builtin_spirv_OpSubgroupShuffleUpINTEL_##TYPE_ABBR##_##TYPE_ABBR##_i32(TYPE Previous, TYPE Current, int Value)   \
+{                                                                                                                       \
+    Value = __builtin_IB_get_simd_size() - Value;                                                                       \
+    return __builtin_spirv_OpSubgroupShuffleDownINTEL_##TYPE_ABBR##_##TYPE_ABBR##_i32(Previous, Current, Value);        \
+}
+
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(char,   i8)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(short,  i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(int,    i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(long,   i64)
+#ifdef cl_khr_fp16
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(half,   f16)
+#endif // cl_khr_fp16
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(float,  f32)
+#if defined(cl_khr_fp64)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(double, f64)
+#endif // defined(cl_khr_fp64)
+
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, char,  char,  int, i8,  i32)
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, short, short, int, i16, i32)
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, int,   int,   int, i32, i32)
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, float, float, int, f32, i32)
+
+// OpSubgroupShuffleXorINTEL
+//
+// Allows data to be transferred between invocations in a subgroup as a function of the invocation's SubgroupLocalInvocationId.
+// The data that is returned for this invocation is the value of 'Data' for the invocation with SubgroupLocalInvocationId equal
+// to this invocation's SubgroupLocalInvocationId XOR'd with the specified 'Value'.
+#define DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(TYPE, TYPE_ABBR)                                \
+TYPE __builtin_spirv_OpSubgroupShuffleXorINTEL_##TYPE_ABBR##_i32(TYPE Data, int Value)   \
+{                                                                                        \
+    Value = __builtin_IB_get_simd_id() ^ Value;                                          \
+    return __builtin_spirv_OpSubgroupShuffleINTEL_##TYPE_ABBR##_i32(Data, Value);        \
+}
+
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(char,   i8)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(short,  i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(int,    i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(long,   i64)
+#ifdef cl_khr_fp16
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(half,   f16)
+#endif // cl_khr_fp16
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(float,  f32)
+#if defined(cl_khr_fp64)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(double, f64)
+#endif // defined(cl_khr_fp64)
+
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, char,  char,  int, i8,  i32)
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, short, short, int, i16, i32)
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, int,   int,   int, i32, i32)
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, float, float, int, f32, i32)
+
 // Ballot Functions
 
 uint intel_sub_group_ballot(bool p)

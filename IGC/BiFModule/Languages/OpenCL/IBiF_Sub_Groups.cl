@@ -75,194 +75,160 @@ INLINE void OVERLOADABLE sub_group_barrier( cl_mem_fence_flags flags, memory_sco
 }
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
+// gentype intel_sub_group_shuffle(gentype data, uint sub_group_local_id )
+//
+// Allows data to be arbitrarily transferred between work items in a subgroup.
+// The data that is returned for this work item is the value of data for the work item
+// identified by sub_group_local_id.
+#define DEFN_INTEL_SUB_GROUP_SHUFFLE(TYPE, TYPE_ABBR)                         \
+INLINE TYPE OVERLOADABLE intel_sub_group_shuffle( TYPE x, uint c )            \
+{                                                                             \
+    return __builtin_spirv_OpSubgroupShuffleINTEL_##TYPE_ABBR##_i32( x, c );  \
+}
+
+#ifdef cl_intel_subgroups_char
+DEFN_INTEL_SUB_GROUP_SHUFFLE(char,   i8)
+DEFN_INTEL_SUB_GROUP_SHUFFLE(uchar,  i8)
+#endif // cl_intel_subgroups_char
+DEFN_INTEL_SUB_GROUP_SHUFFLE(short,  i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE(ushort, i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE(int,    i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE(uint,   i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE(long,   i64)
+DEFN_INTEL_SUB_GROUP_SHUFFLE(ulong,  i64)
 #ifdef cl_khr_fp16
-INLINE half OVERLOADABLE intel_sub_group_shuffle( half x, uint c )
-{
-    return __builtin_IB_simd_shuffle_h( x, c );
-}
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, half, half, uint )
+DEFN_INTEL_SUB_GROUP_SHUFFLE(half,   f16)
 #endif // cl_khr_fp16
-
-INLINE ushort OVERLOADABLE intel_sub_group_shuffle( ushort x, uint c )
-{
-    return __builtin_IB_simd_shuffle_us( x, c );
-}
-
-INLINE short OVERLOADABLE intel_sub_group_shuffle( short x, uint c )
-{
-    return as_short( intel_sub_group_shuffle( as_ushort(x), c ) );
-}
+DEFN_INTEL_SUB_GROUP_SHUFFLE(float,  f32)
+#ifdef cl_khr_fp64
+DEFN_INTEL_SUB_GROUP_SHUFFLE(double, f64)
+#endif // cl_khr_fp64
 
 #ifdef cl_intel_subgroups_char
-INLINE uchar OVERLOADABLE intel_sub_group_shuffle( uchar x, uint c )
-{
-    return as_uchar( __builtin_IB_simd_shuffle_c( as_char(x), c ) );
-}
-
-INLINE char OVERLOADABLE intel_sub_group_shuffle( char x, uint c )
-{
-    return as_char( intel_sub_group_shuffle( as_uchar(x), c ) );
-}
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, char,   char,   uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uchar,  uchar,  uint )
 #endif // cl_intel_subgroups_char
-
-INLINE float OVERLOADABLE intel_sub_group_shuffle( float x, uint c )
-{
-    return __builtin_IB_simd_shuffle_f( x, c );
-}
-
-INLINE uint OVERLOADABLE intel_sub_group_shuffle( uint x, uint c )
-{
-    return __builtin_IB_simd_shuffle( x, c );
-}
-
-INLINE int OVERLOADABLE intel_sub_group_shuffle( int x, uint c )
-{
-    return as_int( intel_sub_group_shuffle( as_uint(x), c ) );
-}
-
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, float, float, uint )
-#ifdef cl_intel_subgroups_char
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, char, char, uint )
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uchar, uchar, uint )
-#endif // cl_intel_subgroups_char
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, short, short, uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, short,  short,  uint )
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, ushort, ushort, uint )
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, int, int, uint )
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uint, uint, uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, int,    int,    uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uint,   uint,   uint )
+#ifdef cl_khr_fp16
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, half,   half,   uint )
+#endif // cl_khr_fp16
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, float,  float,  uint )
 
-INLINE long OVERLOADABLE intel_sub_group_shuffle( long x, uint c )
-{
-    return as_long( intel_sub_group_shuffle( as_uint2(x), c ) );
-}
-
-INLINE ulong OVERLOADABLE intel_sub_group_shuffle( ulong x, uint c )
-{
-    return as_ulong( intel_sub_group_shuffle( as_uint2(x), c ) );
-}
-
-// Experimental support for 8-bit and 16-bit integer types:
-
-INLINE uint OVERLOADABLE intel_sub_group_shuffle_down( uint cur, uint next, uint c )
-{
-    return __builtin_IB_simd_shuffle_down( cur, next, c );
-}
-
-INLINE int OVERLOADABLE intel_sub_group_shuffle_down( int cur, int next, uint c )
-{
-    return as_int( intel_sub_group_shuffle_down( as_uint(cur), as_uint(next), c ) );
-}
-
-INLINE ushort OVERLOADABLE intel_sub_group_shuffle_down( ushort cur, ushort next, uint c )
-{
-    return __builtin_IB_simd_shuffle_down_us( cur, next, c );
-}
-
-INLINE short OVERLOADABLE intel_sub_group_shuffle_down( short cur, short next, uint c )
-{
-    return as_short( intel_sub_group_shuffle_down( as_ushort(cur), as_ushort(next), c ) );
+// gentype intel_sub_group_shuffle_down( gentype current, gentype next, uint delta )
+//
+// Allows data to be transferred from a work item in the subgroup with a higher sub_group_local_id
+// down to a work item in the subgroup with a lower sub_group_local_id.
+#define DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(TYPE, TYPE_ABBR)                                             \
+INLINE TYPE OVERLOADABLE intel_sub_group_shuffle_down(TYPE cur, TYPE next, uint c)                     \
+{                                                                                                      \
+    return __builtin_spirv_OpSubgroupShuffleDownINTEL_##TYPE_ABBR##_##TYPE_ABBR##_i32(cur, next, c);   \
 }
 
 #ifdef cl_intel_subgroups_char
-INLINE uchar OVERLOADABLE intel_sub_group_shuffle_down( uchar cur, uchar next, uint c )
-{
-    return __builtin_IB_simd_shuffle_down_uc( cur, next, c );
-}
-
-INLINE char OVERLOADABLE intel_sub_group_shuffle_down( char cur, char next, uint c )
-{
-    return as_char( intel_sub_group_shuffle_down( as_uchar(cur), as_uchar(next), c ) );
-}
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(char,   i8)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(uchar,  i8)
 #endif // cl_intel_subgroups_char
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(short,  i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(ushort, i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(int,    i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(uint,   i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(long,   i64)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(ulong,  i64)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(float,  f32)
+#ifdef cl_khr_fp64
+DEFN_INTEL_SUB_GROUP_SHUFFLE_DOWN(double, f64)
+#endif // cl_khr_fp64
 
-INLINE float OVERLOADABLE intel_sub_group_shuffle_down( float cur, float next, uint c )
-{
-    return as_float( intel_sub_group_shuffle_down( as_uint(cur), as_uint(next), c ) );
-}
-
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, float, float, uint )
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, short, short, uint )
+#ifdef cl_intel_subgroups_char
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, char,   char,   uint)
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, uchar,  uchar,  uint)
+#endif // cl_intel_subgroups_char
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, short,  short,  uint )
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, ushort, ushort, uint )
-#ifdef cl_intel_subgroups_char
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, char, char, uint )
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, uchar, uchar, uint )
-#endif // cl_intel_subgroups_char
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, int, int, uint )
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, uint, uint, uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, int,    int,    uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, uint,   uint,   uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, float,  float,  uint )
 
-INLINE long OVERLOADABLE intel_sub_group_shuffle_down( long cur, long next, uint c )
-{
-    return as_long( intel_sub_group_shuffle_down( as_int2(cur), as_int2(next), c ) );
-}
-
-INLINE ulong OVERLOADABLE intel_sub_group_shuffle_down( ulong cur, ulong next, uint c )
-{
-    return as_ulong( intel_sub_group_shuffle_down( as_int2(cur), as_int2(next), c ) );
-}
-
-
-#define DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(TYPE)                                                 \
-INLINE TYPE OVERLOADABLE  intel_sub_group_shuffle_up( TYPE prev, TYPE cur, uint c )           \
-{                                                                                             \
-    c = get_max_sub_group_size() - c;                                                         \
-    return intel_sub_group_shuffle_down( prev, cur, c );                                      \
+// gentype intel_sub_group_shuffle_up(gentype previous, gentype current, uint delta )
+//
+// Allows data to be transferred from a work item in the subgroup with a lower sub_group_local_id
+// up to a work item in the subgroup with a higher sub_group_local_id.
+#define DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(TYPE, TYPE_ABBR)                                            \
+INLINE TYPE OVERLOADABLE  intel_sub_group_shuffle_up( TYPE prev, TYPE cur, uint c )                 \
+{                                                                                                   \
+    return __builtin_spirv_OpSubgroupShuffleUpINTEL_##TYPE_ABBR##_##TYPE_ABBR##_i32( prev, cur, c); \
 }
 
 #ifdef cl_intel_subgroups_char
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(uchar)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(char)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(char,   i8)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(uchar,  i8)
 #endif // cl_intel_subgroups_char
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(ushort)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(short)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(uint)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(int)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(float)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(ulong)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(long)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(short,  i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(ushort, i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(int,    i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(uint,   i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(long,   i64)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(ulong,  i64)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(float,  f32)
+#ifdef cl_khr_fp64
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(double, f64)
+#endif // cl_khr_fp64
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, float, float, uint )
 #ifdef cl_intel_subgroups_char
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, char, char, uint )
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, uchar, uchar, uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, char,   char,   uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, uchar,  uchar,  uint )
 #endif // cl_intel_subgroups_char
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, short, short, uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, short,  short,  uint )
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, ushort, ushort, uint )
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, int, int, uint )
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, uint, uint, uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, int,    int,    uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, uint,   uint,   uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, float,  float,  uint )
 
-
-#define DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(TYPE)                                  \
+// gentype intel_sub_group_shuffle_xor( gentype data, uint value )
+//
+// The data that is returned for this work item is the value of data for the work item with
+// sub_group_local_id equal to this work item's sub_group_local_id XOR'd with the specified value.
+#define DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(TYPE, TYPE_ABBR)                       \
 INLINE TYPE OVERLOADABLE  intel_sub_group_shuffle_xor( TYPE x, uint c )         \
 {                                                                               \
-    c = get_sub_group_local_id() ^ c;                                           \
-    return intel_sub_group_shuffle( x, c );                                     \
+    return __builtin_spirv_OpSubgroupShuffleXorINTEL_##TYPE_ABBR##_i32( x, c ); \
 }
 
 #ifdef cl_intel_subgroups_char
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(uchar)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(char)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(char,   i8)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(uchar,  i8)
 #endif // cl_intel_subgroups_char
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(ushort)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(short)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(uint)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(int)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(float)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(ulong)
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(long)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(short,  i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(ushort, i16)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(int,    i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(uint,   i32)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(long,   i64)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(ulong,  i64)
+#ifdef cl_khr_fp16
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(half,   f16)
+#endif // cl_khr_fp16
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(float,  f32)
+#ifdef cl_khr_fp64
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(double, f64)
+#endif // cl_khr_fp64
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, float, float, uint )
 #ifdef cl_intel_subgroups_char
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, char, char, uint )
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, uchar, uchar, uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, char,   char,   uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, uchar,  uchar,  uint )
 #endif // cl_intel_subgroups_char
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, short, short, uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, short,  short,  uint )
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, ushort, ushort, uint )
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, int, int, uint )
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, uint, uint, uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, int,    int,    uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, uint,   uint,   uint )
+#ifdef cl_khr_fp16
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, half,   half,   uint)
+#endif // cl_khr_fp16
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, float,  float,  uint )
 
 #ifdef cl_khr_fp16
-
-DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(half)
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, half, half, uint )
 
 #define SHUFFLE_AS_INTEGER_2_1(FNAME)\
   INLINE half OVERLOADABLE FNAME( half x, half y, uint c )\
@@ -328,32 +294,6 @@ INLINE char OVERLOADABLE intel_sub_group_shuffle( char x, uint c )
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, char, char, uint )
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uchar, uchar, uint )
 #endif
-
-#if defined(cl_khr_fp64)
-
-INLINE double OVERLOADABLE intel_sub_group_shuffle( double x, uint c )
-{
-    return __builtin_IB_simd_shuffle_df( x, c );
-}
-
-INLINE double OVERLOADABLE intel_sub_group_shuffle_down( double cur, double next, uint c )
-{
-    return as_double( intel_sub_group_shuffle_down( as_uint2(cur), as_uint2(next), c ) );
-}
-
-INLINE double OVERLOADABLE intel_sub_group_shuffle_up( double prev, double cur, uint c )
-{
-    c = get_max_sub_group_size() - c;
-    return intel_sub_group_shuffle_down( prev, cur, c );
-}
-
-INLINE double OVERLOADABLE intel_sub_group_shuffle_xor( double x, uint c )
-{
-    c = get_sub_group_local_id() ^ c;
-    return intel_sub_group_shuffle( x, c );
-}
-
-#endif // defined(cl_khr_fp64)
 
 #define  DEFN_SUB_GROUP_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)                                                         \
 INLINE TYPE OVERLOADABLE  sub_group_broadcast( TYPE x, uint sub_group_local_id )                                     \
@@ -957,59 +897,6 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_ul8, ulong8, 
 
 #endif // cl_intel_subgroup_local_block_io
 
-// SPIR-V builtins implementation for intel_subgroups
-
-// Second param is always an uint, so take only first as an argument to the macro.
-#define DEFN_SPIRV_INTEL_SUBGROUP_2PARAMS(FUNC_NAME, TYPE_ABBR, TYPE)       \
-TYPE __builtin_spirv_##FUNC_NAME##_##TYPE_ABBR##_i32(TYPE x, uint y) {      \
-    return FUNC_NAME(x,y);                                                  \
-}
-
-#define DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(FUNC_NAME, TYPE_ABBR, TYPE) \
-TYPE __builtin_spirv_##FUNC_NAME##_##TYPE_ABBR##_##TYPE_ABBR##_i32(TYPE x, TYPE y, uint z) {    \
-    return FUNC_NAME(x,y,z);                                                                    \
-}
-
-#define DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(TYPE_ABBR, TYPE)                    \
-    DEFN_SPIRV_INTEL_SUBGROUP_2PARAMS(intel_sub_group_shuffle, TYPE_ABBR, TYPE)         \
-    DEFN_SPIRV_INTEL_SUBGROUP_2PARAMS(intel_sub_group_shuffle_xor, TYPE_ABBR, TYPE)     \
-    DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(intel_sub_group_shuffle_down, TYPE_ABBR, TYPE)    \
-    DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(intel_sub_group_shuffle_up, TYPE_ABBR, TYPE)
-
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i32, uint)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i8, uchar)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i16, ushort)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(f32, float)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v2f32, float2)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v3f32, float3)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v4f32, float4)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v8f32, float8)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v16f32, float16)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v2i32, uint2)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v3i32, uint3)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v4i32, uint4)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v8i32, uint8)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v16i32, uint16)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v2i16, ushort2)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v3i16, ushort3)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v4i16, ushort4)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v8i16, ushort8)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v16i16, ushort16)
-#ifdef cl_intel_subgroups_char
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v2i8, uchar2)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v3i8, uchar3)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v4i8, uchar4)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v8i8, uchar8)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v16i8, uchar16)
-#endif // cl_intel_subgroups_char
-
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i64, ulong)
-#if defined(cl_khr_fp16)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(f16, half)
-#endif
-#if defined(cl_khr_fp64)
-DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(f64, double)
-#endif
 
 #if defined(cl_khr_subgroup_shuffle)
 #define DEFN_SUB_GROUP_SHUFFLE(TYPE, SPV_TYPE, TYPE_ABBR)                                                             \

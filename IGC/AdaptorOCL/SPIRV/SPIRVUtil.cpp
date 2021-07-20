@@ -217,7 +217,8 @@ getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, st
   std::string name = "";
   bool hasI32Postfix = false;
 
-  if (isIntelSubgroupOpCode(OC)) {
+  if (isIntelSubgroupOpCode(OC) && OC != OpSubgroupShuffleINTEL && OC != OpSubgroupShuffleDownINTEL
+      && OC != OpSubgroupShuffleUpINTEL && OC != OpSubgroupShuffleXorINTEL) {
     std::stringstream tmpName;
     SPIRVType *DataTy = nullptr;
     switch (OC) {
