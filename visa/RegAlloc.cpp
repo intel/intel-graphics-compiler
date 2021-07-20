@@ -3452,7 +3452,7 @@ static void recordRAStats(IR_Builder& builder,
 
 static void replaceSSO(G4_Kernel& kernel)
 {
-    // Invoke function only for Xe_HP+
+    // Invoke function only for XeHP_SDV+
     // Replace SSO with r126.7 (scratch reg)
 
     auto dst = kernel.fg.builder->createDst(
@@ -3492,7 +3492,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         kernel.fg.setABIForStackCallFunctionCalls();
         kernel.fg.addFrameSetupDeclares(builder, regPool);
         kernel.fg.normalizeFlowGraph();
-        if (builder.getPlatform() >= XE_HP)
+        if (builder.getPlatform() >= XeHP_SDV)
             replaceSSO(kernel);
     }
 

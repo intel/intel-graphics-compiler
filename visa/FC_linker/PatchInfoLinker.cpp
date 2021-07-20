@@ -280,7 +280,7 @@ unsigned PatchInfoLinker::writeNOP(unsigned N) {
   uint64_t compact_nop = 0;
   switch (Platform) {
   case cm::patch::PP_TGL:
-  case cm::patch::PP_XE_HP:
+  case cm::patch::PP_XeHP_SDV:
     regular_nop = 0x00000060U;
     compact_nop = 0x20000060U;
     break;
@@ -313,7 +313,7 @@ unsigned PatchInfoLinker::writeEOT() {
   uint64_t r127_sync1 = 0;
   switch (Platform) {
   case cm::patch::PP_TGL:
-  case cm::patch::PP_XE_HP:
+  case cm::patch::PP_XeHP_SDV:
   {
       if (hasR127Token)
       {

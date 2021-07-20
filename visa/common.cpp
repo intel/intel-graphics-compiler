@@ -48,8 +48,8 @@ static const PlatformInfo ALL_PLATFORMS[] {
     PlatformInfo(GENX_TGLLP, PlatformGen::XE, 12,
         "TGLLP", "DG1", "GEN12LP"
     ),
-    PlatformInfo(XE_HP, PlatformGen::XE, 11,
-        "Xe_HP"),
+    PlatformInfo(XeHP_SDV, PlatformGen::XE, 11,
+        "XeHP_SDV"),
 }; // ALL_PLATFORMS
 
 static const PlatformInfo *LookupPlatformInfo(TARGET_PLATFORM p)
@@ -162,7 +162,7 @@ unsigned char getGRFSize()
 // 8 ICL
 // 10 ICLLP
 // 12 TGLLP
-// 11 XE_HP
+// 11 XeHP_SDV
 // Note that encoding is not linearized.
 int getGenxPlatformEncoding()
 {

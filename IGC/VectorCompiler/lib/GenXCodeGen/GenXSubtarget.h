@@ -318,7 +318,7 @@ public:
     case GENX_DG1:
       return TARGET_PLATFORM::GENX_TGLLP;
     case XE_HP_SDV:
-      return TARGET_PLATFORM::XE_HP;
+      return TARGET_PLATFORM::XeHP_SDV;
     case GENX_KBL:
       return TARGET_PLATFORM::GENX_SKL;
     case GENX_GLK:

@@ -3002,7 +3002,7 @@ namespace IGC
             }
             else if (platform->getPlatformInfo().eProductFamily == IGFX_XE_HP_SDV)
             {
-                return XE_HP;
+                return XeHP_SDV;
             }
             // fall-through
         default:
@@ -4289,7 +4289,7 @@ namespace IGC
             SaveOption(vISA_EnableGroupScheduleForBC, true);
         }
 
-        if (VISAPlatform == XE_HP && IGC_IS_FLAG_ENABLED(DPASTokenReduction))
+        if (VISAPlatform == XeHP_SDV && IGC_IS_FLAG_ENABLED(DPASTokenReduction))
         {
             SaveOption(vISA_EnableDPASTokenReduction, true);
         }
