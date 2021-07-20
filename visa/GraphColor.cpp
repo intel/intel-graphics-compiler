@@ -9766,22 +9766,20 @@ int GlobalRA::coloringRegAlloc()
     // declares and code. This currently must be done after flag/addr RA due to
     // the assumption about the location of the pseudo save/restore instructions
     //
-    bool euWADone = false;
+    if (builder.hasFusedEUWA())
+    {
+        G4_INST* euWAInst = builder.createEUWASpill(false);
+        G4_BB* entryBB = (*kernel.fg.begin());
+        INST_LIST_ITER inst_it = entryBB->begin();
+        while ((*inst_it)->isLabel())
+        {
+            inst_it++;
+        }
+        entryBB->insertBefore(inst_it, euWAInst);
+    }
+
     if (hasStackCall)
     {
-        if (builder.hasFusedEUWA() && !euWADone)
-        {
-            G4_INST* euWAInst = builder.createEUWASpill(false);
-            G4_BB* entryBB = (*kernel.fg.begin());
-            INST_LIST_ITER inst_it = entryBB->begin();
-            while ((*inst_it)->isLabel())
-            {
-                inst_it++;
-            }
-            entryBB->insertBefore(inst_it, euWAInst);
-            euWADone = true;
-        }
-
         addCallerSavePseudoCode();
 
         // Only GENX sub-graphs require callee-save code.
@@ -10187,19 +10185,6 @@ int GlobalRA::coloringRegAlloc()
 
                 bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
                 nextSpillOffset = spillGRF.getNextOffset();
-
-                if (builder.hasFusedEUWA() && !euWADone)
-                {
-                    G4_INST * euWAInst = builder.createEUWASpill(false);
-                    G4_BB* entryBB = (*kernel.fg.begin());
-                    INST_LIST_ITER inst_it = entryBB->begin();
-                    while ((*inst_it)->isLabel())
-                    {
-                        inst_it++;
-                    }
-                    entryBB->insertBefore(inst_it, euWAInst);
-                    euWADone = true;
-                }
 
                 if (builder.hasScratchSurface() && !hasStackCall &&
                     (nextSpillOffset + globalScratchOffset) > SCRATCH_MSG_LIMIT)
