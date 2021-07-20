@@ -40,13 +40,10 @@ public:
     ZEBinaryBuilder(const PLATFORM plat, bool is64BitPointer,
         const IGC::SOpenCLProgramInfo& programInfo, const uint8_t* spvData, uint32_t spvSize);
 
-    // Set the given GfxCoreFamily value to elfFileHeader::e_machine. Also set the flag
-    // TargetFlags::machineEntryUsesGfxCoreInsteadOfProductFamily.
-    // The default value of e_machine is ProductFamily. This API will set e_machine to
-    // given value which is supposed to be GfxCoreFamily.
-    void setGfxCoreFamilyToELFMachine(uint32_t value);
+    // Set the given GfxCoreFamily as the specified value.
+    void setGfxCoreFamily(uint32_t value);
 
-    /// add kernel information. Also create kernel metadata inforamtion for .ze_info
+    /// add kernel information. Also create kernel metadata information for .ze_info
     /// This function can be called several times for adding different kernel information
     /// into this ZEObject
     /// The given rawIsaBinary must be lived through the entire ZEBinaryBuilder life
