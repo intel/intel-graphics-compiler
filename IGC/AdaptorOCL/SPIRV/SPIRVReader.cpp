@@ -1808,14 +1808,10 @@ SPIRVToLLVM::transFPType(SPIRVType* T) {
 
 std::string
 SPIRVToLLVM::transOCLImageTypeName(igc_spv::SPIRVTypeImage* ST) {
-  return getSPIRVTypeName(
-    kSPIRVTypeName::Image,
-    getSPIRVImageTypePostfixes(
-      getSPIRVImageSampledTypeName(ST->getSampledType()),
-      ST->getDescriptor(),
-      ST->hasAccessQualifier()
-      ? ST->getAccessQualifier()
-      : AccessQualifierReadOnly));
+  return std::string(kSPR2TypeName::OCLPrefix)
+       + rmap<std::string>(ST->getDescriptor())
+       + kSPR2TypeName::Delimiter
+       + rmap<std::string>(ST->getAccessQualifier());
 }
 
 std::string
@@ -3844,31 +3840,27 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   // OpImageRead:              Image  | Image Type | Coordinate
 
   // Look for opaque image pointer operands and convert it with an i64 type
-  bool convertImageToI64 = (OC != OpSubgroupImageBlockReadINTEL && OC != OpSubgroupImageBlockWriteINTEL);
+  for (auto i = 0U; i < BI->getOperands().size(); i++) {
 
-  if (convertImageToI64)
-  {
-      for (auto i = 0U; i < BI->getOperands().size(); i++) {
+      SPIRVValue* imagePtr = BI->getOperands()[i];
 
-          SPIRVValue* imagePtr = BI->getOperands()[i];
+      if (imagePtr->getType()->isTypeImage())
+      {
+          IGC_ASSERT(isa<PointerType>(transType(imagePtr->getType())));
 
-          if (imagePtr->getType()->isTypeImage())
-          {
-              IGC_ASSERT(isa<PointerType>(transType(imagePtr->getType())));
+          Value *ImageArgVal = llvm::PtrToIntInst::Create(
+              Instruction::PtrToInt,
+              transValue(imagePtr, BB->getParent(), BB),
+              Type::getInt64Ty(*Context),
+              "ImageArgVal",
+              BB);
 
-              Value* ImageArgVal = llvm::PtrToIntInst::Create(
-                  Instruction::PtrToInt,
-                  transValue(imagePtr, BB->getParent(), BB),
-                  Type::getInt64Ty(*Context),
-                  "ImageArgVal",
-                  BB);
-
-              // replace opaque pointer type with i64 type
-              IGC_ASSERT(ArgTys[i] == transType(imagePtr->getType()));
-              ArgTys[i] = ImageArgVal->getType();
-              operands[i] = ImageArgVal;
-          }
+          // replace opaque pointer type with i64 type
+          IGC_ASSERT(ArgTys[i] == transType(imagePtr->getType()));
+          ArgTys[i] = ImageArgVal->getType();
+          operands[i] = ImageArgVal;
       }
+
   }
 
   if (isImageOpCode(OC))
@@ -3922,10 +3914,8 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       }
   }
 
-  if (OC == OpImageQuerySizeLod ||
-      OC == OpImageQuerySize ||
-      OC == OpSubgroupBlockReadINTEL ||
-      OC == OpSubgroupImageBlockReadINTEL)
+  if ((OC == OpImageQuerySizeLod) ||
+      (OC == OpImageQuerySize))
   {
       hasReturnTypeInTypeList = true;
   }

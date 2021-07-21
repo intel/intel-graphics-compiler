@@ -406,7 +406,6 @@ public:
       CV.push_back(SPIRVCapabilityKind::CapabilityImageMipmap);
     return CV;
   }
-  SPIRVType* getSampledType() const { return get<SPIRVType>(SampledType); }
 protected:
   _SPIRV_DEF_DEC9(Id, SampledType, Desc.Dim, Desc.Depth,
       Desc.Arrayed, Desc.MS, Desc.Sampled, Desc.Format, Acc)
