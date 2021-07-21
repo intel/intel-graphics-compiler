@@ -309,9 +309,16 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
                                createBackendData(ExtData,
                                    TM.getPointerSizeInBits(0))});
 
+#ifndef NDEBUG
+  // Do not enforce IR verification at an arbitrary moments in release builds
+  constexpr bool DisableIrVerifier = false;
+#else
+  constexpr bool DisableIrVerifier = true;
+#endif
+
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
   bool AddPasses =
-      TM.addPassesToEmitFile(PM, OS, nullptr, FileType, /*NoVerify*/ true);
+      TM.addPassesToEmitFile(PM, OS, nullptr, FileType, DisableIrVerifier);
   IGC_ASSERT_MESSAGE(!AddPasses, "Bad filetype for vc-codegen");
 }
 

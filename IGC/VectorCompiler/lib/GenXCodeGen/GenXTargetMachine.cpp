@@ -276,8 +276,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(createPromoteMemoryToRegisterPass());
     // All passes which modify the LLVM IR are now complete; run the verifier
   // to ensure that the IR is valid.
-  if (!DisableVerify)
-    PM.add(createVerifierPass());
+  if (!DisableVerify) PM.add(createVerifierPass());
   // Run passes to generate vISA.
 
   /// .. include:: GenXGEPLowering.cpp
@@ -487,6 +486,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   if (BackendConfig.enableRegAllocDump() || Subtarget.dumpRegAlloc())
     PM.add(createGenXGroupAnalysisDumperPass(RegAlloc, ".regalloc"));
 
+  if (!DisableVerify) PM.add(createVerifierPass());
   /// .. include:: GenXCisaBuilder.cpp
   PM.add(createGenXCisaBuilderPass());
   PM.add(createGenXFinalizerPass(o));
