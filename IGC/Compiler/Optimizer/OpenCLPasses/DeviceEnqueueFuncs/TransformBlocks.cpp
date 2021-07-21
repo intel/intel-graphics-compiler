@@ -204,7 +204,46 @@ namespace //Anonymous
             val->addOperand(md);
         }
 
+        enum SPIRVAccessQualifier : uint8_t
+        {
+            AccessQualifierReadOnly = 0,
+            AccessQualifierWriteOnly = 1,
+            AccessQualifierReadWrite = 2,
+        };
+
+        struct SPIRVTypeImageDescriptor
+        {
+            uint8_t Dimension;
+            uint8_t Depth;
+            uint8_t Arrayed;
+            uint8_t MS;
+            uint8_t Sampled;
+            uint8_t Format;
+
+            bool operator==(const SPIRVTypeImageDescriptor& rhs) const
+            {
+                return (Dimension == rhs.Dimension) &&
+                    (Depth == rhs.Depth) &&
+                    (Arrayed == rhs.Arrayed) &&
+                    (MS == rhs.MS) &&
+                    (Sampled == rhs.Sampled) &&
+                    (Format == rhs.Format);
+            }
+        };
+
+        struct ImageMetadata
+        {
+            std::string TypeName;
+            std::string AccessQual;
+        };
+
+        using SPIRVToOCLImage = std::pair<SPIRVTypeImageDescriptor, std::string>;
+        static std::vector<SPIRVToOCLImage> imageTypeMap;
     private:
+        /////////////////////////////////////////////////////////////////////////////////////////////////
+        //  Function responsible for emitting OpenCL meta data for image type argument                 //
+        /////////////////////////////////////////////////////////////////////////////////////////////////
+        ImageMetadata EmitImageTypeMetadata(const llvm::Type* type);
         /////////////////////////////////////////////////////////////////////////////////////////////////
         //  Function responsible for emitting special meta data for block dispatcher functions         //
         //  this will be part of stadard meta data layout and will be consumed by the Target           //
@@ -243,18 +282,20 @@ namespace //Anonymous
             return false;
         }
 
-        /// Check if type is OCL image type
-        static bool isImageType(const llvm::Type* type, llvm::SmallVectorImpl<llvm::StringRef>* nameFractions = nullptr)
+        /// Check if type is OCL or SPIRV image type
+        static bool isImageType(const llvm::Type* type)
         {
             if (auto * sType = toStructType(type))
             {
                 if (sType->isOpaque())
                 {
                     auto typeName = sType->getName();
-                    llvm::SmallVector<llvm::StringRef, 3> buf;
-                    auto& tokens = nameFractions != nullptr ? *nameFractions : buf;
+                    llvm::SmallVector<llvm::StringRef, 3> tokens;
                     typeName.split(tokens, ".");
-                    return tokens.size() >= 2 && tokens[0].equals("opencl") && tokens[1].startswith("image") && tokens[1].endswith("_t");
+                    if (tokens.size() < 2) return false;
+                    bool isOpenCLImage = tokens[0].equals("opencl") && tokens[1].startswith("image") && tokens[1].endswith("_t");
+                    bool isSPIRVImage = tokens[0].equals("spirv") && tokens[1].startswith("Image");
+                    return isOpenCLImage || isSPIRVImage;
                 }
             }
             return false;
@@ -1642,6 +1683,94 @@ namespace //Anonymous
         }
     };
 
+    std::vector<std::pair<MetadataBuilder::SPIRVTypeImageDescriptor, std::string>> MetadataBuilder::imageTypeMap =
+    {
+        { { 0, 0, 0, 0, 0, 0 }, "image1d_t" },
+        { { 5, 0, 0, 0, 0, 0 }, "image1d_buffer_t" },
+        { { 0, 0, 1, 0, 0, 0 }, "image1d_array_t" },
+        { { 1, 0, 0, 0, 0, 0 }, "image2d_t" },
+        { { 1, 0, 1, 0, 0, 0 }, "image2d_array_t" },
+        { { 1, 1, 0, 0, 0, 0 }, "image2d_depth_t" },
+        { { 1, 1, 1, 0, 0, 0 }, "image2d_array_depth_t" },
+        { { 1, 0, 0, 1, 0, 0 }, "image2d_msaa_t" },
+        { { 1, 0, 1, 1, 0, 0 }, "image2d_array_msaa_t" },
+        { { 1, 1, 0, 1, 0, 0 }, "image2d_msaa_depth_t" },
+        { { 1, 1, 1, 1, 0, 0 }, "image2d_array_msaa_depth_t" },
+        { { 2, 0, 0, 0, 0, 0 }, "image3d_t"}
+    };
+
+    MetadataBuilder::ImageMetadata MetadataBuilder::EmitImageTypeMetadata(const llvm::Type* type)
+    {
+        MetadataBuilder::ImageMetadata imageMetadata;
+        if (auto* sType = KindQuery::toStructType(type))
+        {
+            if (sType->isOpaque())
+            {
+                auto typeName = sType->getName();
+                llvm::SmallVector<llvm::StringRef, 3> nameFractions;
+                typeName.split(nameFractions, ".");
+                StringRef prefix = nameFractions[0];
+                if (prefix.equals("opencl"))
+                {
+                    IGC_ASSERT(nameFractions.size() >= 2);
+                    imageMetadata.TypeName = nameFractions[1];
+                    imageMetadata.AccessQual = nameFractions.size() > 2 ? nameFractions[2].str() : "read_write";
+                }
+                else if(prefix.equals("spirv"))
+                {
+                    IGC_ASSERT(nameFractions.size() == 3);
+                    StringRef postfix = nameFractions[2];
+                    SmallVector<StringRef, 8> matches;
+                    Regex regex("([0-6])_([0-2])_([0-1])_([0-1])_([0-2])_([0-9]+)_([0-2])");
+                    if (regex.match(postfix, &matches))
+                    {
+                        MetadataBuilder::SPIRVTypeImageDescriptor Desc;
+                        matches[1].getAsInteger(0, Desc.Dimension);
+                        matches[2].getAsInteger(0, Desc.Depth);
+                        matches[3].getAsInteger(0, Desc.Arrayed);
+                        matches[4].getAsInteger(0, Desc.MS);
+                        matches[5].getAsInteger(0, Desc.Sampled);
+                        matches[6].getAsInteger(0, Desc.Format);
+
+                        auto imageMapping = std::find_if(
+                            imageTypeMap.begin(),
+                            imageTypeMap.end(),
+                            [&Desc](SPIRVToOCLImage& e) { return e.first == Desc; });
+
+                        bool found = (imageMapping != imageTypeMap.end());
+                        IGC_ASSERT_MESSAGE(found, "Unsupported image type!");
+
+                        imageMetadata.TypeName = imageMapping->second;
+
+                        uint8_t accessQual;
+                        matches[7].getAsInteger(0, accessQual);
+                        switch (accessQual)
+                        {
+                        case AccessQualifierReadOnly:
+                            imageMetadata.AccessQual = "read_only";
+                            break;
+                        case AccessQualifierWriteOnly:
+                            imageMetadata.AccessQual = "write_only";
+                            break;
+                        case AccessQualifierReadWrite:
+                            imageMetadata.AccessQual = "read_write";
+                            break;
+                        default:
+                            IGC_ASSERT_MESSAGE(0, "Unsupported image type access qualifier!");
+                        }
+                    }
+                }
+                else
+                {
+                    IGC_ASSERT_MESSAGE(0, "Unexpected image type!");
+                }
+            }
+        }
+        IGC_ASSERT_MESSAGE(!imageMetadata.TypeName.empty() && !imageMetadata.AccessQual.empty(),
+            "Couldn't generate metadata for image type!");
+        return imageMetadata;
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // MetadataBuilder implementation
     /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1730,10 +1859,11 @@ namespace //Anonymous
             {
                 typeName = "sampler_t";
             }
-            else if (KindQuery::isImageType(argType, &nameFractions))
+            else if (KindQuery::isImageType(argType))
             {
-                typeName = nameFractions[1].str();
-                accessQual = nameFractions.size() > 2 ? nameFractions[2].str() : "read_write";
+                ImageMetadata imageMetadata = EmitImageTypeMetadata(argType);
+                typeName = imageMetadata.TypeName;
+                accessQual = imageMetadata.AccessQual;
             }
             else
             {
