@@ -614,7 +614,7 @@ enum Capability {
     CapabilityLongConstantCompositeINTEL = 6089,
     CapabilityOptNoneINTEL = 6094,
     CapabilityTokenTypeINTEL = 6112,
-    CapabilityDebugInfoModuleINTEL = 6114
+    CapabilityDebugInfoModuleINTEL = 6114,
 };
 
 enum Op {
