@@ -39,118 +39,11 @@ namespace cmcl {
 
 constexpr const char BuiltinPrefix[] = "__cm_cl_";
 
-// FIXME: autogenerate the most of the boilerplate below.
-
-namespace BuiltinID {
-enum Enum {
-  Select,
-  RdRegion,
-  WrRegion,
-  PrintfBuffer,
-  PrintfFormatIndex,
-  PrintfFormatIndexLegacy,
-  SVMScatter,
-  SVMAtomicAdd,
-  Size
-};
-} // namespace BuiltinID
-
-constexpr const char *BuiltinNames[BuiltinID::Size] = {
-    "__cm_cl_select",
-    "__cm_cl_rdregion",
-    "__cm_cl_wrregion",
-    "__cm_cl_printf_buffer",
-    "__cm_cl_printf_format_index",
-    "__cm_cl_printf_format_index_legacy",
-    "__cm_cl_svm_scatter",
-    "__cm_cl_svm_atomic_add"};
-
-namespace OperandKind {
-enum Enum {
-  VectorIn,
-  VectorOut,
-  VectorInOut,
-  ScalarIn,
-  ScalarConst,
-  PointerIn
-};
-} // namespace OperandKind
+#include "TranslationInfo.inc"
 
 static bool isOutputOperand(OperandKind::Enum OpKind) {
   return OpKind == OperandKind::VectorInOut || OpKind == OperandKind::VectorOut;
 }
-
-namespace SelectOperand {
-enum Enum { Destination, Condition, TrueValue, FalseValue, Size };
-} // namespace SelectOperand
-
-namespace RdRegionOperand {
-enum Enum { Destination, Source, VStride, Width, Stride, Offset, Size };
-} // namespace RdRegionOperand
-
-namespace WrRegionOperand {
-enum Enum { Destination, Source, VStride, Width, Stride, Offset, Size };
-} // namespace WrRegionOperand
-
-namespace PrintfBufferOperand {
-enum Enum { Size };
-} // namespace PrintfBufferOperand
-
-namespace PrintfFormatIndexOperand {
-enum Enum { Source, Size };
-} // namespace PrintfFormatIndexOperand
-
-namespace SVMScatterOperand {
-enum Enum { NumBlocks, Address, Source, Size };
-} // namespace SVMScatterOperand
-
-namespace SVMAtomicAddOperand {
-enum Enum { Destination, Address, Source, Size };
-} // namespace SVMAtomicAddOperand
-
-constexpr OperandKind::Enum SelectOperandKind[SelectOperand::Size] = {
-    OperandKind::VectorOut, OperandKind::VectorIn, OperandKind::VectorIn,
-    OperandKind::VectorIn};
-
-constexpr OperandKind::Enum RdRegionOperandKind[RdRegionOperand::Size] = {
-    OperandKind::VectorOut,   OperandKind::VectorIn,
-    OperandKind::ScalarConst, OperandKind::ScalarConst,
-    OperandKind::ScalarConst, OperandKind::ScalarIn};
-
-constexpr OperandKind::Enum WrRegionOperandKind[WrRegionOperand::Size] = {
-    OperandKind::VectorInOut, OperandKind::VectorIn,
-    OperandKind::ScalarConst, OperandKind::ScalarConst,
-    OperandKind::ScalarConst, OperandKind::ScalarIn};
-
-constexpr OperandKind::Enum
-    PrintfFormatIndexOperandKind[PrintfFormatIndexOperand::Size] = {
-        OperandKind::PointerIn};
-
-constexpr OperandKind::Enum SVMScatterOperandKind[SVMScatterOperand::Size] = {
-    OperandKind::ScalarConst, OperandKind::VectorIn, OperandKind::VectorIn};
-
-constexpr OperandKind::Enum SVMAtomicAddOperandKind[SVMAtomicAddOperand::Size] =
-    {OperandKind::VectorOut, OperandKind::VectorIn, OperandKind::VectorIn};
-
-constexpr const OperandKind::Enum *BuiltinOperandKind[BuiltinID::Size] = {
-    SelectOperandKind,
-    RdRegionOperandKind,
-    WrRegionOperandKind,
-    nullptr,
-    PrintfFormatIndexOperandKind,
-    PrintfFormatIndexOperandKind, // Legacy
-    SVMScatterOperandKind,
-    SVMAtomicAddOperandKind};
-
-constexpr int BuiltinOperandSize[BuiltinID::Size] = {
-    SelectOperand::Size,
-    RdRegionOperand::Size,
-    WrRegionOperand::Size,
-    PrintfBufferOperand::Size,
-    PrintfFormatIndexOperand::Size,
-    PrintfFormatIndexOperand::Size, // Legacy
-    SVMScatterOperand::Size,
-    SVMAtomicAddOperand::Size};
 
 } // namespace cmcl
 

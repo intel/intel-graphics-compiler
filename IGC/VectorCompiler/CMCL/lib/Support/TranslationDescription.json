@@ -1,0 +1,83 @@
+{
+  "copyright": [
+    "============================ begin_copyright_notice ============================",
+    "",
+    "Copyright (C) 2021 Intel Corporation",
+    "",
+    "SPDX-License-Identifier: MIT",
+    "",
+    "============================= end_copyright_notice ============================="
+  ],
+  "FileDescription": [
+    "Description of CMCL builtins and rules of their translation into VC",
+    "intrinsics. More details can be found in GenerateTranslationCode.py"
+  ],
+  "HelperStructures": {
+    "OperandKind": ["VectorIn", "VectorOut", "VectorInOut", "ScalarIn", "ScalarConst", "PointerIn"]
+  },
+  "BuiltinDescriptions": {
+    "Select": {
+      "Name": "select",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorOut"},
+        {"Name": "Condition", "Kind": "VectorIn"},
+        {"Name": "TrueValue", "Kind": "VectorIn"},
+        {"Name": "FalseValue", "Kind": "VectorIn"}
+      ]
+    },
+    "RdRegion": {
+      "Name": "rdregion",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorOut"},
+        {"Name": "Source", "Kind": "VectorIn"},
+        {"Name": "VStride", "Kind": "ScalarConst"},
+        {"Name": "Width", "Kind": "ScalarConst"},
+        {"Name": "Stride", "Kind": "ScalarConst"},
+        {"Name": "Offset", "Kind": "ScalarIn"}
+      ]
+    },
+    "WrRegion": {
+      "Name": "wrregion",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorInOut"},
+        {"Name": "Source", "Kind": "VectorIn"},
+        {"Name": "VStride", "Kind": "ScalarConst"},
+        {"Name": "Width", "Kind": "ScalarConst"},
+        {"Name": "Stride", "Kind": "ScalarConst"},
+        {"Name": "Offset", "Kind": "ScalarIn"}
+      ]
+    },
+    "PrintfBuffer": {
+      "Name": "printf_buffer",
+      "Operands": []
+    },
+    "PrintfFormatIndex": {
+      "Name": "printf_format_index",
+      "Operands": [
+        {"Name": "Source", "Kind": "PointerIn"}
+      ]
+    },
+    "PrintfFormatIndexLegacy": {
+      "Name": "printf_format_index_legacy",
+      "Operands": [
+        {"Name": "Source", "Kind": "PointerIn"}
+      ]
+    },
+    "SVMScatter": {
+      "Name": "svm_scatter",
+      "Operands": [
+        {"Name": "NumBlocks", "Kind": "ScalarConst"},
+        {"Name": "Address", "Kind": "VectorIn"},
+        {"Name": "Source", "Kind": "VectorIn"}
+      ]
+    },
+    "SVMAtomicAdd": {
+      "Name": "svm_atomic_add",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorOut"},
+        {"Name": "Address", "Kind": "VectorIn"},
+        {"Name": "Source", "Kind": "VectorIn"}
+      ]
+    }
+  }
+}
