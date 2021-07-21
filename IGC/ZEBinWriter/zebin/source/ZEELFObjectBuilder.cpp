@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/MC/StringTableBuilder.h"
 #include "llvm/Support/EndianStream.h"
-#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
 #ifndef ZEBinStandAloneBuild
@@ -24,7 +23,6 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include <iostream>
-#include <tuple>
 #include "Probe/Assertion.h"
 
 namespace zebin {
@@ -78,19 +76,15 @@ private:
     uint64_t writeRelocTab(const RelocationListTy& relocs, bool isRelFormat);
     // write ze info section
     uint64_t writeZEInfo();
-    // write .note.intelgt.compat section
-    std::pair<uint64_t, uint64_t> writeCompatibilityNote();
     // write string table
     uint64_t writeStrTab();
     // write section header
     void writeSectionHeader();
     // write the section header's offset into ELF header
     void writeSectionHdrOffset(uint64_t offset);
-    // write number of zero bytes
+    // wirite number of zero bytes
     void writePadding(uint32_t size);
 
-    // The name writeWord seems confusing. Both ELF32 and ELF64 words are
-    // uint32_t.
     void writeWord(uint64_t Word) {
         if (is64Bit())
             m_W.write<uint64_t>(Word);
@@ -153,7 +147,7 @@ ZEELFObjectBuilder::addStandardSection(
 {
     IGC_ASSERT(type != ELF::SHT_NULL);
     // calculate the required padding to satisfy alignment requirement
-    // The original data size is (size + padding)
+    // The origanl data size is (size + padding)
     uint32_t need_padding_for_align = (align == 0) ?
         0 : align - ((size + padding) % align);
     if (need_padding_for_align == align)
@@ -543,50 +537,6 @@ uint64_t ELFWriter::writeZEInfo()
     return m_W.OS.tell() - start_off;
 }
 
-std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
-    auto padToRequiredAlign = [&]() {
-        // The alignment of the Elf word, name and descriptor is 4.
-        // Implementations differ from the specification here: in practice all
-        // variants align both the name and descriptor to 4-bytes.
-        uint64_t cur = m_W.OS.tell();
-        uint64_t next = llvm::alignTo(cur, 4);
-        writePadding(next - cur);
-    };
-
-    auto writeOneNote = [&](StringRef owner, auto desc, uint32_t type) {
-        // It's easier to use uint32_t directly now because both Elf32_Word and
-        // Elf64_Word are uint32_t.
-        // TODO: Use template implementation to handle ELF32 and ELF64 cases.
-        m_W.write<uint32_t>(owner.size() + 1);
-        m_W.write<uint32_t>(sizeof(desc));
-        m_W.write<uint32_t>(type);
-        m_W.OS << owner << '\0';
-        padToRequiredAlign();
-        m_W.write(desc);
-        padToRequiredAlign();
-    };
-
-    // Align the section offset to the required alignment first.
-    // TODO: Handle the section alignment in a more generic place..
-    padToRequiredAlign();
-    uint64_t start_off = m_W.OS.tell();
-    // write NT_INTELGT_PRODUCT_FAMILY
-    writeOneNote("IntelGT",
-                 m_ObjBuilder.m_productFamily,
-                 NT_INTELGT_PRODUCT_FAMILY);
-
-    // write NT_INTELGT_GFXCORE_FAMILY_
-    writeOneNote("IntelGT",
-                 m_ObjBuilder.m_gfxCoreFamily,
-                 NT_INTELGT_GFXCORE_FAMILY);
-
-    // write NT_INTELGT_TARGET_METADATA
-    writeOneNote("IntelGT",
-                 m_ObjBuilder.m_metadata.packed,
-                 NT_INTELGT_TARGET_METADATA);
-    return std::make_pair(start_off, m_W.OS.tell() - start_off);
-}
-
 uint64_t ELFWriter::writeStrTab()
 {
     uint64_t start_off = m_W.OS.tell();
@@ -689,21 +639,6 @@ void ELFWriter::writeSections()
                 (m_SectionHdrEntries.size() + 1) : 0;
             break;
 
-        case ELF::SHT_NOTE: {
-            // Currently we don't seem to reorder strings in the .strtab, and
-            // the offset returned by LLVM StringTableBuilder::add() will still
-            // be valid, so the section name can be checked in this way. Other
-            // possibilities are creating a new section kind and set the
-            // appropriate section pointer, or emitting .strtab before the note
-            // section.
-            auto strtabSize = m_StrTabBuilder.getSize();
-            if (entry.name == m_StrTabBuilder.add(m_ObjBuilder.m_CompatNoteName)) {
-                IGC_ASSERT(entry.name < strtabSize);
-                std::tie(entry.offset, entry.size) = writeCompatibilityNote();
-                break;
-            }
-        }
-
         default:
             IGC_ASSERT(0);
             break;
@@ -747,11 +682,11 @@ void ELFWriter::writeHeader()
     // e_ident padding
     m_W.OS.write_zeros(ELF::EI_NIDENT - ELF::EI_OSABI);
 
-    // e_type: Currently IGC always emits a relocatable file
-    m_W.write<uint16_t>(ELF::ET_REL);
+    // e_type
+    m_W.write<uint16_t>(m_ObjBuilder.m_fileType);
 
     // e_machine
-    m_W.write<uint16_t>(EM_INTELGT);
+    m_W.write<uint16_t>(m_ObjBuilder.m_machineType);
 
     // e_version
     m_W.write<uint32_t>(0);
@@ -766,7 +701,7 @@ void ELFWriter::writeHeader()
     writeWord(0);
 
     // e_flags
-    m_W.write<uint32_t>(0);
+    m_W.write<uint32_t>(m_ObjBuilder.m_flags.packed);
 
     // e_ehsize = ELF header size
     m_W.write<uint16_t>(is64Bit() ?
@@ -896,16 +831,11 @@ void ELFWriter::createSectionHdrEntries()
     }
 
     // .ze_info
-    // every object must have exactly one ze_info section
-    IGC_ASSERT(m_ObjBuilder.m_zeInfoSection);
-    createSectionHdrEntry(m_ObjBuilder.m_ZEInfoName, SHT_ZEBIN_ZEINFO,
-        m_ObjBuilder.m_zeInfoSection.get());
-    ++index;
-
-    // .note.intelgt.compat
-    // Create the compatibility note section
-    createSectionHdrEntry(m_ObjBuilder.m_CompatNoteName, ELF::SHT_NOTE);
-    ++index;
+    if (m_ObjBuilder.m_zeInfoSection) {
+        createSectionHdrEntry(m_ObjBuilder.m_ZEInfoName, SHT_ZEBIN_ZEINFO,
+            m_ObjBuilder.m_zeInfoSection.get());
+        ++index;
+    }
 
     // .strtab
     m_StringTableIndex = index;

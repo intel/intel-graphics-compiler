@@ -48,21 +48,41 @@ public:
     typedef int32_t SectionID;
 
 public:
-    ZEELFObjectBuilder(bool is64Bit) : m_is64Bit(is64Bit)
+    // Each ZEELFObjectBuilder creates one ELF Object
+    ZEELFObjectBuilder(bool is64Bit,
+                       ELF_TYPE_ZEBIN fileType,
+                       uint32_t machine,
+                       TargetFlags flags)
+        : m_is64Bit(is64Bit),
+          m_fileType(fileType),
+          m_machineType(machine),
+          m_flags(flags) {}
+
+    ZEELFObjectBuilder(bool is64Bit)
+        : m_is64Bit(is64Bit)
     {
-        m_metadata.packed = 0;
+        m_fileType = ET_ZEBIN_NONE;
+        m_machineType = 0;
+        m_flags.packed = 0;
     }
 
     ~ZEELFObjectBuilder() {}
 
-    void setProductFamily(uint32_t family) { m_productFamily = family; }
-    uint32_t getProductFamily() const { return m_productFamily; }
+    /// Set elfFileHeader::e_type value
+    void setFileType(ELF_TYPE_ZEBIN fileType)
+    { m_fileType = fileType; }
 
-    void setGfxCoreFamily(uint32_t family) { m_gfxCoreFamily = family; }
-    uint32_t getGfxCoreFamily() const { return m_gfxCoreFamily; }
+    /// Set elfFileHeader::e_machine value
+    void setMachine(uint32_t machine)
+    { m_machineType = machine; }
 
-    void setTargetMetadata(TargetMetadata metadata) { m_metadata = metadata; }
-    TargetMetadata getTargetMetadata() const { return m_metadata; }
+    /// Set elfFileHeader::e_flags
+    void setTargetFlag(TargetFlags flags)
+    { m_flags = flags; }
+
+    /// Get elfFileHeader::e_flags
+    TargetFlags getTargetFlag() const
+    { return m_flags; }
 
     // add a text section contains gen binary
     // - name: section name. This is usually the kernel or function name of
@@ -336,29 +356,28 @@ private:
 
 private:
     // place holder for section default name
-    const std::string m_TextName       = ".text";
-    const std::string m_DataName       = ".data";
-    const std::string m_BssName        = ".bss";
-    const std::string m_SymTabName     = ".symtab";
-    const std::string m_RelName        = ".rel";
-    const std::string m_RelaName       = ".rela";
-    const std::string m_SpvName        = ".spv";
-    const std::string m_VISAAsmName    = ".visaasm";
-    const std::string m_DebugName      = ".debug_info";
-    const std::string m_ZEInfoName     = ".ze_info";
-    const std::string m_GTPinInfoName  = ".gtpin_info";
-    const std::string m_MiscName       = ".misc";
-    const std::string m_CompatNoteName = ".note.intelgt.compat";
-    const std::string m_StrTabName     = ".strtab";
+    const std::string m_TextName      = ".text";
+    const std::string m_DataName      = ".data";
+    const std::string m_BssName       = ".bss";
+    const std::string m_SymTabName    = ".symtab";
+    const std::string m_RelName       = ".rel";
+    const std::string m_RelaName      = ".rela";
+    const std::string m_SpvName       = ".spv";
+    const std::string m_VISAAsmName   = ".visaasm";
+    const std::string m_DebugName     = ".debug_info";
+    const std::string m_ZEInfoName    = ".ze_info";
+    const std::string m_GTPinInfoName = ".gtpin_info";
+    const std::string m_MiscName      = ".misc";
+    const std::string m_StrTabName    = ".strtab";
 
 private:
     // 32 or 64 bit object
     bool m_is64Bit;
 
-    // information used to generate .note.intelgt.compat
-    uint32_t m_productFamily = 0;
-    uint32_t m_gfxCoreFamily = 0;
-    TargetMetadata m_metadata;
+    // information for ELF header
+    ELF_TYPE_ZEBIN m_fileType; // e_type
+    uint32_t m_machineType;    // e_machine
+    TargetFlags m_flags;       // e_flags
 
     StandardSectionListTy m_textSections;
     StandardSectionListTy m_dataAndbssSections; // data and bss sections

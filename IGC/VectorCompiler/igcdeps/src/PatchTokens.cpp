@@ -180,7 +180,7 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   llvm::raw_string_ostream ErrLog{m_ErrorLog};
   iOpenCL::ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8,
                                      *m_programInfo, nullptr, 0};
-  zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
+  zebuilder.setGfxCoreFamilyToELFMachine(m_Platform.eRenderCoreFamily);
 
   for (const auto &kernel : m_kernels) {
     zebuilder.createKernel(
