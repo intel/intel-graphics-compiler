@@ -435,7 +435,7 @@ DECLARE_IGC_REGKEY(bool, SaveRestoreIR,                 true,  "Save/Restore IR 
 DECLARE_IGC_REGKEY(DWORD, CodePatch,                    2,     "Enable Pixel Shader code patching to directly emit code after stitching", false)
 DECLARE_IGC_REGKEY(DWORD, CodePatchLimit,               0,     "Debug CodePatch via limiting the number of shader been patched", false)
 DECLARE_IGC_REGKEY(DWORD, CodePatchExperiments,         0,      "Experiment with code patching when != 0", false)
-DECLARE_IGC_REGKEY(DWORD, CodePatchFilter,            0x7,     "Filter out unsupported patterns", false)
+DECLARE_IGC_REGKEY(DWORD, CodePatchFilter,            0x17,     "Filter out unsupported patterns", false)
 DECLARE_IGC_REGKEY(DWORD, FirstStagedSIMD,              0,      "Force Pixel shader to be 1: FastSIMD (SIMD8), 2: BestSIMD (SIMD16 or SIMD8), 3: FatestSIMD (SIMD8 opt off)", false)
 DECLARE_IGC_REGKEY(DWORD, FastestS1Experiments,         0,      "Select configs for fastest compilation by bits.", false)
 DECLARE_IGC_REGKEY(bool, ForceFastestSIMD, false,  "Force pixel shader to return SIMD8 as fast as possible.", false)
