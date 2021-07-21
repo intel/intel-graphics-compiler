@@ -196,6 +196,10 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
         .Pass(passName, m_pContext->m_numPasses++)
         .StagedInfo(m_pContext)
         .Extension("ll");
+
+    if (!name.allow())
+        return;
+
     // The dump object needs to be on the Heap because it owns the stream, and the stream
     // is taken by reference into the printer pass. If the Dump object had been on the
     // stack, then that reference would go bad as soon as we exit this scope, and then
@@ -230,7 +234,7 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
         auto annotator = (pContext->annotater != nullptr) ? pContext->annotater : &new_annotator;
         DumpLLVMIRText(
             pContext->getModule(),
-            Dump(name, DumpType::PASS_IR_TEXT),
+            name,
             annotator);
     }
     if (IGC_IS_FLAG_ENABLED(ShaderOverride))

@@ -77,6 +77,7 @@ public:
     std::string RelativePath() const;
     std::string AbsolutePath(OutputFolderName folder) const;
     std::string GetKernelName() const;
+    bool allow() const;
 
 private:
     class CPassDescriptor
@@ -187,7 +188,7 @@ public:
 
 void DumpLLVMIRText(
     llvm::Module*             pModule,
-    Dump                      const& dump,
+    const DumpName&           dumpName,
     llvm::AssemblyAnnotationWriter*  optionalAnnotationWriter = nullptr);
 
 int PrintDebugMsgV(

@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include <sstream>
 #include <fstream>
 #include <functional>
+#include <regex>
 
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"
@@ -499,11 +500,16 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
     {
         std::stringstream ss;
         ss << m_asmName << ".asm";
-        std::ofstream krnlOutput(ss.str(), std::ofstream::out);
-        if (!krnlOutput) {
-            std::cerr << ss.str() << ": failed to open file\n";
-        } else {
-            m_kernel->emitDeviceAsm(krnlOutput, binary, binarySize);
+        std::string filePath = ss.str();
+        if (allowDump(*m_options, filePath))
+        {
+            std::ofstream krnlOutput(filePath, std::ofstream::out);
+            if (!krnlOutput) {
+                std::cerr << filePath << ": failed to open file\n";
+            }
+            else {
+                m_kernel->emitDeviceAsm(krnlOutput, binary, binarySize);
+            }
         }
     }
 

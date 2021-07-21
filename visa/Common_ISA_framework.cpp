@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include <sstream>
 #include <fstream>
+#include <regex>
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"
 #include "Common_ISA_util.h"
@@ -515,18 +516,33 @@ int CisaBinary::isaDump(
             // fallback to a default file name in the current working directory
             // for that case
             std::string asmFileName = asmName.str();
-            FILE *f = fopen(asmFileName.c_str(), "w");
-            if (f) {
-                fclose(f);
-            } else {
-                asmFileName = "default.visaasm";
+            if (allowDump(*m_options, asmFileName))
+            {
+                FILE* f = fopen(asmFileName.c_str(), "w");
+                if (f) {
+                    fclose(f);
+                }
+                else {
+                    asmFileName = "default.visaasm";
+                }
+                writeIsaAsmFile(asmFileName, sstr.str());
             }
-            writeIsaAsmFile(asmFileName, sstr.str());
         }
     }
 
     return VISA_SUCCESS;
 #endif // IS_RELEASE_DLL
+}
+
+bool allowDump(const Options& options, const std::string &fileName)
+{
+    const char* regex = options.getOptionCstr(vISA_ShaderDumpFilter);
+    if (!regex || *regex == '\0')
+        return true;
+
+    std::regex fileRegex(regex);
+
+    return std::regex_search(fileName, fileRegex);
 }
 
 }

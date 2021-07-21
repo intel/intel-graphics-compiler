@@ -852,7 +852,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     {
         auto name = IGC::Debug::GetDumpNameObj(m_currShader, "visa.ll");
-        llvmtoVISADump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
+        if (name.allow())
+            llvmtoVISADump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
     }
     VisaIdAnnotator VidAnnotator;  // for visa.ll dump
     StringRef curSrcFile, curSrcDir;

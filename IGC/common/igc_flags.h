@@ -250,6 +250,7 @@ DECLARE_IGC_REGKEY(bool, QualityMetricsEnable,          false, "Enable Quality M
 DECLARE_IGC_REGKEY(bool, ShaderDumpEnable,              false, "dump LLVM IR, visaasm, and GenISA", true)
 DECLARE_IGC_REGKEY(bool, ShaderDumpEnableAll,           false, "dump all LLVM IR passes, visaasm, and GenISA", true)
 DECLARE_IGC_REGKEY(DWORD, ShaderDumpEnableG4,           false, "same as ShaderDumpEnable but adds G4 dumps (0 = off, 1 = some, 2 = all)", 0)
+DECLARE_IGC_REGKEY(debugString, ShaderDumpFilter,       0,     "Only dump files matching the given regex", true)
 DECLARE_IGC_REGKEY(bool, ElfDumpEnable,                 false, "dump ELF file", true)
 DECLARE_IGC_REGKEY(bool, ElfTempDumpEnable,             false, "dump temporary ELF files", true)
 DECLARE_IGC_REGKEY(bool, ShowFullVectorsInShaderDumps,  false, "print all elements of vectors in ShaderDumps, can dramatically increase ShaderDumps size", true)

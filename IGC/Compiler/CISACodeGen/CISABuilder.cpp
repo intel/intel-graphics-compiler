@@ -4069,6 +4069,11 @@ namespace IGC
             SaveOption(vISA_Compaction, false);
         }
 
+        if (auto *regex = IGC_GET_REGKEYSTRING(ShaderDumpFilter))
+        {
+            SaveOption(vISA_ShaderDumpFilter, regex);
+        }
+
         // In Vulkan and OGL buffer variable memory reads and writes within
         // a single shader invocation must be processed in order.
         if (m_program->m_DriverInfo->DisableDpSendReordering())

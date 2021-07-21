@@ -218,5 +218,7 @@ private:
     CISA_IR_Builder* parent;
 };
 
+bool allowDump(const Options& options, const std::string& fileName);
+
 }
 #endif

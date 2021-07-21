@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "iga/IGALibrary/api/igaEncoderWrapper.hpp"
 #include "Timer.h"
 #include "BuildIR.h"
+#include "Common_ISA_framework.h"
 
 #include <map>
 #include <utility>
@@ -1503,15 +1504,18 @@ void *BinaryEncodingIGA::EmitBinary(size_t& binarySize)
     if (kernel.getOption(vISA_GenerateBinary))
     {
         std::string binFileName = fileName + ".dat";
-        std::string errStr;
-        std::ofstream os(binFileName, std::ios::binary);
-        if (!os)
+        if (CisaFramework::allowDump(*kernel.getOptions(), binFileName))
         {
-            errStr = "Can't open " + binFileName + ".\n";
-            MUST_BE_TRUE(0, errStr);
-            return nullptr;
+            std::string errStr;
+            std::ofstream os(binFileName, std::ios::binary);
+            if (!os)
+            {
+                errStr = "Can't open " + binFileName + ".\n";
+                MUST_BE_TRUE(0, errStr);
+                return nullptr;
+            }
+            os.write((const char*)m_kernelBuffer, binarySize);
         }
-        os.write((const char*)m_kernelBuffer, binarySize);
     }
 
     return m_kernelBuffer;

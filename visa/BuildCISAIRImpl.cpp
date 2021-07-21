@@ -922,7 +922,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
     */
     if (IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA) && nameInput && !os)
     {
-        status = m_cisaBinary->dumpToFile(name);
+        if (CisaFramework::allowDump(m_options, name))
+            status = m_cisaBinary->dumpToFile(name);
     }
 
     if (os && emit_visa_only)
@@ -1242,9 +1243,14 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         }
 
         if (os)
+        {
             status = m_cisaBinary->dumpToStream(os);
+        }
         else
-            status = m_cisaBinary->dumpToFile(name);
+        {
+            if (CisaFramework::allowDump(m_options, name))
+                status = m_cisaBinary->dumpToFile(name);
+        }
     }
 
     stopTimer(TimerID::TOTAL); // have to record total time before dump the timer

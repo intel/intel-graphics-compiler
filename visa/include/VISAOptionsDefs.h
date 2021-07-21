@@ -244,6 +244,7 @@ DEF_VISA_OPTION(vISA_GenerateISAASM,      ET_BOOL,  "-dumpcommonisa",   UNUSED, 
 DEF_VISA_OPTION(vISA_DumpIsaVarNames,     ET_BOOL,  "-dumpisavarnames", UNUSED, true)
 DEF_VISA_OPTION(vISA_GenIsaAsmList,       ET_BOOL,  "-genIsaasmList",   UNUSED, false)
 DEF_VISA_OPTION(vISA_UniqueLabels,        ET_BOOL,  NULLSTR,            UNUSED, false)
+DEF_VISA_OPTION(vISA_ShaderDumpFilter,    ET_CSTR, "-shaderDumpFilter", "USAGE: -shaderDumpFilter <regex>\n", NULL)
 //   specifies a file containing isaasm paths/names to parse
 DEF_VISA_OPTION(vISA_IsaasmNamesFileUsed, ET_BOOL,  NULLSTR,            UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpvISA,            ET_BOOL,  "-dumpvisa",        UNUSED, false)

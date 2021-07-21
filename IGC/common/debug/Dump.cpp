@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <iomanip>
 #include <mutex>
 #include <algorithm>
+#include <regex>
 #include "Probe/Assertion.h"
 
 using namespace IGC;
@@ -426,6 +427,17 @@ std::string DumpName::RelativePath() const
     return AbsolutePath("");
 }
 
+bool DumpName::allow() const
+{
+    const char* regex = IGC_GET_REGKEYSTRING(ShaderDumpFilter);
+    if (!regex || *regex == '\0')
+        return true;
+
+    std::regex fileRegex(regex);
+
+    return std::regex_search(RelativePath(), fileRegex);
+}
+
 namespace {
     bool isText( DumpType type )
     {
@@ -639,13 +651,18 @@ llvm::raw_ostream& Dump::stream() const
 
 void DumpLLVMIRText(
     llvm::Module*             pModule,
-    Dump                      const& dump,
+    const DumpName&           dumpName,
     llvm::AssemblyAnnotationWriter*  optionalAnnotationWriter /* = nullptr */)
 {
 #if defined(IGC_DEBUG_VARIABLES)
+    if (dumpName.allow())
+    {
+        auto dump = Dump(dumpName, DumpType::PASS_IR_TEXT);
+
         IGC::Debug::DumpLock();
         pModule->print(dump.stream(), optionalAnnotationWriter);
         IGC::Debug::DumpUnlock();
+    }
 #endif
 }
 

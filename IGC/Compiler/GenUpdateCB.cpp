@@ -516,8 +516,7 @@ bool GenUpdateCB::runOnFunction(Function& F)
             IGCLLVM::WriteBitcodeToFile(m_ConstantBufferReplaceShaderPatterns, bitcodeSS);
 
             IGC::Debug::DumpName name = IGC::Debug::GetLLDumpName(m_ctx, "gencb");
-            IGC::Debug::DumpLLVMIRText(m_ConstantBufferReplaceShaderPatterns,
-                IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT));
+            IGC::Debug::DumpLLVMIRText(m_ConstantBufferReplaceShaderPatterns, name);
 
             size_t bufferSize = bitcodeSS.str().size();
             void* CBPatterns = aligned_malloc(bufferSize, 16);
