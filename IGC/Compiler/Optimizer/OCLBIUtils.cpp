@@ -1356,6 +1356,8 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_fma_rtz_f32"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_fma_rtz);
     m_CommandMap["__builtin_IB_add_rtz_f64"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_add_rtz);
     m_CommandMap["__builtin_IB_add_rtz_f32"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_add_rtz);
+    m_CommandMap["__builtin_IB_fma_rtp_f64"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_fma_rtp);
+    m_CommandMap["__builtin_IB_fma_rtn_f64"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_fma_rtn);
 
     //Sync built-ins
     m_CommandMap["__builtin_IB_thread_group_barrier"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_threadgroupbarrier, false);

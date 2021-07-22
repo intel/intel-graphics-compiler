@@ -14,6 +14,9 @@ SPDX-License-Identifier: MIT
 #define RT_Z   2
 #define RT_NE  3
 
+extern __constant int __UseNative64BitIntBuiltin;
+extern __constant int __UseNative64BitFloatBuiltin;
+
 static ulong OVERLOADABLE sat_ulong(half _T, ulong _R);
 #if defined(cl_khr_fp64)
 INLINE float __intel_convert_float_rtp_rtn(double a, uint direction);
@@ -2560,17 +2563,62 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f64_i64, _Rdouble_rte)
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i64, _Rdouble_rtz)(long SignedValue)
 {
-  return __builtin_IB_itofp64_rtz(SignedValue);
+  if(__UseNative64BitIntBuiltin)
+  {
+    return __builtin_IB_itofp64_rtz(SignedValue);
+  }
+  else
+  {
+    int hi = SignedValue >> 32;
+    unsigned int lo = SignedValue & 0xFFFFFFFF;
+    long c = 1l << 32;
+
+    double o_lo = (double) lo,
+           o_hi = (double) hi,
+           o_c = (double) c;
+    // o_c * o_hi + o_lo, using round-to-zero
+    return __builtin_IB_fma_rtz_f64(o_c, o_hi, o_lo);
+  }
 }
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i64, _Rdouble_rtp)(long SignedValue)
 {
-  return __builtin_IB_itofp64_rtp(SignedValue);
+  if(__UseNative64BitIntBuiltin)
+  {
+    return __builtin_IB_itofp64_rtp(SignedValue);
+  }
+  else
+  {
+    int hi = SignedValue >> 32;
+    unsigned int lo = SignedValue & 0xFFFFFFFF;
+    long c = 1l << 32;
+
+    double o_lo = (double) lo,
+           o_hi = (double) hi,
+           o_c = (double) c;
+    // o_c * o_hi + o_lo, using round-to-positive-infinity
+    return __builtin_IB_fma_rtp_f64(o_c, o_hi, o_lo);
+  }
 }
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i64, _Rdouble_rtn)(long SignedValue)
 {
-  return __builtin_IB_itofp64_rtn(SignedValue);
+  if(__UseNative64BitIntBuiltin)
+  {
+    return __builtin_IB_itofp64_rtn(SignedValue);
+  }
+  else
+  {
+    int hi = SignedValue >> 32;
+    unsigned int lo = SignedValue & 0xFFFFFFFF;
+    long c = 1l << 32;
+
+    double o_lo = (double) lo,
+           o_hi = (double) hi,
+           o_c = (double) c;
+    // o_c * o_hi + o_lo, using round-to-negative-infinity
+    return __builtin_IB_fma_rtn_f64(o_c, o_hi, o_lo);
+  }
 }
 
 #endif  // defined(cl_khr_fp64)
@@ -2825,17 +2873,62 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f64_i64, _Rdouble_rte)
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i64, _Rdouble_rtz)(ulong UnsignedValue)
 {
-  return __builtin_IB_uitofp64_rtz(UnsignedValue);
+  if(__UseNative64BitIntBuiltin)
+  {
+    return __builtin_IB_uitofp64_rtz(UnsignedValue);
+  }
+  else
+  {
+    unsigned int hi = UnsignedValue >> 32;
+    unsigned int lo = UnsignedValue & 0xFFFFFFFF;
+    long c = 1l << 32;
+
+    double o_lo = (double) lo,
+           o_hi = (double) hi,
+           o_c = (double) c;
+    // o_c * o_hi + o_lo, using round-to-zero
+    return __builtin_IB_fma_rtz_f64(o_c, o_hi, o_lo);
+  }
 }
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i64, _Rdouble_rtp)(ulong UnsignedValue)
 {
-  return __builtin_IB_uitofp64_rtp(UnsignedValue);
+  if(__UseNative64BitIntBuiltin)
+  {
+    return __builtin_IB_uitofp64_rtp(UnsignedValue);
+  }
+  else
+  {
+    unsigned int hi = UnsignedValue >> 32;
+    unsigned int lo = UnsignedValue & 0xFFFFFFFF;
+    long c = 1l << 32;
+
+    double o_lo = (double) lo,
+           o_hi = (double) hi,
+           o_c = (double) c;
+    // o_c * o_hi + o_lo, using round-to-positive-infinity
+    return __builtin_IB_fma_rtp_f64(o_c, o_hi, o_lo);
+  }
 }
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i64, _Rdouble_rtn)(ulong UnsignedValue)
 {
-  return __builtin_IB_uitofp64_rtn(UnsignedValue);
+  if(__UseNative64BitIntBuiltin)
+  {
+    return __builtin_IB_uitofp64_rtn(UnsignedValue);
+  }
+  else
+  {
+    unsigned int hi = UnsignedValue >> 32;
+    unsigned int lo = UnsignedValue & 0xFFFFFFFF;
+    long c = 1l << 32;
+
+    double o_lo = (double) lo,
+           o_hi = (double) hi,
+           o_c = (double) c;
+    // o_c * o_hi + o_lo, using round-to-negative-infinity
+    return __builtin_IB_fma_rtn_f64(o_c, o_hi, o_lo);
+  }
 }
 
 #endif  // defined(cl_khr_fp64)

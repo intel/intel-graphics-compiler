@@ -164,6 +164,10 @@ BIConvert::BIConvert() {
       std::make_pair(Intrinsic::fma, GenXIntrinsic::genx_rndz);
   TwoMap["__builtin_IB_fma_rtz_f32"] =
       std::make_pair(Intrinsic::fma, GenXIntrinsic::genx_rndz);
+  TwoMap["__builtin_IB_fma_rtp_f64"] =
+      std::make_pair(Intrinsic::fma, GenXIntrinsic::genx_rndu);
+  TwoMap["__builtin_IB_fma_rtn_f64"] =
+      std::make_pair(Intrinsic::fma, GenXIntrinsic::genx_rndd);
 }
 
 // Get intrinsic declaration for given base call instruction and intrinsic ID.

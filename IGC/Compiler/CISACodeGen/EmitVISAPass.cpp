@@ -8927,6 +8927,12 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_add_rtz:
         emitFPOrtz(inst);
         break;
+    case GenISAIntrinsic::GenISA_fma_rtp:
+        emitFMArtp(inst);
+        break;
+    case GenISAIntrinsic::GenISA_fma_rtn:
+        emitFMArtn(inst);
+        break;
     case GenISAIntrinsic::GenISA_CatchAllDebugLine:
         emitDebugPlaceholder(inst);
         break;
@@ -14788,11 +14794,13 @@ ERoundingMode EmitPass::GetRoundingMode_FP(Instruction* inst)
         case GenISAIntrinsic::GenISA_ftof_rtn:
         case GenISAIntrinsic::GenISA_itof_rtn:
         case GenISAIntrinsic::GenISA_uitof_rtn:
+        case GenISAIntrinsic::GenISA_fma_rtn:
             RM = ERoundingMode::ROUND_TO_NEGATIVE;
             break;
         case GenISAIntrinsic::GenISA_ftof_rtp:
         case GenISAIntrinsic::GenISA_itof_rtp:
         case GenISAIntrinsic::GenISA_uitof_rtp:
+        case GenISAIntrinsic::GenISA_fma_rtp:
             RM = ERoundingMode::ROUND_TO_POSITIVE;
             break;
         case GenISAIntrinsic::GenISA_ftof_rte:
@@ -14962,6 +14970,8 @@ bool EmitPass::setRMExplicitly(Instruction* inst)
         case GenISAIntrinsic::GenISA_add_rtz:
         case GenISAIntrinsic::GenISA_mul_rtz:
         case GenISAIntrinsic::GenISA_fma_rtz:
+        case GenISAIntrinsic::GenISA_fma_rtp:
+        case GenISAIntrinsic::GenISA_fma_rtn:
         case GenISAIntrinsic::GenISA_ftof_rtn:
         case GenISAIntrinsic::GenISA_itof_rtn:
         case GenISAIntrinsic::GenISA_uitof_rtn:
@@ -15133,6 +15143,40 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
     }
 
     ResetRoundingMode(inst);
+}
+
+// Emit FP mad (FMA) using round-to-positive-infinity (rtp)
+void EmitPass::emitFMArtp(llvm::GenIntrinsicInst *inst) {
+  IGC_ASSERT_MESSAGE(inst->getNumArgOperands() == 3, "ICE: incorrect gen intrinsic");
+
+  CVariable *src0 = GetSymbol(inst->getOperand(0));
+  CVariable *src1 = GetSymbol(inst->getOperand(1));
+  CVariable *src2 = GetSymbol(inst->getOperand(2));
+  CVariable *dst = m_destination;
+
+  SetRoundingMode_FP(ERoundingMode::ROUND_TO_POSITIVE);
+
+  m_encoder->Mad(dst, src0, src1, src2);
+  m_encoder->Push();
+
+  ResetRoundingMode(inst);
+}
+
+// Emit FP mad (FMA) using round-to-negative-infinity (rtn)
+void EmitPass::emitFMArtn(llvm::GenIntrinsicInst *inst) {
+  IGC_ASSERT_MESSAGE(inst->getNumArgOperands() == 3, "ICE: incorrect gen intrinsic");
+
+  CVariable *src0 = GetSymbol(inst->getOperand(0));
+  CVariable *src1 = GetSymbol(inst->getOperand(1));
+  CVariable *src2 = GetSymbol(inst->getOperand(2));
+  CVariable *dst = m_destination;
+
+  SetRoundingMode_FP(ERoundingMode::ROUND_TO_NEGATIVE);
+
+  m_encoder->Mad(dst, src0, src1, src2);
+  m_encoder->Push();
+
+  ResetRoundingMode(inst);
 }
 
 void EmitPass::emitftoi(llvm::GenIntrinsicInst* inst)

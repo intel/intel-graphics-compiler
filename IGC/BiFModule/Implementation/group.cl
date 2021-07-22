@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
- extern __constant int __UseNative64BitIntSubgroupBuiltin;
- extern __constant int __UseNative64BitFloatSubgroupBuiltin;
+ extern __constant int __UseNative64BitIntBuiltin;
+ extern __constant int __UseNative64BitFloatBuiltin;
 
 // Group Instructions
 
@@ -2191,7 +2191,7 @@ type  SPIRV_OVERLOADABLE SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(int 
     }                                                                                             \
     else if (Execution == Subgroup)                                                               \
     {                                                                                             \
-        if (sizeof(X) < 8 || __UseNative64Bit##type_gen##SubgroupBuiltin)                         \
+        if (sizeof(X) < 8 || __UseNative64Bit##type_gen##Builtin)                                 \
         {                                                                                         \
             switch(Operation){                                                                    \
             case GroupOperationReduce:                                                            \
@@ -2385,7 +2385,7 @@ type  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniform##func, _i32_i32_##type_ab
 {                                                                                                                                    \
     if (Execution == Subgroup)                                                                                                       \
     {                                                                                                                                \
-        if (sizeof(X) < 8 || __UseNative64Bit##type_gen##SubgroupBuiltin)                                                            \
+        if (sizeof(X) < 8 || __UseNative64Bit##type_gen##Builtin)                                                                    \
         {                                                                                                                            \
             if (Operation == GroupOperationReduce)                                                                                   \
             {                                                                                                                        \
