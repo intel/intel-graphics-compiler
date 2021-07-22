@@ -707,7 +707,7 @@ CVariable* CShader::GetTSC()
 {
     if (!m_TSC)
     {
-        m_TSC = new (Allocator) CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_DWORD, false, 1, CName::NONE);
+        m_TSC = new (Allocator) CVariable(2, true, ISA_TYPE_UD, EVARTYPE_GENERAL, EALIGN_DWORD, false, 1, CName::NONE);
         encoder.GetVISAPredefinedVar(m_TSC, PREDEFINED_TSC);
     }
     return m_TSC;
@@ -2941,7 +2941,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
 
     if (IGC_IS_FLAG_ENABLED(EnableVariableReuse))
     {
-        // Only for instrunctions and do not reuse flag variables.
+        // Only for instructions and do not reuse flag variables.
         if (!value->getType()->getScalarType()->isIntegerTy(1))
         {
             if (auto Inst = dyn_cast<Instruction>(value))
