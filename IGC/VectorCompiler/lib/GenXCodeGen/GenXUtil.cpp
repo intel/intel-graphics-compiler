@@ -274,30 +274,31 @@ Instruction *genx::findClosestCommonDominator(DominatorTree *DT,
  *
  * If an intrinsic has a "two address operand", then that operand must be
  * in the same register as the result. This function returns the operand number
- * of the two address operand if any, or -1 if not.
+ * of the two address operand if any, or None if not.
  */
-int genx::getTwoAddressOperandNum(CallInst *CI)
+llvm::Optional<unsigned> genx::getTwoAddressOperandNum(CallInst *CI)
 {
   auto IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(CI);
   if (IntrinsicID == GenXIntrinsic::not_any_intrinsic)
-    return -1; // not intrinsic
+    return None; // not intrinsic
+  // wr(pred(pred))region has operand 0 as two address operand
   if (GenXIntrinsic::isWrRegion(IntrinsicID) ||
       IntrinsicID == GenXIntrinsic::genx_wrpredregion ||
       IntrinsicID == GenXIntrinsic::genx_wrpredpredregion)
-    return 0; // wr(pred(pred))region has operand 0 as two address operand
+    return GenXIntrinsic::GenXRegion::OldValueOperandNum;
   if (CI->getType()->isVoidTy())
-    return -1; // no return value
+    return None; // no return value
   GenXIntrinsicInfo II(IntrinsicID);
   unsigned Num = CI->getNumArgOperands();
   if (!Num)
-    return -1; // no args
+    return None; // no args
   --Num; // Num = last arg number, could be two address operand
   if (isa<UndefValue>(CI->getOperand(Num)))
-    return -1; // operand is undef, must be RAW_NULLALLOWED
+    return None; // operand is undef, must be RAW_NULLALLOWED
   if (II.getArgInfo(Num).getCategory() != GenXIntrinsicInfo::TWOADDR)
-    return -1; // not two addr operand
+    return None; // not two addr operand
   if (CI->use_empty() && II.getRetInfo().rawNullAllowed())
-    return -1; // unused result will be V0
+    return None; // unused result will be V0
   return Num; // it is two addr
 }
 

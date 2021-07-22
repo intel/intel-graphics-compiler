@@ -598,7 +598,8 @@ void VectorDecomposer::decomposeRdRegion(Instruction *RdRegion,
       for (auto ui = V->use_begin(), ue = V->use_end(); ui != ue; ++ui) {
         auto user = cast<Instruction>(ui->getUser());
         if (auto CI = dyn_cast<CallInst>(user)) {
-          if (getTwoAddressOperandNum(CI) == (int)ui->getOperandNo())
+          if (auto OpndNum = getTwoAddressOperandNum(CI);
+              OpndNum && *OpndNum == ui->getOperandNo())
             return true;
         }
       }

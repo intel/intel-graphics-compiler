@@ -1018,10 +1018,10 @@ void GenXDepressurizer::fillTwoAddrValueMap(BasicBlock *BB) {
       auto CI = dyn_cast<CallInst>(&*I);
       if (!CI)
         continue;
-      int OpndNum = getTwoAddressOperandNum(CI);
-      if (OpndNum < 0)
+      auto OpndNum = getTwoAddressOperandNum(CI);
+      if (!OpndNum)
         continue;
-      TwoAddrValueMap[I->getOperand(OpndNum)] = CI;
+      TwoAddrValueMap[I->getOperand(*OpndNum)] = CI;
   }
 }
 

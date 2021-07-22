@@ -187,7 +187,7 @@ inline bool skipOptWithLargeBlock(const Function &F) {
 bool skipOptWithLargeBlock(FunctionGroup &FG);
 
 // getTwoAddressOperandNum : get operand number of two address operand
-int getTwoAddressOperandNum(CallInst *CI);
+llvm::Optional<unsigned> getTwoAddressOperandNum(CallInst *II);
 
 // isNot : test whether an instruction is a "not" instruction (an xor with
 //    constant all ones)

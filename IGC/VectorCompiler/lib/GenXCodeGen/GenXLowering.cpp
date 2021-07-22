@@ -332,10 +332,10 @@ bool GenXLowering::runOnFunction(Function &F) {
 // replace the old value with undef which allows more optimizations to kick in.
 //
 bool GenXLowering::processTwoAddressOpnd(CallInst *CI) {
-  int OpNum = getTwoAddressOperandNum(CI);
+  auto OpNum = getTwoAddressOperandNum(CI);
   // Skip write regions whose OpNum is 0.
-  if (OpNum > 0) {
-    Type *Ty = CI->getArgOperand(OpNum)->getType();
+  if (OpNum && *OpNum != 0) {
+    Type *Ty = CI->getArgOperand(*OpNum)->getType();
     IGC_ASSERT_MESSAGE(Ty == CI->getType(), "two address op type out of sync");
 
     for (unsigned i = 0; i < CI->getNumArgOperands(); ++i) {
@@ -345,7 +345,7 @@ bool GenXLowering::processTwoAddressOpnd(CallInst *CI) {
         if (Op->getType()->isVectorTy())
           Op = Op->getSplatValue();
         if (Op && Op->isOneValue()) {
-          CI->setOperand(OpNum, UndefValue::get(Ty));
+          CI->setOperand(*OpNum, UndefValue::get(Ty));
           return true;
         }
         return false;

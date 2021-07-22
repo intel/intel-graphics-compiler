@@ -600,7 +600,7 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
         } else {
           if (auto *CI = dyn_cast<CallInst>(Inst)) {
             // Two address instruction: process just the two address operand.
-            oi = getTwoAddressOperandNum(CI);
+            oi = *getTwoAddressOperandNum(CI);
             oe = oi + 1;
           } else {
             IGC_ASSERT(isa<CastInst>(Inst));
@@ -613,7 +613,7 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
           if (isa<PHINode>(V))
             return true;
           if (auto CI = dyn_cast<CallInst>(V))
-            return getTwoAddressOperandNum(CI) >= 0;
+            return getTwoAddressOperandNum(CI).hasValue();
           return false;
         };
 
@@ -776,8 +776,8 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
           if (isa<PHINode>(Web[wi]))
             continue;
           auto CI = dyn_cast<CallInst>(Web[wi]);
-          if (CI && getTwoAddressOperandNum(CI) >= 0) {
-            auto oi = getTwoAddressOperandNum(CI);
+          if (CI && getTwoAddressOperandNum(CI)) {
+            auto oi = *getTwoAddressOperandNum(CI);
             Use *U = &CI->getOperandUse(oi);
             auto *UC = dyn_cast<Constant>(*U);
             if (UC && UC == C) {

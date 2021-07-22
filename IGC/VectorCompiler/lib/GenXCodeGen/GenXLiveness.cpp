@@ -313,7 +313,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
       }
     }
     EndNum = StartNum + 1;
-    if (CI && getTwoAddressOperandNum(CI) >= 0) {
+    if (CI && getTwoAddressOperandNum(CI)) {
       // Two address op. Move the definition point one earlier, to where
       // GenXCoalescing will need to insert a copy if coalescing fails.
       --StartNum;
@@ -355,7 +355,8 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
                                                  SV.getIndex());
             break;
           default:
-            if (getTwoAddressOperandNum(CI) == (int)i->getOperandNo()) {
+            if (auto OpndNum = getTwoAddressOperandNum(CI);
+                OpndNum && *OpndNum == i->getOperandNo()) {
               // The use is the two address operand in a two address op. Move
               // the use point one earlier, to where GenXCoalescing will need
               // to insert a copy if coalescing fails. If there is any other
@@ -903,12 +904,12 @@ bool GenXLiveness::twoAddrInterfere(LiveRange *LR1, LiveRange *LR2)
       auto CI = dyn_cast<CallInst>(vi->getValue());
       if (!CI)
         continue;
-      int OperandNum = getTwoAddressOperandNum(CI);
-      if (OperandNum < 0)
+      auto OperandNum = getTwoAddressOperandNum(CI);
+      if (!OperandNum)
         continue;
       // Got a two addr op. Check whether the two addr operand is in the other
       // LR.
-      if (getLiveRangeOrNull(CI->getOperand(OperandNum)) != OtherLR)
+      if (getLiveRangeOrNull(CI->getOperand(*OperandNum)) != OtherLR)
         continue;
       // Discount the single number interference site here, if there is one.
       SitesSet.erase(getNumbering()->getNumber(CI) - 1);

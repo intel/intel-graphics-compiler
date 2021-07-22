@@ -174,6 +174,7 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "GenXVisitor.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 
 #include "Probe/Assertion.h"
@@ -297,7 +298,8 @@ namespace {
   };
 
   // GenX coalescing pass
-  class GenXCoalescing : public FunctionGroupPass {
+  class GenXCoalescing : public FunctionGroupPass,
+                         public GenXVisitor<GenXCoalescing> {
   private:
     const DataLayout *DL = nullptr;
     const GenXSubtarget *ST = nullptr;
@@ -339,42 +341,50 @@ namespace {
     // specific analyses
     virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
     { return createGenXGroupPrinterPass(O, Banner); }
+
+    void visitPHINode(PHINode &Phi);
+    void visitCallInst(CallInst &CI);
+    void visitGenXIntrinsicInst(GenXIntrinsicInst &II);
+    void visitCastInst(CastInst &CI);
+    void visitExtractValueInst(ExtractValueInst &EVI);
+    void visitInsertValueInst(InsertValueInst &IVI);
   private:
-    void recordCandidates(FunctionGroup *FG);
-    unsigned getPriority(Type *Ty, BasicBlock *BB);
+    unsigned getPriority(Type *Ty, BasicBlock *BB) const;
+    unsigned getPriority(SimpleValue Val) const;
     // Various permutations of the function to record a coalescing candidate.
-    void recordCopyCandidate(Value *Dest, Use *UseInDest, unsigned Priority) {
-      recordCandidate(SimpleValue(Dest), UseInDest, 0, Priority,
-                      &CopyCandidates);
+    void recordCopyCandidate(SimpleValue Dest, unsigned OperandIndex,
+                             unsigned SourceIndex = 0) {
+      IGC_ASSERT(isa<User>(Dest.getValue()));
+      recordCandidate(Dest, &cast<User>(Dest.getValue())->getOperandUse(OperandIndex),
+                      SourceIndex, getPriority(Dest), CopyCandidates);
     }
-    void recordCopyCandidate(SimpleValue Dest, Use *UseInDest,
-                             unsigned SourceIndex, unsigned Priority) {
-      recordCandidate(Dest, UseInDest, SourceIndex, Priority, &CopyCandidates);
+    void recordNormalCandidate(SimpleValue Dest, unsigned OperandIndex,
+                               unsigned SourceIndex = 0) {
+      IGC_ASSERT(isa<User>(Dest.getValue()));
+      recordCandidate(Dest, &cast<User>(Dest.getValue())->getOperandUse(OperandIndex),
+                      SourceIndex, getPriority(Dest), NormalCandidates);
     }
-    void recordNormalCandidate(Instruction *Dest, Use *UseInDest,
-                               unsigned Priority) {
-      recordCandidate(SimpleValue(Dest), UseInDest, 0, Priority,
-                      &NormalCandidates);
+    void recordCallArgCandidate(SimpleValue Dest, Use *UseInDest, unsigned SourceIndex,
+                                unsigned Priority) {
+      recordCandidate(Dest, UseInDest, SourceIndex, Priority, NormalCandidates);
     }
-    void recordNormalCandidate(SimpleValue Dest, Use *UseInDest,
-                               unsigned SourceIndex, unsigned Priority) {
-      recordCandidate(Dest, UseInDest, SourceIndex, Priority,
-                      &NormalCandidates);
+    void recordUnifiedRetCandidate(SimpleValue Dest, unsigned SourceIndex) {
+      recordCandidate(Dest, nullptr, SourceIndex, getPriority(Dest), NormalCandidates);
     }
-    void recordPhiCandidate(Value *Dest, Use *UseInDest, unsigned Priority) {
-      recordCandidate(SimpleValue(Dest), UseInDest, 0, Priority,
-                      &NormalCandidates);
+    void recordPhiCandidate(PHINode &Phi, unsigned IncomingIndex, unsigned Priority) {
+      recordCandidate(&Phi, &Phi.getOperandUse(IncomingIndex), 0, Priority,
+                      NormalCandidates);
     }
     void recordCandidate(SimpleValue Dest, Use *UseInDest, unsigned SourceIndex,
-                         unsigned Priority, std::vector<Candidate> *Candidates);
+                         unsigned Priority, std::vector<Candidate> &Candidates);
     void recordCallCandidates(FunctionGroup *FG);
     void recordCallArgCandidates(Value *Dest, unsigned ArgNum,
                                  ArrayRef<Instruction *> Insts);
     // Functions for processing coalecing candidates.
-    void processCopyCandidate(Candidate *Cand) {
+    void processCopyCandidate(const Candidate &Cand) {
       processCandidate(Cand, true /*IsCopy*/);
     }
-    void processCandidate(Candidate *Cand, bool IsCopy = false);
+    void processCandidate(const Candidate &Cand, bool IsCopy = false);
     void processPhiNodes(FunctionGroup *FG);
     void analysePhiCopies(PHINode *Phi, std::vector<PhiCopy> &ToProcess);
     void processPhiCopy(PHINode *Phi, unsigned Inc,
@@ -405,8 +415,12 @@ namespace {
     template <typename Iter>
     Iter mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt, Iter EndIt);
     // Helpers
-    DominatorTree *getDomTree(Function *F) { return DTWrapper->getDomTree(F); }
-    LoopInfo *getLoopInfo(Function *F) { return LIWrapper->getLoopInfo(F); }
+    DominatorTree *getDomTree(Function *F) const {
+      return DTWrapper->getDomTree(F);
+    }
+    LoopInfo *getLoopInfo(Function *F) const {
+      return LIWrapper->getLoopInfo(F);
+    }
   };
 
 } // end anonymous namespace
@@ -449,11 +463,11 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
 
   // Record all the coalescing candidates except the call arg and return
   // value pre-copy ones.
-  recordCandidates(&FG);
+  visit(FG);
 
   // Process the copy coalescing candidates.
   for (unsigned i = 0; i != CopyCandidates.size(); ++i)
-    processCopyCandidate(&CopyCandidates[i]);
+    processCopyCandidate(CopyCandidates[i]);
 
   // Record the call arg and return value pre-copy candidates.
   recordCallCandidates(&FG);
@@ -463,7 +477,7 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
   // to get consistent results across different runs.
   std::stable_sort(NormalCandidates.begin(), NormalCandidates.end());
   for (unsigned i = 0; i != NormalCandidates.size(); ++i)
-    processCandidate(&NormalCandidates[i]);
+    processCandidate(NormalCandidates[i]);
 
   // Now scan all phi nodes again, inserting copies where necessary. Doing
   // them in one go here ensures that the copies appear in the predecessor
@@ -496,212 +510,194 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
 }
 
 /***********************************************************************
- * recordCandidates : record all the coalescing candidates from code
- *
- * This does not record call arg pre-copy or ret value pre-copy candidates.
- * That is done in recordCallCandidates.
+ * visitPHINode : for each incoming, record a phi candidate, unless it is a
+ * registerless value (EM/RM).
+ * If the incoming block is a branching join label block, then we
+ * cannot insert any phi copies there, so give the coalescing
+ * candidate a high priority to ensure it gets coalesced first.
  */
-void GenXCoalescing::recordCandidates(FunctionGroup *FG)
-{
-  for (auto fgi = FG->begin(), fge = FG->end(); fgi != fge; ++fgi) {
-    Function *F = *fgi;
-    LLVM_DEBUG(dbgs() << "Recording coalescing cands in func " << F->getName()
-                      << "\n");
-    for (Function::iterator fi = F->begin(), fe = F->end(); fi != fe; ++fi) {
-      BasicBlock *BB = &*fi;
-      for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
-        Instruction *Inst = &*bi;
-        if (PHINode *Phi = dyn_cast<PHINode>(Inst)) {
-          // Phi node. For each incoming, record a phi candidate, unless it is a
-          // registerless value (EM/RM).
-          // If the incoming block is a branching join label block, then we
-          // cannot insert any phi copies there, so give the coalescing
-          // candidate a high priority to ensure it gets coalesced first.
-          if (Liveness->getLiveRange(Phi)->getCategory()
-              < RegCategory::NUMREALCATEGORIES) {
-            for (unsigned i = 0, e = Phi->getNumIncomingValues(); i != e; ++i) {
-              auto IncomingBlock = Phi->getIncomingBlock(i);
-              unsigned Priority = getPriority(Phi->getType(), IncomingBlock);
-              if (GotoJoin::isBranchingJoinLabelBlock(IncomingBlock))
-                Priority = UINT_MAX;
-              recordPhiCandidate(Phi, &Phi->getOperandUse(i), Priority);
-            }
-          }
-        } else if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
-          LLVM_DEBUG(dbgs() << "Processing call " << *CI << "\n");
-          if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CI)) {
-            if (CI->isInlineAsm()) {
-              InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
-              // Do not process if no constraints provided or it's baled
-              // (the coalescing actually needs to be done at the wrregion).
-              if (IA->getConstraintString().empty() || Baling->isBaled(CI))
-                continue;
-              unsigned NumOutputs = genx::getInlineAsmNumOutputs(CI);
-              auto ConstraintsInfo = genx::getGenXInlineAsmInfo(CI);
-              // we need to coalesce if there is a '+' modifier
-              // because those operands are tied and have to be in the same
-              // registers
-              for (unsigned ArgNo = 0; ArgNo < ConstraintsInfo.size();
-                   ArgNo++) {
-                auto &Info = ConstraintsInfo[ArgNo];
-                if (!Info.isOutput() || !Info.hasMatchingInput())
-                  continue;
-                unsigned ActualIdx = Info.getMatchingInput() - NumOutputs;
-                auto OpInst = dyn_cast<Instruction>(CI->getOperand(ActualIdx));
-                if (!OpInst || Baling->isBaled(OpInst))
-                  continue;
-                Use *OpUse = &CI->getOperandUse(ActualIdx);
-                if (isa<StructType>(CI->getType())) {
-                  unsigned Priority = getPriority(
-                      IndexFlattener::getElementType(CI->getType(), ArgNo),
-                      CI->getParent());
-                  recordNormalCandidate(SimpleValue(CI, ArgNo), OpUse, 0,
-                                        Priority);
-                } else {
-                  recordNormalCandidate(
-                      CI, OpUse, 0,
-                      getPriority(CI->getType(), CI->getParent()));
-                }
-              }
-            } else if (IGCLLVM::isIndirectCall(*CI))
-              continue;
-            // This is a non-intrinsic call. If it returns a value, mark
-            // (elements of) the return value for coalescing with the
-            // unified return value.
-            else if (!CI->getType()->isVoidTy()) {
-              for (unsigned i = 0,
-                  e = IndexFlattener::getNumElements(CI->getType());
-                  i != e; ++i)
-                recordNormalCandidate(SimpleValue(CI, i), 0, i,
-                    getPriority(IndexFlattener::getElementType(
-                        CI->getType(), i), CI->getParent()));
-            } else {
-              // handle callable kernel
-              Function *Callee = CI->getCalledFunction();
-              if (Callee->hasFnAttribute("CMCallable")) {
-                if (F->hasFnAttribute("CMCallable")) {
-                  DiagnosticInfoFastComposition Err(CI,
-                    "Callable function must not call another callable"
-                    " function", DS_Error);
-                  F->getContext().diagnose(Err);
-                }
-                Callables.push_back(CI);
-              }
-            }
-          } else if (!GenXIntrinsic::isReadWritePredefReg(CI)) {
-            int OperandNum = getTwoAddressOperandNum(CI);
-            if (OperandNum >= 0) {
-              // This is an intrinsic with a two address operand (including
-              // the case of operand 0 in wrregion). That operand has to be in
-              // the same register as the result.
-              // *.predef.reg intrinsics should not participate in coalescing
-              // since they don't have any LR
-              if (Baling->isBaled(CI) ||
-                  GenXIntrinsic::isReadWritePredefReg(CI->getOperand(0))) {
-                // The intrinsic is baled into a wrregion. The two address
-                // operand must also have a rdregion baled in whose input is
-                // the "old value" input of the wrregion, and the coalescing
-                // actually needs to be done at the wrregion.  That is handled
-                // when this pass reaches the wrregion, so we do not want to do
-                // anything here.
-                //
-                // it may also be baled into a g_store.
-                // IGC_ASSERT(Baling->getBaleInfo(CI).isOperandBaled(OperandNum) &&
-                // "expecting rdregion to be baled in to the two addr operand");
-                continue;
-              }
-              // Normal unbaled twoaddr operand.
-              recordNormalCandidate(CI, &CI->getOperandUse(OperandNum),
-                  getPriority(CI->getType(), CI->getParent()));
-            }
-          }
-        } else if (isa<BitCastInst>(Inst) || isa<AddrSpaceCastInst>(Inst)) {
-          IGC_ASSERT_MESSAGE(!isa<StructType>(Inst->getType()), "not expecting bitcast to struct");
-          IGC_ASSERT_MESSAGE(!isa<StructType>(Inst->getOperand(0)->getType()), "not expecting bitcast from struct");
-          // The source and destination of a bitcast can copy coalesce,
-          // but only if it is not the case that the source is a phi and
-          // the destination has a use in a phi node in the same block and
-          // after the source's phi. If the above is the case, then we try
-          // and normal coalesce instead, which fails, leading to a copy
-          // being generated.
-          // Ignore bitcasts of volatile globals as they normally
-          // participate in load/store only, so no coalescing is possible anyway.
-          if (GenXLiveness::wrapsAround(Inst->getOperand(0), Inst)) {
-            recordNormalCandidate(Inst, &Inst->getOperandUse(0),
-                getPriority(Inst->getType(), Inst->getParent()));
-          } else if (Liveness->getLiveRangeOrNull(Inst) &&
-                     !GenXIntrinsic::isReadWritePredefReg(
-                         Inst->getOperand(0)) &&
-                     !(isa<GlobalVariable>(Inst->getOperandUse(0)) &&
-                       cast<GlobalVariable>(Inst->getOperandUse(0))
-                           ->hasAttribute(VCModuleMD::VCVolatile))) {
-            recordCopyCandidate(Inst, &Inst->getOperandUse(0),
-                getPriority(Inst->getType(), Inst->getParent()));
-          }
-        } else if (auto EVI = dyn_cast<ExtractValueInst>(Inst)) {
-          // extractvalue: copy coalesce the element being extracted, as long as
-          // both source and destination have live ranges. The two cases where
-          // they don't are:
-          //  1. the source live range got removed in the code below that
-          //     handles undef elements in an insertvalue chain;
-          //  2. this is the extract of the !any(EM) result of a goto/join,
-          //     which does not have a live range because it is baled in to the
-          //     branch.
-          if (Liveness->getLiveRangeOrNull(Inst)) {
-          unsigned Index = IndexFlattener::flatten(
-              cast<StructType>(EVI->getAggregateOperand()->getType()),
-              EVI->getIndices());
-            if (Liveness->getLiveRangeOrNull(
-                  SimpleValue(Inst->getOperand(0), Index))) {
-              recordCopyCandidate(SimpleValue(EVI), &Inst->getOperandUse(0), Index,
-                  getPriority(EVI->getType(), EVI->getParent()));
-            }
-          }
-        } else if (auto IVI = dyn_cast<InsertValueInst>(Inst)) {
-          // insertvalue:
-          // First, if the struct value input is undef, scan the possible chain
-          // of insertvalues and remove the live range for any SimpleValue that
-          // is undef. We need to do this to stop a register being allocated
-          // later for a coalesced SimpleValue from a chain of insertvalues
-          // for a return where that element is never set.
-          auto ST = cast<StructType>(IVI->getType());
-          unsigned NumElements = IndexFlattener::getNumElements(ST);
-          if (isa<UndefValue>(IVI->getOperand(0))) {
-            SmallVector<bool, 8> IsDefined;
-            IsDefined.resize(NumElements, false);
-            // For each insertvalue in the chain:
-            for (auto ThisIVI = IVI; ThisIVI;) {
-              // For the element set by this one, set it as defined (unless the
-              // input is undef).
-              IsDefined[IndexFlattener::flatten(ST, ThisIVI->getIndices())]
-                = !isa<UndefValue>(IVI->getOperand(1));
-              // For any element that is still undef, remove its live range.
-              for (unsigned i = 0; i != NumElements; ++i)
-                if (!IsDefined[i])
-                  Liveness->removeValue(SimpleValue(ThisIVI, i));
-              if (!ThisIVI->hasOneUse())
-                break;
-              ThisIVI = dyn_cast<InsertValueInst>(ThisIVI->use_begin()->getUser());
-            }
-          }
-          // Copy coalesce the element being inserted and the other elements,
-          // as long as the appropriate live ranges did not get removed above.
-          unsigned Index = IndexFlattener::flatten(ST, IVI->getIndices());
-          for (unsigned i = 0; i != NumElements; ++i) {
-            if (!Liveness->getLiveRangeOrNull(SimpleValue(IVI, i)))
-              continue;
-            if (i == Index) {
-              if (Liveness->getLiveRangeOrNull(Inst->getOperand(1)))
-                recordCopyCandidate(SimpleValue(IVI, i), &Inst->getOperandUse(1), 0,
-                    getPriority(IVI->getOperand(1)->getType(), IVI->getParent()));
-            } else {
-              if (Liveness->getLiveRangeOrNull(SimpleValue(Inst->getOperand(0), i)))
-                recordCopyCandidate(SimpleValue(IVI, i), &Inst->getOperandUse(0), i,
-                    getPriority(IVI->getOperand(1)->getType(), IVI->getParent()));
-            }
-          }
-        }
-      }
+void GenXCoalescing::visitPHINode(PHINode &Phi) {
+  if (Liveness->getLiveRange(&Phi)->getCategory() >= RegCategory::NUMREALCATEGORIES)
+    return;
+  for (unsigned i = 0; i < Phi.getNumIncomingValues(); ++i) {
+    auto IncomingBlock = Phi.getIncomingBlock(i);
+    unsigned Priority = GotoJoin::isBranchingJoinLabelBlock(IncomingBlock) ?
+                        UINT_MAX : getPriority(Phi.getType(), IncomingBlock);
+    recordPhiCandidate(Phi, i, Priority);
+  }
+}
+
+/***********************************************************************
+ * visitCallInst : process inlime asm and direct non-intrinsic calls
+ */
+void GenXCoalescing::visitCallInst(CallInst &CI) {
+  if (CI.isInlineAsm()) {
+    InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
+    // Do not process if no constraints provided or it's baled
+    // (the coalescing actually needs to be done at the wrregion).
+    if (IA->getConstraintString().empty() || Baling->isBaled(&CI))
+      return;
+    unsigned NumOutputs = genx::getInlineAsmNumOutputs(&CI);
+    auto ConstraintsInfo = genx::getGenXInlineAsmInfo(&CI);
+    // we need to coalesce if there is a '+' modifier
+    // because those operands are tied and have to be in the same
+    // registers
+    for (unsigned ArgNo = 0; ArgNo < ConstraintsInfo.size(); ArgNo++) {
+      auto &Info = ConstraintsInfo[ArgNo];
+      if (!Info.isOutput() || !Info.hasMatchingInput())
+        continue;
+      unsigned ActualIdx = Info.getMatchingInput() - NumOutputs;
+      auto OpInst = dyn_cast<Instruction>(CI.getOperand(ActualIdx));
+      if (!OpInst || Baling->isBaled(OpInst))
+        continue;
+      SimpleValue SV (&CI, isa<StructType>(CI.getType()) ? ArgNo : 0);
+      recordNormalCandidate(SV, ActualIdx);
+    }
+    return;
+  }
+  if (IGCLLVM::isIndirectCall(CI))
+    return;
+  // This is a non-intrinsic call. If it returns a value, mark
+  // (elements of) the return value for coalescing with the
+  // unified return value.
+  if (!CI.getType()->isVoidTy()) {
+    for (unsigned i = 0, e = IndexFlattener::getNumElements(CI.getType());
+         i != e; ++i)
+      recordUnifiedRetCandidate(SimpleValue(&CI, i), i);
+    return;
+  }
+  // handle callable kernel
+  Function *Callee = CI.getCalledFunction();
+  if (!Callee->hasFnAttribute("CMCallable"))
+    return;
+  if (CI.getFunction()->hasFnAttribute("CMCallable")) {
+    DiagnosticInfoFastComposition Err(&CI, "Callable function must not call"
+      " another callable function", DS_Error);
+    CI.getContext().diagnose(Err);
+  }
+  Callables.push_back(&CI);
+}
+
+/***********************************************************************
+ * visitGenXIntrinsicInst : process an intrinsic with a two address operand
+ * (including the case of operand 0 in wrregion). That operand has to be in
+ * the same register as the result.
+ * NOTE: *.predef.reg intrinsics should not participate in coalescing
+ * since they don't have any LR
+ */
+void GenXCoalescing::visitGenXIntrinsicInst(GenXIntrinsicInst &II) {
+  if (GenXIntrinsic::isReadWritePredefReg(&II))
+    return;
+  auto OperandNum = getTwoAddressOperandNum(&II);
+  if (!OperandNum)
+    return;
+  if (Baling->isBaled(&II) ||
+      GenXIntrinsic::isReadWritePredefReg(II.getOperand(0))) {
+    // The intrinsic is baled into a wrregion. The two address
+    // operand must also have a rdregion baled in whose input is
+    // the "old value" input of the wrregion, and the coalescing
+    // actually needs to be done at the wrregion.  That is handled
+    // when this pass reaches the wrregion, so we do not want to do
+    // anything here.
+    return;
+  }
+  // Normal unbaled twoaddr operand.
+  recordNormalCandidate(&II, *OperandNum);
+}
+
+/***********************************************************************
+ * visitCastInst : the source and destination of a no-op cast can copy coalesce,
+ * but only if it is not the case that the source is a phi and
+ * the destination has a use in a phi node in the same block and
+ * after the source's phi. If the above is the case, then we try
+ * and normal coalesce instead, which fails, leading to a copy
+ * being generated.
+ * Ignore bitcasts of volatile globals as they normally
+ * participate in load/store only, so no coalescing is possible anyway.
+ */
+void GenXCoalescing::visitCastInst(CastInst &CI) {
+  // TODO: replace with no-op cast check
+  if (!isa<BitCastInst>(CI))
+    return;
+  IGC_ASSERT_MESSAGE(!isa<StructType>(CI.getDestTy()), "not expecting bitcast to struct");
+  IGC_ASSERT_MESSAGE(!isa<StructType>(CI.getSrcTy()), "not expecting bitcast from struct");
+  if (GenXLiveness::wrapsAround(CI.getOperand(0), &CI))
+    recordNormalCandidate(&CI, 0);
+  else {
+    if (!Liveness->getLiveRangeOrNull(&CI))
+      return;
+    if (GenXIntrinsic::isReadWritePredefReg(CI.getOperand(0)))
+      return;
+    if (auto * GV = dyn_cast<GlobalVariable>(CI.getOperandUse(0));
+        GV && GV->hasAttribute(VCModuleMD::VCVolatile))
+      return;
+    recordCopyCandidate(&CI, 0);
+  }
+}
+
+/***********************************************************************
+ * visitExtractValueInst : copy coalesce the element being extracted, as long as
+ * both source and destination have live ranges. The two cases where
+ * they don't are:
+ *  1. the source live range got removed in the code below that
+ *     handles undef elements in an insertvalue chain;
+ *  2. this is the extract of the !any(EM) result of a goto/join,
+ *     which does not have a live range because it is baled in to the
+ *     branch.
+ */
+void GenXCoalescing::visitExtractValueInst(ExtractValueInst &EVI) {
+  if (!Liveness->getLiveRangeOrNull(&EVI))
+    return;
+  unsigned Index = IndexFlattener::flatten(
+      cast<StructType>(EVI.getAggregateOperand()->getType()),
+      EVI.getIndices());
+  if (!Liveness->getLiveRangeOrNull(SimpleValue(EVI.getOperand(0), Index)))
+    return;
+  recordCopyCandidate(&EVI, 0, Index);
+}
+
+
+/***********************************************************************
+ * visitInsertValueInst :
+ * First, if the struct value input is undef, scan the possible chain
+ * of insertvalues and remove the live range for any SimpleValue that
+ * is undef. We need to do this to stop a register being allocated
+ * later for a coalesced SimpleValue from a chain of insertvalues
+ * for a return where that element is never set.
+ */
+void GenXCoalescing::visitInsertValueInst(InsertValueInst &IVI) {
+  auto ST = cast<StructType>(IVI.getType());
+  unsigned NumElements = IndexFlattener::getNumElements(ST);
+  if (isa<UndefValue>(IVI.getOperand(0))) {
+    SmallVector<bool, 8> IsDefined;
+    IsDefined.resize(NumElements, false);
+    // For each insertvalue in the chain:
+    for (auto ThisIVI = &IVI; ThisIVI;) {
+      // For the element set by this one, set it as defined (unless the
+      // input is undef).
+      IsDefined[IndexFlattener::flatten(ST, ThisIVI->getIndices())]
+        = !isa<UndefValue>(IVI.getOperand(1));
+      // For any element that is still undef, remove its live range.
+      for (unsigned i = 0; i != NumElements; ++i)
+        if (!IsDefined[i])
+          Liveness->removeValue(SimpleValue(ThisIVI, i));
+      if (!ThisIVI->hasOneUse())
+        break;
+      ThisIVI = dyn_cast<InsertValueInst>(ThisIVI->use_begin()->getUser());
+    }
+  }
+  // Copy coalesce the element being inserted and the other elements,
+  // as long as the appropriate live ranges did not get removed above.
+  unsigned Index = IndexFlattener::flatten(ST, IVI.getIndices());
+  for (unsigned i = 0; i != NumElements; ++i) {
+    if (!Liveness->getLiveRangeOrNull(SimpleValue(&IVI, i)))
+      continue;
+    if (i == Index) {
+      if (Liveness->getLiveRangeOrNull(IVI.getOperand(1)))
+        recordCopyCandidate(SimpleValue(&IVI, i), 1, 0);
+    } else {
+      if (Liveness->getLiveRangeOrNull(SimpleValue(IVI.getOperand(0), i)))
+        recordCopyCandidate(SimpleValue(&IVI, i), 0, i);
     }
   }
 }
@@ -789,17 +785,16 @@ void GenXCoalescing::recordCallArgCandidates(Value *Dest, unsigned ArgNum,
       LiveRange *LR = CallArgs[i].LR;
       if (!LR)
         continue; // Already done this one (or it was an undef).
+      Use *U = CallArgs[i].U;
       unsigned Priority = 0;
       for (unsigned j = i, je = CallArgs.size(); j != je; ++j) {
         if (LR != CallArgs[j].LR)
           continue;
-        Priority += getPriority(nullptr, Insts[j]->getParent());
-        CallArgs[j].LR = 0; // Blank out so we can see we have done this one.
+        Priority += getPriority(IndexFlattener::getElementType(
+              (*U)->getType(), StructIdx), Insts[j]->getParent());
+        CallArgs[j].LR = nullptr; // Blank out so we can see we have done this one.
       }
-      Use *U = CallArgs[i].U;
-      Priority *= getPriority(IndexFlattener::getElementType(
-            (*U)->getType(), StructIdx), 0);
-      recordNormalCandidate(SimpleValue(Dest, StructIdx),
+      recordCallArgCandidate(SimpleValue(Dest, StructIdx),
           U, StructIdx, Priority);
     }
   }
@@ -809,33 +804,35 @@ void GenXCoalescing::recordCallArgCandidates(Value *Dest, unsigned ArgNum,
  * getPriority : get priority of coalescing candidate
  *
  * Enter:   Ty = type that would need to be copied if coalescing failed,
- *               so we can estimate the copy cost. Can be nullptr, in which
- *               case the copy cost is assumed to be 1
+ *               so we can estimate the copy cost.
  *          BB = basic block where copy would be inserted, so we can use
- *               loop depth to adjust the cost. Can be nullptr, in which
- *               the loop depth is assumed to be 0
+ *               loop depth to adjust the cost.
  *
  * Return:  priority (estimate of cost of inserting a copy)
- *
- * getPriority(Ty, BB) is equivalent to getPriority(Ty, 0) * getPriority(0, BB).
  */
-unsigned GenXCoalescing::getPriority(Type *Ty, BasicBlock *BB)
+unsigned GenXCoalescing::getPriority(Type *Ty, BasicBlock *BB) const
 {
+  IGC_ASSERT(Ty);
+  IGC_ASSERT(BB);
   // Multiplier of priority when copy located in loop.
   constexpr unsigned LoopScale = 4;
 
-  unsigned Priority = 1;
   // Estimate number of moves required for this type.
-  if (Ty) {
-    unsigned VecWidth = getTypeSize<genx::ByteBits>(Ty, DL);
-    Priority = VecWidth / ST->getGRFWidth();
-    Priority += countPopulation(VecWidth % ST->getGRFWidth());
-  }
+  unsigned VecWidth = getTypeSize<genx::ByteBits>(Ty, DL);
+  unsigned Priority = VecWidth / ST->getGRFWidth() +
+    countPopulation(VecWidth % ST->getGRFWidth());
   // Scale by loop depth.
-  if (BB)
-    Priority *=
-        std::pow(LoopScale, getLoopInfo(BB->getParent())->getLoopDepth(BB));
+  Priority *= std::pow(LoopScale,
+      getLoopInfo(BB->getParent())->getLoopDepth(BB));
   return Priority;
+}
+
+unsigned GenXCoalescing::getPriority(SimpleValue SV) const
+{
+  IGC_ASSERT(isa<Instruction>(SV.getValue()));
+  auto *BB = cast<Instruction>(SV.getValue())->getParent();
+  auto *Type = IndexFlattener::getElementType(SV.getValue()->getType(), SV.getIndex());
+  return getPriority(Type, BB);
 }
 
 /***********************************************************************
@@ -859,14 +856,14 @@ unsigned GenXCoalescing::getPriority(Type *Ty, BasicBlock *BB)
  * CallInst, and UseInDest and SourceIndex are 0.
  */
 void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
-    unsigned SourceIndex, unsigned Priority, std::vector<Candidate> *Candidates)
+    unsigned SourceIndex, unsigned Priority, std::vector<Candidate> &Candidates)
 {
   LLVM_DEBUG(dbgs() << "Trying to record cand " << *(Dest.getValue()) << "\n");
   if (UseInDest && isa<UndefValue>(*UseInDest))
     return;
   LLVM_DEBUG(dbgs() << "Recording cand " << *(Dest.getValue()) << "\n");
   IGC_ASSERT(!UseInDest || !isa<Constant>(*UseInDest));
-  Candidates->emplace_back(Dest, UseInDest, SourceIndex, Priority);
+  Candidates.emplace_back(Dest, UseInDest, SourceIndex, Priority);
 }
 
 /***********************************************************************
@@ -885,11 +882,11 @@ void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
  * See the comment at the top of recordCandidate for the special values of
  * fields in Candidate for a call arg coalesce and a ret value coalesce.
  */
-void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
+void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
 {
-  SimpleValue Dest = Cand->Dest;
+  SimpleValue Dest = Cand.Dest;
   SimpleValue Source;
-  if (!Cand->UseInDest) {
+  if (!Cand.UseInDest) {
     auto *Callee = cast<CallInst>(Dest.getValue())->getCalledFunction();
     // Do not process calls to external functions
     if (Callee->isDeclaration())
@@ -897,19 +894,19 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
 
     // This is a return value post-copy coalesce candidate. The actual source
     // is the unified return value.
-    Source = SimpleValue(Liveness->getUnifiedRet(Callee), Cand->SourceIndex);
+    Source = SimpleValue(Liveness->getUnifiedRet(Callee), Cand.SourceIndex);
   } else
-    Source = SimpleValue(*Cand->UseInDest, Cand->SourceIndex);
+    Source = SimpleValue(*Cand.UseInDest, Cand.SourceIndex);
   LLVM_DEBUG(dbgs() << "Trying coalesce from ";
       Source.printName(dbgs());
       dbgs() << " to ";
       Dest.printName(dbgs());
-      dbgs() << " priority " << Cand->Priority;
+      dbgs() << " priority " << Cand.Priority;
       if (isa<Argument>(Dest.getValue()))
         dbgs() << " (call arg)";
       else if (Liveness->isUnifiedRet(Dest.getValue()))
         dbgs() << " (ret pre-copy)";
-      else if (!Cand->UseInDest)
+      else if (!Cand.UseInDest)
         dbgs() << " (ret post-copy)";
       dbgs() << "\n");
   LiveRange *DestLR = Liveness->getLiveRange(Dest);
@@ -917,7 +914,7 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
   // Source should not be a constant (but could be undef) because
   // GenXLowering ensured that all our two address operands and phi incomings
   // are not constant.
-  IGC_ASSERT(!Cand->UseInDest || !isa<Constant>(Source.getValue()) || isa<UndefValue>(Source.getValue()));
+  IGC_ASSERT(!Cand.UseInDest || !isa<Constant>(Source.getValue()) || isa<UndefValue>(Source.getValue()));
   SourceLR = Liveness->getLiveRange(Source);
   IGC_ASSERT(DestLR);
   if (SourceLR == DestLR)
@@ -1021,7 +1018,7 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
     return; // Call arg pre-copy, defer copy insertion
   if (Liveness->isUnifiedRet(Dest.getValue()))
     return; // Return value pre-copy, defer copy insertion
-  if (!Cand->UseInDest)
+  if (!Cand.UseInDest)
     return; // Return value post-copy, defer copy insertion
   if (isa<BitCastInst>(Dest.getValue()) || isa<AddrSpaceCastInst>(Dest.getValue())) {
     // A bitcast is normally copy coalesced, which means it cannot fail to
@@ -1046,7 +1043,7 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
 
   // Store info for two address op copy
   Instruction *DestInst = cast<Instruction>(Dest.getValue());
-  ToCopy.emplace_back(Dest, Source, Cand->UseInDest, DestInst, TWOADDRCOPY,
+  ToCopy.emplace_back(Dest, Source, Cand.UseInDest, DestInst, TWOADDRCOPY,
                       Numbering->getNumber(DestInst), ToCopy.size());
 }
 

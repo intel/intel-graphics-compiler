@@ -407,9 +407,8 @@ void GenXUnbaling::processFunc(Function *F) {
       // Process a two address instruction. (All two address instructions are
       // intrinsics and thus calls.)
       if (auto CI = dyn_cast<CallInst>(Inst)) {
-        int TwoAddrOperandNum = getTwoAddressOperandNum(CI);
-        if (TwoAddrOperandNum >= 0) {
-          processTwoAddrOrPhi(CI, TwoAddrOperandNum);
+        if (auto TwoAddrOperandNum = getTwoAddressOperandNum(CI)) {
+          processTwoAddrOrPhi(CI, *TwoAddrOperandNum);
           if (GenXIntrinsic::isWrRegion(CI))
             processNonOverlappingRegion(CI);
         }
