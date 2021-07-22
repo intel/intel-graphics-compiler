@@ -2162,9 +2162,11 @@ std::string GenXKernelBuilder::createInlineAsmOperand(
         createGeneralOperand(R, Reg->GetVar<VISA_GenVar>(Kernel), Signed, Mod, IsDst);
     break;
   case ConstraintType::Constraint_a:
-    if (!R->Indirect)
-      report_fatal_error("Inline asm operand can'be indirected here");
-    ResultOperand = createIndirectOperand(R, Signed, Mod, IsDst);
+    if (R->Indirect)
+      ResultOperand = createIndirectOperand(R, Signed, Mod, IsDst);
+    else
+      ResultOperand = createGeneralOperand(R, Reg->GetVar<VISA_GenVar>(Kernel),
+                                           Signed, Mod, IsDst);
     break;
   }
   return Kernel->getVectorOperandName(ResultOperand, true);
