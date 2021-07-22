@@ -292,6 +292,7 @@ public:
 
     bool isEndWithCall() const { return getLastOpcode() == G4_call; }
     bool isEndWithFCall() const { return getLastOpcode() == G4_pseudo_fcall; }
+    bool isEndWithFCCall() const { return getLastOpcode() == G4_pseudo_fc_call; }
     bool isEndWithFRet() const { return getLastOpcode() == G4_pseudo_fret; }
     bool isEndWithGoto() const { return getLastOpcode() == G4_goto; }
 
