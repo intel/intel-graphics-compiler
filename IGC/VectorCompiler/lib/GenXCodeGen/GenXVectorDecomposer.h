@@ -54,14 +54,14 @@ class Region;
 
 // VectorDecomposer : decomposes vectors in a function
 class VectorDecomposer {
-  DominatorTree *DT;
+  DominatorTree *DT = nullptr;
   const DataLayout *DL = nullptr;
   SmallVector<Instruction *, 16> StartWrRegions;
   std::set<Instruction *> Seen;
   SmallVector<Instruction *, 16> Web;
   SmallVector<Instruction *, 16> ToDelete;
-  bool NotDecomposing;
-  Instruction *NotDecomposingReportInst;
+  bool NotDecomposing = false;
+  Instruction *NotDecomposingReportInst = nullptr;
   SmallVector<unsigned, 8> Decomposition;
   SmallVector<unsigned, 8> Offsets;
   std::map<PHINode *, SmallVector<Value *, 8>> PhiParts;

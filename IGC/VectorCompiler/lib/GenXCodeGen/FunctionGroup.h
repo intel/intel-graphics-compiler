@@ -45,7 +45,7 @@ class PMStack;
 // FunctionGroup : a group of Functions
 //
 class FunctionGroup {
-  FunctionGroupAnalysis *FGA;
+  FunctionGroupAnalysis *FGA = nullptr;
   // Vector of Functions in the FunctionGroup. Element 0 is the head.
   // Elements are asserting value handles, so we spot when a Function
   // in the group gets destroyed too early.
@@ -103,7 +103,7 @@ public:
       FGType::GROUP, FGType::SUBGROUP};
 
 private:
-  Module *M;
+  Module *M = nullptr;
   SmallVector<FunctionGroup *, 8> Groups;
 
   // storage for FunctionGroups that aren't of type GROUP,

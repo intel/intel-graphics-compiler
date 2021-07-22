@@ -68,8 +68,8 @@ class ReturnInst;
 FunctionGroupPass *createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner);
 
 class GenXNumbering : public FunctionGroupPass {
-  FunctionGroup *FG;
-  GenXBaling *Baling;
+  FunctionGroup *FG = nullptr;
+  GenXBaling *Baling = nullptr;
   struct BBNumber {
     unsigned Index; // 0-based index in list of basic blocks
     unsigned PhiNumber; // instruction number of first phi node in successor

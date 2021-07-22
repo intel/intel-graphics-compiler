@@ -25,7 +25,7 @@ class LiveRange;
 class PressureTracker {
   const DataLayout &DL;
   FunctionGroup &FG;
-  GenXLiveness *Liveness;
+  GenXLiveness *Liveness = nullptr;
   // Flag to widen byte vectors to word vectors if applicable.
   bool WithByteWidening;
   // Candidate variable for widening.

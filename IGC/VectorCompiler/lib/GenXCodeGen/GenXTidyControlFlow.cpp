@@ -87,7 +87,7 @@ namespace {
   class GenXTidyControlFlow : public FunctionPass {
     const GenXSubtarget *ST = nullptr;
     GenXLiveness *Liveness = nullptr;
-    bool Modified;
+    bool Modified = false;
   public:
     static char ID;
     explicit GenXTidyControlFlow() : FunctionPass(ID), Modified(false) {}

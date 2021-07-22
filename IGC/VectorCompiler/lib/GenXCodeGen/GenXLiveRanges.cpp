@@ -43,9 +43,9 @@ using namespace genx;
 namespace {
 
 class GenXLiveRanges : public FunctionGroupPass {
-  FunctionGroup *FG;
-  GenXBaling *Baling;
-  GenXLiveness *Liveness;
+  FunctionGroup *FG = nullptr;
+  GenXBaling *Baling = nullptr;
+  GenXLiveness *Liveness = nullptr;
 public:
   static char ID;
   explicit GenXLiveRanges() : FunctionGroupPass(ID) { }

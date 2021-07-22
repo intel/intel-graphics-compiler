@@ -37,8 +37,8 @@ using namespace genx;
 namespace {
 
 class GenXIMadPostLegalization : public FunctionPass {
-  DominatorTree *DT;
-  GenXBaling *Baling;
+  DominatorTree *DT = nullptr;
+  GenXBaling *Baling = nullptr;
 public:
   static char ID;
 

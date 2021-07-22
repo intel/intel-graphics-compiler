@@ -278,7 +278,7 @@ inline raw_ostream &operator<<(raw_ostream &OS, SimpleValue V) {
 // AssertingSV : like a SimpleValue, but contains an AssertingVH
 class AssertingSV {
   AssertingVH<Value> V;
-  unsigned Index;
+  unsigned Index = 0;
 public:
   AssertingSV(SimpleValue SV) : V(SV.getValue()), Index(SV.getIndex()) {}
   SimpleValue get() const { return SimpleValue(V, Index); }
@@ -437,13 +437,13 @@ inline raw_ostream &operator<<(raw_ostream &OS, const LiveRange &LR) {
 
 // CallGraph : the call graph within a FunctionGroup
 class CallGraph {
-  FunctionGroup *FG;
+  FunctionGroup *FG = nullptr;
 public:
   class Node;
   struct Edge {
-    unsigned Number;
-    CallInst *Call;
-    Node *Callee;
+    unsigned Number = 0;
+    CallInst *Call = nullptr;
+    Node *Callee = nullptr;
     bool operator==(Edge Rhs) const { return Number == Rhs.Number; }
     bool operator!=(Edge Rhs) const { return !(*this == Rhs); }
     bool operator<(Edge Rhs) const { return Number < Rhs.Number; }

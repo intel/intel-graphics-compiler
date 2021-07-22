@@ -81,7 +81,7 @@ namespace llvm {
       genx::Signedness Signed = genx::DONTCARESIGNED;
       Type *Ty = nullptr;
       // log2 min alignment requested by user of register
-      unsigned Alignment;
+      unsigned Alignment = 0;
       // String representation of register, mostly it is combination of
       // Category and Num
       std::string NameStr;

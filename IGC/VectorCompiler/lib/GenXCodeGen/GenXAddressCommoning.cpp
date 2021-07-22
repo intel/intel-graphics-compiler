@@ -169,11 +169,11 @@ struct Extract {
 
 // GenX address conversion pass
 class GenXAddressCommoning : public FunctionGroupPass {
-  GenXBaling *Baling;
-  GenXLiveness *Liveness;
-  GenXNumbering *Numbering;
-  const GenXSubtarget *ST;
-  Function *F;
+  GenXBaling *Baling = nullptr;
+  GenXLiveness *Liveness = nullptr;
+  GenXNumbering *Numbering = nullptr;
+  const GenXSubtarget *ST = nullptr;
+  Function *F = nullptr;
   SmallSet<Value *, 8> AlreadyProcessed;
   // Types and data structures used for gathering convert_addr ops that
   // could be commoned up:

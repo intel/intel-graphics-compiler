@@ -289,13 +289,13 @@ namespace {
 class GenXUnbaling : public FunctionGroupPass {
   enum { UNKNOWN, BEFORE, AFTER, NOTREACHES, REACHES };
 
-  const GenXBackendConfig *BackendConfig;
-  GenXBaling *Baling;
-  GenXLiveness *Liveness;
-  GenXNumbering *Numbering;
-  DominatorTree *DT;
-  bool Modified;
-  BasicBlock *CurBlock;
+  const GenXBackendConfig *BackendConfig = nullptr;
+  GenXBaling *Baling = nullptr;
+  GenXLiveness *Liveness = nullptr;
+  GenXNumbering *Numbering = nullptr;
+  DominatorTree *DT = nullptr;
+  bool Modified = false;;
+  BasicBlock *CurBlock = nullptr;
   std::map<BasicBlock *, int> ReachabilityCache;
   std::set<Instruction *> InstSeen;
   ValueMap<Instruction *, bool> InstSeenInProcessNonOverlappingRegion;

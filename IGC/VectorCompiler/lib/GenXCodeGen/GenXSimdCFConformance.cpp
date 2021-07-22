@@ -258,16 +258,16 @@ int DiagnosticInfoSimdCF::KindID = 0;
 // late passes.
 class GenXSimdCFConformance {
 protected:
-  Module *M;
-  FunctionGroup *FG;
-  FunctionGroupAnalysis *FGA;
-  DominatorTreeGroupWrapperPass *DTWrapper;
+  Module *M = nullptr;
+  FunctionGroup *FG = nullptr;
+  FunctionGroupAnalysis *FGA = nullptr;
+  DominatorTreeGroupWrapperPass *DTWrapper = nullptr;
   std::map<Function *, DominatorTree *> DTs;
-  GenXLiveness *Liveness;
-  bool Modified;
+  GenXLiveness *Liveness = nullptr;
+  bool Modified = false;
   SetVector<SimpleValue> EMVals;
   std::map<CallInst *, SetVector<SimpleValue>> RMVals;
-  bool lowerSimdCF;
+  bool lowerSimdCF = false;
 private:
 
   // GotoJoinEVs: container for goto/join Extract Value (EV) info. Also

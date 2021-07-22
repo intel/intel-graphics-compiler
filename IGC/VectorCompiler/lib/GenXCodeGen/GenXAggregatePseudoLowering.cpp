@@ -267,7 +267,7 @@ std::vector<Value *> createSplitInstOperands(int elemIdx, OpRange OrigOps,
 class SplitInstCreator : public InstVisitor<SplitInstCreator, Instruction *> {
   const std::vector<Value *> &NewOps;
   // Index of the currently considered element of aggregate.
-  int Idx;
+  int Idx = -1;
 
 public:
   SplitInstCreator(const std::vector<Value *> &NewOpsIn, int IdxIn)

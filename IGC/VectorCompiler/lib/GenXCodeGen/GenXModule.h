@@ -68,7 +68,7 @@ namespace llvm {
   // GenXModule pass. Stores the information from various parts of the
   // GenX writing process
   class GenXModule : public ModulePass {
-    const GenXSubtarget *ST;
+    const GenXSubtarget *ST = nullptr;
     LLVMContext *Ctx = nullptr;
     const GenXBackendConfig *BC = nullptr;
 

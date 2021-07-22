@@ -319,17 +319,17 @@ class GenXArgIndirection;
 
 // A subroutine arg that we might want to indirect
 class SubroutineArg {
-  GenXArgIndirection *Pass;
+  GenXArgIndirection *Pass = nullptr;
 public:
-  LiveRange *ArgLR;
-  Argument *Arg;
+  LiveRange *ArgLR = nullptr;
+  Argument *Arg = nullptr;
 private:
-  int CoalescedRetIdx;
-  bool CanCoalesceWithoutKill;
+  int CoalescedRetIdx = -1;
+  bool CanCoalesceWithoutKill = false;
   SmallVector<CallSite *, 4> CallSites;
   Alignment Align;
-  Function *F;
-  Function *NewFunc;
+  Function *F = nullptr;
+  Function *NewFunc = nullptr;
 public:
   Argument *AddressArgument;
   SubroutineArg(GenXArgIndirection *Pass, LiveRange *ArgLR, Argument *Arg)
