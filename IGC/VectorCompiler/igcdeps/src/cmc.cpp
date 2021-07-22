@@ -765,8 +765,7 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
   auto ConstantAnnotation = getDataAnnotation<iOpenCL::InitConstantAnnotation>(
       ModuleInfo.ConstantData);
   if (ConstantAnnotation)
-    ProgramInfo.m_initConstantAnnotation.push_back(
-        std::move(ConstantAnnotation));
+    ProgramInfo.m_initConstantAnnotation = std::move(ConstantAnnotation);
   auto GlobalAnnotation =
       getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.GlobalData);
   if (GlobalAnnotation)

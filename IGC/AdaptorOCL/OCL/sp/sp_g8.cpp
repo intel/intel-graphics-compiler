@@ -330,24 +330,24 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
     ICBE_DPF_STR(output, GFXDBG_HARDWARE, "** Program Scope patch lists **\n");
     ICBE_DPF_STR(output, GFXDBG_HARDWARE, "\n");
 
-    for (const auto &iter : annotations.m_initConstantAnnotation)
-    {
-        iOpenCL::SPatchAllocateConstantMemorySurfaceProgramBinaryInfo   patch;
+    if (annotations.m_initConstantAnnotation != nullptr) {
+        const auto& constBuffer = annotations.m_initConstantAnnotation;
+        iOpenCL::SPatchAllocateConstantMemorySurfaceProgramBinaryInfo patch;
         memset( &patch, 0, sizeof( patch ) );
 
         patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_CONSTANT_MEMORY_SURFACE_PROGRAM_BINARY_INFO;
         patch.Size = sizeof( patch );
         patch.ConstantBufferIndex = DEFAULT_CONSTANT_BUFFER_INDEX;
-        patch.InlineDataSize = (DWORD)iter->AllocSize;
+        patch.InlineDataSize = (DWORD)constBuffer->AllocSize;
 
         retValue = AddPatchItem(
             patch,
             membuf );
 
         // And now write the actual data
-        membuf.Write((char*)iter->InlineData.data(), iter->InlineData.size());
+        membuf.Write((char*)constBuffer->InlineData.data(), constBuffer->InlineData.size());
         // Pad the end with zeros
-        unsigned zeroPadding = iter->AllocSize - iter->InlineData.size();
+        unsigned zeroPadding = constBuffer->AllocSize - constBuffer->InlineData.size();
         membuf.AddPadding(zeroPadding);
     }
 
