@@ -1807,7 +1807,7 @@ int VISAKernelImpl::CreateVISAAddressOperand(
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->addrVar.dcl;
@@ -1857,7 +1857,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
     int status = VISA_SUCCESS;
-    cisa_opnd = (VISA_VectorOpnd*)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
 
     if (IS_GEN_BOTH_PATH)
     {
@@ -1967,7 +1967,7 @@ int VISAKernelImpl::CreateVISAIndirectGeneralOperand(
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_VectorOpnd*)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
 
     if (IS_GEN_BOTH_PATH)
     {
@@ -2068,7 +2068,7 @@ int VISAKernelImpl::CreateVISAPredicateSrcOperand(
 
     assert(decl->type == PREDICATE_VAR && "expect a predicate variable");
 
-    opnd = (VISA_VectorOpnd *)getOpndFromPool();
+    opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
 
     if (IS_GEN_BOTH_PATH)
     {
@@ -2102,7 +2102,7 @@ int VISAKernelImpl::CreateVISAPredicateDstOperand(
 
     int status = VISA_SUCCESS;
 
-    opnd = (VISA_VectorOpnd *)getOpndFromPool();
+    opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->predVar.dcl;
@@ -2144,7 +2144,7 @@ int VISAKernelImpl::CreateVISAPredicateOperand(
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_PredOpnd *)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_PredOpnd *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->predVar.dcl;
@@ -2180,7 +2180,7 @@ int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenV
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         if (cisa_decl->index < Get_CISA_PreDefined_Var_Count())
@@ -2222,7 +2222,7 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = cisa_decl->genVar.dcl;
@@ -2249,7 +2249,7 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
         cisa_opnd->index = cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.index;
         cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.row_offset = rowOffset;
         cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.col_offset = colOffset;
-        cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.region = Get_CISA_Region_Val(hStride) <<8;
+        cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.region = Get_CISA_Region_Val(hStride) << 8;
 
         cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
     }
@@ -2261,28 +2261,28 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd*& cisa_opnd, const void*
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_VectorOpnd*)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         G4_Type g4type = GetGenTypeFromVISAType(isaType);
 
         if (isaType == ISA_TYPE_Q) {
-            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(int64_t*)value, Type_Q);
+            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*static_cast<const int64_t*>(value), Type_Q);
         }
         else if (isaType == ISA_TYPE_UQ) {
-            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(int64_t*)value, Type_UQ);
+            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*static_cast<const int64_t*>(value), Type_UQ);
         }
         else if (isaType == ISA_TYPE_DF)
         {
-            cisa_opnd->g4opnd = m_builder->createDFImm(*(double*)value);
+            cisa_opnd->g4opnd = m_builder->createDFImm(*static_cast<const double*>(value));
         }
         else if (isaType == ISA_TYPE_F)
         {
-            cisa_opnd->g4opnd = m_builder->createImm(*(float*)(value));
+            cisa_opnd->g4opnd = m_builder->createImm(*static_cast<const float*>(value));
         }
         else if (isaType == ISA_TYPE_HF)
         {
-            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(unsigned*)(value), Type_HF);
+            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*static_cast<const unsigned*>(value), Type_HF);
         }
         else
         {
@@ -2307,15 +2307,15 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd*& cisa_opnd, const void*
         }
         if (isaType == ISA_TYPE_DF)
         {
-            cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.dval = *((double*)value);
+            cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.dval = *static_cast<const double*>(value);
         }
         else if (isaType == ISA_TYPE_F)
         {
-            cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.fval = *((float*)value);
+            cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.fval = *static_cast<const float*>(value);
         }
         else if (isaType == ISA_TYPE_Q || isaType == ISA_TYPE_UQ)
         {
-            cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = *((uint64_t*)value);
+            cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = *static_cast<const uint64_t*>(value);
         }
         else if (isaType == ISA_TYPE_V || isaType == ISA_TYPE_UV)
         {
@@ -2337,7 +2337,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->stateVar.dcl;
@@ -2427,7 +2427,7 @@ int VISAKernelImpl::CreateVISARawOperand(VISA_RawOpnd *& cisa_opnd, VISA_GenVar 
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_RawOpnd *)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_RawOpnd *>(getOpndFromPool());
     cisa_opnd->opnd_type = CISA_OPND_RAW;
     cisa_opnd->tag = NUM_OPERAND_CLASS;
     cisa_opnd->index = decl->index;
@@ -2573,7 +2573,7 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
 int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SurfaceVar *decl)
 {
     int status = VISA_SUCCESS;
-    opnd = (VISA_StateOpndHandle *)getOpndFromPool();
+    opnd = static_cast<VISA_StateOpndHandle *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         status = CreateStateInstUseFastPath(opnd, (CISA_GEN_VAR *)decl);
@@ -2588,7 +2588,7 @@ int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VI
 int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SamplerVar *decl)
 {
     int status = VISA_SUCCESS;
-    opnd = (VISA_StateOpndHandle *)getOpndFromPool();
+    opnd = static_cast<VISA_StateOpndHandle *>(getOpndFromPool());
     if (IS_GEN_BOTH_PATH)
     {
         status =  CreateStateInstUseFastPath(opnd, (CISA_GEN_VAR *)decl);
@@ -2604,7 +2604,7 @@ int VISAKernelImpl::CreateVISANullRawOperand(VISA_RawOpnd *& cisa_opnd, bool isD
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
-    cisa_opnd = (VISA_RawOpnd *)getOpndFromPool();
+    cisa_opnd = static_cast<VISA_RawOpnd *>(getOpndFromPool());
     cisa_opnd->opnd_type = CISA_OPND_RAW;
     cisa_opnd->tag = NUM_OPERAND_CLASS;
     cisa_opnd->index = 0;
@@ -3406,7 +3406,7 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(
     if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
-        VISA_opnd *opnd[3]; //should be more then enough
+        VISA_opnd *opnd[3]; //should be more than enough
         int num_pred_desc_operands = 2;
         ISA_Opcode opcode = ISA_FCALL;
         inst_desc = &CISA_INST_table[opcode];
@@ -3506,7 +3506,7 @@ int VISAKernelImpl::AppendVISACFSymbolInst(std::string symbolName, VISA_VectorOp
     if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_FADDR];
-        VISA_opnd *opnd[3]; //should be more then enough
+        VISA_opnd *opnd[3]; //should be more than enough
         int num_operands = 0;
 
         // create an entry in string pool with the given symbolName
@@ -3603,7 +3603,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
         opnd[num_operands] = index;
         ++num_operands;
 
-        memcpy_s(&opnd[num_operands], sizeof(VISA_LabelOpnd*) * labelCount, labels, sizeof(VISA_LabelOpnd*) * labelCount);
+        std::copy_n(labels, labelCount, opnd + num_operands);
         /*
         Making a copy of descriptor adn setting correct number of operands.
         This is used later to calculate total size of the buffer.
@@ -7656,16 +7656,13 @@ int VISAKernelImpl::patchLastInst(VISA_LabelOpnd *label)
 
 uint32_t VISAKernelImpl::addStringPool(std::string str)
 {
-    if (strcmp(str.c_str(), ""))
-    {
-        m_string_pool.push_back(str);
-        m_string_pool_size += (int) str.size()+1; //to account for a null terminating character
-        return (uint32_t)(m_string_pool.size()-1);
-    }
-    else
+    if (str.empty())
     {
         return 0;
     }
+    m_string_pool_size += (int) str.size()+1; //to account for a null terminating character
+    m_string_pool.emplace_back(std::move(str));
+    return (uint32_t)(m_string_pool.size()-1);
 }
 
 void VISAKernelImpl::addInstructionToEnd(CisaInst * inst)
@@ -8391,7 +8388,7 @@ G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(
 
 void VISAKernelImpl::setName(const char* n)
 {
-    if (!strcmp("", n)) return;
+    if (n[0] == '\0') return;
     m_cisa_kernel.name_index = addStringPool(n);
     m_name = m_string_pool[m_cisa_kernel.name_index];
     if (m_kernel)

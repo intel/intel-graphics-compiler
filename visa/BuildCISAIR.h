@@ -904,7 +904,7 @@ private:
     // Remove sgInvoke functions out of function list to avoid redundant compilation
     void RemoveOptimizingFunction(
             std::list<VISAKernelImpl *>& functions,
-            std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList);
+            const std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList);
 
     // Perform LinkTimeOptimization for call related transformations
     void LinkTimeOptimization(

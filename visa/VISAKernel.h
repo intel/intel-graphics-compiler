@@ -195,9 +195,9 @@ public:
     VISA_LabelOpnd * getLabelOpndFromLabelName(std::string label_name);
     bool setLabelNameIndexMap(const std::string &label_name, VISA_LabelOpnd * lbl);
     int patchLastInst(VISA_LabelOpnd *label);
-    vISA::G4_Kernel* getKernel() { return m_kernel; }
-    vISA::IR_Builder* getIRBuilder() { return m_builder; }
-    CISA_IR_Builder* getCISABuilder() { return m_CISABuilder; }
+    vISA::G4_Kernel* getKernel() const { return m_kernel; }
+    vISA::IR_Builder* getIRBuilder() const { return m_builder; }
+    CISA_IR_Builder* getCISABuilder() const { return m_CISABuilder; }
 
     int getVISAOffset() const;
     void CopyVars(VISAKernelImpl* from);
@@ -800,7 +800,7 @@ public:
         return (uint32_t)m_var_info_list.size();
     }
 
-    CISA_GEN_VAR* getGenVar(unsigned int index)
+    CISA_GEN_VAR* getGenVar(unsigned int index) const
     {
         return m_var_info_list[index];
     }
@@ -1004,7 +1004,7 @@ private:
 
     VISA_BUILDER_OPTION mBuildOption;
     vISA::G4_Kernel* m_kernel;
-    CISA_IR_Builder* m_CISABuilder;
+    CISA_IR_Builder* const m_CISABuilder;
     vISA::IR_Builder* m_builder;
     vISA::Mem_Manager *m_kernelMem;
     //customized allocator for allocating
@@ -1037,7 +1037,7 @@ private:
     void computeFCInfo(vISA::BinaryEncodingBase* binEncodingInstance);
     void computeFCInfo();
     //memory managed by the entity that creates vISA Kernel object
-    Options *m_options;
+    Options * const m_options;
 
     void createKernelAttributes() {
         void* pmem = m_mem.alloc(sizeof(vISA::Attributes));

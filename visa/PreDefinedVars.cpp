@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include "PreDefinedVars.h"
 #include "common.h"
 
-PreDefinedVarInfo preDefinedVarTable[static_cast<int>(PreDefinedVarsInternal::VAR_LAST)] =
+static const PreDefinedVarInfo preDefinedVarTable[static_cast<int>(PreDefinedVarsInternal::VAR_LAST)] =
 {
     { PreDefinedVarsInternal::VAR_NULL,      ISA_TYPE_UD, 1, true,  false,  0, 1,   "%null" },
     { PreDefinedVarsInternal::X,             ISA_TYPE_UW, 1, true,  false,  4,  1,   "%thread_x" },

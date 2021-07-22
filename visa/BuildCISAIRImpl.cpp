@@ -532,7 +532,7 @@ void CISA_IR_Builder::CollectCallSites(
 
 void CISA_IR_Builder::RemoveOptimizingFunction(
     std::list<VISAKernelImpl *>& functions,
-    std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList)
+    const std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList)
 {
     std::set<G4_Kernel*> removeList;
     for (auto& it : sgInvokeList)
@@ -934,8 +934,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
     if (m_options.getuInt32Option(vISA_Linker) != Linker_Disabled)
     {
         std::map<std::string, G4_Kernel*> functionsNameMap;
-        G4_Kernel* mainFunc = (*m_kernelsAndFunctions.begin())->getKernel();
-        assert((*m_kernelsAndFunctions.begin())->getIsKernel() && "mainFunc must be the kernel entry");
+        G4_Kernel* mainFunc = m_kernelsAndFunctions.front()->getKernel();
+        assert(m_kernelsAndFunctions.front()->getIsKernel() && "mainFunc must be the kernel entry");
         std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>> callSites;
         CollectCallSites(m_kernelsAndFunctions, callSites);
 
@@ -964,14 +964,12 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         Mem_Manager mem(4096);
         common_isa_header pseudoHeader;
         // m_kernels contains kernels and functions to compile.
-        std::list<VISAKernelImpl*>::iterator iter = m_kernelsAndFunctions.begin();
-        std::list<VISAKernelImpl*>::iterator end = m_kernelsAndFunctions.end();
 
         pseudoHeader.num_kernels = 0;
         pseudoHeader.num_functions = 0;
-        for (; iter != end; iter++)
+        for (const VISAKernelImpl* func : m_kernelsAndFunctions)
         {
-            if ((*iter)->getIsKernel() == true)
+            if (func->getIsKernel())
             {
                 pseudoHeader.num_kernels++;
             }
@@ -987,7 +985,9 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         unsigned int k = 0;
         bool isInPatchingMode = m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Enable_NoLTO && m_prevKernel;
         VISAKernelImpl* mainKernel = nullptr;
-        for (iter = m_kernelsAndFunctions.begin(), i = 0; iter != end; iter++, i++)
+        std::list<VISAKernelImpl*>::iterator iter = m_kernelsAndFunctions.begin();
+        std::list<VISAKernelImpl*>::iterator end = m_kernelsAndFunctions.end();
+        for (i = 0; iter != end; iter++, i++)
         {
             VISAKernelImpl* kernel = (*iter);
             mainKernel = (kernel->getIsKernel()) ? kernel : mainKernel;
@@ -1050,17 +1050,14 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 // Remove payload live-outs from the kernel after the compilation since
                 // they will not be outputs anymore after stitching.
                 mainKernel->getIRBuilder()->getRealR0()->resetLiveOut();
-                std::vector<input_info_t*>& inputs = mainKernel->getIRBuilder()->m_inputVect;
-                std::vector<input_info_t*>::iterator it = inputs.begin();
-                while (it != inputs.end())
+                const std::vector<input_info_t*>& inputs = mainKernel->getIRBuilder()->m_inputVect;
+                for (const input_info_t* input_info : inputs)
                 {
-                    input_info_t* input_info = *it;
                     vISA::G4_Declare* dcl = input_info->dcl;
                     if (dcl->isPayloadLiveOut())
                     {
                         dcl->resetLiveOut();
                     }
-                    ++it;
                 }
             }
         }
@@ -1070,7 +1067,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         // so we can stitch it again to another SIMD size of payload section
         if (m_options.getuInt32Option(vISA_CodePatch))
         {
-            assert((*m_kernelsAndFunctions.begin())->getIsKernel());
+            assert(m_kernelsAndFunctions.front()->getIsKernel());
             for (auto func : m_kernelsAndFunctions)
             {
                 if (func->getIsKernel())
@@ -1294,7 +1291,7 @@ int CISA_IR_Builder::verifyVISAIR()
         {
             //if asmName is test9_genx_0.asm, the testName is test9_genx.
             std::string asmName = kTemp->getOutputAsmPath();
-            std::string::size_type asmNameEnd = asmName.find_last_of("_");
+            std::string::size_type asmNameEnd = asmName.find_last_of('_');
             if (asmNameEnd != std::string::npos)
             {
                 testName = asmName.substr(0, asmNameEnd);

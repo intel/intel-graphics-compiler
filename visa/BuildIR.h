@@ -403,10 +403,6 @@ private:
     class PreDefinedVars
     {
     public:
-        PreDefinedVars() {
-            memset(hasPredefined,  0, sizeof(hasPredefined));
-            memset(predefinedVars, 0, sizeof(predefinedVars));
-        }
         void setHasPredefined(PreDefinedVarsInternal id, bool val) {
             hasPredefined[static_cast<int>(id)] = val;
         }
@@ -428,8 +424,8 @@ private:
     private:
         // records whether a vISA pre-defined var is used by the kernel
         // some predefined need to be expanded (e.g., HWTid, color)
-        bool hasPredefined[static_cast<int>(PreDefinedVarsInternal::VAR_LAST)];
-        G4_Declare* predefinedVars[static_cast<int>(PreDefinedVarsInternal::VAR_LAST)];
+        bool hasPredefined[static_cast<int>(PreDefinedVarsInternal::VAR_LAST)] {};
+        G4_Declare* predefinedVars[static_cast<int>(PreDefinedVarsInternal::VAR_LAST)] {};
     };
 
     bool hasNullReturnSampler = false;

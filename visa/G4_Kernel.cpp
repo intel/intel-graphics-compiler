@@ -84,18 +84,17 @@ void* gtPinData::getFreeGRFInfo(unsigned& size)
     //
     //    freeBytes data[numItems];
     //};
-    typedef struct freeBytes
+    struct freeBytes
     {
         unsigned short startByte;
         unsigned short numConsecutiveBytes;
-    } freeBytes;
+    };
 
-    typedef struct freeGRFInfo
+    struct freeGRFInfo
     {
         unsigned int magicStart;
         unsigned int numItems;
-        freeBytes* data;
-    } freeGRFInfo;
+    };
 
     // Compute free register information using vector for efficiency,
     // then convert to POS for passing back to gtpin.
@@ -142,7 +141,7 @@ void* gtPinData::getFreeGRFInfo(unsigned& size)
         size = sizeof(unsigned int) + sizeof(unsigned int) + sizeof(unsigned int) + (numItems * sizeof(freeBytes));
     }
 
-    return (void*)buffer;
+    return buffer;
 }
 
 void gtPinData::setGTPinInit(void* buffer)
@@ -300,7 +299,7 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
 
     void* gtpinBuffer = allocCodeBlock(bufferSize);
 
-    memcpy_s(gtpinBuffer, bufferSize, (const void*)(buffer.data()), bufferSize);
+    memcpy_s(gtpinBuffer, bufferSize, buffer.data(), bufferSize);
 
     // Dump buffer with shader dumps
     if (kernel.getOption(vISA_outputToFile))

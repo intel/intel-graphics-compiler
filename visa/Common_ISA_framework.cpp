@@ -86,7 +86,7 @@ int CisaInst::createCisaInstruction(
     m_cisa_instruction.modifier   = modifier;
     m_cisa_instruction.pred       = pred;
     m_cisa_instruction.opnd_array = (VISA_opnd**)m_mem.alloc(sizeof(VISA_opnd*) * numOpnds);
-    memcpy_s(m_cisa_instruction.opnd_array, sizeof(VISA_opnd*)* numOpnds, opnd, sizeof(VISA_opnd*)* numOpnds);
+    std::copy_n(opnd, numOpnds, m_cisa_instruction.opnd_array);
     m_cisa_instruction.isa_type = inst_desc->type;
 
     // FIXME: this is a mess and needs to be cleaned up
@@ -508,7 +508,7 @@ int CisaBinary::isaDump(
             for (; inst_iter != inst_iter_end; inst_iter++)
             {
                 CisaFramework::CisaInst * cisa_inst = *inst_iter;
-                CISA_INST * inst = cisa_inst->getCISAInst();
+                const CISA_INST * inst = cisa_inst->getCISAInst();
                 sstr << printInstruction(&fmt, inst, kTemp->getOptions()) << "\n";
             }
 

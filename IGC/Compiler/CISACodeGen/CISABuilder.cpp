@@ -5226,7 +5226,7 @@ namespace IGC
             for (int i = 0; i < functionCount; i++)
             {
                 std::string tmpVisaFile = name.AbsolutePath(folder);
-                std::string::size_type asmNameEnd = tmpVisaFile.find_last_of(".");
+                std::string::size_type asmNameEnd = tmpVisaFile.find_last_of('.');
                 tmpVisaFile = tmpVisaFile.substr(0, asmNameEnd);
                 std::stringstream asmName;
                 asmName << tmpVisaFile;
@@ -5267,9 +5267,9 @@ namespace IGC
             llvm::SmallVector<const char*, 10> params;
             llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> params2;
             InitBuildParams(params2);
-            for (size_t i = 0; i < params2.size(); i++)
+            for (const auto &ptr : params2)
             {
-                params.push_back((params2[i].get()));
+                params.push_back(ptr.get());
             }
 
             // Create a new builder for parsing the visaasm
@@ -5288,12 +5288,12 @@ namespace IGC
                 for (const std::string& tmpVisaFile : visaOverrideFiles)
                 {
                     std::string asmName = GetDumpFileName("");
-                    size_t asmNamedBegin = asmName.find_last_of("\\");
-                    size_t asmNameEnd = tmpVisaFile.find_last_of("/");
+                    size_t asmNamedBegin = asmName.find_last_of('\\');
+                    size_t asmNameEnd = tmpVisaFile.find_last_of('/');
                     std::string asmPreName = asmName.substr(0, asmNamedBegin);
                     std::string asmPostName = tmpVisaFile.substr(asmNameEnd, asmName.length());
                     asmName = asmPreName + asmPostName;
-                    size_t asmNamed = asmName.find_last_of(".");
+                    size_t asmNamed = asmName.find_last_of('.');
                     asmName = asmName.substr(0, asmNamed);
                     vAsmTextBuilder->SetOption(vISA_AsmFileNameOverridden, true);
                     vAsmTextBuilder->SetOption(VISA_AsmFileName, asmName.c_str());

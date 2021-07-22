@@ -393,8 +393,8 @@ namespace IGC
 
         void Wait();
 
-        VISAKernel* GetVISAKernel() { return vKernel; }
-        VISABuilder* GetVISABuilder() { return vbuilder; }
+        VISAKernel* GetVISAKernel() const { return vKernel; }
+        VISABuilder* GetVISABuilder() const { return vbuilder; }
         void Init();
         void Push();
 

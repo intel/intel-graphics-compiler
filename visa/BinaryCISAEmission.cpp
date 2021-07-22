@@ -139,7 +139,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
     {
         CisaFramework::CisaInst * inst = *inst_iter;
 
-        CISA_INST * cisa_inst = inst->getCISAInst();
+        const CISA_INST * cisa_inst = inst->getCISAInst();
         const VISA_INST_Desc * inst_desc = inst->getCISAInstDesc();
         status = emitCisaInst(cisa_kernel, cisa_inst, inst_desc);
         if (status != VISA_SUCCESS)
@@ -152,7 +152,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 }
 
 int CBinaryCISAEmitter::emitCisaInst(
-    VISAKernelImpl* cisa_kernel, CISA_INST* inst, const VISA_INST_Desc* desc)
+    VISAKernelImpl* cisa_kernel, const CISA_INST* inst, const VISA_INST_Desc* desc)
 {
     bool     useSubDesc    = false;
     uint8_t  subOpcode     = 0;

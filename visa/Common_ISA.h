@@ -670,7 +670,7 @@ public:
     }
 
     uint16_t getPredInBinary() const { return predInBinary; }
-    int constexpr getPredInBinarySize() { return sizeof(predInBinary); }
+    static constexpr int getPredInBinarySize() { return sizeof(predInBinary); }
 
     static PredicateOpnd getNullPred()
     {

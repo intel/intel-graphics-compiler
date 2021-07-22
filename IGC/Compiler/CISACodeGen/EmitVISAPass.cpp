@@ -17794,7 +17794,7 @@ void EmitPass::emitThreadPause(llvm::GenIntrinsicInst* inst)
     else if (var <= 4)
         var = 0x0080;
     else
-        var = var << 5;
+        var <<= 5;
     m_encoder->Copy(TSC_pause, m_currShader->ImmToVariable(var, ISA_TYPE_UD));
     m_encoder->Push();
 }
