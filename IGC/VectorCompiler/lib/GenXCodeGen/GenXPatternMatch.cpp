@@ -265,13 +265,11 @@ private:
   // be emitted as mac in the end and mul + mach could be emitted.
   bool isProfitable() const;
 
-  // mad on i64 is restricted
-  // checks if fadd/fsub/add/sub/fmul/mul/shl operates on i64 type
+  // mad on i64 is restricted.
+  // Checks if add/sub/mul/shl/.. operates on i64 or <n x i64>.
   bool isOperationOnI64() const {
-    auto isI64 = [this](Instruction *I) -> bool {
-      auto *BO = dyn_cast<BinaryOperator>(I);
-      IGC_ASSERT_MESSAGE(BO, "Intruction has to be a binary operatior");
-      return BO->getOperand(0)->getType()->isIntegerTy(64);
+    auto isI64 = [this](Value *Val) -> bool {
+      return Val->getType()->getScalarType()->isIntegerTy(64);
     };
 
     return isI64(MInst) || isI64(AInst);
