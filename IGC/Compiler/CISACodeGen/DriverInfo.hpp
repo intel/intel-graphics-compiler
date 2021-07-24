@@ -211,9 +211,6 @@ namespace IGC
         /// disable mad in Vertex shader to avoid ZFigthing issues
         virtual bool DisabeMatchMad() const { return false; }
 
-        /// WA bug in load store pattern match, needs to be cleaned up
-        virtual bool WALoadStorePatternMatch() const { return false; }
-
         /// Some FE sends SLM pointers in DWORD units
         virtual bool WASLMPointersDwordUnit() const { return false; }
 

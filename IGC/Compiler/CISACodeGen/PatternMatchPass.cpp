@@ -1235,33 +1235,13 @@ namespace IGC
 
     void CodeGenPatternMatch::visitStoreInst(StoreInst& I)
     {
-        bool match = false;
-        // we try to fold some pointer values in GFX path, not OCL path
-        if (m_ctx->m_DriverInfo.WALoadStorePatternMatch())
-        {
-            match = MatchSingleInstruction(I);
-        }
-        else
-        {
-            match = MatchLoadStorePointer(I, *(I.getPointerOperand())) ||
-                MatchSingleInstruction(I);
-        }
+         bool match = MatchSingleInstruction(I);
         IGC_ASSERT(match);
     }
 
     void CodeGenPatternMatch::visitLoadInst(LoadInst& I)
     {
-        bool match = false;
-        // we try to fold some pointer values in GFX path, not OCL path
-        if (m_ctx->m_DriverInfo.WALoadStorePatternMatch())
-        {
-            match = MatchSingleInstruction(I);
-        }
-        else
-        {
-            match = MatchLoadStorePointer(I, *(I.getPointerOperand())) ||
-                MatchSingleInstruction(I);
-        }
+        bool match = MatchSingleInstruction(I);
         IGC_ASSERT(match);
     }
 
