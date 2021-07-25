@@ -255,7 +255,7 @@ namespace IGC {
             auto FatLoop = m_fatLoops[i];
             auto Pressure = m_fatLoopPressures[i];
             // Enable multiple-level loop sink if pressure is high enough
-            bool sinkMultiLevel = (Pressure > (ngrf + 2 * GRFThresholdDelta));
+            bool sinkMultiLevel = (Pressure > (2*ngrf + 2 * GRFThresholdDelta));
             if (loopSink(FatLoop, sinkMultiLevel)) {
                 changed = true;
             }
@@ -354,7 +354,7 @@ namespace IGC {
             pressure0 = EstimateLiveOutPressure(&blk, DL);
             uint32_t GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
             uint32_t ngrf = CTX->getNumGRFPerThread();
-            if (pressure0 > (ngrf + GRFThresholdDelta) &&
+            if (pressure0 > (2*ngrf + GRFThresholdDelta) &&
                 CTX->type == ShaderType::OPENCL_SHADER)
             {
                 if (auto L = findLoopAsPreheader(blk))
