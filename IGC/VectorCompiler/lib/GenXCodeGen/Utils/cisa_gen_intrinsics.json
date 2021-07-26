@@ -210,10 +210,34 @@
       "offset": [ "GENERAL", "UNSIGNED", 3 ],
       "dst": [ "RAW", 0 ]
     },
+    "genx_oword_ld_predef_surface": {
+      "opc": "ISA_OWORD_LD",
+      "log2_owords": [ "LOG2OWORDS", 0 ],
+      "is_modified": [ "BYTE", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "GENERAL", "UNSIGNED", 3 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_oword_ld_unaligned_predef_surface": {
+      "opc": "ISA_OWORD_LD_UNALIGNED",
+      "gen_opc": "ISA_OWORD_LD",
+      "log2_owords": [ "LOG2OWORDS", 0 ],
+      "is_modified": [ "BYTE", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "GENERAL", "UNSIGNED", 3 ],
+      "dst": [ "RAW", 0 ]
+    },
     "genx_oword_st": {
       "opc": "ISA_OWORD_ST",
       "log2_owords": [ "LOG2OWORDS", 3 ],
       "surface": [ "SURFACE", 1 ],
+      "offset": [ "GENERAL", "UNSIGNED", 2 ],
+      "src": [ "RAW", 3 ]
+    },
+    "genx_oword_st_predef_surface": {
+      "opc": "ISA_OWORD_ST",
+      "log2_owords": [ "LOG2OWORDS", 3 ],
+      "surface": [ "PREDEF_SURFACE", 1 ],
       "offset": [ "GENERAL", "UNSIGNED", 2 ],
       "src": [ "RAW", 3 ]
     },
@@ -585,6 +609,182 @@
       "src1": [ "RAW", 4 ],
       "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
     },
+    "genx_dword_atomic2_add_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_ADD" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_sub_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_SUB" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_inc_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_INC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "NULLRAW" ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_dec_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_DEC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "NULLRAW" ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_min_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_MIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_max_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_MAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_xchg_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_XCHG" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_cmpxchg_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_CMPXCHG" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "URAW", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_and_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_AND" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_or_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_OR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_xor_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_XOR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_imin_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_IMIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "SRAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "SRAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_imax_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_IMAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "SRAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "SRAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_fmax_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FMAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "RAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_fmin_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FMIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "RAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic2_fcmpwr_predef_surface": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FCMPWR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "PREDEF_SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "RAW", 5 ],
+      "src1": [ "RAW", 4 ],
+      "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
+    },
     "fma": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
@@ -813,6 +1013,29 @@
       "element_offset": [ "URAW", 6 ],
       "src": [ "RAW", 7 ]
     },
+    "genx_scatter_scaled_predef_surface": {
+      "opc": "ISA_SCATTER_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "1_byte_block_size_MBZ": [ "LITERAL", 0 ],
+      "log2_num_blocks": [ "BYTE", 2 ],
+      "scale": [ "SHORT", 3 ],
+      "surface": [ "PREDEF_SURFACE", 4 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 5 ],
+      "element_offset": [ "URAW", 6 ],
+      "src": [ "RAW", 7 ]
+    },
+    "genx_scatter4_scaled_predef_surface": {
+      "opc": "ISA_SCATTER4_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "channel_mask": [ "BYTE", 2 ],
+      "scale": [ "SHORT", 3 ],
+      "surface": [ "PREDEF_SURFACE", 4 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 5 ],
+      "element_offset": [ "URAW", 6 ],
+      "src": [ "RAW", 7 ]
+    },
     "genx_scatter4_typed": {
       "opc": "ISA_SCATTER4_TYPED",
       "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
@@ -862,6 +1085,18 @@
       "element_offset": [ "URAW", 5 ],
       "dst": [ "RAW", 0 ]
     },
+    "genx_gather_masked_scaled2_predef_surface": {
+      "opc": "ISA_GATHER_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 6 ],
+      "pred": [ "PREDICATION", 6 ],
+      "block_size_MBZ": [ "LITERAL", 0 ],
+      "log2_num_blocks": [ "BYTE", 1 ],
+      "scale": [ "SHORT", 2 ],
+      "surface": [ "PREDEF_SURFACE", 3 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 4 ],
+      "element_offset": [ "URAW", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
     "genx_gather4_scaled": {
       "opc": "ISA_GATHER4_SCALED",
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
@@ -892,6 +1127,17 @@
       "channel_mask": [ "BYTE", 1 ],
       "scale": [ "SHORT", 2 ],
       "surface": [ "SURFACE", 3 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 4 ],
+      "element_offset": [ "URAW", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_gather4_masked_scaled2_predef_surface": {
+      "opc": "ISA_GATHER4_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 6 ],
+      "pred": [ "PREDICATION", 6 ],
+      "channel_mask": [ "BYTE", 1 ],
+      "scale": [ "SHORT", 2 ],
+      "surface": [ "PREDEF_SURFACE", 3 ],
       "global_offset": [ "GENERAL", "UNSIGNED", 4 ],
       "element_offset": [ "URAW", 5 ],
       "dst": [ "RAW", 0 ]
@@ -4200,6 +4446,7 @@
     "LITERAL":      "{value1}",
     "ISBARRIER":    "HasBarrier = true",
     "BITWIDTH":     "GetBitWidth(II::ArgInfo({args}))",
+    "PREDEF_SURFACE": "CreatePredefSurfaceOperand(II::ArgInfo({args}))",
     "SKIP":         null
   }
 }

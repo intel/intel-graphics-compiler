@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "vc/GenXOpts/GenXAnalysis.h"
+#include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -797,6 +798,27 @@ LiveRange::iterator LiveRange::find(unsigned Pos)
   return I;
 }
 
+static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
+  const unsigned Category =
+      llvm::StringSwitch<unsigned>(SV.getValue()->getName())
+          .Case(genx::BSSVariableName, RegCategory::SURFACE)
+          .Default(RegCategory::NUMCATEGORIES);
+  IGC_ASSERT_MESSAGE(Category != RegCategory::NUMCATEGORIES,
+                     "Unhandled predefined variable");
+  return Category;
+}
+
+static bool isPredefinedVariable(SimpleValue SV) {
+  Value *V = SV.getValue();
+  IGC_ASSERT_MESSAGE(V, "Expected value");
+  if (!isa<GlobalVariable>(V))
+    return false;
+  IGC_ASSERT_MESSAGE(SV.getIndex() == 0,
+                     "Expected single simple value for predefined variable");
+  auto *GV = cast<GlobalVariable>(V);
+  return GV->hasAttribute(genx::VariableMD::VCPredefinedVariable);
+}
+
 /***********************************************************************
  * getOrDefaultCategory : get category; if none, set default
  *
@@ -810,6 +832,11 @@ unsigned LiveRange::getOrDefaultCategory()
     return Cat;
   IGC_ASSERT(!value_empty());
   SimpleValue SV = *value_begin();
+  if (isPredefinedVariable(SV)) {
+    Cat = getCategoryForPredefinedVariable(SV);
+    setCategory(Cat);
+    return Cat;
+  }
   Type *Ty = IndexFlattener::getElementType(
       SV.getValue()->getType(), SV.getIndex());
   if (Ty->getScalarType()->isIntegerTy(1))

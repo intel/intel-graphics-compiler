@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "GenXNumbering.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/General/Types.h"
@@ -569,9 +570,14 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   LLVM_DEBUG(dbgs() << "Allocating "; LR->print(dbgs()); dbgs() << "\n");
   SimpleValue V = *LR->value_begin();
   Type *Ty = V.getType();
-  if (auto GV = dyn_cast<GlobalVariable>(V.getValue()))
+  if (auto *GV = dyn_cast<GlobalVariable>(V.getValue())) {
+    // No register for predefined variable.
+    if (GV->hasAttribute(genx::VariableMD::VCPredefinedVariable))
+      return;
+
     if (GV->hasAttribute(genx::FunctionMD::GenXVolatile))
       Ty = Ty->getPointerElementType();
+  }
   IGC_ASSERT(!Ty->isVoidTy());
   if (LR->Category == RegCategory::PREDICATE) {
     VectorType *VT = dyn_cast<VectorType>(Ty);
@@ -946,4 +952,3 @@ void GenXVisaRegAlloc::Reg::print(raw_ostream &OS) const
   }
   OS << Num;
 }
-

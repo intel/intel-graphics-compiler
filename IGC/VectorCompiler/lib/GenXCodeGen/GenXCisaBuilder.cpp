@@ -612,6 +612,7 @@ private:
   VISA_PredVar *getPredicateVar(Register *Idx);
   VISA_PredVar *getPredicateVar(Value *V);
   VISA_PredVar *getZeroedPredicateVar(Value *V);
+  VISA_SurfaceVar *getPredefinedSurfaceVar(GlobalVariable &GV);
   VISA_EMask_Ctrl getExecMaskFromWrPredRegion(Instruction *WrPredRegion,
                                                      bool IsNoMask);
   VISA_EMask_Ctrl getExecMaskFromWrRegion(const DstOpndDesc &DstDesc,
@@ -654,6 +655,7 @@ private:
                         const DstOpndDesc &DstDesc);
   void buildAlloca(CallInst *CI, unsigned IntrinID, unsigned Mod,
                    const DstOpndDesc &DstDesc);
+  void buildWritePredefSurface(CallInst &CI);
   void addWriteRegionLifetimeStartInst(Instruction *WrRegion);
   void addLifetimeStartInst(Instruction *Inst);
   void AddGenVar(Register &Reg);
@@ -2783,6 +2785,9 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case GenXIntrinsic::genx_gaddr:
         buildSymbolInst(CI, Mod, DstDesc);
         break;
+      case GenXIntrinsic::genx_write_predef_surface:
+        buildWritePredefSurface(*CI);
+        break;
       case GenXIntrinsic::genx_constanti:
       case GenXIntrinsic::genx_constantf:
       case GenXIntrinsic::genx_constantpred:
@@ -3356,6 +3361,15 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     }
     VISA_StateOpndHandle *ResultOperand = nullptr;
     CISA_CALL(Kernel->CreateVISAStateOperandHandle(ResultOperand, SurfDecl));
+    return ResultOperand;
+  };
+
+  auto CreatePredefSurfaceOperand = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreatePredefinedSurfaceOperand\n");
+    auto *Arg = cast<GlobalVariable>(CI->getArgOperand(AI.getArgIdx()));
+    VISA_SurfaceVar *SurfVar = getPredefinedSurfaceVar(*Arg);
+    VISA_StateOpndHandle *ResultOperand = nullptr;
+    CISA_CALL(Kernel->CreateVISAStateOperandHandle(ResultOperand, SurfVar));
     return ResultOperand;
   };
 
@@ -4326,6 +4340,49 @@ void GenXKernelBuilder::buildSymbolInst(CallInst *GAddrInst, unsigned Mod,
   auto *GV = cast<GlobalValue>(GAddrInst->getOperand(0));
   VISA_VectorOpnd *Dst = createDestination(GAddrInst, UNSIGNED, Mod, DstDesc);
   CISA_CALL(Kernel->AppendVISACFSymbolInst(GV->getName().str(), Dst));
+}
+
+/***********************************************************************
+ * buildWritePredefSurface : get predefined visa surface variable
+ *
+ * Enter:   GV = global that denotes predefined variable
+ *
+ * Return:  visa surface variable, non-null
+ *
+ */
+VISA_SurfaceVar *
+GenXKernelBuilder::getPredefinedSurfaceVar(GlobalVariable &GV) {
+  StringRef SurfName = GV.getName();
+  PreDefined_Surface VisaSurfName =
+      StringSwitch<PreDefined_Surface>(SurfName)
+          .Case(genx::BSSVariableName, PREDEFINED_SURFACE_T252)
+          .Default(PREDEFINED_SURFACE_LAST);
+  IGC_ASSERT_MESSAGE(VisaSurfName != PREDEFINED_SURFACE_LAST,
+                     "Unexpected predefined surface");
+  VISA_SurfaceVar *SurfVar = nullptr;
+  CISA_CALL(Kernel->GetPredefinedSurface(SurfVar, VisaSurfName));
+  return SurfVar;
+}
+
+/***********************************************************************
+ * buildWritePredefSurface : build code to write to predefined surface
+ *
+ * Enter:   CI = write_predef_surface intrinsic
+ *
+ */
+void GenXKernelBuilder::buildWritePredefSurface(CallInst &CI) {
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(&CI) ==
+                         GenXIntrinsic::genx_write_predef_surface,
+                     "Expected predefined surface write intrinsic");
+  auto *PredefSurf = cast<GlobalVariable>(CI.getArgOperand(0));
+  VISA_SurfaceVar *SurfVar = getPredefinedSurfaceVar(*PredefSurf);
+  VISA_VectorOpnd *SurfOpnd = nullptr;
+  CISA_CALL(Kernel->CreateVISAStateOperand(SurfOpnd, SurfVar, /*offset=*/0,
+                                           /*useAsDst=*/true));
+  VISA_VectorOpnd *SrcOpnd = createSource(CI.getArgOperand(1), genx::UNSIGNED);
+  CISA_CALL(Kernel->AppendVISADataMovementInst(
+      ISA_MOVS, /*pred=*/nullptr, /*satMod=*/false, vISA_EMASK_M1_NM,
+      EXEC_SIZE_1, SurfOpnd, SrcOpnd));
 }
 
 /***********************************************************************

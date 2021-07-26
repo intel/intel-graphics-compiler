@@ -170,6 +170,7 @@ public:
     MODIFIER_LOGIC =        GENX_ITR_FLAGENUM(8, 2), // src modifier: logic
     MODIFIER_EXTONLY =      GENX_ITR_FLAGENUM(8, 3), // src modifier: extend only
     DIRECTONLY =            GENX_ITR_FLAGVAL(10), // indirect region not allowed
+    PREDEF_SURFACE =        GENX_ITR_CATVAL(0x31), // predefined surface operand
   };
   struct ArgInfo {
     unsigned Info;

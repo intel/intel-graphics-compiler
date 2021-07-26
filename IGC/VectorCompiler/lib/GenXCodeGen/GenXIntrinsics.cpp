@@ -175,6 +175,7 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
   // Exec size of intrinsics with channels are inferred from address operand.
   case GenXIntrinsic::genx_gather4_scaled2:
   case GenXIntrinsic::genx_gather4_masked_scaled2:
+  case GenXIntrinsic::genx_gather4_masked_scaled2_predef_surface:
     return cast<VectorType>(
                CI->getArgOperand(4 /*address operand idx*/)->getType())
         ->getNumElements();
