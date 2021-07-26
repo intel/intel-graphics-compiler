@@ -2388,57 +2388,6 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
     }
 }
 
-
-//  Searches the following pattern
-//      %0 = call fast float @llvm.fma.f32(float %x, float %y, float 0.000000e+00)
-//
-//  And changes it to:
-//      %0 = fmul fast float %x, %y
-//
-//  and
-//
-//  Searches the following pattern
-//      %0 = call fast float @llvm.fma.f32(float %x, float 0.000000e+00, float %y)
-//      %1 = fmul fast float %0, 5.000000
-//
-//  And changes it to:
-//      %0 = fmul fast float %y, 5.000000
-//
-//  and
-//
-//  Searches the following pattern
-//      %0 = call fast float @llvm.fma.f32(float 0.000000e+00, float %x, float %y)
-//      %1 = fmul fast float %0, 5.000000
-//
-//  And changes it to:
-//      %0 = fmul fast float %y, 5.000000
-//
-// This optimization simplifies FMA expressions with zero arguments.
-void CustomUnsafeOptPass::visitIntrinsicInst(IntrinsicInst& intr) {
-    const Intrinsic::ID ID = intr.getIntrinsicID();
-
-    if (ID == Intrinsic::fma && intr.isFast()) {
-        if (ConstantFP* C = dyn_cast<ConstantFP>(intr.getArgOperand(2))) {
-            if (C->isZero()) {
-                // change to mul
-                IRBuilder<> irb(&intr);
-                Value* v = irb.CreateFMulFMF(intr.getArgOperand(0), intr.getArgOperand(1), &intr);
-                intr.replaceAllUsesWith(v);
-                intr.eraseFromParent();
-            }
-        }
-        else {
-            ConstantFP* A = dyn_cast<ConstantFP>(intr.getArgOperand(0));
-            ConstantFP* B = dyn_cast<ConstantFP>(intr.getArgOperand(1));
-
-            if ((A != nullptr && A->isZero()) || (B != nullptr && B->isZero())) {
-                // replace
-                intr.replaceAllUsesWith(intr.getArgOperand(2));
-                intr.eraseFromParent();
-            }
-        }
-    }
-}
 // This pass looks for potential patterns where, if some value evaluates
 // to zero, then a long chain of computation will be zero as well and
 // we can just skip it (a so called 'early out').  For example:
