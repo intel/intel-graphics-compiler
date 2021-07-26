@@ -655,7 +655,7 @@ bool supportByteALUOperation() const
 
 bool NeedsHDCFenceBeforeEOTInPixelShader() const
 {
-    return false;
+    return m_WaTable.Wa_1807084924 != 0;
 }
 
 bool canFuseTypedWrite() const
