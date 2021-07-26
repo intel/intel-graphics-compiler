@@ -53,6 +53,8 @@ namespace IGC
         void visitCallInst(llvm::CallInst& I);
         void visitFPToSIInst(llvm::FPToSIInst& I);
 
+        void visitIntrinsicInst(llvm::IntrinsicInst& intr);
+
         bool visitBinaryOperatorPropNegate(llvm::BinaryOperator& I);
         bool visitBinaryOperatorNegateMultiply(llvm::BinaryOperator& I);
         bool visitBinaryOperatorTwoConstants(llvm::BinaryOperator& I);
