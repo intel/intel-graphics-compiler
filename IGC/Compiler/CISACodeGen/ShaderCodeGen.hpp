@@ -165,6 +165,7 @@ public:
     void        CreatePayload(uint regCount, uint idxOffset, CVariable*& payload, llvm::Instruction* inst, uint paramOffset, uint8_t hfFactor);
     uint        GetNbVectorElementAndMask(llvm::Value* value, uint32_t& mask);
     uint32_t    GetExtractMask(llvm::Value* value);
+    uint32_t    GetExtractMask(llvm::Value* value, bool& hasEM);
     uint16_t    AdjustExtractIndex(llvm::Value* value, uint16_t elemIndex);
     WIBaseClass::WIDependancy GetDependency(llvm::Value* v) const;
     void        SetDependency(llvm::Value* v, WIBaseClass::WIDependancy dep);

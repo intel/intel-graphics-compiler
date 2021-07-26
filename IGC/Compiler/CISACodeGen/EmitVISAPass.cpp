@@ -15235,7 +15235,16 @@ bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
 
 void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
 {
-    uint destMask = m_currShader->GetExtractMask(BCI);
+    bool hasEM;  // if false, assume all 1.
+    uint32_t destMask = m_currShader->GetExtractMask(BCI, hasEM);
+
+    auto isBitSet = [hasEM](uint32_t i, uint32_t EM) -> bool {
+        if (hasEM)
+        {
+            return (BIT(i) & EM);
+        }
+        return true;
+    };
 
     CVariable* src = GetSymbol(BCI->getOperand(0));
     llvm::Type* srcTy = BCI->getOperand(0)->getType();
@@ -15322,7 +15331,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         {
             for (uint32_t i = 0, offset = 0; i < dstNElts; ++i)
             {
-                if (BIT(i) & destMask)
+                if (isBitSet(i, destMask))
                 {
                     m_encoder->SetSrcRegion(0,
                         srcUniform ? 0 : 1,
@@ -15397,7 +15406,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             CVariable* dst_alias = m_currShader->GetNewAlias(m_destination, V0->GetType(), 0, 0);
             for (unsigned i = 0, offset = 0; i < dstNElts; ++i)
             {
-                if (BIT(i) & destMask)
+                if (isBitSet(i, destMask))
                 {
                     for (unsigned j = 0; j < N; ++j)
                     {
@@ -15467,7 +15476,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         {
             for (unsigned i = 0, offset = 0; i < dstNElts; ++i)
             {
-                if (BIT(i) & destMask)
+                if (isBitSet(i, destMask))
                 {
                     for (unsigned j = 0; j < N; ++j)
                     {
@@ -15556,7 +15565,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         {
             for (unsigned j = 0; j < N; ++j)
             {
-                if (BIT(i * N + j) & destMask)
+                if (isBitSet(i * N + j, destMask))
                 {
                     if (useSeparateCVar)
                     {

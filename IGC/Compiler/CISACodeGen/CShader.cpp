@@ -1235,7 +1235,25 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
     return nbElement;
 }
 
-
+// If ExtractMask (EM) is set, return it and set hasEM = true;
+// otherwise (not set), return 0 and set hasEM = false;
+uint32_t CShader::GetExtractMask(llvm::Value* vecVal, bool& hasEM)
+{
+    auto it = extractMasks.find(vecVal);
+    if (it != extractMasks.end())
+    {
+        hasEM = true;
+        return it->second;
+    }
+    const unsigned int numChannels = vecVal->getType()->isVectorTy() ? (unsigned)cast<VectorType>(vecVal->getType())->getNumElements() : 1;
+    if (numChannels <= 32)
+    {
+        hasEM = true;
+        return (1ULL << numChannels) - 1;
+    }
+    hasEM = false;
+    return 0;
+}
 
 uint32_t CShader::GetExtractMask(llvm::Value* vecVal)
 {
