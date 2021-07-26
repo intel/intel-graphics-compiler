@@ -181,6 +181,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
+#include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -207,6 +208,9 @@ static cl::opt<bool> GenXCoalescingLessCopies(
     "genx-coalescing-less-copies", cl::init(true), cl::Hidden,
     cl::desc(
         "GenX Coalescing will try to emit less copies on coalescing failures"));
+
+STATISTIC(NumCoalescingCandidates, "Number of coalescing candidates");
+STATISTIC(NumInsertedCopies, "Number of inserted copies");
 
 // Diagnostic information for error/warning relating fast-composition.
 class DiagnosticInfoFastComposition : public DiagnosticInfo {
@@ -864,6 +868,7 @@ void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
   LLVM_DEBUG(dbgs() << "Recording cand " << *(Dest.getValue()) << "\n");
   IGC_ASSERT(!UseInDest || !isa<Constant>(*UseInDest));
   Candidates.emplace_back(Dest, UseInDest, SourceIndex, Priority);
+  ++NumCoalescingCandidates;
 }
 
 /***********************************************************************
@@ -1750,6 +1755,7 @@ Instruction *GenXCoalescing::insertCopy(SimpleValue Input, LiveRange *LR,
     Liveness->setLiveRange(SimpleValue(Extract), SourceLR);
     Input = SimpleValue(Extract);
   }
+  ++NumInsertedCopies;
   return Liveness->insertCopy(Input.getValue(), LR, InsertBefore, Name, Number,
                               ST);
 }

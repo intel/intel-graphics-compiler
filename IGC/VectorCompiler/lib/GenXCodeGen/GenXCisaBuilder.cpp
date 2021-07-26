@@ -45,6 +45,7 @@ SPDX-License-Identifier: MIT
 #include "visaBuilder_interface.h"
 
 #include "llvm/ADT/IndexedMap.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -103,6 +104,10 @@ static cl::opt<bool>
                          cl::init(false), cl::Hidden,
                          cl::desc("Finalizer shall produce optimized code if "
                                   "debug info is requested"));
+
+STATISTIC(NumVisaInsts, "Number of VISA instructions");
+STATISTIC(NumAsmInsts, "Number of Gen asm instructions");
+STATISTIC(SpillMemUsed, "Spill memory size used");
 
 /// For VISA_PREDICATE_CONTROL & VISA_PREDICATE_STATE
 template <class T> T &operator^=(T &a, T b) {
@@ -1175,6 +1180,8 @@ bool GenXKernelBuilder::run() {
     if (!HasBarrier)
       CISA_CALL(Kernel->AddKernelAttribute("NoBarrier", 0, nullptr));
   }
+
+  NumVisaInsts += Kernel->getvIsaInstCount();
 
   return false;
 }
@@ -6262,7 +6269,8 @@ public:
   bool runOnModule(Module &M) {
     Ctx = &M.getContext();
 
-    GenXModule &GM = getAnalysis<GenXModule>();
+    auto &FGA = getAnalysis<FunctionGroupAnalysis>();
+    auto &GM = getAnalysis<GenXModule>();
     std::stringstream ss;
     VISABuilder *CisaBuilder = GM.GetCisaBuilder();
     if (GM.HasInlineAsm())
@@ -6272,6 +6280,17 @@ public:
     dbgs() << CisaBuilder->GetCriticalMsg();
 
     Out << ss.str();
+
+    // Collect some useful statistics
+    for (auto *FG: FGA) {
+      VISAKernel *Kernel = CisaBuilder->GetVISAKernel(FG->getName());
+      IGC_ASSERT(Kernel);
+      FINALIZER_INFO *jitInfo = nullptr;
+      CISA_CALL(Kernel->GetJitInfo(jitInfo));
+      IGC_ASSERT(jitInfo);
+      NumAsmInsts += jitInfo->numAsmCount;
+      SpillMemUsed += jitInfo->spillMemUsed;
+    }
     return false;
   }
 };
