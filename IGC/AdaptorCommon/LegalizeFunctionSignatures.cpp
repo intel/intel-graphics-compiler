@@ -153,7 +153,7 @@ inline bool isPromotableStructType(Module& M, Type* ty, bool isReturnValue = fal
             for (const auto* EltTy : sTy->elements())
             {
                 // Check if all elements are primitive types
-                if (!EltTy->isSingleValueType())
+                if (!EltTy->isSingleValueType() || EltTy->isVectorTy())
                     return false;
             }
             return true;
