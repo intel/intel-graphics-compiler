@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -435,6 +436,10 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   if (Opts.TimePasses)
     TimePassesIsEnabled = true;
 
+  // Enable LLVM statistics recording if required.
+  if (Opts.ShowStats || !Opts.StatsFile.empty())
+    llvm::EnableStatistics(false);
+
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpModule(M, "after_ir_adaptors.ll");
 
@@ -449,6 +454,18 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   TimerGroup::printAll(llvm::errs());
   TimePassesIsEnabled = TimePassesIsEnabledLocal;
 
+  // Print LLVM statistics if required.
+  if (Opts.ShowStats)
+    llvm::PrintStatistics(llvm::errs());
+  if (!Opts.StatsFile.empty()) {
+    std::error_code EC;
+    auto StatS = std::make_unique<llvm::raw_fd_ostream>(
+        Opts.StatsFile, EC, llvm::sys::fs::OF_Text);
+    if (EC)
+      llvm::errs() << Opts.StatsFile << ": " << EC.message();
+    else
+      llvm::PrintStatisticsJSON(*StatS);
+  }
   return Output;
 }
 
@@ -591,6 +608,9 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.DumpAsm = true;
   if (InternalOptions.hasArg(OPT_ftime_report))
     Opts.TimePasses = true;
+  if (InternalOptions.hasArg(OPT_print_stats))
+    Opts.ShowStats = true;
+  Opts.StatsFile = InternalOptions.getLastArgValue(OPT_stats_file);
   if (InternalOptions.hasArg(OPT_intel_use_bindless_buffers_ze))
     Opts.UseBindlessBuffers = true;
 

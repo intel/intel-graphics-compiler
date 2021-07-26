@@ -48,5 +48,13 @@ def : PlainJoined<"runtime=">, Alias<binary_format>,
 def ftime_report : PlainFlag<"ftime-report">,
   HelpText<"Print timing summary of each stage of compilation">;
 
+def print_stats : PlainFlag<"print-stats">,
+  HelpText<"Print performance metrics and statistics">;
+
+def stats_file : PlainSeparate<"stats-file">,
+  HelpText<"Filename to write statistics to">;
+def : PlainJoined<"stats-file=">, Alias<stats_file>,
+  HelpText<"Alias for -stats-file">;
+
 }
 // }} VC internal options
