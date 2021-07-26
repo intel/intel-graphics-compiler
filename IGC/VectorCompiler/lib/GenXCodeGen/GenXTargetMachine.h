@@ -154,7 +154,6 @@ void initializeGenXGroupBalingPass(PassRegistry &);
 void initializeGenXInstCombineCleanup(PassRegistry &);
 void initializeGenXIMadPostLegalizationPass(PassRegistry &);
 void initializeGenXLateSimdCFConformancePass(PassRegistry &);
-void initializeGenXLayoutBlocksPass(PassRegistry &);
 void initializeGenXLegalizationPass(PassRegistry &);
 void initializeGenXLiveRangesPass(PassRegistry &);
 void initializeGenXLivenessPass(PassRegistry &);

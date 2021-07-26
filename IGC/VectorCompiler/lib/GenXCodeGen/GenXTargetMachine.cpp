@@ -103,7 +103,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXGroupBalingPass(registry);
   initializeGenXIMadPostLegalizationPass(registry);
   initializeGenXLateSimdCFConformancePass(registry);
-  initializeGenXLayoutBlocksPass(registry);
   initializeGenXLegalizationPass(registry);
   initializeGenXLiveRangesPass(registry);
   initializeGenXLivenessPass(registry);

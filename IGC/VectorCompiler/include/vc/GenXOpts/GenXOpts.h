@@ -49,7 +49,6 @@ Pass *createCMLowerVLoadVStorePass();
 FunctionPass *createGenXReduceIntSizePass();
 FunctionPass *createGenXRegionCollapsingPass();
 FunctionPass *createGenXSimplifyPass();
-FunctionPass *createGenXLayoutBlocksPass();
 FunctionPass *createGenXLowerAggrCopiesPass();
 
 ModulePass *createGenXPacketizePass();

@@ -158,7 +158,6 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-#include "KillAnalysis.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"

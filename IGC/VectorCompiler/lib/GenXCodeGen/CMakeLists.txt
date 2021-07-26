@@ -21,7 +21,6 @@ add_custom_target(GenXCommonTableGen_target DEPENDS ${GenXCommonTableGen_depende
 
 set(CODEGEN_SOURCES
   FunctionGroup.cpp
-  KillAnalysis.cpp
   GenXAddressCommoning.cpp
   GenXAggregatePseudoLowering.cpp
   GenXAlignmentInfo.cpp
@@ -44,7 +43,6 @@ set(CODEGEN_SOURCES
   GenXIMadPostLegalization.cpp
   GenXInlineAsmLowering.cpp
   GenXIntrinsics.cpp
-  GenXLayoutBlocks.cpp
   GenXLegalization.cpp
   GenXLiveRanges.cpp
   GenXLiveness.cpp
