@@ -934,7 +934,21 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
                     // phi-move will be placed on the blocks created on those
                     user_blk = phi->getIncomingBlock(*use_it);
                 }
-                if (user_blk == def_blk)
+                auto canUserBeHoistedToDefBlock = [](Instruction* UI, Instruction* DI)->bool {
+                    for (auto& uo : UI->operands())
+                    {
+                        Value* V = uo.get();
+                        if (V == DI)
+                            continue;
+                        else if (dyn_cast<Constant>(V))
+                            continue;
+                        else
+                            return false;
+                    }
+                    return true;
+                };
+                if ((user_blk == def_blk) ||
+                    (canUserBeHoistedToDefBlock(user, defi) && !phi))
                 {
                     // local def-use, not related to control-dependence
                     continue; // skip
