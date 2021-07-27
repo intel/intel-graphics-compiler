@@ -2271,6 +2271,17 @@ namespace IGC
             // One multiplicant should be *W or *B.
             if (!isByteOrWordValue(sources[0]) && !isByteOrWordValue(sources[1]))
                 return false;
+
+            auto isQWordValue = [](Value* V) -> bool {
+                while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
+                    V = cast<Instruction>(V)->getOperand(0);
+                Type* T = V->getType();
+                return (T->isIntegerTy() && T->getScalarSizeInBits() == 64);
+            };
+
+            // Mad instruction doesn't support QW type
+            if (isQWordValue(sources[0]) || isQWordValue(sources[1]))
+                return false;
         }
 
         if (found)
