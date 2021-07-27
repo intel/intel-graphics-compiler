@@ -251,9 +251,9 @@ namespace iga
         NOSRCDEPSET,
         SWITCH,
         SERIALIZE,
-        EXBSO, // XE_HP to XE_HPC extended bindless surface offset
+        EXBSO, // XE_HP extended bindless surface offset
                // implies CPS and Src1.Length come from EU encoding, not
-        CPS,   // XE_HP to XE_HPC coarse pixel shading
+        CPS,   // XE_HP coarse pixel shading
     };
 } // namespace iga
 #endif

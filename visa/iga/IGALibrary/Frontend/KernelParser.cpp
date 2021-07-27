@@ -3362,15 +3362,6 @@ public:
             auto loc = m_srcLocs[1].isValid() ? m_srcLocs[1] : m_mnemonicLoc;
             FailAtT(loc, "send with ExBSO option should have "
                 "Src1.Length suffixing parameter (e.g. r10:4)");
-        ////////////////////////////
-        //  else if:
-        //    platform() >= Platform::XE_HPG
-        //    m_builder.getExDesc().isImm() &&
-        //    src1LengthSuffixSet
-        // GOOD:  send ... r10:2  IMM ... {}
-        // GOOD:  send ... r10    a0.# ... {}
-        // this is already checked in ExDesc parser
-        //
         } else if (instOpts.contains(InstOpt::EXBSO) &&
             m_builder.getExDesc().isImm())
         {
