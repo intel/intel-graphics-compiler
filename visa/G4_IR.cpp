@@ -956,7 +956,7 @@ bool G4_INST::hasNoPipe()
 
 bool G4_INST::isLongPipeType(G4_Type type) const
 {
-    if (builder.hasInt64Add())
+    if (builder.hasPartialInt64Support())
     {
         return type == Type_DF;
     }
@@ -970,7 +970,7 @@ bool G4_INST::isIntegerPipeType(G4_Type type) const
         return true;
     }
 
-    if (builder.hasInt64Add())
+    if (builder.hasPartialInt64Support())
     {
         return type == Type_UQ || type == Type_Q;
     }
@@ -1023,7 +1023,7 @@ bool G4_INST::isLongPipeInstructionXe() const
         return true;
     }
 
-    if (!builder.hasInt64Add())
+    if (!builder.hasPartialInt64Support())
     {
         for (int i = 0; i < G4_MAX_SRCS; i++)
         {
@@ -1142,7 +1142,7 @@ SB_INST_PIPE G4_INST::getDataTypePipeXe(G4_Type type)
 
     case Type_Q:
     case Type_UQ:
-        if (builder.hasInt64Add())
+        if (builder.hasPartialInt64Support())
         {
             return PIPE_INT;
         }

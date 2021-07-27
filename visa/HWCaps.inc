@@ -822,7 +822,7 @@ SPDX-License-Identifier: MIT
     {
         return false;
     }
-    bool hasInt64Add() const
+    bool hasPartialInt64Support() const
     {
         return false;
     }
