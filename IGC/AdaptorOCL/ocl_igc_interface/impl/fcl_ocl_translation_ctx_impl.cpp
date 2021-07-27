@@ -181,9 +181,9 @@ static llvm::Optional<std::string> MakeTemporaryCMSource(
 
 static bool processCmSrcOptions(
     llvm::SmallVectorImpl<const char*> &userArgs,
+    std::string optname,
     std::string &inputFile) {
 
-    std::string optname = "-cm-src";
     auto toErase = std::find_if(userArgs.begin(), userArgs.end(),
         [&optname](const auto& Item) { return std::strcmp(Item, optname.c_str()) == 0; });
     if (toErase != userArgs.end()) {
@@ -240,7 +240,8 @@ static std::vector<const char*>
         cmfeDefaultArchOpt ? cmfeDefaultArchOpt.getValue() : "SKL";
 
     std::string inputFile = "src.cm";
-    isMemFile = processCmSrcOptions(userArgs, inputFile);
+    isMemFile = processCmSrcOptions(userArgs, "-cm-src", inputFile) ||
+                processCmSrcOptions(userArgs, "-s", inputFile);
     if (!isMemFile) {
         auto OptSrc = MakeTemporaryCMSource(Src, inputFile, outI);
         if (!OptSrc)
