@@ -434,11 +434,17 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
 
+        // Set for kernel functions
+        const bool isKernel = isEntryFunc(pMdUtils, F);
+
         // Functions that have the spir_kernel calling convention
         // This may be true even if isEntryFunc returns false, for invoke kernels and cloned callable kernels
-        const bool spirKernelConv = (F->getCallingConv() == CallingConv::SPIR_KERNEL);
-        // Set for kernel functions
-        const bool isKernel = isEntryFunc(pMdUtils, F) || spirKernelConv;
+        if (!isKernel && !istrue && (F->getCallingConv() == CallingConv::SPIR_KERNEL))
+        {
+            // WA for callable kernels, always inline these.
+            SetAlwaysInline(F);
+            continue;
+        }
 
         // Check for functions that can be indirectly called
         bool isIndirect = false;
@@ -477,10 +483,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         if (isKernel)
         {
-            // WA for callable kernels, always inline these.
-            if (spirKernelConv)
-                SetAlwaysInline(F);
-
             // No need to process further for kernels
             continue;
         }
