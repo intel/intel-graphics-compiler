@@ -4366,8 +4366,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     IGC_ASSERT_MESSAGE(7 < numOperands, "Wrong number of operands");
     IGC_ASSERT_MESSAGE(numOperands < 10, "Wrong number of operands");
 
-    uint writeMask = m_currShader->GetExtractMask(inst);
-    IGC_ASSERT(writeMask != 0);
+    const CShader::ExtractMaskWrapper writeMask(m_currShader, inst);
+    IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
 
     EOPCODE opCode = GetOpCode(inst);
     //Subtract the offsets, resource sources to get
@@ -4467,7 +4467,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         }
     }
 
-    bool feedbackEnable = (writeMask & (1 << 4)) ? true : false;
+    bool feedbackEnable = writeMask.isSet(4);
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
@@ -4478,7 +4478,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     }
     m_encoder->Load(
         opCode,
-        writeMask,
+        writeMask.getEM(),
         offset,
         resource,
         numSources,
@@ -7221,8 +7221,8 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         immOffset = ComputeSampleIntOffset(inst, offsetSourceIndex);
     }
 
-    uint writeMask = m_currShader->GetExtractMask(inst);
-    IGC_ASSERT_MESSAGE(writeMask != 0, "Wrong write mask");
+    const CShader::ExtractMaskWrapper writeMask(m_currShader, inst);
+    IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
 
     bool derivativeSample = inst->IsDerivative();
 
@@ -7280,7 +7280,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     }
 
     // the responses to the sample + killpix and feedback messages have an extra register that contains a mask.
-    bool hasMaskResponse = (writeMask & (1 << 4)) ? true : false;
+    bool hasMaskResponse = writeMask.isSet(4);
 
     CVariable* dst = m_destination;
     //When sampler output is 16 bit float, hardware doesnt pack the output in SIMD8 mode.
@@ -7308,7 +7308,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     }
     m_encoder->Sample(
         opCode,
-        writeMask,
+        writeMask.getEM(),
         immOffset,
         resource,
         sampler,
@@ -7482,8 +7482,10 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     bool needLoop = ResourceLoopHeader(resource, flag, label);
     m_encoder->SetPredicate(flag);
 
-    uint writeMask = m_currShader->GetExtractMask(inst);
-    m_encoder->Info(opCode, writeMask, resource, lod, tempDest);
+    const CShader::ExtractMaskWrapper writeMask(m_currShader, inst);
+    IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
+
+    m_encoder->Info(opCode, writeMask.getEM(), resource, lod, tempDest);
     m_encoder->Push();
 
     ResourceLoopBackEdge(needLoop, flag, label);
@@ -7720,8 +7722,8 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     }
 
     // Figure out the write mask from the size of the destination we want to write
-    uint writeMask = m_currShader->GetExtractMask(inst);
-    IGC_ASSERT_MESSAGE(writeMask != 0, "Wrong write mask");
+    const CShader::ExtractMaskWrapper writeMask(m_currShader, inst);
+    IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
 
     Value* texOperand = inst->getOperand(textureArgIdx);
     ResourceDescriptor resource = GetResourceVariable(texOperand);
@@ -7750,12 +7752,12 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
             m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false, CName::NONE);
     }
 
-    bool feedbackEnable = (writeMask & (1 << 4)) ? true : false;
+    bool feedbackEnable = writeMask.isSet(4);
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
     m_encoder->SetPredicate(flag);
-    m_encoder->LoadMS(opCode, writeMask, offset, resource, numSources, dst, payload, feedbackEnable);
+    m_encoder->LoadMS(opCode, writeMask.getEM(), offset, resource, numSources, dst, payload, feedbackEnable);
     m_encoder->Push();
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
     {
@@ -13794,8 +13796,8 @@ void setSIMDSizeMask(CEncoder* m_encoder, const CShader* m_currShader, int i)
 
 void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 {
-    uint writeMask = m_currShader->GetExtractMask(pInsn);
-    IGC_ASSERT_MESSAGE(writeMask != 0, "Wrong write mask");
+    const CShader::ExtractMaskWrapper writeMask(m_currShader, pInsn);
+    IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
 
     llvm::Value* pllSrcBuffer = pInsn->getOperand(0);
     llvm::Value* pllU = pInsn->getOperand(1);
@@ -13815,7 +13817,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
     ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
 
-    uint numChannels = iSTD::BitCount(writeMask);
+    uint numChannels = iSTD::BitCount(writeMask.getEM());
 
     if (m_currShader->GetIsUniform(pInsn))
     {
@@ -13829,7 +13831,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         m_encoder->SetSimdSize(nativeDispatchMode);
         m_encoder->SetPredicate(nullptr);
         m_encoder->SetNoMask();
-        m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst, writeMask);
+        m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst, writeMask.getEM());
 
         m_encoder->Push();
 
@@ -13859,7 +13861,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         if (!needsSplit)
         {
             m_encoder->SetPredicate(flag);
-            m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, m_destination, writeMask);
+            m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, m_destination, writeMask.getEM());
 
             m_encoder->Push();
         }
@@ -13882,7 +13884,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
                 m_encoder->SetSrcSubVar(1, i);
                 m_encoder->SetSrcSubVar(2, i);
                 m_encoder->SetPredicate(flag);
-                m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst[i], writeMask);
+                m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst[i], writeMask.getEM());
                 m_encoder->Push();
             }
         }
@@ -15235,16 +15237,7 @@ bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
 
 void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
 {
-    bool hasEM;  // if false, assume all 1.
-    uint32_t destMask = m_currShader->GetExtractMask(BCI, hasEM);
-
-    auto isBitSet = [hasEM](uint32_t i, uint32_t EM) -> bool {
-        if (hasEM)
-        {
-            return (BIT(i) & EM);
-        }
-        return true;
-    };
+    const CShader::ExtractMaskWrapper destMask(m_currShader, BCI);
 
     CVariable* src = GetSymbol(BCI->getOperand(0));
     llvm::Type* srcTy = BCI->getOperand(0)->getType();
@@ -15298,7 +15291,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     if (srcUniform && dstUniform &&
         (dstNElts == 2 || dstNElts == 4 || dstNElts == 8) &&
         m_destination != src &&
-        destMask == ((1U << dstNElts) - 1)/* Full mask */ &&
+        destMask.getEM() == ((1U << dstNElts) - 1)/* Full mask */ &&
         /* If alignment of source is safe to be aliased to the dst type. */
         src->GetAlign() >= CEncoder::GetCISADataTypeAlignment(m_destination->GetType()) &&
         /* Exclude bitcast from/to 16-bit */
@@ -15331,7 +15324,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         {
             for (uint32_t i = 0, offset = 0; i < dstNElts; ++i)
             {
-                if (isBitSet(i, destMask))
+                if (destMask.isSet(i))
                 {
                     m_encoder->SetSrcRegion(0,
                         srcUniform ? 0 : 1,
@@ -15406,7 +15399,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             CVariable* dst_alias = m_currShader->GetNewAlias(m_destination, V0->GetType(), 0, 0);
             for (unsigned i = 0, offset = 0; i < dstNElts; ++i)
             {
-                if (isBitSet(i, destMask))
+                if (destMask.isSet(i))
                 {
                     for (unsigned j = 0; j < N; ++j)
                     {
@@ -15476,7 +15469,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         {
             for (unsigned i = 0, offset = 0; i < dstNElts; ++i)
             {
-                if (isBitSet(i, destMask))
+                if (destMask.isSet(i))
                 {
                     for (unsigned j = 0; j < N; ++j)
                     {
@@ -15565,7 +15558,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         {
             for (unsigned j = 0; j < N; ++j)
             {
-                if (isBitSet(i * N + j, destMask))
+                if (destMask.isSet(i * N + j))
                 {
                     if (useSeparateCVar)
                     {

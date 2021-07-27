@@ -1235,44 +1235,38 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
     return nbElement;
 }
 
-// If ExtractMask (EM) is set, return it and set hasEM = true;
-// otherwise (not set), return 0 and set hasEM = false;
-uint32_t CShader::GetExtractMask(llvm::Value* vecVal, bool& hasEM)
+CShader::ExtractMaskWrapper::ExtractMaskWrapper(CShader* pS, Value* VecVal)
 {
-    auto it = extractMasks.find(vecVal);
-    if (it != extractMasks.end())
+    auto it = pS->extractMasks.find(VecVal);
+    if (it != pS->extractMasks.end())
     {
-        hasEM = true;
-        return it->second;
+        m_hasEM = true;
+        m_EM = it->second;
+        return;
     }
-    const unsigned int numChannels = vecVal->getType()->isVectorTy() ? (unsigned)cast<VectorType>(vecVal->getType())->getNumElements() : 1;
+    VectorType* VTy = dyn_cast<VectorType>(VecVal->getType());
+    const unsigned int numChannels = VTy ? (unsigned)VTy->getNumElements() : 1;
     if (numChannels <= 32)
     {
-        hasEM = true;
-        return (1ULL << numChannels) - 1;
+        m_hasEM = true;
+        m_EM = (uint32_t)((1ULL << numChannels) - 1);
     }
-    hasEM = false;
-    return 0;
-}
-
-uint32_t CShader::GetExtractMask(llvm::Value* vecVal)
-{
-    auto it = extractMasks.find(vecVal);
-    if (it != extractMasks.end())
+    else
     {
-        return it->second;
+        m_hasEM = false;
+        m_EM = 0;
     }
-    const unsigned int numChannels = vecVal->getType()->isVectorTy() ? (unsigned)cast<VectorType>(vecVal->getType())->getNumElements() : 1;
-    IGC_ASSERT_MESSAGE(numChannels <= 32, "Mask has 32 bits maximally!");
-    return (1ULL << numChannels) - 1;
 }
 
 uint16_t CShader::AdjustExtractIndex(llvm::Value* vecVal, uint16_t index)
 {
+    const ExtractMaskWrapper EMW(this, vecVal);
+
     uint16_t result = index;
-    if (cast<VectorType>(vecVal->getType())->getNumElements() < 32)
+    if (EMW.hasEM())
     {
-        uint32_t mask = GetExtractMask(vecVal);
+        IGC_ASSERT(index < 32);
+        uint32_t mask = EMW.getEM();
         for (uint i = 0; i < index; ++i)
         {
             if ((mask & (1 << i)) == 0)

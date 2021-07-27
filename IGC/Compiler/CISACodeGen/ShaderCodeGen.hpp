@@ -61,6 +61,35 @@ class CShader
 {
 public:
     friend class CShaderProgram;
+
+    class ExtractMaskWrapper
+    {
+        // To enable ExtractMask of any vector size. Currently, only vector
+        // whose size is no larger than 32 has its extractMask calculated.
+    private:
+        uint32_t m_EM;     // 32 bit extractMask;
+        bool     m_hasEM;  // If true, m_EM is valid; otherwise, not valid.
+    public:
+        ExtractMaskWrapper(CShader* pS, llvm::Value* VecVal);
+
+        ExtractMaskWrapper() = delete;
+        ExtractMaskWrapper(const ExtractMaskWrapper&) = delete;
+        ExtractMaskWrapper& operator=(const ExtractMaskWrapper&) = delete;
+
+        // b: bit position, from 0 to 31.
+        bool isSet(uint32_t b) const
+        {
+            if (m_hasEM) {
+                IGC_ASSERT(b < 32);
+                return (1 << (b)) & m_EM;
+            }
+            return true;
+        }
+
+        uint32_t getEM() const { return m_EM; }
+        uint16_t hasEM() const { return m_hasEM; }
+    };
+
     CShader(llvm::Function*, CShaderProgram* pProgram);
     virtual ~CShader();
     void        Destroy();
@@ -164,8 +193,6 @@ public:
     uint        GetNbElementAndMask(llvm::Value* value, uint32_t& mask);
     void        CreatePayload(uint regCount, uint idxOffset, CVariable*& payload, llvm::Instruction* inst, uint paramOffset, uint8_t hfFactor);
     uint        GetNbVectorElementAndMask(llvm::Value* value, uint32_t& mask);
-    uint32_t    GetExtractMask(llvm::Value* value);
-    uint32_t    GetExtractMask(llvm::Value* value, bool& hasEM);
     uint16_t    AdjustExtractIndex(llvm::Value* value, uint16_t elemIndex);
     WIBaseClass::WIDependancy GetDependency(llvm::Value* v) const;
     void        SetDependency(llvm::Value* v, WIBaseClass::WIDependancy dep);
