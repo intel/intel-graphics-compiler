@@ -26,8 +26,8 @@ $ git config --global user.email "your@email.com"
 
 ### 2. Install LLVM, LLD, Clang and OpenCL Clang
 
-> <span style="color: firebrick; font-weight: 600;">Important notice</span>
-Every LLVM/LLD/Clang version brings some restrictions and in some cases needs different configuration. Please refer to [LLVM/LLD/Clang version information](#LLVM/Clang-version-information) section for more information.
+> **Important notice**
+> Every LLVM/LLD/Clang version brings some restrictions and in some cases needs different configuration. Please refer to [LLVM/LLD/Clang version information](#LLVM/Clang-version-information) section for more information.
 
 In this step you need to prepare VC Intrinsics, SPIRV-LLVM Translator, LLVM, LLD, OpenCL-Clang libraries and Clang for IGC.
 It can be done either by using packaged releases or building those yourself:
@@ -35,9 +35,9 @@ It can be done either by using packaged releases or building those yourself:
 #### Use preinstalled packages
 
 For **LLVM**, **LLD** and **Clang** packages please visit this [link](https://apt.llvm.org/) to download and install desired version.
-Using for example the APT command it will be: 
+For `apt` package manager you can use this command:
 ```shell
-$ sudo apt-get install llvm-10 llvm-10-dev clang-10 liblld-10 liblld-10-dev
+$ sudo apt-get install llvm-11 llvm-11-dev clang-11 liblld-11 liblld-11-dev
 ```
 As of now **OpenCL Clang** is still needed to be built and installed manually. Sources are available [here](https://github.com/intel/opencl-clang). You can use out-of-tree build method with LLVM and Clang preinstalled.
 **VC Intrinsics** is a lightweight library that is built from sources with IGC and there is no package for it.
@@ -59,11 +59,11 @@ You can use following commands for setup:
 ```shell
 $ cd <workspace>
 $ git clone https://github.com/intel/vc-intrinsics vc-intrinsics
-$ git clone -b release/10.x https://github.com/llvm/llvm-project llvm-project
-$ git clone -b ocl-open-100 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
-$ git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
+$ git clone -b llvmorg-11.1.0 https://github.com/llvm/llvm-project llvm-project
+$ git clone -b ocl-open-110 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+$ git clone -b llvm_release_110 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 ```
-These commands will set up a workspace with LLVM 10. If you wish to use any other version please refer to the [component revision table](#Revision-table)
+These commands will set up a workspace with LLVM 11. If you wish to use any other version please refer to the [component revision table](#Revision-table)
 
 Correct directory tree looks like this:
 ```
@@ -75,13 +75,7 @@ Correct directory tree looks like this:
         |- llvm/projects/llvm-spirv      https://github.com/KhronosGroup/SPIRV-LLVM-Translator
 ```
 
-All dependencies will be build in the next step.
-
-If you have problems with LLVM patching during IGC build, you can try listed steps:
-```shell
-$ cd llvm-project
-$ git checkout llvmorg-10.0.0
-```
+All dependencies will be built in the next step.
 
 #### Additional notes on build modes
 
@@ -89,7 +83,7 @@ There are several flags for these builds modes that you can pass to
 cmake command.
 
 - `IGC_OPTION__LLVM_PREFERRED_VERSION` -- sets version of LLVM that
-  will be used by IGC (defaults to "10.0.0").
+  will be used by IGC (defaults to "11.1.0").
 - `IGC_OPTION__LLVM_MODE` -- select LLVM mode for IGC to use. Possible
 values are: **Source**, **Prebuilds** or empty (that is
 default). **Source** mode uses LLVM sources to build LLVM in-tree with
@@ -152,9 +146,9 @@ $ sudo make install
 
 | Version          | Product quality |
 |:----------------:|-----------------|
-| LLVM 11          | Experimental    |
-| LLVM 10          | **Production**  |
-| LLVM 9 and older | Experimental    |
+| LLVM 12          | Experimental    |
+| LLVM 11          | **Production**  |
+| LLVM 10 and older | Experimental    |
 
 | Terminology       | Description |
 |-------------------|-|
@@ -168,10 +162,10 @@ When checking out the components refer to the following table, replace **XX** wi
 
 | Repository name       | Version specific | Branch               | LLVM 10 example  |
 |-----------------------|:----------------:|----------------------|------------------|
-| llvm-project          | -                | release/**XX**.x     | release/10.x     |
+| llvm-project          | -                | release/**XX**.x     | release/11.x     |
 | vc-intrinsics         | no               | master               | master           |
-| SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_100 |
-| opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-100     |
+| SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_110 |
+| opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-110     |
 
 ### LLVM/LLD/Clang version specific caveats
 
@@ -205,14 +199,9 @@ No additional steps are needed.
 
 #### LLVM11/Clang11
 
-**This configuration is experimental and problems with compilation and functionality are to be expected.**
+No additional steps are needed.
 
-Latest known configuration that compiles successfully:
+#### LLVM12/Clang12
 
-| Component | Branch | Revision |
-|-|-|-|
-| igc           | master       | 7d11ff43f42564fdfe2753b4d008abfd56ec9671 |
-| vc-intrinsics | master       | eabcd2022cf868a658b257b8ea6ad62acbbe7dc5 |
-| llvm-project  | release/11.x | llvmorg-11.0.0 |
-| opencl-clang  | ocl-open-110 | cdacb8a1dba95e8ebc5d948c0e0e574f87b1e861 |
-| SPIRV-LLVM-Translator | llvm_release_110 | d6dc999eee381158a26f048a333467c9ce7e77f2 |
+**Experimental**
+Currently there are none LLVM12/Clang12 conformance/performance guarantees.
