@@ -285,7 +285,7 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         if (m_hash->perShaderPsoHash != 0)
         {
             ss << "_"
-                << "pspso"
+                << "spec"
                 << std::hex
                 << std::setfill('0')
                 << std::setw(sizeof(m_hash->perShaderPsoHash) * CHAR_BIT / 4)
