@@ -385,13 +385,13 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
             sysInfo.ThreadCount / (sysInfo.MaxEuPerSubSlice * sysInfo.MaxSubSlicesSupported * sysInfo.MaxSlicesSupported);
 
     if (sizeof(StateSaveAreaHeader) % 16)
-	    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset =
-		16 - sizeof(StateSaveAreaHeader) % 16;
+        Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset =
+            16 - sizeof(StateSaveAreaHeader) % 16;
 
     // Match SIP alignment of debug surface
     IGC_ASSERT_MESSAGE(((Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset +
-	  Gen12LPSIPCSRDebugBindlessDebugHeader.versionHeader.size * 8) / 16 == 0x14),
-	"Gen12 Bindless SIP header size alignment mismatch.");
+        Gen12LPSIPCSRDebugBindlessDebugHeader.versionHeader.size * 8) / 16 == 0x14),
+        "Gen12 Bindless SIP header size alignment mismatch.");
 
 }
 
@@ -495,7 +495,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_DG1:
             case IGFX_ROCKETLAKE:
             case IGFX_ALDERLAKE_S:
-                SIPIndex = bindlessMode ? GEN12_LP_CSR_DEBUG_BINDLESS : GEN12_LP_CSR_DEBUG; 
+                SIPIndex = bindlessMode ? GEN12_LP_CSR_DEBUG_BINDLESS : GEN12_LP_CSR_DEBUG;
                 break;
 
 
