@@ -6283,7 +6283,7 @@ public:
 
     // Collect some useful statistics
     for (auto *FG: FGA) {
-      VISAKernel *Kernel = CisaBuilder->GetVISAKernel(FG->getName());
+      VISAKernel *Kernel = CisaBuilder->GetVISAKernel(FG->getName().str());
       IGC_ASSERT(Kernel);
       FINALIZER_INFO *jitInfo = nullptr;
       CISA_CALL(Kernel->GetJitInfo(jitInfo));
