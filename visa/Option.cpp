@@ -61,7 +61,7 @@ static std::string makePlatformsString()
 bool Options::parseOptions(int argc, const char* argv[])
 {
     int startPos = 0;
-    assert(! argToOption.empty() && "Must be initialized first!");
+    assert(!argToOption.empty() && "Must be initialized first!");
 
 #define MAX_ARGC 128
     MUST_BE_TRUE(argc < MAX_ARGC, "too many options for vISA builder");
