@@ -331,7 +331,7 @@ void VISAKernelImpl::compilePostOptimize()
         auto getFirstNonLabelInst = [this]()
         {
             unsigned int skip = 0, skipCount = 0;
-            if (m_kernel->fg.builder->getHasPerThreadProlog())
+            if (m_kernel->fg.builder->needsToLoadLocalID())
                 ++skip;
             if (m_kernel->fg.builder->needsToLoadCrossThreadConstantData())
                 ++skip;

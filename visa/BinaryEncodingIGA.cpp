@@ -824,8 +824,7 @@ void BinaryEncodingIGA::Encode()
 
     // Make the size of the first BB be multiple of 4 instructions, and do not compact
     // any instructions in it, so that the size of the first BB is multiple of 64 bytes
-    if (kernel.fg.builder->getHasPerThreadProlog() ||
-        kernel.fg.builder->getHasComputeFFIDProlog())
+    if (kernel.hasPerThreadPayloadBB() || kernel.hasComputeFFIDProlog())
     {
         G4_BB* first_bb = *kernel.fg.begin();
         size_t num_inst = first_bb->size();
@@ -953,29 +952,24 @@ void BinaryEncodingIGA::Encode()
     {
         inst.second->setGenOffset(inst.first->getPC());
     }
-    if (kernel.fg.builder->getHasPerThreadProlog())
+    if (kernel.hasPerThreadPayloadBB())
     {
-        // per thread data load is in the first BB
-        assert(kernel.fg.getNumBB() > 1 && "expect at least one prolog BB");
-        auto secondBB = *(std::next(kernel.fg.begin()));
-        auto iter = std::find_if(secondBB->begin(), secondBB->end(),
-            [](G4_INST* inst) { return !inst->isLabel();});
-        assert(iter != secondBB->end() && "expect at least one non-label inst in second BB");
         kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad =
-            (uint32_t)(*iter)->getGenOffset();
+            kernel.getPerThreadNextOff();
     }
-    if (kernel.fg.builder->getHasComputeFFIDProlog())
+    if (kernel.hasCrossThreadPayloadBB())
     {
-        // something weird will happen if both HasPerThreadProlog and HasComputeFFIDProlog
-        assert(!kernel.fg.builder->getHasPerThreadProlog());
-
-        // set offsetToSkipSetFFIDGP to the second entry's offset
-        // the first instruction in the second BB is the start of the sencond entry
-        assert(kernel.fg.getNumBB() > 1 && "expect at least one prolog BB");
-        auto secondBB = *(std::next(kernel.fg.begin()));
-        assert(!secondBB->empty() && !secondBB->front()->isLabel());
+        kernel.fg.builder->getJitInfo()->offsetToSkipCrossThreadDataLoad =
+            kernel.getCrossThreadNextOff();
+    }
+    if (kernel.hasComputeFFIDProlog())
+    {
+        // something weird will happen if kernel has both PerThreadProlog and ComputeFFIDProlog
+        assert(!kernel.hasPerThreadPayloadBB() && !kernel.hasCrossThreadPayloadBB());
         kernel.fg.builder->getJitInfo()->offsetToSkipSetFFIDGP =
-            (uint32_t)secondBB->front()->getGenOffset();
+            kernel.getComputeFFIDGPNextOff();
+        kernel.fg.builder->getJitInfo()->offsetToSkipSetFFIDGP1 =
+            kernel.getComputeFFIDGP1NextOff();
     }
 }
 

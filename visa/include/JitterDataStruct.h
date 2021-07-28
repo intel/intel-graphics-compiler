@@ -55,11 +55,13 @@ typedef struct {
     unsigned char numBytesScratchGtpin;
 
     uint32_t offsetToSkipPerThreadDataLoad = 0;
+    uint32_t offsetToSkipCrossThreadDataLoad = 0;
 
     // When two entries prolog is added for setting FFID
     // for compute (GP or GP1), skip this offset to set FFID_GP1.
     // Will set FFID_GP if not skip
     uint32_t offsetToSkipSetFFIDGP = 0;
+    uint32_t offsetToSkipSetFFIDGP1 = 0;
 
     bool hasStackcalls = false;
 

@@ -282,8 +282,8 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
         // Write payload offsets
         gtpin::igc::igc_token_kernel_start_info_t offsets;
         offsets.token = gtpin::igc::GTPIN_IGC_TOKEN_KERNEL_START_INFO;
-        offsets.per_thread_prolog_size = getPerThreadNextOff();
-        offsets.cross_thread_prolog_size = getCrossThreadNextOff() - offsets.per_thread_prolog_size;
+        offsets.per_thread_prolog_size = kernel.getPerThreadNextOff();
+        offsets.cross_thread_prolog_size = kernel.getCrossThreadNextOff() - offsets.per_thread_prolog_size;
         offsets.token_size = sizeof(offsets);
         writeBuffer(buffer, bufferSize, &offsets, sizeof(offsets));
     }
@@ -344,40 +344,6 @@ uint32_t gtPinData::getNumBytesScratchUse() const
     }
     return 0;
 }
-
-static unsigned getBinOffsetNextBB(G4_Kernel& kernel, G4_BB* bb)
-{
-    // Given bb, return binary offset of first
-    // non-label of lexically following bb.
-    G4_BB* nextBB = nullptr;
-    for (auto it = kernel.fg.begin(); it != kernel.fg.end(); it++)
-    {
-        auto curBB = (*it);
-        if (curBB == bb && it != kernel.fg.end())
-        {
-            it++;
-            nextBB = (*it);
-        }
-    }
-
-    if (!nextBB)
-        return 0;
-
-    auto iter = std::find_if(nextBB->begin(), nextBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
-    assert(iter != nextBB->end() && "execpt at least one non-label inst in second BB");
-    return (unsigned)(*iter)->getGenOffset();
-}
-
-unsigned gtPinData::getCrossThreadNextOff() const
-{
-    return getBinOffsetNextBB(kernel, crossThreadPayloadBB);
-}
-
-unsigned gtPinData::getPerThreadNextOff() const
-{
-    return getBinOffsetNextBB(kernel, perThreadPayloadBB);
-}
-
 
 
 G4_Kernel::G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
@@ -1765,4 +1731,76 @@ void G4_Kernel::emitDeviceAsmInstructionsOldAsm(std::ostream& os)
     os << ".end_code" << std::endl;
     os << ".end_kernel" << std::endl;
     os << std::endl;
+}
+
+G4_BB* G4_Kernel::getNextBB(G4_BB* bb) const
+{
+    if (!bb)
+        return nullptr;
+
+    // Return the lexically following bb.
+    G4_BB* nextBB = nullptr;
+    for (auto it = fg.cbegin(), ie = fg.cend(); it != ie; it++)
+    {
+        auto curBB = (*it);
+        if (curBB == bb)
+        {
+            if (it != ie)
+            {
+                it++;
+                nextBB = (*it);
+            }
+            break;
+        }
+    }
+
+    return nextBB;
+}
+
+unsigned G4_Kernel::getBinOffsetOfBB(G4_BB* bb) const {
+    if (!bb)
+        return 0;
+
+    // Given a bb, return the binary offset of first non-label of instruction.
+    auto it = std::find_if(bb->begin(), bb->end(), [](G4_INST* inst) { return !inst->isLabel(); });
+    assert(it != bb->end() && "expect at least one non-label inst in second BB");
+    return (unsigned)(*it)->getGenOffset();
+}
+
+unsigned G4_Kernel::getPerThreadNextOff() const
+{
+    if (!hasPerThreadPayloadBB())
+        return 0;
+    G4_BB* next = getNextBB(perThreadPayloadBB);
+    return getBinOffsetOfBB(next);
+}
+
+unsigned G4_Kernel::getCrossThreadNextOff() const
+{
+    if (!hasCrossThreadPayloadBB())
+        return 0;
+    G4_BB* next = getNextBB(crossThreadPayloadBB);
+    return getBinOffsetOfBB(next);
+}
+
+unsigned G4_Kernel::getComputeFFIDGPNextOff() const
+{
+    if (!hasComputeFFIDProlog())
+        return 0;
+    // return the offset of the second entry (GP1)
+    // the first instruction in the second BB is the start of the second entry
+    assert(fg.getNumBB() > 1 && "expect at least one prolog BB");
+    assert(!computeFFIDGP1->empty() && !computeFFIDGP1->front()->isLabel());
+    return getBinOffsetOfBB(computeFFIDGP1);
+}
+
+unsigned G4_Kernel::getComputeFFIDGP1NextOff() const
+{
+    if (!hasComputeFFIDProlog())
+        return 0;
+    // return the offset of the BB next to GP1
+    // the first instruction in the second BB is the start of the second entry
+    assert(fg.getNumBB() > 1 && "expect at least one prolog BB");
+    G4_BB* next = getNextBB(computeFFIDGP1);
+    return getBinOffsetOfBB(next);
 }

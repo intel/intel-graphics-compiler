@@ -546,7 +546,8 @@ namespace IGC
         void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
             SProgramOutput::ZEBinFuncSymbolTable& funcSyms, SOpenCLProgramInfo::ZEBinProgramSymbolTable& programSyms);
         // Create function symbols for kernels. This is ZEBinary foramt only.
-        void CreateKernelSymbol(const std::string& kernelName, const VISAKernel& visaKernel, SProgramOutput::ZEBinFuncSymbolTable& symbols);
+        void CreateKernelSymbol(const std::string& kernelName, unsigned offset, unsigned size,
+            SProgramOutput::ZEBinFuncSymbolTable& symbols);
 
         // CreateRelocationTable
         // input/output: buffer, bufferSize, tableEntries: for patch-token-based format.

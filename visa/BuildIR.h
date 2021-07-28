@@ -429,9 +429,6 @@ private:
     };
 
     bool hasNullReturnSampler = false;
-    bool hasPerThreadProlog = false;
-    // Have inserted two entires prolog for setting FFID for compute shaders
-    bool hasComputeFFIDProlog = false;
 
     const CISA_IR_Builder* parentBuilder = nullptr;
 
@@ -569,12 +566,6 @@ public:
     int32_t getCrossThreadInputSize() const {
         return kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
     }
-
-    bool getHasPerThreadProlog() const { return hasPerThreadProlog; }
-    void setHasPerThreadProlog() { hasPerThreadProlog = true; }
-
-    bool getHasComputeFFIDProlog() const { return hasComputeFFIDProlog; }
-    void setHasComputeFFIDProlog() { hasComputeFFIDProlog = true; }
 
     //
     // Check if opnd is or can be made "alignByte"-byte aligned.

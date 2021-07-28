@@ -4955,11 +4955,11 @@ namespace IGC
             context->m_retryManager.IsFirstTry();
     }
 
-    void CEncoder::CreateKernelSymbol(const std::string& kernelName, const VISAKernel& visaKernel,
-        SProgramOutput::ZEBinFuncSymbolTable& symbols)
+    void CEncoder::CreateKernelSymbol(const std::string& kernelName, unsigned offset,
+        unsigned size, SProgramOutput::ZEBinFuncSymbolTable& symbols)
     {
-        // kernel symbols are local symbols, and point to the offset 0 of this kernel binary
-        symbols.local.emplace_back(vISA::GenSymType::S_KERNEL, 0, visaKernel.getGenSize(), kernelName);
+        // kernel symbols are local symbols
+        symbols.local.emplace_back(vISA::GenSymType::S_KERNEL, offset, size, kernelName);
     }
 
     void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
@@ -5593,10 +5593,24 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
             context->getCompilerOption().EnableZEBinary)
         {
-            // cretae symbols for kernel. Symbols have name the same as the kernels, and offset to the
-            // start of that kernel
-            CreateKernelSymbol(m_program->entry->getName().str(), *pMainKernel, pOutput->m_symbols);
+            // create symbols for kernel.
+            // The kernel Symbol has the same name as the kernel, and offset
+            // pointed to 0.
+            CreateKernelSymbol(m_program->entry->getName().str(), 0,
+                (unsigned)pMainKernel->getGenSize(), pOutput->m_symbols);
+
+            // Emit symbol "_entry' as the actual kernel start. Maybe we can
+            // consider to use the value of the _main label in this case. Now
+            // set the symbol value as the max offset next to the per-thread
+            // prolog, the cross-thread prolog, or the compute-FFID prolog.
+            unsigned actual_kernel_start_off =
+                std::max(std::max(jitInfo->offsetToSkipPerThreadDataLoad,
+                                  jitInfo->offsetToSkipCrossThreadDataLoad),
+                         jitInfo->offsetToSkipSetFFIDGP1);
+            CreateKernelSymbol("_entry", actual_kernel_start_off,
+                (unsigned)pMainKernel->getGenSize() - actual_kernel_start_off, pOutput->m_symbols);
         }
+
         CreateRelocationTable(pOutput->m_funcRelocationTable,
             pOutput->m_funcRelocationTableSize,
             pOutput->m_funcRelocationTableEntries,

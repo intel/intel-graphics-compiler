@@ -102,12 +102,6 @@ public:
     }
     uint32_t getNumBytesScratchUse() const;
 
-    void setPerThreadPayloadBB(G4_BB* bb) { perThreadPayloadBB = bb; }
-    void setCrossThreadPayloadBB(G4_BB* bb) { crossThreadPayloadBB = bb; }
-
-    unsigned getCrossThreadNextOff() const;
-    unsigned getPerThreadNextOff() const;
-
     void setGTPinInitFromL0(bool val) { gtpinInitFromL0 = val; }
     bool isGTPinInitFromL0() const { return gtpinInitFromL0; }
 
@@ -124,9 +118,6 @@ private:
 
     bool gtpinInitFromL0 = false;
     gtpin::igc::igc_init_t* gtpin_init = nullptr;
-
-    G4_BB* perThreadPayloadBB = nullptr;
-    G4_BB* crossThreadPayloadBB = nullptr;
 }; // class gtPinData
 
 class G4_BB;
@@ -184,6 +175,11 @@ private:
     bool sharedDebugInfo = false;
     bool sharedGTPinInfo = false;
 
+    G4_BB* perThreadPayloadBB = nullptr;
+    G4_BB* crossThreadPayloadBB = nullptr;
+    // There's two entires prolog for setting FFID for compute shaders.
+    G4_BB* computeFFIDGP = nullptr;
+    G4_BB* computeFFIDGP1 = nullptr;
 public:
     FlowGraph              fg;
     DECLARE_LIST           Declares;
@@ -331,7 +327,25 @@ public:
     void emitRegInfo();
     void emitRegInfoKernel(std::ostream& output);
 
+    bool hasPerThreadPayloadBB() const { return perThreadPayloadBB != nullptr; }
+    void setPerThreadPayloadBB(G4_BB* bb) { perThreadPayloadBB = bb; }
+    bool hasCrossThreadPayloadBB() const { return crossThreadPayloadBB != nullptr; }
+    void setCrossThreadPayloadBB(G4_BB* bb) { crossThreadPayloadBB = bb; }
+    bool hasComputeFFIDProlog() const {
+        return computeFFIDGP != nullptr && computeFFIDGP1 != nullptr;
+    }
+    void setComputeFFIDGPBB(G4_BB* bb) { computeFFIDGP = bb; }
+    void setComputeFFIDGP1BB(G4_BB* bb) { computeFFIDGP1 = bb; }
+
+    unsigned getCrossThreadNextOff() const;
+    unsigned getPerThreadNextOff() const;
+    unsigned getComputeFFIDGPNextOff() const;
+    unsigned getComputeFFIDGP1NextOff() const;
+
 private:
+    G4_BB* getNextBB(G4_BB* bb) const;
+    unsigned getBinOffsetOfBB(G4_BB* bb) const;
+
     void setKernelParameters();
 
     void dumpDotFileInternal(const std::string &baseName);

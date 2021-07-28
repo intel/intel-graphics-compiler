@@ -7869,7 +7869,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             // add these two BB to be the first two in the shader
             kernel.fg.addPrologBB(entry_1_bb);
             kernel.fg.addPrologBB(entry_0_bb);
-            builder.setHasComputeFFIDProlog();
+            kernel.setComputeFFIDGPBB(entry_0_bb);
+            kernel.setComputeFFIDGP1BB(entry_1_bb);
         }
         else
         {
@@ -8138,9 +8139,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             perThreadBB = kernel.fg.createNewBB();
             perThreadBB->insert(perThreadBB->begin(), instBuffer.begin(), instBuffer.end());
             instBuffer.clear();
-            builder.setHasPerThreadProlog();
 
-            kernel.getGTPinData()->setPerThreadPayloadBB(perThreadBB);
+            kernel.setPerThreadPayloadBB(perThreadBB);
         }
 
         // code for loading the cross-thread data
@@ -8200,7 +8200,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
             kernel.fg.addPrologBB(crossThreadBB);
 
-            kernel.getGTPinData()->setCrossThreadPayloadBB(crossThreadBB);
+            kernel.setCrossThreadPayloadBB(crossThreadBB);
         }
 
         if (perThreadBB)
