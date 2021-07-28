@@ -1724,13 +1724,16 @@ void OptimizeIR(CodeGenContext* const pContext)
                 }
             }
 
-            // Note: call reassociation pass before IGCConstProp(EnableSimplifyGEP) to preserve the
-            // the expr evaluation order that IGCConstProp creates.
-            //
-            // Do not apply reordering on VS as CustomUnsafeOptPass does.
-            //
-            if (IGC_IS_FLAG_ENABLED(EnableReasso) &&
-                (pContext->type != ShaderType::VERTEX_SHADER))
+            // Note:
+            // call reassociation pass before IGCConstProp(EnableSimplifyGEP)
+            // to preserve the the expr evaluation order that IGCConstProp
+            // creates.
+            // Limit this optimization to GPGPU-only because it tends to have
+            // more address computation.
+            // Do not apply reordering on vertex-shader as CustomUnsafeOptPass
+            // does.
+            if (IGC_IS_FLAG_ENABLED(OCLEnableReassociate) &&
+                pContext->type == ShaderType::OPENCL_SHADER)
             {
                 mpm.add(createReassociatePass());
             }
