@@ -91,14 +91,14 @@ bool LegalizeFunctionSignatures::runOnModule(Module& M)
 
 // IGC stackcall ABI requires return values to be <= 64bits, since we don't support return value on stack.
 // Stackcalls with return values > 64bits will need to be changed to pass-by-ref.
-inline bool isLegalReturnType(const Type* ty)
+inline bool isLegalReturnType(Type* ty)
 {
     // check return type size
     return ty->getPrimitiveSizeInBits() <= MAX_STACKCALL_RETVAL_SIZE_IN_BITS;
 }
 
 // Check if an int or int-vector argument type is a power of two
-inline bool isLegalIntVectorType(const Module& M, Type* ty)
+inline bool isLegalIntVectorType(Module& M, Type* ty)
 {
     if (ty->isIntOrIntVectorTy())
     {
@@ -117,7 +117,7 @@ inline bool isLegalIntVectorType(const Module& M, Type* ty)
     return true;
 }
 
-inline Type* LegalizedIntVectorType(const Module& M, Type* ty)
+inline Type* LegalizedIntVectorType(Module& M, Type* ty)
 {
     IGC_ASSERT(ty && ty->isIntOrIntVectorTy());
 
@@ -137,7 +137,7 @@ inline Type* LegalizedIntVectorType(const Module& M, Type* ty)
 }
 
 // Returns true for small structures that only contain primitive types
-inline bool isPromotableStructType(const Module& M, const Type* ty, bool isReturnValue = false)
+inline bool isPromotableStructType(Module& M, Type* ty, bool isReturnValue = false)
 {
     if (IGC_IS_FLAG_DISABLED(EnableByValStructArgPromotion))
         return false;
@@ -151,16 +151,12 @@ inline bool isPromotableStructType(const Module& M, const Type* ty, bool isRetur
     if (ty->isPointerTy())
     {
         StructType* sTy = dyn_cast<StructType>(ty->getPointerElementType());
-        if (sTy && DL.getStructLayout(sTy)->getSizeInBits() < maxSize)
+        if (sTy && (unsigned)DL.getStructLayout(sTy)->getSizeInBits() < maxSize)
         {
             for (const auto* EltTy : sTy->elements())
             {
                 // Check if all elements are primitive types
                 if (!EltTy->isSingleValueType() || EltTy->isVectorTy())
-                    return false;
-                // Avoid int64 and fp64 because of unimplemented InstExpander::visitInsertValue
-                // and InstExpander::visitExtractValue in the Emu64Ops pass.
-                if (EltTy->isIntegerTy(64) || EltTy->isDoubleTy())
                     return false;
             }
             return true;
@@ -170,7 +166,7 @@ inline bool isPromotableStructType(const Module& M, const Type* ty, bool isRetur
 }
 
 // Check if a function's first argument has the "sret" attribute and is a promotable struct type
-inline bool FunctionHasPromotableSRetArg(const Module& M, const Function* F)
+inline bool FunctionHasPromotableSRetArg(Module& M, Function* F)
 {
     if (F->getReturnType()->isVoidTy() &&
         !F->arg_empty() &&
@@ -183,7 +179,7 @@ inline bool FunctionHasPromotableSRetArg(const Module& M, const Function* F)
 }
 
 // Promotes struct pointer to struct type
-inline Type* PromotedStructValueType(const Module& M, const Type* ty)
+inline Type* PromotedStructValueType(Module& M, Type* ty)
 {
     IGC_ASSERT(ty->isPointerTy() && ty->getPointerElementType()->isStructTy());
     return cast<StructType>(ty->getPointerElementType());
