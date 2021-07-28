@@ -660,7 +660,7 @@ bool NeedsHDCFenceBeforeEOTInPixelShader() const
 
 bool canFuseTypedWrite() const
 {
-    return IGC_IS_FLAG_ENABLED(FuseTypedWrite);
+    return false;
 }
 
 unsigned int getMaxNumberHWThreadForEachWG() const

@@ -14009,7 +14009,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 m_encoder->SetDstSubVar(3);
                 m_encoder->Copy(pPayload[i], pSrc_W);
                 m_encoder->Push();
-                if (IGC_IS_FLAG_DISABLED(FuseTypedWriteInIGC))
+                if (!m_currShader->m_Platform->canFuseTypedWrite())
                 {
                     setSIMDSizeMask(m_encoder, m_currShader, i);
                     m_encoder->SetSrcSubVar(0, i);
@@ -14021,7 +14021,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->Push();
                 }
             }
-            if (IGC_IS_FLAG_ENABLED(FuseTypedWriteInIGC))
+            if (m_currShader->m_Platform->canFuseTypedWrite())
             {
                 for (uint i = 0; i < numInst; ++i)
                 {
