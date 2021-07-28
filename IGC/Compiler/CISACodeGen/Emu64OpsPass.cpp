@@ -2008,7 +2008,7 @@ bool InstExpander::visitExtractValue(ExtractValueInst& EVI) {
 bool InstExpander::visitInsertValue(InsertValueInst& IVI) {
     // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
-    IGC_ASSERT(0 < IVI.getNumOperands());
+    IGC_ASSERT(1 < IVI.getNumOperands());
     IGC_ASSERT_MESSAGE(false == Emu->isInt64(IVI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
@@ -2016,7 +2016,7 @@ bool InstExpander::visitInsertValue(InsertValueInst& IVI) {
 bool InstExpander::visitLandingPad(LandingPadInst& LPI) {
     // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
-    IGC_ASSERT(0 < LPI.getNumOperands());
+    IGC_ASSERT(1 < LPI.getNumOperands());
     IGC_ASSERT_MESSAGE(false == Emu->isInt64(LPI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
