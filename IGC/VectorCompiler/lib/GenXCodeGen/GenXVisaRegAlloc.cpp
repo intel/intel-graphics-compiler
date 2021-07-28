@@ -536,13 +536,17 @@ void GenXVisaRegAlloc::extraCoalescing()
             continue;
           if (Operand->getType() != Inst->getType())
             continue;
-          // Do not coalesce with kernel arguments as they are input variables.
-          if (FG->getHead() == F && isa<Argument>(Operand))
-            continue;
           if (isRestrictedByVisa(GenXIntrinsic::getGenXIntrinsicID(Inst), oi))
             continue;
           auto OperandLR = Liveness->getLiveRangeOrNull(Operand);
           if (!OperandLR || OperandLR->Category != RegCategory::GENERAL)
+            continue;
+          // Do not coalesce with kernel arguments as they are input variables
+          // (after coalescing alignment requirements can become stricter, and
+          // kernel arguments have already fixed alignment).
+          if (FG->getHead() == F &&
+              std::any_of(OperandLR->value_begin(), OperandLR->value_end(),
+                [](AssertingSV SV) { return isa<Argument>(SV.getValue()); }))
             continue;
           if (Liveness->interfere(LR, OperandLR))
             continue;

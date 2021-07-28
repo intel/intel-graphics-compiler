@@ -1216,9 +1216,11 @@ bool GenXBaling::isBalableNewValueIntoWrr(Value *V, const Region &WrrR) {
       GenXIntrinsic::isRdRegion(ValIntrinID))
     return true;
   else if (ValIntrinID == GenXIntrinsic::not_any_intrinsic) {
-    if (isa<BinaryOperator>(Inst) ||
-        (isa<CastInst>(Inst) && !isa<BitCastInst>(Inst)))
+    if (isa<BinaryOperator>(Inst))
       return true;
+    if (auto *CI = dyn_cast<CastInst>(Inst);
+        CI && !genx::isNoopCast(CI))
+        return true;
     else if (isMaskPacking(Inst))
       return true;
     else if (isa<CallInst>(Inst) && cast<CallInst>(Inst)->isInlineAsm())
@@ -1314,7 +1316,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
   if (IntrinID == GenXIntrinsic::not_any_intrinsic) {
     if (!acceptableMainInst(Inst))
       return;
-    if (isa<BitCastInst>(Inst))
+    if (auto *CI = dyn_cast<CastInst>(Inst); CI && genx::isNoopCast(CI))
       return;
     BI.Type = checkModifier(Inst);
     // Work out whether the instruction accepts arithmetic, logic or no

@@ -773,8 +773,8 @@ Indirectability SubroutineArg::checkIndirectability()
         continue;
       if (Pass->FuncMap.find(Func) == Pass->FuncMap.end())
         continue; // value not in one of the subroutines where the arg is indirected
-      auto BC = dyn_cast<BitCastInst>(Inst);
-      if (!BC || !Pass->Liveness->isBitCastCoalesced(BC)) {
+      auto *CI = dyn_cast<CastInst>(Inst);
+      if (!CI || !genx::isNoopCast(CI) || !Pass->Liveness->isNoopCastCoalesced(CI)) {
         CanCoalesceWithoutKill = false;
         break;
       }

@@ -620,11 +620,10 @@ void GenXCoalescing::visitGenXIntrinsicInst(GenXIntrinsicInst &II) {
  * participate in load/store only, so no coalescing is possible anyway.
  */
 void GenXCoalescing::visitCastInst(CastInst &CI) {
-  // TODO: replace with no-op cast check
-  if (!isa<BitCastInst>(CI))
+  if (!genx::isNoopCast(&CI))
     return;
-  IGC_ASSERT_MESSAGE(!isa<StructType>(CI.getDestTy()), "not expecting bitcast to struct");
-  IGC_ASSERT_MESSAGE(!isa<StructType>(CI.getSrcTy()), "not expecting bitcast from struct");
+  IGC_ASSERT_MESSAGE(!isa<StructType>(CI.getDestTy()), "not expecting cast to struct");
+  IGC_ASSERT_MESSAGE(!isa<StructType>(CI.getSrcTy()), "not expecting cast from struct");
   if (GenXLiveness::wrapsAround(CI.getOperand(0), &CI))
     recordNormalCandidate(&CI, 0);
   else {
@@ -932,8 +931,9 @@ void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
       // def of SourceLR but after it.
       if (!Liveness->copyInterfere(SourceLR, DestLR)) {
         Liveness->coalesce(DestLR, SourceLR, /*DisallowCASC=*/ false);
-        if (auto *BCI = dyn_cast<BitCastInst>(Dest.getValue())) {
-          CopyCoalesced[BCI] = Source.getValue();
+        if (auto *CI = dyn_cast<CastInst>(Dest.getValue());
+            CI && genx::isNoopCast(CI)) {
+          CopyCoalesced[CI] = Source.getValue();
         }
         return;
       }
@@ -1025,7 +1025,8 @@ void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
     return; // Return value pre-copy, defer copy insertion
   if (!Cand.UseInDest)
     return; // Return value post-copy, defer copy insertion
-  if (isa<BitCastInst>(Dest.getValue()) || isa<AddrSpaceCastInst>(Dest.getValue())) {
+  if (auto *CI = dyn_cast<CastInst>(Dest.getValue());
+      CI && genx::isNoopCast(CI)) {
     // A bitcast is normally copy coalesced, which means it cannot fail to
     // coalesce. However, if the source is a phi node and the destination
     // wraps round the loop and is used in another phi node in the same
@@ -1033,8 +1034,8 @@ void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
     // try to normal coalesce, which fails because they interfere.
     // This happens with a bitcast inserted in GenXLiveRanges to resolve
     // an overlapping circular phi, but can happen in other cases too.
-    if ((int)genx::exactLog2(
-          Dest.getValue()->getType()->getPrimitiveSizeInBits()) <= 8) {
+    unsigned TySz = genx::getTypeSize<genx::ByteBits>(Dest.getValue()->getType(), DL);
+    if (isPowerOf2_32(TySz) && TySz <= ST->getGRFWidth()) {
       // This is a bitcast with a legal size for a single copy. We do not
       // insert a copy, because GenXCisaBuilder will generate one.
       // (GenXLegalization does not legalize a bitcast, so it can be

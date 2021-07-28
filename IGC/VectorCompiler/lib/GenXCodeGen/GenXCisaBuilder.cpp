@@ -659,8 +659,8 @@ private:
   void addLifetimeStartInst(Instruction *Inst);
   void AddGenVar(Register &Reg);
   void buildRet(ReturnInst *RI);
-  void buildBitCast(CastInst *CI, genx::BaleInfo BI, unsigned Mod,
-                    const DstOpndDesc &DstDesc);
+  void buildNoopCast(CastInst *CI, genx::BaleInfo BI, unsigned Mod,
+                     const DstOpndDesc &DstDesc);
   void buildCmp(CmpInst *Cmp, genx::BaleInfo BI, const DstOpndDesc &DstDesc);
   void buildExtractRetv(ExtractValueInst *Inst);
   void buildInsertRetv(InsertValueInst *Inst);
@@ -2378,8 +2378,8 @@ void GenXKernelBuilder::buildSelectInst(SelectInst *SI, BaleInfo BI,
       getExecSizeFromValue(ExecSize), Dst, Src0, Src1));
 }
 
-void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
-                                     unsigned Mod, const DstOpndDesc &DstDesc) {
+void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
+                                      unsigned Mod, const DstOpndDesc &DstDesc) {
   IGC_ASSERT_MESSAGE(isMaskPacking(CI) || !BI.Bits,
     "non predicate bitcast should not be baled with anything");
   IGC_ASSERT_MESSAGE(isMaskPacking(CI) || !Mod,
@@ -2476,8 +2476,8 @@ void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
   if (Ty->getScalarType()->getPrimitiveSizeInBits() <
       CI->getType()->getScalarType()->getPrimitiveSizeInBits())
     Ty = CI->getType();
-  if (Liveness->isBitCastCoalesced(cast<BitCastInst>(CI)))
-    return; // bitcast was coalesced away
+  if (Liveness->isNoopCastCoalesced(CI))
+    return; // cast was coalesced away
   Register *DstReg =
       getRegForValueAndSaveAlias(KernFunc, CI, DONTCARESIGNED, Ty);
   // Give dest and source the same signedness for byte mov.
@@ -2719,10 +2719,11 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
         !isa<BitCastInst>(Inst->getOperand(1)))
       RetvInserts.push_back(IVI);
     // no code generated
-  } else if (BitCastInst *BCI = dyn_cast<BitCastInst>(Inst)) {
-    buildBitCast(BCI, BI, Mod, DstDesc);
   } else if (CastInst *CI = dyn_cast<CastInst>(Inst)) {
-    buildCastInst(CI, BI, Mod, DstDesc);
+    if (genx::isNoopCast(CI))
+      buildNoopCast(CI, BI, Mod, DstDesc);
+    else
+      buildCastInst(CI, BI, Mod, DstDesc);
   } else if (auto SI = dyn_cast<SelectInst>(Inst)) {
     buildSelectInst(SI, BI, Mod, DstDesc);
   } else if (auto LI = dyn_cast<LoadInst>(Inst)) {
@@ -4382,7 +4383,7 @@ void GenXKernelBuilder::buildWritePredefSurface(CallInst &CI) {
 }
 
 /***********************************************************************
- * buildCastInst : build code for a cast (other than a bitcast)
+ * buildCastInst : build code for a cast (other than a no-op cast)
  *
  * Enter:   CI = the CastInst
  *          BI = BaleInfo for CI

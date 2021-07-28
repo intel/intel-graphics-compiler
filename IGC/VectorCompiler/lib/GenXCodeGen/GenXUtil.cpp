@@ -377,6 +377,28 @@ Value *genx::invertCondition(Value *Condition)
 }
 
 /***********************************************************************
+ * isNoopCast : test if cast operation doesn't modify bitwise representation
+ * of value (in other words, it can be copy-coalesced).
+ * NOTE: LLVM has CastInst::isNoopCast method, but it conservatively treats
+ * AddrSpaceCast as modifying operation; this function can be more aggresive
+ * relying on DataLayout information.
+ */
+bool genx::isNoopCast(const CastInst *CI) {
+  const DataLayout &DL = CI->getModule()->getDataLayout();
+  switch (CI->getOpcode()) {
+  case Instruction::BitCast:
+    return true;
+  case Instruction::PtrToInt:
+  case Instruction::IntToPtr:
+  case Instruction::AddrSpaceCast:
+    return getTypeSize(CI->getDestTy(), &DL) ==
+           getTypeSize(CI->getSrcTy(), &DL);
+  default:
+    return false;
+  }
+}
+
+/***********************************************************************
  * ShuffleVectorAnalyzer::getAsSlice : see if the shufflevector is a slice on
  *    operand 0, and if so return the start index, or -1 if it is not a slice
  */

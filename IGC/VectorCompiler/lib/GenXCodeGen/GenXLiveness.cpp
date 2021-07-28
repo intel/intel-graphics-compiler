@@ -1489,14 +1489,15 @@ std::vector<Value *> GenXLiveness::getAddressWithBase(Value *Base) {
 }
 
 /***********************************************************************
- * isBitCastCoalesced : see if the bitcast has been coalesced away
+ * isNoopCastCoalesced : see if the no-op cast has been coalesced away
  *
- * This handles the case that the input and result of the bitcast are coalesced
+ * This handles the case that the input and result of the no-op cast are coalesced
  * in to the same live range.
  */
-bool GenXLiveness::isBitCastCoalesced(BitCastInst *BCI)
+bool GenXLiveness::isNoopCastCoalesced(CastInst *CI)
 {
-  return getLiveRangeOrNull(BCI) == getLiveRangeOrNull(BCI->getOperand(0));
+  IGC_ASSERT(genx::isNoopCast(CI));
+  return getLiveRangeOrNull(CI) == getLiveRangeOrNull(CI->getOperand(0));
 }
 
 /***********************************************************************
