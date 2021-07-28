@@ -376,6 +376,7 @@ DECLARE_IGC_REGKEY(bool, EnableLTO,                     true,  "Enable link time
 DECLARE_IGC_REGKEY(bool, EnableLTODebug,                false, "Enable debug information for LTO", true)
 DECLARE_IGC_REGKEY(DWORD, FunctionControl,              0,     "Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp.", true)
 DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", false)
+DECLARE_IGC_REGKEY(bool, EnableByValStructArgPromotion, true, "If enabled, byval/sret struct arguments are promoted to pass-by-value if possible.", true)
 DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, true, "If enabled, stack calls that uses implicit args will be force inlined.", true)
 DECLARE_IGC_REGKEY(DWORD, FunctionCloningThreshold,    0,
     "Limits how many times functions can be cloned when called from multiple function groups." \

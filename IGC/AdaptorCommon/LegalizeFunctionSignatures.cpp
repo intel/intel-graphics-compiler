@@ -139,6 +139,9 @@ inline Type* LegalizedIntVectorType(Module& M, Type* ty)
 // Returns true for small structures that only contain primitive types
 inline bool isPromotableStructType(Module& M, Type* ty, bool isReturnValue = false)
 {
+    if (IGC_IS_FLAG_DISABLED(EnableByValStructArgPromotion))
+        return false;
+
     // We can separate promoting argument and return value sizes.
     // Return value is limited to 64-bits due to vISA stackcall conventions.
     // Argument is not limited to 64-bits, but can be adjusted to minimize spill.
