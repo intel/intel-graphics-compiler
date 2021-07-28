@@ -305,13 +305,13 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
   case Instruction::Add:
   case Instruction::Sub:
   case Instruction::Mul:
-  case Instruction::Shl:
-    // These binary operators can just truncate.
-    NewInst = BinaryOperator::Create(
-        (Instruction::BinaryOps)Inst->getOpcode(),
-        truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL),
-        truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL),
-        "", InsertBefore);
+  case Instruction::Shl: {
+      // These binary operators can just truncate.
+      Value *Fst = truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL),
+            *Snd = truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL);
+      NewInst = BinaryOperator::Create(
+          (Instruction::BinaryOps)Inst->getOpcode(), Fst, Snd, "", InsertBefore);
+    }
     break;
   case Instruction::ZExt:
   case Instruction::SExt: {
