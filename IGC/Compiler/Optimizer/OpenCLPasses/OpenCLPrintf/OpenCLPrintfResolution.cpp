@@ -937,10 +937,14 @@ Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* arg
         break;
     }
 
-    case IGC::SHADER_PRINTF_STRING_LITERAL:
-        castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
+    case IGC::SHADER_PRINTF_STRING_LITERAL: {
+        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary)
+            castedType = m_ptrSizeIntType->getPointerTo(ADDRESS_SPACE_GLOBAL);
+        else
+            castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
         break;
-
+    }
     case IGC::SHADER_PRINTF_POINTER:
         castedType = m_ptrSizeIntType->getPointerTo(ADDRESS_SPACE_GLOBAL);
         break;
