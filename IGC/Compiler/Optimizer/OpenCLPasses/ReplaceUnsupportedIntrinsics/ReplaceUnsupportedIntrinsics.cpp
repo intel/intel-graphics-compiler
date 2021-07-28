@@ -71,6 +71,12 @@ namespace
         // if the value comes from a bitcast, return the source, otherwise return itself
         Value* SkipBitCast(Value* v) {
             if (BitCastInst* bc = dyn_cast<BitCastInst>(v)) {
+                // Don't skip if this is a pointer cast and the addrspace changed
+                if (v->getType()->isPointerTy() &&
+                    bc->getOperand(0)->getType()->isPointerTy() &&
+                    v->getType()->getPointerAddressSpace() != bc->getOperand(0)->getType()->getPointerAddressSpace()) {
+                    return v;
+                }
                 v = bc->getOperand(0);
             }
             return v;
