@@ -360,7 +360,6 @@ DECLARE_IGC_REGKEY(DWORD, OverrideDeviceIdForWA,          0,   "Enable this to o
 DECLARE_IGC_REGKEY(DWORD, OverrideProductFamilyForWA,     0,   "Enable this to override the product family, get the correct enum from igfxfmid.h", false)
 
 
-
 DECLARE_IGC_REGKEY(bool, EnableGlobalStateBuffer,              false, "This key allows stack calls to read implicit args from side buffer. It also emits a relocatable add in VISA.", true)
 DECLARE_IGC_REGKEY(bool, LateInlineUnmaskedFunc,        false, "Postpone inlining of Unmasked functions till end of CG to avoid code movement inside/outside of unmasked region", false)
 
