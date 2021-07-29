@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include "vc/GenXOpts/Utils/CMRegion.h"
 
@@ -1088,7 +1089,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
   case Instruction::ShuffleVector: {
     auto Src1 = pInst->getOperand(0);
     auto Src2 = pInst->getOperand(1);
-    auto Mask = pInst->getOperand(2);
+    auto Mask = IGCLLVM::getShuffleMaskForBitcode(cast<ShuffleVectorInst>(pInst));
     if (cast<VectorType>(Src1->getType())->getNumElements() == 1 &&
         cast<VectorType>(Mask->getType())->getNumElements() == 1) {
       if (cast<Constant>(Mask)->isAllOnesValue())

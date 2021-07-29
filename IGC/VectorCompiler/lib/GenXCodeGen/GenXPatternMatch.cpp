@@ -148,6 +148,10 @@ public:
 
   void visitSDiv(BinaryOperator &I);
 
+#if LLVM_VERSION_MAJOR >= 10
+  void visitFreezeInst(FreezeInst &I);
+#endif
+
   bool runOnFunction(Function &F) override;
 
   bool isFpMadEnabled() const {
@@ -2906,6 +2910,15 @@ void GenXPatternMatch::visitSRem(BinaryOperator &I) {
     Changed = true;
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 10
+// Quick fix of IGC LLVM 11 based compilation failures.
+void GenXPatternMatch::visitFreezeInst(FreezeInst &I) {
+  Value *Op = I.getOperand(0);
+  I.replaceAllUsesWith(Op);
+  Changed = true;
+}
+#endif
 
 // Decompose predicate operand for large vector selects.
 bool GenXPatternMatch::decomposeSelect(Function *F) {

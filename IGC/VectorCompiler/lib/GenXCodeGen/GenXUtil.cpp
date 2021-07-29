@@ -384,7 +384,7 @@ int ShuffleVectorAnalyzer::getAsSlice()
 {
   unsigned WholeWidth =
       cast<VectorType>(SI->getOperand(0)->getType())->getNumElements();
-  Constant *Selector = cast<Constant>(SI->getOperand(2));
+  Constant *Selector = IGCLLVM::getShuffleMaskForBitcode(SI);
   unsigned Width = cast<VectorType>(SI->getType())->getNumElements();
   auto *Aggr = Selector->getAggregateElement(0u);
   if (isa<UndefValue>(Aggr))
@@ -841,7 +841,7 @@ int ShuffleVectorAnalyzer::getAsUnslice()
   auto SI2 = dyn_cast<ShuffleVectorInst>(SI->getOperand(1));
   if (!SI2)
     return -1;
-  Constant *MaskVec = cast<Constant>(SI->getOperand(2));
+  Constant *MaskVec = IGCLLVM::getShuffleMaskForBitcode(SI);
   // Find prefix of undef or elements from operand 0.
   unsigned OldWidth = cast<VectorType>(SI2->getType())->getNumElements();
   unsigned NewWidth =
@@ -876,7 +876,7 @@ int ShuffleVectorAnalyzer::getAsUnslice()
       return -1;
   }
   // Check that the first Prefix elements of SI2 come from its operand 1.
-  Constant *MaskVec2 = cast<Constant>(SI2->getOperand(2));
+  Constant *MaskVec2 = IGCLLVM::getShuffleMaskForBitcode(SI2);
   for (unsigned i = 0; i != Prefix; ++i) {
     Constant *IdxC = MaskVec2->getAggregateElement(Prefix + i);
     if (isa<UndefValue>(IdxC))

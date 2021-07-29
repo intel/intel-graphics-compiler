@@ -66,6 +66,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -333,16 +334,17 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
       }
     }
     break;
-  case Instruction::ShuffleVector:
-    if (!cast<Constant>(Inst->getOperand(2))->isNullValue())
+  case Instruction::ShuffleVector: {
+    auto *Shuffle = cast<ShuffleVectorInst>(Inst);
+    if (!Shuffle->isZeroEltSplat())
       return Prev;
-    if (cast<VectorType>(Inst->getOperand(0)->getType())
+    if (cast<VectorType>(Shuffle->getOperand(0)->getType())
         ->getNumElements() == 1) {
       // This shufflevector is a splat from a 1-vector.
-      auto TruncatedInput = truncValue(Inst->getOperand(0), TruncBits,
+      auto TruncatedInput = truncValue(Shuffle->getOperand(0), TruncBits,
           InsertBefore, DL);
       NewInst = new ShuffleVectorInst(TruncatedInput,
-          UndefValue::get(TruncatedInput->getType()), Inst->getOperand(2), "",
+          UndefValue::get(TruncatedInput->getType()), IGCLLVM::getShuffleMaskForBitcode(Shuffle), "",
           InsertBefore);
       break;
     }
@@ -351,13 +353,13 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
     // a splat (and the insertelement has no other use). For example:
     //  %splat.splatinsert.i = insertelement <16 x i32> undef, i32 %direction, i32 0, !dbg !355
     //  %splat.splat.i = shufflevector <16 x i32> %splat.splatinsert.i, <16 x i32> undef, <16 x i32> zeroinitializer, !dbg !355
-    if (auto IE = dyn_cast<InsertElementInst>(Inst->getOperand(0))) {
+    if (auto IE = dyn_cast<InsertElementInst>(Shuffle->getOperand(0))) {
       if (IE->hasOneUse()) {
         if (auto C = dyn_cast<Constant>(IE->getOperand(2))) {
           if (C->isNullValue()) {
             // This is a splat, and we can truncate it by creating new
             // insertelement and shufflevector instructions.
-            unsigned NumElements = cast<VectorType>(Inst->getType())
+            unsigned NumElements = cast<VectorType>(Shuffle->getType())
                 ->getNumElements();
             auto ElTy = Type::getIntNTy(InsertBefore->getContext(),
                   TruncBits);
@@ -371,13 +373,14 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
             NewIE->setDebugLoc(IE->getDebugLoc());
             NewIE->takeName(IE);
             NewInst = new ShuffleVectorInst(NewIE, UndefValue::get(Ty),
-                Inst->getOperand(2), "", InsertBefore);
+                IGCLLVM::getShuffleMaskForBitcode(Shuffle), "", InsertBefore);
             break;
           }
         }
       }
     }
     return Prev;
+  }
   default:
     return Prev;
   }
