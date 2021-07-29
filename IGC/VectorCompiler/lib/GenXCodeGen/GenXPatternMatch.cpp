@@ -252,9 +252,6 @@ public:
   // Match integer mads that starts with binary operators.
   bool matchIntegerMad();
 
-  // Match integer mads that starts with genx_*add intrinsic calls.
-  bool matchIntegerMad(unsigned IID);
-
 private:
   // Return true if changes are made.
   bool emit();
@@ -510,9 +507,7 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_suadd_sat:
   case GenXIntrinsic::genx_usadd_sat:
   case GenXIntrinsic::genx_uuadd_sat:
-    if (EnableMadMatcher && MadMatcher(&I).matchIntegerMad(ID))
-      Changed = true;
-    else if (ST && (ST->hasAdd3Bfn()))
+    if (ST && (ST->hasAdd3Bfn()))
       Changed |= EnableAdd3Matcher && Add3Matcher(&I).matchIntegerAdd3(ID);
     break;
   case GenXIntrinsic::genx_rdpredregion:
@@ -1341,60 +1336,6 @@ bool MadMatcher::matchIntegerMad() {
 
   // Always use ssmad.
   ID = GenXIntrinsic::genx_ssmad;
-
-  // Emit mad if matched and profitable.
-  return emit();
-}
-
-bool MadMatcher::matchIntegerMad(unsigned IID) {
-  IGC_ASSERT_MESSAGE((GenXIntrinsic::getAnyIntrinsicID(AInst) == IID),
-    "input out of sync");
-  Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
-
-  // TODO: handle cases like: cm_add(cm_mul(u, v), w).
-  if (BinaryOperator *BI = dyn_cast<BinaryOperator>(Ops[0])) {
-    if (BI->getOpcode() == Instruction::Mul ||
-        BI->getOpcode() == Instruction::Shl) {
-      // Case X * Y +/- Z
-      Srcs[2] = Ops[1];
-      Srcs[1] = BI->getOperand(1);
-      Srcs[0] = BI->getOperand(0);
-      setMInst(BI);
-      if (!isProfitable())
-        setMInst(nullptr);
-    }
-  }
-  if (!MInst) {
-    if (BinaryOperator *BI = dyn_cast<BinaryOperator>(Ops[1])) {
-      // Case Z +/- X * Y
-      if (BI->getOpcode() == Instruction::Mul ||
-          BI->getOpcode() == Instruction::Shl) {
-        Srcs[2] = Ops[0];
-        Srcs[1] = BI->getOperand(1);
-        Srcs[0] = BI->getOperand(0);
-        setMInst(BI);
-        if (!isProfitable())
-          setMInst(nullptr);
-      }
-    }
-  }
-
-  switch (IID) {
-  default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected intrinsic ID");
-  case GenXIntrinsic::genx_ssadd_sat:
-    ID = GenXIntrinsic::genx_ssmad_sat;
-    break;
-  case GenXIntrinsic::genx_suadd_sat:
-    ID = GenXIntrinsic::genx_sumad_sat;
-    break;
-  case GenXIntrinsic::genx_usadd_sat:
-    ID = GenXIntrinsic::genx_usmad_sat;
-    break;
-  case GenXIntrinsic::genx_uuadd_sat:
-    ID = GenXIntrinsic::genx_uumad_sat;
-    break;
-  }
 
   // Emit mad if matched and profitable.
   return emit();
