@@ -303,12 +303,14 @@ function(igc_bif_build_bc)
     set(_bcTempFilePath "${_bcIntFilePath}.tmp")
     math(EXPR _bcFileId "${_bcFileId} + 1")
 
+    set(LLVM_LINK_EXE "llvm-link" CACHE STRING "")
+
     # LLVM linking is triggered by host LLVM package change (where tools are), change of intermediate .bc files or change of additional dependencies.
     # Makes sure that LLVM is unzipped before.
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND llvm-link -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
+        COMMAND ${LLVM_LINK_EXE} -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
         DEPENDS ${_bcFiles} ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Linking intermediate .bc into output .bc."
       )

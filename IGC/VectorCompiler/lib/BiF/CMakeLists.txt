@@ -9,6 +9,7 @@
 add_subdirectory(Utils)
 
 set(RESOURCE_EMBEDDER_SCRIPT ${IGC_SOURCE_DIR}/BiFModule/resource_embedder.py)
+set(LLVM_OPT_EXE "opt" CACHE STRING "")
 
 # Args:
 #   RES_LIST - generated list
@@ -85,7 +86,7 @@ function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
     COMMENT "vc_embed_bif: Translating CMCL builtins: ${BIF_CLANG_BC_NAME} -> ${BIF_CMCL_BC_NAME}"
     DEPENDS CMCLTranslatorTool ${BIF_CLANG_BC_PATH})
   add_custom_command(OUTPUT ${BIF_OPT_BC_PATH}
-    COMMAND opt --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
+    COMMAND ${LLVM_OPT_EXE} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
     COMMENT "vc_embed_bif: running opt with O2: ${BIF_CMCL_BC_NAME} -> ${BIF_OPT_BC_NAME}"
     DEPENDS opt ${BIF_CMCL_BC_PATH})
   add_custom_command(

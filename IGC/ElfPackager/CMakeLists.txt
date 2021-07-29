@@ -32,32 +32,35 @@ set(IGC_BUILD__PROJ_LABEL__ElfPackager "${IGC_BUILD__PROJ__ElfPackager}")
 set(IGC_BUILD__SRC__ElfPackager
     "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 
-add_executable("${IGC_BUILD__PROJ__ElfPackager}"
-    ${IGC_BUILD__SRC__ElfPackager}
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfWriter.cpp
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.cpp
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfWriter.h
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.h
+igc_imported_tool("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ_NAME_PREFIX}elf_packager")
+if(NOT TARGET ${IGC_BUILD__PROJ__ElfPackager})
+  add_executable("${IGC_BUILD__PROJ__ElfPackager}"
+      ${IGC_BUILD__SRC__ElfPackager}
+      ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfWriter.cpp
+      ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.cpp
+      ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfWriter.h
+      ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.h
+    )
+
+  add_dependencies("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
+
+  target_link_libraries(${IGC_BUILD__PROJ__ElfPackager}
+      ${IGC_BUILD__LLVM_LIBS_TO_LINK})
+
+  include_directories (
+    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/
   )
 
-add_dependencies("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
+  if(NOT ANDROID)
+    add_custom_command(TARGET ${IGC_BUILD__PROJ__ElfPackager}
+                      POST_BUILD
+                      COMMAND $<TARGET_FILE:${IGC_BUILD__PROJ__ElfPackager}> -includeSizet -funcList ${CMAKE_CURRENT_SOURCE_DIR}/function_bin.txt ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/igdclbif.bin
+                      )
+  endif()
 
-target_link_libraries(${IGC_BUILD__PROJ__ElfPackager}
-    ${IGC_BUILD__LLVM_LIBS_TO_LINK})
 
-include_directories (
-  ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/
-)
-
-if(NOT ANDROID)
-  add_custom_command(TARGET ${IGC_BUILD__PROJ__ElfPackager}
-                     POST_BUILD
-                     COMMAND $<TARGET_FILE:${IGC_BUILD__PROJ__ElfPackager}> -includeSizet -funcList ${CMAKE_CURRENT_SOURCE_DIR}/function_bin.txt ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/igdclbif.bin
-                    )
+  add_dependencies("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ__BiFModule_OCL}")
 endif()
-
-
-add_dependencies("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ__BiFModule_OCL}")
 
 if(MSVC)
 #set up standard defines from the common WDK path.

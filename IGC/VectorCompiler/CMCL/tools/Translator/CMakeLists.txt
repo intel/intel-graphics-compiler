@@ -6,17 +6,22 @@
 #
 #============================ end_copyright_notice =============================
 
-add_executable(CMCLTranslatorTool Main.cpp)
+igc_imported_tool(CMCLTranslatorTool CMCLTranslatorTool)
 
-# LLVM dependencies
-igc_get_llvm_targets(LLVM_LIBS
-  Core
-  Support
-  IRReader
-# Not really required but VS linker fails on its dependency from Support
-  Demangle
-  BitWriter)
+if(NOT TARGET CMCLTranslatorTool)
+  add_executable(CMCLTranslatorTool Main.cpp)
 
-target_link_libraries(CMCLTranslatorTool
-  CMCLSupport
+  # LLVM dependencies
+  igc_get_llvm_targets(LLVM_LIBS
+    Core
+    Support
+    IRReader
+  # Not really required but VS linker fails on its dependency from Support
+    Demangle
+    BitWriter)
+
+  target_link_libraries(CMCLTranslatorTool
+    CMCLSupport
   ${LLVM_LIBS})
+
+endif()

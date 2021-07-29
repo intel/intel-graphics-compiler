@@ -60,6 +60,7 @@ include(igc_arch_utils)
 include(igc_resource_utils)
 include(igc_source_group_utils)
 include(igc_llvm_utils)
+include(igc_imported_tools)
 
 # ======================================================================================================
 # ======================================================================================================
@@ -1180,11 +1181,16 @@ add_compile_definitions(
     $<$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>:_AMD64_>
     $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:ICBE_LINUX>
     $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:LINUX>
-    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_MMX>
-    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_SSE>
-    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_SSE2>
-    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_SSE3>
-    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_SSSE3>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux32>:USE_MMX>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux32>:USE_SSE>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux32>:USE_SSE2>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux32>:USE_SSE3>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux32>:USE_SSSE3>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux64>:USE_MMX>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux64>:USE_SSE>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux64>:USE_SSE2>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux64>:USE_SSE3>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux64>:USE_SSSE3>
     $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:ICBE_LHDM>
     $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:_WIN32>
     $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:"WIN32">
