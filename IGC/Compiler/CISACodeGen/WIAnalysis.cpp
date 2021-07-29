@@ -914,6 +914,10 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
                     m_pChangedNew->push_back(it->second);
             }
 
+            // Experiment to see when the code after this test is needed
+            if (IGC_IS_FLAG_ENABLED(WIAExperimental))
+                continue;
+
             if (isRegionInvariant(defi, &br_info, 0))
             {
                 continue;
