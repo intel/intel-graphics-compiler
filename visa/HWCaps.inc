@@ -850,16 +850,4 @@ SPDX-License-Identifier: MIT
    {
        return getPlatform() <= GENX_TGLLP;
    }
-
-   unsigned int getMaxPTSS() const
-   {
-      if (getPlatform() >= GENX_TGLLP)
-      {
-         // Max PTSS supported is 256kb
-         return 256 * 1024;
-      }
-
-      // Max PTSS supported is 2MB
-      return 2 * 1024 * 1024;
-   }
    // end HW capabilities
