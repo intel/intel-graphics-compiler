@@ -142,3 +142,11 @@ enum GenRelocType {
     R_PER_THREAD_PAYLOAD_OFFSET_32 = 4  // 32-bit field of payload offset of per-thread data
 };
 ~~~
+
+## ZE symbols
+In ZEBinary file for each kernel there is a corresponding ELF symbol with the
+same name as the kernel emitted in the .symtab. The kernel symbol is local and
+points to offset 0 of the section. Currently for each kernel a local symbol
+"_entry" is emitted to represent the actul kernel start. A kernel may start
+with some prolog code and it is useful to know the actual kernel start offset
+in some cases.
