@@ -575,7 +575,18 @@ namespace vISA
             return false;
 
         // Def-use must be far away
-        if ((srcLexId - origOpLexId) < MIN_DEF_USE_DISTANCE)
+        unsigned int minDefUseDist = MIN_DEF_USE_DISTANCE;
+
+        // If def is a scalar and its def/use lie entirely in a BB,
+        // then increase min def use distance heuristic as remating
+        // closeby is unlikely to provide perf benefit.
+        if (uniqueDefInst->getExecSize() == 1)
+        {
+            if(uniqueDefBB->back()->getLexicalId() >= refs.lastUseLexId)
+                minDefUseDist *= 2;
+        }
+
+        if ((srcLexId - origOpLexId) < minDefUseDist)
             return false;
 
         if (!inSameSubroutine(bb, uniqueDefBB))
@@ -716,7 +727,8 @@ namespace vISA
                     }
 
                     if ((*opIt).second.lastUseLexId < srcLexId &&
-                        !isPartGRFBusyInput((*opIt).first, srcLexId))
+                        (!isPartGRFBusyInput((*opIt).first, srcLexId) ||
+                        !inSameLoop))
                     {
                         // Inputs are pre-assigned and extending such ranges
                         // could lead to worse RA results, unless the input
