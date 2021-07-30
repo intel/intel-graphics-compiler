@@ -2151,6 +2151,8 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB* bb,
         {
             for (unsigned j = 0; j < G4_MAX_SRCS; j++)
             {
+                if (inst->isDpas() && j != 1)
+                    continue;
                 G4_Operand* src = inst->getSrc(j);
                 if (src != NULL &&
                     src->isSrcRegRegion() &&
