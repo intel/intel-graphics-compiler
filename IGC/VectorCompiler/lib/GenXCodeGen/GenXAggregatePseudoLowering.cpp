@@ -282,13 +282,8 @@ public:
     return nullptr;
   }
 
-  Instruction *create(Instruction &I) {
-    auto *NewInst = visit(I);
-    IGC_ASSERT_MESSAGE(!hasAggregate(*NewInst),
-                       "split instruction must not have aggregate as an "
-                       "operand or a return value");
-    return NewInst;
-  }
+  // Just an alias to visit with a bit more suitable name.
+  Instruction *create(Instruction &I) { return visit(I); }
 
   Instruction *visitSelectInst(SelectInst &Inst) const {
     IGC_ASSERT_MESSAGE(NewOps.size() == 3, "select must have 3 operands");
