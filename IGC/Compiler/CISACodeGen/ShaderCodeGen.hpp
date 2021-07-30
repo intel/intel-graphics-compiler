@@ -198,7 +198,7 @@ public:
     void        SetDependency(llvm::Value* v, WIBaseClass::WIDependancy dep);
     bool        GetIsUniform(llvm::Value* v) const;
     bool        InsideDivergentCF(const llvm::Instruction* inst) const;
-    bool        InsideThreadDivergentCF(const llvm::Instruction* inst) const;
+    bool        InsideWorkgroupDivergentCF(const llvm::Instruction* inst) const;
     CEncoder& GetEncoder();
     CVariable* GetR0();
     CVariable* GetNULL();

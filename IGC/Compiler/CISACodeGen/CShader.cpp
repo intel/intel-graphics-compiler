@@ -1031,9 +1031,9 @@ bool CShader::InsideDivergentCF(const llvm::Instruction* inst) const
     return m_WI ? m_WI->insideDivergentCF(inst) : true;
 }
 
-bool CShader::InsideThreadDivergentCF(const llvm::Instruction* inst) const
+bool CShader::InsideWorkgroupDivergentCF(const llvm::Instruction* inst) const
 {
-    return m_WI ? m_WI->insideThreadDivergentCF(inst) : true;
+    return m_WI ? m_WI->insideWorkgroupDivergentCF(inst) : true;
 }
 
 uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)

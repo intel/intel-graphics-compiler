@@ -127,26 +127,10 @@ namespace IGC
                 m_ctrlBranches.find(llvm::cast<llvm::Instruction>(val)->getParent()) != m_ctrlBranches.end());
         }
 
-        /// check if a value is defined inside thread divergent control-flow.
+        /// check if a value is defined inside workgroup divergent control-flow.
         /// This will return false if the value is in the influence region
         /// of only global and workgroup uniform branches.
-        bool insideThreadDivergentCF(const llvm::Value* val) const
-        {
-            if (auto* I = llvm::dyn_cast<llvm::Instruction>(val))
-            {
-                auto II = m_ctrlBranches.find(I->getParent());
-                if (II == m_ctrlBranches.end())
-                    return false;
-
-                for (auto* BI : II->second)
-                {
-                    if (!isWorkGroupOrGlobalUniform(BI))
-                        return true;
-                }
-            }
-
-            return false;
-        }
+        bool insideWorkgroupDivergentCF(const llvm::Value* val) const;
 
         void releaseMemory()
         {
@@ -169,6 +153,8 @@ namespace IGC
         void lock_print();
 
     private:
+        WIBaseClass::WIDependancy getCFDependency(const llvm::BasicBlock* BB) const;
+
         struct AllocaDep
         {
             std::vector<const llvm::StoreInst*> stores;
@@ -372,10 +358,10 @@ namespace IGC
         /// check if a value is defined inside divergent control-flow
         bool insideDivergentCF(const llvm::Value* val) const;
 
-        /// check if a value is defined inside thread divergent control-flow
+        /// check if a value is defined inside workgroup divergent control-flow
         /// This will return false if the value is in the influence region
         /// of only global and workgroup uniform branches.
-        bool insideThreadDivergentCF(const llvm::Value* val) const;
+        bool insideWorkgroupDivergentCF(const llvm::Value* val) const;
 
         void releaseMemory() override
         {

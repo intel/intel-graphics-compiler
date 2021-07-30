@@ -212,6 +212,10 @@ void WIAnalysisRunner::print(raw_ostream& OS, const Module*) const
                 OS << pred->getName();
             isFirst = false;
         }
+        {
+            auto dep = getCFDependency(BB);
+            OS << "[ " << dep_str[dep] << " ]";
+        }
         OS << "\n";
         for (BasicBlock::iterator it = BB->begin(), ie = BB->end(); it != ie; ++it) {
             Instruction* I = &*it;
@@ -586,9 +590,9 @@ bool WIAnalysis::insideDivergentCF(const Value* val) const
     return Runner.insideDivergentCF(val);
 }
 
-bool WIAnalysis::insideThreadDivergentCF(const Value* val) const
+bool WIAnalysis::insideWorkgroupDivergentCF(const Value* val) const
 {
-    return Runner.insideThreadDivergentCF(val);
+    return Runner.insideWorkgroupDivergentCF(val);
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val) const
@@ -634,6 +638,34 @@ bool WIAnalysisRunner::isGlobalUniform(const Value* val) const
         return false;
     WIAnalysis::WIDependancy dep = whichDepend(val);
     return dep == WIAnalysis::UNIFORM_GLOBAL;
+}
+
+WIAnalysis::WIDependancy WIAnalysisRunner::getCFDependency(const BasicBlock* BB) const
+{
+    auto II = m_ctrlBranches.find(BB);
+    if (II == m_ctrlBranches.end())
+        return WIAnalysis::UNIFORM_GLOBAL;
+
+    WIAnalysis::WIDependancy dep = WIAnalysis::UNIFORM_GLOBAL;
+    for (auto* BI : II->second)
+    {
+        auto newDep = whichDepend(BI);
+        if (depRank(dep) < depRank(newDep))
+            dep = newDep;
+    }
+
+    return dep;
+}
+
+bool WIAnalysisRunner::insideWorkgroupDivergentCF(const Value* val) const
+{
+    if (auto* I = dyn_cast<Instruction>(val))
+    {
+        auto dep = getCFDependency(I->getParent());
+        return depRank(dep) > WIAnalysis::UNIFORM_WORKGROUP;
+    }
+
+    return false;
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value* val)

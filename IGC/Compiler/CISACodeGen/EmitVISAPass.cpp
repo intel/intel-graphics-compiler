@@ -14048,7 +14048,7 @@ static void divergentBarrierCheck(
     if (IGC_IS_FLAG_DISABLED(EnableDivergentBarrierCheck))
         return;
 
-    if (Shader->InsideThreadDivergentCF(I))
+    if (Shader->InsideWorkgroupDivergentCF(I))
     {
         Debug::DumpName name =
             IGC::Debug::GetDumpNameObj(Shader, "divergent_barrier.log");
