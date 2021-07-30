@@ -1899,10 +1899,10 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     return NewInst;
   }
   if (BinaryOperator *BO = dyn_cast<BinaryOperator>(BInst.Inst)) {
+    auto Split1 = getSplitOperand(BO, 0, StartIdx, Width, InsertBefore, DL),
+         Split2 = getSplitOperand(BO, 1, StartIdx, Width, InsertBefore, DL);
     Instruction *NewInst = BinaryOperator::Create(
-        BO->getOpcode(),
-        getSplitOperand(BO, 0, StartIdx, Width, InsertBefore, DL),
-        getSplitOperand(BO, 1, StartIdx, Width, InsertBefore, DL),
+        BO->getOpcode(), Split1, Split2,
         BO->getName() + ".split" + Twine(StartIdx), InsertBefore);
     NewInst->setDebugLoc(DL);
     return NewInst;
@@ -1918,10 +1918,10 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   }
 #endif
   if (CmpInst *CI = dyn_cast<CmpInst>(BInst.Inst)) {
+    auto Split1 = getSplitOperand(CI, 0, StartIdx, Width, InsertBefore, DL),
+         Split2 = getSplitOperand(CI, 1, StartIdx, Width, InsertBefore, DL);
     Instruction *NewInst = CmpInst::Create(
-        CI->getOpcode(), CI->getPredicate(),
-        getSplitOperand(CI, 0, StartIdx, Width, InsertBefore, DL),
-        getSplitOperand(CI, 1, StartIdx, Width, InsertBefore, DL),
+        CI->getOpcode(), CI->getPredicate(), Split1, Split2,
         CI->getName() + ".split" + Twine(StartIdx), InsertBefore);
     NewInst->setDebugLoc(DL);
     return NewInst;

@@ -2930,8 +2930,9 @@ bool GenXLowering::lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID) {
     return IsSignedOps ? B.CreateSExt(Val, MulType, Val->getName() + ".sext")
                        : B.CreateZExt(Val, MulType, Val->getName() + ".zext");
   };
-  Value *Mul = B.CreateMul(ExtendMulOperand(CI->getOperand(0)),
-                           ExtendMulOperand(CI->getOperand(1)), CI->getName());
+  Value *FstMulOpnd = ExtendMulOperand(CI->getOperand(0)),
+        *SndMulOpnd = ExtendMulOperand(CI->getOperand(1));
+  Value *Mul = B.CreateMul(FstMulOpnd, SndMulOpnd, CI->getName());
   Function *TruncSatFunc = GenXIntrinsic::getGenXDeclaration(
       CI->getModule(), GetTruncSatIntrinsicId(IsSignedRes, IsSignedOps),
       {ResType, MulType});
