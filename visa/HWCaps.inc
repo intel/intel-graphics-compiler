@@ -490,7 +490,7 @@ SPDX-License-Identifier: MIT
     bool no64bitRegioning() const
     {
         return getPlatform() == GENX_CHV || getPlatform() == GENX_BXT ||
-               getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == XeHP_SDV;
+               getPlatform() == GENX_ICLLP || isXeLP();
     }
 
     bool hasBankCollision() const
