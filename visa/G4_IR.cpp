@@ -1993,6 +1993,15 @@ bool G4_INST::canPropagateTo(
     G4_Operand *use = useInst->getOperand(opndNum);
     G4_Type useType = use->getType();
 
+    //If the operand to be copied is acc register, need to check if the use operand can use acc register
+    if (src->isAccReg())
+    {
+        if (!useInst->canSrcBeAcc(opndNum))
+        {
+            return false;
+        }
+    }
+
     if (useInst->is2SrcAlign16())
     {
         // don't copy propagate for the legacy dp* instructions,
@@ -7808,7 +7817,13 @@ bool G4_INST::canDstBeAcc() const
 bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
 {
     int srcId = getSrcNum(opndNum);
-    assert((srcId == 0 || srcId == 1 || (builder.hasSrc2Acc() && srcId == 2)) && "must be either src0 or src1");
+    assert((srcId == 0 || srcId == 1 || srcId == 2) && "must be either src0, src1 or src2");
+
+    if (!builder.hasSrc2Acc() && srcId == 2)
+    {
+        return false;
+    }
+
     if (getSrc(srcId) == nullptr || !getSrc(srcId)->isSrcRegRegion())
     {
         return false;
@@ -7942,7 +7957,7 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
             ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) ||
                 (srcId == 0 && src->getModifier() == Mod_src_undef) ||
                 (srcId == 0 && builder.relaxedACCRestrictions_1()) ||
-                (builder.hasSrc2Acc() && srcId == 2 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))));
+                (srcId == 2 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))));
     case G4_csel:
         return builder.canMadHaveAcc();
     case G4_mul:
