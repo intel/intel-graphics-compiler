@@ -56,13 +56,13 @@ namespace IGC
         {
             AU.setPreservesCFG();
             AU.addPreservedID(WIAnalysis::ID);
+            AU.addPreservedID(llvm::LCSSAID);
+            AU.addPreservedID(TranslationTable::ID);
             AU.addRequired<DominatorTreeWrapperPass>();
             AU.addRequired<WIAnalysis>();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<TranslationTable>();
-            AU.addPreservedID(TranslationTable::ID);
-
         }
 
         void ProcessBlock(llvm::BasicBlock* blk,

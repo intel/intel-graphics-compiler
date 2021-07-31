@@ -266,7 +266,6 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     mpm.add(new Legalizer::PeepholeTypeLegalizer());
 
     // need this before WIAnalysis:
-    // insert phi to prevent changing of WIAnalysis result by later code-motion
     mpm.add(llvm::createLCSSAPass());
     // Fixup extract value pairs.
     mpm.add(createExtractValuePairFixupPass());
@@ -309,6 +308,8 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         mpm.add(createPromoteMemoryToRegisterPass());
         // Resolving private memory allocas
         mpm.add(CreatePrivateMemoryResolution());
+        // need this before WIAnalysis:
+        mpm.add(llvm::createLCSSAPass());
     }
 
     // This is for dumping register pressure info
@@ -534,6 +535,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
               IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)))
         {
             mpm.add(createBreakCriticalEdgesPass());
+            // need this before WIAnalysis:
+            mpm.add(llvm::createLCSSAPass());
             mpm.add(createAnnotateUniformAllocasPass());
 
             if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
@@ -601,7 +604,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     if (!isOptDisabled &&
         ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
         // run AdvMemOpt and MemOPt back-to-back so that we only
-        // need to run WIAnalysis once
+        // need to run WIAnalysis once, also need LCSSA before WIAnalysis:
+        mpm.add(llvm::createLCSSAPass());
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
             mpm.add(createAdvMemOptPass());
         bool AllowNegativeSymPtrsForLoad =
@@ -768,6 +772,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing))
     {
         mpm.add(createBreakCriticalEdgesPass());
+        // need this before WIAnalysis:
+        mpm.add(llvm::createLCSSAPass());
         mpm.add(new ConstantCoalescing());
     }
 

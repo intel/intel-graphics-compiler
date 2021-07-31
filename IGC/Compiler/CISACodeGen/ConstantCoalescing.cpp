@@ -70,30 +70,6 @@ void ConstantCoalescing::ProcessFunction(Function* function)
     dataLayout = &function->getParent()->getDataLayout();
     wiAns = &getAnalysis<WIAnalysis>();
 
-    // clean up unnecessary lcssa-phi
-    for (Function::iterator I = function->begin(), E = function->end();
-        I != E; ++I)
-    {
-        if (I->getSinglePredecessor())
-        {
-            for (BasicBlock::iterator BBI = I->begin(), BBE = I->end(); BBI != BBE; )
-            {
-                Instruction* PHI = &(*BBI++);
-                if (!isa<PHINode>(PHI))
-                {
-                    break;
-                }
-                IGC_ASSERT(PHI->getNumOperands() <= 1);
-                Value* src = PHI->getOperand(0);
-                if (wiAns->whichDepend(src) == wiAns->whichDepend(PHI))
-                {
-                    PHI->replaceAllUsesWith(src);
-                    PHI->eraseFromParent();
-                }
-            }
-        }
-    }
-
     // get the dominator-tree to traverse
     DominatorTree& dom_tree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
