@@ -107,8 +107,6 @@ class GenXPrologEpilogInsertion
   unsigned ArgRegSize = 0;
   unsigned RetRegSize = 0;
 
-  bool UseGlobalMem = true;
-
   void generateKernelProlog(Function &F);
   void generateFunctionProlog(Function &F);
   void generateFunctionEpilog(Function &F, ReturnInst &I);
@@ -231,8 +229,6 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
     return false;
   }
   NumCalls = CallsCalculator().getNumCalls(F);
-  UseGlobalMem =
-      F.getParent()->getModuleFlag(ModuleMD::UseSVMStack) != nullptr;
   LLVM_DEBUG(dbgs() << "Visiting all calls in " << F.getName() << "\n");
   visit(F);
   LLVM_DEBUG(dbgs() << "Visiting finished\n");
@@ -280,10 +276,7 @@ void GenXPrologEpilogInsertion::generateKernelProlog(Function &F) {
   Function *HWID = GenXIntrinsic::getGenXDeclaration(
       F.getParent(), llvm::GenXIntrinsic::genx_get_hwid, {});
   auto *HWIDCall = IRB.CreateCall(HWID);
-  // TODO: revisit offset for scratch if it will be needed.
-  auto *ThreadOffset =
-      IRB.getInt32(UseGlobalMem ? BEConf->getStatelessPrivateMemSize()
-                                : visa::StackPerThreadScratch);
+  auto *ThreadOffset = IRB.getInt32(BEConf->getStatelessPrivateMemSize());
   auto *Mul = IRB.CreateMul(HWIDCall, ThreadOffset);
   auto *MulCasted = IRB.CreateZExt(Mul, IRB.getInt64Ty());
 

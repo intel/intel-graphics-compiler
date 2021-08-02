@@ -106,9 +106,6 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
     genx::KernelMetadata &KM, const GenXSubtarget &ST) {
   Name = KM.getName();
   SLMSize = KM.getSLMSize();
-  // NOTE: if UseSVMStack is set, we are using default value from StatelessPrivateMemSizeOpt
-  if (!KM.getFunction()->getParent()->getModuleFlag(genx::ModuleMD::UseSVMStack))
-    StatelessPrivateMemSize = 0;
 
 }
 

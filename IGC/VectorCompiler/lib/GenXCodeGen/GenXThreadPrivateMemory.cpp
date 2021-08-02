@@ -54,6 +54,8 @@ using namespace genx;
 
 #define DEBUG_TYPE "genx-tpm"
 
+static cl::opt<bool> EnableTPM("enable-legacy-tpm", cl::init(true), cl::Hidden,
+                               cl::desc("Enable legacy TPM pass"));
 static cl::opt<bool> ForceSVMTPM("force-svm-tpm", cl::init(true), cl::Hidden,
   cl::desc("Force putting thread-private memory to SVM"));
 static cl::opt<bool>
@@ -1321,8 +1323,11 @@ public:
 
 void GenXThreadPrivateMemory::switchStack(Module &M) {
   LLVM_DEBUG(dbgs() << "Switching TPM to SVM\n");
-  IGC_ASSERT(m_ST->isOCLRuntime());
-  M.addModuleFlag(Module::ModFlagBehavior::Error, ModuleMD::UseSVMStack, 1);
+  if (!m_ST->isOCLRuntime()) {
+    DiagnosticInfoTPM Err{"CMRT not supported for stack switching to SVM",
+                          DS_Error};
+    M.getContext().diagnose(Err);
+  }
   m_useGlobalMem = true;
 }
 
@@ -1418,6 +1423,8 @@ void GenXThreadPrivateMemory::addUsersIfNeeded(Value *V, bool ProcessCalls) {
 }
 
 bool GenXThreadPrivateMemory::runOnModule(Module &M) {
+  if (!EnableTPM)
+    return false;
   m_ST = &getAnalysis<TargetPassConfig>()
               .getTM<GenXTargetMachine>()
               .getGenXSubtarget();

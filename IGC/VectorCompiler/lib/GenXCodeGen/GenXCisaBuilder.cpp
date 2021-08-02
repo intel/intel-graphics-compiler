@@ -531,7 +531,6 @@ class GenXKernelBuilder {
   bool HasCallable = false;
   bool HasStackcalls = false;
   bool HasAlloca = false;
-  bool UseGlobalMem = false;
   bool UseNewStackBuilder = false;
   // GRF width in unit of byte
   unsigned GrfByteSize = defaultGRFWidth;
@@ -1063,9 +1062,8 @@ bool GenXKernelBuilder::run() {
   GrfByteSize = Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth;
   StackSurf = Subtarget ? Subtarget->stackSurface() : PREDEFINED_SURFACE_STACK;
 
-  UseNewStackBuilder = BackendConfig->useNewStackBuilder() &&
-                       Subtarget->isOCLRuntime() &&
-                       FG->getModule()->getModuleFlag(ModuleMD::UseSVMStack);
+  UseNewStackBuilder =
+      BackendConfig->useNewStackBuilder() && Subtarget->isOCLRuntime();
 
   IGC_ASSERT_MESSAGE(TheKernelMetadata.isKernel(),
                      "Expected kernel as a head of function group");
@@ -3121,8 +3119,6 @@ bool GenXKernelBuilder::allowI64Ops() const {
  * barrier.
  */
 void GenXKernelBuilder::collectKernelInfo() {
-  UseGlobalMem |=
-      (FG->getModule()->getModuleFlag(ModuleMD::UseSVMStack) != nullptr);
   for (auto It = FG->begin(), E = FG->end(); It != E; ++It) {
     auto Func = *It;
     HasStackcalls |=
@@ -5577,8 +5573,6 @@ void GenXKernelBuilder::pushStackArg(VISA_StateOpndHandle *Dst, Value *Src,
                      DoCopy);
       VISA_VectorOpnd *Imm = nullptr;
       unsigned OffVal = Sz;
-      if (UseGlobalMem)
-        OffVal *= visa::BytesPerOword;
       CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_UD));
       VISA_RawOpnd *RawSrc = nullptr;
       CISA_CALL(
@@ -5589,14 +5583,9 @@ void GenXKernelBuilder::pushStackArg(VISA_StateOpndHandle *Dst, Value *Src,
         CISA_CALL(Kernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false,
                                                      vISA_EMASK_M1, EXEC_SIZE_1,
                                                      TmpOffDst, SpOpSrc1));
-        if (UseGlobalMem) {
-          CISA_CALL(Kernel->AppendVISASvmBlockStoreInst(
-              getCisaOwordNumFromNumber(Sz), true, TmpOffSrc, RawSrc));
-        } else {
-          CISA_CALL(Kernel->AppendVISASurfAccessOwordLoadStoreInst(
-              ISA_OWORD_ST, vISA_EMASK_M1, Dst, getCisaOwordNumFromNumber(Sz),
-              TmpOffSrc, RawSrc));
-        }
+        CISA_CALL(Kernel->AppendVISASurfAccessOwordLoadStoreInst(
+            ISA_OWORD_ST, vISA_EMASK_M1, Dst, getCisaOwordNumFromNumber(Sz),
+            TmpOffSrc, RawSrc));
       }
       CISA_CALL(Kernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false,
                                                  vISA_EMASK_M1, EXEC_SIZE_1,
@@ -5641,8 +5630,6 @@ void GenXKernelBuilder::popStackArg(llvm::Value *Dst, VISA_StateOpndHandle *Src,
 
       VISA_VectorOpnd *Imm = nullptr;
       int OffVal = PrevStackOff;
-      if (UseGlobalMem)
-        OffVal *= visa::BytesPerOword;
       CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_UD));
       PrevStackOff += Sz;
       VISA_RawOpnd *RawSrc = nullptr;
@@ -5651,15 +5638,9 @@ void GenXKernelBuilder::popStackArg(llvm::Value *Dst, VISA_StateOpndHandle *Src,
       CISA_CALL(Kernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false,
                                                  vISA_EMASK_M1, EXEC_SIZE_1,
                                                  TmpOffDst, SpOpSrc, Imm));
-      if (UseGlobalMem) {
-        CISA_CALL(Kernel->AppendVISASvmBlockLoadInst(
-            getCisaOwordNumFromNumber(Sz), false, TmpOffSrc, RawSrc));
-      } else {
-        CISA_CALL(Kernel->AppendVISASurfAccessOwordLoadStoreInst(
-            ISA_OWORD_LD, vISA_EMASK_M1, Src, getCisaOwordNumFromNumber(Sz),
-            TmpOffSrc, RawSrc));
-      }
-
+      CISA_CALL(Kernel->AppendVISASurfAccessOwordLoadStoreInst(
+          ISA_OWORD_LD, vISA_EMASK_M1, Src, getCisaOwordNumFromNumber(Sz),
+          TmpOffSrc, RawSrc));
       int CopySz = std::min(ByteSz, TotalSz);
       SrcRowOff = SrcColOff = 0;
       emitVectorCopy(Dst, TmpVar, RowOff, ColOff, SrcRowOff, SrcColOff, CopySz);
@@ -5722,11 +5703,9 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
 
     VISA_VectorOpnd *HwtidOp = nullptr;
 
-    // TODO:
-    // 1) switch to SVM
-    // 2) calculate exact stack size required by the kernel
-    uint32_t Val =
-        UseGlobalMem ? visa::StackPerThreadSVM : visa::StackPerThreadScratch;
+    // probably here would be better calculate exact stack size required
+    // by the kernel, but legacy stack builder is to be dropped away soon
+    uint32_t Val = visa::StackPerThreadScratch;
 
     CISA_CALL(Kernel->CreateVISAImmediate(Imm, &Val, ISA_TYPE_UD));
     CISA_CALL(Kernel->CreateVISASrcOperand(HwtidOp, Hwtid, MODIFIER_NONE, 0, 1,
@@ -5752,22 +5731,10 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
           EXEC_SIZE_1, OffOpDst, HwtidOp, Imm));
 
       VISA_VectorOpnd *OpSrc = nullptr;
-      if (UseGlobalMem) {
-        auto *PrivBase = std::find_if(
-            Func->arg_begin(), Func->arg_end(), [this](Argument &Arg) {
-              return KernelArgInfo(TheKernelMetadata.getArgKind(Arg.getArgNo()))
-                  .isPrivateBase();
-            });
-        IGC_ASSERT_EXIT_MESSAGE(PrivBase != Func->arg_end(),
-                                "No PrivBase arg found");
-        OpSrc = createSource(PrivBase, DONTCARESIGNED);
-      } else {
-        VISA_GenVar *R0 = nullptr;
-        CISA_CALL(Kernel->GetPredefinedVar(R0, PREDEFINED_R0));
-
-        CISA_CALL(Kernel->CreateVISASrcOperand(OpSrc, R0, MODIFIER_NONE, 0, 1,
-                                               0, 0, 5));
-      }
+      VISA_GenVar *R0 = nullptr;
+      CISA_CALL(Kernel->GetPredefinedVar(R0, PREDEFINED_R0));
+      CISA_CALL(Kernel->CreateVISASrcOperand(OpSrc, R0, MODIFIER_NONE, 0, 1, 0,
+                                             0, 5));
       CISA_CALL(Kernel->AppendVISADataMovementInst(
           ISA_MOV, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
           EXEC_SIZE_1, SpOpDst, OpSrc));
@@ -6210,9 +6177,6 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
     CISA_CALL(Kernel->CreateVISADstOperand(SpOpDst, Sp, 1, 0, 0));
     CISA_CALL(Kernel->CreateVISASrcOperand(SpOpSrc, Sp, MODIFIER_NONE, 0, 1, 0,
                                            0, 0));
-
-    if (UseGlobalMem)
-      StackOff *= visa::BytesPerOword;
     CISA_CALL(Kernel->CreateVISAImmediate(Imm, &StackOff, ISA_TYPE_UQ));
     CISA_CALL(Kernel->AppendVISAArithmeticInst(
         ISA_ADD, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
