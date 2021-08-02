@@ -242,6 +242,7 @@ private:
   bool lowerLLVMMaskedStore(CallInst* CI);
   bool lowerLLVMMaskedGather(CallInst *CI);
   bool lowerLLVMMaskedScatter(CallInst *CI);
+  bool lowerFMulAdd(CallInst *CI);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -1476,6 +1477,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return true;
     case Intrinsic::expect:
       llvm_unreachable("Expect intrinsic should be lowered before");
+    case Intrinsic::fmuladd:
+      return lowerFMulAdd(CI);
     }
     return false;
   }
@@ -3175,6 +3178,18 @@ bool GenXLowering::lowerLLVMMaskedScatter(CallInst* CallOp) {
   CallInst::Create(NewFDecl, { MaskV, NumBlksC, PtrV, DataV },
       CallOp->getName(), CallOp);
   ToErase.push_back(CallOp);
+  return true;
+}
+
+bool GenXLowering::lowerFMulAdd(CallInst *CI) {
+  IGC_ASSERT(CI);
+  auto *Decl = Intrinsic::getDeclaration(CI->getModule(), Intrinsic::fma,
+                                         {CI->getType()});
+  SmallVector<Value *, 3> Args{CI->args()};
+  auto *FMA = CallInst::Create(Decl, Args, CI->getName(), CI);
+  CI->replaceAllUsesWith(FMA);
+
+  ToErase.push_back(CI);
   return true;
 }
 
