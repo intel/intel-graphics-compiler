@@ -198,28 +198,22 @@ createMainInst<BuiltinID::Select>(const std::vector<ValueRef> &Operands, Type &,
 
 template <>
 std::vector<ValueRef>
-createMainInst<BuiltinID::RdRegion>(const std::vector<ValueRef> &Operands,
-                                    Type &, IRBuilder<> &IRB) {
-  auto IID = Operands[RdRegionOperand::Source]
-                     .get()
-                     .getType()
-                     ->getScalarType()
-                     ->isFloatingPointTy()
-                 ? GenXIntrinsic::genx_rdregionf
-                 : GenXIntrinsic::genx_rdregioni;
-  Type *Tys[] = {Operands[RdRegionOperand::Destination]
+createMainInst<BuiltinID::RdRegionInt>(const std::vector<ValueRef> &Operands,
+                                       Type &, IRBuilder<> &IRB) {
+  Type *Tys[] = {Operands[RdRegionIntOperand::Destination]
                      .get()
                      .getType()
                      ->getPointerElementType(),
-                 Operands[RdRegionOperand::Source].get().getType(),
-                 Operands[RdRegionOperand::Offset].get().getType()};
+                 Operands[RdRegionIntOperand::Source].get().getType(),
+                 Operands[RdRegionIntOperand::Offset].get().getType()};
   auto *Decl = GenXIntrinsic::getGenXDeclaration(
-      IRB.GetInsertBlock()->getParent()->getParent(), IID, Tys);
-  Value *Args[] = {&Operands[RdRegionOperand::Source].get(),
-                   &Operands[RdRegionOperand::VStride].get(),
-                   &Operands[RdRegionOperand::Width].get(),
-                   &Operands[RdRegionOperand::Stride].get(),
-                   &Operands[RdRegionOperand::Offset].get(),
+      IRB.GetInsertBlock()->getParent()->getParent(),
+      GenXIntrinsic::genx_rdregioni, Tys);
+  Value *Args[] = {&Operands[RdRegionIntOperand::Source].get(),
+                   &Operands[RdRegionIntOperand::VStride].get(),
+                   &Operands[RdRegionIntOperand::Width].get(),
+                   &Operands[RdRegionIntOperand::Stride].get(),
+                   &Operands[RdRegionIntOperand::Offset].get(),
                    UndefValue::get(IRB.getInt32Ty())};
   auto *RdR = IRB.CreateCall(Decl, Args, "cmcl.rdr");
   return {*RdR};
@@ -227,27 +221,67 @@ createMainInst<BuiltinID::RdRegion>(const std::vector<ValueRef> &Operands,
 
 template <>
 std::vector<ValueRef>
-createMainInst<BuiltinID::WrRegion>(const std::vector<ValueRef> &Operands,
-                                    Type &, IRBuilder<> &IRB) {
-  auto IID = Operands[WrRegionOperand::Source]
+createMainInst<BuiltinID::RdRegionFloat>(const std::vector<ValueRef> &Operands,
+                                         Type &, IRBuilder<> &IRB) {
+  Type *Tys[] = {Operands[RdRegionFloatOperand::Destination]
                      .get()
                      .getType()
-                     ->getScalarType()
-                     ->isFloatingPointTy()
-                 ? GenXIntrinsic::genx_wrregionf
-                 : GenXIntrinsic::genx_wrregioni;
-  Type *Tys[] = {Operands[WrRegionOperand::Destination].get().getType(),
-                 Operands[WrRegionOperand::Source].get().getType(),
-                 Operands[WrRegionOperand::Offset].get().getType(),
+                     ->getPointerElementType(),
+                 Operands[RdRegionFloatOperand::Source].get().getType(),
+                 Operands[RdRegionFloatOperand::Offset].get().getType()};
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(
+      IRB.GetInsertBlock()->getParent()->getParent(),
+      GenXIntrinsic::genx_rdregionf, Tys);
+  Value *Args[] = {&Operands[RdRegionFloatOperand::Source].get(),
+                   &Operands[RdRegionFloatOperand::VStride].get(),
+                   &Operands[RdRegionFloatOperand::Width].get(),
+                   &Operands[RdRegionFloatOperand::Stride].get(),
+                   &Operands[RdRegionFloatOperand::Offset].get(),
+                   UndefValue::get(IRB.getInt32Ty())};
+  auto *RdR = IRB.CreateCall(Decl, Args, "cmcl.rdr");
+  return {*RdR};
+}
+
+template <>
+std::vector<ValueRef>
+createMainInst<BuiltinID::WrRegionInt>(const std::vector<ValueRef> &Operands,
+                                       Type &, IRBuilder<> &IRB) {
+  Type *Tys[] = {Operands[WrRegionIntOperand::Destination].get().getType(),
+                 Operands[WrRegionIntOperand::Source].get().getType(),
+                 Operands[WrRegionIntOperand::Offset].get().getType(),
                  IRB.getInt1Ty()};
   auto *Decl = GenXIntrinsic::getGenXDeclaration(
-      IRB.GetInsertBlock()->getParent()->getParent(), IID, Tys);
-  Value *Args[] = {&Operands[WrRegionOperand::Destination].get(),
-                   &Operands[WrRegionOperand::Source].get(),
-                   &Operands[WrRegionOperand::VStride].get(),
-                   &Operands[WrRegionOperand::Width].get(),
-                   &Operands[WrRegionOperand::Stride].get(),
-                   &Operands[WrRegionOperand::Offset].get(),
+      IRB.GetInsertBlock()->getParent()->getParent(),
+      GenXIntrinsic::genx_wrregioni, Tys);
+  Value *Args[] = {&Operands[WrRegionIntOperand::Destination].get(),
+                   &Operands[WrRegionIntOperand::Source].get(),
+                   &Operands[WrRegionIntOperand::VStride].get(),
+                   &Operands[WrRegionIntOperand::Width].get(),
+                   &Operands[WrRegionIntOperand::Stride].get(),
+                   &Operands[WrRegionIntOperand::Offset].get(),
+                   UndefValue::get(IRB.getInt32Ty()),
+                   IRB.getTrue()};
+  auto *WrR = IRB.CreateCall(Decl, Args, "cmcl.wrr");
+  return {*WrR};
+}
+
+template <>
+std::vector<ValueRef>
+createMainInst<BuiltinID::WrRegionFloat>(const std::vector<ValueRef> &Operands,
+                                         Type &, IRBuilder<> &IRB) {
+  Type *Tys[] = {Operands[WrRegionFloatOperand::Destination].get().getType(),
+                 Operands[WrRegionFloatOperand::Source].get().getType(),
+                 Operands[WrRegionFloatOperand::Offset].get().getType(),
+                 IRB.getInt1Ty()};
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(
+      IRB.GetInsertBlock()->getParent()->getParent(),
+      GenXIntrinsic::genx_wrregionf, Tys);
+  Value *Args[] = {&Operands[WrRegionFloatOperand::Destination].get(),
+                   &Operands[WrRegionFloatOperand::Source].get(),
+                   &Operands[WrRegionFloatOperand::VStride].get(),
+                   &Operands[WrRegionFloatOperand::Width].get(),
+                   &Operands[WrRegionFloatOperand::Stride].get(),
+                   &Operands[WrRegionFloatOperand::Offset].get(),
                    UndefValue::get(IRB.getInt32Ty()),
                    IRB.getTrue()};
   auto *WrR = IRB.CreateCall(Decl, Args, "cmcl.wrr");
@@ -262,8 +296,7 @@ createMainInst<BuiltinID::PrintfBuffer>(const std::vector<ValueRef> &,
       IRB.GetInsertBlock()->getParent()->getParent(),
       GenXIntrinsic::genx_print_buffer, {});
   auto *IntPtr = IRB.CreateCall(Decl, {}, "cmcl.print.buffer");
-  auto *Ptr = IRB.CreateIntToPtr(IntPtr, &BiTy);
-  return {*Ptr};
+  return {*IntPtr};
 }
 
 template <>
@@ -361,10 +394,12 @@ static BuiltinCallHandlerSeq getBuiltinCallHandlers() {
   BuiltinCallHandlerSeq Handlers{BuiltinID::Size};
   Handlers[BuiltinID::Select] =
       handleBuiltinCall<BuiltinID::Select>;
-  Handlers[BuiltinID::RdRegion] =
-      handleBuiltinCall<BuiltinID::RdRegion>;
-  Handlers[BuiltinID::WrRegion] =
-      handleBuiltinCall<BuiltinID::WrRegion>;
+  Handlers[BuiltinID::RdRegionInt] = handleBuiltinCall<BuiltinID::RdRegionInt>;
+  Handlers[BuiltinID::RdRegionFloat] =
+      handleBuiltinCall<BuiltinID::RdRegionFloat>;
+  Handlers[BuiltinID::WrRegionInt] = handleBuiltinCall<BuiltinID::WrRegionInt>;
+  Handlers[BuiltinID::WrRegionFloat] =
+      handleBuiltinCall<BuiltinID::WrRegionFloat>;
   Handlers[BuiltinID::PrintfBuffer] =
       handleBuiltinCall<BuiltinID::PrintfBuffer>;
   Handlers[BuiltinID::PrintfFormatIndex] =

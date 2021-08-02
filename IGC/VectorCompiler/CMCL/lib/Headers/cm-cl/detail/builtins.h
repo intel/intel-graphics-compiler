@@ -17,13 +17,20 @@ SPDX-License-Identifier: MIT
 
 extern "C" void __cm_cl_select(void *res, void *cond, void *true_val,
                                void *false_val);
-extern "C" void __cm_cl_rdregion(void *res, void *src, int vstride, int width,
-                                 int stride,
-                                 cm::detail::vector_offset_type offset);
-extern "C" void __cm_cl_wrregion(void *res, void *src, int vstride, int width,
-                                 int stride,
-                                 cm::detail::vector_offset_type offset);
-extern "C" __global void *__cm_cl_printf_buffer();
+extern "C" void __cm_cl_rdregion_int(void *res, void *src, int vstride,
+                                     int width, int stride,
+                                     cm::detail::vector_offset_type offset);
+extern "C" void __cm_cl_rdregion_float(void *res, void *src, int vstride,
+                                       int width, int stride,
+                                       cm::detail::vector_offset_type offset);
+extern "C" void __cm_cl_wrregion_int(void *res, void *src, int vstride,
+                                     int width, int stride,
+                                     cm::detail::vector_offset_type offset);
+extern "C" void __cm_cl_wrregion_float(void *res, void *src, int vstride,
+                                       int width, int stride,
+                                       cm::detail::vector_offset_type offset);
+// FIXME: for legacy issues 64-bit pointer is always returned.
+extern "C" uint64_t __cm_cl_printf_buffer();
 extern "C" int __cm_cl_printf_format_index(__constant char *str);
 extern "C" int __cm_cl_printf_format_index_legacy(__private char *str);
 extern "C" void __cm_cl_svm_scatter(int num_blocks, void *address, void *src);
@@ -95,7 +102,12 @@ vector_impl<T, vwidth * width> read_region(vector_impl<T, src_width> src,
     return src[offset];
   else {
     vector_impl<T, vwidth * width> res;
-    __cm_cl_rdregion(&res, &src, vstride, width, stride, offset * sizeof(T));
+    if constexpr (cl::is_floating_point<T>::value)
+      __cm_cl_rdregion_float(&res, &src, vstride, width, stride,
+                             offset * sizeof(T));
+    else
+      __cm_cl_rdregion_int(&res, &src, vstride, width, stride,
+                           offset * sizeof(T));
     return res;
   }
 }
@@ -110,11 +122,21 @@ void write_region(vector_impl<T, dst_width> &dst, vector_impl<T, src_width> src,
                 "provided region is illegal");
   if constexpr (src_width == 1 && width == 1)
     dst[offset] = src[0];
-  else
-    __cm_cl_wrregion(&dst, &src, vstride, width, stride, offset * sizeof(T));
+  else {
+    if constexpr (cl::is_floating_point<T>::value)
+      __cm_cl_wrregion_float(&dst, &src, vstride, width, stride,
+                             offset * sizeof(T));
+    else
+      __cm_cl_wrregion_int(&dst, &src, vstride, width, stride,
+                           offset * sizeof(T));
+  }
 }
 
-inline __global void *printf_buffer() { return __cm_cl_printf_buffer(); }
+inline __global void *printf_buffer() {
+  // FIXME: for legacy issues 64-bit pointer is always returned.
+  auto ptr = static_cast<uintptr_t>(__cm_cl_printf_buffer());
+  return reinterpret_cast<__global void *>(ptr);
+}
 
 inline int printf_format_index(__constant char *str) {
   return __cm_cl_printf_format_index(str);

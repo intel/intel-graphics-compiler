@@ -25,8 +25,8 @@
         {"Name": "FalseValue", "Kind": "VectorIn"}
       ]
     },
-    "RdRegion": {
-      "Name": "rdregion",
+    "RdRegionInt": {
+      "Name": "rdregion_int",
       "Operands": [
         {"Name": "Destination", "Kind": "VectorOut"},
         {"Name": "Source", "Kind": "VectorIn"},
@@ -36,8 +36,30 @@
         {"Name": "Offset", "Kind": "ScalarIn"}
       ]
     },
-    "WrRegion": {
-      "Name": "wrregion",
+    "RdRegionFloat": {
+      "Name": "rdregion_float",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorOut"},
+        {"Name": "Source", "Kind": "VectorIn"},
+        {"Name": "VStride", "Kind": "ScalarConst"},
+        {"Name": "Width", "Kind": "ScalarConst"},
+        {"Name": "Stride", "Kind": "ScalarConst"},
+        {"Name": "Offset", "Kind": "ScalarIn"}
+      ]
+    },
+    "WrRegionInt": {
+      "Name": "wrregion_int",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorInOut"},
+        {"Name": "Source", "Kind": "VectorIn"},
+        {"Name": "VStride", "Kind": "ScalarConst"},
+        {"Name": "Width", "Kind": "ScalarConst"},
+        {"Name": "Stride", "Kind": "ScalarConst"},
+        {"Name": "Offset", "Kind": "ScalarIn"}
+      ]
+    },
+    "WrRegionFloat": {
+      "Name": "wrregion_float",
       "Operands": [
         {"Name": "Destination", "Kind": "VectorInOut"},
         {"Name": "Source", "Kind": "VectorIn"},

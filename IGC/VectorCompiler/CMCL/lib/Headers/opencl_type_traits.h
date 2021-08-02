@@ -59,6 +59,19 @@ struct conditional { using type = T; };
 template<typename T, typename F>
 struct conditional<false, T, F> { using type = F; };
 
+template <typename T> struct remove_cv { using type = T; };
+template <typename T> struct remove_cv<const T> { using type = T; };
+template <typename T> struct remove_cv<volatile T> { using type = T; };
+template <typename T> struct remove_cv<const volatile T> { using type = T; };
+
+template <typename T>
+struct is_floating_point
+    : integral_constant<
+          bool, is_same<float, typename remove_cv<T>::type>::value ||
+                    is_same<double, typename remove_cv<T>::type>::value ||
+                    is_same<long double, typename remove_cv<T>::type>::value> {
+};
+
 } // namespace cl
 
 #endif // OPENCL_TYPE_TRAITS
