@@ -94,6 +94,9 @@ inline bool opMustBeConstant(Instruction *I, unsigned OpNum) {
 // from FunctionComparator::cmpConstants
 bool areConstantsEqual(const Constant *C1, const Constant *C2);
 
+// Remove all genx.constant* intrinsics that have non-constant source
+bool cleanupConstantLoads(Function *F);
+
 // Load a constant using the llvm.genx.constant intrinsic.
 inline Instruction *
 loadConstant(Constant *C, Instruction *InsertBefore,

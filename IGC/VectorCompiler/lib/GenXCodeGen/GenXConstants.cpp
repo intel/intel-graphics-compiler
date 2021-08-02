@@ -563,6 +563,30 @@ bool genx::areConstantsEqual(const Constant *C1, const Constant *C2) {
 }
 
 /***********************************************************************
+ * cleanupConstantLoads : remove all genx.constant* intrinsics that have
+ * non-constant source operand
+ */
+bool genx::cleanupConstantLoads(Function *F) {
+  bool Modified = false;
+  for (auto I = inst_begin(F), E = inst_end(F); I != E;) {
+    auto *CI = dyn_cast<CallInst>(&*I++);
+    if (!CI)
+      continue;
+    auto IID = GenXIntrinsic::getAnyIntrinsicID(CI);
+    if (IID != GenXIntrinsic::genx_constanti &&
+        IID != GenXIntrinsic::genx_constantf &&
+        IID != GenXIntrinsic::genx_constantpred)
+      continue;
+    if (isa<Constant>(CI->getOperand(0)))
+      continue;
+    CI->replaceAllUsesWith(CI->getOperand(0));
+    CI->eraseFromParent();
+    Modified = true;
+  }
+  return Modified;
+}
+
+/***********************************************************************
  * loadPhiConstants : load constant incomings in phi nodes, commoning up
  *      if appropriate
  */
