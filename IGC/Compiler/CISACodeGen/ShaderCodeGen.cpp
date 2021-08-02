@@ -92,6 +92,7 @@ SPDX-License-Identifier: MIT
 #if defined(_DEBUG) && !defined(ANDROID)
 #include "Compiler/VerificationPass.hpp"
 #endif
+#include "Compiler/FixInvalidFuncNamePass.hpp"
 #include "Compiler/LegalizationPass.hpp"
 #include "Compiler/LowPrecisionOptPass.hpp"
 #include "Compiler/WorkaroundAnalysisPass.h"
@@ -318,6 +319,7 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     }
 
     mpm.add(new Layout());
+    mpm.add(createFixInvalidFuncNamePass());
 
     mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_END));
 
