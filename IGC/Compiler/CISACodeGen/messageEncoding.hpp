@@ -277,6 +277,10 @@ namespace IGC
     static const unsigned int BINDLESS_BTI = 252;
 
     /*****************************************************************************\
+    CONST: SSH_BINDLESS_BTI
+    \*****************************************************************************/
+    static const unsigned int SSH_BINDLESS_BTI = 251;
+    /*****************************************************************************\
     ENUM: EU_GEN7_DATA_CACHE_MESSAGE_TYPE
     \*****************************************************************************/
     enum EU_GEN7_DATA_CACHE_MESSAGE_TYPE

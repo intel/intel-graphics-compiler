@@ -1020,7 +1020,6 @@ namespace IGC
             break;
         case GenISAIntrinsic::GenISA_atomiccounterinc:
         case GenISAIntrinsic::GenISA_atomiccounterpredec:
-            overloadedTys.push_back(pIntr->getType());
             overloadedTys.push_back(args[0]->getType());
             break;
         case llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed:

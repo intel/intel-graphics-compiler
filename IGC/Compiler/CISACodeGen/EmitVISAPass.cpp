@@ -14335,6 +14335,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 
     llvm::Value* pllbuffer = pInsn->getOperand(0);
     ResourceDescriptor resource = GetResourceVariable(pllbuffer);
+    uint binding_table_index = 0;
 
     CVariable* prefixVar[2] = { nullptr, nullptr };
     CVariable* dst = m_destination;
@@ -14382,6 +14383,13 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
         EALIGN_GRF,
         true, CName::NONE);
 
+    if (resource.m_surfaceType == ESURFACE_SSHBINDLESS)
+        binding_table_index = SSH_BINDLESS_BTI;
+    else if (resource.m_surfaceType == ESURFACE_BINDLESS)
+        binding_table_index = BINDLESS_BTI;
+    else
+        binding_table_index = (uint)resource.m_resource->GetImmediateValue();
+
     uint messageDescriptor = encodeMessageDescriptorForAtomicUnaryOp(
         1,
         returnsImmValue ? 1 : 0,
@@ -14390,7 +14398,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
         returnsImmValue,
         SIMDMode::SIMD8,
         atomicType,
-        resource.m_surfaceType == ESURFACE_BINDLESS ? BINDLESS_BTI : (uint)resource.m_resource->GetImmediateValue());
+        binding_table_index);
 
     CVariable* pMessDesc = m_currShader->ImmToVariable(messageDescriptor, ISA_TYPE_D);
     // src1 len = 1, SFID = DC1
@@ -14405,7 +14413,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     CVariable* exDesc =
         m_currShader->ImmToVariable(exDescVal, ISA_TYPE_D);
 
-    if (resource.m_surfaceType == ESURFACE_BINDLESS)
+    if (resource.m_surfaceType == ESURFACE_BINDLESS || resource.m_surfaceType == ESURFACE_SSHBINDLESS)
     {
         CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
         m_encoder->Add(temp, resource.m_resource, exDesc);
