@@ -2878,8 +2878,9 @@ bool SpillManagerGRF::checkUniqueDefAligned(G4_DstRegRegion* dst, G4_BB* defBB)
         auto otherDefDstRgn = otherDefInst->getDst();
         unsigned int otherLb = otherDefDstRgn->getLeftBound();
         unsigned int otherRb = otherDefDstRgn->getRightBound();
+        unsigned int otherTypeSize = otherDefDstRgn->getTypeSize();
         bool commonRow = false;
-        for (unsigned int i = otherLb; i <= otherRb; i += GRFSize)
+        for (unsigned int i = otherLb; i <= otherRb; i += otherTypeSize)
         {
             auto rowWritten = i / GRFSize;
             if (rowWritten >= startRow && rowWritten <= endRow)
