@@ -341,14 +341,16 @@ typedef struct _G4_InstOptInfo
 
 
 //various attributes for the Gen opcodes
+#define ATTR_NONE               0x00000000
 #define ATTR_PSEUDO             0x00000001
 #define ATTR_COMMUTATIVE        0x00000002
 #define ATTR_FLOAT_SRC_ONLY     0x00000004
-#define ATTR_NONE               0x00000000
+#define ATTR_WIDE_DST           0x00000008
 
 #define INST_PSEUDO(inst)           (G4_Inst_Table[inst].attributes & ATTR_PSEUDO)
 #define INST_COMMUTATIVE(inst)      (G4_Inst_Table[inst].attributes & ATTR_COMMUTATIVE)
 #define INST_FLOAT_SRC_ONLY(inst)   (G4_Inst_Table[inst].attributes & ATTR_FLOAT_SRC_ONLY)
+#define INST_WIDE_DST(inst)         (G4_Inst_Table[inst].attributes & ATTR_WIDE_DST)
 
 #define HANDLE_INST(op, nsrc, ndst, type, plat, attr) G4_ ## op,
 

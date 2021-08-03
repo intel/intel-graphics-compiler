@@ -37,7 +37,7 @@ void InstSplitPass::run()
 
         if (inst->isSend() || inst->opcode() == G4_label ||
             inst->opcode() == G4_pln || inst->opcode() == G4_return ||
-            inst->isFlowControl() || inst->isPseudoLogic())
+            inst->isFlowControl() || inst->isPseudoLogic() || inst->opcode() == G4_madw)
         {
             continue;
         }
