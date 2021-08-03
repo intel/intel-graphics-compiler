@@ -7859,12 +7859,18 @@ void EmitPass::getCoarsePixelSize(CVariable* destination, const uint component, 
 
     CPixelShader* const psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* r;
+    bool isR1Lo = false;
     // Coarse pixel sizes are in R1 for both simd32 halves.
     {
         r = psProgram->GetPhase() == PSPHASE_PIXEL ? psProgram->GetCoarseR1() : psProgram->GetR1();
+        isR1Lo = true;
     }
     r = m_currShader->GetVarHalf(r, 0);
     CVariable* const coarsePixelSize = m_currShader->BitCast(r, ISA_TYPE_UB);
+    if (isR1Lo && isCodePatchCandidate)
+    {
+        psProgram->AppendR1Lo(coarsePixelSize);
+    }
     m_encoder->SetSrcRegion(0, 0, 1, 0);
     uint subReg;
     {
@@ -7915,6 +7921,10 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             CVariable* floatR1 = nullptr;
             {
                 floatR1 = psProgram->BitCast(psProgram->GetR1(), ISA_TYPE_F);
+                if (m_encoder->IsCodePatchCandidate())
+                {
+                    psProgram->AppendR1Lo(floatR1);
+                }
             }
 
             // Returns (x - xstart) or (y - ystart) in float.
@@ -8124,6 +8134,10 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                     m_encoder->SetSimdSize(simdSize);
                     m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
                     m_encoder->SetDstSubVar(i);
+                    if (m_encoder->IsCodePatchCandidate())
+                    {
+                        psProgram->AppendR1Lo(src);
+                    }
                     m_encoder->Cast(dst, src);
                     m_encoder->Push();
                 }
@@ -8294,10 +8308,16 @@ void EmitPass::getPixelPosition(CVariable* destination, const uint component, bo
     {
         // Coarse pixel sizes are in R1 for both simd32 halves.
         CVariable* r;
+        bool isR1Lo = false;
         {
             r = m_currShader->GetVarHalf(psProgram->GetR1(), 0);
+            isR1Lo = true;
         }
         CVariable* CPSize = m_currShader->BitCast(r, ISA_TYPE_UB);
+        if (isR1Lo && isCodePatchCandidate)
+        {
+            psProgram->AppendR1Lo(CPSize);
+        }
         pixelSize =
             m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
@@ -8332,6 +8352,7 @@ void EmitPass::getPixelPosition(CVariable* destination, const uint component, bo
         if (isCodePatchCandidate)
         {
             m_encoder->SetPayloadSectionAsPrimary();
+            psProgram->AppendR1Lo(position);
             m_currShader->AddPatchTempSetup(destination);
         }
         m_encoder->Add(destination, position, pixelSize);
