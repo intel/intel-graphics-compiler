@@ -2166,10 +2166,6 @@ e_alignment IGC::GetPreferredAlignment(llvm::Value* V, WIAnalysis* WIA,
             Align = GetPreferredAlignmentOnUse(V, WIA, pContext);
         return (Align == EALIGN_AUTO) ? (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD : Align;
     }
-    else if (isa<LdRawIntrinsic>(V))
-    {
-        return (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
-    }
 
     // If uniform variables are results from uniform atomic ops, they need
     // being GRF aligned.
