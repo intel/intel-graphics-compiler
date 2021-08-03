@@ -1180,8 +1180,9 @@ static uint32_t createSampleHeader0Dot2(VISASampler3DSubOpCode op,
             secondDword |= (channels.getSingleChannel() << 16);
         }
         break;
-    case VISA_3D_GATHER4_C:
     case VISA_3D_GATHER4_PO_C:
+        break;
+    case VISA_3D_GATHER4_C:
         // do nothing as channle must be Red (0)
         break;
     default:
