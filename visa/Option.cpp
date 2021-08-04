@@ -607,6 +607,76 @@ std::string Options::getEncoderOutputFile()
     }
 }
 
+//
+// This is to read visa options from environment variable: VISA_OPTIONS
+// Options string is blank-seperated, just like ones used in genx_ir.
+// For example,
+//    VISA_OPTIONS=-dotAll -noAccSub
+//  or
+//    VISA_OPTIONS="-dotAll -noAccSub"
+//
+// The option in this environment variable overrides the previous one!
+// This is intended for non visa standalone use only (not via genx_ir).
+//
+void Options::getOptionsFromEV()
+{
+#if defined(_DEBUG) || defined(_INTERNAL)
+    const char* visaOptionsEV = "VISA_OPTIONS";
+    const char* pVisaEV = getenv(visaOptionsEV);
+    if (!pVisaEV)
+    {
+        return;
+    }
+
+    std::cerr << "VISA Environment Variable in effect:\n"
+        << visaOptionsEV << " = " << pVisaEV << "\n";
+
+    std::string ostr(pVisaEV);
+    // Remove leading/trailing quote if present
+    size_t pos = ostr.find_first_not_of(' ');
+    char firstC = ostr.at(pos);
+    if (firstC == '"' || firstC == '\'')
+    {
+        ostr.at(pos) = ' ';
+        size_t p0 = ostr.find_last_not_of(" ");
+        if (firstC == ostr.at(p0))
+        {
+            ostr.at(p0) = ' ';
+        }
+        else
+        {
+            std::cerr << "    Environment variable's leading and trailing quote ("
+                << firstC << ", " << ostr.at(p0) << ") : not matched!  Ignored!\n";
+            return;
+        }
+        // pos to the fist non-blank valid char
+        pos = ostr.find_first_not_of(' ', pos + 1);
+    }
+    std::vector<std::string> flags;
+    size_t currPos = pos;
+    while (currPos != std::string::npos)
+    {
+        pos = ostr.find_first_of(' ', currPos);
+        flags.emplace_back(ostr.substr(currPos, pos - currPos));
+        currPos = ostr.find_first_not_of(' ', pos);  // pos can be npos!
+    }
+
+    int sz = (int)flags.size();
+    if (sz <= 0) {
+        return;
+    }
+    char** argvars = new char* [sz];
+    const char** pargs = (const char**)argvars;
+    for (int i = 0; i < sz; ++i)
+    {
+        pargs[i] = flags[i].c_str();
+    }
+    parseOptions(sz, pargs);
+    delete [] argvars;
+    return;
+#endif
+}
+
 void Options::dump(void) const {
     m_vISAOptions.dump();
 }

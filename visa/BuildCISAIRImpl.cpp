@@ -869,6 +869,10 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
     stopTimer(TimerID::BUILDER);   // TIMER_BUILDER is started when builder is created
     int status = VISA_SUCCESS;
 
+#if defined(_DEBUG) || defined(_INTERNAL)
+    m_options.getOptionsFromEV();
+#endif
+
     std::string name = std::string(nameInput);
 
     if (IS_VISA_BOTH_PATH)

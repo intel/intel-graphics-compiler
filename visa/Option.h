@@ -150,6 +150,8 @@ public:
 
     Stepping GetStepping() const { return stepping; }
 
+    void getOptionsFromEV();
+
     void dump() const;
 
 private:
