@@ -58,6 +58,8 @@ SPDX-License-Identifier: MIT
 #include "IgnoreRAUWValueMap.h"
 #include "llvm/IR/Value.h"
 
+#include <unordered_map>
+
 namespace llvm {
 
 class CallInst;
