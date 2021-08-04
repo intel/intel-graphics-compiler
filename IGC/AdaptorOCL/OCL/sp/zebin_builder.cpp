@@ -634,7 +634,7 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
 
     char* secData = NULL;
     size_t secDataSize = 0;
-    std::vector<std::string> zeBinSymbols;      // ELF symbols added to zeBinary; to avoid duplicated symbols.
+    std::vector<std::string> zeBinSymbols;      // ELF symbols added to zeBinary for a given section; to avoid duplicated symbols.
 
     // ELF binary scanning sections with copying whole sections one by one to zeBinary, except:
     // - empty sections
@@ -670,6 +670,12 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
                     IGC_ASSERT_MESSAGE((secDataSize % relocEntrySize) == 0, "Incorrect relocation section size");
                     IGC_ASSERT_MESSAGE((entrySize == 64) || (entrySize == 32), "Incorrect relocation entry size");
 
+                    // If .rela.foo is being processed then find zeBinary section ID of previously added .foo section
+                    ZEELFObjectBuilder::SectionID nonRelaSectionID =
+                        mBuilder.getSectionIDBySectionName(elfReader->GetSectionName(elfSectionIdx) + sizeof(".rela") - 1);
+                    // Local symbols with the same name are allowed in zebinary if defined in different sections.
+                    zeBinSymbols.clear();
+
                     if (entrySize == 64)
                     {
                         uint64_t relocEntryNum = secDataSize / relocEntrySize;
@@ -695,9 +701,6 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
                                     (uint32_t)symtabEntry.st_size,
                                     symName);  // Symbol's name
 
-                                // If .rela.foo is being processed then find zeBinary section ID of previously added .foo section
-                                ZEELFObjectBuilder::SectionID nonRelaSectionID =
-                                    mBuilder.getSectionIDBySectionName(elfReader->GetSectionName(elfSectionIdx) + sizeof(".rela") - 1);
                                 // Avoid symbol duplications - check whether a current symbol has been previously added.
                                 bool isSymbolAdded = false;
                                 for (auto zeBinSym : zeBinSymbols)
