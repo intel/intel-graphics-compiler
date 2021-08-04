@@ -20,6 +20,8 @@ namespace TC
 
         bool AllowSendFusion() const override { return false; }
 
+        bool SupportFastestStage1() const override { return true; }
+
         bool SupportsIEEEMinMax() const override { return true; }
 
         bool NeedCheckContractionAllowed() const override { return true; }

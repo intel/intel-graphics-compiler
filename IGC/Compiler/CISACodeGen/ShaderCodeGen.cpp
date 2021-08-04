@@ -1642,7 +1642,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(new SampleMultiversioning(pContext));
         }
 
-        bool disableGOPT = ((IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
+        bool disableGOPT = ( (IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
                                IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
                              (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT));
 
