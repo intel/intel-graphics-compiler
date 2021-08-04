@@ -1356,6 +1356,13 @@ void FlowGraph::handleReturn(Label_BB_Map& labelMap, FuncInfoHashTable& funcInfo
                 retAddr->setBBType(G4_BB_RETURN_TYPE);
             }
         }
+
+        if (bb->isEndWithFCall())
+        {
+            // normalizeFlowGraph() process FCALL BB. (Maybe should be processed here?)
+            // Here just set BB type
+            bb->setBBType(G4_BB_FCALL_TYPE);
+        }
     }
     //
     // remove <CALL, return addr> link when it is not a conditional call
