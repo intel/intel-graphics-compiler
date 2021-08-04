@@ -27,18 +27,13 @@ ZEBinaryBuilder::ZEBinaryBuilder(
 {
     G6HWC::InitializeCapsGen8(&mHWCaps);
 
-    // IGC only generates executable
-    mBuilder.setFileType(ELF_TYPE_ZEBIN::ET_ZEBIN_EXE);
-
-    mBuilder.setMachine(plat.eProductFamily);
-
     // FIXME: Most fields leaves as 0
-    TargetFlags tf;
-    tf.generatorSpecificFlags = TargetFlags::GeneratorSpecificFlags::NONE;
-    tf.minHwRevisionId = plat.usRevId;
-    tf.maxHwRevisionId = plat.usRevId;
-    tf.generatorId = TargetFlags::GeneratorId::IGC;
-    mBuilder.setTargetFlag(tf);
+    TargetMetadata metadata;
+    metadata.generatorSpecificFlags = TargetMetadata::GeneratorSpecificFlags::NONE;
+    metadata.minHwRevisionId = plat.usRevId;
+    metadata.maxHwRevisionId = plat.usRevId;
+    metadata.generatorId = TargetMetadata::GeneratorId::IGC;
+    mBuilder.setTargetMetadata(metadata);
 
     addProgramScopeInfo(programInfo);
 
@@ -46,12 +41,14 @@ ZEBinaryBuilder::ZEBinaryBuilder(
         addSPIRV(spvData, spvSize);
 }
 
-void ZEBinaryBuilder::setGfxCoreFamilyToELFMachine(uint32_t value)
+void ZEBinaryBuilder::setProductFamily(PRODUCT_FAMILY value)
 {
-    TargetFlags tf = mBuilder.getTargetFlag();
-    tf.machineEntryUsesGfxCoreInsteadOfProductFamily = true;
-    mBuilder.setTargetFlag(tf);
-    mBuilder.setMachine(value);
+    mBuilder.setProductFamily(value);
+}
+
+void ZEBinaryBuilder::setGfxCoreFamily(GFXCORE_FAMILY value)
+{
+    mBuilder.setGfxCoreFamily(value);
 }
 
 void ZEBinaryBuilder::createKernel(

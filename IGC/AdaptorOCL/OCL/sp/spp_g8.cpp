@@ -417,7 +417,7 @@ void CGen8OpenCLProgram::GetZEBinary(
 
     ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
         m_Context.m_programInfo, (const uint8_t*)spv, spvSize);
-
+    zebuilder.setProductFamily(m_Platform.eProductFamily);
 
     std::vector<string> elfVecNames;      // Vector of parameters for the linker, contains in/out ELF file names and params
     std::vector<char*> elfVecPtrs;        // Vector of pointers to the elfVecNames vector elements

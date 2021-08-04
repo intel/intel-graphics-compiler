@@ -20,14 +20,9 @@ SPDX-License-Identifier: MIT
 
 namespace zebin {
 
-// ELF file type for ELF32_Ehdr::e_type
-enum ELF_TYPE_ZEBIN
-{
-    ET_ZEBIN_NONE = 0x0,
-
-    ET_ZEBIN_REL  = 0xff11,     // A relocatable ZE binary file
-    ET_ZEBIN_EXE  = 0xff12,     // An executable ZE binary file
-    ET_ZEBIN_DYN  = 0xff13,     // A shared object ZE binary file
+// ELF machine architecture
+enum {
+    EM_INTELGT = 205,
 };
 
 // ELF section type for ELF32_Shdr::sh_type
@@ -49,9 +44,14 @@ enum R_TYPE_ZEBIN
     R_ZE_SYM_ADDR_32_HI = 3  // higher 32bits of 64-bit address
 };
 
-// ELF32_Ehdr::e_flags
-struct TargetFlags {
+// ELF note type for INTELGT
+enum {
+    NT_INTELGT_PRODUCT_FAMILY = 1,
+    NT_INTELGT_GFXCORE_FAMILY = 2,
+    NT_INTELGT_TARGET_METADATA = 3,
+};
 
+struct TargetMetadata {
     // bit[7:0]: dedicated for specific generator (meaning based on generatorId)
     enum GeneratorSpecificFlags : uint8_t {
         NONE = 0
@@ -76,10 +76,8 @@ struct TargetFlags {
             // 0 - ignore minHwRevisionId and maxHwRevisionId
             // 1 - underlying device must match specified revisionId info
             bool disableExtendedValidation : 1;
-            // bit[15:15]:
-            // 0 - elfFileHeader::machine is PRODUCT_FAMILY
-            // 1 - elfFileHeader::machine is GFXCORE_FAMILY
-            bool machineEntryUsesGfxCoreInsteadOfProductFamily : 1;
+            // bit[15:15]: reserved bit for future use
+            bool reservedBit : 1;
             // bit[20:16]:  max compatible device revision Id (stepping)
             uint8_t maxHwRevisionId : 5;
             // bit[23:21]: generator of this device binary. Value defined in above GeneratorId
@@ -90,6 +88,8 @@ struct TargetFlags {
         uint32_t packed = 0U;
     };
 };
+
+static_assert(sizeof(TargetMetadata) == sizeof(uint32_t), "TargetMetadata should be packed");
 
 } // namespace zebin
 
