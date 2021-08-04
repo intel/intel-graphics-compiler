@@ -1995,7 +1995,7 @@ bool G4_INST::canPropagateTo(
     //If the operand to be copied is acc register, need to check if the use operand can use acc register
     if (src->isAccReg())
     {
-        if (!useInst->canSrcBeAcc(opndNum))
+        if (!useInst->canSrcBeAccBeforeHWConform(opndNum))
         {
             return false;
         }
@@ -7813,7 +7813,7 @@ bool G4_INST::canDstBeAcc() const
 // in addition to opcode-specific checks, we require
 // -- contiguous regions
 // -- simd8 for D/UD, simd8/16 for F, simd16 for HF/W, other types not allowed
-bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
+bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const
 {
     int srcId = getSrcNum(opndNum);
     assert((srcId == 0 || srcId == 1 || srcId == 2) && "must be either src0, src1 or src2");
@@ -7849,8 +7849,8 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     }
 
     if (builder.relaxedACCRestrictions() &&
-         isMixedMode() &&
-         isLowPrecisionFloatTy(src->getType()))
+        isMixedMode() &&
+        isLowPrecisionFloatTy(src->getType()))
     {
         return false;
     }
@@ -7860,40 +7860,8 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
         return false;
     }
 
-    // dst must be GRF-aligned
-    if ((getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
-    {
-        if (!(isMixedMode() && builder.getPlatform() == XeHP_SDV))
-            return false;
-    }
-
-    // check that src0 and dst have the same type/alignment
-    auto dstEltSize = getDst()->getHorzStride() * getDst()->getTypeSize();
-    if (dstEltSize > TypeSize(src->getType()))
-    {
-        return false;
-    }
-    else if (isLowPrecisionFloatTy(getDst()->getType()) && src->getType() == Type_F &&
-        dstEltSize == 2)
-    {
-        if (builder.relaxedACCRestrictions())
-        {
-            //When source is float or half float from accumulator register and destination is half float with a stride of 1,
-            //the source must register aligned. i.e., source must have offset zero.
-            if ((src->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
-            {
-                return false;
-            }
-        }
-        else
-        {
-            // no acc for mix mode inst with packed HF dst
-            return false;
-        }
-    }
-
     if (opcode() == G4_mad && srcId == 0 &&
-         !builder.canMadHaveSrc0Acc())
+        !builder.canMadHaveSrc0Acc())
     {
         // mac's implicit acc gets its region from dst, so we have to check src and
         // dst have the same type
@@ -7976,6 +7944,51 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     default:
         return false;
     }
+}
+
+bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const
+{
+    int srcId = getSrcNum(opndNum);
+    G4_SrcRegRegion* src = getSrc(srcId)->asSrcRegRegion();
+
+    // dst must be GRF-aligned
+    if ((getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
+    {
+        if (!(isMixedMode() && builder.getPlatform() == XeHP_SDV))
+            return false;
+    }
+
+    // check that src0 and dst have the same type/alignment
+    auto dstEltSize = getDst()->getHorzStride() * getDst()->getTypeSize();
+    if (dstEltSize > TypeSize(src->getType()))
+    {
+        return false;
+    }
+    else if (isLowPrecisionFloatTy(getDst()->getType()) && src->getType() == Type_F &&
+        dstEltSize == 2)
+    {
+        if (builder.relaxedACCRestrictions())
+        {
+            //When source is float or half float from accumulator register and destination is half float with a stride of 1,
+            //the source must register aligned. i.e., source must have offset zero.
+            if ((src->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            // no acc for mix mode inst with packed HF dst
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
+{
+    return canSrcBeAccBeforeHWConform(opndNum) && canSrcBeAccAfterHWConform(opndNum);
 }
 
 TARGET_PLATFORM G4_INST::getPlatform() const

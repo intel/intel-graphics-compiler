@@ -983,6 +983,10 @@ public:
     bool canDstBeAcc() const;
     bool canSrcBeAcc(Gen4_Operand_Number opndNum) const;
 
+    bool canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const;
+
+    bool canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const;
+
     TARGET_PLATFORM getPlatform() const;
 
     void setMetadata(const std::string& key, MDNode* value);
