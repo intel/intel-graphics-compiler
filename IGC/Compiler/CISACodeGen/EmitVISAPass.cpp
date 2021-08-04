@@ -8856,11 +8856,17 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_ldrawvector_indexed:
     case GenISAIntrinsic::GenISA_ldraw_indexed:
-        emitLoadRawIndexed(cast<LdRawIntrinsic>(inst));
+        emitLoadRawIndexed(
+            cast<LdRawIntrinsic>(inst),
+            cast<LdRawIntrinsic>(inst)->getOffsetValue(),
+            nullptr);
         break;
     case GenISAIntrinsic::GenISA_storerawvector_indexed:
     case GenISAIntrinsic::GenISA_storeraw_indexed:
-        emitStoreRawIndexed(cast<StoreRawIntrinsic>(inst));
+        emitStoreRawIndexed(
+            cast<StoreRawIntrinsic>(inst),
+            cast<StoreRawIntrinsic>(inst)->getOffsetValue(),
+            nullptr);
         break;
     case GenISAIntrinsic::GenISA_GetBufferPtr:
         emitGetBufferPtr(inst);
@@ -9914,15 +9920,15 @@ void EmitPass::emitUAVSerialize()
 }
 
 
-void EmitPass::emitLoadRawIndexed(LdRawIntrinsic * inst)
+void EmitPass::emitLoadRawIndexed(
+    LdRawIntrinsic * inst, Value * varOffset, ConstantInt * immOffset)
 {
-    Value* buf_ptrv = inst->getResourceValue();
-    Value* elem_idxv = inst->getOffsetValue();
+    Value* bufPtrv = inst->getResourceValue();
 
-    ResourceDescriptor resource = GetResourceVariable(buf_ptrv);
+    ResourceDescriptor resource = GetResourceVariable(bufPtrv);
     m_currShader->isMessageTargetDataCacheDataPort = true;
-    emitLoad3DInner(inst, resource, elem_idxv);
-
+    IGC_ASSERT(immOffset == nullptr);
+    emitLoad3DInner(inst, resource, varOffset);
 }
 
 void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resource, Value* elem_idxv)
@@ -10240,10 +10246,15 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         }
         break;
     case Instruction::Store:
-        emitStore(cast<StoreInst>(inst), nullptr, nullptr);
+        emitStore(cast<StoreInst>(inst),
+            cast<StoreInst>(inst)->getPointerOperand(),
+            nullptr);
         break;
     case Instruction::Load:
-        emitLoad(cast<LoadInst>(inst), nullptr, nullptr);
+        emitLoad(
+            cast<LoadInst>(inst),
+            cast<LoadInst>(inst)->getPointerOperand(),
+            nullptr);
         break;
     case Instruction::GetElementPtr:
         emitGEP(cast<GetElementPtrInst>(inst));
@@ -11108,16 +11119,16 @@ void EmitPass::emitSymbolRelocation(Function& F)
     }
 }
 
-void EmitPass::emitStoreRawIndexed(StoreRawIntrinsic* inst)
+void EmitPass::emitStoreRawIndexed(
+    StoreRawIntrinsic* inst, Value* varOffset, ConstantInt* immOffset)
 {
     Value* pBufPtr = inst->getResourceValue();
-    Value* pOffset = inst->getOffsetValue();
     Value* pValToStore = inst->getStoreValue();
 
     m_currShader->isMessageTargetDataCacheDataPort = true;
 
-    emitStore3DInner(pValToStore, pBufPtr, pOffset);
-
+    IGC_ASSERT(immOffset == nullptr);
+    emitStore3DInner(pValToStore, pBufPtr, varOffset);
 }
 
 void EmitPass::emitStore3D(StoreInst* inst, Value* elmIdxV)
@@ -11253,9 +11264,9 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
     }
 }
 
-void EmitPass::emitStore(StoreInst* inst, Value* offset, ConstantInt* immOffset)
+void EmitPass::emitStore(StoreInst* inst, Value* varOffset, ConstantInt* immOffset)
 {
-    emitVectorStore(inst, offset, immOffset);
+    emitVectorStore(inst, varOffset, immOffset);
 }
 
 CVariable* EmitPass::GetSymbol(llvm::Value* v) const

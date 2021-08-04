@@ -2908,7 +2908,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         }
     }
 
-    // If we use a value which is not marked has needed by the pattern matching something went wrong
+    // If we use a value which is not marked as needed by the pattern matching, then something went wrong
     IGC_ASSERT(!isa<Instruction>(value) || isa<PHINode>(value) || m_CG->NeedInstruction(cast<Instruction>(*value)));
 
     e_alignment preferredAlign = GetPreferredAlignment(value, m_WI, GetContext());
