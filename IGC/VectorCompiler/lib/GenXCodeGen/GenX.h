@@ -75,7 +75,7 @@ FunctionPass *createGenXLegalizationPass();
 ModulePass *createGenXEmulatePass();
 ModulePass *createGenXEmulationImportPass();
 FunctionPass *createGenXDeadVectorRemovalPass();
-FunctionPass *createGenXPatternMatchPass(const TargetOptions *Options);
+FunctionPass *createGenXPatternMatchPass();
 FunctionPass *createGenXPostLegalizationPass();
 FunctionPass *createTransformPrivMemPass();
 ModulePass *createGenXThreadPrivateMemoryPass();

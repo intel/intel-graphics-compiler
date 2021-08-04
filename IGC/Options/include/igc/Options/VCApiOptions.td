@@ -15,6 +15,10 @@ let Flags = [VCApiOption] in {
 def vc_codegen : PlainFlag<"vc-codegen">,
   HelpText<"Enable vector codegenerator">;
 
+def fp_contract : PlainJoined<"ffp-contract=">,
+  HelpText<"Form fused FP ops: fast (everywhere) | on (nowhere except insertion fma) | off (never fuse)">,
+  Values<"fast,on,off">;
+
 def : ZeFlag<"kernel-debug-enable">,
   Alias<emit_debug>, HelpText<"Alias for -g">;
 

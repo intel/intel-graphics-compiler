@@ -377,7 +377,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   ///
   PM.add(createBreakCriticalEdgesPass());
   /// .. include:: GenXPatternMatch.cpp
-  PM.add(createGenXPatternMatchPass(&Options));
+  PM.add(createGenXPatternMatchPass());
   if (!DisableVerify) PM.add(createVerifierPass());
   /// .. include:: GenXExtractVectorizer.cpp
   PM.add(createGenXExtractVectorizerPass());

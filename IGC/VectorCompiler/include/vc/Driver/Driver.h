@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/Optional.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Target/TargetOptions.h>
 
 #include <memory>
 #include <string>
@@ -77,6 +78,8 @@ struct CompileOptions {
   bool ForceLiveRangesLocalizationForAccUsage = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
   bool IsLargeGRFMode = false;
+
+  llvm::FPOpFusion::FPOpFusionMode AllowFPOpFusion = llvm::FPOpFusion::Standard;
 
   // Internal options.
   std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...

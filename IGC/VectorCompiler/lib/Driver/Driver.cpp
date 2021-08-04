@@ -178,6 +178,12 @@ static CodeGenOpt::Level getCodeGenOptLevel(const vc::CompileOptions &Opts) {
   return CodeGenOpt::Default;
 }
 
+static TargetOptions getTargetOptions(const vc::CompileOptions &Opts) {
+  TargetOptions Options;
+  Options.AllowFPOpFusion = Opts.AllowFPOpFusion;
+  return Options;
+}
+
 static Expected<std::unique_ptr<TargetMachine>>
 createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
   std::string Error;
@@ -186,9 +192,9 @@ createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
   IGC_ASSERT_MESSAGE(TheTarget, "vc target was not registered");
 
   const std::string FeaturesStr = getSubtargetFeatureString(Opts);
-  // These ones do not look useful for now. Maybe will be adjusted
-  // later to account for fp model.
-  const TargetOptions Options;
+
+  const TargetOptions Options = getTargetOptions(Opts);
+
   CodeGenOpt::Level OptLevel = getCodeGenOptLevel(Opts);
   std::unique_ptr<TargetMachine> TM{
       TheTarget->createTargetMachine(TheTriple.getTriple(), Opts.CPUStr,
@@ -575,6 +581,19 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.TranslateLegacyMemoryIntrinsics = true;
   if (ApiOptions.hasArg(OPT_large_GRF))
     Opts.IsLargeGRFMode = true;
+
+  if (opt::Arg *A = ApiOptions.getLastArg(OPT_fp_contract)) {
+    StringRef Val = A->getValue();
+    auto MayBeAllowFPOPFusion =
+        StringSwitch<Optional<FPOpFusion::FPOpFusionMode>>(Val)
+            .Case("on", FPOpFusion::Standard)
+            .Case("fast", FPOpFusion::Fast)
+            .Case("off", FPOpFusion::Strict)
+            .Default(None);
+    if (!MayBeAllowFPOPFusion)
+      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
+    Opts.AllowFPOpFusion = MayBeAllowFPOPFusion.getValue();
+  }
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_vc_optimize)) {
     StringRef Val = A->getValue();

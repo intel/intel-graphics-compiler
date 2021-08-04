@@ -115,14 +115,13 @@ class GenXPatternMatch : public FunctionPass,
   DominatorTree *DT = nullptr;
   LoopInfo *LI = nullptr;
   const DataLayout *DL = nullptr;
-  const TargetOptions *Options;
+  const TargetOptions *Options = nullptr;
   // Indicates whether there is any change.
   bool Changed = false;
 
 public:
   static char ID;
-  GenXPatternMatch(const TargetOptions *Options = nullptr)
-      : FunctionPass(ID), Options(Options) {}
+  GenXPatternMatch() : FunctionPass(ID) {}
 
   StringRef getPassName() const override { return "GenX pattern match"; }
 
@@ -200,15 +199,16 @@ INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXPatternMatch, "GenXPatternMatch", "GenXPatternMatch",
                     false, false)
 
-FunctionPass *llvm::createGenXPatternMatchPass(const TargetOptions *Options) {
+FunctionPass *llvm::createGenXPatternMatchPass() {
   initializeGenXPatternMatchPass(*PassRegistry::getPassRegistry());
-  return new GenXPatternMatch(Options);
+  return new GenXPatternMatch();
 }
 
 bool GenXPatternMatch::runOnFunction(Function &F) {
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   DL = &F.getParent()->getDataLayout();
+  Options = &getAnalysis<TargetPassConfig>().getTM<GenXTargetMachine>().Options;
 
   // Before we get the simd-control-flow representation right,
   // we avoid dealing with predicate constants
