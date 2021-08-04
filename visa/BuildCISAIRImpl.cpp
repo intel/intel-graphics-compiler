@@ -559,6 +559,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
 {
     std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
     std::map<G4_INST*, std::list<G4_INST*>> rets;
+    std::set<G4_Kernel*> visited;
     std::list<G4_INST*> dummyContainer;
     // append instructions from callee to caller
     for (auto& it : sgInvokeList)
@@ -568,6 +569,12 @@ void CISA_IR_Builder::LinkTimeOptimization(
 
         G4_Kernel* caller = GetCallerKernel(fcall);
         G4_Kernel* callee = GetCalleeKernel(fcall);
+        // We only have to copy callee's instructions once
+        if (visited.find(callee) != visited.end())
+        {
+            continue;
+        }
+        visited.insert(callee);
         auto& callerInsts = caller->fg.builder->instList;
         auto calleeInsts  = callee->fg.builder->instList;
         G4_INST* calleeLabel = *calleeInsts.begin();
