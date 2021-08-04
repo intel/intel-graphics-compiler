@@ -1034,7 +1034,7 @@ struct DepAnalysisComputer
     static bool updateLiveDefs(LivePaths &to, const LivePaths &from) {
         bool changed = from != to;
         if (changed) {
-#if defined(__ANDROID__)
+#if defined(_LIBCPP_VERSION)
        to.clear();
        for (auto iter : from) {
               to.insert(iter);
