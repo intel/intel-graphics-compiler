@@ -147,16 +147,16 @@ public:
     void emitSampleOffset(llvm::GenIntrinsicInst* inst);
 
     // TODO: unify the functions below and clean up
-    void emitStore(llvm::StoreInst* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);
+    void emitStore(llvm::StoreInst* inst, llvm::Value* offset = nullptr, llvm::ConstantInt* immOffset = nullptr);
     void emitStore3D(llvm::StoreInst* inst, llvm::Value* elemIdxV);
     void emitStore3DInner(llvm::Value* pllValToStore, llvm::Value* pllDstPtr, llvm::Value* pllElmIdx);
 
-    void emitLoad(llvm::LoadInst* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);   // single load, no pattern
+    void emitLoad(llvm::LoadInst* inst, llvm::Value* offset = nullptr, llvm::ConstantInt* immOffset = nullptr);   // single load, no pattern
     void emitLoad3DInner(llvm::LdRawIntrinsic* inst, ResourceDescriptor& resource, llvm::Value* elemIdxV);
 
     // when resource is dynamically indexed, load/store must use special intrinsics
-    void emitLoadRawIndexed(llvm::LdRawIntrinsic* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);
-    void emitStoreRawIndexed(llvm::StoreRawIntrinsic* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);
+    void emitLoadRawIndexed(llvm::LdRawIntrinsic* inst);
+    void emitStoreRawIndexed(llvm::StoreRawIntrinsic* inst);
     void emitGetBufferPtr(llvm::GenIntrinsicInst* inst);
     // \todo, remove this function after we lower all GEP to IntToPtr before CodeGen.
     // Only remaining GEPs are for scratch in GFX path
