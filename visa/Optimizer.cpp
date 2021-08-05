@@ -2785,18 +2785,16 @@ void Optimizer::doSimplification(G4_INST *inst)
     // - src uses VxH indirect access.
     // - src is within one GRF.
     // - indices to src are all within src.
-    if (inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD8 &&
+    // - destination stride in bytes must be equal to the source element size in bytes.
+    bool canConvertMovToMovi = inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD8 &&
         inst->isRawMov() && inst->getDst() &&
         !inst->getDst()->asDstRegRegion()->isCrossGRFDst() &&
         inst->getSrc(0) && inst->getSrc(0)->isSrcRegRegion() &&
         inst->getSrc(0)->asSrcRegRegion()->isIndirect() &&
         inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH() &&
         inst->getSrc(0)->asSrcRegRegion()->getRegion()->width == 1 &&
-        // destination stride in bytes must be equal to the source element size
-        // in bytes.
-        inst->getSrc(0)->getTypeSize() ==
-            inst->getDst()->getTypeSize() *
-                inst->getDst()->asDstRegRegion()->getHorzStride())
+        inst->getSrc(0)->getTypeSize() == inst->getDst()->getTypeSize() * inst->getDst()->asDstRegRegion()->getHorzStride();
+    if (canConvertMovToMovi)
     {
         // Convert 'mov' to 'movi' if the following conditions are met.
 
