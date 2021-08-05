@@ -853,7 +853,9 @@ public:
     SB_INST_PIPE getDataTypePipeXe(G4_Type type);
     SB_INST_PIPE getInstructionPipeXe();
 
-    void swapDefUse();
+    void swapDefUse(
+        Gen4_Operand_Number srcIxA = Opnd_src0,
+        Gen4_Operand_Number srcIxB = Opnd_src1);
     void addDefUse(G4_INST* use, Gen4_Operand_Number usePos);
     void uniqueDefUse()
     {

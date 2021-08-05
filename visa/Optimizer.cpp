@@ -3149,26 +3149,60 @@ G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
 // - saturation is not allowed
 void Optimizer::doConsFolding(G4_INST *inst)
 {
-    G4_Operand *src0, *src1;
+    if (inst->getSaturate())
+        return; // TODO: we could do this if we wanted to bad enough
 
-    src0 = inst->getSrc(0);
-    src1 = inst->getSrc(1);
+    auto srcIsFoldableImm = [](const G4_Operand *op) {
+        return op && op->isImm() && !op->isRelocImm();
+    };
 
-    G4_Imm *newSrc = nullptr;
-
-    if (src0 && src0->isImm() && !src0->isRelocImm() &&
-        src1 && src1->isImm() && !src1->isRelocImm() &&
-        inst->getSaturate() == false)
-    {
-        newSrc = foldConstVal(src0->asImm(), src1->asImm(), inst->opcode());
-    }
-
-    if (newSrc != NULL)
-    {
-        // change instruction into a MOV
-        inst->setOpcode(G4_mov);
-        inst->setSrc(newSrc, 0);
-        inst->setSrc(NULL, 1);
+    if (inst->getNumSrc() == 2) {
+        G4_Operand *src0 = inst->getSrc(0);
+        G4_Operand *src1 = inst->getSrc(1);
+        if (srcIsFoldableImm(src0) && srcIsFoldableImm(src1)) {
+            G4_Imm *foldedImm =
+                foldConstVal(src0->asImm(), src1->asImm(), inst->opcode());
+            if (foldedImm)
+            {
+                // change instruction into a MOV
+                inst->setOpcode(G4_mov);
+                inst->setSrc(foldedImm, 0);
+                inst->setSrc(nullptr, 1);
+            }
+        }
+    } else if (inst->getNumSrc() == 3) {
+        G4_Operand *src0 = inst->getSrc(0);
+        G4_Operand *src1 = inst->getSrc(1);
+        G4_Operand *src2 = inst->getSrc(2);
+        if (inst->opcode() == G4_add3) {
+            // always fold the variable into src0
+            G4_Imm *foldedImm = nullptr;
+            G4_Operand *otherSrc = nullptr;
+            if (srcIsFoldableImm(src0) && srcIsFoldableImm(src1)) {
+                foldedImm = foldConstVal(src0->asImm(), src1->asImm(), G4_add);
+                otherSrc = src2;
+            } else if (srcIsFoldableImm(src0) && srcIsFoldableImm(src2)) {
+                foldedImm = foldConstVal(src0->asImm(), src2->asImm(), G4_add);
+                otherSrc = src1;
+            } else if (srcIsFoldableImm(src1) && srcIsFoldableImm(src2)) {
+                foldedImm = foldConstVal(src1->asImm(), src2->asImm(), G4_add);
+                otherSrc = src0;
+            }
+            if (foldedImm) {
+                // always put the possible register in src0
+                inst->setOpcode(G4_add);
+                if (otherSrc != src0) {
+                    inst->setSrc(otherSrc, 0);
+                    inst->swapDefUse(
+                        Opnd_src0,
+                        otherSrc == src1 ? Opnd_src1 : Opnd_src2);
+                }
+                inst->setSrc(foldedImm, 1);
+                inst->setSrc(nullptr, 2);
+                // recurse for possible fold again
+                doConsFolding(inst);
+            }
+        } // TODO: integer mad, bfn, bfi, bfe
     }
 }
 

@@ -1325,19 +1325,19 @@ void G4_INST::addDefUse(G4_INST* inst, Gen4_Operand_Number srcPos)
 }
 
 // exchange def/use info of src0 and src1 after they are swapped.
-void G4_INST::swapDefUse()
+void G4_INST::swapDefUse(Gen4_Operand_Number srcIxA, Gen4_Operand_Number srcIxB)
 {
     DEF_EDGE_LIST_ITER iter = defInstList.begin();
     // since ACC is only exposed in ARCTAN intrinsic translation, there is no instruction split with ACC
     while (iter != defInstList.end())
     {
-        if ((*iter).second == Opnd_src1)
+        if ((*iter).second == srcIxB)
         {
-            (*iter).second = Opnd_src0;
+            (*iter).second = srcIxA;
         }
-        else if ((*iter).second == Opnd_src0)
+        else if ((*iter).second == srcIxA)
         {
-            (*iter).second = Opnd_src1;
+            (*iter).second = srcIxB;
         }
         else
         {
@@ -1350,13 +1350,13 @@ void G4_INST::swapDefUse()
         {
             if ((*useIter).first == this)
             {
-                if ((*useIter).second == Opnd_src1)
+                if ((*useIter).second == srcIxB)
                 {
-                    (*useIter).second = Opnd_src0;
+                    (*useIter).second = srcIxA;
                 }
-                else if ((*useIter).second == Opnd_src0)
+                else if ((*useIter).second == srcIxA)
                 {
-                    (*useIter).second = Opnd_src1;
+                    (*useIter).second = srcIxB;
                 }
             }
         }
@@ -3333,6 +3333,9 @@ static void emitInstructionStartColumn(std::ostream& output, G4_INST &inst)
     else if (inst.opcode() == G4_goto)
     {
         oupPfx << (inst.asCFInst()->isBackward() ? ".bwd" : ".fwd");
+    }
+    else if (inst.isBfn()) {
+        oupPfx << "." << fmtHex(inst.asBfnInst()->getBooleanFuncCtrl(), 2);
     }
     else if (inst.isMath() && inst.asMathInst()->getMathCtrl() != MATH_RESERVED)
     {

@@ -65,39 +65,39 @@ void G4Verifier::verify()
 
 bool G4Verifier::verifyInst(G4_INST *inst)
 {
-    ASSERT_USER(inst != NULL, "null instruction upexpected");
-    if( inst )
+    ASSERT_USER(inst != NULL, "null instruction unexpected");
+    if (inst)
     {
-        verifyOpcode( inst );
-        verifyOpnd( inst->getDst(), inst );
-        verifyOpnd( inst->getSrc( 0 ), inst );
-        verifyOpnd( inst->getSrc( 1 ), inst );
-        verifyOpnd( inst->getSrc( 2 ), inst );
-        verifyOpnd( inst->getPredicate(), inst );
-        verifyOpnd( inst->getCondMod(), inst );
-        verifyOpnd( inst->getImplAccDst(), inst );
-        verifyOpnd( inst->getImplAccSrc(), inst );
+        verifyOpcode(inst);
+        verifyOpnd(inst->getDst(), inst);
+        verifyOpnd(inst->getSrc(0), inst);
+        verifyOpnd(inst->getSrc(1), inst);
+        verifyOpnd(inst->getSrc(2), inst);
+        verifyOpnd(inst->getPredicate(), inst);
+        verifyOpnd(inst->getCondMod(), inst);
+        verifyOpnd(inst->getImplAccDst(), inst);
+        verifyOpnd(inst->getImplAccSrc(), inst);
 
-        if( inst->isSend() )
+        if (inst->isSend())
         {
-            verifySend( inst );
+            verifySend(inst);
         }
-        else if( inst->isDpas() )
+        else if (inst->isDpas())
         {
-            verifyDpas( inst );
+            verifyDpas(inst);
         }
-        verifyAccMov( inst );
+        verifyAccMov(inst);
 
-        verifyDstSrcOverlap( inst );
+        verifyDstSrcOverlap(inst);
 
-        if( passIndex == Optimizer::PI_cleanMessageHeader ||
+        if (passIndex == Optimizer::PI_cleanMessageHeader ||
             passIndex == Optimizer::PI_renameRegister ||
             passIndex == Optimizer::PI_newLocalDefHoisting ||
             passIndex == Optimizer::PI_newLocalCopyPropagation ||
-            passIndex == Optimizer::PI_cselPeepHoleOpt )
+            passIndex == Optimizer::PI_cselPeepHoleOpt)
         {
             // def-use chain should be valid after these passes
-            return verifyDefUseChain( inst );
+            return verifyDefUseChain(inst);
         }
     }
     return true;
@@ -171,17 +171,17 @@ bool G4Verifier::verifyDefUseChain(G4_INST *inst)
     return isValid;
 }
 
-void G4Verifier::printDefUseImpl(std::ostream &os, G4_INST *def, G4_INST *use,
-                                 Gen4_Operand_Number pos)
+void G4Verifier::printDefUseImpl(
+    std::ostream &os, G4_INST *def, G4_INST *use, Gen4_Operand_Number pos)
 {
     os << "\n  def: ";
     def->emit(os);
     os << "\n user: ";
     use->emit(os);
     os << "\n opnd: ";
-    if( use->getOperand( pos ) )
+    if (use->getOperand(pos))
     {
-        use->getOperand( pos )->emit( os );
+        use->getOperand(pos)->emit(os);
     }
 }
 
@@ -202,13 +202,7 @@ void G4Verifier::printDefUse(G4_INST *def, G4_INST *use, Gen4_Operand_Number pos
 
 void G4Verifier::assertIfEnable() const
 {
-#ifdef _DEBUG
-    if (verifyCtrl == VC_ASSERT)
-    {
-        int *ptr = 0;
-        *ptr = 0;
-    }
-#endif
+    MUST_BE_TRUE(false, "G4Verification failure");
 }
 
 bool G4Verifier::dataHazardCheck(G4_Operand *dst, G4_Operand *src)
@@ -798,12 +792,12 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             {
                 auto dst = inst->getDst();
                 // should we assert if dst is not phyReg assigned?
-                if( dst )
+                if (dst)
                 {
                     bool dstIsAssigned = dst->getBase()->isRegVar() && dst->getBase()->asRegVar()->isPhyRegAssigned();
-                    if( dstIsAssigned && dst->getLinearizedStart() % 16 != 0 )
+                    if (dstIsAssigned && dst->getLinearizedStart() % 16 != 0)
                     {
-                        assert( false && "destination of move instruction with V/VF imm is not 16-byte aligned" );
+                        assert(false && "destination of move instruction with V/VF imm is not 16-byte aligned");
                     }
                 }
             }
