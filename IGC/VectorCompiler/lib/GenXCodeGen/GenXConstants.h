@@ -61,6 +61,7 @@ public:
   Instruction *load(Instruction *InsertBefore);
   Instruction *loadBig(Instruction *InsertBefore);
   Instruction *loadNonSimple(Instruction *InsertBefore);
+  Instruction *loadNonPackedIntConst(Instruction *InsertBefore);
   bool needFixingSimple() const { return NewC; }
   void fixSimple(int OperandIdx);
   bool isBigSimple();

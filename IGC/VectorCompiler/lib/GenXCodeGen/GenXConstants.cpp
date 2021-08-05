@@ -899,7 +899,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
     if (DL.getTypeSizeInBits(PackTy) > 32)
       PackTy = Type::getInt32Ty(Inst->getContext());
     // Load as a packed int vector with scale and/or adjust.
-    SmallVector<Constant *, 8> PackedVals;
+    SmallVector<Constant *, 32> PackedVals;
     for (unsigned i = 0, e = cast<VectorType>(C->getType())->getNumElements();
          i != e; ++i) {
       int64_t Val = 0;
@@ -912,8 +912,9 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
       IGC_ASSERT(cast<ConstantInt>(PackedVals.back())->getSExtValue() >= -8
           && cast<ConstantInt>(PackedVals.back())->getSExtValue() <= 15);
     }
+
     ConstantLoader Packed(ConstantVector::get(PackedVals), Subtarget, DL);
-    auto LoadPacked = Packed.load(Inst);
+    auto *LoadPacked = Packed.loadNonPackedIntConst(Inst);
     if (PackedIntScale != 1)
       LoadPacked = BinaryOperator::Create(
           Instruction::Mul, LoadPacked,
@@ -1289,6 +1290,41 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore)
 }
 
 /***********************************************************************
+ * ConstantLoader::loadNonPackedIntConst : insert instruction to load a constant
+ *                               that are not packed because they have width > 8.
+ *
+ * Enter:   C = constant to load
+ *          InsertBefore = insert new instruction before here
+ *
+ * Return:  new instruction
+ */
+Instruction *ConstantLoader::loadNonPackedIntConst(Instruction *InsertBefore) {
+  auto* CTy = cast<VectorType>(C->getType());
+  IGC_ASSERT(CTy && CTy->isIntOrIntVectorTy());
+  // Simple vectors are already the correct size <= 8, process common load
+  if (isSimple())
+    return load(InsertBefore);
+
+  unsigned NumElements = CTy->getNumElements();
+  Instruction *Result = nullptr;
+  for (unsigned Idx = 0; Idx != NumElements;) {
+    unsigned Size =
+        std::min(PowerOf2Floor(NumElements - Idx), (uint64_t)ImmIntVec::Width);
+    Constant *SubC = getConstantSubvector(C, Idx, Size);
+    Value *SubV = SubC;
+    ConstantLoader SubLoader(SubC, Subtarget, DL);
+    SubV = SubLoader.load(InsertBefore);
+
+    Region R(C, &DL);
+    R.getSubregion(Idx, Size);
+    Result = R.createWrRegion(
+        Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()), SubV,
+        "constant.split" + Twine(Idx), InsertBefore, DebugLoc());
+    Idx += Size;
+  }
+  return Result;
+}
+/***********************************************************************
  * ConstantLoader::loadBig : insert instruction to load a constant that might
  *      be illegally sized
  */
@@ -1427,6 +1463,8 @@ bool ConstantLoader::isPackedIntVector()
   // Check for a packed int vector. Either the element type must be i16, or
   // the user (instruction using the constant) must be genx.constanti or
   // wrregion or wrconstregion. Not allowed if the user is a logic op.
+  if (cast<VectorType>(C->getType())->getNumElements() > ImmIntVec::Width)
+    return false; // wrong width for packed vector
   if (PackedIntScale == 1 && (PackedIntAdjust == 0 || PackedIntAdjust == -8)) {
     if (!User)
       return true; // user not specified -- assume it is a mov, so wrong element
@@ -1535,9 +1573,15 @@ void ConstantLoader::analyze()
   if (C->getSplatValue())
     return; // don't analyze if already a splat
   unsigned NumElements = VT->getNumElements();
-  if (NumElements <= 8 && VT->getElementType()->isIntegerTy())
-    analyzeForPackedInt(NumElements);
-  else if (NumElements <= 8 && VT->getElementType()->isFloatingPointTy())
+  if (VT->getElementType()->isIntegerTy()) {
+    unsigned MaxSize = 2 * Subtarget.getGRFWidth(); // element type is boolean
+    if (!VT->getElementType()->isIntegerTy(1)) {
+      unsigned ElmSz = VT->getScalarSizeInBits() / genx::ByteBits;
+      MaxSize = 2 * Subtarget.getGRFWidth() / ElmSz;
+    }
+    if (NumElements <= MaxSize)
+      analyzeForPackedInt(NumElements);
+  } else if (NumElements <= 8 && VT->getElementType()->isFloatingPointTy())
     analyzeForPackedFloat(NumElements);
 }
 
@@ -1546,7 +1590,7 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
   // Get element values.
   int64_t Min = INT64_MAX;
   int64_t Max = INT64_MIN;
-  SmallVector<int64_t, 8> Elements;
+  SmallVector<int64_t, 32> Elements;
   Constant *SomeDefinedElement = nullptr;
   for (unsigned i = 0; i != NumElements; ++i) {
     auto El = C->getAggregateElement(i);
@@ -1569,7 +1613,10 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
     // (constant materilization expects that NewC is cleared)
     if (!User)
       return;
-    // All but one element undef. Turn into a splat constant.
+    // All but one element undef. If num elements equal 8
+    // then turn it into a splat constant
+    if (NumElements != ImmIntVec::Width)
+      return;
     NewC = ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
                                     SomeDefinedElement);
     return;
@@ -1604,8 +1651,8 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
   // Get unique absolute differences, so we can detect if we have a valid
   // packed int vector that is then scaled and has a splatted constant
   // added/subtracted.
-  SmallVector<uint64_t, 7> Diffs;
-  SmallSet<uint64_t, 7> DiffsSet;
+  SmallVector<uint64_t, 31> Diffs;
+  SmallSet<uint64_t, 31> DiffsSet;
   for (unsigned i = 0, e = Elements.size() - 1; i != e; ++i) {
     int64_t Diff;
     if (IGCLLVM::SubOverflow(Elements[i + 1], Elements[i], Diff))
