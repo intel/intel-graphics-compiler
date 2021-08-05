@@ -83,6 +83,10 @@ static cl::opt<bool> DisableNonOverlappingRegionOptOpt(
     "vc-disable-non-overlapping-region-opt", cl::init(false), cl::Hidden,
     cl::desc("Disable non-overlapping region optimization"));
 
+static cl::opt<bool> PassDebugToFinalizerOpt(
+    "vc-pass-debug-to-finalizer", cl::init(false), cl::Hidden,
+    cl::desc("Pass -debug option to finalizer"));
+
 static cl::opt<bool>
     UseNewStackBuilderOpt("vc-use-new-stack-builder",
                           cl::desc("Use prolog/epilog insertion pass"),
@@ -124,6 +128,7 @@ GenXBackendOptions::GenXBackendOptions()
       UseNewStackBuilder(UseNewStackBuilderOpt),
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
+      PassDebugToFinalizer(PassDebugToFinalizerOpt),
       FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
       UseBindlessBuffers(UseBindlessBuffersOpt),
       StatelessPrivateMemSize(StatelessPrivateMemSizeOpt) {}

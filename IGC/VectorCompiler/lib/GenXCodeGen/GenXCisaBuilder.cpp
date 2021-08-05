@@ -99,11 +99,6 @@ static cl::opt<bool> DisableNoMaskWA(
     "vc-cg-disable-no-mask-wa", cl::init(false), cl::Hidden,
     cl::desc("do not apply noMask WA (fusedEU)"));
 
-static cl::opt<bool>
-    EnableOptimizedDebug("vc-experimental-finalizer-optimizes-debug",
-                         cl::init(false), cl::Hidden,
-                         cl::desc("Finalizer shall produce optimized code if "
-                                  "debug info is requested"));
 
 STATISTIC(NumVisaInsts, "Number of VISA instructions");
 STATISTIC(NumAsmInsts, "Number of Gen asm instructions");
@@ -6340,11 +6335,10 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   for (const auto &Fos : FinalizerOpts)
     cl::TokenizeGNUCommandLine(Fos, Saver, Argv);
 
-  if (BC.emitDebugInformation()) {
+  if (BC.emitDebugInformation())
     addArgument("-generateDebugInfo");
-    if (!EnableOptimizedDebug)
-      addArgument("-debug");
-  }
+  if (BC.passDebugToFinalizer())
+    addArgument("-debug");
   if (BC.emitDebuggableKernels()) {
     addArgument("-addKernelID");
     addArgument("-setstartbp");

@@ -80,6 +80,9 @@ struct GenXBackendOptions {
   // value in two-address operand)
   bool DisableNonOverlappingRegionOpt;
 
+  // Force passing "-debug" option to finalizer
+  bool PassDebugToFinalizer = false;
+
   // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
   bool UseNewStackBuilder = true;
 
@@ -192,6 +195,10 @@ public:
 
   bool disableNonOverlappingRegionOpt() const {
     return Options.DisableNonOverlappingRegionOpt;
+  }
+
+  bool passDebugToFinalizer() const {
+    return Options.PassDebugToFinalizer;
   }
 
   bool useNewStackBuilder() const { return Options.UseNewStackBuilder; }

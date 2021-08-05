@@ -78,6 +78,7 @@ struct CompileOptions {
   bool ForceLiveRangesLocalizationForAccUsage = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
   bool IsLargeGRFMode = false;
+  bool ForcePassDebugToFinalizer = false;
 
   llvm::FPOpFusion::FPOpFusionMode AllowFPOpFusion = llvm::FPOpFusion::Standard;
 

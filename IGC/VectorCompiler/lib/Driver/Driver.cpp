@@ -225,6 +225,9 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.LocalizeLRsForAccUsage = true;
   if (Opts.ForceDisableNonOverlappingRegionOpt)
     BackendOpts.DisableNonOverlappingRegionOpt = true;
+  BackendOpts.PassDebugToFinalizer =
+      Opts.ForcePassDebugToFinalizer ||
+      (Opts.OptLevel == vc::OptimizerLevel::None && Opts.EmitDebugInformation);
   BackendOpts.FCtrl = Opts.FCtrl;
   BackendOpts.WATable = Opts.WATable;
   BackendOpts.IsLargeGRFMode = Opts.IsLargeGRFMode;
