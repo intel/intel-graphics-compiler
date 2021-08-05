@@ -24,6 +24,9 @@ extern unsigned int VCBiFPrintfZE64RawData_size;
 
 extern unsigned char VCEmulation64RawData[];
 extern unsigned int VCEmulation64RawData_size;
+
+extern unsigned char VCSPIRVBuiltins64RawData[];
+extern unsigned int VCSPIRVBuiltins64RawData_size;
 #endif // IGC_VC_DISABLE_BIF
 
 #endif

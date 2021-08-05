@@ -380,6 +380,10 @@ fillExternalData(vc::BinaryKind Binary) {
       getVCModuleBuffer<vc::bif::RawKind::Emulation>();
   if (!ExtData.VCEmulationBIFModule)
     return {};
+  ExtData.VCSPIRVBuiltinsBIFModule =
+      getVCModuleBuffer<vc::bif::RawKind::SPIRVBuiltins>();
+  if (!ExtData.VCSPIRVBuiltinsBIFModule)
+    return {};
   return std::move(ExtData);
 }
 

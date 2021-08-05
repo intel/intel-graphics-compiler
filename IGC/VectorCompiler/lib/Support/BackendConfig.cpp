@@ -64,6 +64,12 @@ static cl::opt<std::string>
                        cl::init(""));
 
 static cl::opt<std::string>
+    VCSPIRVBuiltinsBiFPath("vc-spirv-builtins-bif-path",
+                           cl::desc("full name (with path) of a BiF file with "
+                                    "precompiled SPIR-V builtins"),
+                           cl::init(""));
+
+static cl::opt<std::string>
     VCPrintfBiFPath("vc-printf-bif-path",
                     cl::desc("full name (with path) of a BiF file with "
                              "precompiled printf implementation"),
@@ -139,6 +145,8 @@ GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
                        readBiFModuleFromFile(OCLGenericBiFPath));
   setOwningBiFModuleIf(BiFKind::VCEmulation,
                        readBiFModuleFromFile(VCEmulationBiFPath));
+  setOwningBiFModuleIf(BiFKind::VCSPIRVBuiltins,
+                       readBiFModuleFromFile(VCSPIRVBuiltinsBiFPath));
   setOwningBiFModuleIf(BiFKind::VCPrintf, readBiFModuleFromFile(VCPrintfBiFPath));
 }
 

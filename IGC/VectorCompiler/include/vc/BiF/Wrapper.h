@@ -23,7 +23,8 @@ enum class RawKind {
   PrintfOCL64,
   PrintfZE32,
   PrintfZE64,
-  Emulation
+  Emulation,
+  SPIRVBuiltins
 };
 
 inline llvm::StringRef getPrintfCM32RawData() {
@@ -81,6 +82,15 @@ inline llvm::StringRef getVCEmulationRawData() {
 #endif // IGC_VC_DISABLE_BIF
 }
 
+inline llvm::StringRef getSPIRVBuiltinsRawData() {
+#ifdef IGC_VC_DISABLE_BIF
+  return "";
+#else  // IGC_VC_DISABLE_BIF
+  return {reinterpret_cast<char *>(VCSPIRVBuiltins64RawData),
+          VCSPIRVBuiltins64RawData_size};
+#endif // IGC_VC_DISABLE_BIF
+}
+
 template <enum RawKind> llvm::StringRef getRawData();
 
 template <> llvm::StringRef getRawData<RawKind::Emulation>() {
@@ -111,6 +121,10 @@ template <> llvm::StringRef getRawData<RawKind::PrintfCM32>() {
 
 template <> llvm::StringRef getRawData<RawKind::PrintfCM64>() {
   return getPrintfCM64RawData();
+}
+
+template <> llvm::StringRef getRawData<RawKind::SPIRVBuiltins>() {
+  return getSPIRVBuiltinsRawData();
 }
 
 } // namespace bif

@@ -70,6 +70,9 @@ void initializeGenXImportOCLBiFPass(PassRegistry &);
 ModulePass *createGenXBTIAssignmentPass();
 void initializeGenXBTIAssignmentPass(PassRegistry &);
 
+ModulePass *createGenXTranslateSPIRVBuiltinsPass();
+void initializeGenXTranslateSPIRVBuiltinsPass(PassRegistry &);
+
 } // End llvm namespace
 
 #endif

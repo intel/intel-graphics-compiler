@@ -103,6 +103,7 @@ enum BiFKind {
   OCLGeneric,
   VCPrintf,
   VCEmulation,
+  VCSPIRVBuiltins,
   Size
 };
 

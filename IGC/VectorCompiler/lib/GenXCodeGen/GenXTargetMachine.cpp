@@ -138,6 +138,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXAggregatePseudoLoweringPass(registry);
   initializeGenXBTIAssignmentPass(registry);
   initializeGenXPromoteStatefulToBindlessPass(registry);
+  initializeGenXTranslateSPIRVBuiltinsPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -525,6 +526,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // Packetize.
   auto AddPacketize = [](const PassManagerBuilder &Builder,
                          PassManagerBase &PM) {
+    PM.add(createGenXTranslateSPIRVBuiltinsPass());
     PM.add(createGenXPrintfResolutionPass());
     PM.add(createGenXImportOCLBiFPass());
     PM.add(createGenXPacketizePass());
