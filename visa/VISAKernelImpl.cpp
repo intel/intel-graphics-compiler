@@ -7963,7 +7963,7 @@ unsigned long VISAKernelImpl::writeInToCisaBinaryBuffer(const void * value, int 
     return m_bytes_written_cisa_buffer;
 }
 
-VISA_LabelOpnd* VISAKernelImpl::getLabelOperandFromFunctionName(std::string name)
+VISA_LabelOpnd* VISAKernelImpl::getLabelOperandFromFunctionName(const std::string &name)
 {
     auto it = m_funcName_to_labelID_map.find(name);
     if (m_funcName_to_labelID_map.end() == it) {
@@ -7972,7 +7972,7 @@ VISA_LabelOpnd* VISAKernelImpl::getLabelOperandFromFunctionName(std::string name
         return it->second;
     }
 }
-unsigned int VISAKernelImpl::getLabelIdFromFunctionName(std::string name)
+unsigned int VISAKernelImpl::getLabelIdFromFunctionName(const std::string &name)
 {
     auto it = m_funcName_to_labelID_map.find(name);
     if (m_funcName_to_labelID_map.end() == it) {
@@ -8065,7 +8065,7 @@ unsigned int VISAKernelImpl::getIndexFromLabelName(const std::string &name)
     }
 }
 
-VISA_LabelOpnd* VISAKernelImpl::getLabelOpndFromLabelName(std::string name)
+VISA_LabelOpnd* VISAKernelImpl::getLabelOpndFromLabelName(const std::string &name)
 {
     auto it = m_label_name_to_index_map.find(name);
     if (m_label_name_to_index_map.end() == it) {

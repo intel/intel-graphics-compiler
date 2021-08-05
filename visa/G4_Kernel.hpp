@@ -227,7 +227,7 @@ public:
     void computeChannelSlicing();
     void calculateSimdSize();
     G4_ExecSize getSimdSize() { return simdSize; }
-    bool getChannelSlicing() { return channelSliced; }
+    bool getChannelSlicing() const { return channelSliced; }
     unsigned getSimdSizeWithSlicing() { return channelSliced ? simdSize/2 : simdSize; }
 
     void setHasAddrTaken(bool val) { hasAddrTaken = val; }
@@ -237,16 +237,16 @@ public:
     unsigned getNumRegTotal() const { return numRegTotal; }
 
     void setName(const char* n) { name = n; }
-    const char* getName() { return name; }
+    const char* getName() const { return name; }
 
     void updateKernelByNumThreads(int nThreads);
 
     void evalAddrExp();
 
     void setRAType(RA_Type type) { RAType = type; }
-    RA_Type getRAType() { return RAType; }
+    RA_Type getRAType() const { return RAType; }
 
-    bool hasKernelDebugInfo() {return kernelDbgInfo;}
+    bool hasKernelDebugInfo() const {return kernelDbgInfo;}
     void setKernelDebugInfo(KernelDebugInfo* k);
     KernelDebugInfo* getKernelDebugInfo();
 

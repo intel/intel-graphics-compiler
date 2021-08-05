@@ -516,8 +516,8 @@ void parseText(std::string fileName, int argc, const char *argv[], Options &opt)
             exit(1);
         }
 
-        std::string::size_type testNameEnd = vISAFileName.find_last_of(".");
-        std::string::size_type testNameStart = vISAFileName.find_last_of("\\");
+        std::string::size_type testNameEnd = vISAFileName.find_last_of('.');
+        std::string::size_type testNameStart = vISAFileName.find_last_of('\\');
 
         if (testNameStart != std::string::npos)
             testNameStart++;

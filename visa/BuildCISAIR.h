@@ -38,15 +38,8 @@ public:
     CISA_IR_Builder(
         VISA_BUILDER_OPTION buildOption, vISABuilderMode mode,
         int majorVersion, int minorVersion, const WA_TABLE *pWaTable)
-        : m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
+        : mBuildOption(buildOption), m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
     {
-        memset(&m_header, 0, sizeof(m_header));
-
-        mBuildOption = buildOption;
-        m_kernel_count = 0;
-        m_function_count = 0;
-        m_prevKernel = nullptr;
-
         m_header.major_version = majorVersion;
         m_header.minor_version = minorVersion;
         m_header.magic_number = COMMON_ISA_MAGIC_NUM;
@@ -67,40 +60,40 @@ public:
         const char* flags[],
         const WA_TABLE *pWaTable = nullptr);
     static int DestroyBuilder(CISA_IR_Builder *builder);
-    VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
-    VISA_BUILDER_API virtual int SetPrevKernel(VISAKernel *& prevKernel);
-    VISA_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName);
-    VISA_BUILDER_API virtual int AddPayloadSection(VISAFunction *& function, const char* functionName);
-    VISA_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream * os = nullptr, bool emit_visa_only = false);
+    VISA_BUILDER_API int AddKernel(VISAKernel *& kernel, const char* kernelName) override;
+    VISA_BUILDER_API int SetPrevKernel(VISAKernel *& prevKernel) override;
+    VISA_BUILDER_API int AddFunction(VISAFunction *& function, const char* functionName) override;
+    VISA_BUILDER_API int AddPayloadSection(VISAFunction *& function, const char* functionName) override;
+    VISA_BUILDER_API int Compile(const char * isaFileNameint, std::ostream * os = nullptr, bool emit_visa_only = false) override;
 
-    VISA_BUILDER_API void SetOption(vISAOptions option, bool val) { m_options.setOption(option, val); }
-    VISA_BUILDER_API void SetOption(vISAOptions option, uint32_t val) { m_options.setOption(option, val); }
-    VISA_BUILDER_API void SetOption(vISAOptions option, const char *val) { m_options.setOption(option, val); }
+    VISA_BUILDER_API void SetOption(vISAOptions option, bool val) override { m_options.setOption(option, val); }
+    VISA_BUILDER_API void SetOption(vISAOptions option, uint32_t val) override { m_options.setOption(option, val); }
+    VISA_BUILDER_API void SetOption(vISAOptions option, const char *val) override { m_options.setOption(option, val); }
 
     // Used for inline asm code generation
-    VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaText, const std::string& visaTextFile);
-    VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaFile);
-    VISA_BUILDER_API std::stringstream& GetAsmTextStream() { return m_ssIsaAsm; }
-    VISA_BUILDER_API virtual VISAKernel* GetVISAKernel(const std::string& kernelName);
-    VISA_BUILDER_API virtual int ClearAsmTextStreams();
+    VISA_BUILDER_API int ParseVISAText(const std::string& visaText, const std::string& visaTextFile) override;
+    VISA_BUILDER_API int ParseVISAText(const std::string& visaFile) override;
+    VISA_BUILDER_API std::stringstream& GetAsmTextStream() override { return m_ssIsaAsm; }
+    VISA_BUILDER_API VISAKernel* GetVISAKernel(const std::string& kernelName) override;
+    VISA_BUILDER_API int ClearAsmTextStreams() override;
 
     /**************END VISA BUILDER API*************************/
 
     string_pool_entry** branch_targets;
-    common_isa_header m_header;
+    common_isa_header m_header {};
 
     // the current vISA kernel/function being processed
     VISAKernelImpl *m_kernel;
-    VISAKernelImpl *m_prevKernel;
+    VISAKernelImpl *m_prevKernel = nullptr;
     CisaFramework::CisaBinary *m_cisaBinary;
-    VISAKernelImpl * get_kernel() { return m_kernel; }
+    VISAKernelImpl * get_kernel() const { return m_kernel; }
 
     std::stringstream& criticalMsgStream()
     {
         return criticalMsg;
     }
 
-    std::string GetCriticalMsg()
+    std::string GetCriticalMsg() override
     {
         return criticalMsg.str();
     }
@@ -135,7 +128,7 @@ public:
         criticalMsg << m_errorMessage << "\n";
     }
     bool HasParseError() const {return !m_errorMessage.empty();}
-    std::string GetParseError() {return m_errorMessage;}
+    std::string GetParseError() const {return m_errorMessage;}
 
     template <typename...Ts>
     void RecordParseWarning(int lineNum, Ts...ts)
@@ -155,7 +148,7 @@ public:
     // holds the %DispatchSimdSize attribute
     int    m_dispatchSimdSize = -1;
 
-    const WA_TABLE *getWATable() { return m_pWaTable; }
+    const WA_TABLE *getWATable() const { return m_pWaTable; }
 
     uint8_t getMajorVersion() const { return m_header.major_version; }
     uint8_t getMinorVersion() const { return m_header.minor_version; }
@@ -870,12 +863,12 @@ public:
 private:
 
     vISA::Mem_Manager m_mem;
-    VISA_BUILDER_OPTION mBuildOption;
+    const VISA_BUILDER_OPTION mBuildOption;
     // FIXME: we need to make 3D/media per kernel instead of per builder
     const vISABuilderMode m_builderMode;
 
-    unsigned int m_kernel_count;
-    unsigned int m_function_count;
+    unsigned int m_kernel_count = 0;
+    unsigned int m_function_count = 0;
 
     // list of kernels and functions added to this builder
     std::list<VISAKernelImpl *> m_kernelsAndFunctions;

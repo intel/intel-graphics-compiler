@@ -101,13 +101,13 @@ public:
     }
 
     void setHasFCCalls(bool hasFC) { hasFCCalls = hasFC; }
-    bool getHasFCCalls() { return hasFCCalls; }
+    bool getHasFCCalls() const { return hasFCCalls; }
     void setIsCallableKernel(bool value) { isFCCallableKernel = value; }
-    bool getIsCallableKernel() { return isFCCallableKernel; }
+    bool getIsCallableKernel() const { return isFCCallableKernel; }
     void setFCComposableKernel(bool value) { isFCComposableKernel = value; }
-    bool getFCComposableKernel() { return isFCComposableKernel; }
+    bool getFCComposableKernel() const { return isFCComposableKernel; }
     void setIsEntryKernel(bool value) { isFCEntryKernel = value; }
-    bool getIsEntryKernel() { return isFCEntryKernel; }
+    bool getIsEntryKernel() const { return isFCEntryKernel; }
     std::vector<FCCalls*>& getFCCallsToPatch() { return FCCallsToPatch; }
     std::vector<unsigned int>& getFCReturnsToPatch() { return FCReturnOffsetsToPatch; }
 
@@ -388,7 +388,7 @@ private:
     // map of all stack functioncs ever invoked by this builder's kernel/function
     std::map<std::string, G4_Label*> m_fcallLabels;
 
-    G4_Label* getFcallLabel(std::string str)
+    G4_Label* getFcallLabel(const std::string &str)
     {
         auto it = m_fcallLabels.find(str);
         if (it == m_fcallLabels.end())
@@ -1071,12 +1071,12 @@ public:
     // a new null-terminated copy of "lab" is created for the new label, so
     // caller does not have to allocate memory for lab
     //
-    G4_Label* createLabel(std::string lab, VISA_Label_Kind kind)
+    G4_Label* createLabel(const std::string &lab, VISA_Label_Kind kind)
     {
         auto labStr = lab.c_str();
         size_t len = strlen(labStr) + 1;
         char* new_str = (char*)mem.alloc(len);  // +1 for null that ends the string
-        strcpy_s(new_str, len, labStr);
+        memcpy_s(new_str, len, labStr, len);
         return new (mem) G4_Label(new_str);
     }
 
