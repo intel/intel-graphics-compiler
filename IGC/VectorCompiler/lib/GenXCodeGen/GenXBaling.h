@@ -336,6 +336,9 @@ public:
   // hash : set hash code for bale. Must be called before using comparison
   // operators.
   void hash();
+  hash_code getHash() const {
+    return Hash;
+  }
   // Comparison operators. Two bales are equivalent if they compute the same
   // value, that is, they have the same opcodes in the instructions, the
   // instructions are baled together in the same way, and the operands coming
@@ -532,5 +535,9 @@ public:
 void initializeGenXGroupBalingPass(PassRegistry &);
 
 } // end namespace llvm
+
+template <> struct std::hash<llvm::genx::Bale> {
+  std::size_t operator()(const llvm::genx::Bale &B) const { return B.getHash(); }
+};
 
 #endif // GENXBALING_H

@@ -82,6 +82,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm-c/Core.h"
 #include "llvm/ADT/DepthFirstIterator.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/IR/BasicBlock.h"
@@ -358,7 +359,21 @@ bool GenXAddressCommoning::processBaseReg(LiveRange *LR)
   // Gather the address conversions used by regions of this base register into
   // buckets, one for each distinct input. A bucket discards duplicate address
   // conversions.
-  std::map<Bale, Bucket> Buckets;
+  llvm::MapVector<Bale, Bucket, std::unordered_map<Bale, unsigned>> Buckets;
+
+  auto processIndexOperand = [&](Value *Index) {
+    while (GenXIntrinsic::getGenXIntrinsicID(Index) ==
+           GenXIntrinsic::genx_add_addr)
+      Index = cast<Instruction>(Index)->getOperand(0);
+    if (GenXIntrinsic::getGenXIntrinsicID(Index) !=
+        GenXIntrinsic::genx_convert_addr)
+      return;
+    Bale B;
+    Baling->buildBale(cast<Instruction>(Index), &B);
+    B.hash();
+    Buckets[B].add(cast<Instruction>(Index));
+  };
+
   for (auto vi = LR->value_begin(), ve = LR->value_end(); vi != ve; ++vi) {
     Value *V = vi->getValue();
     // Ignore the value if it is in the wrong function. That can happen because
@@ -366,20 +381,9 @@ bool GenXAddressCommoning::processBaseReg(LiveRange *LR)
     if (!isValueInCurrentFunc(V))
       continue;
     // First the def, if it is a wrregion.
-    if (GenXIntrinsic::isWrRegion(V)) {
-      Value *Index = cast<Instruction>(V)->getOperand(
-          GenXIntrinsic::GenXRegion::WrIndexOperandNum);
-      while (GenXIntrinsic::getGenXIntrinsicID(Index) ==
-             GenXIntrinsic::genx_add_addr)
-        Index = cast<Instruction>(Index)->getOperand(0);
-      if (GenXIntrinsic::getGenXIntrinsicID(Index) ==
-          GenXIntrinsic::genx_convert_addr) {
-        Bale B;
-        Baling->buildBale(cast<Instruction>(Index), &B);
-        B.hash();
-        Buckets[B].add(cast<Instruction>(Index));
-      }
-    }
+    if (GenXIntrinsic::isWrRegion(V))
+      processIndexOperand(cast<Instruction>(V)->getOperand(
+          GenXIntrinsic::GenXRegion::WrIndexOperandNum));
     // Then each use that is a rdregion. (A use that is a wrregion will be
     // handled when we look at that value, which must be coalesced into the
     // same live range.)
@@ -401,34 +405,14 @@ bool GenXAddressCommoning::processBaseReg(LiveRange *LR)
       };
 
       // wrr may have been baled with a g_store.
-      if (isBaledWrr()) {
-        Value *Index = cast<Instruction>(user)->getOperand(
-            GenXIntrinsic::GenXRegion::WrIndexOperandNum);
-        while (GenXIntrinsic::getGenXIntrinsicID(Index) ==
-               GenXIntrinsic::genx_add_addr)
-          Index = cast<Instruction>(Index)->getOperand(0);
-        if (GenXIntrinsic::getGenXIntrinsicID(Index) ==
-            GenXIntrinsic::genx_convert_addr) {
-          Bale B;
-          Baling->buildBale(cast<Instruction>(Index), &B);
-          B.hash();
-          Buckets[B].add(cast<Instruction>(Index));
-        }
-      }
+      if (isBaledWrr())
+        processIndexOperand(cast<Instruction>(user)->getOperand(
+            GenXIntrinsic::GenXRegion::WrIndexOperandNum));
 
       if (!GenXIntrinsic::isRdRegion(user))
         continue;
-      Value *Index = user->getOperand(GenXIntrinsic::GenXRegion::RdIndexOperandNum);
-      while (GenXIntrinsic::getGenXIntrinsicID(Index) ==
-             GenXIntrinsic::genx_add_addr)
-        Index = cast<Instruction>(Index)->getOperand(0);
-      if (GenXIntrinsic::getGenXIntrinsicID(Index) ==
-          GenXIntrinsic::genx_convert_addr) {
-        Bale B;
-        Baling->buildBale(cast<Instruction>(Index), &B);
-        B.hash();
-        Buckets[B].add(cast<Instruction>(Index));
-      }
+      processIndexOperand(user->getOperand(
+          GenXIntrinsic::GenXRegion::RdIndexOperandNum));
     }
   }
   // Common up each bucket with more than one address conversion.
