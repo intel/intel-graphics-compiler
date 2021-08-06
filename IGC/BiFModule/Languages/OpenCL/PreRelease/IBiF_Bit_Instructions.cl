@@ -48,68 +48,116 @@ SPDX-License-Identifier: MIT
   GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, int, i32, int)                                                              \
   GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, long, i64, long)
 
-#define GEN_DEFINITION_BFE( FUNC, OP, TYPE1, TYPE2, ABBR_TYPE1, ABBR_TYPE2 ) \
-INLINE TYPE1 OVERLOADABLE FUNC( TYPE1 base, TYPE2 offset, TYPE2 count ) { \
-    return __builtin_spirv_##OP##_##ABBR_TYPE1##_##ABBR_TYPE2##_##ABBR_TYPE2(base, offset, count); \
+#define GEN_DEFINITION_BFE( FUNC, OP, TYPE1, TYPE2, TYPE3, ABBR_TYPE1, ABBR_TYPE3 ) \
+INLINE TYPE1 OVERLOADABLE FUNC( TYPE2 base, TYPE3 offset, TYPE3 count ) { \
+    return __builtin_spirv_##OP##_##ABBR_TYPE1##_##ABBR_TYPE3##_##ABBR_TYPE3( as_##TYPE1(base), offset, count); \
 }
 
-#define GEN_VECTOR_DEFINITION_BFE( FUNC, OP, TYPE1, TYPE2, ABBR_TYPE1, ABBR_TYPE2, VEC_SIZE) \
-INLINE TYPE1##VEC_SIZE OVERLOADABLE FUNC( TYPE1##VEC_SIZE base, TYPE2##VEC_SIZE offset, TYPE2##VEC_SIZE count ) { \
-    return __builtin_spirv_##OP##_v##VEC_SIZE##ABBR_TYPE1##_v##VEC_SIZE##ABBR_TYPE2##_v##VEC_SIZE##ABBR_TYPE2 \
-        (base, offset, count); \
+#define GEN_VECTOR_DEFINITION_BFE( FUNC, OP, TYPE1, TYPE2, TYPE3, ABBR_TYPE1, ABBR_TYPE3, VEC_SIZE) \
+INLINE TYPE1##VEC_SIZE OVERLOADABLE FUNC( TYPE2##VEC_SIZE base, TYPE3##VEC_SIZE offset, TYPE3##VEC_SIZE count ) { \
+    return __builtin_spirv_##OP##_v##VEC_SIZE##ABBR_TYPE1##_v##VEC_SIZE##ABBR_TYPE3##_v##VEC_SIZE##ABBR_TYPE3 \
+        ( as_##TYPE1##VEC_SIZE(base), offset, count); \
 }
 
 #define GEN_DEFINITIONS_UBFE( FUNC, OP ) \
-    GEN_DEFINITION_BFE( FUNC, OP, uchar, uint, i8, i32 ) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uint, i8, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uint, i8, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uint, i8, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uint, i8, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uint, i8, i32, 16) \
-    GEN_DEFINITION_BFE( FUNC, OP, ushort, uint, i16, i32 ) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, uint, i16, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, uint, i16, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, uint, i16, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, uint, i16, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, uint, i16, i32, 16) \
-    GEN_DEFINITION_BFE( FUNC, OP, uint, uint, i32, i32 ) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, i32, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, i32, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, i32, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, i32, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, i32, i32, 16) \
-    GEN_DEFINITION_BFE( FUNC, OP, ulong, uint, i64, i32 ) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, uint, i64, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, uint, i64, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, uint, i64, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, uint, i64, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, uint, i64, i32, 16)
+    GEN_DEFINITION_BFE( FUNC, OP, uchar, uchar, uint, i8, i32 ) \
+    GEN_DEFINITION_BFE( FUNC, OP, uchar,  char, uint, i8, i32 ) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uchar, uint, i8, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar,  char, uint, i8, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uchar, uint, i8, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar,  char, uint, i8, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uchar, uint, i8, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar,  char, uint, i8, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uchar, uint, i8, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar,  char, uint, i8, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar, uchar, uint, i8, i32, 16) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uchar,  char, uint, i8, i32, 16) \
+    GEN_DEFINITION_BFE( FUNC, OP, ushort, ushort, uint, i16, i32 ) \
+    GEN_DEFINITION_BFE( FUNC, OP, ushort,  short, uint, i16, i32 ) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, ushort, uint, i16, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort,  short, uint, i16, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, ushort, uint, i16, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort,  short, uint, i16, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, ushort, uint, i16, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort,  short, uint, i16, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, ushort, uint, i16, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort,  short, uint, i16, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort, ushort, uint, i16, i32, 16) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ushort,  short, uint, i16, i32, 16) \
+    GEN_DEFINITION_BFE( FUNC, OP, uint, uint, uint, i32, i32 ) \
+    GEN_DEFINITION_BFE( FUNC, OP, uint,  int, uint, i32, i32 ) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, uint, i32, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint,  int, uint, i32, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, uint, i32, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint,  int, uint, i32, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, uint, i32, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint,  int, uint, i32, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, uint, i32, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint,  int, uint, i32, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint, uint, uint, i32, i32, 16) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, uint,  int, uint, i32, i32, 16) \
+    GEN_DEFINITION_BFE( FUNC, OP, ulong, ulong, uint, i64, i32 ) \
+    GEN_DEFINITION_BFE( FUNC, OP, ulong,  long, uint, i64, i32 ) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, ulong, uint, i64, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong,  long, uint, i64, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, ulong, uint, i64, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong,  long, uint, i64, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, ulong, uint, i64, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong,  long, uint, i64, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, ulong, uint, i64, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong,  long, uint, i64, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong, ulong, uint, i64, i32, 16) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, ulong,  long, uint, i64, i32, 16)
 
 #define GEN_DEFINITIONS_SBFE( FUNC, OP ) \
-    GEN_DEFINITION_BFE( FUNC, OP, char, uint, i8, i32 ) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uint, i8, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uint, i8, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uint, i8, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uint, i8, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uint, i8, i32, 16) \
-    GEN_DEFINITION_BFE( FUNC, OP, short, uint, i16, i32 ) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, uint, i16, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, uint, i16, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, uint, i16, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, uint, i16, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, uint, i16, i32, 16) \
-    GEN_DEFINITION_BFE( FUNC, OP, int, uint, i32, i32 ) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, i32, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, i32, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, i32, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, i32, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, i32, i32, 16) \
-    GEN_DEFINITION_BFE( FUNC, OP, long, uint, i64, i32 ) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, uint, i64, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, uint, i64, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, uint, i64, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, uint, i64, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, uint, i64, i32, 16)
+    GEN_DEFINITION_BFE( FUNC, OP, char, uchar, uint, i8, i32 ) \
+    GEN_DEFINITION_BFE( FUNC, OP, char,  char, uint, i8, i32 ) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uchar, uint, i8, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char,  char, uint, i8, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uchar, uint, i8, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char,  char, uint, i8, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uchar, uint, i8, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char,  char, uint, i8, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uchar, uint, i8, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char,  char, uint, i8, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char, uchar, uint, i8, i32, 16) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, char,  char, uint, i8, i32, 16) \
+    GEN_DEFINITION_BFE( FUNC, OP, short, ushort, uint, i16, i32 ) \
+    GEN_DEFINITION_BFE( FUNC, OP, short,  short, uint, i16, i32 ) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, ushort, uint, i16, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short,  short, uint, i16, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, ushort, uint, i16, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short,  short, uint, i16, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, ushort, uint, i16, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short,  short, uint, i16, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, ushort, uint, i16, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short,  short, uint, i16, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short, ushort, uint, i16, i32, 16) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, short,  short, uint, i16, i32, 16) \
+    GEN_DEFINITION_BFE( FUNC, OP, int, uint, uint, i32, i32 ) \
+    GEN_DEFINITION_BFE( FUNC, OP, int,  int, uint, i32, i32 ) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, uint, i32, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int,  int, uint, i32, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, uint, i32, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int,  int, uint, i32, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, uint, i32, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int,  int, uint, i32, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, uint, i32, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int,  int, uint, i32, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int, uint, uint, i32, i32, 16) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, int,  int, uint, i32, i32, 16) \
+    GEN_DEFINITION_BFE( FUNC, OP, long, ulong, uint, i64, i32 ) \
+    GEN_DEFINITION_BFE( FUNC, OP, long,  long, uint, i64, i32 ) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, ulong, uint, i64, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long,  long, uint, i64, i32, 2) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, ulong, uint, i64, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long,  long, uint, i64, i32, 3) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, ulong, uint, i64, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long,  long, uint, i64, i32, 4) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, ulong, uint, i64, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long,  long, uint, i64, i32, 8) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long, ulong, uint, i64, i32, 16) \
+    GEN_VECTOR_DEFINITION_BFE( FUNC, OP, long,  long, uint, i64, i32, 16)
 
 #define GEN_DEFINITION_BFREV( FUNC, OP, TYPE, ABBR_TYPE ) \
 INLINE TYPE OVERLOADABLE FUNC( TYPE base ) { \
