@@ -1711,6 +1711,11 @@ list(APPEND _targetLinkLineCommon zebinlib)
         "${CMAKE_DL_LIBS}"
       )
     endif()
+    # Android binary needs to link static libstdc++ and liblog
+    if(ANDROID)
+        find_package(Threads REQUIRED)
+        target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE Threads::Threads -static-libstdc++ -llog)
+    endif()
     # Link line for shared / dynamic library requires only library project (all static libs are linked inside).
     set_property(TARGET "${IGC_BUILD__PROJ${_libBuildSuffix}}" PROPERTY LINK_INTERFACE_LIBRARIES "")
     set("IGC_BUILD__LINK_LINE${_libBuildSuffix}"

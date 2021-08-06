@@ -1033,8 +1033,16 @@ struct DepAnalysisComputer
 
     static bool updateLiveDefs(LivePaths &to, const LivePaths &from) {
         bool changed = from != to;
-        if (changed)
-            to = from;
+        if (changed) {
+#if defined(__ANDROID__)
+       to.clear();
+       for (auto iter : from) {
+              to.insert(iter);
+       }
+#else
+       to = from;
+#endif
+    }
         return changed;
     }
 

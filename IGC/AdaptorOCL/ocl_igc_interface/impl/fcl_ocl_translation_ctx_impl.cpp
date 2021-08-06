@@ -40,6 +40,9 @@ SPDX-License-Identifier: MIT
 #include <iostream>
 #include <string>
 #include <vector>
+#if defined(__ANDROID__)
+#include <sstream>
+#endif
 
 #if defined( _DEBUG ) || defined( _INTERNAL )
 #include <numeric>

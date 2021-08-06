@@ -1533,7 +1533,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         });
 
         mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
-#if defined(_DEBUG) && !defined(ANDROID)
+#if defined(_DEBUG) && !defined(__ANDROID__)
         // IGC IR Verification pass checks that we get a correct IR after the Unification.
         mpm.add(new VerificationPass());
 #endif
