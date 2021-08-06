@@ -3650,7 +3650,7 @@ namespace IGC
     {
         CodeGenContext* context = m_program->GetContext();
         bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
-        typedef std::unique_ptr< char, std::function<void(char*)>> param_uptr;
+        using param_uptr = std::unique_ptr<char, std::function<void(char*)>>;
         auto literal_deleter = [](char* val) {};
         auto dup_deleter = [](char* val) {free(val); };
         // create vbuilder->Compile() params
@@ -3702,30 +3702,26 @@ namespace IGC
             }
         }
         if (IGC_IS_FLAG_DISABLED(ForceDisableShaderDebugHashCodeInKernel) &&
-          (context->m_DriverInfo.EnableShaderDebugHashCodeInKernel() ||
-            IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel)))
+            (context->m_DriverInfo.EnableShaderDebugHashCodeInKernel() ||
+             IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel)))
         {
-            QWORD AssemblyHash = { 0 };
-            AssemblyHash = context->hash.getAsmHash();
-            params.push_back(param_uptr("-hashmovs", literal_deleter));
-            std::string Low = std::to_string((DWORD)AssemblyHash);
-            std::string High = std::to_string((DWORD)(AssemblyHash >> 32));
-            params.push_back(param_uptr(_strdup(Low.c_str()), dup_deleter));
-            params.push_back(param_uptr(_strdup(High.c_str()), dup_deleter));
-
-            QWORD NosHash = { 0 };
-            NosHash = context->hash.getNosHash();
-            QWORD PsoHash = { 0 };
-            PsoHash = context->hash.getPsoHash();
-            QWORD hashToUse = NosHash != 0 ? NosHash : PsoHash;
-            if (hashToUse)
+            auto addHash = [&](char* OptName, QWORD Hash)
             {
-                params.push_back(param_uptr("-hashmovs1", literal_deleter));
-                std::string Low = std::to_string((DWORD)hashToUse);
-                std::string High = std::to_string((DWORD)(hashToUse >> 32));
+                params.push_back(param_uptr(OptName, literal_deleter));
+                std::string Low = std::to_string((DWORD)Hash);
+                std::string High = std::to_string((DWORD)(Hash >> 32));
                 params.push_back(param_uptr(_strdup(Low.c_str()), dup_deleter));
                 params.push_back(param_uptr(_strdup(High.c_str()), dup_deleter));
-            }
+            };
+
+            QWORD AssemblyHash = context->hash.getAsmHash();
+            addHash("-hashmovs", AssemblyHash);
+
+            QWORD NosHash = context->hash.getNosHash();
+            QWORD PsoHash = context->hash.getPsoHash();
+            QWORD hashToUse = NosHash != 0 ? NosHash : PsoHash;
+            if (hashToUse)
+                addHash("-hashmovs1", hashToUse);
         }
     }
     void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR)
