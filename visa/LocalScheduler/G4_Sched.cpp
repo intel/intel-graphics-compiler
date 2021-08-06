@@ -576,6 +576,22 @@ bool preRA_Scheduler::run()
             continue;
         }
 
+        if (kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID) &&
+            (bb->getId() < kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID)))
+        {
+            SCHED_DUMP(std::cerr << "Skip BB"
+                << bb->getId() << "\n");
+            continue;
+        }
+
+        if (kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID) &&
+            (bb->getId() > kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID)))
+        {
+            SCHED_DUMP(std::cerr << "Skip BB"
+                << bb->getId() << "\n");
+            continue;
+        }
+
         unsigned MaxPressure = rp.getPressure(bb);
         if (MaxPressure <= Threshold && !config.UseLatency) {
             SCHED_DUMP(std::cerr << "Skip block with rp " << MaxPressure << "\n");
@@ -743,6 +759,22 @@ bool preRA_RegSharing::run()
         {
             SCHED_DUMP(std::cerr << "Skip block with instructions "
                 << bb->size() << "\n");
+            continue;
+        }
+
+        if (kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID) &&
+            (bb->getId() < kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID)))
+        {
+            SCHED_DUMP(std::cerr << "Skip BB"
+                << bb->getId() << "\n");
+            continue;
+        }
+
+        if (kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID) &&
+            (bb->getId() > kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID)))
+        {
+            SCHED_DUMP(std::cerr << "Skip BB"
+                << bb->getId() << "\n");
             continue;
         }
 
