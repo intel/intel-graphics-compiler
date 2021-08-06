@@ -217,8 +217,8 @@ void CMKernel::createConstArgumentAnnotation(unsigned argNo,
         payloadPosition, sizeInBytes, argNo);
 }
 
-// TODO: this is incomplete.
-void CMKernel::createSamplerAnnotation(unsigned argNo)
+// TODO: this is incomplete. Media sampler types are not supported now.
+void CMKernel::createSamplerAnnotation(unsigned argNo, unsigned BTI)
 {
     iOpenCL::SAMPLER_OBJECT_TYPE samplerType;
     samplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
@@ -226,7 +226,7 @@ void CMKernel::createSamplerAnnotation(unsigned argNo)
     auto samplerArg = std::make_unique<iOpenCL::SamplerArgumentAnnotation>();
     samplerArg->SamplerType = samplerType;
     samplerArg->ArgumentNumber = argNo;
-    samplerArg->SamplerTableIndex = 0;
+    samplerArg->SamplerTableIndex = BTI;
     samplerArg->LocationIndex = 0;
     samplerArg->LocationCount = 0;
     samplerArg->IsBindlessAccess = false;
@@ -566,7 +566,7 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::Sampler:
-      Kernel.createSamplerAnnotation(Arg.getIndex());
+      Kernel.createSamplerAnnotation(Arg.getIndex(), Arg.getBTI());
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::Image1D:

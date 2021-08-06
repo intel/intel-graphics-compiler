@@ -86,7 +86,7 @@ public:
   void createImplicitArgumentsAnnotation(unsigned payloadPosition);
 
   // Sampler
-  void createSamplerAnnotation(unsigned argNo);
+  void createSamplerAnnotation(unsigned argNo, unsigned BTI);
 
   void createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
                                        unsigned Size, unsigned ArgOffset);
