@@ -289,6 +289,7 @@ namespace IGC
         inline void Inv(CVariable* dst, CVariable* src0);
         inline void Not(CVariable* dst, CVariable* src0);
         // src0 * src1 + src2
+        inline void Madw(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
         inline void Mad(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
         inline void Lrp(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
         inline void Xor(CVariable* dst, CVariable* src0, CVariable* src1);
@@ -864,6 +865,12 @@ namespace IGC
     inline void CEncoder::Cast(CVariable* dst, CVariable* src)
     {
         DataMov(ISA_MOV, dst, src);
+    }
+
+    // src0 * src1 + src2
+    inline void CEncoder::Madw(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2)
+    {
+        Arithmetic(ISA_MADW, dst, src0, src1, src2);
     }
 
     // src0 * src1 + src2
