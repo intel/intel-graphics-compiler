@@ -946,18 +946,23 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
                     m_pChangedNew->push_back(it->second);
             }
 
-            // Experiment to see when the code after this test is needed
-            if (IGC_IS_FLAG_ENABLED(WIAExperimental))
-                continue;
-
+            // This is an optimization that tries to detect instruction
+            // not really affected by control-flow divergency because
+            // all the sources are outside the region.
+            // However this is only as good as we can get because we
+            // only search limited depth
             if (isRegionInvariant(defi, &br_info, 0))
             {
                 continue;
             }
-            // look at the uses
+            // We need to look at where the use is in order to decide
+            // we should make def to be "random" when loop is not in
+            // LCSSA form because we do not have LCSSA phi-nodes.
+            // 1) if use is in the full-join
+            // 2) if use is even outside the full-join
+            // 3) if use is in partial-join but def is not in partial-join
             Value::use_iterator use_it = defi->use_begin();
             Value::use_iterator use_e = defi->use_end();
-
             for (; use_it != use_e; ++use_it)
             {
                 Instruction* user = dyn_cast<Instruction>((*use_it).getUser());
@@ -966,32 +971,20 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
                 PHINode* phi = dyn_cast<PHINode>(user);
                 if (phi)
                 {
-                    // another place we assume all critical edges have been split and
-                    // phi-move will be placed on the blocks created on those
+                    // another place we assume all critical edges have been
+                    // split and phi-move will be placed on those splitters
                     user_blk = phi->getIncomingBlock(*use_it);
                 }
-                auto canUserBeHoistedToDefBlock = [](Instruction* UI, Instruction* DI)->bool {
-                    for (auto& uo : UI->operands())
-                    {
-                        Value* V = uo.get();
-                        if (V == DI)
-                            continue;
-                        else if (dyn_cast<Constant>(V))
-                            continue;
-                        else
-                            return false;
-                    }
-                    return true;
-                };
-                if ((user_blk == def_blk) ||
-                    (canUserBeHoistedToDefBlock(user, defi) && !phi))
+                if (user_blk == def_blk)
                 {
                     // local def-use, not related to control-dependence
                     continue; // skip
                 }
                 if (user_blk == br_info.full_join ||
-                    br_info.partial_joins.count(user_blk) ||
-                    !br_info.influence_region.count(user_blk))
+                    !br_info.influence_region.count(user_blk) ||
+                    (br_info.partial_joins.count(user_blk) &&
+                     !br_info.partial_joins.count(def_blk))
+                   )
                 {
                     updateDepMap(defi, instDep);
                     // break out of the use loop

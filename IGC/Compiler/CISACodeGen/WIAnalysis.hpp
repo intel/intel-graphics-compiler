@@ -28,7 +28,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
-#include <llvmWrapper/Transforms/Utils.h>
 #include "common/LLVMWarningsPop.hpp"
 
 
@@ -327,8 +326,6 @@ namespace IGC
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<TranslationTable>();
-            AU.addRequiredID(llvm::LCSSAID);
-            AU.addPreservedID(llvm::LCSSAID);
         }
 
         /// @brief LLVM llvm::Function pass entry
