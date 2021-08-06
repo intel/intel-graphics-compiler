@@ -1121,7 +1121,16 @@ void SWSBAnalyzer::run()
                 inst->setSWSB(
                     SWSB(SWSB::DistType::NO_DIST, distanceDependency.tokenType, 0, distanceDependency.sbid));
             } else {
-                inst->setSWSB(distanceDependency);
+                // if the input SWSB is a special token, preserve it and insert a sync before to carry the dependency info
+                // Note that dpas must not have special token so we only do this check for non-dpas here
+                if (inst->getSWSB().hasSpecialToken()) {
+                    if (distanceDependency.hasSWSB()) {
+                        Instruction* syncInst = m_kernel.createSyncNopInstruction(distanceDependency);
+                        bb->insertInstBefore(instIter, syncInst);
+                    }
+                } else {
+                    inst->setSWSB(distanceDependency);
+                }
             }
             assert(distanceDependency.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)));
 

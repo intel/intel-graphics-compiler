@@ -32,7 +32,6 @@ SPDX-License-Identifier: MIT
 
 using namespace iga;
 
-
 // full "constructor"
 #define UNWRAP_TUPLE(...) {__VA_ARGS__}
 #define IGA_REGISTER_SPEC(\
