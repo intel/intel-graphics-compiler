@@ -1660,6 +1660,12 @@ uchar3  __attribute__((overloadable)) intel_bfrev(uchar3  base);
 uchar4  __attribute__((overloadable)) intel_bfrev(uchar4  base);
 uchar8  __attribute__((overloadable)) intel_bfrev(uchar8  base);
 uchar16 __attribute__((overloadable)) intel_bfrev(uchar16 base);
+char   __attribute__((overloadable)) intel_bfrev(char   base);
+char2  __attribute__((overloadable)) intel_bfrev(char2  base);
+char3  __attribute__((overloadable)) intel_bfrev(char3  base);
+char4  __attribute__((overloadable)) intel_bfrev(char4  base);
+char8  __attribute__((overloadable)) intel_bfrev(char8  base);
+char16 __attribute__((overloadable)) intel_bfrev(char16 base);
 
 // bfrev i16
 ushort   __attribute__((overloadable)) intel_bfrev(ushort   base);
@@ -1668,6 +1674,12 @@ ushort3  __attribute__((overloadable)) intel_bfrev(ushort3  base);
 ushort4  __attribute__((overloadable)) intel_bfrev(ushort4  base);
 ushort8  __attribute__((overloadable)) intel_bfrev(ushort8  base);
 ushort16 __attribute__((overloadable)) intel_bfrev(ushort16 base);
+short   __attribute__((overloadable)) intel_bfrev(short   base);
+short2  __attribute__((overloadable)) intel_bfrev(short2  base);
+short3  __attribute__((overloadable)) intel_bfrev(short3  base);
+short4  __attribute__((overloadable)) intel_bfrev(short4  base);
+short8  __attribute__((overloadable)) intel_bfrev(short8  base);
+short16 __attribute__((overloadable)) intel_bfrev(short16 base);
 
 // bfrev i32
 uint   __attribute__((overloadable)) intel_bfrev(uint   base);
@@ -1676,6 +1688,12 @@ uint3  __attribute__((overloadable)) intel_bfrev(uint3  base);
 uint4  __attribute__((overloadable)) intel_bfrev(uint4  base);
 uint8  __attribute__((overloadable)) intel_bfrev(uint8  base);
 uint16 __attribute__((overloadable)) intel_bfrev(uint16 base);
+int   __attribute__((overloadable)) intel_bfrev(int   base);
+int2  __attribute__((overloadable)) intel_bfrev(int2  base);
+int3  __attribute__((overloadable)) intel_bfrev(int3  base);
+int4  __attribute__((overloadable)) intel_bfrev(int4  base);
+int8  __attribute__((overloadable)) intel_bfrev(int8  base);
+int16 __attribute__((overloadable)) intel_bfrev(int16 base);
 
 // bfrev i64
 ulong   __attribute__((overloadable)) intel_bfrev(ulong   base);
@@ -1684,6 +1702,12 @@ ulong3  __attribute__((overloadable)) intel_bfrev(ulong3  base);
 ulong4  __attribute__((overloadable)) intel_bfrev(ulong4  base);
 ulong8  __attribute__((overloadable)) intel_bfrev(ulong8  base);
 ulong16 __attribute__((overloadable)) intel_bfrev(ulong16 base);
+long   __attribute__((overloadable)) intel_bfrev(long   base);
+long2  __attribute__((overloadable)) intel_bfrev(long2  base);
+long3  __attribute__((overloadable)) intel_bfrev(long3  base);
+long4  __attribute__((overloadable)) intel_bfrev(long4  base);
+long8  __attribute__((overloadable)) intel_bfrev(long8  base);
+long16 __attribute__((overloadable)) intel_bfrev(long16 base);
 #endif // defined(cl_intel_bit_instructions)
 
 #ifdef cl_intel_subgroups_ballot
