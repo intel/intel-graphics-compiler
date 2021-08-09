@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
+#include <llvm/Support/ErrorHandling.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 
@@ -170,10 +171,11 @@ Value &readValueFromBuiltinOp(Use &BiOp, IRBuilder<> &IRB) {
   assert(OpIdx < BuiltinOperandSize[BiID] && "operand index is illegal");
   switch (BuiltinOperandKind[BiID][OpIdx]) {
   case OperandKind::VectorOut:
-    // Need to know the real vector type to mangle some intrinsics,
-    // so we pass this info through operands to createMainInst.
-    // FIXME: don't look at output operands here at all.
-    return searchForVectorPointer(*BiOp.get());
+    // Have to return something because the function is called for every
+    // operand even output one.
+    // FIXME: Call the function only for the required operands and replace this
+    //        case with an assertion.
+    return *IRB.getInt32(0);
   case OperandKind::VectorIn:
   case OperandKind::VectorInOut:
     return readVectorFromBuiltinOp(*BiOp.get(), IRB);
@@ -192,8 +194,7 @@ Value &readValueFromBuiltinOp(Use &BiOp, IRBuilder<> &IRB) {
     assert(BiOp.get()->getType()->isPointerTy() && "pointer type is expected");
     return *BiOp.get();
   default:
-    assert(0 && "Unexpected operand kind");
-    return *BiOp.get();
+    llvm_unreachable("Unexpected operand kind");
   }
 }
 
@@ -211,14 +212,100 @@ static std::vector<ValueRef> readOperands(CallInst &BiCall, IRBuilder<> &IRB) {
   return LegalOps;
 }
 
+// Returns a intended builtin operand type.
+// Vector operands are passed through pointer, intended type in this case is
+// the vector type, not pointer to vector type.
+template <BuiltinID::Enum BiID>
+Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
+  assert(OpIdx < BuiltinOperandSize[BiID] && "operand index is illegal");
+  Value &BiOp = *BiCall.getArgOperand(OpIdx);
+  switch (BuiltinOperandKind[BiID][OpIdx]) {
+  case OperandKind::VectorOut:
+  case OperandKind::VectorIn:
+  case OperandKind::VectorInOut:
+    return *searchForVectorPointer(BiOp).getType()->getPointerElementType();
+  case OperandKind::ScalarConst:
+  case OperandKind::ScalarIn:
+  case OperandKind::PointerIn:
+    return *BiOp.getType();
+  default:
+    llvm_unreachable("Unexpected operand kind");
+  }
+}
+
+// Returns the type wich instruction that a builtin is translated into will
+// have.
+template <BuiltinID::Enum BiID>
+Type &getTranslatedBuiltinType(CallInst &BiCall);
+
+// FIXME: Autogenerate getTranslatedBuiltinType specializations.
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::Select>(CallInst &BiCall) {
+  return getTypeFromBuiltinOperand<BuiltinID::Select>(BiCall,
+                                                      SelectOperand::TrueValue);
+}
+
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::RdRegionInt>(CallInst &BiCall) {
+  return getTypeFromBuiltinOperand<BuiltinID::RdRegionInt>(
+      BiCall, RdRegionIntOperand::Destination);
+}
+
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::RdRegionFloat>(CallInst &BiCall) {
+  return getTypeFromBuiltinOperand<BuiltinID::RdRegionFloat>(
+      BiCall, RdRegionFloatOperand::Destination);
+}
+
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::WrRegionInt>(CallInst &BiCall) {
+  return getTypeFromBuiltinOperand<BuiltinID::WrRegionInt>(
+      BiCall, WrRegionIntOperand::Destination);
+}
+
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::WrRegionFloat>(CallInst &BiCall) {
+  return getTypeFromBuiltinOperand<BuiltinID::WrRegionFloat>(
+      BiCall, WrRegionFloatOperand::Destination);
+}
+
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::PrintfBuffer>(CallInst &BiCall) {
+  return *BiCall.getType();
+}
+
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::PrintfFormatIndex>(CallInst &BiCall) {
+  return *BiCall.getType();
+}
+
+template <>
+Type &
+getTranslatedBuiltinType<BuiltinID::PrintfFormatIndexLegacy>(CallInst &BiCall) {
+  return *BiCall.getType();
+}
+
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::SVMScatter>(CallInst &BiCall) {
+  return *BiCall.getType();
+}
+
+template <>
+Type &getTranslatedBuiltinType<BuiltinID::SVMAtomicAdd>(CallInst &BiCall) {
+  return getTypeFromBuiltinOperand<BuiltinID::SVMAtomicAdd>(
+      BiCall, SVMAtomicAddOperand::Destination);
+}
+
 // Generates instruction/instructions that represent cm-cl builtin semantics,
 // output values (if any) a written into output vector.
 // The order of output values are covered in the comment to
 // writeBuiltinResults.
+// Args:
+//    RetTy - type of generated instruction
 // FIXME: find a way to autogenerate it.
 template <BuiltinID::Enum BiID>
 std::vector<ValueRef> createMainInst(const std::vector<ValueRef> &Operands,
-                                     Type &BiTy, IRBuilder<> &IRB);
+                                     Type &RetTy, IRBuilder<> &IRB);
 
 template <>
 std::vector<ValueRef>
@@ -241,11 +328,7 @@ createMainInst<BuiltinID::Select>(const std::vector<ValueRef> &Operands, Type &,
 template <>
 std::vector<ValueRef>
 createMainInst<BuiltinID::RdRegionInt>(const std::vector<ValueRef> &Operands,
-                                       Type &, IRBuilder<> &IRB) {
-  Type *RetTy = Operands[RdRegionIntOperand::Destination]
-                    .get()
-                    .getType()
-                    ->getPointerElementType();
+                                       Type &RetTy, IRBuilder<> &IRB) {
   Value *Args[] = {&Operands[RdRegionIntOperand::Source].get(),
                    &Operands[RdRegionIntOperand::VStride].get(),
                    &Operands[RdRegionIntOperand::Width].get(),
@@ -253,7 +336,7 @@ createMainInst<BuiltinID::RdRegionInt>(const std::vector<ValueRef> &Operands,
                    &Operands[RdRegionIntOperand::Offset].get(),
                    UndefValue::get(IRB.getInt32Ty())};
   auto *Decl = getGenXDeclarationForIdFromArgs(
-      *RetTy, Args, GenXIntrinsic::genx_rdregioni,
+      RetTy, Args, GenXIntrinsic::genx_rdregioni,
       *IRB.GetInsertBlock()->getModule());
   auto *RdR = IRB.CreateCall(Decl, Args, "cmcl.rdr");
   return {*RdR};
@@ -262,11 +345,7 @@ createMainInst<BuiltinID::RdRegionInt>(const std::vector<ValueRef> &Operands,
 template <>
 std::vector<ValueRef>
 createMainInst<BuiltinID::RdRegionFloat>(const std::vector<ValueRef> &Operands,
-                                         Type &, IRBuilder<> &IRB) {
-  Type *RetTy = Operands[RdRegionFloatOperand::Destination]
-                    .get()
-                    .getType()
-                    ->getPointerElementType();
+                                         Type &RetTy, IRBuilder<> &IRB) {
   Value *Args[] = {&Operands[RdRegionFloatOperand::Source].get(),
                    &Operands[RdRegionFloatOperand::VStride].get(),
                    &Operands[RdRegionFloatOperand::Width].get(),
@@ -274,7 +353,7 @@ createMainInst<BuiltinID::RdRegionFloat>(const std::vector<ValueRef> &Operands,
                    &Operands[RdRegionFloatOperand::Offset].get(),
                    UndefValue::get(IRB.getInt32Ty())};
   auto *Decl = getGenXDeclarationForIdFromArgs(
-      *RetTy, Args, GenXIntrinsic::genx_rdregionf,
+      RetTy, Args, GenXIntrinsic::genx_rdregionf,
       *IRB.GetInsertBlock()->getModule());
   auto *RdR = IRB.CreateCall(Decl, Args, "cmcl.rdr");
   return {*RdR};
@@ -283,8 +362,7 @@ createMainInst<BuiltinID::RdRegionFloat>(const std::vector<ValueRef> &Operands,
 template <>
 std::vector<ValueRef>
 createMainInst<BuiltinID::WrRegionInt>(const std::vector<ValueRef> &Operands,
-                                       Type &, IRBuilder<> &IRB) {
-  Type *RetTy = Operands[WrRegionIntOperand::Destination].get().getType();
+                                       Type &RetTy, IRBuilder<> &IRB) {
   Value *Args[] = {&Operands[WrRegionIntOperand::Destination].get(),
                    &Operands[WrRegionIntOperand::Source].get(),
                    &Operands[WrRegionIntOperand::VStride].get(),
@@ -294,7 +372,7 @@ createMainInst<BuiltinID::WrRegionInt>(const std::vector<ValueRef> &Operands,
                    UndefValue::get(IRB.getInt32Ty()),
                    IRB.getTrue()};
   auto *Decl = getGenXDeclarationForIdFromArgs(
-      *RetTy, Args, GenXIntrinsic::genx_wrregioni,
+      RetTy, Args, GenXIntrinsic::genx_wrregioni,
       *IRB.GetInsertBlock()->getModule());
   auto *WrR = IRB.CreateCall(Decl, Args, "cmcl.wrr");
   return {*WrR};
@@ -303,8 +381,7 @@ createMainInst<BuiltinID::WrRegionInt>(const std::vector<ValueRef> &Operands,
 template <>
 std::vector<ValueRef>
 createMainInst<BuiltinID::WrRegionFloat>(const std::vector<ValueRef> &Operands,
-                                         Type &, IRBuilder<> &IRB) {
-  Type *RetTy = Operands[WrRegionFloatOperand::Destination].get().getType();
+                                         Type &RetTy, IRBuilder<> &IRB) {
   Value *Args[] = {&Operands[WrRegionFloatOperand::Destination].get(),
                    &Operands[WrRegionFloatOperand::Source].get(),
                    &Operands[WrRegionFloatOperand::VStride].get(),
@@ -314,7 +391,7 @@ createMainInst<BuiltinID::WrRegionFloat>(const std::vector<ValueRef> &Operands,
                    UndefValue::get(IRB.getInt32Ty()),
                    IRB.getTrue()};
   auto *Decl = getGenXDeclarationForIdFromArgs(
-      *RetTy, Args, GenXIntrinsic::genx_wrregionf,
+      RetTy, Args, GenXIntrinsic::genx_wrregionf,
       *IRB.GetInsertBlock()->getModule());
   auto *WrR = IRB.CreateCall(Decl, Args, "cmcl.wrr");
   return {*WrR};
@@ -323,11 +400,10 @@ createMainInst<BuiltinID::WrRegionFloat>(const std::vector<ValueRef> &Operands,
 template <>
 std::vector<ValueRef>
 createMainInst<BuiltinID::PrintfBuffer>(const std::vector<ValueRef> &,
-                                        Type &BiTy, IRBuilder<> &IRB) {
-  Type *RetTy = IRB.getInt64Ty();
+                                        Type &RetTy, IRBuilder<> &IRB) {
   std::array<Value *, 0> Args;
   auto *Decl = getGenXDeclarationForIdFromArgs(
-      *RetTy, Args, GenXIntrinsic::genx_print_buffer,
+      RetTy, Args, GenXIntrinsic::genx_print_buffer,
       *IRB.GetInsertBlock()->getModule());
   auto *IntPtr = IRB.CreateCall(Decl, Args, "cmcl.print.buffer");
   return {*IntPtr};
@@ -335,11 +411,10 @@ createMainInst<BuiltinID::PrintfBuffer>(const std::vector<ValueRef> &,
 
 template <>
 std::vector<ValueRef> createMainInst<BuiltinID::PrintfFormatIndex>(
-    const std::vector<ValueRef> &Operands, Type &BiTy, IRBuilder<> &IRB) {
-  Type *RetTy = IRB.getInt32Ty();
+    const std::vector<ValueRef> &Operands, Type &RetTy, IRBuilder<> &IRB) {
   Value *Args[] = {&Operands[PrintfFormatIndexOperand::Source].get()};
   auto *Decl = getGenXDeclarationForIdFromArgs(
-      *RetTy, Args, GenXIntrinsic::genx_print_format_index,
+      RetTy, Args, GenXIntrinsic::genx_print_format_index,
       *IRB.GetInsertBlock()->getModule());
   auto *Idx = IRB.CreateCall(Decl, Args);
   return {*Idx};
@@ -354,8 +429,7 @@ std::vector<ValueRef> createMainInst<BuiltinID::PrintfFormatIndexLegacy>(
 template <>
 std::vector<ValueRef>
 createMainInst<BuiltinID::SVMScatter>(const std::vector<ValueRef> &Operands,
-                                      Type &BiTy, IRBuilder<> &IRB) {
-  Type *RetTy = IRB.getVoidTy();
+                                      Type &RetTy, IRBuilder<> &IRB) {
   auto Width = cast<IGCLLVM::FixedVectorType>(
                    Operands[SVMScatterOperand::Address].get().getType())
                    ->getNumElements();
@@ -364,7 +438,7 @@ createMainInst<BuiltinID::SVMScatter>(const std::vector<ValueRef> &Operands,
                    &Operands[SVMScatterOperand::Address].get(),
                    &Operands[SVMScatterOperand::Source].get()};
   auto *Decl = getGenXDeclarationForIdFromArgs(
-      *RetTy, Args, GenXIntrinsic::genx_svm_scatter,
+      RetTy, Args, GenXIntrinsic::genx_svm_scatter,
       *IRB.GetInsertBlock()->getModule());
   IRB.CreateCall(Decl, Args);
   return {};
@@ -373,20 +447,16 @@ createMainInst<BuiltinID::SVMScatter>(const std::vector<ValueRef> &Operands,
 template <>
 std::vector<ValueRef>
 createMainInst<BuiltinID::SVMAtomicAdd>(const std::vector<ValueRef> &Operands,
-                                        Type &, IRBuilder<> &IRB) {
-  Type *RetTy = Operands[SVMAtomicAddOperand::Destination]
-                    .get()
-                    .getType()
-                    ->getPointerElementType();
+                                        Type &RetTy, IRBuilder<> &IRB) {
   auto Width = cast<IGCLLVM::FixedVectorType>(
                    Operands[SVMAtomicAddOperand::Address].get().getType())
                    ->getNumElements();
   Value *Args[] = {IRB.CreateVectorSplat(Width, IRB.getInt1(true)),
                    &Operands[SVMAtomicAddOperand::Address].get(),
                    &Operands[SVMAtomicAddOperand::Source].get(),
-                   UndefValue::get(RetTy)};
+                   UndefValue::get(&RetTy)};
   auto *Decl = getGenXDeclarationForIdFromArgs(
-      *RetTy, Args, GenXIntrinsic::genx_svm_atomic_add,
+      RetTy, Args, GenXIntrinsic::genx_svm_atomic_add,
       *IRB.GetInsertBlock()->getModule());
   auto *Result = IRB.CreateCall(Decl, Args, "cmcl.svm.atomic.add");
   return {*Result};
@@ -419,7 +489,8 @@ static void handleBuiltinCall(CallInst &BiCall) {
   IRBuilder<> IRB{&BiCall};
 
   auto Operands = readOperands<BiID>(BiCall, IRB);
-  auto Result = createMainInst<BiID>(Operands, *BiCall.getType(), IRB);
+  auto &RetTy = getTranslatedBuiltinType<BiID>(BiCall);
+  auto Result = createMainInst<BiID>(Operands, RetTy, IRB);
   writeBuiltinResults<BiID>(Result, BiCall, IRB);
 }
 
