@@ -1183,6 +1183,7 @@ namespace IGC
         bool isSecondCompile;
         bool m_IsPingPongSecond;
         unsigned m_slmSize;
+        bool numWorkGroupsUsed;
 
         ComputeShaderContext(
             const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
@@ -1196,6 +1197,7 @@ namespace IGC
             isSecondCompile = false;
             m_IsPingPongSecond = false;
             m_slmSize = 0;
+            numWorkGroupsUsed = false;
         }
 
         /** get shader's thread group size */
