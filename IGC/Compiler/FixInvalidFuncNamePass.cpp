@@ -33,60 +33,36 @@ public:
     static char ID;
 
 private:
-    // Check and change call instruction if contains invalid char
-    bool changeCallInstr(Function& F);
-    // Change func name. This changing update all the references inside the same module
-    bool changeInvalidFuncName(Function& F);
     // Replace invalid char to underscore
-    std::string replaceInvalidCharToUnderline(std::string str);
+    static std::string replaceInvalidCharToUnderline(std::string str);
 };
 
 char FixInvalidFuncName::ID = 0;
 
 bool FixInvalidFuncName::runOnFunction(Function& F)
 {
-    return changeCallInstr(F);
-}
-
-bool FixInvalidFuncName::changeInvalidFuncName(Function& F)
-{
-    std::string str = F.getName().str();
-    std::string str_changed = replaceInvalidCharToUnderline(str);
-    if (str != str_changed)
-    {
-        F.setName(str_changed);
-        return true;
-    }
-    return false;
-}
-
-bool FixInvalidFuncName::changeCallInstr(Function& F)
-{
+    bool modified = false;
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
     {
         if (CallInst* callInst = dyn_cast<CallInst>(&(*I)))
         {
             if (callInst->getCallingConv() == CallingConv::SPIR_FUNC)
             {
-                auto calledFuncName = callInst->getCalledFunction();
-                if (calledFuncName)
+                Function* func = callInst->getCalledFunction();
+                if (func)
                 {
-                    StringRef funcName = calledFuncName->getName();
-                    std::string str = funcName.str();
-                    std::string str_changed = replaceInvalidCharToUnderline(str);
-                    if (str != str_changed)
+                    StringRef original = func->getName();
+                    std::string changed = replaceInvalidCharToUnderline(original);
+                    if (original != changed)
                     {
-                        Function* func = callInst->getCalledFunction();
-                        if (func)
-                        {
-                            return changeInvalidFuncName(*func);
-                        }
+                        func->setName(changed);
+                        modified = true;
                     }
                 }
             }
         }
     }
-    return false;
+    return modified;
 }
 
 std::string FixInvalidFuncName::replaceInvalidCharToUnderline(std::string str)
@@ -101,11 +77,11 @@ namespace IGC
 #define PASS_FLAG "fix-invalid-func-name"
 #define PASS_DESCRIPTION "Fix Invalid Func Name Pass"
 #define PASS_CFG_ONLY false
-#define PASS_ANALYSIS true
-    IGC_INITIALIZE_PASS_BEGIN(FixInvalidFuncName, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-        IGC_INITIALIZE_PASS_END(FixInvalidFuncName, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(FixInvalidFuncName, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(FixInvalidFuncName, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-        FunctionPass* createFixInvalidFuncNamePass()
+    FunctionPass* createFixInvalidFuncNamePass()
     {
         return new FixInvalidFuncName();
     }
