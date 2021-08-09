@@ -6,9 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "SendFusion.h"
-#include "BuildIR.h"
-#include "G4_IR.hpp"
+#include "SendFusion.hpp"
+#include "../BuildIR.h"
+#include "../G4_IR.hpp"
 
 #include <map>
 #include <algorithm>
@@ -1604,7 +1604,7 @@ bool SendFusion::run(G4_BB* BB)
     // Prepare for processing this BB
     CurrBB = BB;
     FlagDefPerBB = nullptr;
-    CurrBB->resetLocalId();
+    CurrBB->resetLocalIds();
 
     // Found two candidate sends:
     //    1. next to each (no other sends in between), and

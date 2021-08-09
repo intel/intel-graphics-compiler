@@ -1536,7 +1536,7 @@ void G4_BB::dumpDefUse(std::ostream& os) const
     }
 }
 
-void G4_BB::resetLocalId()
+void G4_BB::resetLocalIds()
 {
     int i = 0;
 

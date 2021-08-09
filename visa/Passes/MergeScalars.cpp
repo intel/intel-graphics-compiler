@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "MergeScalar.h"
+#include "MergeScalars.hpp"
 
 #include <vector>
 

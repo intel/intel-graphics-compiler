@@ -1435,12 +1435,11 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
 SendDesc BinaryEncodingIGA::encodeExDescRegA0(
     G4_INST* sendInst, SendExDescOpts &sdos) const
 {
-    SendDesc exDescIga;
-
     G4_Operand* exDescG4 = sendInst->getSrc(3);
     const G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
     assert(descG4 != nullptr && "expected raw descriptor");
 
+    SendDesc exDescIga;
     exDescIga.type = SendDesc::Kind::REG32A;
     exDescIga.reg.regNum = 0; // must be a0
     bool valid = false;

@@ -10,14 +10,15 @@ SPDX-License-Identifier: MIT
 #include "G4_Opcode.h"
 #include "Timer.h"
 #include "G4_Verifier.hpp"
-#include "LVN.h"
 #include "ifcvt.h"
 #include "FlowGraph.h"
-#include "SendFusion.h"
 #include "Common_BinaryEncoding.h"
 #include "DebugInfo.h"
-#include "AccSubstitution.h"
-#include "MergeScalar.h"
+#include "Passes/AccSubstitution.hpp"
+#include "Passes/InstCombine.hpp"
+#include "Passes/LVN.hpp"
+#include "Passes/MergeScalars.hpp"
+#include "Passes/SendFusion.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -975,26 +976,6 @@ void Optimizer::cloneSampleInst()
     }
 }
 
-bool isLifetimeOpRemovalCandidate(G4_INST* inst)
-{
-    if (inst->isPseudoKill() || inst->isLifeTimeEnd())
-    {
-        return true;
-    }
-
-    return false;
-
-}
-
-bool isPseudoUse(G4_INST* inst)
-{
-    if (inst->isPseudoUse())
-    {
-        return true;
-    }
-    return false;
-}
-
 void Optimizer::removeLifetimeOps()
 {
     // Call this function after RA only.
@@ -1063,8 +1044,9 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(cleanMessageHeader,      vISA_LocalCleanMessageHeader, TimerID::OPTIMIZER);
     INITIALIZE_PASS(sendFusion,              vISA_EnableSendFusion,        TimerID::OPTIMIZER);
     INITIALIZE_PASS(renameRegister,          vISA_LocalRenameRegister,     TimerID::OPTIMIZER);
-    INITIALIZE_PASS(newLocalDefHoisting,     vISA_LocalDefHoist,           TimerID::OPTIMIZER);
-    INITIALIZE_PASS(newLocalCopyPropagation, vISA_LocalCopyProp,           TimerID::OPTIMIZER);
+    INITIALIZE_PASS(localDefHoisting,        vISA_LocalDefHoist,           TimerID::OPTIMIZER);
+    INITIALIZE_PASS(localCopyPropagation,    vISA_LocalCopyProp,           TimerID::OPTIMIZER);
+    INITIALIZE_PASS(localInstCombine,        vISA_LocalInstCombine,        TimerID::OPTIMIZER);
     INITIALIZE_PASS(cselPeepHoleOpt,         vISA_enableCSEL,              TimerID::OPTIMIZER);
     INITIALIZE_PASS(optimizeLogicOperation,  vISA_EnableAlways,            TimerID::OPTIMIZER);
     INITIALIZE_PASS(HWConformityChk,         vISA_EnableAlways,            TimerID::HW_CONFORMITY);
@@ -1341,7 +1323,7 @@ void restoreGRFAssignments(std::vector<Assignment>& assignments)
 // add more as necessary
 bool Optimizer::isCopyPropProfitable(G4_INST* movInst) const
 {
-    assert(movInst->opcode() == G4_mov && "execpt move instruction");
+    assert(movInst->opcode() == G4_mov && "expected a move instruction");
 
     // if inst is a simd16 W/HF packing, we don't want to optimize it if
     // there are >=2 simd16 mad uses, since it will slow down the mad.
@@ -1570,11 +1552,14 @@ int Optimizer::optimization()
     // rename registers.
     runPass(PI_renameRegister);
 
-    runPass(PI_newLocalDefHoisting);
+    runPass(PI_localDefHoisting);
 
 
-    // remove redundant movs
-    runPass(PI_newLocalCopyPropagation);
+    // remove redundant movs and fold some other patterns
+    runPass(PI_localCopyPropagation);
+
+    // fold some binary operations
+    runPass(PI_localInstCombine);
 
     runPass(PI_mergeScalarInst);
 
@@ -2210,9 +2195,9 @@ G4_SrcModifier Optimizer::mergeModifier(G4_Operand *src, G4_Operand *use)
 {
     if ((src == NULL || !src->isSrcRegRegion())  && use && use->isSrcRegRegion()) {
         return use->asSrcRegRegion()->getModifier();
-    }else if ((use == NULL || !use->isSrcRegRegion()) && src && src->isSrcRegRegion()) {
+    } else if ((use == NULL || !use->isSrcRegRegion()) && src && src->isSrcRegRegion()) {
         return src->asSrcRegRegion()->getModifier();
-    }else if (src && src->isSrcRegRegion() && use && use->isSrcRegRegion()) {
+    } else if (src && src->isSrcRegRegion() && use && use->isSrcRegRegion()) {
         G4_SrcModifier mod1 = src->asSrcRegRegion()->getModifier(), mod2 = use->asSrcRegRegion()->getModifier();
         if (mod2 == Mod_Abs || mod2 == Mod_Minus_Abs) {
             return mod2;
@@ -2222,11 +2207,11 @@ G4_SrcModifier Optimizer::mergeModifier(G4_Operand *src, G4_Operand *use)
             // mod2 == Minus
             if (mod1 == Mod_Minus) {
                 return Mod_src_undef;
-            }else if (mod1 == Mod_Abs) {
+            } else if (mod1 == Mod_Abs) {
                 return Mod_Minus_Abs;
-            }else if (mod1 == Mod_Minus_Abs) {
+            } else if (mod1 == Mod_Minus_Abs) {
                 return Mod_Abs;
-            }else{
+            } else{
                 return mod2;
             }
         }
@@ -2716,7 +2701,7 @@ static void doHoisting(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
     inst->removeAllUses();
 }
 
-void Optimizer::newLocalDefHoisting()
+void Optimizer::localDefHoisting()
 {
     unsigned numDefHoisted = 0;
     for (auto bb : fg)
@@ -2751,195 +2736,6 @@ void Optimizer::newLocalDefHoisting()
         optReport << "             === Local Definition Hoisting Optimization ===\n";
         optReport << "Number of defs hoisted: " << numDefHoisted << "\n";
         closeOptReportStream(optReport);
-    }
-}
-
-//  find a common (integer) type for constant folding.  The rules are:
-//  -- both types must be int
-//  -- Q and UQ are not folded
-//  -- UD if one of the type is UD
-//  -- D otherwise
-//
-//  returns Type_UNDEF if no appropriate type can be found
-//
-static G4_Type findConstFoldCommonType(G4_Type type1, G4_Type type2)
-{
-    if (IS_TYPE_INT(type1) && IS_TYPE_INT(type2))
-    {
-        if (TypeSize(type1) == 8 || TypeSize(type2) == 8)
-        {
-            return Type_UNDEF;
-        }
-        if (type1 == Type_UD || type2 == Type_UD)
-        {
-            return Type_UD;
-        }
-        else
-        {
-            return Type_D;
-        }
-    }
-    return Type_UNDEF;
-}
-
-// Do the following algebraic simplification:
-// - mul v, src0, 0 ==> 0, commutative
-// - and v, src0, 0 ==> 0, commutative
-// - mul v, src0, 1 ==> src0, commutative
-// - shl v, src0, 0 ==> src0
-// - shr v, src0, 0 ==> src0
-// - asr v, src0, 0 ==> src0
-// - add v, src0, 0 ==> src0, commutative
-void Optimizer::doSimplification(G4_INST *inst)
-{
-    // Just handle following commonly used ops for now.
-    if (inst->opcode() != G4_mul && inst->opcode() != G4_and &&
-        inst->opcode() != G4_add && inst->opcode() != G4_shl &&
-        inst->opcode() != G4_shr && inst->opcode() != G4_asr &&
-        inst->opcode() != G4_mov)
-    {
-        return;
-    }
-
-
-    // Perform 'mov' to 'movi' transform when it's a 'mov' of
-    // - simd8
-    // - it's a raw mov
-    // - dst is within a single GRF.
-    // - src uses VxH indirect access.
-    // - src is within one GRF.
-    // - indices to src are all within src.
-    // - destination stride in bytes must be equal to the source element size in bytes.
-    bool canConvertMovToMovi = inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD8 &&
-        inst->isRawMov() && inst->getDst() &&
-        !inst->getDst()->asDstRegRegion()->isCrossGRFDst() &&
-        inst->getSrc(0) && inst->getSrc(0)->isSrcRegRegion() &&
-        inst->getSrc(0)->asSrcRegRegion()->isIndirect() &&
-        inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH() &&
-        inst->getSrc(0)->asSrcRegRegion()->getRegion()->width == 1 &&
-        inst->getSrc(0)->getTypeSize() == inst->getDst()->getTypeSize() * inst->getDst()->asDstRegRegion()->getHorzStride();
-    if (canConvertMovToMovi)
-    {
-        // Convert 'mov' to 'movi' if the following conditions are met.
-
-        auto getSingleDefInst = [](G4_INST *UI,
-                                   Gen4_Operand_Number OpndNum)
-            -> G4_INST * {
-            G4_INST *Def = nullptr;
-            for (auto I = UI->def_begin(), E = UI->def_end(); I != E; ++I) {
-                if (I->second != OpndNum)
-                    continue;
-                if (Def) {
-                    // Not single defined, bail out
-                    Def = nullptr;
-                    break;
-                }
-                Def = I->first;
-            }
-            return Def;
-        };
-
-        unsigned SrcSizeInBytes =
-            inst->getExecSize() * inst->getSrc(0)->getTypeSize();
-        if (SrcSizeInBytes == numEltPerGRF<Type_UB>()/2 ||
-            SrcSizeInBytes == numEltPerGRF<Type_UB>())
-        {
-            G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
-            if (LEA && LEA->opcode() == G4_add &&
-                LEA->getExecSize() == inst->getExecSize()) {
-                G4_Operand *Op0 = LEA->getSrc(0);
-                G4_Operand *Op1 = LEA->getSrc(1);
-                G4_Declare *Dcl = nullptr;
-                int Offset = 0;
-                if (Op0->isAddrExp()) {
-                    G4_AddrExp *AE = Op0->asAddrExp();
-                    Dcl = AE->getRegVar()->getDeclare();
-                    Offset = AE->getOffset();
-                }
-                if (Dcl && (Offset % SrcSizeInBytes) == 0 &&
-                    Op1->isImm() && Op1->getType() == Type_UV) {
-                    // Immeidates in 'uv' ensures each element is a
-                    // byte-offset within half-GRF.
-                    G4_SubReg_Align SubAlign = GRFALIGN;
-                    if (SrcSizeInBytes <= numEltPerGRF<Type_UB>()/2u)
-                        SubAlign = (G4_SubReg_Align)(numEltPerGRF<Type_UW>()/2);
-                    inst->setOpcode(G4_movi);
-                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != GRFALIGN)
-                    {
-                        Dcl->setSubRegAlign(SubAlign);
-                    }
-                    const RegionDesc *rd = builder.getRegionStride1();
-                    inst->getSrc(0)->asSrcRegRegion()->setRegion(rd);
-                    // Set subreg alignment for the address variable.
-                    Dcl =
-                        LEA->getDst()->getBase()->asRegVar()->getDeclare();
-                    assert(Dcl->getRegFile() == G4_ADDRESS &&
-                           "Address variable is required.");
-                    Dcl->setSubRegAlign(Eight_Word);
-                }
-            }
-        }
-    }
-
-    auto isInteger = [](G4_Operand *opnd, int64_t val)
-    {
-        if (opnd && IS_TYPE_INT(opnd->getType()) && !opnd->isRelocImm())
-        {
-            return opnd->isImm() && opnd->asImm()->getInt() == val;
-        }
-        return false;
-    };
-
-    G4_Operand *src0 = inst->getSrc(0);
-    G4_Operand *src1 = inst->getSrc(1);
-    G4_Operand *newSrc = nullptr;
-    if (inst->opcode() == G4_mul || inst->opcode() == G4_and)
-    {
-        if (isInteger(src1, 0))
-        {
-            inst->removeDefUse(Opnd_src0);
-            newSrc = builder.createImm(0, Type_W);
-        }
-        else if (isInteger(src0, 0))
-        {
-            inst->removeDefUse(Opnd_src1);
-            newSrc = builder.createImm(0, Type_W);
-        }
-        else if (inst->opcode() == G4_mul)
-        {
-            if (isInteger(src1, 1))
-            {
-                newSrc = src0;
-            }
-            else if (isInteger(src0, 1))
-            {
-                inst->swapDefUse();
-                newSrc = src1;
-            }
-        }
-    }
-    else if (inst->opcode() == G4_shl || inst->opcode() == G4_shr ||
-             inst->opcode() == G4_asr || inst->opcode() == G4_add)
-    {
-        if (isInteger(src1, 0))
-        {
-            newSrc = src0;
-        }
-        else if (inst->opcode() == G4_add && isInteger(src0, 0))
-        {
-            inst->swapDefUse();
-            newSrc = src1;
-        }
-    }
-
-    if (newSrc != nullptr)
-    {
-        inst->setOpcode(G4_mov);
-        if (newSrc != src0)
-        {
-            inst->setSrc(newSrc, 0);
-        }
-        inst->setSrc(nullptr, 1);
     }
 }
 
@@ -3039,7 +2835,7 @@ void Optimizer::reassociateConst()
                 //inst->dump();
                 G4_Imm* constOne = src0Def->getSrc(1)->asImm();
                 G4_Imm* constTwo = inst->getSrc(1)->asImm();
-                G4_Imm* resultImm = foldConstVal(constOne, constTwo, inst->opcode());
+                G4_Imm* resultImm = builder.foldConstVal(constOne, constTwo, inst->opcode());
 
                 if (resultImm)
                 {
@@ -3063,171 +2859,6 @@ void Optimizer::reassociateConst()
             BB->end());
     }
 
-}
-
-// helper function to fold BinOp with two immediate operands
-// supported opcodes are given below in doConsFolding
-// returns nullptr if the two constants may not be folded
-G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
-{
-    bool isNonQInt = IS_TYPE_INT(const1->getType()) && IS_TYPE_INT(const2->getType()) &&
-        !IS_QTYPE(const1->getType()) && !IS_QTYPE(const2->getType());
-
-    if (!isNonQInt)
-    {
-        return nullptr;
-    }
-
-    G4_Type src0T = const1->getType(), src1T = const2->getType(), resultType = src0T;
-
-    if (op == G4_mul || op == G4_add || op == G4_and || op == G4_xor || op == G4_or)
-    {
-        resultType = findConstFoldCommonType(src0T, src1T);
-        if (resultType == Type_UNDEF)
-        {
-            return nullptr;
-        }
-
-        int64_t res;
-        switch (op)
-        {
-        case G4_and:
-            res = (int64_t)(const1->getInt()) & (int64_t)(const2->getInt());
-            break;
-
-        case G4_xor:
-            res = (int64_t)(const1->getInt()) ^ (int64_t)(const2->getInt());
-            break;
-
-        case G4_or:
-            res = (int64_t)(const1->getInt()) | (int64_t)(const2->getInt());
-            break;
-
-        case G4_add:
-            res = (int64_t)(const1->getInt()) + (int64_t)(const2->getInt());
-            break;
-
-        case G4_mul:
-            res = (int64_t)(const1->getInt()) * (int64_t)(const2->getInt());
-            break;
-
-        default:
-            return nullptr;
-        }
-
-        // result type is either D or UD
-        // don't fold if the value overflows D/UD
-        if (!G4_Imm::isInTypeRange(res, resultType))
-        {
-            return nullptr;
-        }
-        return builder.createImmWithLowerType(res, resultType);
-    }
-    else
-    {
-        uint32_t shift = const2->getInt() % 32;
-
-        if (op == G4_shl || op == G4_shr)
-        {
-            uint32_t value = (uint32_t)const1->getInt();
-            // set result type to D/UD as it may overflow W. If the value fits the type will be lowered later
-            // source type matters here since it affects sign extension
-            resultType = IS_SIGNED_INT(resultType) ? Type_D : Type_UD;
-            int64_t res = op == G4_shl ?
-                ((int64_t)value) << shift :
-                value >> shift;
-            if (!G4_Imm::isInTypeRange(res, resultType))
-            {
-                return nullptr;
-            }
-
-            return builder.createImmWithLowerType(res, resultType);
-        }
-        else if (op == G4_asr)
-        {
-            if (IS_SIGNED_INT(resultType))
-            {
-                int64_t value = const1->getInt();
-                int64_t res = value >> shift;
-                return builder.createImmWithLowerType(res, resultType);
-            }
-            else
-            {
-                uint64_t value = const1->getInt();
-                uint64_t res = value >> shift;
-                return builder.createImmWithLowerType(res, resultType);
-            }
-        }
-    }
-    return nullptr;
-}
-
-
-
-// Currently constant folding is done for the following code patterns:
-//
-// - op v, imm, imm
-//    where op is shl, shr, asr, or, xor, and, add, mul
-// Restrictions:
-// - operand type cannot be float or Q/UQ
-// - saturation is not allowed
-void Optimizer::doConsFolding(G4_INST *inst)
-{
-    if (inst->getSaturate())
-        return; // TODO: we could do this if we wanted to bad enough
-
-    auto srcIsFoldableImm = [](const G4_Operand *op) {
-        return op && op->isImm() && !op->isRelocImm();
-    };
-
-    if (inst->getNumSrc() == 2) {
-        G4_Operand *src0 = inst->getSrc(0);
-        G4_Operand *src1 = inst->getSrc(1);
-        if (srcIsFoldableImm(src0) && srcIsFoldableImm(src1)) {
-            G4_Imm *foldedImm =
-                foldConstVal(src0->asImm(), src1->asImm(), inst->opcode());
-            if (foldedImm)
-            {
-                // change instruction into a MOV
-                inst->setOpcode(G4_mov);
-                inst->setSrc(foldedImm, 0);
-                inst->setSrc(nullptr, 1);
-            }
-        }
-    } else if (inst->getNumSrc() == 3) {
-        G4_Operand *src0 = inst->getSrc(0);
-        G4_Operand *src1 = inst->getSrc(1);
-        G4_Operand *src2 = inst->getSrc(2);
-        if (inst->opcode() == G4_add3) {
-            // always fold the variable into src0
-            G4_Imm *foldedImm = nullptr;
-            G4_Operand *otherSrc = nullptr;
-            if (srcIsFoldableImm(src0) && srcIsFoldableImm(src1)) {
-                foldedImm = foldConstVal(src0->asImm(), src1->asImm(), G4_add);
-                otherSrc = src2;
-            } else if (srcIsFoldableImm(src0) && srcIsFoldableImm(src2)) {
-                foldedImm = foldConstVal(src0->asImm(), src2->asImm(), G4_add);
-                otherSrc = src1;
-            } else if (srcIsFoldableImm(src1) && srcIsFoldableImm(src2)) {
-                foldedImm = foldConstVal(src1->asImm(), src2->asImm(), G4_add);
-                otherSrc = src0;
-            }
-            if (foldedImm) {
-                // always put the possible register in src0
-                inst->setOpcode(G4_add);
-                if (otherSrc != src0) {
-                    inst->setSrc(otherSrc, 0);
-                    inst->swapDefUse(
-                        Opnd_src0,
-                        otherSrc == src1 ? Opnd_src1 : Opnd_src2);
-                }
-                inst->setSrc(foldedImm, 1);
-                inst->setSrc(nullptr, 2);
-                // recurse for possible fold again
-                doConsFolding(inst);
-            }
-        } // TODO: integer mad, bfn, bfi, bfe
-    }
 }
 
 static void hoistUseInst(G4_BB *bb, G4_INST *inst , INST_LIST_ITER forwardIter, bool &canRemove)
@@ -3385,7 +3016,8 @@ static unsigned getMaskSize(G4_INST* Inst, Gen4_Operand_Number OpNum)
 }
 
 
-void Optimizer::newLocalCopyPropagation()
+
+void Optimizer::localCopyPropagation()
 {
     BB_LIST_ITER ib, bend(fg.end());
 
@@ -3393,7 +3025,7 @@ void Optimizer::newLocalCopyPropagation()
     {
         G4_BB* bb = *ib;
 
-        bb->resetLocalId();
+        bb->resetLocalIds();
 
         INST_LIST_ITER ii = bb->begin(), iend(bb->end());
         while (ii != iend)
@@ -3406,8 +3038,8 @@ void Optimizer::newLocalCopyPropagation()
                 continue;
             }
 
-            doConsFolding(inst);
-            doSimplification(inst);
+            builder.doConsFolding(inst);
+            builder.doSimplification(inst);
 
             G4_INST::MovType MT = inst->canPropagate();
             // Skip super mov.
@@ -3473,7 +3105,7 @@ void Optimizer::newLocalCopyPropagation()
 
                     cpIter++;
                 }
-            }
+            } // for uses
 
             if (canRemove && inst->getSrc(0)->isSrcRegRegion())
             {
@@ -3565,8 +3197,7 @@ void Optimizer::newLocalCopyPropagation()
                             newImm = builder.createImm(imm, propType);
                         }
                     }
-                    useInst->setSrc(newImm,
-                                    opndNum - 1);
+                    useInst->setSrc(newImm, opndNum - 1);
                 }
                 else
                 {
@@ -3727,7 +3358,7 @@ void Optimizer::newLocalCopyPropagation()
                 // due to truncation a (partial) def of the move may no longer be a def of the use
                 inst->copyDef(useInst, Opnd_src0, opndNum, true);
 
-                doConsFolding(useInst);
+                builder.doConsFolding(useInst);
             }
             // remove decl corresponding to this def
             // TODO!!! what if there is some alias to this decl?
@@ -3742,6 +3373,12 @@ void Optimizer::newLocalCopyPropagation()
         }
     }
 }
+
+void Optimizer::localInstCombine()
+{
+    InstCombine(builder, fg);
+}
+
 
 void Optimizer::cselPeepHoleOpt()
 {
@@ -3763,7 +3400,7 @@ void Optimizer::cselPeepHoleOpt()
             continue;
         }
 
-        bb->resetLocalId();
+        bb->resetLocalIds();
         ii = bb->begin();
         iiEnd = bb->end();
 
@@ -3777,7 +3414,7 @@ void Optimizer::cselPeepHoleOpt()
             G4_opcode op = inst->opcode();
             bool hasGRFDst = inst->getDst() && !inst->hasNULLDst();
             /*
-            csel doesn't have the same symantics for destination
+            csel doesn't have the same semantics for destination
             as cmp instruction
             */
             if (op != G4_cmp || hasGRFDst || inst->getPredicate() ||
@@ -4839,7 +4476,7 @@ void Optimizer::optimizeLogicOperation()
 
             if (!resetLocalIds)
             {
-                bb->resetLocalId();
+                bb->resetLocalIds();
                 resetLocalIds =  true;
             }
 
@@ -8968,7 +8605,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             G4_BB* bb = (*ib);
 
-            bb->resetLocalId();
+            bb->resetLocalIds();
             std::unordered_set<G4_INST *> Seen;
 
             INST_LIST_ITER ii = bb->begin(), iend(bb->end());

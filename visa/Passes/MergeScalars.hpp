@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef _MERGESCALAR_H
-#define _MERGESCALAR_H
+#ifndef VISA_PASSES_MERGESCALAR_HPP
+#define VISA_PASSES_MERGESCALAR_HPP
 
-#include "G4_IR.hpp"
-#include "BuildIR.h"
-#include "FlowGraph.h"
+#include "../G4_IR.hpp"
+#include "../BuildIR.h"
+#include "../FlowGraph.h"
 
 namespace vISA {
 

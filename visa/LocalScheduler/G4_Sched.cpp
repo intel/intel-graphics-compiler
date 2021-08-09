@@ -2212,7 +2212,7 @@ void preDDD::reset(bool ReassignNodeID)
     // as IDs may be used in node comparison.
     //
     if (ReassignNodeID) {
-        m_BB->resetLocalId();
+        m_BB->resetLocalIds();
         auto Cmp = [](const preNode* LHS, const preNode* RHS) {
             return LHS->Inst->getLocalId() > RHS->Inst->getLocalId();
         };

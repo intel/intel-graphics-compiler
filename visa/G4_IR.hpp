@@ -922,6 +922,16 @@ public:
         SuperMov        = 9,        // MOV is a mov with other effects.
     };
     MovType canPropagate() const;
+    //
+    // check if this is a simple integer add that can be propagated to a
+    // ternary instruction potentially
+    //
+    // has to to be:
+    //   {add,mul} (E)  dst.0<1>:d  src0:{d,w} {src1|imm32}:{d,w}
+    //   {add,mul} (1)  dst.X<1>:d  src0.X:{d,w} {src1|imm32}:{d,w}
+    // And there are other various constraints....
+    bool canPropagateBinaryToTernary() const;
+
     G4_Type getPropType(Gen4_Operand_Number opndNum, MovType MT, const G4_INST *mov) const;
     bool isSignSensitive(Gen4_Operand_Number opndNum) const;
     bool canPropagateTo(G4_INST* useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow, bool statelessAddrss = false);
@@ -2207,7 +2217,8 @@ public:
     void setBase(G4_VarBase *b) { base = b; }
     G4_RegAccess getRegAccess() const;
 
-    G4_Declare *getBaseRegVarRootDeclare() const;
+    const G4_Declare *getBaseRegVarRootDeclare() const;
+          G4_Declare *getBaseRegVarRootDeclare();
 
     virtual bool isRelocImm() const { return false; }
     virtual void emit(std::ostream &output, bool symbolreg = false) = 0;
@@ -4175,7 +4186,11 @@ inline bool G4_Operand::isScalarSrc() const
     return isImm() || isAddrExp() || (isSrcRegRegion() && asSrcRegRegion()->isScalar());
 }
 
-inline G4_Declare *G4_Operand::getBaseRegVarRootDeclare() const
+inline const G4_Declare *G4_Operand::getBaseRegVarRootDeclare() const
+{
+    return getBase()->asRegVar()->getDeclare()->getRootDeclare();
+}
+inline G4_Declare *G4_Operand::getBaseRegVarRootDeclare()
 {
     return getBase()->asRegVar()->getDeclare()->getRootDeclare();
 }

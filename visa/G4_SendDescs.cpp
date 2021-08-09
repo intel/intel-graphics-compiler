@@ -451,6 +451,8 @@ uint32_t G4_SendDescRaw::getHdcMessageType() const
     return (desc.value >> 14) & 0x1F;
 }
 
+
+
 void G4_SendDescRaw::setEOT() {
     eotAfterMessage = true;
 

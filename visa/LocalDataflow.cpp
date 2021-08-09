@@ -506,7 +506,7 @@ void FlowGraph::localDataFlowAnalysis()
         // This matches the use list order produced by forward
         // reaching definition based analysis. It is better for
         // optimizations not to rely on this order.
-        BB->resetLocalId();
+        BB->resetLocalIds();
         for (auto Inst : *BB) {
             if (Inst->use_size() > 1) {
                 using Ty = std::pair<vISA::G4_INST *, Gen4_Operand_Number>;

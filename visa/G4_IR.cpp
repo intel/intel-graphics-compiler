@@ -1747,6 +1747,73 @@ G4_INST::MovType G4_INST::canPropagate() const
     return MT;
 }
 
+bool G4_INST::canPropagateBinaryToTernary() const
+{
+    if (opcode() != G4_add && opcode() != G4_mul)
+        return false; // constrain just to a few ops for the moment
+    else if (dst == nullptr)
+        return false;
+    else if (!dst->getBase()->isRegVar() && !dst->getBase()->isPhyGreg())
+        return false; // must be GRF dst
+    else if (dst->isIndirect())
+        return false; // must not be indirect
+    else if (dst->getHorzStride() != 1)
+        return false; // must be <1>
+    else if (
+        dst->getType() != Type_D && dst->getType() != Type_UD &&
+        dst->getType() != Type_Q && dst->getType() != Type_UQ)
+        return false; // dst has to be :d or :ud (for now)
+    else if (builder.kernel.fg.globalOpndHT.isOpndGlobal(dst))
+        return false; // writes to globals must be visible
+    else if (getNumSrc() != 2)
+        return false; // must be binary
+    else if (getPredicate())
+        return false; // no predicates
+    else if (getExecSize() != 1 && dst->getSubRegOff() != 0)
+        return false; // must be dst.0 or SIMD1 to any subreg
+    else if (getImplAccDst() || getImplAccSrc())
+        return false; // no {AccWrEn}
+    else if (getSaturate() || getCondMod())
+        return false; // do not eliminate if either sat or condMod is present.
+    else if (useInstList.size() == 0)
+        return false; // do not eliminate if there's no use (dead or side-effect code?)
+
+    G4_Declare* topDcl = dst->getTopDcl();
+    if (topDcl) {
+        // Do not eliminate stack call return value passing instructions.
+        // Do not eliminate vars marked with Output attribute.
+        if (topDcl->isOutput())
+            return false;
+        G4_Declare* rootDcl = topDcl->getRootDeclare();
+        if (builder.isPreDefFEStackVar(rootDcl) || builder.isPreDefArg(rootDcl) ||
+            builder.isPreDefRet(rootDcl))
+        {
+            // can't propagate stack call related variables (Arg, Retval, SP, FP)
+            return false;
+        }
+    }
+
+    for (int srcIx = 0; srcIx < getNumSrc(); srcIx++) {
+        G4_Operand *src = srcs[srcIx];
+
+        if (!src->isSrcRegRegion() && !src->isImm()) {
+            return false; // only GRF
+        } else if (src->isRelocImm()) {
+            return false;
+        }
+        if (src->isSrcRegRegion()) {
+            const G4_SrcRegRegion *srr = src->asSrcRegRegion();
+            if (!srr->getBase()->isRegVar() && !srr->getBase()->isPhyGreg()) {
+                return false; // has to be GRF
+            } else if (srr->isIndirect()) {
+                return false; // has to be direct
+            }
+        }
+    }
+
+    return true;
+}
+
 // Check to see whether the given type is supported by this opcode + operand. Mainly focus on integer ops
 // This is used by copy propagation and def-hoisting to determine if the resulting instruction is legal
 bool G4_INST::isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const
@@ -5917,7 +5984,7 @@ void G4_Imm::emit(std::ostream& output, bool symbolreg)
     else if (type == Type_D || type == Type_UD)
     {
         // 32-bit int
-        output << (int) imm.num;
+        output << (int)imm.num;
     }
     else
     {

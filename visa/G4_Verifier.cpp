@@ -92,8 +92,10 @@ bool G4Verifier::verifyInst(G4_INST *inst)
 
         if (passIndex == Optimizer::PI_cleanMessageHeader ||
             passIndex == Optimizer::PI_renameRegister ||
-            passIndex == Optimizer::PI_newLocalDefHoisting ||
-            passIndex == Optimizer::PI_newLocalCopyPropagation ||
+            passIndex == Optimizer::PI_localDefHoisting ||
+            passIndex == Optimizer::PI_localCopyPropagation ||
+            passIndex == Optimizer::PI_localInstCombine ||
+            passIndex == Optimizer::PI_reassociateConst ||
             passIndex == Optimizer::PI_cselPeepHoleOpt)
         {
             // def-use chain should be valid after these passes

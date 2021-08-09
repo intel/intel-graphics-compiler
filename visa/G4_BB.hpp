@@ -314,7 +314,7 @@ public:
     void emitBbInfo(std::ostream& os) const;
 
     // reset this BB's instruction's local id so they are [0,..#BBInst-1]
-    void resetLocalId();
+    void resetLocalIds();
 
     void removeIntrinsics(Intrinsic intrinId);
 

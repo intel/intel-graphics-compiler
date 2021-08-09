@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "LVN.h"
-#include "Timer.h"
+#include "LVN.hpp"
+#include "../Timer.h"
 
 #include <fstream>
 #include <sstream>
@@ -1839,7 +1839,7 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it)
 
 void LVN::doLVN()
 {
-    bb->resetLocalId();
+    bb->resetLocalIds();
     for (INST_LIST_ITER inst_it = bb->begin(), inst_end_it = bb->end();
         inst_it != inst_end_it;
         inst_it++)

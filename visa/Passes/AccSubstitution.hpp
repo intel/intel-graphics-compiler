@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef _ACCSUBSTITUION_H
 #define _ACCSUBSTITUION_H
 
-#include "FlowGraph.h"
-#include "BuildIR.h"
+#include "../FlowGraph.h"
+#include "../BuildIR.h"
 
 // Replace local GRF variables with accumulator. This offers a number of benefits:
 // -- avoid bank conflict

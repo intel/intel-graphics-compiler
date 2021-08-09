@@ -199,7 +199,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
 
 {
     // we use local id in the scheduler for determining two instructions' original ordering
-    bb->resetLocalId();
+    bb->resetLocalIds();
 
     DDD ddd(mem, bb, LT, k);
     // Generate pairs of TypedWrites

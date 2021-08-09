@@ -190,10 +190,21 @@ set(GenX_Common_Sources_VisaToG4
 set(GenX_Common_Sources_G4_IRBuilder
   BuildIRImpl.cpp)
 
+set(GenX_Common_Sources_G4_Passes
+  Passes/AccSubstitution.cpp
+  Passes/AccSubstitution.hpp
+  Passes/InstCombine.cpp
+  Passes/InstCombine.hpp
+  Passes/LVN.cpp
+  Passes/LVN.hpp
+  Passes/MergeScalars.cpp
+  Passes/MergeScalars.hpp
+  Passes/SendFusion.cpp
+  Passes/SendFusion.hpp
+  )
 
 
 set(GenX_Common_Sources_External_Other
-  AccSubstitution.cpp
   Attributes.cpp
   BinaryCISAEmission.cpp
   BinaryEncoding.cpp
@@ -213,13 +224,11 @@ set(GenX_Common_Sources_External_Other
   GraphColor.cpp
   HWConformity.cpp
   InstSplit.cpp
-  LVN.cpp
   LinearScanRA.cpp
   LocalDataflow.cpp
   LocalRA.cpp
   LoopAnalysis.cpp
   Lowered_IR.cpp
-  MergeScalar.cpp
   Optimizer.cpp
   PhyRegCompute.cpp
   PhyRegUsage.cpp
@@ -230,7 +239,6 @@ set(GenX_Common_Sources_External_Other
   RelocationEntry.cpp
   Rematerialization.cpp
   SCCAnalysis.cpp
-  SendFusion.cpp
   SplitAlignedScalars.cpp
   SpillCleanup.cpp
   SpillCode.cpp
@@ -245,8 +253,9 @@ set(GenX_Common_Sources_External_Other
 
 set(GenX_Common_Sources_External
   ${GenX_Common_Sources_External_Other}
-  ${GenX_Common_Sources_VisaToG4}
   ${GenX_Common_Sources_G4_IRBuilder}
+  ${GenX_Common_Sources_G4_Passes}
+  ${GenX_Common_Sources_VisaToG4}
 )
 
 set(GenX_Common_Sources
@@ -284,7 +293,6 @@ set(GenX_Utility_Files
   )
 
 set(GenX_Common_Headers
-  AccSubstitution.h
   Attributes.hpp
   BinaryCISAEmission.h
   BinaryEncoding.h
@@ -308,11 +316,9 @@ set(GenX_Common_Headers
   HWConformity.h
   IGfxHwEuIsaCNL.h
   InstSplit.h
-  LVN.h
   LinearScanRA.h
   LocalDataflow.h
   LocalRA.h
-  MergeScalar.h
   Metadata.h
   Optimizer.h
   PhyRegUsage.h
@@ -322,7 +328,6 @@ set(GenX_Common_Headers
   RelocationEntry.hpp
   Rematerialization.h
   SCCAnalysis.h
-  SendFusion.h
   SpillCleanup.h
   SpillCode.h
   SpillManagerGMRF.h
@@ -399,6 +404,7 @@ if (UNIX OR WIN32)
   source_group("Utility Files" FILES ${GenX_IR_EXE_UTILITY} )
   source_group("Header Files" FILES ${GenX_IR_EXE_HEADERS} )
   source_group("G4 IR Builder" FILES ${GenX_Common_Sources_G4_IRBuilder} )
+  source_group("G4 Passes" FILES ${GenX_Common_Sources_G4_Passes} )
   source_group("Visa to G4 IR Translation" FILES ${GenX_Common_Sources_VisaToG4} )
   source_group("Lex Yacc Files" FILES ${GenX_IR_EXE_lex_yacc} )
   target_link_libraries(GenX_IR_Exe IGA_SLIB IGA_ENC_LIB)

@@ -695,35 +695,6 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
     return mov_dst;
 }
 
-//  find a common (integer) type for constant folding.  The rules are:
-//  -- both types must be int
-//  -- Q and UQ are not folded
-//  -- UD if one of the type is UD
-//  -- D otherwise
-//
-//  returns Type_UNDEF if no appropriate type can be found
-//
-static G4_Type findConstFoldCommonType(G4_Type type1, G4_Type type2)
-{
-    if (IS_TYPE_INT(type1) && IS_TYPE_INT(type2))
-    {
-        if (TypeSize(type1) == 8 || TypeSize(type2) == 8)
-        {
-            return Type_UNDEF;
-        }
-        if (type1 == Type_UD || type2 == Type_UD)
-        {
-            return Type_UD;
-        }
-        else
-        {
-            return Type_D;
-        }
-    }
-    return Type_UNDEF;
-}
-
-
 bool HWConformity::hasSameSubregOffset(G4_INST* inst) const
 {
     uint32_t offset;
@@ -4367,7 +4338,7 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
 void HWConformity::fixMADInst(G4_BB* bb)
 {
     bool doAlign1Mad = builder.hasAlign1Ternary();
-    bb->resetLocalId();
+    bb->resetLocalIds();
     INST_LIST_ITER i = bb->begin();
 
     for (auto iterEnd = bb->end(); i != iterEnd; ++i)

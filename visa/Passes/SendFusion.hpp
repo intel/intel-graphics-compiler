@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef _SENDFUSION_H_
-#define _SENDFUSION_H_
+#ifndef VISA_PASSES_SENDFUSION_HPP
+#define VISA_PASSES_SENDFUSION_HPP
 
 namespace vISA
 {

@@ -105,19 +105,17 @@ class Optimizer
     FlowGraph&  fg;
 
     vISA::Mem_Manager& mem;
-
     //
     // optimization phases
     //
-    G4_SrcModifier mergeModifier(G4_Operand *src, G4_Operand *use);
+    G4_SrcModifier mergeModifier(G4_Operand *def, G4_Operand *use);
     void cleanMessageHeader();
     void sendFusion();
     void renameRegister();
-    void newLocalDefHoisting();
-    void doConsFolding(G4_INST *inst);
-    void doSimplification(G4_INST *inst);
+    void localDefHoisting();
     void reassociateConst();
-    void newLocalCopyPropagation();
+    void localCopyPropagation();
+    void localInstCombine();
     void optimizeLogicOperation();
     void cselPeepHoleOpt();
     void regAlloc();
@@ -275,8 +273,6 @@ private:
     void varSplit();
     void cloneSampleInst();
 
-    G4_Imm* foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op);
-
     /// Each optimization should be a member function of this class.
     /// This defines a pass type as a pointer to member function.
     typedef void (Optimizer::*PassType)();
@@ -314,8 +310,9 @@ public:
         PI_cleanMessageHeader = 0,
         PI_sendFusion,
         PI_renameRegister,
-        PI_newLocalDefHoisting,
-        PI_newLocalCopyPropagation,
+        PI_localDefHoisting,
+        PI_localCopyPropagation,
+        PI_localInstCombine,
         PI_cselPeepHoleOpt,
         PI_optimizeLogicOperation,
         PI_HWConformityChk,            // always

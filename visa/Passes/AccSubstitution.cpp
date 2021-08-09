@@ -6,8 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "AccSubstitution.hpp"
+
 #include <cmath>
-#include "AccSubstitution.h"
 
 using namespace vISA;
 
@@ -1069,7 +1070,7 @@ void AccSubPass::multiAccSub(G4_BB* bb)
 // substitute local operands with acc when possible
 void AccSubPass::accSub(G4_BB* bb)
 {
-    bb->resetLocalId();
+    bb->resetLocalIds();
 
     if (builder.doMultiAccSub())
     {
