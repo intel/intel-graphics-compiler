@@ -1215,102 +1215,12 @@ bool GenXBaling::isBalableNewValueIntoWrr(Value *V, const Region &WrrR) {
 }
 
 bool GenXBaling::isHighCostBaling(uint16_t Type, Instruction *Inst) {
-  switch (Type) {
-  case BaleInfo::WRREGION:
-    switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
-    case GenXIntrinsic::genx_dword_atomic_add:
-    case GenXIntrinsic::genx_dword_atomic_sub:
-    case GenXIntrinsic::genx_dword_atomic_min:
-    case GenXIntrinsic::genx_dword_atomic_max:
-    case GenXIntrinsic::genx_dword_atomic_xchg:
-    case GenXIntrinsic::genx_dword_atomic_or:
-    case GenXIntrinsic::genx_dword_atomic_xor:
-    case GenXIntrinsic::genx_dword_atomic_imin:
-    case GenXIntrinsic::genx_dword_atomic_imax:
-    case GenXIntrinsic::genx_dword_atomic_fmin:
-    case GenXIntrinsic::genx_dword_atomic_fmax:
-    case GenXIntrinsic::genx_dword_atomic_inc:
-    case GenXIntrinsic::genx_dword_atomic_dec:
-    case GenXIntrinsic::genx_dword_atomic_cmpxchg:
-    case GenXIntrinsic::genx_dword_atomic_fcmpwr:
-    case GenXIntrinsic::genx_typed_atomic_add:
-    case GenXIntrinsic::genx_typed_atomic_sub:
-    case GenXIntrinsic::genx_typed_atomic_min:
-    case GenXIntrinsic::genx_typed_atomic_max:
-    case GenXIntrinsic::genx_typed_atomic_xchg:
-    case GenXIntrinsic::genx_typed_atomic_and:
-    case GenXIntrinsic::genx_typed_atomic_or:
-    case GenXIntrinsic::genx_typed_atomic_xor:
-    case GenXIntrinsic::genx_typed_atomic_imin:
-    case GenXIntrinsic::genx_typed_atomic_imax:
-    case GenXIntrinsic::genx_typed_atomic_fmin:
-    case GenXIntrinsic::genx_typed_atomic_fmax:
-    case GenXIntrinsic::genx_typed_atomic_inc:
-    case GenXIntrinsic::genx_typed_atomic_dec:
-    case GenXIntrinsic::genx_typed_atomic_cmpxchg:
-    case GenXIntrinsic::genx_typed_atomic_fcmpwr:
-    case GenXIntrinsic::genx_gather_scaled:
-    case GenXIntrinsic::genx_gather4_scaled:
-    case GenXIntrinsic::genx_gather4_typed:
-    case GenXIntrinsic::genx_media_ld:
-    case GenXIntrinsic::genx_oword_ld:
-    case GenXIntrinsic::genx_oword_ld_unaligned:
-    case GenXIntrinsic::genx_svm_block_ld:
-    case GenXIntrinsic::genx_svm_block_ld_unaligned:
-    case GenXIntrinsic::genx_svm_gather:
-    case GenXIntrinsic::genx_svm_gather4_scaled:
-    case GenXIntrinsic::genx_svm_atomic_add:
-    case GenXIntrinsic::genx_svm_atomic_sub:
-    case GenXIntrinsic::genx_svm_atomic_min:
-    case GenXIntrinsic::genx_svm_atomic_max:
-    case GenXIntrinsic::genx_svm_atomic_xchg:
-    case GenXIntrinsic::genx_svm_atomic_and:
-    case GenXIntrinsic::genx_svm_atomic_or:
-    case GenXIntrinsic::genx_svm_atomic_xor:
-    case GenXIntrinsic::genx_svm_atomic_imin:
-    case GenXIntrinsic::genx_svm_atomic_imax:
-    case GenXIntrinsic::genx_svm_atomic_inc:
-    case GenXIntrinsic::genx_svm_atomic_dec:
-    case GenXIntrinsic::genx_svm_atomic_cmpxchg:
-    case GenXIntrinsic::genx_load:
-    case GenXIntrinsic::genx_sample:
-    case GenXIntrinsic::genx_sample_unorm:
-    case GenXIntrinsic::genx_3d_sample:
-    case GenXIntrinsic::genx_3d_load:
-    case GenXIntrinsic::genx_avs:
-    case GenXIntrinsic::genx_raw_send:
-    case GenXIntrinsic::genx_raw_sends:
-    case GenXIntrinsic::genx_va_convolve2d:
-    case GenXIntrinsic::genx_va_hdc_convolve2d:
-    case GenXIntrinsic::genx_va_erode:
-    case GenXIntrinsic::genx_va_hdc_erode:
-    case GenXIntrinsic::genx_va_dilate:
-    case GenXIntrinsic::genx_va_hdc_dilate:
-    case GenXIntrinsic::genx_va_minmax:
-    case GenXIntrinsic::genx_va_minmax_filter:
-    case GenXIntrinsic::genx_va_hdc_minmax_filter:
-    case GenXIntrinsic::genx_va_bool_centroid:
-    case GenXIntrinsic::genx_va_centroid:
-    case GenXIntrinsic::genx_va_1d_convolve_horizontal:
-    case GenXIntrinsic::genx_va_hdc_1d_convolve_horizontal:
-    case GenXIntrinsic::genx_va_1d_convolve_vertical:
-    case GenXIntrinsic::genx_va_hdc_1d_convolve_vertical:
-    case GenXIntrinsic::genx_va_1pixel_convolve:
-    case GenXIntrinsic::genx_va_hdc_1pixel_convolve:
-    case GenXIntrinsic::genx_va_1pixel_convolve_1x1mode:
-    case GenXIntrinsic::genx_va_lbp_creation:
-    case GenXIntrinsic::genx_va_hdc_lbp_creation:
-    case GenXIntrinsic::genx_va_lbp_correlation:
-    case GenXIntrinsic::genx_va_hdc_lbp_correlation:
-    case GenXIntrinsic::genx_va_correlation_search:
-    case GenXIntrinsic::genx_va_flood_fill:
-      return true;
-    default:
-      break;
-    }
-    break;
-  }
-  return false;
+  if (Type != BaleInfo::WRREGION)
+    return false;
+  auto *CI = dyn_cast<CallInst>(Inst);
+  if (!CI)
+    return false;
+  return !CI->doesNotAccessMemory();
 }
 
 /***********************************************************************
