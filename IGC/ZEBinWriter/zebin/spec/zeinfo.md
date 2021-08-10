@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.5
+Version 1.6
 
 ## Grammar
 
@@ -87,7 +87,6 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 
 | Attribute | Type | Required/Optional | Default | Description |
 | ------ | ------ |  ------ | ------ | ------ |
-| actual_kernel_start_offset | int32 | Required | | |
 | barrier_count | int32 | Optional | 0 | Number of barriers |
 | disable_mid_thread_preemption | bool | Optional | false | |
 | grf_count | int32 | Required | | |
@@ -257,6 +256,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.6**: Remove actual_kernel_start_offset from execution environment.
 - **Version 1.5**: Add payload_argument type work_dimensions.
 - **Version 1.4**: Add sampler_index to payload arguments.
 - **Version 1.3**: Add printf_buffer to argument_type.

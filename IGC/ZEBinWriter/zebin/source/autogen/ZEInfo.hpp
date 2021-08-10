@@ -30,7 +30,6 @@ typedef bool        zeinfo_bool_t;
 typedef std::string zeinfo_str_t;
 struct zeInfoExecutionEnv
 {
-    zeinfo_int32_t actual_kernel_start_offset = 0;
     zeinfo_int32_t barrier_count = 0;
     zeinfo_bool_t disable_mid_thread_preemption = false;
     zeinfo_int32_t grf_count = 0;
@@ -108,7 +107,7 @@ struct zeInfoContainer
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.5"; }
+    static zeinfo_str_t getVersionNumber() { return "1.6"; }
 
     enum class ArgType {
         packed_local_ids,

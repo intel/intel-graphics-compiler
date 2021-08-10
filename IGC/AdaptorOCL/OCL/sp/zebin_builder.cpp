@@ -436,9 +436,6 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
 {
     zeInfoExecutionEnv& env = zeinfoKernel.execution_env;
 
-    // FIXME: compiler did not provide this information
-    env.actual_kernel_start_offset = 0;
-
     env.barrier_count = annotations.m_executionEnivronment.HasBarriers;
     env.disable_mid_thread_preemption = annotations.m_executionEnivronment.DisableMidThreadPreemption;
     env.grf_count = annotations.m_executionEnivronment.NumGRFRequired;

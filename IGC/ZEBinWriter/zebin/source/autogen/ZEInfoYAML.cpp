@@ -36,7 +36,6 @@ void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
 }
 void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info)
 {
-    io.mapRequired("actual_kernel_start_offset", info.actual_kernel_start_offset);
     io.mapOptional("barrier_count", info.barrier_count, 0);
     io.mapOptional("disable_mid_thread_preemption", info.disable_mid_thread_preemption, false);
     io.mapRequired("grf_count", info.grf_count);
