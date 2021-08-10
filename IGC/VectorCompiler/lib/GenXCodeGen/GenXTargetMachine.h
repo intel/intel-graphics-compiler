@@ -157,6 +157,7 @@ void initializeGenXLateSimdCFConformancePass(PassRegistry &);
 void initializeGenXLegalizationPass(PassRegistry &);
 void initializeGenXLiveRangesPass(PassRegistry &);
 void initializeGenXLivenessPass(PassRegistry &);
+void initializeGenXLoadStoreLoweringPass(PassRegistry &);
 void initializeGenXLowerAggrCopiesPass(PassRegistry &);
 void initializeGenXLoweringPass(PassRegistry &);
 void initializeGenXModulePass(PassRegistry &);

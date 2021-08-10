@@ -85,6 +85,7 @@ FunctionPass *createGenXAggregatePseudoLoweringPass();
 ModulePass *createGenXModulePass();
 FunctionGroupPass *createGenXLateSimdCFConformancePass();
 FunctionGroupPass *createGenXLivenessPass();
+FunctionPass *createGenXLoadStoreLoweringPass();
 ModulePass *createGenXFunctionPointersLoweringPass();
 FunctionGroupPass *createGenXCategoryPass();
 FunctionGroupPass *createGenXGroupBalingPass(BalingKind Kind, GenXSubtarget *ST);

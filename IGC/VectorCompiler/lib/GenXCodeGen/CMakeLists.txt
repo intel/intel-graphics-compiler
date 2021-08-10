@@ -46,6 +46,7 @@ set(CODEGEN_SOURCES
   GenXLegalization.cpp
   GenXLiveRanges.cpp
   GenXLiveness.cpp
+  GenXLoadStoreLowering.cpp
   GenXLowering.cpp
   GenXLowerAggrCopies.cpp
   GenXLowerJmpTableSwitch.cpp

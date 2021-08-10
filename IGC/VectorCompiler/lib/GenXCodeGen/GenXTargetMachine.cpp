@@ -139,6 +139,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXBTIAssignmentPass(registry);
   initializeGenXPromoteStatefulToBindlessPass(registry);
   initializeGenXTranslateSPIRVBuiltinsPass(registry);
+  initializeGenXLoadStoreLoweringPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -292,6 +293,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   /// .. include:: GenXGEPLowering.cpp
   PM.add(createGenXGEPLoweringPass());
+  /// .. include:: GenXLoadStoreLowering.cpp
+  PM.add(createGenXLoadStoreLoweringPass());
   PM.add(createGenXThreadPrivateMemoryPass());
 
   /// BasicAliasAnalysis
