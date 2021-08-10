@@ -95,6 +95,7 @@ namespace IGC
         STATELESS_A32,
         SSH_BINDLESS,
         SSH_BINDLESS_CONSTANT_BUFFER,
+        SSH_BINDLESS_TEXTURE,
         BUFFER_TYPE_UNKNOWN = 31
     };
 
