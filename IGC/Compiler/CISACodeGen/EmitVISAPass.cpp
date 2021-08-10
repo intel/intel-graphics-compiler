@@ -2436,94 +2436,37 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     if (L0->GetType() != ISA_TYPE_UD) L0 = m_currShader->BitCast(L0, ISA_TYPE_UD);
     if (L1->GetType() != ISA_TYPE_UD) L1 = m_currShader->BitCast(L1, ISA_TYPE_UD);
 
-    // Algorithm:
-    //    AB   - L0, L1
-    //    CD   - H0, H1
-    //   ----
-    //     E
-    //    F
-    //    G
-    //   H     - 'H' spills into bit 65 - only needed if overflow detection is required
-    // --------
-    // dstLow = E
-    // dstHigh = F + G + carry
 
-    if (Lo == nullptr && Hi == nullptr)
-    {
-        return;
-    }
-    else if (Lo != nullptr && Hi == nullptr)
-    {
-        // Lo = A * B
+    if (Lo != nullptr) {
         m_encoder->Mul(Lo, L0, L1);
         m_encoder->Push();
+    }
+
+    if (Hi == nullptr) {
+        // Skip if Hi is ignored.
         return;
     }
-    else if (Lo == nullptr && Hi != nullptr)
-    {
-        // Cr = carry(A * B)
-        m_encoder->MulH(Hi, L0, L1);
-        m_encoder->Push();
-    }
-    else
-    {
-        // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh to get better performance.
-        if (false && m_currShader->m_Platform->noNativeDwordMulSupport())
-        {
-            // (Cr, E) = A * B
-            // dst size should be GRF-aligned and doubled as it has both low and high results.
-            // We must make the dst element number is numDWPerGRF aligned. For example, if the madw is SIMD1,
-            // the dst has only 1 DW as low result in 1 GRF and only 1 DW as high result in another GRF. We should
-            // set the dst as (numDWPerGRF * 2) element but not 2 DW elements. This is required by madw.
-            auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
-            auto numElements = iSTD::Align(Lo->GetNumberElement(), numDWPerGRF) * 2;
-            CVariable* DstTmp = m_currShader->GetNewVariable(
-                numElements, ISA_TYPE_UD, EALIGN_GRF, Lo->IsUniform(),
-                CName(Lo->getName(), "int64Tmp"));
-            CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
-            m_encoder->Madw(DstTmp, L0, L1, zero);
 
-            // dstLow = E
-            m_encoder->SetSrcRegion(0, 1, 1, 0);
-            m_encoder->Copy(Lo, DstTmp);
-            m_encoder->Push();
+    CVariable* THi = m_currShader->GetNewVariable(
+        Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(), Hi->getName());
 
-            // dstHigh = Cr
-            uint regOffset = (uint)std::ceil((float)(numLanes(m_currShader->m_SIMDSize) * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
-            m_encoder->SetSrcSubVar(0, regOffset);
-            m_encoder->SetSrcRegion(0, 1, 1, 0);
-            m_encoder->Copy(Hi, DstTmp);
-            m_encoder->Push();
-        }
-        else
-        {
-            // E = A * B
-            m_encoder->Mul(Lo, L0, L1);
-            m_encoder->Push();
+    m_encoder->MulH(THi, L0, L1);
+    m_encoder->Push();
 
-            // Cr = carry(A * B)
-            m_encoder->MulH(Hi, L0, L1);
-            m_encoder->Push();
-        }
-    }
-
-    // F = A * D
-    CVariable* dstHiTmp = m_currShader->GetNewVariable(
+    CVariable* T0 = m_currShader->GetNewVariable(
         Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(),
-        CName(Hi->getName(), "int64HiTmp"));
-    m_encoder->Mul(dstHiTmp, L0, H1);
+        CName(Hi->getName(), "tmp"));
+
+    m_encoder->Mul(T0, L0, H1);
     m_encoder->Push();
 
-    // dstHigh = Cr + F
-    m_encoder->Add(Hi, dstHiTmp, Hi);
+    m_encoder->Add(THi, THi, T0);
     m_encoder->Push();
 
-    // G = B * C
-    m_encoder->Mul(dstHiTmp, L1, H0);
+    m_encoder->Mul(T0, L1, H0);
     m_encoder->Push();
 
-    // dstHigh = Cr + F + G
-    m_encoder->Add(Hi, dstHiTmp, Hi);
+    m_encoder->Add(Hi, THi, T0);
     m_encoder->Push();
 }
 
@@ -3571,16 +3514,16 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     TODO("Do not generate intermediate multiplies by constant 0 or 1.");
     TODO("Do smarter pattern matching to look for non-constant zexted/sexted sources.");
 
-    CVariable* dstLo, * dstHi, * dstHiTemp;
+    CVariable* dstLo, * dstHi, * dstTemp;
     dstLo = m_currShader->GetNewVariable(dst->GetNumberElement(),
         ISA_TYPE_UD, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "int64Lo"));
+        CName(m_destination->getName(), "Lo"));
     dstHi = m_currShader->GetNewVariable(dst->GetNumberElement(),
         hiType, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "int64Hi"));
-    dstHiTemp = m_currShader->GetNewVariable(dst->GetNumberElement(),
+        CName(m_destination->getName(), "Hi"));
+    dstTemp = m_currShader->GetNewVariable(dst->GetNumberElement(),
         hiType, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "int64HiTmp"));
+        CName(m_destination->getName(), "Tmp"));
 
 
     //
@@ -3599,68 +3542,34 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     // dstLow = E
     // dstHigh = F + G + carry
 
-    // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh to get better performance.
-    if (false && m_currShader->m_Platform->noNativeDwordMulSupport())
-    {
-        // (Cr, E) = A * B
-        EncoderInit();
-        // dst size should be GRF-aligned and doubled as it has both low and high results.
-        // We must make the dst element number is numDWPerGRF aligned. For example, if the madw is SIMD1,
-        // the dst has only 1 DW as low result in 1 GRF and only 1 DW as high result in another GRF. We should
-        // set the dst as (numDWPerGRF * 2) element but not 2 DW elements. This is required by madw.
-        auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
-        auto numElements = iSTD::Align(dst->GetNumberElement(), numDWPerGRF) * 2;
-        CVariable* dstTmp = m_currShader->GetNewVariable(
-            numElements, ISA_TYPE_UD, EALIGN_GRF, dst->IsUniform(),
-            CName(m_destination->getName(), "int64Tmp"));
-        CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
-        m_encoder->Madw(dstTmp, srcLo[0], srcLo[1], zero);
+    // E = A * B
+    EncoderInit();
+    m_encoder->Mul(dstLo, srcLo[0], srcLo[1]);
+    m_encoder->Push();
 
-        // copy low of A*B to dstLo
-        EncoderInit();
-        m_encoder->SetSrcRegion(0, 1, 1, 0);
-        m_encoder->Copy(dstLo, dstTmp);
-        m_encoder->Push();
-
-        // copy high of A*B to dstHi
-        EncoderInit();
-        uint regOffset = (uint)std::ceil((float)(numLanes(simdMode) * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
-        m_encoder->SetSrcSubVar(0, regOffset);
-        m_encoder->SetSrcRegion(0, 1, 1, 0);
-        m_encoder->Copy(dstHi, dstTmp);
-        m_encoder->Push();
-    }
-    else
-    {
-        // E = A * B
-        EncoderInit();
-        m_encoder->Mul(dstLo, srcLo[0], srcLo[1]);
-        m_encoder->Push();
-
-        // Cr = carry(A * B)
-        EncoderInit();
-        m_encoder->MulH(dstHi, srcLo[0], srcLo[1]);
-        m_encoder->Push();
-    }
+    // Cr = carry(A * B)
+    EncoderInit();
+    m_encoder->MulH(dstHi, srcLo[0], srcLo[1]);
+    m_encoder->Push();
 
     // F = A * D
     EncoderInit();
-    m_encoder->Mul(dstHiTemp, srcLo[0], srcHi[1]);
+    m_encoder->Mul(dstTemp, srcLo[0], srcHi[1]);
     m_encoder->Push();
 
     // dstHigh = Cr + F
     EncoderInit();
-    m_encoder->Add(dstHi, dstHi, dstHiTemp);
+    m_encoder->Add(dstHi, dstHi, dstTemp);
     m_encoder->Push();
 
     // G = C * B
     EncoderInit();
-    m_encoder->Mul(dstHiTemp, srcHi[0], srcLo[1]);
+    m_encoder->Mul(dstTemp, srcHi[0], srcLo[1]);
     m_encoder->Push();
 
     // dstHigh = (Cr + F) + G
     EncoderInit();
-    m_encoder->Add(dstHi, dstHi, dstHiTemp);
+    m_encoder->Add(dstHi, dstHi, dstTemp);
     m_encoder->Push();
 
     //And now, pack the result
