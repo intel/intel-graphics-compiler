@@ -1265,6 +1265,30 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
         }
     }
 
+    for (auto dcl : kernel.Declares)
+    {
+        auto r = dcl->getRootDeclare()->getRegVar();
+
+        if (!r->getPhyReg())
+            continue;
+
+        if (dcl->getRegFile() != G4_GRF && dcl->getRegFile() != G4_INPUT)
+            continue;
+
+        if(dcl->isPayloadLiveOut())
+        {
+            auto phyReg = r->getPhyReg()->asGreg();
+            auto subRegOff = r->getPhyRegOff();
+            start = phyReg->getRegNum() * numEltPerGRF<Type_UB>();
+            start += subRegOff * r->getDeclare()->getElemSize();
+            end = start + r->getDeclare()->getRootDeclare()->getByteSize() - 1;
+            for (unsigned int i = start; i <= end; i++)
+            {
+                freeGRFs[i] = false;
+            }
+        }
+    }
+
     for (unsigned int i = 0; i < freeGRFs.size(); i++)
     {
         if (freeGRFs[i])
