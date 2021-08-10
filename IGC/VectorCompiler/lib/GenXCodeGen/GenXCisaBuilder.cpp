@@ -2534,10 +2534,11 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
 
   // TODO: fix signedness of the source
   addDebugInfo();
+  auto *Src = createSource(Input, DONTCARESIGNED, false, 0);
+  auto *Dst = createDestination(Input, DONTCARESIGNED, 0, DstDesc);
   CISA_CALL(Kernel->AppendVISADataMovementInst(
       ISA_MOV, createPredFromWrRegion(DstDesc), false, ExecMask, ExecSize,
-      createDestination(Input, DONTCARESIGNED, 0, DstDesc),
-      createSource(Input, DONTCARESIGNED, false, 0)));
+      Dst, Src));
 }
 
 /***********************************************************************
