@@ -11172,6 +11172,21 @@ static bool isDeadInst(FlowGraph& fg, G4_INST* Inst)
     return false;
 }
 
+// DCE() is off by default.
+// Some cases have inaccurate kills, thus it is unsafe to turn it on by default.
+// For example,
+//    1. mov (1) r10.2:ud  r 20.0:ud
+//    2. send (1) r10:ud  ...  // a32 dword read
+//    3.   ... r10.2 ...
+// In this case, send's footprint is the entire r10 (0-7 dw), thus it kill 1).
+// In fact, send only modifies r10.0:ud (a single dw), thus it actually does not
+// kill 1).  If dce is on, it willl use the false kill info to remove 1), as result,
+// the code would be wrong.
+//
+// Tried to improve the accuracy of send's footprint to make the footprint be just
+// a single DW, but the change has some unknown regression (VMIT-9224). For now,
+// revert that change. We need to revisit this in the future.
+//
 void Optimizer::dce()
 {
     // make sure dataflow is up to date
