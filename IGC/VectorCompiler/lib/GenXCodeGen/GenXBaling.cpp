@@ -64,6 +64,10 @@ static cl::opt<bool> BaleSelect("bale-select", cl::init(true), cl::Hidden,
 static cl::opt<bool> BaleFNeg("bale-fneg", cl::init(true), cl::Hidden,
                               cl::desc("Bale fneg"));
 
+static cl::opt<bool>
+DisableMemOrderCheck("dbgonly-disable-mem-order-check", cl::init(false),
+                     cl::Hidden, cl::desc("Disable checking of memory ordering"));
+
 //----------------------------------------------------------------------
 // Administrivia for GenXFuncBaling pass
 //
@@ -299,6 +303,55 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
   default:
     break;
   }
+  return true;
+}
+
+/***********************************************************************
+ * isSafeToMove : check if operation Op can be safely moved if it's placed
+ * on position From on position To
+ * If operation can write to memory, it's considered unsafe to sink it across
+ * any memory-related operation
+ * I operation is load-like, we don't sink it only through store-like operations
+ */
+bool GenXBaling::isSafeToMove(Instruction *Op, Instruction *From, Instruction *To) {
+  if (DisableMemOrderCheck || !Op->mayReadOrWriteMemory())
+    return true;
+
+  SmallVector<BasicBlock *, 4> Worklist;
+  SmallPtrSet<BasicBlock *, 4> Visited;
+  auto *FirstBB = From->getParent(),
+       *LastBB = To->getParent();
+  Worklist.push_back(LastBB);
+
+  // Do DFS traversal from LastBB until FirstBB is not reached.
+  while (!Worklist.empty()) {
+    auto *CurBB = Worklist.pop_back_val();
+
+    auto II = CurBB == FirstBB ? From->getNextNode()->getIterator() : CurBB->begin(),
+         EI = CurBB == LastBB ? To->getIterator() : CurBB->end();
+
+    for (; II != EI; ++II) {
+      auto *CurInst = &*II;
+      // Loads and stores to globals are not generated in any real memory operation
+      // so can be safely skipped.
+      if (genx::isGlobalLoad(CurInst) || genx::isGlobalStore(CurInst))
+        continue;
+      if (CurInst->mayWriteToMemory() ||
+          (Op->mayWriteToMemory() && CurInst->mayReadFromMemory())) {
+        LLVM_DEBUG(llvm::dbgs() << "Operation " << *Op << " can't be sinked through "
+                                << *CurInst << "\n");
+        return false;
+      }
+    }
+
+    if (CurBB != FirstBB) {
+      Visited.insert(CurBB);
+      for (auto *PredBB : predecessors(CurBB))
+        if (!Visited.count(PredBB))
+          Worklist.push_back(PredBB);
+    }
+  }
+
   return true;
 }
 
@@ -567,7 +620,8 @@ void GenXBaling::processWrRegion(Instruction *Inst)
       V = nullptr;
   }
 
-  if (V && isBalableNewValueIntoWrr(V, Region(Inst, BaleInfo()))) {
+  if (V && isBalableNewValueIntoWrr(V, Region(Inst, BaleInfo())) &&
+      isSafeToMove(V, V, Inst)) {
     LLVM_DEBUG(llvm::dbgs()
                << __FUNCTION__ << " setting operand #" << OperandNum
                << " to bale in instruction " << *Inst << "\n");
@@ -644,6 +698,13 @@ void GenXBaling::processStore(StoreInst *Inst) {
   unsigned OperandNum = 0;
   Instruction *V = dyn_cast<Instruction>(Inst->getOperand(OperandNum));
   if (GenXIntrinsic::isWrRegion(V)) {
+    constexpr unsigned NewValOpNum = GenXIntrinsic::GenXRegion::NewValueOperandNum;
+    if (getBaleInfo(V).isOperandBaled(NewValOpNum)) {
+      Instruction *MainInst = cast<Instruction>(V->getOperand(NewValOpNum));
+      if (getBaleInfo(MainInst).Type == BaleInfo::MAININST &&
+          !isSafeToMove(MainInst, V, Inst))
+        return;
+    }
     LLVM_DEBUG(llvm::dbgs()
                << __FUNCTION__ << " setting operand #" << OperandNum
                << " to bale in instruction " << *Inst << "\n");

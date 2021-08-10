@@ -476,6 +476,7 @@ private:
 
   bool  isRegionOKForIntrinsic(unsigned ArgInfoBits, const genx::Region &R,
                          bool CanSplitBale);
+  bool isSafeToMove(Instruction *Op, Instruction *From, Instruction *To);
 
   // Cleanup and optimization before do baling on a function.
   bool prologue(Function *F);
