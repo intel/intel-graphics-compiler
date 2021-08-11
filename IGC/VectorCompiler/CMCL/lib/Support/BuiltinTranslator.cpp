@@ -41,7 +41,35 @@ using BuiltinCallHandler = std::add_pointer_t<void(CallInst &)>;
 
 constexpr const char BuiltinPrefix[] = "__cm_cl_";
 
+// Imports:
+//
+// Posible builtin operand kinds:
+// namespace OperandKind { enum Enum {.....};}
+//
+// CMCL builtin IDs. This ID will be used in all other structures to define
+// a builtin, e.g. BuiltinID::Select:
+// namespace BuiltinID { enum Enum {.....};}
+//
+// Names of builtin functions:
+// constexpr const char* BuiltinNames[] = {.....};
+//
+// Operand indices for each builtin. 'BuiltinName'Operand::Size holds the
+// number of 'BuiltinName' builtin, e.g. SelectOperand::Size:
+// namespace 'BuiltinName'Operand { enum Enum {.....};}
+//
+// Maps builtin ID to builtin operand size:
+// constexpr int BuiltinOperandSize[] = {.....};
+//
+// Maps operand index to its kind for every builtin:
+// constexpr OperandKind::Enum 'BuiltinName'OperandKind[] = {.....};
+//
+// Maps BuiltinID to pointer to corresponding 'BuiltinName'OperandKind array.
+// BuiltinOperandKind[BiID][Idx] will return the kind of Idx operand of the
+// builtin with BiID ID:
+// constexpr const OperandKind::Enum* BuiltinOperandKind[] = {.....};
+#define CMCL_AUTOGEN_BUILTIN_DESCS
 #include "TranslationInfo.inc"
+#undef CMCL_AUTOGEN_BUILTIN_DESCS
 
 static bool isOutputOperand(OperandKind::Enum OpKind) {
   return OpKind == OperandKind::VectorInOut || OpKind == OperandKind::VectorOut;
@@ -50,17 +78,14 @@ static bool isOutputOperand(OperandKind::Enum OpKind) {
 template <BuiltinID::Enum BiID>
 static void handleBuiltinCall(CallInst &BiCall);
 
-constexpr BuiltinCallHandler BuiltinCallHandlers[] = {
-    handleBuiltinCall<BuiltinID::Select>,
-    handleBuiltinCall<BuiltinID::RdRegionInt>,
-    handleBuiltinCall<BuiltinID::RdRegionFloat>,
-    handleBuiltinCall<BuiltinID::WrRegionInt>,
-    handleBuiltinCall<BuiltinID::WrRegionFloat>,
-    handleBuiltinCall<BuiltinID::PrintfBuffer>,
-    handleBuiltinCall<BuiltinID::PrintfFormatIndex>,
-    handleBuiltinCall<BuiltinID::PrintfFormatIndexLegacy>,
-    handleBuiltinCall<BuiltinID::SVMScatter>,
-    handleBuiltinCall<BuiltinID::SVMAtomicAdd>};
+// Imports:
+//
+// Maps builtin ID to builtin handler. Builtin handler is a function that will
+// translate this builtin:
+// constexpr BuiltinCallHandler BuiltinCallHandlers[] = {.....};
+#define CMCL_AUTOGEN_TRANSLATION_DESCS
+#include "TranslationInfo.inc"
+#undef CMCL_AUTOGEN_TRANSLATION_DESCS
 
 constexpr unsigned IntrinsicForBuiltin[] = {
     ~0u,
