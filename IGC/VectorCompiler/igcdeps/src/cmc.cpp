@@ -223,6 +223,10 @@ void CMKernel::createSamplerAnnotation(unsigned argNo, unsigned BTI)
     iOpenCL::SAMPLER_OBJECT_TYPE samplerType;
     samplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
 
+    // No bindless support yet.
+    constexpr int PayloadPosition = 0;
+    constexpr int ArgSize = 0;
+
     auto samplerArg = std::make_unique<iOpenCL::SamplerArgumentAnnotation>();
     samplerArg->SamplerType = samplerType;
     samplerArg->ArgumentNumber = argNo;
@@ -231,12 +235,15 @@ void CMKernel::createSamplerAnnotation(unsigned argNo, unsigned BTI)
     samplerArg->LocationCount = 0;
     samplerArg->IsBindlessAccess = false;
     samplerArg->IsEmulationArgument = false;
-    samplerArg->PayloadPosition = 0;
+    samplerArg->PayloadPosition = PayloadPosition;
 
     m_kernelInfo.m_samplerArgument.push_back(std::move(samplerArg));
 
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-        IGC_ASSERT_MESSAGE(0, "not yet supported for L0 binary");
+    constexpr auto ZeAddrMode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
+    constexpr auto ZeAccessType = zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
+
+    zebin::ZEInfoBuilder::addPayloadArgumentSampler(m_kernelInfo.m_zePayloadArgs,
+       PayloadPosition, ArgSize, argNo, BTI, ZeAddrMode, ZeAccessType);
 }
 
 void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI,
