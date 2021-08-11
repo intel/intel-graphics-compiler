@@ -616,11 +616,12 @@ bool GenXEarlySimdCFConformance::runOnModule(Module &ArgM)
   // an unmask construction in module. It is very suboptimal.
   if (lowerSimdCF)
     lowerAllSimdCF();
-  else
+  else {
     // Repeatedly check the code for conformance and lower non-conformant gotos
     // and joins until the code stabilizes.
     ensureConformance();
-  optimizeRestoredSIMDCF();
+    optimizeRestoredSIMDCF();
+  }
   // Perform check for genx_simdcf_get_em intrinsics and remove redundant ones.
   lowerUnsuitableGetEMs();
   clear();
