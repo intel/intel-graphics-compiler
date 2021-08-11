@@ -249,9 +249,9 @@ public:
       return globalVars;
   }
 
-  virtual std::vector<SPIRVExtInst*> getImportedEntities() override
+  virtual std::vector<SPIRVExtInst*> getModuleINTELInstructions() override
   {
-      std::vector<SPIRVExtInst*> importedEntities;
+      std::vector<SPIRVExtInst*> moduleINTELInstructions;
 
       for (auto& item : IdEntryMap)
       {
@@ -260,14 +260,14 @@ public:
               auto extInst = static_cast<SPIRVExtInst*>(item.second);
               if ((extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
                   extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
-                  extInst->getExtOp() == OCLExtOpDbgKind::ImportedEntity)
+                  extInst->getExtOp() == OCLExtOpDbgKind::ModuleINTEL)
               {
-                  importedEntities.push_back(extInst);
+                  moduleINTELInstructions.push_back(extInst);
               }
           }
       }
 
-      return importedEntities;
+      return moduleINTELInstructions;
   }
 
   virtual std::vector<SPIRVValue*> parseSpecConstants() override

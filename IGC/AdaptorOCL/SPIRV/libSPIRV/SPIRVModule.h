@@ -210,7 +210,7 @@ public:
 
   virtual SPIRVExtInst* getCompilationUnit() const = 0;
   virtual std::vector<SPIRVExtInst*> getGlobalVars() = 0;
-  virtual std::vector<SPIRVExtInst*> getImportedEntities() = 0;
+  virtual std::vector<SPIRVExtInst*> getModuleINTELInstructions() = 0;
   virtual std::vector<SPIRVValue*> parseSpecConstants() = 0;
 
   // I/O functions
