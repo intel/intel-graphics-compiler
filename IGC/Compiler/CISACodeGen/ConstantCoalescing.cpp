@@ -851,7 +851,8 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
             cov_chunk->elementSize = scalarSizeInBytes;
             cov_chunk->chunkStart = eltid;
             cov_chunk->chunkSize = maxEltPlus;
-            cov_chunk->chunkIO = load;
+            const uint chunkAlignment = std::max<uint>(alignment, 4);
+            cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment);
 
             // Update load alignment if needed, set it to DWORD aligned
             if (alignment < 4)
