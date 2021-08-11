@@ -832,7 +832,8 @@ bool supportHeaderRTW() const
 
 bool preemptionSupported() const
 {
-    return GetPlatformFamily() >= IGFX_GEN9_CORE && GetPlatformFamily() < IGFX_GEN12_CORE;
+
+    return GetPlatformFamily() >= IGFX_GEN9_CORE;
 };
 
 };
