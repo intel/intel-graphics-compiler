@@ -732,11 +732,10 @@ IGC::DIE* CompileUnit::getOrCreateContextDIE(DIScope* Context)
         return getOrCreateNameSpace(NS);
     if (auto * SP = dyn_cast<DISubprogram>(Context))
         return getOrCreateSubprogramDIE(SP);
-
-    IGC_ASSERT_MESSAGE(nullptr == dyn_cast<DIModule>(Context), "Missing implementation for DIModule!");
+    if (auto * MD = dyn_cast<DIModule>(Context))
+        return getOrCreateModuleDIE(MD);
 
     return getDIE(Context);
-
 }
 
 /// getOrCreateTypeDIE - Find existing DIE or create new DIE for the
@@ -2151,6 +2150,18 @@ IGC::DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
     }
 
     return SPDie;
+}
+
+/// getOrCreateModuleDIE - Create new DIE for DIModule.
+IGC::DIE* CompileUnit::getOrCreateModuleDIE(DIModule* MD)
+{
+    // Construct the context before querying for the existence of the DIE in case
+    // such construction creates the DIE (as is the case for member function
+    // declarations).
+
+    IGC_ASSERT_MESSAGE(false, "Missing implementation for DIModule!");
+
+    return nullptr;
 }
 
 /// constructSubrangeDIE - Construct subrange DIE from DISubrange.

@@ -1226,5 +1226,18 @@ namespace igc_spv {
         SPIRVId getAPINotesFile() { return arg<SPIRVId>(SPIRVDebug::Operand::ModuleINTEL::APINotesFileIdx); }
         SPIRVWord getIsDecl() { return arg<SPIRVWord>(SPIRVDebug::Operand::ModuleINTEL::IsDeclIdx); }
     };
+
+    class OpDebugImportedEntity : OpDebugInfoBase
+    {
+    public:
+        OpDebugImportedEntity(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
+        SPIRVId getName() { return arg<SPIRVId>(SPIRVDebug::Operand::ImportedEntity::NameIdx); }
+        SPIRVWord getTag() { return arg<SPIRVId>(SPIRVDebug::Operand::ImportedEntity::TagIdx); }
+        SPIRVId getSource() { return arg<SPIRVId>(SPIRVDebug::Operand::ImportedEntity::SourceIdx); }
+        SPIRVWord getEntity() { return arg<SPIRVWord>(SPIRVDebug::Operand::ImportedEntity::EntityIdx); }
+        SPIRVWord getLine() { return arg<SPIRVWord>(SPIRVDebug::Operand::ImportedEntity::LineIdx); }
+        SPIRVWord getColumn() { return arg<SPIRVId>(SPIRVDebug::Operand::ImportedEntity::ColumnIdx); }
+        SPIRVId getParent() { return arg<SPIRVId>(SPIRVDebug::Operand::ImportedEntity::ParentIdx); }
+    };
 }
 #endif
