@@ -83,21 +83,14 @@ static void handleBuiltinCall(CallInst &BiCall);
 // Maps builtin ID to builtin handler. Builtin handler is a function that will
 // translate this builtin:
 // constexpr BuiltinCallHandler BuiltinCallHandlers[] = {.....};
+//
+// Maps builtin ID to ID of intrinsic which this builtin should be translated
+// into. Holds ~0u for cases when builtin should be translated not in an
+// intrinsic:
+// constexpr unsigned IntrinsicForBuiltin[] = {.....};
 #define CMCL_AUTOGEN_TRANSLATION_DESCS
 #include "TranslationInfo.inc"
 #undef CMCL_AUTOGEN_TRANSLATION_DESCS
-
-constexpr unsigned IntrinsicForBuiltin[] = {
-    ~0u,
-    GenXIntrinsic::genx_rdregioni,
-    GenXIntrinsic::genx_rdregionf,
-    GenXIntrinsic::genx_wrregioni,
-    GenXIntrinsic::genx_wrregionf,
-    GenXIntrinsic::genx_print_buffer,
-    GenXIntrinsic::genx_print_format_index,
-    GenXIntrinsic::genx_print_format_index,
-    GenXIntrinsic::genx_svm_scatter,
-    GenXIntrinsic::genx_svm_atomic_add};
 
 // Return declaration for intrinsics with provided parameters.
 // This is helper function to get genx intrinsic declaration for given

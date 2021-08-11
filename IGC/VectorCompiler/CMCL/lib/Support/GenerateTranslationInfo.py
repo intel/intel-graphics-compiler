@@ -227,10 +227,32 @@ def generate_handlers_array(builtin_descs):
                            builtin + ">"
                          for builtin in builtin_descs.keys()])
 
+# Returns text representation for ID of intrinsic that was mentioned in
+# "TranslateInto" section of builtin description. The section is taken as the
+# argument. If there's no intrinsic, "~0u" is returned.
+def get_intrinsic_id(translation_desc):
+  if "VC-Intrinsic" in translation_desc:
+    return "GenXIntrinsic::" + translation_desc["VC-Intrinsic"]
+  return "~0u"
+
+# Generates an array that represents map between builtin ID and intrinsic ID.
+# Output:
+# constexpr unsigned IntrinsicForBuiltin[] = {
+#   IntrinsicForBuiltin0,
+#   IntrinsicForBuiltin1,
+#   ~0u, // Builtin2 has no corresponding intrinsic
+#   ...
+# };
+def generate_intrinsics_array(builtin_descs):
+  return generate_array("unsigned", "IntrinsicForBuiltin",
+                        [get_intrinsic_id(desc["TranslateInto"])
+                         for desc in builtin_descs.values()])
+
 # Generate a section of the output file that holds some structures needed for
 # the translation.
 def generate_translation_descs_section(builtin_descs):
-  fragments = [generate_handlers_array(builtin_descs)]
+  fragments = [generate_handlers_array(builtin_descs),
+               generate_intrinsics_array(builtin_descs)]
   fragments = frame_section(fragments, TRANSLATION_DESCS_SECTION)
   return INTERVAL_BETWEEN_DECLS.join(fragments)
 

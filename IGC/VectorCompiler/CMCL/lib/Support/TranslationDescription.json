@@ -23,7 +23,10 @@
         {"Name": "Condition", "Kind": "VectorIn"},
         {"Name": "TrueValue", "Kind": "VectorIn"},
         {"Name": "FalseValue", "Kind": "VectorIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "Instruction": "SelectInst"
+      }
     },
     "RdRegionInt": {
       "Name": "rdregion_int",
@@ -34,7 +37,10 @@
         {"Name": "Width", "Kind": "ScalarConst"},
         {"Name": "Stride", "Kind": "ScalarConst"},
         {"Name": "Offset", "Kind": "ScalarIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_rdregioni"
+      }
     },
     "RdRegionFloat": {
       "Name": "rdregion_float",
@@ -45,7 +51,10 @@
         {"Name": "Width", "Kind": "ScalarConst"},
         {"Name": "Stride", "Kind": "ScalarConst"},
         {"Name": "Offset", "Kind": "ScalarIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_rdregionf"
+      }
     },
     "WrRegionInt": {
       "Name": "wrregion_int",
@@ -56,7 +65,10 @@
         {"Name": "Width", "Kind": "ScalarConst"},
         {"Name": "Stride", "Kind": "ScalarConst"},
         {"Name": "Offset", "Kind": "ScalarIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_wrregioni"
+      }
     },
     "WrRegionFloat": {
       "Name": "wrregion_float",
@@ -67,23 +79,35 @@
         {"Name": "Width", "Kind": "ScalarConst"},
         {"Name": "Stride", "Kind": "ScalarConst"},
         {"Name": "Offset", "Kind": "ScalarIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_wrregionf"
+      }
     },
     "PrintfBuffer": {
       "Name": "printf_buffer",
-      "Operands": []
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_print_buffer"
+      }
     },
     "PrintfFormatIndex": {
       "Name": "printf_format_index",
       "Operands": [
         {"Name": "Source", "Kind": "PointerIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_print_format_index"
+      }
     },
     "PrintfFormatIndexLegacy": {
       "Name": "printf_format_index_legacy",
       "Operands": [
         {"Name": "Source", "Kind": "PointerIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_print_format_index"
+      }
     },
     "SVMScatter": {
       "Name": "svm_scatter",
@@ -91,7 +115,10 @@
         {"Name": "NumBlocks", "Kind": "ScalarConst"},
         {"Name": "Address", "Kind": "VectorIn"},
         {"Name": "Source", "Kind": "VectorIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_svm_scatter"
+      }
     },
     "SVMAtomicAdd": {
       "Name": "svm_atomic_add",
@@ -99,7 +126,10 @@
         {"Name": "Destination", "Kind": "VectorOut"},
         {"Name": "Address", "Kind": "VectorIn"},
         {"Name": "Source", "Kind": "VectorIn"}
-      ]
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_svm_atomic_add"
+      }
     }
   }
 }
