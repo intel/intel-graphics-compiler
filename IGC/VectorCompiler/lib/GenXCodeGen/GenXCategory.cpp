@@ -453,7 +453,8 @@ bool GenXCategory::handleLeftover() {
 static bool commonUpPredicate(BasicBlock *BB) {
   bool Changed = false;
   // Map from flatten predicate value to its constpred calls.
-  SmallDenseMap<uint64_t, SmallVector<Instruction *, 8>> ValMap;
+  using key_type = std::pair<char, uint64_t>;
+  SmallDenseMap<key_type, SmallVector<Instruction *, 8>> ValMap;
 
   for (auto &Inst : BB->getInstList()) {
     if (GenXIntrinsic::getGenXIntrinsicID(&Inst) == GenXIntrinsic::genx_constantpred) {
@@ -466,9 +467,10 @@ static bool commonUpPredicate(BasicBlock *BB) {
         for (unsigned i = 0; i != NElts; ++i)
           if (!V->getAggregateElement(i)->isNullValue())
             Bits |= ((uint64_t)1 << i);
-        auto Iter = ValMap.find(Bits);
+        key_type Key{NElts, Bits};
+        auto Iter = ValMap.find(Key);
         if (Iter == ValMap.end())
-          ValMap[Bits].push_back(&Inst);
+          ValMap[Key].push_back(&Inst);
         else if (Inst.hasOneUse() && Inst.user_back()->getParent() == BB)
           // Just in case constpred is not from constant predicate loading. This
           // ensures the first instruction dominates others in the same vector.
