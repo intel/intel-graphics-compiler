@@ -2870,14 +2870,16 @@ bool EarlyOutPatterns::canOptimizeMulMaxMatch(SmallVector<Instruction*, 4> & Val
             {
                 return false;
             }
-            if (Instruction * maxInst = dyn_cast<Instruction>(*mulInst->user_begin()))
+            CallInst* maxInst = dyn_cast<CallInst>(*mulInst->user_begin());
+            if (maxInst && GetOpCode(maxInst) == llvm_max)
             {
                 ConstantFP* c = dyn_cast<ConstantFP>(maxInst->getOperand(1));
-                if (!c || !c->isZero())
+                if (c && c->isZero())
                 {
-                    return false;
+                    continue;
                 }
             }
+            return false;
         }
     }
     return true;
