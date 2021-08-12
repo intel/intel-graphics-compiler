@@ -739,22 +739,6 @@ bool preRA_RegSharing::run()
 
     for (auto bb : kernel.fg)
     {
-        if (kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID) &&
-            (bb->getId() < kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID)))
-        {
-            SCHED_DUMP(std::cerr << "Skip BB"
-                << bb->getId() << "\n");
-            continue;
-        }
-
-        if (kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID) &&
-            (bb->getId() > kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID)))
-        {
-            SCHED_DUMP(std::cerr << "Skip BB"
-                << bb->getId() << "\n");
-            continue;
-        }
-
         if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE)
         {
             SCHED_DUMP(std::cerr << "Skip block with instructions "
