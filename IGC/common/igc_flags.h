@@ -118,6 +118,9 @@ DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTextures, false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTypedBuffers,  false, "Setting this to use HDC message rather than sampler ld for buffer read", false)
 DECLARE_IGC_REGKEY(bool, DisableUniformTypedAccess,     false, "Setting this will disable uniform typed access handling", false)
 DECLARE_IGC_REGKEY(bool, DisableURBWriteMerge,          false, "Setting this to 1/true adds a compiler switch to disable URB write merge", false)
+DECLARE_IGC_REGKEY(bool, DisableURBPartialWritesPass,   true, "Disable IGC pass that converts URB partial writes to full-mask writes.", false)
+DECLARE_IGC_REGKEY(DWORD, SetURBFullWriteGranularity,   0, "Overrides the minimum access granularity for URB full writes.\
+                                                            Valid values are 0, 16 and 32, value 0 means use default for the platform.", true)
 DECLARE_IGC_REGKEY(bool, DisableMatchFloor,          false, "Setting this to 1/true adds a compiler switch to disable sub-frc = floor optimization", false)
 DECLARE_IGC_REGKEY(bool, DisableEmptyBlockRemoval,      false, "Setting this to 1/true adds a compiler switch to disable empty block optimization", false)
 DECLARE_IGC_REGKEY(bool, DisableSIMD32Slicing,          false, "Setting this to 1/true adds a compiler switch to disable emitting SIMD32 VISA code in slices", false)
