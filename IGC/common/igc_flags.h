@@ -19,6 +19,8 @@ DECLARE_IGC_REGKEY(bool, EnableVISAPreSched,            true,  "Enable VISA Pre-
 DECLARE_IGC_REGKEY(DWORD, VISAPreSchedCtrl,             0,     "Configure Pre-RA Scheduler, default(0), logging(1), latency(2), pressure(4)", false)
 DECLARE_IGC_REGKEY(bool, ForceVISAPreSched,             false, "Force enabling of VISA Pre-RA Scheduler", false)
 DECLARE_IGC_REGKEY(DWORD, VISAPreSchedRPThreshold,      0,     "Configure how aggressive pre-RA Scheduler is, 0 for the default", false)
+DECLARE_IGC_REGKEY(DWORD, VISAScheduleStartBBID, 0,  "The ID of BB which will be first scheduled", false)
+DECLARE_IGC_REGKEY(DWORD, VISAScheduleEndBBID, 0,  "The ID of BB which will be last scheduled", false)
 DECLARE_IGC_REGKEY(DWORD, SIMD8_SpillThreshold,         2,     "Percentage of instructions allowed for spilling", false)
 DECLARE_IGC_REGKEY(DWORD, SIMD16_SpillThreshold,        2,     "Percentage of instructions allowed for spilling", false)
 DECLARE_IGC_REGKEY(bool, DisableCSEL,                   false, "disable csel peep-hole", false)

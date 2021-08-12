@@ -3888,6 +3888,16 @@ namespace IGC
             {
                 SaveOption(vISA_preRA_ScheduleRPThreshold, Val);
             }
+
+            if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAScheduleStartBBID))
+            {
+                SaveOption(vISA_ScheduleStartBBID, Val);
+            }
+
+            if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAScheduleEndBBID))
+            {
+                SaveOption(vISA_ScheduleEndBBID, Val);
+            }
         }
         else
         {
