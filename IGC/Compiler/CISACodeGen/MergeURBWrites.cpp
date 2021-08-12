@@ -77,6 +77,15 @@ private:
     // Does this by going through write list containing stored write instructions
     // in order of offsets and merging adjacent writes.
     void MergeInstructions();
+
+    // Returns the dynamic URB base offset and an immediate const offset
+    // from the dynamic base. The function calculates the result by walking
+    // the use-def chain of pUrbOffset.
+    // If pUrbOffset is an immediate constant (==offset) then
+    // <nullptr, offset> is returned.
+    // In all other cases <pUrbOffset, 0> is returned.
+    std::pair<Value*, unsigned int> GetBaseAndOffset(Value* pUrbOffset);
+
     // represents the map (urb index) --> (instruction, instruction index in BB)
     // The key consists of a dynamic URB base offset (key.first) and
     // an immediate offset from this dynamic base
@@ -160,7 +169,7 @@ void MergeURBWrites::FillWriteList(BasicBlock& BB)
         }
 
         std::pair<Value*, unsigned int> baseAndOffset =
-            GetURBBaseAndOffset(iit->getOperand(0));
+            GetBaseAndOffset(iit->getOperand(0));
 
         auto it = m_writeList.find(baseAndOffset);
         // we encountered an instruction writing at the same offset,
@@ -313,6 +322,130 @@ void MergeURBWrites::MergeInstructions()
 
 } // MergeInstructions
 
+
+std::pair<Value*, unsigned int> MergeURBWrites::GetBaseAndOffset(Value* pUrbOffset)
+{
+    Value* pBase = pUrbOffset;
+    unsigned int offset = 0;
+
+    auto GetConstant = [](Value* pVal)->unsigned int
+    {
+        IGC_ASSERT(isa<ConstantInt>(pVal));
+        ConstantInt* pConst = cast<ConstantInt>(pVal);
+        return int_cast<unsigned int>(pConst->getZExtValue());
+    };
+
+    if (isa<ConstantInt>(pUrbOffset))
+    {
+        Value* pNullBase = nullptr;
+        return std::make_pair(
+            pNullBase,
+            GetConstant(pUrbOffset));
+    }
+    else if (isa<Instruction>(pUrbOffset))
+    {
+        Instruction* pInstr = cast<Instruction>(pUrbOffset);
+        if (pInstr->getOpcode() == Instruction::Add)
+        {
+            Value* src0 = pInstr->getOperand(0);
+            Value* src1 = pInstr->getOperand(1);
+            if (isa<ConstantInt>(src1))
+            {
+                auto baseAndOffset = GetBaseAndOffset(src0);
+                pBase = baseAndOffset.first;
+                offset = GetConstant(src1) + baseAndOffset.second;
+            }
+            else if (isa<ConstantInt>(src0))
+            {
+                auto baseAndOffset = GetBaseAndOffset(src1);
+                pBase = baseAndOffset.first;
+                offset = GetConstant(src0) + baseAndOffset.second;
+            }
+        }
+        else if (pInstr->getOpcode() == Instruction::Or)
+        {
+            // Examples of patterns matched below:
+            // 1. shl + or
+            //    urbOffset = urbOffset << 1;
+            //    urbOffset = urbOffset | 1;
+            // 2. mul + or
+            //    urbOffset = urbOffset * 2;
+            //    urbOffset = urbOffset | 1;
+            // 3. two oword urb writes in loop
+            //    urbOffset = urbOffset * 2;
+            //    for(...) {
+            //      {...}
+            //      urbOffset = urbOffset | 1;
+            //      urbOffset = urbOffset + 2;
+            //      {...}
+            //    }
+            //
+            //
+
+            std::function<unsigned int(Value*)> GetAlignment =
+                [&GetAlignment, &GetConstant](Value* pUrbOffset)->unsigned int
+            {
+                unsigned int alignment = 1;
+                Instruction* pInstr = dyn_cast<Instruction>(pUrbOffset);
+                if (pInstr &&
+                    pInstr->getOpcode() == Instruction::Shl &&
+                    isa<ConstantInt>(pInstr->getOperand(1)))
+                {
+                    alignment = GetAlignment(pInstr->getOperand(0)) *
+                        (1u << GetConstant(pInstr->getOperand(1)));
+                }
+                else if (pInstr &&
+                    pInstr->getOpcode() == Instruction::Mul &&
+                    isa<ConstantInt>(pInstr->getOperand(1)) &&
+                    iSTD::IsPowerOfTwo(GetConstant(pInstr->getOperand(1))))
+                {
+                    alignment = GetAlignment(pInstr->getOperand(0)) *
+                        GetConstant(pInstr->getOperand(1));
+                }
+                return alignment;
+            };
+
+            Value* src0 = pInstr->getOperand(0);
+            Value* src1 = pInstr->getOperand(1);
+            unsigned int alignment = 1;
+            if (isa<PHINode>(src0) && isa<ConstantInt>(src1))
+            {
+                // pattern 3
+                PHINode* pPhi = cast<PHINode>(src0);
+                alignment = std::numeric_limits<unsigned int>::max();
+                for (unsigned int i = 0; i < pPhi->getNumIncomingValues(); i++)
+                {
+                    Instruction* pIncoming = dyn_cast<Instruction>(pPhi->getIncomingValue(i));
+                    if (pIncoming &&
+                        pIncoming->getOpcode() == Instruction::Add &&
+                        pPhi == pIncoming->getOperand(0) &&
+                        isa<ConstantInt>(pIncoming->getOperand(1)) &&
+                        iSTD::IsPowerOfTwo(GetConstant(pIncoming->getOperand(1))))
+                    {
+                        alignment = std::min(alignment, GetConstant(pIncoming->getOperand(1)));
+                    }
+                    else
+                    {
+                        alignment = std::min(alignment, GetAlignment(pIncoming));
+                    }
+                }
+            }
+            else
+            {
+                // patterns 1 and 2
+                alignment = GetAlignment(src0);
+            }
+            if (alignment > GetConstant(src1))
+            {
+                IGC_ASSERT(iSTD::IsPowerOfTwo(alignment));
+                pBase = src0;
+                offset = GetConstant(src1);
+            }
+        }
+    }
+
+    return std::make_pair(pBase, offset);
+}
 
 #define PASS_FLAG "igc-merge-urb-writes"
 #define PASS_DESCRIPTION "merges urb writes"

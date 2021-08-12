@@ -486,12 +486,4 @@ namespace IGC
     // Function modifies address space in selected uses of given input value
     void FixAddressSpaceInAllUses(llvm::Value* ptr, uint newAS, uint oldAS);
 
-
-    // Returns the dynamic URB base offset and an immediate const offset
-    // from the dynamic base. The function calculates the result by walking
-    // the use-def chain of pUrbOffset.
-    // If pUrbOffset is an immediate constant (==offset) then
-    // <nullptr, offset> is returned.
-    // In all other cases <pUrbOffset, 0> is returned.
-    std::pair<llvm::Value*, unsigned int> GetURBBaseAndOffset(llvm::Value* pUrbOffset);
 } // namespace IGC

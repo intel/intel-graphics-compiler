@@ -845,16 +845,6 @@ bool noNativeDwordMulSupport() const
         GetPlatformFamily() == IGFX_GEN12LP_CORE;
 }
 
-unsigned getURBFullWriteMinGranularity() const
-{
-    unsigned overrideValue = IGC_GET_FLAG_VALUE(SetURBFullWriteGranularity);
-    if (overrideValue == 16 || overrideValue == 32)
-    {
-        return overrideValue;
-    }
-    return isXeHPSDVPlus() ? 16 : 32; // in bytes
-}
-
 };
 
 }//namespace IGC

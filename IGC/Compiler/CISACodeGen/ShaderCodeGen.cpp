@@ -51,7 +51,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/UniformAssumptions.hpp"
 #include "Compiler/Optimizer/LinkMultiRateShaders.hpp"
 #include "Compiler/CISACodeGen/MergeURBWrites.hpp"
-#include "Compiler/CISACodeGen/URBPartialWrites.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
@@ -191,12 +190,6 @@ static void AddURBWriteRelatedPass(CodeGenContext& ctx, IGCPassManager& mpm)
             if (IGC_IS_FLAG_ENABLED(EnableTEFactorsClear) && (ctx.type == ShaderType::HULL_SHADER))
             {
                 mpm.add(createClearTessFactorsPass());
-            }
-            const bool enablePartialURBWritesPass =
-                IGC_IS_FLAG_DISABLED(DisableURBPartialWritesPass);
-            if (enablePartialURBWritesPass)
-            {
-                mpm.add(createURBPartialWritesPass());
             }
         }
         if (IGC_IS_FLAG_DISABLED(DisableCodeHoisting))
@@ -841,9 +834,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     case ShaderType::HULL_SHADER:
         mpm.add(createHullShaderLoweringPass());
         mpm.add(new GenSpecificPattern());
-        // Run EarlyCSE to remove redundant calculations of per-vertex or
-        // per-primitive URB offsets created in lowering.
-        mpm.add(llvm::createEarlyCSEPass());
         break;
 
     case ShaderType::DOMAIN_SHADER:
