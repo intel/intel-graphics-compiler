@@ -405,7 +405,7 @@ bool OpenCLPrintfResolution::argIsString(Value* printfArg)
     {
         auto& curr_e = *curr_i;
         formatString = dyn_cast_or_null<GlobalVariable>(&curr_e);
-        if (nullptr == formatString)
+        if (nullptr == formatString || !formatString->hasInitializer())
         {
             return false;
         }

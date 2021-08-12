@@ -51,6 +51,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     LLVMContext& C = M.getContext();
     m_DL = &M.getDataLayout();
 
+    auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     MetaDataUtils* mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_pModuleMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
@@ -80,6 +81,21 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             AS != ADDRESS_SPACE_GLOBAL)
         {
             IGC_ASSERT_MESSAGE(0, "program scope variable with unexpected address space");
+            continue;
+        }
+
+        if (!globalVar->hasInitializer())
+        {
+            Value* inst = nullptr;
+            for (auto u : globalVar->users())
+            {
+                if (dyn_cast_or_null<Instruction>(u))
+                {
+                    inst = u;
+                }
+            }
+            std::string ErrorMsg = "Global constant without initializer!";
+            Ctx->EmitError(ErrorMsg.c_str(), inst);
             continue;
         }
 
