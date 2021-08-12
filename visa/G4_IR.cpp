@@ -2289,10 +2289,15 @@ bool G4_INST::canPropagateTo(
         return false;
     }
 
+    // bfloat specific checks
     if (propType == Type_BF)
     {
-        // bfloat specific checks
-        if (use->asSrcRegRegion()->hasModifier() && useInst->isMov())
+        // If the useInst is G4_pseudo_mad and the use operand has source modifier, a invalid bf->bf mov with source modifier
+        // may be inserted in fixMADInst(). So avoid propagating to G4_pseudo_mad source with source modifier.
+        // TODO: a mov is not always inserted for G4_pseudo_mad source with source modifier since gen mad inst supports source
+        // modifier. So for the no mov inserted case, avoid propagating may miss this opotimize. So, do we need to check if a mov
+        // is really needed for G4_pseudo_mad source here? But the same check code in fixMADInst() seems very complicated?
+        if (use->asSrcRegRegion()->hasModifier() && (useInst->isMov() || useInst->opcode() == G4_pseudo_mad))
         {
             // BF_CVT does not like source modifier
             return false;
@@ -2316,7 +2321,7 @@ bool G4_INST::canPropagateTo(
         return false;
     }
 
-    // TODO: Revisit this later as IntToFp could be folded on specific insns,
+    // TODO: Revisit this later as IntToFp could be folded on specific insts,
     // such as add, cmp, and mul, when types of all source operands could be
     // consistent.
     if (!(useInst->isRawMov() && dstType == useType) &&
