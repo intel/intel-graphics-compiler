@@ -25,7 +25,8 @@
         {"Name": "FalseValue", "Kind": "VectorIn"}
       ],
       "TranslateInto": {
-        "Instruction": "SelectInst"
+        "Instruction": "SelectInst",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
       }
     },
     "RdRegionInt": {
@@ -39,7 +40,8 @@
         {"Name": "Offset", "Kind": "ScalarIn"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_rdregioni"
+        "VC-Intrinsic": "genx_rdregioni",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
       }
     },
     "RdRegionFloat": {
@@ -53,7 +55,8 @@
         {"Name": "Offset", "Kind": "ScalarIn"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_rdregionf"
+        "VC-Intrinsic": "genx_rdregionf",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
       }
     },
     "WrRegionInt": {
@@ -67,7 +70,8 @@
         {"Name": "Offset", "Kind": "ScalarIn"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_wrregioni"
+        "VC-Intrinsic": "genx_wrregioni",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
       }
     },
     "WrRegionFloat": {
@@ -81,14 +85,16 @@
         {"Name": "Offset", "Kind": "ScalarIn"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_wrregionf"
+        "VC-Intrinsic": "genx_wrregionf",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
       }
     },
     "PrintfBuffer": {
       "Name": "printf_buffer",
       "Operands": [],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_print_buffer"
+        "VC-Intrinsic": "genx_print_buffer",
+        "ReturnType": {"GetBuiltinReturnType": []}
       }
     },
     "PrintfFormatIndex": {
@@ -97,7 +103,8 @@
         {"Name": "Source", "Kind": "PointerIn"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_print_format_index"
+        "VC-Intrinsic": "genx_print_format_index",
+        "ReturnType": {"GetBuiltinReturnType": []}
       }
     },
     "PrintfFormatIndexLegacy": {
@@ -106,7 +113,8 @@
         {"Name": "Source", "Kind": "PointerIn"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_print_format_index"
+        "VC-Intrinsic": "genx_print_format_index",
+        "ReturnType": {"GetBuiltinReturnType": []}
       }
     },
     "SVMScatter": {
@@ -117,7 +125,8 @@
         {"Name": "Source", "Kind": "VectorIn"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_svm_scatter"
+        "VC-Intrinsic": "genx_svm_scatter",
+        "ReturnType": {"GetBuiltinReturnType": []}
       }
     },
     "SVMAtomicAdd": {
@@ -128,7 +137,8 @@
         {"Name": "Source", "Kind": "VectorIn"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_svm_atomic_add"
+        "VC-Intrinsic": "genx_svm_atomic_add",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
       }
     }
   }

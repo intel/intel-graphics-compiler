@@ -256,63 +256,16 @@ template <BuiltinID::Enum BiID>
 std::vector<Value *> getTranslatedBuiltinOperands(CallInst &BiCall,
                                                   IRBuilder<> &IRB);
 
-// FIXME: Autogenerate getTranslatedBuiltinType specializations.
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::Select>(CallInst &BiCall) {
-  return getTypeFromBuiltinOperand<BuiltinID::Select>(BiCall,
-                                                      SelectOperand::TrueValue);
-}
-
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::RdRegionInt>(CallInst &BiCall) {
-  return getTypeFromBuiltinOperand<BuiltinID::RdRegionInt>(
-      BiCall, RdRegionIntOperand::Destination);
-}
-
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::RdRegionFloat>(CallInst &BiCall) {
-  return getTypeFromBuiltinOperand<BuiltinID::RdRegionFloat>(
-      BiCall, RdRegionFloatOperand::Destination);
-}
-
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::WrRegionInt>(CallInst &BiCall) {
-  return getTypeFromBuiltinOperand<BuiltinID::WrRegionInt>(
-      BiCall, WrRegionIntOperand::Destination);
-}
-
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::WrRegionFloat>(CallInst &BiCall) {
-  return getTypeFromBuiltinOperand<BuiltinID::WrRegionFloat>(
-      BiCall, WrRegionFloatOperand::Destination);
-}
-
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::PrintfBuffer>(CallInst &BiCall) {
-  return *BiCall.getType();
-}
-
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::PrintfFormatIndex>(CallInst &BiCall) {
-  return *BiCall.getType();
-}
-
-template <>
-Type &
-getTranslatedBuiltinType<BuiltinID::PrintfFormatIndexLegacy>(CallInst &BiCall) {
-  return *BiCall.getType();
-}
-
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::SVMScatter>(CallInst &BiCall) {
-  return *BiCall.getType();
-}
-
-template <>
-Type &getTranslatedBuiltinType<BuiltinID::SVMAtomicAdd>(CallInst &BiCall) {
-  return getTypeFromBuiltinOperand<BuiltinID::SVMAtomicAdd>(
-      BiCall, SVMAtomicAddOperand::Destination);
-}
+// Imports:
+//
+// getTranslatedBuiltinType specialization for every builtin.
+// template <>
+// Type &getTranslatedBuiltinType<BuiltinID::'BuiltinName'>(CallInst &BiCall) {
+//   ...;
+// }
+#define CMCL_AUTOGEN_TRANSLATION_IMPL
+#include "TranslationInfo.inc"
+#undef CMCL_AUTOGEN_TRANSLATION_IMPL
 
 // FIXME: Autogenerate getTranslatedBuiltinOperands specializations.
 template <>
