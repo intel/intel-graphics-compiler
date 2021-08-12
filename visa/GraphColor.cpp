@@ -10351,7 +10351,8 @@ int GlobalRA::coloringRegAlloc()
     // this includes vISA's scratch space use only and does not include whatever IGC may use for private memory
     uint32_t spillMemUsed = ROUND(nextSpillOffset, numEltPerGRF<Type_UB>());
 
-    if (spillMemUsed)
+    if (spillMemUsed &&
+        !(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()))
     {
         builder.criticalMsgStream() << "Spill memory used = " << spillMemUsed << " bytes for kernel " <<
             kernel.getName() << "\n Compiling kernel with spill code may degrade performance." <<
