@@ -4391,9 +4391,7 @@ SPIRVToLLVM::transOCLVectorLoadStore(std::string& UnmangledName,
   if (UnmangledName.find("vload") == 0 &&
       UnmangledName.find("n") != std::string::npos) {
     if (BArgs.back() > 1) {
-      std::stringstream SS;
-      SS << BArgs.back();
-      UnmangledName.replace(UnmangledName.find("n"), 1, SS.str());
+      UnmangledName.replace(UnmangledName.find("n"), 1, std::to_string(BArgs.back()));
     } else {
       UnmangledName.erase(UnmangledName.find("n"), 1);
     }
@@ -4402,9 +4400,7 @@ SPIRVToLLVM::transOCLVectorLoadStore(std::string& UnmangledName,
       auto T = BM->getValueType(BArgs[0]);
       if (T->isTypeVector()) {
         auto W = T->getVectorComponentCount();
-        std::stringstream SS;
-        SS << W;
-        UnmangledName.replace(UnmangledName.find("n"), 1, SS.str());
+        UnmangledName.replace(UnmangledName.find("n"), 1, std::to_string(W));
       } else {
         UnmangledName.erase(UnmangledName.find("n"), 1);
       }
