@@ -4342,8 +4342,8 @@ namespace IGC
             SaveOption(vISA_accSubstitution, true);
             uint32_t numAcc = IGC_GET_FLAG_VALUE(NumGeneralAcc);
 
-            IGC_ASSERT_MESSAGE(0 <= numAcc, "number of general acc should be [1-8] if set");
-            IGC_ASSERT_MESSAGE(numAcc <= 8, "number of general acc should be [1-8] if set");
+            IGC_ASSERT_MESSAGE(0 <= numAcc, "number of general acc should be [1-16] if set");
+            IGC_ASSERT_MESSAGE(numAcc <= 16, "number of general acc should be [1-16] if set");
 
             if (numAcc > 0)
             {
