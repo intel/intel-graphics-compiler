@@ -2475,6 +2475,7 @@ bool G4_INST::canPropagateTo(
 // assume only MOV inst is checked
 bool G4_INST::canHoist(bool simdBB, const Options *opt) const
 {
+    assert(op == G4_mov && "defHoisting only handles mov");
     if (dst == NULL)
     {
         return false;
@@ -2533,6 +2534,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const
 // check if this instruction can be hoisted to defInst
 bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
 {
+    assert(op == G4_mov && "defHoisting only handles mov");
     bool indirect_dst = (dst->getRegAccess() != Direct);
 
     auto def_dst = defInst->getDst();
@@ -2800,16 +2802,8 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         }
     }
 
-    bool hasSrcModifier = false;
-    for (int i = 0, numSrc = defInst->getNumSrc(); i < numSrc; ++i)
-    {
-        if (defInst->getSrc(i)->isSrcRegRegion() && defInst->getSrc(i)->asSrcRegRegion()->hasModifier())
-        {
-            hasSrcModifier = true;
-            break;
-        }
-    }
-    if (hasSrcModifier && !canSupportSrcModifier())
+    // Cannot do hoisting if the use inst has src modifier.
+    if (getSrc(0)->asSrcRegRegion()->hasModifier())
     {
         return false;
     }
