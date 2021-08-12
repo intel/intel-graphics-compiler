@@ -295,7 +295,7 @@ bool supportsThreadCombining() const
     return (!(!m_WaTable.WaEnablePooledEuFor2x6 &&
         m_platformInfo.eProductFamily == IGFX_BROXTON &&
         m_GTSystemInfo.SubSliceCount == 2))
-        ;
+        && (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE);
 }
 
 bool enableMaxWorkGroupSizeCalculation() const
