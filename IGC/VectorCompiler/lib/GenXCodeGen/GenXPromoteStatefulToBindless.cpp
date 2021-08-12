@@ -230,6 +230,49 @@ GlobalVariable &PromoteToBindless::getOrCreateBSSVariable() {
   return createBSSVariable();
 }
 
+// Get surface operand number for given intrinsic.
+static unsigned getSurfaceOperandNo(GenXIntrinsic::ID Id) {
+  using namespace GenXIntrinsic;
+
+  switch (Id) {
+  case genx_dword_atomic2_add:
+  case genx_dword_atomic2_sub:
+  case genx_dword_atomic2_min:
+  case genx_dword_atomic2_max:
+  case genx_dword_atomic2_xchg:
+  case genx_dword_atomic2_and:
+  case genx_dword_atomic2_or:
+  case genx_dword_atomic2_xor:
+  case genx_dword_atomic2_imin:
+  case genx_dword_atomic2_imax:
+  case genx_dword_atomic2_fmin:
+  case genx_dword_atomic2_fmax:
+  case genx_dword_atomic2_inc:
+  case genx_dword_atomic2_dec:
+  case genx_dword_atomic2_cmpxchg:
+  case genx_dword_atomic2_fcmpwr:
+    return 1;
+
+  case genx_gather_masked_scaled2:
+  case genx_gather4_masked_scaled2:
+    return 2;
+
+  case genx_scatter_scaled:
+  case genx_scatter4_scaled:
+    return 3;
+
+  case genx_oword_ld:
+  case genx_oword_ld_unaligned:
+    return 1;
+
+  case genx_oword_st:
+    return 0;
+  default:
+    reportUnhandledIntrinsic("getSurfaceOperandNo", Id);
+  }
+  return 0;
+}
+
 // Check whether instruction operates on buffer surface.
 // Only new versions of intrinsics are handled.
 // They are coming from CM and this also allows to prevent
@@ -272,8 +315,13 @@ static bool isBufferIntrinsic(const Instruction &I) {
   // OWORD operations.
   case genx_oword_ld:
   case genx_oword_ld_unaligned:
-  case genx_oword_st:
-    return true;
+  case genx_oword_st: {
+    // Check additionally that surface argument in not a constant.
+    // If argument is a constant then promotion cannot happen because
+    // it can be SLM, stack or stateless access.
+    const unsigned SurfOpNo = getSurfaceOperandNo(ID);
+    return !isa<ConstantInt>(cast<CallInst>(I).getArgOperand(SurfOpNo));
+  }
   default:
     break;
   }
@@ -301,49 +349,6 @@ static void createSurfaceStateOffsetWrite(Value &SSO, IRBuilder<> &IRB,
   auto *Decl = getGenXDeclaration(&M, genx_write_predef_surface, Tys);
   Value *Args[] = {&BSS, &SSO};
   IRB.CreateCall(Decl->getFunctionType(), Decl, Args);
-}
-
-// Get surface operand number for given intrinsic.
-static unsigned getSurfaceOperandNo(GenXIntrinsic::ID Id) {
-  using namespace GenXIntrinsic;
-
-  switch (Id) {
-  case genx_dword_atomic2_add:
-  case genx_dword_atomic2_sub:
-  case genx_dword_atomic2_min:
-  case genx_dword_atomic2_max:
-  case genx_dword_atomic2_xchg:
-  case genx_dword_atomic2_and:
-  case genx_dword_atomic2_or:
-  case genx_dword_atomic2_xor:
-  case genx_dword_atomic2_imin:
-  case genx_dword_atomic2_imax:
-  case genx_dword_atomic2_fmin:
-  case genx_dword_atomic2_fmax:
-  case genx_dword_atomic2_inc:
-  case genx_dword_atomic2_dec:
-  case genx_dword_atomic2_cmpxchg:
-  case genx_dword_atomic2_fcmpwr:
-    return 1;
-
-  case genx_gather_masked_scaled2:
-  case genx_gather4_masked_scaled2:
-    return 2;
-
-  case genx_scatter_scaled:
-  case genx_scatter4_scaled:
-    return 3;
-
-  case genx_oword_ld:
-  case genx_oword_ld_unaligned:
-    return 1;
-
-  case genx_oword_st:
-    return 0;
-  default:
-    reportUnhandledIntrinsic("getSurfaceOperandNo", Id);
-  }
-  return 0;
 }
 
 // For given intrinsic ID get version with predefined surface variable
