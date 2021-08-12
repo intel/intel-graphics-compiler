@@ -594,7 +594,7 @@ namespace IGC
         return TracePointerSource(resourcePtr, hasBranching, enablePhiLoops, fillList, instList, visitedPHIs);
     }
 
-    static BufferAccessType getDefaultAccessType(BufferType bufTy)
+    BufferAccessType getDefaultAccessType(BufferType bufTy)
     {
         switch (bufTy)
         {
