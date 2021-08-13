@@ -58,7 +58,7 @@ DEF_VISA_OPTION(vISA_EnableSendFusion,      ET_BOOL, "-enableSendFusion",   UNUS
 DEF_VISA_OPTION(vISA_EnableWriteFusion,     ET_BOOL, "-enableWriteFusion",  UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableAtomicFusion,    ET_BOOL, "-enableAtomicFusion", UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalCopyProp,         ET_BOOL, "-nocopyprop",      UNUSED, true)
-DEF_VISA_OPTION(vISA_LocalInstCombine,      ET_BOOL, "-instcombine",     UNUSED, false)
+DEF_VISA_OPTION(vISA_LocalInstCombine,      ET_BOOL, "-noinstcombine",   UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalFlagOpt,          ET_BOOL, "-noflagopt",       UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalMACopt,           ET_BOOL, "-nomacopt",        UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalCleanMessageHeader, ET_BOOL, "-nomsgheaderopt", UNUSED, true)
