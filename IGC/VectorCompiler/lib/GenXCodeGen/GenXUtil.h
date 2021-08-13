@@ -69,7 +69,16 @@ template <typename T> inline T roundedVal(T Val, T RoundUp) {
 template<unsigned UnitBitSize = 1>
 unsigned getTypeSize(Type *Ty, const DataLayout *DL = nullptr) {
   IGC_ASSERT(Ty && Ty->isSized());
-  unsigned BitTypeSize = DL ? DL->getTypeSizeInBits(Ty) : Ty->getPrimitiveSizeInBits();
+  unsigned BitTypeSize = 0;
+  // FIXME: it's better to use DataLayout to get function pointers type size, so
+  // we should remove it when such pointers will be in separate address space.
+  // Size of function pointers is always 32 bit.
+  if (auto PT = dyn_cast<PointerType>(Ty->getScalarType());
+      PT && PT->getPointerElementType()->isFunctionTy()) {
+    BitTypeSize = 32 * isa<VectorType>(Ty) ? cast<VectorType>(Ty)->getNumElements()
+                                           : 1;
+  } else
+    BitTypeSize = DL ? DL->getTypeSizeInBits(Ty) : Ty->getPrimitiveSizeInBits();
   IGC_ASSERT_MESSAGE(BitTypeSize, "Consider using DataLayout for retrieving this type size");
   return 1 + (BitTypeSize - 1) / UnitBitSize;
 }
