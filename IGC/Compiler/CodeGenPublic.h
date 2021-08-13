@@ -39,7 +39,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/StringMap.h>
-#include <llvm/ADT/StringRef.h>
 #include <llvm/IR/IRBuilder.h>
 #include "llvm/IR/Function.h"
 #include "llvm/IR/ValueMap.h"
@@ -1274,8 +1273,161 @@ namespace IGC
                 if (pInputArgs->pInternalOptions == nullptr)
                     return;
 
-                parseOptions(pInputArgs->pInternalOptions);
+                // Build options are of the form -cl-xxxx and -ze-xxxx
+                // So we skip these prefixes when reading the options to be agnostic of their source
+
+                const char* options = pInputArgs->pInternalOptions;
+                if (strstr(options, "-replace-global-offsets-by-zero"))
+                {
+                    replaceGlobalOffsetsByZero = true;
+                }
+                if (strstr(options, "-kernel-debug-enable"))
+                {
+                    KernelDebugEnable = true;
+                }
+
+                if (strstr(options, "-include-sip-csr"))
+                {
+                    IncludeSIPCSR = true;
+                }
+
+                if (strstr(options, "-include-sip-kernel-debug"))
+                {
+                    IncludeSIPKernelDebug = true;
+                }
+                else if (strstr(options, "-include-sip-kernel-local-debug"))
+                {
+                    IncludeSIPKernelDebugWithLocalMemory = true;
+                }
+
+                if (strstr(options, "-intel-use-32bit-ptr-arith"))
+                {
+                    Use32BitPtrArith = true;
+                }
+
+                // -cl-intel-greater-than-4GB-buffer-required, -ze-opt-greater-than-4GB-buffer-required
+                if (strstr(options, "-greater-than-4GB-buffer-required"))
+                {
+                    IntelGreaterThan4GBBufferRequired = true;
+                }
+
+                // -cl-intel-has-buffer-offset-arg, -ze-opt-has-buffer-offset-arg
+                if (strstr(options, "-has-buffer-offset-arg"))
+                {
+                    IntelHasBufferOffsetArg = true;
+                }
+
+                // -cl-intel-buffer-offset-arg-required, -ze-opt-buffer-offset-arg-required
+                if (strstr(options, "-buffer-offset-arg-required"))
+                {
+                    IntelBufferOffsetArgOptional = false;
+                }
+
+                // -cl-intel-has-positive-pointer-offset, -ze-opt-has-positive-pointer-offset
+                if (strstr(options, "-has-positive-pointer-offset"))
+                {
+                    IntelHasPositivePointerOffset = true;
+                }
+
+                // -cl-intel-has-subDW-aligned-ptr-arg, -ze-opt-has-subDW-aligned-ptr-arg
+                if (strstr(options, "-has-subDW-aligned-ptr-arg"))
+                {
+                    IntelHasSubDWAlignedPtrArg = true;
+                }
+
+                if (strstr(options, "-intel-disable-a64WA"))
+                {
+                    IntelDisableA64WA = true;
+                }
+
+                if (strstr(options, "-intel-force-enable-a64WA"))
+                {
+                    IntelForceEnableA64WA = true;
+                }
+
+                if (strstr(options, "-intel-gtpin-rera"))
+                {
+                    DoReRA = true;
+                }
+                if (strstr(options, "-intel-no-prera-scheduling"))
+                {
+                    IntelEnablePreRAScheduling = false;
+                }
+                //
+                // Options to set the number of GRF and threads
+                //
+                if (strstr(options, IGC_MANGLE("-intel-128-GRF-per-thread")))
+                {
+                    Intel128GRFPerThread = true;
+                    numThreadsPerEU = 8;
+                }
+                if (strstr(options, IGC_MANGLE("-intel-256-GRF-per-thread")) ||
+                    strstr(options, IGC_MANGLE("-opt-large-register-file")))
+                {
+                    Intel256GRFPerThread = true;
+                    numThreadsPerEU = 4;
+                }
+                if (const char* op = strstr(options, IGC_MANGLE("-intel-num-thread-per-eu")))
+                {
+                    IntelNumThreadPerEU = true;
+                    // Take an integer value after this option
+                    // atoi(..) ignores leading white spaces and characters after the actual number
+                    numThreadsPerEU = atoi(op + strlen(IGC_MANGLE("-intel-num-thread-per-eu")));
+                }
+                if (strstr(options, "-intel-use-bindless-buffers"))
+                {
+                    PromoteStatelessToBindless = true;
+                }
+                if (strstr(options, "-intel-use-bindless-images"))
+                {
+                    PreferBindlessImages = true;
+                }
+                if (strstr(options, "-intel-use-bindless-mode"))
+                {
+                    // This is a new option that combines bindless generation for buffers
+                    // and images. Keep the old internal options to have compatibility
+                    // for existing tests. Those (old) options could be removed in future.
+                    UseBindlessMode = true;
+                    PreferBindlessImages = true;
+                    PromoteStatelessToBindless = true;
+                }
+                if (strstr(options, "-intel-use-bindless-printf"))
+                {
+                    UseBindlessPrintf = true;
+                }
+                if (strstr(options, "-intel-use-bindless-legacy-mode"))
+                {
+                    UseBindlessLegacyMode = true;
+                }
+                if (const char* O = strstr(options, "-intel-vector-coalesing"))
+                {
+                    // -cl-intel-vector-coalescing=<0-5>.
+                    const char* optionVal = O + strlen("-intel-vector-coalesing");
+                    if (*optionVal != 0 && *optionVal == '=' && isdigit(*(optionVal+1)))
+                    {
+                        ++optionVal;
+                        int16_t val = (int16_t)atoi(optionVal);
+                        if (val >= 0 && val <= 5)
+                        {
+                            VectorCoalescingControl = val;
+                        }
+                    }
+                }
+                if (strstr(options, "-allow-zebin"))
+                {
+                    EnableZEBinary = true;
+                }
+                if (strstr(options, "-intel-no-spill"))
+                {
+                    // This is an option to avoid spill/fill instructions in scheduler kernel.
+                    // OpenCL Runtime triggers scheduler kernel offline compilation while driver building,
+                    // since scratch space is not supported in this specific case, we cannot end up with
+                    // spilling kernel. If this option is set, then IGC will recompile the kernel with
+                    // some some optimizations disabled to avoid spill/fill instructions.
+                    NoSpill = true;
+                }
             }
+
 
             bool KernelDebugEnable;
             bool IncludeSIPCSR;
@@ -1314,9 +1466,6 @@ namespace IGC
             bool Intel256GRFPerThread = false;
             bool IntelNumThreadPerEU = false;
             uint32_t numThreadsPerEU = 0;
-
-            private:
-                void parseOptions(const char* IntOptStr);
         };
 
         class Options
