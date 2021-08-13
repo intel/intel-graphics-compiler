@@ -245,6 +245,12 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
   }
 }
 
+// A helper function to get vector type width.
+// \p Ty must be a fixed vector type.
+static int getVectorWidth(Type &Ty) {
+  return cast<IGCLLVM::FixedVectorType>(Ty).getNumElements();
+}
+
 // Returns the type wich instruction that a builtin is translated into will
 // have.
 template <BuiltinID::Enum BiID>
@@ -261,139 +267,19 @@ std::vector<Value *> getTranslatedBuiltinOperands(CallInst &BiCall,
 // getTranslatedBuiltinType specialization for every builtin.
 // template <>
 // Type &getTranslatedBuiltinType<BuiltinID::'BuiltinName'>(CallInst &BiCall) {
-//   ...;
+//   return .....;
+// }
+//
+// getTranslatedBuiltinOperands specialization for every builtin.
+// template <>
+// std::vector<Value *>
+// getTranslatedBuiltinOperands<BuiltinID::'BuiltinName'>(CallInst &BiCall,
+//                                                        IRBuilder<> &IRB) {
+//   return {.....};
 // }
 #define CMCL_AUTOGEN_TRANSLATION_IMPL
 #include "TranslationInfo.inc"
 #undef CMCL_AUTOGEN_TRANSLATION_IMPL
-
-// FIXME: Autogenerate getTranslatedBuiltinOperands specializations.
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::Select>(CallInst &BiCall,
-                                                IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::Select;
-  using namespace SelectOperand;
-  return {&readValueFromBuiltinOp<BiID>(BiCall, Condition, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, TrueValue, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, FalseValue, IRB),
-          UndefValue::get(IRB.getInt32Ty())};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::RdRegionInt>(CallInst &BiCall,
-                                                     IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::RdRegionInt;
-  using namespace RdRegionIntOperand;
-  return {&readValueFromBuiltinOp<BiID>(BiCall, Source, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, VStride, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Width, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Stride, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Offset, IRB),
-          UndefValue::get(IRB.getInt32Ty())};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::RdRegionFloat>(CallInst &BiCall,
-                                                       IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::RdRegionFloat;
-  using namespace RdRegionFloatOperand;
-  return {&readValueFromBuiltinOp<BiID>(BiCall, Source, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, VStride, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Width, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Stride, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Offset, IRB),
-          UndefValue::get(IRB.getInt32Ty())};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::WrRegionInt>(CallInst &BiCall,
-                                                     IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::WrRegionInt;
-  using namespace WrRegionIntOperand;
-  return {&readValueFromBuiltinOp<BiID>(BiCall, Destination, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Source, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, VStride, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Width, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Stride, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Offset, IRB),
-          UndefValue::get(IRB.getInt32Ty()),
-          IRB.getTrue()};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::WrRegionFloat>(CallInst &BiCall,
-                                                       IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::WrRegionFloat;
-  using namespace WrRegionFloatOperand;
-  return {&readValueFromBuiltinOp<BiID>(BiCall, Destination, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Source, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, VStride, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Width, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Stride, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Offset, IRB),
-          UndefValue::get(IRB.getInt32Ty()),
-          IRB.getTrue()};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::PrintfBuffer>(CallInst &BiCall,
-                                                      IRBuilder<> &IRB) {
-  return {};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::PrintfFormatIndex>(CallInst &BiCall,
-                                                           IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::PrintfFormatIndex;
-  using namespace PrintfFormatIndexOperand;
-  return {&readValueFromBuiltinOp<BiID>(BiCall, Source, IRB)};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::PrintfFormatIndexLegacy>(
-    CallInst &BiCall, IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::PrintfFormatIndexLegacy;
-  using namespace PrintfFormatIndexLegacyOperand;
-  return {&readValueFromBuiltinOp<BiID>(BiCall, Source, IRB)};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::SVMScatter>(CallInst &BiCall,
-                                                    IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::SVMScatter;
-  using namespace SVMScatterOperand;
-  auto Width = cast<IGCLLVM::FixedVectorType>(
-                   getTypeFromBuiltinOperand<BiID>(BiCall, Address))
-                   .getNumElements();
-  return {IRB.CreateVectorSplat(Width, IRB.getTrue()),
-          &readValueFromBuiltinOp<BiID>(BiCall, NumBlocks, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Address, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Source, IRB)};
-}
-
-template <>
-std::vector<Value *>
-getTranslatedBuiltinOperands<BuiltinID::SVMAtomicAdd>(CallInst &BiCall,
-                                                      IRBuilder<> &IRB) {
-  constexpr BuiltinID::Enum BiID = BuiltinID::SVMAtomicAdd;
-  using namespace SVMAtomicAddOperand;
-  auto Width = cast<IGCLLVM::FixedVectorType>(
-                   getTypeFromBuiltinOperand<BiID>(BiCall, Address))
-                   .getNumElements();
-  return {IRB.CreateVectorSplat(Width, IRB.getTrue()),
-          &readValueFromBuiltinOp<BiID>(BiCall, Address, IRB),
-          &readValueFromBuiltinOp<BiID>(BiCall, Source, IRB),
-          UndefValue::get(&getTypeFromBuiltinOperand<BiID>(BiCall, Source))};
-}
 
 // Generates instruction/instructions that represent cm-cl builtin semantics,
 // output values (if any) a written into output vector.
@@ -401,7 +287,6 @@ getTranslatedBuiltinOperands<BuiltinID::SVMAtomicAdd>(CallInst &BiCall,
 // writeBuiltinResults.
 // Args:
 //    RetTy - type of generated instruction
-// FIXME: find a way to autogenerate it.
 template <BuiltinID::Enum BiID>
 std::vector<ValueRef> createMainInst(const std::vector<Value *> &Operands,
                                      Type &RetTy, IRBuilder<> &IRB) {

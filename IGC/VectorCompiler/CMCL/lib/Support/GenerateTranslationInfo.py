@@ -27,6 +27,8 @@ OPERAND_KIND = "OperandKind"
 OPERAND_NAME = "Operand"
 # The name of the variable that holds a reference to builtin call.
 BUILTIN_VARIABLE = "BiCall"
+# The name of the variable that holds a reference to IR builder.
+IRB_VARIABLE = "IRB"
 
 # Section names.
 BUILTIN_DESCS_SECTION = "CMCL_AUTOGEN_BUILTIN_DESCS"
@@ -270,26 +272,73 @@ def generate_builtin_return_type_expression(builtin_name, args):
                          bi=builtin_name))
   return "*{}.getType()".format(BUILTIN_VARIABLE)
 
-# Generates code for GetBuiltinOperandType node.
-# The node must have only one argument with the operand name.
-# A call to getTypeFromBuiltinOperand is generated.
-def generate_builtin_operand_type_expression(builtin_name, args, builtin_desc):
+# Get single operand from \p function_name node with required additional
+# checks.
+def get_single_operand_from_expression(function_name, builtin_name, args,
+                                       builtin_desc):
   if len(args) != 1:
     raise RuntimeError("Builtin {bi} has invalid expession tree description: "
-                       "GetBuiltinOperandType node must have only one "
-                       "argument.".format(bi=builtin_name))
+                       "{func} node must have only one argument.".format(
+                         bi=builtin_name, func=function_name))
   operand = args[0]
   builtin_operands = [op["Name"] for op in builtin_desc["Operands"]]
   if not operand in builtin_operands:
     raise RuntimeError("Builtin {bi} has invalid expession tree description: "
-                       "GetBuiltinOperandType argument is not an operand of "
-                       "this builtin.".format(bi=builtin_name))
+                       "{func} argument is not an operand of this builtin."
+                       .format(bi=builtin_name, func=function_name))
+  return operand
+
+# Generates code for GetBuiltinOperandType node.
+# The node must have only one argument with the operand name.
+# A call to getTypeFromBuiltinOperand is generated.
+def generate_builtin_operand_type_expression(builtin_name, args, builtin_desc):
+  operand = get_single_operand_from_expression("GetBuiltinOperandType",
+                                               builtin_name,
+                                               args,
+                                               builtin_desc)
   return "getTypeFromBuiltinOperand<{bi_id}::{bi}>("\
          "{bi_call}, {bi}{op_suffix}::{op})".format(bi_id=BUILTIN_ID,
                                                     bi=builtin_name,
                                                     bi_call=BUILTIN_VARIABLE,
                                                     op_suffix=OPERAND_NAME,
                                                     op=operand)
+
+# Generates a code that returns builtin operand value as llvm::Value& from
+# GetBuiltinOperand node (or better to say leaf). The node must have a single
+# argument which is a builtin operand name.
+def generate_builtin_operand_expression(builtin_name, args, builtin_desc):
+  operand = get_single_operand_from_expression("GetBuiltinOperand",
+                                               builtin_name,
+                                               args,
+                                               builtin_desc)
+  return "readValueFromBuiltinOp<{bi_id}::{bi}>({bi_call}, "\
+         "{bi}{op_suffix}::{op}, {irb_var})".format(bi_id=BUILTIN_ID,
+                                                    bi=builtin_name,
+                                                    bi_call=BUILTIN_VARIABLE,
+                                                    op_suffix=OPERAND_NAME,
+                                                    op=operand,
+                                                    irb_var=IRB_VARIABLE)
+
+# Generate code for Code node. If Code node has a single argument, it is a
+# string and it is the generated code. If the node has multiple arguments, the
+# first argument is a python format string, the rest of arguments are the
+# arguments for this string. Arguments must be expression trees too.
+def generate_code_expression(builtin_name, args, builtin_desc):
+  if not args:
+    raise RuntimeError("Builtin {bi} has invalid expession tree description: "
+                       "Code node must have at least one argument.".format(
+                         bi=builtin_name))
+  code = args[0]
+  if not isinstance(code, str):
+    raise RuntimeError("Builtin {bi} has invalid expession tree description: "
+                       "Code node must have a string as the first argument."
+                       .format(bi=builtin_name))
+  if len(args) == 1:
+    return code
+  replacements = [generate_expression_tree(builtin_name, arg, builtin_desc)
+                  for arg in args[1:]]
+  code = code.format(*replacements)
+  return code
 
 # Generate a complex nested expression based on description in \p desc_tree.
 # Each tree node has the following structure: {name: [args]} where name is the
@@ -312,6 +361,11 @@ def generate_expression_tree(builtin_name, tree_desc, builtin_desc):
   if function == "GetBuiltinOperandType":
     return generate_builtin_operand_type_expression(builtin_name, args,
                                                     builtin_desc)
+  if function == "GetBuiltinOperand":
+    return generate_builtin_operand_expression(builtin_name, args,
+                                               builtin_desc)
+  if function == "Code":
+    return generate_code_expression(builtin_name, args, builtin_desc)
   raise RuntimeError("Builtin {bi} has invalid expession tree description: "
                      "Unknown node.".format(bi=builtin_name))
 
@@ -332,16 +386,50 @@ def generate_return_type_specialization(builtin_name, desc):
   text += "}"
   return text
 
+# Generates getTranslatedBuiltinOperands specialization for builtin with the
+# name \p builtin_name. The rule for every operand generation is defined as
+# expression tree in TranslateInto:Operands section of JSON description.
+#
+# Output:
+# template <>
+# std::vector<Value *>
+# getTranslatedBuiltinOperands<BuiltinID::Builtin>(CallInst &BiCall,
+#                                                  IRBuilder<> &IRB) {
+#   return {.....};
+# }
+def generate_operand_specialization(builtin_name, desc):
+  text = "template <>\n"
+  text += "std::vector<Value *>\n"
+  text += "getTranslatedBuiltinOperands<{bi_enum}::{bi}>(CallInst &{bi_var}, "\
+          "IRBuilder<> &{irb_var}) {{\n".format(bi_enum=BUILTIN_ID,
+                                                bi=builtin_name,
+                                                bi_var=BUILTIN_VARIABLE,
+                                                irb_var=IRB_VARIABLE)
+  operands = [generate_expression_tree(builtin_name, op_desc, desc)
+              for op_desc in desc["TranslateInto"]["Operands"]]
+  operands = ["&" + op for op in operands]
+  operands = ",\n          ".join(operands)
+  text += "  return {{{}}};\n".format(operands)
+  text += "}"
+  return text
+
 # Generates getTranslatedBuiltinType specialization for every builtin.
 def generate_return_type_function(builtin_descs):
   return INTERVAL_BETWEEN_DECLS.join(
       [generate_return_type_specialization(*item)
        for item in builtin_descs.items()])
 
+# Generates getTranslatedBuiltinOperands specialization for every builtin.
+def generate_operand_function(builtin_descs):
+  return INTERVAL_BETWEEN_DECLS.join(
+      [generate_operand_specialization(*item)
+       for item in builtin_descs.items()])
+
 # Generates a section that will hold some implementation required for
 # builtin translation.
 def generate_translation_impl_section(builtin_descs):
-  fragments = [generate_return_type_function(builtin_descs)]
+  fragments = [generate_return_type_function(builtin_descs),
+               generate_operand_function(builtin_descs)]
   fragments = frame_section(fragments, TRANSLATION_IMPL_SECTION)
   return INTERVAL_BETWEEN_DECLS.join(fragments)
 

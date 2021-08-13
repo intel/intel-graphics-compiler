@@ -26,7 +26,12 @@
       ],
       "TranslateInto": {
         "Instruction": "SelectInst",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"GetBuiltinOperand": ["Condition"]},
+          {"GetBuiltinOperand": ["TrueValue"]},
+          {"GetBuiltinOperand": ["FalseValue"]}
+        ]
       }
     },
     "RdRegionInt": {
@@ -41,7 +46,15 @@
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_rdregioni",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["VStride"]},
+          {"GetBuiltinOperand": ["Width"]},
+          {"GetBuiltinOperand": ["Stride"]},
+          {"GetBuiltinOperand": ["Offset"]},
+          {"Code": ["*UndefValue::get(IRB.getInt32Ty())"]}
+        ]
       }
     },
     "RdRegionFloat": {
@@ -56,7 +69,15 @@
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_rdregionf",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["VStride"]},
+          {"GetBuiltinOperand": ["Width"]},
+          {"GetBuiltinOperand": ["Stride"]},
+          {"GetBuiltinOperand": ["Offset"]},
+          {"Code": ["*UndefValue::get(IRB.getInt32Ty())"]}
+        ]
       }
     },
     "WrRegionInt": {
@@ -71,7 +92,17 @@
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_wrregioni",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"GetBuiltinOperand": ["Destination"]},
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["VStride"]},
+          {"GetBuiltinOperand": ["Width"]},
+          {"GetBuiltinOperand": ["Stride"]},
+          {"GetBuiltinOperand": ["Offset"]},
+          {"Code": ["*UndefValue::get(IRB.getInt32Ty())"]},
+          {"Code": ["*IRB.getTrue()"]}
+        ]
       }
     },
     "WrRegionFloat": {
@@ -86,7 +117,17 @@
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_wrregionf",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"GetBuiltinOperand": ["Destination"]},
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["VStride"]},
+          {"GetBuiltinOperand": ["Width"]},
+          {"GetBuiltinOperand": ["Stride"]},
+          {"GetBuiltinOperand": ["Offset"]},
+          {"Code": ["*UndefValue::get(IRB.getInt32Ty())"]},
+          {"Code": ["*IRB.getTrue()"]}
+        ]
       }
     },
     "PrintfBuffer": {
@@ -94,7 +135,8 @@
       "Operands": [],
       "TranslateInto": {
         "VC-Intrinsic": "genx_print_buffer",
-        "ReturnType": {"GetBuiltinReturnType": []}
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
       }
     },
     "PrintfFormatIndex": {
@@ -104,7 +146,10 @@
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_print_format_index",
-        "ReturnType": {"GetBuiltinReturnType": []}
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
       }
     },
     "PrintfFormatIndexLegacy": {
@@ -114,7 +159,10 @@
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_print_format_index",
-        "ReturnType": {"GetBuiltinReturnType": []}
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
       }
     },
     "SVMScatter": {
@@ -126,7 +174,16 @@
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_svm_scatter",
-        "ReturnType": {"GetBuiltinReturnType": []}
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"Code": [
+            "*IRB.CreateVectorSplat(getVectorWidth({}), IRB.getTrue())",
+            {"GetBuiltinOperandType": ["Address"]}
+          ]},
+          {"GetBuiltinOperand": ["NumBlocks"]},
+          {"GetBuiltinOperand": ["Address"]},
+          {"GetBuiltinOperand": ["Source"]}
+        ]
       }
     },
     "SVMAtomicAdd": {
@@ -138,7 +195,19 @@
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_svm_atomic_add",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]}
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"Code": [
+            "*IRB.CreateVectorSplat(getVectorWidth({}), IRB.getTrue())",
+            {"GetBuiltinOperandType": ["Address"]}
+          ]},
+          {"GetBuiltinOperand": ["Address"]},
+          {"GetBuiltinOperand": ["Source"]},
+          {"Code": [
+            "*UndefValue::get(&{})",
+            {"GetBuiltinOperandType": ["Source"]}
+          ]}
+        ]
       }
     }
   }
