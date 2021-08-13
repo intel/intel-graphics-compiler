@@ -6681,18 +6681,18 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
 
     uint32_t dstSubReg = 0;
 
-    int scale = (blockWidth == 64) ? 2 : 1;
-    auto instWidth = SIMDMode::SIMD8;
+    int scale = blockWidth / getGRFSize();
+    auto simdMode = lanesToSIMDMode(blockWidth / typeSizeInBytes);
     for (pass = 0; pass < numPasses; pass++)
     {
-        uint32_t srcSubVar = pass * scale * maxWidth / getGRFSize();
+        uint32_t srcSubVar = pass * blockWidth / getGRFSize();
         uint32_t dstSubVar = 0;
-        uint32_t srcSubRegOffset = (pass * maxWidth) % getGRFSize();
+        uint32_t srcSubRegOffset = (pass * blockWidth) % getGRFSize();
         uint32_t dstSubRegOffset = 0;
 
         CVariable* tempdst = nullptr;
         tempdst = m_currShader->GetNewVariable(
-            nbElements * numLanes(instWidth),
+            nbElements * numLanes(simdMode),
             data->GetType(),
             m_currShader->getGRFAlignment(),
             CName::NONE);
@@ -6717,21 +6717,20 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
         // mov (8) r20.0<1>:d r60.0<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r20.8<1>:d r62.0<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r21.0<1>:d r64.0<8;8,1>:d {Align1, Q1, Compacted}
-        // mov (8) r21.8<1>:d rr66.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r21.8<1>:d r66.0<8;8,1>:d {Align1, Q1, Compacted}
         // ...
         //block 1
         // mov (8) r30.0<1>:d r60.8<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r30.8<1>:d r62.8<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r31.0<1>:d r64.8<8;8,1>:d {Align1, Q1, Compacted}
-        // mov (8) r31.8<1>:d rr66.8<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r31.8<1>:d r66.8<8;8,1>:d {Align1, Q1, Compacted}
         //...
 
         if (numPasses > 1)
         {
             for (uint i = 0; i < nbElements; ++i)
             {
-                SIMDMode mode = (typeSizeInBytes == 8 && blockWidth != 64) ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
-                m_encoder->SetSimdSize(mode);
+                m_encoder->SetSimdSize(simdMode);
                 m_encoder->SetNoMask();
 
                 //Src
@@ -6741,12 +6740,12 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
                 m_encoder->SetDstSubVar(dstSubVar);
                 m_encoder->SetDstSubReg(dstSubRegOffset / typeSizeInBytes);
                 //Strides for dst and src
-                dstSubRegOffset = ((i + 1) * maxWidth) % getGRFSize();
+                dstSubRegOffset = ((i + 1) * blockWidth) % getGRFSize();
                 if (dstSubRegOffset == 0)
                 {
-                    dstSubVar += scale;
+                    dstSubVar += scale > 0 ? scale : 1;
                 }
-                srcSubVar = srcSubVar + (scale * numPasses * blockWidth / getGRFSize());
+                srcSubVar = srcSubVar + (numPasses * blockWidth / getGRFSize());
 
                 m_encoder->Copy(tempdst, data);
                 m_encoder->Push();
