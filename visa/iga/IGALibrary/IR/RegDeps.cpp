@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "../asserts.hpp"
 #include "../bits.hpp"
 
+#include <limits>
 #include <sstream>
 #include <cstring>
 
