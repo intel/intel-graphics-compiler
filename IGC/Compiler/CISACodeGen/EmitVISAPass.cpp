@@ -1717,7 +1717,7 @@ void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modif
         m_encoder->Add(temp, src, src);
         m_encoder->Push();
 
-        if (m_currShader->m_SIMDSize == SIMDMode::SIMD16)
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD16 || m_currShader->m_SIMDSize == SIMDMode::SIMD32)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD4);
             m_encoder->SetSrcModifier(0, src_mod0);
@@ -1749,6 +1749,71 @@ void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modif
             m_encoder->Add(temp, src, src);
             m_encoder->Push();
         }
+        
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD4);
+            m_encoder->SetSrcModifier(0, src_mod0);
+            m_encoder->SetSrcRegion(0, 0, 2, 1);
+            m_encoder->SetSrcSubReg(0, 18);
+
+            m_encoder->SetSrcModifier(1, src_mod1);
+            m_encoder->SetSrcRegion(1, 0, 2, 1);
+            m_encoder->SetSrcSubReg(1, 16);
+            m_encoder->SetNoMask();
+
+            m_encoder->SetDstModifier(modifier);
+            m_encoder->SetDstSubReg(16);
+            m_encoder->Add(temp, src, src);
+            m_encoder->Push();
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD4);
+            m_encoder->SetSrcModifier(0, src_mod0);
+            m_encoder->SetSrcRegion(0, 0, 2, 1);
+            m_encoder->SetSrcSubReg(0, 22);
+
+            m_encoder->SetSrcModifier(1, src_mod1);
+            m_encoder->SetSrcRegion(1, 0, 2, 1);
+            m_encoder->SetSrcSubReg(1, 20);
+            m_encoder->SetNoMask();
+
+            m_encoder->SetDstModifier(modifier);
+            m_encoder->SetDstSubReg(20);
+            m_encoder->Add(temp, src, src);
+            m_encoder->Push();
+
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD4);
+            m_encoder->SetSrcModifier(0, src_mod0);
+            m_encoder->SetSrcRegion(0, 0, 2, 1);
+            m_encoder->SetSrcSubReg(0, 26);
+
+            m_encoder->SetSrcModifier(1, src_mod1);
+            m_encoder->SetSrcRegion(1, 0, 2, 1);
+            m_encoder->SetSrcSubReg(1, 24);
+            m_encoder->SetNoMask();
+
+            m_encoder->SetDstModifier(modifier);
+            m_encoder->SetDstSubReg(24);
+            m_encoder->Add(temp, src, src);
+            m_encoder->Push();
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD4);
+            m_encoder->SetSrcModifier(0, src_mod0);
+            m_encoder->SetSrcRegion(0, 0, 2, 1);
+            m_encoder->SetSrcSubReg(0, 30);
+
+            m_encoder->SetSrcModifier(1, src_mod1);
+            m_encoder->SetSrcRegion(1, 0, 2, 1);
+            m_encoder->SetSrcSubReg(1, 28);
+
+            m_encoder->SetNoMask();
+            m_encoder->SetDstModifier(modifier);
+            m_encoder->SetDstSubReg(28);
+            m_encoder->Add(temp, src, src);
+            m_encoder->Push();
+        }
+        
         m_encoder->Copy(m_destination, temp);
         m_encoder->Push();
     }
