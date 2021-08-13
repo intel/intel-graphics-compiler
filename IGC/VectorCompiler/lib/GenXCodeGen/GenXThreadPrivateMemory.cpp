@@ -56,6 +56,9 @@ using namespace genx;
 
 static cl::opt<bool> EnableTPM("enable-legacy-tpm", cl::init(true), cl::Hidden,
                                cl::desc("Enable legacy TPM pass"));
+static cl::opt<bool> EnableTPMOCLRT("enable-legacy-tpm-oclrt", cl::init(true),
+                                    cl::Hidden,
+                                    cl::desc("Enable legacy TPM pass"));
 static cl::opt<bool> ForceSVMTPM("force-svm-tpm", cl::init(true), cl::Hidden,
   cl::desc("Force putting thread-private memory to SVM"));
 static cl::opt<bool>
@@ -80,7 +83,7 @@ private:
 public:
   // Initialize from description
   DiagnosticInfoTPM(const Twine &Desc, DiagnosticSeverity Severity = DS_Error)
-      : DiagnosticInfo(llvm::getNextAvailablePluginDiagnosticKind(), Severity),
+      : DiagnosticInfo(getKindID(), Severity),
         Description("GenXTPM: " + Desc.str()) {}
 
   // Initialize with Value
@@ -1429,6 +1432,11 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
               .getTM<GenXTargetMachine>()
               .getGenXSubtarget();
   m_DL = &M.getDataLayout();
+
+  // switching off for OCLRT only
+  if (m_ST->isOCLRuntime() && !EnableTPMOCLRT)
+    return false;
+
   if (!m_ST->isOCLRuntime())
     m_useGlobalMem = false;
   GenXBackendConfig &BEConf = getAnalysis<GenXBackendConfig>();
