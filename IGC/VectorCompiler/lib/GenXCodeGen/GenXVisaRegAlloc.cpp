@@ -767,7 +767,7 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed)
     BytesPerElement = 4;
   } else if (auto PT = dyn_cast<PointerType>(ElementTy)) {
     BytesPerElement = DL.getPointerTypeSize(PT);
-    if (BytesPerElement == 4 || PT->getPointerElementType()->isFunctionTy())
+    if (BytesPerElement == 4)
       VisaType = ISA_TYPE_UD;
     else if (BytesPerElement == 8)
       VisaType = ISA_TYPE_UQ;
