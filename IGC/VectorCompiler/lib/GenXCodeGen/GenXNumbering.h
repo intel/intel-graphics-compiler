@@ -28,14 +28,14 @@ SPDX-License-Identifier: MIT
 /// before it for pre-copies, where N is the number of SimpleValues in the
 /// (possibly struct) args, allowing for extra args that might be added later by
 /// GenXArgIndirection.
-/// 
+///
 /// Similarly, a non-intrinsic call has N slots reserved after it for
 /// post-copies, where N is the number of SimpleValues in the (possibly struct)
 /// return value. The definition of each SimpleValue in the result of the call
 /// is considered to be in its slot, and the corresponding SimpleValue in the
 /// unified return value has an extra segment of live range from the call up to
 /// that slot.
-/// 
+///
 /// A return instruction in a subroutine has N slots reserved before it for
 /// pre-copies, where N is the number of SimpleValues in the (possibly struct)
 /// return value. The use of each SimpleValue in the return is considered to be
@@ -57,6 +57,8 @@ SPDX-License-Identifier: MIT
 #include "FunctionGroup.h"
 #include "IgnoreRAUWValueMap.h"
 #include "llvm/IR/Value.h"
+
+#include <unordered_map>
 
 namespace llvm {
 

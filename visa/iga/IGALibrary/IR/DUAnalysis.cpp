@@ -1040,7 +1040,7 @@ struct DepAnalysisComputer
               to.insert(iter);
        }
 #else
-       to = from;
+       to = LivePaths(from);
 #endif
     }
         return changed;

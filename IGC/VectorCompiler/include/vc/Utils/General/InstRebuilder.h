@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Casting.h>
 
 #include <numeric>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
