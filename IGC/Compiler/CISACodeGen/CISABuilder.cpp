@@ -3741,23 +3741,18 @@ namespace IGC
             ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
             AllowSpill = !ClContext->m_InternalOptions.NoSpill;
 
-            if (ClContext->m_InternalOptions.DoReRA &&
-                !ClContext->gtpin_init)
-            {
-                SaveOption(vISA_ReRAPostSchedule, true);
-            }
-            if (ClContext->m_Options.GTPinReRA)
+            if (ClContext->m_InternalOptions.GTPinReRA)
             {
                 SaveOption(vISA_GTPinReRA, true);
                 SaveOption(vISA_ReRAPostSchedule, true);
             }
-            if (ClContext->m_Options.GTPinGRFInfo)
+            if (ClContext->m_InternalOptions.GTPinGRFInfo)
             {
                 SaveOption(vISA_GetFreeGRFInfo, true);
             }
-            if (ClContext->m_Options.GTPinScratchAreaSize)
+            if (ClContext->m_InternalOptions.GTPinScratchAreaSize)
             {
-                SaveOption(vISA_GTPinScratchAreaSize, ClContext->m_Options.GTPinScratchAreaSizeValue);
+                SaveOption(vISA_GTPinScratchAreaSize, ClContext->m_InternalOptions.GTPinScratchAreaSizeValue);
             }
         }
 

@@ -554,7 +554,7 @@ namespace IGC
 
     bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
     {
-        return m_Options.ForceGlobalMemoryAllocation;
+        return m_InternalOptions.ForceGlobalMemoryAllocation;
     }
 
     bool OpenCLProgramContext::allocatePrivateAsGlobalBuffer() const
@@ -564,7 +564,7 @@ namespace IGC
 
     bool OpenCLProgramContext::hasNoLocalToGenericCast() const
     {
-        return m_Options.HasNoLocalToGeneric || getModuleMetaData()->hasNoLocalToGenericCast;
+        return m_InternalOptions.HasNoLocalToGeneric || getModuleMetaData()->hasNoLocalToGenericCast;
     }
 
     bool OpenCLProgramContext::hasNoPrivateToGenericCast() const
@@ -695,15 +695,44 @@ namespace IGC
                 IntelForceEnableA64WA = true;
             }
 
+            // GTPin flags used by L0 driver runtime
             // -cl-intel-gtpin-rera
             else if (suffix.equals("-gtpin-rera"))
             {
-                DoReRA = true;
+                GTPinReRA = true;
             }
+            else if (suffix.equals("-gtpin-grf-info"))
+            {
+                GTPinGRFInfo = true;
+            }
+            else if (suffix.equals("-gtpin-scratch-area-size"))
+            {
+                GTPinScratchAreaSize = true;
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+                if (valStr.getAsInteger(10, GTPinScratchAreaSizeValue))
+                {
+                    IGC_ASSERT(false);
+                }
+                Pos = valEnd;
+                continue;
+            }
+
             // -cl-intel-no-prera-scheduling
             else if (suffix.equals("-no-prera-scheduling"))
             {
                 IntelEnablePreRAScheduling = false;
+            }
+            // -cl-intel-no-local-to-generic
+            else if (suffix.equals("-no-local-to-generic"))
+            {
+                HasNoLocalToGeneric = true;
+            }
+            // -cl-intel-force-global-mem-allocation
+            else if (suffix.equals("-force-global-mem-allocation"))
+            {
+                ForceGlobalMemoryAllocation = true;
             }
 
             //

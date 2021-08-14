@@ -1262,7 +1262,6 @@ namespace IGC
                 IntelGreaterThan4GBBufferRequired(false),
                 Use32BitPtrArith(false),
                 IncludeSIPKernelDebugWithLocalMemory(false),
-                DoReRA(false),
                 IntelHasPositivePointerOffset(false),
                 IntelHasBufferOffsetArg(false),
                 IntelBufferOffsetArgOptional(true),
@@ -1271,10 +1270,16 @@ namespace IGC
                 if (pInputArgs == nullptr)
                     return;
 
-                if (pInputArgs->pInternalOptions == nullptr)
-                    return;
+                if (pInputArgs->pInternalOptions != nullptr)
+                {
+                    parseOptions(pInputArgs->pInternalOptions);
+                }
 
-                parseOptions(pInputArgs->pInternalOptions);
+                // Internal options are passed in via pOptions as well.
+                if (pInputArgs->pOptions != nullptr)
+                {
+                    parseOptions(pInputArgs->pOptions);
+                }
             }
 
             bool KernelDebugEnable;
@@ -1285,7 +1290,11 @@ namespace IGC
             bool IntelForceEnableA64WA = false;
             bool Use32BitPtrArith = false;
             bool IncludeSIPKernelDebugWithLocalMemory;
-            bool DoReRA;
+
+            bool GTPinReRA = false;
+            bool GTPinGRFInfo = false;
+            bool GTPinScratchAreaSize = false;
+            uint32_t GTPinScratchAreaSizeValue = 0;
 
             // stateless to stateful optimization
             bool IntelHasPositivePointerOffset; // default: false
@@ -1305,6 +1314,10 @@ namespace IGC
             bool UseBindlessLegacyMode = true;
             bool EnableZEBinary = false;
             bool NoSpill = false;
+
+            // Generic address related
+            bool HasNoLocalToGeneric = false;
+            bool ForceGlobalMemoryAllocation = false;
 
             // -1 : initial value that means it is not set from cmdline
             // 0-5: valid values set from the cmdline
@@ -1336,6 +1349,8 @@ namespace IGC
                 // Build options are of the form -cl-xxxx and -ze-xxxx
                 // So we skip these prefixes when reading the options to be agnostic of their source
 
+                // Runtime passes internal options via pOptions as well, and those
+                // internal options will be handled by InternalOptions class.
                 const char* options = pInputArgs->pOptions;
                 if (strstr(options, "-fp32-correctly-rounded-divide-sqrt"))
                 {
@@ -1362,34 +1377,6 @@ namespace IGC
                 {
                     IsLibraryCompilation = true;
                 }
-                if (strstr(options, "-no-local-to-generic"))
-                {
-                    HasNoLocalToGeneric = true;
-                }
-                if (strstr(options, "-force-global-mem-allocation"))
-                {
-                    ForceGlobalMemoryAllocation = true;
-                }
-
-                // GTPin flags used by L0 driver runtime
-                if (strstr(options, "-gtpin-rera"))
-                {
-                    GTPinReRA = true;
-                }
-                if (strstr(options, "-gtpin-grf-info"))
-                {
-                    GTPinGRFInfo = true;
-                }
-                if (const char* op = strstr(options, "-gtpin-scratch-area-size"))
-                {
-                    GTPinScratchAreaSize = true;
-                    const char* optionVal = op + strlen("-gtpin-scratch-area-size");
-                    if ((*optionVal == '=' || *optionVal == ' ') && isdigit(*(optionVal + 1)))
-                    {
-                        ++optionVal;
-                        GTPinScratchAreaSizeValue = atoi(optionVal);
-                    }
-                }
                 if (const char* op = strstr(options, IGC_MANGLE("-intel-reqd-eu-thread-count")))
                 {
                     IntelRequiredEUThreadCount = true;
@@ -1404,12 +1391,6 @@ namespace IGC
             bool UniformWGS;
             bool EnableTakeGlobalAddress = false;
             bool IsLibraryCompilation = false;
-            bool HasNoLocalToGeneric = false;
-            bool ForceGlobalMemoryAllocation = false;
-            bool GTPinReRA = false;
-            bool GTPinGRFInfo = false;
-            bool GTPinScratchAreaSize = false;
-            uint32_t GTPinScratchAreaSizeValue = 0;
             bool IntelRequiredEUThreadCount = false;
             uint32_t requiredEUThreadCount = 0;
         };
