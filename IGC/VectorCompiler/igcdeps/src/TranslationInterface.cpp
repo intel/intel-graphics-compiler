@@ -312,10 +312,16 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
     dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/true);
   });
 
+  std::string InternalOptionsHolder;
   auto NewPathPayload = tryExtractPayload(Input.data(), Input.size());
   if (NewPathPayload.IsValid) {
     ApiOptions = "-vc-codegen";
-    InternalOptions = Input.data() + NewPathPayload.VcOptsOffset;
+
+    InternalOptionsHolder = InternalOptions.str();
+    InternalOptionsHolder.append(" ");
+    InternalOptionsHolder.append(Input.data() + NewPathPayload.VcOptsOffset);
+    InternalOptions = InternalOptionsHolder;
+
     Input = Input.take_front(static_cast<size_t>(NewPathPayload.IrSize));
   }
 
