@@ -1587,12 +1587,10 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
           break;
       }
       std::set<BasicBlock *> UnseenPreds;
-      for (auto ui = BB->use_begin(), ue = BB->use_end(); ui != ue; ++ui) {
-        auto Pred = cast<Instruction>(ui->getUser())->getParent();
-        if (Done.find(Pred) != Done.end())
-          continue;
-        UnseenPreds.insert(Pred);
-      }
+      std::copy_if(
+          getNode(BB)->pred_begin(), getNode(BB)->pred_end(),
+          std::inserter(UnseenPreds, UnseenPreds.begin()),
+          [&Done](BasicBlock *BB) { return Done.find(BB) == Done.end(); });
       for (auto i = UnseenPreds.begin(), e = UnseenPreds.end(); i != e; ++i) {
         getNode(BB)->removePred(*i);
         getNode(*i)->removeSucc(BB);
@@ -1605,6 +1603,7 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
     auto BB = Ready.back();
     Ready.pop_back();
     Ordering.push_back(BB);
+    Done.insert(BB);
     // For each successor, decrement the pending count. If it becomes 0, the
     // successor becomes ready.
     auto BBNode = getNode(BB);
@@ -1623,6 +1622,8 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
       // Successor needs to become ready.
       Pending.erase(Succ);
       Ready.push_back(Succ);
+      IGC_ASSERT_MESSAGE(Done.find(Succ) == Done.end(),
+                         "Adding already handled node!");
     }
   }
 }
