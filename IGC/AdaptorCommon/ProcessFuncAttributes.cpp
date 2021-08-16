@@ -309,7 +309,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             {
                 auto functionName = F->getName();
                 functionName = functionName.drop_front(buildinPrefixOpenCL.size());
-                functionName = functionName.take_front(functionName.find("_", 0));
+                functionName = functionName.take_front(functionName.find('_'));
 
                 static std::set<StringRef> mathFunctionNames = {
 #define _OCL_EXT_OP(name, num) #name,
