@@ -145,10 +145,6 @@ void CPixelShader::AllocatePSPayload()
         for (uint i = 0; i < GetR1()->GetNumberInstance(); i++)
         {
             AllocateInput(GetR1(), offset, i, forceLiveOut);
-            for (auto R1Lo: GetR1Lo()) {
-                AllocateInput(R1Lo, offset, i, forceLiveOut);
-            }
-
             offset += getGRFSize();
         }
     }
