@@ -1183,6 +1183,11 @@ namespace IGC
         case Instruction::ExtractValue:
             match = MatchSingleInstruction(I);
             break;
+#if LLVM_VERSION_MAJOR >= 10
+        case Instruction::FNeg:
+            match = MatchAbsNeg(I);
+            break;
+#endif
         }
         IGC_ASSERT(match);
     }
