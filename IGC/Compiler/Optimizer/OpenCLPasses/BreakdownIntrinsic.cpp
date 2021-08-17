@@ -52,7 +52,7 @@ void BreakdownIntrinsicPass::visitIntrinsicInst(llvm::IntrinsicInst& I)
 
     if (I.getIntrinsicID() == llvm::Intrinsic::fmuladd ||
         // For FMA only break it up if unsafe math optimizations are set
-        (I.getIntrinsicID() == llvm::Intrinsic::fma && I.isFast()))
+        (I.getIntrinsicID() == llvm::Intrinsic::fma && modMD.compOpt.UnsafeMathOptimizations))
     {
         llvm::Value* pMulInst = builder.CreateFMul(I.getOperand(0), I.getOperand(1));
         llvm::Value* pAddInst = builder.CreateFAdd(pMulInst, I.getOperand(2));

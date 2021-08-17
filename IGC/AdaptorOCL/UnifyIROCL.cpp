@@ -348,7 +348,6 @@ static void CommonOCLBasedPasses(
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());
-        mpm.add(createProcessFuncFastMathAttributes());
         FastMathFlags Mask;
         Mask.setFast();
         Mask.setNoSignedZeros(false);

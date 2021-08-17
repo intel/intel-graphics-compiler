@@ -96,6 +96,7 @@ namespace IGC
         m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
         MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
         {
             return false;
@@ -105,8 +106,8 @@ namespace IGC
         if (m_ctx->m_DriverInfo.NeedCheckContractionAllowed())
         {
             m_AllowContractions =
-                hasFnAttributeSet(F, "unsafe-fp-math") ||
-                hasFnAttributeSet(F, "less-precise-fpmad");
+                modMD->compOpt.FastRelaxedMath ||
+                modMD->compOpt.MadEnable;
         }
         m_Platform = m_ctx->platform;
 

@@ -375,7 +375,8 @@ bool GenIRLowering::runOnFunction(Function& F) {
                 break;
             case Instruction::Select:
                 // Enable the pattern match only when NaNs can be ignored.
-                if (hasFnAttributeSet(F, "no-nans-fp-math"))
+                if (modMD->compOpt.NoNaNs ||
+                    modMD->compOpt.FiniteMathOnly)
                 {
                     Changed |= combineSelectInst(cast<SelectInst>(Inst), BI);
                 }
