@@ -974,6 +974,10 @@ void CPixelShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
             {
                 OutputStencil();
             }
+            if (rt->hasMask())
+            {
+                OutputMask();
+            }
             break;
         }
         case GenISAIntrinsic::GenISA_DCL_ShaderInputVec:

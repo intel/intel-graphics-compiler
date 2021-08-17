@@ -1749,7 +1749,7 @@ void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modif
             m_encoder->Add(temp, src, src);
             m_encoder->Push();
         }
-        
+
         if (m_currShader->m_SIMDSize == SIMDMode::SIMD32)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD4);
@@ -1813,7 +1813,7 @@ void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modif
             m_encoder->Add(temp, src, src);
             m_encoder->Push();
         }
-        
+
         m_encoder->Copy(m_destination, temp);
         m_encoder->Push();
     }
@@ -5199,6 +5199,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         }
     }
 
+    bool forceEOT = false;
 
     if (pMaskOpnd)
     {
@@ -5228,6 +5229,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         }
     }
 
+
     m_encoder->RenderTargetWrite(
         src,
         isUndefined,
@@ -5236,6 +5238,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         perSample,
         coarseMode,
         isHeaderMaskFromCe0,
+        forceEOT,
         bti,
         rtIndexOpnd,
         source0Alpha,

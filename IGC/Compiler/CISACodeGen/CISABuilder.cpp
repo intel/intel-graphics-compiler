@@ -2243,6 +2243,7 @@ namespace IGC
         bool perSample,
         bool coarseMode,
         bool headerMaskFromCe0,
+        bool forceEOT,
         CVariable* bindingTableIndex,
         CVariable* RTIndex,
         CVariable* source0Alpha,
@@ -2334,6 +2335,9 @@ namespace IGC
 
         // controls NULL render target enbale bit
         cntrls.isNullRT = isNullRT;
+
+        // Forces use of EOT bit
+        cntrls.forceEOT = forceEOT;
 
         //r1Reg should always be populated
         //vISA will decide whether to use it or not.

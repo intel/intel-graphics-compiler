@@ -615,6 +615,7 @@ typedef struct _vISA_RT_CONTROLS
     unsigned isSampleIndex : 1; //controls whether sampleIndex is used.
     unsigned isHeaderMaskfromCe0 : 1;
     unsigned isNullRT : 1;   // null render target
+    unsigned forceEOT : 1;
 } vISA_RT_CONTROLS;
 
 typedef enum
