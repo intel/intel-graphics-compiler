@@ -1312,6 +1312,8 @@ static bool setNoMaskByDefault(Function *F) {
       Function *G = CI->getParent()->getParent();
       if (G == F)
         return false;
+      // FIXME: trivial recursion case is handled above. But any more
+      // complicated one creates infinite recursion here (e.g. S1->S2->S1->...)
       if (setNoMaskByDefault(G))
         return true;
     }
