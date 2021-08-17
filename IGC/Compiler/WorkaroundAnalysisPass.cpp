@@ -424,10 +424,14 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     }
     Value* resource = gatherpo->getTextureValue();
     Value* sampler = gatherpo->getSamplerValue();
+
+    Value* lod = zero;
+
     Function* resInfo =
         GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_resinfoptr, resource->getType());
     m_builder->SetInsertPoint(gatherpo);
-    Value* info = m_builder->CreateCall2(resInfo, resource, m_builder->getInt32(0));
+    Value* info = m_builder->CreateCall2(resInfo, resource, lod);
+
     std::vector<Value*> arg;
     if (extraBeginArgsNo > 0)
     {
