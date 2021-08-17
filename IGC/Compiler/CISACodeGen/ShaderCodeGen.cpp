@@ -26,7 +26,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ScalarizerCodeGen.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
-#include "Compiler/CISACodeGen/CodeHoisting.hpp"
+#include "Compiler/CISACodeGen/HoistURBWrites.hpp"
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
 #include "Compiler/CISACodeGen/EstimateFunctionSize.h"

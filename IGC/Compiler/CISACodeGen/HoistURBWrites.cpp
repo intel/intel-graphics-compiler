@@ -28,7 +28,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/PostOrderIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/CISACodeGen/CodeHoisting.hpp"
+#include "Compiler/CISACodeGen/HoistURBWrites.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
