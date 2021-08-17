@@ -281,7 +281,7 @@ void CPixelShader::AllocatePSPayload()
                 }
             }
 
-            AllocateInput(setup[i], offset + subRegOffset);
+            AllocateInput(setup[i], offset + subRegOffset, 0, forceLiveOut);
 
             if (m_Signature)
             {
