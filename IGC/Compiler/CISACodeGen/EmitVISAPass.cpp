@@ -6445,7 +6445,8 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     uint32_t blockRegSize = 0;
 
     //Following variable declaration is SIMD8 based, UD is used, so blockRegSize is total required registers.
-    blockRegSize = numPasses * blockHeight * numLanes(SIMDMode::SIMD8);
+    auto simdMode = lanesToSIMDMode(blockWidth / typeSizeInBytes);
+    blockRegSize = numPasses * blockHeight * numLanes(simdMode);
 
     CVariable* pTempDest = m_currShader->GetNewVariable(
         blockRegSize,
@@ -6481,7 +6482,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     //      ---------
     //  32 or 64 bytes at most, that's the reason simd8 is used.
 
-    int scale = (blockWidth == 64) ? 2 : 1;
+    int scale = blockWidth / getGRFSize();
 
     for (pass = 0; pass < numPasses; pass++)
     {
@@ -6502,7 +6503,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
         else
         {
             m_encoder->Add(pTempVar0, pTempVar0, m_currShader->ImmToVariable(blockWidth, ISA_TYPE_UD));
-            uint32_t subOffset = maxWidth * scale * blockHeight;
+            uint32_t subOffset = blockWidth * blockHeight;
             subOffset /= getGRFSize();
             dstSubReg = dstSubReg + subOffset;
         }
@@ -6596,12 +6597,11 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
 
             for (uint32_t pass = 0; pass < numPasses; pass++) //Width
             {
-                SIMDMode mode = typeSizeInBytes == 8 && blockWidth != 64 ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
-                m_encoder->SetSimdSize(mode);
+                m_encoder->SetSimdSize(simdMode);
                 m_encoder->SetNoMask();
 
-                srcSubReg = (scale * (i + (blockHeight * pass)) * maxWidth) / getGRFSize();
-                srcSubRegOffset = (i * maxWidth) % getGRFSize();
+                srcSubReg = ((i + blockHeight * pass) * blockWidth) / getGRFSize();
+                srcSubRegOffset = (i * blockWidth) % getGRFSize();
 
                 m_encoder->SetSrcSubVar(0, srcSubReg);
                 m_encoder->SetSrcSubReg(0, srcSubRegOffset / typeSizeInBytes);
@@ -6609,10 +6609,10 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
                 m_encoder->SetDstSubVar(dstSubReg);
                 m_encoder->SetDstSubReg(dstSubRegOffset / typeSizeInBytes);
 
-                dstSubRegOffset = ((pass + 1) * maxWidth) % getGRFSize();
+                dstSubRegOffset = ((pass + 1) * blockWidth) % getGRFSize();
                 if (dstSubRegOffset == 0)
                 {
-                    dstSubReg += scale;
+                    dstSubReg += (scale > 0 ? scale : 1);
                 }
 
                 m_encoder->Copy(m_destination, pTempDest);
