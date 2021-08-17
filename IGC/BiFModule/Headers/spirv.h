@@ -256,6 +256,24 @@ typedef enum
 #define IMAGETYPE_MULTISAMPLED_SHIFT 56
 #define IMAGETYPE_ACCESSQUALIFER_SHIFT 54
 
+#define DEF_IMAGE_TYPE(SPIRV_IMAGE_TYPE, SHORT_IMAGE_TYPE) \
+typedef struct  SPIRV_IMAGETYPE##_0 SHORT_IMAGE_TYPE##_ro; \
+typedef struct  SPIRV_IMAGETYPE##_1 SHORT_IMAGE_TYPE##_wo; \
+typedef struct  SPIRV_IMAGETYPE##_2 SHORT_IMAGE_TYPE##_rw;
+
+DEF_IMAGE_TYPE(__spirv_Image__void_0_0_0_0_0_0, Img1d)
+DEF_IMAGE_TYPE(__spirv_Image__void_5_0_0_0_0_0, Img1d_buffer)
+DEF_IMAGE_TYPE(__spirv_Image__void_0_0_0_0_0_0, Img1d_array)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_0_0_0_0_0, Img2d)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_0_1_0_0_0, Img2d_array)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_1_0_0_0_0, Img2d_depth)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_1_1_0_0_0, Img2d_array_depth)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_0_0_1_0_0, Img2d_msaa)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_0_1_1_0_0, Img2d_array_msaa)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_1_0_1_0_0, Img2d_msaa_depth)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_1_1_1_0_0, Img2d_array_msaa_depth)
+DEF_IMAGE_TYPE(__spirv_Image__void_2_0_0_0_0_0, Img3d)
+
 // Keep track of SaturatedConversion
 
 // Work-item functions
@@ -4451,6 +4469,31 @@ float  __builtin_spirv_OpSubgroupShuffleXorINTEL_f32_i32(float Data, int Value);
 #if defined(cl_khr_fp64)
 double __builtin_spirv_OpSubgroupShuffleXorINTEL_f64_i32(double Data, int Value);
 #endif // defined(cl_khr_fp64)
+
+#ifdef cl_intel_subgroups_char
+char   __builtin_spirv_OpSubgroupImageBlockReadINTEL_i8_img2d_ro_v2i32(global Img2d_ro * image, int2 coord);
+char2  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v2i8_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+char4  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v4i8_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+char8  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v8i8_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+char16 __builtin_spirv_OpSubgroupImageBlockReadINTEL_v16i8_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+#endif // cl_intel_subgroups_char
+
+short   __builtin_spirv_OpSubgroupImageBlockReadINTEL_i16_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+short2  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v2i16_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+short4  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v4i16_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+short8  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v8i16_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+
+int   __builtin_spirv_OpSubgroupImageBlockReadINTEL_i32_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+int2  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v2i32_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+int4  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v4i32_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+int8  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v8i32_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+
+#ifdef cl_intel_subgroups_long
+long   __builtin_spirv_OpSubgroupImageBlockReadINTEL_i64_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+long2  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v2i64_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+long4  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v4i64_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+long8  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v8i64_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+#endif // cl_intel_subgroups_long
 
 #define DECL_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)       \
 DECL_SUB_GROUP_BROADCAST_BASE(TYPE, TYPE_ABBR)          \

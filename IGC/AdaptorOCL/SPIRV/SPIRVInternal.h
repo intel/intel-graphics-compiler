@@ -443,6 +443,10 @@ _SPIRV_OP(OpSubgroupShuffleINTEL)
 _SPIRV_OP(OpSubgroupShuffleDownINTEL)
 _SPIRV_OP(OpSubgroupShuffleUpINTEL)
 _SPIRV_OP(OpSubgroupShuffleXorINTEL)
+_SPIRV_OP(OpSubgroupBlockReadINTEL)
+_SPIRV_OP(OpSubgroupBlockWriteINTEL)
+_SPIRV_OP(OpSubgroupImageBlockReadINTEL)
+_SPIRV_OP(OpSubgroupImageBlockWriteINTEL)
 #undef _SPIRV_OP
 
 #define _SPIRV_OP(x, y) add(Op##y, #x);
@@ -693,6 +697,24 @@ _SPIRV_OP(n, FPRoundingModeRTN)
 typedef SPIRVMap<std::string, SPIRVFPRoundingModeKind>
   SPIRSPIRVFPRoundingModeMap;
 
+template<> inline void
+SPIRVMap<SPIRVTypeImageDescriptor, std::string>::init() {
+    add({ Dim1D, 0, 0, 0, 0, 0 }, "img1d");
+    add({ DimBuffer, 0, 0, 0, 0, 0 }, "img1d_buffer");
+    add({ Dim1D,     0, 1, 0, 0, 0 }, "img1d_array");
+    add({ Dim2D,     0, 0, 0, 0, 0 }, "img2d");
+    add({ Dim2D,     0, 1, 0, 0, 0 }, "img2d_array");
+    add({ Dim2D,     1, 0, 0, 0, 0 }, "img2d_depth");
+    add({ Dim2D,     1, 1, 0, 0, 0 }, "img2d_array_depth");
+    add({ Dim2D,     0, 0, 1, 0, 0 }, "img2d_msaa");
+    add({ Dim2D,     0, 1, 1, 0, 0 }, "img2d_array_msaa");
+    add({ Dim2D,     1, 0, 1, 0, 0 }, "img2d_msaa_depth");
+    add({ Dim2D,     1, 1, 1, 0, 0 }, "img2d_array_msaa_depth");
+    add({ Dim3D,     0, 0, 0, 0, 0 }, "img3d");
+}
+typedef SPIRVMap<SPIRVTypeImageDescriptor, std::string>
+SPIRVImageManglingMap;
+
 #define SPIR_MD_KERNELS                     "opencl.kernels"
 #define SPIR_MD_KERNEL_ARG_ADDR_SPACE       "kernel_arg_addr_space"
 #define SPIR_MD_KERNEL_ARG_ACCESS_QUAL      "kernel_arg_access_qual"
@@ -706,12 +728,22 @@ namespace kLLVMName {
   const static char builtinExtInstPrefixOpenCL[] = "__builtin_spirv_OpenCL_";
 }
 
+namespace kSPIRVImageSampledTypeName {
+  const static char Float[] = "float";
+  const static char Half[] = "half";
+  const static char Int[] = "int";
+  const static char UInt[] = "uint";
+  const static char Void[] = "void";
+}
+
 namespace kSPIRVTypeName {
   const static char Delimiter   = '.';
   const static char SampledImage[] = "OpTypeSampledImage";
   const static char Sampler[] = "OpTypeSampler";
-  const static char Image[] = "OpTypeImage";
+  const static char Image[] = "Image";
   const static char Pipe[] = "OpTypePipe";
+  const static char PrefixAndDelim[] = "spirv.";
+  const static char PostfixDelim = '_';
 }
 
 namespace kSPR2TypeName {
@@ -911,6 +943,18 @@ ConstantInt *getInt32(Module *M, int value);
 /// Decode OpenCL version which is encoded as Major*10^5+Minor*10^3+Rev
 std::tuple<unsigned short, unsigned char, unsigned char>
 decodeOCLVer(unsigned Ver);
+
+/// Get SPIR-V type name as spirv.BaseTyName.Postfixes.
+std::string getSPIRVTypeName(StringRef BaseTyName, StringRef Postfixes = "");
+
+/// Get the postfixes of SPIR-V image type name as in spirv.Image.postfixes.
+std::string getSPIRVImageTypePostfixes(StringRef SampledType,
+    SPIRVTypeImageDescriptor Desc,
+    SPIRVAccessQualifierKind Acc);
+
+/// Get the sampled type name used in postfix of image type in SPIR-V
+/// friendly LLVM IR.
+std::string getSPIRVImageSampledTypeName(SPIRVType* Ty);
 
 }
 
