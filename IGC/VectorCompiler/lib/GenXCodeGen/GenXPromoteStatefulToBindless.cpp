@@ -178,7 +178,7 @@ bool PromoteToBindless::convertKernelArguments(Function &F) {
   ArrayRef<unsigned> ArgKinds = KM.getArgKinds();
   ArrayRef<StringRef> ArgDescs = KM.getArgTypeDescs();
 
-  SmallVector<unsigned, 8> NewArgKinds(ArgKinds.size());
+  SmallVector<unsigned, 8> NewArgKinds{ArgKinds.begin(), ArgKinds.end()};
   bool Changed = false;
   for (auto &&[Kind, Desc, NewKind] :
        llvm::zip(ArgKinds, ArgDescs, NewArgKinds)) {
