@@ -1445,22 +1445,69 @@ void linkCPS(SPixelShaderKernelProgram* output, SPixelShaderKernelProgram& linke
     SPixelShaderKernelProgram CoarsePhaseOutput = output[0];
     SPixelShaderKernelProgram PixelPhaseOutput = output[1];
     linked = output[0];
+    linked.simd8.m_debugData = nullptr;
+    linked.simd8.m_debugDataGenISA = nullptr;
+    linked.simd8.m_funcAttributeTable = nullptr;
+    linked.simd16.m_debugData = nullptr;
+    linked.simd16.m_debugDataGenISA = nullptr;
+    linked.simd16.m_funcAttributeTable = nullptr;
 
-    if (CoarsePhaseOutput.simd16.m_scratchSpaceUsedBySpills == 0 &&
-        CoarsePhaseOutput.simd16.m_programBin != nullptr &&
-        PixelPhaseOutput.simd16.m_scratchSpaceUsedBySpills == 0 &&
-        PixelPhaseOutput.simd16.m_programBin != nullptr)
+
+    if (CoarsePhaseOutput.simd16.m_programBin == nullptr &&
+        CoarsePhaseOutput.simd8.m_programBin == nullptr)
     {
-        linkProgram(CoarsePhaseOutput.simd16, PixelPhaseOutput.simd16, linked.simd16);
+        // empty cps
+        linked = PixelPhaseOutput;
+        linked.simd8.m_debugData = nullptr;
+        linked.simd8.m_debugDataGenISA = nullptr;
+        linked.simd8.m_funcAttributeTable = nullptr;
+        linked.simd16.m_debugData = nullptr;
+        linked.simd16.m_debugDataGenISA = nullptr;
+        linked.simd16.m_funcAttributeTable = nullptr;
+        if (PixelPhaseOutput.simd16.m_programBin != nullptr)
+        {
+            // deep copy
+            linked.simd16.m_programSize = iSTD::Align(PixelPhaseOutput.simd16.m_unpaddedProgramSize, 64);
+            linked.simd16.m_programBin = IGC::aligned_malloc(PixelPhaseOutput.simd16.m_programSize, 16);
+            memset(linked.simd16.m_programBin,
+                0,
+                linked.simd16.m_unpaddedProgramSize);
+            memcpy_s(linked.simd16.m_programBin,
+                linked.simd16.m_unpaddedProgramSize,
+                PixelPhaseOutput.simd16.m_programBin,
+                PixelPhaseOutput.simd16.m_unpaddedProgramSize);
+        }
+        if (PixelPhaseOutput.simd8.m_programBin != nullptr)
+        {
+            linked.simd8.m_programSize = iSTD::Align(PixelPhaseOutput.simd8.m_unpaddedProgramSize, 64);
+            linked.simd8.m_programBin = IGC::aligned_malloc(PixelPhaseOutput.simd8.m_programSize, 16);
+            memset(linked.simd8.m_programBin,
+                0,
+                linked.simd8.m_unpaddedProgramSize);
+            memcpy_s(linked.simd8.m_programBin,
+                linked.simd8.m_unpaddedProgramSize,
+                PixelPhaseOutput.simd8.m_programBin,
+                PixelPhaseOutput.simd8.m_unpaddedProgramSize);
+        }
     }
     else
     {
-        linked.simd16.m_programBin = nullptr;
-        linked.simd16.m_programSize = 0;
+        if (CoarsePhaseOutput.simd16.m_scratchSpaceUsedBySpills == 0 &&
+            CoarsePhaseOutput.simd16.m_programBin != nullptr &&
+            PixelPhaseOutput.simd16.m_scratchSpaceUsedBySpills == 0 &&
+            PixelPhaseOutput.simd16.m_programBin != nullptr)
+        {
+            linkProgram(CoarsePhaseOutput.simd16, PixelPhaseOutput.simd16, linked.simd16);
+        }
+        else
+        {
+            linked.simd16.m_programBin = nullptr;
+            linked.simd16.m_programSize = 0;
+        }
+        linkProgram(CoarsePhaseOutput.simd8, PixelPhaseOutput.simd8, linked.simd8);
+        linked.hasPullBary = true;
+        linked.renderTargetMask = (CoarsePhaseOutput.renderTargetMask || PixelPhaseOutput.renderTargetMask);
     }
-    linkProgram(CoarsePhaseOutput.simd8, PixelPhaseOutput.simd8, linked.simd8);
-    linked.hasPullBary = true;
-    linked.renderTargetMask = (CoarsePhaseOutput.renderTargetMask || PixelPhaseOutput.renderTargetMask);
     IGC_ASSERT_MESSAGE(numberPhases == 2, "maximum number of phases is 2");
 }
 
