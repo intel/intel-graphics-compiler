@@ -16,47 +16,53 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Dominators.h"
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC {
+namespace IGC
+{
 
-    class CodeHoisting : public llvm::FunctionPass {
-        llvm::DominatorTree* DT;
-        llvm::PostDominatorTree* PDT;
-        llvm::LoopInfo* LI;
+class HoistURBWrites : public llvm::FunctionPass
+{
+    llvm::DominatorTree* DT;
+    llvm::PostDominatorTree* PDT;
+    llvm::LoopInfo* LI;
 
-    public:
-        static char ID; // Pass identification
+public:
+    static char ID; // Pass identification
 
-        CodeHoisting();
+    HoistURBWrites();
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+    virtual bool runOnFunction(llvm::Function& F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
-            AU.setPreservesCFG();
-            AU.addRequired<llvm::DominatorTreeWrapperPass>();
-            AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
-            AU.addRequired<llvm::LoopInfoWrapperPass>();
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addPreserved<llvm::DominatorTreeWrapperPass>();
-            AU.addPreserved<llvm::PostDominatorTreeWrapperPass>();
-            AU.addPreserved<llvm::LoopInfoWrapperPass>();
-        }
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+    {
+        AU.setPreservesCFG();
+        AU.addRequired<llvm::DominatorTreeWrapperPass>();
+        AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
+        AU.addRequired<llvm::LoopInfoWrapperPass>();
+        AU.addRequired<CodeGenContextWrapper>();
+        AU.addPreserved<llvm::DominatorTreeWrapperPass>();
+        AU.addPreserved<llvm::PostDominatorTreeWrapperPass>();
+        AU.addPreserved<llvm::LoopInfoWrapperPass>();
+    }
+    virtual llvm::StringRef getPassName() const override
+    {
+        return "HoistURBWrites";
+    }
 
-    private:
-        void gatherLastURBReadInEachBB(llvm::Function& F);
-        llvm::Instruction* searchBackForAliasedURBRead(
-            llvm::Instruction* urbWrite);
+private:
+    void gatherLastURBReadInEachBB(llvm::Function& F);
+    llvm::Instruction* searchBackForAliasedURBRead(
+        llvm::Instruction* urbWrite);
 
-        void hoistURBWriteInBB(llvm::BasicBlock& BB);
+    void hoistURBWriteInBB(llvm::BasicBlock& BB);
 
-        /// local processing
-        bool isSafeToHoistURBWriteInstruction(
-            llvm::Instruction* inst,
-            llvm::Instruction*& tgtInst);
+    /// local processing
+    bool isSafeToHoistURBWriteInstruction(
+        llvm::Instruction* inst,
+        llvm::Instruction*& tgtInst);
 
-        /// data members for local-hoisting
-        llvm::MapVector<llvm::Instruction*, llvm::Instruction*> instMovDataMap;
-        llvm::DenseMap<llvm::BasicBlock*, llvm::Instruction*> basicBlockReadInstructionMap;
-    };
-
-}
+    /// data members for local-hoisting
+    llvm::MapVector<llvm::Instruction*, llvm::Instruction*> instMovDataMap;
+    llvm::DenseMap<llvm::BasicBlock*, llvm::Instruction*> basicBlockReadInstructionMap;
+};
+} // namespace IGC
 

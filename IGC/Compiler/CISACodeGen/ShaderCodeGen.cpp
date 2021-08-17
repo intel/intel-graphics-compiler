@@ -194,7 +194,7 @@ static void AddURBWriteRelatedPass(CodeGenContext& ctx, IGCPassManager& mpm)
         }
         if (IGC_IS_FLAG_DISABLED(DisableCodeHoisting))
         {
-            mpm.add(new CodeHoisting());
+            mpm.add(new HoistURBWrites());
         }
         break;
     default:
