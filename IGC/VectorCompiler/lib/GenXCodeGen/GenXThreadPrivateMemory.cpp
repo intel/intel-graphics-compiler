@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/BreakConst.h"
 
 #include "Probe/Assertion.h"
@@ -67,47 +68,6 @@ static cl::opt<bool>
                                   "warning in case of stack overflow"));
 
 namespace {
-
-// Diagnostic information for errors/warnings in the TPM
-class DiagnosticInfoTPM : public DiagnosticInfo {
-private:
-  std::string Description;
-  static int KindID;
-
-  static int getKindID() {
-    if (KindID == 0)
-      KindID = llvm::getNextAvailablePluginDiagnosticKind();
-    return KindID;
-  }
-
-public:
-  // Initialize from description
-  DiagnosticInfoTPM(const Twine &Desc, DiagnosticSeverity Severity = DS_Error)
-      : DiagnosticInfo(getKindID(), Severity),
-        Description("GenXTPM: " + Desc.str()) {}
-
-  // Initialize with Value
-  DiagnosticInfoTPM(Value *Val, const Twine &Desc, DiagnosticSeverity Severity)
-      : DiagnosticInfo(getKindID(), Severity) {
-    std::string Str;
-    llvm::raw_string_ostream(Str) << *Val;
-    Description = (Twine("TPM failed for: <") + Str + ">: " + Desc).str();
-  }
-
-  // Initialize with Type
-  DiagnosticInfoTPM(Type *Ty, const Twine &Desc, DiagnosticSeverity Severity)
-      : DiagnosticInfo(getKindID(), Severity) {
-    std::string Str;
-    llvm::raw_string_ostream(Str) << *Ty;
-    Description = (Twine("TPM failed for: <") + Str + ">: " + Desc).str();
-  }
-
-  void print(DiagnosticPrinter &DP) const override { DP << Description; }
-
-  static bool classof(const DiagnosticInfo *DI) {
-    return DI->getKind() == getKindID();
-  }
-};
 
 class StackAnalysis : public InstVisitor<StackAnalysis> {
   DataLayout const &m_DL;
@@ -185,12 +145,12 @@ uint64_t StackAnalysis::checkFunction(Function &F) {
     uint64_t UsedStackSize = 0;
     switch (m_ProcessedFs[NextCalledF].m_ProcessingFlag) {
     case FunctionState::ProcessingState::Started: {
-      DiagnosticInfoTPM Warn{
+      vc::diagnose(
+          F.getContext(), "TPM",
           "Recursion has been found in call graph. Called function: \"" +
               NextCalledF->getName() + "\" from \"" + F.getName() +
               "\"\nStack overflow can occur, but cannot be diagnosed.",
-          DS_Warning};
-      F.getContext().diagnose(Warn);
+          DS_Warning);
       break;
     }
     case FunctionState::ProcessingState::NotStarted:
@@ -231,13 +191,13 @@ std::string StackAnalysis::GenerateCallSequence(Function &F) {
 void StackAnalysis::checkKernel(Function &Kernel) {
   uint64_t const KernelUsedStack = checkFunction(Kernel) / genx::ByteBits;
   if (KernelUsedStack > m_MaxStackSize) {
-    DiagnosticInfoTPM Warn{"Kernel \"" + Kernel.getName() +
-                               "\" may overflow stack. Used " +
-                               std::to_string(KernelUsedStack) + " bytes of " +
-                               std::to_string(m_MaxStackSize) +
-                               "\nCalls: " + GenerateCallSequence(Kernel),
-                           DS_Warning};
-    Kernel.getContext().diagnose(Warn);
+    vc::diagnose(Kernel.getContext(), "TPM",
+                 "Kernel \"" + Kernel.getName() +
+                     "\" may overflow stack. Used " +
+                     std::to_string(KernelUsedStack) + " bytes of " +
+                     std::to_string(m_MaxStackSize) +
+                     "\nCalls: " + GenerateCallSequence(Kernel),
+                 DS_Warning);
   }
 }
 
@@ -254,8 +214,6 @@ void StackAnalysis::doAnalysis(Module &M) {
   for (auto *Kernel : Kernels)
     checkKernel(*Kernel);
 }
-
-int DiagnosticInfoTPM::KindID = 0;
 
 struct FunctionInfo {
   std::unordered_set<Value *> Calls;
@@ -668,8 +626,8 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
   } else if (isa<ConstantPointerNull>(Ptr))
     return ConstantInt::get(MemTy, 0);
 
-  DiagnosticInfoTPM Err{Ptr, "Cannot find pointer replacement", DS_Error};
-  Ptr->getContext().diagnose(Err);
+  vc::diagnose(Ptr->getContext(), "TPM", Ptr,
+               "Cannot find pointer replacement");
   return nullptr; // to suppress warnings
 }
 
@@ -781,9 +739,8 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
            LdTy->isPointerTy())
     LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
   else {
-    DiagnosticInfoTPM Err{LdTy, "Unsupported type inside replaceLoad",
-                          DS_Error};
-    LdI->getContext().diagnose(Err);
+    vc::diagnose(LdI->getContext(), "TPM", LdTy,
+                 "Unsupported type inside replaceLoad");
   }
 
   unsigned NumEltsToLoad = cast<VectorType>(LdTy)->getNumElements();
@@ -873,9 +830,8 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
     ValueOpTy = ValueOp->getType();
   }
   if (!ValueOpTy->isVectorTy()) {
-    DiagnosticInfoTPM Err{ValueOpTy, "Unsupported type inside replaceStore",
-                          DS_Error};
-    StI->getContext().diagnose(Err);
+    vc::diagnose(StI->getContext(), "TPM", ValueOpTy,
+                 "Unsupported type inside replaceStore");
   }
 
   unsigned ValueEltSz = 0;
@@ -1326,11 +1282,9 @@ public:
 
 void GenXThreadPrivateMemory::switchStack(Module &M) {
   LLVM_DEBUG(dbgs() << "Switching TPM to SVM\n");
-  if (!m_ST->isOCLRuntime()) {
-    DiagnosticInfoTPM Err{"CMRT not supported for stack switching to SVM",
-                          DS_Error};
-    M.getContext().diagnose(Err);
-  }
+  if (!m_ST->isOCLRuntime())
+    vc::diagnose(M.getContext(), "TPM",
+                 "CMRT not supported for stack switching to SVM");
   m_useGlobalMem = true;
 }
 
@@ -1619,10 +1573,8 @@ bool GenXThreadPrivateMemory::processUsers() {
     }
     if (m_AIUsers.empty()) {
       if (!Changed && ChangeRequired) {
-        DiagnosticInfoTPM Err{
-            I, "Thread private memory: cannot resolve all alloca uses",
-            DS_Error};
-        I->getContext().diagnose(Err);
+        vc::diagnose(I->getContext(), "TPM", I,
+                     "Thread private memory: cannot resolve all alloca uses");
       }
       Changed = false;
       collectEachPossibleTPMUsers();
@@ -1754,10 +1706,10 @@ void GenXThreadPrivateMemory::visitFunction(Function &F) {
                           << F.getName() << "\n");
         m_Calls[&F].Recreate = true;
       } else {
-        DiagnosticInfoTPM Warn(
-            F.getName() + " args are used in TPM, but rewriting impossible",
-            DS_Warning);
-        F.getContext().diagnose(Warn);
+        vc::diagnose(F.getContext(), "TPM",
+                     F.getName() +
+                         " args are used in TPM, but rewriting impossible",
+                     DS_Warning);
       }
     }
     return;

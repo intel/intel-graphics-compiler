@@ -7,6 +7,7 @@
 #============================ end_copyright_notice =============================
 
 set(SUPPORT_SOURCES
+  GenXDiagnostic.cpp
   Status.cpp
   ShaderDump.cpp
   BackendConfig.cpp

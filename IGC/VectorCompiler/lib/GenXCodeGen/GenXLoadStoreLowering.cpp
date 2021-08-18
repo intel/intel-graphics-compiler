@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/BreakConst.h"
 
 #include "Probe/Assertion.h"
@@ -45,8 +46,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/GenXIntrinsics/GenXMetadata.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/DiagnosticInfo.h>
-#include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
@@ -106,49 +105,6 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override;
 };
-
-// Diagnostic information for errors/warnings in the load-store lowering
-class DiagnosticInfoLS : public DiagnosticInfo {
-private:
-  std::string Description;
-  static int KindID;
-
-  static int getKindID() {
-    if (KindID == 0)
-      KindID = llvm::getNextAvailablePluginDiagnosticKind();
-    return KindID;
-  }
-
-public:
-  // Initialize from description
-  DiagnosticInfoLS(const Twine &Desc, DiagnosticSeverity Severity = DS_Error)
-      : DiagnosticInfo(getKindID(), Severity),
-        Description("GenXTPM: " + Desc.str()) {}
-
-  // Initialize with Value
-  DiagnosticInfoLS(Value *Val, const Twine &Desc, DiagnosticSeverity Severity)
-      : DiagnosticInfo(getKindID(), Severity) {
-    std::string Str;
-    llvm::raw_string_ostream(Str) << *Val;
-    Description = (Twine("TPM failed for: <") + Str + ">: " + Desc).str();
-  }
-
-  // Initialize with Type
-  DiagnosticInfoLS(Type *Ty, const Twine &Desc, DiagnosticSeverity Severity)
-      : DiagnosticInfo(getKindID(), Severity) {
-    std::string Str;
-    llvm::raw_string_ostream(Str) << *Ty;
-    Description = (Twine("TPM failed for: <") + Str + ">: " + Desc).str();
-  }
-
-  void print(DiagnosticPrinter &DP) const override { DP << Description; }
-
-  static bool classof(const DiagnosticInfo *DI) {
-    return DI->getKind() == getKindID();
-  }
-};
-
-int DiagnosticInfoLS::KindID = 0;
 
 } // end namespace
 
@@ -408,10 +364,9 @@ VectorType *GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
   if (LdTy->isIntOrPtrTy() || LdTy->isFloatingPointTy())
     LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
 
-  if (!LdTy->isVectorTy()) {
-    DiagnosticInfoLS Err{LdTy, "Unsupported type inside replaceLoad", DS_Error};
-    LdI.getContext().diagnose(Err);
-  }
+  if (!LdTy->isVectorTy())
+    vc::diagnose(LdI.getContext(), "LDS", LdTy,
+                 "Unsupported type inside replaceLoad");
   return cast<VectorType>(LdTy);
 }
 
@@ -572,9 +527,8 @@ Value *GenXLoadStoreLowering::splatStoreIfNeeded(StoreInst &StI,
   ValueOpTy = ValueOp->getType();
 
   if (!ValueOpTy->isVectorTy()) {
-    DiagnosticInfoLS Err{ValueOpTy, "Unsupported type inside replaceStore",
-                         DS_Error};
-    StI.getContext().diagnose(Err);
+    vc::diagnose(StI.getContext(), "LDS", ValueOpTy,
+                 "Unsupported type inside replaceStore");
   }
 
   return ValueOp;
