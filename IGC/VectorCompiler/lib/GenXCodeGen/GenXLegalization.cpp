@@ -720,25 +720,29 @@ bool GenXLegalization::processInst(Instruction *Inst) {
   auto *I8Ty = Type::getInt8Ty(Inst->getContext());
   auto *I16Ty = Type::getInt16Ty(Inst->getContext());
   auto *I32Ty = Type::getInt32Ty(Inst->getContext());
-  if (transformMoveType(&B, I8Ty, I32Ty) ||
-      transformMoveType(&B, I8Ty, I16Ty)) {
+  if (Instruction *MoveHead = nullptr;
+      (MoveHead = transformMoveType(&B, I8Ty, I32Ty)) ||
+      (MoveHead = transformMoveType(&B, I8Ty, I16Ty))) {
     // Successfully transformed. Run legalization on the new instruction
     // (which got inserted before the existing one, so will be processed
     // next).
     LLVM_DEBUG(dbgs() << "done transform of byte move\n");
-    return false;
+    clearBale();
+    Baling->buildBale(MoveHead, &B);
+    return processBale(MoveHead->getNextNode());
   }
 
   // Check if it is a 64-bit move that we want to transform into 32-bit move.
+  auto *I64Ty = Type::getInt64Ty(Inst->getContext());
   if (ST->emulateLongLong()) {
-    auto *I32Ty = Type::getInt32Ty(Inst->getContext());
-    auto *I64Ty = Type::getInt64Ty(Inst->getContext());
-    if (transformMoveType(&B, I64Ty, I32Ty)) {
+    if (Instruction *MoveHead = transformMoveType(&B, I64Ty, I32Ty)) {
       // Successfully transformed. Run legalization on the new instruction
       // (which got inserted before the existing one, so will be processed
       // next).
       LLVM_DEBUG(dbgs() << "done transform of long long move\n");
-      return false;
+      clearBale();
+      Baling->buildBale(MoveHead, &B);
+      return processBale(MoveHead->getNextNode());
     }
   }
 
