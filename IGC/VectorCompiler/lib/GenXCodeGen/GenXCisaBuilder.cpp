@@ -1722,6 +1722,7 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
                                  DONTCARESIGNED, Mod, true /*isDest*/);
     } else {
       IGC_ASSERT(Reg->Category == RegCategory::SURFACE ||
+             Reg->Category == RegCategory::VME ||
              Reg->Category == RegCategory::SAMPLER);
 
       return createState(Reg, 0 /*Offset*/, true /*IsDst*/);
@@ -1754,7 +1755,8 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
     *SignedRes = RegAlloc->getSigned(Reg);
 
   if (Reg && (Reg->Category == RegCategory::SAMPLER ||
-              Reg->Category == RegCategory::SURFACE)) {
+              Reg->Category == RegCategory::SURFACE ||
+              Reg->Category == RegCategory::VME)) {
     IGC_ASSERT(R.ElementBytes);
     return createState(Reg, R.Offset / R.ElementBytes, true /*IsDest*/);
   } else {
@@ -2084,7 +2086,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, Signed);
     IGC_ASSERT(Reg->Category == RegCategory::GENERAL ||
            Reg->Category == RegCategory::SURFACE ||
-           Reg->Category == RegCategory::SAMPLER);
+           Reg->Category == RegCategory::SAMPLER ||
+           Reg->Category == RegCategory::VME);
     // Write the vISA general operand.
     Region R(V);
     if (Offset)
@@ -2611,7 +2614,8 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
       DstReg = getRegForValueAndSaveAlias(KernFunc, Inst, DONTCARESIGNED);
     }
     if (DstReg && (DstReg->Category == RegCategory::SURFACE ||
-                   DstReg->Category == RegCategory::SAMPLER)) {
+                   DstReg->Category == RegCategory::SAMPLER ||
+                   DstReg->Category == RegCategory::VME)) {
       Opcode = ISA_MOVS;
     }
   }
@@ -3210,6 +3214,10 @@ void GenXKernelBuilder::buildVariables() {
       }
       Reg->SetVar(Kernel, Decl);
     } break;
+
+    case RegCategory::VME:
+      report_fatal_error("VME variable is no longer supported");
+      break;
 
     default:
       report_fatal_error("Unknown category for register");

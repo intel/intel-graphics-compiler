@@ -115,7 +115,8 @@ namespace llvm {
            VISA_MAX_ADDRESS_REGS = 4096,
            VISA_MAX_PREDICATE_REGS = 4096,
            VISA_MAX_SAMPLER_REGS = 32 - 1,
-           VISA_MAX_SURFACE_REGS = 256 };
+           VISA_MAX_SURFACE_REGS = 256,
+           VISA_MAX_VME_REGS = 16 };
 
     enum { VISA_WIDTH_GENERAL_REG = 32 };
 

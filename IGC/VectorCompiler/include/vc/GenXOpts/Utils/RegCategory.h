@@ -23,6 +23,7 @@ struct RegCategory {
     PREDICATE,
     SAMPLER,
     SURFACE,
+    VME,
     NUMREALCATEGORIES,
     EM,
     RM,

@@ -1782,10 +1782,11 @@ void LiveRange::print(raw_ostream &OS) const
     case RegCategory::GENERAL: Cat = "general"; break;
     case RegCategory::ADDRESS: Cat = "address"; break;
     case RegCategory::PREDICATE: Cat = "predicate"; break;
-    case RegCategory::SAMPLER: Cat = "sampler"; break;
-    case RegCategory::SURFACE: Cat = "surface"; break;
     case RegCategory::EM: Cat = "em"; break;
     case RegCategory::RM: Cat = "rm"; break;
+    case RegCategory::SAMPLER: Cat = "sampler"; break;
+    case RegCategory::SURFACE: Cat = "surface"; break;
+    case RegCategory::VME: Cat = "vme"; break;
   }
   OS << "{" << Cat << ",align" << (1U << LogAlignment);
   if (Offset)

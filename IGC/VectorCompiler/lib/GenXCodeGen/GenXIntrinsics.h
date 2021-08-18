@@ -116,28 +116,29 @@ public:
     Z_PREDICATE = PREDICATE | PREDICATE_ZEROED,
     SAMPLER =               GENX_ITR_CATVAL(0x25), // sampler operand
     SURFACE =               GENX_ITR_CATVAL(0x26), // surface operand
+    VME =                   GENX_ITR_CATVAL(0x27), // vme operand
     // byte height of media 2D block, inferred from the width operand
     // pointed at and the size of the return type or final operand type
-    MEDIAHEIGHT =           GENX_ITR_CATVAL(0x27),
+    MEDIAHEIGHT =           GENX_ITR_CATVAL(0x28),
     // predication control field from explicit predicate arg
-    PREDICATION =           GENX_ITR_CATVAL(0x28),
+    PREDICATION =           GENX_ITR_CATVAL(0x29),
     // chmask field in load/sample, with exec size bit
-    SAMPLECHMASK =          GENX_ITR_CATVAL(0x29),
+    SAMPLECHMASK =          GENX_ITR_CATVAL(0x2a),
     // does not appear in the vISA output, but needs to be two address
     // coalesced with result
-    TWOADDR =               GENX_ITR_CATVAL(0x2a),
-    CONSTVI1ASI32 =         GENX_ITR_CATVAL(0x2b), // constant vXi1 written as i32 (used in setp)
-    RAW =                   GENX_ITR_CATVAL(0x2c), // raw operand or result,
+    TWOADDR =               GENX_ITR_CATVAL(0x2b),
+    CONSTVI1ASI32 =         GENX_ITR_CATVAL(0x2c), // constant vXi1 written as i32 (used in setp)
+    RAW =                   GENX_ITR_CATVAL(0x2d), // raw operand or result,
       // Raw descriptor flags, 3 bits used
       RAW_UNSIGNED =        GENX_ITR_FLAGVAL(0),   // raw operand/result must be unsigned
       RAW_SIGNED =          GENX_ITR_FLAGVAL(1),   // raw operand/result must be signed
       RAW_NULLALLOWED =     GENX_ITR_FLAGVAL(2),   // raw operand or result can be null (V0)
     URAW =                  RAW | RAW_UNSIGNED,
     SRAW =                  RAW | RAW_SIGNED,
-    EXECSIZE_NOMASK =       GENX_ITR_CATVAL(0x2d), // execution size with NoMask
+    EXECSIZE_NOMASK =       GENX_ITR_CATVAL(0x2e), // execution size with NoMask
 
     // A general operand
-    GENERAL =               GENX_ITR_CATVAL(0x2e),
+    GENERAL =               GENX_ITR_CATVAL(0x30),
     // A general operand with compile-time signedness choosing
     GENERAL_CTSIGN =        GENERAL,
     // Modifiers for destination or source, 7 bits used
@@ -169,7 +170,7 @@ public:
     MODIFIER_LOGIC =        GENX_ITR_FLAGENUM(8, 2), // src modifier: logic
     MODIFIER_EXTONLY =      GENX_ITR_FLAGENUM(8, 3), // src modifier: extend only
     DIRECTONLY =            GENX_ITR_FLAGVAL(10), // indirect region not allowed
-    PREDEF_SURFACE =        GENX_ITR_CATVAL(0x2f), // predefined surface operand
+    PREDEF_SURFACE =        GENX_ITR_CATVAL(0x31), // predefined surface operand
   };
   struct ArgInfo {
     unsigned Info;
@@ -266,6 +267,7 @@ public:
         case PREDICATION:
         case SURFACE:
         case SAMPLER:
+        case VME:
           return true;
         default: break;
       }
