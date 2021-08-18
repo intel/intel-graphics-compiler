@@ -476,8 +476,9 @@ private:
     /// Whether funcCtrl is valid
     bool funcCtrlValid;
 
+    // sampler surface pointer?
     G4_Operand *m_sti;
-    G4_Operand *m_bti;
+    G4_Operand *m_bti; // BTI or other surface pointer
 
     int         src1Len;
     bool        eotAfterMessage = false;
@@ -664,6 +665,12 @@ public:
     G4_Operand *getBti()       {return m_bti;}
     const G4_Operand *getSti() const {return m_sti;}
     G4_Operand *getSti()       {return m_sti;}
+
+    // In rare cases we must update the surface pointer
+    // The send instructions also keeps a copy of the ExDesc parameter
+    // as a proper source operand (e.g. for dataflow algorithms).
+    // When they update their copy, they need to do the same for us.
+    void setSurface(G4_Operand *newSurf) {m_bti = newSurf;}
 
     uint32_t getDesc() const { return desc.value; }
     uint32_t getExtendedDesc() const { return extDesc.value; }

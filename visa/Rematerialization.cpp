@@ -1041,7 +1041,7 @@ namespace vISA
             auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(
                 dstMsgDesc->getDesc(),
                 dstMsgDesc->getExtendedDesc(), dstMsgDesc->getAccess(),
-                kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
+                kernel.fg.builder->duplicateOperand(dstMsgDesc->getSurface()),
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
 
             auto dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,

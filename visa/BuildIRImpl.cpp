@@ -2283,7 +2283,7 @@ G4_InstSend *IR_Builder::createSendInst(
     fixSendDstType(postDst, execsize);
 
     uint32_t desc = msgDesc->getDesc();
-    G4_Operand *bti = msgDesc->getBti();
+    G4_Operand *bti = msgDesc->getSurface();
     G4_Operand *sti = msgDesc->getSti();
     G4_Operand *descOpnd = NULL;
 
@@ -2420,7 +2420,7 @@ G4_InstSend *IR_Builder::createSplitSendInst(
 
     uint32_t desc = msgDesc->getDesc();
     uint32_t exdesc = msgDesc->getExtendedDesc();
-    G4_Operand *bti = msgDesc->getBti();
+    G4_Operand *bti = msgDesc->getSurface();
     G4_Operand *sti = msgDesc->getSti();
 
     G4_Operand* descOpnd = NULL;
@@ -2554,7 +2554,7 @@ G4_InstSend *IR_Builder::createSplitSendToRenderTarget(
 
     uint32_t desc = msgDesc->getDesc();
     G4_Operand* descOpnd = nullptr;
-    G4_Operand *bti = msgDesc->getBti();
+    G4_Operand *bti = msgDesc->getSurface();
 
     if (bti && bti->isSrcRegRegion())
     {

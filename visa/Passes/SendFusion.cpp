@@ -560,7 +560,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
     G4_SendDescRaw* desc = Send->getMsgDescRaw();
     if (!desc)
         return;
-    G4_Operand* bti = desc->getBti();
+    G4_Operand* bti = desc->getSurface();
     if ((bti && bti->getTopDcl() != movI->getDst()->getTopDcl()) ||
         (addI->getSrc(1)->asImm()->getInt() != desc->getDesc()))
     {
@@ -581,7 +581,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
         desc->getExtendedDesc(),
         desc->extMessageLength(),
         desc->getAccess(),
-        desc->getBti(),
+        desc->getSurface(),
         desc->getExecSize());
     Send->setMsgDesc(newDesc);
 
@@ -1435,7 +1435,7 @@ void SendFusion::doFusion(
     // No need to set bti here as we handle the case in which bti is imm only.
     // For that imm bti, the descriptor has already contained bti. Thus, we can
     // safely set bti to nullptr here.
-    //G4_Operand* bti = (desc->getBti() ? Builder->duplicateOperand(desc->getBti()) : nullptr);
+    //G4_Operand* bti = (desc->getSurface() ? Builder->duplicateOperand(desc->getSurface()) : nullptr);
     G4_Operand* bti = nullptr;
     uint32_t newFC = (execSize < 8 ? desc->getFuncCtrl()
                                    : getFuncCtrlWithSimd16(desc));
