@@ -809,23 +809,26 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         // LLVM does not have compile time polymorphisms
         // TODO: to make things faster we may want to sort the list below according
         // to the order of their probability of appearance.
-        if (const BinaryOperator * BI = dyn_cast<BinaryOperator>(inst))         dep = calculate_dep(BI);
-        else if (const CallInst * CI = dyn_cast<CallInst>(inst))                     dep = calculate_dep(CI);
+        if (const BinaryOperator* BI = dyn_cast<BinaryOperator>(inst))              dep = calculate_dep(BI);
+        else if (const CallInst* CI = dyn_cast<CallInst>(inst))                     dep = calculate_dep(CI);
         else if (isa<CmpInst>(inst))                                                dep = calculate_dep_simple(inst);
         else if (isa<ExtractElementInst>(inst))                                     dep = calculate_dep_simple(inst);
-        else if (const GetElementPtrInst * GEP = dyn_cast<GetElementPtrInst>(inst))  dep = calculate_dep(GEP);
+        else if (const GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(inst))  dep = calculate_dep(GEP);
         else if (isa<InsertElementInst>(inst))                                      dep = calculate_dep_simple(inst);
         else if (isa<InsertValueInst>(inst))                                        dep = calculate_dep_simple(inst);
-        else if (const PHINode * Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi);
+        else if (const PHINode* Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi);
         else if (isa<ShuffleVectorInst>(inst))                                      dep = calculate_dep_simple(inst);
         else if (isa<StoreInst>(inst))                                              dep = calculate_dep_simple(inst);
         else if (inst->isTerminator())                                              dep = calculate_dep_terminator(dyn_cast<IGCLLVM::TerminatorInst>(inst));
-        else if (const SelectInst * SI = dyn_cast<SelectInst>(inst))                 dep = calculate_dep(SI);
-        else if (const AllocaInst * AI = dyn_cast<AllocaInst>(inst))                 dep = calculate_dep(AI);
-        else if (const CastInst * CI = dyn_cast<CastInst>(inst))                     dep = calculate_dep(CI);
+        else if (const SelectInst* SI = dyn_cast<SelectInst>(inst))                 dep = calculate_dep(SI);
+        else if (const AllocaInst* AI = dyn_cast<AllocaInst>(inst))                 dep = calculate_dep(AI);
+        else if (const CastInst* CI = dyn_cast<CastInst>(inst))                     dep = calculate_dep(CI);
         else if (isa<ExtractValueInst>(inst))                                       dep = calculate_dep_simple(inst);
-        else if (const LoadInst * LI = dyn_cast<LoadInst>(inst))                     dep = calculate_dep(LI);
-        else if (const VAArgInst * VAI = dyn_cast<VAArgInst>(inst))                  dep = calculate_dep(VAI);
+        else if (const LoadInst* LI = dyn_cast<LoadInst>(inst))                     dep = calculate_dep(LI);
+        else if (const VAArgInst* VAI = dyn_cast<VAArgInst>(inst))                  dep = calculate_dep(VAI);
+#if LLVM_VERSION_MAJOR >= 10
+        else if (inst->getOpcode() == Instruction::FNeg)                            dep = calculate_dep_simple(inst);
+#endif
 
         if (m_func->hasFnAttribute("KMPLOCK"))
         {
