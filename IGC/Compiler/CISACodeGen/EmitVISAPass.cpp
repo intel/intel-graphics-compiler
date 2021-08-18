@@ -18536,6 +18536,18 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
     if (FP_RM != ERoundingMode::ROUND_TO_ANY)
         SetRoundingMode_FP(FP_RM);
 
+    // BF_CVT vISA instruction doesn't support immediate source
+    if (id == GenISAIntrinsic::GenISA_ftobf ||
+        id == GenISAIntrinsic::GenISA_bftof) {
+        if (src->IsImmediate()) {
+            CVariable* tempMov = m_currShader->GetNewVariable(
+                1, src->GetType(), EALIGN_GRF, true, src->getName());
+            m_encoder->Copy(tempMov, src);
+            m_encoder->Push();
+            src = tempMov;
+        }
+    }
+
     if (id == GenISAIntrinsic::GenISA_ftobf ||
         id == GenISAIntrinsic::GenISA_bftof)
     {
