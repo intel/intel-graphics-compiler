@@ -689,6 +689,7 @@ static void declareIGCKey(std::string& line, const char* dataType, const char* r
     if (isSet)
     {
         memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
+        regKey->hashes = hashes;
     }
 }
 
