@@ -49,6 +49,10 @@ bool CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx, 2)::GetSystemRoutine(SystemRoutine
     return CIF_GET_PIMPL()->GetSystemRoutine(typeOfSystemRoutine, bindless, outSystemRoutineBuffer, stateSaveAreaHeaderInit);
 }
 
+const char* CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx, 3)::GetIGCRevision() {
+    return CIF_GET_PIMPL()->GetIGCRevision();
+}
+
 IgcOclTranslationCtxBase *CIF_PIMPL(IgcOclDeviceCtx)::CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType)
 {
     if(false == CIF_PIMPL(IgcOclTranslationCtx)::SupportsTranslation(inType, outType)){

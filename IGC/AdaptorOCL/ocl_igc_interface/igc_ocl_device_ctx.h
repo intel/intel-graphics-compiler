@@ -81,13 +81,19 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclDeviceCtx, 2, 1) {
                                     CIF::Builtins::BufferSimple *stateSaveAreaHeaderInit);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclDeviceCtx, 3, 2) {
+  CIF_INHERIT_CONSTRUCTOR();
+
+  virtual const char* GetIGCRevision();
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclDeviceCtx, IGC::Platform, IGC::GTSystemInfo,
                                                                                IGC::OclGenBinary,
                                                                                IGC::IgcFeaturesAndWorkarounds,
                                                                                IGC::IgcOclTranslationCtx
                                                              );
 CIF_MARK_LATEST_VERSION(IgcOclDeviceCtxLatest, IgcOclDeviceCtx);
-using IgcOclDeviceCtxTagOCL = IgcOclDeviceCtxLatest; // Note : can tag with different version for
+using IgcOclDeviceCtxTagOCL = IgcOclDeviceCtx<2>; // Note : can tag with different version for
                                                              //        transition periods
 
 }

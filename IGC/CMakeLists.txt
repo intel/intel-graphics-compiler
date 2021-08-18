@@ -1296,6 +1296,7 @@ include_directories(
 
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_shared/executable_format"
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL"
+    "${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/ocl_igc_interface/impl"
     )
 
 
@@ -1847,8 +1848,10 @@ set(IGC_PC_PACKAGE_RELEASE "")
 if(DEFINED IGC_PACKAGE_RELEASE)
   set(IGC_PC_PACKAGE_RELEASE "-${IGC_PACKAGE_RELEASE}")
 endif()
+include(cmake/igc_version.cmake)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc.opencl.h.in ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc.opencl.h)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc-opencl.pc.in ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc-opencl.pc @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_interface/impl/version_in.h ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/ocl_igc_interface/impl/version.h)
 
 if(UNIX)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll} LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-core)

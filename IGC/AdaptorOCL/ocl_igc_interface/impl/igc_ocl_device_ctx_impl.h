@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "common/SystemThread.h"
 
 #include "cif/macros/enable.h"
+#include "version.h"
 
 namespace IGC
 {
@@ -92,6 +93,14 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
         stateSaveAreaHeaderInit->PushBackRawBytes(systemKernel->m_pStateSaveAreaHeader, systemKernel->m_StateSaveAreaHeaderSize);
         SIP::CSystemThread::DeleteSystemThreadKernel(systemKernel);
         return true;
+    }
+
+    const char* GetIGCRevision() {
+#ifdef IGC_REVISION
+      return IGC_MANGLE(IGC_REVISION);
+#else
+      return "";
+#endif
     }
 
     struct MiscOptions
