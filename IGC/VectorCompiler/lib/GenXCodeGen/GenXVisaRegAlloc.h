@@ -100,7 +100,7 @@ namespace llvm {
           Reg* AliasTo = nullptr)
           : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
             Ty(Ty), Alignment(LogAlignment) {
-        static const char* Prefix[] = { "ERR", "V", "A", "P", "S", "T", "VME" };
+        static const char* Prefix[] = { "ERR", "V", "A", "P", "S", "T" };
         IGC_ASSERT(Category);
         IGC_ASSERT(Category < genx::RegCategory::NUMREALCATEGORIES);
         NameStr = Prefix[Category] + std::to_string(Num);

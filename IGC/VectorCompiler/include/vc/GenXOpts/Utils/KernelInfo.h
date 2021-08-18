@@ -161,15 +161,13 @@ public:
     return ArgTypeDescs[Idx];
   }
 
-  enum { AK_NORMAL, AK_SAMPLER, AK_SURFACE, AK_VME };
+  enum { AK_NORMAL, AK_SAMPLER, AK_SURFACE };
   unsigned getArgCategory(unsigned Idx) const {
     switch (getArgKind(Idx) & 7) {
     case AK_SAMPLER:
       return RegCategory::SAMPLER;
     case AK_SURFACE:
       return RegCategory::SURFACE;
-    case AK_VME:
-      return RegCategory::VME;
     default:
       return RegCategory::GENERAL;
     }
