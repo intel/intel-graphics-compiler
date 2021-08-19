@@ -800,14 +800,13 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
   if (V->getType()->getScalarType()->getPrimitiveSizeInBits() == 1)
     return RegCategory::PREDICATE;
   if (Argument *Arg = dyn_cast<Argument>(V)) {
-    auto *F = Arg->getParent();
     // This is a function Argument.
     if (!InFGHead) {
       // It is an arg in a subroutine.  Get the category from the corresponding
       // arg at some call site.  (We should not have disagreement among the
       // call sites and the function arg, since whichever one gets a category
       // first forces the category of all the others.)
-      return getCategoryForCallArg(F, Arg->getArgNo());
+      return getCategoryForCallArg(Arg->getParent(), Arg->getArgNo());
     }
     unsigned ArgNo = Arg->getArgNo();
     if (KM.getNumArgs() > ArgNo) {
@@ -820,12 +819,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
     // determine the category. This is the fallback for compatibility with
     // hand coded LLVM IR from before this metadata was added. (If we only
     // had to cope with non-kernel functions, we could just return GENERAL.)
-    // FIXME: temporary fix for stack calls. We need to figure out how to
-    // determine arguments category if it cannot be deduced from the arg uses.
-    // * calls from another function groups might help (but we do not have
-    // liveness -> category for them). What about standalone stack calls?
-    IGC_ASSERT(genx::requiresStackCall(F));
-    return getCategoryForCallArg(F, Arg->getArgNo());
+    return RegCategory::NONE;
   }
   // The def is a phi-instruction.
   if (PHINode *Phi = dyn_cast<PHINode>(V)) {
@@ -1076,19 +1070,22 @@ unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) c
       return Cat;
   }
   // Then try the arg at each call site.
+  bool UseUndef = true;
   for (auto *U: Callee->users()) {
     if (auto *CI = checkFunctionCall(U, Callee)) {
       auto ArgV = CI->getArgOperand(ArgNo);
+      if (!isa<UndefValue>(ArgV)) {
+        UseUndef = false;
         if (auto LR = Liveness->getLiveRangeOrNull(ArgV)) {
           unsigned Cat = LR->getCategory();
           if (Cat != RegCategory::NONE)
             return Cat;
         }
+      }
     }
   }
-  // special case handling to break deadlock when all uses are undef or stack
-  // call arg category cannot be deduced from the uses in the function, force
-  // the argument to be GENERAL
-  return EnforceCategoryPromotion ? RegCategory::GENERAL : RegCategory::NONE;
+  // special case handling to break deadlock when all uses are undef,
+  // force the argument to be GENERAL
+  return(UseUndef ? RegCategory::GENERAL : RegCategory::NONE);
 }
 

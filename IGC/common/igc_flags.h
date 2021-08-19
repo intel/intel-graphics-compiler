@@ -512,5 +512,3 @@ DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, VCDisableNonOverlappingRegionOpt, false, "Disable non-overlapping region optimization", true)
     DECLARE_IGC_REGKEY(bool, VCEnableExtraDebugLogging, false, "Turns on extra debug output to trace IGC/VC-specific execution", true)
     DECLARE_IGC_REGKEY(bool, VCPassDebugToFinalizer, false, "Pass -debug option to finalizer", true)
-    DECLARE_IGC_REGKEY(bool, VCSaveStackCallLinkage, false,
-                       "Do not override stack calls linkage as internal", true)

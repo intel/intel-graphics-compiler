@@ -195,7 +195,6 @@ SPDX-License-Identifier: MIT
 #include "GenXRegion.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -585,11 +584,6 @@ FunctionGroupPass *llvm::createGenXLateSimdCFConformancePass()
   return new GenXLateSimdCFConformance();
 }
 
-static bool hasStackCall(const Module &M) {
-  return std::any_of(M.begin(), M.end(),
-                     [](const auto &F) { return genx::requiresStackCall(&F); });
-}
-
 /***********************************************************************
  * runOnModule : run the early SIMD control flow conformance pass for this
  *  module
@@ -603,7 +597,6 @@ bool GenXEarlySimdCFConformance::runOnModule(Module &ArgM)
   FG = nullptr;
   FGA = nullptr;
   DTWrapper = nullptr;
-  lowerSimdCF = hasStackCall(ArgM);
   // Perform actions to create correct DF for EM
   canonicalizeEM();
   // Gather the EM values, both from goto/join and phi nodes.

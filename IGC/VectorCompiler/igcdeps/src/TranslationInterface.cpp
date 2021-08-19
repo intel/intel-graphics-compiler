@@ -193,8 +193,6 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
     Opts.ForceDisableNonOverlappingRegionOpt = true;
   if (IGC_IS_FLAG_ENABLED(VCPassDebugToFinalizer))
     Opts.ForcePassDebugToFinalizer = true;
-  if (IGC_IS_FLAG_ENABLED(VCSaveStackCallLinkage))
-    Opts.SaveStackCallLinkage = true;
 }
 
 static void adjustDumpOptions(vc::CompileOptions &Opts) {

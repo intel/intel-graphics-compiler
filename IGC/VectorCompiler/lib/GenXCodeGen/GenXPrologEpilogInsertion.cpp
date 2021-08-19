@@ -816,7 +816,7 @@ GenXPrologEpilogInsertion::buildWritePredefReg(PreDefined_Vars RegID,
 Instruction *GenXPrologEpilogInsertion::buildWritePredefReg(
     PreDefined_Vars RegID, IRBuilder<> &IRB, Value *Input, Value *Dep,
     Instruction *InsPoint, unsigned Offset) {
-  Region RWrite(Input, DL);
+  Region RWrite(Input);
   RWrite.Offset = Offset;
   auto *Wrr = RWrite.createWrRegion(Dep, Input, "", InsPoint, DebugLoc());
   Function *RegWriteIntr = GenXIntrinsic::getGenXDeclaration(

@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "FunctionGroup.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Dominators.h"
@@ -84,14 +83,6 @@ FunctionGroup *FunctionGroupAnalysis::getSubGroup(const Function *F) const {
   return getGroup(F, FGType::SUBGROUP);
 }
 
-FunctionGroup *FunctionGroupAnalysis::getAnyGroup(const Function *F) const {
-  auto *Group = getGroup(F, FGType::SUBGROUP);
-  if (!Group)
-    Group = getGroup(F, FGType::GROUP);
-  IGC_ASSERT_MESSAGE(Group, "Function isn't assigned to any function group");
-  return Group;
-}
-
 // getGroupForHead : get the FunctionGroup for which Function F is the
 // head, else 0
 FunctionGroup *FunctionGroupAnalysis::getGroupForHead(const Function *F) const {
@@ -107,8 +98,7 @@ FunctionGroup *FunctionGroupAnalysis::getGroupForHead(const Function *F) const {
 void FunctionGroupAnalysis::replaceFunction(Function *OldF, Function *NewF) {
   for (auto T : TypesToProcess) {
     auto OldFIt = GroupMap[T].find(OldF);
-    if (OldFIt == GroupMap[T].end())
-      continue;
+    IGC_ASSERT(OldFIt != GroupMap[T].end());
     FunctionGroup *FG = OldFIt->second;
     GroupMap[T].erase(OldFIt);
     GroupMap[T][NewF] = FG;
@@ -176,12 +166,8 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
   LLVM_DEBUG(dbgs() << "process function " << F->getName() << " from " << curGr
                     << ", type = " << Type << "\n");
   if (Visited.count(F) > 0) {
-    bool NeedCloning =
-        std::any_of(std::begin(TypesToProcess), std::end(TypesToProcess),
-                    [&GM = GroupMap, curGr, F](FGType CurType) {
-                      return GM[CurType].count(F) && GM[CurType][F] != curGr;
-                    });
-    if (NeedCloning && !F->hasFnAttribute(TypeToAttr(Type))) {
+    if (GroupMap[Type].count(F) > 0 && GroupMap[Type][F] != curGr &&
+        !F->hasFnAttribute(TypeToAttr(Type))) {
       ValueToValueMapTy VMap;
       Function *ClonedFunc = CloneFunction(F, VMap);
       LLVM_DEBUG(dbgs() << "Cloning: " << ClonedFunc->getName() << "\n");
@@ -195,17 +181,16 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
         if (GroupMap[Type][CI->getFunction()] == curGr)
           *u = ClonedFunc;
       }
+      for (auto T : TypesToProcess) {
+        if (T >= Type)
+          break;
+        addToFunctionGroup(getGroup(F, T), ClonedFunc, T);
+      }
       addToFunctionGroup(curGr, ClonedFunc, Type);
 
       for (auto &Callee : Callees[F]) {
         if (Callee == F)
           continue;
-        if (genx::requiresStackCall(Callee)) {
-          LLVM_DEBUG(dbgs()
-                     << "\tDo not process next callee " << Callee->getName()
-                     << " because it's a stack call\n");
-          continue;
-        }
         LLVM_DEBUG(dbgs() << "Next callee: " << Callee->getName() << "\n");
         result |= buildGroup(Callees, Callee, curGr, Type);
       }
@@ -224,13 +209,6 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
       addToFunctionGroup(curGr, F, Type);
     }
     for (auto &Callee : Callees[F]) {
-      if (genx::requiresStackCall(Callee)) {
-        LLVM_DEBUG(dbgs() << "\tDo not process next callee "
-                          << Callee->getName()
-                          << " because it's a stack call\n");
-        continue;
-      }
-
       LLVM_DEBUG(dbgs() << "Next callee: " << Callee->getName() << "\n");
       result |= buildGroup(Callees, Callee, curGr, Type);
     }
@@ -440,7 +418,7 @@ bool FGPassManager::runFGPassSequence(unsigned &Pass) {
   bool Changed = false;
 
   Changed |= doFGInitialization(BeginPass, Pass, FGA);
-  for (auto *FG : FGA.AllGroups())
+  for (auto *FG : FGA)
     Changed |= runPassesOnFunctionGroup(BeginPass, Pass, *FG);
   Changed |= doFGFinalization(BeginPass, Pass, FGA);
 

@@ -239,7 +239,6 @@ int DiagnosticInfoOverlappingArgs::KindID = 0;
 class CMABIAnalysis : public ModulePass {
   // This map captures all global variables to be localized.
   std::vector<LocalizationInfo *> LocalizationInfoObjs;
-  bool SaveStackCallLinkage = false;
 
 public:
   static char ID;
@@ -357,7 +356,6 @@ INITIALIZE_PASS_END(CMABIAnalysis, "cmabi-analysis",
 bool CMABIAnalysis::runOnModule(Module &M) {
   auto &&BCfg = getAnalysis<GenXBackendConfig>();
   FCtrl = BCfg.getFCtrl();
-  SaveStackCallLinkage = BCfg.saveStackCallLinkage();
 
   runOnCallGraph(getAnalysis<CallGraphWrapperPass>().getCallGraph());
   return false;
@@ -514,6 +512,13 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
 
     // No changes to this kernel's prototype.
     return 0;
+  }
+
+  // Convert non-kernel to stack call if applicable
+  if (Info->FCtrl == FunctionControl::StackCall &&
+      !genx::requiresStackCall(F)) {
+    LLVM_DEBUG(dbgs() << "Adding stack call to: " << F->getName() << "\n");
+    F->addFnAttr(genx::FunctionMD::CMStackCall);
   }
 
   // Non-kernels, only transforms module locals.
@@ -1392,27 +1397,12 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
       Global.setLinkage(GlobalValue::InternalLinkage);
   }
   for (auto& F : M.getFunctionList()) {
-    if (F.isDeclaration() || F.hasDLLExportStorageClass())
-      continue;
-    if (GenXIntrinsic::getAnyIntrinsicID(&F) !=
-        GenXIntrinsic::not_any_intrinsic)
-      continue;
     // __cm_intrinsic_impl_* could be used for emulation mul/div etc
-    if (F.getName().contains("__cm_intrinsic_impl_"))
-      continue;
-
-    // Convert non-kernel to stack call if applicable
-    if (FCtrl == FunctionControl::StackCall && !genx::requiresStackCall(&F)) {
-      LLVM_DEBUG(dbgs() << "Adding stack call to: " << F.getName() << "\n");
-      F.addFnAttr(genx::FunctionMD::CMStackCall);
-    }
-
-    // Do not change stack calls linkage as we may have both types of stack
-    // calls.
-    if (genx::requiresStackCall(&F) && SaveStackCallLinkage)
-      continue;
-
-    F.setLinkage(GlobalValue::InternalLinkage);
+    if (GenXIntrinsic::getAnyIntrinsicID(&F) ==
+      GenXIntrinsic::not_any_intrinsic &&
+      !F.getName().contains("__cm_intrinsic_impl_") &&
+      !F.isDeclaration() && !F.hasDLLExportStorageClass())
+      F.setLinkage(GlobalValue::InternalLinkage);
   }
   // No global variables.
   if (M.global_empty())

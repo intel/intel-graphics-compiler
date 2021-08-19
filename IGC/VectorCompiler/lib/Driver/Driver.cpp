@@ -232,8 +232,6 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.WATable = Opts.WATable;
   BackendOpts.IsLargeGRFMode = Opts.IsLargeGRFMode;
   BackendOpts.UseBindlessBuffers = Opts.UseBindlessBuffers;
-  if (Opts.SaveStackCallLinkage)
-    BackendOpts.SaveStackCallLinkage = true;
   return BackendOpts;
 }
 

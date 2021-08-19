@@ -1733,18 +1733,16 @@ void LiveRange::prepareFuncs(FunctionGroupAnalysis *FGA) {
     else if (auto Arg = dyn_cast<Argument>(Val.getValue()))
       DefFunc = Arg->getParent();
 
-    if (DefFunc) {
-      auto *DefFuncFG = FGA->getAnyGroup(DefFunc);
-      IGC_ASSERT_MESSAGE(DefFuncFG, "Cannot find the function group");
-      Funcs.insert(DefFuncFG->getHead());
-    }
+    if (DefFunc)
+      Funcs.insert(FGA->getSubGroup(DefFunc)
+        ? FGA->getSubGroup(DefFunc)->getHead()
+        : FGA->getGroup(DefFunc)->getHead());
 
     for (auto U : Val.getValue()->users())
       if (Instruction *UserInst = dyn_cast<Instruction>(U)) {
         auto F = UserInst->getFunction();
-        auto *FG = FGA->getAnyGroup(F);
-        IGC_ASSERT_MESSAGE(FG, "Cannot find the function group");
-        Funcs.insert(FG->getHead());
+        Funcs.insert(FGA->getSubGroup(F) ? FGA->getSubGroup(F)->getHead()
+                                         : FGA->getGroup(F)->getHead());
       }
   }
 }
