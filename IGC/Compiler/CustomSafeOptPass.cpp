@@ -2154,6 +2154,10 @@ void CustomSafeOptPass::matchReverse(BinaryOperator& I)
  */
 void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Value* OpLow, Value* OpHi, unsigned extractNum1, unsigned extractNum2)
 {
+    if (IGC_IS_FLAG_DISABLED(EnableBitcastExtractInsertPattern)) {
+        return;
+    }
+
     llvm::IRBuilder<> builder(&I);
     auto vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
     Value* vec = UndefValue::get(vec2);
