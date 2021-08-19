@@ -428,6 +428,16 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
             {
                 const std::string typeStr = modMD->FuncMD[const_cast<Function*>(curFunc)].m_OpenCLArgBaseTypes[pArgument->getArgNo()];
                 KernelArg::ArgType argType = KernelArg::calcArgType(pArgument, typeStr);
+                if (argType == KernelArg::ArgType::SAMPLER)
+                {
+                    // SAMPLER and NOT_TO_ALLOCATE have same enum values so disambiguate these
+                    auto pr = KernelArg::getBufferType(pArgument, typeStr);
+                    if(!pr.isSampler)
+                    {
+                        // type is actually NOT_TO_ALLOCATE
+                        argType = KernelArg::ArgType::End;
+                    }
+                }
                 FunctionMetaData* funcMD = &modMD->FuncMD[const_cast<Function*>(curFunc)];
                 ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
                 IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() == curFunc->arg_size(), "Invalid ArgAllocMDList");

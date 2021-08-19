@@ -116,6 +116,36 @@ unsigned int KernelArg::calcElemAllocateSize(const Argument* arg, const DataLayo
     return int_cast<unsigned int>(DL->getTypeAllocSize(arg->getType()->getScalarType()));
 }
 
+// First member of pair is ArgType of buffer.
+// When ArgType is SAMPLER, second member should be true.
+// When ArgType is NOT_TO_ALLOCATE, second member should be false.
+// ArgType enum uses same values for SAMPLER and NOT_TO_ALLOCATE.
+// This function helps disambiguate between the two values.
+KernelArg::BufferArgType KernelArg::getBufferType(const Argument* arg, const StringRef typeStr)
+{
+    if (arg->getType()->getTypeID() != Type::PointerTyID)
+        return { KernelArg::ArgType::SAMPLER, true };
+
+    PointerType* ptrType = cast<PointerType>(arg->getType());
+
+    int address_space = ptrType->getPointerAddressSpace();
+    bool directIdx = false;
+    unsigned int bufId = 0;
+    BufferType bufType = DecodeAS4GFXResource(address_space, directIdx, bufId);
+
+    // Check if this arg is an image
+    if (bufType == BufferType::UAV)
+    {
+        ArgType imgArgType;
+        // Check if argument is image
+        if (isImage(arg, typeStr, imgArgType)) return { imgArgType, false };
+    }
+    else if (bufType == BufferType::SAMPLER)
+        return { KernelArg::ArgType::SAMPLER, true };
+
+    return { KernelArg::ArgType::NOT_TO_ALLOCATE, false };
+}
+
 KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef typeStr)
 {
     switch (arg->getType()->getTypeID())
@@ -185,22 +215,7 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
             IGC_ASSERT_MESSAGE(0, "Unrecognized address space");
 #endif
             // This is a buffer. Try to decode this
-            int address_space = ptrType->getPointerAddressSpace();
-            bool directIdx = false;
-            unsigned int bufId = 0;
-            BufferType bufType = DecodeAS4GFXResource(address_space, directIdx, bufId);
-
-            // Check if this arg is an image
-            if (bufType == BufferType::UAV)
-            {
-                ArgType imgArgType;
-                // Check if argument is image
-                if (isImage(arg, typeStr, imgArgType)) return imgArgType;
-            }
-            else if (bufType == BufferType::SAMPLER)
-                return KernelArg::ArgType::SAMPLER;
-
-            return KernelArg::ArgType::NOT_TO_ALLOCATE;
+            return getBufferType(arg, typeStr).type;
         }
     }
     case  Type::IntegerTyID:

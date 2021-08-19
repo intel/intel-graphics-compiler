@@ -228,6 +228,17 @@ namespace IGC
         /// @return The kernel argument type of the given explicit argument
         static ArgType calcArgType(const llvm::Argument* arg, const llvm::StringRef typeStr);
 
+        struct BufferArgType
+        {
+            KernelArg::ArgType type = KernelArg::ArgType::End;
+            bool isSampler = false;
+        };
+        /// @brief  Calculates the kernel arg type for buffer
+        /// @param  arg         The explicit kernel argument
+        /// @param  typeStr     The OpenCL type information for the kernel this argument belongs to
+        /// @return Pair of the kernel argument type of the given explicit argument and whether the type is really SAMPLER
+        static BufferArgType getBufferType(const llvm::Argument* arg, const llvm::StringRef typeStr);
+
         /// @brief  Checks whether the given argument is an image
         /// @param  arg           The kernel argument
         /// @param  typeStr       The OpenCL type information for the kernel this argument belongs to
