@@ -167,7 +167,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/DiagnosticInfo.h"
+#include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -378,6 +381,46 @@ private:
 };
 
 static const unsigned MaxPredSize = 32;
+
+class DiagnosticInfoLegalization : public DiagnosticInfoWithLocationBase {
+private:
+  const Instruction *Inst;
+  std::string Description;
+  static int KindID;
+  static int getKindID() {
+    if (KindID == 0)
+      KindID = llvm::getNextAvailablePluginDiagnosticKind();
+    return KindID;
+  }
+
+public:
+  DiagnosticInfoLegalization(const Instruction *Inst, const Twine &Desc,
+                             DiagnosticSeverity Severity = DS_Error);
+
+  void print(DiagnosticPrinter &DP) const override;
+  std::string getDescription() const;
+};
+int DiagnosticInfoLegalization::KindID = 0;
+
+DiagnosticInfoLegalization::DiagnosticInfoLegalization(const Instruction *I,
+                                                       const Twine &Desc,
+                                                       DiagnosticSeverity Severity):
+    DiagnosticInfoWithLocationBase(static_cast<DiagnosticKind>(getKindID()),
+                                   Severity,
+                                   *I->getFunction(), I->getDebugLoc()),
+    Inst(I),
+    Description(Desc.str()) {}
+
+std::string DiagnosticInfoLegalization::getDescription() const {
+  std::string str;
+  llvm::raw_string_ostream(str) << *Inst;
+  return (Twine("GenXLegalization failed for instruction \"") +
+          StringRef(str).ltrim() + "\": " + Description).str();
+}
+
+void DiagnosticInfoLegalization::print(DiagnosticPrinter &DP) const {
+  DP << getLocationStr() << ": " << getDescription();
+}
 
 } // end anonymous namespace
 
