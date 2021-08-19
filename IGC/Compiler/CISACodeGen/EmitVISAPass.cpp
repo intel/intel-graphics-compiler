@@ -2530,7 +2530,7 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     else
     {
         // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh to get better performance.
-        if (false && m_currShader->m_Platform->noNativeDwordMulSupport())
+        if (m_currShader->m_Platform->noNativeDwordMulSupport())
         {
             // (Cr, E) = A * B
             // dst size should be GRF-aligned and doubled as it has both low and high results.
@@ -3662,7 +3662,7 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     // dstHigh = F + G + carry
 
     // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh to get better performance.
-    if (false && m_currShader->m_Platform->noNativeDwordMulSupport())
+    if (m_currShader->m_Platform->noNativeDwordMulSupport())
     {
         // (Cr, E) = A * B
         EncoderInit();
