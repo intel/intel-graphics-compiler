@@ -3164,6 +3164,27 @@ void SpillManagerGRF::insertSpillRangeCode(
             replacementRangeDcl = spillRangeDcl;
             // maintain the spilled dst's subreg since the spill is done on a per-GRF basis
             newSubregOff = spilledRegion->getSubRegOff();
+
+            if (preloadNeeded &&
+                isUnalignedRegion(spilledRegion, execSize)) {
+                // A dst region may be not need pre-fill, however, if it is unaligned,
+                // we need to use non-zero sub-reg offset in newly created spill dcl.
+                // This section of code computes sub-reg offset to use for such cases.
+                // It is insufficient to simply use spilledRegion's sub-reg offset in
+                // case the region dcl is an alias of another dcl. This typically happens
+                // when 2 scalar dcls are merged by merge scalar pass, merged dcl is
+                // spilled, and dominating def writes non-zeroth element.
+                unsigned segmentDisp = getEncAlignedSegmentDisp(spilledRegion, execSize);
+                unsigned regionDisp = getRegionDisp(spilledRegion);
+                assert(regionDisp >= segmentDisp);
+                unsigned short subRegOff = (regionDisp - segmentDisp) / spilledRegion->getElemSize();
+                assert((regionDisp - segmentDisp) % spilledRegion->getElemSize() == 0);
+                assert(subRegOff * spilledRegion->getElemSize() +
+                    getRegionByteSize(spilledRegion, execSize) <=
+                    2u * REG_BYTE_SIZE);
+                newSubregOff = subRegOff;
+            }
+
             if (!bb->isAllLaneActive() &&
                 !preloadNeeded)
             {
