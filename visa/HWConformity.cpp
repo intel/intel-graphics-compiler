@@ -7948,23 +7948,50 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
     // sat cannot be used at all in the macro sequence
     // make the dst GRF-aligned before expanding to macro
     if (madwInst->getSaturate() ||
+        dst->getHorzStride() != 1 ||
         isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
         !builder.isOpndAligned(dst, getGRFSize()))
     {
-        // add a tmp mov
-        madwInst->setDest(insertMovAfter(it, dst, dst->getType(), bb, GRFALIGN));
-        dst = madwInst->getDst();
+        // add tmp mov instructions
+        int dstLowGRFNum = (int)std::ceil((float)(execSize * dst->getExecTypeSize()) / getGRFSize());
+        int dstTotalGRFNum = dstLowGRFNum * 2;
+
+        G4_Declare* newDstDcl = builder.createTempVar(numEltPerGRF(dst->getType()) * dstTotalGRFNum, dst->getType(), GRFALIGN);
+
+        // add a tmp mov for low results in dst
+        G4_Declare* lowMovSrcDcl = builder.createTempVar(numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
+        lowMovSrcDcl->setAliasDeclare(newDstDcl, 0);
+        G4_SrcRegRegion* lowMovSrc = builder.createSrcRegRegion(lowMovSrcDcl, builder.getRegionStride1());
+        auto dstLow = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
+        G4_INST* lowMovInst = builder.createMov(execSize, dstLow, lowMovSrc, madwInst->getMaskOption(), false);
+        lowMovInst->setPredicate(madwInst->getPredicate());
+        lowMovInst->setSaturate(madwInst->getSaturate());
+        auto insertIter = bb->insertAfter(it, lowMovInst);
+        maintainDU4TempMov(madwInst, lowMovInst);
+
+        // add a tmp mov for high results in dst
+        G4_Declare* hiMovSrcDcl = builder.createTempVar(numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
+        hiMovSrcDcl->setAliasDeclare(newDstDcl, dstLowGRFNum * getGRFSize());
+        G4_SrcRegRegion* hiMovSrc = builder.createSrcRegRegion(hiMovSrcDcl, builder.getRegionStride1());
+        auto dstHi = builder.createDst(dst->getBase(), dst->getRegOff() + dstLowGRFNum, dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
+        G4_INST* hiMovInst = builder.createMov(execSize, dstHi, hiMovSrc, madwInst->getMaskOption(), false);
+        hiMovInst->setPredicate(madwInst->getPredicate());
+        hiMovInst->setSaturate(madwInst->getSaturate());
+        bb->insertAfter(insertIter, hiMovInst);
+        maintainDU4TempMov(madwInst, hiMovInst);
+
+        G4_DstRegRegion* newDst = builder.createDstRegRegion(newDstDcl, 1);
+        madwInst->setDest(newDst);
+        madwInst->setPredicate(nullptr);
+        madwInst->setSaturate(g4::NOSAT);
+        dst = newDst;
     }
 
-    //G4_Type tmpType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType()) && IS_UNSIGNED_INT(src2->getType())) ? Type_UD : Type_D;
     INST_LIST_ITER retIter = it;
     if (builder.noMulOrMadwExpandingBeforeScheduler() && builder.getOption(vISA_expandMadwPostSchedule))
     {
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Madw->Mul+Mach+Addc+Add expanding
         // will be done in expandMadwPostSchedule pass.
-
-        // sat has bee resolved above, here just set it as NOSAT
-        madwInst->setSaturate(g4::NOSAT);
 
         // need extra mov if dst is acc and src0 is indirect
         if (!builder.accDstforIndirectSrc())
