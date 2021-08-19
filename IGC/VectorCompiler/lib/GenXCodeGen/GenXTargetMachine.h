@@ -182,6 +182,7 @@ void initializeGenXGlobalValueLoweringPass(PassRegistry &);
 void initializeGenXAggregatePseudoLoweringPass(PassRegistry &);
 void initializeGenXVectorCombinerPass(PassRegistry &);
 void initializeGenXPromoteStatefulToBindlessPass(PassRegistry &);
+void initializeGenXStackUsagePass(PassRegistry &);
 } // End llvm namespace
 
 #endif

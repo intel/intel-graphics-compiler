@@ -140,6 +140,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXPromoteStatefulToBindlessPass(registry);
   initializeGenXTranslateSPIRVBuiltinsPass(registry);
   initializeGenXLoadStoreLoweringPass(registry);
+  initializeGenXStackUsagePass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -293,6 +294,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   /// .. include:: GenXGEPLowering.cpp
   PM.add(createGenXGEPLoweringPass());
+  /// .. include:: GenXStackUsage.cpp
+  PM.add(createGenXStackUsagePass());
   /// .. include:: GenXLoadStoreLowering.cpp
   PM.add(createGenXLoadStoreLoweringPass());
   PM.add(createGenXThreadPrivateMemoryPass());

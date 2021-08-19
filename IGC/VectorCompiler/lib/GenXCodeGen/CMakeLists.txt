@@ -72,6 +72,7 @@ set(CODEGEN_SOURCES
   GenXRegionCollapsing.cpp
   GenXRematerialization.cpp
   GenXSimdCFConformance.cpp
+  GenXStackUsage.cpp
   GenXSubtarget.cpp
   GenXTargetMachine.cpp
   GenXTidyControlFlow.cpp

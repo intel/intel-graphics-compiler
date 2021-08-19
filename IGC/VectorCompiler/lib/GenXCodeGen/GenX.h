@@ -105,6 +105,7 @@ ModulePass *createGenXFinalizerPass(raw_pwrite_stream &o);
 ModulePass *createGenXDebugInfoPass();
 ModulePass *createGenXGlobalValueLoweringPass();
 ModulePass *createGenXPromoteStatefulToBindlessPass();
+ModulePass *createGenXStackUsagePass();
 
 namespace genx {
 
