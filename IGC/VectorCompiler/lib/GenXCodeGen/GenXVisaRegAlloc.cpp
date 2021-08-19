@@ -597,7 +597,7 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   for (LiveRange::value_iterator vi = LR->value_begin(), ve = LR->value_end();
        vi != ve; ++vi) {
     for (auto &F : LR->Funcs) {
-      if (FGA->getGroup(F) == FG) {
+      if (FGA->getAnyGroup(F) == FG) {
         IGC_ASSERT(RegMap.count(F) > 0);
         LLVM_DEBUG(dbgs() << "Allocating reg " << NewReg->Num << " for "
                           << *(vi->getValue()) << " in func " << F->getName()

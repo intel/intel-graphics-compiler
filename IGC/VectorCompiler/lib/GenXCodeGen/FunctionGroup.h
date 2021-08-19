@@ -27,6 +27,8 @@ SPDX-License-Identifier: MIT
 #ifndef FUNCTIONGROUP_H
 #define FUNCTIONGROUP_H
 
+#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/ValueHandle.h"
@@ -41,6 +43,18 @@ class FunctionGroupAnalysis;
 class LLVMContext;
 class PMStack;
 
+namespace genx {
+namespace fg {
+inline bool isGroupHead(const Function &F) { return genx::isKernel(&F); }
+inline bool isSubGroupHead(const Function &F) {
+  return genx::isReferencedIndirectly(&F) || genx::requiresStackCall(&F);
+}
+inline bool isHead(const Function &F) {
+  return isGroupHead(F) || isSubGroupHead(F);
+}
+} // namespace fg
+} // namespace genx
+
 //----------------------------------------------------------------------
 // FunctionGroup : a group of Functions
 //
@@ -50,6 +64,9 @@ class FunctionGroup {
   // Elements are asserting value handles, so we spot when a Function
   // in the group gets destroyed too early.
   SmallVector<AssertingVH<Function>, 8> Functions;
+  // FunctionGroup can call the head function of another FunctionGroups with
+  // SUBGROUP type.
+  SetVector<const FunctionGroup *> Subgroups;
 
 public:
   FunctionGroup(FunctionGroupAnalysis *FGA) : FGA(FGA) {}
@@ -83,6 +100,25 @@ public:
   StringRef getName() { return getHead()->getName(); }
   LLVMContext &getContext() { return getHead()->getContext(); }
   Module *getModule() { return getHead()->getParent(); }
+  void addSubgroup(FunctionGroup *FG) {
+    IGC_ASSERT(FG);
+    IGC_ASSERT(FG->getHead());
+    IGC_ASSERT_MESSAGE(genx::fg::isSubGroupHead(*FG->getHead()),
+                       "Provided function group has incorrect type");
+    Subgroups.insert(FG);
+  }
+  using subgroup_iterator = decltype(Subgroups)::iterator;
+  using const_subgroup_iterator = decltype(Subgroups)::const_iterator;
+  subgroup_iterator begin_subgroup() { return Subgroups.begin(); }
+  subgroup_iterator end_subgroup() { return Subgroups.end(); }
+  const_subgroup_iterator begin_subgroup() const { return Subgroups.begin(); }
+  const_subgroup_iterator end_subgroup() const { return Subgroups.end(); }
+  iterator_range<subgroup_iterator> subgroups() {
+    return make_range(begin_subgroup(), end_subgroup());
+  }
+  iterator_range<const_subgroup_iterator> subgroups() const {
+    return make_range(begin_subgroup(), end_subgroup());
+  }
 };
 
 //----------------------------------------------------------------------
@@ -153,6 +189,8 @@ public:
   FunctionGroup *getGroup(const Function *F, FGType Type) const;
   FunctionGroup *getGroup(const Function *F) const;
   FunctionGroup *getSubGroup(const Function *F) const;
+  // get group or subgroup depending on where the function is.
+  FunctionGroup *getAnyGroup(const Function *F) const;
   // getGroupForHead : get the FunctionGroup for which Function F is the
   // head, else 0
   FunctionGroup *getGroupForHead(const Function *F) const;
@@ -161,10 +199,40 @@ public:
   // iterator for FunctionGroups in the analysis
   typedef SmallVectorImpl<FunctionGroup *>::iterator iterator;
   typedef SmallVectorImpl<FunctionGroup *>::const_iterator const_iterator;
+  using all_iterator = concat_iterator<FunctionGroup *, iterator, iterator>;
+  using const_all_iterator =
+      concat_iterator<FunctionGroup *const, const_iterator, const_iterator>;
   iterator begin() { return iterator(Groups.begin()); }
   iterator end() { return iterator(Groups.end()); }
   const_iterator begin() const { return const_iterator(Groups.begin()); }
   const_iterator end() const { return const_iterator(Groups.end()); }
+
+  iterator subgroup_begin() { return iterator(NonMainGroups.begin()); }
+  iterator subgroup_end() { return iterator(NonMainGroups.end()); }
+  const_iterator subgroup_begin() const {
+    return const_iterator(NonMainGroups.begin());
+  }
+  const_iterator subgroup_end() const {
+    return const_iterator(NonMainGroups.end());
+  }
+  iterator_range<iterator> subgroups() {
+    return make_range(subgroup_begin(), subgroup_end());
+  }
+  iterator_range<const_iterator> subgroups() const {
+    return make_range(subgroup_begin(), subgroup_end());
+  }
+
+  iterator_range<all_iterator> AllGroups() {
+    return concat<FunctionGroup *>(
+        make_range(begin(), end()),
+        make_range(subgroup_begin(), subgroup_end()));
+  }
+  iterator_range<const_all_iterator> AllGroups() const {
+    return concat<FunctionGroup *const>(
+        make_range(begin(), end()),
+        make_range(subgroup_begin(), subgroup_end()));
+  }
+
   size_t size() const { return Groups.size(); }
   // addToFunctionGroup : add Function F to FunctionGroup FG
   // Using this (rather than calling push_back directly on the FunctionGroup)
