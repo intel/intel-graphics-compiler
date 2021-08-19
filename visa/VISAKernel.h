@@ -166,8 +166,6 @@ public:
     std::list<CisaFramework::CisaInst *>::iterator getInstructionListBegin() { return m_instruction_list.begin(); }
     std::list<CisaFramework::CisaInst *>::iterator getInstructionListEnd() { return m_instruction_list.end(); }
 
-    int getCisaInstCount() { return m_instruction_list.size(); }
-
     unsigned long getGenxBinarySize() { return m_genx_binary_size; }
 
     char * getGenxBinaryBuffer() { return m_genx_binary_buffer; }
