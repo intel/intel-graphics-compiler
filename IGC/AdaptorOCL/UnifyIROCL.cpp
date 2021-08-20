@@ -111,8 +111,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
+#include "Compiler/DebugInfo/Utils.h"
 #include "DebugInfo/VISADebugEmitter.hpp"
-#include "DebugInfo/DebugInfoUtils.hpp"
 
 #include <string>
 #include <algorithm>

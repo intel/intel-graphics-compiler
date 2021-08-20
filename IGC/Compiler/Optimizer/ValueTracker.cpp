@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/Optimizer/ValueTracker.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "DebugInfo/DebugInfoUtils.hpp"
+#include "Compiler/DebugInfo/Utils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -182,7 +182,7 @@ Value* ValueTracker::handleGlobalVariable(GlobalVariable* G)
     Constant* pSamplerVal = G->getInitializer();
     // Add debug info intrinsic for this variable inside the function using this sampler.
     Instruction* pEntryPoint = &(*m_Function->getEntryBlock().getFirstInsertionPt());
-    IF_DEBUG_INFO(DebugInfoUtils::UpdateGlobalVarDebugInfo(G, pSamplerVal, pEntryPoint, false);)
+    IF_DEBUG_INFO(Utils::UpdateGlobalVarDebugInfo(G, pSamplerVal, pEntryPoint, false);)
         // Found a global sampler, return it.
         return isa<ConstantStruct>(pSamplerVal) ?
         pSamplerVal->getAggregateElement(0U) : pSamplerVal;

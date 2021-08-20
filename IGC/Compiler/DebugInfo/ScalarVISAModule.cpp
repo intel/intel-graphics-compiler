@@ -7,12 +7,11 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
+#include "Compiler/DebugInfo/Utils.h"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/debug/Debug.hpp"
-
-#include "DebugInfo/DebugInfoUtils.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
@@ -37,7 +36,7 @@ namespace IGC {
     fullDebugInfo = false;
     lineNumbersOnly = false;
 
-    if (DebugInfoUtils::HasDebugInfo(*ctx->getModule()))
+    if (Utils::HasDebugInfo(*ctx->getModule()))
     {
         bool hasDbgIntrinsic = false;
         bool hasDbgLoc = false;
@@ -673,7 +672,7 @@ void insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
 
                 if (!GlobalValue::isLocalLinkage(g->getLinkage()) || isConstForThisFunc)
                 {
-                    DebugInfoUtils::UpdateGlobalVarDebugInfo(g, init, &func.getEntryBlock().getInstList().front(), false);
+                    Utils::UpdateGlobalVarDebugInfo(g, init, &func.getEntryBlock().getInstList().front(), false);
                 }
             }
         }

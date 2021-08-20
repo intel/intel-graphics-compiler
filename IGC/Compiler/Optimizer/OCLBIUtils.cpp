@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "DebugInfo/DebugInfoUtils.hpp"
+#include "Compiler/DebugInfo/Utils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"

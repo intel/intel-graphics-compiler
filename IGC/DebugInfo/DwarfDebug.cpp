@@ -45,7 +45,6 @@ See LICENSE.TXT for details.
 #include "DwarfCompileUnit.hpp"
 #include "StreamEmitter.hpp"
 #include "VISAModule.hpp"
-#include "Version.hpp"
 
 #include <unordered_set>
 #include <list>

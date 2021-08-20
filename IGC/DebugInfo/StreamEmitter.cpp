@@ -37,7 +37,6 @@ See LICENSE.TXT for details.
 
 #include "DIE.hpp"
 #include "StreamEmitter.hpp"
-#include "Version.hpp"
 
 #include "Probe/Assertion.h"
 

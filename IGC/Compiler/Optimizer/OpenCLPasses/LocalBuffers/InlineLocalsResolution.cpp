@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/helper.h"
-#include "DebugInfo/DebugInfoUtils.hpp"
+#include "Compiler/DebugInfo/Utils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
@@ -456,7 +456,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         {
             IF_DEBUG_INFO(Instruction * pInsertBefore = &(*userFunc->begin()->getFirstInsertionPt());)
                 TODO("Should inline local buffer points to origin offset 'globalVar' or to fixed offset 'pMovedPtr'?");
-            IF_DEBUG_INFO(DebugInfoUtils::UpdateGlobalVarDebugInfo(G, G, pInsertBefore, true););
+            IF_DEBUG_INFO(Utils::UpdateGlobalVarDebugInfo(G, G, pInsertBefore, true););
         }
     }
 }

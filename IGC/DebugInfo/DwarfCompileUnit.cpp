@@ -41,7 +41,6 @@ See LICENSE.TXT for details.
 #include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"
 #include "VISAModule.hpp"
-#include "Version.hpp"
 
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 

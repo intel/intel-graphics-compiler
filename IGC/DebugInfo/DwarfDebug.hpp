@@ -33,7 +33,6 @@ See LICENSE.TXT for details.
 #include "VISAModule.hpp"
 #include "DIE.hpp"
 #include "LexicalScopes.hpp"
-#include "Version.hpp"
 
 #include "EmitterOpts.hpp"
 
@@ -173,31 +172,11 @@ namespace IGC
             return false;
         }
 
-#if LLVM_3_5
-        bool variableHasComplexAddress()   const
-        {
-            IGC_ASSERT_MESSAGE(Var.isVariable(), "Invalid complex DbgVariable!");
-            return Var.hasComplexAddress();
-        }
-#endif
         bool isBlockByrefVariable()        const;
-#if LLVM_3_5
-        unsigned getNumAddrElements()      const
-        {
-            IGC_ASSERT_MESSAGE(Var.isVariable(), "Invalid complex DbgVariable!");
-            return Var.getNumAddrElements();
-        }
-        uint64_t getAddrElement(unsigned i) const
-        {
-            return Var.getAddrElement(i);
-        }
-#endif
+
         llvm::DIType* getType() const;
 
-        std::string& getDecorations()
-        {
-            return decorations;
-        }
+        std::string& getDecorations() { return decorations; }
 
     private:
         template <typename T> inline T* resolve(T* Ref) const {

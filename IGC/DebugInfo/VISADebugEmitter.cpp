@@ -23,7 +23,6 @@ See LICENSE.TXT for details.
 #include "llvm/BinaryFormat/ELF.h"
 #include "common/LLVMWarningsPop.hpp"
 
-#include "DebugInfoUtils.hpp"
 #include "VISADebugEmitter.hpp"
 #include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"
@@ -34,7 +33,7 @@ See LICENSE.TXT for details.
 
 #include "CLElfLib/CLElfTypes.h"
 
-#define DEBUG_TYPE "GENX_DEBUG_INFO"
+#define DEBUG_TYPE "dwarfdebug"
 
 using namespace llvm;
 using namespace IGC;

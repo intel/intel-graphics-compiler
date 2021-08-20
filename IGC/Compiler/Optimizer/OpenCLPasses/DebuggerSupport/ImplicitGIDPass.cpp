@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
-#include "DebugInfo/DebugInfoUtils.hpp"
+#include "Compiler/DebugInfo/Utils.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
@@ -47,7 +47,7 @@ ImplicitGlobalId::ImplicitGlobalId() : ModulePass(ID)
 
 bool ImplicitGlobalId::runOnModule(Module& M)
 {
-    if (!DebugInfoUtils::HasDebugInfo(M))
+    if (!Utils::HasDebugInfo(M))
     {
         // If there is no debug info, then it must be GenISA debugger.
         // Thus, no need to add OpenCL global id variable. Just return.
@@ -336,7 +336,7 @@ bool CleanImplicitIds::processFunc(Function& F)
             if (auto DbgVal = dyn_cast_or_null<DbgValueInst>(&I))
             {
                 auto Name = DbgVal->getVariable()->getName().str();
-                if (DebugInfoUtils::IsSpecialDebugVariable(Name))
+                if (Utils::IsSpecialDebugVariable(Name))
                 {
                     auto PredefVar = FindPredefinedInst(PredefinedInsts, Name);
                     if (PredefVar == nullptr)

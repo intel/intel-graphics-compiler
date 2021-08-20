@@ -23,7 +23,6 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 
 #include "VISAModule.hpp"
-#include "DebugInfoUtils.hpp"
 #include "LexicalScopes.hpp"
 
 #include <vector>
