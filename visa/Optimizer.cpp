@@ -7020,6 +7020,28 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     bb->insertBefore(insert_point, movInst);
                 }
 
+                if (inst->isEOT() && builder.needBreakpointWAForEOT())
+                {
+                    bool hasLegalInstAfterEOT = false;
+                    for (auto bnext = std::next(ib); bnext != bend; ++bnext)
+                    {
+                        G4_BB* nextBB = *bnext;
+                        auto it = std::find_if(nextBB->begin(),
+                                               nextBB->end(),
+                                               [](G4_INST* inst) { return !inst->isLabel(); });
+                        if (it != nextBB->end())
+                        {
+                            hasLegalInstAfterEOT = true;
+                            break;
+                        }
+                    }
+                    if (!hasLegalInstAfterEOT)
+                    {
+                        G4_INST *nopInst = builder.createNop(InstOpt_NoOpt);
+                        bb->insertAfter(ii, nopInst);
+                    }
+                }
+
                 if (VISA_WA_CHECK(builder.getPWaTable(), WaResetN0BeforeGatewayMessage) &&
                     inst->isSend() && inst->getMsgDesc()->isBarrier())
                 {

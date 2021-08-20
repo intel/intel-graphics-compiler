@@ -853,4 +853,9 @@ SPDX-License-Identifier: MIT
    {
        return getPlatform() <= GENX_TGLLP;
    }
+
+    bool needBreakpointWAForEOT() const
+    {
+       return (getPlatform() == GENX_TGLLP || getPlatform() == XeHP_SDV);
+    }
    // end HW capabilities
