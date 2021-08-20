@@ -330,13 +330,33 @@ void overrideOCLKernelBinary(
     KernBin->Write(Buf.get(), newBinarySize);
 }
 
-void dumpOCLCos(const IGC::CShader *Kernel, const std::string &stateDebugMsg) {
-      auto name = IGC::Debug::GetDumpNameObj(Kernel, "cos");
-      auto dump = IGC::Debug::Dump(name, IGC::Debug::DumpType::COS_TEXT);
+void dumpOCLCos(const IGC::COpenCLKernel *Kernel, const std::string &stateDebugMsg) {
+    IGC::CodeGenContext* context = Kernel->GetContext();
 
-      IGC::Debug::DumpLock();
-      dump.stream() << stateDebugMsg;
-      IGC::Debug::DumpUnlock();
+    auto dumpName =
+        IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+        .Type(ShaderType::OPENCL_SHADER)
+        .Hash(context->hash)
+        .StagedInfo(context);
+
+    std::string kernelName = Kernel->m_kernelInfo.m_kernelName;
+    const int MAX_KERNEL_NAME = 180;
+
+    // Shorten kernel name to avoid issues with too long file name
+    if (kernelName.size() > MAX_KERNEL_NAME)
+    {
+        kernelName.resize(MAX_KERNEL_NAME);
+    }
+    dumpName = dumpName.PostFix(kernelName);
+
+    dumpName = dumpName.DispatchMode(Kernel->m_ShaderDispatchMode);
+    dumpName = dumpName.SIMDSize(Kernel->m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension("cos");
+
+    auto dump = IGC::Debug::Dump(dumpName, IGC::Debug::DumpType::COS_TEXT);
+
+    IGC::Debug::DumpLock();
+    dump.stream() << stateDebugMsg;
+    IGC::Debug::DumpUnlock();
 }
 
 // Build a name for an ELF temporary file. If uniqueLockFileName contains any % characters then
