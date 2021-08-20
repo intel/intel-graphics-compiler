@@ -828,17 +828,18 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);
     }
 
+    IGC_ASSERT(m_pDebugEmitter);
+
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
         m_currShader->GetDebugInfoData().m_pShader = m_currShader;
         m_currShader->GetDebugInfoData().m_pDebugEmitter = m_pDebugEmitter;
 
-        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->resetModule(
-                        IGC::ScalarVisaModule::BuildNew(m_currShader, &F));)
+        m_pDebugEmitter->resetModule(IGC::ScalarVisaModule::BuildNew(m_currShader, &F));
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.
-    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
+    m_pDebugEmitter->EndEncodingMark();
 
     phiMovToBB.clear();
     unsigned int lineNo = 0;
@@ -875,11 +876,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
         if (i != 0)
         {
-            IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
+            m_pDebugEmitter->BeginEncodingMark();
             // create a label
             m_encoder->Label(block.id);
             m_encoder->Push();
-            IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
+            m_pDebugEmitter->EndEncodingMark();
         }
 
         // remove cached per lane offset variables if any.
@@ -902,20 +903,20 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 {
                     curSrcFile = srcFile;
                     curSrcDir = srcDir;
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
+                    m_pDebugEmitter->BeginEncodingMark();
                     llvm::SmallVector<char, 1024> fileName;
                     llvm::sys::path::append(fileName, curSrcDir);
                     llvm::sys::path::append(fileName, curSrcFile);
                     std::string fileNameStr(fileName.begin(), fileName.end());
                     m_encoder->File(fileNameStr);
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
+                    m_pDebugEmitter->EndEncodingMark();
                 }
                 if (curLineNumber != lineNo)
                 {
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-                        m_encoder->Loc(curLineNumber);
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
-                        lineNo = curLineNumber;
+                     m_pDebugEmitter->BeginEncodingMark();
+                     m_encoder->Loc(curLineNumber);
+                     m_pDebugEmitter->EndEncodingMark();
+                     lineNo = curLineNumber;
                 }
             }
 
@@ -925,27 +926,27 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
             if (slicing && !disableSlicing)
             {
-                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-                    I = emitInSlice(block, I);
-                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
-                    llvmInst = I->m_root;
+                 m_pDebugEmitter->BeginEncodingMark();
+                 I = emitInSlice(block, I);
+                 m_pDebugEmitter->EndEncodingMark();
+                 llvmInst = I->m_root;
             }
 
             if (I != E)
             {
-                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction(llvmInst);)
+                m_pDebugEmitter->BeginInstruction(llvmInst);
 
-                    // before inserting the terminator, initialize constant pool & insert the de-ssa moves
-                    if (isa<BranchInst>(llvmInst))
-                    {
-                        m_encoder->SetSecondHalf(false);
-                        // insert constant initializations.
-                        InitConstant(block.bb);
-                        // Insert lifetime start if there are any
-                        emitLifetimeStartAtEndOfBB(block.bb);
-                        // insert the de-ssa movs.
-                        MovPhiSources(block.bb);
-                    }
+                // before inserting the terminator, initialize constant pool & insert the de-ssa moves
+                if (isa<BranchInst>(llvmInst))
+                {
+                    m_encoder->SetSecondHalf(false);
+                    // insert constant initializations.
+                    InitConstant(block.bb);
+                    // Insert lifetime start if there are any
+                    emitLifetimeStartAtEndOfBB(block.bb);
+                    // insert the de-ssa movs.
+                    MovPhiSources(block.bb);
+                }
 
                 // If slicing happens, then recalculate the number of instances.
                 if (slicing)
@@ -977,7 +978,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     I->m_pattern->Emit(this, init);
                     ++I;
                 }
-                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction(llvmInst);)
+                m_pDebugEmitter->EndInstruction(llvmInst);
             }
         }
     }
