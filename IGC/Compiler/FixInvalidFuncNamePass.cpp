@@ -52,7 +52,7 @@ bool FixInvalidFuncName::runOnFunction(Function& F)
                 if (func)
                 {
                     StringRef original = func->getName();
-                    std::string changed = replaceInvalidCharToUnderline(original);
+                    std::string changed = replaceInvalidCharToUnderline(original.str());
                     if (original != changed)
                     {
                         func->setName(changed);

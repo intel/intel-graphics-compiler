@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/BackendConfig.h"
 
+#include <llvm/Analysis/CallGraph.h>
 #include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/GenXIntrinsics/GenXMetadata.h>
 #include <llvm/IR/Instructions.h>
