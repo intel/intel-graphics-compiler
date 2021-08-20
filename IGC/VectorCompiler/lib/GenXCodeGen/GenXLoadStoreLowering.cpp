@@ -62,7 +62,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
-static cl::opt<bool> EnableLL("enable-ldst-lowering", cl::init(true),
+static cl::opt<bool> EnableLL("enable-ldst-lowering", cl::init(false),
                               cl::Hidden,
                               cl::desc("Enable Load-Store lowering pass"));
 
