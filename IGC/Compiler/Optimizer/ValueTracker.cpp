@@ -182,9 +182,9 @@ Value* ValueTracker::handleGlobalVariable(GlobalVariable* G)
     Constant* pSamplerVal = G->getInitializer();
     // Add debug info intrinsic for this variable inside the function using this sampler.
     Instruction* pEntryPoint = &(*m_Function->getEntryBlock().getFirstInsertionPt());
-    IF_DEBUG_INFO(Utils::UpdateGlobalVarDebugInfo(G, pSamplerVal, pEntryPoint, false);)
-        // Found a global sampler, return it.
-        return isa<ConstantStruct>(pSamplerVal) ?
+    Utils::UpdateGlobalVarDebugInfo(G, pSamplerVal, pEntryPoint, false);
+    // Found a global sampler, return it.
+    return isa<ConstantStruct>(pSamplerVal) ?
         pSamplerVal->getAggregateElement(0U) : pSamplerVal;
 }
 

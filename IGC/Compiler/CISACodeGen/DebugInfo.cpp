@@ -277,9 +277,10 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg,
                                   const std::vector<llvm::DISubprogram*>& DISubprogramNodes)
 {
-    std::vector<char> buffer;
+    IGC_ASSERT(m_pDebugEmitter);
 
-    IF_DEBUG_INFO_IF(m_pDebugEmitter, buffer = m_pDebugEmitter->Finalize(finalize, decodedDbg, DISubprogramNodes);)
+    std::vector<char> buffer =
+        m_pDebugEmitter->Finalize(finalize, decodedDbg, DISubprogramNodes);
 
     if (!buffer.empty())
     {

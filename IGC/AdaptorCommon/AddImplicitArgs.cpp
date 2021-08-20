@@ -216,9 +216,9 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
     // the new arguments, also transferring over the names as well.
     std::vector<std::pair<llvm::Instruction*, unsigned int>> newAddr;
     bool fullDebugInfo = false;
-    IF_DEBUG_INFO(bool lineNumbersOnly = false;)
-    IF_DEBUG_INFO(CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();)
-    IF_DEBUG_INFO(DebugMetadataInfo::hasAnyDebugInfo(ctx, fullDebugInfo, lineNumbersOnly);)
+    bool lineNumbersOnly = false;
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    DebugMetadataInfo::hasAnyDebugInfo(ctx, fullDebugInfo, lineNumbersOnly);
 
     if (fullDebugInfo)
     {
@@ -271,16 +271,16 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
     // storage location for the variable.
     for (auto toReplace : newAddr)
     {
-        IF_DEBUG_INFO(auto d = dyn_cast<DbgDeclareInst>(toReplace.first);)
+        auto d = dyn_cast<DbgDeclareInst>(toReplace.first);
 
-        IF_DEBUG_INFO(llvm::DIBuilder Builder(*pNewFunc->getParent()));
-        IF_DEBUG_INFO(auto DIVar = d->getVariable();)
-        IF_DEBUG_INFO(auto DIExpr = d->getExpression();)
+        llvm::DIBuilder Builder(*pNewFunc->getParent());
+        auto DIVar = d->getVariable();
+        auto DIExpr = d->getExpression();
 
         IGC_ASSERT(toReplace.second < pNewFunc->arg_size());
-        IF_DEBUG_INFO(Value* v = pNewFunc->arg_begin() + toReplace.second);
-        IF_DEBUG_INFO(Builder.insertDeclare(v, DIVar, DIExpr, d->getDebugLoc().get(), d);)
-        IF_DEBUG_INFO(d->eraseFromParent();)
+        Value* v = pNewFunc->arg_begin() + toReplace.second;
+        Builder.insertDeclare(v, DIVar, DIExpr, d->getDebugLoc().get(), d);
+        d->eraseFromParent();
     }
 
     // Set implicit argument names

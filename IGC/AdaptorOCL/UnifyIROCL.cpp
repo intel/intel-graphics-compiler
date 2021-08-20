@@ -317,7 +317,7 @@ static void CommonOCLBasedPasses(
 
     if(pContext->m_InternalOptions.KernelDebugEnable)
     {
-        IF_DEBUG_INFO(mpm.add(new ImplicitGlobalId());)
+        mpm.add(new ImplicitGlobalId());
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
@@ -540,7 +540,7 @@ static void CommonOCLBasedPasses(
     // this function here, as opposed to beginning of this function,
     // is that unreferenced constants will be eliminated. So
     // debugger will not be able to query those variables.
-    IF_DEBUG_INFO(insertOCLMissingDebugConstMetadata(pContext);)
+    insertOCLMissingDebugConstMetadata(pContext);
 
     COMPILER_TIME_END(pContext, TIME_UnificationPasses);
 

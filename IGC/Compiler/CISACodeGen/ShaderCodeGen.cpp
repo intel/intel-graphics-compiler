@@ -1502,7 +1502,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         if (((OpenCLProgramContext*)pContext)->m_InternalOptions.KernelDebugEnable)
         {
             IGCPassManager mpm(pContext, "CleanImplicitId");
-            IF_DEBUG_INFO(mpm.add(new CleanImplicitIds()));
+            mpm.add(new CleanImplicitIds());
             mpm.run(*pContext->getModule());
         }
     }

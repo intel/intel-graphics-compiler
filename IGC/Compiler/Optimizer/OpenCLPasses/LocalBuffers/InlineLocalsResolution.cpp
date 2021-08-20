@@ -449,14 +449,14 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
     }
 
     // set debugging info, and insert mov inst.
-    IF_DEBUG_INFO(for (const auto& I : m_FuncToVarsMap))
+    for (const auto& I : m_FuncToVarsMap)
     {
-        IF_DEBUG_INFO(Function * userFunc = I.first;)
-            IF_DEBUG_INFO(for (auto G : I.second))
+        Function* userFunc = I.first;
+        for (auto* G : I.second)
         {
-            IF_DEBUG_INFO(Instruction * pInsertBefore = &(*userFunc->begin()->getFirstInsertionPt());)
-                TODO("Should inline local buffer points to origin offset 'globalVar' or to fixed offset 'pMovedPtr'?");
-            IF_DEBUG_INFO(Utils::UpdateGlobalVarDebugInfo(G, G, pInsertBefore, true););
+            Instruction * pInsertBefore = &(*userFunc->begin()->getFirstInsertionPt());
+            TODO("Should inline local buffer points to origin offset 'globalVar' or to fixed offset 'pMovedPtr'?");
+            Utils::UpdateGlobalVarDebugInfo(G, G, pInsertBefore, true);
         }
     }
 }

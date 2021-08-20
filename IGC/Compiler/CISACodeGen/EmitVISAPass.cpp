@@ -824,8 +824,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.EnableRelocation = IGC_IS_FLAG_ENABLED(EnableRelocations) || DebugOpts.ZeBinCompatible;
         DebugOpts.EnforceAMD64Machine = IGC_IS_FLAG_ENABLED(DebugInfoEnforceAmd64EM) || DebugOpts.ZeBinCompatible;
         DebugOpts.EmitPrologueEnd = IGC_IS_FLAG_ENABLED(EmitPrologueEnd);
-        IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
-        IF_DEBUG_INFO(m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);)
+        m_pDebugEmitter = IDebugEmitter::Create();
+        m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);
     }
 
     if (DebugInfoData::hasDebugInfo(m_currShader))
@@ -1098,7 +1098,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         if (!m_currShader->GetDebugInfoData().m_pDebugEmitter)
         {
-            IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
+            IDebugEmitter::Release(m_pDebugEmitter);
         }
 
         if (!m_encoder->IsCodePatchCandidate() || m_encoder->HasPrevKernel())
@@ -8329,7 +8329,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
         {
             CVariable* r1 = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW);
             temp = m_currShader->GetNewVariable(8, ISA_TYPE_UW, EALIGN_GRF,
-                std::string(IF_DEBUG_INFO("SampleIndexExtracted")));
+                                                "SampleIndexExtracted");
             m_encoder->SetSrcRegion(0, 0, 1, 0);
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             m_encoder->SetNoMask();

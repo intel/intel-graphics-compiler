@@ -50,5 +50,4 @@ namespace IGC
     int getPointerSize(llvm::Module &M);
 }
 
-#define IF_DEBUG_INFO(X) X
 #define IF_DEBUG_INFO_IF(C, X) if (C) { X }

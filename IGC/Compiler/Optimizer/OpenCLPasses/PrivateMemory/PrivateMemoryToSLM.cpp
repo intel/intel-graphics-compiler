@@ -217,7 +217,7 @@ namespace IGC
 
             // This declaration will invoke constructor of DebugLoc class
             // and result in an empty DebugLoc instance, ie with line and scope set to 0.
-            IF_DEBUG_INFO(DebugLoc emptyDebugLoc);
+            DebugLoc emptyDebugLoc;
 
             LLVMContext& llvmCtx = F->getContext();
             IntegerType* typeInt32 = Type::getInt32Ty(llvmCtx);
@@ -292,7 +292,7 @@ namespace IGC
                     // TODO: optimize on x-y-z values
                     llvm::IRBuilder<> builder(pAI);
 
-                    IF_DEBUG_INFO(builder.SetCurrentDebugLocation(emptyDebugLoc));
+                    builder.SetCurrentDebugLocation(emptyDebugLoc);
 
                     // totalOffset = localIdX +
                     //               localIdY * dimX +
