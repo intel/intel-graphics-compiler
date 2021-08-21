@@ -221,8 +221,6 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M);
-
 
 static cl::opt<std::string> DbgOpt_VisaTransformInfoPath(
     "vc-dump-module-to-visa-transform-info-path", cl::init(""), cl::Hidden,
@@ -1060,8 +1058,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
     bool ExpectMore = GF != GenXFunctions.back();
     LLVM_DEBUG(dbgs() << "--- Starting Debug Info Finalization (final:  "
                       << !ExpectMore << ") ---\n");
-    auto Out = Emitter->Finalize(!ExpectMore, GF->getDIDecoder(),
-                                 DISubprogramNodes);
+    auto Out = Emitter->Finalize(!ExpectMore, GF->getDIDecoder());
     if (!ExpectMore) {
       ElfBin = std::move(Out);
     } else {
@@ -1089,7 +1086,6 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
 }
 
 void GenXDebugInfo::cleanup() {
-  DISubprogramNodes.clear();
   ElfOutputs.clear();
 }
 
@@ -1143,8 +1139,6 @@ bool GenXDebugInfo::runOnModule(Module &M) {
 
   const FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
   auto &GM = getAnalysis<GenXModule>();
-
-  DISubprogramNodes = gatherDISubprogramNodes(M);
 
   VISABuilder *VB = GM.GetCisaBuilder();
   if (GM.HasInlineAsm())

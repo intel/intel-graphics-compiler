@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "CLElfLib/ElfReader.h"
 
 #include "DebugInfo/ScalarVISAModule.h"
+#include "DebugInfo/DwarfDebug.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
 
 using namespace llvm;
@@ -19,8 +20,6 @@ using namespace IGC::IGCMD;
 using namespace std;
 // ElfReader related typedefs
 using namespace CLElfLib;
-
-void gatherDISubprogramNodes(llvm::Module& M, std::unordered_map<llvm::Function*, std::vector<llvm::DISubprogram*>>& DISubprogramNodes);
 
 char DebugInfoPass::ID = 0;
 char CatchAllLineNumber::ID = 0;
@@ -74,43 +73,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         if (simd32) units.push_back(simd32);
     }
 
-    std::unordered_map<llvm::Function*, std::vector<llvm::DISubprogram*>> DISubprogramNodes;
-    gatherDISubprogramNodes(M, DISubprogramNodes);
-
-    auto getSPDiesCollection = [&DISubprogramNodes](std::vector<llvm::Function*>& functions)
-    {
-        // Function argument is list of all functions for elf.
-        // Each function may require emission of one or more DISubprogram nodes.
-        // Return value should be a stable vector of collection of all DISubprogram nodes
-        // but without duplicates.
-        std::vector<llvm::DISubprogram*> retUniqueFuncVec;
-        std::unordered_set<llvm::DISubprogram*> uniqueDISP;
-        for (auto& f : functions)
-        {
-            // iterate over all DISubprogram nodes references by llvm::Function f
-            auto& DISPNodesForF = DISubprogramNodes[f];
-            for (auto& SP : DISPNodesForF)
-            {
-                if (uniqueDISP.find(SP) == uniqueDISP.end())
-                {
-                    retUniqueFuncVec.push_back(SP);
-                    uniqueDISP.insert(SP);
-                }
-            }
-        }
-        // This vector contains DISubprogram node pointers for which DIEs will be emitted elf
-        // for current kernel.
-        //
-        // Input to IGC may have 100s of kernels. When emitting to dwarf, we can emit subprogram
-        // DIEs defined in current kernel (+ it's recursive callees) as well as declarations of
-        // other kernels and functions in input. These declarations quickly add up and cause
-        // bloat of elf size without adding much benefit. This function is responsible to filter
-        // and return only those DISubprogram nodes for which we want DIE emitted to elf. This
-        // only includes DIEs for subprograms ever referenced in this kernel (+ it's recursive
-        // callees). We skip emitting declaration DIEs for which no code is emitted in current
-        // kernel.
-        return retUniqueFuncVec;
-    };
+    DwarfDISubprogramCache DISPCache;
 
     for (auto& currShader : units)
     {
@@ -242,6 +205,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             return p1.first < p2.first;
         });
 
+        m_pDebugEmitter->SetDISPCache(&DISPCache);
         for (auto& m : sortedVISAModules)
         {
             m_pDebugEmitter->registerVISA(m.second.second);
@@ -250,7 +214,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         std::vector<llvm::Function*> functions;
         std::for_each(sortedVISAModules.begin(), sortedVISAModules.end(),
             [&functions](auto& item) { functions.push_back(item.second.first); });
-        auto SPDiesToBuild = getSPDiesCollection(functions);
+
         for (auto& m : sortedVISAModules)
         {
             m_pDebugEmitter->setCurrentVISA(m.second.second);
@@ -258,7 +222,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             if (--size == 0)
                 finalize = true;
 
-            EmitDebugInfo(finalize, &decodedDbg, SPDiesToBuild);
+            EmitDebugInfo(finalize, &decodedDbg);
         }
 
         // set VISA dbg info to nullptr to indicate 1-step debug is enabled
@@ -274,13 +238,11 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
     return false;
 }
 
-void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg,
-                                  const std::vector<llvm::DISubprogram*>& DISubprogramNodes)
+void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg)
 {
     IGC_ASSERT(m_pDebugEmitter);
 
-    std::vector<char> buffer =
-        m_pDebugEmitter->Finalize(finalize, decodedDbg, DISubprogramNodes);
+    std::vector<char> buffer = m_pDebugEmitter->Finalize(finalize, decodedDbg);
 
     if (!buffer.empty())
     {
