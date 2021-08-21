@@ -52,7 +52,7 @@ namespace IGC
             AU.setPreservesAll();
         }
 
-        void EmitDebugInfo(bool, DbgDecoder*);
+        void EmitDebugInfo(bool, DbgDecoder*, const std::vector<llvm::DISubprogram*>&);
     };
 
     class CatchAllLineNumber : public llvm::FunctionPass

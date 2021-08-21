@@ -28,7 +28,6 @@ See LICENSE.TXT for details.
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Module.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCSection.h"
@@ -90,7 +89,7 @@ uint64_t DbgVariable::getBasicTypeSize(DICompositeType* Ty)
         return Ty->getSizeInBits();
     }
 
-    DIType* BaseType = Ty->getBaseType();
+    DIType* BaseType = resolve(Ty->getBaseType());
 
     // If this is a derived type, go ahead and get the base type, unless it's a
     // reference then it's just the size of the field. Pointer types have no need
@@ -135,7 +134,7 @@ uint64_t DbgVariable::getBasicTypeSize(DIDerivedType* Ty)
         return Ty->getSizeInBits();
     }
 
-    DIType* BaseType = Ty->getBaseType();
+    DIType* BaseType = resolve(Ty->getBaseType());
 
     // If this is a derived type, go ahead and get the base type, unless it's a
     // reference then it's just the size of the field. Pointer types have no need
@@ -192,7 +191,7 @@ uint64_t DbgVariable::getBasicSize(DwarfDebug* DD)
 
 DIType* DbgVariable::getType() const
 {
-    return getVariable()->getType();
+    return resolve(getVariable()->getType());
 }
 
 /// Return Dwarf Version by checking module flags.
@@ -204,79 +203,14 @@ static unsigned getDwarfVersionFromModule(const Module* M)
     return (unsigned)(cast<ConstantInt>(Val->getValue())->getZExtValue());
 }
 
-void DwarfDISubprogramCache::updateDISPCache(const llvm::Function *F)
-{
-    llvm::DenseSet<const DISubprogram*> DISPToFunction;
-    llvm::DenseSet<const MDNode*> Processed;
-
-    if (auto *DISP = F->getSubprogram())
-        DISubprograms[F].push_back(DISP);
-
-    for (auto I = llvm::inst_begin(F), E = llvm::inst_end(F); I != E; ++I)
-    {
-        auto debugLoc = I->getDebugLoc().get();
-        while (debugLoc)
-        {
-            auto scope = debugLoc->getScope();
-            if (scope &&
-                dyn_cast_or_null<llvm::DILocalScope>(scope) &&
-                Processed.find(scope) == Processed.end())
-            {
-                auto DISP = cast<llvm::DILocalScope>(scope)->getSubprogram();
-                if (DISPToFunction.find(DISP) == DISPToFunction.end())
-                {
-                    DISubprograms[F].push_back(DISP);
-                    DISPToFunction.insert(DISP);
-                    Processed.insert(scope);
-                }
-            }
-
-            if (debugLoc->getInlinedAt())
-                debugLoc = debugLoc->getInlinedAt();
-            else
-                debugLoc = nullptr;
-        }
-    }
-}
-
-DwarfDISubprogramCache::DISubprogramNodes
-DwarfDISubprogramCache::findNodes (const std::vector<Function*>& Functions)
-{
-    DISubprogramNodes Result;
-    // to ensure that Result does not contain duplicates
-    std::unordered_set<llvm::DISubprogram*> uniqueDISP;
-
-    for (const auto* F: Functions)
-    {
-        // do not search for DISubprogram if we have then in cache
-        if (DISubprograms.find(F) != DISubprograms.end())
-            continue;
-
-        updateDISPCache(F);
-
-        const auto& DISPNodes = DISubprograms[F];
-        for (auto *DISP : DISPNodes)
-        {
-            if (uniqueDISP.find(DISP) != uniqueDISP.end())
-                continue;
-
-            Result.push_back(DISP);
-            uniqueDISP.insert(DISP);
-        }
-    }
-    return Result;
-}
 DwarfDebug::DwarfDebug(StreamEmitter* A, VISAModule* M) :
-    Asm(A), EmitSettings(Asm->GetEmitterSettings()), m_pModule(M),
-    DISPCache(nullptr),
-    FirstCU(0),
+    Asm(A), EmitSettings(Asm->GetEmitterSettings()),
+    m_pModule(M), FirstCU(0),
     //AbbreviationsSet(InitAbbreviationsSetSize),
     SourceIdMap(DIEValueAllocator),
-    PrevLabel(nullptr),
-    GlobalCUIndexCount(0),
+    PrevLabel(NULL), GlobalCUIndexCount(0),
     StringPool(DIEValueAllocator),
-    NextStringPoolNumber(0),
-    StringPref("info_string")
+    NextStringPoolNumber(0), StringPref("info_string")
 {
 
     DwarfInfoSectionSym = nullptr;
@@ -326,8 +260,7 @@ void DwarfDebug::registerVISA(IGC::VISAModule* M)
     if (EM != nullptr) {
         VISAModToFunc.erase(EM);
     }
-    RegisteredFunctions.push_back(F);
-    VISAModToFunc[M] = RegisteredFunctions.back();
+    VISAModToFunc[M] = M->getFunction();
 }
 
 // Define a unique number for the abbreviation.
@@ -968,25 +901,6 @@ void DwarfDebug::constructSubprogramDIE(CompileUnit* TheCU, const MDNode* N)
     TheCU->getOrCreateSubprogramDIE(SP);
 }
 
-void DwarfDebug::discoverDISPNodes(DwarfDISubprogramCache &Cache)
-{
-    IGC_ASSERT(DISubprogramNodes.empty());
-    DISubprogramNodes = Cache.findNodes(RegisteredFunctions);
-}
-
-void DwarfDebug::discoverDISPNodes()
-{
-    if (DISPCache)
-    {
-        discoverDISPNodes(*DISPCache);
-    }
-    else
-    {
-        DwarfDISubprogramCache TemporaryCache;
-        discoverDISPNodes(TemporaryCache);
-    }
-}
-
 // Emit all Dwarf sections that should come prior to the content. Create
 // global DIEs and emit initial debug info sections.
 void DwarfDebug::beginModule()
@@ -996,8 +910,6 @@ void DwarfDebug::beginModule()
     // module using debug info finder to collect debug info.
     NamedMDNode* CU_Nodes = M->getNamedMetadata("llvm.dbg.cu");
     if (!CU_Nodes) return;
-    // discover DISubprogramNodes for all the registered visaModules
-    discoverDISPNodes();
     // Emit initial sections so we can reference labels later.
     emitSectionLabels();
 
@@ -1006,7 +918,17 @@ void DwarfDebug::beginModule()
         DICompileUnit* CUNode = cast<DICompileUnit>(CU_Nodes->getOperand(i));
         CompileUnit* CU = constructCompileUnit(CUNode);
 
-        for (auto* DISP : DISubprogramNodes)
+        //DISubprogramArray SPs = CUNode->getSubprograms();
+        //for (unsigned i = 0, e = SPs.size(); i != e; ++i)
+        //{
+        //    constructSubprogramDIE(CU, SPs[i]);
+        //}
+
+        // Added during upgrade to LLVM 4.0
+        // Assume all functions belong to same Compile Unit
+        // With LLVM 4.0 DISubprogram nodes are no longer
+        // present in DICompileUnit node.
+        for (auto& DISP : *DISubprogramNodes)
         {
             constructSubprogramDIE(CU, DISP);
         }
@@ -1079,7 +1001,7 @@ void DwarfDebug::collectDeadVariables()
     {
         DICompileUnit* TheCU = cast<DICompileUnit>(CU_Nodes->getOperand(i));
 
-        for (auto* SP : DISubprogramNodes)
+        for (auto& SP : *DISubprogramNodes)
         {
             if (!SP)
                 continue;
@@ -3456,4 +3378,101 @@ llvm::MCSymbol* DwarfDebug::GetLabelBeforeIp(unsigned int ip)
     auto NewLabel = Asm->CreateTempSymbol();
     LabelsBeforeIp[ip] = NewLabel;
     return NewLabel;
+}
+
+std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M)
+{
+    // Discover all DISubprogram nodes in program and store them
+    // in an std::set. With LLVM 4.0 DISubprogram nodes are no
+    // longer stored in DICompileUnit. Instead DISubprogram nodes
+    // point to their corresponding DICompileUnit. This function
+    // iterates over all instructions to find unique DISubprogram
+    // nodes and stores them in an std::set for other functions
+    // to iterate over.
+    llvm::DenseSet<DISubprogram*> DISPToFunction;
+    llvm::DenseSet<MDNode*> Processed;
+    std::vector<llvm::DISubprogram*> DISubprogramNodes;
+
+    for (auto& F : M)
+    {
+        if (auto* diSubprogram = F.getSubprogram())
+        {
+            DISubprogramNodes.push_back(diSubprogram);
+        }
+
+        for (auto& bb : F)
+        {
+            for (auto& inst : bb)
+            {
+                auto debugLoc = inst.getDebugLoc().get();
+                while (debugLoc)
+                {
+                    auto scope = debugLoc->getScope();
+                    if (scope &&
+                        dyn_cast_or_null<llvm::DILocalScope>(scope) &&
+                        Processed.find(scope) == Processed.end())
+                    {
+                        auto DISP = cast<llvm::DILocalScope>(scope)->getSubprogram();
+                        if (DISPToFunction.find(DISP) == DISPToFunction.end())
+                        {
+                            DISubprogramNodes.push_back(DISP);
+                            DISPToFunction.insert(DISP);
+                            Processed.insert(scope);
+                        }
+                    }
+
+                    if (debugLoc->getInlinedAt())
+                        debugLoc = debugLoc->getInlinedAt();
+                    else
+                        debugLoc = nullptr;
+                }
+            }
+        }
+    }
+    return DISubprogramNodes;
+}
+
+void gatherDISubprogramNodes(llvm::Module& M, std::unordered_map<llvm::Function*, std::vector<llvm::DISubprogram*>>& DISubprogramNodes)
+{
+    // Discover all DISubprogram nodes referenced by every llvm::Function
+    // in the module. These referenced DISubprogram nodes will be emitted
+    // to dwarf.
+    for (auto& F : M)
+    {
+        llvm::DenseSet<DISubprogram*> DISPToFunction;
+        llvm::DenseSet<MDNode*> Processed;
+        if (auto* diSubprogram = F.getSubprogram())
+        {
+            DISubprogramNodes[&F].push_back(diSubprogram);
+        }
+
+        for (auto& bb : F)
+        {
+            for (auto& inst : bb)
+            {
+                auto debugLoc = inst.getDebugLoc().get();
+                while (debugLoc)
+                {
+                    auto scope = debugLoc->getScope();
+                    if (scope &&
+                        dyn_cast_or_null<llvm::DILocalScope>(scope) &&
+                        Processed.find(scope) == Processed.end())
+                    {
+                        auto DISP = cast<llvm::DILocalScope>(scope)->getSubprogram();
+                        if (DISPToFunction.find(DISP) == DISPToFunction.end())
+                        {
+                            DISubprogramNodes[&F].push_back(DISP);
+                            DISPToFunction.insert(DISP);
+                            Processed.insert(scope);
+                        }
+                    }
+
+                    if (debugLoc->getInlinedAt())
+                        debugLoc = debugLoc->getInlinedAt();
+                    else
+                        debugLoc = nullptr;
+                }
+            }
+        }
+    }
 }
