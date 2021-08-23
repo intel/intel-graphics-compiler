@@ -21,6 +21,11 @@ inline constexpr const char VCPredefinedVariable[] = "VCPredefinedVariable";
 namespace FunctionMD {
 inline constexpr const char GenXKernelInternal[] = "genx.kernel.internal";
 inline constexpr const char VCEmulationRoutine[] = "VC.Emulation.Routine";
+
+// amount of stack calculated for kernel
+// no attribute means that GenXStackUsage pass failed (recursion, etc)
+// attribute created by GenXStackUsage and used to create patch token
+inline constexpr const char VCStackAmount[] = "VC.Stack.Amount";
 }
 
 namespace InstMD {

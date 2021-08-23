@@ -597,11 +597,13 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       break;
     case ArgKind::PrivateBase:
       if (Info.getStatelessPrivMemSize() != 0) {
+        // align stateless private request to kilobyte boundary
+        auto PrivMemSize = iSTD::Align(Info.getStatelessPrivMemSize(), 1024);
         Kernel.createPrivateBaseAnnotation(Arg.getIndex(), Arg.getSizeInBytes(),
                                            ArgOffset, Arg.getBTI(),
-                                           Info.getStatelessPrivMemSize());
+                                           PrivMemSize);
         Kernel.m_kernelInfo.m_executionEnivronment
-            .PerThreadPrivateOnStatelessSize = Info.getStatelessPrivMemSize();
+            .PerThreadPrivateOnStatelessSize = PrivMemSize;
         Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       }
       break;

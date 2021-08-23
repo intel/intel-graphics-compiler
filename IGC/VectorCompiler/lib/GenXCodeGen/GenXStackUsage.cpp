@@ -16,9 +16,10 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 
+#include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 
 #include <llvm/Analysis/CallGraph.h>
 #include <llvm/CodeGen/TargetPassConfig.h>
@@ -30,6 +31,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 
 #include "Probe/Assertion.h"
+
+#include <sstream>
 
 using namespace llvm;
 
@@ -207,7 +210,14 @@ void StackAnalysis::checkKernel(Function &Kernel) {
                      std::to_string(m_MaxStackSize) +
                      "\nCalls: " + GenerateCallSequence(Kernel),
                  DS_Warning);
+    return;
   }
+
+  IGC_ASSERT(!Kernel.hasFnAttribute(genx::FunctionMD::VCStackAmount));
+
+  std::ostringstream Os;
+  Os << KernelUsedStack;
+  Kernel.addFnAttr(genx::FunctionMD::VCStackAmount, Os.str());
 }
 
 void StackAnalysis::doAnalysis(Module &M) {
