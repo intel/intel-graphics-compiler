@@ -317,7 +317,6 @@ protected:
     // during optimization, an inst may become redundant and be marked dead
     unsigned short dead : 1;
     unsigned short evenlySplitInst : 1;
-    unsigned short createdPreRA : 1;  // for NoMaskWA
     G4_ExecSize    execSize;
 
     BinInst *bin;
@@ -1056,11 +1055,6 @@ public:
     // replaces any old comments with this
     // prefer addComment if don't wish to stomp earlier comments
     void setComments(const std::string& comments);
-
-    // For NoMaskWA. Set in PreRA WA for all instructions. PostRA WA will
-    // apply on new instructions created by RA only.
-    bool getCreatedPreRA() const { return createdPreRA; }
-    void setCreatedPreRA(bool V) { createdPreRA = V; }
 
     std::string getComments() const
     {
