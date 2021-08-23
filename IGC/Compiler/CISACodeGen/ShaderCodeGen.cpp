@@ -1926,7 +1926,7 @@ void OptimizeIR(CodeGenContext* const pContext)
             pContext->type == ShaderType::HULL_SHADER ||
             pContext->type == ShaderType::COMPUTE_SHADER)
         {
-            mpm.add(new SynchronizationObjectCoalescing);
+            mpm.add(createSynchronizationObjectCoalescing());
         }
         mpm.add(createGenSimplificationPass());
 
