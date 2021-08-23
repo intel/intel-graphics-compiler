@@ -84,15 +84,8 @@ namespace IGC
     // Use following templated method to get encoded register number
     // for regx and bregx operations. For eg, if GRF to encode in regx is
     // 10 then invoke method as GetEncodedRegNum<RegisterNumbering::GRFBase>(10).
-    template<unsigned int T>
-    unsigned int GetEncodedRegNum(unsigned int i, bool UseNewEncoding)
-    {
-        if (UseNewEncoding)
-        {
-            return (T + i);
-        }
-        return i;
-    }
+    template<unsigned int EncodeBase>
+    unsigned int GetEncodedRegNum(unsigned int i) { return (EncodeBase + i); }
 
     class StreamEmitter;
 

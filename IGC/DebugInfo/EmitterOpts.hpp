@@ -13,7 +13,6 @@ namespace IGC
 {
   struct DebugEmitterOpts {
     bool DebugEnabled = false;
-    bool UseNewRegisterEncoding = true;
     bool EnableSIMDLaneDebugging = true;
     bool EnableGTLocationDebugging = false;
     bool UseOffsetInLocation = false;

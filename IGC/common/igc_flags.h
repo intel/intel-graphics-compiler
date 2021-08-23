@@ -472,7 +472,6 @@ DECLARE_IGC_REGKEY(DWORD, MemOptWindowSize,   150,  "Size of the window in unit 
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugRanges, true, "Emit .debug_ranges section when instructions in a block are non-consecutive", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugLoc, true, "Enable generation of .debug_loc section", false)
-DECLARE_IGC_REGKEY(bool, UseNewRegEncoding, true, "Use new location encoding for register numbers in dwarf", true)
 DECLARE_IGC_REGKEY(bool, EmitOffsetInDbgLoc, false, "Emit offset of private memory in DW_AT_location when available", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", true)
 DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, true, "Split SIMD8 Sampler message to 2 subspans and SIMD16 to odd and even", false)

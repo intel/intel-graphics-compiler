@@ -744,8 +744,7 @@ void StreamEmitter::EmitSectionOffset(const MCSymbol* pLabel, const MCSymbol* pS
 
 void StreamEmitter::EmitDwarfRegOp(unsigned reg, unsigned offset, bool indirect) const
 {
-    auto regEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
-        reg, StreamOptions.UseNewRegisterEncoding);
+    auto regEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(reg);
     if (indirect)
     {
         if (regEncoded < 32)

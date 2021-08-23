@@ -478,8 +478,7 @@ void CompileUnit::addRegisterLoc(IGC::DIEBlock* TheDie, unsigned DWReg, int64_t 
 /// addRegisterOp - Add register operand.
 void CompileUnit::addRegisterOp(IGC::DIEBlock* TheDie, unsigned DWReg)
 {
-    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
-        DWReg, EmitSettings.UseNewRegisterEncoding);
+    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(DWReg);
     if (DWRegEncoded < 32)
     {
         addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_reg0 + DWRegEncoded);
@@ -494,8 +493,7 @@ void CompileUnit::addRegisterOp(IGC::DIEBlock* TheDie, unsigned DWReg)
 /// addRegisterOffset - Add register offset.
 void CompileUnit::addRegisterOffset(IGC::DIEBlock* TheDie, unsigned DWReg, int64_t Offset)
 {
-    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
-        DWReg, EmitSettings.UseNewRegisterEncoding);
+    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(DWReg);
     if (DWRegEncoded < 32)
     {
         addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_breg0 + DWRegEncoded);
@@ -883,13 +881,12 @@ void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariable
             // 11 DW_OP_deref
             // 12 DW_OP_plus_uconst <offset>
 
-            IGC_ASSERT(EmitSettings.UseNewRegisterEncoding);
             IGC_ASSERT_MESSAGE(false == Loc->IsInGlobalAddrSpace(), "Missing surface for variable location");
 
-            uint64_t btiBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::BTBase>(
-                dwarf::DW_OP_breg0, EmitSettings.UseNewRegisterEncoding);
-            uint64_t surfaceStateBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::SurfStateBase>(
-                dwarf::DW_OP_breg0, EmitSettings.UseNewRegisterEncoding);
+            uint64_t btiBaseAddrEncoded =
+                GetEncodedRegNum<RegisterNumbering::BTBase>(dwarf::DW_OP_breg0);
+            uint64_t surfaceStateBaseAddrEncoded =
+                GetEncodedRegNum<RegisterNumbering::SurfStateBase>(dwarf::DW_OP_breg0);
             uint32_t surfaceOffset = Loc->GetOffset();  // Surface offset
 
             addUInt(Block, dwarf::DW_FORM_data1, btiBaseAddrEncoded);  // Binding Table Base Address
@@ -986,9 +983,8 @@ void CompileUnit::addStatelessLocation(IGC::DIEBlock* Block, const VISAVariableL
     if (EmitSettings.EnableGTLocationDebugging)
     {
         // Use virtual debug register with Stateless Surface State Base Address
-        IGC_ASSERT(EmitSettings.UseNewRegisterEncoding);
-        uint32_t statelessBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::GenStateBase>(
-            dwarf::DW_OP_breg0, EmitSettings.UseNewRegisterEncoding);
+        uint32_t statelessBaseAddrEncoded =
+            GetEncodedRegNum<RegisterNumbering::GenStateBase>(dwarf::DW_OP_breg0);
         IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
 
         addBindlessOrStatelessLocation(Block, Loc, statelessBaseAddrEncoded);
@@ -1000,10 +996,9 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock* Block, const VISAVar
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
-        IGC_ASSERT(EmitSettings.UseNewRegisterEncoding);
         // Use virtual debug register with Bindless Surface State Base Address
-        uint32_t bindlessSurfBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::BindlessSurfStateBase>(
-            dwarf::DW_OP_breg0, EmitSettings.UseNewRegisterEncoding);
+        uint32_t bindlessSurfBaseAddrEncoded =
+            GetEncodedRegNum<RegisterNumbering::BindlessSurfStateBase>(dwarf::DW_OP_breg0);
 
         IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
 
@@ -1088,10 +1083,9 @@ void CompileUnit::addBindlessScratchSpaceLocation(IGC::DIEBlock* Block, const VI
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
-        IGC_ASSERT(EmitSettings.UseNewRegisterEncoding);
         // Use virtual debug register with Surface State Base Address
-        uint32_t surfStateBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::SurfStateBase>(
-            dwarf::DW_OP_breg0, EmitSettings.UseNewRegisterEncoding);
+        uint32_t surfStateBaseAddrEncoded =
+            GetEncodedRegNum<RegisterNumbering::SurfStateBase>(dwarf::DW_OP_breg0);
 
         IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
 
@@ -1185,10 +1179,10 @@ void CompileUnit::addBindlessSamplerLocation(IGC::DIEBlock* Block, const VISAVar
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
-        IGC_ASSERT(EmitSettings.UseNewRegisterEncoding);
+
         // Use virtual debug register with Bindless Sampler State Base Address
-        uint32_t bindlessSamplerBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::BindlessSamplerStateBase>(
-            dwarf::DW_OP_breg0, EmitSettings.UseNewRegisterEncoding);
+        uint32_t bindlessSamplerBaseAddrEncoded =
+            GetEncodedRegNum<RegisterNumbering::BindlessSamplerStateBase>(dwarf::DW_OP_breg0);
 
         IGC_ASSERT_MESSAGE(Loc->IsSampler(), "Missing sampler for variable location");
 
@@ -1212,8 +1206,7 @@ void CompileUnit::addBE_FP(IGC::DIEBlock* Block)
     if (!hasValidBEFP)
         return;
 
-    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
-        BE_FP_RegNum, EmitSettings.UseNewRegisterEncoding);
+    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(BE_FP_RegNum);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);
     addUInt(Block, dwarf::DW_FORM_udata, DWRegEncoded);  // Register ID is shifted by offset
     addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);
@@ -1243,11 +1236,10 @@ void CompileUnit::addScratchLocation(IGC::DIEBlock* Block, uint32_t memoryOffset
 
     if (EmitSettings.EnableGTLocationDebugging)
     {
-        IGC_ASSERT(EmitSettings.UseNewRegisterEncoding);
         // For spills to the scratch area at offset available as literal
         // 1 DW_OP_breg6 <offset>    , breg6 stands for Scratch Space Base Address
-        uint32_t scratchBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::ScratchBase>(
-            dwarf::DW_OP_breg0, EmitSettings.UseNewRegisterEncoding);
+        uint32_t scratchBaseAddrEncoded =
+            GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
 
         addUInt(Block, dwarf::DW_FORM_data1, scratchBaseAddrEncoded);  // Scratch Base Address
         addSInt(Block, dwarf::DW_FORM_sdata, offset);                  // Offset to base address
@@ -1269,9 +1261,8 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, const VISAVariableLocatio
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
-        IGC_ASSERT(EmitSettings.UseNewRegisterEncoding);
-        IGC_ASSERT_MESSAGE(Loc->IsSLM(), "SLM expected as variable location");
 
+        IGC_ASSERT_MESSAGE(Loc->IsSLM(), "SLM expected as variable location");
         // For SLM addressing using address <slm - va> available as literal
         // 1 DW_OP_addr <slm - va>
         addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
@@ -1480,8 +1471,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAV
             uint32_t regNumOffset = (variablesInSingleGRF == 0 || simdWidthOffset < variablesInSingleGRF) ?
                 0 : (simdWidthOffset / variablesInSingleGRF);
             uint32_t regNum = lr->getGRF().regNum + regNumOffset;
-            auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
-                regNum, EmitSettings.UseNewRegisterEncoding);
+            auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(regNum);
 
             // 1 var fits the whole GRF then set litForSubReg=dwarf::DW_OP_lit0 and litForSIMDlane=dwarf::DW_OP_lit0,
             // 2 vars   - dwarf::DW_OP_lit1 and dwarf::DW_OP_lit1,
@@ -2652,8 +2642,8 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     unsigned int grfSubRegNumPrivBase = varInfoPrivBase.lrs.front().getGRF().subRegNum;
                     auto bitOffsetToPrivBaseReg = grfSubRegNumPrivBase * 8;  // Bit-offset to GRF with Private Base
 
-                    auto DWRegPrivBaseEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
-                        grfRegNumPrivBase, EmitSettings.UseNewRegisterEncoding);
+                    auto DWRegPrivBaseEncoded =
+                        GetEncodedRegNum<RegisterNumbering::GRFBase>(grfRegNumPrivBase);
                     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);              // 1 DW_OP_constu <Private Base reg encoded>
                     addUInt(Block, dwarf::DW_FORM_udata, DWRegPrivBaseEncoded);             // Register ID is shifted by offset
                     addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);                 // 2 DW_OP_INTEL_regs     , i.e. Private Base
@@ -2689,8 +2679,8 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     unsigned int grfSubRegPTO = varInfoPerThOff.lrs.front().getGRF().subRegNum;
                     auto bitOffsetToPTOReg = grfSubRegPTO * 8;  // Bit-offset to GRF with Per Thread Offset
 
-                    auto DWRegPTOEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
-                        grfRegNumPTO, EmitSettings.UseNewRegisterEncoding);
+                    auto DWRegPTOEncoded =
+                        GetEncodedRegNum<RegisterNumbering::GRFBase>(grfRegNumPTO);
                     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);              // 6 DW_OP_constu <Per Thread reg encoded>
                     addUInt(Block, dwarf::DW_FORM_udata, DWRegPTOEncoded);                  // Register ID is shifted by offset
                     addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);                 // 7 DW_OP_INTEL_regs     , i.e. Per Thread Offset
@@ -2765,8 +2755,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             uint16_t grfRegNumFP = varInfoFP.lrs.front().getGRF().regNum;
             uint16_t grfSubRegNumFP = varInfoFP.lrs.front().getGRF().subRegNum;
             auto bitOffsetToFPReg = grfSubRegNumFP * 8;  // Bit-offset to GRF with Frame Pointer
-            auto DWRegFPEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
-                grfRegNumFP, EmitSettings.UseNewRegisterEncoding);
+            auto DWRegFPEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(grfRegNumFP);
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);          // 1 DW_OP_constu <Frame Pointer reg encoded>
             addUInt(Block, dwarf::DW_FORM_udata, DWRegFPEncoded);               // Register ID is shifted by offset
