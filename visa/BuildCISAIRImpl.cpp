@@ -1025,7 +1025,10 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             {
                 // Copy main kernel's declarations (shader body) into payload section
                 kernel->CopyVars(mainKernel);
-                kernel->getKernel()->Declares = mainKernel->getKernel()->Declares;
+                kernel->getKernel()->Declares.insert(
+                        kernel->getKernel()->Declares.end(),
+                        mainKernel->getKernel()->Declares.begin(),
+                        mainKernel->getKernel()->Declares.end());
 
                 // Set payload LiveOuts to be output
                 uint32_t inputCount = mainKernel->getIRBuilder()->getInputCount();
@@ -1046,7 +1049,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 mainKernel->getIRBuilder()->getRealR0()->setLiveOut();
             }
 
-            if (kernel->getIsKernel() && isInPatchingMode)
+            if ((kernel->getIsKernel() && isInPatchingMode) ||
+                kernel->getvIsaInstCount() == 0)
             {
                 continue;
             }
