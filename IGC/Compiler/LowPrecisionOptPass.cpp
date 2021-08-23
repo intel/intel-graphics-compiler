@@ -253,7 +253,7 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
 
     if (I.getType()->isVectorTy())
     {
-        numberOfElements = int_cast<unsigned int>(cast<VectorType>(I.getType())->getNumElements());
+        numberOfElements = int_cast<unsigned int>(cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements());
     }
 
     llvm::SmallVector<llvm::Type*, 4> overloadTys;

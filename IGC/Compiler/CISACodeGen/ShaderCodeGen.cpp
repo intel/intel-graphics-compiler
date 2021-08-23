@@ -646,12 +646,17 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     {
         mpm.add(createPruneUnusedArgumentsPass());
 
+#if LLVM_VERSION_MAJOR >= 12
+        mpm.add(createIPSCCPPass());
+#else
         if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
         {
             // Don't run IPConstantProp when debugging function calls, to avoid folding function arg/ret constants
             mpm.add(createIPConstantPropagationPass());
         }
         mpm.add(createConstantPropagationPass());
+#endif
+
         mpm.add(createDeadCodeEliminationPass());
         mpm.add(createCFGSimplificationPass());
     }
@@ -1556,8 +1561,12 @@ void OptimizeIR(CodeGenContext* const pContext)
             // possible which potentially allows late stage code sinking of
             // those calls by the instruction combiner.
             mpm.add(createPostOrderFunctionAttrsLegacyPass());
+#if LLVM_VERSION_MAJOR >= 12
+            mpm.add(createIPSCCPPass());
+#else
             mpm.add(createConstantPropagationPass());
             mpm.add(createIPConstantPropagationPass());
+#endif
         }
 
         // enable this only when Pooled EU is not supported

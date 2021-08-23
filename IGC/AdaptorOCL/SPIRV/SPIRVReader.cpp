@@ -1610,7 +1610,7 @@ void SPIRVToLLVMDbgTran::transDbgInfo(SPIRVValue *SV, Value *V) {
             Line->getColumn(), scope, iat);
 
         if(scope && !isa<DIFile>(scope))
-            I->setDebugLoc(DebugLoc::get(Line->getLine(), Line->getColumn(),
+            I->setDebugLoc(DILocation::get(scope->getContext(), Line->getLine(), Line->getColumn(),
                 scope, iat));
     }
 }
@@ -2067,7 +2067,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
         auto name = isSubgroupAvcINTELTypeOpCode(OC) ?
             OCLSubgroupINTELTypeOpCodeMap::rmap(OC) :
             BuiltinOpaqueGenericTypeOpCodeMap::rmap(OC);
-        auto *pST = M->getTypeByName(name);
+        auto *pST = IGCLLVM::getTypeByName(M, name);
         pST = pST ? pST : StructType::create(*Context, name);
 
         return mapType(T, PointerType::get(pST, getOCLOpaqueTypeAddrSpace(OC)));
@@ -2545,7 +2545,7 @@ Value *SPIRVToLLVM::promoteBool(Value *pVal, BasicBlock *BB)
 
     auto *PromoType = isa<VectorType>(pVal->getType()) ?
         cast<Type>(IGCLLVM::FixedVectorType::get(Type::getInt8Ty(pVal->getContext()),
-        (unsigned)cast<VectorType>(pVal->getType())->getNumElements())) :
+        (unsigned)cast<IGCLLVM::FixedVectorType>(pVal->getType())->getNumElements())) :
         Type::getInt8Ty(pVal->getContext());
 
     if (auto *C = dyn_cast<Constant>(pVal))
@@ -2587,7 +2587,7 @@ Value *SPIRVToLLVM::truncBool(Value *pVal, BasicBlock *BB)
 
     auto *TruncType = isa<VectorType>(pVal->getType()) ?
         cast<Type>(IGCLLVM::FixedVectorType::get(Type::getInt1Ty(pVal->getContext()),
-            (unsigned)cast<VectorType>(pVal->getType())->getNumElements())) :
+            (unsigned)cast<IGCLLVM::FixedVectorType>(pVal->getType())->getNumElements())) :
         Type::getInt1Ty(pVal->getContext());
 
     if (auto *C = dyn_cast<Constant>(pVal))
@@ -2633,7 +2633,7 @@ Type *SPIRVToLLVM::truncBoolType(SPIRVType *SPVType, Type *LLType)
 
     return isa<VectorType>(LLType) ?
         cast<Type>(IGCLLVM::FixedVectorType::get(Type::getInt1Ty(LLType->getContext()),
-                                   (unsigned)cast<VectorType>(LLType)->getNumElements())) :
+                                   (unsigned)cast<IGCLLVM::FixedVectorType>(LLType)->getNumElements())) :
         Type::getInt1Ty(LLType->getContext());
 }
 
@@ -2841,7 +2841,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       {
         if(CV[i]->getType()->isVectorTy())
         {
-          for(uint32_t j = 0; j < cast<VectorType>(CV[i]->getType())->getNumElements(); j++)
+          for(uint32_t j = 0; j < cast<IGCLLVM::FixedVectorType>(CV[i]->getType())->getNumElements(); j++)
           {
             Value *v = ExtractElementInst::Create( CV[i],ConstantInt::get( *Context,APInt( 32,j ) ),BCC->getName(),BB );
             elm1 = CreateCompositeConstruct( elm1,v,pos++ );
@@ -3512,7 +3512,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       auto Vector = transValue(BI->getOperand(0), F, BB);
       auto Scalar = transValue(BI->getOperand(1), F, BB);
 
-      auto VecType = cast<VectorType>(Vector->getType());
+      auto VecType = cast<IGCLLVM::FixedVectorType>(Vector->getType());
       auto Undef   = UndefValue::get(VecType);
 
       auto ScalarVec = InsertElementInst::Create(Undef, Scalar,
@@ -3537,7 +3537,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
           a->getType()->getScalarSizeInBits() - 1);
       auto *ShiftOp = isa<VectorType>(a->getType()) ?
           ConstantVector::getSplat(
-              IGCLLVM::getElementCount((unsigned)cast<VectorType>(a->getType())->getNumElements()), ShiftAmt) :
+              IGCLLVM::getElementCount((unsigned)cast<IGCLLVM::FixedVectorType>(a->getType())->getNumElements()), ShiftAmt) :
           ShiftAmt;
 
       // OCL C:
@@ -3895,15 +3895,15 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
               "",
               BB);
       }
-      else if (cast<VectorType>(coordType)->getNumElements() != 4)
+      else if (cast<IGCLLVM::FixedVectorType>(coordType)->getNumElements() != 4)
       {
           Value *undef = UndefValue::get(coordType);
 
           SmallVector<Constant*, 4> shuffleIdx;
-          for (unsigned i = 0; i < cast<VectorType>(coordType)->getNumElements(); i++)
+          for (unsigned i = 0; i < cast<IGCLLVM::FixedVectorType>(coordType)->getNumElements(); i++)
               shuffleIdx.push_back(ConstantInt::get(Type::getInt32Ty(*Context), i));
 
-          for (uint64_t i = (unsigned)cast<VectorType>(coordType)->getNumElements(); i < 4; i++)
+          for (uint64_t i = (unsigned)cast<IGCLLVM::FixedVectorType>(coordType)->getNumElements(); i < 4; i++)
               shuffleIdx.push_back(ConstantInt::get(Type::getInt32Ty(*Context), 0));
 
           imageCoordinateWiden = new ShuffleVectorInst(

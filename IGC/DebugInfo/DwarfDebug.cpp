@@ -1992,9 +1992,9 @@ static DebugLoc getFnDebugLoc(DebugLoc DL, const LLVMContext& Ctx)
         // Check for number of operands since the compatibility is cheap here.
         if (SP->getNumOperands() > 19)
         {
-            return DebugLoc::get(SP->getScopeLine(), 0, SP);
+            return DILocation::get(SP->getContext(), SP->getScopeLine(), 0, SP);
         }
-        return DebugLoc::get(SP->getLine(), 0, SP);
+        return DILocation::get(SP->getContext(), SP->getLine(), 0, SP);
     }
 
     return DebugLoc();

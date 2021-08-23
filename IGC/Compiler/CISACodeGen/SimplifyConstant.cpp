@@ -336,7 +336,7 @@ static unsigned getLegalVectorSize(unsigned N) {
 // Check vector size. We may demote the data type if all values can fit into
 // smaller data type.
 //
-static bool checkSize(GlobalVariable* GV, VectorType*& DataType,
+static bool checkSize(GlobalVariable* GV, IGCLLVM::FixedVectorType*& DataType,
     bool& IsSigned) {
     Constant* Init = GV->getInitializer();
     IGC_ASSERT(isa<ArrayType>(Init->getType()));
@@ -344,7 +344,7 @@ static bool checkSize(GlobalVariable* GV, VectorType*& DataType,
     unsigned N = (unsigned)ArrayTy->getArrayNumElements();
     Type* BaseTy = ArrayTy->getArrayElementType();
     unsigned VectorSize = 1;
-    if (auto VT = dyn_cast<VectorType>(BaseTy)) {
+    if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(BaseTy)) {
         BaseTy = VT->getElementType();
         VectorSize = int_cast<unsigned>(VT->getNumElements());
         N *= VectorSize;
@@ -467,7 +467,7 @@ static Constant* getConstantVal(Type* VEltTy, Constant* V, bool IsSigned) {
     return ConstantInt::get(VEltTy, IVal, IsSigned);
 }
 
-static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
+static void promote(GlobalVariable* GV, IGCLLVM::FixedVectorType* AllocaType, bool IsSigned,
     Function* F) {
     // Build the constant vector from constant array.
     unsigned VS = int_cast<unsigned>(AllocaType->getNumElements());
@@ -491,7 +491,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
             Constant* const Elt = CA->getAggregateElement(i);
             IGC_ASSERT_MESSAGE(nullptr != Elt, "Null AggregateElement");
             if (auto EltTy = dyn_cast<VectorType>(Elt->getType())) {
-                unsigned VectorSize = (unsigned)cast<VectorType>(EltTy)->getNumElements();
+                unsigned VectorSize = (unsigned)cast<IGCLLVM::FixedVectorType>(EltTy)->getNumElements();
                 for (unsigned j = 0; j < VectorSize; ++j) {
                     Constant* V = Elt->getAggregateElement(j);
                     Vals[i * VectorSize + j] = getConstantVal(VEltTy, V, IsSigned);
@@ -533,7 +533,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
             unsigned N = 1;
             Value* Offset = Index;
             if (Ty->isVectorTy()) {
-                N = (unsigned)cast<VectorType>(Ty)->getNumElements();
+                N = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
                 Offset = Builder.CreateMul(Offset, ConstantInt::get(Offset->getType(), N));
             }
             Value* Val = extractNElts(N, VectorData, Offset, Builder);
@@ -668,7 +668,7 @@ bool PromoteConstant::runOnFunction(Function& F) {
 
         // If possible demote the data into smaller type. Uses of value will be
         // promoted back with ZExt or SExt.
-        VectorType* AllocaType = nullptr;
+        IGCLLVM::FixedVectorType* AllocaType = nullptr;
         bool IsSigned = false;
         if (!checkSize(GV, AllocaType, IsSigned))
             continue;

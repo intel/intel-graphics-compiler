@@ -286,7 +286,7 @@ bool VerificationPass::verifyType(Type* type, Value* val)
 
     case IGCLLVM::VectorTyID:
     {
-        auto VType = cast<VectorType>(type);
+        auto VType = cast<IGCLLVM::FixedVectorType>(type);
         unsigned typeSize = (unsigned)VType->getNumElements();
         if (!m_IGC_IR_spec.vectorTypeSizes.count(typeSize))
         {

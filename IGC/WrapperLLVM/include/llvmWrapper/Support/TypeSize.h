@@ -17,9 +17,13 @@ using namespace llvm;
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 11
 inline unsigned getElementCount(unsigned EC) { return EC; }
-#else
+#elif LLVM_VERSION_MAJOR == 11
 inline ElementCount getElementCount(unsigned EC) {
   return ElementCount(EC, false);
+}
+#else
+inline ElementCount getElementCount(unsigned EC) {
+  return ElementCount::get(EC, false);
 }
 #endif
 } // namespace IGCLLVM

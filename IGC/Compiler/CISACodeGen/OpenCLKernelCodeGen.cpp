@@ -409,7 +409,7 @@ namespace IGC
         unsigned int numElements = 1;
         if (baseType->isVectorTy())
         {
-            numElements = (unsigned)cast<VectorType>(baseType)->getNumElements();
+            numElements = (unsigned)cast<IGCLLVM::FixedVectorType>(baseType)->getNumElements();
             baseType = cast<VectorType>(baseType)->getElementType();
         }
 

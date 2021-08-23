@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 
@@ -108,7 +109,7 @@ namespace {
             if (!Ty->isSingleValueType())
                 return UINT_MAX;
             // Simply return 1 so far for scalar types.
-            VectorType* VecTy = dyn_cast<VectorType>(Ty);
+            IGCLLVM::FixedVectorType* VecTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
             if (!VecTy)
                 return 1;
             // Check how that vector is used.
@@ -137,7 +138,7 @@ namespace {
                 return UINT_MAX;
             unsigned EltByte = (Ty->getScalarSizeInBits() + 7) / 8;
             // Simply return 1 so far for scalar types.
-            VectorType* VecTy = dyn_cast<VectorType>(Ty);
+            IGCLLVM::FixedVectorType* VecTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
             if (!VecTy)
                 return EltByte;
             // Check how that vector is used.

@@ -277,7 +277,7 @@ static Value* BuildLoadInst(CallInst& CI, unsigned int Offset, Type* DataType)
     // It Offset is aligned, it returns result of LoadInst of type DataType.
     auto ElemByteSize = DataType->getScalarSizeInBits() / 8;
     auto Size = ElemByteSize;
-    if (auto DataVecType = dyn_cast<VectorType>(DataType))
+    if (auto DataVecType = dyn_cast<IGCLLVM::FixedVectorType>(DataType))
     {
         Size *= (unsigned int)DataVecType->getNumElements();
     }

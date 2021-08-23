@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/TypeSize.h"
 
 #include "llvmWrapper/Analysis/CallGraph.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/CallSite.h"
 
 #define DEBUG_TYPE "genx-constantfolding"
@@ -64,7 +65,7 @@ static Constant *constantFoldRdRegion(Type *RetTy,
     return UndefValue::get(RetTy);
   // Parse the region parameters.
   unsigned WholeNumElements =
-      cast<VectorType>(Input->getType())->getNumElements();
+      dyn_cast<IGCLLVM::FixedVectorType>(Input->getType())->getNumElements();
   auto OffsetC = dyn_cast<Constant>(
       Operands[GenXIntrinsic::GenXRegion::RdIndexOperandNum]);
   if (!OffsetC)
@@ -75,7 +76,7 @@ static Constant *constantFoldRdRegion(Type *RetTy,
   if (!isa<VectorType>(OffsetC->getType()))
     Offset = dyn_cast<ConstantInt>(OffsetC)->getZExtValue() / RetElemSize;
   else
-    IGC_ASSERT(cast<VectorType>(OffsetC->getType())->getNumElements() ==
+    IGC_ASSERT(dyn_cast<IGCLLVM::FixedVectorType>(OffsetC->getType())->getNumElements() ==
                R.NumElements);
   if (Offset >= WholeNumElements)
     return UndefValue::get(RetTy); // out of range index

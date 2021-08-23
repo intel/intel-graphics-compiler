@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -117,7 +118,7 @@ Value* CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator* I, Value* Op0, Va
     }
     else
     {
-        auto vType = dyn_cast<VectorType>(Ty);
+        auto vType = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
         unsigned VecLen = (uint32_t)vType->getNumElements();
         Divide = UndefValue::get(Ty);
         for (unsigned i = 0; i < VecLen; i++)

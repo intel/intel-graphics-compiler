@@ -574,7 +574,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
 
         if (pType->isVectorTy())
         {
-            vectorNumElements = (unsigned)cast<VectorType>(pType)->getNumElements();
+            vectorNumElements = (unsigned)cast<IGCLLVM::FixedVectorType>(pType)->getNumElements();
         }
         else if (!pVar->IsUniform())
         {

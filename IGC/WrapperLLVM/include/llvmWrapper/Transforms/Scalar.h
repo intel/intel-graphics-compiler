@@ -26,7 +26,7 @@ namespace IGCLLVM
     {
         return llvm::createLoopUnrollPass(OptLevel, false, Threshold, Count, AllowPartial, Runtime, UpperBound, AllowPeeling);
     }
-#elif LLVM_VERSION_MAJOR == 9 || LLVM_VERSION_MAJOR == 10 || LLVM_VERSION_MAJOR == 11
+#elif LLVM_VERSION_MAJOR >= 9 && LLVM_VERSION_MAJOR <= 12
     inline static llvm::Pass * createLoopUnrollPass(
         int OptLevel = 2, int Threshold = -1, int Count = -1,
         int AllowPartial = -1, int Runtime = -1,
@@ -34,7 +34,7 @@ namespace IGCLLVM
     {
         return llvm::createLoopUnrollPass(OptLevel, false, false, Threshold, Count, AllowPartial, Runtime, UpperBound, AllowPeeling);
     }
-#elif LLVM_VERSION_MAJOR >= 12
+#else
     //DO NOT assume same function signature for all incoming llvm versions! Double check to upgrade!
 #error Not supported llvm version.
 #endif

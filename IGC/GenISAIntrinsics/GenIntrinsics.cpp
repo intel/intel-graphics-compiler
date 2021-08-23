@@ -188,7 +188,7 @@ static Type *DecodeFixedType(ArrayRef<GenISAIntrinsic::IITDescriptor> &Infos,
   case IITDescriptor::SameVecWidthArgument: {
     Type *EltTy = DecodeFixedType(Infos, Tys, Context);
     Type *Ty = Tys[D.getArgumentNumber()];
-    if (VectorType *VTy = dyn_cast<VectorType>(Ty)) {
+    if (IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty)) {
       return IGCLLVM::FixedVectorType::get(EltTy, int_cast<unsigned int>(VTy->getNumElements()));
     }
     IGC_ASSERT_EXIT_MESSAGE(0, "unhandled");
@@ -199,7 +199,7 @@ static Type *DecodeFixedType(ArrayRef<GenISAIntrinsic::IITDescriptor> &Infos,
   }
   case IITDescriptor::VecOfPtrsToElt: {
       Type *Ty = Tys[D.getArgumentNumber()];
-      VectorType *VTy = dyn_cast<VectorType>(Ty);
+      IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
       if (!VTy)
           IGC_ASSERT_EXIT_MESSAGE(0, "Expected an argument of Vector Type");
       Type *EltTy = cast<VectorType>(VTy)->getElementType();
@@ -418,7 +418,7 @@ static std::string getMangledTypeStr(Type* Ty) {
     Result += "f";
   }
   else if (isa<VectorType>(Ty))
-    Result += "v" + utostr(cast<VectorType>(Ty)->getNumElements()) +
+    Result += "v" + utostr(cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements()) +
       getMangledTypeStr(cast<VectorType>(Ty)->getElementType());
   else if (Ty)
     Result += EVT::getEVT(Ty).getEVTString();

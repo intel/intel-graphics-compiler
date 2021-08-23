@@ -2443,7 +2443,7 @@ namespace IGC
         // Store3d supports only types equal or less than 128 bits.
         if (auto* storeInst = dyn_cast<StoreInst>(&I))
         {
-            llvm::VectorType* vectorToStore = dyn_cast<llvm::VectorType>(storeInst->getValueOperand()->getType());
+            IGCLLVM::FixedVectorType* vectorToStore = dyn_cast<IGCLLVM::FixedVectorType>(storeInst->getValueOperand()->getType());
 
             // If stored value is a vector of pointers, the size must be calculated manually,
             // because getPrimitiveSizeInBits returns 0 for pointers.
@@ -3077,8 +3077,8 @@ namespace IGC
                 llvm::Type* srcTy = bTInst->getOperand(0)->getType();
                 llvm::Type* dstTy = bTInst->getType();
 
-                srcNElts = (srcTy->isVectorTy()) ? (uint32_t)cast<VectorType>(srcTy)->getNumElements() : 1;
-                dstNElts = (dstTy->isVectorTy()) ? (uint32_t)cast<VectorType>(dstTy)->getNumElements() : 1;
+                srcNElts = (srcTy->isVectorTy()) ? (uint32_t)cast<IGCLLVM::FixedVectorType>(srcTy)->getNumElements() : 1;
+                dstNElts = (dstTy->isVectorTy()) ? (uint32_t)cast<IGCLLVM::FixedVectorType>(dstTy)->getNumElements() : 1;
 
                 if (srcNElts < dstNElts && srcTy->getScalarSizeInBits() < 64)
                 {

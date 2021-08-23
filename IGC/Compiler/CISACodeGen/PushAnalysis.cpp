@@ -987,7 +987,7 @@ namespace IGC
 
         if (pTypeToPush->isVectorTy())
         {
-            num_elms = (unsigned)cast<VectorType>(pTypeToPush)->getNumElements();
+            num_elms = (unsigned)cast<IGCLLVM::FixedVectorType>(pTypeToPush)->getNumElements();
             pTypeToPush = cast<VectorType>(pTypeToPush)->getElementType();
             llvm::Type* pVecTy = IGCLLVM::FixedVectorType::get(pTypeToPush, num_elms);
             pReplacedInst = llvm::UndefValue::get(pVecTy);
@@ -1178,7 +1178,7 @@ namespace IGC
         }
 
         unsigned num_elms =
-            inst->getType()->isVectorTy() ? (unsigned)cast<VectorType>(inst->getType())->getNumElements() : 1;
+            inst->getType()->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(inst->getType())->getNumElements() : 1;
         llvm::Type* pTypeToPush = inst->getType();
         llvm::Value* replaceVector = nullptr;
         unsigned int numberChannelReplaced = 0;

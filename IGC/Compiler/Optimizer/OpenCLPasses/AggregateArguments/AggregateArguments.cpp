@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/AggregateArguments/AggregateArguments.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -114,7 +115,7 @@ static uint64_t getNumElements(Type* type)
     {
         return arrayType->getNumElements();
     }
-    if (VectorType * vectorType = dyn_cast<VectorType>(type))
+    if (IGCLLVM::FixedVectorType * vectorType = dyn_cast<IGCLLVM::FixedVectorType>(type))
     {
         return vectorType->getNumElements();
     }

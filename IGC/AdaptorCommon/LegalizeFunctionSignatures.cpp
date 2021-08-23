@@ -133,7 +133,7 @@ inline Type* LegalizedIntVectorType(Module& M, Type* ty)
 
     return ty->isIntegerTy() ?
         cast<Type>(IntegerType::get(M.getContext(), newSize)) :
-        IGCLLVM::FixedVectorType::get(IntegerType::get(M.getContext(), newSize), (unsigned)cast<VectorType>(ty)->getNumElements());
+        IGCLLVM::FixedVectorType::get(IntegerType::get(M.getContext(), newSize), (unsigned)cast<IGCLLVM::FixedVectorType>(ty)->getNumElements());
 }
 
 // Returns true for small structures that only contain primitive types

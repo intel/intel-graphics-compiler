@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/GenXOpts/GenXOpts.h"
@@ -151,7 +152,7 @@ static Value *simplifyMulDDQ(BinaryOperator &Mul) {
       if (V->getType()->getScalarSizeInBits() >= To->getScalarSizeInBits())
         return V;
 
-      if (auto *VTy = dyn_cast<VectorType>(V->getType()))
+      if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(V->getType()))
         To = IGCLLVM::FixedVectorType::get(To, VTy->getNumElements());
 
       return Sign ? B.CreateSExt(V, To, V->getName() + ".sext")
@@ -274,7 +275,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
       // Identity rdregion can be simplified to its "old value" input.
       if (RetTy
           == ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum]->getType()) {
-        unsigned NumElements = cast<VectorType>(RetTy)->getNumElements();
+        unsigned NumElements = dyn_cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
         unsigned Width = cast<ConstantInt>(
               ArgBegin[GenXIntrinsic::GenXRegion::RdWidthOperandNum])
             ->getZExtValue();
@@ -300,7 +301,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
       if (auto C = dyn_cast<Constant>(
             ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum]))
         if (auto Splat = C->getSplatValue()) {
-          if (auto VT = dyn_cast<VectorType>(RetTy))
+          if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(RetTy))
             return ConstantVector::getSplat(
                 IGCLLVM::getElementCount(VT->getNumElements()), Splat);
           return Splat;
@@ -315,7 +316,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
         if (auto CMask = dyn_cast<Constant>(ArgBegin[
               GenXIntrinsic::GenXRegion::PredicateOperandNum])) {
           if (CMask->isAllOnesValue()) {
-            unsigned NumElements = cast<VectorType>(RetTy)->getNumElements();
+            unsigned NumElements = dyn_cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
             unsigned Width = cast<ConstantInt>(
                   ArgBegin[GenXIntrinsic::GenXRegion::WrWidthOperandNum])
                 ->getZExtValue();

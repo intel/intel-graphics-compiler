@@ -643,7 +643,7 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
       Type *Ty = IntegerType::get(F->getContext(), 8);
       if (ArgTy->isVectorTy())
         ArgTys.push_back(IGCLLVM::FixedVectorType::get(
-            Ty, cast<VectorType>(ArgTy)->getNumElements()));
+            Ty, dyn_cast<IGCLLVM::FixedVectorType>(ArgTy)->getNumElements()));
       else
         ArgTys.push_back(Ty);
     } else {
@@ -1473,7 +1473,7 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
       // For a load, create a map entry that says that every vector element
       // comes from this arg.
       unsigned NumElements = 1;
-      if (auto VT = dyn_cast<VectorType>(LI->getType()))
+      if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(LI->getType()))
         NumElements = VT->getNumElements();
       auto Entry = &ValMap[LI];
       Entry->resize(NumElements, ArgIndex);
@@ -1567,7 +1567,7 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
               Entry->insert(Entry->begin(), OpndEntry->begin(), OpndEntry->end());
               // Then copy the "new value" elements according to the region.
               TempVector.resize(
-                  cast<VectorType>(CI->getType())->getNumElements(), 0);
+                  dyn_cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements(), 0);
               int VStride = cast<ConstantInt>(CI->getOperand(
                     GenXIntrinsic::GenXRegion::WrVStrideOperandNum))->getSExtValue();
               unsigned Width = cast<ConstantInt>(CI->getOperand(

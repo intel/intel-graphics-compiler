@@ -138,12 +138,12 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
             // There are uses of ldmcs other then ldms, using vector of int32 type.
             // Fix them to use newly created 16bit ldmcs.
             if (ldmcs->getType()->isVectorTy() &&
-                cast<VectorType>(ldmcs->getType())->getElementType() == m_builder->getInt32Ty())
+                cast<IGCLLVM::FixedVectorType>(ldmcs->getType())->getElementType() == m_builder->getInt32Ty())
             {
                 m_builder->SetInsertPoint(ldmcs);
 
-                uint32_t ldmcsNumOfElements =    (uint32_t)cast<VectorType>(ldmcs->getType())->getNumElements();
-                uint32_t newLdmcsNumOfElements = (uint32_t)cast<VectorType>(new_mcs_call->getType())->getNumElements();
+                uint32_t ldmcsNumOfElements =    (uint32_t)cast<IGCLLVM::FixedVectorType>(ldmcs->getType())->getNumElements();
+                uint32_t newLdmcsNumOfElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(new_mcs_call->getType())->getNumElements();
 
                 // vec of 16bit ints to vec of 32bit ints
                 Type* newLdmcsVecType = IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), newLdmcsNumOfElements);

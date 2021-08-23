@@ -24,6 +24,7 @@ See LICENSE.TXT for details.
 #include "llvm/Pass.h"
 #include <llvm/IR/InstVisitor.h>
 #include "llvm/Analysis/LoopInfo.h"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
@@ -222,7 +223,7 @@ namespace IGC
             auto Ty = V->getType();
             if (Ty->isVoidTy())
                 return 0;
-            auto VTy = llvm::dyn_cast<llvm::VectorType>(Ty);
+            auto VTy = llvm::dyn_cast<IGCLLVM::FixedVectorType>(Ty);
             auto eltTy = VTy ? VTy->getElementType() : Ty;
             uint32_t nelts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
             uint32_t eltBits = (uint32_t)m_DL->getTypeSizeInBits(eltTy);

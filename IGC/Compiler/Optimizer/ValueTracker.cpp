@@ -162,7 +162,7 @@ Value* ValueTracker::handleExtractElement(ExtractElementInst* E)
         {
             auto mask = I->getShuffleMask();
             uint shuffleidx = int_cast<uint>(mask[(uint)idx]);
-            auto vType = dyn_cast<VectorType>(I->getOperand(0)->getType());
+            auto vType = dyn_cast<IGCLLVM::FixedVectorType>(I->getOperand(0)->getType());
             baseValue = (shuffleidx < vType->getNumElements()) ?
                 I->getOperand(0) : I->getOperand(1);
         }

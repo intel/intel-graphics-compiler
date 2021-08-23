@@ -339,7 +339,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     }
                     else
                     {
-                        uint32_t vectorSize = cast<VectorType>(Inst->getType())->getNumElements();
+                        uint32_t vectorSize = cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
                         fsub = llvm::UndefValue::get(Inst->getType());
 
                         for (uint32_t i = 0; i < vectorSize; ++i)
@@ -1002,7 +1002,7 @@ void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunction
 
     Type* argumentType = inst.getOperand(0)->getType();
 
-    if (auto argumentVType = dyn_cast<VectorType>(argumentType))
+    if (auto argumentVType = dyn_cast<IGCLLVM::FixedVectorType>(argumentType))
     {
         numElements = (unsigned)argumentVType->getNumElements();
     }

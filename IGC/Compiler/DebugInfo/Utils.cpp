@@ -86,7 +86,7 @@ namespace Utils {
             IGCLLVM::DIBuilder Builder(M);
             llvm::DIGlobalVariable* GV = GVs[j]->getVariable();
             llvm::DIScope* scopeToUse = GV->getScope();
-            llvm::DILocation* locToUse = llvm::DebugLoc::get(GV->getLine(), 0, scopeToUse, loc);
+            llvm::DILocation* locToUse = llvm::DILocation::get(scopeToUse->getContext(), GV->getLine(), 0, scopeToUse, loc);
             if (llvm::isa<llvm::DICompileUnit>(GV->getScope()))
             {
                 // Function has no DebugLoc so it is either internal

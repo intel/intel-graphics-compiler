@@ -224,7 +224,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     IGC_ASSERT(nullptr != Ptr);
     IGC_ASSERT(nullptr != Ty);
 
-    VectorType* const VTy = dyn_cast<VectorType>(Ty);
+    IGCLLVM::FixedVectorType* const VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
 
     // Treat a scalar as 1-element vector
     uint32_t nelts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
@@ -638,7 +638,7 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
     VectorType* VTy = dyn_cast<VectorType>(Ty);
     Type* eTy = VTy ? cast<VectorType>(VTy)->getElementType() : Ty;
     unsigned eltSize = m_emitter->GetScalarTypeSizeInRegister(eTy);
-    unsigned nElts = VTy ? (unsigned)cast<VectorType>(VTy)->getNumElements() : 1;
+    unsigned nElts = VTy ? (unsigned)cast<IGCLLVM::FixedVectorType>(VTy)->getNumElements() : 1;
     // total bytes
     const unsigned TBytes = nElts * eltSize;
 

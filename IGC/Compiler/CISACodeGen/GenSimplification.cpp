@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -148,7 +149,7 @@ bool GenSimplification::simplifyVectorPHINodeCase2(PHINode& PN) const {
 
     Type* Ty = PN.getType();
     Type* EltTy = Ty->getScalarType();
-    unsigned NumElts = (unsigned)cast<VectorType>(Ty)->getNumElements();
+    unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
 
     SmallVector<Value*, 8> Lanes;
     SmallVector<SmallVector<Value*, 8>, 4> Values;
@@ -222,7 +223,7 @@ void GenSimplification::visitPHINode(PHINode& PN) {
 void GenSimplification::visitExtractElement(ExtractElementInst& EEI) {
     // Skip non-2-element vector.
     Value* Vec = EEI.getVectorOperand();
-    VectorType* VTy = cast<VectorType>(Vec->getType());
+    IGCLLVM::FixedVectorType* VTy = cast<IGCLLVM::FixedVectorType>(Vec->getType());
     if (VTy->getNumElements() != 2)
         return;
 
