@@ -782,8 +782,6 @@ static unsigned intrinsicCategoryToRegCategory(unsigned ICat)
       return RegCategory::SAMPLER;
     case GenXIntrinsicInfo::SURFACE:
       return RegCategory::SURFACE;
-    case GenXIntrinsicInfo::VME:
-      return RegCategory::VME;
     default:
       return RegCategory::GENERAL;
   }

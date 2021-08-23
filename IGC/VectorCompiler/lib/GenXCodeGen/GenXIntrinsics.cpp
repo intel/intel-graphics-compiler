@@ -126,8 +126,9 @@ unsigned GenXIntrinsicInfo::getTrailingNullZoneStart(CallInst *CI) {
  */
 unsigned GenXIntrinsicInfo::getExecSizeAllowedBits() {
   for (const auto *p = Args; *p; p++) {
-    if (!(*p & GENERAL)) {
-      switch (*p & CATMASK) {
+    ArgInfo AI(*p);
+    if (!AI.isGeneral()) {
+      switch (AI.getCategory()) {
       case EXECSIZE:
         return 0x3f;
       case EXECSIZE_GE2:

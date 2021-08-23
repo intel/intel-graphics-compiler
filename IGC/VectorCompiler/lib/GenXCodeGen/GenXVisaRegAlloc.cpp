@@ -155,8 +155,6 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
     report_fatal_error("Too many vISA sampler registers");
   if (CurrentRegId[RegCategory::SURFACE] > VISA_MAX_SURFACE_REGS)
     report_fatal_error("Too many vISA surface registers");
-  if (CurrentRegId[RegCategory::VME] > VISA_MAX_VME_REGS)
-    report_fatal_error("Too many vISA VME registers");
   return false;
 }
 
@@ -951,7 +949,6 @@ void GenXVisaRegAlloc::Reg::print(raw_ostream &OS) const
     case RegCategory::PREDICATE: OS << "p"; break;
     case RegCategory::SAMPLER: OS << "s"; break;
     case RegCategory::SURFACE: OS << "t"; break;
-    case RegCategory::VME: OS << "vme"; break;
     default: OS << "?"; break;
   }
   OS << Num;
