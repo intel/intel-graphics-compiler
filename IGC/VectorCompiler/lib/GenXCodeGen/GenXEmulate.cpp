@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include "vc/BiF/Tools.h"
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/BiF.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
@@ -128,6 +129,9 @@ class GenXEmulate : public ModulePass {
     Value *visitFPToSI(FPToSIInst &);
     Value *visitUIToFP(UIToFPInst &);
     Value *visitSIToFP(SIToFPInst &);
+    Value *buildUI64ToFloat(UIToFPInst &Op);
+    Value *buildSI64ToFloat(SIToFPInst &Op);
+    Value *buildI64ToHalf(CastInst &Op);
 
     Value *visitZExtInst(ZExtInst &I);
     Value *visitSExtInst(SExtInst &I);
@@ -160,6 +164,7 @@ class GenXEmulate : public ModulePass {
     static bool isI64ToFP(const Instruction &I);
     static bool isI64Cmp(const Instruction &I);
     static Value *detectBitwiseNot(BinaryOperator &);
+    static Type *changeScalarType(Type *T, Type *NewTy);
 
     struct VectorInfo {
       Value *V;
@@ -360,6 +365,14 @@ Value *GenXEmulate::Emu64Expander::detectBitwiseNot(BinaryOperator &Op) {
     return Op.getOperand(1);
 
   return nullptr;
+}
+
+// Changes scalar to scalar, vector to vector
+Type *GenXEmulate::Emu64Expander::changeScalarType(Type *T, Type *NewTy) {
+  IGC_ASSERT_MESSAGE(NewTy == NewTy->getScalarType(), "NewTy must be scalar");
+  return (T->isVectorTy()) ? IGCLLVM::FixedVectorType::get(
+                                 NewTy, cast<VectorType>(T)->getNumElements())
+                           : NewTy;
 }
 
 // changes vector/scalar i64 type so it now uses scalar type i32
@@ -658,8 +671,11 @@ Value *GenXEmulate::Emu64Expander::visitAShr(BinaryOperator &Op) {
 }
 Value *GenXEmulate::Emu64Expander::visitFPToUI(FPToUIInst &Op) {
 
-  if (Op.getType()->getScalarType() == Type::getDoubleTy(Op.getContext()))
-    report_fatal_error("int_emu: double->UI conversions are not supported");
+  if (!(Op.getOperand(0)->getType()->getScalarType()->isFloatTy() &&
+        Op.getType()->getScalarType()->isIntegerTy(64)))
+    vc::diagnose(Op.getContext(), "GenXEmulate", &Op,
+                 "unsupported (floating point type) -> UI conversion. "
+                 "Only float->i64 is supported");
 
   // TODO: try to detect the case where operand is a constant expression
   // and do the covertion manually
@@ -672,8 +688,11 @@ Value *GenXEmulate::Emu64Expander::visitFPToUI(FPToUIInst &Op) {
 }
 Value *GenXEmulate::Emu64Expander::visitFPToSI(FPToSIInst &Op) {
 
-  if (Op.getType()->getScalarType() == Type::getDoubleTy(Op.getContext()))
-    report_fatal_error("int_emu: double->SI conversions are not supported");
+  if (!(Op.getOperand(0)->getType()->getScalarType()->isFloatTy() &&
+        Op.getType()->getScalarType()->isIntegerTy(64)))
+    vc::diagnose(Op.getContext(), "GenXEmulate", &Op,
+                 "unsupported (floating point type) -> UI conversion. "
+                 "Only float->i64 is supported");
 
   // TODO: try to detect the case where operand is a constant expression
   // and do the covertion manually
@@ -685,9 +704,32 @@ Value *GenXEmulate::Emu64Expander::visitFPToSI(FPToSIInst &Op) {
                                Twine(Op.getOpcodeName()) + ".emu");
 }
 Value *GenXEmulate::Emu64Expander::visitUIToFP(UIToFPInst &Op) {
+  auto *STy = Op.getType()->getScalarType();
 
-  if (Op.getType()->getScalarType() == Type::getDoubleTy(Op.getContext()))
-    report_fatal_error("int_emu: UI->double conversions are not supported");
+  if (STy->isHalfTy())
+    return buildI64ToHalf(Op);
+  if (STy->isFloatTy())
+    return buildUI64ToFloat(Op);
+  vc::diagnose(Op.getContext(), "GenXEmulate", &Op,
+               "unsupported UI64 -> (floating point type) conversion. "
+               "Only UI64->float and UI64->half are supported");
+  return nullptr; // to suppress warnings
+}
+Value *GenXEmulate::Emu64Expander::visitSIToFP(SIToFPInst &Op) {
+  auto *STy = Op.getType()->getScalarType();
+
+  if (STy->isHalfTy())
+    return buildI64ToHalf(Op);
+  if (STy->isFloatTy())
+    return buildSI64ToFloat(Op);
+  vc::diagnose(Op.getContext(), "GenXEmulate", &Op,
+               "unsupported SI64 -> (floating point type) conversion. "
+               "Only SI64->float and SI64->half are supported");
+  return nullptr; // to suppress warnings
+}
+Value *GenXEmulate::Emu64Expander::buildUI64ToFloat(UIToFPInst &Op) {
+  IGC_ASSERT_MESSAGE(Op.getType()->getScalarType()->isFloatTy(),
+                     "UI64->fp32 conversion expected");
 
   auto Builder = getIRBuilder();
   auto UI64 = SplitBuilder.splitOperandLoHi(0);
@@ -761,10 +803,9 @@ Value *GenXEmulate::Emu64Expander::visitUIToFP(UIToFPInst &Op) {
         Result, Op.getType(), Twine("int_emu.ui2fp.") + Op.getOpcodeName());
   return Result;
 }
-Value *GenXEmulate::Emu64Expander::visitSIToFP(SIToFPInst &Op) {
-
-  if (Op.getType()->getScalarType() == Type::getDoubleTy(Op.getContext()))
-    report_fatal_error("int_emu: UI->double conversions are not supported");
+Value *GenXEmulate::Emu64Expander::buildSI64ToFloat(SIToFPInst &Op) {
+  IGC_ASSERT_MESSAGE(Op.getType()->getScalarType()->isFloatTy(),
+                     "SI64->fp32 conversion expected");
 
   // NOTE: SIToFP is special, since it does not do the convert by itself,
   // Instead it just creates a sequence of 64.bit operations which
@@ -797,6 +838,20 @@ Value *GenXEmulate::Emu64Expander::visitSIToFP(SIToFPInst &Op) {
   Value *AsInt = Builder.CreateBitCast(Cnv, K.getVTy());
   auto *Result = Builder.CreateOr(AsInt, SignVal);
   return Builder.CreateBitCast(Result, Op.getType());
+}
+// Expands both UI64->half and SI64->half
+Value *GenXEmulate::Emu64Expander::buildI64ToHalf(CastInst &Op) {
+  IGC_ASSERT_MESSAGE(Op.getType()->getScalarType()->isHalfTy(),
+                     "UI64->half or SI64->half conversion expected");
+
+  auto Builder = getIRBuilder();
+  auto *FloatTy = Type::getFloatTy(Op.getContext());
+  auto *Conv = cast<Instruction>(
+      Builder.CreateCast(Op.getOpcode(), Op.getOperand(0),
+                         changeScalarType(Op.getType(), FloatTy)));
+  auto *EmulatedConv = Emu64Expander{ST, *Conv}.tryExpand();
+  Conv->eraseFromParent();
+  return Builder.CreateFPTrunc(EmulatedConv, Op.getType(), "int_emu.truncate");
 }
 Value *GenXEmulate::Emu64Expander::visitZExtInst(ZExtInst &I) {
   auto Builder = getIRBuilder();
@@ -839,7 +894,8 @@ Value *GenXEmulate::Emu64Expander::visitPtrToInt(PtrToIntInst &I) {
   if (DL.getTypeSizeInBits(I.getOperand(0)->getType()->getScalarType()) <
       DL.getTypeSizeInBits(I.getType()->getScalarType())) {
     LLVM_DEBUG(dbgs() << "i64-emu::ERROR: " << I << " can't be emulated\n");
-    report_fatal_error("int_emu: ptr32->i64 extensions are not supported");
+    vc::diagnose(I.getContext(), "GenXEmulate", &I,
+                 "ptr32->i64 extensions are not supported");
   }
 
   auto Builder = getIRBuilder();
@@ -885,7 +941,8 @@ Value *GenXEmulate::Emu64Expander::visitIntToPtr(IntToPtrInst &I) {
   if (DL.getTypeSizeInBits(I.getOperand(0)->getType()->getScalarType()) >
       DL.getTypeSizeInBits(I.getType()->getScalarType())) {
     LLVM_DEBUG(dbgs() << "i64-emu::ERROR: " << I << " can't be emulated\n");
-    report_fatal_error("int_emu: i64->ptr32 truncations are not supported");
+    vc::diagnose(I.getContext(), "GenXEmulate", &I,
+                 "i64->ptr32 truncations are not supported");
   }
 
   auto Builder = getIRBuilder();
@@ -1142,8 +1199,9 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
 }
 
 Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
-  if (CI.getType()->getScalarType() == Type::getDoubleTy(CI.getContext()))
-    report_fatal_error("int_emu: double->UI conversions are not supported");
+  if (CI.getType()->getScalarType()->isDoubleTy())
+    vc::diagnose(CI.getContext(), "GenXEmulate", &CI,
+                 "double->UI conversions are not supported");
 
   auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
   IGC_ASSERT_MESSAGE(IID == GenXIntrinsic::genx_fptosi_sat ||
