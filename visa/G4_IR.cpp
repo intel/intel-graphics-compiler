@@ -6122,7 +6122,7 @@ int G4_AddrExp::eval()
         // address taken range is spilled
         G4_Declare* addrTakenSpillFillDcl = m_addressedReg->getDeclare()->getAddrTakenSpillFill();
         MUST_BE_TRUE(addrTakenSpillFillDcl != NULL, "No addr taken spill fill register found!");
-        byteAddr = addrTakenSpillFillDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum() * 32;
+        byteAddr = addrTakenSpillFillDcl->getGRFBaseOffset();
     }
     else
     {
