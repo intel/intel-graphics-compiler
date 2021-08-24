@@ -477,13 +477,16 @@ bool EstimateFunctionSize::funcIsGoodtoTrim( llvm::Function* F)
         }
         return false;
     }
-    /* allow trimming functions called from other kernels, some could be clnoed later
-    for( auto C : func->CallerList )
+    // to allow trimming functions called from other kernels, set the regkey to false
+    if( IGC_IS_FLAG_ENABLED( ForceInlineExternalFunctions ) )
     {
-        FunctionNode* caller = get<FunctionNode>( C );
-        if( caller->KernelNum != func->KernelNum )
-            return false; // always inline if there is a caller outside this kernel
-    } */
+        for( auto C : func->CallerList )
+        {
+            FunctionNode* caller = get<FunctionNode>( C );
+            if( caller->KernelNum != func->KernelNum )
+                return false; // always inline if there is a caller outside this kernel
+        }
+    }
     return true;
 }
 

@@ -400,6 +400,7 @@ DECLARE_IGC_REGKEY(bool, ControlInlineImplicitArgs,     true, "Avoid trimming fu
 DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySize,        200, "Tiny function size for controlling kernel total size", true)
 DECLARE_IGC_REGKEY(DWORD, PrintControlKernelTotalSize,  0, "Print Control kernel total size", true)
 DECLARE_IGC_REGKEY(bool, AddNoInlineToTrimmedFunctions, false, "Tell late passes not to inline trimmed functions", false)
+DECLARE_IGC_REGKEY(bool, ForceInlineExternalFunctions,  false, "not to trim functions called from multiple kernels", true)
 DECLARE_IGC_REGKEY(DWORD, KernelTotalSizeThreshold,     50000, "Trimming target of kernel total size", true)
 DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global constant data to register promotion", false)
 DECLARE_IGC_REGKEY(bool, AllowNonLoopConstantPromotion, false, "Allows promotion for constants not in loop (e.g. used once)", false)
