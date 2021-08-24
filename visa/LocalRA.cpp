@@ -159,10 +159,7 @@ void LocalRA::preLocalRAAnalysis()
     unsigned int numRowsReserved = numRowsEOT;
 
     // Remove unreferenced dcls
-    if (!builder.getOptions()->getuInt32Option(vISA_CodePatch))
-    {
-        gra.removeUnreferencedDcls();
-    }
+    gra.removeUnreferencedDcls();
 
     if (builder.getOption(vISA_HybridRAWithSpill) || builder.getOption(vISA_FastCompileRA))
     {
