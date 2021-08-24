@@ -98,6 +98,12 @@ IntelCMClangFEGetInterfaceVersion();
 extern "C" INTEL_CM_CLANGFE_DLL_DECL int IntelCMClangFEGetRevId(
     Intel::CM::ClangFE::IDriverInvocation const *DriverInvocPtr);
 
+extern "C" INTEL_CM_CLANGFE_DLL_DECL bool IntelCMClangFEGetPrintStats(
+    Intel::CM::ClangFE::IDriverInvocation const *DriverInvocPtr);
+
+extern "C" INTEL_CM_CLANGFE_DLL_DECL const char *IntelCMClangFEGetStatsFile(
+    Intel::CM::ClangFE::IDriverInvocation const *DriverInvocPtr);
+
 extern "C" INTEL_CM_CLANGFE_DLL_DECL const char *IntelCMClangFEGetVCApiOptions(
     Intel::CM::ClangFE::IDriverInvocation const *DriverInvocPtr);
 

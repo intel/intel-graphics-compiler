@@ -191,6 +191,16 @@ public:
 
   DyLibTy &LibInfo() { return Lib; }
 
+  bool getPrintStats(IDriverInvocation *DriverInvoc) {
+    auto *PrintStats = CMFE_WRAPPER_GET_SYMBOL(IntelCMClangFEGetPrintStats);
+    return PrintStats(DriverInvoc);
+  }
+
+  std::string getStatsFile(IDriverInvocation *DriverInvoc) {
+    auto *StatsFile = CMFE_WRAPPER_GET_SYMBOL(IntelCMClangFEGetStatsFile);
+    return StatsFile(DriverInvoc);
+  }
+
   std::string getVCApiOptions(IDriverInvocation *DriverInvoc) {
     auto *getVCOptions =
         CMFE_WRAPPER_GET_SYMBOL(IntelCMClangFEGetVCApiOptions);
