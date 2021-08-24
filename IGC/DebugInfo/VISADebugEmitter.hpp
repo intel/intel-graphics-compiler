@@ -38,7 +38,6 @@ namespace IGC
     class StreamEmitter;
     class VISAModule;
     class DwarfDebug;
-    class DwarfDISubprogramCache;
     class CodeGenContext;
 
     class DebugEmitter : public IDebugEmitter
@@ -48,13 +47,9 @@ namespace IGC
         ~DebugEmitter();
 
         // IDebugEmitter interface methods
-        void Initialize(std::unique_ptr<VISAModule> VM,
-                        const DebugEmitterOpts& Opts) override;
-
-        void SetDISPCache(DwarfDISubprogramCache *DISPCache) override;
-
-        std::vector<char> Finalize(bool finalize, DbgDecoder* decodedDbg) override;
-
+        void Initialize(std::unique_ptr<VISAModule> VM, const DebugEmitterOpts& Opts) override;
+        std::vector<char> Finalize(bool finalize, DbgDecoder* decodedDbg,
+                                   const std::vector<llvm::DISubprogram*>&) override;
         void BeginInstruction(llvm::Instruction* pInst) override;
         void EndInstruction(llvm::Instruction* pInst) override;
         void BeginEncodingMark() override;
