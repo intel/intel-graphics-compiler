@@ -178,6 +178,9 @@ void CGen8CMProgram::CreateKernelBinaries() {
 void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
                                  unsigned pointerSizeInBytes) {
   llvm::raw_string_ostream ErrLog{m_ErrorLog};
+  // Contains buffer to an optional debug info. Should exists till zebuilder
+  // is destroyed.
+  std::unique_ptr<llvm::MemoryBuffer> DebugInfoHolder;
   iOpenCL::ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8,
                                      *m_programInfo, nullptr, 0};
   zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
@@ -188,13 +191,14 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
         kernel->getProgramOutput().m_programSize, kernel->m_kernelInfo,
         kernel->m_GRFSizeInBytes);
   }
+
   if (m_ContextProvider.isProgramDebuggable()) {
-    auto Buff = buildZeDebugInfo(m_kernels, ErrLog);
-    if (Buff) {
+    DebugInfoHolder = buildZeDebugInfo(m_kernels, ErrLog);
+    if (DebugInfoHolder) {
       // Unfortunately, we do need const_cast here, since API requires void*
       void *BufferStart = const_cast<void *>(
-          reinterpret_cast<const void *>(Buff->getBufferStart()));
-      zebuilder.addElfSections(BufferStart, Buff->getBufferSize());
+          reinterpret_cast<const void *>(DebugInfoHolder->getBufferStart()));
+      zebuilder.addElfSections(BufferStart, DebugInfoHolder->getBufferSize());
     }
   }
   zebuilder.getBinaryObject(programBinary);
