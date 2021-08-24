@@ -243,6 +243,7 @@ private:
   bool lowerLLVMMaskedGather(CallInst *CI);
   bool lowerLLVMMaskedScatter(CallInst *CI);
   bool lowerFMulAdd(CallInst *CI);
+  bool lowerBitreverse(CallInst *CI);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -1479,6 +1480,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       llvm_unreachable("Expect intrinsic should be lowered before");
     case Intrinsic::fmuladd:
       return lowerFMulAdd(CI);
+    case Intrinsic::bitreverse:
+      return lowerBitreverse(CI);
     }
     return false;
   }
@@ -3178,6 +3181,53 @@ bool GenXLowering::lowerLLVMMaskedScatter(CallInst* CallOp) {
   CallInst::Create(NewFDecl, { MaskV, NumBlksC, PtrV, DataV },
       CallOp->getName(), CallOp);
   ToErase.push_back(CallOp);
+  return true;
+}
+
+// %1 = call i8 @llvm.bitreverse.i8(i8 %in)
+// to
+// %1.zext = zext i8 %in to i32
+// %halfres.bigger = call i32 @genx.bfrev.i32(i32 %1.zext)
+// // calculated val = 32 - 8
+// %res.bigger = lshr i32 %halfres.bigger, val
+// %res = trunc i32 %res.bigger to i8
+bool GenXLowering::lowerBitreverse(CallInst *CI) {
+  IGC_ASSERT(CI);
+  LLVMContext &Ctx = CI->getContext();
+
+  Value *ValueToBitReverse = CI->getOperand(0);
+  auto IDBfrev = GenXIntrinsic::genx_bfrev;
+  Type *OriginalType = ValueToBitReverse->getType();
+  Type *BfrevType =
+      isa<IGCLLVM::FixedVectorType>(OriginalType)
+          ? cast<Type>(IGCLLVM::FixedVectorType::get(
+                Type::getInt32Ty(Ctx),
+                cast<IGCLLVM::FixedVectorType>(OriginalType)->getNumElements()))
+          : Type::getInt32Ty(Ctx);
+
+  auto *DeclGenXBfReverse =
+      GenXIntrinsic::getGenXDeclaration(CI->getModule(), IDBfrev, {BfrevType});
+  auto OriginalElementBitSize = OriginalType->getScalarSizeInBits();
+  int ShiftSize = 32 - OriginalElementBitSize;
+  if (ShiftSize < 0) {
+    DiagnosticInfoLowering Err(
+        CI,
+        "currently llvm.bitreverse with bitsize bigger than 32 is not supported",
+        DS_Error);
+    CI->getContext().diagnose(Err);
+  }
+  Value *ShiftSizeVal = ConstantInt::get(BfrevType, ShiftSize);
+  IRBuilder<> Builder(CI);
+  Value *Zext = Builder.CreateZExt(ValueToBitReverse, BfrevType);
+  Value *WiderRes = Builder.CreateCall(DeclGenXBfReverse->getFunctionType(),
+                                       DeclGenXBfReverse, {Zext}, "bfRev");
+  if (ShiftSize > 0)
+    WiderRes = Builder.CreateLShr(WiderRes, ShiftSizeVal, "lshl");
+  Value *Res = Builder.CreateTrunc(WiderRes, OriginalType);
+
+  CI->replaceAllUsesWith(Res);
+  ToErase.push_back(CI);
+
   return true;
 }
 
