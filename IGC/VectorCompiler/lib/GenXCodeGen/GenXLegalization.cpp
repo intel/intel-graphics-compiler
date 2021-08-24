@@ -1765,11 +1765,6 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
                                       Instruction *InsertBefore) {
   IGC_ASSERT_MESSAGE(BInst.Info.Type == BaleInfo::WRREGION, "wrong argument");
   Region R(BInst.Inst, BInst.Info);
-  R.getSubregion(StartIdx, Width);
-  if (R.Mask && isa<VectorType>(R.Mask->getType()))
-    R.Mask = getSplitOperand(
-        BInst.Inst, GenXIntrinsic::GenXRegion::PredicateOperandNum, StartIdx,
-        Width, InsertBefore, BInst.Inst->getDebugLoc());
   // For SplitIdx==0, the old vector value comes from the original
   // wrregion. Otherwise it comes from the split wrregion created
   // last time round.
@@ -1781,13 +1776,16 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
     In = new LoadInst(GV->getType()->getPointerElementType(), GV, ".gload",
                       /*volatile*/ true, InsertBefore);
   }
-  Value *NewWrRegion =
-      R.createWrRegion(In,
-                       getSplitOperand(BInst.Inst, 1, StartIdx, Width,
-                                       InsertBefore, BInst.Inst->getDebugLoc()),
-                       BInst.Inst->getName() + ".join" + Twine(StartIdx),
-                       InsertBefore, BInst.Inst->getDebugLoc());
-  return NewWrRegion;
+  R.getSubregion(StartIdx, Width);
+  if (R.Mask && isa<VectorType>(R.Mask->getType()))
+    R.Mask = getSplitOperand(
+        BInst.Inst, GenXIntrinsic::GenXRegion::PredicateOperandNum, StartIdx,
+        Width, InsertBefore, BInst.Inst->getDebugLoc());
+  Value *WriteValue = getSplitOperand(BInst.Inst, 1, StartIdx, Width,
+                                      InsertBefore, BInst.Inst->getDebugLoc());
+  return R.createWrRegion(In, WriteValue,
+                          BInst.Inst->getName() + ".join" + Twine(StartIdx),
+                          InsertBefore, BInst.Inst->getDebugLoc());
 }
 
 // specialized join function for wrpredpredregion instruction
@@ -1886,8 +1884,6 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
                        cast<VectorType>(BInst.Inst->getOperand(0)->getType())
                            ->getNumElements(),
                        ST, &(Baling->AlignInfo)) == 1;
-
-    R.getSubregion(StartIdx, Width);
     // The region to read from. This is normally from the input region baled
     // in. If this is reading from and writing to the same region and
     // split progapation is on, then just reading from the last joined value
@@ -1903,6 +1899,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
           OldVal = PrevSliceRes;
       }
     }
+    R.getSubregion(StartIdx, Width);
     if (!ConvertToMulti) {
       // Not converting to multi indirect.
       return R.createRdRegion(
@@ -2023,8 +2020,8 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   Module *M = InsertBefore->getParent()->getParent()->getParent();
   Function *Decl =
       GenXIntrinsic::getAnyDeclaration(M, IntrinID, OverloadedTypes);
-  Instruction *NewInst = CallInst::Create(
-      Decl, Args, CI->getName() + ".split" + Twine(StartIdx), InsertBefore);
+  auto Name = ".split" + Twine(StartIdx);
+  Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
   NewInst->setDebugLoc(DL);
   return NewInst;
 }
