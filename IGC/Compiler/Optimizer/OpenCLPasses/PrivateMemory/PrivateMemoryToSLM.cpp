@@ -309,21 +309,21 @@ namespace IGC
                     {
                         localIdX =
                             ZExtInst::CreateIntegerCast(
-                                implicitArgs.getArgInFunc(*F, ImplicitArg::LOCAL_ID_X),
+                                implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_ID_X),
                                 typeInt32,
                                 false,
                                 VALUE_NAME("localIdX"),
                                 pEntryPoint);
                         localIdY =
                             ZExtInst::CreateIntegerCast(
-                                implicitArgs.getArgInFunc(*F, ImplicitArg::LOCAL_ID_Y),
+                                implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_ID_Y),
                                 typeInt32,
                                 false,
                                 VALUE_NAME("localIdY"),
                                 pEntryPoint);
                         localIdZ =
                             ZExtInst::CreateIntegerCast(
-                                implicitArgs.getArgInFunc(*F, ImplicitArg::LOCAL_ID_Z),
+                                implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_ID_Z),
                                 typeInt32,
                                 false,
                                 VALUE_NAME("localIdZ"),
@@ -336,7 +336,7 @@ namespace IGC
                         //    R0.1  31:0    Thread Group ID X
                         //    R0.6  31:0    Thread Group ID Y
                         //    R0.7  31:0    Thread Group ID Z
-                        Argument* r0Arg = implicitArgs.getArgInFunc(*F, ImplicitArg::R0);
+                        Argument* r0Arg = implicitArgs.getImplicitArg(*F, ImplicitArg::R0);
                         localIdX =
                             builder.CreateExtractElement(
                                 r0Arg,

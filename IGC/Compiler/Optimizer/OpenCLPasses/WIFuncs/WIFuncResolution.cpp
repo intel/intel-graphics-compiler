@@ -321,7 +321,7 @@ Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
     // %localIdX
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         // LocalIDBase = oword_ld
@@ -396,7 +396,7 @@ Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
     }
     else
     {
-        Argument* localId = getImplicitArg(CI, argType);
+        Argument* localId = m_implicitArgs.getImplicitArg(*F, argType);
         V = localId;
     }
 
@@ -420,7 +420,7 @@ Value* WIFuncResolution::getGroupId(CallInst& CI)
     // if dim = 2 then we need to access R0.7
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -433,7 +433,7 @@ Value* WIFuncResolution::getGroupId(CallInst& CI)
     }
     else
     {
-        Argument* arg = getImplicitArg(CI, ImplicitArg::R0);
+        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::R0);
         V = arg;
     }
 
@@ -461,7 +461,7 @@ Value* WIFuncResolution::getLocalThreadId(CallInst &CI)
     // we need to access R0.2 bits 0 to 7, which contain HW local thread ID on XeHP_SDV+
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -474,7 +474,7 @@ Value* WIFuncResolution::getLocalThreadId(CallInst &CI)
     }
     else
     {
-        Argument* arg = getImplicitArg(CI, ImplicitArg::R0);
+        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::R0);
         V = arg;
     }
 
@@ -495,7 +495,7 @@ Value* WIFuncResolution::getGlobalSize(CallInst& CI)
     // %globalSize1 = extractelement <3 x i32> %globalSize, i32 %dim
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         llvm::IRBuilder<> Builder(&CI);
@@ -516,7 +516,7 @@ Value* WIFuncResolution::getGlobalSize(CallInst& CI)
     }
     else
     {
-        Argument* arg = getImplicitArg(CI, ImplicitArg::GLOBAL_SIZE);
+        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::GLOBAL_SIZE);
         V = arg;
     }
 
@@ -536,7 +536,7 @@ Value* WIFuncResolution::getLocalSize(CallInst& CI)
     // %localSize = extractelement <3 x i32> %localSize, i32 %dim
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         llvm::IRBuilder<> Builder(&CI);
@@ -548,7 +548,7 @@ Value* WIFuncResolution::getLocalSize(CallInst& CI)
     }
     else
     {
-        Argument* arg = getImplicitArg(CI, ImplicitArg::LOCAL_SIZE);
+        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_SIZE);
         V = arg;
     }
 
@@ -567,7 +567,7 @@ Value* WIFuncResolution::getEnqueuedLocalSize(CallInst& CI) {
     // %enqueuedLocalSize1 = extractelement <3 x i32> %enqueuedLocalSize, %dim
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         // Assume that enqueued local size is same as local size
@@ -580,7 +580,7 @@ Value* WIFuncResolution::getEnqueuedLocalSize(CallInst& CI) {
     }
     else
     {
-        Argument* arg = getImplicitArg(CI, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE);
+        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE);
         V = arg;
     }
 
@@ -600,7 +600,7 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     // %globalOffset = extractelement <8 x i32> %payloadHeader, i32 %dim
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         llvm::IRBuilder<> Builder(&CI);
@@ -621,7 +621,7 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     }
     else
     {
-        Argument* arg = getImplicitArg(CI, ImplicitArg::PAYLOAD_HEADER);
+        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::PAYLOAD_HEADER);
         V = arg;
     }
 
@@ -641,7 +641,7 @@ Value* WIFuncResolution::getWorkDim(CallInst& CI)
     // %workDim
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         llvm::IRBuilder<> Builder(&CI);
@@ -654,7 +654,7 @@ Value* WIFuncResolution::getWorkDim(CallInst& CI)
     }
     else
     {
-        Argument* workDim = getImplicitArg(CI, ImplicitArg::WORK_DIM);
+        Argument* workDim = m_implicitArgs.getImplicitArg(*F, ImplicitArg::WORK_DIM);
         V = workDim;
     }
 
@@ -670,7 +670,7 @@ Value* WIFuncResolution::getNumGroups(CallInst& CI)
     // %numGroups1 = extractelement <3 x i32> %numGroups, i32 %dim
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         llvm::IRBuilder<> Builder(&CI);
@@ -682,7 +682,7 @@ Value* WIFuncResolution::getNumGroups(CallInst& CI)
     }
     else
     {
-        Argument* arg = getImplicitArg(CI, ImplicitArg::NUM_GROUPS);
+        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::NUM_GROUPS);
         V = arg;
     }
 
@@ -700,8 +700,8 @@ Value* WIFuncResolution::getStageInGridOrigin(CallInst& CI)
 
     // Creates:
     // %grid_origin1 = extractelement <3 x i32> %globalSize, i32 %dim
-
-    Argument* arg = getImplicitArg(CI, ImplicitArg::STAGE_IN_GRID_ORIGIN);
+    auto F = CI.getParent()->getParent();
+    Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::STAGE_IN_GRID_ORIGIN);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* globalSize = ExtractElementInst::Create(arg, dim, "grid_origin", &CI);
@@ -719,7 +719,7 @@ Value* WIFuncResolution::getStageInGridSize(CallInst& CI)
     // %grid_size1 = extractelement <3 x i32> %globalSize, i32 %dim
 
     Value* V = nullptr;
-    auto F = CI.getFunction();
+    auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
         llvm::IRBuilder<> Builder(&CI);
@@ -740,7 +740,7 @@ Value* WIFuncResolution::getStageInGridSize(CallInst& CI)
     }
     else
     {
-        Argument* arg = getImplicitArg(CI, ImplicitArg::STAGE_IN_GRID_SIZE);
+        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::STAGE_IN_GRID_SIZE);
         V = arg;
     }
 
@@ -758,23 +758,9 @@ Value* WIFuncResolution::getSyncBufferPtr(CallInst& CI)
 
     // Creates:
     // i8 addrspace(1)* %syncBuffer
-
-    Argument* syncBuffer = getImplicitArg(CI, ImplicitArg::SYNC_BUFFER);
+    auto F = CI.getParent()->getParent();
+    Argument* syncBuffer = m_implicitArgs.getImplicitArg(*F, ImplicitArg::SYNC_BUFFER);
 
     return syncBuffer;
 }
 
-Argument* WIFuncResolution::getImplicitArg(CallInst& CI, ImplicitArg::ArgType argType)
-{
-    unsigned int numImplicitArgs = m_implicitArgs.size();
-    unsigned int implicitArgIndex = m_implicitArgs.getArgIndex(argType);
-
-    Function* pFunc = CI.getParent()->getParent();
-    IGC_ASSERT_MESSAGE(pFunc->arg_size() >= numImplicitArgs, "Function arg size does not match meta data args.");
-    unsigned int implicitArgIndexInFunc = pFunc->arg_size() - numImplicitArgs + implicitArgIndex;
-
-    Function::arg_iterator arg = pFunc->arg_begin();
-    for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);
-
-    return &(*arg);
-}

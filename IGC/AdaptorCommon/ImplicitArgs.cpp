@@ -587,16 +587,6 @@ int32_t ImplicitArgs::getStructArgOffset(unsigned int index) const
     return -1;
 }
 
-
-TODO("Refactor code to avoid code triplication for getArgInFunc(), getImplicitArg() and WIFuncResolution::getImplicitArg()")
-Argument* ImplicitArgs::getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) const {
-    IGC_ASSERT_MESSAGE((F.arg_size() >= size()), "Invalid number of argumnents in the function!");
-
-    unsigned int argIndex       =  getArgIndex(argType);
-    unsigned int argIndexInFunc = F.arg_size() - size() + argIndex;
-    return F.arg_begin() + argIndexInFunc;
-}
-
 Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType) const
 {
     if (!isImplicitArgExist(argType))

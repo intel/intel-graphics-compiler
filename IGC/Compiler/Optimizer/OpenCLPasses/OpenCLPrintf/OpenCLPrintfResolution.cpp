@@ -496,7 +496,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
     preprocessPrintfArgs(printfCall);
 
     // writeOffset = atomic_add(bufferPtr, dataSize)
-    Value* basebufferPtr = implicitArgs.getArgInFunc(F, ImplicitArg::PRINTF_BUFFER);
+    Value* basebufferPtr = implicitArgs.getImplicitArg(F, ImplicitArg::PRINTF_BUFFER);
     Value* dataSizeVal = ConstantInt::get(m_int32Type, getTotalDataSize());
     Instruction* writeOffsetStart = genAtomicAdd(basebufferPtr, dataSizeVal, printfCall, "write_offset");
     writeOffsetStart->setDebugLoc(m_DL);

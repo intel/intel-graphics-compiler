@@ -103,7 +103,7 @@ void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
         return;
     }
 
-    Value* vmeRes = m_implicitArgs.getArgInFunc(F, argType);
+    Value* vmeRes = m_implicitArgs.getImplicitArg(F, argType);
 
     // Replace original VME call instruction with the appropriate argument, example:
 

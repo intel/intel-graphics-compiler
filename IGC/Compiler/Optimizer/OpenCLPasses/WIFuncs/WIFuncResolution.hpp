@@ -113,13 +113,6 @@ namespace IGC
         /// @return A value representing the number of work groups
         llvm::Value* getNumGroups(llvm::CallInst& CI);
 
-        /// @brief  Returns the appropriate implicit argument of the function
-        ///         containing the given call instruction, based on the given argument type
-        /// @param  CI       The call instruction.
-        /// @param  argType  The argument type.
-        /// @return The function argument associated with the given implicit arg type
-        llvm::Argument* getImplicitArg(llvm::CallInst& CI, ImplicitArg::ArgType argType);
-
         /// @brief  Resolves get_stage_in_grid_origin().
         ///         Adds the appropriate sequence of code before the given call instruction
         /// @param  CI The call instruction.

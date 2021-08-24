@@ -2025,7 +2025,7 @@ void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
         {
             ArgInfoMetaDataHandle argInfo = newFH->getImplicitArgInfoListItem(cImpCount);
             ImplicitArg::ArgType argId = (ImplicitArg::ArgType)argInfo->getArgId();
-            Argument* iArgVal = parentIA->getArgInFunc(*parent_func, argId);
+            Argument* iArgVal = parentIA->getImplicitArg(*parent_func, argId);
 
             new_args.push_back(iArgVal);
             ++new_arg_iter;

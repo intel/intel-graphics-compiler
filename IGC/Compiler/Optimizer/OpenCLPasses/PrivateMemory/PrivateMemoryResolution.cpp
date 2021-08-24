@@ -931,7 +931,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         Value* privateBase = nullptr;
         if (modMD->compOpt.UseScratchSpacePrivateMemory)
         {
-            Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
+            Argument* r0Arg = implicitArgs.getImplicitArg(*m_currFunction, ImplicitArg::R0);
             Value* r0_5 = entryBuilder.CreateExtractElement(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
             privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
         }
@@ -1051,8 +1051,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     }
 
     // Find the implicit argument representing r0 and the private memory base.
-    Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
-    Argument* privateMemArg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::PRIVATE_BASE);
+    Argument* r0Arg = implicitArgs.getImplicitArg(*m_currFunction, ImplicitArg::R0);
+    Argument* privateMemArg = implicitArgs.getImplicitArg(*m_currFunction, ImplicitArg::PRIVATE_BASE);
     // Note: for debugging purposes privateMemArg will be marked as Output to keep its liveness all time
 
     // Resolve the call

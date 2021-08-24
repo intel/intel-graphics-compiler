@@ -74,7 +74,7 @@ void PromoteStatelessToBindless::CheckPrintfBuffer(Function& F)
 
     if (implicitArgs.isImplicitArgExist(ImplicitArg::PRINTF_BUFFER))
     {
-        m_PrintfBuffer = implicitArgs.getArgInFunc(F, ImplicitArg::PRINTF_BUFFER);
+        m_PrintfBuffer = implicitArgs.getImplicitArg(F, ImplicitArg::PRINTF_BUFFER);
     }
     else
     {
