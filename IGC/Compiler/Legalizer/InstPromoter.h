@@ -66,6 +66,8 @@ namespace IGC {
 
             /// Other operators
 
+            bool visitExtractElementInst(ExtractElementInst& I);
+            bool visitInsertElementInst(InsertElementInst& I);
             bool visitGenIntrinsicInst(GenIntrinsicInst& I);
             bool visitCallInst(CallInst& I);
         };

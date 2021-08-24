@@ -196,7 +196,7 @@ TypeLegalizer::getLegalizedTypes(Type* Ty) {
 }
 
 TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty) {
-    IGC_ASSERT(Ty->isIntegerTy());
+    IGC_ASSERT(Ty->isIntOrIntVectorTy());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == Promote);
 
     TypeMapTy::iterator TMI; bool New;

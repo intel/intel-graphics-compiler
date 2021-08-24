@@ -414,8 +414,142 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
         return true;
     }
 
+    // Promote bitcast with illegal src and dst both requiring to be promoted
+    // to the same type. Example:
+    //
+    // bitcast i12 %v to <3 x i4>
+    //
+    // '%v' may just be used as a promoted value, since both i12 and <3 x i4> are
+    // required to be promoted to i16 type.
+    if (Act == Promote && ValAct == Promote &&
+        Val->getType() == TySeq->front()) {
+        Promoted = Val;
+        return true;
+    }
+
     // Unsupported legalization action.
     return false;
+}
+
+bool InstPromoter::visitExtractElementInst(ExtractElementInst& I) {
+    ValueSeq* ValSeq; LegalizeAction ValAct;
+    Value* Val = I.getOperand(0);
+    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(Val);
+
+    if (ValAct != Legal)
+        Val = ValSeq->front();
+
+    TypeSeq* TySeq; LegalizeAction Act;
+    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType());
+    IGC_ASSERT(Act == Legal || Act == Promote);
+
+    auto SetBits = [](uint64_t& Data, uint32_t From, uint32_t To) {
+        IGC_ASSERT(From < To);
+        uint64_t N = To - From;
+        uint64_t Mask = (0xFFFFFFFFFFFFFFFFu >> (64 - N));
+        Data |= (Mask << From);
+    };
+
+    if (Act == Promote && Val->getType()->isIntegerTy()) {
+        if (ConstantInt* Index = dyn_cast<ConstantInt>(I.getIndexOperand())) {
+            const uint32_t IndexImm = int_cast<uint32_t>(Index->getZExtValue());
+            const uint32_t IllegalElemTyWidth = I.getOperand(0)->getType()->getScalarSizeInBits();
+
+            // Mask preparation
+            uint64_t Mask = 0;
+            const uint32_t From = IndexImm * IllegalElemTyWidth;
+            const uint32_t To = From + IllegalElemTyWidth;
+            SetBits(Mask, From, To);
+
+            // Clear bits representing source vector elements that are not queried by
+            // extract element instruction
+            Value* And = IRB->CreateAnd(Val, Mask);
+
+            // Shift relevant bits to put sign bit on it's place
+            Type* LegalReturnTy = TySeq->front();
+            const uint32_t LegalReturnTyWidth = LegalReturnTy->getIntegerBitWidth();
+            const uint32_t CurrSignPos = To - 1;
+            const uint32_t TargetSignPos = LegalReturnTyWidth - 1;
+            Value* Shift = nullptr;
+            if (CurrSignPos == TargetSignPos) {
+                // Continue operating on 'and' instruction. Shifting is not required,
+                // since sign bit is already in place.
+                Shift = And;
+            }
+            else {
+                if (CurrSignPos < TargetSignPos) {
+                    Shift = IRB->CreateShl(And, TargetSignPos - CurrSignPos);
+                }
+                else if (CurrSignPos > TargetSignPos) {
+                    Shift = IRB->CreateLShr(And, CurrSignPos - TargetSignPos);
+                }
+            }
+
+            // Truncate result to a legalized type
+            Value* Trunc = IRB->CreateTrunc(Shift, LegalReturnTy);
+
+            // Shift bits back to put relevant ones at the begging of an integer
+            IGC_ASSERT(LegalReturnTyWidth > IllegalElemTyWidth);
+            Promoted = IRB->CreateAShr(Trunc, LegalReturnTyWidth - IllegalElemTyWidth);
+
+            return true;
+        }
+        else {
+            IGC_ASSERT_MESSAGE(0, "Cannot legalize extract element instruction with non-constant index!");
+            return false;
+        }
+    }
+
+    return false;
+}
+
+bool InstPromoter::visitInsertElementInst(InsertElementInst& I) {
+    ValueSeq* ValSeq; LegalizeAction ValAct;
+    Value* Val = I.getOperand(1);
+    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(Val);
+
+    if (ValAct != Legal)
+        Val = ValSeq->front();
+
+    Value* VecVal = I.getOperand(0);
+    if (!isa<UndefValue>(VecVal)) {
+        ValueSeq* VecValSeq; LegalizeAction VecValAct;
+        std::tie(VecValSeq, VecValAct) = TL->getLegalizedValues(VecVal);
+
+        if (VecValAct != Legal)
+            VecVal = VecValSeq->front();
+    }
+
+    TypeSeq* TySeq; LegalizeAction Act;
+    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType());
+    IGC_ASSERT(Act == Legal || Act == Promote);
+
+    if (Act == Promote && Val->getType()->isIntegerTy()) {
+        if (ConstantInt* Index = dyn_cast<ConstantInt>(I.getOperand(2))) {
+            // Extend value to be inserted to the legalized insert element return type
+            Value* ZExt = IRB->CreateZExt(Val, TySeq->front());
+
+            // Shift extended value to it's place based on index to imitate insert element behavior
+            // Note: If an insert element index is zero, we don't need to generate shl instruction.
+            const uint32_t IllegalElemTyWidth = I.getOperand(0)->getType()->getScalarSizeInBits();
+            const uint32_t IndexImm = int_cast<uint32_t>(Index->getZExtValue());
+            const uint32_t ShiftFactor = IndexImm * IllegalElemTyWidth;
+            Promoted = (IndexImm > 0) ? IRB->CreateShl(ZExt, ShiftFactor) : ZExt;
+
+            if (!isa<UndefValue>(VecVal)) {
+                // Generate 'and' instruction to merge value returned by another insert element instruction
+                // with value to be inserted.
+                IGC_ASSERT(VecVal->getType()->isIntegerTy());
+                Promoted = IRB->CreateAnd(VecVal, Promoted);
+            }
+        }
+        else {
+            IGC_ASSERT_MESSAGE(0, "Cannot legalize insert element instruction with non-constant index!");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 /// Other operators
