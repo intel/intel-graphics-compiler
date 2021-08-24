@@ -186,6 +186,10 @@ static void AddURBWriteRelatedPass(CodeGenContext& ctx, IGCPassManager& mpm)
     case ShaderType::DOMAIN_SHADER:
         if (IGC_IS_FLAG_DISABLED(DisableURBWriteMerge))
         {
+            // Run EarlyCSE to remove redundant calculations of per-vertex or
+            // per-primitive URB offsets created in lowering.
+            mpm.add(llvm::createEarlyCSEPass());
+
             mpm.add(createMergeURBWritesPass());
 
             if (IGC_IS_FLAG_ENABLED(EnableTEFactorsClear) && (ctx.type == ShaderType::HULL_SHADER))
