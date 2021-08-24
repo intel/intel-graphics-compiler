@@ -365,6 +365,7 @@ uint32_t kv_get_send_descs(
     return n;
 }
 
+
 void kv_get_send_indirect_descs(
     const kv_t *kv, int32_t pc,
     uint8_t *ex_desc_reg, uint8_t *ex_desc_subreg,
@@ -395,6 +396,7 @@ void kv_get_send_indirect_descs(
         *desc_reg = *desc_subreg = KV_INVALID_REG;
     }
 }
+
 
 /******************** KernelView analysis APIs *******************************/
 static const Instruction *getInstruction(const kv_t *kv, int32_t pc)

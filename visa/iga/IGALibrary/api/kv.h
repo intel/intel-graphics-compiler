@@ -212,6 +212,13 @@ IGA_API uint32_t kv_get_send_descs(
     uint32_t *ex_desc,
     uint32_t *desc);
 
+
+/*
+ * Returns the indirect descriptor registers for a send message.
+ * The function fails silently if the PC is invalid or a nullptr is passed.
+ * Registers are assigned KV_INVALID_REG on other failures otherwise they
+ * hold the index register and subregister (e.g. a0.2) would have 0 and 2.
+ */
 IGA_API void kv_get_send_indirect_descs(
     const kv_t *kv,
     int32_t pc,

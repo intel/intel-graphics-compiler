@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include <iostream>
 #include <locale>
+#include <string>
 #include <vector>
 
 #include "fatal.hpp"
@@ -20,7 +21,7 @@ SPDX-License-Identifier: MIT
 
 
 static inline void readBinaryStream(
-    const char *streamName,
+    const std::string &streamName,
     std::istream &is,
     std::vector<unsigned char> &bin)
 {
@@ -33,7 +34,8 @@ static inline void readBinaryStream(
         }
         bin.push_back((char)chr);
     }
-    fatalExitWithMessage(streamName, ": error reading ");
+    fatalExitWithMessage(
+        streamName, ": error reading  (", iga::LastErrorString(), ")");
 }
 
 #define IGA_STDIN_FILENAME std::string("std::cin")
@@ -47,17 +49,18 @@ static inline std::vector<unsigned char> readBinaryStreamStdin()
 }
 
 static inline void readBinaryFile(
-    const char *fileName, std::vector<unsigned char> &bin)
+    const std::string &fileName, std::vector<unsigned char> &bin)
 {
     std::ifstream is(fileName, std::ios::binary);
-    if (!is.is_open()) {
-        fatalExitWithMessage(fileName, ": failed to open file");
+    if (!is.good()) {
+        fatalExitWithMessage(
+            fileName, ": failed to open file (", iga::LastErrorString(), ")");
     }
     readBinaryStream(fileName, is, bin);
 }
 
 static inline std::string readTextStream(
-    const char *streamName,
+    const std::string &streamName,
     std::istream &is)
 {
     std::string s;
@@ -65,42 +68,46 @@ static inline std::string readTextStream(
     s.append(std::istreambuf_iterator<char>(is),
              std::istreambuf_iterator<char>());
     if (!is.good()) {
-        fatalExitWithMessage(streamName, ": error reading");
+        fatalExitWithMessage(
+            streamName, ": error reading (", iga::LastErrorString(), ")");
     }
     return s;
 }
 
-static inline std::string readTextFile(
-    const char *fileName)
+static inline std::string readTextFile(const std::string &fileName)
 {
     std::ifstream file(fileName);
     if (!file.good()) {
-        fatalExitWithMessage(fileName, ": failed to open file");
+        fatalExitWithMessage(
+            fileName, ": failed to open file (", iga::LastErrorString(), ")");
     }
-    return readTextStream(fileName,file);
+    return readTextStream(fileName, file);
 }
 
 static inline void writeTextStream(
-    const char *streamName, std::ostream &os, const char *output)
+    const std::string &streamName, std::ostream &os, const char *output)
 {
     os.clear();
     os << output;
     if (!os.good()) {
-        fatalExitWithMessage(streamName, ": error writing");
+        fatalExitWithMessage(
+            streamName, ": error writing (", iga::LastErrorString(), ")");
     }
 }
 
-static inline void writeTextFile(const char *fileName, const char *output)
+static inline void writeTextFile(
+    const std::string &fileName, const char *output)
 {
     std::ofstream file(fileName);
     if (!file.good()) {
-        fatalExitWithMessage(fileName, ": failed to open file");
+        fatalExitWithMessage(
+            fileName, ": failed to open file (", iga::LastErrorString(), ")");
     }
     writeTextStream(fileName, file, output);
 }
 
 static inline void writeBinaryStream(
-    const char *streamName,
+    const std::string &streamName,
     std::ostream &os,
     const void *bits,
     size_t bitsLen)
@@ -108,23 +115,25 @@ static inline void writeBinaryStream(
     os.clear();
     os.write((const char *)bits, bitsLen);
     if (!os.good()) {
-        fatalExitWithMessage(streamName, ": error writing stream");
+        fatalExitWithMessage(
+            streamName, ": error writing stream (", iga::LastErrorString(), ")");
     }
 }
 
 static inline void writeBinaryFile(
-  const char *fileName,
-  const void *bits,
-  size_t bitsLen)
+    const std::string &fileName,
+    const void *bits,
+    size_t bitsLen)
 {
-    std::ofstream file(fileName,std::ios::binary);
+    std::ofstream file(fileName, std::ios::binary);
     if (!file.good()) {
-        fatalExitWithMessage(fileName, ": failed to open file");
+        fatalExitWithMessage(
+            fileName, ": failed to open file (", iga::LastErrorString(), ")");
     }
-    writeBinaryStream(fileName,file,bits,bitsLen);
+    writeBinaryStream(fileName, file, bits, bitsLen);
 }
 
-static inline bool doesFileExist(const char *fileName) {
+static inline bool doesFileExist(const std::string &fileName) {
     return iga::DoesFileExist(fileName);
 }
 

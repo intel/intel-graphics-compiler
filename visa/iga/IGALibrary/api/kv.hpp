@@ -279,6 +279,7 @@ public:
         return kv_get_send_descs(m_kv, pc, ex_desc, desc);
     }
 
+
     /*************************Analysis APIs **********************************/
 
     // Returns the number of expicit sources this instruction has.
@@ -286,6 +287,15 @@ public:
         return kv_get_number_sources(m_kv, pc);
     }
 
+    // Determines if the given send instruction is on ExBSO mode.
+    // Return 1 if true, 0 if false
+    // Return -1 if not success
+    int32_t getSendExBso(int32_t pc) const {
+        int32_t exbso = -1;
+        if (kv_get_send_exbso(m_kv, pc, &exbso) != kv_status_t::KV_SUCCESS)
+            return -1;
+        return exbso;
+    }
 
     // Fetches the message type for send/sends instructions.
     //

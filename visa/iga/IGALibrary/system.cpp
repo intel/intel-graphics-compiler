@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "asserts.hpp"
 #include "system.hpp"
 
 #ifdef _WIN32
@@ -23,8 +24,14 @@ SPDX-License-Identifier: MIT
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h> // strerror_r
 #endif
+#include <algorithm>
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
 
 using namespace iga;
 
@@ -94,15 +101,15 @@ void iga::SetStdinBinary()
 #endif
 }
 
-bool iga::DoesFileExist(const char *path)
+bool iga::DoesFileExist(const std::string &path)
 {
 #ifdef _WIN32
-    DWORD dwAttrib = GetFileAttributesA(path);
+    DWORD dwAttrib = GetFileAttributesA(path.c_str());
     return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
         !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 #else
     struct stat sb = {0};
-    if (stat(path, &sb) != 0) {
+    if (stat(path.c_str(), &sb) != 0) {
         return false;
     }
     return S_ISREG(sb.st_mode);
@@ -224,4 +231,113 @@ void iga::EmitGreenText(std::ostream &os, const std::string &s) {
 void iga::EmitYellowText(std::ostream &os, const std::string &s) {
     StreamColorSetter scs(os, StreamColorSetter::YELLOW);
     os << s;
+}
+
+unsigned iga::LastError()
+{
+#ifdef _WIN32
+    return (unsigned)GetLastError();
+#else
+    return (unsigned)errno;
+#endif // _WIN32
+}
+
+std::string iga::FormatLastError(unsigned errCode)
+{
+    std::string msg;
+    char buf[256] {0};
+    char *errMsg = nullptr;
+#ifdef _WIN32
+    errMsg = &buf[0];
+    FormatMessageA(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+        NULL,
+        errCode,
+        0,
+        (LPTSTR)&errMsg,
+        sizeof(buf),
+        NULL);
+    if (errMsg)
+        msg = errMsg;
+#else
+    errMsg = strerror_r(errCode, buf, sizeof(buf));
+#endif // _WIN32
+    if (errMsg == nullptr || errMsg[0] == 0)
+        return "???";
+    return std::string(errMsg);
+}
+
+std::string iga::FixupPath(const std::string &path)
+{
+#ifdef _WIN32
+    // Windows paths can be a mess due to the 260 MAX_PATH limit.
+    // This fails in the guts on the Windows path expansion (of .) and
+    // normalization of path component separates (/ to \) etc.
+    // (You'd experience std::ofstream to just fail to open a file.)
+    // We work around this here by normalizing and expanding the path to an
+    // absolute path.
+    //
+    // The approach here is to expand the path to a normalized absolute path.
+    // This is a bit pesky because GetFullPathNameA is limited to 260 chars.
+    // So we must use GetFullPathNameW. We will.
+    //  0. manually replace / with \
+    //  1. convert the path to absolute using GetFullPathNameW
+    //     (GetFullPathNameA is still limited to 260)
+    //  2. convert back to UTF-8
+    //  3. prefix a \\?\ so that CreateFile (under std::ofstream) won't
+    //     attempt to expand any relative components and choke due to length.
+    //
+    // If someone can come up with something better please let me know.
+    if (path.substr(0, 2) == "\\\\") {
+        // Network or UNC path (e.g. \\?\...) can be ignored...
+        return path;
+    }
+
+    std::string noSlashes = path;
+    std::replace(noSlashes.begin(), noSlashes.end(), '/', '\\');
+    const char *pathCstr = noSlashes.c_str();
+    auto retMbtwc = MultiByteToWideChar(CP_ACP, 0, pathCstr, -1, nullptr, 0);
+    if (retMbtwc <= 0) {
+        auto err = GetLastError();
+        std::stringstream ess;
+        ess << "iga::FixupPath:MultiByteToWideChar: " << err;
+        IGA_FATAL(ess.str().c_str());
+    }
+    std::vector<wchar_t> wPath;
+    wPath.resize(retMbtwc);
+    MultiByteToWideChar(
+        CP_ACP, 0, pathCstr, -1, wPath.data(), (int)wPath.size());
+
+    std::wstring absPathW;
+    wchar_t wbuf[256];
+    auto retGfpn = GetFullPathNameW(
+        wPath.data(),
+        (unsigned)sizeof(wbuf)/sizeof(wbuf[0]) - 1, wbuf, nullptr);
+    if (retGfpn == 0) {
+        auto err = GetLastError();
+        std::stringstream ess;
+        ess << "iga::FixupPath:GetFullPathNameW: " << err;
+        IGA_FATAL(ess.str().c_str());
+        return "";
+    } else if (retGfpn >= sizeof(wbuf)/sizeof(wbuf[0]) - 1) {
+        std::vector<wchar_t> vec;
+        vec.resize(retGfpn + 1);
+        retGfpn = GetFullPathNameW(
+            wPath.data(),  (unsigned)vec.size() - 1, vec.data(), nullptr);
+        absPathW = vec.data();
+    } else {
+        absPathW = wbuf;
+    }
+    int sizeNeeded = WideCharToMultiByte(
+        CP_ACP, 0, &absPathW[0], (int)absPathW.size(),
+        NULL, 0, NULL, NULL);
+    std::string absPathA(sizeNeeded, 0);
+    WideCharToMultiByte(
+        CP_ACP, 0, &absPathW[0], (int)absPathW.size(),
+        &absPathA[0], sizeNeeded, NULL, NULL);
+    absPathA = "\\\\?\\" + absPathA;
+    return absPathA;
+#else
+    return path;
+#endif // _WIN32
 }
