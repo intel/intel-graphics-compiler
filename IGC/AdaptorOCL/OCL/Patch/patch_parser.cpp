@@ -55,6 +55,9 @@ void DebugPatchList(
     const DWORD size,
     std::string& output )
 {
+    if (!IGC_IS_FLAG_ENABLED(DumpOCLProgramInfo))
+        return;
+
     const BYTE* ptr = (const BYTE*)pBuffer;
 
     DWORD   remaining = size;
@@ -63,10 +66,6 @@ void DebugPatchList(
     {
         const iOpenCL::SPatchItemHeader* pHeader =
             (const iOpenCL::SPatchItemHeader*)ptr;
-
-
-    if (IGC_IS_FLAG_ENABLED(DumpOCLProgramInfo))
-    {
 
         switch( pHeader->Token )
         {
@@ -922,7 +921,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchKernelAttributesInfo* pPatchItem =
                     (const iOpenCL::SPatchKernelAttributesInfo*)pHeader;
 
-                char* pStr = (char*)pHeader + sizeof(iOpenCL::SPatchKernelAttributesInfo);
+                const char* pStr = (const char*)pHeader + sizeof(iOpenCL::SPatchKernelAttributesInfo);
 
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_KERNEL_ATTRIBUTES_INFO (%08X) (size = %d)\n",
@@ -940,7 +939,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchKernelArgumentInfo* pPatchItem =
                     (const iOpenCL::SPatchKernelArgumentInfo*)pHeader;
 
-                char* pStr = (char*)pHeader + sizeof(iOpenCL::SPatchKernelArgumentInfo);
+                const char* pStr = (const char*)pHeader + sizeof(iOpenCL::SPatchKernelArgumentInfo);
 
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_KERNEL_ARGUMENT_INFO (%08X) (size = %d)\n",
@@ -982,7 +981,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchString* pPatchItem =
                     (const iOpenCL::SPatchString*)pHeader;
 
-                char* pStr = (char*)pHeader + sizeof(iOpenCL::SPatchString);
+                const char* pStr = (const char*)pHeader + sizeof(iOpenCL::SPatchString);
 
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_STRING (%08X) (size = %d)\n",
@@ -1360,7 +1359,7 @@ void DebugPatchList(
                     "PATCH_TOKEN_CONSTRUCTOR_DESTRUCTOR_KERNEL_PROGRAM_BINARY_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
-                char* kType;
+                const char* kType;
                 if (pPatchItem->Type)
                     kType = "Destructor";
                 else
@@ -1511,7 +1510,7 @@ void DebugPatchList(
                              "\tNumEntries = %d\n",
                              pPatchItem->NumEntries);
 
-                vISA::GenSymEntry* entryPtr = (vISA::GenSymEntry*) (ptr + sizeof(iOpenCL::SPatchFunctionTableInfo));
+                const vISA::GenSymEntry* entryPtr = (const vISA::GenSymEntry*) (ptr + sizeof(iOpenCL::SPatchFunctionTableInfo));
                 for (unsigned i = 0; i < pPatchItem->NumEntries; i++)
                 {
                     ICBE_DPF_STR(output, GFXDBG_HARDWARE,
@@ -1539,7 +1538,7 @@ void DebugPatchList(
                              "\tNumEntries = %d\n",
                              pPatchItem->NumEntries);
 
-                vISA::GenRelocEntry* entryPtr = (vISA::GenRelocEntry*) (ptr + sizeof(iOpenCL::SPatchFunctionTableInfo));
+                const vISA::GenRelocEntry* entryPtr = (const vISA::GenRelocEntry*) (ptr + sizeof(iOpenCL::SPatchFunctionTableInfo));
                 for (unsigned i = 0; i < pPatchItem->NumEntries; i++)
                 {
                     ICBE_DPF_STR(output, GFXDBG_HARDWARE,
@@ -1563,7 +1562,7 @@ void DebugPatchList(
             }
             break;
         }
-    }
+
         ptr += pHeader->Size;
         remaining -= pHeader->Size;
     }

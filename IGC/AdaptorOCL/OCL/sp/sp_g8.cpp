@@ -127,15 +127,6 @@ __forceinline bool IsAligned( Type size, const size_t alignSize )
 
 RETVAL g_cInitRetValue = { 1 };
 
-static const int numAllowedAttributes = 4;
-const char* allowedAttributes[numAllowedAttributes] =
-{
-    "reqd_sub_group_size",
-    "reqd_work_group_size",
-    "vec_type_hint",
-    "work_group_size_hint",
-};
-
 /*****************************************************************************\
 STRUCT: SStateProcessorContextGen8_0
 \*****************************************************************************/
@@ -2261,26 +2252,22 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelAttributePatchItems(
     if( retValue.Success )
     {
         std::istringstream buf(annotations.m_kernelAttributeInfo);
-        std::istream_iterator< std::string > beg(buf), end;
-
-        std::vector<std::string> tokens(beg, end);
-
         std::string filteredAttributes;
 
-        for (const auto& s: tokens)
+        std::string s;
+        while (buf >> s)
         {
-            for( int index = 0; index < numAllowedAttributes; index++ )
+            if ( s.find("reqd_sub_group_size") != std::string::npos
+              || s.find("reqd_work_group_size") != std::string::npos
+              || s.find("vec_type_hint") != std::string::npos
+              || s.find("work_group_size_hint") != std::string::npos )
             {
-                if( s.find( allowedAttributes[index] ) != std::string::npos )
+                if ( !filteredAttributes.empty() )
                 {
-                    if( filteredAttributes.length() > 0 )
-                    {
-                        filteredAttributes += " ";
-                    }
-
-                    filteredAttributes += s;
-                    break;
+                    filteredAttributes += ' ';
                 }
+
+                filteredAttributes += s;
             }
         }
 

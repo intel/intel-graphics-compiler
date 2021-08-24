@@ -129,10 +129,10 @@ public:
 
 private:
     std::string                        m_string;
-    DumpName                           m_name;
+    const DumpName                     m_name;
     std::unique_ptr<llvm::raw_ostream> m_pStream;
     llvm::raw_ostream*                 m_pStringStream;
-    DumpType                           m_type;
+    const DumpType                     m_type;
     bool                               m_ClearFile;
 };
 

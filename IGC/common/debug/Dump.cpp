@@ -62,7 +62,7 @@ DumpName::DumpName()
 
 DumpName DumpName::ShaderName(std::string const& name) const
 {
-    IGC_ASSERT_MESSAGE(name.find(" ") == std::string::npos, "Shader name must not contain spaces");
+    IGC_ASSERT_MESSAGE(name.find(' ') == std::string::npos, "Shader name must not contain spaces");
     DumpName copy(*this);
     copy.m_shaderName = name;
     return copy;
@@ -93,7 +93,7 @@ DumpName DumpName::Extension(std::string const& extension) const
 {
     IGC_ASSERT_MESSAGE((extension.size() == 0) || (extension.at(0) != '.'),
         "Extension shouldn't start with a '.', and shouldn't be empty");
-    IGC_ASSERT_MESSAGE(extension.find(" ") == std::string::npos, "Extension must not contain spaces");
+    IGC_ASSERT_MESSAGE(extension.find(' ') == std::string::npos, "Extension must not contain spaces");
     DumpName copy(*this);
     copy.m_extension = extension;
     return copy;
@@ -107,7 +107,7 @@ DumpName DumpName::StagedInfo(void const* context) const
         return copy;
     }
 
-    IGC::CodeGenContext const* ctx = (IGC::CodeGenContext const*) context;
+    IGC::CodeGenContext const* ctx = static_cast<IGC::CodeGenContext const*>(context);
     if (!IsStage2RestSIMDs(ctx->m_StagingCtx) &&
         ctx->m_CgFlag != FLAG_CG_ALL_SIMDS)
     {
@@ -164,15 +164,11 @@ DumpName DumpName::Pass(std::string const& name, llvm::Optional<unsigned int> in
     newName.erase(remove_if(
         newName.begin(),
         newName.end(),
-        [](char c) {
-        return isspace(static_cast<unsigned char>(c));
-    }),
+        [](char c) { return isspace(static_cast<unsigned char>(c)); }),
         newName.end());
     std::replace_if(newName.begin(), newName.end(),
-        [](const char s) {
-            return s == '/' || s == '\\';
-        }, '_');
-    IGC_ASSERT_MESSAGE(newName.find(" ") == std::string::npos, "Pass name must not contain spaces");
+        [](const char s) { return s == '/' || s == '\\'; }, '_');
+    IGC_ASSERT_MESSAGE(newName.find(' ') == std::string::npos, "Pass name must not contain spaces");
     DumpName copy(*this);
     CPassDescriptor pd = { newName, index };
     copy.m_pass = pd;
@@ -575,11 +571,11 @@ namespace
         }
 
     private:
-        std::string           m_prefix;
-        Colors                m_prefixColor;
-        llvm::raw_ostream*    m_pUnder;
-        bool                  m_deleteStream;
-        bool                  m_isFirstWrite;
+        const std::string        m_prefix;
+        const Colors             m_prefixColor;
+        llvm::raw_ostream* const m_pUnder;
+        const bool               m_deleteStream;
+        bool                     m_isFirstWrite;
     };
 } // anonymous namespace
 
@@ -588,20 +584,20 @@ namespace
 // when the calling function returns)
 Dump::Dump( DumpName const& dumpName, DumpType type )
     : m_name( dumpName )
-    , m_pStream( nullptr )
+    , m_pStream(std::make_unique<llvm::raw_string_ostream>(m_string)) // buffered stream!
     , m_pStringStream( nullptr )
     , m_type(type)
     , m_ClearFile(true)
 {
-    m_pStream.reset(new llvm::raw_string_ostream(m_string)); // buffered stream!
     m_pStringStream = m_pStream.get();
-    if(IGC_IS_FLAG_ENABLED(PrintToConsole) && isConsolePrintable(m_type))
-    {
-        m_pStream->SetUnbuffered();
-        m_pStream.reset(new TeeOutputStream(&ods(), false, m_pStream.release(), true));
-    }
     if (isConsolePrintable(m_type))
     {
+        if (IGC_IS_FLAG_ENABLED(PrintToConsole))
+        {
+            m_pStream->SetUnbuffered();
+            m_pStream.reset(new TeeOutputStream(&ods(), false, m_pStream.release(), true));
+        }
+
         std::stringstream ss;
         ss << commentPrefix(m_type) << "------------------------------------------------\n";
         ss << commentPrefix(m_type) << dumpName.RelativePath() << "\n";
