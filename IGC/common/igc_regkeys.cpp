@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include <utility>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 #include <mutex>
 #include "Probe/Assertion.h"
 
@@ -688,6 +689,7 @@ static void declareIGCKey(std::string& line, const char* dataType, const char* r
     setRegkeyFromOption(line, dataType, regkeyName, &value, isSet);
     if (isSet)
     {
+        std::cout << "** regkey " << line << std::endl;
         memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
         regKey->hashes = hashes;
     }
@@ -699,7 +701,12 @@ static void LoadDebugFlagsFromFile()
     std::string line;
     std::vector<HashRange> hashes;
 
+    if (input.is_open())
+        std::cout << std::endl << "** DebugFlags " << GetOptionFile() << " is opened" << std::endl;
+
     while (std::getline(input, line)) {
+        if (line.front() == '#')
+            continue;
         ParseHashRange(line, hashes);
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)         \
 {                                                                                   \
