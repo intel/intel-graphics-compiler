@@ -69,7 +69,8 @@ void DebugEmitter::Reset()
 }
 
 
-void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM, const DebugEmitterOpts& Opts)
+void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM,
+                              const DebugEmitterOpts& Opts)
 {
     IGC_ASSERT_MESSAGE(false == m_initialized, "DebugEmitter is already initialized!");
     m_initialized = true;
@@ -254,8 +255,12 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
     m_pDwarfDebug->highPc = lastGenOff;
 }
 
-std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
-    const std::vector<llvm::DISubprogram*>& DISubprogramNodes)
+void DebugEmitter::SetDISPCache(DwarfDISubprogramCache *DISPCache) {
+    IGC_ASSERT(m_pDwarfDebug);
+    m_pDwarfDebug->setDISPCache(DISPCache);
+}
+
+std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
 {
     if (!m_debugEnabled)
     {
@@ -263,11 +268,11 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
     }
 
     IGC_ASSERT_MESSAGE(m_pVISAModule, "active visa object must be selected before finalization");
+    IGC_ASSERT(m_pDwarfDebug);
     m_pDwarfDebug->setDecodedDbg(decodedDbg);
 
     if (!doneOnce)
     {
-        m_pDwarfDebug->setDISPNodes(&DISubprogramNodes);
         m_pDwarfDebug->beginModule();
         doneOnce = true;
     }
@@ -283,8 +288,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
     if (!finalize)
         return {};
 
-    // Make sure we wrote out everything we need.
-    //m_pMCStreamer->Flush();
+    IGC_ASSERT(doneOnce);
 
     // Finalize debug information.
     m_pDwarfDebug->endModule();
@@ -337,7 +341,6 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
     writeProgramHeaderTable(is64Bit, Result.data(), m_str.size() + kernelNameSizeWithDot);
     setElfType(is64Bit, Result.data());
 
-    // Reset all members and prepare for next beginModule() call.
     Reset();
 
     return std::move(Result);
