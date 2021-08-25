@@ -276,7 +276,12 @@ void GenXPrologEpilogInsertion::generateKernelProlog(Function &F) {
   Function *HWID = GenXIntrinsic::getGenXDeclaration(
       F.getParent(), llvm::GenXIntrinsic::genx_get_hwid, {});
   auto *HWIDCall = IRB.CreateCall(HWID);
-  auto *ThreadOffset = IRB.getInt32(BEConf->getStatelessPrivateMemSize());
+
+  int StackAmount = genx::getStackAmount(&F);
+  if (StackAmount == genx::VC_STACK_USAGE_UNKNOWN)
+    StackAmount = BEConf->getStatelessPrivateMemSize();
+
+  auto *ThreadOffset = IRB.getInt32(StackAmount);
   auto *Mul = IRB.CreateMul(HWIDCall, ThreadOffset);
   auto *MulCasted = IRB.CreateZExt(Mul, IRB.getInt64Ty());
 
