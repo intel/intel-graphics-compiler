@@ -5199,7 +5199,6 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         }
     }
 
-    bool forceEOT = false;
 
     if (pMaskOpnd)
     {
@@ -5229,7 +5228,6 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         }
     }
 
-
     m_encoder->RenderTargetWrite(
         src,
         isUndefined,
@@ -5238,7 +5236,6 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         perSample,
         coarseMode,
         isHeaderMaskFromCe0,
-        forceEOT,
         bti,
         rtIndexOpnd,
         source0Alpha,

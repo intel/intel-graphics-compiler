@@ -1124,10 +1124,6 @@ int IR_Builder::translateVISARTWrite3DInst(
             srcToUse = createNullSrc(Type_UD);
         }
 
-        if (cntrls.forceEOT)
-        {
-            msgDesc->setEOT();
-        }
         createSplitSendToRenderTarget(
             pred,
             createNullDst(Type_UD),

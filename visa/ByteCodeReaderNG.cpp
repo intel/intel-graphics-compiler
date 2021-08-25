@@ -950,7 +950,6 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
             cntrls.RTIndexPresent = (mode & (0x1 << 2)) ? true : false;
             cntrls.isNullRT = (mode & (0x1 << 12)) ? true : false;
             cntrls.isHeaderMaskfromCe0 = 0;
-            cntrls.forceEOT = false;
 
             VISA_VectorOpnd *sampleIndex = cntrls.isSampleIndex ? readVectorOperandNG(bytePos, buf, container, false) : NULL;
             VISA_VectorOpnd *cpsCounter = CPSEnable ? readVectorOperandNG(bytePos, buf, container, false) : NULL;

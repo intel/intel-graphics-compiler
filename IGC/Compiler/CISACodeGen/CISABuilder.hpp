@@ -164,7 +164,6 @@ namespace IGC
             bool perSample,
             bool coarseMode,
             bool headerMaskFromCe0,
-            bool forceEOT,
             CVariable* bindingTableIndex,
             CVariable* RTIndex,
             CVariable* source0Alpha,

@@ -196,7 +196,6 @@ void CShader::EOTRenderTarget(CVariable* r1, bool isPerCoarse)
         false, // perSample,
         isPerCoarse, // coarseMode,
         false, // isHeaderMaskFromCe0,
-        true, // forceEOT
         nullSurfaceBti,
         blendStateIndex,
         nullptr, // source0Alpha,
