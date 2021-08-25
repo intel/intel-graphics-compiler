@@ -300,6 +300,9 @@ namespace IGC
         /// getOrCreateSubprogramDIE - Create new DIE using SP.
         DIE* getOrCreateSubprogramDIE(llvm::DISubprogram* SP);
 
+        /// getOrCreateModuleDIE - Create new DIE for DIModule.
+        DIE* getOrCreateModuleDIE(llvm::DIModule* MD);
+
         /// getOrCreateTypeDIE - Find existing DIE or create new DIE for the
         /// given llvm::DIType.
         DIE* getOrCreateTypeDIE(const llvm::MDNode* N);

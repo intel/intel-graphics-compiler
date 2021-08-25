@@ -944,7 +944,7 @@ public:
       DINodeArray TParams = Builder.getOrCreateArray(Elts);
       llvm::DITemplateParameterArray TParamsArray = TParams.get();
 
-      if (isa<DICompositeType>(scope) || isa<DINamespace>(scope))
+      if (isa<DICompositeType>(scope) || isa<DINamespace>(scope) || isa<DIModule>(scope))
           return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, line, type,
               isLocal, isDefinition, 0, 0, 0, nullptr, flags, isOptimized, TParamsArray));
       else
@@ -1024,7 +1024,7 @@ public:
       DINodeArray TParams = Builder.getOrCreateArray(Elts);
       llvm::DITemplateParameterArray TParamsArray = TParams.get();
       DISubprogram* diSP = nullptr;
-      if ((isa<DICompositeType>(scope) || isa<DINamespace>(scope)) && !isDefinition)
+      if ((isa<DICompositeType>(scope) || isa<DINamespace>(scope) || isa<DIModule>(scope)) && !isDefinition)
       {
           diSP = Builder.createMethod(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
               0, 0, 0, nullptr, flags, isOptimized, TParamsArray);
@@ -1101,21 +1101,47 @@ public:
       auto cfgMacros = BM->get<SPIRVString>(moduleINTEL.getConfigurationMacros())->getStr();
       auto inclPath = BM->get<SPIRVString>(moduleINTEL.getIncludePath())->getStr();
 
-      ///ModuleINTELIDToDISP[funcSPIRVId] = diSP;
+      DIModule* diModule;
+
 #if LLVM_VERSION_MAJOR <= 10
       llvm::StringRef iSysRoot = StringRef();  // Empty string
-      return Builder.createModule(scope, name, cfgMacros, inclPath, iSysRoot);
+      diModule = addMDNode(inst, Builder.createModule(scope, name, cfgMacros, inclPath, iSysRoot));
 #else  // LLVM_VERSION_MAJOR >= 11
       auto file = getDIFile(BM->get<SPIRVExtInst>(moduleINTEL.getSource()));
       auto line = moduleINTEL.getLine();
       auto apiNotesFile = BM->get<SPIRVString>(moduleINTEL.getAPINotesFile())->getStr();
 #if LLVM_VERSION_MAJOR == 11
-      return Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line);
+      diModule = addMDNode(inst, Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line));
 #elif LLVM_VERSION_MAJOR >= 12
       bool isDecl = moduleINTEL.getIsDecl() ? true : false;
-      return Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line, isDecl);
+      diModule = addMDNode(inst, Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line, isDecl));
 #endif
-#endif  // LLVM_VERSION_MAJOR >= 11
+#endif  // LLVM_VERSION_MAJOR >= 11.
+
+      return diModule;
+  }
+
+  DINode* createImportedEntity(SPIRVExtInst* inst)
+  {
+      if (auto n = getExistingNode<DINode*>(inst))
+          return n;
+
+      OpDebugImportedEntity importedEntity(inst);
+
+      auto scope = createScope(BM->get<SPIRVExtInst>(importedEntity.getParent()));
+      auto file = getDIFile(BM->get<SPIRVExtInst>(importedEntity.getSource()));
+      auto line = importedEntity.getLine();
+      auto entity = importedEntity.getEntity();
+
+      DINode* diNode = nullptr;
+
+      if (BM->get<SPIRVExtInst>(entity)->getExtOp() == OCLExtOpDbgKind::ModuleINTEL)
+      {
+          auto diModule = createModuleINTEL(BM->get<SPIRVExtInst>(entity));
+          diNode = addMDNode(inst, Builder.createImportedModule(scope, diModule, file, line));
+      }
+
+      return diNode;
   }
 
   DIScope* createScope(SPIRVExtInst* inst)
@@ -1278,11 +1304,18 @@ public:
       {
           (void)createGlobalVar(gvar);
       }
+  }
 
-      auto moduleINTELInstructions = BM->getModuleINTELInstructions();
-      for (auto& moduleInstruction : moduleINTELInstructions)
+  void transImportedEntities()
+  {
+      if (!Enable)
+          return;
+
+      auto importedEntities = BM->getImportedEntities();
+
+      for (auto& importedEntity : importedEntities)
       {
-          (void)createModuleINTEL(moduleInstruction);
+          (void)createImportedEntity(importedEntity);
       }
   }
 
@@ -1568,8 +1601,10 @@ DIGlobalVariableExpression* SPIRVToLLVMDbgTran::createGlobalVar(SPIRVExtInst* in
     auto file = getDIFile(BM->get<SPIRVExtInst>(var.getSource()));
     auto type = createType(BM->get<SPIRVExtInst>(var.getType()));
     auto varValue = static_cast<SPIRVValue*>(BM->getEntry(var.getVariable()));
+    auto flags = var.getFlags();
+    bool isLocal = (flags & SPIRVDebug::Flag::FlagIsLocal) ? true : false;
 
-    auto globalVarMD = addMDNode(inst, Builder.createGlobalVariableExpression(ctxt, name, linkageName, file, var.getLine(), type, true));
+    auto globalVarMD = addMDNode(inst, Builder.createGlobalVariableExpression(ctxt, name, linkageName, file, var.getLine(), type, isLocal));
 
     llvm::Value* llvmValue = nullptr;
     if (varValue)
@@ -4030,6 +4065,8 @@ SPIRVToLLVM::translate() {
     return false;
 
   DbgTran.transGlobals();
+
+  DbgTran.transImportedEntities();
 
   DbgTran.finalize();
   return true;
