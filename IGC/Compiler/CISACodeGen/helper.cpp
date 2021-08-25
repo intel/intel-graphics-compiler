@@ -2591,6 +2591,10 @@ std::pair<Value*, unsigned int> GetURBBaseAndOffset(Value* pUrbOffset)
                     alignment = GetAlignment(pInstr->getOperand(1)) *
                         GetConstant(pInstr->getOperand(0));
                 }
+                else if (isa<ConstantInt>(pUrbOffset))
+                {
+                    alignment = 1 << iSTD::bsf(GetConstant(pUrbOffset));
+                }
                 return alignment;
             };
 
@@ -2615,7 +2619,7 @@ std::pair<Value*, unsigned int> GetURBBaseAndOffset(Value* pUrbOffset)
                     }
                     else
                     {
-                        alignment = std::min(alignment, GetAlignment(pIncoming));
+                        alignment = std::min(alignment, GetAlignment(pPhi->getIncomingValue(i)));
                     }
                 }
             }
