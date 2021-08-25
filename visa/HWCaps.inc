@@ -25,6 +25,9 @@ SPDX-License-Identifier: MIT
             getPlatformGeneration(getPlatform()) != PlatformGen::GEN11;
     }
 
+    // True if it has bfloat16 mixed mode support.
+    bool hasBFMixMode() const { return hasDPAS();}
+
     bool forceSamplerHeader() const
     {
         return m_options->getOption(vISA_forceSamplerHeader) ||
