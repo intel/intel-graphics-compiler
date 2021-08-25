@@ -89,7 +89,7 @@ namespace IGC
 
         /// The driver doesn't clear the vertex header so it needs to be done in the compiler
         virtual bool NeedClearVertexHeader() const { return false; }
- 
+
         /// Do Fastest Stage1 only for 3D
         virtual bool SupportFastestStage1() const { return true; }
 
