@@ -38,10 +38,10 @@ value gives the same SCEV expressions as calculated by LFTR.
  4 files changed, 38 insertions(+), 7 deletions(-)
  create mode 100644 test/Transforms/IndVarSimplify/add_nsw.ll
 
-diff --git a/Source/llvm/lib/Transforms/Scalar/IndVarSimplify.cpp b/Source/llvm/lib/Transforms/Scalar/IndVarSimplify.cpp
+diff --git a/llvm/lib/Transforms/Scalar/IndVarSimplify.cpp b/llvm/lib/Transforms/Scalar/IndVarSimplify.cpp
 index f9fc698a4a9..5e04dac8aa6 100644
---- a/Source/llvm/lib/Transforms/Scalar/IndVarSimplify.cpp
-+++ b/Source/llvm/lib/Transforms/Scalar/IndVarSimplify.cpp
+--- a/llvm/lib/Transforms/Scalar/IndVarSimplify.cpp
++++ b/llvm/lib/Transforms/Scalar/IndVarSimplify.cpp
 @@ -2375,6 +2375,17 @@ static Value *genLoopLimit(PHINode *IndVar, BasicBlock *ExitingBB,
      if (UsePostInc)
        IVLimit = SE->getAddExpr(IVLimit, SE->getOne(IVLimit->getType()));
@@ -68,11 +68,11 @@ index f9fc698a4a9..5e04dac8aa6 100644
      return Rewriter.expandCodeFor(IVLimit, LimitTy, BI);
    }
  }
-diff --git a/Source/llvm/test/Transforms/IndVarSimplify/add_nsw.ll b/Source/llvm/test/Transforms/IndVarSimplify/add_nsw.ll
+diff --git a/llvm/test/Transforms/IndVarSimplify/add_nsw.ll b/llvm/test/Transforms/IndVarSimplify/add_nsw.ll
 new file mode 100644
 index 00000000000..abd1cbb6c51
 --- /dev/null
-+++ b/Source/llvm/test/Transforms/IndVarSimplify/add_nsw.ll
++++ b/llvm/test/Transforms/IndVarSimplify/add_nsw.ll
 @@ -0,0 +1,23 @@
 +; RUN: opt -indvars -S %s | FileCheck %s
 +
@@ -97,10 +97,10 @@ index 00000000000..abd1cbb6c51
 +for.end:                                          ; preds = %for.body
 +  ret void
 +}
-diff --git a/Source/llvm/test/Transforms/IndVarSimplify/lftr-reuse.ll b/Source/llvm/test/Transforms/IndVarSimplify/lftr-reuse.ll
+diff --git a/llvm/test/Transforms/IndVarSimplify/lftr-reuse.ll b/llvm/test/Transforms/IndVarSimplify/lftr-reuse.ll
 index 14ae9738696..509d662b767 100644
---- a/Source/llvm/test/Transforms/IndVarSimplify/lftr-reuse.ll
-+++ b/Source/llvm/test/Transforms/IndVarSimplify/lftr-reuse.ll
+--- a/llvm/test/Transforms/IndVarSimplify/lftr-reuse.ll
++++ b/llvm/test/Transforms/IndVarSimplify/lftr-reuse.ll
 @@ -67,11 +67,9 @@ define void @expandOuterRecurrence(i32 %arg) nounwind {
  ; CHECK-NEXT:    [[CMP1:%.*]] = icmp slt i32 0, [[SUB1]]
  ; CHECK-NEXT:    br i1 [[CMP1]], label [[OUTER_PREHEADER:%.*]], label [[EXIT:%.*]]
@@ -131,10 +131,10 @@ index 14ae9738696..509d662b767 100644
  ; CHECK-NEXT:    br i1 [[EXITCOND1]], label [[OUTER]], label [[EXIT_LOOPEXIT:%.*]]
  ; CHECK:       exit.loopexit:
  ; CHECK-NEXT:    br label [[EXIT]]
-diff --git a/Source/llvm/test/Transforms/IndVarSimplify/udiv.ll b/Source/llvm/test/Transforms/IndVarSimplify/udiv.ll
+diff --git a/llvm/test/Transforms/IndVarSimplify/udiv.ll b/llvm/test/Transforms/IndVarSimplify/udiv.ll
 index b3f2c2a6a66..3530343ef4a 100644
---- a/Source/llvm/test/Transforms/IndVarSimplify/udiv.ll
-+++ b/Source/llvm/test/Transforms/IndVarSimplify/udiv.ll
+--- a/llvm/test/Transforms/IndVarSimplify/udiv.ll
++++ b/llvm/test/Transforms/IndVarSimplify/udiv.ll
 @@ -133,6 +133,7 @@ declare i32 @printf(i8* nocapture, ...) nounwind
  ; CHECK-LABEL: @foo(
  ; CHECK: for.body.preheader:

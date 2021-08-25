@@ -8,8 +8,8 @@ SPDX-License-Identifier: MIT
 
 #    Description                  : Fix build break for building llvm-link
 
---- a/Source/llvm/tools/llvm-link/CMakeLists.txt
-+++ b/Source/llvm/tools/llvm-link/CMakeLists.txt
+--- a/llvm/tools/llvm-link/CMakeLists.txt
++++ b/llvm/tools/llvm-link/CMakeLists.txt
 @@ -8,6 +8,7 @@ set(LLVM_LINK_COMPONENTS
    Support
    TransformUtils
