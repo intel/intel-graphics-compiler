@@ -63,7 +63,7 @@ typedef unsigned int Id;
 #define SPV_REVISION 1
 
 static const unsigned int MagicNumber = 0x07230203;
-static const unsigned int Version     = 0x00010300;
+static const unsigned int Version     = 0x00010400;
 static const unsigned int Revision    = 1;
 static const unsigned int OpCodeMask  = 0xffff;
 
