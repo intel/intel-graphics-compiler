@@ -124,7 +124,8 @@ namespace pktz
           if (auto CV = dyn_cast<ConstantVector>(src)) {
             if (CV->getSplatValue()) {
               return VECTOR_SPLAT(
-                  mVWidth * cast<VectorType>(src->getType())->getNumElements(),
+                  mVWidth * cast<IGCLLVM::FixedVectorType>(src->getType())
+                                ->getNumElements(),
                   CV->getSplatValue(), name);
             }
           }
@@ -247,7 +248,8 @@ namespace pktz
     {
       IGC_ASSERT(cast<VectorType>(mask->getType())->getElementType() ==
                  mInt1Ty);
-      uint32_t numLanes = cast<VectorType>(mask->getType())->getNumElements();
+      uint32_t numLanes =
+          cast<IGCLLVM::FixedVectorType>(mask->getType())->getNumElements();
       Value *i32Result;
       if (numLanes == 8) {
         i32Result = BITCAST(mask, mInt8Ty);
@@ -278,7 +280,8 @@ namespace pktz
         Constant* cB = dyn_cast<Constant>(b);
         IGC_ASSERT(cB);
         // number of 8 bit elements in b
-        uint32_t numElms = cast<VectorType>(cB->getType())->getNumElements();
+        uint32_t numElms =
+            cast<IGCLLVM::FixedVectorType>(cB->getType())->getNumElements();
         // output vector
         Value *vShuf =
             UndefValue::get(IGCLLVM::FixedVectorType::get(mInt8Ty, numElms));

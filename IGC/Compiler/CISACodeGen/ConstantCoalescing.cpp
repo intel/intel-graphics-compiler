@@ -2265,7 +2265,9 @@ void ConstantCoalescing::ScatterToSampler(
     const uint loadSizeInBytes = (unsigned int)load->getType()->getPrimitiveSizeInBits() / 8;
 
     IGC_ASSERT(nullptr != (load->getType()));
-    IGC_ASSERT((!load->getType()->isVectorTy()) || (cast<VectorType>(load->getType())->getNumElements() <= 4));
+    IGC_ASSERT(
+        (!load->getType()->isVectorTy()) ||
+        (cast<IGCLLVM::FixedVectorType>(load->getType())->getNumElements() <= 4));
 
     const bool useByteAddress = m_ctx->m_DriverInfo.UsesTypedConstantBuffersWithByteAddress();
 

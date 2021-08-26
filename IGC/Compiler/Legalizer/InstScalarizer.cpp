@@ -214,7 +214,8 @@ bool InstScalarizer::visitStoreInst(StoreInst& I) {
 
     ValueSeq* ValSeq;
     std::tie(ValSeq, std::ignore) = TL->getLegalizedValues(OrigVal);
-    IGC_ASSERT(ValSeq->size() == cast<VectorType>(OrigTy)->getNumElements());
+    IGC_ASSERT(ValSeq->size() ==
+               cast<IGCLLVM::FixedVectorType>(OrigTy)->getNumElements());
 
     StringRef Name = OrigVal->getName();
 

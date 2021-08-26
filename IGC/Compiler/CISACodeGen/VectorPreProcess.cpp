@@ -981,7 +981,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
     AbstractStoreInst* ASI = optionalASI ? optionalASI.getPointer() : nullptr;
     IGC_ASSERT_MESSAGE((optionalALI || optionalASI), "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     IGC_ASSERT_MESSAGE(nullptr != VTy, "Inst should be a 3-element vector load/store!");
     IGC_ASSERT_MESSAGE(VTy->getNumElements() == 3, "Inst should be a 3-element vector load/store!");
 

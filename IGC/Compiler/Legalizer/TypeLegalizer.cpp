@@ -270,8 +270,9 @@ TypeSeq* TypeLegalizer::getScalarizedTypeSeq(Type* Ty) {
     TypeMapTy::iterator TMI; bool New;
     std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New) {
-        IGC_ASSERT(TMI->second.size() == cast<VectorType>(Ty)->getNumElements());
-        return &TMI->second;
+      IGC_ASSERT(TMI->second.size() ==
+                 cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements());
+      return &TMI->second;
     }
 
     Type* EltTy = cast<VectorType>(Ty)->getElementType();

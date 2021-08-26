@@ -154,7 +154,7 @@ namespace pktz
         if (pType->isVoidTy())
             return pType;
 
-        if (auto VecpType = dyn_cast<VectorType>(pType)) {
+        if (auto VecpType = dyn_cast<IGCLLVM::FixedVectorType>(pType)) {
           uint32_t vectorSize = VecpType->getNumElements();
           Type *pElemType = VecpType->getElementType();
           Type *pVecType =

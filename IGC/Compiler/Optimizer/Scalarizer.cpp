@@ -532,8 +532,13 @@ void ScalarizeFunction::scalarizeInstruction(CastInst* CI)
 
     // Get additional info from instruction
     unsigned numElements = int_cast<unsigned>(instType->getNumElements());
-    IGC_ASSERT_MESSAGE(isa<VectorType>(CI->getOperand(0)->getType()), "unexpected type!");
-    IGC_ASSERT_MESSAGE(cast<VectorType>(CI->getOperand(0)->getType())->getNumElements() == numElements, "unexpected vector width");
+    IGC_ASSERT_MESSAGE(
+        isa<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType()),
+        "unexpected type!");
+    IGC_ASSERT_MESSAGE(
+        cast<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType())
+                ->getNumElements() == numElements,
+        "unexpected vector width");
 
     // Obtain scalarized argument
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand0;
@@ -822,7 +827,10 @@ void ScalarizeFunction::scalarizeInstruction(InsertElementInst* II)
 
     IGC_ASSERT_MESSAGE(isa<ConstantInt>(scalarIndexVal), "inst arguments error");
     uint64_t scalarIndex = cast<ConstantInt>(scalarIndexVal)->getZExtValue();
-    IGC_ASSERT_MESSAGE(scalarIndex < dyn_cast<VectorType>(II->getType())->getNumElements(), "index error");
+    IGC_ASSERT_MESSAGE(
+        scalarIndex <
+            dyn_cast<IGCLLVM::FixedVectorType>(II->getType())->getNumElements(),
+        "index error");
 
     // Obtain breakdown of input vector
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>scalarValues;

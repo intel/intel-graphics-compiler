@@ -876,7 +876,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
         Type *pDstPtrTy = PointerType::get(
             pDstScalarTy, pInst->getType()->getPointerAddressSpace());
         uint32_t numElems =
-            cast<VectorType>(pPacketizedSrcTy)->getNumElements();
+            cast<IGCLLVM::FixedVectorType>(pPacketizedSrcTy)->getNumElements();
         pReturnTy = IGCLLVM::FixedVectorType::get(pDstPtrTy, numElems);
       }
       else {
@@ -990,7 +990,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     auto OldVec = pInst->getOperand(0);
     auto Vec = getPacketizeValue(OldVec);
     auto Idx = pInst->getOperand(1);
-    auto N = cast<VectorType>(OldVec->getType())->getNumElements();
+    auto N =
+        cast<IGCLLVM::FixedVectorType>(OldVec->getType())->getNumElements();
     auto ElemType = pInst->getType();
     auto VecDstTy = IGCLLVM::FixedVectorType::get(ElemType, B->mVWidth);
     // create an read-region
@@ -1025,7 +1026,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     auto Vec = getPacketizeValue(OldVec);
     auto ElmVec = getPacketizeValue(pInst->getOperand(1));
     auto Idx = pInst->getOperand(2);
-    auto N = cast<VectorType>(OldVec->getType())->getNumElements();
+    auto N =
+        cast<IGCLLVM::FixedVectorType>(OldVec->getType())->getNumElements();
     auto ElemType = pInst->getOperand(1)->getType();
     // create an write-region
     CMRegion R(Vec->getType());
@@ -1090,8 +1092,10 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     auto Src1 = pInst->getOperand(0);
     auto Src2 = pInst->getOperand(1);
     auto Mask = IGCLLVM::getShuffleMaskForBitcode(cast<ShuffleVectorInst>(pInst));
-    if (cast<VectorType>(Src1->getType())->getNumElements() == 1 &&
-        cast<VectorType>(Mask->getType())->getNumElements() == 1) {
+    if (cast<IGCLLVM::FixedVectorType>(Src1->getType())->getNumElements() ==
+            1 &&
+        cast<IGCLLVM::FixedVectorType>(Mask->getType())->getNumElements() ==
+            1) {
       if (cast<Constant>(Mask)->isAllOnesValue())
         pReplacedInst = getPacketizeValue(Src2);
       else
@@ -1517,7 +1521,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         auto OrigV0 = CI->getOperand(0);
         CMRegion R(CI);
         IGC_ASSERT(R.Width == 1);
-        if (cast<VectorType>(OrigV0->getType())->getNumElements() == 1) {
+        if (cast<IGCLLVM::FixedVectorType>(OrigV0->getType())
+                ->getNumElements() == 1) {
           replacement = getPacketizeValue(OrigV0);
         } else {
           R.NumElements = B->mVWidth;
@@ -1534,8 +1539,9 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         auto NewV0 = CI->getOperand(1);
         const DebugLoc &DL = CI->getDebugLoc();
         CMRegion R(CI);
-        IGC_ASSERT(isa<VectorType>(NewV0->getType()));
-        IGC_ASSERT(cast<VectorType>(NewV0->getType())->getNumElements() == 1);
+        IGC_ASSERT(isa<IGCLLVM::FixedVectorType>(NewV0->getType()));
+        IGC_ASSERT(cast<IGCLLVM::FixedVectorType>(NewV0->getType())
+                       ->getNumElements() == 1);
         auto NewV1 = getPacketizeValue(NewV0);
         R.NumElements = B->mVWidth;
         if (R.Indirect) {
@@ -1794,8 +1800,9 @@ GlobalVariable *GenXPacketize::findGlobalExecMask() {
   // look for the global EMask variable if exists
   for (auto &Global : M->getGlobalList()) {
     auto Ty = Global.getType()->getElementType();
-    if (Ty->isVectorTy() && cast<VectorType>(Ty)->getNumElements() ==
-                                CMSimdCFLower::MAX_SIMD_CF_WIDTH) {
+    if (Ty->isVectorTy() &&
+        cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() ==
+            CMSimdCFLower::MAX_SIMD_CF_WIDTH) {
       auto ElemTy = cast<VectorType>(Ty)->getElementType();
       if (ElemTy->isIntegerTy() && ElemTy->getIntegerBitWidth() == 1) {
         // so far the type is right, then check the use

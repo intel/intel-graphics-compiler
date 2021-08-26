@@ -94,7 +94,7 @@ static Constant *constantFoldRdRegion(Type *RetTy,
       Idx = RowIdx;
     }
     if (isa<VectorType>(OffsetC->getType())) {
-      auto EltOffset = 
+      auto EltOffset =
         dyn_cast<ConstantInt>(OffsetC->getAggregateElement(i))->getZExtValue();
       EltOffset =
           EltOffset / (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
@@ -142,13 +142,15 @@ static Constant *constantFoldWrRegion(Type *RetTy,
     if (Splat)
       if (DL.getTypeSizeInBits(RetTy) <= 2 * 32 * 8)
         return ConstantVector::getSplat(
-            IGCLLVM::getElementCount(cast<VectorType>(RetTy)->getNumElements()),
+            IGCLLVM::getElementCount(
+                cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements()),
             Splat);
     // If new value fills the whole vector, just return the new value.
     if (NewValue->getType() == RetTy)
       return NewValue;
   }
-  unsigned WholeNumElements = cast<VectorType>(RetTy)->getNumElements();
+  unsigned WholeNumElements =
+      cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
   // Gather the elements of the old value.
   SmallVector<Constant *, 8> Values;
   for (unsigned i = 0; i != WholeNumElements; ++i)

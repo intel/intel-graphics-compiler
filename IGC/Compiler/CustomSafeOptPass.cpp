@@ -1450,8 +1450,14 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::SamplerLoadIntrinsic* inst)
     if (inst->getType() != pNewCallInst->getType())
     {
         IGC_ASSERT_MESSAGE(inst->getType()->isVectorTy(), "expect int4 here");
-        IGC_ASSERT_MESSAGE(cast<VectorType>(inst->getType())->getElementType()->isIntegerTy(32), "expect int4 here");
-        IGC_ASSERT_MESSAGE(cast<VectorType>(inst->getType())->getNumElements() == 4, "expect int4 here");
+        IGC_ASSERT_MESSAGE(cast<IGCLLVM::FixedVectorType>(inst->getType())
+                               ->getElementType()
+                               ->isIntegerTy(32),
+                           "expect int4 here");
+        IGC_ASSERT_MESSAGE(
+            cast<IGCLLVM::FixedVectorType>(inst->getType())->getNumElements() ==
+                4,
+            "expect int4 here");
         auto bitCastInst = builder.CreateBitCast(pNewCallInst, inst->getType());
         inst->replaceAllUsesWith(bitCastInst);
     }

@@ -51,7 +51,8 @@ CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
   IGC_ASSERT_MESSAGE(!Ty->isAggregateType(),
     "cannot create region based on an aggregate type");
   ElementTy = Ty;
-  if (VectorType *VT = dyn_cast<VectorType>(ElementTy)) {
+  if (IGCLLVM::FixedVectorType *VT =
+          dyn_cast<IGCLLVM::FixedVectorType>(ElementTy)) {
     ElementTy = VT->getElementType();
     NumElements = VT->getNumElements();
     Width = NumElements;
@@ -90,14 +91,16 @@ CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
   IGC_ASSERT(isa<CallInst>(Inst));
   switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_rdpredregion:
-      NumElements = cast<VectorType>(Inst->getType())->getNumElements();
+      NumElements =
+          cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
       Width = NumElements;
       Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
       ElementBytes = 1;
       return;
     case GenXIntrinsic::genx_wrpredregion:
       NumElements =
-          cast<VectorType>(Inst->getOperand(1)->getType())->getNumElements();
+          cast<IGCLLVM::FixedVectorType>(Inst->getOperand(1)->getType())
+              ->getNumElements();
       Width = NumElements;
       Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
       ElementBytes = 1;
@@ -129,7 +132,8 @@ CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
   // Get the region parameters.
   IGC_ASSERT(Subregion);
   ElementTy = Subregion->getType();
-  if (VectorType *VT = dyn_cast<VectorType>(ElementTy)) {
+  if (IGCLLVM::FixedVectorType *VT =
+          dyn_cast<IGCLLVM::FixedVectorType>(ElementTy)) {
     ElementTy = VT->getElementType();
     NumElements = VT->getNumElements();
   }
@@ -283,7 +287,8 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
       StartIdx, // start index (in bytes)
       ParentWidthArg // parent width (if variable start index)
   };
-  Type *ElTy = cast<VectorType>(Args[0]->getType())->getElementType();
+  Type *ElTy =
+      cast<IGCLLVM::FixedVectorType>(Args[0]->getType())->getElementType();
   Type *RegionTy;
   if (NumElements != 1 || !AllowScalar)
     RegionTy = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
@@ -341,8 +346,10 @@ Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
                                             const DebugLoc &DL) {
   IGC_ASSERT_MESSAGE(ElementBytes, "not expecting i1 element type");
   if (isa<VectorType>(Input->getType()))
-    IGC_ASSERT_MESSAGE(NumElements == cast<VectorType>(Input->getType())->getNumElements(),
-      "input value and region are inconsistent");
+    IGC_ASSERT_MESSAGE(
+        NumElements ==
+            cast<IGCLLVM::FixedVectorType>(Input->getType())->getNumElements(),
+        "input value and region are inconsistent");
   else
     IGC_ASSERT_MESSAGE(NumElements == 1, "input value and region are inconsistent");
   IGC_ASSERT_MESSAGE(OldVal->getType()->getScalarType() == Input->getType()->getScalarType(),
@@ -419,7 +426,7 @@ Instruction *CMRegion::createRdPredRegion(Value *Input, unsigned Index,
 static Constant *GetConstantSubvector(Constant *V,
   unsigned StartIdx, unsigned Size)
 {
-  Type *ElTy = cast<VectorType>(V->getType())->getElementType();
+  Type *ElTy = cast<IGCLLVM::FixedVectorType>(V->getType())->getElementType();
   Type *RegionTy = IGCLLVM::FixedVectorType::get(ElTy, Size);
   if (isa<UndefValue>(V))
     V = UndefValue::get(RegionTy);
@@ -581,7 +588,7 @@ Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
   if (!Indirect)
     return ConstantInt::get(I16Ty, Offset);
   // Deal with indirect (variable index) region.
-  if (auto VT = dyn_cast<VectorType>(Indirect->getType())) {
+  if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(Indirect->getType())) {
     if (VT->getNumElements() != NumElements) {
       // We have a vector indirect and we need to take a subregion of it.
       CMRegion IdxRegion(Indirect);
@@ -594,7 +601,7 @@ Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
   Value *Index = Indirect;
   if (Offset) {
     Constant *OffsetVal = ConstantInt::get(I16Ty, Offset);
-    if (auto VT = dyn_cast<VectorType>(Indirect->getType()))
+    if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(Indirect->getType()))
       OffsetVal = ConstantVector::getSplat(
           IGCLLVM::getElementCount(VT->getNumElements()), OffsetVal);
     auto BO = BinaryOperator::Create(Instruction::Add, Index, OffsetVal,
@@ -702,7 +709,7 @@ Constant *CMRegion::evaluateConstantRdRegion(Constant *Input, bool AllowScalar)
       return SV;
     return ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements), SV);
   }
-  auto VT = cast<VectorType>(Input->getType());
+  auto VT = cast<IGCLLVM::FixedVectorType>(Input->getType());
   SmallVector<Constant *, 8> Values;
   Constant *Undef = UndefValue::get(
       AllowScalar ? ElementTy
@@ -740,12 +747,12 @@ Constant *CMRegion::evaluateConstantWrRegion(Constant *OldVal, Constant *NewVal)
 {
   IGC_ASSERT(!Indirect);
   SmallVector<Constant *, 8> Vec;
-  for (unsigned i = 0,
-                e = cast<VectorType>(OldVal->getType())->getNumElements();
+  for (unsigned i = 0, e = cast<IGCLLVM::FixedVectorType>(OldVal->getType())
+                               ->getNumElements();
        i != e; ++i)
     Vec.push_back(OldVal->getAggregateElement(i));
   unsigned Off = Offset / ElementBytes, Row = Off;
-  auto NewVT = dyn_cast<VectorType>(NewVal->getType());
+  auto NewVT = dyn_cast<IGCLLVM::FixedVectorType>(NewVal->getType());
   unsigned NewNumEls = !NewVT ? 1 : NewVT->getNumElements();
   for (unsigned i = 0;;) {
     if (Off >= Vec.size())
@@ -911,7 +918,7 @@ void CMRegion::print(raw_ostream &OS) const
      << VStride << ";" << Width << "," << Stride << ">(";
   if (Indirect) {
     OS << Indirect->getName();
-    if (auto VT = dyn_cast<VectorType>(Indirect->getType()))
+    if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(Indirect->getType()))
       OS << "<" << VT->getNumElements() << ">(" << IndirectIdx << ")";
     OS << " + ";
   }
