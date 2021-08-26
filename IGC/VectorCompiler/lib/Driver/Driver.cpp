@@ -598,15 +598,21 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.AllowFPOpFusion = MayBeAllowFPOPFusion.getValue();
   }
 
-  if (opt::Arg *A = ApiOptions.getLastArg(OPT_vc_optimize)) {
-    StringRef Val = A->getValue();
-    auto MaybeLevel = StringSwitch<Optional<vc::OptimizerLevel>>(Val)
-                          .Case("none", vc::OptimizerLevel::None)
-                          .Case("full", vc::OptimizerLevel::Full)
-                          .Default(None);
-    if (!MaybeLevel)
-      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
-    Opts.OptLevel = MaybeLevel.getValue();
+  if (opt::Arg *A =
+          ApiOptions.getLastArg(OPT_vc_optimize, OPT_opt_disable_ze)) {
+    if (A->getOption().matches(OPT_vc_optimize)) {
+      StringRef Val = A->getValue();
+      auto MaybeLevel = StringSwitch<Optional<vc::OptimizerLevel>>(Val)
+                            .Case("none", vc::OptimizerLevel::None)
+                            .Case("full", vc::OptimizerLevel::Full)
+                            .Default(None);
+      if (!MaybeLevel)
+        return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
+      Opts.OptLevel = MaybeLevel.getValue();
+    } else {
+      IGC_ASSERT(A->getOption().matches(OPT_opt_disable_ze));
+      Opts.OptLevel = vc::OptimizerLevel::None;
+    }
   }
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_vc_stateless_private_size)) {

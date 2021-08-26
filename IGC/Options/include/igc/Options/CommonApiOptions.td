@@ -29,8 +29,8 @@ def large_GRF : ZeFlag<"opt-large-register-file">,
 def emit_debug : PlainFlag<"g">,
   HelpText<"Enable generation of debug information and enables kernel debug">;
 // These are coming from NEO when run under debugger.
-defm : CommonFlag<"opt-disable">,
-  Alias<emit_debug>, HelpText<"Alias for -g">;
+defm opt_disable : CommonFlag<"opt-disable">,
+  HelpText<"Turns off optimizations">;
 
 }
 // }} Common API options
