@@ -21,9 +21,9 @@ namespace IGC
 
 class HoistURBWrites : public llvm::FunctionPass
 {
-    llvm::DominatorTree* DT;
-    llvm::PostDominatorTree* PDT;
-    llvm::LoopInfo* LI;
+    llvm::DominatorTree* DT = nullptr;
+    llvm::PostDominatorTree* PDT = nullptr;;
+    llvm::LoopInfo* LI = nullptr;;
 
 public:
     static char ID; // Pass identification
