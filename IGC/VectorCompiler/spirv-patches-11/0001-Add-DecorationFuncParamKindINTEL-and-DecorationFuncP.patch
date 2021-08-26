@@ -11,15 +11,15 @@ Subject: [PATCH 1/6] Add DecorationFuncParamKindINTEL and
  lib/SPIRV/libSPIRV/SPIRVDecorate.cpp  | 12 ++++++++++++
  lib/SPIRV/libSPIRV/SPIRVDecorate.h    |  9 +++++++++
  lib/SPIRV/libSPIRV/SPIRVEnum.h        |  2 ++
- lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h |  2 ++
+ lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h |  3 +++
  lib/SPIRV/libSPIRV/spirv.hpp          |  2 ++
- 8 files changed, 54 insertions(+)
+ 8 files changed, 55 insertions(+)
 
 diff --git a/lib/SPIRV/SPIRVReader.cpp b/lib/SPIRV/SPIRVReader.cpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/SPIRVReader.cpp
 +++ b/lib/SPIRV/SPIRVReader.cpp
-@@ -4074,6 +4074,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
+@@ -4077,6 +4077,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
      }
      if (BA->hasDecorate(DecorationSingleElementVectorINTEL))
        F->addAttribute(ArgNo + 1, SEVAttr);
@@ -42,7 +42,7 @@ diff --git a/lib/SPIRV/SPIRVWriter.cpp b/lib/SPIRV/SPIRVWriter.cpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/SPIRVWriter.cpp
 +++ b/lib/SPIRV/SPIRVWriter.cpp
-@@ -664,6 +664,19 @@ void LLVMToSPIRVBase::transVectorComputeMetadata(Function *F) {
+@@ -650,6 +650,19 @@ void LLVMToSPIRVBase::transVectorComputeMetadata(Function *F) {
               "This decoration is valid only for Scalar or Pointer types");
        BA->addDecorate(DecorationSingleElementVectorINTEL);
      }
@@ -156,12 +156,13 @@ diff --git a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h b/lib/SPIRV/libSPIRV/SPIRVNam
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
-@@ -165,6 +165,8 @@ template <> inline void SPIRVMap<Decoration, std::string>::init() {
-       "FunctionFloatingPointModeINTEL");
-   add(DecorationSingleElementVectorINTEL, "SingleElementVectorINTEL");
+@@ -171,6 +171,9 @@ template <> inline void SPIRVMap<Decoration, std::string>::init() {
+   // From spirv_internal.hpp
    add(DecorationCallableFunctionINTEL, "CallableFunctionINTEL");
+
 +  add(DecorationFuncParamKindINTEL, "FuncParamKindINTEL");
 +  add(DecorationFuncParamDescINTEL, "FuncParamDescINTEL");
++
    add(DecorationMax, "Max");
  }
  SPIRV_DEF_NAMEMAP(Decoration, SPIRVDecorationNameMap)
@@ -169,7 +170,7 @@ diff --git a/lib/SPIRV/libSPIRV/spirv.hpp b/lib/SPIRV/libSPIRV/spirv.hpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/spirv.hpp
 +++ b/lib/SPIRV/libSPIRV/spirv.hpp
-@@ -549,6 +549,8 @@ enum Decoration {
+@@ -539,6 +539,8 @@ enum Decoration {
      DecorationFunctionFloatingPointModeINTEL = 6080,
      DecorationSingleElementVectorINTEL = 6085,
      DecorationCallableFunctionINTEL = 6087,
