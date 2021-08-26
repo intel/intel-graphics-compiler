@@ -493,8 +493,8 @@ DECLARE_IGC_REGKEY(DWORD, OverrideOCLMaxParamSize, 0,  "Override the value impos
 DECLARE_IGC_REGKEY(bool, EnableOptReportPrivateMemoryToSLM, false, "[POC] Generate opt report file for moving private memory allocations to SLM.", false)
 DECLARE_IGC_REGKEY(bool, ForceAllPrivateMemoryToSLM, false, "[POC] Force moving all private memory allocations to SLM.", false)
 DECLARE_IGC_REGKEY(debugString, ForcePrivateMemoryToSLMOnBuffers, 0, "[POC] Force moving private memory allocations to SLM, semicolon-separated list of buffers.", false)
-DECLARE_IGC_REGKEY(bool, ForcePrivateMemoryToGlobalOnGeneric, false, "Force moving private memory allocations to global buffer when generic pointer is present", true)
-DECLARE_IGC_REGKEY(bool, DetectCastToGAS,                     false, "Check if the module contains local/private to GAS (Gerneric Address Space) cast, it also check internal flags", true)
+DECLARE_IGC_REGKEY(bool, ForcePrivateMemoryToGlobalOnGeneric, true, "Force moving private memory allocations to global buffer when generic pointer is present", true)
+DECLARE_IGC_REGKEY(bool, DetectCastToGAS,                     true, "Check if the module contains local/private to GAS (Gerneric Address Space) cast, it also check internal flags", true)
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true, "Apply WaConservativeRasterization for the platforms enabled", false)
