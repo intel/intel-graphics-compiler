@@ -3252,7 +3252,7 @@ namespace IGC
     VISA_StateOpndHandle* CEncoder::GetVISASurfaceOpnd(e_predefSurface surfaceType, CVariable* bti)
     {
         VISA_StateOpndHandle* surfOpnd = nullptr;
-        if (surfaceType == ESURFACE_NORMAL || surfaceType == ESURFACE_BINDLESS)
+        if (surfaceType == ESURFACE_NORMAL || surfaceType == ESURFACE_BINDLESS || surfaceType == ESURFACE_SSHBINDLESS)
         {
             VISA_SurfaceVar* surfacevar = nullptr;
             if (surfaceType == ESURFACE_BINDLESS)
