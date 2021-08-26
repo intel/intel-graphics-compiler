@@ -186,89 +186,78 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
   for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI, ++GTI) {
     Value *Idx = *OI;
     if (StructType *StTy = GTI.getStructTypeOrNull()) {
-      if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
-        auto Field = CI->getSExtValue();
-        if (Field) {
-          uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
-          Value *OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
-          PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
-        }
-        Ty = StTy->getElementType(Field);
-      } else if (isa<ConstantAggregateZero>(Idx)) {
-        Ty = StTy->getElementType(0);
-      } else if (const ConstantVector *CV = dyn_cast<ConstantVector>(Idx)) {
-        auto CE = CV->getSplatValue();
-        assert(CE && dyn_cast<ConstantInt>(CE));
-        auto Field = cast<ConstantInt>(CE)->getSExtValue();
-        if (Field) {
-          uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
-          Value *OffsetVal = Constant::getIntegerValue(
-              PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
-          PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
-        }
-        Ty = StTy->getElementType(Field);
-      } else
-        assert(false);
-    } else {
-      Ty = GTI.getIndexedType();
-      if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
-        if (!CI->isZero()) {
-          uint64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
-          Value *OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
-          PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
-        }
-      } else if (!isa<ConstantAggregateZero>(Idx)) {
-        Value *NewIdx = getSExtOrTrunc(Idx, PtrMathTy);
-        APInt ElementSize = APInt(PtrMathSizeInBits, DL->getTypeAllocSize(Ty));
-
-        if (BinaryOperator *BO = dyn_cast<BinaryOperator>(NewIdx)) {
-          // Detect the pattern GEP base, a + b where base and a are both loop
-          // invariant (but not b), so we could rearrange the lowered code into
-          // (base + (a << shftAmt)) + (b << shftAmt).
-          Loop *L = LI ? LI->getLoopFor(BO->getParent()) : nullptr;
-          if (L && L->isLoopInvariant(GEP->getPointerOperand()) &&
-              BO->getOpcode() == Instruction::Add) {
-
-            auto reassociate = [&](Value *A, Value *B) {
-              Value *InvVal = nullptr;
-              if (ElementSize == 1)
-                InvVal = A;
-              else if (ElementSize.isPowerOf2())
-                InvVal = Builder->CreateShl(
-                    A, Constant::getIntegerValue(
-                           A->getType(),
-                           APInt(PtrMathSizeInBits, ElementSize.logBase2())));
-              else
-                InvVal = Builder->CreateMul(
-                    A, Constant::getIntegerValue(A->getType(), ElementSize));
-              PointerValue = Builder->CreateAdd(PointerValue, InvVal);
-              NewIdx = B;
-            };
-
-            Value *LHS = BO->getOperand(0);
-            Value *RHS = BO->getOperand(1);
-            bool isLHSLI = L->isLoopInvariant(LHS);
-            bool isRHSLI = L->isLoopInvariant(RHS);
-            if (isLHSLI && !isRHSLI)
-              reassociate(LHS, RHS);
-            else if (!isLHSLI && isRHSLI)
-              reassociate(RHS, LHS);
-          }
-        }
-        if (ElementSize == 1) {
-          // DO NOTHING.
-        } else if (ElementSize.isPowerOf2()) {
-          APInt ShiftAmount = APInt(PtrMathSizeInBits, ElementSize.logBase2());
-          NewIdx = Builder->CreateShl(
-              NewIdx,
-              Constant::getIntegerValue(NewIdx->getType(), ShiftAmount));
-        } else
-          NewIdx = Builder->CreateMul(
-              NewIdx,
-              Constant::getIntegerValue(NewIdx->getType(), ElementSize));
-
-        PointerValue = Builder->CreateAdd(PointerValue, NewIdx);
+      int64_t Field = 0;
+      Constant *CE = cast<Constant>(Idx);
+      if (!CE->isNullValue()) {
+        Field = CE->getUniqueInteger().getSExtValue();
+        uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
+        Value *OffsetVal = Constant::getIntegerValue(
+          PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
+        PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
       }
+      
+      Ty = StTy->getElementType(Field);
+      break;
+    } 
+
+    Ty = GTI.getIndexedType();
+    if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
+      if (!CI->isZero()) {
+        uint64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
+        Value *OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
+        PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
+      }
+    } else if (!isa<ConstantAggregateZero>(Idx)) {
+      Value *NewIdx = getSExtOrTrunc(Idx, PtrMathTy);
+      APInt ElementSize = APInt(PtrMathSizeInBits, DL->getTypeAllocSize(Ty));
+
+      if (BinaryOperator *BO = dyn_cast<BinaryOperator>(NewIdx)) {
+        // Detect the pattern GEP base, a + b where base and a are both loop
+        // invariant (but not b), so we could rearrange the lowered code into
+        // (base + (a << shftAmt)) + (b << shftAmt).
+        Loop *L = LI ? LI->getLoopFor(BO->getParent()) : nullptr;
+        if (L && L->isLoopInvariant(GEP->getPointerOperand()) &&
+            BO->getOpcode() == Instruction::Add) {
+
+          auto reassociate = [&](Value *A, Value *B) {
+            Value *InvVal = nullptr;
+            if (ElementSize == 1)
+              InvVal = A;
+            else if (ElementSize.isPowerOf2())
+              InvVal = Builder->CreateShl(
+                  A, Constant::getIntegerValue(
+                         A->getType(),
+                         APInt(PtrMathSizeInBits, ElementSize.logBase2())));
+            else
+              InvVal = Builder->CreateMul(
+                  A, Constant::getIntegerValue(A->getType(), ElementSize));
+            PointerValue = Builder->CreateAdd(PointerValue, InvVal);
+            NewIdx = B;
+          };
+
+          Value *LHS = BO->getOperand(0);
+          Value *RHS = BO->getOperand(1);
+          bool isLHSLI = L->isLoopInvariant(LHS);
+          bool isRHSLI = L->isLoopInvariant(RHS);
+          if (isLHSLI && !isRHSLI)
+            reassociate(LHS, RHS);
+          else if (!isLHSLI && isRHSLI)
+            reassociate(RHS, LHS);
+        }
+      }
+      if (ElementSize == 1) {
+        // DO NOTHING.
+      } else if (ElementSize.isPowerOf2()) {
+        APInt ShiftAmount = APInt(PtrMathSizeInBits, ElementSize.logBase2());
+        NewIdx = Builder->CreateShl(
+            NewIdx,
+            Constant::getIntegerValue(NewIdx->getType(), ShiftAmount));
+      } else
+        NewIdx = Builder->CreateMul(
+            NewIdx,
+            Constant::getIntegerValue(NewIdx->getType(), ElementSize));
+
+      PointerValue = Builder->CreateAdd(PointerValue, NewIdx);
     }
   }
 
