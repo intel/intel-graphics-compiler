@@ -3692,7 +3692,7 @@ bool Augmentation::markNonDefaultMaskDef()
 
         if (dclRegFile == G4_GRF || dclRegFile == G4_INPUT || dclRegFile == G4_ADDRESS)
         {
-            if (dcl->getTotalElems() < 8)
+            if (dcl->getTotalElems() < 8 || dclRegFile == G4_INPUT)
             {
                 gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
             }
