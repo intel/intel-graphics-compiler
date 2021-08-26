@@ -555,12 +555,14 @@ void CISA_IR_Builder::RemoveOptimizingFunction(
 // Perform LTO including transforming stack calls to subroutine calls, subroutine calls to jumps, and inlining
 void CISA_IR_Builder::LinkTimeOptimization(
     std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
-    bool call2jump)
+    bool call2jump,
+    bool inlining)
 {
     std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
     std::map<G4_INST*, std::list<G4_INST*>> rets;
     std::set<G4_Kernel*> visited;
     std::list<G4_INST*> dummyContainer;
+    unsigned int raUID = 0;
     // append instructions from callee to caller
     for (auto& it : sgInvokeList)
     {
@@ -569,52 +571,76 @@ void CISA_IR_Builder::LinkTimeOptimization(
 
         G4_Kernel* caller = GetCallerKernel(fcall);
         G4_Kernel* callee = GetCalleeKernel(fcall);
-        // We only have to copy callee's instructions once
-        if (visited.find(callee) != visited.end())
-        {
-            continue;
-        }
-        visited.insert(callee);
-        auto& callerInsts = caller->fg.builder->instList;
-        auto calleeInsts  = callee->fg.builder->instList;
-        G4_INST* calleeLabel = *calleeInsts.begin();
-        for (G4_INST* fret : calleeInsts)
-        {
-            if (fret->opcode() != G4_pseudo_fret)
-                continue;
-            // Change fret to ret
-            fret->setOpcode(G4_return);
-            rets[calleeLabel].push_back(fret);
-        }
-        callerInsts.insert(callerInsts.end(), calleeInsts.begin(), calleeInsts.end());
-        // Append declarations from callee to caller
-        for (auto curDcl : callee->Declares)
-        {
-            caller->Declares.push_back(curDcl);
-        }
-    }
-
-    // Change fcall to call
-    for (auto& it : sgInvokeList)
-    {
-        G4_INST* fcall = *it;
-        assert(fcall->opcode() == G4_pseudo_fcall);
-
-        G4_Kernel* callee = GetCalleeKernel(fcall);
-
         G4_INST* calleeLabel = *callee->fg.builder->instList.begin();
         ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not a label");
 
+        // Change fcall to call
         fcall->setOpcode(G4_call);
         fcall->setSrc(calleeLabel->getSrc(0), 0);
         // we only record a single callsite to the target in order to convert to jumps
-        if (callsite.find(calleeLabel) == callsite.end())
+        // note that we don't need call2jump when inlining kicks in
+        if ((!inlining) && callsite.find(calleeLabel) == callsite.end())
         {
             callsite[calleeLabel] = it;
         }
         else
         {
             callsite[calleeLabel] = dummyContainer.end();
+        }
+
+        auto& callerInsts = caller->fg.builder->instList;
+        auto calleeInsts = callee->fg.builder->instList;
+
+        if (inlining)
+        {
+            auto& builder = caller->fg.builder;
+            std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
+            G4_Label *raLabel = builder->createLabel(funcName + "_ret" + std::to_string(raUID++), LABEL_BLOCK);
+            G4_INST* ra = caller->fg.createNewLabelInst(raLabel);
+            // We don't need calleeLabel (first instruction) anymore after inlining
+            calleeInsts.pop_front();
+            for (G4_INST* fret : calleeInsts)
+            {
+                G4_INST* inst = fret->cloneInst();
+                callerInsts.insert(it, inst);
+                if (inst->opcode() != G4_pseudo_fret)
+                    continue;
+                // Change inst to goto
+                inst->setOpcode(G4_goto);
+                inst->asCFInst()->setUip(raLabel);
+            }
+            // Append declarations from callee to caller
+            for (auto curDcl : callee->Declares)
+            {
+                caller->Declares.push_back(curDcl);
+            }
+            // insert return label for goto
+            callerInsts.insert(it, ra);
+            // remove the call
+            callerInsts.erase(it);
+        }
+        else
+        {
+            // We only have to copy callee's instructions once for subrountine calls
+            if (visited.find(callee) != visited.end())
+            {
+                continue;
+            }
+            visited.insert(callee);
+            for (G4_INST* fret : calleeInsts)
+            {
+                if (fret->opcode() != G4_pseudo_fret)
+                    continue;
+                // Change fret to ret
+                fret->setOpcode(G4_return);
+                rets[calleeLabel].push_back(fret);
+            }
+            callerInsts.insert(callerInsts.end(), calleeInsts.begin(), calleeInsts.end());
+            // Append declarations from callee to caller
+            for (auto curDcl : callee->Declares)
+            {
+                caller->Declares.push_back(curDcl);
+            }
         }
     }
 
@@ -962,8 +988,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         if (m_options.getuInt32Option(vISA_Linker) & Linker_Subroutine)
         {
             LinkTimeOptimization(sgInvokeList,
-                    (m_options.getuInt32Option(vISA_Linker) & Linker_Call2Jump) ||
-                    (m_options.getuInt32Option(vISA_Linker) & Linker_Inline));
+                    m_options.getuInt32Option(vISA_Linker) & Linker_Call2Jump,
+                    m_options.getuInt32Option(vISA_Linker) & Linker_Inline);
         }
     }
 
