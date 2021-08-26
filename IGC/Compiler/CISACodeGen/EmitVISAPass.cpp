@@ -4422,6 +4422,8 @@ void EmitPass::emitSetDebugReg(llvm::Instruction* inst)
 
 CVariable* EmitPass::ComputeSampleIntOffset(llvm::Instruction* sample, uint sourceIndex)
 {
+    // The (u,v,r) offsets are encoded in SamplerMessageHeader::DW2
+    // as [11:8], [7:4], [3:0] bitfields, respectively. Format: S3.
     uint offset = 0;
     bool dynamicOffset = false;
     for (uint i = 0; i < 3; i++)
@@ -4453,9 +4455,9 @@ CVariable* EmitPass::ComputeSampleIntOffset(llvm::Instruction* sample, uint sour
                 // Offset is only 4 bits, mask off remaining bits
                 CVariable* offsetBits = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true, "PackedOffset");
                 m_encoder->And(offsetBits, offsetV, m_currShader->ImmToVariable(0xF, ISA_TYPE_UW));
-                if (i > 0)
+                if (i != 2)
                 {
-                    m_encoder->Shl(offsetBits, offsetBits, m_currShader->ImmToVariable(i * 4, ISA_TYPE_UW));
+                    m_encoder->Shl(offsetBits, offsetBits, m_currShader->ImmToVariable(4 * (2 - i), ISA_TYPE_UW));
                 }
                 if (packedOffset->IsImmediate() && packedOffset->GetImmediateValue() == 0)
                 {
