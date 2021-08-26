@@ -21,6 +21,7 @@ FIXME? ::
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
+#include "GenISAIntrinsics/GenIntrinsics.h"
 
 using namespace llvm;
 using namespace IGC::Legalizer;
@@ -342,21 +343,65 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
                 break;
             case Instruction::LShr:
             {
-                if (auto val = dyn_cast<ConstantInt>(Src2)) {
-                    unsigned offset = (unsigned)val->getSExtValue() / promoteToInt;
-                    unsigned elementToMove = Idx + offset;
-
-                    if (elementToMove < quotient)
-                        NewInst = m_builder->CreateExtractElement(NewLargeSrc1VecForm, elementToMove);
+                if (auto val = dyn_cast<ConstantInt>(Src2))
+                {
+                    int64_t offset = val->getSExtValue();
+                    IGC_ASSERT(offset >= 0 && offset < (int64_t)Src1width);
+                    IGC_ASSERT(quotient == 2);
+                    if (offset < promoteToInt)
+                    {
+                        NewInst = m_builder->CreateLShr(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx), offset);
+                        if (Idx == 0)
+                        {
+                            Value* shrVal = NewInst;
+                            Value* shlVal = m_builder->CreateShl(m_builder->CreateExtractElement(NewLargeSrc1VecForm, 1), promoteToInt - offset);
+                            NewInst = m_builder->CreateAnd(shrVal, shlVal);
+                        }
+                    }
                     else
-                        NewInst = ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, true);
+                    {
+                        if (Idx == 0)
+                            NewInst = m_builder->CreateLShr(m_builder->CreateExtractElement(NewLargeSrc1VecForm, 1), offset - promoteToInt);
+                        else
+                            NewInst = ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, false);
+                    }
                 }
-                else {
+                else
+                {
                     instSupported = false;
                     IGC_ASSERT_MESSAGE(0, "Shift by amount is not a constant.");
                 }
                 break;
             }
+            case Instruction::Mul:
+                IGC_ASSERT(quotient == 2);
+                if (Idx == 0)
+                {
+                    NewInst = m_builder->CreateMul(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
+                        m_builder->CreateExtractElement(NewLargeSrc2VecForm, Idx));
+                }
+                else
+                {
+                    Type* type = llvm::Type::getIntNTy(I.getContext(), promoteToInt);
+                    Function* MulHFunc = llvm::GenISAIntrinsic::getDeclaration(
+                        m_builder->GetInsertBlock()->getParent()->getParent(),
+                        llvm::GenISAIntrinsic::GenISA_umulH,
+                        type);
+
+                    Value* Lo1 = m_builder->CreateExtractElement(NewLargeSrc1VecForm, uint64_t(0));
+                    Value* Hi1 = m_builder->CreateExtractElement(NewLargeSrc1VecForm, uint64_t(1));
+                    Value* Lo2 = m_builder->CreateExtractElement(NewLargeSrc2VecForm, uint64_t(0));
+                    Value* Hi2 = m_builder->CreateExtractElement(NewLargeSrc2VecForm, uint64_t(1));
+
+                    Value* MulHiLo1Lo2 = m_builder->CreateCall(MulHFunc, { Lo1, Lo2 });
+                    Value* MulLo1Hi2 = m_builder->CreateMul(Lo1, Hi2);
+                    Value* MulLo2Hi1 = m_builder->CreateMul(Lo2, Hi1);
+                    Value* AddLoHi = m_builder->CreateAdd(MulLo1Hi2, MulLo2Hi1);
+                    Value* AddMulHi = m_builder->CreateAdd(AddLoHi, MulHiLo1Lo2);
+                    uint64_t mask = (1ULL << (Src1width - promoteToInt)) - 1;
+                    NewInst = m_builder->CreateAnd(AddMulHi, mask);
+                }
+                break;
             case Instruction::Add:
                 instSupported = false;
                 IGC_ASSERT_MESSAGE(0, "Add Instruction seen with 'large' illegal int type. Legalization support missing.");
@@ -445,6 +490,13 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
         case Instruction::Shl:
         {
             NewLargeRes = m_builder->CreateShl(NewLargeSrc1, NewLargeSrc2);
+            break;
+        }
+        case Instruction::Mul:
+        {
+            Value* Mul = m_builder->CreateMul(NewLargeSrc1, NewLargeSrc2);
+            uint64_t mask = (1ULL << Src1width) - 1;
+            NewLargeRes = m_builder->CreateAnd(Mul, mask);
             break;
         }
         default:
@@ -709,8 +761,6 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         unsigned quotient, promoteToInt, Src1width = prevInst->getOperand(0)->getType()->getIntegerBitWidth();
         promoteInt(Src1width, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
-        unsigned long long mask = ULLONG_MAX; //0xffffffffffffffffui64
-
         int activeBits = prevInst->getType()->getIntegerBitWidth(); // or I.getoperand(0)->getType()->getIntegerBitWidth();
 
         if (promoteToInt * quotient == Src1width) { // As in the example sighted below
@@ -753,14 +803,14 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
                     Value* Elmt;
                     Value* maskedElmt;
 
-                    for (unsigned Idx = 0; Idx < quotient; ++Idx) {
+                    for (unsigned Idx = 0; Idx < quotient; ++Idx)
+                    {
                         Elmt = m_builder->CreateExtractElement(truncSrcAsVec, Idx);
-                        mask >>= 64 - std::min(64, activeBits);
+                        uint64_t mask = (1ULL << std::min(promoteToInt, activeBits - Idx * promoteToInt)) - 1;
                         maskedElmt = m_builder->CreateAnd(Elmt, mask);
-                        m_builder->CreateInsertElement(vecRes, maskedElmt, Idx);
-                        activeBits -= std::min(64, activeBits);
+                        vecRes = m_builder->CreateInsertElement(vecRes, maskedElmt, Idx);
                     }
-                    Value* bitcastBackToScalar = m_builder->CreateBitCast(vecRes, prevInst->getType());
+                    Value* bitcastBackToScalar = m_builder->CreateBitCast(vecRes, I.getType());
 
                     I.replaceAllUsesWith(bitcastBackToScalar);
                     I.eraseFromParent();
@@ -786,7 +836,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
                 ...
                 ALU2 (%1)
                 */
-                mask >>= 64 - activeBits;
+                uint64_t mask = (1ULL << activeBits) - 1;
                 Value* maskedElmt = m_builder->CreateAnd(prevInst->getOperand(0), mask);
                 Value* cleanedUpInst = NULL;
                 if (I.getType()->getScalarSizeInBits() < maskedElmt->getType()->getScalarSizeInBits())
@@ -868,10 +918,32 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         Changed = true;
     }
     break;
+    case Instruction::ZExt:
+    {
+        /*
+
+        %1.    zext %1 i32, i33
+        %2.    zext %2 i33, i64
+        ...
+        ALU
+        -->
+        %1.    zext %1 i32, i64
+        ...
+        ALU
+        */
+        I.setOperand(0, prevInst->getOperand(0));
+    }
+    break;
     default:
         IGC_ASSERT_MESSAGE(0, "Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing.");
         break;
     }
+    if (prevInst->use_empty())
+    {
+        prevInst->eraseFromParent();
+        Changed = true;
+    }
+
 }
 
 void PeepholeTypeLegalizer::cleanupTruncInst(Instruction& I) {
