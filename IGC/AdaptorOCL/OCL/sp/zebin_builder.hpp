@@ -54,7 +54,9 @@ public:
         const char*  rawIsaBinary,
         unsigned int rawIsaBinarySize,
         const IGC::SOpenCLKernelInfo& annotations,
-        const uint32_t grfSize);
+        const uint32_t grfSize,
+        const IGC::CBTILayout& layout,
+        bool isProgramDebuggable);
 
     // getElfSymbol - find a symbol name in ELF binary and return a symbol entry
     // that will later be transformed to ZE binary format
@@ -164,6 +166,11 @@ private:
     /// Calculate correct (pure) size of ELF binary, because m_debugDataSize in kernel output
     /// contains something else.
     size_t calcElfSize(void* elfBin, size_t elfSize);
+
+    /// add debug environment
+    void addKernelDebugEnv(const IGC::SOpenCLKernelInfo& annotations,
+                           const IGC::CBTILayout& layout,
+                           zebin::zeInfoKernel& zeinfoKernel);
 
 private:
     // mBuilder - Builder of a ZE ELF object

@@ -55,7 +55,9 @@ void ZEBinaryBuilder::createKernel(
     const char*  rawIsaBinary,
     unsigned int rawIsaBinarySize,
     const SOpenCLKernelInfo& annotations,
-    const uint32_t grfSize)
+    const uint32_t grfSize,
+    const CBTILayout& layout,
+    bool isProgramDebuggable)
 {
     ZEELFObjectBuilder::SectionID textID =
         addKernelBinary(annotations.m_kernelName, rawIsaBinary, rawIsaBinarySize);
@@ -78,6 +80,8 @@ void ZEBinaryBuilder::createKernel(
     addPayloadArgsAndBTI(annotations, zeKernel);
     addMemoryBuffer(annotations, zeKernel);
     addGTPinInfo(annotations);
+    if (isProgramDebuggable)
+        addKernelDebugEnv(annotations, layout, zeKernel);
 }
 
 void ZEBinaryBuilder::addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations)
@@ -770,4 +774,19 @@ void ZEBinaryBuilder::printBinaryObject(const std::string& filename)
     llvm::raw_fd_ostream os(filename, EC);
     mBuilder.finalize(os);
     os.close();
+}
+
+void ZEBinaryBuilder::addKernelDebugEnv(const SOpenCLKernelInfo& annotations,
+                                        const CBTILayout& layout,
+                                        zeInfoKernel& zeinfoKernel)
+{
+    DebugEnvTy& envVec = zeinfoKernel.debug_env;
+    // Although debug_env has a vector type, only 1 element is allowed now.
+    IGC_ASSERT(envVec.empty());
+    zeInfoDebugEnv env;
+    env.sip_surface_bti = layout.GetSystemThreadBindingTableIndex();
+    // Now set the sip surface offset to 0 directly. Currently the surface offset
+    // is computed locally when creating patch tokens.
+    env.sip_surface_offset = 0;
+    envVec.emplace_back(env);
 }

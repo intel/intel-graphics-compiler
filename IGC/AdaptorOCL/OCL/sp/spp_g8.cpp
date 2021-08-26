@@ -518,7 +518,9 @@ void CGen8OpenCLProgram::GetZEBinary(
                 (const char*)pOutput->m_programBin,
                 pOutput->m_programSize,
                 kernel->m_kernelInfo,
-                kernel->getGRFSize());
+                kernel->getGRFSize(),
+                m_Context.btiLayout,
+                m_ContextProvider.isProgramDebuggable());
 
             // FIXME: Handle IGC_IS_FLAG_ENABLED(ShaderDumpEnable) and
             // IGC_IS_FLAG_ENABLED(ShaderOverride)

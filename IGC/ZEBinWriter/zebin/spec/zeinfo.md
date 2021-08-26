@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.6
+Version 1.7
 
 ## Grammar
 
@@ -47,6 +47,7 @@ All **literals** have one of the following types:
 | binding_table_indices | BindingTableIndicesTy | Optional | vector |
 | per_thread_memory_buffers | PerThreadMemoryBuffersTy | Optional | vector |
 | experimental_properties | ExperimentalPropertiesTy | Optional | A set of experimental attributes. vector. |
+| debug_env | DebugEnvTy | Optional | vector |
 <!--- Kernel Kernels --->
 
 A ze_info section may contain more than one kernel's attributes, each is
@@ -64,12 +65,12 @@ functions:
     attribute_seq
 ~~~
 
-function attribute represents a non-kernel function's information. A ze_info
+Function attribute represents a non-kernel function's information. A ze_info
 section may contains more than one function's attributes, each is
 represented in a function attribute. The name attribute in function represent the
 kernel's name.
 
-function attributes may only present when the function can be externally or
+Function attributes may only present when the function can be externally or
 indirectly called.
 
 The attributes that are supported in function are: **name** and **Memory Buffer**.
@@ -138,17 +139,17 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | local_size | int32x3 | Number of work-items in a group |
 | group_count | int32x3 | Number of group |
 | work_dimensions | int32 | Work dimensions |
-| global_size | int32x3 | OpenCL specific feacture. The total number of work-items in each dimension |
+| global_size | int32x3 | OpenCL specific feature. The total number of work-items in each dimension |
 | enqueued_local_size | int32x3 | OpenCL specific feature. The size returned by OCL get_enqueued_local_size API  |
 | global_id_offset | int32x3 | |
 | private_base_stateless | int64 | The base address of private buffer specified at per_thread_memory_buffers |
 | buffer_offset | | The extra offset for buffer reference to satisfy the alignment requirement of stateful memory access. |
-| printf_buffer | | The address of printf_buffer which holds the prtinf strings information. |
+| printf_buffer | | The address of printf_buffer which holds the printf strings information. |
 | arg_byvalue | | Explicit kernel argument |
 | arg_bypointer | | Explicit kernel argument |
 <!--- <argument_type> ArgType -->
 
-arg_byvalue and arg_bypointer are user arguments that are explcitly passed in from the applications. Other kinds of arguments are implicit arguments that are passed in by runtime.
+arg_byvalue and arg_bypointer are user arguments that are explicitly passed in from the applications. Other kinds of arguments are implicit arguments that are passed in by runtime.
 
 ### Supported memory addressing modes:
 Supported <memory_addressing_mode> of payload_arguments.
@@ -164,7 +165,7 @@ Supported <memory_addressing_mode> of payload_arguments.
 ### Supported address spaces:
 Supported <address_space> of payload_arguments.
 
-| Addresss Space | Description |
+| Address Space | Description |
 | ----- | ----- |
 | global | |
 | local | |
@@ -224,7 +225,7 @@ Supported <allocation_type> of Per Thread Memory Buffer.
 | Allocation Type | Description |
 | ----- | ----- |
 | global | Only the memory usage "private_space" can have global type <br> The base address of the global buffer will be passed in by payload_argument with private_base_stateless type
-| scratch | Scratch could be bindless surface or stateless <br> The base offset of this scratch will be passed in r0.5. If more than one scratch buffer is requested, the scrach index of each is set by convention |
+| scratch | Scratch could be bindless surface or stateless <br> The base offset of this scratch will be passed in r0.5. If more than one scratch buffer is requested, the scratch index of each is set by convention |
 | slm | |
 <!--- <allocation_type> MemBufferType -->
 
@@ -241,7 +242,7 @@ Supported <memory_usage> of Per Thread Memory Buffer.
 ## Experimental Properties
 This section defines experimental_properties of a kernel/function.
 The experimental attributes are experimental information for early evaluation or experiment.
-They must not affect the kernel execution correctness and are subject to be chagned or removed.
+They must not affect the kernel execution correctness and are subject to be changed or removed.
 
 | Attribute | Type | Required/Optional | Default | Description |
 | ------ | ------ | ------ | ------ | ------ |
@@ -250,12 +251,23 @@ They must not affect the kernel execution correctness and are subject to be chag
 | has_non_kernel_arg_atomic | int32 | Optional | -1 | If this kernel/function contains atomic that cannot be traced back to kernel arguments. 0 if false, 1 if true, -1 if not applicable. |
 <!--- ExperimentalProperties ExperimentalProperties -->
 
+## Debug Environment
+This section defines debug_env attributes to represent all debug related
+information. Currently only SIP surface information is provided.
+
+| Attribute | Type | Required/Optional | Default | Description |
+| ------ | ------ | ------ | ------ | ------ |
+| sip_surface_bti | int32 | Optional | -1 | |
+| sip_surface_offset | int32 | Optional | -1 | |
+<!--- DebugEnv DebugEnv -->
+
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
 - Major number: Increase when non-backward-compatible features are added. For example, rename attributes or remove attributes.
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.7**: Add debug_env to kernel.
 - **Version 1.6**: Remove actual_kernel_start_offset from execution environment.
 - **Version 1.5**: Add payload_argument type work_dimensions.
 - **Version 1.4**: Add sampler_index to payload arguments.

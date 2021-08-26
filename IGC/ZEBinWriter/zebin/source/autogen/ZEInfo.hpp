@@ -85,11 +85,17 @@ struct zeInfoExperimentalProperties
     zeinfo_int32_t has_non_kernel_arg_store = -1;
     zeinfo_int32_t has_non_kernel_arg_atomic = -1;
 };
+struct zeInfoDebugEnv
+{
+    zeinfo_int32_t sip_surface_bti = -1;
+    zeinfo_int32_t sip_surface_offset = -1;
+};
 typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;
 typedef std::vector<zeInfoBindingTableIndex> BindingTableIndicesTy;
 typedef std::vector<zeInfoPerThreadMemoryBuffer> PerThreadMemoryBuffersTy;
 typedef std::vector<zeInfoExperimentalProperties> ExperimentalPropertiesTy;
+typedef std::vector<zeInfoDebugEnv> DebugEnvTy;
 struct zeInfoKernel
 {
     zeinfo_str_t name;
@@ -99,6 +105,7 @@ struct zeInfoKernel
     BindingTableIndicesTy binding_table_indices;
     PerThreadMemoryBuffersTy per_thread_memory_buffers;
     ExperimentalPropertiesTy experimental_properties;
+    DebugEnvTy debug_env;
 };
 typedef std::vector<zeInfoKernel> KernelsTy;
 struct zeInfoContainer
@@ -107,7 +114,7 @@ struct zeInfoContainer
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.6"; }
+    static zeinfo_str_t getVersionNumber() { return "1.7"; }
 
     enum class ArgType {
         packed_local_ids,
