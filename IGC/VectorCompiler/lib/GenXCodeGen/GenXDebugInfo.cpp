@@ -221,6 +221,10 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
+static cl::opt<bool>
+    DbgOpt_ZeBinCompatible("vc-experimental-dbg-info-zebin-compatible",
+                           cl::init(false), cl::Hidden,
+                           cl::desc("same as IGC_ZeBinCompatibleDebugging"));
 
 static cl::opt<std::string> DbgOpt_VisaTransformInfoPath(
     "vc-dump-module-to-visa-transform-info-path", cl::init(""), cl::Hidden,
@@ -1123,7 +1127,7 @@ static void fillDbgInfoOptions(const GenXBackendConfig &BC,
                                IGC::DebugEmitterOpts &DebugOpts) {
   DebugOpts.DebugEnabled = true;
 
-  if (BC.emitDebugInfoForZeBin()) {
+  if (BC.emitDebugInfoForZeBin() || DbgOpt_ZeBinCompatible) {
     DebugOpts.ZeBinCompatible = true;
     DebugOpts.EnableRelocation = true;
     DebugOpts.EnforceAMD64Machine = true;
