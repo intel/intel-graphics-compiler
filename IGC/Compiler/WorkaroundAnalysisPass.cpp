@@ -407,6 +407,7 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
         return;
     }
     Value* const zero = m_builder->getInt32(0);
+    Value* const zeroFP = llvm::ConstantFP::get(gatherpo->getOperand(0)->getType(), 0);
     const bool hasRef = gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4POCptr;
     const uint extraBeginArgsNo = hasRef ? 1 : 0;
 
@@ -425,12 +426,12 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     Value* resource = gatherpo->getTextureValue();
     Value* sampler = gatherpo->getSamplerValue();
 
-    Value* lod = zero;
+    Value* lod = zeroFP;
 
     Function* resInfo =
         GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_resinfoptr, resource->getType());
     m_builder->SetInsertPoint(gatherpo);
-    Value* info = m_builder->CreateCall2(resInfo, resource, lod);
+    Value* info = m_builder->CreateCall2(resInfo, resource, m_builder->CreateFPToUI(lod, zero->getType()));
 
     std::vector<Value*> arg;
     if (extraBeginArgsNo > 0)
@@ -438,6 +439,8 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
         arg.push_back(gatherpo->getOperand(0));
         IGC_ASSERT(extraBeginArgsNo == 1);
     }
+
+
     arg.push_back(nullptr);                  // u
     arg.push_back(nullptr);                  // v
     arg.push_back(gatherpo->getOperand(4 + extraBeginArgsNo)); // r
