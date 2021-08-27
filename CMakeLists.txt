@@ -8,6 +8,8 @@
 
 cmake_minimum_required(VERSION 3.13.4 FATAL_ERROR)
 
+project(IGC)
+
 add_subdirectory(IGC)
 
 list(APPEND IGC__IGC_TARGETS "igc_dll")
