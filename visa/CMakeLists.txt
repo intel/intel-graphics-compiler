@@ -68,7 +68,7 @@ if(WIN32)
   cmake_minimum_required(VERSION 3.1)
   cmake_policy(SET CMP0043 OLD)
 else()
-  cmake_minimum_required(VERSION 2.8)
+  cmake_minimum_required(VERSION 2.8.12)
 endif(WIN32)
 
 # In the case where this is the IGC build we need to add a dummy custom target check_headers
