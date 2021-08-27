@@ -1376,15 +1376,15 @@ void Optimizer::reRAPostSchedule()
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
         return;
 
-    // No rera for the payload section
-    if (builder.getIsPayload())
-        return;
 
     std::vector<Assignment> assignments;
     auto finalizerInfo = *builder.getJitInfo();
     auto oldRAType = kernel.getRAType();
     auto gtpin = kernel.getGTPinData();
     computeGlobalFreeGRFs(kernel);
+    // No rera for the payload section
+    if (builder.getIsPayload())
+        return;
     auto freeGRFsBeforeReRA = gtpin->getNumFreeGlobalRegs();
 
     storeGRFAssignments(kernel.Declares, assignments);

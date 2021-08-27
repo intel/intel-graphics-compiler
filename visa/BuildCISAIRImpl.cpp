@@ -1141,8 +1141,33 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
             if (shaderBody->kernel.hasGTPinInit())
             {
+                std::vector<unsigned> globalFreeRegs;
+                unsigned int i = 0, j = 0;
+                auto payloadSectionGTPin = payloadSection->kernel.getGTPinData();
+                auto shaderBodyGTPin = shaderBody->kernel.getGTPinData();
+                while (i < payloadSectionGTPin->getNumFreeGlobalRegs() &&
+                       j < shaderBodyGTPin->getNumFreeGlobalRegs())
+                {
+                    unsigned int iFreeGRF = payloadSectionGTPin->getFreeGlobalReg(i);
+                    unsigned int jFreeGRF =     shaderBodyGTPin->getFreeGlobalReg(j);
+                    if (iFreeGRF < jFreeGRF)
+                    {
+                        i ++;
+                    }
+                    else if (iFreeGRF > jFreeGRF)
+                    {
+                        j ++;
+                    }
+                    else // iFreeGRF == jFreeGRF
+                    {
+                        globalFreeRegs.push_back(iFreeGRF);
+                        i ++;
+                        j ++;
+                    }
+                }
                 payloadSection->kernel.setGTPinData(
                     shaderBody->kernel.getGTPinData());
+                payloadSection->kernel.getGTPinData()->setFreeGlobalRegs(globalFreeRegs);
             }
         }
 

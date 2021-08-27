@@ -85,6 +85,7 @@ public:
     unsigned getNumFreeGlobalRegs() const { return (unsigned)globalFreeRegs.size(); }
     unsigned getFreeGlobalReg(unsigned n) const { return globalFreeRegs[n]; }
     void addFreeGlobalReg(unsigned n) { globalFreeRegs.push_back(n); }
+    void setFreeGlobalRegs(std::vector<unsigned>& vec) {globalFreeRegs = vec;}
 
     // This function internally mallocs memory to hold buffer
     // of free GRFs. It is meant to be freed by caller after
