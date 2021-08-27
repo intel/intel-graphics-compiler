@@ -244,6 +244,7 @@ private:
   bool lowerLLVMMaskedScatter(CallInst *CI);
   bool lowerFMulAdd(CallInst *CI);
   bool lowerBitreverse(CallInst *CI);
+  bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -1482,6 +1483,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerFMulAdd(CI);
     case Intrinsic::bitreverse:
       return lowerBitreverse(CI);
+    case Intrinsic::fshl:
+    case Intrinsic::fshr:
+      return lowerFunnelShift(CI, IntrinsicID);
     }
     return false;
   }
@@ -3228,6 +3232,48 @@ bool GenXLowering::lowerBitreverse(CallInst *CI) {
   CI->replaceAllUsesWith(Res);
   ToErase.push_back(CI);
 
+  return true;
+}
+
+bool GenXLowering::lowerFunnelShift(CallInst *CI, unsigned IntrinsicID) {
+  IGC_ASSERT(CI);
+  unsigned BitWidth = CI->getType()->getScalarSizeInBits();
+  IGC_ASSERT(isPowerOf2_32(BitWidth) && BitWidth <= 64);
+  Value *Fst = CI->getOperand(0), *Snd = CI->getOperand(1);
+  Value *ShiftAmnt = CI->getOperand(2);
+  IRBuilder<> Builder(CI);
+  // If Fst == Snd, funnel shift is equivalent to rotate. Lower to appropriate
+  // intrinsic on supported platforms (>= ICLLP)
+  if (ST->hasBitRotate() && BitWidth != 64 &&
+      Fst == Snd) {
+    auto RotateIntrinsicID = IntrinsicID == Intrinsic::fshl
+                                 ? GenXIntrinsic::genx_rol
+                                 : GenXIntrinsic::genx_ror;
+    auto *Decl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), RotateIntrinsicID, {CI->getType(), CI->getType()});
+    Value *Rotate = Builder.CreateCall(Decl, {Fst, ShiftAmnt}, "rotate");
+    CI->replaceAllUsesWith(Rotate);
+    ToErase.push_back(CI);
+    return true;
+  }
+  // Otherwise, emulate it with next sequence:
+  // ShiftAmnt &= (BitWidth - 1)
+  // For fshl: Res = (Fst << ShiftAmnt) | (Snd >> (BitWidth - ShiftAmnt))
+  // For fshr: Res = (Fst << (BitWidth - ShiftAmnt)) | (Snd >> ShiftAmnt)
+  ShiftAmnt = Builder.CreateAnd(ShiftAmnt, BitWidth - 1, "shiftamnt");
+  Constant *BitWidthConstant =
+      Constant::getIntegerValue(CI->getType(), APInt(BitWidth, BitWidth));
+  Value *ComplementShiftAmnt =
+      Builder.CreateSub(BitWidthConstant, ShiftAmnt, "complementshiftamnt");
+  Fst = Builder.CreateShl(
+      Fst, IntrinsicID == Intrinsic::fshl ? ShiftAmnt : ComplementShiftAmnt,
+      "fstpart");
+  Snd = Builder.CreateLShr(
+      Snd, IntrinsicID == Intrinsic::fshl ? ComplementShiftAmnt : ShiftAmnt,
+      "sndpart");
+  Value *Res = Builder.CreateOr(Fst, Snd, "funnelshift");
+  CI->replaceAllUsesWith(Res);
+  ToErase.push_back(CI);
   return true;
 }
 

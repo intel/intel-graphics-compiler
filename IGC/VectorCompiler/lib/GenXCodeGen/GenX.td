@@ -68,6 +68,12 @@ def FeatureInstrAdd64: SubtargetFeature<"add64",
                                        "true",
                                        "enable support for native add64 intruction">;
 
+def FeatureInstrBitRotate: SubtargetFeature<"bitrotate",
+                                           "HasBitRotate",
+                                           "true",
+                                           "support of rol/ror instructions">;
+
+
 def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
                                     "true", "warn instead of error on callable violation">;
 
@@ -124,14 +130,15 @@ def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureInstrAdd64,
                                FeatureFP64]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
-                               FeatureIntDivRem32]>;
+                               FeatureIntDivRem32, FeatureInstrBitRotate]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
-                               FeatureWAFusedEUNoMask]>;
+                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask]>;
 def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
-                               FeatureWAFusedEUNoMask]>;
+                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask]>;
 def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureInstrAdd64,
-                               FeatureFP64]>;
+                               FeatureFP64,
+                               FeatureInstrBitRotate]>;
 
 def GenX : Target {
   // Nothing here (yet?)

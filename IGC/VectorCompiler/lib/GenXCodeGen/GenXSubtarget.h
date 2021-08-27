@@ -115,6 +115,9 @@ private:
   // True if subtarget supports 32-bit integer division
   bool HasIntDivRem32;
 
+  // True if subtarget supports 32-bit rol/ror instructions
+  bool HasBitRotate;
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -262,6 +265,8 @@ public:
       return false;
     return true;
   }
+
+  bool hasBitRotate() const { return HasBitRotate; }
 
   /// * hneedsArgPatching - some subtarget require special treatment of
   // certain argument types, returns *true* if this is the case.
