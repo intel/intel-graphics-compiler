@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/CFG.h>
-#include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/ADT/SmallSet.h>
 #include <llvm/ADT/DenseSet.h>
@@ -126,7 +126,7 @@ namespace IGC
     //scalarize aggregate into flattened members
     void ScalarizeAggregateMembers(llvm::IRBuilder<>& builder, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*>& instList);
     //scalarize aggregate into flattened member addresses
-    void ScalarizeAggregateMemberAddresses(llvm::IRBuilder<>& builder, llvm::Type* type, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*>& instList, llvm::SmallVector<llvm::Value*, 16> indices);
+    void ScalarizeAggregateMemberAddresses(IGCLLVM::IRBuilder<>& builder, llvm::Type* type, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*>& instList, llvm::SmallVector<llvm::Value*, 16> indices);
 
     /// return true if pLLVMInst is load from constant-buffer with immediate constant-buffer index
     bool IsLoadFromDirectCB(llvm::Instruction* pLLVMInst, uint& cbId, llvm::Value*& eltPtrVal);

@@ -19,6 +19,8 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/DataTypes.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvmWrapper/MC/MCContext.h"
+#include "llvmWrapper/MC/MCObjectFileInfo.h"
 #include "llvm/MC/MCSection.h"
 #include "llvm/IR/GlobalValue.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -30,8 +32,6 @@ See LICENSE.TXT for details.
 namespace llvm
 {
     class MCStreamer;
-    class MCContext;
-    class MCObjectFileInfo;
     class SourceMgr;
     class MCAsmInfo;
 }
@@ -205,7 +205,7 @@ namespace IGC
         llvm::MCContext* m_pContext;
         llvm::SourceMgr* m_pSrcMgr;
         llvm::MCAsmInfo* m_pAsmInfo;
-        llvm::MCObjectFileInfo* m_pObjFileInfo;
+        IGCLLVM::MCObjectFileInfo* m_pObjFileInfo;
         const llvm::DataLayout* m_pDataLayout;
         const std::string& m_targetTriple;
         Settings StreamOptions;

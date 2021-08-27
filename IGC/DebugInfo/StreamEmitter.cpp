@@ -386,15 +386,15 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream,
     m_pDataLayout = new DataLayout(dataLayout);
     m_pSrcMgr = new SourceMgr();
     m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
-    m_pObjFileInfo = new MCObjectFileInfo();
+    m_pObjFileInfo = new IGCLLVM::MCObjectFileInfo();
 
     MCRegisterInfo* regInfo = nullptr;
+    Triple triple = Triple(GetTargetTriple());
 
     // Create new MC context
-    m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
+    m_pContext = IGCLLVM::CreateMCContext(triple, (const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
 
-    Triple triple = Triple(GetTargetTriple());
-    m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, *m_pContext);
+    m_pObjFileInfo->InitMCObjectFileInfo(triple, false, *m_pContext);
 
     bool is64Bit = GetPointerSize() == 8;
     uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());

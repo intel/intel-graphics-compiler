@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Pass.h>
-#include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -75,7 +75,7 @@ namespace IGC
             unsigned int newSizeY,
             unsigned int threadGroupSize_X,
             unsigned int threadGroupSize_Y,
-            llvm::IRBuilder<>& builder);
+            IGCLLVM::IRBuilder<>& builder);
 
         void CreateLoopKernel(
             llvm::Module& M,
@@ -84,10 +84,10 @@ namespace IGC
             unsigned int threadGroupSize_X,
             unsigned int threadGroupSize_Y,
             llvm::Function* newFunc,
-            llvm::IRBuilder<>& builder);
+            IGCLLVM::IRBuilder<>& builder);
 
         void CreateNewKernel(llvm::Module& M,
-            llvm::IRBuilder<>& builder,
+            IGCLLVM::IRBuilder<>& builder,
             llvm::Function* newFunc);
 
         bool canDoOptimization(llvm::Function* m_kernel, llvm::Module& M);

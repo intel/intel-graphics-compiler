@@ -54,7 +54,8 @@ THE SOFTWARE.
 
 #include <llvm/Support/ScaledNumber.h>
 #include "llvm/ADT/StringExtras.h"
-#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "libSPIRV/SPIRVInstruction.h"
@@ -67,7 +68,7 @@ namespace igc_spv{
 void
 saveLLVMModule(Module *M, const std::string &OutputFile) {
   std::error_code EC;
-  llvm::ToolOutputFile Out(OutputFile.c_str(), EC, sys::fs::F_None);
+  llvm::ToolOutputFile Out(OutputFile.c_str(), EC, sys::fs::OF_None);
   IGC_ASSERT_EXIT_MESSAGE((!EC), "Failed to open file");
   IGCLLVM::WriteBitcodeToFile(M, Out.os());
   Out.keep();
@@ -340,7 +341,7 @@ mutateCallInst(Module *M, CallInst *CI,
     ValueToValueMapTy VMap;
     llvm::SmallVector<llvm::ReturnInst*, 8> Returns;
     BasicBlock* EntryBB = BasicBlock::Create(M->getContext(), "", NewF);
-    IRBuilder<> builder(EntryBB);
+    IGCLLVM::IRBuilder<> builder(EntryBB);
 
     for (auto OldArgIt = OldF->arg_begin(), NewArgIt = NewF->arg_begin(); OldArgIt != OldF->arg_end(); ++OldArgIt, ++NewArgIt) {
       NewArgIt->setName(OldArgIt->getName().str());
@@ -354,7 +355,7 @@ mutateCallInst(Module *M, CallInst *CI,
       }
     }
 
-    CloneFunctionInto(NewF, OldF, VMap, true, Returns);
+    IGCLLVM::CloneFunctionInto(NewF, OldF, VMap, true, Returns);
 
     // Merge the basic block with Load instruction with the original entry basic block.
     BasicBlock* ClonedEntryBB = cast<BasicBlock>(VMap[&*OldF->begin()]);

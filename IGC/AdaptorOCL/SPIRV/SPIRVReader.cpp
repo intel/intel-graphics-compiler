@@ -57,7 +57,7 @@ THE SOFTWARE.
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Analysis/CFG.h>
 #include "libSPIRV/SPIRVDebugInfoExt.h"
-#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "libSPIRV/SPIRVAsm.h"
 #include "llvm/IR/InlineAsm.h"
@@ -97,7 +97,7 @@ isOpenCLKernel(SPIRVFunction *BF) {
 __attr_unused static void
 dumpLLVM(Module *M, const std::string &FName) {
   std::error_code EC;
-  raw_fd_ostream FS(FName, EC, sys::fs::F_None);
+  raw_fd_ostream FS(FName, EC, sys::fs::OF_None);
   if (!FS.has_error()) {
     FS << *M;
   }
@@ -2452,7 +2452,7 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
           NewArgIt->setName(OldArgIt->getName());
           VMap[&*OldArgIt] = &*NewArgIt;
       }
-      CloneFunctionInto(NewF, F, VMap, true, Returns);
+      IGCLLVM::CloneFunctionInto(NewF, F, VMap, true, Returns);
       auto DL = M->getDataLayout();
       const auto ptrSize = DL.getPointerSize();
 

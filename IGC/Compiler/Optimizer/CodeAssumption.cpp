@@ -272,7 +272,13 @@ bool CodeAssumption::addAssumption(Function* F, AssumptionCache* AC)
                     // Register assumption
                     if (AC)
                     {
-                        AC->registerAssumption(assumeInst);
+                        AC->registerAssumption(
+#if LLVM_VERSION_MAJOR < 13
+                            assumeInst
+#else
+                            dyn_cast<AssumeInst>(assumeInst)
+#endif
+                        );
                     }
 
                     assumptionAdded[PN] = 1;

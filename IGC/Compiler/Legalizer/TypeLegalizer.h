@@ -21,7 +21,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -50,7 +50,7 @@ namespace IGC {
             Elementize
         };
 
-        typedef IRBuilder<TargetFolder> BuilderType;
+        typedef IGCLLVM::IRBuilder<TargetFolder> BuilderType;
 
         typedef TinyPtrVector<Type*> TypeSeq;
         typedef TinyPtrVector<Value*> ValueSeq;

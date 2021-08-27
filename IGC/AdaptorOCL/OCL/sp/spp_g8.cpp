@@ -404,10 +404,9 @@ bool createElfFileName(std::string &name, unsigned int maxNameLen, SIMDMode simd
     if (uniqueLockFileNameStr.find('%') < uniqueLockFileNameStr.size())
     {
         int uniqueLockFileID = 0;
-        unsigned int mode = sys::fs::perms::all_read | sys::fs::perms::all_write;
         // Every '%' will be replaced with a random character (0-9 or a-f), taking care of multithreaded compilations
         if (std::error_code EC = sys::fs::createUniqueFile(
-            uniqueLockFileName, uniqueLockFileID, resultUniqueLockFileName, mode))
+            uniqueLockFileName, uniqueLockFileID, resultUniqueLockFileName))
         {
             IGC_ASSERT_MESSAGE(false, "A uniquely named file not created");
             retValue = false;

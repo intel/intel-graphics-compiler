@@ -23,7 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Linker/Linker.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
-#include <llvm/Transforms/Utils/Cloning.h>
+#include <llvmWrapper/Transforms/Utils/Cloning.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -876,7 +876,7 @@ void BIImport::removeFunctionBitcasts(Module& M)
 
                             // Clone the body of the function into the dest function.
                             SmallVector<ReturnInst*, 8> Returns; // Ignore returns.
-                            CloneFunctionInto(
+                            IGCLLVM::CloneFunctionInto(
                                 pDstFunc,
                                 funcTobeChanged,
                                 operandMap,

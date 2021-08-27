@@ -133,7 +133,7 @@ void ThreadCombining::CreateLoopKernel(
     unsigned int threadGroupSize_X,
     unsigned int threadGroupSize_Y,
     Function* newFunc,
-    llvm::IRBuilder<>& builder)
+    IGCLLVM::IRBuilder<>& builder)
 {
     unsigned int numLoopsX = threadGroupSize_X / newGroupSizeX;
     unsigned int numLoopsY = threadGroupSize_Y / newGroupSizeY;
@@ -318,7 +318,7 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
                             {
                                 if (instToCheck->getType()->isIntegerTy() && instToCheck->getType()->getIntegerBitWidth() == 1)
                                 {
-                                    llvm::IRBuilder<>  builder(M.getContext());
+                                    IGCLLVM::IRBuilder<>  builder(M.getContext());
                                     builder.SetInsertPoint(instToCheck->getNextNode());
                                     llvm::Value* I_i8 = builder.CreateZExt(instToCheck, builder.getInt8Ty());
                                     IGC_ASSERT(isa<Instruction>(I_i8));
@@ -400,7 +400,7 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
 ///    provided by the loop kernel
 
 void ThreadCombining::CreateNewKernel(llvm::Module& M,
-    llvm::IRBuilder<>& builder,
+    IGCLLVM::IRBuilder<>& builder,
     llvm::Function* newFunc)
 {
 
@@ -619,7 +619,7 @@ void ThreadCombining::remapThreads(
     unsigned int newSizeY,
     unsigned int threadGroupSize_X,
     unsigned int threadGroupSize_Y,
-    llvm::IRBuilder<>& builder)
+    IGCLLVM::IRBuilder<>& builder)
 {
     unsigned int threadGroupSizeModifier_X = threadGroupSize_X / newSizeX;
     unsigned int threadGroupSizeModifier_Y = threadGroupSize_Y / newSizeY;
@@ -691,7 +691,7 @@ void ThreadCombining::remapThreads(
 
 bool ThreadCombining::runOnModule(llvm::Module& M)
 {
-    llvm::IRBuilder<>  builder(M.getContext());
+    IGCLLVM::IRBuilder<>  builder(M.getContext());
     CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     ComputeShaderContext* csCtx = static_cast<ComputeShaderContext*>(context);
     auto m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();

@@ -16,8 +16,10 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DataLayout.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Dominators.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -612,7 +614,7 @@ public:
     {
         IGC_ASSERT(nullptr != pLoad);
         IGC_ASSERT(pLoad->isSimple());
-        IRBuilder<> IRB(pLoad);
+        IGCLLVM::IRBuilder<> IRB(pLoad);
         if (isa<Instruction>(pLoad->getPointerOperand()))
         {
             IRB.SetInsertPoint(cast<Instruction>(pLoad->getPointerOperand()));
@@ -650,7 +652,7 @@ public:
     {
         IGC_ASSERT(nullptr != pStore);
         IGC_ASSERT(pStore->isSimple());
-        IRBuilder<> IRB(pStore);
+        IGCLLVM::IRBuilder<> IRB(pStore);
         if (isa<Instruction>(pStore->getPointerOperand()))
         {
             IRB.SetInsertPoint(cast<Instruction>(pStore->getPointerOperand()));
@@ -839,7 +841,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd size
     Function* simdSizeFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_simdSize);
 
-    llvm::IRBuilder<> entryBuilder(&*m_currFunction->getEntryBlock().getFirstInsertionPt());
+    IGCLLVM::IRBuilder<> entryBuilder(&*m_currFunction->getEntryBlock().getFirstInsertionPt());
     ImplicitArgs implicitArgs(*m_currFunction, m_pMdUtils);
 
     // Construct an empty DebugLoc.
@@ -855,7 +857,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         for (auto pAI : allocaInsts)
         {
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
-            llvm::IRBuilder<> builder(pAI);
+            IGCLLVM::IRBuilder<> builder(pAI);
             builder.SetCurrentDebugLocation(entryDebugLoc);
 
             // buffer of this private var
@@ -980,7 +982,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         for (auto pAI : allocaInsts)
         {
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
-            llvm::IRBuilder<> builder(pAI);
+            IGCLLVM::IRBuilder<> builder(pAI);
             // Post upgrade to LLVM 3.5.1, it was found that inliner propagates debug info of callee
             // in to the alloca. Further, those allocas are somehow hoisted to the top of program.
             // When those allocas are lowered to below sequence, they result in prologue instructions
@@ -1120,7 +1122,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         // %privateBufferGEP            = getelementptr i8* %privateBase, i32 %totalOffset
         // %privateBuffer               = bitcast i8* %offsettmp1 to <buffer type>
 
-        llvm::IRBuilder<> builder(pAI);
+        IGCLLVM::IRBuilder<> builder(pAI);
         builder.SetCurrentDebugLocation(entryDebugLoc);
         bool isUniform = pAI->getMetadata("uniform") != nullptr;
         // Get buffer information from the analysis

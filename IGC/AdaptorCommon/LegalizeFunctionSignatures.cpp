@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include "llvm/IR/InstIterator.h"
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <llvm/Transforms/Utils/Cloning.h>
+#include <llvmWrapper/Transforms/Utils/Cloning.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
@@ -377,7 +377,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             }
 
             // Clone the old function body into the new
-            CloneFunctionInto(pNewFunc, pFunc, VMap, true, Returns);
+            IGCLLVM::CloneFunctionInto(pNewFunc, pFunc, VMap, true, Returns);
 
             // Merge the BB for when extra instructions were created
             BasicBlock* ClonedEntryBB = cast<BasicBlock>(VMap[&*pFunc->begin()]);

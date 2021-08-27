@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/ExtenstionFuncs/ExtensionFuncsAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -73,7 +74,7 @@ void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
     else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE)) {
         // Load from the opaque vme pointer and return the a vector with values.
         IGC_ASSERT(CI.getNumArgOperands() == 1);
-        IRBuilder<> builder(&CI);
+        IGCLLVM::IRBuilder<> builder(&CI);
         Type* retType = CI.getType();
         IGC_ASSERT(retType->isVectorTy() || retType->isIntegerTy());
         PointerType* ptrType = PointerType::get(retType, 0);
@@ -86,7 +87,7 @@ void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
     else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_AS)) {
         // Store the VME values and return an opaque vme pointer.
         IGC_ASSERT(CI.getNumArgOperands() == 1);
-        IRBuilder<> builder(&*CI.getParent()->getParent()->begin()->getFirstInsertionPt());
+        IGCLLVM::IRBuilder<> builder(&*CI.getParent()->getParent()->begin()->getFirstInsertionPt());
         Type* retType = CI.getType();
         Value* arg = CI.getArgOperand(0);
         IGC_ASSERT(arg->getType()->isVectorTy() || arg->getType()->isIntegerTy());

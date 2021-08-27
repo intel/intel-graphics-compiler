@@ -643,7 +643,7 @@ void TransposeHelper::handleGEPInst(
 static Value* loadEltsFromVecAlloca(
     unsigned N, AllocaInst* pVecAlloca,
     Value* pScalarizedIdx,
-    IRBuilder<>& IRB,
+    IGCLLVM::IRBuilder<>& IRB,
     Type* scalarType)
 {
     Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
@@ -682,7 +682,7 @@ void TransposeHelperPromote::handleLoadInst(
 {
     IGC_ASSERT(nullptr != pLoad);
     IGC_ASSERT(pLoad->isSimple());
-    IRBuilder<> IRB(pLoad);
+    IGCLLVM::IRBuilder<> IRB(pLoad);
     IGC_ASSERT(nullptr != pLoad->getType());
     unsigned N = pLoad->getType()->isVectorTy()
         ? (unsigned)cast<IGCLLVM::FixedVectorType>(pLoad->getType())->getNumElements()
@@ -700,7 +700,7 @@ void TransposeHelperPromote::handleStoreInst(
     IGC_ASSERT(nullptr != pStore);
     IGC_ASSERT(pStore->isSimple());
 
-    IRBuilder<> IRB(pStore);
+    IGCLLVM::IRBuilder<> IRB(pStore);
     llvm::Value* pStoreVal = pStore->getValueOperand();
     llvm::Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
     llvm::Value* pIns = pLoadVecAlloca;

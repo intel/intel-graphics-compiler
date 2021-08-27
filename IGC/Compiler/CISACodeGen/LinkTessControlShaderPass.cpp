@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CodeGenPublic.h"
@@ -304,7 +304,7 @@ namespace IGC
         }
 
         Function* pFunc = pMdUtils->begin_FunctionsInfo()->first;
-        llvm::IRBuilder<> builder(pFunc->getContext());
+        IGCLLVM::IRBuilder<> builder(pFunc->getContext());
         std::string oldEntryFuncName = pFunc->getName().str();
 
         llvm::Function* pNewTCSFunction = CreateNewTCSFunction(pFunc);

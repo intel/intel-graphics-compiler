@@ -55,7 +55,7 @@ bool PeepholeTypeLegalizer::runOnFunction(Function& F) {
     DL = &F.getParent()->getDataLayout();
     IGC_ASSERT_MESSAGE(DL->isLittleEndian(), "ONLY SUPPORT LITTLE ENDIANNESS!");
 
-    llvm::IRBuilder<> builder(F.getContext());
+    IGCLLVM::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
 
     Changed = false;

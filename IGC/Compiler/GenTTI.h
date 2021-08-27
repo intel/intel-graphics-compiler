@@ -71,9 +71,12 @@ namespace llvm
             , const User * U
 #endif
         );
-#else
+#elif LLVM_VERSION_MAJOR <= 12
        int getUserCost(const User *U, ArrayRef<const Value *> Operands,
                       TTI::TargetCostKind CostKind);
+#else 
+       llvm::InstructionCost getUserCost(const User* U, ArrayRef<const Value*> Operands,
+           TTI::TargetCostKind CostKind);
 #endif
 
     };

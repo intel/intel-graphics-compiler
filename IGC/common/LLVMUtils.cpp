@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
+#include <llvmWrapper/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace IGC;
@@ -132,7 +133,7 @@ bool IGCPassManager::isInList(const StringRef& N, const StringRef& List) const
         size_t endPos = List.find_first_of(Separators, startPos);
         size_t len = (endPos != StringRef::npos ? endPos - startPos : endPos);
         StringRef Name = List.substr(startPos, len);
-        if (Name.equals_lower(N))
+        if (IGCLLVM::equals_insensitive(Name,N))
         {
             return true;
         }
@@ -149,7 +150,7 @@ bool IGCPassManager::isPrintBefore(Pass* P)
         //                         or pass command args registered in passInfo.
         StringRef  passNameList(IGC_GET_REGKEYSTRING(PrintBefore));
         StringRef PN = P->getPassName();
-        if (passNameList.equals_lower("all") || isInList(PN, passNameList))
+        if (IGCLLVM::equals_insensitive(passNameList, "all") || isInList(PN, passNameList))
             return true;
 
         // further check passInfo
@@ -173,7 +174,7 @@ bool IGCPassManager::isPrintAfter(Pass* P)
         //                         or pass command args registered in passInfo.
         StringRef  passNameList(IGC_GET_REGKEYSTRING(PrintAfter));
         StringRef PN = P->getPassName();
-        if (passNameList.equals_lower("all") || isInList(PN, passNameList))
+        if (IGCLLVM::equals_insensitive(passNameList, "all") || isInList(PN, passNameList))
             return true;
 
         // further check passInfo

@@ -127,7 +127,7 @@ bool LdShrink::runOnFunction(Function& F) {
             if (Length != 1)
                 continue;
 
-            IRBuilder<> Builder(LI);
+            IGCLLVM::IRBuilder<> Builder(LI);
 
             // Shrink it to scalar load.
             auto Ptr = LI->getPointerOperand();

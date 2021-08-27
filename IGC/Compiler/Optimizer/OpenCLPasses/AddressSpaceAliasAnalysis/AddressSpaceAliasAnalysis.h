@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
-#include <llvm/Analysis/AliasAnalysis.h>
+#include <llvmWrapper/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/BasicAliasAnalysis.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include "common/LLVMWarningsPop.hpp"

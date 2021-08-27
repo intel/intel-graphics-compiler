@@ -20,15 +20,34 @@ namespace IGCLLVM
         llvm::Function* ForwardVarArgsTo = nullptr)
     {
         return llvm::InlineFunction(
-#if LLVM_VERSION_MAJOR >= 11
-            *
+#if LLVM_VERSION_MAJOR < 11
+            CB
+#else
+            *llvm::dyn_cast<llvm::CallBase>(CB)
 #endif
-            CB, IFI, CalleeAAR, InsertLifetime, ForwardVarArgsTo)
+            , IFI, CalleeAAR, InsertLifetime, ForwardVarArgsTo)
 #if LLVM_VERSION_MAJOR >= 11
             .isSuccess()
 #endif
             ;
     }
+
+#if LLVM_VERSION_MAJOR >= 13
+    inline void CloneFunctionInto(llvm::Function *NewFunc, const llvm::Function *OldFunc,
+                       llvm::ValueToValueMapTy &VMap, bool ModuleLevelChanges,
+                       llvm::SmallVectorImpl<llvm::ReturnInst *> &Returns,
+                       const char *NameSuffix = "",
+                       llvm::ClonedCodeInfo *CodeInfo = nullptr,
+                       llvm::ValueMapTypeRemapper *TypeMapper = nullptr,
+                       llvm::ValueMaterializer *Materializer = nullptr)
+   {
+       llvm::CloneFunctionChangeType Changes = ModuleLevelChanges ? llvm::CloneFunctionChangeType::GlobalChanges : llvm::CloneFunctionChangeType::LocalChang\
+esOnly;
+       llvm::CloneFunctionInto(NewFunc, OldFunc, VMap, Changes, Returns, NameSuffix, CodeInfo, TypeMapper, Materializer);
+   }
+#else
+    using llvm::CloneFunctionInto;
+#endif
 }
 
 #endif

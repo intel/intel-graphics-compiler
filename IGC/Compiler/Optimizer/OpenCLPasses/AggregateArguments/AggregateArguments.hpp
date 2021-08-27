@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
-#include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
@@ -79,7 +79,7 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& F) override;
 
     private:
-        void storeArgument(const llvm::Argument*, llvm::AllocaInst* base, llvm::IRBuilder<>& irBuilder);
+        void storeArgument(const llvm::Argument*, llvm::AllocaInst* base, IGCLLVM::IRBuilder<>& irBuilder);
 
         void getImplicitArg(unsigned int explicitArgNo, unsigned int& startArgNo, unsigned int& endArgNo);
 

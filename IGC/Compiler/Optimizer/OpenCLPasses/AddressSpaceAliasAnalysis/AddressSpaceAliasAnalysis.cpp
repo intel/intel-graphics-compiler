@@ -29,7 +29,7 @@ namespace {
         AddressSpaceAAResult(AddressSpaceAAResult&& Arg)
             : AAResultBase(std::move(Arg)), TLI(Arg.TLI), CGC(Arg.CGC) {}
 
-        AliasResult alias(const MemoryLocation& LocA, const MemoryLocation& LocB
+        IGCLLVM::AliasResultEnum alias(const MemoryLocation& LocA, const MemoryLocation& LocB
 #if LLVM_VERSION_MAJOR >= 9
             , AAQueryInfo & AAQI
 #endif
@@ -44,7 +44,7 @@ namespace {
             PointerType* PtrTy2 = dyn_cast<PointerType>(LocB.Ptr->getType());
 
             if (!PtrTy1 || !PtrTy2)
-                return NoAlias;
+                return IGCLLVM::AliasResultEnum::NoAlias;
 
             unsigned AS1 = PtrTy1->getAddressSpace();
             unsigned AS2 = PtrTy2->getAddressSpace();
@@ -61,21 +61,21 @@ namespace {
                 AS1 != ADDRESS_SPACE_GENERIC &&
                 AS2 != ADDRESS_SPACE_GENERIC &&
                 AS1 != AS2)
-                return NoAlias;
+                return IGCLLVM::AliasResultEnum::NoAlias;
 
 
             // Shared local memory doesn't alias any statefull memory.
             if ((AS1 == ADDRESS_SPACE_LOCAL && AS2 > ADDRESS_SPACE_NUM_ADDRESSES) ||
                 (AS1 > ADDRESS_SPACE_NUM_ADDRESSES && AS2 == ADDRESS_SPACE_LOCAL))
             {
-                return NoAlias;
+                return IGCLLVM::AliasResultEnum::NoAlias;
             }
 
             // Private memory doesn't alias any stateful memory
             if ((AS1 == ADDRESS_SPACE_PRIVATE && AS2 > ADDRESS_SPACE_NUM_ADDRESSES) ||
                 (AS1 > ADDRESS_SPACE_NUM_ADDRESSES && AS2 == ADDRESS_SPACE_PRIVATE))
             {
-                return NoAlias;
+                return IGCLLVM::AliasResultEnum::NoAlias;
             }
 
 
@@ -107,7 +107,7 @@ namespace {
                     if ((resourceType[0] != resourceType[1]) || // different resource types
                         (isDirectAccess[0] && isDirectAccess[1] && resourceIndex[0] != resourceIndex[1])) // direct access to different BTIs
                     {
-                        return NoAlias;
+                        return IGCLLVM::AliasResultEnum::NoAlias;
                     }
                 }
             }

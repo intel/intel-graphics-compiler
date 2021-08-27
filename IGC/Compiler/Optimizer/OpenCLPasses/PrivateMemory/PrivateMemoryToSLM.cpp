@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "common/debug/Debug.hpp"
 #include "llvmWrapper/IR/DataLayout.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 
 #include <fstream>
 #include <sstream>
@@ -290,7 +291,7 @@ namespace IGC
                     slmVar->setSection("localSLM");
 
                     // TODO: optimize on x-y-z values
-                    llvm::IRBuilder<> builder(pAI);
+                    IGCLLVM::IRBuilder<> builder(pAI);
 
                     builder.SetCurrentDebugLocation(emptyDebugLoc);
 

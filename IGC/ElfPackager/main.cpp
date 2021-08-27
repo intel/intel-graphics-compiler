@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ScaledNumber.h>
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
-#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/IR/DataLayout.h"
@@ -177,7 +177,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
             }
 
             SmallVector<ReturnInst*, 8> Returns;  // Ignore returns cloned.
-            CloneFunctionInto(F, &*I, VMap, /*ModuleLevelChanges=*/true, Returns);
+            IGCLLVM::CloneFunctionInto(F, &*I, VMap, /*ModuleLevelChanges=*/true, Returns);
         }
 
         if (I->hasPersonalityFn())

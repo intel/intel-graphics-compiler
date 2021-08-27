@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalAlias.h>
-#include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/Pass.h>
 #include <llvmWrapper/Support/Alignment.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
@@ -782,7 +782,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (s < 2)
         return false;
 
-    IRBuilder<> Builder(LeadingLoad);
+    IGCLLVM::IRBuilder<> Builder(LeadingLoad);
 
     // Start to merge loads.
     IGC_ASSERT_MESSAGE(1 < NumElts, "It's expected to merge into at least 2-element vector!");
@@ -1218,7 +1218,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
 
     // Tailing store is always the last one in the program order.
     StoreInst* TailingStore = std::get<0>(StoresToMerge.back());
-    IRBuilder<> Builder(TailingStore);
+    IGCLLVM::IRBuilder<> Builder(TailingStore);
 
     // Start to merge stores.
     NumElts = 0;

@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -284,7 +285,7 @@ static Value* BuildLoadInst(CallInst& CI, unsigned int Offset, Type* DataType)
     unsigned int AlignedOffset = (Offset / ElemByteSize) * ElemByteSize;
     unsigned int LoadByteSize = (Offset == AlignedOffset) ? Size : Size * 2;
 
-    llvm::IRBuilder<> Builder(&CI);
+    IGCLLVM::IRBuilder<> Builder(&CI);
     auto F = CI.getFunction();
     auto Int32Ptr = PointerType::get(Type::getInt32Ty(F->getParent()->getContext()), ADDRESS_SPACE_A32);
     auto ElemType = DataType->getScalarType();
@@ -331,7 +332,7 @@ Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
         // BaseOffset_Y = ThreadBaseOffset + 1 * (SimdSize * 2) + (SimdLaneId * 2) OR
         // BaseOffset_Z = ThreadBaseOffset + 2 * (SimdSize * 2) + (SimdLaneId * 2)
         // Load from BaseOffset_[X|Y|Z]
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
 
         // Get Local ID Base Ptr
         auto DataTypeI64 = Type::getInt64Ty(F->getParent()->getContext());
@@ -424,7 +425,7 @@ Value* WIFuncResolution::getGroupId(CallInst& CI)
     if (hasStackCallAttr(*F))
     {
         auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         Type* Int32Ty = Type::getInt32Ty(F->getParent()->getContext());
         VectorType* Tys = IGCLLVM::FixedVectorType::get(Int32Ty, Ctx->platform.getGRFSize() / SIZE_DWORD);
         Function* R0Dcl = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_getR0, Tys);
@@ -465,7 +466,7 @@ Value* WIFuncResolution::getLocalThreadId(CallInst &CI)
     if (hasStackCallAttr(*F))
     {
         auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         Type* Int32Ty = Type::getInt32Ty(F->getParent()->getContext());
         VectorType* Tys = IGCLLVM::FixedVectorType::get(Int32Ty, Ctx->platform.getGRFSize() / SIZE_DWORD);
         Function* R0Dcl = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_getR0, Tys);
@@ -498,7 +499,7 @@ Value* WIFuncResolution::getGlobalSize(CallInst& CI)
     auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         auto ElemTypeQ = Type::getInt64Ty(F->getParent()->getContext());
         auto VecTyQ = IGCLLVM::FixedVectorType::get(ElemTypeQ, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::GLOBAL_SIZE_X;
@@ -539,7 +540,7 @@ Value* WIFuncResolution::getLocalSize(CallInst& CI)
     auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         auto ElemTypeD = Type::getInt32Ty(F->getParent()->getContext());
         auto VecTyD = IGCLLVM::FixedVectorType::get(ElemTypeD, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::LOCAL_SIZE_X;
@@ -571,7 +572,7 @@ Value* WIFuncResolution::getEnqueuedLocalSize(CallInst& CI) {
     if (hasStackCallAttr(*F))
     {
         // Assume that enqueued local size is same as local size
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         auto ElemTypeD = Type::getInt32Ty(F->getParent()->getContext());
         auto VecTyD = IGCLLVM::FixedVectorType::get(ElemTypeD, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::LOCAL_SIZE_X;
@@ -603,7 +604,7 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         auto ElemTypeQ = Type::getInt64Ty(F->getParent()->getContext());
         auto VecTyQ = IGCLLVM::FixedVectorType::get(ElemTypeQ, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::GLOBAL_OFFSET_X;
@@ -644,7 +645,7 @@ Value* WIFuncResolution::getWorkDim(CallInst& CI)
     auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         unsigned int Size = 4;
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::NUM_WORK_DIM / Size;
         auto TypeUD = Type::getInt32Ty(F->getParent()->getContext());
@@ -673,7 +674,7 @@ Value* WIFuncResolution::getNumGroups(CallInst& CI)
     auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         auto ElemTypeUD = Type::getInt32Ty(F->getParent()->getContext());
         auto VecTyUD = IGCLLVM::FixedVectorType::get(ElemTypeUD, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::GROUP_COUNT_X;
@@ -722,7 +723,7 @@ Value* WIFuncResolution::getStageInGridSize(CallInst& CI)
     auto F = CI.getParent()->getParent();
     if (hasStackCallAttr(*F))
     {
-        llvm::IRBuilder<> Builder(&CI);
+        IGCLLVM::IRBuilder<> Builder(&CI);
         auto ElemTypeQ = Type::getInt64Ty(F->getParent()->getContext());
         auto VecTyQ = IGCLLVM::FixedVectorType::get(ElemTypeQ, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::GLOBAL_SIZE_X;

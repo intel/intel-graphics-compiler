@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/PassManager.h>
-#include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/ADT/SmallBitVector.h>
 #include <llvmWrapper/Transforms/Utils.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -140,7 +140,7 @@ namespace IGC
                 return val;
             }
             LoadInst* CreateLoad(Value* Ptr, bool isVolatile, const Twine& Name = "") {
-                LoadInst* val = IGCIRBuilder<>::CreateLoad(Ptr, isVolatile, Name);
+            LoadInst* val = IGCIRBuilder<>::CreateLoad(Ptr, isVolatile, Name);
                 m_TT->RegisterNewValueAndAssignID(val);
                 return val;
             }

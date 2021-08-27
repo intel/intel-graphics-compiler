@@ -44,7 +44,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/IR/DIBuilder.h"
+#include "llvmWrapper/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <algorithm>
 #include <map>
@@ -939,7 +939,7 @@ namespace //Anonymous
                 IGC_ASSERT(nullptr != arg->getType());
 
                 if (arg->getType()->isPointerTy()) {
-                    IRBuilder<> builder(&_call);
+                    IGCLLVM::IRBuilder<> builder(&_call);
                     arg = builder.CreateLoad(arg);
                 }
 

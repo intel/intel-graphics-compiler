@@ -23,7 +23,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/Function.h"
 #include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/StringExtras.h"
+#include "llvmWrapper/ADT/StringExtras.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Constants.h"
@@ -923,9 +923,9 @@ CompileUnit* DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
                 {
                     std::string str;
                     str = "Intel OpenCL ";
-                    str += op1->getValue()->getUniqueInteger().toString(10, false);
+                    str += IGCLLVM::toString(op1->getValue()->getUniqueInteger(), 10, false);
                     str += ".";
-                    str += op2->getValue()->getUniqueInteger().toString(10, false);
+                    str += IGCLLVM::toString(op2->getValue()->getUniqueInteger(), 10, false);
 
                     NewCU->addString(Die, dwarf::DW_AT_description, llvm::StringRef(str));
                 }

@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
-#include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 
@@ -160,7 +160,7 @@ void LinkMultiRateShader::GetPixelPhaseOutput(
 
 void LinkMultiRateShader::Link(Function* pixelPhase, Function* samplePhase, Module& M)
 {
-    IRBuilder<> builder(M.getContext());
+    IGCLLVM::IRBuilder<> builder(M.getContext());
     SmallDenseMap<unsigned int, unsigned int, 16> linkSignature;
     Function* samplePhasePatched = PatchSamplePhaseSignature(samplePhase, linkSignature);
 

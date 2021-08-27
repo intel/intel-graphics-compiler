@@ -98,7 +98,7 @@ AllocaInst* TypesLegalizationPass::CreateAlloca( Instruction *inst ) {
 /// @param  ptr memory pointer to
 /// @param  indices set of constant indices to use in GEP
 /// @return Value* - GetElementPtrInst* instruction.
-Value* TypesLegalizationPass::CreateGEP( IRBuilder<> &builder,Value *ptr,SmallVector<unsigned,8> &indices ) {
+Value* TypesLegalizationPass::CreateGEP( IGCLLVM::IRBuilder<> &builder,Value *ptr,SmallVector<unsigned,8> &indices ) {
   SmallVector<   Value *,8> gepIndices;
   gepIndices.reserve( indices.size() + 1 );
   gepIndices.push_back( builder.getInt32( 0 ) );
@@ -118,12 +118,12 @@ void TypesLegalizationPass::ResolvePhiNode( PHINode *phi ) {
   {
     for(unsigned i = 0; i < phi->getNumOperands(); ++i)
     {
-      IRBuilder<> builder( phi->getIncomingBlock( i )->getTerminator() );
+      IGCLLVM::IRBuilder<> builder( phi->getIncomingBlock( i )->getTerminator() );
       Value* source = phi->getOperand( i );
       StoreInst* newStore = builder.CreateStore( source,allocaPtr );
       m_StoreInst.push_back( newStore );
     }
-    IRBuilder<> builder( phi );
+    IGCLLVM::IRBuilder<> builder( phi );
     BasicBlock *block = builder.GetInsertBlock();
     builder.SetInsertPoint( &(*block->getFirstInsertionPt()) );
     Value* newLoad = builder.CreateLoad( allocaPtr );
@@ -201,7 +201,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
   }
   else if(LoadInst* ld = dyn_cast<LoadInst>(val))
   {
-    IRBuilder<> builder( ld );
+    IGCLLVM::IRBuilder<> builder( ld );
     Value* gep = CreateGEP( builder,ld->getOperand( 0 ),indices );
     unsigned alignment = ld->getAlignment();
     unsigned pointerTypeSize = gep->getType()->getPointerElementType()->getScalarSizeInBits() / 8;
@@ -327,7 +327,7 @@ void TypesLegalizationPass::ResolveStoreInst(
     Value *val =
       ResolveValue( storeInst,storeInst->getOperand( 0 ),indices );
     if (val) {
-        IRBuilder<> builder(storeInst);
+        IGCLLVM::IRBuilder<> builder(storeInst);
         Value* pGEP = CreateGEP(builder, storeInst->getOperand(1), indices);
         builder.CreateStore(val, pGEP);
     }

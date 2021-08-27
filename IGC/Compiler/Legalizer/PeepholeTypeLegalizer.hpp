@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
@@ -31,7 +31,7 @@ namespace IGC {
         using namespace llvm;
 
         class PeepholeTypeLegalizer : public FunctionPass, public InstVisitor<PeepholeTypeLegalizer> {
-            llvm::IRBuilder<>* m_builder;
+            IGCLLVM::IRBuilder<>* m_builder;
             Module* TheModule;
             Function* TheFunction;
 

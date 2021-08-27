@@ -236,7 +236,7 @@ namespace IGC
     ///     cutBits[index] |= orVal
     void LowerGSInterface::updateCutVariables(llvm::GenIntrinsicInst& I)
     {
-        llvm::IRBuilder<> b(&I);
+        IGCLLVM::IRBuilder<> b(&I);
         Value* emitCount = I.getArgOperand(0);
         Value* zeroValue = b.getInt32(0);
 
@@ -326,7 +326,7 @@ namespace IGC
         Value* streamID = I.getArgOperand(0);
         Value* emitCount = I.getArgOperand(1);
 
-        llvm::IRBuilder<> builder(&I);
+        IGCLLVM::IRBuilder<> builder(&I);
         // %emitCountMulTwo_s = shl i32 %emitCount, 1
         Value* emitCountMulTwo = builder.CreateShl(
             emitCount,
@@ -401,7 +401,7 @@ namespace IGC
     /// Adds instructions calling intrinsic that will get translated to writing control data header.
     void LowerGSInterface::writeControlHeaderCuts(llvm::ReturnInst& I)
     {
-        llvm::IRBuilder<> builder(&I);
+        IGCLLVM::IRBuilder<> builder(&I);
         Module* M = I.getParent()->getParent()->getParent();
         Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(M, llvm::GenISAIntrinsic::GenISA_GsCutControlHeader);
         IGC_ASSERT(pFunc);
@@ -432,7 +432,7 @@ namespace IGC
     /// Adds instructions calling intrinsic that will get translated to writing control data header.
     void LowerGSInterface::writeControlHeaderStreams(llvm::ReturnInst& I)
     {
-        llvm::IRBuilder<> builder(&I);
+        IGCLLVM::IRBuilder<> builder(&I);
         Module* M = I.getParent()->getParent()->getParent();
         Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(M, llvm::GenISAIntrinsic::GenISA_GsStreamHeader);
         IGC_ASSERT(pFunc);
