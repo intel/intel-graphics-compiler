@@ -923,9 +923,17 @@ CompileUnit* DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
                 {
                     std::string str;
                     str = "Intel OpenCL ";
+#if LLVM_VERSION_MAJOR >= 13
+                    str += toString(op1->getValue()->getUniqueInteger(), 10, false);
+#else
                     str += op1->getValue()->getUniqueInteger().toString(10, false);
+#endif
                     str += ".";
+#if LLVM_VERSION_MAJOR >= 13
+                    str += toString(op2->getValue()->getUniqueInteger(), 10, false);
+#else
                     str += op2->getValue()->getUniqueInteger().toString(10, false);
+#endif
 
                     NewCU->addString(Die, dwarf::DW_AT_description, llvm::StringRef(str));
                 }

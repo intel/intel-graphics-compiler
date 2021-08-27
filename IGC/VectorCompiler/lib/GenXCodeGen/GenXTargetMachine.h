@@ -97,7 +97,11 @@ public:
   bool shouldBuildLookupTables() { return false; }
   unsigned getFlatAddressSpace() { return 4; }
 
+#if LLVM_VERSION_MAJOR >= 13
+  InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands
+#else
   int getUserCost(const User *U, ArrayRef<const Value *> Operands
+#endif
 #if LLVM_VERSION_MAJOR >= 11
                   ,
                   TTI::TargetCostKind CostKind

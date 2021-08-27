@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 #include "../asserts.hpp"
 #include "common/secure_mem.h"
 
+#include <stdexcept>
+#include <limits>
 #include <algorithm>
 #include <bitset>
 #include <cstdint>

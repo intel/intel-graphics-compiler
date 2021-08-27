@@ -390,11 +390,23 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream,
 
     MCRegisterInfo* regInfo = nullptr;
 
+    Triple triple = Triple(GetTargetTriple());
+
+#if LLVM_VERSION_MAJOR >= 13
+    // Create new MC context
+    m_pContext = new MCContext(Triple(GetTargetTriple()),
+                               (const llvm::MCAsmInfo*)m_pAsmInfo, regInfo,
+                               /*MSTI=*/(const llvm::MCSubtargetInfo *)nullptr, m_pSrcMgr);
+
+    m_pObjFileInfo->initMCObjectFileInfo(*m_pContext, false);
+
+    m_pContext->setObjectFileInfo(m_pObjFileInfo);
+#else
     // Create new MC context
     m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
 
-    Triple triple = Triple(GetTargetTriple());
     m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, *m_pContext);
+#endif
 
     bool is64Bit = GetPointerSize() == 8;
     uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());

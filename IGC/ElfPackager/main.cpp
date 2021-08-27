@@ -177,7 +177,11 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
             }
 
             SmallVector<ReturnInst*, 8> Returns;  // Ignore returns cloned.
+#if LLVM_VERSION_MAJOR >= 13
+            CloneFunctionInto(F, &*I, VMap, CloneFunctionChangeType::DifferentModule, Returns);
+#else
             CloneFunctionInto(F, &*I, VMap, /*ModuleLevelChanges=*/true, Returns);
+#endif
         }
 
         if (I->hasPersonalityFn())

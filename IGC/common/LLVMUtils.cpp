@@ -132,7 +132,11 @@ bool IGCPassManager::isInList(const StringRef& N, const StringRef& List) const
         size_t endPos = List.find_first_of(Separators, startPos);
         size_t len = (endPos != StringRef::npos ? endPos - startPos : endPos);
         StringRef Name = List.substr(startPos, len);
+#if LLVM_VERSION_MAJOR >= 13
+        if (Name.equals_insensitive(N))
+#else
         if (Name.equals_lower(N))
+#endif
         {
             return true;
         }
@@ -149,7 +153,11 @@ bool IGCPassManager::isPrintBefore(Pass* P)
         //                         or pass command args registered in passInfo.
         StringRef  passNameList(IGC_GET_REGKEYSTRING(PrintBefore));
         StringRef PN = P->getPassName();
+#if LLVM_VERSION_MAJOR >= 13
+        if (passNameList.equals_insensitive("all") || isInList(PN, passNameList))
+#else
         if (passNameList.equals_lower("all") || isInList(PN, passNameList))
+#endif
             return true;
 
         // further check passInfo
@@ -173,7 +181,11 @@ bool IGCPassManager::isPrintAfter(Pass* P)
         //                         or pass command args registered in passInfo.
         StringRef  passNameList(IGC_GET_REGKEYSTRING(PrintAfter));
         StringRef PN = P->getPassName();
+#if LLVM_VERSION_MAJOR >= 13
+        if (passNameList.equals_insensitive("all") || isInList(PN, passNameList))
+#else
         if (passNameList.equals_lower("all") || isInList(PN, passNameList))
+#endif
             return true;
 
         // further check passInfo

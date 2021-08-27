@@ -377,7 +377,11 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             }
 
             // Clone the old function body into the new
+#if LLVM_VERSION_MAJOR >= 13
+            CloneFunctionInto(pNewFunc, pFunc, VMap, CloneFunctionChangeType::DifferentModule, Returns);
+#else
             CloneFunctionInto(pNewFunc, pFunc, VMap, true, Returns);
+#endif
 
             // Merge the BB for when extra instructions were created
             BasicBlock* ClonedEntryBB = cast<BasicBlock>(VMap[&*pFunc->begin()]);

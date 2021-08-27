@@ -67,7 +67,11 @@ namespace igc_spv{
 void
 saveLLVMModule(Module *M, const std::string &OutputFile) {
   std::error_code EC;
+#if LLVM_VERSION_MAJOR >= 13
+  llvm::ToolOutputFile Out(OutputFile.c_str(), EC, sys::fs::OF_None);
+#else
   llvm::ToolOutputFile Out(OutputFile.c_str(), EC, sys::fs::F_None);
+#endif
   IGC_ASSERT_EXIT_MESSAGE((!EC), "Failed to open file");
   IGCLLVM::WriteBitcodeToFile(M, Out.os());
   Out.keep();
@@ -354,7 +358,11 @@ mutateCallInst(Module *M, CallInst *CI,
       }
     }
 
+#if LLVM_VERSION_MAJOR >= 13
+    CloneFunctionInto(NewF, OldF, VMap, CloneFunctionChangeType::DifferentModule, Returns);
+#else
     CloneFunctionInto(NewF, OldF, VMap, true, Returns);
+#endif
 
     // Merge the basic block with Load instruction with the original entry basic block.
     BasicBlock* ClonedEntryBB = cast<BasicBlock>(VMap[&*OldF->begin()]);

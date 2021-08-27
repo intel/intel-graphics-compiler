@@ -461,7 +461,11 @@ namespace llvm {
   // [LLVM-UPGRADE] moved from getCallCost to getUserCost
   // https://github.com/llvm/llvm-project/commit/2641a19981e71c887bece92074e00d1af3e716c9#diff-dd4bd65dc55d754674d9a945a0d22911
 
+#if LLVM_VERSION_MAJOR >= 13
+  InstructionCost GenIntrinsicsTTIImpl::getUserCost(const User *U, ArrayRef<const Value *> Operands, TTI::TargetCostKind CostKind)
+#else
   int GenIntrinsicsTTIImpl::getUserCost(const User *U, ArrayRef<const Value *> Operands, TTI::TargetCostKind CostKind)
+#endif
   {
       const Function* F = dyn_cast<Function>(U);
       if(F != nullptr)

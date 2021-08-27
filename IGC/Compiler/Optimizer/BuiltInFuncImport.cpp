@@ -880,7 +880,11 @@ void BIImport::removeFunctionBitcasts(Module& M)
                                 pDstFunc,
                                 funcTobeChanged,
                                 operandMap,
+#if LLVM_VERSION_MAJOR >= 13
+                                CloneFunctionChangeType::LocalChangesOnly,
+#else
                                 false,
+#endif
                                 Returns,
                                 "");
 

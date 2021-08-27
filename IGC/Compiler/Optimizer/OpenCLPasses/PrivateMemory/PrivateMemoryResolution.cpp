@@ -18,6 +18,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DataLayout.h"
+#if LLVM_VERSION_MAJOR >= 13
+#include "llvm/IR/DebugInfo.h"
+#endif
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Dominators.h"
 #include "common/LLVMWarningsPop.hpp"

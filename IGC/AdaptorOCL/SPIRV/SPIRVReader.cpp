@@ -97,7 +97,11 @@ isOpenCLKernel(SPIRVFunction *BF) {
 __attr_unused static void
 dumpLLVM(Module *M, const std::string &FName) {
   std::error_code EC;
+#if LLVM_VERSION_MAJOR >= 13
+  raw_fd_ostream FS(FName, EC, sys::fs::OF_None);
+#else
   raw_fd_ostream FS(FName, EC, sys::fs::F_None);
+#endif
   if (!FS.has_error()) {
     FS << *M;
   }
@@ -2452,7 +2456,11 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
           NewArgIt->setName(OldArgIt->getName());
           VMap[&*OldArgIt] = &*NewArgIt;
       }
+#if LLVM_VERSION_MAJOR >= 13
+      CloneFunctionInto(NewF, F, VMap, CloneFunctionChangeType::DifferentModule, Returns);
+#else
       CloneFunctionInto(NewF, F, VMap, true, Returns);
+#endif
       auto DL = M->getDataLayout();
       const auto ptrSize = DL.getPointerSize();
 
