@@ -401,6 +401,7 @@ namespace IGC
         }
         selectWalkOrder(
             false,
+            false,
             m_numberOfTypedAccess,
             m_numberOfUntypedAccess,
             m_num1DAccesses,
