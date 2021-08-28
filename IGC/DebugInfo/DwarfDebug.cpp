@@ -1390,7 +1390,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         return startEnd;
     };
 
-    auto encodeImm = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t offset,
+    auto encodeImm = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t& offset,
         llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries,
         uint64_t rangeStart, uint64_t rangeEnd,
         uint32_t pointerSize, DbgVariable* RegVar, const ConstantInt* pConstInt)
@@ -1419,7 +1419,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         TempDotDebugLocEntries.push_back(dotLoc);
     };
 
-    auto encodeReg = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t offset,
+    auto encodeReg = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t& offset,
         llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries,
         uint64_t startRange, uint64_t endRange,
         uint32_t pointerSize, DbgVariable* RegVar, std::vector<VISAVariableLocation>& Locs,
@@ -1492,7 +1492,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         offset += TempDotDebugLocEntries.back().loc.size() - oldSize;
     };
 
-    unsigned int offset = 0;
+    uint32_t offset = 0;
     unsigned int pointerSize = m_pModule->getPointerSize();
     for (SmallVectorImpl<const MDNode*>::const_iterator UVI = UserVariables.begin(),
         UVE = UserVariables.end(); UVI != UVE; ++UVI)
@@ -1658,7 +1658,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             };
 
             PrevLoc p;
-            auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries, unsigned int& offset)
+            auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries, uint32_t& offset)
             {
                 if (p.dbgVar->getDotDebugLocOffset() == ~0U)
                 {
