@@ -60,8 +60,7 @@ SPDX-License-Identifier: MIT
 /// split operands, though split instruction operands contain at least one
 /// split operand, e.g. %c, %arg.0.0, %arg.1.0 for %res.0 instruction.
 ///
-/// TODO: currently this pass can only handle only flat structures (without
-/// nested aggregates). Supported instructions are phi and select.
+/// TODO: Supported instructions are phi, select, load and store.
 //
 //===----------------------------------------------------------------------===//
 
@@ -81,6 +80,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 
 #include <unordered_map>
+#include <vector>
 
 using namespace llvm;
 using namespace genx;
@@ -91,6 +91,14 @@ namespace {
 // and corresponding split operands.
 // Split operands are always extractvalue instructions.
 using SplitOpsMap = std::unordered_map<Use *, std::vector<Instruction *>>;
+
+// For iterating over elementary values in the case of nested aggregates, it is
+// convenient to use a list of indices, rather than a single index. Each index
+// in the list is an index at a given nesting depth. Example:
+//   %struct_t = type { float, type { [5 x i32], i8 } }
+// The float element will have a list of indices {0}, and the fourth element of
+// the array will have a list of indices {1, 0, 3}.
+using IdxListType = std::vector<unsigned>;
 
 class GenXAggregatePseudoLowering : public FunctionPass {
   std::vector<Instruction *> ToErase;
@@ -198,6 +206,8 @@ static Instruction *getInsertionPtForSplitOp(Use &Op, Instruction &Inst) {
 // Arguments:
 //    \p Inst - an instruction
 //    \p Op - operand of the instruction \p Inst
+//    \p IdxLists - lists of indices for all elementary values of \p Op (see the
+//                  description of IdxListType)
 //
 // Splits operand \p Op of the instruction \p Inst into elementary values.
 // Those values are extractvalue instructions. Inserts those instruction in
@@ -205,29 +215,32 @@ static Instruction *getInsertionPtForSplitOp(Use &Op, Instruction &Inst) {
 // \p Inst those instructions could be reached.
 //
 // Returns the vector of created instructions.
-static std::vector<Instruction *> createSplitOperand(Use &Op,
-                                                     Instruction &Inst) {
+static std::vector<Instruction *>
+createSplitOperand(Use &Op, Instruction &Inst,
+                   const std::vector<IdxListType> &IdxLists) {
   auto &OpVal = *Op.get();
   IGC_ASSERT_MESSAGE(OpVal.getType()->isAggregateType(), "wrong argument");
-  // TODO: support ArrayType
-  auto *InstTy = cast<StructType>(OpVal.getType());
   auto *InsertionPt = getInsertionPtForSplitOp(Op, Inst);
   std::vector<Instruction *> SplitOperand;
-  for (unsigned i = 0; i < InstTy->getNumElements(); ++i) {
-    IGC_ASSERT_MESSAGE(!InstTy->getElementType(i)->isAggregateType(),
-      "folded structures is yet unsupported");
+  for (const auto &IdxList : IdxLists) {
     SplitOperand.push_back(
-        ExtractValueInst::Create(&OpVal, i, "", InsertionPt));
+        ExtractValueInst::Create(&OpVal, IdxList, "", InsertionPt));
   }
   return SplitOperand;
 }
 
 // Arguments:
 //    \p Inst - an instruction
+//    \p IdxLists - lists of indices for all elementary values of aggregates of
+//                  \p Inst (see the description of IdxListType).
+//                  It is assumed that all aggregate operands of \p Inst and
+//                  it's return value, if it is aggregate, have the same type.
 //
 // Splits all aggregate operands of provided \p Inst.
 // Returns a map between original operands and created instructions.
-static SplitOpsMap createSplitOperands(Instruction &Inst) {
+static SplitOpsMap
+createSplitOperands(Instruction &Inst,
+                    const std::vector<IdxListType> &IdxLists) {
   IGC_ASSERT_MESSAGE(hasAggregateOperand(Inst),
     "wrong argument: inst must have aggregate operand");
   auto AggregateOps = make_filter_range(Inst.operands(), [](const Use &U) {
@@ -236,8 +249,9 @@ static SplitOpsMap createSplitOperands(Instruction &Inst) {
 
   SplitOpsMap SplitOps;
   llvm::transform(AggregateOps, std::inserter(SplitOps, SplitOps.end()),
-                  [&Inst](Use &U) {
-                    return std::make_pair(&U, createSplitOperand(U, Inst));
+                  [&Inst, &IdxLists](Use &U) {
+                    return std::make_pair(
+                        &U, createSplitOperand(U, Inst, IdxLists));
                   });
   return SplitOps;
 }
@@ -266,15 +280,16 @@ std::vector<Value *> createSplitInstOperands(int elemIdx, OpRange OrigOps,
 
 class SplitInstCreator : public InstVisitor<SplitInstCreator, Instruction *> {
   const std::vector<Value *> &NewOps;
-  // Index of the currently considered element of aggregate.
-  int Idx = -1;
+  // The list of indices of the currently considered element of an aggregate.
+  const IdxListType &IdxList;
 
 public:
-  SplitInstCreator(const std::vector<Value *> &NewOpsIn, int IdxIn)
-      : NewOps{NewOpsIn}, Idx{IdxIn} {
+  SplitInstCreator(const std::vector<Value *> &NewOpsIn,
+                   const IdxListType &IdxListIn)
+      : NewOps{NewOpsIn}, IdxList{IdxListIn} {
     IGC_ASSERT_MESSAGE(
-        Idx >= 0,
-        "aggregate element index is expected to be non-negative number");
+        !IdxList.empty(),
+        "the list of indices of an aggregate element cannot be of zero length");
   }
 
   Instruction *visitInstruction(Instruction &I) const {
@@ -317,13 +332,20 @@ public:
     return NewPHI;
   }
 
+  std::vector<Value *> CreateIdxListForGEP(IRBuilder<> &IRB) const {
+    std::vector<Value *> IdxListForGEP = {IRB.getInt32(0)};
+    llvm::transform(IdxList, std::back_inserter(IdxListForGEP),
+                    [&IRB](auto Idx) { return IRB.getInt32(Idx); });
+    return IdxListForGEP;
+  }
+
   Instruction *visitLoadInst(LoadInst &OrigLoad) const {
     IGC_ASSERT_MESSAGE(NewOps.size() == 1, "load has only one operand");
     IGC_ASSERT_MESSAGE(OrigLoad.getPointerOperand() == NewOps[0],
                        "should take the operand from the original load");
     IRBuilder<> IRB{&OrigLoad};
     auto *GEP = IRB.CreateInBoundsGEP(OrigLoad.getPointerOperand(),
-                                      {IRB.getInt32(0), IRB.getInt32(Idx)},
+                                      CreateIdxListForGEP(IRB),
                                       OrigLoad.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment
     return IRB.CreateAlignedLoad(GEP, IGCLLVM::getAlign(OrigLoad),
@@ -334,7 +356,7 @@ public:
   Instruction *visitStoreInst(StoreInst &OrigStore) const {
     IRBuilder<> IRB{&OrigStore};
     auto *GEP = IRB.CreateInBoundsGEP(OrigStore.getPointerOperand(),
-                                      {IRB.getInt32(0), IRB.getInt32(Idx)},
+                                      CreateIdxListForGEP(IRB),
                                       OrigStore.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment
     return IRB.CreateAlignedStore(NewOps[0], GEP, IGCLLVM::getAlign(OrigStore),
@@ -345,51 +367,37 @@ public:
 // Arguments:
 //    \p Inst - original instruction
 //    \p NewOps - operands for split instruction
+//    \p IdxList - the list of indices of the currently considered elementary
+//                 value
 //
 // Creates split instruction based on the kind of original instruction.
 // New instruction is inserted right before \p Inst.
 // Split instruction is returned.
 static Instruction *createSplitInst(Instruction &Inst,
                                     const std::vector<Value *> &NewOps,
-                                    int Idx) {
-  return SplitInstCreator{NewOps, Idx}.create(Inst);
-}
-
-// Arguments:
-//    \p Inst - original instruction
-//
-// Returns the aggregate's elements number.
-// An aggregate can be an operand or a return value.
-static int getAggregateElementsNum(const Instruction &Inst) {
-  if (Inst.getType()->isAggregateType()) {
-    auto &InstTy = *cast<StructType>(Inst.getType());
-    return InstTy.getNumElements();
-  }
-  IGC_ASSERT_MESSAGE(hasAggregateOperand(Inst),
-    "expected an aggregate as either an operand, or a return value");
-  auto AggrOperandIt = llvm::find_if(Inst.operand_values(), [](const Value *V) {
-    return V->getType()->isAggregateType();
-  });
-  auto &AggrOperandTy = *cast<StructType>(AggrOperandIt->getType());
-  return AggrOperandTy.getNumElements();
+                                    const IdxListType &IdxList) {
+  return SplitInstCreator{NewOps, IdxList}.create(Inst);
 }
 
 // Arguments:
 //    \p Inst - original instruction
 //    \p SplitOps - map between original aggregate operands and corresponding
 //                  elementary operands
+//    \p IdxLists - lists of indices for all elementary values of aggregates of
+//                  \p Inst (see the description of IdxListType).
+//                  It is assumed that all aggregate operands of \p Inst have
+//                  the same type.
 //
 // Creates all split instructions for original \p Inst, inserts them before the
 // original one. Returns vector of created split instructions.
 static std::vector<Instruction *>
-createSplitInsts(Instruction &Inst, const SplitOpsMap &SplitOps) {
-  // TODO: support ArrayType
+createSplitInsts(Instruction &Inst, const SplitOpsMap &SplitOps,
+                 const std::vector<IdxListType> &IdxLists) {
   std::vector<Instruction *> NewInsts;
-  int NumNewInsts = getAggregateElementsNum(Inst);
-  NewInsts.reserve(NumNewInsts);
-  for (int Idx = 0; Idx < NumNewInsts; ++Idx) {
-    auto NewOps = createSplitInstOperands(Idx, Inst.operands(), SplitOps);
-    NewInsts.push_back(createSplitInst(Inst, NewOps, Idx));
+  for (auto IdxList : enumerate(IdxLists)) {
+    auto NewOps =
+        createSplitInstOperands(IdxList.index(), Inst.operands(), SplitOps);
+    NewInsts.push_back(createSplitInst(Inst, NewOps, IdxList.value()));
   }
   return NewInsts;
 }
@@ -398,33 +406,110 @@ createSplitInsts(Instruction &Inst, const SplitOpsMap &SplitOps) {
 //    \p SplitInsts - split instructions
 //    \p JoinTy - aggregate type that all split instructions together should
 //                form \p InsertBefore - insertion point
+//    \p IdxLists - lists of indices for \p SplitInsts
 //
 // Combines split instructions back into aggregate value with a sequence of
 // inservalue instructions.
 // Last insertvalue instruction that form full aggregate value is returned.
 static Instruction *joinSplitInsts(const std::vector<Instruction *> &SplitInsts,
-                                   Type *JoinTy, Instruction *InsertBefore) {
-  IGC_ASSERT_MESSAGE(SplitInsts.size() == cast<StructType>(JoinTy)->getNumElements(),
-    "number of splitted insts doesn't correspond with aggregate type");
+                                   Type *JoinTy,
+                                   const std::vector<IdxListType> &IdxLists,
+                                   Instruction *InsertBefore) {
+  IGC_ASSERT_MESSAGE(SplitInsts.size() == IdxLists.size(),
+                     "the number of splitted insts doesn't correspond with the "
+                     "number of index lists");
   Value *JoinInst = UndefValue::get(JoinTy);
-  unsigned Idx = 0;
-  for (auto *SplitInst : SplitInsts) {
+  for (auto &&[SplitInst, IdxList] : zip(SplitInsts, IdxLists)) {
     JoinInst =
-        InsertValueInst::Create(JoinInst, SplitInst, Idx++, "", InsertBefore);
+        InsertValueInst::Create(JoinInst, SplitInst, IdxList, "", InsertBefore);
   }
   return cast<Instruction>(JoinInst);
+}
+
+static Type *getAggregateTypeImpl(Instruction &Inst) {
+  if (Inst.getType()->isAggregateType())
+    return Inst.getType();
+  auto AggrTypeIt = llvm::find_if(Inst.operands(), [](const Use &U) {
+    return U->getType()->isAggregateType();
+  });
+  IGC_ASSERT_MESSAGE(AggrTypeIt != Inst.operands().end(),
+                     "no aggregate operand or return value");
+  return (*AggrTypeIt)->getType();
+}
+
+// Returns the type of the first aggregate operand of Inst, or the type of its
+// return value, if it is aggregate. It is assumed that all aggregate operands
+// of Inst and it's return value, if it is aggregate, have the same type.
+static Type *getAggregateType(Instruction &Inst) {
+  Type *AggrTy = getAggregateTypeImpl(Inst);
+  IGC_ASSERT_MESSAGE(
+      llvm::all_of(Inst.operands(),
+                   [AggrTy](const Use &U) {
+                     return !U->getType()->isAggregateType() ||
+                            U->getType() == AggrTy;
+                   }),
+      "different aggregate types in the same instruction are not supported");
+  return AggrTy;
+}
+
+// Returns the type of an aggregate's element at specific index.
+static Type *getTypeAtIndex(Type *AggrTy, unsigned Index) {
+  IGC_ASSERT_MESSAGE(isa<StructType>(AggrTy) || isa<ArrayType>(AggrTy),
+                     "unexpected type");
+  if (isa<StructType>(AggrTy))
+    return cast<StructType>(AggrTy)->getTypeAtIndex(Index);
+  return cast<ArrayType>(AggrTy)->getElementType();
+}
+
+// Returns the number of elements of an aggregate.
+static unsigned getNumElements(Type *AggrTy) {
+  IGC_ASSERT_MESSAGE(isa<StructType>(AggrTy) || isa<ArrayType>(AggrTy),
+                     "unexpected type");
+  if (isa<StructType>(AggrTy))
+    return cast<StructType>(AggrTy)->getNumElements();
+  return cast<ArrayType>(AggrTy)->getNumElements();
+}
+
+// Returns lists of indices for all elementary values of Inst's aggregate
+// operands or return value.
+static std::vector<IdxListType> createIdxLists(Type *AggrTy) {
+  std::vector<IdxListType> IdxLists;
+  std::vector<std::pair<Type *, unsigned>> AggrStack = {{AggrTy, 0}};
+  while (!AggrStack.empty()) {
+    Type *CurrAggr = AggrStack.back().first;
+    unsigned CurrIndex = AggrStack.back().second;
+    if (CurrIndex == getNumElements(CurrAggr)) {
+      AggrStack.pop_back();
+      if (!AggrStack.empty())
+        ++AggrStack.back().second;
+      continue;
+    }
+    Type *TypeAtIndex = getTypeAtIndex(CurrAggr, CurrIndex);
+    if (TypeAtIndex->isAggregateType()) {
+      AggrStack.emplace_back(TypeAtIndex, 0);
+      continue;
+    }
+    IdxListType CurrIdxList;
+    llvm::transform(AggrStack, std::back_inserter(CurrIdxList),
+                    [](auto &Item) { return Item.second; });
+    IdxLists.push_back(std::move(CurrIdxList));
+    ++AggrStack.back().second;
+  }
+  return IdxLists;
 }
 
 void GenXAggregatePseudoLowering::processInst(Instruction &Inst) {
   IGC_ASSERT_MESSAGE(hasAggregate(Inst),
     "wrong argument: instruction doesn't work with aggregates");
+  Type *AggrTy = getAggregateType(Inst);
+  auto IdxLists = createIdxLists(AggrTy);
   SplitOpsMap NewOperands;
   if (hasAggregateOperand(Inst))
-    NewOperands = createSplitOperands(Inst);
-  auto NewInsts = createSplitInsts(Inst, NewOperands);
+    NewOperands = createSplitOperands(Inst, IdxLists);
+  auto NewInsts = createSplitInsts(Inst, NewOperands, IdxLists);
   if (Inst.getType()->isAggregateType()) {
-    auto *JoinInst =
-        joinSplitInsts(NewInsts, Inst.getType(), getFirstInsertionPtAfter(Inst));
+    auto *JoinInst = joinSplitInsts(NewInsts, Inst.getType(), IdxLists,
+                                    getFirstInsertionPtAfter(Inst));
     Inst.replaceAllUsesWith(JoinInst);
     JoinInst->takeName(&Inst);
   }
