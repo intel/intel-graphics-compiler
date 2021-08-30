@@ -455,7 +455,7 @@ DECLARE_IGC_REGKEY(bool, ForceMixMode, false, "force enable mix mode even on pla
 DECLARE_IGC_REGKEY(bool, DisableFDIV, false, "Disable fdiv support", false)
 DECLARE_IGC_REGKEY(bool, EmulateFDIV, false, "Emulate fdiv instructions", false)
 DECLARE_IGC_REGKEY(bool, UpConvertF16Sampler, true, "up-convert fp16 sampler mesasge to return fp32", false)
-DECLARE_IGC_REGKEY(bool, FuseTypedWrite, false, "Enable fusing of simd8 typed write", false)
+DECLARE_IGC_REGKEY(bool, FuseTypedWrite, true, "Enable fusing of simd8 typed write", false)
 DECLARE_IGC_REGKEY(bool, EnableUndefAlphaOutputAsRed, true, "Output red for undefined alpha output", false)
 DECLARE_IGC_REGKEY(bool, EnableHalfPromotion, true, "Enable pass that replaces instructions using halfs with corresponding float counterparts for pre-SKL", false)
 DECLARE_IGC_REGKEY(bool, ForceHalfPromotion, false, "Force enable pass that replaces instructions using halfs with corresponding float counterparts", false)
