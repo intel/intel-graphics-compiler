@@ -2009,6 +2009,76 @@ protected:
 _SPIRV_OP(ExpectKHR, true, 5)
 #undef _SPIRV_OP
 
+class SPIRVDotKHRBase : public SPIRVInstTemplateBase {
+protected:
+  CapVec getRequiredCapability() const override {
+    // Both vector operands must have the same type, so analyzing the
+    // first operand will suffice.
+    return getVec(CapabilityDotProductKHR);
+  }
+
+  void validate() const override {
+    SPIRVInstruction::validate();
+    SPIRVId Vec1 = Ops[0];
+    SPIRVId Vec2 = Ops[1];
+    (void)Vec1;
+    (void)Vec2;
+    IGC_ASSERT_MESSAGE(getValueType(Vec1) == getValueType(Vec2), "Input vectors must have the same type");
+    IGC_ASSERT_MESSAGE(getType()->isTypeInt(), "Result type must be an integer type");
+    IGC_ASSERT_MESSAGE(!getType()->isTypeVector(), "Result type must be scalar");
+  }
+
+private:
+  bool isAccSat() const {
+    return (OpCode == OpSDotAccSatKHR || OpCode == OpUDotAccSatKHR || OpCode == OpSUDotAccSatKHR);
+  }
+
+  PackedVectorFormat getPackedVectorFormat() const {
+    size_t PackFmtIdx = 2;
+    if (isAccSat()) {
+      // AccSat instructions have an additional Accumulator operand.
+      PackFmtIdx++;
+    }
+    if (PackFmtIdx == Ops.size() - 1)
+      return static_cast<PackedVectorFormat>(Ops[PackFmtIdx]);
+    return static_cast<PackedVectorFormat>(Ops[PackFmtIdx]);
+  }
+
+  SPIRVCapabilityKind getRequiredCapabilityForOperand(SPIRVId ArgId) const {
+    const SPIRVType* T = getValueType(ArgId);
+    if (auto PackFmt = getPackedVectorFormat()) {
+      switch (PackFmt) {
+      case PackedVectorFormatPackedVectorFormat4x8BitKHR:
+        IGC_ASSERT_MESSAGE(!T->isTypeVector() && T->isTypeInt() && T->getBitWidth() == 32,
+          "Type does not match pack format");
+        return CapabilityDotProductInput4x8BitPackedKHR;
+      case PackedVectorFormatMax:
+        break;
+      }
+      llvm_unreachable("Unknown Packed Vector Format");
+    }
+    if (T->isTypeVector()) {
+      const SPIRVType* EltT = T->getVectorComponentType();
+      if (T->getVectorComponentCount() == 4 && EltT->isTypeInt() && EltT->getBitWidth() == 8)
+        return CapabilityDotProductInput4x8BitKHR;
+      if (EltT->isTypeInt())
+        return CapabilityDotProductInputAllKHR;
+    }
+    llvm_unreachable("No mapping for argument type to capability.");
+  }
+};
+
+#define _SPIRV_OP(x, ...)                                                      \
+  typedef SPIRVInstTemplate<SPIRVDotKHRBase, Op##x, __VA_ARGS__> SPIRV##x;
+_SPIRV_OP(SDotKHR, true, 5, true, 2)
+_SPIRV_OP(UDotKHR, true, 5, true, 2)
+_SPIRV_OP(SUDotKHR, true, 5, true, 2)
+_SPIRV_OP(SDotAccSatKHR, true, 6, true, 3)
+_SPIRV_OP(UDotAccSatKHR, true, 6, true, 3)
+_SPIRV_OP(SUDotAccSatKHR, true, 6, true, 3)
+#undef _SPIRV_OP
+
+
 class SPIRVSubgroupShuffleINTELInstBase : public SPIRVInstTemplateBase {
 protected:
   CapVec getRequiredCapability() const override {
@@ -2237,5 +2307,4 @@ _SPIRV_OP(SaveMemory, true, 3)
 _SPIRV_OP(RestoreMemory, false, 2)
 #undef _SPIRV_OP
 }
-
 #endif // SPIRVINSTRUCTION_HPP_

@@ -3862,7 +3862,6 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       }
       suffix += rounding_string;
   }
-
   std::vector<Type*> ArgTys;
   for (auto &v : operands)
   {

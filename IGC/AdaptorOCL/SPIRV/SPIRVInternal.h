@@ -447,6 +447,13 @@ _SPIRV_OP(OpSubgroupBlockReadINTEL)
 _SPIRV_OP(OpSubgroupBlockWriteINTEL)
 _SPIRV_OP(OpSubgroupImageBlockReadINTEL)
 _SPIRV_OP(OpSubgroupImageBlockWriteINTEL)
+// integer dot product
+_SPIRV_OP(OpUDotKHR)
+_SPIRV_OP(OpSDotKHR)
+_SPIRV_OP(OpSUDotKHR)
+_SPIRV_OP(OpUDotAccSatKHR)
+_SPIRV_OP(OpSDotAccSatKHR)
+_SPIRV_OP(OpSUDotAccSatKHR)
 #undef _SPIRV_OP
 
 #define _SPIRV_OP(x, y) add(Op##y, #x);

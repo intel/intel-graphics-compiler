@@ -6773,6 +6773,38 @@ uint __attribute__((overloadable)) intel_get_accelerator_mb_sub_pixel_mode(
 uint __attribute__((overloadable)) intel_get_accelerator_mb_search_path_type(
     sampler_t a );
 
+#ifdef cl_khr_integer_dot_product
+uint __attribute__((overloadable)) dot(uint, uint, int);
+int __attribute__((overloadable)) dot(uint, int, int);
+int __attribute__((overloadable)) dot(int, uint, int);
+int __attribute__((overloadable)) dot(int, int, int);
+
+uint __attribute__((overloadable)) dot(ushort2, ushort2);
+int __attribute__((overloadable)) dot(ushort2, short2);
+int __attribute__((overloadable)) dot(short2, ushort2);
+int __attribute__((overloadable)) dot(short2, short2);
+
+uint __attribute__((overloadable)) dot(uchar4, uchar4);
+int __attribute__((overloadable)) dot(char4, char4);
+int __attribute__((overloadable)) dot(char4, uchar4);
+int __attribute__((overloadable)) dot(uchar4, char4);
+
+int __attribute__((overloadable)) dot_acc_sat(uint, uint, uint, int);
+int __attribute__((overloadable)) dot_acc_sat(uint, int, int, int);
+int __attribute__((overloadable)) dot_acc_sat(int, uint, int, int);
+int __attribute__((overloadable)) dot_acc_sat(int, int, int, int);
+
+uint __attribute__((overloadable)) dot_acc_sat(uchar4, uchar4, uint);
+int __attribute__((overloadable)) dot_acc_sat(char4, char4, int);
+int __attribute__((overloadable)) dot_acc_sat(char4, uchar4, int);
+int __attribute__((overloadable)) dot_acc_sat(uchar4, char4, int);
+
+uint __attribute__((overloadable)) dot_acc_sat(ushort2, ushort2, uint);
+int __attribute__((overloadable)) dot_acc_sat(short2, short2, int);
+int __attribute__((overloadable)) dot_acc_sat(short2, ushort2, int);
+int __attribute__((overloadable)) dot_acc_sat(ushort2, short2, int);
+#endif
+
 #ifdef __opencl_c_images
 void __attribute__((overloadable)) intel_work_group_vme_mb_query(
     __local uint* dst,

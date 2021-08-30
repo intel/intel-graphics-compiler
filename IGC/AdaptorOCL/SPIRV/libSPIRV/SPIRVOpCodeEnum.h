@@ -342,6 +342,13 @@ _SPIRV_OP(GroupNonUniformBitwiseXor, 361)
 _SPIRV_OP(GroupNonUniformLogicalAnd, 362)
 _SPIRV_OP(GroupNonUniformLogicalOr, 363)
 _SPIRV_OP(GroupNonUniformLogicalXor, 364)
+// SPV KHR integer dot product extension
+_SPIRV_OP(SDotKHR, 4450)
+_SPIRV_OP(UDotKHR, 4451)
+_SPIRV_OP(SUDotKHR, 4452)
+_SPIRV_OP(SDotAccSatKHR, 4453)
+_SPIRV_OP(UDotAccSatKHR, 4454)
+_SPIRV_OP(SUDotAccSatKHR, 4455)
 // Ballot extension
 _SPIRV_OP(SubgroupBallotKHR, 4421)
 _SPIRV_OP(SubgroupFirstInvocationKHR, 4422)

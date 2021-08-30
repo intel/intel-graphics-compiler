@@ -612,9 +612,18 @@ enum Capability {
     CapabilityUnstructuredLoopControlsINTEL = 5886,
     CapabilityMemoryAccessAliasingINTEL = 5910,
     CapabilityLongConstantCompositeINTEL = 6089,
+    CapabilityDotProductInputAllKHR = 6016,
+    CapabilityDotProductInput4x8BitKHR = 6017,
+    CapabilityDotProductInput4x8BitPackedKHR = 6018,
+    CapabilityDotProductKHR = 6019,
     CapabilityOptNoneINTEL = 6094,
     CapabilityTokenTypeINTEL = 6112,
     CapabilityDebugInfoModuleINTEL = 6114,
+};
+
+enum PackedVectorFormat {
+    PackedVectorFormatPackedVectorFormat4x8BitKHR = 0,
+    PackedVectorFormatMax = 0x7fffffff,
 };
 
 enum Op {
