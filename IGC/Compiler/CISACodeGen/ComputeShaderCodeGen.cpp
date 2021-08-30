@@ -484,18 +484,12 @@ namespace IGC
                 uint sendStallCycle = simd16Program->m_sendStallCycle;
                 uint staticCycle = simd16Program->m_staticCycle;
 
-                llvm::GlobalVariable* pGlobal = GetContext()->getModule()->getGlobalVariable("ThreadGroupSize_X");
-                unsigned threadGroupSize_X = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-                pGlobal = GetContext()->getModule()->getGlobalVariable("ThreadGroupSize_Y");
-                unsigned threadGroupSize_Y = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-                pGlobal = GetContext()->getModule()->getGlobalVariable("ThreadGroupSize_Z");
-                unsigned threadGroupSize_Z = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 
                 if ((sendStallCycle / (float)staticCycle > 0.2) ||
                     (m_Platform->AOComputeShadersSIMD32Mode() &&
-                        threadGroupSize_X == 32 &&
-                        threadGroupSize_Y == 32 &&
-                        threadGroupSize_Z == 1))
+                        m_threadGroupSize_X == 32 &&
+                        m_threadGroupSize_Y == 32 &&
+                        m_threadGroupSize_Z == 1))
                 {
                     return true;
                 }
