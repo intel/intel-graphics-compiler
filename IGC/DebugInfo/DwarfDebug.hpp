@@ -49,7 +49,6 @@ const llvm::Instruction* getNextInst(const llvm::Instruction* start);
 
 namespace IGC
 {
-    class VISAMachineModuleInfo;
     class StreamEmitter;
     class DbgVariable;
 
@@ -88,7 +87,7 @@ namespace IGC
 
         /// \brief Empty entries are also used as a trigger to emit temp label. Such
         /// labels are referenced is used to find debug_loc offset for a given DIE.
-        bool isEmpty() { return start == 0 && end == 0; }
+        bool isEmpty() const { return start == 0 && end == 0; }
         const llvm::MDNode* getVariable() const { return Variable; }
         const llvm::Instruction* getDbgInst() const { return m_pDbgInst; }
         uint64_t getStart() const { return start; }
@@ -96,10 +95,10 @@ namespace IGC
 
         std::vector<unsigned char> loc;
 
-        uint32_t getOffset() { return offset; }
+        uint32_t getOffset() const { return offset; }
         void setOffset(uint32_t o) { offset = o; }
 
-        llvm::MCSymbol* getSymbol() { return Symbol; }
+        llvm::MCSymbol* getSymbol() const { return Symbol; }
         void setSymbol(llvm::MCSymbol* S) { Symbol = S; }
     };
 
@@ -107,6 +106,10 @@ namespace IGC
     /// \brief This class is used to track local variable information.
     class DbgVariable
     {
+    public:
+        constexpr static unsigned int InvalidDotDebugLocOffset = ~0u;
+
+    private:
         // Variable Descriptor
         const llvm::DILocalVariable* Var = nullptr;
         // Inlined at location
@@ -114,18 +117,18 @@ namespace IGC
         // Variable DIE
         DIE* TheDIE = nullptr;
         // Offset in DotDebugLocEntries.
-        unsigned DotDebugLocOffset = ~0u;
+        unsigned int DotDebugLocOffset = InvalidDotDebugLocOffset;
         // Corresponding Abstract variable, if any
         DbgVariable* AbsVar = nullptr;
         // DBG_VALUE instruction of the variable
         const llvm::Instruction* m_pDbgInst = nullptr;
-        std::string decorations;
 
     public:
+
         // AbsVar may be NULL.
-        DbgVariable(const llvm::DILocalVariable* V, const llvm::DILocation* IA_,
+        DbgVariable(const llvm::DILocalVariable* V, const llvm::DILocation* IA = nullptr,
                     DbgVariable* AV = nullptr)
-            : Var(V), IA(IA_), AbsVar(AV) { }
+            : Var(V), IA(IA), AbsVar(AV) { }
 
         // Accessors.
         const llvm::DILocation* getLocation() const { return IA; }
@@ -134,8 +137,8 @@ namespace IGC
         void setDIE(DIE* D) { TheDIE = D; }
         DIE* getDIE() const { return TheDIE; }
 
-        void setDotDebugLocOffset(unsigned O) { DotDebugLocOffset = O; }
-        unsigned getDotDebugLocOffset() const { return DotDebugLocOffset; }
+        void setDotDebugLocOffset(unsigned int O) { DotDebugLocOffset = O; }
+        unsigned int getDotDebugLocOffset() const { return DotDebugLocOffset; }
 
         llvm::StringRef getName() const { return Var->getName(); }
         DbgVariable* getAbstractVariable() const { return AbsVar; }
@@ -186,7 +189,12 @@ namespace IGC
 
         llvm::DIType* getType() const;
 
-        std::string& getDecorations() { return decorations; }
+#ifndef NDEBUG
+        void print(llvm::raw_ostream& O, bool HideAbstract) const;
+        void dump() const;
+        static void printDbgInst(llvm::raw_ostream& O, const llvm::Instruction* Inst);
+        static void dumpDbgInst(const llvm::Instruction* Inst);
+#endif // NDEBUG
 
     };
 
@@ -276,24 +284,29 @@ namespace IGC
         typedef llvm::DenseMap<const llvm::MCSection*, llvm::SmallVector<SymbolCU, 8> > SectionMapType;
         SectionMapType SectionMap;
 
-        // List of arguments for current function.
-        llvm::SmallVector<DbgVariable*, 8> CurrentFnArguments;
-
         ::IGC::LexicalScopes LScopes;
 
         // Collection of abstract subprogram DIEs.
         llvm::DenseMap<const llvm::MDNode*, DIE*> AbstractSPDies;
 
         // Collection of dbg variables of a scope.
-        typedef llvm::DenseMap<::IGC::LexicalScope*, llvm::SmallVector<DbgVariable*, 8> > ScopeVariablesMap;
+        using DbgVariablesVect = llvm::SmallVector<DbgVariable*, 8>;
+        using ScopeVariablesMap = llvm::DenseMap<::IGC::LexicalScope*, DbgVariablesVect>;
         ScopeVariablesMap ScopeVariables;
+
+        // List of arguments for current function.
+        DbgVariablesVect CurrentFnArguments;
 
         // Collection of abstract variables.
         llvm::DenseMap<const llvm::MDNode*, DbgVariable*> AbstractVariables;
 
+        // storage for all created DbgVariables
+        std::vector<std::unique_ptr<DbgVariable>> DbgVariablesStorage;
+
         // Collection of DotDebugLocEntry.
-        llvm::SmallVector<DotDebugLocEntry, 4> DotDebugLocEntries;
-        llvm::SmallVector<DotDebugLocEntry, 4> TempDotDebugLocEntries;
+        using DotDebugLocEntryVect = llvm::SmallVector<DotDebugLocEntry, 4>;
+        DotDebugLocEntryVect DotDebugLocEntries;
+        DotDebugLocEntryVect TempDotDebugLocEntries;
 
         // Collection of subprogram DIEs that are marked (at the end of the module)
         // as DW_AT_inline.
@@ -316,7 +329,8 @@ namespace IGC
         // For each user variable, keep a list of DBG_VALUE instructions in order.
         // The list can also contain normal instructions that clobber the previous
         // DBG_VALUE.
-        typedef llvm::DenseMap<const llvm::MDNode*, llvm::SmallVector<const llvm::Instruction*, 4> > DbgValueHistoryMap;
+        using InstructionsList = llvm::SmallVector<const llvm::Instruction*, 4>;
+        typedef llvm::DenseMap<const llvm::MDNode*, InstructionsList> DbgValueHistoryMap;
         DbgValueHistoryMap DbgValues;
 
         llvm::SmallVector<const llvm::MCSymbol*, 8> DebugRangeSymbols;
@@ -377,6 +391,11 @@ namespace IGC
         llvm::DenseMap<LexicalScope*, DIE*> AbsLexicalScopeDIEMap;
 
     private:
+
+        // AbsVar may be NULL.
+        DbgVariable* createDbgVariable(const llvm::DILocalVariable* V,
+                                       const llvm::DILocation* IA = nullptr,
+                                       DbgVariable* AV = nullptr);
 
         void addScopeVariable(::IGC::LexicalScope* LS, DbgVariable* Var);
 
@@ -598,8 +617,8 @@ namespace IGC
         }
 
     private:
-        // Store all DISubprogram nodes from LLVM IR as they are no longer available
-        // in DICompileUnit
+
+        // DISubprograms used by the currently processed shader
         std::vector<llvm::DISubprogram*> DISubprogramNodes;
 
         // line#, vector<inlinedAt>
@@ -666,10 +685,7 @@ namespace IGC
         unsigned short simdWidth = 0;   // Not set until IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging)
 
         const DbgDecoder* getDecodedDbg() { return decodedDbg; }
-        void setDecodedDbg(const DbgDecoder* d)
-        {
-            decodedDbg = d;
-        }
+        void setDecodedDbg(const DbgDecoder* d) { decodedDbg = d; }
 
         llvm::MCSymbol* CopyDebugLoc(unsigned int offset);
         unsigned int CopyDebugLocNoReloc(unsigned int o);

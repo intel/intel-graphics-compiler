@@ -39,16 +39,16 @@ void IGC::DbgDecoder::VarAlloc::print(llvm::raw_ostream& OS) const {
     case VarAlloc::VirTypeGRF:     OS << "v:G->"; break;
     };
     switch(physicalType) {
-    case VarAlloc::PhyTypeAddress: OS << "p:A !GRF"; break;
-    case VarAlloc::PhyTypeFlag:    OS << "p:F !GRF"; break;
+    case VarAlloc::PhyTypeAddress: OS << "p:A(!GRF) "; break;
+    case VarAlloc::PhyTypeFlag:    OS << "p:F(!GRF) "; break;
     case VarAlloc::PhyTypeGRF:     OS << "p:G ";
       mapping.r.print(OS);
     break;
-    case VarAlloc::PhyTypeMemory:  OS << "p:M !GRF"; break;
+    case VarAlloc::PhyTypeMemory:  OS << "p:M(!GRF) "; break;
     };
 }
 void IGC::DbgDecoder::LiveIntervalsVISA::print(llvm::raw_ostream& OS) const {
-    OS << "LInt-V[" << start << ";" << end << "]";
+    OS << "LInt-V[" << start << ";" << end << "] ";
     var.print(OS);
 }
 void IGC::DbgDecoder::VarInfo::print(llvm::raw_ostream& OS) const {

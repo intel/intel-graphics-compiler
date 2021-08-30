@@ -34,6 +34,122 @@ See LICENSE.TXT for details.
 using namespace llvm;
 using namespace IGC;
 
+void VISAVariableLocation::print(llvm::raw_ostream &OS,
+                                 const std::vector<VISAVariableLocation> &Locs)
+{
+    IGC_ASSERT(!Locs.empty());
+    if (Locs.size() == 1)
+    {
+        Locs.front().print(OS);
+    }
+    else
+    {
+        for (size_t i = 0; i < Locs.size(); ++i)
+        {
+            OS << "    Loc[" << i << "]";
+            Locs[i].print(OS);
+        }
+    }
+}
+void VISAVariableLocation::print(raw_ostream &OS) const
+{
+    OS << "   - VarLoc = { ";
+    if (IsImmediate())
+    {
+        OS << "Imm: ";
+        m_pConstVal->print(OS, true);
+    }
+    else if (HasSurface())
+    {
+        auto PrintExtraSurfaceType =[this](raw_ostream& OS)
+        {
+            if (IsSLM())
+                OS << "SLM";
+            if (IsTexture())
+                OS << "Texture";
+            if (IsSampler())
+                OS << "Sampler";
+            if (!IsSLM() && !IsTexture() && !IsSampler())
+                OS << "Unknown";
+        };
+        if (!HasLocation())
+        {
+            // Simple surface entry
+            OS << "Type: SimpleSurface, " << "SurfaceReg: " << m_surfaceReg <<
+                ", Extra: ";
+            PrintExtraSurfaceType(OS);
+        }
+        else
+        {
+            // Surface entry + offset
+            OS << "Type: Surface, " << "SurfaceReg: " << m_surfaceReg;
+            // Simple surface entry
+            OS << "Type: SimpleSurface, " << "SurfaceReg: " << m_surfaceReg;
+            if (m_isRegister)
+                OS << ", Offset: [VReg=" << m_locationReg << "]";
+            else
+                OS << ", Offset: " << m_locationOffset;
+            OS << ", IsMem: " << m_isInMemory;
+            OS << ", Vectorized: ";
+            if (m_isVectorized)
+                OS << "v" << m_vectorNumElements;
+            else
+                OS << "false";
+            OS <<  ", Extra: ";
+            PrintExtraSurfaceType(OS);
+        }
+    }
+    else if (HasLocation())
+    {
+        // Address/Register location
+        if (m_isInMemory)
+        {
+            OS << "Type: InMem";
+            OS << ", Loc:";
+            if (m_isRegister)
+                OS << "[VReg=" << m_locationReg << "]";
+            else
+                OS << "[Offset=" << m_locationOffset << "]";
+            OS << ", GlobalASID: " << m_isGlobalAddrSpace;
+        }
+        else
+        {
+            OS << "Type: Value";
+            OS << ", VReg: " << m_locationReg;
+        }
+        OS << ", Vectorized: ";
+        if (m_isVectorized)
+            OS << "v" << m_vectorNumElements;
+        else
+            OS << "false";
+    }
+    else {
+        std::array<std::pair<const char*, bool>, 7> Props = {{
+            { "IsImmediate:", IsImmediate() },
+            { "HasSurface:", HasSurface() },
+            { "HasLocation:", HasLocation() },
+            { "IsInMemory:", IsInMemory() },
+            { "IsRegister:", IsRegister() },
+            { "IsVectorized:", IsVectorized() },
+            { "IsInGlobalAddressSpace:", IsInGlobalAddrSpace() }
+        }};
+        if (std::all_of(Props.begin(), Props.end(),
+                        [](const auto& Item) { return Item.second == false; }))
+        {
+            OS << "empty";
+        }
+        else
+        {
+            OS << "UNEXPECTED_FORMAT: true, ";
+            OS << "FORMAT: { ";
+            for (const auto& Prop: Props) { OS << Prop.first << ": " << Prop.second << ", "; }
+            OS << " }";
+        }
+    }
+    OS << " }\n";
+}
+
+
 VISAModule::VISAModule(llvm::Function * Entry)
 {
     m_pEntryFunc = Entry;
@@ -107,26 +223,6 @@ unsigned int VISAModule::GetVisaSize(const llvm::Instruction* pInst) const
     IGC_ASSERT_MESSAGE(itr != m_instInfoMap.end(), "Invalid Instruction");
     IGC_ASSERT_MESSAGE(itr->second.m_size != INVALID_SIZE, "Invalid Size");
     return itr->second.m_size;
-}
-
-bool VISAModule::IsDebugValue(const Instruction* pInst) const
-{
-    //return isa<DbgDeclareInst>(pInst) || isa<DbgValueInst>(pInst);
-    return isa<DbgInfoIntrinsic>(pInst);
-}
-
-const MDNode* VISAModule::GetDebugVariable(const Instruction* pInst) const
-{
-    if (const DbgDeclareInst * pDclInst = dyn_cast<DbgDeclareInst>(pInst))
-    {
-        return pDclInst->getVariable();
-    }
-    if (const DbgValueInst * pValInst = dyn_cast<DbgValueInst>(pInst))
-    {
-        return pValInst->getVariable();
-    }
-    IGC_ASSERT_MESSAGE(0, "Expected debug info instruction");
-    return nullptr;
 }
 
 void VISAModule::GetConstantData(const Constant* pConstVal, DataVector& rawData) const
@@ -441,6 +537,7 @@ void VISAModule::coalesceRanges(std::vector<std::pair<unsigned int, unsigned int
         it++;
     }
 }
+
 template<class ContainerType, class BinaryFunction>
 void OrderedTraversal(const ContainerType &Data, BinaryFunction Visit) {
     std::vector<typename ContainerType::key_type> Keys;
@@ -454,6 +551,7 @@ void OrderedTraversal(const ContainerType &Data, BinaryFunction Visit) {
         Visit(Key, Val);
     }
 }
+
 void VISAModule::print (raw_ostream &OS) const {
 
     OS << "[DBG] VisaModule\n";

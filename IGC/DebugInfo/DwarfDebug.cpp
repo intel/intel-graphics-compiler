@@ -77,6 +77,40 @@ bool DbgVariable::isBlockByrefVariable() const {
 #endif
 }
 
+// Currently, only DbgDeclare and DbgValue are supported
+static bool IsSupportedDebugInst(const llvm::Instruction* Inst)
+{
+    IGC_ASSERT(Inst);
+    return dyn_cast<DbgValueInst>(Inst) || dyn_cast<DbgDeclareInst>(Inst);
+}
+
+static bool IsDebugInst(const llvm::Instruction* Inst)
+{
+    if (!isa<DbgInfoIntrinsic>(Inst))
+        return false;
+#ifndef NDEBUG
+    if (!IsSupportedDebugInst(Inst))
+    {
+        LLVM_DEBUG(dbgs() << "WARNING! Unsupported DbgInfo Instruction detected:\n";
+                   DbgVariable::dumpDbgInst(Inst));
+    }
+#endif // NDEBUG
+    return true;
+}
+
+static const MDNode* GetDebugVariable(const Instruction* Inst)
+{
+    IGC_ASSERT(IsSupportedDebugInst(Inst));
+
+    if (const auto* DclInst = dyn_cast<DbgDeclareInst>(Inst))
+        return DclInst->getVariable();
+
+    if (const DbgValueInst* ValInst = dyn_cast<DbgValueInst>(Inst))
+        return ValInst->getVariable();
+
+    return nullptr;
+}
+
 /// If this type is derived from a base type then return base type size
 /// even if it derived directly or indirectly from Derived Type
 uint64_t DbgVariable::getBasicTypeSize(DICompositeType* Ty)
@@ -683,22 +717,26 @@ DIE* DwarfDebug::createScopeChildrenDIE(CompileUnit* TheCU, LexicalScope* Scope,
     // Collect arguments for current function.
     if (LScopes.isCurrentFunctionScope(Scope))
     {
-        dbgVariables.insert(dbgVariables.end(), CurrentFnArguments.begin(), CurrentFnArguments.end());
+        std::copy(CurrentFnArguments.begin(), CurrentFnArguments.end(),
+                  std::back_inserter(dbgVariables));
     }
 
-    // Collect lexical scope variables.
-    const SmallVectorImpl<DbgVariable*>& Variables = ScopeVariables.lookup(Scope);
-    dbgVariables.insert(dbgVariables.end(), Variables.begin(), Variables.end());
+    {
+        // Collect lexical scope variables.
+        const DbgVariablesVect& Variables = ScopeVariables.lookup(Scope);
+        std::copy(Variables.begin(), Variables.end(), std::back_inserter(dbgVariables));
+    }
 
     // Collect all argument/variable children
-    for (unsigned i = 0, N = dbgVariables.size(); i < N; ++i)
+    for (DbgVariable* ArgDV: dbgVariables)
     {
-        DbgVariable* ArgDV = dbgVariables[i];
-        if (!ArgDV) continue;
+        if (!ArgDV)
+            continue;
         if (DIE * Arg = TheCU->constructVariableDIE(*ArgDV, Scope->isAbstractScope()))
         {
             Children.push_back(Arg);
-            if (ArgDV->isObjectPointer()) ObjectPointer = Arg;
+            if (ArgDV->isObjectPointer())
+                ObjectPointer = Arg;
         }
     }
 
@@ -1058,6 +1096,7 @@ void DwarfDebug::computeInlinedDIEs()
         DIE* ISP = *AI;
         FirstCU->addUInt(ISP, dwarf::DW_AT_inline, None, dwarf::DW_INL_inlined);
     }
+    // TODO: fixup non-deterministic traversal
     for (DenseMap<const MDNode*, DIE*>::iterator AI = AbstractSPDies.begin(),
         AE = AbstractSPDies.end(); AI != AE; ++AI)
     {
@@ -1105,7 +1144,7 @@ void DwarfDebug::collectDeadVariables()
                 DIVariable* DV = cast<DIVariable>(Variables[i]);
                 if (!isa<DILocalVariable>(DV))
                     continue;
-                DbgVariable NewVar(cast<DILocalVariable>(DV), NULL, nullptr);
+                DbgVariable NewVar(cast<DILocalVariable>(DV));
                 if (DIE * VariableDIE = SPCU->constructVariableDIE(NewVar, false))
                 {
                     SPDIE->addChild(VariableDIE);
@@ -1121,7 +1160,9 @@ void DwarfDebug::collectDeadVariables()
 void DwarfDebug::finalizeModuleInfo()
 {
     // Collect info for variables that were optimized out.
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] collecting dead variables ---\n");
     collectDeadVariables();
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] dead variables collected ***\n");
 
     // Attach DW_AT_inline attribute with inlined subprogram DIEs.
     computeInlinedDIEs();
@@ -1139,18 +1180,6 @@ void DwarfDebug::finalizeModuleInfo()
     // Compute DIE offsets and sizes.
     computeSizeAndOffsets();
 }
-
-#if 0
-// Disabled because getLabelBeginName() isnt present in LLVM 3.8
-
-// Helper for sorting sections into a stable output order.
-static bool SectionSort(const MCSection * A, const MCSection * B)
-{
-    std::string LA = (A ? A->getLabelBeginName() : "");
-    std::string LB = (B ? B->getLabelBeginName() : "");
-    return LA < LB;
-}
-#endif
 
 void DwarfDebug::endSections()
 {
@@ -1270,7 +1299,8 @@ DbgVariable* DwarfDebug::findAbstractVariable(DIVariable* DV, DebugLoc ScopeLoc)
     if (!Scope)
         return NULL;
 
-    AbsDbgVariable = new DbgVariable(cast<DILocalVariable>(DV), NULL, nullptr);
+    AbsDbgVariable = createDbgVariable(cast<DILocalVariable>(DV));
+    LLVM_DEBUG(dbgs() << "  abstract variable: ";  AbsDbgVariable->dump());
     addScopeVariable(Scope, AbsDbgVariable);
     AbstractVariables[DV] = AbsDbgVariable;
     return AbsDbgVariable;
@@ -1339,7 +1369,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
     auto isAdded = [&addedEntries](MDNode* md, DILocation* iat)
     {
-        for (auto item : addedEntries)
+        for (const auto& item : addedEntries)
         {
             if (std::get<0>(item) == md && std::get<1>(item) == iat)
                 return std::get<2>(item);
@@ -1391,9 +1421,10 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
     };
 
     auto encodeImm = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t& offset,
-        llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries,
-        uint64_t rangeStart, uint64_t rangeEnd,
-        uint32_t pointerSize, DbgVariable* RegVar, const ConstantInt* pConstInt)
+                         DotDebugLocEntryVect& TempDotDebugLocEntries,
+                         uint64_t rangeStart, uint64_t rangeEnd,
+                         uint32_t pointerSize, DbgVariable* RegVar,
+                         const ConstantInt* pConstInt)
     {
         auto oldSize = dotLoc.loc.size();
 
@@ -1420,10 +1451,11 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
     };
 
     auto encodeReg = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t& offset,
-        llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries,
-        uint64_t startRange, uint64_t endRange,
-        uint32_t pointerSize, DbgVariable* RegVar, std::vector<VISAVariableLocation>& Locs,
-        DbgDecoder::LiveIntervalsVISA& genIsaRange)
+                         DotDebugLocEntryVect& TempDotDebugLocEntries,
+                         uint64_t startRange, uint64_t endRange,
+                         uint32_t pointerSize, DbgVariable* RegVar,
+                         std::vector<VISAVariableLocation>& Locs,
+                         DbgDecoder::LiveIntervalsVISA& genIsaRange)
     {
         auto allCallerSave = m_pModule->getAllCallerSave(*decodedDbg,
                                                          startRange, endRange, genIsaRange);
@@ -1494,31 +1526,35 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
     uint32_t offset = 0;
     unsigned int pointerSize = m_pModule->getPointerSize();
-    for (SmallVectorImpl<const MDNode*>::const_iterator UVI = UserVariables.begin(),
-        UVE = UserVariables.end(); UVI != UVE; ++UVI)
+    for (const MDNode* Var : UserVariables)
     {
-        const MDNode* Var = *UVI;
         if (Processed.count(Var))
             continue;
+
+        LLVM_DEBUG(dbgs() << "$$$ processing user variable: [" <<
+                   cast<DIVariable>(Var)->getName() << "], type(" <<
+                   *cast<DIVariable>(Var)->getType() << ")\n");
 
         // History contains relevant DBG_VALUE instructions for Var and instructions
         // clobbering it.
         SmallVectorImpl<const Instruction*>& History = DbgValues[Var];
         if (History.empty())
+        {
+            LLVM_DEBUG(dbgs() << "   user variable has no history, skipped\n");
             continue;
+        }
+        LLVM_DEBUG(dbgs() << "    variable history size: " << History.size() << "\n");
 
         auto origLocSize = TempDotDebugLocEntries.size();
 
-        // This loop was added during upgrade to clang 3.8.1. Upto clang 3.6, each inlined function copy
-        // got unique version of auto variable metadata nodes. This is because each auto variable had
-        // "inlinedAt" field as part of its metadata. With clang 3.8.1, inlinedAt field is no
-        // longer part of variable metadata node. This causes auto variable nodes of all inlined functions
-        // to collapse in to a single metadata node. Following loop iterates over all dbg.declare instances
+        // Following loop iterates over all dbg.declare instances
         // for inlined functions and creates new DbgVariable instances for each.
 
         // DbgVariable is created once per variable to be emitted to dwarf.
         // If a function is inlined x times, there would be x number of DbgVariable instances.
-        std::unordered_map<DbgVariable*, std::list<std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>>> DbgValuesWithGenIP;
+        using DbgVarIPInfo = std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>;
+        // TODO: consider replacing std::list to std::vector
+        std::unordered_map<DbgVariable*, std::list<DbgVarIPInfo>> DbgValuesWithGenIP;
         for (auto HI = History.begin(), HE = History.end(); HI != HE; HI++)
         {
             auto H = (*HI);
@@ -1533,8 +1569,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             }
             else if (auto IA = H->getDebugLoc().getInlinedAt())
             {
-                Scope = LScopes.findInlinedScope(cast<DILocalScope>(DV->getScope()),
-                    IA);
+                Scope = LScopes.findInlinedScope(cast<DILocalScope>(DV->getScope()), IA);
             }
             else
             {
@@ -1548,38 +1583,41 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             Processed.insert(DV);
             const Instruction* pInst = H; // History.front();
 
-            IGC_ASSERT_MESSAGE(m_pModule->IsDebugValue(pInst), "History must begin with debug value");
+            IGC_ASSERT_MESSAGE(IsDebugInst(pInst),
+                               "History must begin with debug instruction");
             DbgVariable* AbsVar = findAbstractVariable(DV, pInst->getDebugLoc());
             DbgVariable* RegVar = nullptr;
 
             auto prevRegVar = isAdded(DV, pInst->getDebugLoc().getInlinedAt());
 
+            if (AbsVar)
+                AbsVar->setDbgInst(pInst);
+
             if (!prevRegVar)
             {
-                RegVar = new DbgVariable(cast<DILocalVariable>(DV),
-                    AbsVar != nullptr ? AbsVar->getLocation() : nullptr, AbsVar);
+                RegVar = createDbgVariable(cast<DILocalVariable>(DV),
+                                           AbsVar ? AbsVar->getLocation() : nullptr,
+                                           AbsVar);
+                RegVar->setDbgInst(pInst);
+                LLVM_DEBUG(dbgs() << "  regular variable: ";  RegVar->dump());
 
                 if (!addCurrentFnArgument(MF, RegVar, Scope))
-                {
                     addScopeVariable(Scope, RegVar);
-                }
-                addedEntries.push_back(std::make_tuple(DV, pInst->getDebugLoc().getInlinedAt(), RegVar));
 
-                RegVar->setDbgInst(pInst);
+                addedEntries.push_back(std::make_tuple(DV, pInst->getDebugLoc().getInlinedAt(), RegVar));
             }
             else
                 RegVar = prevRegVar;
-
-            if (AbsVar)
-            {
-                AbsVar->setDbgInst(pInst);
-            }
 
             // Conditions below decide whether we want to emit location to debug_loc or inline it
             // in the DIE. To inline in DIE, we simply dont emit anything here and continue the loop.
             bool needsCallerSave = m_pModule->getCompileUnit(*decodedDbg)->cfi.numCallerSaveEntries > 0;
             if (!EmitSettings.EmitDebugLoc && !needsCallerSave)
+            {
+                LLVM_DEBUG(dbgs() << "  << location is expected to be emitted in DIE: " <<
+                           "!EmitSettings.EmitDebugLoc && !needsCallerSave\n");
                 continue;
+            }
 
             if (EmitSettings.UseOffsetInLocation && isa<DbgDeclareInst>(pInst))
             {
@@ -1588,6 +1626,8 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 // When optimizations are enabled, ie when pInst is not dbgDeclare, we
                 // may choose to emit locations to debug_loc as variables may be mapped to
                 // registers.
+                LLVM_DEBUG(dbgs() << "  << location is expected to be emitted in DIE: " <<
+                           "EmitSettings.UseOffsetInLocation && isa<DbgDeclareInst>\n");
                 continue;
             }
 
@@ -1595,9 +1635,14 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             auto Locs = m_pModule->GetVariableLocation(pInst);
             auto& Loc = Locs.front();
 
-            if (Loc.IsSampler() || Loc.IsSLM() ||
-                Loc.HasSurface())
+            LLVM_DEBUG(VISAVariableLocation::print(dbgs(), Locs));
+
+            if (Loc.IsSampler() || Loc.IsSLM() || Loc.HasSurface())
             {
+                LLVM_DEBUG(dbgs() << "  << location is expected to be emitted in DIE: " <<
+                           "{ IsSampler: " << Loc.IsSampler() << ", " <<
+                           "IsSLM: " << Loc.IsSLM() << ", " <<
+                           "HasSurface: " <<  Loc.HasSurface() << " }\n");
                 // Assume location of these types doesnt change
                 // throughout program. Revisit this if required.
                 continue;
@@ -1620,8 +1665,11 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             auto GenISARange = m_pModule->getGenISARange(InsnRange);
 
             // Emit location within the DIE for dbg.declare
-            if (History.size() == 1 && isa<DbgDeclareInst>(pInst) && !needsCallerSave)
+            if (History.size() == 1 && isa<DbgDeclareInst>(pInst) && !needsCallerSave) {
+                LLVM_DEBUG(dbgs() << "  << location is expected to be emitted in DIE: " <<
+                           "isa<DbgDeclare> && History.size() == 1 && !needsCallerSave\n");
                 continue;
+            }
 
             for (auto range : GenISARange)
             {
@@ -1630,13 +1678,17 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         }
 
         DIVariable* DV = cast<DIVariable>(const_cast<MDNode*>(Var));
+
+        if (!DbgValuesWithGenIP.empty())
+            LLVM_DEBUG(dbgs() << "  number of IP intervals for the usage of " <<
+                       "the source variable: " << DbgValuesWithGenIP.size() << "\n");
+
+        // TODO: fixup non-determenistic traversal
         for (auto& d : DbgValuesWithGenIP)
         {
-            d.second.sort([](std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>& first,
-                std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>& second)
-                {
-                    return std::get<0>(first) < std::get<0>(second);
-                });
+            d.second.sort([](const DbgVarIPInfo& first, const DbgVarIPInfo& second) {
+                            return std::get<0>(first) < std::get<0>(second);
+                          });
 
             struct PrevLoc
             {
@@ -1658,9 +1710,10 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             };
 
             PrevLoc p;
-            auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries, uint32_t& offset)
+            auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, DotDebugLocEntryVect& TempDotDebugLocEntries,
+                                     uint32_t& offset)
             {
-                if (p.dbgVar->getDotDebugLocOffset() == ~0U)
+                if (p.dbgVar->getDotDebugLocOffset() == DbgVariable::InvalidDotDebugLocOffset)
                 {
                     p.dbgVar->setDotDebugLocOffset(offset);
                 }
@@ -1683,6 +1736,11 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
                 auto Locs = m_pModule->GetVariableLocation(pInst);
                 auto& Loc = Locs.front();
+
+                LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x";
+                           dbgs().write_hex(startIp) << "; " << "0x";
+                           dbgs().write_hex(endIp) << "]\n";
+                           VISAVariableLocation::print(dbgs(), Locs));
 
                 // Variable has a constant value so inline it in DIE
                 if (d.second.size() == 1 && Loc.IsImmediate())
@@ -1734,7 +1792,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                     DbgDecoder::VarInfo varInfo;
                     auto regNum = Loc.GetRegister();
                     m_pModule->getVarInfo(*decodedDbg, "V", regNum, varInfo);
-                    for (auto& genIsaRange : varInfo.lrs)
+                    for (const auto& genIsaRange : varInfo.lrs)
                     {
                         auto startEnd = findClosestStartEnd(genIsaRange.start, genIsaRange.end);
 
@@ -1814,7 +1872,9 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             continue;
         if (LexicalScope * Scope = LScopes.findLexicalScope(DV->getScope()))
         {
-            addScopeVariable(Scope, new DbgVariable(DV, NULL, nullptr));
+            auto * Var = createDbgVariable(DV);
+            LLVM_DEBUG(dbgs() << "  optimized-out variable: ";  Var->dump());
+            addScopeVariable(Scope, Var);
         }
     }
 }
@@ -1927,8 +1987,7 @@ unsigned int DwarfDebug::CopyDebugLocNoReloc(unsigned int o)
 void DwarfDebug::beginInstruction(const Instruction* MI, bool recordSrcLine)
 {
     // Check if source location changes, but ignore DBG_VALUE locations.
-    if (!m_pModule->IsDebugValue(MI) &&
-        recordSrcLine)
+    if (!IsDebugInst(MI) && recordSrcLine)
     {
         DebugLoc DL = MI->getDebugLoc();
         if (DL && DL != PrevInstLoc)
@@ -1996,7 +2055,7 @@ void DwarfDebug::endInstruction(const Instruction* MI)
 {
     // Don't create a new label after DBG_VALUE instructions.
     // They don't generate code.
-    if (!m_pModule->IsDebugValue(MI))
+    if (!IsDebugInst(MI))
         PrevLabel = 0;
 
     DenseMap<const Instruction*, MCSymbol*>::iterator I = LabelsAfterInsn.find(MI);
@@ -2092,8 +2151,10 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
     // Grab the lexical scopes for the function, if we don't have any of those
     // then we're not going to be able to do anything.
     LScopes.initialize(m_pModule);
-    if (LScopes.empty())
+    if (LScopes.empty()) {
+        LLVM_DEBUG(dbgs() << "[DwarfDebug]: no scope detected\n");
         return;
+    }
 
     IGC_ASSERT_MESSAGE(UserVariables.empty(), "Maps weren't cleaned");
     IGC_ASSERT_MESSAGE(DbgValues.empty(), "Maps weren't cleaned");
@@ -2121,19 +2182,18 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
         const Instruction* MI = *II;
         auto Loc = MI->getDebugLoc();
 
-        if (Loc &&
-            Loc.getScope() != prevIAT)
+        if (Loc && Loc.getScope() != prevIAT)
         {
             SameIATInsts[Loc.getInlinedAt()].push_back(MI);
             prevIAT = Loc.getInlinedAt();
         }
 
-        if (m_pModule->IsDebugValue(MI))
+        if (IsDebugInst(MI))
         {
             IGC_ASSERT_MESSAGE(MI->getNumOperands() > 1, "Invalid machine instruction!");
 
             // Keep track of user variables.
-            const MDNode* Var = m_pModule->GetDebugVariable(MI);
+            const MDNode* Var = GetDebugVariable(MI);
 
             // Check the history of this variable.
             SmallVectorImpl<const Instruction*>& History = DbgValues[Var];
@@ -2153,17 +2213,13 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
             {
                 // We have seen this variable before. Try to coalesce DBG_VALUEs.
                 const Instruction* Prev = History.back();
-                if (m_pModule->IsDebugValue(Prev))
+                // Coalesce identical entries at the end of History.
+                if (History.size() >= 2 &&
+                    Prev->isIdenticalTo(History[History.size() - 2]))
                 {
-                    // Coalesce identical entries at the end of History.
-                    if (History.size() >= 2 &&
-                        Prev->isIdenticalTo(History[History.size() - 2]))
-                    {
-                        LLVM_DEBUG(dbgs() << "Coalescing identical DBG_VALUE entries:\n"
-                            << "\t" << *Prev << "\t"
-                            << *History[History.size() - 2] << "\n");
-                        History.pop_back();
-                    }
+                    LLVM_DEBUG(dbgs() << "Coalescing identical DBG_VALUE entries:\n";
+                               DbgVariable::dumpDbgInst(Prev));
+                    History.pop_back();
                 }
             }
             History.push_back(MI);
@@ -2181,17 +2237,17 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
         }
     }
 
-    for (DbgValueHistoryMap::iterator I = DbgValues.begin(), E = DbgValues.end(); I != E; ++I)
+    // TODO: fixup non-deterministic traversal
+    for (const auto& HistoryInfo : DbgValues)
     {
-        SmallVectorImpl<const Instruction*>& History = I->second;
+        const InstructionsList& History = HistoryInfo.second;
         if (History.empty())
             continue;
 
         // Request labels for the full history.
-        for (unsigned i = 0, e = History.size(); i != e; ++i)
+        for (const Instruction *MI: History)
         {
-            const Instruction* MI = History[i];
-            if (m_pModule->IsDebugValue(MI))
+            if (IsDebugInst(MI))
                 requestLabelBeforeInsn(MI);
             else
                 requestLabelAfterInsn(MI);
@@ -2212,9 +2268,18 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
     }
 }
 
+DbgVariable* DwarfDebug::createDbgVariable(const llvm::DILocalVariable* V,
+                                           const llvm::DILocation* IA,
+                                           DbgVariable* AV)
+{
+    DbgVariablesStorage.push_back(std::make_unique<DbgVariable>(V, IA, AV));
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] created DbgVariable instance...\n");
+    return DbgVariablesStorage.back().get();
+}
+
 void DwarfDebug::addScopeVariable(LexicalScope* LS, DbgVariable* Var)
 {
-    SmallVectorImpl<DbgVariable*>& Vars = ScopeVariables[LS];
+    DbgVariablesVect& Vars = ScopeVariables[LS];
     const DILocalVariable* DV = Var->getVariable();
     // Variables with positive arg numbers are parameters.
     if (unsigned ArgNum = DV->getArg())
@@ -2226,7 +2291,7 @@ void DwarfDebug::addScopeVariable(LexicalScope* LS, DbgVariable* Var)
         // builds have the right order to begin with), searching from the back (this
         // would catch the unoptimized case quickly), or doing a binary search
         // rather than linear search.
-        SmallVectorImpl<DbgVariable*>::iterator I = Vars.begin();
+        auto I = Vars.begin();
         while (I != Vars.end())
         {
             unsigned CurNum = (*I)->getVariable()->getArg();
@@ -2249,7 +2314,11 @@ void DwarfDebug::addScopeVariable(LexicalScope* LS, DbgVariable* Var)
 // Gather and emit post-function debug information.
 void DwarfDebug::endFunction(const Function* MF)
 {
-    if (LScopes.empty()) return;
+    if (LScopes.empty())
+    {
+        LLVM_DEBUG(dbgs() << "[DwarfDebug] no lexical scopes detected\n");
+        return;
+    }
 
     // Define end label for subprogram.
     FunctionEndSym = Asm->GetTempSymbol("func_end", m_pModule->GetFuncId());
@@ -2262,13 +2331,16 @@ void DwarfDebug::endFunction(const Function* MF)
     Asm->SetDwarfCompileUnitID(0);
 
     SmallPtrSet<const MDNode*, 16> ProcessedVars;
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] collecting variables ---\n");
     collectVariableInfo(MF, ProcessedVars);
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] variables collected ***\n");
 
     LexicalScope* FnScope = LScopes.getCurrentFunctionScope();
     CompileUnit* TheCU = SPMap.lookup(FnScope->getScopeNode());
     IGC_ASSERT_MESSAGE(TheCU, "Unable to find compile unit!");
 
     // Construct abstract scopes.
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing abstract scopes ---\n");
     ArrayRef<LexicalScope*> AList = LScopes.getAbstractScopesList();
     for (unsigned i = 0, e = AList.size(); i != e; ++i)
     {
@@ -2289,7 +2361,9 @@ void DwarfDebug::endFunction(const Function* MF)
                 //if (AbstractVariables.lookup(CleanDV)) continue;
                 if (LexicalScope * Scope = LScopes.findAbstractScope(DV->getScope()))
                 {
-                    addScopeVariable(Scope, new DbgVariable(DV, NULL, nullptr));
+                    auto * Var = createDbgVariable(DV);
+                    LLVM_DEBUG(dbgs() << "  optimized-out variable: ";  Var->dump());
+                    addScopeVariable(Scope, Var);
                 }
             }
         }
@@ -2298,34 +2372,31 @@ void DwarfDebug::endFunction(const Function* MF)
             constructScopeDIE(TheCU, AScope);
         }
     }
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] abstract scopes constructed ***\n");
 
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing FnScope ---\n");
     constructScopeDIE(TheCU, FnScope);
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] FnScope constructed ***\n");
 
     if (DwarfFrameSectionNeeded())
     {
         Asm->SwitchSection(Asm->GetDwarfFrameSection());
         if (m_pModule->hasOrIsStackCall(*decodedDbg))
         {
+            LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall start ---\n");
             writeFDEStackCall(m_pModule);
+            LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall end  ***\n");
         }
         else
         {
+            LLVM_DEBUG(dbgs() << "[DwarfDebug] FDESubproutine skipped  ***\n");
             //writeFDESubroutine(m_pModule);
         }
     }
 
-    // Clear debug info
-    for (ScopeVariablesMap::iterator
-        I = ScopeVariables.begin(), E = ScopeVariables.end(); I != E; ++I)
-    {
-        for (auto V : I->second)
-            delete V;
-        I->second.clear();
-    }
     ScopeVariables.clear();
-    for (auto V : CurrentFnArguments)
-        delete V;
     CurrentFnArguments.clear();
+    DbgVariablesStorage.clear();
     UserVariables.clear();
     DbgValues.clear();
     AbstractVariables.clear();
@@ -2681,15 +2752,13 @@ void DwarfDebug::emitDebugLoc()
     if (DotDebugLocEntries.empty())
         return;
 
+// TODO: remove deprecated code
 #if 1
     Asm->SwitchSection(Asm->GetDwarfLocSection());
     unsigned int size = Asm->GetPointerSize();
 
-    for (SmallVectorImpl<DotDebugLocEntry>::iterator
-        I = DotDebugLocEntries.begin(), E = DotDebugLocEntries.end();
-        I != E; ++I)
+    for (const DotDebugLocEntry& Entry: DotDebugLocEntries)
     {
-        DotDebugLocEntry& Entry = *I;
         if (Entry.isEmpty())
         {
             Asm->EmitIntValue(0, size);
@@ -2697,9 +2766,10 @@ void DwarfDebug::emitDebugLoc()
         }
         else
         {
-            auto Symbol = Entry.getSymbol();
+            auto* Symbol = Entry.getSymbol();
             if(Symbol)
                 Asm->EmitLabel(Symbol);
+
             for (unsigned int byte = 0; byte != Entry.loc.size(); byte++)
             {
                 Asm->EmitIntValue(Entry.loc[byte], 1);
@@ -3446,3 +3516,81 @@ llvm::MCSymbol* DwarfDebug::GetLabelBeforeIp(unsigned int ip)
     LabelsBeforeIp[ip] = NewLabel;
     return NewLabel;
 }
+
+#ifndef NDEBUG
+void DbgVariable::print(raw_ostream& O, bool HideAbstract) const
+{
+    O << "DbgVariable: {\n";
+    if (Var)
+    {
+        O << "      |  Name: " << Var->getName() << ";\n";
+        O << "      |  Type: " << *getType() << ";\n";
+        O << "      |  Props: { IsParameter: " << Var->isParameter() << ", ";
+        O << "IsArtificial: " << Var->isArtificial() << ", ";
+        O << "IsObjPtr: " << isObjectPointer() << " } ;\n";
+    }
+    else
+    {
+        O << "      |  Name/Type: <null>;\n";
+    }
+
+    if (IA)
+        O << "      |  InlinedAt: " << *IA << ";\n";
+    else
+        O << "      |  InlinedAt: none;\n";
+
+    if (AbsVar)
+    {
+        O << "      |  AbsVar: ";
+        if (HideAbstract)
+            O << "<hidden>;\n";
+        else
+            AbsVar->print(O, true);
+    }
+    else
+    {
+        O << "      |  AbsVar: none;\n";
+    }
+
+    if (m_pDbgInst)
+    {
+        if (isa<DbgInfoIntrinsic>(m_pDbgInst))
+        {
+            O << "      |  ValInst: ";
+            DbgVariable::printDbgInst(O, m_pDbgInst);
+        }
+        else
+            O << "      |  ValInst: " << *m_pDbgInst << "\n";
+    }
+    else
+        O << "      |  ValInst: " << "none;\n";
+
+
+    O << "  }\n";
+}
+void DbgVariable::dump() const
+{
+    print(dbgs(), false);
+}
+
+void DbgVariable::printDbgInst(llvm::raw_ostream& O, const llvm::Instruction* Inst)
+{
+    IGC_ASSERT(Inst);
+    const auto *DbgInfoInst = cast<DbgInfoIntrinsic>(Inst);
+    auto OperandNum = DbgInfoInst->getNumOperands();
+    IGC_ASSERT(OperandNum > 0);
+    // last operand is usually function attributes, so we skip them
+    auto OperandsToPrint = OperandNum - 1;
+    O << *DbgInfoInst << "\n";
+    for (unsigned OperandIdx = 0; OperandIdx < OperandsToPrint; ++OperandIdx)
+    {
+        O << "\t" << "node#" << OperandIdx << " " <<
+            *DbgInfoInst->getOperand(OperandIdx) << "\n";
+    }
+}
+void DbgVariable::dumpDbgInst(const llvm::Instruction* Inst)
+{
+    IGC_ASSERT(Inst);
+    printDbgInst(dbgs(), Inst);
+}
+#endif // NDEBUG

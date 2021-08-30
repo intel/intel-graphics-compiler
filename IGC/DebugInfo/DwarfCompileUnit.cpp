@@ -823,11 +823,13 @@ void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariable
         if ((bti == STATELESS_BTI) || (bti == STATELESS_NONCOHERENT_BTI))  // 255, 253
         {
             // Stateless (coherent and non-coherent)
+            LLVM_DEBUG(dbgs() << "  gt-loc: adding stateless location\n");
             addStatelessLocation(Block, Loc);
         }
         else if (bti == SLM_BTI) // 254
         {
             // SLM
+            LLVM_DEBUG(dbgs() << "  gt-loc: adding slm location\n");
             addSLMLocation(Block, Loc);
         }
         else if (bti == BINDLESS_BTI) // 252
@@ -836,11 +838,13 @@ void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariable
             if (Loc->IsSampler())
             {
                 // Bindless sampler
+                LLVM_DEBUG(dbgs() << "  gt-loc: bindless sampler location\n");
                 addBindlessSamplerLocation(Block, Loc);
             }
             else
             {
                 // Bindless surface
+                LLVM_DEBUG(dbgs() << "  gt-loc: bindless surface location\n");
                 addBindlessSurfaceLocation(Block, Loc);
             }
         }
@@ -851,6 +855,7 @@ void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariable
             // The bindless surface is relative to the Surface State Base Address heap (BTS 251).
             // The HWord offset into the Scratch Buffer memory is provided in the message descriptor and
             // communicated to the data port on the Sideband.
+            LLVM_DEBUG(dbgs() << "  gt-loc: bindless scratch space location\n");
             addBindlessScratchSpaceLocation(Block, Loc);
         }
         else if ((bti >= 0) && (bti <= 240))
@@ -882,6 +887,7 @@ void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariable
             // 12 DW_OP_plus_uconst <offset>
 
             IGC_ASSERT_MESSAGE(false == Loc->IsInGlobalAddrSpace(), "Missing surface for variable location");
+            LLVM_DEBUG(dbgs() << "  gt-loc: bti surface location\n");
 
             uint64_t btiBaseAddrEncoded =
                 GetEncodedRegNum<RegisterNumbering::BTBase>(dwarf::DW_OP_breg0);
@@ -1179,7 +1185,6 @@ void CompileUnit::addBindlessSamplerLocation(IGC::DIEBlock* Block, const VISAVar
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
-
         // Use virtual debug register with Bindless Sampler State Base Address
         uint32_t bindlessSamplerBaseAddrEncoded =
             GetEncodedRegNum<RegisterNumbering::BindlessSamplerStateBase>(dwarf::DW_OP_breg0);
@@ -1261,7 +1266,8 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, const VISAVariableLocatio
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
-
+        LLVM_DEBUG(dbgs() << "  emitting SLMLocation, offset: " <<
+                   Loc->GetOffset() << "\n");
         IGC_ASSERT_MESSAGE(Loc->IsSLM(), "SLM expected as variable location");
         // For SLM addressing using address <slm - va> available as literal
         // 1 DW_OP_addr <slm - va>
@@ -1364,8 +1370,11 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAV
     {
         // SIMD lane
         const auto* VISAMod = Loc->GetVISAModule();
-
         uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
+
+        LLVM_DEBUG(dbgs() << "  addSimdLane(varSizeInBits: " << varSizeInBits <<
+                   ", simdWidthOffset: " << simdWidthOffset << ", isPacked: " <<
+                   isPacked << ", isSecondHalf: " << isSecondHalf << ")\n");
         IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
 
         if (lr->isSpill())
@@ -1543,6 +1552,8 @@ bool CompileUnit::emitBitPiecesForRegVal(IGC::DIEBlock* Block, const VISAModule&
     const auto numGRFs = VM.getNumGRFs();
 
     PieceBuilder PieceBuilder(numGRFs, registerSizeInBits, varSizeInBits, offsetInBits);
+    LLVM_DEBUG(dbgs() << "  emitBitPiecesForRegVal(" << "varSizeInBits: " <<
+               varSizeInBits << ", offsetInBits: " << offsetInBits << ")\n");
     if (!PieceBuilder.needsPieces())
         return false;
     for (unsigned i = 0, e = PieceBuilder.pieceCount(); i < e; ++i) {
@@ -1563,9 +1574,10 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const
 
         // addRegisterOffset(Block, varInfo.lrs.front().getGRF().regNum, 0);
         uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
-
         auto offsetInBits = subRegInBytes * 8;
 
+        LLVM_DEBUG(dbgs() << "  addSimdLaneScalar(varSizeInBits: " <<
+                   varSizeInBits << ", offsetInBits: " << offsetInBits << ")\n");
         if (isa<llvm::DbgDeclareInst>(DV.getDbgInst()) || HasImplicitLocation(DV))
         {
             // Pointer or an implicit value of a variable
@@ -1574,7 +1586,10 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const
             // on it.
             addConstantUValue(Block, offsetInBits);
             addConstantUValue(Block, varSizeInBits);
+
+            LLVM_DEBUG(dbgs() << "  value is pointer or an implicit\n");
             IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
+
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
         }
         else
@@ -2308,11 +2323,11 @@ void CompileUnit::constructContainingTypeDIEs()
     }
 }
 
-/// constructVariableDIE - Construct a DIE for the given DbgVariable.
 IGC::DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstract)
 {
     StringRef Name = DV.getName();
-
+    LLVM_DEBUG(dbgs () <<
+               "[DwarfDebug] constructing DIE for variable <" << Name << ">\n");
     // Define variable debug information entry.
     DIE* VariableDie = new DIE(DV.getTag());
     DbgVariable* AbsVar = DV.getAbstractVariable();
@@ -2339,13 +2354,14 @@ IGC::DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstrac
     if (isScopeAbstract)
     {
         DV.setDIE(VariableDie);
+        LLVM_DEBUG(dbgs() << "  done. Variable is scope-abstract\n");
         return VariableDie;
     }
 
     // Add variable address.
 
-    unsigned Offset = DV.getDotDebugLocOffset();
-    if (Offset != ~0U)
+    auto Offset = DV.getDotDebugLocOffset();
+    if (Offset != DbgVariable::InvalidDotDebugLocOffset)
     {
         // Copy over references ranges to DotLocDebugEntries
         if (EmitSettings.EnableRelocation)
@@ -2361,11 +2377,9 @@ IGC::DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstrac
             Offset = DD->CopyDebugLocNoReloc(Offset);
             addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
         }
-        if (DV.getDecorations().size() > 0)
-        {
-            addString(VariableDie, dwarf::DW_AT_description, DV.getDecorations());
-        }
+
         DV.setDIE(VariableDie);
+        LLVM_DEBUG(dbgs() << "  done. Location is taken from .debug_loc\n");
         return VariableDie;
     }
 
@@ -2374,19 +2388,23 @@ IGC::DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstrac
     if (!pDbgInst)
     {
         DV.setDIE(VariableDie);
+        LLVM_DEBUG(dbgs() << " done. No dbg.inst assotiated\n");
         return VariableDie;
     }
 
     buildLocation(pDbgInst, DV, VariableDie);
 
+    LLVM_DEBUG(dbgs() << " done. Location is emitted directly in DIE\n");
     return VariableDie;
 }
 
 void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& DV, IGC::DIE* VariableDie)
 {
-    auto F = pDbgInst->getParent()->getParent();
+    auto* F = pDbgInst->getParent()->getParent();
     const auto* VISAModule = DD->GetVISAModule(F);
     auto Locs = VISAModule->GetVariableLocation(pDbgInst);
+    LLVM_DEBUG(dbgs() << "  buildLocation at vISA location:\n";
+               VISAVariableLocation::print(dbgs(), Locs));
     auto& FirstLoc = Locs.front();
 
     // Variable can be immdeiate or in a location (but not both)
@@ -2407,6 +2425,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
             VISAModule->GetConstantData(pConstVal, rawData);
             addConstantData(VariableDie, rawData.data(), rawData.size());
         }
+        LLVM_DEBUG(dbgs() << "  location is built as an imm\n");
         DV.setDIE(VariableDie);
         return;
     }
@@ -2437,6 +2456,8 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
 IGC::DIEBlock* CompileUnit::buildPointer(DbgVariable& var, const VISAVariableLocation* loc)
 {
     auto bti = loc->GetSurface() - VISAModule::TEXTURE_REGISTER_BEGIN;
+
+    LLVM_DEBUG(dbgs() << "  buildingPointer, bti_idx = " << bti << "\n");
 
     IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
 
@@ -2595,6 +2616,8 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
         }
         return;
     };
+
+    LLVM_DEBUG(dbgs() << "  building DWARF info for the variable [" << var.getName() << "]\n");
     // locs contains 1 item for SIMD8/SIMD16 kernels describing locations of all channels.
     // locs contains 2 items for SIMD32 kernels. First item has storage mapping for lower 16
     // channels, second item has storage mapping for upper 16 channels.
@@ -2606,9 +2629,9 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
         const auto* storageMD = var.getDbgInst()->getMetadata("StorageOffset");
         const auto* VISAMod = loc->GetVISAModule();
         IGC_ASSERT_MESSAGE(VISAMod, "VISA Module is expected for LOC");
-        VISAVariableLocation V(VISAMod);
 
-        if (VISAMod->getPrivateBase() && VISAMod->hasPTO() && storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation))
+        if (VISAMod->getPrivateBase() && VISAMod->hasPTO() && storageMD &&
+            (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation))
         {
             // This is executed only when llvm.dbg.declare still exists and no stack call is supported.
             // With mem2reg run, data is stored in GRFs and this wont be
@@ -2617,9 +2640,13 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             auto privateBaseRegNum = VISAMod->getPrivateBaseReg();
             if (privateBaseRegNum)  // FIX ME if 0 is allowed
             {
+                LLVM_DEBUG(dbgs() << " PrivateBase(%X) + (%PerThreadOffset + "
+                           " (simdSize*<var_offset>) + (simdLaneId * <var_size>))");
                 emitLocation = true;
 
-                // %Y = privateBase (%X) + (%perThreadOffset + (simdSize * <variable offset>) + (simdLaneId * <variable size>))
+                // %Y = privateBase (%X)
+                //                + (%perThreadOffset + (simdSize * <variable offset>)
+                //                + (simdLaneId * <variable size>))
                 // CASE with Private Base and Per Thread Offset in GRF registers (both not spilled)
                 // 1 DW_OP_constu <Private Base reg encoded>
                 // 2 DW_OP_INTEL_regs     , i.e. Private Base
@@ -2632,7 +2659,8 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 // 9 DW_OP_const1u 32  , i.e. size in bits
                 // 10 DW_OP_INTEL_push_bit_piece_stack
                 // 11 DW_OP_plus , i.e. add Private Base to Per Thread Offset
-                // 12 DW_OP_const1u/2u/4u/8u simdSize * <variable offset> , i.e. offset in bits to the first lane's variable
+                // 12 DW_OP_const1u/2u/4u/8u simdSize * <variable offset> ,
+                //              i.e. offset in bits to the first lane's variable
                 // 13 DW_OP_plus
                 // 14 DW_OP_INTEL_push_simd_lane
                 // 15 DW_OP_const1u/2u/4u/8u <variableSize>  , i.e. size in bytes
@@ -2646,8 +2674,12 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     LLVM_DEBUG(dbgs() << "warning: could not get PrivateBase LR (V" << privateBaseRegNum << ")");
                     return Block;
                 }
+
+                LLVM_DEBUG(dbgs() << "  PrivateBase: ";
+                           varInfoPrivBase.print(dbgs()); dbgs() << "\n");
                 IGC_ASSERT_MESSAGE(varInfoPrivBase.lrs.front().isGRF() || varInfoPrivBase.lrs.front().isSpill(),
                     "Unexpected location of variable");
+
                 if (varInfoPrivBase.lrs.front().isGRF())
                 {
                     uint16_t grfRegNumPrivBase = varInfoPrivBase.lrs.front().getGRF().regNum;
@@ -2683,8 +2715,11 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     return Block;
                 }
 
+                LLVM_DEBUG(dbgs() << "  PerThOffset: ";
+                           varInfoPerThOff.print(dbgs()); dbgs() << "\n");
                 IGC_ASSERT_MESSAGE(varInfoPerThOff.lrs.front().isGRF() || varInfoPerThOff.lrs.front().isSpill(),
                     "Unexpected location of variable");
+
                 if (varInfoPerThOff.lrs.front().isGRF())
                 {
                     uint16_t grfRegNumPTO = varInfoPerThOff.lrs.front().getGRF().regNum;
@@ -2720,6 +2755,9 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);  // 14 DW_OP_INTEL_push_simd_lane
 
                 uint64_t varSizeInBytes = var.getBasicSize(DD) >> 3;
+
+                LLVM_DEBUG(dbgs() << "  var Offset: " << offset <<
+                           ", var Size: " << varSizeInBytes << "\n");
                 IGC_ASSERT_MESSAGE((var.getBasicSize(DD) & 0x7) == 0, "Unexpected variable size");
 
                 addConstantUValue(Block, varSizeInBytes);                          // 15 DW_OP_const1u/2u/4u/8u <variableSize>  , i.e. size in bytes
@@ -2736,10 +2774,14 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
         auto sizeMD = var.getDbgInst()->getMetadata("StorageSize");
         if (storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation) && sizeMD)
         {
+            LLVM_DEBUG(dbgs() << "  generating FP-based location\n");
             emitLocation = true;
             auto simdSize = VISAMod->GetSIMDSize();
             uint64_t storageOffset = simdSize * dyn_cast<ConstantAsMetadata>(storageMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
             uint64_t storageSize = dyn_cast<ConstantAsMetadata>(sizeMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
+            LLVM_DEBUG(dbgs() << "  StorageOffset: " << storageOffset <<
+                       ", StorageSize: " << storageSize << "\n");
+
             // There is a private value in the current stack frame
             // 1 DW_OP_constu <Frame Pointer reg encoded>
             // 2 DW_OP_INTEL_regs  , i.e. Frame Pointer
@@ -2760,9 +2802,11 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             // Rely on getVarInfo result here.
             DbgDecoder::VarInfo varInfoFP;
             if (!VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNumFP, varInfoFP)) {
-                LLVM_DEBUG(dbgs() << "warning: no variable info for FP (V" << regNumFP << ")");
+                LLVM_DEBUG(dbgs() << "warning: no gen loc info for FP (V" << regNumFP << ")");
                 return Block;
             }
+            LLVM_DEBUG(dbgs() << "  FramePointer: ";
+                       varInfoFP.print(dbgs()); dbgs() << "\n");
 
             uint16_t grfRegNumFP = varInfoFP.lrs.front().getGRF().regNum;
             uint16_t grfSubRegNumFP = varInfoFP.lrs.front().getGRF().subRegNum;
@@ -2796,6 +2840,8 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
 
         if (EmitSettings.EnableSIMDLaneDebugging && isSliced)
         {
+            LLVM_DEBUG(dbgs() << "  sliced variable, pushing lane, " <<
+                       "fisrtHalf:" << firstHalf << "\n");
             // DW_OP_push_simd_lane
             // DW_OP_lit16
             // DW_OP_ge
@@ -2829,17 +2875,28 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
 
         DbgDecoder::VarInfo varInfo;
         bool HasVarInfo = false;
+        // When vars is valid, use it to encode location directly, otherwise
+        // rely on getVarInfo result here.
         if (!vars)
         {
-            // When vars is valid, use it to encode location directly, otherwise
-            // rely on getVarInfo result here.
             auto regNum = loc->GetRegister();
             HasVarInfo = VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo);
+
+            if (HasVarInfo)
+                LLVM_DEBUG(dbgs() << "  general vISA Variable info: ";
+                           varInfo.print(dbgs());
+                           dbgs() << "\n");
+            else
+                LLVM_DEBUG(dbgs() << "  warning: could not get vISA Variable info");
+
         }
 
         if (HasVarInfo || (vars && vars->size() >= (firstHalf ? 1u : 2u)))
         {
             auto& lrToUse = vars ? vars->at(firstHalf ? 0 : 1) : varInfo.lrs.front();
+            LLVM_DEBUG(dbgs() << "  emitting variable location at LR: <";
+                       lrToUse.print(dbgs());
+                       dbgs() << ">\n");
             emitLocation = true;
             if (lrToUse.isGRF())
             {
@@ -2856,6 +2913,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     {
                         addConstantUValue(Block, offsetInBits);
                         addConstantUValue(Block, varSizeInBits);
+
                         IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
                         addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
                     }
@@ -2866,15 +2924,12 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 }
                 else
                 {
-                    IGC_ASSERT(EmitSettings.EnableSIMDLaneDebugging);
-
                     if (loc->IsVectorized() == false)
                     {
                         unsigned int subReg = lrToUse.getGRF().subRegNum;
                         addRegisterLoc(Block, regNum, 0, var.getDbgInst());
                         // Emit GT-relative location expression
                         addGTRelativeLocation(Block, loc);
-                        // Emit subregister for GRF (unpacked)
                         addSimdLaneScalar(Block, var, loc, &lrToUse, subReg);
                         EmitExpression(Block, var);
 
@@ -2885,7 +2940,6 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                         for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                         {
                             addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
-
                             // Emit SIMD lane for GRF (unpacked)
                             const auto MaxUI16 = std::numeric_limits<uint16_t>::max();
                             auto SimdOffset = DD->simdWidth * vectorElem;
@@ -2934,7 +2988,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             }
             else
             {
-                //IGC_ASSERT_MESSAGE(false, "\nVariable neither in GRF nor spilled\n");
+                LLVM_DEBUG(dbgs() << "  <warning> variable is niether in GRF nor spilled\n");
             }
             EmitExpression(Block, var);
 

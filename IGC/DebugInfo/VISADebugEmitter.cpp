@@ -73,6 +73,7 @@ void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM,
                               const DebugEmitterOpts& Opts)
 {
     IGC_ASSERT_MESSAGE(false == m_initialized, "DebugEmitter is already initialized!");
+    // IGC_ASSERT(!doneOnce);
     m_initialized = true;
 
     m_pVISAModule = VM.get();
@@ -280,13 +281,25 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
     const Function* pFunc = m_pVISAModule->GetEntryFunction();
     // Collect debug information for given function.
     m_pStreamEmitter->SwitchSection(m_pStreamEmitter->GetTextSection());
+
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] beginFunction called for <" <<
+               pFunc->getName() << "> ---\n");
     m_pDwarfDebug->beginFunction(pFunc, m_pVISAModule);
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] beginFunction end ***\n");
+
     processCurrentFunction(finalize, decodedDbg);
-    // Emit post-function debug information.
+
+    // Emit post-function debug information
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] endFunction start ---\n");
     m_pDwarfDebug->endFunction(pFunc);
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] endFunction done ***\n");
 
     if (!finalize)
+    {
+        LLVM_DEBUG(dbgs() << "[DwarfDebug] non-finalized exit ***\n");
         return {};
+    }
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] starting finalization ---\n");
 
     IGC_ASSERT(doneOnce);
 
@@ -294,6 +307,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
     m_pDwarfDebug->endModule();
 
     m_pStreamEmitter->Finalize();
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] finalized***\n");
 
     LLVM_DEBUG(dbgs() << "Finalized Visa Module:\n");
     LLVM_DEBUG(m_pVISAModule->dump());
