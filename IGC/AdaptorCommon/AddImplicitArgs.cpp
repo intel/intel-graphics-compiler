@@ -725,13 +725,34 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
     FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(f);
     funcInfo->clearImplicitArgInfoList();
 
+    bool isEntry = isEntryFunc(m_pMdUtils, f);
+
     for (const auto& A : data.ArgsMaps)
     {
         ImplicitArg::ArgType argId = A.first;
+        if (!isEntry && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
+        {
+            // The following is the list of implicit args that have GenISAIntrinsic support.
+            // They do not require to be added as explicit arguments other than in the caller kernel.
+            switch (argId) {
+            case ImplicitArg::ArgType::R0:
+            case ImplicitArg::ArgType::PAYLOAD_HEADER:
+            case ImplicitArg::ArgType::WORK_DIM:
+            case ImplicitArg::ArgType::NUM_GROUPS:
+            case ImplicitArg::ArgType::GLOBAL_SIZE:
+            case ImplicitArg::ArgType::LOCAL_SIZE:
+            case ImplicitArg::ArgType::ENQUEUED_LOCAL_WORK_SIZE:
+            case ImplicitArg::ArgType::LOCAL_ID_X:
+            case ImplicitArg::ArgType::LOCAL_ID_Y:
+            case ImplicitArg::ArgType::LOCAL_ID_Z:
+                continue;
+            default:
+                break;
+            }
+        }
         if (argId < ImplicitArg::ArgType::STRUCT_START)
         {
             // unique implicit argument, add it on metadata
-
             ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
             argMD->setArgId(argId);
             funcInfo->addImplicitArgInfoListItem(argMD);

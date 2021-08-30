@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/VISAIDebugEmitter.hpp"
 #include "DebugInfo/EmitterOpts.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Instructions.h"
@@ -9099,7 +9100,16 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitDebugPlaceholder(inst);
         break;
     case GenISAIntrinsic::GenISA_getR0:
-        emitR0(inst);
+    case GenISAIntrinsic::GenISA_getPayloadHeader:
+    case GenISAIntrinsic::GenISA_getWorkDim:
+    case GenISAIntrinsic::GenISA_getNumWorkGroups:
+    case GenISAIntrinsic::GenISA_getLocalSize:
+    case GenISAIntrinsic::GenISA_getGlobalSize:
+    case GenISAIntrinsic::GenISA_getEnqueuedLocalSize:
+    case GenISAIntrinsic::GenISA_getLocalID_X:
+    case GenISAIntrinsic::GenISA_getLocalID_Y:
+    case GenISAIntrinsic::GenISA_getLocalID_Z:
+        emitImplicitArgIntrinsic(inst);
         break;
     case GenISAIntrinsic::GenISA_dummyInst:
         emitDummyInst(inst);
@@ -18404,11 +18414,36 @@ void EmitPass::emitDummyInst(llvm::GenIntrinsicInst* GII)
     m_encoder->Push();
 }
 
-void EmitPass::emitR0(llvm::GenIntrinsicInst* I)
+void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
 {
-    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(m_currShader->getGRFSize() / SIZE_DWORD));
-    m_encoder->SetNoMask();
-    m_currShader->CopyVariable(GetSymbol(I), m_currShader->GetR0());
+    Function* parentFunc = I->getParent()->getParent();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+
+    IGC_ASSERT_MESSAGE(!isEntryFunc(pMdUtils, parentFunc), "Implicit Arg Intrinsics should not be used by kernel");
+    if (I->getIntrinsicID() == GenISAIntrinsic::ID::GenISA_getR0)
+    {
+        // Returns the predefined R0 register
+        m_encoder->SetUniformSIMDSize(lanesToSIMDMode(m_currShader->getGRFSize() / SIZE_DWORD));
+        m_encoder->SetNoMask();
+        m_currShader->CopyVariable(GetSymbol(I), m_currShader->GetR0());
+    }
+    else if (m_FGA)
+    {
+        Function* SubGroupHead = m_FGA->getSubGroupMap(parentFunc);
+        if (isEntryFunc(pMdUtils, SubGroupHead))
+        {
+            // Map to the kernel's implicit arg
+            ImplicitArgs IAS(*SubGroupHead, pMdUtils);
+            ImplicitArg::ArgType IAtype = IAS.getArgType(I->getIntrinsicID());
+            Argument* arg = IAS.getImplicitArg(*SubGroupHead, IAtype);
+            auto ArgSymbol = m_currShader->getOrCreateArgumentSymbol(arg, false, false);
+            m_currShader->CopyVariable(GetSymbol(I), ArgSymbol);
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Does not support stackcall as subgroup head!");
+        }
+    }
 }
 
 

@@ -1314,8 +1314,17 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca ||
         GII_id == GenISAIntrinsic::GenISA_StackAlloca ||
+        GII_id == GenISAIntrinsic::GenISA_vectorUniform ||
         GII_id == GenISAIntrinsic::GenISA_getR0 ||
-        GII_id == GenISAIntrinsic::GenISA_vectorUniform)
+        GII_id == GenISAIntrinsic::GenISA_getPayloadHeader ||
+        GII_id == GenISAIntrinsic::GenISA_getWorkDim ||
+        GII_id == GenISAIntrinsic::GenISA_getNumWorkGroups ||
+        GII_id == GenISAIntrinsic::GenISA_getLocalSize ||
+        GII_id == GenISAIntrinsic::GenISA_getGlobalSize ||
+        GII_id == GenISAIntrinsic::GenISA_getEnqueuedLocalSize ||
+        GII_id == GenISAIntrinsic::GenISA_getLocalID_X ||
+        GII_id == GenISAIntrinsic::GenISA_getLocalID_Y ||
+        GII_id == GenISAIntrinsic::GenISA_getLocalID_Z)
     {
         switch (GII_id)
         {
@@ -1325,7 +1334,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             // collect the seeds for forcing uniform vectors
             m_forcedUniforms.push_back(inst);
             return WIAnalysis::UNIFORM_THREAD;
-        case GenISAIntrinsic::GenISA_getR0:
         case GenISAIntrinsic::GenISA_getSR0:
         case GenISAIntrinsic::GenISA_getSR0_0:
         case GenISAIntrinsic::GenISA_eu_id:
@@ -1337,6 +1345,21 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             // Make sure they are UNIFORM_WORKGROUP
             //return WIAnalysis::UNIFORM_WORKGROUP;
             return WIAnalysis::UNIFORM_THREAD;
+        case GenISAIntrinsic::GenISA_getR0:
+        case GenISAIntrinsic::GenISA_getPayloadHeader:
+        case GenISAIntrinsic::GenISA_getWorkDim:
+        case GenISAIntrinsic::GenISA_getNumWorkGroups:
+        case GenISAIntrinsic::GenISA_getLocalSize:
+        case GenISAIntrinsic::GenISA_getGlobalSize:
+        case GenISAIntrinsic::GenISA_getEnqueuedLocalSize:
+        case GenISAIntrinsic::GenISA_getLocalID_X:
+        case GenISAIntrinsic::GenISA_getLocalID_Y:
+        case GenISAIntrinsic::GenISA_getLocalID_Z:
+        {
+            const Function* F = inst->getParent()->getParent();
+            ImplicitArgs IAS(*F, m_pMdUtils);
+            return IAS.getArgDep(GII_id);
+        }
         }
 
         if (intrinsic_name == llvm_input ||

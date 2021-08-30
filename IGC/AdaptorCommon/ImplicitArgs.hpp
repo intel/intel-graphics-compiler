@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
+#include "GenISAIntrinsics/GenIntrinsics.h"
 
 #include <vector>
 #include <set>
@@ -155,6 +156,16 @@ namespace IGC
             ValAlign                        align,
             bool                            isConstantBuf);
 
+        ImplicitArg(
+            const ArgType& argType,
+            const std::string& name,
+            const ValType                   valType,
+            WIAnalysis::WIDependancy        dependency,
+            unsigned int                    nbElement,
+            ValAlign                        align,
+            bool                            isConstantBuf,
+            llvm::GenISAIntrinsic::ID       GenIntrinsicID);
+
         /// @brief  Getter functions
         ArgType                         getArgType() const;
         const std::string&              getName() const;
@@ -168,6 +179,7 @@ namespace IGC
         unsigned int                    getPointerSize(const llvm::DataLayout& DL) const;
         bool                            isConstantBuf() const;
         bool                            isLocalIDs() const;
+        llvm::GenISAIntrinsic::ID       getGenIntrinsicID() const;
 
     private:
         const ArgType                   m_argType;
@@ -177,6 +189,7 @@ namespace IGC
         const unsigned int              m_nbElement;
         const ValAlign                  m_align;
         const bool                      m_isConstantBuf;
+        const llvm::GenISAIntrinsic::ID m_GenIntrinsicID;
     };
 
     /// @brief  ImplicitArgs is used for accessing the actual implict information that is passed from
@@ -228,6 +241,16 @@ namespace IGC
         /// @param  i               The implicit argument index
         /// @return The argument type of the argument at the given index
         ImplicitArg::ArgType getArgType(unsigned int i) const;
+
+        /// @brief  Returns the argument type of the given matching intrinsic ID
+        /// @param  i               The GenISAIntrinsic ID
+        /// @return The argument type
+        ImplicitArg::ArgType getArgType(llvm::GenISAIntrinsic::ID id) const;
+
+        /// @brief  Returns the argument dependency of the given matching intrinsic ID
+        /// @param  i               The GenISAIntrinsic ID
+        /// @return The argument dependency
+        IGC::WIAnalysis::WIDependancy getArgDep(llvm::GenISAIntrinsic::ID id) const;
 
         /// @brief  Returns the explicit argument number of the given implicit argument index
         /// @param  i               The implicit argument index
@@ -311,6 +334,8 @@ namespace IGC
         /// @brief  Returns true if the given argument type is a struct
         /// @param  argType The argument type to check.
         static bool isImplicitStruct(ImplicitArg::ArgType argType);
+
+        llvm::Value* getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGC::CodeGenContext* pCtx);
 
     private:
 

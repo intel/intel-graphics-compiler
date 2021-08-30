@@ -51,6 +51,7 @@ Constant* WIFuncResolution::getKnownWorkGroupSize(
 bool WIFuncResolution::runOnFunction(Function& F)
 {
     m_changed = false;
+    m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto* MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
     visit(F);
@@ -349,11 +350,8 @@ Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
         SimdSize = Builder.CreateSelect(CmpInst, SimdSize, ConstantInt::get(SimdSize->getType(), (uint64_t)16));
 
         // Get local thread id
-        auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        VectorType* Tys = IGCLLVM::FixedVectorType::get(DataTypeI32, Ctx->platform.getGRFSize() / SIZE_DWORD);
-        Function* R0Dcl = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_getR0, Tys);
-        auto IntCall = Builder.CreateCall(R0Dcl);
-        auto LocalThreadId = Builder.CreateExtractElement(IntCall, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2));
+        auto R0Val = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pCtx);
+        auto LocalThreadId = Builder.CreateExtractElement(R0Val, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2));
 
         // Get SIMD lane id
         auto DataTypeI16 = Type::getInt16Ty(F->getParent()->getContext());
@@ -397,8 +395,7 @@ Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
     }
     else
     {
-        Argument* localId = m_implicitArgs.getImplicitArg(*F, argType);
-        V = localId;
+        V = m_implicitArgs.getImplicitArgValue(*F, argType, m_pCtx);
     }
 
     return V;
@@ -422,21 +419,7 @@ Value* WIFuncResolution::getGroupId(CallInst& CI)
 
     Value* V = nullptr;
     auto F = CI.getParent()->getParent();
-    if (hasStackCallAttr(*F))
-    {
-        auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        IGCLLVM::IRBuilder<> Builder(&CI);
-        Type* Int32Ty = Type::getInt32Ty(F->getParent()->getContext());
-        VectorType* Tys = IGCLLVM::FixedVectorType::get(Int32Ty, Ctx->platform.getGRFSize() / SIZE_DWORD);
-        Function* R0Dcl = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_getR0, Tys);
-        auto IntCall = Builder.CreateCall(R0Dcl);
-        V = IntCall;
-    }
-    else
-    {
-        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::R0);
-        V = arg;
-    }
+    V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pCtx);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* cmpDim = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_EQ, dim, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 0), "cmpDim", &CI);
@@ -463,21 +446,7 @@ Value* WIFuncResolution::getLocalThreadId(CallInst &CI)
 
     Value* V = nullptr;
     auto F = CI.getParent()->getParent();
-    if (hasStackCallAttr(*F))
-    {
-        auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        IGCLLVM::IRBuilder<> Builder(&CI);
-        Type* Int32Ty = Type::getInt32Ty(F->getParent()->getContext());
-        VectorType* Tys = IGCLLVM::FixedVectorType::get(Int32Ty, Ctx->platform.getGRFSize() / SIZE_DWORD);
-        Function* R0Dcl = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_getR0, Tys);
-        auto IntCall = Builder.CreateCall(R0Dcl);
-        V = IntCall;
-    }
-    else
-    {
-        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::R0);
-        V = arg;
-    }
+    V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pCtx);
 
     Instruction* r0second = ExtractElementInst::Create(V, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2), "r0second", &CI);
     Instruction* localThreadId = TruncInst::Create(Instruction::CastOps::Trunc, r0second, Type::getInt8Ty(CI.getContext()), "localThreadId", &CI);
@@ -517,8 +486,7 @@ Value* WIFuncResolution::getGlobalSize(CallInst& CI)
     }
     else
     {
-        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::GLOBAL_SIZE);
-        V = arg;
+        V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::GLOBAL_SIZE, m_pCtx);
     }
 
     Value* dim = CI.getArgOperand(0);
@@ -549,8 +517,7 @@ Value* WIFuncResolution::getLocalSize(CallInst& CI)
     }
     else
     {
-        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_SIZE);
-        V = arg;
+        V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_SIZE, m_pCtx);
     }
 
     Value* dim = CI.getArgOperand(0);
@@ -581,8 +548,7 @@ Value* WIFuncResolution::getEnqueuedLocalSize(CallInst& CI) {
     }
     else
     {
-        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE);
-        V = arg;
+        V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, m_pCtx);
     }
 
     Value* dim = CI.getArgOperand(0);
@@ -622,8 +588,7 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     }
     else
     {
-        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::PAYLOAD_HEADER);
-        V = arg;
+        V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::PAYLOAD_HEADER, m_pCtx);
     }
 
     Value* dim = CI.getArgOperand(0);
@@ -655,8 +620,7 @@ Value* WIFuncResolution::getWorkDim(CallInst& CI)
     }
     else
     {
-        Argument* workDim = m_implicitArgs.getImplicitArg(*F, ImplicitArg::WORK_DIM);
-        V = workDim;
+        V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::WORK_DIM, m_pCtx);
     }
 
     return V;
@@ -683,8 +647,7 @@ Value* WIFuncResolution::getNumGroups(CallInst& CI)
     }
     else
     {
-        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::NUM_GROUPS);
-        V = arg;
+        V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::NUM_GROUPS, m_pCtx);
     }
 
     Value* dim = CI.getArgOperand(0);

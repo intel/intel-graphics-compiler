@@ -35,7 +35,28 @@ ImplicitArg::ImplicitArg(
             m_dependency(dependency),
             m_nbElement(nbElement),
             m_align(align),
-            m_isConstantBuf(isConstantBuf)
+            m_isConstantBuf(isConstantBuf),
+            m_GenIntrinsicID(GenISAIntrinsic::ID::no_intrinsic)
+{
+}
+
+ImplicitArg::ImplicitArg(
+    const ArgType& argType,
+    const std::string& name,
+    const ValType                   valType,
+    WIAnalysis::WIDependancy        dependency,
+    unsigned int                    nbElement,
+    ValAlign                        align,
+    bool                            isConstantBuf,
+    GenISAIntrinsic::ID             GenIntrinsicID)
+    : m_argType(argType),
+    m_name(name),
+    m_valType(valType),
+    m_dependency(dependency),
+    m_nbElement(nbElement),
+    m_align(align),
+    m_isConstantBuf(isConstantBuf),
+    m_GenIntrinsicID(GenIntrinsicID)
 {
 }
 
@@ -215,23 +236,27 @@ bool ImplicitArg::isLocalIDs() const {
                  m_argType == ImplicitArg::LOCAL_ID_Z);
 }
 
+GenISAIntrinsic::ID ImplicitArg::getGenIntrinsicID() const {
+    return m_GenIntrinsicID;
+}
+
 ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMdUtils)
 {
     if (IMPLICIT_ARGS.size() == 0)
     {
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::R0, "r0", ImplicitArg::INT, WIAnalysis::UNIFORM_THREAD, 8, ImplicitArg::ALIGN_GRF, false));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::R0, "r0", ImplicitArg::INT, WIAnalysis::UNIFORM_THREAD, 8, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getR0));
 
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::PAYLOAD_HEADER, "payloadHeader", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 8, ImplicitArg::ALIGN_GRF, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::WORK_DIM, "workDim", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::PAYLOAD_HEADER, "payloadHeader", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 8, ImplicitArg::ALIGN_GRF, true, GenISAIntrinsic::GenISA_getPayloadHeader));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::WORK_DIM, "workDim", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getWorkDim));
 
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::NUM_GROUPS, "numWorkGroups", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GLOBAL_SIZE, "globalSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_SIZE, "localSize", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 3, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, "enqueuedLocalSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::NUM_GROUPS, "numWorkGroups", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getNumWorkGroups));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GLOBAL_SIZE, "globalSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getGlobalSize));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_SIZE, "localSize", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getLocalSize));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, "enqueuedLocalSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getEnqueuedLocalSize));
 
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_X, "localIdX", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Y, "localIdY", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Z, "localIdZ", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_X, "localIdX", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_X));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Y, "localIdY", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_Y));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Z, "localIdZ", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_Z));
 
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::CONSTANT_BASE, "constBase", ImplicitArg::CONSTPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GLOBAL_BASE, "globalBase", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
@@ -563,6 +588,32 @@ ImplicitArg::ArgType ImplicitArgs::getArgType(unsigned int index) const {
     return static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
 }
 
+ImplicitArg::ArgType ImplicitArgs::getArgType(GenISAIntrinsic::ID id) const {
+    IGC_ASSERT(id != GenISAIntrinsic::ID::no_intrinsic);
+    for (auto &arg : IMPLICIT_ARGS)
+    {
+        if (arg.getGenIntrinsicID() == id)
+        {
+            return arg.getArgType();
+        }
+    }
+    IGC_ASSERT_MESSAGE(0, "Intrinsic not supported!");
+    return ImplicitArg::ArgType::NUM_IMPLICIT_ARGS;
+}
+
+IGC::WIAnalysis::WIDependancy ImplicitArgs::getArgDep(GenISAIntrinsic::ID id) const {
+    IGC_ASSERT(id != GenISAIntrinsic::ID::no_intrinsic);
+    for (auto& arg : IMPLICIT_ARGS)
+    {
+        if (arg.getGenIntrinsicID() == id)
+        {
+            return arg.getDependency();
+        }
+    }
+    IGC_ASSERT_MESSAGE(0, "Intrinsic not supported!");
+    return IGC::WIAnalysis::WIDependancy::RANDOM;
+}
+
 int32_t ImplicitArgs::getExplicitArgNum(unsigned int index) const
 {
     ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(index);
@@ -597,6 +648,39 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
     unsigned int implicitArgIndexInFunc = F.arg_size() - numImplicitArgs + implicitArgIndex;
 
     return F.arg_begin() + implicitArgIndexInFunc;
+}
+
+Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGC::CodeGenContext* pCtx)
+{
+    auto pMdUtils = pCtx->getMetaDataUtils();
+    if (!isEntryFunc(pMdUtils, &F) && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
+    {
+        ImplicitArg& iArg = IMPLICIT_ARGS[argType];
+        GenISAIntrinsic::ID genID = iArg.getGenIntrinsicID();
+        if (genID != GenISAIntrinsic::ID::no_intrinsic)
+        {
+            // Look for already existing intrinsic
+            for (auto II = inst_begin(F), IE = inst_end(F); II != IE; II++)
+            {
+                if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(&*II))
+                {
+                    if (inst->getIntrinsicID() == genID)
+                    {
+                        return inst;
+                    }
+                }
+            }
+
+            // Does not exist, create the intrinsic at function entry
+            llvm::IRBuilder<> Builder(&*F.getEntryBlock().begin());
+            Type* argTy = iArg.getLLVMType(F.getParent()->getContext());
+            Function* intrinsicDecl = GenISAIntrinsic::getDeclaration(F.getParent(), genID, argTy);
+            CallInst* inst = Builder.CreateCall(intrinsicDecl);
+            return inst;
+        }
+    }
+    // By default, get it from function arguments list
+    return getImplicitArg(F, argType);
 }
 
 Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType, int argNum) const

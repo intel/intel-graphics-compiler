@@ -933,8 +933,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         Value* privateBase = nullptr;
         if (modMD->compOpt.UseScratchSpacePrivateMemory)
         {
-            Argument* r0Arg = implicitArgs.getImplicitArg(*m_currFunction, ImplicitArg::R0);
-            Value* r0_5 = entryBuilder.CreateExtractElement(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
+            Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, &Ctx);
+            Value* r0_5 = entryBuilder.CreateExtractElement(r0Val, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
             privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
         }
 
@@ -1053,7 +1053,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     }
 
     // Find the implicit argument representing r0 and the private memory base.
-    Argument* r0Arg = implicitArgs.getImplicitArg(*m_currFunction, ImplicitArg::R0);
+    Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, &Ctx);
     Argument* privateMemArg = implicitArgs.getImplicitArg(*m_currFunction, ImplicitArg::PRIVATE_BASE);
     // Note: for debugging purposes privateMemArg will be marked as Output to keep its liveness all time
 
@@ -1089,7 +1089,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         Value* shlThreadID = entryBuilder.CreateShl(threadId, ConstantInt::get(typeInt32, 1), VALUE_NAME("shlThreadID"));
 
         // FFSID - r0.0 bit 16
-        Value* r0_0 = entryBuilder.CreateExtractElement(r0Arg, ConstantInt::get(typeInt32, 0), VALUE_NAME("r0.0"));
+        Value* r0_0 = entryBuilder.CreateExtractElement(r0Val, ConstantInt::get(typeInt32, 0), VALUE_NAME("r0.0"));
         Value* FFSIDbit = entryBuilder.CreateLShr(r0_0, ConstantInt::get(typeInt32, 16), VALUE_NAME("FFSIDbit"));
         Value* FFSID = entryBuilder.CreateAnd(FFSIDbit, ConstantInt::get(typeInt32, 1), VALUE_NAME("FFSID"));
 

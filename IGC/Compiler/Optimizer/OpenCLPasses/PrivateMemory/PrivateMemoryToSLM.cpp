@@ -337,20 +337,20 @@ namespace IGC
                         //    R0.1  31:0    Thread Group ID X
                         //    R0.6  31:0    Thread Group ID Y
                         //    R0.7  31:0    Thread Group ID Z
-                        Argument* r0Arg = implicitArgs.getImplicitArg(*F, ImplicitArg::R0);
+                        Value* r0Val = implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, CodeGenCtx);
                         localIdX =
                             builder.CreateExtractElement(
-                                r0Arg,
+                                r0Val,
                                 ConstantInt::get(typeInt32, 1),
                                 VALUE_NAME("localIdX"));
                         localIdY =
                             builder.CreateExtractElement(
-                                r0Arg,
+                                r0Val,
                                 ConstantInt::get(typeInt32, 6),
                                 VALUE_NAME("localIdY"));
                         localIdZ =
                             builder.CreateExtractElement(
-                                r0Arg,
+                                r0Val,
                                 ConstantInt::get(typeInt32, 7),
                                 VALUE_NAME("localIdZ"));
                     }

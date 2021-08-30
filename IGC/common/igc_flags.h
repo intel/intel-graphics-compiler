@@ -362,6 +362,7 @@ DECLARE_IGC_REGKEY(bool, DisableWaSampleLZ,             false,  "Disable The Sam
 DECLARE_IGC_REGKEY(DWORD, OverrideRevIdForWA,           0xff,   "Enable this to override the stepping/RevId, default is a0 = 0, b0 = 1, c0 = 2, so on...", false)
 DECLARE_IGC_REGKEY(DWORD, OverrideDeviceIdForWA,          0,   "Enable this to override DeviceId ", false)
 DECLARE_IGC_REGKEY(DWORD, OverrideProductFamilyForWA,     0,   "Enable this to override the product family, get the correct enum from igfxfmid.h", false)
+DECLARE_IGC_REGKEY(bool, EnableImplicitArgAsIntrinsic,  false, "Use GenISAIntrinsic instructions for supported implicit args instead of passing them as function arguments", true)
 
 
 DECLARE_IGC_REGKEY(bool, EnableGlobalStateBuffer,              false, "This key allows stack calls to read implicit args from side buffer. It also emits a relocatable add in VISA.", true)
