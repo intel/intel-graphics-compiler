@@ -3776,7 +3776,7 @@ namespace IGC
             SaveOption(vISA_EnableCompilerStats, true);
         }
 
-        if (m_program->m_Platform->getWATable().Wa_22011494591 && IGC_IS_FLAG_ENABLED(EnableSamplerSplit))
+        if (m_program->m_Platform->getWATable().Wa_14014414195 && IGC_IS_FLAG_ENABLED(EnableSamplerSplit))
         {
             SaveOption(vISA_cloneSampleInst, true);
         }

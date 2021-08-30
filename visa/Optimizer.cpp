@@ -857,7 +857,9 @@ void Optimizer::insertHashMovs()
 // into
 // (P1) send.smpl (16) dst src0 src1
 // (~P1) send.smpl (16) dst src0 src1
-// where P1 is 0x0F0F (i.e., the even sub-spans)
+// where P1 is 0x5555 (i.e., pixels with even x coordinates)
+// Ideally this would only affect 3d textures, but at
+// the moment it will affect 2d array textures as well.
 //
 // P1 is initialized per BB before the first sample inst; we could make it per shader but I'm worried about flag spill
 // this works for SIMD8 and SIMD32 shaders as well.
@@ -886,16 +888,29 @@ void Optimizer::cloneSampleInst()
                 inst->getExecSize() >= builder.getNativeExecSize())
             {
                 G4_InstSend* sendInst = inst->asSendInst();
+                G4_Operand* src0 = sendInst->getSrc(0);
+
+                unsigned int messageSizeInBytes = src0->getRightBound() - src0->getLeftBound() + 1;
+                if (sendInst->isSplitSend())
+                {
+                    G4_Operand* src1 = sendInst->getSrc(1);
+                    messageSizeInBytes += src1->getRightBound() - src1->getLeftBound() + 1;
+                }
+                if (sendInst->getMsgDescRaw()->isHeaderPresent())
+                {
+                    messageSizeInBytes -= getGRFSize();
+                }
+                unsigned int numParams = messageSizeInBytes / getGRFSize() * builder.getNativeExecSize() / inst->getExecSize();
                 bool isEval = sendInst->getMsgDesc()->getDstLenRegs() == 0;
                 uint32_t messageType = sendInst->getMsgDescRaw()->getSamplerMessageType();
                 assert(!inst->getPredicate() && "do not handle predicated sampler inst for now");
-                if (!isEval && cloneSample)
+                if (!isEval && cloneSample && messageType == 0 && numParams == 3)
                 {
                     if (!hasSample)
                     {
                         hasSample = true;
                         auto flagInit = builder.createMov(g4::SIMD1, builder.createDst(tmpFlag->getRegVar(), isSIMD32 ? Type_UD : Type_UW),
-                            builder.createImm(isSIMD32 ? 0x0F0F0F0F : 0x0F0F, isSIMD32 ? Type_UD : Type_UW), InstOpt_WriteEnable, false);
+                            builder.createImm(isSIMD32 ? 0x55555555 : 0x5555, isSIMD32 ? Type_UD : Type_UW), InstOpt_WriteEnable, false);
                         bb->insertBefore(I, flagInit);
                     }
                     auto newInst = inst->cloneInst();

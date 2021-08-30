@@ -475,7 +475,7 @@ DECLARE_IGC_REGKEY(bool, EmitDebugRanges, true, "Emit .debug_ranges section when
 DECLARE_IGC_REGKEY(bool, EmitDebugLoc, true, "Enable generation of .debug_loc section", false)
 DECLARE_IGC_REGKEY(bool, EmitOffsetInDbgLoc, false, "Emit offset of private memory in DW_AT_location when available", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", true)
-DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, true, "Split SIMD8 Sampler message to 2 subspans and SIMD16 to odd and even", false)
+DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, false, "Split Sampler 3d message to odd and even", false)
 DECLARE_IGC_REGKEY(bool, EnableEvaluateSamplerSplit, true, "Split evaluate messages to sampler into either SIMD8 or SIMD1 messages", false)
 DECLARE_IGC_REGKEY(DWORD, AllocaRAPressureThreshold, 500, "The threshold for the register pressure potential", false)
 DECLARE_IGC_REGKEY(DWORD, HPCInstNumThreshold, 1000000, "The threshold for the register pressure potential", false)
