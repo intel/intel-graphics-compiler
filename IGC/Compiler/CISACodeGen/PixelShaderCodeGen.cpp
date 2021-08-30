@@ -1445,69 +1445,22 @@ void linkCPS(SPixelShaderKernelProgram* output, SPixelShaderKernelProgram& linke
     SPixelShaderKernelProgram CoarsePhaseOutput = output[0];
     SPixelShaderKernelProgram PixelPhaseOutput = output[1];
     linked = output[0];
-    linked.simd8.m_debugData = nullptr;
-    linked.simd8.m_debugDataGenISA = nullptr;
-    linked.simd8.m_funcAttributeTable = nullptr;
-    linked.simd16.m_debugData = nullptr;
-    linked.simd16.m_debugDataGenISA = nullptr;
-    linked.simd16.m_funcAttributeTable = nullptr;
 
-
-    if (CoarsePhaseOutput.simd16.m_programBin == nullptr &&
-        CoarsePhaseOutput.simd8.m_programBin == nullptr)
+    if (CoarsePhaseOutput.simd16.m_scratchSpaceUsedBySpills == 0 &&
+        CoarsePhaseOutput.simd16.m_programBin != nullptr &&
+        PixelPhaseOutput.simd16.m_scratchSpaceUsedBySpills == 0 &&
+        PixelPhaseOutput.simd16.m_programBin != nullptr)
     {
-        // empty cps
-        linked = PixelPhaseOutput;
-        linked.simd8.m_debugData = nullptr;
-        linked.simd8.m_debugDataGenISA = nullptr;
-        linked.simd8.m_funcAttributeTable = nullptr;
-        linked.simd16.m_debugData = nullptr;
-        linked.simd16.m_debugDataGenISA = nullptr;
-        linked.simd16.m_funcAttributeTable = nullptr;
-        if (PixelPhaseOutput.simd16.m_programBin != nullptr)
-        {
-            // deep copy
-            linked.simd16.m_programSize = iSTD::Align(PixelPhaseOutput.simd16.m_unpaddedProgramSize, 64);
-            linked.simd16.m_programBin = IGC::aligned_malloc(PixelPhaseOutput.simd16.m_programSize, 16);
-            memset(linked.simd16.m_programBin,
-                0,
-                linked.simd16.m_unpaddedProgramSize);
-            memcpy_s(linked.simd16.m_programBin,
-                linked.simd16.m_unpaddedProgramSize,
-                PixelPhaseOutput.simd16.m_programBin,
-                PixelPhaseOutput.simd16.m_unpaddedProgramSize);
-        }
-        if (PixelPhaseOutput.simd8.m_programBin != nullptr)
-        {
-            linked.simd8.m_programSize = iSTD::Align(PixelPhaseOutput.simd8.m_unpaddedProgramSize, 64);
-            linked.simd8.m_programBin = IGC::aligned_malloc(PixelPhaseOutput.simd8.m_programSize, 16);
-            memset(linked.simd8.m_programBin,
-                0,
-                linked.simd8.m_unpaddedProgramSize);
-            memcpy_s(linked.simd8.m_programBin,
-                linked.simd8.m_unpaddedProgramSize,
-                PixelPhaseOutput.simd8.m_programBin,
-                PixelPhaseOutput.simd8.m_unpaddedProgramSize);
-        }
+        linkProgram(CoarsePhaseOutput.simd16, PixelPhaseOutput.simd16, linked.simd16);
     }
     else
     {
-        if (CoarsePhaseOutput.simd16.m_scratchSpaceUsedBySpills == 0 &&
-            CoarsePhaseOutput.simd16.m_programBin != nullptr &&
-            PixelPhaseOutput.simd16.m_scratchSpaceUsedBySpills == 0 &&
-            PixelPhaseOutput.simd16.m_programBin != nullptr)
-        {
-            linkProgram(CoarsePhaseOutput.simd16, PixelPhaseOutput.simd16, linked.simd16);
-        }
-        else
-        {
-            linked.simd16.m_programBin = nullptr;
-            linked.simd16.m_programSize = 0;
-        }
-        linkProgram(CoarsePhaseOutput.simd8, PixelPhaseOutput.simd8, linked.simd8);
-        linked.hasPullBary = true;
-        linked.renderTargetMask = (CoarsePhaseOutput.renderTargetMask || PixelPhaseOutput.renderTargetMask);
+        linked.simd16.m_programBin = nullptr;
+        linked.simd16.m_programSize = 0;
     }
+    linkProgram(CoarsePhaseOutput.simd8, PixelPhaseOutput.simd8, linked.simd8);
+    linked.hasPullBary = true;
+    linked.renderTargetMask = (CoarsePhaseOutput.renderTargetMask || PixelPhaseOutput.renderTargetMask);
     IGC_ASSERT_MESSAGE(numberPhases == 2, "maximum number of phases is 2");
 }
 
@@ -1533,23 +1486,22 @@ void CodeGen(PixelShaderContext* ctx)
         pMdUtils = ctx->getMetaDataUtils();
     }
 
-    if (coarsePhase && pixelPhase)
-   {
-        CShaderProgram::KernelShaderMap coarseShaders;
-        CShaderProgram::KernelShaderMap pixelShaders;
+    bool codegenDone = false;
 
+    CShaderProgram::KernelShaderMap coarseShaders;
+    CShaderProgram::KernelShaderMap pixelShaders;
+
+    if (coarsePhase && pixelPhase)
+    {
         // Cancelling staged compilation for multi stage PS.
         ctx->m_CgFlag = FLAG_CG_ALL_SIMDS;
 
         //Multi stage PS, need to do separate compiler and link them
         unsigned int numStage = 2;
         PSSignature signature;
-        SPixelShaderKernelProgram outputs[2];
         FunctionInfoMetaDataHandle coarseFI, pixelFI;
         coarseFI = pMdUtils->getFunctionsInfoItem(coarsePhase);
         pixelFI = pMdUtils->getFunctionsInfoItem(pixelPhase);
-
-        memset(&outputs, 0, 2 * sizeof(SPixelShaderKernelProgram));
 
         for (unsigned int i = 0; i < numStage; i++)
         {
@@ -1573,6 +1525,8 @@ void CodeGen(PixelShaderContext* ctx)
             }
         }
 
+        codegenDone = true;
+
 
         for (unsigned int i = 0; i < numStage; i++)
         {
@@ -1581,35 +1535,82 @@ void CodeGen(PixelShaderContext* ctx)
                 mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
 
             CShaderProgram::KernelShaderMap& shaders = (i == 0) ? coarseShaders : pixelShaders;
-
-            shaders[phaseFunc]->FillProgram(&outputs[i]);
-            COMPILER_SHADER_STATS_PRINT(shaders[phaseFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");
-            COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, shaders[phaseFunc]->m_shaderStats, ShaderType::PIXEL_SHADER);
-            COMPILER_SHADER_STATS_DEL(shaders[phaseFunc]->m_shaderStats);
-            delete shaders[phaseFunc];
+            CPixelShader* simd8Shader = static_cast<CPixelShader*>(shaders[phaseFunc]->GetShader(SIMDMode::SIMD8));
+            CPixelShader* simd16Shader = static_cast<CPixelShader*>(shaders[phaseFunc]->GetShader(SIMDMode::SIMD16));
+            CPixelShader* simd32Shader = static_cast<CPixelShader*>(shaders[phaseFunc]->GetShader(SIMDMode::SIMD32));
+            if (!((simd8Shader && simd8Shader->ProgramOutput()->m_programBin) ||
+                (simd16Shader && simd16Shader->ProgramOutput()->m_programBin) ||
+                (simd32Shader && simd32Shader->ProgramOutput()->m_programBin)
+                ))
+            {
+                shaders[phaseFunc]->DeleteShader(SIMDMode::SIMD8);
+                shaders[phaseFunc]->DeleteShader(SIMDMode::SIMD16);
+                shaders[phaseFunc]->DeleteShader(SIMDMode::SIMD32);
+                if (i == 0)
+                {
+                    delete shaders[coarsePhase];
+                    coarsePhase = nullptr;
+                }
+                else
+                {
+                    delete shaders[pixelPhase];
+                    pixelPhase = nullptr;
+                }
+            }
         }
 
-        linkCPS(outputs, ctx->programOutput, numStage);
-        // Kernels allocated in CISABuilder.cpp (Compile())
-        // are freed in CompilerOutputOGL.hpp (DeleteShaderCompilerOutputOGL())
-        // in case of CPS multistage PS they are separated.
-        // Need to free original kernels here as DeleteShaderCompilerOutputOGL()
-        // will clear new allocations for separated phases in this case.
-        for (unsigned int i = 0; i < numStage; i++)
+        if (coarsePhase && pixelPhase)
         {
-            outputs[i].simd8.Destroy();
-            outputs[i].simd16.Destroy();
-            outputs[i].simd32.Destroy();
+            SPixelShaderKernelProgram outputs[2];
+            memset(&outputs, 0, 2 * sizeof(SPixelShaderKernelProgram));
+
+            for (unsigned int i = 0; i < numStage; i++)
+            {
+                Function* phaseFunc = (i == 0) ?
+                    mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0)) :
+                    mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
+
+                CShaderProgram::KernelShaderMap& shaders = (i == 0) ? coarseShaders : pixelShaders;
+
+                shaders[phaseFunc]->FillProgram(&outputs[i]);
+                COMPILER_SHADER_STATS_PRINT(shaders[phaseFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");
+                COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, shaders[phaseFunc]->m_shaderStats, ShaderType::PIXEL_SHADER);
+                COMPILER_SHADER_STATS_DEL(shaders[phaseFunc]->m_shaderStats);
+                delete shaders[phaseFunc];
+            }
+
+            linkCPS(outputs, ctx->programOutput, numStage);
+            // Kernels allocated in CISABuilder.cpp (Compile())
+            // are freed in CompilerOutputOGL.hpp (DeleteShaderCompilerOutputOGL())
+            // in case of CPS multistage PS they are separated.
+            // Need to free original kernels here as DeleteShaderCompilerOutputOGL()
+            // will clear new allocations for separated phases in this case.
+            for (unsigned int i = 0; i < numStage; i++)
+            {
+                outputs[i].simd8.Destroy();
+                outputs[i].simd16.Destroy();
+                outputs[i].simd32.Destroy();
+            }
         }
     }
-    else
+
+    if (!(coarsePhase && pixelPhase))
     {
         CShaderProgram::KernelShaderMap shaders;
+        Function* pFunc = nullptr;
 
-        // Single PS
-        CodeGen(ctx, shaders);
-        // Assuming single shader information in metadata
-        Function* pFunc = getUniqueEntryFunc(ctx->getMetaDataUtils(), ctx->getModuleMetaData());
+        if (!codegenDone)
+        {
+            // Single PS
+            CodeGen(ctx, shaders);
+            pFunc = getUniqueEntryFunc(ctx->getMetaDataUtils(), ctx->getModuleMetaData());
+        }
+        else
+        {
+            shaders = coarsePhase ? coarseShaders : pixelShaders;
+            pFunc = coarsePhase ? coarsePhase : pixelPhase;
+        }
+
         // gather data to send back to the driver
         shaders[pFunc]->FillProgram(&ctx->programOutput);
         COMPILER_SHADER_STATS_PRINT(shaders[pFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");
