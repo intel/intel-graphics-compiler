@@ -2217,8 +2217,10 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
     for (unsigned i = 0; i != 2; ++i) {
       auto Opnd = Cmp->getOperand(i);
       if (auto C = dyn_cast<Constant>(Opnd)) {
+        Constant *SplatC = C->getType()->isVectorTy() ?
+          C->getAggregateElement(Idx) : C;
         CmpOpnds[i] = ConstantVector::getSplat(
-            IGCLLVM::getElementCount(R.NumElements), C);
+            IGCLLVM::getElementCount(R.NumElements), SplatC);
         continue;
       }
       if (!isa<VectorType>(Opnd->getType())) {
