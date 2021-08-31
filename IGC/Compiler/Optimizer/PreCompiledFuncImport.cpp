@@ -902,8 +902,11 @@ BinaryOperator* PreCompiledFuncImport::upcastTo32Bit(BinaryOperator* I)
     }
     };
     new32BitInst = dyn_cast<BinaryOperator>(IRB.CreateBinOp(I->getOpcode(), newSrc0, newSrc1, ""));
+    IGC_ASSERT(new32BitInst != nullptr);
 
     Instruction* replaceInst = dyn_cast<Instruction>(IRB.CreateTrunc(new32BitInst, I->getType()));
+    IGC_ASSERT(replaceInst != nullptr);
+
     I->replaceAllUsesWith(replaceInst);
     replaceInst->setDebugLoc(I->getDebugLoc());
     I->eraseFromParent();

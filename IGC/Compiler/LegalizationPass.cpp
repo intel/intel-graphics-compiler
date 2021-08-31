@@ -1801,6 +1801,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                     Function* const f = bb->getParent();
                     IGC_ASSERT(nullptr != f);
                     Value* hiDst = CreateMulh(*f, Builder, isSigned, src0, src1);
+                    IGC_ASSERT_MESSAGE( nullptr != hiDst, "CreateMulh failed.");
                     if (isSigned)
                     {
                         // Signed a * b overflows if Mulh(a, b) != 0 or -1   and consequently

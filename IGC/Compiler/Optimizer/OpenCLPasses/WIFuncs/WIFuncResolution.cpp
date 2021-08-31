@@ -488,6 +488,7 @@ Value* WIFuncResolution::getGlobalSize(CallInst& CI)
     {
         V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::GLOBAL_SIZE, m_pCtx);
     }
+    IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* globalSize = ExtractElementInst::Create(V, dim, "globalSize", &CI);
@@ -519,6 +520,7 @@ Value* WIFuncResolution::getLocalSize(CallInst& CI)
     {
         V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_SIZE, m_pCtx);
     }
+    IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* localSize = ExtractElementInst::Create(V, dim, "localSize", &CI);
@@ -550,6 +552,7 @@ Value* WIFuncResolution::getEnqueuedLocalSize(CallInst& CI) {
     {
         V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, m_pCtx);
     }
+    IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* enqueuedLocalSize = ExtractElementInst::Create(V, dim, "enqueuedLocalSize", &CI);
@@ -590,6 +593,7 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     {
         V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::PAYLOAD_HEADER, m_pCtx);
     }
+    IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
     auto globalOffset = ExtractElementInst::Create(V, dim, "globalOffset", &CI);
@@ -649,6 +653,7 @@ Value* WIFuncResolution::getNumGroups(CallInst& CI)
     {
         V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::NUM_GROUPS, m_pCtx);
     }
+    IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* numGroups = ExtractElementInst::Create(V, dim, "numGroups", &CI);
@@ -666,6 +671,7 @@ Value* WIFuncResolution::getStageInGridOrigin(CallInst& CI)
     // %grid_origin1 = extractelement <3 x i32> %globalSize, i32 %dim
     auto F = CI.getParent()->getParent();
     Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::STAGE_IN_GRID_ORIGIN);
+    IGC_ASSERT(arg != nullptr);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* globalSize = ExtractElementInst::Create(arg, dim, "grid_origin", &CI);
@@ -707,6 +713,8 @@ Value* WIFuncResolution::getStageInGridSize(CallInst& CI)
         Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::STAGE_IN_GRID_SIZE);
         V = arg;
     }
+
+    IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* globalSize = ExtractElementInst::Create(V, dim, "grid_size", &CI);
