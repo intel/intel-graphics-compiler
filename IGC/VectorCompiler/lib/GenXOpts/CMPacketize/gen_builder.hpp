@@ -120,14 +120,14 @@ CallInst* INT_MIN_REDUCE(Value *Src, bool IsSigned = false)
     return IRB()->CreateIntMinReduce(Src, IsSigned);
 }
 
-CallInst* FP_MAX_REDUCE(Value *Src, bool NoNaN = false)
+CallInst* FP_MAX_REDUCE(Value *Src)
 {
-    return IRB()->CreateFPMaxReduce(Src, NoNaN);
+    return IRB()->CreateFPMaxReduce(Src);
 }
 
-CallInst* FP_MIN_REDUCE(Value *Src, bool NoNaN = false)
+CallInst* FP_MIN_REDUCE(Value *Src)
 {
-    return IRB()->CreateFPMinReduce(Src, NoNaN);
+    return IRB()->CreateFPMinReduce(Src);
 }
 
 CallInst* LIFETIME_START(Value *Ptr, ConstantInt *Size = nullptr)
@@ -163,46 +163,6 @@ CallInst* MASKED_SCATTER(Value *Val, Value *Ptrs, unsigned Align, Value *Mask = 
 CallInst* ASSUMPTION(Value *Cond)
 {
     return IRB()->CreateAssumption(Cond);
-}
-
-CallInst* GC_STATEPOINT_CALL(uint64_t ID, uint32_t NumPatchBytes, Value *ActualCallee, ArrayRef<Value *> CallArgs, ArrayRef<Value *> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name = "")
-{
-    return IRB()->CreateGCStatepointCall(ID, NumPatchBytes, ActualCallee, CallArgs, DeoptArgs, GCArgs, Name);
-}
-
-CallInst* GC_STATEPOINT_CALL(uint64_t ID, uint32_t NumPatchBytes, Value *ActualCallee, uint32_t Flags, ArrayRef<Use> CallArgs, ArrayRef<Use> TransitionArgs, ArrayRef<Use> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name = "")
-{
-    return IRB()->CreateGCStatepointCall(ID, NumPatchBytes, ActualCallee, Flags, CallArgs, TransitionArgs, DeoptArgs, GCArgs, Name);
-}
-
-CallInst* GC_STATEPOINT_CALL(uint64_t ID, uint32_t NumPatchBytes, Value *ActualCallee, ArrayRef<Use> CallArgs, ArrayRef<Value *> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name = "")
-{
-    return IRB()->CreateGCStatepointCall(ID, NumPatchBytes, ActualCallee, CallArgs, DeoptArgs, GCArgs, Name);
-}
-
-InvokeInst* GC_STATEPOINT_INVOKE(uint64_t ID, uint32_t NumPatchBytes, Value *ActualInvokee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Value *> InvokeArgs, ArrayRef<Value *> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name = "")
-{
-    return IRB()->CreateGCStatepointInvoke(ID, NumPatchBytes, ActualInvokee, NormalDest, UnwindDest, InvokeArgs, DeoptArgs, GCArgs, Name);
-}
-
-InvokeInst* GC_STATEPOINT_INVOKE(uint64_t ID, uint32_t NumPatchBytes, Value *ActualInvokee, BasicBlock *NormalDest, BasicBlock *UnwindDest, uint32_t Flags, ArrayRef<Use> InvokeArgs, ArrayRef<Use> TransitionArgs, ArrayRef<Use> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name = "")
-{
-    return IRB()->CreateGCStatepointInvoke(ID, NumPatchBytes, ActualInvokee, NormalDest, UnwindDest, Flags, InvokeArgs, TransitionArgs, DeoptArgs, GCArgs, Name);
-}
-
-InvokeInst* GC_STATEPOINT_INVOKE(uint64_t ID, uint32_t NumPatchBytes, Value *ActualInvokee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Use> InvokeArgs, ArrayRef<Value *> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name = "")
-{
-    return IRB()->CreateGCStatepointInvoke(ID, NumPatchBytes, ActualInvokee, NormalDest, UnwindDest, InvokeArgs, DeoptArgs, GCArgs, Name);
-}
-
-CallInst* GC_RESULT(Instruction *Statepoint, Type *ResultType, const Twine &Name = "")
-{
-    return IRB()->CreateGCResult(Statepoint, ResultType, Name);
-}
-
-CallInst* GC_RELOCATE(Instruction *Statepoint, int BaseOffset, int DerivedOffset, Type *ResultType, const Twine &Name = "")
-{
-    return IRB()->CreateGCRelocate(Statepoint, BaseOffset, DerivedOffset, ResultType, Name);
 }
 
 CallInst* BINARY_INTRINSIC(Intrinsic::ID ID, Value *LHS, Value *RHS, const Twine &Name = "")
