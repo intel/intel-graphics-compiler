@@ -9,60 +9,39 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/ADT/MapVector.h>
-#include <llvm/Analysis/PostDominators.h>
-#include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/PostDominators.h"
-#include "llvm/IR/Dominators.h"
+#include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
+namespace llvm
+{
+class PassRegistry;
+class FunctionPass;
+class Instruction;
+class GenIntrinsicInst;
+}
 namespace IGC
 {
-
 class HoistURBWrites : public llvm::FunctionPass
 {
-    llvm::DominatorTree* DT = nullptr;
-    llvm::PostDominatorTree* PDT = nullptr;;
-    llvm::LoopInfo* LI = nullptr;;
-
 public:
     static char ID; // Pass identification
-
     HoistURBWrites();
-
     virtual bool runOnFunction(llvm::Function& F) override;
-
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-    {
-        AU.setPreservesCFG();
-        AU.addRequired<llvm::DominatorTreeWrapperPass>();
-        AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
-        AU.addRequired<llvm::LoopInfoWrapperPass>();
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.addPreserved<llvm::DominatorTreeWrapperPass>();
-        AU.addPreserved<llvm::PostDominatorTreeWrapperPass>();
-        AU.addPreserved<llvm::LoopInfoWrapperPass>();
-    }
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
     virtual llvm::StringRef getPassName() const override
     {
         return "HoistURBWrites";
     }
-
 private:
-    void gatherLastURBReadInEachBB(llvm::Function& F);
-    llvm::Instruction* searchBackForAliasedURBRead(
-        llvm::Instruction* urbWrite);
+    void GatherURBAccesses(llvm::Function& F);
+    llvm::Instruction* IsSafeToHoistURBWriteInstruction(
+        llvm::GenIntrinsicInst* inst);
+    bool Hoist();
 
-    void hoistURBWriteInBB(llvm::BasicBlock& BB);
-
-    /// local processing
-    bool isSafeToHoistURBWriteInstruction(
-        llvm::Instruction* inst,
-        llvm::Instruction*& tgtInst);
-
-    /// data members for local-hoisting
-    llvm::MapVector<llvm::Instruction*, llvm::Instruction*> instMovDataMap;
-    llvm::DenseMap<llvm::BasicBlock*, llvm::Instruction*> basicBlockReadInstructionMap;
+    /// Collection of all URB accesses.
+    llvm::SmallVector<llvm::GenIntrinsicInst*, 32> m_URBAccesses;
 };
+
+void initializeHoistURBWritesPass(llvm::PassRegistry&);
 } // namespace IGC
 
