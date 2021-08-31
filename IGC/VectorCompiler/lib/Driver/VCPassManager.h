@@ -21,6 +21,9 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 class VCPassManager : public llvm::legacy::PassManager {
+  template <typename PMOption>
+  void addExtraPass(const llvm::PassInfo *CurrentPass);
+
 public:
   void add(llvm::Pass *P) override;
 };
