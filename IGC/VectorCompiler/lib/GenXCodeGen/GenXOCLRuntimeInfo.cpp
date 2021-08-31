@@ -493,7 +493,7 @@ public:
     auto *Inserter = SymbolStorage;
     appendLegacySymbolTable(Symbols.Constants.begin(), Symbols.Constants.end(),
                             Inserter);
-    Inserter += Symbols.Constants.size() * sizeof(vISA::GenSymEntry);
+    Inserter += Symbols.Constants.size();
     appendLegacySymbolTable(Symbols.Globals.begin(), Symbols.Globals.end(),
                             Inserter);
     return std::move(TI);
