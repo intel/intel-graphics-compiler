@@ -39,6 +39,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Local.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 // Part of the bodge to allow abs to bale in to sext/zext. This needs to be set
 // to some arbitrary value that does not clash with any
 // GenXIntrinsicInfo::MODIFIER_* value.
@@ -787,7 +789,9 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
         IGC_ASSERT((MinSize = Inst->getType()->getScalarType()->getPrimitiveSizeInBits() == 64 ? 4 : 8, 1));
 
         unsigned NElems = 0; // it will be assigned inside assertion statament
-        IGC_ASSERT((NElems = cast<VectorType>(Mask->getType())->getNumElements(), 1));
+        IGC_ASSERT((NElems = cast<IGCLLVM::FixedVectorType>(Mask->getType())
+                                 ->getNumElements(),
+                    1));
 
         unsigned Offset = 0; // it will be assigned inside assertion statament
         IGC_ASSERT((Offset = dyn_cast<ConstantInt>(Mask->getOperand(1))->getZExtValue(), 1));

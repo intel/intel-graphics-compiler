@@ -227,8 +227,8 @@ void GenXExtractVectorizer::processBucket(const BucketIndex *BIdx,
   Value *NewRdRegion = OrigVector;
   // Need to splat if Diff is 0, otherwise elements extracted are wrong.
   if (Diff == 0 || R.Indirect || R.Offset ||
-      R.NumElements !=
-          cast<VectorType>(OrigVector->getType())->getNumElements()) {
+      R.NumElements != cast<IGCLLVM::FixedVectorType>(OrigVector->getType())
+                           ->getNumElements()) {
     // Not identity region.
     NewRdRegion = R.createRdRegion(OrigVector,
         Extract0->Inst->getName() + ".histogrammed", InsertBefore,

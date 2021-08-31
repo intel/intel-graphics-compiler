@@ -575,7 +575,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
       // Check if it is safe to truncate to lower type without loss of bits.
       Type *DstTy = nullptr;
       uint64_t Val = Elt->getZExtValue();
-      unsigned NElts = cast<VectorType>(Ty)->getNumElements();
+      unsigned NElts = cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
       unsigned BitWidth = Elt->getType()->getPrimitiveSizeInBits();
       if (Val == Int16Mask && NBits + 16 >= BitWidth)
         DstTy = IGCLLVM::FixedVectorType::get(Builder.getInt16Ty(), NElts);
@@ -703,7 +703,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
       Pred == CmpInst::ICMP_EQ && isa<CmpInst>(V0) &&
       V0->getType()->isVectorTy() &&
       V0->getType()->getScalarType()->isIntegerTy(1)) {
-    VectorType *VTy = cast<VectorType>(V0->getType());
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(V0->getType());
     unsigned NumElts = VTy->getNumElements();
     if (NumElts == 2 || NumElts == 4 || NumElts == 8 || NumElts == 16) {
       IRBuilder<> Builder(&I);
@@ -714,7 +714,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
         // Once the cmp could be reduced into narrower one (with the assumption
         // that the reduced part is always TRUE), reduce it into narrow one.
         Cmp = NewCmp;
-        VTy = cast<VectorType>(Cmp->getType());
+        VTy = cast<IGCLLVM::FixedVectorType>(Cmp->getType());
       }
       simplifyCmp(Cmp);
       // Call 'all'.
@@ -744,7 +744,7 @@ CmpInst *GenXPatternMatch::reduceCmpWidth(CmpInst *Cmp) {
     return nullptr;
 
   V0 = WII->getOperand(1);
-  VectorType *VTy = cast<VectorType>(V0->getType());
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(V0->getType());
   unsigned NumElts = VTy->getNumElements();
 
   Region R(WII, BaleInfo());
@@ -1116,7 +1116,7 @@ bool MadMatcher::isProfitable() const {
 }
 
 static Value *getBroadcastFromScalar(Value *V) {
-  VectorType *VTy = dyn_cast<VectorType>(V->getType());
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
   // Skip if it's not vector type.
   if (!VTy)
     return nullptr;
@@ -1131,7 +1131,7 @@ static Value *getBroadcastFromScalar(Value *V) {
   auto *BC = dyn_cast<BitCastInst>(Src);
   if (!BC)
     return nullptr;
-  VTy = dyn_cast<VectorType>(BC->getType());
+  VTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getType());
   if (!VTy || VTy->getNumElements() != 1 ||
       VTy->getScalarType() != BC->getOperand(0)->getType())
     return nullptr;
@@ -1186,7 +1186,7 @@ MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
     V = Ext->getOperand(0);
     if (V->getType()->getScalarType()->isIntegerTy(8)) {
       Type *DstTy = Builder.getInt16Ty();
-      if (auto VTy = dyn_cast<VectorType>(V->getType()))
+      if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(V->getType()))
         DstTy = IGCLLVM::FixedVectorType::get(DstTy, VTy->getNumElements());
       // Extend to i16 first.
       V = Builder.CreateCast(Instruction::CastOps(Ext->getOpcode()), V, DstTy);
@@ -1347,7 +1347,7 @@ bool MadMatcher::emit() {
 
   IRBuilder<> Builder(AInst);
 
-  VectorType *VTy = dyn_cast<VectorType>(Srcs[2]->getType());
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Srcs[2]->getType());
   if (!isFpMad() && VTy && VTy->getScalarType()->isIntegerTy(32)) {
     Value *V = getBroadcastFromScalar(Srcs[2]);
     if (!V)
@@ -1398,7 +1398,7 @@ bool MadMatcher::emit() {
     }
   }
 
-  if (auto VTy = dyn_cast<VectorType>(Vals[2]->getType())) {
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Vals[2]->getType())) {
     // Splat scalar sources if necessary.
     for (unsigned i = 0; i != 2; ++i) {
       Value *V = Vals[i];
@@ -1432,7 +1432,8 @@ bool MadMatcher::emit() {
     Constant *Base = ConstantInt::get(Ty->getScalarType(), 1);
     if (Ty->isVectorTy())
       Base = ConstantVector::getSplat(
-          IGCLLVM::getElementCount(cast<VectorType>(Ty)->getNumElements()),
+          IGCLLVM::getElementCount(
+              cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements()),
           Base);
     Vals[1] = Builder.CreateShl(Base, Vals[1]);
   }
@@ -1644,7 +1645,8 @@ bool Add3Matcher::matchIntegerAdd3(unsigned IID) {
 // If Value *V is scalar type, return new Value* - splat of a specific type
 // for example, if VTy is <2 x i32>, and V is i32 type constant i32 7, we return
 // pointer to new Value <7, 7>
-Value *SplatValueIfNecessary(Value *V, VectorType *VTy, IRBuilder<> &Builder) {
+Value *SplatValueIfNecessary(Value *V, IGCLLVM::FixedVectorType *VTy,
+                             IRBuilder<> &Builder) {
   IGC_ASSERT_MESSAGE(V && VTy, "Error: get nullptr input");
   IGC_ASSERT_MESSAGE(V->getType()->isIntOrIntVectorTy() &&
                          VTy->isIntOrIntVectorTy(),
@@ -1684,7 +1686,7 @@ bool Add3Matcher::emit() {
 
   std::array<Value *, 3> Vals(Srcs);
 
-  if (auto* VTy = dyn_cast<VectorType>(AInst->getType())) {
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(AInst->getType())) {
     // Splat scalar sources if necessary.
     std::transform(Vals.begin(), Vals.end(), Vals.begin(),
                    [&Builder, VTy](Value *V) {
@@ -2058,7 +2060,7 @@ static Constant *getReciprocal(Constant *C, bool HasAllowReciprocal) {
     return nullptr;
   }
 
-  VectorType *VTy = cast<VectorType>(C->getType());
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(C->getType());
   IntegerType *ITy = Type::getInt32Ty(VTy->getContext());
 
   SmallVector<Constant *, 16> Result;
@@ -2352,7 +2354,8 @@ bool GenXPatternMatch::simplifyPredRegion(CallInst *CI) {
   IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_rdpredregion);
   bool Changed = false;
 
-  unsigned NElts = cast<VectorType>(CI->getType())->getNumElements();
+  unsigned NElts =
+      cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements();
   ConstantInt *C = dyn_cast<ConstantInt>(CI->getArgOperand(1));
   IGC_ASSERT_MESSAGE(C, "constant integer expected");
   unsigned Offset = (unsigned)C->getZExtValue();
@@ -2389,7 +2392,7 @@ bool GenXPatternMatch::simplifyRdRegion(CallInst* Inst) {
     int64_t diffi = 0;
     if (IsLinearVectorConstantInts(R.Indirect, starti, diffi)) {
       R.Indirect = nullptr;
-      R.Width = cast<VectorType>(NewVTy)->getNumElements();
+      R.Width = cast<IGCLLVM::FixedVectorType>(NewVTy)->getNumElements();
       R.Offset += starti;
       R.Stride =
           (diffi * 8) /
@@ -2423,7 +2426,8 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
     if (GenXIntrinsic::getAnyIntrinsicID(Parent) == GenXIntrinsic::genx_faddr)
       return false;
 
-    if (NewVTy->isVectorTy() && cast<VectorType>(NewVTy)->getNumElements() > 1)
+    if (NewVTy->isVectorTy() &&
+        cast<IGCLLVM::FixedVectorType>(NewVTy)->getNumElements() > 1)
       return false;
     // Do not rewrite if input is another region read, as two region reads
     // cannot be groupped into a single bale.
@@ -2464,7 +2468,7 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
     int64_t diffi = 0;
     if (IsLinearVectorConstantInts(R.Indirect, starti, diffi)) {
       R.Indirect = nullptr;
-      R.Width = cast<VectorType>(NewVTy)->getNumElements();
+      R.Width = cast<IGCLLVM::FixedVectorType>(NewVTy)->getNumElements();
       R.Offset += starti;
       R.Stride =
           (diffi * 8) /
@@ -2491,10 +2495,10 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
 
     if (!(isa<UndefValue>(OldV)) && OldVTy->isVectorTy() &&
         NewVTy->isVectorTy() && MaskVTy->isVectorTy() &&
-        cast<VectorType>(OldVTy)->getNumElements() ==
-            cast<VectorType>(NewVTy)->getNumElements() &&
-        cast<VectorType>(OldVTy)->getNumElements() ==
-            cast<VectorType>(MaskVTy)->getNumElements()) {
+        cast<IGCLLVM::FixedVectorType>(OldVTy)->getNumElements() ==
+            cast<IGCLLVM::FixedVectorType>(NewVTy)->getNumElements() &&
+        cast<IGCLLVM::FixedVectorType>(OldVTy)->getNumElements() ==
+            cast<IGCLLVM::FixedVectorType>(MaskVTy)->getNumElements()) {
       Instruction *InsertBefore = Inst->getNextNode();
       auto SelectInstruction =
           SelectInst::Create(MaskV, NewV, OldV, "", InsertBefore, Inst);
@@ -2784,7 +2788,9 @@ static void decomposeSdivPow2(BinaryOperator &Sdiv) {
   IGC_ASSERT(ElementTy && "ERROR: logic error in decomposeSdivPow2");
   unsigned ElementBitWidth = ElementTy->getIntegerBitWidth();
   unsigned OperandWidth =
-      SdivTy->isVectorTy() ? cast<VectorType>(SdivTy)->getNumElements() : 0;
+      SdivTy->isVectorTy()
+          ? cast<IGCLLVM::FixedVectorType>(SdivTy)->getNumElements()
+          : 0;
 
   IRBuilder<> Builder(&Sdiv);
 
@@ -3058,11 +3064,10 @@ static bool analyzeForShiftPattern(Constant *C,
                                    SmallVectorImpl<Constant *> &ShtAmt,
                                    const DataLayout &DL) {
   unsigned Width = 8;
-  VectorType *VT = dyn_cast<VectorType>(C->getType());
-  if (!VT || cast<VectorType>(VT)->getNumElements() <= Width ||
-      VT->getScalarSizeInBits() == 1)
+  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
+  if (!VT || VT->getNumElements() <= Width || VT->getScalarSizeInBits() == 1)
     return false;
-  unsigned NElts = cast<VectorType>(VT)->getNumElements();
+  unsigned NElts = VT->getNumElements();
   if (NElts % Width != 0)
     return false;
 
@@ -3151,7 +3156,8 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
         if (opMustBeConstant(Inst, i))
           continue;
         auto Ty = C->getType();
-        if (!Ty->isVectorTy() || cast<VectorType>(Ty)->getNumElements() < 16 ||
+        if (!Ty->isVectorTy() ||
+            cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() < 16 ||
             C->getSplatValue())
           continue;
         SmallVector<Constant *, 8> ShtAmt;
@@ -3177,8 +3183,8 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
           }
 
           IRBuilder<> Builder(Inst);
-          unsigned Width =
-              cast<VectorType>(ShtAmt[0]->getType())->getNumElements();
+          unsigned Width = cast<IGCLLVM::FixedVectorType>(ShtAmt[0]->getType())
+                               ->getNumElements();
           Region R(C->getType());
           R.getSubregion(0, Width);
           Value *Val = UndefValue::get(C->getType());
@@ -3248,8 +3254,9 @@ bool GenXPatternMatch::placeConstants(Function *F) {
 
         // Counting the bit size of non-undef values.
         unsigned NBits = 0;
-        for (unsigned i = 0, e = cast<VectorType>(Ty)->getNumElements(); i != e;
-             ++i) {
+        for (unsigned i = 0,
+                      e = cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
+             i != e; ++i) {
           Constant *Elt = C->getAggregateElement(i);
           if (Elt && !isa<UndefValue>(Elt))
             NBits += Ty->getScalarSizeInBits();
@@ -3372,7 +3379,7 @@ bool GenXPatternMatch::extendMask(BinaryOperator *BO) {
   Type *I32Ty = Type::getInt32Ty(InstTy->getContext());
   unsigned SizeInBits = InstTy->getScalarSizeInBits();
   unsigned Scale = I32Ty->getPrimitiveSizeInBits() / SizeInBits;
-  unsigned NumElts = cast<VectorType>(InstTy)->getNumElements();
+  unsigned NumElts = cast<IGCLLVM::FixedVectorType>(InstTy)->getNumElements();
 
   // Cannot bitcast <N x iM> to <N/(32/M) x i32>
   if (NumElts % Scale != 0)

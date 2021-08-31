@@ -137,7 +137,8 @@ unsigned genx::getPredicateConstantAsInt(const Constant *C) {
   if (auto CI = dyn_cast<ConstantInt>(C))
     return CI->getZExtValue(); // scalar
   unsigned Bits = 0;
-  unsigned NumElements = cast<VectorType>(C->getType())->getNumElements();
+  unsigned NumElements =
+      cast<IGCLLVM::FixedVectorType>(C->getType())->getNumElements();
   IGC_ASSERT_MESSAGE(NumElements <= sizeof(Bits) * CHAR_BIT,
     "vector has too much elements, it won't fit into Bits");
   for (unsigned i = 0; i != NumElements; ++i) {
@@ -181,7 +182,7 @@ Constant *genx::concatConstants(Constant *C1, Constant *C2)
   bool AllUndef = true;
   for (unsigned Idx = 0; Idx != 2; ++Idx) {
     Constant *C = CC[Idx];
-    if (auto VT = dyn_cast<VectorType>(C->getType())) {
+    if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType())) {
       for (unsigned i = 0, e = VT->getNumElements(); i != e; ++i) {
         Constant *El = C->getAggregateElement(i);
         Vec.push_back(El);
@@ -405,9 +406,11 @@ bool genx::isNoopCast(const CastInst *CI) {
 int ShuffleVectorAnalyzer::getAsSlice()
 {
   unsigned WholeWidth =
-      cast<VectorType>(SI->getOperand(0)->getType())->getNumElements();
+      cast<IGCLLVM::FixedVectorType>(SI->getOperand(0)->getType())
+          ->getNumElements();
   Constant *Selector = IGCLLVM::getShuffleMaskForBitcode(SI);
-  unsigned Width = cast<VectorType>(SI->getType())->getNumElements();
+  unsigned Width =
+      cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
   auto *Aggr = Selector->getAggregateElement(0u);
   if (isa<UndefValue>(Aggr))
     return -1; // operand 0 is undef value
@@ -443,8 +446,8 @@ bool ShuffleVectorAnalyzer::isReplicatedSlice() const {
 
   // Slice should not touch second operand.
   auto MaxIndex = static_cast<size_t>(MaskVals.back());
-  if (MaxIndex >=
-      cast<VectorType>(SI->getOperand(0)->getType())->getNumElements())
+  if (MaxIndex >= cast<IGCLLVM::FixedVectorType>(SI->getOperand(0)->getType())
+                      ->getNumElements())
     return false;
 
   // Find first non-one difference.
@@ -497,13 +500,14 @@ Value *genx::getMaskOperand(const Instruction *Inst) {
 static Value *getOperandByMaskValue(const ShuffleVectorInst &SI,
                                     int MaskValue) {
   IGC_ASSERT_MESSAGE(MaskValue >= 0, "invalid index");
-  int FirstOpSize =
-      cast<VectorType>(SI.getOperand(0)->getType())->getNumElements();
+  int FirstOpSize = cast<IGCLLVM::FixedVectorType>(SI.getOperand(0)->getType())
+                        ->getNumElements();
   if (MaskValue < FirstOpSize)
     return SI.getOperand(0);
   else {
     int SecondOpSize =
-        cast<VectorType>(SI.getOperand(1)->getType())->getNumElements();
+        cast<IGCLLVM::FixedVectorType>(SI.getOperand(1)->getType())
+            ->getNumElements();
     IGC_ASSERT_MESSAGE(MaskValue < FirstOpSize + SecondOpSize, "invalid index");
     return SI.getOperand(1);
   }
@@ -531,7 +535,8 @@ matchOneElemRegion(const ShuffleVectorInst &SI, int MaskVal) {
     Init.R.Offset = MaskVal * Init.R.ElementBytes;
   else {
     auto FirstOpSize =
-        cast<VectorType>(SI.getOperand(0)->getType())->getNumElements();
+        cast<IGCLLVM::FixedVectorType>(SI.getOperand(0)->getType())
+            ->getNumElements();
     Init.R.Offset = (MaskVal - FirstOpSize) * Init.R.ElementBytes;
   }
   return Init;
@@ -581,8 +586,8 @@ template <typename ForwardIter, typename OutputIter>
 void makeSVIIndexesOperandIndexes(const ShuffleVectorInst &SI,
                                   const Value &Operand, ForwardIter FirstIt,
                                   ForwardIter LastIt, OutputIter OutIt) {
-  int FirstOpSize =
-      cast<VectorType>(SI.getOperand(0)->getType())->getNumElements();
+  int FirstOpSize = cast<IGCLLVM::FixedVectorType>(SI.getOperand(0)->getType())
+                        ->getNumElements();
   if (&Operand == SI.getOperand(0)) {
     std::transform(FirstIt, LastIt, OutIt, [FirstOpSize](int MaskVal) {
       if (MaskVal >= FirstOpSize)
@@ -843,11 +848,11 @@ ShuffleVectorAnalyzer::getMaskRegionPrefix(int StartIdx) {
 
   Res.R = matchVectorRegionByIndexes(
       std::move(Res.R), SubMask.begin(), PastLastDefinedElement,
-      cast<VectorType>(Res.Op->getType())->getNumElements());
+      cast<IGCLLVM::FixedVectorType>(Res.Op->getType())->getNumElements());
   Res.R = matchMatrixRegionByIndexes(
       std::move(Res.R), SubMask.begin(), SubMask.end(),
       std::prev(PastLastDefinedElement),
-      cast<VectorType>(Res.Op->getType())->getNumElements());
+      cast<IGCLLVM::FixedVectorType>(Res.Op->getType())->getNumElements());
   return Res;
 }
 
@@ -865,9 +870,11 @@ int ShuffleVectorAnalyzer::getAsUnslice()
     return -1;
   Constant *MaskVec = IGCLLVM::getShuffleMaskForBitcode(SI);
   // Find prefix of undef or elements from operand 0.
-  unsigned OldWidth = cast<VectorType>(SI2->getType())->getNumElements();
+  unsigned OldWidth =
+      cast<IGCLLVM::FixedVectorType>(SI2->getType())->getNumElements();
   unsigned NewWidth =
-      cast<VectorType>(SI2->getOperand(0)->getType())->getNumElements();
+      cast<IGCLLVM::FixedVectorType>(SI2->getOperand(0)->getType())
+          ->getNumElements();
   unsigned Prefix = 0;
   for (;; ++Prefix) {
     if (Prefix == OldWidth - NewWidth)
@@ -951,7 +958,7 @@ ShuffleVectorAnalyzer::SplatInfo ShuffleVectorAnalyzer::getAsSplat()
   // The mask is a splat. Work out which element of which input vector
   // it refers to.
   int InVec1NumElements =
-      cast<VectorType>(InVec1->getType())->getNumElements();
+      cast<IGCLLVM::FixedVectorType>(InVec1->getType())->getNumElements();
   if (ShuffleIdx >= InVec1NumElements) {
     ShuffleIdx -= InVec1NumElements;
     InVec1 = InVec2;
@@ -983,8 +990,9 @@ Value *ShuffleVectorAnalyzer::serialize() {
     V = Op1;
 
   // Expand or shink the initial value if sizes mismatch.
-  unsigned NElts = cast<VectorType>(SI->getType())->getNumElements();
-  unsigned M = cast<VectorType>(V->getType())->getNumElements();
+  unsigned NElts =
+      cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
+  unsigned M = cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements();
   bool SkipBase = true;
   if (M != NElts) {
     if (auto C = dyn_cast<Constant>(V)) {
@@ -1032,16 +1040,18 @@ unsigned ShuffleVectorAnalyzer::getSerializeCost(unsigned i) {
   unsigned Cost = 0;
   Value *Op = SI->getOperand(i);
   if (!isa<Constant>(Op) && Op->getType() != SI->getType())
-    Cost += cast<VectorType>(Op->getType())->getNumElements();
+    Cost += cast<IGCLLVM::FixedVectorType>(Op->getType())->getNumElements();
 
-  unsigned NElts = cast<VectorType>(SI->getType())->getNumElements();
+  unsigned NElts =
+      cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
   for (unsigned j = 0; j < NElts; ++j) {
     // Undef index returns -1.
     int idx = SI->getMaskValue(j);
     if (idx < 0)
       continue;
     // Count the number of elements out of place.
-    unsigned M = cast<VectorType>(Op->getType())->getNumElements();
+    unsigned M =
+        cast<IGCLLVM::FixedVectorType>(Op->getType())->getNumElements();
     if ((i == 0 && idx != j) || (i == 1 && idx != j + M))
       Cost++;
   }
@@ -1057,9 +1067,9 @@ IVSplitter::IVSplitter(Instruction &Inst, const unsigned *BaseOpIdx)
     ETy = Inst.getOperand(*BaseOpIdx)->getType();
 
   Len = 1;
-  if (ETy->isVectorTy()) {
-    Len = cast<VectorType>(ETy)->getNumElements();
-    ETy = cast<VectorType>(ETy)->getElementType();
+  if (auto *EVTy = dyn_cast<IGCLLVM::FixedVectorType>(ETy)) {
+    Len = EVTy->getNumElements();
+    ETy = EVTy->getElementType();
   }
 
   VI32Ty = IGCLLVM::FixedVectorType::get(ETy->getInt32Ty(Inst.getContext()),
@@ -1102,9 +1112,9 @@ IVSplitter::splitConstantVector(const SmallVectorImpl<Constant *> &KV32,
 Region IVSplitter::createSplitRegion(Type *SrcTy, IVSplitter::RegionType RT) {
   IGC_ASSERT(SrcTy->isVectorTy());
   IGC_ASSERT(SrcTy->getScalarType()->isIntegerTy(32));
-  IGC_ASSERT(cast<VectorType>(SrcTy)->getNumElements() % 2 == 0);
+  IGC_ASSERT(cast<IGCLLVM::FixedVectorType>(SrcTy)->getNumElements() % 2 == 0);
 
-  size_t Len = cast<VectorType>(SrcTy)->getNumElements() / 2;
+  size_t Len = cast<IGCLLVM::FixedVectorType>(SrcTy)->getNumElements() / 2;
 
   auto Split = describeSplit(RT, Len);
 
@@ -1147,7 +1157,8 @@ static void convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32) {
     K32.push_back(V32.second);
     return;
   }
-  unsigned ElNum = cast<VectorType>(K.getType())->getNumElements();
+  unsigned ElNum =
+      cast<IGCLLVM::FixedVectorType>(K.getType())->getNumElements();
   K32.reserve(2 * ElNum);
   for (unsigned i = 0; i < ElNum; ++i) {
     auto V32 = I64To32(*K.getAggregateElement(i));
@@ -1230,7 +1241,9 @@ Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
   Result->setDebugLoc(DL);
 
   if (Scalarize) {
-    IGC_ASSERT(cast<VectorType>(Result->getType())->getNumElements() == 1);
+    IGC_ASSERT(
+        cast<IGCLLVM::FixedVectorType>(Result->getType())->getNumElements() ==
+        1);
     Result = new BitCastInst(Result, ETy->getInt64Ty(Inst.getContext()),
                              Name + "recast", &Inst);
   }
@@ -1908,8 +1921,9 @@ unsigned genx::getInlineAsmNumOutputs(CallInst *CI) {
  */
 Type *genx::getCorrespondingVectorOrScalar(Type *Ty) {
   if (Ty->isVectorTy()) {
-    IGC_ASSERT_MESSAGE(cast<VectorType>(Ty)->getNumElements() == 1,
-      "wrong argument: scalar or degenerate vector is expected");
+    IGC_ASSERT_MESSAGE(
+        cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() == 1,
+        "wrong argument: scalar or degenerate vector is expected");
     return Ty->getScalarType();
   }
   return IGCLLVM::FixedVectorType::get(Ty, 1);
@@ -2017,9 +2031,10 @@ bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
   IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(&WrPredRegion) == GenXIntrinsic::genx_wrpredregion,
     "wrong argument: wrpredregion intrinsic was expected");
   auto &NewValue = *WrPredRegion.getOperand(WrPredRegionOperand::NewValue);
-  auto ExecSize = NewValue.getType()->isVectorTy()
-                      ? cast<VectorType>(NewValue.getType())->getNumElements()
-                      : 1;
+  auto ExecSize =
+      NewValue.getType()->isVectorTy()
+          ? cast<IGCLLVM::FixedVectorType>(NewValue.getType())->getNumElements()
+          : 1;
   auto Offset =
       cast<ConstantInt>(WrPredRegion.getOperand(WrPredRegionOperand::Offset))
           ->getZExtValue();

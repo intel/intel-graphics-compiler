@@ -352,13 +352,12 @@ static VISA_Type llvmToVisaType(Type *Type,
   auto T = Type;
   IGC_ASSERT(!T->isAggregateType());
   VISA_Type Result = ISA_TYPE_NUM;
-  if (T->isVectorTy() &&
-      cast<VectorType>(T)->getElementType()->isIntegerTy(1)) {
-    IGC_ASSERT(cast<VectorType>(T)->getNumElements() == 8 ||
-               cast<VectorType>(T)->getNumElements() == 16 ||
-               cast<VectorType>(T)->getNumElements() == 32);
-    Result = getVisaTypeFromBytesNumber(
-        cast<VectorType>(Type)->getNumElements() / genx::ByteBits, false, Sign);
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(T);
+      VT && VT->getElementType()->isIntegerTy(1)) {
+    IGC_ASSERT(VT->getNumElements() == 8 || VT->getNumElements() == 16 ||
+               VT->getNumElements() == 32);
+    Result = getVisaTypeFromBytesNumber(VT->getNumElements() / genx::ByteBits,
+                                        false, Sign);
   } else {
     if (T->isVectorTy())
       T = cast<VectorType>(T)->getElementType();
@@ -1201,7 +1200,7 @@ static bool PatchImpArgOffset(Function *F, const GenXSubtarget *ST,
 
 static unsigned getStateVariableSizeInBytes(const Type *Ty,
                                             const unsigned ElemSize) {
-  auto *VTy = dyn_cast<VectorType>(Ty);
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
   if (!VTy)
     return ElemSize;
   return ElemSize * VTy->getNumElements();
@@ -1678,7 +1677,7 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
     if (!(isa<Constant>(BCI->getOperand(0))) &&
         !(BCI->getType()->getScalarType()->isIntegerTy(1)) &&
         (BCI->getOperand(0)->getType()->getScalarType()->isIntegerTy(1))) {
-      if (VectorType *VT = dyn_cast<VectorType>(Dest->getType())) {
+      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Dest->getType())) {
         unsigned int NumBits = VT->getNumElements() *
                                VT->getElementType()->getPrimitiveSizeInBits();
         OverrideType = IntegerType::get(BCI->getContext(), NumBits);
@@ -1810,7 +1809,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createAddressOperand(Value *V, bool IsDst) {
   Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, DONTCARESIGNED);
   IGC_ASSERT(Reg->Category == RegCategory::ADDRESS);
   unsigned Width = 1;
-  if (VectorType *VT = dyn_cast<VectorType>(V->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(V->getType()))
     Width = VT->getNumElements();
   if (IsDst) {
     CISA_CALL(Kernel->CreateVISAAddressDstOperand(
@@ -1832,7 +1831,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createImmediateOperand(Constant *V,
     V = Constant::getNullValue(V->getType());
 
   Type *T = V->getType();
-  if (VectorType *VT = dyn_cast<VectorType>(T)) {
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(T)) {
     // Vector constant.
     auto Splat = V->getSplatValue();
     if (!Splat) {
@@ -1986,7 +1985,7 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
   if (DstReg->Category != RegCategory::ADDRESS) {
     // State copy.
     int ExecSize = 1;
-    if (VectorType *VT = dyn_cast<VectorType>(CI->getType())) {
+    if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType())) {
       ExecSize = VT->getNumElements();
     }
 
@@ -2019,7 +2018,7 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
   // Write the addr_add instruction.
   Value *SrcOp0 = CI->getOperand(0);
   unsigned Src0Width = 1;
-  if (VectorType *VT = dyn_cast<VectorType>(SrcOp0->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(SrcOp0->getType()))
     Src0Width = VT->getNumElements();
 
   Register *RegDst = getRegForValueAndSaveAlias(KernFunc, CI, DONTCARESIGNED);
@@ -2349,7 +2348,7 @@ void GenXKernelBuilder::buildSelectInst(SelectInst *SI, BaleInfo BI,
                                         unsigned Mod,
                                         const DstOpndDesc &DstDesc) {
   unsigned ExecSize = 1;
-  if (VectorType *VT = dyn_cast<VectorType>(SI->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(SI->getType()))
     ExecSize = VT->getNumElements();
   // Get the predicate (mask) operand, scanning through baled in
   // all/any/not/rdpredregion and setting PredField and MaskCtrl
@@ -2438,7 +2437,7 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
       return; // undef source, generate no code
     // Source is constant.
     int ExecSize = 1;
-    if (VectorType *VT = dyn_cast<VectorType>(CI->getType()))
+    if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType()))
       ExecSize = VT->getNumElements();
 
     VISA_EMask_Ctrl ctrlMask = getExecMaskFromWrRegion(DstDesc, true);
@@ -2479,7 +2478,7 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
   Register *SrcReg =
       getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0), Signed, Ty);
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
-  if (VectorType *VT = dyn_cast<VectorType>(Ty))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
   IGC_ASSERT_MESSAGE(ExecSize >= EXEC_SIZE_1,
     "illegal exec size in bitcast: should have been coalesced away");
@@ -2521,7 +2520,7 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
   if (isa<UndefValue>(Input))
     return; // No code if input is undef
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
-  if (VectorType *VT = dyn_cast<VectorType>(Input->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Input->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
 
   VISA_EMask_Ctrl ExecMask = getExecMaskFromWrRegion(DstDesc, true);
@@ -2576,7 +2575,7 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
   BaleInfo WrRegionBI = DstDesc.WrRegionBI;
 
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
-  if (VectorType *VT = dyn_cast<VectorType>(Inst->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Inst->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
   ISA_Opcode Opcode = ISA_MOV;
   bool Baled = true;
@@ -2625,9 +2624,9 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
 
 static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
   unsigned TySz = 0;
-  if (Ty->isVectorTy())
-    TySz = cast<VectorType>(Ty)->getNumElements() *
-           getResultedTypeSize(cast<VectorType>(Ty)->getElementType(), DL);
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+    TySz =
+        VTy->getNumElements() * getResultedTypeSize(VTy->getElementType(), DL);
   else if (Ty->isArrayTy())
     TySz = Ty->getArrayNumElements() *
            getResultedTypeSize(Ty->getArrayElementType(), DL);
@@ -2902,8 +2901,8 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
     IGC_ASSERT(PredReg->Category == RegCategory::PREDICATE);
   }
 
-  uint8_t execSize =
-      genx::log2(cast<VectorType>(Pred->getType())->getNumElements());
+  uint8_t execSize = genx::log2(
+      cast<IGCLLVM::FixedVectorType>(Pred->getType())->getNumElements());
 
   // Visa decoder part
   VISA_EMask_Ctrl emask =
@@ -3159,7 +3158,7 @@ void GenXKernelBuilder::buildVariables() {
     case RegCategory::ADDRESS: {
       VISA_AddrVar *Decl = nullptr;
       unsigned NumElements = 1;
-      if (VectorType *VT = dyn_cast<VectorType>(Reg->Ty))
+      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Reg->Ty))
         NumElements = VT->getNumElements();
       CISA_CALL(
           Kernel->CreateVISAAddrVar(Decl, Reg->NameStr.c_str(), NumElements));
@@ -3174,7 +3173,7 @@ void GenXKernelBuilder::buildVariables() {
     case RegCategory::PREDICATE: {
       VISA_PredVar *Decl = nullptr;
       unsigned NumElements = 1;
-      if (VectorType *VT = dyn_cast<VectorType>(Reg->Ty))
+      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Reg->Ty))
         NumElements = VT->getNumElements();
       CISA_CALL(
           Kernel->CreateVISAPredVar(Decl, Reg->NameStr.c_str(), NumElements));
@@ -3188,7 +3187,7 @@ void GenXKernelBuilder::buildVariables() {
 
     case RegCategory::SAMPLER: {
       unsigned NumElements = 1;
-      if (VectorType *VT = dyn_cast<VectorType>(Reg->Ty))
+      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Reg->Ty))
         NumElements = VT->getNumElements();
       VISA_SamplerVar *Decl = nullptr;
       CISA_CALL(Kernel->CreateVISASamplerVar(Decl, Reg->NameStr.c_str(),
@@ -3202,7 +3201,7 @@ void GenXKernelBuilder::buildVariables() {
         Kernel->GetPredefinedSurface(Decl, (PreDefined_Surface)Reg->Num);
       } else {
         unsigned NumElements = 1;
-        if (VectorType *VT = dyn_cast<VectorType>(Reg->Ty))
+        if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Reg->Ty))
           NumElements = VT->getNumElements();
 
         CISA_CALL(Kernel->CreateVISASurfaceVar(Decl, Reg->NameStr.c_str(),
@@ -3436,7 +3435,8 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       if (AI.getRestriction() == II::TWICEWIDTH) {
         // For a TWICEWIDTH operand, do not allow width bigger than the
         // execution size.
-        MaxWidth = cast<VectorType>(CI->getType())->getNumElements();
+        MaxWidth =
+            cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements();
       }
       if ((IntrinID == GenXIntrinsic::genx_dpas) ||
           (IntrinID == GenXIntrinsic::genx_dpas2) ||
@@ -3484,7 +3484,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     Value *Arg = CI;
     if (!AI.isRet())
       Arg = CI->getOperand(AI.getArgIdx());
-    VectorType *VT = dyn_cast<VectorType>(Arg->getType());
+    auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
     if (!VT)
       report_fatal_error("Invalid number of owords");
     int DataSize = VT->getNumElements() *
@@ -3499,7 +3499,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     LLVM_DEBUG(dbgs() << "GetExecSize\n");
     int ExecSize = GenXIntrinsicInfo::getOverridedExecSize(CI, Subtarget);
     if (ExecSize == 0) {
-      if (VectorType *VT = dyn_cast<VectorType>(CI->getType())) {
+      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType())) {
         ExecSize = VT->getNumElements();
       } else {
         ExecSize = 1;
@@ -3563,8 +3563,8 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         getPredicateOperand(CI, AI.getArgIdx(), BI, Control, State, ExecMask);
     if (isa<Constant>(Mask) || getRegForValueOrNullAndSaveAlias(KernFunc, Mask))
       *ExecMask |= NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-    if (auto VT =
-            dyn_cast<VectorType>(CI->getOperand(AI.getArgIdx())->getType()))
+    if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(
+            CI->getOperand(AI.getArgIdx())->getType()))
       ExecSize = VT->getNumElements();
     else
       ExecSize = GenXIntrinsicInfo::getOverridedExecSize(CI, Subtarget);
@@ -3680,7 +3680,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     Value *Arg = CI;
     if (!AI.isRet())
       Arg = CI->getOperand(AI.getArgIdx());
-    VectorType *VT = dyn_cast<VectorType>(Arg->getType());
+    auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
     if (!VT) {
       DiagnosticInfoCisaBuild Err{CI, "Invalid number of GRFs", DS_Error};
       getContext().diagnose(Err);
@@ -3701,9 +3701,11 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     }
     unsigned Byte = Const->getSExtValue() & 15;
     // Find the U_offset arg. It is the first vector arg after this one.
-    VectorType *VT;
+    IGCLLVM::FixedVectorType *VT;
     for (unsigned Idx = AI.getArgIdx() + 1;
-         !(VT = dyn_cast<VectorType>(CI->getOperand(Idx)->getType())); ++Idx)
+         !(VT = dyn_cast<IGCLLVM::FixedVectorType>(
+               CI->getOperand(Idx)->getType()));
+         ++Idx)
       ;
     unsigned Width = VT->getNumElements();
     if (Width != 8 && Width != 16) {
@@ -3807,7 +3809,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
         const auto TypeSize = CISATypeTable[ISA_TYPE_UD].typeSize;
         auto Elements = 1;
-        if (auto *VT = dyn_cast<VectorType>(DstType))
+        if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(DstType))
           Elements = VT->getNumElements();
 
         Region R(IGCLLVM::FixedVectorType::get(
@@ -3981,8 +3983,7 @@ void GenXKernelBuilder::buildUnaryOperator(UnaryOperator *UO, BaleInfo BI,
   Signedness SrcSigned = SIGNED;
   unsigned Mod1 = 0;
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
-  VectorType *VT = dyn_cast<VectorType>(UO->getType());
-  if (VT != nullptr)
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(UO->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
 
   switch (UO->getOpcode()) {
@@ -4135,7 +4136,7 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
       return C->getValue().getMinSignedBits() <= genx::WordBits;
     });
   };
-  if (VectorType *VT = dyn_cast<VectorType>(BO->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(BO->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
   switch (BO->getOpcode()) {
   case Instruction::Add:
@@ -4273,7 +4274,7 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
  */
 void GenXKernelBuilder::buildBoolBinaryOperator(BinaryOperator *BO) {
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
-  if (VectorType *VT = dyn_cast<VectorType>(BO->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(BO->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
   ISA_Opcode Opcode = ISA_RESERVED_0;
   switch (BO->getOpcode()) {
@@ -4421,7 +4422,7 @@ void GenXKernelBuilder::buildCastInst(CastInst *CI, BaleInfo BI, unsigned Mod,
   }
 
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
-  if (VectorType *VT = dyn_cast<VectorType>(CI->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
 
   auto ExecMask = getExecMaskFromWrRegion(DstDesc);
@@ -4532,7 +4533,7 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
 
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
   VISA_EMask_Ctrl ctrlMask = vISA_EMASK_M1;
-  if (VectorType *VT = dyn_cast<VectorType>(Cmp->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Cmp->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
 
   VISA_VectorOpnd *Dst = nullptr;
@@ -4575,7 +4576,7 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
   VISA_EMask_Ctrl MaskCtrl = NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
 
-  if (VectorType *VT = dyn_cast<VectorType>(CI->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
   // If the offset is less aligned than the base register element type, then
   // we need a different type.
@@ -4589,7 +4590,8 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
   if ((ElementBytes - 1) & Offset) {
     OverrideTy = IGCLLVM::FixedVectorType::get(
         Type::getInt8Ty(CI->getContext()),
-        cast<VectorType>(BaseTy)->getNumElements() * ElementBytes);
+        cast<IGCLLVM::FixedVectorType>(BaseTy)->getNumElements() *
+            ElementBytes);
     ElementBytes = 1;
   }
   Register *BaseReg =
@@ -4939,7 +4941,7 @@ void GenXKernelBuilder::addWriteRegionLifetimeStartInst(Instruction *WrRegion) {
   // register.
   unsigned NumElementsSoFar = 0;
   unsigned TotalNumElements = 1;
-  if (auto *VT = dyn_cast<VectorType>(WrRegion->getType()))
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(WrRegion->getType()))
     TotalNumElements = VT->getNumElements();
   Instruction *ThisWr = WrRegion;
   for (;;) {
@@ -5275,11 +5277,11 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
   } else {
     auto PredicateOpnd = NoMask ? nullptr : createPred(CI, BaleInfo(), EMOperandNum);
     addDebugInfo();
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(
+        CI->getArgOperand(EMOperandNum)->getType());
+    VISA_Exec_Size ExecSize = getExecSizeFromValue(VTy->getNumElements());
     CISA_CALL(Kernel->AppendVISACFCallInst(
-        PredicateOpnd, vISA_EMASK_M1,
-        getExecSizeFromValue(
-            cast<VectorType>(CI->getArgOperand(EMOperandNum)->getType())
-                ->getNumElements()),
+        PredicateOpnd, vISA_EMASK_M1, ExecSize,
         Labels[getOrCreateLabel(Callee, LabelKind)]));
   }
 }
@@ -6035,9 +6037,9 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
   if (EMArg != CI->arg_end()) {
     auto EMOperandNum = EMArg->getOperandNo();
     Pred = createPred(CI, BaleInfo(), EMOperandNum);
-    Esz = getExecSizeFromValue(
-        cast<VectorType>(CI->getArgOperand(EMOperandNum)->getType())
-            ->getNumElements());
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(
+        CI->getArgOperand(EMOperandNum)->getType());
+    Esz = getExecSizeFromValue(VTy->getNumElements());
   }
   addDebugInfo();
   auto *MDArg = CI->getMetadata(InstMD::FuncArgSize);
@@ -6178,9 +6180,9 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
   VISA_Exec_Size Esz = EXEC_SIZE_16;
   if (EMOperandNum >= 0) {
     Pred = createPred(CI, BaleInfo(), EMOperandNum);
-    Esz = getExecSizeFromValue(
-        cast<VectorType>(CI->getArgOperand(EMOperandNum)->getType())
-            ->getNumElements());
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(
+        CI->getArgOperand(EMOperandNum)->getType());
+    Esz = getExecSizeFromValue(VTy->getNumElements());
   }
   addDebugInfo();
 

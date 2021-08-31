@@ -24,6 +24,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include "Probe/Assertion.h"
 
 #include <algorithm>
@@ -75,8 +77,10 @@ unsigned getTypeSize(Type *Ty, const DataLayout *DL = nullptr) {
   // Size of function pointers is always 32 bit.
   if (auto PT = dyn_cast<PointerType>(Ty->getScalarType());
       PT && PT->getPointerElementType()->isFunctionTy()) {
-    BitTypeSize = 32 * isa<VectorType>(Ty) ? cast<VectorType>(Ty)->getNumElements()
-                                           : 1;
+    // FIXME: wrong condition.
+    BitTypeSize = 32 * isa<IGCLLVM::FixedVectorType>(Ty)
+                      ? cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements()
+                      : 1;
   } else
     BitTypeSize = DL ? DL->getTypeSizeInBits(Ty) : Ty->getPrimitiveSizeInBits();
   IGC_ASSERT_MESSAGE(BitTypeSize, "Consider using DataLayout for retrieving this type size");
@@ -267,7 +271,8 @@ public:
   // replicated slice to its parameters.
   ReplicatedSlice getReplicatedSliceDescriptor() const {
     IGC_ASSERT_MESSAGE(isReplicatedSlice(), "Expected replicated slice");
-    const unsigned TotalSize = (SI->getType())->getNumElements();
+    const unsigned TotalSize =
+        cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
     const unsigned SliceStart = SI->getMaskValue(0);
     const unsigned SliceEnd = SI->getMaskValue(TotalSize - 1);
     const unsigned SliceSize = SliceEnd - SliceStart + 1;
@@ -414,10 +419,10 @@ Value *sinkAdd(Value *V);
 // integer i8, i16 or i32.
 static inline bool isMaskPacking(const Value *V) {
   if (auto BC = dyn_cast<BitCastInst>(V)) {
-    auto SrcTy = dyn_cast<VectorType>(BC->getSrcTy());
+    auto SrcTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getSrcTy());
     if (!SrcTy || !SrcTy->getScalarType()->isIntegerTy(1))
       return false;
-    unsigned NElts = cast<VectorType>(SrcTy)->getNumElements();
+    unsigned NElts = SrcTy->getNumElements();
     if (NElts != 8 && NElts != 16 && NElts != 32)
       return false;
     return V->getType()->getScalarType()->isIntegerTy(NElts);
@@ -514,7 +519,7 @@ CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst, ConstIter FirstType,
          "wrong arguments: type of instructions must correspond");
 
   if (Inst->getType()->isVectorTy() &&
-      cast<VectorType>(Inst->getType())->getNumElements() > 1)
+      cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements() > 1)
     return nullptr;
   bool needBitCast = std::any_of(
       FirstType, LastType, [Inst](Type *Ty) { return Ty != Inst->getType(); });

@@ -484,7 +484,8 @@ void GenXUnbaling::shortenLiveRanges(Function *F) {
               return Init + NumElts;
             });
         if (NumEltsToCopy >=
-            cast<VectorType>(SrcRegion->getType())->getNumElements())
+            cast<IGCLLVM::FixedVectorType>(SrcRegion->getType())
+                ->getNumElements())
           continue;
 
         // Unbale and hoist
@@ -731,7 +732,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
       // more than 2 GRFs), we cannot unbale it. This happens with an rdregion
       // baled in to a raw operand of a shared function intrinsic. Unbaling it
       // would result in an illegally wide instruction.
-      if (auto VT = dyn_cast<VectorType>(User->getType())) {
+      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(User->getType())) {
         if (VT->getNumElements() > 32U
             || VT->getPrimitiveSizeInBits() > 512U) {
           LLVM_DEBUG(dbgs() << User->getName() << " is too wide to unbale\n");

@@ -24,6 +24,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
+
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -177,7 +180,7 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
   case GenXIntrinsic::genx_gather4_scaled2:
   case GenXIntrinsic::genx_gather4_masked_scaled2:
   case GenXIntrinsic::genx_gather4_masked_scaled2_predef_surface:
-    return cast<VectorType>(
+    return cast<IGCLLVM::FixedVectorType>(
                CI->getArgOperand(4 /*address operand idx*/)->getType())
         ->getNumElements();
   case GenXIntrinsic::genx_raw_send:
@@ -187,7 +190,8 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
     return 16;
   case GenXIntrinsic::genx_subb:
   case GenXIntrinsic::genx_addc:
-    if (auto *VT = dyn_cast<VectorType>(CI->getOperand(0)->getType()))
+    if (auto *VT =
+            dyn_cast<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType()))
       return VT->getNumElements();
     return 1;
   case GenXIntrinsic::genx_dpas:

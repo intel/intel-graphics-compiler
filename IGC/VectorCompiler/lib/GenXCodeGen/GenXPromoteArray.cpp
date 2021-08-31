@@ -445,12 +445,12 @@ static bool CheckPtrToIntCandidate(PtrToIntInst *PTI) {
 
     IGC_ASSERT(isa<ConstantInt>(NumBlocks));
     if (cast<ConstantInt>(NumBlocks)->getZExtValue() ||
-        cast<VectorType>(Input->getType())->getNumElements() >
-            cast<VectorType>(Pred->getType())
-                ->getNumElements() ||
+        cast<IGCLLVM::FixedVectorType>(Input->getType())->getNumElements() >
+            cast<IGCLLVM::FixedVectorType>(Pred->getType())->getNumElements() ||
         (isa<VectorType>(MemOp->getType()) &&
-         cast<VectorType>(Pred->getType())->getNumElements() <
-             cast<VectorType>(MemOp->getType())->getNumElements()))
+         cast<IGCLLVM::FixedVectorType>(Pred->getType())->getNumElements() <
+             cast<IGCLLVM::FixedVectorType>(MemOp->getType())
+                 ->getNumElements()))
       return false;
   }
   return true;
@@ -677,7 +677,8 @@ void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
       SrcDerefTy->getScalarSizeInBits() / DstDerefTy->getScalarSizeInBits();
   Value *Scale = nullptr;
   if (Idx.Index->getType()->isVectorTy()) {
-    auto Width = cast<VectorType>(Idx.Index->getType())->getNumElements();
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(Idx.Index->getType())->getNumElements();
     Scale = ConstantVector::getSplat(IGCLLVM::getElementCount(Width),
                                      IRB.getInt32(ElementSize));
   } else
@@ -755,7 +756,8 @@ void TransposeHelper::handleGEPInst(GetElementPtrInst *GEP,
   for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI) {
     Value *GEPIdx = *OI;
     if (GEPIdx->getType()->isVectorTy()) {
-      auto Width = cast<VectorType>(GEPIdx->getType())->getNumElements();
+      auto Width =
+          cast<IGCLLVM::FixedVectorType>(GEPIdx->getType())->getNumElements();
       if (Width > 1) {
         if (IdxWidth <= 1)
           IdxWidth = Width;
@@ -820,7 +822,8 @@ void TransposeHelper::handleGEPInst(GetElementPtrInst *GEP,
         auto ElementSize =
             m_pDL->getTypeAllocSize(Ty) / Idx.getElementSizeInBytes();
         if (GEPIdx->getType()->isVectorTy()) {
-          IGC_ASSERT(cast<VectorType>(GEPIdx->getType())->getNumElements() == IdxWidth);
+          IGC_ASSERT(cast<IGCLLVM::FixedVectorType>(GEPIdx->getType())
+                         ->getNumElements() == IdxWidth);
           NewIdx = IRB.CreateZExtOrTrunc(GEPIdx, pScalarizedIdx->getType());
           NewIdx = IRB.CreateMul(NewIdx, ConstantVector::getSplat(
                                              IGCLLVM::getElementCount(IdxWidth),
@@ -837,7 +840,8 @@ void TransposeHelper::handleGEPInst(GetElementPtrInst *GEP,
   if (!Idx.Index->getType()->isVectorTy() && IdxWidth <= 1) {
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, Idx.Index);
   } else if (Idx.Index->getType()->isVectorTy()) {
-    IGC_ASSERT(cast<VectorType>(Idx.Index->getType())->getNumElements() == IdxWidth);
+    IGC_ASSERT(cast<IGCLLVM::FixedVectorType>(Idx.Index->getType())
+                   ->getNumElements() == IdxWidth);
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, Idx.Index);
   } else {
     auto SplatIdx = IRB.CreateVectorSplat(IdxWidth, Idx.Index);
@@ -942,7 +946,8 @@ void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad,
     // %v0 = extractelement <32 x float> %w, i32 %idx
     // %v1 = extractelement <32 x float> %w, i32 %idx+1
     // replace all uses of %v with <%v0, %v1>
-    auto Len = cast<VectorType>(pLoad->getType())->getNumElements();
+    auto Len =
+        cast<IGCLLVM::FixedVectorType>(pLoad->getType())->getNumElements();
     Value *Result = UndefValue::get(pLoad->getType());
     for (unsigned i = 0; i < Len; ++i) {
       Value *VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
@@ -1006,7 +1011,8 @@ void TransposeHelperPromote::handleStoreInst(StoreInst *pStore,
     // %v1 = extractelement <2 x float> %v, i32 1
     // %w1 = insertelement <32 x float> %w0, float %v1, i32 %idx+1
     // store <32 x float> %w1, <32 x float>* %ptr1
-    auto Len = cast<VectorType>(pStoreVal->getType())->getNumElements();
+    auto Len =
+        cast<IGCLLVM::FixedVectorType>(pStoreVal->getType())->getNumElements();
     for (unsigned i = 0; i < Len; ++i) {
       Value *VectorIdx = ConstantInt::get(ScalarizedIdx.Index->getType(), i);
       auto *Val = IRB.CreateExtractElement(pStoreVal, VectorIdx);
@@ -1030,8 +1036,9 @@ void TransposeHelperPromote::handlePrivateGather(IntrinsicInst *pInst,
   IRBuilder<> IRB(pInst);
   IGC_ASSERT(pInst->getType()->isVectorTy());
   Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
-  auto N = cast<VectorType>(pInst->getType())->getNumElements();
-  auto ElemType = cast<VectorType>(pInst->getType())->getElementType();
+  auto *InstTy = cast<IGCLLVM::FixedVectorType>(pInst->getType());
+  auto N = InstTy->getNumElements();
+  auto ElemType = InstTy->getElementType();
 
   // A vector load
   // %v = <2 x float> gather %pred, %ptr, %offset, %old_value
@@ -1108,8 +1115,9 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
   llvm::Value *pStoreVal = pInst->getArgOperand(3);
   llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
   IGC_ASSERT(pStoreVal->getType()->isVectorTy());
-  auto N = cast<VectorType>(pStoreVal->getType())->getNumElements();
-  auto ElemType = cast<VectorType>(pStoreVal->getType())->getElementType();
+  auto *StoreValTy = cast<IGCLLVM::FixedVectorType>(pStoreVal->getType());
+  auto N = StoreValTy->getNumElements();
+  auto ElemType = StoreValTy->getElementType();
   // A vector scatter
   // scatter %pred, %ptr, %offset, %newvalue
   // becomes
@@ -1169,9 +1177,9 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
 void TransposeHelperPromote::handleLLVMGather(IntrinsicInst *pInst,
   Value *pScalarizedIdx) {
   IRBuilder<> IRB(pInst);
-  IGC_ASSERT(pInst->getType()->isVectorTy());
-  auto N = cast<VectorType>(pInst->getType())->getNumElements();
-  auto ElemType = cast<VectorType>(pInst->getType())->getElementType();
+  auto *InstTy = cast<IGCLLVM::FixedVectorType>(pInst->getType());
+  auto N = InstTy->getNumElements();
+  auto ElemType = InstTy->getElementType();
   Value *LoadVecAlloca = loadAndCastVector(*pVecAlloca, *ElemType, IRB);
 
   // A vector load
@@ -1307,7 +1315,8 @@ void TransposeHelperPromote::handleSVMGather(IntrinsicInst *pInst,
       pScalarizedIdx,
       IGCLLVM::FixedVectorType::get(
           IntegerType::getInt16Ty(pInst->getContext()),
-          cast<VectorType>(pScalarizedIdx->getType())->getNumElements()),
+          cast<IGCLLVM::FixedVectorType>(pScalarizedIdx->getType())
+              ->getNumElements()),
       "");
   R.Width = 1;
   R.Stride = 0;
@@ -1342,7 +1351,8 @@ void TransposeHelperPromote::handleSVMScatter(IntrinsicInst *pInst,
       pScalarizedIdx,
       IGCLLVM::FixedVectorType::get(
           IntegerType::getInt16Ty(pInst->getContext()),
-          cast<VectorType>(pScalarizedIdx->getType())->getNumElements()),
+          cast<IGCLLVM::FixedVectorType>(pScalarizedIdx->getType())
+              ->getNumElements()),
       "");
   R.Width = 1;
   R.Stride = 0;

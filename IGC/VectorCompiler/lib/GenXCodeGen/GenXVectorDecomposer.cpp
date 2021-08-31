@@ -931,7 +931,7 @@ template <typename T> bool isGlobalVarOperand(const Value *V) {
 bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
   auto SI = dyn_cast<SelectInst>(Inst);
   IGC_ASSERT_MESSAGE(SI, "select expected");
-  VectorType *Ty = dyn_cast<VectorType>(SI->getCondition()->getType());
+  auto *Ty = dyn_cast<IGCLLVM::FixedVectorType>(SI->getCondition()->getType());
   if (!Ty)
     return false;
   unsigned NumElts = Ty->getNumElements();
@@ -982,7 +982,9 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
       Region R(CI, BaleInfo());
       unsigned LegalSize = R.getLegalSize(
           0, true /*Allow2D*/,
-          cast<VectorType>(CI->getOperand(0)->getType())->getNumElements(), ST);
+          cast<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType())
+              ->getNumElements(),
+          ST);
       if (LegalSize < 32)
         Width = 16;
     }

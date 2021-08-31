@@ -131,6 +131,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/Utils/RegCategory.h"
 
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
@@ -459,8 +460,8 @@ static bool commonUpPredicate(BasicBlock *BB) {
   for (auto &Inst : BB->getInstList()) {
     if (GenXIntrinsic::getGenXIntrinsicID(&Inst) == GenXIntrinsic::genx_constantpred) {
       Constant *V = cast<Constant>(Inst.getOperand(0));
-      if (auto VT = dyn_cast<VectorType>(V->getType())) {
-        unsigned NElts = cast<VectorType>(VT)->getNumElements();
+      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(V->getType())) {
+        unsigned NElts = VT->getNumElements();
         if (NElts > 64)
           continue;
         uint64_t Bits = 0;

@@ -102,6 +102,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 
 #include "Probe/Assertion.h"
+
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/MathExtras.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
@@ -536,8 +538,10 @@ bool genx::areConstantsEqual(const Constant *C1, const Constant *C2) {
   case Value::ConstantVectorVal: {
     const ConstantVector *C1CV = cast<ConstantVector>(C1);
     const ConstantVector *C2CV = cast<ConstantVector>(C2);
-    unsigned NumElementsC1 = cast<VectorType>(C1Ty)->getNumElements();
-    unsigned NumElementsC2 = cast<VectorType>(C2Ty)->getNumElements();
+    unsigned NumElementsC1 =
+        cast<IGCLLVM::FixedVectorType>(C1Ty)->getNumElements();
+    unsigned NumElementsC2 =
+        cast<IGCLLVM::FixedVectorType>(C2Ty)->getNumElements();
     if (NumElementsC1 != NumElementsC2)
       return false;
     for (uint64_t i = 0; i < NumElementsC1; ++i)
@@ -872,7 +876,8 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
   if (!isLegalSize())
     return loadBig(Inst);
   if (PackedFloat) {
-    unsigned NumElts = cast<VectorType>(C->getType())->getNumElements();
+    unsigned NumElts =
+        cast<IGCLLVM::FixedVectorType>(C->getType())->getNumElements();
     SmallVector<Instruction *, 4> Quads;
     for (unsigned i = 0, e = NumElts; i != e; i += 4) {
       SmallVector<Constant *, 4> Quad;
@@ -885,7 +890,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
     unsigned Offset = 0;
     auto DbgLoc = Inst->getDebugLoc();
     for (auto &Q : Quads) {
-      VectorType *VTy = cast<VectorType>(Q->getType());
+      auto *VTy = cast<IGCLLVM::FixedVectorType>(Q->getType());
       Region R(V, &DL);
       R.getSubregion(Offset, VTy->getNumElements());
       V = R.createWrRegion(V, Q, "constant.quad" + Twine(Offset), Inst, DbgLoc);
@@ -900,7 +905,9 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
       PackTy = Type::getInt32Ty(Inst->getContext());
     // Load as a packed int vector with scale and/or adjust.
     SmallVector<Constant *, 32> PackedVals;
-    for (unsigned i = 0, e = cast<VectorType>(C->getType())->getNumElements();
+    for (unsigned
+             i = 0,
+             e = cast<IGCLLVM::FixedVectorType>(C->getType())->getNumElements();
          i != e; ++i) {
       int64_t Val = 0;
       if (auto CI = dyn_cast<ConstantInt>(C->getAggregateElement(i))) {
@@ -915,24 +922,24 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
 
     ConstantLoader Packed(ConstantVector::get(PackedVals), Subtarget, DL);
     auto *LoadPacked = Packed.loadNonPackedIntConst(Inst);
-    if (PackedIntScale != 1)
-      LoadPacked = BinaryOperator::Create(
-          Instruction::Mul, LoadPacked,
-          ConstantVector::getSplat(
-              IGCLLVM::getElementCount(
-                  cast<VectorType>(C->getType())->getNumElements()),
-              ConstantInt::get(PackTy, PackedIntScale,
-                               /*isSigned=*/true)),
-          "constantscale", Inst);
-    if (PackedIntAdjust)
-      LoadPacked = BinaryOperator::Create(
-          Instruction::Add, LoadPacked,
-          ConstantVector::getSplat(
-              IGCLLVM::getElementCount(
-                  cast<VectorType>(C->getType())->getNumElements()),
-              ConstantInt::get(PackTy, PackedIntAdjust,
-                               /*isSigned=*/true)),
-          "constantadjust", Inst);
+    if (PackedIntScale != 1) {
+      auto *SplatVal =
+          ConstantInt::get(PackTy, PackedIntScale, /*isSigned=*/true);
+      auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
+      auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
+      auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
+      LoadPacked = BinaryOperator::Create(Instruction::Mul, LoadPacked, Op1,
+                                          "constantscale", Inst);
+    }
+    if (PackedIntAdjust) {
+      auto *SplatVal =
+          ConstantInt::get(PackTy, PackedIntAdjust, /*isSigned=*/true);
+      auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
+      auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
+      auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
+      LoadPacked = BinaryOperator::Create(Instruction::Add, LoadPacked, Op1,
+                                          "constantadjust", Inst);
+    }
     if (DL.getTypeSizeInBits(PackTy) <
         DL.getTypeSizeInBits(C->getType()->getScalarType())) {
       LoadPacked = CastInst::CreateSExtOrBitCast(LoadPacked, C->getType(),
@@ -965,7 +972,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
       AddedInstructions->push_back(NewInst);
     return NewInst;
   }
-  VectorType *VT = dyn_cast<VectorType>(C->getType());
+  auto *VT = cast<IGCLLVM::FixedVectorType>(C->getType());
   unsigned NumElements = VT->getNumElements();
   SmallVector<Constant *, 32> Elements;
   unsigned UndefBits = 0;
@@ -1212,7 +1219,7 @@ unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
 
 Instruction *ConstantLoader::loadSplatConstant(Instruction *InsertPos) {
   // Skip scalar types, vector type with just one element, or boolean vector.
-  VectorType *VTy = dyn_cast<VectorType>(C->getType());
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VTy ||
       VTy->getNumElements() == 1 ||
       VTy->getScalarType()->isIntegerTy(1))
@@ -1299,8 +1306,8 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore)
  * Return:  new instruction
  */
 Instruction *ConstantLoader::loadNonPackedIntConst(Instruction *InsertBefore) {
-  auto* CTy = cast<VectorType>(C->getType());
-  IGC_ASSERT(CTy && CTy->isIntOrIntVectorTy());
+  auto *CTy = cast<IGCLLVM::FixedVectorType>(C->getType());
+  IGC_ASSERT(CTy->isIntOrIntVectorTy());
   // Simple vectors are already the correct size <= 8, process common load
   if (isSimple())
     return load(InsertBefore);
@@ -1350,7 +1357,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
       AddedInstructions->push_back(Load);
     return Load;
   }
-  auto VT = cast<VectorType>(C->getType());
+  auto VT = cast<IGCLLVM::FixedVectorType>(C->getType());
   const unsigned NumElements = VT->getNumElements();
   const unsigned GRFWidthInBits = Subtarget.getGRFWidth() * genx::ByteBits;
   const unsigned ElementBits = DL.getTypeSizeInBits(VT->getElementType());
@@ -1383,7 +1390,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
  */
 bool ConstantLoader::isLegalSize()
 {
-  auto VT = dyn_cast<VectorType>(C->getType());
+  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VT)
     return true;
   const int NumBits = DL.getTypeSizeInBits(C->getType());
@@ -1463,7 +1470,8 @@ bool ConstantLoader::isPackedIntVector()
   // Check for a packed int vector. Either the element type must be i16, or
   // the user (instruction using the constant) must be genx.constanti or
   // wrregion or wrconstregion. Not allowed if the user is a logic op.
-  if (cast<VectorType>(C->getType())->getNumElements() > ImmIntVec::Width)
+  if (cast<IGCLLVM::FixedVectorType>(C->getType())->getNumElements() >
+      ImmIntVec::Width)
     return false; // wrong width for packed vector
   if (PackedIntScale == 1 && (PackedIntAdjust == 0 || PackedIntAdjust == -8)) {
     if (!User)
@@ -1491,7 +1499,7 @@ bool ConstantLoader::isPackedIntVector()
  *    (having already done the analysis in the ConstantLoader constructor)
  */
 bool ConstantLoader::isPackedFloatVector() {
-  VectorType *VT = dyn_cast<VectorType>(C->getType());
+  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VT)
     return false;
   if (VT->getNumElements() > 4)
@@ -1510,7 +1518,7 @@ Constant *ConstantLoader::getConsolidatedConstant(Constant *C)
 {
   if (isa<UndefValue>(C))
     return nullptr;
-  VectorType *VT = dyn_cast<VectorType>(C->getType());
+  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VT)
     return nullptr;
   const unsigned BytesPerElement =
@@ -1567,7 +1575,7 @@ Constant *ConstantLoader::getConsolidatedConstant(Constant *C)
  */
 void ConstantLoader::analyze()
 {
-  auto VT = dyn_cast<VectorType>(C->getType());
+  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VT)
     return;
   if (C->getSplatValue())

@@ -2384,7 +2384,8 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
       // Turn zext/sext to select.
       if (CI->getOpcode() == Instruction::CastOps::ZExt ||
           CI->getOpcode() == Instruction::CastOps::SExt) {
-        unsigned NElts = cast<VectorType>(V->getType())->getNumElements();
+        unsigned NElts =
+            cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements();
         unsigned NBits = CI->getType()->getScalarSizeInBits();
         int Val = (CI->getOpcode() == Instruction::CastOps::ZExt) ? 1 : -1;
         APInt One(NBits, Val);
@@ -3459,8 +3460,10 @@ void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
 Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
     const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
 {
-  unsigned OldWidth = cast<VectorType>(OldVal->getType())->getNumElements();
-  unsigned NewWidth = cast<VectorType>(NewVal->getType())->getNumElements();
+  unsigned OldWidth =
+      cast<IGCLLVM::FixedVectorType>(OldVal->getType())->getNumElements();
+  unsigned NewWidth =
+      cast<IGCLLVM::FixedVectorType>(NewVal->getType())->getNumElements();
   if (OldWidth == NewWidth)
     return NewVal;
   // Do the insert with shufflevector. We need two shufflevectors, one to extend
@@ -3505,8 +3508,9 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
 Value *GenXSimdCFConformance::truncateCond(Value *In, Type *Ty,
     const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
 {
-  unsigned InWidth = cast<VectorType>(In->getType())->getNumElements();
-  unsigned TruncWidth = cast<VectorType>(Ty)->getNumElements();
+  unsigned InWidth =
+      cast<IGCLLVM::FixedVectorType>(In->getType())->getNumElements();
+  unsigned TruncWidth = cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
   if (InWidth == TruncWidth)
     return In;
   // Do the truncate with shufflevector. GenXLowering lowers it to rdpredregion.

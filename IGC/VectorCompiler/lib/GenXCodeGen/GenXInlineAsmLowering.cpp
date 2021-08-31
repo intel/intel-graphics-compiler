@@ -211,7 +211,8 @@ Type *GenXInlineAsmLowering::rewriteTypeForCR(Type *CRType) const {
   Type *Int1Ty = Type::getInt1Ty(*Context);
   return CRType->isVectorTy()
              ? IGCLLVM::FixedVectorType::get(
-                   Int1Ty, cast<VectorType>(CRType)->getNumElements())
+                   Int1Ty,
+                   cast<IGCLLVM::FixedVectorType>(CRType)->getNumElements())
              : Int1Ty;
 }
 

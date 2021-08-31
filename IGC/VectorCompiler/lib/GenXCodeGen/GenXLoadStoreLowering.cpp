@@ -81,7 +81,7 @@ private:
   Instruction *RestoreVectorAfterNormalization(Instruction *From,
                                                Type *To) const;
   Value *NormalizeFuncPtrVec(Value *V, Instruction *InsPoint) const;
-  VectorType *getLoadVType(const LoadInst &LdI) const;
+  IGCLLVM::FixedVectorType *getLoadVType(const LoadInst &LdI) const;
   Value *splatStoreIfNeeded(StoreInst &StI, IRBuilder<> &Builder) const;
   Instruction *extractFirstElement(Instruction &ProperGather, Type &LdTy,
                                    IRBuilder<> &Builder) const;
@@ -169,12 +169,13 @@ GenXLoadStoreLowering::ZExtOrTruncIfNeeded(Value *From, Type *ToTy,
   unsigned FromTySz = DL_->getTypeSizeInBits(FromTy);
   unsigned ToTySz = DL_->getTypeSizeInBits(ToTy);
   Value *Res = From;
-  if (FromTy->isVectorTy() && cast<VectorType>(FromTy)->getNumElements() == 1) {
+  if (auto *FromVTy = dyn_cast<IGCLLVM::FixedVectorType>(FromTy);
+      FromVTy && FromVTy->getNumElements() == 1) {
     auto *TmpRes = CastInst::CreateBitOrPointerCast(
-        Res, cast<VectorType>(FromTy)->getElementType(), "", InsertBefore);
+        Res, FromVTy->getElementType(), "", InsertBefore);
     Res = TmpRes;
   }
-  if (auto ToVTy = dyn_cast<VectorType>(ToTy))
+  if (auto *ToVTy = dyn_cast<IGCLLVM::FixedVectorType>(ToTy))
     Res = Builder.CreateVectorSplat(ToVTy->getNumElements(), Res,
                                     Res->getName() + ".splat");
   if (FromTySz < ToTySz)
@@ -197,8 +198,7 @@ Value *GenXLoadStoreLowering::NormalizeVector(Value *From, Type *To,
   Type *I64Ty = Builder.getInt64Ty();
   Value *Res = From;
   Type *FromTy = From->getType();
-  IGC_ASSERT(isa<VectorType>(FromTy));
-  unsigned NumElts = cast<VectorType>(FromTy)->getNumElements();
+  unsigned NumElts = cast<IGCLLVM::FixedVectorType>(FromTy)->getNumElements();
   if (isFuncPointerVec(From) &&
       DL_->getTypeSizeInBits(From->getType()->getScalarType()) <
           genx::QWordBits) {
@@ -206,7 +206,7 @@ Value *GenXLoadStoreLowering::NormalizeVector(Value *From, Type *To,
     IGC_ASSERT(From);
     To = From->getType();
     IGC_ASSERT(To);
-    NumElts = cast<VectorType>(To)->getNumElements();
+    NumElts = cast<IGCLLVM::FixedVectorType>(To)->getNumElements();
   }
   if (To->getScalarType()->isPointerTy() &&
       To->getScalarType()->getPointerElementType()->isFunctionTy()) {
@@ -256,7 +256,8 @@ GenXLoadStoreLowering::RestoreVectorAfterNormalization(Instruction *From,
     auto *NewFrom = From;
     if (From->getType()->isVectorTy() &&
         From->getType()->getScalarType()->isIntegerTy(genx::DWordBits)) {
-      auto HalfElts = cast<VectorType>(From->getType())->getNumElements() / 2;
+      auto HalfElts =
+          cast<IGCLLVM::FixedVectorType>(From->getType())->getNumElements() / 2;
       IGC_ASSERT(HalfElts > 0);
       auto *NewTy = IGCLLVM::FixedVectorType::get(
           Type::getInt64Ty(From->getContext()), HalfElts);
@@ -271,7 +272,7 @@ GenXLoadStoreLowering::RestoreVectorAfterNormalization(Instruction *From,
     auto EltTySz = DL_->getTypeSizeInBits(EltTy);
     if (!EltTy->isIntegerTy()) {
       auto Ty = IntegerType::get(From->getContext(), EltTySz);
-      auto NumElts = cast<VectorType>(To)->getNumElements();
+      auto NumElts = cast<IGCLLVM::FixedVectorType>(To)->getNumElements();
       auto ToTr = IGCLLVM::FixedVectorType::get(Ty, NumElts);
       auto Trunc = CastInst::Create(Instruction::Trunc, From, ToTr, "");
       Trunc->setDebugLoc(From->getDebugLoc());
@@ -318,7 +319,8 @@ static Value *FormEltsOffsetVectorForSVM(Value *BaseOffset, Value *Offsets,
   IGC_ASSERT(Offsets->getType()->isVectorTy());
 
   Type *I64Ty = Builder.getInt64Ty();
-  unsigned NumElts = cast<VectorType>(Offsets->getType())->getNumElements();
+  unsigned NumElts =
+      cast<IGCLLVM::FixedVectorType>(Offsets->getType())->getNumElements();
   Value *BaseOffsets = Builder.CreateVectorSplat(NumElts, BaseOffset);
   if (!Offsets->getType()->getScalarType()->isIntegerTy(64))
     Offsets = Builder.CreateZExtOrBitCast(
@@ -359,7 +361,8 @@ Value *GenXLoadStoreLowering::NormalizeFuncPtrVec(Value *V,
 
 // we need vector type that emulates what real load type
 // will be for gather/scatter
-VectorType *GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
+IGCLLVM::FixedVectorType *
+GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
   Type *LdTy = LdI.getType();
   if (LdTy->isIntOrPtrTy() || LdTy->isFloatingPointTy())
     LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
@@ -367,7 +370,7 @@ VectorType *GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
   if (!LdTy->isVectorTy())
     vc::diagnose(LdI.getContext(), "LDS", LdTy,
                  "Unsupported type inside replaceLoad");
-  return cast<VectorType>(LdTy);
+  return cast<IGCLLVM::FixedVectorType>(LdTy);
 }
 
 // creates load
@@ -377,7 +380,7 @@ Instruction *GenXLoadStoreLowering::createLoad(LoadInst &LdI,
                                                IRBuilder<> &Builder) const {
   Type *I64Ty = Builder.getInt64Ty();
   LLVM_DEBUG(dbgs() << "Creating load from: " << LdI << "\n");
-  VectorType *LdTy = getLoadVType(LdI);
+  IGCLLVM::FixedVectorType *LdTy = getLoadVType(LdI);
   unsigned NumEltsToLoad = LdTy->getNumElements();
   Value *PredVal = Builder.getTrue();
   Value *Pred = Builder.CreateVectorSplat(NumEltsToLoad, PredVal);
@@ -387,7 +390,8 @@ Instruction *GenXLoadStoreLowering::createLoad(LoadInst &LdI,
 
   // we haven't changed size after normalization
   IGC_ASSERT(NumEltsToLoad ==
-             cast<VectorType>(NormalizedOldVal.getType())->getNumElements());
+             cast<IGCLLVM::FixedVectorType>(NormalizedOldVal.getType())
+                 ->getNumElements());
 
   Value *PointerOp = LdI.getPointerOperand();
   Value *Offset =
@@ -419,7 +423,7 @@ Instruction *GenXLoadStoreLowering::createLoad(LoadInst &LdI,
 
 Instruction *GenXLoadStoreLowering::extractFirstElement(
     Instruction &ProperGather, Type &LdTy, IRBuilder<> &Builder) const {
-  VectorType *GatheredTy = cast<VectorType>(ProperGather.getType());
+  auto *GatheredTy = cast<IGCLLVM::FixedVectorType>(ProperGather.getType());
   Builder.ClearInsertionPoint();
   Instruction *LdVal = nullptr;
   if (GatheredTy->getNumElements() == 1)
@@ -440,7 +444,7 @@ void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
   LLVM_DEBUG(dbgs() << "Replacing load " << LdI << " ===>\n");
   IRBuilder<> Builder(&LdI);
 
-  VectorType *LdTy = getLoadVType(LdI);
+  IGCLLVM::FixedVectorType *LdTy = getLoadVType(LdI);
   auto *LdEltTy = LdTy->getElementType();
   unsigned NumEltsToLoad = LdTy->getNumElements();
 
@@ -494,7 +498,8 @@ Instruction *GenXLoadStoreLowering::createStore(StoreInst &StI,
       DL_->getTypeSizeInBits(NormalizedOldVal.getType()->getScalarType()) /
       genx::ByteBits;
   unsigned ValueNumElts =
-      cast<VectorType>(NormalizedOldVal.getType())->getNumElements();
+      cast<IGCLLVM::FixedVectorType>(NormalizedOldVal.getType())
+          ->getNumElements();
   Value *Pred = Builder.CreateVectorSplat(ValueNumElts, PredVal);
 
   // below everything is for SVM scatter only

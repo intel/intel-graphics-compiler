@@ -33,6 +33,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Errc.h>
 #include <llvm/Support/Error.h>
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include "Probe/Assertion.h"
 
 #include <unordered_set>
@@ -879,7 +881,7 @@ public:
     const bool IsRegister = true;
     const bool IsMemory = false;
     const bool IsGlobalASI = false;
-    auto *VTy = dyn_cast<VectorType>(DbgValue->getType());
+    auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(DbgValue->getType());
     unsigned NumElements = VTy ? VTy->getNumElements() : 1;
     const bool IsVectorized = false;
 

@@ -313,7 +313,7 @@ void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
     auto *ArgScalarType = Arg.getType()->getScalarType();
     auto NumElements = 1;
     bool AllowScalar = true;
-    if (auto *VT = dyn_cast<VectorType>(Arg.getType()))
+    if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Arg.getType()))
       NumElements = VT->getNumElements();
     if (ArgScalarType->isIntegerTy(1)) {
       if (!HandleMaskArgs)
@@ -338,10 +338,11 @@ void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
       if (Arg.getType()->getScalarType()->isIntegerTy(1)) {
         IGC_ASSERT(isa<VectorType>(Arg.getType()));
         ArgRead = cast<Instruction>(IRB.CreateTruncOrBitCast(
-            ArgRead, IGCLLVM::FixedVectorType::get(
-                         IRB.getIntNTy(
-                             cast<VectorType>(Arg.getType())->getNumElements()),
-                         1)));
+            ArgRead,
+            IGCLLVM::FixedVectorType::get(
+                IRB.getIntNTy(cast<IGCLLVM::FixedVectorType>(Arg.getType())
+                                  ->getNumElements()),
+                1)));
         ArgRead = cast<Instruction>(IRB.CreateBitCast(ArgRead, Arg.getType()));
       }
       Offset += ArgSize;
@@ -461,10 +462,10 @@ unsigned GenXPrologEpilogInsertion::writeArgs(CallInst *CI, Value *SpArgs,
         continue;
       IGC_ASSERT(isa<VectorType>(Arg->getType()));
       Arg = IRB.CreateBitOrPointerCast(
-          Arg,
-          IGCLLVM::FixedVectorType::get(
-              IRB.getIntNTy(cast<VectorType>(Arg->getType())->getNumElements()),
-              1));
+          Arg, IGCLLVM::FixedVectorType::get(
+                   IRB.getIntNTy(cast<IGCLLVM::FixedVectorType>(Arg->getType())
+                                     ->getNumElements()),
+                   1));
     }
     Offset += calcPadding(Offset, ST->getGRFWidth());
     auto ArgSize = DL->getTypeSizeInBits(Arg->getType()) / genx::ByteBits;
@@ -578,7 +579,7 @@ void GenXPrologEpilogInsertion::extractResults(CallInst *CI, Value *OrigSp,
           IGC_ASSERT_MESSAGE(0, "Unsupported type to extract from stackcall");
       }
       unsigned NumElems = 1;
-      if (auto *VT = dyn_cast<VectorType>(ActualRet->getType()))
+      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(ActualRet->getType()))
         NumElems = VT->getNumElements();
       auto *RetRegType = IGCLLVM::FixedVectorType::get(
           ActualRet->getType()->getScalarType(),
@@ -673,9 +674,10 @@ Value *GenXPrologEpilogInsertion::push(Value *V, IRBuilder<> &IRB, Value *InitSP
   if (V->getType()->getScalarType()->isIntegerTy(1)) {
     IGC_ASSERT(isa<VectorType>(V->getType()));
     V = IRB.CreateBitOrPointerCast(
-        V, IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(),
-                           cast<VectorType>(V->getType())->getNumElements() /
-                               genx::ByteBits));
+        V, IGCLLVM::FixedVectorType::get(
+               IRB.getInt8Ty(),
+               cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements() /
+                   genx::ByteBits));
   }
   unsigned BytesLeft = DL->getTypeSizeInBits(V->getType()) / genx::ByteBits;
   unsigned Offset = 0;
@@ -721,9 +723,9 @@ GenXPrologEpilogInsertion::pop(Type *Ty, IRBuilder<> &IRB, Value *InitSP) {
   unsigned Offset = 0;
   if (Ty->getScalarType()->isIntegerTy(1)) {
     IGC_ASSERT(isa<VectorType>(Ty));
-    Ty = IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(),
-                         cast<VectorType>(Ty)->getNumElements() /
-                             genx::ByteBits);
+    Ty = IGCLLVM::FixedVectorType::get(
+        IRB.getInt8Ty(),
+        cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() / genx::ByteBits);
   }
   auto *SP = InitSP;
   Value *RetVal = UndefValue::get(Ty);

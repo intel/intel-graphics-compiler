@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
 using namespace llvm;
@@ -46,8 +47,7 @@ bool testRegionIndexForSizeMismatch(const llvm::Value *const V,
 
   bool Result = true;
 
-  const llvm::VectorType *const VT =
-    dyn_cast<const llvm::VectorType> (V->getType());
+  auto *const VT = dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
 
   if (VT) {
     const unsigned VectorElements = (VT->getNumElements() * Width);
@@ -144,14 +144,16 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
   IGC_ASSERT(CallI->getCalledFunction());
   switch (GenXIntrinsic::getGenXIntrinsicID(CallI->getCalledFunction())) {
     case GenXIntrinsic::genx_rdpredregion:
-      NumElements = cast<VectorType>(Inst->getType())->getNumElements();
+      NumElements =
+          cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
       Width = NumElements;
       Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
       ElementBytes = 1;
       return;
     case GenXIntrinsic::genx_wrpredregion:
       NumElements =
-          cast<VectorType>(Inst->getOperand(1)->getType())->getNumElements();
+          cast<IGCLLVM::FixedVectorType>(Inst->getOperand(1)->getType())
+              ->getNumElements();
       Width = NumElements;
       Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
       ElementBytes = 1;
@@ -182,7 +184,7 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
   // Get the region parameters.
   IGC_ASSERT(Subregion);
   ElementTy = Subregion->getType();
-  if (VectorType *VT = dyn_cast<VectorType>(ElementTy)) {
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(ElementTy)) {
     ElementTy = VT->getElementType();
     NumElements = VT->getNumElements();
   }
@@ -806,7 +808,8 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
     return Inst;
   // Flatten the vector out into the elements array
   llvm::SmallVector<llvm::Constant*, 16> elements;
-  auto vectorLength = cast<VectorType>(cv->getType())->getNumElements();
+  auto vectorLength =
+      cast<IGCLLVM::FixedVectorType>(cv->getType())->getNumElements();
   for (unsigned i = 0; i < vectorLength; ++i)
     elements.push_back(cv->getElementAsConstant(i));
 
@@ -931,11 +934,9 @@ static Value *simplifyRegionRead(Instruction *Inst) {
     return UndefValue::get(Inst->getType());
   else if (auto C = dyn_cast<Constant>(Input)) {
     if (auto Splat = C->getSplatValue()) {
-      Type *Ty = Inst->getType();
-      if (Ty->isVectorTy())
+      if (auto *Ty = dyn_cast<IGCLLVM::FixedVectorType>(Inst->getType()))
         Splat = ConstantVector::getSplat(
-            IGCLLVM::getElementCount(cast<VectorType>(Ty)->getNumElements()),
-            Splat);
+            IGCLLVM::getElementCount(Ty->getNumElements()), Splat);
       return Splat;
     }
   } else if (GenXIntrinsic::isWrRegion(Input) && Input->hasOneUse()) {
@@ -1059,7 +1060,8 @@ llvm::genx::IsLinearVectorConstantInts(Value* v, int64_t& start, int64_t& stride
         return false;
     // Flatten the vector out into the elements array
     llvm::SmallVector<llvm::Constant*, 16> elements;
-    auto vectorLength = cast<VectorType>(cv->getType())->getNumElements();
+    auto vectorLength =
+        cast<IGCLLVM::FixedVectorType>(cv->getType())->getNumElements();
     for (unsigned i = 0; i < vectorLength; ++i)
         elements.push_back(cv->getElementAsConstant(i));
 

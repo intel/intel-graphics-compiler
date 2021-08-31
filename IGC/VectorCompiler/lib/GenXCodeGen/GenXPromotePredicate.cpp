@@ -88,7 +88,8 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
       auto Cond = dyn_cast<Instruction>(SI->getCondition());
       if (!Cond || !Cond->getType()->isVectorTy())
         continue;
-      if (cast<VectorType>(Cond->getType())->getNumElements() < 32)
+      if (cast<IGCLLVM::FixedVectorType>(Cond->getType())->getNumElements() <
+          32)
         continue;
 
       // TODO: analyze when it is benefial to promote.
@@ -149,7 +150,8 @@ bool GenXPromotePredicate::matchOpnds(llvm::BasicBlock *UseBB, Value *V,
 }
 Value *GenXPromotePredicate::rewriteTree(Instruction *Inst) {
   IRBuilder<> Builder(Inst);
-  unsigned N = cast<VectorType>(Inst->getType())->getNumElements();
+  unsigned N =
+      cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
   VectorType *VT = IGCLLVM::FixedVectorType::get(Builder.getInt16Ty(), N);
   unsigned Opc = Inst->getOpcode();
   switch (Opc) {

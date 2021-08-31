@@ -171,12 +171,13 @@ Value *GenXThreadPrivateMemory::ZExtOrTruncIfNeeded(Value *From, Type *To,
   unsigned FromTySz = FromTy->getPrimitiveSizeInBits();
   unsigned ToTySz = To->getPrimitiveSizeInBits();
   Value *Res = From;
-  if (FromTy->isVectorTy() && cast<VectorType>(FromTy)->getNumElements() == 1) {
+  if (FromTy->isVectorTy() &&
+      cast<IGCLLVM::FixedVectorType>(FromTy)->getNumElements() == 1) {
     auto *TmpRes = CastInst::CreateBitOrPointerCast(
         Res, cast<VectorType>(FromTy)->getElementType(), "", InsertBefore);
     Res = TmpRes;
   }
-  if (auto ToVTy = dyn_cast<VectorType>(To)) {
+  if (auto *ToVTy = dyn_cast<IGCLLVM::FixedVectorType>(To)) {
     IRBuilder<> Builder(InsertBefore);
     Res = Builder.CreateVectorSplat(
         ToVTy->getNumElements(),
@@ -199,7 +200,8 @@ Value *GenXThreadPrivateMemory::ZExtOrTruncIfNeeded(Value *From, Type *To,
 // TODO: revise this for non-svm case
 static int getNumBlocksForType(Type *Ty, const DataLayout &DL) {
   return DL.getTypeSizeInBits(Ty) /
-         (std::min<unsigned>(32u, cast<VectorType>(Ty)->getNumElements()) *
+         (std::min<unsigned>(
+              32u, cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements()) *
           DL.getTypeSizeInBits(Ty->getScalarType()));
 }
 
@@ -246,7 +248,7 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
   Value *Res = From;
   Type *FromTy = From->getType();
   IGC_ASSERT(isa<VectorType>(FromTy));
-  unsigned NumElts = cast<VectorType>(FromTy)->getNumElements();
+  unsigned NumElts = cast<IGCLLVM::FixedVectorType>(FromTy)->getNumElements();
   static_assert(genx::ByteBits);
   unsigned EltSz =
       m_DL->getTypeSizeInBits(FromTy->getScalarType()) / genx::ByteBits;
@@ -258,7 +260,7 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
     IGC_ASSERT(From);
     To = From->getType();
     IGC_ASSERT(To);
-    NumElts = cast<VectorType>(To)->getNumElements();
+    NumElts = cast<IGCLLVM::FixedVectorType>(To)->getNumElements();
   }
   if (To->getScalarType()->isPointerTy() &&
       To->getScalarType()->getPointerElementType()->isFunctionTy()) {
@@ -312,9 +314,10 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
     auto *NewFrom = From;
     if (From->getType()->isVectorTy() &&
         From->getType()->getScalarType()->isIntegerTy(genx::DWordBits)) {
-      auto *NewTy =
-          IGCLLVM::FixedVectorType::get(Type::getInt64Ty(*m_ctx),
-                          cast<VectorType>(From->getType())->getNumElements() / 2);
+      auto *NewTy = IGCLLVM::FixedVectorType::get(
+          Type::getInt64Ty(*m_ctx),
+          cast<IGCLLVM::FixedVectorType>(From->getType())->getNumElements() /
+              2);
       NewFrom = CastInst::CreateBitOrPointerCast(From, NewTy);
       NewFrom->insertAfter(From);
       From = NewFrom;
@@ -325,7 +328,7 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
     auto EltTySz = m_DL->getTypeSizeInBits(EltTy);
     if (!EltTy->isIntegerTy()) {
       auto Ty = IntegerType::get(*m_ctx, EltTySz);
-      auto NumElts = cast<VectorType>(To)->getNumElements();
+      auto NumElts = cast<IGCLLVM::FixedVectorType>(To)->getNumElements();
       auto ToTr = IGCLLVM::FixedVectorType::get(Ty, NumElts);
       auto Trunc = CastInst::Create(Instruction::Trunc, From, ToTr, "");
       Trunc->insertAfter(From);
@@ -343,7 +346,8 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
             From->getType()->getScalarType()->isIntegerTy(genx::DWordBits));
         Type *NewTy = IGCLLVM::FixedVectorType::get(
             Type::getInt64Ty(*m_ctx),
-            cast<VectorType>(From->getType())->getNumElements() / 2);
+            cast<IGCLLVM::FixedVectorType>(From->getType())->getNumElements() /
+                2);
         auto *NewFrom = CastInst::CreateBitOrPointerCast(From, NewTy);
         NewFrom->insertAfter(From);
         From = NewFrom;
@@ -361,10 +365,9 @@ static Value *DoubleVector(Value *OrigVector, unsigned ShiftVal,
                            Instruction *InsertPoint) {
   IRBuilder<> Builder(InsertPoint);
   Type *I32Ty = Type::getInt32Ty(InsertPoint->getContext());
-  unsigned NumElts =
-      cast<VectorType>(OrigVector->getType())->getNumElements() * 2;
-  Type *OrigVectorEltTy =
-      cast<VectorType>(OrigVector->getType())->getElementType();
+  auto *OrigVectorTy = cast<IGCLLVM::FixedVectorType>(OrigVector->getType());
+  unsigned NumElts = OrigVectorTy->getNumElements() * 2;
+  Type *OrigVectorEltTy = OrigVectorTy->getElementType();
   Value *NewElts =
       UndefValue::get(IGCLLVM::FixedVectorType::get(OrigVectorEltTy, NumElts));
   for (unsigned CurEltNum = 0; CurEltNum * 2 < NumElts; ++CurEltNum) {
@@ -406,7 +409,8 @@ static Value *FormEltsOffsetVectorForSVM(Value *BaseOffset,
 
   IRBuilder<> Builder(InsertBefore);
   Type *I64Ty = Type::getInt64Ty(InsertBefore->getContext());
-  unsigned NumElts = cast<VectorType>(Offsets->getType())->getNumElements();
+  unsigned NumElts =
+      cast<IGCLLVM::FixedVectorType>(Offsets->getType())->getNumElements();
   Value *BaseOffsets = Builder.CreateVectorSplat(NumElts, BaseOffset);
   if (!Offsets->getType()->getScalarType()->isIntegerTy(64))
     Offsets = Builder.CreateZExtOrBitCast(Offsets,
@@ -420,7 +424,7 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
 
   Type *MemTy = IntegerType::get(*m_ctx, (m_useGlobalMem ? 64 : 32));
   if (isa<UndefValue>(Ptr)) {
-    if (auto PtrVecTy = dyn_cast<VectorType>(PtrTy))
+    if (auto *PtrVecTy = dyn_cast<IGCLLVM::FixedVectorType>(PtrTy))
       return UndefValue::get(
           IGCLLVM::FixedVectorType::get(MemTy, PtrVecTy->getNumElements()));
     return UndefValue::get(MemTy);
@@ -593,7 +597,8 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
                  "Unsupported type inside replaceLoad");
   }
 
-  unsigned NumEltsToLoad = cast<VectorType>(LdTy)->getNumElements();
+  unsigned NumEltsToLoad =
+      cast<IGCLLVM::FixedVectorType>(LdTy)->getNumElements();
   unsigned ValueEltSz = m_DL->getTypeSizeInBits(LdEltTy) / genx::ByteBits;
 
   Value *PredVal = ConstantInt::get(Type::getInt1Ty(*m_ctx), 1);
@@ -605,8 +610,8 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
       Builder.CreateVectorSplat(NumEltsToLoad, UndefValue::get(LdEltTy));
   std::tie(OldValOfTheDataRead, ValueEltSz) =
       NormalizeVector(OldValOfTheDataRead, LdTy, LdI);
-  NumEltsToLoad =
-      cast<VectorType>(OldValOfTheDataRead->getType())->getNumElements();
+  NumEltsToLoad = cast<IGCLLVM::FixedVectorType>(OldValOfTheDataRead->getType())
+                      ->getNumElements();
 
   Value *PointerOp = LdI->getPointerOperand();
   Value *Offset = lookForPtrReplacement(PointerOp);
@@ -644,7 +649,7 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
 
   if (!isa<VectorType>(LdI->getType()) &&
       isa<VectorType>(ProperGather->getType())) {
-    VectorType *GatheredTy = cast<VectorType>(ProperGather->getType());
+    auto *GatheredTy = cast<IGCLLVM::FixedVectorType>(ProperGather->getType());
     Builder.ClearInsertionPoint();
     Instruction *LdVal = nullptr;
     if (GatheredTy->getNumElements() == 1)
@@ -687,7 +692,7 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
   unsigned ValueEltSz = 0;
   std::tie(ValueOp, ValueEltSz) = NormalizeVector(ValueOp, ValueOpTy, StI);
   unsigned ValueNumElts =
-      cast<VectorType>(ValueOp->getType())->getNumElements();
+      cast<IGCLLVM::FixedVectorType>(ValueOp->getType())->getNumElements();
 
   Value *PointerOp = StI->getPointerOperand();
   Value *Offset = lookForPtrReplacement(PointerOp);
@@ -802,7 +807,8 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
   if (!(m_useGlobalMem && CI->getType()->getScalarType()->isIntegerTy(64)))
     std::tie(OldValue, ValueEltSz) = NormalizeVector(OldValue, NewDstTy, CI);
   NewDstTy = OldValue->getType();
-  unsigned ValueNumElts = cast<VectorType>(NewDstTy)->getNumElements();
+  unsigned ValueNumElts =
+      cast<IGCLLVM::FixedVectorType>(NewDstTy)->getNumElements();
 
   Value *Pred = CI->getArgOperand(0);
   Value *EltsOffset = CI->getArgOperand(2);
@@ -810,7 +816,9 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
       m_DL->getTypeSizeInBits(cast<VectorType>(OrigDstTy)->getElementType()) ==
           genx::QWordBits) {
     IGC_ASSERT(ValueNumElts ==
-               cast<VectorType>(EltsOffset->getType())->getNumElements() * 2);
+               cast<IGCLLVM::FixedVectorType>(EltsOffset->getType())
+                       ->getNumElements() *
+                   2);
     EltsOffset = DoubleVector(EltsOffset, ValueEltSz, CI);
     Pred = DoubleVector(Pred, 0, CI);
   }
@@ -890,7 +898,8 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
       Offset = CastInst::CreateZExtOrBitCast(
           Offset,
           IGCLLVM::FixedVectorType::get(
-              I64Ty, cast<VectorType>(EltsOffset->getType())->getNumElements()),
+              I64Ty, cast<IGCLLVM::FixedVectorType>(EltsOffset->getType())
+                         ->getNumElements()),
           "", CI);
   }
 
@@ -936,7 +945,9 @@ bool GenXThreadPrivateMemory::replacePhi(PHINode *Phi) {
       else if (V->getType()->getScalarType() == NonVecTy->getScalarType() &&
                V->getType()->isVectorTy() != NonVecTy->isVectorTy()) {
         if (V->getType()->isVectorTy()) {
-          IGC_ASSERT(cast<VectorType>(V->getType())->getNumElements() == 1);
+          IGC_ASSERT(
+              cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements() ==
+              1);
           auto *VCast = CastInst::Create(CastInst::BitCast, V, NonVecTy->getScalarType());
           VCast->insertAfter(cast<Instruction>(V));
           V = VCast;
@@ -1037,7 +1048,8 @@ static Value *FillVecWithSeqVals(Value *Vec, unsigned Start,
   Builder.SetInsertPoint(InsertBefore);
 
   Type *I32Ty = Type::getInt32Ty(InsertBefore->getContext());
-  unsigned NumElts = cast<VectorType>(Vec->getType())->getNumElements();
+  unsigned NumElts =
+      cast<IGCLLVM::FixedVectorType>(Vec->getType())->getNumElements();
   for (unsigned i = 0; i < NumElts; ++i) {
     Value *Idx = ConstantInt::get(I32Ty, i);
     Value *Val = ConstantInt::get(I32Ty, i + Start);

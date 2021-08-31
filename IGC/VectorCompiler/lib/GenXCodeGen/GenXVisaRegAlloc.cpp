@@ -38,6 +38,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -582,7 +584,7 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   }
   IGC_ASSERT(!Ty->isVoidTy());
   if (LR->Category == RegCategory::PREDICATE) {
-    VectorType *VT = dyn_cast<VectorType>(Ty);
+    auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     IGC_ASSERT_MESSAGE((!VT || genx::exactLog2(VT->getNumElements()) >= 0),
       "invalid predicate width");
     (void)VT;
@@ -736,7 +738,7 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed)
     : DL(DL) {
   Type *ElementTy = Ty;
   NumElements = 1;
-  if (VectorType *VT = dyn_cast<VectorType>(ElementTy)) {
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(ElementTy)) {
     ElementTy = VT->getElementType();
     NumElements = VT->getNumElements();
   }

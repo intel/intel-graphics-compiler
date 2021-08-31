@@ -94,6 +94,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
 using namespace llvm;
@@ -532,7 +533,7 @@ bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs)
         // We don't have an add_addr. We need to insert one.
         Constant *C = ConstantInt::get(CommonOffsetVal->getType(),
               AdjustedOffset);
-        if (auto VT = dyn_cast<VectorType>(Addr->getType()))
+        if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Addr->getType()))
           C = ConstantVector::getSplat(
               IGCLLVM::getElementCount(VT->getNumElements()), C);
         auto CI = createAddAddr(Addr, C,
@@ -547,7 +548,8 @@ bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs)
         // int.
         Constant *C = ConstantInt::get(CommonOffsetVal->getType(),
               AdjustedOffset);
-        if (auto VT = dyn_cast<VectorType>(AddAddr->getOperand(1)->getType()))
+        if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(
+                AddAddr->getOperand(1)->getType()))
           C = ConstantVector::getSplat(
               IGCLLVM::getElementCount(VT->getNumElements()), C);
         AddAddr->setOperand(1, C);
@@ -875,7 +877,7 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
   IGC_ASSERT(VecDef);
 
   unsigned InputNumElements =
-      cast<VectorType>(VecDef->getType())->getNumElements();
+      cast<IGCLLVM::FixedVectorType>(VecDef->getType())->getNumElements();
 
   if (HasVector) {
     if (InputNumElements == 2 || InputNumElements == 4 ||
@@ -939,7 +941,8 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
     R.Stride = Diff / R.ElementBytes;
     // See how big we can legally make the region.
     unsigned InputNumElements =
-        cast<VectorType>(FirstRdR->getOperand(0)->getType())->getNumElements();
+        cast<IGCLLVM::FixedVectorType>(FirstRdR->getOperand(0)->getType())
+            ->getNumElements();
     Num = R.getLegalSize(0, /*Allow2D=*/true, InputNumElements, ST);
     if (Num == 1)
       continue;
