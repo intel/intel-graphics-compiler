@@ -1350,7 +1350,9 @@ namespace IGC
                 // So we skip these prefixes when reading the options to be agnostic of their source
 
                 // Runtime passes internal options via pOptions as well, and those
-                // internal options will be handled by InternalOptions class.
+                // internal options will be handled by InternalOptions class (parseOptions).
+                // !!! When adding a new internal option, please add it into internalOptions class!!!
+                // (Might combine both Options and InternalOptions into a single class!)
                 const char* options = pInputArgs->pOptions;
                 if (strstr(options, "-fp32-correctly-rounded-divide-sqrt"))
                 {
