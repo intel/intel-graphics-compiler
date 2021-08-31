@@ -700,53 +700,9 @@ static bool OCLBuiltinsRequired(const Module &M) {
                      [](const Function &F) { return isOCLBuiltinDecl(F); });
 }
 
-// Translates SPIR-V OCL builtin name into OCL library function name.
-// FIXME: delete it. Hand demangling was provided as a quick'n'dirty solution.
-static std::string translateSPIRVOCLBuiltinName(StringRef OrigName) {
-  StringRef SPIRVOCLBuiltinPrefixRef{SPIRVOCLBuiltinPrefix};
-  auto DemangledNameBegin = OrigName.find(SPIRVOCLBuiltinPrefix);
-  IGC_ASSERT_MESSAGE(DemangledNameBegin != StringRef::npos,
-                     "should've found spirv ocl prefix in the name");
-  StringRef NameLengthWithPrefix = OrigName.take_front(DemangledNameBegin);
-  const StringRef GlobalNSPrefix = "_Z";
-  IGC_ASSERT_MESSAGE(NameLengthWithPrefix.startswith(GlobalNSPrefix),
-                     "the name is expected to start with _Z");
-  StringRef NameLengthStr =
-      NameLengthWithPrefix.drop_front(GlobalNSPrefix.size());
-  int NameLength;
-  bool Error = NameLengthStr.getAsInteger(10, NameLength);
-  IGC_ASSERT_MESSAGE(!Error, "error occured during name length decoding");
-  StringRef OrigDemangledName = OrigName.substr(DemangledNameBegin, NameLength);
-  StringRef NewDemangledName =
-      OrigDemangledName.drop_front(SPIRVOCLBuiltinPrefixRef.size());
-  StringRef OrigNameSuffix = OrigName.take_back(
-      OrigName.size() - NameLengthWithPrefix.size() - NameLength);
-  std::stringstream NewNameBuilder;
-  NewNameBuilder << GlobalNSPrefix.str() << NewDemangledName.size()
-                 << NewDemangledName.str() << OrigNameSuffix.str();
-  return NewNameBuilder.str();
-}
-
-static void translateSPIRVOCLBuiltin(Function &F) {
-  StringRef OrigName = F.getName();
-  auto NewName = translateSPIRVOCLBuiltinName(OrigName);
-  F.setName(NewName);
-}
-
-// SPIR-V OCL builtins are functions that start with __spirv_ocl_.
-// OCL library functions have no prefix. So e.g. __spirv_ocl_exp(double)
-// should be translated into exp(double).
-static void translateSPIRVOCLBuiltins(Module &M) {
-  auto Worklist = make_filter_range(
-      M, [](Function &F) { return isSPIRVOCLBuiltinDecl(F); });
-  llvm::for_each(Worklist, [](Function &F) { translateSPIRVOCLBuiltin(F); });
-}
-
 bool GenXImportOCLBiF::runOnModule(Module &M) {
   if (!OCLBuiltinsRequired(M))
     return false;
-
-  translateSPIRVOCLBuiltins(M);
   std::unique_ptr<Module> GenericBiFModule =
       getBiFModule(BiFKind::OCLGeneric, M.getContext());
   GenericBiFModule->setDataLayout(M.getDataLayout());

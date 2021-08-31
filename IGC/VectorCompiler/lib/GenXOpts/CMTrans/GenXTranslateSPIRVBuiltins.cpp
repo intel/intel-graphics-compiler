@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Linker/Linker.h>
 #include <llvm/Pass.h>
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
@@ -72,14 +73,38 @@ static bool isSPIRVBuiltinDecl(const Function &F) {
 }
 
 bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
-  // FIXME: It does nothing for now until BiF module is ready.
-  return false;
+  // Collect SPIRV built-in functions to link.
+  auto SPIRVBuiltinDecls =
+      llvm::make_filter_range(M.getFunctionList(), [](const Function &F) {
+        return isSPIRVBuiltinDecl(F);
+      });
+  // Nothing to do if there are no spirv builtins.
+  if (std::begin(SPIRVBuiltinDecls) == std::end(SPIRVBuiltinDecls))
+    return false;
+
+  std::vector<std::string> SPIRVBuiltinDeclsNames;
+  llvm::transform(SPIRVBuiltinDecls, std::back_inserter(SPIRVBuiltinDeclsNames),
+                  [](const Function &F) { return F.getName().str(); });
 
   std::unique_ptr<Module> SPIRVBuiltinsModule =
       getBiFModule(BiFKind::VCSPIRVBuiltins, M.getContext());
   SPIRVBuiltinsModule->setDataLayout(M.getDataLayout());
   SPIRVBuiltinsModule->setTargetTriple(M.getTargetTriple());
-  // TODO: Link builtins implementations, make them internal.
+
+  if (Linker::linkModules(M, std::move(SPIRVBuiltinsModule),
+                          Linker::Flags::LinkOnlyNeeded)) {
+    IGC_ASSERT_MESSAGE(0, "Error linking spirv implementation builtin module");
+  }
+
+  // If declaration appeared, then mark with internal linkage. False positives
+  // are still declarations as they were earlier.
+  for (auto SPIRVBuiltinDeclName : SPIRVBuiltinDeclsNames) {
+    auto *F = M.getFunction(SPIRVBuiltinDeclName);
+    IGC_ASSERT_MESSAGE(F, "Function is still expected");
+    if (!F->isDeclaration())
+      F->setLinkage(GlobalValue::LinkageTypes::InternalLinkage);
+  }
+
   return true;
 }
 

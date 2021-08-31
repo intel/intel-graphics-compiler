@@ -603,6 +603,14 @@ add_custom_target("${IGC_BUILD__PROJ__BiFModule_OCL}"
   )
 set_property(TARGET "${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__BiFModule_OCL}")
 
+# =========================================== SPIRV Headers ============================================
+
+add_library(IGCSPIRVHeaders INTERFACE)
+target_include_directories(IGCSPIRVHeaders
+  INTERFACE
+  ${IGC_OPTION__BIF_SRC_OCL_DIR}/Headers
+  )
+
 # ======================================================================================================
 # ======================================================================================================
 # ======================================================================================================
