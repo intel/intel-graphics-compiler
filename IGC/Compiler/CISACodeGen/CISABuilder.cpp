@@ -4109,6 +4109,10 @@ namespace IGC
         {
             SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum));
         }
+        else if (context->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
+        {
+            SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum4CS));
+        }
         else
         {
             SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());

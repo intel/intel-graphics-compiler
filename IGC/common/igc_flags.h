@@ -50,6 +50,7 @@ DECLARE_IGC_REGKEY(debugString, VISAOptions,            0,     "Options to vISA.
 DECLARE_IGC_REGKEY(DWORD,disableIGASyntax,              false, "Disables GEN isa text output using IGA and new syntax.", false)
 DECLARE_IGC_REGKEY(DWORD,disableCompaction,             false, "Disables compaction.", true)
 DECLARE_IGC_REGKEY(DWORD,TotalGRFNum,                   0,     "Total GRF used for register allocation.", false)
+DECLARE_IGC_REGKEY(DWORD,TotalGRFNum4CS,                0,     "Total GRF used for register allocation. ComputeShader only.", false)
 DECLARE_IGC_REGKEY(DWORD,ReservedRegisterNum,           0,     "Reserve regsiter number for spill cost testing.", false)
 DECLARE_IGC_REGKEY(DWORD, GRFNumToUse,                  0,     "Set the number of general registers to use (64 to totalGRFNum)", false)
 DECLARE_IGC_REGKEY(bool, ExpandPlane,                   false, "Enable pln to mad macro expansion.", false)

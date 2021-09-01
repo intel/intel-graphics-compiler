@@ -1179,6 +1179,10 @@ namespace IGC
         {
             return getModuleMetaData()->csInfo.forceTotalGRFNum;
         }
+        if (this->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
+        {
+            return IGC_GET_FLAG_VALUE(TotalGRFNum4CS);
+        }
         return 128;
     }
 
