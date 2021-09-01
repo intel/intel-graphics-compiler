@@ -1472,7 +1472,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAV
             // If unpacked then small variable takes up 32 bits else when packed fits its exact size
             uint32_t bitsUsedByVar = (isPacked || varSizeInBits > 32) ? (uint32_t)varSizeInBits : 32;
             uint32_t variablesInSingleGRF = (VISAMod->getGRFSize() * 8) / bitsUsedByVar;
-            uint32_t valForSubRegLit = (uint32_t)log2(variablesInSingleGRF);
+            uint32_t valForSubRegLit = variablesInSingleGRF > 0 ? (uint32_t)log2(variablesInSingleGRF) : 0;
 
             // TODO: missing case lr->getGRF().subRegNum > 0
             // unsigned int subReg = lr->getGRF().subRegNum;
