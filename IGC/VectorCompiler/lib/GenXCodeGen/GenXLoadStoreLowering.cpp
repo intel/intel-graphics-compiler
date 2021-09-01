@@ -76,8 +76,9 @@ class GenXLoadStoreLowering : public FunctionPass,
 private:
   Value *ZExtOrTruncIfNeeded(Value *From, Type *To,
                              Instruction *InsertBefore) const;
-  Value *NormalizeVector(Value *From, Type *To, Instruction *InsertBefore,
-                         IRBuilder<> &Builder) const;
+  std::pair<Value *, unsigned> NormalizeVector(Value *From, Type *To,
+                                               Instruction *InsertBefore,
+                                               IRBuilder<> &Builder) const;
   Instruction *RestoreVectorAfterNormalization(Instruction *From,
                                                Type *To) const;
   Value *NormalizeFuncPtrVec(Value *V, Instruction *InsPoint) const;
@@ -88,9 +89,9 @@ private:
 
 private:
   Instruction *createLoad(LoadInst &LdI, Value &NormalizedOldVal,
-                          IRBuilder<> &Builder) const;
+                          unsigned ValueEltSz, IRBuilder<> &Builder) const;
   Instruction *createStore(StoreInst &StI, Value &NormalizedOldVal,
-                           IRBuilder<> &Builder) const;
+                           unsigned ValueEltSz, IRBuilder<> &Builder) const;
 
 public:
   void visitStoreInst(StoreInst &StI) const;
@@ -191,13 +192,20 @@ GenXLoadStoreLowering::ZExtOrTruncIfNeeded(Value *From, Type *ToTy,
 // and possible extractelems (64->8xi8 cast case) to get a vector of int64s.
 // If data is a vector of type < 32bit, extend each element in order to create
 // proper send instruction in the finalizer.
-Value *GenXLoadStoreLowering::NormalizeVector(Value *From, Type *To,
-                                              Instruction *Inst,
-                                              IRBuilder<> &Builder) const {
+//
+// returned size almost always size of element of returned data
+// except 8/16 case shrink
+std::pair<Value *, unsigned>
+GenXLoadStoreLowering::NormalizeVector(Value *From, Type *To, Instruction *Inst,
+                                       IRBuilder<> &Builder) const {
   Type *I32Ty = Builder.getInt32Ty();
   Type *I64Ty = Builder.getInt64Ty();
   Value *Res = From;
   Type *FromTy = From->getType();
+  IGC_ASSERT(isa<VectorType>(FromTy));
+  unsigned EltSz =
+      DL_->getTypeSizeInBits(FromTy->getScalarType()) / genx::ByteBits;
+  IGC_ASSERT(EltSz > 0);
   unsigned NumElts = cast<IGCLLVM::FixedVectorType>(FromTy)->getNumElements();
   if (isFuncPointerVec(From) &&
       DL_->getTypeSizeInBits(From->getType()->getScalarType()) <
@@ -214,6 +222,7 @@ Value *GenXLoadStoreLowering::NormalizeVector(Value *From, Type *To,
     Res = CastInst::Create(Instruction::PtrToInt, From, To, "", Inst);
     NumElts *= 2;
     To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
+    EltSz = I32Ty->getPrimitiveSizeInBits() / genx::ByteBits;
     Res = CastInst::Create(Instruction::BitCast, Res, To, "", Inst);
   } else if (DL_->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) <
              genx::DWordBits) {
@@ -233,11 +242,12 @@ Value *GenXLoadStoreLowering::NormalizeVector(Value *From, Type *To,
       auto *NewType = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
       From = CastInst::Create(CastInst::PtrToInt, From, NewType, "", Inst);
       To = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
+      EltSz = I64Ty->getPrimitiveSizeInBits() / genx::ByteBits;
     }
     Res = CastInst::CreateBitOrPointerCast(From, To, "", Inst);
   }
 
-  return Res;
+  return std::make_pair(Res, EltSz);
 }
 // --- MAGIC LEGACY END ---
 
@@ -377,6 +387,7 @@ GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
 // in future this will be extended to create different loads (now SVM only)
 Instruction *GenXLoadStoreLowering::createLoad(LoadInst &LdI,
                                                Value &NormalizedOldVal,
+                                               unsigned ValueEltSz,
                                                IRBuilder<> &Builder) const {
   Type *I64Ty = Builder.getInt64Ty();
   LLVM_DEBUG(dbgs() << "Creating load from: " << LdI << "\n");
@@ -384,9 +395,6 @@ Instruction *GenXLoadStoreLowering::createLoad(LoadInst &LdI,
   unsigned NumEltsToLoad = LdTy->getNumElements();
   Value *PredVal = Builder.getTrue();
   Value *Pred = Builder.CreateVectorSplat(NumEltsToLoad, PredVal);
-  unsigned ValueEltSz =
-      DL_->getTypeSizeInBits(NormalizedOldVal.getType()->getScalarType()) /
-      genx::ByteBits;
 
   // we haven't changed size after normalization
   IGC_ASSERT(NumEltsToLoad ==
@@ -452,10 +460,10 @@ void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
       Builder.CreateVectorSplat(NumEltsToLoad, UndefValue::get(LdEltTy));
 
   // normalize (see restore below)
-  Value *NormalizedOldVal =
+  auto [NormalizedOldVal, ValueEltSz] =
       NormalizeVector(OldValOfTheDataRead, LdTy, &LdI, Builder);
 
-  auto *Gather = createLoad(LdI, *NormalizedOldVal, Builder);
+  auto *Gather = createLoad(LdI, *NormalizedOldVal, ValueEltSz, Builder);
   Gather->setDebugLoc(LdI.getDebugLoc());
   Gather->insertAfter(&LdI);
 
@@ -488,15 +496,14 @@ void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
 // in future this will be extended to create different stores (now SVM only)
 Instruction *GenXLoadStoreLowering::createStore(StoreInst &StI,
                                                 Value &NormalizedOldVal,
+                                                unsigned ValueEltSz,
                                                 IRBuilder<> &Builder) const {
   Value *PointerOp = StI.getPointerOperand();
   Type *I64Ty = Builder.getInt64Ty();
   Value *PredVal = Builder.getTrue();
   Value *Offset =
       CastInst::Create(Instruction::PtrToInt, PointerOp, I64Ty, "", &StI);
-  unsigned ValueEltSz =
-      DL_->getTypeSizeInBits(NormalizedOldVal.getType()->getScalarType()) /
-      genx::ByteBits;
+
   unsigned ValueNumElts =
       cast<IGCLLVM::FixedVectorType>(NormalizedOldVal.getType())
           ->getNumElements();
@@ -546,10 +553,11 @@ void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
   // old Value type to restore into
   Type *ValueOpTy = ValueOp->getType();
 
-  Value *NormalizedValue = NormalizeVector(ValueOp, ValueOpTy, &StI, Builder);
+  auto [NormalizedOldVal, ValueEltSz] =
+      NormalizeVector(ValueOp, ValueOpTy, &StI, Builder);
 
-  // creating store after StI, using NormalizedValue
-  auto *Scatter = createStore(StI, *NormalizedValue, Builder);
+  // creating store after StI, using NormalizedOldVal
+  auto *Scatter = createStore(StI, *NormalizedOldVal, ValueEltSz, Builder);
   Scatter->setDebugLoc(StI.getDebugLoc());
   Scatter->insertAfter(&StI);
   Scatter->setMetadata(
