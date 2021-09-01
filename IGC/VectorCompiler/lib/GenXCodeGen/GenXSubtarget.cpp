@@ -81,13 +81,21 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   if (CPUName.empty())
     CPUName = "generic";
 
-  ParseSubtargetFeatures(CPUName, FS);
+  ParseSubtargetFeatures(CPUName,
+#if LLVM_VERSION_MAJOR >= 12
+                         /*TuneCPU=*/CPUName,
+#endif
+                         FS);
 }
 
 GenXSubtarget::GenXSubtarget(const Triple &TT, const std::string &CPU,
                              const std::string &FS)
-    : GenXGenSubtargetInfo(TT, CPU, FS), TargetTriple(TT) {
+    : GenXGenSubtargetInfo(TT, CPU,
+#if LLVM_VERSION_MAJOR >= 12
+                           /*TuneCPU=*/CPU,
+#endif
+                           FS),
+      TargetTriple(TT) {
 
   resetSubtargetFeatures(CPU, FS);
 }
-
