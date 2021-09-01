@@ -268,9 +268,6 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
       break;
     auto Next = Inst->getNextNode();
     if (Phi->getNumIncomingValues() == 2) {
-      Value *V = Phi->getIncomingValueForBlock(BB);
-      Phi->replaceAllUsesWith(V);
-      Phi->eraseFromParent();
       // Having got rid of the phi, it is worth running instruction
       // simplification on each use. Specifically, this turns the
       // P3 = (P1 & P2) | (P1 & ~P2) at the endif of an if that
@@ -278,20 +275,8 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
       // would never have its branch removed, because the use of the "or"
       // as a predicate stops us detecting that all predicates are a
       // subset of the branch condition.
-      // Run instruction simplification on each use, but restart if any
-      // simplification happens as then the use chain changes under our feet.
-      if (auto I = dyn_cast<Instruction>(V)) {
-        bool Restart = true;
-        while (Restart) {
-          Restart = false;
-          for (auto ui = I->use_begin(), ue = I->use_end(); ui != ue; ++ui)
-            if (recursivelySimplifyInstruction(
-                  cast<Instruction>(ui->getUser()))) {
-              Restart = true;
-              break;
-            }
-        }
-      }
+      Value *V = Phi->getIncomingValueForBlock(BB);
+      replaceAndRecursivelySimplify(Phi, V);
     } else {
       unsigned PredIdx = Phi->getBasicBlockIndex(Pred);
       unsigned BBIdx = Phi->getBasicBlockIndex(BB);
