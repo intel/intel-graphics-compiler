@@ -6870,7 +6870,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     void Optimizer::HWWorkaround()
     {
         if ((kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) &&
-            builder.getJitInfo()->spillMemUsed > 0 && builder.hasFusedEUWA())
+            builder.hasFusedEUWA() &&
+            (builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
         {
             // For now, do it for CM/VC. Will turn it on for all.
             doNoMaskWA_postRA();
@@ -11606,6 +11607,10 @@ void Optimizer::doNoMaskWA()
             for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
             {
                 G4_INST* I = *II;
+
+                // Mark all instruction as created by preRA to avoid re-processing postRA
+                I->setCreatedPreRA(true);
+
                 if (!isCandidateInst(I, fg))
                 {
                     continue;
@@ -11792,21 +11797,48 @@ void Optimizer::doNoMaskWA()
 //           //  scratch space spill: SP_GRF_V77_3 from offset[4x32];
 //           (W) send.dc0 (16|M0)  null  r0  r4  0x80  0x020F1004
 //
+// For flag spill:
+//   Need WA as well due to the following case:
+//
+//   After RA:
+//      BB_19:
+//           (W)  mov (1|M0)     r34.8<1>:uw   f0.1<0;1,0>:uw
+//           ...
+//      BB_21:
+//           (W)  mov (1|M0)     f1.1<1>:uw    r34.8<0;1,0>:uw
+//
+//   If BB_19 should be skipped but runs due to this HW bug, r34.8 will be updated
+//   with a f0.1, which is undefined value.  And at BB_21, reading from r34.8 will
+//   get garbage value!
+//
 // Note this works only for NoMaskWA=2
 //
 void Optimizer::doNoMaskWA_postRA()
 {
     std::vector<INST_LIST_ITER> NoMaskCandidates;
     G4_ExecSize simdsize = fg.getKernel()->getSimdSize();
+    const bool HasFlagSpill = (builder.getJitInfo()->numFlagSpillStore > 0);
 
-    auto isCandidate = [](G4_INST* I) {
-        if (I->isSend() && I->isWriteEnableInst() &&
-            I->getPredicate() == nullptr &&
+    auto isCandidate = [&](G4_INST* I) {
+        if (I->getCreatedPreRA() || !I->isWriteEnableInst())
+        {
+            return false;
+        }
+
+        // If it is global flag spill or global grf spill, need to do WA.
+        // For now, global checking is not available
+
+        // 1. flag spill
+        if (HasFlagSpill &&
+            I->isMov() && I->getSrc(0) && I->getSrc(0)->isFlag() &&
+            I->getExecSize() == g4::SIMD1 && I->getPredicate() == nullptr)
+        {
+            return true;
+        }
+        // 2. GRF spill
+        if (I->isSend() && I->getPredicate() == nullptr &&
             (I->getDst() == nullptr || I->getDst()->isNullReg()))
         {
-            // This shall be a spill (write).
-            // May check if the spilled var is global. We only need
-            // to do WA for global spill!
             return true;
         }
         return false;
@@ -11864,6 +11896,16 @@ void Optimizer::doNoMaskWA_postRA()
     //        (W & f0.0.any16h) send (16|M0) ...
     //    3.  (W) mov (1|M0) f0.0<1>:uw  DW0:uw               // restore
     //
+    // For flag spill, the sequence is the same as the above except for the case in which
+    // the WAFlag is the same as spilled flag. For example,
+    //
+    //    (W) mov (1|M0)   r34.8<1>:uw   f0.0<0;1,0>:uw
+    //
+    //    1. (W) mov (1|M0)  DW0:uw   f0.0<0;1,0>:uw         // save
+    //    2. (W) mov (1|M0)  f0.0<1>:uw   DW1:uw             // WARestore
+    //       (W & f0.0.any16h) mov r34.8<1>:uw  DW0.0<0;1,0>:uw
+    //    3. (W) mov (1|M0) f0.0<1>:uw  DW0:uw               // restore
+    //
     // Todo:  check if save/restore is needed to avoid redundant save/restore.
     //
     G4_Declare* saveTmp = builder.getEUFusionWATmpVar(); // 2DW;
@@ -11904,10 +11946,15 @@ void Optimizer::doNoMaskWA_postRA()
         // Without optimization, always do save/restore
         bool needSave = true;
         bool needRestore = true;
+
+        // wa flag register to use f(wafregnum, wafsregnum)
+        uint32_t wafregnum = 0;
+        uint32_t wafsregnum = 0;
+
         G4_Type Ty = (simdsize > 16) ? Type_UD : Type_UW;
         G4_Declare* flagDcl = builder.createTempFlag((Ty == Type_UW ? 1 : 2), "waflag");
         G4_RegVar* flagVar = flagDcl->getRegVar();
-        flagVar->setPhyReg(builder.phyregpool.getFlagAreg(0), 0);
+        flagVar->setPhyReg(builder.phyregpool.getFlagAreg(wafregnum), wafsregnum);
 
         // Save flag, create WA mask, save WAflag
         createMov1(BB, WAInsts[0], saveVar, saveOff, flagVar, 0, Ty);  // save
@@ -11928,6 +11975,24 @@ void Optimizer::doNoMaskWA_postRA()
             G4_INST* I = *currII;
             G4_Predicate* newPred = builder.createPredicate(
                 PredState_Plus, flagVar, 0, waPredCtrl);
+            if (I->isMov() && I->getSrc(0) && I->getSrc(0)->isFlag())
+            {
+                G4_SrcRegRegion* srcReg = I->getSrc(0)->asSrcRegRegion();
+                G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcReg->getBase());
+                assert(baseVar->isPhyRegAssigned());
+
+                // For flag, G4_Areg has flag number and G4_RegVar has subRefOff.
+                // (SrcRegRegion's refOff/subRefOff is 0/0 always.)
+                G4_Areg* flagReg = baseVar->getPhyReg()->getAreg();
+                uint32_t subRegOff = baseVar->getPhyRegOff();
+                if (flagReg->getFlagNum() == wafregnum &&
+                    (Ty == Type_UD /* 32bit flag */ ||  subRegOff == wafsregnum /* 16bit flag */))
+                {
+                    G4_SrcRegRegion* S = builder.createSrc(
+                        saveVar, 0, saveOff, builder.getRegionScalar(), Ty);
+                    I->setSrc(S, 0);
+                }
+            }
             I->setPredicate(newPred);
 
             if (i == (sz - 1) || needRestore) {
