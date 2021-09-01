@@ -255,6 +255,11 @@ void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
         if (itr == m_instInfoMap.end())
             continue;
 
+        // No VISA instruction emitted corresponding to this llvm IR instruction.
+        // Typically happens with cast instructions.
+        if (itr->second.m_size == 0)
+            continue;
+
         unsigned int currOffset = itr->second.m_offset;
         VISAIndexToInst.insert(std::make_pair(currOffset, pInst));
         unsigned int currSize = itr->second.m_size;
