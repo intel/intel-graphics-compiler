@@ -94,6 +94,39 @@ namespace IGCLLVM
 #endif
         }
 
+        // SysRoot Argument only for LLVM <= 10 backwards compatibility
+        llvm::DIModule *createModule(llvm::DIScope *Scope, llvm::StringRef Name,
+                        llvm::StringRef ConfigurationMacros, llvm::StringRef IncludePath,
+                        llvm::StringRef APINotesFile = {}, llvm::DIFile *File = nullptr,
+                        unsigned LineNo = 0, bool IsDecl = false, llvm::StringRef SysRoot = {})
+        {
+
+#if LLVM_VERSION_MAJOR >= 12
+// Simply proxy the call
+
+            return llvm::DIBuilder::createModule(Scope, Name, ConfigurationMacros, IncludePath,
+                        APINotesFile, File, LineNo, IsDecl);
+
+#elif LLVM_VERSION_MAJOR == 11
+// LLVM 12 introduced IsDecl argument.
+//
+//     Differential Revision: https://reviews.llvm.org/D93462
+
+            return llvm::DIBuilder::createModule(Scope, Name, ConfigurationMacros, IncludePath,
+                        APINotesFile, File, LineNo);
+
+#elif LLVM_VERSION_MAJOR <= 10
+// LLVM 11 introduced major changes in arguments for Fortran support.
+// Deleted SysRoot argument had moved to DICompileUnit
+//
+//     Differential Revision #1: https://reviews.llvm.org/D79484
+//     Differential Revision #2: https://reviews.llvm.org/D71732
+
+            return llvm::DIBuilder::createModule(Scope, Name, ConfigurationMacros, IncludePath,
+                        SysRoot);
+#endif
+        }
+
         inline llvm::DISubprogram* createTempFunctionFwdDecl(
             llvm::DIScope* Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile* File,
             unsigned LineNo, llvm::DISubroutineType* Ty, bool isLocalToUnit,
