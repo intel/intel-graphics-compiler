@@ -97,7 +97,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
 
     const char* GetIGCRevision() {
 #ifdef IGC_REVISION
-      return IGC_MANGLE(IGC_REVISION);
+      return IGC_REVISION;
 #else
       return "";
 #endif

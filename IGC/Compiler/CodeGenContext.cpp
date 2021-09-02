@@ -738,18 +738,18 @@ namespace IGC
             //
             // Options to set the number of GRF and threads
             // (All start with -cl-intel or -ze-opt)
-            else if (suffix.equals(IGC_MANGLE("-128-GRF-per-thread")))
+            else if (suffix.equals("-128-GRF-per-thread"))
             {
                 Intel128GRFPerThread = true;
                 numThreadsPerEU = 8;
             }
-            else if (suffix.equals(IGC_MANGLE("-256-GRF-per-thread")) ||
-                suffix.equals(IGC_MANGLE("-large-register-file")))
+            else if (suffix.equals("-256-GRF-per-thread") ||
+                suffix.equals("-large-register-file"))
             {
                 Intel256GRFPerThread = true;
                 numThreadsPerEU = 4;
             }
-            else if (suffix.equals(IGC_MANGLE("-num-thread-per-eu")))
+            else if (suffix.equals("-num-thread-per-eu"))
             {
                 IntelNumThreadPerEU = true;
 

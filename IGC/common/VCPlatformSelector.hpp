@@ -44,20 +44,20 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     if (Product == IGFX_DG1)
       return "DG1";
     if (Product == IGFX_ROCKETLAKE)
-      return IGC_MANGLE("RKL");
+      return "RKL";
     if (Product == IGFX_ALDERLAKE_S)
-      return IGC_MANGLE("ADLS");
+      return "ADLS";
     if (Product == IGFX_ALDERLAKE_P)
-        return IGC_MANGLE("ADLP");
+      return "ADLP";
     else if (Product == IGFX_XE_HP_SDV)
       return "XEHP";
     else if (Product == IGFX_XE_HP_SDV)
-      return IGC_MANGLE("TGL"); // alias to XeHP_SDV
+      return "TGL"; // alias to XeHP_SDV
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
   }
-  return IGC_MANGLE("SKL");
+  return "SKL";
 }
 
 } // namespace cmc

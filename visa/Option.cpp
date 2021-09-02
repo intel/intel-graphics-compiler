@@ -368,7 +368,7 @@ void Options::showUsage(std::ostream& output)
 void Options::initialize_vISAOptionsToStr(void) {
    #undef DEF_VISA_OPTION
    #define DEF_VISA_OPTION(ENUM, TYPE, STR, ERROR_MSG, DEFAULT_VAL) \
-    vISAOptionsToStr[ENUM] = IGC_MANGLE(#ENUM);
+    vISAOptionsToStr[ENUM] = #ENUM;
    #include "VISAOptionsDefs.h"
 }
 

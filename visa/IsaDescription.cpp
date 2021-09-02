@@ -1765,13 +1765,13 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         },
     },
     /// 143 (0x8F)
-    { ALL, ISA_RESERVED_8F, ISA_Inst_Reserved, IGC_MANGLE("reserved_8f"), 0, 0,
+    { ALL, ISA_RESERVED_8F, ISA_Inst_Reserved, "reserved_8f", 0, 0,
         {
         },
     },
 
     /// 144 (0x90)
-    { ALL, ISA_RESERVED_90, ISA_Inst_Reserved, IGC_MANGLE("reserved_90"), 0, 0,
+    { ALL, ISA_RESERVED_90, ISA_Inst_Reserved, "reserved_90", 0, 0,
         {
         },
     },

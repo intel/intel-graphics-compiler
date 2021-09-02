@@ -1805,7 +1805,7 @@ bool BfnMatcher::emit() {
   std::copy(Srcs.begin(), Srcs.end(), Args.begin());
   Args.back() = Builder.getInt8(Index);
 
-  CallInst *CI = Builder.CreateCall(Fn, Args, IGC_MANGLE("bfn"));
+  CallInst *CI = Builder.CreateCall(Fn, Args, "bfn");
   MainBfnInst->replaceAllUsesWith(CI);
 
   NumOfBfnMatched++;

@@ -1478,7 +1478,7 @@ bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNum, const char *var, int64_
     do { \
         int __status = m_kernel->FUNC(__VA_ARGS__); \
         if (__status != VISA_SUCCESS) { \
-            RecordParseError(lineNum, IGC_MANGLE(#FUNC), ": unknown error (internal line: ", __LINE__, ")"); \
+            RecordParseError(lineNum, #FUNC, ": unknown error (internal line: ", __LINE__, ")"); \
             return false; \
         } \
     } while (0)
@@ -1486,7 +1486,7 @@ bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNum, const char *var, int64_
     do { \
         int __status = FUNC_RESULT; \
         if (__status != VISA_SUCCESS) { \
-            RecordParseError(lineNum, ""/*IGC_MANGLE(__FUNCTION__)*/, ": unknown error (internal line: ", __LINE__, ")"); \
+            RecordParseError(lineNum, ""/*__FUNCTION__*/, ": unknown error (internal line: ", __LINE__, ")"); \
             return false; \
         } \
     } while (0)
@@ -1495,10 +1495,11 @@ bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNum, const char *var, int64_
     do { \
         int __status = m_kernel->FUNC(__VA_ARGS__); \
         if (__status != VISA_SUCCESS) { \
-            RecordParseError(lineNum, IGC_MANGLE(#FUNC), ": unknown error (internal line: ", __LINE__, ")"); \
+            RecordParseError(lineNum, #FUNC, ": unknown error (internal line: ", __LINE__, ")"); \
             return nullptr; \
         } \
     } while (0)
+
 #define VISA_CALL_TO_BOOL_NOLINE(FUNC, ...) \
     do { \
         int lineNum = 0; \

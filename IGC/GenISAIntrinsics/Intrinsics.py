@@ -130,7 +130,9 @@ def generateIDArray():
     f.write("// Intrinsic ID to name table\n"
             "#ifdef GET_INTRINSIC_NAME_TABLE\n")
     for i in range(len(ID_array)):
-        f.write('  IGC_MANGLE("llvm.genx.'+ID_array[i].replace("_",".")+'"),\n')
+        f.write('  ')
+        f.write('"llvm.genx.'+ID_array[i].replace("_",".")+'"')
+        f.write(',\n')
     f.write("#endif\n\n")
     f.close()
 
@@ -169,7 +171,9 @@ def sortedIntrinsicsOnLenth():
             "static const std::array<IntrinsicEntry,"+str(len(final_array))+"> LengthTable = {{\n")
     for i in range(len(final_array)):
         #Go through and write each element
-        f.write("{ "+str(final_array[i][0])+", "+str(final_array[i][1][1])+", IGC_MANGLE(\""+str(final_array[i][1][0])+"\")}")
+        f.write("{ "+str(final_array[i][0])+", "+str(final_array[i][1][1])+", ")
+        f.write("\""+str(final_array[i][1][0])+"\"")
+        f.write("}")
         if i != len(final_array) - 1:
             f.write(", ")
         if i%2 == 0:

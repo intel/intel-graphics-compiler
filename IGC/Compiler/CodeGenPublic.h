@@ -1394,7 +1394,7 @@ namespace IGC
                 {
                     IsLibraryCompilation = true;
                 }
-                if (const char* op = strstr(options, IGC_MANGLE("-intel-reqd-eu-thread-count")))
+                if (const char* op = strstr(options, "-intel-reqd-eu-thread-count"))
                 {
                     IntelRequiredEUThreadCount = true;
                     // Take an integer value after this option

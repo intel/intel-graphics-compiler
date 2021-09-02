@@ -11,4 +11,3 @@ SPDX-License-Identifier: MIT
 #include <cstddef>
 
 #define IGC_STRDEBUG(STR) (STR)
-#define IGC_MANGLE(STR) (STR)

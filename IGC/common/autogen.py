@@ -159,7 +159,9 @@ def printStructCalls(structDecl, outputFile):
     for item in structDecl.fields:
         item = item[:-1]
         p =  '"{}"'.format(item)
-        outputFile.write("        CreateNode(" + structDecl.declName + "Var" + "." + item + ", module, IGC_MANGLE("+ p + ")),\n")
+        outputFile.write("        CreateNode(" + structDecl.declName + "Var" + "." + item + ", module, ")
+        outputFile.write(p)
+        outputFile.write("),\n")
     outputFile.write("    };\n")
     outputFile.write("    MDNode* node = MDNode::get(module->getContext(), v);\n")
     outputFile.write("    return node;\n")
@@ -171,7 +173,9 @@ def printEnumCalls(enumDecl, outputFile):
     outputFile.write("    {\n")
     for item in enumDecl.fields:
         outputFile.write("        case IGC::" + enumDecl.declName + "::" + item + ":\n"  )
-        outputFile.write("            enumName = IGC_MANGLE(\"" + item + "\");\n" )
+        outputFile.write("            enumName = ")
+        outputFile.write("\"" + item + "\"")
+        outputFile.write(";\n")
         outputFile.write("            break;\n" )
     outputFile.write("    }\n")
     outputFile.write("    Metadata* v[] = \n")
@@ -187,8 +191,9 @@ def printStructReadCalls(structDecl, outputFile):
      for item in structDecl.fields:
         item = item[:-1]
         p =  '"{}"'.format(item)
-        outputFile.write("    readNode(" + structDecl.declName + "Var" + "." + item + ", node , IGC_MANGLE(" + p + "));\n")
-
+        outputFile.write("    readNode(" + structDecl.declName + "Var" + "." + item + ", node , ")
+        outputFile.write(p)
+        outputFile.write(");\n")
 
 def printEnumReadCalls(enumDecl, outputFile):
     outputFile.write("    StringRef s = cast<MDString>(node->getOperand(1))->getString();\n")
@@ -196,7 +201,9 @@ def printEnumReadCalls(enumDecl, outputFile):
     outputFile.write("    "+ enumDecl.declName + "Var = (IGC::" + enumDecl.declName + ")(0);\n")
 
     for item in enumDecl.fields:
-        outputFile.write("    if((str.size() == sizeof(\""+ item + "\")-1) && (::memcmp(str.c_str(),IGC_MANGLE(\""+ item + "\"),str.size())==0))\n")
+        outputFile.write("    if((str.size() == sizeof(\""+ item + "\")-1) && (::memcmp(str.c_str(),")
+        outputFile.write("\"" + item + "\"")
+        outputFile.write(",str.size())==0))\n")
         outputFile.write("    {\n")
         outputFile.write("            "+ enumDecl.declName + "Var = IGC::" + enumDecl.declName + "::" + item + ";\n")
         outputFile.write("    } else\n")
