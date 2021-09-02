@@ -41,8 +41,9 @@ SPDX-License-Identifier: MIT
 namespace {
 struct VcPayloadInfo {
   bool IsValid = false;
-  uint64_t VcOptsOffset = 0;
-  uint64_t IrSize = 0;
+  size_t IRSize = 0;
+  llvm::StringRef VCApiOpts;
+  llvm::StringRef VCInternalOpts;
 };
 
 class BuildDiag {
@@ -63,28 +64,30 @@ private:
 
 static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
   // Payload format:
-  // |-vc-codegen|c-str llvm-opts|i64(IR size)|i64(Payload size)|-vc-codegen|
+  // |-vc-payload|api opts|internal opts|i64(IR size)|i64(Payload size)|-vc-payload|
+  // NOTE: <api/internal opts> are c-strings.
   //
   // Should be in sync with:
-  //  Source/IGC/AdaptorOCL/ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.cpp
+  //    Source/IGC/AdaptorOCL/ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.cpp
 
-  // Check for availability of "-vc-codegen" marker at the end.
-  const std::string CodegenMarker = "-vc-codegen";
+  // Check for availability of "-vc-payload" marker at the end.
+  const char *PayloadMarker = "-vc-payload";
+  const size_t PayloadMarkerSize = strlen(PayloadMarker);
   // Make sure that we also have a room for 2 i64 size items.
-  if (InputSize < (CodegenMarker.size() + 2 * sizeof(uint64_t)))
+  if (InputSize < (PayloadMarkerSize + 2 * sizeof(uint64_t)))
     return {};
   const char *const InputEnd = Input + InputSize;
-  if (std::memcmp(InputEnd - CodegenMarker.size(), CodegenMarker.data(),
-                  CodegenMarker.size()) != 0)
+  if (std::memcmp(InputEnd - PayloadMarkerSize, PayloadMarker,
+                  PayloadMarkerSize) != 0)
     return {};
 
   // Read IR and Payload sizes. We already ensured that we have the room.
   uint64_t IrSize;
   uint64_t PayloadSize;
   const char *IrSizeBuff =
-      InputEnd - CodegenMarker.size() - 2 * sizeof(uint64_t);
+      InputEnd - PayloadMarkerSize - 2 * sizeof(uint64_t);
   const char *PayloadSizeBuff =
-      InputEnd - CodegenMarker.size() - 1 * sizeof(uint64_t);
+      InputEnd - PayloadMarkerSize - 1 * sizeof(uint64_t);
   memcpy_s(&IrSize, sizeof(IrSize), IrSizeBuff, sizeof(IrSize));
   memcpy_s(&PayloadSize, sizeof(PayloadSize), PayloadSizeBuff,
            sizeof(PayloadSize));
@@ -93,21 +96,25 @@ static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
 
   // Search for the start of payload, it should start with "-vc-codegen" marker.
   const char *const IREnd = InputEnd - PayloadSize;
-  if (std::memcmp(IREnd, CodegenMarker.data(), CodegenMarker.size()) != 0)
+  if (std::memcmp(IREnd, PayloadMarker, PayloadMarkerSize) != 0)
     return {};
 
   // Make sure that we have a zero-terminated c-string (vc-options are encoded
   // as such).
-  auto NullPos = std::find(IREnd, InputEnd, 0);
-  if (NullPos == InputEnd)
+  auto ApiOptsStart  = IREnd + PayloadMarkerSize;
+  auto ApiOptsEnd = std::find(ApiOptsStart, InputEnd, 0);
+  if (ApiOptsEnd == InputEnd)
     return {};
+  auto IntOptStart = ApiOptsEnd + 1;
+  auto IntOptEnd = std::find(IntOptStart, InputEnd, 0);
   // Consistency check, see the Payload format.
-  if ((NullPos + 1) != IrSizeBuff)
+  if ((IntOptEnd + 1) != IrSizeBuff)
     return {};
 
   VcPayloadInfo Result;
-  Result.VcOptsOffset = (IREnd + CodegenMarker.size()) - Input;
-  Result.IrSize = IrSize;
+  Result.VCApiOpts = llvm::StringRef(ApiOptsStart);
+  Result.VCInternalOpts = llvm::StringRef(IntOptStart);
+  Result.IRSize = IrSize;
   Result.IsValid = true;
 
   return Result;
@@ -314,17 +321,21 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
     dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/true);
   });
 
+  std::string ApiOptionsHolder;
   std::string InternalOptionsHolder;
-  auto NewPathPayload = tryExtractPayload(Input.data(), Input.size());
-  if (NewPathPayload.IsValid) {
-    ApiOptions = "-vc-codegen";
+  auto LegacyPayload = tryExtractPayload(Input.data(), Input.size());
+  if (LegacyPayload.IsValid) {
+    ApiOptionsHolder = "-vc-codegen";
+    ApiOptionsHolder.append(" ");
+    ApiOptionsHolder.append(LegacyPayload.VCApiOpts);
+    ApiOptions = ApiOptionsHolder;
 
     InternalOptionsHolder = InternalOptions.str();
     InternalOptionsHolder.append(" ");
-    InternalOptionsHolder.append(Input.data() + NewPathPayload.VcOptsOffset);
+    InternalOptionsHolder.append(LegacyPayload.VCInternalOpts);
     InternalOptions = InternalOptionsHolder;
 
-    Input = Input.take_front(static_cast<size_t>(NewPathPayload.IrSize));
+    Input = Input.take_front(static_cast<size_t>(LegacyPayload.IRSize));
   }
 
   std::string AuxApiOptions;

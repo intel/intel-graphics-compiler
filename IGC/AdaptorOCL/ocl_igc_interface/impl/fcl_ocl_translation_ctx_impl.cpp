@@ -98,41 +98,50 @@ llvm::Optional<std::vector<char>> readBinaryFile(const std::string& fileName) {
 using InvocationInfo = IGC::AdaptorCM::Frontend::IDriverInvocation;
 using PathT = llvm::SmallVector<char, 1024>;
 
+using CMStringVect = IGC::AdaptorCM::Frontend::StringVect_t;
 std::vector<char> makeVcOptPayload(uint64_t IR_size,
-                                   const std::string& TargetFeaturesStr,
-                                   const std::vector<std::string>& VcOpts) {
+                                   const std::string& VCApiOpts,
+                                   const CMStringVect& VCLLVMOptions,
+                                   const std::string& TargetFeaturesStr) {
     std::string InternalVcOptions;
-    if (!VcOpts.empty()) {
-        InternalVcOptions += " -llvm-options='" + llvm::join(VcOpts, " ") + "'";
+    if (!VCLLVMOptions.empty()) {
+        InternalVcOptions +=
+            " -llvm-options='" + llvm::join(VCLLVMOptions, " ") + "'";
     }
     if (!TargetFeaturesStr.empty()) {
         InternalVcOptions.append(" -target-features=").append(TargetFeaturesStr);
     }
     // Payload format:
-    // |-vc-codegen|c-str llvm-opts|i64(IR size)|i64(Payload size)|-vc-codegen|
+    // |-vc-payload|api opts|internal opts|i64(IR size)|i64(Payload size)|-vc-payload|
+    // NOTE: <api/internal opts> are c-strings.
+    //
     // Should be in sync with:
-    //  Source/IGC/AdaptorOCL/dllInterfaceCompute.cpp
-    const std::string CodegenMarker = "-vc-codegen";
+    //      Source/IGC/AdaptorOCL/dllInterfaceCompute.cpp
+    const std::string PayloadMarker = "-vc-payload";
     std::vector<char> VcPayload;
-    VcPayload.insert(VcPayload.end(), CodegenMarker.begin(), CodegenMarker.end());
+    VcPayload.insert(VcPayload.end(), PayloadMarker.begin(), PayloadMarker.end());
+    VcPayload.insert(VcPayload.end(), VCApiOpts.begin(), VCApiOpts.end());
+    VcPayload.push_back(0); // zero-terminate api options
     VcPayload.insert(VcPayload.end(), InternalVcOptions.begin(), InternalVcOptions.end());
-    VcPayload.push_back(0); // zero-terminate options
+    VcPayload.push_back(0); // zero-terminate internal options
     uint64_t payloadSize = VcPayload.size() +
-                            /* as suffix */ CodegenMarker.size() +
+                            /* as suffix */ PayloadMarker.size() +
                             /* for sanity-checks */ + sizeof(IR_size) +
                             /* include the size itself */ + sizeof(uint64_t);
     VcPayload.insert(VcPayload.end(),
-                     reinterpret_cast<char*>(&IR_size),
-                     reinterpret_cast<char*>(&IR_size + 1));
+                     reinterpret_cast<const char*>(&IR_size),
+                     reinterpret_cast<const char*>(&IR_size + 1));
     VcPayload.insert(VcPayload.end(),
-                     reinterpret_cast<char*>(&payloadSize),
-                     reinterpret_cast<char*>(&payloadSize + 1));
-    VcPayload.insert(VcPayload.end(), CodegenMarker.begin(), CodegenMarker.end());
+                     reinterpret_cast<const char*>(&payloadSize),
+                     reinterpret_cast<const char*>(&payloadSize + 1));
+    VcPayload.insert(VcPayload.end(), PayloadMarker.begin(), PayloadMarker.end());
     return VcPayload;
 }
 
 void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs& FEOutput,
-                      const InvocationInfo& Invocation,
+                      const std::string& VCApiOptions,
+                      const CMStringVect& VCLLVMOptions,
+                      const std::string& TargetFeatures,
                       OclTranslationOutputBase& Output)
 {
     auto& OutputInterface = *Output.GetImpl();
@@ -158,11 +167,8 @@ void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs& FEOutput,
     // Right now we have no way to pass auxiliary options to vc-codegen backend
     // So we introduce a temporary hack to incorporate the options
     // into the underlying buffer which contains SPIRV IR
-    const auto& VcOpts =
-        IGC::AdaptorCM::Frontend::convertBackendArgsToVcOpts(Invocation.getBEArgs());
-    const auto& TargetFeatures = Invocation.getTargetFeaturesStr();
-
-    std::vector<char> Payload = makeVcOptPayload(IR.size(), TargetFeatures, VcOpts);
+    std::vector<char> Payload = makeVcOptPayload(IR.size(), VCApiOptions,
+                                                 VCLLVMOptions, TargetFeatures);
 
     std::vector<char> FinalOutput;
     FinalOutput.reserve(IR.size() + Payload.size());
@@ -507,8 +513,12 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
         ErrFn("Null output in CMFE");
         return outputInterface;
     }
+    const auto& TargetFeatures = Drv->getTargetFeaturesStr();
+    const auto& VCLLMVOpts =
+        IGC::AdaptorCM::Frontend::convertBackendArgsToVcOpts(Drv->getBEArgs());
+    const auto& VCApiOpts = FE.getVCApiOptions(&*Drv);
 
-    finalizeFEOutput(*FEOutput, *Drv, Out);
+    finalizeFEOutput(*FEOutput, VCApiOpts, VCLLMVOpts, TargetFeatures, Out);
 
 #else
     Out.GetImpl()->SetError(TranslationErrorType::Internal,
