@@ -1332,6 +1332,14 @@ namespace TC
                             (strcmp(pParam, "-ze-opt-greater-than-4GB-buffer-required") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-has-buffer-offset-arg") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-has-buffer-offset-arg") == 0) || //temporary options
+                            (strcmp(pParam, "-cl-intel-buffer-offset-arg-required") == 0) || //temporary options
+                            (strcmp(pParam, "-ze-opt-buffer-offset-arg-required") == 0) || //temporary options
+                            (strcmp(pParam, "-cl-intel-has-subDW-aligned-ptr-arg") == 0) || //temporary options
+                            (strcmp(pParam, "-ze-opt-has-subDW-aligned-ptr-arg") == 0) || //temporary options
+                            (strcmp(pParam, "-cl-force-global-mem-allocation") == 0) || // temp
+                            (strcmp(pParam, "-ze-force-global-mem-allocation") == 0) || // temp
+                            (strcmp(pParam, "-cl-no-local-to-generic") == 0) || // temp
+                            (strcmp(pParam, "-ze-no-local-to-generic") == 0) || // temp
                             (strcmp(pParam, "-cl-intel-debug-info") == 0) ||
                             (strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
                             (strcmp(pParam, "-cl-no-subgroup-ifp") == 0) ||
