@@ -21,7 +21,6 @@ namespace IGC
     protected:
         void selectWalkOrder(
             bool useLinearWalk,
-            bool cfgDefaultTileY,
             uint numberOfTypedAccess,
             uint numberOfUntypedAccess,
             uint num1DAccesses,

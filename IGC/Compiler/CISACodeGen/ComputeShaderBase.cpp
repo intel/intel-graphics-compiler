@@ -28,7 +28,6 @@ namespace IGC
 
     void CComputeShaderBase::selectWalkOrder(
         bool useLinearWalk,
-        bool cfgDefaultTileY,
         uint numberOfTypedAccess,
         uint numberOfUntypedAccess,
         uint num1DAccesses,
