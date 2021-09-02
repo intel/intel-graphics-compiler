@@ -4577,6 +4577,23 @@ static G4_Predicate_Control getPredCtrl(unsigned simdSize,
         : G4_Predicate_Control::PRED_ANY32H;
 }
 
+// If BB has only one predecessor, return it;
+// if BB has two predecessors and one is ExcludedPred, return the other predecessor;
+// otherwise, return nullptr.
+G4_BB* FlowGraph::getSinglePredecessor(G4_BB* BB, G4_BB* ExcludedPred) const
+{
+    if (BB->Preds.size() != 1) {
+        if (BB->Preds.size() == 2) {
+            if (BB->Preds.front() == ExcludedPred)
+                return BB->Preds.back();
+            if (BB->Preds.back() == ExcludedPred)
+                return BB->Preds.front();
+        }
+        return nullptr;
+    }
+    return BB->Preds.front();
+}
+
 // Convert jmpi to goto. E.g.
 //
 // Case1:

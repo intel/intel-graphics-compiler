@@ -427,6 +427,7 @@ public:
     G4_Label* insertEndif(G4_BB* bb, G4_ExecSize execSize, bool createLabel);
     void setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB);
     void convertGotoToJmpi(G4_INST *gotoInst);
+    G4_BB* getSinglePredecessor(G4_BB* BB, G4_BB* ExcludedPred) const;
     bool convertJmpiToGoto();
 
     unsigned getNumFuncs() const {return unsigned(funcInfoTable.size());}

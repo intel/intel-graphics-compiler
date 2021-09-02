@@ -6871,7 +6871,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         if ((kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) &&
             builder.hasFusedEUWA() &&
-            (builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
+            (builder.getJitInfo()->spillMemUsed > 0
+             || builder.getJitInfo()->numFlagSpillStore > 0
+             || fg.getHasStackCalls()))
         {
             // For now, do it for CM/VC. Will turn it on for all.
             doNoMaskWA_postRA();
@@ -11789,15 +11791,45 @@ void Optimizer::doNoMaskWA()
 //   with a f0.1, which is undefined value.  And at BB_21, reading from r34.8 will
 //   get garbage value!
 //
+// For Stack call,
+//   Caller-save/restore code needs WA as well
+//
 // Note this works only for NoMaskWA=2
 //
 void Optimizer::doNoMaskWA_postRA()
 {
     std::vector<INST_LIST_ITER> NoMaskCandidates;
     G4_ExecSize simdsize = fg.getKernel()->getSimdSize();
-    const bool HasFlagSpill = (builder.getJitInfo()->numFlagSpillStore > 0);
 
-    auto isCandidate = [&](G4_INST* I) {
+    const bool HasFlagSpill = (builder.getJitInfo()->numFlagSpillStore > 0);
+    const bool HasStackCall = fg.getHasStackCalls();
+    const bool HasGRFSpill  = (builder.getJitInfo()->spillMemUsed > 0);
+    const uint32_t grfStart = fg.getKernel()->getStackCallStartReg();
+    const uint32_t grfEnd = grfStart + fg.getKernel()->numReservedABIGRF(); // not include End
+
+    auto isStackCallReservedGRF = [&grfStart, &grfEnd](G4_DstRegRegion* DRR)
+    {
+        if (DRR == nullptr || DRR->isNullReg())
+        {
+            return false;
+        }
+        bool isAssigned = false;
+        uint32_t regno = DRR->ExRegNum(isAssigned);
+        return isAssigned && (regno >= grfStart && regno < grfEnd);
+    };
+
+    auto isStore = [](G4_INST* I)
+    {
+        return I->isSend() && I->getPredicate() == nullptr &&
+            (I->getDst() == nullptr || I->getDst()->isNullReg());
+    };
+    auto isLoad = [](G4_INST* I)
+    {
+        return I->isSend() && I->getPredicate() == nullptr &&
+            (I->getDst() != nullptr && !I->getDst()->isNullReg());
+    };
+
+    auto isCandidate = [&](G4_INST* I, G4_BB* BB) {
         if (I->getCreatedPreRA() || !I->isWriteEnableInst())
         {
             return false;
@@ -11814,10 +11846,26 @@ void Optimizer::doNoMaskWA_postRA()
             return true;
         }
         // 2. GRF spill
-        if (I->isSend() && I->getPredicate() == nullptr &&
-            (I->getDst() == nullptr || I->getDst()->isNullReg()))
+        if (HasGRFSpill && isStore(I))
         {
             return true;
+        }
+        // 3. Stack call's caller-save/restore
+        if (HasStackCall)
+        {
+            G4_BB* SolePredBB = fg.getSinglePredecessor(BB, nullptr);
+            const bool callerSave = (BB->getBBType() & G4_BB_FCALL_TYPE);
+            const bool callerRestore = SolePredBB ? (SolePredBB->getBBType() & G4_BB_FCALL_TYPE) : false;
+            if (callerSave || callerRestore)
+            {
+                if (I->getPredicate() == nullptr &&
+                    ((!I->isSend() && isStackCallReservedGRF(I->getDst()))
+                     || (callerSave && isStore(I))
+                     || (callerRestore && isLoad(I))))
+                {
+                    return true;
+                }
+            }
         }
         return false;
     };
@@ -11856,7 +11904,7 @@ void Optimizer::doNoMaskWA_postRA()
 
     // Assuming all flags are used, thus need to spill one.
     // RA reserves two DW for this purpose:
-    //    DW0:  <original flag>
+    //    DW0:  <original flag>  // to save an existing flag, as all flags are assumed live.
     //    DW1:  <WA flag>        // set once and reuse it in the same BB
     // For example,  the following spill send needs WA:
     //    (W) send  (16|M0) ...
@@ -11909,7 +11957,7 @@ void Optimizer::doNoMaskWA_postRA()
         for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
         {
             G4_INST* I = *II;
-            if (!isCandidate(I))
+            if (!isCandidate(I, BB))
             {
                 continue;
             }
