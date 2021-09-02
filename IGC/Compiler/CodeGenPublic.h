@@ -1088,6 +1088,10 @@ namespace IGC
 
         uint64_t GetSIMDInfo() { return m_SIMDInfo; }
 
+        virtual llvm::Optional<SIMDMode> knownSIMDSize() const {
+            return llvm::None;
+        }
+
         // This can be paired with `EncodeAS4GFXResource()` to get a unique
         // index.
         uint32_t getUniqueIndirectIdx()
