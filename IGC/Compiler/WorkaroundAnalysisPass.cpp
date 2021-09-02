@@ -81,7 +81,7 @@ bool WorkaroundAnalysis::runOnFunction(Function& F)
     m_pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
     m_pDataLayout = &F.getParent()->getDataLayout();
 
-    llvm::IGCIRBuilder<> builder(F.getContext());
+    LLVM3DBuilder<> builder(F.getContext(), m_pCtxWrapper->getCodeGenContext()->platform.getPlatformInfo());
     m_builder = &builder;
     m_pModule = F.getParent();
     visit(F);
@@ -340,12 +340,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
                 llvm::Instruction* cloneinst = I.clone();
                 cloneinst->insertAfter(&I);
                 m_builder->SetInsertPoint(&(*std::next(BasicBlock::iterator(cloneinst))));
-                Function* SGV = GenISAIntrinsic::getDeclaration(
-                    m_pModule,
-                    GenISAIntrinsic::GenISA_DCL_SystemValue,
-                    m_builder->getFloatTy());
-                Value* inputCoverageFloat = m_builder->CreateCall(SGV, m_builder->getInt32(INPUT_COVERAGE_MASK));
-                Value* inputCoverage = m_builder->CreateBitCast(inputCoverageFloat, m_builder->getInt32Ty());
+                Value* inputCoverage = m_builder->CreateCoverage();
 
                 Value* shiftLeft = m_builder->CreateShl(m_builder->getInt32(1), I.getOperand(1));
                 Value* andWithInputCoverage = m_builder->CreateAnd(shiftLeft, inputCoverage);

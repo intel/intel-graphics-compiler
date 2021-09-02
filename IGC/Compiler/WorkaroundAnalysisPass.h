@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -25,7 +26,7 @@ namespace IGC
     class WorkaroundAnalysis : public llvm::FunctionPass,
         public llvm::InstVisitor<WorkaroundAnalysis>
     {
-        llvm::IGCIRBuilder<>* m_builder;
+        LLVM3DBuilder<>* m_builder;
     public:
         static char ID;
 
