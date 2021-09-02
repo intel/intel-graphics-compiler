@@ -1515,6 +1515,7 @@ target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared/executable_format"
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif"
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/"
+  "${CMAKE_CURRENT_SOURCE_DIR}/"
   "${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/"
 )
 
