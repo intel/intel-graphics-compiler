@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 #include "InstCombine.hpp"
 
+#include <limits>
 #include <functional>
 #include <unordered_set>
 
