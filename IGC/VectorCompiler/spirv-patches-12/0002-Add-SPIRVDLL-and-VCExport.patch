@@ -18,11 +18,10 @@ new mode 100755
 index 00000000..00000000
 --- a/lib/SPIRV/CMakeLists.txt
 +++ b/lib/SPIRV/CMakeLists.txt
-@@ -1,4 +1,6 @@
+@@ -1,4 +1,5 @@
 -add_llvm_library(LLVMSPIRVLib
 +set(SPIRV_SOURCES
 +  VCExport.cpp
-+  LLVMSPIRVOpts.cpp
    LLVMToSPIRVDbgTran.cpp
    Mangler/FunctionDescriptor.cpp
    Mangler/Mangler.cpp
