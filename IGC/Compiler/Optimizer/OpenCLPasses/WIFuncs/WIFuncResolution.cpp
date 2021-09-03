@@ -352,6 +352,7 @@ Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
         // Get local thread id
         auto R0Val = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pCtx);
         auto LocalThreadId = Builder.CreateExtractElement(R0Val, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2));
+        LocalThreadId = Builder.CreateAnd(LocalThreadId, (uint16_t)255);
 
         // Get SIMD lane id
         auto DataTypeI16 = Type::getInt16Ty(F->getParent()->getContext());
@@ -619,8 +620,9 @@ Value* WIFuncResolution::getWorkDim(CallInst& CI)
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::NUM_WORK_DIM / Size;
         auto TypeUD = Type::getInt32Ty(F->getParent()->getContext());
         auto LoadInst = BuildLoadInst(CI, Offset, TypeUD);
-        auto LShr = Builder.CreateLShr(LoadInst, (uint64_t)24);
-        V = LShr;
+        auto LShr = Builder.CreateLShr(LoadInst, (uint64_t)16);
+        auto And = Builder.CreateAnd(LShr, (uint16_t)255);
+        V = And;
     }
     else
     {
