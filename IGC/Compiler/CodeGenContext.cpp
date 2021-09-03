@@ -444,15 +444,15 @@ namespace IGC
     unsigned ComputeShaderContext::GetThreadGroupSize()
     {
         llvm::GlobalVariable* pGlobal = getModule()->getGlobalVariable("ThreadGroupSize_X");
-        unsigned threadGroupSize_X = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
+        m_threadGroupSize_X = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 
         pGlobal = getModule()->getGlobalVariable("ThreadGroupSize_Y");
-        unsigned threadGroupSize_Y = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
+        m_threadGroupSize_Y = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 
         pGlobal = getModule()->getGlobalVariable("ThreadGroupSize_Z");
-        unsigned threadGroupSize_Z = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
+        m_threadGroupSize_Z = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 
-        return threadGroupSize_X * threadGroupSize_Y * threadGroupSize_Z;
+        return m_threadGroupSize_X * m_threadGroupSize_Y * m_threadGroupSize_Z;
     }
 
     unsigned ComputeShaderContext::GetSlmSizePerSubslice()
