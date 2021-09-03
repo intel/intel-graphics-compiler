@@ -671,7 +671,7 @@ namespace vISA
                              }
                              else //For math and other ALU instructions
                              {
-                                 instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DIST);
+                                 instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
                              }
                          }
                          else
@@ -806,7 +806,7 @@ namespace vISA
                             }
                             else //For math and other ALU instructions
                             {
-                                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DIST);
+                                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
                             }
                         }
                         else // For send, we will set it to DISTALL if there are multiple dependences. For non-send, DIST
