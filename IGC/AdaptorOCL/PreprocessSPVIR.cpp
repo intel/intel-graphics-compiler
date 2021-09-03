@@ -42,7 +42,7 @@ PreprocessSPVIR::PreprocessSPVIR() : ModulePass(ID)
 
 uint64_t PreprocessSPVIR::parseSampledImageTy(StructType* sampledImageTy)
 {
-    std::string Name = sampledImageTy->getName();
+    std::string Name = sampledImageTy->getName().str();
     std::smatch match;
     std::regex reg("spirv.SampledImage._void_([0-6])_([0-2])_([0-1])_([0-1])_([0-2])_([0-9]+)_([0-2])");
 
@@ -77,18 +77,18 @@ Value* PreprocessSPVIR::getWidenImageCoordsArg(Value* Coords)
 {
     Type* coordsType = Coords->getType();
     Value* newCoords = nullptr;
-    if (!isa<VectorType>(coordsType))
+    if (!isa<IGCLLVM::FixedVectorType>(coordsType))
     {
-        Value* undef = UndefValue::get(VectorType::get(coordsType, 4));
+        Value* undef = UndefValue::get(IGCLLVM::FixedVectorType::get(coordsType, 4));
         newCoords = m_Builder->CreateInsertElement(undef, Coords, ConstantInt::get(m_Builder->getInt32Ty(), 0));
     }
-    else if (cast<VectorType>(coordsType)->getNumElements() < 4)
+    else if (cast<IGCLLVM::FixedVectorType>(coordsType)->getNumElements() < 4)
     {
         SmallVector<Constant*, 4> shuffleIdx;
-        for (uint64_t i = 0; i < cast<VectorType>(coordsType)->getNumElements(); i++)
+        for (uint64_t i = 0; i < cast<IGCLLVM::FixedVectorType>(coordsType)->getNumElements(); i++)
             shuffleIdx.push_back(ConstantInt::get(m_Builder->getInt32Ty(), i));
 
-        for (uint64_t i = cast<VectorType>(coordsType)->getNumElements(); i < 4; i++)
+        for (uint64_t i = cast<IGCLLVM::FixedVectorType>(coordsType)->getNumElements(); i < 4; i++)
             shuffleIdx.push_back(ConstantInt::get(m_Builder->getInt32Ty(), 0));
 
         newCoords = m_Builder->CreateShuffleVector(Coords, UndefValue::get(coordsType), ConstantVector::get(shuffleIdx));
@@ -156,7 +156,7 @@ void PreprocessSPVIR::visitImageSampleExplicitLod(CallInst& CI)
     //   -image,
     //   -image type which comes from parsing opaque type
     //   -sampler.
-    Value* unifiedSampledImage = UndefValue::get(VectorType::get(m_Builder->getInt64Ty(), 3));
+    Value* unifiedSampledImage = UndefValue::get(IGCLLVM::FixedVectorType::get(m_Builder->getInt64Ty(), 3));
 
     Value* imageAsInt = m_Builder->CreatePtrToInt(callSampledImage->getArgOperand(0), m_Builder->getInt64Ty());
     Value* samplerAsInt = m_Builder->CreatePtrToInt(callSampledImage->getArgOperand(1), m_Builder->getInt64Ty());
@@ -205,9 +205,9 @@ void PreprocessSPVIR::visitImageSampleExplicitLod(CallInst& CI)
         else
             IGC_ASSERT_MESSAGE(0, "Unsupported dx/dy types of ImageSampleExplicitLod builtin.");
 
-        if (isa<VectorType>(dxType))
+        if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(dxType))
         {
-            unifiedImageSampleName += std::to_string(dxType->getVectorNumElements());
+            unifiedImageSampleName += std::to_string(VT->getNumElements());
         }
     }
     break;
@@ -216,9 +216,10 @@ void PreprocessSPVIR::visitImageSampleExplicitLod(CallInst& CI)
         break;
     }
 
-    Type* retType = CI.getType();
-    if (retType->isVectorTy() && retType->getVectorNumElements() == 4)
-    {
+   Type* retType = CI.getType();
+   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(retType);
+   if (VT && VT->getNumElements() == 4)
+   {
         Type* retScalarType = retType->getScalarType();
         if (retScalarType->isIntegerTy())
             unifiedImageSampleName += "_Ruint4";
