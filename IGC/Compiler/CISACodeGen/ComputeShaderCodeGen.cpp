@@ -451,9 +451,6 @@ namespace IGC
             return true;
         }
 
-        if (simdMode == SIMDMode::SIMD8 && !hasSimd16 && !hasSimd32)
-            return true;
-
         ////////
         // dynamic rules
         ////////
