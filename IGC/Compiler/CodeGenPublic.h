@@ -1189,6 +1189,7 @@ namespace IGC
         bool m_IsPingPongSecond;
         unsigned m_slmSize;
         bool numWorkGroupsUsed;
+        bool m_ForceOneSIMD = false;
 
         ComputeShaderContext(
             const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
@@ -1203,10 +1204,16 @@ namespace IGC
             m_IsPingPongSecond = false;
             m_slmSize = 0;
             numWorkGroupsUsed = false;
+            m_threadGroupSize_X = 0;
+            m_threadGroupSize_Y = 0;
+            m_threadGroupSize_Z = 0;
         }
 
         /** get shader's thread group size */
         unsigned GetThreadGroupSize();
+        unsigned GetThreadGroupSizeX() { return m_threadGroupSize_X; }
+        unsigned GetThreadGroupSizeY() { return m_threadGroupSize_Y; }
+        unsigned GetThreadGroupSizeZ() { return m_threadGroupSize_Z; }
         unsigned GetSlmSizePerSubslice();
         unsigned GetSlmSize() const;
         float GetThreadOccupancy(SIMDMode simdMode);
@@ -1216,6 +1223,10 @@ namespace IGC
         SIMDMode GetMaxSIMDMode();
 
         float GetSpillThreshold() const;
+    private:
+        unsigned m_threadGroupSize_X;
+        unsigned m_threadGroupSize_Y;
+        unsigned m_threadGroupSize_Z;
     };
 
     class HullShaderContext : public CodeGenContext

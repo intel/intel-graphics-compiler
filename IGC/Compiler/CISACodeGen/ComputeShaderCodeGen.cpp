@@ -442,14 +442,11 @@ namespace IGC
         bool hasSimd16 = simd16Program && simd16Program->ProgramOutput()->m_programSize > 0;
         bool hasSimd32 = simd32Program && simd32Program->ProgramOutput()->m_programSize > 0;
 
-        if (IGC_IS_FLAG_ENABLED(ForceCSSIMD16) && simdMode == SIMDMode::SIMD16)
-        {
+        if (ctx->m_ForceOneSIMD)
             return true;
-        }
-        else if(IGC_IS_FLAG_ENABLED(ForceCSSIMD32) && simdMode == SIMDMode::SIMD32)
-        {
+
+        if (simdMode == SIMDMode::SIMD8 && !hasSimd16 && !hasSimd32)
             return true;
-        }
 
         ////////
         // dynamic rules
