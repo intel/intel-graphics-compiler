@@ -2668,21 +2668,82 @@ half16 __builtin_spirv_OpenCL_sin_v16f16(half16 x);
 float __builtin_spirv_OpenCL_sincos_f32_p0f32( float x, __private float* cosval );
 float __builtin_spirv_OpenCL_sincos_f32_p1f32( float x, __global float* cosval );
 float __builtin_spirv_OpenCL_sincos_f32_p3f32( float x, __local float* cosval );
+float2 __builtin_spirv_OpenCL_sincos_v2f32_p0v2f32( float2 x, __private float2* cosval );
+float2 __builtin_spirv_OpenCL_sincos_v2f32_p1v2f32( float2 x, __global float2* cosval );
+float2 __builtin_spirv_OpenCL_sincos_v2f32_p3v2f32( float2 x, __local float2* cosval );
+float3 __builtin_spirv_OpenCL_sincos_v3f32_p0v3f32( float3 x, __private float3* cosval );
+float3 __builtin_spirv_OpenCL_sincos_v3f32_p1v3f32( float3 x, __global float3* cosval );
+float3 __builtin_spirv_OpenCL_sincos_v3f32_p3v3f32( float3 x, __local float3* cosval );
+float4 __builtin_spirv_OpenCL_sincos_v4f32_p0v4f32( float4 x, __private float4* cosval );
+float4 __builtin_spirv_OpenCL_sincos_v4f32_p1v4f32( float4 x, __global float4* cosval );
+float4 __builtin_spirv_OpenCL_sincos_v4f32_p3v4f32( float4 x, __local float4* cosval );
+float8 __builtin_spirv_OpenCL_sincos_v8f32_p0v8f32( float8 x, __private float8* cosval );
+float8 __builtin_spirv_OpenCL_sincos_v8f32_p1v8f32( float8 x, __global float8* cosval );
+float8 __builtin_spirv_OpenCL_sincos_v8f32_p3v8f32( float8 x, __local float8* cosval );
+float16 __builtin_spirv_OpenCL_sincos_v16f32_p0v16f32( float16 x, __private float16* cosval );
+float16 __builtin_spirv_OpenCL_sincos_v16f32_p1v16f32( float16 x, __global float16* cosval );
+float16 __builtin_spirv_OpenCL_sincos_v16f32_p3v16f32( float16 x, __local float16* cosval );
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 float __builtin_spirv_OpenCL_sincos_f32_p4f32( float x, __generic float* cosval );
+float2 __builtin_spirv_OpenCL_sincos_v2f32_p4v2f32( float2 x, __generic float2* cosval );
+float3 __builtin_spirv_OpenCL_sincos_v3f32_p4v3f32( float3 x, __generic float3* cosval );
+float4 __builtin_spirv_OpenCL_sincos_v4f32_p4v4f32( float4 x, __generic float4* cosval );
+float8 __builtin_spirv_OpenCL_sincos_v8f32_p4v8f32( float8 x, __generic float8* cosval );
+float16 __builtin_spirv_OpenCL_sincos_v16f32_p4v16f32( float16 x, __generic float16* cosval );
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 half __builtin_spirv_OpenCL_sincos_f16_p0f16( half x, __private half* cosval );
 half __builtin_spirv_OpenCL_sincos_f16_p1f16( half x, __global half* cosval );
 half __builtin_spirv_OpenCL_sincos_f16_p3f16( half x, __local half* cosval );
+half2 __builtin_spirv_OpenCL_sincos_v2f16_p0v2f16( half2 x, __private half2* cosval );
+half2 __builtin_spirv_OpenCL_sincos_v2f16_p1v2f16( half2 x, __global half2* cosval );
+half2 __builtin_spirv_OpenCL_sincos_v2f16_p3v2f16( half2 x, __local half2* cosval );
+half3 __builtin_spirv_OpenCL_sincos_v3f16_p0v3f16( half3 x, __private half3* cosval );
+half3 __builtin_spirv_OpenCL_sincos_v3f16_p1v3f16( half3 x, __global half3* cosval );
+half3 __builtin_spirv_OpenCL_sincos_v3f16_p3v3f16( half3 x, __local half3* cosval );
+half4 __builtin_spirv_OpenCL_sincos_v4f16_p0v4f16( half4 x, __private half4* cosval );
+half4 __builtin_spirv_OpenCL_sincos_v4f16_p1v4f16( half4 x, __global half4* cosval );
+half4 __builtin_spirv_OpenCL_sincos_v4f16_p3v4f16( half4 x, __local half4* cosval );
+half8 __builtin_spirv_OpenCL_sincos_v8f16_p0v8f16( half8 x, __private half8* cosval );
+half8 __builtin_spirv_OpenCL_sincos_v8f16_p1v8f16( half8 x, __global half8* cosval );
+half8 __builtin_spirv_OpenCL_sincos_v8f16_p3v8f16( half8 x, __local half8* cosval );
+half16 __builtin_spirv_OpenCL_sincos_v16f16_p0v16f16( half16 x, __private half16* cosval );
+half16 __builtin_spirv_OpenCL_sincos_v16f16_p1v16f16( half16 x, __global half16* cosval );
+half16 __builtin_spirv_OpenCL_sincos_v16f16_p3v16f16( half16 x, __local half16* cosval );
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 half __builtin_spirv_OpenCL_sincos_f16_p4f16( half x, __generic half* cosval );
+half2 __builtin_spirv_OpenCL_sincos_v2f16_p4v2f16( half2 x, __generic half2* cosval );
+half3 __builtin_spirv_OpenCL_sincos_v3f16_p4v3f16( half3 x, __generic half3* cosval );
+half4 __builtin_spirv_OpenCL_sincos_v4f16_p4v4f16( half4 x, __generic half4* cosval );
+half8 __builtin_spirv_OpenCL_sincos_v8f16_p4v8f16( half8 x, __generic half8* cosval );
+half16 __builtin_spirv_OpenCL_sincos_v16f16_p4v16f16( half16 x, __generic half16* cosval );
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #if defined(cl_khr_fp64)
 double __builtin_spirv_OpenCL_sincos_f64_p0f64( double x, __private double* cosval );
 double __builtin_spirv_OpenCL_sincos_f64_p3f64( double x, __local double* cosval );
 double __builtin_spirv_OpenCL_sincos_f64_p1f64( double x, __global double* cosval );
+double __builtin_spirv_OpenCL_sincos_f64_p3f64( double x, __local double* cosval );
+double2 __builtin_spirv_OpenCL_sincos_v2f64_p0v2f64( double2 x, __private double2* cosval );
+double2 __builtin_spirv_OpenCL_sincos_v2f64_p1v2f64( double2 x, __global double2* cosval );
+double2 __builtin_spirv_OpenCL_sincos_v2f64_p3v2f64( double2 x, __local double2* cosval );
+double3 __builtin_spirv_OpenCL_sincos_v3f64_p0v3f64( double3 x, __private double3* cosval );
+double3 __builtin_spirv_OpenCL_sincos_v3f64_p1v3f64( double3 x, __global double3* cosval );
+double3 __builtin_spirv_OpenCL_sincos_v3f64_p3v3f64( double3 x, __local double3* cosval );
+double4 __builtin_spirv_OpenCL_sincos_v4f64_p0v4f64( double4 x, __private double4* cosval );
+double4 __builtin_spirv_OpenCL_sincos_v4f64_p1v4f64( double4 x, __global double4* cosval );
+double4 __builtin_spirv_OpenCL_sincos_v4f64_p3v4f64( double4 x, __local double4* cosval );
+double8 __builtin_spirv_OpenCL_sincos_v8f64_p0v8f64( double8 x, __private double8* cosval );
+double8 __builtin_spirv_OpenCL_sincos_v8f64_p1v8f64( double8 x, __global double8* cosval );
+double8 __builtin_spirv_OpenCL_sincos_v8f64_p3v8f64( double8 x, __local double8* cosval );
+double16 __builtin_spirv_OpenCL_sincos_v16f64_p0v16f64( double16 x, __private double16* cosval );
+double16 __builtin_spirv_OpenCL_sincos_v16f64_p1v16f64( double16 x, __global double16* cosval );
+double16 __builtin_spirv_OpenCL_sincos_v16f64_p3v16f64( double16 x, __local double16* cosval );
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 double __builtin_spirv_OpenCL_sincos_f64_p4f64( double x, __generic double* cosval );
+double2 __builtin_spirv_OpenCL_sincos_v2f64_p4v2f64( double2 x, __generic double2* cosval );
+double3 __builtin_spirv_OpenCL_sincos_v3f64_p4v3f64( double3 x, __generic double3* cosval );
+double4 __builtin_spirv_OpenCL_sincos_v4f64_p4v4f64( double4 x, __generic double4* cosval );
+double8 __builtin_spirv_OpenCL_sincos_v8f64_p4v8f64( double8 x, __generic double8* cosval );
+double16 __builtin_spirv_OpenCL_sincos_v16f32_p4v16f64( double16 x, __generic double16* cosval );
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_fp64)
 
