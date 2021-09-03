@@ -326,40 +326,9 @@ void BIConvert::runOnModule(Module &M) {
   for (auto I : ListDelete) {
     I->eraseFromParent();
   }
-
-  for (auto &Global : M.getGlobalList()) {
-    if (!Global.isDeclaration())
-      Global.setLinkage(GlobalValue::InternalLinkage);
-  }
-  for (auto &F : M.getFunctionList()) {
-    // TODO: revise the code once CM-based BIFs are implemented
-    if (F.getName().contains("__cm_intrinsic_impl_")) {
-      IGC_ASSERT_MESSAGE(
-          F.getLinkage() == GlobalValue::ExternalLinkage,
-          "CM library functions are expected to have an external linkage");
-      continue;
-    }
-    if (F.getIntrinsicID() == Intrinsic::not_intrinsic && !F.isDeclaration() &&
-        !F.hasDLLExportStorageClass())
-      F.setLinkage(GlobalValue::InternalLinkage);
-  }
 }
 
-typedef std::vector<llvm::Function *> TFunctionsVec;
-
-static Function *GetBuiltinFunction(llvm::StringRef funcName,
-                                    llvm::Module &BiFModule) {
-  Function *pFunc = BiFModule.getFunction(funcName);
-  if (pFunc && !pFunc->isDeclaration())
-    return pFunc;
-  return nullptr;
-}
-
-static bool materialized_use_empty(const Value *v) {
-  return v->materialized_use_begin() == v->use_end();
-}
-
-static void removeFunctionBitcasts(llvm::Module &M) {
+static void removeFunctionBitcasts(Module &M) {
   std::vector<Instruction *> list_delete;
   DenseMap<Function *, std::vector<Function *>> bitcastFunctionMap;
 
@@ -450,7 +419,7 @@ static void removeFunctionBitcasts(llvm::Module &M) {
   }
 }
 
-static void InitializeBIFlags(llvm::Module &M) {
+static void InitializeBIFlags(Module &M) {
   /// @brief Adds initialization to a global-var according to given value.
   ///        If the given global-var does not exist, does nothing.
   auto initializeVarWithValue = [&M](StringRef varName, uint32_t value) {
@@ -478,17 +447,6 @@ static void InitializeBIFlags(llvm::Module &M) {
   initializeVarWithValue("__UseMathWithLUT", 0);
 }
 
-namespace {
-// Note: FuncDecl is a declaration of a function in the main module.
-//       FuncImpl is a definition of this function in the BiF module.
-struct FuncAndItsImpl {
-  Function *FuncDecl;
-  Function *FuncImpl;
-};
-} // namespace
-
-static constexpr const char SPIRVOCLBuiltinPrefix[] = "__spirv_ocl_";
-
 static bool isOCLBuiltinDecl(const Function &F) {
   if (!F.isDeclaration())
     return false;
@@ -496,172 +454,6 @@ static bool isOCLBuiltinDecl(const Function &F) {
     return false;
   // presuming that the only declarations left are from OCL header
   return true;
-}
-
-static bool isSPIRVOCLBuiltinDecl(const Function &F) {
-  return isOCLBuiltinDecl(F) && F.getName().contains(SPIRVOCLBuiltinPrefix);
-}
-
-static void fixCallingConv(Function &FuncDecl, CallingConv::ID Conv) {
-  FuncDecl.setCallingConv(Conv);
-  for (User *U : FuncDecl.users())
-    cast<CallInst>(U)->setCallingConv(Conv);
-}
-
-static void fixCallingConv(const std::vector<FuncAndItsImpl> &UsedBiFFuncs) {
-  for (const auto &FuncLinkInfo : UsedBiFFuncs) {
-    if (FuncLinkInfo.FuncDecl->getCallingConv() !=
-        FuncLinkInfo.FuncImpl->getCallingConv())
-      fixCallingConv(*FuncLinkInfo.FuncDecl,
-                     FuncLinkInfo.FuncImpl->getCallingConv());
-  }
-}
-
-static std::vector<FuncAndItsImpl> collectBiFFuncUses(Module &MainModule,
-                                                      Module &BiFModule) {
-  std::vector<FuncAndItsImpl> FuncsFromBiF;
-  for (auto &Func : MainModule)
-    if (isOCLBuiltinDecl(Func)) {
-      StringRef FuncName = Func.getName();
-      Function *FuncBiFImpl = GetBuiltinFunction(FuncName, BiFModule);
-      if (FuncBiFImpl)
-        FuncsFromBiF.push_back({&Func, FuncBiFImpl});
-    }
-  return std::move(FuncsFromBiF);
-}
-
-static void materializeFuncIfRequired(Function &Func) {
-  if (Func.isMaterializable()) {
-    if (Error Err = Func.materialize()) {
-      handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
-        errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
-      });
-      IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
-    }
-  }
-}
-
-// Collects functions that are directly called from \p Parent function
-// (goes only one step in depth in the call graph).
-static std::vector<Function *> collectDirectSubroutines(Function &Parent) {
-  std::vector<Function *> Subroutines;
-  llvm::transform(
-      make_filter_range(
-          instructions(Parent),
-          [](Instruction &Inst) {
-            if (!isa<CallInst>(Inst))
-              return false;
-            auto *Subroutine = cast<CallInst>(Inst).getCalledFunction();
-            IGC_ASSERT_MESSAGE(Subroutine,
-                               "indirect calls are unexpected in BiF module");
-            IGC_ASSERT_MESSAGE(!GenXIntrinsic::isGenXIntrinsic(Subroutine),
-                               "genx intrinsics are unexpected in BiF module");
-            return !Subroutine->isIntrinsic();
-          }),
-      std::back_inserter(Subroutines), [](Instruction &Inst) {
-        auto *Subroutine = cast<CallInst>(Inst).getCalledFunction();
-        IGC_ASSERT_MESSAGE(Subroutine,
-                           "indirect calls are unexpected in BiF module");
-        IGC_ASSERT_MESSAGE(!Subroutine->isIntrinsic() &&
-                               !GenXIntrinsic::isGenXIntrinsic(Subroutine),
-                           "it should've been already checked");
-        return Subroutine;
-      });
-  std::sort(Subroutines.begin(), Subroutines.end());
-  Subroutines.erase(std::unique(Subroutines.begin(), Subroutines.end()),
-                    Subroutines.end());
-  return std::move(Subroutines);
-}
-
-class BiFImporter {
-  Module &MainModule;
-  std::unique_ptr<Module> BiFModule;
-  std::unordered_set<Function *> ImportedFuncs;
-
-public:
-  BiFImporter(Module &MainModuleIn, std::unique_ptr<llvm::Module> BiFModuleIn)
-      : MainModule{MainModuleIn}, BiFModule{std::move(BiFModuleIn)} {}
-
-  void run();
-
-private:
-  void materializeSubroutines(Function &Parent);
-  void materializeUsedBiFFuncs(const std::vector<FuncAndItsImpl> &FuncsFromBiF);
-  void forceInlining();
-};
-
-// Recursively materialize \p Parent's subroutines and its subroutines too.
-void BiFImporter::materializeSubroutines(Function &Parent) {
-  std::vector<Function *> DirectSubroutines = collectDirectSubroutines(Parent);
-  for (Function *Subroutine : DirectSubroutines) {
-    if (ImportedFuncs.count(Subroutine) == 0) {
-      ImportedFuncs.insert(Subroutine);
-      materializeFuncIfRequired(*Subroutine);
-      materializeSubroutines(*Subroutine);
-    }
-  }
-}
-
-void BiFImporter::materializeUsedBiFFuncs(
-    const std::vector<FuncAndItsImpl> &FuncsFromBiF) {
-  std::vector<Function *> BiFFuncs;
-  for (auto &&[FuncDecl, FuncImpl] : FuncsFromBiF) {
-    (void)FuncDecl;
-    ImportedFuncs.insert(FuncImpl);
-    materializeFuncIfRequired(*FuncImpl);
-    materializeSubroutines(*FuncImpl);
-  }
-}
-
-void BiFImporter::forceInlining() {
-  for (auto *Func : ImportedFuncs)
-    if (!Func->hasFnAttribute(Attribute::AlwaysInline))
-      Func->addFnAttr(Attribute::AlwaysInline);
-}
-
-void BiFImporter::run() {
-  std::vector<FuncAndItsImpl> FuncsFromBiF =
-      collectBiFFuncUses(MainModule, *BiFModule);
-  materializeUsedBiFFuncs(FuncsFromBiF);
-  fixCallingConv(FuncsFromBiF);
-  // FIXME: workaround to solve several issues in the backend, remove it
-  forceInlining();
-
-  // nuke the unused functions so we can materializeAll() quickly
-  auto CleanUnused = [](llvm::Module *Module) {
-    for (auto I = Module->begin(), E = Module->end(); I != E;) {
-      auto *F = &(*I++);
-      if (F->isDeclaration() || F->isMaterializable()) {
-        if (materialized_use_empty(F)) {
-          F->eraseFromParent();
-        }
-      }
-    }
-  };
-
-  CleanUnused(BiFModule.get());
-  Linker ld(MainModule);
-
-  if (Error Err = BiFModule->materializeAll()) {
-    handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
-      errs() << "===> Materialize All Failure: " << EIB.message().c_str()
-             << '\n';
-    });
-    IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
-  }
-
-  if (ld.linkInModule(std::move(BiFModule))) {
-    IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
-  }
-
-  InitializeBIFlags(MainModule);
-  removeFunctionBitcasts(MainModule);
-
-  std::vector<Instruction *> InstToRemove;
-
-  for (auto I : InstToRemove) {
-    I->eraseFromParent();
-  }
 }
 
 class GenXImportOCLBiF final : public ModulePass {
@@ -701,14 +493,22 @@ static bool OCLBuiltinsRequired(const Module &M) {
 }
 
 bool GenXImportOCLBiF::runOnModule(Module &M) {
-  if (!OCLBuiltinsRequired(M))
+  auto OCLBuiltins = vc::collectFunctionNamesIf(
+      M, [](const Function &F) { return isOCLBuiltinDecl(F); });
+  if (OCLBuiltins.empty())
     return false;
   std::unique_ptr<Module> GenericBiFModule =
       getBiFModule(BiFKind::OCLGeneric, M.getContext());
   GenericBiFModule->setDataLayout(M.getDataLayout());
   GenericBiFModule->setTargetTriple(M.getTargetTriple());
-  BiFImporter{M, std::move(GenericBiFModule)}.run();
+  if (Linker::linkModules(M, std::move(GenericBiFModule),
+                          Linker::Flags::LinkOnlyNeeded)) {
+    IGC_ASSERT_MESSAGE(0, "Error OCL builtin implementation module");
+  }
+  removeFunctionBitcasts(M);
+  InitializeBIFlags(M);
   BIConvert{}.runOnModule(M);
+  vc::internalizeImportedFunctions(M, OCLBuiltins, /* SetAlwaysInline */ true);
   return true;
 }
 

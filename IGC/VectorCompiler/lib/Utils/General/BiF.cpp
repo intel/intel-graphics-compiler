@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "vc/Utils/General/BiF.h"
 
+#include "Probe/Assertion.h"
+
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Support/Error.h>
 
@@ -53,4 +55,18 @@ vc::getLazyBiFModuleOrReportError(MemoryBufferRef BiFModuleBuffer,
       [](MemoryBufferRef BiFModuleBufferIn, LLVMContext &CtxIn) {
         return getLazyBitcodeModule(BiFModuleBufferIn, CtxIn);
       });
+}
+
+void vc::internalizeImportedFunctions(const llvm::Module &M,
+                                      const vc::FunctionNameSeq &FuncNames,
+                                      bool SetAlwaysInline) {
+  for (auto &Name : FuncNames) {
+    auto *F = M.getFunction(Name);
+    IGC_ASSERT_MESSAGE(F, "Function is expected");
+    if (!F->isDeclaration()) {
+      F->setLinkage(GlobalValue::LinkageTypes::InternalLinkage);
+      if (SetAlwaysInline)
+        F->addFnAttr(Attribute::AlwaysInline);
+    }
+  }
 }

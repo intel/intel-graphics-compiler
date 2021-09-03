@@ -74,17 +74,11 @@ static bool isSPIRVBuiltinDecl(const Function &F) {
 
 bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
   // Collect SPIRV built-in functions to link.
-  auto SPIRVBuiltinDecls =
-      llvm::make_filter_range(M.getFunctionList(), [](const Function &F) {
-        return isSPIRVBuiltinDecl(F);
-      });
+  auto SPIRVBuiltins = vc::collectFunctionNamesIf(
+      M, [](const Function &F) { return isSPIRVBuiltinDecl(F); });
   // Nothing to do if there are no spirv builtins.
-  if (std::begin(SPIRVBuiltinDecls) == std::end(SPIRVBuiltinDecls))
+  if (SPIRVBuiltins.empty())
     return false;
-
-  std::vector<std::string> SPIRVBuiltinDeclsNames;
-  llvm::transform(SPIRVBuiltinDecls, std::back_inserter(SPIRVBuiltinDeclsNames),
-                  [](const Function &F) { return F.getName().str(); });
 
   std::unique_ptr<Module> SPIRVBuiltinsModule =
       getBiFModule(BiFKind::VCSPIRVBuiltins, M.getContext());
@@ -96,14 +90,9 @@ bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
     IGC_ASSERT_MESSAGE(0, "Error linking spirv implementation builtin module");
   }
 
-  // If declaration appeared, then mark with internal linkage. False positives
-  // are still declarations as they were earlier.
-  for (auto SPIRVBuiltinDeclName : SPIRVBuiltinDeclsNames) {
-    auto *F = M.getFunction(SPIRVBuiltinDeclName);
-    IGC_ASSERT_MESSAGE(F, "Function is still expected");
-    if (!F->isDeclaration())
-      F->setLinkage(GlobalValue::LinkageTypes::InternalLinkage);
-  }
+  // If declaration appeared, then mark with internal linkage.
+  vc::internalizeImportedFunctions(M, SPIRVBuiltins,
+                                   /* SetAlwaysInline */ true);
 
   return true;
 }
