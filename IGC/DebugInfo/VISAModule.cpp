@@ -34,6 +34,11 @@ See LICENSE.TXT for details.
 using namespace llvm;
 using namespace IGC;
 
+void VISAVariableLocation::dump() const
+{
+    print(llvm::dbgs());
+}
+
 void VISAVariableLocation::print(llvm::raw_ostream &OS,
                                  const std::vector<VISAVariableLocation> &Locs)
 {

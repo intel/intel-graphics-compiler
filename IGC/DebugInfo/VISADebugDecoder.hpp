@@ -55,8 +55,8 @@ namespace IGC
                     return (regNum == rhs.regNum && subRegNum == rhs.subRegNum);
                 }
 
-                void print (llvm::raw_ostream& OS) const;
-                void dump() const { print(llvm::dbgs()); }
+                void print(llvm::raw_ostream& OS) const;
+                void dump() const;
             };
             class Memory
             {
@@ -69,8 +69,8 @@ namespace IGC
                     return (isBaseOffBEFP == rhs.isBaseOffBEFP && memoryOffset == rhs.memoryOffset);
                 }
 
-                void print (llvm::raw_ostream& OS) const;
-                void dump() const { print(llvm::dbgs()); }
+                void print(llvm::raw_ostream& OS) const;
+                void dump() const;
             };
             union {
                 Register r;
@@ -97,8 +97,8 @@ namespace IGC
             PhysicalVarType physicalType;
             Mapping mapping;
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
         class LiveIntervalsVISA
         {
@@ -144,8 +144,8 @@ namespace IGC
                 return var.mapping.m;
             }
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
         class LiveIntervalGenISA
         {
@@ -154,8 +154,8 @@ namespace IGC
             uint32_t end = 0;
             VarAlloc var;
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
 
         class VarInfo
@@ -164,8 +164,8 @@ namespace IGC
             std::string name;
             std::vector<LiveIntervalsVISA> lrs;
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
         class SubroutineInfo
         {
@@ -175,8 +175,8 @@ namespace IGC
             uint32_t endVISAIndex;
             std::vector<LiveIntervalsVISA> retval;
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
         class RegInfoMapping
         {
@@ -186,8 +186,8 @@ namespace IGC
             bool dstInReg = false;
             Mapping dst;
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
         class PhyRegSaveInfoPerIP
         {
@@ -196,8 +196,8 @@ namespace IGC
             uint16_t numEntries = 0;
             std::vector<RegInfoMapping> data;
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
         class CallFrameInfo
         {
@@ -230,8 +230,8 @@ namespace IGC
                 return true;
             }
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
         class DbgInfoFormat
         {
@@ -245,8 +245,8 @@ namespace IGC
             std::vector<SubroutineInfo> subs;
             CallFrameInfo cfi;
 
-            void print (llvm::raw_ostream& OS) const;
-            void dump() const { print(llvm::dbgs()); }
+            void print(llvm::raw_ostream& OS) const;
+            void dump() const;
         };
 
         std::vector<DbgInfoFormat> compiledObjs;
@@ -487,7 +487,7 @@ namespace IGC
 
             return false;
         }
-        void print (llvm::raw_ostream& OS) const;
-        void dump() const { print(llvm::dbgs()); }
+        void print(llvm::raw_ostream& OS) const;
+        void dump() const;
     };
 } // namespace IGC

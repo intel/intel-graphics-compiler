@@ -140,7 +140,7 @@ namespace IGC
         bool IsTexture() const;
         bool IsSLM() const;
 
-        void dump() const { print(llvm::dbgs()); }
+        void dump() const;
         void print (llvm::raw_ostream &OS) const;
 
         static void print(llvm::raw_ostream &OS,

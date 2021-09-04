@@ -25,14 +25,30 @@ static void PrintItems(llvm::raw_ostream& OS, const T& Items,
         OS << ")";
     });
 }
-void IGC::DbgDecoder::Mapping::Register::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::Mapping::Register::print(llvm::raw_ostream& OS) const
+{
     OS << "RegMap<R#: " << regNum << ", Sub#:" << subRegNum << ">";
 }
-void IGC::DbgDecoder::Mapping::Memory::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::Mapping::Register::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::Mapping::Memory::print(llvm::raw_ostream& OS) const
+{
     OS << "MemMap<" << ((isBaseOffBEFP == 1) ? "AbsBase(" : "BE_FP(") <<
         memoryOffset << ")>";
 }
-void IGC::DbgDecoder::VarAlloc::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::Mapping::Memory::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::VarAlloc::print(llvm::raw_ostream& OS) const
+{
     switch(virtualType) {
     case VarAlloc::VirTypeAddress: OS << "v:A->"; break;
     case VarAlloc::VirTypeFlag:    OS << "v:F->"; break;
@@ -47,32 +63,74 @@ void IGC::DbgDecoder::VarAlloc::print(llvm::raw_ostream& OS) const {
     case VarAlloc::PhyTypeMemory:  OS << "p:M(!GRF) "; break;
     };
 }
-void IGC::DbgDecoder::LiveIntervalsVISA::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::VarAlloc::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::LiveIntervalsVISA::print(llvm::raw_ostream& OS) const
+{
     OS << "LInt-V[" << start << ";" << end << "] ";
     var.print(OS);
 }
-void IGC::DbgDecoder::VarInfo::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::LiveIntervalsVISA::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::VarInfo::print(llvm::raw_ostream& OS) const
+{
     OS << "{ " << name << " - ";
     PrintItems(OS, lrs, ", ");
     OS << " }";
 }
-void IGC::DbgDecoder::LiveIntervalGenISA::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::VarInfo::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::LiveIntervalGenISA::print(llvm::raw_ostream& OS) const
+{
     OS << "LInt-G[" << start << ";" << end << "] ";
     var.print(OS);
 }
-void IGC::DbgDecoder::SubroutineInfo::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::LiveIntervalGenISA::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::SubroutineInfo::print(llvm::raw_ostream& OS) const
+{
     OS << "Name=" << name << " [" << startVISAIndex << ";" << endVISAIndex <<
         "), retvals: ";
     PrintItems(OS, retval, ", ");
 }
-void IGC::DbgDecoder::RegInfoMapping::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::SubroutineInfo::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::RegInfoMapping::print(llvm::raw_ostream& OS) const
+{
     OS << "srcRegOff: " << srcRegOff << ", " << numBytes << " bytes; ";
     if (dstInReg)
         dst.r.print(OS);
     else
         dst.m.print(OS);
 }
-void IGC::DbgDecoder::PhyRegSaveInfoPerIP::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::RegInfoMapping::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::PhyRegSaveInfoPerIP::print(llvm::raw_ostream& OS) const
+{
     OS << "PhyR_SaveInfo: " << "IPOffset " << genIPOffset << ", numEntries " <<
       numEntries << "\n";
     OS << "   >RegInfoMapping: [";
@@ -80,7 +138,14 @@ void IGC::DbgDecoder::PhyRegSaveInfoPerIP::print(llvm::raw_ostream& OS) const {
     PrintItems(OS, data, ", ");
     OS << "   ]";
 }
-void IGC::DbgDecoder::CallFrameInfo::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::PhyRegSaveInfoPerIP::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::CallFrameInfo::print(llvm::raw_ostream& OS) const
+{
   OS << "    frameSize: " << frameSize << "\n";
   OS << "    befpValid: " << befpValid << "\n";
   OS << "    callerbefpValid: " << callerbefpValid << "\n";
@@ -106,7 +171,14 @@ void IGC::DbgDecoder::CallFrameInfo::print(llvm::raw_ostream& OS) const {
   PrintItems(OS, callerSaveEntry, "\n        ");
   OS << "    ]\n";
 }
-void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream& OS) const {
+
+void IGC::DbgDecoder::CallFrameInfo::dump() const
+{
+    print(llvm::dbgs());
+}
+
+void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream& OS) const
+{
     OS << "<VISADebugInfo>\n";
     OS << "  Kernel: " << kernelName << "\n";
     OS << "  RelocOffset: " << relocOffset << "\n";
@@ -128,6 +200,11 @@ void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream& OS) const {
             OS << "  GI: " << GenOff << " -> VI: " << VisaIndex << "\n";
         });
     OS << "</VISADebugInfo>";
+}
+
+void IGC::DbgDecoder::DbgInfoFormat::dump() const
+{
+    print(llvm::dbgs());
 }
 
 void IGC::DbgDecoder::print(llvm::raw_ostream& OS) const
@@ -157,4 +234,9 @@ void IGC::DbgDecoder::print(llvm::raw_ostream& OS) const
         OS << "\n";
     }
     OS << "-------------------------------------\n";
+}
+
+void IGC::DbgDecoder::dump() const
+{
+    print(llvm::dbgs());
 }
