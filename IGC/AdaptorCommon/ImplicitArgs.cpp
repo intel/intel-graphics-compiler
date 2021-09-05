@@ -21,6 +21,77 @@ using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
 
+static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
+    ImplicitArg(ImplicitArg::R0, "r0", ImplicitArg::INT, WIAnalysis::UNIFORM_THREAD, 8, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getR0),
+
+    ImplicitArg(ImplicitArg::PAYLOAD_HEADER, "payloadHeader", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 8, ImplicitArg::ALIGN_GRF, true, GenISAIntrinsic::GenISA_getPayloadHeader),
+    ImplicitArg(ImplicitArg::WORK_DIM, "workDim", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getWorkDim),
+
+    ImplicitArg(ImplicitArg::NUM_GROUPS, "numWorkGroups", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getNumWorkGroups),
+    ImplicitArg(ImplicitArg::GLOBAL_SIZE, "globalSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getGlobalSize),
+    ImplicitArg(ImplicitArg::LOCAL_SIZE, "localSize", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getLocalSize),
+    ImplicitArg(ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, "enqueuedLocalSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getEnqueuedLocalSize),
+
+    ImplicitArg(ImplicitArg::LOCAL_ID_X, "localIdX", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_X),
+    ImplicitArg(ImplicitArg::LOCAL_ID_Y, "localIdY", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_Y),
+    ImplicitArg(ImplicitArg::LOCAL_ID_Z, "localIdZ", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_Z),
+
+    ImplicitArg(ImplicitArg::CONSTANT_BASE, "constBase", ImplicitArg::CONSTPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::GLOBAL_BASE, "globalBase", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::PRIVATE_BASE, "privateBase", ImplicitArg::PRIVATEPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::PRINTF_BUFFER, "printfBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+
+    ImplicitArg(ImplicitArg::BUFFER_OFFSET, "bufferOffset", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+
+    ImplicitArg(ImplicitArg::CONSTANT_REG_FP32, "const_reg_fp32", ImplicitArg::FP32, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::CONSTANT_REG_QWORD, "const_reg_qword", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_QWORD, true),
+    ImplicitArg(ImplicitArg::CONSTANT_REG_DWORD, "const_reg_dword", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::CONSTANT_REG_WORD, "const_reg_word", ImplicitArg::SHORT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::CONSTANT_REG_BYTE, "const_reg_byte", ImplicitArg::BYTE, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+
+    ImplicitArg(ImplicitArg::IMAGE_HEIGHT, "imageHeigt", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::IMAGE_WIDTH, "imageWidth", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::IMAGE_DEPTH, "imageDepth", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::IMAGE_NUM_MIP_LEVELS, "imageNumMipLevels", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::IMAGE_CHANNEL_DATA_TYPE, "imageDataType", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::IMAGE_CHANNEL_ORDER, "imageOrder", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER, "imageSrgbOrder", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::IMAGE_ARRAY_SIZE, "imageArrSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::IMAGE_NUM_SAMPLES, "imageNumSamples", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+
+    ImplicitArg(ImplicitArg::SAMPLER_ADDRESS, "smpAddress", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::SAMPLER_NORMALIZED, "smpNormalized", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::SAMPLER_SNAP_WA, "smpSnapWA", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::FLAT_IMAGE_BASEOFFSET, "flatImageBaseoffset", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_QWORD, true),
+    ImplicitArg(ImplicitArg::FLAT_IMAGE_HEIGHT, "flatImageHeight", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::FLAT_IMAGE_WIDTH, "flatImageWidth", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::FLAT_IMAGE_PITCH, "flatImagePitch", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+
+    ImplicitArg(ImplicitArg::VME_MB_BLOCK_TYPE, "vmeMbBlockType", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::VME_SUBPIXEL_MODE, "vmeSubpixelMode", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::VME_SAD_ADJUST_MODE, "vmeSadAdjustMode", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::VME_SEARCH_PATH_TYPE, "vmeSearchPathType", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+
+    ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE, "deviceEnqueueDefaultDeviceQueue", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_EVENT_POOL, "deviceEnqueueEventPool", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_MAX_WORKGROUP_SIZE, "deviceEnqueueMaxWorkgroupSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_PARENT_EVENT, "deviceEnqueueParentEvent", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_PREFERED_WORKGROUP_MULTIPLE, "deviceEnqueuePreferedWorkgroupMultiple", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::GET_OBJECT_ID, "deviceEnqueueGetObjectId", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::GET_BLOCK_SIMD_SIZE, "deviceEnqueueGetBlockSimdSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+
+    ImplicitArg(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS, "localMemStatelessWindowStartAddr", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE, "localMemStatelessWindowSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE, "PrivateMemStatelessSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+
+    ImplicitArg(ImplicitArg::STAGE_IN_GRID_ORIGIN, "stageInGridOrigin", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_GRF, true),
+    ImplicitArg(ImplicitArg::STAGE_IN_GRID_SIZE, "stageInGridSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_GRF, true),
+
+    ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, false),
+
+    ImplicitArg(ImplicitArg::BINDLESS_OFFSET, "bindlessOffset", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+};
+
 ImplicitArg::ImplicitArg(
         const ArgType&                  argType,
         const std::string&              name,
@@ -242,90 +313,16 @@ GenISAIntrinsic::ID ImplicitArg::getGenIntrinsicID() const {
 
 ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMdUtils)
 {
-    if (IMPLICIT_ARGS.size() == 0)
+    IGC_ASSERT_MESSAGE((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS), "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
     {
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::R0, "r0", ImplicitArg::INT, WIAnalysis::UNIFORM_THREAD, 8, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getR0));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::PAYLOAD_HEADER, "payloadHeader", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 8, ImplicitArg::ALIGN_GRF, true, GenISAIntrinsic::GenISA_getPayloadHeader));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::WORK_DIM, "workDim", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getWorkDim));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::NUM_GROUPS, "numWorkGroups", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getNumWorkGroups));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GLOBAL_SIZE, "globalSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getGlobalSize));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_SIZE, "localSize", ImplicitArg::INT, WIAnalysis::UNIFORM_WORKGROUP, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getLocalSize));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, "enqueuedLocalSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_DWORD, true, GenISAIntrinsic::GenISA_getEnqueuedLocalSize));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_X, "localIdX", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_X));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Y, "localIdY", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_Y));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Z, "localIdZ", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getLocalID_Z));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::CONSTANT_BASE, "constBase", ImplicitArg::CONSTPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GLOBAL_BASE, "globalBase", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::PRIVATE_BASE, "privateBase", ImplicitArg::PRIVATEPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::PRINTF_BUFFER, "printfBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::BUFFER_OFFSET, "bufferOffset", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::CONSTANT_REG_FP32, "const_reg_fp32", ImplicitArg::FP32, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::CONSTANT_REG_QWORD, "const_reg_qword", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_QWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::CONSTANT_REG_DWORD, "const_reg_dword", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::CONSTANT_REG_WORD, "const_reg_word", ImplicitArg::SHORT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::CONSTANT_REG_BYTE, "const_reg_byte", ImplicitArg::BYTE, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_HEIGHT, "imageHeigt", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_WIDTH, "imageWidth", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_DEPTH, "imageDepth", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_NUM_MIP_LEVELS, "imageNumMipLevels", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_CHANNEL_DATA_TYPE, "imageDataType", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_CHANNEL_ORDER, "imageOrder", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER, "imageSrgbOrder", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_ARRAY_SIZE, "imageArrSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::IMAGE_NUM_SAMPLES, "imageNumSamples", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SAMPLER_ADDRESS, "smpAddress", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SAMPLER_NORMALIZED, "smpNormalized", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SAMPLER_SNAP_WA, "smpSnapWA", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::FLAT_IMAGE_BASEOFFSET, "flatImageBaseoffset", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_QWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::FLAT_IMAGE_HEIGHT, "flatImageHeight", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::FLAT_IMAGE_WIDTH, "flatImageWidth", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::FLAT_IMAGE_PITCH, "flatImagePitch", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::VME_MB_BLOCK_TYPE, "vmeMbBlockType", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::VME_SUBPIXEL_MODE, "vmeSubpixelMode", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::VME_SAD_ADJUST_MODE, "vmeSadAdjustMode", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::VME_SEARCH_PATH_TYPE, "vmeSearchPathType", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE, "deviceEnqueueDefaultDeviceQueue", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_EVENT_POOL, "deviceEnqueueEventPool", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_MAX_WORKGROUP_SIZE, "deviceEnqueueMaxWorkgroupSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_PARENT_EVENT, "deviceEnqueueParentEvent", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::DEVICE_ENQUEUE_PREFERED_WORKGROUP_MULTIPLE, "deviceEnqueuePreferedWorkgroupMultiple", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GET_OBJECT_ID, "deviceEnqueueGetObjectId", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GET_BLOCK_SIMD_SIZE, "deviceEnqueueGetBlockSimdSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS, "localMemStatelessWindowStartAddr", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE, "localMemStatelessWindowSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE, "PrivateMemStatelessSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::STAGE_IN_GRID_ORIGIN, "stageInGridOrigin", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_GRF, true));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::STAGE_IN_GRID_SIZE, "stageInGridSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_GRF, true));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, false));
-
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::BINDLESS_OFFSET, "bindlessOffset", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true));
-
-        IGC_ASSERT_MESSAGE((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS), "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
-
+        // Note: the order that implicit args are added here must match the
+        // order of the ImplicitArg::Argtype enum.  Let's check that they match:
+        uint32_t CurArgId = ImplicitArg::START_ID;
+        for (auto& Arg : IMPLICIT_ARGS)
         {
-            // Note: the order that implicit args are added here must match the
-            // order of the ImplicitArg::Argtype enum.  Let's check that they match:
-            uint32_t CurArgId = ImplicitArg::START_ID;
-            for (auto& Arg : IMPLICIT_ARGS)
-            {
-                IGC_ASSERT_MESSAGE((Arg.getArgType() == CurArgId++), "enum and vector out of sync!");
-            }
+            IGC_ASSERT_MESSAGE((Arg.getArgType() == CurArgId++), "enum and vector out of sync!");
         }
     }
-
     m_funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&func));
 }
 
@@ -588,7 +585,7 @@ ImplicitArg::ArgType ImplicitArgs::getArgType(unsigned int index) const {
     return static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
 }
 
-ImplicitArg::ArgType ImplicitArgs::getArgType(GenISAIntrinsic::ID id) const {
+ImplicitArg::ArgType ImplicitArgs::getArgType(GenISAIntrinsic::ID id) {
     IGC_ASSERT(id != GenISAIntrinsic::ID::no_intrinsic);
     for (auto &arg : IMPLICIT_ARGS)
     {
@@ -601,7 +598,7 @@ ImplicitArg::ArgType ImplicitArgs::getArgType(GenISAIntrinsic::ID id) const {
     return ImplicitArg::ArgType::NUM_IMPLICIT_ARGS;
 }
 
-IGC::WIAnalysis::WIDependancy ImplicitArgs::getArgDep(GenISAIntrinsic::ID id) const {
+IGC::WIAnalysis::WIDependancy ImplicitArgs::getArgDep(GenISAIntrinsic::ID id) {
     IGC_ASSERT(id != GenISAIntrinsic::ID::no_intrinsic);
     for (auto& arg : IMPLICIT_ARGS)
     {
@@ -612,6 +609,10 @@ IGC::WIAnalysis::WIDependancy ImplicitArgs::getArgDep(GenISAIntrinsic::ID id) co
     }
     IGC_ASSERT_MESSAGE(0, "Intrinsic not supported!");
     return IGC::WIAnalysis::WIDependancy::RANDOM;
+}
+
+bool ImplicitArgs::hasIntrinsicSupport(ImplicitArg::ArgType i) {
+    return IMPLICIT_ARGS[i].getGenIntrinsicID() != GenISAIntrinsic::no_intrinsic;
 }
 
 int32_t ImplicitArgs::getExplicitArgNum(unsigned int index) const
@@ -655,7 +656,7 @@ Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType
     auto pMdUtils = pCtx->getMetaDataUtils();
     if (!isEntryFunc(pMdUtils, &F) && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
     {
-        ImplicitArg& iArg = IMPLICIT_ARGS[argType];
+        ImplicitArg iArg = IMPLICIT_ARGS[argType];
         GenISAIntrinsic::ID genID = iArg.getGenIntrinsicID();
         if (genID != GenISAIntrinsic::ID::no_intrinsic)
         {

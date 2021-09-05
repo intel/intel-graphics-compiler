@@ -1356,9 +1356,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         case GenISAIntrinsic::GenISA_getLocalID_Y:
         case GenISAIntrinsic::GenISA_getLocalID_Z:
         {
-            const Function* F = inst->getParent()->getParent();
-            ImplicitArgs IAS(*F, m_pMdUtils);
-            return IAS.getArgDep(GII_id);
+            return ImplicitArgs::getArgDep(GII_id);
         }
         }
 

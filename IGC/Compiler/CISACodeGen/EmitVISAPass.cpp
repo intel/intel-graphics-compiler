@@ -18419,30 +18419,38 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
     Function* parentFunc = I->getParent()->getParent();
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    IGC_ASSERT_MESSAGE(!isEntryFunc(pMdUtils, parentFunc), "Implicit Arg Intrinsics should not be used by kernel");
     if (I->getIntrinsicID() == GenISAIntrinsic::ID::GenISA_getR0)
     {
         // Returns the predefined R0 register
         m_encoder->SetUniformSIMDSize(lanesToSIMDMode(m_currShader->getGRFSize() / SIZE_DWORD));
         m_encoder->SetNoMask();
         m_currShader->CopyVariable(GetSymbol(I), m_currShader->GetR0());
+        return;
     }
-    else if (m_FGA)
+
+    Function* groupHead = nullptr;
+    if (!m_FGA || m_FGA->isGroupHead(parentFunc)) {
+        groupHead = parentFunc;
+    }
+    else {
+        groupHead = m_FGA->getSubGroupMap(parentFunc);
+    }
+
+    if (isEntryFunc(pMdUtils, groupHead))
     {
-        Function* SubGroupHead = m_FGA->getSubGroupMap(parentFunc);
-        if (isEntryFunc(pMdUtils, SubGroupHead))
+        // Map to the root kernel's implicit arg
+        ImplicitArgs IAS(*groupHead, pMdUtils);
+        ImplicitArg::ArgType IAtype = ImplicitArgs::getArgType(I->getIntrinsicID());
+        Argument* arg = IAS.getImplicitArg(*groupHead, IAtype);
+        IGC_ASSERT_MESSAGE(arg, "Implicit argument not found!");
+        if (arg)
         {
-            // Map to the kernel's implicit arg
-            ImplicitArgs IAS(*SubGroupHead, pMdUtils);
-            ImplicitArg::ArgType IAtype = IAS.getArgType(I->getIntrinsicID());
-            Argument* arg = IAS.getImplicitArg(*SubGroupHead, IAtype);
-            auto ArgSymbol = m_currShader->getOrCreateArgumentSymbol(arg, false, false);
-            m_currShader->CopyVariable(GetSymbol(I), ArgSymbol);
+            m_currShader->CopyVariable(GetSymbol(I), m_currShader->getOrCreateArgumentSymbol(arg, false));
         }
-        else
-        {
-            IGC_ASSERT_MESSAGE(0, "Does not support stackcall as subgroup head!");
-        }
+    }
+    else
+    {
+        IGC_ASSERT_MESSAGE(0, "Does not support stackcall as subgroup head!");
     }
 }
 

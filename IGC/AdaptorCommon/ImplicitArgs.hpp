@@ -245,12 +245,17 @@ namespace IGC
         /// @brief  Returns the argument type of the given matching intrinsic ID
         /// @param  i               The GenISAIntrinsic ID
         /// @return The argument type
-        ImplicitArg::ArgType getArgType(llvm::GenISAIntrinsic::ID id) const;
+        static ImplicitArg::ArgType getArgType(llvm::GenISAIntrinsic::ID id);
 
         /// @brief  Returns the argument dependency of the given matching intrinsic ID
         /// @param  i               The GenISAIntrinsic ID
         /// @return The argument dependency
-        IGC::WIAnalysis::WIDependancy getArgDep(llvm::GenISAIntrinsic::ID id) const;
+        static IGC::WIAnalysis::WIDependancy getArgDep(llvm::GenISAIntrinsic::ID id);
+
+        /// @brief  Returns if the given arg type supports the GenISAIntrinsic instruction
+        /// @param  i               The ImplicitArg type
+        /// @return If intrinsic supported
+        static bool hasIntrinsicSupport(ImplicitArg::ArgType i);
 
         /// @brief  Returns the explicit argument number of the given implicit argument index
         /// @param  i               The implicit argument index
@@ -299,12 +304,6 @@ namespace IGC
         /// @param  pMdUtils        The Metadata API object
         static void addBindlessOffsetArgs(llvm::Function& F, const IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD);
 
-        /// @brief  Returns the (implicit) function argument associated with the given implicit argument type
-        /// @param  F               The function for which the implict argument should be returned
-        /// @param  argType         The type of the implict argument that should be returned
-        /// @return The (implicit) function argument associated with the given argument type
-        llvm::Argument* getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) const;
-
         /// @brief  Check if the given implicit argument type exist in the(implicit) function argument associated
         /// @param  argType         The type of the implict argument that should be checked
         /// @return true if the argument exist, false otherwise.
@@ -338,10 +337,6 @@ namespace IGC
         llvm::Value* getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGC::CodeGenContext* pCtx);
 
     private:
-
-        /// @brief  All possible implicit arguments
-        std::vector<ImplicitArg> IMPLICIT_ARGS;
-
         /// @brief The function's metadata information.
         IGCMD::FunctionInfoMetaDataHandle m_funcInfoMD;
 
