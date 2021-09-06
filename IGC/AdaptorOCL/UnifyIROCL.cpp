@@ -268,6 +268,7 @@ static void CommonOCLBasedPasses(
     mpmSPIR.add(new PreprocessSPVIR());
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new TypesLegalizationPass());
+    mpmSPIR.add(new TargetLibraryInfoWrapperPass());
     mpmSPIR.add(createDeadCodeEliminationPass());
     mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpmSPIR.add(new CodeGenContextWrapper(pContext));
