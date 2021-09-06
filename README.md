@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 # Intel&reg; Graphics Compiler for OpenCL&trade;
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/intel/intel-graphics-compiler?label=Latest%20release)
-![Travis (.com) branch](https://img.shields.io/travis/com/intel/intel-graphics-compiler/master?label=Ubuntu%20build)
 
 ## Introduction
 
