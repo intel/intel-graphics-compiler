@@ -57,6 +57,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/InstVisitor.h"
@@ -313,8 +314,6 @@ struct CMABI : public CallGraphSCCPass {
 
   bool runOnSCC(CallGraphSCC &SCC) override;
 
-  bool doFinalization(CallGraph &CG) override;
-
 private:
 
   CallGraphNode *ProcessNode(CallGraphNode *CGN);
@@ -388,21 +387,6 @@ bool CMABIAnalysis::runOnCallGraph(CallGraph &CG) {
 
   // no change.
   return false;
-}
-
-bool CMABI::doFinalization(CallGraph &CG) {
-  bool Changed = false;
-  for (Module::global_iterator I = CG.getModule().global_begin();
-       I != CG.getModule().global_end();
-       /*empty*/) {
-    GlobalVariable *GV = &*I++;
-    if (GV->use_empty()) {
-      GV->eraseFromParent();
-      Changed = true;
-    }
-  }
-
-  return Changed;
 }
 
 bool CMABI::runOnSCC(CallGraphSCC &SCC) {
@@ -1383,14 +1367,6 @@ void CMABIAnalysis::defineGVDirectUsers(GlobalVariable &GV) {
 // copy-in and copy-out arguments.
 void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   Module &M = CG.getModule();
-  // assuming the device module is self-contained,
-  // set internal-linkage for global variables
-  // and functions so globla-DCE can remove them
-  // if there is no use in the module.
-  for (auto& Global : M.getGlobalList()) {
-    if (!Global.isDeclaration())
-      Global.setLinkage(GlobalValue::InternalLinkage);
-  }
   for (auto& F : M.getFunctionList()) {
     if (F.isDeclaration() || F.hasDLLExportStorageClass())
       continue;
