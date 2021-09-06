@@ -57,7 +57,7 @@ using namespace genx;
 
 static cl::opt<bool> EnableTPM("enable-legacy-tpm", cl::init(true), cl::Hidden,
                                cl::desc("Enable legacy TPM pass"));
-static cl::opt<bool> EnableTPMOCLRT("enable-legacy-tpm-oclrt", cl::init(true),
+static cl::opt<bool> EnableTPMOCLRT("enable-legacy-tpm-oclrt", cl::init(false),
                                     cl::Hidden,
                                     cl::desc("Enable legacy TPM pass"));
 static cl::opt<bool> ForceSVMTPM("force-svm-tpm", cl::init(true), cl::Hidden,
