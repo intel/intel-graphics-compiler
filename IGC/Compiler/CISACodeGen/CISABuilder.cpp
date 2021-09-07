@@ -3856,6 +3856,7 @@ namespace IGC
 
             // API check.
             if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
+                context->m_retryManager.AllowVISAPreRAScheduler() &&
                 m_program->m_DriverInfo->enableVISAPreRAScheduler())
                 return true;
 
