@@ -1986,6 +1986,9 @@ void SPIRVToLLVM::transLLVMLoopMetadata(const Function *F) {
 
 GlobalValue::LinkageTypes
 SPIRVToLLVM::transLinkageType(const SPIRVValue* V) {
+  std::string ValueName = V->getName();
+  if (ValueName == "llvm.used" || ValueName == "llvm.compiler.used")
+    return GlobalValue::AppendingLinkage;
   if (V->getLinkageType() == LinkageTypeInternal) {
     return GlobalValue::InternalLinkage;
   }
