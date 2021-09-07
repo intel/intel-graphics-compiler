@@ -31,6 +31,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvm/Support/Debug.h"
+
+#define DEBUG_TYPE "GENX_GEPLowering"
 
 using namespace llvm;
 using namespace genx;
@@ -84,6 +87,8 @@ FunctionPass *llvm::createGenXGEPLoweringPass() {
 }
 
 bool GenXGEPLowering::runOnFunction(Function &F) {
+  LLVM_DEBUG(dbgs() << "Before GEPLowering\n");
+  LLVM_DEBUG(F.dump());
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   M = F.getParent();
   DL = &M->getDataLayout();
@@ -136,6 +141,8 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
       }
     }
   }
+  LLVM_DEBUG(dbgs() << "After GEPLowering\n");
+  LLVM_DEBUG(F.dump());
   Builder = nullptr;
 
   return Changed;
@@ -186,29 +193,17 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
   for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI, ++GTI) {
     Value *Idx = *OI;
     if (StructType *StTy = GTI.getStructTypeOrNull()) {
-      if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
-        auto Field = CI->getSExtValue();
-        if (Field) {
-          uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
-          Value *OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
-          PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
-        }
-        Ty = StTy->getElementType(Field);
-      } else if (isa<ConstantAggregateZero>(Idx)) {
-        Ty = StTy->getElementType(0);
-      } else if (const ConstantVector *CV = dyn_cast<ConstantVector>(Idx)) {
-        auto CE = CV->getSplatValue();
-        assert(CE && dyn_cast<ConstantInt>(CE));
-        auto Field = cast<ConstantInt>(CE)->getSExtValue();
-        if (Field) {
-          uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
-          Value *OffsetVal = Constant::getIntegerValue(
-              PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
-          PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
-        }
-        Ty = StTy->getElementType(Field);
-      } else
-        assert(false);
+      int64_t Field = 0;
+      Constant *CE = cast<Constant>(Idx);
+      if (!CE->isNullValue()) {
+        Field = CE->getUniqueInteger().getSExtValue();
+        uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
+        Value *OffsetVal = Constant::getIntegerValue(
+          PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
+        PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
+      }
+
+      Ty = StTy->getElementType(Field);
     } else {
       Ty = GTI.getIndexedType();
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
