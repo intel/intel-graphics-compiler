@@ -591,6 +591,32 @@ loadBinaries(genx::BinaryDataAccumulator<const Function *> &GenBinary,
   
 }
 
+template <typename UnaryPred>
+std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
+                                                     UnaryPred &&Pred) {
+  std::vector<const Function *> Collected;
+  std::set<const FunctionGroup *> Visited;
+  std::stack<const FunctionGroup *> Worklist;
+  Worklist.push(&FG);
+
+  while (!Worklist.empty()) {
+    const FunctionGroup *CurFG = Worklist.top();
+    Worklist.pop();
+    if (Visited.count(CurFG))
+      continue;
+
+    for (const FunctionGroup *SubFG : CurFG->subgroups())
+      Worklist.push(SubFG);
+    Visited.insert(CurFG);
+
+    const Function *SubgroupHead = CurFG->getHead();
+    if (Pred(SubgroupHead))
+      Collected.push_back(SubgroupHead);
+  }
+
+  return Collected;
+}
+
 // Constructs gen binary for provided function group \p FG.
 static genx::BinaryDataAccumulator<const Function *>
 getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
@@ -600,10 +626,11 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
   // load kernel
   loadBinaries(GenBinary, VB, *Kernel, *Kernel, BC);
 
-  for (Function *F : FG)
-    if (genx::isReferencedIndirectly(F))
-      // load functions
-      loadBinaries(GenBinary, VB, *Kernel, *F, BC);
+  const auto IndirectFunctions = collectCalledFunctions(
+      FG, [](const Function *F) { return genx::isReferencedIndirectly(F); });
+  for (const Function *F : IndirectFunctions)
+    // load functions
+    loadBinaries(GenBinary, VB, *Kernel, *F, BC);
 
   return std::move(GenBinary);
 }
@@ -746,20 +773,18 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   // TODO: this a temporary solution for spill mem size
   // calculation. This has to be redesign properly, maybe w/ multiple
   // KernelInfos or by introducing FunctionInfos
-  for (Function *F: FG) {
-    if (F == KernelFunction)
-      continue;
-    if (genx::requiresStackCall(F)) {
-      const std::string FuncName = F->getName().str();
-      VISAKernel *VF = VB.GetVISAKernel(FuncName);
-      IGC_ASSERT_MESSAGE(VF, "Function is null");
-      FINALIZER_INFO *FuncJitInfo = nullptr;
-      CISA_CALL(VF->GetJitInfo(FuncJitInfo));
-      IGC_ASSERT_MESSAGE(FuncJitInfo, "Func jit info is not set by finalizer");
-      JitInfo->isSpill |= FuncJitInfo->isSpill;
-      JitInfo->hasStackcalls |= FuncJitInfo->hasStackcalls;
-      JitInfo->spillMemUsed += FuncJitInfo->spillMemUsed;
-    }
+  const auto StackCalls = collectCalledFunctions(
+      FG, [](const Function *F) { return genx::requiresStackCall(F); });
+  for (const Function *F : StackCalls) {
+    const std::string FuncName = F->getName().str();
+    VISAKernel *VF = VB.GetVISAKernel(FuncName);
+    IGC_ASSERT_MESSAGE(VF, "Function is null");
+    FINALIZER_INFO *FuncJitInfo = nullptr;
+    CISA_CALL(VF->GetJitInfo(FuncJitInfo));
+    IGC_ASSERT_MESSAGE(FuncJitInfo, "Func jit info is not set by finalizer");
+    JitInfo->isSpill |= FuncJitInfo->isSpill;
+    JitInfo->hasStackcalls |= FuncJitInfo->hasStackcalls;
+    JitInfo->spillMemUsed += FuncJitInfo->spillMemUsed;
   }
 
   genx::BinaryDataAccumulator<const Function *> GenBinary =

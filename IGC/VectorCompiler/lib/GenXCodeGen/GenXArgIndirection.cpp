@@ -1095,9 +1095,14 @@ void SubroutineArg::gatherBalesToModify(Alignment Align)
       auto User = cast<Instruction>(ui->getUser());
       if (auto CI = dyn_cast<CallInst>(User)) {
         Function *CF = CI->getCalledFunction();
-        if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CF)) {
+        if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CF) &&
+            !genx::requiresStackCall(CF)) {
           // Non-intrinsic call. Ignore. (A call site using an arg being
           // indirected gets handled differently.)
+          // Cannot indirect if there is a stack call. Do not ignore stack
+          // calls here and add them to BalesToModify. In checkIndirectBale
+          // report that such bale cannot be indirected. This method is
+          // confusing, must be improved.
           continue;
         }
       } else {
@@ -1165,6 +1170,13 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
                           << "\n\tintrinsic with raw return value\n");
         return false;
       }
+    } else if (auto *CI = dyn_cast<CallInst>(MainInst->Inst)) {
+      auto *Callee = CI->getCalledFunction();
+      IGC_ASSERT_MESSAGE(genx::requiresStackCall(Callee),
+                         "Expect a stack call to stop indirection. See "
+                         "SubroutineArg::gatherBalesToModify");
+      LLVM_DEBUG(dbgs() << *CI << "\n\tcalls stack call function\n");
+      return false;
     }
   }
   // Check the rdregion(s) and wrregion.

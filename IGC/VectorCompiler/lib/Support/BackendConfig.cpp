@@ -111,6 +111,10 @@ static cl::opt<bool> UseBindlessBuffersOpt("vc-use-bindless-buffers",
                                            cl::desc("Use bindless buffers"),
                                            cl::init(false));
 
+static cl::opt<bool> SaveStackCallLinkageOpt(
+    "save-stack-call-linkage", cl::init(false), cl::Hidden,
+    cl::desc("Do not override stack calls linkage as internal"));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -131,7 +135,8 @@ GenXBackendOptions::GenXBackendOptions()
       PassDebugToFinalizer(PassDebugToFinalizerOpt),
       FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
       UseBindlessBuffers(UseBindlessBuffersOpt),
-      StatelessPrivateMemSize(StatelessPrivateMemSizeOpt) {}
+      StatelessPrivateMemSize(StatelessPrivateMemSizeOpt),
+      SaveStackCallLinkage(SaveStackCallLinkageOpt) {}
 
 static std::unique_ptr<MemoryBuffer>
 readBiFModuleFromFile(const cl::opt<std::string> &File) {

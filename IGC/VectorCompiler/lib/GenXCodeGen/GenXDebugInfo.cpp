@@ -475,9 +475,9 @@ std::vector<const Function *> ModuleToVisaTransformInfo::getSecondaryFunctions(
 void ModuleToVisaTransformInfo::extractSubroutineInfo(
     const Function &F, VISABuilder &VB, const FunctionGroupAnalysis &FGA) {
   IGC_ASSERT(isVisaFunctionSpawner(&F));
-  const auto *SubGr = FGA.getSubGroup(&F);
-  IGC_ASSERT(SubGr);
-  for (const Function *SF : *SubGr) {
+  const auto *Gr = FGA.getAnyGroup(&F);
+  IGC_ASSERT(Gr);
+  for (const Function *SF : *Gr) {
     if (isKernelFunction(SF))
       continue;
     if (genx::requiresStackCall(SF))
@@ -564,7 +564,7 @@ void ModuleToVisaTransformInfo::extractVisaFunctionsEmitters(
 
 void ModuleToVisaTransformInfo::extractKernelFunctions(
     VISABuilder &VB, const FunctionGroupAnalysis &FGA) {
-  for (const auto *FG : FGA) {
+  for (const auto *FG : FGA.AllGroups()) {
     for (const Function *F : *FG) {
       if (!genx::isReferencedIndirectly(F) && !genx::isKernel(F))
         continue;
@@ -585,7 +585,7 @@ ModuleToVisaTransformInfo::ModuleToVisaTransformInfo(
   extractKernelFunctions(VB, FGA);
   extractVisaFunctionsEmitters(VB, FGA, CG);
 
-  for (const auto *FG : FGA) {
+  for (const auto *FG : FGA.AllGroups()) {
     for (const Function *F : *FG) {
       if (isSourceLevelKernel(F))
         IGC_ASSERT(isKernelFunction(F) && isVisaFunctionSpawner(F) &&

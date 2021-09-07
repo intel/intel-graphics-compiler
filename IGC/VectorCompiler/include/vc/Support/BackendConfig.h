@@ -99,6 +99,11 @@ struct GenXBackendOptions {
   // max private stateless memory size per thread
   unsigned StatelessPrivateMemSize;
 
+  // Historically stack calls linkage is changed to internal in CMABI. This
+  // option allows saving the original linkage type for such functions. This is
+  // required for linking (e.g. invoke_simd).
+  bool SaveStackCallLinkage = false;
+
   GenXBackendOptions();
 };
 
@@ -217,6 +222,8 @@ public:
   }
 
   bool useBindlessBuffers() const { return Options.UseBindlessBuffers; }
+
+  bool saveStackCallLinkage() const { return Options.SaveStackCallLinkage; }
 };
 } // namespace llvm
 

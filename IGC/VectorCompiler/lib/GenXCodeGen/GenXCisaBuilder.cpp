@@ -793,6 +793,8 @@ private:
   template <typename... Args>
   Register *getRegForValueAndSaveAlias(Args &&... args);
 
+  void runOnKernel();
+
 public:
   GenXKernelBuilder(FunctionGroup &FG)
       : TheKernelMetadata(FG.getHead()), Ctx(FG.getContext()),
@@ -1015,7 +1017,6 @@ static std::string legalizeName(std::string Name) {
 }
 
 std::string GenXKernelBuilder::buildAsmName() const {
-  IGC_ASSERT(TheKernelMetadata.isKernel());
   std::string AsmName;
   auto UserAsmName = AsmNameOpt.getValue();
   if (UserAsmName.empty()) {
@@ -1052,15 +1053,9 @@ std::string GenXKernelBuilder::buildAsmName() const {
   return Dumper.composeDumpPath(AsmName);
 }
 
-bool GenXKernelBuilder::run() {
-  GrfByteSize = Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth;
-  StackSurf = Subtarget ? Subtarget->stackSurface() : PREDEFINED_SURFACE_STACK;
-
-  UseNewStackBuilder =
-      BackendConfig->useNewStackBuilder() && Subtarget->isOCLRuntime();
-
-  IGC_ASSERT_MESSAGE(TheKernelMetadata.isKernel(),
-                     "Expected kernel as a head of function group");
+void GenXKernelBuilder::runOnKernel() {
+  if (!TheKernelMetadata.isKernel())
+    return;
 
   const std::string KernelName = TheKernelMetadata.getName().str();
   CisaBuilder->AddKernel(MainKernel, KernelName.c_str());
@@ -1070,7 +1065,6 @@ bool GenXKernelBuilder::run() {
   IGC_ASSERT_MESSAGE(Kernel, "Kernel initialization failed!");
   LLVM_DEBUG(dbgs() << "=== PROCESS KERNEL(" << KernelName << ") ===\n");
 
-  IGC_ASSERT(Subtarget);
   addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget);
 
   // Set CM target for all functions produced by VC.
@@ -1079,51 +1073,49 @@ bool GenXKernelBuilder::run() {
   CISA_CALL(Kernel->AddKernelAttribute("Target", sizeof(CMTarget), &CMTarget));
 
   bool NeedRetIP = false; // Need special return IP variable for FC.
-  if (TheKernelMetadata.isKernel()) {
-    // For a kernel, add an attribute for asm filename for the jitter.
-    std::string AsmName = buildAsmName();
-    StringRef AsmNameRef = AsmName;
-    CISA_CALL(Kernel->AddKernelAttribute("OutputAsmPath", AsmNameRef.size(),
-                                         AsmNameRef.begin()));
-    // Populate variable attributes if any.
-    unsigned Idx = 0;
-    bool IsComposable = false;
-    for (auto &Arg : FG->getHead()->args()) {
-      const char *Kind = nullptr;
-      switch (TheKernelMetadata.getArgInputOutputKind(Idx++)) {
-      default:
-        break;
-      case KernelMetadata::ArgIOKind::Input:
-        Kind = "Input";
-        break;
-      case KernelMetadata::ArgIOKind::Output:
-        Kind = "Output";
-        break;
-      case KernelMetadata::ArgIOKind::InputOutput:
-        Kind = "Input_Output";
-        break;
-      }
-      if (Kind != nullptr) {
-        auto R = getRegForValueUntypedAndSaveAlias(FG->getHead(), &Arg);
-        IGC_ASSERT(R);
-        IGC_ASSERT(R->Category == RegCategory::GENERAL);
-        R->addAttribute(addStringToPool(Kind), "");
-        IsComposable = true;
-      }
+  // For a kernel, add an attribute for asm filename for the jitter.
+  std::string AsmName = buildAsmName();
+  StringRef AsmNameRef = AsmName;
+  CISA_CALL(Kernel->AddKernelAttribute("OutputAsmPath", AsmNameRef.size(),
+                                       AsmNameRef.begin()));
+  // Populate variable attributes if any.
+  unsigned Idx = 0;
+  bool IsComposable = false;
+  for (auto &Arg : FG->getHead()->args()) {
+    const char *Kind = nullptr;
+    switch (TheKernelMetadata.getArgInputOutputKind(Idx++)) {
+    default:
+      break;
+    case KernelMetadata::ArgIOKind::Input:
+      Kind = "Input";
+      break;
+    case KernelMetadata::ArgIOKind::Output:
+      Kind = "Output";
+      break;
+    case KernelMetadata::ArgIOKind::InputOutput:
+      Kind = "Input_Output";
+      break;
     }
-    if (IsComposable)
-      CISA_CALL(Kernel->AddKernelAttribute("Composable", 0, ""));
-    if (HasCallable) {
-      CISA_CALL(Kernel->AddKernelAttribute("Caller", 0, ""));
-      NeedRetIP = true;
+    if (Kind != nullptr) {
+      auto R = getRegForValueUntypedAndSaveAlias(FG->getHead(), &Arg);
+      IGC_ASSERT(R);
+      IGC_ASSERT(R->Category == RegCategory::GENERAL);
+      R->addAttribute(addStringToPool(Kind), "");
+      IsComposable = true;
     }
-    if (FG->getHead()->hasFnAttribute("CMCallable")) {
-      CISA_CALL(Kernel->AddKernelAttribute("Callable", 0, ""));
-      NeedRetIP = true;
-    }
-    if (FG->getHead()->hasFnAttribute("CMEntry")) {
-      CISA_CALL(Kernel->AddKernelAttribute("Entry", 0, ""));
-    }
+  }
+  if (IsComposable)
+    CISA_CALL(Kernel->AddKernelAttribute("Composable", 0, ""));
+  if (HasCallable) {
+    CISA_CALL(Kernel->AddKernelAttribute("Caller", 0, ""));
+    NeedRetIP = true;
+  }
+  if (FG->getHead()->hasFnAttribute("CMCallable")) {
+    CISA_CALL(Kernel->AddKernelAttribute("Callable", 0, ""));
+    NeedRetIP = true;
+  }
+  if (FG->getHead()->hasFnAttribute("CMEntry")) {
+    CISA_CALL(Kernel->AddKernelAttribute("Entry", 0, ""));
   }
 
   if (NeedRetIP) {
@@ -1143,6 +1135,18 @@ bool GenXKernelBuilder::run() {
 
   // Build input variables
   buildInputs(FG->getHead(), NeedRetIP);
+}
+
+bool GenXKernelBuilder::run() {
+  GrfByteSize = Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth;
+  StackSurf = Subtarget ? Subtarget->stackSurface() : PREDEFINED_SURFACE_STACK;
+
+  UseNewStackBuilder =
+      BackendConfig->useNewStackBuilder() && Subtarget->isOCLRuntime();
+
+  IGC_ASSERT(Subtarget);
+
+  runOnKernel();
 
   std::string FuncName;
   for (auto &F : *FG) {
@@ -1328,9 +1332,11 @@ void GenXKernelBuilder::buildInstructions() {
         genx::requiresStackCall(Func) || genx::isReferencedIndirectly(Func)) {
       KernFunc = Func;
     } else {
-      KernFunc = FGA->getSubGroup(Func) ? FGA->getSubGroup(Func)->getHead()
-                                        : FGA->getGroup(Func)->getHead();
+      auto *FuncFG = FGA->getAnyGroup(Func);
+      IGC_ASSERT_MESSAGE(FuncFG, "Cannot find the function group");
+      KernFunc = FuncFG->getHead();
     }
+
     IGC_ASSERT(KernFunc);
     Kernel = Func2Kern.at(KernFunc);
 
@@ -4900,30 +4906,36 @@ GenXKernelBuilder::createRegionOperand(Region *R, VISA_GenVar *Decl,
 
 
 bool GenXKernelBuilder::isInLoop(BasicBlock *BB) {
-  if (LIs->getLoopInfo(BB->getParent())->getLoopFor(BB))
+  Function *BBFunc = BB->getParent();
+  // Cannot predict for stack calls and indirectly called functions.
+  // Let's assume the function is in a loop.
+  if (genx::requiresStackCall(BBFunc) || genx::isReferencedIndirectly(BBFunc))
+    return true;
+
+  IGC_ASSERT(LIs->getLoopInfo(BBFunc));
+  if (LIs->getLoopInfo(BBFunc)->getLoopFor(BB))
     return true; // inside loop in this function
   // Now we need to see if this function is called from inside a loop.
   // First check the cache.
-  auto i = IsInLoopCache.find(BB->getParent());
+  auto i = IsInLoopCache.find(BBFunc);
   if (i != IsInLoopCache.end())
     return i->second;
   // Now check all call sites. This recurses as deep as the depth of the call
   // graph, which must be acyclic as GenX does not allow recursion.
   bool InLoop = false;
-  for (auto ui = BB->getParent()->use_begin(), ue = BB->getParent()->use_end();
-       ui != ue; ++ui) {
+  for (auto ui = BBFunc->use_begin(), ue = BBFunc->use_end(); ui != ue; ++ui) {
     auto CI = dyn_cast<CallInst>(ui->getUser());
-    if (!CI || !checkFunctionCall(CI, BB->getParent()))
+    if (!checkFunctionCall(CI, BBFunc))
       continue;
     IGC_ASSERT(ui->getOperandNo() == CI->getNumArgOperands());
-    if (CI->getFunction() == BB->getParent())
+    if (CI->getFunction() == BBFunc)
       continue;
     if (isInLoop(CI->getParent())) {
       InLoop = true;
       break;
     }
   }
-  IsInLoopCache[BB->getParent()] = InLoop;
+  IsInLoopCache[BBFunc] = InLoop;
   return InLoop;
 }
 
@@ -5253,8 +5265,8 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
   if (Callee->hasFnAttribute("CMCallable"))
     LabelKind = LABEL_FC;
   else
-    IGC_ASSERT_MESSAGE(FG == FG->getParent()->getGroup(Callee),
-      "unexpected call to outside FunctionGroup");
+    IGC_ASSERT_MESSAGE(FG == FG->getParent()->getAnyGroup(Callee),
+                       "unexpected call to outside FunctionGroup");
 
   // Check whether the called function has a predicate arg that is EM.
   int EMOperandNum = -1;
@@ -6024,8 +6036,6 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
                                             const DstOpndDesc &DstDesc) {
   LLVM_DEBUG(dbgs() << "Build stack call " << *CI << "\n");
   Function *Callee = CI->getCalledFunction();
-  auto *StackCallee = Func2Kern[Callee];
-  IGC_ASSERT(IGCLLVM::isIndirectCall(*CI) || StackCallee);
 
   // Check whether the called function has a predicate arg that is EM.
   auto *EMArg = std::find_if(CI->arg_begin(), CI->arg_end(), [this](Use &Arg) {
@@ -6071,8 +6081,6 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
   LLVM_DEBUG(dbgs() << "Build stack call " << *CI << "\n");
   Function *Callee = CI->getCalledFunction();
   auto *FuncTy = CI->getFunctionType();
-  auto *StackCallee = Func2Kern[Callee];
-  IGC_ASSERT(IGCLLVM::isIndirectCall(*CI) || StackCallee);
 
   // Check whether the called function has a predicate arg that is EM.
   int EMOperandNum = -1, EMIdx = -1;

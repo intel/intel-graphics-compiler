@@ -100,35 +100,63 @@ bool GenXModule::runOnModule(Module &M) {
   // This should be removed once indirection is fixed
   std::map<Function *, std::set<Function*>> Visited;
 
-  for (auto T : FGA->TypesToProcess) {
-    for (auto &F : M) {
-      for (auto *U: F.users()) {
-        auto *Inst = dyn_cast<Instruction>(U);
-        if (!Inst) {
-          continue;
-        }
-        if (!F.empty() && Visited[Inst->getFunction()].count(&F) == 0) {
-          CG[Inst->getFunction()].push_back(&F);
-          Visited[Inst->getFunction()].insert(&F);
-        }
-        // recursive funcs must use stack
-        if (Inst->getFunction() == &F) {
-          const bool UsesStack = genx::requiresStackCall(&F);
-          IGC_ASSERT_MESSAGE(UsesStack, "Found recursive function without CMStackCall attribute");
-          (void) UsesStack;
-        }
+  for (auto &F : M) {
+    for (auto *U : F.users()) {
+      auto *Inst = dyn_cast<Instruction>(U);
+      if (!Inst) {
+        continue;
+      }
+      if (!F.empty() && Visited[Inst->getFunction()].count(&F) == 0) {
+        CG[Inst->getFunction()].push_back(&F);
+        Visited[Inst->getFunction()].insert(&F);
+      }
+      // recursive funcs must use stack
+      if (Inst->getFunction() == &F) {
+        const bool UsesStack = genx::requiresStackCall(&F);
+        IGC_ASSERT_MESSAGE(
+            UsesStack,
+            "Found recursive function without CMStackCall attribute");
+        (void)UsesStack;
       }
     }
+  }
 
+  for (auto T : FGA->TypesToProcess) {
     for (auto &F : M) {
-      if (F.empty() || F.getLinkage() == GlobalValue::InternalLinkage)
+      if (F.isDeclaration())
         continue;
+      if (!genx::fg::isHead(F))
+        continue;
+      // Do not process kernels at subgroup level.
+      if (genx::fg::isGroupHead(F) &&
+          T == FunctionGroupAnalysis::FGType::SUBGROUP)
+        continue;
+      // Do not process stack calls at group level.
+      if (genx::fg::isSubGroupHead(F) &&
+          T == FunctionGroupAnalysis::FGType::GROUP)
+        continue;
+      // TODO: it seems OK not to update CG each time a function was cloned. But
+      // it must be investigated deeper.
       ModuleModified |= FGA->buildGroup(CG, &F, nullptr, T);
     }
+  }
 
-    FGA->clearVisited();
-    CG.clear();
-    Visited.clear();
+  for (auto SubFG : FGA->subgroups()) {
+    const Function *Head = SubFG->getHead();
+    IGC_ASSERT(Head);
+
+    for (auto U : Head->users()) {
+      const auto *UserInst = dyn_cast<Instruction>(U);
+      if (!UserInst)
+        continue;
+
+      const Function *UserFunction = UserInst->getFunction();
+      IGC_ASSERT(UserFunction);
+      FunctionGroup *UserFG = FGA->getAnyGroup(UserFunction);
+      IGC_ASSERT(UserFG);
+
+      UserFG->addSubgroup(SubFG);
+    }
   }
 
   return ModuleModified;
