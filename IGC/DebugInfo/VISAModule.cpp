@@ -471,7 +471,7 @@ VISAModule::getAllCallerSave( const IGC::DbgDecoder& VD,
                 for (auto callerSaveReg : (*callerSaveStartIt).data)
                 {
                     // startRegNum is saved to caller save area around the stack call.
-                    if ((callerSaveReg.srcRegOff / getGRFSize()) == startRegNum)
+                    if ((callerSaveReg.srcRegOff / getGRFSizeInBytes()) == startRegNum)
                     {
                         // Emit caller save/restore only if %ip is within range
                         callerSaveIPs.emplace_back(std::make_tuple(callerSaveIp, callerRestoreIp,

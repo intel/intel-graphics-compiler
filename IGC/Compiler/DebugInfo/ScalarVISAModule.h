@@ -42,7 +42,7 @@ public:
     }
     unsigned getPrivateBaseReg() const override;
 
-    unsigned getGRFSize() const override {
+    unsigned getGRFSizeInBytes() const override {
       return m_pShader->getGRFSize();
     }
 

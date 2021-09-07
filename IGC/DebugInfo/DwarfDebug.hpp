@@ -30,6 +30,9 @@ See LICENSE.TXT for details.
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
 
+// TODO: remove wrapper since we don't need LLVM 7 support
+#include "llvmWrapper/IR/IntrinsicInst.h"
+
 #include "VISAModule.hpp"
 #include "DIE.hpp"
 #include "LexicalScopes.hpp"
@@ -69,7 +72,7 @@ namespace IGC
         uint32_t offset = 0;
 
         // The location in the machine frame.
-        const llvm::Instruction* m_pDbgInst = nullptr;
+        const IGCLLVM::DbgVariableIntrinsic* m_pDbgInst = nullptr;
 
         // The variable to which this location entry corresponds.
         const llvm::MDNode* Variable = nullptr;
@@ -80,16 +83,20 @@ namespace IGC
         uint64_t end = 0;
 
         DotDebugLocEntry() : m_pDbgInst(nullptr), Variable(nullptr) { }
-        DotDebugLocEntry(const llvm::MCSymbol* B, const llvm::MCSymbol* E, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
+        DotDebugLocEntry(const llvm::MCSymbol* B, const llvm::MCSymbol* E,
+                         const IGCLLVM::DbgVariableIntrinsic* pDbgInst,
+                         const llvm::MDNode* V)
             : m_pDbgInst(pDbgInst), Variable(V) { }
-        DotDebugLocEntry(const uint64_t s, const uint64_t e, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
+        DotDebugLocEntry(const uint64_t s, const uint64_t e,
+                         const IGCLLVM::DbgVariableIntrinsic* pDbgInst,
+                         const llvm::MDNode* V)
             : start(s), end(e), m_pDbgInst(pDbgInst), Variable(V) {}
 
         /// \brief Empty entries are also used as a trigger to emit temp label. Such
         /// labels are referenced is used to find debug_loc offset for a given DIE.
         bool isEmpty() const { return start == 0 && end == 0; }
         const llvm::MDNode* getVariable() const { return Variable; }
-        const llvm::Instruction* getDbgInst() const { return m_pDbgInst; }
+        const IGCLLVM::DbgVariableIntrinsic* getDbgInst() const { return m_pDbgInst; }
         uint64_t getStart() const { return start; }
         uint64_t getEnd() const { return end; }
 
@@ -121,7 +128,7 @@ namespace IGC
         // Corresponding Abstract variable, if any
         DbgVariable* AbsVar = nullptr;
         // DBG_VALUE instruction of the variable
-        const llvm::Instruction* m_pDbgInst = nullptr;
+        const IGCLLVM::DbgVariableIntrinsic* m_pDbgInst = nullptr;
 
     public:
 
@@ -143,18 +150,18 @@ namespace IGC
         llvm::StringRef getName() const { return Var->getName(); }
         DbgVariable* getAbstractVariable() const { return AbsVar; }
 
-        const llvm::Instruction* getDbgInst() const { return m_pDbgInst; }
-        void setDbgInst(const llvm::Instruction* pInst) { m_pDbgInst = pInst; }
+        const IGCLLVM::DbgVariableIntrinsic* getDbgInst() const { return m_pDbgInst; }
+        void setDbgInst(const IGCLLVM::DbgVariableIntrinsic* pInst) { m_pDbgInst = pInst; }
 
         /// If this type is derived from a base type then return base type size
         /// even if it derived directly or indirectly from Composite Type
-        uint64_t getBasicTypeSize(llvm::DIDerivedType* Ty);
+        uint64_t getBasicTypeSize(const llvm::DIDerivedType* Ty) const;
         /// If this type is derived from a base type then return base type size
         /// even if it derived directly or indirectly from Derived Type
-        uint64_t getBasicTypeSize(llvm::DICompositeType* Ty);
+        uint64_t getBasicTypeSize(const llvm::DICompositeType* Ty) const;
 
         /// Return base type size even if it derived directly or indirectly from Composite Type
-        uint64_t getBasicSize(DwarfDebug* DD);
+        uint64_t getBasicSize(const DwarfDebug* DD) const;
 
         // Translate tag to proper Dwarf tag.
 
@@ -189,10 +196,12 @@ namespace IGC
 
         llvm::DIType* getType() const;
 
+        void print(llvm::raw_ostream& O, bool NestedAbstract = false) const;
+        static void printDbgInst(llvm::raw_ostream& O,
+                                 const llvm::Instruction* Inst,
+                                 const char* NodePrefixes = "     ");
 #ifndef NDEBUG
-        void print(llvm::raw_ostream& O, bool HideAbstract) const;
         void dump() const;
-        static void printDbgInst(llvm::raw_ostream& O, const llvm::Instruction* Inst);
         static void dumpDbgInst(const llvm::Instruction* Inst);
 #endif // NDEBUG
 
@@ -329,7 +338,7 @@ namespace IGC
         // For each user variable, keep a list of DBG_VALUE instructions in order.
         // The list can also contain normal instructions that clobber the previous
         // DBG_VALUE.
-        using InstructionsList = llvm::SmallVector<const llvm::Instruction*, 4>;
+        using InstructionsList = llvm::SmallVector<const IGCLLVM::DbgVariableIntrinsic*, 4>;
         typedef llvm::DenseMap<const llvm::MDNode*, InstructionsList> DbgValueHistoryMap;
         DbgValueHistoryMap DbgValues;
 
@@ -539,6 +548,12 @@ namespace IGC
 
         ~DwarfDebug();
 
+        IGC::StreamEmitter& getStreamEmitter() const { return *Asm; }
+
+        const IGC::DebugEmitterOpts& getEmitterSettings() const
+        {
+            return EmitSettings;
+        }
         void setDISPCache(DwarfDISubprogramCache *Cache) { DISPCache = Cache; }
 
         void insertDIE(const llvm::MDNode* TypeMD, DIE* Die)
@@ -690,7 +705,7 @@ namespace IGC
         llvm::MCSymbol* CopyDebugLoc(unsigned int offset);
         unsigned int CopyDebugLocNoReloc(unsigned int o);
 
-        const VISAModule* GetVISAModule() { return m_pModule; }
+        const VISAModule* GetVISAModule() const { return m_pModule; }
 
         llvm::MCSymbol* GetLabelBeforeIp(unsigned int ip);
 

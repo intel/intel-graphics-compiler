@@ -801,7 +801,7 @@ public:
     IGC_ASSERT_MESSAGE(0, "getPrivateBaseReg() - not implemented");
     return 0;
   }
-  unsigned getGRFSize() const override {
+  unsigned getGRFSizeInBytes() const override {
     return ST.getGRFWidth();
   }
   unsigned getNumGRFs() const override {
@@ -842,8 +842,7 @@ public:
 
     IGC_ASSERT(isa<DbgInfoIntrinsic>(DbgInst));
 
-    LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst
-                      << "\n");
+    LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst << "\n");
     const Value *DbgValue = nullptr;
     const DIVariable *VarDescr = nullptr;
     if (const auto *pDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {

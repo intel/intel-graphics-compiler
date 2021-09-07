@@ -453,8 +453,10 @@ namespace IGC
         virtual unsigned getUnpaddedProgramSize() const = 0;
         virtual bool isLineTableOnly() const = 0;
         virtual unsigned getPrivateBaseReg() const = 0;
-        virtual unsigned getGRFSize() const = 0;
+        unsigned getGRFSizeInBits() const { return getGRFSizeInBytes() * 8; }
+        virtual unsigned getGRFSizeInBytes() const = 0;
         virtual unsigned getNumGRFs() const = 0;
+        // TODO: deprecate usage of this method, since it does not respect ASI
         virtual unsigned getPointerSize() const = 0;
 
         virtual void* getPrivateBase() const = 0;

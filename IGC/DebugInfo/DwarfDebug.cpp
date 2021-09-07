@@ -113,7 +113,7 @@ static const MDNode* GetDebugVariable(const Instruction* Inst)
 
 /// If this type is derived from a base type then return base type size
 /// even if it derived directly or indirectly from Derived Type
-uint64_t DbgVariable::getBasicTypeSize(DICompositeType* Ty)
+uint64_t DbgVariable::getBasicTypeSize(const DICompositeType* Ty) const
 {
     unsigned Tag = Ty->getTag();
 
@@ -158,7 +158,7 @@ uint64_t DbgVariable::getBasicTypeSize(DICompositeType* Ty)
 
 /// If this type is derived from a base type then return base type size
 /// even if it derived directly or indirectly from Composite Type
-uint64_t DbgVariable::getBasicTypeSize(DIDerivedType* Ty)
+uint64_t DbgVariable::getBasicTypeSize(const DIDerivedType* Ty) const
 {
     unsigned Tag = Ty->getTag();
 
@@ -202,15 +202,15 @@ uint64_t DbgVariable::getBasicTypeSize(DIDerivedType* Ty)
 }
 
 /// Return base type size even if it derived directly or indirectly from Composite Type
-uint64_t DbgVariable::getBasicSize(DwarfDebug* DD)
+uint64_t DbgVariable::getBasicSize(const DwarfDebug* DD) const
 {
     uint64_t varSizeInBits = getType()->getSizeInBits();
 
     if (isa<DIDerivedType>(getType()))
     {
         // If type is derived then size of a basic type is needed
-        DIType* Ty = getType();
-        DIDerivedType* DDTy = cast<DIDerivedType>(Ty);
+        const DIType* Ty = getType();
+        const DIDerivedType* DDTy = cast<DIDerivedType>(Ty);
         varSizeInBits = getBasicTypeSize(DDTy);
         IGC_ASSERT_MESSAGE(varSizeInBits > 0, "\nVariable's basic type size 0\n");
         IGC_ASSERT_MESSAGE(!(varSizeInBits == 0 && getType()->getSizeInBits() == 0),
@@ -1537,7 +1537,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
         // History contains relevant DBG_VALUE instructions for Var and instructions
         // clobbering it.
-        SmallVectorImpl<const Instruction*>& History = DbgValues[Var];
+        InstructionsList& History = DbgValues[Var];
         if (History.empty())
         {
             LLVM_DEBUG(dbgs() << "   user variable has no history, skipped\n");
@@ -1552,12 +1552,14 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
         // DbgVariable is created once per variable to be emitted to dwarf.
         // If a function is inlined x times, there would be x number of DbgVariable instances.
-        using DbgVarIPInfo = std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>;
+        using DbgVarIPInfo =
+            std::tuple<unsigned int, unsigned int, DbgVariable*,
+                       const IGCLLVM::DbgVariableIntrinsic*>;
         // TODO: consider replacing std::list to std::vector
         std::unordered_map<DbgVariable*, std::list<DbgVarIPInfo>> DbgValuesWithGenIP;
         for (auto HI = History.begin(), HE = History.end(); HI != HE; HI++)
         {
-            auto H = (*HI);
+            const auto* H = (*HI);
             DIVariable* DV = cast<DIVariable>(const_cast<MDNode*>(Var));
 
             LexicalScope* Scope = NULL;
@@ -1581,7 +1583,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 continue;
 
             Processed.insert(DV);
-            const Instruction* pInst = H; // History.front();
+            const IGCLLVM::DbgVariableIntrinsic* pInst = H; // History.front();
 
             IGC_ASSERT_MESSAGE(IsDebugInst(pInst),
                                "History must begin with debug instruction");
@@ -1648,8 +1650,8 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 continue;
             }
 
-            auto start = (*HI);
-            auto end = start;
+            const Instruction* start = (*HI);
+            const Instruction* end = start;
 
             if (HI + 1 != HE)
                 end = HI[1];
@@ -1702,7 +1704,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 uint64_t start = 0;
                 uint64_t end = 0;
                 DbgVariable* dbgVar = nullptr;
-                const llvm::Instruction* pInst = nullptr;
+                const IGCLLVM::DbgVariableIntrinsic* pInst = nullptr;
                 const ConstantInt* imm = nullptr;
 
                 std::vector<VISAVariableLocation> Locs;
@@ -2196,7 +2198,7 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
             const MDNode* Var = GetDebugVariable(MI);
 
             // Check the history of this variable.
-            SmallVectorImpl<const Instruction*>& History = DbgValues[Var];
+            InstructionsList& History = DbgValues[Var];
             if (History.empty())
             {
                 UserVariables.push_back(Var);
@@ -2222,7 +2224,7 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
                     History.pop_back();
                 }
             }
-            History.push_back(MI);
+            History.push_back(cast<IGCLLVM::DbgVariableIntrinsic>(MI));
         }
         else if(m_pModule->IsExecutableInst(*MI))
         {
@@ -3141,8 +3143,9 @@ void DwarfDebug::writeFDESubroutine(VISAModule* m)
 
     // assume ret var is live throughout sub-routine and it is contained
     // in same GRF.
-    uint32_t linearAddr = (retvarLR.front().var.mapping.r.regNum * m_pModule->getGRFSize()) +
-        retvarLR.front().var.mapping.r.subRegNum;
+    uint32_t linearAddr =
+        (retvarLR.front().var.mapping.r.regNum * m_pModule->getGRFSizeInBytes()) +
+         retvarLR.front().var.mapping.r.subRegNum;
 
     // initial location
     write(data, ptrSize == 4 ? (uint32_t)genOffStart : genOffStart);
@@ -3417,7 +3420,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
         {
             for (unsigned int idx = 0; idx != item.data.size(); ++idx)
             {
-                auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->getGRFSize());
+                auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->getGRFSizeInBytes());
                 if (calleeSaveRegsSaved.find(regNum) == calleeSaveRegsSaved.end())
                 {
                     write(cfaOps[item.genIPOffset], (uint8_t)llvm::dwarf::DW_CFA_expression);
@@ -3438,7 +3441,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
                 bool found = false;
                 for (unsigned int idx = 0; idx != item.data.size(); ++idx)
                 {
-                    auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->getGRFSize());
+                    auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->getGRFSizeInBytes());
                     if ((*it) == regNum)
                     {
                         found = true;
@@ -3517,63 +3520,66 @@ llvm::MCSymbol* DwarfDebug::GetLabelBeforeIp(unsigned int ip)
     return NewLabel;
 }
 
-#ifndef NDEBUG
-void DbgVariable::print(raw_ostream& O, bool HideAbstract) const
+void DbgVariable::print(raw_ostream& O, bool NestedAbstract) const
 {
+    auto makePrefix = [](unsigned SpaceNum, const char* Pfx) {
+        return std::string(SpaceNum, ' ').append(Pfx);
+    };
+
+    auto Prefix = makePrefix(NestedAbstract ? 8 : 4, "| ");
+
     O << "DbgVariable: {\n";
     if (Var)
     {
-        O << "      |  Name: " << Var->getName() << ";\n";
-        O << "      |  Type: " << *getType() << ";\n";
-        O << "      |  Props: { IsParameter: " << Var->isParameter() << ", ";
+        O << Prefix << "Name: " << Var->getName() << ";\n";
+        O << Prefix << "Type: " << *getType() << ";\n";
+        O << Prefix << "Props: { IsParameter: " << Var->isParameter() << ", ";
         O << "IsArtificial: " << Var->isArtificial() << ", ";
         O << "IsObjPtr: " << isObjectPointer() << " } ;\n";
     }
     else
     {
-        O << "      |  Name/Type: <null>;\n";
+        O << Prefix << "Name/Type: <null>;\n";
     }
 
     if (IA)
-        O << "      |  InlinedAt: " << *IA << ";\n";
+        O << Prefix << "InlinedAt: " << *IA << ";\n";
     else
-        O << "      |  InlinedAt: none;\n";
+        O << Prefix << "InlinedAt: none;\n";
 
     if (AbsVar)
     {
-        O << "      |  AbsVar: ";
-        if (HideAbstract)
+        O << Prefix << "AbsVar: ";
+        if (NestedAbstract)
             O << "<hidden>;\n";
         else
             AbsVar->print(O, true);
     }
     else
     {
-        O << "      |  AbsVar: none;\n";
+        O << Prefix << "AbsVar: none;\n";
     }
 
     if (m_pDbgInst)
     {
         if (isa<DbgInfoIntrinsic>(m_pDbgInst))
         {
-            O << "      |  ValInst: ";
-            DbgVariable::printDbgInst(O, m_pDbgInst);
+            O << Prefix << "ValInst: ";
+            DbgVariable::printDbgInst(O, m_pDbgInst,
+                                      makePrefix(NestedAbstract ? 14 : 8, "").c_str());
         }
         else
-            O << "      |  ValInst: " << *m_pDbgInst << "\n";
+            O << Prefix << "ValInst: " << *m_pDbgInst << "\n";
     }
     else
-        O << "      |  ValInst: " << "none;\n";
+        O << Prefix << "ValInst: " << "none;\n";
 
 
-    O << "  }\n";
-}
-void DbgVariable::dump() const
-{
-    print(dbgs(), false);
+    O << makePrefix(NestedAbstract ? 4 : 0, "") << "}\n";
 }
 
-void DbgVariable::printDbgInst(llvm::raw_ostream& O, const llvm::Instruction* Inst)
+void DbgVariable::printDbgInst(llvm::raw_ostream& O, const llvm::Instruction* Inst,
+                               const char* NodePrefixes)
 {
     IGC_ASSERT(Inst);
     const auto *DbgInfoInst = cast<DbgInfoIntrinsic>(Inst);
@@ -3584,10 +3590,17 @@ void DbgVariable::printDbgInst(llvm::raw_ostream& O, const llvm::Instruction* In
     O << *DbgInfoInst << "\n";
     for (unsigned OperandIdx = 0; OperandIdx < OperandsToPrint; ++OperandIdx)
     {
-        O << "\t" << "node#" << OperandIdx << " " <<
+        O << NodePrefixes << "node#" << OperandIdx << " " <<
             *DbgInfoInst->getOperand(OperandIdx) << "\n";
     }
 }
+
+#ifndef NDEBUG
+void DbgVariable::dump() const
+{
+    print(dbgs(), false);
+}
+
 void DbgVariable::dumpDbgInst(const llvm::Instruction* Inst)
 {
     IGC_ASSERT(Inst);

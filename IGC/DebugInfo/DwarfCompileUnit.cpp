@@ -51,6 +51,15 @@ See LICENSE.TXT for details.
 using namespace llvm;
 using namespace ::IGC;
 
+static ConstantAsMetadata* getConstMdOperand(const MDNode* MD, unsigned OpIdx)
+{
+    return cast<ConstantAsMetadata>(MD->getOperand(OpIdx));
+}
+static const APInt & getIntConstFromMdOperand(const MDNode* MD, unsigned OpIdx)
+{
+    return getConstMdOperand(MD, OpIdx)->getValue()->getUniqueInteger();
+}
+
 class PieceBuilder {
 public:
     struct PieceInfo {
@@ -1353,8 +1362,10 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, const VISAVariableLocatio
 // 11 DW_OP_const1u 16 or 8
 // 12 DW_OP_INTEL_bit_piece_stack
 //
-void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAVariableLocation *Loc,
-    DbgDecoder::LiveIntervalsVISA * lr, uint16_t simdWidthOffset, bool isPacked, bool isSecondHalf)
+void CompileUnit::addSimdLane(IGC::DIEBlock* Block, const DbgVariable& DV,
+                              const VISAVariableLocation *Loc,
+                              DbgDecoder::LiveIntervalsVISA * lr,
+                              uint16_t simdWidthOffset, bool isPacked, bool isSecondHalf)
 {
     auto EmitPushSimdLane = [this](IGC::DIEBlock* Block, bool isSecondHalf)
     {
@@ -1370,7 +1381,9 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAV
     {
         // SIMD lane
         const auto* VISAMod = Loc->GetVISAModule();
-        uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
+        auto varSizeInBits = Loc->IsInMemory()
+            ? Asm->GetPointerSize() * 8
+            : DV.getBasicSize(DD);
 
         LLVM_DEBUG(dbgs() << "  addSimdLane(varSizeInBits: " << varSizeInBits <<
                    ", simdWidthOffset: " << simdWidthOffset << ", isPacked: " <<
@@ -1471,7 +1484,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAV
 
             // If unpacked then small variable takes up 32 bits else when packed fits its exact size
             uint32_t bitsUsedByVar = (isPacked || varSizeInBits > 32) ? (uint32_t)varSizeInBits : 32;
-            uint32_t variablesInSingleGRF = (VISAMod->getGRFSize() * 8) / bitsUsedByVar;
+            uint32_t variablesInSingleGRF = (VISAMod->getGRFSizeInBits()) / bitsUsedByVar;
             uint32_t valForSubRegLit = variablesInSingleGRF > 0 ? (uint32_t)log2(variablesInSingleGRF) : 0;
 
             // TODO: missing case lr->getGRF().subRegNum > 0
@@ -1544,11 +1557,11 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAV
 
 
 bool CompileUnit::emitBitPiecesForRegVal(IGC::DIEBlock* Block, const VISAModule& VM,
-                                         DbgVariable& DV,
+                                         const DbgVariable& DV,
                                          const DbgDecoder::LiveIntervalsVISA& lr,
                                          uint64_t varSizeInBits, uint64_t offsetInBits)
 {
-    const auto registerSizeInBits = VM.getGRFSize() * 8;
+    const auto registerSizeInBits = VM.getGRFSizeInBits();
     const auto numGRFs = VM.getNumGRFs();
 
     PieceBuilder PieceBuilder(numGRFs, registerSizeInBits, varSizeInBits, offsetInBits);
@@ -1566,15 +1579,20 @@ bool CompileUnit::emitBitPiecesForRegVal(IGC::DIEBlock* Block, const VISAModule&
 }
 // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
 // e.g. a GRF subregister.
-void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes)
+void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, const DbgVariable& DV,
+                                    const VISAVariableLocation* Loc,
+                                    DbgDecoder::LiveIntervalsVISA* lr,
+                                    uint16_t subRegInBytes)
 {
     if (EmitSettings.EnableSIMDLaneDebugging)
     {
         IGC_ASSERT_MESSAGE(lr->isSpill() == false, "Scalar spilled in scratch space");
 
-        // addRegisterOffset(Block, varInfo.lrs.front().getGRF().regNum, 0);
-        uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
+        auto varSizeInBits = Loc->IsInMemory()
+            ? Asm->GetPointerSize() * 8
+            : DV.getBasicSize(DD);
         auto offsetInBits = subRegInBytes * 8;
+        IGC_ASSERT(offsetInBits / 8 == subRegInBytes);
 
         LLVM_DEBUG(dbgs() << "  addSimdLaneScalar(varSizeInBits: " <<
                    varSizeInBits << ", offsetInBits: " << offsetInBits << ")\n");
@@ -2398,7 +2416,9 @@ IGC::DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstrac
     return VariableDie;
 }
 
-void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& DV, IGC::DIE* VariableDie)
+void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst,
+                                DbgVariable& DV,
+                                IGC::DIE* VariableDie)
 {
     auto* F = pDbgInst->getParent()->getParent();
     const auto* VISAModule = DD->GetVISAModule(F);
@@ -2453,7 +2473,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
         addBlock(VariableDie, dwarf::DW_AT_location, locationAT);
 }
 
-IGC::DIEBlock* CompileUnit::buildPointer(DbgVariable& var, const VISAVariableLocation* loc)
+IGC::DIEBlock* CompileUnit::buildPointer(const DbgVariable& var, const VISAVariableLocation* loc)
 {
     auto bti = loc->GetSurface() - VISAModule::TEXTURE_REGISTER_BEGIN;
 
@@ -2498,7 +2518,7 @@ IGC::DIEBlock* CompileUnit::buildPointer(DbgVariable& var, const VISAVariableLoc
     return Block;
 }
 
-IGC::DIEBlock* CompileUnit::buildSampler(DbgVariable& var, const VISAVariableLocation* loc)
+IGC::DIEBlock* CompileUnit::buildSampler(const DbgVariable& var, const VISAVariableLocation* loc)
 {
     IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
 
@@ -2518,7 +2538,7 @@ IGC::DIEBlock* CompileUnit::buildSampler(DbgVariable& var, const VISAVariableLoc
     return Block;
 }
 
-IGC::DIEBlock* CompileUnit::buildSLM(DbgVariable& var, const VISAVariableLocation* loc)
+IGC::DIEBlock* CompileUnit::buildSLM(const DbgVariable& var, const VISAVariableLocation* loc)
 {
     const auto* VISAMod = loc->GetVISAModule();
     auto regNum = loc->GetRegister();
@@ -2592,7 +2612,9 @@ IGC::DIEBlock* CompileUnit::buildSLM(DbgVariable& var, const VISAVariableLocatio
     return Block;
 }
 
-IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVariableLocation>* locs, std::vector<DbgDecoder::LiveIntervalsVISA>* vars)
+IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
+                                         std::vector<VISAVariableLocation>* locs,
+                                         std::vector<DbgDecoder::LiveIntervalsVISA>* vars)
 {
     IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
     bool emitLocation = false;
@@ -2748,17 +2770,18 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);           // 11 DW_OP_plus   , i.e. add Private Base to Per Thread Offset
 
                 // Variable's bit offset can be found in the first operand of StorageOffset metadata node.
-                offset = simdSize * dyn_cast<ConstantAsMetadata>(storageMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
+                offset = simdSize * getIntConstFromMdOperand(storageMD, 0).getSExtValue();
 
                 addConstantUValue(Block, offset);                                  // 12 DW_OP_const1u/2u/4u/8 offset , i.e. simdSize * <variable offset>
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);           // 13 DW_OP_plus
                 addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);  // 14 DW_OP_INTEL_push_simd_lane
 
-                uint64_t varSizeInBytes = var.getBasicSize(DD) >> 3;
+                auto varSizeInBytes = var.getBasicSize(DD) / 8;
 
                 LLVM_DEBUG(dbgs() << "  var Offset: " << offset <<
                            ", var Size: " << varSizeInBytes << "\n");
-                IGC_ASSERT_MESSAGE((var.getBasicSize(DD) & 0x7) == 0, "Unexpected variable size");
+                IGC_ASSERT_MESSAGE((var.getBasicSize(DD) & 0x7) == 0,
+                                   "Unexpected variable size");
 
                 addConstantUValue(Block, varSizeInBytes);                          // 15 DW_OP_const1u/2u/4u/8u <variableSize>  , i.e. size in bytes
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);            // 16 DW_OP_mul
@@ -2771,14 +2794,14 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             }
         }
 
-        auto sizeMD = var.getDbgInst()->getMetadata("StorageSize");
+        const auto* sizeMD = var.getDbgInst()->getMetadata("StorageSize");
         if (storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation) && sizeMD)
         {
             LLVM_DEBUG(dbgs() << "  generating FP-based location\n");
             emitLocation = true;
             auto simdSize = VISAMod->GetSIMDSize();
-            uint64_t storageOffset = simdSize * dyn_cast<ConstantAsMetadata>(storageMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
-            uint64_t storageSize = dyn_cast<ConstantAsMetadata>(sizeMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
+            uint64_t storageOffset = simdSize * getIntConstFromMdOperand(storageMD, 0).getZExtValue();
+            uint64_t storageSize = getIntConstFromMdOperand(sizeMD, 0).getZExtValue();
             LLVM_DEBUG(dbgs() << "  StorageOffset: " << storageOffset <<
                        ", StorageSize: " << storageSize << "\n");
 
@@ -2887,7 +2910,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                            varInfo.print(dbgs());
                            dbgs() << "\n");
             else
-                LLVM_DEBUG(dbgs() << "  warning: could not get vISA Variable info");
+                LLVM_DEBUG(dbgs() << "  warning: could not get vISA Variable info\n");
 
         }
 
@@ -2906,6 +2929,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 {
                     auto varSizeInBits = var.getBasicSize(DD);
                     auto offsetInBits = lrToUse.getGRF().subRegNum * 8;
+                    IGC_ASSERT(offsetInBits / 8 == lrToUse.getGRF().subRegNum);
 
                     addRegisterLoc(Block, lrToUse.getGRF().regNum, offset, var.getDbgInst());
 
@@ -2971,15 +2995,35 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     }
                     else
                     {
-                        uint16_t grfSize = (uint16_t)VISAMod->getGRFSize();
-                        uint16_t varSizeInBits = loc->IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)var.getBasicSize(DD);
-                        uint16_t varSizeInReg = (uint16_t)(loc->IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
-                        uint16_t numOfRegs = ((varSizeInReg * (uint16_t)DD->simdWidth) > (grfSize * 8)) ?
-                            ((varSizeInReg * (uint16_t)DD->simdWidth) / (grfSize * 8)) : 1;
+                        // TODO: revise these calculations
+                        unsigned GrfSizeBytes = VISAMod->getGRFSizeInBytes();
+                        IGC_ASSERT(GrfSizeBytes <= std::numeric_limits<uint16_t>::max());
+
+                        unsigned GrfSizeInBits = GrfSizeBytes * 8;
+                        IGC_ASSERT(GrfSizeInBits <= std::numeric_limits<uint16_t>::max());
+
+                        uint64_t varSizeInBits = loc->IsInMemory()
+                            ? Asm->GetPointerSize() * 8
+                            : var.getBasicSize(DD);
+
+                        uint64_t varSizeInReg = (loc->IsInMemory() && varSizeInBits < 32)
+                                              ? 32
+                                              : varSizeInBits;
+
+                        IGC_ASSERT(DD->simdWidth != 0);
+                        uint64_t FullSizeInBits = varSizeInReg * DD->simdWidth;
+                        IGC_ASSERT(FullSizeInBits / FullSizeInBits  == varSizeInReg);
+                        uint64_t numOfRegs = (FullSizeInBits > GrfSizeInBits)
+                            ? (FullSizeInBits / GrfSizeInBits)
+                            : 1;
+                        IGC_ASSERT(numOfRegs <= std::numeric_limits<uint16_t>::max());
 
                         for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                         {
-                            addScratchLocation(Block, lrToUse.getSpillOffset().memoryOffset, vectorElem * numOfRegs * grfSize);
+                            unsigned VectorOffset = static_cast<unsigned>(vectorElem * numOfRegs * GrfSizeBytes);
+                            IGC_ASSERT(VectorOffset <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
+                            addScratchLocation(Block, lrToUse.getSpillOffset().memoryOffset,
+                                               static_cast<int32_t>(VectorOffset));
                             addBE_FP(Block);
                             addSimdLane(Block, var, loc, &lrToUse, 0, false, !firstHalf); // Emit SIMD lane for spill (unpacked)
                         }
