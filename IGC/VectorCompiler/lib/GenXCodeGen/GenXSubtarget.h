@@ -118,6 +118,9 @@ private:
   // True if subtarget supports 32-bit rol/ror instructions
   bool HasBitRotate;
 
+  // True if subtarget gets HWTID from predefined variable
+  bool GetsHWTIDFromPredef;
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -281,6 +284,10 @@ public:
       return true;
     return false;
   }
+
+  /// * getsHWTIDFromPredef - some subtargets get HWTID from
+  // predefined variable instead of sr0, returns *true* for such ones.
+  bool getsHWTIDFromPredef() const { return GetsHWTIDFromPredef; }
 
   // Generic helper functions...
   const Triple &getTargetTriple() const { return TargetTriple; }

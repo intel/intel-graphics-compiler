@@ -136,13 +136,6 @@
       "dst": [ "GENERAL", 0 ],
       "src0": "CreateOpndPredefinedSrc(PREDEFINED_COLOR, 0, 0, 1, 1, 0)"
     },
-    "genx_get_hwid": {
-      "opc": "ISA_MOV",
-      "exec_size": [ "EXECSIZE" ],
-      "pred": [ "IMPLICITPRED" ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": "CreateOpndPredefinedSrc(PREDEFINED_HW_TID, 0, 0, 0, 1, 0)"
-    },
     "genx_set_pause": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],

@@ -56,6 +56,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   WaNoMaskFusedEU = false;
   HasIntDivRem32 = false;
   HasBitRotate = false;
+  GetsHWTIDFromPredef = false;
 
   if (StackScratchMem)
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_T255;
