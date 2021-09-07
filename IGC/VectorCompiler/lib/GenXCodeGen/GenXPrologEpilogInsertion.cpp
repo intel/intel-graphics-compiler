@@ -120,6 +120,8 @@ class GenXPrologEpilogInsertion
   buildWorkList(CallInst *CI, Value *OrigSp, bool UseMemForRet);
   void extractResults(CallInst *CI, Value *OrigSp, IRBuilder<> &IRB);
 
+  void generateAlloca(CallInst *CI);
+
   Value *push(Value *V, IRBuilder<> &IRB, Value *InitSP);
   std::pair<Instruction *, Value*> pop(Type *T, IRBuilder<> &IRB, Value *InitSP);
 
@@ -163,7 +165,6 @@ public:
   }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override;
-  void visitAllocaInst(AllocaInst &I);
   void visitCallInst(CallInst &I);
   void visitReturnInst(ReturnInst &I);
 };
@@ -242,30 +243,6 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   return true;
 }
 
-// alloca_base = FE_SP
-// FE_SP += sizeof(alloca)
-void GenXPrologEpilogInsertion::visitAllocaInst(AllocaInst &AI) {
-  IRBuilder<> IRB(&AI);
-
-  auto *AllocaBase = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                                        DL->getIntPtrType(AI.getType()), true);
-
-  IGC_ASSERT_MESSAGE(AI.isStaticAlloca(), "Non-static alloca is not supported");
-  unsigned AllocaOffset = *AI.getAllocationSizeInBits(*DL) / genx::ByteBits;
-
-  // padd the current alloca the comply with gather/scatter alignment rules
-  AllocaOffset = alignTo(AllocaOffset, visa::BytesPerSVMPtr);
-
-  auto *Add = IRB.CreateAdd(AllocaBase,
-      ConstantInt::get(AllocaBase->getType(), AllocaOffset));
-  PrivMemSize += AllocaOffset;
-
-  buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, Add);
-  auto *AllocaPtr = IRB.CreateIntToPtr(AllocaBase, AI.getType());
-  AI.replaceAllUsesWith(AllocaPtr);
-  AI.eraseFromParent();
-}
-
 void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
   if (I.isInlineAsm())
     return;
@@ -276,10 +253,12 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
     generateStackCall(&I);
   if (!IsIndirectCall) {
     auto IID = GenXIntrinsic::getAnyIntrinsicID(I.getCalledFunction());
+    if (IID == GenXIntrinsic::genx_alloca)
+      generateAlloca(&I);
     // TODO: conformance fails when we pass i1 args in presence of SIMDCF. Funny
     // thing is that ISPC doesn't use goto/join in its recursion tests so
     // they're fine (i.e. they're not affected by this option) unlike CM
-    if (IID == GenXIntrinsic::genx_simdcf_goto)
+    else if (IID == GenXIntrinsic::genx_simdcf_goto)
       HandleMaskArgs = false;
   }
 }
@@ -658,6 +637,35 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
 
   // read retvalue
   extractResults(CI, OrigSp, IRB);
+}
+
+// alloca_base = FE_SP
+// FE_SP += sizeof(alloca)
+void GenXPrologEpilogInsertion::generateAlloca(CallInst *CI) {
+  IRBuilder<> IRB(CI);
+
+  auto *AllocaBase = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                                        CI->getType(), true);
+
+  auto *AllocaOff = CI->getOperand(0);
+  auto *AllocaOffTy = AllocaOff->getType();
+
+  unsigned AllocaOffset = DL->getTypeSizeInBits(AllocaOffTy) / genx::ByteBits;
+
+  // padd the current alloca the comply with gather/scatter alignment rules
+  auto *AllocaEltTy = AllocaOffTy->getScalarType();
+  if (AllocaOffTy->isArrayTy())
+    AllocaEltTy = AllocaOffTy->getArrayElementType();
+  AllocaOffset += calcPadding(AllocaOffset, visa::BytesPerSVMPtr);
+
+  auto *Add =
+      IRB.CreateAdd(AllocaBase, ConstantInt::get(CI->getType(), AllocaOffset));
+  IGC_ASSERT(AllocaOffset % visa::BytesPerSVMPtr == 0);
+  PrivMemSize += AllocaOffset;
+
+  buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, Add);
+  CI->replaceAllUsesWith(AllocaBase);
+  CI->eraseFromParent();
 }
 
 Value *GenXPrologEpilogInsertion::push(Value *V, IRBuilder<> &IRB, Value *InitSP) {

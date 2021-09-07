@@ -1498,9 +1498,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
     return lowerInsertValue(IV);
   if (isa<LoadInst>(Inst) || isa<StoreInst>(Inst))
     return lowerLoadStore(Inst);
-  if (isa<AllocaInst>(Inst) && !ST->isOCLRuntime())
+  if (isa<AllocaInst>(Inst))
     Inst->getContext().emitError(Inst,
-        "GenX backend cannot handle allocas with CMRT yet");
+                                 "GenX backend cannot handle allocas yet");
   return false;
 }
 
