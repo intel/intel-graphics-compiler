@@ -152,6 +152,23 @@ public:
   }
 };
 
+class CompilationAbortedError final
+    : public llvm::ErrorInfo<CompilationAbortedError> {
+public:
+  static char ID;
+
+private:
+  std::string Message;
+
+public:
+  CompilationAbortedError(llvm::StringRef Msg) : Message(Msg.str()) {}
+
+  void log(llvm::raw_ostream &OS) const override;
+  std::error_code convertToErrorCode() const override {
+    return make_error_code(errc::compilation_aborted);
+  }
+};
+
 } // namespace vc
 
 #endif

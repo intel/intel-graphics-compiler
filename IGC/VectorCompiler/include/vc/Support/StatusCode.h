@@ -45,7 +45,10 @@ enum class errc {
   bif_load_fail,
 
   // Output creation failure.
-  output_not_created
+  output_not_created,
+
+  // Compilation was aborted.
+  compilation_aborted
 };
 
 const std::error_category &err_category() noexcept;
