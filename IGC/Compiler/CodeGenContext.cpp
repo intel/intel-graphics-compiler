@@ -26,14 +26,13 @@ namespace IGC
         bool allowSimd32Slicing;
         bool allowPromotePrivateMemory;
         bool allowPreRAScheduler;
-        bool allowVISAPreRAScheduler;
         bool allowLargeURBWrite;
         unsigned nextState;
     } RetryState;
 
     static const RetryState RetryTable[] = {
-        { true, true, false, true, true, true, true, 1 },
-        { false, true, true, false, false, false, false, 500 }
+        { true, true, false, true, true, true, 1 },
+        { false, true, true, false, false, false, 500 }
     };
 
     RetryManager::RetryManager() : enabled(false)
@@ -64,10 +63,6 @@ namespace IGC
     bool RetryManager::AllowPreRAScheduler() {
         IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowPreRAScheduler;
-    }
-    bool RetryManager::AllowVISAPreRAScheduler() {
-        IGC_ASSERT(stateId < getStateCnt());
-        return RetryTable[stateId].allowVISAPreRAScheduler;
     }
     bool RetryManager::AllowCodeSinking() {
         IGC_ASSERT(stateId < getStateCnt());

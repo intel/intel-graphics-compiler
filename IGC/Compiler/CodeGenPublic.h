@@ -780,7 +780,6 @@ namespace IGC
         bool AllowLICM();
         bool AllowPromotePrivateMemory();
         bool AllowPreRAScheduler();
-        bool AllowVISAPreRAScheduler();
         bool AllowCodeSinking();
         bool AllowSimd32Slicing();
         bool AllowLargeURBWrite();
