@@ -183,6 +183,7 @@ void Dominator::runDOM()
 
     // Actual dom computation
     bool change = true;
+    BitSet oldBS(kernel.fg.size(), false);
     while (change)
     {
         change = false;
@@ -192,7 +193,7 @@ void Dominator::runDOM()
             if (bb == entryBB)
                 continue;
 
-            auto oldBS = domsBS[bb->getId()];
+            oldBS = domsBS[bb->getId()];
 
             domsBS[bb->getId()].setAll();
             // Dominators[BB] = Intersection(Dominators[All Pred BBs]) + BB
