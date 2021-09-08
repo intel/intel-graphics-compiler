@@ -531,7 +531,7 @@ void Options::setOption(vISAOptions option, const char* str)
 // return full set of arguments ever set by user, either through
 // string options or the various setOptions()
 //
-std::string Options::getFullArgString()
+std::string Options::getFullArgString() const
 {
     std::stringstream args;
     // Collect all user-set options.
@@ -573,9 +573,32 @@ std::string Options::getFullArgString()
             }
             break;
             case ET_CSTR:
-                args << m_vISAOptions.getArgStr(o) << " "
-                    << m_vISAOptions.getCstr(o) << " ";
+            {
+                args << m_vISAOptions.getArgStr(o) << " ";
+                const char *sval = m_vISAOptions.getCstr(o);
+                // Careful not to emit empty strings
+                // ... -string_opt   -next_opt
+                //                 ^ empty string value for -string_opt
+                // We need to put something so poor fool (me) that comes along
+                // and tries to parse the .full_options line doesn't get
+                // -string_opt parsing -next_opt as the value
+                // Instead produce:
+                // ... -string_opt ""  -next_opt"
+                if (sval == nullptr || *sval == 0) {
+                    args << "\"\""; // emit escaped so tokenization in next parse works
+                } else {
+                    std::string s = sval;
+                    if (s.find(' ') != std::string::npos) {
+                        // if there's spaces escape them
+                        //   -string_opt "foo bar" -next_opt
+                        args << "\"" << s << "\"";
+                    } else {
+                        args << s;
+                    }
+                }
+                args << " ";
                 break;
+            }
             default:
                 assert(false && "Invalid vISA option type!");
                 args << "UNDEFINED ";
@@ -594,7 +617,7 @@ std::stringstream& Options::getUserArgString()
     return argString;
 }
 
-std::string Options::getEncoderOutputFile()
+std::string Options::getEncoderOutputFile() const
 {
     const char * encoderOutputFile = m_vISAOptions.getCstr(vISA_encoderFile);
     if (encoderOutputFile != nullptr)
