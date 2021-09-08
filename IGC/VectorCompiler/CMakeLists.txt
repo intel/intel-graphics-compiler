@@ -59,7 +59,9 @@ set(BUILD_EXTERNAL YES)
 set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
 add_subdirectory(${INTRSRC} ${INTRBUILD} EXCLUDE_FROM_ALL)
 
-include(cmake/spirv.cmake)
+if(NOT IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_VC)
+  include(cmake/spirv.cmake)
+endif()
 
 set(IGC_OPTION__VC_DISABLE_BIF_DEFAULT OFF)
 if(LLVM_VERSION_MAJOR LESS 9)
