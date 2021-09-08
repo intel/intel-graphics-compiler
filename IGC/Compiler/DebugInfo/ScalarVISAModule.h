@@ -51,6 +51,7 @@ public:
     }
 
     unsigned getPointerSize() const override;
+    uint64_t getTypeSizeInBits(Type*) const override;
 
     llvm::ArrayRef<char> getGenDebug() const override {
       const auto& PO = *m_pShader->ProgramOutput();

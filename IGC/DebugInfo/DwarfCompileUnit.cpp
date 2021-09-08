@@ -1383,7 +1383,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, const DbgVariable& DV,
         const auto* VISAMod = Loc->GetVISAModule();
         auto varSizeInBits = Loc->IsInMemory()
             ? Asm->GetPointerSize() * 8
-            : DV.getBasicSize(DD);
+            : DV.getRegisterValueSizeInBits(DD);
 
         LLVM_DEBUG(dbgs() << "  addSimdLane(varSizeInBits: " << varSizeInBits <<
                    ", simdWidthOffset: " << simdWidthOffset << ", isPacked: " <<
@@ -1590,7 +1590,7 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, const DbgVariable& DV,
 
         auto varSizeInBits = Loc->IsInMemory()
             ? Asm->GetPointerSize() * 8
-            : DV.getBasicSize(DD);
+            : DV.getRegisterValueSizeInBits(DD);
         auto offsetInBits = subRegInBytes * 8;
         IGC_ASSERT(offsetInBits / 8 == subRegInBytes);
 
@@ -2776,11 +2776,11 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);           // 13 DW_OP_plus
                 addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);  // 14 DW_OP_INTEL_push_simd_lane
 
-                auto varSizeInBytes = var.getBasicSize(DD) / 8;
+                auto varSizeInBytes = var.getRegisterValueSizeInBits(DD) / 8;
 
                 LLVM_DEBUG(dbgs() << "  var Offset: " << offset <<
                            ", var Size: " << varSizeInBytes << "\n");
-                IGC_ASSERT_MESSAGE((var.getBasicSize(DD) & 0x7) == 0,
+                IGC_ASSERT_MESSAGE((var.getRegisterValueSizeInBits(DD) & 0x7) == 0,
                                    "Unexpected variable size");
 
                 addConstantUValue(Block, varSizeInBytes);                          // 15 DW_OP_const1u/2u/4u/8u <variableSize>  , i.e. size in bytes
@@ -2927,7 +2927,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
 
                 if (!EmitSettings.EnableSIMDLaneDebugging)
                 {
-                    auto varSizeInBits = var.getBasicSize(DD);
+                    auto varSizeInBits = var.getRegisterValueSizeInBits(DD);
                     auto offsetInBits = lrToUse.getGRF().subRegNum * 8;
                     IGC_ASSERT(offsetInBits / 8 == lrToUse.getGRF().subRegNum);
 
@@ -3002,25 +3002,24 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
                         unsigned GrfSizeInBits = GrfSizeBytes * 8;
                         IGC_ASSERT(GrfSizeInBits <= std::numeric_limits<uint16_t>::max());
 
-                        uint64_t varSizeInBits = loc->IsInMemory()
+                        unsigned varSizeInBits = loc->IsInMemory()
                             ? Asm->GetPointerSize() * 8
-                            : var.getBasicSize(DD);
+                            : var.getRegisterValueSizeInBits(DD);
 
-                        uint64_t varSizeInReg = (loc->IsInMemory() && varSizeInBits < 32)
+                        unsigned varSizeInReg = (loc->IsInMemory() && varSizeInBits < 32)
                                               ? 32
                                               : varSizeInBits;
 
                         IGC_ASSERT(DD->simdWidth != 0);
-                        uint64_t FullSizeInBits = varSizeInReg * DD->simdWidth;
-                        IGC_ASSERT(FullSizeInBits / FullSizeInBits  == varSizeInReg);
-                        uint64_t numOfRegs = (FullSizeInBits > GrfSizeInBits)
+                        unsigned FullSizeInBits = varSizeInReg * DD->simdWidth;
+                        unsigned numOfRegs = (FullSizeInBits > GrfSizeInBits)
                             ? (FullSizeInBits / GrfSizeInBits)
                             : 1;
                         IGC_ASSERT(numOfRegs <= std::numeric_limits<uint16_t>::max());
 
                         for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                         {
-                            unsigned VectorOffset = static_cast<unsigned>(vectorElem * numOfRegs * GrfSizeBytes);
+                            unsigned VectorOffset = vectorElem * numOfRegs * GrfSizeBytes;
                             IGC_ASSERT(VectorOffset <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
                             addScratchLocation(Block, lrToUse.getSpillOffset().memoryOffset,
                                                static_cast<int32_t>(VectorOffset));

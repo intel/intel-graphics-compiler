@@ -37,6 +37,7 @@ See LICENSE.TXT for details.
 
 #include "DIE.hpp"
 #include "StreamEmitter.hpp"
+#include "DwarfDebug.hpp"
 
 #include "Probe/Assertion.h"
 
@@ -810,7 +811,3 @@ const MCObjectFileInfo& StreamEmitter::GetObjFileLowering() const
     return *m_pObjFileInfo;
 }
 
-const std::string& StreamEmitter::GetTargetTriple() const
-{
-    return m_targetTriple;
-}

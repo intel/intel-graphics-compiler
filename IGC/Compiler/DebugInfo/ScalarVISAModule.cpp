@@ -170,6 +170,16 @@ unsigned ScalarVisaModule::getPointerSize() const {
     return IGC::getPointerSize((llvm::Module &)(*GetModule()));
 }
 
+uint64_t ScalarVisaModule::getTypeSizeInBits(Type* Ty) const
+{
+    IGC_ASSERT(getFunction());
+    // TODO: looks like data layout for function pointers is not set
+    // correctly. According to the current data layout all pointers are of
+    // 64 bits, while vISA/genIsa function pointers are deemed to be 32 bits.
+    // Double-check if this is an issue.
+    return getFunction()->getParent()->getDataLayout().getTypeSizeInBits(Ty);
+}
+
 void ScalarVisaModule::UpdateVisaId()
 {
     auto* Kernel = m_pShader->GetEncoder().GetVISAKernel();

@@ -38,6 +38,9 @@ namespace llvm
 
 namespace IGC
 {
+    class DbgVariable;
+    class DwarfDebug;
+
     /// @brief StreamEmitter provides API methods for emitting elf object.
     ///        It will be used to emit the debug info sections in dwarf format.
     class StreamEmitter
@@ -197,7 +200,7 @@ namespace IGC
         const llvm::MCObjectFileInfo& GetObjFileLowering() const;
 
         /// @brief Return the target triple string.
-        const std::string& GetTargetTriple() const;
+        const std::string& GetTargetTriple() const { return m_targetTriple; }
 
     private:
 

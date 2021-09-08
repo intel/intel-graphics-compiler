@@ -224,6 +224,39 @@ uint64_t DbgVariable::getBasicSize(const DwarfDebug* DD) const
     return varSizeInBits;
 }
 
+unsigned DbgVariable::getRegisterValueSizeInBits(const DwarfDebug* DD) const
+{
+    IGC_ASSERT(getDbgInst() != nullptr);
+    // There was a re-design of DbgVariableIntrinsic to suppport DIArgList
+    // See: e5d958c45629ccd2f5b5f7432756be1d0fcf052c (~llvm-14)
+    // So most likely we'll have to revise the relevant codebase.
+    Value* IRLoc = IGCLLVM::getVariableLocation(getDbgInst());
+    auto* Ty = IRLoc->getType();
+    IGC_ASSERT(Ty->isSingleValueType());
+
+    auto LocationSizeInBits = DD->GetVISAModule()->getTypeSizeInBits(Ty);
+
+    const auto* VisaModule = DD->GetVISAModule();
+    const auto GRFSizeInBits = VisaModule->getGRFSizeInBits();
+    const auto NumGRF = VisaModule->getNumGRFs();
+    const auto MaxGRFSpaceInBits = GRFSizeInBits * NumGRF;
+
+    IGC_ASSERT(MaxGRFSpaceInBits / GRFSizeInBits == NumGRF);
+
+    auto Result = LocationSizeInBits;
+    if (LocationSizeInBits > MaxGRFSpaceInBits)
+    {
+        LLVM_DEBUG(dbgs() << "Error: location size is "<< LocationSizeInBits <<
+                   " , while only " << MaxGRFSpaceInBits <<
+                   " bits available! location size truncated.");
+        IGC_ASSERT_MESSAGE(false, "reported register location is large than available GRF space!");
+        Result = 0;
+    }
+
+    IGC_ASSERT(Result <= std::numeric_limits<unsigned>::max());
+    return static_cast<unsigned>(Result);
+}
+
 DIType* DbgVariable::getType() const
 {
     return getVariable()->getType();

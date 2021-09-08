@@ -163,8 +163,14 @@ namespace IGC
         /// Return base type size even if it derived directly or indirectly from Composite Type
         uint64_t getBasicSize(const DwarfDebug* DD) const;
 
-        // Translate tag to proper Dwarf tag.
+        // TODO: re-design required since current approach does not support
+        // DIArgList
+        /// Returns size of the location associated with the current instance
+        /// of the source variable, should be usde to calculate required
+        /// storage required
+        unsigned getRegisterValueSizeInBits(const DwarfDebug* DD) const;
 
+        // Translate tag to proper Dwarf tag.
         llvm::dwarf::Tag getTag() const
         {
             // FIXME: Why don't we just infer this tag and store it all along?

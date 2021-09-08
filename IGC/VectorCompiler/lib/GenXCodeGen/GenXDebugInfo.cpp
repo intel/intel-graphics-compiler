@@ -810,6 +810,9 @@ public:
   unsigned getPointerSize() const override {
     return F.getParent()->getDataLayout().getPointerSize();
   }
+  uint64_t getTypeSizeInBits(Type* Ty) const override {
+    return F.getParent()->getDataLayout().getTypeSizeInBits(Ty);
+  }
   ArrayRef<char> getGenDebug() const override {
     return CompiledVisa.getDbgInfoBlob();
   }

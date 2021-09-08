@@ -458,6 +458,7 @@ namespace IGC
         virtual unsigned getNumGRFs() const = 0;
         // TODO: deprecate usage of this method, since it does not respect ASI
         virtual unsigned getPointerSize() const = 0;
+        virtual uint64_t getTypeSizeInBits(llvm::Type*) const = 0;
 
         virtual void* getPrivateBase() const = 0;
         virtual void setPrivateBase(void*) = 0;
