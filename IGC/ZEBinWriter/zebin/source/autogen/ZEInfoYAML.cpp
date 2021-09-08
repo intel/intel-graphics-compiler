@@ -28,12 +28,12 @@ void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
 {
     io.mapRequired("name", info.name);
     io.mapRequired("execution_env", info.execution_env);
-    io.mapOptional("payload_arguments", info.payload_arguments);
-    io.mapOptional("per_thread_payload_arguments", info.per_thread_payload_arguments);
-    io.mapOptional("binding_table_indices", info.binding_table_indices);
-    io.mapOptional("per_thread_memory_buffers", info.per_thread_memory_buffers);
-    io.mapOptional("experimental_properties", info.experimental_properties);
-    io.mapOptional("debug_env", info.debug_env);
+    io.mapOptional("payload_arguments", info.payload_arguments, PayloadArgumentsTy());
+    io.mapOptional("per_thread_payload_arguments", info.per_thread_payload_arguments, PerThreadPayloadArgumentsTy());
+    io.mapOptional("binding_table_indices", info.binding_table_indices, BindingTableIndicesTy());
+    io.mapOptional("per_thread_memory_buffers", info.per_thread_memory_buffers, PerThreadMemoryBuffersTy());
+    io.mapOptional("experimental_properties", info.experimental_properties, zeInfoExperimentalProperties());
+    io.mapOptional("debug_env", info.debug_env, zeInfoDebugEnv());
 }
 void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info)
 {

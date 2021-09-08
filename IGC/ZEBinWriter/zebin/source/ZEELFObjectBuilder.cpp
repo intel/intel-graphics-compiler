@@ -1080,12 +1080,7 @@ zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addPerSIMTThreadGlobalMemoryBuffer(
 void ZEInfoBuilder::addExpPropertiesHasNonKernelArgLdSt(zeInfoKernel& zekernel,
     bool hasNonKernelArgLoad, bool hasNonKernelArgStore, bool hasNonKernelArgAtomic)
 {
-    // there should be at most one experimental_properties under a kernel
-    // create one if not existed.
-    if (zekernel.experimental_properties.empty()) {
-        zekernel.experimental_properties.emplace_back();
-    }
-    zeInfoExperimentalProperties& ep = zekernel.experimental_properties.back();
+    zeInfoExperimentalProperties& ep = zekernel.experimental_properties;
     ep.has_non_kernel_arg_load = hasNonKernelArgLoad;
     ep.has_non_kernel_arg_store = hasNonKernelArgStore;
     ep.has_non_kernel_arg_atomic = hasNonKernelArgAtomic;

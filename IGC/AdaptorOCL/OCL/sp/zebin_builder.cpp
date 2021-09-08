@@ -780,13 +780,9 @@ void ZEBinaryBuilder::addKernelDebugEnv(const SOpenCLKernelInfo& annotations,
                                         const CBTILayout& layout,
                                         zeInfoKernel& zeinfoKernel)
 {
-    DebugEnvTy& envVec = zeinfoKernel.debug_env;
-    // Although debug_env has a vector type, only 1 element is allowed now.
-    IGC_ASSERT(envVec.empty());
-    zeInfoDebugEnv env;
+    zeInfoDebugEnv& env = zeinfoKernel.debug_env;
     env.sip_surface_bti = layout.GetSystemThreadBindingTableIndex();
     // Now set the sip surface offset to 0 directly. Currently the surface offset
     // is computed locally when creating patch tokens.
     env.sip_surface_offset = 0;
-    envVec.emplace_back(env);
 }

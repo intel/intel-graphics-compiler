@@ -30,6 +30,10 @@ typedef bool        zeinfo_bool_t;
 typedef std::string zeinfo_str_t;
 struct zeInfoExecutionEnv
 {
+    bool operator==(const zeInfoExecutionEnv& other) const
+    {
+        return barrier_count == other.barrier_count && disable_mid_thread_preemption == other.disable_mid_thread_preemption && grf_count == other.grf_count && has_4gb_buffers == other.has_4gb_buffers && has_device_enqueue == other.has_device_enqueue && has_dpas == other.has_dpas && has_fence_for_image_access == other.has_fence_for_image_access && has_global_atomics == other.has_global_atomics && has_multi_scratch_spaces == other.has_multi_scratch_spaces && has_no_stateless_write == other.has_no_stateless_write && offset_to_skip_per_thread_data_load == other.offset_to_skip_per_thread_data_load && offset_to_skip_set_ffid_gp == other.offset_to_skip_set_ffid_gp && required_sub_group_size == other.required_sub_group_size && required_work_group_size == other.required_work_group_size && simd_size == other.simd_size && slm_size == other.slm_size && subgroup_independent_forward_progress == other.subgroup_independent_forward_progress && work_group_walk_order_dimensions == other.work_group_walk_order_dimensions;
+    }
     zeinfo_int32_t barrier_count = 0;
     zeinfo_bool_t disable_mid_thread_preemption = false;
     zeinfo_int32_t grf_count = 0;
@@ -51,6 +55,10 @@ struct zeInfoExecutionEnv
 };
 struct zeInfoPayloadArgument
 {
+    bool operator==(const zeInfoPayloadArgument& other) const
+    {
+        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index;
+    }
     zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
     zeinfo_int32_t size = 0;
@@ -62,17 +70,29 @@ struct zeInfoPayloadArgument
 };
 struct zeInfoPerThreadPayloadArgument
 {
+    bool operator==(const zeInfoPerThreadPayloadArgument& other) const
+    {
+        return arg_type == other.arg_type && offset == other.offset && size == other.size;
+    }
     zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
     zeinfo_int32_t size = 0;
 };
 struct zeInfoBindingTableIndex
 {
+    bool operator==(const zeInfoBindingTableIndex& other) const
+    {
+        return bti_value == other.bti_value && arg_index == other.arg_index;
+    }
     zeinfo_int32_t bti_value = 0;
     zeinfo_int32_t arg_index = 0;
 };
 struct zeInfoPerThreadMemoryBuffer
 {
+    bool operator==(const zeInfoPerThreadMemoryBuffer& other) const
+    {
+        return type == other.type && usage == other.usage && size == other.size && slot == other.slot && is_simt_thread == other.is_simt_thread;
+    }
     zeinfo_str_t type;
     zeinfo_str_t usage;
     zeinfo_int32_t size = 0;
@@ -81,12 +101,20 @@ struct zeInfoPerThreadMemoryBuffer
 };
 struct zeInfoExperimentalProperties
 {
+    bool operator==(const zeInfoExperimentalProperties& other) const
+    {
+        return has_non_kernel_arg_load == other.has_non_kernel_arg_load && has_non_kernel_arg_store == other.has_non_kernel_arg_store && has_non_kernel_arg_atomic == other.has_non_kernel_arg_atomic;
+    }
     zeinfo_int32_t has_non_kernel_arg_load = -1;
     zeinfo_int32_t has_non_kernel_arg_store = -1;
     zeinfo_int32_t has_non_kernel_arg_atomic = -1;
 };
 struct zeInfoDebugEnv
 {
+    bool operator==(const zeInfoDebugEnv& other) const
+    {
+        return sip_surface_bti == other.sip_surface_bti && sip_surface_offset == other.sip_surface_offset;
+    }
     zeinfo_int32_t sip_surface_bti = -1;
     zeinfo_int32_t sip_surface_offset = -1;
 };
@@ -94,8 +122,6 @@ typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;
 typedef std::vector<zeInfoBindingTableIndex> BindingTableIndicesTy;
 typedef std::vector<zeInfoPerThreadMemoryBuffer> PerThreadMemoryBuffersTy;
-typedef std::vector<zeInfoExperimentalProperties> ExperimentalPropertiesTy;
-typedef std::vector<zeInfoDebugEnv> DebugEnvTy;
 struct zeInfoKernel
 {
     zeinfo_str_t name;
@@ -104,8 +130,8 @@ struct zeInfoKernel
     PerThreadPayloadArgumentsTy per_thread_payload_arguments;
     BindingTableIndicesTy binding_table_indices;
     PerThreadMemoryBuffersTy per_thread_memory_buffers;
-    ExperimentalPropertiesTy experimental_properties;
-    DebugEnvTy debug_env;
+    zeInfoExperimentalProperties experimental_properties;
+    zeInfoDebugEnv debug_env;
 };
 typedef std::vector<zeInfoKernel> KernelsTy;
 struct zeInfoContainer
