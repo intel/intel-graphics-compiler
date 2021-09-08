@@ -35,6 +35,8 @@ extern "C" int __cm_cl_printf_format_index(__constant char *str);
 extern "C" int __cm_cl_printf_format_index_legacy(__private char *str);
 extern "C" void __cm_cl_svm_scatter(int num_blocks, void *address, void *src);
 extern "C" void __cm_cl_svm_atomic_add(void *dst, void *address, void *src);
+extern "C" uint32_t __cm_cl_lzd_scalar(uint32_t src);
+extern "C" void __cm_cl_lzd_vector(void *dst, void *src);
 
 namespace cm {
 namespace detail {
@@ -162,6 +164,15 @@ vector_impl<T, width> svm_atomic_add(vector_impl<uintptr_t, width> address,
   vector_impl<T, width> res;
   __cm_cl_svm_atomic_add(&res, &address, &src);
   return res;
+}
+
+inline uint32_t lzd(uint32_t src) { return __cm_cl_lzd_scalar(src); }
+
+template <int width>
+vector_impl<uint32_t, width> lzd(vector_impl<uint32_t, width> src) {
+  vector_impl<uint32_t, width> dst;
+  __cm_cl_lzd_vector(&dst, &src);
+  return dst;
 }
 
 } // namespace detail

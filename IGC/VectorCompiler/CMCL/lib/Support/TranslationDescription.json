@@ -209,6 +209,33 @@
           ]}
         ]
       }
+    },
+    "LZDScalar": {
+      "Name": "lzd_scalar",
+      "Operands": [
+        {"Name": "Source", "Kind": "ScalarIn"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_lzd",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
+    "LZDVector": {
+      "Name": "lzd_vector",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorOut"},
+        {"Name": "Source", "Kind": "VectorIn"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_lzd",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
     }
   }
 }
