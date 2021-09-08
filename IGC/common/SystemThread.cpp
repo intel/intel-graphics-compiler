@@ -196,6 +196,22 @@ static struct StateSaveAreaHeader Gen12LPSIPCSRDebugBindlessDebugHeader =
     }
 };
 
+bool SIPSuppoertedOnPlatformFamily(const GFXCORE_FAMILY& family)
+{
+    switch (family)
+    {
+    case IGFX_GEN9_CORE:
+    case IGFX_GENNEXT_CORE:
+    case IGFX_GEN10_CORE:
+    case IGFX_GEN11_CORE:
+    case IGFX_GEN12_CORE:
+    case IGFX_GEN12LP_CORE:
+        return true;
+    default:
+        return false;
+    }
+}
+
 MemoryBuffer* LoadFile(const std::string &FileName)
 {
     ErrorOr<std::unique_ptr<MemoryBuffer>> result = MemoryBuffer::getFile(FileName.c_str());
@@ -208,6 +224,11 @@ bool CSystemThread::CreateSystemThreadKernel(
     USC::SSystemThreadKernelOutput* &pSystemThreadKernelOutput,
     bool bindlessMode)
 {
+    if (!SIPSuppoertedOnPlatformFamily(platform.getPlatformInfo().eRenderCoreFamily))
+    {
+        return false;
+    }
+
     bool success = true;
 
     // Check if the System Thread mode in the correct range.

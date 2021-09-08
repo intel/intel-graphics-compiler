@@ -2203,10 +2203,15 @@ namespace IGC
                     systemThreadMode |= USC::SYSTEM_THREAD_MODE_DEBUG_LOCAL;
                 }
 
-                SIP::CSystemThread::CreateSystemThreadKernel(
+                bool success = SIP::CSystemThread::CreateSystemThreadKernel(
                     ctx->platform,
                     (USC::SYSTEM_THREAD_MODE)systemThreadMode,
                     ctx->m_programOutput.m_pSystemThreadKernelOutput);
+
+                if (!success)
+                {
+                    ctx->EmitError("System thread kernel could not be created!", nullptr);
+                }
             }
         }
 
