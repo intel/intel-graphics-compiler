@@ -508,7 +508,7 @@ bool GenXImportOCLBiF::runOnModule(Module &M) {
   removeFunctionBitcasts(M);
   InitializeBIFlags(M);
   BIConvert{}.runOnModule(M);
-  vc::internalizeImportedFunctions(M, OCLBuiltins, /* SetAlwaysInline */ true);
+  vc::internalizeImportedFunctions(M, OCLBuiltins, /*SetAlwaysInline=*/true);
   return true;
 }
 
