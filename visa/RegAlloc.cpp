@@ -3547,7 +3547,10 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     gra.markGraphBlockLocalVars();
 
     //Remove the un-referenced declares
-    gra.removeUnreferencedDcls();
+    if (!builder.getOptions()->getuInt32Option(vISA_CodePatch))
+    {
+        gra.removeUnreferencedDcls();
+    }
 
     if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
     {
