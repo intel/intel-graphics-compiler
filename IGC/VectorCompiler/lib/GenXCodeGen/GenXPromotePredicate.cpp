@@ -104,13 +104,12 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
   // comparisions or constants as leaf nodes.
   for (auto Inst : Candidates) {
     IGC_ASSERT(Inst->hasOneUse());
-    Instruction *UI = Inst->user_back();
     Value *V = rewriteTree(Inst);
     IGC_ASSERT(isa<Instruction>(V));
     auto TI = TruncInst::Create(CastInst::Trunc, V, Inst->getType());
     TI->insertAfter(cast<Instruction>(V));
     TI->setDebugLoc(Inst->getDebugLoc());
-    UI->replaceUsesOfWith(Inst, TI);
+    Inst->replaceAllUsesWith(TI);
     RecursivelyDeleteTriviallyDeadInstructions(Inst);
   }
 
