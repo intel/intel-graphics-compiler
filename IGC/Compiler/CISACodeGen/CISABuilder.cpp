@@ -5428,6 +5428,7 @@ namespace IGC
                 COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_EARLYEXIT32, 1);
             }
 #endif
+            context->SetSIMDInfo(SIMD_SKIP_SPILL, m_program->m_dispatchSize, m_program->m_ShaderDispatchMode);
             return;
         }
 
