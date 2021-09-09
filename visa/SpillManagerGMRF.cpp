@@ -728,7 +728,7 @@ void SpillManagerGRF::calculateEncAlignedSegment(
     unsigned regionDisp = getRegionDisp(region);
     unsigned regionByteSize = getRegionByteSize(region, execSize);
 
-    if (need32ByteAlignedOffset())
+    if (needGRFAlignedOffset())
     {
         unsigned hwordLB = regionDisp & grfMask();
         unsigned hwordRB = hwordLB + numEltPerGRF<Type_UB>();
@@ -1114,10 +1114,10 @@ G4_Declare * SpillManagerGRF::createTransientGRFRangeDeclare(
         height = 1;
     }
 
-    if (need32ByteAlignedOffset())
+    if (needGRFAlignedOffset())
     {
         // the message will read/write a minimum of one GRF
-        if (height == 1 && width < getGRFSize())
+        if (height == 1 && width < (getGRFSize() / region->getElemSize()))
             width = getGRFSize() / region->getElemSize();
     }
 
@@ -1338,6 +1338,9 @@ G4_Declare * SpillManagerGRF::createTemporaryRangeDeclare(
         getSegmentByteSize(spilledRegion, execSize):
         getRegionByteSize(spilledRegion, execSize);
 
+    // ensure tmp reg is large enough to hold all data when sub-reg offset is non-zero
+    byteSize += spilledRegion->getSubRegOff() * spilledRegion->getElemSize();
+
     assert(byteSize <= 2u * REG_BYTE_SIZE);
     assert(byteSize % spilledRegion->getElemSize () == 0);
 
@@ -1437,7 +1440,7 @@ G4_SrcRegRegion * SpillManagerGRF::createTemporaryRangeSrcRegion (
     // A scalar region is returned when execsize is 1.
     const RegionDesc *rDesc = builder_->createRegionDesc(execSize, horzStride, 1, 0);
 
-    return builder_->createSrc(tmpRangeRegVar, (short) regOff, SUBREG_ORIGIN,
+    return builder_->createSrc(tmpRangeRegVar, (short) regOff, spilledRegion->getSubRegOff(),
         rDesc, spilledRegion->getType());
 }
 
@@ -3048,7 +3051,9 @@ void SpillManagerGRF::insertSpillRangeCode(
             spilledRegion->getRegOff());
 
         replacementRangeDcl = spillRangeDcl;
-    } else {
+    }
+    else
+    {
         // Handle other regular single/multi destination register instructions.
         // Create the spill range for the destination region, assign spill
         // offset to the spill range and create the instructions to load the
@@ -3065,8 +3070,8 @@ void SpillManagerGRF::insertSpillRangeCode(
         // Unaligned region specific handling.
         unsigned int spillSendOption = InstOpt_WriteEnable;
         auto preloadNeeded = shouldPreloadSpillRange(*spilledInstIter, bb);
-        if (preloadNeeded &&
-            checkRMWNeeded()) {
+        if (preloadNeeded && checkRMWNeeded())
+        {
 
             // Preload the segment aligned spill range from memory to use
             // as an overlay
@@ -3112,8 +3117,11 @@ void SpillManagerGRF::insertSpillRangeCode(
             numGRFMove++;
 
             replacementRangeDcl = tmpRangeDcl;
-            // newSubRegOff is 0 here since the move above already takes the spilled dst's subreg into account.
-        } else {
+            // maintain the spilled dst's subreg to not break the regioning restriction
+            newSubregOff = spilledRegion->getSubRegOff();
+        }
+        else
+        {
             // We're here because:
             // 1. preloadNeeded = false AND checkRMWNeeded = true OR
             // 2. preloadNeeded = true AND checkRMWNeeded = false OR
@@ -3166,7 +3174,8 @@ void SpillManagerGRF::insertSpillRangeCode(
             newSubregOff = spilledRegion->getSubRegOff();
 
             if (preloadNeeded &&
-                isUnalignedRegion(spilledRegion, execSize)) {
+                isUnalignedRegion(spilledRegion, execSize))
+            {
                 // A dst region may be not need pre-fill, however, if it is unaligned,
                 // we need to use non-zero sub-reg offset in newly created spill dcl.
                 // This section of code computes sub-reg offset to use for such cases.

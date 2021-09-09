@@ -657,8 +657,8 @@ private:
         return needed;
     }
 
-    // return true if offset for spill/fill message needs to be 32byte aligned
-    bool need32ByteAlignedOffset() const
+    // return true if offset for spill/fill message needs to be GRF-aligned
+    bool needGRFAlignedOffset() const
     {
         return useScratchMsg_ || useSplitSend();
     }
