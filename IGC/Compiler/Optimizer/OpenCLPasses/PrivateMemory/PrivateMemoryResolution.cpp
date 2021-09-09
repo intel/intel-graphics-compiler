@@ -296,6 +296,16 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
                         return false;
                     }
                 }
+                if (Ctx.type == ShaderType::OPENCL_SHADER) {
+                    // PtrToInt may be used to test if pointer is null, then we cannot
+                    // distinguish nullptr versus zero offset. This causes a problem
+                    // with an OpenCL3.0 test. see cassian/oclc_address_space_qualifiers
+                    if (PtrToIntInst* IPI = dyn_cast<PtrToIntInst>(&I)) {
+                        if (IPI->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE) {
+                            return false;
+                        }
+                    }
+                }
             }
         }
 
