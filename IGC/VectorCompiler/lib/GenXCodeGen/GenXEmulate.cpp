@@ -370,9 +370,10 @@ Value *GenXEmulate::Emu64Expander::detectBitwiseNot(BinaryOperator &Op) {
 // Changes scalar to scalar, vector to vector
 Type *GenXEmulate::Emu64Expander::changeScalarType(Type *T, Type *NewTy) {
   IGC_ASSERT_MESSAGE(NewTy == NewTy->getScalarType(), "NewTy must be scalar");
-  return (T->isVectorTy()) ? IGCLLVM::FixedVectorType::get(
-                                 NewTy, cast<VectorType>(T)->getNumElements())
-                           : NewTy;
+  return (T->isVectorTy())
+             ? IGCLLVM::FixedVectorType::get(
+                   NewTy, cast<IGCLLVM::FixedVectorType>(T)->getNumElements())
+             : NewTy;
 }
 
 // changes vector/scalar i64 type so it now uses scalar type i32
