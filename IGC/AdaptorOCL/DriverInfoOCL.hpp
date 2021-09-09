@@ -40,7 +40,7 @@ namespace TC
         bool enableVISAPreRAScheduler() const override { return true; }
 
         bool NeedWAToTransformA32MessagesToA64() const override{ return true; }
-        bool WADisableCustomPass() const override { return true; }
+        bool WADisableCustomPass() const override { return false; }
         bool WAEnableMemOpt2ForOCL() const override { return true; }
 
         unsigned int GetLoopUnrollThreshold() const override { return  1280; }
