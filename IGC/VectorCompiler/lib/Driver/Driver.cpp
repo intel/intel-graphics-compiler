@@ -532,19 +532,11 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
     return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(Argv, FlagsToInclude,
                                                     Options, IsStrictMode);
   }
-  // Deprecated -cmc parsing just for compatibility.
+  // Treat -cmc option as unknown.
   const std::string IgcmcOptName =
       Options.getOption(OPT_igcmc).getPrefixedName();
-  if (HasOption(IgcmcOptName)) {
-    llvm::errs()
-        << "'" << IgcmcOptName
-        << "' option is deprecated and will be removed in the future release. "
-           "Use -vc-codegen instead for compiling from SPIRV.\n";
-    const unsigned FlagsToInclude =
-        IGC::options::IgcmcApiOption | IGC::options::IGCApiOption;
-    return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(Argv, FlagsToInclude,
-                                                    Options, IsStrictMode);
-  }
+  if (HasOption(IgcmcOptName))
+    return make_error<vc::OptionError>(IgcmcOptName, /*IsInternal=*/false);
 
   return make_error<vc::NotVCError>();
 }
