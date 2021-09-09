@@ -55,7 +55,7 @@ namespace {
         GASPropagator* Propagator;
 
         // Phi node being able to be resolved from its initial value.
-        DenseSet<PHINode*> ResolvableLoopPHIs;
+        DenseSet<PHINode*>* ResolvableLoopPHIs;
 
     public:
         static char ID;
@@ -74,7 +74,7 @@ namespace {
         }
 
         bool isResolvableLoopPHI(PHINode* PN) const {
-            return ResolvableLoopPHIs.count(PN) != 0;
+            return ResolvableLoopPHIs->count(PN) != 0;
         }
 
     private:
@@ -156,8 +156,10 @@ namespace IGC {
 bool GASResolving::runOnFunction(Function& F) {
     BuilderType TheBuilder(F.getContext());
     GASPropagator ThePropagator(this, &TheBuilder);
+    DenseSet<PHINode*> TheResolvableLoopPHIsSet;
     IRB = &TheBuilder;
     Propagator = &ThePropagator;
+    ResolvableLoopPHIs = &TheResolvableLoopPHIsSet;
 
     resolveMemoryFromHost(F);
 
@@ -317,7 +319,7 @@ void GASResolving::populateResolvableLoopPHIsForLoop(const Loop* L) {
         PHINode* PN = cast<PHINode>(I);
         if (!isAddrSpaceResolvable(PN, L, BackEdge))
             continue;
-        ResolvableLoopPHIs.insert(PN);
+        ResolvableLoopPHIs->insert(PN);
     }
 }
 
