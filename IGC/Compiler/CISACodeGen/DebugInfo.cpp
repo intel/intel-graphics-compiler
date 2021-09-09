@@ -238,25 +238,34 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
     return false;
 }
 
+static void debugDump(const CShader* Shader, llvm::StringRef Ext,
+                      ArrayRef<char> Blob)
+{
+    if (Blob.empty())
+        return;
+
+    auto ExtStr = Ext.str();
+    std::string DumpName = IGC::Debug::GetDumpName(Shader, ExtStr.c_str());
+    FILE* const DumpFile = fopen(DumpName.c_str(), "wb+");
+    if (nullptr == DumpFile)
+        return;
+
+    fwrite(Blob.data(), Blob.size(), 1, DumpFile);
+    fclose(DumpFile);
+}
+
 void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg)
 {
     IGC_ASSERT(m_pDebugEmitter);
 
     std::vector<char> buffer = m_pDebugEmitter->Finalize(finalize, decodedDbg);
 
-    if (!buffer.empty())
-    {
-        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) || IGC_IS_FLAG_ENABLED(ElfDumpEnable))
-        {
-            std::string debugFileNameStr = IGC::Debug::GetDumpName(m_currShader, "elf");
-            FILE* const elfFile = fopen(debugFileNameStr.c_str(), "wb+");
-            if (nullptr != elfFile)
-            {
-                fwrite(buffer.data(), buffer.size(), 1, elfFile);
-                fclose(elfFile);
-            }
-        }
-    }
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) || IGC_IS_FLAG_ENABLED(ElfDumpEnable))
+        debugDump(m_currShader, "elf", { buffer.data(), buffer.size() });
+
+    const std::string& DbgErrors = m_pDebugEmitter->getErrors();
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+        debugDump(m_currShader, "dbgerr", { DbgErrors.data(), DbgErrors.size() });
 
     void* dbgInfo = IGC::aligned_malloc(buffer.size(), sizeof(void*));
     if (dbgInfo)

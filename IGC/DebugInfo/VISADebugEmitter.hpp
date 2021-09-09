@@ -66,6 +66,8 @@ namespace IGC
 
         void resetModule(std::unique_ptr<IGC::VISAModule> VM) override;
 
+        const std::string& getErrors() const override;
+
     private:
         /// @brief Reset Debug Emitter instance.
         void Reset();
@@ -78,6 +80,7 @@ namespace IGC
 
         llvm::SmallVector<char, 1000> m_str;
         llvm::raw_svector_ostream m_outStream;
+        std::string m_errs;
 
         VISAModule* m_pVISAModule = nullptr;
         /// m_pDwarfDebug - dwarf debug info processor.

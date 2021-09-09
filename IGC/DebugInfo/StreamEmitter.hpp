@@ -195,6 +195,12 @@ namespace IGC
         /// @brief Finalize the streamer, flush all written bytes.
         void Finalize() const;
 
+        const std::string& getErrors() const { return ErrorLog; }
+        void verifyRegisterLocationSize(const DbgVariable& VarVal,
+                                        const DwarfDebug& DD,
+                                        unsigned MaxGRFSpaceInBits,
+                                        uint64_t ExpectedSize);
+
     private:
         /// @brief Return information about object file lowering.
         const llvm::MCObjectFileInfo& GetObjFileLowering() const;
@@ -212,6 +218,7 @@ namespace IGC
         const llvm::DataLayout* m_pDataLayout;
         const std::string& m_targetTriple;
         Settings StreamOptions;
+        std::string ErrorLog;
 
         mutable unsigned int m_setCounter;
     };

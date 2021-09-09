@@ -355,6 +355,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
     writeProgramHeaderTable(is64Bit, Result.data(), m_str.size() + kernelNameSizeWithDot);
     setElfType(is64Bit, Result.data());
 
+    m_errs = m_pStreamEmitter->getErrors();
     Reset();
 
     return std::move(Result);
@@ -585,4 +586,8 @@ void DebugEmitter::setCurrentVISA(IGC::VISAModule* VM) {
 void DebugEmitter::resetModule(std::unique_ptr<IGC::VISAModule> VM) {
     m_pVISAModule = VM.get();
     toFree.push_back(std::move(VM));
+}
+
+const std::string& DebugEmitter::getErrors() const {
+    return m_errs;
 }

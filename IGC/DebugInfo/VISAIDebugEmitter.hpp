@@ -94,6 +94,8 @@ namespace IGC
 
         /// @brief registers VISA object for bookkeeping purposes
         virtual void registerVISA(IGC::VISAModule* VF) = 0;
+
+        virtual const std::string& getErrors() const = 0;
     };
 
 } // namespace IGC

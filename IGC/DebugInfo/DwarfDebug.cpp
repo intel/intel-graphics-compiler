@@ -253,6 +253,11 @@ unsigned DbgVariable::getRegisterValueSizeInBits(const DwarfDebug* DD) const
         Result = 0;
     }
 
+    if (DD->getEmitterSettings().EnableDebugInfoValidation)
+        DD->getStreamEmitter().verifyRegisterLocationSize(*this, *DD,
+                                                          MaxGRFSpaceInBits,
+                                                          LocationSizeInBits);
+
     IGC_ASSERT(Result <= std::numeric_limits<unsigned>::max());
     return static_cast<unsigned>(Result);
 }

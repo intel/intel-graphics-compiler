@@ -25,6 +25,7 @@ namespace IGC
     bool EmitPrologueEnd = true;
     bool ScratchOffsetInOW = true;
     bool EmitATLinkageName = true;
+    bool EnableDebugInfoValidation = false;
   };
 }
 

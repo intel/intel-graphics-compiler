@@ -41,6 +41,8 @@ See LICENSE.TXT for details.
 
 #include "Probe/Assertion.h"
 
+#define DEBUG_TYPE "dwarfdebug"
+
 using namespace llvm;
 using namespace IGC;
 
@@ -809,5 +811,55 @@ const MCObjectFileInfo& StreamEmitter::GetObjFileLowering() const
 {
     IGC_ASSERT_MESSAGE(m_pObjFileInfo, "Object File Lowering was not initialized");
     return *m_pObjFileInfo;
+}
+
+void StreamEmitter::verifyRegisterLocationSize(const IGC::DbgVariable& VarVal,
+                                               const IGC::DwarfDebug& DD,
+                                               unsigned MaxGRFSpaceInBits,
+                                               uint64_t ExpectedSize)
+{
+    if (!GetEmitterSettings().EnableDebugInfoValidation)
+        return;
+
+    auto* DbgInst = VarVal.getDbgInst();
+    IGC_ASSERT(DbgInst);
+    Value* IRLoc = IGCLLVM::getVariableLocation(DbgInst);
+    auto* Ty = IRLoc->getType();
+    IGC_ASSERT(Ty->isSingleValueType());
+
+    if (Ty->isPointerTy())
+        return; // no validation for pointers (for now)
+
+    auto* Expr = DbgInst->getExpression();
+    if (Expr->isFragment() || Expr->isImplicit())
+    {
+        // TODO: implement some sanity checks
+        return;
+    }
+    std::string ErrMsg;
+    llvm::raw_string_ostream OS(ErrMsg);
+    auto PosBeforeChecks = OS.tell();
+
+    auto DwarfTypeSize = VarVal.getBasicSize(&DD);
+    if (DwarfTypeSize != ExpectedSize) {
+        OS << "ValidationFailure [regLocSize] -- DWARF Type Size: " <<
+            DwarfTypeSize << ", expected: " << ExpectedSize << "\n";
+    }
+    if (ExpectedSize > MaxGRFSpaceInBits) {
+        OS << "ValidationFailure [GRFSpace] -- Available GRF space: " <<
+            MaxGRFSpaceInBits << ", while expected value size: " <<
+            ExpectedSize << "\n";
+    }
+
+    // Dump DbgVariable if errors were reported
+    if (PosBeforeChecks != OS.tell())
+    {
+        VarVal.print(OS);
+        OS << "==============\n";
+        OS.str(); // flush raw_string_stream
+
+        ErrorLog.append(ErrMsg);
+        LLVM_DEBUG(dbgs() << ErrMsg);
+    }
 }
 

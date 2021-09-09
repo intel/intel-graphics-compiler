@@ -224,6 +224,10 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 static cl::opt<bool>
+    DbgOpt_ValidationEnable("vc-dbginfo-enable-validation",
+                            cl::init(false), cl::Hidden,
+                            cl::desc("same as IGC_DebugInfoValidation"));
+static cl::opt<bool>
     DbgOpt_ZeBinCompatible("vc-experimental-dbg-info-zebin-compatible",
                            cl::init(false), cl::Hidden,
                            cl::desc("same as IGC_ZeBinCompatibleDebugging"));
@@ -1135,6 +1139,9 @@ static void fillDbgInfoOptions(const GenXBackendConfig &BC,
     DebugOpts.ZeBinCompatible = true;
     DebugOpts.EnableRelocation = true;
     DebugOpts.EnforceAMD64Machine = true;
+  }
+  if (BC.enableDebugInfoValidation() || DbgOpt_ValidationEnable) {
+    DebugOpts.EnableDebugInfoValidation = true;
   }
 }
 

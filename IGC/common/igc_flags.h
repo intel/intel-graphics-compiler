@@ -294,6 +294,7 @@ DECLARE_IGC_REGKEY(bool, EnableRelocations,             false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, EnableWriteOldFPToStack,       true,  "Setting this to 1 (true) writes the caller frame's frame-pointer to the start of callee's frame on stack, to support stack walk", false)
 DECLARE_IGC_REGKEY(bool, ZeBinCompatibleDebugging,      true,  "Setting this to 1 (true) enables embed debug info in zeBinary", true)
 DECLARE_IGC_REGKEY(bool, DebugInfoEnforceAmd64EM,       false, "Enforces elf file with the debug infomation to have eMachine set to AMD64", false)
+DECLARE_IGC_REGKEY(bool, DebugInfoValidation,           false, "Enable optional (strict) checks to detect debug information inconsistencies", false)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLOptions,        0,     "Extra options for OpenCL", true)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLInternalOptions, 0,    "Extra internal options for OpenCL", true)
 DECLARE_IGC_REGKEY(bool, UseVISAVarNames,               false, "Make VISA generate names for virtual variables so they match with dbg file", true)
