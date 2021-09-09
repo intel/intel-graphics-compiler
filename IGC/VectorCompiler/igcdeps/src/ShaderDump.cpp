@@ -53,6 +53,8 @@ public:
 
   void dumpModule(const llvm::Module &M, llvm::StringRef DumpName) override;
 
+  void dumpCos(llvm::StringRef Contents, llvm::StringRef DumpName) override;
+
   std::string composeDumpPath(llvm::StringRef DumpName) const override;
 
 private:
@@ -93,6 +95,12 @@ void VC_IGCFileDumper::dumpModule(const llvm::Module &M,
                                   llvm::StringRef DumpName) {
   writeToFile<IGC::Debug::DumpType::TRANSLATED_IR_TEXT>(
       DumpName, [&M](llvm::raw_ostream &OS) { M.print(OS, nullptr); });
+}
+
+void VC_IGCFileDumper::dumpCos(llvm::StringRef Contents,
+                               llvm::StringRef DumpName) {
+  writeToFile<IGC::Debug::DumpType::COS_TEXT>(
+      DumpName, [Contents](llvm::raw_ostream &OS) { OS << Contents; });
 }
 
 std::string VC_IGCFileDumper::composeDumpPath(llvm::StringRef DumpName) const {

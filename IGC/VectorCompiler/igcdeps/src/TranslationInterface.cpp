@@ -497,7 +497,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
     vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(), IGCPlatform.getWATable()};
     vc::createBinary(CMProgram, CompileResult);
-    CMProgram.CreateKernelBinaries();
+    CMProgram.CreateKernelBinaries(Opts);
     Util::BinaryStream ProgramBinary;
     CMProgram.GetProgramBinary(ProgramBinary, CompileResult.PointerSizeInBytes);
     llvm::StringRef BinaryRef{ProgramBinary.GetLinearPointer(),

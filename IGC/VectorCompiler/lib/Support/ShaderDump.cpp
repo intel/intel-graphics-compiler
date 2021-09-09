@@ -32,6 +32,10 @@ public:
                 [&M](llvm::raw_fd_ostream &OS) { M.print(OS, nullptr); });
   }
 
+  void dumpCos(StringRef Contents, StringRef DumpName) override {
+    dumpText(Contents, DumpName);
+  }
+
 private:
   template <typename F> void writeToFile(StringRef DumpName, F Writer) const {
     int FD;

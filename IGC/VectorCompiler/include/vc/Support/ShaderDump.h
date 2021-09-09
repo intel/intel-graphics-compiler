@@ -31,6 +31,8 @@ public:
   // Convenience method to dump module.
   virtual void dumpModule(const llvm::Module &M, llvm::StringRef DumpName) = 0;
 
+  virtual void dumpCos(llvm::StringRef Contents, llvm::StringRef DumpName) = 0;
+
   // Hack required for finalizer dumps since it can dump only to
   // specified file and not to generic stream.
   // Return the same string by default.

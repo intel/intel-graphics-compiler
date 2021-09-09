@@ -29,6 +29,8 @@ class Error;
 
 namespace vc {
 
+struct CompileOptions;
+
 // Interface to compile and package cm kernels into OpenCL binars.
 class CMKernel {
 public:
@@ -119,7 +121,7 @@ public:
 
   // Produce the final ELF binary with the given CM kernels
   // in OpenCL format.
-  void CreateKernelBinaries();
+  void CreateKernelBinaries(CompileOptions& Opts);
   void GetZEBinary(llvm::raw_pwrite_stream &programBinary,
                    unsigned pointerSizeInBytes) override;
   bool HasErrors() const { return !m_ErrorLog.empty(); };

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "vc/Driver/Driver.h"
 #include "vc/Support/Status.h"
 #include "vc/igcdeps/cmc.h"
 
@@ -146,7 +147,7 @@ CGen8CMProgram::CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable)
     : CGen8OpenCLProgramBase(platform, m_ContextProvider, WATable),
       m_programInfo(new IGC::SOpenCLProgramInfo) {}
 
-void CGen8CMProgram::CreateKernelBinaries() {
+void CGen8CMProgram::CreateKernelBinaries(CompileOptions& Opts) {
   CreateProgramScopePatchStream(*m_programInfo);
   for (const auto &kernel : m_kernels) {
     // Create the kernel binary streams.
@@ -160,6 +161,10 @@ void CGen8CMProgram::CreateKernelBinaries() {
         m_pSystemThreadKernelOutput,
         kernel->getProgramOutput().m_unpaddedProgramSize);
 
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+      Opts.Dumper->dumpCos(m_StateProcessor.m_oclStateDebugMessagePrintOut,
+                           kernel->m_kernelInfo.m_kernelName + ".cos");
+
     if (kernel->getProgramOutput().m_debugDataSize) {
       data.vcKernelDebugData = std::make_unique<Util::BinaryStream>();
       m_StateProcessor.CreateKernelDebugData(
@@ -171,6 +176,7 @@ void CGen8CMProgram::CreateKernelBinaries() {
           kernel->getProgramOutput().m_debugDataGenISASize,
           kernel->m_kernelInfo.m_kernelName, *data.vcKernelDebugData);
     }
+    m_StateProcessor.m_oclStateDebugMessagePrintOut.clear();
     m_KernelBinaries.push_back(std::move(data));
   }
 }
