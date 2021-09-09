@@ -501,6 +501,8 @@ Value *GenXEmulate::Emu64Expander::visitXor(BinaryOperator &Op) {
     auto Src0 = SplitBuilder.splitOperandHalf(OperandIdx);
     auto *Part1 = BinaryOperator::CreateNot(Src0.Left, ".part1_not", &Inst);
     auto *Part2 = BinaryOperator::CreateNot(Src0.Right, ".part2_not", &Inst);
+    Part1->setDebugLoc(Inst.getDebugLoc());
+    Part2->setDebugLoc(Inst.getDebugLoc());
     return SplitBuilder.combineHalfSplit({Part1, Part2}, "int_emu.not.",
                                          Op.getType()->isIntegerTy());
   }

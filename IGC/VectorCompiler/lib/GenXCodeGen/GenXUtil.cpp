@@ -1246,6 +1246,7 @@ Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
         1);
     Result = new BitCastInst(Result, ETy->getInt64Ty(Inst.getContext()),
                              Name + "recast", &Inst);
+    Result->setDebugLoc(DL);
   }
   return Result;
 
