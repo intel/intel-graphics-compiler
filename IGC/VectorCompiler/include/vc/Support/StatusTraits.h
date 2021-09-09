@@ -72,10 +72,6 @@ template <> struct ErrorTraits<errc::output_not_created> {
   static llvm::StringRef getMessage() { return "could not create output file"; }
 };
 
-template <> struct ErrorTraits<errc::compilation_aborted> {
-  static llvm::StringRef getMessage() { return "compilation aborted"; }
-};
-
 } // namespace vc
 
 #endif
