@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Analysis/TargetFolder.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
 #include "common/Types.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
@@ -71,6 +72,7 @@ namespace IGC {
             friend class InstElementizer;
 
             const DataLayout* DL;
+            DominatorTree* DT;
             BuilderType* IRB;
 
             InstLegalChecker* ILC;
@@ -104,6 +106,7 @@ namespace IGC {
             void getAnalysisUsage(AnalysisUsage& AU) const override;
 
             LLVMContext& getContext() const { return TheModule->getContext(); }
+            DominatorTree& getDominatorTree() const { return *DT; }
             Module* getModule() const { return TheModule; }
             Function* getFunction() const { return TheFunction; }
 

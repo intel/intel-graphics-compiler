@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -38,6 +40,11 @@ bool InstPromoter::promote(Instruction* I) {
         if (I->getType() == Promoted->getType())
         {
             I->replaceAllUsesWith(Promoted);
+        }
+        else
+        {
+        // Need copy debug information for new legalized instruction
+            replaceAllDbgUsesWith(*I, *Promoted, *I, TL->getDominatorTree());
         }
     }
 

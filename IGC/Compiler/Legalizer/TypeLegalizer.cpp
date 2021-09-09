@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/CFG.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
@@ -37,10 +38,11 @@ TheModule(nullptr), TheFunction(nullptr) {
     initializeTypeLegalizerPass(*PassRegistry::getPassRegistry());
 }
 
-
 void TypeLegalizer::getAnalysisUsage(AnalysisUsage& AU) const {
+    AU.addRequired<DominatorTreeWrapperPass>();
     AU.setPreservesCFG();
 }
+
 
 FunctionPass* createTypeLegalizerPass() { return new TypeLegalizer(); }
 
@@ -56,6 +58,7 @@ IGC_INITIALIZE_PASS_END(TypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS
 
 bool TypeLegalizer::runOnFunction(Function & F) {
     DL = &F.getParent()->getDataLayout();
+    DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
     IGC_ASSERT_MESSAGE(DL->isLittleEndian(), "ONLY SUPPORT LITTLE ENDIANNESS!");
 
@@ -97,6 +100,7 @@ bool TypeLegalizer::runOnFunction(Function & F) {
     eraseIllegalInsts();
 
     DL = nullptr;
+    DT = nullptr;
 
     IRB = nullptr;
 
@@ -558,6 +562,8 @@ bool TypeLegalizer::preparePHIs(Function& F) {
                 PHINode* Promoted =
                     PHINode::Create(PromotedTy, PN->getNumIncomingValues(),
                         Twine(Name, getSuffix(Act)), &(*BI));
+                Promoted->setDebugLoc(PN->getDebugLoc());
+                replaceAllDbgUsesWith(*PN, *Promoted, *PN, *DT);
                 setLegalizedValues(PN, Promoted);
                 BI = BasicBlock::iterator(Promoted);
                 break;
