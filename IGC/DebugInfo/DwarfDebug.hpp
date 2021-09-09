@@ -637,6 +637,10 @@ namespace IGC
             return nullptr;
         }
 
+        /// Construct imported_module or imported_declaration DIE.
+        void constructThenAddImportedEntityDIE(CompileUnit* TheCU,
+            llvm::DIImportedEntity* IE);
+
     private:
 
         // DISubprograms used by the currently processed shader

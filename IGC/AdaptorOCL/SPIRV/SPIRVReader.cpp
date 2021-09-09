@@ -1121,7 +1121,7 @@ public:
       return diModule;
   }
 
-  DINode* createImportedEntity(SPIRVExtInst* inst)
+  DINode* createImportedEntity(SPIRVExtInst* inst, SmallVector<TrackingMDNodeRef, 4>& allImportedModules)
   {
       if (auto n = getExistingNode<DINode*>(inst))
           return n;
@@ -1139,6 +1139,18 @@ public:
       {
           auto diModule = createModuleINTEL(BM->get<SPIRVExtInst>(entity));
           diNode = addMDNode(inst, Builder.createImportedModule(scope, diModule, file, line));
+          DIImportedEntity* IE = Builder.createImportedModule(scope, diModule, file, line);
+          diNode = addMDNode(inst, IE);
+
+          IGC_ASSERT_MESSAGE(scope, "Invalid Scope encoding!");
+          if (isa<DILocalScope>(scope))
+          {
+              allImportedModules.emplace_back(IE);
+          }
+          else
+          {
+              // TODO? ReplaceImportedEntities = true;
+          }
       }
 
       return diNode;
@@ -1311,12 +1323,21 @@ public:
       if (!Enable)
           return;
 
+      DICompileUnit* CU = getCompileUnit();
+
       auto importedEntities = BM->getImportedEntities();
 
+      SmallVector<TrackingMDNodeRef, 4> AllImportedModules;
       for (auto& importedEntity : importedEntities)
       {
-          (void)createImportedEntity(importedEntity);
+          (void)createImportedEntity(importedEntity, AllImportedModules);
       }
+
+      if (!AllImportedModules.empty())
+          CU->replaceImportedEntities(
+              MDTuple::get(CU->getContext(), SmallVector<Metadata*, 16>(AllImportedModules.begin(), AllImportedModules.end())));
+      else
+          CU->replaceImportedEntities(nullptr);  // If there were no local scope imported entities, we can map the whole list to nullptr.
   }
 
   void transDbgInfo(SPIRVValue *SV, Value *V);

@@ -448,6 +448,20 @@ void CompileUnit::addSourceLine(DIE* Die, DIScope* S, unsigned Line)
 
 /// addSourceLine - Add location information to specified debug information
 /// entry.
+void CompileUnit::addSourceLine(DIE* Die, DIImportedEntity* IE, unsigned Line)
+{
+    // If the line number is 0, don't add it.
+    if (Line == 0)
+        return;
+
+    unsigned FileID = DD->getOrCreateSourceID(IE->getFile()->getFilename(), IE->getFile()->getDirectory(), getUniqueID());
+    IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
+    addUInt(Die, dwarf::DW_AT_decl_file, None, FileID);
+    addUInt(Die, dwarf::DW_AT_decl_line, None, Line);
+}
+
+/// addSourceLine - Add location information to specified debug information
+/// entry.
 void CompileUnit::addSourceLine(DIE* Die, DIVariable* V)
 {
     // Verify variable.
@@ -742,7 +756,6 @@ IGC::DIE* CompileUnit::getOrCreateContextDIE(DIScope* Context)
         return getOrCreateModuleDIE(MD);
 
     return getDIE(Context);
-
 }
 
 /// getOrCreateTypeDIE - Find existing DIE or create new DIE for the
@@ -2017,6 +2030,36 @@ void CompileUnit::constructTemplateValueParameterDIE(
     }
 }
 
+/// constructImportedEntityDIE - Create a DIE for DIImportedEntity.
+IGC::DIE* CompileUnit::constructImportedEntityDIE(
+    DIImportedEntity* Module)
+{
+    DIE* IMDie = new(DIEValueAllocator) DIE((dwarf::Tag)Module->getTag());
+    insertDIE(Module, IMDie);
+    DIE* EntityDie;
+    auto* Entity = Module->getEntity();
+    if (auto* NS = dyn_cast<DINamespace>(Entity))
+        EntityDie = getOrCreateNameSpace(NS);
+    else if (auto* M = dyn_cast<DIModule>(Entity))
+        EntityDie = getOrCreateModuleDIE(M);
+    else if (auto* SP = dyn_cast<DISubprogram>(Entity))
+        EntityDie = getOrCreateSubprogramDIE(SP);
+    else if (auto* T = dyn_cast<DIType>(Entity))
+        EntityDie = getOrCreateTypeDIE(T);
+    //    else if (auto* GV = dyn_cast<DIGlobalVariable>(Entity))  // TODO missing support
+    //        EntityDie = getOrCreateGlobalVariableDIE(GV, {});
+    else
+        EntityDie = getDIE(Entity);
+    assert(EntityDie);
+
+    addSourceLine(IMDie, Module, Module->getLine());
+    addDIEEntry(IMDie, dwarf::DW_AT_import, EntityDie);
+    StringRef Name = Module->getName();
+    if (!Name.empty())
+        addString(IMDie, dwarf::DW_AT_name, Name);
+
+    return IMDie;
+}
 
 /// getOrCreateNameSpace - Create a DIE for DINameSpace.
 IGC::DIE* CompileUnit::getOrCreateNameSpace(DINamespace* NS)
@@ -2181,10 +2224,33 @@ IGC::DIE* CompileUnit::getOrCreateModuleDIE(DIModule* MD)
     // Construct the context before querying for the existence of the DIE in case
     // such construction creates the DIE (as is the case for member function
     // declarations).
+    DIE* ContextDIE = getOrCreateContextDIE(MD->getScope());
 
     IGC_ASSERT_MESSAGE(false, "Missing implementation for DIModule!");
+    DIE* MDDie = getDIE(MD);
+    if (MDDie)
+        return MDDie;
+
+    MDDie = createAndAddDIE(dwarf::DW_TAG_module, *ContextDIE, MD);
+
+    if (!MD->getName().empty())
+    {
+        addString(MDDie, dwarf::DW_AT_name, MD->getName());
+    }
+
+#if LLVM_VERSION_MAJOR >= 12
+    if (!MD->getIsDecl())
+    {
+        addSourceLine(MDDie, MD, MD->getLineNo());
+    }
+    else
+    {
+        addFlag(MDDie, dwarf::DW_AT_declaration);
+    }
+#endif  // LLVM_VERSION_MAJOR >= 12.
 
     return nullptr;
+    return MDDie;
 }
 
 /// constructSubrangeDIE - Construct subrange DIE from DISubrange.
