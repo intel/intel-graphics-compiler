@@ -2195,43 +2195,87 @@ void CustomUnsafeOptPass::strengthReducePowOrExpLog(
     }
 }
 
-void CustomUnsafeOptPass::visitCallInst(llvm::CallInst& I)
+void CustomUnsafeOptPass::visitIntrinsicInst(IntrinsicInst& I)
 {
-    if (llvm::IntrinsicInst* intr = dyn_cast<llvm::IntrinsicInst>(&I))
+    const Intrinsic::ID ID = I.getIntrinsicID();
+    if (ID == Intrinsic::pow)
     {
-        const llvm::Intrinsic::ID ID = intr->getIntrinsicID();
-        if (ID == llvm::Intrinsic::pow)
+        strengthReducePowOrExpLog(&I, I.getOperand(0), I.getOperand(1), true /* isPow */);
+    }
+    else if (ID == Intrinsic::exp2)
+    {
+        BinaryOperator* mul = dyn_cast<BinaryOperator>(I.getOperand((0)));
+        if (mul && mul->getOpcode() == Instruction::FMul)
         {
-            strengthReducePowOrExpLog(intr, intr->getOperand(0), intr->getOperand(1), true /* isPow */);
-        }
-        else if (ID == Intrinsic::exp2)
-        {
-            llvm::BinaryOperator* mul = dyn_cast<BinaryOperator>(intr->getOperand((0)));
-            if (mul && mul->getOpcode() == Instruction::FMul)
+            for (uint j = 0; j < 2; j++)
             {
-                for (uint j = 0; j < 2; j++)
+                IntrinsicInst* log = dyn_cast<IntrinsicInst>(mul->getOperand(j));
+                if (log && log->getIntrinsicID() == Intrinsic::log2)
                 {
-                    llvm::IntrinsicInst* log = dyn_cast<IntrinsicInst>(mul->getOperand(j));
-                    if (log && log->getIntrinsicID() == Intrinsic::log2)
-                    {
-                        strengthReducePowOrExpLog(intr, log->getOperand(0), mul->getOperand(1 - j), false /* isPow */);
-                    }
+                    strengthReducePowOrExpLog(&I, log->getOperand(0), mul->getOperand(1 - j), false /* isPow */);
                 }
             }
         }
-        else if (ID == llvm::Intrinsic::sqrt)
+    }
+    else if (ID == Intrinsic::sqrt)
+    {
+        // y*y = x if y = sqrt(x).
+        for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
         {
-            // y*y = x if y = sqrt(x).
-            for (auto iter = intr->user_begin(); iter != intr->user_end(); iter++)
+            if (Instruction* mul = dyn_cast<Instruction>(*iter))
             {
-                if (llvm::Instruction* mul = dyn_cast<Instruction>(*iter))
+                if (mul->getOpcode() == Instruction::FMul &&
+                    mul->getOperand(0) == mul->getOperand(1))
                 {
-                    if (mul->getOpcode() == Instruction::FMul &&
-                        mul->getOperand(0) == mul->getOperand(1))
-                    {
-                        mul->replaceAllUsesWith(intr->getOperand(0));
-                    }
+                    mul->replaceAllUsesWith(I.getOperand(0));
                 }
+            }
+        }
+    }
+    // This optimization simplifies FMA expressions with zero arguments.
+    else if (ID == Intrinsic::fma && I.isFast())
+    {
+        //  Searches the following pattern
+        //      %0 = call fast float @llvm.fma.f32(float %x, float %y, float 0.000000e+00)
+        //
+        //  And changes it to:
+        //      %0 = fmul fast float %y, %x
+        if (ConstantFP* C = dyn_cast<ConstantFP>(I.getArgOperand(2)))
+        {
+            if (C->isZero())
+            {
+                // change to mul
+                IRBuilder<> irb(&I);
+                Value* v = irb.CreateFMulFMF(I.getArgOperand(1), I.getArgOperand(0), &I);
+                I.replaceAllUsesWith(v);
+                I.eraseFromParent();
+            }
+        }
+        //  Searches the following pattern
+        //      %0 = call fast float @llvm.fma.f32(float %x, float 0.000000e+00, float %y)
+        //      %1 = fmul fast float %0, 5.000000
+        //
+        //  And changes it to:
+        //      %0 = fmul fast float %y, 5.000000
+        //
+        //  and
+        //
+        //  Searches the following pattern
+        //      %0 = call fast float @llvm.fma.f32(float 0.000000e+00, float %x, float %y)
+        //      %1 = fmul fast float %0, 5.000000
+        //
+        //  And changes it to:
+        //      %0 = fmul fast float %y, 5.000000
+        else
+        {
+            ConstantFP* A = dyn_cast<ConstantFP>(I.getArgOperand(0));
+            ConstantFP* B = dyn_cast<ConstantFP>(I.getArgOperand(1));
+
+            if ((A != nullptr && A->isZero()) || (B != nullptr && B->isZero()))
+            {
+                // replace
+                I.replaceAllUsesWith(I.getArgOperand(2));
+                I.eraseFromParent();
             }
         }
     }

@@ -50,7 +50,7 @@ namespace IGC
         void visitBinaryOperator(llvm::BinaryOperator& I);
         void visitFCmpInst(llvm::FCmpInst& FC);
         void visitSelectInst(llvm::SelectInst& I);
-        void visitCallInst(llvm::CallInst& I);
+        void visitIntrinsicInst(llvm::IntrinsicInst& I);
         void visitFPToSIInst(llvm::FPToSIInst& I);
 
         bool visitBinaryOperatorPropNegate(llvm::BinaryOperator& I);
