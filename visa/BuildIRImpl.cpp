@@ -2931,17 +2931,17 @@ void IR_Builder::addInputArg(input_info_t * inpt)
     m_inputVect.push_back(inpt);
 }
 
-input_info_t * IR_Builder::getInputArg(unsigned int index)
+input_info_t * IR_Builder::getInputArg(unsigned int index) const
 {
     return m_inputVect[index];
 }
 
-unsigned int IR_Builder::getInputCount()
+unsigned int IR_Builder::getInputCount() const
 {
     return (uint32_t)m_inputVect.size();
 }
 
-input_info_t *IR_Builder::getRetIPArg() {
+input_info_t *IR_Builder::getRetIPArg() const {
     // TODO: So far, we assume the last argument of caller of callable kernel
     // or callable kernel is the RetIP argument. If required, extra attribute
     // will be added to specify which QWORD argument is used as RetIP argument

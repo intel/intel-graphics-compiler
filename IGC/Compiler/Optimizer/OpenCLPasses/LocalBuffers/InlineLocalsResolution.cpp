@@ -77,9 +77,8 @@ static bool useAsPointerOnly(Value* V) {
             case Instruction::PHI:
                 PN = cast<PHINode>(U);
                 // Skip if it's already visited.
-                if (VisitedPHIs.count(PN))
+                if (!VisitedPHIs.insert(PN).second)
                     continue;
-                VisitedPHIs.insert(PN);
                 // FALL THROUGH
             case Instruction::BitCast:
             case Instruction::Select:

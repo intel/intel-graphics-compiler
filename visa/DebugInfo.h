@@ -185,7 +185,7 @@ public:
     LiveIntervalInfo* getLiveIntervalInfo(G4_Declare* dcl, bool createIfNULL = true);
     void *operator new(size_t sz, Mem_Manager& m);
     G4_Kernel& getKernel() { return *kernel; }
-    VISAKernelImpl* getVISAKernel() { return visaKernel; }
+    VISAKernelImpl* getVISAKernel() const { return visaKernel; }
     void setVISAKernel(VISAKernelImpl* k);
 
     KernelDebugInfo();
@@ -229,22 +229,22 @@ public:
         return ret;
     }
 
-    G4_INST* getCallerBEFPSaveInst() { return saveCallerFP; }
+    G4_INST* getCallerBEFPSaveInst() const { return saveCallerFP; }
     void setCallerBEFPSaveInst(G4_INST* i) { saveCallerFP = i; }
 
-    G4_INST* getCallerBEFPRestoreInst() { return restoreCallerFP; }
+    G4_INST* getCallerBEFPRestoreInst() const { return restoreCallerFP; }
     void setCallerBEFPRestoreInst(G4_INST* i) { restoreCallerFP = i; }
 
-    G4_INST* getBEFPSetupInst() { return setupFP; }
+    G4_INST* getBEFPSetupInst() const { return setupFP; }
     void setBEFPSetupInst(G4_INST* i) { setupFP = i; }
 
-    G4_INST* getCallerSPRestoreInst() { return restoreSP; }
+    G4_INST* getCallerSPRestoreInst() const { return restoreSP; }
     void setCallerSPRestoreInst(G4_INST* i) { restoreSP = i; }
 
-    uint32_t getFrameSize() { return frameSize; }
+    uint32_t getFrameSize() const { return frameSize; }
     void setFrameSize(uint32_t sz) { frameSize = sz; }
 
-    G4_Declare* getFretVar() { return fretVar; }
+    G4_Declare* getFretVar() const { return fretVar; }
     void setFretVar(G4_Declare* dcl) { fretVar = dcl; }
 
     void updateExpandedIntrinsic(G4_InstIntrinsic* spillOrFill, G4_INST* inst);
@@ -261,9 +261,7 @@ public:
 
     void setOldInstList(G4_BB* bb)
     {
-        oldInsts.clear();
-        for (auto instIt = bb->begin(); instIt != bb->end(); instIt++)
-            oldInsts.push_back(*instIt);
+        oldInsts.assign(bb->begin(), bb->end());
     }
     void clearOldInstList() { oldInsts.clear(); }
     INST_LIST getDeltaInstructions(G4_BB* bb);
@@ -281,14 +279,14 @@ public:
 
     void computeDebugInfo(std::list<G4_BB*>& stackCallEntryBBs);
 
-    uint32_t getRelocOffset() { return reloc_offset; }
+    uint32_t getRelocOffset() const { return reloc_offset; }
 
     void mapCISAOffsetInsert(unsigned int a, unsigned int b)
     {
         mapCISAOffset.insert(std::make_pair(a, b));
     }
 
-    unsigned int getGenOffsetFromVISAIndex(unsigned int v)
+    unsigned int getGenOffsetFromVISAIndex(unsigned int v) const
     {
         for (auto& item : mapCISAIndexGenOffset)
         {
@@ -346,9 +344,9 @@ public:
 
         for (auto& thisMap : saveRestoreMap)
         {
-            if (thisMap.first != (*otherMapIt).first ||
-                thisMap.second.first != (*otherMapIt).second.first ||
-                thisMap.second.second.memOff != (*otherMapIt).second.second.memOff)
+            if (thisMap.first != otherMapIt->first ||
+                thisMap.second.first != otherMapIt->second.first ||
+                thisMap.second.second.memOff != otherMapIt->second.second.memOff)
             {
                 return false;
             }
@@ -360,7 +358,7 @@ public:
     }
 
     void update(G4_INST* inst, int32_t memOffset = 0xffff, uint32_t regWithMemOffset = 0xffff, bool absOffset = false);
-    G4_INST* getInst() { return i; }
+    G4_INST* getInst() const { return i; }
 };
 
 class SaveRestoreManager
@@ -399,19 +397,15 @@ public:
 class DbgDecoder
 {
 private:
-    char* filename;
-    std::FILE* dbgFile;
+    const char* const filename;
+    std::FILE* dbgFile = nullptr;
 
     void ddName();
     template<class T> void ddLiveInterval();
     void ddCalleeCallerSave(uint32_t relocOffset);
 
 public:
-    DbgDecoder(char* f)
-    {
-        filename = f;
-        dbgFile = nullptr;
-    }
+    DbgDecoder(const char* f) : filename(f) {}
 
     int ddDbg();
 };

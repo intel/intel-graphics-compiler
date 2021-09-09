@@ -162,14 +162,8 @@ int VISAKernelImpl::compileFastPath()
 
 void replaceFCOpcodes(IR_Builder& builder)
 {
-    BB_LIST_ITER bbEnd = builder.kernel.fg.end();
-
-    for (BB_LIST_ITER bb_it = builder.kernel.fg.begin();
-        bb_it != bbEnd;
-        bb_it++)
+    for (G4_BB* bb : builder.kernel.fg)
     {
-        G4_BB* bb = (*bb_it);
-
         if (bb->size() > 0)
         {
             // pseudo_fc_call/ret would always be last

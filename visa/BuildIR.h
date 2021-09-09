@@ -461,9 +461,9 @@ public:
     uint32_t       getuint32Option(vISAOptions opt) const { return m_options->getuInt32Option(opt); }
     void           getOption(vISAOptions opt, const char *&str) const {return m_options->getOption(opt, str); }
     void           addInputArg(input_info_t * inpt);
-    input_info_t * getInputArg(unsigned int index);
-    unsigned int   getInputCount();
-    input_info_t * getRetIPArg();
+    input_info_t * getInputArg(unsigned int index) const;
+    unsigned int   getInputCount() const;
+    input_info_t * getRetIPArg() const;
 
     const CISA_IR_Builder* getParent() const { return parentBuilder; }
 

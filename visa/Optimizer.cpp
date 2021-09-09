@@ -330,11 +330,8 @@ void Optimizer::countBankConflicts()
 
     for (auto curBB : kernel.fg)
     {
-        for (INST_LIST_ITER inst_it = curBB->begin();
-            inst_it != curBB->end();
-            inst_it++)
+        for (G4_INST* curInst : *curBB)
         {
-            G4_INST* curInst = (*inst_it);
             G4_Operand* src0 = curInst->getSrc(0);
             G4_Operand* src1 = curInst->getSrc(1);
             G4_Operand* src2 = curInst->getSrc(2);
@@ -451,11 +448,8 @@ void Optimizer::countBankConflicts()
 
         optreport << "===== Bank conflicts =====" << std::endl;
         optreport << "Found " << numBankConflicts << " conflicts (" << numLocals << " locals, " << numGlobals << " globals) in kernel: " << kernel.getName() << std::endl;
-        for (std::list<G4_INST*>::iterator it = conflicts.begin();
-            it != conflicts.end();
-            it++)
+        for (G4_INST* i : conflicts)
         {
-            G4_INST* i = (*it);
             i->emit(optreport);
             optreport << " // $" << i->getCISAOff() << ":#" << i->getLineNo() << std::endl;
         }
@@ -724,9 +718,8 @@ void Optimizer::insertDummyMovForHWRSWA()
                 {
                     bool hasJmpIPred = false;
 
-                    for (BB_LIST_ITER biter = bb->Preds.begin(), E1 = bb->Preds.end(); biter != E1; ++biter)
+                    for (G4_BB* predBB : bb->Preds)
                     {
-                        G4_BB* predBB = (*biter);
                         G4_INST* predBBLastInst = NULL;
                         if (!predBB->empty())
                         {
@@ -744,9 +737,8 @@ void Optimizer::insertDummyMovForHWRSWA()
                     G4_Label* newLabel = hasJmpIPred ? wa_bb->getLabel() : NULL;
 
                     //replace bb with wa_bb in the pred BB of bb.
-                    for (BB_LIST_ITER biter = bb->Preds.begin(), E1 = bb->Preds.end(); biter != E1; ++biter)
+                    for (G4_BB* predBB : bb->Preds)
                     {
-                        G4_BB* predBB = (*biter);
                         G4_INST* predBBLastInst = NULL;
                         if (!predBB->empty())
                         {
@@ -758,11 +750,12 @@ void Optimizer::insertDummyMovForHWRSWA()
                             predBBLastInst->setSrc(newLabel, 0);
                         }
 
-                        for (BB_LIST_ITER succiter = predBB->Succs.begin(), E2 = predBB->Succs.end(); succiter != E2; ++succiter)
+                        // C++17: std::replace(predBB->Succs.begin(), predBB->Succs.end(), bb, wa_bb);
+                        for (G4_BB *&succ : predBB->Succs)
                         {
-                            if (*succiter == bb)
+                            if (succ == bb)
                             {
-                                *succiter = wa_bb;
+                                succ = wa_bb;
                             }
                         }
                         wa_bb->Preds.push_back(predBB);
@@ -784,11 +777,9 @@ void Optimizer::insertDummyMovForHWRSWA()
         builder.getOptions()->getOption(vISA_InsertDummyMovForDPASRSWA) &&
         (hasPredicatedSendOrIndirect || hasNonUniformBranch))
     {
-        for (BB_LIST_ITER bb_it = kernel.fg.begin();
-            bb_it != kernel.fg.end();
-            bb_it++)
+        for (G4_BB* bb : kernel.fg)
         {
-            insertDummyMovForHWRSWADPAS(*bb_it);
+            insertDummyMovForHWRSWADPAS(bb);
         }
     }
 }
@@ -802,18 +793,10 @@ void Optimizer::insertHashMovs()
     // mov (16) null<1>:d        lo32 {NoMask}
     // mov (16) null<1>:d        hi32 {NoMask}
     //
-    for (BB_LIST_ITER bb_it = kernel.fg.begin();
-        bb_it != kernel.fg.end();
-        bb_it++)
+    for (G4_BB* bb : kernel.fg)
     {
-        G4_BB* bb = (*bb_it);
-
-        for (INST_LIST_ITER inst_it = bb->begin();
-            inst_it != bb->end();
-            inst_it++)
+        for (G4_INST* inst : *bb)
         {
-            G4_INST* inst = (*inst_it);
-
             if (inst->isEOT())
             {
                 // We have to insert new instructions after EOT.
@@ -998,11 +981,8 @@ void Optimizer::removeLifetimeOps()
     // Remove all pseudo_kill and lifetime.end
     // instructions.
     // Also remove pseudo_use instructions.
-    for (BB_LIST_ITER bbs = kernel.fg.begin();
-        bbs != fg.end();
-        bbs++)
+    for (G4_BB* bb : kernel.fg)
     {
-        G4_BB* bb = *bbs;
         bb->erase(
             std::remove_if (bb->begin(), bb->end(),
             [](G4_INST* inst) { return inst->isPseudoKill() || inst->isLifeTimeEnd() || inst->isPseudoUse(); }),
@@ -1765,9 +1745,8 @@ void Optimizer::fixEndIfWhileLabels()
     }
 
     // Patch labels if necessary.
-    for (auto iter = fg.begin(), iend = fg.end(); iter != iend; ++iter)
+    for (G4_BB *bb : fg)
     {
-        G4_BB *bb = *iter;
         if (bb->empty())
             continue;
 
@@ -1787,10 +1766,8 @@ void Optimizer::fixEndIfWhileLabels()
          {
              // For break, the whileBB should be the physical predecessor of
              // break's first successor bb.
-             BB_LIST_ITER iter = bb->Succs.begin();
-             while (iter != bb->Succs.end())
+             for (G4_BB * succBB : bb->Succs)
              {
-                 G4_BB * succBB = (*iter);
                  if (succBB->getPhysicalPred() &&
                      (!succBB->getPhysicalPred()->empty()) &&
                      (succBB->getPhysicalPred()->back()->opcode() == G4_while))
@@ -1798,7 +1775,6 @@ void Optimizer::fixEndIfWhileLabels()
                      whileBB = succBB->getPhysicalPred();
                      break;
                  }
-                 iter++;
              }
          }
 
@@ -1937,15 +1913,13 @@ void Optimizer::reverseOffsetProp(
 void Optimizer::FoldAddrImmediate()
 {
     AddrSubReg_Node* addrRegInfo = new AddrSubReg_Node[getNumAddrRegisters()];
-    BB_LIST_ITER ib, bend(fg.end());
     int dst_subReg = 0, src0_subReg = 0;
     G4_DstRegRegion *dst;
     G4_Operand *src0, *src1;
     unsigned num_srcs;
 
-    for (ib = fg.begin(); ib != bend; ++ib)
+    for (G4_BB* bb : fg)
     {
-        G4_BB* bb = (*ib);
         INST_LIST_ITER ii, iend(bb->end());
         // reset address offset info
         for (unsigned i = 0; i < getNumAddrRegisters(); i++)
@@ -3010,12 +2984,8 @@ static unsigned getMaskSize(G4_INST* Inst, Gen4_Operand_Number OpNum)
 
 void Optimizer::localCopyPropagation()
 {
-    BB_LIST_ITER ib, bend(fg.end());
-
-    for (ib = fg.begin(); ib != bend; ++ib)
+    for (G4_BB* bb : fg)
     {
-        G4_BB* bb = *ib;
-
         bb->resetLocalIds();
 
         INST_LIST_ITER ii = bb->begin(), iend(bb->end());
@@ -3377,12 +3347,10 @@ void Optimizer::cselPeepHoleOpt()
     {
         return;
     }
-    BB_LIST_ITER ib, bend(fg.end());
     G4_SrcRegRegion *cmpSrc0 = NULL;
     G4_Operand *cmpSrc1 = NULL;
-    for (ib = fg.begin(); ib != bend; ++ib)
+    for (G4_BB* bb : fg)
     {
-        G4_BB* bb = (*ib);
         INST_LIST_ITER ii;
         INST_LIST_ITER nextIter;
         INST_LIST_ITER iiEnd;
@@ -4413,7 +4381,6 @@ and (1) P4 P3 ~P1
 
 void Optimizer::optimizeLogicOperation()
 {
-    BB_LIST_ITER ib, bend(fg.end());
     G4_Operand *dst = NULL;
     bool resetLocalIds =  false;
     bool doLogicOpt = builder.getOption(vISA_LocalFlagOpt);
@@ -4435,9 +4402,8 @@ void Optimizer::optimizeLogicOperation()
         return;
     }
 
-    for (ib = fg.begin(); ib != bend; ++ib)
+    for (G4_BB* bb : fg)
     {
-        G4_BB* bb = *ib;
         INST_LIST_ITER ii;
         if ((bb->begin() == bb->end())) {
             continue;
@@ -6222,7 +6188,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     void Optimizer::cleanMessageHeader()
     {
         MSGTableList msgList;
-        BB_LIST_ITER ib, bend(fg.end());
         size_t ic_before = 0;
         size_t ic_after = 0;
 
@@ -6231,7 +6196,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         bool isRedundantBarrier = false;
         G4_SrcRegRegion *barrierSendSrc0 = NULL;
 
-        for (ib = fg.begin(); ib != bend; ++ib)
+        for (G4_BB* bb : fg)
         {
 
             msgList.clear();
@@ -6241,7 +6206,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             newItem->first      = HEADER_UNDEF;
 
             msgList.push_front(newItem);
-            G4_BB* bb = (*ib);
             INST_LIST_ITER ii = bb->begin();
             INST_LIST_ITER iend = bb->end();
             ic_before += bb->size();
@@ -6351,11 +6315,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             for (auto instEnd = bb->end(); instIter != instEnd; ++instIter)
             {
                 G4_INST* bbInst = *instIter;
-                if (bbInst->isLabel())
-                {
-                    continue;
-                }
-                else
+                if (!bbInst->isLabel())
                 {
                     break;
                 }
@@ -7364,19 +7324,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         G4_INST *movInst =
             builder.createMov(g4::SIMD8, R0CopyOpnd, R0Opnd, options, false);
 
-        BB_LIST_ITER ib = kernel.fg.begin();
-        G4_INST *inst = NULL;
-        BB_LIST_ITER bend(kernel.fg.end());
-        INST_LIST_ITER ii;
-
-        for (ib = kernel.fg.begin(); ib != bend; ++ib)
+        for (G4_BB* bb : kernel.fg)
         {
-            G4_BB* bb = (*ib);
-            ii = bb->begin();
+            INST_LIST_ITER ii = bb->begin();
             INST_LIST_ITER iend = bb->end();
             for (; ii != iend; ii++)
             {
-                inst = *ii;
+                G4_INST *inst = *ii;
                 if (inst->opcode() != G4_label)
                 {
                     bb->insertBefore(ii, movInst);
@@ -8268,7 +8222,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         // SKL workaround for indirect call
         // r125.0 is the return IP (the instruction right after jmpi)
-        // r125.1 is the return mask. While we'll replace the ret in calee to jmpi as well,
+        // r125.1 is the return mask. While we'll replace the ret in callee to jmpi as well,
         // we do not need to consider the return mask here.
 
         // Do not allow predicate call on jmpi WA
@@ -8615,12 +8569,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         const int MAX_REG_RENAME_DIST = 250;
         const int MAX_REG_RENAME_SIZE = 2;
 
-        BB_LIST_ITER ib, bend(fg.end());
-
-        for (ib = fg.begin(); ib != bend; ++ib)
+        for (G4_BB* bb : fg)
         {
-            G4_BB* bb = (*ib);
-
             bb->resetLocalIds();
             std::unordered_set<G4_INST *> Seen;
 

@@ -1123,10 +1123,8 @@ void CFGStructurizer::init()
     // CFG at this moment has subroutine calls explicitly linked (between call and
     // callee and callee's return to call's succ). For structurizing purpose, those
     // edges should not be considered. Here ANodeBB will have those edges ignored.
-    uint32_t i = 0;
-    for (BB_LIST_ITER II = CFG->begin(), IE = CFG->end(); II != IE; ++II, ++i)
+    for (G4_BB *bb : *CFG)
     {
-        G4_BB *bb = *II;
         uint32_t id = bb->getId();
         ANodeBB *node = &(anodeBBs.IDToANodeBB[id]);
         node->anodeId = getNextANodeId();
@@ -1149,9 +1147,8 @@ void CFGStructurizer::init()
         }
         else
         {
-            for (BB_LIST_ITER I = bb->Succs.begin(), E = bb->Succs.end(); I != E; ++I)
+            for (G4_BB *succ : bb->Succs)
             {
-                G4_BB *succ = *I;
                 ANode *succNode = &(anodeBBs.IDToANodeBB[succ->getId()]);
                 node->succs.push_back(succNode);
                 succNode->preds.push_back(node);
