@@ -28,6 +28,8 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/ADT/StringRef.h"
+
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -114,18 +116,18 @@ static constexpr int MaxAvailableSurfaceIndex = 239;
 static constexpr int MaxAvailableSamplerIndex = 14;
 
 static bool isDescImageType(StringRef TypeDesc) {
-  return TypeDesc.find_lower("image1d_t") != StringRef::npos ||
-         TypeDesc.find_lower("image2d_t") != StringRef::npos ||
-         TypeDesc.find_lower("image3d_t") != StringRef::npos ||
-         TypeDesc.find_lower("image1d_buffer_t") != StringRef::npos;
+  return IGCLLVM::contains_insensitive(TypeDesc, "image1d_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image2d_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image3d_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t");
 }
 
 static bool isDescReadOnly(StringRef TypeDesc) {
-  return TypeDesc.find_lower("read_only") != StringRef::npos;
+  return IGCLLVM::contains_insensitive(TypeDesc, "read_only");
 }
 
 static bool isDescSvmPtr(StringRef TypeDesc) {
-  return TypeDesc.find_lower("svmptr_t") != StringRef::npos;
+  return IGCLLVM::contains_insensitive(TypeDesc, "svmptr_t");
 }
 
 template <typename ZipTy>

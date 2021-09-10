@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/BreakConst.h"
 
 #include "Probe/Assertion.h"
+#include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/InstrTypes.h"
@@ -1577,15 +1578,17 @@ void GenXThreadPrivateMemory::visitFunction(Function &F) {
   MDNode *ArgDescNode =
       cast<MDNode>(Node->getOperand(KernelMDOp::ArgTypeDescs));
 
-  for (auto &Arg : F.args())
-    if (ArgDescNode->getNumOperands() > Arg.getArgNo() &&
-        cast<MDString>(ArgDescNode->getOperand(Arg.getArgNo()))
-                ->getString()
-                .find_lower("svmptr_t") != StringRef::npos) {
-      if (!m_useGlobalMem)
-        switchStack(*F.getParent());
-      LLVM_DEBUG(dbgs() << "Adding svm arg " << Arg << " of " << F.getName()
-                        << "\n");
-      m_args.insert(&Arg);
-    }
+  for (auto &Arg : F.args()) {
+    if (ArgDescNode->getNumOperands() <= Arg.getArgNo())
+      continue;
+    StringRef SvmMD =
+        cast<MDString>(ArgDescNode->getOperand(Arg.getArgNo()))->getString();
+    if (!IGCLLVM::contains_insensitive(SvmMD, "svmptr_t"))
+      continue;
+    if (!m_useGlobalMem)
+      switchStack(*F.getParent());
+    LLVM_DEBUG(dbgs() << "Adding svm arg " << Arg << " of " << F.getName()
+                      << "\n");
+    m_args.insert(&Arg);
+  }
 }

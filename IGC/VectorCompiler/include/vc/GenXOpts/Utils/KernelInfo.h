@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 
 #include <unordered_map>
 
+#include "llvmWrapper/ADT/StringRef.h"
+
 namespace llvm {
 namespace genx {
 
@@ -85,8 +87,8 @@ using ArgToImplicitLinearization =
     std::unordered_map<Argument *, LinearizedArgInfo>;
 
 inline bool isDescBufferType(StringRef TypeDesc) {
-  return (TypeDesc.find_lower("buffer_t") != StringRef::npos &&
-          TypeDesc.find_lower("image1d_buffer_t") == StringRef::npos);
+  return (IGCLLVM::contains_insensitive(TypeDesc, "buffer_t") &&
+          !IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t"));
 }
 
 /// KernelMetadata : class to parse and update kernel metadata

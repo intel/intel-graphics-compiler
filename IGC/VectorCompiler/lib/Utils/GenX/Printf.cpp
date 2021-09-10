@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 #include "Probe/Assertion.h"
+#include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/Support/Regex.h"
 
 using namespace llvm;
@@ -117,10 +118,12 @@ static PrintfArgInfo parseArgDesc(StringRef ArgDesc) {
   if (ArgDesc.endswith("d") || ArgDesc.endswith("i"))
     return parseIntLengthModifier(ArgDesc, /* IsSigned */ true);
   if (ArgDesc.endswith("o") || ArgDesc.endswith("u") ||
-      ArgDesc.endswith_lower("x"))
+      IGCLLVM::endswith_insensitive(ArgDesc, "x"))
     return parseIntLengthModifier(ArgDesc, /* IsSigned */ false);
-  if (ArgDesc.endswith_lower("f") || ArgDesc.endswith_lower("e") ||
-      ArgDesc.endswith_lower("a") || ArgDesc.endswith_lower("g"))
+  if (IGCLLVM::endswith_insensitive(ArgDesc, "f") ||
+      IGCLLVM::endswith_insensitive(ArgDesc, "e") ||
+      IGCLLVM::endswith_insensitive(ArgDesc, "a") ||
+      IGCLLVM::endswith_insensitive(ArgDesc, "g"))
     return {PrintfArgInfo::Double, /* IsSigned */ true};
   IGC_ASSERT_MESSAGE(ArgDesc.endswith("p"), "unexpected conversion specifier");
   return {PrintfArgInfo::Pointer, /* IsSigned */ false};
