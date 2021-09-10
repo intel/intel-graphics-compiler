@@ -16,20 +16,13 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM
 {
-// TODO: remove support for LLVM 7
-#if LLVM_VERSION_MAJOR <= 7
-    using DbgVariableIntrinsic = llvm::DbgInfoIntrinsic;
-#else
-    using llvm::DbgVariableIntrinsic;
-#endif
-
-    inline llvm::Value* getVariableLocation(const DbgVariableIntrinsic* DbgInst)
+    inline llvm::Value* getVariableLocation(const llvm::DbgVariableIntrinsic* DbgInst)
     {
         IGC_ASSERT(DbgInst);
 #if LLVM_VERSION_MAJOR <= 12
         return DbgInst->getVariableLocation();
 #else
-        IGC_ASSERT_MESSAGE(getNumVariableLocationOps() == 1,
+        IGC_ASSERT_MESSAGE(DbgInst->getNumVariableLocationOps() == 1,
                            "unsupported number of location ops");
         return DbgInst->getVariableLocationOp(0);
 #endif

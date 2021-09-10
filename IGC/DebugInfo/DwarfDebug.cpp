@@ -1592,7 +1592,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         // If a function is inlined x times, there would be x number of DbgVariable instances.
         using DbgVarIPInfo =
             std::tuple<unsigned int, unsigned int, DbgVariable*,
-                       const IGCLLVM::DbgVariableIntrinsic*>;
+                       const llvm::DbgVariableIntrinsic*>;
         // TODO: consider replacing std::list to std::vector
         std::unordered_map<DbgVariable*, std::list<DbgVarIPInfo>> DbgValuesWithGenIP;
         for (auto HI = History.begin(), HE = History.end(); HI != HE; HI++)
@@ -1621,7 +1621,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 continue;
 
             Processed.insert(DV);
-            const IGCLLVM::DbgVariableIntrinsic* pInst = H; // History.front();
+            const llvm::DbgVariableIntrinsic* pInst = H; // History.front();
 
             IGC_ASSERT_MESSAGE(IsDebugInst(pInst),
                                "History must begin with debug instruction");
@@ -1742,7 +1742,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 uint64_t start = 0;
                 uint64_t end = 0;
                 DbgVariable* dbgVar = nullptr;
-                const IGCLLVM::DbgVariableIntrinsic* pInst = nullptr;
+                const llvm::DbgVariableIntrinsic* pInst = nullptr;
                 const ConstantInt* imm = nullptr;
 
                 std::vector<VISAVariableLocation> Locs;
@@ -2262,7 +2262,7 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
                     History.pop_back();
                 }
             }
-            History.push_back(cast<IGCLLVM::DbgVariableIntrinsic>(MI));
+            History.push_back(cast<llvm::DbgVariableIntrinsic>(MI));
         }
         else if(m_pModule->IsExecutableInst(*MI))
         {

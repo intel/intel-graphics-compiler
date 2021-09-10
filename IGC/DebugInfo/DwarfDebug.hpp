@@ -72,7 +72,7 @@ namespace IGC
         uint32_t offset = 0;
 
         // The location in the machine frame.
-        const IGCLLVM::DbgVariableIntrinsic* m_pDbgInst = nullptr;
+        const llvm::DbgVariableIntrinsic* m_pDbgInst = nullptr;
 
         // The variable to which this location entry corresponds.
         const llvm::MDNode* Variable = nullptr;
@@ -84,11 +84,11 @@ namespace IGC
 
         DotDebugLocEntry() : m_pDbgInst(nullptr), Variable(nullptr) { }
         DotDebugLocEntry(const llvm::MCSymbol* B, const llvm::MCSymbol* E,
-                         const IGCLLVM::DbgVariableIntrinsic* pDbgInst,
+                         const llvm::DbgVariableIntrinsic* pDbgInst,
                          const llvm::MDNode* V)
             : m_pDbgInst(pDbgInst), Variable(V) { }
         DotDebugLocEntry(const uint64_t s, const uint64_t e,
-                         const IGCLLVM::DbgVariableIntrinsic* pDbgInst,
+                         const llvm::DbgVariableIntrinsic* pDbgInst,
                          const llvm::MDNode* V)
             : start(s), end(e), m_pDbgInst(pDbgInst), Variable(V) {}
 
@@ -96,7 +96,7 @@ namespace IGC
         /// labels are referenced is used to find debug_loc offset for a given DIE.
         bool isEmpty() const { return start == 0 && end == 0; }
         const llvm::MDNode* getVariable() const { return Variable; }
-        const IGCLLVM::DbgVariableIntrinsic* getDbgInst() const { return m_pDbgInst; }
+        const llvm::DbgVariableIntrinsic* getDbgInst() const { return m_pDbgInst; }
         uint64_t getStart() const { return start; }
         uint64_t getEnd() const { return end; }
 
@@ -128,7 +128,7 @@ namespace IGC
         // Corresponding Abstract variable, if any
         DbgVariable* AbsVar = nullptr;
         // DBG_VALUE instruction of the variable
-        const IGCLLVM::DbgVariableIntrinsic* m_pDbgInst = nullptr;
+        const llvm::DbgVariableIntrinsic* m_pDbgInst = nullptr;
 
     public:
 
@@ -150,8 +150,8 @@ namespace IGC
         llvm::StringRef getName() const { return Var->getName(); }
         DbgVariable* getAbstractVariable() const { return AbsVar; }
 
-        const IGCLLVM::DbgVariableIntrinsic* getDbgInst() const { return m_pDbgInst; }
-        void setDbgInst(const IGCLLVM::DbgVariableIntrinsic* pInst) { m_pDbgInst = pInst; }
+        const llvm::DbgVariableIntrinsic* getDbgInst() const { return m_pDbgInst; }
+        void setDbgInst(const llvm::DbgVariableIntrinsic* pInst) { m_pDbgInst = pInst; }
 
         /// If this type is derived from a base type then return base type size
         /// even if it derived directly or indirectly from Composite Type
@@ -344,7 +344,7 @@ namespace IGC
         // For each user variable, keep a list of DBG_VALUE instructions in order.
         // The list can also contain normal instructions that clobber the previous
         // DBG_VALUE.
-        using InstructionsList = llvm::SmallVector<const IGCLLVM::DbgVariableIntrinsic*, 4>;
+        using InstructionsList = llvm::SmallVector<const llvm::DbgVariableIntrinsic*, 4>;
         typedef llvm::DenseMap<const llvm::MDNode*, InstructionsList> DbgValueHistoryMap;
         DbgValueHistoryMap DbgValues;
 

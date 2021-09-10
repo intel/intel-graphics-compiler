@@ -203,7 +203,7 @@ int64_t CompileUnit::getDefaultLowerBound() const
 }
 
 static bool HasImplicitLocation(const DbgVariable& var) {
-    if (auto* dbgInst = dyn_cast_or_null<IGCLLVM::DbgVariableIntrinsic>(var.getDbgInst()))
+    if (auto* dbgInst = var.getDbgInst())
         if (auto* expr = dbgInst->getExpression())
             return expr->isImplicit();
     return false;
@@ -2625,9 +2625,9 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
 
     auto EmitExpression = [this](IGC::DIEBlock* Block, const DbgVariable& var) {
         // Emit DIExpression if it exists
-        if (auto dbgInst = dyn_cast_or_null<IGCLLVM::DbgVariableIntrinsic>(var.getDbgInst()))
+        if (auto* dbgInst = var.getDbgInst())
         {
-            if (auto expr = dbgInst->getExpression())
+            if (auto* expr = dbgInst->getExpression())
             {
                 for (auto elem : expr->getElements())
                 {
