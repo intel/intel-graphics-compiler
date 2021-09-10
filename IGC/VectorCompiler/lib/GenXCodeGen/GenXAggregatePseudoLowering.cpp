@@ -344,19 +344,24 @@ public:
     IGC_ASSERT_MESSAGE(OrigLoad.getPointerOperand() == NewOps[0],
                        "should take the operand from the original load");
     IRBuilder<> IRB{&OrigLoad};
-    auto *GEP = IRB.CreateInBoundsGEP(OrigLoad.getPointerOperand(),
-                                      CreateIdxListForGEP(IRB),
+    Value *PointerOp = OrigLoad.getPointerOperand();
+    Type *Ty = cast<PointerType>(PointerOp->getType()->getScalarType())
+                   ->getElementType();
+    auto *GEP = IRB.CreateInBoundsGEP(Ty, PointerOp, CreateIdxListForGEP(IRB),
                                       OrigLoad.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment
-    return IRB.CreateAlignedLoad(GEP, IGCLLVM::getAlign(OrigLoad),
+    Type *GEPPtrTy = GEP->getType()->getPointerElementType();
+    return IRB.CreateAlignedLoad(GEPPtrTy, GEP, IGCLLVM::getAlign(OrigLoad),
                                  OrigLoad.isVolatile(),
                                  OrigLoad.getName() + ".split.aggr");
   }
 
   Instruction *visitStoreInst(StoreInst &OrigStore) const {
     IRBuilder<> IRB{&OrigStore};
-    auto *GEP = IRB.CreateInBoundsGEP(OrigStore.getPointerOperand(),
-                                      CreateIdxListForGEP(IRB),
+    Value *PointerOp = OrigStore.getPointerOperand();
+    Type *Ty = cast<PointerType>(PointerOp->getType()->getScalarType())
+                   ->getElementType();
+    auto *GEP = IRB.CreateInBoundsGEP(Ty, PointerOp, CreateIdxListForGEP(IRB),
                                       OrigStore.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment
     return IRB.CreateAlignedStore(NewOps[0], GEP, IGCLLVM::getAlign(OrigStore),

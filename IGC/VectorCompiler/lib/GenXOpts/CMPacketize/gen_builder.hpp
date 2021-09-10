@@ -566,11 +566,6 @@ Value* IN_BOUNDS_GEP(Type *Ty, Value *Ptr, Value *Idx, const Twine &Name = "")
     return IRB()->CreateInBoundsGEP(Ty, Ptr, Idx, Name);
 }
 
-Value* CONST_GEP1_32(Value *Ptr, unsigned Idx0, const Twine &Name = "")
-{
-    return IRB()->CreateConstGEP1_32(Ptr, Idx0, Name);
-}
-
 Value* CONST_GEP1_32(Type *Ty, Value *Ptr, unsigned Idx0, const Twine &Name = "")
 {
     return IRB()->CreateConstGEP1_32(Ty, Ptr, Idx0, Name);
@@ -591,24 +586,24 @@ Value* CONST_IN_BOUNDS_GEP2_32(Type *Ty, Value *Ptr, unsigned Idx0, unsigned Idx
     return IRB()->CreateConstInBoundsGEP2_32(Ty, Ptr, Idx0, Idx1, Name);
 }
 
-Value* CONST_GEP1_64(Value *Ptr, uint64_t Idx0, const Twine &Name = "")
+Value* CONST_GEP1_64(Type *Ty, Value *Ptr, uint64_t Idx0, const Twine &Name = "")
 {
-    return IRB()->CreateConstGEP1_64(Ptr, Idx0, Name);
+    return IRB()->CreateConstGEP1_64(Ty, Ptr, Idx0, Name);
 }
 
-Value* CONST_IN_BOUNDS_GEP1_64(Value *Ptr, uint64_t Idx0, const Twine &Name = "")
+Value* CONST_IN_BOUNDS_GEP1_64(Type *Ty, Value *Ptr, uint64_t Idx0, const Twine &Name = "")
 {
-    return IRB()->CreateConstInBoundsGEP1_64(Ptr, Idx0, Name);
+    return IRB()->CreateConstInBoundsGEP1_64(Ty, Ptr, Idx0, Name);
 }
 
-Value* CONST_GEP2_64(Value *Ptr, uint64_t Idx0, uint64_t Idx1, const Twine &Name = "")
+Value* CONST_GEP2_64(Type *Ty, Value *Ptr, uint64_t Idx0, uint64_t Idx1, const Twine &Name = "")
 {
-    return IRB()->CreateConstGEP2_64(Ptr, Idx0, Idx1, Name);
+    return IRB()->CreateConstGEP2_64(Ty, Ptr, Idx0, Idx1, Name);
 }
 
-Value* CONST_IN_BOUNDS_GEP2_64(Value *Ptr, uint64_t Idx0, uint64_t Idx1, const Twine &Name = "")
+Value* CONST_IN_BOUNDS_GEP2_64(Type *Ty, Value *Ptr, uint64_t Idx0, uint64_t Idx1, const Twine &Name = "")
 {
-    return IRB()->CreateConstInBoundsGEP2_64(Ptr, Idx0, Idx1, Name);
+    return IRB()->CreateConstInBoundsGEP2_64(Ty, Ptr, Idx0, Idx1, Name);
 }
 
 Value* STRUCT_GEP(Type *Ty, Value *Ptr, unsigned Idx, const Twine &Name = "")

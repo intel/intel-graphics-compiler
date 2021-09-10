@@ -244,7 +244,8 @@ void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
   auto SrcAddr = MemCall->getRawSource();
   unsigned srcAS = cast<PointerType>(SrcAddr->getType())->getAddressSpace();
   auto LoadPtrV = IRB.CreateBitCast(SrcAddr, VecTy->getPointerTo(srcAS));
-  auto ReadIn = IRB.CreateLoad(LoadPtrV);
+  Type *Ty = LoadPtrV->getType()->getPointerElementType();
+  auto ReadIn = IRB.CreateLoad(Ty, LoadPtrV);
   auto DstAddr = MemCall->getRawDest();
   unsigned dstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
   auto StorePtrV = IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(dstAS));

@@ -872,7 +872,8 @@ void TransposeHelper::handlePHINode(PHINode *pPhi, GenericVectorIndex Idx,
 template <typename FolderT = ConstantFolder>
 Instruction *loadAndCastVector(AllocaInst &VecAlloca, Type &CastTo,
                                IRBuilder<FolderT> &IRB) {
-  auto *LoadVecAlloca = IRB.CreateLoad(&VecAlloca);
+  auto *LoadVecAlloca =
+      IRB.CreateLoad(VecAlloca.getType()->getPointerElementType(), &VecAlloca);
   auto *AllocatedElemTy = LoadVecAlloca->getType()->getScalarType();
   bool IsFuncPointer =
       CastTo.isPointerTy() && CastTo.getPointerElementType()->isFunctionTy();
@@ -1035,7 +1036,8 @@ void TransposeHelperPromote::handlePrivateGather(IntrinsicInst *pInst,
                                           Value *pScalarizedIdx) {
   IRBuilder<> IRB(pInst);
   IGC_ASSERT(pInst->getType()->isVectorTy());
-  Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+  Value *pLoadVecAlloca = IRB.CreateLoad(
+      pVecAlloca->getType()->getPointerElementType(), pVecAlloca);
   auto *InstTy = cast<IGCLLVM::FixedVectorType>(pInst->getType());
   auto N = InstTy->getNumElements();
   auto ElemType = InstTy->getElementType();
@@ -1113,7 +1115,8 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
   // Add Store instruction to remove list
   IRBuilder<> IRB(pInst);
   llvm::Value *pStoreVal = pInst->getArgOperand(3);
-  llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+  llvm::Value *pLoadVecAlloca = IRB.CreateLoad(
+      pVecAlloca->getType()->getPointerElementType(), pVecAlloca);
   IGC_ASSERT(pStoreVal->getType()->isVectorTy());
   auto *StoreValTy = cast<IGCLLVM::FixedVectorType>(pStoreVal->getType());
   auto N = StoreValTy->getNumElements();
@@ -1308,7 +1311,8 @@ void TransposeHelperPromote::handleSVMGather(IntrinsicInst *pInst,
 
   // part of this is taken from handleLLVMGather above
   IRBuilder<> IRB(pInst);
-  llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+  llvm::Value *pLoadVecAlloca = IRB.CreateLoad(
+      pVecAlloca->getType()->getPointerElementType(), pVecAlloca);
   Region R(pInst);
   R.Mask = pInst->getArgOperand(0);
   R.Indirect = IRB.CreateTrunc(
@@ -1344,7 +1348,8 @@ void TransposeHelperPromote::handleSVMScatter(IntrinsicInst *pInst,
                                               Value *pScalarizedIdx) {
   IRBuilder<> IRB(pInst);
   Value *pStoreVal = pInst->getArgOperand(3);
-  Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+  Value *pLoadVecAlloca = IRB.CreateLoad(
+      pVecAlloca->getType()->getPointerElementType(), pVecAlloca);
   Region R(pStoreVal);
   R.Mask = pInst->getArgOperand(0);
   R.Indirect = IRB.CreateTrunc(

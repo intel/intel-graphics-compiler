@@ -183,7 +183,8 @@ static Value &searchForVectorPointer(Value &V) {
 // pointer to vector first and then load the vector.
 static Value &readVectorFromBuiltinOp(Value &BiOp, IRBuilder<> &IRB) {
   auto &Ptr = searchForVectorPointer(BiOp);
-  return *IRB.CreateLoad(&Ptr, Ptr.getName() + ".ld.arg");
+  Type *Ty = Ptr.getType()->getPointerElementType();
+  return *IRB.CreateLoad(Ty, &Ptr, Ptr.getName() + ".ld.arg");
 }
 
 // Output vector operands is also passed as void*.

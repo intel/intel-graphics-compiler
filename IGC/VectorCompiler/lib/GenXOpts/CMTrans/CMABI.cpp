@@ -1033,7 +1033,8 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
                          NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx];
     IGC_ASSERT_MESSAGE(isa<AllocaInst>(LocalizedGlobal),
         "an alloca is expected when pass localized global by value");
-    Value *LocalizedGlobalVal = Builder.CreateLoad(LocalizedGlobal);
+    Value *LocalizedGlobalVal = Builder.CreateLoad(
+        LocalizedGlobal->getType()->getPointerElementType(), LocalizedGlobal);
     return Builder.CreateInsertValue(&NewRetVal, LocalizedGlobalVal, RetIdx);
   }
   IGC_ASSERT_MESSAGE(NewFuncInfo.getArgKinds()[ArgIdx] == ArgKind::CopyInOut,
@@ -1045,7 +1046,8 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
     CurRetByPtr = cast<AddrSpaceCastInst>(CurRetByPtr)->getOperand(0);
   IGC_ASSERT_MESSAGE(isa<AllocaInst>(CurRetByPtr),
                      "corresponding alloca is expected");
-  Value *CurRetByVal = Builder.CreateLoad(CurRetByPtr);
+  Value *CurRetByVal = Builder.CreateLoad(
+      CurRetByPtr->getType()->getPointerElementType(), CurRetByPtr);
   return Builder.CreateInsertValue(&NewRetVal, CurRetByVal, RetIdx);
 }
 
@@ -1820,7 +1822,9 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
         if (GenXIntrinsic::isVStore(&Inst))
           Builder.CreateStore(Inst.getOperand(0), Inst.getOperand(1));
         else {
-          auto LI = Builder.CreateLoad(Inst.getOperand(0), Inst.getName());
+          Value *Op0 = Inst.getOperand(0);
+          auto LI = Builder.CreateLoad(Op0->getType()->getPointerElementType(),
+                                       Op0, Inst.getName());
           LI->setDebugLoc(Inst.getDebugLoc());
           Inst.replaceAllUsesWith(LI);
         }
@@ -2034,13 +2038,16 @@ void ArgRefPattern::process() {
 
   if (CopyOutRegion) {
     Builder.SetInsertPoint(CopyOutRegion);
-    CopyOutRegion->setArgOperand(0, Builder.CreateLoad(BaseAlloca));
+    CopyOutRegion->setArgOperand(
+        0, Builder.CreateLoad(BaseAlloca->getType()->getPointerElementType(),
+                              BaseAlloca));
   }
 
   // Rewrite all stores.
   for (auto ST : VStores) {
     Builder.SetInsertPoint(ST);
-    Value *OldVal = Builder.CreateLoad(BaseAlloca);
+    Value *OldVal = Builder.CreateLoad(
+        BaseAlloca->getType()->getPointerElementType(), BaseAlloca);
     // Always use copy-in region arguments as copy-out region
     // arguments do not dominate this store.
     auto M = ST->getParent()->getParent()->getParent();
@@ -2068,7 +2075,8 @@ void ArgRefPattern::process() {
       continue;
 
     Builder.SetInsertPoint(LI);
-    Value *SrcVal = Builder.CreateLoad(BaseAlloca);
+    Value *SrcVal = Builder.CreateLoad(
+        BaseAlloca->getType()->getPointerElementType(), BaseAlloca);
     SmallVector<Value *, 8> Args(CopyInRegion->arg_operands());
     Args[0] = SrcVal;
     Value *Val = Builder.CreateCall(RdFn, Args);

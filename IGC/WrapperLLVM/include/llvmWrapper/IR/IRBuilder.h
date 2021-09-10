@@ -189,6 +189,12 @@ namespace IGCLLVM
 #endif
 
 #if LLVM_VERSION_MAJOR >= 13
+        inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, const char *Name)
+        {
+            Type* ptrType = Ptr->getType()->getPointerElementType();
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, Name);
+        }
+
         inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, const Twine &Name = "")
         {
             Type* ptrType = Ptr->getType()->getPointerElementType();
@@ -200,6 +206,8 @@ namespace IGCLLVM
             Type* ptrType = Ptr->getType()->getPointerElementType();
             return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, isVolatile, Name);
         }
+
+        using llvm::IRBuilder<T, InserterTyDef()>::CreateLoad;
 
         inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, const llvm::Twine& Name = "")
         {
@@ -215,11 +223,13 @@ namespace IGCLLVM
 
         inline llvm::Value* CreateConstGEP1_32(
             llvm::Value* Ptr,
-            uint64_t Idx0,
+            unsigned Idx0,
             const llvm::Twine& Name = "")
         {
             return llvm::IRBuilder<T, InserterTyDef()>::CreateConstGEP1_32(Ptr->getType()->getPointerElementType(), Ptr, Idx0, Name);
         }
+
+        using llvm::IRBuilder<T, InserterTyDef()>::CreateConstGEP1_32;
 
         inline llvm::Value* CreateInBoundsGEP(llvm::Value *Ptr, llvm::ArrayRef<llvm::Value*> IdxList,
                            const llvm::Twine &Name = "") {
@@ -227,11 +237,51 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::CreateInBoundsGEP(Ty, Ptr, IdxList, Name);
         }
 
+        using llvm::IRBuilder<T, InserterTyDef()>::CreateInBoundsGEP;
+
         inline llvm::Value* CreateGEP(llvm::Value* Ptr, llvm::ArrayRef<llvm::Value*> IdxList,
             const llvm::Twine& Name = "") {
             Type* Ty = cast<PointerType>(Ptr->getType()->getScalarType())->getElementType();
             return llvm::IRBuilder<T, InserterTyDef()>::CreateGEP(Ty, Ptr, IdxList, Name);
         }
+
+        using llvm::IRBuilder<T, InserterTyDef()>::CreateGEP;
+
+        CallInst *CreateMaskedGather(Value *Ptrs, Align Alignment, Value *Mask,
+                                     Value *PassThru, const Twine &Name) {
+          auto *PtrsTy = cast<FixedVectorType>(Ptrs->getType());
+          auto *PtrTy = cast<PointerType>(PtrsTy->getElementType());
+          unsigned NumElts = PtrsTy->getNumElements();
+          auto *Ty = FixedVectorType::get(PtrTy->getElementType(), NumElts);
+          return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedGather(
+              Ty, Ptrs, Alignment, Mask, PassThru, Name);
+        }
+
+        AtomicCmpXchgInst *
+        CreateAtomicCmpXchg(Value *Ptr, Value *Cmp, Value *New,
+                            AtomicOrdering SuccessOrdering,
+                            AtomicOrdering FailureOrdering,
+                            SyncScope::ID SSID = SyncScope::System) {
+          return llvm::IRBuilder<T, InserterTyDef()>::CreateAtomicCmpXchg(
+              Ptr, Cmp, New, MaybeAlign(), SuccessOrdering, FailureOrdering,
+              SSID);
+        }
+
+        AtomicRMWInst *CreateAtomicRMW(AtomicRMWInst::BinOp Op, Value *Ptr,
+                                       Value *Val, AtomicOrdering Ordering,
+                                       SyncScope::ID SSID = SyncScope::System) {
+          return llvm::IRBuilder<T, InserterTyDef()>::CreateAtomicRMW(
+              Op, Ptr, Val, MaybeAlign(), Ordering, SSID);
+        }
+
+        CallInst *CreateMaskedLoad(Value *Ptr, Align Alignment, Value *Mask,
+                                   Value *PassThru, const Twine &Name) {
+          auto *PtrTy = cast<PointerType>(Ptr->getType());
+          Type *Ty = PtrTy->getElementType();
+          return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedLoad(
+              Ty, Ptr, Alignment, Mask, PassThru, Name);
+        }
+
 #endif
 
         inline llvm::Value* CreateConstInBoundsGEP2_64(
@@ -247,6 +297,7 @@ namespace IGCLLVM
 #endif
         }
 
+        using llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64;
 
         inline static llvm::CallInst* Create(llvm::Value* Func, llvm::ArrayRef<llvm::Value*> Args,
             llvm::ArrayRef<llvm::OperandBundleDef> Bundles = llvm::None,
