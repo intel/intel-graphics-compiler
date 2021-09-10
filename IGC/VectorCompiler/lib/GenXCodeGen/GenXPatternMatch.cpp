@@ -75,6 +75,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
+#include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 #include "llvmWrapper/Transforms/Utils/Local.h"
@@ -1834,7 +1835,7 @@ bool MinMaxMatcher::valuesMatch(llvm::Value *Op1, llvm::Value *Op2) {
   if (isa<ConstantAggregateZero>(Op1) && isa<ConstantAggregateZero>(Op2)) {
     ConstantAggregateZero *C1 = cast<ConstantAggregateZero>(Op1);
     ConstantAggregateZero *C2 = cast<ConstantAggregateZero>(Op2);
-    if (C1->getNumElements() != C2->getNumElements())
+    if (IGCLLVM::getElementCount(*C1) != IGCLLVM::getElementCount(*C2))
       return false;
     Type *C1Ty = C1->getType();
     Type *C2Ty = C2->getType();

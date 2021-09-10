@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 
 #include "vc/GenXOpts/Utils/CMRegion.h"
 
@@ -322,7 +323,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
   }
   SmallVector<ReturnInst *, 10> returns;
   ClonedCodeInfo CloneInfo;
-  CloneFunctionInto(ClonedFunc, F, ArgMap, true, returns, Suffix[Width / 8],
+  IGCLLVM::CloneFunctionInto(ClonedFunc, F, ArgMap, true, returns, Suffix[Width / 8],
                     &CloneInfo);
 
   ReplaceMap.clear();

@@ -95,7 +95,8 @@ static int openFileForDump(Function *F, StringRef Suffix)
   // Sanitize templated kernel names.
   std::replace_if(Filename.begin(), Filename.end(),
                   [](const char x) { return x == '<' || x == '>'; }, '_');
-  auto EC = sys::fs::openFileForWrite(Filename, FD, sys::fs::CD_CreateAlways, sys::fs::F_None);
+  auto EC = sys::fs::openFileForWrite(Filename, FD, sys::fs::CD_CreateAlways,
+                                      sys::fs::OF_None);
   if (EC) {
     errs() << "Error: " << EC.message() << "\n";
     return -1;

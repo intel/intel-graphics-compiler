@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/ToolOutputFile.h>
+#include <llvm/Support/FileSystem.h>
 
 using namespace llvm;
 

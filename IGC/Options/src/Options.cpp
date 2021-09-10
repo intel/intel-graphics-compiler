@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 using namespace IGC::options;
 using namespace llvm::opt;
+using llvm::raw_ostream;
 
 #define PREFIX(NAME, VALUE) static const char *const API_##NAME[] = VALUE;
 #include "igc/Options/ApiOptions.inc"

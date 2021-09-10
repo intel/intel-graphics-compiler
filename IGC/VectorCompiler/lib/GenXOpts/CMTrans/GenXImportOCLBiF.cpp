@@ -44,6 +44,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvmWrapper/IR/Instructions.h>
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 
 #include <algorithm>
 #include <iterator>
@@ -387,7 +388,7 @@ static void removeFunctionBitcasts(Module &M) {
 
               // Clone the body of the function into the dest function.
               SmallVector<ReturnInst *, 8> Returns; // Ignore returns.
-              CloneFunctionInto(pDstFunc, funcTobeChanged, operandMap, false,
+              IGCLLVM::CloneFunctionInto(pDstFunc, funcTobeChanged, operandMap, false,
                                 Returns, "");
 
               pDstFunc->setCallingConv(funcTobeChanged->getCallingConv());

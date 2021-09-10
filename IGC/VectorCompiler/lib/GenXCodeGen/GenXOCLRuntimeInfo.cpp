@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include <cctype>
 #include <functional>
 #include <iterator>
+#include <stack>
 
 #include "Probe/Assertion.h"
 

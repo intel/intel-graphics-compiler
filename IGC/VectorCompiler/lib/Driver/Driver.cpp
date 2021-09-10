@@ -53,6 +53,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Scalar.h"
 
+#include "llvmWrapper/Option/OptTable.h"
 #include "llvmWrapper/Target/TargetMachine.h"
 
 #include "Probe/Assertion.h"
@@ -668,8 +669,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     constexpr unsigned FlagsToInclude = IGC::options::VCApiOption;
     constexpr unsigned FlagsToExclude = 0;
     constexpr bool ShowAllAliases = false;
-    IGC::getApiOptTable().PrintHelp(llvm::errs(), Usage, Title, FlagsToInclude,
-                                    FlagsToExclude, ShowAllAliases);
+    IGCLLVM::printHelp(IGC::getApiOptTable(), llvm::errs(), Usage, Title,
+                       FlagsToInclude, FlagsToExclude, ShowAllAliases);
   }
   if (InternalOptions.hasArg(OPT_help_internal)) {
     constexpr const char *Usage =
@@ -678,9 +679,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     constexpr unsigned FlagsToInclude = IGC::options::VCInternalOption;
     constexpr unsigned FlagsToExclude = 0;
     constexpr bool ShowAllAliases = false;
-    IGC::getInternalOptTable().PrintHelp(llvm::errs(), Usage, Title,
-                                         FlagsToInclude, FlagsToExclude,
-                                         ShowAllAliases);
+    IGCLLVM::printHelp(IGC::getInternalOptTable(), llvm::errs(), Usage, Title,
+                       FlagsToInclude, FlagsToExclude, ShowAllAliases);
   }
 
   return Error::success();
