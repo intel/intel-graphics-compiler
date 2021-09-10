@@ -303,8 +303,6 @@ function(igc_bif_build_bc)
     set(_bcTempFilePath "${_bcIntFilePath}.tmp")
     math(EXPR _bcFileId "${_bcFileId} + 1")
 
-    set(LLVM_LINK_EXE "llvm-link" CACHE STRING "")
-
     # LLVM linking is triggered by host LLVM package change (where tools are), change of intermediate .bc files or change of additional dependencies.
     # Makes sure that LLVM is unzipped before.
     add_custom_command(
