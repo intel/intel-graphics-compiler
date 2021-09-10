@@ -36,9 +36,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/ValueSymbolTable.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/ErrorHandling.h>
+#include <llvm/Transforms/IPO/Internalize.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvmWrapper/IR/Instructions.h>
@@ -492,23 +494,37 @@ static bool OCLBuiltinsRequired(const Module &M) {
                      [](const Function &F) { return isOCLBuiltinDecl(F); });
 }
 
+static void forceInlining(Module &M, const StringSet<> &GVS) {
+  for (auto &Entry : GVS) {
+    StringRef Name = Entry.getKey();
+    Value *GV = M.getValueSymbolTable().lookup(Name);
+    if (!isa<Function>(GV))
+      continue;
+    cast<Function>(GV)->addFnAttr(Attribute::AlwaysInline);
+  }
+}
+
 bool GenXImportOCLBiF::runOnModule(Module &M) {
-  auto OCLBuiltins = vc::collectFunctionNamesIf(
-      M, [](const Function &F) { return isOCLBuiltinDecl(F); });
-  if (OCLBuiltins.empty())
+  if (llvm::none_of(M, [](const Function &F) { return isOCLBuiltinDecl(F); }))
     return false;
   std::unique_ptr<Module> GenericBiFModule =
       getBiFModule(BiFKind::OCLGeneric, M.getContext());
   GenericBiFModule->setDataLayout(M.getDataLayout());
   GenericBiFModule->setTargetTriple(M.getTargetTriple());
+  auto LinkerCallback = [](Module &M, const StringSet<> &GVS) {
+    internalizeModule(M, [&GVS](const GlobalValue &GV) {
+      return !GV.hasName() || (GVS.count(GV.getName()) == 0);
+    });
+    // FIXME: workaround to solve several issues in the backend, remove it
+    forceInlining(M, GVS);
+  };
   if (Linker::linkModules(M, std::move(GenericBiFModule),
-                          Linker::Flags::LinkOnlyNeeded)) {
+                          Linker::Flags::LinkOnlyNeeded, LinkerCallback)) {
     IGC_ASSERT_MESSAGE(0, "Error OCL builtin implementation module");
   }
   removeFunctionBitcasts(M);
   InitializeBIFlags(M);
   BIConvert{}.runOnModule(M);
-  vc::internalizeImportedFunctions(M, OCLBuiltins, /*SetAlwaysInline=*/true);
   return true;
 }
 
