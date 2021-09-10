@@ -96,7 +96,6 @@ private:
 public:
   void visitStoreInst(StoreInst &StI) const;
   void visitLoadInst(LoadInst &LdI) const;
-  void visitAllocaInst(AllocaInst &Alloca) const;
   void visitIntrinsicInst(IntrinsicInst &Intrinsic) const;
 
 public:
@@ -568,39 +567,6 @@ void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
   LLVM_DEBUG(dbgs() << *Scatter << "\n");
   StI.replaceAllUsesWith(Scatter);
   StI.eraseFromParent();
-}
-
-void GenXLoadStoreLowering::visitAllocaInst(AllocaInst &Alloca) const {
-  LLVM_DEBUG(dbgs() << "Replacing alloca: " << Alloca << "\n");
-  auto *AllocaTy = Alloca.getAllocatedType();
-  auto *AllocaPtrTy = Alloca.getType();
-  // Alloca inst also have alignment.
-  // One day we need to take it into account as well.
-
-  auto IID = llvm::GenXIntrinsic::genx_alloca;
-  auto *IntrDecl = GenXIntrinsic::getGenXDeclaration(
-      Alloca.getModule(), IID,
-      {IntegerType::get(Alloca.getContext(), genx::QWordBits), AllocaTy});
-  auto *AllocaIntr =
-      IntrinsicInst::Create(IntrDecl, {Constant::getNullValue(AllocaTy)});
-  AllocaIntr->setDebugLoc(Alloca.getDebugLoc());
-  AllocaIntr->insertAfter(&Alloca);
-
-  // In m32 we need to use 32-bit version of genx_alloca
-  // For now m32 not properly supported, lets just put an assert
-  IGC_ASSERT_MESSAGE(DL_->getTypeSizeInBits(AllocaIntr->getType()) ==
-                         DL_->getTypeSizeInBits(AllocaPtrTy),
-                     "Alloca type size shall be equal to AllocaIntr type size");
-
-  // and now hack: replace Ty *alloca with (Ty *) genx.alloca to not touch types
-  auto *ProperAlloca = IntToPtrInst::Create(Instruction::CastOps::IntToPtr,
-                                            AllocaIntr, AllocaPtrTy, "");
-  ProperAlloca->setDebugLoc(AllocaIntr->getDebugLoc());
-  ProperAlloca->insertAfter(AllocaIntr);
-
-  LLVM_DEBUG(dbgs() << *AllocaIntr << "\n");
-  Alloca.replaceAllUsesWith(ProperAlloca);
-  Alloca.eraseFromParent();
 }
 
 void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Intrinsic) const {

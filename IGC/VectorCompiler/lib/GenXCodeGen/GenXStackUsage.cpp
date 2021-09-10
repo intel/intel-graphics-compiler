@@ -103,6 +103,7 @@ class StackAnalysis : public InstVisitor<StackAnalysis> {
       NotStarted // function has not started processing but will start
     };
     uint64_t m_UsedSz{0};
+    unsigned m_RequiredAlign{visa::BytesPerSVMPtr};
     bool m_HasIndirect{false};
     Function *m_pHeavyFunction{nullptr};
     ProcessingState m_ProcessingFlag{ProcessingState::NotStarted};
@@ -111,7 +112,7 @@ class StackAnalysis : public InstVisitor<StackAnalysis> {
   // map between Function and its State
   std::unordered_map<Function *, FunctionState> m_ProcessedFs{};
 
-  std::pair<bool, uint64_t> checkFunction(Function &F);
+  llvm::Optional<std::pair<uint64_t, unsigned>> checkFunction(Function &F);
   std::string GenerateCallSequence(Function &F);
   void checkKernel(Function &Kernel);
 
@@ -130,10 +131,16 @@ public:
 
 // Collect all allocas and updates stack usage of each function
 void StackAnalysis::visitAllocaInst(AllocaInst &AI) {
-  auto AllocaSize = AI.getAllocationSizeInBits(m_DL);
-  IGC_ASSERT_MESSAGE(AllocaSize.hasValue(), "VLA is not expected");
+  IGC_ASSERT_MESSAGE(AI.isStaticAlloca(), "Non-static alloca not supported");
+  auto AllocaSize = llvm::divideCeil(*AI.getAllocationSizeInBits(m_DL),
+                                     genx::ByteBits);
+  auto AllocaAlign = std::max(AI.getAlignment(), visa::BytesPerSVMPtr);
 
-  m_ProcessedFs[AI.getFunction()].m_UsedSz += AllocaSize.getValue();
+  auto &CurFuncState = m_ProcessedFs[AI.getFunction()];
+  CurFuncState.m_UsedSz = llvm::alignTo(CurFuncState.m_UsedSz, AllocaAlign);
+  CurFuncState.m_UsedSz += AllocaSize;
+  CurFuncState.m_RequiredAlign = std::max(CurFuncState.m_RequiredAlign,
+                                          AllocaAlign);
 }
 
 // Check for indirect calls
@@ -149,21 +156,21 @@ void StackAnalysis::visitFunction(Function &F) {
 }
 
 // Check CallGraph and usage of allocas in function
-std::pair<bool, uint64_t> StackAnalysis::checkFunction(Function &F) {
-  bool Failure = false;
+llvm::Optional<std::pair<uint64_t, unsigned>>
+StackAnalysis::checkFunction(Function &F) {
   auto pOnF = m_ProcessedFs.find(&F);
   IGC_ASSERT_MESSAGE(pOnF != m_ProcessedFs.end(),
                      "Function must be inserted before checking");
 
   auto &StateOfF = pOnF->second;
 
-  // if there are indirect calls, lets mark failure but then still check other
+  // Can't predict stack usage if there are indirect calls
   if (StateOfF.m_HasIndirect)
-    Failure = true;
+    return None;
 
   // if function is stack call, we do not know stack usage
   if (genx::requiresStackCall(&F))
-    Failure = true;
+    return None;
 
   StateOfF.m_ProcessingFlag = FunctionState::ProcessingState::Started;
 
@@ -185,13 +192,13 @@ std::pair<bool, uint64_t> StackAnalysis::checkFunction(Function &F) {
               NextCalledF->getName() + "\" from \"" + F.getName() +
               "\"\nStack overflow can occur, but cannot be diagnosed.",
           DS_Warning);
-      Failure = true;
-      break;
+      return None;
     }
     case FunctionState::ProcessingState::NotStarted: {
-      bool LocalFailure;
-      std::tie(LocalFailure, UsedStackSize) = checkFunction(*NextCalledF);
-      Failure |= LocalFailure;
+      auto Res = checkFunction(*NextCalledF);
+      if (!Res)
+        return None;
+      std::tie(UsedStackSize, std::ignore) = *Res;
       break;
     }
     case FunctionState::ProcessingState::Finished:
@@ -210,18 +217,17 @@ std::pair<bool, uint64_t> StackAnalysis::checkFunction(Function &F) {
   StateOfF.m_ProcessingFlag = FunctionState::ProcessingState::Finished;
   StateOfF.m_UsedSz += MostUsedStackSize;
 
-  LLVM_DEBUG(dbgs() << "Size from " << F.getName() << " is "
-                    << StateOfF.m_UsedSz << "\n");
+  LLVM_DEBUG(dbgs() << F.getName() << " size: " << StateOfF.m_UsedSz
+                    << " alignment: " << StateOfF.m_RequiredAlign << "\n");
 
-  return std::make_pair(Failure, StateOfF.m_UsedSz);
+  return std::make_pair(StateOfF.m_UsedSz, StateOfF.m_RequiredAlign);
 }
 
 // Generate trace of functions most occupy stack memory
 std::string StackAnalysis::GenerateCallSequence(Function &F) {
   auto &FunctionState = m_ProcessedFs[&F];
   std::string FunctionDump =
-      F.getName().str() + '(' +
-      std::to_string(FunctionState.m_UsedSz / genx::ByteBits) + ')';
+      F.getName().str() + '(' + std::to_string(FunctionState.m_UsedSz) + ')';
 
   if (FunctionState.m_pHeavyFunction)
     return FunctionDump + "->" +
@@ -233,12 +239,18 @@ std::string StackAnalysis::GenerateCallSequence(Function &F) {
 // Start from kernel and generate warning in case of possible stack overflow
 void StackAnalysis::checkKernel(Function &Kernel) {
   LLVM_DEBUG(dbgs() << "Processing kernel: " << Kernel.getName() << "\n");
-  auto [Failure, KernelUsedStack] = checkFunction(Kernel);
+  auto Res = checkFunction(Kernel);
+  // if we detected recursion or indirect call inside checkFunction
+  if (!Res) {
+    LLVM_DEBUG(
+        dbgs() << "Stack usage analysis stuck on recursion or indirect call ("
+               << Kernel.getName() << ")\n");
+    return;
+  }
+  auto [KernelUsedStack, KernelAlignment] = *Res;
 
-  // align stateless private request to even boundary
-  constexpr int PRIV_MEM_ALIGN = 8;
-  KernelUsedStack =
-      llvm::alignTo(KernelUsedStack / genx::ByteBits, PRIV_MEM_ALIGN);
+  // align stack size to kernel alignment requirement
+  KernelUsedStack = llvm::alignTo(KernelUsedStack, KernelAlignment);
   if (KernelUsedStack > m_MaxStackSize) {
     vc::diagnose(Kernel.getContext(), "StackUsage",
                  "Kernel \"" + Kernel.getName() +
@@ -247,14 +259,6 @@ void StackAnalysis::checkKernel(Function &Kernel) {
                      std::to_string(m_MaxStackSize) +
                      "\nCalls: " + GenerateCallSequence(Kernel),
                  DS_Warning);
-    return;
-  }
-
-  // if we detected recursion or indirect call inside checkFunction
-  if (Failure) {
-    LLVM_DEBUG(
-        dbgs() << "Stack usage analysis stuck on recursion or indirect call ("
-               << Kernel.getName() << ")\n");
     return;
   }
 
