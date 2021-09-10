@@ -849,7 +849,8 @@ void Optimizer::insertHashMovs()
 //
 void Optimizer::cloneSampleInst()
 {
-    bool cloneSample = builder.getOption(vISA_cloneSampleInst);
+    bool cloneSample = builder.getOption(vISA_enableCloneSampleInst) &&
+        VISA_WA_CHECK(builder.getPWaTable(), Wa_14014414195);
     bool cloneEvaluateSample = builder.getOption(vISA_cloneEvaluateSampleInst);
     if (!cloneSample && !cloneEvaluateSample)
     {

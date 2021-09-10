@@ -287,7 +287,7 @@ DEF_VISA_OPTION(vISA_noMaskWA,                      ET_INT32, "-noMaskWA",  "USA
 DEF_VISA_OPTION(vISA_forceNoMaskWA,                 ET_BOOL,  "-forceNoMaskWA",  UNUSED, false)
 DEF_VISA_OPTION(vISA_DstSrcOverlapWA,               ET_BOOL,  "-dstSrcOverlapWA",  UNUSED, true)
 DEF_VISA_OPTION(vISA_noSendSrcDstOverlap,           ET_BOOL,  "-noSendSrcDstOverlap", UNUSED, false)
-DEF_VISA_OPTION(vISA_cloneSampleInst,               ET_BOOL,  "-cloneSampleInst", UNUSED, false)
+DEF_VISA_OPTION(vISA_enableCloneSampleInst,         ET_BOOL,  "-cloneSampleInst", UNUSED, false)
 DEF_VISA_OPTION(vISA_cloneEvaluateSampleInst,       ET_BOOL,  "-cloneEvaluateSampleInst", UNUSED, false)
 DEF_VISA_OPTION(vISA_expandMulPostSchedule,         ET_BOOL,  "-expandMulPostSchedule", UNUSED, true)
 DEF_VISA_OPTION(vISA_expandMadwPostSchedule,        ET_BOOL,  "-expandMadwPostSchedule", UNUSED, true)
