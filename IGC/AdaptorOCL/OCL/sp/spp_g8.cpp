@@ -197,6 +197,8 @@ RETVAL CGen8OpenCLProgramBase::GetProgramDebugDataSize(size_t& totalDbgInfoBuffe
         totalDbgInfoBufferSize += sizeof(iOpenCL::SProgramDebugDataHeaderIGC);
         for (auto& data : m_KernelBinaries)
         {
+            if (!data.dbgInfo.header)
+                continue;
             totalDbgInfoBufferSize += (size_t)data.dbgInfo.header->Size() +
                 (size_t)(data.dbgInfo.dbgInfoBufferSize +
                 data.dbgInfo.extraAlignBytes);
