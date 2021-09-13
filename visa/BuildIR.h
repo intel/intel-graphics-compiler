@@ -364,6 +364,11 @@ private:
     G4_INST* FDSpillInst = nullptr;
     G4_Declare* tmpFCRet = nullptr;
 
+
+    // input declare of R1.
+    // Used to initialize header payload of render target read message
+    G4_Declare* inputR1 = nullptr;
+
     unsigned short arg_size;
     unsigned short return_var_size;
 
@@ -666,6 +671,9 @@ public:
     G4_Declare* getBuiltinBindlessSampler() const {return builtinBindlessSampler; }
     G4_Declare* getBuiltinSamplerHeader() const { return builtinSamplerHeader; }
     G4_Declare* getOldA0Dot2Temp() const { return oldA0Dot2Temp; }
+
+    G4_Declare* getInputR1() { return inputR1; }
+    void setInputR1(G4_Declare* r1) { inputR1 = r1; }
 
     bool isBindlessSampler(const G4_Operand* sampler) const {
         return sampler->isSrcRegRegion() && sampler->getTopDcl() == getBuiltinBindlessSampler();
