@@ -3855,8 +3855,12 @@ namespace IGC
                 return true;
 
             // API check.
+            bool enableForRetey = m_program->m_DriverInfo->enableVISAPreRASchedulerForRetry() ||
+                context->m_retryManager.AllowVISAPreRAScheduler();
+
             if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
-                m_program->m_DriverInfo->enableVISAPreRAScheduler())
+                m_program->m_DriverInfo->enableVISAPreRAScheduler() &&
+                enableForRetey)
                 return true;
 
             return false;

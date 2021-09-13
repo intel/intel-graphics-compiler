@@ -158,6 +158,9 @@ namespace IGC
         /// Turn on vISA pre-RA scheduler. Not tested on all APIs
         virtual bool enableVISAPreRAScheduler() const { return false; }
 
+        /// Turn on vISA pre-RA scheduler for retry
+        virtual bool enableVISAPreRASchedulerForRetry() const { return false; }
+
         /// Configure vISA pre-RA scheduler. Not tested on all APIs
         virtual unsigned getVISAPreRASchedulerCtrl() const { return 4; }
 
