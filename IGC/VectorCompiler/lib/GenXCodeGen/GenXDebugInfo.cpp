@@ -966,23 +966,28 @@ static void processGenXFunction(IGC::IDebugEmitter *Emitter, GenXFunction *GF) {
 
 namespace llvm {
 
-static void dumpDebugInfoFiles(const GenXBackendConfig &BC,
-                               const StringRef &KernelName,
-                               const ArrayRef<char> ElfBin,
-                               const ArrayRef<char> GenDbgBlob) {
-  std::string NamePrefix = "dbginfo_";
-  if (!BC.dbgInfoDumpsNameOverride().empty())
-    NamePrefix.append(BC.dbgInfoDumpsNameOverride()).append("_");
+static void dumpDebugInfoBlob(const GenXBackendConfig &BC,
+                              const Twine &OutputName,
+                              const ArrayRef<char> Blob) {
+  if (BC.hasShaderDumper())
+    BC.getShaderDumper().dumpBinary(Blob, OutputName.str());
+  else
+    debugDump(OutputName, Blob.data(), Blob.size());
+}
 
-  auto DwarfDumpName = (NamePrefix + KernelName + "_dwarf.elf").str();
-  auto GendbgDumpName = (NamePrefix + KernelName + "_gen.dump").str();
-  if (BC.hasShaderDumper()) {
-    BC.getShaderDumper().dumpBinary(ElfBin, DwarfDumpName);
-    BC.getShaderDumper().dumpBinary(GenDbgBlob, GendbgDumpName);
-  } else {
-    debugDump(DwarfDumpName, ElfBin.data(), ElfBin.size());
-    debugDump(GendbgDumpName, GenDbgBlob.data(), GenDbgBlob.size());
-  }
+static void dumpDebugInfo(const GenXBackendConfig &BC,
+                          const StringRef KernelName,
+                          const ArrayRef<char> ElfBin,
+                          const ArrayRef<char> GenDbgBlob,
+                          const ArrayRef<char> ErrLog) {
+  std::string Prefix = "dbginfo_";
+  if (!BC.dbgInfoDumpsNameOverride().empty())
+    Prefix.append(BC.dbgInfoDumpsNameOverride()).append("_");
+
+  dumpDebugInfoBlob(BC, Prefix + KernelName + "_dwarf.elf", ElfBin);
+  dumpDebugInfoBlob(BC, Prefix + KernelName + "_gen.dump", GenDbgBlob);
+  if (!ErrLog.empty())
+    dumpDebugInfoBlob(BC, Prefix + KernelName + ".dbgerr", ErrLog);
 }
 
 void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
@@ -1060,6 +1065,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   auto &KF = PI.FIs.front().F;
   IGC_ASSERT(ElfOutputs.count(&KF) == 0);
   auto &ElfBin = ElfOutputs[&KF];
+  std::string ErrLog;
 
   std::vector<GenXFunction *> GenXFunctions =
       PrepareEmitter(RA, ST, DebugOpts, CWs, PI);
@@ -1073,6 +1079,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
     auto Out = Emitter->Finalize(!ExpectMore, GF->getDIDecoder());
     if (!ExpectMore) {
       ElfBin = std::move(Out);
+      ErrLog = Emitter->getErrors();
     } else {
       IGC_ASSERT(Out.empty());
     }
@@ -1085,8 +1092,8 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
   if (BC.dbgInfoDumpsEnabled())
-    dumpDebugInfoFiles(BC, KernelName, ElfBin,
-                       GenXFunctions.front()->getGenDebug());
+    dumpDebugInfo(BC, KernelName, ElfBin, GenXFunctions.front()->getGenDebug(),
+                  {ErrLog.data(), ErrLog.size()});
 
   // this reset is needed to gracefully cleanup resources held by CWs
   GenXFunctions.clear();
