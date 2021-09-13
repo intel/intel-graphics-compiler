@@ -632,18 +632,15 @@ bool AccSubPass::replaceDstWithAcc(G4_INST* inst, int accNum)
             }
         }
 
-        if (builder.relaxedACCRestrictions())
+        if (builder.relaxedACCRestrictions2())
         {
             // mul/mac can't have both sources be acc
             // Note that we only need to check for explicit mac here since we will not change mad to mac
-            if (!builder.relaxedACCRestrictions_1())
+            if (useInst->opcode() == G4_mul || useInst->opcode() == G4_mac)
             {
-                if (useInst->opcode() == G4_mul || useInst->opcode() == G4_mac)
+                if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg())
                 {
-                    if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg())
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
         }
