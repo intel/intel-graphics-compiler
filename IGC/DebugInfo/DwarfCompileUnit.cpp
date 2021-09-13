@@ -202,12 +202,6 @@ int64_t CompileUnit::getDefaultLowerBound() const
     return -1;
 }
 
-static bool HasImplicitLocation(const DbgVariable& var) {
-    if (auto* dbgInst = var.getDbgInst())
-        if (auto* expr = dbgInst->getExpression())
-            return expr->isImplicit();
-    return false;
-}
 /// Check whether the DIE for this MDNode can be shared across CUs.
 static bool isShareableAcrossCUs(llvm::MDNode* D)
 {
@@ -1381,9 +1375,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, const DbgVariable& DV,
     {
         // SIMD lane
         const auto* VISAMod = Loc->GetVISAModule();
-        auto varSizeInBits = Loc->IsInMemory()
-            ? Asm->GetPointerSize() * 8
-            : DV.getRegisterValueSizeInBits(DD);
+        auto varSizeInBits = DV.getRegisterValueSizeInBits(DD);
 
         LLVM_DEBUG(dbgs() << "  addSimdLane(varSizeInBits: " << varSizeInBits <<
                    ", simdWidthOffset: " << simdWidthOffset << ", isPacked: " <<
@@ -1586,26 +1578,29 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, const DbgVariable& DV,
 {
     if (EmitSettings.EnableSIMDLaneDebugging)
     {
-        IGC_ASSERT_MESSAGE(lr->isSpill() == false, "Scalar spilled in scratch space");
+        IGC_ASSERT_MESSAGE(!lr->isSpill(), "Scalar spilled in scratch space");
 
-        auto varSizeInBits = Loc->IsInMemory()
-            ? Asm->GetPointerSize() * 8
-            : DV.getRegisterValueSizeInBits(DD);
+        auto varSizeInBits = DV.getRegisterValueSizeInBits(DD);
         auto offsetInBits = subRegInBytes * 8;
         IGC_ASSERT(offsetInBits / 8 == subRegInBytes);
 
+        if (DD->getEmitterSettings().EnableDebugInfoValidation)
+            DD->getStreamEmitter().verifyRegisterLocationExpr(DV, *DD);
+
         LLVM_DEBUG(dbgs() << "  addSimdLaneScalar(varSizeInBits: " <<
                    varSizeInBits << ", offsetInBits: " << offsetInBits << ")\n");
-        if (isa<llvm::DbgDeclareInst>(DV.getDbgInst()) || HasImplicitLocation(DV))
+        if (DV.currentLocationIsMemoryAddress() ||
+            DV.currentLocationIsImplicit() ||
+            DV.currentLocationIsSimpleIndirectValue())
         {
-            // Pointer or an implicit value of a variable
+            // Pointer, indirect or an implicit value of a variable
             // Note: in case of implicit value we want to put the value of the
-            // bit_piece onto DWARF stack, so implict expression could operatate
+            // bit_piece onto DWARF stack, so expression could operate
             // on it.
             addConstantUValue(Block, offsetInBits);
             addConstantUValue(Block, varSizeInBits);
 
-            LLVM_DEBUG(dbgs() << "  value is pointer or an implicit\n");
+            LLVM_DEBUG(dbgs() << "  value is pointer/indirect or an implicit\n");
             IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
 
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
@@ -2623,22 +2618,6 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
     DIEValue* secondHalfOff = nullptr, *skipOff = nullptr;
     unsigned int offsetTaken = 0, offsetNotTaken = 0, offsetEnd = 0;
 
-    auto EmitExpression = [this](IGC::DIEBlock* Block, const DbgVariable& var) {
-        // Emit DIExpression if it exists
-        if (auto* dbgInst = var.getDbgInst())
-        {
-            if (auto* expr = dbgInst->getExpression())
-            {
-                for (auto elem : expr->getElements())
-                {
-                    auto BF = DIEInteger::BestForm(false, elem);
-                    addUInt(Block, BF, elem);
-                }
-            }
-        }
-        return;
-    };
-
     LLVM_DEBUG(dbgs() << "  building DWARF info for the variable [" << var.getName() << "]\n");
     // locs contains 1 item for SIMD8/SIMD16 kernels describing locations of all channels.
     // locs contains 2 items for SIMD32 kernels. First item has storage mapping for lower 16
@@ -2931,13 +2910,19 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
                     auto offsetInBits = lrToUse.getGRF().subRegNum * 8;
                     IGC_ASSERT(offsetInBits / 8 == lrToUse.getGRF().subRegNum);
 
+                    if (DD->getEmitterSettings().EnableDebugInfoValidation)
+                        DD->getStreamEmitter().verifyRegisterLocationExpr(var, *DD);
+
                     addRegisterLoc(Block, lrToUse.getGRF().regNum, offset, var.getDbgInst());
 
-                    if (HasImplicitLocation(var))
+                    if (var.currentLocationIsMemoryAddress() ||
+                        var.currentLocationIsImplicit() ||
+                        var.currentLocationIsSimpleIndirectValue())
                     {
                         addConstantUValue(Block, offsetInBits);
                         addConstantUValue(Block, varSizeInBits);
 
+                        LLVM_DEBUG(dbgs() << "  value is pointer/indirect or an implicit\n");
                         IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
                         addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
                     }
@@ -2955,7 +2940,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
                         // Emit GT-relative location expression
                         addGTRelativeLocation(Block, loc);
                         addSimdLaneScalar(Block, var, loc, &lrToUse, subReg);
-                        EmitExpression(Block, var);
+                        var.emitExpression(this, Block);
 
                         break;
                     }
@@ -3002,9 +2987,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
                         unsigned GrfSizeInBits = GrfSizeBytes * 8;
                         IGC_ASSERT(GrfSizeInBits <= std::numeric_limits<uint16_t>::max());
 
-                        unsigned varSizeInBits = loc->IsInMemory()
-                            ? Asm->GetPointerSize() * 8
-                            : var.getRegisterValueSizeInBits(DD);
+                        unsigned varSizeInBits = var.getRegisterValueSizeInBits(DD);
 
                         unsigned varSizeInReg = (loc->IsInMemory() && varSizeInBits < 32)
                                               ? 32
@@ -3033,7 +3016,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
             {
                 LLVM_DEBUG(dbgs() << "  <warning> variable is niether in GRF nor spilled\n");
             }
-            EmitExpression(Block, var);
+            var.emitExpression(this, Block);
 
         }
         firstHalf = false;

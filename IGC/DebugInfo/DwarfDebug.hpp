@@ -151,7 +151,11 @@ namespace IGC
         DbgVariable* getAbstractVariable() const { return AbsVar; }
 
         const llvm::DbgVariableIntrinsic* getDbgInst() const { return m_pDbgInst; }
-        void setDbgInst(const llvm::DbgVariableIntrinsic* pInst) { m_pDbgInst = pInst; }
+        void setDbgInst(const llvm::DbgVariableIntrinsic* pInst)
+        {
+            IGC_ASSERT(pInst && IsSupportedDebugInst(pInst));
+            m_pDbgInst = pInst;
+        }
 
         /// If this type is derived from a base type then return base type size
         /// even if it derived directly or indirectly from Composite Type
@@ -169,6 +173,25 @@ namespace IGC
         /// of the source variable, should be usde to calculate required
         /// storage required
         unsigned getRegisterValueSizeInBits(const DwarfDebug* DD) const;
+
+        bool currentLocationIsImplicit() const;
+        bool currentLocationIsMemoryAddress() const;
+
+        // "Simple Indirect Value" is a dbg.value of the following form:
+        //      llvm.dbg.value(pointer to <whatever>, <nevermind>,
+        //                     !DIExpression(DW_OP_deref, [DW_OP_LLVM_fragment]))
+        // Other types of indirect values are currently not supported.
+        // For example, if we encounter an expression like this:
+        //     call void @llvm.dbg.value(metadata i32* %<whatever>,
+        //          metadata !<nevermind>,
+        //          metadata !DIExpression(DW_OP_deref), DW_OP_plus_uconst, 3)
+        // We won't be able to emit a proper expression, due to limitations
+        // of the current *implementation*. A proper expression should have
+        // DW_OP_stack_value to form a proper location descriptor needed in
+        // this context.
+        bool currentLocationIsSimpleIndirectValue() const;
+
+        void emitExpression(CompileUnit* CU, IGC::DIEBlock* Block) const;
 
         // Translate tag to proper Dwarf tag.
         llvm::dwarf::Tag getTag() const
@@ -202,6 +225,8 @@ namespace IGC
 
         llvm::DIType* getType() const;
 
+
+        static bool IsSupportedDebugInst(const llvm::Instruction* Inst);
         void print(llvm::raw_ostream& O, bool NestedAbstract = false) const;
         static void printDbgInst(llvm::raw_ostream& O,
                                  const llvm::Instruction* Inst,

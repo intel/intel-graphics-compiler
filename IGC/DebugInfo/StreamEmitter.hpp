@@ -40,6 +40,7 @@ namespace IGC
 {
     class DbgVariable;
     class DwarfDebug;
+    struct VISAVariableLocation;
 
     /// @brief StreamEmitter provides API methods for emitting elf object.
     ///        It will be used to emit the debug info sections in dwarf format.
@@ -200,8 +201,23 @@ namespace IGC
                                         const DwarfDebug& DD,
                                         unsigned MaxGRFSpaceInBits,
                                         uint64_t ExpectedSize);
+        void verifyRegisterLocationExpr(const DbgVariable& VarVal,
+                                        const DwarfDebug& DD);
 
     private:
+
+        class DiagnosticBuff
+        {
+            std::string Buff;
+            llvm::raw_string_ostream OS;
+        public:
+            DiagnosticBuff(): OS(Buff) {}
+            llvm::raw_string_ostream &out() { return OS; }
+        };
+
+        void verificationReport(const DbgVariable& VarVal,
+                                DiagnosticBuff& DiagBuff);
+
         /// @brief Return information about object file lowering.
         const llvm::MCObjectFileInfo& GetObjFileLowering() const;
 

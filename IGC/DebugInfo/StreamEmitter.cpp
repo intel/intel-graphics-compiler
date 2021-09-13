@@ -836,30 +836,59 @@ void StreamEmitter::verifyRegisterLocationSize(const IGC::DbgVariable& VarVal,
         // TODO: implement some sanity checks
         return;
     }
-    std::string ErrMsg;
-    llvm::raw_string_ostream OS(ErrMsg);
-    auto PosBeforeChecks = OS.tell();
-
+    DiagnosticBuff Diag;
     auto DwarfTypeSize = VarVal.getBasicSize(&DD);
     if (DwarfTypeSize != ExpectedSize) {
-        OS << "ValidationFailure [regLocSize] -- DWARF Type Size: " <<
+        Diag.out() << "ValidationFailure [regLocSize] -- DWARF Type Size: " <<
             DwarfTypeSize << ", expected: " << ExpectedSize << "\n";
     }
     if (ExpectedSize > MaxGRFSpaceInBits) {
-        OS << "ValidationFailure [GRFSpace] -- Available GRF space: " <<
+        Diag.out() << "ValidationFailure [GRFSpace] -- Available GRF space: " <<
             MaxGRFSpaceInBits << ", while expected value size: " <<
             ExpectedSize << "\n";
     }
 
     // Dump DbgVariable if errors were reported
-    if (PosBeforeChecks != OS.tell())
-    {
-        VarVal.print(OS);
-        OS << "==============\n";
-        OS.str(); // flush raw_string_stream
-
-        ErrorLog.append(ErrMsg);
-        LLVM_DEBUG(dbgs() << ErrMsg);
-    }
+    verificationReport(VarVal, Diag);
 }
 
+void StreamEmitter::verifyRegisterLocationExpr(const DbgVariable& DV,
+                                               const DwarfDebug& DD)
+{
+    if (!GetEmitterSettings().EnableDebugInfoValidation)
+        return;
+
+    // TODO: add checks for locations other than llvm.dbg.value
+    if (DV.currentLocationIsMemoryAddress())
+        return;
+
+    auto* DbgInst = DV.getDbgInst();
+    if (!isa<llvm::DbgValueInst>(DbgInst))
+        return;
+
+    DiagnosticBuff Diag;
+    if (!DV.currentLocationIsImplicit() &&
+        !DV.currentLocationIsSimpleIndirectValue())
+    {
+        if (DbgInst->getExpression()->isComplex())
+        {
+            Diag.out() << "ValidationFailure [UnexpectedComlexExpression]" <<
+               " for a simple register location\n";
+        }
+    }
+    verificationReport(DV, Diag);
+}
+
+void StreamEmitter::verificationReport(const DbgVariable& VarVal,
+                                       DiagnosticBuff& Diag)
+{
+    if (Diag.out().tell() == 0)
+        return;
+
+    VarVal.print(Diag.out());
+    Diag.out() << "==============\n";
+    const auto& ErrMsg = Diag.out().str();
+
+    ErrorLog.append(ErrMsg);
+    LLVM_DEBUG(dbgs() << ErrMsg);
+}

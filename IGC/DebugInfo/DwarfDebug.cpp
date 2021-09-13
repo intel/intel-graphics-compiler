@@ -31,6 +31,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Module.h"
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCDwarf.h"
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSymbol.h"
@@ -38,7 +39,7 @@ See LICENSE.TXT for details.
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
 #include "llvm/IR/IntrinsicInst.h"
-#include "llvm/MC/MCDwarf.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "DwarfDebug.hpp"
@@ -77,19 +78,12 @@ bool DbgVariable::isBlockByrefVariable() const {
 #endif
 }
 
-// Currently, only DbgDeclare and DbgValue are supported
-static bool IsSupportedDebugInst(const llvm::Instruction* Inst)
-{
-    IGC_ASSERT(Inst);
-    return dyn_cast<DbgValueInst>(Inst) || dyn_cast<DbgDeclareInst>(Inst);
-}
-
 static bool IsDebugInst(const llvm::Instruction* Inst)
 {
     if (!isa<DbgInfoIntrinsic>(Inst))
         return false;
 #ifndef NDEBUG
-    if (!IsSupportedDebugInst(Inst))
+    if (!DbgVariable::IsSupportedDebugInst(Inst))
     {
         LLVM_DEBUG(dbgs() << "WARNING! Unsupported DbgInfo Instruction detected:\n";
                    DbgVariable::dumpDbgInst(Inst));
@@ -100,7 +94,7 @@ static bool IsDebugInst(const llvm::Instruction* Inst)
 
 static const MDNode* GetDebugVariable(const Instruction* Inst)
 {
-    IGC_ASSERT(IsSupportedDebugInst(Inst));
+    IGC_ASSERT(DbgVariable::IsSupportedDebugInst(Inst));
 
     if (const auto* DclInst = dyn_cast<DbgDeclareInst>(Inst))
         return DclInst->getVariable();
@@ -109,6 +103,83 @@ static const MDNode* GetDebugVariable(const Instruction* Inst)
         return ValInst->getVariable();
 
     return nullptr;
+}
+
+bool DbgVariable::IsSupportedDebugInst(const llvm::Instruction* Inst)
+{
+    IGC_ASSERT(Inst);
+    return dyn_cast<DbgValueInst>(Inst) || dyn_cast<DbgDeclareInst>(Inst);
+}
+
+bool DbgVariable::currentLocationIsImplicit() const
+{
+    const auto* DbgInst = getDbgInst();
+    if (!DbgInst)
+        return false;
+    return DbgInst->getExpression()->isImplicit();
+}
+
+bool DbgVariable::currentLocationIsMemoryAddress() const
+{
+    const auto* DbgInst = getDbgInst();
+    if (!DbgInst)
+        return false;
+    return isa<llvm::DbgDeclareInst>(DbgInst);
+}
+
+bool DbgVariable::currentLocationIsSimpleIndirectValue() const
+{
+    if (currentLocationIsImplicit())
+        return false;
+
+    const auto* DbgInst = getDbgInst();
+    if (!isa<llvm::DbgValueInst>(DbgInst))
+        return false;
+    auto* Expr = DbgInst->getExpression();
+
+    // IMPORTANT: changes here should be in sync with DbgVariable::emitExpression
+    Value* IRLocation = IGCLLVM::getVariableLocation(DbgInst);
+    if (!IRLocation->getType()->isPointerTy())
+        return false;
+
+    if (!Expr->startsWithDeref())
+        return false;
+
+    if (!std::all_of(Expr->expr_op_begin(), Expr->expr_op_end(),
+                     [](const auto& DIOp) {
+                        return  DIOp.getOp() == dwarf::DW_OP_deref ||
+                                DIOp.getOp() == dwarf::DW_OP_LLVM_fragment;
+                     }))
+    {
+        // backout if the expression contains something other than deref/fragment
+        return false;
+    }
+
+    return true;
+}
+
+void DbgVariable::emitExpression(CompileUnit* CU, IGC::DIEBlock* Block) const
+{
+    IGC_ASSERT(CU);
+    IGC_ASSERT(Block);
+
+    const auto* DbgInst = getDbgInst();
+    if (!DbgInst)
+        return;
+
+    // Indirect values result in emission DWARF location descriptors of
+    // <memory location> type - the evaluation should result in address,
+    // thus no need for OP_deref.
+    // Currently, our dwarf emitters support only "simple indirect" values.
+    auto Elements = DbgInst->getExpression()->getElements();
+    if (currentLocationIsSimpleIndirectValue())
+        Elements = Elements.slice(1); // drop OP_deref
+
+    for (auto elem : Elements)
+    {
+        auto BF = DIEInteger::BestForm(false, elem);
+        CU->addUInt(Block, BF, elem);
+    }
 }
 
 /// If this type is derived from a base type then return base type size
