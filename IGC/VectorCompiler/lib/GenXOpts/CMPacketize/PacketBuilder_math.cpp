@@ -127,17 +127,22 @@ namespace pktz
                                 5.5826318e-2f,
                                 8.9893397e-3f,
                                 1.8775767e-3f);
-#elif EXP_POLY_DEGREE == 4
+#endif
+
+#if EXP_POLY_DEGREE == 4
         Value* expfpart = POLY4(
             fpart, 1.0000026f, 6.9300383e-1f, 2.4144275e-1f, 5.2011464e-2f, 1.3534167e-2f);
-#elif EXP_POLY_DEGREE == 3
+#endif
+
+#if EXP_POLY_DEGREE == 3
         Value* expfpart =
             POLY3(fpart, 9.9992520e-1f, 6.9583356e-1f, 2.2606716e-1f, 7.8024521e-2f);
-#elif EXP_POLY_DEGREE == 2
-        Value* expfpart = POLY2(fpart, 1.0017247f, 6.5763628e-1f, 3.3718944e-1f);
-#else
-#error
 #endif
+
+#if EXP_POLY_DEGREE == 2
+        Value* expfpart = POLY2(fpart, 1.0017247f, 6.5763628e-1f, 3.3718944e-1f);
+#endif
+
         result = FMUL(expipart, expfpart, "exp2.");
 
         return result;
