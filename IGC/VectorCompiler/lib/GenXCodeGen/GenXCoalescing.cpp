@@ -197,6 +197,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 
 #include <algorithm>
+#include <map>
 #include <vector>
 
 using namespace llvm;
@@ -317,6 +318,7 @@ namespace {
     std::vector<Candidate> NormalCandidates;
     std::vector<CallInst*> Callables;
     std::vector<CopyData> ToCopy;
+    std::map<SimpleValue, Value*> CallToRetVal;
     std::unordered_map<Instruction *, Value *> CopyCoalesced;
 
   public:
@@ -508,6 +510,7 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
   CopyCandidates.clear();
   NormalCandidates.clear();
   Callables.clear();
+  CallToRetVal.clear();
   ToCopy.clear();
   CopyCoalesced.clear();
   return true;
@@ -1400,9 +1403,10 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           showCoalesceFail(SimpleValue(CI, StructIdx), CI->getDebugLoc(),
                            "ret postcopy", DestLR, SourceLR);
           unsigned Num = Numbering->getRetPostCopyNumber(CI, StructIdx);
+          SimpleValue Source(CI, StructIdx);
           Instruction *NewCopy =
-              insertCopy(SimpleValue(CI, StructIdx), DestLR, InsertBefore,
-                         "retval.postcopy", Num);
+              insertCopy(Source, DestLR, InsertBefore, "retval.postcopy", Num);
+          CallToRetVal[Source] = NewCopy;
           IGC_ASSERT(NewCopy);
           if (AllUsesAreExtract) {
             // For a struct ret value where all the uses are non-struct
@@ -2039,6 +2043,9 @@ SortedCopies GenXCoalescing::getSortedCopyData() {
 Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
   LiveRange *DestLR = Liveness->getLiveRange(CD.Dest);
   LiveRange *SourceLR = Liveness->getLiveRange(CD.Source);
+  SimpleValue Source = CD.Source;
+  if (auto It = CallToRetVal.find(Source); It != CallToRetVal.end())
+    Source = SimpleValue{It->second};
   Instruction *NewCopy = nullptr;
   switch (CD.CopyT) {
   case PHICOPY:
@@ -2052,7 +2059,7 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
             : Numbering->getNumber(CD.InsertPoint);
     showCoalesceFail(CD.Dest, CD.InsertPoint->getDebugLoc(), "phi", DestLR,
                      SourceLR);
-    NewCopy = insertCopy(CD.Source, DestLR, CD.InsertPoint, "phicopy", Num);
+    NewCopy = insertCopy(Source, DestLR, CD.InsertPoint, "phicopy", Num);
     Phi->setIncomingValue(CD.UseInDest->getOperandNo(), NewCopy);
     break;
   }
@@ -2063,7 +2070,7 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
     Instruction *DestInst = cast<Instruction>(CD.Dest.getValue());
     showCoalesceFail(CD.Dest, DestInst->getDebugLoc(), "two address", DestLR,
                      SourceLR);
-    NewCopy = insertCopy(CD.Source, DestLR, DestInst, "twoaddr",
+    NewCopy = insertCopy(Source, DestLR, DestInst, "twoaddr",
                          Numbering->getNumber(DestInst) - 1);
     NewCopy =
         insertIntoStruct(CD.Dest.getValue()->getType(), CD.Dest.getIndex(),
