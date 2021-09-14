@@ -52,6 +52,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_set>
 #include "Probe/Assertion.h"
 #include <optional>
+#include <Metrics/IGCMetric.h>
 
 /************************************************************************
 This file contains the interface structure and functions to communicate
@@ -896,6 +897,8 @@ namespace IGC
         llvm::AssemblyAnnotationWriter* annotater = nullptr;
 
         RetryManager m_retryManager;
+
+        IGCMetrics::IGCMetric metrics;
 
         // shader stat for opt customization
         uint32_t     m_tempCount = 0;

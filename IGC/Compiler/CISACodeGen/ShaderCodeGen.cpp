@@ -345,7 +345,7 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
     unsigned int numInsts = ctx.m_instrTypes.numInsts;
     bool hasUnmaskedRegion = ctx.m_instrTypes.hasUnmaskedRegion;
     IGCPassManager mpm(&ctx, "UpdateOptPre");
-    mpm.add(new CheckInstrTypes(&(ctx.m_instrTypes)));
+    mpm.add(new CheckInstrTypes(&(ctx.m_instrTypes), nullptr));
     mpm.run(*ctx.getModule());
     ctx.m_instrTypes.numBB = numBB;
     ctx.m_instrTypes.numSample = numSample;
@@ -1432,7 +1432,7 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
     }
 
     IGCPassManager mpm(pContext, "OPTPre");
-    mpm.add(new CheckInstrTypes(&(pContext->m_instrTypes)));
+    mpm.add(new CheckInstrTypes(&(pContext->m_instrTypes), &pContext->metrics));
 
     if (pContext->isPOSH())
     {

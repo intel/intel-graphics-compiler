@@ -582,11 +582,12 @@ bool Emu64Ops::expandInsts(Function& F) {
     for (auto& BB : RPOT) {
         for (auto BI = BB->begin(), BE = BB->end(); BI != BE; /*EMPTY*/) {
             Instruction* I = &(*BI++);
-
+            CGC->metrics.StatBeginEmuFunc(I);
             bool LocalChanged = Expander->expand(I);
             Changed |= LocalChanged;
 
             if (LocalChanged) {
+                CGC->metrics.StatEndEmuFunc(I);
                 BI = std::next(BasicBlock::iterator(I));
                 BE = I->getParent()->end();
                 DeadInsts.insert(I);

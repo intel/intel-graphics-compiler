@@ -1001,6 +1001,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
 //64 bit emulation for divide
 void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunctions function)
 {
+    m_pCtx->metrics.StatBeginEmuFunc(&inst);
     unsigned int numElements = 1;
     unsigned int elementIndex = 0;
 
@@ -1075,10 +1076,12 @@ void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunction
 
     m_libModuleToBeImported[LIBMOD_INT_DIV_REM] = true;
     m_changed = true;
+    m_pCtx->metrics.StatEndEmuFunc(funcCall);
 }
 
 void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
 {
+    m_pCtx->metrics.StatBeginEmuFunc(&inst);
     if ((isI64DivRem() || isDPEmu()) &&
         inst.getDestTy()->isHalfTy() && inst.getSrcTy()->isDoubleTy())
     {
@@ -1116,6 +1119,7 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
 
         m_libModuleToBeImported[LIBMOD_INT_DIV_REM] = true;
         m_changed = true;
+        m_pCtx->metrics.StatEndEmuFunc(funcCall);
         return;
     }
 
@@ -1140,6 +1144,7 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
         inst.eraseFromParent();
 
         m_changed = true;
+        m_pCtx->metrics.StatEndEmuFunc(funcCall);
         return;
     }
 }
@@ -1163,28 +1168,35 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs 
 
         Instruction* twoI32 = CastInst::Create(
             Instruction::BitCast, I.getOperand(1), vec2Ty, "", &I);
+        twoI32->setDebugLoc(I.getDebugLoc());
         Instruction* topI32 = ExtractElementInst::Create(
             twoI32, ConstantInt::get(intTy, 1), "", &I);
+        topI32->setDebugLoc(I.getDebugLoc());
 
         //Isolate and flip sign bit
         Instruction* Inst2 = BinaryOperator::CreateAnd(
             topI32, ConstantInt::get(intTy, 0x80000000), "", &I);
+        Inst2->setDebugLoc(I.getDebugLoc());
         Instruction* Inst3 = BinaryOperator::CreateXor(
             Inst2, ConstantInt::get(intTy, 0x80000000), "", &I);
+        Inst3->setDebugLoc(I.getDebugLoc());
 
         //Change sign bit and pack back new value
         Instruction* Inst4 = BinaryOperator::CreateAnd(
             topI32, ConstantInt::get(intTy, 0x7FFFFFFF), "", &I);
+        Inst4->setDebugLoc(I.getDebugLoc());
         Instruction* newTopI32 = BinaryOperator::CreateOr(
             Inst4, Inst3, "", &I);
+        newTopI32->setDebugLoc(I.getDebugLoc());
         Instruction* finalVal = InsertElementInst::Create(
             twoI32, newTopI32, ConstantInt::get(intTy, 1), "", &I);
+        finalVal->setDebugLoc(I.getDebugLoc());
         Instruction* finalValDouble = CastInst::Create(
             Instruction::BitCast, finalVal, DoubleTy, "", &I);
+        finalValDouble->setDebugLoc(I.getDebugLoc());
 
         I.replaceAllUsesWith(finalValDouble);
         I.eraseFromParent();
-
         m_changed = true;
     }
     else
@@ -1207,7 +1219,6 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs 
 
         I.replaceAllUsesWith(funcCall);
         I.eraseFromParent();
-
         m_changed = true;
     }
 }
@@ -1387,6 +1398,7 @@ void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst& I)
     if (isDPEmu() && I.getDestTy()->isDoubleTy() &&
         (I.getSrcTy()->isFloatTy() || I.getSrcTy()->isHalfTy()))
     {
+        m_pCtx->metrics.StatBeginEmuFunc(&I);
         Function* newFunc = getOrCreateFunction(FUNCTION_SP_TO_DP);
         Type* intTy = Type::getInt32Ty(m_pModule->getContext());
         Function* CurrFunc = I.getParent()->getParent();
@@ -1413,13 +1425,14 @@ void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst& I)
 
         I.replaceAllUsesWith(funcCall);
         I.eraseFromParent();
-
+        m_pCtx->metrics.StatEndEmuFunc(funcCall);
         m_changed = true;
     }
 }
 
 void PreCompiledFuncImport::visitCastInst(llvm::CastInst& I)
 {
+    m_pCtx->metrics.StatBeginEmuFunc(&I);
     if (!isDPEmu()) {
         return;
     }
@@ -1504,7 +1517,7 @@ void PreCompiledFuncImport::visitCastInst(llvm::CastInst& I)
 
     I.replaceAllUsesWith(newVal);
     I.eraseFromParent();
-
+    m_pCtx->metrics.StatEndEmuFunc(newVal);
     m_changed = true;
     return;
 }
@@ -1582,6 +1595,7 @@ uint32_t PreCompiledFuncImport::getFCmpMask(CmpInst::Predicate Pred)
 
 void PreCompiledFuncImport::visitFCmpInst(FCmpInst& I)
 {
+    m_pCtx->metrics.StatBeginEmuFunc(&I);
     if (!isDPEmu() || !I.getOperand(0)->getType()->isDoubleTy()) {
         return;
     }
@@ -1627,12 +1641,13 @@ void PreCompiledFuncImport::visitFCmpInst(FCmpInst& I)
 
     I.replaceAllUsesWith(intcmp);
     I.eraseFromParent();
-
+    m_pCtx->metrics.StatEndEmuFunc(funcCall);
     m_changed = true;
 }
 
 void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
 {
+    m_pCtx->metrics.StatBeginEmuFunc(&I);
     if (IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin))
     {
         // This is to test if an emulated function is the same
@@ -1759,10 +1774,12 @@ As a result, we reduce 2x necessary work
 
                 if (auto* AI = dyn_cast<AllocaInst>(remValue))
                     AI->eraseFromParent();
+                InstCompare->setDebugLoc(I.getDebugLoc());
 
                 eraseCallInst(&I);
                 I.replaceAllUsesWith(InstCompare);
                 I.eraseFromParent();
+                m_pCtx->metrics.StatEndEmuFunc(InstCompare);
                 m_changed = true;
                 return;
             }
@@ -1792,7 +1809,7 @@ As a result, we reduce 2x necessary work
 
         I.replaceAllUsesWith(newVal);
         I.eraseFromParent();
-
+        m_pCtx->metrics.StatEndEmuFunc(newVal);
         m_changed = true;
         return;
     }
@@ -1821,7 +1838,7 @@ As a result, we reduce 2x necessary work
 
         I.replaceAllUsesWith(newVal);
         I.eraseFromParent();
-
+        m_pCtx->metrics.StatEndEmuFunc(newVal);
         m_changed = true;
         return;
     }
@@ -1849,7 +1866,7 @@ As a result, we reduce 2x necessary work
 
         I.replaceAllUsesWith(fabsVal);
         I.eraseFromParent();
-
+        m_pCtx->metrics.StatEndEmuFunc(fabsVal);
         m_changed = true;
         return;
     }

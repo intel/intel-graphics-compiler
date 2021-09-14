@@ -1354,6 +1354,10 @@ add_subdirectory(common)
 igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
 
+#Metrcis
+include(igc_find_protobuf)
+include(Metrics/protobuf_metrics.cmake)
+
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
@@ -1451,6 +1455,7 @@ set(IGC_BUILD__HDR__IGC__igc_dll
     ${IGC_BUILD__HDR__IGC_DriverInterface__igc_dll}
     ${IGC_WrapperLLVM_HDR}
   )
+
 
 #FCL
 set(IGC_BUILD__HDR__IGC__fcl_dll
@@ -1629,6 +1634,11 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
         "${IGC_BUILD__PROJ__AdaptorOCL}"
     )
   endif()
+
+  #Metrics
+  list(APPEND _targetLinkLineCommon
+      igc_metric
+  )
 
 list(APPEND _targetLinkLineCommon zebinlib)
 

@@ -98,6 +98,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/InitializePasses.h"
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/Optimizer/FixFastMathFlags.hpp"
+#include "Compiler/CustomUnsafeOptPass.hpp"
 #include "MoveStaticAllocas.h"
 #include "PreprocessSPVIR.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
@@ -117,6 +118,9 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 #include <algorithm>
+
+
+#include <Metrics/IGCMetric.h>
 
 
 
@@ -160,7 +164,6 @@ namespace IGC
         return oclMajor;
     }
 
-
 static void CommonOCLBasedPasses(
     OpenCLProgramContext* pContext,
     std::unique_ptr<llvm::Module> BuiltinGenericModule,
@@ -171,6 +174,10 @@ static void CommonOCLBasedPasses(
 #endif
 
     COMPILER_TIME_START(pContext, TIME_UnificationPasses);
+
+    pContext->metrics.Init(&pContext->hash,
+        pContext->getModule()->getNamedMetadata("llvm.dbg.cu") != nullptr);
+    pContext->metrics.CollectFunctions(pContext->getModule());
 
     unify_opt_PreProcess(pContext);
 
@@ -535,7 +542,6 @@ static void CommonOCLBasedPasses(
 
     mpm.add(createLowerSwitchPass());
     mpm.add(createTypeLegalizerPass());
-
     mpm.run(*pContext->getModule());
 
     // Following functions checks whether -g option is specified.

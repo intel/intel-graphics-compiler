@@ -1304,6 +1304,9 @@ bool TranslateBuild(
 
     COMPILER_TIME_DEL(&oclContext, m_compilerTimeStats);
 
+    oclContext.metrics.FinalizeStats();
+    oclContext.metrics.OutputMetrics();
+
     return true;
 }
 

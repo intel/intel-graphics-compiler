@@ -3923,6 +3923,11 @@ namespace IGC
         if (context->m_instrTypes.hasDebugInfo)
         {
             SaveOption(vISA_GenerateDebugInfo, true);
+
+            if (context->metrics.Enable())
+            {
+                SaveOption(vISA_GenerateKernelInfo, true);
+            }
         }
 
         if (canAbortOnSpill)
@@ -5380,6 +5385,10 @@ namespace IGC
             context->m_compilerTimeStats->recordVISATimers();
         }
 #endif
+        KERNEL_INFO* vISAstats;
+        pMainKernel->GetKernelInfo(vISAstats);
+        // Collect metrics from vISA
+        context->metrics.CollectRegStats(vISAstats);
 
         FINALIZER_INFO* jitInfo = nullptr;
         pMainKernel->GetJitInfo(jitInfo);

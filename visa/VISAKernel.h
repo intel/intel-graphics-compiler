@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "visa_wa.h"
 #include "Mem_Manager.h"
 #include "JitterDataStruct.h"
+#include "KernelInfo.h"
 //#include "G4_IR.hpp"  // for PhyRegPool
 #include "Attributes.hpp"
 #include "CompilerStats.h"
@@ -81,6 +82,7 @@ public:
         memset(&m_cisa_kernel, 0, sizeof(kernel_format_t));
         m_forward_label_count = 0;
         m_jitInfo = NULL;
+        m_kernelInfo = NULL;
         m_kernel = NULL;
         m_builder = NULL;
 
@@ -646,6 +648,7 @@ public:
     /********** MISC APIs START *************************/
     VISA_BUILDER_API int GetGenxBinary(void *&buffer, int &size) const override;
     VISA_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo) const override;
+    VISA_BUILDER_API int GetKernelInfo(KERNEL_INFO*& kernelInfo) const override;
     VISA_BUILDER_API int GetCompilerStats(CompilerStats &compilerStats) override;
     VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const override;
     VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size) const override;
@@ -933,6 +936,7 @@ private:
     unsigned long m_genx_debug_info_size;
     char * m_genx_debug_info_buffer;
     FINALIZER_INFO* m_jitInfo;
+    KERNEL_INFO* m_kernelInfo;
     CompilerStats m_compilerStats;
 
     unsigned long m_cisa_binary_size;

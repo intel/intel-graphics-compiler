@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_util.h"
 #include "Common_ISA_framework.h"
 #include "JitterDataStruct.h"
+#include "KernelInfo.h"
 #include "VISAKernel.h"
 #include "Attributes.hpp"
 #include "Timer.h"
@@ -7950,6 +7951,50 @@ void VISAKernelImpl::finalizeKernel()
     m_cisa_binary_size = m_instruction_size + m_kernel_data_size;
     m_cisa_binary_buffer = (char *) m_mem.alloc(m_cisa_binary_size);
 
+    if (getOptions()->getOption(vISA_GenerateKernelInfo))
+    {
+        auto kernel = getKernel();
+
+        m_kernelInfo = new KERNEL_INFO();
+        BB_LIST_ITER bbItEnd = kernel->fg.end();
+        for (auto bbIt = kernel->fg.begin();
+            bbIt != bbItEnd;
+            bbIt++)
+        {
+            G4_BB* bb = (*bbIt);
+            for (auto inst : bb->getInstList())
+            {
+                int lineNb = inst->getLineNo();
+
+                auto dstRg = inst->getDst();
+                if (dstRg == nullptr) continue;
+                auto decl = dstRg->getTopDcl();
+                if (decl == nullptr) continue;
+                //auto reg = decl->getRegVar();
+
+                VarInfo* varInfo = nullptr;
+
+                if ((varInfo = m_kernelInfo->AddVarInfo(decl->getName())) != nullptr)
+                {
+                    varInfo->lineNb = lineNb;
+                    varInfo->isSpill = decl->isSpilled();
+                    // fixed values == const variable?
+                    varInfo->isConst = dstRg->isImm();
+                    varInfo->promoted2GRF = dstRg->isGreg();
+                    varInfo->size = decl->getByteSize();
+
+                    varInfo->type = (short)decl->getElemType();
+
+                    //varInfo->isUniform = N\A
+                    //varInfo->addrModel = N\A
+                    //varInfo->memoryAccess = N\A
+                    //varInfo->bc_count = N\A
+                    //varInfo->bc_sameBank = N\A
+                    //varInfo->bc_twoSrc = N\A
+                }
+            }
+        }
+    }
 }
 
 unsigned long VISAKernelImpl::writeInToCisaBinaryBuffer(const void * value, int size)
@@ -8127,6 +8172,11 @@ VISAKernelImpl::~VISAKernelImpl()
         delete m_kernelMem;
     }
 
+    if (m_kernelInfo != nullptr)
+    {
+        delete m_kernelInfo;
+    }
+
     destroyKernelAttributes();
 }
 
@@ -8195,6 +8245,12 @@ int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size) const
 int VISAKernelImpl::GetJitInfo(FINALIZER_INFO *&jitInfo) const
 {
     jitInfo = m_jitInfo;
+    return VISA_SUCCESS;
+}
+
+int VISAKernelImpl::GetKernelInfo(KERNEL_INFO*& kernelInfo) const
+{
+    kernelInfo = m_kernelInfo;
     return VISA_SUCCESS;
 }
 

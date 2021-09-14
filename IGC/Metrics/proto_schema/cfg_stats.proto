@@ -1,0 +1,37 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2021 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+syntax = "proto3";
+
+import "Metrics/proto_schema/code_reference.proto";
+
+package IGC_METRICS;
+
+message CFGStats {
+
+  message Loops {
+    optional int32 countTrip = 1;
+    optional int32 nestingLevel = 2;
+
+    optional bool isUnrolled = 3;
+
+    optional CodeRef loopLoc = 4;
+  }
+
+  message ifElseBr {
+    int32 countBrTaken = 1;
+
+    optional CodeRef brLoc = 2;
+  }
+
+  int32 loopUnrollFactor = 1;
+  int32 loopBlockingFactor = 2;
+
+  repeated Loops loops_stats = 3;
+  repeated ifElseBr ifElseBr_stats = 4;
+}

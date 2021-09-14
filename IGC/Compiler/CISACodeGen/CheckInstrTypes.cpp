@@ -34,11 +34,12 @@ IGC_INITIALIZE_PASS_END(CheckInstrTypes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_O
 
 char CheckInstrTypes::ID = 0;
 
-CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID), g_InstrTypes(instrList)
+CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMetric* metrics) : FunctionPass(ID), g_InstrTypes(instrList)
 {
     initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
     initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
 
+    g_metrics = metrics;
     instrList->CorrelatedValuePropagationEnable = false;
     instrList->hasLoop = false;
     instrList->hasMultipleBB = false;
@@ -115,6 +116,8 @@ void CheckInstrTypes::SetLoopFlags(Function& F)
 bool CheckInstrTypes::runOnFunction(Function& F)
 {
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    if (g_metrics != nullptr)
+        g_metrics->CollectLoops(LI);
     g_InstrTypes->hasLoop |= !(LI->empty());
 
     // check if module has debug info

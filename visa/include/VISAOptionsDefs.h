@@ -298,6 +298,7 @@ DEF_VISA_OPTION(vISA_GenerateDebugInfo,   ET_BOOL,  "-generateDebugInfo", UNUSED
 DEF_VISA_OPTION(vISA_setStartBreakPoint,  ET_BOOL,  "-setstartbp",        UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertHashMovs,      ET_BOOL,  NULLSTR,              UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertDummyMovForHWRSWA,      ET_BOOL,  "-insertRSDummyMov",              UNUSED, false)
+DEF_VISA_OPTION(vISA_GenerateKernelInfo,  ET_BOOL, "-generateKernelInfo", UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertDummyMovForDPASRSWA,      ET_BOOL,  "-insertDPASRSDummyMov",              UNUSED, true)
 DEF_VISA_OPTION(vISA_registerHWRSWA,      ET_INT32,  "-dummyRegisterHWRSWA",              UNUSED, 0)
 DEF_VISA_OPTION(vISA_InsertDummyCompactInst, ET_BOOL, "-insertDummyCompactInst", UNUSED, false)

@@ -1,0 +1,38 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2021 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+syntax = "proto3";
+
+package IGC_METRICS;
+
+enum DeviceType
+{
+  IGFX_NONE = 0;
+  IGFX_BROADWELL = 16;
+  IGFX_CHERRYVIEW = 17;
+  IGFX_SKYLAKE = 18;
+  IGFX_KABYLAKE = 19;
+  IGFX_COFFEELAKE = 20;
+  IGFX_WILLOWVIEW = 21;
+  IGFX_BROXTON = 22;
+  IGFX_GEMINILAKE = 23;
+  IGFX_CANNONLAKE = 24;
+  IGFX_ICELAKE = 25;
+  IGFX_ICELAKE_LP = 26;
+  IGFX_LAKEFIELD = 27;
+  IGFX_JASPERLAKE = 28;
+  IGFX_ELKHARTLAKE = 28;
+  IGFX_TIGERLAKE_LP = 29;
+  IGFX_ROCKETLAKE = 30;
+  IGFX_ALDERLAKE_S = 31;
+  IGFX_ALDERLAKE_P = 32;
+  IGFX_DG1 = 1210;
+  IGFX_XE_HP_SDV = 1250;
+
+  option allow_alias = true;
+}

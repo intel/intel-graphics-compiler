@@ -335,6 +335,7 @@ set(GenX_Common_Headers
   VISAKernel.h
   VarSplit.h
   include/JitterDataStruct.h
+  include/KernelInfo.h
   include/RT_Jitter_Interface.h
   include/VISABuilderAPIDefinition.h
   include/VISADefines.h
@@ -516,4 +517,5 @@ set(headers_to_copy
   include/VISABuilderAPIDefinition.h
   include/visa_igc_common_header.h
   include/JitterDataStruct.h
+  include/KernelInfo.h
 )
