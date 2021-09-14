@@ -160,7 +160,7 @@ $ sudo make install
 LLVM version determines what branches are used when building dependencies.
 When checking out the components refer to the following table, replace **XX** with the LLVM version used:
 
-| Repository name       | Version specific | Branch               | LLVM 10 example  |
+| Repository name       | Version specific | Branch               | LLVM 11 example  |
 |-----------------------|:----------------:|----------------------|------------------|
 | llvm-project          | -                | release/**XX**.x     | release/11.x     |
 | vc-intrinsics         | no               | master               | master           |
