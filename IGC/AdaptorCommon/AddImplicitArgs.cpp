@@ -187,7 +187,7 @@ bool AddImplicitArgs::hasIndirectlyCalledParent(const Function* F)
         if (const CallInst* call = dyn_cast<CallInst>(*u))
         {
             const Function* parent = call->getParent()->getParent();
-            if (parent->hasFnAttribute("referenced-indirectly"))
+            if (parent->hasFnAttribute("referenced-indirectly") || hasIndirectlyCalledParent(parent))
                 return true;
         }
     }
