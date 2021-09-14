@@ -22,9 +22,11 @@ See LICENSE.TXT for details.
 #include "llvm/Config/llvm-config.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/Optional.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/GlobalValue.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -101,6 +103,11 @@ namespace IGC
         CompileUnit(unsigned UID, DIE* D, llvm::DICompileUnit* CU,
             StreamEmitter* A, IGC::DwarfDebug* DW);
         ~CompileUnit();
+
+        using ImportedEntityList = llvm::SmallVector<const llvm::MDNode*, 8>;
+        using ImportedEntityMap = llvm::DenseMap<const llvm::MDNode*, ImportedEntityList>;
+
+        ImportedEntityMap ImportedEntities;
 
         // Accessors.
         unsigned getUniqueID() const { return UniqueID; }
@@ -205,6 +212,7 @@ namespace IGC
         /// addSourceLine - Add location information to specified debug information
         /// entry.
         void addSourceLine(DIE* Die, llvm::DIScope* S, unsigned Line);
+        void addSourceLine(DIE* Die, llvm::DIImportedEntity* IE, unsigned Line);
         void addSourceLine(DIE* Die, llvm::DIVariable* V);
         void addSourceLine(DIE* Die, llvm::DISubprogram* SP);
         void addSourceLine(DIE* Die, llvm::DIType* Ty);
@@ -298,6 +306,16 @@ namespace IGC
                                     const DbgDecoder::LiveIntervalsVISA& lr,
                                     uint64_t varSizeInBits, uint64_t offsetInBits);
 
+        // Decode line number, file name and location from a string, where a line no. and file name
+        // (including directory) are separated by '-' character: lineNumber-fileNameIncludingDirectory
+        // There is a workaround for DIModule creation in earlier LLVM versions, where a line and a file
+        // parameters are not supported in DIBuilder.
+        void decodeLineAndFileForISysRoot(llvm::StringRef& lineAndFile, unsigned int* line, std::string* file,
+            std::string* directory);
+
+        /// Construct import_module DIE.
+        IGC::DIE* constructImportedEntityDIE(llvm::DIImportedEntity* Module);
+
         /// getOrCreateNameSpace - Create a DIE for DINameSpace.
         DIE* getOrCreateNameSpace(llvm::DINamespace* NS);
 
@@ -324,6 +342,20 @@ namespace IGC
         /// Create a DIE with the given Tag, add the DIE to its parent, and
         /// call insertDIE if MD is not null.
         DIE* createAndAddDIE(unsigned Tag, DIE& Parent, llvm::DINode* N = nullptr);
+
+        void addImportedEntity(const llvm::DIImportedEntity* IE)
+        {
+            llvm::DIScope* Scope = IE->getScope();
+            assert(Scope && "Invalid Scope encoding!");
+            if (!llvm::isa<llvm::DILocalScope>(Scope))
+            {
+                // No need to add imported enities that are not local declaration.
+                return;
+            }
+
+            auto* LocalScope = llvm::cast<llvm::DILocalScope>(Scope)->getNonLexicalBlockFileScope();
+            ImportedEntities[LocalScope].push_back(IE);
+        }
 
         /// Compute the size of a header for this unit, not including the initial
         /// length field.

@@ -203,7 +203,7 @@ int64_t CompileUnit::getDefaultLowerBound() const
 }
 
 /// Check whether the DIE for this MDNode can be shared across CUs.
-static bool isShareableAcrossCUs(llvm::MDNode* D)
+static bool isShareableAcrossCUs(const llvm::MDNode* D)
 {
     // When the MDNode can be part of the type system, the DIE can be
     // shared across CUs.
@@ -435,6 +435,20 @@ void CompileUnit::addSourceLine(DIE* Die, DIScope* S, unsigned Line)
     if (Line == 0) return;
 
     unsigned FileID = DD->getOrCreateSourceID(S->getFilename(), S->getDirectory(), getUniqueID());
+    IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
+    addUInt(Die, dwarf::DW_AT_decl_file, None, FileID);
+    addUInt(Die, dwarf::DW_AT_decl_line, None, Line);
+}
+
+/// addSourceLine - Add location information to specified debug information
+/// entry.
+void CompileUnit::addSourceLine(DIE* Die, DIImportedEntity* IE, unsigned Line)
+{
+    // If the line number is 0, don't add it.
+    if (Line == 0)
+        return;
+
+    unsigned FileID = DD->getOrCreateSourceID(IE->getFile()->getFilename(), IE->getFile()->getDirectory(), getUniqueID());
     IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
     addUInt(Die, dwarf::DW_AT_decl_file, None, FileID);
     addUInt(Die, dwarf::DW_AT_decl_line, None, Line);
@@ -736,7 +750,6 @@ IGC::DIE* CompileUnit::getOrCreateContextDIE(DIScope* Context)
         return getOrCreateModuleDIE(MD);
 
     return getDIE(Context);
-
 }
 
 /// getOrCreateTypeDIE - Find existing DIE or create new DIE for the
@@ -1658,6 +1671,27 @@ std::string CompileUnit::getParentContextString(DIScope* Context) const
     return CS;
 }
 
+// Decode line number, file name and location from a string, where a line no., file name
+// and directory are separated by '?' character: lineNumber?fileName?directory
+// There is a workaround for DIModule creation in earlier LLVM versions, where a line and a file
+// parameters are not supported in DIBuilder.
+void CompileUnit::decodeLineAndFileForISysRoot(StringRef& lineAndFile, unsigned int* line, std::string* file,
+    std::string* directory)
+{
+#if LLVM_VERSION_MAJOR < 11
+    SmallVector<StringRef, 8> splitStr;
+    lineAndFile.split(splitStr, "?");//   substr(0, posOfLineAndDirSeparator).str().copy()
+    unsigned int posOfFirstQ = lineAndFile.find_first_of('?', 0);
+    std::string lineStr = "";
+    lineStr.append(splitStr[0].str().c_str(), posOfFirstQ);
+    unsigned int posOfSecondQ = lineAndFile.find_first_of('?', posOfFirstQ + 1);
+
+    directory->append(splitStr[1].str().c_str(), posOfSecondQ - posOfFirstQ);
+    file->append(splitStr[2].str().c_str(), splitStr[2].size());
+    *line = (unsigned int)std::atoi(splitStr[0].data());
+#endif // LLVM_VERSION_MAJOR < 11
+}
+
 /// constructTypeDIE - Construct basic type die from DIBasicType.
 void CompileUnit::constructTypeDIE(DIE& Buffer, DIBasicType* BTy)
 {
@@ -2013,6 +2047,42 @@ void CompileUnit::constructTemplateValueParameterDIE(
 }
 
 
+/// constructImportedEntityDIE - Create a DIE for DIImportedEntity.
+IGC::DIE* CompileUnit::constructImportedEntityDIE(
+    DIImportedEntity* Module)
+{
+    DINode* Entity = Module->getEntity();
+    if (auto* GV = dyn_cast<DIGlobalVariable>(Entity))
+        return nullptr;  // Missing support for imported entity linked to a global variable
+
+    DIE* IMDie = new DIE(Module->getTag());
+    insertDIE(Module, IMDie);
+
+    DIE* EntityDie;
+    if (auto* NS = dyn_cast<DINamespace>(Entity))
+        EntityDie = getOrCreateNameSpace(NS);
+    else if (auto* M = dyn_cast<DIModule>(Entity))
+        EntityDie = getOrCreateModuleDIE(M);
+    else if (auto* SP = dyn_cast<DISubprogram>(Entity))
+        EntityDie = getOrCreateSubprogramDIE(SP);
+    else if (auto* T = dyn_cast<DIType>(Entity))
+        EntityDie = getOrCreateTypeDIE(T);
+    //else if (auto* GV = dyn_cast<DIGlobalVariable>(Entity))  // TODO missing support
+    //    EntityDie = getOrCreateGlobalVariableDIE(GV, {});
+    else
+        EntityDie = getDIE(Entity);
+
+    assert(EntityDie);
+
+    addSourceLine(IMDie, Module, Module->getLine());
+    addDIEEntry(IMDie, dwarf::DW_AT_import, EntityDie);
+    StringRef Name = Module->getName();
+    if (!Name.empty())
+        addString(IMDie, dwarf::DW_AT_name, Name);
+
+    return IMDie;
+}
+
 /// getOrCreateNameSpace - Create a DIE for DINameSpace.
 IGC::DIE* CompileUnit::getOrCreateNameSpace(DINamespace* NS)
 {
@@ -2145,6 +2215,8 @@ IGC::DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
         {
             DIE* Arg = createAndAddDIE(dwarf::DW_TAG_formal_parameter, *SPDie);
             DIType* ATy = resolve(Args[i]);
+            if (!ATy)
+                continue;
             addType(Arg, ATy);
             if (ATy->isArtificial())
             {
@@ -2176,10 +2248,58 @@ IGC::DIE* CompileUnit::getOrCreateModuleDIE(DIModule* MD)
     // Construct the context before querying for the existence of the DIE in case
     // such construction creates the DIE (as is the case for member function
     // declarations).
+    DIE* ContextDIE = getOrCreateContextDIE(MD->getScope());
+    DIE* MDDie = getDIE(MD);
+    if (MDDie)
+        return MDDie;
 
-    IGC_ASSERT_MESSAGE(false, "Missing implementation for DIModule!");
+    MDDie = createAndAddDIE(dwarf::DW_TAG_module, *ContextDIE, MD);
+    IGC_ASSERT(MDDie);
 
-    return nullptr;
+    if (!MD->getName().empty())
+    {
+        addString(MDDie, dwarf::DW_AT_name, MD->getName());
+    }
+
+#if LLVM_VERSION_MAJOR < 11
+#if LLVM_VERSION_MAJOR < 10
+    StringRef iSysRoot = MD->getISysRoot();
+#else // LLVM_VERSION_MAJOR == 10
+    StringRef iSysRoot = MD->getSysRoot();
+#endif // LLVM_VERSION_MAJOR == 10
+    unsigned int line;
+    std::string file = "";
+    std::string directory = "";
+
+    decodeLineAndFileForISysRoot(iSysRoot, &line, &file, &directory);
+
+    // Emit a line number and a file only if line number is significant
+    if (line > 0)
+        addUInt(MDDie, dwarf::DW_AT_decl_line, None, line);
+    // Emit a file if not empty name
+    if (!file.empty() || !directory.empty())
+    {
+        StringRef fileRef(file);
+        StringRef dirRef(directory);
+        unsigned FileID = DD->getOrCreateSourceID(fileRef, dirRef, getUniqueID());
+        addUInt(MDDie, dwarf::DW_AT_decl_file, None, FileID);
+    }
+#else // LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR == 11
+    addSourceLine(MDDie, MD, MD->getLineNo());
+#elif LLVM_VERSION_MAJOR >= 12
+    if (!MD->getIsDecl())
+    {
+        addSourceLine(MDDie, MD, MD->getLineNo());
+    }
+    else
+    {
+        addFlag(MDDie, dwarf::DW_AT_declaration);
+    }
+#endif // LLVM_VERSION_MAJOR >= 12
+#endif // LLVM_VERSION_MAJOR >= 11.
+
+    return MDDie;
 }
 
 /// constructSubrangeDIE - Construct subrange DIE from DISubrange.

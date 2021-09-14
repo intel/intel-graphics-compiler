@@ -849,6 +849,16 @@ DIE* DwarfDebug::createScopeChildrenDIE(CompileUnit* TheCU, LexicalScope* Scope,
         }
     }
 
+    // There is no need to emit empty lexical block DIE.
+    for (auto* constIE : TheCU->ImportedEntities[Scope->getScopeNode()])
+    {
+        llvm::MDNode* MD = const_cast<llvm::MDNode*>(constIE);
+        llvm::DIImportedEntity* IE = cast<llvm::DIImportedEntity>(MD);
+        DIE* IEDie = TheCU->constructImportedEntityDIE(IE);
+        if (IEDie)
+            Children.push_back(IEDie);
+    }
+
     const SmallVectorImpl<LexicalScope*>& Scopes = Scope->getChildren();
     for (unsigned j = 0, M = Scopes.size(); j < M; ++j)
     {
@@ -857,6 +867,7 @@ DIE* DwarfDebug::createScopeChildrenDIE(CompileUnit* TheCU, LexicalScope* Scope,
             Children.push_back(Nested);
         }
     }
+
     return ObjectPointer;
 }
 
@@ -1085,6 +1096,9 @@ CompileUnit* DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
         FirstCU = NewCU;
     }
 
+    for (auto* IE : DIUnit->getImportedEntities())
+        NewCU->addImportedEntity(IE);
+
     CUs.push_back(NewCU);
 
     CUMap.insert(std::make_pair(DIUnit, NewCU));
@@ -1113,6 +1127,20 @@ void DwarfDebug::constructSubprogramDIE(CompileUnit* TheCU, const MDNode* N)
     }
 
     TheCU->getOrCreateSubprogramDIE(SP);
+}
+
+void DwarfDebug::constructThenAddImportedEntityDIE(CompileUnit* TheCU,
+    DIImportedEntity* IE)
+{
+    if (isa<DILocalScope>(IE->getScope()))
+        return;
+
+    if (DIE* D = TheCU->getOrCreateContextDIE(IE->getScope()))
+    {
+        DIE* IEDie = TheCU->constructImportedEntityDIE(IE);
+        if (IEDie)
+            D->addChild(IEDie);
+    }
 }
 
 void DwarfDebug::discoverDISPNodes(DwarfDISubprogramCache &Cache)
@@ -1170,6 +1198,13 @@ void DwarfDebug::beginModule()
             CU->getOrCreateTypeDIE(RetainedTypes[i]);
         }
 
+        // Emit imported_modules last so that the relevant context is already
+        // available.
+        for (auto* IE : CUNode->getImportedEntities())
+        {
+            constructThenAddImportedEntityDIE(CU, IE);
+        }
+
         // Assume there is a single CU
         break;
     }
@@ -1177,7 +1212,7 @@ void DwarfDebug::beginModule()
     // Prime section data.
     SectionMap[Asm->GetTextSection()];
 
-    if(DwarfFrameSectionNeeded())
+    if (DwarfFrameSectionNeeded())
     {
         Asm->SwitchSection(Asm->GetDwarfFrameSection());
         if (m_pModule->hasOrIsStackCall(*decodedDbg))

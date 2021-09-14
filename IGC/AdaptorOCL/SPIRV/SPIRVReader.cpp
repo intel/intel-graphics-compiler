@@ -1089,6 +1089,24 @@ public:
       return addMDNode(inst, createLocation(line, 0, scope, iat));
   }
 
+  // Encode a line number, a file name and a directory to a string, where a line no., file name
+  // and directory are separated by '?' character: lineNumber?fileName?directory
+  // There is a workaround for DIModule creation in earlier LLVM versions, where a line and a file
+  // parameters are not supported in DIBuilder.
+  void encodeLineAndFileForISysRoot(unsigned int line, llvm::DIFile* file, std::string& lineAndFile)
+  {
+#if LLVM_VERSION_MAJOR < 11
+      lineAndFile.append(std::to_string(line));
+      lineAndFile.append("?");
+      if (file)
+      {
+          lineAndFile.append(file->getDirectory().str());
+          lineAndFile.append("?");
+          lineAndFile.append(file->getFilename().str());
+      }
+#endif  // LLVM_VERSION_MAJOR < 11.
+  }
+
   DIModule* createModuleINTEL(SPIRVExtInst* inst)
   {
       if (auto n = getExistingNode<DIModule*>(inst))
@@ -1100,28 +1118,21 @@ public:
       auto& name = BM->get<SPIRVString>(moduleINTEL.getName())->getStr();
       auto cfgMacros = BM->get<SPIRVString>(moduleINTEL.getConfigurationMacros())->getStr();
       auto inclPath = BM->get<SPIRVString>(moduleINTEL.getIncludePath())->getStr();
-
-      DIModule* diModule;
-
-#if LLVM_VERSION_MAJOR <= 10
-      llvm::StringRef iSysRoot = StringRef();  // Empty string
-      diModule = addMDNode(inst, Builder.createModule(scope, name, cfgMacros, inclPath, iSysRoot));
-#else  // LLVM_VERSION_MAJOR >= 11
       auto file = getDIFile(BM->get<SPIRVExtInst>(moduleINTEL.getSource()));
       auto line = moduleINTEL.getLine();
       auto apiNotesFile = BM->get<SPIRVString>(moduleINTEL.getAPINotesFile())->getStr();
-#if LLVM_VERSION_MAJOR == 11
-      diModule = addMDNode(inst, Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line));
-#elif LLVM_VERSION_MAJOR >= 12
       bool isDecl = moduleINTEL.getIsDecl() ? true : false;
-      diModule = addMDNode(inst, Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line, isDecl));
-#endif
-#endif  // LLVM_VERSION_MAJOR >= 11.
+
+      std::string encodedLineAndFile = "";
+      encodeLineAndFileForISysRoot(line, file, encodedLineAndFile);
+      llvm::StringRef iSysRoot = StringRef(encodedLineAndFile);
+
+      DIModule* diModule = addMDNode(inst, Builder.createModule(scope, name, cfgMacros, inclPath, apiNotesFile, file, line, isDecl, iSysRoot));
 
       return diModule;
   }
 
-  DINode* createImportedEntity(SPIRVExtInst* inst)
+  DINode* createImportedEntity(SPIRVExtInst* inst, SmallVector<TrackingMDNodeRef, 4>& allImportedModules)
   {
       if (auto n = getExistingNode<DINode*>(inst))
           return n;
@@ -1137,8 +1148,20 @@ public:
 
       if (BM->get<SPIRVExtInst>(entity)->getExtOp() == OCLExtOpDbgKind::ModuleINTEL)
       {
-          auto diModule = createModuleINTEL(BM->get<SPIRVExtInst>(entity));
-          diNode = addMDNode(inst, Builder.createImportedModule(scope, diModule, file, line));
+          auto* diModule = createModuleINTEL(BM->get<SPIRVExtInst>(entity));
+          IGC_ASSERT(diModule);
+          DIImportedEntity* IE = Builder.createImportedModule(scope, diModule, file, line);
+          diNode = addMDNode(inst, IE);
+
+          IGC_ASSERT_MESSAGE(scope, "Invalid Scope encoding!");
+          if (isa<DILocalScope>(scope))
+          {
+              allImportedModules.emplace_back(IE);
+          }
+          else
+          {
+              // TODO? ReplaceImportedEntities = true;
+          }
       }
 
       return diNode;
@@ -1311,12 +1334,20 @@ public:
       if (!Enable)
           return;
 
+      DICompileUnit* CU = getCompileUnit();
+
       auto importedEntities = BM->getImportedEntities();
 
+      SmallVector<TrackingMDNodeRef, 4> AllImportedModules;
       for (auto& importedEntity : importedEntities)
-      {
-          (void)createImportedEntity(importedEntity);
-      }
+          (void)createImportedEntity(importedEntity, AllImportedModules);
+
+
+      if (!AllImportedModules.empty())
+          CU->replaceImportedEntities(
+              MDTuple::get(CU->getContext(), SmallVector<Metadata*, 16>(AllImportedModules.begin(), AllImportedModules.end())));
+      else
+          CU->replaceImportedEntities(nullptr);  // If there were no local scope imported entities, we can map the whole list to nullptr.
   }
 
   void transDbgInfo(SPIRVValue *SV, Value *V);
