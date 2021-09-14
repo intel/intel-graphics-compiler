@@ -546,15 +546,39 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
         newType = src->getType();
         if (isIntDivide)
         {
-            //   cases:
-            //     math.quot  r10:w   r20:ub   -r30:ub
-            //       Make sure newType is D, not UD. The correct code is:
-            //          mov  r22:d  r20:ub
-            //          mov  r32:d  -r30:ub
-            //          math.quot r10:w  r22:d  r32:d
-            bool src0Unsigned = IS_UNSIGNED_INT(inst->getSrc(0)->getType()) && !hasModMinus(inst->getSrc(0));
-            bool src1Unsigned = IS_UNSIGNED_INT(inst->getSrc(1)->getType()) && !hasModMinus(inst->getSrc(1));
-            G4_Type divType = (src0Unsigned && src1Unsigned) ? Type_UD : Type_D;
+            // case 1: Perform a signed division if there's any minus src modifier.
+            //   math.quot  r10:w   r20:ub   -r30:ub
+            // Make sure newType is D, not UD. The correct code is:
+            //   mov  r22:d  r20:ub
+            //   mov  r32:d  -r30:ub
+            //   math.quot r10:w  r22:d  r32:d
+            // case 2: Perform an appropriate type conversion based on the type ranks of both sources.
+            //   math.quot  r6:ud  r3:b  r4:ud
+            // Make sure it's still an unsigned division.
+            //   mov  r11:ud  r3:b
+            //   math.quot  r6:ud  r11:ud  r4:ud
+            G4_Type src0Type = inst->getSrc(0)->getType();
+            G4_Type src1Type = inst->getSrc(1)->getType();
+            G4_Type divType = Type_UNDEF;
+            if (hasModMinus(inst->getSrc(0)) || hasModMinus(inst->getSrc(1)))
+            {
+                // If there's any minus source modifier, do a signed division.
+                divType = Type_D;
+            }
+            else if (TypeSize(src0Type) != TypeSize(src1Type))
+            {
+                // If src0 and src1 have different ranks, get the signedness of the
+                // division from the higher rank src.
+                G4_Type higherRankType = TypeSize(src0Type) > TypeSize(src1Type) ? src0Type : src1Type;
+                divType = IS_SIGNED_INT(higherRankType) ? Type_D : Type_UD;
+            }
+            else
+            {
+                // If both sources have the same rank, do a signed division only
+                // when both are signed. Otherwise, do an unsigned division.
+                divType = IS_SIGNED_INT(src0Type) && IS_SIGNED_INT(src1Type) ? Type_D : Type_UD;
+            }
+            assert(divType == Type_D || divType == Type_UD);
             if (newType != divType)
             {
                 newType = divType;
