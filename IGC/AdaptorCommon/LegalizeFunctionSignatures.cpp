@@ -451,7 +451,7 @@ void LegalizeFunctionSignatures::FixFunctionUsers(Module& M)
             {
                 // Any other uses can be replaced with a pointer cast
                 IGCLLVM::IRBuilder<> builder(inst);
-                Value* pCast = builder.CreatePointerCast(pNewFunc, pFunc->getFunctionType());
+                Value* pCast = builder.CreatePointerCast(pNewFunc, pFunc->getType());
                 inst->replaceUsesOfWith(pFunc, pCast);
             }
         }
