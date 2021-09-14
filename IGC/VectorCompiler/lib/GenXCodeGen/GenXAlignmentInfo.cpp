@@ -160,6 +160,14 @@ Alignment AlignmentInfo::get(Value *V)
             } else
               A = Alignment::getUnknown();
             break;
+          case Instruction::Or:
+            if (auto *CI0 = dyn_cast<ConstantInt>(Op0)) {
+              A = A1.logicalOr(CI0);
+            } else if (auto *CI1 = dyn_cast<ConstantInt>(Op1)) {
+              A = A0.logicalOr(CI1);
+            } else
+              A = Alignment::getUnknown();
+            break;
           default:
             A = Alignment::getUnknown();
             break;
@@ -384,9 +392,10 @@ Alignment Alignment::mul(Alignment Other) const
 }
 
 /***********************************************************************
- * logicalAnd : logical and two alignments. Only constant int supported.
+ * logicalOp : Helped Function for alignment calculating of logical
+ * 'AND' and 'OR'.
  */
-Alignment Alignment::logicalAnd(ConstantInt *CI) const {
+Alignment Alignment::logicalOp(ConstantInt *CI, SelectFunction F) const {
   IGC_ASSERT(!isUncomputed() && CI);
   // If value doesn't fit into unsigned then be conservative and pretend
   // that alignement is unknown
@@ -396,9 +405,23 @@ Alignment Alignment::logicalAnd(ConstantInt *CI) const {
     return Alignment::getUnknown();
   unsigned UVal = static_cast<unsigned>(std::abs(Val));
   unsigned ValLSB = countTrailingZeros(UVal, ZB_Width);
-  // Chop off constant bits according to maximum log align
-  unsigned NewLogAlign = std::max(ValLSB, LogAlign);
+  // Chop off constant bits according to log align
+  unsigned NewLogAlign = F(ValLSB, LogAlign);
   return Alignment(NewLogAlign, UVal & ((1 << NewLogAlign) - 1));
+}
+
+/***********************************************************************
+ * logicalAnd : logical and two alignments. Only constant int supported.
+ */
+Alignment Alignment::logicalAnd(ConstantInt *CI) const {
+  return logicalOp(CI, std::max<unsigned>);
+}
+
+/***********************************************************************
+ * logicalOr : logical or two alignments. Only constant int supported.
+ */
+Alignment Alignment::logicalOr(ConstantInt *CI) const {
+  return logicalOp(CI, std::min<unsigned>);
 }
 
 /***********************************************************************

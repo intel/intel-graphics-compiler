@@ -92,6 +92,8 @@ public:
   Alignment mul(Alignment Other) const;
   // Logical and Alignment with constant integer
   Alignment logicalAnd(ConstantInt *CI) const;
+  // Logical or Alignment with constant integer
+  Alignment logicalOr(ConstantInt *CI) const;
 
   // accessors
   bool isUncomputed() const { return LogAlign == UnsignedAllOnes; }
@@ -120,6 +122,10 @@ private:
     ExtraBits = 0;
     ConstBits = MaskForUnknown;
   }
+  // Type alias for std::min and std::max functions.
+  using SelectFunction = const unsigned &(*)(const unsigned &,
+                                             const unsigned &);
+  Alignment logicalOp(ConstantInt *CI, SelectFunction F) const;
 };
 
 // AlignmentInfo : cache of alignment of instructions in a function
