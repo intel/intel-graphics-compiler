@@ -454,6 +454,9 @@ _SPIRV_OP(OpSUDotKHR)
 _SPIRV_OP(OpUDotAccSatKHR)
 _SPIRV_OP(OpSDotAccSatKHR)
 _SPIRV_OP(OpSUDotAccSatKHR)
+_SPIRV_OP(OpMatrixLoadINTEL)
+_SPIRV_OP(OpMatrixStoreINTEL)
+_SPIRV_OP(OpMatrixMadINTEL)
 #undef _SPIRV_OP
 
 #define _SPIRV_OP(x, y) add(Op##y, #x);

@@ -91,6 +91,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/SPIRMetaDataTranslation.h"
 #include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/JointMatrixFuncsResolutionPass.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/FixResourcePtr.hpp"
@@ -330,6 +331,8 @@ static void CommonOCLBasedPasses(
     {
         mpm.add(new HandleFRemInstructions());
     }
+
+    mpm.add(new JointMatrixFuncsResolutionPass(pContext));
 
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));

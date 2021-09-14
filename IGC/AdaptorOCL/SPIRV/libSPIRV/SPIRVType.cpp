@@ -353,5 +353,26 @@ void SPIRVTypeForwardPointer::decode(std::istream& I) {
   Decoder >> PointerId >> SC;
 }
 
+unsigned SPIRVTypeMatrixINTEL::getLayout() const {
+  return (unsigned)get<SPIRVConstant>(Layout)->getZExtIntValue();
+}
+
+unsigned SPIRVTypeMatrixINTEL::getRows() const {
+  return (unsigned)get<SPIRVConstant>(Rows)->getZExtIntValue();
+}
+
+unsigned SPIRVTypeMatrixINTEL::getColumns() const {
+  return (unsigned)get<SPIRVConstant>(Columns)->getZExtIntValue();
+}
+
+unsigned SPIRVTypeMatrixINTEL::getScope() const {
+  return (unsigned)get<SPIRVConstant>(Scope)->getZExtIntValue();
+}
+
+uint32_t SPIRVTypeMatrixINTEL::getElementTypeFlags() const {
+  const uint32_t bitWidth = ElemType->getBitWidth();
+  const bool isFloating = ElemType->isTypeFloat();
+  return bitWidth | (isFloating << 31);
+}
 }
 

@@ -619,6 +619,7 @@ enum Capability {
     CapabilityOptNoneINTEL = 6094,
     CapabilityTokenTypeINTEL = 6112,
     CapabilityDebugInfoModuleINTEL = 6114,
+    CapabilityMatrixINTEL = 6118,
 };
 
 enum PackedVectorFormat {

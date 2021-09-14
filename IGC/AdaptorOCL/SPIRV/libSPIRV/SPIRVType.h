@@ -677,6 +677,63 @@ protected:
         }
 };
 
+class SPIRVTypeMatrixINTEL : public SPIRVType {
+public:
+    const static Op OC = OpTypeMatrixINTEL;
+    const static SPIRVWord FixedWC = 7;
+    // Complete constructor
+    SPIRVTypeMatrixINTEL(SPIRVModule *M, SPIRVId TheId, SPIRVType *ElemType,
+                         SPIRVId Rows, SPIRVId Columns,
+                         SPIRVId Layout, SPIRVId Scope)
+        : SPIRVType(M, FixedWC, OC, TheId), ElemType(ElemType),
+          Rows(Rows), Columns(Columns), Layout(Layout), Scope(Scope) {
+        validate();
+    }
+
+    // Incomplete constructor
+    SPIRVTypeMatrixINTEL()
+        : SPIRVType(OC), ElemType(0), Rows(0), Columns(0),
+          Layout(0), Scope(0) {
+    }
+
+    CapVec getRequiredCapability() const override {
+        return getVec(SPIRVCapabilityKind::CapabilityMatrixINTEL);
+    }
+
+    SPIRVType *getElemType() const { return ElemType; }
+
+    unsigned getLayout() const;
+    unsigned getRows() const;
+    unsigned getColumns() const;
+    unsigned getScope() const;
+
+    uint32_t getElementTypeFlags() const;
+
+    enum {
+        LayoutColumnMajor = 0,
+        LayoutRowMajor = 1,
+        LayoutPackedA = 2,
+        LayoutPackedB = 3,
+        LayoutMAX
+    };
+
+protected:
+    _SPIRV_DEF_DEC6(Id, ElemType, Rows, Columns, Layout, Scope)
+    void validate() const override {
+        SPIRVEntry::validate();
+        ElemType->validate();
+        IGC_ASSERT_EXIT_MESSAGE(getRows()    <= 64, "Unsupported rows size.");
+        IGC_ASSERT_EXIT_MESSAGE(getColumns() <= 64, "Unsupported columns size.");
+        IGC_ASSERT_EXIT_MESSAGE(getLayout() < LayoutMAX, "Unsupported layout.");
+    }
+
+private:
+    SPIRVType *ElemType;
+    SPIRVId Rows;
+    SPIRVId Columns;
+    SPIRVId Layout;
+    SPIRVId Scope;
+};
 
 
 template<typename T2, typename T1>

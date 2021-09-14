@@ -2128,6 +2128,25 @@ SPIRVToLLVM::transType(SPIRVType *T) {
                    getOrCreateOpaquePtrType(M, "intel.buffer_rw_t",
                                             SPIRAddressSpace::SPIRAS_Global));
   }
+  case OpTypeMatrixINTEL:
+  {
+    SPIRVTypeMatrixINTEL *MT = static_cast<SPIRVTypeMatrixINTEL *>(T);
+    const char *typeName = nullptr;
+    switch (MT->getLayout()) {
+      case SPIRVTypeMatrixINTEL::LayoutPackedA:
+        typeName = "intel.joint_matrix_packedA_t";
+        break;
+      case SPIRVTypeMatrixINTEL::LayoutPackedB:
+        typeName = "intel.joint_matrix_packedB_t";
+        break;
+      case SPIRVTypeMatrixINTEL::LayoutRowMajor:
+      case SPIRVTypeMatrixINTEL::LayoutColumnMajor:
+        typeName = "intel.joint_matrix_acc_t";
+        break;
+    }
+    IGC_ASSERT_EXIT_MESSAGE(typeName, "Unsupported layout of INTEL Joint Matrix.");
+    return mapType(T, getOrCreateOpaquePtrType(M, typeName, SPIRAddressSpace::SPIRAS_Global));
+  }
   default: {
     auto OC = T->getOpCode();
     if (isOpaqueGenericTypeOpCode(OC) ||
@@ -3650,6 +3669,199 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     // It is planned to be translated into @llvm.arithmetic.fence.f64 in the future.
     auto* BC = static_cast<SPIRVUnary*>(BV);
     return mapValue(BV, transValue(BC->getOperand(0), F, BB));
+  }
+  case OpMatrixLoadINTEL: {
+    SPIRVMatrixLoadINTEL *ML = static_cast<SPIRVMatrixLoadINTEL *>(BV);
+    std::vector<SPIRVValue *> BArgs = ML->getOperands();
+    enum SPVIdx { Pointer, Stride, Layout, Scope, MemOp };
+
+    SPIRVTypeMatrixINTEL *MatTy = static_cast<SPIRVTypeMatrixINTEL *>(ML->getType());
+    const unsigned loadLayout = (unsigned)BM->get<SPIRVConstant>(BArgs[Layout]->getId())->getZExtIntValue();
+
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
+
+    /* Get arugment values for the intrinsic call */
+    Value *PtrVal = transValue(BArgs[Pointer], F, BB);
+    Value *StrideVal = transValue(BArgs[Stride], F, BB);
+
+    unsigned AS = static_cast<PointerType *>(PtrVal->getType())->getAddressSpace();
+    /* Prepare types for the call: */
+    Type *RetTy      = transType(MatTy);
+    Type *PtrTy      = PointerType::get(Type::getInt8Ty(*Context), AS);
+    Type *StrideTy   = Type::getInt32Ty(*Context);
+    Type *ElemTypeTy = Type::getInt32Ty(*Context);
+    Type *LayoutTy   = Type::getInt32Ty(*Context);
+    Type *SizeTy     = Type::getInt32Ty(*Context);
+
+    std::vector<Type *> ArgTys = {
+      PtrTy, StrideTy, LayoutTy, ElemTypeTy, SizeTy, SizeTy
+    };
+    FunctionType *builtinTy = FunctionType::get(RetTy, ArgTys, false);
+
+    /* Cast if necessary and prepare rest of the arguments: */
+    CastInst *Ptr = CastInst::CreatePointerCast(PtrVal, PtrTy, "", BB);
+    if (StrideVal->getType() != StrideTy) {
+      IGC_ASSERT_MESSAGE(StrideVal->getType()->isIntegerTy(), 
+          "Unspupported matrix stide type in load instruction.");
+      StrideVal = CastInst::CreateIntegerCast(StrideVal, StrideTy, false, "stride", Ptr);
+    }
+    
+    Value *LoadLayoutVal  = ConstantInt::get(LayoutTy, loadLayout);
+    Value *ElementTypeVal = ConstantInt::get(ElemTypeTy, MatTy->getElementTypeFlags());
+    Value *RowsVal        = ConstantInt::get(SizeTy, MatTy->getRows());
+    Value *ColumnsVal     = ConstantInt::get(SizeTy, MatTy->getColumns());
+
+    /* Get function to call */
+    const char *suffix = nullptr;
+    switch (MatTy->getLayout()) {
+      case SPIRVTypeMatrixINTEL::LayoutPackedA:
+        suffix = "_PackedA";
+        break;
+      case SPIRVTypeMatrixINTEL::LayoutPackedB:
+        suffix = "_PackedB";
+        break;
+      case SPIRVTypeMatrixINTEL::LayoutRowMajor:
+      case SPIRVTypeMatrixINTEL::LayoutColumnMajor:
+        suffix = "_Accumulator";
+        break;
+    }
+    IGC_ASSERT_MESSAGE(suffix, "Unsupported layout type for INTEL Joint Matrix.");
+    auto BI = static_cast<SPIRVInstruction *>(BV);
+    std::string builtinName(getSPIRVBuiltinName(BV->getOpCode(), BI, ArgTys, suffix));
+    Function *Func = cast<Function>(M->getOrInsertFunction(builtinName, builtinTy));
+
+    std::vector<Value *> Args = {
+      Ptr, StrideVal, LoadLayoutVal, ElementTypeVal, RowsVal, ColumnsVal 
+    };
+    CallInst *CI = CallInst::Create(Func, Args, "matrix", BB);
+    return mapValue(BV, CI);
+  }
+  case OpMatrixStoreINTEL: {
+    SPIRVMatrixStoreINTEL *MS = static_cast<SPIRVMatrixStoreINTEL *>(BV);
+    std::vector<SPIRVValue *> BArgs = MS->getOperands();
+    enum SPVIdx { Pointer, Object, Stride, Layout, Scope, MemOp };
+
+    SPIRVTypeMatrixINTEL *MatTy = static_cast<SPIRVTypeMatrixINTEL *>(BArgs[Object]->getType());
+    const unsigned storeLayout = (unsigned)BM->get<SPIRVConstant>(BArgs[Layout]->getId())->getZExtIntValue();
+
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
+
+    /* Get arugment values for the intrinsic call */
+    Value *MatrixVal = transValue(BArgs[Object], F, BB);
+    Value *PtrVal    = transValue(BArgs[Pointer], F, BB);
+    Value *StrideVal = transValue(BArgs[Stride], F, BB);
+
+    unsigned AS = static_cast<PointerType *>(PtrVal->getType())->getAddressSpace();
+    /* Prepare types for the call: */
+    Type *MatrixTy   = transType(MatTy);
+    Type *PtrTy      = PointerType::get(Type::getInt8Ty(*Context), AS);
+    Type *StrideTy   = Type::getInt32Ty(*Context);
+    Type *ElemTypeTy = Type::getInt32Ty(*Context);
+    Type *LayoutTy   = Type::getInt32Ty(*Context);
+    Type *SizeTy     = Type::getInt32Ty(*Context);
+
+    std::vector<Type *> ArgTys = {
+      PtrTy, MatrixTy, StrideTy, LayoutTy, ElemTypeTy, SizeTy, SizeTy
+    };
+    FunctionType *builtinTy = FunctionType::get(Type::getVoidTy(*Context), ArgTys, false);
+
+    /* Cast if necessary and prepare rest of the arguments: */
+    CastInst *Ptr = CastInst::CreatePointerCast(PtrVal, PtrTy, "", BB);
+    if (StrideVal->getType() != StrideTy) {
+      IGC_ASSERT_MESSAGE(StrideVal->getType()->isIntegerTy(), 
+          "Unspupported matrix stide type in store instruction.");
+      StrideVal = CastInst::CreateIntegerCast(StrideVal, StrideTy, false, "stride", Ptr);
+    }
+
+    Value *StoreLayoutVal = ConstantInt::get(LayoutTy, storeLayout);
+    Value *ElementTypeVal = ConstantInt::get(ElemTypeTy, MatTy->getElementTypeFlags());
+    Value *RowsVal        = ConstantInt::get(SizeTy, MatTy->getRows());
+    Value *ColumnsVal     = ConstantInt::get(SizeTy, MatTy->getColumns());
+
+    /* Get function to call */
+    const char *suffix = nullptr;
+    switch (MatTy->getLayout()) {
+      case SPIRVTypeMatrixINTEL::LayoutPackedA:
+        suffix = "_PackedA";
+        break;
+      case SPIRVTypeMatrixINTEL::LayoutPackedB:
+        suffix = "_PackedB";
+        break;
+      case SPIRVTypeMatrixINTEL::LayoutRowMajor:
+      case SPIRVTypeMatrixINTEL::LayoutColumnMajor:
+        suffix = "_Accumulator";
+        break;
+    }
+    IGC_ASSERT_MESSAGE(suffix, "Unsupported layout type for INTEL Joint Matrix.");
+    auto BI = static_cast<SPIRVInstruction *>(BV);
+    std::string builtinName(getSPIRVBuiltinName(BV->getOpCode(), BI, ArgTys, suffix));
+    Function *Func = cast<Function>(M->getOrInsertFunction(builtinName, builtinTy));
+
+    std::vector<Value *> Args = {
+      Ptr, MatrixVal, StrideVal, StoreLayoutVal, ElementTypeVal, RowsVal, ColumnsVal
+    };
+    CallInst *CI = CallInst::Create(Func, Args, "", BB);
+    return mapValue(BV, CI);
+  }
+  case OpMatrixMadINTEL: {
+    SPIRVMatrixMadINTEL *MM = static_cast<SPIRVMatrixMadINTEL *>(BV);
+    std::vector<SPIRVValue *> BArgs = MM->getOperands();
+    enum SPVIdx { A, B, C, Scope };
+
+    auto *MatATy = static_cast<SPIRVTypeMatrixINTEL *>(BArgs[A]->getType());
+    auto *MatBTy = static_cast<SPIRVTypeMatrixINTEL *>(BArgs[B]->getType());
+    auto *MatCTy = static_cast<SPIRVTypeMatrixINTEL *>(BArgs[C]->getType());
+
+    auto *ResMatTy = static_cast<SPIRVTypeMatrixINTEL *>(MM->getType());
+
+    const unsigned sizeM = MatATy->getRows();
+    const unsigned sizeK = MatATy->getColumns();
+    const unsigned sizeN = MatBTy->getColumns();
+
+    IGC_ASSERT(sizeM == MatCTy->getRows());
+    IGC_ASSERT(sizeN == MatCTy->getColumns());
+    IGC_ASSERT(sizeK == MatBTy->getRows());
+
+    IGC_ASSERT(ResMatTy->getRows()    == MatCTy->getRows());
+    IGC_ASSERT(ResMatTy->getColumns() == MatCTy->getColumns());
+
+    Type *RetTy  = transType(ResMatTy);
+    Type *ATy    = transType(MatATy);
+    Type *BTy    = transType(MatBTy);
+    Type *CTy    = transType(MatCTy);
+    Type *ElemTypeTy = Type::getInt32Ty(*Context);
+    Type *SizeTy = Type::getInt32Ty(*Context);
+
+    std::vector<Type *> ArgTys = {
+      ATy, ElemTypeTy, SizeTy, SizeTy,
+      BTy, ElemTypeTy, SizeTy, SizeTy,
+      CTy, ElemTypeTy, SizeTy, SizeTy
+    };
+    FunctionType *builtinTy = FunctionType::get(RetTy, ArgTys, false);
+
+    auto BI = static_cast<SPIRVInstruction *>(BV);
+    std::string builtinName(getSPIRVBuiltinName(BV->getOpCode(), BI, ArgTys, ""));
+    Function *Func = cast<Function>(M->getOrInsertFunction(builtinName, builtinTy));
+
+    std::vector<Value *> Args = {
+      /* Matrix A */
+      transValue(BArgs[A], F, BB),
+      ConstantInt::get(ElemTypeTy, MatATy->getElementTypeFlags()),
+      ConstantInt::get(SizeTy, MatATy->getRows()),
+      ConstantInt::get(SizeTy, MatATy->getColumns()),
+      /* Matrix B */
+      transValue(BArgs[B], F, BB),
+      ConstantInt::get(ElemTypeTy, MatBTy->getElementTypeFlags()),
+      ConstantInt::get(SizeTy, MatBTy->getRows()),
+      ConstantInt::get(SizeTy, MatBTy->getColumns()),
+      /* Matrix C */
+      transValue(BArgs[C], F, BB),
+      ConstantInt::get(ElemTypeTy, MatCTy->getElementTypeFlags()),
+      ConstantInt::get(SizeTy, MatCTy->getRows()),
+      ConstantInt::get(SizeTy, MatCTy->getColumns()),
+    };
+    CallInst *CI = CallInst::Create(Func, Args, "matrix", BB);
+    return mapValue(BV, CI);
   }
   default: {
     auto OC = BV->getOpCode();
