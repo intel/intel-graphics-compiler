@@ -9,7 +9,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/MemoryDependenceAnalysis.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/PtrUseVisitor.h"
+#include "llvm/Analysis/CFG.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -28,7 +31,6 @@ namespace {
     // work for large structures. This parameter can not be tweaked inside compiler
     //
     // Restrictions to this implementation to keep it simple and save compile time:
-    // -- All stores to the structure must be in the same BB
     // -- The structure does not escape
     // -- We promote only constant values of the same type and store->load only
     //
@@ -53,17 +55,19 @@ namespace {
 
         MemoryDependenceResults *MD = nullptr;
         DominatorTree *DT = nullptr;
+        LoopInfo* LPI = nullptr;
 
         void getAnalysisUsage(AnalysisUsage &AU) const override {
             AU.addRequired<DominatorTreeWrapperPass>();
             AU.addRequired<MemoryDependenceWrapperPass>();
+            AU.addRequired<LoopInfoWrapperPass>();
             AU.setPreservesCFG();
             AU.addPreserved<DominatorTreeWrapperPass>();
         }
 
         bool processAlloca(AllocaInst &AI);
 
-        bool processLoad(LoadInst *LI, BasicBlock *StoreBB);
+        bool processLoad(LoadInst *LI, SetVector<BasicBlock*>& StoreBBs);
 
     };
 
@@ -86,7 +90,6 @@ IGC_INITIALIZE_PASS_END(PromoteConstantStructs, PASS_FLAG, PASS_DESC, PASS_CFG_O
 
 // This class visits all alloca uses to check that
 // -- it does not escape
-// -- all stores are in the same BB
 // and collect all loads with constant offsets from alloca
 
 class AllocaChecker : public PtrUseVisitor<AllocaChecker> {
@@ -95,28 +98,23 @@ class AllocaChecker : public PtrUseVisitor<AllocaChecker> {
 
 public:
     AllocaChecker(const DataLayout &DL)
-        : PtrUseVisitor<AllocaChecker>(DL), StoreBB(nullptr) {}
+        : PtrUseVisitor<AllocaChecker>(DL), StoreBBs() {}
 
     SmallVector<LoadInst*, 8>& getPotentialLoads() {
         return Loads;
     }
 
-    BasicBlock *getStoreBB() {
-        return StoreBB;
+    SetVector<BasicBlock*>& getStoreBBs() {
+        return StoreBBs;
     }
 
 private:
     SmallVector<LoadInst*, 8> Loads;
 
-    BasicBlock *StoreBB;
+    SetVector<BasicBlock*> StoreBBs;
 
     void visitStoreInst(StoreInst &SI) {
-        if (!StoreBB) {
-            StoreBB = SI.getParent();
-        }
-        else if (SI.getParent() != StoreBB) {
-            PI.setAborted(&SI);
-        }
+        StoreBBs.insert(SI.getParent());
     }
 
     void visitLoadInst(LoadInst &LI) {
@@ -126,10 +124,10 @@ private:
     }
 };
 
-bool PromoteConstantStructs::runOnFunction(Function &F)
-{
+bool PromoteConstantStructs::runOnFunction(Function &F) {
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     MD = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
+    LPI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
     bool Changed = false;
     BasicBlock &EntryBB = F.getEntryBlock();
@@ -142,8 +140,7 @@ bool PromoteConstantStructs::runOnFunction(Function &F)
     return Changed;
 }
 
-bool PromoteConstantStructs::processAlloca(AllocaInst &AI)
-{
+bool PromoteConstantStructs::processAlloca(AllocaInst &AI) {
     // we do not process single or array allocas
     if (!AI.getAllocatedType()->isStructTy())
         return false;
@@ -153,37 +150,67 @@ bool PromoteConstantStructs::processAlloca(AllocaInst &AI)
     if (PtrI.isEscaped() || PtrI.isAborted())
         return false;
 
-    BasicBlock *StoreBB = AC.getStoreBB();
     // if we don't have any stores, nothing to do
-    if (!StoreBB)
+    if (AC.getStoreBBs().empty())
         return false;
 
     bool Changed = false;
-    for (auto LI : AC.getPotentialLoads())
-        Changed |= processLoad(LI, StoreBB);
+    bool LocalChanged = true;
+    while (LocalChanged) {
+        LocalChanged = false;
+
+        auto LII = AC.getPotentialLoads().begin();
+        while (LII != AC.getPotentialLoads().end()) {
+            if (processLoad(*LII, AC.getStoreBBs())) {
+                LII = AC.getPotentialLoads().erase(LII);
+                LocalChanged = true;
+            } else {
+                ++LII;
+            }
+        }
+        Changed |= LocalChanged;
+    }
 
     return Changed;
 }
 
-bool PromoteConstantStructs::processLoad(LoadInst *LI, BasicBlock *StoreBB)
-{
-    if (!DT->dominates(StoreBB->getFirstNonPHI(), LI))
-        return false;
-
-    Instruction *InstPt = StoreBB->getTerminator();
-    if (StoreBB == LI->getParent()) InstPt = LI;
-
+bool PromoteConstantStructs::processLoad(LoadInst *LI, SetVector<BasicBlock*>& StoreBBs) {
     unsigned limit = InstructionsLimit;
+    StoreInst* SI = nullptr;
 
-    MemDepResult Dep = MD->getPointerDependencyFrom(MemoryLocation::get(LI), true,
-        InstPt->getIterator(), StoreBB, LI, &limit);
+    auto ML = MemoryLocation::get(LI);
+    for (auto StBB : StoreBBs) {
+        SmallVector<BasicBlock*, 32> Worklist;
+        Worklist.push_back(StBB);
 
-    // we care only about must aliases, no clobber dependencies
-    if (!Dep.isDef())
-        return false;
+        if (!isPotentiallyReachableFromMany(Worklist, LI->getParent(), nullptr, DT, LPI))
+            continue;
 
-    // we search only for stores
-    StoreInst *SI = dyn_cast<StoreInst>(Dep.getInst());
+        Instruction* InstPt = StBB->getTerminator();
+        if (StBB == LI->getParent())
+            InstPt = LI;
+
+        MemDepResult Dep = MD->getPointerDependencyFrom(ML, true,
+            InstPt->getIterator(), StBB, LI, &limit);
+
+        if (Dep.isDef()) {
+            // skip if more than one def
+            if (SI)
+                return false;
+
+            // we search only for stores
+            SI = dyn_cast<StoreInst>(Dep.getInst());
+            if (!SI)
+                return false;
+
+            if (!DT->dominates(SI, LI))
+                return false;
+        } else if (!Dep.isNonLocal()) {
+            return false;
+        }
+        // else no memdep in this BB, can move on
+    }
+
     if (!SI)
         return false;
 
