@@ -769,10 +769,11 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
     BasicBlock* OldBB = BinOp.getParent();
     BasicBlock* InnerTBB = nullptr;
     BasicBlock* InnerFBB = nullptr;
-    Value* InnerResLo = nullptr;
-    Value* InnerResHi = nullptr;
+    PHINode* InnerResLo = nullptr;
+    PHINode* InnerResHi = nullptr;
     Value* ResLo = nullptr;
     Value* ResHi = nullptr;
+    DebugLoc BinOpDebugLoc = BinOp.getDebugLoc();
 
     Value* Cond = nullptr;
 
@@ -786,15 +787,19 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         Value* NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
         BasicBlock* JointBB = OldBB->splitBasicBlock(&BinOp);
         ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.outer.merge.lo", &BinOp);
+        cast<Instruction>(ResLo)->setDebugLoc(BinOpDebugLoc);
         ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.outer.merge.hi", &BinOp);
+        cast<Instruction>(ResHi)->setDebugLoc(BinOpDebugLoc);
 
         BasicBlock* TrueBB = BasicBlock::Create(*Emu->getContext(),
             ".shl.outer.true.branch");
         TrueBB->insertInto(Emu->getFunction(), JointBB);
         Instruction* TrueJmp = BranchInst::Create(JointBB, TrueBB);
+        TrueJmp->setDebugLoc(BinOpDebugLoc);
 
         OldBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(TrueBB, JointBB, NE, OldBB);
+        Instruction* TempOldBBBranchInst = BranchInst::Create(TrueBB, JointBB, NE, OldBB);
+        TempOldBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         // Create the inner branch.
         IRB->SetInsertPoint(&(*TrueBB->begin()));
@@ -804,18 +809,23 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         // than 32 (true branch) or otherwise (false branch).
         BasicBlock* InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
         InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.merge.inner.lo", TrueJmp);
+        InnerResLo->setDebugLoc(BinOpDebugLoc);
         InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.merge.inner.hi", TrueJmp);
+        InnerResHi->setDebugLoc(BinOpDebugLoc);
 
         InnerTBB = BasicBlock::Create(*Emu->getContext(), ".shl.inner.true.branch");
         InnerTBB->insertInto(Emu->getFunction(), InnerJBB);
-        BranchInst::Create(InnerJBB, InnerTBB);
+        Instruction* TempInnerTBBBranchInst = BranchInst::Create(InnerJBB, InnerTBB);
+        TempInnerTBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         InnerFBB = BasicBlock::Create(*Emu->getContext(), ".shl.inner.false.branch");
         InnerFBB->insertInto(Emu->getFunction(), InnerJBB);
-        BranchInst::Create(InnerJBB, InnerFBB);
+        Instruction* TempInnerFBBBranchInst = BranchInst::Create(InnerJBB, InnerFBB);
+        TempInnerFBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         TrueBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(InnerTBB, InnerFBB, Cond, TrueBB);
+        Instruction* TempTrueBBBranchInst = BranchInst::Create(InnerTBB, InnerFBB, Cond, TrueBB);
+        TempTrueBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         // The result is the same as the source if ShAmt is 0, i.e. NE is
         // false.
@@ -840,8 +850,8 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         if (InnerTBB) {
             IGC_ASSERT(isa<PHINode>(InnerResLo));
             IGC_ASSERT(isa<PHINode>(InnerResHi));
-            cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
-            cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
+            InnerResLo->addIncoming(L, InnerTBB);
+            InnerResHi->addIncoming(H, InnerTBB);
         }
         else {
             ResLo = L;
@@ -859,8 +869,8 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         if (InnerFBB) {
             IGC_ASSERT(isa<PHINode>(InnerResLo));
             IGC_ASSERT(isa<PHINode>(InnerResHi));
-            cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
-            cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
+            InnerResLo->addIncoming(L, InnerFBB);
+            InnerResHi->addIncoming(H, InnerFBB);
         }
         else {
             ResLo = L;
@@ -885,10 +895,11 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
     BasicBlock* OldBB = BinOp.getParent();
     BasicBlock* InnerTBB = nullptr;
     BasicBlock* InnerFBB = nullptr;
-    Value* InnerResLo = nullptr;
-    Value* InnerResHi = nullptr;
+    PHINode* InnerResLo = nullptr;
+    PHINode* InnerResHi = nullptr;
     Value* ResLo = nullptr;
     Value* ResHi = nullptr;
+    DebugLoc BinOpDebugLoc = BinOp.getDebugLoc();
 
     Value* Cond = nullptr;
 
@@ -902,15 +913,19 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         Value* NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
         BasicBlock* JointBB = OldBB->splitBasicBlock(&BinOp);
         ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.outer.merge.lo", &BinOp);
+        cast<Instruction>(ResLo)->setDebugLoc(BinOpDebugLoc);
         ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.outer.merge.hi", &BinOp);
+        cast<Instruction>(ResHi)->setDebugLoc(BinOpDebugLoc);
 
         BasicBlock* TrueBB = BasicBlock::Create(*Emu->getContext(),
             ".lshr.outer.true.branch");
         TrueBB->insertInto(Emu->getFunction(), JointBB);
         Instruction* TrueJmp = BranchInst::Create(JointBB, TrueBB);
+        TrueJmp->setDebugLoc(BinOpDebugLoc);
 
         OldBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(TrueBB, JointBB, NE, OldBB);
+        Instruction* TempOldBBBranchInst = BranchInst::Create(TrueBB, JointBB, NE, OldBB);
+        TempOldBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         // Create the inner branch.
         IRB->SetInsertPoint(&(*TrueBB->begin()));
@@ -920,18 +935,23 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         // than 32 (true branch) or otherwise (false branch).
         BasicBlock* InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
         InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.merge.inner.lo", TrueJmp);
+        InnerResLo->setDebugLoc(BinOpDebugLoc);
         InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.merge.inner.hi", TrueJmp);
+        InnerResHi->setDebugLoc(BinOpDebugLoc);
 
         InnerTBB = BasicBlock::Create(*Emu->getContext(), ".lshr.inner.true.branch");
         InnerTBB->insertInto(Emu->getFunction(), InnerJBB);
-        BranchInst::Create(InnerJBB, InnerTBB);
+        Instruction* TempInnerTBBBranchInst = BranchInst::Create(InnerJBB, InnerTBB);
+        TempInnerTBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         InnerFBB = BasicBlock::Create(*Emu->getContext(), ".lshr.inner.false.branch");
         InnerFBB->insertInto(Emu->getFunction(), InnerJBB);
-        BranchInst::Create(InnerJBB, InnerFBB);
+        Instruction* TempInnerFBBBranchInst = BranchInst::Create(InnerJBB, InnerFBB);
+        TempInnerFBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         TrueBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(InnerTBB, InnerFBB, Cond, TrueBB);
+        Instruction* TempTrueBBBranchInst = BranchInst::Create(InnerTBB, InnerFBB, Cond, TrueBB);
+        TempTrueBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         // The result is the same as the source if ShAmt is 0, i.e. NE is
         // false.
@@ -959,10 +979,8 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         L = IRB->CreateOr(L, T0);
 
         if (InnerTBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo));
-            IGC_ASSERT(isa<PHINode>(InnerResHi));
-            cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
-            cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
+            InnerResLo->addIncoming(L, InnerTBB);
+            InnerResHi->addIncoming(H, InnerTBB);
         }
         else {
             ResLo = L;
@@ -982,10 +1000,8 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         Value* L = IRB->CreateLShr(Hi, Amt);
 
         if (InnerFBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo));
-            IGC_ASSERT(isa<PHINode>(InnerResHi));
-            cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
-            cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
+            InnerResLo->addIncoming(L, InnerFBB);
+            InnerResHi->addIncoming(H, InnerFBB);
         }
         else {
             ResLo = L;
@@ -1010,10 +1026,11 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
     BasicBlock* OldBB = BinOp.getParent();
     BasicBlock* InnerTBB = nullptr;
     BasicBlock* InnerFBB = nullptr;
-    Value* InnerResLo = nullptr;
-    Value* InnerResHi = nullptr;
+    PHINode* InnerResLo = nullptr;
+    PHINode* InnerResHi = nullptr;
     Value* ResLo = nullptr;
     Value* ResHi = nullptr;
+    DebugLoc BinOpDebugLoc = BinOp.getDebugLoc();
 
     Value* Cond = nullptr;
 
@@ -1027,15 +1044,19 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         Value* NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
         BasicBlock* JointBB = OldBB->splitBasicBlock(&BinOp);
         ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.outer.merge.lo", &BinOp);
+        cast<Instruction>(ResLo)->setDebugLoc(BinOpDebugLoc);
         ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.outer.merge.hi", &BinOp);
+        cast<Instruction>(ResHi)->setDebugLoc(BinOpDebugLoc);
 
         BasicBlock* TrueBB = BasicBlock::Create(*Emu->getContext(),
             ".ashr.outer.true.branch");
         TrueBB->insertInto(Emu->getFunction(), JointBB);
         Instruction* TrueJmp = BranchInst::Create(JointBB, TrueBB);
+        TrueJmp->setDebugLoc(BinOpDebugLoc);
 
         OldBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(TrueBB, JointBB, NE, OldBB);
+        Instruction* TempOldBBBranchInst = BranchInst::Create(TrueBB, JointBB, NE, OldBB);
+        TempOldBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         // Create the inner branch.
         IRB->SetInsertPoint(&(*TrueBB->begin()));
@@ -1045,18 +1066,23 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         // than 32 or otherwise.
         BasicBlock* InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
         InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.merge.inner.lo", TrueJmp);
+        InnerResLo->setDebugLoc(BinOpDebugLoc);
         InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.merge.inner.hi", TrueJmp);
+        InnerResHi->setDebugLoc(BinOpDebugLoc);
 
         InnerTBB = BasicBlock::Create(*Emu->getContext(), ".ashr.inner.true.branch");
         InnerTBB->insertInto(Emu->getFunction(), InnerJBB);
-        BranchInst::Create(InnerJBB, InnerTBB);
+        Instruction* TempInnerTBBBranchInst = BranchInst::Create(InnerJBB, InnerTBB);
+        TempInnerTBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         InnerFBB = BasicBlock::Create(*Emu->getContext(), ".ashr.inner.false.branch");
         InnerFBB->insertInto(Emu->getFunction(), InnerJBB);
-        BranchInst::Create(InnerJBB, InnerFBB);
+        Instruction* TempInnerFBBBranchInst = BranchInst::Create(InnerJBB, InnerFBB);
+        TempInnerFBBBranchInst->setDebugLoc(BinOp.getDebugLoc());
 
         TrueBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(InnerTBB, InnerFBB, Cond, TrueBB);
+        Instruction* TempTrueBBBranchInst = BranchInst::Create(InnerTBB, InnerFBB, Cond, TrueBB);
+        TempTrueBBBranchInst->setDebugLoc(BinOpDebugLoc);
 
         // The result is the same as the source if ShAmt is 0, i.e. NE is
         // false.
@@ -1079,10 +1105,8 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         L = IRB->CreateOr(L, T0);
 
         if (InnerTBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo));
-            IGC_ASSERT(isa<PHINode>(InnerResHi));
-            cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
-            cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
+            InnerResLo->addIncoming(L, InnerTBB);
+            InnerResHi->addIncoming(H, InnerTBB);
         }
         else {
             ResLo = L;
@@ -1098,10 +1122,8 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         Value* L = IRB->CreateAShr(Hi, Amt);
 
         if (InnerFBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo));
-            IGC_ASSERT(isa<PHINode>(InnerResHi));
-            cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
-            cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
+            InnerResLo->addIncoming(L, InnerFBB);
+            InnerResHi->addIncoming(H, InnerFBB);
         }
         else {
             ResLo = L;
@@ -1443,8 +1465,10 @@ Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruct
 
     // Set insert point to Pos in the new block JointBB
     IRB->SetInsertPoint(Pos);
+    DebugLoc PosDebugLoc = Pos->getDebugLoc();
 
     PHINode* Res = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.outer.merge", Pos);
+    Res->setDebugLoc(PosDebugLoc);
 
     {
         BuilderType::InsertPointGuard Guard(*IRB);
@@ -1452,9 +1476,11 @@ Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruct
         BasicBlock* TrueBB = BasicBlock::Create(*Emu->getContext(), ".u2f.outer.true.branch");
         TrueBB->insertInto(Emu->getFunction(), JointBB);
         Instruction* TrueJmp = BranchInst::Create(JointBB, TrueBB);
+        TrueJmp->setDebugLoc(PosDebugLoc);
 
         OldBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(TrueBB, JointBB, NE, OldBB);
+        Instruction* TempOldBBBranchInst = BranchInst::Create(TrueBB, JointBB, NE, OldBB);
+        TempOldBBBranchInst->setDebugLoc(PosDebugLoc);
 
         IRB->SetInsertPoint(&(*TrueBB->begin()));
         // Check ShAmt == 0
@@ -1462,14 +1488,18 @@ Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruct
 
         BasicBlock* InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
         PHINode* InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.inner.merge.hi", TrueJmp);
+        InnerResHi->setDebugLoc(PosDebugLoc);
         PHINode* InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.inner.merge.lo", TrueJmp);
+        InnerResLo->setDebugLoc(PosDebugLoc);
 
         BasicBlock* InnerTBB = BasicBlock::Create(*Emu->getContext(), ".u2f.inner.true.branch");
         InnerTBB->insertInto(Emu->getFunction(), InnerJBB);
-        BranchInst::Create(InnerJBB, InnerTBB);
+        Instruction* TempInnerTBBBranchInst = BranchInst::Create(InnerJBB, InnerTBB);
+        TempInnerTBBBranchInst->setDebugLoc(PosDebugLoc);
 
         TrueBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(InnerTBB, InnerJBB, NE, TrueBB);
+        Instruction* TempTrueBBBranchInst = BranchInst::Create(InnerTBB, InnerJBB, NE, TrueBB);
+        TempTrueBBBranchInst->setDebugLoc(PosDebugLoc);
 
         IRB->SetInsertPoint(&(*InnerTBB->begin()));
         // 0 < ShAmt < 32
@@ -1491,13 +1521,16 @@ Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruct
 
         BasicBlock* RoundingJBB = InnerJBB->splitBasicBlock(InnerJmp);
         PHINode* RoundingRes = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.rounding.merge.hi", InnerJmp);
+        RoundingRes->setDebugLoc(PosDebugLoc);
 
         BasicBlock* RoundingBB = BasicBlock::Create(*Emu->getContext(), ".u2f.rounding.branch");
         RoundingBB->insertInto(Emu->getFunction(), RoundingJBB);
-        BranchInst::Create(RoundingJBB, RoundingBB);
+        Instruction* TempRoundingBBBranchInst = BranchInst::Create(RoundingJBB, RoundingBB);
+        TempRoundingBBBranchInst->setDebugLoc(PosDebugLoc);
 
         InnerJBB->getTerminator()->eraseFromParent();
-        BranchInst::Create(RoundingBB, RoundingJBB, NE, InnerJBB);
+        Instruction* TempInnerJBBBranchInst = BranchInst::Create(RoundingBB, RoundingJBB, NE, InnerJBB);
+        TempInnerJBBBranchInst->setDebugLoc(PosDebugLoc);
 
         // Rounding
         IRB->SetInsertPoint(&(*RoundingBB->begin()));
