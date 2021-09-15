@@ -72,7 +72,14 @@ constexpr const char BuiltinPrefix[] = "__cm_cl_";
 #undef CMCL_AUTOGEN_BUILTIN_DESCS
 
 static bool isOutputOperand(OperandKind::Enum OpKind) {
-  return OpKind == OperandKind::VectorInOut || OpKind == OperandKind::VectorOut;
+  switch (OpKind) {
+  case OperandKind::VectorInOut:
+  case OperandKind::VectorOut:
+  case OperandKind::ScalarOut:
+    return true;
+  default:
+    return false;
+  }
 }
 
 template <BuiltinID::Enum BiID>
@@ -109,8 +116,12 @@ Function *getGenXDeclarationForIdFromArgs(Type &RetTy, Range &&Args,
   assert(GenXIntrinsic::isGenXIntrinsic(Id) && "Expected genx intrinsic id");
 
   SmallVector<Type *, 4> Types;
-  if (GenXIntrinsic::isOverloadedRet(Id))
-    Types.push_back(&RetTy);
+  if (GenXIntrinsic::isOverloadedRet(Id)) {
+    if (isa<StructType>(RetTy))
+      llvm::copy(cast<StructType>(RetTy).elements(), std::back_inserter(Types));
+    else
+      Types.push_back(&RetTy);
+  }
   for (auto &&EnumArg : llvm::enumerate(Args)) {
     if (GenXIntrinsic::isOverloadedArg(Id, EnumArg.index()))
       Types.push_back(EnumArg.value()->getType());
@@ -176,6 +187,8 @@ static Value &searchForVectorPointer(Value &V) {
   for (CurV = &V; !isPointerToVector(*CurV->getType());
        CurV = cast<CastInst>(CurV)->getOperand(0))
     ;
+  assert(isPointerToVector(*CurV->getType()) &&
+         "must've found a pointer to vector");
   return *CurV;
 }
 
@@ -189,9 +202,19 @@ static Value &readVectorFromBuiltinOp(Value &BiOp, IRBuilder<> &IRB) {
 
 // Output vector operands is also passed as void*.
 static void writeVectorFromBuiltinOp(Value &ToWrite, Value &BiOp,
+                                     OperandKind::Enum OpKind,
                                      IRBuilder<> &IRB) {
-  auto &Ptr = searchForVectorPointer(BiOp);
-  IRB.CreateStore(&ToWrite, &Ptr);
+  switch (OpKind) {
+  case OperandKind::VectorOut:
+  case OperandKind::VectorInOut:
+    IRB.CreateStore(&ToWrite, &searchForVectorPointer(BiOp));
+    return;
+  case OperandKind::ScalarOut:
+    IRB.CreateStore(&ToWrite, &BiOp);
+    return;
+  default:
+    llvm_unreachable("Only output kinds are expected");
+  }
 }
 
 // Getting vc-intrinsic (or llvm instruction/intrinsic) operand based on cm-cl
@@ -202,6 +225,7 @@ Value &readValueFromBuiltinOp(CallInst &BiCall, int OpIdx, IRBuilder<> &IRB) {
   assert(OpIdx < BuiltinOperandSize[BiID] && "operand index is illegal");
   switch (BuiltinOperandKind[BiID][OpIdx]) {
   case OperandKind::VectorOut:
+  case OperandKind::ScalarOut:
     llvm_unreachable("cannot read value from an output operand");
   case OperandKind::VectorIn:
   case OperandKind::VectorInOut:
@@ -237,10 +261,13 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
   case OperandKind::VectorIn:
   case OperandKind::VectorInOut:
     return *searchForVectorPointer(BiOp).getType()->getPointerElementType();
+  // TOTHINK: How to handle overloaded scalars?
   case OperandKind::ScalarConst:
   case OperandKind::ScalarIn:
   case OperandKind::PointerIn:
     return *BiOp.getType();
+  case OperandKind::ScalarOut:
+    return *BiOp.getType()->getPointerElementType();
   default:
     llvm_unreachable("Unexpected operand kind");
   }
@@ -250,6 +277,11 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
 // \p Ty must be a fixed vector type.
 static int getVectorWidth(Type &Ty) {
   return cast<IGCLLVM::FixedVectorType>(Ty).getNumElements();
+}
+
+// A helper function to get structure type from its element types.
+template <typename... ArgTys> Type &getStructureOf(ArgTys &... ElementTys) {
+  return *StructType::create("", &ElementTys...);
 }
 
 // Returns the type wich instruction that a builtin is translated into will
@@ -289,21 +321,20 @@ std::vector<Value *> getTranslatedBuiltinOperands(CallInst &BiCall,
 // Args:
 //    RetTy - type of generated instruction
 template <BuiltinID::Enum BiID>
-std::vector<ValueRef> createMainInst(const std::vector<Value *> &Operands,
-                                     Type &RetTy, IRBuilder<> &IRB) {
+Value &createMainInst(const std::vector<Value *> &Operands, Type &RetTy,
+                      IRBuilder<> &IRB) {
   auto *Decl = getGenXDeclarationForIdFromArgs(
       RetTy, Operands,
       static_cast<GenXIntrinsic::ID>(IntrinsicForBuiltin[BiID]),
       *IRB.GetInsertBlock()->getModule());
   auto *CI =
       IRB.CreateCall(Decl, Operands, RetTy.isVoidTy() ? "" : "cmcl.builtin");
-  return {*CI};
+  return *CI;
 }
 
 template <>
-std::vector<ValueRef>
-createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands, Type &,
-                                  IRBuilder<> &IRB) {
+Value &createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands,
+                                         Type &, IRBuilder<> &IRB) {
   // LLVM select instruction operand indices.
   enum LLVMSelectOperand { Condition, TrueValue, FalseValue };
   // trunc <iW x N> to <i1 x N> for mask
@@ -316,7 +347,23 @@ createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands, Type &,
   auto *SelectResult =
       IRB.CreateSelect(RightTypeCond, Operands[LLVMSelectOperand::TrueValue],
                        Operands[LLVMSelectOperand::FalseValue], "cmcl.sel");
-  return {*SelectResult};
+  return *SelectResult;
+}
+
+// Produces a vector of main inst results from its value.
+// For multiple output an intrinsic may return a structure. This function will
+// extract all structure elements and put them in index order into resulting
+// vector.
+static std::vector<ValueRef> splitMainInstResult(Value &CombinedResult,
+                                                 IRBuilder<> &IRB) {
+  if (!isa<StructType>(CombinedResult.getType()))
+    return {CombinedResult};
+  auto *ResTy = cast<StructType>(CombinedResult.getType());
+  std::vector<ValueRef> Results;
+  for (int Idx = 0; Idx != ResTy->getNumElements(); ++Idx)
+    Results.push_back(
+        *IRB.CreateExtractValue(&CombinedResult, Idx, "cmcl.extract.res"));
+  return Results;
 }
 
 // Writes output values of created "MainInst".
@@ -324,8 +371,9 @@ createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands, Type &,
 //    builtin return value if any, output operands in order of builtin
 //    arguments (VectorOut, VectorInOut, etc.) if any.
 template <BuiltinID::Enum BiID>
-void writeBuiltinResults(const std::vector<ValueRef> &Results, CallInst &BiCall,
+void writeBuiltinResults(Value &CombinedResult, CallInst &BiCall,
                          IRBuilder<> &IRB) {
+  auto Results = splitMainInstResult(CombinedResult, IRB);
   int ResultIdx = 0;
   // Handle return value.
   if (!BiCall.getType()->isVoidTy()) {
@@ -335,10 +383,12 @@ void writeBuiltinResults(const std::vector<ValueRef> &Results, CallInst &BiCall,
   }
 
   // Handle output operands.
-  for (int BiOpIdx = 0; BiOpIdx != BuiltinOperandSize[BiID]; ++BiOpIdx)
-    if (isOutputOperand(BuiltinOperandKind[BiID][BiOpIdx]))
+  for (int BiOpIdx = 0; BiOpIdx != BuiltinOperandSize[BiID]; ++BiOpIdx) {
+    auto OpKind = BuiltinOperandKind[BiID][BiOpIdx];
+    if (isOutputOperand(OpKind))
       writeVectorFromBuiltinOp(Results[ResultIdx++],
-                               *BiCall.getArgOperand(BiOpIdx), IRB);
+                               *BiCall.getArgOperand(BiOpIdx), OpKind, IRB);
+  }
 }
 
 template <BuiltinID::Enum BiID>
@@ -347,7 +397,7 @@ static void handleBuiltinCall(CallInst &BiCall) {
 
   auto Operands = getTranslatedBuiltinOperands<BiID>(BiCall, IRB);
   auto &RetTy = getTranslatedBuiltinType<BiID>(BiCall);
-  auto Result = createMainInst<BiID>(Operands, RetTy, IRB);
+  auto &Result = createMainInst<BiID>(Operands, RetTy, IRB);
   writeBuiltinResults<BiID>(Result, BiCall, IRB);
 }
 

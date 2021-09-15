@@ -33,6 +33,15 @@ template <typename T>
 struct add_rvalue_reference : decltype(detail::try_add_rvalue_reference<T>(0)) {
 };
 
+template <typename T> struct remove_reference { using type = T; };
+
+template <typename T> struct remove_reference<T &> { using type = T; };
+
+template <typename T> struct remove_reference<T &&> { using type = T; };
+
+template <typename T>
+using remove_reference_t = typename remove_reference<T>::type;
+
 template <typename...> using void_t = void;
 
 template <typename T> typename add_rvalue_reference<T>::type declval() noexcept;

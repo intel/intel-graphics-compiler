@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "vector_impl.h"
 
 #include <opencl_def.h>
+#include <opencl_utility.h>
 
 //=========================== builtin declarations ===========================//
 
@@ -37,6 +38,10 @@ extern "C" void __cm_cl_svm_scatter(int num_blocks, void *address, void *src);
 extern "C" void __cm_cl_svm_atomic_add(void *dst, void *address, void *src);
 extern "C" uint32_t __cm_cl_lzd_scalar(uint32_t src);
 extern "C" void __cm_cl_lzd_vector(void *dst, void *src);
+extern "C" uint32_t __cm_cl_addc_scalar(uint32_t *sum, uint32_t src0,
+                                        uint32_t src1);
+extern "C" void __cm_cl_addc_vector(void *carry, void *sum, void *src0,
+                                    void *src1);
 
 namespace cm {
 namespace detail {
@@ -173,6 +178,22 @@ vector_impl<uint32_t, width> lzd(vector_impl<uint32_t, width> src) {
   vector_impl<uint32_t, width> dst;
   __cm_cl_lzd_vector(&dst, &src);
   return dst;
+}
+
+// Sum is the first output, carry - the second.
+inline cl::pair<uint32_t, char> addc(uint32_t src0, uint32_t src1) {
+  uint32_t res;
+  uint32_t carry = __cm_cl_addc_scalar(&res, src0, src1);
+  return {res, carry};
+}
+
+template <int width>
+cl::pair<vector_impl<uint32_t, width>, vector_impl<char, width>>
+addc(vector_impl<uint32_t, width> src0, vector_impl<uint32_t, width> src1) {
+  vector_impl<uint32_t, width> carry;
+  vector_impl<uint32_t, width> res;
+  __cm_cl_addc_vector(&carry, &res, &src0, &src1);
+  return {res, __builtin_convertvector(carry, vector_impl<char, width>)};
 }
 
 } // namespace detail

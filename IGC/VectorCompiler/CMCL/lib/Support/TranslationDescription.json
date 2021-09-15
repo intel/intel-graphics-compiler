@@ -13,7 +13,15 @@
     "intrinsics. More details can be found in GenerateTranslationCode.py"
   ],
   "HelperStructures": {
-    "OperandKind": ["VectorIn", "VectorOut", "VectorInOut", "ScalarIn", "ScalarConst", "PointerIn"]
+    "OperandKind": [
+      "VectorIn",
+      "VectorOut",
+      "VectorInOut",
+      "ScalarIn",
+      "ScalarConst",
+      "ScalarOut",
+      "PointerIn"
+    ]
   },
   "BuiltinDescriptions": {
     "Select": {
@@ -234,6 +242,51 @@
         "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
         "Operands": [
           {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
+    "AddCarryScalar": {
+      "Name": "addc_scalar",
+      "Operands": [
+        {"Name": "Sum", "Kind": "ScalarOut"},
+        {"Name": "FirstSrc", "Kind": "ScalarIn"},
+        {"Name": "SecondSrc", "Kind": "ScalarIn"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_addc",
+        "ReturnType": {
+          "Code": [
+            "getStructureOf({}, {})",
+            {"GetBuiltinReturnType": []},
+            {"GetBuiltinOperandType": ["Sum"]}
+          ]
+        },
+        "Operands": [
+          {"GetBuiltinOperand": ["FirstSrc"]},
+          {"GetBuiltinOperand": ["SecondSrc"]}
+        ]
+      }
+    },
+    "AddCarryVector": {
+      "Name": "addc_vector",
+      "Operands": [
+        {"Name": "Carry", "Kind": "VectorOut"},
+        {"Name": "Sum", "Kind": "VectorOut"},
+        {"Name": "FirstSrc", "Kind": "VectorIn"},
+        {"Name": "SecondSrc", "Kind": "VectorIn"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_addc",
+        "ReturnType": {
+          "Code": [
+            "getStructureOf({}, {})",
+            {"GetBuiltinOperandType": ["Carry"]},
+            {"GetBuiltinOperandType": ["Sum"]}
+          ]
+        },
+        "Operands": [
+          {"GetBuiltinOperand": ["FirstSrc"]},
+          {"GetBuiltinOperand": ["SecondSrc"]}
         ]
       }
     }
