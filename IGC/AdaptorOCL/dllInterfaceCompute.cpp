@@ -448,6 +448,7 @@ bool ProcessElfInput(
   PLATFORM &platform,
   bool isOutputLlvmBinary)
 {
+  ShaderHash previousHash;
   bool success = true;
   std::string ErrorMsg;
 
@@ -460,6 +461,47 @@ bool ProcessElfInput(
     {
       // Create an empty module to store the output
       std::unique_ptr<llvm::Module> OutputModule;
+
+#if defined(IGC_SPIRV_ENABLED)
+      if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+      {
+          // Dumping SPIRV files with temporary hashes
+
+          for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
+          {
+              const CLElfLib::SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
+              IGC_ASSERT(pSectionHeader != NULL);
+              if (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV)
+              {
+                  char* pSPIRVBitcode = NULL;
+                  size_t size = 0;
+                  pElfReader->GetSectionData(i, pSPIRVBitcode, size);
+                  // The hash created here (from Input) is only temporary and will be replaced
+                  // if the LLVM translation and linking finishes successfully
+                  previousHash = ShaderHashOCL(reinterpret_cast<const UINT*>(InputArgs.pInput), InputArgs.InputSize / 4);
+                  QWORD hash = previousHash.getAsmHash();
+
+                  // beyond of general hash, each SPIR-V module needs to have it's own hash
+                  QWORD spvHash = ShaderHashOCL((const UINT*)pSPIRVBitcode, size / 4).getAsmHash();
+                  std::ostringstream spvHashSuffix("_", std::ostringstream::ate);
+                  spvHashSuffix << std::hex << std::setfill('0') << std::setw(sizeof(spvHash) * CHAR_BIT / 4) << spvHash;
+                  const std::string suffix = spvHashSuffix.str();
+
+                  const char* pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+                  DumpShaderFile(pOutputFolder, pSPIRVBitcode, size, hash, suffix + ".spv");
+
+#if defined(IGC_SPIRV_TOOLS_ENABLED)
+                  spv_text spirvAsm = nullptr;
+                  if (DisassembleSPIRV(pSPIRVBitcode, size, &spirvAsm) == SPV_SUCCESS)
+                  {
+                      DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, suffix + ".spvasm");
+                  }
+                  spvTextDestroy(spirvAsm);
+#endif // defined(IGC_SPIRV_TOOLS_ENABLED)
+              }
+          }
+      }
+#endif // defined(IGC_SPIRV_ENABLED)
 
       // Iterate over all the input modules.
       for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
@@ -585,40 +627,41 @@ bool ProcessElfInput(
 #if defined(IGC_SPIRV_ENABLED)
             if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
             {
-                // Dumping SPIRV files needs to be done after linking process, as we need to know
-                // the output parameters to prepare the correct file hash
-                for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
+                // This part renames the previously dumped SPIR-V files
+                // so that the hash in their name matches the one of LLVM files
+                const char* outputDir = IGC::Debug::GetShaderOutputFolder();
+                QWORD prevAsmHash = previousHash.getAsmHash();
+                std::ostringstream oss1(std::ostringstream::ate);
+                oss1 << std::hex
+                    << std::setfill('0')
+                    << std::setw(sizeof(prevAsmHash) * CHAR_BIT / 4)
+                    << prevAsmHash;
+                const std::string prevHashString = oss1.str();
+                QWORD newAsmHash = ShaderHashOCL((const UINT*)OutputArgs.pOutput, OutputArgs.OutputSize / 4).getAsmHash();
+                std::ostringstream oss2(std::ostringstream::ate);
+                oss2 << std::hex
+                    << std::setfill('0')
+                    << std::setw(sizeof(newAsmHash) * CHAR_BIT / 4)
+                    << newAsmHash;
+                const std::string newHashString = oss2.str();
+                llvm::Twine outputPath = outputDir;
+                std::error_code ec;
+                for(llvm::sys::fs::directory_iterator file(outputDir, ec), fileEnd; file != fileEnd && !ec; file.increment(ec))
                 {
-                    const CLElfLib::SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
-                    IGC_ASSERT(pSectionHeader != NULL);
-                    if (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV)
+                    if (llvm::sys::fs::is_regular_file(file->path()))
                     {
-                        char* pSPIRVBitcode = NULL;
-                        size_t size = 0;
-                        pElfReader->GetSectionData(i, pSPIRVBitcode, size);
-                        QWORD hash = ShaderHashOCL((const UINT*)OutputArgs.pOutput, OutputArgs.OutputSize / 4).getAsmHash();
-
-                        // beyond of general hash, each SPIR-V module needs to have it's own hash
-                        QWORD spvHash = ShaderHashOCL((const UINT*)pSPIRVBitcode, size / 4).getAsmHash();
-                        std::ostringstream spvHashSuffix("_", std::ostringstream::ate);
-                        spvHashSuffix << std::hex << std::setfill('0') << std::setw(sizeof(spvHash)* CHAR_BIT / 4) << spvHash;
-                        const std::string suffix = spvHashSuffix.str();
-
-                        const char* pOutputFolder = IGC::Debug::GetShaderOutputFolder();
-                        DumpShaderFile(pOutputFolder, pSPIRVBitcode, size, hash, suffix + ".spv");
-
-#if defined(IGC_SPIRV_TOOLS_ENABLED)
-                        spv_text spirvAsm = nullptr;
-                        if (DisassembleSPIRV(pSPIRVBitcode, size, &spirvAsm) == SPV_SUCCESS)
+                        std::string name = file->path();
+                        // Rename file if it contains the previous hash
+                        if (name.find(prevHashString) != std::string::npos)
                         {
-                            DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, suffix + ".spvasm");
+                            name.replace(name.find(prevHashString), newHashString.length(), newHashString);
+                            llvm::sys::fs::rename(file->path(), name);
                         }
-                        spvTextDestroy(spirvAsm);
-#endif // defined(IGC_SPIRV_TOOLS_ENABLED)
                     }
                 }
             }
 #endif // defined(IGC_SPIRV_ENABLED)
+
           }
           else
           {
@@ -665,8 +708,6 @@ bool ProcessElfInput(
         }
       }
     }
-
-    success = true;
 
   return success;
 }
