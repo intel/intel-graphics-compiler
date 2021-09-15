@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -224,8 +225,32 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
 
 void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerOperand)
 {
-    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(
-        "Adding additional control flow due to presence of generic address space operations");
+    std::stringstream warningInfo;
+    if (m_ctx->m_instrTypes.hasDebugInfo)
+    {
+        llvm::DILocation* dbInfo = I.getDebugLoc();
+        llvm::Instruction* prevInst = I.getPrevNode();
+
+        while (dbInfo == nullptr)
+        {
+            if (prevInst == nullptr)
+            {
+                break;
+            }
+            dbInfo = prevInst->getDebugLoc();
+            prevInst = prevInst->getPrevNode();
+        }
+        if (dbInfo != nullptr)
+        {
+            warningInfo << "from dir:" << dbInfo->getDirectory().str();
+            warningInfo << " from file:" << dbInfo->getFilename().str();
+            warningInfo << " line:" << dbInfo->getLine();
+            warningInfo << " :";
+        }
+    }
+    warningInfo << "Adding additional control flow due to presence of generic address space operations";
+    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningInfo.str().c_str());
+
     // Every time there is a load/store from/to a generic pointer, we have to resolve
     // its corresponding address space by looking at its tag on bits[61:63].
     // First, the generic pointer's tag is obtained to then perform the load/store
