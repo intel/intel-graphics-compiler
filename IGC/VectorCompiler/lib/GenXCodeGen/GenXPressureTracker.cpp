@@ -13,7 +13,10 @@ SPDX-License-Identifier: MIT
 #include "GenXLiveness.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
+
 #include "vc/GenXOpts/Utils/RegCategory.h"
+#include "vc/Utils/General/Types.h"
+
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -36,7 +39,7 @@ unsigned PressureTracker::getSizeInBytes(LiveRange *LR, bool AllowWidening) {
   SimpleValue SV = *LR->value_begin();
   Value *V = SV.getValue();
   Type *Ty = IndexFlattener::getElementType(V->getType(), SV.getIndex());
-  unsigned Bytes = getTypeSize<WordBits>(Ty, &DL) * WordBytes;
+  unsigned Bytes = vc::getTypeSize(Ty, &DL).inWords() * WordBytes;
   if (!AllowWidening)
     return Bytes;
 

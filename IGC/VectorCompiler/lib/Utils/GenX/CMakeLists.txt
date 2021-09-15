@@ -8,6 +8,7 @@
 
 set(GENX_UTILS_SOURCES
   Printf.cpp
+  TypeSize.cpp
   )
 
 add_library(VCGenXUtils ${GENX_UTILS_SOURCES})

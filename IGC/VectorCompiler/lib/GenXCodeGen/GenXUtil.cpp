@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/Utils/GenX/Printf.h"
+#include "vc/Utils/General/Types.h"
 
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -392,8 +393,8 @@ bool genx::isNoopCast(const CastInst *CI) {
   case Instruction::PtrToInt:
   case Instruction::IntToPtr:
   case Instruction::AddrSpaceCast:
-    return getTypeSize(CI->getDestTy(), &DL) ==
-           getTypeSize(CI->getSrcTy(), &DL);
+    return vc::getTypeSize(CI->getDestTy(), &DL) ==
+           vc::getTypeSize(CI->getSrcTy(), &DL);
   default:
     return false;
   }

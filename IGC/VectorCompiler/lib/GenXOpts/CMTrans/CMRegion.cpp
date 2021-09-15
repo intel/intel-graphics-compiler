@@ -15,6 +15,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/TypeSize.h"
 
 #include "vc/GenXOpts/Utils/CMRegion.h"
+
+#include "vc/Utils/GenX/TypeSize.h"
+
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -623,7 +626,8 @@ bool CMRegion::isSimilar(const CMRegion &R2) const
     return isStrictlySimilar(R2);
   // Change the element type to match, so we can compare the regions.
   CMRegion R = R2;
-  if (!R.changeElementType(ElementTy))
+  // FIXME: we need DataLayout here
+  if (!R.changeElementType(ElementTy, nullptr))
     return false;
   return isStrictlySimilar(R);
 }
@@ -775,18 +779,20 @@ Constant *CMRegion::evaluateConstantWrRegion(Constant *OldVal, Constant *NewVal)
  *
  * Return:  true if succeeded, false if failed (nothing altered)
  */
-bool CMRegion::changeElementType(Type *NewElementType)
-{
+bool CMRegion::changeElementType(Type *NewElementType, const DataLayout *DL) {
+  // TODO: enable this assert once out codebase is ready
+  // IGC_ASSERT(DL);
   IGC_ASSERT(ElementBytes);
   IGC_ASSERT_MESSAGE(Offset % ElementBytes == 0, "Impossible offset (in bytes) for data type");
-  unsigned NewElementBytes = NewElementType->getPrimitiveSizeInBits() / 8U;
-  if (NewElementType->getPrimitiveSizeInBits())
-    NewElementBytes = NewElementBytes ? NewElementBytes : 1;
+
+  unsigned NewElementBytes = vc::getTypeSize(NewElementType, DL).inBytes();
+
   if (NewElementBytes == ElementBytes) {
     // No change in element size
     ElementTy = NewElementType;
     return true;
   }
+
   unsigned Ratio = NewElementBytes / ElementBytes;
   if (Ratio >= 1) {
     IGC_ASSERT_MESSAGE(isPowerOf2_32(Ratio), "Ratio must be pow of 2");

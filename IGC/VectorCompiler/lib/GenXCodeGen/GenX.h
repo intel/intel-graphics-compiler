@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #ifndef TARGET_GENX_H
 #define TARGET_GENX_H
+
 #include "visa_igc_common_header.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
@@ -20,6 +21,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/LoopInfo.h"
+
+#include "vc/Utils/GenX/TypeSize.h"
+
 #include <string>
 
 namespace llvm {
@@ -113,13 +117,12 @@ namespace genx {
 enum Signedness {
   DONTCARESIGNED = 3, SIGNED = 1, UNSIGNED = 2
 };
-
-constexpr unsigned BoolBits  = 1;
-constexpr unsigned ByteBits  = 8;
-constexpr unsigned WordBits  = 16;
-constexpr unsigned DWordBits = 32;
-constexpr unsigned QWordBits = 64;
-constexpr unsigned OWordBits = 128;
+constexpr unsigned BoolBits = vc::BoolBits;
+constexpr unsigned ByteBits = vc::ByteBits;
+constexpr unsigned WordBits = vc::WordBits;
+constexpr unsigned DWordBits = vc::DWordBits;
+constexpr unsigned QWordBits = vc::QWordBits;
+constexpr unsigned OWordBits = vc::OWordBits;
 
 constexpr unsigned ByteBytes = ByteBits / ByteBits;
 constexpr unsigned WordBytes = WordBits / ByteBits;

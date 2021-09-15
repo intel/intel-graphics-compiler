@@ -2168,6 +2168,7 @@ static Value *createBitCastIfNeeded(Value *V, Type *NewTy,
 static Type *getNewVectorType(Type *OldTy, IntegerType *NewScalarType) {
   IGC_ASSERT(OldTy->isIntOrIntVectorTy());
   unsigned OldElemSize = OldTy->getScalarSizeInBits();
+  IGC_ASSERT(OldElemSize > 0);
   auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(OldTy);
   unsigned OldNumElems = VTy ? VTy->getNumElements() : 1;
   unsigned NewElemSize = NewScalarType->getBitWidth();
@@ -2240,9 +2241,14 @@ Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
     return nullptr;
   Type *NewSrcTy = getNewVectorType(Src->getType(), ToTy),
        *NewDstTy = getNewVectorType(Dst->getType(), ToTy);
-  if (!NewSrcTy || !NewDstTy || !SrcRgn.changeElementType(ToTy) ||
-      !DstRgn.changeElementType(ToTy))
+  if (!NewSrcTy || !NewDstTy)
     return nullptr;
+
+  const auto *DL = &HeadInst->getModule()->getDataLayout();
+  if (!SrcRgn.changeElementType(ToTy, DL) ||
+      !DstRgn.changeElementType(ToTy, DL))
+    return nullptr;
+
   IGC_ASSERT(SrcRgn.NumElements == DstRgn.NumElements);
 
   Instruction *NewWr = nullptr, *NewRd = nullptr;

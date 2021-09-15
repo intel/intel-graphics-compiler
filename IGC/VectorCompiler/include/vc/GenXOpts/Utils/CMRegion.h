@@ -181,7 +181,7 @@ public:
   // append : append region AR to this region
   bool append(CMRegion AR);
   // changeElementType : change the element type of the region
-  bool changeElementType(Type *NewElementType);
+  bool changeElementType(Type *NewElementType, const DataLayout *DL);
   // Debug dump/print
   void dump() const;
   void print(raw_ostream &OS) const;

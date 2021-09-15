@@ -432,7 +432,8 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
   Region ROrig(Rd, BaleInfo());
   Region R(Rd, BaleInfo());
   auto ElTy = BC->getType()->getScalarType();
-  if (!R.changeElementType(ElTy))
+  IGC_ASSERT(DL);
+  if (!R.changeElementType(ElTy, DL))
     return;
 
   // we do not want this optimization to be applied if resulting indirect
@@ -444,11 +445,11 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
     return;
 
   // Create the new bitcast.
-  IGC_ASSERT(ElTy->getPrimitiveSizeInBits());
+  IGC_ASSERT(vc::getTypeSize(ElTy, DL).inBits());
   auto Input = Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
   auto NewBCTy = IGCLLVM::FixedVectorType::get(
-      ElTy, Input->getType()->getPrimitiveSizeInBits() /
-                ElTy->getPrimitiveSizeInBits());
+      ElTy, vc::getTypeSize(Input->getType(), DL).inBits() /
+                vc::getTypeSize(ElTy, DL).inBits());
   auto NewBC = CastInst::Create(Instruction::BitCast, Input, NewBCTy, "", Rd);
   NewBC->takeName(BC);
   NewBC->setDebugLoc(BC->getDebugLoc());
@@ -805,7 +806,7 @@ void GenXRegionCollapsing::processWrRegionBitCast2(Instruction *WrRegion)
   // Get the region params for the replacement wrregion, checking if that
   // fails.
   Region R(WrRegion, BaleInfo());
-  if (!R.changeElementType(BCInputElementType))
+  if (!R.changeElementType(BCInputElementType, DL))
     return;
   // Bitcast the "old value" input.
   Value *OldVal = createBitCastToElementType(
@@ -1087,16 +1088,16 @@ bool GenXRegionCollapsing::normalizeElementType(Region *R1, Region *R2,
   // Try the smaller element size first if it is preferred by the caller.
   if (PreferSmall)
     if (!BigR->Indirect) // big region not indirect
-      if (BigR->changeElementType(SmallR->ElementTy))
+      if (BigR->changeElementType(SmallR->ElementTy, DL))
         return true;
   // Then try the bigger element size.
   if (!SmallR->Indirect) // small region not indirect
-    if (SmallR->changeElementType(BigR->ElementTy))
+    if (SmallR->changeElementType(BigR->ElementTy, DL))
       return true;
   // Then try the smaller element size.
   if (!PreferSmall)
     if (!BigR->Indirect) // big region not indirect
-      if (BigR->changeElementType(SmallR->ElementTy))
+      if (BigR->changeElementType(SmallR->ElementTy, DL))
         return true;
   return false;
 }

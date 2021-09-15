@@ -817,7 +817,7 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const Module *M) const
     RN->print(OS);
     Type *ElTy = IndexFlattener::getElementType(SV.getValue()->getType(),
           SV.getIndex());
-    unsigned Bytes = getTypeSize<WordBits>(ElTy) * WordBytes;
+    unsigned Bytes = vc::getTypeSize(ElTy).inWords() * WordBytes;
     bool IsFlag = ElTy->getScalarType()->isIntegerTy(1);
     OS << "] (" << Bytes << " bytes, length " << i->Length <<") ";
     // Dump some indication of what the live range is. For a kernel argument,
