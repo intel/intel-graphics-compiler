@@ -157,7 +157,7 @@ public:
       : DiagnosticInfoOptimizationBase((DiagnosticKind)getKindID(), Severity,
                                        /*PassName=*/nullptr, Msg, Fn, DLoc) {}
   // This kind of message is always enabled, and not affected by -rpass.
-  virtual bool isEnabled() const override { return true; }
+  bool isEnabled() const override { return true; }
   static bool classof(const DiagnosticInfo *DI) {
     return DI->getKind() == getKindID();
   }
@@ -181,9 +181,9 @@ public:
     GrfStartOffset = GrfByteSize;
     GrfEndOffset = 128 * GrfByteSize;
   }
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {}
-  virtual StringRef getPassName() const { return "CM kernel arg offset"; }
-  virtual bool runOnModule(Module &M);
+  void getAnalysisUsage(AnalysisUsage &AU) const override {}
+  StringRef getPassName() const override { return "CM kernel arg offset"; }
+  bool runOnModule(Module &M) override;
 
 private:
   void processKernel(MDNode *Node);

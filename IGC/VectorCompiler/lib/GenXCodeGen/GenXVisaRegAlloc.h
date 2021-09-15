@@ -157,9 +157,11 @@ namespace llvm {
   public:
     static char ID;
     explicit GenXVisaRegAlloc() : FunctionGroupPass(ID) { }
-    virtual StringRef getPassName() const { return "GenX vISA virtual register allocator"; }
-    void getAnalysisUsage(AnalysisUsage &AU) const;
-    bool runOnFunctionGroup(FunctionGroup &FG);
+    StringRef getPassName() const override {
+      return "GenX vISA virtual register allocator";
+    }
+    void getAnalysisUsage(AnalysisUsage &AU) const override;
+    bool runOnFunctionGroup(FunctionGroup &FG) override;
 
     std::list<Reg>& getRegStorage() {
       return RegStorage;
@@ -207,10 +209,13 @@ namespace llvm {
 
     // createPrinterPass : get a pass to print the IR, together with the GenX
     // specific analyses
-    virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
-    { return createGenXGroupPrinterPass(O, Banner); }
+    Pass *createPrinterPass(raw_ostream &O,
+                            const std::string &Banner) const override {
+      return createGenXGroupPrinterPass(O, Banner);
+    }
     // print : dump the state of the pass. This is used by -genx-dump-regalloc
-    virtual void print(raw_ostream &O, const Module *M) const;
+    void print(raw_ostream &O, const Module *M) const override;
+
   private:
     void getLiveRanges(std::vector<genx::LiveRange *> &LRs) const;
     void getLiveRangesForValue(Value *V,

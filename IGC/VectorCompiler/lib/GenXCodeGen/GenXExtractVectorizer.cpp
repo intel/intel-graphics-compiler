@@ -72,12 +72,13 @@ class GenXExtractVectorizer : public FunctionPass {
 public:
   static char ID;
   explicit GenXExtractVectorizer() : FunctionPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX Extract Vectorizer"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override { return "GenX Extract Vectorizer"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.setPreservesCFG();
   }
-  bool runOnFunction(Function &F);
+  bool runOnFunction(Function &F) override;
+
 private:
   void processExtracted(Value *V);
   void processBucket(const BucketIndex *BIdx, SmallVectorImpl<Extract> *B);

@@ -194,9 +194,9 @@ class GenXLowering : public FunctionPass {
 public:
   static char ID;
   explicit GenXLowering() : FunctionPass(ID), DT(nullptr) {}
-  virtual StringRef getPassName() const { return "GenX lowering"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunction(Function &F);
+  StringRef getPassName() const override { return "GenX lowering"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunction(Function &F) override;
 
 private:
   bool translateSLMOWord(CallInst* CI, unsigned IID);

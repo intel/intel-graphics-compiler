@@ -91,7 +91,7 @@ public:
   static char ID;
   explicit GenXPacketize() : ModulePass(ID) {}
   ~GenXPacketize() { releaseMemory(); }
-  virtual StringRef getPassName() const override { return "GenX Packetize"; }
+  StringRef getPassName() const override { return "GenX Packetize"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequiredID(BreakCriticalEdgesID);
   };

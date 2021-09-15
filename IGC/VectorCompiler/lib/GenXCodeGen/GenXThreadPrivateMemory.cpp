@@ -80,9 +80,7 @@ class GenXThreadPrivateMemory : public ModulePass,
 public:
   GenXThreadPrivateMemory();
 
-  virtual StringRef getPassName() const override {
-    return "GenXThreadPrivateMemory";
-  }
+  StringRef getPassName() const override { return "GenXThreadPrivateMemory"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     ModulePass::getAnalysisUsage(AU);

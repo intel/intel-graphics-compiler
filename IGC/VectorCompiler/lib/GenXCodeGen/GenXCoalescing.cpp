@@ -324,8 +324,10 @@ namespace {
   public:
     static char ID;
     explicit GenXCoalescing() : FunctionGroupPass(ID) {}
-    virtual StringRef getPassName() const { return "GenX coalescing and copy insertion"; }
-    void getAnalysisUsage(AnalysisUsage &AU) const {
+    StringRef getPassName() const override {
+      return "GenX coalescing and copy insertion";
+    }
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
       FunctionGroupPass::getAnalysisUsage(AU);
       AU.addRequired<GenXLiveness>();
       AU.addRequired<GenXGroupBaling>();
@@ -342,11 +344,13 @@ namespace {
       AU.addPreserved<FunctionGroupAnalysis>();
       AU.setPreservesCFG();
     }
-    bool runOnFunctionGroup(FunctionGroup &FG);
+    bool runOnFunctionGroup(FunctionGroup &FG) override;
     // createPrinterPass : get a pass to print the IR, together with the GenX
     // specific analyses
-    virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
-    { return createGenXGroupPrinterPass(O, Banner); }
+    Pass *createPrinterPass(raw_ostream &O,
+                            const std::string &Banner) const override {
+      return createGenXGroupPrinterPass(O, Banner);
+    }
 
     void visitPHINode(PHINode &Phi);
     void visitCallInst(CallInst &CI);

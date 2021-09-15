@@ -186,13 +186,17 @@ namespace {
   public:
     static char ID;
     explicit GenXCategory() : FunctionGroupPass(ID) { }
-    virtual StringRef getPassName() const { return "GenX category conversion"; }
-    void getAnalysisUsage(AnalysisUsage &AU) const;
-    bool runOnFunctionGroup(FunctionGroup &FG);
+    StringRef getPassName() const override {
+      return "GenX category conversion";
+    }
+    void getAnalysisUsage(AnalysisUsage &AU) const override;
+    bool runOnFunctionGroup(FunctionGroup &FG) override;
     // createPrinterPass : get a pass to print the IR, together with the GenX
     // specific analyses
-    virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
-    { return createGenXGroupPrinterPass(O, Banner); }
+    Pass *createPrinterPass(raw_ostream &O,
+                            const std::string &Banner) const override {
+      return createGenXGroupPrinterPass(O, Banner);
+    }
     unsigned getCategoryForPhiIncomings(PHINode *Phi) const;
     unsigned getCategoryForCallArg(Function *Callee, unsigned ArgNo) const;
     unsigned getCategoryForInlasmConstraintedOp(CallInst *CI, unsigned ArgNo,

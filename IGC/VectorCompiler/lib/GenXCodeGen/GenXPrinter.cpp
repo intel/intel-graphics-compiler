@@ -36,11 +36,11 @@ public:
   static char ID;
   explicit GenXPrinter(raw_ostream &OS, const std::string &Banner)
     : FunctionPass(ID), OS(OS), Banner(Banner) { }
-  virtual StringRef getPassName() const { return "GenX printer pass"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override { return "GenX printer pass"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesAll();
   }
-  bool runOnFunction(Function &F);
+  bool runOnFunction(Function &F) override;
 };
 
 // GenXGroupPrinter : an analysis to print a FunctionGroup, with GenX specific analyses
@@ -51,12 +51,14 @@ public:
   static char ID;
   explicit GenXGroupPrinter(raw_ostream &OS, const std::string &Banner)
     : FunctionGroupPass(ID), OS(OS), Banner(Banner) { }
-  virtual StringRef getPassName() const { return "GenX FunctionGroup printer pass"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override {
+    return "GenX FunctionGroup printer pass";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionGroupPass::getAnalysisUsage(AU);
     AU.setPreservesAll();
   }
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
 };
 
 } // end namespace llvm

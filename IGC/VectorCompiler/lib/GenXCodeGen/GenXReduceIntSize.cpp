@@ -87,9 +87,10 @@ class GenXReduceIntSize : public FunctionPass {
 public:
   static char ID;
   explicit GenXReduceIntSize() : FunctionPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX reduce integer size"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunction(Function &F);
+  StringRef getPassName() const override { return "GenX reduce integer size"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunction(Function &F) override;
+
 private:
   Instruction *reverseProcessInst(Instruction *Inst);
   Value *truncValue(Value *V, unsigned NumBits, Instruction *InsertBefore,

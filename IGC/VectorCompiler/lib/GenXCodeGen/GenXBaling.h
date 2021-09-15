@@ -519,15 +519,15 @@ public:
   static char ID;
   explicit GenXGroupBaling(BalingKind Kind = BalingKind::BK_Legalization, GenXSubtarget *ST = nullptr)
       : FunctionGroupPass(ID), GenXBaling(Kind, ST) {}
-  virtual StringRef getPassName() const {
+  StringRef getPassName() const override {
     return "GenX instruction baling analysis for a function group";
   }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
-  virtual Pass *createPrinterPass(raw_ostream &O,
-                                  const std::string &Banner) const {
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
     return createGenXGroupPrinterPass(O, Banner);
   }
   // processFunctionGroup : process all the Functions in a FunctionGroup

@@ -280,9 +280,9 @@ class GenXEmulate : public ModulePass {
 public:
   static char ID;
   explicit GenXEmulate() : ModulePass(ID) {}
-  virtual StringRef getPassName() const { return "GenX emulation"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnModule(Module &M);
+  StringRef getPassName() const override { return "GenX emulation"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnModule(Module &M) override;
   void runOnFunction(Function &F);
 
 private:
@@ -1858,12 +1858,12 @@ public:
   static char ID;
 
   explicit GenXEmulationImport() : ModulePass(ID) {}
-  virtual StringRef getPassName() const { return "GenX Emulation BiF Import"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override { return "GenX Emulation BiF Import"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<TargetPassConfig>();
     AU.addRequired<GenXBackendConfig>();
   }
-  bool runOnModule(Module &M) {
+  bool runOnModule(Module &M) override {
     const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();

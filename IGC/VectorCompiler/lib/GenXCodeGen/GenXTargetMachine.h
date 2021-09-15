@@ -52,9 +52,7 @@ public:
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 
-  virtual const DataLayout *getDataLayout() const { return &DL; }
-
-  virtual const TargetSubtargetInfo *getSubtargetImpl(const Function &) const override {
+  const TargetSubtargetInfo *getSubtargetImpl(const Function &) const override {
     return &Subtarget;
   }
   TargetTransformInfo getTargetTransformInfo(const Function &F) override;
@@ -63,8 +61,6 @@ public:
 };
 
 class GenXTargetMachine32 : public GenXTargetMachine {
-  virtual void anchor();
-
 public:
   GenXTargetMachine32(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, const TargetOptions &Options,
@@ -73,8 +69,6 @@ public:
 };
 
 class GenXTargetMachine64 : public GenXTargetMachine {
-  virtual void anchor();
-
 public:
   GenXTargetMachine64(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, const TargetOptions &Options,

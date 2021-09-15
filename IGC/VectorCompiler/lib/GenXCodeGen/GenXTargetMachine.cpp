@@ -172,7 +172,7 @@ public:
   // addPassesToEmitFile, opt creates it manually before adding other
   // passes. BackendConfig will be either created manually with
   // options structure or default-constructed using cl::opt values.
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<GenXBackendConfig>();
     TargetPassConfig::getAnalysisUsage(AU);
   }
@@ -209,8 +209,6 @@ TargetPassConfig *GenXTargetMachine::createPassConfig(PassManagerBase &PM) {
   return createGenXPassConfig(*this, PM);
 }
 
-void GenXTargetMachine32::anchor() {}
-
 GenXTargetMachine32::GenXTargetMachine32(const Target &T, const Triple &TT,
                                          StringRef CPU, StringRef FS,
                                          const TargetOptions &Options,
@@ -218,8 +216,6 @@ GenXTargetMachine32::GenXTargetMachine32(const Target &T, const Triple &TT,
                                          Optional<CodeModel::Model> CM,
                                          CodeGenOpt::Level OL, bool JIT)
     : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, false) {}
-
-void GenXTargetMachine64::anchor() {}
 
 GenXTargetMachine64::GenXTargetMachine64(const Target &T, const Triple &TT,
                                          StringRef CPU, StringRef FS,

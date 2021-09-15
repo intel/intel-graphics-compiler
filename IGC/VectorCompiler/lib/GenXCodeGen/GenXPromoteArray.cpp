@@ -142,16 +142,14 @@ public:
 
   ~TransformPrivMem() {}
 
-  virtual llvm::StringRef getPassName() const override {
-    return "TransformPrivMem";
-  }
+  llvm::StringRef getPassName() const override { return "TransformPrivMem"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<GenXBackendConfig>();
     AU.setPreservesCFG();
   }
 
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool runOnFunction(llvm::Function &F) override;
 
   void visitAllocaInst(llvm::AllocaInst &I);
 

@@ -104,9 +104,9 @@ public:
   static char ID;
   explicit GenXNumbering() : FunctionGroupPass(ID), Baling(0) { }
   ~GenXNumbering() { clear(); }
-  virtual StringRef getPassName() const { return "GenX numbering"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  StringRef getPassName() const override { return "GenX numbering"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
   // get BBNumber struct for a basic block
   const BBNumber *getBBNumber(BasicBlock *BB) { return &BBNumbers[BB]; }
   // get and set instruction number
@@ -132,15 +132,15 @@ public:
   getPhiIncomingFromNumber(unsigned Number);
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
-  virtual Pass *createPrinterPass(raw_ostream &O,
-                                  const std::string &Banner) const {
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
     return createGenXGroupPrinterPass(O, Banner);
   }
   // Debug dump
   void dump();
   using llvm::Pass::print; // enables overloading of print in this class rather
                            // than override (and stops compiler warnings)
-  virtual void print(raw_ostream &OS) const;
+  void print(raw_ostream &OS) const;
 
 private:
   void clear();

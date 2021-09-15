@@ -245,7 +245,7 @@ public:
       : DiagnosticInfoOptimizationBase((DiagnosticKind)getKindID(), Severity,
           /*PassName=*/nullptr, Msg, Fn, DLoc) {}
   // This kind of message is always enabled, and not affected by -rpass.
-  virtual bool isEnabled() const override { return true; }
+  bool isEnabled() const override { return true; }
   static bool classof(const DiagnosticInfo *DI) {
     return DI->getKind() == getKindID();
   }
@@ -413,11 +413,13 @@ class GenXEarlySimdCFConformance
 public:
   static char ID;
   explicit GenXEarlySimdCFConformance() : ModulePass(ID) { }
-  virtual StringRef getPassName() const { return "GenX early SIMD control flow conformance"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override {
+    return "GenX early SIMD control flow conformance";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     ModulePass::getAnalysisUsage(AU);
   }
-  bool runOnModule(Module &M);
+  bool runOnModule(Module &M) override;
 };
 
 // GenX late SIMD control flow conformance pass
@@ -426,8 +428,10 @@ class GenXLateSimdCFConformance
 public:
   static char ID;
   explicit GenXLateSimdCFConformance() : FunctionGroupPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX late SIMD control flow conformance"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override {
+    return "GenX late SIMD control flow conformance";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionGroupPass::getAnalysisUsage(AU);
     AU.addRequired<DominatorTreeGroupWrapperPass>();
     AU.addRequired<GenXLiveness>();
@@ -436,11 +440,14 @@ public:
     AU.addPreserved<GenXLiveness>();
     AU.addPreserved<FunctionGroupAnalysis>();
   }
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
-  virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
-  { return createGenXGroupPrinterPass(O, Banner); }
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
+
 private:
   void setCategories();
   void modifyEMUses(Value *EM);

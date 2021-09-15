@@ -49,13 +49,15 @@ class GenXLiveRanges : public FunctionGroupPass {
 public:
   static char ID;
   explicit GenXLiveRanges() : FunctionGroupPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX live ranges analysis"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  StringRef getPassName() const override { return "GenX live ranges analysis"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
-  virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
-  { return createGenXGroupPrinterPass(O, Banner); }
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
 
 private:
   void buildLiveRanges();

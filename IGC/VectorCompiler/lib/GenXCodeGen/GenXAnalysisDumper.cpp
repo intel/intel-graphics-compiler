@@ -33,12 +33,12 @@ public:
   static char ID;
   explicit GenXAnalysisDumper(FunctionPass *P, const char *Suffix)
     : FunctionPass(ID), P(P), Suffix(Suffix) { }
-  virtual StringRef getPassName() const { return "GenX analysis dumper pass"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override { return "GenX analysis dumper pass"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionPass::getAnalysisUsage(AU);
     AU.setPreservesAll();
   }
-  bool runOnFunction(Function &F);
+  bool runOnFunction(Function &F) override;
 };
 
 // GenXGroupAnalysisDumper : a pass to dump an analysis to a file
@@ -49,12 +49,12 @@ public:
   static char ID;
   explicit GenXGroupAnalysisDumper(FunctionGroupPass *P, const char *Suffix)
     : FunctionGroupPass(ID), P(P), Suffix(Suffix) { }
-  virtual StringRef getPassName() const { return "GenX analysis dumper pass"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override { return "GenX analysis dumper pass"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionGroupPass::getAnalysisUsage(AU);
     AU.setPreservesAll();
   }
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
 };
 
 } // end anonymous namespace

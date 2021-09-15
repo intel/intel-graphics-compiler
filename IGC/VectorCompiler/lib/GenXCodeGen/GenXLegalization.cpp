@@ -309,15 +309,15 @@ class GenXLegalization : public FunctionPass {
 public:
   static char ID;
   explicit GenXLegalization() : FunctionPass(ID) { clearBale(); }
-  virtual StringRef getPassName() const {
+  StringRef getPassName() const override {
     return "GenX execution width and GRF crossing legalization";
   }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunction(Function &F);
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunction(Function &F) override;
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
-  virtual Pass *createPrinterPass(raw_ostream &O,
-                                  const std::string &Banner) const {
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
     return createGenXPrinterPass(O, Banner);
   }
 

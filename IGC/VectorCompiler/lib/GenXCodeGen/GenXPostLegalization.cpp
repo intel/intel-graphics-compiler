@@ -66,9 +66,11 @@ class GenXPostLegalization : public FunctionPass {
 public:
   static char ID;
   explicit GenXPostLegalization() : FunctionPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX post-legalization pass"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunction(Function &F);
+  StringRef getPassName() const override {
+    return "GenX post-legalization pass";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunction(Function &F) override;
 };
 
 } // end namespace llvm

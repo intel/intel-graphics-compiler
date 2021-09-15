@@ -165,9 +165,12 @@ class GenXDeadVectorRemoval : public FunctionPass {
 public:
   static char ID;
   explicit GenXDeadVectorRemoval() : FunctionPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX dead vector element removal pass"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunction(Function &F);
+  StringRef getPassName() const override {
+    return "GenX dead vector element removal pass";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunction(Function &F) override;
+
 private:
   void clear() {
     InstMap.clear();

@@ -45,9 +45,12 @@ class GenXCFSimplification : public FunctionPass {
 public:
   static char ID;
   explicit GenXCFSimplification() : FunctionPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX SIMD CF simplification"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunction(Function &F);
+  StringRef getPassName() const override {
+    return "GenX SIMD CF simplification";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunction(Function &F) override;
+
 private:
   bool isBranchedOverBlock(BasicBlock *BB);
   BasicBlock *processBranchedOverBlock(BasicBlock *BB);

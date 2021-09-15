@@ -480,11 +480,11 @@ public:
   static char ID;
   explicit GenXCisaBuilder() : FunctionGroupPass(ID) {}
 
-  virtual StringRef getPassName() const {
+  StringRef getPassName() const override {
     return "GenX CISA construction pass";
   }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
 
   LLVMContext &getContext() {
     IGC_ASSERT(Ctx);
@@ -6385,14 +6385,14 @@ public:
   static char ID;
   explicit GenXFinalizer(raw_pwrite_stream &o) : ModulePass(ID), Out(o) {}
 
-  virtual StringRef getPassName() const { return "GenX Finalizer"; }
+  StringRef getPassName() const override { return "GenX Finalizer"; }
 
   LLVMContext &getContext() {
     IGC_ASSERT(Ctx);
     return *Ctx;
   }
 
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<GenXModule>();
     AU.addRequired<FunctionGroupAnalysis>();
     AU.addRequired<TargetPassConfig>();
@@ -6400,7 +6400,7 @@ public:
     AU.setPreservesAll();
   }
 
-  bool runOnModule(Module &M) {
+  bool runOnModule(Module &M) override {
     Ctx = &M.getContext();
 
     auto &FGA = getAnalysis<FunctionGroupAnalysis>();

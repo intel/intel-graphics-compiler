@@ -1724,13 +1724,13 @@ struct CMLowerVLoadVStore : public FunctionPass {
   CMLowerVLoadVStore() : FunctionPass(ID) {
     initializeCMLowerVLoadVStorePass(*PassRegistry::getPassRegistry());
   }
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<PostDominatorTreeWrapperPass>();
     AU.setPreservesCFG();
   }
 
-  virtual bool runOnFunction(Function &F) override;
+  bool runOnFunction(Function &F) override;
 
 private:
   bool promoteAllocas(Function &F);

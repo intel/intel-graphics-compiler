@@ -104,7 +104,7 @@ public:
     return "GenX Promote Stateful to Bindless";
   }
 
-  bool runOnModule(Module &M);
+  bool runOnModule(Module &M) override;
 };
 } // namespace
 

@@ -381,8 +381,8 @@ private:
 public:
   static char ID;
   explicit GenXArgIndirection() : FunctionGroupPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX arg indirection"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override { return "GenX arg indirection"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionGroupPass::getAnalysisUsage(AU);
     AU.addRequired<FunctionGroupAnalysis>();
     AU.addRequired<GenXNumbering>();
@@ -395,11 +395,14 @@ public:
     AU.addPreserved<GenXModule>();
     AU.addPreserved<FunctionGroupAnalysis>();
   }
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
-  virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
-  { return createGenXGroupPrinterPass(O, Banner); }
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
+
 private:
   void gatherArgLRs();
   bool processArgLR(LiveRange *ArgLR);

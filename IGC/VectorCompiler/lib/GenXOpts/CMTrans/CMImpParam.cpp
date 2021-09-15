@@ -188,16 +188,16 @@ struct CMImpParam : public ModulePass {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<CallGraphWrapperPass>();
   }
 
-  virtual StringRef getPassName() const { return "CM Implicit Params"; }
+  StringRef getPassName() const override { return "CM Implicit Params"; }
 
-  virtual bool runOnModule(Module &M);
+  bool runOnModule(Module &M) override;
 
   void dump() const { print(dbgs()); }
-  virtual void print(raw_ostream &OS, const Module *M = nullptr) const;
+  void print(raw_ostream &OS, const Module *M = nullptr) const override;
 
 private:
   void replaceWithGlobal(CallInst *CI, unsigned IID);

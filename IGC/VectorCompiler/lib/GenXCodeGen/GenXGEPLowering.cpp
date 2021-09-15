@@ -50,11 +50,11 @@ public:
 
   GenXGEPLowering() : FunctionPass(ID) {}
 
-  virtual StringRef getPassName() const override { return "GenX GEP Lowering"; }
+  StringRef getPassName() const override { return "GenX GEP Lowering"; }
 
-  virtual bool runOnFunction(Function &F) override;
+  bool runOnFunction(Function &F) override;
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<LoopInfoWrapperPass>();
     AU.addRequired<TargetTransformInfoWrapperPass>();
     AU.setPreservesCFG();

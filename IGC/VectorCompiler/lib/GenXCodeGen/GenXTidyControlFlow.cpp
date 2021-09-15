@@ -91,9 +91,9 @@ namespace {
   public:
     static char ID;
     explicit GenXTidyControlFlow() : FunctionPass(ID), Modified(false) {}
-    virtual StringRef getPassName() const { return "GenX tidy control flow"; }
+    StringRef getPassName() const override { return "GenX tidy control flow"; }
 
-    void getAnalysisUsage(AnalysisUsage &AU) const {
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
       AU.addPreserved<GenXModule>();
       AU.addPreserved<GenXGroupBaling>();
       AU.addPreserved<GenXLiveness>();
@@ -104,11 +104,14 @@ namespace {
       AU.addRequired<TargetPassConfig>();
     }
 
-    bool runOnFunction(Function &F);
+    bool runOnFunction(Function &F) override;
     // createPrinterPass : get a pass to print the IR, together with the GenX
     // specific analyses
-    virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
-    { return createGenXPrinterPass(O, Banner); }
+    Pass *createPrinterPass(raw_ostream &O,
+                            const std::string &Banner) const override {
+      return createGenXPrinterPass(O, Banner);
+    }
+
   private:
     void removeEmptyBlocks(Function *F);
     void reorderBlocks(Function *F);

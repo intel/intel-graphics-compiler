@@ -68,12 +68,13 @@ class GenXRegionCollapsing : public FunctionPass {
 public:
   static char ID;
   explicit GenXRegionCollapsing() : FunctionPass(ID) { }
-  virtual StringRef getPassName() const { return "GenX Region Collapsing"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override { return "GenX Region Collapsing"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.setPreservesCFG();
   }
-  bool runOnFunction(Function &F);
+  bool runOnFunction(Function &F) override;
+
 private:
   void runOnBasicBlock(BasicBlock *BB);
   void processBitCast(BitCastInst *BC);
