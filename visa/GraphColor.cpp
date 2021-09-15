@@ -4512,7 +4512,25 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
         return;
     }
 
-    if (kernel.fg.isPseudoVCADcl(firstDcl) || kernel.fg.isPseudoVCADcl(secondDcl))
+    auto contain = [](const auto& C, auto pred)
+    {
+        return std::find_if(C.cbegin(), C.cend(), pred) != C.cend();
+    };
+
+    bool isFirstDcl = true;
+
+    auto pred = [firstDcl, secondDcl, &isFirstDcl](const auto& el)
+    {
+        if (el.second.VCA == firstDcl) return true;
+        if (el.second.VCA == secondDcl)
+        {
+            isFirstDcl = false;
+            return true;
+        }
+        return false;
+    };
+
+    if (contain(kernel.fg.fcallToPseudoDclMap, pred))
     {
         // Mark intf for following pattern:
         // V33 =
@@ -4531,12 +4549,12 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
         // Note that if V33 is actually live after fcall
         // then graph coloring will do this for us. In this
         // case however we need to rely on augmentation.
-        FCALL_RET_MAP_ITER retIter = kernel.fg.isPseudoVCADcl(firstDcl) ? fcallRetMap.find(firstDcl) : fcallRetMap.find(secondDcl);
+        FCALL_RET_MAP_ITER retIter = isFirstDcl ? fcallRetMap.find(firstDcl) : fcallRetMap.find(secondDcl);
         if (retIter != fcallRetMap.end())
         {
             G4_Declare* retVar = retIter->second;
             LocalLiveRange* otherDclLR;
-            G4_Declare* otherDcl = kernel.fg.isPseudoVCADcl(firstDcl) ? secondDcl : firstDcl;
+            G4_Declare* otherDcl = isFirstDcl ? secondDcl : firstDcl;
             if (otherDcl->getRegVar()->isRegAllocPartaker())
                 intf.checkAndSetIntf(otherDcl->getRegVar()->getId(), retVar->getRegVar()->getId());
             else if ((otherDclLR = gra.getLocalLR(otherDcl)) &&
