@@ -122,6 +122,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
+#include "vc/Support/GenXDiagnostic.h"
+
 #include <algorithm>
 #include <iterator>
 #include <numeric>
@@ -226,6 +228,10 @@ private:
   bool lowerExtractValue(ExtractValueInst *Inst);
   bool lowerInsertValue(InsertValueInst *Inst);
   bool lowerUAddWithOverflow(CallInst *CI);
+  CallInst *buildUAddWithSat(CallInst *CI, Value *Arg0, Value *Arg1,
+                             Instruction *InsertPoint);
+  bool lowerUAddWithSat(CallInst *CI);
+  bool lowerUSubWithSat(CallInst *CI);
   bool lowerCtpop(CallInst *CI);
   bool lowerFCmpInst(FCmpInst *Inst);
   bool lowerUnorderedFCmpInst(FCmpInst *Inst);
@@ -1467,6 +1473,16 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerMinMax(CI, IntrinsicID);
     case Intrinsic::sqrt:
       return lowerSqrt(CI);
+    case Intrinsic::sadd_sat:
+    case Intrinsic::ssub_sat:
+      vc::diagnose(Inst->getContext(), "GenXLowering", Inst,
+                   "Sorry not implemented: GenX backend cannot handle this "
+                   "intrinsic yet");
+      break;
+    case Intrinsic::uadd_sat:
+      return lowerUAddWithSat(CI);
+    case Intrinsic::usub_sat:
+      return lowerUSubWithSat(CI);
     case Intrinsic::uadd_with_overflow:
       return lowerUAddWithOverflow(CI);
     case Intrinsic::sadd_with_overflow:
@@ -2664,6 +2680,50 @@ bool GenXLowering::lowerUAddWithOverflow(CallInst *CI) {
     // ... and use it to replace the original intrinsic.
     CI->replaceAllUsesWith(Insert);
   }
+  ToErase.push_back(CI);
+  return true;
+}
+
+// common subroutine for sub+sat and add+sat: builds uadd with sat
+CallInst *GenXLowering::buildUAddWithSat(CallInst *CI, Value *Arg0, Value *Arg1,
+                                         Instruction *InsertPoint) {
+  IGC_ASSERT(CI);
+  const DebugLoc &DL = CI->getDebugLoc();
+  Module *M = CI->getModule();
+  IRBuilder<> Builder(InsertPoint);
+  Type *ArgTypes[] = {CI->getType(), Arg0->getType()};
+  Value *Args[] = {Arg0, Arg1};
+  auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_uuadd_sat,
+                                              ArgTypes);
+  auto *UUAddInst = Builder.CreateCall(Fn, Args, CI->getName());
+  UUAddInst->setDebugLoc(DL);
+  return UUAddInst;
+}
+
+// llvm.uadd.sat
+// here we are lucky to reuse genx intrinsic
+bool GenXLowering::lowerUAddWithSat(CallInst *CI) {
+  IGC_ASSERT(CI);
+  Value *Arg0 = CI->getArgOperand(0);
+  Value *Arg1 = CI->getArgOperand(1);
+  auto *UUAddInst = buildUAddWithSat(CI, Arg0, Arg1, CI);
+  CI->replaceAllUsesWith(UUAddInst);
+  ToErase.push_back(CI);
+  return true;
+}
+
+// llvm.usub.sat i.e. sat(a - b) we can treat as sat(a + (-b))
+// i.e. we are building -b and then uadd with saturation
+bool GenXLowering::lowerUSubWithSat(CallInst *CI) {
+  IGC_ASSERT(CI);
+  const DebugLoc &DL = CI->getDebugLoc();
+  Value *Arg0 = CI->getArgOperand(0);
+  Instruction *InstNeg = BinaryOperator::Create(
+      BinaryOperator::Xor, CI->getArgOperand(1),
+      Constant::getAllOnesValue(CI->getType()), CI->getName(), CI);
+  InstNeg->setDebugLoc(DL);
+  auto *UUAddInst = buildUAddWithSat(CI, Arg0, InstNeg, CI);
+  CI->replaceAllUsesWith(UUAddInst);
   ToErase.push_back(CI);
   return true;
 }
