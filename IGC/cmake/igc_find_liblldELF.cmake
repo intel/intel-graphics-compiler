@@ -8,6 +8,7 @@
 
 #   IGC_OPTION__LLDELF_LIB_DIR - Specify additional directories for searching lldELF library
 #   IGC_OPTION__LLDELF_H_DIR - Specify additional directories for searching lldELF headers
+#   IGC_OPTION__LLD_BIN_DIR - Specify additional directories for searching lld executable
 
 function(add_lld_library LIB_NAME)
   find_library(${LIB_NAME}_PATH
@@ -23,10 +24,25 @@ function(add_lld_library LIB_NAME)
   set_target_properties(${LIB_NAME} PROPERTIES IMPORTED_LOCATION ${${LIB_NAME}_PATH})
 endfunction()
 
+function(add_lld_executable EXE_NAME)
+  find_program(${EXE_NAME}_PATH
+    ${EXE_NAME}
+    PATHS "${IGC_OPTION__LLD_BIN_DIR}"
+    PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/bin")
+
+  if(${EXE_NAME}_PATH-NOTFOUND)
+    message(FATAL_ERROR
+    "Cannot find ${EXE_NAME} executable, please install missing executable or provide the path by IGC_OPTION__LLD_BIN_DIR")
+  endif()
+  add_executable(${EXE_NAME} IMPORTED GLOBAL)
+  set_target_properties(${EXE_NAME} PROPERTIES IMPORTED_LOCATION ${${EXE_NAME}_PATH})
+endfunction()
+
 if(IGC_BUILD__LLVM_SOURCES)
   get_target_property(lldELF_SRC_DIR lldELF SOURCE_DIR)
   set(LLD_INCLUDE_DIR "${lldELF_SRC_DIR}/../include")
 elseif(IGC_BUILD__LLVM_PREBUILDS)
+  add_lld_executable(lld)
   add_lld_library(lldELF)
   add_lld_library(lldCommon)
   igc_get_llvm_targets(LLD_COMMON_LLVM_DEPS
