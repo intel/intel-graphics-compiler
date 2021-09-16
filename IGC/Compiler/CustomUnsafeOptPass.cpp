@@ -2353,6 +2353,9 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
         for (auto I = BB.begin(); I != BB.end(); /*Empty*/)
         {
             Instruction* Inst = &*I++;
+            BinaryOperator* BinOp = dyn_cast<BinaryOperator>(Inst);
+            if (!BinOp || !allowUnsafeMathOpt(m_ctx, *BinOp))
+                continue;
             Value* A, * B, * C, * D;
             // Match Exp = A * B + C * D with a single use so that
             // it is benefical to fold one FSub/FAdd with A * B.
