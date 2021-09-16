@@ -264,12 +264,12 @@ public:
     static const uint32_t GROUP_COUNT_Z = GROUP_COUNT_Y + sizeof(uint32_t);
 };
 
-bool hasStackCallAttr(const llvm::Function& F)
+static bool hasStackCallAttr(const llvm::Function& F)
 {
     return F.hasFnAttribute("visaStackCall");
 }
 
-Value* BuildLoadInst(CallInst& CI, unsigned int Offset, Type* DataType)
+static Value* BuildLoadInst(CallInst& CI, unsigned int Offset, Type* DataType)
 {
     // This function computes type aligned address that includes Offset.
     // Then it loads DataType number of elements from Offset.
@@ -312,20 +312,6 @@ Value* BuildLoadInst(CallInst& CI, unsigned int Offset, Type* DataType)
     }
     auto Result = Builder.CreateBitCast(LoadInst, DataType);
     return Result;
-}
-
-Value* getPrintfBasePtr(CallInst& CI)
-{
-    // This function is invoked when expanding printf call to retrieve printf buffer ptr.
-    // It should be invoked only when function containing call instruction is a stack
-    // call function.
-    IGCLLVM::IRBuilder<> Builder(&CI);
-
-    auto DataTypeI64 = Type::getInt64Ty(CI.getFunction()->getParent()->getContext());
-    auto DataTypeI64Ptr = Type::getInt64PtrTy(CI.getFunction()->getParent()->getContext(), ADDRESS_SPACE_GLOBAL);
-    unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::PRINTF_BUFFER;
-    auto Result = BuildLoadInst(CI, Offset, DataTypeI64);
-    return Builder.CreateIntToPtr(Result, DataTypeI64Ptr);
 }
 
 Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
