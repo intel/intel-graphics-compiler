@@ -2241,6 +2241,10 @@ void FlowGraph::removeEmptyBlocks()
                     }
                 }
 
+                // remove redundant succs and preds for the empty block
+                bb->Succs.unique();
+                bb->Preds.unique();
+
                 for (auto predBB : bb->Preds)
                 {
                     //

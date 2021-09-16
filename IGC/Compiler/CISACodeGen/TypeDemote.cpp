@@ -209,9 +209,16 @@ bool TypeDemote::demoteOnBasicBlock(BasicBlock* BB) const {
             case Instruction::Xor:
                 break;
             }
+            unsigned src0BitSize = BO->getOperand( 0 )->getType()->getScalarSizeInBits();
+            unsigned src1BitSize = BO->getOperand( 1 )->getType()->getScalarSizeInBits();
+            unsigned demotedBitSize = DemotedTy->getScalarSizeInBits();
+            if( src0BitSize <= demotedBitSize || src1BitSize <= demotedBitSize )
+                continue;
+
             Value* DemotedLHS = getDemotedValue(BO->getOperand(0), DemotedTy, true);
             if (!DemotedLHS)
                 continue;
+
             Value* DemotedRHS = getDemotedValue(BO->getOperand(1), DemotedTy, true);
             if (!DemotedRHS)
                 continue;
