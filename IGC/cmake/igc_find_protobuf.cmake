@@ -8,6 +8,15 @@
 
 set(PROTOBUF_SRC_ROOT_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/../../../protobuf")
 
+if(NOT EXISTS ${PROTOBUF_SRC_ROOT_FOLDER})
+  set(PROTOBUF_SRC_ROOT_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/../../protobuf")
+endif()
+
+if(NOT EXISTS ${PROTOBUF_SRC_ROOT_FOLDER})
+  set(PROTOBUF_SRC_ROOT_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/../protobuf")
+endif()
+
+
 if(EXISTS ${PROTOBUF_SRC_ROOT_FOLDER}/cmake/protobuf-config.cmake)
   include(${PROTOBUF_SRC_ROOT_FOLDER}/cmake/protobuf-config.cmake)
 endif()

@@ -63,7 +63,7 @@ namespace IGCMetrics
 
         if (metric_data.is_open())
         {
-            if (false)
+            if (true)
             {
                 // Binary format of protobuf
                 oclProgram.SerializePartialToOstream(&metric_data);
