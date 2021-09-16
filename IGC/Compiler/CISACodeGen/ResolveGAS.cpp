@@ -949,6 +949,7 @@ namespace IGC
 
         IGCMD::MetaDataUtils* m_mdUtils = nullptr;
         CodeGenContext* m_ctx = nullptr;
+        std::vector<Instruction*> m_partiallyLoweredInsts;
 
         bool hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned& addrSpaceCallSite);
         void updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs);
@@ -1398,7 +1399,32 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             continue;
         }
 
-        if (isa<BitCastInst>(inst) || isa<GetElementPtrInst>(inst) || isa<PHINode>(inst)) {
+        // add inst to partiallyLowered Inst list.  cover select and phi for now, and may add others later
+        if( isa<SelectInst>( inst ) || isa<PHINode>( inst ))
+        {
+            // if not all operands are lowered, add to partiallyLowered list, and don't propagate
+            bool partiallylowered = false;
+            for( unsigned i = 0; i < inst->getNumOperands(); ++i )
+            {
+                Value* srci = inst->getOperand( i );
+
+                if( PointerType* PtrTy = dyn_cast<PointerType>( srci->getType() ) )
+                {
+                    if( PtrTy->getAddressSpace() == oldAS )
+                    {
+                        partiallylowered = true;
+                        break;
+                    }
+                }
+            }
+            if( partiallylowered )
+            {
+                m_partiallyLoweredInsts.push_back( inst );
+                continue;
+            }
+        }
+
+        if (isa<BitCastInst>(inst) || isa<GetElementPtrInst>(inst) || isa<PHINode>(inst) || isa<SelectInst>( inst ) ) {
             instType = dyn_cast<PointerType>(inst->getType());
         }
 
@@ -1424,6 +1450,7 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
 {
     Function::arg_iterator currArg = newFunc->arg_begin();
     unsigned currentArgIdx = 0, newArgIdx = 0;
+    m_partiallyLoweredInsts.clear(); // initiate a list for partiallyLoweredInsts
 
     for (Function::arg_iterator I = oldFunc->arg_begin(), E = oldFunc->arg_end();
         I != E; ++I, ++currArg, ++currentArgIdx)
@@ -1455,6 +1482,73 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
         }
         I->replaceAllUsesWith(newArg);
         currArg->takeName(&(*I));
+    }
+
+    // travese the partiallyLoweredInsts and insert cast for those with incompatible addrspace
+    for( auto inst : m_partiallyLoweredInsts )
+    {
+        IGC_ASSERT( ( dyn_cast<SelectInst>( inst ) || dyn_cast<PHINode>( inst ) ) );
+        std::vector<Value*> unloweredSrc; // PHI may have more than 2 operands
+        std::vector<Value*> loweredSrc;
+        PointerType* ASGPtrTy = nullptr;
+
+        for( unsigned i = 0; i < inst->getNumOperands(); ++i )
+        {
+            Value* srci = inst->getOperand( i );
+
+            if( PointerType* PtrTy = dyn_cast<PointerType>( srci->getType() ) )
+            {
+                if( PtrTy->getAddressSpace() == ADDRESS_SPACE_GENERIC )
+                {
+                    unloweredSrc.push_back( srci );
+                    ASGPtrTy = PtrTy;  // result type of the new ASC inst
+                }
+                else
+                {
+                    loweredSrc.push_back( srci );
+                }
+            }
+        }
+        // if the inst a partially lowered, insert a cast
+        if( !loweredSrc.empty() && !unloweredSrc.empty() )
+        {
+            IGC_ASSERT( ASGPtrTy != nullptr );
+            for( auto src : loweredSrc )
+            {
+                Instruction* srcInst = dyn_cast<Instruction>( src );
+                AddrSpaceCastInst* asc;
+
+                // insert addrspacecast after src, so to keep PHI in the beginning of its block
+                // find insertBefore to be after src in 3 cases:
+                // 1. if src is a phi, getFirstInsertionPt after the last phi
+                // 2. if src is a regular inst, find the next inst after it.
+                // 3. if src is a function arg, find the beginning of the entry block
+                Instruction* insertBefore = nullptr;
+                if( srcInst )
+                {
+                    if( isa<PHINode>( srcInst ) ) // 1
+                    {
+                        BasicBlock* BB = srcInst->getParent();
+                        insertBefore = &( *BB->getFirstInsertionPt() );
+                    }
+                    else // 2 src is an instruction
+                    {
+                        BasicBlock::iterator iter( srcInst );
+                        ++iter;
+                        insertBefore = &( *iter );
+                    }
+                }
+                else // 3 src is an argument and insert at the begin of entry BB
+                {
+                    BasicBlock& entryBB = inst->getParent()->getParent()->getEntryBlock();
+                    insertBefore = &( *entryBB.getFirstInsertionPt() );
+                }
+                IGC_ASSERT( insertBefore );
+                asc = new AddrSpaceCastInst( src, ASGPtrTy, "", insertBefore );
+                IGC_ASSERT( asc );
+                inst->replaceUsesOfWith( src, asc );
+            }
+        }
     }
 }
 
