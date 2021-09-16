@@ -234,7 +234,11 @@ size_t G4_SendDescLdSt::getDstLenBytes() const
     MUST_BE_TRUE(false, "TODO: compute bytes received");
     return (size_t)-1;
 }
-
+void G4_SendDescLdSt::setCaching(Caching _l1, Caching _l3)
+{
+    l1 = _l1;
+    l3 = _l3;
+}
 bool G4_SendDescLdSt::isSLM() const
 {
     MUST_BE_TRUE(!isHDC(), "HDC SLM not supported (yet)");
@@ -1116,10 +1120,17 @@ int G4_SendDescRaw::getOffset() const
     return 0;
 }
 
+std::pair<Caching,Caching> G4_SendDescRaw::getCaching() const {
+   return std::make_pair(Caching::INVALID, Caching::INVALID);
+}
+void G4_SendDescRaw::setCaching(Caching l1, Caching l3)
+{
+    MUST_BE_TRUE(
+        (l1 == Caching::INVALID && l3 == Caching::INVALID) ||
+        (l1 == Caching::DF && l3 == Caching::DF),
+        "invalid caching options for platform");
+}
 
-
-Caching G4_SendDescRaw::getCachingL1() const {return Caching::INVALID;}
-Caching G4_SendDescRaw::getCachingL3() const {return Caching::INVALID;}
 
 static bool isDc1OpTyped(uint32_t desc)
 {

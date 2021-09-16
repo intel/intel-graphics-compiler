@@ -1351,7 +1351,7 @@ G4_SendDescRaw * IR_Builder::createSendMsgDesc(
     G4_Operand *sti)
 {
     G4_SendDescRaw* msgDesc = new (mem) G4_SendDescRaw(
-        funcCtrl, regs2rcv, regs2snd, funcID, (uint16_t) extMsgLength,
+        funcCtrl, regs2rcv, regs2snd, funcID, (uint16_t)extMsgLength,
         extFuncCtrl, access, bti, sti, *this);
     return msgDesc;
 }

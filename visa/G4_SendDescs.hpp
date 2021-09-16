@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 #include <ostream>
+#include <utility>
 
 namespace vISA
 {
@@ -243,8 +244,10 @@ public:
     // Returns the caching behavior of this message if known.
     // Returns Caching::INVALID if the message doesn't support caching
     // controls.
-    virtual Caching getCachingL1() const = 0;
-    virtual Caching getCachingL3() const = 0;
+    virtual std::pair<Caching,Caching> getCaching() const = 0;
+    Caching getCachingL1() const {return getCaching().first;}
+    Caching getCachingL3() const {return getCaching().second;}
+    virtual void setCaching(Caching l1, Caching l3) = 0;
     //
     // generally in multiples of full GRFs, but a few exceptions such
     // as OWord and HWord operations may make this different
@@ -384,8 +387,8 @@ struct G4_SendDescLdSt : G4_SendDesc {
     virtual size_t getDstLenBytes() const override;
 
     virtual SendAccess getAccessType() const override;
-    virtual Caching getCachingL1() const override {return l1;}
-    virtual Caching getCachingL3() const override {return l3;}
+    virtual std::pair<Caching,Caching> getCaching() const override {return std::make_pair(l1, l3);}
+    virtual void setCaching(Caching l1, Caching l3) override;
     //
     virtual int getOffset() const override {return immOff.immOff;}
     virtual G4_Operand *getSurface() const override {return surface;}
@@ -687,8 +690,8 @@ public:
     virtual size_t getSrc1LenBytes() const override;
     //
     virtual SendAccess getAccessType() const override {return accessType;}
-    virtual Caching getCachingL1() const override;
-    virtual Caching getCachingL3() const override;
+    virtual std::pair<Caching,Caching> getCaching() const override;
+    virtual void setCaching(Caching l1, Caching l3) override;
     //
     virtual int getOffset() const override;
     virtual G4_Operand *getSurface() const override {return m_bti;}

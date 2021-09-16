@@ -805,8 +805,35 @@ void BinaryEncodingIGA::getIGAFlagInfo(
     }
 }
 
+#if 0
+static void DebugCaching(G4_Kernel &kernel)
+{
+    std::map<uint32_t,std::pair<Caching,Caching>> descs;
+    for (auto bb : kernel.fg) {
+        for (auto inst : *bb)
+        {
+            if (inst->isSend()) {
+                G4_SendDescRaw *sd = inst->getMsgDescRaw();
+                if (sd) {
+                    descs[sd->getDesc()] = sd->getCaching();
+                }
+            }
+        }
+    }
+    for (const auto &p : descs) {
+        std::cerr << std::hex << "0x" << p.first <<
+            " ===>"
+            "  L1=" << std::dec << int(p.second.first) <<
+            "  L3=" << std::dec << int(p.second.second) <<
+            "\n";
+    }
+}
+#endif
+
 void BinaryEncodingIGA::Encode()
 {
+    // DebugCaching(this->kernel);
+
     FixInst();
     Block* currBB = nullptr;
 
