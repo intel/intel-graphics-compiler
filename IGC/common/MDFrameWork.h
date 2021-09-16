@@ -466,6 +466,9 @@ namespace IGC
         bool UseBindlessImage = false;
         bool enableRangeReduce = false;
 
+        //when true, compiler enables MatchMad optimization for VS 
+        bool allowMatchMadOptimizationforVS = false;
+
         // When true compiler can assume that resources bound to two different
         // bindings do not alias.
         bool statefullResourcesNotAliased = false;

@@ -2121,13 +2121,16 @@ namespace IGC
             return false;
         }
 
+        bool allow = m_ctx->getModuleMetaData()->allowMatchMadOptimizationforVS || IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS);
+
         using namespace llvm::PatternMatch;
         if (m_ctx->type == ShaderType::VERTEX_SHADER &&
-            m_ctx->m_DriverInfo.PreventZFighting())
+            m_ctx->m_DriverInfo.PreventZFighting() && !allow)
         {
             if (m_PosDep->PositionDependsOnInst(&I))
                 return false;
         }
+        
         if (IGC_IS_FLAG_ENABLED(DisableMatchMad))
         {
             return false;
