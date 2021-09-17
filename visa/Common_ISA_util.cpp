@@ -1345,6 +1345,19 @@ VISA_Modifier Get_Common_ISA_SrcMod_From_G4_Mod(G4_SrcModifier mod)
     }
 }
 
+VISA_Type getRawOperandType(const print_format_provider_t* header, const raw_opnd& opnd)
+{
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
+    if (opnd.index < numPreDefinedVars)
+    {
+        // One of the pre-defined variables
+        return getPredefinedVarType(mapExternalToInternalPreDefVar(opnd.index));
+    }
+
+    uint32_t opnd_index = opnd.index - numPreDefinedVars;
+    const var_info_t* currVar = header->getVar(opnd_index);
+    return currVar->getType();
+}
 
 VISA_Type getVectorOperandType(const print_format_provider_t* header, const vector_opnd& opnd)
 {

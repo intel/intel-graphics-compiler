@@ -357,7 +357,8 @@ CISATypeInfo CISATypeTable[ISA_TYPE_NUM] =
     { ISA_TYPE_UQ,  "uq",   8 },
     { ISA_TYPE_UV,  "uv",   4 },
     { ISA_TYPE_Q,   "q",    8 },
-    { ISA_TYPE_HF,  "hf",   2 }
+    { ISA_TYPE_HF,  "hf",   2 },
+    { ISA_TYPE_BF16, "bf16", 2 }
 };
 
 int processCommonISAHeader(

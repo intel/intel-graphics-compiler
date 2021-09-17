@@ -550,6 +550,7 @@ bool allowDump(const Options& options, const std::string &fileName)
 // It's unfortunate we have to define vISAVerifier functions here due to the #include mess..
 void vISAVerifier::run(VISAKernelImpl* kernel)
 {
+    irBuilder = kernel->getIRBuilder();
     verifyKernelHeader();
     for (auto iter = kernel->getInstructionListBegin(), iterEnd = kernel->getInstructionListEnd();
         iter != iterEnd; ++iter)

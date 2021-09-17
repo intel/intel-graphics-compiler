@@ -94,6 +94,7 @@ typedef enum {
      ISA_TYPE_UV    = 0xC,
      ISA_TYPE_Q     = 0xD,
      ISA_TYPE_HF    = 0xE,
+     ISA_TYPE_BF16  = 0xF,
      ISA_TYPE_NUM
  } VISA_Type ;
 

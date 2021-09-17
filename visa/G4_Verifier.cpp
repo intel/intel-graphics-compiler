@@ -101,6 +101,9 @@ bool G4Verifier::verifyInst(G4_INST *inst)
             // def-use chain should be valid after these passes
             return verifyDefUseChain(inst);
         }
+
+        // feature verification
+        verifyBFMixedMode(inst);
     }
     return true;
 }
@@ -1196,4 +1199,168 @@ void G4Verifier::verifyAccMov(G4_INST* inst)
             MUST_BE_TRUE(false, "Invalid type combination during mov format conversion when accumulator is used as src or dst!");
         }
     }
+}
+
+//
+// Mixed mode instruction allows bfloat16 operands in the following cases:
+//   1. dst, src0, and src1 for 2 source instructions format not involving multiplier(mov, add, cmp, sel).
+//   2. dst and src0 for 2 source instructions format involving multiplier(mul, mac etc).
+//   3. dst, src0, and src1 for 3 source instructions format(mad).
+//   4. Broadcast of bfloat16 scalar is not supported.
+//      Note: exclude simd1. Also, no bfloat16 imm allowed!
+//   5. Unpacked bfloat16 destination with stride 2 when register offset is 0 or 1.
+//      Note: exclude float
+//   6. Packed bfloat16 source and destination when register offset is 0 or 8.
+//      note: exclude float
+//   7. Execution size must not be greater than 8.
+//   8. Instructions with pure bfloat16 operands are not supported.
+//
+void G4Verifier::verifyBFMixedMode(G4_INST* inst)
+{
+    auto useGivenType = [](G4_INST* I, G4_Type GivenTy) -> bool
+    {
+        G4_Operand* dst = I->getDst();
+        if (dst && !dst->isNullReg())
+        {
+            if (dst->getType() == GivenTy)
+                return true;
+        }
+        for (int i = 0; i < I->getNumSrc(); ++i)
+        {
+            G4_Operand* src = I->getSrc(i);
+            if (src && !src->isNullReg())
+            {
+                if (src->getType() == GivenTy)
+                    return true;
+            }
+        }
+        return false;
+    };
+
+    // Skip dpas as it has been verified separately
+    if (inst->isDpas())
+        return;
+
+    // Skip if no BF usage
+    if (!useGivenType(inst, Type_BF))
+        return;
+
+    if (!kernel.fg.builder->hasBFMixMode())
+    {
+        DEBUG_VERBOSE("BF type: BF mixed mode not supported!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "BF type: BF mixed mode not supported!!");
+    }
+
+    // case 8, pure bf not supported
+    if (!useGivenType(inst, Type_F))
+    {
+        DEBUG_VERBOSE("Pure BF operands are not supported!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "Pure BF operands are not supported!!");
+    }
+
+    switch (inst->opcode())
+    {
+    case G4_mul:
+    case G4_mac:
+    {
+        // case 2
+        G4_Operand* src1 = inst->getSrc(1);
+        if (src1->getType() != Type_F)
+        {
+            DEBUG_VERBOSE("Src1 in BF mixed mode must be F!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "Src1 in BF mixed mode must be F!");
+        }
+        break;
+    }
+    case G4_mad:
+    {
+        // case 3
+        G4_Operand* src2 = inst->getSrc(1);
+        if (src2->getType() != Type_F)
+        {
+            DEBUG_VERBOSE("Src2 in BF mixed mode must be F!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "Src2 in BF mixed mode must be F!");
+        }
+        break;
+    }
+    case G4_add:
+    case G4_mov:
+    case G4_sel:
+    case G4_cmp:
+    {   // case 1
+        break;
+    }
+    default:
+        DEBUG_VERBOSE("Instruction does not support BF type!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "Instruction does not support BF type!");
+        break;
+    }
+
+    // verify dst
+    G4_DstRegRegion* dreg = inst->getDst();
+    uint32_t hs = dreg->getSubRegOff();
+    uint32_t so = dreg->getSubRegOff();
+    if (dreg && !dreg->isNullReg() && dreg->getType() == Type_BF)
+    {
+        if (!((hs == 1 && (so == 0 || so == 8)) || (hs == 2 && (so == 0 || so == 1))))
+        {
+            // case 5 & 6
+            DEBUG_VERBOSE("BF Dst has illegal region and type combination!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "BF Dst has illegal region and type combination!");
+        }
+    }
+
+    // verify src
+    for (int i = 0, sz = (int)inst->getNumSrc(); i < sz; ++i)
+    {
+        G4_Operand* src = inst->getSrc(i);
+        if (!src || src->isNullReg()     // sanity
+            || src->getType() != Type_BF)
+            continue;
+        if (src->isImm()
+            || (inst->getExecSize() != g4::SIMD1 && src->asSrcRegRegion()->getRegion()->isScalar()))
+        {
+            // case 4
+            DEBUG_VERBOSE("Scalar BF Src is not supported!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "Scalar BF Src is not supported!");
+        }
+
+        G4_SrcRegRegion* sreg = src->asSrcRegRegion();
+        uint32_t so = sreg->getSubRegOff();
+        uint16_t hs;
+        bool isUniformStride = sreg->getRegion()->isSingleNonUnitStride(inst->getExecSize(), hs);
+        if (!((sreg->getRegion()->isContiguous(inst->getExecSize()) && (so == 0 || so == 8))
+             || (isUniformStride && hs == 2 && (so == 0 || so == 1))))
+        {
+            // case 5 & 6
+            DEBUG_VERBOSE("BF src has illegal region and type combination!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "BF src has illegal region and type combination!");
+        }
+    }
+
+    // case 7
+    if (inst->getExecSize() > g4::SIMD8)
+    {
+        DEBUG_VERBOSE("Inst with BF in BF mixed mode should have execsize <= 8!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "Inst with BF in BF mixed mode should have execsize <= 8!");
+    }
+    return;
 }

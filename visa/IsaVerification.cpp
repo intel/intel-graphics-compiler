@@ -198,6 +198,80 @@ static std::string createIsaError(
     return sstr.str();
 }
 
+// If region/offset is available, return true; otherwise, return false.
+bool vISAVerifier::getRegion(const vector_opnd& VecOpnd,
+    uint16_t& row_offset, uint16_t& col_offset,
+    uint16_t& v_stride, uint16_t& width, uint16_t& h_stride) const
+{
+    Common_ISA_Operand_Class operand_class = VecOpnd.getOperandClass();
+
+    uint16_t region = 0;
+    row_offset = 0;
+    col_offset = 0;
+
+    switch (operand_class)
+    {
+    case OPERAND_GENERAL:
+        region = VecOpnd.opnd_val.gen_opnd.region;
+        row_offset = VecOpnd.opnd_val.gen_opnd.row_offset;
+        col_offset = VecOpnd.opnd_val.gen_opnd.col_offset;
+        break;
+    case OPERAND_INDIRECT:
+        region = VecOpnd.opnd_val.indirect_opnd.region;
+        break;
+    default:
+        return false;
+    }
+
+    Common_ISA_Region_Val w = (Common_ISA_Region_Val)((region >> 4) & 0xF);
+    Common_ISA_Region_Val h = (Common_ISA_Region_Val)((region >> 8) & 0xF);
+    Common_ISA_Region_Val v = (Common_ISA_Region_Val)((region) & 0xF);
+
+    v_stride = Common_ISA_Get_Region_Value(v);
+    h_stride = Common_ISA_Get_Region_Value(h);
+    width = Common_ISA_Get_Region_Value(w);
+    return true;
+}
+
+VISA_Type vISAVerifier::getOperandVISAType(const CISA_INST* I, unsigned Ix) const
+{
+    switch (getOperandType(I, Ix))
+    {
+    case CISA_OPND_VECTOR:
+    {
+        const vector_opnd& vec_opnd = getVectorOperand(I, Ix);
+        return getVectorOperandType(header, vec_opnd);
+    }
+    case CISA_OPND_RAW:
+    {
+        const raw_opnd& raw_opnd = getRawOperand(I, Ix);
+        return getRawOperandType(header, raw_opnd);
+    }
+    default:
+        break;
+    }
+    return ISA_TYPE_NUM;
+}
+
+// If any of I's operands uses the GivenType, return true; otherwise, return false.
+bool vISAVerifier::useGivenVISAType(const CISA_INST* I, VISA_Type GivenType) const
+{
+    ISA_Opcode opc = (ISA_Opcode)I->opcode;
+    for (int j = 0; j < ISA_Inst_Table[opc].n_dsts; j++)
+    {
+        VISA_Type dstType = getOperandVISAType(I, j);
+        if (dstType == GivenType)
+            return true;
+    }
+    for (int j = 0; j < ISA_Inst_Table[opc].n_srcs; j++)
+    {
+        VISA_Type srcType = getOperandVISAType(I, j + ISA_Inst_Table[opc].n_dsts);
+        if (srcType == GivenType)
+            return true;
+    }
+    return false;
+}
+
 void vISAVerifier::verifyPredicateDecl(unsigned declID)
 {
     std::string declError =
@@ -613,27 +687,6 @@ void vISAVerifier::verifyRawOperandType(
         REPORT_INSTRUCTION(options,typeFunc(currVar->getType()), "Raw Operand %s has incorrect type %s",
             opnd.toString().c_str(), CISATypeTable[currVar->getType()].typeName);
     }
-}
-
-static VISA_Type getRawOperandType(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    const CISA_INST* inst,
-    const raw_opnd& opnd)
-{
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
-    uint32_t variable_count = header->getVarCount();
-
-    uint32_t opnd_index = opnd.index;
-
-    if (opnd_index < variable_count + numPreDefinedVars &&
-        numPreDefinedVars <= opnd_index)
-    {
-        const var_info_t* currVar = header->getVar(opnd_index - numPreDefinedVars);
-        return currVar->getType();
-    }
-
-    return ISA_TYPE_NUM;
 }
 
 void vISAVerifier::verifyRawOperand(
@@ -1084,7 +1137,7 @@ void vISAVerifier::verifyInstructionControlFlow(
         }
         case ISA_SWITCHJMP:
         {
-            REPORT_INSTRUCTION(options, !hasFusedEU(), "switchjmp is not supported on this platform");
+            REPORT_INSTRUCTION(options, !irBuilder->hasFusedEU(), "switchjmp is not supported on this platform");
             break;
         }
         default: REPORT_INSTRUCTION(options,false, "Illegal Scalar Control Flow Instruction Opcode: %d, %s.", opcode, ISA_Inst_Table[opcode].str);
@@ -2946,6 +2999,117 @@ void vISAVerifier::verifyInstructionDataport(
     }
 }
 
+//
+// Mixed mode instruction allows bfloat16 operands in the following cases:
+//   1. dst, src0, and src1 for 2 source instructions format not involving multiplier(mov, add, cmp, sel).
+//   2. dst and src0 for 2 source instructions format involving multiplier(mul, mac etc).
+//   3. dst, src0, and src1 for 3 source instructions format(mad).
+//   4. Broadcast of bfloat16 scalar is not supported.
+//   5. Unpacked bfloat16 destination with stride 2 when register offset is 0 or 1.
+//   6. Packed bfloat16 source and destination when register offset is 0 or 8.
+//   7. Execution size must not be greater than 8.
+//   8. Instructions with pure bfloat16 operands are not supported.
+//
+void vISAVerifier::verifyBFMixedMode(const CISA_INST* inst)
+{
+    if (!useGivenVISAType(inst, ISA_TYPE_BF16))
+        return;
+    if (!irBuilder->hasBFMixMode())
+    {
+        REPORT_INSTRUCTION(options, false, "BF type is not allowed on this platform");
+        return;
+    }
+
+    if (!useGivenVISAType(inst, ISA_TYPE_F))
+    {   // case 8
+        REPORT_INSTRUCTION(options, false, "Instruction with pure BF opnds is not supported");
+        return;
+    }
+
+    ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
+    switch (opcode)
+    {
+    case ISA_MUL:
+    {   // case 2
+        const unsigned src1ix = 1 + ISA_Inst_Table[opcode].n_dsts;
+        VISA_Type src2Ty = getOperandVISAType(inst, src1ix);
+        REPORT_INSTRUCTION(options, src2Ty == ISA_TYPE_F, "Mul's src1 must be F in BF mixed mode");
+        break;
+    }
+    case ISA_MAD:
+    {   // case 3
+        const unsigned src2ix = 2 + ISA_Inst_Table[opcode].n_dsts;
+        VISA_Type src2Ty = getOperandVISAType(inst, src2ix);
+        REPORT_INSTRUCTION(options, src2Ty == ISA_TYPE_F, "Mad's src2 must be F in BF mixed mode");
+        break;
+    }
+    case ISA_ADD:
+    case ISA_MOV:
+    case ISA_SEL:
+    case ISA_CMP:
+    {   // case 1
+        break;
+    }
+    default:
+        REPORT_INSTRUCTION(options, false, "BF opnd is not allowed on this instruction");
+        return;
+    }
+
+    // case 7
+    VISA_Exec_Size execSizeEnum = inst->getExecSize();
+    uint32_t execSize = Get_VISA_Exec_Size(execSizeEnum);
+    REPORT_INSTRUCTION(options, execSize <= 8, "Exection Size > 8 is not allowed for BF-mixed mode instruction");
+
+    // Check dst
+    const vector_opnd& dst = getVectorOperand(inst, 0);
+    VISA_Type      dstType = getVectorOperandType(header, dst);
+    uint16_t row_off, col_off, v_stride, width, h_stride;
+    if (getRegion(dst, row_off, col_off, v_stride, width, h_stride))
+    {
+        if (dstType == ISA_TYPE_BF16)
+        {
+            // case 5 & 6
+            bool legitUnpackedDst = (h_stride == 2 && (col_off == 0 || col_off == 1));
+            bool legitPackedDst = (h_stride == 1 && (col_off == 0 || col_off == 8));
+            REPORT_INSTRUCTION(options, (legitUnpackedDst || legitPackedDst), "Dst region is incorrect in BF mixed mode");
+        }
+    }
+
+    for (uint32_t i = 0; i < ISA_Inst_Table[opcode].n_srcs; i++)
+    {
+        const vector_opnd& src = getVectorOperand(inst, i + ISA_Inst_Table[opcode].n_dsts);
+        VISA_Type         srcType = getVectorOperandType(header, src);
+        Common_ISA_Operand_Class operand_class = src.getOperandClass();
+        if (getRegion(src, row_off, col_off, v_stride, width, h_stride))
+        {
+            if (srcType == ISA_TYPE_BF16)
+            {
+                // case 6
+                bool isContinuous = (execSize == 1                           // SIMD1
+                    || (h_stride == 0 && v_stride == 1 && width == 1)        // (1;1,0)
+                    || (h_stride == 1 && v_stride == width));  // (4;4,1)
+                bool isStride2 = (h_stride == 2 && v_stride == (2 * width));
+                bool isLegitPacked = (isContinuous && (col_off == 0 || col_off == 8));
+                bool isLegitUnpacked = (isStride2 && (col_off == 0 || col_off == 1));
+                bool isScalarSrc = (execSize > 1 &&
+                    (operand_class == OPERAND_IMMEDIATE ||
+                     (h_stride == 0 && v_stride == 0 && width == 1)));
+                if (!(isLegitPacked || isLegitUnpacked)   // case 5 & 6
+                    || isScalarSrc)                       // case 4
+                {
+                    REPORT_INSTRUCTION(options, false,
+                        "Src%d : invalid region or imm. Must be packed and non-scalar BF in BF mixed mode", i);
+                }
+            }
+        }
+        else
+        {
+            REPORT_INSTRUCTION(options, false, "Invalid region");
+            return;
+        }
+    }
+    return;
+}
 
 
 
@@ -3189,6 +3353,18 @@ void vISAVerifier::verifyInstruction(
                 opcode << ", " << ISA_Inst_Table[opcode].type << ").";
             ASSERT_USER(false, sstr.str());
         }
+    }
+
+    // Verify particular features
+    switch (ISA_Inst_Table[opcode].type)
+    {
+    case ISA_Inst_Mov:
+    case ISA_Inst_Compare:
+    case ISA_Inst_Arith:
+        verifyBFMixedMode(inst);
+        break;
+    default:
+        break;
     }
 }
 

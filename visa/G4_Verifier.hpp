@@ -84,6 +84,7 @@ private:
 
     void verifyDpas(G4_INST* inst);
     void verifyAccMov(G4_INST* inst);
+    void verifyBFMixedMode(G4_INST* inst);
 
 };
 }
