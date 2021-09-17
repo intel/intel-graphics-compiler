@@ -144,6 +144,7 @@ namespace IGCMetrics
 
             auto emuCall_m_loc = emuCall_m->add_funccallloc();
             emuCall_m_loc->set_line(debLoc->getLine());
+            emuCall_m_loc->set_pathtofile(debLoc->getFilename().str());
             stats->set_countemulatedinst(stats->countemulatedinst() + 1);
 
             if (IGC_IS_FLAG_ENABLED(ForceDPEmulation) && isDPType(emulatedInstruction))
@@ -238,7 +239,7 @@ namespace IGCMetrics
                 map_Func.insert({ func_dbinfo , func_m });
                 IGC_METRICS::CodeRef* func_m_loc = func_m->mutable_funcloc();
                 func_m_loc->set_line(func_dbinfo->getLine());
-                func_m_loc->set_pathtofile(func_dbinfo->getFilename());
+                func_m_loc->set_pathtofile(func_dbinfo->getFilename().str());
 
                 GetFunctionCalls(func_m, func);
                 CollectInstructions(pModule);
@@ -292,7 +293,7 @@ namespace IGCMetrics
                 auto loopLoc = loop_m->mutable_looploc();
 
                 loopLoc->set_line(loop->getStartLoc()->getLine());
-                loopLoc->set_pathtofile(loop->getStartLoc()->getFilename());
+                loopLoc->set_pathtofile(loop->getStartLoc()->getFilename().str());
                 loop_m->set_nestinglevel(loop->getLoopDepth());
 
                 map_Loops.insert({ loop->getStartLoc()->getScope(), loop_m });
@@ -316,7 +317,7 @@ namespace IGCMetrics
                 if (instr_call != nullptr)
                 {
                     auto calledFunc = instr_call->getCalledFunction();
-                    llvm::StringRef& calledFuncName = calledFunc->getName();
+                    auto calledFuncName = calledFunc->getName();
                     auto funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_INLINE;
 
                     // Check if this is function call which we wanted to track
@@ -357,7 +358,7 @@ namespace IGCMetrics
                     {
                         // For new case
                         callFunc_m = func_m->add_functioncalls();
-                        callFunc_m->set_name(calledFuncName);
+                        callFunc_m->set_name(calledFuncName.str());
                         callFunc_m->set_count(1);
                         callFunc_m->set_type(funcCallType);
                     }
