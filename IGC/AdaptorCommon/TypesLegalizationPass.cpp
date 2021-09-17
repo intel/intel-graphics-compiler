@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "llvmWrapper/Support/Alignment.h"
-#include <llvm/IR/InstIterator.h>
 #include "TypesLegalizationPass.hpp"
 #include "../Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
@@ -355,21 +354,5 @@ bool TypesLegalizationPass::runOnFunction( Function &function ) {
   m_StoreInst.clear();
   m_ExtractValueInst.clear();
   m_PhiNodes.clear();
-  // type-legalization may create dead load, clean up those loads
-  SmallVector<LoadInst*, 32> DeadLoads;
-  for (inst_iterator I = inst_begin(function), E = inst_end(function);
-      I != E; ++I) {
-    Instruction* inst = &*I;
-    if (LoadInst* Load = dyn_cast<LoadInst>(inst)) {
-      if (!Load->isVolatile() && Load->use_empty() &&
-           Load->getType()->isAggregateType()) {
-        DeadLoads.push_back(Load);
-      }
-    }
-  }
-  for (LoadInst* ld : DeadLoads) {
-    ld->eraseFromParent();
-  }
-
   return shaderModified;
 }
