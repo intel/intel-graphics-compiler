@@ -514,11 +514,14 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
         return outputInterface;
     }
     const auto& TargetFeatures = Drv->getTargetFeaturesStr();
-    const auto& VCLLMVOpts =
-        IGC::AdaptorCM::Frontend::convertBackendArgsToVcOpts(Drv->getBEArgs());
-    const auto& VCApiOpts = FE.getVCApiOptions(&*Drv);
+    const auto& [VCLLVMOpts, VCFinalizerOpts] =
+        IGC::AdaptorCM::Frontend::convertBackendArgsToVcAndFinalizerOpts(
+            Drv->getBEArgs());
+    auto VCApiOpts = FE.getVCApiOptions(&*Drv);
+    if (!VCFinalizerOpts.empty())
+      VCApiOpts += " -Xfinalizer '" + llvm::join(VCFinalizerOpts, " ") + "'";
 
-    finalizeFEOutput(*FEOutput, VCApiOpts, VCLLMVOpts, TargetFeatures, Out);
+    finalizeFEOutput(*FEOutput, VCApiOpts, VCLLVMOpts, TargetFeatures, Out);
 
 #else
     Out.GetImpl()->SetError(TranslationErrorType::Internal,

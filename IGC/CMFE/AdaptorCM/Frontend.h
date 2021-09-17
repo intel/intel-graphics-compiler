@@ -37,31 +37,24 @@ struct InputArgs final : public Intel::CM::ClangFE::IInputArgs {
 };
 
 using StringVect_t = std::vector<std::string>;
-inline StringVect_t
-convertBackendArgsToVcOpts(const StringVect_t &BackendArgs) {
-  std::vector<std::string> VcOpts;
-  std::vector<std::string> AllFinalizerOpts;
+inline std::pair<StringVect_t, StringVect_t>
+convertBackendArgsToVcAndFinalizerOpts(const StringVect_t &BackendArgs) {
+  StringVect_t VcOpts;
+  StringVect_t FinalizerOpts;
 
   const std::string FinalizerOptPrefix = "-finalizer-opts=";
   auto IsFinalizerOpts = [&FinalizerOptPrefix](const std::string &Opt) {
     return Opt.find(FinalizerOptPrefix) == 0;
   };
   std::partition_copy(BackendArgs.begin(), BackendArgs.end(),
-                      std::back_inserter(AllFinalizerOpts),
+                      std::back_inserter(FinalizerOpts),
                       std::back_inserter(VcOpts), IsFinalizerOpts);
-  std::transform(AllFinalizerOpts.begin(), AllFinalizerOpts.end(),
-                 AllFinalizerOpts.begin(),
+  std::transform(FinalizerOpts.begin(), FinalizerOpts.end(),
+                 FinalizerOpts.begin(),
                  [&FinalizerOptPrefix](const std::string &Opt) {
                    return Opt.substr(FinalizerOptPrefix.size());
                  });
-  if (!AllFinalizerOpts.empty()) {
-    // TODO: we should escape the joined finalizer options
-    VcOpts.emplace_back((llvm::StringRef(FinalizerOptPrefix) + "\"" +
-                         llvm::join(AllFinalizerOpts, " ") + "\"")
-                            .str());
-  }
-
-  return VcOpts;
+  return {VcOpts, FinalizerOpts};
 }
 
 using IOutputArgs = Intel::CM::ClangFE::IOutputArgs;
