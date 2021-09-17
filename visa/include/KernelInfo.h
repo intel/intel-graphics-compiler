@@ -57,6 +57,7 @@ public:
         {
             delete i->second;
         }
+        variables.clear();
     }
 
     VarInfo* AddVarInfo(const char* name)
