@@ -10065,7 +10065,7 @@ int GlobalRA::coloringRegAlloc()
                     !kernel.getOption(vISA_FastSpill) &&
                     !alignedScalarSplitDone)
                 {
-                    SplitAlignedScalars split(*this);
+                    SplitAlignedScalars split(*this, coloring);
                     split.run();
                     alignedScalarSplitDone = true;
 

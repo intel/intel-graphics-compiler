@@ -602,6 +602,7 @@ namespace vISA
         GlobalRA & getGRA() { return gra; }
         G4_SrcRegRegion* getScratchSurface() const;
         LiveRange** getLRs() const { return lrs; }
+        unsigned int getNumVars() const { return numVar; }
     };
 
     struct BundleConflict
