@@ -52,10 +52,8 @@ bool SplitAlignedScalars::canReplaceSrc(G4_INST* inst, unsigned int idx)
     return false;
 }
 
-std::vector<G4_Declare*> SplitAlignedScalars::gatherCandidates()
+void SplitAlignedScalars::gatherCandidates()
 {
-    std::vector<G4_Declare*> candidates;
-
     unsigned int lexId = 0;
     for (auto bb : kernel.fg)
     {
@@ -71,7 +69,7 @@ std::vector<G4_Declare*> SplitAlignedScalars::gatherCandidates()
                     isDclCandidate(dstTopDcl))
                 {
                     auto& Data = dclData[dstTopDcl];
-                    Data.defs.push_back(std::pair(bb, inst));
+                    Data.numDefs++;
                     if (Data.firstDef == 0)
                         Data.firstDef = lexId;
 
@@ -81,25 +79,12 @@ std::vector<G4_Declare*> SplitAlignedScalars::gatherCandidates()
                         Data.allowed = false;
                     }
 
-                    // Disallow splitting any variable if it's used as send
-                    // dst because adding a copy after send causes a back-to-back
-                    // dependency. If scheduler cannot hide it, it can lead to
-                    // performance penalty.
-                    if (inst->isSend())
+                    // send dst is scalar. disallow it's replacement
+                    // if bb has few instructions than threshold as
+                    // a copy after the send will cause stalls that
+                    // cannot be hidden by scheduler.
+                    if (inst->isSend() && bb->size() <= MinBBSize)
                     {
-                        Data.allowed = false;
-                    }
-
-                    if (dst->getTypeSize() != dstTopDcl->getByteSize())
-                    {
-                        // we require that dst opnd writes complete topdcl
-                        Data.allowed = false;
-                    }
-
-                    if (dst->getTypeSize() < 4)
-                    {
-                        // byte, word, half floats may have many hw restrictions
-                        // and these are usually not set as GRF aligned
                         Data.allowed = false;
                     }
 
@@ -121,8 +106,8 @@ std::vector<G4_Declare*> SplitAlignedScalars::gatherCandidates()
 
                     if (!inst->isSend())
                     {
-                        // check whether dst type size != src type size
-                        // disallow optimization if dst type is different
+                        // check whether dst type size >= src type size
+                        // disallow optimization if dst type is smaller
                         // than src as that entails alignmment requirements
                         // that this pass may not honor.
                         for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
@@ -130,7 +115,7 @@ std::vector<G4_Declare*> SplitAlignedScalars::gatherCandidates()
                             auto src = inst->getSrc(i);
                             if (!src->isSrcRegRegion())
                                 continue;
-                            if (dst->getTypeSize() != src->getTypeSize())
+                            if (dst->getTypeSize() < src->getTypeSize())
                                 Data.allowed = false;
                         }
                     }
@@ -147,162 +132,12 @@ std::vector<G4_Declare*> SplitAlignedScalars::gatherCandidates()
                         isDclCandidate(srcTopDcl))
                     {
                         auto& Data = dclData[srcTopDcl];
-                        Data.uses.push_back(std::make_tuple(bb, inst, i));
+                        Data.numSrcs++;
                         if (Data.lastUse < lexId)
                             Data.lastUse = lexId;
-
-                        if (!inst->isSend())
-                        {
-                            // mixed types have alignment requirements
-                            if (dst->getTypeSize() != src->getTypeSize())
-                                Data.allowed = false;
-                        }
                     }
                 }
             }
-        }
-    }
-
-    for (auto dcl : kernel.Declares)
-    {
-        if (dcl != dcl->getRootDeclare())
-            continue;
-        auto dclDataIt = dclData.find(dcl);
-        if (dclDataIt != dclData.end())
-        {
-            if ((*dclDataIt).second.allowed)
-                candidates.push_back(dcl);
-        }
-    }
-
-    return candidates;
-}
-
-// return number of movs needed when applying optimization on dcl
-// this method returns estimate of dynamic movs by considering
-// loops. each loop nest N add is expected to run const# of iterations.
-unsigned int SplitAlignedScalars::computeNumMovs(G4_Declare* dcl)
-{
-    unsigned int numMovsNeeded = 0;
-    auto& Data = dclData[dcl];
-    for (auto def : Data.defs)
-    {
-        if (!canReplaceDst(def.second))
-        {
-            auto bb = def.first;
-            auto innerMostLoop = kernel.fg.getLoops().getInnerMostLoop(bb);
-            if (innerMostLoop)
-                numMovsNeeded += innerMostLoop->getNestingLevel() * EstimatedLoopTripCount;
-            else
-                numMovsNeeded++;
-        }
-    }
-    for (auto use : Data.uses)
-    {
-        if (!canReplaceSrc(std::get<1>(use), std::get<2>(use)))
-        {
-            auto bb = std::get<0>(use);
-            auto innerMostLoop = kernel.fg.getLoops().getInnerMostLoop(bb);
-            if (innerMostLoop)
-                numMovsNeeded += innerMostLoop->getNestingLevel() * EstimatedLoopTripCount;
-            else
-                numMovsNeeded++;
-        }
-    }
-
-    return numMovsNeeded;
-}
-
-void SplitAlignedScalars::pruneCandidates(std::vector<G4_Declare*>& candidates)
-{
-    // This method is a cost function that decides which aligned scalar variables from candidates list
-    // get split. This method returns list of final candidates in passed-by-ref argument.
-    // We first sort candidates in descending order of spill cost.
-    // Next, we determine number of movs needed if a given candidate is split. This is an estimate
-    // that takes in to account loop nesting levels. If accumulated mov count is below a threshold
-    // then splitting is allowed. Note that we always split a candidate if it was spilled by current
-    // RA iteration or if the variable was marked as callee saved (in case it crossed fcall boundary).
-
-    auto compareSpillCost = [&](G4_Declare* dcl1, G4_Declare* dcl2)
-    {
-        auto it1 = dclSpillCost.find(dcl1);
-        auto it2 = dclSpillCost.find(dcl2);
-
-        float cost1 = 0, cost2 = 0;
-        if (it1 != dclSpillCost.end())
-            cost1 = (*it1).second;
-        if (it2 != dclSpillCost.end())
-            cost2 = (*it2).second;
-
-        return cost1 < cost2;
-    };
-
-    std::list<G4_Declare*> candidateList;
-    std::for_each(candidates.begin(), candidates.end(), [&](G4_Declare* dcl) { candidateList.push_back(dcl); });
-
-    // First re-order candidates based on spill cost in descending order
-    candidateList.sort(compareSpillCost);
-    std::reverse(candidateList.begin(), candidateList.end());
-
-    for (auto it = candidateList.begin(); it != candidateList.end();)
-    {
-        auto dcl = *it;
-        auto dclDataIt = dclData.find(dcl);
-        bool erase = true;
-        if (dclDataIt != dclData.end())
-        {
-            auto& Data = dclData[dcl];
-            if (heuristic(*it, Data))
-                erase = false;
-        }
-        if (erase)
-        {
-            it = candidateList.erase(it);
-            continue;
-        }
-        ++it;
-    }
-
-    auto estimateInstCount = [&]()
-    {
-        auto instCount = 0;
-        for (auto bb : kernel.fg.getBBList())
-        {
-            auto loop = kernel.fg.getLoops().getInnerMostLoop(bb);
-            if (loop)
-                instCount += (loop->getNestingLevel() * EstimatedLoopTripCount) * bb->size();
-            else
-                instCount += bb->size();
-        }
-        return instCount;
-    };
-
-    candidates.clear();
-    unsigned int totalMovsNeeded = 0;
-    unsigned int estimatedInstCount = estimateInstCount();
-    for (auto candidate : candidateList)
-    {
-        bool isCandidate = false;
-        auto numMovsNeeded = computeNumMovs(candidate);
-
-        // Allow any candidate that was marked as spill or if the candidate needs no movs or
-        // if candidate was marked as requiring callee save allocation.
-        if (spilledDclSet.find(candidate) != spilledDclSet.end() ||
-            calleeSaveBiased.find(candidate) != calleeSaveBiased.end() ||
-            numMovsNeeded == 0)
-            isCandidate = true;
-        else
-        {
-            // Mark as candidate for splitting only if doing so doesnt increase mov count above
-            // a set threshold.
-            if ((totalMovsNeeded + numMovsNeeded) < (unsigned int)(((float)estimatedInstCount * BloatAllowed)))
-                isCandidate = true;
-        }
-
-        if (isCandidate)
-        {
-            candidates.push_back(candidate);
-            totalMovsNeeded += numMovsNeeded;
         }
     }
 }
@@ -383,15 +218,17 @@ void SplitAlignedScalars::run()
         return std::make_tuple(1, Type_UQ);
     };
 
-    auto candidates = gatherCandidates();
+    gatherCandidates();
 
-    pruneCandidates(candidates);
-
-    for (auto dcl : candidates)
+    for (auto dcl : kernel.Declares)
     {
-        auto dclDataIt = dclData.find(dcl);
-        if (dclDataIt != dclData.end())
+        dcl = dcl->getRootDeclare();
+        if (isDclCandidate(dcl))
         {
+            auto& Data = dclData[dcl];
+            if(!heuristic(dcl, Data))
+                continue;
+            // store all candidates
             oldNewDcls[dcl] = nullptr;
             numDclsReplaced++;
         }

@@ -17,16 +17,11 @@ namespace vISA
     {
     private:
         const unsigned int MinOptDist = 200;
-        // Constant trip count assume for each loop to estimate dynamic inst
-        // count change due to splitting.
-        const unsigned int EstimatedLoopTripCount = 4;
-        // Threshold percent increase in estimated dynamic inst count allowed
-        const float BloatAllowed = 1.0f / 100.0f;
+        const unsigned int MinBBSize = 5;
 
         unsigned int numDclsReplaced = 0;
         unsigned int numMovsAdded = 0;
         GlobalRA& gra;
-        GraphColor& coloring;
         G4_Kernel& kernel;
         bool changesMade = false;
 
@@ -35,14 +30,13 @@ namespace vISA
         public:
             unsigned int firstDef = 0;
             unsigned int lastUse = 0;
+            unsigned int numDefs = 0;
+            unsigned int numSrcs = 0;
             bool allowed = true;
             unsigned int getDUMaxDist()
             {
                 return std::abs((int)lastUse - (int)firstDef);
             };
-            std::vector<std::pair<G4_BB*, G4_INST*>> defs;
-            // store vector of <bb, inst, src#>
-            std::vector <std::tuple<G4_BB*, G4_INST*, unsigned int>> uses;
         };
 
         std::unordered_map<G4_Declare*, Data> dclData;
@@ -53,36 +47,14 @@ namespace vISA
 
         bool heuristic(G4_Declare* dcl, Data& d);
         bool isDclCandidate(G4_Declare* dcl);
-        std::vector<G4_Declare*> gatherCandidates();
-        void pruneCandidates(std::vector<G4_Declare*>& candidates);
-        unsigned int computeNumMovs(G4_Declare* dcl);
+        void gatherCandidates();
 
         template<class T>
         G4_Declare* getDclForRgn(T* rgn, G4_Declare* newTopDcl);
 
-        // store set of dcls marked as spill in current RA iteration
-        std::unordered_set<G4_Declare*> spilledDclSet;
-        // store spill cost for each dcl
-        std::unordered_map<G4_Declare*, float> dclSpillCost;
-        // store dcls that have callee save bias
-        std::unordered_set<G4_Declare*> calleeSaveBiased;
-
     public:
-        SplitAlignedScalars(GlobalRA& g, GraphColor& c) : gra(g), coloring(c), kernel(g.kernel)
+        SplitAlignedScalars(GlobalRA& g) : gra(g), kernel(g.kernel)
         {
-            for (auto spill : coloring.getSpilledLiveRanges())
-            {
-                spilledDclSet.insert(spill->getDcl());
-            }
-            auto numVars = coloring.getNumVars();
-            auto lrs = coloring.getLiveRanges();
-            for (unsigned int i = 0; i != numVars; ++i)
-            {
-                auto rootDcl = lrs[i]->getDcl();
-                dclSpillCost[rootDcl] = lrs[i]->getSpillCost();
-                if (lrs[i]->getCalleeSaveBias())
-                    calleeSaveBiased.insert(rootDcl);
-            }
         }
 
         void run();
