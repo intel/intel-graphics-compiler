@@ -175,26 +175,13 @@ namespace IGCMetrics
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        if (kernelInfo == nullptr)
-        {
-            return;
-        }
-
         for (auto record = kernelInfo->variables.begin();
             record != kernelInfo->variables.end(); ++record)
         {
             auto varInfo = record->second;
             // Find to which function this var info belongs
-            if (map_Instr.find(varInfo->lineNb) == map_Instr.end())
-            {
-                continue;
-            }
             auto func_scope = map_Instr[varInfo->lineNb]->getScope();
             // Get function metrics
-            if (map_Func.find(func_scope) == map_Func.end())
-            {
-                continue;
-            }
             auto func_m = map_Func[func_scope];
 
             auto varInfo_m = func_m->add_variables();
