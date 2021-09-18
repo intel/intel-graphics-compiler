@@ -3929,6 +3929,7 @@ namespace IGC
             if (context->metrics.Enable())
             {
                 SaveOption(vISA_GenerateKernelInfo, true);
+                SaveOption(vISA_EmitLocation, true);
             }
         }
 

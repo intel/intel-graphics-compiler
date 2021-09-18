@@ -30,6 +30,7 @@ public:
     };
 
     int lineNb;
+    const char* srcFilename;
     int size;
     short type;
     AddressModel addrModel;
@@ -49,6 +50,7 @@ class KERNEL_INFO
 {
 public:
     std::map<std::string, VarInfo*> variables;
+    std::string name;
 
     KERNEL_INFO() { }
     ~KERNEL_INFO()

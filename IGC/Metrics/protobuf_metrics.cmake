@@ -43,7 +43,9 @@ else()
 endif()
 
 list(APPEND IGC_METRICS_SRCS "Metrics/IGCMetric.cpp")
+list(APPEND IGC_METRICS_SRCS "Metrics/IGCMetricImpl.cpp")
 list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetric.h")
+list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetricImpl.h")
 
 add_library(igc_metric STATIC ${IGC_METRICS_SRCS} ${IGC_METRICS_HDRS})
 
