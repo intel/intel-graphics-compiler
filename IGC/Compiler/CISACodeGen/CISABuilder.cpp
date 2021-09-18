@@ -3722,6 +3722,8 @@ namespace IGC
             QWORD hashToUse = NosHash != 0 ? NosHash : PsoHash;
             if (hashToUse)
                 addHash("-hashmovs1", hashToUse);
+            else if (context->hash.getPerShaderPsoHash() != 0)
+                addHash("-hashmovs1", context->hash.getPerShaderPsoHash());
         }
     }
     void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR)

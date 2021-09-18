@@ -74,7 +74,7 @@ namespace IGCMetrics
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         // Out file with ext OPTRPT - OPTimization RePoT
         std::string fileName = "OCL_" + oclProgram.hash() + ".optrpt";
-        
+
         std::ofstream metric_data;
         metric_data.open(fileName);
 
