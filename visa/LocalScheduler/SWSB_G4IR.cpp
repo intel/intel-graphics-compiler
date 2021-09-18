@@ -754,28 +754,8 @@ void SWSB::handleFuncCall()
 
         SBNode* node = SBNodes[bb->last_node];
 
-        bool isIndrectCall = false;
-
-        if (node->GetInstruction()->isCall() || node->GetInstruction()->isFCall())
-        {
-            G4_INST* fcall = node->GetInstruction();
-            if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0())
-            {
-                isIndrectCall = true;
-            }
-        }
-
-        if ((node->GetInstruction()->isReturn() || node->GetInstruction()->isFReturn()) && kernel.getBoolKernelAttr(Attributes::ATTR_Extern))
-        {
-            isIndrectCall = true;
-            node->GetInstruction()->setDistance(1);
-            if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
-            {
-                node->GetInstruction()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-            }
-        }
-
-        if (isIndrectCall)
+        if ((node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) ||
+            (node->GetInstruction()->isReturn() || node->GetInstruction()->isFReturn()))
         {
             LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal(), *fg.getKernel());
             for (const SBBucketNode* sBucketNode : globalSendOpndList)
@@ -793,6 +773,15 @@ void SWSB::handleFuncCall()
                 {
                     bb->createAddGRFEdge(sNode, node, RAW, DEP_EXPLICT);
                 }
+            }
+        }
+        if (node->GetInstruction()->isReturn() ||
+            node->GetInstruction()->isFReturn())
+        {
+            node->GetInstruction()->setDistance(1);
+            if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
+            {
+                node->GetInstruction()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
             }
         }
     }
@@ -5557,7 +5546,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         }
 
         if ((builder.getOption(vISA_EnableSwitch) && node->GetInstruction()->isYieldInst()) ||
-            ((node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) && (curInst->getSrc(0)->isGreg() || curInst->getSrc(0)->isA0())) ||
+            (node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) ||
             (builder.hasEOTWait() && node->GetInstruction()->isEOT()))
         {
             node->setDistance(1);
