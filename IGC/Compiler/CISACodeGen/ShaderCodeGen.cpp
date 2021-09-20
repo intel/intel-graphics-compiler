@@ -327,9 +327,10 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     if (IGC_IS_FLAG_ENABLED(ForceRPE)) {
         mpm.add(new RegisterEstimator());
     }
-
-    mpm.add(new Layout());
     mpm.add(createFixInvalidFuncNamePass());
+
+    // Let Layout be the last pass before Emit Pass
+    mpm.add(new Layout());
 
     mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_END));
 
