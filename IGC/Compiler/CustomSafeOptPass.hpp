@@ -245,6 +245,5 @@ namespace IGC
     llvm::FunctionPass* createBlendToDiscardPass();
     llvm::FunctionPass* createMarkReadOnlyLoadPass();
     llvm::FunctionPass* createLogicalAndToBranchPass();
-    llvm::FunctionPass* createCleanPHINodePass();
 
 } // namespace IGC
