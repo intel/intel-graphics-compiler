@@ -2267,18 +2267,21 @@ void FlowGraph::removeEmptyBlocks()
                     //
                     BB_LIST_ITER kt = std::find(succBB->Preds.begin(), succBB->Preds.end(), bb);
 
-                    for (auto predBB : bb->Preds)
+                    if (kt != succBB->Preds.end())
                     {
-                        succBB->Preds.insert(kt, predBB);
+                        for (auto predBB : bb->Preds)
+                        {
+                            succBB->Preds.insert(kt, predBB);
+                        }
+
+                        succBB->Preds.erase(kt);
+                        succBB->Preds.unique();
+
+                        //
+                        // Propagate the removed block's type to its unique successor.
+                        //
+                        succBB->setBBType(bb->getBBType());
                     }
-
-                    succBB->Preds.erase(kt);
-                    succBB->Preds.unique();
-
-                    //
-                    // Propagate the removed block's type to its unique successor.
-                    //
-                    succBB->setBBType(bb->getBBType());
                 }
                 //
                 // Remove the block to be removed.
