@@ -1904,6 +1904,24 @@
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
     },
+    "genx_smadw": {
+      "opc": "ISA_MADW",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 3 ]
+    },
+    "genx_umadw": {
+      "opc": "ISA_MADW",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 3 ]
+    },
     "genx_ssshl": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
@@ -3639,6 +3657,21 @@
           "src0",
           "src1",
           "nullptr"
+        ]
+      ]
+    ],
+    "ISA_MADW": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "src2"
         ]
       ]
     ],

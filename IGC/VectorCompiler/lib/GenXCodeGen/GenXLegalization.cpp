@@ -684,6 +684,8 @@ bool GenXLegalization::processInst(Instruction *Inst) {
       (ID == GenXIntrinsic::genx_dpasw_nosrc0)) {
     return false;
   }
+  if (ID == GenXIntrinsic::genx_umadw || ID == GenXIntrinsic::genx_smadw)
+    return false;
   if (isa<ExtractValueInst>(Inst))
     return false;
   if (isa<BitCastInst>(Inst)) {
