@@ -53,6 +53,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/MergeURBWrites.hpp"
 #include "Compiler/CISACodeGen/URBPartialWrites.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
+#include "Compiler/CISACodeGen/InsertGenericPtrArithmeticMetadata.hpp"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
@@ -864,6 +865,10 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     }
 
     mpm.add(new WAFMinFMax());
+
+    // Preferred to be added after llvm instruction combining, otherwise 'generic.arith'
+    // metadata may get lost during optimizations.
+    mpm.add(new InsertGenericPtrArithmeticMetadata());
 
     mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Legalization, STATS_COUNTER_END));
 
