@@ -26,8 +26,6 @@ set(CMAKE_MODULE_PATH
 
 set(LLVM_TABLEGEN_EXE "llvm-tblgen")
 
-set(LLVM_LINK_EXE "llvm-link" CACHE STRING "")
-
 include(AddLLVM)
 include(TableGen)
 # Set LLVM_TABLEGEN_FLAGS manually based on include dirs.
