@@ -1800,8 +1800,11 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
             {
-                // Add CFGSimplification for clean-up before JumpThreading.
-                mpm.add(llvm::createCFGSimplificationPass());
+                if (pContext->type == ShaderType::OPENCL_SHADER)
+                {
+                    // Add CFGSimplification for clean-up before JumpThreading.
+                    mpm.add(llvm::createCFGSimplificationPass());
+                }
 
                 // jump threading currently causes the atomic_flag test from c11 conformance to fail.  Right now,
                 // only do jump threading if we don't have atomics as using atomics as locks seems to be the most common
