@@ -375,7 +375,7 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
                         {
                             Value* shrVal = NewInst;
                             Value* shlVal = m_builder->CreateShl(m_builder->CreateExtractElement(NewLargeSrc1VecForm, 1), promoteToInt - offset);
-                            NewInst = m_builder->CreateAnd(shrVal, shlVal);
+                            NewInst = m_builder->CreateOr(shrVal, shlVal);
                         }
                     }
                     else
