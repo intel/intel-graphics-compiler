@@ -60,7 +60,7 @@ static cl::opt<std::string>
 static cl::opt<std::string>
     VCEmulationBiFPath("vc-emulation-bif-path",
                        cl::desc("full name (with path) of a BiF file with "
-                                "precompiled divrem emulation routines"),
+                                "precompiled emulation routines"),
                        cl::init(""));
 
 static cl::opt<std::string>
