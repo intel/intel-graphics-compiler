@@ -533,39 +533,41 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   return TransformNode(*F, ArgsToTransform, LI);
 }
 
-// Returns false if data is only read using load-like intrinsics. The result may
-// be false positive.
+// check for typical inst sequences passing arg as a base
+// of store-like intrinsics
 static bool checkSinkToMemIntrinsic(const Instruction *Inst) {
   auto *CI = dyn_cast<CallInst>(Inst);
   if (CI && (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-                 GenXIntrinsic::genx_svm_gather ||
+                 GenXIntrinsic::genx_svm_scatter ||
              GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-                 GenXIntrinsic::genx_gather_scaled))
-    return false;
+                 GenXIntrinsic::genx_scatter_scaled))
+    return true;
   for (auto *U : Inst->users()) {
     if (isa<InsertElementInst>(U) || isa<ShuffleVectorInst>(U) ||
         isa<BinaryOperator>(U) || isa<CallInst>(U))
       return checkSinkToMemIntrinsic(cast<Instruction>(U));
   }
-  return true;
+  return false;
 }
 
-// Arg is a ptr to a vector type. If data is only read using load, then false is
-// returned. Otherwise, or if it is not clear, true is returned. This is a
-// recursive function. The result may be false positive.
-static bool isPtrArgModified(const Value &Arg) {
-  // User iterator returns pointer both for star and arrow operators, because...
+// Arg is a ptr to a vector type. If data is written using a
+// store, then return true. This means copy-in/copy-out are
+// needed as caller may use the updated value. If no data is
+// ever stored in Arg then return false. It is safe to
+// convert the parameter to pass-by-value in GRF.
+// This is a recursive function.
+static bool IsPtrArgModified(const Value &Arg) {
+  // user iterator returns pointer both for star and arrow operators, because...
   return std::any_of(Arg.user_begin(), Arg.user_end(), [](const User *U) {
     if (!isa<Instruction>(U))
       return false;
-    if (isa<LoadInst>(U))
-      return false;
-    if (isa<AddrSpaceCastInst>(U) || isa<BitCastInst>(U) ||
-        isa<GetElementPtrInst>(U))
-      return isPtrArgModified(*U);
+    if (isa<StoreInst>(U))
+      return true;
+    if (isa<AddrSpaceCastInst>(U) || isa<GetElementPtrInst>(U))
+      return IsPtrArgModified(*U);
     if (isa<PtrToIntInst>(U))
       return checkSinkToMemIntrinsic(cast<Instruction>(U));
-    return true;
+    return false;
   });
 }
 
@@ -812,7 +814,7 @@ private:
                     [&ArgsToTransform](Argument &Arg) {
                       if (!ArgsToTransform.count(&Arg))
                         return ArgKind::General;
-                      if (isPtrArgModified(Arg))
+                      if (IsPtrArgModified(Arg))
                         return ArgKind::CopyInOut;
                       return ArgKind::CopyIn;
                     });
