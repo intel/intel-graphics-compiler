@@ -161,7 +161,7 @@ void GenXLiveRanges::buildLiveRanges()
     // Build live ranges for args.
     for (auto fi = Func->arg_begin(), fe = Func->arg_end(); fi != fe; ++fi)
       Liveness->buildLiveRange(&*fi);
-    if (i != FG->begin() && !Func->getReturnType()->isVoidTy()) {
+    if (!Func->getReturnType()->isVoidTy()) {
       // Build live range(s) for unified return value.
       Liveness->buildLiveRange(Liveness->getUnifiedRet(Func));
     }

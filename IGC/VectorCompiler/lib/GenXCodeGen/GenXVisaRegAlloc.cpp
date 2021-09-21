@@ -185,7 +185,7 @@ void GenXVisaRegAlloc::getLiveRanges(std::vector<LiveRange *> &LRs) const {
     Function *F = *fgi;
     for (auto ai = F->arg_begin(), ae = F->arg_end(); ai != ae; ++ai)
       getLiveRangesForValue(&*ai, LRs);
-    if (fgi != FG->begin() && !F->getReturnType()->isVoidTy()) {
+    if (!F->getReturnType()->isVoidTy()) {
       // allocate reg for unified return value
       getLiveRangesForValue(Liveness->getUnifiedRet(F), LRs);
     }
