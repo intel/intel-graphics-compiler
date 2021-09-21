@@ -500,7 +500,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXVisaRegAlloc.h
   auto RegAlloc = createGenXVisaRegAllocPass();
   PM.add(RegAlloc);
-  if (BackendConfig.enableRegAllocDump() || Subtarget.dumpRegAlloc())
+  if (BackendConfig.enableRegAllocDump())
     PM.add(createGenXGroupAnalysisDumperPass(RegAlloc, FGDumpsPrefix,
                                              ".regalloc"));
 

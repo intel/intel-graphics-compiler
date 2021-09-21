@@ -16,13 +16,6 @@ SPDX-License-Identifier: MIT
 include "llvm/Target/Target.td"
 
 //===----------------------------------------------------------------------===//
-// GenX Subtarget features - these are typically passed in as features
-//===----------------------------------------------------------------------===//
-
-def DumpRegAlloc: SubtargetFeature<"dump_regalloc", "DumpRegAlloc",
-                                   "true", "dump regalloc information">;
-
-//===----------------------------------------------------------------------===//
 // GenX Subtarget state - these are typically inferred from the Proc
 //===----------------------------------------------------------------------===//
 

@@ -70,8 +70,6 @@ protected:
   GenXTag GenXVariant;
 
 private:
-  // DumpRegAlloc - True if we should dump register allocation information
-  bool DumpRegAlloc;
 
   // EmitCisa Builder - True if we should generate CISA instead of VISA
   bool EmitCisa;
@@ -203,9 +201,6 @@ public:
 
   /// * emulateLongLong - true if i64 emulation is requested
   bool emulateLongLong() const { return EmulateLongLong; }
-
-  /// * dumpRegAlloc - true if we should dump Reg Alloc info
-  bool dumpRegAlloc() const { return DumpRegAlloc; }
 
   /// * hasLongLong - true if target supports long long
   bool hasLongLong() const { return HasLongLong; }
