@@ -28,11 +28,15 @@ namespace {
 // GenXAnalysisDumper : a pass to dump an analysis to a file
 class GenXAnalysisDumper : public FunctionPass {
   FunctionPass *P;
-  const char *Suffix;
+  std::string DumpNamePrefix;
+  std::string DumpNameSuffix;
+
 public:
   static char ID;
-  explicit GenXAnalysisDumper(FunctionPass *P, const char *Suffix)
-    : FunctionPass(ID), P(P), Suffix(Suffix) { }
+  explicit GenXAnalysisDumper(FunctionPass *P, StringRef DumpNamePrefixIn,
+                              StringRef DumpNameSuffixIn)
+      : FunctionPass(ID), P(P), DumpNamePrefix(DumpNamePrefixIn.str()),
+        DumpNameSuffix(DumpNameSuffixIn) {}
   StringRef getPassName() const override { return "GenX analysis dumper pass"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionPass::getAnalysisUsage(AU);
@@ -44,11 +48,15 @@ public:
 // GenXGroupAnalysisDumper : a pass to dump an analysis to a file
 class GenXGroupAnalysisDumper : public FunctionGroupPass {
   FunctionGroupPass *P;
-  const char *Suffix;
+  std::string DumpNamePrefix;
+  std::string DumpNameSuffix;
+
 public:
   static char ID;
-  explicit GenXGroupAnalysisDumper(FunctionGroupPass *P, const char *Suffix)
-    : FunctionGroupPass(ID), P(P), Suffix(Suffix) { }
+  GenXGroupAnalysisDumper(FunctionGroupPass *P, StringRef DumpNamePrefixIn,
+                          StringRef DumpNameSuffixIn)
+      : FunctionGroupPass(ID), P(P), DumpNamePrefix(DumpNamePrefixIn.str()),
+        DumpNameSuffix(DumpNameSuffixIn.str()) {}
   StringRef getPassName() const override { return "GenX analysis dumper pass"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionGroupPass::getAnalysisUsage(AU);
@@ -61,18 +69,17 @@ public:
 
 char GenXAnalysisDumper::ID = 0;
 
-FunctionPass *llvm::createGenXAnalysisDumperPass(
-    FunctionPass *P, const char *Suffix)
-{
-  return new GenXAnalysisDumper(P, Suffix);
+FunctionPass *llvm::createGenXAnalysisDumperPass(FunctionPass *P,
+                                                 StringRef DumpNamePrefix,
+                                                 StringRef DumpNameSuffix) {
+  return new GenXAnalysisDumper(P, DumpNamePrefix, DumpNameSuffix);
 }
 
 char GenXGroupAnalysisDumper::ID = 0;
 
 FunctionGroupPass *llvm::createGenXGroupAnalysisDumperPass(
-    FunctionGroupPass *P, const char *Suffix)
-{
-  return new GenXGroupAnalysisDumper(P, Suffix);
+    FunctionGroupPass *P, StringRef DumpNamePrefix, StringRef DumpNameSuffix) {
+  return new GenXGroupAnalysisDumper(P, DumpNamePrefix, DumpNameSuffix);
 }
 
 /***********************************************************************
@@ -83,15 +90,15 @@ FunctionGroupPass *llvm::createGenXGroupAnalysisDumperPass(
  *
  * On error, this function prints an error message and returns -1.
  */
-static int openFileForDump(Function *F, StringRef Suffix)
-{
+static int openFileForDump(Function *F, StringRef DumpNamePrefix,
+                           StringRef DumpNameSuffix) {
   // Get name of kernel, or failing that, name of function.
   KernelMetadata KM(F);
   StringRef Name = KM.getName();
   if (Name.empty())
     Name = F->getName();
   int FD = -1;
-  std::string Filename = (Name + Suffix).str();
+  std::string Filename = (DumpNamePrefix + Name + DumpNameSuffix).str();
   // Sanitize templated kernel names.
   std::replace_if(Filename.begin(), Filename.end(),
                   [](const char x) { return x == '<' || x == '>'; }, '_');
@@ -109,7 +116,7 @@ static int openFileForDump(Function *F, StringRef Suffix)
  */
 bool GenXAnalysisDumper::runOnFunction(Function &F)
 {
-  int FD = openFileForDump(&F, Suffix);
+  int FD = openFileForDump(&F, DumpNamePrefix, DumpNameSuffix);
   raw_fd_ostream O(FD, /*shouldClose=*/ true);
   P->print(O, F.getParent());
   return false;
@@ -118,11 +125,10 @@ bool GenXAnalysisDumper::runOnFunction(Function &F)
 /***********************************************************************
  * GenXGroupAnalysisDumper::runOnFunctionGroup : dump analysis to file
  */
-bool GenXGroupAnalysisDumper::runOnFunctionGroup(FunctionGroup &FG)
-{
-  int FD = openFileForDump(FG.getHead(), Suffix);
+bool GenXGroupAnalysisDumper::runOnFunctionGroup(FunctionGroup &FG) {
+  int FD = openFileForDump(FG.getHead(), DumpNamePrefix, DumpNameSuffix);
   raw_fd_ostream O(FD, /*shouldClose=*/ true);
-  P->print(O, FG.getHead()->getParent());
+  P->print(O, &FG);
   return false;
 }
 

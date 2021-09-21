@@ -276,6 +276,10 @@ public:
 
   explicit FunctionGroupPass(char &pid) : Pass(static_cast<PassKind>(PassType), pid) {}
 
+  using llvm::Pass::print;
+  virtual void print(raw_ostream &OS, const FunctionGroup *FG) const {
+    print(OS, FG->getHead()->getParent());
+  }
   // createPrinterPass - Get a pass that prints the Module
   // corresponding to a FunctionGroupAnalysis.
   Pass *createPrinterPass(raw_ostream &O,

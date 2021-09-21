@@ -57,8 +57,13 @@ enum BalingKind {
 
 FunctionPass *createGenXPrinterPass(raw_ostream &O, const std::string &Banner);
 FunctionGroupPass *createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner);
-FunctionPass *createGenXAnalysisDumperPass(FunctionPass *Analysis, const char *Suffix);
-FunctionGroupPass *createGenXGroupAnalysisDumperPass(FunctionGroupPass *Analysis, const char *Suffix);
+FunctionPass *createGenXAnalysisDumperPass(FunctionPass *Analysis,
+                                           StringRef DumpNamePrefix,
+                                           StringRef DumpNameSuffix);
+FunctionGroupPass *
+createGenXGroupAnalysisDumperPass(FunctionGroupPass *Analysis,
+                                  StringRef DumpNamePrefix,
+                                  StringRef DumpNameSuffix);
 
 FunctionPass *createGenXCFSimplificationPass();
 ModulePass *createGenXEarlySimdCFConformancePass();

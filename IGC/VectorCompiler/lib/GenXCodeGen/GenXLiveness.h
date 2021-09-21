@@ -420,7 +420,7 @@ public:
   //    LR is alive in
   void prepareFuncs(FunctionGroupAnalysis *FGA);
   // getLength : add up the number of instructions covered by this LR
-  unsigned getLength(bool WithWeak);
+  unsigned getLength(bool WithWeak) const;
   // debug dump/print
   void dump() const;
   void print(raw_ostream &OS) const;

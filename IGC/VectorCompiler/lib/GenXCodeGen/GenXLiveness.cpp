@@ -1752,8 +1752,7 @@ void LiveRange::prepareFuncs(FunctionGroupAnalysis *FGA) {
 /***********************************************************************
  * LiveRange::getLength : add up the number of instructions covered by this LR
  */
-unsigned LiveRange::getLength(bool WithWeak)
-{
+unsigned LiveRange::getLength(bool WithWeak) const {
   unsigned Length = 0;
   for (auto i = begin(), e = end(); i != e; ++i) {
     if (i->isWeak() && !WithWeak)

@@ -65,6 +65,10 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
+static cl::opt<std::string>
+    FGDumpsPrefix("vc-fg-dump-prefix", cl::init(""), cl::Hidden,
+                  cl::desc("prefix to use for FG dumps"));
+
 static cl::opt<bool> ExperimentalEnforceLateEmulationImports(
     "vc-experimental-emulation-late-imports", cl::init(false), cl::Hidden,
     cl::desc("Import of some emulation BiF shall be deferred (experimental)"));
@@ -497,7 +501,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   auto RegAlloc = createGenXVisaRegAllocPass();
   PM.add(RegAlloc);
   if (BackendConfig.enableRegAllocDump() || Subtarget.dumpRegAlloc())
-    PM.add(createGenXGroupAnalysisDumperPass(RegAlloc, ".regalloc"));
+    PM.add(createGenXGroupAnalysisDumperPass(RegAlloc, FGDumpsPrefix,
+                                             ".regalloc"));
 
   if (!DisableVerify) PM.add(createVerifierPass());
   /// .. include:: GenXCisaBuilder.cpp

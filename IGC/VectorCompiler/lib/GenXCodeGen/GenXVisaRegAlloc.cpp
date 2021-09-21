@@ -46,8 +46,10 @@ using namespace llvm;
 using namespace genx;
 using namespace visa;
 
-static cl::opt<unsigned> LimitGenXExtraCoalescing("limit-genx-extra-coalescing", cl::init(UINT_MAX), cl::Hidden,
-                                      cl::desc("Limit GenX extra coalescing."));
+static cl::opt<unsigned>
+    LimitGenXExtraCoalescing("limit-genx-extra-coalescing", cl::init(UINT_MAX),
+                             cl::Hidden,
+                             cl::desc("Limit GenX extra coalescing."));
 
 static cl::opt<unsigned> ArithChainLengthThreshold(
     "acc-split-arith-length", cl::init(4), cl::Hidden,
@@ -157,6 +159,10 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
     report_fatal_error("Too many vISA sampler registers");
   if (CurrentRegId[RegCategory::SURFACE] > VISA_MAX_SURFACE_REGS)
     report_fatal_error("Too many vISA surface registers");
+
+  if (BackendConfig->enableRegAllocDump())
+    Stats.recordLRs(FG, LRs);
+
   return false;
 }
 
@@ -782,36 +788,51 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed)
     report_fatal_error("Variable too big");
 }
 
+struct LiveRangeAndLength {
+  const LiveRange *LR;
+  unsigned Length;
+
+  LiveRangeAndLength(const LiveRange *LR, unsigned Length)
+      : LR(LR), Length(Length) {}
+  bool operator<(const LiveRangeAndLength &Rhs) const {
+    return Length > Rhs.Length;
+  }
+  LiveRangeAndLength &operator=(const LiveRangeAndLength &Rhs) = default;
+};
+
+static std::vector<LiveRangeAndLength>
+getSortedLRL(const GenXVisaRegAlloc::LRCPtrVect &LRs) {
+  std::vector<LiveRangeAndLength> Result;
+  std::transform(LRs.begin(), LRs.end(), std::back_inserter(Result),
+                 [](const auto &LR) {
+                   const bool WithWeak = false;
+                   return LiveRangeAndLength{LR, LR->getLength(WithWeak)};
+                 });
+  std::sort(Result.begin(), Result.end());
+  return Result;
+}
 
 /***********************************************************************
  * print : dump the state of the pass. This is used by -genx-dump-regalloc
  */
-void GenXVisaRegAlloc::print(raw_ostream &OS, const Module *M) const
-{
+void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
   // Get the live ranges in a reproducible order, and sort them by "length"
   // (the total number of instructions that the live range covers).
-  struct LiveRangeAndLength {
-    LiveRange *LR;
-    unsigned Length;
-    LiveRangeAndLength(LiveRange *LR, unsigned Length) : LR(LR), Length(Length) {}
-    bool operator<(const LiveRangeAndLength &Rhs) const { return Length > Rhs.Length; }
-  };
-  std::vector<LiveRange *> LRs;
-  getLiveRanges(LRs);
-  std::vector<LiveRangeAndLength> LRLs;
-  for (auto i = LRs.begin(), e = LRs.end(); i != e; ++i)
-    LRLs.push_back(LiveRangeAndLength(*i, (*i)->getLength(/*WithWeak=*/ false)));
-  LRs.clear();
-  std::sort(LRLs.begin(), LRLs.end());
+  const auto *FGInfo = Stats.getLRs(FG);
+  if (!FGInfo) {
+    OS << "no RA info!\n";
+    return;
+  }
+  auto LRLs = getSortedLRL(*FGInfo);
   // Dump them. Also keep count of the register pressure at each
   // instruction number.
   std::vector<unsigned> Pressure;
   std::vector<unsigned> FlagPressure;
   for (auto i = LRLs.begin(), e = LRLs.end(); i != e; ++i) {
     // Dump a single live range.
-    LiveRange *LR = i->LR;
+    const LiveRange *LR = i->LR;
     SimpleValue SV = *LR->value_begin();
-    Reg* RN = getRegForValueUntyped(&(*(M->begin())), SV);
+    Reg *RN = getRegForValueUntyped(FG->getHead(), SV);
     IGC_ASSERT(RN);
     OS << "[";
     RN->print(OS);
@@ -839,7 +860,7 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const Module *M) const
           unsigned Num = Numbering->getNumber(Inst);
           if (Num < BestNum) {
             auto DL = Inst->getDebugLoc();
-            if (!DL) {
+            if (DL) {
               BestNum = Num;
               BestInst = Inst;
             }
@@ -851,7 +872,10 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const Module *M) const
       OS << KernelArg->getName();
     else if (BestInst) {
       const DebugLoc &DL = BestInst->getDebugLoc();
-      OS << DL->getFilename() << ":" << DL.getLine();
+      if (DL)
+        OS << DL->getFilename() << ":" << DL.getLine();
+      else
+        OS << "<no_dbg_loc>";
     }
     // Dump the live range segments, and add each to the pressure score.
     OS << ":";
@@ -932,7 +956,10 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const Module *M) const
       if (Inst) {
         HadInst = true;
         const DebugLoc &DL = Inst->getDebugLoc();
-        OS << " " << DL->getFilename() << ":" << DL.getLine();
+        if (DL)
+          OS << " " << DL->getFilename() << ":" << DL.getLine();
+        else
+          OS << " <no_dbg_loc>";
       }
       OS << "\n";
     }
@@ -942,8 +969,7 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const Module *M) const
 /***********************************************************************
  * RegNum::print : print a regnum
  */
-void GenXVisaRegAlloc::Reg::print(raw_ostream &OS) const
-{
+void GenXVisaRegAlloc::Reg::print(raw_ostream &OS) const {
   switch (Category) {
     case RegCategory::NONE: OS << "-"; return;
     case RegCategory::GENERAL: OS << "v"; break;
@@ -954,4 +980,19 @@ void GenXVisaRegAlloc::Reg::print(raw_ostream &OS) const
     default: OS << "?"; break;
   }
   OS << Num;
+}
+
+const GenXVisaRegAlloc::LRCPtrVect *
+GenXVisaRegAlloc::RegAllocStats::getLRs(const FunctionGroup *FG) const {
+  auto LRsIt = LRs.find(FG);
+  if (LRsIt == LRs.end())
+    return nullptr;
+  return &LRsIt->second;
+}
+
+void GenXVisaRegAlloc::RegAllocStats::recordLRs(const FunctionGroup *FG,
+                                                const LRPtrVect &FGLR) {
+  auto &Storage = LRs[FG];
+  IGC_ASSERT(Storage.empty());
+  std::copy(FGLR.begin(), FGLR.end(), std::back_inserter(Storage));
 }

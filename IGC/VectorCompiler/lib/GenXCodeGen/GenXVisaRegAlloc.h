@@ -129,6 +129,9 @@ namespace llvm {
     using RegPushHook = void(*)(void* Object, Reg&);
     using KernRegMap_t = std::map<genx::SimpleValue, Reg*>;
     using RegMap_t = std::map<const Function*, KernRegMap_t>;
+    using LRPtrVect = std::vector<genx::LiveRange *>;
+    using LRCPtrVect = std::vector<const genx::LiveRange *>;
+
   private:
     FunctionGroup *FG = nullptr;
     GenXLiveness *Liveness = nullptr;
@@ -153,6 +156,14 @@ namespace llvm {
 
     // Array of current indexes being assigned to new register.
     unsigned CurrentRegId[genx::RegCategory::NUMREALCATEGORIES];
+
+    struct RegAllocStats {
+      const LRCPtrVect *getLRs(const FunctionGroup *FG) const;
+      void recordLRs(const FunctionGroup *FG, const LRPtrVect &LRs);
+
+    private:
+      std::map<const FunctionGroup *, LRCPtrVect> LRs;
+    } Stats;
 
   public:
     static char ID;
@@ -213,14 +224,14 @@ namespace llvm {
                             const std::string &Banner) const override {
       return createGenXGroupPrinterPass(O, Banner);
     }
+
     // print : dump the state of the pass. This is used by -genx-dump-regalloc
-    void print(raw_ostream &O, const Module *M) const override;
+    void print(raw_ostream &O, const FunctionGroup *FG) const override;
 
   private:
-    void getLiveRanges(std::vector<genx::LiveRange *> &LRs) const;
-    void getLiveRangesForValue(Value *V,
-                               std::vector<genx::LiveRange *> &LRs) const;
-    void localizeLiveRangesForAccUsage(std::vector<genx::LiveRange *> &LRs);
+    void getLiveRanges(LRPtrVect &LRs) const;
+    void getLiveRangesForValue(Value *V, LRPtrVect &LRs) const;
+    void localizeLiveRangesForAccUsage(LRPtrVect &LRs);
     void extraCoalescing();
     void allocReg(genx::LiveRange *LR);
   public:
