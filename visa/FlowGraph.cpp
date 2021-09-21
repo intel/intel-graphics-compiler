@@ -1931,6 +1931,18 @@ void FlowGraph::removeRedundantLabels()
             for (auto pred : bb->Preds)
             {
                 auto jt = std::find(pred->Succs.begin(), pred->Succs.end(), bb);
+                if (jt == pred->Succs.end())
+                {
+                    // Just skip!
+                    //
+                    // Each unique pred is processed just once.  If a pred appears
+                    // more than once in bb->Preds, it is only handled the first time
+                    // the pred is processed.
+                    //   Note that if jt == end(), it means that this pred appears
+                    //   more than once in the Preds list AND it has been handled
+                    //   before (see code at the end of this loop). So, it is safe to skip.
+                    continue;
+                }
 
                 G4_INST *i = pred->back();
                 // replace label in instructions
