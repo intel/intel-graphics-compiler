@@ -1547,116 +1547,116 @@ DEFN_SUB_GROUP_BROADCAST_VEC(double, f64)
 //
 // Allows data to be arbitrarily transferred between invocations in a subgroup.
 // The data that is returned for this invocation is the value of 'Data' for the invocation identified by 'InvocationId'.
-char __builtin_spirv_OpSubgroupShuffleINTEL_i8_i32(char Data, int InvocationId)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i8_i32, )(char Data, uint InvocationId)
 {
     return __builtin_IB_simd_shuffle_c(Data, InvocationId);
 }
 
-short __builtin_spirv_OpSubgroupShuffleINTEL_i16_i32(short Data, int InvocationId)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i16_i32, )(short Data, uint InvocationId)
 {
     return __builtin_IB_simd_shuffle_us(as_ushort(Data), InvocationId);
 }
 
-int __builtin_spirv_OpSubgroupShuffleINTEL_i32_i32(int Data, int InvocationId)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i32_i32, )(int Data, uint InvocationId)
 {
     return __builtin_IB_simd_shuffle(as_uint(Data), InvocationId);
 }
 
-long __builtin_spirv_OpSubgroupShuffleINTEL_i64_i32(long Data, int InvocationId)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i64_i32, )(long Data, uint InvocationId)
 {
     int2 DataXY = as_int2(Data);
     int2 Result;
-    Result.s0 = __builtin_spirv_OpSubgroupShuffleINTEL_i32_i32(DataXY.s0, InvocationId);
-    Result.s1 = __builtin_spirv_OpSubgroupShuffleINTEL_i32_i32(DataXY.s1, InvocationId);
+    Result.s0 = SPIRV_BUILTIN(SubgroupShuffleINTEL, _i32_i32, )(DataXY.s0, InvocationId);
+    Result.s1 = SPIRV_BUILTIN(SubgroupShuffleINTEL, _i32_i32, )(DataXY.s1, InvocationId);
     return as_long(Result);
 }
 
 #ifdef cl_khr_fp16
-half __builtin_spirv_OpSubgroupShuffleINTEL_f16_i32(half Data, int InvocationId)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f16_i32, )(half Data, uint InvocationId)
 {
     return __builtin_IB_simd_shuffle_h(Data, InvocationId);
 }
 #endif // cl_khr_fp16
 
-float __builtin_spirv_OpSubgroupShuffleINTEL_f32_i32(float Data, int InvocationId)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f32_i32, )(float Data, uint InvocationId)
 {
     return __builtin_IB_simd_shuffle_f(Data, InvocationId);
 }
 
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpSubgroupShuffleINTEL_f64_i32(double Data, int InvocationId)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f64_i32, )(double Data, uint InvocationId)
 {
     return __builtin_IB_simd_shuffle_df(Data, InvocationId);
 }
 #endif // cl_khr_fp64
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleINTEL, char,  char,  int, i8,  i32)
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleINTEL, short, short, int, i16, i32)
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleINTEL, int,   int,   int, i32, i32)
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleINTEL, float, float, int, f32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleINTEL, char,  char,  uint, i8,  i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleINTEL, short, short, uint, i16, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleINTEL, int,   int,   uint, i32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleINTEL, float, float, uint, f32, i32)
 
 // OpSubgroupShuffleDownINTEL
 //
 // Allows data to be transferred from an invocation in the subgroup with a higher SubgroupLocalInvocationId down to
 // a invocation in the subgroup with a lower SubgroupLocalInvocationId.
-char __builtin_spirv_OpSubgroupShuffleDownINTEL_i8_i8_i32(char Current, char Next, int Delta)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i8_i8_i32, )(char Current, char Next, uint Delta)
 {
     return __builtin_IB_simd_shuffle_down_uc(Current, Next, Delta);
 }
 
-short __builtin_spirv_OpSubgroupShuffleDownINTEL_i16_i16_i32(short Current, short Next, int Delta)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i16_i16_i32, )(short Current, short Next, uint Delta)
 {
     return __builtin_IB_simd_shuffle_down_us(Current, Next, Delta);
 }
 
-int __builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(int Current, int Next, int Delta)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(int Current, int Next, uint Delta)
 {
     return __builtin_IB_simd_shuffle_down(Current, Next, Delta);
 }
 
-long __builtin_spirv_OpSubgroupShuffleDownINTEL_i64_i64_i32(long Current, long Next, int Delta)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i64_i64_i32, )(long Current, long Next, uint Delta)
 {
     int2 CurrentXY = as_int2(Current);
     int2 NextXY = as_int2(Next);
     int2 Result;
-    Result.s0 = __builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(CurrentXY.s0, NextXY.s0, Delta);
-    Result.s1 = __builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(CurrentXY.s1, NextXY.s1, Delta);
+    Result.s0 = SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(CurrentXY.s0, NextXY.s0, Delta);
+    Result.s1 = SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(CurrentXY.s1, NextXY.s1, Delta);
     return as_long(Result);
 }
 
 #ifdef cl_khr_fp16
-half __builtin_spirv_OpSubgroupShuffleDownINTEL_f16_f16_i32(half Current, half Next, int Delta)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f16_f16_i32, )(half Current, half Next, uint Delta)
 {
-    return as_half(__builtin_spirv_OpSubgroupShuffleDownINTEL_i16_i16_i32(as_short(Current), as_short(Next), Delta));
+    return as_half(SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i16_i16_i32, )(as_short(Current), as_short(Next), Delta));
 }
 #endif // cl_khr_fp16
 
-float __builtin_spirv_OpSubgroupShuffleDownINTEL_f32_f32_i32(float Current, float Next, int Delta)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f32_f32_i32, )(float Current, float Next, uint Delta)
 {
-    return as_float(__builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(as_int(Current), as_int(Next), Delta));
+    return as_float(SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(as_int(Current), as_int(Next), Delta));
 }
 
 #ifdef cl_khr_fp64
-double __builtin_spirv_OpSubgroupShuffleDownINTEL_f64_f64_i32(double Current, double Next, int Delta)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f64_f64_i32, )(double Current, double Next, uint Delta)
 {
-    return as_double(__builtin_spirv_OpSubgroupShuffleDownINTEL_i64_i64_i32(as_long(Current), as_long(Next), Delta));
+    return as_double(SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i64_i64_i32, )(as_long(Current), as_long(Next), Delta));
 }
 #endif // cl_khr_fp64
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleDownINTEL, char,  char,  int, i8,  i32)
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleDownINTEL, short, short, int, i16, i32)
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleDownINTEL, int,   int,   int, i32, i32)
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleDownINTEL, float, float, int, f32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleDownINTEL, char,  char,  uint, i8,  i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleDownINTEL, short, short, uint, i16, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleDownINTEL, int,   int,   uint, i32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleDownINTEL, float, float, uint, f32, i32)
 
 // OpSubgroupShuffleUpINTEL
 //
 // Allows data to be transferred from an invocation in the subgroup with a lower SubgroupLocalInvocationId up to
 // an invocation in the subgroup with a higher SubgroupLocalInvocationId.
 #define DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(TYPE, TYPE_ABBR)                                                                \
-TYPE __builtin_spirv_OpSubgroupShuffleUpINTEL_##TYPE_ABBR##_##TYPE_ABBR##_i32(TYPE Previous, TYPE Current, int Value)   \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _##TYPE_ABBR##_##TYPE_ABBR##_i32, )(TYPE Previous, TYPE Current, uint Value)  \
 {                                                                                                                       \
     Value = __builtin_IB_get_simd_size() - Value;                                                                       \
-    return __builtin_spirv_OpSubgroupShuffleDownINTEL_##TYPE_ABBR##_##TYPE_ABBR##_i32(Previous, Current, Value);        \
+    return SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _##TYPE_ABBR##_##TYPE_ABBR##_i32, )(Previous, Current, Value);       \
 }
 
 DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(char,   i8)
@@ -1671,10 +1671,10 @@ DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(float,  f32)
 DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(double, f64)
 #endif // defined(cl_khr_fp64)
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, char,  char,  int, i8,  i32)
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, short, short, int, i16, i32)
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, int,   int,   int, i32, i32)
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, float, float, int, f32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleUpINTEL, char,  char,  uint, i8,  i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleUpINTEL, short, short, uint, i16, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleUpINTEL, int,   int,   uint, i32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS(SubgroupShuffleUpINTEL, float, float, uint, f32, i32)
 
 // OpSubgroupShuffleXorINTEL
 //
@@ -1682,10 +1682,10 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS(__builtin_spirv_OpSubgroupShuffleUpINTEL, fl
 // The data that is returned for this invocation is the value of 'Data' for the invocation with SubgroupLocalInvocationId equal
 // to this invocation's SubgroupLocalInvocationId XOR'd with the specified 'Value'.
 #define DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(TYPE, TYPE_ABBR)                                \
-TYPE __builtin_spirv_OpSubgroupShuffleXorINTEL_##TYPE_ABBR##_i32(TYPE Data, int Value)   \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _##TYPE_ABBR##_i32, )(TYPE Data, uint Value)  \
 {                                                                                        \
     Value = __builtin_IB_get_simd_id() ^ Value;                                          \
-    return __builtin_spirv_OpSubgroupShuffleINTEL_##TYPE_ABBR##_i32(Data, Value);        \
+    return SPIRV_BUILTIN(SubgroupShuffleINTEL, _##TYPE_ABBR##_i32, )(Data, Value);       \
 }
 
 DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(char,   i8)
@@ -1700,10 +1700,10 @@ DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(float,  f32)
 DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(double, f64)
 #endif // defined(cl_khr_fp64)
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, char,  char,  int, i8,  i32)
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, short, short, int, i16, i32)
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, int,   int,   int, i32, i32)
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, float, float, int, f32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleXorINTEL, char,  char,  uint, i8,  i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleXorINTEL, short, short, uint, i16, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleXorINTEL, int,   int,   uint, i32, i32)
+GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS(SubgroupShuffleXorINTEL, float, float, uint, f32, i32)
 
 // OpSubgroupBlockReadINTEL
 //
@@ -1711,67 +1711,67 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(__builtin_spirv_OpSubgroupShuffleXorINTEL, fl
 // as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)  \
-TYPE __builtin_spirv_OpSubgroupBlockReadINTEL_##TYPE_ABBR##_p1##ELEM_TYPE_ABBR(global ELEM_TYPE * p)      \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockReadINTEL, _##TYPE_ABBR##_p1##ELEM_TYPE_ABBR, _R##TYPE)(const global ELEM_TYPE * p)      \
 {                                                                                                         \
     return as_##TYPE(INTERNAL_FUNC((__global void*)p));                                                   \
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char,   i8,    char, i8, __builtin_IB_simd_block_read_1_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char2,  v2i8,  char, i8, __builtin_IB_simd_block_read_2_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char4,  v4i8,  char, i8, __builtin_IB_simd_block_read_4_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char8,  v8i8,  char, i8, __builtin_IB_simd_block_read_8_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char16, v16i8, char, i8, __builtin_IB_simd_block_read_16_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar,   i8,    uchar, i8, __builtin_IB_simd_block_read_1_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar2,  v2i8,  uchar, i8, __builtin_IB_simd_block_read_2_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar4,  v4i8,  uchar, i8, __builtin_IB_simd_block_read_4_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar8,  v8i8,  uchar, i8, __builtin_IB_simd_block_read_8_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar16, v16i8, uchar, i8, __builtin_IB_simd_block_read_16_global_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short,  i16,   short, i16, __builtin_IB_simd_block_read_1_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short2, v2i16, short, i16, __builtin_IB_simd_block_read_2_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short4, v4i16, short, i16, __builtin_IB_simd_block_read_4_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short8, v8i16, short, i16, __builtin_IB_simd_block_read_8_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ushort,  i16,   ushort, i16, __builtin_IB_simd_block_read_1_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ushort2, v2i16, ushort, i16, __builtin_IB_simd_block_read_2_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ushort4, v4i16, ushort, i16, __builtin_IB_simd_block_read_4_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ushort8, v8i16, ushort, i16, __builtin_IB_simd_block_read_8_global_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int,  i32,   int, i32, __builtin_IB_simd_block_read_1_global)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int2, v2i32, int, i32, __builtin_IB_simd_block_read_2_global)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int4, v4i32, int, i32, __builtin_IB_simd_block_read_4_global)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int8, v8i32, int, i32, __builtin_IB_simd_block_read_8_global)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uint,  i32,   uint, i32, __builtin_IB_simd_block_read_1_global)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uint2, v2i32, uint, i32, __builtin_IB_simd_block_read_2_global)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uint4, v4i32, uint, i32, __builtin_IB_simd_block_read_4_global)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uint8, v8i32, uint, i32, __builtin_IB_simd_block_read_8_global)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long,  i64,   long, i64, __builtin_IB_simd_block_read_1_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long2, v2i64, long, i64, __builtin_IB_simd_block_read_2_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long4, v4i64, long, i64, __builtin_IB_simd_block_read_4_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long8, v8i64, long, i64, __builtin_IB_simd_block_read_8_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ulong,  i64,   ulong, i64, __builtin_IB_simd_block_read_1_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ulong2, v2i64, ulong, i64, __builtin_IB_simd_block_read_2_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ulong4, v4i64, ulong, i64, __builtin_IB_simd_block_read_4_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ulong8, v8i64, ulong, i64, __builtin_IB_simd_block_read_8_global_l)
 #endif // cl_intel_subgroups_long
 
 #ifdef cl_intel_subgroup_local_block_io
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)   \
-TYPE __builtin_spirv_OpSubgroupBlockReadINTEL_##TYPE_ABBR##_p3##ELEM_TYPE_ABBR(local ELEM_TYPE * p)       \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockReadINTEL, _##TYPE_ABBR##_p3##ELEM_TYPE_ABBR, _R##TYPE)(const local ELEM_TYPE * p)       \
 {                                                                                                         \
     return as_##TYPE(INTERNAL_FUNC(p));                                                                   \
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char,   i8,    char, i8, __builtin_IB_simd_block_read_1_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char2,  v2i8,  char, i8, __builtin_IB_simd_block_read_2_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char4,  v4i8,  char, i8, __builtin_IB_simd_block_read_4_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char8,  v8i8,  char, i8, __builtin_IB_simd_block_read_8_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char16, v16i8, char, i8, __builtin_IB_simd_block_read_16_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar,   i8,    uchar, i8, __builtin_IB_simd_block_read_1_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar2,  v2i8,  uchar, i8, __builtin_IB_simd_block_read_2_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar4,  v4i8,  uchar, i8, __builtin_IB_simd_block_read_4_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar8,  v8i8,  uchar, i8, __builtin_IB_simd_block_read_8_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar16, v16i8, uchar, i8, __builtin_IB_simd_block_read_16_local_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short,  i16,   short, i16, __builtin_IB_simd_block_read_1_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short2, v2i16, short, i16, __builtin_IB_simd_block_read_2_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short4, v4i16, short, i16, __builtin_IB_simd_block_read_4_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short8, v8i16, short, i16, __builtin_IB_simd_block_read_8_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ushort,  i16,   ushort, i16, __builtin_IB_simd_block_read_1_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ushort2, v2i16, ushort, i16, __builtin_IB_simd_block_read_2_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ushort4, v4i16, ushort, i16, __builtin_IB_simd_block_read_4_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ushort8, v8i16, ushort, i16, __builtin_IB_simd_block_read_8_local_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int,  i32,   int, i32, __builtin_IB_simd_block_read_1_local)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int2, v2i32, int, i32, __builtin_IB_simd_block_read_2_local)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int4, v4i32, int, i32, __builtin_IB_simd_block_read_4_local)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int8, v8i32, int, i32, __builtin_IB_simd_block_read_8_local)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uint,  i32,   uint, i32, __builtin_IB_simd_block_read_1_local)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uint2, v2i32, uint, i32, __builtin_IB_simd_block_read_2_local)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uint4, v4i32, uint, i32, __builtin_IB_simd_block_read_4_local)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uint8, v8i32, uint, i32, __builtin_IB_simd_block_read_8_local)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long,  i64,   long, i64, __builtin_IB_simd_block_read_1_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long2, v2i64, long, i64, __builtin_IB_simd_block_read_2_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long4, v4i64, long, i64, __builtin_IB_simd_block_read_4_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long8, v8i64, long, i64, __builtin_IB_simd_block_read_8_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ulong,  i64,   ulong, i64, __builtin_IB_simd_block_read_1_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ulong2, v2i64, ulong, i64, __builtin_IB_simd_block_read_2_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ulong4, v4i64, ulong, i64, __builtin_IB_simd_block_read_4_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ulong8, v8i64, ulong, i64, __builtin_IB_simd_block_read_8_local_l)
 #endif // cl_intel_subgroups_long
 
 #endif // cl_intel_subgroup_local_block_io
@@ -1782,67 +1782,67 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long8, v8i64, long, i64, __builtin_IB_simd_
 // as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)            \
-void __builtin_spirv_OpSubgroupBlockWriteINTEL_p1##ELEM_TYPE_ABBR##_##TYPE_ABBR(__global ELEM_TYPE * p, TYPE data)   \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockWriteINTEL, _p1##ELEM_TYPE_ABBR##_##TYPE_ABBR, )(__global ELEM_TYPE * p, TYPE data)   \
 {                                                                                                                    \
-    INTERNAL_FUNC(p, as_u##TYPE(data));                                                                              \
+    INTERNAL_FUNC(p, data);                                                                                          \
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(char,   i8,    char, i8, __builtin_IB_simd_block_write_1_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(char2,  v2i8,  char, i8, __builtin_IB_simd_block_write_2_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(char4,  v4i8,  char, i8, __builtin_IB_simd_block_write_4_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(char8,  v8i8,  char, i8, __builtin_IB_simd_block_write_8_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(char16, v16i8, char, i8, __builtin_IB_simd_block_write_16_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uchar,   i8,    uchar, i8, __builtin_IB_simd_block_write_1_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uchar2,  v2i8,  uchar, i8, __builtin_IB_simd_block_write_2_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uchar4,  v4i8,  uchar, i8, __builtin_IB_simd_block_write_4_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uchar8,  v8i8,  uchar, i8, __builtin_IB_simd_block_write_8_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uchar16, v16i8, uchar, i8, __builtin_IB_simd_block_write_16_global_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(short,   i16,    short, i16, __builtin_IB_simd_block_write_1_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(short2,  v2i16,  short, i16, __builtin_IB_simd_block_write_2_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(short4,  v4i16,  short, i16, __builtin_IB_simd_block_write_4_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(short8,  v8i16,  short, i16, __builtin_IB_simd_block_write_8_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort,   i16,    ushort, i16, __builtin_IB_simd_block_write_1_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort2,  v2i16,  ushort, i16, __builtin_IB_simd_block_write_2_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort4,  v4i16,  ushort, i16, __builtin_IB_simd_block_write_4_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort8,  v8i16,  ushort, i16, __builtin_IB_simd_block_write_8_global_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(int,   i32,    int, i32, __builtin_IB_simd_block_write_1_global)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(int2,  v2i32,  int, i32, __builtin_IB_simd_block_write_2_global)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(int4,  v4i32,  int, i32, __builtin_IB_simd_block_write_4_global)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(int8,  v8i32,  int, i32, __builtin_IB_simd_block_write_8_global)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uint,   i32,    uint, i32, __builtin_IB_simd_block_write_1_global)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uint2,  v2i32,  uint, i32, __builtin_IB_simd_block_write_2_global)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uint4,  v4i32,  uint, i32, __builtin_IB_simd_block_write_4_global)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uint8,  v8i32,  uint, i32, __builtin_IB_simd_block_write_8_global)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(long,   i64,    long, i64, __builtin_IB_simd_block_write_1_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(long2,  v2i64,  long, i64, __builtin_IB_simd_block_write_2_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(long4,  v4i64,  long, i64, __builtin_IB_simd_block_write_4_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(long8,  v8i64,  long, i64, __builtin_IB_simd_block_write_8_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ulong,   i64,    ulong, i64, __builtin_IB_simd_block_write_1_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ulong2,  v2i64,  ulong, i64, __builtin_IB_simd_block_write_2_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ulong4,  v4i64,  ulong, i64, __builtin_IB_simd_block_write_4_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ulong8,  v8i64,  ulong, i64, __builtin_IB_simd_block_write_8_global_l)
 #endif // cl_intel_subgroups_long
 
 #ifdef cl_intel_subgroup_local_block_io
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)             \
-void __builtin_spirv_OpSubgroupBlockWriteINTEL_p3##ELEM_TYPE_ABBR##_##TYPE_ABBR(__local ELEM_TYPE * p, TYPE data)    \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockWriteINTEL, _p3##ELEM_TYPE_ABBR##_##TYPE_ABBR, )(__local ELEM_TYPE * p, TYPE data)    \
 {                                                                                                                    \
-    INTERNAL_FUNC(p, as_u##TYPE(data));                                                                              \
+    INTERNAL_FUNC(p, data);                                                                                          \
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(char,   i8,    char, i8, __builtin_IB_simd_block_write_1_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(char2,  v2i8,  char, i8, __builtin_IB_simd_block_write_2_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(char4,  v4i8,  char, i8, __builtin_IB_simd_block_write_4_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(char8,  v8i8,  char, i8, __builtin_IB_simd_block_write_8_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(char16, v16i8, char, i8, __builtin_IB_simd_block_write_16_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uchar,   i8,    uchar, i8, __builtin_IB_simd_block_write_1_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uchar2,  v2i8,  uchar, i8, __builtin_IB_simd_block_write_2_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uchar4,  v4i8,  uchar, i8, __builtin_IB_simd_block_write_4_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uchar8,  v8i8,  uchar, i8, __builtin_IB_simd_block_write_8_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uchar16, v16i8, uchar, i8, __builtin_IB_simd_block_write_16_local_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(short,  i16,   short, i16, __builtin_IB_simd_block_write_1_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(short2, v2i16, short, i16, __builtin_IB_simd_block_write_2_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(short4, v4i16, short, i16, __builtin_IB_simd_block_write_4_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(short8, v8i16, short, i16, __builtin_IB_simd_block_write_8_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort,  i16,   ushort, i16, __builtin_IB_simd_block_write_1_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort2, v2i16, ushort, i16, __builtin_IB_simd_block_write_2_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort4, v4i16, ushort, i16, __builtin_IB_simd_block_write_4_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort8, v8i16, ushort, i16, __builtin_IB_simd_block_write_8_local_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(int,  i32,   int, i32, __builtin_IB_simd_block_write_1_local)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(int2, v2i32, int, i32, __builtin_IB_simd_block_write_2_local)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(int4, v4i32, int, i32, __builtin_IB_simd_block_write_4_local)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(int8, v8i32, int, i32, __builtin_IB_simd_block_write_8_local)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uint,  i32,   uint, i32, __builtin_IB_simd_block_write_1_local)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uint2, v2i32, uint, i32, __builtin_IB_simd_block_write_2_local)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uint4, v4i32, uint, i32, __builtin_IB_simd_block_write_4_local)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uint8, v8i32, uint, i32, __builtin_IB_simd_block_write_8_local)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(long,  i64,   long, i64, __builtin_IB_simd_block_write_1_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(long2, v2i64, long, i64, __builtin_IB_simd_block_write_2_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(long4, v4i64, long, i64, __builtin_IB_simd_block_write_4_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(long8, v8i64, long, i64, __builtin_IB_simd_block_write_8_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ulong,  i64,   ulong, i64, __builtin_IB_simd_block_write_1_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ulong2, v2i64, ulong, i64, __builtin_IB_simd_block_write_2_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ulong4, v4i64, ulong, i64, __builtin_IB_simd_block_write_4_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ulong8, v8i64, ulong, i64, __builtin_IB_simd_block_write_8_local_l)
 #endif // cl_intel_subgroups_long
 
 #endif // cl_intel_subgroup_local_block_io
@@ -1853,40 +1853,40 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(long8, v8i64, long, i64, __builtin_IB_simd
 // at the specified 'Coordinate' as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(TYPE, TYPE_ABBR, INTERNAL_FUNC)                                         \
-TYPE __builtin_spirv_OpSubgroupImageBlockReadINTEL_##TYPE_ABBR##_img2d_ro_v2i32(global Img2d_ro* image, int2 coord)  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _##TYPE_ABBR##_img2d_ro_v2i32, _R##TYPE)(global Img2d_ro* image, int2 coord)  \
 {                                                                                                                    \
     int id = (int)__builtin_astype(image, __global void*);                                                           \
-    return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
+    return INTERNAL_FUNC(id, coord);                                                                                 \
 }                                                                                                                    \
-TYPE __builtin_spirv_OpSubgroupImageBlockReadINTEL_##TYPE_ABBR##_img2d_rw_v2i32(global Img2d_rw* image, int2 coord)  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _##TYPE_ABBR##_img2d_rw_v2i32, _R##TYPE)(global Img2d_rw* image, int2 coord)  \
 {                                                                                                                    \
     int id = (int)__builtin_astype(image, __global void*);                                                           \
-    return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
+    return INTERNAL_FUNC(id, coord);                                                                                 \
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char,   i8,    __builtin_IB_simd_media_block_read_1_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char2,  v2i8,  __builtin_IB_simd_media_block_read_2_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char4,  v4i8,  __builtin_IB_simd_media_block_read_4_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char8,  v8i8,  __builtin_IB_simd_media_block_read_8_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char16, v16i8, __builtin_IB_simd_media_block_read_16_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar,   i8,    __builtin_IB_simd_media_block_read_1_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar2,  v2i8,  __builtin_IB_simd_media_block_read_2_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar4,  v4i8,  __builtin_IB_simd_media_block_read_4_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar8,  v8i8,  __builtin_IB_simd_media_block_read_8_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar16, v16i8, __builtin_IB_simd_media_block_read_16_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short,  i16,   __builtin_IB_simd_media_block_read_1_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short2, v2i16, __builtin_IB_simd_media_block_read_2_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short4, v4i16, __builtin_IB_simd_media_block_read_4_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short8, v8i16, __builtin_IB_simd_media_block_read_8_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ushort,  i16,   __builtin_IB_simd_media_block_read_1_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ushort2, v2i16, __builtin_IB_simd_media_block_read_2_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ushort4, v4i16, __builtin_IB_simd_media_block_read_4_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ushort8, v8i16, __builtin_IB_simd_media_block_read_8_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int,  i32,   __builtin_IB_simd_media_block_read_1)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int2, v2i32, __builtin_IB_simd_media_block_read_2)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int4, v4i32, __builtin_IB_simd_media_block_read_4)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int8, v8i32, __builtin_IB_simd_media_block_read_8)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uint,  i32,   __builtin_IB_simd_media_block_read_1)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uint2, v2i32, __builtin_IB_simd_media_block_read_2)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uint4, v4i32, __builtin_IB_simd_media_block_read_4)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uint8, v8i32, __builtin_IB_simd_media_block_read_8)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long,  i64,   __builtin_IB_simd_media_block_read_1_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long2, v2i64, __builtin_IB_simd_media_block_read_2_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long4, v4i64, __builtin_IB_simd_media_block_read_4_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long8, v8i64, __builtin_IB_simd_media_block_read_8_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ulong,  i64,   __builtin_IB_simd_media_block_read_1_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ulong2, v2i64, __builtin_IB_simd_media_block_read_2_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ulong4, v4i64, __builtin_IB_simd_media_block_read_4_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ulong8, v8i64, __builtin_IB_simd_media_block_read_8_l)
 #endif // cl_intel_subgroups_long
 
 // OpSubgroupImageBlockWriteINTEL
@@ -1895,42 +1895,42 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long8, v8i64, __builtin_IB_simd_media_block
 // at the specified 'Coordinate' as a block operation.
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(TYPE, TYPE_ABBR, INTERNAL_FUNC)      \
-void __builtin_spirv_OpSubgroupImageBlockWriteINTEL_img2d_wo_v2i32_##TYPE_ABBR(    \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockWriteINTEL, _img2d_wo_v2i32_##TYPE_ABBR, )(    \
     global Img2d_wo* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
     int id = (int)__builtin_astype(image, __global void*);                         \
-    INTERNAL_FUNC(image, coord, as_u##TYPE(data));                                 \
+    INTERNAL_FUNC(image, coord, data);                                             \
 }                                                                                  \
-void __builtin_spirv_OpSubgroupImageBlockWriteINTEL_img2d_rw_v2i32_##TYPE_ABBR(    \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockWriteINTEL, _img2d_rw_v2i32_##TYPE_ABBR, )(    \
     global Img2d_rw* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
     int id = (int)__builtin_astype(image, __global void*);                         \
-    INTERNAL_FUNC(image, coord, as_u##TYPE(data));                                 \
+    INTERNAL_FUNC(image, coord, data);                                             \
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(char,   i8,    __builtin_IB_simd_media_block_write_1_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(char2,  v2i8,  __builtin_IB_simd_media_block_write_2_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(char4,  v4i8,  __builtin_IB_simd_media_block_write_4_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(char8,  v8i8,  __builtin_IB_simd_media_block_write_8_b)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(char16, v16i8, __builtin_IB_simd_media_block_write_16_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uchar,   i8,    __builtin_IB_simd_media_block_write_1_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uchar2,  v2i8,  __builtin_IB_simd_media_block_write_2_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uchar4,  v4i8,  __builtin_IB_simd_media_block_write_4_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uchar8,  v8i8,  __builtin_IB_simd_media_block_write_8_b)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uchar16, v16i8, __builtin_IB_simd_media_block_write_16_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(short,  i16,   __builtin_IB_simd_media_block_write_1_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(short2, v2i16, __builtin_IB_simd_media_block_write_2_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(short4, v4i16, __builtin_IB_simd_media_block_write_4_h)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(short8, v8i16, __builtin_IB_simd_media_block_write_8_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort,  i16,   __builtin_IB_simd_media_block_write_1_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort2, v2i16, __builtin_IB_simd_media_block_write_2_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort4, v4i16, __builtin_IB_simd_media_block_write_4_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort8, v8i16, __builtin_IB_simd_media_block_write_8_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(int,  i32,   __builtin_IB_simd_media_block_write_1)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(int2, v2i32, __builtin_IB_simd_media_block_write_2)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(int4, v4i32, __builtin_IB_simd_media_block_write_4)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(int8, v8i32, __builtin_IB_simd_media_block_write_8)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uint,  i32,   __builtin_IB_simd_media_block_write_1)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uint2, v2i32, __builtin_IB_simd_media_block_write_2)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uint4, v4i32, __builtin_IB_simd_media_block_write_4)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uint8, v8i32, __builtin_IB_simd_media_block_write_8)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(long,  i64,   __builtin_IB_simd_media_block_write_1_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(long2, v2i64, __builtin_IB_simd_media_block_write_2_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(long4, v4i64, __builtin_IB_simd_media_block_write_4_l)
-DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(long8, v8i64, __builtin_IB_simd_media_block_write_8_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong,  i64,   __builtin_IB_simd_media_block_write_1_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong2, v2i64, __builtin_IB_simd_media_block_write_2_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong4, v4i64, __builtin_IB_simd_media_block_write_4_l)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong8, v8i64, __builtin_IB_simd_media_block_write_8_l)
 #endif // cl_intel_subgroups_long
 
 // Ballot Functions

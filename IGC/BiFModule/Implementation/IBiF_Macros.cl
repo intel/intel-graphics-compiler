@@ -621,49 +621,49 @@ SPDX-License-Identifier: MIT
     GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __func, __rettype, __argtype0, __argtype1, 16, __abbrargtype0, __abbrargtype1 )
 
 
-#define GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( __func, __rettype, __vargtype, __sargtype, __abbrvargtype, __abbrsargtype ) \
-    __rettype##2 __func##_v2##__abbrvargtype##_##__abbrsargtype( __vargtype##2 x, __sargtype y ) {   \
-        return (__rettype##2)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y) );                           \
+#define GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS( __opcode, __rettype, __vargtype, __sargtype, __abbrvargtype, __abbrsargtype ) \
+    __rettype##2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v2##__abbrvargtype##_##__abbrsargtype, )( __vargtype##2 x, __sargtype y ) {   \
+        return (__rettype##2)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s0, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s1, y) );                           \
     }                                                                                             \
-    __rettype##3 __func##_v3##__abbrvargtype##_##__abbrsargtype( __vargtype##3 x, __sargtype y ) {   \
-        return (__rettype##3)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s2, y) );                           \
+    __rettype##3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v3##__abbrvargtype##_##__abbrsargtype, )( __vargtype##3 x, __sargtype y ) {   \
+        return (__rettype##3)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s0, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s1, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s2, y) );                           \
     }                                                                                             \
-    __rettype##4 __func##_v4##__abbrvargtype##_##__abbrsargtype( __vargtype##4 x, __sargtype y ) {   \
-        return (__rettype##4)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s2, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s3, y) );                           \
+    __rettype##4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v4##__abbrvargtype##_##__abbrsargtype, )( __vargtype##4 x, __sargtype y ) {   \
+        return (__rettype##4)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s0, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s1, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s2, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s3, y) );                           \
     }                                                                                             \
-    __rettype##8 __func##_v8##__abbrvargtype##_##__abbrsargtype( __vargtype##8 x, __sargtype y ) {   \
-        return (__rettype##8)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s2, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s3, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s4, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s5, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s6, y),                             \
-                               __func##_##__abbrvargtype##_##__abbrsargtype(x.s7, y) );                           \
+    __rettype##8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v8##__abbrvargtype##_##__abbrsargtype, )( __vargtype##8 x, __sargtype y ) {   \
+        return (__rettype##8)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s0, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s1, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s2, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s3, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s4, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s5, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s6, y),                             \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s7, y) );                           \
     }                                                                                             \
-    __rettype##16 __func##_v16##__abbrvargtype##_##__abbrsargtype( __vargtype##16 x, __sargtype y ) {\
-        return (__rettype##16)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s2, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s3, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s4, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s5, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s6, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s7, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s8, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s9, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.sa, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.sb, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.sc, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.sd, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.se, y),                            \
-                                __func##_##__abbrvargtype##_##__abbrsargtype(x.sf, y) );                          \
+    __rettype##16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v16##__abbrvargtype##_##__abbrsargtype, )( __vargtype##16 x, __sargtype y ) {\
+        return (__rettype##16)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s0, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s1, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s2, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s3, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s4, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s5, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s6, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s7, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s8, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.s9, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.sa, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.sb, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.sc, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.sd, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.se, y),                            \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrsargtype, )(x.sf, y) );                          \
     }
 
 #define GENERATE_VECTOR_FUNCTIONS_2ARGS_SV( __func, __rettype, __sargtype, __vargtype, __abbrsargtype, __abbrvargtype ) \
@@ -805,49 +805,49 @@ SPDX-License-Identifier: MIT
 #define GENERATE_VECTOR_FUNCTIONS_3ARGS( __func, __rettype, __argtype, __abbrargtype )     \
     GENERATE_VECTOR_FUNCTIONS_3ARGS_EXPLICIT( __func, __func, __rettype, __argtype, __abbrargtype )
 
-#define GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( __func, __rettype, __vargtype, __sargtype, __abbrvargtype, __abbrsargtype ) \
-    __rettype##2 __func##_v2##__abbrvargtype##_v2##__abbrvargtype##_##__abbrsargtype( __vargtype##2 x, __vargtype##2 y, __sargtype z ) { \
-        return (__rettype##2)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z) );                     \
+#define GENERATE_SPIRV_VECTOR_FUNCTIONS_3ARGS_VVS( __opcode, __rettype, __vargtype, __sargtype, __abbrvargtype, __abbrsargtype ) \
+    __rettype##2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v2##__abbrvargtype##_v2##__abbrvargtype##_##__abbrsargtype, )( __vargtype##2 x, __vargtype##2 y, __sargtype z ) { \
+        return (__rettype##2)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s0, y.s0, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s1, y.s1, z) );                     \
     }                                                                                                        \
-    __rettype##3 __func##_v3##__abbrvargtype##_v3##__abbrvargtype##_##__abbrsargtype( __vargtype##3 x, __vargtype##3 y, __sargtype z ) { \
-        return (__rettype##3)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s2, y.s2, z) );                     \
+    __rettype##3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v3##__abbrvargtype##_v3##__abbrvargtype##_##__abbrsargtype, )( __vargtype##3 x, __vargtype##3 y, __sargtype z ) { \
+        return (__rettype##3)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s0, y.s0, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s1, y.s1, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s2, y.s2, z) );                     \
     }                                                                                                        \
-    __rettype##4 __func##_v4##__abbrvargtype##_v4##__abbrvargtype##_##__abbrsargtype( __vargtype##4 x, __vargtype##4 y, __sargtype z ) { \
-        return (__rettype##4)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s2, y.s2, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s3, y.s3, z) );                     \
+    __rettype##4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v4##__abbrvargtype##_v4##__abbrvargtype##_##__abbrsargtype, )( __vargtype##4 x, __vargtype##4 y, __sargtype z ) { \
+        return (__rettype##4)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s0, y.s0, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s1, y.s1, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s2, y.s2, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s3, y.s3, z) );                     \
     }                                                                                                        \
-    __rettype##8 __func##_v8##__abbrvargtype##_v8##__abbrvargtype##_##__abbrsargtype( __vargtype##8 x, __vargtype##8 y, __sargtype z ) { \
-        return (__rettype##8)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s2, y.s2, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s3, y.s3, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s4, y.s4, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s5, y.s5, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s6, y.s6, z),                       \
-                               __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s7, y.s7, z) );                     \
+    __rettype##8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v8##__abbrvargtype##_v8##__abbrvargtype##_##__abbrsargtype, )( __vargtype##8 x, __vargtype##8 y, __sargtype z ) { \
+        return (__rettype##8)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s0, y.s0, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s1, y.s1, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s2, y.s2, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s3, y.s3, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s4, y.s4, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s5, y.s5, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s6, y.s6, z),                       \
+                               SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s7, y.s7, z) );                     \
     }                                                                                                        \
-    __rettype##16 __func##_v16##__abbrvargtype##_v16##__abbrvargtype##_##__abbrsargtype( __vargtype##16 x, __vargtype##16 y, __sargtype z ) { \
-        return (__rettype##16)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s2, y.s2, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s3, y.s3, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s4, y.s4, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s5, y.s5, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s6, y.s6, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s7, y.s7, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s8, y.s8, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s9, y.s9, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.sa, y.sa, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.sb, y.sb, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.sc, y.sc, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.sd, y.sd, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.se, y.se, z),                      \
-                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.sf, y.sf, z) );                    \
+    __rettype##16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__opcode, _v16##__abbrvargtype##_v16##__abbrvargtype##_##__abbrsargtype, )( __vargtype##16 x, __vargtype##16 y, __sargtype z ) { \
+        return (__rettype##16)( SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s0, y.s0, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s1, y.s1, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s2, y.s2, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s3, y.s3, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s4, y.s4, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s5, y.s5, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s6, y.s6, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s7, y.s7, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s8, y.s8, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.s9, y.s9, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.sa, y.sa, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.sb, y.sb, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.sc, y.sc, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.sd, y.sd, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.se, y.se, z),                      \
+                                SPIRV_BUILTIN(__opcode, _##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype, )(x.sf, y.sf, z) );                    \
     }
 
 #define GENERATE_VECTOR_FUNCTIONS_3ARGS_VSS( __func, __rettype, __vargtype, __sargtype, __abbrvargtype, __abbrsargtype ) \

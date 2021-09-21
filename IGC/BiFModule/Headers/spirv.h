@@ -257,9 +257,9 @@ typedef enum
 #define IMAGETYPE_ACCESSQUALIFER_SHIFT 54
 
 #define DEF_IMAGE_TYPE(SPIRV_IMAGE_TYPE, SHORT_IMAGE_TYPE) \
-typedef struct  SPIRV_IMAGETYPE##_0 SHORT_IMAGE_TYPE##_ro; \
-typedef struct  SPIRV_IMAGETYPE##_1 SHORT_IMAGE_TYPE##_wo; \
-typedef struct  SPIRV_IMAGETYPE##_2 SHORT_IMAGE_TYPE##_rw;
+typedef struct  SPIRV_IMAGE_TYPE##_0 SHORT_IMAGE_TYPE##_ro; \
+typedef struct  SPIRV_IMAGE_TYPE##_1 SHORT_IMAGE_TYPE##_wo; \
+typedef struct  SPIRV_IMAGE_TYPE##_2 SHORT_IMAGE_TYPE##_rw;
 
 DEF_IMAGE_TYPE(__spirv_Image__void_0_0_0_0_0_0, Img1d)
 DEF_IMAGE_TYPE(__spirv_Image__void_5_0_0_0_0_0, Img1d_buffer)
@@ -4422,77 +4422,77 @@ TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v2i64, 
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE Value, int LocalId);      \
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i64, )(int Execution, TYPE Value, long LocalId);
 
-char   __builtin_spirv_OpSubgroupShuffleINTEL_i8_i32(char Data, int InvocationId);
-short  __builtin_spirv_OpSubgroupShuffleINTEL_i16_i32(short Data, int InvocationId);
-int    __builtin_spirv_OpSubgroupShuffleINTEL_i32_i32(int Data, int InvocationId);
-long   __builtin_spirv_OpSubgroupShuffleINTEL_i64_i32(long Data, int InvocationId);
+char   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i8_i32, )(char Data, uint InvocationId);
+short  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i16_i32, )(short Data, uint InvocationId);
+int    SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i32_i32, )(int Data, uint InvocationId);
+long   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _i64_i32, )(long Data, uint InvocationId);
 #if defined(cl_khr_fp16)
-half   __builtin_spirv_OpSubgroupShuffleINTEL_f16_i32(half Data, int InvocationId);
+half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f16_i32, )(half Data, uint InvocationId);
 #endif // defined(cl_khr_fp16)
-float  __builtin_spirv_OpSubgroupShuffleINTEL_f32_i32(float Data, int InvocationId);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f32_i32, )(float Data, uint InvocationId);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpSubgroupShuffleINTEL_f64_i32(double Data, int InvocationId);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleINTEL, _f64_i32, )(double Data, uint InvocationId);
 #endif // defined(cl_khr_fp64)
 
-char   __builtin_spirv_OpSubgroupShuffleDownINTEL_i8_i8_i32(char Current, char Next, int Delta);
-short  __builtin_spirv_OpSubgroupShuffleDownINTEL_i16_i16_i32(short Current, short Next, int Delta);
-int    __builtin_spirv_OpSubgroupShuffleDownINTEL_i32_i32_i32(int Current, int Next, int Delta);
-long   __builtin_spirv_OpSubgroupShuffleDownINTEL_i64_i64_i32(long Current, long Next, int Delta);
+char   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i8_i8_i32, )(char Current, char Next, uint Delta);
+short  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i16_i16_i32, )(short Current, short Next, uint Delta);
+int    SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i32_i32_i32, )(int Current, int Next, uint Delta);
+long   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _i64_i64_i32, )(long Current, long Next, uint Delta);
 #if defined(cl_khr_fp16)
-half   __builtin_spirv_OpSubgroupShuffleDownINTEL_f16_f16_i32(half Current, half Next, int Delta);
+half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f16_f16_i32, )(half Current, half Next, uint Delta);
 #endif // defined(cl_khr_fp16)
-float  __builtin_spirv_OpSubgroupShuffleDownINTEL_f32_f32_i32(float Current, float Next, int Delta);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f32_f32_i32, )(float Current, float Next, uint Delta);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpSubgroupShuffleDownINTEL_f64_f64_i32(double Current, double Next, int Delta);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleDownINTEL, _f64_f64_i32, )(double Current, double Next, uint Delta);
 #endif // defined(cl_khr_fp64)
 
-char   __builtin_spirv_OpSubgroupShuffleUpINTEL_i8_i8_i32(char Previous, char Current, int Delta);
-short  __builtin_spirv_OpSubgroupShuffleUpINTEL_i16_i16_i32(short Previous, short Current, int Delta);
-int    __builtin_spirv_OpSubgroupShuffleUpINTEL_i32_i32_i32(int Previous, int Current, int Delta);
-long   __builtin_spirv_OpSubgroupShuffleUpINTEL_i64_i64_i32(long Previous, long Current, int Delta);
+char   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _i8_i8_i32, )(char Previous, char Current, uint Delta);
+short  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _i16_i16_i32, )(short Previous, short Current, uint Delta);
+int    SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _i32_i32_i32, )(int Previous, int Current, uint Delta);
+long   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _i64_i64_i32, )(long Previous, long Current, uint Delta);
 #if defined(cl_khr_fp16)
-half   __builtin_spirv_OpSubgroupShuffleUpINTEL_f16_f16_i32(half Previous, half Current, int Delta);
+half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _f16_f16_i32, )(half Previous, half Current, uint Delta);
 #endif // defined(cl_khr_fp16)
-float  __builtin_spirv_OpSubgroupShuffleUpINTEL_f32_f32_i32(float Previous, float Current, int Delta);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _f32_f32_i32, )(float Previous, float Current, uint Delta);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpSubgroupShuffleUpINTEL_f64_f64_i32(double Previous, double Current, int Delta);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleUpINTEL, _f64_f64_i32, )(double Previous, double Current, uint Delta);
 #endif // defined(cl_khr_fp64)
 
-char   __builtin_spirv_OpSubgroupShuffleXorINTEL_i8_i32(char Data, int Value);
-short  __builtin_spirv_OpSubgroupShuffleXorINTEL_i16_i32(short Data, int Value);
-int    __builtin_spirv_OpSubgroupShuffleXorINTEL_i32_i32(int Data, int Value);
-long   __builtin_spirv_OpSubgroupShuffleXorINTEL_i64_i32(long Data, int Value);
+char   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _i8_i32, )(char Data, uint Value);
+short  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _i16_i32, )(short Data, uint Value);
+int    SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _i32_i32, )(int Data, uint Value);
+long   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _i64_i32, )(long Data, uint Value);
 #if defined(cl_khr_fp16)
-half   __builtin_spirv_OpSubgroupShuffleXorINTEL_f16_i32(half Data, int Value);
+half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _f16_i32, )(half Data, uint Value);
 #endif // defined(cl_khr_fp16)
-float  __builtin_spirv_OpSubgroupShuffleXorINTEL_f32_i32(float Data, int Value);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _f32_i32, )(float Data, uint Value);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpSubgroupShuffleXorINTEL_f64_i32(double Data, int Value);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupShuffleXorINTEL, _f64_i32, )(double Data, uint Value);
 #endif // defined(cl_khr_fp64)
 
 #ifdef cl_intel_subgroups_char
-char   __builtin_spirv_OpSubgroupImageBlockReadINTEL_i8_img2d_ro_v2i32(global Img2d_ro * image, int2 coord);
-char2  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v2i8_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-char4  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v4i8_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-char8  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v8i8_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-char16 __builtin_spirv_OpSubgroupImageBlockReadINTEL_v16i8_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+uchar   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _i8_img2d_ro_v2i32, _Ruchar)(global Img2d_ro * image, int2 coord);
+uchar2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v2i8_img2d_ro_v2i32, _Ruchar2)(global Img2d_ro* image, int2 coord);
+uchar4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v4i8_img2d_ro_v2i32, _Ruchar4)(global Img2d_ro* image, int2 coord);
+uchar8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v8i8_img2d_ro_v2i32, _Ruchar8)(global Img2d_ro* image, int2 coord);
+uchar16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v16i8_img2d_ro_v2i32, _Ruchar16)(global Img2d_ro* image, int2 coord);
 #endif // cl_intel_subgroups_char
 
-short   __builtin_spirv_OpSubgroupImageBlockReadINTEL_i16_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-short2  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v2i16_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-short4  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v4i16_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-short8  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v8i16_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+ushort   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _i16_img2d_ro_v2i32, _Rushort)(global Img2d_ro* image, int2 coord);
+ushort2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v2i16_img2d_ro_v2i32, _Rushort2)(global Img2d_ro* image, int2 coord);
+ushort4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v4i16_img2d_ro_v2i32, _Rushort4)(global Img2d_ro* image, int2 coord);
+ushort8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v8i16_img2d_ro_v2i32, _Rushort8)(global Img2d_ro* image, int2 coord);
 
-int   __builtin_spirv_OpSubgroupImageBlockReadINTEL_i32_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-int2  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v2i32_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-int4  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v4i32_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-int8  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v8i32_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _i32_img2d_ro_v2i32, _Ruint)(global Img2d_ro* image, int2 coord);
+uint2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v2i32_img2d_ro_v2i32, _Ruint2)(global Img2d_ro* image, int2 coord);
+uint4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v4i32_img2d_ro_v2i32, _Ruint4)(global Img2d_ro* image, int2 coord);
+uint8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v8i32_img2d_ro_v2i32, _Ruint8)(global Img2d_ro* image, int2 coord);
 
 #ifdef cl_intel_subgroups_long
-long   __builtin_spirv_OpSubgroupImageBlockReadINTEL_i64_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-long2  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v2i64_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-long4  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v4i64_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
-long8  __builtin_spirv_OpSubgroupImageBlockReadINTEL_v8i64_img2d_ro_v2i32(global Img2d_ro* image, int2 coord);
+ulong   SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _i64_img2d_ro_v2i32, _Rulong)(global Img2d_ro* image, int2 coord);
+ulong2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v2i64_img2d_ro_v2i32, _Rulong2)(global Img2d_ro* image, int2 coord);
+ulong4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v4i64_img2d_ro_v2i32, _Rulong4)(global Img2d_ro* image, int2 coord);
+ulong8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v8i64_img2d_ro_v2i32, _Rulong8)(global Img2d_ro* image, int2 coord);
 #endif // cl_intel_subgroups_long
 
 #define DECL_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)       \
