@@ -36,6 +36,14 @@ add_with_carry(vector<uint32_t, width> src0, vector<uint32_t, width> src1) {
   return detail::addc(src0.cl_vector(), src1.cl_vector());
 }
 
+inline bool is_ordered(float src0, float src1) {
+  return (src0 == src0) && (src1 == src1);
+}
+
+inline bool is_ordered(double src0, double src1) {
+  return (src0 == src0) && (src1 == src1);
+}
+
 } // namespace math
 } // namespace cm
 

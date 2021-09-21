@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include <cm-cl/math.h>
 #include <cm-cl/vector.h>
 #include <opencl_def.h>
 
@@ -301,3 +302,10 @@ SPIRV_MATH_BUILTIN_DECL_2_SAME_ELEMENT_TYPES_POINTER_VECTOR(sincos, double, 8,
                                                             __local, p3, f64);
 SPIRV_MATH_BUILTIN_DECL_2_SAME_ELEMENT_TYPES_POINTER_VECTOR(sincos, double, 16,
                                                             __local, p3, f64);
+
+CM_NODEBUG CM_INLINE int __spirv_Ordered(float src0, float src1) {
+  return math::is_ordered(src0, src1);
+}
+CM_NODEBUG CM_INLINE int __spirv_Ordered(double src0, double src1) {
+  return math::is_ordered(src0, src1);
+}
