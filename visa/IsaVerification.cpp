@@ -3056,9 +3056,11 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST* inst)
     }
 
     // case 7
+    uint32_t nativeES = irBuilder->getNativeExecSize();
     VISA_Exec_Size execSizeEnum = inst->getExecSize();
     uint32_t execSize = Get_VISA_Exec_Size(execSizeEnum);
-    REPORT_INSTRUCTION(options, execSize <= 8, "Exection Size > 8 is not allowed for BF-mixed mode instruction");
+    REPORT_INSTRUCTION(options, execSize <= nativeES,
+        "Exection Size > %d is not allowed for BF mixed-mode instruction", nativeES);
 
     // Check dst
     const vector_opnd& dst = getVectorOperand(inst, 0);
@@ -3066,13 +3068,13 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST* inst)
     uint16_t row_off, col_off, v_stride, width, h_stride;
     if (getRegion(dst, row_off, col_off, v_stride, width, h_stride))
     {
-        if (dstType == ISA_TYPE_BF16)
-        {
-            // case 5 & 6
-            bool legitUnpackedDst = (h_stride == 2 && (col_off == 0 || col_off == 1));
-            bool legitPackedDst = (h_stride == 1 && (col_off == 0 || col_off == 8));
-            REPORT_INSTRUCTION(options, (legitUnpackedDst || legitPackedDst), "Dst region is incorrect in BF mixed mode");
-        }
+        // case 5 & 6
+        bool legitUnpackedBF = (dstType == ISA_TYPE_BF16 && h_stride == 2 && (col_off == 0 || col_off == 1));
+        bool legitPackedBF = (dstType == ISA_TYPE_BF16 && h_stride == 1 && (col_off == 0 || col_off == nativeES));
+        bool legitF = (dstType == ISA_TYPE_F && h_stride == 1 && col_off == 0);
+        bool legitScalar = (execSize == 1 && h_stride == 1);
+        REPORT_INSTRUCTION(options, (legitUnpackedBF || legitPackedBF || legitF || legitScalar),
+            "Dst region is incorrect in BF mixed mode");
     }
 
     for (uint32_t i = 0; i < ISA_Inst_Table[opcode].n_srcs; i++)
@@ -3082,24 +3084,26 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST* inst)
         Common_ISA_Operand_Class operand_class = src.getOperandClass();
         if (getRegion(src, row_off, col_off, v_stride, width, h_stride))
         {
-            if (srcType == ISA_TYPE_BF16)
+            if (srcType == ISA_TYPE_BF16
+                && (operand_class == OPERAND_IMMEDIATE ||
+                    (execSize > 1 && (h_stride == 0 && v_stride == 0 && width == 1))))
             {
-                // case 6
-                bool isContinuous = (execSize == 1                           // SIMD1
-                    || (h_stride == 0 && v_stride == 1 && width == 1)        // (1;1,0)
-                    || (h_stride == 1 && v_stride == width));  // (4;4,1)
-                bool isStride2 = (h_stride == 2 && v_stride == (2 * width));
-                bool isLegitPacked = (isContinuous && (col_off == 0 || col_off == 8));
-                bool isLegitUnpacked = (isStride2 && (col_off == 0 || col_off == 1));
-                bool isScalarSrc = (execSize > 1 &&
-                    (operand_class == OPERAND_IMMEDIATE ||
-                     (h_stride == 0 && v_stride == 0 && width == 1)));
-                if (!(isLegitPacked || isLegitUnpacked)   // case 5 & 6
-                    || isScalarSrc)                       // case 4
-                {
-                    REPORT_INSTRUCTION(options, false,
-                        "Src%d : invalid region or imm. Must be packed and non-scalar BF in BF mixed mode", i);
-                }
+                REPORT_INSTRUCTION(options, false,
+                    "Src%d : BF imm or BF broadcast scalar not supported! in BF mixed mode", i);
+                continue;
+            }
+
+            bool isContinuous = ((h_stride == 0 && v_stride == 1 && width == 1)    // (1;1,0)
+                || (h_stride == 1 && v_stride == width));                          // (4;4,1)
+            bool isLegitPackedBF = (srcType == ISA_TYPE_BF16
+                && execSize != 1
+                && isContinuous && (col_off == 0 || col_off == nativeES));
+            bool isLegitF = (srcType == ISA_TYPE_F && execSize != 1 && isContinuous && col_off == 0);
+            bool isLegitScalar = (execSize == 1 && (h_stride == 0 && v_stride == 0 && width == 1));
+            if (!(isLegitPackedBF || isLegitF || isLegitScalar))
+            {
+                // case 5 & 6
+                REPORT_INSTRUCTION(options, false, "Src%d : invalid region in BF mixed mode", i);
             }
         }
         else

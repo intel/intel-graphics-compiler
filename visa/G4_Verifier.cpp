@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "G4_Verifier.hpp"
 
+#include <sstream>
+
 using namespace vISA;
 
 void verifyG4Kernel(
@@ -1207,13 +1209,27 @@ void G4Verifier::verifyAccMov(G4_INST* inst)
 //   2. dst and src0 for 2 source instructions format involving multiplier(mul, mac etc).
 //   3. dst, src0, and src1 for 3 source instructions format(mad).
 //   4. Broadcast of bfloat16 scalar is not supported.
-//      Note: exclude simd1. Also, no bfloat16 imm allowed!
 //   5. Unpacked bfloat16 destination with stride 2 when register offset is 0 or 1.
-//      Note: exclude float
 //   6. Packed bfloat16 source and destination when register offset is 0 or 8.
-//      note: exclude float
 //   7. Execution size must not be greater than 8.
 //   8. Instructions with pure bfloat16 operands are not supported.
+//
+// **More examples**
+//   1. BF imm is not allowed
+//      mov  (1|M0)  r12.0<1>:f  0xffff:bf - ILLEGAL "Imm operand with BF type is not allowed"
+//   2. BF scalar operand can be used in SIMD1
+//      mul  (1|M0)  r14.0<1>:f  r11.0<0;1,0>:bf  r12.3<0;1,0>:f - OK
+//   3. For SIMD1, scalar operands (both dst/src) of F or BF can have any subreg!
+//      add  (1|M0)  r16.3<1>:bf  r11.0<0;1,0>:f  r12.3<0;1,0>:f - OK
+//   4. F Operand should have subreg = 0 if execSize > SIMD1
+//      add  (2|M0)  r10.4<1>:f  r11.0<1;1,0>:bf   0x12345:f
+//       ILLEGAL "Src0 regioning must be aligned to destination or scalar for Float/64bit pipes"
+//   5. Others
+//     add  (8|M0)  r16.0<2>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
+//     add  (8|M0)  r16.1<2>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
+//     add  (8|M0)  r16.0<1>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
+//     add  (8|M0)  r16.8<1>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
+//         Note that float source operands  can be scalar region <0;1,0>
 //
 void G4Verifier::verifyBFMixedMode(G4_INST* inst)
 {
@@ -1281,7 +1297,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
     case G4_mad:
     {
         // case 3
-        G4_Operand* src2 = inst->getSrc(1);
+        G4_Operand* src2 = inst->getSrc(2);
         if (src2->getType() != Type_F)
         {
             DEBUG_VERBOSE("Src2 in BF mixed mode must be F!");
@@ -1306,19 +1322,26 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         break;
     }
 
+    uint32_t nativeES = kernel.fg.builder->getNativeExecSize();
     // verify dst
     G4_DstRegRegion* dreg = inst->getDst();
-    uint32_t hs = dreg->getSubRegOff();
-    uint32_t so = dreg->getSubRegOff();
-    if (dreg && !dreg->isNullReg() && dreg->getType() == Type_BF)
+    if (dreg && !dreg->isNullReg())
     {
-        if (!((hs == 1 && (so == 0 || so == 8)) || (hs == 2 && (so == 0 || so == 1))))
+        uint32_t hs = dreg->getHorzStride();
+        uint32_t so = dreg->getSubRegOff();
+        bool isLegitPackedBF = (dreg->getType() == Type_BF
+            && (hs == 1 && (so == 0 || so == nativeES)));
+        bool isLegitUnpackedBF = (dreg->getType() == Type_BF
+            && (hs == 2 && (so == 0 || so == 1)));
+        bool isLegitF = (dreg->getType() == Type_F && (hs == 1 && so == 0));
+        bool isLegitScalar = (inst->getExecSize() == g4::SIMD1 && hs == 1);
+        if (!(isLegitPackedBF || isLegitUnpackedBF || isLegitF || isLegitScalar))
         {
             // case 5 & 6
-            DEBUG_VERBOSE("BF Dst has illegal region and type combination!");
+            DEBUG_VERBOSE("BF/F Dst has illegal region and type combination!");
             inst->emit(std::cerr);
             DEBUG_VERBOSE(std::endl);
-            MUST_BE_TRUE(false, "BF Dst has illegal region and type combination!");
+            MUST_BE_TRUE(false, "BF/F Dst has illegal region and type combination!");
         }
     }
 
@@ -1326,41 +1349,50 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
     for (int i = 0, sz = (int)inst->getNumSrc(); i < sz; ++i)
     {
         G4_Operand* src = inst->getSrc(i);
-        if (!src || src->isNullReg()     // sanity
-            || src->getType() != Type_BF)
+        if (!src || src->isNullReg()    // sanity
+            || (src->getType() == Type_F && src->isImm()))
             continue;
-        if (src->isImm()
-            || (inst->getExecSize() != g4::SIMD1 && src->asSrcRegRegion()->getRegion()->isScalar()))
+
+        G4_Type  srcTy = src->getType();
+        if (srcTy == Type_BF &&
+            (src->isImm() || (inst->getExecSize() != g4::SIMD1 && src->asSrcRegRegion()->getRegion()->isScalar())))
         {
             // case 4
-            DEBUG_VERBOSE("Scalar BF Src is not supported!");
+            DEBUG_VERBOSE(" Src: Imm BF/broadcast scalar BF are not supported!");
             inst->emit(std::cerr);
             DEBUG_VERBOSE(std::endl);
-            MUST_BE_TRUE(false, "Scalar BF Src is not supported!");
+            MUST_BE_TRUE(false, "Src: Imm BF/broadcast scalar BF are not supported!");
         }
 
         G4_SrcRegRegion* sreg = src->asSrcRegRegion();
         uint32_t so = sreg->getSubRegOff();
-        uint16_t hs;
-        bool isUniformStride = sreg->getRegion()->isSingleNonUnitStride(inst->getExecSize(), hs);
-        if (!((sreg->getRegion()->isContiguous(inst->getExecSize()) && (so == 0 || so == 8))
-             || (isUniformStride && hs == 2 && (so == 0 || so == 1))))
+        bool isLegitPackedBF = (srcTy == Type_BF
+            && !sreg->getRegion()->isScalar()
+            && sreg->getRegion()->isContiguous(inst->getExecSize()) && (so == 0 || so == nativeES));
+        bool isLegitF = (srcTy == Type_F
+            && !sreg->getRegion()->isScalar()
+            && sreg->getRegion()->isContiguous(inst->getExecSize()) && so == 0);
+        bool isLegitScalar = (sreg->getRegion()->isScalar()
+            && (srcTy == Type_F || (srcTy == Type_BF && inst->getExecSize() == g4::SIMD1)));
+        if (!(isLegitPackedBF || isLegitF || isLegitScalar))
         {
             // case 5 & 6
-            DEBUG_VERBOSE("BF src has illegal region and type combination!");
+            DEBUG_VERBOSE("Src has illegal region and type combination!");
             inst->emit(std::cerr);
             DEBUG_VERBOSE(std::endl);
-            MUST_BE_TRUE(false, "BF src has illegal region and type combination!");
+            MUST_BE_TRUE(false, "Src has illegal region and type combination!");
         }
     }
 
     // case 7
-    if (inst->getExecSize() > g4::SIMD8)
+    if (inst->getExecSize() > nativeES)
     {
-        DEBUG_VERBOSE("Inst with BF in BF mixed mode should have execsize <= 8!");
+        std::stringstream ss;
+        ss << "Inst in BF mixed mode should have execsize <= " << nativeES << '\n';
+        DEBUG_VERBOSE(ss.str().c_str());
         inst->emit(std::cerr);
         DEBUG_VERBOSE(std::endl);
-        MUST_BE_TRUE(false, "Inst with BF in BF mixed mode should have execsize <= 8!");
+        MUST_BE_TRUE(false, ss.str().c_str());
     }
     return;
 }
