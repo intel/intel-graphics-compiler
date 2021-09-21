@@ -310,51 +310,49 @@ uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId,
 
 // Image Instructions
 //
-struct ImageDummy;
-#define INLINEWA global struct ImageDummy* __dummy
 
 SampledImage_t __builtin_spirv_OpSampledImage_i64_i64_i64(Image_t Image, ImageType_t ImageType, Sampler_t Sampler);
 
-uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32_i64(SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA);
-uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_i64(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA);
-float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4i32_i32_f32_i64(SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA);
-float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_i64(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA);
+uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32(SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod);
+uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod);
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4i32_i32_f32(SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod);
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod);
 
 #ifdef cl_khr_fp16
-half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4i32_i32_f32_i64( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod , INLINEWA);
-half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4f32_i32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod , INLINEWA);
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f16_i64(Image_t Image, ImageType_t ImageType, int4 Coordinate, half4 Texel, INLINEWA);
-half4 __builtin_spirv_OpImageRead_v4f16_i64_i64_v4i32_i64( Image_t Image, ImageType_t ImageType, int4 Coordinate , INLINEWA);
+half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4i32_i32_f32( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod );
+half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4f32_i32_f32( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod );
+void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f16(Image_t Image, ImageType_t ImageType, int4 Coordinate, half4 Texel);
+half4 __builtin_spirv_OpImageRead_v4f16_i64_i64_v4i32_i64( Image_t Image, ImageType_t ImageType, int4 Coordinate );
 #endif // cl_khr_fp16
 
 // Pipe in image type information.
-uint4  __builtin_spirv_OpImageRead_v4i32_i64_i64_v4i32_i64(Image_t Image, ImageType_t ImageType, int4 Coordinate, INLINEWA);
-uint4  __builtin_spirv_OpImageRead_v4i32_i64_i64_v4f32_i64(Image_t Image, ImageType_t ImageType, float4 Coordinate, INLINEWA);
-float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i64(Image_t Image, ImageType_t ImageType, int4 Coordinate, INLINEWA);
-float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4f32_i64(Image_t Image, ImageType_t ImageType, float4 Coordinate, INLINEWA);
+uint4  __builtin_spirv_OpImageRead_v4i32_i64_i64_v4i32(Image_t Image, ImageType_t ImageType, int4 Coordinate);
+uint4  __builtin_spirv_OpImageRead_v4i32_i64_i64_v4f32(Image_t Image, ImageType_t ImageType, float4 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32(Image_t Image, ImageType_t ImageType, int4 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4f32(Image_t Image, ImageType_t ImageType, float4 Coordinate);
 
-float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i32_i32_i64( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample, INLINEWA);
-float __builtin_spirv_OpImageRead_f32_i64_i64_v4i32_i32_i32_i64( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample, INLINEWA);
-uint4 __builtin_spirv_OpImageRead_v4i32_i64_i64_v4i32_i32_i32_i64( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample, INLINEWA);
+float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample);
+float __builtin_spirv_OpImageRead_f32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample);
+uint4 __builtin_spirv_OpImageRead_v4i32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample);
 
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4i32_i64(Image_t Image, ImageType_t ImageType, int4 Coordinate, uint4 Texel, INLINEWA);
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f32_i64(Image_t Image, ImageType_t ImageType, int4 Coordinate, float4 Texel, INLINEWA);
+void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4i32(Image_t Image, ImageType_t ImageType, int4 Coordinate, uint4 Texel);
+void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f32(Image_t Image, ImageType_t ImageType, int4 Coordinate, float4 Texel);
 
-uint  __builtin_spirv_OpImageQueryFormat_i64_i64(Image_t Image, INLINEWA);
-uint  __builtin_spirv_OpImageQueryOrder_i64_i64(Image_t Image, INLINEWA);
+uint  __builtin_spirv_OpImageQueryFormat_i64(Image_t Image);
+uint  __builtin_spirv_OpImageQueryOrder_i64(Image_t Image);
 
-uint  __builtin_spirv_OpImageQuerySizeLod_i32_i64_i64_i32_i64(Image_t Image, ImageType_t ImageType, int Lod, INLINEWA);
-uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32_i64(Image_t Image, ImageType_t ImageType, int Lod, INLINEWA);
-uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_i64_i64_i32_i64(Image_t Image, ImageType_t ImageType, int Lod, INLINEWA);
-uint4 __builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32_i64(Image_t Image, ImageType_t ImageType, int Lod, INLINEWA);
+uint  __builtin_spirv_OpImageQuerySizeLod_i32_i64_i64_i32(Image_t Image, ImageType_t ImageType, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32(Image_t Image, ImageType_t ImageType, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_i64_i64_i32(Image_t Image, ImageType_t ImageType, int Lod);
+uint4 __builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32(Image_t Image, ImageType_t ImageType, int Lod);
 
-uint  __builtin_spirv_OpImageQuerySize_i32_i64_i64_i64(Image_t Image, ImageType_t ImageType, INLINEWA);
-uint2 __builtin_spirv_OpImageQuerySize_v2i32_i64_i64_i64(Image_t Image, ImageType_t ImageType, INLINEWA);
-uint3 __builtin_spirv_OpImageQuerySize_v3i32_i64_i64_i64(Image_t Image, ImageType_t ImageType, INLINEWA);
-uint4  __builtin_spirv_OpImageQuerySize_v4i32_i64_i64_i64(Image_t Image, ImageType_t ImageType, INLINEWA);
+uint  __builtin_spirv_OpImageQuerySize_i32_i64_i64(Image_t Image, ImageType_t ImageType);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_i64_i64(Image_t Image, ImageType_t ImageType);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_i64_i64(Image_t Image, ImageType_t ImageType);
+uint4  __builtin_spirv_OpImageQuerySize_v4i32_i64_i64(Image_t Image, ImageType_t ImageType);
 
-uint __builtin_spirv_OpImageQueryLevels_i64_i64(Image_t Image, INLINEWA);
-uint __builtin_spirv_OpImageQuerySamples_i64_i64(Image_t Image, INLINEWA);
+uint __builtin_spirv_OpImageQueryLevels_i64(Image_t Image);
+uint __builtin_spirv_OpImageQuerySamples_i64(Image_t Image);
 
 // Conversion Instructions
 

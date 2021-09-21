@@ -4050,28 +4050,6 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       default:
           break;
       }
-
-      // WA for image inlining:
-      switch (OC)
-      {
-      case OpImageSampleExplicitLod:
-      case OpImageRead:
-      case OpImageWrite:
-      case OpImageQueryFormat:
-      case OpImageQueryOrder:
-      case OpImageQuerySizeLod:
-      case OpImageQuerySize:
-      case OpImageQueryLevels:
-      case OpImageQuerySamples:
-      {
-          auto type = getOrCreateOpaquePtrType(M, "struct.ImageDummy");
-          auto val = Constant::getNullValue(type);
-          operands.push_back(val);
-          break;
-      }
-      default:
-          break;
-      }
   }
 
   bool hasReturnTypeInTypeList = false;
