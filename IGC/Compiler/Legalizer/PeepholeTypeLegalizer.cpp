@@ -131,6 +131,23 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
     }
 }
 
+/*
+  %24 = bitcast <3 x i16> %23 to i48
+  br label %BB1
+BB2:
+  %val48 = phi i48 [ %24, %BB1], [ 0, %BB2]
+  %val64 = zext i48 %val to i64
+---->
+  %24 = bitcast <3 x i16> %23 to i48
+  %25 = zext i48 %24 to i64
+  %26 = bitcast i64 %25 to <2 x i32>
+  br label %BB1
+BB2:
+  %27 = phi <2 x i32> [ %26, %BB1 ], [ zeroinitializer, %BB2]
+  %28 = bitcast <2 x i32> %27 to i64
+  %29 = trunc i64 %28 to i48
+  %val64 = zext i48 %29 to i64
+*/
 void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
 {
     IGC_ASSERT(isa<PHINode>(&I));
@@ -148,20 +165,23 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
     if (quotient > 1)
     {
         unsigned numElements = I.getType()->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements() : 1;
-        Type* newType = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
+        Type* newVecType = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
+        Type* newLargeIntType = Type::getIntNTy(I.getContext(), promoteToInt * quotient);
 
-        PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
+        PHINode* newPhi = m_builder->CreatePHI(newVecType, oldPhi->getNumIncomingValues());
         for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++)
         {
             Value* incomingValue = oldPhi->getIncomingValue(i);
 
-            // bitcast each incoming value to the legal type
-            Value* newValue = BitCastInst::Create(Instruction::BitCast, incomingValue, newType, "", oldPhi->getIncomingBlock(i)->getTerminator());
-            newPhi->addIncoming(newValue, oldPhi->getIncomingBlock(i));
+            m_builder->SetInsertPoint(oldPhi->getIncomingBlock(i)->getTerminator());
+            Value* newLargeIntValue = m_builder->CreateZExt(incomingValue, newLargeIntType);
+            Value* newVecValue = m_builder->CreateBitCast(newLargeIntValue, newVecType);
+            newPhi->addIncoming(newVecValue, oldPhi->getIncomingBlock(i));
         }
         // Cast back to original type
         m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
-        result = m_builder->CreateBitCast(newPhi, oldPhi->getType());
+        Value* NewLargeIntPhi = m_builder->CreateBitCast(newPhi, newLargeIntType);
+        result = m_builder->CreateTrunc(NewLargeIntPhi, oldPhi->getType());
     }
     else
     {
@@ -904,12 +924,30 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
                         m_builder->CreateExtractElement(prevInst->getOperand(0), m_builder->getIntN(promoteToInt, Idx)), resElmtTy);
                     NewVal = m_builder->CreateOr(m_builder->CreateShl(Hi, ipElmtSize), NewVal);
                     ++Idx;
+                    vecRes = m_builder->CreateInsertElement(vecRes, NewVal, o);
                 }
                 else {
+                    /*
+                      %32 is "NewVal" above. Idx==convFactor==3.
+                      %24 = bitcast <3 x i16> %23 to i48
+                      %25 = zext i48 %24 to i64
+                      %26 = bitcast i64 %25 to <2 x i32>
+                      ---->
+                      %24 = extractelement <3 x i16> %23, i32 0
+                      %25 = zext i16 %24 to i32
+                      %26 = extractelement <3 x i16> %23, i32 1
+                      %27 = zext i16 %26 to i32
+                      %28 = shl i32 %27, 16
+                      %29 = or i32 %28, %25
+                      %30 = insertelement <2 x i32> undef, i32 %29, i64 0
+                      %31 = extractelement <3 x i16> %23, i32 2
+                      %32 = zext i16 %31 to i32
+                      %33 = insertelement <2 x i32> %30, i32 %32, i64 1
+                    */
+                    vecRes = m_builder->CreateInsertElement(vecRes, NewVal, o);
                     break;
                 }
             }
-            m_builder->CreateInsertElement(vecRes, NewVal, o);
         }
         Value* bitcastBackToScalar = m_builder->CreateBitCast(vecRes, I.getType());
 
