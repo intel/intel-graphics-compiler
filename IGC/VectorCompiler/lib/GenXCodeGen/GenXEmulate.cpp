@@ -24,7 +24,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Function.h"
 
 #include "vc/BiF/Tools.h"
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
@@ -48,7 +47,6 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
-#include <array>
 #include <string>
 
 using namespace llvm;
@@ -59,26 +57,6 @@ static constexpr const char *EmuLibSDivPrefix = "__cm_intrinsic_impl_sdiv";
 static constexpr const char *EmuLibSRemPrefix = "__cm_intrinsic_impl_srem";
 static constexpr const char *EmuLibUDivPrefix = "__cm_intrinsic_impl_udiv";
 static constexpr const char *EmuLibURemPrefix = "__cm_intrinsic_impl_urem";
-static constexpr const char *EmuLibFP2UIPrefix = "__cm_intrinsic_impl_fp2ui";
-static constexpr const char *EmuLibFP2SIPrefix = "__cm_intrinsic_impl_fp2si";
-static constexpr const char *EmuLibUI2FPPrefix = "__cm_intrinsic_impl_ui2fp";
-static constexpr const char *EmuLibSI2FPPrefix = "__cm_intrinsic_impl_si2fp";
-
-struct PrefixOpcode {
-  const char *Prefix;
-  const unsigned Opcode;
-};
-constexpr std::array<PrefixOpcode, 4> DivRemPrefixes = {
-    {{EmuLibSDivPrefix, BinaryOperator::SDiv},
-     {EmuLibSRemPrefix, BinaryOperator::SRem},
-     {EmuLibUDivPrefix, BinaryOperator::UDiv},
-     {EmuLibURemPrefix, BinaryOperator::URem}}};
-
-constexpr std::array<PrefixOpcode, 4> EmulationLLPrefixes = {
-    {{EmuLibFP2UIPrefix, Instruction::FPToUI},
-     {EmuLibFP2SIPrefix, Instruction::FPToSI},
-     {EmuLibUI2FPPrefix, Instruction::UIToFP},
-     {EmuLibSI2FPPrefix, Instruction::SIToFP}}};
 
 static constexpr const char *RoundingRtzSuffix = "__rtz_";
 static constexpr const char *RoundingRteSuffix = "__rte_";
@@ -109,23 +87,6 @@ static cl::opt<bool> OptConvertPartialPredicates(
     cl::desc("if \"partial predicates\" shall be converted to icmp"));
 
 using IRBuilder = IRBuilder<TargetFolder>;
-struct OpType {
-  unsigned Opcode;
-  Type *ResType;
-  Type *FirstArgType;
-};
-static std::function<bool(const OpType &, const OpType &)> OpTypeComparator =
-    [](const OpType &ot1, const OpType &ot2) -> bool {
-  if (ot1.Opcode < ot2.Opcode)
-    return true;
-  if (ot2.Opcode < ot1.Opcode)
-    return false;
-  if (ot1.ResType < ot2.ResType)
-    return true;
-  if (ot2.ResType < ot1.ResType)
-    return false;
-  return ot1.FirstArgType < ot2.FirstArgType;
-};
 
 class GenXEmulate : public ModulePass {
 
@@ -134,10 +95,9 @@ class GenXEmulate : public ModulePass {
                                                       EmulationFlag AuxAction);
   std::vector<Instruction *> DiscracedList;
   // Maps <opcode, type> to its corresponding emulation function.
-  std::map<OpType, Function *, decltype(OpTypeComparator)> EmulationFuns{
-      OpTypeComparator};
-
+  using OpType = std::pair<unsigned, Type *>;
   std::vector<Instruction *> ToErase;
+  std::map<OpType, Function *> EmulationFuns;
   const GenXSubtarget *ST = nullptr;
 
   class Emu64Expander : public InstVisitor<Emu64Expander, Value *> {
@@ -145,8 +105,6 @@ class GenXEmulate : public ModulePass {
     friend InstVisitor<Emu64Expander, Value *>;
 
     const GenXSubtarget &ST;
-    std::map<OpType, Function *, decltype(OpTypeComparator)> *EmulationFuns;
-
     IVSplitter SplitBuilder;
     Instruction &Inst;
 
@@ -259,10 +217,8 @@ class GenXEmulate : public ModulePass {
     };
 
   public:
-    Emu64Expander(
-        const GenXSubtarget &ST, Instruction &I,
-        std::map<OpType, Function *, decltype(OpTypeComparator)> *EF = nullptr)
-        : ST(ST), SplitBuilder(I), Inst(I), EmulationFuns(EF) {}
+    Emu64Expander(const GenXSubtarget &ST, Instruction &I)
+        : ST(ST), SplitBuilder(I), Inst(I) {}
 
     Value *tryExpand() {
       if (!needsEmulation())
@@ -332,7 +288,7 @@ public:
 private:
   Value *emulateInst(Instruction *Inst);
   Function *getEmulationFunction(const Instruction *Inst) const;
-  void buildEmuFunCache(Module &M);
+  void buildDivRemCache(Module &M);
 
   // Check if a function is to emulate instructions.
   static bool isEmulationFunction(const Function* F) {
@@ -716,7 +672,6 @@ Value *GenXEmulate::Emu64Expander::visitLShr(BinaryOperator &Op) {
 Value *GenXEmulate::Emu64Expander::visitAShr(BinaryOperator &Op) {
   return buildRightShift(SplitBuilder, Op);
 }
-
 Value *GenXEmulate::Emu64Expander::visitFPToUI(FPToUIInst &Op) {
 
   if (!(Op.getOperand(0)->getType()->getScalarType()->isFloatTy() &&
@@ -901,7 +856,6 @@ Value *GenXEmulate::Emu64Expander::buildI64ToHalf(CastInst &Op) {
   Conv->eraseFromParent();
   return Builder.CreateFPTrunc(EmulatedConv, Op.getType(), "int_emu.truncate");
 }
-
 Value *GenXEmulate::Emu64Expander::visitZExtInst(ZExtInst &I) {
   auto Builder = getIRBuilder();
   auto VOp = toVector(Builder, I.getOperand(0));
@@ -1259,25 +1213,9 @@ Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
   const bool IsSigned = (IID == GenXIntrinsic::genx_fptosi_sat) ? true : false;
 
   auto Builder = getIRBuilder();
-  unsigned Opcode = IsSigned ? Instruction::FPToSI : Instruction::FPToSI;
-
-  Type *Ty = CI.getType();
-  auto *F = CI.getCalledFunction();
-  IGC_ASSERT(F);
-  Type *Ty2 = IGCLLVM::getArg(*F, 0)->getType();
-  OpType OpAndType{Opcode, Ty, Ty2};
-  if (!EmulationFuns)
-    vc::diagnose(CI.getContext(), "GenXEmulate", &CI,
-                 "Emulation was called without initialization");
-
-  auto Iter = EmulationFuns->find(OpAndType);
-  if (Iter == EmulationFuns->end())
-    vc::diagnose(CI.getContext(), "GenXEmulate", &CI,
-                 "Unsupported instruction for emulation");
-
-  SmallVector<Value *, 8> Args(CI.arg_operands());
-
-  return Builder.CreateCall(Iter->second, Args);
+  auto *V = buildFPToI64(*CI.getModule(), Builder, SplitBuilder,
+                         CI.getOperand(0), IsSigned);
+  return Builder.CreateBitCast(V, CI.getType(), Twine(CI.getName()) + ".emu");
 }
 
 Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
@@ -1309,7 +1247,7 @@ Value *GenXEmulate::Emu64Expander::ensureEmulated(Value *Val) {
   Instruction *Inst = dyn_cast<Instruction>(Val);
   if (!Inst)
     return Val;
-  auto *Emulated = Emu64Expander(ST, *Inst, EmulationFuns).tryExpand();
+  auto *Emulated = Emu64Expander(ST, *Inst).tryExpand();
   // we expect to always return an emulated sequence
   IGC_ASSERT(Emulated);
   Inst->eraseFromParent();
@@ -1681,7 +1619,6 @@ Value *GenXEmulate::Emu64Expander::buildFPToI64(Module &M, IRBuilder &Builder,
     // if sign bit is set, alter the result with negated value
     std::tie(Lo, Hi) =
         PredicatedUpdate(FlagSignSet, {AddcRes.Val, NegHi}, {Lo, Hi});
-
     // Here we process oveflows
     auto K_SOverflow = std::make_pair(K.getZero(), K.getSplat(1u << 31));
     auto K_UOverflow = std::make_pair(K.getOnes(), K.getSplat((1u << 31) - 1));
@@ -1693,7 +1630,6 @@ Value *GenXEmulate::Emu64Expander::buildFPToI64(Module &M, IRBuilder &Builder,
                                  Builder.CreateAnd(Hi, K.getSplat(1 << 31)));
     auto *NZ2 = Builder.CreateICmpNE(SS, K.getZero());
     auto *Ovrfl = Builder.CreateAnd(NZ, NZ2);
-
     // In case of overflow, HW response is : 7fffffffffffffff
     std::tie(Lo, Hi) = PredicatedUpdate(Ovrfl, K_UOverflow, {Lo, Hi});
     std::tie(Lo, Hi) = PredicatedUpdate(FlagExpO, K_SOverflow, {Lo, Hi});
@@ -1750,7 +1686,7 @@ bool GenXEmulate::runOnModule(Module &M) {
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  buildEmuFunCache(M);
+  buildDivRemCache(M);
 
   for (auto &F : M.getFunctionList())
     runOnFunction(F);
@@ -1803,11 +1739,7 @@ Function *GenXEmulate::getEmulationFunction(const Instruction *Inst) const {
 
   unsigned Opcode = Inst->getOpcode();
   Type *Ty = Inst->getType();
-
-  Type *Ty2 = nullptr;
-  if (Inst->getNumOperands() > 0)
-    Ty2 = Inst->getOperand(0)->getType();
-  OpType OpAndType{Opcode, Ty, Ty2};
+  OpType OpAndType = std::make_pair(Opcode, Ty);
 
   auto Iter = EmulationFuns.find(OpAndType);
   if (Iter != EmulationFuns.end()) {
@@ -1819,7 +1751,7 @@ Function *GenXEmulate::getEmulationFunction(const Instruction *Inst) const {
   return nullptr;
 }
 
-void GenXEmulate::buildEmuFunCache(Module &M) {
+void GenXEmulate::buildDivRemCache(Module &M) {
   EmulationFuns.clear();
 
   auto UpdateCacheIfMatch = [this](Function &F, StringRef PrefixToMatch,
@@ -1829,23 +1761,21 @@ void GenXEmulate::buildEmuFunCache(Module &M) {
       return false;
 
     Type *Ty = F.getReturnType();
-    Type *Ty2 = nullptr;
-    if (F.arg_size() > 0)
-      Ty2 = IGCLLVM::getArg(F, 0)->getType();
-    IGC_ASSERT(EmulationFuns.find({OpCode, Ty, Ty2}) == EmulationFuns.end());
-    EmulationFuns.insert({{OpCode, Ty, Ty2}, &F});
+    EmulationFuns.insert({{OpCode, Ty}, &F});
     return true;
   };
 
   for (Function &F : M.getFunctionList()) {
     if (!isEmulationFunction(&F))
       continue;
-    for (auto &PrOp : DivRemPrefixes)
-      UpdateCacheIfMatch(F, PrOp.Prefix, PrOp.Opcode);
-    if (ST->emulateLongLong()) {
-      for (auto &PrOp : EmulationLLPrefixes)
-        UpdateCacheIfMatch(F, PrOp.Prefix, PrOp.Opcode);
-    }
+    if (UpdateCacheIfMatch(F, EmuLibSDivPrefix, BinaryOperator::SDiv))
+      continue;
+    if (UpdateCacheIfMatch(F, EmuLibSRemPrefix, BinaryOperator::SRem))
+      continue;
+    if (UpdateCacheIfMatch(F, EmuLibUDivPrefix, BinaryOperator::UDiv))
+      continue;
+    if (UpdateCacheIfMatch(F, EmuLibURemPrefix, BinaryOperator::URem))
+      continue;
   }
 }
 
@@ -1860,7 +1790,7 @@ Value *GenXEmulate::emulateInst(Instruction *Inst) {
   }
   IGC_ASSERT(ST);
   if (ST->emulateLongLong()) {
-    Value *NewInst = Emu64Expander(*ST, *Inst, &EmulationFuns).tryExpand();
+    Value *NewInst = Emu64Expander(*ST, *Inst).tryExpand();
     if (!NewInst) {
     }
 
@@ -1875,7 +1805,6 @@ Instruction *llvm::genx::emulateI64Operation(const GenXSubtarget *ST,
   LLVM_DEBUG(dbgs() << "i64-emu::WARNING: direct emulation routine was "
                     << "called for " << *Inst << "\n");
   Instruction *NewInst = nullptr;
-
   if (!ST->hasLongLong()) {
     Value *EmulatedResult = GenXEmulate::Emu64Expander(*ST, *Inst).tryExpand();
     NewInst = cast_or_null<Instruction>(EmulatedResult);
@@ -1939,14 +1868,15 @@ public:
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();
 
-    auto ModEmuFun =
-        LoadEmuFunLib(M.getContext(), M.getDataLayout(), M.getTargetTriple());
-    if (!ModEmuFun)
+    auto ModDivRem =
+        LoadDivRemLib(M.getContext(), M.getDataLayout(), M.getTargetTriple());
+    if (!ModDivRem)
       return false;
-    if (ST.hasIntDivRem32())
-      Purge32BitDivRemFunctions(*ModEmuFun);
 
-    if (Linker::linkModules(M, std::move(ModEmuFun)))
+    if (ST.hasIntDivRem32())
+      Purge32BitFunctions(*ModDivRem);
+
+    if (Linker::linkModules(M, std::move(ModDivRem)))
       report_fatal_error("Error linking emulation routines");
 
     return true;
@@ -1958,19 +1888,13 @@ private:
     return Name.startswith(LibraryFunctionPrefix);
   }
 
-  static void Purge32BitDivRemFunctions(Module &M) {
+  static void Purge32BitFunctions(Module &M) {
     // We should remove 32-bit emulation routines if they are not used
     for (auto I = M.begin(), E = M.end(); I != E;) {
       Function &F = *I++;
-      if (!IsLibraryFunction(F))
-        continue;
-      if (F.getReturnType()->getScalarType()->isIntegerTy(64))
-        continue;
-      const auto &Name = F.getName();
-      for (auto &PrOp : DivRemPrefixes) {
-        if (Name.startswith(PrOp.Prefix))
+      if (IsLibraryFunction(F))
+        if (!F.getReturnType()->getScalarType()->isIntegerTy(64))
           F.eraseFromParent();
-      }
     }
   }
 
@@ -2001,7 +1925,7 @@ private:
     }
   }
 
-  std::unique_ptr<Module> LoadEmuFunLib(LLVMContext &Ctx, const DataLayout &DL,
+  std::unique_ptr<Module> LoadDivRemLib(LLVMContext &Ctx, const DataLayout &DL,
                                         const std::string &Triple) {
 
     MemoryBufferRef EmulationBiFBuffer =
