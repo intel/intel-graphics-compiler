@@ -2457,7 +2457,8 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
     Region R(Inst->getType());
     R.Width = R.NumElements;
     R.Stride = 0;
-    NewV = R.createRdRegion(NewV, "splat", Inst, Inst->getDebugLoc(), false);
+    NewV = R.createRdRegion(NewV, "splat", Inst, Inst->getDebugLoc(),
+                            !Inst->getType()->isVectorTy());
     Inst->replaceAllUsesWith(NewV);
     return true;
   }
