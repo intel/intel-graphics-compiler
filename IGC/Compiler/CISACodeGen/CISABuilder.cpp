@@ -4964,7 +4964,7 @@ namespace IGC
     {
         CodeGenContext* context = m_program->GetContext();
         return context->type == ShaderType::PIXEL_SHADER &&
-            (m_program->m_dispatchSize == SIMDMode::SIMD8 || m_program->m_dispatchSize == SIMDMode::SIMD16) &&
+            m_program->m_dispatchSize == SIMDMode::SIMD8 &&
             context->m_retryManager.IsFirstTry();
     }
 
