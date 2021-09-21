@@ -65,8 +65,10 @@ public:
                                      unsigned offsetInArg);
 
   // 1D/2D/3D Surface
-  void createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
-                             ArgAccessKind Access);
+  void
+  createImageAnnotation(unsigned argNo, unsigned BTI,
+                        llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind,
+                        ArgAccessKind Access);
 
   // add a pointer patch token.
   void createPointerGlobalAnnotation(unsigned index, unsigned offset,

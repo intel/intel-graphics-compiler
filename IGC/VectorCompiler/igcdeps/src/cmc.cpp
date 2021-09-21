@@ -246,8 +246,29 @@ void CMKernel::createSamplerAnnotation(unsigned argNo, unsigned BTI)
        PayloadPosition, ArgSize, argNo, BTI, ZeAddrMode, ZeAccessType);
 }
 
-void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI,
-                                     unsigned dim, ArgAccessKind Access)
+static iOpenCL::IMAGE_MEMORY_OBJECT_TYPE
+getOCLImageType(llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind)
+{
+    using KindType = llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType;
+    switch (Kind)
+    {
+    case KindType::Image1D:
+        return iOpenCL::IMAGE_MEMORY_OBJECT_1D;
+    case KindType::Image2D:
+        // FIXME: Media block should be treated separately.
+        return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA_BLOCK;
+    case KindType::Image3D:
+        return iOpenCL::IMAGE_MEMORY_OBJECT_3D;
+    default:
+        IGC_ASSERT_MESSAGE(0, "Unexpected image kind");
+        return iOpenCL::IMAGE_MEMORY_OBJECT_INVALID;
+    }
+}
+
+void CMKernel::createImageAnnotation(
+    unsigned argNo, unsigned BTI,
+    llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind,
+    ArgAccessKind Access)
 {
     auto imageInput = std::make_unique<iOpenCL::ImageArgumentAnnotation>();
     // As VC uses only statefull addrmode.
@@ -257,14 +278,7 @@ void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI,
     imageInput->ArgumentNumber = argNo;
     imageInput->IsFixedBindingTableIndex = true;
     imageInput->BindingTableIndex = BTI;
-    if (dim == 1)
-        imageInput->ImageType = iOpenCL::IMAGE_MEMORY_OBJECT_1D;
-    else if (dim == 2)
-        imageInput->ImageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA_BLOCK;
-    else if (dim == 3)
-        imageInput->ImageType = iOpenCL::IMAGE_MEMORY_OBJECT_3D;
-    else
-        IGC_ASSERT_MESSAGE(0, "unsupported image dimension");
+    imageInput->ImageType = getOCLImageType(Kind);
     imageInput->LocationIndex = 0;
     imageInput->LocationCount = 0;
     imageInput->IsEmulationArgument = false;
@@ -577,17 +591,9 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::Image1D:
-      Kernel.createImageAnnotation(Arg.getIndex(), Arg.getBTI(), /*dim=*/1,
-                                   Arg.getAccessKind());
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
-      break;
     case ArgKind::Image2D:
-      Kernel.createImageAnnotation(Arg.getIndex(), Arg.getBTI(), /*dim=*/2,
-                                   Arg.getAccessKind());
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
-      break;
     case ArgKind::Image3D:
-      Kernel.createImageAnnotation(Arg.getIndex(), Arg.getBTI(), /*dim=*/3,
+      Kernel.createImageAnnotation(Arg.getIndex(), Arg.getBTI(), Arg.getKind(),
                                    Arg.getAccessKind());
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
