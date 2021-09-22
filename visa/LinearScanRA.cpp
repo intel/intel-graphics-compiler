@@ -1133,6 +1133,12 @@ void LinearScanRA::undoLinearScanRAAssignments()
             lr->setLastRef(NULL, 0);
             lr->clearForbiddenGRF(kernel.getNumRegTotal());
             lr->setRegionID(-1);
+            if (kernel.getOption(vISA_GenerateDebugInfo))
+            {
+                auto lrInfo = kernel.getKernelDebugInfo()->getLiveIntervalInfo(lr->getTopDcl(), false);
+                if (lrInfo)
+                    lrInfo->clearLiveIntervals();
+            }
         }
     }
 }
@@ -2210,6 +2216,11 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
 
     //Assign the registers for the live out ones
     expireAllActive();
+
+    if (builder.kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
+    {
+        updateDebugInfo(builder.kernel, liveIntervals);
+    }
 
     return true;
 }

@@ -1181,6 +1181,10 @@ void emitDataSubroutines(VISAKernelImpl* visaKernel, T& t)
                     uint32_t idx = kernel->getKernelDebugInfo()->getVarIndex(retval);
                     emitDataVarLiveInterval(visaKernel, lv, idx, sizeof(uint16_t), t);
                 }
+                else
+                {
+                    emitDataUInt16(0, t);
+                }
             }
         }
     }
@@ -1915,7 +1919,30 @@ void updateDebugInfo(G4_Kernel& kernel, G4_INST* inst, const LivenessAnalysis& l
     }
 }
 
-void updateDebugInfo(G4_Kernel& kernel,  std::vector<LocalLiveRange*>& liveIntervals)
+void updateDebugInfo(vISA::G4_Kernel& kernel, std::vector<vISA::LSLiveRange*>& liveIntervals)
+{
+    for (auto lr : liveIntervals)
+    {
+        uint32_t start, end;
+        G4_INST* startInst = lr->getFirstRef(start);
+        G4_INST* endInst = lr->getLastRef(end);
+
+        if (!start || !end)
+            continue;
+
+        start = startInst->getCISAOff();
+        end = endInst->getCISAOff();
+
+        auto lrInfo = kernel.getKernelDebugInfo()->getLiveIntervalInfo(lr->getTopDcl());
+        if (start != UNMAPPABLE_VISA_INDEX &&
+            end != UNMAPPABLE_VISA_INDEX)
+        {
+            lrInfo->addLiveInterval(start, end);
+        }
+    }
+}
+
+void updateDebugInfo(G4_Kernel& kernel, std::vector<vISA::LocalLiveRange*>& liveIntervals)
 {
     for (auto lr : liveIntervals)
     {

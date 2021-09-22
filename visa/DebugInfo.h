@@ -71,6 +71,11 @@ void updateDebugInfo(vISA::G4_Kernel& kernel, vISA::G4_INST* inst,
 // For ranges allocated by local RA
 void updateDebugInfo(vISA::G4_Kernel& kernel,
     std::vector<vISA::LocalLiveRange*>& liveIntervals);
+// For ranges allocated by global linear scan
+void updateDebugInfo(vISA::G4_Kernel& kernel,
+    std::vector<vISA::LSLiveRange*>& liveIntervals);
+
+
 // For ranges updated by augmentation
 void updateDebugInfo(vISA::G4_Kernel& kernel,
     std::vector<std::tuple<vISA::G4_Declare*, vISA::G4_INST*, vISA::G4_INST*>> augmentationLiveIntervals);
