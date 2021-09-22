@@ -3592,7 +3592,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                                   DS_Error};
       getContext().diagnose(Err);
     }
-    unsigned Byte = Const->getSExtValue() & 15;
+    unsigned Byte = Const->getSExtValue() & 0xFF;
     *Mask = (VISA_EMask_Ctrl)(Byte >> 4);
     unsigned Res = Byte & 0xF;
     if (Res > 5) {
