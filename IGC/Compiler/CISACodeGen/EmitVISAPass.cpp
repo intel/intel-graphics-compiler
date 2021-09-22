@@ -13567,6 +13567,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     llvm::Value* pllDstAddr = pInsn->getOperand(1);
     llvm::Value* pllSrc0 = pInsn->getOperand(2);
     ResourceDescriptor resource = GetResourceVariable(pllbuffer);
+    CountStatelessIndirectAccess(pllbuffer, resource);
     AtomicOp atomic_op = EATOMIC_UNDEF;
 
     if (pllbuffer->getType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL)
