@@ -594,7 +594,6 @@ ImplicitArg::ArgType ImplicitArgs::getArgType(GenISAIntrinsic::ID id) {
             return arg.getArgType();
         }
     }
-    IGC_ASSERT_MESSAGE(0, "Intrinsic not supported!");
     return ImplicitArg::ArgType::NUM_IMPLICIT_ARGS;
 }
 
@@ -607,7 +606,6 @@ IGC::WIAnalysis::WIDependancy ImplicitArgs::getArgDep(GenISAIntrinsic::ID id) {
             return arg.getDependency();
         }
     }
-    IGC_ASSERT_MESSAGE(0, "Intrinsic not supported!");
     return IGC::WIAnalysis::WIDependancy::RANDOM;
 }
 

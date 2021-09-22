@@ -752,3 +752,52 @@ Value* WIFuncResolution::getSyncBufferPtr(CallInst& CI)
     return syncBuffer;
 }
 
+
+// Register pass to igc-opt
+#define PASS_FLAG2 "igc-lower-implicit-arg-intrinsic"
+#define PASS_DESCRIPTION2 "igc-lower-implicit-arg-intrinsic"
+#define PASS_CFG_ONLY2 false
+#define PASS_ANALYSIS2 false
+IGC_INITIALIZE_PASS_BEGIN(LowerImplicitArgIntrinsics, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(LowerImplicitArgIntrinsics, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+
+char LowerImplicitArgIntrinsics::ID = 0;
+
+LowerImplicitArgIntrinsics::LowerImplicitArgIntrinsics() : FunctionPass(ID)
+{
+    initializeLowerImplicitArgIntrinsicsPass(*PassRegistry::getPassRegistry());
+}
+
+bool LowerImplicitArgIntrinsics::runOnFunction(Function& F)
+{
+    visit(F);
+
+    return false;
+}
+
+void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
+{
+    Function* parentFunc = CI.getParent()->getParent();
+    auto* MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+
+    if (isEntryFunc(MDUtils, parentFunc))
+    {
+        ImplicitArgs IAS(*parentFunc, MDUtils);
+
+        if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(&CI))
+        {
+            ImplicitArg::ArgType argTy = ImplicitArgs::getArgType(inst->getIntrinsicID());
+            if (argTy != ImplicitArg::ArgType::NUM_IMPLICIT_ARGS)
+            {
+                Argument* Arg = IAS.getImplicitArg(*parentFunc, argTy);
+                if (Arg)
+                {
+                    inst->replaceAllUsesWith(Arg);
+                }
+            }
+        }
+    }
+}
+

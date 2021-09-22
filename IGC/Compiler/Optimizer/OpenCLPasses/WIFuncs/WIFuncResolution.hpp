@@ -151,3 +151,30 @@ namespace IGC
 
 } // namespace IGC
 
+namespace IGC
+{
+    class LowerImplicitArgIntrinsics : public llvm::FunctionPass, public llvm::InstVisitor<LowerImplicitArgIntrinsics>
+    {
+    public:
+        static char ID;
+
+        LowerImplicitArgIntrinsics();
+
+        ~LowerImplicitArgIntrinsics() {}
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "LowerImplicitArgIntrinsics";
+        }
+
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
+
+        virtual bool runOnFunction(llvm::Function& F) override;
+
+        void visitCallInst(llvm::CallInst& CI);
+    };
+} // namespace IGC

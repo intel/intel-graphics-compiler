@@ -75,6 +75,7 @@ void initializeLegalizeResourcePointerPass(llvm::PassRegistry&);
 void initializeLegalizeFunctionSignaturesPass(llvm::PassRegistry&);
 void initializeLiveVarsAnalysisPass(llvm::PassRegistry&);
 void initializeLowerGEPForPrivMemPass(llvm::PassRegistry&);
+void initializeLowerImplicitArgIntrinsicsPass(llvm::PassRegistry&);
 void initializeLowPrecisionOptPass(llvm::PassRegistry&);
 void initializeMetaDataUtilsWrapperInitializerPass(llvm::PassRegistry&);
 void initializeMetaDataUtilsWrapperPass(llvm::PassRegistry&);
