@@ -35,6 +35,7 @@ igc_sg_define(Compiler__Optimizer)
 
 set(IGC_BUILD__SRC__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/CodeGenContext.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CodeGenPublic.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CodeGenContextWrapper.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/compiler_caps.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CustomSafeOptPass.cpp"
@@ -161,6 +162,7 @@ add_library("${IGC_BUILD__PROJ__Compiler}" STATIC
     ${IGC_BUILD__HDR__Compiler}
     ${IGC_BUILD__HDR_Win_Lin_Dar__Compiler}
   )
+target_link_libraries(${IGC_BUILD__PROJ__Compiler} IGCOptions)
 set_property(TARGET "${IGC_BUILD__PROJ__Compiler}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__Compiler}")
 
 add_dependencies("${IGC_BUILD__PROJ__Compiler}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")

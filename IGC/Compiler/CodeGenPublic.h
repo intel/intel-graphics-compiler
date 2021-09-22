@@ -1274,41 +1274,16 @@ namespace IGC
         class InternalOptions
         {
         public:
-            InternalOptions(const TC::STB_TranslateInputArgs* pInputArgs) :
-                KernelDebugEnable(false),
-                IncludeSIPCSR(false),
-                IncludeSIPKernelDebug(false),
-                IntelGreaterThan4GBBufferRequired(false),
-                Use32BitPtrArith(false),
-                IncludeSIPKernelDebugWithLocalMemory(false),
-                IntelHasPositivePointerOffset(false),
-                IntelHasBufferOffsetArg(false),
-                IntelBufferOffsetArgOptional(true),
-                IntelHasSubDWAlignedPtrArg(false)
-            {
-                if (pInputArgs == nullptr)
-                    return;
+            static InternalOptions &createInternalOptions(const TC::STB_TranslateInputArgs* pInputArgs);
 
-                if (pInputArgs->pInternalOptions != nullptr)
-                {
-                    parseOptions(pInputArgs->pInternalOptions);
-                }
-
-                // Internal options are passed in via pOptions as well.
-                if (pInputArgs->pOptions != nullptr)
-                {
-                    parseOptions(pInputArgs->pOptions);
-                }
-            }
-
-            bool KernelDebugEnable;
-            bool IncludeSIPCSR;
-            bool IncludeSIPKernelDebug;
-            bool IntelGreaterThan4GBBufferRequired;
+            bool KernelDebugEnable = false;
+            bool IncludeSIPCSR = false;
+            bool IncludeSIPKernelDebug = false;
+            bool IntelGreaterThan4GBBufferRequired = false;
             bool IntelDisableA64WA = false;
             bool IntelForceEnableA64WA = false;
             bool Use32BitPtrArith = false;
-            bool IncludeSIPKernelDebugWithLocalMemory;
+            bool IncludeSIPKernelDebugWithLocalMemory = false;
 
             bool GTPinReRA = false;
             bool GTPinGRFInfo = false;
@@ -1316,10 +1291,10 @@ namespace IGC
             uint32_t GTPinScratchAreaSizeValue = 0;
 
             // stateless to stateful optimization
-            bool IntelHasPositivePointerOffset; // default: false
-            bool IntelHasBufferOffsetArg;       // default: false
-            bool IntelBufferOffsetArgOptional;  // default: true
-            bool IntelHasSubDWAlignedPtrArg;
+            bool IntelHasPositivePointerOffset = false; // default: false
+            bool IntelHasBufferOffsetArg = false;       // default: false
+            bool IntelBufferOffsetArgOptional = true;  // default: true
+            bool IntelHasSubDWAlignedPtrArg = false;
                  // default: false, meaning kernel's sub-DW ptrArgs (char*, short*) are DW-aligned.
                  // This default is stronger than the natural alignment implied by char*/short*. But
                  // for historical reason, we have this.
@@ -1348,72 +1323,24 @@ namespace IGC
             uint32_t numThreadsPerEU = 0;
 
             private:
-                void parseOptions(const char* IntOptStr);
+                InternalOptions(){};
+                void parseOptions(const char *IntOptStr);
         };
 
         class Options
         {
         public:
-            Options(const TC::STB_TranslateInputArgs* pInputArgs) :
-                CorrectlyRoundedSqrt(false),
-                NoSubgroupIFP(false),
-                UniformWGS(false)
-            {
-                if (pInputArgs == nullptr)
-                    return;
+            static Options &createOptions(const TC::STB_TranslateInputArgs* pInputArgs);
 
-                if (pInputArgs->pOptions == nullptr)
-                    return;
-
-                // Build options are of the form -cl-xxxx and -ze-xxxx
-                // So we skip these prefixes when reading the options to be agnostic of their source
-
-                // Runtime passes internal options via pOptions as well, and those
-                // internal options will be handled by InternalOptions class (parseOptions).
-                // !!! When adding a new internal option, please add it into internalOptions class!!!
-                // (Might combine both Options and InternalOptions into a single class!)
-                const char* options = pInputArgs->pOptions;
-                if (strstr(options, "-fp32-correctly-rounded-divide-sqrt"))
-                {
-                    CorrectlyRoundedSqrt = true;
-                }
-
-                if (strstr(options, "-no-subgroup-ifp"))
-                {
-                    NoSubgroupIFP = true;
-                }
-
-                if (strstr(options, "-uniform-work-group-size"))
-                {
-                    // Note that this is only available for -cl-std >= 2.0.
-                    // This will be checked before we place this into the
-                    // the module metadata.
-                    UniformWGS = true;
-                }
-                if (strstr(options, "-take-global-address"))
-                {
-                    EnableTakeGlobalAddress = true;
-                }
-                if (strstr(options, "-library-compilation"))
-                {
-                    IsLibraryCompilation = true;
-                }
-                if (const char* op = strstr(options, "-intel-reqd-eu-thread-count"))
-                {
-                    IntelRequiredEUThreadCount = true;
-                    // Take an integer value after this option
-                    // atoi(..) ignores leading white spaces and characters after the actual number
-                    requiredEUThreadCount = atoi(op + strlen("-intel-reqd-eu-thread-count="));
-                }
-            }
-
-            bool CorrectlyRoundedSqrt;
-            bool NoSubgroupIFP;
-            bool UniformWGS;
+            bool CorrectlyRoundedSqrt = false;
+            bool NoSubgroupIFP = false;
+            bool UniformWGS = false;
             bool EnableTakeGlobalAddress = false;
             bool IsLibraryCompilation = false;
             bool IntelRequiredEUThreadCount = false;
             uint32_t requiredEUThreadCount = 0;
+        private:
+            Options(){};
         };
 
         // output: shader information
@@ -1436,8 +1363,8 @@ namespace IGC
             const bool createResourceDimTypes = true)
             : CodeGenContext(ShaderType::OPENCL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmContext),
             m_programOutput(platform.getPlatformInfo(), *this),
-            m_InternalOptions(pInputArgs),
-            m_Options(pInputArgs),
+            m_InternalOptions(InternalOptions::createInternalOptions(pInputArgs)),
+            m_Options(Options::createOptions(pInputArgs)),
             isSpirV(false),
             m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
         {
