@@ -1611,9 +1611,6 @@ if (NOT CMAKE_WDDM_LINUX)
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__ElfPackager}")
 endif()
 
-if(LLVM_ON_WIN32)
-endif()
-
 
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   get_property(_targetType TARGET "${IGC_BUILD__PROJ${_libBuildSuffix}}" PROPERTY TYPE)
