@@ -402,16 +402,19 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
     if (!Rd || !GenXIntrinsic::isRdRegion(Rd))
       return true;
 
+    Value *OldValue = Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+    if (GenXIntrinsic::isReadWritePredefReg(OldValue))
+      return true;
+
     // Single use, do optimization.
     if (Rd->hasOneUse())
       return false;
 
     // More than one uses, we check if rdr is reading from a global.
     // If yes, still do such conversion, as bitcast could be folded into g_load.
-    Value *Op0 = Rd->getOperand(0);
-    while (auto CI = dyn_cast<BitCastInst>(Op0))
-      Op0 = CI->getOperand(0);
-    auto LI = dyn_cast<LoadInst>(Op0);
+    while (auto CI = dyn_cast<BitCastInst>(OldValue))
+      OldValue = CI->getOperand(0);
+    auto LI = dyn_cast<LoadInst>(OldValue);
     if (LI && getUnderlyingGlobalVariable(LI->getPointerOperand()))
       return false;
 
@@ -516,8 +519,14 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd)
     for (;;) {
       if (!OuterRd)
         break; // input not result of earlier rdregion
-      if (GenXIntrinsic::isRdRegion(OuterRd))
+      if (GenXIntrinsic::isRdRegion(OuterRd)) {
+        Value *OldValue =
+            OuterRd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+        // Do not optimize predefined register regions.
+        if (GenXIntrinsic::isReadWritePredefReg(OldValue))
+          OuterRd = nullptr;
         break; // found the outer rdregion
+      }
       if (isa<SExtInst>(OuterRd) || isa<ZExtInst>(OuterRd)) {
         if (OuterRd->getOperand(0)->getType()->getScalarType()->isIntegerTy(1)) {
           OuterRd = nullptr;

@@ -292,14 +292,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   // Aggregate pseudo lowering may create GEPs to be lowered before TPM
 
-  /// .. include:: GenXGEPLowering.cpp
-  PM.add(createGenXGEPLoweringPass());
-  /// .. include:: GenXStackUsage.cpp
-  PM.add(createGenXStackUsagePass());
-  /// .. include:: GenXLoadStoreLowering.cpp
-  PM.add(createGenXLoadStoreLoweringPass());
-  PM.add(createGenXThreadPrivateMemoryPass());
-
   /// BasicAliasAnalysis
   /// ------------------
   /// This is a standard LLVM analysis pass to provide basic AliasAnalysis
@@ -356,6 +348,19 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(createGenXEarlySimdCFConformancePass());
   /// .. include:: GenXPromotePredicate.cpp
   PM.add(createGenXPromotePredicatePass());
+
+  /// .. include:: GenXStackUsage.cpp
+  PM.add(createGenXStackUsagePass());
+
+  // PrologEpilog may emit memory instructions of illegal width.
+  PM.add(createGenXPrologEpilogInsertionPass());
+
+  /// .. include:: GenXGEPLowering.cpp
+  PM.add(createGenXGEPLoweringPass());
+  /// .. include:: GenXLoadStoreLowering.cpp
+  PM.add(createGenXLoadStoreLoweringPass());
+  PM.add(createGenXThreadPrivateMemoryPass());
+
   // Run GEP lowering again to remove possible GEPs after instcombine.
   PM.add(createGenXGEPLoweringPass());
   /// .. include:: GenXLowering.cpp
@@ -397,7 +402,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// removes code that has been made dead by other passes.
   ///
   PM.add(createDeadCodeEliminationPass());
-  PM.add(createGenXPrologEpilogInsertionPass());
   /// .. include:: GenXBaling.h
   PM.add(createGenXFuncBalingPass(BalingKind::BK_Legalization, &Subtarget));
   /// .. include:: GenXLegalization.cpp

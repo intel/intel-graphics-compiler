@@ -2443,6 +2443,9 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
 
       if (GenXIntrinsic::isWrRegion(U))
         return false;
+
+      if (GenXIntrinsic::isReadWritePredefReg(U))
+        return false;
     }
 
     // OK, rewrite it!
