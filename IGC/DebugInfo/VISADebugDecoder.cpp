@@ -60,7 +60,10 @@ void IGC::DbgDecoder::VarAlloc::print(llvm::raw_ostream& OS) const
     case VarAlloc::PhyTypeGRF:     OS << "p:G ";
       mapping.r.print(OS);
     break;
-    case VarAlloc::PhyTypeMemory:  OS << "p:M(!GRF) "; break;
+    case VarAlloc::PhyTypeMemory:
+      OS << "p:M(!GRF) ";
+      mapping.m.print(OS);
+    break;
     };
 }
 
