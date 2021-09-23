@@ -331,12 +331,6 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     }
     mpm.add(createFixInvalidFuncNamePass());
 
-    //
-    // Generally, passes that change IR should be prior to this place!
-    //
-
-    // let CleanPHINode be right before Layout
-    mpm.add(createCleanPHINodePass());
     // Let Layout be the last pass before Emit Pass
     mpm.add(new Layout());
 
