@@ -4034,7 +4034,6 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       {
       case OpSampledImage:
       case OpVmeImageINTEL:
-      case OpImageRead:
       case OpImageWrite:
       case OpImageQuerySize:
       case OpImageQuerySizeLod:
@@ -4105,7 +4104,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   // OpImageRead:              Image  | Image Type | Coordinate
 
   // Look for opaque image pointer operands and convert it with an i64 type
-  bool convertImageToI64 = (OC != OpSubgroupImageBlockReadINTEL && OC != OpSubgroupImageBlockWriteINTEL);
+  bool convertImageToI64 = (OC != OpSubgroupImageBlockReadINTEL && OC != OpSubgroupImageBlockWriteINTEL && OC != OpImageRead);
 
   if (convertImageToI64)
   {
@@ -4132,7 +4131,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       }
   }
 
-  if (isImageOpCode(OC))
+  if (isImageOpCode(OC) && OC != OpImageRead)
   {
       // Writes have a void return type that is not part of the mangle.
       if (OC != OpImageWrite)
@@ -4186,7 +4185,8 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   if (OC == OpImageQuerySizeLod ||
       OC == OpImageQuerySize ||
       OC == OpSubgroupBlockReadINTEL ||
-      OC == OpSubgroupImageBlockReadINTEL)
+      OC == OpSubgroupImageBlockReadINTEL ||
+      OC == OpImageRead)
   {
       hasReturnTypeInTypeList = true;
   }

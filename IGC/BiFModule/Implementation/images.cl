@@ -583,144 +583,186 @@ __attribute__((inline)) float4 __flush_denormals(float4 in)
 }
 #endif
 
-float __builtin_spirv_OpImageRead_f32_i64_i64_v4i32( Image_t Image, ImageType_t ImageType, int4 Coordinate )
-{
-    int id = (int)Image;
-
-    if ( isImageArrayed( ImageType ) )
-    {
-        float4 res = __builtin_IB_OCL_2darr_ld(id, Coordinate, 0);
-        return __flush_denormals(res).x;
-    }
-    else
-    {
-        float4 res = __builtin_IB_OCL_2d_ld(id, Coordinate.xy, 0);
-        return __flush_denormals(res).x;
-    }
+#define DEF_IMAGE_READ_2D(ACC_QUAL)                                                                                 \
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_##ACC_QUAL##_v2i32(global Img2d_##ACC_QUAL* Image, int2 Coordinate)   \
+{                                                                                                                   \
+    int id = (int)__builtin_astype(Image, __global void*);                                                          \
+    return __builtin_IB_OCL_2d_ldui(id, Coordinate, 0);                                                             \
+}                                                                                                                   \
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_##ACC_QUAL##_v2i32(global Img2d_##ACC_QUAL* Image, int2 Coordinate)  \
+{                                                                                                                   \
+    int id = (int)__builtin_astype(Image, __global void*);                                                          \
+    float4 res = __builtin_IB_OCL_2d_ld(id, Coordinate, 0);                                                         \
+    return __flush_denormals(res);                                                                                  \
 }
 
-uint4  __builtin_spirv_OpImageRead_v4i32_i64_i64_v4i32( Image_t Image, ImageType_t ImageType, int4 Coordinate )
-{
-    int id = (int)Image;
-    uint4 result = (uint4)0;
-
-    if( isImageDim( ImageType, Dim1D ) || isImageDim( ImageType, DimBuffer ) )
-    {
-        if( isImageArrayed( ImageType ) )
-        {
-            result = __builtin_IB_OCL_1darr_ldui( id, Coordinate.xy, 0 );
-        }
-        else
-        {
-            result = __builtin_IB_OCL_1d_ldui( id, Coordinate.x, 0 );
-        }
-    }
-    else if( isImageDim( ImageType, Dim2D ) )
-    {
-        if( isImageArrayed( ImageType ) )
-        {
-            result = __builtin_IB_OCL_2darr_ldui( id, Coordinate, 0 );
-        }
-        else
-        {
-            result = __builtin_IB_OCL_2d_ldui( id, Coordinate.xy, 0 );
-        }
-    }
-    else if( isImageDim( ImageType, Dim3D ) )
-    {
-        result = __builtin_IB_OCL_3d_ldui( id, Coordinate, 0 );
-    }
-
-    return result;
-
+#define DEF_IMAGE_READ_3D(ACC_QUAL)                                                                                 \
+uint4 __builtin_spirv_OpImageRead_v4i32_img3d_##ACC_QUAL##_v4i32(global Img3d_##ACC_QUAL* Image, int4 Coordinate)   \
+{                                                                                                                   \
+    int id = (int)__builtin_astype(Image, __global void*);                                                          \
+    return __builtin_IB_OCL_3d_ldui( id, Coordinate, 0 );                                                           \
+}                                                                                                                   \
+float4 __builtin_spirv_OpImageRead_v4f32_img3d_##ACC_QUAL##_v4i32(global Img3d_##ACC_QUAL * Image, int4 Coordinate) \
+{                                                                                                                   \
+    int id = (int)__builtin_astype(Image, __global void*);                                                          \
+    float4 res = __builtin_IB_OCL_3d_ld(id, Coordinate, 0);                                                         \
+    return __flush_denormals(res);                                                                                  \
 }
 
-
-float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32( Image_t Image, ImageType_t ImageType, int4 Coordinate )
-{
-    int id = (int)Image;
-
-    if (isImageDim(ImageType, Dim1D) || isImageDim(ImageType, DimBuffer))
-    {
-        if (isImageArrayed(ImageType))
-        {
-            float4 res = __builtin_IB_OCL_1darr_ld(id, Coordinate.xy, 0);
-            return __flush_denormals(res);
-        }
-        else
-        {
-            float4 res = __builtin_IB_OCL_1d_ld(id, Coordinate.x, 0);
-            return __flush_denormals(res);
-        }
-    }
-    else if (isImageDim(ImageType, Dim2D))
-    {
-        if (isImageArrayed(ImageType))
-        {
-            float4 res = __builtin_IB_OCL_2darr_ld(id, Coordinate, 0);
-            return __flush_denormals(res);
-        }
-        else
-        {
-            float4 res = __builtin_IB_OCL_2d_ld(id, Coordinate.xy, 0);
-            return __flush_denormals(res);
-        }
-    }
-    else if (isImageDim(ImageType, Dim3D))
-    {
-        float4 res = __builtin_IB_OCL_3d_ld(id, Coordinate, 0);
-        return __flush_denormals(res);
-    }
+#define DEF_IMAGE_READ_2D_ARRAY(ACC_QUAL)                                                                                        \
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_array_##ACC_QUAL##_v4i32(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)    \
+{                                                                                                                                \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                       \
+    return __builtin_IB_OCL_2darr_ldui( id, Coordinate, 0 );                                                                     \
+}                                                                                                                                \
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_array_##ACC_QUAL##_v4i32(global Img2d_array_##ACC_QUAL * Image, int4 Coordinate)  \
+{                                                                                                                                \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                       \
+    float4 res = __builtin_IB_OCL_2darr_ld(id, Coordinate, 0);                                                                   \
+    return __flush_denormals(res);                                                                                               \
 }
+
+#define DEF_IMAGE_READ_1D(ACC_QUAL)                                                                               \
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_##ACC_QUAL##_i32(global Img1d_##ACC_QUAL* Image, int Coordinate)    \
+{                                                                                                                 \
+    int id = (int)__builtin_astype(Image, __global void*);                                                        \
+    return __builtin_IB_OCL_1d_ldui( id, Coordinate, 0 );                                                         \
+}                                                                                                                 \
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_##ACC_QUAL##_i32(global Img1d_##ACC_QUAL * Image, int Coordinate)  \
+{                                                                                                                 \
+    int id = (int)__builtin_astype(Image, __global void*);                                                        \
+    float4 res = __builtin_IB_OCL_1d_ld(id, Coordinate, 0);                                                       \
+    return __flush_denormals(res);                                                                                \
+}
+
+#define DEF_IMAGE_READ_1D_BUFFER(ACC_QUAL)                                                                                      \
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_buffer_##ACC_QUAL##_i32(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)    \
+{                                                                                                                               \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                      \
+    return __builtin_IB_OCL_1d_ldui( id, Coordinate, 0 );                                                                       \
+}                                                                                                                               \
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_buffer_##ACC_QUAL##_i32(global Img1d_buffer_##ACC_QUAL * Image, int Coordinate)  \
+{                                                                                                                               \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                      \
+    float4 res = __builtin_IB_OCL_1d_ld(id, Coordinate, 0);                                                                     \
+    return __flush_denormals(res);                                                                                              \
+}
+
+#define DEF_IMAGE_READ_1D_ARRAY(ACC_QUAL)                                                                                       \
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_array_##ACC_QUAL##_v2i32(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)   \
+{                                                                                                                               \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                      \
+    return __builtin_IB_OCL_1darr_ldui( id, Coordinate, 0 );                                                                    \
+}                                                                                                                               \
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_array_##ACC_QUAL##_v2i32(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)  \
+{                                                                                                                               \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                      \
+    float4 res = __builtin_IB_OCL_1darr_ld(id, Coordinate, 0);                                                                  \
+    return __flush_denormals(res);                                                                                              \
+}
+
+#define DEF_IMAGE_READ_2D_DEPTH(ACC_QUAL)                                                                                      \
+float __builtin_spirv_OpImageRead_f32_img2d_depth_##ACC_QUAL##_v2i32(global Img2d_depth_##ACC_QUAL* Image, int2 Coordinate)    \
+{                                                                                                                              \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                     \
+    float4 res = __builtin_IB_OCL_2d_ld(id, Coordinate, 0);                                                                    \
+    return __flush_denormals(res).x;                                                                                           \
+}
+
+#define DEF_IMAGE_READ_2D_ARRAY_DEPTH(ACC_QUAL)                                                                                          \
+float __builtin_spirv_OpImageRead_f32_img2d_array_depth_##ACC_QUAL##_v4i32(global Img2d_array_depth_##ACC_QUAL* Image, int4 Coordinate)  \
+{                                                                                                                                        \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                               \
+    float4 res = __builtin_IB_OCL_2darr_ld(id, Coordinate, 0);                                                                           \
+    return __flush_denormals(res).x;                                                                                                     \
+}
+
+DEF_IMAGE_READ_2D(ro)
+DEF_IMAGE_READ_2D(rw)
+DEF_IMAGE_READ_3D(ro)
+DEF_IMAGE_READ_3D(rw)
+DEF_IMAGE_READ_2D_ARRAY(ro)
+DEF_IMAGE_READ_2D_ARRAY(rw)
+DEF_IMAGE_READ_1D(ro)
+DEF_IMAGE_READ_1D(rw)
+DEF_IMAGE_READ_1D_BUFFER(ro)
+DEF_IMAGE_READ_1D_BUFFER(rw)
+DEF_IMAGE_READ_1D_ARRAY(ro)
+DEF_IMAGE_READ_1D_ARRAY(rw)
+DEF_IMAGE_READ_2D_DEPTH(ro)
+DEF_IMAGE_READ_2D_DEPTH(rw)
+DEF_IMAGE_READ_2D_ARRAY_DEPTH(ro)
+DEF_IMAGE_READ_2D_ARRAY_DEPTH(rw)
 
 #ifdef cl_khr_fp16
-half4 __builtin_spirv_OpImageRead_v4f16_i64_i64_v4i32( Image_t Image, ImageType_t ImageType, int4 Coordinate )
-{
-    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(__builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32( Image, ImageType, Coordinate ));
+
+#define DEF_HALF_IMAGE_READ(IMAGE_TYPE, COORDS_TYPE, COORDS_TYPE_ABBR)                                                                                \
+half4 __builtin_spirv_OpImageRead_v4f16_img##IMAGE_TYPE##_##COORDS_TYPE_ABBR(global Img##IMAGE_TYPE* Image, COORDS_TYPE Coordinate)                   \
+{                                                                                                                                                     \
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(__builtin_spirv_OpImageRead_v4f32_img##IMAGE_TYPE##_##COORDS_TYPE_ABBR(Image, Coordinate)); \
 }
+
+DEF_HALF_IMAGE_READ(2d_ro, int2, v2i32)
+DEF_HALF_IMAGE_READ(2d_rw, int2, v2i32)
+DEF_HALF_IMAGE_READ(3d_ro, int4, v4i32)
+DEF_HALF_IMAGE_READ(3d_rw, int4, v4i32)
+DEF_HALF_IMAGE_READ(2d_array_ro, int4, v4i32)
+DEF_HALF_IMAGE_READ(2d_array_rw, int4, v4i32)
+DEF_HALF_IMAGE_READ(1d_ro, int, i32)
+DEF_HALF_IMAGE_READ(1d_rw, int, i32)
+DEF_HALF_IMAGE_READ(1d_buffer_ro, int, i32)
+DEF_HALF_IMAGE_READ(1d_buffer_rw, int, i32)
+DEF_HALF_IMAGE_READ(1d_array_ro, int2, v2i32)
+DEF_HALF_IMAGE_READ(1d_array_rw, int2, v2i32)
+
 #endif // cl_khr_fp16
 
 // Image Read MSAA
 
-float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample )
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_msaa_ro_v2i32_i32_i32(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
 {
-    int id = (int)Image;
-    SampledImage_t SampledImage = { Image, ImageType, 0 };
-
-    if( isImageArrayed( SampledImage ) )
-    {
-        float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
-        float4 res = __builtin_IB_OCL_2darr_ld2dms(id, Coordinate, Sample, mcs);
-        return __flush_denormals(res);
-    }
-    else
-    {
-        float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate.xy);
-        float4 res = __builtin_IB_OCL_2d_ld2dms(id, Coordinate.xy, Sample, mcs);
-        return __flush_denormals(res);
-    }
+    int id = (int)__builtin_astype(Image, __global void*);
+    float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate);
+    return __builtin_IB_OCL_2d_ld2dmsui(id, Coordinate, Sample, mcs);
 }
 
-float __builtin_spirv_OpImageRead_f32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample )
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_msaa_ro_v2i32_i32_i32(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
 {
-    return __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i32_i32(Image, ImageType, Coordinate, ImageOperands, Sample).x;
+    int id = (int)__builtin_astype(Image, __global void*);
+    float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate);
+    float4 res = __builtin_IB_OCL_2d_ld2dms(id, Coordinate, Sample, mcs);
+    return __flush_denormals(res);
 }
 
-uint4 __builtin_spirv_OpImageRead_v4i32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample )
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_array_msaa_ro_v4i32_i32_i32(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
 {
-    int id = (int)Image;
-    SampledImage_t SampledImage = { Image, ImageType, 0 };
+    int id = (int)__builtin_astype(Image, __global void*);
+    float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
+    return __builtin_IB_OCL_2darr_ld2dmsui(id, Coordinate, Sample, mcs);
+}
 
-    if( isImageArrayed( SampledImage ) )
-    {
-        float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
-        return __builtin_IB_OCL_2darr_ld2dmsui(id, Coordinate, Sample, mcs);
-    }
-    else
-    {
-        float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate.xy);
-        return __builtin_IB_OCL_2d_ld2dmsui(id, Coordinate.xy, Sample, mcs);
-    }
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_array_msaa_ro_v4i32_i32_i32(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
+    float4 res = __builtin_IB_OCL_2darr_ld2dms(id, Coordinate, Sample, mcs);
+    return __flush_denormals(res);
+}
+
+float __builtin_spirv_OpImageRead_v4f32_img2d_msaa_depth_ro_v2i32_i32_i32(global Img2d_msaa_depth_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate);
+    float4 res = __builtin_IB_OCL_2d_ld2dms(id, Coordinate, Sample, mcs);
+    return __flush_denormals(res).x;
+}
+
+float __builtin_spirv_OpImageRead_v4f32_img2d_array_msaa_depth_ro_v4i32_i32_i32(global Img2d_array_msaa_depth_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
+    float4 res = __builtin_IB_OCL_2darr_ld2dms(id, Coordinate, Sample, mcs);
+    return __flush_denormals(res).x;
 }
 
 // Image Write

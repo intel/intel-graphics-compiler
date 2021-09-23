@@ -322,18 +322,57 @@ float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32(Sample
 half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4i32_i32_f32( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod );
 half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4f32_i32_f32( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod );
 void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f16(Image_t Image, ImageType_t ImageType, int4 Coordinate, half4 Texel);
-half4 __builtin_spirv_OpImageRead_v4f16_i64_i64_v4i32_i64( Image_t Image, ImageType_t ImageType, int4 Coordinate );
+half4 __builtin_spirv_OpImageRead_v4f16_img2d_ro_v2i32(global Img2d_ro* Image, int2 Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img2d_rw_v2i32(global Img2d_rw* Image, int2 Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img3d_ro_v4i32(global Img3d_ro* Image, int4 Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img3d_rw_v4i32(global Img3d_rw* Image, int4 Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img2d_array_ro_v4i32(global Img2d_array_ro* Image, int4 Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img2d_array_rw_v4i32(global Img2d_array_rw* Image, int4 Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img1d_ro_i32(global Img1d_ro* Image, int Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img1d_rw_i32(global Img1d_rw* Image, int Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img1d_buffer_ro_i32(global Img1d_buffer_ro* Image, int Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img1d_buffer_rw_i32(global Img1d_buffer_rw* Image, int Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img1d_array_ro_v2i32(global Img1d_array_ro* Image, int2 Coordinate);
+half4 __builtin_spirv_OpImageRead_v4f16_img1d_array_rw_v2i32(global Img1d_array_rw* Image, int2 Coordinate);
 #endif // cl_khr_fp16
 
 // Pipe in image type information.
-uint4  __builtin_spirv_OpImageRead_v4i32_i64_i64_v4i32(Image_t Image, ImageType_t ImageType, int4 Coordinate);
-uint4  __builtin_spirv_OpImageRead_v4i32_i64_i64_v4f32(Image_t Image, ImageType_t ImageType, float4 Coordinate);
-float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32(Image_t Image, ImageType_t ImageType, int4 Coordinate);
-float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4f32(Image_t Image, ImageType_t ImageType, float4 Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_ro_v2i32(global Img2d_ro* Image, int2 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_ro_v2i32(global Img2d_ro* Image, int2 Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_rw_v2i32(global Img2d_rw* Image, int2 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_rw_v2i32(global Img2d_rw* Image, int2 Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img3d_ro_v4i32(global Img3d_ro* Image, int4 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img3d_ro_v4i32(global Img3d_ro* Image, int4 Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img3d_rw_v4i32(global Img3d_rw* Image, int4 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img3d_rw_v4i32(global Img3d_rw* Image, int4 Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_array_ro_v4i32(global Img2d_array_ro* Image, int4 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_array_ro_v4i32(global Img2d_array_ro* Image, int4 Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_array_rw_v4i32(global Img2d_array_rw* Image, int4 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_array_rw_v4i32(global Img2d_array_rw* Image, int4 Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_ro_i32(global Img1d_ro* Image, int Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_ro_i32(global Img1d_ro* Image, int Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_rw_i32(global Img1d_rw* Image, int Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_rw_i32(global Img1d_rw* Image, int Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_buffer_ro_i32(global Img1d_buffer_ro* Image, int Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_buffer_ro_i32(global Img1d_buffer_ro* Image, int Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_buffer_rw_i32(global Img1d_buffer_rw* Image, int Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_buffer_rw_i32(global Img1d_buffer_rw* Image, int Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_array_ro_v2i32(global Img1d_array_ro* Image, int2 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_array_ro_v2i32(global Img1d_array_ro* Image, int2 Coordinate);
+uint4 __builtin_spirv_OpImageRead_v4i32_img1d_array_rw_v2i32(global Img1d_array_rw* Image, int2 Coordinate);
+float4 __builtin_spirv_OpImageRead_v4f32_img1d_array_rw_v2i32(global Img1d_array_rw* Image, int2 Coordinate);
+float __builtin_spirv_OpImageRead_f32_img2d_depth_ro_v2i32(global Img2d_depth_ro* Image, int2 Coordinate);
+float __builtin_spirv_OpImageRead_f32_img2d_depth_rw_v2i32(global Img2d_depth_rw* Image, int2 Coordinate);
+float __builtin_spirv_OpImageRead_f32_img2d_array_depth_ro_v4i32(global Img2d_array_depth_ro* Image, int4 Coordinate);
+float __builtin_spirv_OpImageRead_f32_img2d_array_depth_rw_v4i32(global Img2d_array_depth_rw* Image, int4 Coordinate);
 
-float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample);
-float __builtin_spirv_OpImageRead_f32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample);
-uint4 __builtin_spirv_OpImageRead_v4i32_i64_i64_v4i32_i32_i32( Image_t Image, ImageType_t ImageType, int4 Coordinate, uint ImageOperands, uint Sample);
+// Image Read MSAA
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_msaa_ro_v2i32_i32_i32(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample);
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_msaa_ro_v2i32_i32_i32(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample);
+uint4 __builtin_spirv_OpImageRead_v4i32_img2d_array_msaa_ro_v4i32_i32_i32(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample);
+float4 __builtin_spirv_OpImageRead_v4f32_img2d_array_msaa_ro_v4i32_i32_i32(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample);
+float __builtin_spirv_OpImageRead_v4f32_img2d_msaa_depth_ro_v2i32_i32_i32(global Img2d_msaa_depth_ro* Image, int2 Coordinate, int ImageOperands, int Sample);
+float __builtin_spirv_OpImageRead_v4f32_img2d_array_msaa_depth_ro_v4i32_i32_i32(global Img2d_array_msaa_depth_ro* Image, int4 Coordinate, int ImageOperands, int Sample);
 
 void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4i32(Image_t Image, ImageType_t ImageType, int4 Coordinate, uint4 Texel);
 void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f32(Image_t Image, ImageType_t ImageType, int4 Coordinate, float4 Texel);
