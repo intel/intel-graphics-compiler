@@ -42,7 +42,9 @@ public:
       SVM,
       Sampler,
       Image1D,
+      Image1DArray,
       Image2D,
+      Image2DArray,
       Image3D,
       PrintBuffer,
       PrivateBase,
@@ -81,7 +83,9 @@ public:
     bool isImage() const {
       switch (Kind) {
       case KindType::Image1D:
+      case KindType::Image1DArray:
       case KindType::Image2D:
+      case KindType::Image2DArray:
       case KindType::Image3D:
         return true;
       default:

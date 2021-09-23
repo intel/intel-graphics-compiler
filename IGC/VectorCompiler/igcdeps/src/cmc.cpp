@@ -254,9 +254,13 @@ getOCLImageType(llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind)
     {
     case KindType::Image1D:
         return iOpenCL::IMAGE_MEMORY_OBJECT_1D;
+    case KindType::Image1DArray:
+        return iOpenCL::IMAGE_MEMORY_OBJECT_1D_ARRAY;
     case KindType::Image2D:
         // FIXME: Media block should be treated separately.
         return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA_BLOCK;
+    case KindType::Image2DArray:
+        return iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY;
     case KindType::Image3D:
         return iOpenCL::IMAGE_MEMORY_OBJECT_3D;
     default:
@@ -591,7 +595,9 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::Image1D:
+    case ArgKind::Image1DArray:
     case ArgKind::Image2D:
+    case ArgKind::Image2DArray:
     case ArgKind::Image3D:
       Kernel.createImageAnnotation(Arg.getIndex(), Arg.getBTI(), Arg.getKind(),
                                    Arg.getAccessKind());

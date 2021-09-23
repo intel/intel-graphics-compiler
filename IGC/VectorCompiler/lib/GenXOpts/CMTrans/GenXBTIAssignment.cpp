@@ -117,7 +117,9 @@ static constexpr int MaxAvailableSamplerIndex = 14;
 
 static bool isDescImageType(StringRef TypeDesc) {
   return IGCLLVM::contains_insensitive(TypeDesc, "image1d_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image1d_array_t") ||
          IGCLLVM::contains_insensitive(TypeDesc, "image2d_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image2d_array_t") ||
          IGCLLVM::contains_insensitive(TypeDesc, "image3d_t") ||
          IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t");
 }

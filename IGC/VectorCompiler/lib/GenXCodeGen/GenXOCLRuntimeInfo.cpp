@@ -185,9 +185,11 @@ struct OCLAttributes {
   // OpenCL-like types.
   static constexpr auto Sampler = "sampler_t";
   static constexpr auto Image1d = "image1d_t";
+  static constexpr auto Image1dArray = "image1d_array_t";
   // Same as 1D image. Seems that there is no difference in runtime.
   static constexpr auto Image1dBuffer = "image1d_buffer_t";
   static constexpr auto Image2d = "image2d_t";
+  static constexpr auto Image2dArray = "image2d_array_t";
   static constexpr auto Image3d = "image3d_t";
 };
 
@@ -228,10 +230,14 @@ static ArgKindType getOCLArgKind(const SmallVectorImpl<StringRef> &Tokens,
   case genx::RegCategory::SURFACE:
     if (any_of(Tokens, GetStrPred(OCLAttributes::Image1d)))
       return ArgKindType::Image1D;
+    if (any_of(Tokens, GetStrPred(OCLAttributes::Image1dArray)))
+      return ArgKindType::Image1DArray;
     if (any_of(Tokens, GetStrPred(OCLAttributes::Image1dBuffer)))
       return ArgKindType::Image1D;
     if (any_of(Tokens, GetStrPred(OCLAttributes::Image2d)))
       return ArgKindType::Image2D;
+    if (any_of(Tokens, GetStrPred(OCLAttributes::Image2dArray)))
+      return ArgKindType::Image2DArray;
     if (any_of(Tokens, GetStrPred(OCLAttributes::Image3d)))
       return ArgKindType::Image3D;
     return ArgKindType::Buffer;
@@ -248,7 +254,9 @@ getOCLArgAccessKind(const SmallVectorImpl<StringRef> &Tokens,
   switch (Kind) {
   case ArgKindType::Buffer:
   case ArgKindType::Image1D:
+  case ArgKindType::Image1DArray:
   case ArgKindType::Image2D:
+  case ArgKindType::Image2DArray:
   case ArgKindType::Image3D:
   case ArgKindType::SVM:
   case ArgKindType::BindlessBuffer:
