@@ -197,6 +197,9 @@ namespace IGC
         void Finalize() const;
 
         const std::string& getErrors() const { return ErrorLog; }
+
+        void reportUsabilityIssue(llvm::StringRef Msg,
+                                  const llvm::Value* Ctx = nullptr);
         void verifyRegisterLocationSize(const DbgVariable& VarVal,
                                         const DwarfDebug& DD,
                                         unsigned MaxGRFSpaceInBits,
@@ -217,6 +220,7 @@ namespace IGC
 
         void verificationReport(const DbgVariable& VarVal,
                                 DiagnosticBuff& DiagBuff);
+        void verificationReport(DiagnosticBuff& DiagBuff);
 
         /// @brief Return information about object file lowering.
         const llvm::MCObjectFileInfo& GetObjFileLowering() const;

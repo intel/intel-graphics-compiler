@@ -310,7 +310,6 @@ namespace IGC
         typedef std::vector<const llvm::Instruction*> InstList;
         typedef InstList::iterator iterator;
         typedef InstList::const_iterator const_iterator;
-        typedef std::vector<unsigned char> DataVector;
     public:
         VISAModule(llvm::Function * Entry);
         /// @brief Destructor.
@@ -347,11 +346,6 @@ namespace IGC
         /// @param Instruction to query.
         /// @return VISA code size (in instructions)
         unsigned int GetVisaSize(const llvm::Instruction*) const;
-
-        /// @brief Return raw data of given LLVM constant value.
-        /// @param pConstVal constant value to process.
-        /// @param rawData output buffer to append processed raw data to.
-        void GetConstantData(const llvm::Constant* pConstVal, DataVector& rawData) const;
 
         /// @brief Return LLVM module.
         /// @return LLVM module.

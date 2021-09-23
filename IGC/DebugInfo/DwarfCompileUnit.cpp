@@ -2556,8 +2556,8 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst,
         }
         else
         {
-            VISAModule::DataVector rawData;
-            VISAModule->GetConstantData(pConstVal, rawData);
+            DwarfDebug::DataVector rawData;
+            DD->ExtractConstantData(pConstVal, rawData);
             addConstantData(VariableDie, rawData.data(), rawData.size());
         }
         LLVM_DEBUG(dbgs() << "  location is built as an imm\n");

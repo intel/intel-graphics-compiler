@@ -662,6 +662,9 @@ namespace IGC
             return nullptr;
         }
 
+        using DataVector = std::vector<unsigned char>;
+        void ExtractConstantData(const llvm::Constant* ConstVal, DataVector &R) const;
+
         /// Construct imported_module or imported_declaration DIE.
         void constructThenAddImportedEntityDIE(CompileUnit* TheCU, llvm::DIImportedEntity* IE);
 

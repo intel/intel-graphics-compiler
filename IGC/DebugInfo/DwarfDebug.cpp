@@ -1129,6 +1129,93 @@ void DwarfDebug::constructSubprogramDIE(CompileUnit* TheCU, const MDNode* N)
     TheCU->getOrCreateSubprogramDIE(SP);
 }
 
+void DwarfDebug::ExtractConstantData(const llvm::Constant* ConstVal,
+                                     DwarfDebug::DataVector& Result) const
+{
+    IGC_ASSERT(ConstVal);
+
+    if (dyn_cast<ConstantPointerNull>(ConstVal))
+    {
+        DataLayout DL(GetVISAModule()->GetDataLayout());
+        Result.insert(Result.end(), DL.getPointerSize(), 0);
+    }
+    else if (const ConstantDataSequential *cds =
+             dyn_cast<ConstantDataSequential>(ConstVal))
+    {
+        for (unsigned i = 0; i < cds->getNumElements(); i++) {
+            ExtractConstantData(cds->getElementAsConstant(i), Result);
+        }
+    }
+    else if (const ConstantAggregateZero * cag = dyn_cast<ConstantAggregateZero>(ConstVal))
+    {
+        // Zero aggregates are filled with, well, zeroes.
+        DataLayout DL(GetVISAModule()->GetDataLayout());
+        const unsigned int zeroSize = (unsigned int)(DL.getTypeAllocSize(cag->getType()));
+        Result.insert(Result.end(), zeroSize, 0);
+    }
+    // If this is an sequential type which is not a CDS or zero, have to collect the values
+    // element by element. Note that this is not exclusive with the two cases above, so the
+    // order of ifs is meaningful.
+    else if (ConstVal->getType()->isVectorTy() ||
+             ConstVal->getType()->isArrayTy() ||
+             ConstVal->getType()->isStructTy())
+    {
+        const int numElts = ConstVal->getNumOperands();
+        for (int i = 0; i < numElts; ++i)
+        {
+            Constant* C = ConstVal->getAggregateElement(i);
+            IGC_ASSERT_MESSAGE(C, "getAggregateElement returned null, unsupported constant");
+            // Since the type may not be primitive, extra alignment is required.
+            ExtractConstantData(C, Result);
+        }
+    }
+    // And, finally, we have to handle base types - ints and floats.
+    else
+    {
+        APInt intVal(32, 0, false);
+        if (const ConstantInt * ci = dyn_cast<ConstantInt>(ConstVal))
+        {
+            intVal = ci->getValue();
+        }
+        else if (const ConstantFP * cfp = dyn_cast<ConstantFP>(ConstVal))
+        {
+            intVal = cfp->getValueAPF().bitcastToAPInt();
+        }
+        else if (const UndefValue* undefVal = dyn_cast<UndefValue>(ConstVal))
+        {
+            intVal = llvm::APInt(32, 0, false);
+        }
+        else if (const ConstantExpr *cExpr = dyn_cast<ConstantExpr>(ConstVal))
+        {
+            // under some weird and obscure conditions we can and up with
+            // constant expressions. Usually this is an indication of
+            // a problem in the frontend our poorly-written user code.
+            // Handle some cases observed in practice and report a usability issue
+            if (cExpr->isCast() && cExpr->getType()->isPointerTy() &&
+                cExpr->getOperand(0)->getType()->isIntegerTy()) {
+                intVal = cast<ConstantInt>(cExpr->getOperand(0))->getValue();
+            } else {
+                IGC_ASSERT_MESSAGE(0, "unsupported constant expression type");
+            }
+            getStreamEmitter().reportUsabilityIssue("unexpected constant expression",
+                                                    cExpr);
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Unsupported constant type");
+        }
+
+        auto bitWidth = intVal.getBitWidth();
+        IGC_ASSERT_MESSAGE((0 < bitWidth), "Unsupported bitwidth");
+        IGC_ASSERT_MESSAGE((bitWidth % 8 == 0), "Unsupported bitwidth");
+        IGC_ASSERT_MESSAGE((bitWidth <= 64), "Unsupported bitwidth");
+        auto ByteWidth = bitWidth / 8;
+        const char* DataPtr = reinterpret_cast<const char*>(intVal.getRawData());
+
+        Result.insert(Result.end(), DataPtr, DataPtr + ByteWidth);
+    }
+}
+
 void DwarfDebug::constructThenAddImportedEntityDIE(CompileUnit* TheCU,
     DIImportedEntity* IE)
 {

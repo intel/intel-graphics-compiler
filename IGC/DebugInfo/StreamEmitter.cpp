@@ -879,6 +879,25 @@ void StreamEmitter::verifyRegisterLocationExpr(const DbgVariable& DV,
     verificationReport(DV, Diag);
 }
 
+void StreamEmitter::reportUsabilityIssue(llvm::StringRef Msg,
+                                         const llvm::Value* Ctx)
+{
+    if (!GetEmitterSettings().EnableDebugInfoValidation)
+        return;
+
+    DiagnosticBuff Diag;
+    Diag.out() << "ValidationFailure [UsabilityIssue] " <<
+        Msg << "\n";
+
+    if (Ctx)
+    {
+        Ctx->print(Diag.out());
+        Diag.out() << "\n";
+    }
+
+    verificationReport(Diag);
+}
+
 void StreamEmitter::verificationReport(const DbgVariable& VarVal,
                                        DiagnosticBuff& Diag)
 {
@@ -887,8 +906,18 @@ void StreamEmitter::verificationReport(const DbgVariable& VarVal,
 
     VarVal.print(Diag.out());
     Diag.out() << "==============\n";
+
+    verificationReport(Diag);
+}
+
+void StreamEmitter::verificationReport(DiagnosticBuff& Diag)
+{
+    if (Diag.out().tell() == 0)
+        return;
+
     const auto& ErrMsg = Diag.out().str();
 
     ErrorLog.append(ErrMsg);
     LLVM_DEBUG(dbgs() << ErrMsg);
 }
+
