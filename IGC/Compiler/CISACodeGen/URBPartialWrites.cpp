@@ -67,6 +67,10 @@ public:
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<DominatorTreeWrapperPass>();
         AU.addRequired<PostDominatorTreeWrapperPass>();
+        AU.addRequired<LoopInfoWrapperPass>();
+        AU.addPreserved<DominatorTreeWrapperPass>();
+        AU.addPreserved<PostDominatorTreeWrapperPass>();
+        AU.addPreserved<LoopInfoWrapperPass>();
     }
 
     virtual llvm::StringRef getPassName() const { return "URBPartialWrites"; }
@@ -524,6 +528,7 @@ bool URBPartialWrites::PostDominates(
 bool URBPartialWrites::ResolvePartialWrites32B()
 {
     bool modified = false;
+    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     for (uint i = 0; i < m_UrbWrites.size(); ++i)
     {
         const URBAccess& write0 = m_UrbWrites[i];
@@ -535,6 +540,11 @@ bool URBPartialWrites::ResolvePartialWrites32B()
         if (immMask0 && mask0 == 0xFF)
         {
             // not a partial write
+            continue;
+        }
+        if (!immMask0 && LI->getLoopFor(intr0->getParent()))
+        {
+            // not immediate mask and in a loop
             continue;
         }
         if (!IsEven(offset0) || (constOffset0 % 2) == 1)
@@ -560,6 +570,7 @@ bool URBPartialWrites::ResolvePartialWrites32B()
 bool URBPartialWrites::ResolvePartialWrites16B()
 {
     bool modified = false;
+    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     for (uint i = 0; i < m_UrbWrites.size(); ++i)
     {
         const URBAccess& write0 = m_UrbWrites[i];
@@ -570,6 +581,11 @@ bool URBPartialWrites::ResolvePartialWrites16B()
             (mask0 == 0xFF || mask0 == 0x0F || mask0 == 0xF0))
         {
             // not a partial write
+            continue;
+        }
+        if (!immMask0 && LI->getLoopFor(intr0->getParent()))
+        {
+            // not immediate mask and in a loop
             continue;
         }
         std::pair<bool, bool> extendMask = CheckURBWrites(write0);
@@ -650,6 +666,7 @@ IGC_INITIALIZE_PASS_BEGIN(URBPartialWrites, PASS_FLAG, PASS_DESCRIPTION, PASS_CF
     IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
     IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+    IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(URBPartialWrites, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 } // namespace IGC
