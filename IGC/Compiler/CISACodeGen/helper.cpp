@@ -2394,6 +2394,11 @@ namespace IGC
         return false;
     }
 
+    bool hasFnAttributeSet(llvm::Function& F, llvm::StringRef Attr)
+    {
+        return F.hasFnAttribute(Attr) && F.getFnAttribute(Attr).getValueAsString() == "true";
+    }
+
     // Parses the "vector-variant" attribute string to get a valid function
     // variant symbol string supported by current implementation of IGC.
     //

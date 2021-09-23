@@ -478,6 +478,9 @@ namespace IGC
     // Returns true if a function has an inline asm call instruction
     bool hasInlineAsmInFunc(llvm::Function& F);
 
+    // Returns true if a function has a specified attribute set to true
+    bool hasFnAttributeSet(llvm::Function& F, llvm::StringRef Attr);
+
     std::tuple<std::string, std::string, unsigned> ParseVectorVariantFunctionString(llvm::StringRef varStr);
 
     // Return base type of complex type or nullptr if it cannot be processed

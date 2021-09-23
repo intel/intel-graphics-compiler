@@ -49,7 +49,7 @@ define void @GenIRLowering_test(float addrspace(1)* %src1, float addrspace(1)* %
 
 }
 
-attributes #0 = { alwaysinline nounwind "less-precise-fpmad"="false" "no-frame-pointer-elim"="false" "no-frame-pointer-elim-non-leaf"="false" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #0 = { alwaysinline nounwind "less-precise-fpmad"="false" "no-frame-pointer-elim"="false" "no-frame-pointer-elim-non-leaf"="false" "no-infs-fp-math"="false" "no-nans-fp-math"="true" "unsafe-fp-math"="false" "use-soft-float"="false" }
 
 ;; This hack named metadata is needed to assure metadata order
 !hack_order = !{!0, !1, !2, !3 ,!4, !5, !6, !7}

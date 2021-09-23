@@ -67,12 +67,11 @@ bool Legalization::runOnFunction(Function& F)
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    auto MD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
     {
         return false;
     }
-    if (MD->compOpt.FiniteMathOnly)
+    if (hasFnAttributeSet(F, "no-nans-fp-math"))
     {
         m_preserveNan = false;
         // Do not preserve nan but honor nan checks.

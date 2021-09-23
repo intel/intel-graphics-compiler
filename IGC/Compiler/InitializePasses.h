@@ -87,6 +87,7 @@ void initializePrivateMemoryResolutionPass(llvm::PassRegistry&);
 void initializePrivateMemoryToSLMPass(llvm::PassRegistry&);
 void initializePrivateMemoryUsageAnalysisPass(llvm::PassRegistry&);
 void initializeProcessFuncAttributesPass(llvm::PassRegistry&);
+void initializeProcessFuncFastMathAttributesPass(llvm::PassRegistry&);
 void initializeProcessBuiltinMetaDataPass(llvm::PassRegistry&);
 void initializeInsertDummyKernelForSymbolTablePass(llvm::PassRegistry&);
 void initializeProgramScopeConstantAnalysisPass(llvm::PassRegistry&);
