@@ -787,7 +787,7 @@ namespace vISA
                 if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
                     !builder.hasRegDistDepIssue())
                 {
-                    instVec.front()->setOperandTypeIndicated(sameOperandType);
+                instVec.front()->setOperandTypeIndicated(sameOperandType);
                 }
 
                 //Multiple dependences
@@ -799,8 +799,15 @@ namespace vISA
                         {
                             assert(!GetInstruction()->isSend()); //Send operand has no type, sameOperandType is always false
 
-                            setAccurateDistType(depPipe);
-                            instVec.front()->setOperandTypeIndicated(false);
+                            if (GetInstruction()->isDpas()) //For DPAS, we also put the distance dependence into a sync instruction.
+                            {
+                                setAccurateDistType(depPipe);
+                                instVec.front()->setOperandTypeIndicated(false); //DPAS distance will be in sync inst
+                            }
+                            else //For math and other ALU instructions
+                            {
+                                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                            }
                         }
                         else // For send, we will set it to DISTALL if there are multiple dependences. For non-send, DIST
                         {
