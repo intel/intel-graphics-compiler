@@ -439,15 +439,16 @@ void LegalizeFunctionSignatures::FixFunctionUsers(Module& M)
         Function* pFunc = it.first;
         Function* pNewFunc = it.second;
 
-        for (auto ui = pFunc->user_begin(), ei = pFunc->user_end(); ui != ei; ++ui)
+        std::vector<User*> pFuncUses(pFunc->user_begin(), pFunc->user_end());
+        for (auto ui : pFuncUses)
         {
-            CallInst* callInst = dyn_cast<CallInst>(*ui);
+            CallInst* callInst = dyn_cast<CallInst>(ui);
             if (callInst && callInst->getCalledFunction() == pFunc)
             {
                 // Find the callers of the transformed functions
                 callsToFix.push_back(callInst);
             }
-            else if (Instruction* inst = dyn_cast<Instruction>(*ui))
+            else if (Instruction* inst = dyn_cast<Instruction>(ui))
             {
                 // Any other uses can be replaced with a pointer cast
                 IGCLLVM::IRBuilder<> builder(inst);
