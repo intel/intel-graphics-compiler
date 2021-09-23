@@ -795,8 +795,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
     // Find the implicit argument representing r0 and the private memory base.
     Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, &Ctx);
-    Argument* privateMemArg = implicitArgs.getImplicitArg(*m_currFunction, ImplicitArg::PRIVATE_BASE);
-    // Note: for debugging purposes privateMemArg will be marked as Output to keep its liveness all time
+    Value* privateMemPtr = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::PRIVATE_BASE, &Ctx);
+    // Note: for debugging purposes privateMemPtr will be marked as Output to keep its liveness all time
 
     // Resolve the call
 
@@ -875,7 +875,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
         perLaneOffset = builder.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
         Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
-        Value* privateBufferGEP = builder.CreateGEP(privateMemArg, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
+        Value* privateBufferGEP = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
         auto DbgUses = llvm::FindDbgAddrUses(pAI);

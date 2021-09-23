@@ -686,11 +686,11 @@ Value* WIFuncResolution::getStageInGridOrigin(CallInst& CI)
     // Creates:
     // %grid_origin1 = extractelement <3 x i32> %globalSize, i32 %dim
     auto F = CI.getParent()->getParent();
-    Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::STAGE_IN_GRID_ORIGIN);
-    IGC_ASSERT(arg != nullptr);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::STAGE_IN_GRID_ORIGIN, m_pCtx);
+    IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
-    Instruction* globalSize = ExtractElementInst::Create(arg, dim, "grid_origin", &CI);
+    Instruction* globalSize = ExtractElementInst::Create(V, dim, "grid_origin", &CI);
     updateDebugLoc(&CI, globalSize);
 
     return globalSize;
@@ -726,8 +726,7 @@ Value* WIFuncResolution::getStageInGridSize(CallInst& CI)
     }
     else
     {
-        Argument* arg = m_implicitArgs.getImplicitArg(*F, ImplicitArg::STAGE_IN_GRID_SIZE);
-        V = arg;
+        V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::STAGE_IN_GRID_SIZE, m_pCtx);
     }
 
     IGC_ASSERT(V != nullptr);
@@ -747,7 +746,7 @@ Value* WIFuncResolution::getSyncBufferPtr(CallInst& CI)
     // Creates:
     // i8 addrspace(1)* %syncBuffer
     auto F = CI.getParent()->getParent();
-    Argument* syncBuffer = m_implicitArgs.getImplicitArg(*F, ImplicitArg::SYNC_BUFFER);
+    Value* syncBuffer = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::SYNC_BUFFER, m_pCtx);
 
     return syncBuffer;
 }

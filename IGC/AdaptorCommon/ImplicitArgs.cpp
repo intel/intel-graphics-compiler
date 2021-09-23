@@ -38,7 +38,7 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
 
     ImplicitArg(ImplicitArg::CONSTANT_BASE, "constBase", ImplicitArg::CONSTPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
     ImplicitArg(ImplicitArg::GLOBAL_BASE, "globalBase", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
-    ImplicitArg(ImplicitArg::PRIVATE_BASE, "privateBase", ImplicitArg::PRIVATEPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::PRIVATE_BASE, "privateBase", ImplicitArg::PRIVATEPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true, GenISAIntrinsic::GenISA_getPrivateBase),
     ImplicitArg(ImplicitArg::PRINTF_BUFFER, "printfBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
 
     ImplicitArg(ImplicitArg::BUFFER_OFFSET, "bufferOffset", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
@@ -84,10 +84,10 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
     ImplicitArg(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE, "localMemStatelessWindowSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE, "PrivateMemStatelessSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
 
-    ImplicitArg(ImplicitArg::STAGE_IN_GRID_ORIGIN, "stageInGridOrigin", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_GRF, true),
-    ImplicitArg(ImplicitArg::STAGE_IN_GRID_SIZE, "stageInGridSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_GRF, true),
+    ImplicitArg(ImplicitArg::STAGE_IN_GRID_ORIGIN, "stageInGridOrigin", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_GRF, true, GenISAIntrinsic::GenISA_getStageInGridOrigin),
+    ImplicitArg(ImplicitArg::STAGE_IN_GRID_SIZE, "stageInGridSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 3, ImplicitArg::ALIGN_GRF, true, GenISAIntrinsic::GenISA_getStageInGridSize),
 
-    ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, false),
+    ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, false, GenISAIntrinsic::GenISA_getSyncBuffer),
 
     ImplicitArg(ImplicitArg::BINDLESS_OFFSET, "bindlessOffset", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
 };

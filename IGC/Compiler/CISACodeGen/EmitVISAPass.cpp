@@ -9110,6 +9110,10 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_getLocalID_X:
     case GenISAIntrinsic::GenISA_getLocalID_Y:
     case GenISAIntrinsic::GenISA_getLocalID_Z:
+    case GenISAIntrinsic::GenISA_getPrivateBase:
+    case GenISAIntrinsic::GenISA_getStageInGridOrigin:
+    case GenISAIntrinsic::GenISA_getStageInGridSize:
+    case GenISAIntrinsic::GenISA_getSyncBuffer:
         emitImplicitArgIntrinsic(inst);
         break;
     case GenISAIntrinsic::GenISA_dummyInst:
