@@ -161,6 +161,7 @@ namespace vISA
         Loop(BackEdge b) : be(b) {}
 
         Loop* parent = nullptr;
+        G4_BB* preHeader = nullptr;
         std::vector<Loop*> immNested;
 
         void addBBToLoopHierarchy(G4_BB* bb);
@@ -188,10 +189,13 @@ namespace vISA
 
         Loop* getInnerMostLoop(const G4_BB* bb);
 
+        std::vector<G4_BB*>& getLoopExits();
+
     private:
         std::vector<G4_BB*> BBs;
         std::unordered_set<const G4_BB*> BBsLookup;
         BackEdge be;
+        std::vector<G4_BB*> loopExits;
     };
 
     class FuncInfo;
@@ -203,6 +207,7 @@ namespace vISA
 
         std::vector<Loop*> getTopLoops();
         Loop* getInnerMostLoop(const G4_BB*);
+        void computePreheaders();
 
     private:
         std::vector<Loop*> topLoops;
@@ -224,6 +229,7 @@ namespace vISA
         void populateLoop(BackEdge&);
         void computeLoopTree();
         void addLoop(Loop* newLoop, Loop* aParent);
+        G4_BB* getPreheader(Loop* loop);
     };
 }
 

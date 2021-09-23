@@ -693,6 +693,122 @@ Loop* Loop::getInnerMostLoop(const G4_BB* bb)
     return this;
 }
 
+std::vector<G4_BB*>& Loop::getLoopExits()
+{
+    // already computed before, so return old list
+    if (loopExits.size() > 0)
+        return loopExits;
+
+    // list all successors of loop BBs that are themselves not part of loop, ie loop exits.
+    // this loop may add duplicate entries to exits. those are cleaned up later.
+    std::list<G4_BB*> exits;
+    for (auto bb : BBs)
+    {
+        for (auto succ : bb->Succs)
+        {
+            if (contains(succ))
+                continue;
+            exits.push_back(succ);
+        }
+    }
+
+    // sort exits found by bbid
+    exits.sort([](G4_BB* bb1, G4_BB* bb2) { return bb1->getId() < bb2->getId(); });
+    // remove duplicates
+    exits.unique();
+    // transfer data to class member for future invocations
+    std::for_each(exits.begin(), exits.end(), [&](G4_BB* bb) { loopExits.push_back(bb); });
+
+    return loopExits;
+}
+
+G4_BB* LoopDetection::getPreheader(Loop* loop)
+{
+    if (loop->preHeader)
+        return loop->preHeader;
+
+    // return pre-header if one exists, otherwise create a new one and return it
+    auto header = loop->getHeader();
+    auto headerPreds = header->Preds;
+
+    // for a BB to be valid pre-header, it needs to fulfill following criteria:
+    // 1. BB should be a predecessor of loop header,
+    // 2. BB should dominate header
+    // 3. BB's only successor should be loop header
+    // 4. Loop header should've no other predecessor outside the loop
+
+    G4_BB* enteringNode = nullptr;
+    bool found = false;
+    for (auto pred : headerPreds)
+    {
+        if (loop->contains(pred))
+            continue;
+
+        if (!enteringNode)
+        {
+            enteringNode = pred;
+            found = true;
+        }
+        else
+        {
+            found = false;
+            break;
+        }
+
+        if (!enteringNode->dominates(header))
+        {
+            found = false;
+            break;
+        }
+
+        if (enteringNode->Succs.size() > 1)
+        {
+            found = false;
+            break;
+        }
+    }
+
+    if (found && enteringNode)
+    {
+        // entering node is legal preheader for loop
+        loop->preHeader = enteringNode;
+        return enteringNode;
+    }
+
+    // a valid pre-header wasnt found, so create one and return it
+    G4_BB* preHeader = kernel.fg.createNewBBWithLabel("preHeader");
+    for (auto pred : headerPreds)
+    {
+        if (loop->contains(pred))
+            continue;
+
+        kernel.fg.removePredSuccEdges(pred, header);
+        kernel.fg.addPredSuccEdges(pred, preHeader);
+    }
+    kernel.fg.addPredSuccEdges(preHeader, header);
+
+    for (auto bbIt = kernel.fg.begin(); bbIt != kernel.fg.end(); ++bbIt)
+    {
+        if (*bbIt == header)
+        {
+            kernel.fg.insert(bbIt, preHeader);
+            break;
+        }
+    }
+
+    loop->preHeader = preHeader;
+    if (loop->parent)
+        loop->parent->addBBToLoopHierarchy(preHeader);
+
+    // adding/deleted CFG edges causes loop information to become
+    // stale. we fix this by inserting preheader BB to all
+    // parent loops. and then we set valid flag so no recomputation
+    // is needed.
+    setValid();
+
+    return preHeader;
+}
+
 Loop* LoopDetection::getInnerMostLoop(const G4_BB* bb)
 {
     recomputeIfStale();
@@ -702,6 +818,16 @@ Loop* LoopDetection::getInnerMostLoop(const G4_BB* bb)
             return innerMost;
 
     return nullptr;
+}
+
+void LoopDetection::computePreheaders()
+{
+    recomputeIfStale();
+
+    for (auto& loop : allLoops)
+    {
+        (void)getPreheader(&loop);
+    }
 }
 
 void LoopDetection::reset()
@@ -874,6 +1000,7 @@ void LoopDetection::populateLoop(BackEdge& backEdge)
             }
         }
 
+        (void)newLoop.getLoopExits();
         allLoops.emplace_back(newLoop);
     }
 }
@@ -1052,7 +1179,22 @@ void Loop::dump(std::ostream& os)
     }
     os << " } ";
 
-    os << " BE: {BB" << be.first->getId() << " -> BB" << be.second->getId() << "}\n";
+    auto labelStr = std::string("BB") + std::to_string(preHeader->getId());
+
+    if (preHeader->getLabel())
+        labelStr += "(" + std::string(preHeader->getLabel()->getLabel()) + ")";
+
+    std::string exitBBs = "{ ";
+    for (auto bb : loopExits)
+    {
+        exitBBs += "BB" + std::to_string(bb->getId());
+        if (bb != loopExits.back())
+            exitBBs += ", ";
+    }
+    exitBBs += " }";
+
+    os << " BE: {BB" << be.first->getId() << " -> BB" << be.second->getId() << "}, " <<
+        "PreHeader: " << labelStr << ", " << "Loop exits: " << exitBBs << std::endl;
 
     for (auto& nested : immNested)
     {

@@ -3482,6 +3482,7 @@ static void replaceSSO(G4_Kernel& kernel)
     }
 }
 
+
 int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 {
     kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.frameSizeInOWord = 0;
@@ -3494,6 +3495,14 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         kernel.fg.normalizeFlowGraph();
         if (builder.getPlatform() >= XeHP_SDV)
             replaceSSO(kernel);
+    }
+
+    if (kernel.getOption(vISA_DoSplitOnSpill))
+    {
+        // loop computation is done here because we may need to add
+        // new preheader BBs. later parts of RA assume no change
+        // to CFG structure.
+        kernel.fg.getLoops().computePreheaders();
     }
 
     kernel.fg.reassignBlockIDs();
