@@ -1609,6 +1609,7 @@ void vISAVerifier::verifyInstructionArith(
         REPORT_INSTRUCTION(options, dstType == ISA_TYPE_UD, "%s only supports single UD type", ISA_Inst_Table[opcode].str);
         break;
     case ISA_ADD3:
+    case ISA_ADD3O:
         REPORT_INSTRUCTION(options, dstType == ISA_TYPE_UD || dstType == ISA_TYPE_D ||
             dstType == ISA_TYPE_UW || dstType == ISA_TYPE_W,
             "%s only supports interger D/W type", ISA_Inst_Table[opcode].str);
@@ -1715,6 +1716,7 @@ void vISAVerifier::verifyInstructionArith(
                 ISA_Inst_Table[opcode].str);
             break;
         case ISA_ADD3:
+        case ISA_ADD3O:
             REPORT_INSTRUCTION(options,
                 srcType == ISA_TYPE_D || srcType == ISA_TYPE_UD ||
                 srcType == ISA_TYPE_W || srcType == ISA_TYPE_UW,

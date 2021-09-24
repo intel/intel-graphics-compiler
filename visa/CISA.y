@@ -914,6 +914,7 @@ ArithInstruction_3OPND:
 
 
 ArithInstruction_4OPND:
+     //  1         2         3        4             5                    6                    7                     8
      Predicate ARITH4_OP SatModOpt ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM  VecSrcOperand_G_I_IMM
      {
          pBuilder->CISA_create_arith_instruction($1, $2, $3, $4.emask, $4.exec_size,

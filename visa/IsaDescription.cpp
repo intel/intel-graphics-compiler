@@ -165,7 +165,8 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_RESERVED_8E,        ISA_Inst_Reserved,   "reserved8e",          0, 0 },
     { ISA_RESERVED_8F,        ISA_Inst_Reserved,   "reserved8f",          0, 0 },
     { ISA_RESERVED_90,        ISA_Inst_Reserved,   "reserved90",          0, 0 },
-    { ISA_MADW,               ISA_Inst_Arith,      "madw",                3, 1 }
+    { ISA_MADW,               ISA_Inst_Arith,      "madw",                3, 1 },
+    { ISA_ADD3O,              ISA_Inst_Arith,      "add3.o",               3, 1 }
 };
 
 
@@ -1785,6 +1786,18 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
+    },
+    },
+
+    /// 146 (0x92)
+    { ALL, ISA_ADD3O, ISA_Inst_Arith, "add3.o", 6, SAME_DATA_TYPE,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_PRED, ISA_TYPE_UW, 0 },
+        { OPND_VECTOR_DST_G_I, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
     },
     },
 };

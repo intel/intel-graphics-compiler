@@ -175,6 +175,7 @@ G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode opcode)
         case ISA_DPASW:
             return G4_dpasw;
         case ISA_ADD3:
+        case ISA_ADD3O:
             return G4_add3;
         case ISA_BFN:
             return G4_bfn;

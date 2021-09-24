@@ -101,6 +101,13 @@ int IR_Builder::translateVISAArithmeticInst(
     }
     else if (ISA_Inst_Table[opcode].n_srcs == 3)
     {
+        if (opcode == ISA_ADD3O)
+        {
+            assert(predOpnd != nullptr && "predicate operand couldn't be nullptr");
+            condMod = createCondMod(Mod_o, predOpnd->getBase(), 0);
+            predOpnd = nullptr;
+        }
+
         // do not check type of sources, float and integer are supported
         createInst(
             predOpnd,

@@ -87,7 +87,7 @@ HANDLE_INST(subb, 2, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
 HANDLE_INST(dp4a, 3, 1, InstTypeArith, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(dpas,  3, 1, InstTypeArith, XeHP_SDV, ATTR_NONE)
 HANDLE_INST(dpasw, 3, 1, InstTypeArith, XeHP_SDV, ATTR_NONE)
-HANDLE_INST(add3,  3, 1, InstTypeArith, XeHP_SDV, ATTR_NONE)
+HANDLE_INST(add3,  3, 1, InstTypeArith, XeHP_SDV, ATTR_COMMUTATIVE)
 
 
 HANDLE_INST(madm,   3, 1, InstTypeArith, GENX_BDW, ATTR_NONE)

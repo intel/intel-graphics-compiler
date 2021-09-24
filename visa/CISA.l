@@ -292,6 +292,12 @@ add3 {
         return ARITH4_OP;
     }
 
+add3\.o {
+        TRACE("** ADD3O INST");
+        CISAlval.opcode = str2opcode(yytext);
+        return ARITH4_OP;
+    }
+
 bfn"."x[[:xdigit:]]+ {
         TRACE("** BFN INST");
         CISAlval.bfn_info.func_ctrl = (uint8_t)hexToInt(yytext+5, yyleng-5);
