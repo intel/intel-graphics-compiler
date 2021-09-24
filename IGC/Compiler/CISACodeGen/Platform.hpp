@@ -470,6 +470,11 @@ bool supportDpasInstruction() const
     return isXeHPSDVPlus();
 }
 
+bool hasPackedRestrictedFloatVector() const
+{
+    return true;
+}
+
 bool supportLoadThreadPayloadForCompute() const
 {
     return isXeHPSDVPlus();

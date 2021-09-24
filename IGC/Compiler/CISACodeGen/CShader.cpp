@@ -1610,7 +1610,7 @@ llvm::Constant* CShader::findCommonConstant(llvm::Constant* C, uint elts, uint c
     llvm::MapVector<llvm::Constant*, int> constMap;
     constMap.clear();
     Constant* constC = nullptr;
-    bool cannotPackVF = false;
+    bool cannotPackVF = !m_ctx->platform.hasPackedRestrictedFloatVector();
     for (uint32_t i = currentEmitElts; i < currentEmitElts + elts; i++)
     {
         constC = C->getAggregateElement(i);
@@ -1624,10 +1624,11 @@ llvm::Constant* CShader::findCommonConstant(llvm::Constant* C, uint elts, uint c
         if (!isa<UndefValue>(constC) && elts >= 4)
         {
             llvm::VectorType* VTy = llvm::dyn_cast<llvm::VectorType>(C->getType());
-            if (VTy->getScalarType()->isFloatTy())
+            uint8_t encoding = 0;
+            if (VTy->getScalarType()->isFloatTy() &&
+                !getByteFloatEncoding(cast<ConstantFP>(constC), encoding))
             {
-                uint8_t encoding = 0;
-                cannotPackVF = !getByteFloatEncoding(cast<ConstantFP>(constC), encoding);
+                cannotPackVF = true;
             }
         }
     }
@@ -1876,8 +1877,8 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
                 {
                     // pack into vf if possible.
                     uint32_t vfimm = 0;
-                    bool canUseVF = true;
-                    for (unsigned j = 0; j < Step; ++j)
+                    bool canUseVF = m_ctx->platform.hasPackedRestrictedFloatVector();
+                    for (unsigned j = 0; j < Step && canUseVF; ++j)
                     {
                         Constant* EC = C->getAggregateElement(i + j);
                         // Treat undef as 0.0f.
