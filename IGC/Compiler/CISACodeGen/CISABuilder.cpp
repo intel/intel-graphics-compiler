@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "common/shaderOverride.hpp"
 #include "common/CompilerStatsUtils.hpp"
 #include "inc/common/sku_wa.h"
+#include <llvm/Support/Path.h>
 #include <llvm/ADT/Statistic.h>
 #include <iStdLib/utility.h>
 #include <iostream>
@@ -5300,25 +5301,32 @@ namespace IGC
             {
                 for (const std::string& tmpVisaFile : visaOverrideFiles)
                 {
-                    std::string asmName = GetDumpFileName("");
-                    size_t asmNamedBegin = asmName.find_last_of('\\');
-                    size_t asmNameEnd = tmpVisaFile.find_last_of('/');
-                    std::string asmPreName = asmName.substr(0, asmNamedBegin);
-                    std::string asmPostName = tmpVisaFile.substr(asmNameEnd, asmName.length());
-                    asmName = asmPreName + asmPostName;
-                    size_t asmNamed = asmName.find_last_of('.');
-                    asmName = asmName.substr(0, asmNamed);
-                    vAsmTextBuilder->SetOption(vISA_AsmFileNameOverridden, true);
-                    vAsmTextBuilder->SetOption(VISA_AsmFileName, asmName.c_str());
+                    llvm::SmallVector<char, 1024> visaAsmNameVector;
+                    std::string visaAsmName = GetDumpFileName("");
+
+                    StringRef visaAsmNameRef(visaAsmName.c_str());
+                    StringRef tmpVisaFileRef(tmpVisaFile.c_str());
+                    StringRef directory = llvm::sys::path::parent_path(visaAsmNameRef);
+                    StringRef filename = llvm::sys::path::filename(tmpVisaFileRef);
+
+                    llvm::sys::path::append(visaAsmNameVector, directory, filename);
+                    visaAsmName = std::string(visaAsmNameVector.begin(), visaAsmNameVector.end());
+
                     auto result = vAsmTextBuilder->ParseVISAText(tmpVisaFile.c_str());
-                    asmName = asmName + ".visaasm";
-                    appendToShaderOverrideLogFile(asmName, "OVERRIDEN: ");
+                    appendToShaderOverrideLogFile(visaAsmName, "OVERRIDEN: ");
                     vISAAsmParseError = (result != 0);
                     if (vISAAsmParseError) {
                         IGC_ASSERT_MESSAGE(0, "visaasm file parse error!");
                         break;
                     }
                 }
+                // After call to ParseVISAText, we have new VISAKernel, which don't have asm path set.
+                // So we need to set the OutputAsmPath attribute of overridden kernel,
+                // otherwise, we will not get .visaasm dump and .asm file dump
+                auto kernelName = IGC::Debug::GetDumpNameObj(m_program, "").GetKernelName();
+                std::string asmName = GetDumpFileName("asm");
+                auto overriddenKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
+                overriddenKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str());
 
                 // We need to update stackFuncMap for the symbol table for the overridden object,
                 // because stackFuncMap contains information about functions for original object.
