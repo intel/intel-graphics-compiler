@@ -469,7 +469,7 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, i
             switch (opndNum)
             {
             case Opnd_src2:
-                if (!kernel.fg.builder->relaxedACCRestrictions3())
+                if (!kernel.fg.builder->hasSrc2Acc())
                 {
                     return false;
                 }
@@ -636,7 +636,7 @@ bool AccSubPass::replaceDstWithAcc(G4_INST* inst, int accNum)
         {
             // mul/mac can't have both sources be acc
             // Note that we only need to check for explicit mac here since we will not change mad to mac
-            if (!builder.relaxedACCRestrictions3() && (useInst->opcode() == G4_mul || useInst->opcode() == G4_mac))
+            if (useInst->opcode() == G4_mul || useInst->opcode() == G4_mac)
             {
                 if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg() ||
                     useInst->getSrc(0)->compareOperand(useInst->getSrc(1)) == G4_CmpRelation::Rel_eq)

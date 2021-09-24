@@ -688,12 +688,9 @@ SPDX-License-Identifier: MIT
         return getOption(vISA_mathAccSub);
     }
 
-    //to relax ACC usage restrictions for FP MUL and MAD instructions.
-    //1. Support both sources as ACC for FP MUL
-    //2. Support Src2 as ACC for FP MAD
-    bool relaxedACCRestrictions3() const
+    bool hasSrc2Acc() const
     {
-        return false;
+        return getOption(vISA_src2AccSub);
     }
 
     bool hasHFMathGRFAlign() const

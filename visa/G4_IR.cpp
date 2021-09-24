@@ -7887,7 +7887,7 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const
     int srcId = getSrcNum(opndNum);
     assert((srcId == 0 || srcId == 1 || srcId == 2) && "must be either src0, src1 or src2");
 
-    if (!builder.relaxedACCRestrictions3() && srcId == 2)
+    if (!builder.hasSrc2Acc() && srcId == 2)
     {
         return false;
     }
