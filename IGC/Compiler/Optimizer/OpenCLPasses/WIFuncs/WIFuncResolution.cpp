@@ -784,17 +784,17 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
 
     if (isEntryFunc(MDUtils, parentFunc))
     {
-        ImplicitArgs IAS(*parentFunc, MDUtils);
-
         if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(&CI))
         {
             ImplicitArg::ArgType argTy = ImplicitArgs::getArgType(inst->getIntrinsicID());
             if (argTy != ImplicitArg::ArgType::NUM_IMPLICIT_ARGS)
             {
+                ImplicitArgs IAS(*parentFunc, MDUtils);
                 Argument* Arg = IAS.getImplicitArg(*parentFunc, argTy);
                 if (Arg)
                 {
-                    inst->replaceAllUsesWith(Arg);
+                    CI.replaceAllUsesWith(Arg);
+                    CI.eraseFromParent();
                 }
             }
         }

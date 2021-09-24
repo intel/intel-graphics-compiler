@@ -610,6 +610,13 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(createGenXCodeGenModulePass());
     }
 
+    // Remove all uses of implicit arg instrinsics in the kernel after
+    // inlining by lowering them to kernel args.
+    if (IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
+    {
+        mpm.add(new LowerImplicitArgIntrinsics());
+    }
+
     // Resolving private memory allocas
     // In case of late inlining of Unmasked function postpone memory
     // resolution till inlining is done as during inlining new Allocas
@@ -1915,10 +1922,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         {
             mpm.add(createSROAPass());
         }
-
-        // Remove all uses of implicit arg instrinsics in the kernel after
-        // inlining by lowering them to kernel args.
-        mpm.add(new LowerImplicitArgIntrinsics());
 
 #if LLVM_VERSION_MAJOR >= 7
         mpm.add(new TrivialLocalMemoryOpsElimination());
