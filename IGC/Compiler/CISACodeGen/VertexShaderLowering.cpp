@@ -572,7 +572,7 @@ namespace IGC
             offset
         };
         unsigned int inIndex = int_cast<unsigned int>(cast<ConstantInt>(offset)->getZExtValue());
-        IGC_ASSERT(inIndex < MaxNumOfUserInputs);
+        IGC_ASSERT(inIndex < MaxNumOfInputs);
 
         Instruction* urbRead = GenIntrinsicInst::Create(
             GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead),

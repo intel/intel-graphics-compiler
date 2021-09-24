@@ -100,7 +100,7 @@ namespace IGC
         // Maximum number of inputs including SGVs. SGVs can be located in URB past
         // the number of available vertex elements.
         // Currently additional 2 inputs is enough for all SGVs.
-        static const unsigned int MaxNumOfInputs = 34; // in 4*DWORD units
+        static const unsigned int MaxNumOfInputs = MaxNumOfUserInputs + 2; // in 4*DWORD units
 
         CollectVertexShaderProperties* m_vsPropsPass;
         llvm::Module* m_module;
