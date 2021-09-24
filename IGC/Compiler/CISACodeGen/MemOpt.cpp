@@ -626,23 +626,18 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         const SCEVConstant* Offset
             = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
         // Skip load with non-constant distance.
-        SymbolicPointer LeadingSymPtr;
-        SymbolicPointer NextSymPtr;
-        bool isLeadingSymPointer = SymbolicPointer::decomposePointer(LeadingLoad->getPointerOperand(),
-            LeadingSymPtr, CGC);
-        bool isNextSymPointer = SymbolicPointer::decomposePointer(NextLoad->getPointerOperand(),
-            NextSymPtr, CGC);
-        bool isconstoffset = NextSymPtr.getConstantOffset(LeadingSymPtr, Off, ArrayElem);
-
-
         if (!Offset) {
-            if ( isLeadingSymPointer ||
-                 isNextSymPointer ||
-                isconstoffset) {
+
+            SymbolicPointer LeadingSymPtr;
+            SymbolicPointer NextSymPtr;
+            if (SymbolicPointer::decomposePointer(LeadingLoad->getPointerOperand(),
+                LeadingSymPtr, CGC) ||
+                SymbolicPointer::decomposePointer(NextLoad->getPointerOperand(),
+                    NextSymPtr, CGC) ||
+                NextSymPtr.getConstantOffset(LeadingSymPtr, Off, ArrayElem)) {
                 continue;
             }
-            else
-            {
+            else {
                 if (!AllowNegativeSymPtrsForLoad && LeadingSymPtr.Offset < 0)
                     continue;
             }
