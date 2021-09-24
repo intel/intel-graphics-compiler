@@ -613,7 +613,10 @@ int VISAKernelImpl::InitializeFastPath()
 
 void VISAKernelImpl::CopyVars(VISAKernelImpl* from)
 {
-    m_builder->dclpool.getDeclareList() = from->m_builder->dclpool.getDeclareList();
+    m_builder->dclpool.getDeclareList().insert(
+            m_builder->dclpool.getDeclareList().end(),
+            from->m_builder->dclpool.getDeclareList().begin(),
+            from->m_builder->dclpool.getDeclareList().end());
 }
 
 int VISAKernelImpl::InitializeKernel(const char *kernel_name)
