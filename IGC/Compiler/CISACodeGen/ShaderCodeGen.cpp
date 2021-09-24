@@ -622,7 +622,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     // Run MemOpt
     if (!isOptDisabled &&
-        ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
+        ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) && !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
         // run AdvMemOpt and MemOPt back-to-back so that we only
         // need to run WIAnalysis once
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
