@@ -4034,7 +4034,6 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       {
       case OpSampledImage:
       case OpVmeImageINTEL:
-      case OpImageWrite:
       case OpImageQuerySize:
       case OpImageQuerySizeLod:
       {
@@ -4104,7 +4103,11 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   // OpImageRead:              Image  | Image Type | Coordinate
 
   // Look for opaque image pointer operands and convert it with an i64 type
-  bool convertImageToI64 = (OC != OpSubgroupImageBlockReadINTEL && OC != OpSubgroupImageBlockWriteINTEL && OC != OpImageRead);
+  bool convertImageToI64 =
+      (OC != OpSubgroupImageBlockReadINTEL &&
+       OC != OpSubgroupImageBlockWriteINTEL &&
+       OC != OpImageRead &&
+       OC != OpImageWrite);
 
   if (convertImageToI64)
   {
@@ -4131,13 +4134,9 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       }
   }
 
-  if (isImageOpCode(OC) && OC != OpImageRead)
+  if (isImageOpCode(OC) && OC != OpImageRead && OC != OpImageWrite)
   {
-      // Writes have a void return type that is not part of the mangle.
-      if (OC != OpImageWrite)
-      {
-          hasReturnTypeInTypeList = true;
-      }
+      hasReturnTypeInTypeList = true;
 
       // need to widen coordinate type
       SPIRVValue* coordinate = BI->getOperands()[1];

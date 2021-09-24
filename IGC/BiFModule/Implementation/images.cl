@@ -767,85 +767,189 @@ float __builtin_spirv_OpImageRead_v4f32_img2d_array_msaa_depth_ro_v4i32_i32_i32(
 
 // Image Write
 
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4i32_i32_i32(Image_t Image, ImageType_t ImageType, int4 Coordinate, uint4 Texel, uint ImageOperands, uint Lod )
-{
-    int id = (int)Image;
-
-    SampledImage_t SampledImage = { Image, ImageType, 0 };
-
-    if( isImageDim( SampledImage, Dim1D ) || isImageDim( SampledImage, DimBuffer ) )
-    {
-
-        if( isImageArrayed( SampledImage ) )
-        {
-            __builtin_IB_write_1darr_ui( id, Coordinate.xy, Texel, Lod );
-        }
-        else
-        {
-            __builtin_IB_write_1d_ui( id, Coordinate.x, Texel, Lod );
-        }
-    }
-    else if( isImageDim( SampledImage, Dim2D ) )
-    {
-        if( isImageArrayed( SampledImage ) )
-        {
-            __builtin_IB_write_2darr_ui( id, Coordinate, Texel, Lod );
-        }
-        else
-        {
-            __builtin_IB_write_2d_ui( id, Coordinate.xy, Texel, Lod );
-        }
-    }
-    else if( isImageDim( SampledImage, Dim3D ) )
-    {
-        __builtin_IB_write_3d_ui( id, Coordinate, Texel, Lod );
-    }
-
-
+#define DEF_IMAGE_WRITE_2D(ACC_QUAL)                                                                                              \
+void __builtin_spirv_OpImageWrite_img2d_##ACC_QUAL##_v2i32_v4i32(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)     \
+{                                                                                                                                 \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                        \
+    __builtin_IB_write_2d_ui(id, Coordinate, as_uint4(Texel), 0);                                                                 \
+}                                                                                                                                 \
+void __builtin_spirv_OpImageWrite_img2d_##ACC_QUAL##_v2i32_v4f32(global Img2d_##ACC_QUAL* Image, int2 Coordinate, float4 Texel)   \
+{                                                                                                                                 \
+    __builtin_spirv_OpImageWrite_img2d_##ACC_QUAL##_v2i32_v4i32(Image, Coordinate, as_int4(Texel));                               \
 }
 
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f32_i32_i32(Image_t Image, ImageType_t ImageType, int4 Coordinate, float4 Texel, uint ImageOperands, uint Lod )
-{
-    __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4i32_i32_i32( Image, ImageType, Coordinate, as_uint4(Texel), ImageOperands, Lod );
+#define DEF_IMAGE_WRITE_2D_ARRAY(ACC_QUAL)                                                                                                   \
+void __builtin_spirv_OpImageWrite_img2d_array_##ACC_QUAL##_v4i32_v4i32(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, int4 Texel)    \
+{                                                                                                                                            \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                   \
+    __builtin_IB_write_2darr_ui(id, Coordinate, as_uint4(Texel), 0);                                                                         \
+}                                                                                                                                            \
+void __builtin_spirv_OpImageWrite_img2d_array_##ACC_QUAL##_v4i32_v4f32(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, float4 Texel)  \
+{                                                                                                                                            \
+    __builtin_spirv_OpImageWrite_img2d_array_##ACC_QUAL##_v4i32_v4i32(Image, Coordinate, as_int4(Texel));                                    \
 }
 
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4i32(Image_t Image, ImageType_t ImageType, int4 Coordinate, uint4 Texel )
-{
-    __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4i32_i32_i32(Image, ImageType, Coordinate, Texel, 0, 0);
+#define DEF_IMAGE_WRITE_1D(ACC_QUAL)                                                                                         \
+void __builtin_spirv_OpImageWrite_img1d_##ACC_QUAL##_i32_v4i32(global Img1d_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
+{                                                                                                                            \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                   \
+    __builtin_IB_write_1d_ui(id, Coordinate, as_uint4(Texel), 0);                                                            \
+}                                                                                                                            \
+void __builtin_spirv_OpImageWrite_img1d_##ACC_QUAL##_i32_v4f32(global Img1d_##ACC_QUAL* Image, int Coordinate, float4 Texel) \
+{                                                                                                                            \
+    __builtin_spirv_OpImageWrite_img1d_##ACC_QUAL##_i32_v4i32(Image, Coordinate, as_int4(Texel));                            \
 }
 
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f32(Image_t Image, ImageType_t ImageType, int4 Coordinate, float4 Texel )
-{
-    __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4i32( Image, ImageType, Coordinate, as_uint4(Texel) );
+#define DEF_IMAGE_WRITE_1D_BUFFER(ACC_QUAL)                                                                                                \
+void __builtin_spirv_OpImageWrite_img1d_buffer_##ACC_QUAL##_i32_v4i32(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
+{                                                                                                                                          \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                 \
+    __builtin_IB_write_1d_ui(id, Coordinate, as_uint4(Texel), 0);                                                                          \
+}                                                                                                                                          \
+void __builtin_spirv_OpImageWrite_img1d_buffer_##ACC_QUAL##_i32_v4f32(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, float4 Texel) \
+{                                                                                                                                          \
+    __builtin_spirv_OpImageWrite_img1d_buffer_##ACC_QUAL##_i32_v4i32(Image, Coordinate, as_int4(Texel));                                   \
 }
 
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_f32_i32_i32(Image_t Image, ImageType_t ImageType, int4 Coordinate, float Texel, uint ImageOperands, uint Lod )
-{
-    // scalar float texels currently exist for image2d_depth_t and image2d_array_depth_t types.
-
-    int id = (int)Image;
-    SampledImage_t SampledImage = { Image, ImageType, 0 };
-
-    if( isImageArrayed( SampledImage ) )
-    {
-        __builtin_IB_write_2darr_f(id, Coordinate, Texel, Lod);
-    }
-    else
-    {
-        __builtin_IB_write_2d_f(id, Coordinate.xy, Texel, Lod);
-    }
+#define DEF_IMAGE_WRITE_1D_ARRAY(ACC_QUAL)                                                                                                  \
+void __builtin_spirv_OpImageWrite_img1d_array_##ACC_QUAL##_v2i32_v4i32(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)   \
+{                                                                                                                                           \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
+    __builtin_IB_write_1darr_ui(id, Coordinate, as_uint4(Texel), 0);                                                                        \
+}                                                                                                                                           \
+void __builtin_spirv_OpImageWrite_img1d_array_##ACC_QUAL##_v2i32_v4f32(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, float4 Texel) \
+{                                                                                                                                           \
+    __builtin_spirv_OpImageWrite_img1d_array_##ACC_QUAL##_v2i32_v4i32(Image, Coordinate, as_int4(Texel));                                   \
 }
 
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_f32(Image_t Image, ImageType_t ImageType, int4 Coordinate, float Texel )
+#define DEF_IMAGE_WRITE_2D_DEPTH(ACC_QUAL)                                                                                                  \
+void __builtin_spirv_OpImageWrite_img2d_depth_##ACC_QUAL##_v2i32_f32(global Img2d_depth_##ACC_QUAL * Image, int2 Coordinate, float Texel)   \
+{                                                                                                                                           \
+    __builtin_spirv_OpImageWrite_img2d_##ACC_QUAL##_v2i32_v4f32(Image, Coordinate, (float4)(Texel, 0, 0, 0));                               \
+}
+
+#define DEF_IMAGE_WRITE_2D_ARRAY_DEPTH(ACC_QUAL)                                                                                                        \
+void __builtin_spirv_OpImageWrite_img2d_array_depth_##ACC_QUAL##_v4i32_f32(global Img2d_array_depth_##ACC_QUAL * Image, int4 Coordinate, float Texel)   \
+{                                                                                                                                                       \
+    __builtin_spirv_OpImageWrite_img2d_array_##ACC_QUAL##_v4i32_v4f32(Image, Coordinate, (float4)(Texel, 0, 0, 0));                                     \
+}
+
+#define DEF_IMAGE_WRITE_3D(ACC_QUAL)                                                                                              \
+void __builtin_spirv_OpImageWrite_img3d_##ACC_QUAL##_v4i32_v4i32(global Img3d_##ACC_QUAL* Image, int4 Coordinate, int4 Texel)     \
+{                                                                                                                                 \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                        \
+    __builtin_IB_write_3d_ui(id, Coordinate, as_uint4(Texel), 0);                                                                 \
+}                                                                                                                                 \
+void __builtin_spirv_OpImageWrite_img3d_##ACC_QUAL##_v4i32_v4f32(global Img3d_##ACC_QUAL* Image, int4 Coordinate, float4 Texel)   \
+{                                                                                                                                 \
+    __builtin_spirv_OpImageWrite_img3d_##ACC_QUAL##_v4i32_v4i32(Image, Coordinate, as_int4(Texel));                               \
+}
+
+DEF_IMAGE_WRITE_2D(wo)
+DEF_IMAGE_WRITE_2D(rw)
+DEF_IMAGE_WRITE_2D_ARRAY(wo)
+DEF_IMAGE_WRITE_2D_ARRAY(rw)
+DEF_IMAGE_WRITE_1D(wo)
+DEF_IMAGE_WRITE_1D(rw)
+DEF_IMAGE_WRITE_1D_BUFFER(wo)
+DEF_IMAGE_WRITE_1D_BUFFER(rw)
+DEF_IMAGE_WRITE_1D_ARRAY(wo)
+DEF_IMAGE_WRITE_1D_ARRAY(rw)
+DEF_IMAGE_WRITE_2D_DEPTH(wo)
+DEF_IMAGE_WRITE_2D_DEPTH(rw)
+DEF_IMAGE_WRITE_2D_ARRAY_DEPTH(wo)
+DEF_IMAGE_WRITE_2D_ARRAY_DEPTH(rw)
+DEF_IMAGE_WRITE_3D(wo)
+DEF_IMAGE_WRITE_3D(rw)
+
+// Level of details versions
+
+void __builtin_spirv_OpImageWrite_img2d_wo_v2i32_v4i32_i32_i32(global Img2d_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands, int Lod)
 {
-    __builtin_spirv_OpImageWrite_i64_i64_v4i32_f32_i32_i32(Image, ImageType, Coordinate, Texel, 0, 0);
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_2d_ui(id, Coordinate, as_uint4(Texel), Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img2d_wo_v2i32_v4f32_i32_i32(global Img2d_wo* Image, int2 Coordinate, float4 Texel, int ImageOperands, int Lod)
+{
+    __builtin_spirv_OpImageWrite_img2d_wo_v2i32_v4i32_i32_i32(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img2d_depth_wo_v2i32_f32_i32_i32(global Img2d_depth_wo* Image, int2 Coordinate, float Texel, int ImageOperands, int Lod)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_2d_f(id, Coordinate, Texel, Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img1d_wo_i32_v4i32_i32_i32(global Img1d_wo* Image, int Coordinate, int4 Texel, int ImageOperands, int Lod)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_1d_ui(id, Coordinate, as_uint4(Texel), Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img1d_wo_i32_v4f32_i32_i32(global Img1d_wo* Image, int Coordinate, float4 Texel, int ImageOperands, int Lod)
+{
+    __builtin_spirv_OpImageWrite_img1d_wo_i32_v4i32_i32_i32(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img1d_array_wo_v2i32_v4i32_i32_i32(global Img1d_array_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands, int Lod)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_1darr_ui(id, Coordinate, as_uint4(Texel), Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img1d_array_wo_v2i32_v4f32_i32_i32(global Img1d_array_wo* Image, int2 Coordinate, float4 Texel, int ImageOperands, int Lod)
+{
+    __builtin_spirv_OpImageWrite_img1d_array_wo_v2i32_v4i32_i32_i32(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img2d_array_wo_v4i32_v4i32_i32_i32(global Img2d_array_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands, int Lod)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_2darr_ui(id, Coordinate, as_uint4(Texel), Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img2d_array_wo_v4i32_v4f32_i32_i32(global Img2d_array_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands, int Lod)
+{
+    __builtin_spirv_OpImageWrite_img2d_array_wo_v4i32_v4i32_i32_i32(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img2d_array_depth_wo_v4i32_f32_i32_i32(global Img2d_array_depth_wo* Image, int4 Coordinate, float Texel, int ImageOperands, int Lod)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_2darr_f(id, Coordinate, Texel, Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img3d_wo_v4i32_v4i32_i32_i32(global Img3d_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands, int Lod)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_3d_ui(id, Coordinate, as_uint4(Texel), Lod);
+}
+
+void __builtin_spirv_OpImageWrite_img3d_wo_v4i32_v4f32_i32_i32(global Img3d_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands, int Lod)
+{
+    __builtin_spirv_OpImageWrite_img3d_wo_v4i32_v4i32_i32_i32(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
 }
 
 #ifdef cl_khr_fp16
-void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f16(Image_t Image, ImageType_t ImageType, int4 Coordinate, half4 Texel )
-{
-    __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f32(Image, ImageType, Coordinate, SPIRV_BUILTIN(FConvert, _v4f32_v4f16, _Rfloat4)(Texel));
+#define DEF_HALF_IMAGE_WRITE(IMAGE_TYPE, COORDS_TYPE, COORDS_TYPE_ABBR)                                                                                     \
+void __builtin_spirv_OpImageWrite_img##IMAGE_TYPE##_##COORDS_TYPE_ABBR##_v4f16(global Img##IMAGE_TYPE* Image, COORDS_TYPE Coordinate, half4 Texel)          \
+{                                                                                                                                                           \
+    __builtin_spirv_OpImageWrite_img##IMAGE_TYPE##_##COORDS_TYPE_ABBR##_v4f32(Image, Coordinate, SPIRV_BUILTIN(FConvert, _v4f32_v4f16, _Rfloat4)(Texel));   \
 }
+
+DEF_HALF_IMAGE_WRITE(2d_wo, int2, v2i32)
+DEF_HALF_IMAGE_WRITE(2d_rw, int2, v2i32)
+DEF_HALF_IMAGE_WRITE(3d_wo, int4, v4i32)
+DEF_HALF_IMAGE_WRITE(3d_rw, int4, v4i32)
+DEF_HALF_IMAGE_WRITE(2d_array_wo, int4, v4i32)
+DEF_HALF_IMAGE_WRITE(2d_array_rw, int4, v4i32)
+DEF_HALF_IMAGE_WRITE(1d_wo, int, i32)
+DEF_HALF_IMAGE_WRITE(1d_rw, int, i32)
+DEF_HALF_IMAGE_WRITE(1d_buffer_wo, int, i32)
+DEF_HALF_IMAGE_WRITE(1d_buffer_rw, int, i32)
+DEF_HALF_IMAGE_WRITE(1d_array_wo, int2, v2i32)
+DEF_HALF_IMAGE_WRITE(1d_array_rw, int2, v2i32)
 #endif // cl_khr_fp16
 
 // Image Query
