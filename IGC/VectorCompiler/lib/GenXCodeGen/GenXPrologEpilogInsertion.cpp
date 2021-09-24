@@ -661,8 +661,6 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
 }
 
 Value *GenXPrologEpilogInsertion::push(Value *V, IRBuilder<> &IRB, Value *InitSP) {
-  if (!isa<VectorType>(V->getType()))
-    V = IRB.CreateBitCast(V, IGCLLVM::FixedVectorType::get(V->getType()->getScalarType(), 1));
   if (V->getType()->getScalarType()->isIntegerTy(1)) {
     IGC_ASSERT(isa<VectorType>(V->getType()));
     V = IRB.CreateBitOrPointerCast(
@@ -671,89 +669,41 @@ Value *GenXPrologEpilogInsertion::push(Value *V, IRBuilder<> &IRB, Value *InitSP
                cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements() /
                    genx::ByteBits));
   }
-  unsigned BytesLeft = DL->getTypeSizeInBits(V->getType()) / genx::ByteBits;
-  unsigned Offset = 0;
-  auto *SP = InitSP;
-  auto Copy = [&](unsigned Width) {
-    unsigned ByteSize = Width * visa::BytesPerOword;
-    if (ByteSize > BytesLeft && BytesLeft && Width == 1)
-      ByteSize = BytesLeft;
-    while (BytesLeft >= ByteSize) {
-      auto *CurReadType = IGCLLVM::FixedVectorType::get(
-          V->getType()->getScalarType(),
-          ByteSize / (DL->getTypeSizeInBits(V->getType()->getScalarType()) /
-                      genx::ByteBits));
-      Region R(CurReadType);
-      R.Offset = Offset;
-      auto *Read = R.createRdRegion(V, "", &*IRB.GetInsertPoint(), DebugLoc());
 
-      auto *Fn = llvm::GenXIntrinsic::getGenXDeclaration(
-          IRB.GetInsertPoint()->getModule(),
-          llvm::GenXIntrinsic::genx_svm_block_st,
-          {SP->getType(), Read->getType()});
+  // 'allocate' space for the value in stack first.
+  unsigned Size = vc::getTypeSize(V->getType(), DL).inBytes();
+  Size += calcPadding(Size, OWordBytes);
+  Value *SP = IRB.CreateAdd(InitSP, IRB.getInt64(Size));
 
-      IRB.CreateCall(Fn, {SP, Read});
-      Offset += ByteSize;
-      BytesLeft -= ByteSize;
-      SP = IRB.CreateAdd(SP, IRB.getInt64(ByteSize));
-      Offset += calcPadding(Offset, visa::BytesPerOword);
-    }
-  };
-  Copy(8);
-  Copy(4);
-  Copy(2);
-  Copy(1);
+  // FIXME: There must be a correct addrspace.
+  Type *SPPtrTy = PointerType::getUnqual(V->getType());
+  InitSP = IRB.CreateIntToPtr(InitSP, SPPtrTy);
+
+  IRB.CreateStore(V, InitSP);
+
   return SP;
 }
 
 std::pair<Instruction *, Value *>
 GenXPrologEpilogInsertion::pop(Type *Ty, IRBuilder<> &IRB, Value *InitSP) {
   auto *OrigTy = Ty;
-  if (!isa<VectorType>(Ty))
-    Ty = IGCLLVM::FixedVectorType::get(Ty, 1);
-  unsigned BytesLeft = DL->getTypeSizeInBits(Ty) / genx::ByteBits;
-  unsigned Offset = 0;
   if (Ty->getScalarType()->isIntegerTy(1)) {
     IGC_ASSERT(isa<VectorType>(Ty));
     Ty = IGCLLVM::FixedVectorType::get(
         IRB.getInt8Ty(),
         cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() / genx::ByteBits);
   }
-  auto *SP = InitSP;
-  Value *RetVal = UndefValue::get(Ty);
-  auto Copy = [&](unsigned Width) {
-    unsigned ByteSize = Width * visa::BytesPerOword;
-    if (ByteSize > BytesLeft && BytesLeft && Width == 1)
-      ByteSize = BytesLeft;
-    while (BytesLeft >= ByteSize) {
-      auto *CurLdType = IGCLLVM::FixedVectorType::get(
-          Ty->getScalarType(),
-          ByteSize /
-              (Ty->getScalarType()->getPrimitiveSizeInBits() / genx::ByteBits));
-      auto *Fn = llvm::GenXIntrinsic::getGenXDeclaration(
-          IRB.GetInsertPoint()->getModule(),
-          llvm::GenXIntrinsic::genx_svm_block_ld, {CurLdType, SP->getType()});
 
-      auto *Ld = IRB.CreateCall(Fn, {SP});
-      Region R(Ld->getType());
-      R.Offset = Offset;
-      RetVal =
-          R.createWrRegion(RetVal, Ld, "", &*IRB.GetInsertPoint(), DebugLoc());
-      Offset += ByteSize;
-      BytesLeft -= ByteSize;
-      SP = IRB.CreateAdd(SP, IRB.getInt64(ByteSize));
-      Offset += calcPadding(Offset, visa::BytesPerOword);
-    }
-  };
-  Copy(8);
-  Copy(4);
-  Copy(2);
-  Copy(1);
-  if (!isa<VectorType>(OrigTy)) {
-    Region R(Ty);
-    RetVal =
-        R.createRdRegion(RetVal, "", &*IRB.GetInsertPoint(), DebugLoc(), true);
-  }
+  unsigned Size = vc::getTypeSize(Ty, DL).inBytes();
+  Size += calcPadding(Size, OWordBytes);
+  Value *SP = IRB.CreateAdd(InitSP, IRB.getInt64(Size));
+
+  // FIXME: There must be a correct addrspace.
+  Type *SPPtrTy = PointerType::getUnqual(Ty);
+  InitSP = IRB.CreateIntToPtr(InitSP, SPPtrTy);
+
+  Value *RetVal = IRB.CreateLoad(Ty, InitSP);
+
   if (OrigTy->getScalarType()->isIntegerTy(1))
     RetVal = IRB.CreateBitCast(RetVal, OrigTy);
   return {cast<Instruction>(RetVal), SP};
