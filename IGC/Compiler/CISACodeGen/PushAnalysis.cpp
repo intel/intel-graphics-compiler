@@ -188,7 +188,7 @@ namespace IGC
         llvm::Instruction* inst,
         int& pushableAddressGrfOffset,
         int& pushableOffsetGrfOffset,
-        unsigned int& offset)
+        unsigned int& pushableOffset)
     {
         if (!llvm::isa<llvm::LoadInst>(inst))
             return false;
@@ -210,6 +210,7 @@ namespace IGC
             pAddress = cast<Instruction>(pAddress)->getOperand(0);
         }
 
+        uint64_t offset = 0;
         SmallVector<Value*, 4> potentialPushableAddresses;
         std::function<void(Value*)> GetPotentialPushableAddresses;
         GetPotentialPushableAddresses = [&potentialPushableAddresses, &offset, &GetPotentialPushableAddresses](
@@ -229,7 +230,7 @@ namespace IGC
             else if (isa<ConstantInt>(pAddress))
             {
                 ConstantInt* pConst = cast<ConstantInt>(pAddress);
-                offset += int_cast<uint>(pConst->getZExtValue());
+                offset += pConst->getZExtValue();
             }
             else
             {
@@ -341,8 +342,10 @@ namespace IGC
             offset = 0;
             GetPotentialPushableAddresses(pAddress);
         }
-        if (potentialPushableAddresses.size() == 1 ||
-            potentialPushableAddresses.size() == 2)
+
+        if (offset <= std::numeric_limits<uint>::max() && // pushableOffset is a 32bit value
+            (potentialPushableAddresses.size() == 1 ||
+             potentialPushableAddresses.size() == 2))
         {
             for (Value* potentialAddress : potentialPushableAddresses)
             {
@@ -357,6 +360,7 @@ namespace IGC
                 }
             }
             IGC_ASSERT(pushableAddressGrfOffset >= 0);
+            pushableOffset = int_cast<uint>(offset);
             return true;
         }
 
@@ -625,16 +629,14 @@ namespace IGC
         if (!isa<LoadInst>(inst) && !isa<LdRawIntrinsic>(inst))
             return false;
 
-        if (inst->getType()->isVectorTy())
+        Type* loadType = inst->getType();
+        Type* elemType = loadType->getScalarType();
+        // TODO: enable promotion of 8 bit, 16 bit and 64 bit values
+        if (!elemType->isFloatTy() &&
+            !elemType->isIntegerTy(32) &&
+            !(elemType->isPointerTy() && GetSizeInBits(elemType) == 32))
         {
-            if (!(cast<VectorType>(inst->getType())->getElementType()->isFloatTy() ||
-                cast<VectorType>(inst->getType())->getElementType()->isIntegerTy(32)))
-                return false;
-        }
-        else
-        {
-            if (!(inst->getType()->isFloatTy() || inst->getType()->isIntegerTy(32) || inst->getType()->isPointerTy()))
-                return false;
+            return false;
         }
 
         if (IsPushableBindlessLoad(
@@ -852,6 +854,15 @@ namespace IGC
         if (type->isPointerTy())
         {
             size = m_DL->getPointerSizeInBits(type->getPointerAddressSpace());
+            IGC_ASSERT(size == 32 || size == 64);
+        }
+        else if (type->isVectorTy() &&
+            type->getScalarType()->isPointerTy())
+        {
+            size = m_DL->getPointerSizeInBits(
+                type->getScalarType()->getPointerAddressSpace());
+            IGC_ASSERT(size == 32 || size == 64);
+            size = size * int_cast<uint>(cast<IGCLLVM::FixedVectorType>(type)->getNumElements());
         }
         return size;
     }
@@ -999,7 +1010,7 @@ namespace IGC
 
         for (unsigned int i = 0; i < num_elms; ++i)
         {
-            uint address = offset + i * ((unsigned int)pScalarTy->getPrimitiveSizeInBits() / 8);
+            uint address = offset + i * (GetSizeInBits(pScalarTy) / 8);
             auto it = info.simplePushLoads.find(address);
             llvm::Value* value = nullptr;
             if (it != info.simplePushLoads.end())
@@ -1007,16 +1018,18 @@ namespace IGC
                 // Value is already getting pushed
                 IGC_ASSERT_MESSAGE((it->second <= m_argIndex), "Function arguments list and metadata are out of sync!");
                 value = m_argList[it->second];
-                if (pTypeToPush != value->getType())
-                    value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
             }
             else
             {
                 value = addArgumentAndMetadata(pTypeToPush, VALUE_NAME("cb"), WIAnalysis::UNIFORM_GLOBAL);
-                if (pTypeToPush != value->getType())
-                    value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
-
                 info.simplePushLoads.insert(std::make_pair(address, m_argIndex));
+            }
+            if (pTypeToPush != value->getType())
+            {
+                IGC_ASSERT(pTypeToPush->isPointerTy() == value->getType()->isPointerTy());
+                value = pTypeToPush->isPointerTy() ?
+                    CastInst::CreatePointerBitCastOrAddrSpaceCast(value, pTypeToPush, "", load) :
+                    CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
             }
 
             if (load->getType()->isVectorTy())
