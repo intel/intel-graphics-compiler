@@ -5287,3 +5287,161 @@ bool LogicalAndToBranch::runOnFunction(Function& F)
 
     return changed;
 }
+
+// clean PHINode does the following:
+//   given the following:
+//     a = phi (x, b0), (x, b1)
+//   this pass will replace 'a' with 'x', and as result, phi is removed.
+//
+// Special note:
+//   LCSSA PHINode has a single incoming value. Make sure it is not removed
+//   as WIA uses lcssa phi as a seperator between a uniform value inside loop
+//   and non-uniform value outside a loop.  For example:
+//      B0:
+//             i = 0;
+//      Loop:
+//             i_0 = phi (0, B0)  (t, Bn)
+//             .... <use i_0>
+//             if (divergent cond)
+//      Bi:
+//                goto out;
+//      Bn:
+//             t = i_0 + 1;
+//             if (t < N) goto Loop;
+//             goto output;
+//      out:
+//             i_1 = phi (i_0, Bi)    <-- lcssa phi node
+//      ....
+//      output:
+//   Here, i_0 is uniform within the loop,  but it is not outside loop as each WI will
+//   exit with different i, thus i_1 is non-uniform.
+//   If this lcssa phi would be removed, all uses of i_1 will be replaced with a uniform
+//   value i_0, which is wrong.
+//
+// This is needed to avoid generating the following code for which vISA cannot generate
+// the correct code:
+//   i = 0;             // i is uniform
+//   Loop:
+//         x = i + 1      // x is uniform
+//     B0  if (divergent-condition)
+//            <code1>
+//     B1  else
+//            z = array[i]
+//     B2  endif
+//         i = phi (x, B0), (x, B1)
+//         ......
+//     if (i < n) goto Loop
+//
+// Generated code (visa) (phi becomes mov in its incoming BBs).
+//
+//   i = 0;             // i is uniform
+//   Loop:
+//         (W) x = i + 1      // x is uniform, NoMask
+//     B0  if (divergent-condition)
+//            <code1>
+//         (W) i = x         // noMask
+//     B1  else
+//            z = array[i]
+//         (W) i = x         // noMask
+//     B2  endif
+//         ......
+//         if (i < n) goto Loop
+//
+// In the 1st iteration, 'z' should be array[0].  Assume 'if' is divergent, thus both B0 and B1
+// blocks will be executed. As result, the value of 'i' after B0 will be x, which is 1. And 'z'
+// will take array[1], which is wrong (correct one is array[0]).
+//
+// This case happens if phi is uniform, which means all phis' incoming values are identical
+// and uniform (current hehavior of WIAnalysis). Note that the identical values means this phi
+// is no longer needed.  Once such a phi is removed,  we will never generate code like one shown
+// above and thus, no wrong code will be generated from visa.
+//
+// This pass will be invoked at place close to the Emit pass, where WIAnalysis will be invoked,
+// so that IR between this pass and WIAnalysis stays the same, at least no new PHINodes like this
+// will be generated.
+//
+namespace {
+    class CleanPHINode : public FunctionPass
+    {
+    public:
+        static char ID;
+        CleanPHINode();
+
+        StringRef getPassName() const override { return "CleanPhINode"; }
+
+        bool runOnFunction(Function& F) override;
+    };
+}
+
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG "igc-cleanphinode"
+#define PASS_DESCRIPTION "Clean up PHINode"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(CleanPHINode, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CleanPHINode,   PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+
+char CleanPHINode::ID = 0;
+FunctionPass* IGC::createCleanPHINodePass()
+{
+    return new CleanPHINode();
+}
+
+CleanPHINode::CleanPHINode() : FunctionPass(ID)
+{
+    initializeCleanPHINodePass(*PassRegistry::getPassRegistry());
+}
+
+bool CleanPHINode::runOnFunction(Function& F)
+{
+    auto isLCSSAPHINode = [](PHINode* PHI) { return (PHI->getNumIncomingValues() == 1); };
+
+    bool changed = false;
+    for (auto BI = F.begin(), BE = F.end(); BI != BE; ++BI)
+    {
+        BasicBlock* BB = &*BI;
+        auto II = BB->begin();
+        auto IE = BB->end();
+        while (II != IE)
+        {
+            auto currII = II;
+            ++II;
+            PHINode* PHI = dyn_cast<PHINode>(currII);
+            if (PHI == nullptr)
+            {
+                // proceed to the next BB
+                break;
+            }
+            if (isLCSSAPHINode(PHI))
+            {
+                // Keep LCSSA PHI as uniform analysis needs it.
+                continue;
+            }
+
+            if (PHI->getNumIncomingValues() > 0) // sanity
+            {
+                Value* sameVal = PHI->getIncomingValue(0);
+                bool isAllSame = true;
+                for (int i = 1, sz = (int)PHI->getNumIncomingValues(); i < sz; ++i)
+                {
+                    if (sameVal != PHI->getIncomingValue(i))
+                    {
+                        isAllSame = false;
+                        break;
+                    }
+                }
+                if (isAllSame)
+                {
+                    PHI->replaceAllUsesWith(sameVal);
+                    PHI->eraseFromParent();
+                    changed = true;
+                }
+            }
+        }
+    }
+    return changed;
+}
