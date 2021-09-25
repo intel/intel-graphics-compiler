@@ -2122,11 +2122,6 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
             G4_DstRegRegion* tmpDst = insertMovAfter(it, origDst, tmpType, bb, GRFALIGN);
             mulInst->setDest(tmpDst);
         }
-
-        // set implicit acc dst to the mul instruction as acc will be used as dst of the expanded mul after local scheduling.
-        // it is a must to fix the WAR/WAW issue of acc in local scheduling.
-        G4_DstRegRegion* accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, mulInst->getDst()->getType());
-        mulInst->setImplAccDst(accDstOpnd);
     }
     else
     {
@@ -2683,11 +2678,6 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
         // sat cannot be used at all in the macro sequence
         // this effectivly means sat is broken for mul D D D
         inst->setSaturate(g4::NOSAT);
-
-        // set implicit acc dst to the mulh instruction as acc will be used as dst of the expanded mul after local scheduling.
-        // it is a must to fix the WAR/WAW issue of acc in local scheduling.
-        G4_DstRegRegion* accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, inst->getDst()->getType());
-        inst->setImplAccDst(accDstOpnd);
 
         if (execSize > builder.getNativeExecSize())
         {
@@ -8035,11 +8025,6 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
                 madwInst->setSrc(insertMovBefore(it, 0, src0->getType(), bb), 0);
             }
         }
-
-        // add implicit acc dst to the madw instruction as acc will be used as dst of the expanded mul after local scheduling.
-        // it is a must to fix the WAR/WAW issue of acc in local scheduling.
-        G4_DstRegRegion* accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, madwInst->getDst()->getType());
-        madwInst->setImplAccDst(accDstOpnd);
 
         retIter = std::next(it);
     }
