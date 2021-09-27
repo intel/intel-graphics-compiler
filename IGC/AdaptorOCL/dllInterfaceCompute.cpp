@@ -935,6 +935,13 @@ bool TranslateBuild(
 
 #if defined(IGC_VC_ENABLED)
     if (pInputArgs->pOptions) {
+        // Currently, VC compiler effectively uses global variables to store
+        // some configuration information. This may lead to problems
+        // during multi-threaded compilations. The mutex below serializes
+        // the whole compilation process.
+        // This is a temporary measure till a proper re-design is done.
+        const std::lock_guard<std::mutex> lock(llvm_mutex);
+
         std::error_code Status =
             vc::translateBuild(pInputArgs, pOutputArgs, inputDataFormatTemp,
                                IGCPlatform, profilingTimerResolution);
