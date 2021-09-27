@@ -1470,7 +1470,7 @@ void LocalRA::calculateInputIntervals()
                     if (topdcl && (lr = gra.getLocalLR(topdcl)))
                     {
                         // Check whether it is input
-                        if (topdcl->getRegFile() == G4_INPUT &&
+                        if ((topdcl->getRegFile() == G4_INPUT || topdcl->isLiveIn()) &&
                             !(src->isAreg()) &&
                             topdcl->isOutput() == false &&
                             lr->hasIndirectAccess() == false &&
