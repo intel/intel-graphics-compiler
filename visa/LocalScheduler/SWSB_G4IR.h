@@ -757,6 +757,7 @@ namespace vISA
             if (distDep.size())
             {
                 SB_INST_PIPE depPipe = PIPE_NONE;
+                SB_INST_PIPE sameOpndTypeDepPipe = PIPE_NONE;
                 bool sameOperandType = true;
                 int diffPipes = 0;
 
@@ -783,6 +784,35 @@ namespace vISA
                     }
                 }
 
+                //In some platforms, A@ need be used for following case when the regDist cannot be used (due to HW issue), and inst depends on different pipes
+                //mov(8 | M0)               r63.0 < 2 > :ud   r15.0 < 1; 1, 0 > : ud{ I@7 }
+                //...
+                //add(8 | M0)               r95.0 < 1 > : q    r87.0 < 1; 1, 0 > : q    r10.0 < 0; 1, 0 > : q{ I@7 }
+                //...
+                //add(8 | M0)               r55.0 < 2 > : d    r95.0 < 1; 1, 0 > : q    r63.0 < 2; 1, 0 > : ud{ A@4 }
+                //In some platforms I@ accurate dependence can used for following case when the regDist cannot be used (due to HW issue), because inst depends on same pipe
+                //The example code piece :
+                //mov(16 | M0) r88.0 < 2 > : d r84.0 < 1; 1, 0 > : d{ F@2 } // $79&103
+                //mov(16 | M16) r90.0 < 2 > : d r85.0 < 1; 1, 0 > : d // $80&104
+                //mov(16 | M0) r88.1 < 2 > : d r86.0 < 1; 1, 0 > : d{ F@1 } // $81&105
+                //mov(16 | M16) r90.1 < 2 > : d r87.0 < 1; 1, 0 > : d // $82&106
+                //mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2 } // $83&107
+                //Since:q and : d all go to integer pipeline in, @2 should work.However, due to HW bug, I@2 is good
+                bool mulitpleSamePipe = false;
+                if (distDep.size() > 1 && sameOperandType)
+                {
+                    sameOpndTypeDepPipe = distDep[0].liveNodePipe;
+                    for (int i = 1; i < (int)(distDep.size()); i++)
+                    {
+                        SBDISTDEP_ITEM& it = distDep[i];
+
+                        if (it.liveNodePipe != sameOpndTypeDepPipe)
+                        {
+                            mulitpleSamePipe = true;
+                        }
+                    }
+                }
+
 
                 if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
                     !builder.hasRegDistDepIssue())
@@ -798,16 +828,15 @@ namespace vISA
                         if (sameOperandType) //But the operand type is from same instruction pipeline.
                         {
                             assert(!GetInstruction()->isSend()); //Send operand has no type, sameOperandType is always false
-
-                            if (GetInstruction()->isDpas()) //For DPAS, we also put the distance dependence into a sync instruction.
-                            {
-                                setAccurateDistType(depPipe);
-                                instVec.front()->setOperandTypeIndicated(false); //DPAS distance will be in sync inst
-                            }
-                            else //For math and other ALU instructions
+                            if (mulitpleSamePipe)
                             {
                                 instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
                             }
+                            else
+                            {
+                                setAccurateDistType(depPipe);
+                            }
+                            instVec.front()->setOperandTypeIndicated(false); //DPAS distance will be in sync inst
                         }
                         else // For send, we will set it to DISTALL if there are multiple dependences. For non-send, DIST
                         {
