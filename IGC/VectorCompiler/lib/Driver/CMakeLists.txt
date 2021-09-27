@@ -9,7 +9,6 @@
 set(DRIVER_SOURCES
   Driver.cpp
   SPIRVWrapper.cpp
-  VCPassManager.cpp
   )
 
 add_library(VCDriver ${DRIVER_SOURCES})

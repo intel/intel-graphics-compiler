@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "SPIRVWrapper.h"
-#include "VCPassManager.h"
+#include "vc/Support/PassManager.h"
 
 #include "vc/Driver/Driver.h"
 
@@ -262,7 +262,7 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
 static void optimizeIR(const vc::CompileOptions &Opts,
                        const vc::ExternalData &ExtData, TargetMachine &TM,
                        Module &M) {
-  VCPassManager PerModulePasses;
+  vc::PassManager PerModulePasses;
   legacy::FunctionPassManager PerFunctionPasses(&M);
 
   PerModulePasses.add(
@@ -342,7 +342,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
 static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
                                             const vc::ExternalData &ExtData,
                                             TargetMachine &TM, Module &M) {
-  VCPassManager PM;
+  vc::PassManager PM;
 
   SmallString<32> IsaBinary;
   raw_svector_ostream OS(IsaBinary);
@@ -364,7 +364,7 @@ static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
 static vc::cm::CompileOutput runCmCodeGen(const vc::CompileOptions &Opts,
                                           const vc::ExternalData &ExtData,
                                           TargetMachine &TM, Module &M) {
-  VCPassManager PM;
+  vc::PassManager PM;
 
   SmallString<32> IsaBinary;
   raw_svector_ostream OS(IsaBinary);
@@ -432,7 +432,7 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpModule(M, "after_spirv_reader.ll");
 
-  VCPassManager PerModulePasses;
+  vc::PassManager PerModulePasses;
   PerModulePasses.add(createGenXSPIRVReaderAdaptorPass());
   PerModulePasses.add(createGenXRestoreIntrAttrPass());
   PerModulePasses.run(M);

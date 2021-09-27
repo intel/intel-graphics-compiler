@@ -6,19 +6,22 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "VCPassManager.h"
+#include "vc/Support/PassManager.h"
 
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/ADT/StringMap.h>
+#include <llvm/ADT/StringRef.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Regex.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "Probe/Assertion.h"
 
-#include <llvm/ADT/StringMap.h>
-
 #include <string>
+#include <utility>
 
 using namespace llvm;
 
@@ -179,13 +182,13 @@ bool AllOptionsAreEmpty() {
 } // namespace
 
 template <typename PMOption>
-void VCPassManager::addExtraPass(const PassInfo *CurrentPI) {
+void vc::PassManager::addExtraPass(const PassInfo *CurrentPI) {
   auto res = PMOption::option.getValue().includes(CurrentPI->getPassArgument());
   if (res.first)
     legacy::PassManager::add(PMOption::createPass(CurrentPI, res.second));
 }
 
-void VCPassManager::add(Pass *P) {
+void vc::PassManager::add(Pass *P) {
   IGC_ASSERT(P);
 
   if (AllOptionsAreEmpty())
