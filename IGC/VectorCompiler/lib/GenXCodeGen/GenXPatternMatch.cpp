@@ -2603,12 +2603,23 @@ static bool canonizeSelect(SelectInst *SI) {
 }
 
 // Try to merge select condition to wrregion mask:
+//
+// Scenario 1
 // old_val = rdregion(x, R)
 // masked_val = select cond, new_val, old_val
 // wrregion(x, masked_val, R)
 // ===>
 // old_val = rdregion(x, R)
 // wrregion(x, new_val, R, cond)
+//
+// Scenario 2 (replace undef with x)
+// old_val = rdregion(x, R)
+// masked_val = select cond, new_val, old_val
+// wrregion(undef, masked_val, R)
+// ===>
+// old_val = rdregion(x, R)
+// wrregion(x, new_val, R, cond)
+//
 // Also generate cond inversion if select operands are swapped)
 //
 static bool mergeToWrRegion(SelectInst *SI) {
@@ -2643,9 +2654,14 @@ static bool mergeToWrRegion(SelectInst *SI) {
       WrReg.Mask = nullptr;
       if (WrReg != RdReg)
         return false;
-      return isa<UndefValue>(Wr->getOperand(OldValueOperandNum)) ||
-             (Wr->getOperand(OldValueOperandNum) ==
-              Rd->getOperand(OldValueOperandNum));
+
+      Value *WrOldValOp = Wr->getOperand(OldValueOperandNum);
+      Value *RdOldValOp = Rd->getOperand(OldValueOperandNum);
+
+      bool SameOrigin = (WrOldValOp == RdOldValOp);
+      bool CanReplaceUndef = isa<UndefValue>(WrOldValOp) &&
+                             (WrOldValOp->getType() == RdOldValOp->getType());
+      return SameOrigin || CanReplaceUndef;
     };
 
     auto DoMergeToWrRegion = [&](User *U) {
@@ -2658,7 +2674,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
       // Create new wrregion.
       Region WrReg(Wr, BaleInfo());
       WrReg.Mask = Mask;
-      Value *NewWr = WrReg.createWrRegion(Wr->getOperand(OldValueOperandNum),
+      Value *NewWr = WrReg.createWrRegion(Rd->getOperand(OldValueOperandNum),
                                           Inverted ? SI->getFalseValue()
                                                    : SI->getTrueValue(),
                                           Wr->getName(), Wr, Wr->getDebugLoc());
