@@ -749,7 +749,7 @@ float4 __builtin_spirv_OpImageRead_v4f32_img2d_array_msaa_ro_v4i32_i32_i32(globa
     return __flush_denormals(res);
 }
 
-float __builtin_spirv_OpImageRead_v4f32_img2d_msaa_depth_ro_v2i32_i32_i32(global Img2d_msaa_depth_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
+float __builtin_spirv_OpImageRead_f32_img2d_msaa_depth_ro_v2i32_i32_i32(global Img2d_msaa_depth_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
 {
     int id = (int)__builtin_astype(Image, __global void*);
     float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate);
@@ -757,7 +757,7 @@ float __builtin_spirv_OpImageRead_v4f32_img2d_msaa_depth_ro_v2i32_i32_i32(global
     return __flush_denormals(res).x;
 }
 
-float __builtin_spirv_OpImageRead_v4f32_img2d_array_msaa_depth_ro_v4i32_i32_i32(global Img2d_array_msaa_depth_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
+float __builtin_spirv_OpImageRead_f32_img2d_array_msaa_depth_ro_v4i32_i32_i32(global Img2d_array_msaa_depth_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
 {
     int id = (int)__builtin_astype(Image, __global void*);
     float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
