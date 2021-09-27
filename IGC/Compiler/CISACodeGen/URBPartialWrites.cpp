@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/MetaDataUtilsWrapper.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
@@ -33,7 +34,7 @@ namespace IGC
 // granularity`.
 //
 // A URB partial write instruction can be changed to a full-mask write if it can
-// be proven that writing additional URB channels does not overwrite data that
+// be proved that writing additional URB channels does not overwrite data that
 // is observable by URBReadOutput instruction in current shader stage or read
 // in the next shader stage (i.e. written by other URBWrite instructions in
 // current stage).
@@ -53,7 +54,6 @@ public:
 
     URBPartialWrites() :
         m_SafeToExtend(std::make_pair(true, true)),
-        m_FullWriteGranularity(0),
         FunctionPass(ID)
     {
         initializeURBPartialWritesPass(*PassRegistry::getPassRegistry());
@@ -65,8 +65,13 @@ public:
     {
         AU.setPreservesCFG();
         AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<MetaDataUtilsWrapper>();
         AU.addRequired<DominatorTreeWrapperPass>();
         AU.addRequired<PostDominatorTreeWrapperPass>();
+        AU.addRequired<LoopInfoWrapperPass>();
+        AU.addPreserved<DominatorTreeWrapperPass>();
+        AU.addPreserved<PostDominatorTreeWrapperPass>();
+        AU.addPreserved<LoopInfoWrapperPass>();
     }
 
     virtual llvm::StringRef getPassName() const { return "URBPartialWrites"; }
@@ -97,7 +102,6 @@ private:
         const URBAccess& write0) const;
 private:
     const std::pair<bool, bool> m_SafeToExtend;
-    uint m_FullWriteGranularity;
     std::vector<URBAccess> m_UrbWrites;
     std::vector<URBAccess> m_UrbReads;
 };
@@ -299,7 +303,7 @@ std::pair<bool, bool> URBPartialWrites::IsSafeToExtendChannelMask(
         return (mask >> 4) & 0xF;
     };
     // Returns true if full mask can be set.
-    auto SafeToSetFullMask = [immMask0](
+    auto SafeToSetFullMask = [this, immMask0](
         uint mask0,
         uint mask1)->bool
     {
@@ -308,7 +312,8 @@ std::pair<bool, bool> URBPartialWrites::IsSafeToExtendChannelMask(
             // not overlapping accesses
             return true;
         }
-        if (immMask0 && (mask0 | mask1) == mask0)
+        if (immMask0 &&
+            (mask0 | mask1) == mask0)
         {
             // The second URB access is for a subset of channels accessed by the
             // first access.
@@ -524,6 +529,7 @@ bool URBPartialWrites::PostDominates(
 bool URBPartialWrites::ResolvePartialWrites32B()
 {
     bool modified = false;
+    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     for (uint i = 0; i < m_UrbWrites.size(); ++i)
     {
         const URBAccess& write0 = m_UrbWrites[i];
@@ -535,6 +541,11 @@ bool URBPartialWrites::ResolvePartialWrites32B()
         if (immMask0 && mask0 == 0xFF)
         {
             // not a partial write
+            continue;
+        }
+        if (!immMask0 && LI->getLoopFor(intr0->getParent()))
+        {
+            // not immediate mask and in a loop
             continue;
         }
         if (!IsEven(offset0) || (constOffset0 % 2) == 1)
@@ -560,6 +571,7 @@ bool URBPartialWrites::ResolvePartialWrites32B()
 bool URBPartialWrites::ResolvePartialWrites16B()
 {
     bool modified = false;
+    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     for (uint i = 0; i < m_UrbWrites.size(); ++i)
     {
         const URBAccess& write0 = m_UrbWrites[i];
@@ -570,6 +582,11 @@ bool URBPartialWrites::ResolvePartialWrites16B()
             (mask0 == 0xFF || mask0 == 0x0F || mask0 == 0xF0))
         {
             // not a partial write
+            continue;
+        }
+        if (!immMask0 && LI->getLoopFor(intr0->getParent()))
+        {
+            // not immediate mask and in a loop
             continue;
         }
         std::pair<bool, bool> extendMask = CheckURBWrites(write0);
@@ -624,14 +641,14 @@ bool URBPartialWrites::runOnFunction(Function& F)
     GetURBWritesAndReads(F);
 
     const CodeGenContext* const ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    const uint m_FullWriteGranularity = ctx->platform.getURBFullWriteMinGranularity();
-    if (m_FullWriteGranularity == 16)
+    const uint fullWriteGranularity = ctx->platform.getURBFullWriteMinGranularity();
+    if (fullWriteGranularity == 16)
     {
         modified = ResolvePartialWrites16B();
     }
     else
     {
-        IGC_ASSERT(m_FullWriteGranularity == 32);
+        IGC_ASSERT(fullWriteGranularity == 32);
         modified = ResolvePartialWrites32B();
     }
     return modified;
@@ -648,8 +665,10 @@ llvm::FunctionPass* createURBPartialWritesPass()
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(URBPartialWrites, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
     IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+    IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
     IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+    IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(URBPartialWrites, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 } // namespace IGC
