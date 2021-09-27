@@ -105,6 +105,9 @@ char OpenCLPrintfResolution::ID = 0;
 // |      < vec_element_3 >       |
 // |------------------------------|
 
+bool hasStackCallAttr(const llvm::Function& F);
+Value* BuildLoadInst(CallInst& CI, unsigned int Offset, Type* DataType);
+Value* getPrintfBasePtr(CallInst& CI);
 
 // Looks for a GlobalVariable related with given value.
 // Returns nullptr if on the way to the global variable
@@ -496,7 +499,15 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
     preprocessPrintfArgs(printfCall);
 
     // writeOffset = atomic_add(bufferPtr, dataSize)
-    Value* basebufferPtr = implicitArgs.getImplicitArg(F, ImplicitArg::PRINTF_BUFFER);
+    Value* basebufferPtr = nullptr;
+    auto usesStackCall = hasStackCallAttr(F) &&
+        IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE &&
+        IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg);
+    if(usesStackCall)
+        basebufferPtr = getPrintfBasePtr(printfCall);
+    else
+        basebufferPtr = implicitArgs.getImplicitArg(F, ImplicitArg::PRINTF_BUFFER);
+
     Value* dataSizeVal = ConstantInt::get(m_int32Type, getTotalDataSize());
     Instruction* writeOffsetStart = genAtomicAdd(basebufferPtr, dataSizeVal, printfCall, "write_offset");
     writeOffsetStart->setDebugLoc(m_DL);
