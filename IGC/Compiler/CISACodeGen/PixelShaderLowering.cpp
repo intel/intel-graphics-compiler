@@ -299,6 +299,8 @@ void PixelShaderLowering::FindIntrinsicOutput(
     std::bitset<cMaxInputs> isLinearInterpolation;
 
     llvm::Instruction* primId = nullptr;
+    llvm::Instruction* pointCoordX = nullptr;
+    llvm::Instruction* pointCoordY = nullptr;
     SmallVector<Instruction*, 4> instructionToRemove;
     Function& F = *m_ReturnBlock->getParent();
     Value* btrue = llvm::ConstantInt::get(Type::getInt1Ty(m_module->getContext()), true);
@@ -398,6 +400,14 @@ void PixelShaderLowering::FindIntrinsicOutput(
                     {
                         primId = inst;
                     }
+                    else if (usage == POINT_COORD_X)
+                    {
+                        pointCoordX = inst;
+                    }
+                    else if (usage == POINT_COORD_Y)
+                    {
+                        pointCoordY = inst;
+                    }
                     else if (usage == POSITION_X || usage == POSITION_Y)
                     {
                         LowerPositionInput(inst, usage);
@@ -480,6 +490,61 @@ void PixelShaderLowering::FindIntrinsicOutput(
             m_module->getContext(),
             ConstantAsMetadata::get(cval));
         primIdMD->addOperand(locationNd);
+    }
+    if (pointCoordX || pointCoordY)
+    {
+        // Although PointCoords needs only 2 DWORDs, IGC must allocate 4 additional input and returns
+        // information about the PointCoord input to UMD (to program SBE). These new input components
+        // are created with linear interpolation and must be placed in an empty attribute index (4 DWORDs).
+        unsigned int location;
+        for (location = 0; location < cMaxInputComponents; location += 4)
+        {
+            bool isAttributeIndexEmpty =
+                inputComponentsUsed.test(location) == false &&
+                inputComponentsUsed.test(location + 1) == false &&
+                inputComponentsUsed.test(location + 2) == false &&
+                inputComponentsUsed.test(location + 3) == false;
+            if (isAttributeIndexEmpty)
+            {
+                isLinearInterpolation.set(location / 4);
+                break;
+            }
+        }
+        IGC_ASSERT(location < cMaxInputComponents);
+
+        llvm::Instruction* inputPointCoords[] = { pointCoordX, pointCoordY };
+        for (unsigned int i = 0; i < sizeof(inputPointCoords) / sizeof(inputPointCoords[0]); i++)
+        {
+            if (inputPointCoords[i] == nullptr)
+            {
+                continue;
+            }
+            Value* arguments[] =
+            {
+                ConstantInt::get(Type::getInt32Ty(m_module->getContext()), location + i),
+                ConstantInt::get(Type::getInt32Ty(m_module->getContext()), EINTERPOLATION_LINEAR),
+            };
+            CallInst* in = GenIntrinsicInst::Create(
+                GenISAIntrinsic::getDeclaration(
+                    m_module,
+                    GenISAIntrinsic::GenISA_DCL_inputVec,
+                    Type::getFloatTy(m_module->getContext())),
+                arguments,
+                "",
+                inputPointCoords[i]);
+            in->setDebugLoc(inputPointCoords[i]->getDebugLoc());
+            inputPointCoords[i]->replaceAllUsesWith(in);
+            instructionToRemove.push_back(inputPointCoords[i]);
+        }
+
+        NamedMDNode* PointCoordMD = m_module->getOrInsertNamedMetadata("PointCoordLocation");
+        Constant* cval = ConstantInt::get(
+            Type::getInt32Ty(m_module->getContext()), location);
+        llvm::MDNode* locationNd = llvm::MDNode::get(
+            m_module->getContext(),
+            ConstantAsMetadata::get(cval));
+        PointCoordMD->addOperand(locationNd);
+
     }
     for (unsigned int i = 0; i < instructionToRemove.size(); i++)
     {

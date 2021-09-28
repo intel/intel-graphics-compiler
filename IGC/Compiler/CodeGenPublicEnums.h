@@ -233,6 +233,8 @@ namespace IGC
         XP0,
         XP1,
         XP2,
+        POINT_COORD_X,
+        POINT_COORD_Y,
         NUM_SGV,
     };
 

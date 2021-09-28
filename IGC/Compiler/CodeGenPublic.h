@@ -408,6 +408,7 @@ namespace IGC
         unsigned int renderTargetMask;
         unsigned int constantInterpolationEnableMask;
         unsigned int primIdLocation;
+        unsigned int pointCoordLocation;
         unsigned int samplerCount;
         unsigned int BindingTableEntryBitmap;
         unsigned int sampleCmpToDiscardOptimizationSlot;
@@ -432,6 +433,7 @@ namespace IGC
         bool VectorMask;
 
         bool hasPrimID;
+        bool hasPointCoord;
         bool isCoarsePS;
         bool hasCoarsePixelSize;
         bool hasSampleOffset;

@@ -870,6 +870,12 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
             mdconst::dyn_extract<ConstantInt>(primIdNod->getOperand(0)->getOperand(0))->getZExtValue());
         pKernelProgram->hasPrimID = true;
     }
+    if (NamedMDNode* PointCoordNod = entry->getParent()->getNamedMetadata("PointCoordLocation"))
+    {
+        pKernelProgram->pointCoordLocation = int_cast<uint>(
+            mdconst::dyn_extract<ConstantInt>(PointCoordNod->getOperand(0)->getOperand(0))->getZExtValue());
+        pKernelProgram->hasPointCoord = true;
+    }
 
     pKernelProgram->posXYOffsetEnable = m_pPositionXYOffset ? true : false;
     pKernelProgram->VectorMask = m_VectorMask;
