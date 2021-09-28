@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Support/ShaderDump.h"
+#include "vc/Support/BackendConfig.h"
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringRef.h>
@@ -51,4 +52,20 @@ private:
 
 std::unique_ptr<vc::ShaderDumper> vc::createDefaultShaderDumper() {
   return std::make_unique<FileShaderDumper>();
+}
+
+static void writeContentToFile(const Twine &Name, llvm::ArrayRef<char> Blob) {
+  std::error_code EC;
+  // no error handling since this is debug output
+  raw_fd_ostream OS(Name.str(), EC);
+  OS.write(Blob.data(), Blob.size());
+}
+
+void vc::produceAuxiliaryShaderDumpFile(const llvm::GenXBackendConfig &BC,
+                                        const llvm::Twine &OutputName,
+                                        llvm::ArrayRef<char> Blob) {
+  if (BC.hasShaderDumper())
+    BC.getShaderDumper().dumpBinary(Blob, OutputName.str());
+  else
+    writeContentToFile(OutputName, Blob);
 }

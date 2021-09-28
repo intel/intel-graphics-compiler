@@ -236,13 +236,6 @@ static cl::opt<std::string> DbgOpt_VisaTransformInfoPath(
     "vc-dump-module-to-visa-transform-info-path", cl::init(""), cl::Hidden,
     cl::desc("filename into which MVTI is dumped"));
 
-static void debugDump(const Twine &Name, const char *Content, size_t Size) {
-  std::error_code EC;
-  // no error handling since this is debug output
-  raw_fd_ostream OS(Name.str(), EC);
-  OS << StringRef(Content, Size);
-}
-
 template <typename ContainerT>
 using EmplaceTy = decltype(std::declval<ContainerT>().emplace());
 
@@ -966,15 +959,6 @@ static void processGenXFunction(IGC::IDebugEmitter *Emitter, GenXFunction *GF) {
 
 namespace llvm {
 
-static void dumpDebugInfoBlob(const GenXBackendConfig &BC,
-                              const Twine &OutputName,
-                              const ArrayRef<char> Blob) {
-  if (BC.hasShaderDumper())
-    BC.getShaderDumper().dumpBinary(Blob, OutputName.str());
-  else
-    debugDump(OutputName, Blob.data(), Blob.size());
-}
-
 static void dumpDebugInfo(const GenXBackendConfig &BC,
                           const StringRef KernelName,
                           const ArrayRef<char> ElfBin,
@@ -984,10 +968,13 @@ static void dumpDebugInfo(const GenXBackendConfig &BC,
   if (!BC.dbgInfoDumpsNameOverride().empty())
     Prefix.append(BC.dbgInfoDumpsNameOverride()).append("_");
 
-  dumpDebugInfoBlob(BC, Prefix + KernelName + "_dwarf.elf", ElfBin);
-  dumpDebugInfoBlob(BC, Prefix + KernelName + "_gen.dump", GenDbgBlob);
+  vc::produceAuxiliaryShaderDumpFile(BC, Prefix + KernelName + "_dwarf.elf",
+                                     ElfBin);
+  vc::produceAuxiliaryShaderDumpFile(BC, Prefix + KernelName + "_gen.dump",
+                                     GenDbgBlob);
   if (!ErrLog.empty())
-    dumpDebugInfoBlob(BC, Prefix + KernelName + ".dbgerr", ErrLog);
+    vc::produceAuxiliaryShaderDumpFile(BC, Prefix + KernelName + ".dbgerr",
+                                       ErrLog);
 }
 
 void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
@@ -1169,9 +1156,11 @@ bool GenXDebugInfo::runOnModule(Module &M) {
   const auto &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
   ModuleToVisaTransformInfo MVTI(*VB, FGA, CG);
   if (!DbgOpt_VisaTransformInfoPath.empty()) {
-    std::error_code IgnoredEC;
-    raw_fd_ostream DumpStream(DbgOpt_VisaTransformInfoPath, IgnoredEC);
-    MVTI.print(DumpStream);
+    std::string SerializedMVTI;
+    llvm::raw_string_ostream OS(SerializedMVTI);
+    MVTI.print(OS);
+    vc::produceAuxiliaryShaderDumpFile(BC, DbgOpt_VisaTransformInfoPath,
+                                       OS.str());
   }
   LLVM_DEBUG(MVTI.print(dbgs()); dbgs() << "\n");
 

@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Support/BackendConfig.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
@@ -60,6 +61,7 @@ public:
   StringRef getPassName() const override { return "GenX analysis dumper pass"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionGroupPass::getAnalysisUsage(AU);
+    AU.addRequired<GenXBackendConfig>();
     AU.setPreservesAll();
   }
   bool runOnFunctionGroup(FunctionGroup &FG) override;
@@ -82,43 +84,33 @@ FunctionGroupPass *llvm::createGenXGroupAnalysisDumperPass(
   return new GenXGroupAnalysisDumper(P, DumpNamePrefix, DumpNameSuffix);
 }
 
-/***********************************************************************
- * openFileForDump : open file for dumping analysis into
- *
- * The filename is the name of the kernel, or the name of the function if
- * not a kernel, with the supplied suffix.
- *
- * On error, this function prints an error message and returns -1.
- */
-static int openFileForDump(Function *F, StringRef DumpNamePrefix,
-                           StringRef DumpNameSuffix) {
-  // Get name of kernel, or failing that, name of function.
-  KernelMetadata KM(F);
+static std::string makeOutputName(const Function &F, StringRef DumpNamePrefix,
+                                  StringRef DumpNameSuffix) {
+
+  KernelMetadata KM(&F);
   StringRef Name = KM.getName();
   if (Name.empty())
-    Name = F->getName();
-  int FD = -1;
+    Name = F.getName();
+
   std::string Filename = (DumpNamePrefix + Name + DumpNameSuffix).str();
   // Sanitize templated kernel names.
   std::replace_if(Filename.begin(), Filename.end(),
                   [](const char x) { return x == '<' || x == '>'; }, '_');
-  auto EC = sys::fs::openFileForWrite(Filename, FD, sys::fs::CD_CreateAlways,
-                                      sys::fs::OF_None);
-  if (EC) {
-    errs() << "Error: " << EC.message() << "\n";
-    return -1;
-  }
-  return FD;
+
+  return Filename;
 }
 
 /***********************************************************************
  * GenXAnalysisDumper::runOnFunction : dump analysis to file
  */
-bool GenXAnalysisDumper::runOnFunction(Function &F)
-{
-  int FD = openFileForDump(&F, DumpNamePrefix, DumpNameSuffix);
-  raw_fd_ostream O(FD, /*shouldClose=*/ true);
-  P->print(O, F.getParent());
+bool GenXAnalysisDumper::runOnFunction(Function &F) {
+  std::string SerializedData;
+  llvm::raw_string_ostream OS(SerializedData);
+  P->print(OS, F.getParent());
+
+  auto DumpName = makeOutputName(F, "f_" + DumpNamePrefix, DumpNameSuffix);
+  const auto &BC = getAnalysis<GenXBackendConfig>();
+  vc::produceAuxiliaryShaderDumpFile(BC, DumpName, OS.str());
   return false;
 }
 
@@ -126,9 +118,14 @@ bool GenXAnalysisDumper::runOnFunction(Function &F)
  * GenXGroupAnalysisDumper::runOnFunctionGroup : dump analysis to file
  */
 bool GenXGroupAnalysisDumper::runOnFunctionGroup(FunctionGroup &FG) {
-  int FD = openFileForDump(FG.getHead(), DumpNamePrefix, DumpNameSuffix);
-  raw_fd_ostream O(FD, /*shouldClose=*/ true);
-  P->print(O, &FG);
+  std::string SerializedData;
+  llvm::raw_string_ostream OS(SerializedData);
+  P->print(OS, &FG);
+
+  auto DumpName =
+      makeOutputName(*FG.getHead(), "fg_" + DumpNamePrefix, DumpNameSuffix);
+  const auto &BC = getAnalysis<GenXBackendConfig>();
+  vc::produceAuxiliaryShaderDumpFile(BC, DumpName, OS.str());
   return false;
 }
 

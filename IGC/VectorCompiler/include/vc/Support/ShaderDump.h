@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 
 namespace llvm {
 class Module;
+class GenXBackendConfig;
 }
 
 namespace vc {
@@ -44,6 +45,16 @@ public:
 };
 
 std::unique_ptr<ShaderDumper> createDefaultShaderDumper();
+
+void produceAuxiliaryShaderDumpFile(const llvm::GenXBackendConfig &BC,
+                                    const llvm::Twine &OutputName,
+                                    const llvm::ArrayRef<char> Blob);
+inline void produceAuxiliaryShaderDumpFile(const llvm::GenXBackendConfig &BC,
+                                           const llvm::Twine &OutputName,
+                                           const llvm::StringRef Blob) {
+  return produceAuxiliaryShaderDumpFile(BC, OutputName,
+                                        {Blob.begin(), Blob.end()});
+}
 } // namespace vc
 
 #endif
