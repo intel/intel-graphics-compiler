@@ -2289,7 +2289,7 @@
       "opc": "ISA_BF_CVT",
       "exec_size": [ "EXECSIZE" ],
       "dst": [ "GENERAL", "DIRECTONLY", 0 ],
-      "src0": [ "GENERAL", "DIRECTONLY", "NOIMM", 1 ]
+      "src0": [ "GENERAL", "CONTIGUOUS", "DIRECTONLY", "NOIMM", 1 ]
     },
     "genx_bfrev": {
       "opc": "ISA_BFREV",

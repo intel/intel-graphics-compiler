@@ -198,6 +198,9 @@ public:
   int dpasWidth() const {
     return 8;
   }
+  unsigned bfMixedModeWidth() const {
+    return 8;
+  }
 
   /// * emulateLongLong - true if i64 emulation is requested
   bool emulateLongLong() const { return EmulateLongLong; }
