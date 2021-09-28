@@ -1329,6 +1329,9 @@ void G4_INST::addDefUse(G4_INST* inst, Gen4_Operand_Number srcPos)
 void G4_INST::swapDefUse(Gen4_Operand_Number srcIxA, Gen4_Operand_Number srcIxB)
 {
     DEF_EDGE_LIST_ITER iter = defInstList.begin();
+    //To avoid redundant define and use items
+    INST_LIST handledDefInst;
+
     // since ACC is only exposed in ARCTAN intrinsic translation, there is no instruction split with ACC
     while (iter != defInstList.end())
     {
@@ -1345,6 +1348,12 @@ void G4_INST::swapDefUse(Gen4_Operand_Number srcIxA, Gen4_Operand_Number srcIxB)
             iter++;
             continue;
         }
+        if (std::find(handledDefInst.begin(), handledDefInst.end(), (*iter).first) != handledDefInst.end())
+        {
+            iter++;
+            continue;
+        }
+        handledDefInst.push_back((*iter).first);
         // change uselist of def inst
         USE_EDGE_LIST_ITER useIter = (*iter).first->useInstList.begin();
         for (; useIter != (*iter).first->useInstList.end(); useIter++)
