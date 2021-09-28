@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include <cm-cl/exec.h>
 #include <cm-cl/math.h>
 #include <cm-cl/vector.h>
 #include <opencl_def.h>
@@ -14,6 +15,33 @@ using namespace cm;
 
 extern "C" {
 #include "spirv_math.h"
+}
+
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInGlobalInvocationId(int dim) {
+  return cm::exec::get_local_id(dim) +
+         static_cast<ulong>(cm::exec::get_group_id(dim)) *
+             cm::exec::get_local_size(dim);
+}
+
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInWorkgroupSize(int dim) {
+  return cm::exec::get_local_size(dim);
+}
+
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInLocalInvocationId(int dim) {
+  return cm::exec::get_local_id(dim);
+}
+
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInWorkgroupId(int dim) {
+  return cm::exec::get_group_id(dim);
+}
+
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInGlobalSize(int dim) {
+  return static_cast<ulong>(cm::exec::get_local_size(dim)) *
+         cm::exec::get_group_count(dim);
+}
+
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInNumWorkgroups(int dim) {
+  return cm::exec::get_group_count(dim);
 }
 
 #define IGC_OCL_BUILTIN_NAME_1ARG_SCALAR(FUNC_NAME, POSTFIX_TYPE)              \

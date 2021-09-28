@@ -43,6 +43,13 @@ extern "C" uint32_t __cm_cl_addc_scalar(uint32_t *sum, uint32_t src0,
 extern "C" void __cm_cl_addc_vector(void *carry, void *sum, void *src0,
                                     void *src1);
 
+extern "C" cm::detail::vector_impl<uint32_t, 3> __cm_cl_local_id();
+extern "C" cm::detail::vector_impl<uint32_t, 3> __cm_cl_local_size();
+extern "C" cm::detail::vector_impl<uint32_t, 3> __cm_cl_group_count();
+extern "C" uint32_t __cm_cl_group_id_x();
+extern "C" uint32_t __cm_cl_group_id_y();
+extern "C" uint32_t __cm_cl_group_id_z();
+
 namespace cm {
 namespace detail {
 
@@ -195,6 +202,22 @@ addc(vector_impl<uint32_t, width> src0, vector_impl<uint32_t, width> src1) {
   __cm_cl_addc_vector(&carry, &res, &src0, &src1);
   return {res, __builtin_convertvector(carry, vector_impl<char, width>)};
 }
+
+inline vector_impl<uint32_t, 3> get_local_id() { return __cm_cl_local_id(); }
+
+inline vector_impl<uint32_t, 3> get_local_size() {
+  return __cm_cl_local_size();
+}
+
+inline vector_impl<uint32_t, 3> get_group_count() {
+  return __cm_cl_group_count();
+}
+
+inline uint32_t get_group_id_x() { return __cm_cl_group_id_x(); }
+
+inline uint32_t get_group_id_y() { return __cm_cl_group_id_y(); }
+
+inline uint32_t get_group_id_z() { return __cm_cl_group_id_z(); }
 
 } // namespace detail
 } // namespace cm

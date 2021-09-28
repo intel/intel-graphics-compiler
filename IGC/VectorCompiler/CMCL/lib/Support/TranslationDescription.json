@@ -289,6 +289,60 @@
           {"GetBuiltinOperand": ["SecondSrc"]}
         ]
       }
+    },
+    "LocalID": {
+      "Name": "local_id",
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_local_id",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
+    "LocalSize": {
+      "Name": "local_size",
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_local_size",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
+    "GroupCount": {
+      "Name": "group_count",
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_group_count",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
+    "GroupIDX": {
+      "Name": "group_id_x",
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_group_id_x",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
+    "GroupIDY": {
+      "Name": "group_id_y",
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_group_id_y",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
+    "GroupIDZ": {
+      "Name": "group_id_z",
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_group_id_z",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
     }
   }
 }
