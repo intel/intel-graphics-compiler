@@ -38,31 +38,13 @@ WIFuncResolution::WIFuncResolution() : FunctionPass(ID), m_implicitArgs()
     initializeWIFuncResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-Constant* WIFuncResolution::getKnownWorkGroupSize(
-    IGCMD::MetaDataUtils* MDUtils, llvm::Function& F) const
-{
-    auto Dims = IGCMD::IGCMetaDataHelper::getThreadGroupDims(*MDUtils, &F);
-    if (!Dims)
-        return nullptr;
-
-    return ConstantDataVector::get(F.getContext(), *Dims);
-}
-
 bool WIFuncResolution::runOnFunction(Function& F)
 {
     m_changed = false;
     m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto* MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    m_implicitArgs = ImplicitArgs(F, MDUtils);
     visit(F);
-
-    /// If the work group size is known at compile time, emit it as a
-    /// literal rather than reading from the payload.
-    if (Constant * KnownWorkGroupSize = getKnownWorkGroupSize(MDUtils, F))
-    {
-        if (auto * Arg = m_implicitArgs.getImplicitArg(F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE))
-            Arg->replaceAllUsesWith(KnownWorkGroupSize);
-    }
 
     return m_changed;
 }
@@ -769,9 +751,29 @@ LowerImplicitArgIntrinsics::LowerImplicitArgIntrinsics() : FunctionPass(ID)
     initializeLowerImplicitArgIntrinsicsPass(*PassRegistry::getPassRegistry());
 }
 
+Constant* getKnownWorkGroupSize(IGCMD::MetaDataUtils* MDUtils, llvm::Function& F)
+{
+    auto Dims = IGCMD::IGCMetaDataHelper::getThreadGroupDims(*MDUtils, &F);
+    if (!Dims)
+        return nullptr;
+
+    return ConstantDataVector::get(F.getContext(), *Dims);
+}
+
 bool LowerImplicitArgIntrinsics::runOnFunction(Function& F)
 {
     visit(F);
+
+    /// If the work group size is known at compile time, emit it as a
+    /// literal rather than reading from the payload.
+    auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    if (Constant* KnownWorkGroupSize = getKnownWorkGroupSize(MDUtils, F))
+    {
+        ImplicitArgs IAS(F, MDUtils);
+        if (auto* V = IAS.getImplicitArgValue(F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, Ctx))
+            V->replaceAllUsesWith(KnownWorkGroupSize);
+    }
 
     return false;
 }
