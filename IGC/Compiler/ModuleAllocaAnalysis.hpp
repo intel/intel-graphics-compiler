@@ -103,4 +103,5 @@ namespace IGC
     };
 
     void initializeModuleAllocaAnalysisPass(llvm::PassRegistry&);
+
 }
