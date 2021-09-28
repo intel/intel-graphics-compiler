@@ -1914,7 +1914,7 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             if (!opnd[i])
             {
                 VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, lblKind);
-                opnd[i]->tag = lblKind;
+                opnd[i]->tag = ISA_SUBROUTINE;
             }
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
             VISA_CALL_TO_BOOL(AppendVISACFCallInst,
