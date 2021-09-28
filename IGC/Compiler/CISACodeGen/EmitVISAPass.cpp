@@ -14110,6 +14110,12 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
     pR = pR ? BroadcastIfUniform(pR) : nullptr;
     pLOD = pLOD ? BroadcastIfUniform(pLOD) : nullptr;
 
+    uint writeMask =
+        (!llvm::isa<UndefValue>(pllSrc_X) ? 1 : 0) |
+        (!llvm::isa<UndefValue>(pllSrc_Y) ? 2 : 0) |
+        (!llvm::isa<UndefValue>(pllSrc_Z) ? 4 : 0) |
+        (!llvm::isa<UndefValue>(pllSrc_W) ? 8 : 0);
+
     ResourceDescriptor resource = GetResourceVariable(pllDstBuffer);
 
     if (m_currShader->GetIsUniform(pInsn))
@@ -14141,7 +14147,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
             m_currShader->CopyVariable(pPayload, pSrc_Z, 2);
             m_currShader->CopyVariable(pPayload, pSrc_W, 3);
             m_encoder->SetPredicate(flag);
-            m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload);
+            m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload, writeMask);
 
             m_encoder->Push();
         }
@@ -14201,7 +14207,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetSrcSubVar(2, i);
                     m_encoder->SetSrcSubVar(3, i);
                     m_encoder->SetPredicate(flag);
-                    m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i]);
+                    m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i], writeMask);
                     m_encoder->Push();
                 }
             }
@@ -14215,7 +14221,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetSrcSubVar(2, i);
                     m_encoder->SetSrcSubVar(3, i);
                     m_encoder->SetPredicate(flag);
-                    m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i]);
+                    m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i], writeMask);
                     m_encoder->Push();
                 }
             }

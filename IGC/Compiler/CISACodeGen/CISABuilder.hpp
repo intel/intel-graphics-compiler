@@ -302,7 +302,7 @@ namespace IGC
         inline void SetP(CVariable* dst, CVariable* src);
         inline void Gather(CVariable* dst, CVariable* bufidx, CVariable* offset, CVariable* gOffset, e_predefSurface surface, int elementSize);
         inline void TypedRead4(const ResourceDescriptor& resource, CVariable* pU, CVariable* pV, CVariable* pR, CVariable* pLOD, CVariable* pDst, uint writeMask);
-        inline void TypedWrite4(const ResourceDescriptor& resource, CVariable* pU, CVariable* pV, CVariable* pR, CVariable* pLOD, CVariable* pSrc);
+        inline void TypedWrite4(const ResourceDescriptor& resource, CVariable* pU, CVariable* pV, CVariable* pR, CVariable* pLOD, CVariable* pSrc, uint writeMask);
         inline void Scatter(CVariable* val, CVariable* bufidx, CVariable* offset, CVariable* gOffset, e_predefSurface surface, int elementSize);
         inline void IShr(CVariable* dst, CVariable* src0, CVariable* src1);
         inline void Min(CVariable* dst, CVariable* src0, CVariable* src1);
@@ -954,9 +954,9 @@ namespace IGC
     }
 
     inline void CEncoder::TypedWrite4(const ResourceDescriptor& resource, CVariable* pU, CVariable* pV,
-        CVariable* pR, CVariable* pLOD, CVariable* pSrc)
+        CVariable* pR, CVariable* pLOD, CVariable* pSrc, uint writeMask)
     {
-        TypedReadWrite(ISA_SCATTER4_TYPED, resource, pU, pV, pR, pLOD, pSrc, 0);
+        TypedReadWrite(ISA_SCATTER4_TYPED, resource, pU, pV, pR, pLOD, pSrc, writeMask);
     }
 
     inline void CEncoder::Scatter(CVariable* val, CVariable* bufidx, CVariable* offset, CVariable* gOffset, e_predefSurface surface, int elementSize)
