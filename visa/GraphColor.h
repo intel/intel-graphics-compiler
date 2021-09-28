@@ -277,9 +277,9 @@ namespace vISA
         std::unordered_map <G4_Declare*, MaskDeclares> retDeclares;
         Mem_Manager& m;
 
-        bool updateDstMaskForGather(G4_INST* inst, unsigned char* mask);
-        bool updateDstMaskForGatherRaw(G4_INST* inst, unsigned char* mask, const G4_SendDescRaw *raw);
-        bool updateDstMaskForGatherLdSt(G4_INST* inst, unsigned char* mask, const G4_SendDescLdSt *ldst);
+        bool updateDstMaskForGather(G4_INST* inst, std::vector<unsigned char>& mask);
+        bool updateDstMaskForGatherRaw(G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescRaw* raw);
+        bool updateDstMaskForGatherLdSt(G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescLdSt *ldst);
         void updateDstMask(G4_INST* inst, bool checkCmodOnly);
         static unsigned getByteSizeFromMask(AugmentationMasks type);
         bool isDefaultMaskDcl(G4_Declare* dcl, unsigned simdSize, AugmentationMasks type);
@@ -623,7 +623,7 @@ namespace vISA
         BankConflict conflict = BANK_CONFLICT_NONE;      // used to indicate bank that should be assigned to dcl if possible
         G4_INST* startInterval = nullptr;
         G4_INST* endInterval = nullptr;
-        unsigned char* mask = nullptr;
+        std::vector<unsigned char> mask;
         std::vector<const G4_Declare*> subDclList;
         unsigned subOff = 0;
         std::vector<BundleConflict> bundleConflicts;
@@ -1021,12 +1021,12 @@ namespace vISA
             allocVar(dcl).endInterval = inst;
         }
 
-        unsigned char* getMask(const G4_Declare* dcl) const
+        const std::vector<unsigned char>& getMask(const G4_Declare* dcl) const
         {
             return getVar(dcl).mask;
         }
 
-        void setMask(const G4_Declare* dcl, unsigned char* m)
+        void setMask(const G4_Declare* dcl, std::vector<unsigned char> m)
         {
             allocVar(dcl).mask = m;
         }

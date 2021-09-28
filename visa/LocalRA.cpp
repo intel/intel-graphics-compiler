@@ -543,7 +543,7 @@ void LocalRA::resetMasks()
 
     for (auto dcl : dcls)
     {
-        gra.setMask(dcl, nullptr);
+        gra.setMask(dcl, {});
     }
 }
 

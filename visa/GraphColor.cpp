@@ -1284,8 +1284,8 @@ bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSo
 bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
 {
     bool retval = true;
-    auto maskUsed = getMask(dcl);
-    if (maskUsed != nullptr &&
+    auto& maskUsed = getMask(dcl);
+    if (maskUsed.size() > 0 &&
         getAugmentationMask(dcl) != AugmentationMasks::NonDefault)
     {
         auto byteSize = dcl->getByteSize();
@@ -2942,7 +2942,7 @@ Augmentation::Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis
 
 // For Scatter read, the channel is not handled as the block read.
 // Update the emask according to the definition of VISA
-bool Augmentation::updateDstMaskForGather(G4_INST* inst, unsigned char* mask)
+bool Augmentation::updateDstMaskForGather(G4_INST* inst, std::vector<unsigned char>& mask)
 {
     if (const G4_SendDescRaw *d = inst->getMsgDescRaw()) {
         return updateDstMaskForGatherRaw(inst, mask, d);
@@ -2957,7 +2957,7 @@ bool Augmentation::updateDstMaskForGather(G4_INST* inst, unsigned char* mask)
 static void updateMaskSIMT(
     unsigned char curEMBit,
     unsigned char execSize,
-    unsigned char* mask,
+    std::vector<unsigned char>& mask,
     unsigned dataSizeBytes, unsigned vecElems)
 {
     unsigned blockSize = dataSizeBytes;
@@ -2980,7 +2980,7 @@ static void updateMaskSIMT(
 }
 
 bool Augmentation::updateDstMaskForGatherRaw(
-    G4_INST* inst, unsigned char* mask, const G4_SendDescRaw *msgDesc)
+    G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescRaw* msgDesc)
 {
     unsigned char execSize = inst->getExecSize();
     const G4_DstRegRegion* dst = inst->getDst();
@@ -3146,7 +3146,7 @@ bool Augmentation::updateDstMaskForGatherRaw(
 }
 
 bool Augmentation::updateDstMaskForGatherLdSt(
-    G4_INST* inst, unsigned char* mask, const G4_SendDescLdSt *msgDesc)
+    G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescLdSt *msgDesc)
 {
     // as in the raw case only support SIMT
     if (msgDesc->op != LdStOp::LOAD || msgDesc->order == LdStOrder::SCALAR) {
@@ -3177,7 +3177,6 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
         (checkCmodOnly == true && cmod != NULL && cmod->getBase() != NULL))
     {
         int dclOffset = 0;
-        unsigned char* mask = NULL;
         G4_Declare* topdcl = NULL;
 
         if (checkCmodOnly == false)
@@ -3195,7 +3194,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
             topdcl = topdcl->getAliasDeclare();
         }
 
-        mask = gra.getMask(topdcl);
+        auto& mask = const_cast<std::vector<unsigned char>&>(gra.getMask(topdcl));
 
         unsigned size = topdcl->getByteSize();
         if (checkCmodOnly == true || dst->isFlag())
@@ -3203,16 +3202,12 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
             size *= BITS_PER_BYTE;
         }
 
-        if (mask == NULL)
+        if (mask.size() == 0)
         {
-            mask = (unsigned char*)m.alloc(size);
-
-            gra.setMask(topdcl, mask);
-
-            memset(mask, 0, size);
+            mask.resize(size);
         }
 
-        MUST_BE_TRUE(mask != NULL, "Valid mask not found for dcl " << topdcl->getName());
+        MUST_BE_TRUE(mask.size() > 0, "Valid mask not found for dcl " << topdcl->getName());
 
         unsigned short hstride, elemSize;
         short row, subReg;
@@ -3313,7 +3308,7 @@ bool Augmentation::isDefaultMaskDcl(G4_Declare* dcl, unsigned simdSize, Augmenta
     // default mask is one where dst's hstride is 1 and
     // elem size is 4
     bool isDefault = false;
-    unsigned char* mask = gra.getMask(dcl);
+    auto& mask = gra.getMask(dcl);
 
     unsigned byteSize = getByteSizeFromMask(type);
 
@@ -3322,7 +3317,7 @@ bool Augmentation::isDefaultMaskDcl(G4_Declare* dcl, unsigned simdSize, Augmenta
     {
         simdSize = 16;
     }
-    if (mask != NULL)
+    if (mask.size() > 0)
     {
         G4_Declare* topdcl = dcl->getRootDeclare();
         bool isFlagDcl = (topdcl->getRegFile() == G4_FLAG);
@@ -4432,7 +4427,7 @@ void Augmentation::clearIntervalInfo()
     {
         gra.setStartInterval(*dcl_it, nullptr);
         gra.setEndInterval(*dcl_it, nullptr);
-        gra.setMask(*dcl_it, nullptr);
+        gra.setMask(*dcl_it, {});
         gra.setAugmentationMask(*dcl_it, AugmentationMasks::Undetermined);
     }
 }
@@ -4595,10 +4590,10 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
 
 bool Augmentation::isNoMask(const G4_Declare* dcl, unsigned size) const
 {
-    const unsigned char* mask = gra.getMask(dcl);
+    auto& mask = gra.getMask(dcl);
     bool result = false;
 
-    if (mask != NULL)
+    if (mask.size() > 0)
     {
         result = true;
 
@@ -4616,10 +4611,10 @@ bool Augmentation::isNoMask(const G4_Declare* dcl, unsigned size) const
 
 bool Augmentation::isConsecutiveBits(const G4_Declare* dcl, unsigned size) const
 {
-    const unsigned char* mask = gra.getMask(dcl);
+    auto& mask = gra.getMask(dcl);
     bool result = false;
 
-    if (mask != NULL)
+    if (mask.size() > 0)
     {
         result = true;
 
@@ -4655,10 +4650,10 @@ bool Augmentation::isCompatible(const G4_Declare* testDcl, const G4_Declare* big
     // that overlap are considered to be incompatible. This is to
     // handle removal of JIP edges (then->else edge).
 
-    unsigned char* testMask = gra.getMask(testDcl);
-    unsigned char* biggerMask = gra.getMask(biggerDcl);
+    auto& testMask = gra.getMask(testDcl);
+    auto& biggerMask = gra.getMask(biggerDcl);
 
-    if (testMask != NULL && biggerMask != NULL)
+    if (testMask.size() > 0 && biggerMask.size() > 0)
     {
         // Lets pattern match
         if (testDcl->getRegFile() == G4_FLAG)
