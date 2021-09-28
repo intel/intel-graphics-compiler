@@ -21,13 +21,14 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 namespace vc {
-class PassManager : public llvm::legacy::PassManager {
-  template <typename PMOption>
-  void addExtraPass(const llvm::PassInfo *CurrentPass);
-
-public:
+struct PassManager : public llvm::legacy::PassManager {
   void add(llvm::Pass *P) override;
 };
+
+// Optionally injects additional passes besides the provided \p P.
+// Set -vc-choose-pass-manager-override to false to inject those passes inside
+// this function and disable inside vc::PassManager::add.
+void addPass(llvm::legacy::PassManagerBase &PM, llvm::Pass *P);
 } // namespace vc
 
 #endif // DRIVER_VCPASSMANAGER_H

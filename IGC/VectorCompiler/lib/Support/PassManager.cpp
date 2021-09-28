@@ -25,6 +25,14 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
+// One can either add extra passes inside vc::PassManager::add or inside
+// vc::addPass function. Otherwise pass will be added multiple times.
+// This option defines whether addition inside vc::PassManager should take
+// place.
+static cl::opt<bool> OverridePassManagerOpt(
+    "vc-choose-pass-manager-override", cl::init(true), cl::Hidden,
+    cl::desc("Take pass manager overrideing over addPass func"));
+
 namespace {
 struct PassNumber {
   int N;
@@ -181,42 +189,62 @@ bool AllOptionsAreEmpty() {
 }
 } // namespace
 
-template <typename PMOption>
-void vc::PassManager::addExtraPass(const PassInfo *CurrentPI) {
+template <typename PMOption, typename PMT, typename AdderT>
+void addExtraPass(PMT &PM, const PassInfo *CurrentPI, AdderT Adder) {
   auto res = PMOption::option.getValue().includes(CurrentPI->getPassArgument());
   if (res.first)
-    legacy::PassManager::add(PMOption::createPass(CurrentPI, res.second));
+    Adder(PM, *PMOption::createPass(CurrentPI, res.second));
 }
 
-void vc::PassManager::add(Pass *P) {
-  IGC_ASSERT(P);
-
+// Adds pass \p P to \p PM plus some additional passes.
+// Passes are added by \p Adder functor.
+// AdderT: (PMT &, Pass &) -> void
+template <typename PMT, typename AdderT>
+void addPassImpl(PMT &PM, Pass &P, AdderT Adder) {
   if (AllOptionsAreEmpty())
-    return legacy::PassManager::add(P);
+    return Adder(PM, P);
 
-  const auto *PassInfo = Pass::lookupPassInfo(P->getPassID());
+  const auto *PassInfo = Pass::lookupPassInfo(P.getPassID());
   if (!PassInfo) {
 #ifndef NDEBUG
     llvm::errs() << "WARNING: LLVM could not find PassInfo for the <"
-                 << P->getPassName() << "> pass! Extra passes "
+                 << P.getPassName() << "> pass! Extra passes "
                  << "won't be injected.\n";
 #endif // NDEBUG
-    return legacy::PassManager::add(P);
+    return Adder(PM, P);
   }
   // Extra passes are inserted independent on whether or not the pass is ommited
   // to preserve numbering of passes inside them (if '*' is passed to
   // -vc-dump-...-pass, and one occurence of a pass is ommited, the numbering of
   // others would shift if addExtraPasses would not be called).
-  addExtraPass<ExtraIRDumpBeforePass>(PassInfo);
-  addExtraPass<ExtraVerificationBeforePass>(PassInfo);
+  addExtraPass<ExtraIRDumpBeforePass>(PM, PassInfo, Adder);
+  addExtraPass<ExtraVerificationBeforePass>(PM, PassInfo, Adder);
 
   auto PassArg = PassInfo->getPassArgument();
   auto res = DisablePass.getValue().includes(PassArg);
   if (res.first)
     errs() << "Pass " << PassArg << res.second.str() << " is ommited\n";
   else
-    legacy::PassManager::add(P);
+    Adder(PM, P);
 
-  addExtraPass<ExtraIRDumpAfterPass>(PassInfo);
-  addExtraPass<ExtraVerificationAfterPass>(PassInfo);
+  addExtraPass<ExtraIRDumpAfterPass>(PM, PassInfo, Adder);
+  addExtraPass<ExtraVerificationAfterPass>(PM, PassInfo, Adder);
+}
+
+void vc::PassManager::add(Pass *P) {
+  IGC_ASSERT(P);
+  auto Adder = [](vc::PassManager &PM, Pass &P) {
+    PM.legacy::PassManager::add(&P);
+  };
+  if (OverridePassManagerOpt.getValue())
+    return addPassImpl(*this, *P, Adder);
+  Adder(*this, *P);
+}
+
+void vc::addPass(legacy::PassManagerBase &PM, Pass *P) {
+  IGC_ASSERT(P);
+  auto Adder = [](legacy::PassManagerBase &PM, Pass &P) { PM.add(&P); };
+  if (OverridePassManagerOpt.getValue())
+    return Adder(PM, *P);
+  addPassImpl(PM, *P, Adder);
 }
