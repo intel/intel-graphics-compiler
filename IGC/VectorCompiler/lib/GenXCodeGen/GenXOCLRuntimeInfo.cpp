@@ -48,6 +48,183 @@ char GenXOCLRuntimeInfo::ID = 0;
 
 //===----------------------------------------------------------------------===//
 //
+// Kernel argument info implementation.
+//
+//===----------------------------------------------------------------------===//
+// Supported kernel argument attributes.
+struct OCLAttributes {
+  // Type qualifiers for resources.
+  static constexpr auto ReadOnly = "read_only";
+  static constexpr auto WriteOnly = "write_only";
+  static constexpr auto ReadWrite = "read_write";
+
+  // Buffer surface.
+  static constexpr auto Buffer = "buffer_t";
+  // SVM pointer to buffer.
+  static constexpr auto SVM = "svmptr_t";
+  // OpenCL-like types.
+  static constexpr auto Sampler = "sampler_t";
+  static constexpr auto Image1d = "image1d_t";
+  static constexpr auto Image1dArray = "image1d_array_t";
+  // Same as 1D image. Seems that there is no difference in runtime.
+  static constexpr auto Image1dBuffer = "image1d_buffer_t";
+  static constexpr auto Image2d = "image2d_t";
+  static constexpr auto Image2dArray = "image2d_array_t";
+  static constexpr auto Image3d = "image3d_t";
+};
+
+namespace llvm {
+class KernelArgBuilder final {
+  using ArgKindType = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
+  using ArgAccessKindType = GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
+
+  const genx::KernelMetadata &KM;
+  const DataLayout &DL;
+
+public:
+  KernelArgBuilder(const genx::KernelMetadata &KMIn, const DataLayout &DLIn)
+      : KM(KMIn), DL(DLIn) {}
+
+  GenXOCLRuntimeInfo::KernelArgInfo
+  translateArgument(const Argument &Arg) const;
+
+private:
+  static auto getStrPred(const char *Attr) {
+    return [Attr](StringRef Token) { return Token == Attr; };
+  }
+
+  ArgKindType getOCLArgKind(ArrayRef<StringRef> Tokens, unsigned ArgNo) const;
+  ArgAccessKindType getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
+                                        ArgKindType Kind) const;
+  std::pair<ArgKindType, ArgAccessKindType>
+  translateArgDesc(unsigned ArgNo) const;
+  unsigned getArgSizeInBytes(const Argument &Arg) const;
+};
+} // namespace llvm
+
+KernelArgBuilder::ArgAccessKindType
+KernelArgBuilder::getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
+                                      ArgKindType Kind) const {
+  switch (Kind) {
+  case ArgKindType::Buffer:
+  case ArgKindType::Image1D:
+  case ArgKindType::Image1DArray:
+  case ArgKindType::Image2D:
+  case ArgKindType::Image2DArray:
+  case ArgKindType::Image3D:
+  case ArgKindType::SVM:
+  case ArgKindType::BindlessBuffer:
+    if (any_of(Tokens, getStrPred(OCLAttributes::ReadOnly)))
+      return ArgAccessKindType::ReadOnly;
+    if (any_of(Tokens, getStrPred(OCLAttributes::WriteOnly)))
+      return ArgAccessKindType::WriteOnly;
+    return ArgAccessKindType::ReadWrite;
+  default:
+    return ArgAccessKindType::None;
+  }
+}
+
+KernelArgBuilder::ArgKindType
+KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
+                                unsigned ArgNo) const {
+  unsigned RawKind = KM.getArgKind(ArgNo);
+
+  // Implicit arguments.
+  genx::KernelArgInfo KAI{RawKind};
+  if (KAI.isLocalSize())
+    return ArgKindType::LocalSize;
+  if (KAI.isGroupCount())
+    return ArgKindType::GroupCount;
+  if (KAI.isPrintBuffer())
+    return ArgKindType::PrintBuffer;
+  if (KAI.isPrivateBase())
+    return ArgKindType::PrivateBase;
+  if (KAI.isByValSVM())
+    return ArgKindType::ByValSVM;
+
+  // Explicit arguments.
+  switch (KM.getArgCategory(ArgNo)) {
+  default:
+    return ArgKindType::General;
+  case genx::RegCategory::GENERAL:
+    if (any_of(Tokens, getStrPred(OCLAttributes::SVM)))
+      return ArgKindType::SVM;
+    // Bindless buffers have general category but buffer annotation.
+    if (any_of(Tokens, getStrPred(OCLAttributes::Buffer)))
+      return ArgKindType::BindlessBuffer;
+    return ArgKindType::General;
+  case genx::RegCategory::SURFACE:
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image1d)))
+      return ArgKindType::Image1D;
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image1dArray)))
+      return ArgKindType::Image1DArray;
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image1dBuffer)))
+      return ArgKindType::Image1D;
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image2d)))
+      return ArgKindType::Image2D;
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image2dArray)))
+      return ArgKindType::Image2DArray;
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image3d)))
+      return ArgKindType::Image3D;
+    return ArgKindType::Buffer;
+  case genx::RegCategory::SAMPLER:
+    return ArgKindType::Sampler;
+  }
+}
+
+// Retrieve Kind and AccessKind from given ArgTypeDesc in metadata.
+std::pair<KernelArgBuilder::ArgKindType, KernelArgBuilder::ArgAccessKindType>
+KernelArgBuilder::translateArgDesc(unsigned ArgNo) const {
+  std::string Translated{KM.getArgTypeDesc(ArgNo)};
+  // Transform each separator to space.
+  std::transform(Translated.begin(), Translated.end(), Translated.begin(),
+                 [](char C) {
+                   if (C != '-' && C != '_' && C != '=' && !std::isalnum(C))
+                     return ' ';
+                   return C;
+                 });
+
+  // Split and delete duplicates.
+  SmallVector<StringRef, 4> Tokens;
+  StringRef(Translated)
+      .split(Tokens, ' ', -1 /* MaxSplit */, false /* AllowEmpty */);
+  std::sort(Tokens.begin(), Tokens.end());
+  Tokens.erase(std::unique(Tokens.begin(), Tokens.end()), Tokens.end());
+
+  const ArgKindType Kind = getOCLArgKind(Tokens, ArgNo);
+  const ArgAccessKindType AccessKind = getOCLArgAccessKind(Tokens, Kind);
+  return {Kind, AccessKind};
+}
+
+unsigned KernelArgBuilder::getArgSizeInBytes(const Argument &Arg) const {
+  Type *ArgTy = Arg.getType();
+  if (ArgTy->isPointerTy())
+    return DL.getPointerTypeSize(ArgTy);
+  if (KM.isBufferType(Arg.getArgNo()))
+    return DL.getPointerSize();
+  return ArgTy->getPrimitiveSizeInBits() / genx::ByteBits;
+}
+
+GenXOCLRuntimeInfo::KernelArgInfo
+KernelArgBuilder::translateArgument(const Argument &Arg) const {
+  GenXOCLRuntimeInfo::KernelArgInfo Info;
+  const unsigned ArgNo = Arg.getArgNo();
+  std::tie(Info.Kind, Info.AccessKind) = translateArgDesc(ArgNo);
+  Info.Offset = KM.getArgOffset(ArgNo);
+  Info.SizeInBytes = getArgSizeInBytes(Arg);
+  Info.BTI = KM.getBTI(ArgNo);
+  // For implicit arguments that are byval argument linearization, index !=
+  // ArgNo in the IR function.
+  Info.Index = KM.getArgIndex(ArgNo);
+  // Linearization arguments have a non-zero offset in the original explicit
+  // byval arg.
+  Info.OffsetInArg = KM.getOffsetInArg(ArgNo);
+
+  return Info;
+}
+
+//===----------------------------------------------------------------------===//
+//
 // Kernel info implementation.
 //
 //===----------------------------------------------------------------------===//
@@ -110,7 +287,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
 }
 
 void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
-    const Function &Kernel, genx::KernelMetadata &KM) {
+    const Function &Kernel, const genx::KernelMetadata &KM) {
   IGC_ASSERT_MESSAGE(Kernel.arg_size() == KM.getNumArgs(),
     "Expected same number of arguments");
   // Some arguments are part of thread payload and do not require
@@ -122,10 +299,10 @@ void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
         return !(KAI.isLocalIDX() || KAI.isLocalIDY() || KAI.isLocalIDZ() ||
                  KAI.isGroupOrLocalSize() || KAI.isLocalIDs());
       });
-  const DataLayout &DL = Kernel.getParent()->getDataLayout();
+  KernelArgBuilder ArgBuilder{KM, Kernel.getParent()->getDataLayout()};
   transform(NonPayloadArgs, std::back_inserter(ArgInfos),
-            [&KM, &DL](const Argument &Arg) {
-              return KernelArgInfo{Arg, KM, DL};
+            [&ArgBuilder](const Argument &Arg) {
+              return ArgBuilder.translateArgument(Arg);
             });
   UsesReadWriteImages = std::any_of(
       ArgInfos.begin(), ArgInfos.end(), [](const KernelArgInfo &AI) {
@@ -164,159 +341,6 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
   setMetadataProperties(KM, ST);
   setArgumentProperties(*FG.getHead(), KM);
   setPrintStrings(*FG.getHead()->getParent());
-}
-
-//===----------------------------------------------------------------------===//
-//
-// Kernel argument info implementation.
-//
-//===----------------------------------------------------------------------===//
-// Supported kernel argument attributes.
-struct OCLAttributes {
-  // Type qualifiers for resources.
-  static constexpr auto ReadOnly = "read_only";
-  static constexpr auto WriteOnly = "write_only";
-  static constexpr auto ReadWrite = "read_write";
-
-  // Buffer surface.
-  static constexpr auto Buffer = "buffer_t";
-  // SVM pointer to buffer.
-  static constexpr auto SVM = "svmptr_t";
-  // OpenCL-like types.
-  static constexpr auto Sampler = "sampler_t";
-  static constexpr auto Image1d = "image1d_t";
-  static constexpr auto Image1dArray = "image1d_array_t";
-  // Same as 1D image. Seems that there is no difference in runtime.
-  static constexpr auto Image1dBuffer = "image1d_buffer_t";
-  static constexpr auto Image2d = "image2d_t";
-  static constexpr auto Image2dArray = "image2d_array_t";
-  static constexpr auto Image3d = "image3d_t";
-};
-
-using ArgKindType = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
-
-static auto GetStrPred = [](const char *Attr) {
-  return [Attr](StringRef Token) { return Token == Attr; };
-};
-
-static ArgKindType getOCLArgKind(const SmallVectorImpl<StringRef> &Tokens,
-                                 unsigned ArgNo, genx::KernelMetadata &KM) {
-  unsigned RawKind = KM.getArgKind(ArgNo);
-
-  // Implicit arguments.
-  genx::KernelArgInfo KAI{RawKind};
-  if (KAI.isLocalSize())
-    return ArgKindType::LocalSize;
-  if (KAI.isGroupCount())
-    return ArgKindType::GroupCount;
-  if (KAI.isPrintBuffer())
-    return ArgKindType::PrintBuffer;
-  if (KAI.isPrivateBase())
-    return ArgKindType::PrivateBase;
-  if (KAI.isByValSVM())
-    return ArgKindType::ByValSVM;
-
-  // Explicit arguments.
-  switch (KM.getArgCategory(ArgNo)) {
-  default:
-    return ArgKindType::General;
-  case genx::RegCategory::GENERAL:
-    if (any_of(Tokens, GetStrPred(OCLAttributes::SVM)))
-      return ArgKindType::SVM;
-    // Bindless buffers have general category but buffer annotation.
-    if (any_of(Tokens, GetStrPred(OCLAttributes::Buffer)))
-      return ArgKindType::BindlessBuffer;
-    return ArgKindType::General;
-  case genx::RegCategory::SURFACE:
-    if (any_of(Tokens, GetStrPred(OCLAttributes::Image1d)))
-      return ArgKindType::Image1D;
-    if (any_of(Tokens, GetStrPred(OCLAttributes::Image1dArray)))
-      return ArgKindType::Image1DArray;
-    if (any_of(Tokens, GetStrPred(OCLAttributes::Image1dBuffer)))
-      return ArgKindType::Image1D;
-    if (any_of(Tokens, GetStrPred(OCLAttributes::Image2d)))
-      return ArgKindType::Image2D;
-    if (any_of(Tokens, GetStrPred(OCLAttributes::Image2dArray)))
-      return ArgKindType::Image2DArray;
-    if (any_of(Tokens, GetStrPred(OCLAttributes::Image3d)))
-      return ArgKindType::Image3D;
-    return ArgKindType::Buffer;
-  case genx::RegCategory::SAMPLER:
-    return ArgKindType::Sampler;
-  }
-}
-
-using ArgAccessKindType = GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
-
-static ArgAccessKindType
-getOCLArgAccessKind(const SmallVectorImpl<StringRef> &Tokens,
-                    ArgKindType Kind) {
-  switch (Kind) {
-  case ArgKindType::Buffer:
-  case ArgKindType::Image1D:
-  case ArgKindType::Image1DArray:
-  case ArgKindType::Image2D:
-  case ArgKindType::Image2DArray:
-  case ArgKindType::Image3D:
-  case ArgKindType::SVM:
-  case ArgKindType::BindlessBuffer:
-    if (any_of(Tokens, GetStrPred(OCLAttributes::ReadOnly)))
-      return ArgAccessKindType::ReadOnly;
-    if (any_of(Tokens, GetStrPred(OCLAttributes::WriteOnly)))
-      return ArgAccessKindType::WriteOnly;
-    return ArgAccessKindType::ReadWrite;
-  default:
-    return ArgAccessKindType::None;
-  }
-}
-
-// Initialize Kind and AccessKind from given ArgTypeDesc in metadata.
-void GenXOCLRuntimeInfo::KernelArgInfo::translateArgDesc(
-    genx::KernelMetadata &KM, unsigned ArgNo) {
-  std::string Translated{KM.getArgTypeDesc(ArgNo)};
-  // Transform each separator to space.
-  std::transform(Translated.begin(), Translated.end(), Translated.begin(),
-                 [](char C) {
-                   if (C != '-' && C != '_' && C != '=' && !std::isalnum(C))
-                     return ' ';
-                   return C;
-                 });
-
-  // Split and delete duplicates.
-  SmallVector<StringRef, 4> Tokens;
-  StringRef(Translated)
-      .split(Tokens, ' ', -1 /* MaxSplit */, false /* AllowEmpty */);
-  std::sort(Tokens.begin(), Tokens.end());
-  Tokens.erase(std::unique(Tokens.begin(), Tokens.end()), Tokens.end());
-
-  Kind = getOCLArgKind(Tokens, ArgNo, KM);
-  AccessKind = getOCLArgAccessKind(Tokens, Kind);
-}
-
-static unsigned getArgSizeInBytes(const Argument &Arg, genx::KernelMetadata &KM,
-                                  const DataLayout &DL) {
-  Type *ArgTy = Arg.getType();
-  if (ArgTy->isPointerTy())
-    return DL.getPointerTypeSize(ArgTy);
-  if (KM.isBufferType(Arg.getArgNo()))
-    return DL.getPointerSize();
-  return ArgTy->getPrimitiveSizeInBits() / genx::ByteBits;
-}
-
-GenXOCLRuntimeInfo::KernelArgInfo::KernelArgInfo(const Argument &Arg,
-                                                 genx::KernelMetadata &KM,
-                                                 const DataLayout &DL) {
-  unsigned ArgNo = Arg.getArgNo();
-  translateArgDesc(KM, ArgNo);
-  Offset = KM.getArgOffset(ArgNo);
-  SizeInBytes = getArgSizeInBytes(Arg, KM, DL);
-  BTI = KM.getBTI(ArgNo);
-  // For implicit arguments that are byval argument linearization, index !=
-  // ArgNo in the IR function.
-  Index = KM.getArgIndex(ArgNo);
-  // Linearization arguments have a non-zero offset in the original explicit
-  // byval arg
-  OffsetInArg = KM.getOffsetInArg(ArgNo);
 }
 
 //===----------------------------------------------------------------------===//

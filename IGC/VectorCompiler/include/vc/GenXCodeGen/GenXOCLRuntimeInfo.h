@@ -28,11 +28,15 @@ class Function;
 class FunctionGroup;
 class GenXSubtarget;
 
+class KernelArgBuilder;
+
 void initializeGenXOCLRuntimeInfoPass(PassRegistry &PR);
 
 class GenXOCLRuntimeInfo : public ModulePass {
 public:
   class KernelArgInfo {
+    friend class KernelArgBuilder;
+
   public:
     enum class KindType {
       General,
@@ -66,12 +70,9 @@ public:
     unsigned BTI;
 
   private:
-    void translateArgDesc(genx::KernelMetadata &KM, unsigned ArgNo);
+    KernelArgInfo() = default;
 
   public:
-    KernelArgInfo(const Argument &Arg, genx::KernelMetadata &KM,
-                  const DataLayout &DL);
-
     unsigned getIndex() const { return Index; }
     KindType getKind() const { return Kind; }
     AccessKindType getAccessKind() const { return AccessKind; }
@@ -171,7 +172,7 @@ public:
     void setMetadataProperties(genx::KernelMetadata &KM,
                                const GenXSubtarget &ST);
     void setArgumentProperties(const Function &Kernel,
-                               genx::KernelMetadata &KM);
+                               const genx::KernelMetadata &KM);
     void setPrintStrings(const Module &KernelModule);
 
   public:
