@@ -429,21 +429,218 @@ void __builtin_spirv_OpImageWrite_img2d_array_depth_wo_v4i32_f32_i32_i32(global 
 void __builtin_spirv_OpImageWrite_img3d_wo_v4i32_v4i32_i32_i32(global Img3d_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands, int Lod);
 void __builtin_spirv_OpImageWrite_img3d_wo_v4i32_v4f32_i32_i32(global Img3d_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands, int Lod);
 
-uint  __builtin_spirv_OpImageQueryFormat_i64(Image_t Image);
-uint  __builtin_spirv_OpImageQueryOrder_i64(Image_t Image);
+// Image Query Format
+uint __builtin_spirv_OpImageQueryFormat_img2d_ro(global Img2d_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_wo(global Img2d_wo* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_rw(global Img2d_rw* Image);
+uint __builtin_spirv_OpImageQueryFormat_img3d_ro(global Img3d_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img3d_wo(global Img3d_wo* Image);
+uint __builtin_spirv_OpImageQueryFormat_img3d_rw(global Img3d_rw* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_ro(global Img1d_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_wo(global Img1d_wo* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_rw(global Img1d_rw* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_buffer_ro(global Img1d_buffer_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_buffer_wo(global Img1d_buffer_wo* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_buffer_rw(global Img1d_buffer_rw* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_array_ro(global Img1d_array_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_array_wo(global Img1d_array_wo* Image);
+uint __builtin_spirv_OpImageQueryFormat_img1d_array_rw(global Img1d_array_rw* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_array_ro(global Img2d_array_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_array_wo(global Img2d_array_wo* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_array_rw(global Img2d_array_rw* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_depth_ro(global Img2d_depth_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_depth_wo(global Img2d_depth_wo* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_depth_rw(global Img2d_depth_rw* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_array_depth_ro(global Img2d_array_depth_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_array_depth_wo(global Img2d_array_depth_wo* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_array_depth_rw(global Img2d_array_depth_rw* Image);
 
-uint  __builtin_spirv_OpImageQuerySizeLod_i32_i64_i64_i32(Image_t Image, ImageType_t ImageType, int Lod);
-uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32(Image_t Image, ImageType_t ImageType, int Lod);
-uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_i64_i64_i32(Image_t Image, ImageType_t ImageType, int Lod);
-uint4 __builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32(Image_t Image, ImageType_t ImageType, int Lod);
+uint __builtin_spirv_OpImageQueryFormat_img2d_msaa_ro(global Img2d_msaa_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_array_msaa_ro(global Img2d_array_msaa_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_msaa_depth_ro(global Img2d_msaa_depth_ro* Image);
+uint __builtin_spirv_OpImageQueryFormat_img2d_array_msaa_depth_ro(global Img2d_array_msaa_depth_ro* Image);
 
-uint  __builtin_spirv_OpImageQuerySize_i32_i64_i64(Image_t Image, ImageType_t ImageType);
-uint2 __builtin_spirv_OpImageQuerySize_v2i32_i64_i64(Image_t Image, ImageType_t ImageType);
-uint3 __builtin_spirv_OpImageQuerySize_v3i32_i64_i64(Image_t Image, ImageType_t ImageType);
-uint4  __builtin_spirv_OpImageQuerySize_v4i32_i64_i64(Image_t Image, ImageType_t ImageType);
+// Image Query Order
+uint __builtin_spirv_OpImageQueryOrder_img2d_ro(global Img2d_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_wo(global Img2d_wo* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_rw(global Img2d_rw* Image);
+uint __builtin_spirv_OpImageQueryOrder_img3d_ro(global Img3d_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img3d_wo(global Img3d_wo* Image);
+uint __builtin_spirv_OpImageQueryOrder_img3d_rw(global Img3d_rw* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_ro(global Img1d_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_wo(global Img1d_wo* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_rw(global Img1d_rw* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_buffer_ro(global Img1d_buffer_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_buffer_wo(global Img1d_buffer_wo* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_buffer_rw(global Img1d_buffer_rw* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_array_ro(global Img1d_array_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_array_wo(global Img1d_array_wo* Image);
+uint __builtin_spirv_OpImageQueryOrder_img1d_array_rw(global Img1d_array_rw* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_array_ro(global Img2d_array_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_array_wo(global Img2d_array_wo* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_array_rw(global Img2d_array_rw* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_depth_ro(global Img2d_depth_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_depth_wo(global Img2d_depth_wo* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_depth_rw(global Img2d_depth_rw* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_array_depth_ro(global Img2d_array_depth_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_array_depth_wo(global Img2d_array_depth_wo* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_array_depth_rw(global Img2d_array_depth_rw* Image);
 
-uint __builtin_spirv_OpImageQueryLevels_i64(Image_t Image);
-uint __builtin_spirv_OpImageQuerySamples_i64(Image_t Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_msaa_ro(global Img2d_msaa_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_array_msaa_ro(global Img2d_array_msaa_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_msaa_depth_ro(global Img2d_msaa_depth_ro* Image);
+uint __builtin_spirv_OpImageQueryOrder_img2d_array_msaa_depth_ro(global Img2d_array_msaa_depth_ro* Image);
+
+// Image Query Size
+uint __builtin_spirv_OpImageQuerySize_i32_img1d_ro(global Img1d_ro* Image);
+uint __builtin_spirv_OpImageQuerySize_i32_img1d_wo(global Img1d_wo* Image);
+uint __builtin_spirv_OpImageQuerySize_i32_img1d_rw(global Img1d_rw* Image);
+uint __builtin_spirv_OpImageQuerySize_i32_img1d_buffer_ro(global Img1d_buffer_ro* Image);
+uint __builtin_spirv_OpImageQuerySize_i32_img1d_buffer_wo(global Img1d_buffer_wo* Image);
+uint __builtin_spirv_OpImageQuerySize_i32_img1d_buffer_rw(global Img1d_buffer_rw* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img1d_array_ro(global Img1d_array_ro* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img1d_array_wo(global Img1d_array_wo* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img1d_array_rw(global Img1d_array_rw* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img2d_ro(global Img2d_ro* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img2d_wo(global Img2d_wo* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img2d_rw(global Img2d_rw* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img2d_depth_ro(global Img2d_depth_ro* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img2d_depth_wo(global Img2d_depth_wo* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img2d_depth_rw(global Img2d_depth_rw* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img2d_array_ro(global Img2d_array_ro* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img2d_array_wo(global Img2d_array_wo* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img2d_array_rw(global Img2d_array_rw* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img2d_array_depth_ro(global Img2d_array_depth_ro* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img2d_array_depth_wo(global Img2d_array_depth_wo* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img2d_array_depth_rw(global Img2d_array_depth_rw* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img3d_ro(global Img3d_ro* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img3d_wo(global Img3d_wo* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img3d_rw(global Img3d_rw* Image);
+
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img2d_msaa_ro(global Img2d_msaa_ro* Image);
+uint2 __builtin_spirv_OpImageQuerySize_v2i32_img2d_msaa_depth_ro(global Img2d_msaa_depth_ro* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img2d_array_msaa_ro(global Img2d_array_msaa_ro* Image);
+uint3 __builtin_spirv_OpImageQuerySize_v3i32_img2d_array_msaa_depth_ro(global Img2d_array_msaa_depth_ro* Image);
+
+ulong __builtin_spirv_OpImageQuerySize_i64_img1d_ro(global Img1d_ro* Image);
+ulong __builtin_spirv_OpImageQuerySize_i64_img1d_wo(global Img1d_wo* Image);
+ulong __builtin_spirv_OpImageQuerySize_i64_img1d_rw(global Img1d_rw* Image);
+ulong __builtin_spirv_OpImageQuerySize_i64_img1d_buffer_ro(global Img1d_buffer_ro* Image);
+ulong __builtin_spirv_OpImageQuerySize_i64_img1d_buffer_wo(global Img1d_buffer_wo* Image);
+ulong __builtin_spirv_OpImageQuerySize_i64_img1d_buffer_rw(global Img1d_buffer_rw* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img1d_array_ro(global Img1d_array_ro* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img1d_array_wo(global Img1d_array_wo* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img1d_array_rw(global Img1d_array_rw* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img2d_ro(global Img2d_ro* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img2d_wo(global Img2d_wo* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img2d_rw(global Img2d_rw* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img2d_depth_ro(global Img2d_depth_ro* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img2d_depth_wo(global Img2d_depth_wo* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img2d_depth_rw(global Img2d_depth_rw* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img2d_array_ro(global Img2d_array_ro* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img2d_array_wo(global Img2d_array_wo* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img2d_array_rw(global Img2d_array_rw* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img2d_array_depth_ro(global Img2d_array_depth_ro* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img2d_array_depth_wo(global Img2d_array_depth_wo* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img2d_array_depth_rw(global Img2d_array_depth_rw* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img3d_ro(global Img3d_ro* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img3d_wo(global Img3d_wo* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img3d_rw(global Img3d_rw* Image);
+
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img2d_msaa_ro(global Img2d_msaa_ro* Image);
+ulong2 __builtin_spirv_OpImageQuerySize_v2i64_img2d_msaa_depth_ro(global Img2d_msaa_depth_ro* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img2d_array_msaa_ro(global Img2d_array_msaa_ro* Image);
+ulong3 __builtin_spirv_OpImageQuerySize_v3i64_img2d_array_msaa_depth_ro(global Img2d_array_msaa_depth_ro* Image);
+
+// Image Query Size Lod
+uint __builtin_spirv_OpImageQuerySizeLod_i32_img1d_ro_i32(global Img1d_ro* Image, int Lod);
+uint __builtin_spirv_OpImageQuerySizeLod_i32_img1d_wo_i32(global Img1d_wo* Image, int Lod);
+uint __builtin_spirv_OpImageQuerySizeLod_i32_img1d_rw_i32(global Img1d_rw* Image, int Lod);
+uint __builtin_spirv_OpImageQuerySizeLod_i32_img1d_buffer_ro_i32(global Img1d_buffer_ro* Image, int Lod);
+uint __builtin_spirv_OpImageQuerySizeLod_i32_img1d_buffer_wo_i32(global Img1d_buffer_wo* Image, int Lod);
+uint __builtin_spirv_OpImageQuerySizeLod_i32_img1d_buffer_rw_i32(global Img1d_buffer_rw* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img1d_array_ro_i32(global Img1d_array_ro* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img1d_array_wo_i32(global Img1d_array_wo* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img1d_array_rw_i32(global Img1d_array_rw* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img2d_ro_i32(global Img2d_ro* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img2d_wo_i32(global Img2d_wo* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img2d_rw_i32(global Img2d_rw* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img2d_depth_ro_i32(global Img2d_depth_ro* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img2d_depth_wo_i32(global Img2d_depth_wo* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img2d_depth_rw_i32(global Img2d_depth_rw* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img2d_array_ro_i32(global Img2d_array_ro* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img2d_array_wo_i32(global Img2d_array_wo* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img2d_array_rw_i32(global Img2d_array_rw* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img2d_array_depth_ro_i32(global Img2d_array_depth_ro* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img2d_array_depth_wo_i32(global Img2d_array_depth_wo* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img2d_array_depth_rw_i32(global Img2d_array_depth_rw* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img3d_ro_i32(global Img3d_ro* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img3d_wo_i32(global Img3d_wo* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img3d_rw_i32(global Img3d_rw* Image, int Lod);
+
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img2d_msaa_ro_i32(global Img2d_msaa_ro* Image, int Lod);
+uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_img2d_msaa_depth_ro_i32(global Img2d_msaa_depth_ro* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img2d_array_msaa_ro_i32(global Img2d_array_msaa_ro* Image, int Lod);
+uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_img2d_array_msaa_depth_ro_i32(global Img2d_array_msaa_depth_ro* Image, int Lod);
+
+ulong __builtin_spirv_OpImageQuerySizeLod_i64_img1d_ro_i32(global Img1d_ro* Image, int Lod);
+ulong __builtin_spirv_OpImageQuerySizeLod_i64_img1d_wo_i32(global Img1d_wo* Image, int Lod);
+ulong __builtin_spirv_OpImageQuerySizeLod_i64_img1d_rw_i32(global Img1d_rw* Image, int Lod);
+ulong __builtin_spirv_OpImageQuerySizeLod_i64_img1d_buffer_ro_i32(global Img1d_buffer_ro* Image, int Lod);
+ulong __builtin_spirv_OpImageQuerySizeLod_i64_img1d_buffer_wo_i32(global Img1d_buffer_wo* Image, int Lod);
+ulong __builtin_spirv_OpImageQuerySizeLod_i64_img1d_buffer_rw_i32(global Img1d_buffer_rw* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img1d_array_ro_i32(global Img1d_array_ro* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img1d_array_wo_i32(global Img1d_array_wo* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img1d_array_rw_i32(global Img1d_array_rw* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img2d_ro_i32(global Img2d_ro* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img2d_wo_i32(global Img2d_wo* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img2d_rw_i32(global Img2d_rw* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img2d_depth_ro_i32(global Img2d_depth_ro* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img2d_depth_wo_i32(global Img2d_depth_wo* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img2d_depth_rw_i32(global Img2d_depth_rw* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img2d_array_ro_i32(global Img2d_array_ro* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img2d_array_wo_i32(global Img2d_array_wo* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img2d_array_rw_i32(global Img2d_array_rw* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img2d_array_depth_ro_i32(global Img2d_array_depth_ro* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img2d_array_depth_wo_i32(global Img2d_array_depth_wo* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img2d_array_depth_rw_i32(global Img2d_array_depth_rw* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img3d_ro_i32(global Img3d_ro* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img3d_wo_i32(global Img3d_wo* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img3d_rw_i32(global Img3d_rw* Image, int Lod);
+
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img2d_msaa_ro_i32(global Img2d_msaa_ro* Image, int Lod);
+ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_img2d_msaa_depth_ro_i32(global Img2d_msaa_depth_ro* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img2d_array_msaa_ro_i32(global Img2d_array_msaa_ro* Image, int Lod);
+ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_img2d_array_msaa_depth_ro_i32(global Img2d_array_msaa_depth_ro* Image, int Lod);
+
+// Image Query Levels
+uint __builtin_spirv_OpImageQueryLevels_img1d_ro(global Img1d_ro* Image);
+uint __builtin_spirv_OpImageQueryLevels_img1d_wo(global Img1d_wo* Image);
+uint __builtin_spirv_OpImageQueryLevels_img1d_rw(global Img1d_rw* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_ro(global Img2d_ro* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_wo(global Img2d_wo* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_rw(global Img2d_rw* Image);
+uint __builtin_spirv_OpImageQueryLevels_img3d_ro(global Img3d_ro* Image);
+uint __builtin_spirv_OpImageQueryLevels_img3d_wo(global Img3d_wo* Image);
+uint __builtin_spirv_OpImageQueryLevels_img3d_rw(global Img3d_rw* Image);
+uint __builtin_spirv_OpImageQueryLevels_img1d_array_ro(global Img1d_array_ro* Image);
+uint __builtin_spirv_OpImageQueryLevels_img1d_array_wo(global Img1d_array_wo* Image);
+uint __builtin_spirv_OpImageQueryLevels_img1d_array_rw(global Img1d_array_rw* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_array_ro(global Img2d_array_ro* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_array_wo(global Img2d_array_wo* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_array_rw(global Img2d_array_rw* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_depth_ro(global Img2d_depth_ro* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_depth_wo(global Img2d_depth_wo* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_depth_rw(global Img2d_depth_rw* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_array_depth_ro(global Img2d_array_depth_ro* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_array_depth_wo(global Img2d_array_depth_wo* Image);
+uint __builtin_spirv_OpImageQueryLevels_img2d_array_depth_rw(global Img2d_array_depth_rw* Image);
+
+// Image Query Samples
+uint __builtin_spirv_OpImageQuerySamples_img2d_msaa_ro(global Img2d_msaa_ro* Image);
+uint __builtin_spirv_OpImageQuerySamples_img2d_array_msaa_ro(global Img2d_array_msaa_ro* Image);
+uint __builtin_spirv_OpImageQuerySamples_img2d_msaa_depth_ro(global Img2d_msaa_depth_ro* Image);
+uint __builtin_spirv_OpImageQuerySamples_img2d_array_msaa_depth_ro(global Img2d_array_msaa_depth_ro* Image);
 
 // Conversion Instructions
 

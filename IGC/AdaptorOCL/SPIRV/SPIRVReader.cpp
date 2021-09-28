@@ -4034,8 +4034,6 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       {
       case OpSampledImage:
       case OpVmeImageINTEL:
-      case OpImageQuerySize:
-      case OpImageQuerySizeLod:
       {
           // resolving argument imageType for
           // __builtin_spirv_OpSampledImage(%opencl.image2d_t.read_only addrspace(1)* %srcimg0,
@@ -4107,7 +4105,13 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       (OC != OpSubgroupImageBlockReadINTEL &&
        OC != OpSubgroupImageBlockWriteINTEL &&
        OC != OpImageRead &&
-       OC != OpImageWrite);
+       OC != OpImageWrite &&
+       OC != OpImageQueryFormat &&
+       OC != OpImageQueryOrder &&
+       OC != OpImageQuerySizeLod &&
+       OC != OpImageQuerySize &&
+       OC != OpImageQueryLevels &&
+       OC != OpImageQuerySamples);
 
   if (convertImageToI64)
   {

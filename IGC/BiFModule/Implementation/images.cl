@@ -958,148 +958,171 @@ DEF_HALF_IMAGE_WRITE(1d_array_rw, int2, v2i32)
 // values but SPIRV enum values start at 0.
 
 #define CLK_SNORM_INT8 0x10D0
-
-uint  __builtin_spirv_OpImageQueryFormat_i64( Image_t Image )
-{
-    int id = (int)Image;
-    return __builtin_IB_get_image_channel_data_type( id ) - CLK_SNORM_INT8;
-}
-
 #define CLK_R 0x10B0
 
-uint  __builtin_spirv_OpImageQueryOrder_i64( Image_t Image )
-{
-    int id = (int)Image;
-    return __builtin_IB_get_image_channel_order( id ) - CLK_R;
+// ------------------------OpImageQueryFormat------------------------
+// Query the image format of an image created with an Unknown Image Format.
+
+// ------------------------OpImageQueryOrder------------------------
+// Query the channel order of an image created with an Unknown Image Format.
+
+#define DEF_IMAGE_QUERY_BUILTINS_BASE(IMAGE_TYPE, ACC_QUAL)                                                          \
+uint __builtin_spirv_OpImageQueryFormat_img##IMAGE_TYPE##_##ACC_QUAL(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)     \
+{                                                                                                                    \
+    int id = (int)__builtin_astype(Image, __global void*);                                                           \
+    return __builtin_IB_get_image_channel_data_type(id) - CLK_SNORM_INT8;                                            \
+}                                                                                                                    \
+uint __builtin_spirv_OpImageQueryOrder_img##IMAGE_TYPE##_##ACC_QUAL(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)      \
+{                                                                                                                    \
+    int id = (int)__builtin_astype(Image, __global void*);                                                           \
+    return __builtin_IB_get_image_channel_order( id ) - CLK_R;                                                       \
 }
 
+#define DEF_IMAGE_QUERY_BUILTINS(IMAGE_TYPE)  \
+DEF_IMAGE_QUERY_BUILTINS_BASE(IMAGE_TYPE, ro) \
+DEF_IMAGE_QUERY_BUILTINS_BASE(IMAGE_TYPE, wo) \
+DEF_IMAGE_QUERY_BUILTINS_BASE(IMAGE_TYPE, rw)
 
-uint  __builtin_spirv_OpImageQuerySizeLod_i32_i64_i64_i32( Image_t Image, ImageType_t ImageType, int Lod )
+DEF_IMAGE_QUERY_BUILTINS(2d)
+DEF_IMAGE_QUERY_BUILTINS(3d)
+DEF_IMAGE_QUERY_BUILTINS(1d)
+DEF_IMAGE_QUERY_BUILTINS(1d_buffer)
+DEF_IMAGE_QUERY_BUILTINS(1d_array)
+DEF_IMAGE_QUERY_BUILTINS(2d_array)
+DEF_IMAGE_QUERY_BUILTINS(2d_depth)
+DEF_IMAGE_QUERY_BUILTINS(2d_array_depth)
+
+DEF_IMAGE_QUERY_BUILTINS_BASE(2d_msaa,             ro)
+DEF_IMAGE_QUERY_BUILTINS_BASE(2d_array_msaa,       ro)
+DEF_IMAGE_QUERY_BUILTINS_BASE(2d_msaa_depth,       ro)
+DEF_IMAGE_QUERY_BUILTINS_BASE(2d_array_msaa_depth, ro)
+
+// Query image size helper functions
+uint __intel_query_image_size_Ruint(int id)
 {
-    // TODO: Can OpenCL query a specific LOD?
-    return __builtin_spirv_OpImageQuerySize_i32_i64_i64( Image, ImageType );
-}
-
-ulong __builtin_spirv_OpImageQuerySizeLod_i64_i64_i64_i32( Image_t Image, ImageType_t ImageType, int Lod )
-{
-    return SPIRV_BUILTIN(UConvert, _i64_i32, _Rulong)(__builtin_spirv_OpImageQuerySizeLod_i32_i64_i64_i32(Image, ImageType, Lod));
-}
-
-uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32( Image_t Image, ImageType_t ImageType, int Lod )
-{
-    // TODO: Can OpenCL query a specific LOD?
-    return __builtin_spirv_OpImageQuerySize_v2i32_i64_i64( Image, ImageType );
-}
-
-ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_i64_i64_i32( Image_t Image, ImageType_t ImageType, int Lod )
-{
-    return SPIRV_BUILTIN(UConvert, _v2i64_v2i32, _Rulong2)(__builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32(Image, ImageType, Lod));
-}
-
-
-uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_i64_i64_i32( Image_t Image, ImageType_t ImageType, int Lod )
-{
-    // TODO: Can OpenCL query a specific LOD?
-    return __builtin_spirv_OpImageQuerySize_v3i32_i64_i64( Image, ImageType );
-}
-
-ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_i64_i64_i32( Image_t Image, ImageType_t ImageType, int Lod )
-{
-    return SPIRV_BUILTIN(UConvert, _v3i64_v3i32, _Rulong3)(__builtin_spirv_OpImageQuerySizeLod_v3i32_i64_i64_i32(Image, ImageType, Lod));
-}
-
-uint4 __builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32( Image_t Image, ImageType_t ImageType, int Lod )
-{
-    // TODO: Can OpenCL query a specific LOD?
-    return __builtin_spirv_OpImageQuerySize_v4i32_i64_i64( Image, ImageType );
-}
-
-ulong4 __builtin_spirv_OpImageQuerySizeLod_v4i64_i64_i64_i32( Image_t Image, ImageType_t ImageType, int Lod )
-{
-    return SPIRV_BUILTIN(UConvert, _v4i64_v4i32, _Rulong4)(__builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32(Image, ImageType, Lod));
-}
-
-uint  __builtin_spirv_OpImageQuerySize_i32_i64_i64( Image_t Image, ImageType_t ImageType )
-{
-    int id = (int)Image;
     return __builtin_IB_get_image_width(id);
 }
 
-ulong __builtin_spirv_OpImageQuerySize_i64_i64_i64( Image_t Image, ImageType_t ImageType )
+uint2 __intel_query_arrayed_image_size_Ruint2(int id)
 {
-    return SPIRV_BUILTIN(UConvert, _i64_i32, _Rulong)(__builtin_spirv_OpImageQuerySize_i32_i64_i64(Image, ImageType));
-}
-
-uint2 __builtin_spirv_OpImageQuerySize_v2i32_i64_i64( Image_t Image, ImageType_t ImageType )
-{
-    int id = (int)Image;
     uint width = __builtin_IB_get_image_width(id);
-
-    if (isImageArrayed(ImageType))
-    {
-        uint elements = __builtin_IB_get_image_array_size( id );
-        return (uint2)( width, elements );
-    }
-    else
-    {
-        uint height = __builtin_IB_get_image_height(id);
-        return (uint2)( width, height );
-    }
+    uint elements = __builtin_IB_get_image_array_size(id);
+    return (uint2)(width, elements);
 }
 
-ulong2 __builtin_spirv_OpImageQuerySize_v2i64_i64_i64( Image_t Image, ImageType_t ImageType )
+uint2 __intel_query_image_size_Ruint2(int id)
 {
-    return SPIRV_BUILTIN(UConvert, _v2i64_v2i32, _Rulong2)(__builtin_spirv_OpImageQuerySize_v2i32_i64_i64(Image, ImageType));
-}
-
-uint3 __builtin_spirv_OpImageQuerySize_v3i32_i64_i64( Image_t Image, ImageType_t ImageType )
-{
-    int id = (int)Image;
-    uint width  = __builtin_IB_get_image_width(id);
+    uint width = __builtin_IB_get_image_width(id);
     uint height = __builtin_IB_get_image_height(id);
-
-    if (isImageArrayed(ImageType))
-    {
-        uint elements = __builtin_IB_get_image_array_size( id );
-        return (uint3)(width, height, elements);
-    }
-    else
-    {
-        uint depth = __builtin_IB_get_image_depth(id);
-        return (uint3)( width, height, depth );
-    }
+    return (uint2)(width, height);
 }
 
-ulong3 __builtin_spirv_OpImageQuerySize_v3i64_i64_i64( Image_t Image, ImageType_t ImageType )
+uint3 __intel_query_arrayed_image_size_Ruint3(int id)
 {
-    return SPIRV_BUILTIN(UConvert, _v3i64_v3i32, _Rulong3)(__builtin_spirv_OpImageQuerySize_v3i32_i64_i64(Image, ImageType));
-}
-
-uint4 __builtin_spirv_OpImageQuerySize_v4i32_i64_i64( Image_t Image, ImageType_t ImageType )
-{
-    int id = (int)Image;
-    uint width  = __builtin_IB_get_image_width(id);
+    uint width = __builtin_IB_get_image_width(id);
     uint height = __builtin_IB_get_image_height(id);
-    uint depth  = __builtin_IB_get_image_depth(id);
-    uint elements = __builtin_IB_get_image_array_size( id );
+    uint elements = __builtin_IB_get_image_array_size(id);
+    return (uint3)(width, height, elements);
+}
 
+uint3 __intel_query_image_size_Ruint3(int id)
+{
+    uint width = __builtin_IB_get_image_width(id);
+    uint height = __builtin_IB_get_image_height(id);
+    uint depth = __builtin_IB_get_image_depth(id);
+    return (uint3)(width, height, depth);
+}
+
+uint4 __intel_query_image_size_Ruint4(int id)
+{
+    uint width = __builtin_IB_get_image_width(id);
+    uint height = __builtin_IB_get_image_height(id);
+    uint depth = __builtin_IB_get_image_depth(id);
+    uint elements = __builtin_IB_get_image_array_size(id);
     return (uint4)(width, height, depth, elements);
 }
 
-ulong4 __builtin_spirv_OpImageQuerySize_v4i64_i64_i64( Image_t Image, ImageType_t ImageType )
-{
-    return SPIRV_BUILTIN(UConvert, _v4i64_v4i32, _Rulong4)(__builtin_spirv_OpImageQuerySize_v4i32_i64_i64(Image, ImageType));
+// ------------------------OpImageQuerySize------------------------
+// Query the dimensions of Image, with no level of detail.
+
+// ------------------------OpImageQuerySizeLod------------------------
+// Query the dimensions of Image for mipmap level for Level of Detail.
+
+#define DEF_IMAGE_QUERY_SIZE_BASE(IMAGE_TYPE, INTRINSIC, ACC_QUAL, VEC_SIZE, VEC_SIZE_ABBR)                                                                         \
+uint##VEC_SIZE __builtin_spirv_OpImageQuerySize_##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)                       \
+{                                                                                                                                                                   \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                                          \
+    return INTRINSIC##_Ruint##VEC_SIZE(id);                                                                                                                         \
+}                                                                                                                                                                   \
+ulong##VEC_SIZE __builtin_spirv_OpImageQuerySize_##VEC_SIZE_ABBR##i64_img##IMAGE_TYPE##_##ACC_QUAL(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)                      \
+{                                                                                                                                                                   \
+    return SPIRV_BUILTIN(UConvert, _##VEC_SIZE_ABBR##i64_##VEC_SIZE_ABBR##i32, _Rulong##VEC_SIZE)(                                                                  \
+        __builtin_spirv_OpImageQuerySize_##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL(Image));                                                                 \
+}                                                                                                                                                                   \
+uint##VEC_SIZE __builtin_spirv_OpImageQuerySizeLod_##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL##_i32(global Img##IMAGE_TYPE##_##ACC_QUAL* Image, int Lod)     \
+{                                                                                                                                                                   \
+    return __builtin_spirv_OpImageQuerySize_##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL(Image);                                                               \
+}                                                                                                                                                                   \
+ulong##VEC_SIZE __builtin_spirv_OpImageQuerySizeLod_##VEC_SIZE_ABBR##i64_img##IMAGE_TYPE##_##ACC_QUAL##_i32(global Img##IMAGE_TYPE##_##ACC_QUAL* Image, int Lod)    \
+{                                                                                                                                                                   \
+    return SPIRV_BUILTIN(UConvert, _##VEC_SIZE_ABBR##i64_##VEC_SIZE_ABBR##i32, _Rulong##VEC_SIZE)(                                                                  \
+        __builtin_spirv_OpImageQuerySizeLod_##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL##_i32(Image, Lod));                                                   \
 }
 
-uint __builtin_spirv_OpImageQueryLevels_i64( Image_t Image )
-{
-    int id = (int)Image;
-    return __builtin_IB_get_image_num_mip_levels( id );
+#define DEF_IMAGE_QUERY_SIZE(IMAGE_TYPE, INTRINSIC, VEC_SIZE, VEC_SIZE_ABBR)  \
+DEF_IMAGE_QUERY_SIZE_BASE(IMAGE_TYPE, INTRINSIC, ro, VEC_SIZE, VEC_SIZE_ABBR) \
+DEF_IMAGE_QUERY_SIZE_BASE(IMAGE_TYPE, INTRINSIC, wo, VEC_SIZE, VEC_SIZE_ABBR) \
+DEF_IMAGE_QUERY_SIZE_BASE(IMAGE_TYPE, INTRINSIC, rw, VEC_SIZE, VEC_SIZE_ABBR)
+
+DEF_IMAGE_QUERY_SIZE(1d,             __intel_query_image_size,          ,   )
+DEF_IMAGE_QUERY_SIZE(1d_buffer,      __intel_query_image_size,          ,   )
+DEF_IMAGE_QUERY_SIZE(1d_array,       __intel_query_arrayed_image_size, 2, v2)
+DEF_IMAGE_QUERY_SIZE(2d,             __intel_query_image_size,         2, v2)
+DEF_IMAGE_QUERY_SIZE(2d_depth,       __intel_query_image_size,         2, v2)
+DEF_IMAGE_QUERY_SIZE(2d_array,       __intel_query_arrayed_image_size, 3, v3)
+DEF_IMAGE_QUERY_SIZE(2d_array_depth, __intel_query_arrayed_image_size, 3, v3)
+DEF_IMAGE_QUERY_SIZE(3d,             __intel_query_image_size,         3, v3)
+
+// MSAA image query size
+DEF_IMAGE_QUERY_SIZE_BASE(2d_msaa,             __intel_query_image_size,         ro, 2, v2)
+DEF_IMAGE_QUERY_SIZE_BASE(2d_msaa_depth,       __intel_query_image_size,         ro, 2, v2)
+DEF_IMAGE_QUERY_SIZE_BASE(2d_array_msaa,       __intel_query_arrayed_image_size, ro, 3, v3)
+DEF_IMAGE_QUERY_SIZE_BASE(2d_array_msaa_depth, __intel_query_arrayed_image_size, ro, 3, v3)
+
+// ------------------------OpImageQueryLevels------------------------
+// Query the number of mipmap levels accessible through Image.
+
+#define DEF_IMAGE_QUERY_LEVELS_BASE(IMAGE_TYPE, ACC_QUAL)                                                           \
+uint __builtin_spirv_OpImageQueryLevels_img##IMAGE_TYPE##_##ACC_QUAL(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)    \
+{                                                                                                                   \
+    int id = (int)__builtin_astype(Image, __global void*);                                                          \
+    return __builtin_IB_get_image_num_mip_levels(id);                                                               \
 }
 
+#define DEF_IMAGE_QUERY_LEVELS(IMAGE_TYPE)   \
+DEF_IMAGE_QUERY_LEVELS_BASE(IMAGE_TYPE, ro)  \
+DEF_IMAGE_QUERY_LEVELS_BASE(IMAGE_TYPE, wo)  \
+DEF_IMAGE_QUERY_LEVELS_BASE(IMAGE_TYPE, rw)
 
-uint __builtin_spirv_OpImageQuerySamples_i64( Image_t Image )
-{
-    int id = (int)Image;
-    return __builtin_IB_get_image_num_samples( id );
+DEF_IMAGE_QUERY_LEVELS(1d)
+DEF_IMAGE_QUERY_LEVELS(2d)
+DEF_IMAGE_QUERY_LEVELS(3d)
+DEF_IMAGE_QUERY_LEVELS(1d_array)
+DEF_IMAGE_QUERY_LEVELS(2d_array)
+DEF_IMAGE_QUERY_LEVELS(2d_depth)
+DEF_IMAGE_QUERY_LEVELS(2d_array_depth)
+
+// ------------------------OpImageQuerySamples------------------------
+// Query the number of samples available per texel fetch in a multisample image.
+
+#define DEF_IMAGE_QUERY_SAMPLES(IMAGE_TYPE)                                                         \
+uint __builtin_spirv_OpImageQuerySamples_img##IMAGE_TYPE##_ro(global Img##IMAGE_TYPE##_ro* Image)   \
+{                                                                                                   \
+    int id = (int)__builtin_astype(Image, __global void*);                                          \
+    return __builtin_IB_get_image_num_samples(id);                                                  \
 }
+
+DEF_IMAGE_QUERY_SAMPLES(2d_msaa)
+DEF_IMAGE_QUERY_SAMPLES(2d_array_msaa)
+DEF_IMAGE_QUERY_SAMPLES(2d_msaa_depth)
+DEF_IMAGE_QUERY_SAMPLES(2d_array_msaa_depth)
