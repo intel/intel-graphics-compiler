@@ -671,6 +671,21 @@ void G4_INST::transferDef(G4_INST *inst2, Gen4_Operand_Number opndNum1, Gen4_Ope
             defInst->useInstList.push_back(USE_DEF_NODE(inst2, opndNum2));
             DEF_EDGE_LIST_ITER curr_iter = iter++;
             defInstList.erase(curr_iter);
+
+            //Remove the redundant d/u node.
+            //Due to the instruction optimization, such as merge scalars, redundant d/u info may be generated.
+            //Such as the case:
+            //(W) shl (1) V3429(0,0)<1>:d V3380(0,0)<0;1,0>:d 0x17:w
+            //(W) shl (1) V3430(0,0)<1>:d V3381(0,0)<0;1,0>:d 0x17:w
+            //(W) add (1) V3432(0,0)<1>:d 0x43800000:d -V3429(0,0)<0;1,0>:d
+            //(W) add (1) V3433(0,0)<1>:d 0x43800000:d -V3430(0,0)<0;1,0>:d
+            //==>
+            //(W) shl (2) Merged138(0,0)<1>:d Merged139(0,0)<1;1,0>:d 0x17:w
+            //(W) add (2) Merged140(0,0)<1>:d 0x43800000:d -Merged138(0,0)<1;1,0>:d
+            inst2->defInstList.sort();
+            inst2->defInstList.unique();
+            defInst->useInstList.sort();
+            defInst->useInstList.unique();
         }
         else
         {
