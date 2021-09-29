@@ -22,82 +22,12 @@ __impl_combineLoHi(vector<uint32_t, N> Lo, vector<uint32_t, N> Hi) {
 }
 
 template <unsigned N>
-CM_NODEBUG CM_INLINE vector<double, N>
-__impl_ui2fp__double__(vector<uint64_t, N> a) {
-  const vector<uint32_t, N> Zero(0);
-  const vector<uint32_t, N> Ones(0xffffffff);
-  const vector<uint32_t, N> One(1);
-
-  vector<uint32_t, 2 *N> LoHi = a.template format<uint32_t>();
-  vector<uint32_t, N> Lo = LoHi.template select<N, 2>(0);
-  vector<uint32_t, N> Hi = LoHi.template select<N, 2>(1);
-  // TODO : replace with clz for 64 bit
-  vector<uint32_t, N> LZHi = cm::math::count_leading_zeros(Hi);
-  vector<uint32_t, N> LZLo = cm::math::count_leading_zeros(Lo);
-  auto ZeroHi = Hi == Zero;
-  vector<uint32_t, N> LZ = LZHi;
-  LZ.merge(LZ + LZLo, ZeroHi);
-
-  // we need to get that nice first set bit into bit position 51.
-  // thus we shift our nice pair of values by 63 - 51 - clz,
-  // uint8_t shift = 12 - lz;
-  // shift hidden bit too (+1)
-
-  // 64bit Shift - we rely on compiler emulation there
-  vector<int32_t, N> Shift = LZ - vector<int32_t, N>(11);
-  vector<uint64_t, N> ToShift = __impl_combineLoHi<N>(Lo, Hi);
-  vector<uint64_t, N> Shifted64 = ToShift << Shift;
-  auto IsRightShift = Shift < vector<int32_t, N>(0);
-  Shifted64.merge(ToShift >> -Shift, IsRightShift);
-
-  vector<uint32_t, 2 *N> Shifted = Shifted64.template format<uint32_t>();
-  vector<uint32_t, N> LoMant = Shifted.template select<N, 2>(0);
-  vector<uint32_t, N> HiMant = Shifted.template select<N, 2>(1);
-  // delete hidden bit
-  HiMant = HiMant & ~(1u << 20);
-
-  // calculate RS
-  vector<uint32_t, N> RMask = (One << (10 - LZ));
-  vector<uint32_t, N> R = (RMask & Lo) >> (10 - LZ);
-  auto NoR = LZ > vector<uint32_t, N>(10);
-  R.merge(Zero, NoR);
-
-  vector<uint32_t, N> SMask = RMask - 1;
-  vector<uint32_t, N> S = Zero;
-  vector<uint32_t, N> AfterR = Lo & SMask;
-  auto ZeroRem = AfterR == Zero;
-  S.merge(One, ~ZeroRem);
-  auto NoS = LZ > vector<uint32_t, N>(9);
-  S.merge(Zero, NoS);
-
-  // R is set but no S, round to even.
-  // Mant + R
-  auto AddC = cm::math::add_with_carry(LoMant, R);
-  LoMant = AddC.first;
-  vector<uint32_t, N> CB = AddC.second;
-  HiMant = HiMant + CB;
-
-  LoMant &= ~(~S & R);
-
-  vector<uint32_t, N> Exp = vector<uint32_t, N>(1086) - LZ;
-  Exp.merge(Zero, LZ == vector<uint32_t, N>(64));
-  vector<uint32_t, N> HiRes = Exp << vector<uint32_t, N>(20);
-  HiRes += HiMant;
-  vector<uint32_t, N> LoRes = LoMant;
-
-  vector<int64_t, N> Result = __impl_combineLoHi<N>(LoRes, HiRes);
-
-  return Result.template format<double>();
-};
-
-template <unsigned N>
 CM_NODEBUG CM_INLINE vector<float, N> __impl_ui2fp__(vector<uint64_t, N> a) {
   const vector<uint32_t, N> Zero(0);
   const vector<uint32_t, N> Ones(0xffffffff);
   const vector<uint32_t, N> One(1);
 
   vector<uint32_t, 2 *N> LoHi = a.template format<uint32_t>();
-
   vector<uint32_t, N> Lo = LoHi.template select<N, 2>(0);
   vector<uint32_t, N> Hi = LoHi.template select<N, 2>(1);
   vector<uint32_t, N> LZ = cm::math::count_leading_zeros(Hi);
@@ -160,26 +90,6 @@ CM_NODEBUG CM_INLINE vector<float, N> __impl_ui2fp__(vector<uint64_t, N> a) {
 }
 
 template <unsigned N>
-CM_NODEBUG CM_INLINE vector<double, N>
-__impl_si2fp__double__(vector<uint64_t, N> a) {
-  const vector<uint32_t, N> Zero(0);
-
-  // NOTE: SIToFP is special, since it does not do the convert by itself,
-  // Instead it just creates a sequence of 64.bit operations which
-  // are then expanded. As such some type convertion trickery is involved.
-  vector<uint32_t, 2 *N> LoHi = a.template format<uint32_t>();
-  vector<uint32_t, N> Lo = LoHi.template select<N, 2>(0);
-  vector<uint32_t, N> Hi = LoHi.template select<N, 2>(1);
-  vector<uint32_t, N> SB = Hi & vector<uint32_t, N>(1u << 31);
-  auto IsSignZero = SB == Zero;
-  vector<uint64_t, N> b = -a;
-  b.merge(a, IsSignZero);
-  vector<double, N> Res = __impl_ui2fp__double__<N>(b);
-  Res.merge(-Res, ~IsSignZero);
-  return Res;
-}
-
-template <unsigned N>
 CM_NODEBUG CM_INLINE vector<float, N> __impl_si2fp__(vector<uint64_t, N> a) {
   const vector<uint32_t, N> Zero(0);
 
@@ -199,106 +109,6 @@ CM_NODEBUG CM_INLINE vector<float, N> __impl_si2fp__(vector<uint64_t, N> a) {
 }
 
 template <unsigned N, bool isSigned>
-CM_NODEBUG CM_INLINE vector<uint64_t, N>
-__impl_fp2ui__double__(vector<double, N> a) {
-  // vector of floats -> vector of ints
-  vector<uint32_t, 2 *N> LoHi = a.template format<uint32_t>();
-  const vector<uint32_t, N> Exp_mask(0xff << 20);
-  const vector<uint32_t, N> Mantissa_mask((1u << 20) - 1);
-  const vector<uint32_t, N> Zero(0);
-  const vector<uint32_t, N> Ones(0xffffffff);
-  const vector<uint32_t, N> One(1);
-  vector<uint32_t, N> Lo = LoHi.template select<N, 2>(0);
-  vector<uint32_t, N> Hi = LoHi.template select<N, 2>(1);
-  vector<uint32_t, N> Exp = (Hi >> 20) & vector<uint32_t, N>(0x7ff);
-  // mantissa without hidden bit
-  vector<uint32_t, N> LoMant = Lo;
-  vector<uint32_t, N> HiMant = Hi & Mantissa_mask;
-  // for normalized numbers (1 + mant/2^52) * 2 ^ (mant-1023)
-  vector<int32_t, N> MantShift = Exp - 1023 - 52;
-  vector<int32_t, N> OneShift = Exp - 1023;
-  auto IsNormalized = Exp == Zero;
-  // for denormalized numbers (0 + mant/2^52) * 2 ^ (1-1023)
-  MantShift.merge(One - 1023 + 1, IsNormalized);
-  OneShift.merge(Ones, IsNormalized);
-
-  // 64bit Shift - we rely on compiler emulation there
-  vector<uint64_t, N> ToShift = __impl_combineLoHi<N>(LoMant, HiMant);
-  vector<uint64_t, N> Shifted64 = ToShift << MantShift;
-  auto IsRightShift = MantShift < vector<int32_t, N>(0);
-  Shifted64.merge(ToShift >> -MantShift, IsRightShift);
-  auto IsShiftGT64 = (MantShift >= vector<int32_t, N>(64)) |
-                     (MantShift <= vector<int32_t, N>(-64));
-  Shifted64.merge(vector<uint64_t, N>(0), IsShiftGT64);
-  vector<uint32_t, 2 *N> Shifted = Shifted64.template format<uint32_t>();
-  vector<uint32_t, N> LoRes = Shifted.template select<N, 2>(0);
-  vector<uint32_t, N> HiRes = Shifted.template select<N, 2>(1);
-
-  // add hidden One
-  vector<uint32_t, N> OneInLo = One << OneShift;
-  auto IsOneInLo =
-      (OneShift < vector<int32_t, N>(32)) & (OneShift >= vector<int32_t, N>(0));
-  LoRes.merge(LoRes + OneInLo, IsOneInLo);
-
-  vector<uint32_t, N> OneInHi = One << (OneShift - 32);
-  auto IsOneInHi = (OneShift >= vector<int32_t, N>(32)) &
-                   (OneShift < vector<int32_t, N>(64));
-  HiRes.merge(HiRes + OneInHi, IsOneInHi);
-
-  vector<uint32_t, N> SignedBitMask(1u << 31);
-  vector<uint32_t, N> SignedBit = Hi & SignedBitMask;
-
-  auto FlagSignSet = (SignedBit != Zero);
-  auto FlagNoSignSet = (SignedBit == Zero);
-  // check for Exponent overflow (when sign bit set)
-  auto FlagExpO = (Exp > vector<uint32_t, N>(1089));
-  auto FlagExpUO = FlagNoSignSet & FlagExpO;
-  if constexpr (isSigned) {
-    // calculate (NOT[Lo, Hi] + 1) (integer sign negation)
-    vector<uint32_t, N> NegLo = ~LoRes;
-    vector<uint32_t, N> NegHi = ~HiRes;
-
-    auto AddC = cm::math::add_with_carry(NegLo, One);
-    auto AddcRes = AddC.first;
-    auto AddcResCB = AddC.second;
-    NegHi = NegHi + AddcResCB;
-
-    // if sign bit is set, alter the result with negated value
-    // if (FlagSignSet)
-    LoRes.merge(AddcRes, FlagSignSet);
-    HiRes.merge(NegHi, FlagSignSet);
-
-    // Here we process overflows
-    vector<uint32_t, N> LoOrHi = LoRes | HiRes;
-    auto NZ = (LoOrHi != Zero);
-    vector<uint32_t, N> HiHBit = HiRes & SignedBitMask;
-    auto NZ2 = SignedBit != HiHBit;
-    auto Ovrfl1 = NZ2 & NZ;
-
-    // In case of overflow, HW response is : 7fffffffffffffff
-    // if (Ovrfl1)
-    LoRes.merge(Ones, Ovrfl1);
-    HiRes.merge(vector<uint32_t, N>((1u << 31) - 1), Ovrfl1);
-
-    // if (FlagExpO)
-    LoRes.merge(Zero, FlagExpO);
-    HiRes.merge(vector<uint32_t, N>(1u << 31), FlagExpO);
-
-    // if (FlagExpUO)
-    LoRes.merge(Ones, FlagExpUO);
-    HiRes.merge(vector<uint32_t, N>((1u << 31) - 1), FlagExpUO);
-
-  } else {
-    // if (FlagSignSet)
-    LoRes.merge(Zero, FlagSignSet);
-    HiRes.merge(Zero, FlagSignSet);
-    // if (FlagExpUO)
-    LoRes.merge(Ones, FlagExpUO);
-    HiRes.merge(Ones, FlagExpUO);
-  }
-  return __impl_combineLoHi<N>(LoRes, HiRes);
-}
-template <unsigned N, bool isSigned>
 CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
   // vector of floats -> vector of ints
   vector<uint32_t, N> Uifl = a.template format<uint32_t>();
@@ -306,8 +116,6 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
   const vector<uint32_t, N> Mantissa_mask((1u << 23) - 1);
   const vector<uint32_t, N> Zero(0);
   const vector<uint32_t, N> Ones(0xffffffff);
-  const vector<uint32_t, N> One(1);
-
   vector<uint32_t, N> Exp = (Uifl >> 23) & vector<uint32_t, N>(0xff);
   // mantissa without hidden bit
   vector<uint32_t, N> Pmantissa = Uifl & Mantissa_mask;
@@ -350,10 +158,11 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
     // calculate (NOT[Lo, Hi] + 1) (integer sign negation)
     vector<uint32_t, N> NegLo = ~Lo;
     vector<uint32_t, N> NegHi = ~Hi;
-
-    auto AddC = cm::math::add_with_carry(NegLo, One);
-    auto AddcResVal = AddC.first;
-    vector<uint32_t, N> AddcResCB = AddC.second;
+    // TODO Use Addc intrinsic
+    vector<uint32_t, N> AddcResVal = NegLo + 1;
+    auto AddcResCBMask = (NegLo == Ones);
+    vector<uint32_t, N> AddcResCB = Zero;
+    AddcResCB.merge(vector<uint32_t, N>(1), AddcResCBMask);
 
     NegHi = NegHi + AddcResCB;
 
@@ -401,24 +210,10 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
     return b.cl_vector();                                                      \
   };
 
-#define __FP2UI_D_VECTOR_IMPL(N)                                               \
-  CM_NODEBUG CM_NOINLINE extern "C" cl_vector<uint64_t, N>                     \
-      __cm_intrinsic_impl_fp2ui__double_##N##_(cl_vector<double, N> a) {       \
-    vector<uint64_t, N> b = details::__impl_fp2ui__double__<N, false>(a);      \
-    return b.cl_vector();                                                      \
-  };
-
 #define __FP2SI_VECTOR_IMPL(N)                                                 \
   CM_NODEBUG CM_NOINLINE extern "C" cl_vector<int64_t, N>                      \
       __cm_intrinsic_impl_fp2si_##N##_(cl_vector<float, N> a) {                \
     vector<int64_t, N> b = details::__impl_fp2ui__<N, true>(a);                \
-    return b.cl_vector();                                                      \
-  };
-
-#define __FP2SI_D_VECTOR_IMPL(N)                                               \
-  CM_NODEBUG CM_NOINLINE extern "C" cl_vector<int64_t, N>                      \
-      __cm_intrinsic_impl_fp2si__double_##N##_(cl_vector<double, N> a) {       \
-    vector<int64_t, N> b = details::__impl_fp2ui__double__<N, true>(a);        \
     return b.cl_vector();                                                      \
   };
 
@@ -429,40 +224,17 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
     return b.cl_vector();                                                      \
   };
 
-#define __UI2FP_D_VECTOR_IMPL(N)                                               \
-  CM_NODEBUG CM_NOINLINE extern "C" cl_vector<double, N>                       \
-      __cm_intrinsic_impl_ui2fp__double_##N##_(cl_vector<uint64_t, N> a) {     \
-    vector<double, N> b = details::__impl_ui2fp__double__<N>(a);               \
-    return b.cl_vector();                                                      \
-  };
-
 #define __SI2FP_VECTOR_IMPL(N)                                                 \
   CM_NODEBUG CM_NOINLINE extern "C" cl_vector<float, N>                        \
       __cm_intrinsic_impl_si2fp_##N##_(cl_vector<uint64_t, N> a) {             \
     vector<float, N> b = details::__impl_si2fp__<N>(a);                        \
     return b.cl_vector();                                                      \
   };
-
-#define __SI2FP_D_VECTOR_IMPL(N)                                               \
-  CM_NODEBUG CM_NOINLINE extern "C" cl_vector<double, N>                       \
-      __cm_intrinsic_impl_si2fp__double_##N##_(cl_vector<uint64_t, N> a) {     \
-    vector<double, N> b = details::__impl_si2fp__double__<N>(a);               \
-    return b.cl_vector();                                                      \
-  };
-
 // special case - input not a vector
 CM_NODEBUG CM_NOINLINE extern "C" uint64_t
 __cm_intrinsic_impl_fp2ui_1_base__(float a) {
   vector<uint64_t, 1> b =
       details::__impl_fp2ui__<1, false>(vector<float, 1>(a));
-  return b[0];
-}
-
-// special case - input not a vector
-CM_NODEBUG CM_NOINLINE extern "C" uint64_t
-__cm_intrinsic_impl_fp2ui_1_double_base__(double a) {
-  vector<uint64_t, 1> b =
-      details::__impl_fp2ui__double__<1, false>(vector<double, 1>(a));
   return b[0];
 }
 
@@ -474,25 +246,9 @@ __cm_intrinsic_impl_fp2si_1_base__(float a) {
 }
 
 // special case - input not a vector
-CM_NODEBUG CM_NOINLINE extern "C" int64_t
-__cm_intrinsic_impl_fp2si_1_double_base__(double a) {
-  vector<int64_t, 1> b =
-      details::__impl_fp2ui__double__<1, true>(vector<double, 1>(a));
-  return b[0];
-}
-
-// special case - input not a vector
 CM_NODEBUG CM_NOINLINE extern "C" float
 __cm_intrinsic_impl_ui2fp_1_base__(uint64_t a) {
   vector<float, 1> b = details::__impl_ui2fp__<1>(vector<uint64_t, 1>(a));
-  return b[0];
-}
-
-// special case - input not a vector
-CM_NODEBUG CM_NOINLINE extern "C" double
-__cm_intrinsic_impl_ui2fp_1_double_base__(uint64_t a) {
-  vector<double, 1> b =
-      details::__impl_ui2fp__double__<1>(vector<uint64_t, 1>(a));
   return b[0];
 }
 
@@ -503,23 +259,11 @@ __cm_intrinsic_impl_si2fp_1_base__(int64_t a) {
   return b[0];
 }
 
-// special case - input not a vector
-CM_NODEBUG CM_NOINLINE extern "C" double
-__cm_intrinsic_impl_si2fp_1_double_base__(int64_t a) {
-  vector<double, 1> b =
-      details::__impl_si2fp__double__<1>(vector<int64_t, 1>(a));
-  return b[0];
-}
-
 #define __DEFINE_FP2UI_FUN(N)                                                  \
   __FP2UI_VECTOR_IMPL(N);                                                      \
-  __FP2UI_D_VECTOR_IMPL(N);                                                    \
   __FP2SI_VECTOR_IMPL(N);                                                      \
-  __FP2SI_D_VECTOR_IMPL(N)                                                     \
   __UI2FP_VECTOR_IMPL(N);                                                      \
-  __UI2FP_D_VECTOR_IMPL(N)                                                     \
-  __SI2FP_VECTOR_IMPL(N);                                                      \
-  __SI2FP_D_VECTOR_IMPL(N);
+  __SI2FP_VECTOR_IMPL(N);
 
 __DEFINE_FP2UI_FUN(1);
 __DEFINE_FP2UI_FUN(2);
