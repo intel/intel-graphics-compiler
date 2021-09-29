@@ -5786,6 +5786,7 @@ void GraphColor::computeDegreeForARF()
 void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
 {
     std::vector <LiveRange *> addressSensitiveVars;
+    std::vector<LiveRange*> unalignedScalars;
     float maxNormalCost = 0.0f;
 
     for (unsigned i = 0; i < numVar; i++)
@@ -5873,6 +5874,13 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
                     lrs[i]->getDegree() : 1.0f*lrs[i]->getRefCount()*lrs[i]->getRefCount() / (lrs[i]->getDegree() + 1);
             }
 
+            if (dcl->getNumElems() == 1 && dcl->getSubRegAlign() <= G4_SubReg_Align::Even_Word &&
+                dcl->getRegFile() == G4_RegFileKind::G4_GRF)
+            {
+                // This dcl is a basic unaligned dcl. Most cases wont benefit by spilling this dcl.
+                unalignedScalars.push_back(lrs[i]);
+            }
+
             lrs[i]->setSpillCost(spillCost);
 
             // Track address sensitive live range.
@@ -5902,6 +5910,14 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
         if (lr->getSpillCost() != MAXSPILLCOST)
         {
             lr->setSpillCost(maxNormalCost + lr->getSpillCost());
+        }
+    }
+
+    for (auto lr : unalignedScalars)
+    {
+        if (lr->getSpillCost() != MAXSPILLCOST)
+        {
+            lr->setSpillCost(maxNormalCost - 1);
         }
     }
 }
