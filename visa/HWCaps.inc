@@ -829,11 +829,14 @@ SPDX-License-Identifier: MIT
     {
         return false;
     }
+    bool hasPartialInt64Support() const
+    {
+        return false;
+    }
     bool hasInt64Add() const
     {
         return false;
     }
-
 
    bool hasEOTWait() const
    {
