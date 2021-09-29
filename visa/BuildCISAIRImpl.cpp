@@ -1923,7 +1923,6 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
             VISA_CALL_TO_BOOL(AppendVISACFCallInst,
                 (VISA_PredOpnd *)pred, emask, executionSize, opnd[i]);
-            VISA_CALL_TO_BOOL(patchLastInst, opnd[i]);
             return true;
         }
     case ISA_JMP:
@@ -1937,7 +1936,6 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             }
 
             VISA_CALL_TO_BOOL(AppendVISACFJmpInst, (VISA_PredOpnd *) pred, opnd[i]);
-            VISA_CALL_TO_BOOL(patchLastInst, opnd[i]);
             return true;
         }
     case ISA_GOTO:
@@ -1952,8 +1950,6 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
             VISA_CALL_TO_BOOL(AppendVISACFGotoInst,
                 (VISA_PredOpnd*)pred, emask, executionSize, opnd[i]);
-            VISA_CALL_TO_BOOL(patchLastInst,
-                opnd[i]);
             return true;
         }
     default:

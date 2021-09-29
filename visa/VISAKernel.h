@@ -80,7 +80,6 @@ public:
         m_type = type;
 
         memset(&m_cisa_kernel, 0, sizeof(kernel_format_t));
-        m_forward_label_count = 0;
         m_jitInfo = NULL;
         m_kernelInfo = NULL;
         m_kernel = NULL;
@@ -156,7 +155,6 @@ public:
     int addFunctionDirective(char * func_name);
 
     VISA_LabelOpnd * getLabelOperandFromFunctionName(const std::string &name);
-    unsigned int getLabelIdFromFunctionName(const std::string &name);
 
     void setGenxDebugInfoBuffer(char * buffer, unsigned long size);
     VISA_opnd* CreateOtherOpndHelper(int num_pred_desc_operands, int num_operands, VISA_INST_Desc *inst_desc, unsigned int value, bool hasSubOpcode = false, uint8_t subOpcode = 0);
@@ -196,7 +194,6 @@ public:
     unsigned int getIndexFromLabelName(const std::string &label_name);
     VISA_LabelOpnd * getLabelOpndFromLabelName(const std::string &label_name);
     bool setLabelNameIndexMap(const std::string &label_name, VISA_LabelOpnd * lbl);
-    int patchLastInst(VISA_LabelOpnd *label);
     vISA::G4_Kernel* getKernel() const { return m_kernel; }
     vISA::IR_Builder* getIRBuilder() const { return m_builder; }
     CISA_IR_Builder* getCISABuilder() const { return m_CISABuilder; }
@@ -756,8 +753,6 @@ public:
 
     int CreateVISAStateOperand(VISA_VectorOpnd *& opnd, CISA_GEN_VAR *decl, Common_ISA_State_Opnd_Class opnd_class, uint8_t size, unsigned char offset, bool useAsDst);
 
-    int CreateDummyLabelOperand(VISA_LabelOpnd *& opnd, char *name, VISA_Label_Kind kind);
-
     void setGenxBinaryBuffer(void *buffer, int size) { m_genx_binary_buffer = static_cast<char *>(buffer); m_genx_binary_size = size; }
     void setJitInfo(FINALIZER_INFO* jitInfo) { m_jitInfo = jitInfo; }
 
@@ -880,7 +875,6 @@ private:
     void generateVariableName(Common_ISA_Var_Class Ty, const char *&varName);
 
     void dumpDebugFormatFile(std::vector<vISA::DebugInfoFormat>& debugSymbols, std::string filename);
-    void patchLabels();
     int InitializeFastPath();
     void initCompilerStats();
     int predefinedVarRegAssignment();
@@ -949,7 +943,6 @@ private:
     unsigned long m_input_offset;
 
     std::vector<std::string> m_string_pool;
-    CisaFramework::CisaInst * m_lastInst;
     enum VISA_BUILD_TYPE m_type;
     unsigned int m_resolvedIndex;
 
@@ -968,9 +961,6 @@ private:
 
     unsigned int m_pred_info_count;
     std::vector<CISA_GEN_VAR *> m_pred_info_list;
-
-    unsigned int m_forward_label_count;
-    std::map<unsigned int, std::string> m_forward_label_pool;
 
     unsigned int m_sampler_count;
     std::vector<CISA_GEN_VAR*> m_sampler_info_list;

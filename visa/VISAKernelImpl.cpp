@@ -1215,30 +1215,6 @@ int VISAKernelImpl::CreateVISASurfaceVar(
     return CreateStateVar((CISA_GEN_VAR *&)decl, SURFACE_VAR, name, numberElements);
 }
 
-int VISAKernelImpl::CreateDummyLabelOperand(
-    VISA_LabelOpnd *& opnd, char * name, VISA_Label_Kind kind)
-{
-    TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
-
-    VISA_INST_Desc *inst_desc = NULL;
-    ISA_Opcode opcode = ISA_LABEL;
-    if (kind == LABEL_SUBROUTINE)
-    {
-        opcode = ISA_SUBROUTINE;
-    }
-    inst_desc = &CISA_INST_table[opcode];
-    opnd = (VISA_LabelOpnd *)m_mem.alloc(sizeof(VISA_LabelOpnd));
-    opnd->_opnd.other_opnd = CISA_INVALID_VAR_ID;
-    opnd->opnd_type = CISA_OPND_OTHER;
-    opnd->size = (uint16_t)Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[0].data_type);
-    opnd->tag = opcode;
-
-    m_forward_label_pool[m_forward_label_count] = std::string(name);
-    opnd->index = m_forward_label_count++;
-
-    return VISA_SUCCESS;
-}
-
 int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name, VISA_Label_Kind kind)
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_VAR);
@@ -7684,28 +7660,6 @@ int VISAKernelImpl::AppendVISAQwordScatterInst(
 
 
 
-int VISAKernelImpl::patchLastInst(VISA_LabelOpnd *label)
-{
-    if (label->_opnd.other_opnd == CISA_INVALID_VAR_ID)
-    {
-        std::map<unsigned int, std::string>::iterator iter = m_forward_label_pool.find(label->index);
-
-        if (iter == m_forward_label_pool.end())
-        {
-            assert(0);
-            return VISA_FAILURE;
-        }
-        if ((ISA_Opcode)label->tag == ISA_SUBROUTINE)
-        {
-            m_lastInst->setLabelInfo(iter->second, true, true);
-        }else
-        {
-            m_lastInst->setLabelInfo(iter->second, false, true);
-        }
-    }
-    return VISA_SUCCESS;
-}
-
 uint32_t VISAKernelImpl::addStringPool(std::string str)
 {
     if (str.empty())
@@ -7720,7 +7674,6 @@ uint32_t VISAKernelImpl::addStringPool(std::string str)
 void VISAKernelImpl::addInstructionToEnd(CisaInst * inst)
 {
     m_instruction_list.push_back(inst);
-    m_lastInst = inst;
     CISA_INST * cisaInst = inst->getCISAInst();
     cisaInst->id = getvIsaInstCount();
     m_instruction_size += inst->getSize();
@@ -7750,34 +7703,6 @@ void VISAKernelImpl::setGenxDebugInfoBuffer(char * buffer, unsigned long size)
     m_genx_debug_info_size = size;
 }
 
-void VISAKernelImpl::patchLabels()
-{
-    std::list<CisaInst *>::iterator iter =  m_instruction_list.begin();
-    for (; iter != m_instruction_list.end(); iter++)
-    {
-        CisaInst * inst = *iter;
-        if (inst->needLabelPatch())
-        {
-            if (inst->isFuncLabel())
-            {
-                int labelID = getLabelIdFromFunctionName(inst->getLabelName());
-                MUST_BE_TRUE(labelID != INVALID_LABEL_ID, "Invalid Function Name.");
-                inst->setLabelIndex(labelID);
-
-            }else
-            {
-                std::string label_name = inst->getLabelName();
-                MUST_BE_TRUE(label_name != "", "Invalid Label discovered during patching label process.");
-                unsigned int labelID = getIndexFromLabelName(label_name);
-                MUST_BE_TRUE(labelID != ((unsigned int) INVALID_LABEL_ID), "Invalid Label Name.");
-                inst->setLabelIndex(labelID);
-            }
-        }
-    }
-
-    return;
-}
-
 /**
 *  finalizeAttributes() sets attributes based on options, etc.
 *     This is a temporary solution to move some options to attributes.
@@ -7801,7 +7726,6 @@ void VISAKernelImpl::finalizeAttributes()
 void VISAKernelImpl::finalizeKernel()
 {
     finalizeAttributes();
-    patchLabels();
     m_cisa_kernel.string_count = (uint32_t)m_string_pool.size();
     m_cisa_kernel.strings = (const char **) m_mem.alloc(m_cisa_kernel.string_count * sizeof(char *));
     auto it_string = m_string_pool.begin(), et_string = m_string_pool.end();
@@ -8018,15 +7942,6 @@ VISA_LabelOpnd* VISAKernelImpl::getLabelOperandFromFunctionName(const std::strin
         return nullptr;
     } else {
         return it->second;
-    }
-}
-unsigned int VISAKernelImpl::getLabelIdFromFunctionName(const std::string &name)
-{
-    auto it = m_funcName_to_labelID_map.find(name);
-    if (m_funcName_to_labelID_map.end() == it) {
-        return INVALID_LABEL_ID;
-    } else {
-        return it->second->_opnd.other_opnd;
     }
 }
 
