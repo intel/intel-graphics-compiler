@@ -162,8 +162,7 @@ int IR_Builder::translateVISACFFCallInst(
         InstOpt_NoOpt,
         true);
 
-    m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
-
+    addFcallInfo(fcall, argSize, returnSize);
     return VISA_SUCCESS;
 }
 
@@ -200,7 +199,7 @@ int IR_Builder::translateVISACFIFCallInst(
     auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, g4::NOSAT, exsize,
         nullptr, src0, nullptr, InstOpt_NoOpt, true);
 
-    m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
+    addFcallInfo(fcall, argSize, returnSize);
 
     return VISA_SUCCESS;
 }

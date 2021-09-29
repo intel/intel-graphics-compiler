@@ -601,6 +601,10 @@ public:
         VISA_PREDICATE_CONTROL control, G4_ExecSize execSize);
 
     G4_FCALL* getFcallInfo(const G4_INST* inst) const;
+    void addFcallInfo(const G4_INST* FcallInst, uint16_t ArgSize, uint16_t RetSize)
+    {
+        m_fcallInfo[FcallInst] = new (mem) G4_FCALL(ArgSize, RetSize);
+    }
 
     // If this is true (detected in TranslateInterface.cpp), we need a sampler flush before EOT
     bool getHasNullReturnSampler() const { return hasNullReturnSampler; }
