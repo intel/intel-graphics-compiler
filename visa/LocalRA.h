@@ -305,8 +305,6 @@ public:
 
     unsigned int get_bundle(unsigned int baseReg, int offset);
 
-    unsigned int get_bank(unsigned int baseReg, int offset);
-
     int findBundleConflictFreeRegister(int curReg, int endReg, unsigned short occupiedBundles, BankAlign align, bool evenAlign);
 
     void findRegisterCandiateWithAlignBackward(int& i, BankAlign align, bool evenAlign);

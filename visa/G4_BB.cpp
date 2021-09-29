@@ -651,7 +651,7 @@ static int getConflictTimesForTGLLP(
     return conflictTimes;
 }
 
-static int getConflictTimesForTGL(
+int G4_BB::getConflictTimesForTGL(
     std::ostream& output, int *firstRegCandidate,
     int &sameBankConflicts, bool zeroOne, bool isTGLLP, bool reducedBundles)
 {

@@ -277,6 +277,8 @@ public:
     void emitInstructionSourceLineMapping(std::ostream& output, INST_LIST_ITER &it);
     void emitBankConflict(std::ostream& output, const G4_INST *inst);
 
+    int getConflictTimesForTGL(std::ostream& output, int* firstRegCandidate, int& sameBankConflicts, bool zeroOne, bool isTGLLP, bool reducedBundles);
+
     uint32_t emitBankConflictXe(
         std::ostream& os, const G4_INST *inst,
         int* suppressRegs,

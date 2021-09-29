@@ -1085,6 +1085,7 @@ namespace vISA
         {
             int bankID = (baseReg + offset) % 2;
 
+
             return bankID;
         }
 
