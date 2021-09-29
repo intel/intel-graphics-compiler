@@ -410,6 +410,7 @@ void CMImpParam::replaceWithGlobal(CallInst *CI, unsigned IID) {
   LoadInst *Load =
       new LoadInst(GV->getType()->getPointerElementType(), GV,
                    GV->getName() + ".val", /* isVolatile */ false, CI);
+  Load->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(Load);
 }
 
