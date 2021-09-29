@@ -215,6 +215,9 @@ bool GenXPacketize::runOnModule(Module &Module) {
   if (ForkFuncs.empty())
     return false;
 
+  DL = &(M->getDataLayout());
+  B = new PacketBuilder(M);
+
   // sort functions in order, also find those functions that are used in
   // the SIMT mode, therefore need whole-function vectorization.
   findFunctionVectorizationOrder(M);
@@ -229,8 +232,6 @@ bool GenXPacketize::runOnModule(Module &Module) {
 
   UniformInsts.clear();
 
-  DL = &(M->getDataLayout());
-  B = new PacketBuilder(M);
   std::vector<Function *> SIMTFuncs;
   // Process those functions called in the SIMT mode
   for (int i = NumFunc - 1; i >= 0; --i) {
@@ -807,6 +808,10 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *pInst) {
   Function *f = pCall->getCalledFunction();
   IGC_ASSERT(f);
   IGC_ASSERT(f->isIntrinsic());
+  // not sure how to handle debug intrinsics, just return
+  if (isa<DbgDeclareInst>(pInst) || isa<DbgValueInst>(pInst))
+    return pInst;
+
   auto id = GenXIntrinsic::getAnyIntrinsicID(f);
 
   // packetize intrinsic operands
