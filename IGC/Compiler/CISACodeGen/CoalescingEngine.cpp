@@ -1140,8 +1140,8 @@ namespace IGC
         SIMDMode simdMode,
         const DataLayout* pDL,
         llvm::Instruction* inst,
-        int& payloadOffsetInBytes
-    )
+        int& payloadOffsetInBytes,
+        const bool isUniformPayloadAllowed)
     {
         SetCurrentPart(inst, 0);
         const uint numOperands = m_PayloadMapping.GetNumPayloadElements(inst);
@@ -1234,16 +1234,19 @@ namespace IGC
         }
         else
         {
-            payload = outProgram->GetNewVariable(
-                numOperands * numLanes(simdMode), ISA_TYPE_F, outProgram->GetContext()->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD, CName::NONE);
-
-            for (uint i = 0; i < numOperands; i++)
             {
-                Value* val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
-                CVariable* data = outProgram->GetSymbol(val);
-                encoder->SetDstSubVar(i * numSubVarsPerOperand);
-                encoder->Copy(payload, data);
-                encoder->Push();
+                payload = outProgram->GetNewVariable(numOperands * numLanes(simdMode), ISA_TYPE_F,
+                    outProgram->GetContext()->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD,
+                    "CEExplicitPayload");
+
+                for (uint i = 0; i < numOperands; i++)
+                {
+                    Value* val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
+                    CVariable* data = outProgram->GetSymbol(val);
+                    encoder->SetDstSubVar(i * numSubVarsPerOperand);
+                    encoder->Copy(payload, data);
+                    encoder->Push();
+                }
             }
         }
 

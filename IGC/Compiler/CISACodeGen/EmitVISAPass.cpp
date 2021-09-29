@@ -7187,36 +7187,38 @@ void EmitPass::emitURBRead(llvm::GenIntrinsicInst* inst)
 void EmitPass::emitURBWrite(llvm::GenIntrinsicInst* inst)
 {
     // input: GenISA_URBWrite(%offset, %mask, %data0, ..., %data7)
-
-    CVariable* channelMask = m_currShader->GetSymbol(inst->getOperand(1));
     CVariable* offset = m_currShader->GetSymbol(inst->getOperand(0));
+    CVariable* channelMask = m_currShader->GetSymbol(inst->getOperand(1));
     CVariable* URBHandle = m_currShader->GetURBOutputHandle();
 
 
-    // If the offset or channel mask is not immediate value we need per-slot offsets and/or channel mask
-    // to contain data in all the channels however,
-    // if the variable is uniform, uniform analysis makes it a scalar value
-    // we need to copy to simd form then.
-    if (!channelMask->IsImmediate())
     {
-        channelMask = BroadcastIfUniform(channelMask);
-    }
+        // If offset or channel mask is not immediate value, we need per-slot offsets and/or channel mask
+        // to contain data in all the channels. However, if the variable is uniform,
+        // the uniform analysis makes it a scalar value, so we need to broadcast it to simd form.
+        if (!channelMask->IsImmediate())
+        {
+            channelMask = BroadcastIfUniform(channelMask);
+        }
 
-    if (!offset->IsImmediate())
-    {
-        offset = BroadcastIfUniform(offset);
+        if (!offset->IsImmediate())
+        {
+            offset = BroadcastIfUniform(offset);
+        }
     }
-
 
     {
         int payloadElementOffset = 0;
+        const bool isUniformPayloadAllowed = false;
         CVariable* payload = m_CE->PrepareExplicitPayload(
             m_currShader,
             m_encoder,
             m_SimdMode,
             m_DL,
             inst,
-            payloadElementOffset);
+            payloadElementOffset,
+            isUniformPayloadAllowed);
+
 
         m_encoder->URBWrite(payload, payloadElementOffset, offset, URBHandle, channelMask);
         m_encoder->Push();
