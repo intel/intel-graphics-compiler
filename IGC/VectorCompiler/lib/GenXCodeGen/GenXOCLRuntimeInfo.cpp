@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
+#include <llvm/InitializePasses.h>
 
 #include <cctype>
 #include <functional>
@@ -878,7 +879,16 @@ bool GenXOCLRuntimeInfo::runOnModule(Module &M) {
   return false;
 }
 
+void GenXOCLRuntimeInfo::print(raw_ostream &OS, const Module *M) const {
+  OS << "To be done\n";
+}
+
 INITIALIZE_PASS_BEGIN(GenXOCLRuntimeInfo, "GenXOCLRuntimeInfo",
                       "GenXOCLRuntimeInfo", false, true)
+INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis);
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig);
+INITIALIZE_PASS_DEPENDENCY(GenXModule);
+INITIALIZE_PASS_DEPENDENCY(GenXDebugInfo);
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig);
 INITIALIZE_PASS_END(GenXOCLRuntimeInfo, "GenXOCLRuntimeInfo",
                     "GenXOCLRuntimeInfo", false, true)

@@ -325,6 +325,7 @@ public:
   bool runOnModule(Module &M) override;
 
   void releaseMemory() override { CompiledModule.clear(); }
+  void print(raw_ostream &OS, const Module *M) const override;
 
   // Move compiled kernels out of this pass.
   CompiledModuleT stealCompiledModule() { return std::move(CompiledModule); }

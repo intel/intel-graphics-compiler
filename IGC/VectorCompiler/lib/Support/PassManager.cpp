@@ -7,10 +7,14 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Support/PassManager.h"
+#include "vc/Support/PassPrinters.h"
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Analysis/CallGraphSCCPass.h>
+#include <llvm/Analysis/LoopPass.h>
+#include <llvm/Analysis/RegionPass.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Verifier.h>
@@ -126,7 +130,8 @@ public:
 
 struct ExtraIRDumpBeforePass {
   static PassSetOption option;
-  static auto createPass(const PassInfo *PI, PassNumber N) {
+  static auto createPass(const PassInfo *PI, PassKind PassKindID,
+                         PassNumber N) {
     auto PassName = PI->getPassName();
     auto PassArg = PI->getPassArgument();
     return createPrintModulePass(
@@ -141,7 +146,8 @@ PassSetOption ExtraIRDumpBeforePass::option{
 
 struct ExtraVerificationBeforePass {
   static PassSetOption option;
-  static auto createPass(const PassInfo *PI, PassNumber N) {
+  static auto createPass(const PassInfo *PI, PassKind PassKindID,
+                         PassNumber N) {
     errs() << "extra verifier shall be run before <" << PI->getPassArgument()
            << N.str() << ">\n";
     return createVerifierPass();
@@ -153,7 +159,8 @@ PassSetOption ExtraVerificationBeforePass::option{
 
 struct ExtraIRDumpAfterPass {
   static PassSetOption option;
-  static auto createPass(const PassInfo *PI, PassNumber N) {
+  static auto createPass(const PassInfo *PI, PassKind PassKindID,
+                         PassNumber N) {
     auto PassName = PI->getPassName();
     auto PassArg = PI->getPassArgument();
     return createPrintModulePass(llvm::errs(),
@@ -168,7 +175,8 @@ PassSetOption ExtraIRDumpAfterPass::option{
 
 struct ExtraVerificationAfterPass {
   static PassSetOption option;
-  static auto createPass(const PassInfo *PI, PassNumber N) {
+  static auto createPass(const PassInfo *PI, PassKind PassKindID,
+                         PassNumber N) {
     errs() << "extra verifier shall be run after <" << PI->getPassArgument()
            << N.str() << ">\n";
     return createVerifierPass();
@@ -181,19 +189,45 @@ PassSetOption ExtraVerificationAfterPass::option{
 static PassSetOption DisablePass{
     "vc-disable-pass", cl::desc("Debug only. Do not add the specified pass")};
 
+struct ExtraPrinterPassAfterPass {
+  static PassSetOption option;
+  static Pass *createPass(const PassInfo *PI, PassKind PassKindID,
+                          PassNumber N) {
+    auto PassName = PI->getPassName();
+    auto PassArg = PI->getPassArgument();
+    switch (PassKindID) {
+    case PT_Region:
+      return vc::createRegionPassPrinter(PI, llvm::errs());
+    case PT_Loop:
+      return vc::createLoopPassPrinter(PI, llvm::errs());
+    case PT_Function:
+      return vc::createFunctionPassPrinter(PI, llvm::errs());
+    case PT_CallGraphSCC:
+      return vc::createCallGraphPassPrinter(PI, llvm::errs());
+    default:
+      return vc::createModulePassPrinter(PI, llvm::errs());
+    }
+  }
+};
+PassSetOption ExtraPrinterPassAfterPass::option{
+    "vc-analyze", cl::desc("Debug only. Print specified analyses. Behaves like "
+                           "-analyze opt option.")};
+
 bool AllOptionsAreEmpty() {
   return ExtraIRDumpBeforePass::option.empty() &&
          ExtraIRDumpAfterPass::option.empty() &&
          ExtraVerificationBeforePass::option.empty() &&
-         ExtraVerificationAfterPass::option.empty() && DisablePass.empty();
+         ExtraVerificationAfterPass::option.empty() &&
+         ExtraPrinterPassAfterPass::option.empty() && DisablePass.empty();
 }
 } // namespace
 
 template <typename PMOption, typename PMT, typename AdderT>
-void addExtraPass(PMT &PM, const PassInfo *CurrentPI, AdderT Adder) {
+void addExtraPass(PMT &PM, const PassInfo *CurrentPI, PassKind PassKindID,
+                  AdderT Adder) {
   auto res = PMOption::option.getValue().includes(CurrentPI->getPassArgument());
   if (res.first)
-    Adder(PM, *PMOption::createPass(CurrentPI, res.second));
+    Adder(PM, *PMOption::createPass(CurrentPI, PassKindID, res.second));
 }
 
 // Adds pass \p P to \p PM plus some additional passes.
@@ -213,12 +247,13 @@ void addPassImpl(PMT &PM, Pass &P, AdderT Adder) {
 #endif // NDEBUG
     return Adder(PM, P);
   }
+  PassKind PassKindID = P.getPassKind();
   // Extra passes are inserted independent on whether or not the pass is ommited
   // to preserve numbering of passes inside them (if '*' is passed to
   // -vc-dump-...-pass, and one occurence of a pass is ommited, the numbering of
   // others would shift if addExtraPasses would not be called).
-  addExtraPass<ExtraIRDumpBeforePass>(PM, PassInfo, Adder);
-  addExtraPass<ExtraVerificationBeforePass>(PM, PassInfo, Adder);
+  addExtraPass<ExtraIRDumpBeforePass>(PM, PassInfo, PassKindID, Adder);
+  addExtraPass<ExtraVerificationBeforePass>(PM, PassInfo, PassKindID, Adder);
 
   auto PassArg = PassInfo->getPassArgument();
   auto res = DisablePass.getValue().includes(PassArg);
@@ -227,8 +262,9 @@ void addPassImpl(PMT &PM, Pass &P, AdderT Adder) {
   else
     Adder(PM, P);
 
-  addExtraPass<ExtraIRDumpAfterPass>(PM, PassInfo, Adder);
-  addExtraPass<ExtraVerificationAfterPass>(PM, PassInfo, Adder);
+  addExtraPass<ExtraIRDumpAfterPass>(PM, PassInfo, PassKindID, Adder);
+  addExtraPass<ExtraPrinterPassAfterPass>(PM, PassInfo, PassKindID, Adder);
+  addExtraPass<ExtraVerificationAfterPass>(PM, PassInfo, PassKindID, Adder);
 }
 
 void vc::PassManager::add(Pass *P) {

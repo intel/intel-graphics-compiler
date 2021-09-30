@@ -12,6 +12,7 @@ set(SUPPORT_SOURCES
   ShaderDump.cpp
   BackendConfig.cpp
   PassManager.cpp
+  PassPrinters.cpp
   )
 
 add_library(VCSupport ${SUPPORT_SOURCES})

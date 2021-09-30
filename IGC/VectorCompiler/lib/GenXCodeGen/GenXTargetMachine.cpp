@@ -146,6 +146,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXTranslateSPIRVBuiltinsPass(registry);
   initializeGenXLoadStoreLoweringPass(registry);
   initializeGenXStackUsagePass(registry);
+  initializeGenXOCLRuntimeInfoPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
