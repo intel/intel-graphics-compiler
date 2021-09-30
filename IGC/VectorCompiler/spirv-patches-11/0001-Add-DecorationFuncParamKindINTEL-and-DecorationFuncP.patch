@@ -149,22 +149,22 @@ index 00000000..00000000 100644
    ADD_VEC_INIT(DecorationCallableFunctionINTEL, {CapabilityFastCompositeINTEL});
 +  ADD_VEC_INIT(DecorationFuncParamKindINTEL, {CapabilityVectorComputeINTEL});
 +  ADD_VEC_INIT(DecorationFuncParamDescINTEL, {CapabilityVectorComputeINTEL});
-   ADD_VEC_INIT(internal::DecorationAliasScopeINTEL,
-                {internal::CapabilityMemoryAccessAliasingINTEL});
-   ADD_VEC_INIT(internal::DecorationNoAliasINTEL,
+ }
+ 
+ template <> inline void SPIRVMap<BuiltIn, SPIRVCapVec>::init() {
 diff --git a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 @@ -165,6 +165,8 @@ template <> inline void SPIRVMap<Decoration, std::string>::init() {
-   add(DecorationFunctionFloatingPointModeINTEL,
        "FunctionFloatingPointModeINTEL");
    add(DecorationSingleElementVectorINTEL, "SingleElementVectorINTEL");
+   add(DecorationCallableFunctionINTEL, "CallableFunctionINTEL");
 +  add(DecorationFuncParamKindINTEL, "FuncParamKindINTEL");
 +  add(DecorationFuncParamDescINTEL, "FuncParamDescINTEL");
- 
-   // From spirv_internal.hpp
-   add(DecorationCallableFunctionINTEL, "CallableFunctionINTEL");
+   add(DecorationMax, "Max");
+ }
+ SPIRV_DEF_NAMEMAP(Decoration, SPIRVDecorationNameMap)
 diff --git a/lib/SPIRV/libSPIRV/spirv.hpp b/lib/SPIRV/libSPIRV/spirv.hpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/spirv.hpp
