@@ -5205,9 +5205,8 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb, PointsTo
         // special check for 2-GRF instruction with VxH operands
         // strictly speaking dst and VxH src may overlap only if src's address may point to dst variable,
         // but we skip such check as VxH access is rare and already expensive, so adding an extra move won't cause much extra overhead
-        auto SI = std::find_if(inst->src_begin(), inst->src_end(),
+        bool hasVxH = std::any_of(inst->src_begin(), inst->src_end(),
             [](G4_Operand* src) { return src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegion()->isRegionWH(); });
-        bool hasVxH = (SI != inst->src_end());
         if (hasVxH)
         {
             replaceDst(it, dst->getType());

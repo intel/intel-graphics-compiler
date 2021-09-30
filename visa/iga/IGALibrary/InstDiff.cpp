@@ -442,8 +442,7 @@ iga_status_t iga::DiffFieldsFromPCs(
                     auto fieldEq = [&](const FragmentListElem &p) {
                         return p.first == *f;
                     };
-                    return std::find_if(
-                        flist.begin(), flist.end(), fieldEq) != flist.end();
+                    return std::any_of(flist.begin(), flist.end(), fieldEq);
                 };
                 auto findStr = [&](const FragmentList &flist) {
                     for (const auto &fp : flist) {

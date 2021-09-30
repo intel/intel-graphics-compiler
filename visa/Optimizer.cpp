@@ -7005,10 +7005,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     for (auto bnext = std::next(ib); bnext != bend; ++bnext)
                     {
                         G4_BB* nextBB = *bnext;
-                        auto it = std::find_if(nextBB->begin(),
-                                               nextBB->end(),
-                                               [](G4_INST* inst) { return !inst->isLabel(); });
-                        if (it != nextBB->end())
+                        bool found = std::any_of(nextBB->begin(),
+                                                 nextBB->end(),
+                                                 [](G4_INST* inst) { return !inst->isLabel(); });
+                        if (found)
                         {
                             hasLegalInstAfterEOT = true;
                             break;
