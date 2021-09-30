@@ -1628,6 +1628,11 @@ bool LivenessAnalysis::writeWholeRegion(const G4_BB* bb,
         return false;
     }
 
+    if (inst->getPredicate())
+    {
+        return false;
+    }
+
     if (inst->isFCall())
         return true;
 
