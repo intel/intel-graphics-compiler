@@ -735,7 +735,8 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
             &LB,
             &globalSendsLB,
             p,
-            &labelToBlockMap);
+            &labelToBlockMap,
+            tokenAfterDPASCycle);
         if ((*ib)->getNestLevel())
         {
             nestLoopLevel = nestLoopLevel < (*ib)->getNestLevel() ? (*ib)->getNestLevel() : nestLoopLevel;
@@ -1370,7 +1371,7 @@ unsigned SWSB::getDepDelay(const SBNode* curNode) const
     }
     else if (inst->isDpas())
     {
-        reuseDelay = TOKEN_AFTER_WRITE_DPAS_CYCLE;
+        reuseDelay = tokenAfterDPASCycle;
     }
     else
     {
@@ -1514,7 +1515,7 @@ bool SWSB::cycleExpired(const SBNode* node, int currentID) const
     }
     else if (node->GetInstruction()->isDpas())
     {
-        return TOKEN_AFTER_WRITE_DPAS_CYCLE <= (currentID - node->getLiveStartID());
+        return tokenAfterDPASCycle <= (int)(currentID - node->getLiveStartID());
     }
     else
     {
@@ -5293,7 +5294,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                             liveNode->getLastInstruction()->isDpas() &&
                             curFootprint->isWholeOverlap(liveFootprint))
                         {
-                            if ((node->getDPASID() + curFootprint->offset - (liveNode->getDPASID() + internalOffset) < TOKEN_AFTER_WRITE_DPAS_CYCLE))
+                            if ((node->getDPASID() + curFootprint->offset - (liveNode->getDPASID() + internalOffset) < tokenAfterDPASCycle))
                             {
                                 LB->killOperand(bn_it);
                                 createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
@@ -6154,7 +6155,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                 {
                                     if (node->getDPASID() > curLiveNode->getDPASID())
                                     {
-                                        if ((node->getDPASID() + curFootprint->offset - (curLiveNode->getDPASID() + internalOffset) < TOKEN_AFTER_WRITE_DPAS_CYCLE))
+                                        if ((node->getDPASID() + curFootprint->offset - (curLiveNode->getDPASID() + internalOffset) < tokenAfterDPASCycle))
                                         {
                                             send_use_kills.killOperand(bn_it);
                                             BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
@@ -6179,7 +6180,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                             unsigned endDist = BBVector[loopEndBB]->last_DPASID - curLiveNode->getDPASID();
 
                                             //Note that if node and live node are in different but nest loop, the caculation will be conservative
-                                            if (frontDist + endDist + curFootprint->offset - internalOffset < TOKEN_AFTER_WRITE_DPAS_CYCLE)
+                                            if ((int)(frontDist + endDist + curFootprint->offset - internalOffset) < tokenAfterDPASCycle)
                                             {
                                                 send_use_kills.killOperand(bn_it);
                                                 BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
@@ -6527,7 +6528,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                                 {
                                     if (node->getDPASID() > curLiveNode->getDPASID())
                                     {
-                                        if ((node->getDPASID() + curFootprint->offset - (curLiveNode->getDPASID() + internalOffset) < TOKEN_AFTER_WRITE_DPAS_CYCLE))
+                                        if ((node->getDPASID() + curFootprint->offset - (curLiveNode->getDPASID() + internalOffset) < tokenAfterDPASCycle))
                                         {
                                             send_use_kills.killOperand(bn_it);
                                             BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
@@ -6552,7 +6553,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                                             unsigned frontDist = node->getDPASID() - BBVector[loopStartBB]->first_DPASID;
                                             unsigned endDist = BBVector[loopEndBB]->last_DPASID - curLiveNode->getDPASID();
 
-                                            if (frontDist + endDist + curFootprint->offset - internalOffset < TOKEN_AFTER_WRITE_DPAS_CYCLE)
+                                            if ((int)(frontDist + endDist + curFootprint->offset - internalOffset) < tokenAfterDPASCycle)
                                             {
                                                 send_use_kills.killOperand(bn_it);
                                                 BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);

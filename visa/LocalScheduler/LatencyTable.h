@@ -93,6 +93,8 @@ namespace vISA
         // Functions to get latencies/occupancy based on platforms
         uint16_t getOccupancy(G4_INST* Inst) const;
         uint16_t getLatency(G4_INST* Inst) const;
+        uint16_t getDPAS8x8Latency() const;
+
     private:
         uint16_t getLatencyLegacy(G4_INST* Inst) const;
         uint16_t getOccupancyLegacy(G4_INST* Inst) const;

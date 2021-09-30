@@ -35,7 +35,6 @@ namespace vISA
 #define SWSB_MAX_MATH_DEPENDENCE_DISTANCE 18
 #define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE 7u
 
-#define TOKEN_AFTER_WRITE_DPAS_CYCLE 28
 #define TOKEN_AFTER_READ_DPAS_CYCLE 8
 #define SWSB_MAX_DPAS_DEPENDENCE_DISTANCE 4
 
@@ -1247,6 +1246,7 @@ namespace vISA
         std::vector<unsigned> *latestInstID[PIPE_DPAS];
 
         int totalGRFNum;
+        int tokenAfterDPASCycle;
 
     public:
         LiveGRFBuckets *send_use_kills;
@@ -1296,7 +1296,7 @@ namespace vISA
         G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_VECT* SBSendNodes,
             SBBUCKET_VECTOR *globalSendOpndList,  SWSB_INDEXES *indexes, uint32_t &globalSendNum, LiveGRFBuckets *lb,
             LiveGRFBuckets *globalLB, PointsToAnalysis& p,
-            std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap) : builder(b), mem(m), bb(block)
+            std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap, const unsigned dpasLatency) : builder(b), mem(m), bb(block), tokenAfterDPASCycle(dpasLatency)
         {
             for (int i = 0; i < PIPE_DPAS; i++)
             {
@@ -1513,6 +1513,7 @@ namespace vISA
         const unsigned tokenAfterWriteSendSlmCycle;
         const unsigned tokenAfterWriteSendMemoryCycle;
         const unsigned tokenAfterWriteSendSamplerCycle;
+        int tokenAfterDPASCycle;
 
         //For profiling
         uint32_t syncInstCount = 0;
@@ -1651,7 +1652,8 @@ namespace vISA
             indexes.longIndex = 0;
             indexes.DPASIndex = 0;
             indexes.mathIndex = 0;
-
+            LatencyTable LT(k.fg.builder);
+            tokenAfterDPASCycle = LT.getDPAS8x8Latency();
         }
         ~SWSB()
         {

@@ -21,6 +21,17 @@ uint16_t LatencyTable::getLatency(G4_INST* Inst) const
     return getLatencyLegacy(Inst);
 }
 
+uint16_t LatencyTable::getDPAS8x8Latency() const
+{
+    switch(m_builder->getPlatform())
+    {
+        case XeHP_SDV:
+            return uint16_t(LatenciesXe::DPAS + 7); //28
+        default: //Not suppport platform
+           return 46;
+    }
+}
+
 // This calculates the node's pipeline occupancy (node delay)
 uint16_t LatencyTable::getOccupancy(G4_INST* Inst) const
 {
@@ -139,7 +150,10 @@ uint16_t LatencyTable::getLatencyG12(const G4_INST* Inst) const
         return LatenciesXe::BRANCH;
     }
     if (Inst->isDpas()) {
-        G4_InstDpas *dpas = Inst->asDpasInst();
+
+
+
+        G4_InstDpas* dpas = Inst->asDpasInst();
         return uint16_t(LatenciesXe::DPAS + dpas->getRepeatCount() - 1);
     }
     if (Inst->writesFlag() || (Dst && Dst->isA0()))
