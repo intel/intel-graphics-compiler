@@ -1777,17 +1777,19 @@ bool CISA_IR_Builder::CISA_attr_directiveNum(
 
 bool CISA_IR_Builder::CISA_create_label(const char *label_name, int lineNum)
 {
-    VISA_LabelOpnd *opnd[1] = {NULL};
+    VISA_LabelOpnd *opnd[1] = {nullptr};
 
     //when we print out ./function from isa we also print out label.
     //if we don't skip it during re-parsing then we will have duplicate labels
-    if (m_kernel->getLabelOperandFromFunctionName(std::string(label_name)) == NULL)
+    if (!m_kernel->getLabelOperandFromFunctionName(std::string(label_name)))
     {
         opnd[0] = m_kernel->getLabelOpndFromLabelName(std::string(label_name));
         if (!opnd[0])
         {
             // forward jump
             VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[0], label_name, LABEL_BLOCK);
+            if (!m_kernel->setLabelOpndNameMap(label_name, opnd[0], LABEL_BLOCK))
+                return false;
         }
         VISA_CALL_TO_BOOL(AppendVISACFLabelInst, opnd[0]);
     }
@@ -1798,11 +1800,13 @@ bool CISA_IR_Builder::CISA_create_label(const char *label_name, int lineNum)
 
 bool CISA_IR_Builder::CISA_function_directive(const char* func_name, int lineNum)
 {
-    VISA_LabelOpnd *opnd[1] = {NULL};
+    VISA_LabelOpnd *opnd[1] = {nullptr};
     opnd[0] = m_kernel->getLabelOperandFromFunctionName(std::string(func_name));
-    if (opnd[0] == NULL)
+    if (!opnd[0])
     {
         VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[0], func_name, LABEL_SUBROUTINE);
+        if (!m_kernel->setLabelOpndNameMap(func_name, opnd[0], LABEL_SUBROUTINE))
+            return false;
     }
 
     VISA_CALL_TO_BOOL(AppendVISACFLabelInst, opnd[0]);
@@ -1914,6 +1918,8 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             if (!opnd[i])
             {
                 VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, lblKind);
+                if (!m_kernel->setLabelOpndNameMap(target_label, opnd[0], lblKind))
+                    return false;
                 opnd[i]->tag = ISA_SUBROUTINE;
             }
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
@@ -1929,6 +1935,8 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             if (!opnd[i])
             {
                 VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, LABEL_BLOCK);
+                if (!m_kernel->setLabelOpndNameMap(target_label, opnd[0], LABEL_BLOCK))
+                    return false;
             }
 
             VISA_CALL_TO_BOOL(AppendVISACFJmpInst, (VISA_PredOpnd *) pred, opnd[i]);
@@ -1942,6 +1950,8 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             if (!opnd[i])
             {
                 VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, LABEL_BLOCK);
+                if (!m_kernel->setLabelOpndNameMap(target_label, opnd[0], LABEL_BLOCK))
+                    return false;
             }
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
             VISA_CALL_TO_BOOL(AppendVISACFGotoInst,
@@ -3096,6 +3106,8 @@ bool CISA_IR_Builder::CISA_create_switch_instruction(
         if (!labelOpnd)
         {
             VISA_CALL_TO_BOOL(CreateVISALabelVar, labelOpnd, labels[i], LABEL_BLOCK);
+            if (!m_kernel->setLabelOpndNameMap(labels[i], labelOpnd, LABEL_BLOCK))
+                return false;
         }
         jmpTargets[i] = labelOpnd;
     }

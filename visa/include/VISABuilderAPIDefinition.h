@@ -73,6 +73,7 @@ public:
     /// CreateVISALabelVar - create an instance of vISA label variable and return it via decl.
     /// a label is either a block label or a subroutine label.
     /// name is for IR dump and debugging only; a fresh label is always returned even if another label with same name exists.
+    /// The user should be responsible for managing the created label.
     VISA_BUILDER_API virtual int CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name, VISA_Label_Kind kind) = 0;
 
     /// CreateVISAImplicitInputVar - create an input variable from a vISA general variable

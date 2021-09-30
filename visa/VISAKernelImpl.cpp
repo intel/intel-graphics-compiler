@@ -1261,29 +1261,13 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
 
         if (kind == LABEL_BLOCK)
         {
-            if (!setLabelNameIndexMap(std::string(name), opnd))
-            {
-                assert(0);
-                return VISA_FAILURE;
-            }else
-            {
-                inst_desc = &CISA_INST_table[ISA_LABEL];
-                opnd->tag = ISA_LABEL;
-            }
+            inst_desc = &CISA_INST_table[ISA_LABEL];
+            opnd->tag = ISA_LABEL;
         }
         else
         {
-            if (getLabelOperandFromFunctionName(name) == NULL)
-            {
-                m_funcName_to_labelID_map[std::string(name)] = opnd;
-                inst_desc = &CISA_INST_table[ISA_SUBROUTINE];
-                opnd->tag = ISA_SUBROUTINE;
-            }
-            else
-            {
-                assert(0);
-                return VISA_FAILURE;
-            }
+            inst_desc = &CISA_INST_table[ISA_SUBROUTINE];
+            opnd->tag = ISA_SUBROUTINE;
         }
 
         opnd->opnd_type = CISA_OPND_OTHER;
@@ -7936,6 +7920,29 @@ VISA_LabelOpnd* VISAKernelImpl::getLabelOperandFromFunctionName(const std::strin
     }
 }
 
+VISA_LabelOpnd* VISAKernelImpl::getLabelOpndFromLabelName(const std::string &name)
+{
+    auto it = m_label_name_to_index_map.find(name);
+    if (m_label_name_to_index_map.end() == it) {
+        return nullptr;
+    } else {
+        return it->second;
+    }
+}
+
+bool VISAKernelImpl::setLabelOpndNameMap(const std::string &name, VISA_LabelOpnd *lbl, VISA_Label_Kind kind)
+{
+    // TODO: Is it possible to merge the 2 maps? Or a function label and
+    // a block label are allowed to have the same name?
+    if (kind == LABEL_BLOCK) {
+        auto Res = m_label_name_to_index_map.insert({name, lbl});
+        return Res.second;
+    } else {
+        auto Res = m_funcName_to_labelID_map.insert({name, lbl});
+        return Res.second;
+    }
+}
+
 CISA_GEN_VAR * VISAKernelImpl::getDeclFromName(const std::string &name)
 {
     // First search in the unique var map
@@ -8007,38 +8014,6 @@ void VISAKernelImpl::popIndexMapScopeLevel()
 {
     MUST_BE_TRUE(m_GenNamedVarMap.size() > 1, "Cannot pop base scope level!");
     m_GenNamedVarMap.pop_back();
-}
-
-unsigned int VISAKernelImpl::getIndexFromLabelName(const std::string &name)
-{
-    auto it = m_label_name_to_index_map.find(name);
-    if (m_label_name_to_index_map.end() == it) {
-        return CISA_INVALID_VAR_ID;
-    } else {
-        return it->second->_opnd.other_opnd;
-    }
-}
-
-VISA_LabelOpnd* VISAKernelImpl::getLabelOpndFromLabelName(const std::string &name)
-{
-    auto it = m_label_name_to_index_map.find(name);
-    if (m_label_name_to_index_map.end() == it) {
-        return nullptr;
-    } else {
-        return it->second;
-    }
-}
-
-bool VISAKernelImpl::setLabelNameIndexMap(const std::string &name, VISA_LabelOpnd *lbl)
-{
-    bool succeeded = true;
-
-    //make sure mapping doesn't already exist
-    if (getIndexFromLabelName(name) != CISA_INVALID_VAR_ID) {
-        return false;
-    }
-    m_label_name_to_index_map[name] = lbl;
-    return succeeded;
 }
 
 unsigned short VISAKernelImpl::get_hash_key(const char* str)

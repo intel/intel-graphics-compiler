@@ -154,7 +154,13 @@ public:
     void addInstructionToEnd(CisaFramework::CisaInst * inst);
     int addFunctionDirective(char * func_name);
 
+    // The user of CreateVISALabelVar should be responsible for the management
+    // of the created labels. The following are the example APIs to manage vISA
+    // labels that assumes every block/subroutine/function in kernel has an
+    // unique name.
     VISA_LabelOpnd * getLabelOperandFromFunctionName(const std::string &name);
+    VISA_LabelOpnd * getLabelOpndFromLabelName(const std::string &label_name);
+    bool setLabelOpndNameMap(const std::string &label_name, VISA_LabelOpnd * lbl, VISA_Label_Kind kind);
 
     void setGenxDebugInfoBuffer(char * buffer, unsigned long size);
     VISA_opnd* CreateOtherOpndHelper(int num_pred_desc_operands, int num_operands, VISA_INST_Desc *inst_desc, unsigned int value, bool hasSubOpcode = false, uint8_t subOpcode = 0);
@@ -191,9 +197,6 @@ public:
     void pushIndexMapScopeLevel();
     void popIndexMapScopeLevel();
 
-    unsigned int getIndexFromLabelName(const std::string &label_name);
-    VISA_LabelOpnd * getLabelOpndFromLabelName(const std::string &label_name);
-    bool setLabelNameIndexMap(const std::string &label_name, VISA_LabelOpnd * lbl);
     vISA::G4_Kernel* getKernel() const { return m_kernel; }
     vISA::IR_Builder* getIRBuilder() const { return m_builder; }
     CISA_IR_Builder* getCISABuilder() const { return m_CISABuilder; }
