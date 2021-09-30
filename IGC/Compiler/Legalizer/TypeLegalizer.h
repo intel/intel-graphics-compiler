@@ -71,19 +71,19 @@ namespace IGC {
             friend class InstScalarizer;
             friend class InstElementizer;
 
-            const DataLayout* DL;
-            DominatorTree* DT;
-            BuilderType* IRB;
+            const DataLayout* DL = nullptr;
+            DominatorTree* DT = nullptr;;
+            BuilderType* IRB = nullptr;;
 
-            InstLegalChecker* ILC;
-            InstPromoter* IPromoter;
-            InstExpander* IExpander;
-            InstSoftener* ISoftener;
-            InstScalarizer* IScalarizer;
-            InstElementizer* IElementizer;
+            InstLegalChecker* ILC = nullptr;;
+            InstPromoter* IPromoter = nullptr;;
+            InstExpander* IExpander = nullptr;;
+            InstSoftener* ISoftener = nullptr;;
+            InstScalarizer* IScalarizer = nullptr;;
+            InstElementizer* IElementizer = nullptr;;
 
-            Module* TheModule;
-            Function* TheFunction;
+            Module* TheModule = nullptr;;
+            Function* TheFunction = nullptr;;
 
             // Map from illegal type to legalized type(s).
             typedef DenseMap<Type*, TypeSeq> TypeMapTy;

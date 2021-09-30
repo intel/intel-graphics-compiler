@@ -79,10 +79,10 @@ namespace IGC
         };
 
         /// \brief The module being analyzed.
-        llvm::Module* M;
+        llvm::Module* M = nullptr;
 
         /// \brief The optional function group analysis.
-        GenXFunctionGroupAnalysis* FGA;
+        GenXFunctionGroupAnalysis* FGA = nullptr;
 
         /// \brief Each function has an entry that describes its private memory
         /// usage information.

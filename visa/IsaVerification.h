@@ -34,7 +34,7 @@ class vISAVerifier
     // false -- a label is used in the kernel but not yet defined
     std::map<int, bool> labelDefs;
 
-    const vISA::IR_Builder* irBuilder;  // for capability check
+    const vISA::IR_Builder* irBuilder = nullptr;  // for capability check
 
 public:
 

@@ -58,8 +58,8 @@ namespace IGC
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
 
-        ModuleMetaData* MMD;
-        OpenCLProgramContext* Context;
-        bool Changed;
+        ModuleMetaData* MMD = nullptr;
+        OpenCLProgramContext* Context = nullptr;
+        bool Changed = false;
     };
 };

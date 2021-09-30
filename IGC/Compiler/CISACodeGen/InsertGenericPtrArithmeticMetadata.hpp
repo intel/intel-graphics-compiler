@@ -35,7 +35,7 @@ namespace IGC
         void visitAddrSpaceCast(llvm::AddrSpaceCastInst& I);
 
     private:
-        llvm::LLVMContext* m_context;
+        llvm::LLVMContext* m_context = nullptr;
         bool m_changed = false;
         std::unordered_set<llvm::PHINode*> m_visitedPHIs;
     };
