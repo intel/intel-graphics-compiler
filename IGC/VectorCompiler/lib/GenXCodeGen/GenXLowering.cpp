@@ -2021,7 +2021,8 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
   BB4->setName("select.true");
 
   auto OldTerm = BB1->getTerminator();
-  BranchInst::Create(BB4, BB2, SI->getCondition(), OldTerm);
+  auto NewInst = BranchInst::Create(BB4, BB2, SI->getCondition(), OldTerm);
+  NewInst->setDebugLoc(SI->getDebugLoc());
   OldTerm->eraseFromParent();
   // Since additional edge is added between BB1 and BB4 instead of through BB2
   // only. BB4 is not immediately dominated by BB2 anymore. Instead, BB4 is
@@ -2034,6 +2035,7 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
   Phi->takeName(SI);
   Phi->addIncoming(SI->getTrueValue(), BB1);
   Phi->addIncoming(SI->getFalseValue(), BB2);
+  Phi->setDebugLoc(SI->getDebugLoc()); 
   SI->replaceAllUsesWith(Phi);
   ToErase.push_back(SI);
   // Split the (critical) edge from BB1 to BB4 to avoid having critical edge.
@@ -2879,6 +2881,8 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
       Inst->getName() + ".ordered.inversed", Inst->getNextNode());
   Instruction *Result = BinaryOperator::CreateNot(
       InverseFCmp, InverseFCmp->getName() + ".not", InverseFCmp->getNextNode());
+  InverseFCmp->setDebugLoc(Inst->getDebugLoc());
+  Result->setDebugLoc(Inst->getDebugLoc());
   Inst->replaceAllUsesWith(Result);
   ToErase.push_back(Inst);
 
@@ -3354,6 +3358,7 @@ bool GenXLowering::lowerLLVMMaskedLoad(CallInst* CallOp) {
       CallOp->getModule(), ID, { DTy, PtrV->getType() });
   auto VecDT = CallInst::Create(NewFDecl, { PtrV },
       "svm.block.ld.unaligned", CallOp);
+  VecDT->setDebugLoc(CallOp->getDebugLoc());
   IRBuilder<> Builder(CallOp);
   auto RepI = Builder.CreateSelect(CallOp->getArgOperand(2), VecDT,
       CallOp->getArgOperand(3), CallOp->getName());
@@ -3368,6 +3373,7 @@ bool GenXLowering::lowerLLVMMaskedStore(CallInst* CallOp) {
   auto AS = cast<PointerType>(PtrV->getType())->getAddressSpace();
   assert(AS != SYCL_SLM_AS && "do not expected masked store to SLM");
   auto DTV = CallOp->getArgOperand(0);
+  auto DL = CallOp->getDebugLoc();
   // convert to unaligned-block-load then select
   // then block-store
   std::string IntrName =
@@ -3378,6 +3384,7 @@ bool GenXLowering::lowerLLVMMaskedStore(CallInst* CallOp) {
       CallOp->getModule(), ID, { DTV->getType(), PtrV->getType() });
   auto VecDT = CallInst::Create(NewFDecl, { PtrV },
       "svm.block.ld.unaligned", CallOp);
+  VecDT->setDebugLoc(DL);
   IRBuilder<> Builder(CallOp);
   auto SelI = Builder.CreateSelect(CallOp->getArgOperand(3), DTV, VecDT);
 
@@ -3386,10 +3393,11 @@ bool GenXLowering::lowerLLVMMaskedStore(CallInst* CallOp) {
   ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
   NewFDecl = GenXIntrinsic::getGenXDeclaration(
       CallOp->getModule(), ID, { PtrV->getType(), DTV->getType() });
-  CallInst::Create(
+  auto NewInst = CallInst::Create(
       NewFDecl, { PtrV, SelI },
       NewFDecl->getReturnType()->isVoidTy() ? "" : "svm.block.st",
       CallOp);
+  NewInst->setDebugLoc(DL);
   ToErase.push_back(CallOp);
   return true;
 }
@@ -3436,8 +3444,10 @@ bool GenXLowering::lowerLLVMMaskedGather(CallInst* CallOp) {
   auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
   Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
       CallOp->getModule(), ID, { VDTy, MaskV->getType(), PtrV->getType() });
-  RepI = CallInst::Create(NewFDecl, { MaskV, NumBlksC, PtrV, OldV },
+  auto NewInst = CallInst::Create(NewFDecl, { MaskV, NumBlksC, PtrV, OldV },
       CallOp->getName(), CallOp);
+  NewInst->setDebugLoc(CallOp->getDebugLoc());
+  RepI = NewInst;
   if (EltBytes < 4) {
     // bitcast to i32 type
     auto VInt32 = IGCLLVM::FixedVectorType::get(CIntTy, NumElts);
@@ -3487,8 +3497,9 @@ bool GenXLowering::lowerLLVMMaskedScatter(CallInst* CallOp) {
   auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
   Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
       CallOp->getModule(), ID, { MaskV->getType(), PtrV->getType(), VDTy });
-  CallInst::Create(NewFDecl, { MaskV, NumBlksC, PtrV, DataV },
+  auto NewInst = CallInst::Create(NewFDecl, { MaskV, NumBlksC, PtrV, DataV },
       CallOp->getName(), CallOp);
+  NewInst->setDebugLoc(CallOp->getDebugLoc());
   ToErase.push_back(CallOp);
   return true;
 }
@@ -3588,6 +3599,7 @@ bool GenXLowering::lowerFMulAdd(CallInst *CI) {
                                          {CI->getType()});
   SmallVector<Value *, 3> Args{CI->args()};
   auto *FMA = CallInst::Create(Decl, Args, CI->getName(), CI);
+  FMA->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(FMA);
 
   ToErase.push_back(CI);
@@ -4218,7 +4230,9 @@ bool LoadStoreResolver::emitSVMBlockLD() {
   auto *Fn = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_svm_block_ld, Tys);
 
-  Value *NewVal = Builder.CreateCall(Fn, Addr);
+  auto NewInst = Builder.CreateCall(Fn, Addr);
+  NewInst->setDebugLoc(LI->getDebugLoc());
+  Value *NewVal = NewInst;
   if (BasicScalarTy->isPointerTy())
     NewVal = Builder.CreateIntToPtr(NewVal, LI->getType());
   LI->replaceAllUsesWith(NewVal);
