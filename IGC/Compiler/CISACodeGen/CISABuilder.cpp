@@ -4440,7 +4440,11 @@ namespace IGC
                 SaveOption(vISA_SpillSpaceCompression, false);
                 SaveOption(vISA_LVN, false);
                 SaveOption(vISA_QuickTokenAllocation, true);
-                SaveOption(vISA_LinearScan, true);
+                if (IGC_IS_FLAG_DISABLED(FastestWALinearScanForCS) ||
+                    context->type != ShaderType::COMPUTE_SHADER)
+                {
+                    SaveOption(vISA_LinearScan, true);
+                }
             }
             else
             {
@@ -4466,7 +4470,9 @@ namespace IGC
                     SaveOption(vISA_LVN, false);
                 if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_QUICKTOKEN_ALLOC)
                     SaveOption(vISA_QuickTokenAllocation, true);
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LINEARSCAN)
+                if (((IGC_IS_FLAG_DISABLED(FastestWALinearScanForCS) ||
+                     context->type != ShaderType::COMPUTE_SHADER)) &&
+                    (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LINEARSCAN))
                     SaveOption(vISA_LinearScan, true); // use linearScan
 
                 if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_1PASSRA)

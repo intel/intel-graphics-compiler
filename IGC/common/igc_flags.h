@@ -449,6 +449,7 @@ DECLARE_IGC_REGKEY(DWORD, CodePatchExperiments,         0,      "Experiment with
 DECLARE_IGC_REGKEY(DWORD, CodePatchFilter,            0x7,      "Filter out unsupported patterns", false)
 DECLARE_IGC_REGKEY(DWORD, FirstStagedSIMD,              0,      "Force Pixel shader to be 1: FastSIMD (SIMD8), 2: BestSIMD (SIMD16 or SIMD8), 3: FatestSIMD (SIMD8 opt off)", false)
 DECLARE_IGC_REGKEY(DWORD, FastestS1Experiments,         0,      "Select configs for fastest compilation by bits.", false)
+DECLARE_IGC_REGKEY(bool, FastestWALinearScanForCS,      true,   "WA LinearScanRA for fastest in CS due to regressions.", false)
 DECLARE_IGC_REGKEY(bool, ForceFastestSIMD, false,  "Force pixel shader to return SIMD8 as fast as possible.", false)
 DECLARE_IGC_REGKEY(bool, ForceBestSIMD, false,  "Force pixel shader to return the best SIMD, either SIMD16 or SIMD8.", false)
 DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit check in ShaderCodeGen", false)
