@@ -72,14 +72,7 @@ void PromoteStatelessToBindless::CheckPrintfBuffer(Function& F)
     MetaDataUtils* MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ImplicitArgs implicitArgs(F, MdUtils);
 
-    if (implicitArgs.isImplicitArgExist(ImplicitArg::PRINTF_BUFFER))
-    {
-        m_PrintfBuffer = implicitArgs.getImplicitArg(F, ImplicitArg::PRINTF_BUFFER);
-    }
-    else
-    {
-        m_PrintfBuffer = nullptr;
-    }
+    m_PrintfBuffer = implicitArgs.getImplicitArgValue(F, ImplicitArg::PRINTF_BUFFER, MdUtils);
 }
 
 void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst, Value* resourcePtr)

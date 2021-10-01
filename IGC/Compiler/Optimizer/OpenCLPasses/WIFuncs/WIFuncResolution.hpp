@@ -137,8 +137,7 @@ namespace IGC
     private:
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed = false;
-
-        IGC::CodeGenContext* m_pCtx = nullptr;
+        IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
     };
 
 } // namespace IGC

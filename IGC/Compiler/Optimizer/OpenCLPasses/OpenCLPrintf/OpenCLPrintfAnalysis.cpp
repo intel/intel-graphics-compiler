@@ -39,8 +39,6 @@ OpenCLPrintfAnalysis::OpenCLPrintfAnalysis() : ModulePass(ID)
 //TODO: move to a common place
 const StringRef OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME = "printf";
 
-bool hasStackCallAttr(const llvm::Function& F);
-
 bool OpenCLPrintfAnalysis::runOnModule(Module& M)
 {
     m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -77,10 +75,7 @@ void OpenCLPrintfAnalysis::visitCallInst(llvm::CallInst& callInst)
 
     StringRef  funcName = callInst.getCalledFunction()->getName();
     bool hasPrintf = (funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME);
-    auto usesStackCall = hasStackCallAttr(*pF) &&
-        IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE &&
-        IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg);
-    if (hasPrintf && !usesStackCall)
+    if (hasPrintf)
     {
         m_hasPrintfs.insert(pF);
     }

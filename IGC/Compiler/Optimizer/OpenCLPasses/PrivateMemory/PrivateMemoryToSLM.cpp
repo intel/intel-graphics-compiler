@@ -335,7 +335,7 @@ namespace IGC
                         //    R0.1  31:0    Thread Group ID X
                         //    R0.6  31:0    Thread Group ID Y
                         //    R0.7  31:0    Thread Group ID Z
-                        Value* r0Val = implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, CodeGenCtx);
+                        Value* r0Val = implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, MD);
                         localIdX =
                             builder.CreateExtractElement(
                                 r0Val,

@@ -38,17 +38,11 @@ WIFuncResolution::WIFuncResolution() : FunctionPass(ID), m_implicitArgs()
     initializeWIFuncResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-bool hasStackCallAttr(const llvm::Function & F)
-{
-    return F.hasFnAttribute("visaStackCall");
-}
-
 bool WIFuncResolution::runOnFunction(Function& F)
 {
     m_changed = false;
-    m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    auto* MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    m_implicitArgs = ImplicitArgs(F, MDUtils);
+    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_implicitArgs = ImplicitArgs(F, m_pMdUtils);
     visit(F);
 
     return m_changed;
@@ -296,20 +290,6 @@ Value* BuildLoadInst(CallInst& CI, unsigned int Offset, Type* DataType)
     return Result;
 }
 
-Value* getPrintfBasePtr(CallInst& CI)
-{
-    // This function is invoked when expanding printf call to retrieve printf buffer ptr.
-    // It should be invoked only when function containing call instruction is a stack
-    // call function.
-    IGCLLVM::IRBuilder<> Builder(&CI);
-
-    auto DataTypeI64 = Type::getInt64Ty(CI.getFunction()->getParent()->getContext());
-    auto DataTypeI64Ptr = Type::getInt64PtrTy(CI.getFunction()->getParent()->getContext(), ADDRESS_SPACE_GLOBAL);
-    unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::PRINTF_BUFFER;
-    auto Result = BuildLoadInst(CI, Offset, DataTypeI64);
-    return Builder.CreateIntToPtr(Result, DataTypeI64Ptr);
-}
-
 Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
 {
     // Receives:
@@ -318,7 +298,7 @@ Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
     // Creates:
     // %localIdX
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, argType, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, argType, m_pMdUtils);
     IGC_ASSERT(V);
 
     return V;
@@ -342,7 +322,7 @@ Value* WIFuncResolution::getGroupId(CallInst& CI)
 
     Value* V = nullptr;
     auto F = CI.getParent()->getParent();
-    V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pCtx);
+    V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pMdUtils);
 
     Value* dim = CI.getArgOperand(0);
     Instruction* cmpDim = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_EQ, dim, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 0), "cmpDim", &CI);
@@ -369,7 +349,7 @@ Value* WIFuncResolution::getLocalThreadId(CallInst &CI)
 
     Value* V = nullptr;
     auto F = CI.getParent()->getParent();
-    V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pCtx);
+    V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pMdUtils);
 
     Instruction* r0second = ExtractElementInst::Create(V, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2), "r0second", &CI);
     Instruction* localThreadId = TruncInst::Create(Instruction::CastOps::Trunc, r0second, Type::getInt8Ty(CI.getContext()), "localThreadId", &CI);
@@ -388,7 +368,7 @@ Value* WIFuncResolution::getGlobalSize(CallInst& CI)
     // %globalSize1 = extractelement <3 x i32> %globalSize, i32 %dim
 
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::GLOBAL_SIZE, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::GLOBAL_SIZE, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
@@ -407,7 +387,7 @@ Value* WIFuncResolution::getLocalSize(CallInst& CI)
     // %localSize = extractelement <3 x i32> %localSize, i32 %dim
 
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_SIZE, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_SIZE, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
@@ -425,7 +405,7 @@ Value* WIFuncResolution::getEnqueuedLocalSize(CallInst& CI) {
     // %enqueuedLocalSize1 = extractelement <3 x i32> %enqueuedLocalSize, %dim
 
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
@@ -444,7 +424,7 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     // %globalOffset = extractelement <8 x i32> %payloadHeader, i32 %dim
 
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::PAYLOAD_HEADER, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::PAYLOAD_HEADER, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
@@ -462,7 +442,7 @@ Value* WIFuncResolution::getWorkDim(CallInst& CI)
     // Creates:
     // %workDim
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::WORK_DIM, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::WORK_DIM, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
 
     return V;
@@ -476,7 +456,7 @@ Value* WIFuncResolution::getNumGroups(CallInst& CI)
     // Creates:
     // %numGroups1 = extractelement <3 x i32> %numGroups, i32 %dim
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::NUM_GROUPS, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::NUM_GROUPS, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
@@ -494,7 +474,7 @@ Value* WIFuncResolution::getStageInGridOrigin(CallInst& CI)
     // Creates:
     // %grid_origin1 = extractelement <3 x i32> %globalSize, i32 %dim
     auto F = CI.getParent()->getParent();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::STAGE_IN_GRID_ORIGIN, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::STAGE_IN_GRID_ORIGIN, m_pMdUtils);
     IGC_ASSERT(V != nullptr);
 
     Value* dim = CI.getArgOperand(0);
@@ -513,7 +493,7 @@ Value* WIFuncResolution::getStageInGridSize(CallInst& CI)
     // %grid_size1 = extractelement <3 x i32> %globalSize, i32 %dim
 
     auto F = CI.getFunction();
-    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::STAGE_IN_GRID_SIZE, m_pCtx);
+    Value* V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::STAGE_IN_GRID_SIZE, m_pMdUtils);
 
     IGC_ASSERT(V != nullptr);
 
@@ -532,7 +512,7 @@ Value* WIFuncResolution::getSyncBufferPtr(CallInst& CI)
     // Creates:
     // i8 addrspace(1)* %syncBuffer
     auto F = CI.getParent()->getParent();
-    Value* syncBuffer = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::SYNC_BUFFER, m_pCtx);
+    Value* syncBuffer = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::SYNC_BUFFER, m_pMdUtils);
 
     return syncBuffer;
 }
@@ -570,12 +550,11 @@ bool LowerImplicitArgIntrinsics::runOnFunction(Function& F)
 
     /// If the work group size is known at compile time, emit it as a
     /// literal rather than reading from the payload.
-    auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (Constant* KnownWorkGroupSize = getKnownWorkGroupSize(MDUtils, F))
     {
         ImplicitArgs IAS(F, MDUtils);
-        if (auto* V = IAS.getImplicitArgValue(F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, Ctx))
+        if (auto* V = IAS.getImplicitArgValue(F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, MDUtils))
             V->replaceAllUsesWith(KnownWorkGroupSize);
     }
 
@@ -585,7 +564,6 @@ bool LowerImplicitArgIntrinsics::runOnFunction(Function& F)
 void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
 {
     Function* F = CI.getParent()->getParent();
-    auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
     // Not a GenISAIntrinsic
@@ -596,6 +574,13 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
     auto ID = inst->getIntrinsicID();
     ImplicitArg::ArgType argTy = ImplicitArgs::getArgType(ID);
     if (argTy == ImplicitArg::ArgType::NUM_IMPLICIT_ARGS) return;
+
+    // If the intrinsic no longer have a use, just remove it
+    if (inst->getNumUses() == 0)
+    {
+        CI.eraseFromParent();
+        return;
+    }
 
     // Lower intrinsic usage in the kernel to kernel args
     if (isEntryFunc(MDUtils, F))
@@ -646,7 +631,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
 
             // Get local thread id
             ImplicitArgs IAS(*F, MDUtils);
-            auto R0Val = IAS.getImplicitArgValue(*F, ImplicitArg::R0, Ctx);
+            auto R0Val = IAS.getImplicitArgValue(*F, ImplicitArg::R0, MDUtils);
             auto LocalThreadId = Builder.CreateExtractElement(R0Val, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2));
             LocalThreadId = Builder.CreateAnd(LocalThreadId, (uint16_t)255);
 
@@ -749,6 +734,17 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
             auto LShr = Builder.CreateLShr(LoadInst, (uint64_t)16);
             auto And = Builder.CreateAnd(LShr, (uint16_t)255);
             V = And;
+            break;
+        }
+        case GenISAIntrinsic::GenISA_getPrintfBuffer:
+        {
+            // This function is invoked when expanding printf call to retrieve printf buffer ptr.
+            auto DataTypeI64 = Type::getInt64Ty(CI.getFunction()->getParent()->getContext());
+            auto DataTypeI64Ptr = Type::getInt64PtrTy(CI.getFunction()->getParent()->getContext(), ADDRESS_SPACE_GLOBAL);
+            unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::PRINTF_BUFFER;
+            auto Result = BuildLoadInst(CI, Offset, DataTypeI64);
+            Result = Builder.CreateIntToPtr(Result, DataTypeI64Ptr);
+            V = Result;
             break;
         }
         default:

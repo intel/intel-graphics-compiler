@@ -334,7 +334,7 @@ namespace IGC
         /// @param  argType The argument type to check.
         static bool isImplicitStruct(ImplicitArg::ArgType argType);
 
-        llvm::Value* getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGC::CodeGenContext* pCtx);
+        llvm::Value* getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGCMD::MetaDataUtils* pMdUtils);
 
     private:
         /// @brief The function's metadata information.

@@ -39,7 +39,7 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
     ImplicitArg(ImplicitArg::CONSTANT_BASE, "constBase", ImplicitArg::CONSTPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
     ImplicitArg(ImplicitArg::GLOBAL_BASE, "globalBase", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
     ImplicitArg(ImplicitArg::PRIVATE_BASE, "privateBase", ImplicitArg::PRIVATEPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true, GenISAIntrinsic::GenISA_getPrivateBase),
-    ImplicitArg(ImplicitArg::PRINTF_BUFFER, "printfBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::PRINTF_BUFFER, "printfBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true, GenISAIntrinsic::GenISA_getPrintfBuffer),
 
     ImplicitArg(ImplicitArg::BUFFER_OFFSET, "bufferOffset", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
 
@@ -649,9 +649,8 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
     return F.arg_begin() + implicitArgIndexInFunc;
 }
 
-Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGC::CodeGenContext* pCtx)
+Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGCMD::MetaDataUtils* pMdUtils)
 {
-    auto pMdUtils = pCtx->getMetaDataUtils();
     if (!isEntryFunc(pMdUtils, &F) && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
     {
         ImplicitArg iArg = IMPLICIT_ARGS[argType];

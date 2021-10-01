@@ -50,7 +50,7 @@ namespace IGC
 
         std::unordered_map<llvm::Value*, llvm::Value*> m_AccessToSrcPtrMap;
         std::unordered_map<llvm::Value*, llvm::Value*> m_AddressUsedSrcPtrMap;
-        llvm::Argument* m_PrintfBuffer;
+        llvm::Value* m_PrintfBuffer;
     };
 
 } // namespace IGC

@@ -9113,6 +9113,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_getLocalID_Y:
     case GenISAIntrinsic::GenISA_getLocalID_Z:
     case GenISAIntrinsic::GenISA_getPrivateBase:
+    case GenISAIntrinsic::GenISA_getPrintfBuffer:
     case GenISAIntrinsic::GenISA_getStageInGridOrigin:
     case GenISAIntrinsic::GenISA_getStageInGridSize:
     case GenISAIntrinsic::GenISA_getSyncBuffer:
@@ -18427,6 +18428,10 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
     Function* parentFunc = I->getParent()->getParent();
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
+    // We can just drop the intrinsic if there are no uses for it.
+    // It should have been lowered in LowerImplicitArgIntrinsics pass, but did not get cleaned up.
+    if (I->getNumUses() == 0) return;
+
     if (I->getIntrinsicID() == GenISAIntrinsic::ID::GenISA_getR0)
     {
         // Returns the predefined R0 register
@@ -18446,13 +18451,14 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
 
     if (isEntryFunc(pMdUtils, groupHead))
     {
-        // Map to the root kernel's implicit arg
+        // Map to the root kernel's implicit arg symbol
         ImplicitArgs IAS(*groupHead, pMdUtils);
         ImplicitArg::ArgType IAtype = ImplicitArgs::getArgType(I->getIntrinsicID());
         Argument* arg = IAS.getImplicitArg(*groupHead, IAtype);
         IGC_ASSERT_MESSAGE(arg, "Implicit argument not found!");
         if (arg)
         {
+            m_encoder->SetNoMask();
             m_currShader->CopyVariable(GetSymbol(I), m_currShader->getOrCreateArgumentSymbol(arg, false));
         }
     }
