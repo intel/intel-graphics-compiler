@@ -49,6 +49,7 @@ public:
       Image1DArray,
       Image2D,
       Image2DArray,
+      Image2DMediaBlock,
       Image3D,
       PrintBuffer,
       PrivateBase,
@@ -87,6 +88,7 @@ public:
       case KindType::Image1DArray:
       case KindType::Image2D:
       case KindType::Image2DArray:
+      case KindType::Image2DMediaBlock:
       case KindType::Image3D:
         return true;
       default:

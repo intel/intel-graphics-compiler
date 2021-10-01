@@ -71,6 +71,7 @@ struct OCLAttributes {
   static constexpr auto Image1dBuffer = "image1d_buffer_t";
   static constexpr auto Image2d = "image2d_t";
   static constexpr auto Image2dArray = "image2d_array_t";
+  static constexpr auto Image2dMediaBlock = "image2d_media_block_t";
   static constexpr auto Image3d = "image3d_t";
 };
 
@@ -112,6 +113,7 @@ KernelArgBuilder::getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
   case ArgKindType::Image1DArray:
   case ArgKindType::Image2D:
   case ArgKindType::Image2DArray:
+  case ArgKindType::Image2DMediaBlock:
   case ArgKindType::Image3D:
   case ArgKindType::SVM:
   case ArgKindType::BindlessBuffer:
@@ -165,6 +167,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
       return ArgKindType::Image2D;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dArray)))
       return ArgKindType::Image2DArray;
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image2dMediaBlock)))
+      return ArgKindType::Image2DMediaBlock;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image3d)))
       return ArgKindType::Image3D;
     return ArgKindType::Buffer;

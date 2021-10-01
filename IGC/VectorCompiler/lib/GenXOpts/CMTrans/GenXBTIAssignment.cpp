@@ -120,6 +120,7 @@ static bool isDescImageType(StringRef TypeDesc) {
          IGCLLVM::contains_insensitive(TypeDesc, "image1d_array_t") ||
          IGCLLVM::contains_insensitive(TypeDesc, "image2d_t") ||
          IGCLLVM::contains_insensitive(TypeDesc, "image2d_array_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image2d_media_block_t") ||
          IGCLLVM::contains_insensitive(TypeDesc, "image3d_t") ||
          IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t");
 }
