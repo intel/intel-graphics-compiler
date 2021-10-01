@@ -1341,7 +1341,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         Value *Src0 = getPacketizeValue(CI->getOperand(0));
         Value *Src1 = getPacketizeValue(CI->getOperand(1));
         Value *Src2 = getPacketizeValue(CI->getOperand(2));
-        Value *BFN = getUniformValue(CI->getOperand(4));
+        Value *BFN = getUniformValue(CI->getOperand(3));
         Value *Args[] = {Src0, Src1, Src2, BFN};
         auto RetTy = B->GetVectorType(CI->getType());
         Type *Tys[] = {RetTy, Src0->getType()};
