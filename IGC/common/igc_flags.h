@@ -68,6 +68,7 @@ DECLARE_IGC_REGKEY(bool, DisableRegDistDep,                 false,  "distable re
 DECLARE_IGC_REGKEY(bool, EnableQuickTokenAlloc,                 false,  "Insert dependence resolve for kernel stitching", true)
 DECLARE_IGC_REGKEY(bool, SetA0toTdrForSendc,            false,  "Set A0 to tdr0 before each sendc/sendsc", true)
 DECLARE_IGC_REGKEY(bool, ReplaceIndirectCallWithJmpi,   false,  "Replace indirect call with jmpi instruction (HW WA)", true)
+DECLARE_IGC_REGKEY(bool, AssumeUniformIndirectCall,     false,  "Assume indirect call is uniform to avoid looping code", false)
 DECLARE_IGC_REGKEY(bool, DPASTokenReduction,            false, "optimization to reduce the tokens used for DPAS instruction.", true)
 DECLARE_IGC_REGKEY(bool, EnableAdd3,                    true,  "Enable Add3 (temporary for testing). XeHP only", true)
 DECLARE_IGC_REGKEY(bool, EnableBfn,                     true,  "Enable Bfn (temporary for testing). XeHP only", true)

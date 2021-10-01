@@ -10905,7 +10905,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     }
     else
     {
-        if (funcAddr->IsUniform())
+        if (funcAddr->IsUniform() || IGC_IS_FLAG_ENABLED(AssumeUniformIndirectCall))
         {
             CopyArgBlkVariables();
             funcAddr = TruncatePointer(funcAddr);
