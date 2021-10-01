@@ -811,7 +811,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         Function* Entry = m_currShader->entry;
         // owned by m_pDebugEmitter
-        auto vMod = IGC::ScalarVisaModule::BuildNew(m_currShader, Entry);
+        const bool IsPrimary = true;
+        auto vMod = IGC::ScalarVisaModule::BuildNew(m_currShader, Entry, IsPrimary);
         IGC::DebugEmitterOpts DebugOpts;
         DebugOpts.DebugEnabled = DebugInfoData::hasDebugInfo(m_currShader);
         DebugOpts.EnableSIMDLaneDebugging = IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging);
@@ -836,7 +837,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->GetDebugInfoData().m_pShader = m_currShader;
         m_currShader->GetDebugInfoData().m_pDebugEmitter = m_pDebugEmitter;
 
-        m_pDebugEmitter->resetModule(IGC::ScalarVisaModule::BuildNew(m_currShader, &F));
+        const bool IsPrimary = isFuncGroupHead;
+        m_pDebugEmitter->resetModule(
+            IGC::ScalarVisaModule::BuildNew(m_currShader, &F, IsPrimary));
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.

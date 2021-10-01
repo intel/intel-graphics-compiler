@@ -754,9 +754,10 @@ public:
   GenXFunction(const GenXSubtarget &STIn, const GenXVisaRegAlloc &RAIn,
                const Function &F, const CompiledVisaWrapper &CW,
                const genx::di::VisaMapping &V2I,
-               const ModuleToVisaTransformInfo &MVTI)
+               const ModuleToVisaTransformInfo &MVTI,
+               bool IsPrimary)
       : F{F}, ST{STIn}, VisaMapping{V2I}, CompiledVisa{CW}, RA{RAIn},
-        MVTI(MVTI), VISAModule(const_cast<Function *>(&F)) {
+        MVTI(MVTI), VISAModule(const_cast<Function *>(&F), IsPrimary) {
 
     if (MVTI.isSubroutine(&F))
        SetType(ObjectType::SUBROUTINE);
@@ -1028,8 +1029,11 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
 
         IGC_ASSERT(CWs.size() == PI.FIs.size());
         for (auto &&[FI, CW] : llvm::zip(PI.FIs, CWs)) {
+          bool IsPrimaryFunction = &FI.F == &PI.FIs.front().F;
           auto GF = std::make_unique<GenXFunction>(ST, RA, FI.F, *CW,
-                                                   FI.VisaMapping, PI.MVTI);
+                                                   FI.VisaMapping,
+                                                   PI.MVTI,
+                                                   IsPrimaryFunction);
           GFs.push_back(GF.get());
           if (&FI.F == &PI.FIs.front().F) {
             Emitter->Initialize(std::move(GF), DebugOpts);

@@ -87,14 +87,18 @@ namespace IGC {
     return (fullDebugInfo | lineNumbersOnly);
 }
 
-ScalarVisaModule::ScalarVisaModule(CShader* TheShader, llvm::Function *TheFunction)
-  : m_pShader(TheShader), VISAModule(TheFunction) {
+ScalarVisaModule::ScalarVisaModule(CShader* TheShader,
+                                   llvm::Function *TheFunction,
+                                   bool IsPrimary)
+  : m_pShader(TheShader), VISAModule(TheFunction, IsPrimary) {
   UpdateVisaId();
 }
 
-std::unique_ptr<IGC::VISAModule> ScalarVisaModule::BuildNew(CShader* S, llvm::Function *F)
+std::unique_ptr<IGC::VISAModule> ScalarVisaModule::BuildNew(CShader* S,
+                                                            llvm::Function *F,
+                                                            bool IsPrimary)
 {
-    auto* n = new ScalarVisaModule(S, F);
+    auto* n = new ScalarVisaModule(S, F, IsPrimary);
     return std::unique_ptr<IGC::VISAModule>(n);
 }
 

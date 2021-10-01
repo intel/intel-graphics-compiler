@@ -473,6 +473,33 @@ void DwarfDebug::registerVISA(IGC::VISAModule* M)
     VISAModToFunc[M] = RegisteredFunctions.back();
 }
 
+const llvm::Function* DwarfDebug::GetPrimaryEntry() const
+{
+    auto FoundIt =
+        std::find_if(VISAModToFunc.begin(), VISAModToFunc.end(),
+                     [](const auto& Item) { return Item.first->isPrimaryFunc(); });
+    IGC_ASSERT(FoundIt != VISAModToFunc.end());
+    return FoundIt->second;
+}
+
+llvm::Function* DwarfDebug::GetFunction(const VISAModule* M) const
+{
+    auto it = VISAModToFunc.find(M);
+    if (it != VISAModToFunc.end())
+        return (*it).second;
+    return nullptr;
+}
+
+VISAModule* DwarfDebug::GetVISAModule(const llvm::Function* F) const
+{
+    for (auto& p : VISAModToFunc)
+    {
+        if (p.second == F)
+            return p.first;
+    }
+    return nullptr;
+}
+
 // Define a unique number for the abbreviation.
 //
 void DwarfDebug::assignAbbrevNumber(IGC::DIEAbbrev& Abbrev)

@@ -154,27 +154,6 @@ void VISAVariableLocation::print(raw_ostream &OS) const
     OS << " }\n";
 }
 
-
-VISAModule::VISAModule(llvm::Function * Entry)
-{
-    m_pEntryFunc = Entry;
-    m_pModule = m_pEntryFunc->getParent();
-}
-
-VISAModule::~VISAModule()
-{
-}
-
-VISAModule::const_iterator VISAModule::begin() const
-{
-    return m_instList.begin();
-}
-
-VISAModule::const_iterator VISAModule::end() const
-{
-    return m_instList.end();
-}
-
 void VISAModule::BeginInstruction(Instruction* pInst)
 {
     IGC_ASSERT_MESSAGE(!m_instInfoMap.count(pInst), "Instruction emitted twice!");
@@ -232,22 +211,22 @@ unsigned int VISAModule::GetVisaSize(const llvm::Instruction* pInst) const
 
 const Module* VISAModule::GetModule() const
 {
-    return m_pModule;
+    return m_Func->getParent();
 }
 
 const Function* VISAModule::GetEntryFunction() const
 {
-    return m_pEntryFunc;
+    return m_Func;
 }
 
 const LLVMContext& VISAModule::GetContext() const
 {
-    return m_pModule->getContext();
+    return GetModule()->getContext();
 }
 
 const std::string VISAModule::GetDataLayout() const
 {
-    return m_pModule->getDataLayout().getStringRepresentation();
+    return GetModule()->getDataLayout().getStringRepresentation();
 }
 
 const std::string& VISAModule::GetTargetTriple() const
@@ -662,7 +641,7 @@ VISAModule::getCompileUnit(const IGC::DbgDecoder& VD) const
 {
     for (const auto& co : VD.compiledObjs)
     {
-        auto EntryFuncName = m_pEntryFunc->getName();
+        auto EntryFuncName = m_Func->getName();
         EntryFuncName = GetVISAFuncName(EntryFuncName);
 
         if (VD.compiledObjs.size() == 1 ||

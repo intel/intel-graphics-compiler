@@ -318,12 +318,13 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
     if (is64Bit)
         phtSize = sizeof(llvm::ELF::Elf64_Phdr);
 
-    unsigned int kernelNameSizeWithDot = 0;
+    const Function* PrimaryEntry = m_pDwarfDebug->GetPrimaryEntry();
+    std::string EntryNameWithDot = ("." + PrimaryEntry->getName()).str();
+    size_t ContentSize = m_str.size();
     if (m_pStreamEmitter->GetEmitterSettings().ZeBinCompatible)
-    {
-        kernelNameSizeWithDot = sizeof('.') + pFunc->getName().size();
-    }
-    size_t elfWithProgramHeaderSize = m_str.size() + phtSize + kernelNameSizeWithDot;
+        ContentSize += EntryNameWithDot.size();
+
+    size_t elfWithProgramHeaderSize = phtSize + ContentSize;
     std::vector<char> Result(elfWithProgramHeaderSize);
 
     if (!m_pStreamEmitter->GetEmitterSettings().ZeBinCompatible)
@@ -334,25 +335,21 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
     else
     {
         // Text section's name to be extended by a kernel name.
-
-        // How each elf section gets its name? Find the answer in the following function.
-
         size_t endOfDotTextNameOffset = 0;
-        std::string entryFunctionNameWithDot = "." + pFunc->getName().str();
-        unsigned int kernelNameSizeWithDot = entryFunctionNameWithDot.size();
-        prepareElfForZeBinary(is64Bit, m_str.begin(), m_str.size(), kernelNameSizeWithDot, &endOfDotTextNameOffset);
+        prepareElfForZeBinary(is64Bit, m_str.begin(), m_str.size(),
+                              EntryNameWithDot.size(), &endOfDotTextNameOffset);
 
         // First copy ELF binary from the beginning to the .text name (included) located in the .str.tab
         std::copy(m_str.begin(), m_str.begin() + endOfDotTextNameOffset, Result.begin());
         // Next concatenate .text with a kernel name (a dot joining both names also added).
-        std::copy(entryFunctionNameWithDot.data(), entryFunctionNameWithDot.data() + kernelNameSizeWithDot,
-            Result.begin() + endOfDotTextNameOffset);
+        std::copy(EntryNameWithDot.begin(), EntryNameWithDot.end(),
+                  Result.begin() + endOfDotTextNameOffset);
         // Finally copy remaining part of ELF binary.
         std::copy(m_str.begin() + endOfDotTextNameOffset + 1, m_str.end(),
-            Result.begin() + endOfDotTextNameOffset + 1 + kernelNameSizeWithDot);
+                  Result.begin() + endOfDotTextNameOffset + 1 + EntryNameWithDot.size());
     }
 
-    writeProgramHeaderTable(is64Bit, Result.data(), m_str.size() + kernelNameSizeWithDot);
+    writeProgramHeaderTable(is64Bit, Result.data(), ContentSize);
     setElfType(is64Bit, Result.data());
 
     m_errs = m_pStreamEmitter->getErrors();

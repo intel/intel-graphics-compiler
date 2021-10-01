@@ -644,23 +644,9 @@ namespace IGC
 
         void registerVISA(IGC::VISAModule* M);
 
-        llvm::Function* GetFunction(VISAModule* M)
-        {
-            auto it = VISAModToFunc.find(M);
-            if (it != VISAModToFunc.end())
-                return (*it).second;
-            return nullptr;
-        }
-
-        VISAModule* GetVISAModule(const llvm::Function* F)
-        {
-            for (auto& p : VISAModToFunc)
-            {
-                if (p.second == F)
-                    return p.first;
-            }
-            return nullptr;
-        }
+        const llvm::Function* GetPrimaryEntry() const;
+        llvm::Function* GetFunction(const VISAModule* M) const;
+        VISAModule* GetVISAModule(const llvm::Function* F) const;
 
         using DataVector = std::vector<unsigned char>;
         void ExtractConstantData(const llvm::Constant* ConstVal, DataVector &R) const;

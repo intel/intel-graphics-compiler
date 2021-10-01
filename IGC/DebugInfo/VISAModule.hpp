@@ -310,18 +310,31 @@ namespace IGC
         typedef std::vector<const llvm::Instruction*> InstList;
         typedef InstList::iterator iterator;
         typedef InstList::const_iterator const_iterator;
-    public:
-        VISAModule(llvm::Function * Entry);
-        /// @brief Destructor.
-        virtual ~VISAModule();
+
+        /// @brief Constructor.
+        /// @param AssociatedFunc holds llvm IR function associated with
+        /// this vISA object
+        /// @param IsPrimary indicates if the associated IR function can be
+        /// classified as a "primary entry point"
+        /// "Primary entry point" is a function that spawns a separate
+        /// gen object (compiled gen isa code). Currently, such functions
+        /// correspond to kernel functions or indirectly called functions.
+        VISAModule(llvm::Function* AssociatedFunc, bool IsPrimary)
+            : m_Func(AssociatedFunc), IsPrimaryFunc(IsPrimary) {}
+
+        virtual ~VISAModule() {}
+
+        /// @brief true if the underlying function correspond to the
+        /// "primary entry point".
+        bool isPrimaryFunc() const { return IsPrimaryFunc; }
 
         /// @brief Return first instruction to process.
         /// @return iterator to first instruction in the entry point function.
-        const_iterator begin() const;
+        const_iterator begin() const { return m_instList.begin(); }
 
         /// @brief Return after last instruction to process.
         /// @return iterator to after last instruction in the entry point function.
-        const_iterator end() const;
+        const_iterator end() const { return m_instList.end(); }
 
         /// @brief Process instruction before emitting its VISA code.
         /// @param Instruction to process.
@@ -489,19 +502,19 @@ namespace IGC
         // This function coalesces GenISARange which is a vector of <start ip, end ip>
         static void coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange);
 
-        llvm::Function* getFunction() const  { return m_pEntryFunc; }
-        uint64_t GetFuncId() const { return (uint64_t)m_pEntryFunc; }
+        llvm::Function* getFunction() const  { return m_Func; }
+        uint64_t GetFuncId() const { return (uint64_t)m_Func; }
 
         void dump() const { print(llvm::dbgs()); }
         void print (llvm::raw_ostream &OS) const;
 
     private:
         std::string m_triple = "vISA_64";
-        const llvm::Module* m_pModule = nullptr;
-        // m_pEntryFunction points to llvm::Function that resulted in this VISAModule instance.
+        bool IsPrimaryFunc = false;
+        // m_Func points to llvm::Function that resulted in this VISAModule instance.
         // There is a 1:1 mapping between the two.
         // Its value is setup in DebugInfo pass, prior to it this is undefined.
-        llvm::Function* m_pEntryFunc = nullptr;
+        llvm::Function* m_Func = nullptr;
         InstList m_instList;
 
         unsigned int m_currentVisaId = 0;
