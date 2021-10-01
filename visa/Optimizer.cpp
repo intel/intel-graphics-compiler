@@ -6836,11 +6836,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     void Optimizer::HWWorkaround()
     {
-        if (builder.hasFusedEUWA() &&
+        if ((kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) &&
+            builder.hasFusedEUWA() &&
             (builder.getJitInfo()->spillMemUsed > 0
              || builder.getJitInfo()->numFlagSpillStore > 0
              || fg.getHasStackCalls()))
         {
+            // For now, do it for CM/VC. Will turn it on for all.
             doNoMaskWA_postRA();
         }
 
