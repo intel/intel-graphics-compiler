@@ -7500,7 +7500,7 @@ G4_SrcRegRegion* GraphColor::getScratchSurface() const
 //
 void GlobalRA::restoreRegs(
     unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
+    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group, bool caller)
 {
     //
     // Process chunks of size 8, 4, 2 and 1.
@@ -7511,6 +7511,10 @@ void GlobalRA::restoreRegs(
         unsigned responseLength = GlobalRA::owordToGRFSize(owordSize);
         G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, StackCallStr);
+        if (caller)
+        {
+            kernel.callerRestoreDecls.push_back(dstDcl);
+        }
         dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         G4_DstRegRegion* dstRgn = builder.createDst(dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
         G4_INST* fillIntrinsic = nullptr;
@@ -7524,24 +7528,24 @@ void GlobalRA::restoreRegs(
     //
     else if (owordSize > 8)
     {
-        restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt, group);
+        restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group, caller);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt, group, caller);
     }
     //
     // Split into chunks of sizes 4 and remaining owords.
     //
     else if (owordSize > 4)
     {
-        restoreRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt, group);
+        restoreRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group, caller);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt, group, caller);
     }
     //
     // Split into chunks of sizes 2 and remaining owords.
     //
     else if (owordSize > 2)
     {
-        restoreRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt, group);
+        restoreRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group, caller);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt, group, caller);
     }
     else
     {
@@ -7554,7 +7558,7 @@ void GlobalRA::restoreRegs(
 //
 void GlobalRA::restoreActiveRegs(
     std::vector<bool>& restoreRegs, unsigned startReg, unsigned frameOffset,
-    G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
+    G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group, bool caller)
 {
     G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
@@ -7570,7 +7574,7 @@ void GlobalRA::restoreActiveRegs(
             for (; endPos < restoreRegs.size() && restoreRegs[endPos] == true; endPos++);
             unsigned owordSize = (endPos - startPos) * GlobalRA::GRFSizeToOwords(1);
             owordSize = std::max(owordSize, GlobalRA::GRFSizeToOwords(1));
-            this->restoreRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt, group);
+            this->restoreRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt, group, caller);
             frameOwordPos += owordSize;
             startPos = endPos;
         }
@@ -7823,7 +7827,7 @@ void GlobalRA::addCallerSaveRestoreCode()
                 }
 
                 restoreActiveRegs(callerSaveRegsMap[bb], 0, builder.kernel.fg.callerSaveAreaOffset,
-                    afterFCallBB, insertRestIt, callerRestoreInsts[callInst]);
+                    afterFCallBB, insertRestIt, callerRestoreInsts[callInst], true);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
@@ -7939,7 +7943,7 @@ void GlobalRA::addCalleeSaveRestoreCode()
         }
 
         restoreActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getUniqueReturnBlock(), insertRestIt, calleeRestoreInsts);
+            builder.kernel.fg.getUniqueReturnBlock(), insertRestIt, calleeRestoreInsts, false);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {

@@ -3627,6 +3627,39 @@ void SWSB::insertTest()
                     }
                 }
             }
+            else if ((kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()) && inst->isSend() && inst->getDst())
+            {
+                //Stack call is using the NOMASK save and restore.
+                //This means there will be RAW dependence generated along the SIMD control flow.
+                //Such as in following case, {$1.dst} is required.
+                //if()
+                //{
+                //    ...
+                //    R1 --> save();
+                //    Fcall_0
+                //    R1 <-- retore(); {$1}
+                //    ...
+                //}
+                //else
+                //{
+                //    ...
+                //    R1 --> save() {$1.dst}
+                //    Fcall_1
+                //    R1 <-- retore();
+                //    ...
+                //}
+                //RAW dependence tracking in SWSB is scalar control flow based, because traditional RA will not generate this kind dependence.
+                //At the same time, since we handle the SWSB for stack call conservatively. So we can handle this dependence specially.
+                G4_Declare *dstDcl = GetTopDclFromRegRegion((G4_DstRegRegion *)inst->getDst());
+                if (std::find(kernel.callerRestoreDecls.begin(), kernel.callerRestoreDecls.end(), dstDcl) != kernel.callerRestoreDecls.end())
+                {
+                    G4_INST* syncInst = insertSyncInstructionAfter(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                    unsigned short dstToken = (unsigned short)-1;
+                    dstToken = node->getLastInstruction()->getSetToken();
+                    syncInst->setToken(dstToken);
+                    syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+                }
+            }
             if (fusedSync)
             {
                 insertSync(bb, node, inst, inst_it, newInstID, &dstTokens, &srcTokens);

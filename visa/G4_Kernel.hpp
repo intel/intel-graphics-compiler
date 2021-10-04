@@ -184,6 +184,7 @@ private:
 public:
     FlowGraph              fg;
     DECLARE_LIST           Declares;
+    DECLARE_LIST           callerRestoreDecls;
 
     unsigned char major_version;
     unsigned char minor_version;

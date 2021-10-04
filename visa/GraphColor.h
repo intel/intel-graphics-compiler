@@ -1197,8 +1197,8 @@ namespace vISA
         void assignRegForAliasDcl();
         void removeSplitDecl();
         int coloringRegAlloc();
-        void restoreRegs(unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr, unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
-        void restoreActiveRegs(std::vector<bool>& restoreRegs, unsigned startReg, unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
+        void restoreRegs(unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr, unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group, bool caller);
+        void restoreActiveRegs(std::vector<bool>& restoreRegs, unsigned startReg, unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group, bool caller);
         void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs);
         void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs);
         void addCallerSaveRestoreCode();
