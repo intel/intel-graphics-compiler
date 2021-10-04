@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/ln_s_la.cl"
-#include "../IMF/FP64/ln_d_la_noLUT.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/ln_d_la.cl"
@@ -97,13 +96,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log, float, float, f
 
 INLINE double __builtin_spirv_OpenCL_log_f64( double x )
 {
-    double result;
-    if (__UseMathWithLUT) {
-        result = __ocl_svml_log(x);
-    } else {
-        result = __ocl_svml_log_noLUT(x);
-    }
-    return result;
+    return __ocl_svml_log(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log, double, double, f64 )
