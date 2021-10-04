@@ -167,7 +167,6 @@ public:
   /// * isBXT - true if target is BXT
   bool isBXT() const { return GenXVariant == GENX_BXT; }
 
-
   /// * isKBL - true if target is KBL
   bool isKBL() const { return GenXVariant == GENX_KBL; }
 
