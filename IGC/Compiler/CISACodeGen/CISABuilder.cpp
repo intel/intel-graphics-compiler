@@ -4430,7 +4430,8 @@ namespace IGC
         // Turning off optimizations as much as possible to have the fastest compilation
         if ((IsStage1FastestCompile(context->m_CgFlag, context->m_StagingCtx) ||
              IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
-            m_program->m_DriverInfo->SupportFastestStage1())
+            (m_program->m_DriverInfo->SupportFastestStage1() ||
+             IGC_IS_FLAG_ENABLED(EnableFastestForVulkan)))
         {
             if (IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT)
             {
