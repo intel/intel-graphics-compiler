@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -167,5 +168,8 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& F) override;
 
         void visitCallInst(llvm::CallInst& CI);
+
+    private:
+        GenXFunctionGroupAnalysis* m_FGA = nullptr;
     };
 } // namespace IGC

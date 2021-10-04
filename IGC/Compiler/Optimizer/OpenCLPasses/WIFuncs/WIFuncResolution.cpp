@@ -546,6 +546,8 @@ Constant* getKnownWorkGroupSize(IGCMD::MetaDataUtils* MDUtils, llvm::Function& F
 
 bool LowerImplicitArgIntrinsics::runOnFunction(Function& F)
 {
+    m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+
     visit(F);
 
     /// If the work group size is known at compile time, emit it as a
@@ -595,8 +597,20 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
         return;
     }
 
-    // Lower intrinsic usage in stackcall functions to loads from the implicit arg buffer
-    if (F->hasFnAttribute("visaStackCall"))
+    // Load from implicit arg buffer for intrinsic usage in stackcall
+    bool LoadFromImplicitArgBuffer = F->hasFnAttribute("visaStackCall");
+
+    // If the current function is a subroutine, but the caller is a stackcall, we
+    // still need to use the implicit arg buffer.
+    if (!LoadFromImplicitArgBuffer)
+    {
+        if (m_FGA && m_FGA->getSubGroupMap(F)->hasFnAttribute("visaStackCall"))
+        {
+            LoadFromImplicitArgBuffer = true;
+        }
+    }
+
+    if (LoadFromImplicitArgBuffer)
     {
         Value* V = nullptr;
         IGCLLVM::IRBuilder<> Builder(&CI);

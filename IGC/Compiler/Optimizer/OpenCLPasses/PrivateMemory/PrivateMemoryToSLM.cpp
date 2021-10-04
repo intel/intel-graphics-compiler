@@ -308,21 +308,21 @@ namespace IGC
                     {
                         localIdX =
                             ZExtInst::CreateIntegerCast(
-                                implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_ID_X),
+                                implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_X, MD),
                                 typeInt32,
                                 false,
                                 VALUE_NAME("localIdX"),
                                 pEntryPoint);
                         localIdY =
                             ZExtInst::CreateIntegerCast(
-                                implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_ID_Y),
+                                implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_Y, MD),
                                 typeInt32,
                                 false,
                                 VALUE_NAME("localIdY"),
                                 pEntryPoint);
                         localIdZ =
                             ZExtInst::CreateIntegerCast(
-                                implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_ID_Z),
+                                implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_Z, MD),
                                 typeInt32,
                                 false,
                                 VALUE_NAME("localIdZ"),
