@@ -42,6 +42,10 @@ extern "C" uint32_t __cm_cl_addc_scalar(uint32_t *sum, uint32_t src0,
                                         uint32_t src1);
 extern "C" void __cm_cl_addc_vector(void *carry, void *sum, void *src0,
                                     void *src1);
+// FIXME: add scalar overloads for cbit
+extern "C" void __cm_cl_cbit_vector(void *dst, void *src);
+extern "C" uint32_t __cm_cl_bfrev_scalar(uint32_t src);
+extern "C" void __cm_cl_bfrev_vector(void *dst, void *src);
 
 extern "C" cm::detail::vector_impl<uint32_t, 3> __cm_cl_local_id();
 extern "C" cm::detail::vector_impl<uint32_t, 3> __cm_cl_local_size();
@@ -218,6 +222,35 @@ inline uint32_t get_group_id_x() { return __cm_cl_group_id_x(); }
 inline uint32_t get_group_id_y() { return __cm_cl_group_id_y(); }
 
 inline uint32_t get_group_id_z() { return __cm_cl_group_id_z(); }
+
+template <typename T, int width>
+vector_impl<uint32_t, width> cbit(vector_impl<T, width> src) {
+  static_assert(cl::is_integral<T>::value && !cl::is_bool<T>::value &&
+                    sizeof(T) <= sizeof(uint32_t),
+                "illegal type provided in cbit");
+  vector_impl<uint32_t, width> dst;
+  __cm_cl_cbit_vector(&dst, &src);
+  return dst;
+}
+
+template <typename T> uint32_t cbit(T src) {
+  static_assert(cl::is_integral<T>::value && !cl::is_bool<T>::value &&
+                    sizeof(T) <= sizeof(uint32_t),
+                "illegal type provided in cbit");
+  vector_impl<uint32_t, 1> dst_vec;
+  vector_impl<T, 1> src_vec = src;
+  __cm_cl_cbit_vector(&dst_vec, &src_vec);
+  return dst_vec[0];
+}
+
+inline uint32_t bfrev(uint32_t src) { return __cm_cl_bfrev_scalar(src); }
+
+template <int width>
+vector_impl<uint32_t, width> bfrev(vector_impl<uint32_t, width> src) {
+  vector_impl<uint32_t, width> dst;
+  __cm_cl_bfrev_vector(&dst, &src);
+  return dst;
+}
 
 } // namespace detail
 } // namespace cm

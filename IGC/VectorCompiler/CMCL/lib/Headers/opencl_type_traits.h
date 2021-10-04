@@ -81,6 +81,28 @@ struct is_floating_point
                     is_same<long double, typename remove_cv<T>::type>::value> {
 };
 
+template <typename T>
+struct is_integral
+    : integral_constant<
+          bool,
+          is_same<bool, typename remove_cv<T>::type>::value ||
+              is_same<char, typename remove_cv<T>::type>::value ||
+              is_same<unsigned char, typename remove_cv<T>::type>::value ||
+              is_same<short, typename remove_cv<T>::type>::value ||
+              is_same<unsigned short, typename remove_cv<T>::type>::value ||
+              is_same<int, typename remove_cv<T>::type>::value ||
+              is_same<unsigned int, typename remove_cv<T>::type>::value ||
+              is_same<long, typename remove_cv<T>::type>::value ||
+              is_same<unsigned long, typename remove_cv<T>::type>::value ||
+              is_same<long long, typename remove_cv<T>::type>::value ||
+              is_same<unsigned long long, typename remove_cv<T>::type>::value> {
+};
+
+template <typename T>
+struct is_bool
+    : integral_constant<bool,
+                        is_same<bool, typename remove_cv<T>::type>::value> {};
+
 } // namespace cl
 
 #endif // OPENCL_TYPE_TRAITS

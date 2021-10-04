@@ -343,6 +343,47 @@
         "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": []
       }
+    },
+    "CBITVector": {
+      "Name": "cbit_vector",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorOut"},
+        {"Name": "Source", "Kind": "VectorIn"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_cbit",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
+    "BFRevScalar": {
+      "Name": "bfrev_scalar",
+      "Operands": [
+        {"Name": "Source", "Kind": "ScalarIn"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_bfrev",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
+    "BFRevVector": {
+      "Name": "bfrev_vector",
+      "Operands": [
+        {"Name": "Destination", "Kind": "VectorOut"},
+        {"Name": "Source", "Kind": "VectorIn"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_bfrev",
+        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
     }
   }
 }

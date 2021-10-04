@@ -337,3 +337,214 @@ CM_NODEBUG CM_INLINE int __spirv_Ordered(float src0, float src1) {
 CM_NODEBUG CM_INLINE int __spirv_Ordered(double src0, double src1) {
   return math::is_ordered(src0, src1);
 }
+
+#define SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(FUNC_NAME, TYPE,            \
+                                                   CUSTOM_NAME)                \
+  CM_NODEBUG CM_INLINE TYPE __spirv_ocl_##FUNC_NAME(TYPE x) {                  \
+    return CUSTOM_NAME(x);                                                     \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, char,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, uchar,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, short,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, ushort,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, int,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, uint,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, long,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, ulong,
+                                           cm::math::count_population)
+
+#define SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(FUNC_NAME, ELEMENT_TYPE, N, \
+                                                   CUSTOM_NAME)                \
+  CM_NODEBUG CM_INLINE cl_vector<ELEMENT_TYPE, N> __spirv_ocl_##FUNC_NAME(     \
+      cl_vector<ELEMENT_TYPE, N> x) {                                          \
+    vector<ELEMENT_TYPE, N> x_vec = x;                                         \
+    return static_cast<vector<ELEMENT_TYPE, N>>(CUSTOM_NAME(x_vec))            \
+        .cl_vector();                                                          \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, char, 2,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, char, 3,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, char, 4,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, char, 8,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, char, 16,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uchar, 2,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uchar, 3,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uchar, 4,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uchar, 8,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uchar, 16,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, short, 2,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, short, 3,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, short, 4,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, short, 8,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, short, 16,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ushort, 2,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ushort, 3,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ushort, 4,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ushort, 8,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ushort, 16,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, int, 2,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, int, 3,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, int, 4,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, int, 8,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, int, 16,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uint, 2,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uint, 3,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uint, 4,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uint, 8,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, uint, 16,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, long, 2,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, long, 3,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, long, 4,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, long, 8,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, long, 16,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ulong, 2,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ulong, 3,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ulong, 4,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ulong, 8,
+                                           cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(popcount, ulong, 16,
+                                           cm::math::count_population)
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ctz, char,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ctz, uchar,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ctz, short,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ctz, ushort,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ctz, int,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ctz, uint,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ctz, long,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ctz, ulong,
+                                           cm::math::count_trailing_zeros)
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, char, 2,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, char, 3,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, char, 4,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, char, 8,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, char, 16,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uchar, 2,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uchar, 3,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uchar, 4,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uchar, 8,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uchar, 16,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, short, 2,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, short, 3,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, short, 4,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, short, 8,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, short, 16,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ushort, 2,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ushort, 3,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ushort, 4,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ushort, 8,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ushort, 16,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, int, 2,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, int, 3,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, int, 4,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, int, 8,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, int, 16,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uint, 2,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uint, 3,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uint, 4,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uint, 8,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, uint, 16,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, long, 2,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, long, 3,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, long, 4,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, long, 8,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, long, 16,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 2,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 3,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 4,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 8,
+                                           cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 16,
+                                           cm::math::count_trailing_zeros)
