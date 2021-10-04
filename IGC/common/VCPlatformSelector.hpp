@@ -39,6 +39,7 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     return "ICL";
   case IGFX_GEN12_CORE:
   case IGFX_GEN12LP_CORE:
+  case IGFX_XE_HP_CORE:
     if (Product == IGFX_TIGERLAKE_LP)
       return "TGLLP";
     if (Product == IGFX_DG1)
