@@ -664,51 +664,21 @@ DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
         }
     }
 
-    if (EmitSettings.EmitDebugRanges)
-    {
-        encodeRange(TheCU, ScopeDIE, &Ranges);
-    }
-    else
-    {
-        // This makes sense only for full debug info.
-        // Resolve VISA index to Gen IP here.
-        auto start = Ranges.front().first;
-        auto end = Ranges.back().second;
-        InsnRange RI(start, end);
-        auto GenISARanges = m_pModule->getGenISARange(RI);
+    encodeRange(TheCU, ScopeDIE, &Ranges);
 
-        if (GenISARanges.size() > 0)
-        {
-            // Emit loc/high_pc
-            if (EmitSettings.EnableRelocation)
-            {
-                auto StartLabel = GetLabelBeforeIp(GenISARanges.front().first);
-                auto EndLabel = GetLabelBeforeIp(GenISARanges.back().second);
-                TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_low_pc, StartLabel);
-                TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
-            }
-            else
-            {
-                TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
-                TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
-            }
-        }
-    }
     return ScopeDIE;
 }
 
 void DwarfDebug::encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges)
 {
-    // When functions are inlined, their allocas get hoisted to top
-    // of kernel, including their dbg.declares. Since dbg.declare
-    // nodes have DebugLoc, it means the function would've 2
-    // live-intervals, first one being hoisted dbg.declare/alloca
-    // and second being actual function. When emitting debug_loc
-    // we only want to use the second interval since it includes
-    // actual function user wants to debug. Following loop prunes
-    // Ranges vector to include only actual function. It does so
-    // by checking whether any sub-range has DebugLoc attached to
-    // non-DbgInfoIntrinsic instruction.
+    // Attaches gen isa ranges to the provided DIE
+    // gen isa ranges are calculated based on the input vISA intervals once
+    // vISA intevals are resolved, the respected gen isa ranges are coalesced.
+    // Gen isa ranges can be attached either as DW_AT_low_pc/DW_AT_high_pc or
+    // as DW_AT_ranges if we have more than one range associated with it.
+    // In the latter case, the respected ranges are stored in
+    // GenISADebugRangeSymbols (as a pair of <Label, RangesList>)
+
     auto IsValidRange = [](const InsnRange& R)
     {
         auto start = R.first;
@@ -725,6 +695,16 @@ void DwarfDebug::encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::Smal
     };
 
     llvm::SmallVector<InsnRange, 5> PrunedRanges;
+    // When functions are inlined, their allocas get hoisted to top
+    // of kernel, including their dbg.declares. Since dbg.declare
+    // nodes have DebugLoc, it means the function would've 2
+    // live-intervals, first one being hoisted dbg.declare/alloca
+    // and second being actual function. When emitting debug_loc
+    // we only want to use the second interval since it includes
+    // actual function user wants to debug. Following loop prunes
+    // Ranges vector to include only actual function. It does so
+    // by checking whether any sub-range has DebugLoc attached to
+    // non-DbgInfoIntrinsic instruction.
     for (auto& R : *Ranges)
     {
         if (IsValidRange(R))
