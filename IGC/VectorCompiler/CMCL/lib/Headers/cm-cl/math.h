@@ -33,7 +33,13 @@ inline cl::pair<uint32_t, char> add_with_carry(uint32_t src0, uint32_t src1) {
 template <int width>
 cl::pair<vector<uint32_t, width>, vector<char, width>>
 add_with_carry(vector<uint32_t, width> src0, vector<uint32_t, width> src1) {
+#if __clang_major__ > 9
   return detail::addc(src0.cl_vector(), src1.cl_vector());
+#else  // __clang_major__ > 9
+  // clang-9 has some issues with type deduction, it needs help.
+  auto res = detail::addc(src0.cl_vector(), src1.cl_vector());
+  return {res.first, res.second};
+#endif // __clang_major__ > 9
 }
 
 inline bool is_ordered(float src0, float src1) {
