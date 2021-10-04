@@ -121,11 +121,8 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
     unsigned int prevLastGenOff = lastGenOff;
     m_pDwarfDebug->lowPc = lastGenOff;
 
-    if (m_pStreamEmitter->GetEmitterSettings().EnableSIMDLaneDebugging)
-    {
-        // SIMD width
-        m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
-    }
+    // SIMD width
+    m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
 
     if (co->subs.size() == 0)
     {

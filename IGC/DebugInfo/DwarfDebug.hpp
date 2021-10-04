@@ -720,7 +720,7 @@ namespace IGC
         unsigned int lowPc = 0, highPc = 0;
 
         // SIMD width
-        unsigned short simdWidth = 0;   // Not set until IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging)
+        unsigned short simdWidth = 0;
 
         const DbgDecoder* getDecodedDbg() { return decodedDbg; }
         void setDecodedDbg(const DbgDecoder* d) { decodedDbg = d; }
