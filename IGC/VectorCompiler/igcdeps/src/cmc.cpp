@@ -11,12 +11,13 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Path.h>
 
-#include "vc/igcdeps/cmc.h"
-#include "RT_Jitter_Interface.h"
-#include "inc/common/igfxfmid.h"
 #include "AdaptorOCL/OCL/sp/spp_g8.h"
+#include "LegacyInfoGeneration.h"
+#include "RT_Jitter_Interface.h"
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
+#include "inc/common/igfxfmid.h"
+#include "vc/igcdeps/cmc.h"
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -478,25 +479,29 @@ void CMKernel::RecomputeBTLayout(int numUAVs, int numResources)
     layout->maxBTsize = index;
 }
 
-static void setSymbolsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
-                           IGC::SProgramOutput &KernelProgram) {
-  if (Info.getRelocationTable().Size > 0) {
-    KernelProgram.m_funcRelocationTable = Info.getRelocationTable().Buffer;
-    KernelProgram.m_funcRelocationTableSize = Info.getRelocationTable().Size;
-    KernelProgram.m_funcRelocationTableEntries =
-        Info.getRelocationTable().Entries;
-    // EnableZEBinary: ZEBinary related code
-    KernelProgram.m_relocs = Info.ZEBinInfo.Relocations;
-  }
-  if (Info.getSymbolTable().Size > 0) {
-    KernelProgram.m_funcSymbolTable = Info.getSymbolTable().Buffer;
-    KernelProgram.m_funcSymbolTableSize = Info.getSymbolTable().Size;
-    KernelProgram.m_funcSymbolTableEntries = Info.getSymbolTable().Entries;
-    // EnableZEBinary: ZEBinary related code
-    KernelProgram.m_symbols.function = Info.ZEBinInfo.Symbols.Functions;
-  }
+static void setFuncSectionInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
+                               IGC::SProgramOutput &KernelProgram) {
+  KernelProgram.m_funcRelocationTable = Info.LegacyFuncRelocations.Buffer;
+  KernelProgram.m_funcRelocationTableSize = Info.LegacyFuncRelocations.Size;
+  KernelProgram.m_funcRelocationTableEntries =
+      Info.LegacyFuncRelocations.Entries;
+  KernelProgram.m_relocs = Info.Func.Relocations;
+
+  vc::validateFunctionSymbolTable(Info.Func.Symbols);
+  std::tie(KernelProgram.m_funcSymbolTable, KernelProgram.m_funcSymbolTableSize,
+           KernelProgram.m_funcSymbolTableEntries) =
+      vc::emitLegacyFunctionSymbolTable(Info.Func.Symbols);
+  // Points to the first function symbol and also one past last kernel symbol.
+  const auto FirstFuncIt =
+      std::partition_point(Info.Func.Symbols.begin(), Info.Func.Symbols.end(),
+                           [](const vISA::ZESymEntry &Entry) {
+                             return Entry.s_type == vISA::GenSymType::S_KERNEL;
+                           });
+  KernelProgram.m_symbols.function =
+      IGC::SProgramOutput::SymbolListTy{FirstFuncIt, Info.Func.Symbols.end()};
   // EnableZEBinary: ZEBinary related code
-  KernelProgram.m_symbols.local = Info.ZEBinInfo.Symbols.Local;
+  KernelProgram.m_symbols.local =
+      IGC::SProgramOutput::SymbolListTy{Info.Func.Symbols.begin(), FirstFuncIt};
 }
 
 static void generateKernelArgInfo(
@@ -754,7 +759,7 @@ static void fillKernelInfo(const GenXOCLRuntimeInfo::CompiledKernel &CompKernel,
   setExecutionInfo(CompKernel.getKernelInfo(), CompKernel.getJitterInfo(),
                    ResKernel);
   setArgumentsInfo(CompKernel.getKernelInfo(), ResKernel);
-  setSymbolsInfo(CompKernel.getKernelInfo(), ResKernel.getProgramOutput());
+  setFuncSectionInfo(CompKernel.getKernelInfo(), ResKernel.getProgramOutput());
 
   setGenBinary(CompKernel.getJitterInfo(), CompKernel.getGenBinary(),
                ResKernel);
@@ -765,18 +770,18 @@ static void fillKernelInfo(const GenXOCLRuntimeInfo::CompiledKernel &CompKernel,
 
 template <typename AnnotationT>
 std::unique_ptr<AnnotationT>
-getDataAnnotation(const GenXOCLRuntimeInfo::DataInfoT &DataInfo) {
-  auto AllocSize = DataInfo.Buffer.size() + DataInfo.AdditionalZeroedSpace;
+getDataAnnotation(const GenXOCLRuntimeInfo::DataInfo &Data) {
+  auto AllocSize = Data.Buffer.size() + Data.AdditionalZeroedSpace;
   IGC_ASSERT_MESSAGE(AllocSize >= 0, "illegal allocation size");
   if (AllocSize == 0)
     return nullptr;
   auto InitConstant = std::make_unique<AnnotationT>();
-  InitConstant->Alignment = DataInfo.Alignment;
+  InitConstant->Alignment = Data.Alignment;
   InitConstant->AllocSize = AllocSize;
 
-  auto BufferSize = DataInfo.Buffer.size();
+  auto BufferSize = Data.Buffer.size();
   InitConstant->InlineData.resize(BufferSize);
-  memcpy_s(InitConstant->InlineData.data(), BufferSize, DataInfo.Buffer.data(),
+  memcpy_s(InitConstant->InlineData.data(), BufferSize, Data.Buffer.data(),
            BufferSize);
 
   return std::move(InitConstant);
@@ -786,22 +791,22 @@ static void
 fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
                    const GenXOCLRuntimeInfo::ModuleInfoT &ModuleInfo) {
   auto ConstantAnnotation = getDataAnnotation<iOpenCL::InitConstantAnnotation>(
-      ModuleInfo.ConstantData);
+      ModuleInfo.Constant.Data);
   if (ConstantAnnotation)
     ProgramInfo.m_initConstantAnnotation = std::move(ConstantAnnotation);
   auto GlobalAnnotation =
-      getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.GlobalData);
+      getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.Global.Data);
   if (GlobalAnnotation)
     ProgramInfo.m_initGlobalAnnotation.push_back(std::move(GlobalAnnotation));
 
   // Symbols.
-  if (ModuleInfo.SymbolTable.Size != 0) {
-    ProgramInfo.m_legacySymbolTable.m_buffer = ModuleInfo.SymbolTable.Buffer;
-    ProgramInfo.m_legacySymbolTable.m_size = ModuleInfo.SymbolTable.Size;
-    ProgramInfo.m_legacySymbolTable.m_entries = ModuleInfo.SymbolTable.Entries;
-  }
-  ProgramInfo.m_zebinSymbolTable.global = ModuleInfo.ZEBinInfo.Symbols.Globals;
-  ProgramInfo.m_zebinSymbolTable.globalConst = ModuleInfo.ZEBinInfo.Symbols.Constants;
+  std::tie(ProgramInfo.m_legacySymbolTable.m_buffer,
+           ProgramInfo.m_legacySymbolTable.m_size,
+           ProgramInfo.m_legacySymbolTable.m_entries) =
+      vc::emitLegacyModuleSymbolTable(ModuleInfo.Constant.Symbols,
+                                      ModuleInfo.Global.Symbols);
+  ProgramInfo.m_zebinSymbolTable.global = ModuleInfo.Global.Symbols;
+  ProgramInfo.m_zebinSymbolTable.globalConst = ModuleInfo.Constant.Symbols;
 };
 
 void vc::createBinary(

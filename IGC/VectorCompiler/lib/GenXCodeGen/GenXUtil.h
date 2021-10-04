@@ -670,6 +670,7 @@ public:
   int getSectionSize(const KeyT &Key) const { return getSectionInfo(Key).Size; }
   // Get size of the whole collected data.
   int getFullSize() const { return Data.size(); }
+  int getNumSections() const { return Sections.size(); }
   // Data buffer empty.
   bool empty() const { return Data.empty(); }
   // Emit the whole consolidated data.

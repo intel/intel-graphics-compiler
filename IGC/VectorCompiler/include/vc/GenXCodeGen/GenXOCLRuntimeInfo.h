@@ -115,32 +115,51 @@ public:
     unsigned Entries = 0;
   };
 
-  // This data partially duplicates KernelInfo data.
-  // It exists due to OCLBinary to ZEBinary transition period.
-  struct ZEBinKernelInfo {
-    struct SymbolsInfo {
-      using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
-      ZESymEntrySeq Functions;
-      ZESymEntrySeq Local;
-    };
-    using ZERelocEntrySeq = std::vector<vISA::ZERelocEntry>;
-    ZERelocEntrySeq Relocations;
-    SymbolsInfo Symbols;
+  // Symbols and reloacations are collected in zebin format. Later they are
+  // translated into legacy format for patch token generation.
+  using SymbolSeq = std::vector<vISA::ZESymEntry>;
+  using RelocationSeq = std::vector<vISA::ZERelocEntry>;
+
+  struct DataInfo {
+    std::vector<char> Buffer;
+    int Alignment = 0;
+    // Runtime can allocate bigger zeroed out buffer, and fill only
+    // the first part of it with the data from Buffer field. So there's no
+    // need to fill Buffer with zero, one can just set AdditionalZeroedSpace,
+    // and it will be additionally allocated. The size is in bytes.
+    std::size_t AdditionalZeroedSpace = 0;
+
+    void clear() {
+      Buffer.clear();
+      Alignment = 0;
+      AdditionalZeroedSpace = 0;
+    }
   };
 
-  struct ZEBinModuleInfo {
-    struct SymbolsInfo {
-      using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
-      ZESymEntrySeq Globals;
-      ZESymEntrySeq Constants;
-    };
-    SymbolsInfo Symbols;
+  struct SectionInfo {
+    DataInfo Data;
+    // Symbols inside this section. Symbol offsets must be in bounds of
+    // \p Data.
+    SymbolSeq Symbols;
+    // Relocations inside this section. "Inside" means that relocation/patching
+    // happens inside this section a relocated symbol itself may refer to any
+    // section, including the current one.
+    RelocationSeq Relocations;
+
+    void clear() {
+      Data.clear();
+      Symbols.clear();
+      Relocations.clear();
+    }
   };
 
   // Additional kernel info that are not provided by finalizer
   // but still required for runtime.
   struct KernelInfo {
-    ZEBinKernelInfo ZEBinInfo;
+    SectionInfo Func;
+    // Duplicates Func.Relocations. Cannot unify it on VC side since the
+    // duplication happens on Finalizer side.
+    TableInfo LegacyFuncRelocations;
 
   private:
     std::string Name;
@@ -164,9 +183,6 @@ public:
     using PrintStringStorageTy = std::vector<std::string>;
     ArgInfoStorageTy ArgInfos;
     PrintStringStorageTy PrintStrings;
-
-    TableInfo ReloTable;
-    TableInfo SymbolTable;
 
   private:
     void setInstructionUsageProperties(const FunctionGroup &FG,
@@ -226,10 +242,6 @@ public:
     arg_size_type arg_size() const { return ArgInfos.size(); }
     bool arg_empty() const { return ArgInfos.empty(); }
     const PrintStringStorageTy &getPrintStrings() const { return PrintStrings; }
-    TableInfo &getRelocationTable() { return ReloTable; }
-    const TableInfo &getRelocationTable() const { return ReloTable; }
-    TableInfo &getSymbolTable() { return SymbolTable; }
-    const TableInfo &getSymbolTable() const { return SymbolTable; }
   };
 
   class GTPinInfo {
@@ -244,50 +256,29 @@ public:
     KernelInfo CompilerInfo;
     FINALIZER_INFO JitterInfo;
     GTPinInfo GtpinInfo;
-    std::vector<char> GenBinary;
     std::vector<char> DebugInfo;
 
   public:
     CompiledKernel(KernelInfo &&KI, const FINALIZER_INFO &JI,
                    const GTPinInfo &GI,
-                   std::vector<char> GenBin,
                    std::vector<char> DebugInfo);
 
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
     const FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }
     const GTPinInfo &getGTPinInfo() const { return GtpinInfo; }
-    const std::vector<char> &getGenBinary() const { return GenBinary; }
+    const std::vector<char> &getGenBinary() const {
+      return CompilerInfo.Func.Data.Buffer;
+    }
     const std::vector<char> &getDebugInfo() const { return DebugInfo; }
   };
 
-  struct DataInfoT {
-    std::vector<char> Buffer;
-    int Alignment = 0;
-    // Runtime can allocate bigger zeroed out buffer, and fill only
-    // the first part of it with the data from Buffer field. So there's no
-    // need to fill Buffer with zero, one can just set AdditionalZeroedSpace,
-    // and it will be additionally allocated. The size is in bytes.
-    std::size_t AdditionalZeroedSpace = 0;
-
-    void clear() {
-      Buffer.clear();
-      Alignment = 0;
-      AdditionalZeroedSpace = 0;
-    }
-  };
-
   struct ModuleInfoT {
-    DataInfoT ConstantData;
-    DataInfoT GlobalData;
-    ZEBinModuleInfo ZEBinInfo;
-    // This table must contain only global and constant symbols.
-    TableInfo SymbolTable;
+    SectionInfo Constant;
+    SectionInfo Global;
 
     void clear() {
-      ConstantData.clear();
-      GlobalData.clear();
-      ZEBinInfo.Symbols.Constants.clear();
-      ZEBinInfo.Symbols.Globals.clear();
+      Constant.clear();
+      Global.clear();
     }
   };
 
