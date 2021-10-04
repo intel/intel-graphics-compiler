@@ -101,6 +101,9 @@ struct GenXBackendOptions {
 
   // max private stateless memory size per thread
   unsigned StatelessPrivateMemSize;
+  
+  // Disable critical messages from CisaBuilder
+  bool DisableFinalizerMsg = false;
 
   // Historically stack calls linkage is changed to internal in CMABI. This
   // option allows saving the original linkage type for such functions. This is
@@ -217,6 +220,10 @@ public:
 
   unsigned getStatelessPrivateMemSize() const {
     return Options.StatelessPrivateMemSize;
+  }
+
+  bool isDisableFinalizerMsg() const {
+    return Options.DisableFinalizerMsg;
   }
 
   FunctionControl getFCtrl() const { return Options.FCtrl; }

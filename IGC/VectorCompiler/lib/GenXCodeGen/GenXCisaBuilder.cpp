@@ -6402,6 +6402,7 @@ public:
   bool runOnModule(Module &M) override {
     Ctx = &M.getContext();
 
+    auto BC = &getAnalysis<GenXBackendConfig>();
     auto &FGA = getAnalysis<FunctionGroupAnalysis>();
     auto &GM = getAnalysis<GenXModule>();
     std::stringstream ss;
@@ -6410,7 +6411,8 @@ public:
       CisaBuilder = GM.GetVISAAsmReader();
     CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
 
-    dbgs() << CisaBuilder->GetCriticalMsg();
+    if (!BC->isDisableFinalizerMsg())
+      dbgs() << CisaBuilder->GetCriticalMsg();
 
     Out << ss.str();
 

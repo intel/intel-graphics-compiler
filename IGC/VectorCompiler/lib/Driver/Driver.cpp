@@ -214,6 +214,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
     BackendOpts.StatelessPrivateMemSize = Opts.StackMemSize.getValue();
   }
+  BackendOpts.DisableFinalizerMsg = Opts.DisableFinalizerMsg;
   BackendOpts.EmitDebugInformation = Opts.EmitDebugInformation;
   BackendOpts.EmitDebuggableKernels = Opts.EmitDebuggableKernels;
   BackendOpts.DebugInfoForZeBin = (Opts.Binary == vc::BinaryKind::ZE);
@@ -589,6 +590,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.NoJumpTables = true;
   if (ApiOptions.hasArg(OPT_vc_ftranslate_legacy_memory_intrinsics))
     Opts.TranslateLegacyMemoryIntrinsics = true;
+  if (ApiOptions.hasArg(OPT_vc_disable_finalizer_msg))
+    Opts.DisableFinalizerMsg = true;
   if (ApiOptions.hasArg(OPT_large_GRF))
     Opts.IsLargeGRFMode = true;
   if (ApiOptions.hasArg(OPT_vc_use_plain_2d_images))

@@ -72,6 +72,8 @@ struct CompileOptions {
   bool NoJumpTables = false;
   // -ftranslate-legacy-memory-intrinsics
   bool TranslateLegacyMemoryIntrinsics = false;
+  // -disable-finalizer-msg 
+  bool DisableFinalizerMsg = false;
 
   OptimizerLevel OptLevel = OptimizerLevel::Full;
   llvm::Optional<unsigned> StackMemSize;

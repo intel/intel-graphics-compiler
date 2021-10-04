@@ -51,6 +51,10 @@ def vc_ftranslate_legacy_memory_intrinsics :
   PlainFlag<"ftranslate-legacy-memory-intrinsics">,
   HelpText<"Legalize old memory intrinsics">;
 
+def vc_disable_finalizer_msg :
+  PlainFlag<"disable-finalizer-msg">,
+  HelpText<"Turns off critical messages from cISA Builder">;
+
 def vc_stateless_private_size : PlainJoined<"stateless-stack-mem-size=">,
   HelpText<"Stateless memory amount per thread">;
 
