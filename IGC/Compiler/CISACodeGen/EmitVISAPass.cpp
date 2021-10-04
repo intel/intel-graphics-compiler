@@ -823,7 +823,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.ZeBinCompatible = IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging) && IGC_IS_FLAG_ENABLED(EnableZEBinary);
         DebugOpts.EnableRelocation = IGC_IS_FLAG_ENABLED(EnableRelocations) || DebugOpts.ZeBinCompatible;
         DebugOpts.EnforceAMD64Machine = IGC_IS_FLAG_ENABLED(DebugInfoEnforceAmd64EM) || DebugOpts.ZeBinCompatible;
-        DebugOpts.EmitPrologueEnd = IGC_IS_FLAG_ENABLED(EmitPrologueEnd);
         DebugOpts.EnableDebugInfoValidation = IGC_IS_FLAG_ENABLED(DebugInfoValidation);
         m_pDebugEmitter = IDebugEmitter::Create();
         m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);

@@ -21,7 +21,6 @@ namespace IGC
     bool EnableRelocation = false;
     bool ZeBinCompatible = false;
     bool EnforceAMD64Machine = false;
-    bool EmitPrologueEnd = true;
     bool ScratchOffsetInOW = true;
     bool EmitATLinkageName = true;
     bool EnableDebugInfoValidation = false;

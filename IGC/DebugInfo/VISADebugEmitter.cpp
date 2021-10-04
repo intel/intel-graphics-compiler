@@ -218,10 +218,7 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
         if (!m_pDwarfDebug->prologueEndExists(loc.get()->getScope()->getSubprogram(),
                                               loc.getInlinedAt(), true))
         {
-            if (m_pStreamEmitter->GetEmitterSettings().EmitPrologueEnd)
-            {
-                Flags |= DWARF2_FLAG_PROLOGUE_END;
-            }
+            Flags |= DWARF2_FLAG_PROLOGUE_END;
         }
         m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
 
