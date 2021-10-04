@@ -205,6 +205,7 @@ class GenXEmulate : public ModulePass {
     static bool isConvertOfI64(const Instruction &I);
     static bool isI64ToFP(const Instruction &I);
     static bool isI64Cmp(const Instruction &I);
+    static bool isI64AddSat(const Instruction &I);
     static Value *detectBitwiseNot(BinaryOperator &);
     static Type *changeScalarType(Type *T, Type *NewTy);
 
@@ -229,7 +230,8 @@ class GenXEmulate : public ModulePass {
 
     bool needsEmulation() const {
       return (SplitBuilder.IsI64Operation() || isI64Cmp(Inst) ||
-              isConvertOfI64(Inst) || isI64PointerOp(Inst));
+              isConvertOfI64(Inst) || isI64PointerOp(Inst) ||
+              isI64AddSat(Inst));
     }
 
     IRBuilder getIRBuilder() {
@@ -391,6 +393,24 @@ bool GenXEmulate::Emu64Expander::isI64Cmp(const Instruction &I) {
   if (Instruction::ICmp != I.getOpcode())
     return false;
   return I.getOperand(0)->getType()->getScalarType()->isIntegerTy(64);
+}
+bool GenXEmulate::Emu64Expander::isI64AddSat(const Instruction &I) {
+  if (auto *CI = dyn_cast<CallInst>(&I)) {
+    switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {
+    case GenXIntrinsic::genx_suadd_sat:
+    case GenXIntrinsic::genx_usadd_sat:
+    case GenXIntrinsic::genx_uuadd_sat:
+    case GenXIntrinsic::genx_ssadd_sat: {
+      Value *Arg0 = I.getOperand(0);
+      Value *Arg1 = I.getOperand(1);
+      return Arg0->getType()->isIntOrIntVectorTy(64) &&
+             Arg1->getType()->isIntOrIntVectorTy(64);
+    }
+    default:
+      return false;
+    }
+  }
+  return false;
 }
 
 Value *GenXEmulate::Emu64Expander::detectBitwiseNot(BinaryOperator &Op) {
@@ -1182,24 +1202,38 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
   auto Builder = getIRBuilder();
   ConstantEmitter K(Src0.Lo);
 
+  Value *Result = nullptr;
   auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
   switch (IID) {
   case GenXIntrinsic::genx_uuadd_sat: {
-    auto LoAdd = buildAddc(M, Builder, *Src0.Lo, *Src1.Lo, "int_emu.uuadd.lo");
-    auto HiAdd1 =
-        buildAddc(M, Builder, *Src0.Hi, *Src1.Hi, "int_emu.uuadd.hi1.");
-    // add carry from low part
-    auto HiAdd2 =
-        buildAddc(M, Builder, *HiAdd1.Val, *LoAdd.CB, "int_emu.uuadd.h2.");
+    if (!SplitBuilder.IsI64Operation()) {
+      auto LoAdd =
+          buildAddc(M, Builder, *Src0.Lo, *Src1.Lo, "int_emu.uuadd.lo");
+      // if there are any non-zero byte in hi parts of srcs
+      // then positive saturation is produced
+      auto *PosSat =
+          Builder.CreateOr(Builder.CreateOr(Src0.Hi, Src1.Hi), LoAdd.CB);
+      auto *Saturated =
+          Builder.CreateICmpNE(PosSat, K.getZero(), "int_emu.uuadd.sat");
+      Result = Builder.CreateSelect(Saturated, K.getOnes(), LoAdd.Val);
+    } else {
+      auto LoAdd =
+          buildAddc(M, Builder, *Src0.Lo, *Src1.Lo, "int_emu.uuadd.lo");
+      auto HiAdd1 =
+          buildAddc(M, Builder, *Src0.Hi, *Src1.Hi, "int_emu.uuadd.hi1.");
+      // add carry from low part
+      auto HiAdd2 =
+          buildAddc(M, Builder, *HiAdd1.Val, *LoAdd.CB, "int_emu.uuadd.h2.");
 
-    auto *HiResult = HiAdd2.Val;
-    auto *Saturated =
-        Builder.CreateICmpNE(Builder.CreateOr(HiAdd1.CB, HiAdd2.CB),
-                             K.getZero(), "int_emu.uuadd.sat.");
-    auto *Lo = Builder.CreateSelect(Saturated, K.getOnes(), LoAdd.Val);
-    auto *Hi = Builder.CreateSelect(Saturated, K.getOnes(), HiResult);
-    return SplitBuilder.combineLoHiSplit({Lo, Hi}, "int_emu.uuadd.",
-                                         CI.getType()->isIntegerTy());
+      auto *HiResult = HiAdd2.Val;
+      auto *Saturated =
+          Builder.CreateICmpNE(Builder.CreateOr(HiAdd1.CB, HiAdd2.CB),
+                               K.getZero(), "int_emu.uuadd.sat.");
+      auto *Lo = Builder.CreateSelect(Saturated, K.getOnes(), LoAdd.Val);
+      auto *Hi = Builder.CreateSelect(Saturated, K.getOnes(), HiResult);
+      Result = SplitBuilder.combineLoHiSplit({Lo, Hi}, "int_emu.uuadd.",
+                                             CI.getType()->isIntegerTy());
+    }
   } break;
   case GenXIntrinsic::genx_ssadd_sat: {
     auto LoAdd = buildAddc(M, Builder, *Src0.Lo, *Src1.Lo, "int_emu.ssadd.lo");
@@ -1230,8 +1264,8 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
     Lo = Builder.CreateSelect(FlagNegativeSat, K.getZero(), Lo);
     Hi = Builder.CreateSelect(FlagNegativeSat, K.getSplat(1 << 31), Hi);
 
-    return SplitBuilder.combineLoHiSplit({Lo, Hi}, "int_emu.ssadd.",
-                                         CI.getType()->isIntegerTy());
+    Result = SplitBuilder.combineLoHiSplit({Lo, Hi}, "int_emu.ssadd.",
+                                           CI.getType()->isIntegerTy());
   } break;
   case GenXIntrinsic::genx_suadd_sat:
     report_fatal_error(
@@ -1244,7 +1278,17 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
   default:
     IGC_ASSERT_MESSAGE(0, "unknown intrinsic passed to saturation add emu");
   }
-  return nullptr;
+
+  if (Result->getType() != CI.getType()) {
+    auto TruncID = (IID == GenXIntrinsic::genx_uuadd_sat)
+                       ? GenXIntrinsic::genx_uutrunc_sat
+                       : GenXIntrinsic::genx_sstrunc_sat;
+    auto *TruncFunct = GenXIntrinsic::getGenXDeclaration(
+        M, TruncID, {CI.getType(), Result->getType()});
+    Result = Builder.CreateCall(TruncFunct, {Result}, "int_emu.trunc.sat");
+  }
+
+  return Result;
 }
 
 Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
