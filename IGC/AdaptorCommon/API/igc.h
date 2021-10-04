@@ -9,17 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef __IGC_H
 #define __IGC_H
 
-#if defined(_WIN32)
-    #define IGC_API_CALL_TYPE __stdcall
-    #ifdef IGC_EXPORTS
-        #define IGC_API_CALL __declspec(dllexport) IGC_API_CALL_TYPE
-    #else
-        #define IGC_API_CALL __declspec(dllimport) IGC_API_CALL_TYPE
-    #endif
-#else
-    #define IGC_API_CALL_TYPE
-    #define IGC_API_CALL __attribute__ ((visibility("default"))) IGC_API_CALL_TYPE
-#endif
+#include "igc_api_calls.h"
 
 #if defined(_DEBUG) || defined(_INTERNAL)
 # define IGC_DEBUG
