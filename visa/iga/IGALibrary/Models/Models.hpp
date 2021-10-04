@@ -135,7 +135,7 @@ namespace iga
         }
     }
 
-    static inline bool IsRegisterScaled(RegName regName)
+    static inline bool IsRegisterScaled(RegName regName, const Platform platform)
     {
         switch (regName)
         {
@@ -153,7 +153,10 @@ namespace iga
         case RegName::ARF_SR:
         case RegName::ARF_TDR:
             return true;
+
         case RegName::ARF_FC:
+            return false;
+
         default:
             return false;
         }
@@ -163,7 +166,7 @@ namespace iga
     static inline uint8_t BinaryOffsetToSubReg(
         uint32_t offset, RegName regName, Type type, const Platform platform)
     {
-        if (!IsRegisterScaled(regName) || type == Type::INVALID) {
+        if (!IsRegisterScaled(regName, platform) || type == Type::INVALID) {
             return (uint8_t)offset;
         }
         auto tsh = TypeSizeShiftsOffsetToSubreg(type);
@@ -176,7 +179,7 @@ namespace iga
     static inline uint32_t SubRegToBinaryOffset(
         int subRegNum, RegName regName, Type type, const Platform platform)
     {
-        if (!IsRegisterScaled(regName) || type == Type::INVALID) {
+        if (!IsRegisterScaled(regName, platform) || type == Type::INVALID) {
             return subRegNum;
         }
         auto tsh = TypeSizeShiftsOffsetToSubreg(type);

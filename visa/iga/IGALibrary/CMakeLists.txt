@@ -302,7 +302,7 @@ target_compile_definitions(IGA_ENC_LIB PUBLIC IGA_DISABLE_ENCODER_EXCEPTIONS)
 ##############################################################################
 # iga##.dll
 ##############################################################################
-if(MSVC)
+if(IGC_BUILD AND MSVC)
   set(IGA_BUILD__RES__IGC__igc_common
       "${CMAKE_CURRENT_SOURCE_DIR}/iga.rc"
     )
