@@ -801,6 +801,11 @@ namespace IGC
             {
                 UseBindlessLegacyMode = true;
             }
+            // -cl-intel-use-bindless-advanced-mode
+            else if (suffix.equals("-use-bindless-advanced-mode"))
+            {
+                UseBindlessLegacyMode = false;
+            }
             // -cl-intel-vector-coalesing
             else if (suffix.equals("-vector-coalescing"))
             {
