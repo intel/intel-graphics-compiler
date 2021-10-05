@@ -3045,8 +3045,19 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST* inst)
         REPORT_INSTRUCTION(options, src2Ty == ISA_TYPE_F, "Mad's src2 must be F in BF mixed mode");
         break;
     }
-    case ISA_ADD:
     case ISA_MOV:
+    {
+        // bf->f isn't a hardware inst, just left shift. Thus bf restriction does not apply.
+        const vector_opnd& src = getVectorOperand(inst, ISA_Inst_Table[opcode].n_dsts);
+        VISA_Type         srcType = getVectorOperandType(header, src);
+        if (srcType == ISA_TYPE_BF16)
+        {
+            return;
+        }
+        // case 1
+        break;
+    }
+    case ISA_ADD:
     case ISA_SEL:
     case ISA_CMP:
     {   // case 1

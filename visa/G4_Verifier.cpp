@@ -1307,8 +1307,17 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         }
         break;
     }
-    case G4_add:
     case G4_mov:
+    {
+        if (inst->getSrc(0)->getType() == Type_BF)
+        {
+            // bf->f is just a left shift, bf mix restriction does not apply.
+            return;
+        }
+        // case 1
+        break;
+    }
+    case G4_add:
     case G4_sel:
     case G4_cmp:
     {   // case 1
