@@ -1360,16 +1360,18 @@ include(igc_find_protobuf)
 include(Metrics/protobuf_metrics.cmake)
 
 
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
-endif()
+set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
 
 if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     add_subdirectory("${IGC_SOURCE_DIR}/../external/SPIRV-Tools" "${IGC_OPTION__OUTPUT_DIR}/external/SPIRV-Tools/config" EXCLUDE_FROM_ALL)
     include_directories("${IGC_BUILD__SPIRV-Headers_DIR}/include")
     include_directories("${IGC_BUILD__SPIRV-Tools_DIR}/include")
     add_compile_definitions("$<$<CONFIG:Debug>:IGC_SPIRV_TOOLS_ENABLED>")
+    add_compile_definitions("$<$<CONFIG:Release>:IGC_SPIRV_TOOLS_ENABLED>")
     igc_sg_define(IGC__SPIRV-Tools)
+    if(NOT TARGET ${IGC_BUILD__PROJ__SPIRV-Tools})
+        message(FATAL_ERROR "Error while adding SPIR-V Tools project. Please make sure ${IGC_BUILD__SPIRV-Tools_DIR} is present.")
+    endif()
 endif()
 
 add_subdirectory(GenISAIntrinsics)
@@ -1650,6 +1652,7 @@ list(APPEND _targetLinkLineCommon zebinlib)
   if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     list(APPEND _targetLinkLineCommon
         "$<$<CONFIG:Debug>:${IGC_BUILD__PROJ__SPIRV-Tools}>"
+        "$<$<CONFIG:Release>:${IGC_BUILD__PROJ__SPIRV-Tools}>"
     )
   endif()
 

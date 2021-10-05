@@ -10,8 +10,8 @@ cmake_minimum_required(VERSION 2.8.12)
 
 message(STATUS "============================ SPIRV-Tools project ============================")
 
-set(SPIRV-Headers_SOURCE_DIR "${BS_DIR_EXTERNAL_COMPONENTS}/external/SPIRV-Headers") # used in subdirectory
-set(SPIRV-Tools_SOURCE_DIR "${BS_DIR_EXTERNAL_COMPONENTS}/external/SPIRV-Tools")
+set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-Headers") # used in subdirectory
+set(SPIRV-Tools_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-Tools")
 set(SPIRV-Tools_OUTPUT_DIR "${IGC_OPTION__OUTPUT_DIR}/external/SPIRV-Tools/build")
 set(IGC_BUILD__SPIRV-Headers_DIR "${SPIRV-Headers_SOURCE_DIR}" PARENT_SCOPE)
 set(IGC_BUILD__SPIRV-Tools_DIR "${SPIRV-Tools_SOURCE_DIR}" PARENT_SCOPE)
@@ -34,6 +34,5 @@ message(STATUS "Option SPIRV_HEADERS_SKIP_EXAMPLES: ${SPIRV_HEADERS_SKIP_EXAMPLE
 
 add_subdirectory("${SPIRV-Tools_SOURCE_DIR}" "${SPIRV-Tools_OUTPUT_DIR}" EXCLUDE_FROM_ALL)
 set(IGC_BUILD__PROJ__SPIRV-Tools "SPIRV-Tools" PARENT_SCOPE) # same name as in subdirectory
-set_target_properties("SPIRV-Tools" PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE TRUE)
 
 message(STATUS "=============================================================================")
