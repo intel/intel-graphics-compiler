@@ -23,60 +23,47 @@ void __builtin_IB_copyNDRangeTondrange(ndrange_t* out, Ndrange_t* in)
     out->localWorkSize[2]    = in->localWorkSize[2];
 }
 
-Ndrange_t __builtin_spirv_OpBuildNDRange_i64_i64_i64(ulong GlobalWorkSize, ulong LocalWorkSize, ulong GlobalWorkOffset)
-{
-  Ndrange_t range = { 1, {GlobalWorkOffset, 0, 0}, {GlobalWorkSize, 1, 1}, {LocalWorkSize, 0, 0} };
-  return range;
+#define DEF_BUILD_NDRANGE_1D(TYPE, MANGLING)                                                                                                \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, MANGLING, _1D)(TYPE GlobalWorkSize, TYPE LocalWorkSize, TYPE GlobalWorkOffset)     \
+{                                                                                                                                           \
+  Ndrange_t range = { 1, {GlobalWorkOffset, 0, 0}, {GlobalWorkSize, 1, 1}, {LocalWorkSize, 0, 0} };                                         \
+  return range;                                                                                                                             \
 }
 
-Ndrange_t __builtin_spirv_OpBuildNDRange_i32_i32_i32(uint GlobalWorkSize, uint LocalWorkSize, uint GlobalWorkOffset)
-{
-  return __builtin_spirv_OpBuildNDRange_i64_i64_i64(GlobalWorkSize, LocalWorkSize, GlobalWorkOffset);
+#define DEF_BUILD_NDRANGE_2D(TYPE, MANGLING)                                                                                                      \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, MANGLING, _2D)(TYPE GlobalWorkSize[2], TYPE LocalWorkSize[2], TYPE GlobalWorkOffset[2])  \
+{                                                                                                                                                 \
+  Ndrange_t range = {                                                                                                                             \
+    2,                                                                                                                                            \
+    {GlobalWorkOffset[0], GlobalWorkOffset[1], 0},                                                                                                \
+    {GlobalWorkSize[0], GlobalWorkSize[1], 1},                                                                                                    \
+    {LocalWorkSize[0], LocalWorkSize[1], 0}                                                                                                       \
+  };                                                                                                                                              \
+  return range;                                                                                                                                   \
 }
 
-Ndrange_t __builtin_spirv_OpBuildNDRange_a2i64_a2i64_a2i64(ulong GlobalWorkSize[2], ulong LocalWorkSize[2], ulong GlobalWorkOffset[2])
-{
-  Ndrange_t range = {
-    2,
-    {GlobalWorkOffset[0], GlobalWorkOffset[1], 0},
-    {GlobalWorkSize[0], GlobalWorkSize[1], 1},
-    {LocalWorkSize[0], LocalWorkSize[1], 0}
-  };
-  return range;
+#define DEF_BUILD_NDRANGE_3D(TYPE, MANGLING)                                                                                                      \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, MANGLING, _3D)(TYPE GlobalWorkSize[3], TYPE LocalWorkSize[3], TYPE GlobalWorkOffset[3])  \
+{                                                                                                                                                 \
+  Ndrange_t range = {                                                                                                                             \
+    3,                                                                                                                                            \
+    {GlobalWorkOffset[0], GlobalWorkOffset[1], GlobalWorkOffset[2]},                                                                              \
+    {GlobalWorkSize[0], GlobalWorkSize[1], GlobalWorkSize[2]},                                                                                    \
+    {LocalWorkSize[0], LocalWorkSize[1], LocalWorkSize[2]}                                                                                        \
+  };                                                                                                                                              \
+  return range;                                                                                                                                   \
 }
 
-Ndrange_t __builtin_spirv_OpBuildNDRange_a2i32_a2i32_a2i32(uint GlobalWorkSize[2], uint LocalWorkSize[2], uint GlobalWorkOffset[2])
-{
-  Ndrange_t range = {
-    2,
-    {GlobalWorkOffset[0], GlobalWorkOffset[1], 0},
-    {GlobalWorkSize[0], GlobalWorkSize[1], 1},
-    {LocalWorkSize[0], LocalWorkSize[1], 0}
-  };
-  return range;
-}
+#if __32bit__ > 0
+DEF_BUILD_NDRANGE_1D(int, _i32_i32_i32)
+DEF_BUILD_NDRANGE_2D(int, _a2i32_a2i32_a2i32)
+DEF_BUILD_NDRANGE_3D(int, _a3i32_a3i32_a3i32)
+#else
+DEF_BUILD_NDRANGE_1D(long, _i64_i64_i64)
+DEF_BUILD_NDRANGE_2D(long, _a2i64_a2i64_a2i64)
+DEF_BUILD_NDRANGE_3D(long, _a3i64_a3i64_a3i64)
+#endif
 
-Ndrange_t __builtin_spirv_OpBuildNDRange_a3i64_a3i64_a3i64(ulong GlobalWorkSize[3], ulong LocalWorkSize[3], ulong GlobalWorkOffset[3])
-{
-  Ndrange_t range = {
-    3,
-    {GlobalWorkOffset[0], GlobalWorkOffset[1], GlobalWorkOffset[2]},
-    {GlobalWorkSize[0], GlobalWorkSize[1], GlobalWorkSize[2]},
-    {LocalWorkSize[0], LocalWorkSize[1], LocalWorkSize[2]}
-  };
-  return range;
-}
-
-Ndrange_t __builtin_spirv_OpBuildNDRange_a3i32_a3i32_a3i32(uint GlobalWorkSize[3], uint LocalWorkSize[3], uint GlobalWorkOffset[3])
-{
-  Ndrange_t range = {
-    3,
-    {GlobalWorkOffset[0], GlobalWorkOffset[1], GlobalWorkOffset[2]},
-    {GlobalWorkSize[0], GlobalWorkSize[1], GlobalWorkSize[2]},
-    {LocalWorkSize[0], LocalWorkSize[1], LocalWorkSize[2]}
-  };
-  return range;
-}
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 

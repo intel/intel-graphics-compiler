@@ -5039,12 +5039,17 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SetUserEventStatus, _i64_i32, )(ClkEvent_t
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CaptureEventProfilingInfo, _i64_i32_p1i8, )(ClkEvent_t Event, int ProfilingInfo, global char *Value);
 Queue_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetDefaultQueue, , )(void);
 
-Ndrange_t __builtin_spirv_OpBuildNDRange_i32_i32_i32(uint GlobalWorkSize, uint LocalWorkSize, uint GlobalWorkOffset);
-Ndrange_t __builtin_spirv_OpBuildNDRange_i64_i64_i64(ulong GlobalWorkSize, ulong LocalWorkSize, ulong GlobalWorkOffset);
-Ndrange_t __builtin_spirv_OpBuildNDRange_a2i32_a2i32_a2i32(uint GlobalWorkSize[2], uint LocalWorkSize[2], uint GlobalWorkOffset[2]);
-Ndrange_t __builtin_spirv_OpBuildNDRange_a2i64_a2i64_a2i64(ulong GlobalWorkSize[2], ulong LocalWorkSize[2], ulong GlobalWorkOffset[2]);
-Ndrange_t __builtin_spirv_OpBuildNDRange_a3i32_a3i32_a3i32(uint GlobalWorkSize[3], uint LocalWorkSize[3], uint GlobalWorkOffset[3]);
-Ndrange_t __builtin_spirv_OpBuildNDRange_a3i64_a3i64_a3i64(ulong GlobalWorkSize[3], ulong LocalWorkSize[3], ulong GlobalWorkOffset[3]);
+#define DECL_BUILD_NDRANGE(TYPE, TYPE_MANGLING) \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, _##TYPE_MANGLING##_##TYPE_MANGLING##_##TYPE_MANGLING, _1D)(TYPE GlobalWorkSize, TYPE LocalWorkSize, TYPE GlobalWorkOffset); \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, _a2##TYPE_MANGLING##_a2##TYPE_MANGLING##_a2##TYPE_MANGLING, _2D)(TYPE GlobalWorkSize[2], TYPE LocalWorkSize[2], TYPE GlobalWorkOffset[2]); \
+Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, _a3##TYPE_MANGLING##_a3##TYPE_MANGLING##_a3##TYPE_MANGLING, _3D)(TYPE GlobalWorkSize[3], TYPE LocalWorkSize[3], TYPE GlobalWorkOffset[3]);
+
+#if __32bit__ > 0
+DECL_BUILD_NDRANGE(int, i32)
+#else
+DECL_BUILD_NDRANGE(long, i64)
+#endif
+
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 // Pipe Instructions

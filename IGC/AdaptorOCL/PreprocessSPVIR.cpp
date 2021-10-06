@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 
 #include <regex>
 #include <iostream>
+#include <unordered_set>
 
 using namespace llvm;
 using namespace IGC;
@@ -106,10 +107,12 @@ void PreprocessSPVIR::createCallAndReplace(CallInst& oldCallInst, StringRef newF
         argTypes.push_back(arg->getType());
 
     FunctionType* FT = FunctionType::get(oldCallInst.getType(), argTypes, false);
-    FunctionCallee newFunction = m_Module->getOrInsertFunction(newFuncName, FT, oldCallInst.getAttributes());
-    CallInst* newCall = m_Builder->CreateCall(newFunction, args);
+    auto* newFunction = cast<Function>(m_Module->getOrInsertFunction(newFuncName, FT, F->getAttributes()));
+    newFunction->setCallingConv(F->getCallingConv());
+    CallInst* newCall = CallInst::Create(newFunction, args, "", &oldCallInst);
+    newCall->setCallingConv(oldCallInst.getCallingConv());
+    newCall->setAttributes(oldCallInst.getAttributes());
     oldCallInst.replaceAllUsesWith(newCall);
-    oldCallInst.eraseFromParent();
 }
 
 // Transform:
@@ -235,6 +238,7 @@ void PreprocessSPVIR::visitImageSampleExplicitLod(CallInst& CI)
 
     // Create function call to __intel_sample_image_{Lod|Grad}_{i|f}coords_R{returnType}
     createCallAndReplace(CI, unifiedImageSampleName, args);
+    CI.eraseFromParent();
 
     if (callSampledImage->use_empty())
         callSampledImage->eraseFromParent();
@@ -254,7 +258,7 @@ void PreprocessSPVIR::visitImageSampleExplicitLod(CallInst& CI)
 void PreprocessSPVIR::visitOpenCLEISPrintf(llvm::CallInst& CI)
 {
     FunctionType* FT = FunctionType::get(CI.getType(), Type::getInt8PtrTy(m_Module->getContext(), 2), true);
-    FunctionCallee newPrintf = m_Module->getOrInsertFunction("printf", FT);
+    Function* newPrintf = cast<Function>(m_Module->getOrInsertFunction("printf", FT));
     CI.setCalledFunction(newPrintf);
 
     m_changed = true;
@@ -268,6 +272,83 @@ bool PreprocessSPVIR::isSPVIR(StringRef funcName)
     std::string name = funcName.str();
 
     return std::regex_search(name, patternRegular) || std::regex_search(name, patternEIS);
+}
+
+bool PreprocessSPVIR::hasArrayArg(llvm::Function& F)
+{
+    for (auto& Arg : F.args())
+    {
+        if (Arg.getType()->isArrayTy())
+            return true;
+    }
+    return false;
+}
+
+void PreprocessSPVIR::processBuiltinsWithArrayArguments(llvm::Function& F)
+{
+    if (F.user_empty()) return;
+
+    IGC_ASSERT(F.hasName());
+    StringRef origName = F.getName();
+
+    // add postfix to original function name, since new function with original
+    // name and different arguments types is going to be created
+    F.setName(origName + ".old");
+
+    std::unordered_set<CallInst*> callInstsToErase;
+    for (auto* user : F.users())
+    {
+        if (auto* CI = dyn_cast<CallInst>(user))
+        {
+            std::vector<Value*> newArgs;
+            for (auto& arg : CI->args())
+            {
+                auto* T = arg->getType();
+                if (!T->isArrayTy())
+                {
+                    // leave non-array arguments unchanged
+                    newArgs.push_back(arg);
+                    continue;
+                }
+
+                auto FBegin = CI->getFunction()->begin()->getFirstInsertionPt();
+                auto* Alloca = new AllocaInst(T, 0, "", &(*FBegin));
+                new StoreInst(arg, Alloca, false, CI);
+                auto* Zero =
+                    ConstantInt::getNullValue(Type::getInt32Ty(T->getContext()));
+                Value* Index[] = { Zero, Zero };
+                auto* GEP = GetElementPtrInst::CreateInBounds(T, Alloca, Index, "", CI);
+                newArgs.push_back(GEP);
+            }
+
+            createCallAndReplace(*CI, origName, newArgs);
+            callInstsToErase.insert(CI);
+        }
+    }
+
+    for (auto* CI : callInstsToErase)
+        CI->eraseFromParent();
+
+    F.eraseFromParent();
+    m_changed = true;
+}
+
+void PreprocessSPVIR::processBuiltinsWithArrayArguments()
+{
+    for (auto& F : make_early_inc_range(m_Module->functions()))
+    {
+        if (F.hasName() && F.isDeclaration())
+        {
+            StringRef Name = F.getName();
+            if (hasArrayArg(F) && isSPVIR(Name))
+            {
+                if (Name.contains("BuildNDRange"))
+                {
+                    processBuiltinsWithArrayArguments(F);
+                }
+            }
+        }
+    }
 }
 
 void PreprocessSPVIR::visitCallInst(CallInst& CI)
@@ -289,9 +370,13 @@ void PreprocessSPVIR::visitCallInst(CallInst& CI)
 }
 
 bool PreprocessSPVIR::runOnModule(Module& M) {
-    m_Module = &M;
+    m_Module = static_cast<IGCLLVM::Module*>(&M);
     IRBuilder<> builder(M.getContext());
     m_Builder = &builder;
+
+    // Change arguments with array type to pointer type to match signature produced by clang
+    processBuiltinsWithArrayArguments();
+
     visit(M);
     return m_changed;
 }

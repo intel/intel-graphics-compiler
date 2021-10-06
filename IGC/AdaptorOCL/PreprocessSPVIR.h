@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/Module.h"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
@@ -36,12 +37,15 @@ namespace IGC
         void visitImageSampleExplicitLod(llvm::CallInst& CI);
         void visitOpenCLEISPrintf(llvm::CallInst& CI);
     private:
+        bool hasArrayArg(llvm::Function& F);
+        void processBuiltinsWithArrayArguments(llvm::Function& F);
+        void processBuiltinsWithArrayArguments();
         llvm::Value* getWidenImageCoordsArg(llvm::Value* Coords);
         void createCallAndReplace(llvm::CallInst& oldCallInst, llvm::StringRef newFuncName, std::vector<llvm::Value*>& args);
         uint64_t parseSampledImageTy(llvm::StructType* SampledImageTy);
         bool isSPVIR(llvm::StringRef funcName);
 
-        llvm::Module* m_Module = nullptr;
+        IGCLLVM::Module* m_Module = nullptr;
         llvm::IRBuilder<>* m_Builder = nullptr;
         bool m_changed = false;
     };
