@@ -418,8 +418,6 @@ Instruction *CMRegion::createRdPredRegion(Value *Input, unsigned Index,
       RetTy, Args);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
   NewInst->setDebugLoc(DL);
-  if (NewInst->getName() == "phitmp18.i.i.split0")
-    dbgs() << "wobble\n";
   return NewInst;
 }
 
