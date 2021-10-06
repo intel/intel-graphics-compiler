@@ -548,6 +548,7 @@ void parseText(std::string fileName, int argc, const char *argv[], Options &opt)
         if (k->getOutputAsmPath().empty()) {
             const char *outputPrefix = opt.getOptionCstr(VISA_AsmFileName);
             k->setOutputAsmPath(outputPrefix);
+            cisa_builder->getOptions()->setOptionInternally(VISA_AsmFileName, outputPrefix);
         }
 
         file_names.pop_front();
