@@ -56,6 +56,16 @@ inline bool is_ordered(double src0, double src1) {
   return (src0 == src0) && (src1 == src1);
 }
 
+/*====================== Is unordered =======================*/
+
+inline bool is_unordered(float src0, float src1) {
+  return (src0 != src0) || (src1 != src1);
+}
+
+inline bool is_unordered(double src0, double src1) {
+  return (src0 != src0) || (src1 != src1);
+}
+
 /*====================== Reverse bit =======================*/
 
 inline uint32_t reverse_bits(uint32_t src) { return detail::bfrev(src); }

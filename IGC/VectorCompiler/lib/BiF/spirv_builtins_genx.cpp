@@ -331,6 +331,12 @@ SPIRV_MATH_BUILTIN_DECL_2_SAME_ELEMENT_TYPES_POINTER_VECTOR(sincos, double, 8,
 SPIRV_MATH_BUILTIN_DECL_2_SAME_ELEMENT_TYPES_POINTER_VECTOR(sincos, double, 16,
                                                             __local, p3, f64);
 
+CM_NODEBUG CM_INLINE int __spirv_Unordered(float src0, float src1) {
+  return math::is_unordered(src0, src1);
+}
+CM_NODEBUG CM_INLINE int __spirv_Unordered(double src0, double src1) {
+  return math::is_unordered(src0, src1);
+}
 CM_NODEBUG CM_INLINE int __spirv_Ordered(float src0, float src1) {
   return math::is_ordered(src0, src1);
 }
