@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
-#include "Compiler/ModuleAllocaAnalysis.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 
 #include "common/debug/Debug.hpp"
 #include "llvmWrapper/IR/DataLayout.h"
@@ -31,7 +31,6 @@ using namespace IGC::Debug;
 #define PASS_CFG_ONLY true
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(PrivateMemoryToSLM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(ModuleAllocaAnalysis)
 IGC_INITIALIZE_PASS_END(PrivateMemoryToSLM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC
@@ -136,7 +135,10 @@ namespace IGC
         auto* CodeGenCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto* MD = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         auto* ModuleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        auto* FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
         auto DL = M.getDataLayout();
+
+        ModuleAllocaInfo allocaInfo(&M, &DL, FGA);
 
         bool modified = false;
         for (Module::iterator I = M.begin(); I != M.end(); ++I)
@@ -148,7 +150,7 @@ namespace IGC
                 continue;
             }
 
-            SmallVector<AllocaInst*, 8>& allocaInsts = getAnalysis<ModuleAllocaAnalysis>().getAllocaInsts(F);
+            SmallVector<AllocaInst*, 8>& allocaInsts = allocaInfo.getAllocaInsts(F);
 
             if (allocaInsts.empty())
             {

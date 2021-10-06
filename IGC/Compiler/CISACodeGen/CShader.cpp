@@ -3458,9 +3458,7 @@ void CShader::PackAndCopyVariable(
 
 bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 {
-    bool ret = ((m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace()) ||
-        m_ctx->m_DriverInfo.supportsStatelessSpacePrivateMemory());
-
+    bool ret = (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());
     m_simdProgram.setScratchSpaceUsedByShader(m_ScratchSpaceSize);
     if (m_ctx->platform.hasScratchSurface() && m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace()) {
         ret = (m_simdProgram.getScratchSpaceUsageInSlot0() <= m_ctx->platform.maxPerThreadScratchSpace());

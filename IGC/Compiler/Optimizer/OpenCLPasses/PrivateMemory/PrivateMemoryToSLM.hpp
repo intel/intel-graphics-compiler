@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/ModuleAllocaAnalysis.hpp"
 
 #include <llvm/Pass.h>
 
@@ -42,7 +41,6 @@ namespace IGC
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<ModuleAllocaAnalysis>();
         }
 
         virtual bool runOnModule(Module& M) override;
