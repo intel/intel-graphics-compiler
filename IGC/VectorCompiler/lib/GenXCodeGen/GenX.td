@@ -87,14 +87,7 @@ class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
 
 def : Proc<"generic",         []>;
-def : Proc<"HSW",             [FeatureLongLongEmulation, FeatureSwitchjmp,
-                               FeatureIntDivRem32, FeatureHWTIDFromPredef]>;
 def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntDivRem32,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureHWTIDFromPredef]>;
-def : Proc<"CHV",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureInstrAdd64,
                                FeatureFP64,

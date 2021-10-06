@@ -52,9 +52,7 @@ protected:
 
   enum GenXTag {
     GENX_GENERIC,
-    GENX_HSW,
     GENX_BDW,
-    GENX_CHV,
     GENX_SKL,
     GENX_BXT,
     GENX_KBL,
@@ -146,17 +144,11 @@ public:
 
 public:
 
-  /// * isHSW - true if target is HSW
-  bool isHSW() const { return GenXVariant == GENX_HSW; }
-
   /// * isBDW - true if target is BDW
   bool isBDW() const { return GenXVariant == GENX_BDW; }
 
   /// * isBDWplus - true if target is BDW or later
   bool isBDWplus() const { return GenXVariant >= GENX_BDW; }
-
-  /// * isCHV - true if target is CHV
-  bool isCHV() const { return GenXVariant == GENX_CHV; }
 
   /// * isSKL - true if target is SKL
   bool isSKL() const { return GenXVariant == GENX_SKL; }
@@ -316,8 +308,6 @@ public:
     switch (GenXVariant) {
     case GENX_BDW:
       return TARGET_PLATFORM::GENX_BDW;
-    case GENX_CHV:
-      return TARGET_PLATFORM::GENX_CHV;
     case GENX_SKL:
       return TARGET_PLATFORM::GENX_SKL;
     case GENX_BXT:

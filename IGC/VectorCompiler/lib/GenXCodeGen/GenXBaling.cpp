@@ -584,22 +584,8 @@ void GenXBaling::processWrRegion(Instruction *Inst)
             isHighCostBaling(BaleInfo::WRREGION, MainInst->Inst))
           V = nullptr;
       }
-      // 2. There is an indirect rdregion with a constant offset (probably due to
-      // the risk of the jitter doing unfolding; this check may be unnecessary
-      // after HSW).
-      if (ST && ST->isHSW()) {
-        for (auto i = B.begin(), e = B.end(); i != e; ++i) {
-          if (i->Info.Type != BaleInfo::RDREGION)
-            continue;
-          if (!isa<Constant>(i->Inst->getOperand(
-                  GenXIntrinsic::GenXRegion::RdIndexOperandNum))) {
-            V = nullptr;
-            break;
-          }
-        }
-      }
     } else {
-      // 3. It is in a different basic block to the wrregion.
+      // 2. It is in a different basic block to the wrregion.
       if (!genx::isRdRFromGlobalLoad(V))
         V = nullptr;
     }

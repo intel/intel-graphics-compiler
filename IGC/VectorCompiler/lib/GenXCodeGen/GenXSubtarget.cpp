@@ -63,9 +63,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_STACK;
 
   GenXVariant = llvm::StringSwitch<GenXTag>(CPU)
-    .Case("HSW", GENX_HSW)
     .Case("BDW", GENX_BDW)
-    .Case("CHV", GENX_CHV)
     .Case("SKL", GENX_SKL)
     .Case("BXT", GENX_BXT)
     .Case("KBL", GENX_KBL)
