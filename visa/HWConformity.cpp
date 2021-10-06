@@ -918,6 +918,24 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB* bb)
 
     if (inst->opcode() == G4_madw)
     {
+        // src0 can not be immediate.
+        if (src0 && src0->isImm())
+        {
+            // swap src0 and src1 if src0 is immediate but src1 is not immediate
+            if (src1 && !src1->isImm())
+            {
+                inst->swapSrc(0, 1);
+                inst->swapDefUse();
+                src0 = inst->getSrc(0);
+                src1 = inst->getSrc(1);
+            }
+            else
+            {
+                inst->setSrc(insertMovBefore(it, 0, IS_UNSIGNED_INT(src0->getType()) ? Type_UD : Type_D, bb), 0);
+                src0 = inst->getSrc(0);
+            }
+        }
+
         // fixe immediate type of G4_madw as it can only support D/UD types
         if (src1 && src1->isImm())
         {
