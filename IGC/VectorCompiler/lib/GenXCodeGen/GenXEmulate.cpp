@@ -1966,10 +1966,11 @@ private:
         continue;
       if (F.getReturnType()->getScalarType()->isIntegerTy(64))
         continue;
-      const auto &Name = F.getName();
-      for (auto &PrOp : DivRemPrefixes) {
-        if (Name.startswith(PrOp.Prefix))
-          F.eraseFromParent();
+      if (std::any_of(DivRemPrefixes.begin(), DivRemPrefixes.end(),
+                      [&F](const auto &PrOp) {
+                        return F.getName().startswith(PrOp.Prefix);
+                      })) {
+        F.eraseFromParent();
       }
     }
   }
