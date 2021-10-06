@@ -164,7 +164,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1dBuffer)))
       return ArgKindType::Image1D;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2d)))
-      return ArgKindType::Image2D;
+      // Legacy behavior to treat all 2d images as media block.
+      return ArgKindType::Image2DMediaBlock;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dArray)))
       return ArgKindType::Image2DArray;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dMediaBlock)))

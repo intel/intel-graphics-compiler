@@ -258,8 +258,7 @@ getOCLImageType(llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind)
     case KindType::Image1DArray:
         return iOpenCL::IMAGE_MEMORY_OBJECT_1D_ARRAY;
     case KindType::Image2D:
-        // FIXME: Media block should be treated separately.
-        return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA_BLOCK;
+        return iOpenCL::IMAGE_MEMORY_OBJECT_2D;
     case KindType::Image2DArray:
         return iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY;
     case KindType::Image2DMediaBlock:
