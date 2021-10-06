@@ -812,6 +812,11 @@ void GenXRegionCollapsing::processWrRegionBitCast2(Instruction *WrRegion)
   Type *BCInputElementType = BC->getOperand(0)->getType()->getScalarType();
   if (BCInputElementType->isIntegerTy(1))
     return;
+
+  Value *OldValue = WrRegion->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+  if (GenXIntrinsic::isReadWritePredefReg(OldValue))
+    return;
+
   // Get the region params for the replacement wrregion, checking if that
   // fails.
   Region R(WrRegion, BaleInfo());
@@ -819,7 +824,7 @@ void GenXRegionCollapsing::processWrRegionBitCast2(Instruction *WrRegion)
     return;
   // Bitcast the "old value" input.
   Value *OldVal = createBitCastToElementType(
-      WrRegion->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum),
+      OldValue,
       BCInputElementType, WrRegion->getName() + ".precast", WrRegion, DL,
       WrRegion->getDebugLoc());
   // Create the replacement wrregion.
