@@ -69,6 +69,8 @@ SPDX-License-Identifier: MIT
 #include <iomanip>
 #include "Probe/Assertion.h"
 #include "common/StringMacros.hpp"
+#include "VISALinkerDriver/VLD.hpp"
+
 
 //In case of use GT_SYSTEM_INFO in GlobalData.h from inc/umKmInc/sharedata.h
 //We have to do this temporary defines
@@ -952,6 +954,18 @@ bool TranslateBuild(
             return false;
     }
 #endif // defined(IGC_VC_ENABLED)
+    if (pInputArgs->pOptions &&
+        strstr(pInputArgs->pOptions,
+               VLD::VLD_compilation_enable_option)) {
+        std::string errorMessage;
+        bool ret = VLD::TranslateBuildSPMDAndESIMD(
+            pInputArgs, pOutputArgs, inputDataFormatTemp, IGCPlatform,
+            profilingTimerResolution, inputShHash, errorMessage);
+        if (!ret) {
+             SetErrorMessage(errorMessage, *pOutputArgs);
+        }
+        return ret;
+  }
 
     // This part of code is a critical-section for threads,
     // due static LLVM object which handles options.

@@ -1409,6 +1409,9 @@ endif()
 
 add_subdirectory(OCLFE)
 
+add_subdirectory(VISALinkerDriver)
+igc_sg_define(IGC__VISALinkerDriver)
+
 if(MSVC)
   set(IGC_BUILD__RES__IGC__igc_common
       "${CMAKE_CURRENT_SOURCE_DIR}/igc.rc"
@@ -1645,6 +1648,9 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   )
 
 list(APPEND _targetLinkLineCommon zebinlib)
+
+list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
+
 
 
 
