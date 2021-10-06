@@ -1856,7 +1856,9 @@ unsigned IndexFlattener::flatten(StructType *ST, ArrayRef<unsigned> Indices)
 unsigned IndexFlattener::unflatten(StructType *ST, unsigned Flattened,
     SmallVectorImpl<unsigned> *Indices)
 {
+  ++Flattened;
   for (unsigned i = 0, e = ST->getNumElements(); i != e; ++i) {
+    --Flattened;
     Type *ElTy = ST->getElementType(i);
     if (auto ElST = dyn_cast<StructType>(ElTy)) {
       Indices->push_back(i);
@@ -1864,7 +1866,7 @@ unsigned IndexFlattener::unflatten(StructType *ST, unsigned Flattened,
       if (!Flattened)
         return 0;
       Indices->pop_back();
-    } else if (!Flattened--) {
+    } else if (!Flattened) {
       Indices->push_back(i);
       return 0;
     }
@@ -1888,6 +1890,7 @@ Type *IndexFlattener::getElementType(Type *Ty, unsigned FlattenedIndex)
     return Ty;
   SmallVector<unsigned, 4> Indices;
   IndexFlattener::unflatten(ST, FlattenedIndex, &Indices);
+  IGC_ASSERT(IndexFlattener::flatten(ST, Indices) == FlattenedIndex);
   Type *T = 0;
   for (unsigned i = 0;;) {
     T = ST->getElementType(Indices[i]);
