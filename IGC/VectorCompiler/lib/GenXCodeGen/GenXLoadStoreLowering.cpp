@@ -395,11 +395,6 @@ Instruction *GenXLoadStoreLowering::createLoad(LoadInst &LdI,
   Value *PredVal = Builder.getTrue();
   Value *Pred = Builder.CreateVectorSplat(NumEltsToLoad, PredVal);
 
-  // we haven't changed size after normalization
-  IGC_ASSERT(NumEltsToLoad ==
-             cast<IGCLLVM::FixedVectorType>(NormalizedOldVal.getType())
-                 ->getNumElements());
-
   Value *PointerOp = LdI.getPointerOperand();
   Value *Offset =
       CastInst::Create(Instruction::PtrToInt, PointerOp, I64Ty, "", &LdI);
