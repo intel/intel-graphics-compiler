@@ -403,9 +403,31 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
     default:
     {
         BufferType bufferType = DecodeBufferType(as);
-        if (bufferType == UAV || bufferType == BINDLESS)
+        switch (bufferType)
         {
+        case IGC::UAV:
+        case IGC::BINDLESS:
+        case IGC::SSH_BINDLESS:
             g_InstrTypes->hasStorageBufferLoad = true;
+            break;
+        case IGC::STATELESS:
+            g_InstrTypes->hasGlobalLoad = true;
+            break;
+        case IGC::CONSTANT_BUFFER:
+        case IGC::RESOURCE:
+        case IGC::SLM:
+        case IGC::POINTER:
+        case IGC::BINDLESS_CONSTANT_BUFFER:
+        case IGC::BINDLESS_TEXTURE:
+        case IGC::SAMPLER:
+        case IGC::BINDLESS_SAMPLER:
+        case IGC::RENDER_TARGET:
+        case IGC::STATELESS_READONLY:
+        case IGC::STATELESS_A32:
+        case IGC::SSH_BINDLESS_CONSTANT_BUFFER:
+        case IGC::SSH_BINDLESS_TEXTURE:
+        case IGC::BUFFER_TYPE_UNKNOWN:
+            break;
         }
         if (isStatefulAddrSpace(as) && !IsDirectIdx(as))
         {
@@ -441,9 +463,31 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
     default:
     {
         BufferType bufferType = DecodeBufferType(as);
-        if (bufferType == UAV || bufferType == BINDLESS)
+        switch (bufferType)
         {
+        case IGC::UAV:
+        case IGC::BINDLESS:
+        case IGC::SSH_BINDLESS:
             g_InstrTypes->hasStorageBufferStore = true;
+            break;
+        case IGC::STATELESS:
+            g_InstrTypes->hasGlobalStore = true;
+            break;
+        case IGC::CONSTANT_BUFFER:
+        case IGC::RESOURCE:
+        case IGC::SLM:
+        case IGC::POINTER:
+        case IGC::BINDLESS_CONSTANT_BUFFER:
+        case IGC::BINDLESS_TEXTURE:
+        case IGC::SAMPLER:
+        case IGC::BINDLESS_SAMPLER:
+        case IGC::RENDER_TARGET:
+        case IGC::STATELESS_READONLY:
+        case IGC::STATELESS_A32:
+        case IGC::SSH_BINDLESS_CONSTANT_BUFFER:
+        case IGC::SSH_BINDLESS_TEXTURE:
+        case IGC::BUFFER_TYPE_UNKNOWN:
+            break;
         }
         if (isStatefulAddrSpace(as) && !IsDirectIdx(as))
         {
