@@ -53,6 +53,7 @@ DEF_ATTR_INT32(ATTR_SimdSize,              "SimdSize",      AK_KERNEL, 0, "Dispa
 DEF_ATTR_INT32(ATTR_Scope,                 "Scope",         AK_VAR,    0, "")
 DEF_ATTR_INT32(ATTR_SurfaceUsage,          "SurfaceUsage",  AK_VAR,    0, "")
 DEF_ATTR_INT32(ATTR_CrossThreadInputSize,  "CrossThreadInputSize",AK_KERNEL, -1, "cross-thread payload size in bytes")
+DEF_ATTR_BOOL(ATTR_NeedToPreserveR1Lo,    "NeedToPreserveR1Lo",   AK_KERNEL, 0, "")
 
 
 // C String Attributes

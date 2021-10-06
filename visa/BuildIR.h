@@ -369,6 +369,9 @@ private:
 
     unsigned int sampler8x8_group_id;
 
+    // input declare of R1.
+    G4_Declare* inputR1 = nullptr;
+
     // Populate this data structure so after compiling all kernels
     // in file, we can emit out patch file using this up-levelled
     // information.
@@ -567,6 +570,10 @@ public:
         return kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
     }
 
+    bool getNeedToPreserveR1Lo() const {
+        return kernel.getBoolKernelAttr(Attributes::ATTR_NeedToPreserveR1Lo);
+    }
+
     //
     // Check if opnd is or can be made "alignByte"-byte aligned.
     // These functions will change the underlying variable's alignment
@@ -670,6 +677,9 @@ public:
     G4_Declare* getBuiltinBindlessSampler() const {return builtinBindlessSampler; }
     G4_Declare* getBuiltinSamplerHeader() const { return builtinSamplerHeader; }
     G4_Declare* getOldA0Dot2Temp() const { return oldA0Dot2Temp; }
+
+    G4_Declare* getInputR1() { return inputR1; }
+    void setInputR1(G4_Declare* r1) { inputR1 = r1; }
 
     bool isBindlessSampler(const G4_Operand* sampler) const {
         return sampler->isSrcRegRegion() && sampler->getTopDcl() == getBuiltinBindlessSampler();

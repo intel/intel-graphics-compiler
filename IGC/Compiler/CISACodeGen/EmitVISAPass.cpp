@@ -1025,6 +1025,12 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
         if (m_encoder->IsCodePatchCandidate())
         {
+            if (m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER)
+            {
+                CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
+                bool needToPreserveR1Lo = (psProgram->GetR1Lo().size() != 0);
+                m_encoder->GetVISAKernel()->AddKernelAttribute("NeedToPreserveR1Lo", sizeof(uint32_t), &needToPreserveR1Lo);
+            }
             if (IGC_GET_FLAG_VALUE(CodePatchLimit) >= 2)
             {
                 IGC_SET_FLAG_VALUE(CodePatchLimit, IGC_GET_FLAG_VALUE(CodePatchLimit) - 1);
