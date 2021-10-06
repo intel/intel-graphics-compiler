@@ -2541,9 +2541,9 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
             // the dst has only 1 DW as low result in 1 GRF and only 1 DW as high result in another GRF. We should
             // set the dst as (numDWPerGRF * 2) element but not 2 DW elements. This is required by madw.
             auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
-            auto numElements = iSTD::Align(Lo->GetNumberElement(), numDWPerGRF) * 2;
+            auto numElements = iSTD::Align(Lo->GetNumberElement(), numDWPerGRF);
             CVariable* DstTmp = m_currShader->GetNewVariable(
-                numElements, ISA_TYPE_UD, EALIGN_GRF, Lo->IsUniform(),
+                numElements * 2, ISA_TYPE_UD, EALIGN_GRF, Lo->IsUniform(),
                 CName(Lo->getName(), "int64Tmp"));
             CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
             m_encoder->Madw(DstTmp, L0, L1, zero);
@@ -2554,7 +2554,7 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
             m_encoder->Push();
 
             // dstHigh = Cr
-            uint regOffset = (uint)std::ceil((float)(numLanes(m_currShader->m_SIMDSize) * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
+            uint regOffset = (uint)std::ceil((float)(numElements * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
             m_encoder->SetSrcSubVar(0, regOffset);
             m_encoder->SetSrcRegion(0, 1, 1, 0);
             m_encoder->Copy(dstHiTmp, DstTmp);
@@ -3674,9 +3674,9 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
         // the dst has only 1 DW as low result in 1 GRF and only 1 DW as high result in another GRF. We should
         // set the dst as (numDWPerGRF * 2) element but not 2 DW elements. This is required by madw.
         auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
-        auto numElements = iSTD::Align(dst->GetNumberElement(), numDWPerGRF) * 2;
+        auto numElements = iSTD::Align(dst->GetNumberElement(), numDWPerGRF);
         CVariable* dstTmp = m_currShader->GetNewVariable(
-            numElements, ISA_TYPE_UD, EALIGN_GRF, dst->IsUniform(),
+            numElements * 2, ISA_TYPE_UD, EALIGN_GRF, dst->IsUniform(),
             CName(m_destination->getName(), "int64Tmp"));
         CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
         m_encoder->Madw(dstTmp, srcLo[0], srcLo[1], zero);
@@ -3689,7 +3689,7 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
 
         // copy high of A*B to dstHi
         EncoderInit();
-        uint regOffset = (uint)std::ceil((float)(numLanes(simdMode) * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
+        uint regOffset = (uint)std::ceil((float)(numElements * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
         m_encoder->SetSrcSubVar(0, regOffset);
         m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->Copy(dstHi, dstTmp);
