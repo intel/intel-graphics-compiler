@@ -158,6 +158,9 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+
+#include "vc/Support/GenXDiagnostic.h"
+
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
@@ -635,12 +638,23 @@ bool GenXLegalization::processInst(Instruction *Inst) {
 
   if (ScalarType->isIntegerTy(64) && !ST->hasLongLong()) {
     if (!ST->emulateLongLong() && checkIfLongLongSupportNeeded(Inst)) {
-      report_fatal_error("'long long' type is not supported by this target");
+      auto Target = getAnalysis<TargetPassConfig>()
+                        .getTM<GenXTargetMachine>()
+                        .getTargetCPU();
+      vc::diagnose(Inst->getContext(), "GenXLegalization", Inst,
+                   "'i64' data type is not supported by this target <" +
+                       Target + ">");
     }
   }
 
-  if (ScalarType->isDoubleTy() && !ST->hasFP64())
-    report_fatal_error("'double' type is not supported by this target");
+  if (ScalarType->isDoubleTy() && !ST->hasFP64()) {
+    auto Target = getAnalysis<TargetPassConfig>()
+                      .getTM<GenXTargetMachine>()
+                      .getTargetCPU();
+    vc::diagnose(Inst->getContext(), "GenXLegalization", Inst,
+                 "'double' data type is not supported by this target <" +
+                     Target + ">");
+  }
 
   if (!ST->hasSad2Support()) {
     switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
