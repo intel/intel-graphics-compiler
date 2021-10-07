@@ -985,8 +985,6 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
     for (auto Kind : KM.getArgKinds()) {
       if (Kind & 0x8)
         HasImplicit = true;
-      genx::KernelArgInfo KAI(Kind);
-      NumGRFs += KAI.isLocalIDX() || KAI.isLocalIDY() || KAI.isLocalIDZ();
     }
     if (Subtarget->isOCLRuntime()) {
       // When CM kernel is run with OCL runtime, it is dispatched in a
@@ -996,7 +994,6 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
       // Payload format:
       // | 0-15     | 16 - 31  | 32 - 47  | 46 - 256 |
       // | localIDX | localIDY | localIDZ | unused   |
-      IGC_ASSERT(NumGRFs == 0); // we do not expect local_id_[x/y/z] calls
       NumGRFs = 1;
     } else {
       // One GRF for per thread input size for CM

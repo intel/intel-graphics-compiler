@@ -310,8 +310,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
       make_filter_range(Kernel.args(), [&KM](const Argument &Arg) {
         uint32_t ArgKind = KM.getArgKind(Arg.getArgNo());
         genx::KernelArgInfo KAI(ArgKind);
-        return !(KAI.isLocalIDX() || KAI.isLocalIDY() || KAI.isLocalIDZ() ||
-                 KAI.isGroupOrLocalSize() || KAI.isLocalIDs());
+        return !KAI.isLocalIDs();
       });
   KernelArgBuilder ArgBuilder{KM, Kernel.getParent()->getDataLayout(), ST, BC};
   transform(NonPayloadArgs, std::back_inserter(ArgInfos),

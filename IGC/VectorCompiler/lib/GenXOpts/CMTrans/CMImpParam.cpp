@@ -241,15 +241,6 @@ private:
         return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_BTI;
       case GenXIntrinsic::genx_get_scoreboard_depcnt:
         return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_DEPCNT;
-      case GenXIntrinsic::genx_local_id_x:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_LOCAL_ID_X;
-      case GenXIntrinsic::genx_local_id_y:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_LOCAL_ID_Y;
-      case GenXIntrinsic::genx_local_id_z:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_LOCAL_ID_Z;
-      case GenXIntrinsic::genx_group_or_local_size:
-        return KernelMetadata::AK_NORMAL |
-               KernelMetadata::IMP_OCL_GROUP_OR_LOCAL_SIZE;
     }
     return KernelMetadata::AK_NORMAL;
   }
@@ -553,10 +544,6 @@ bool CMImpParam::AnalyzeImplicitUse(Module &M) {
               case GenXIntrinsic::genx_get_scoreboard_deltas:
               case GenXIntrinsic::genx_get_scoreboard_bti:
               case GenXIntrinsic::genx_get_scoreboard_depcnt:
-              case GenXIntrinsic::genx_local_id_x:
-              case GenXIntrinsic::genx_local_id_y:
-              case GenXIntrinsic::genx_local_id_z:
-              case GenXIntrinsic::genx_group_or_local_size:
               case GenXIntrinsic::genx_print_buffer:
                 LLVM_DEBUG(dbgs() << "AnalyzeImplicitUse found "
                              << GenXIntrinsic::getGenXName((GenXIntrinsic::ID)IID, None));

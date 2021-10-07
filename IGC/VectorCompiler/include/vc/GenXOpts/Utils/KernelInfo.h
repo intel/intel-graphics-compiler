@@ -207,9 +207,6 @@ public:
   // Bits 7..3 represent the value needed for the runtime to determine what
   //           the implicit argument should be
   //
-  // IMP_OCL_LOCAL_ID{X, Y, Z} and IMP_OCL_GLOBAL_OR_LOCAL_SIZE apply to OCL
-  // runtime only.
-  //
   enum ImpValue : uint32_t {
     IMP_NONE = 0x0,
     IMP_LOCAL_SIZE = 0x1 << 3,
@@ -218,10 +215,6 @@ public:
     IMP_SB_DELTAS = 0x4 << 3,
     IMP_SB_BTI = 0x5 << 3,
     IMP_SB_DEPCNT = 0x6 << 3,
-    IMP_OCL_LOCAL_ID_X = 0x7 << 3,
-    IMP_OCL_LOCAL_ID_Y = 0x8 << 3,
-    IMP_OCL_LOCAL_ID_Z = 0x9 << 3,
-    IMP_OCL_GROUP_OR_LOCAL_SIZE = 0xA << 3,
     IMP_OCL_PRINTF_BUFFER = 0xB << 3,
     IMP_OCL_PRIVATE_BASE = 0xC << 3,
     IMP_OCL_LINEARIZATION = 0xD << 3,
@@ -263,22 +256,6 @@ struct KernelArgInfo {
   explicit KernelArgInfo(uint32_t Kind) : Kind(Kind) {}
   bool isNormalCategory() const {
     return (Kind & 0x7) == genx::KernelMetadata::AK_NORMAL;
-  }
-  bool isLocalIDX() const {
-    uint32_t Val = Kind & 0xFFF8;
-    return Val == genx::KernelMetadata::IMP_OCL_LOCAL_ID_X;
-  }
-  bool isLocalIDY() const {
-    uint32_t Val = Kind & 0xFFF8;
-    return Val == genx::KernelMetadata::IMP_OCL_LOCAL_ID_Y;
-  }
-  bool isLocalIDZ() const {
-    uint32_t Val = Kind & 0xFFF8;
-    return Val == genx::KernelMetadata::IMP_OCL_LOCAL_ID_Z;
-  }
-  bool isGroupOrLocalSize() const {
-    uint32_t Val = Kind & 0xFFF8;
-    return Val == genx::KernelMetadata::IMP_OCL_GROUP_OR_LOCAL_SIZE;
   }
   bool isLocalIDs() const {
     uint32_t Val = Kind & 0xFFF8;
