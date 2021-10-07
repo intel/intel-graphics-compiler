@@ -175,10 +175,8 @@ vector<uint32_t, width> count_population(vector<int64_t, width> src) {
   return count_population(static_cast<vector<uint64_t, width>>(src));
 }
 
-// FIXME: add scalar overload functionallity
-template <typename T> inline uint32_t count_population(T src) {
-  vector<T, 1> __src_vec = src;
-  return detail::cbit(__src_vec.cl_vector())[0];
+template <typename T> uint32_t count_population(T src) {
+  return detail::cbit(src);
 }
 
 inline uint32_t count_population(uint64_t src) {

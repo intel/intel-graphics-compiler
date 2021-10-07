@@ -23,7 +23,9 @@ void scatter(vector<uintptr_t, width> address, vector<T, src_width> src) {
                 "src width must be a multiple of address width");
   constexpr int num_blocks = src_width / width;
   static_assert(num_blocks == 1, "only one block is yet supported");
-  detail::svm_scatter<num_blocks>(address.cl_vector(), src.cl_vector());
+  detail::svm_scatter<num_blocks>(
+      static_cast<vector<uint64_t, width>>(address).cl_vector(),
+      src.cl_vector());
 }
 
 enum class operation {
@@ -50,7 +52,9 @@ template <enum operation op, typename T, int width>
 vector<T, width> atomic(vector<uintptr_t, width> address,
                         vector<T, width> src) {
   static_assert(op == operation::add, "only add is yet supported");
-  return detail::svm_atomic_add(address.cl_vector(), src.cl_vector());
+  return detail::svm_atomic_add(
+      static_cast<vector<uint64_t, width>>(address).cl_vector(),
+      src.cl_vector());
 }
 
 } // namespace svm

@@ -71,17 +71,6 @@ constexpr const char BuiltinPrefix[] = "__cm_cl_";
 #include "TranslationInfo.inc"
 #undef CMCL_AUTOGEN_BUILTIN_DESCS
 
-static bool isOutputOperand(OperandKind::Enum OpKind) {
-  switch (OpKind) {
-  case OperandKind::VectorInOut:
-  case OperandKind::VectorOut:
-  case OperandKind::ScalarOut:
-    return true;
-  default:
-    return false;
-  }
-}
-
 template <BuiltinID::Enum BiID>
 static void handleBuiltinCall(CallInst &BiCall);
 
@@ -131,7 +120,7 @@ Function *getGenXDeclarationForIdFromArgs(Type &RetTy, Range &&Args,
 }
 
 static bool isCMCLBuiltin(const Function &F) {
-  return F.getName().startswith(BuiltinPrefix);
+  return F.getName().contains(BuiltinPrefix);
 }
 
 static BuiltinSeq collectBuiltins(Module &M) {
@@ -161,60 +150,12 @@ static void cleanUpBuiltins(iterator_range<BuiltinSeq::iterator> Builtins) {
 }
 
 static BuiltinID::Enum decodeBuiltin(StringRef BiName) {
-  auto BiIt =
-      std::find(std::begin(BuiltinNames), std::end(BuiltinNames), BiName);
+  auto BiIt = std::find_if(std::begin(BuiltinNames), std::end(BuiltinNames),
+                           [BiName](const char *NameFromTable) {
+                             return BiName.contains(NameFromTable);
+                           });
   assert(BiIt != std::end(BuiltinNames) && "unknown CM-CL builtin");
   return static_cast<BuiltinID::Enum>(BiIt - std::begin(BuiltinNames));
-}
-
-static bool isPointerToVector(Type &Ty) {
-  if (!Ty.isPointerTy())
-    return false;
-  auto *PointeeTy = Ty.getPointerElementType();
-  return PointeeTy->isVectorTy();
-}
-
-// Look for original vector pointer through series of bitcasts.
-// For example searchForVectorPointer will return %ptr with %ptr.void.gen
-// argument:
-//    %ptr = alloca <8 x i32>, align 32
-//    %ptr.void = bitcast <8 x i32>* %ptr to i8*
-//    %ptr.void.gen = addrspacecast i8* %ptr.void to i8 addrspace(4)*
-static Value &searchForVectorPointer(Value &V) {
-  assert(V.getType()->isPointerTy() &&
-         "wrong argument: the original value must be a pointer");
-  Value *CurV;
-  for (CurV = &V; !isPointerToVector(*CurV->getType());
-       CurV = cast<CastInst>(CurV)->getOperand(0))
-    ;
-  assert(isPointerToVector(*CurV->getType()) &&
-         "must've found a pointer to vector");
-  return *CurV;
-}
-
-// Vector operand is passed through void* so we need to look for the real
-// pointer to vector first and then load the vector.
-static Value &readVectorFromBuiltinOp(Value &BiOp, IRBuilder<> &IRB) {
-  auto &Ptr = searchForVectorPointer(BiOp);
-  Type *Ty = Ptr.getType()->getPointerElementType();
-  return *IRB.CreateLoad(Ty, &Ptr, Ptr.getName() + ".ld.arg");
-}
-
-// Output vector operands is also passed as void*.
-static void writeVectorFromBuiltinOp(Value &ToWrite, Value &BiOp,
-                                     OperandKind::Enum OpKind,
-                                     IRBuilder<> &IRB) {
-  switch (OpKind) {
-  case OperandKind::VectorOut:
-  case OperandKind::VectorInOut:
-    IRB.CreateStore(&ToWrite, &searchForVectorPointer(BiOp));
-    return;
-  case OperandKind::ScalarOut:
-    IRB.CreateStore(&ToWrite, &BiOp);
-    return;
-  default:
-    llvm_unreachable("Only output kinds are expected");
-  }
 }
 
 // Getting vc-intrinsic (or llvm instruction/intrinsic) operand based on cm-cl
@@ -224,25 +165,12 @@ Value &readValueFromBuiltinOp(CallInst &BiCall, int OpIdx, IRBuilder<> &IRB) {
   Value &BiOp = *BiCall.getArgOperand(OpIdx);
   assert(OpIdx < BuiltinOperandSize[BiID] && "operand index is illegal");
   switch (BuiltinOperandKind[BiID][OpIdx]) {
-  case OperandKind::VectorOut:
-  case OperandKind::ScalarOut:
+  case OperandKind::Output:
     llvm_unreachable("cannot read value from an output operand");
-  case OperandKind::VectorIn:
-  case OperandKind::VectorInOut:
-    return readVectorFromBuiltinOp(BiOp, IRB);
-  case OperandKind::ScalarConst:
-    assert((BiOp.getType()->isIntegerTy() ||
-            BiOp.getType()->isFloatingPointTy()) &&
-           "scalar operand is expected");
+  case OperandKind::Constant:
     assert(isa<Constant>(BiOp) && "constant operand is expected");
     return BiOp;
-  case OperandKind::ScalarIn:
-    assert((BiOp.getType()->isIntegerTy() ||
-            BiOp.getType()->isFloatingPointTy()) &&
-           "scalar operand is expected");
-    return BiOp;
-  case OperandKind::PointerIn:
-    assert(BiOp.getType()->isPointerTy() && "pointer type is expected");
+  case OperandKind::Input:
     return BiOp;
   default:
     llvm_unreachable("Unexpected operand kind");
@@ -257,17 +185,11 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
   assert(OpIdx < BuiltinOperandSize[BiID] && "operand index is illegal");
   Value &BiOp = *BiCall.getArgOperand(OpIdx);
   switch (BuiltinOperandKind[BiID][OpIdx]) {
-  case OperandKind::VectorOut:
-  case OperandKind::VectorIn:
-  case OperandKind::VectorInOut:
-    return *searchForVectorPointer(BiOp).getType()->getPointerElementType();
-  // TOTHINK: How to handle overloaded scalars?
-  case OperandKind::ScalarConst:
-  case OperandKind::ScalarIn:
-  case OperandKind::PointerIn:
-    return *BiOp.getType();
-  case OperandKind::ScalarOut:
+  case OperandKind::Output:
     return *BiOp.getType()->getPointerElementType();
+  case OperandKind::Input:
+  case OperandKind::Constant:
+    return *BiOp.getType();
   default:
     llvm_unreachable("Unexpected operand kind");
   }
@@ -335,18 +257,19 @@ Value &createMainInst(const std::vector<Value *> &Operands, Type &RetTy,
 template <>
 Value &createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands,
                                          Type &, IRBuilder<> &IRB) {
-  // LLVM select instruction operand indices.
-  enum LLVMSelectOperand { Condition, TrueValue, FalseValue };
+  static_assert(SelectOperand::Size == 3,
+                "builtin operands should be trasformed into LLVM select "
+                "instruction operands without changes");
   // trunc <iW x N> to <i1 x N> for mask
-  auto &WrongTypeCond = *Operands[LLVMSelectOperand::Condition];
+  auto &WrongTypeCond = *Operands[SelectOperand::Condition];
   auto Width =
       cast<IGCLLVM::FixedVectorType>(WrongTypeCond.getType())->getNumElements();
   auto *CondTy = IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(), Width);
   auto *RightTypeCond = IRB.CreateTrunc(&WrongTypeCond, CondTy,
                                         WrongTypeCond.getName() + ".trunc");
   auto *SelectResult =
-      IRB.CreateSelect(RightTypeCond, Operands[LLVMSelectOperand::TrueValue],
-                       Operands[LLVMSelectOperand::FalseValue], "cmcl.sel");
+      IRB.CreateSelect(RightTypeCond, Operands[SelectOperand::TrueValue],
+                       Operands[SelectOperand::FalseValue], "cmcl.sel");
   return *SelectResult;
 }
 
@@ -383,12 +306,10 @@ void writeBuiltinResults(Value &CombinedResult, CallInst &BiCall,
   }
 
   // Handle output operands.
-  for (int BiOpIdx = 0; BiOpIdx != BuiltinOperandSize[BiID]; ++BiOpIdx) {
-    auto OpKind = BuiltinOperandKind[BiID][BiOpIdx];
-    if (isOutputOperand(OpKind))
-      writeVectorFromBuiltinOp(Results[ResultIdx++],
-                               *BiCall.getArgOperand(BiOpIdx), OpKind, IRB);
-  }
+  for (int BiOpIdx = 0; BiOpIdx != BuiltinOperandSize[BiID]; ++BiOpIdx)
+    if (BuiltinOperandKind[BiID][BiOpIdx] == OperandKind::Output)
+      IRB.CreateStore(&Results[ResultIdx++].get(),
+                      BiCall.getArgOperand(BiOpIdx));
 }
 
 template <BuiltinID::Enum BiID>

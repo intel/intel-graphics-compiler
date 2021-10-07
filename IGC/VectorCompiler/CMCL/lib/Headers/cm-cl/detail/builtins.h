@@ -14,48 +14,80 @@ SPDX-License-Identifier: MIT
 #include <opencl_def.h>
 #include <opencl_utility.h>
 
-//=========================== builtin declarations ===========================//
-
-extern "C" void __cm_cl_select(void *res, void *cond, void *true_val,
-                               void *false_val);
-extern "C" void __cm_cl_rdregion_int(void *res, void *src, int vstride,
-                                     int width, int stride,
-                                     cm::detail::vector_offset_type offset);
-extern "C" void __cm_cl_rdregion_float(void *res, void *src, int vstride,
-                                       int width, int stride,
-                                       cm::detail::vector_offset_type offset);
-extern "C" void __cm_cl_wrregion_int(void *res, void *src, int vstride,
-                                     int width, int stride,
-                                     cm::detail::vector_offset_type offset);
-extern "C" void __cm_cl_wrregion_float(void *res, void *src, int vstride,
-                                       int width, int stride,
-                                       cm::detail::vector_offset_type offset);
-// FIXME: for legacy issues 64-bit pointer is always returned.
-extern "C" uint64_t __cm_cl_printf_buffer();
-extern "C" int __cm_cl_printf_format_index(__constant char *str);
-extern "C" int __cm_cl_printf_format_index_legacy(__private char *str);
-extern "C" void __cm_cl_svm_scatter(int num_blocks, void *address, void *src);
-extern "C" void __cm_cl_svm_atomic_add(void *dst, void *address, void *src);
-extern "C" uint32_t __cm_cl_lzd_scalar(uint32_t src);
-extern "C" void __cm_cl_lzd_vector(void *dst, void *src);
-extern "C" uint32_t __cm_cl_addc_scalar(uint32_t *sum, uint32_t src0,
-                                        uint32_t src1);
-extern "C" void __cm_cl_addc_vector(void *carry, void *sum, void *src0,
-                                    void *src1);
-// FIXME: add scalar overloads for cbit
-extern "C" void __cm_cl_cbit_vector(void *dst, void *src);
-extern "C" uint32_t __cm_cl_bfrev_scalar(uint32_t src);
-extern "C" void __cm_cl_bfrev_vector(void *dst, void *src);
-
-extern "C" cm::detail::vector_impl<uint32_t, 3> __cm_cl_local_id();
-extern "C" cm::detail::vector_impl<uint32_t, 3> __cm_cl_local_size();
-extern "C" cm::detail::vector_impl<uint32_t, 3> __cm_cl_group_count();
-extern "C" uint32_t __cm_cl_group_id_x();
-extern "C" uint32_t __cm_cl_group_id_y();
-extern "C" uint32_t __cm_cl_group_id_z();
-
 namespace cm {
 namespace detail {
+
+//=========================== builtin declarations ===========================//
+
+template <typename T, int width>
+vector_impl<T, width> __cm_cl_select(vector_impl<char, width> cond,
+                                     vector_impl<T, width> true_val,
+                                     vector_impl<T, width> false_val);
+
+template <int dst_width, typename T, int src_width>
+vector_impl<T, dst_width>
+__cm_cl_rdregion_int(vector_impl<T, src_width> src, int vstride, int width,
+                     int stride, vector_offset_type offset);
+
+template <int dst_width, typename T, int src_width>
+vector_impl<T, dst_width>
+__cm_cl_rdregion_float(vector_impl<T, src_width> src, int vstride, int width,
+                       int stride, vector_offset_type offset);
+
+template <int dst_width, typename T, int src_width>
+vector_impl<T, dst_width>
+__cm_cl_wrregion_int(vector_impl<T, dst_width> dst,
+                     vector_impl<T, src_width> src, int vstride, int width,
+                     int stride, vector_offset_type offset);
+
+template <int dst_width, typename T, int src_width>
+vector_impl<T, dst_width>
+__cm_cl_wrregion_float(vector_impl<T, dst_width> dst,
+                       vector_impl<T, src_width> src, int vstride, int width,
+                       int stride, vector_offset_type offset);
+// FIXME: For legacy issues 64-bit pointer is always returned.
+uint64_t __cm_cl_printf_buffer();
+
+int __cm_cl_printf_format_index(__constant const char *str);
+// FIXME: Need this overload as a workaround for some frontends that didn't
+//        switch to using addrspaces.
+int __cm_cl_printf_format_index(__private const char *str);
+
+// SVM memory operations have only 64 bit addressing. One can extend the address
+// or use statefull operations for 32 bit addressing.
+template <typename T, int width>
+void __cm_cl_svm_scatter(int num_blocks, vector_impl<uint64_t, width> address,
+                         vector_impl<T, width> src);
+
+template <typename T, int width>
+vector_impl<T, width>
+__cm_cl_svm_atomic_add(vector_impl<uint64_t, width> address,
+                       vector_impl<T, width> src);
+
+uint32_t __cm_cl_lzd(uint32_t src);
+template <int width>
+vector_impl<uint32_t, width> __cm_cl_lzd(vector_impl<uint32_t, width> src);
+
+uint32_t __cm_cl_addc(uint32_t *sum, uint32_t src0, uint32_t src1);
+template <int width>
+vector_impl<uint32_t, width> __cm_cl_addc(vector_impl<uint32_t, width> *sum,
+                                          vector_impl<uint32_t, width> src0,
+                                          vector_impl<uint32_t, width> src1);
+
+template <typename T> uint32_t __cm_cl_cbit(T src);
+template <typename T, int width>
+vector_impl<uint32_t, width> __cm_cl_cbit(vector_impl<T, width> src);
+
+uint32_t __cm_cl_bfrev(uint32_t src);
+template <int width>
+vector_impl<uint32_t, width> __cm_cl_bfrev(vector_impl<uint32_t, width> src);
+
+vector_impl<uint32_t, 3> __cm_cl_local_id();
+vector_impl<uint32_t, 3> __cm_cl_local_size();
+vector_impl<uint32_t, 3> __cm_cl_group_count();
+uint32_t __cm_cl_group_id_x();
+uint32_t __cm_cl_group_id_y();
+uint32_t __cm_cl_group_id_z();
 
 //========================= soft implementation part =========================//
 //
@@ -103,9 +135,7 @@ vector_impl<T, width> select(vector_impl<char, width> cond,
 #ifdef CM_CL_SOFT_BUILTINS
   return select_impl(cond, true_val, false_val);
 #else  // CM_CL_SOFT_BUILTINS
-  vector_impl<T, width> res;
-  __cm_cl_select(&res, &cond, &true_val, &false_val);
-  return res;
+  return __cm_cl_select(cond, true_val, false_val);
 #endif // CM_CL_SOFT_BUILTINS
 }
 
@@ -119,14 +149,12 @@ vector_impl<T, vwidth * width> read_region(vector_impl<T, src_width> src,
   if constexpr (width == 1 && vwidth == 1)
     return src[offset];
   else {
-    vector_impl<T, vwidth * width> res;
     if constexpr (cl::is_floating_point<T>::value)
-      __cm_cl_rdregion_float(&res, &src, vstride, width, stride,
-                             offset * sizeof(T));
+      return __cm_cl_rdregion_float<vwidth * width>(src, vstride, width, stride,
+                                                    offset * sizeof(T));
     else
-      __cm_cl_rdregion_int(&res, &src, vstride, width, stride,
-                           offset * sizeof(T));
-    return res;
+      return __cm_cl_rdregion_int<vwidth * width>(src, vstride, width, stride,
+                                                  offset * sizeof(T));
   }
 }
 
@@ -142,11 +170,11 @@ void write_region(vector_impl<T, dst_width> &dst, vector_impl<T, src_width> src,
     dst[offset] = src[0];
   else {
     if constexpr (cl::is_floating_point<T>::value)
-      __cm_cl_wrregion_float(&dst, &src, vstride, width, stride,
-                             offset * sizeof(T));
+      dst = __cm_cl_wrregion_float(dst, src, vstride, width, stride,
+                                   offset * sizeof(T));
     else
-      __cm_cl_wrregion_int(&dst, &src, vstride, width, stride,
-                           offset * sizeof(T));
+      dst = __cm_cl_wrregion_int(dst, src, vstride, width, stride,
+                                 offset * sizeof(T));
   }
 }
 
@@ -156,54 +184,49 @@ inline __global void *printf_buffer() {
   return reinterpret_cast<__global void *>(ptr);
 }
 
-inline int printf_format_index(__constant char *str) {
+inline int printf_format_index(__constant const char *str) {
   return __cm_cl_printf_format_index(str);
 }
 
-inline int printf_format_index(__private char *str) {
-  return __cm_cl_printf_format_index_legacy(str);
+inline int printf_format_index(__private const char *str) {
+  return __cm_cl_printf_format_index(str);
 }
 
 template <int num_blocks, typename T, int width>
-void svm_scatter(vector_impl<uintptr_t, width> address,
+void svm_scatter(vector_impl<uint64_t, width> address,
                  vector_impl<T, num_blocks * width> src) {
   static_assert(sizeof(T) == 1 || sizeof(T) == 4 || sizeof(T) == 8,
                 "invalid type");
   constexpr auto lowered_num_blocks = encode_num_blocks(num_blocks);
   static_assert(lowered_num_blocks >= 0, "invalid number of blocks");
-  __cm_cl_svm_scatter(lowered_num_blocks, &address, &src);
+  __cm_cl_svm_scatter(lowered_num_blocks, address, src);
 }
 
 template <typename T, int width>
-vector_impl<T, width> svm_atomic_add(vector_impl<uintptr_t, width> address,
+vector_impl<T, width> svm_atomic_add(vector_impl<uint64_t, width> address,
                                      vector_impl<T, width> src) {
-  vector_impl<T, width> res;
-  __cm_cl_svm_atomic_add(&res, &address, &src);
-  return res;
+  return __cm_cl_svm_atomic_add(address, src);
 }
 
-inline uint32_t lzd(uint32_t src) { return __cm_cl_lzd_scalar(src); }
+inline uint32_t lzd(uint32_t src) { return __cm_cl_lzd(src); }
 
 template <int width>
 vector_impl<uint32_t, width> lzd(vector_impl<uint32_t, width> src) {
-  vector_impl<uint32_t, width> dst;
-  __cm_cl_lzd_vector(&dst, &src);
-  return dst;
+  return __cm_cl_lzd(src);
 }
 
 // Sum is the first output, carry - the second.
 inline cl::pair<uint32_t, char> addc(uint32_t src0, uint32_t src1) {
   uint32_t res;
-  uint32_t carry = __cm_cl_addc_scalar(&res, src0, src1);
+  uint32_t carry = __cm_cl_addc(&res, src0, src1);
   return {res, carry};
 }
 
 template <int width>
 cl::pair<vector_impl<uint32_t, width>, vector_impl<char, width>>
 addc(vector_impl<uint32_t, width> src0, vector_impl<uint32_t, width> src1) {
-  vector_impl<uint32_t, width> carry;
   vector_impl<uint32_t, width> res;
-  __cm_cl_addc_vector(&carry, &res, &src0, &src1);
+  vector_impl<uint32_t, width> carry = __cm_cl_addc(&res, src0, src1);
   return {res, __builtin_convertvector(carry, vector_impl<char, width>)};
 }
 
@@ -228,28 +251,21 @@ vector_impl<uint32_t, width> cbit(vector_impl<T, width> src) {
   static_assert(cl::is_integral<T>::value && !cl::is_bool<T>::value &&
                     sizeof(T) <= sizeof(uint32_t),
                 "illegal type provided in cbit");
-  vector_impl<uint32_t, width> dst;
-  __cm_cl_cbit_vector(&dst, &src);
-  return dst;
+  return __cm_cl_cbit(src);
 }
 
 template <typename T> uint32_t cbit(T src) {
   static_assert(cl::is_integral<T>::value && !cl::is_bool<T>::value &&
                     sizeof(T) <= sizeof(uint32_t),
                 "illegal type provided in cbit");
-  vector_impl<uint32_t, 1> dst_vec;
-  vector_impl<T, 1> src_vec = src;
-  __cm_cl_cbit_vector(&dst_vec, &src_vec);
-  return dst_vec[0];
+  return __cm_cl_cbit(src);
 }
 
-inline uint32_t bfrev(uint32_t src) { return __cm_cl_bfrev_scalar(src); }
+inline uint32_t bfrev(uint32_t src) { return __cm_cl_bfrev(src); }
 
 template <int width>
 vector_impl<uint32_t, width> bfrev(vector_impl<uint32_t, width> src) {
-  vector_impl<uint32_t, width> dst;
-  __cm_cl_bfrev_vector(&dst, &src);
-  return dst;
+  return __cm_cl_bfrev(src);
 }
 
 } // namespace detail

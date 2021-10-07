@@ -13,28 +13,19 @@
     "intrinsics. More details can be found in GenerateTranslationCode.py"
   ],
   "HelperStructures": {
-    "OperandKind": [
-      "VectorIn",
-      "VectorOut",
-      "VectorInOut",
-      "ScalarIn",
-      "ScalarConst",
-      "ScalarOut",
-      "PointerIn"
-    ]
+    "OperandKind": ["Constant", "Input", "Output"]
   },
   "BuiltinDescriptions": {
     "Select": {
       "Name": "select",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorOut"},
-        {"Name": "Condition", "Kind": "VectorIn"},
-        {"Name": "TrueValue", "Kind": "VectorIn"},
-        {"Name": "FalseValue", "Kind": "VectorIn"}
+        {"Name": "Condition", "Kind": "Input"},
+        {"Name": "TrueValue", "Kind": "Input"},
+        {"Name": "FalseValue", "Kind": "Input"}
       ],
       "TranslateInto": {
         "Instruction": "SelectInst",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Condition"]},
           {"GetBuiltinOperand": ["TrueValue"]},
@@ -45,16 +36,15 @@
     "RdRegionInt": {
       "Name": "rdregion_int",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorOut"},
-        {"Name": "Source", "Kind": "VectorIn"},
-        {"Name": "VStride", "Kind": "ScalarConst"},
-        {"Name": "Width", "Kind": "ScalarConst"},
-        {"Name": "Stride", "Kind": "ScalarConst"},
-        {"Name": "Offset", "Kind": "ScalarIn"}
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "VStride", "Kind": "Constant"},
+        {"Name": "Width", "Kind": "Constant"},
+        {"Name": "Stride", "Kind": "Constant"},
+        {"Name": "Offset", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_rdregioni",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Source"]},
           {"GetBuiltinOperand": ["VStride"]},
@@ -68,16 +58,15 @@
     "RdRegionFloat": {
       "Name": "rdregion_float",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorOut"},
-        {"Name": "Source", "Kind": "VectorIn"},
-        {"Name": "VStride", "Kind": "ScalarConst"},
-        {"Name": "Width", "Kind": "ScalarConst"},
-        {"Name": "Stride", "Kind": "ScalarConst"},
-        {"Name": "Offset", "Kind": "ScalarIn"}
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "VStride", "Kind": "Constant"},
+        {"Name": "Width", "Kind": "Constant"},
+        {"Name": "Stride", "Kind": "Constant"},
+        {"Name": "Offset", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_rdregionf",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Source"]},
           {"GetBuiltinOperand": ["VStride"]},
@@ -91,16 +80,16 @@
     "WrRegionInt": {
       "Name": "wrregion_int",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorInOut"},
-        {"Name": "Source", "Kind": "VectorIn"},
-        {"Name": "VStride", "Kind": "ScalarConst"},
-        {"Name": "Width", "Kind": "ScalarConst"},
-        {"Name": "Stride", "Kind": "ScalarConst"},
-        {"Name": "Offset", "Kind": "ScalarIn"}
+        {"Name": "Destination", "Kind": "Input"},
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "VStride", "Kind": "Constant"},
+        {"Name": "Width", "Kind": "Constant"},
+        {"Name": "Stride", "Kind": "Constant"},
+        {"Name": "Offset", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_wrregioni",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Destination"]},
           {"GetBuiltinOperand": ["Source"]},
@@ -116,16 +105,16 @@
     "WrRegionFloat": {
       "Name": "wrregion_float",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorInOut"},
-        {"Name": "Source", "Kind": "VectorIn"},
-        {"Name": "VStride", "Kind": "ScalarConst"},
-        {"Name": "Width", "Kind": "ScalarConst"},
-        {"Name": "Stride", "Kind": "ScalarConst"},
-        {"Name": "Offset", "Kind": "ScalarIn"}
+        {"Name": "Destination", "Kind": "Input"},
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "VStride", "Kind": "Constant"},
+        {"Name": "Width", "Kind": "Constant"},
+        {"Name": "Stride", "Kind": "Constant"},
+        {"Name": "Offset", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_wrregionf",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Destination"]},
           {"GetBuiltinOperand": ["Source"]},
@@ -150,20 +139,7 @@
     "PrintfFormatIndex": {
       "Name": "printf_format_index",
       "Operands": [
-        {"Name": "Source", "Kind": "PointerIn"}
-      ],
-      "TranslateInto": {
-        "VC-Intrinsic": "genx_print_format_index",
-        "ReturnType": {"GetBuiltinReturnType": []},
-        "Operands": [
-          {"GetBuiltinOperand": ["Source"]}
-        ]
-      }
-    },
-    "PrintfFormatIndexLegacy": {
-      "Name": "printf_format_index_legacy",
-      "Operands": [
-        {"Name": "Source", "Kind": "PointerIn"}
+        {"Name": "Source", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_print_format_index",
@@ -176,9 +152,9 @@
     "SVMScatter": {
       "Name": "svm_scatter",
       "Operands": [
-        {"Name": "NumBlocks", "Kind": "ScalarConst"},
-        {"Name": "Address", "Kind": "VectorIn"},
-        {"Name": "Source", "Kind": "VectorIn"}
+        {"Name": "NumBlocks", "Kind": "Constant"},
+        {"Name": "Address", "Kind": "Input"},
+        {"Name": "Source", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_svm_scatter",
@@ -197,13 +173,12 @@
     "SVMAtomicAdd": {
       "Name": "svm_atomic_add",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorOut"},
-        {"Name": "Address", "Kind": "VectorIn"},
-        {"Name": "Source", "Kind": "VectorIn"}
+        {"Name": "Address", "Kind": "Input"},
+        {"Name": "Source", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_svm_atomic_add",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"Code": [
             "*IRB.CreateVectorSplat(getVectorWidth({}), IRB.getTrue())",
@@ -218,10 +193,10 @@
         ]
       }
     },
-    "LZDScalar": {
-      "Name": "lzd_scalar",
+    "LZD": {
+      "Name": "lzd",
       "Operands": [
-        {"Name": "Source", "Kind": "ScalarIn"}
+        {"Name": "Source", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_lzd",
@@ -231,26 +206,12 @@
         ]
       }
     },
-    "LZDVector": {
-      "Name": "lzd_vector",
+    "AddCarry": {
+      "Name": "addc",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorOut"},
-        {"Name": "Source", "Kind": "VectorIn"}
-      ],
-      "TranslateInto": {
-        "VC-Intrinsic": "genx_lzd",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
-        "Operands": [
-          {"GetBuiltinOperand": ["Source"]}
-        ]
-      }
-    },
-    "AddCarryScalar": {
-      "Name": "addc_scalar",
-      "Operands": [
-        {"Name": "Sum", "Kind": "ScalarOut"},
-        {"Name": "FirstSrc", "Kind": "ScalarIn"},
-        {"Name": "SecondSrc", "Kind": "ScalarIn"}
+        {"Name": "Sum", "Kind": "Output"},
+        {"Name": "FirstSrc", "Kind": "Input"},
+        {"Name": "SecondSrc", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_addc",
@@ -258,29 +219,6 @@
           "Code": [
             "getStructureOf({}, {})",
             {"GetBuiltinReturnType": []},
-            {"GetBuiltinOperandType": ["Sum"]}
-          ]
-        },
-        "Operands": [
-          {"GetBuiltinOperand": ["FirstSrc"]},
-          {"GetBuiltinOperand": ["SecondSrc"]}
-        ]
-      }
-    },
-    "AddCarryVector": {
-      "Name": "addc_vector",
-      "Operands": [
-        {"Name": "Carry", "Kind": "VectorOut"},
-        {"Name": "Sum", "Kind": "VectorOut"},
-        {"Name": "FirstSrc", "Kind": "VectorIn"},
-        {"Name": "SecondSrc", "Kind": "VectorIn"}
-      ],
-      "TranslateInto": {
-        "VC-Intrinsic": "genx_addc",
-        "ReturnType": {
-          "Code": [
-            "getStructureOf({}, {})",
-            {"GetBuiltinOperandType": ["Carry"]},
             {"GetBuiltinOperandType": ["Sum"]}
           ]
         },
@@ -344,42 +282,27 @@
         "Operands": []
       }
     },
-    "CBITVector": {
-      "Name": "cbit_vector",
+    "CBit": {
+      "Name": "cbit",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorOut"},
-        {"Name": "Source", "Kind": "VectorIn"}
+        {"Name": "Source", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_cbit",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
-        "Operands": [
-          {"GetBuiltinOperand": ["Source"]}
-        ]
-      }
-    },
-    "BFRevScalar": {
-      "Name": "bfrev_scalar",
-      "Operands": [
-        {"Name": "Source", "Kind": "ScalarIn"}
-      ],
-      "TranslateInto": {
-        "VC-Intrinsic": "genx_bfrev",
         "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Source"]}
         ]
       }
     },
-    "BFRevVector": {
-      "Name": "bfrev_vector",
+    "BFRev": {
+      "Name": "bfrev",
       "Operands": [
-        {"Name": "Destination", "Kind": "VectorOut"},
-        {"Name": "Source", "Kind": "VectorIn"}
+        {"Name": "Source", "Kind": "Input"}
       ],
       "TranslateInto": {
         "VC-Intrinsic": "genx_bfrev",
-        "ReturnType": {"GetBuiltinOperandType": ["Destination"]},
+        "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Source"]}
         ]
