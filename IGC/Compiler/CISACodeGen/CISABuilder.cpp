@@ -4361,6 +4361,10 @@ namespace IGC
             {
                 SaveOption(vISA_numGeneralAcc, numAcc);
             }
+            if (IGC_IS_FLAG_ENABLED(RelaxAccSub))
+            {
+                SaveOption(vISA_relaxAccSubstitution, true);
+            }
         }
         else
         {
