@@ -290,6 +290,9 @@ static_assert(sizeof(iga_assemble_options_t) == 8*4,
 #define IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL   0x00000004u
 /* enable experimental native encoder */
 #define IGA_ENCODER_OPT_USE_NATIVE              0x00000008u
+/* forcely NoCompact to all instructions even if {Compacted} is set on the instruction
+   This option will overried IGA_ENCODER_OPT_AUTO_COMPACT */
+#define IGA_ENCODER_OPT_FORCE_NO_COMPACT        0x00000010u
 
 /*
  * options for the parsing phase

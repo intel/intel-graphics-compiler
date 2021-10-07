@@ -53,6 +53,9 @@ bool assemble(
     setOptBit(aopts.encoder_opts,
         IGA_ENCODER_OPT_USE_NATIVE,
         opts.useNativeEncoder);
+    setOptBit(aopts.encoder_opts,
+        IGA_ENCODER_OPT_FORCE_NO_COMPACT,
+        opts.forceNoCompact);
     setOptBit(aopts.syntax_opts,
         IGA_SYNTAX_OPT_LEGACY_SYNTAX,
         opts.legacyDirectives);

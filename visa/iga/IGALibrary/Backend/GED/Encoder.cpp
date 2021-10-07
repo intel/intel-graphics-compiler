@@ -160,8 +160,19 @@ void Encoder::encodeBlock(Block *blk)
         setEncodedPC(inst, currentPc());
 
         GED_RETURN_VALUE status = GED_RETURN_VALUE_SIZE;
+
+        // If -Xforce-no-compact is set, do not compact any insruction
+        // Otherwise, if {NoCompact} is set, do not compact the instruction
+        // Otherwise, if {Copmacted} is set on the instructionm, try to compact it and throw error on fail
+        // Otherwise, if no compaction setting on the instruction, try to compact the instruction if -Xauto-compact
+        // Otherwise, do not compact the instruction
         bool mustCompact = inst->hasInstOpt(InstOpt::COMPACTED);
         bool mustNotCompact = inst->hasInstOpt(InstOpt::NOCOMPACT);
+        if (m_opts.forceNoCompact) {
+            mustCompact = false;
+            mustNotCompact = true;
+        }
+
         int32_t iLen = 16;
         if (mustCompact || (!mustNotCompact && m_opts.autoCompact)) {
             // try compact first

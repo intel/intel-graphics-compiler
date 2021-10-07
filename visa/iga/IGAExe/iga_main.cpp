@@ -314,6 +314,14 @@ extern "C" int iga_main(int argc, const char **argv)
         opts::OptAttrs::ALLOW_UNSET,
         baseOpts.autoCompact);
     xGrp.defineFlag(
+        "force-no-compact",
+        nullptr,
+        "forcely uncompact any instruction",
+        "Forcely un-compact any instruction even if 'Compacted' is set in instruction option."
+        "This will override the effect by -Xautocompact",
+        opts::OptAttrs::ALLOW_UNSET,
+        baseOpts.forceNoCompact);
+    xGrp.defineFlag(
         "dcmp",
         nullptr,
         "debug compaction",

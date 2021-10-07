@@ -18,6 +18,7 @@ namespace iga
         bool explicitCompactMissIsWarning = false;
         bool ignoreNoCompactFormFound = false;
         bool autoDepSet = false;
+        bool forceNoCompact = false;
         // Specify the swsb encoding mode. If not specified, the encoding mode will
         // be derived from platform by SWSB::getEncodeMode
         SWSB_ENCODE_MODE swsbEncodeMode = SWSB_ENCODE_MODE::SWSBInvalidMode;
@@ -26,10 +27,12 @@ namespace iga
 
         EncoderOpts(
             bool _autoCompact = false,
-            bool _explicitCompactMissIsWarning = false
+            bool _explicitCompactMissIsWarning = false,
+            bool _force_no_compact = false
             )
         : autoCompact(_autoCompact),
-          explicitCompactMissIsWarning(_explicitCompactMissIsWarning)
+          explicitCompactMissIsWarning(_explicitCompactMissIsWarning),
+          forceNoCompact(_force_no_compact)
         { }
     };
 }

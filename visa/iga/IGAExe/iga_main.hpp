@@ -56,6 +56,7 @@ struct Opts {
     uint32_t sbidCount       = 16;                   // -Xsbid-count
     bool syntaxExts          = false;                // -Xsyntax-exts
     bool useNativeEncoder    = false;                // -Xnative
+    bool forceNoCompact      = false;                // -Xforce-no-compact
 
     bool printBits           = false;                // -Xprint-bits
     bool printDefs           = false;                // -Xprint-defs
