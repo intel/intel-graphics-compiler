@@ -480,7 +480,7 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   if (!F || F->isDeclaration() || AlreadyVisited.count(F))
     return 0;
 
-  vc::breakConstantExprs(F);
+  vc::breakConstantExprs(F, vc::LegalizationStage::NotLegalized);
 
   // Variables to be localized.
   LocalizationInfo &LI = Info->getLocalizationInfo(F);

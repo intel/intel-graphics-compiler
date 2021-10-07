@@ -341,7 +341,8 @@ static Value *FormEltsOffsetVectorForSVM(Value *BaseOffset, Value *Offsets,
 // pointers
 Value *GenXLoadStoreLowering::NormalizeFuncPtrVec(Value *V,
                                                   Instruction *InsPoint) const {
-  V = vc::breakConstantVector(cast<ConstantVector>(V), InsPoint, InsPoint);
+  V = vc::breakConstantVector(cast<ConstantVector>(V), InsPoint, InsPoint,
+                              vc::LegalizationStage::NotLegalized);
   auto *Inst = dyn_cast<InsertElementInst>(V);
   if (!Inst)
     return V;

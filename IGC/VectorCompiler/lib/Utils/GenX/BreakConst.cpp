@@ -29,32 +29,78 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
+#include "vc/GenXOpts/Utils/CMRegion.h"
+
 #include <cstddef>
 #include <iterator>
 
 using namespace llvm;
 using namespace vc;
 
+static Value *undefVector(Type *ScalarType, unsigned ElNum) {
+  IGC_ASSERT(!ScalarType->isVectorTy());
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(ScalarType, ElNum));
+}
+
+static Value *buildNonLegalizedConstantVector(ArrayRef<Value *> Vals,
+                                              Instruction *InsertPt,
+                                              const DebugLoc &DbgLoc) {
+  IGC_ASSERT(!Vals.empty());
+  Value *Result = undefVector(Vals.front()->getType(), Vals.size());
+  IRBuilder<> Builder(InsertPt);
+  Builder.SetCurrentDebugLocation(DbgLoc);
+  for (unsigned j = 0, N = Vals.size(); j < N; ++j)
+    Result = Builder.CreateInsertElement(Result, Vals[j], j);
+  return Result;
+}
+
+static Value *buildLegalizedConstantVector(ArrayRef<Value *> Vals,
+                                           Instruction *InsertPt,
+                                           const DebugLoc &DbgLoc) {
+  IGC_ASSERT(!Vals.empty());
+  Type *ScalarType = Vals.front()->getType();
+  IGC_ASSERT(ScalarType->isIntegerTy() || ScalarType->isFloatingPointTy());
+  Value *Result = undefVector(ScalarType, Vals.size());
+  IntegerType *I16Ty = Type::getInt16Ty(InsertPt->getContext());
+  unsigned ElBytes = ScalarType->getPrimitiveSizeInBits() / 8;
+  for (unsigned j = 0, N = Vals.size(); j < N; ++j) {
+    CMRegion R(Vals[j]);
+    R.Indirect = ConstantInt::get(I16Ty, ElBytes * j);
+    Result = R.createWrRegion(Result, Vals[j], ".vconst", InsertPt, DbgLoc);
+  }
+  return Result;
+}
+
 Value *vc::breakConstantVector(ConstantVector *CV, Instruction *CurInst,
-                               Instruction *InsertPt) {
+                               Instruction *InsertPt,
+                               vc::LegalizationStage LegalizationStage) {
   IGC_ASSERT(CurInst);
   IGC_ASSERT(InsertPt);
   if (!CV)
     return nullptr;
+
+  const auto &DbgLoc = CurInst->getDebugLoc();
   // Splat case.
-  if (auto S = dyn_cast_or_null<ConstantExpr>(CV->getSplatValue())) {
+  if (auto *S = dyn_cast_or_null<ConstantExpr>(CV->getSplatValue())) {
     // Turn element into an instruction
     auto Inst = S->getAsInstruction();
-    Inst->setDebugLoc(CurInst->getDebugLoc());
+    Inst->setDebugLoc(DbgLoc);
     Inst->insertBefore(InsertPt);
 
-    // Splat this value.
-    IRBuilder<> Builder(InsertPt);
-    Value *NewVal = Builder.CreateVectorSplat(CV->getNumOperands(), Inst);
+    Value *Result = nullptr;
+    // Splat the value.
+    if (LegalizationStage == vc::LegalizationStage::Legalized) {
+      Result = CMRegion::createRdVectorSplat(CV->getNumOperands(), Inst,
+                                             ".splat", InsertPt, DbgLoc);
+    } else {
+      IRBuilder<> Builder(InsertPt);
+      Builder.SetCurrentDebugLocation(DbgLoc);
+      Result = Builder.CreateVectorSplat(CV->getNumOperands(), Inst);
+    }
 
     // Update i-th operand with newly created splat.
-    CurInst->replaceUsesOfWith(CV, NewVal);
-    return NewVal;
+    CurInst->replaceUsesOfWith(CV, Result);
+    return Result;
   }
 
   SmallVector<Value *, 8> Vals;
@@ -63,7 +109,7 @@ Value *vc::breakConstantVector(ConstantVector *CV, Instruction *CurInst,
     Value *Elt = CV->getOperand(j);
     if (auto CE = dyn_cast<ConstantExpr>(Elt)) {
       auto Inst = CE->getAsInstruction();
-      Inst->setDebugLoc(CurInst->getDebugLoc());
+      Inst->setDebugLoc(DbgLoc);
       Inst->insertBefore(InsertPt);
       Vals.push_back(Inst);
       HasConstExpr = true;
@@ -71,18 +117,19 @@ Value *vc::breakConstantVector(ConstantVector *CV, Instruction *CurInst,
       Vals.push_back(Elt);
   }
 
-  if (HasConstExpr) {
-    Value *Val = UndefValue::get(CV->getType());
-    IRBuilder<> Builder(InsertPt);
-    for (unsigned j = 0, N = CV->getNumOperands(); j < N; ++j)
-      Val = Builder.CreateInsertElement(Val, Vals[j], j);
-    CurInst->replaceUsesOfWith(CV, Val);
-    return Val;
-  }
-  return nullptr;
+  if (!HasConstExpr)
+    return nullptr;
+
+  Value *Val = (LegalizationStage == vc::LegalizationStage::Legalized)
+                   ? buildLegalizedConstantVector(Vals, InsertPt, DbgLoc)
+                   : buildNonLegalizedConstantVector(Vals, InsertPt, DbgLoc);
+  CurInst->replaceUsesOfWith(CV, Val);
+
+  return Val;
 }
 
-bool vc::breakConstantExprs(Instruction *I) {
+bool vc::breakConstantExprs(Instruction *I,
+                            vc::LegalizationStage LegalizationStage) {
   if (!I)
     return false;
   bool Modified = false;
@@ -102,7 +149,8 @@ bool vc::breakConstantExprs(Instruction *I) {
         Worklist.push_back(NewInst);
         Modified = true;
       } else if (auto *CV = dyn_cast<ConstantVector>(Op)) {
-        if (auto *CVInst = breakConstantVector(CV, CurInst, InsertPt)) {
+        if (auto *CVInst =
+                breakConstantVector(CV, CurInst, InsertPt, LegalizationStage)) {
           Worklist.push_back(cast<Instruction>(CVInst));
           Modified = true;
         }
@@ -112,7 +160,8 @@ bool vc::breakConstantExprs(Instruction *I) {
   return Modified;
 }
 
-bool vc::breakConstantExprs(Function *F) {
+bool vc::breakConstantExprs(Function *F,
+                            vc::LegalizationStage LegalizationStage) {
   bool Modified = false;
   for (po_iterator<BasicBlock *> i = po_begin(&F->getEntryBlock()),
                                  e = po_end(&F->getEntryBlock());
@@ -122,7 +171,7 @@ bool vc::breakConstantExprs(Function *F) {
     // order, and we re-process anything inserted before the instruction
     // being processed.
     for (Instruction *CurInst = BB->getTerminator(); CurInst;) {
-      Modified |= breakConstantExprs(CurInst);
+      Modified |= breakConstantExprs(CurInst, LegalizationStage);
       CurInst = CurInst == &BB->front() ? nullptr : CurInst->getPrevNode();
     }
   }
