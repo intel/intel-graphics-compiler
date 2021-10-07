@@ -6167,7 +6167,7 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr)
             markBusyGRF(((G4_Greg*)pr)->getRegNum(),
                 PhyRegUsage::offsetAllocUnit(lr->getPhyRegOff(), dcl->getElemType()),
                 dcl->getWordSize(),
-                lr->getNumRegNeeded());
+                lr->getNumRegNeeded(), dcl->isPreDefinedVar());
         }
     }
     else if (pr->isFlag())

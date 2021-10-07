@@ -196,13 +196,14 @@ public:
         unsigned numRows);
 
     void markBusyGRF(unsigned regNum,
-                  unsigned regOff,
-                  unsigned nunits,
-        unsigned numRows)
+        unsigned regOff,
+        unsigned nunits,
+        unsigned numRows,
+        bool isPreDefinedVar)
     {
         MUST_BE_TRUE(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
 
-        MUST_BE_TRUE(regNum + numRows <= maxGRFCanBeUsed,
+        MUST_BE_TRUE((regNum + numRows <= maxGRFCanBeUsed) || isPreDefinedVar,
             ERROR_UNKNOWN);
 
         //
