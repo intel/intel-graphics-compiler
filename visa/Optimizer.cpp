@@ -6842,7 +6842,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
              || builder.getJitInfo()->numFlagSpillStore > 0
              || fg.getHasStackCalls()))
         {
-            // For now, do it for CM/VC. Will turn it on for all.
             doNoMaskWA_postRA();
         }
 
@@ -11786,6 +11785,33 @@ void Optimizer::doNoMaskWA_postRA()
     const uint32_t grfStart = fg.getKernel()->getStackCallStartReg();
     const uint32_t grfEnd = grfStart + fg.getKernel()->numReservedABIGRF(); // not include End
 
+    auto getFlagNumAndSubRegOff = [](G4_RegVar* freg, uint32_t freg_subregOff, G4_Type freg_ty,
+                                     uint32_t &flagNum, uint32_t &flagSubNum)
+    {
+        // For flag, G4_Areg has flag number. Its subreg off is from operand's subRegOff.
+        G4_Areg* flagReg = freg->getPhyReg()->getAreg();
+        flagNum = flagReg->getFlagNum();
+        flagSubNum = freg_subregOff;
+
+        // Here, mimic code from printRegVarOff() to get subreg off. Note that for flag,
+        // its phyRefOff() seems to be zero always, thus using operand's subregoff seems enough.
+        uint32_t ArfSubRegNum = freg->getPhyRegOff();
+        if (ArfSubRegNum > 0)
+        {
+            uint32_t declOpSize = freg->getDeclare()->getElemSize();
+            uint32_t thisOpSize = TypeSize(freg_ty);
+            //ArfSubRegNum is in unit of declOpSize
+            //transform ArfSubRegNum to unit of thisOpSize
+            if (thisOpSize != declOpSize)
+            {
+                ArfSubRegNum = (ArfSubRegNum * declOpSize) / thisOpSize;
+                MUST_BE_TRUE((ArfSubRegNum * declOpSize) % thisOpSize == 0,
+                    ERROR_DATA_RANGE("ARF sub-register number"));
+            }
+            flagSubNum = ArfSubRegNum + freg_subregOff;
+        }
+    };
+
     auto isStackCallReservedGRF = [&grfStart, &grfEnd](G4_DstRegRegion* DRR)
     {
         if (DRR == nullptr || DRR->isNullReg())
@@ -11986,15 +12012,36 @@ void Optimizer::doNoMaskWA_postRA()
                 G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcReg->getBase());
                 assert(baseVar->isPhyRegAssigned());
 
-                // For flag, G4_Areg has flag number and G4_RegVar has subRefOff.
-                // (SrcRegRegion's refOff/subRefOff is 0/0 always.)
-                G4_Areg* flagReg = baseVar->getPhyReg()->getAreg();
-                uint32_t subRegOff = baseVar->getPhyRegOff();
-                if (flagReg->getFlagNum() == wafregnum &&
-                    (Ty == Type_UD /* 32bit flag */ ||  subRegOff == wafsregnum /* 16bit flag */))
+                uint32_t fnum, fsuboff;
+                getFlagNumAndSubRegOff(baseVar, srcReg->getSubRegOff(), srcReg->getType(),
+                    fnum, fsuboff);
+                if (fnum == wafregnum &&
+                    (Ty == Type_UD /* 32bit flag */ ||  fsuboff == wafsregnum /* 16bit flag */))
                 {
-                    G4_SrcRegRegion* S = builder.createSrc(
-                        saveVar, 0, saveOff, builder.getRegionScalar(), Ty);
+                    // flag's type is either 4 bytes or 2 bytes
+                    G4_SrcRegRegion* S;
+                    if (Ty == Type_UD && srcReg->getTypeSize() == 2)
+                    {
+                        // Before:
+                        //   (W) mov (1)  r6.4<1>:uw  f0.1<0;1,0>:uw
+                        //
+                        // After:
+                        //   (W) mov(1)   r78.0<1>:ud  f0.0<0;1 0>:ud    // r78.0 is saveVar
+                        //   (W) mov(1)   f0.0<1>:ud  0:ud
+                        //       cmp(32)  (eq)f0.0   null<1>:uw  r0.0<0;1,0>:uw  r0.0<0;1,0>:uw
+                        //   (W&f0.0.any32h) mov(1)  r6.4<1>:uw  r78.1<0;1,0>:uw
+                        //   (W) mov(1)   f0.0<1>:ud  r78.0<0;1,0>:ud
+
+                        // saveOff is in unit Ty;  subRegOff is in unit srcReg->getType()
+                        uint32_t saveOffUW = saveOff * 2 + fsuboff;
+                        S = builder.createSrc(
+                            saveVar, 0, saveOffUW, builder.getRegionScalar(), srcReg->getType());
+                    }
+                    else
+                    {
+                        S = builder.createSrc(
+                            saveVar, 0, saveOff, builder.getRegionScalar(), Ty);
+                    }
                     I->setSrc(S, 0);
                 }
             }
