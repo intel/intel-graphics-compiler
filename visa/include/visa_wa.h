@@ -57,7 +57,8 @@ enum LINKER_TYPE {
     Linker_Subroutine = 1,
     Linker_Call2Jump = 2,
     Linker_Inline = 4,
-    Linker_StackFrameRemove = 8
+    Linker_RemoveStackFrame = 8,
+    Linker_RemoveArgRet = 16
 };
 
 #endif

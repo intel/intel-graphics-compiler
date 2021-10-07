@@ -902,8 +902,7 @@ private:
     // Perform LinkTimeOptimization for call related transformations
     void LinkTimeOptimization(
             std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
-            bool call2jump,
-            bool inlining);
+            uint32_t options);
 
     void emitFCPatchFile();
 

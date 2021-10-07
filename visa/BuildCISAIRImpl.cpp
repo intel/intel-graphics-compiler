@@ -555,14 +555,17 @@ void CISA_IR_Builder::RemoveOptimizingFunction(
 // Perform LTO including transforming stack calls to subroutine calls, subroutine calls to jumps, and inlining
 void CISA_IR_Builder::LinkTimeOptimization(
     std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
-    bool call2jump,
-    bool inlining)
+    uint32_t options)
 {
+    bool inlining = options & Linker_Inline;
+    bool call2jump = options & Linker_Call2Jump;
+    bool removeArgRet = options & Linker_RemoveArgRet;
     std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
     std::map<G4_INST*, std::list<G4_INST*>> rets;
     std::set<G4_Kernel*> visited;
     std::list<G4_INST*> dummyContainer;
     unsigned int raUID = 0;
+
     // append instructions from callee to caller
     for (auto& it : sgInvokeList)
     {
@@ -591,6 +594,90 @@ void CISA_IR_Builder::LinkTimeOptimization(
         auto& callerInsts = caller->fg.builder->instList;
         auto calleeInsts = callee->fg.builder->instList;
 
+        if (removeArgRet)
+        {
+            auto& calleeBuilder = callee->fg.builder;
+            auto& callerBuilder = caller->fg.builder;
+            const RegionDesc *rDesc = callerBuilder->getRegionStride1();
+            G4_Declare *replacedArgDcl = callerBuilder->createDeclareNoLookup("newArg", G4_GRF, numEltPerGRF<Type_UD>(), 32, Type_UD);
+            G4_Declare *replacedRetDcl = callerBuilder->createDeclareNoLookup("newRet", G4_GRF, numEltPerGRF<Type_UD>(), 12, Type_UD);
+
+            for (G4_INST* inst : calleeInsts)
+            {
+                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                {
+                    G4_Operand *src = inst->getSrc(i);
+                    if (!src) continue;
+                    G4_Declare* topDcl = src->getTopDcl();
+                    if (!topDcl) continue;
+                    G4_Declare* rootDcl = topDcl->getRootDeclare();
+                    if (calleeBuilder->isPreDefArg(rootDcl))
+                    {
+                        G4_Operand *replacedArgSrc = callerBuilder->createSrc(
+                                replacedArgDcl->getRegVar(),
+                                src->asSrcRegRegion()->getRegOff(),
+                                src->asSrcRegRegion()->getSubRegOff(),
+                                rDesc,
+                                src->getType());
+                        inst->setSrc(replacedArgSrc, i);
+                    }
+                }
+
+                G4_Operand *dst = inst->getDst();
+                if (!dst) continue;
+                G4_Declare* topDcl = dst->getTopDcl();
+                if (!topDcl) continue;
+                G4_Declare* rootDcl = topDcl->getRootDeclare();
+                if (calleeBuilder->isPreDefRet(rootDcl))
+                {
+                    G4_DstRegRegion *replacedRetDst = callerBuilder->createDst(
+                            replacedRetDcl->getRegVar(),
+                            dst->asDstRegRegion()->getRegOff(),
+                            dst->asDstRegRegion()->getSubRegOff(),
+                            dst->asDstRegRegion()->getHorzStride(),
+                            dst->getType());
+                    inst->setDest(replacedRetDst);
+                }
+
+            }
+            for (G4_INST* inst : callerInsts)
+            {
+                G4_Operand *dst = inst->getDst();
+                if (!dst) continue;
+                G4_Declare* topDcl = dst->getTopDcl();
+                if (!topDcl) continue;
+                G4_Declare* rootDcl = topDcl->getRootDeclare();
+                if (callerBuilder->isPreDefArg(rootDcl))
+                {
+                    G4_DstRegRegion *replacedArgDst = callerBuilder->createDst(
+                            replacedArgDcl->getRegVar(),
+                            dst->asDstRegRegion()->getRegOff(),
+                            dst->asDstRegRegion()->getSubRegOff(),
+                            dst->asDstRegRegion()->getHorzStride(),
+                            dst->getType());
+                    inst->setDest(replacedArgDst);
+                }
+
+                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                {
+                    G4_Operand *src = inst->getSrc(i);
+                    if (!src) continue;
+                    G4_Declare* topDcl = src->getTopDcl();
+                    if (!topDcl) continue;
+                    G4_Declare* rootDcl = topDcl->getRootDeclare();
+                    if (callerBuilder->isPreDefRet(rootDcl))
+                    {
+                        G4_Operand *replacedRetSrc = callerBuilder->createSrc(
+                                replacedRetDcl->getRegVar(),
+                                src->asSrcRegRegion()->getRegOff(),
+                                src->asSrcRegRegion()->getSubRegOff(),
+                                rDesc,
+                                src->getType());
+                        inst->setSrc(replacedRetSrc, i);
+                    }
+                }
+            }
+        }
         if (inlining)
         {
             auto& builder = caller->fg.builder;
@@ -988,8 +1075,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         if (m_options.getuInt32Option(vISA_Linker) & Linker_Subroutine)
         {
             LinkTimeOptimization(sgInvokeList,
-                    m_options.getuInt32Option(vISA_Linker) & Linker_Call2Jump,
-                    m_options.getuInt32Option(vISA_Linker) & Linker_Inline);
+                    m_options.getuInt32Option(vISA_Linker));
         }
     }
 
