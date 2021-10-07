@@ -206,8 +206,7 @@ static int getNumBlocksForType(Type *Ty, const DataLayout &DL) {
 
 // Wipe all internal ConstantExprs out of V if it's a ConstantVector of function pointers
 Value *GenXThreadPrivateMemory::NormalizeFuncPtrVec(Value *V, Instruction *InsPoint) {
-  V = vc::breakConstantVector(cast<ConstantVector>(V), InsPoint, InsPoint,
-                              vc::LegalizationStage::NotLegalized);
+  V = vc::breakConstantVector(cast<ConstantVector>(V), InsPoint, InsPoint);
   auto *Inst = dyn_cast<InsertElementInst>(V);
   if (!Inst)
     return V;

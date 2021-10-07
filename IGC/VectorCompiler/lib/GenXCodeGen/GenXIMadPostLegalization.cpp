@@ -148,7 +148,7 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
   bool Changed = false;
 
   // After this point, we should not do constant folding.
-  Changed |= vc::breakConstantExprs(&F, vc::LegalizationStage::Legalized);
+  Changed |= vc::breakConstantExprs(&F);
 
   // The following alorithm runs very slowly on large blocks.
   if (skipOptWithLargeBlock(F))
