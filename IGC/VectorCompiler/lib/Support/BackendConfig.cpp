@@ -115,6 +115,10 @@ static cl::opt<bool> SaveStackCallLinkageOpt(
     "save-stack-call-linkage", cl::init(false), cl::Hidden,
     cl::desc("Do not override stack calls linkage as internal"));
 
+static cl::opt<bool> UsePlain2DImagesOpt(
+    "vc-use-plain-2d-images", cl::init(false), cl::Hidden,
+    cl::desc("Treat \"image2d_t\" annotation as non-media image"));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -136,7 +140,8 @@ GenXBackendOptions::GenXBackendOptions()
       FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
       UseBindlessBuffers(UseBindlessBuffersOpt),
       StatelessPrivateMemSize(StatelessPrivateMemSizeOpt),
-      SaveStackCallLinkage(SaveStackCallLinkageOpt) {}
+      SaveStackCallLinkage(SaveStackCallLinkageOpt),
+      UsePlain2DImages(UsePlain2DImagesOpt) {}
 
 static std::unique_ptr<MemoryBuffer>
 readBiFModuleFromFile(const cl::opt<std::string> &File) {

@@ -191,7 +191,9 @@ public:
     void setMetadataProperties(genx::KernelMetadata &KM,
                                const GenXSubtarget &ST);
     void setArgumentProperties(const Function &Kernel,
-                               const genx::KernelMetadata &KM);
+                               const genx::KernelMetadata &KM,
+                               const GenXSubtarget &ST,
+                               const GenXBackendConfig &BC);
     void setPrintStrings(const Module &KernelModule);
 
   public:

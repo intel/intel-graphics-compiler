@@ -238,6 +238,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.UseBindlessBuffers = Opts.UseBindlessBuffers;
   if (Opts.SaveStackCallLinkage)
     BackendOpts.SaveStackCallLinkage = true;
+  BackendOpts.UsePlain2DImages = Opts.UsePlain2DImages;
   return BackendOpts;
 }
 
@@ -590,6 +591,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.TranslateLegacyMemoryIntrinsics = true;
   if (ApiOptions.hasArg(OPT_large_GRF))
     Opts.IsLargeGRFMode = true;
+  if (ApiOptions.hasArg(OPT_vc_use_plain_2d_images))
+    Opts.UsePlain2DImages = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_fp_contract)) {
     StringRef Val = A->getValue();

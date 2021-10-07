@@ -82,10 +82,13 @@ class KernelArgBuilder final {
 
   const genx::KernelMetadata &KM;
   const DataLayout &DL;
+  const GenXSubtarget &ST;
+  const GenXBackendConfig &BC;
 
 public:
-  KernelArgBuilder(const genx::KernelMetadata &KMIn, const DataLayout &DLIn)
-      : KM(KMIn), DL(DLIn) {}
+  KernelArgBuilder(const genx::KernelMetadata &KMIn, const DataLayout &DLIn,
+                   const GenXSubtarget &STIn, const GenXBackendConfig &BCIn)
+      : KM(KMIn), DL(DLIn), ST(STIn), BC(BCIn) {}
 
   GenXOCLRuntimeInfo::KernelArgInfo
   translateArgument(const Argument &Arg) const;
@@ -163,13 +166,17 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
       return ArgKindType::Image1DArray;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1dBuffer)))
       return ArgKindType::Image1D;
-    if (any_of(Tokens, getStrPred(OCLAttributes::Image2d)))
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image2d))) {
+      if (BC.usePlain2DImages())
+        return ArgKindType::Image2D;
       // Legacy behavior to treat all 2d images as media block.
       return ArgKindType::Image2DMediaBlock;
+    }
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dArray)))
       return ArgKindType::Image2DArray;
-    if (any_of(Tokens, getStrPred(OCLAttributes::Image2dMediaBlock)))
+    if (any_of(Tokens, getStrPred(OCLAttributes::Image2dMediaBlock))) {
       return ArgKindType::Image2DMediaBlock;
+    }
     if (any_of(Tokens, getStrPred(OCLAttributes::Image3d)))
       return ArgKindType::Image3D;
     return ArgKindType::Buffer;
@@ -293,7 +300,8 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
 }
 
 void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
-    const Function &Kernel, const genx::KernelMetadata &KM) {
+    const Function &Kernel, const genx::KernelMetadata &KM,
+    const GenXSubtarget &ST, const GenXBackendConfig &BC) {
   IGC_ASSERT_MESSAGE(Kernel.arg_size() == KM.getNumArgs(),
     "Expected same number of arguments");
   // Some arguments are part of thread payload and do not require
@@ -305,7 +313,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
         return !(KAI.isLocalIDX() || KAI.isLocalIDY() || KAI.isLocalIDZ() ||
                  KAI.isGroupOrLocalSize() || KAI.isLocalIDs());
       });
-  KernelArgBuilder ArgBuilder{KM, Kernel.getParent()->getDataLayout()};
+  KernelArgBuilder ArgBuilder{KM, Kernel.getParent()->getDataLayout(), ST, BC};
   transform(NonPayloadArgs, std::back_inserter(ArgInfos),
             [&ArgBuilder](const Argument &Arg) {
               return ArgBuilder.translateArgument(Arg);
@@ -345,7 +353,7 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
   genx::KernelMetadata KM{FG.getHead()};
   IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
   setMetadataProperties(KM, ST);
-  setArgumentProperties(*FG.getHead(), KM);
+  setArgumentProperties(*FG.getHead(), KM, ST, BC);
   setPrintStrings(*FG.getHead()->getParent());
 }
 

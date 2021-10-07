@@ -84,6 +84,8 @@ struct CompileOptions {
 
   llvm::FPOpFusion::FPOpFusionMode AllowFPOpFusion = llvm::FPOpFusion::Standard;
 
+  bool UsePlain2DImages = false;
+
   // Internal options.
   std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...
   BinaryKind Binary = BinaryKind::OpenCL;

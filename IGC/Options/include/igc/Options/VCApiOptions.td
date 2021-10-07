@@ -57,6 +57,9 @@ def vc_stateless_private_size : PlainJoined<"stateless-stack-mem-size=">,
 def Xfinalizer : PlainSeparate<"Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
 
+def vc_use_plain_2d_images : PlainFlag<"vc-use-plain-2d-images">,
+  HelpText<"Treat image2d_t annotation as non-media image">;
+
 // Compatibility alias.
 def : PlainFlag<"doubleGRF">, Alias<large_GRF>,
   HelpText<"Alias for -ze-opt-large-register-file"> {
