@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 // Utility break Constant functions for the GenX backend.
 //
 //===----------------------------------------------------------------------===//
-#include "vc/Utils/General/BreakConst.h"
+#include "vc/Utils/GenX/BreakConst.h"
 
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/Constants.h>

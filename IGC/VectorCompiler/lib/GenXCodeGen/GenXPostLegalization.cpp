@@ -36,7 +36,7 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVectorDecomposer.h"
-#include "vc/Utils/General/BreakConst.h"
+#include "vc/Utils/GenX/BreakConst.h"
 
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"

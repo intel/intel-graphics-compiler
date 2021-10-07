@@ -23,7 +23,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
-#include "vc/Utils/General/BreakConst.h"
+#include "vc/Utils/GenX/BreakConst.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/ADT/StringRef.h"

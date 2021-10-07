@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
-#include "vc/Utils/General/BreakConst.h"
+#include "vc/Utils/GenX/BreakConst.h"
 
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IntrinsicInst.h"

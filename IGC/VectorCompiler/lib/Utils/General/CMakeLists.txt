@@ -9,7 +9,6 @@
 set(GENERAL_UTILS_SOURCES
   BiF.cpp
   InstRebuilder.cpp
-  BreakConst.cpp
   Types.cpp
   FunctionAttrs.cpp
   )

@@ -19,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
-#include "vc/Utils/General/BreakConst.h"
 
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
