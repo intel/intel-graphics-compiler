@@ -538,22 +538,25 @@ namespace IGC
         // as ZE binary format
 
         // CreateSymbolTable
-        // input/output: buffer, bufferSize, tableEntries: for patch-token-based format.
-        // input/output: symbols: for ZEBinary foramt
-        // FIXME: Currently we will fill both structures for patch-token-based and ZEBinary format. Can refactor the code
-        // to do only one based on produced binary format (regkey: EnableZEBinary)
         // Note that this function should be called only once even if there are multiple kernels in a program. Current IGC
         // flow will create all symbols in the first kernel and all the other kernels won't contain symbols
-        void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
-            SProgramOutput::ZEBinFuncSymbolTable& funcSyms, SOpenCLProgramInfo::ZEBinProgramSymbolTable& programSyms);
+        typedef std::vector<std::pair<llvm::Value*, vISA::GenSymEntry>> ValueToSymbolList;
+        void CreateSymbolTable(ValueToSymbolList& symbolTableList);
+        // input/output: buffer, bufferSize, tableEntries: for patch-token-based format.
+        void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
+        // input/output: symbols: for ZEBinary foramt
+        void CreateSymbolTable(SProgramOutput::ZEBinFuncSymbolTable& funcSyms, SOpenCLProgramInfo::ZEBinProgramSymbolTable& programSyms);
         // Create function symbols for kernels. This is ZEBinary foramt only.
         void CreateKernelSymbol(const std::string& kernelName, unsigned offset, unsigned size,
             SProgramOutput::ZEBinFuncSymbolTable& symbols);
 
         // CreateRelocationTable
         // input/output: buffer, bufferSize, tableEntries: for patch-token-based format.
+        void CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
         // input/output: relocations: for ZEBinary foramt
-        void CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::RelocListTy& relocations);
+        void CreateRelocationTable(SProgramOutput::RelocListTy& relocations);
+
+        // CreateFuncAttributeTable
         void CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs);
 
         uint32_t getGRFSize() const;

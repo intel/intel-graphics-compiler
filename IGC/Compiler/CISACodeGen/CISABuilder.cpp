@@ -4987,18 +4987,10 @@ namespace IGC
         symbols.local.emplace_back(vISA::GenSymType::S_KERNEL, offset, size, kernelName);
     }
 
-    void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
-        SProgramOutput::ZEBinFuncSymbolTable& funcSyms,
-        SOpenCLProgramInfo::ZEBinProgramSymbolTable& programSyms)
+    void CEncoder::CreateSymbolTable(ValueToSymbolList& symbolTableList)
     {
-        buffer = nullptr;
-        bufferSize = 0;
-        tableEntries = 0;
-
         Module* pModule = m_program->GetContext()->getModule();
         ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
-
-        std::vector<vISA::GenSymEntry> symbolTable;
 
         for (auto& F : pModule->getFunctionList())
         {
@@ -5025,10 +5017,7 @@ namespace IGC
                     fEntry.s_offset = (uint32_t)visaFunc->getGenOffset();
                     fEntry.s_size = (uint32_t)visaFunc->getGenSize();
 
-                    // symbols for patch token
-                    symbolTable.push_back(fEntry);
-                    // symbols for ZEBinary
-                    funcSyms.function.emplace_back((vISA::GenSymType)fEntry.s_type, fEntry.s_offset, fEntry.s_size, F.getName().str());
+                    symbolTableList.push_back(std::make_pair(&F, fEntry));
                 }
             }
             // Ignore variant function definitions
@@ -5063,11 +5052,7 @@ namespace IGC
                     fEntry.s_offset = (uint32_t)visaFunc->getGenOffset();
                     fEntry.s_size = (uint32_t)visaFunc->getGenSize();
                 }
-                symbolTable.push_back(fEntry);
-
-                // symbols for ZEBinary
-                funcSyms.function.emplace_back((vISA::GenSymType)fEntry.s_type,
-                    fEntry.s_offset, fEntry.s_size, F.getName().str());
+                symbolTableList.push_back(std::make_pair(&F, fEntry));
             }
         }
 
@@ -5097,66 +5082,107 @@ namespace IGC
                     sEntry.s_type = vISA::GenSymType::S_CONST_SAMPLER;
                     sEntry.s_size = 0;
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
-                    // symbols for ZEBinary
-                    funcSyms.sampler.emplace_back((vISA::GenSymType)sEntry.s_type,
-                        sEntry.s_offset, sEntry.s_size, name.str());
                 }
                 else
                 {
                     sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
                     sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
-                    // symbols for ZEBinary
-                    if (sEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR) {
-                        programSyms.global.emplace_back((vISA::GenSymType)sEntry.s_type,
-                            sEntry.s_offset, sEntry.s_size, name.str());
-                    } else {
-                        // Global constants and string literals
-                        Constant * initializer = pGlobal->getInitializer();
-                        ConstantDataSequential * cds = dyn_cast<ConstantDataSequential>(initializer);
-                        if (cds && (cds->isCString() || cds->isString()))
-                            programSyms.globalStringConst.emplace_back((vISA::GenSymType)sEntry.s_type,
-                                sEntry.s_offset, sEntry.s_size, name.str());
-                        else
-                            programSyms.globalConst.emplace_back((vISA::GenSymType)sEntry.s_type,
-                                sEntry.s_offset, sEntry.s_size, name.str());
-                    }
                 }
-                symbolTable.push_back(sEntry);
+                symbolTableList.push_back(std::make_pair(pGlobal, sEntry));
             }
-        }
-
-        if (!symbolTable.empty())
-        {
-            tableEntries = symbolTable.size();
-            bufferSize = tableEntries * sizeof(vISA::GenSymEntry);
-            buffer = malloc(bufferSize);
-            IGC_ASSERT_MESSAGE(nullptr != buffer, "Symbol table cannot be allocated");
-            memcpy_s(buffer, bufferSize, symbolTable.data(), bufferSize);
         }
     }
 
-    void CEncoder::CreateRelocationTable(
-        void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
-        SProgramOutput::RelocListTy& relocations)
+    void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
     {
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
-            m_program->GetContext()->getCompilerOption().EnableZEBinary) {
-            // for ZEBinary format
-            V(vMainKernel->GetRelocations(relocations));
-            IGC_ASSERT(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
-        } else {
-            // for patch-token-based binary format
-            buffer = nullptr;
-            bufferSize = 0;
-            tableEntries = 0;
+        buffer = nullptr;
+        bufferSize = 0;
+        tableEntries = 0;
 
-            IGC_ASSERT(nullptr != vMainKernel);
+        ValueToSymbolList symbolTableList;
+        CreateSymbolTable(symbolTableList);
 
-            // vISA will directly return the buffer with GenRelocEntry layout
-            V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
-            IGC_ASSERT((sizeof(vISA::GenRelocEntry) * tableEntries) == bufferSize);
+        // Get the data for patch token
+        if (!symbolTableList.empty())
+        {
+            std::vector<vISA::GenSymEntry> tempBufferData;
+            // Collect the data just for the symbol table entries
+            for (auto I : symbolTableList)
+            {
+                auto symbolEntry = I.second;
+                tempBufferData.push_back(symbolEntry);
+            }
+
+            tableEntries = tempBufferData.size();
+            bufferSize = tableEntries * sizeof(vISA::GenSymEntry);
+            buffer = malloc(bufferSize);
+            IGC_ASSERT_MESSAGE(nullptr != buffer, "Symbol table cannot be allocated");
+            memcpy_s(buffer, bufferSize, tempBufferData.data(), bufferSize);
         }
+    }
+
+    void CEncoder::CreateSymbolTable(SProgramOutput::ZEBinFuncSymbolTable& funcSyms,
+        SOpenCLProgramInfo::ZEBinProgramSymbolTable& programSyms)
+    {
+        ValueToSymbolList symbolTableList;
+        CreateSymbolTable(symbolTableList);
+
+        // Get the data for zebin
+        for (auto I : symbolTableList)
+        {
+            Value* symbolValue = I.first;
+            auto symbolEntry = I.second;
+
+            if (Function* F = dyn_cast<Function>(symbolValue))
+            {
+                funcSyms.function.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, F->getName().str());
+            }
+            else if (GlobalVariable* G = dyn_cast<GlobalVariable>(symbolValue))
+            {
+                // const sampler
+                if (symbolEntry.s_type == vISA::GenSymType::S_CONST_SAMPLER) {
+                    funcSyms.sampler.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
+                }
+                // global variables
+                else if (symbolEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR) {
+                    programSyms.global.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
+                }
+                // global constants and string literals
+                else {
+                    Constant* initializer = G->getInitializer();
+                    ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
+                    if (cds && (cds->isCString() || cds->isString()))
+                        programSyms.globalStringConst.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
+                    else
+                        programSyms.globalConst.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
+                }
+            }
+            else
+            {
+                IGC_ASSERT(0);
+            }
+        }
+    }
+
+    void CEncoder::CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+    {
+        // for patch-token-based binary format
+        buffer = nullptr;
+        bufferSize = 0;
+        tableEntries = 0;
+
+        // vISA will directly return the buffer with GenRelocEntry layout
+        IGC_ASSERT(nullptr != vMainKernel);
+        V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
+        IGC_ASSERT((sizeof(vISA::GenRelocEntry) * tableEntries) == bufferSize);
+    }
+
+    void CEncoder::CreateRelocationTable(SProgramOutput::RelocListTy& relocations)
+    {
+        // for ZEBinary format
+        IGC_ASSERT(nullptr != vMainKernel);
+        V(vMainKernel->GetRelocations(relocations));
     }
 
     void CEncoder::CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize,
@@ -5615,20 +5641,27 @@ namespace IGC
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
+        bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || context->getCompilerOption().EnableZEBinary;
+
         if (hasSymbolTable)
         {
-            // we can only support symbols for OPENCL_SHADER for now
-            IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
-            auto cl_context = static_cast<OpenCLProgramContext*>(context);
-
-            CreateSymbolTable(pOutput->m_funcSymbolTable,
-                pOutput->m_funcSymbolTableSize,
-                pOutput->m_funcSymbolTableEntries,
-                pOutput->m_symbols,
-                cl_context->m_programInfo.m_zebinSymbolTable);
+            if (ZEBinEnabled)
+            {
+                // we can only support zebin symbols for OPENCL_SHADER for now
+                IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
+                auto cl_context = static_cast<OpenCLProgramContext*>(context);
+                CreateSymbolTable(pOutput->m_symbols,
+                    cl_context->m_programInfo.m_zebinSymbolTable);
+            }
+            else
+            {
+                CreateSymbolTable(pOutput->m_funcSymbolTable,
+                    pOutput->m_funcSymbolTableSize,
+                    pOutput->m_funcSymbolTableEntries);
+            }
         }
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
-            context->getCompilerOption().EnableZEBinary)
+
+        if (ZEBinEnabled)
         {
             // create symbols for kernel.
             // The kernel Symbol has the same name as the kernel, and offset
@@ -5648,10 +5681,16 @@ namespace IGC
                 (unsigned)pMainKernel->getGenSize() - actual_kernel_start_off, pOutput->m_symbols);
         }
 
-        CreateRelocationTable(pOutput->m_funcRelocationTable,
-            pOutput->m_funcRelocationTableSize,
-            pOutput->m_funcRelocationTableEntries,
-            pOutput->m_relocs);
+        if (ZEBinEnabled)
+        {
+            CreateRelocationTable(pOutput->m_relocs);
+        }
+        else
+        {
+            CreateRelocationTable(pOutput->m_funcRelocationTable,
+                pOutput->m_funcRelocationTableSize,
+                pOutput->m_funcRelocationTableEntries);
+        }
 
         if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
         {
