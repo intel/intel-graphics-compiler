@@ -261,26 +261,16 @@ static std::vector<const char*>
     std::vector<const char*> result = {
         "-emit-spirv",
         "-fcmocl",
-        stringSaver.save(inputFile).data()
     };
-    auto ItArchScanEnd = std::find_if(userArgs.begin(), userArgs.end(),
-        [](const auto& Arg) { return std::strcmp(Arg, "--") == 0; });
 
-    // if user specified exact arch we are in trouble
-    // but then user knows what to do
-    auto CmArchPresent = std::any_of(userArgs.begin(), ItArchScanEnd,
-        [](const auto& Arg) {
-          llvm::StringRef S = Arg;
-          return S.startswith("-march=") || S.startswith("-mcpu=");
-        });
-    if (!CmArchPresent) {
-      // Pass the runtime-specified architecture if user hasn't specified one
-      if (platform)
-        result.push_back(stringSaver.save("-march=" + std::string(platform)).data());
-      else
-        result.push_back(stringSaver.save("-march=" + cmfeDefaultArch).data());
-    }
+    // Pass the runtime-specified architecture.
+    // User still can override it if -march is passed in user arguments
+    if (platform)
+      result.push_back(stringSaver.save("-march=" + std::string(platform)).data());
+    else
+      result.push_back(stringSaver.save("-march=" + cmfeDefaultArch).data());
 
+    result.push_back(stringSaver.save(inputFile).data());
     result.insert(result.end(), userArgs.begin(), userArgs.end());
 
     auto ExtraCMOpts = llvm::sys::Process::GetEnv("IGC_ExtraCMOptions");
