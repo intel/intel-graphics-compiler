@@ -854,6 +854,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -msse4.2
           -Wno-unknown-pragmas
           -fPIC
+          -Bsymbolic
     )
     if(_igc_compiler_is_gnu)
       igc_config_flag_apply_settings(
@@ -913,6 +914,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -msse4.2
           -Wno-unknown-pragmas
           -fPIC
+          -Bsymbolic
     )
     igc_config_flag_apply_settings(
         CompilerOptions
