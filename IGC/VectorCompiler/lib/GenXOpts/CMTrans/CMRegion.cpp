@@ -422,6 +422,34 @@ Instruction *CMRegion::createRdPredRegion(Value *Input, unsigned Index,
 }
 
 /***********************************************************************
+ * CMRegion::createRdVectorSplat: create vector splat using rdregion
+ *
+ * Enter:   NumElements = number of elements in the resulting vector
+ *          Input = Value from which splat is built
+ *          Name = name for new instruction
+ *          InsertBefore = insert new inst before this point
+ *          DL = DebugLoc to give any new instruction
+ *
+ * Return:  The new rdregion representing vector splat
+ */
+Value *CMRegion::createRdVectorSplat(unsigned NumElements, Value *SplattedValue,
+                                     const Twine &Name, Instruction *InsertPt,
+                                     const DebugLoc &DL) {
+  auto *V1Cast = CastInst::Create(
+      Instruction::BitCast, SplattedValue,
+      IGCLLVM::FixedVectorType::get(SplattedValue->getType(), 1),
+      SplattedValue->getName() + ".v1cast", InsertPt);
+  V1Cast->setDebugLoc(DL);
+
+  CMRegion R(V1Cast->getType());
+  R.Width = NumElements;
+  R.VStride = 0;
+  R.Stride = 0;
+  return R.createRdRegion(V1Cast, SplattedValue->getName() + ".splat", InsertPt,
+                          DL, false /* AllowScalar */);
+}
+
+/***********************************************************************
 * GetConstantSubvector : get a contiguous region from a vector constant
 */
 static Constant *GetConstantSubvector(Constant *V,

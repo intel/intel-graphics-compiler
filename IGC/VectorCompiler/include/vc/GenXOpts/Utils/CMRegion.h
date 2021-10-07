@@ -129,6 +129,11 @@ public:
                                           unsigned Size, const Twine &Name,
                                           Instruction *InsertBefore,
                                           const DebugLoc &DL);
+  // Create rdregion representing vector splat
+  static Value *createRdVectorSplat(unsigned NumElements, Value *Input,
+                                    const Twine &Name,
+                                    Instruction *InsertBefore,
+                                    const DebugLoc &DL);
   // Create wrpredregion from given start index
   static Instruction *createWrPredRegion(Value *OldVal, Value *Input,
                                          unsigned Index, const Twine &Name,
