@@ -517,7 +517,8 @@ std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
 // Constructs gen binary for provided function group \p FG.
 static genx::BinaryDataAccumulator<const Function *>
 getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
-             GenXBackendConfig const &BC) {
+             GenXBackendConfig const &BC,
+             std::set<const Function *> &ProcessedCalls) {
   Function const *Kernel = FG.getHead();
   genx::BinaryDataAccumulator<const Function *> GenBinary;
   // load kernel
@@ -525,9 +526,13 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
 
   const auto IndirectFunctions = collectCalledFunctions(
       FG, [](const Function *F) { return genx::isReferencedIndirectly(F); });
-  for (const Function *F : IndirectFunctions)
+  for (const Function *F : IndirectFunctions) {
+    if (ProcessedCalls.count(F) != 0)
+      continue;
+    ProcessedCalls.insert(F);
     // load functions
     loadBinaries(GenBinary, VB, *Kernel, *F, BC);
+  }
 
   return std::move(GenBinary);
 }
@@ -621,6 +626,7 @@ class RuntimeInfoCollector final {
   const GenXSubtarget &ST;
   const Module &M;
   const GenXDebugInfo &DBG;
+  std::set<const llvm::Function *> ProcessedCalls;
 
 public:
   using KernelStorageTy = GenXOCLRuntimeInfo::KernelStorageTy;
@@ -637,7 +643,7 @@ public:
   CompiledModuleT run();
 
 private:
-  CompiledKernel collectFunctionGroupInfo(const FunctionGroup &FG) const;
+  CompiledKernel collectFunctionGroupInfo(const FunctionGroup &FG);
 };
 
 } // namespace
@@ -653,7 +659,7 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
 }
 
 RuntimeInfoCollector::CompiledKernel
-RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
+RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) {
   using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
   using GTPinInfo = GenXOCLRuntimeInfo::GTPinInfo;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
@@ -686,7 +692,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   }
 
   genx::BinaryDataAccumulator<const Function *> GenBinary =
-      getGenBinary(FG, VB, BC);
+      getGenBinary(FG, VB, BC, ProcessedCalls);
 
   const auto& Dbg = DBG.getModuleDebug();
   auto DbgIt = Dbg.find(KernelFunction);
