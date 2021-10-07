@@ -45,7 +45,7 @@ public:
         Description((Prefix + ": " + Desc).str()) {}
 
   // Initialize with Value
-  DiagnosticInfo(llvm::Value *Val, const llvm::Twine &Prefix,
+  DiagnosticInfo(const llvm::Value *Val, const llvm::Twine &Prefix,
                  const llvm::Twine &Desc,
                  llvm::DiagnosticSeverity Severity = llvm::DS_Error)
       : llvm::DiagnosticInfo(getKindID(), Severity) {
@@ -56,7 +56,7 @@ public:
   }
 
   // Initialize with Type
-  DiagnosticInfo(llvm::Type *Ty, const llvm::Twine &Prefix,
+  DiagnosticInfo(const llvm::Type *Ty, const llvm::Twine &Prefix,
                  const llvm::Twine &Desc,
                  llvm::DiagnosticSeverity Severity = llvm::DS_Error)
       : llvm::DiagnosticInfo(getKindID(), Severity) {
@@ -77,10 +77,10 @@ void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
               const llvm::Twine &Desc,
               llvm::DiagnosticSeverity Severity = llvm::DS_Error);
 void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
-              llvm::Value *Val, const llvm::Twine &Desc,
+              const llvm::Value *Val, const llvm::Twine &Desc,
               llvm::DiagnosticSeverity Severity = llvm::DS_Error);
-void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix, llvm::Type *Ty,
-              const llvm::Twine &Desc,
+void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
+              const llvm::Type *Ty, const llvm::Twine &Desc,
               llvm::DiagnosticSeverity Severity = llvm::DS_Error);
 
 } // namespace vc
