@@ -365,6 +365,11 @@ SPDX-License-Identifier: MIT
         return getPlatformGeneration(getPlatform()) != PlatformGen::XE;
     }
 
+    bool restrictedACCRestrictions() const
+    {
+        return false;
+    }
+
     bool favorFpMad() const
     {
         return getPlatform() < GENX_CNL;

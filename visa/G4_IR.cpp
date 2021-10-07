@@ -7878,6 +7878,34 @@ bool G4_INST::canDstBeAcc() const
                 (dst->getType() == Type_F || dst->getType() == Type_HF);
             const bool allowedDFCombination = getSrc(0)->getType() == Type_DF &&
                 dst->getType() == Type_DF;
+
+            if (builder.restrictedACCRestrictions() && allowedFCombination)
+            {
+                uint16_t dstStride = dst->getHorzStride();
+                uint16_t srcStride = 0;
+                if (getSrc(0)->isSrcRegRegion())
+                {
+                    G4_SrcRegRegion* src = getSrc(0)->asSrcRegRegion();
+                    const RegionDesc* region = src->getRegion();
+
+                    if (!region->isSingleStride(execSize, srcStride))
+                    {
+                        return false;
+                    }
+
+                    //The bitmapping is model by the element size * element stride.
+                    // No matter dst is float or half float.
+                    // Pack and un-pack happen only in the destination register, so no matter dst is F or HF, it's not allowed to be replaced with ACC if bitmapping swizzles.
+                    // If both dst and src are HF type, swizzle is not allowed as well.
+                    //FIXME, mov (16|M0)   acc0.0<1>:f, r28<1;1,0>:hf can be passed in HW.
+                    if ((dst->getType() != src->getType() || dst->getType() == Type_HF) &&
+                        (dstStride * dst->getTypeSize() != srcStride * src->getTypeSize()))
+                    {
+                        return false;
+                    }
+                }
+            }
+
             if (!allowedICombination && !allowedFCombination && !allowedDFCombination)
             {
                 return false;
@@ -8003,6 +8031,31 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const
                 (dst->getType() == Type_F || dst->getType() == Type_HF);
             const bool allowedDFCombination = src->getType() == Type_DF &&
                 dst->getType() == Type_DF;
+
+            if (builder.restrictedACCRestrictions() && allowedFCombination)
+            {
+                uint16_t dstStride = dst->getHorzStride();
+                uint16_t srcStride = 0;
+                const RegionDesc* region = src->getRegion();
+
+                if (!region->isSingleStride(execSize, srcStride))
+                {
+                    return false;
+                }
+
+                //The bitmapping is model by the element size * element stride.
+                //When dst type is different with src type, or both are HF type.
+                //FIXME, currently, r35 in following case cannot be replaced with acc
+                // mov (16|M0) r35.0<1>:f r25.0<1;1,0>:f
+                // mov (16|M0) r36.0<1>:hf r35.0<1;1,0>:f
+                // the restriction may be relaxed after validation of HW team
+                if ((dst->getType() != src->getType() || dst->getType() == Type_HF) &&
+                    (dstStride * dst->getTypeSize() != srcStride * src->getTypeSize()))
+                {
+                    return false;
+                }
+            }
+
             if (!allowedICombination && !allowedFCombination && !allowedDFCombination)
             {
                 return false;
@@ -8030,6 +8083,10 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const
     case G4_pln:
         return builder.doPlane() && src->getModifier() == Mod_src_undef;
     case G4_dp4a:
+        if (builder.restrictedACCRestrictions())
+        {
+            return srcId == 0;
+        }
         return builder.relaxedACCRestrictions2();
     case G4_bfn:
     case G4_add3:
