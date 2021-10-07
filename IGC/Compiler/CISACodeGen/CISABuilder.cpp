@@ -3886,9 +3886,19 @@ namespace IGC
                 SaveOption(vISA_preRA_ScheduleCtrl, V);
             }
 
+            uint32_t VISAPreSchedVal = 0;
+            if (context->type == ShaderType::COMPUTE_SHADER)
+                VISAPreSchedVal = context->getModuleMetaData()->csInfo.VISAPreSchedRPThreshold;
+            else if (context->type == ShaderType::PIXEL_SHADER)
+                VISAPreSchedVal = context->getModuleMetaData()->compOpt.VISAPreSchedRPThreshold;
+            // registry key setting has higher priority
             if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedRPThreshold))
             {
                 SaveOption(vISA_preRA_ScheduleRPThreshold, Val);
+            }
+            else if (VISAPreSchedVal)
+            {
+                SaveOption(vISA_preRA_ScheduleRPThreshold, VISAPreSchedVal);
             }
 
             if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAScheduleStartBBID))
