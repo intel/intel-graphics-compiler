@@ -956,28 +956,25 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p4i64, )(int Exe
 }
 #endif __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
-
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAll, _i32_i1, )(int Execution, bool Predicate)
 {
     if (Execution == Workgroup)
     {
+        // if wg-size is equal to sg-size, don't bother SLM, just do it using subgroups
+        if(SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() == 1)
+            return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, Predicate );
+
         GET_MEMPOOL_PTR(tmp, int, false, 1)
-        *tmp = 0;
+        *tmp = 1;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
-        SPIRV_BUILTIN(AtomicOr, _p3i32_i32_i32_i32, )((local int*)tmp, Device, Relaxed, Predicate == 0); // Set to true if predicate is zero
+        if(Predicate == 0)
+            *tmp = 0; // intentional data race here, as we do not care for the value itself, rather than the fact it was overriden
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for threads
-        return (*tmp == 0); // Return true if none of them failed the test
-    }
-    else if (Execution == Subgroup)
-    {
-            int value = ( Predicate == 0 ) ? 1 : 0;
-            value = SPIRV_BUILTIN(GroupIAdd, _i32_i32_i32, )(Subgroup, GroupOperationReduce, value );
-            value = ( value == 0 ) ? 1 : 0;
-            return value;
+        return *tmp; // Return true if none of them failed the test
     }
     else
     {
-         return 0;
+        return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, Predicate );
     }
 }
 
@@ -985,22 +982,21 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAny, _i32_i1, )(int Execution, bool P
 {
     if (Execution == Workgroup)
     {
+        // if wg-size is equal to sg-size, don't bother SLM, just do it using subgroups
+        if(SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() == 1)
+            return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, Predicate );
+
         GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
-        SPIRV_BUILTIN(AtomicOr, _p3i32_i32_i32_i32, )((local int*)tmp, Device, Relaxed, Predicate != 0); // Set to true if predicate is non-zero
+        if(Predicate == 1)
+            *tmp = 1; // intentional data race here, as we do not care for the value itself, rather than the fact it was overriden
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);
         return *tmp; // Return true if any of them passed the test
     }
-    else if (Execution == Subgroup)
-    {
-            int value = ( Predicate != 0 ) ? 1 : 0;
-            value = SPIRV_BUILTIN(GroupIAdd, _i32_i32_i32, )(Subgroup, GroupOperationReduce, value );
-            return value;
-    }
     else
     {
-         return 0;
+        return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, Predicate );
     }
 }
 
