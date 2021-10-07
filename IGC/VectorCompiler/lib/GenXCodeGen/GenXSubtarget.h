@@ -59,6 +59,7 @@ protected:
     GENX_GLK,
     GENX_ICLLP,
     GENX_TGLLP,
+    GENX_RKL,
     GENX_DG1,
     XE_HP_SDV,
   };
@@ -171,6 +172,8 @@ public:
   bool isICLLP() const { return GenXVariant == GENX_ICLLP; }
   /// * isTGLLP - true if target is TGL LP
   bool isTGLLP() const { return GenXVariant == GENX_TGLLP; }
+  /// * isRKL - true if target is RKL
+  bool isRKL() const { return GenXVariant == GENX_RKL; }
   /// * isDG1 - true if target is DG1
   bool isDG1() const { return GenXVariant == GENX_DG1; }
   /// * isXEHP - true if target is XEHP
@@ -288,6 +291,8 @@ public:
     case GENX_ICLLP:
       return TARGET_PLATFORM::GENX_ICLLP;
     case GENX_TGLLP:
+      return TARGET_PLATFORM::GENX_TGLLP;
+    case GENX_RKL:
       return TARGET_PLATFORM::GENX_TGLLP;
     case GENX_DG1:
       return TARGET_PLATFORM::GENX_TGLLP;

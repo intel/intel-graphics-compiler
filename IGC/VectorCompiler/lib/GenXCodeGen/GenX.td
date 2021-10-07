@@ -122,6 +122,9 @@ def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef]>;
+def : Proc<"RKL",             [FeatureLongLongEmulation, FeatureIntDivRem32,
+                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
+                               FeatureHWTIDFromPredef]>;
 def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef]>;

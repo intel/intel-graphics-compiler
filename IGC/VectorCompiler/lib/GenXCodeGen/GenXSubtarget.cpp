@@ -70,6 +70,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
     .Case("GLK", GENX_GLK)
     .Case("ICLLP", GENX_ICLLP)
     .Case("TGLLP", GENX_TGLLP)
+    .Case("RKL", GENX_RKL)
     .Case("DG1", GENX_DG1)
     .Case("XEHP", XE_HP_SDV)
     .Default(GENX_SKL);
