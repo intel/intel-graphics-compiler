@@ -86,6 +86,17 @@ static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
         return true;
     }
 
+    // then checking compiler options in metadata
+    if (ctx->getModuleMetaData()->compOpt.FastRelaxedMath)
+    {
+        return true;
+    }
+
+    if (IGC_IS_FLAG_ENABLED(EnableFastMath))
+    {
+        return true;
+    }
+
     return false;
 }
 
@@ -1725,7 +1736,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                         {
                             if (!(fp0 && fp0->isExactlyValue(1.0)))
                             {
-                                if (m_ctx->platform.hasCorrectlyRoundedMacros() && (I.isFast() || I.hasAllowReciprocal()))
+                                if (m_ctx->getModuleMetaData()->compOpt.FastRelaxedMath || I.hasAllowReciprocal())
                                 {
                                     Value* invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
                                     I.replaceAllUsesWith(
@@ -2329,7 +2340,8 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
         return;
     }
 
-    if (!hasFnAttributeSet(F, "less-precise-fpmad"))
+    auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    if (!modMD->compOpt.MadEnable)
     {
         return;
     }

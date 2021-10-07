@@ -296,6 +296,35 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         return false;
     };
 
+    // Returns true if a function is built-in double math function
+    // Our implementations of double math built-in functions are precise only
+    // if we don't make any fast relaxed math optimizations.
+    auto IsBuiltinFP64 = [](Function* F)->bool
+    {
+        StringRef buildinPrefixOpenCL = igc_spv::kLLVMName::builtinExtInstPrefixOpenCL;
+        if (F->getName().startswith(buildinPrefixOpenCL))
+        {
+            if (F->getReturnType()->isDoubleTy() ||
+                (F->getReturnType()->isVectorTy() && F->getReturnType()->getContainedType(0)->isDoubleTy()))
+            {
+                auto functionName = F->getName();
+                functionName = functionName.drop_front(buildinPrefixOpenCL.size());
+                functionName = functionName.take_front(functionName.find('_'));
+
+                static std::set<StringRef> mathFunctionNames = {
+#define _OCL_EXT_OP(name, num) #name,
+#include "SPIRV/libSPIRV/OpenCL.stdfuncs.h"
+#undef _OCL_EXT_OP
+                };
+
+                if (mathFunctionNames.find(functionName) != mathFunctionNames.end()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
     // Process through all functions and add the appropriate function attributes
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
@@ -354,6 +383,28 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     callInst->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::AlwaysInline);
                 }
             }
+        }
+
+        // set function attributes according to build options so
+        // inliner doesn't conservatively turn off unsafe optimizations
+        // when inlining BIFs (see mergeAttributesForInlining() in inliner).
+        const auto& opts = modMD->compOpt;
+        if (opts.MadEnable)
+            F->addFnAttr("less-precise-fpmad", "true");
+
+        // Fast relaxed math implies all other flags.
+        if (opts.UnsafeMathOptimizations || opts.FastRelaxedMath)
+            F->addFnAttr("unsafe-fp-math", "true");
+
+        // Finite math implies no infs and nans.
+        if (opts.FiniteMathOnly || opts.FastRelaxedMath) {
+            F->addFnAttr("no-infs-fp-math", "true");
+            F->addFnAttr("no-nans-fp-math", "true");
+        }
+
+        // Unsafe math implies no signed zeros.
+        if (opts.NoSignedZeros || opts.UnsafeMathOptimizations || opts.FastRelaxedMath) {
+            F->addFnAttr("no-signed-zeros-fp-math", "true");
         }
 
         // Add Optnone to user functions but not on builtins. This allows to run
@@ -586,6 +637,19 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     F->addFnAttr("visaStackCall");
                     F->setLinkage(GlobalValue::ExternalLinkage);
                 }
+            }
+        }
+    }
+
+    // Process through all functions and reset the *-fp-math attributes
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+        Function* F = &(*I);
+        if (!F->isDeclaration()) {
+            if (IsBuiltinFP64(F)) {
+                addFnAttrRecursive(F, "unsafe-fp-math", "false");
+                addFnAttrRecursive(F, "no-infs-fp-math", "false");
+                addFnAttrRecursive(F, "no-nans-fp-math", "false");
+                addFnAttrRecursive(F, "no-signed-zeros-fp-math", "false");
             }
         }
     }
@@ -883,134 +947,4 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
         return true;
     }
     return false;
-}
-
-//
-// ProcessFuncFastMathAttributes
-//
-
-namespace {
-    class ProcessFuncFastMathAttributes : public ModulePass
-    {
-    public:
-        static char ID;
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
-
-        ProcessFuncFastMathAttributes();
-
-        ~ProcessFuncFastMathAttributes() {}
-
-        virtual bool runOnModule(Module& M);
-
-        virtual llvm::StringRef getPassName() const
-        {
-            return "ProcessFuncFastMathAttributes";
-        }
-    };
-
-} // namespace
-
-// Register pass to igc-opt
-#define PASS_FLAG4 "igc-process-func-fast-math-attributes"
-#define PASS_DESCRIPTION4 "Set Functions' fast math attributes"
-#define PASS_CFG_ONLY4 false
-#define PASS_ANALYSIS4 false
-IGC_INITIALIZE_PASS_BEGIN(ProcessFuncFastMathAttributes, PASS_FLAG4, PASS_DESCRIPTION4, PASS_CFG_ONLY4, PASS_ANALYSIS4)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(ProcessFuncFastMathAttributes, PASS_FLAG4, PASS_DESCRIPTION4, PASS_CFG_ONLY4, PASS_ANALYSIS4)
-
-char ProcessFuncFastMathAttributes::ID = 0;
-
-ProcessFuncFastMathAttributes::ProcessFuncFastMathAttributes() : ModulePass(ID)
-{
-    initializeProcessFuncFastMathAttributesPass(*PassRegistry::getPassRegistry());
-}
-
-ModulePass* createProcessFuncFastMathAttributes()
-{
-    return new ProcessFuncFastMathAttributes();
-}
-
-bool ProcessFuncFastMathAttributes::runOnModule(Module& M)
-{
-    MetaDataUtilsWrapper& mduw = getAnalysis<MetaDataUtilsWrapper>();
-    ModuleMetaData* modMD = mduw.getModuleMetaData();
-
-    // Returns true if a function is built-in double math function
-    // Our implementations of double math built-in functions are precise only
-    // if we don't make any fast relaxed math optimizations.
-    auto IsBuiltinFP64 = [](Function* F)->bool
-    {
-        StringRef buildinPrefixOpenCL = igc_spv::kLLVMName::builtinExtInstPrefixOpenCL;
-        if (F->getName().startswith(buildinPrefixOpenCL))
-        {
-            if (F->getReturnType()->isDoubleTy() ||
-                (F->getReturnType()->isVectorTy() && F->getReturnType()->getContainedType(0)->isDoubleTy()))
-            {
-                auto functionName = F->getName();
-                functionName = functionName.drop_front(buildinPrefixOpenCL.size());
-                functionName = functionName.take_front(functionName.find('_'));
-
-                static std::set<StringRef> mathFunctionNames = {
-#define _OCL_EXT_OP(name, num) #name,
-#include "SPIRV/libSPIRV/OpenCL.stdfuncs.h"
-#undef _OCL_EXT_OP
-                };
-
-                if (mathFunctionNames.find(functionName) != mathFunctionNames.end()) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    };
-
-    // Process through all functions and add the appropriate function attributes
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
-    {
-        Function* F = &(*I);
-
-        // set function attributes according to build options so
-        // inliner doesn't conservatively turn off unsafe optimizations
-        // when inlining BIFs (see mergeAttributesForInlining() in inliner).
-        const auto& opts = modMD->compOpt;
-        if (opts.MadEnable)
-            F->addFnAttr("less-precise-fpmad", "true");
-
-        // Fast relaxed math implies all other flags.
-        if (opts.UnsafeMathOptimizations || opts.FastRelaxedMath || IGC_IS_FLAG_ENABLED(EnableFastMath))
-            F->addFnAttr("unsafe-fp-math", "true");
-
-        // Finite math implies no infs and nans.
-        if (opts.FiniteMathOnly || opts.FastRelaxedMath || IGC_IS_FLAG_ENABLED(EnableFastMath)) {
-            F->addFnAttr("no-infs-fp-math", "true");
-        }
-        if (opts.FiniteMathOnly || opts.FastRelaxedMath || opts.NoNaNs || IGC_IS_FLAG_ENABLED(EnableFastMath)) {
-            F->addFnAttr("no-nans-fp-math", "true");
-        }
-
-        // Unsafe math implies no signed zeros.
-        if (opts.NoSignedZeros || opts.UnsafeMathOptimizations || opts.FastRelaxedMath || IGC_IS_FLAG_ENABLED(EnableFastMath)) {
-            F->addFnAttr("no-signed-zeros-fp-math", "true");
-        }
-    }
-
-    // Process through all functions and reset the *-fp-math attributes
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
-        Function* F = &(*I);
-        if (!F->isDeclaration()) {
-            if (IsBuiltinFP64(F)) {
-                addFnAttrRecursive(F, "unsafe-fp-math", "false");
-                addFnAttrRecursive(F, "no-infs-fp-math", "false");
-                addFnAttrRecursive(F, "no-nans-fp-math", "false");
-                addFnAttrRecursive(F, "no-signed-zeros-fp-math", "false");
-            }
-        }
-    }
-
-    return true;
 }

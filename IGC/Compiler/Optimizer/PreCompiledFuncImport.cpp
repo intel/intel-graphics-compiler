@@ -188,6 +188,8 @@ void PreCompiledFuncImport::eraseCallInst(CallInst * CI)
 //         be removed.
 bool PreCompiledFuncImport::preProcessDouble()
 {
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    bool hasNoNaN = pCtx->getModuleMetaData()->compOpt.FiniteMathOnly;
     SmallVector<Instruction*, 8> toBeDeleted;
     for (auto II = m_pModule->begin(), IE = m_pModule->end(); II != IE; ++II)
     {
@@ -256,7 +258,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     Value* Oprd1 = CallI->getOperand(1);
                     bool isMax = (II && II->getIntrinsicID() == Intrinsic::maxnum);
                     Instruction* res = nullptr;
-                    if (II->hasNoNaNs())
+                    if (hasNoNaN)
                     {
                         Instruction* cond = FCmpInst::Create(
                             Instruction::FCmp,
@@ -307,7 +309,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     Constant* FC1 = ConstantFP::get(resTy, 1.0);
                     Instruction* cond = FCmpInst::Create(
                         Instruction::FCmp,
-                        II->hasNoNaNs() ? FCmpInst::FCMP_OLT : FCmpInst::FCMP_ULT,
+                        hasNoNaN ? FCmpInst::FCMP_OLT : FCmpInst::FCMP_ULT,
                         Oprd0, FC0, "", CallI);
                     cond->setDebugLoc(CallI->getDebugLoc());
                     Instruction* sel = SelectInst::Create(cond, FC0, Oprd0, "", CallI);

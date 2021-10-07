@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMUtils.h"
-#include "AdaptorCommon/ProcessFuncAttributes.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/Legalizer/PeepholeTypeLegalizer.hpp"
 #include "Compiler/CISACodeGen/layout.hpp"
@@ -79,7 +78,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/SetFastMathFlags/SetFastMathFlags.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
@@ -424,10 +422,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     //Add alias analysis pass
     mpm.add(createAddressSpaceAAWrapperPass());
     mpm.add(createExternalAAWrapperPass(&addAddressSpaceAAResult));
-
-    // Add function attributes processing here as well since ApplyNOS
-    // may re-parse shaders and clear NOS function attributes
-    mpm.add(createProcessFuncFastMathAttributes());
 
     TODO("remove the following once all IGC passes are registered to PassRegistery in their constructor")
     initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
@@ -1657,7 +1651,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(new BreakConstantExpr());
         mpm.add(new IGCConstProp());
 
-        mpm.add(createProcessFuncFastMathAttributes());
         mpm.add(new CustomSafeOptPass());
         if (!pContext->m_DriverInfo.WADisableCustomPass())
         {
@@ -1670,9 +1663,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(createIGCInstructionCombiningPass());
-        FastMathFlags Mask;
-        Mask.setFast();
-        mpm.add(new SetFastMathFlags(Mask));
         mpm.add(new FCmpPaternMatch());
         mpm.add(llvm::createDeadCodeEliminationPass()); // this should be done both before/after constant propagation
 

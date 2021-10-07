@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-process-func-fast-math-attributes -igc-set-fast-math-flags -S %s -o %t.ll
+; RUN: igc_opt -igc-process-func-attributes -igc-set-fast-math-flags -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @testunsafe1(float %a, float %b) {
@@ -60,4 +60,4 @@ define void @testunsafe3(float %a, float %b) {
 
 !0 = !{!"ModuleMD", !1}
 !1 = !{!"compOpt", !2}
-!2 = !{!"NoSignedZeros", i1 true}
+!2 = !{!"UnsafeMathOptimizations", i1 true}

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-process-func-fast-math-attributes -igc-set-fast-math-flags -igc-custom-unsafe-opt-pass -S %s -o %t.ll
+; RUN: igc_opt -igc-custom-unsafe-opt-pass -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @sample_test(float %x, float %y, float addrspace(1)* nocapture %res) nounwind {
@@ -16,7 +16,7 @@ entry:
   ret void
 }
 
-; CHECK:         [[SUB:%[a-zA-Z0-9]+]] = fsub fast float %x, %x
+; CHECK:         [[SUB:%[a-zA-Z0-9]+]] = fsub float %x, %x
 ; CHECK-NOT:     store float [[SUB]]
 ; CHECK:         store float 0.000000e+00
 
