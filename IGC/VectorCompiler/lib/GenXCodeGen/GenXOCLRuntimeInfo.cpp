@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "OCLRuntimeInfoPrinter.h"
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 
@@ -755,7 +756,7 @@ bool GenXOCLRuntimeInfo::runOnModule(Module &M) {
 }
 
 void GenXOCLRuntimeInfo::print(raw_ostream &OS, const Module *M) const {
-  OS << "To be done\n";
+  vc::printOCLRuntimeInfo(OS, CompiledModule);
 }
 
 INITIALIZE_PASS_BEGIN(GenXOCLRuntimeInfo, "GenXOCLRuntimeInfo",

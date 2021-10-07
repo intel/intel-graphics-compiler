@@ -78,6 +78,7 @@ struct ZESymEntry {
     uint32_t      s_size;            // The size in bytes of the function binary
     std::string   s_name;            // The symbol's name
 
+    ZESymEntry() = default;
     ZESymEntry(GenSymType type, uint32_t offset, uint32_t size, std::string name)
         : s_type(type), s_offset(offset), s_size(size), s_name(name)
     {}
