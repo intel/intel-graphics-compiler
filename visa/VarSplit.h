@@ -11,10 +11,75 @@ SPDX-License-Identifier: MIT
 
 #include "FlowGraph.h"
 #include "BuildIR.h"
+#include "RPE.h"
 
 namespace vISA
 {
 class LiveRange;
+class GraphColor;
+class RPE;
+class GlobalRA;
+
+// store mapping of a split variable to original variable. if any split
+// variable is spilled, we can reuse spill location of original variable.
+// also store all instructions emitted in preheader, loop exit for each
+// split variable. this helps eliminate those instruction in case the
+// split variable itself spills.
+class SplitResults
+{
+public:
+    G4_Declare* origDcl = nullptr;
+    std::unordered_map<G4_BB*, std::unordered_set<G4_INST*>> insts;
+};
+
+class LoopVarSplit
+{
+public:
+    LoopVarSplit(G4_Kernel& k, GraphColor* c, RPE* r);
+
+    void run();
+
+    std::vector<G4_SrcRegRegion*> getReads(G4_Declare* dcl, Loop& loop);
+    std::vector<G4_DstRegRegion*> getWrites(G4_Declare* dcl, Loop& loop);
+    unsigned int getMaxRegPressureInLoop(Loop& loop);
+    void dump(std::ostream& of = std::cerr);
+
+    static void removeSplitInsts(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb);
+    static bool removeFromPreheader(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb, INST_LIST_ITER filledInstIter);
+    static bool removeFromLoopExit(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb, INST_LIST_ITER filledInstIter);
+    static const std::unordered_set<G4_INST*> getSplitInsts(GlobalRA* gra, G4_BB* bb);
+
+private:
+    bool split(G4_Declare* dcl, Loop& loop);
+    void copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, bool pushBack = true);
+    void replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl);
+    void replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl);
+    G4_Declare* getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2);
+    std::vector<Loop*> getLoopsToSplitAround(G4_Declare* dcl);
+
+    G4_Kernel& kernel;
+    GraphColor* coloring = nullptr;
+    RPE* rpe = nullptr;
+    VarReferences references;
+
+    // store set of dcls marked as spill in current RA iteration
+    std::unordered_set<G4_Declare*> spilledDclSet;
+
+    // store spill cost for each dcl
+    std::map<G4_Declare*, float> dclSpillCost;
+
+    std::unordered_map<G4_Declare*, G4_Declare*> oldNewDcl;
+
+    std::unordered_map<Loop*, std::unordered_set<G4_Declare*>> splitsPerLoop;
+
+    std::unordered_map<Loop*, unsigned int> maxRegPressureCache;
+
+    // a spilled dcl may be split multiple times, once per loop
+    // store this information to uplevel to GlobalRA class so
+    // anytime we spill a split variable, we reuse spill location.
+    // Orig dcl, vector<Tmp Dcl, Loop>
+    std::unordered_map<G4_Declare*, std::vector<std::pair<G4_Declare*, Loop*>>> splitResults;
+};
 
 class VarProperties
 {

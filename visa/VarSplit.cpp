@@ -947,4 +947,553 @@ bool VarSplitPass::isSplitVarLocal(G4_Declare* dcl)
     return (*it).second.isDefUsesInSameBB();
 }
 
+LoopVarSplit::LoopVarSplit(G4_Kernel& k, GraphColor* c, RPE* r) : kernel(k), coloring(c), rpe(r), references(k)
+{
+    for (auto spill : coloring->getSpilledLiveRanges())
+    {
+        spilledDclSet.insert(spill->getDcl());
+    }
+    auto numVars = coloring->getNumVars();
+    auto lrs = coloring->getLiveRanges();
+    for (unsigned int i = 0; i != numVars; ++i)
+    {
+        auto rootDcl = lrs[i]->getDcl();
+        dclSpillCost[rootDcl] = lrs[i]->getSpillCost();
+    }
+}
+
+void LoopVarSplit::run()
+{
+    // 1. consider list of spilled variables sorted in
+    //       descending order of spill cost
+    // 2. iterate over each spilled variable from sorted list
+    //    a. run cost heuristic to decide if split makes sense
+    //    b. if decision is to split, then check which loop(s) to split around
+
+    std::list<std::pair<G4_Declare*, float>> sortedDcls;
+    for (auto item : dclSpillCost)
+    {
+        if(spilledDclSet.find(item.first) !=spilledDclSet.end())
+            sortedDcls.push_back(std::pair(item.first, item.second));
+    }
+
+    auto SpillCostDesc = [](const std::pair<G4_Declare*, float>& first,
+        const std::pair<G4_Declare*, float>& second)
+    {
+        return first.second > second.second;
+    };
+
+    sortedDcls.sort(SpillCostDesc);
+
+    // TODO: Iterating sequence based on spill cost may not be very accurate.
+    // Thats because long living variables typically have lower spill cost.
+    // But they may be referenced in some nested loop multiple times. In such
+    // cases, it is beneficial to split the variable around such loops. To
+    // accommodate such cases, we should be looking at reference count of
+    // variables in loops and iterate in an order based on that.
+    for (auto var : sortedDcls)
+    {
+        const auto& loops = getLoopsToSplitAround(var.first);
+        for (auto& loop : loops)
+        {
+            split(var.first, *loop);
+        }
+    }
+}
+
+std::vector<G4_SrcRegRegion*> LoopVarSplit::getReads(G4_Declare* dcl, Loop& loop)
+{
+    std::vector<G4_SrcRegRegion*> reads;
+
+    const auto& uses = references.getUses(dcl);
+    for (auto use : *uses)
+    {
+        auto bb = std::get<1>(use);
+        if (loop.contains(bb))
+        {
+            auto inst = std::get<0>(use);
+            for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+            {
+                auto opnd = inst->getSrc(i);
+                if (!opnd || !opnd->isSrcRegRegion())
+                    continue;
+                auto topdcl = opnd->asSrcRegRegion()->getTopDcl();
+                if (topdcl == dcl)
+                    reads.push_back(opnd->asSrcRegRegion());
+            }
+        }
+    }
+
+    return reads;
+}
+
+std::vector<G4_DstRegRegion*> LoopVarSplit::getWrites(G4_Declare* dcl, Loop& loop)
+{
+    std::vector<G4_DstRegRegion*> writes;
+
+    const auto& defs = references.getDefs(dcl);
+    for (auto def : *defs)
+    {
+        auto bb = std::get<1>(def);
+        if (loop.contains(bb))
+        {
+            auto dst = std::get<0>(def)->getDst();
+            writes.push_back(dst);
+        }
+    }
+
+    return writes;
+}
+
+unsigned int LoopVarSplit::getMaxRegPressureInLoop(Loop& loop)
+{
+    auto it = maxRegPressureCache.find(&loop);
+    if (it != maxRegPressureCache.end())
+        return it->second;
+
+    unsigned int maxRPE = 0;
+    auto& bbs = loop.getBBs();
+
+    for (auto bb : bbs)
+    {
+        for (auto inst : bb->getInstList())
+        {
+            maxRPE = std::max(maxRPE, rpe->getRegisterPressure(inst));
+        }
+    }
+
+    maxRegPressureCache[&loop] = maxRPE;
+
+    return maxRPE;
+}
+
+void LoopVarSplit::dump(std::ostream& of)
+{
+    for (auto dcl : splitResults)
+    {
+        of << "Spilled dcl: " << dcl.first->getName() << std::endl;
+        for (auto split : dcl.second)
+        {
+            of << "\tSplit dcl: " << split.first->getName() << ", for loop L" << split.second->id << std::endl;
+        }
+        of << std::endl;
+    }
+}
+
+void LoopVarSplit::removeSplitInsts(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb)
+{
+    auto it = gra->splitResults.find(spillDcl);
+
+    if (it == gra->splitResults.end())
+        return;
+
+    auto& bbInstsToRemove = (*it).second.insts;
+    for (auto entry : bbInstsToRemove)
+    {
+        auto currBB = entry.first;
+
+        if (currBB == bb)
+        {
+            auto& instsToRemoveFromBB = entry.second;
+            for (auto instIt = bb->begin(); instIt != bb->end();)
+            {
+                auto inst = (*instIt);
+                if (instsToRemoveFromBB.find(inst) == instsToRemoveFromBB.end())
+                {
+                    ++instIt;
+                    continue;
+                }
+
+                instIt = bb->erase(instIt);
+            }
+        }
+    }
+}
+
+bool LoopVarSplit::removeFromPreheader(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb, INST_LIST_ITER filledInstIter)
+{
+    auto it = gra->splitResults.find(spillDcl);
+    if (it != gra->splitResults.end() &&
+        (*it).second.insts.find(bb) != (*it).second.insts.end())
+    {
+        auto inst = *filledInstIter;
+        if (inst->isRawMov())
+        {
+            auto dstTopDcl = inst->getDst()->getTopDcl();
+            auto it = gra->splitResults.find(dstTopDcl);
+            if (it == gra->splitResults.end())
+                return false;
+
+            removeSplitInsts(gra, spillDcl, bb);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LoopVarSplit::removeFromLoopExit(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb, INST_LIST_ITER filledInstIter)
+{
+    return removeFromPreheader(gra, spillDcl, bb, filledInstIter);
+}
+
+const std::unordered_set<G4_INST*> LoopVarSplit::getSplitInsts(GlobalRA* gra, G4_BB* bb)
+{
+    std::unordered_set<G4_INST*> ret;
+
+    for (auto& splitVar : gra->splitResults)
+        for (auto& insts : splitVar.second.insts)
+            if (insts.first == bb)
+            {
+                for (auto item : insts.second)
+                    ret.insert(item);
+            }
+
+    return ret;
+}
+
+bool LoopVarSplit::split(G4_Declare* dcl, Loop& loop)
+{
+    // Split dcl in given loop. Return true if split was successful.
+    // It is assumed that dcl is spilled. This method inserts a
+    // copy in preheader of loop. Dst of this copy is a new tmp and
+    // source is dcl. All uses/defs of dcl in the loop are replaced
+    // with the tmp. If dcl is ever written in the loop, a copy from
+    // tmp to dcl is inserted in loop exit bb.
+    //
+    // This transformation requires a valid preheader be present for
+    // loop. If dcl is written in the loop then a valid exit bb is also
+    // needed.
+    if (!loop.preHeader)
+        return false;
+
+    const auto& dsts = getWrites(dcl, loop);
+    if (dsts.size() > 0)
+    {
+        // evaluate if it makes sense to insert the copy if loop has
+        // multiple exits.
+        if (loop.getLoopExits().size() != 1)
+            return false;
+        // TODO: Handle creation of loop preheader and loop exit in
+        // presence of SIMD CF. this requires changing JIP, UIP
+        // in source goto instructions and fix (if) any data structures
+        // in VISA that rely on those JIP/UIP.
+        if (!loop.preHeader->dominates(loop.getLoopExits().front()))
+            return false;
+    }
+
+    const auto& srcs = getReads(dcl, loop);
+
+    auto splitDcl = kernel.fg.builder->createTempVar(dcl->getTotalElems(),
+        dcl->getElemType(), coloring->getGRA().getSubRegAlign(dcl),
+        "LOOPSPLIT", true);
+
+    auto& splitData = coloring->getGRA().splitResults[splitDcl];
+    splitData.origDcl = dcl;
+
+    // emit TMP = dcl in preheader
+    copy(loop.preHeader, splitDcl, dcl, &splitData);
+
+    // emit dcl = TMP in loop exit
+    if (dsts.size() > 0)
+    {
+        copy(loop.getLoopExits().front(), dcl, splitDcl, &splitData, false);
+    }
+
+    // replace all occurences of dcl in loop with TMP
+    for (auto src : srcs)
+        replaceSrc(src, splitDcl);
+
+    for (auto dst : dsts)
+        replaceDst(dst, splitDcl);
+
+    splitResults[dcl].push_back(std::make_pair(splitDcl, &loop));
+
+    return true;
+}
+
+void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, bool pushBack)
+{
+    // create mov instruction to copy dst->src
+    // multiple mov instructions may be created depending on size of dcls
+    // all mov instructions are appended to inst list of bb
+    // when pushBack argument = true, append to BB (happens in pre-header)
+    // when pushBack argument = false, insert in bb after label (happens at exit bb)
+
+    dst = dst->getRootDeclare();
+    src = src->getRootDeclare();
+    unsigned int numRows = dst->getNumRows();
+    unsigned int bytesRemaining = dst->getByteSize();
+
+    auto insertCopy = [&](G4_INST* inst)
+    {
+        if (pushBack || bb->size() == 0)
+        {
+            bb->push_back(inst);
+            splitData->insts[bb].insert(inst);
+        }
+        else
+        {
+            // insert immediately after label instruction, if one exists
+            for (auto it = bb->begin(); it != bb->end(); ++it)
+            {
+                auto inst = (*it);
+                if (inst->isLabel())
+                    continue;
+                bb->insertAfter(it, inst);
+                splitData->insts[bb].insert(inst);
+                break;
+            }
+        }
+    };
+
+    // first copy full GRF rows
+    if (numRows > 1 || (dst->getTotalElems() * dst->getElemSize() == getGRFSize()))
+    {
+        // dcls are GRF sized so emit max SIMD size possible and copy 2 rows at
+        // a time
+        for (unsigned int i = 0; i < numRows; i++)
+        {
+            const RegionDesc* rd = kernel.fg.builder->getRegionStride1();
+            G4_ExecSize execSize{ numEltPerGRF<Type_UD>() };
+
+            if ((i + 1) < numRows)
+                execSize = G4_ExecSize(numEltPerGRF<Type_UD>() * 2);
+
+            auto dstRgn = kernel.fg.builder->createDst(dst->getRegVar(), (short)i, 0, 1, Type_F);
+            auto srcRgn = kernel.fg.builder->createSrc(src->getRegVar(), (short)i, 0, rd, Type_F);
+            auto inst = kernel.fg.builder->createMov(execSize, dstRgn, srcRgn, InstOpt_WriteEnable, false);
+
+            insertCopy(inst);
+            bytesRemaining -= (execSize.value * G4_Type_Table[Type_F].byteSize);
+
+            if (bytesRemaining < numEltPerGRF<Type_UB>())
+                break;
+        }
+    }
+
+    while (bytesRemaining > 0)
+    {
+        G4_Type type = Type_W;
+        G4_ExecSize execSize = g4::SIMD16;
+
+        if (bytesRemaining >= 16)
+            execSize = g4::SIMD8;
+        else if (bytesRemaining >= 8 && bytesRemaining < 16)
+            execSize = g4::SIMD4;
+        else if (bytesRemaining >= 4 && bytesRemaining < 8)
+            execSize = g4::SIMD2;
+        else if (bytesRemaining >= 2 && bytesRemaining < 4)
+            execSize = g4::SIMD1;
+        else if (bytesRemaining == 1)
+        {
+            // If a region has odd number of bytes, copy last byte in final iteration
+            execSize = g4::SIMD1;
+            type = Type_UB;
+        }
+        else
+        {
+            MUST_BE_TRUE(false, "Unexpected condition");
+        }
+
+        const RegionDesc* rd = kernel.fg.builder->getRegionStride1();
+
+        unsigned int row = (dst->getByteSize() - bytesRemaining) / numEltPerGRF<Type_UB>();
+        unsigned int col = (dst->getByteSize() - bytesRemaining) % numEltPerGRF<Type_UB>();
+        if (G4_Type_Table[type].byteSize > 1)
+        {
+            MUST_BE_TRUE(col % 2 == 0, "Unexpected condition");
+            col /= 2;
+        }
+
+        G4_DstRegRegion* dstRgn = kernel.fg.builder->createDst(dst->getRegVar(), row, col, 1, type);
+        G4_SrcRegRegion* srcRgn = kernel.fg.builder->createSrc(src->getRegVar(), row, col, rd, type);
+
+        auto inst = kernel.fg.builder->createMov(execSize, dstRgn, srcRgn, InstOpt_WriteEnable, false);
+
+        insertCopy(inst);
+
+        bytesRemaining -= (execSize.value * G4_Type_Table[type].byteSize);
+    };
+}
+
+void LoopVarSplit::replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl)
+{
+    auto srcDcl = src->getBase()->asRegVar()->getDeclare();
+    dcl = getNewDcl(srcDcl, dcl);
+
+    auto newSrcRgn = kernel.fg.builder->createSrc(dcl->getRegVar(), src->getRegOff(),
+        src->getSubRegOff(), src->getRegion(), src->getType(), src->getAccRegSel());
+
+    auto inst = src->getInst();
+    for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+    {
+        if (inst->getSrc(i) == src)
+        {
+            inst->setSrc(newSrcRgn, i);
+            break;
+        }
+    }
+}
+
+void LoopVarSplit::replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl)
+{
+    auto dstDcl = dst->getBase()->asRegVar()->getDeclare();
+    dcl = getNewDcl(dstDcl, dcl);
+
+    auto newDstRgn = kernel.fg.builder->createDst(dcl->getRegVar(), dst->getRegOff(),
+        dst->getSubRegOff(), dst->getHorzStride(), dst->getType(), dst->getAccRegSel());
+
+    auto inst = dst->getInst();
+    inst->setDest(newDstRgn);
+}
+
+G4_Declare* LoopVarSplit::getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2)
+{
+    // this method gets args dcl1, dcl2. this method is invoked
+    // when the transformation replaces existing src/dst rgn with
+    // equivalent one but using split variable.
+    //
+    // dcl1 is a dcl used to construct some src or dst rgn.
+    // dcl2 is a new dcl that splits dcl1. dcl2 is always root dcl.
+    // dcl1 may or may not be aliased of another dcl.
+    // if dcl1 is also root dcl, then return dcl2.
+    // if dcl1 is an alias dcl, then construct new dcl that aliases
+    //   dcl2 at similar offset.
+    // mapping from old dcl to new dcl is stored for future invocations.
+
+    MUST_BE_TRUE(!dcl2->getAliasDeclare(), "Expecting to see root dcl for dcl2");
+
+    auto it = oldNewDcl.find(dcl1);
+    if (it != oldNewDcl.end())
+        return (*it).second;
+
+    if (!dcl1->getAliasDeclare())
+    {
+        oldNewDcl[dcl1] = dcl2;
+        return dcl2;
+    }
+
+    auto newDcl = kernel.fg.builder->createTempVar(dcl1->getTotalElems(), dcl1->getElemType(),
+        dcl1->getSubRegAlign());
+    newDcl->setAliasDeclare(getNewDcl(dcl1->getRootDeclare(), dcl2), dcl1->getOffsetFromBase());
+
+    oldNewDcl[dcl1] = newDcl;
+
+    return newDcl;
+}
+
+std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
+{
+    // return a list of Loop* around which variable dcl should be split
+    std::vector<Loop*> loopsToSplitAround;
+
+    // first make list of all loops where dcl is ever referenced
+    auto uses = references.getUses(dcl);
+    auto defs = references.getDefs(dcl);
+
+    auto StableOrder = [](const G4_BB* first, const G4_BB* second)
+    {
+        return first->getId() < second->getId();
+    };
+    std::set<G4_BB*, decltype(StableOrder)> bbsWithRefToDcl(StableOrder);
+
+    for (auto& use : *uses)
+    {
+        auto bb = std::get<1>(use);
+        bbsWithRefToDcl.insert(bb);
+    }
+
+    for (auto& def : *defs)
+    {
+        auto bb = std::get<1>(def);
+        bbsWithRefToDcl.insert(bb);
+    }
+
+    auto OrderByRegPressure = [&](Loop* loop1, Loop* loop2)
+    {
+        return getMaxRegPressureInLoop(*loop1) >
+            getMaxRegPressureInLoop(*loop2);
+    };
+
+    std::set<Loop*, decltype(OrderByRegPressure)> innerMostLoops(OrderByRegPressure);
+
+    // now collect innermost loop for each referenced BB
+    for (auto bb : bbsWithRefToDcl)
+    {
+        auto innerMost = kernel.fg.getLoops().getInnerMostLoop(bb);
+        if (innerMost)
+            innerMostLoops.insert(innerMost);
+    }
+
+    // prune list of loops
+    // 1. loops are stored in descending order of max reg pressure
+    // 2. apply cost heuristic to decide if variable should be split at a loop
+    // 3. once split at a loop, dont split at any parent or nested loop
+    //
+    // Example:
+    //
+    // -----
+    // |
+    // | Loop A
+    // | =X
+    // -----
+    //
+    // -----
+    // |
+    // | Loop B
+    // | =X
+    // | -----
+    // | | =X
+    // | | Loop C
+    // | -----
+    // |
+    // -----
+    //
+    // Assume variable X is spilled and is referenced in Loop A, Loop B, Loop C.
+    // Loop C is nested in Loop B.
+    // The algorithm below decides whether it is better to spill X around Loop C
+    // or Loop B. X is spilled around only 1 of these 2 loops since they've a
+    // parent-nested relationship. Independently, the algorithm can also decide to
+    // split X around Loop A as it is not a parent or nested loop of other loops.
+    //
+
+
+    for (auto loop : innerMostLoops)
+    {
+        bool dontSplit = false;
+        for (auto splitLoop : loopsToSplitAround)
+        {
+            if (loop->fullSubset(splitLoop) ||
+                loop->fullSuperset(splitLoop))
+            {
+                // variable already split in nested or parent loop
+                dontSplit = true;
+                break;
+            }
+        }
+        if (dontSplit)
+            continue;
+
+        // apply cost heuristic
+        if (dcl->getNumRows() <= 2)
+        {
+            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(1.5f * (float)kernel.getNumRegTotal()))
+                loopsToSplitAround.push_back(loop);
+        }
+        else if (dcl->getNumRows() <= 4)
+        {
+            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(0.95f * (float)kernel.getNumRegTotal()))
+                loopsToSplitAround.push_back(loop);
+        }
+        else if (dcl->getNumRows() > 4)
+        {
+            // splitting dcls with > 4 rows should be very rare
+            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(0.6f * (float)kernel.getNumRegTotal()))
+                loopsToSplitAround.push_back(loop);
+        }
+    }
+
+    return loopsToSplitAround;
+}
+
 };

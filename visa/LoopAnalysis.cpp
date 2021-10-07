@@ -671,7 +671,7 @@ LoopDetection::LoopDetection(G4_Kernel& k) : kernel(k), fg(k.fg)
 {
 }
 
-std::vector<Loop*> vISA::LoopDetection::getTopLoops()
+std::vector<Loop*> LoopDetection::getTopLoops()
 {
     recomputeIfStale();
 
@@ -776,6 +776,35 @@ G4_BB* LoopDetection::getPreheader(Loop* loop)
     }
 
     // a valid pre-header wasnt found, so create one and return it
+    // unless any pred uses SIMD CF goto in to loop header
+    if (header->getLabel())
+    {
+        auto headerLblStr = std::string(header->getLabel()->getLabel());
+        for (auto pred : headerPreds)
+        {
+            if (pred->isEndWithGoto())
+            {
+                auto gotoInst = pred->back()->asCFInst();
+                auto jipStr = std::string(gotoInst->getJipLabelStr());
+                auto uipStr = std::string(gotoInst->getUipLabelStr());
+                if (jipStr == headerLblStr ||
+                    uipStr == headerLblStr)
+                {
+                    // dont create preheader for this loop as a predecessor
+                    // of header has SIMD CF in to loop header.
+                    return nullptr;
+                }
+            }
+            else if (pred->size() > 0 &&
+                pred->back()->opcode() == G4_jmpi)
+            {
+                // TODO: may be safe to alter CF by changing jmpi destination
+                // to preheader instead of header.
+                return nullptr;
+            }
+        }
+    }
+
     G4_BB* preHeader = kernel.fg.createNewBBWithLabel("preHeader");
     for (auto pred : headerPreds)
     {
@@ -1179,9 +1208,10 @@ void Loop::dump(std::ostream& os)
     }
     os << " } ";
 
-    auto labelStr = std::string("BB") + std::to_string(preHeader->getId());
+    auto labelStr = std::string("BB") + (preHeader ? std::to_string(preHeader->getId()) :
+        std::string("--"));
 
-    if (preHeader->getLabel())
+    if (preHeader && preHeader->getLabel())
         labelStr += "(" + std::string(preHeader->getLabel()->getLabel()) + ")";
 
     std::string exitBBs = "{ ";

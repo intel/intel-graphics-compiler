@@ -1025,6 +1025,7 @@ void CoalesceSpillFills::fills()
         std::list<INST_LIST_ITER> spills;
         INST_LIST_ITER startIter = bb->begin();
         unsigned int w = 0;
+        const auto& splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
         for (auto instIter = startIter;
             instIter != endIter;)
         {
@@ -1033,6 +1034,33 @@ void CoalesceSpillFills::fills()
             if (inst->isPseudoKill() ||
                 inst->isLabel())
             {
+                instIter++;
+                continue;
+            }
+
+            if (splitInsts.find(inst) != splitInsts.end())
+            {
+                // if inst was emitted by loop split transformation,
+                // then dont optimize it. such instructions are
+                // emitted in loop preheader/loop exit. if a split
+                // variable spills, we need to erase all fills and
+                // spills emitted for that split. if we coalesce
+                // 2 fills from split sequence, we may end up with
+                // fill loading data that wont be used. for eg,
+                //
+                // (W) mov (8|M0) SPLIT1     V10
+                // (W) mov (8|M0) SPLIT2     V11
+                // ==>
+                //
+                // (W) fill FILL_V10 @ 0x0
+                // (W) mov (8|M0) SPLIT1     FILL_V10
+                // (W) fill FILL_V11 @ 0x32
+                // (W) mov (8|M0) SPLIT2     FILL_V11
+                //
+                // we need to be able to erase 2nd fill and copy in
+                // case SPLIT2 spills. this cannot be done if the 2
+                // fills are coalesced.
+
                 instIter++;
                 continue;
             }
@@ -1168,6 +1196,7 @@ void CoalesceSpillFills::spills()
         std::list<INST_LIST_ITER> spillsToCoalesce;
         INST_LIST_ITER startIter = bb->begin();
         unsigned int w = 0;
+        const auto& splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
         for (auto instIter = startIter;
             instIter != endIter;)
         {
@@ -1175,6 +1204,12 @@ void CoalesceSpillFills::spills()
 
             if (inst->isPseudoKill() ||
                 inst->isLabel())
+            {
+                instIter++;
+                continue;
+            }
+
+            if (splitInsts.find(inst) != splitInsts.end())
             {
                 instIter++;
                 continue;
@@ -1674,11 +1709,15 @@ void CoalesceSpillFills::spillFillCleanup()
     {
         auto startIt = bb->begin();
         auto endIt = bb->end();
+        const auto& splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
         for (auto instIt = startIt;
             instIt != endIt;
             instIt++)
         {
             auto inst = (*instIt);
+
+            if (splitInsts.find(inst) != splitInsts.end())
+                continue;
 
             if (inst->isFillIntrinsic())
             {

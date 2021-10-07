@@ -10162,6 +10162,14 @@ int GlobalRA::coloringRegAlloc()
                     continue;
                 }
 
+                if (iterationNo == 0 && !fastCompile &&
+                    kernel.getOption(vISA_DoSplitOnSpill))
+                {
+                    LoopVarSplit loopSplit(kernel, &coloring, &rpe);
+                    kernel.fg.getLoops().computePreheaders();
+                    loopSplit.run();
+                }
+
                 //Calculate the spill caused by send to decide if global splitting is required or not
                 for (auto spilled : coloring.getSpilledLiveRanges())
                 {

@@ -191,6 +191,8 @@ namespace vISA
 
         std::vector<G4_BB*>& getLoopExits();
 
+        const std::vector<G4_BB*>& getBBs() { return BBs; }
+
     private:
         std::vector<G4_BB*> BBs;
         std::unordered_set<const G4_BB*> BBsLookup;

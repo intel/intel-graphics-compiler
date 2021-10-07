@@ -566,6 +566,17 @@ unsigned SpillManagerGRF::getDisp(G4_RegVar * regVar)
         return getDisp(regVarDcl->getAliasDeclare()->getRegVar()) +
             regVarDcl->getAliasOffset();
     }
+    else if (gra.splitResults.find(regVar->getDeclare()->getRootDeclare()) !=
+        gra.splitResults.end())
+    {
+        // this variable is result of variable splitting optimization.
+        // original variable is guaranteed to have spilled. if split
+        // variable also spills then reuse original variable's spill
+        // location.
+        auto it = gra.splitResults.find(regVar->getDeclare()->getRootDeclare());
+        auto disp = getDisp((*it).second.origDcl->getRegVar());
+        regVar->setDisp(disp);
+    }
     else if (regVar->isRegVarTransient() &&
         getDisp(regVar->getBaseRegVar()) != UINT_MAX)
     {
@@ -3011,6 +3022,14 @@ void SpillManagerGRF::insertSpillRangeCode(
         return;
     }
 
+    if (builder_->getOption(vISA_DoSplitOnSpill))
+    {
+        // if spilled inst is copy of original variable to it's split variable
+        // then simply remove the instruction.
+        if (LoopVarSplit::removeFromPreheader(&gra, spillDcl, bb, spilledInstIter))
+            return;
+    }
+
     auto checkRMWNeeded = [this, spilledRegion]()
     {
         return noRMWNeeded.find(spilledRegion) == noRMWNeeded.end();
@@ -3218,6 +3237,29 @@ void SpillManagerGRF::insertSpillRangeCode(
         }
     }
 
+    if (builder_->getOption(vISA_DoSplitOnSpill))
+    {
+        if (inst->isRawMov())
+        {
+            // check whether mov is copy in loop preheader or exit
+            auto it = gra.splitResults.find(inst->getSrc(0)->getTopDcl());
+            if (it != gra.splitResults.end())
+            {
+                if ((*it).second.origDcl == spillDcl)
+                {
+                    // srcRegion is a split var temp
+                    // this is a copy in either preheader or loop exit.
+                    // add it to list so we know it shouldnt be optimized
+                    // by spill cleanup.
+                    for (auto addedInst : builder_->instList)
+                    {
+                        (*it).second.insts[bb].insert(addedInst);
+                    }
+                }
+            }
+        }
+    }
+
     // Replace the spilled range with the spill range and insert spill
     // instructions.
 
@@ -3258,6 +3300,23 @@ void SpillManagerGRF::insertFillGRFRangeCode(
     auto dstRegion = inst->getDst();
     G4_INST* fillSendInst = nullptr;
     auto spillDcl = filledRegion->getTopDcl()->getRootDeclare();
+
+    if (builder_->getOption(vISA_DoSplitOnSpill))
+    {
+        // if spilled inst is copy of split variable to it's spilled variable
+        // then simply remove the instruction.
+        //
+        // if inst is:
+        // (W) mov (8|M0) SPLIT1    V10
+        //
+        // and SPLIT1 is marked as spilled then dont insert spill code for it.
+        // V10 is guaranteed to be spilled already so there is no point spilling
+        // SPLIT1. we simply remove above instruction and any fill emitted to load
+        // V10 and return.
+        if (LoopVarSplit::removeFromLoopExit(&gra, spillDcl, bb, filledInstIter))
+            return;
+    }
+
     auto sisIt = scalarImmSpill.find(spillDcl);
     if (sisIt != scalarImmSpill.end())
     {
@@ -3304,6 +3363,29 @@ void SpillManagerGRF::insertFillGRFRangeCode(
                 (rb - lb + 1) == fillRangeDcl->getByteSize())
             {
                 optimizeSplitLLR = true;
+            }
+        }
+    }
+
+    if (builder_->getOption(vISA_DoSplitOnSpill))
+    {
+        if (inst->isRawMov())
+        {
+            // check whether mov is copy in loop preheader or exit
+            auto it = gra.splitResults.find(dstRegion->getTopDcl());
+            if (it != gra.splitResults.end())
+            {
+                if ((*it).second.origDcl == filledRegion->getTopDcl())
+                {
+                    // dstRegion is a split var temp
+                    // this is a copy in either preheader or loop exit.
+                    // add it to list so we know it shouldnt be optimized
+                    // by spill cleanup.
+                    for (auto addedInst : builder_->instList)
+                    {
+                        (*it).second.insts[bb].insert(addedInst);
+                    }
+                }
             }
         }
     }

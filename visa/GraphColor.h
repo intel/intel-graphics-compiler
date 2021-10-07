@@ -794,6 +794,8 @@ namespace vISA
         std::vector<bool> calleeSaveRegs;
         unsigned calleeSaveRegCount = 0;
 
+        std::unordered_map<G4_Declare*, SplitResults> splitResults;
+
     public:
         G4_Kernel& kernel;
         IR_Builder& builder;
