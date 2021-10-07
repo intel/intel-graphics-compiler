@@ -31,12 +31,8 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   switch (Core) {
   case IGFX_GEN9_CORE:
     return "SKL";
-  case IGFX_GEN10_CORE:
-    return "CNL";
   case IGFX_GEN11_CORE:
-    if (Product == IGFX_ICELAKE_LP || Product == IGFX_LAKEFIELD)
-      return "ICLLP";
-    return "ICL";
+    return "ICLLP";
   case IGFX_GEN12_CORE:
   case IGFX_GEN12LP_CORE:
   case IGFX_XE_HP_CORE:

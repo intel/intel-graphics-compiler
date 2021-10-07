@@ -541,8 +541,8 @@ unsigned GenXLegalization::getExecSizeAllowedBits(Instruction *Inst) {
     case GenXIntrinsic::genx_usmad_sat:
     case GenXIntrinsic::genx_uumad_sat:
     case Intrinsic::fma:
-      // Do not emit simd32 mad for pre-CNL.
-      return ST->isCNLplus() ? 0x3f : 0x1f;
+      // Do not emit simd32 mad for pre-ICLLP.
+      return ST->isICLLPplus() ? 0x3f : 0x1f;
     default:
       break;
   }

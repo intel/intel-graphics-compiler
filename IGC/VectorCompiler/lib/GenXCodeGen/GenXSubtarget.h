@@ -57,7 +57,6 @@ protected:
     GENX_BXT,
     GENX_KBL,
     GENX_GLK,
-    GENX_CNL,
     GENX_ICLLP,
     GENX_TGLLP,
     GENX_DG1,
@@ -165,11 +164,8 @@ public:
   /// * isGLK - true if target is GLK
   bool isGLK() const { return GenXVariant == GENX_GLK; }
 
-  /// * isCNL - true if target is CNL
-  bool isCNL() const { return GenXVariant == GENX_CNL; }
-
-  /// * isCNLplus - true if target is CNL or later
-  bool isCNLplus() const { return GenXVariant >= GENX_CNL; }
+  /// * isICLLPplus - true if target is ICLLP or later
+  bool isICLLPplus() const { return GenXVariant >= GENX_ICLLP; }
 
   /// * isICLLP - true if target is ICL LP
   bool isICLLP() const { return GenXVariant == GENX_ICLLP; }
@@ -213,7 +209,7 @@ public:
 
   /// * WaNoA32ByteScatteredStatelessMessages - true if there is no A32 byte
   ///   scatter stateless message.
-  bool WaNoA32ByteScatteredStatelessMessages() const { return !isCNLplus(); }
+  bool WaNoA32ByteScatteredStatelessMessages() const { return !isICLLPplus(); }
 
   /// * disableVectorDecomposition - true if vector decomposition is disabled.
   bool disableVectorDecomposition() const { return DisableVectorDecomposition; }
@@ -289,8 +285,6 @@ public:
       return TARGET_PLATFORM::GENX_SKL;
     case GENX_BXT:
       return TARGET_PLATFORM::GENX_BXT;
-    case GENX_CNL:
-      return TARGET_PLATFORM::GENX_CNL;
     case GENX_ICLLP:
       return TARGET_PLATFORM::GENX_ICLLP;
     case GENX_TGLLP:

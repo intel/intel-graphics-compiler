@@ -116,18 +116,6 @@ def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureInstrAdd64,
                                FeatureFP64,
                                FeatureHWTIDFromPredef]>;
-def : Proc<"CNL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntDivRem32,
-                               FeatureUseMulDDQ,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureHWTIDFromPredef]>;
-def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntDivRem32,
-                               FeatureUseMulDDQ,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureHWTIDFromPredef]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32, FeatureInstrBitRotate,
                                FeatureHWTIDFromPredef]>;

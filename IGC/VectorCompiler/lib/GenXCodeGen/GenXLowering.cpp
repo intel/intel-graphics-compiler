@@ -1393,7 +1393,7 @@ bool GenXLowering::processInst(Instruction *Inst) {
     if (ST) {
       // use gather/scatter to implement SLM oword load/store on
       // legacy platforms
-      if (!ST->isCNLplus()) {
+      if (!ST->isICLLPplus()) {
         if (translateSLMOWord(CI, IntrinsicID))
           return true;
       }
