@@ -80,6 +80,9 @@ public:
   SPIRVWord WordCount;
   Op OpCode;
   SPIRVEntry *Scope; // A function or basic block
+
+  std::vector<SPIRVEntry*>
+      getContinuedInstructions(const Op ContinuedOpCode);
 };
 
 template<typename T>
