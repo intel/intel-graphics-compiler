@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "JitterDataStruct.h"
 #include "RelocationInfo.h"
 
+#include <cstdint>
 #include <map>
 
 #include "Probe/Assertion.h"
@@ -121,7 +122,7 @@ public:
   using RelocationSeq = std::vector<vISA::ZERelocEntry>;
 
   struct DataInfo {
-    std::vector<char> Buffer;
+    std::vector<uint8_t> Buffer;
     int Alignment = 0;
     // Runtime can allocate bigger zeroed out buffer, and fill only
     // the first part of it with the data from Buffer field. So there's no
@@ -266,7 +267,7 @@ public:
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
     const FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }
     const GTPinInfo &getGTPinInfo() const { return GtpinInfo; }
-    const std::vector<char> &getGenBinary() const {
+    const std::vector<uint8_t> &getGenBinary() const {
       return CompilerInfo.Func.Data.Buffer;
     }
     const std::vector<char> &getDebugInfo() const { return DebugInfo; }

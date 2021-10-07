@@ -422,8 +422,8 @@ appendFuncBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
       "Unexpected null buffer or zero-sized kernel (compilation failed?)");
   IGC_ASSERT_MESSAGE(GenBinSize,
       "Unexpected null buffer or zero-sized kernel (compilation failed?)");
-  GenBinary.append(&Func, ArrayRef<char>{reinterpret_cast<char *>(GenBin),
-                                         static_cast<size_t>(GenBinSize)});
+  GenBinary.append(&Func, ArrayRef<uint8_t>{static_cast<uint8_t *>(GenBin),
+                                            static_cast<size_t>(GenBinSize)});
   freeBlock(GenBin);
 }
 
@@ -446,8 +446,8 @@ loadGenBinaryFromFile(genx::BinaryDataAccumulator<const Function *> &GenBinary,
     return false;
   }
 
-  GenBinary.append(&F, ArrayRef<char>{reinterpret_cast<char *>(GenBin),
-                                      static_cast<size_t>(GenBinSize)});
+  GenBinary.append(&F, ArrayRef<uint8_t>{static_cast<uint8_t *>(GenBin),
+                                         static_cast<size_t>(GenBinSize)});
   freeBlock(GenBin);
   return true;
 }

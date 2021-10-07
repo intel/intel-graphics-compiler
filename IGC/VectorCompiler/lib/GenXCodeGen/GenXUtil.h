@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <iterator>
 #include <unordered_map>
 #include <vector>
@@ -589,14 +590,14 @@ Instruction *emulateI64Operation(const GenXSubtarget *ST, Instruction *In,
 // Information about each stored section can be accessed via the key with
 // which it was stored. The key must be unique.
 // Accumulated/consolidated binary data can be accesed.
-template <typename KeyT> class BinaryDataAccumulator {
+template <typename KeyT, typename DataT = uint8_t> class BinaryDataAccumulator {
 public:
   struct SectionInfoT {
     int Offset = 0;
-    ArrayRef<char> Data;
+    ArrayRef<DataT> Data;
 
     SectionInfoT() = default;
-    SectionInfoT(const char *BasePtr, int First, int Last)
+    SectionInfoT(const DataT *BasePtr, int First, int Last)
         : Offset{First}, Data{BasePtr + First, BasePtr + Last} {}
 
     int getSize() const { return Data.size(); }
@@ -608,7 +609,7 @@ public:
   };
 
 private:
-  std::vector<char> Data;
+  std::vector<DataT> Data;
   using SectionSeq = std::vector<SectionT>;
   SectionSeq Sections;
 
@@ -632,7 +633,7 @@ public:
 
   // Append the data that is referenced by a \p Key and represented
   // in range [\p First, \p Last), to the buffer.
-  // The range must consist of char elements.
+  // The range must consist of DataT elements.
   template <typename InputIter>
   void append(KeyT Key, InputIter First, InputIter Last) {
     IGC_ASSERT_MESSAGE(
@@ -648,7 +649,7 @@ public:
     Sections.push_back(std::move(Section));
   }
 
-  void append(KeyT Key, ArrayRef<char> SectionBin) {
+  void append(KeyT Key, ArrayRef<DataT> SectionBin) {
     append(std::move(Key), SectionBin.begin(), SectionBin.end());
   }
 
@@ -674,8 +675,8 @@ public:
   // Data buffer empty.
   bool empty() const { return Data.empty(); }
   // Emit the whole consolidated data.
-  std::vector<char> emitConsolidatedData() const & { return Data; }
-  std::vector<char> emitConsolidatedData() && { return std::move(Data); }
+  std::vector<DataT> emitConsolidatedData() const & { return Data; }
+  std::vector<DataT> emitConsolidatedData() && { return std::move(Data); }
 };
 
 // Not every global variable is a real global variable and should be eventually

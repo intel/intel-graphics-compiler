@@ -706,7 +706,8 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
 }
 
 static void setGenBinary(const FINALIZER_INFO &JitterInfo,
-                         const std::vector<char> &GenBinary, CMKernel &Kernel) {
+                         const std::vector<uint8_t> &GenBinary,
+                         CMKernel &Kernel) {
   // Kernel binary, padding is hard-coded.
   const size_t Size = GenBinary.size();
   const size_t Padding = iSTD::GetAlignmentOffset(Size, 64);
