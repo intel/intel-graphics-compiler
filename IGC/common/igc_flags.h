@@ -319,7 +319,7 @@ DECLARE_IGC_REGKEY(bool, EnableSelectiveScalarizer,     false,  "enable selectiv
 DECLARE_IGC_REGKEY(bool, HoistPSConstBufferValues,      true,  "Hoists up down converts for contant buffer accesses, so they an be vectorized more easily.", false)
 DECLARE_IGC_REGKEY(bool, EnableSingleVertexDispatch,    false, "Vertex Shader Single Patch Dispatch Regkey", false)
 DECLARE_IGC_REGKEY(bool, allowLICM,                     true,  "Enable LICM in IGC.", false)
-DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdSLM,          12,    "Spill Threshold for CS SIMD16 with SLM", false)
+DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdSLM,          9,    "Spill Threshold for CS SIMD16 with SLM", false)
 DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdNoSLM,        5,     "Spill Threshold for CS SIMD16 without SLM", false)
 DECLARE_IGC_REGKEY(DWORD, AllowedSpillRegCount,         0,     "Max allowed spill size without recompile", false)
 DECLARE_IGC_REGKEY(DWORD, LICMStatThreshold,            70,    "LICM stat threshold to avoid retry SIMD16 for CS", false)

@@ -64,6 +64,7 @@ namespace IGC
         outputString.append("\n");
         outputString.append("TotalVsThreads \t\t= \t");
         outputString.append(stringFrom<unsigned int>(sysinfo->TotalVsThreads));
+        outputString.append("\n");
         outputString.append("TotalVsThreads_Pocs \t\t= \t");
         outputString.append(stringFrom<unsigned int>(sysinfo->TotalVsThreads_Pocs));
         outputString.append("\n");
