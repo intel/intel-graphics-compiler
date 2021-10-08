@@ -6860,8 +6860,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         if (builder.hasFusedEUWA() &&
             (builder.getJitInfo()->spillMemUsed > 0
-             || builder.getJitInfo()->numFlagSpillStore > 0
-             || fg.getHasStackCalls()))
+             || builder.getJitInfo()->numFlagSpillStore > 0))
         {
             doNoMaskWA_postRA();
         }
@@ -11790,9 +11789,6 @@ void Optimizer::doNoMaskWA()
 //   with a f0.1, which is undefined value.  And at BB_21, reading from r34.8 will
 //   get garbage value!
 //
-// For Stack call,
-//   Caller-save/restore code needs WA as well
-//
 // Note this works only for NoMaskWA=2
 //
 void Optimizer::doNoMaskWA_postRA()
@@ -11833,26 +11829,23 @@ void Optimizer::doNoMaskWA_postRA()
         }
     };
 
-    auto isStackCallReservedGRF = [&grfStart, &grfEnd](G4_DstRegRegion* DRR)
+    auto isSpillStore = [](G4_INST* I)
     {
-        if (DRR == nullptr || DRR->isNullReg())
+        if (I->isSend() && I->getPredicate() == nullptr &&
+            (I->getDst() == nullptr || I->getDst()->isNullReg()))
         {
-            return false;
+            return I->getComments().find("scratch space spill") != std::string::npos;
+#if 0
+            // The following returns the subset of the above condition, so it misses cases
+            G4_SrcRegRegion* src = I->getSrc(I->isSplitSend() ? 1 : 0)->asSrcRegRegion();
+            G4_RegVar* regvar = src->getBase()->asRegVar();
+            if (regvar->isRegVarTransient() || regvar->isRegVarTmp())
+            {
+                return true;
+            }
+#endif
         }
-        bool isAssigned = false;
-        uint32_t regno = DRR->ExRegNum(isAssigned);
-        return isAssigned && (regno >= grfStart && regno < grfEnd);
-    };
-
-    auto isStore = [](G4_INST* I)
-    {
-        return I->isSend() && I->getPredicate() == nullptr &&
-            (I->getDst() == nullptr || I->getDst()->isNullReg());
-    };
-    auto isLoad = [](G4_INST* I)
-    {
-        return I->isSend() && I->getPredicate() == nullptr &&
-            (I->getDst() != nullptr && !I->getDst()->isNullReg());
+        return false;
     };
 
     auto isCandidate = [&](G4_INST* I, G4_BB* BB) {
@@ -11872,27 +11865,15 @@ void Optimizer::doNoMaskWA_postRA()
             return true;
         }
         // 2. GRF spill
-        if (HasGRFSpill && isStore(I))
+        if (HasGRFSpill && isSpillStore(I))
         {
             return true;
         }
-        // 3. Stack call's caller-save/restore
-        if (HasStackCall)
-        {
-            G4_BB* SolePredBB = fg.getSinglePredecessor(BB, nullptr);
-            const bool callerSave = (BB->getBBType() & G4_BB_FCALL_TYPE);
-            const bool callerRestore = SolePredBB ? (SolePredBB->getBBType() & G4_BB_FCALL_TYPE) : false;
-            if (callerSave || callerRestore)
-            {
-                if (I->getPredicate() == nullptr &&
-                    ((!I->isSend() && isStackCallReservedGRF(I->getDst()))
-                     || (callerSave && isStore(I))
-                     || (callerRestore && isLoad(I))))
-                {
-                    return true;
-                }
-            }
-        }
+        // 3. Stack call's caller-save/restore (all are noMask)
+        //    As call-save/restore are in the same control-flow, that is,
+        //    either all of three save/call/restore run or none of them run.
+        //    Thus, save/restore sequence would be noop in terms of GRF's contents.
+        //    For this, no WA is needed for call sequence.
         return false;
     };
 
@@ -11957,8 +11938,6 @@ void Optimizer::doNoMaskWA_postRA()
     //    2. (W) mov (1|M0)  f0.0<1>:uw   DW1:uw             // WARestore
     //       (W & f0.0.any16h) mov r34.8<1>:uw  DW0.0<0;1,0>:uw
     //    3. (W) mov (1|M0) f0.0<1>:uw  DW0:uw               // restore
-    //
-    // Todo:  check if save/restore is needed to avoid redundant save/restore.
     //
     G4_Declare* saveTmp = builder.getEUFusionWATmpVar(); // 2DW;
     G4_RegVar* saveVar = saveTmp->getRegVar();
