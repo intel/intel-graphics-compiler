@@ -308,6 +308,7 @@ DEF_VISA_OPTION(vISA_InsertDummyCompactInst, ET_BOOL, "-insertDummyCompactInst",
 DEF_VISA_OPTION(vISA_AsmFileNameOverridden,  ET_BOOL,  NULLSTR,        UNUSED, false)
 DEF_VISA_OPTION(vISA_HashVal,             ET_2xINT32, "-hashmovs", "USAGE: -hashmovs hi32 lo32\n", 0)
 DEF_VISA_OPTION(vISA_HashVal1,            ET_2xINT32, "-hashmovs1", "USAGE: -hashmovs1 hi32 lo32\n", 0)
+DEF_VISA_OPTION(vISA_HashMovsAtPrologue,  ET_BOOL, "-hashatprologue", UNUSED, false)
 DEF_VISA_OPTION(vISA_AddKernelID,         ET_BOOL,  "-addKernelID", UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpPayload,         ET_BOOL, "-dumpPayload",        UNUSED, false)
 

@@ -793,11 +793,13 @@ void Optimizer::insertHashMovs()
     // mov (16) null<1>:d        lo32 {NoMask}
     // mov (16) null<1>:d        hi32 {NoMask}
     //
+    bool hashAtPrologue = kernel.getOption(vISA_HashMovsAtPrologue);
     for (G4_BB* bb : kernel.fg)
     {
-        for (G4_INST* inst : *bb)
+        for(auto it = bb->begin(); it != bb->end(); ++it)
         {
-            if (inst->isEOT())
+            auto inst = (*it);
+            if (inst->isEOT() || hashAtPrologue)
             {
                 // We have to insert new instructions after EOT.
                 // Lexically, EOT could even be in the middle
@@ -821,8 +823,24 @@ void Optimizer::insertHashMovs()
                         kernel.fg.builder->createImm((unsigned int)((hashVal >> 32) & 0xffffffff), Type_UD),
                         InstOpt_WriteEnable, false);
 
-                    bb->push_back(lo);
-                    bb->push_back(hi);
+                    if (hashAtPrologue)
+                    {
+                        if (inst->isLabel())
+                        {
+                            bb->insertAfter(it, hi);
+                            bb->insertAfter(it, lo);
+                        }
+                        else
+                        {
+                            bb->insertBefore(it, hi);
+                            bb->insertBefore(it, lo);
+                        }
+                    }
+                    else
+                    {
+                        bb->push_back(lo);
+                        bb->push_back(hi);
+                    }
                 };
                 uint64_t hashVal1 = builder.getOptions()->getuInt64Option(vISA_HashVal);
                 uint64_t hashVal2 = builder.getOptions()->getuInt64Option(vISA_HashVal1);
