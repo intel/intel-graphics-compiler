@@ -1381,28 +1381,42 @@ unsigned SWSB::getDepDelay(const SBNode* curNode) const
     return reuseDelay;
 }
 
-void SWSB::examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &curDistance, unsigned nodeID, unsigned nodeDelay, const SBNode *curNode, unsigned char nestLoopLevel, unsigned curLoopStartBB, unsigned curLoopEndBB) const
+void SWSB::examineNodeForTokenReuse(
+    int &reuseDelay,/* out */
+    int &curDistance, /* out */
+    unsigned nodeID,
+    unsigned nodeDelay,
+    const SBNode *reuseNode,
+    unsigned char nestLoopLevel,
+    unsigned curLoopStartBB,
+    unsigned curLoopEndBB) const
 {
     curDistance = 0;
-    if (nodeID > curNode->getNodeID())
+
+    //The reuse node is before current node.
+    if (nodeID > reuseNode->getNodeID())
     {
-        unsigned curNodeDelay = getDepDelay(curNode);
-        reuseDelay = curNodeDelay - (nodeID - curNode->getNodeID());
+        unsigned curNodeDelay = getDepDelay(reuseNode);
+
+        //reuse Delay is not accurate in different loop level
+        reuseDelay = curNodeDelay - (nodeID - reuseNode->getNodeID());
+
+        //If too far, count distance
         if (reuseDelay < 0)
         {
-            curDistance = nodeID - curNode->getNodeID();
+            curDistance = nodeID - reuseNode->getNodeID();
         }
     }
-    else
+    else //The reuse node is after current node
     {
-        reuseDelay = nodeDelay - (curNode->getNodeID() - nodeID);
+        reuseDelay = nodeDelay - (reuseNode->getNodeID() - nodeID);
         if (reuseDelay < 0)
         {
-            curDistance = curNode->getNodeID() - nodeID;
+            curDistance = reuseNode->getNodeID() - nodeID;
         }
     }
 
-    const G4_BB_SB *bb = BBVector[curNode->getBBID()];
+    const G4_BB_SB *bb = BBVector[reuseNode->getBBID()];
     unsigned char curNodeNestLoopLevel = bb->getBB()->getNestLevel();
     unsigned loopLevelDiff = std::abs(curNodeNestLoopLevel - nestLoopLevel);
     constexpr unsigned loopFactorForTokenReuse = 5;
@@ -1425,8 +1439,27 @@ void SWSB::examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &cu
             {
                 unsigned loopStartID = BBVector[curLoopStartBB]->first_node;
                 unsigned loopEndID = BBVector[curLoopEndBB]->last_node;
+
+                // The reused node may in same loop as current node.
                 int backEdgeDistance = loopEndID - loopStartID - curDistance;
-                curDistance = std::min(curDistance, backEdgeDistance);
+
+                if (reuseNode->getNodeID() < loopStartID || reuseNode->getNodeID() > loopEndID)
+                {
+                    // Or it may in another loop with same nest loop level
+                    // Current back edge cannot cover the distance
+                    // loop1 {
+                    //    node1
+                    // }
+                    //
+                    // loop2 {
+                    //    node2
+                    // }
+                    curDistance = curDistance * (nestLoopLevel * loopFactorForTokenReuse + 1);
+                }
+                else
+                {
+                    curDistance = std::min(curDistance, backEdgeDistance);
+                }
             }
         }
     }
@@ -1437,23 +1470,26 @@ void SWSB::examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &cu
 //Try not reuse the tokens set in adjacent instructions.
 SBNode * SWSB::reuseTokenSelection(const SBNode * node) const
 {
-    int delay = tokenAfterWriteSendSamplerCycle;
-    int distance = 0;
+    int delay = tokenAfterWriteSendSamplerCycle; //Assume the longest one
+    int distance = 0; //Distance between the node
     const unsigned nodeID = node->getNodeID();
-    const unsigned nodeDelay = getDepDelay(node);
+    const unsigned nodeDelay = getDepDelay(node); // The longest delay the node may cause.
     const unsigned char nestLoopLevel = BBVector[node->getBBID()]->getBB()->getNestLevel();
     const unsigned loopStartBB = BBVector[node->getBBID()]->getLoopStartBBID();
     const unsigned loopEndBB = BBVector[node->getBBID()]->getLoopEndBBID();
 
     assert(linearScanLiveNodes.size() <= totalTokenNum);
 
+    //The live nodes whose dependencies are not resovled in current node.
     SBNode* candidateNode = linearScanLiveNodes.front();
     for (SBNode* curNode : linearScanLiveNodes)
     {
-        int reuseDelay;
-        int curDistance;
+        int reuseDelay; //The delay may cause if reuse
+        int curDistance; //The distance from the reused node
         examineNodeForTokenReuse(reuseDelay, curDistance, nodeID, nodeDelay, curNode, nestLoopLevel, loopStartBB, loopEndBB);
 
+        //The token may be reused already, so check the nodes using the same token.
+        //FIXME: sameTokenNodes will cause compilation time over head.
         const unsigned short token = curNode->getLastInstruction()->getSetToken();
         int sameTokenDistance = 0x7FFFFFFF;
         for (const SBNode* snode : sameTokenNodes[token])
@@ -1462,13 +1498,15 @@ SBNode * SWSB::reuseTokenSelection(const SBNode * node) const
             int sDistance;
             examineNodeForTokenReuse(sReuseDelay, sDistance, nodeID, nodeDelay, snode, nestLoopLevel, loopStartBB, loopEndBB);
 
+            //Largest reuse delay
             reuseDelay = std::max(reuseDelay, sReuseDelay);
+            //Closed distance
             sameTokenDistance = std::min(sameTokenDistance, sDistance);
         }
 
-        //Smallest one is the best one
-        //if Distance is not 0, count the distance, otherwise, use the delay.
-        //Distance is not 0 means there are candidate whose distance is larger than the delay
+        // Smallest one is the best one
+        // if Distance is not 0, count the distance, otherwise, use the delay.
+        // Distance is not 0 means there are candidate whose distance is larger than the delay
         if (!distance && reuseDelay > 0)
         {
             if (reuseDelay < delay)
