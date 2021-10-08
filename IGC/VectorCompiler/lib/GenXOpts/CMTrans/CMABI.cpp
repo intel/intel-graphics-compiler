@@ -739,6 +739,11 @@ static bool passLocalizedGlobalByPointer(const GlobalValue &GV) {
   return Type->isAggregateType();
 }
 
+struct ParameterAttrInfo {
+  unsigned ArgIndex;
+  Attribute::AttrKind Attr;
+};
+
 // Computing a new prototype for the function. E.g.
 //
 // i32 @foo(i32, <8 x i32>*) becomes {i32, <8 x i32>} @bar(i32, <8 x i32>)
@@ -746,8 +751,8 @@ static bool passLocalizedGlobalByPointer(const GlobalValue &GV) {
 class TransformedFuncInfo {
   TransformedFuncType NewFuncType;
   AttributeList Attrs;
-  using ArgIdxSet = std::unordered_set<int>;
   std::vector<ArgKind> ArgKinds;
+  std::vector<ParameterAttrInfo> DiscardedParameterAttrs;
   RetToArgInfo RetToArg;
   GlobalArgsInfo GlobalArgs;
 
@@ -762,6 +767,11 @@ public:
           return Arg.getType();
         });
     InheritAttributes(OrigFunc);
+
+    // struct-returns are not supported for transformed functions,
+    // so we need to discard the attribute
+    if (OrigFunc.hasStructRetAttr() && OrigFunc.hasLocalLinkage())
+      DiscardStructRetAttr(OrigFunc.getContext());
 
     auto *OrigRetTy = OrigFunc.getFunctionType()->getReturnType();
     if (!OrigRetTy->isVoidTy()) {
@@ -798,6 +808,9 @@ public:
   const TransformedFuncType &getType() const { return NewFuncType; }
   AttributeList getAttributes() const { return Attrs; }
   const std::vector<ArgKind> &getArgKinds() const { return ArgKinds; }
+  const std::vector<ParameterAttrInfo> &getDiscardedParameterAttrs() const {
+    return DiscardedParameterAttrs;
+  }
   const GlobalArgsInfo &getGlobalArgsInfo() const { return GlobalArgs; }
   const RetToArgInfo &getRetToArgInfo() const { return RetToArg; }
 
@@ -835,6 +848,17 @@ private:
     if (FnAttrs.hasAttributes()) {
       AttrBuilder B(FnAttrs);
       Attrs = Attrs.addAttributes(Context, AttributeList::FunctionIndex, B);
+    }
+  }
+
+  void DiscardStructRetAttr(LLVMContext &Context) {
+    constexpr auto SretAttr = Attribute::StructRet;
+    for (auto ArgInfo : enumerate(ArgKinds)) {
+      unsigned ParamIndex = ArgInfo.index();
+      if (Attrs.hasParamAttr(ParamIndex, SretAttr)) {
+        Attrs = Attrs.removeParamAttribute(Context, ParamIndex, SretAttr);
+        DiscardedParameterAttrs.push_back({ParamIndex, SretAttr});
+      }
     }
   }
 
@@ -928,6 +952,11 @@ inheritCallAttributes(CallInst &OrigCall, int NumOrigFuncArgs,
             NewCallAttrs.addParamAttributes(Context, ArgInfo.index(), B);
       }
     }
+  }
+
+  for (auto DiscardInfo : NewFuncInfo.getDiscardedParameterAttrs()) {
+    NewCallAttrs = NewCallAttrs.removeParamAttribute(
+        Context, DiscardInfo.ArgIndex, DiscardInfo.Attr);
   }
 
   // Add any function attributes.
