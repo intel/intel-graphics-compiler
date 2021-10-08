@@ -418,13 +418,53 @@ void CisaBinary::patchFunction(int index, unsigned genxBufferSize)
     this->genxBinariesSize += genxBufferSize;
 }
 
+const VISAKernelImpl* CisaBinary::getFmtKernelForISADump(const VISAKernelImpl* kernel,
+                                                         const std::list<VISAKernelImpl*>& kernels) const
+{
+    // Assuming there's no too many payload kernels. Use the logic in
+    // CisaBinary::isaDump to select the kernel for format provider.
+    if (!kernel->getIsPayload())
+        return kernel;
+
+    assert(!kernels.empty());
+    VISAKernelImpl* fmtKernel = kernels.front();
+    for (VISAKernelImpl* k : kernels)
+    {
+        if (k == kernel)
+            break;
+        if (k->getIsKernel())
+            fmtKernel = k;
+    }
+    return fmtKernel;
+}
+
+std::string CisaBinary::isaDump(const VISAKernelImpl* kernel,
+                                const VISAKernelImpl* fmtKernel) const
+{
+    std::stringstream sstr;
+    VISAKernel_format_provider fmt(fmtKernel);
+
+    sstr << fmt.printKernelHeader(m_header);
+
+    std::list<CisaFramework::CisaInst *>::const_iterator inst_iter = kernel->getInstructionListBegin();
+    std::list<CisaFramework::CisaInst *>::const_iterator inst_iter_end = kernel->getInstructionListEnd();
+    for (; inst_iter != inst_iter_end; inst_iter++)
+    {
+        CisaFramework::CisaInst * cisa_inst = *inst_iter;
+        const CISA_INST * inst = cisa_inst->getCISAInst();
+        sstr << printInstruction(&fmt, inst, kernel->getOptions()) << "\n";
+    }
+
+    return sstr.str();
+}
+
 int CisaBinary::isaDump(
-    std::list<VISAKernelImpl*> m_kernels, Options* options)
+    const std::list<VISAKernelImpl*>& kernels, const Options* options) const
 {
 #ifdef IS_RELEASE_DLL
     return VISA_SUCCESS;
 #else
-    bool dump =  m_options->getOption(vISA_GenerateISAASM);
+    bool dump = m_options->getOption(vISA_GenerateISAASM);
     if (!dump)
         return VISA_SUCCESS;
 
@@ -461,12 +501,9 @@ int CisaBinary::isaDump(
     }
 
     std::vector<std::string> failedFiles;
-    VISAKernelImpl* mainKernel = m_kernels.front();
-    for (VISAKernelImpl* kTemp : m_kernels)
+    VISAKernelImpl* mainKernel = kernels.front();
+    for (VISAKernelImpl* kTemp : kernels)
     {
-        std::list<CisaFramework::CisaInst *>::iterator inst_iter = kTemp->getInstructionListBegin();
-        std::list<CisaFramework::CisaInst *>::iterator inst_iter_end = kTemp->getInstructionListEnd();
-
         unsigned funcId = 0;
         if (!(m_options->getOption(vISA_DumpvISA) && m_options->getOption(vISA_IsaasmNamesFileUsed)))
         {
@@ -503,14 +540,7 @@ int CisaBinary::isaDump(
                 fputs(std::string(asmName.str() + "\n").c_str(), ILFile.isaasmListFile);
 
             VISAKernelImpl* fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
-            VISAKernel_format_provider fmt(fmtKernel);
-            sstr << fmt.printKernelHeader(m_header);
-            for (; inst_iter != inst_iter_end; inst_iter++)
-            {
-                CisaFramework::CisaInst * cisa_inst = *inst_iter;
-                const CISA_INST * inst = cisa_inst->getCISAInst();
-                sstr << printInstruction(&fmt, inst, kTemp->getOptions()) << "\n";
-            }
+            sstr << isaDump(kTemp, fmtKernel);
 
             // from other shader dumps we sometimes get non-existent paths
             // fallback to a default file name in the current working directory

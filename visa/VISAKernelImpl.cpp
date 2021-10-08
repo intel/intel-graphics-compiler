@@ -8603,6 +8603,17 @@ const char* VISAKernelImpl::getFunctionName() const
     return m_kernel->getName();
 }
 
+std::string VISAKernelImpl::getVISAAsm() const
+{
+    // Return an empty string if the builder option is GEN only.
+    if (IS_GEN_PATH)
+        return std::string();
+
+    const VISAKernelImpl* fmtKernel =
+        m_CISABuilder->m_cisaBinary->getFmtKernelForISADump(this, m_CISABuilder->getKernels());
+    return m_CISABuilder->m_cisaBinary->isaDump(this, fmtKernel);
+}
+
 void VISAKernelImpl::computeAndEmitDebugInfo(VISAKernelImplListTy& functions)
 {
     std::list<VISAKernelImpl*> compilationUnitsForDebugInfo;

@@ -823,6 +823,9 @@ public:
     VISA_BUILDER_API virtual int64_t getGenSize() const = 0;
 
     VISA_BUILDER_API virtual unsigned getNumRegTotal() const = 0;
+
+    /// getVISAAsm -- Get the compiled .visaasm of the kernel.
+    VISA_BUILDER_API virtual std::string getVISAAsm() const = 0;
 };
 
 class VISAFunction : public VISAKernel

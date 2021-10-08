@@ -171,6 +171,8 @@ public:
     /***************** END HELPER FUNCTIONS **********************/
     std::list<CisaFramework::CisaInst *>::iterator getInstructionListBegin() { return m_instruction_list.begin(); }
     std::list<CisaFramework::CisaInst *>::iterator getInstructionListEnd() { return m_instruction_list.end(); }
+    std::list<CisaFramework::CisaInst *>::const_iterator getInstructionListBegin() const { return m_instruction_list.cbegin(); }
+    std::list<CisaFramework::CisaInst *>::const_iterator getInstructionListEnd() const { return m_instruction_list.cend(); }
 
     unsigned long getGenxBinarySize() { return m_genx_binary_size; }
 
@@ -693,6 +695,9 @@ public:
     /// Get global function name
     VISA_BUILDER_API const char* getFunctionName() const override;
 
+    /// Get vISA asm of the kernel function
+    VISA_BUILDER_API std::string getVISAAsm() const override;
+
     //Gets the VISA string format for the variable
     VISA_BUILDER_API std::string getVarName(VISA_GenVar* decl) const override;
     VISA_BUILDER_API std::string getVarName(VISA_PredVar* decl) const override;
@@ -861,7 +866,7 @@ public:
         return m_GenVarToNameMap.find(decl)->second;
     }
 
-    Options * getOptions() { return m_options; }
+    const Options * getOptions() const { return m_options; }
 
     bool IsAsmWriterMode() const { return m_CISABuilder->getBuilderMode() == vISA_ASM_WRITER; }
 
