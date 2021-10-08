@@ -7024,7 +7024,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     bb->insertBefore(insert_point, movInst);
                 }
 
-                if (inst->isEOT() && builder.needBreakpointWAForEOT())
+                if (inst->isEOT() && VISA_WA_CHECK(builder.getPWaTable(), Wa_16013338947))
                 {
                     bool hasLegalInstAfterEOT = false;
                     for (auto bnext = std::next(ib); bnext != bend; ++bnext)
