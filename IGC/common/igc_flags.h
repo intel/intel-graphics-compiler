@@ -209,7 +209,8 @@ DECLARE_IGC_REGKEY(bool, EnableStatefulAtomic,       false,   "Enable promoting 
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ForceDisableShaderDebugHashCodeInKernel,   false,  "Disable hash code addition to the binary after EOT", false)
-DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary", false)
+DECLARE_IGC_REGKEY(bool, EnableHashMovsAtPrologue,      false, "Rather than after EOT, insert hash code movs at shader entry", false)
+DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Add hash code to the binary", false)
 DECLARE_IGC_REGKEY(int,  ShaderDebugHashCode,           0,     "The driver will set a breakpoint in the first instruction of the shader which has the provided hash code.\
                                                                 It works only when the value is different then 0 and SystemThreadEnable is set to TRUE.\
                                                                 Ex: VS_asm2df26246434553ad_nos0000000000000000 , only the LowPart Need \

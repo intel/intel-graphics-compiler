@@ -4179,6 +4179,10 @@ namespace IGC
             SaveOption(vISA_ForceHWThreadNumberPerEU, IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU));
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableHashMovsAtPrologue))
+        {
+            SaveOption(vISA_HashMovsAtPrologue, true);
+        }
 
         if (IGC_IS_FLAG_ENABLED(SystemThreadEnable))
         {

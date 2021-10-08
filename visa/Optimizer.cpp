@@ -844,9 +844,13 @@ void Optimizer::insertHashMovs()
                 };
                 uint64_t hashVal1 = builder.getOptions()->getuInt64Option(vISA_HashVal);
                 uint64_t hashVal2 = builder.getOptions()->getuInt64Option(vISA_HashVal1);
+                // Ensure same order (hashVal1 then hashVal2) by swapping if
+                // we're going to insertAfter().
+                if (hashAtPrologue && inst->isLabel())
+                    std::swap(hashVal1, hashVal2);
                 insertHashMovInsts(hashVal1);
                 insertHashMovInsts(hashVal2);
-                break;
+                return;
             }
         }
     }
