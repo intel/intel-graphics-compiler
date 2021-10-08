@@ -1945,6 +1945,8 @@ public:
       return false;
     if (ST.hasIntDivRem32())
       Purge32BitDivRemFunctions(*ModEmuFun);
+    if (!ST.hasFP64())
+      PurgeFP64Functions(*ModEmuFun);
 
     if (Linker::linkModules(M, std::move(ModEmuFun)))
       report_fatal_error("Error linking emulation routines");
@@ -1972,6 +1974,23 @@ private:
                       })) {
         F.eraseFromParent();
       }
+    }
+  }
+
+  static void PurgeFP64Functions(Module &M) {
+    // We should remove function with double in order not to scare the checkers
+    for (auto I = M.begin(), E = M.end(); I != E;) {
+      Function &F = *I++;
+      if (!IsLibraryFunction(F))
+        continue;
+      bool FoundDouble =
+          std::any_of(F.arg_begin(), F.arg_end(), [](const auto &Arg) {
+            return Arg.getType()->getScalarType()->isDoubleTy();
+          });
+      FoundDouble =
+          FoundDouble || F.getReturnType()->getScalarType()->isDoubleTy();
+      if (FoundDouble)
+        F.eraseFromParent();
     }
   }
 
