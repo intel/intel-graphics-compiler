@@ -929,6 +929,11 @@ void G4_Kernel::setKernelParameters()
             }
         }
     }
+
+    if (m_options->getOption(vISA_hasDoubleAcc))
+    {
+        numAcc = 16;
+    }
 }
 
 void G4_Kernel::dump(std::ostream &os) const

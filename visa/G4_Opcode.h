@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #define IS_TYPE_INT(type)        (IS_SIGNED_INT(type) || IS_UNSIGNED_INT(type))
 #define IS_TYPE_F32_F64(type)         (type == Type_F ||type == Type_DF || type == Type_NF)
 #define IS_TYPE_FLOAT_ALL(type)     (type == Type_F ||type == Type_DF || type == Type_HF || type == Type_NF || type == Type_BF)
+#define IS_TYPE_FLOAT_FOR_ACC(type)     (type == Type_F ||type == Type_DF || type == Type_HF)
 #define IS_TYPE_LONG(type)            (type == Type_DF || type == Type_UQ || type == Type_Q)
 #define IS_TYPE_INTEGER(type)         (type == Type_UW ||type == Type_W ||type == Type_B ||type == Type_UB ||type == Type_V ||type == Type_UV ||type == Type_UD ||type == Type_D)
 

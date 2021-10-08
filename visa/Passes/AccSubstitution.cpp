@@ -17,6 +17,7 @@ struct AccInterval
     G4_INST* inst;
     int lastUse;
     bool mustBeAcc0 = false;
+    bool isAllFloat = false;
     bool isPreAssigned = false;
     int assignedAcc = -1;
     int spilledAcc = -1;
@@ -420,13 +421,19 @@ static unsigned getBankConflicts(int srcOpndIdx, unsigned int BC)
 
 // returns true if the inst is a candidate for acc substitution
 // lastUse is also update to point to the last use id of the inst
-bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, int& readSuppressionSrcs, int& bundleBC, int& bankBC, std::map<G4_INST*, unsigned int>* BCInfo)
+bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, bool& isAllFloat, int& readSuppressionSrcs, int& bundleBC, int& bankBC, std::map<G4_INST*, unsigned int>* BCInfo)
 {
     mustBeAcc0 = false;
+    isAllFloat =  true;
     G4_DstRegRegion* dst = inst->getDst();
     if (!dst || kernel.fg.globalOpndHT.isOpndGlobal(dst) || !inst->canDstBeAcc())
     {
         return false;
+    }
+
+    if (!IS_TYPE_FLOAT_FOR_ACC(dst->getType()))
+    {
+        isAllFloat = false;
     }
 
     if (inst->getCondMod() && inst->opcode() != G4_sel)
@@ -550,6 +557,7 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, i
 
         int srcId = useInst->getSrcNum(opndNum);
         G4_Operand* src = useInst->getSrc(srcId);
+
         if (dst->getType() != src->getType() || kernel.fg.globalOpndHT.isOpndGlobal(src) ||
             dst->compareOperand(src) != Rel_eq)
         {
@@ -558,6 +566,10 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, i
         if (!useInst->canSrcBeAcc(opndNum))
         {
             return false;
+        }
+        if (!IS_TYPE_FLOAT_FOR_ACC(src->getType()))
+        {
+            isAllFloat = false;
         }
     }
 
@@ -822,19 +834,15 @@ struct AccAssignment
         activeIntervals.push_back(interval);
     }
 
-    // pick a free acc for this interval
-    // returns true if a free acc is found, false otherwise
-    bool assignAcc(AccInterval* interval)
-    {
-        if (interval->isPreAssigned)
-        {
-            handlePreAssignedInterval(interval);
-            return true;
-        }
 
-        int step = interval->needBothAcc(builder) ? 2 : 1;
-        for (int i = 0, end = interval->mustBeAcc0 ? 1 : (int)freeAccs.size(); i < end; i += step)
+    bool assignAcc(AccInterval* interval, int startReg, int endReg, int step, unsigned forbidden)
+    {
+        for (int i = startReg; i < endReg; i += step)
         {
+            if (forbidden & (1<< i))
+            {
+                continue;
+            }
             if (freeAccs[i] && (!interval->needBothAcc(builder) || freeAccs[i + 1]))
             {
                 interval->assignedAcc = i;
@@ -848,6 +856,68 @@ struct AccAssignment
                 return true;
             }
         }
+
+        return false;
+    }
+
+    // pick a free acc for this interval
+    // returns true if a free acc is found, false otherwise
+    bool assignAcc(AccInterval* interval)
+    {
+        if (interval->isPreAssigned)
+        {
+            handlePreAssignedInterval(interval);
+            return true;
+        }
+
+        int step = interval->needBothAcc(builder) ? 2 : 1;
+        int startReg = 0;
+        int endReg = 0;
+        unsigned forbidden = 0;
+
+        if (interval->mustBeAcc0)
+        {
+            endReg = 1;
+        }
+        else if (builder.hasDoubleAcc())
+        {
+            //      8 thread mode	        4 thread mode
+            //DF    acc0-acc3,acc8-acc11  acc0-acc15
+            //F     acc0-acc3,acc8-acc11  acc0-acc15
+            //HF    acc0-acc3,acc8-acc11  acc0-acc15
+            //Q(UQ) acc0-acc3             acc0-acc7
+            //D(UD) acc0/acc2	          acc0/acc2/acc4/acc6
+            //W(UW) acc0/acc2             acc0/acc2/acc4/acc6
+            if (!interval->isAllFloat)
+            {
+                if (builder.kernel.getNumThreads() == 8)
+                {
+                    forbidden = 0xFFF0;
+                }
+                else
+                {
+                    forbidden = 0xFF00;
+                }
+            }
+            else
+            {
+                if (builder.kernel.getNumThreads() == 8)
+                {
+                    forbidden = 0xF0F0;
+                }
+            }
+            endReg = (int)freeAccs.size();
+        }
+        else
+        {
+            endReg = (int)freeAccs.size();
+        }
+
+        if (assignAcc(interval, startReg, endReg, step, forbidden))
+        {
+            return true;
+        }
+
         return false;
     }
 };
@@ -897,14 +967,16 @@ void AccSubPass::multiAccSub(G4_BB* bb)
         {
             int lastUseId = 0;
             bool mustBeAcc0 = false;
+            bool isAllFloat = true;
             int bundleBCTimes = 0;
             int bankBCTimes = 0;
             int readSuppressionSrcs = 0;
-            if (isAccCandidate(inst, lastUseId, mustBeAcc0, readSuppressionSrcs, bundleBCTimes, bankBCTimes, &BCInfo))
+            if (isAccCandidate(inst, lastUseId, mustBeAcc0, isAllFloat, readSuppressionSrcs, bundleBCTimes, bankBCTimes, &BCInfo))
             {
                 // this is a potential candidate for acc substitution
                 AccInterval* newInterval = new AccInterval(inst, lastUseId);
                 newInterval->mustBeAcc0 = mustBeAcc0;
+                newInterval->isAllFloat = isAllFloat;
                 newInterval->bankConflictTimes = bankBCTimes;
                 newInterval->bundleConflictTimes = bundleBCTimes;
                 newInterval->suppressionTimes = readSuppressionSrcs;
@@ -1098,10 +1170,11 @@ void AccSubPass::accSub(G4_BB* bb)
 
         int lastUseId = 0;
         bool mustBeAcc0 = false; //ignored
+        bool isAllFloat = false;
         int bundleC = 0;
         int bankC = 0;
         int suppression = 0;
-        if (!isAccCandidate(inst, lastUseId, mustBeAcc0, suppression, bundleC, bankC, nullptr))
+        if (!isAccCandidate(inst, lastUseId, mustBeAcc0, isAllFloat, suppression, bundleC, bankC, nullptr))
         {
             continue;
         }
