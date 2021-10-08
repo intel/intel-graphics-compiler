@@ -13,8 +13,8 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 
-#ifndef LLVM_GENX_ANALYSIS_H
-#define LLVM_GENX_ANALYSIS_H
+#ifndef VC_GENXOPTS_GENXANALYSIS_H
+#define VC_GENXOPTS_GENXANALYSIS_H
 
 namespace llvm {
 
@@ -78,4 +78,4 @@ unsigned getValueAlignmentInBytes(const Value &Val, const DataLayout &DL);
 
 } // end namespace llvm
 
-#endif
+#endif // VC_GENXOPTS_GENXANALYSIS_H

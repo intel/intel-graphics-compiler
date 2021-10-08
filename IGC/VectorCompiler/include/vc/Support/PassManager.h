@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef DRIVER_VCPASSMANAGER_H
-#define DRIVER_VCPASSMANAGER_H
+#ifndef VC_SUPPORT_PASSMANAGER_H
+#define VC_SUPPORT_PASSMANAGER_H
 
 #include <llvm/IR/LegacyPassManager.h>
 
@@ -31,4 +31,4 @@ struct PassManager : public llvm::legacy::PassManager {
 void addPass(llvm::legacy::PassManagerBase &PM, llvm::Pass *P);
 } // namespace vc
 
-#endif // DRIVER_VCPASSMANAGER_H
+#endif // VC_SUPPORT_PASSMANAGER_H

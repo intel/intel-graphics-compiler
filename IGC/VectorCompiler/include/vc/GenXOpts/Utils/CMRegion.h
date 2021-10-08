@@ -52,8 +52,8 @@ SPDX-License-Identifier: MIT
 /// 
 //===----------------------------------------------------------------------===//
 
-#ifndef CMREGION_H
-#define CMREGION_H
+#ifndef VC_GENXOPTS_UTILS_CMREGION_H
+#define VC_GENXOPTS_UTILS_CMREGION_H
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallBitVector.h"
@@ -223,4 +223,4 @@ inline raw_ostream &operator<<(raw_ostream &OS, const CMRegion &R) {
 
 } // end namespace llvm 
 
-#endif /* CMREGION_H */
+#endif // VC_GENXOPTS_UTILS_CMREGION_H

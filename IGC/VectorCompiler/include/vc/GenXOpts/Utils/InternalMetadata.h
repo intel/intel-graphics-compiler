@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef LLVM_GENX_INTERNALMETADATA_H
-#define LLVM_GENX_INTERNALMETADATA_H
+#ifndef VC_GENXOPTS_UTILS_INTERNALMETADATA_H
+#define VC_GENXOPTS_UTILS_INTERNALMETADATA_H
 
 #include "llvm/IR/Function.h"
 
@@ -78,4 +78,4 @@ void replaceInternalFunctionRef(const Function &From, Function &To);
 } // namespace genx
 } // namespace llvm
 
-#endif
+#endif // VC_GENXOPTS_UTILS_INTERNALMETADATA_H

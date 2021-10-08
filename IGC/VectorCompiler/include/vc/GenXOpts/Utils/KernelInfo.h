@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef GENX_KERNEL_INFO_H
-#define GENX_KERNEL_INFO_H
+#ifndef VC_GENXOPTS_UTILS_KERNELINFO_H
+#define VC_GENXOPTS_UTILS_KERNELINFO_H
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
@@ -288,4 +288,4 @@ void replaceFunctionRefMD(const Function &From, Function &To);
 } // namespace genx
 } // namespace llvm
 
-#endif
+#endif // VC_GENXOPTS_UTILS_KERNELINFO_H

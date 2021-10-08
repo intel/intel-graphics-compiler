@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef GENX_REG_CATEGORIES_H
-#define GENX_REG_CATEGORIES_H
+#ifndef VC_GENXOPTS_UTILS_REGCATEGORY_H
+#define VC_GENXOPTS_UTILS_REGCATEGORY_H
 
 namespace llvm {
 namespace genx {
@@ -33,4 +33,4 @@ struct RegCategory {
 } // namespace genx
 } // namespace llvm
 
-#endif
+#endif // VC_GENXOPTS_UTILS_REGCATEGORY_H

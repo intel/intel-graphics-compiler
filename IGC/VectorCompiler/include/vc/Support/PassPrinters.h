@@ -24,8 +24,8 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 // This file was copied from LLVM, because this code is not a part of any
 // library in LLVM. No changes in the implementation are expected.
 
-#ifndef LLVM_TOOLS_OPT_PASSPRINTERS_H
-#define LLVM_TOOLS_OPT_PASSPRINTERS_H
+#ifndef VC_SUPPORT_PASSPRINTERS_H
+#define VC_SUPPORT_PASSPRINTERS_H
 
 #include "llvm/IR/PassManager.h"
 
@@ -62,4 +62,4 @@ llvm::RegionPass *createRegionPassPrinter(const llvm::PassInfo *PI,
 
 } // end namespace vc
 
-#endif // LLVM_TOOLS_OPT_PASSPRINTERS_H
+#endif // VC_SUPPORT_PASSPRINTERS_H

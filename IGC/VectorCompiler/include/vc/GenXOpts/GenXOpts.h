@@ -12,8 +12,8 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_GENX_OPTS_H
-#define LLVM_GENX_OPTS_H
+#ifndef VC_GENXOPTS_GENXOPTS_H
+#define VC_GENXOPTS_GENXOPTS_H
 
 namespace llvm {
 
@@ -75,4 +75,4 @@ void initializeGenXTranslateSPIRVBuiltinsPass(PassRegistry &);
 
 } // End llvm namespace
 
-#endif
+#endif // VC_GENXOPTS_GENXOPTS_H

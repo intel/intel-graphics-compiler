@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef GENXDIAGNOSTIC_H
-#define GENXDIAGNOSTIC_H
+#ifndef VC_SUPPORT_GENXDIAGNOSTIC_H
+#define VC_SUPPORT_GENXDIAGNOSTIC_H
 
 #include "llvm/ADT/Twine.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -85,4 +85,4 @@ void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
 
 } // namespace vc
 
-#endif // GENXDIAGNOSTIC_H
+#endif // VC_SUPPORT_GENXDIAGNOSTIC_H
