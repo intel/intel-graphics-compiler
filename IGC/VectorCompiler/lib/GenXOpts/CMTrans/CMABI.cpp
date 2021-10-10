@@ -71,6 +71,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils/Local.h"
 
 #include <algorithm>
 #include <functional>
@@ -1741,7 +1742,7 @@ struct ArgRefPattern {
 
   // Match a copy-in and copy-out pattern. Return true on success.
   bool match(DominatorTree &DT, PostDominatorTree &PDT);
-  void process();
+  void process(DominatorTree &DT);
 };
 
 struct CMLowerVLoadVStore : public FunctionPass {
@@ -2049,7 +2050,7 @@ bool ArgRefPattern::match(DominatorTree &DT, PostDominatorTree &PDT) {
   return true;
 }
 
-void ArgRefPattern::process() {
+void ArgRefPattern::process(DominatorTree &DT) {
   // 'Spill' the base region into memory during rewriting.
   IRBuilder<> Builder(Alloca);
   Function *RdFn = CopyInRegion->getCalledFunction();
@@ -2108,6 +2109,8 @@ void ArgRefPattern::process() {
     LI->replaceAllUsesWith(Val);
     LI->eraseFromParent();
   }
+  // BaseAlloca created manually, w/o RAUW, need fix debug-info for it
+  llvm::replaceAllDbgUsesWith(*Alloca, *BaseAlloca, *BaseAlloca, DT);
 }
 
 // Allocas that are used in reference argument passing may be promoted into the
@@ -2128,7 +2131,7 @@ bool CMLowerVLoadVStore::promoteAllocas(Function &F) {
   for (auto AI : Allocas) {
     ArgRefPattern ArgRef(AI);
     if (ArgRef.match(DT, PDT)) {
-      ArgRef.process();
+      ArgRef.process(DT);
       Modified = true;
     }
   }
