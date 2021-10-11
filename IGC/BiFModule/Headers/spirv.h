@@ -199,8 +199,6 @@ typedef ulong    Sampler_t;
 typedef ulong3   SampledImage_t;
 typedef event_t  Event_t;
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-typedef queue_t Queue_t;
-typedef clk_event_t ClkEvent_t;
 typedef reserve_id_t ReserveId_t;
 typedef pipe int Pipe_t;
 typedef write_only pipe int Pipe_wo_t;
@@ -273,6 +271,9 @@ DEF_IMAGE_TYPE(__spirv_Image__void_1_0_1_1_0_0, Img2d_array_msaa)
 DEF_IMAGE_TYPE(__spirv_Image__void_1_1_0_1_0_0, Img2d_msaa_depth)
 DEF_IMAGE_TYPE(__spirv_Image__void_1_1_1_1_0_0, Img2d_array_msaa_depth)
 DEF_IMAGE_TYPE(__spirv_Image__void_2_0_0_0_0_0, Img3d)
+
+typedef private struct __spirv_DeviceEvent* __spirv_DeviceEvent;
+typedef private struct __spirv_Queue*       __spirv_Queue;
 
 // Keep track of SaturatedConversion
 
@@ -5011,9 +5012,12 @@ long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMax, _i32_i32_i64, )(int Execution,
 
 // Device-Side Enqueue Instructions
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-uint __builtin_spirv_OpEnqueueMarker_i64_i32_p0i64_p0i64(Queue_t Queue, uint NumEvents, private ClkEvent_t *WaitEvents, private ClkEvent_t *RetEvent);
-uint __builtin_spirv_OpEnqueueMarker_i64_i32_p3i64_p3i64(Queue_t Queue, uint NumEvents, local ClkEvent_t *WaitEvents, local ClkEvent_t *RetEvent);
-uint __builtin_spirv_OpEnqueueMarker_i64_i32_p4i64_p4i64(Queue_t Queue, uint NumEvents, generic ClkEvent_t *WaitEvents, generic ClkEvent_t *RetEvent);
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(EnqueueMarker, _i64_i32_p0i64_p0i64, )(
+    __spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent private* WaitEvents, __spirv_DeviceEvent private* RetEvent);
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(EnqueueMarker, _i64_i32_p3i64_p3i64, )(
+    __spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent local* WaitEvents, __spirv_DeviceEvent local* RetEvent);
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(EnqueueMarker, _i64_i32_p4i64_p4i64, )(
+    __spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent generic* WaitEvents, __spirv_DeviceEvent generic* RetEvent);
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
@@ -5031,13 +5035,13 @@ uint __builtin_spirv_OpGetKernelWorkGroupSize_fp0i32_p0i8_i32_i32(uchar* Invoke,
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(RetainEvent, _i64, )(ClkEvent_t Event);
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReleaseEvent, _i64, )(ClkEvent_t Event);
-ClkEvent_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(CreateUserEvent, , )(void);
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsValidEvent, _i64, )(ClkEvent_t Event);
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SetUserEventStatus, _i64_i32, )(ClkEvent_t Event, int Status);
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CaptureEventProfilingInfo, _i64_i32_p1i8, )(ClkEvent_t Event, int ProfilingInfo, global char *Value);
-Queue_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetDefaultQueue, , )(void);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(RetainEvent, _i64, )(__spirv_DeviceEvent Event);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReleaseEvent, _i64, )(__spirv_DeviceEvent Event);
+__spirv_DeviceEvent SPIRV_OVERLOADABLE SPIRV_BUILTIN(CreateUserEvent, , )(void);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsValidEvent, _i64, )(__spirv_DeviceEvent Event);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SetUserEventStatus, _i64_i32, )(__spirv_DeviceEvent Event, int Status);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CaptureEventProfilingInfo, _i64_i32_p1i8, )(__spirv_DeviceEvent Event, int ProfilingInfo, global char *Value);
+__spirv_Queue SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetDefaultQueue, , )(void);
 
 #define DECL_BUILD_NDRANGE(TYPE, TYPE_MANGLING) \
 Ndrange_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(BuildNDRange, _##TYPE_MANGLING##_##TYPE_MANGLING##_##TYPE_MANGLING, _1D)(TYPE GlobalWorkSize, TYPE LocalWorkSize, TYPE GlobalWorkOffset); \

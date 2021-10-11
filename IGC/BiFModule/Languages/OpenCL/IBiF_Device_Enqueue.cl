@@ -62,7 +62,7 @@ __global IGIL_DeviceEvent* IGIL_GetDeviceEvents()
     return (__global IGIL_DeviceEvent *)(pool + 1);
 }
 
-INLINE bool OVERLOADABLE IGIL_Valid_Event( clk_event_t in_event )
+INLINE bool OVERLOADABLE IGIL_Valid_Event( __spirv_DeviceEvent in_event )
 {
      // Get the event pool
     __global IGIL_EventPool *pool = IGIL_GetEventPool();
@@ -157,7 +157,7 @@ INLINE void OVERLOADABLE IGIL_FreeEvent( clk_event_t event )
     atomic_xchg( &events[(int)__builtin_astype(event, __private void*)].m_state, IGIL_EVENT_UNUSED );
 }
 
-INLINE int OVERLOADABLE IGIL_RetainEvent( clk_event_t in_event )
+INLINE int OVERLOADABLE IGIL_RetainEvent( __spirv_DeviceEvent in_event )
 {
     // offset into the event data
     __global IGIL_DeviceEvent *events = IGIL_GetDeviceEvents();
@@ -176,7 +176,7 @@ INLINE int OVERLOADABLE IGIL_RetainEvent( clk_event_t in_event )
     return status;
 }
 
-INLINE int OVERLOADABLE IGIL_ReleaseEvent( clk_event_t in_event )
+INLINE int OVERLOADABLE IGIL_ReleaseEvent( __spirv_DeviceEvent in_event )
 {
     // offset into the event data
     __global IGIL_DeviceEvent *events = IGIL_GetDeviceEvents();
@@ -203,9 +203,9 @@ INLINE int OVERLOADABLE IGIL_ReleaseEvent( clk_event_t in_event )
     return status;
 }
 
-INLINE clk_event_t IGIL_CreateUserEvent()
+INLINE __spirv_DeviceEvent IGIL_CreateUserEvent()
 {
-    clk_event_t newEvent = __builtin_astype((__private void*)(size_t)IGIL_AcquireEvent(), clk_event_t);
+    __spirv_DeviceEvent newEvent = __builtin_astype((__private void*)(size_t)IGIL_AcquireEvent(), __spirv_DeviceEvent);
 
     if( IGIL_Valid_Event(newEvent) == false)
     {
@@ -222,7 +222,7 @@ INLINE clk_event_t IGIL_CreateUserEvent()
     return newEvent;
 }
 
-INLINE void OVERLOADABLE IGIL_SetUserEventStatus( clk_event_t event, int state )
+INLINE void OVERLOADABLE IGIL_SetUserEventStatus( __spirv_DeviceEvent event, int state )
 {
     __global IGIL_DeviceEvent *events = IGIL_GetDeviceEvents();
 
@@ -240,7 +240,7 @@ INLINE void OVERLOADABLE IGIL_SetUserEventStatus( clk_event_t event, int state )
     }
 }
 
-INLINE void OVERLOADABLE IGIL_CaptureEventProfilingInfo( clk_event_t event, clk_profiling_info name,  __global void *value )
+INLINE void OVERLOADABLE IGIL_CaptureEventProfilingInfo( __spirv_DeviceEvent event, clk_profiling_info name,  __global void *value )
 {
     int status = CLK_SUCCESS;
     if( IGIL_Valid_Event( event ) == false )
@@ -397,40 +397,42 @@ INLINE int OVERLOADABLE IGIL_AcquireQueueSpace( queue_t q, uint numBytes )
 // API Entry Points for Events
 //===----------------------------------------------------------------------===//
 
-INLINE void OVERLOADABLE retain_event( clk_event_t event )
+#define to_spirv_event(e) (__builtin_astype(e, __spirv_DeviceEvent))
+#define to_ocl_event(e)   (__builtin_astype(e, clk_event_t))
+
+INLINE void OVERLOADABLE retain_event(clk_event_t event)
 {
-    IGIL_RetainEvent( event );
+    SPIRV_BUILTIN(RetainEvent, _i64, )(to_spirv_event(event));
 }
 
 INLINE void OVERLOADABLE release_event( clk_event_t event )
 {
-    IGIL_ReleaseEvent( event );
+    SPIRV_BUILTIN(ReleaseEvent, _i64, )(to_spirv_event(event));
 }
 
 INLINE clk_event_t OVERLOADABLE create_user_event()
 {
-    return IGIL_CreateUserEvent();
+    return to_ocl_event(SPIRV_BUILTIN(CreateUserEvent, , )());
 }
 
 INLINE void OVERLOADABLE set_user_event_status( clk_event_t e, int state )
 {
-    IGIL_SetUserEventStatus( e, state );
+    SPIRV_BUILTIN(SetUserEventStatus, _i64_i32, )(to_spirv_event(e), state);
 }
 
-INLINE void OVERLOADABLE capture_event_profiling_info( clk_event_t e, clk_profiling_info name, __global void* value )
+INLINE void OVERLOADABLE capture_event_profiling_info(clk_event_t e, clk_profiling_info name, __global void* value)
 {
-    IGIL_CaptureEventProfilingInfo( e, name, value );
+    SPIRV_BUILTIN(CaptureEventProfilingInfo, _i64_i32_p1i8, )(to_spirv_event(e), name, value);
 }
 
 INLINE bool OVERLOADABLE is_valid_event (clk_event_t event)
 {
-    return IGIL_Valid_Event(event);
+    return SPIRV_BUILTIN(IsValidEvent, _i64, )(to_spirv_event(event));
 }
 
 INLINE OVERLOADABLE queue_t get_default_queue()
 {
-    __global void* deviceQ = __builtin_IB_get_default_device_queue();
-    return __builtin_astype(deviceQ, queue_t);
+    return __builtin_astype(SPIRV_BUILTIN(GetDefaultQueue, , )(), queue_t);
 }
 
 #undef exec_offsetof

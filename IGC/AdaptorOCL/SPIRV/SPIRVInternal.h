@@ -247,9 +247,9 @@ SPIRVMap<std::string, Op>::init() {
 #define _SPIRV_OP(x,y) add(#x, OpType##y);
     _SPIRV_OP(opencl.event_t, Event)
     _SPIRV_OP(opencl.pipe_t, Pipe)
-    _SPIRV_OP(opencl.clk_event_t, DeviceEvent)
+    _SPIRV_OP(spirv.DeviceEvent, DeviceEvent)
     _SPIRV_OP(opencl.reserve_id_t, ReserveId)
-    _SPIRV_OP(opencl.queue_t, Queue)
+    _SPIRV_OP(spirv.Queue, Queue)
 #undef _SPIRV_OP
 }
 typedef SPIRVMap<std::string, Op> BuiltinOpaqueGenericTypeOpCodeMap;

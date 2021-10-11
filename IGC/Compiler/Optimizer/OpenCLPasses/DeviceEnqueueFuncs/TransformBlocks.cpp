@@ -315,7 +315,7 @@ namespace //Anonymous
             return false;
         }
 
-        /// Check if type is OCL event_t
+        /// Check if type is OCL or SPIRV event type
         static bool isEventType(llvm::Type* type)
         {
             if (auto * sType = toStructType(type))
@@ -323,13 +323,15 @@ namespace //Anonymous
                 if (sType->isOpaque())
                 {
                     auto typeName = sType->getName();
-                    return typeName.equals("opencl.clk_event_t") || typeName.equals("opencl.event_t");
+                    bool isOpenCLEvent = typeName.equals("opencl.clk_event_t") || typeName.equals("opencl.event_t");
+                    bool isSPIRVEvent = typeName.equals("__spirv.DeviceEvent");
+                    return isOpenCLEvent || isSPIRVEvent;
                 }
             }
             return false;
         }
 
-        /// Check if type is OCL queue_t
+        /// Check if type is OCL or SPIRV queue type
         static bool isQueueType(llvm::Type* type)
         {
             if (auto * sType = toStructType(type))
@@ -337,7 +339,7 @@ namespace //Anonymous
                 if (sType->isOpaque())
                 {
                     auto typeName = sType->getName();
-                    return typeName.equals("opencl.queue_t");
+                    return typeName.equals("opencl.queue_t") || typeName.equals("__spirv.Queue");
                 }
             }
             return false;

@@ -518,7 +518,6 @@ uint __builtin_IB_get_max_workgroup_size();
 uint __builtin_IB_get_parent_event();
 uint __builtin_IB_get_prefered_workgroup_multiple();
 
-
 // Generic Address Space
 __local   void* __builtin_IB_to_local(void*);
 __private void* __builtin_IB_to_private(void*);
