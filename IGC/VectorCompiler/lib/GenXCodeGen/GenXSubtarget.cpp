@@ -38,25 +38,7 @@ static cl::opt<bool>
                     cl::desc("Specify what surface should be used for stack"),
                     cl::init(true));
 
-void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
-
-  EmitCisa = false;
-  HasLongLong = false;
-  HasFP64 = false;
-  DisableJmpi = false;
-  DisableVectorDecomposition = false;
-  DisableJumpTables = false;
-  WarnCallable = false;
-  EmulateLongLong = false;
-  HasAdd64 = false;
-  UseMulDDQ = false;
-  OCLRuntime = false;
-  HasSwitchjmp = false;
-  WaNoMaskFusedEU = false;
-  HasIntDivRem32 = false;
-  HasBitRotate = false;
-  GetsHWTIDFromPredef = false;
-
+void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
   if (StackScratchMem)
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_T255;
   else
@@ -95,5 +77,5 @@ GenXSubtarget::GenXSubtarget(const Triple &TT, const std::string &CPU,
                            FS),
       TargetTriple(TT) {
 
-  resetSubtargetFeatures(CPU, FS);
+  initSubtargetFeatures(CPU, FS);
 }

@@ -68,54 +68,50 @@ protected:
   GenXTag GenXVariant;
 
 private:
-
-  // EmitCisa Builder - True if we should generate CISA instead of VISA
-  bool EmitCisa;
-
   // HasLongLong - True if subtarget supports long long type
-  bool HasLongLong;
+  bool HasLongLong = false;
 
   // HasFP64 - True if subtarget supports double type
-  bool HasFP64;
+  bool HasFP64 = false;
 
   // DisableJmpi - True if jmpi is disabled.
-  bool DisableJmpi;
+  bool DisableJmpi = false;
 
   // DisableVectorDecomposition - True if vector decomposition is disabled.
-  bool DisableVectorDecomposition;
+  bool DisableVectorDecomposition = false;
 
   // DisableJumpTables - True if switch to jump tables lowering is disabled.
-  bool DisableJumpTables;
+  bool DisableJumpTables = false;
 
   // Only generate warning when callable is used in the middle of the kernel
-  bool WarnCallable;
+  bool WarnCallable = false;
   // Some targets do not support i64 ops natively, we have an option to emulate
-  bool EmulateLongLong;
+  bool EmulateLongLong = false;
 
   // True if target supports native 64-bit add
-  bool HasAdd64;
+  bool HasAdd64 = false;
 
   // True if it is profitable to use native DxD->Q multiplication
-  bool UseMulDDQ;
+  bool UseMulDDQ = false;
 
   // True if codegenerating for OCL runtime.
-  bool OCLRuntime;
+  bool OCLRuntime = false;
 
   // True if subtarget supports switchjmp visa instruction
-  bool HasSwitchjmp;
+  bool HasSwitchjmp = false;
 
   // True if subtarget requires WA for nomask instructions under divergent
   // control flow
-  bool WaNoMaskFusedEU;
+  bool WaNoMaskFusedEU = false;
 
   // True if subtarget supports 32-bit integer division
-  bool HasIntDivRem32;
+  bool HasIntDivRem32 = false;
 
   // True if subtarget supports 32-bit rol/ror instructions
-  bool HasBitRotate;
+  bool HasBitRotate = false;
 
   // True if subtarget gets HWTID from predefined variable
-  bool GetsHWTIDFromPredef;
+  bool GetsHWTIDFromPredef = false;
 
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
@@ -139,8 +135,8 @@ public:
 #endif
                               StringRef FS);
 
-  // \brief Reset the features for the GenX target.
-  void resetSubtargetFeatures(StringRef CPU, StringRef FS);
+  // \brief Initialize the features for the GenX target.
+  void initSubtargetFeatures(StringRef CPU, StringRef FS);
 
 public:
 
