@@ -809,7 +809,7 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *pInst) {
   IGC_ASSERT(f);
   IGC_ASSERT(f->isIntrinsic());
   // not sure how to handle debug intrinsics, just return
-  if (isa<DbgDeclareInst>(pInst) || isa<DbgValueInst>(pInst))
+  if (isa<DbgInfoIntrinsic>(pInst))
     return pInst;
 
   auto id = GenXIntrinsic::getAnyIntrinsicID(f);
