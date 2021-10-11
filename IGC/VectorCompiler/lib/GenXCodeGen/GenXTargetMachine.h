@@ -161,6 +161,7 @@ void initializeGenXLowerAggrCopiesPass(PassRegistry &);
 void initializeGenXLoweringPass(PassRegistry &);
 void initializeGenXModulePass(PassRegistry &);
 void initializeGenXNumberingPass(PassRegistry &);
+void initializeGenXPacketizePass(PassRegistry &);
 void initializeGenXPatternMatchPass(PassRegistry &);
 void initializeGenXPostLegalizationPass(PassRegistry &);
 void initializeGenXPostLegalizationPass(PassRegistry &);

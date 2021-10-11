@@ -116,6 +116,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXLoweringPass(registry);
   initializeGenXModulePass(registry);
   initializeGenXNumberingPass(registry);
+  initializeGenXPacketizePass(registry);
   initializeGenXPatternMatchPass(registry);
   initializeGenXPostLegalizationPass(registry);
   initializeGenXPrologEpilogInsertionPass(registry);
