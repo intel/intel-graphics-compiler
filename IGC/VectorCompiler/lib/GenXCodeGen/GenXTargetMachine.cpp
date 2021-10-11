@@ -134,6 +134,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXImportOCLBiFPass(registry);
   initializeGenXSimplifyPass(registry);
   initializeCMABIPass(registry);
+  initializeCMLowerVLoadVStorePass(registry);
   initializeGenXLowerJmpTableSwitchPass(registry);
   initializeGenXGlobalValueLoweringPass(registry);
   initializeCMImpParamPass(registry);
