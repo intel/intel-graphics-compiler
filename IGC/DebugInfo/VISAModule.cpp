@@ -442,16 +442,12 @@ void VISAModule::coalesceRanges(std::vector<std::pair<unsigned int, unsigned int
         }
     }
 
-
-    for (auto it = GenISARange.begin(); it != GenISARange.end();)
-    {
-        if ((*it).first == (unsigned int)-1 && (*it).second == (unsigned int)-1)
-        {
-            it = GenISARange.erase(it);
-            continue;
-        }
-        it++;
-    }
+    GenISARange.erase(
+        std::remove_if(GenISARange.begin(), GenISARange.end(),
+                        [](const auto& Range) {
+                            return Range.first == -1 && Range.second == -1;
+                        }),
+        GenISARange.end());
 }
 
 template<class ContainerType, class BinaryFunction>
