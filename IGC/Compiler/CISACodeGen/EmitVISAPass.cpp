@@ -8277,6 +8277,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
     }
     break;
     case RENDER_TARGET_ARRAY_INDEX:
+    case VIEWPORT_INDEX:
     case VFACE:
     {
         // VFACE in shader's payload is one bit: 0/1 for front/back facing, respectively.
@@ -8322,6 +8323,23 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                     m_encoder->Push();
                 }
                 m_encoder->And(dst, temp, m_currShader->ImmToVariable(BITMASK(11), ISA_TYPE_UD));
+                m_encoder->Push();
+            }
+            else if (usage == VIEWPORT_INDEX)
+            {
+                dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
+                CVariable* temp = m_currShader->GetNewVariable(dst);
+                for (unsigned int i = 0; i < numTri; i++)
+                {
+                    m_encoder->SetSrcRegion(0, 0, 1, 0);
+                    m_encoder->SetSrcSubReg(0, subReg + i * 5);
+                    m_encoder->SetSimdSize(simdSize);
+                    m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
+                    m_encoder->SetDstSubVar(i);
+                    m_encoder->Shr(temp, reg, m_currShader->ImmToVariable(27, ISA_TYPE_UD));
+                    m_encoder->Push();
+                }
+                m_encoder->And(dst, temp, m_currShader->ImmToVariable(BITMASK(4), ISA_TYPE_UD));
                 m_encoder->Push();
             }
         }

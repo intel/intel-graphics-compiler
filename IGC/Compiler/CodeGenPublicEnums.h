@@ -235,6 +235,7 @@ namespace IGC
         XP2,
         POINT_COORD_X,
         POINT_COORD_Y,
+        VIEWPORT_INDEX,
         NUM_SGV,
     };
 
