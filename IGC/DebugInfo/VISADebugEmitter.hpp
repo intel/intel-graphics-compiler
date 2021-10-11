@@ -53,7 +53,8 @@ namespace IGC
 
         void SetDISPCache(DwarfDISubprogramCache *DISPCache) override;
 
-        std::vector<char> Finalize(bool finalize, DbgDecoder* decodedDbg) override;
+        std::vector<char> Finalize(bool finalize,
+                                   const DbgDecoder* decodedDbg) override;
 
         void BeginInstruction(llvm::Instruction* pInst) override;
         void EndInstruction(llvm::Instruction* pInst) override;
@@ -71,7 +72,7 @@ namespace IGC
     private:
         /// @brief Reset Debug Emitter instance.
         void Reset();
-        void processCurrentFunction(bool finalize, DbgDecoder* decodedDbg);
+        void processCurrentFunction(bool finalize, const DbgDecoder* decodedDbg);
 
     private:
         bool m_initialized = false;

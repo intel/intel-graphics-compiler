@@ -96,7 +96,7 @@ void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM,
     registerVISA(m_pVISAModule);
 }
 
-void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg) {
+void DebugEmitter::processCurrentFunction(bool finalize, const DbgDecoder* decodedDbg) {
 
     auto EmitIpLabel = [&](unsigned int ip)
     {
@@ -255,7 +255,8 @@ void DebugEmitter::SetDISPCache(DwarfDISubprogramCache *DISPCache) {
     m_pDwarfDebug->setDISPCache(DISPCache);
 }
 
-std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
+std::vector<char> DebugEmitter::Finalize(bool finalize,
+                                         const DbgDecoder* decodedDbg)
 {
     if (!m_debugEnabled)
     {

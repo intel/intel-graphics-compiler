@@ -69,7 +69,7 @@ namespace IGC
         /// @param decodedDbg [IN] holds decoded VISA debug information.
         /// @return memory buffer which contains the emitted debug info.
         virtual std::vector<char>
-            Finalize(bool finalize, DbgDecoder* decodedDbg) = 0;
+            Finalize(bool finalize, const DbgDecoder* decodedDbg) = 0;
 
         /// @brief Process instruction before emitting its VISA code.
         /// @param pInst instruction to process.

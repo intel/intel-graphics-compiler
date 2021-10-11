@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 
 #include "visa/include/visaBuilder_interface.h"
 
@@ -599,16 +600,102 @@ ModuleToVisaTransformInfo::ModuleToVisaTransformInfo(
 
 namespace {
 
+class GenObjectWrapper {
+  FINALIZER_INFO *JitInfo = nullptr;
+  std::unique_ptr<IGC::DbgDecoder> DecodedDebugInfo;
+  // TODO: remove this once DbgDecoder is refactored
+  unsigned GenDbgInfoDataSize = 0;
+  void *GenDbgInfoDataPtr = nullptr;
+
+  int GenBinaryDataSize = 0;
+  void *GenBinaryDataPtr = nullptr;
+
+  std::string ErrMsg;
+
+  void setError(const Twine &Msg, const Function &F) {
+    ErrMsg.append((Msg + "<" + F.getName() + ">").str());
+
+    LLVM_DEBUG(dbgs() << "GOW creation for <" << F.getName()
+                      << "> aborted: " << Msg.str());
+  }
+
+public:
+  ArrayRef<char> getGenDebug() const {
+    IGC_ASSERT(GenDbgInfoDataPtr);
+    return ArrayRef<char>(static_cast<char *>(GenDbgInfoDataPtr),
+                          GenDbgInfoDataSize);
+  }
+  ArrayRef<char> getGenBinary() const {
+    IGC_ASSERT(GenBinaryDataPtr);
+    return ArrayRef<char>(static_cast<char *>(GenBinaryDataPtr),
+                          GenBinaryDataSize);
+  }
+
+  const IGC::DbgDecoder &getDecodedGenDbg() const {
+    IGC_ASSERT(DecodedDebugInfo);
+    return *DecodedDebugInfo;
+  }
+
+  const FINALIZER_INFO &getJitInfo() const {
+    IGC_ASSERT(!hasErrors() && JitInfo);
+    return *JitInfo;
+  };
+
+  GenObjectWrapper(VISAKernel &VK, const Function &F);
+  ~GenObjectWrapper() { releaseDebugInfoResources(); }
+
+  bool hasErrors() const { return !ErrMsg.empty(); }
+
+  const std::string &getError() const { return ErrMsg; }
+
+  void releaseDebugInfoResources() {
+    if (!GenDbgInfoDataPtr) {
+      IGC_ASSERT(GenDbgInfoDataSize == 0);
+      return;
+    }
+    freeBlock(GenDbgInfoDataPtr);
+    GenDbgInfoDataPtr = nullptr;
+    GenDbgInfoDataSize = 0;
+  }
+
+  void printDecodedGenXDebug(raw_ostream &OS) {
+    IGC_ASSERT(!hasErrors());
+    LLVM_DEBUG(dbgs() << "GenXDebugInfo size: " << GenDbgInfoDataSize << "\n");
+    IGC::DbgDecoder(GenDbgInfoDataPtr).print(OS);
+  }
+};
+
+GenObjectWrapper::GenObjectWrapper(VISAKernel &VK, const Function &F) {
+  if (VK.GetJitInfo(JitInfo) != 0) {
+    setError("could not extract jitter info", F);
+    return;
+  }
+  IGC_ASSERT(JitInfo);
+
+  // Extract Gen Binary (will need it for line table generation)
+  VK.GetGenxBinary(GenBinaryDataPtr, GenBinaryDataSize);
+  if (GenBinaryDataSize <= 0) {
+    setError("could not extract gen binary from finalizer", F);
+    return;
+  }
+
+  if (VK.GetGenxDebugInfo(GenDbgInfoDataPtr, GenDbgInfoDataSize) != 0) {
+    setError("could not get gen debug information from finalizer", F);
+    return;
+  }
+  if (GenDbgInfoDataPtr <= 0) {
+    setError("invalid gen debug information size reported by finalizer", F);
+    return;
+  }
+  DecodedDebugInfo = std::make_unique<IGC::DbgDecoder>(GenDbgInfoDataPtr);
+};
+
 class CompiledVisaWrapper {
 
   using FinalizedDI = IGC::DbgDecoder::DbgInfoFormat;
 
-  std::vector<char> GenBinary;
-  std::vector<char> DbgInfoBlob;
-  std::unique_ptr<IGC::DbgDecoder> DecodedDebugInfo;
-
-  FINALIZER_INFO *JitInfo = nullptr;
-  // underlying data is owned by DecodedDebugInfo
+  const GenObjectWrapper &GOW;
+  // underlying data is owned by DecodedDebugInfo, owned by GOW
   const FinalizedDI *VisaKernelDI = nullptr;
 
   std::string ErrMsg;
@@ -616,77 +703,40 @@ class CompiledVisaWrapper {
   void setErrorForFunction(const std::string &Err, const Function &F) {
     ErrMsg.append(Err).append("<").append(F.getName()).append(">");
 
-    LLVM_DEBUG(dbgs() << "CW creation for <" << F.getName() << "> aborted: " <<
-               ErrMsg);
+    LLVM_DEBUG(dbgs() << "CW creation for <" << F.getName()
+                      << "> aborted: " << ErrMsg);
   }
 
 public:
-  const FINALIZER_INFO &getJitInfo() const {
-    IGC_ASSERT(ErrMsg.empty() && JitInfo);
-    return *JitInfo;
-  };
+  const FINALIZER_INFO &getJitInfo() const { return GOW.getJitInfo(); };
+
   const FinalizedDI &getFinalizerDI() const {
     IGC_ASSERT(ErrMsg.empty() && VisaKernelDI);
     return *VisaKernelDI;
   }
-  IGC::DbgDecoder *getDIDecoder() const { return DecodedDebugInfo.get(); }
-  const std::vector<char> &getGenBinary() const { return GenBinary; }
-  const std::vector<char> &getDbgInfoBlob() const { return DbgInfoBlob; }
+
+  const IGC::DbgDecoder &getDIDecoder() const { return GOW.getDecodedGenDbg(); }
+
+  ArrayRef<char> getGenDebug() const { return GOW.getGenDebug(); }
+  ArrayRef<char> getGenBinary() const { return GOW.getGenBinary(); }
+
   const std::string &getError() const { return ErrMsg; }
+
   bool hasErrors() const { return !getError().empty(); }
 
-  struct Gen2VisaIdx {
-    unsigned GenOffset;
-    unsigned VisaIdx;
-  };
+  CompiledVisaWrapper(const Function &F, StringRef CompiledObjectName,
+                      const GenObjectWrapper &GOWIn)
+      : GOW(GOWIn) {
+    struct Gen2VisaIdx {
+      unsigned GenOffset;
+      unsigned VisaIdx;
+    };
+    LLVM_DEBUG(dbgs() << "creating CW for <" << F.getName() << ">, using <"
+                      << CompiledObjectName
+                      << "> as a CompiledObject moniker\n");
+    IGC_ASSERT(!GOW.hasErrors());
 
-  static void releaseDebugInfoResources(const VISAKernel &VK) {
-    void *GenXdbgInfo = nullptr;
-    unsigned int DbgSize = 0;
-    auto Result = VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize);
-    IGC_ASSERT_MESSAGE(Result == 0,
-                       "could not get debug blob during cleanup procedure");
-    IGC_ASSERT(GenXdbgInfo);
-    freeBlock(GenXdbgInfo);
-  }
-
-  static void printDecodedGenXDebug(raw_ostream &OS, const VISAKernel &VK) {
-    void *GenXdbgInfo = nullptr;
-    unsigned int DbgSize = 0;
-    auto Result = VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize);
-    IGC_ASSERT_MESSAGE(Result == 0,
-                       "could not get debug blob during debug printing");
-    IGC::DbgDecoder(GenXdbgInfo).print(OS);
-  }
-
-  CompiledVisaWrapper(const Function &F, const VISAKernel &VK,
-                      StringRef CompiledObjectName) {
-    LLVM_DEBUG(dbgs() << "creating CW for <" << F.getName() << ">, using <" <<
-               CompiledObjectName << "> as a CompiledObject moniker\n");
-
-    void *GenXdbgInfo = nullptr;
-    unsigned int DbgSize = 0;
-    if (VK.GetJitInfo(JitInfo) != 0) {
-      setErrorForFunction("could not extract jitter info", F);
-      return;
-    }
-    IGC_ASSERT(JitInfo);
-
-    if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize) != 0) {
-      setErrorForFunction("visa info decode error", F);
-      return;
-    }
-
-    if (!GenXdbgInfo) {
-      setErrorForFunction("could not get debug information from finalizer", F);
-      return;
-    }
-
-    const char *DbgBlobBytes = static_cast<const char *>(GenXdbgInfo);
-    DbgInfoBlob = std::vector<char>(DbgBlobBytes, DbgBlobBytes + DbgSize);
-
-    DecodedDebugInfo = std::make_unique<IGC::DbgDecoder>(DbgInfoBlob.data());
-    const auto &CO = DecodedDebugInfo->compiledObjs;
+    const auto &CO = GOW.getDecodedGenDbg().compiledObjs;
     auto FoundCoIt = std::find_if(
         CO.begin(), CO.end(), [&CompiledObjectName](const auto &DI) {
           return CompiledObjectName == StringRef(DI.kernelName);
@@ -708,14 +758,7 @@ public:
                      return Gen2VisaIdx{V2G.second, V2G.first};
                    });
 
-    // Extract Gen Binary (will need it for line table generation)
-    void *GenBin = nullptr;
-    int GenBinSize = 0; // Finalizer uses signed int for size...
-    VK.GetGenxBinary(GenBin, GenBinSize);
-    IGC_ASSERT(GenBinSize >= 0);
-    const auto *GenBinBytes = reinterpret_cast<const char *>(GenBin);
-    GenBinary.insert(GenBinary.end(), GenBinBytes, GenBinBytes + GenBinSize);
-
+    const auto &GenBinary = GOW.getGenBinary();
     // Make Sure that gen isa indeces are inside GenBinary
     const bool InBounds =
         std::all_of(Gen2Visa.begin(), Gen2Visa.end(), [&](const auto &Idx) {
@@ -812,12 +855,14 @@ public:
     return F.getParent()->getDataLayout().getTypeSizeInBits(Ty);
   }
   ArrayRef<char> getGenDebug() const override {
-    return CompiledVisa.getDbgInfoBlob();
+    return CompiledVisa.getGenDebug();
   }
   ArrayRef<char> getGenBinary() const override {
     return CompiledVisa.getGenBinary();
   }
-  IGC::DbgDecoder *getDIDecoder() const { return CompiledVisa.getDIDecoder(); }
+  const IGC::DbgDecoder &getDIDecoder() const {
+    return CompiledVisa.getDIDecoder();
+  }
   const IGC::DbgDecoder::DbgInfoFormat &getFinalizerDI() const {
     return CompiledVisa.getFinalizerDI();
   }
@@ -987,8 +1032,12 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
                              .count(&PI.FIs.front().F) == 1,
                      "The head of ProgramInfo is expected to be a kernel");
 
-  LLVM_DEBUG(CompiledVisaWrapper::printDecodedGenXDebug(
-      dbgs(), *PI.MVTI.getSpawnedVISAKernel(&PI.FIs.front().F)));
+  GenObjectWrapper GOW(PI.CompiledKernel, PI.FIs.front().F);
+  if (GOW.hasErrors())
+    vc::diagnose(PI.FIs.front().F.getContext(), "GenXDebugInfo",
+                 GOW.getError());
+
+  LLVM_DEBUG(GOW.printDecodedGenXDebug(dbgs()));
 
   auto Deleter = [](IGC::IDebugEmitter *Emitter) {
     IGC::IDebugEmitter::Release(Emitter);
@@ -1001,19 +1050,20 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   CompiledVisaWrappers CWs;
   const auto &MVTI = PI.MVTI;
   std::transform(PI.FIs.begin(), PI.FIs.end(), std::back_inserter(CWs),
-                 [&MVTI](const auto &FI) {
+                 [&MVTI, &GOW](const auto &FI) {
                    StringRef CompiledObjectName = FI.F.getName();
                    if (MVTI.isSubroutine(&FI.F))
                      CompiledObjectName =
                          MVTI.getSubroutineOwner(&FI.F)->getName();
                    return std::make_unique<CompiledVisaWrapper>(
-                       FI.F, FI.CompiledKernel, CompiledObjectName);
+                       FI.F, CompiledObjectName, GOW);
                  });
   auto FaultyCwIt = std::find_if(
       CWs.begin(), CWs.end(), [](const auto &CW) { return CW->hasErrors(); });
 
   if (FaultyCwIt != CWs.end())
-    report_fatal_error((*FaultyCwIt)->getError(), false);
+    vc::diagnose(PI.FIs.front().F.getContext(), "GenXDebugInfo",
+                 (*FaultyCwIt)->getError());
 
   const auto &ST = getAnalysis<TargetPassConfig>()
       .getTM<GenXTargetMachine>()
@@ -1067,7 +1117,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
     bool ExpectMore = GF != GenXFunctions.back();
     LLVM_DEBUG(dbgs() << "--- Starting Debug Info Finalization (final:  "
                       << !ExpectMore << ") ---\n");
-    auto Out = Emitter->Finalize(!ExpectMore, GF->getDIDecoder());
+    auto Out = Emitter->Finalize(!ExpectMore, &GF->getDIDecoder());
     if (!ExpectMore) {
       ElfBin = std::move(Out);
       ErrLog = Emitter->getErrors();
@@ -1083,13 +1133,12 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
   if (BC.dbgInfoDumpsEnabled())
-    dumpDebugInfo(BC, KernelName, ElfBin, GenXFunctions.front()->getGenDebug(),
+    dumpDebugInfo(BC, KernelName, ElfBin, GOW.getGenDebug(),
                   {ErrLog.data(), ErrLog.size()});
 
   // this reset is needed to gracefully cleanup resources held by CWs
   GenXFunctions.clear();
   Emitter.reset();
-  CWs.front()->releaseDebugInfoResources(PI.FIs.front().CompiledKernel);
   CWs.clear();
 
   return;
@@ -1119,14 +1168,14 @@ void GenXDebugInfo::processPrimaryFunction(
 
   using FunctionInfo = ProgramInfo::FunctionInfo;
   std::vector<FunctionInfo> FIs;
-  FIs.push_back(FunctionInfo{*GM.getVisaMapping(&PF), *VKEntry, PF});
+  FIs.push_back(FunctionInfo{*GM.getVisaMapping(&PF), PF});
   const auto &SecondaryFunctions = MVTI.getSecondaryFunctions(&PF);
   std::transform(SecondaryFunctions.begin(), SecondaryFunctions.end(),
-                 std::back_inserter(FIs), [&GM, &VKEntry](const Function *F) {
+                 std::back_inserter(FIs), [&GM](const Function *F) {
                    const auto &Mapping = *GM.getVisaMapping(F);
-                   return FunctionInfo{Mapping, *VKEntry, *F};
+                   return FunctionInfo{Mapping, *F};
                  });
-  processKernel(Opts, ProgramInfo{MVTI, std::move(FIs)});
+  processKernel(Opts, ProgramInfo{MVTI, *VKEntry, std::move(FIs)});
 }
 
 static void fillDbgInfoOptions(const GenXBackendConfig &BC,

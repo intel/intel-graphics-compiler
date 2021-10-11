@@ -61,11 +61,11 @@ class GenXDebugInfo : public ModulePass {
   struct ProgramInfo {
     struct FunctionInfo {
       const genx::di::VisaMapping &VisaMapping;
-      VISAKernel &CompiledKernel;
       const Function &F;
     };
 
     const ModuleToVisaTransformInfo &MVTI;
+    VISAKernel &CompiledKernel;
     std::vector<FunctionInfo> FIs;
   };
 
