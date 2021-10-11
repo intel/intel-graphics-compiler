@@ -207,7 +207,7 @@ public:
 
       OpCompilationUnit cunit(BM->getCompilationUnit());
 
-      auto lang = cunit.getLang();
+      auto lang = convertSPIRVSourceLangToDWARF(cunit.getLang());
       auto file = getDIFile(BM->get<SPIRVExtInst>(cunit.getSource()));
       auto producer = "spirv";
       auto flags = "";
@@ -3704,11 +3704,11 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     /* Cast if necessary and prepare rest of the arguments: */
     CastInst *Ptr = CastInst::CreatePointerCast(PtrVal, PtrTy, "", BB);
     if (StrideVal->getType() != StrideTy) {
-      IGC_ASSERT_MESSAGE(StrideVal->getType()->isIntegerTy(), 
+      IGC_ASSERT_MESSAGE(StrideVal->getType()->isIntegerTy(),
           "Unspupported matrix stide type in load instruction.");
       StrideVal = CastInst::CreateIntegerCast(StrideVal, StrideTy, false, "stride", Ptr);
     }
-    
+
     Value *LoadLayoutVal  = ConstantInt::get(LayoutTy, loadLayout);
     Value *ElementTypeVal = ConstantInt::get(ElemTypeTy, MatTy->getElementTypeFlags());
     Value *RowsVal        = ConstantInt::get(SizeTy, MatTy->getRows());
@@ -3734,7 +3734,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     Function *Func = cast<Function>(M->getOrInsertFunction(builtinName, builtinTy));
 
     std::vector<Value *> Args = {
-      Ptr, StrideVal, LoadLayoutVal, ElementTypeVal, RowsVal, ColumnsVal 
+      Ptr, StrideVal, LoadLayoutVal, ElementTypeVal, RowsVal, ColumnsVal
     };
     CallInst *CI = CallInst::Create(Func, Args, "matrix", BB);
     return mapValue(BV, CI);
@@ -3771,7 +3771,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     /* Cast if necessary and prepare rest of the arguments: */
     CastInst *Ptr = CastInst::CreatePointerCast(PtrVal, PtrTy, "", BB);
     if (StrideVal->getType() != StrideTy) {
-      IGC_ASSERT_MESSAGE(StrideVal->getType()->isIntegerTy(), 
+      IGC_ASSERT_MESSAGE(StrideVal->getType()->isIntegerTy(),
           "Unspupported matrix stide type in store instruction.");
       StrideVal = CastInst::CreateIntegerCast(StrideVal, StrideTy, false, "stride", Ptr);
     }
@@ -4811,7 +4811,9 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
 void
 SPIRVToLLVM::transSourceLanguage() {
   SPIRVWord Ver = 0;
-  SpvSourceLanguage Lang = BM->getSourceLanguage(&Ver);
+  auto DwarfLang =
+    static_cast<llvm::dwarf::SourceLanguage>(BM->getSourceLanguage(&Ver));
+  SpvSourceLanguage Lang = convertDWARFSourceLangToSPIRV(DwarfLang);
   if (Lang == SpvSourceLanguageOpenCL_C || Lang == SpvSourceLanguageOpenCL_CPP) {
     unsigned short Major = 0;
     unsigned char Minor = 0;
