@@ -1371,7 +1371,7 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, const VISAVariableLocatio
 //
 void CompileUnit::addSimdLane(IGC::DIEBlock* Block, const DbgVariable& DV,
                               const VISAVariableLocation *Loc,
-                              DbgDecoder::LiveIntervalsVISA * lr,
+                              const DbgDecoder::LiveIntervalsVISA * lr,
                               uint16_t simdWidthOffset, bool isPacked, bool isSecondHalf)
 {
     auto EmitPushSimdLane = [this](IGC::DIEBlock* Block, bool isSecondHalf)
@@ -1586,7 +1586,7 @@ bool CompileUnit::emitBitPiecesForRegVal(IGC::DIEBlock* Block, const VISAModule&
 // e.g. a GRF subregister.
 void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, const DbgVariable& DV,
                                     const VISAVariableLocation* Loc,
-                                    DbgDecoder::LiveIntervalsVISA* lr,
+                                    const DbgDecoder::LiveIntervalsVISA* lr,
                                     uint16_t subRegInBytes)
 {
     if (EmitSettings.EnableSIMDLaneDebugging)
@@ -2729,7 +2729,7 @@ IGC::DIEBlock* CompileUnit::buildSLM(const DbgVariable& var, const VISAVariableL
 
 IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
                                          std::vector<VISAVariableLocation>* locs,
-                                         std::vector<DbgDecoder::LiveIntervalsVISA>* vars)
+                                         const std::vector<DbgDecoder::LiveIntervalsVISA>* vars)
 {
     IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
     bool emitLocation = false;
