@@ -189,17 +189,18 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
     t.igc_init_size = sizeof(t);
     if (gtpinInitFromL0)
     {
-        if (kernel.getOption(vISA_GetFreeGRFInfo))
+        if (!stackABI)
         {
-            if (!stackABI)
+            if (kernel.getOption(vISA_GetFreeGRFInfo))
+            {
                 t.grf_info = 1;
-            numTokens++;
-        }
+                numTokens++;
+            }
 
-        if (kernel.getOption(vISA_GTPinReRA))
-        {
-            if (!stackABI)
+            if (kernel.getOption(vISA_GTPinReRA))
+            {
                 t.re_ra = 1;
+            }
         }
 
         if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
@@ -214,17 +215,18 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
     else
     {
         t.version = std::min(gtpin_init->version, gtpin::igc::GTPIN_IGC_INTERFACE_VERSION);
-        if (gtpin_init->grf_info)
+        if (!stackABI)
         {
-            if (!stackABI)
+            if (gtpin_init->grf_info)
+            {
                 t.grf_info = 1;
-            numTokens++;
-        }
+                numTokens++;
+            }
 
-        if (gtpin_init->re_ra)
-        {
-            if (!stackABI)
+            if (gtpin_init->re_ra)
+            {
                 t.re_ra = 1;
+            }
         }
 
         if (gtpin_init->srcline_mapping && kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
