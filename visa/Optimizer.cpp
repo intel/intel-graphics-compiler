@@ -214,11 +214,10 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
         if (bb->empty())
             continue;
 
-        // At this point G4_pseudo_fcall may be converted to G4_call
-        if (bb->back()->isCall() || bb->back()->isFCall())
+        if (bb->back()->isFCall())
         {
-            G4_INST* fcall = bb->back();
-            if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0())
+            G4_InstCF* fcall = bb->back()->asCFInst();
+            if (fcall->isIndirectCall())
             {
                 // for every indirect call, count # of instructions inserted
                 // between call and the first add
@@ -8288,8 +8287,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             if (bb->back()->isFCall())
             {
-                G4_INST* fcall = bb->back();
-                if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0()) {
+                G4_InstCF* fcall = bb->back()->asCFInst();
+                if (fcall->isIndirectCall()) {
                     // at this point the call instruction's src0 has the target_address
                     // and the call dst is the reserved register (r125.0) for ret
                     // All the caller save register should be saved. We usd r2 directly
