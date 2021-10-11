@@ -788,6 +788,11 @@ bool WaOverwriteFFID() const
     return m_WaTable.Wa_1409460247 != 0;
 }
 
+bool switchSIMDBasedOnMemInstr() const
+{
+    return m_platformInfo.eProductFamily <= IGFX_DG1;
+}
+
 
 bool WaDisableSendSrcDstOverlap() const
 {
