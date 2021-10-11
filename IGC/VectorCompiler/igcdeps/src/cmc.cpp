@@ -124,7 +124,10 @@ class KernelArgInfoBuilder
                 case ArgKind::Buffer:
                 case ArgKind::SVM:
                 case ArgKind::Image1D:
+                case ArgKind::Image1DArray:
                 case ArgKind::Image2D:
+                case ArgKind::Image2DArray:
+                case ArgKind::Image2DMediaBlock:
                 case ArgKind::Image3D:
                 case ArgKind::BindlessBuffer:
                     return Global;
@@ -515,7 +518,10 @@ static void generateKernelArgInfo(
     case KindType::SVM:
     case KindType::Sampler:
     case KindType::Image1D:
+    case KindType::Image1DArray:
     case KindType::Image2D:
+    case KindType::Image2DArray:
+    case KindType::Image2DMediaBlock:
     case KindType::Image3D:
     case KindType::BindlessBuffer:
       ArgsAnnotationBuilder.insert(Arg.getIndex(), Arg.getKind(),
