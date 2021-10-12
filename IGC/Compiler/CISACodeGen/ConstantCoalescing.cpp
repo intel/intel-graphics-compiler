@@ -416,7 +416,6 @@ void ConstantCoalescing::ProcessBlock(
             if ((bufType != BINDLESS_CONSTANT_BUFFER)
                 && (bufType != BINDLESS_TEXTURE)
                 && (bufType != SSH_BINDLESS_CONSTANT_BUFFER)
-                && (bufType != BINDLESS)
                 )
             {
                 continue;
@@ -453,7 +452,6 @@ void ConstantCoalescing::ProcessBlock(
                 }
                 else if (bufType == BINDLESS_CONSTANT_BUFFER
                          || bufType == SSH_BINDLESS_CONSTANT_BUFFER
-                        || bufType == BINDLESS
                          )
                 {
                     if (UsesTypedConstantBuffer(m_ctx, bufType))
@@ -478,7 +476,7 @@ void ConstantCoalescing::ProcessBlock(
                             indcb_gathers);
                     }
                 }
-                else if ((bufType == BINDLESS_TEXTURE || bufType == BINDLESS) && IGC_IS_FLAG_ENABLED(EnableTextureLoadCoalescing))
+                else if (bufType == BINDLESS_TEXTURE && IGC_IS_FLAG_ENABLED(EnableTextureLoadCoalescing))
                 {
                     MergeScatterLoad(
                         ldRaw,

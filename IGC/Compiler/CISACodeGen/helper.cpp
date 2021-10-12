@@ -172,8 +172,7 @@ namespace IGC
         const BufferType bufType)
     {
         IGC_ASSERT(bufType == CONSTANT_BUFFER ||
-            bufType == BINDLESS_CONSTANT_BUFFER ||
-            bufType == BINDLESS);
+            bufType == BINDLESS_CONSTANT_BUFFER);
 
         if (pContext->m_DriverInfo.ForceUntypedBindlessConstantBuffers() &&
             bufType == BINDLESS_CONSTANT_BUFFER)
