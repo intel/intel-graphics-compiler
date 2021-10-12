@@ -1279,8 +1279,10 @@ inline dwarf::SourceLanguage convertSPIRVSourceLangToDWARF(unsigned SourceLang) 
   case igc_spv::SpvSourceLanguage::SpvSourceLanguageGLSL:
   case igc_spv::SpvSourceLanguage::SpvSourceLanguageHLSL:
   case igc_spv::SpvSourceLanguage::SpvSourceLanguageUnknown:
-  default:
     return dwarf::DW_LANG_OpenCL;
+  default:
+    // Workaround on frontends generating SPIR-V out of SpvSourceLanguage scope.
+    return (dwarf::SourceLanguage)SourceLang;
   }
 }
 #endif
