@@ -7,579 +7,579 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 INLINE char2 OVERLOADABLE shuffle(char2 v, uchar2 m) {
-    return as_char2(__builtin_spirv_OpenCL_shuffle_v2i8_v2i8( as_uchar2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i8_v2i8, )( v, as_char2( m ) );
 }
 
 INLINE char2 OVERLOADABLE shuffle(char4 v, uchar2 m) {
-    return as_char2(__builtin_spirv_OpenCL_shuffle_v4i8_v2i8( as_uchar4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i8_v2i8, )( v, as_char2( m ) );
 }
 
 INLINE char2 OVERLOADABLE shuffle(char8 v, uchar2 m) {
-    return as_char2(__builtin_spirv_OpenCL_shuffle_v8i8_v2i8( as_uchar8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i8_v2i8, )( v, as_char2( m ) );
 }
 
 INLINE char2 OVERLOADABLE shuffle(char16 v, uchar2 m) {
-    return as_char2(__builtin_spirv_OpenCL_shuffle_v16i8_v2i8( as_uchar16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i8_v2i8, )( v, as_char2( m ) );
 }
 
 INLINE char4 OVERLOADABLE shuffle(char2 v, uchar4 m) {
-    return as_char4(__builtin_spirv_OpenCL_shuffle_v2i8_v4i8( as_uchar2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i8_v4i8, )( v, as_char4( m ) );
 }
 
 INLINE char4 OVERLOADABLE shuffle(char4 v, uchar4 m) {
-    return as_char4(__builtin_spirv_OpenCL_shuffle_v4i8_v4i8( as_uchar4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i8_v4i8, )( v, as_char4( m ) );
 }
 
 INLINE char4 OVERLOADABLE shuffle(char8 v, uchar4 m) {
-    return as_char4(__builtin_spirv_OpenCL_shuffle_v8i8_v4i8( as_uchar8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i8_v4i8, )( v, as_char4( m ) );
 }
 
 INLINE char4 OVERLOADABLE shuffle(char16 v, uchar4 m) {
-    return as_char4(__builtin_spirv_OpenCL_shuffle_v16i8_v4i8( as_uchar16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i8_v4i8, )( v, as_char4( m ) );
 }
 
 INLINE char8 OVERLOADABLE shuffle(char2 v, uchar8 m) {
-    return as_char8(__builtin_spirv_OpenCL_shuffle_v2i8_v8i8( as_uchar2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i8_v8i8, )( v, as_char8( m ) );
 }
 
 INLINE char8 OVERLOADABLE shuffle(char4 v, uchar8 m) {
-    return as_char8(__builtin_spirv_OpenCL_shuffle_v4i8_v8i8( as_uchar4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i8_v8i8, )( v, as_char8( m ) );
 }
 
 INLINE char8 OVERLOADABLE shuffle(char8 v, uchar8 m) {
-    return as_char8(__builtin_spirv_OpenCL_shuffle_v8i8_v8i8( as_uchar8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i8_v8i8, )( v, as_char8( m ) );
 }
 
 INLINE char8 OVERLOADABLE shuffle(char16 v, uchar8 m) {
-    return as_char8(__builtin_spirv_OpenCL_shuffle_v16i8_v8i8( as_uchar16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i8_v8i8, )( v, as_char8( m ) );
 }
 
 INLINE char16 OVERLOADABLE shuffle(char2 v, uchar16 m) {
-    return as_char16(__builtin_spirv_OpenCL_shuffle_v2i8_v16i8( as_uchar2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i8_v16i8, )( v, as_char16( m ) );
 }
 
 INLINE char16 OVERLOADABLE shuffle(char4 v, uchar16 m) {
-    return as_char16(__builtin_spirv_OpenCL_shuffle_v4i8_v16i8( as_uchar4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i8_v16i8, )( v, as_char16( m ) );
 }
 
 INLINE char16 OVERLOADABLE shuffle(char8 v, uchar16 m) {
-    return as_char16(__builtin_spirv_OpenCL_shuffle_v8i8_v16i8( as_uchar8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i8_v16i8, )( v, as_char16( m ) );
 }
 
 INLINE char16 OVERLOADABLE shuffle(char16 v, uchar16 m) {
-    return as_char16(__builtin_spirv_OpenCL_shuffle_v16i8_v16i8( as_uchar16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i8_v16i8, )( v, as_char16( m ) );
 }
 
 INLINE uchar2 OVERLOADABLE shuffle(uchar2 v, uchar2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i8_v2i8( v, m );
+    return as_uchar2( SPIRV_OCL_BUILTIN(shuffle, _v2i8_v2i8, )( as_char2( v ), as_char2( m ) ) );
 }
 
 INLINE uchar2 OVERLOADABLE shuffle(uchar4 v, uchar2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i8_v2i8( v, m );
+    return as_uchar2( SPIRV_OCL_BUILTIN(shuffle, _v4i8_v2i8, )( as_char4( v ), as_char2( m ) ) );
 }
 
 INLINE uchar2 OVERLOADABLE shuffle(uchar8 v, uchar2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i8_v2i8( v, m );
+    return as_uchar2( SPIRV_OCL_BUILTIN(shuffle, _v8i8_v2i8, )( as_char8( v ), as_char2( m ) ) );
 }
 
 INLINE uchar2 OVERLOADABLE shuffle(uchar16 v, uchar2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i8_v2i8( v, m );
+    return as_uchar2( SPIRV_OCL_BUILTIN(shuffle, _v16i8_v2i8, )( as_char16( v ), as_char2( m ) ) );
 }
 
 INLINE uchar4 OVERLOADABLE shuffle(uchar2 v, uchar4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i8_v4i8( v, m );
+    return as_uchar4( SPIRV_OCL_BUILTIN(shuffle, _v2i8_v4i8, )( as_char2( v ), as_char4( m ) ) );
 }
 
 INLINE uchar4 OVERLOADABLE shuffle(uchar4 v, uchar4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i8_v4i8( v, m );
+    return as_uchar4( SPIRV_OCL_BUILTIN(shuffle, _v4i8_v4i8, )( as_char4( v ), as_char4( m ) ) );
 }
 
 INLINE uchar4 OVERLOADABLE shuffle(uchar8 v, uchar4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i8_v4i8( v, m );
+    return as_uchar4( SPIRV_OCL_BUILTIN(shuffle, _v8i8_v4i8, )( as_char8( v ), as_char4( m ) ) );
 }
 
 INLINE uchar4 OVERLOADABLE shuffle(uchar16 v, uchar4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i8_v4i8( v, m );
+    return as_uchar4( SPIRV_OCL_BUILTIN(shuffle, _v16i8_v4i8, )( as_char16( v ), as_char4( m ) ) );
 }
 
 INLINE uchar8 OVERLOADABLE shuffle(uchar2 v, uchar8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i8_v8i8( v, m );
+    return as_uchar8( SPIRV_OCL_BUILTIN(shuffle, _v2i8_v8i8, )( as_char2( v ), as_char8( m ) ) );
 }
 
 INLINE uchar8 OVERLOADABLE shuffle(uchar4 v, uchar8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i8_v8i8( v, m );
+    return as_uchar8( SPIRV_OCL_BUILTIN(shuffle, _v4i8_v8i8, )( as_char4( v ), as_char8( m ) ) );
 }
 
 INLINE uchar8 OVERLOADABLE shuffle(uchar8 v, uchar8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i8_v8i8( v, m );
+    return as_uchar8( SPIRV_OCL_BUILTIN(shuffle, _v8i8_v8i8, )( as_char8( v ), as_char8( m ) ) );
 }
 
 INLINE uchar8 OVERLOADABLE shuffle(uchar16 v, uchar8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i8_v8i8( v, m );
+    return as_uchar8( SPIRV_OCL_BUILTIN(shuffle, _v16i8_v8i8, )( as_char16( v ), as_char8( m ) ) );
 }
 
 INLINE uchar16 OVERLOADABLE shuffle(uchar2 v, uchar16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i8_v16i8( v, m );
+    return as_uchar16( SPIRV_OCL_BUILTIN(shuffle, _v2i8_v16i8, )( as_char2( v ), as_char16( m ) ) );
 }
 
 INLINE uchar16 OVERLOADABLE shuffle(uchar4 v, uchar16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i8_v16i8( v, m );
+    return as_uchar16( SPIRV_OCL_BUILTIN(shuffle, _v4i8_v16i8, )( as_char4( v ), as_char16( m ) ) );
 }
 
 INLINE uchar16 OVERLOADABLE shuffle(uchar8 v, uchar16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i8_v16i8( v, m );
+    return as_uchar16( SPIRV_OCL_BUILTIN(shuffle, _v8i8_v16i8, )( as_char8( v ), as_char16( m ) ) );
 }
 
 INLINE uchar16 OVERLOADABLE shuffle(uchar16 v, uchar16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i8_v16i8( v, m );
+    return as_uchar16( SPIRV_OCL_BUILTIN(shuffle, _v16i8_v16i8, )( as_char16( v ), as_char16( m ) ) );
 }
 
 INLINE short2 OVERLOADABLE shuffle(short2 v, ushort2 m) {
-    return as_short2(__builtin_spirv_OpenCL_shuffle_v2i16_v2i16( as_ushort2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i16_v2i16, )( v, as_short2( m ) );
 }
 
 INLINE short2 OVERLOADABLE shuffle(short4 v, ushort2 m) {
-    return as_short2(__builtin_spirv_OpenCL_shuffle_v4i16_v2i16( as_ushort4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i16_v2i16, )( v, as_short2( m ) );
 }
 
 INLINE short2 OVERLOADABLE shuffle(short8 v, ushort2 m) {
-    return as_short2(__builtin_spirv_OpenCL_shuffle_v8i16_v2i16( as_ushort8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i16_v2i16, )( v, as_short2( m ) );
 }
 
 INLINE short2 OVERLOADABLE shuffle(short16 v, ushort2 m) {
-    return as_short2(__builtin_spirv_OpenCL_shuffle_v16i16_v2i16( as_ushort16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i16_v2i16, )( v, as_short2( m ) );
 }
 
 INLINE short4 OVERLOADABLE shuffle(short2 v, ushort4 m) {
-    return as_short4(__builtin_spirv_OpenCL_shuffle_v2i16_v4i16( as_ushort2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i16_v4i16, )( v, as_short4( m ) );
 }
 
 INLINE short4 OVERLOADABLE shuffle(short4 v, ushort4 m) {
-    return as_short4(__builtin_spirv_OpenCL_shuffle_v4i16_v4i16( as_ushort4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i16_v4i16, )( v, as_short4( m ) );
 }
 
 INLINE short4 OVERLOADABLE shuffle(short8 v, ushort4 m) {
-    return as_short4(__builtin_spirv_OpenCL_shuffle_v8i16_v4i16( as_ushort8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i16_v4i16, )( v, as_short4( m ) );
 }
 
 INLINE short4 OVERLOADABLE shuffle(short16 v, ushort4 m) {
-    return as_short4(__builtin_spirv_OpenCL_shuffle_v16i16_v4i16( as_ushort16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i16_v4i16, )( v, as_short4( m ) );
 }
 
 INLINE short8 OVERLOADABLE shuffle(short2 v, ushort8 m) {
-    return as_short8(__builtin_spirv_OpenCL_shuffle_v2i16_v8i16( as_ushort2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i16_v8i16, )( v, as_short8( m ) );
 }
 
 INLINE short8 OVERLOADABLE shuffle(short4 v, ushort8 m) {
-    return as_short8(__builtin_spirv_OpenCL_shuffle_v4i16_v8i16( as_ushort4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i16_v8i16, )( v, as_short8( m ) );
 }
 
 INLINE short8 OVERLOADABLE shuffle(short8 v, ushort8 m) {
-    return as_short8(__builtin_spirv_OpenCL_shuffle_v8i16_v8i16( as_ushort8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i16_v8i16, )( v, as_short8( m ) );
 }
 
 INLINE short8 OVERLOADABLE shuffle(short16 v, ushort8 m) {
-    return as_short8(__builtin_spirv_OpenCL_shuffle_v16i16_v8i16( as_ushort16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i16_v8i16, )( v, as_short8( m ) );
 }
 
 INLINE short16 OVERLOADABLE shuffle(short2 v, ushort16 m) {
-    return as_short16(__builtin_spirv_OpenCL_shuffle_v2i16_v16i16( as_ushort2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i16_v16i16, )( v, as_short16( m ) );
 }
 
 INLINE short16 OVERLOADABLE shuffle(short4 v, ushort16 m) {
-    return as_short16(__builtin_spirv_OpenCL_shuffle_v4i16_v16i16( as_ushort4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i16_v16i16, )( v, as_short16( m ) );
 }
 
 INLINE short16 OVERLOADABLE shuffle(short8 v, ushort16 m) {
-    return as_short16(__builtin_spirv_OpenCL_shuffle_v8i16_v16i16( as_ushort8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i16_v16i16, )( v, as_short16( m ) );
 }
 
 INLINE short16 OVERLOADABLE shuffle(short16 v, ushort16 m) {
-    return as_short16(__builtin_spirv_OpenCL_shuffle_v16i16_v16i16( as_ushort16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i16_v16i16, )( v, as_short16( m ) );
 }
 
 INLINE ushort2 OVERLOADABLE shuffle(ushort2 v, ushort2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i16_v2i16( v, m );
+    return as_ushort2( SPIRV_OCL_BUILTIN(shuffle, _v2i16_v2i16, )( as_short2( v ), as_short2( m ) ) );
 }
 
 INLINE ushort2 OVERLOADABLE shuffle(ushort4 v, ushort2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i16_v2i16( v, m );
+    return as_ushort2( SPIRV_OCL_BUILTIN(shuffle, _v4i16_v2i16, )( as_short4( v ), as_short2( m ) ) );
 }
 
 INLINE ushort2 OVERLOADABLE shuffle(ushort8 v, ushort2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i16_v2i16( v, m );
+    return as_ushort2( SPIRV_OCL_BUILTIN(shuffle, _v8i16_v2i16, )( as_short8( v ), as_short2( m ) ) );
 }
 
 INLINE ushort2 OVERLOADABLE shuffle(ushort16 v, ushort2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i16_v2i16( v, m );
+    return as_ushort2( SPIRV_OCL_BUILTIN(shuffle, _v16i16_v2i16, )( as_short16( v ), as_short2( m ) ) );
 }
 
 INLINE ushort4 OVERLOADABLE shuffle(ushort2 v, ushort4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i16_v4i16( v, m );
+    return as_ushort4( SPIRV_OCL_BUILTIN(shuffle, _v2i16_v4i16, )( as_short2( v ), as_short4( m ) ) );
 }
 
 INLINE ushort4 OVERLOADABLE shuffle(ushort4 v, ushort4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i16_v4i16( v, m );
+    return as_ushort4( SPIRV_OCL_BUILTIN(shuffle, _v4i16_v4i16, )( as_short4( v ), as_short4( m ) ) );
 }
 
 INLINE ushort4 OVERLOADABLE shuffle(ushort8 v, ushort4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i16_v4i16( v, m );
+    return as_ushort4( SPIRV_OCL_BUILTIN(shuffle, _v8i16_v4i16, )( as_short8( v ), as_short4( m ) ) );
 }
 
 INLINE ushort4 OVERLOADABLE shuffle(ushort16 v, ushort4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i16_v4i16( v, m );
+    return as_ushort4( SPIRV_OCL_BUILTIN(shuffle, _v16i16_v4i16, )( as_short16( v ), as_short4( m ) ) );
 }
 
 INLINE ushort8 OVERLOADABLE shuffle(ushort2 v, ushort8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i16_v8i16( v, m );
+    return as_ushort8( SPIRV_OCL_BUILTIN(shuffle, _v2i16_v8i16, )( as_short2( v ), as_short8( m ) ) );
 }
 
 INLINE ushort8 OVERLOADABLE shuffle(ushort4 v, ushort8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i16_v8i16( v, m );
+    return as_ushort8( SPIRV_OCL_BUILTIN(shuffle, _v4i16_v8i16, )( as_short4( v ), as_short8( m ) ) );
 }
 
 INLINE ushort8 OVERLOADABLE shuffle(ushort8 v, ushort8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i16_v8i16( v, m );
+    return as_ushort8( SPIRV_OCL_BUILTIN(shuffle, _v8i16_v8i16, )( as_short8( v ), as_short8( m ) ) );
 }
 
 INLINE ushort8 OVERLOADABLE shuffle(ushort16 v, ushort8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i16_v8i16( v, m );
+    return as_ushort8( SPIRV_OCL_BUILTIN(shuffle, _v16i16_v8i16, )( as_short16( v ), as_short8( m ) ) );
 }
 
 INLINE ushort16 OVERLOADABLE shuffle(ushort2 v, ushort16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i16_v16i16( v, m );
+    return as_ushort16( SPIRV_OCL_BUILTIN(shuffle, _v2i16_v16i16, )( as_short2( v ), as_short16( m ) ) );
 }
 
 INLINE ushort16 OVERLOADABLE shuffle(ushort4 v, ushort16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i16_v16i16( v, m );
+    return as_ushort16( SPIRV_OCL_BUILTIN(shuffle, _v4i16_v16i16, )( as_short4( v ), as_short16( m ) ) );
 }
 
 INLINE ushort16 OVERLOADABLE shuffle(ushort8 v, ushort16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i16_v16i16( v, m );
+    return as_ushort16( SPIRV_OCL_BUILTIN(shuffle, _v8i16_v16i16, )( as_short8( v ), as_short16( m ) ) );
 }
 
 INLINE ushort16 OVERLOADABLE shuffle(ushort16 v, ushort16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i16_v16i16( v, m );
+    return as_ushort16( SPIRV_OCL_BUILTIN(shuffle, _v16i16_v16i16, )( as_short16( v ), as_short16( m ) ) );
 }
 
 INLINE int2 OVERLOADABLE shuffle(int2 v, uint2 m) {
-    return as_int2(__builtin_spirv_OpenCL_shuffle_v2i32_v2i32( as_uint2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i32_v2i32, )( v, as_int2( m ) );
 }
 
 INLINE int2 OVERLOADABLE shuffle(int4 v, uint2 m) {
-    return as_int2(__builtin_spirv_OpenCL_shuffle_v4i32_v2i32( as_uint4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i32_v2i32, )( v, as_int2( m ) );
 }
 
 INLINE int2 OVERLOADABLE shuffle(int8 v, uint2 m) {
-    return as_int2(__builtin_spirv_OpenCL_shuffle_v8i32_v2i32( as_uint8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i32_v2i32, )( v, as_int2( m ) );
 }
 
 INLINE int2 OVERLOADABLE shuffle(int16 v, uint2 m) {
-    return as_int2(__builtin_spirv_OpenCL_shuffle_v16i32_v2i32( as_uint16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i32_v2i32, )( v, as_int2( m ) );
 }
 
 INLINE int4 OVERLOADABLE shuffle(int2 v, uint4 m) {
-    return as_int4(__builtin_spirv_OpenCL_shuffle_v2i32_v4i32( as_uint2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i32_v4i32, )( v, as_int4( m ) );
 }
 
 INLINE int4 OVERLOADABLE shuffle(int4 v, uint4 m) {
-    return as_int4(__builtin_spirv_OpenCL_shuffle_v4i32_v4i32( as_uint4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i32_v4i32, )( v, as_int4( m ) );
 }
 
 INLINE int4 OVERLOADABLE shuffle(int8 v, uint4 m) {
-    return as_int4(__builtin_spirv_OpenCL_shuffle_v8i32_v4i32( as_uint8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i32_v4i32, )( v, as_int4( m ) );
 }
 
 INLINE int4 OVERLOADABLE shuffle(int16 v, uint4 m) {
-    return as_int4(__builtin_spirv_OpenCL_shuffle_v16i32_v4i32( as_uint16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i32_v4i32, )( v, as_int4( m ) );
 }
 
 INLINE int8 OVERLOADABLE shuffle(int2 v, uint8 m) {
-    return as_int8(__builtin_spirv_OpenCL_shuffle_v2i32_v8i32( as_uint2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i32_v8i32, )( v, as_int8( m ) );
 }
 
 INLINE int8 OVERLOADABLE shuffle(int4 v, uint8 m) {
-    return as_int8(__builtin_spirv_OpenCL_shuffle_v4i32_v8i32( as_uint4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i32_v8i32, )( v, as_int8( m ) );
 }
 
 INLINE int8 OVERLOADABLE shuffle(int8 v, uint8 m) {
-    return as_int8(__builtin_spirv_OpenCL_shuffle_v8i32_v8i32( as_uint8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i32_v8i32, )( v, as_int8( m ) );
 }
 
 INLINE int8 OVERLOADABLE shuffle(int16 v, uint8 m) {
-    return as_int8(__builtin_spirv_OpenCL_shuffle_v16i32_v8i32( as_uint16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i32_v8i32, )( v, as_int8( m ) );
 }
 
 INLINE int16 OVERLOADABLE shuffle(int2 v, uint16 m) {
-    return as_int16(__builtin_spirv_OpenCL_shuffle_v2i32_v16i32( as_uint2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i32_v16i32, )( v, as_int16( m ) );
 }
 
 INLINE int16 OVERLOADABLE shuffle(int4 v, uint16 m) {
-    return as_int16(__builtin_spirv_OpenCL_shuffle_v4i32_v16i32( as_uint4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i32_v16i32, )( v, as_int16( m ) );
 }
 
 INLINE int16 OVERLOADABLE shuffle(int8 v, uint16 m) {
-    return as_int16(__builtin_spirv_OpenCL_shuffle_v8i32_v16i32( as_uint8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i32_v16i32, )( v, as_int16( m ) );
 }
 
 INLINE int16 OVERLOADABLE shuffle(int16 v, uint16 m) {
-    return as_int16(__builtin_spirv_OpenCL_shuffle_v16i32_v16i32( as_uint16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i32_v16i32, )( v, as_int16( m ) );
 }
 
 INLINE uint2 OVERLOADABLE shuffle(uint2 v, uint2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i32_v2i32( v, m );
+    return as_uint2( SPIRV_OCL_BUILTIN(shuffle, _v2i32_v2i32, )( as_int2( v ), as_int2( m ) ) );
 }
 
 INLINE uint2 OVERLOADABLE shuffle(uint4 v, uint2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i32_v2i32( v, m );
+    return as_uint2( SPIRV_OCL_BUILTIN(shuffle, _v4i32_v2i32, )( as_int4( v ), as_int2( m ) ) );
 }
 
 INLINE uint2 OVERLOADABLE shuffle(uint8 v, uint2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i32_v2i32( v, m );
+    return as_uint2( SPIRV_OCL_BUILTIN(shuffle, _v8i32_v2i32, )( as_int8( v ), as_int2( m ) ) );
 }
 
 INLINE uint2 OVERLOADABLE shuffle(uint16 v, uint2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i32_v2i32( v, m );
+    return as_uint2( SPIRV_OCL_BUILTIN(shuffle, _v16i32_v2i32, )( as_int16( v ), as_int2( m ) ) );
 }
 
 INLINE uint4 OVERLOADABLE shuffle(uint2 v, uint4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i32_v4i32( v, m );
+    return as_uint4( SPIRV_OCL_BUILTIN(shuffle, _v2i32_v4i32, )( as_int2( v ), as_int4( m ) ) );
 }
 
 INLINE uint4 OVERLOADABLE shuffle(uint4 v, uint4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i32_v4i32( v, m );
+    return as_uint4( SPIRV_OCL_BUILTIN(shuffle, _v4i32_v4i32, )( as_int4( v ), as_int4( m ) ) );
 }
 
 INLINE uint4 OVERLOADABLE shuffle(uint8 v, uint4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i32_v4i32( v, m );
+    return as_uint4( SPIRV_OCL_BUILTIN(shuffle, _v8i32_v4i32, )( as_int8( v ), as_int4( m ) ) );
 }
 
 INLINE uint4 OVERLOADABLE shuffle(uint16 v, uint4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i32_v4i32( v, m );
+    return as_uint4( SPIRV_OCL_BUILTIN(shuffle, _v16i32_v4i32, )( as_int16( v ), as_int4( m ) ) );
 }
 
 INLINE uint8 OVERLOADABLE shuffle(uint2 v, uint8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i32_v8i32( v, m );
+    return as_uint8( SPIRV_OCL_BUILTIN(shuffle, _v2i32_v8i32, )( as_int2( v ), as_int8( m ) ) );
 }
 
 INLINE uint8 OVERLOADABLE shuffle(uint4 v, uint8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i32_v8i32( v, m );
+    return as_uint8( SPIRV_OCL_BUILTIN(shuffle, _v4i32_v8i32, )( as_int4( v ), as_int8( m ) ) );
 }
 
 INLINE uint8 OVERLOADABLE shuffle(uint8 v, uint8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i32_v8i32( v, m );
+    return as_uint8( SPIRV_OCL_BUILTIN(shuffle, _v8i32_v8i32, )( as_int8( v ), as_int8( m ) ) );
 }
 
 INLINE uint8 OVERLOADABLE shuffle(uint16 v, uint8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i32_v8i32( v, m );
+    return as_uint8( SPIRV_OCL_BUILTIN(shuffle, _v16i32_v8i32, )( as_int16( v ), as_int8( m ) ) );
 }
 
 INLINE uint16 OVERLOADABLE shuffle(uint2 v, uint16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i32_v16i32( v, m );
+    return as_uint16( SPIRV_OCL_BUILTIN(shuffle, _v2i32_v16i32, )( as_int2( v ), as_int16( m ) ) );
 }
 
 INLINE uint16 OVERLOADABLE shuffle(uint4 v, uint16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i32_v16i32( v, m );
+    return as_uint16( SPIRV_OCL_BUILTIN(shuffle, _v4i32_v16i32, )( as_int4( v ), as_int16( m ) ) );
 }
 
 INLINE uint16 OVERLOADABLE shuffle(uint8 v, uint16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i32_v16i32( v, m );
+    return as_uint16( SPIRV_OCL_BUILTIN(shuffle, _v8i32_v16i32, )( as_int8( v ), as_int16( m ) ) );
 }
 
 INLINE uint16 OVERLOADABLE shuffle(uint16 v, uint16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i32_v16i32( v, m );
+    return as_uint16( SPIRV_OCL_BUILTIN(shuffle, _v16i32_v16i32, )( as_int16( v ), as_int16( m ) ) );
 }
 
 INLINE long2 OVERLOADABLE shuffle(long2 v, ulong2 m) {
-    return as_long2(__builtin_spirv_OpenCL_shuffle_v2i64_v2i64( as_ulong2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i64_v2i64, )( v, as_long2( m ) );
 }
 
 INLINE long2 OVERLOADABLE shuffle(long4 v, ulong2 m) {
-    return as_long2(__builtin_spirv_OpenCL_shuffle_v4i64_v2i64( as_ulong4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i64_v2i64, )( v, as_long2( m ) );
 }
 
 INLINE long2 OVERLOADABLE shuffle(long8 v, ulong2 m) {
-    return as_long2(__builtin_spirv_OpenCL_shuffle_v8i64_v2i64( as_ulong8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i64_v2i64, )( v, as_long2( m ) );
 }
 
 INLINE long2 OVERLOADABLE shuffle(long16 v, ulong2 m) {
-    return as_long2(__builtin_spirv_OpenCL_shuffle_v16i64_v2i64( as_ulong16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i64_v2i64, )( v, as_long2( m ) );
 }
 
 INLINE long4 OVERLOADABLE shuffle(long2 v, ulong4 m) {
-    return as_long4(__builtin_spirv_OpenCL_shuffle_v2i64_v4i64( as_ulong2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i64_v4i64, )( v, as_long4( m ) );
 }
 
 INLINE long4 OVERLOADABLE shuffle(long4 v, ulong4 m) {
-    return as_long4(__builtin_spirv_OpenCL_shuffle_v4i64_v4i64( as_ulong4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i64_v4i64, )( v, as_long4( m ) );
 }
 
 INLINE long4 OVERLOADABLE shuffle(long8 v, ulong4 m) {
-    return as_long4(__builtin_spirv_OpenCL_shuffle_v8i64_v4i64( as_ulong8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i64_v4i64, )( v, as_long4( m ) );
 }
 
 INLINE long4 OVERLOADABLE shuffle(long16 v, ulong4 m) {
-    return as_long4(__builtin_spirv_OpenCL_shuffle_v16i64_v4i64( as_ulong16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i64_v4i64, )( v, as_long4( m ) );
 }
 
 INLINE long8 OVERLOADABLE shuffle(long2 v, ulong8 m) {
-    return as_long8(__builtin_spirv_OpenCL_shuffle_v2i64_v8i64( as_ulong2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i64_v8i64, )( v, as_long8( m ) );
 }
 
 INLINE long8 OVERLOADABLE shuffle(long4 v, ulong8 m) {
-    return as_long8(__builtin_spirv_OpenCL_shuffle_v4i64_v8i64( as_ulong4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i64_v8i64, )( v, as_long8( m ) );
 }
 
 INLINE long8 OVERLOADABLE shuffle(long8 v, ulong8 m) {
-    return as_long8(__builtin_spirv_OpenCL_shuffle_v8i64_v8i64( as_ulong8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i64_v8i64, )( v, as_long8( m ) );
 }
 
 INLINE long8 OVERLOADABLE shuffle(long16 v, ulong8 m) {
-    return as_long8(__builtin_spirv_OpenCL_shuffle_v16i64_v8i64( as_ulong16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i64_v8i64, )( v, as_long8( m ) );
 }
 
 INLINE long16 OVERLOADABLE shuffle(long2 v, ulong16 m) {
-    return as_long16(__builtin_spirv_OpenCL_shuffle_v2i64_v16i64( as_ulong2(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v2i64_v16i64, )( v, as_long16( m ) );
 }
 
 INLINE long16 OVERLOADABLE shuffle(long4 v, ulong16 m) {
-    return as_long16(__builtin_spirv_OpenCL_shuffle_v4i64_v16i64( as_ulong4(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v4i64_v16i64, )( v, as_long16( m ) );
 }
 
 INLINE long16 OVERLOADABLE shuffle(long8 v, ulong16 m) {
-    return as_long16(__builtin_spirv_OpenCL_shuffle_v8i64_v16i64( as_ulong8(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v8i64_v16i64, )( v, as_long16( m ) );
 }
 
 INLINE long16 OVERLOADABLE shuffle(long16 v, ulong16 m) {
-    return as_long16(__builtin_spirv_OpenCL_shuffle_v16i64_v16i64( as_ulong16(v), m ));
+    return SPIRV_OCL_BUILTIN(shuffle, _v16i64_v16i64, )( v, as_long16( m ) );
 }
 
 INLINE ulong2 OVERLOADABLE shuffle(ulong2 v, ulong2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i64_v2i64( v, m );
+    return as_ulong2( SPIRV_OCL_BUILTIN(shuffle, _v2i64_v2i64, )( as_long2( v ), as_long2( m ) ) );
 }
 
 INLINE ulong2 OVERLOADABLE shuffle(ulong4 v, ulong2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i64_v2i64( v, m );
+    return as_ulong2( SPIRV_OCL_BUILTIN(shuffle, _v4i64_v2i64, )( as_long4( v ), as_long2( m ) ) );
 }
 
 INLINE ulong2 OVERLOADABLE shuffle(ulong8 v, ulong2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i64_v2i64( v, m );
+    return as_ulong2( SPIRV_OCL_BUILTIN(shuffle, _v8i64_v2i64, )( as_long8( v ), as_long2( m ) ) );
 }
 
 INLINE ulong2 OVERLOADABLE shuffle(ulong16 v, ulong2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i64_v2i64( v, m );
+    return as_ulong2( SPIRV_OCL_BUILTIN(shuffle, _v16i64_v2i64, )( as_long16( v ), as_long2( m ) ) );
 }
 
 INLINE ulong4 OVERLOADABLE shuffle(ulong2 v, ulong4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i64_v4i64( v, m );
+    return as_ulong4( SPIRV_OCL_BUILTIN(shuffle, _v2i64_v4i64, )( as_long2( v ), as_long4( m ) ) );
 }
 
 INLINE ulong4 OVERLOADABLE shuffle(ulong4 v, ulong4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i64_v4i64( v, m );
+    return as_ulong4( SPIRV_OCL_BUILTIN(shuffle, _v4i64_v4i64, )( as_long4( v ), as_long4( m ) ) );
 }
 
 INLINE ulong4 OVERLOADABLE shuffle(ulong8 v, ulong4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i64_v4i64( v, m );
+    return as_ulong4( SPIRV_OCL_BUILTIN(shuffle, _v8i64_v4i64, )( as_long8( v ), as_long4( m ) ) );
 }
 
 INLINE ulong4 OVERLOADABLE shuffle(ulong16 v, ulong4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i64_v4i64( v, m );
+    return as_ulong4( SPIRV_OCL_BUILTIN(shuffle, _v16i64_v4i64, )( as_long16( v ), as_long4( m ) ) );
 }
 
 INLINE ulong8 OVERLOADABLE shuffle(ulong2 v, ulong8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i64_v8i64( v, m );
+    return as_ulong8( SPIRV_OCL_BUILTIN(shuffle, _v2i64_v8i64, )( as_long2( v ), as_long8( m ) ) );
 }
 
 INLINE ulong8 OVERLOADABLE shuffle(ulong4 v, ulong8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i64_v8i64( v, m );
+    return as_ulong8( SPIRV_OCL_BUILTIN(shuffle, _v4i64_v8i64, )( as_long4( v ), as_long8( m ) ) );
 }
 
 INLINE ulong8 OVERLOADABLE shuffle(ulong8 v, ulong8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i64_v8i64( v, m );
+    return as_ulong8( SPIRV_OCL_BUILTIN(shuffle, _v8i64_v8i64, )( as_long8( v ), as_long8( m ) ) );
 }
 
 INLINE ulong8 OVERLOADABLE shuffle(ulong16 v, ulong8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i64_v8i64( v, m );
+    return as_ulong8( SPIRV_OCL_BUILTIN(shuffle, _v16i64_v8i64, )( as_long16( v ), as_long8( m ) ) );
 }
 
 INLINE ulong16 OVERLOADABLE shuffle(ulong2 v, ulong16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2i64_v16i64( v, m );
+    return as_ulong16( SPIRV_OCL_BUILTIN(shuffle, _v2i64_v16i64, )( as_long2( v ), as_long16( m ) ) );
 }
 
 INLINE ulong16 OVERLOADABLE shuffle(ulong4 v, ulong16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4i64_v16i64( v, m );
+    return as_ulong16( SPIRV_OCL_BUILTIN(shuffle, _v4i64_v16i64, )( as_long4( v ), as_long16( m ) ) );
 }
 
 INLINE ulong16 OVERLOADABLE shuffle(ulong8 v, ulong16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8i64_v16i64( v, m );
+    return as_ulong16( SPIRV_OCL_BUILTIN(shuffle, _v8i64_v16i64, )( as_long8( v ), as_long16( m ) ) );
 }
 
 INLINE ulong16 OVERLOADABLE shuffle(ulong16 v, ulong16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16i64_v16i64( v, m );
+    return as_ulong16( SPIRV_OCL_BUILTIN(shuffle, _v16i64_v16i64, )( as_long16( v ), as_long16( m ) ) );
 }
 
 INLINE float2 OVERLOADABLE shuffle(float2 v, uint2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f32_v2i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f32_v2i32, )( v, as_int2( m ) );
 }
 
 INLINE float2 OVERLOADABLE shuffle(float4 v, uint2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f32_v2i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f32_v2i32, )( v, as_int2( m ) );
 }
 
 INLINE float2 OVERLOADABLE shuffle(float8 v, uint2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f32_v2i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f32_v2i32, )( v, as_int2( m ) );
 }
 
 INLINE float2 OVERLOADABLE shuffle(float16 v, uint2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f32_v2i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f32_v2i32, )( v, as_int2( m ) );
 }
 
 INLINE float4 OVERLOADABLE shuffle(float2 v, uint4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f32_v4i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f32_v4i32, )( v, as_int4( m ) );
 }
 
 INLINE float4 OVERLOADABLE shuffle(float4 v, uint4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f32_v4i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f32_v4i32, )( v, as_int4( m ) );
 }
 
 INLINE float4 OVERLOADABLE shuffle(float8 v, uint4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f32_v4i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f32_v4i32, )( v, as_int4( m ) );
 }
 
 INLINE float4 OVERLOADABLE shuffle(float16 v, uint4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f32_v4i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f32_v4i32, )( v, as_int4( m ) );
 }
 
 INLINE float8 OVERLOADABLE shuffle(float2 v, uint8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f32_v8i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f32_v8i32, )( v, as_int8( m ) );
 }
 
 INLINE float8 OVERLOADABLE shuffle(float4 v, uint8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f32_v8i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f32_v8i32, )( v, as_int8( m ) );
 }
 
 INLINE float8 OVERLOADABLE shuffle(float8 v, uint8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f32_v8i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f32_v8i32, )( v, as_int8( m ) );
 }
 
 INLINE float8 OVERLOADABLE shuffle(float16 v, uint8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f32_v8i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f32_v8i32, )( v, as_int8( m ) );
 }
 
 INLINE float16 OVERLOADABLE shuffle(float2 v, uint16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f32_v16i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f32_v16i32, )( v, as_int16( m ) );
 }
 
 INLINE float16 OVERLOADABLE shuffle(float4 v, uint16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f32_v16i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f32_v16i32, )( v, as_int16( m ) );
 }
 
 INLINE float16 OVERLOADABLE shuffle(float8 v, uint16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f32_v16i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f32_v16i32, )( v, as_int16( m ) );
 }
 
 INLINE float16 OVERLOADABLE shuffle(float16 v, uint16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f32_v16i32( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f32_v16i32, )( v, as_int16( m ) );
 }
 
 INLINE char2 OVERLOADABLE shuffle2(char2 v0, char2 v1, uchar2 m) {
@@ -18586,67 +18586,67 @@ INLINE float16 OVERLOADABLE shuffle2(float16 v0, float16 v1, uint16 m) {
 
 /// Half Shuffle functions
 INLINE half2 OVERLOADABLE shuffle(half2 v, ushort2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f16_v2i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f16_v2i16, )( v, as_short2( m ) );
 }
 
 INLINE half2 OVERLOADABLE shuffle(half4 v, ushort2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f16_v2i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f16_v2i16, )( v, as_short2( m ) );
 }
 
 INLINE half2 OVERLOADABLE shuffle(half8 v, ushort2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f16_v2i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f16_v2i16, )( v, as_short2( m ) );
 }
 
 INLINE half2 OVERLOADABLE shuffle(half16 v, ushort2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f16_v2i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f16_v2i16, )( v, as_short2( m ) );
 }
 
 INLINE half4 OVERLOADABLE shuffle(half2 v, ushort4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f16_v4i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f16_v4i16, )( v, as_short4( m ) );
 }
 
 INLINE half4 OVERLOADABLE shuffle(half4 v, ushort4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f16_v4i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f16_v4i16, )( v, as_short4( m ) );
 }
 
 INLINE half4 OVERLOADABLE shuffle(half8 v, ushort4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f16_v4i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f16_v4i16, )( v, as_short4( m ) );
 }
 
 INLINE half4 OVERLOADABLE shuffle(half16 v, ushort4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f16_v4i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f16_v4i16, )( v, as_short4( m ) );
 }
 
 INLINE half8 OVERLOADABLE shuffle(half2 v, ushort8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f16_v8i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f16_v8i16, )( v, as_short8( m ) );
 }
 
 INLINE half8 OVERLOADABLE shuffle(half4 v, ushort8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f16_v8i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f16_v8i16, )( v, as_short8( m ) );
 }
 
 INLINE half8 OVERLOADABLE shuffle(half8 v, ushort8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f16_v8i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f16_v8i16, )( v, as_short8( m ) );
 }
 
 INLINE half8 OVERLOADABLE shuffle(half16 v, ushort8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f16_v8i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f16_v8i16, )( v, as_short8( m ) );
 }
 
 INLINE half16 OVERLOADABLE shuffle(half2 v, ushort16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f16_v16i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f16_v16i16, )( v, as_short16( m ) );
 }
 
 INLINE half16 OVERLOADABLE shuffle(half4 v, ushort16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f16_v16i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f16_v16i16, )( v, as_short16( m ) );
 }
 
 INLINE half16 OVERLOADABLE shuffle(half8 v, ushort16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f16_v16i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f16_v16i16, )( v, as_short16( m ) );
 }
 
 INLINE half16 OVERLOADABLE shuffle(half16 v, ushort16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f16_v16i16( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f16_v16i16, )( v, as_short16( m ) );
 }
 
 // Shuffle2
@@ -20656,67 +20656,67 @@ INLINE half16 OVERLOADABLE shuffle2(half16 v0, half16 v1, ushort16 m) {
 
 /// Double Shuffle functions
 INLINE double2 OVERLOADABLE shuffle(double2 v, ulong2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f64_v2i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f64_v2i64, )( v, as_long2( m ) );
 }
 
 INLINE double2 OVERLOADABLE shuffle(double4 v, ulong2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f64_v2i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f64_v2i64, )( v, as_long2( m ) );
 }
 
 INLINE double2 OVERLOADABLE shuffle(double8 v, ulong2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f64_v2i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f64_v2i64, )( v, as_long2( m ) );
 }
 
 INLINE double2 OVERLOADABLE shuffle(double16 v, ulong2 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f64_v2i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f64_v2i64, )( v, as_long2( m ) );
 }
 
 INLINE double4 OVERLOADABLE shuffle(double2 v, ulong4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f64_v4i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f64_v4i64, )( v, as_long4( m ) );
 }
 
 INLINE double4 OVERLOADABLE shuffle(double4 v, ulong4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f64_v4i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f64_v4i64, )( v, as_long4( m ) );
 }
 
 INLINE double4 OVERLOADABLE shuffle(double8 v, ulong4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f64_v4i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f64_v4i64, )( v, as_long4( m ) );
 }
 
 INLINE double4 OVERLOADABLE shuffle(double16 v, ulong4 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f64_v4i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f64_v4i64, )( v, as_long4( m ) );
 }
 
 INLINE double8 OVERLOADABLE shuffle(double2 v, ulong8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f64_v8i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f64_v8i64, )( v, as_long8( m ) );
 }
 
 INLINE double8 OVERLOADABLE shuffle(double4 v, ulong8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f64_v8i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f64_v8i64, )( v, as_long8( m ) );
 }
 
 INLINE double8 OVERLOADABLE shuffle(double8 v, ulong8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f64_v8i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f64_v8i64, )( v, as_long8( m ) );
 }
 
 INLINE double8 OVERLOADABLE shuffle(double16 v, ulong8 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f64_v8i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f64_v8i64, )( v, as_long8( m ) );
 }
 
 INLINE double16 OVERLOADABLE shuffle(double2 v, ulong16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v2f64_v16i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v2f64_v16i64, )( v, as_long16( m ) );
 }
 
 INLINE double16 OVERLOADABLE shuffle(double4 v, ulong16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v4f64_v16i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v4f64_v16i64, )( v, as_long16( m ) );
 }
 
 INLINE double16 OVERLOADABLE shuffle(double8 v, ulong16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v8f64_v16i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v8f64_v16i64, )( v, as_long16( m ) );
 }
 
 INLINE double16 OVERLOADABLE shuffle(double16 v, ulong16 m) {
-    return __builtin_spirv_OpenCL_shuffle_v16f64_v16i64( v, m );
+    return SPIRV_OCL_BUILTIN(shuffle, _v16f64_v16i64, )( v, as_long16( m ) );
 }
 
 // Shuffle2
