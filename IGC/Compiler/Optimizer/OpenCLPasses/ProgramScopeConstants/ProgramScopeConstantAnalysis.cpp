@@ -234,10 +234,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             for (auto& pFunc : M)
             {
                 if (pFunc.isDeclaration()) continue;
-                // Don't add implicit arg if doing relocation
-                if (pFunc.hasFnAttribute("visaStackCall")) continue;
-                // Skip functions called from function marked with IndirectlyCalled attribute
-                if (AddImplicitArgs::hasIndirectlyCalledParent(&pFunc)) continue;
+                // Skip functions called from function marked with stackcall attribute
+                if (AddImplicitArgs::hasStackCallInCG(&pFunc)) continue;
 
                 SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
                 implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
@@ -250,10 +248,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             for (auto& pFunc : M)
             {
                 if (pFunc.isDeclaration()) continue;
-                // Don't add implicit arg if doing relocation
-                if (pFunc.hasFnAttribute("visaStackCall")) continue;
-                // Skip functions called from function marked with IndirectlyCalled attribute
-                if (AddImplicitArgs::hasIndirectlyCalledParent(&pFunc)) continue;
+                // Skip functions called from function marked with stackcall attribute
+                if (AddImplicitArgs::hasStackCallInCG(&pFunc)) continue;
 
                 SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
                 implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);

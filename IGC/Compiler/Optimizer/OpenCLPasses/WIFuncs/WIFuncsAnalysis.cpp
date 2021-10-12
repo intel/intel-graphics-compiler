@@ -104,17 +104,6 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     }
     else
     {
-        // Skip functions called from function marked with IndirectlyCalled attribute
-        // and functions that are doing stack call.
-        if (F.hasFnAttribute("referenced-indirectly") ||
-            AddImplicitArgs::hasIndirectlyCalledParent(&F) ||
-            (F.hasFnAttribute("visaStackCall") &&
-                IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE &&
-                IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg)))
-        {
-            return false;
-        }
-
         if (m_hasGroupID)
         {
             implicitArgs.push_back(ImplicitArg::R0);

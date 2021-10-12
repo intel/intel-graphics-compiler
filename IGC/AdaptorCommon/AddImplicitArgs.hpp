@@ -69,10 +69,10 @@ namespace IGC
         /// @param  M The destination module.
         virtual bool runOnModule(llvm::Module &M) override;
 
-        /// @brief  Check if a function has indirectly called parent to
+        /// @brief  Check if a function has a stackcall in its call path to
         ///         decide whether implicit args should be added
         /// @param  pFunc           Source function
-        static bool hasIndirectlyCalledParent(const llvm::Function* pFunc);
+        static bool hasStackCallInCG(const llvm::Function* pFunc);
     private:
 
         /// @brief  Create the type of the new function,

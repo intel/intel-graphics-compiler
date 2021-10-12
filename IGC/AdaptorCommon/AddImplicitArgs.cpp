@@ -80,12 +80,8 @@ bool AddImplicitArgs::runOnModule(Module &M)
         if (func.isDeclaration()) continue;
         // skip non-entry functions
         if (m_pMdUtils->findFunctionsInfoItem(&func) == m_pMdUtils->end_FunctionsInfo()) continue;
-        // Skip functions called from function marked with IndirectlyCalled attribute
-        // TODO: This function verifies only parent caller, in the future we may need to
-        //       also verify all the callers up to the tree.
-        if (hasIndirectlyCalledParent(&func)) continue;
-        // No implicit arg support for stack calls
-        if (func.hasFnAttribute("visaStackCall")) continue;
+        // Skip functions called from functions marked with stackcall attribute
+        if (hasStackCallInCG(&func)) continue;
 
         // see the detail in StatelessToStatefull.cpp.
         // If SToSProducesPositivePointer is true, do not generate implicit arguments.
@@ -180,14 +176,17 @@ bool AddImplicitArgs::runOnModule(Module &M)
     return true;
 }
 
-bool AddImplicitArgs::hasIndirectlyCalledParent(const Function* F)
+bool AddImplicitArgs::hasStackCallInCG(const Function* F)
 {
+    if (F->hasFnAttribute("visaStackCall"))
+        return true;
+
     for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
     {
         if (const CallInst* call = dyn_cast<CallInst>(*u))
         {
             const Function* parent = call->getParent()->getParent();
-            if (parent->hasFnAttribute("referenced-indirectly") || hasIndirectlyCalledParent(parent))
+            if (hasStackCallInCG(parent))
                 return true;
         }
     }

@@ -161,11 +161,8 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
 
             Function* userFunc = user->getParent()->getParent();
 
-            // Don't have implicit arg if doing relocation
-            if (userFunc->hasFnAttribute("visaStackCall"))
-                continue;
-            // Skip functions called from function marked with IndirectlyCalled attribute
-            if (AddImplicitArgs::hasIndirectlyCalledParent(userFunc))
+            // Skip functions called from function marked with stackcall attribute
+            if (AddImplicitArgs::hasStackCallInCG(userFunc))
                 continue;
 
             // Skip unused internal functions.
@@ -176,6 +173,10 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             }
 
             ImplicitArgs implicitArgs(*userFunc, mdUtils);
+
+            // Skip if this function does not have the implicit arg
+            if (!implicitArgs.isImplicitArgExist(argType))
+                continue;
 
             // Find the implicit argument representing this constant.
             IGC_ASSERT_MESSAGE(userFunc->arg_size() >= implicitArgs.size(), "Function arg size does not match meta data args.");
