@@ -584,30 +584,36 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
 
     return std::move(GenISARange);
 }
-bool VISAModule::getVarInfo(const IGC::DbgDecoder& VD, std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var) const
+
+const DbgDecoder::VarInfo*
+VISAModule::getVarInfo(const IGC::DbgDecoder& VD, unsigned int vreg) const
 {
-    std::string name = prefix + std::to_string(vreg);
-    if (VirToPhyMap.size() == 0)
+    auto& Cache = *VICache.get();
+    if (Cache.empty())
     {
-        // populate map one time
         const auto* co = getCompileUnit(VD);
-        if (co)
+        if (!co)
+            return nullptr;
+        for (const auto& VarInfo : co->Vars)
         {
-            for (auto& v : co->Vars)
+            StringRef Name = VarInfo.name;
+            // TODO: what to do with variables starting with "T"?
+            if (Name.startswith("V"))
             {
-                VirToPhyMap.insert(std::make_pair(v.name, v));
+                Name = Name.drop_front();
+                unsigned RegNum = 0;
+                if (!Name.getAsInteger(10, RegNum))
+                    Cache.insert(std::make_pair(RegNum, &VarInfo));
             }
         }
     }
 
-    auto it = VirToPhyMap.find(name);
-    if (it == VirToPhyMap.end())
-        return false;
-
-    var = (*it).second;
-    // Note: vISA variables can be optimized out,
-    // In such case we'll end up with an empty live range
-    return !var.lrs.empty();
+    auto FoundIt = Cache.find(vreg);
+    if (FoundIt == Cache.end())
+        return nullptr;
+    if (FoundIt->second->lrs.empty())
+        return nullptr;
+    return FoundIt->second;
 }
 
 bool VISAModule::hasOrIsStackCall(const IGC::DbgDecoder& VD) const
@@ -635,11 +641,11 @@ VISAModule::getSubroutines(const IGC::DbgDecoder& VD) const
 const DbgDecoder::DbgInfoFormat*
 VISAModule::getCompileUnit(const IGC::DbgDecoder& VD) const
 {
+    auto EntryFuncName = m_Func->getName();
+    EntryFuncName = GetVISAFuncName(EntryFuncName);
+
     for (const auto& co : VD.compiledObjs)
     {
-        auto EntryFuncName = m_Func->getName();
-        EntryFuncName = GetVISAFuncName(EntryFuncName);
-
         if (VD.compiledObjs.size() == 1 ||
             co.kernelName.compare(EntryFuncName.str()) == 0)
         {

@@ -307,10 +307,70 @@ namespace IGC
     class VISAModule
     {
     public:
-        typedef std::vector<const llvm::Instruction*> InstList;
-        typedef InstList::iterator iterator;
-        typedef InstList::const_iterator const_iterator;
+        enum class ObjectType
+        {
+            UNKNOWN = 0,
+            KERNEL = 1,
+            STACKCALL_FUNC = 2,
+            SUBROUTINE = 3
+        };
 
+        using InstList = std::vector<const llvm::Instruction*>;
+        using iterator = InstList::iterator;
+        using const_iterator = InstList::const_iterator;
+
+        /// Constants represents VISA register encoding in DWARF
+        static constexpr unsigned int LOCAL_SURFACE_BTI = (254);
+        static constexpr unsigned int GENERAL_REGISTER_BEGIN = (0);
+        static constexpr unsigned int GENERAL_REGISTER_NUM = (65536);
+        static constexpr unsigned int SAMPLER_REGISTER_BEGIN = (73728);
+        static constexpr unsigned int SAMPLER_REGISTER_NUM = (16);
+        static constexpr unsigned int TEXTURE_REGISTER_BEGIN = (74744);
+        static constexpr unsigned int TEXTURE_REGISTER_NUM = (255);
+
+        // Store VISA index->[header VISA index, #VISA instructions] corresponding
+        // to same llvm::Instruction. If llvm inst A generates VISA 3,4,5 then
+        // this structure will have 3 entries:
+        // 3 -> [3,3]
+        // 4 -> [3,3]
+        // 5 -> [3,3]
+        struct VisaInterval {
+            unsigned VisaOffset;
+            unsigned VisaInstrNum;
+        };
+        struct IDX_Gen2Visa {
+            unsigned GenOffset;
+            unsigned VisaOffset;
+        };
+        // Store first VISA index->llvm::Instruction mapping
+        llvm::DenseMap<unsigned, const llvm::Instruction*> VISAIndexToInst;
+        llvm::DenseMap<unsigned, VisaInterval> VISAIndexToSize;
+        llvm::DenseMap<unsigned, unsigned> GenISAInstSizeBytes;
+        llvm::DenseMap<unsigned, std::vector<unsigned>> VISAIndexToAllGenISAOff;
+        std::vector<IDX_Gen2Visa> GenISAToVISAIndex;
+
+    private:
+        using VarInfoCache =
+            std::unordered_map<unsigned, const DbgDecoder::VarInfo*>;
+
+        std::string m_triple = "vISA_64";
+        bool IsPrimaryFunc = false;
+        // m_Func points to llvm::Function that resulted in this VISAModule instance.
+        // There is a 1:1 mapping between the two.
+        // Its value is setup in DebugInfo pass, prior to it this is undefined.
+        llvm::Function* m_Func = nullptr;
+        InstList m_instList;
+
+        unsigned int m_currentVisaId = 0;
+        unsigned int m_catchAllVisaId = 0;
+
+        InstInfoMap m_instInfoMap;
+
+        ObjectType m_objectType = ObjectType::UNKNOWN;
+
+        std::unique_ptr<VarInfoCache> VICache = std::make_unique<VarInfoCache>();
+
+    public:
         /// @brief Constructor.
         /// @param AssociatedFunc holds llvm IR function associated with
         /// this vISA object
@@ -405,39 +465,7 @@ namespace IGC
 
         ///  @brief return false if inst is a placeholder instruction
         bool IsExecutableInst(const llvm::Instruction& inst);
-
-        // Store VISA index->[header VISA index, #VISA instructions] corresponding
-        // to same llvm::Instruction. If llvm inst A generates VISA 3,4,5 then
-        // this structure will have 3 entries:
-        // 3 -> [3,3]
-        // 4 -> [3,3]
-        // 5 -> [3,3]
-        struct VisaInterval {
-            unsigned VisaOffset;
-            unsigned VisaInstrNum;
-        };
-        struct IDX_Gen2Visa {
-            unsigned GenOffset;
-            unsigned VisaOffset;
-        };
-        // Store first VISA index->llvm::Instruction mapping
-        llvm::DenseMap<unsigned, const llvm::Instruction*> VISAIndexToInst;
-        llvm::DenseMap<unsigned, VisaInterval> VISAIndexToSize;
-        llvm::DenseMap<unsigned, unsigned> GenISAInstSizeBytes;
-        llvm::DenseMap<unsigned, std::vector<unsigned>> VISAIndexToAllGenISAOff;
-        std::vector<IDX_Gen2Visa> GenISAToVISAIndex;
-
-        class comparer
-        {
-        public:
-            bool operator()(const std::string& v1, const std::string& v2) const
-            {
-                return v1.compare(v2) < 0;
-            }
-        };
-        mutable std::map<std::string, DbgDecoder::VarInfo, comparer> VirToPhyMap;
-
-        bool getVarInfo(const IGC::DbgDecoder& VD, std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var) const;
+        const DbgDecoder::VarInfo* getVarInfo(const IGC::DbgDecoder& VD, unsigned int vreg) const;
 
         bool hasOrIsStackCall(const IGC::DbgDecoder& VD) const;
         const std::vector<DbgDecoder::SubroutineInfo>* getSubroutines(const IGC::DbgDecoder& VD) const;
@@ -483,18 +511,10 @@ namespace IGC
 
         const InstInfoMap* GetInstInfoMap() { return &m_instInfoMap; }
 
-        VISAModule& operator=(VISAModule& other) = default;
+        VISAModule& operator=(VISAModule& other) = delete;
 
         unsigned int GetCurrentVISAId() { return m_currentVisaId; }
         void SetVISAId(unsigned ID) { m_currentVisaId = ID; }
-
-        enum class ObjectType
-        {
-            UNKNOWN = 0,
-            KERNEL = 1,
-            STACKCALL_FUNC = 2,
-            SUBROUTINE = 3
-        };
 
         ObjectType GetType() const { return m_objectType; }
         void SetType(ObjectType t) { m_objectType = t; }
@@ -507,32 +527,5 @@ namespace IGC
 
         void dump() const { print(llvm::dbgs()); }
         void print (llvm::raw_ostream &OS) const;
-
-    private:
-        std::string m_triple = "vISA_64";
-        bool IsPrimaryFunc = false;
-        // m_Func points to llvm::Function that resulted in this VISAModule instance.
-        // There is a 1:1 mapping between the two.
-        // Its value is setup in DebugInfo pass, prior to it this is undefined.
-        llvm::Function* m_Func = nullptr;
-        InstList m_instList;
-
-        unsigned int m_currentVisaId = 0;
-        unsigned int m_catchAllVisaId = 0;
-
-        InstInfoMap m_instInfoMap;
-
-        ObjectType m_objectType = ObjectType::UNKNOWN;
-
-    public:
-        /// Constants represents VISA register encoding in DWARF
-        static const unsigned int LOCAL_SURFACE_BTI = (254);
-        static const unsigned int GENERAL_REGISTER_BEGIN = (0);
-        static const unsigned int GENERAL_REGISTER_NUM = (65536);
-        static const unsigned int SAMPLER_REGISTER_BEGIN = (73728);
-        static const unsigned int SAMPLER_REGISTER_NUM = (16);
-        static const unsigned int TEXTURE_REGISTER_BEGIN = (74744);
-        static const unsigned int TEXTURE_REGISTER_NUM = (255);
     };
-
 } // namespace IGC

@@ -1851,7 +1851,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
             // Conditions below decide whether we want to emit location to debug_loc or inline it
             // in the DIE. To inline in DIE, we simply dont emit anything here and continue the loop.
-            bool needsCallerSave = m_pModule->getCompileUnit(*decodedDbg)->cfi.numCallerSaveEntries > 0;
+            bool needsCallerSave = !m_pModule->getCompileUnit(*decodedDbg)->cfi.callerSaveEntry.empty();
             if (!EmitSettings.EmitDebugLoc && !needsCallerSave)
             {
                 LLVM_DEBUG(dbgs() << "  << location is expected to be emitted in DIE: " <<
@@ -2029,10 +2029,11 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 }
                 else if (Loc.IsRegister())
                 {
-                    DbgDecoder::VarInfo varInfo;
                     auto regNum = Loc.GetRegister();
-                    m_pModule->getVarInfo(*decodedDbg, "V", regNum, varInfo);
-                    for (const auto& genIsaRange : varInfo.lrs)
+                    const auto* VarInfo = m_pModule->getVarInfo(*decodedDbg, regNum);
+                    if (!VarInfo)
+                        continue;
+                    for (const auto& genIsaRange : VarInfo->lrs)
                     {
                         auto startEnd = findClosestStartEnd(genIsaRange.start, genIsaRange.end);
 
