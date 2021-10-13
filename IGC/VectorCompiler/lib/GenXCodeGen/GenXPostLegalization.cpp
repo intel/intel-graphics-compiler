@@ -107,7 +107,7 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   bool Modified = false;
-  Modified |= vc::breakConstantExprs(&F);
+  Modified |= vc::breakConstantExprs(&F, vc::LegalizationStage::Legalized);
 
   for (Function::iterator fi = F.begin(), fe = F.end(); fi != fe; ++fi) {
     BasicBlock *BB = &*fi;

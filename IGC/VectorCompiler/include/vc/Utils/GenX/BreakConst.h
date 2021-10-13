@@ -13,7 +13,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/Value.h>
 
+#include "vc/Support/CompilationStage.h"
+
 namespace vc {
+
 // breakConstantVector : break vector of constexprs into a sequence of
 //                       InsertElementInsts.
 // CV - vector to break
@@ -23,13 +26,14 @@ namespace vc {
 // or nullptr if there're no constexprs in CV.
 llvm::Value *breakConstantVector(llvm::ConstantVector *CV,
                                  llvm::Instruction *CurInst,
-                                 llvm::Instruction *InsertPt);
+                                 llvm::Instruction *InsertPt,
+                                 vc::LegalizationStage LegStage);
 // breakConstantExprs : break constant expressions in instruction I.
 // Return true if any modifications have been made, false otherwise.
-bool breakConstantExprs(llvm::Instruction *I);
+bool breakConstantExprs(llvm::Instruction *I, vc::LegalizationStage LegStage);
 // breakConstantExprs : break constant expressions in function F.
 // Return true if any modifications have been made, false otherwise.
-bool breakConstantExprs(llvm::Function *F);
+bool breakConstantExprs(llvm::Function *F, vc::LegalizationStage LegStage);
 
 } // namespace vc
 
