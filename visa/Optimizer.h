@@ -239,6 +239,7 @@ private:
     void replaceRetWithJmpi();
     void doNoMaskWA();
     void applyFusedCallWA();
+    void patchIPForFusedCallWA();
     void doNoMaskWA_postRA();
     void insertFenceAtEntry();
     void expandMulPostSchedule();
@@ -385,6 +386,19 @@ private:
     std::optional<INST_LIST_ITER> findFenceCommitPos(INST_LIST_ITER fence, G4_BB* bb) const;
 
     bool addFenceCommit(INST_LIST_ITER iter, G4_BB* bb, bool scheduleFenceCommit);
+
+    // fused call wa
+    //     add  v10  -ip,  v20                    // ip_start_inst
+    //     add  v11   v10, 0x33 (-label_patch)    // patch inst
+    //     ...
+    //     call v11                               // ip_end_inst
+    // This map keeps  patch inst --> <ip_start_inst, ip_end_inst>
+    // Once encoding is decided, label_path = IP(ip_end_inst) - IP(ip_start_inst)
+    //
+    // m_labelPatchInsts: keep the info described above
+    // m_instToBBs:  convenient map to BBs that those insts belong to
+    std::unordered_map<G4_INST*, std::pair<G4_INST*, G4_INST*>> m_labelPatchInsts;
+    std::unordered_map<G4_INST*, G4_BB*> m_instToBBs;
 
 public:
     Optimizer(vISA::Mem_Manager& m, IR_Builder& b, G4_Kernel& k, FlowGraph& f) :

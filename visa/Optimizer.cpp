@@ -173,6 +173,171 @@ void Optimizer::regAlloc()
     }
 }
 
+void Optimizer::patchIPForFusedCallWA()
+{
+    if (m_labelPatchInsts.empty())
+        return;
+
+#if defined(_DEBUG)
+    // Verify m_labelPatchInsts/m_instToBBs are still valid
+    bool found = true;
+    for (auto II : m_instToBBs)
+    {
+        G4_BB* BB = II.second;
+        found = false;
+        for (auto b : kernel.fg)
+        {
+            if (BB == b)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        assert(found && "ICE: BB not found in IP patch info!");
+        if (found)
+        {
+            found = false;
+            G4_INST* Inst = II.first;
+            for (auto ii = BB->begin(), ie = BB->end(); ii != ie; ++ii)
+            {
+                G4_INST* currI = *ii;
+                if (Inst == currI)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            assert(found && "ICE: inst not found in IP patch info!");
+        }
+
+        if (!found)
+        {
+            break;
+        }
+    }
+
+    if (found)
+    {
+        for (auto II : m_labelPatchInsts)
+        {
+            found = false;
+            G4_INST* patch_add = II.first;
+            G4_INST* ip_start = II.second.first;
+            G4_INST* ip_end = II.second.second;
+            if (m_instToBBs.find(patch_add) != m_instToBBs.end()
+                && m_instToBBs.find(ip_start) != m_instToBBs.end()
+                && m_instToBBs.find(ip_end) != m_instToBBs.end())
+            {
+                found = true;
+            }
+
+            if (!found)
+            {
+                break;
+            }
+        }
+        assert(found && "ICE: inst not in m_instToBBs!");
+    }
+#endif
+
+    auto update_ip_distance = [](G4_INST* inst, int32_t& ip_dist) {
+        G4_opcode op = inst->opcode();
+        if (op == G4_sync_nop)
+        {
+            inst->setCompacted();
+            ip_dist += 8;
+        }
+        else if (op != G4_label)
+        {
+            inst->setNoCompacted();
+            ip_dist += 16;
+        }
+        return;
+    };
+
+    for (auto II : m_labelPatchInsts)
+    {
+        G4_INST* patch_add = II.first;
+        G4_INST* ip_start = II.second.first;
+        G4_INST* ip_end = II.second.second;
+
+        G4_BB* start_bb = m_instToBBs[ip_start];
+        G4_BB* end_bb = m_instToBBs[ip_end];
+
+        int32_t dist = 0;
+        G4_BB* b;
+        G4_BB* next_b = start_bb;
+        INST_LIST_ITER it_start = std::find(start_bb->begin(), start_bb->end(), ip_start);
+        INST_LIST_ITER it_end = std::find(end_bb->begin(), end_bb->end(), ip_end);
+        do {
+            b = next_b;
+            INST_LIST_ITER iter = (b == start_bb ? it_start : b->begin());
+            INST_LIST_ITER iterEnd = (b == end_bb ? it_end : b->end());
+            for (; iter != iterEnd; ++iter)
+            {
+                G4_INST* tI = *iter;
+                update_ip_distance(tI, dist);
+            }
+            next_b = b->getPhysicalSucc();
+        } while (b != end_bb && next_b != nullptr);
+        assert(b == end_bb);
+
+        G4_Imm* distOprd = builder.createImm(-dist, Type_D);
+        patch_add->setSrc(distOprd, 1);
+
+        // RA does the following
+        //   (W) mov(1|M0)  r125.0<1>:f   r60.2<0;1,0>:f
+        //   (W) send.dc0(16|M0)   null r126  r5    0x80      0x020A03FF   // stack spill
+        //       sync.nop        null{ Compacted,$4.src }
+        //       call (8|M0)      r125.0   r125.0
+        // To make this WA work,  call has to be:
+        //   call (8|M0)  r125.0 r60.2
+        // Here propogate r60.2 down to call instruction
+        if (ip_end->isFCall() && ip_end->getSrc(0)->isGreg())
+        {
+            bool isValid;
+            G4_SrcRegRegion* T = ip_end->getSrc(0)->asSrcRegRegion();
+            int regno = T->ExRegNum(isValid);
+            int subreg = T->ExSubRegNum(isValid);
+
+            // Search backward to find the the 1st mov that defined this reg
+            // This works for ifcall that has been put into a separate BB, in
+            // which only insts related call sequence are present.
+            // If not found, do nothing.
+            for (auto II = it_end, IB = end_bb->begin(); II != IB; --II)
+            {
+                G4_INST* tInst = *II;
+                if (tInst->opcode() == G4_mov
+                    && tInst->getExecSize() == g4::SIMD1
+                    && tInst->isWriteEnableInst()
+                    && tInst->getDst()->isGreg()
+                    && tInst->getSrc(0)->isGreg())
+                {
+                    G4_DstRegRegion* D = tInst->getDst();
+                    int dst_regno = D->ExRegNum(isValid);
+                    int dst_subreg = D->ExSubRegNum(isValid);
+                    if (dst_regno == regno && subreg == dst_subreg)
+                    {
+                        // found
+                        G4_SrcRegRegion* Src0 = tInst->getSrc(0)->asSrcRegRegion();
+                        G4_SrcRegRegion* newT = builder.createSrcRegRegion(*Src0);
+                        ip_end->setSrc(newT, 0);
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            assert(false);
+        }
+    }
+
+    m_instToBBs.clear();
+    m_labelPatchInsts.clear();
+}
+
 void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
 {
     // the call code sequence done at Optimizer::expandIndirectCallWithRegTarget
@@ -287,8 +452,14 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
 
 void Optimizer::addSWSBInfo()
 {
+    bool do_ifcall_wa = builder.hasFusedEU()
+        && builder.getOption(vISA_fusedCallWA)
+        && kernel.hasIndirectCall();
+
     if (!builder.hasSWSB())
     {
+        if (do_ifcall_wa)
+            patchIPForFusedCallWA();
         return;
     }
 
@@ -315,7 +486,11 @@ void Optimizer::addSWSBInfo()
             builder.getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
     }
 
-    if (kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
+    if (do_ifcall_wa)
+    {
+        patchIPForFusedCallWA();
+    }
+    else if (kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
     {
         adjustIndirectCallOffsetAfterSWSBSet();
     }
@@ -6777,7 +6952,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         // Call WA for fused EU
-        if (builder.hasFusedEU() && builder.getOption(vISA_fusedCallWA))
+        if (builder.hasFusedEU() && builder.getOption(vISA_fusedCallWA) &&
+            kernel.hasIndirectCall())
         {
             applyFusedCallWA();
         }
@@ -8283,6 +8459,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     void Optimizer::expandIndirectCallWithRegTarget()
     {
+        if (builder.hasFusedEU() && builder.getOption(vISA_fusedCallWA))
+        {
+            assert(!builder.needReplaceIndirectCallWithJmpi());
+            // Relative IP has been applied in fusedCallWA()
+            return;
+        }
+
         // check every fcall
         for (auto bb : kernel.fg)
         {
@@ -8311,7 +8494,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     //       add  r2.0     r2.0   -64
                     //       add  r125.0   IP     32          // set the return IP
                     //       jmpi r2.0
-
                     InstListType expanded_insts;
                     if (builder.needReplaceIndirectCallWithJmpi()) {
                         createInstForJmpiSequence(expanded_insts, fcall);
@@ -12056,7 +12238,6 @@ void Optimizer::doNoMaskWA_postRA()
     }
 }
 
-//
 //  Under EU fusion,  assume that an indirect call invokes A in thread 0 and invokes B in thread 1.
 //  Assume that these two threads are fused and run on a pair of fused EUs {bigEU, smallEU}. The hardware
 //  will always invoke A: the callee from thread 0 in bigEU, which is incorrect. To workaround this bug,
@@ -12068,32 +12249,35 @@ void Optimizer::doNoMaskWA_postRA()
 //              pseudo_fcall (16)     V44(0,0)<0;1,0>:ud
 //      nextBB:
 //
-//    after WA
-//         (W)           mov (1|M0)   tmp<1>:ud    sr0.0<0;1,0>:ud
-//                             // [readSr0]
-//         (W)           and (16|M0)  (eq)tmpFlag  null<1>:uw  tmp<0;1,0>:uw   0x80:uw
-//                             // [andInst] EUID[2]: 0 big EU; 1 small EU
-//         (W&~tmpFlag)  mov (1|M0)  cr0.2<1>:ud  V44(0,0)<0;1,0>:ud
-//                             // [movToCr0] copy callee into cr0.2
-//         (W&tmpFlag)   mov (1|M0)  tempTarget:ud   cr0.2<0;1,0>:ud
-//                             // [movFromCr0] copy cr0.2(small EU's callee) into tempTarget
-//         (~tmpFlag)    goto smallB0
+//     Let Target = V44
+//
+//    after WA                                                              // Var names
+//      BB:
+//         (W)     mov (1 |M0)  tmp<1>:ud    sr0.0<0;1,0>:ud                // I0
+//         (W)     and (16|M0)  (eq)F  null<1>:uw  tmp<0;1,0>:uw   0x80:uw  // I1
+//         (W&~F)  mov (1 |M0)  cr0.2<1>:ud  Target<0;1,0>:ud               // I2
+//         (W&F)   mov (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud          // I3
+//         (W)     add (1 |M0)  I4_IP:d   -ip:d  smallEUTarget:d            // I4_ip_start
+//         (W)     add (1 |M0)  I4Target:d   I4_IP:d  0x33333333:d          // I4_patch_add
+//         (W)     add (1 |M0)  I5_IP:d   -ip:d  Target:d                   // I5_ip_start
+//         (W)     add (1 |M0)  I5Target:d   I5_IP:d  0x33333333:d          // I5_patch_add
+//         (~F)    goto smallB0
 //                             // [gotoSmallB0]
 //      bigB0:
-//            pseudo_fcall (16)     V44(0,0)<0;1,0>:ud
-//                             // [callI] the original call inst
+//            pseudo_fcall (16)     I5Target:ud                             // callI: original call
 //      bigB1:
-//            goto nextBB      // [gotoEnd]
+//            goto nextBB                                                   // gotoEnd
 //      smallB0:
-//            join nextBB      // [joinSmall]
-//            pseudo_fcall (16)     tempTarget<0;1,0>:ud
-//                             // [nInst]
+//            join nextBB                                                   // joinSmall
+//            pseudo_fcall (16)     I4Target<0;1,0>:ud                      // nCallI
 //      smallB1:
 //
 //      nextBB:
-//            join <nextJoin or null>
+//            join <nextJoin or null>                                       // finalJoin
 //
-// Note that names inside [] are variable names used in the wa function.
+// Those I4_patch_add/I5_patch_add, etc are added into m_labelPatchInsts/m_instsToBBs, so
+// that patchIPForFusedCallWA() will have the right immediate to replace 0x33333333.
+//
 void Optimizer::applyFusedCallWA()
 {
     auto getNextJoinLabel = [&](BB_LIST_ITER ITER) -> G4_Label*
@@ -12103,7 +12287,9 @@ void Optimizer::applyFusedCallWA()
             G4_BB* B = (*II);
             if (G4_INST* Inst = B->getFirstInst())
             {
-                if (Inst->opcode() == G4_join)
+                if (Inst->opcode() == G4_join
+                    || Inst->opcode() == G4_endif
+                    || Inst->opcode() == G4_while)
                 {
                     G4_INST* labelInst = B->front();
                     return labelInst->getLabel();
@@ -12139,55 +12325,122 @@ void Optimizer::applyFusedCallWA()
             continue;
         }
 
-        G4_BB* nextBB = (*BI);
+        BB_LIST_ITER nextBI = BI;
+        G4_BB* nextBB = (*nextBI);
+        if (G4_INST* leadInst = nextBB->getFirstInst())
+        {
+            if (leadInst->opcode() == G4_while || leadInst->opcode() == G4_endif)
+            {
+                // Cannot insert join, otherwise, label for while/endif would be wrong
+                // Here, create a new empty BB so that we can add join into it.
+                G4_BB* endBB = fg.createNewBBWithLabel("_FusedCallWA_EndBB/Tar", callI->getLineNo(), callI->getCISAOff());
+                nextBI = fg.insert(nextBI, endBB);
+
+                // Adjust control-flow
+                fg.removePredSuccEdges(BB, nextBB);
+
+                fg.addPredSuccEdges(BB, endBB, true);
+                fg.addPredSuccEdges(endBB, nextBB, false);
+                nextBB = endBB;
+
+                endBB->setDivergent(BB->isDivergent());
+                if ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
+                    builder.getOption(vISA_forceNoMaskWA))
+                {
+                    endBB->setBBType(G4_BB_NM_WA_TYPE);
+                }
+            }
+        }
         G4_ExecSize simdsz = fg.getKernel()->getSimdSize();
         G4_SrcRegRegion* Target = callI->getSrc(0)->asSrcRegRegion();
 
+        // I0:  mov tmp  sr0.0
         G4_VarBase* V_sr0 = builder.phyregpool.getSr0Reg();
-        G4_SrcRegRegion* Src_sr0 = builder.createSrc(V_sr0, 0, 0, builder.getRegionScalar(), Type_UD);
+        G4_SrcRegRegion* I0_Src0 = builder.createSrc(V_sr0, 0, 0, builder.getRegionScalar(), Type_UD);
         G4_Declare* tmp = builder.createTempVar(1, Type_UD, Any, "tmpSr0");
-        G4_DstRegRegion* Dst_tmp = builder.createDst(tmp->getRegVar(), 0, 0, 1, Type_UD);
-        G4_INST* readSr0 = builder.createInternalInst(nullptr, G4_mov, nullptr, g4::NOSAT, g4::SIMD1,
-            Dst_tmp, Src_sr0, nullptr, InstOpt_WriteEnable);
+        G4_DstRegRegion* I0_Dst = builder.createDst(tmp->getRegVar(), 0, 0, 1, Type_UD);
+        G4_INST* I0 = builder.createInternalInst(nullptr, G4_mov, nullptr, g4::NOSAT, g4::SIMD1,
+            I0_Dst, I0_Src0, nullptr, InstOpt_WriteEnable);
 
+        // I1:  and  (e)F   tmp  0x8F
         G4_Declare* F = builder.createTempFlag(simdsz > g4::SIMD16 ? 2 : 1, "euid2");
         G4_CondMod* F_cm = builder.createCondMod(Mod_e, F->getRegVar(), 0);
-        G4_SrcRegRegion* Src_tmp = builder.createSrc(tmp->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UW);
+        G4_SrcRegRegion* I1_Src0 = builder.createSrc(tmp->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UW);
         G4_Imm* Bit7 = builder.createImm(0x8F, Type_UW);
-        G4_INST* andInst = builder.createInternalInst(nullptr, G4_and, F_cm, g4::NOSAT,
+        G4_INST* I1 = builder.createInternalInst(nullptr, G4_and, F_cm, g4::NOSAT,
             simdsz > g4::SIMD16 ? g4::SIMD32 : g4::SIMD16,
-            builder.createNullDst(Type_UW), Src_tmp, Bit7, InstOpt_WriteEnable);
+            builder.createNullDst(Type_UW), I1_Src0, Bit7, InstOpt_WriteEnable);
 
+        // I2:  (!flag) mov cr0.2  callee
         G4_VarBase* V_cr0 = builder.phyregpool.getCr0Reg();
-        G4_DstRegRegion* Dst_cr0 = builder.createDst(V_cr0, 0, 2, 1, Type_UD);
-        G4_SrcRegRegion* Src_target = builder.createSrc(Target->getBase(), 0, 0, builder.getRegionScalar(), Type_UD);
+        G4_DstRegRegion* I2_Dst = builder.createDst(V_cr0, 0, 2, 1, Type_UD);
+        G4_SrcRegRegion* I2_Src0 = builder.createSrc(Target->getBase(), 0, 0, builder.getRegionScalar(), Type_UD);
         G4_Predicate* pred_m = builder.createPredicate(PredState_Minus, F->getRegVar(), 0);
-        G4_INST* movToCr0 = builder.createMov(g4::SIMD1, Dst_cr0, Src_target, InstOpt_WriteEnable, false);
-        movToCr0->setPredicate(pred_m);
+        G4_INST* I2 = builder.createMov(g4::SIMD1, I2_Dst, I2_Src0, InstOpt_WriteEnable, false);
+        I2->setPredicate(pred_m);
 
-        G4_Declare* nTargetDecl = builder.createTempVar(1, Type_UD, Any, "smallEUTarget");
-        G4_DstRegRegion* Dst_nTarget = builder.createDst(nTargetDecl->getRegVar(), 0, 0, 1, Type_UD);
-        G4_SrcRegRegion* Src_cr0 = builder.createSrc(V_cr0, 0, 2, builder.getRegionScalar(), Type_UD);
+        // I3:  (flag) mov smallEUTarget  cr0.2
+        G4_Declare* sTargetDecl = builder.createTempVar(1, Type_UD, Any, "smallEUTarget");
+        G4_DstRegRegion* I3_Dst = builder.createDst(sTargetDecl->getRegVar(), 0, 0, 1, Type_UD);
+        G4_SrcRegRegion* I3_Src0 = builder.createSrc(V_cr0, 0, 2, builder.getRegionScalar(), Type_UD);
         G4_Predicate* pred_p = builder.createPredicate(PredState_Plus, F->getRegVar(), 0);
-        G4_INST* movFromCr0 = builder.createMov(g4::SIMD1, Dst_nTarget, Src_cr0, InstOpt_WriteEnable, false);
-        movFromCr0->setPredicate(pred_p);
+        G4_INST* I3 = builder.createMov(g4::SIMD1, I3_Dst, I3_Src0, InstOpt_WriteEnable, false);
+        I3->setPredicate(pred_p);
+
+        // relative target for small EU:  need to patch offset after swsb
+        //    I4_ip_start:   add t  (-ip) + smallTarget
+        //    I4_patch_add:  add I4Target  t   -0x33
+        //         where 0x33 should be the IP difference between I4_ip_start and call I4Target, patched later.
+        G4_VarBase* V_ip = builder.phyregpool.getIpReg();
+        G4_Declare* I4_IP = builder.createTempVar(1, Type_D, Any, "rSmallIP");
+        G4_DstRegRegion* I4_Dst = builder.createDst(I4_IP->getRegVar(), 0, 0, 1, Type_D);
+        G4_SrcRegRegion* I4_Src0 = builder.createSrcRegRegion(Mod_Minus, Direct, V_ip, 0, 0, builder.getRegionScalar(), Type_D);
+        G4_SrcRegRegion* I4_Src1 = builder.createSrc(sTargetDecl->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
+        G4_INST* I4_ip_start = builder.createBinOp(G4_add, g4::SIMD1, I4_Dst, I4_Src0, I4_Src1, InstOpt_WriteEnable, false);
+
+        G4_Declare* I4Target = builder.createTempVar(1, Type_D, Any, "rSmallEUTarget");
+        G4_DstRegRegion* I4_pDst = builder.createDst(I4Target->getRegVar(), 0, 0, 1, Type_D);
+        G4_SrcRegRegion* I4_pSrc0 = builder.createSrc(I4_IP->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
+        G4_Imm* I4_pSrc1 = builder.createImm(0x33333333, Type_D);  // to be patched later
+        G4_INST* I4_patch_add = builder.createBinOp(G4_add, g4::SIMD1, I4_pDst, I4_pSrc0, I4_pSrc1, InstOpt_WriteEnable, false);
+
+
+        // relative target of bigEU: need to patch offset after swsb
+        //    I5_ip_start:   add t  (-ip) + bigTarget
+        //    I5_patch_add:  add I5Target  t   -0x33
+        //         where 0x33 should be the IP difference between I4_ip_start and call I4Target, patched later.
+        G4_Declare* I5_IP = builder.createTempVar(1, Type_D, Any, "rBigIP");
+        G4_DstRegRegion* I5_Dst = builder.createDst(I5_IP->getRegVar(), 0, 0, 1, Type_D);
+        G4_SrcRegRegion* I5_Src0 = builder.createSrcRegRegion(Mod_Minus, Direct, V_ip, 0, 0, builder.getRegionScalar(), Type_D);
+        G4_SrcRegRegion* I5_Src1 = builder.createSrc(Target->getBase(), 0, 0, builder.getRegionScalar(), Type_D);
+        G4_INST* I5_ip_start = builder.createBinOp(G4_add, g4::SIMD1, I5_Dst, I5_Src0, I5_Src1, InstOpt_WriteEnable, false);
+
+        G4_Declare* I5Target = builder.createTempVar(1, Type_D, Any, "rBigEUTarget");
+        G4_DstRegRegion* I5_pDst = builder.createDst(I5Target->getRegVar(), 0, 0, 1, Type_D);
+        G4_SrcRegRegion* I5_pSrc0 = builder.createSrc(I5_IP->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
+        G4_Imm* I5_pSrc1 = builder.createImm(0x33333333, Type_D);  // to be patched later
+        G4_INST* I5_patch_add = builder.createBinOp(G4_add, g4::SIMD1, I5_pDst, I5_pSrc0, I5_pSrc1, InstOpt_WriteEnable, false);
 
         // Insert WA instructions
         BB->pop_back();   // unlink the call inst from BB
-        BB->push_back(readSr0);
-        BB->push_back(andInst);
-        BB->push_back(movToCr0);
-        BB->push_back(movFromCr0);
+        BB->push_back(I0);
+        BB->push_back(I1);
+        BB->push_back(I2);
+        BB->push_back(I3);
+        BB->push_back(I4_ip_start);
+        BB->push_back(I4_patch_add);
+        BB->push_back(I5_ip_start);
+        BB->push_back(I5_patch_add);
 
         G4_BB* bigB0 = fg.createNewBBWithLabel("_FusedCallWA_", callI->getLineNo(), callI->getCISAOff());
         G4_BB* bigB1 = fg.createNewBBWithLabel("_FusedCallWA_", callI->getLineNo(), callI->getCISAOff());
         G4_BB* smallB0 = fg.createNewBBWithLabel("_FusedCallWA_", callI->getLineNo(), callI->getCISAOff());
         G4_BB* smallB1 = fg.createNewBBWithLabel("_FusedCallWA_", callI->getLineNo(), callI->getCISAOff());
-        // Note that BI points to the next BB!
-        fg.insert(BI, bigB0);
-        fg.insert(BI, bigB1);
-        fg.insert(BI, smallB0);
-        fg.insert(BI, smallB1);    // this is an empty BB. Might be needed for stack restore, etc.
+        // Note that nextBI points to the nextBB!
+        fg.insert(nextBI, bigB0);
+        fg.insert(nextBI, bigB1);
+        fg.insert(nextBI, smallB0);
+        fg.insert(nextBI, smallB1);    // this is an empty BB. Might be needed for stack restore, etc.
 
         G4_Label* smallB0Label = smallB0->front()->getLabel();
         G4_Label* endLabel = nextBB->front()->getLabel();
@@ -12195,37 +12448,39 @@ void Optimizer::applyFusedCallWA()
         G4_INST* gotoSmallB0 = builder.createCFInst(pred_m1, G4_goto, simdsz, smallB0Label, smallB0Label, InstOpt_NoOpt, false);
         BB->push_back(gotoSmallB0);
 
+        callI->setSrc(builder.createSrc(I5Target->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UD), 0);
         (void)bigB0->push_back(callI);
         G4_INST* gotoEnd = builder.createCFInst(nullptr, G4_goto, simdsz, smallB0Label, endLabel, InstOpt_NoOpt, false);
         bigB1->push_back(gotoEnd);
 
         G4_INST* joinSmallB0 = builder.createCFInst(nullptr, G4_join, simdsz, endLabel, nullptr, InstOpt_NoOpt, false);
-        smallB0->insertBefore(smallB0->end(), joinSmallB0);
+        smallB0->push_back(joinSmallB0);
 
         G4_Predicate* nPred(callI->getPredicate());
-        G4_SrcRegRegion* nSrc = builder.createSrc(nTargetDecl->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UD);
-        G4_INST* nInst = builder.createInternalInst(nPred, callI->opcode(),
+        G4_SrcRegRegion* nSrc = builder.createSrc(I4Target->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UD);
+        G4_INST* nCallI = builder.createInternalInst(nPred, callI->opcode(),
             nullptr, g4::NOSAT, callI->getExecSize(), nullptr, nSrc, nullptr, callI->getOption());
-        smallB0->push_back(nInst);
+        smallB0->push_back(nCallI);
         // Need to create fcall info
         if (G4_FCALL* orig_fcallinfo = builder.getFcallInfo(callI))
         {
-            builder.addFcallInfo(nInst, orig_fcallinfo->getArgSize(), orig_fcallinfo->getRetSize());
+            builder.addFcallInfo(nCallI, orig_fcallinfo->getArgSize(), orig_fcallinfo->getRetSize());
         }
 
         // Need to insert a join in nextBB
-        INST_LIST_ITER iter = nextBB->begin(), iterEnd = nextBB->end();
-        for (; iter != iterEnd; ++iter)
+        G4_INST* tjoin = nextBB->getFirstInst();
+        if (tjoin == nullptr || tjoin->opcode() != G4_join)
         {
-            G4_INST* tI = (*iter);
-            if (tI->isLabel())
-                continue;
-            break;
-        }
-        if (iter == iterEnd || (*iter)->opcode() != G4_join)
-        {
-            G4_INST* finalJoin = builder.createCFInst(nullptr, G4_join, simdsz, getNextJoinLabel(BI), nullptr, InstOpt_NoOpt, false);
-            nextBB->insertBefore(iter, finalJoin);
+            G4_INST* finalJoin = builder.createCFInst(nullptr, G4_join, simdsz, getNextJoinLabel(nextBI), nullptr, InstOpt_NoOpt, false);
+            if (tjoin == nullptr)
+            {
+                nextBB->insertBefore(nextBB->end(), finalJoin);
+            }
+            else
+            {
+                auto iter = std::find(nextBB->begin(), nextBB->end(), tjoin);
+                nextBB->insertBefore(iter, finalJoin);
+            }
         }
 
         // build control-flow
@@ -12239,12 +12494,20 @@ void Optimizer::applyFusedCallWA()
         fg.addPredSuccEdges(smallB1, nextBB, true);
 
         // update local dataflow
-        readSr0->addDefUse(andInst, Opnd_src0);
-        andInst->addDefUse(movToCr0, Opnd_pred);
-        andInst->addDefUse(movFromCr0, Opnd_pred);
-        andInst->addDefUse(gotoSmallB0, Opnd_pred);
-        fg.globalOpndHT.addGlobalOpnd(Target);
-        fg.globalOpndHT.addGlobalOpnd(Dst_nTarget);
+        I0->addDefUse(I1, Opnd_src0);
+        I1->addDefUse(I2, Opnd_pred);
+        I1->addDefUse(I3, Opnd_pred);
+        I1->addDefUse(gotoSmallB0, Opnd_pred);
+        I3->addDefUse(I4_ip_start, Opnd_src1);
+        I4_ip_start->addDefUse(I4_patch_add, Opnd_src0);
+        I5_ip_start->addDefUse(I5_patch_add, Opnd_src0);
+        fg.globalOpndHT.addGlobalOpnd(I4_pDst);
+        fg.globalOpndHT.addGlobalOpnd(I5_pDst);
+        if (!fg.globalOpndHT.isOpndGlobal(Target))
+        {
+            callI->copyDef(I2, Opnd_src0, Opnd_src0);
+            callI->transferDef(I5_ip_start, Opnd_src0, Opnd_src1);
+        }
 
         // divergence property update
         //   new BBs's divergence is the same as BB's
@@ -12253,6 +12516,16 @@ void Optimizer::applyFusedCallWA()
         bigB1->setDivergent(isDivergent);
         smallB0->setDivergent(isDivergent);
         smallB1->setDivergent(isDivergent);
+
+        // add patch info, so those patch_add will be patched.
+        m_labelPatchInsts.insert(std::make_pair(I4_patch_add, std::pair(I4_ip_start, nCallI)));
+        m_labelPatchInsts.insert(std::make_pair(I5_patch_add, std::pair(I5_ip_start, callI)));
+        m_instToBBs.insert(std::make_pair(I4_ip_start, BB));
+        m_instToBBs.insert(std::make_pair(I4_patch_add, BB));
+        m_instToBBs.insert(std::make_pair(I5_ip_start, BB));
+        m_instToBBs.insert(std::make_pair(I5_patch_add, BB));
+        m_instToBBs.insert(std::make_pair(callI, bigB0));
+        m_instToBBs.insert(std::make_pair(nCallI, smallB0));
 
         // nomask wa property
         //   if BB is marked with NM_WA_TYPE, set all new BBs with NM_WA_TYPE
