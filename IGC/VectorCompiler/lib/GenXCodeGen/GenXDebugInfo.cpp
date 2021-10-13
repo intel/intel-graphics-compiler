@@ -109,37 +109,47 @@ SPDX-License-Identifier: MIT
 ///   derived implicitly (which is not always correct but works in most of the
 ///   cases).
 ///
+/// - *ModuleToVisaTransformInfo*
+///   Provides information about how LLVM IR functions are mapped onto various
+///   vISA (and genISA) objects. Allows us to answer the following questions:
+///     - Is a function a subroutine on vISA level?
+///     - If a function is a subroutine, what LLVM IR function corresponds to
+///     vISA-level "owner" of this subroutine. An "owner" in this case is
+///     either VISAFunction or VISAKernel containing the subroutine.
+///     - Is LLVM IR function a "primary" one? "primary" function is the one
+///     that spawns vISA entity that gets compiled into a separate gen object
+///     - For an arbitrary LLVM IR function, get a set of "primary" functions
+///     that contain a compiled vISA corresponding to the function in question
+///     compiled into their gen objects.
+///
 /// - *ProgramInfo*
 ///   A transient object that groups several llvm Functions that are eventually
 ///   get compiled into a single gen entity. A separate elf file with the
 ///   debug information is generated for each gen entity.
+///   The grouping is with a help of *ModuleToVisaTransformInfo* object.
 ///
-///   The grouping is done as follows:
-///   - We piggyback on FunctionGroup analysis. Each kernel function becomes the
-///   head of the group. Different FunctionGroups always result in different
-///   *ProgramInfo* objects. However, a single FunctionGroup can be split even
-///   further. This can happen if we have an indirect call to some function. In
-///   this case, this function shall is compiled into a separate gen object
-///   (and a separate VISAKernel is produced aswell).
-///
-///   The above approach does not work correctly in all cases. See
-///   *KNOWN ISSUES* section.
+/// - *GenObjectWrapper*
+///  Wrapper over the data produced by the finalizer after a kernel gets
+///  compiled. Simplifies/Provides access to the following:
+///     + gen binary (gen machine instructions)
+///     + decoded *gen* debug info and raw gen debug info blob
+///     + FINALIZER_INFO structure
 ///
 /// - *CompiledVisaWrapper*
 ///  For an arbitrary pair of llvm IR Function and VISAKernel objects,
 ///  does the following:
 ///     + Validates that IR Function and VISAKernel object are related (that is
 ///       the vISA spawned by IR Function is owned by the VISAKernel.
-///     + Extracts Gen Binary.
-///     + Extracts Debug Info Blob from finalizer and decodes it.
+///     + Provides services to access *gen* debug info from an appropriate
+///     compiled object (*gen* debug info concept).
 ///
 /// *GenXFunction*
-///  An object that loosely resembles MachineFunctoin from the LLVM Machine IR.
-///  This is an object that for a given LLVM IR Function can access to:
+///  An object that loosely resembles MachineFunction from the LLVM Machine IR.
+///  This is an object that for a given LLVM IR Function provides access to:
 ///     - LLVM IR Function
 ///     - VisaMapping
 ///     - Subtarget
-///     - CompiledVisaWrapper
+///     - data from CompiledVisaWrapper/GenObjectWrapper
 ///     - GenXVisaRegAlloc
 ///  GenXFunctoin serves as a primary method to communicate with the DebugInfo
 ///  library. The data these objects hold allow us to reason about the debug
@@ -202,22 +212,6 @@ SPDX-License-Identifier: MIT
 ///         VISAKernel).
 ///         In the end, we emit two "*.elf" files.
 ///
-/// KNOWN ISSUES
-/// ^^^^^^^^^^^^
-///
-/// Note: see the "Examples" section for the description of the used naming
-/// convention.
-///
-///   Case 1: (debug info can't be emitted)
-///     Source code: *K1*, *L1* *K1* calls *L1*.
-///     Compilation phase:
-///         1 function group is created.
-///         1 VISAKernel produced.
-///     DebugInfoGeneration:
-///       1 *ProgramInfo* created { K1, L1}.
-///       Decoded Debug info contains 1 compiled object, that has 1 subroutines.
-///
-///   Problem: way to map LLVM Function onto subroutine is not implemented.
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "GENX_DEBUG_INFO"
@@ -299,6 +293,28 @@ extractSortedFunctions(const ContainerT &C) {
   std::sort(Result.begin(), Result.end(), compareFunctionNames);
   return Result;
 }
+
+// NOTE: the term "program" is used to avoid a potential confusion
+// since the term "kernel" may introduce some ambiguity.
+// Here a "program" represents a kind of wrapper over a standalone vISA
+// object (which currently is produced by function groups and
+// visa-external functions) that finally gets compiled into a stand-alone
+// gen entity (binary gen kernel) with some auxiliary information
+struct ProgramInfo {
+  struct FunctionInfo {
+    const genx::di::VisaMapping &VisaMapping;
+    const Function &F;
+  };
+
+  const ModuleToVisaTransformInfo &MVTI;
+  VISAKernel &CompiledKernel;
+  std::vector<FunctionInfo> FIs;
+
+  const Function &getEntryPoint() const {
+    IGC_ASSERT(!FIs.empty());
+    return FIs.front().F;
+  }
+};
 
 //
 // ModuleToVisaTransformInfo
@@ -610,21 +626,26 @@ class GenObjectWrapper {
   int GenBinaryDataSize = 0;
   void *GenBinaryDataPtr = nullptr;
 
+  const Function &EntryPoint;
+
   std::string ErrMsg;
 
-  void setError(const Twine &Msg, const Function &F) {
-    ErrMsg.append((Msg + "<" + F.getName() + ">").str());
+  void setError(const Twine &Msg) {
+    ErrMsg.append((Msg + "<" + EntryPoint.getName() + ">").str());
 
-    LLVM_DEBUG(dbgs() << "GOW creation for <" << F.getName()
+    LLVM_DEBUG(dbgs() << "GOW creation for <" << EntryPoint.getName()
                       << "> aborted: " << Msg.str());
   }
 
 public:
+  const Function &getEntryPoint() const { return EntryPoint; }
+
   ArrayRef<char> getGenDebug() const {
     IGC_ASSERT(GenDbgInfoDataPtr);
     return ArrayRef<char>(static_cast<char *>(GenDbgInfoDataPtr),
                           GenDbgInfoDataSize);
   }
+
   ArrayRef<char> getGenBinary() const {
     IGC_ASSERT(GenBinaryDataPtr);
     return ArrayRef<char>(static_cast<char *>(GenBinaryDataPtr),
@@ -665,9 +686,10 @@ public:
   }
 };
 
-GenObjectWrapper::GenObjectWrapper(VISAKernel &VK, const Function &F) {
+GenObjectWrapper::GenObjectWrapper(VISAKernel &VK, const Function &F)
+    : EntryPoint(F) {
   if (VK.GetJitInfo(JitInfo) != 0) {
-    setError("could not extract jitter info", F);
+    setError("could not extract jitter info");
     return;
   }
   IGC_ASSERT(JitInfo);
@@ -675,16 +697,16 @@ GenObjectWrapper::GenObjectWrapper(VISAKernel &VK, const Function &F) {
   // Extract Gen Binary (will need it for line table generation)
   VK.GetGenxBinary(GenBinaryDataPtr, GenBinaryDataSize);
   if (GenBinaryDataSize <= 0) {
-    setError("could not extract gen binary from finalizer", F);
+    setError("could not extract gen binary from finalizer");
     return;
   }
 
   if (VK.GetGenxDebugInfo(GenDbgInfoDataPtr, GenDbgInfoDataSize) != 0) {
-    setError("could not get gen debug information from finalizer", F);
+    setError("could not get gen debug information from finalizer");
     return;
   }
   if (GenDbgInfoDataPtr <= 0) {
-    setError("invalid gen debug information size reported by finalizer", F);
+    setError("invalid gen debug information size reported by finalizer");
     return;
   }
   DecodedDebugInfo = std::make_unique<IGC::DbgDecoder>(GenDbgInfoDataPtr);
@@ -724,6 +746,7 @@ public:
 
   bool hasErrors() const { return !getError().empty(); }
 
+  CompiledVisaWrapper(CompiledVisaWrapper &&Other) = default;
   CompiledVisaWrapper(const Function &F, StringRef CompiledObjectName,
                       const GenObjectWrapper &GOWIn)
       : GOW(GOWIn) {
@@ -795,11 +818,10 @@ class GenXFunction final : public IGC::VISAModule {
 
 public:
   GenXFunction(const GenXSubtarget &STIn, const GenXVisaRegAlloc &RAIn,
-               const Function &F, const CompiledVisaWrapper &CW,
+               const Function &F, CompiledVisaWrapper &&CW,
                const genx::di::VisaMapping &V2I,
-               const ModuleToVisaTransformInfo &MVTI,
-               bool IsPrimary)
-      : F{F}, ST{STIn}, VisaMapping{V2I}, CompiledVisa{CW}, RA{RAIn},
+               const ModuleToVisaTransformInfo &MVTI, bool IsPrimary)
+      : F{F}, ST{STIn}, VisaMapping{V2I}, CompiledVisa{std::move(CW)}, RA{RAIn},
         MVTI(MVTI), VISAModule(const_cast<Function *>(&F), IsPrimary) {
 
     if (MVTI.isSubroutine(&F))
@@ -808,6 +830,10 @@ public:
        SetType(ObjectType::KERNEL);
     else
        SetType(ObjectType::STACKCALL_FUNC);
+  }
+
+  ~GenXFunction() {
+    LLVM_DEBUG(dbgs() << "~GenXFunction() called for " << F.getName() << "\n");
   }
 
   const IGC::DbgDecoder::DbgInfoFormat*
@@ -868,6 +894,7 @@ public:
   }
 
   const genx::di::VisaMapping &getVisaMapping() const { return VisaMapping; }
+
   std::vector<IGC::VISAVariableLocation>
   GetVariableLocation(const Instruction *DbgInst) const override {
 
@@ -957,15 +984,15 @@ private:
   const Function &F;
   const GenXSubtarget &ST;
   const genx::di::VisaMapping &VisaMapping;
-  const CompiledVisaWrapper &CompiledVisa;
+  CompiledVisaWrapper CompiledVisa;
   const GenXVisaRegAlloc &RA;
   const ModuleToVisaTransformInfo &MVTI;
 };
 
-static void processGenXFunction(IGC::IDebugEmitter *Emitter, GenXFunction *GF) {
-  Emitter->setCurrentVISA(GF);
-  const auto &V2I = GF->getVisaMapping().V2I;
-  const auto &FDI = GF->getFinalizerDI();
+static void processGenXFunction(IGC::IDebugEmitter &Emitter, GenXFunction &GF) {
+  Emitter.setCurrentVISA(&GF);
+  const auto &V2I = GF.getVisaMapping().V2I;
+  const auto &FDI = GF.getFinalizerDI();
   for (auto MappingIt = V2I.cbegin(); MappingIt != V2I.cend(); ++MappingIt) {
 
     // "NextIndex" is an index in vISA stream which points to an end
@@ -989,16 +1016,76 @@ static void processGenXFunction(IGC::IDebugEmitter *Emitter, GenXFunction *GF) {
 
     // Note: "index - 1" is because we mimic index values as if they were
     // before corresponding instructions were inserted
-    GF->SetVISAId(VisaIndexCurr - 1);
+    GF.SetVISAId(VisaIndexCurr - 1);
     // we need this const_cast because of the flawed VISA Emitter API
     auto *Inst = const_cast<Instruction *>(MappingIt->Inst);
-    Emitter->BeginInstruction(Inst);
-    GF->SetVISAId(VisaIndexNext - 1);
-    Emitter->EndInstruction(Inst);
+    Emitter.BeginInstruction(Inst);
+    GF.SetVISAId(VisaIndexNext - 1);
+    Emitter.EndInstruction(Inst);
 
     LLVM_DEBUG(dbgs() << "  VisaMapping: [" << VisaIndexCurr << ";"
                       << VisaIndexNext << "):" << *Inst << "\n");
   }
+}
+
+using GenXObjectHolder = std::unique_ptr<GenXFunction>;
+GenXObjectHolder buildGenXFunctionObject(const ModuleToVisaTransformInfo &MVTI,
+                                         const GenObjectWrapper &GOW,
+                                         const ProgramInfo::FunctionInfo &FI,
+                                         const GenXSubtarget &ST,
+                                         const GenXVisaRegAlloc &RA) {
+  StringRef CompiledObjectName = FI.F.getName();
+  if (MVTI.isSubroutine(&FI.F))
+    CompiledObjectName = MVTI.getSubroutineOwner(&FI.F)->getName();
+
+  CompiledVisaWrapper CW(FI.F, CompiledObjectName, GOW);
+  if (CW.hasErrors())
+    vc::diagnose(FI.F.getContext(), "GenXDebugInfo", CW.getError());
+
+  bool IsPrimaryFunction = &GOW.getEntryPoint() == &FI.F;
+  return std::make_unique<GenXFunction>(
+      ST, RA, FI.F, std::move(CW), FI.VisaMapping, MVTI, IsPrimaryFunction);
+}
+
+using GenXObjectHolderList = std::vector<GenXObjectHolder>;
+GenXObjectHolderList translateProgramInfoToGenXFunctionObjects(
+    const GenObjectWrapper &GOW, const ProgramInfo &PI, const GenXSubtarget &ST,
+    const GenXVisaRegAlloc &RA) {
+  const auto &MVTI = PI.MVTI;
+  GenXObjectHolderList GenXFunctionHolders;
+  std::transform(PI.FIs.begin(), PI.FIs.end(),
+                 std::back_inserter(GenXFunctionHolders),
+                 [&ST, &RA, &MVTI, &GOW](const auto &FI) {
+                   return buildGenXFunctionObject(MVTI, GOW, FI, ST, RA);
+                 });
+  return GenXFunctionHolders;
+}
+
+using GenXFunctionPtrList = std::vector<GenXFunction *>;
+GenXFunctionPtrList initializeDebugEmitter(
+    IGC::IDebugEmitter &Emitter, const IGC::DebugEmitterOpts &DebugOpts,
+    const ProgramInfo &PI, GenXObjectHolderList &&GFsHolderIn) {
+
+  GenXFunctionPtrList GFPointers;
+  for (auto &&GF : GFsHolderIn) {
+    GFPointers.push_back(GF.get());
+
+    if (GF->isPrimaryFunc()) {
+      Emitter.Initialize(std::move(GF), DebugOpts);
+    } else {
+      Emitter.registerVISA(GFPointers.back());
+      Emitter.resetModule(std::move(GF));
+    }
+  }
+  // Currently Debug Info Emitter expects that GenXFunctions are
+  // processed in the same order as they appear in the visa object
+  // (in terms of genisa instructions order)
+  std::sort(GFPointers.begin(), GFPointers.end(), [](auto *LGF, auto *RGF) {
+    const auto &LDI = LGF->getFinalizerDI();
+    const auto &RDI = RGF->getFinalizerDI();
+    return LDI.relocOffset < RDI.relocOffset;
+  });
+  return GFPointers;
 }
 
 } // namespace
@@ -1028,13 +1115,13 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
 
   IGC_ASSERT_MESSAGE(!PI.FIs.empty(),
                      "Program must include at least one function");
-  IGC_ASSERT_MESSAGE(PI.MVTI.getPrimaryEmittersForVisa(&PI.FIs.front().F)
-                             .count(&PI.FIs.front().F) == 1,
+  IGC_ASSERT_MESSAGE(PI.MVTI.getPrimaryEmittersForVisa(&PI.getEntryPoint())
+                             .count(&PI.getEntryPoint()) == 1,
                      "The head of ProgramInfo is expected to be a kernel");
 
-  GenObjectWrapper GOW(PI.CompiledKernel, PI.FIs.front().F);
+  GenObjectWrapper GOW(PI.CompiledKernel, PI.getEntryPoint());
   if (GOW.hasErrors())
-    vc::diagnose(PI.FIs.front().F.getContext(), "GenXDebugInfo",
+    vc::diagnose(GOW.getEntryPoint().getContext(), "GenXDebugInfo",
                  GOW.getError());
 
   LLVM_DEBUG(GOW.printDecodedGenXDebug(dbgs()));
@@ -1045,82 +1132,29 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   using EmitterHolder = std::unique_ptr<IGC::IDebugEmitter, decltype(Deleter)>;
   EmitterHolder Emitter(IGC::IDebugEmitter::Create(), Deleter);
 
-  using CompiledVisaWrappers =
-      std::vector<std::unique_ptr<CompiledVisaWrapper>>;
-  CompiledVisaWrappers CWs;
-  const auto &MVTI = PI.MVTI;
-  std::transform(PI.FIs.begin(), PI.FIs.end(), std::back_inserter(CWs),
-                 [&MVTI, &GOW](const auto &FI) {
-                   StringRef CompiledObjectName = FI.F.getName();
-                   if (MVTI.isSubroutine(&FI.F))
-                     CompiledObjectName =
-                         MVTI.getSubroutineOwner(&FI.F)->getName();
-                   return std::make_unique<CompiledVisaWrapper>(
-                       FI.F, CompiledObjectName, GOW);
-                 });
-  auto FaultyCwIt = std::find_if(
-      CWs.begin(), CWs.end(), [](const auto &CW) { return CW->hasErrors(); });
-
-  if (FaultyCwIt != CWs.end())
-    vc::diagnose(PI.FIs.front().F.getContext(), "GenXDebugInfo",
-                 (*FaultyCwIt)->getError());
-
   const auto &ST = getAnalysis<TargetPassConfig>()
       .getTM<GenXTargetMachine>()
       .getGenXSubtarget();
   auto &RA = getAnalysis<GenXVisaRegAlloc>();
 
-  auto PrepareEmitter =
-      [&Emitter](const GenXVisaRegAlloc &RA, const GenXSubtarget &ST,
-                 const IGC::DebugEmitterOpts &DebugOpts,
-                 CompiledVisaWrappers &CWs, const ProgramInfo &PI) {
-        using GenXFunctionList = std::vector<GenXFunction *>;
-        GenXFunctionList GFs;
+  GenXFunctionPtrList GFPointers = initializeDebugEmitter(
+      *Emitter, DebugOpts, PI,
+      translateProgramInfoToGenXFunctionObjects(GOW, PI, ST, RA));
 
-        IGC_ASSERT(CWs.size() == PI.FIs.size());
-        for (auto &&[FI, CW] : llvm::zip(PI.FIs, CWs)) {
-          bool IsPrimaryFunction = &FI.F == &PI.FIs.front().F;
-          auto GF = std::make_unique<GenXFunction>(ST, RA, FI.F, *CW,
-                                                   FI.VisaMapping,
-                                                   PI.MVTI,
-                                                   IsPrimaryFunction);
-          GFs.push_back(GF.get());
-          if (&FI.F == &PI.FIs.front().F) {
-            Emitter->Initialize(std::move(GF), DebugOpts);
-          } else {
-            Emitter->registerVISA(GF.get());
-            Emitter->resetModule(std::move(GF));
-          }
-        }
-        // Currently Debug Info Emitter expects that GenXFunctions are
-        // processed in the same order as they appear in the visa object
-        // (in terms of genisa instructions order)
-        std::sort(GFs.begin(), GFs.end(), [](auto *LGF, auto *RGF) {
-          const auto &LDI = LGF->getFinalizerDI();
-          const auto &RDI = RGF->getFinalizerDI();
-          return LDI.relocOffset < RDI.relocOffset;
-        });
-        return GFs;
-      };
-
-  auto &KF = PI.FIs.front().F;
+  auto &KF = GOW.getEntryPoint();
   IGC_ASSERT(ElfOutputs.count(&KF) == 0);
   auto &ElfBin = ElfOutputs[&KF];
-  std::string ErrLog;
 
-  std::vector<GenXFunction *> GenXFunctions =
-      PrepareEmitter(RA, ST, DebugOpts, CWs, PI);
-  for (auto *GF : GenXFunctions) {
+  for (auto *GF : GFPointers) {
     LLVM_DEBUG(dbgs() << "--- Processing GenXFunction:  "
                       << GF->getFunction()->getName().str() << " ---\n");
-    processGenXFunction(Emitter.get(), GF);
-    bool ExpectMore = GF != GenXFunctions.back();
+    processGenXFunction(*Emitter, *GF);
+    bool ExpectMore = GF != GFPointers.back();
     LLVM_DEBUG(dbgs() << "--- Starting Debug Info Finalization (final:  "
                       << !ExpectMore << ") ---\n");
     auto Out = Emitter->Finalize(!ExpectMore, &GF->getDIDecoder());
     if (!ExpectMore) {
       ElfBin = std::move(Out);
-      ErrLog = Emitter->getErrors();
     } else {
       IGC_ASSERT(Out.empty());
     }
@@ -1132,14 +1166,11 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
                     << "- " << ElfBin.size() << " bytes\n");
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
-  if (BC.dbgInfoDumpsEnabled())
+  if (BC.dbgInfoDumpsEnabled()) {
+    const auto &ErrLog = Emitter->getErrors();
     dumpDebugInfo(BC, KernelName, ElfBin, GOW.getGenDebug(),
                   {ErrLog.data(), ErrLog.size()});
-
-  // this reset is needed to gracefully cleanup resources held by CWs
-  GenXFunctions.clear();
-  Emitter.reset();
-  CWs.clear();
+  }
 
   return;
 }
