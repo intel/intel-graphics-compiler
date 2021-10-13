@@ -863,8 +863,8 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
         return CategoryAndAlignment(
             intrinsicCategoryToRegCategory(AI.getCategory()),
             getLogAlignment(AI.getAlignment(), Subtarget
-                                                   ? Subtarget->getGRFWidth()
-                                                   : defaultGRFWidth));
+                                                   ? Subtarget->getGRFByteSize()
+                                                   : defaultGRFByteSize));
       } else if (GenXIntrinsic::isRdRegion(IntrinsicID)) {
         // Add this to avoid conversion in case of read-region on SurfaceIndex
         // or SamplerIndex type
@@ -994,8 +994,8 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
             return CategoryAndAlignment(
                 intrinsicCategoryToRegCategory(AI.getCategory()),
                 getLogAlignment(AI.getAlignment(),
-                                Subtarget ? Subtarget->getGRFWidth()
-                                          : defaultGRFWidth));
+                                Subtarget ? Subtarget->getGRFByteSize()
+                                          : defaultGRFByteSize));
           }
           break;
           }

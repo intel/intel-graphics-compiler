@@ -320,7 +320,7 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
   // Determine the max valid width.
   unsigned ValidWidth = 1;
   IGC_ASSERT(ST);
-  unsigned GRFWidth = ST->getGRFWidth();
+  unsigned GRFWidth = ST->getGRFByteSize();
   int MaxStride = 4;
   unsigned LogGRFWidth = genx::log2(GRFWidth);
   if ((!Stride || exactLog2(Stride) >= 0) && (Allow2D || Stride <= MaxStride)) {

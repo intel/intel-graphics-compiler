@@ -1359,7 +1359,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
   }
   auto VT = cast<IGCLLVM::FixedVectorType>(C->getType());
   const unsigned NumElements = VT->getNumElements();
-  const unsigned GRFWidthInBits = Subtarget.getGRFWidth() * genx::ByteBits;
+  const unsigned GRFWidthInBits = Subtarget.getGRFByteSize() * genx::ByteBits;
   const unsigned ElementBits = DL.getTypeSizeInBits(VT->getElementType());
   unsigned MaxSize = 2 * GRFWidthInBits / ElementBits;
   MaxSize = std::min(MaxSize, 32U);
@@ -1396,7 +1396,7 @@ bool ConstantLoader::isLegalSize()
   const int NumBits = DL.getTypeSizeInBits(C->getType());
   if (!llvm::isPowerOf2_32(NumBits))
     return false;
-  const int GRFSizeInBits = Subtarget.getGRFWidth() * genx::ByteBits;
+  const int GRFSizeInBits = Subtarget.getGRFByteSize() * genx::ByteBits;
   if (NumBits > GRFSizeInBits * 2)
     return false; // bigger than 2 GRFs
   if (VT->getNumElements() > 32)
@@ -1582,10 +1582,10 @@ void ConstantLoader::analyze()
     return; // don't analyze if already a splat
   unsigned NumElements = VT->getNumElements();
   if (VT->getElementType()->isIntegerTy()) {
-    unsigned MaxSize = 2 * Subtarget.getGRFWidth(); // element type is boolean
+    unsigned MaxSize = 2 * Subtarget.getGRFByteSize(); // element type is boolean
     if (!VT->getElementType()->isIntegerTy(1)) {
       unsigned ElmSz = VT->getScalarSizeInBits() / genx::ByteBits;
-      MaxSize = 2 * Subtarget.getGRFWidth() / ElmSz;
+      MaxSize = 2 * Subtarget.getGRFByteSize() / ElmSz;
     }
     if (NumElements <= MaxSize)
       analyzeForPackedInt(NumElements);

@@ -1539,7 +1539,7 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
         BytesPerElement = InBytesPerElement;
     }
   }
-  unsigned int TwoGRFWidth = ST ? (2 * ST->getGRFWidth()) : 64;
+  unsigned int TwoGRFWidth = ST ? (2 * ST->getGRFByteSize()) : 64;
   if (BytesPerElement) {
     // Non-predicate result.
     if (Width * BytesPerElement > TwoGRFWidth)

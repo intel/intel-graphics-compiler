@@ -843,7 +843,7 @@ public:
     return 0;
   }
   unsigned getGRFSizeInBytes() const override {
-    return ST.getGRFWidth();
+    return ST.getGRFByteSize();
   }
   unsigned getNumGRFs() const override {
     return CompiledVisa.getJitInfo().numGRFTotal;

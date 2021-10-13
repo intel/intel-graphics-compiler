@@ -149,7 +149,7 @@ constexpr int G4_MAX_ADDR_IMM = 511;
 constexpr int G4_MIN_ADDR_IMM = -512;
 
 // Default GRF Width if subtarget is not available
-constexpr unsigned defaultGRFWidth = 32;
+constexpr unsigned defaultGRFByteSize = 32;
 
 // describe integer vector immediate (V, UV)
 enum ImmIntVec : int8_t {

@@ -122,7 +122,7 @@ void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
   LR->addValue(V);
   LiveRangeMap[V] = LR;
   LR->setAlignmentFromValue(
-      *DL, V, Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth);
+      *DL, V, Subtarget ? Subtarget->getGRFByteSize() : defaultGRFByteSize);
 }
 
 /***********************************************************************
@@ -570,7 +570,7 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
     LR->Values.push_back(V);
     i->second = LR;
     LR->setAlignmentFromValue(
-        *DL, V, Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth);
+        *DL, V, Subtarget ? Subtarget->getGRFByteSize() : defaultGRFByteSize);
   }
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   // Give the Value a name if it doesn't already have one.

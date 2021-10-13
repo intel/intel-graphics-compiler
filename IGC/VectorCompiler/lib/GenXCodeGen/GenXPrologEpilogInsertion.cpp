@@ -221,8 +221,8 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  ArgRegSize = visa::ArgRegSizeInGRFs * ST->getGRFWidth();
-  RetRegSize = visa::RetRegSizeInGRFs * ST->getGRFWidth();
+  ArgRegSize = visa::ArgRegSizeInGRFs * ST->getGRFByteSize();
+  RetRegSize = visa::RetRegSizeInGRFs * ST->getGRFByteSize();
   if (!(BEConf->useNewStackBuilder() && ST->isOCLRuntime())) {
     LLVM_DEBUG(dbgs() << "Old builder or CMRT used in " << F.getName() << "\n");
     return false;
@@ -343,7 +343,7 @@ void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
       ArgScalarType = IRB.getInt32Ty();
       AllowScalar = false;
     }
-    Offset += calcPadding(Offset, ST->getGRFWidth());
+    Offset += calcPadding(Offset, ST->getGRFByteSize());
     unsigned ArgSize = DL->getTypeSizeInBits(Arg.getType()) / genx::ByteBits;
     if (ForceArgMemPassing || Offset + ArgSize > ArgRegSize) {
       auto ReadVal = pop(Arg.getType(), IRB, Sp);
@@ -374,7 +374,7 @@ void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
       InstMD::FuncArgSize,
       MDNode::get(F.getContext(),
                   ConstantAsMetadata::get(IRB.getInt32(
-                      (Offset + ST->getGRFWidth() - 1) / ST->getGRFWidth()))));
+                      (Offset + ST->getGRFByteSize() - 1) / ST->getGRFByteSize()))));
 }
 
 //  if fits in %ARG:
@@ -460,7 +460,7 @@ void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
   F.setMetadata(InstMD::FuncRetSize,
                 MDNode::get(F.getContext(),
                             ConstantAsMetadata::get(IRB.getInt32(
-                                divideCeil(RetSize, ST->getGRFWidth())))));
+                                divideCeil(RetSize, ST->getGRFByteSize())))));
 }
 
 // write stack call args
@@ -488,7 +488,7 @@ unsigned GenXPrologEpilogInsertion::writeArgs(CallInst *CI, Value *SpArgs,
                                      ->getNumElements()),
                    1));
     }
-    Offset += calcPadding(Offset, ST->getGRFWidth());
+    Offset += calcPadding(Offset, ST->getGRFByteSize());
     auto ArgSize = DL->getTypeSizeInBits(Arg->getType()) / genx::ByteBits;
     auto *ArgRegType = IGCLLVM::FixedVectorType::get(
         Arg->getType()->getScalarType(),
@@ -643,7 +643,7 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
       InstMD::FuncArgSize,
       MDNode::get(CI->getContext(),
                   ConstantAsMetadata::get(IRB.getInt32(
-                      (Offset + ST->getGRFWidth() - 1) / ST->getGRFWidth()))));
+                      (Offset + ST->getGRFByteSize() - 1) / ST->getGRFByteSize()))));
   bool isVoidCall = CI->getType()->isVoidTy();
   CI->setMetadata(
       InstMD::FuncRetSize,
@@ -652,7 +652,7 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
                       (isVoidCall ? 0
                                   : (DL->getTypeSizeInBits(CI->getType())) /
                                         genx::ByteBits),
-                      ST->getGRFWidth())))));
+                      ST->getGRFByteSize())))));
   if (isVoidCall)
     return;
 

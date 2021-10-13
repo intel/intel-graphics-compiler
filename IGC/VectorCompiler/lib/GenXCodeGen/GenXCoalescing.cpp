@@ -829,8 +829,8 @@ unsigned GenXCoalescing::getPriority(Type *Ty, BasicBlock *BB) const
 
   // Estimate number of moves required for this type.
   unsigned VecWidth = vc::getTypeSize(Ty, DL).inBytes();
-  unsigned Priority = VecWidth / ST->getGRFWidth() +
-    countPopulation(VecWidth % ST->getGRFWidth());
+  unsigned Priority = VecWidth / ST->getGRFByteSize() +
+    countPopulation(VecWidth % ST->getGRFByteSize());
   // Scale by loop depth.
   Priority *= std::pow(LoopScale,
       getLoopInfo(BB->getParent())->getLoopDepth(BB));
@@ -1042,7 +1042,7 @@ void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
     // This happens with a bitcast inserted in GenXLiveRanges to resolve
     // an overlapping circular phi, but can happen in other cases too.
     unsigned TySz = vc::getTypeSize(Dest.getValue()->getType(), DL).inBytes();
-    if (isPowerOf2_32(TySz) && TySz <= ST->getGRFWidth()) {
+    if (isPowerOf2_32(TySz) && TySz <= ST->getGRFByteSize()) {
       // This is a bitcast with a legal size for a single copy. We do not
       // insert a copy, because GenXCisaBuilder will generate one.
       // (GenXLegalization does not legalize a bitcast, so it can be

@@ -492,7 +492,7 @@ void GenXArgIndirection::gatherArgLRs()
     for (auto ai = (*fgi)->arg_begin(), ae = (*fgi)->arg_end(); ai != ae; ++ai) {
       Argument *Arg = &*ai;
       // Only process an arg that is bigger than 2 GRFs.
-      if (Arg->getType()->getPrimitiveSizeInBits() <= ST->getGRFWidth() * 16)
+      if (Arg->getType()->getPrimitiveSizeInBits() <= ST->getGRFByteSize() * 16)
         continue;
       LiveRange *LR = Liveness->getLiveRange(Arg);
       if (Seen.insert(LR).second)
@@ -595,10 +595,10 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
   }
   // Get the worst case alignment of the indices from the call sites if we
   // indirect this arg.
-  Alignment Align = Alignment(genx::log2(ST->getGRFWidth()), 0);
+  Alignment Align = Alignment(genx::log2(ST->getGRFByteSize()), 0);
   for (auto SubrArg = SubrArgs.begin(), e = SubrArgs.end();
       SubrArg != e; ++SubrArg) {
-    auto ThisAlign = SubrArg->getIndirectAlignment(ST->getGRFWidth());
+    auto ThisAlign = SubrArg->getIndirectAlignment(ST->getGRFByteSize());
     Align = Align.merge(ThisAlign);
   }
   // Gather the bales that need indirecting, and check whether indirection is
@@ -1146,7 +1146,7 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
     // Check for things about the main instruction that stop us indexing
     // operand(s) or result in this bale.
     if (MainInst->Inst->getType()->getPrimitiveSizeInBits() / genx::ByteBits >
-            ST->getGRFWidth() &&
+            ST->getGRFByteSize() &&
         !ST->hasIndirectGRFCrossing()) {
       // An execution size bigger than 1 GRF disqualifies the main
       // instruction on <= BDW.

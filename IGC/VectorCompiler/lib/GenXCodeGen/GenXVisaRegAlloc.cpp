@@ -112,12 +112,12 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   RegStorage.emplace_back(
       RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_ARG,
       IGCLLVM::FixedVectorType::get(Type::getInt8Ty(FGArg.getContext()),
-                      visa::ArgRegSizeInGRFs * ST->getGRFWidth()));
+                      visa::ArgRegSizeInGRFs * ST->getGRFByteSize()));
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
       RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_RET,
       IGCLLVM::FixedVectorType::get(Type::getInt8Ty(FGArg.getContext()),
-                      visa::RetRegSizeInGRFs * ST->getGRFWidth()));
+                      visa::RetRegSizeInGRFs * ST->getGRFByteSize()));
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
       RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_FE_SP,

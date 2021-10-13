@@ -527,7 +527,7 @@ class GenXKernelBuilder {
   bool HasAlloca = false;
   bool UseNewStackBuilder = false;
   // GRF width in unit of byte
-  unsigned GrfByteSize = defaultGRFWidth;
+  unsigned GrfByteSize = defaultGRFByteSize;
 
   unsigned LastLine = 0;
   unsigned PendingLine = 0;
@@ -1000,7 +1000,7 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
       NumGRFs = std::max(HasImplicit ? 1U : 0U, NumGRFs);
     }
 
-    uint16_t Bytes = NumGRFs * Subtarget->getGRFWidth();
+    uint16_t Bytes = NumGRFs * Subtarget->getGRFByteSize();
     Kernel.AddKernelAttribute("PerThreadInputSize", sizeof(Bytes), &Bytes);
   }
 
@@ -1136,7 +1136,7 @@ void GenXKernelBuilder::runOnKernel() {
 }
 
 bool GenXKernelBuilder::run() {
-  GrfByteSize = Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth;
+  GrfByteSize = Subtarget ? Subtarget->getGRFByteSize() : defaultGRFByteSize;
   StackSurf = Subtarget ? Subtarget->stackSurface() : PREDEFINED_SURFACE_STACK;
 
   UseNewStackBuilder =
@@ -3047,8 +3047,8 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
     // determine the biggest alignment required. If the register is at least
     // as big as a GRF, make the alignment GRF.
     unsigned Alignment = getLogAlignment(
-        VISA_Align::ALIGN_GRF, Subtarget ? Subtarget->getGRFWidth()
-                                         : defaultGRFWidth); // GRF alignment
+        VISA_Align::ALIGN_GRF, Subtarget ? Subtarget->getGRFByteSize()
+                                         : defaultGRFByteSize); // GRF alignment
     Type *Ty = Reg.Ty;
     unsigned NBits = Ty->isPointerTy() ? DL.getPointerSizeInBits()
                                        : Ty->getPrimitiveSizeInBits();
@@ -3096,7 +3096,7 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
   LLVM_DEBUG(dbgs() << "Resulting #of elements: " << TD.NumElements << "\n");
 
   VISA_Align VA = getVISA_Align(
-      Reg.Alignment, Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth);
+      Reg.Alignment, Subtarget ? Subtarget->getGRFByteSize() : defaultGRFByteSize);
   CISA_CALL(Kernel->CreateVISAGenVar(Decl, Reg.NameStr.c_str(), TD.NumElements,
                                      static_cast<VISA_Type>(TD.VisaType), VA,
                                      parentDecl, 0));
@@ -5610,7 +5610,7 @@ void GenXKernelBuilder::emitVectorCopy(T1 *Dst, T2 *Src, unsigned &RowOff,
                                        unsigned &SrcColOff, int TotalSize,
                                        bool DoCopy) {
   IGC_ASSERT(Subtarget);
-  auto partCopy = [&, GRFWidth = Subtarget->getGRFWidth()](int Sz) {
+  auto partCopy = [&, GRFWidth = Subtarget->getGRFByteSize()](int Sz) {
     int ByteSz = Sz * deduceByteSize(Dst, DL);
     IGC_ASSERT(ByteSz);
 

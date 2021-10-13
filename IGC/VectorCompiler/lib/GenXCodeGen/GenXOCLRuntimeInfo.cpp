@@ -343,7 +343,7 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
                                            const GenXBackendConfig &BC) {
   setInstructionUsageProperties(FG, BC);
 
-  GRFSizeInBytes = ST.getGRFWidth();
+  GRFSizeInBytes = ST.getGRFByteSize();
 
   int StackAmount = genx::getStackAmount(FG.getHead());
   if (StackAmount == genx::VC_STACK_USAGE_UNKNOWN)

@@ -1808,7 +1808,7 @@ bool genx::isValueRegionOKForRaw(Value *V, bool IsWrite,
 }
 
 bool genx::isRegionOKForRaw(const genx::Region &R, const GenXSubtarget *ST) {
-  unsigned GRFWidth = ST ? ST->getGRFWidth() : 32;
+  unsigned GRFWidth = ST ? ST->getGRFByteSize() : 32;
   if (R.Indirect)
     return false;
   else if (R.Offset & (GRFWidth - 1)) // GRF boundary check

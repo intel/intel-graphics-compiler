@@ -256,7 +256,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
   unsigned Restriction = AI.getRestriction();
   if (!Restriction)
     return true;
-  unsigned GRFWidth = ST ? ST->getGRFWidth() : defaultGRFWidth;
+  unsigned GRFWidth = ST ? ST->getGRFByteSize() : defaultGRFByteSize;
   unsigned ElementsPerGrf = GRFWidth / R.ElementBytes;
   unsigned GRFLogAlign = Log2_32(GRFWidth);
   if (AI.Info & GenXIntrinsicInfo::GRFALIGNED) {
@@ -625,7 +625,7 @@ void GenXBaling::processWrRegion(Instruction *Inst)
           !GenXIntrinsic::isRdRegion(V) && !GenXIntrinsic::isWrRegion(V) &&
           (II.getRetInfo().getCategory() == GenXIntrinsicInfo::RAW))
         Liveness->getOrCreateLiveRange(Inst)->LogAlignment = getLogAlignment(
-            VISA_Align::ALIGN_GRF, ST ? ST->getGRFWidth() : defaultGRFWidth);
+            VISA_Align::ALIGN_GRF, ST ? ST->getGRFByteSize() : defaultGRFByteSize);
     }
   }
   // Now see if there is a variable index with an add/sub with an in range
@@ -1431,7 +1431,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
                 Opnd = cast<Instruction>(Opnd)->getOperand(0);
                 Liveness->getOrCreateLiveRange(Opnd)->LogAlignment =
                     getLogAlignment(VISA_Align::ALIGN_GRF,
-                                    ST ? ST->getGRFWidth() : defaultGRFWidth);
+                                    ST ? ST->getGRFByteSize() : defaultGRFByteSize);
               }
             }
             break;

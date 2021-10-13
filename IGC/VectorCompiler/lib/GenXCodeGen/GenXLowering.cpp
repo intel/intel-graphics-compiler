@@ -3117,7 +3117,7 @@ CallInst *buildLegalMadw(ArrayRef<Value *> Args, bool Signed, const Twine &Name,
                          Args[0]->getType()->isIntOrIntVectorTy(),
                      "madw support only i32 vector types");
 
-  unsigned TargetWidth = ST.getGRFWidth() / genx::DWordBytes;
+  unsigned TargetWidth = ST.getGRFByteSize() / genx::DWordBytes;
   auto *VecTy = cast<IGCLLVM::FixedVectorType>(Args[0]->getType());
   unsigned OpWidth = VecTy->getNumElements();
   IGC_ASSERT_MESSAGE(OpWidth <= TargetWidth && isPowerOf2_32(OpWidth),
@@ -3190,7 +3190,7 @@ static MadwRes buildMadw(ArrayRef<Value *> Args, bool Signed, const Twine &Name,
 
   auto *OpTy = cast<IGCLLVM::FixedVectorType>(Args[0]->getType());
   unsigned OpWidth = OpTy->getNumElements();
-  unsigned TargetWidth = ST.getGRFWidth() / genx::DWordBytes;
+  unsigned TargetWidth = ST.getGRFByteSize() / genx::DWordBytes;
 
   if (OpWidth <= TargetWidth && isPowerOf2_32(OpWidth)) {
     CallInst *Madw = buildLegalMadw(Args, Signed, Name, ST, IRB);

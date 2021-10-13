@@ -123,7 +123,7 @@ public:
   GenXSubtarget(const Triple &TT, const std::string &CPU,
                 const std::string &FS);
 
-  unsigned getGRFWidth() const { return 32; }
+  unsigned getGRFByteSize() const { return 32; }
 
   bool isOCLRuntime() const { return OCLRuntime; }
 
