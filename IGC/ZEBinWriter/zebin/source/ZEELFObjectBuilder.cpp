@@ -742,7 +742,7 @@ void ELFWriter::writeHeader()
     m_W.OS << char(ELF::ELFDATA2LSB);
 
     // e_ident[EI_VERSION]
-    m_W.OS << char(0);
+    m_W.OS << char(ELF::EV_CURRENT);
 
     // e_ident padding
     m_W.OS.write_zeros(ELF::EI_NIDENT - ELF::EI_OSABI);
@@ -754,7 +754,7 @@ void ELFWriter::writeHeader()
     m_W.write<uint16_t>(EM_INTELGT);
 
     // e_version
-    m_W.write<uint32_t>(0);
+    m_W.write<uint32_t>(ELF::EV_CURRENT);
 
     // e_entry, no entry point
     writeWord(0);
