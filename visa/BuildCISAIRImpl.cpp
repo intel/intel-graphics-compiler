@@ -1060,7 +1060,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         return m_cisaBinary->dumpToStream(os);
     }
 
-    if (m_options.getuInt32Option(vISA_Linker) != Linker_Disabled)
+    if (m_options.getuInt32Option(vISA_Linker) & Linker_Subroutine)
     {
         std::map<std::string, G4_Kernel*> functionsNameMap;
         G4_Kernel* mainFunc = m_kernelsAndFunctions.front()->getKernel();
@@ -1077,11 +1077,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         RemoveOptimizingFunction(m_kernelsAndFunctions, sgInvokeList);
 
         // Copy callees' context to callers and convert to subroutine calls
-        if (m_options.getuInt32Option(vISA_Linker) & Linker_Subroutine)
-        {
-            LinkTimeOptimization(sgInvokeList,
-                    m_options.getuInt32Option(vISA_Linker));
-        }
+        LinkTimeOptimization(sgInvokeList,
+                m_options.getuInt32Option(vISA_Linker));
     }
 
 
