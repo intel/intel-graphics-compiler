@@ -4830,9 +4830,7 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
 void
 SPIRVToLLVM::transSourceLanguage() {
   SPIRVWord Ver = 0;
-  auto DwarfLang =
-    static_cast<llvm::dwarf::SourceLanguage>(BM->getSourceLanguage(&Ver));
-  SpvSourceLanguage Lang = convertDWARFSourceLangToSPIRV(DwarfLang);
+  SpvSourceLanguage Lang = BM->getSourceLanguage(&Ver);
   if (Lang == SpvSourceLanguageOpenCL_C || Lang == SpvSourceLanguageOpenCL_CPP) {
     unsigned short Major = 0;
     unsigned char Minor = 0;

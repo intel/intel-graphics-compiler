@@ -1253,7 +1253,7 @@ inline igc_spv::SpvSourceLanguage convertDWARFSourceLangToSPIRV(dwarf::SourceLan
 
     // LLVM does not yet define DW_LANG_C_plus_plus_17
     // case dwarf::SourceLanguage::DW_LANG_C_plus_plus_17:
-  case llvm::dwarf::SourceLanguage::DW_LANG_C_plus_plus_14:
+  case dwarf::SourceLanguage::DW_LANG_C_plus_plus_14:
   case dwarf::SourceLanguage::DW_LANG_C_plus_plus:
     return igc_spv::SpvSourceLanguage::SpvSourceLanguageCPP_for_OpenCL;
   case dwarf::SourceLanguage::DW_LANG_C99:
