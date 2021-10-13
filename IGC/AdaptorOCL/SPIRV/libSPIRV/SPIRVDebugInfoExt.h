@@ -16,9 +16,12 @@ SPDX-License-Identifier: MIT
 #ifndef SPIRVDEBUGINFOEXT_HPP_
 #define SPIRVDEBUGINFOEXT_HPP_
 
+#include <llvm/BinaryFormat/Dwarf.h>
+
 #include "SPIRVEntry.h"
 #include "SPIRVInstruction.h"
 #include "SPIRVExtInst.h"
+#include "spirv.hpp"
 
 namespace igc_spv {
 
@@ -1239,6 +1242,48 @@ namespace igc_spv {
         SPIRVWord getColumn() { return arg<SPIRVId>(SPIRVDebug::Operand::ImportedEntity::ColumnIdx); }
         SPIRVId getParent() { return arg<SPIRVId>(SPIRVDebug::Operand::ImportedEntity::ParentIdx); }
     };
+}
+
+using namespace llvm;
+
+inline igc_spv::SpvSourceLanguage convertDWARFSourceLangToSPIRV(dwarf::SourceLanguage DwarfLang) {
+    switch (DwarfLang) {
+        // When updating this function, make sure to also
+        // update convertSPIRVSourceLangToDWARF()
+
+        // LLVM does not yet define DW_LANG_C_plus_plus_17
+        // case dwarf::SourceLanguage::DW_LANG_C_plus_plus_17:
+    case dwarf::SourceLanguage::DW_LANG_C_plus_plus_14:
+    case dwarf::SourceLanguage::DW_LANG_C_plus_plus:
+        return igc_spv::SpvSourceLanguage::SpvSourceLanguageCPP_for_OpenCL;
+    case dwarf::SourceLanguage::DW_LANG_C99:
+    case dwarf::SourceLanguage::DW_LANG_OpenCL:
+        return igc_spv::SpvSourceLanguage::SpvSourceLanguageOpenCL_C;
+    default:
+        return igc_spv::SpvSourceLanguage::SpvSourceLanguageUnknown;
+    }
+}
+
+inline dwarf::SourceLanguage convertSPIRVSourceLangToDWARF(unsigned SourceLang) {
+    switch (SourceLang) {
+        // When updating this function, make sure to also
+        // update convertDWARFSourceLangToSPIRV()
+    case igc_spv::SpvSourceLanguage::SpvSourceLanguageOpenCL_CPP:
+        return dwarf::SourceLanguage::DW_LANG_C_plus_plus_14;
+    case igc_spv::SpvSourceLanguage::SpvSourceLanguageCPP_for_OpenCL:
+        // LLVM does not yet define DW_LANG_C_plus_plus_17
+        // SourceLang = dwarf::SourceLanguage::DW_LANG_C_plus_plus_17;
+        return dwarf::SourceLanguage::DW_LANG_C_plus_plus_14;
+    case igc_spv::SpvSourceLanguage::SpvSourceLanguageOpenCL_C:
+    case igc_spv::SpvSourceLanguage::SpvSourceLanguageESSL:
+    case igc_spv::SpvSourceLanguage::SpvSourceLanguageGLSL:
+    case igc_spv::SpvSourceLanguage::SpvSourceLanguageHLSL:
+    case igc_spv::SpvSourceLanguage::SpvSourceLanguageUnknown:
+        return dwarf::DW_LANG_OpenCL;
+    default:
+        // Workaround on frontends generating SPIR-V out of SpvSourceLanguage scope.
+        return (dwarf::SourceLanguage)SourceLang;
+    }
 }
 
 #endif

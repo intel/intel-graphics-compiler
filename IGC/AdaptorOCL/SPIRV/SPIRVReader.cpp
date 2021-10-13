@@ -207,7 +207,7 @@ public:
 
       OpCompilationUnit cunit(BM->getCompilationUnit());
 
-      auto lang = cunit.getLang();
+      auto lang = convertSPIRVSourceLangToDWARF(cunit.getLang());
       auto file = getDIFile(BM->get<SPIRVExtInst>(cunit.getSource()));
       auto producer = "spirv";
       auto flags = "";
