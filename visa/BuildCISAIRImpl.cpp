@@ -250,6 +250,10 @@ int CISA_IR_Builder::CreateBuilder(
         return VISA_FAILURE;
     }
 
+#if defined(_DEBUG) || defined(_INTERNAL)
+    builder->m_options.getOptionsFromEV();
+#endif
+
     // This should not matter anymore since each kernel should set its Target attribute to 3D/CM
     auto targetMode = VISA_3D;
     builder->m_options.setTarget(targetMode);
@@ -983,11 +987,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 {
     stopTimer(TimerID::BUILDER);   // TIMER_BUILDER is started when builder is created
     int status = VISA_SUCCESS;
-
-#if defined(_DEBUG) || defined(_INTERNAL)
-    m_options.getOptionsFromEV();
-#endif
-
     std::string name = std::string(nameInput);
 
     if (IS_VISA_BOTH_PATH)
