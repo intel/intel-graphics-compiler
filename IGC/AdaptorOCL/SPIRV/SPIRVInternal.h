@@ -247,8 +247,8 @@ SPIRVMap<std::string, Op>::init() {
 #define _SPIRV_OP(x,y) add(#x, OpType##y);
     _SPIRV_OP(opencl.event_t, Event)
     _SPIRV_OP(opencl.pipe_t, Pipe)
-    _SPIRV_OP(spirv.ReserveId, ReserveId)
     _SPIRV_OP(spirv.DeviceEvent, DeviceEvent)
+    _SPIRV_OP(opencl.reserve_id_t, ReserveId)
     _SPIRV_OP(spirv.Queue, Queue)
 #undef _SPIRV_OP
 }
@@ -751,8 +751,7 @@ namespace kSPIRVTypeName {
   const static char SampledImage[] = "OpTypeSampledImage";
   const static char Sampler[] = "OpTypeSampler";
   const static char Image[] = "Image";
-  const static char Pipe[] = "Pipe";
-  const static char ReserveId[] = "ReserveId";
+  const static char Pipe[] = "OpTypePipe";
   const static char PrefixAndDelim[] = "spirv.";
   const static char PostfixDelim = '_';
 }

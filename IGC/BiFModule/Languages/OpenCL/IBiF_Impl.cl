@@ -222,22 +222,17 @@ INLINE int OVERLOADABLE work_group_all(int predicate)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-#define to_spirv_pipe_ro(p) __builtin_astype(p, __spirv_Pipe_ro)
-#define to_spirv_pipe_wo(p) __builtin_astype(p, __spirv_Pipe_wo)
-#define to_spirv_reserveid(p) __builtin_astype(p, __spirv_ReserveId)
-#define to_ocl_reserveid(p) __builtin_astype(p, reserve_id_t)
-
 /////////////////////////////////////////////////////////////////////
 // Basic Reads and Writes
 
 int __read_pipe_2( read_only pipe int pipe_, __generic void* data, uint bytes, uint alignment )
 {
-    return SPIRV_BUILTIN(ReadPipe, _Pipe_ro_p4i8_i32, )(to_spirv_pipe_ro(pipe_), data, bytes);
+    return __builtin_spirv_OpReadPipe_i64_p4i8_i32(pipe_, data, bytes);
 }
 
 int __write_pipe_2( write_only pipe int pipe_, __generic const void* data, uint bytes, uint alignment)
 {
-    return SPIRV_BUILTIN(WritePipe, _Pipe_wo_p4i8_i32, )(to_spirv_pipe_wo(pipe_), data, bytes);
+    return __builtin_spirv_OpWritePipe_i64_p4i8_i32(pipe_, data, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -246,7 +241,7 @@ int __write_pipe_2( write_only pipe int pipe_, __generic const void* data, uint 
 bool OVERLOADABLE is_valid_reserve_id(
   reserve_id_t reserve_id )
 {
-    return SPIRV_BUILTIN(IsValidReserveId, _ReserveId, )(to_spirv_reserveid(reserve_id));
+    return __builtin_spirv_OpIsValidReserveId_i64(reserve_id);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -255,22 +250,22 @@ bool OVERLOADABLE is_valid_reserve_id(
 // NOTE: The pipe's packet type doesn't affect mangling.
 reserve_id_t __reserve_read_pipe( read_only pipe int pipe_, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(SPIRV_BUILTIN(ReserveReadPipePackets, _Pipe_ro_i32_i32, )(to_spirv_pipe_ro(pipe_), num_packets, bytes));
+    return __builtin_spirv_OpReserveReadPipePackets_i64_i32_i32(pipe_, num_packets, bytes);
 }
 
 reserve_id_t __reserve_write_pipe( write_only pipe int pipe_, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(SPIRV_BUILTIN(ReserveWritePipePackets, _Pipe_wo_i32_i32, )(to_spirv_pipe_wo(pipe_), num_packets, bytes));
+    return __builtin_spirv_OpReserveWritePipePackets_i64_i32_i32(pipe_, num_packets, bytes);
 }
 
 void __commit_read_pipe( read_only pipe int pipe_, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    SPIRV_BUILTIN(CommitReadPipe, _Pipe_ro_ReserveId_i32, )(to_spirv_pipe_ro(pipe_), to_spirv_reserveid(reserve_id), bytes);
+    __builtin_spirv_OpCommitReadPipe_i64_i64_i32(pipe_, reserve_id, bytes);
 }
 
 void __commit_write_pipe( write_only pipe int pipe_, reserve_id_t reserve_id, uint bytes, uint alignment)
 {
-    SPIRV_BUILTIN(CommitWritePipe, _Pipe_wo_ReserveId_i32, )(to_spirv_pipe_wo(pipe_), to_spirv_reserveid(reserve_id), bytes);
+    __builtin_spirv_OpCommitWritePipe_i64_i64_i32(pipe_, reserve_id, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -280,13 +275,13 @@ void __commit_write_pipe( write_only pipe int pipe_, reserve_id_t reserve_id, ui
 
 int __read_pipe_4( read_only pipe int pipe_, reserve_id_t reserve_id, uint index, __generic void* data, uint bytes, uint alignment)
 {
-    return SPIRV_BUILTIN(ReservedReadPipe, _Pipe_ro_ReserveId_i32_p4i8_i32, )(to_spirv_pipe_ro(pipe_), to_spirv_reserveid(reserve_id), index, data, bytes);
+    return __builtin_spirv_OpReservedReadPipe_i64_i64_i32_p4i8_i32(pipe_, reserve_id, index, data, bytes);
 }
 
 // write_pipe with 4 explicit arguments
 int __write_pipe_4( write_only pipe int pipe_, reserve_id_t reserve_id, uint index, __generic const void* data, uint bytes, uint alignment)
 {
-    return SPIRV_BUILTIN(ReservedWritePipe, _Pipe_wo_ReserveId_i32_p4i8_i32, )(to_spirv_pipe_wo(pipe_), to_spirv_reserveid(reserve_id), index, data, bytes);
+    return __builtin_spirv_OpReservedWritePipe_i64_i64_i32_p4i8_i32(pipe_, reserve_id, index, data, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -296,22 +291,22 @@ bool __intel_is_first_work_group_item( void );
 
 reserve_id_t __work_group_reserve_read_pipe( read_only pipe int p, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(SPIRV_BUILTIN(GroupReserveReadPipePackets, _i32_Pipe_ro_i32_i32, )(Workgroup, to_spirv_pipe_ro(p), num_packets, bytes));
+    return __builtin_spirv_OpGroupReserveReadPipePackets_i32_i64_i32_i32(Workgroup, p, num_packets, bytes);
 }
 
 reserve_id_t __work_group_reserve_write_pipe( write_only pipe int p, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(SPIRV_BUILTIN(GroupReserveWritePipePackets, _i32_Pipe_wo_i32_i32, )(Workgroup, to_spirv_pipe_wo(p), num_packets, bytes));
+    return __builtin_spirv_OpGroupReserveWritePipePackets_i32_i64_i32_i32(Workgroup, p, num_packets, bytes);
 }
 
 void __work_group_commit_read_pipe( read_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    SPIRV_BUILTIN(GroupCommitReadPipe, _i32_Pipe_ro_ReserveId_i32, )(Workgroup, to_spirv_pipe_ro(p), to_spirv_reserveid(reserve_id), bytes);
+    __builtin_spirv_OpGroupCommitReadPipe_i32_i64_i64_i32(Workgroup, p, reserve_id, bytes);
 }
 
 void __work_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    SPIRV_BUILTIN(GroupCommitWritePipe, _i32_Pipe_wo_ReserveId_i32, )(Workgroup, to_spirv_pipe_wo(p), to_spirv_reserveid(reserve_id), bytes);
+    __builtin_spirv_OpGroupCommitWritePipe_i32_i64_i64_i32(Workgroup, p, reserve_id, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -319,22 +314,22 @@ void __work_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve
 // Note: Not supporting this for intel sub groups (yet?).
 reserve_id_t __sub_group_reserve_read_pipe( read_only pipe int p, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(SPIRV_BUILTIN(GroupReserveReadPipePackets, _i32_Pipe_ro_i32_i32, )(Subgroup, to_spirv_pipe_ro(p), num_packets, bytes));
+    return __builtin_spirv_OpGroupReserveReadPipePackets_i32_i64_i32_i32(Subgroup, p, num_packets, bytes);
 }
 
 reserve_id_t __sub_group_reserve_write_pipe( write_only pipe int p, uint num_packets, uint bytes, uint alignment )
 {
-    return to_ocl_reserveid(SPIRV_BUILTIN(GroupReserveWritePipePackets, _i32_Pipe_wo_i32_i32, )(Subgroup, to_spirv_pipe_wo(p), num_packets, bytes));
+    return __builtin_spirv_OpGroupReserveWritePipePackets_i32_i64_i32_i32(Subgroup, p, num_packets, bytes);
 }
 
 void __sub_group_commit_read_pipe( read_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    SPIRV_BUILTIN(GroupCommitReadPipe, _i32_Pipe_ro_ReserveId_i32, )(Subgroup, to_spirv_pipe_ro(p), to_spirv_reserveid(reserve_id), bytes);
+    __builtin_spirv_OpGroupCommitReadPipe_i32_i64_i64_i32(Subgroup, p, reserve_id, bytes);
 }
 
 void __sub_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
 {
-    SPIRV_BUILTIN(GroupCommitWritePipe, _i32_Pipe_wo_ReserveId_i32, )(Subgroup, to_spirv_pipe_wo(p), to_spirv_reserveid(reserve_id), bytes);
+    __builtin_spirv_OpGroupCommitWritePipe_i32_i64_i64_i32(Subgroup, p, reserve_id, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -342,34 +337,13 @@ void __sub_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve_
 //
 uint __get_pipe_num_packets(pipe int pipe_, uint bytes, uint alignment)
 {
-    return SPIRV_BUILTIN(GetNumPipePackets, _Pipe_ro_i32, )(to_spirv_pipe_ro(pipe_), bytes);
-}
-
-uint __get_pipe_num_packets_ro(pipe int pipe_, uint bytes, uint alignment)
-{
-    return SPIRV_BUILTIN(GetNumPipePackets, _Pipe_ro_i32, )(to_spirv_pipe_ro(pipe_), bytes);
-}
-
-uint __get_pipe_num_packets_wo(write_only pipe int pipe_, uint bytes, uint alignment)
-{
-    return SPIRV_BUILTIN(GetNumPipePackets, _Pipe_wo_i32, )(to_spirv_pipe_wo(pipe_), bytes);
+    return __builtin_spirv_OpGetNumPipePackets_i64_i32(pipe_, bytes);
 }
 
 uint __get_pipe_max_packets(pipe int pipe_, uint bytes, uint alignment)
 {
-    return SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_ro_i32, )(to_spirv_pipe_ro(pipe_), bytes);
+    return __builtin_spirv_OpGetMaxPipePackets_i64_i32(pipe_, bytes);
 }
-
-uint __get_pipe_max_packets_ro(pipe int pipe_, uint bytes, uint alignment)
-{
-    return SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_ro_i32, )(to_spirv_pipe_ro(pipe_), bytes);
-}
-
-uint __get_pipe_max_packets_wo(write_only pipe int pipe_, uint bytes, uint alignment)
-{
-    return SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_wo_i32, )(to_spirv_pipe_wo(pipe_), bytes);
-}
-
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 // Internal Debug Built-Ins (TODO: implement for IGC?)
