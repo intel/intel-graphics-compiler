@@ -155,11 +155,6 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
         Instruction* accessInst = cast<Instruction>(inst.first);
         Argument* srcPtr = cast<Argument>(inst.second);
 
-        if (!modMD->compOpt.UseLegacyBindlessMode)
-        {
-            srcPtr = implicitArgs.getNumberedImplicitArg(F, ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo());
-        }
-
         Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
         accessInst->replaceUsesOfWith(srcPtr, nullSrcPtr);
         if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
@@ -181,18 +176,20 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
         Instruction* accessInst = cast<Instruction>(inst.first);
         Argument* srcPtr = cast<Argument>(inst.second);
 
-        if (!modMD->compOpt.UseLegacyBindlessMode)
-        {
-            srcPtr = implicitArgs.getNumberedImplicitArg(F, ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo());
-        }
-
         // Get the base bindless pointer
         IGCIRBuilder<> builder(accessInst);
         Value* resourcePtr = IGC::GetBufferOperand(accessInst);
         unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS);
         PointerType* basePointerType = PointerType::get(resourcePtr->getType()->getPointerElementType(), bindlessAS);
-        Value* basePointer = builder.CreatePointerCast(srcPtr, basePointerType);
         Value* bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
+
+        Value* basePointer = nullptr;
+        if (!modMD->compOpt.UseLegacyBindlessMode) {
+            Argument * srcOffset = implicitArgs.getNumberedImplicitArg(F, ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo());
+            basePointer = builder.CreateIntToPtr(srcOffset, basePointerType);
+        } else {
+            basePointer = builder.CreatePointerCast(srcPtr, basePointerType);
+        }
 
         if (LoadInst * load = dyn_cast<LoadInst>(accessInst))
         {
