@@ -470,6 +470,32 @@ G4_Kernel* CISA_IR_Builder::GetCalleeKernel(G4_INST* fcall)
     return iter->second;
 }
 
+void CISA_IR_Builder::ResetHasStackCall(
+    std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+    std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>>& callSites)
+{
+    for (auto& [func, callsites] : callSites)
+    {
+        bool hasStackCall = false;
+        for (auto& it : callsites)
+        {
+            G4_INST* fcall = *it;
+            assert(fcall->opcode() == G4_pseudo_fcall);
+            bool isInSgInvokeList = std::find(sgInvokeList.begin(), sgInvokeList.end(), it) != sgInvokeList.end();
+            if (!isInSgInvokeList)
+            {
+                hasStackCall = true;
+                break;
+            }
+        }
+        if (!hasStackCall)
+        {
+            func->fg.resetHasStackCalls();
+        }
+    }
+}
+
+
 void CISA_IR_Builder::CheckHazardFeatures(
     std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
     std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>>& callSites)
@@ -1073,6 +1099,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         assert(callSites.begin()->first == mainFunc);
 
         CheckHazardFeatures(sgInvokeList, callSites);
+
+        ResetHasStackCall(sgInvokeList, callSites);
 
         RemoveOptimizingFunction(m_kernelsAndFunctions, sgInvokeList);
 

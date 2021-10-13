@@ -894,6 +894,11 @@ private:
             std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
             std::unordered_map<vISA::G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callSites);
 
+    // Reset hasStackCalls if all calls in a function are converted to subroutine calls or inlined
+    void ResetHasStackCall(
+            std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+            std::unordered_map<vISA::G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callSites);
+
     // Remove sgInvoke functions out of function list to avoid redundant compilation
     void RemoveOptimizingFunction(
             std::list<VISAKernelImpl *>& functions,

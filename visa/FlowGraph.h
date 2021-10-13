@@ -346,6 +346,7 @@ public:
 
     bool getHasStackCalls() const { return hasStackCalls; }
     void setHasStackCalls() { hasStackCalls = true; }
+    void resetHasStackCalls() { hasStackCalls = false;}
 
     bool getIsStackCallFunc() const {return isStackCallFunc;}
     void setIsStackCallFunc() {isStackCallFunc = true;}
