@@ -526,8 +526,8 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     // there's no way to trace down.
     bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) && (WI->isUniform(LeadingLoad));
     if (isUniformLoad) {
-        unsigned C = IGC_GET_FLAG_VALUE(UniformMemOptLimit);
-        if (C == 0) C = 256;
+        unsigned C = IGC_GET_FLAG_VALUE(UniformMemOpt4OW);
+        C = (C == 1) ? 512 : 256;
         C /= TypeSizeInBits;
         for (; C >= 2; --C)
             profitVec.push_back(C);
