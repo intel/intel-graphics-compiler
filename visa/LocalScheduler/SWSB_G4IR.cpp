@@ -7053,35 +7053,49 @@ static void setInstructionStallSWSB(IR_Builder* builder,
 
     if (inst->distanceHonourInstruction())
     {
-        inst->setDistance(1);
+        G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
+        G4_INST* extraSyncInst = builder->createSync(G4_sync_nop, src0);
+        extraSyncInst->setDistance(1);
         if (builder->hasThreeALUPipes() || builder->hasFourALUPipes())
         {
-            inst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+            extraSyncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
         }
+        bb->insertBefore(inst_it, extraSyncInst);
+
         return;
     }
 
     if (inst->tokenHonourInstruction())
     {
-
-        G4_INST* syncInst = nullptr;
-        G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
-        syncInst = builder->createSync(G4_sync_nop, src0);
-
-        unsigned short token = inst->getSetToken();
-        SWSBTokenType tokenType = SWSBTokenType::TOKEN_NONE;
-        G4_Operand* opnd = inst->getOperand(Opnd_dst);
-        if (!opnd || !opnd->getBase() || opnd->isNullReg())
+        G4_SrcRegRegion* src0_1 = builder->createNullSrc(Type_UD);
+        G4_INST* extraSyncInst = builder->createSync(G4_sync_nop, src0_1);
+        extraSyncInst->setDistance(1);
+        if (builder->hasThreeALUPipes() || builder->hasFourALUPipes())
         {
-            tokenType = SWSBTokenType::AFTER_READ;
+            extraSyncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
         }
-        else
+        bb->insertBefore(inst_it, extraSyncInst);
+
+        if (!inst->isEOT())
         {
-            tokenType = SWSBTokenType::AFTER_WRITE;
+            G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
+            G4_INST* syncInst = builder->createSync(G4_sync_nop, src0);
+
+            unsigned short token = inst->getSetToken();
+            SWSBTokenType tokenType = SWSBTokenType::TOKEN_NONE;
+            G4_Operand* opnd = inst->getOperand(Opnd_dst);
+            if (!opnd || !opnd->getBase() || opnd->isNullReg())
+            {
+                tokenType = SWSBTokenType::AFTER_READ;
+            }
+            else
+            {
+                tokenType = SWSBTokenType::AFTER_WRITE;
+            }
+            syncInst->setToken(token);
+            syncInst->setTokenType(tokenType);
+            inst_it = bb->insertBefore(next_it, syncInst);
         }
-        syncInst->setToken(token);
-        syncInst->setTokenType(tokenType);
-        inst_it = bb->insertBefore(next_it, syncInst);
     }
 
     return;
