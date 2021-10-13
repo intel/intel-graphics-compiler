@@ -703,8 +703,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 inst->asCFInst()->setUip(raLabel);
             }
             // Append declarations from callee to caller
+            auto callerDclCount = caller->Declares.size();
             for (auto curDcl : callee->Declares)
             {
+                curDcl->setDeclId(curDcl->getDeclId() + callerDclCount);
                 caller->Declares.push_back(curDcl);
             }
             // insert return label for goto
@@ -730,8 +732,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
             }
             callerInsts.insert(callerInsts.end(), calleeInsts.begin(), calleeInsts.end());
             // Append declarations from callee to caller
+            auto callerDclCount = caller->Declares.size();
             for (auto curDcl : callee->Declares)
             {
+                curDcl->setDeclId(curDcl->getDeclId() + callerDclCount);
                 caller->Declares.push_back(curDcl);
             }
         }

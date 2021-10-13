@@ -2078,6 +2078,7 @@ public:
     const G4_Declare* getSpilledDeclare() const {return spillDCL;}
           G4_Declare* getSpilledDeclare()  {return spillDCL;}
 
+    void setDeclId(unsigned id) { declId = id; }
     unsigned getDeclId() const { return declId; }
 
     void setIsSplittedDcl(bool b) { isSplittedDcl = b; }
