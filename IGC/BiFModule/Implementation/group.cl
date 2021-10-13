@@ -962,7 +962,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAll, _i32_i1, )(int Execution, bool P
     {
         // if wg-size is equal to sg-size, don't bother SLM, just do it using subgroups
         if(SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() == 1)
-            return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, Predicate );
+            return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)(Predicate) );
 
         GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 1;
@@ -974,7 +974,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAll, _i32_i1, )(int Execution, bool P
     }
     else
     {
-        return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, Predicate );
+        return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
     }
 }
 
@@ -984,7 +984,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAny, _i32_i1, )(int Execution, bool P
     {
         // if wg-size is equal to sg-size, don't bother SLM, just do it using subgroups
         if(SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() == 1)
-            return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, Predicate );
+            return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
 
         GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
@@ -996,7 +996,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAny, _i32_i1, )(int Execution, bool P
     }
     else
     {
-        return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, Predicate );
+        return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
     }
 }
 
