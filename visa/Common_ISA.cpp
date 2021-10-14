@@ -125,7 +125,8 @@ const char* emask_str[vISA_NUM_EMASK+1] =
     "NoMask"
 };
 
-const char* getSampleOp3DName(int opcode)
+
+static const char* getSampleOp3DNameOrNull(int opcode)
 {
     switch (opcode)
     {
@@ -174,9 +175,25 @@ const char* getSampleOp3DName(int opcode)
     case VISA_3D_LD_MCS:        // 0x1D
         return "load_mcs";
     default:
-        assert(!"Unknown VISA sample opcode");
-        return "sample_unknown";
+        return nullptr;
     }
+}
+const char* getSampleOp3DName(int opcode)
+{
+    const char *name = getSampleOp3DNameOrNull(opcode);
+    assert(name && "invalid sampler opcode");
+    if (!name)
+        return "sampler_unknown";
+    return name;
+}
+VISASampler3DSubOpCode getSampleOpFromName(const char *str)
+{
+    for (int i = 0; i < ISA_NUM_OPCODE; i++) {
+        const char *symI = getSampleOp3DNameOrNull(i);
+        if (symI && strcmp(symI, str) == 0)
+            return (VISASampler3DSubOpCode)i;
+    }
+    return (VISASampler3DSubOpCode)-1;
 }
 
 const char * va_sub_names[26] =

@@ -1063,9 +1063,9 @@ static ISA_Opcode str2opcode(const char *op_str)
 
 static VISASampler3DSubOpCode str2SampleOpcode(const char *str)
 {
-    for (int i = 0; i < ISA_NUM_OPCODE; i++)
-        if (strcmp(getSampleOp3DName(i), str) == 0)
-            return (VISASampler3DSubOpCode) i;
+    VISASampler3DSubOpCode op = getSampleOpFromName(str);
+    if (op >= 0)
+        return op;
 
     YY_FATAL_ERROR("Invalid 3D Sample OpCode");
 
