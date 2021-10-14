@@ -80,10 +80,6 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
-static cl::opt<bool> AllowMultipleRet(
-    "allow-multiple-ret", cl::init(true), cl::Hidden,
-    cl::desc("Allow emitting functions with multiple return instructions"));
-
 /***********************************************************************
  * GenXTidyControlFlow pass declaration
  */
@@ -157,8 +153,7 @@ bool GenXTidyControlFlow::runOnFunction(Function &F)
   removeEmptyBlocks(&F);
   reorderBlocks(&F);
   fixGotoOverBranch(&F);
-  if (!AllowMultipleRet)
-    fixReturns(&F);
+  fixReturns(&F);
   return Modified;
 }
 
