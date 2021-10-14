@@ -1492,6 +1492,11 @@ void vISAVerifier::verifyInstructionArith(
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
+    if (useGivenVISAType(inst, ISA_TYPE_BF16))
+    {
+        // Let bfmode verifier to verify it.
+        return;
+    }
 
     unsigned i = 0;
     const vector_opnd& dst = getVectorOperand(inst, i);
