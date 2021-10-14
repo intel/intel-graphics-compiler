@@ -550,6 +550,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   auto AddPacketize = [](const PassManagerBuilder &Builder,
                          PassManagerBase &PM) {
     PM.add(createGenXTranslateSPIRVBuiltinsPass());
+    PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfResolutionPass());
     PM.add(createGenXImportOCLBiFPass());
     PM.add(createGenXPacketizePass());
