@@ -187,8 +187,8 @@ namespace {
             if (PtrTy->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE) {
                 if (CGC->type != ShaderType::OPENCL_SHADER) {
                     // For non-OpenCL shader, skip constant buffer accesses.
-                    bool DirectIndex;
-                    unsigned BufID;
+                    bool DirectIndex = false;
+                    unsigned BufID = 0;
                     BufferType BufTy = DecodeAS4GFXResource(AS, DirectIndex, BufID);
                     if (BufTy == CONSTANT_BUFFER &&
                         UsesTypedConstantBuffer(CGC, BufTy))
@@ -423,7 +423,8 @@ void MemOpt::buildProfitVectorLengths(Function& F) {
 
 bool MemOpt::runOnFunction(Function& F) {
     // Skip non-kernel function.
-    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* MDU = nullptr;
+    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())
         return false;

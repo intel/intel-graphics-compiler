@@ -115,7 +115,8 @@ namespace IGC
 
     bool DomainShaderLowering::runOnFunction(llvm::Function& F)
     {
-        MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        MetaDataUtils* pMdUtils = nullptr;
+        pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (!isEntryFunc(pMdUtils, &F))
         {
             return false;
@@ -135,7 +136,7 @@ namespace IGC
         Value* zero = builder.getInt32(0);
 
         llvm::GlobalVariable* pGlobal = m_pModule->getGlobalVariable("MaxNumOfInputSignatureEntries");
-        auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        IGC::CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         uint maxInputSignatureCount =
             int_cast<uint>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
         pGlobal = m_pModule->getGlobalVariable("MaxNumOfPatchConstantSignatureEntries");
@@ -350,7 +351,8 @@ namespace IGC
 
     void DomainShaderLowering::CalculateVertexHeaderSize(Function& F)
     {
-        IGC::CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        IGC::CodeGenContext* context = nullptr;
+        context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         if (context->getModuleMetaData()->URBInfo.hasVertexHeader)
         {
             if (context->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput)
@@ -430,7 +432,7 @@ namespace IGC
         for (unsigned int i = 0; i < 4; i++)
         {
             Value* index = builder.getInt32(currentElementIndex + i);
-            auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+            IGC::CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
             const e_interpolation interpolant =
                 DSDualPatchEnabled(pCtx) ?
                 EINTERPOLATION_UNDEFINED : EINTERPOLATION_CONSTANT;

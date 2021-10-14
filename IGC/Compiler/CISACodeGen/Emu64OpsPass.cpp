@@ -456,7 +456,8 @@ IGC_INITIALIZE_PASS_END(Emu64Ops, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANAL
 
 bool Emu64Ops::runOnFunction(Function& F) {
     // Skip non-kernel function.
-    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* MDU = nullptr;
+    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     IGC_ASSERT(nullptr != MDU);
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())
@@ -492,7 +493,7 @@ bool Emu64Ops::runOnFunction(Function& F) {
 
 ValuePair Emu64Ops::getExpandedValues(Value* V) {
     ValueMapTy::iterator VMI;
-    bool New;
+    bool New = false;
     std::tie(VMI, New) = ValueMap.insert(std::make_pair(V, ValuePair()));
     if (!New)
         return VMI->second;

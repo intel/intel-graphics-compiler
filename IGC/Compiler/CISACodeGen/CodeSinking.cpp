@@ -612,8 +612,8 @@ namespace IGC {
         bool ForceToReducePressure)
     {
         // Check if it's safe to move the instruction.
-        bool hasAliasConcern;
-        bool reducePressure;
+        bool hasAliasConcern =false;
+        bool reducePressure = false;
         if (!isSafeToMove(inst, reducePressure, hasAliasConcern, Stores/*, AA*/))
             return false;
         if (ForceToReducePressure) {
@@ -628,7 +628,7 @@ namespace IGC {
         {
             // find the lowest common dominator of all uses
             BasicBlock* tgtBlk = 0x0;
-            bool outerLoop;
+            bool outerLoop = false;
             if (FindLowestSinkTarget(inst, tgtBlk, usesInBlk, outerLoop, ForceToReducePressure))
             {
                 // heuristic, avoid code-motion that does not reduce execution frequency but may increase register usage

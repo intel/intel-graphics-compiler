@@ -390,8 +390,8 @@ bool AdvCodeMotion::hoistMost(bool InvPred, BasicBlock* IfBB,
 bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock* IfBB,
     BasicBlock* TBB, BasicBlock* FBB,
     BasicBlock* JBB) const {
-    bool InvPred2;
-    BasicBlock* TBB2, * FBB2, * JBB2;
+    bool InvPred2 = false;
+    BasicBlock* TBB2 = 0x0, * FBB2 = 0x0, * JBB2 = 0x0;
     std::tie(InvPred2, TBB2, FBB2, JBB2) =
         getIfStatementBlock(PDT, TBB);
     if (!JBB2)
@@ -507,7 +507,8 @@ bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock* IfBB,
 
 bool AdvCodeMotion::runOnFunction(Function& F) {
     // Skip non-kernel function.
-    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* MDU = nullptr;
+    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())
         return false;

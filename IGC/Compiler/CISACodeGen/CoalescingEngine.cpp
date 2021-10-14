@@ -205,8 +205,8 @@ namespace IGC
         if (SampleIntrinsic * sample = dyn_cast<SampleIntrinsic>(inst))
         {
             Value* sampler = sample->getSamplerValue();
-            uint bufferIndex;
-            bool directIndexing;
+            uint bufferIndex = 0;
+            bool directIndexing = false;
             if (sampler->getType()->isPointerTy())
             {
                 BufferType bufType = DecodeAS4GFXResource(

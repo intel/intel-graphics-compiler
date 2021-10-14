@@ -38,7 +38,8 @@ namespace IGC
     bool BlockCoalescing::runOnFunction(Function& F)
     {
 
-        MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        MetaDataUtils* pMdUtils = nullptr;
+        pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
         {
             return false;

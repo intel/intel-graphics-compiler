@@ -164,7 +164,7 @@ std::string recursive_mangle(const Type* pType)
                     SPIRVTypeImageDescriptor Desc;
                     if (regex.match(structName, &matches))
                     {
-                        uint8_t dimension;
+                        uint8_t dimension = 0;
                         matches[1].getAsInteger(0, dimension);
                         Desc.Dim = static_cast<SPIRVImageDimKind>(dimension);
                         matches[2].getAsInteger(0, Desc.Depth);
@@ -173,7 +173,7 @@ std::string recursive_mangle(const Type* pType)
                         matches[5].getAsInteger(0, Desc.Sampled);
                         matches[6].getAsInteger(0, Desc.Format);
 
-                        uint8_t spirvAccess;
+                        uint8_t spirvAccess = 0;
                         matches[7].getAsInteger(0, spirvAccess);
                         SPIRVAccessQualifierKind Acc = static_cast<SPIRVAccessQualifierKind>(spirvAccess);
 

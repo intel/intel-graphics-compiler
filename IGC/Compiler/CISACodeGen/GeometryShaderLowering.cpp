@@ -158,7 +158,8 @@ GeometryShaderLowering::GeometryShaderLowering()
 
 bool GeometryShaderLowering::runOnFunction(llvm::Function& function)
 {
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = nullptr;
+    pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (!isEntryFunc(pMdUtils, &function))
     {
         return false;
@@ -631,7 +632,7 @@ void GeometryShaderLowering::LowerControlHeader(llvm::Instruction* inst)
     // Add write to vertex count field for non-static number of output vertices
     IRBuilder<> irb(inst);
     Value* undef = llvm::UndefValue::get(Type::getFloatTy(m_pModule->getContext()));
-    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    IGC::CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (pConstVertexIndex == nullptr || pCtx->platform.disableStaticVertexCount())
     {
         IGC_ASSERT(m_gsProps->GetProperties().Output().HasNonstaticVertexCount());

@@ -261,7 +261,8 @@ namespace {
 
 bool GenIRLowering::runOnFunction(Function& F) {
     // Skip non-kernel function.
-    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* MDU = nullptr;
+    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())

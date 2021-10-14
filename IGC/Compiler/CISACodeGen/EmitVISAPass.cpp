@@ -2450,7 +2450,7 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI, const DstM
 }
 
 void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
-    Value* L, * H;
+    Value* L=nullptr, * H=nullptr;
     std::tie(L, H) = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
     CVariable* Hi = H ? GetSymbol(H) : nullptr;
@@ -2469,7 +2469,7 @@ void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
 }
 
 void EmitPass::EmitSubPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
-    Value* L, * H;
+    Value* L = nullptr, * H = nullptr;
     std::tie(L, H) = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
     CVariable* Hi = H ? GetSymbol(H) : nullptr;
@@ -2485,7 +2485,7 @@ void EmitPass::EmitSubPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
 }
 
 void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
-    Value* L, * H;
+    Value* L = nullptr, * H = nullptr;
     std::tie(L, H) = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
     CVariable* Hi = H ? GetSymbol(H) : nullptr;
@@ -2598,7 +2598,7 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
 }
 
 void EmitPass::EmitPtrToPair(GenIntrinsicInst* GII, const SSource Sources[1], const DstModifier& DstMod) {
-    Value* L, * H;
+    Value* L = nullptr, * H = nullptr;
     std::tie(L, H) = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
     CVariable* Hi = H ? GetSymbol(H) : nullptr;
@@ -5770,7 +5770,8 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
 
     Type* Ty = dataPtr->getType();
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
-    uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+    uint32_t nbElements = 0;
+    nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
     uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);

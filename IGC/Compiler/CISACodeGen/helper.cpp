@@ -418,10 +418,10 @@ namespace IGC
             }
             if (a->getType()->isPointerTy() && b->getType()->isPointerTy())
             {
-                unsigned idxA, idxB;
+                unsigned idxA = 0, idxB = 0;
                 BufferType bufA, bufB;
                 BufferAccessType accessA, accessB;
-                bool needBufferOffsetA, needBufferOffsetB;
+                bool needBufferOffsetA = false, needBufferOffsetB = false;
 
                 if (GetResourcePointerInfo(a, idxA, bufA, accessA, needBufferOffsetA) &&
                     GetResourcePointerInfo(b, idxB, bufB, accessB, needBufferOffsetB) &&

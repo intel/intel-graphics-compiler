@@ -313,7 +313,8 @@ bool DeSSA::runOnFunction(Function& MF)
 {
     m_F = &MF;
     CurrColor = 0;
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = nullptr;
+    pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (pMdUtils->findFunctionsInfoItem(&MF) == pMdUtils->end_FunctionsInfo())
     {
         return false;
@@ -1021,7 +1022,7 @@ int getPartialWriteSource(Value *Inst)
             SmallVector<StringRef, 8> constraints;
             constraintStr.split(constraints, ',');
             for (int i = 0; i < (int)constraints.size(); i++) {
-                unsigned destID;
+                unsigned destID = 0;
                 if (constraints[i].getAsInteger(10, destID) == 0) {
                     // constraint-string indicates that source(i-1) and
                     // destination should be the same vISA variable

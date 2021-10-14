@@ -81,7 +81,8 @@ namespace IGC
 
     bool LowerGSInterface::runOnFunction(llvm::Function& F)
     {
-        MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        MetaDataUtils* pMdUtils = nullptr;
+        pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
         {
             return false;

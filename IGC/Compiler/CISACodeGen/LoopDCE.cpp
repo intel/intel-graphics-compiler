@@ -114,7 +114,8 @@ FunctionPass* IGC::createLoopDeadCodeEliminationPass() {
 
 bool LoopDeadCodeElimination::runOnFunction(Function& F) {
     // Skip non-kernel function.
-    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* MDU = nullptr;
+    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())
         return false;
