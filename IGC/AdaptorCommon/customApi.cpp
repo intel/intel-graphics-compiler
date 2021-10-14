@@ -594,6 +594,22 @@ namespace IGC
 #endif
         }
 
+        OutputName IGC_DEBUG_API_CALL GetFunctionDebugFile()
+        {
+            if (IGC_GET_FLAG_VALUE(SelectiveFunctionControl) != 0)
+            {
+                static std::mutex m;
+                std::lock_guard<std::mutex> lck(m);
+                static std::string functionDebugFilePath;
+                if (functionDebugFilePath == "")
+                {
+                    functionDebugFilePath = std::string(GetBaseIGCOutputFolder()) + "FunctionDebug.txt";
+                }
+                return functionDebugFilePath.c_str();
+            }
+            return "";
+        }
+
         OutputName IGC_DEBUG_API_CALL GetShaderOutputName()
         {
 #if defined(IGC_DEBUG_VARIABLES)

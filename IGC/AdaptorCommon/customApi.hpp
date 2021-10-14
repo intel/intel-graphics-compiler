@@ -202,6 +202,8 @@ namespace IGC
 
         OutputName IGC_DEBUG_API_CALL GetShaderOutputName();
 
+        OutputName IGC_DEBUG_API_CALL GetFunctionDebugFile();
+
         /// Ask the build to identify itself
         VersionInfo IGC_DEBUG_API_CALL GetVersionInfo();
 #else

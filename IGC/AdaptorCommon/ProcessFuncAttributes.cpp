@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SCCIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "common/igc_regkeys.hpp"
+#include <fstream>
 #include <string>
 #include <set>
 
@@ -638,6 +639,60 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     F->setLinkage(GlobalValue::ExternalLinkage);
                 }
             }
+        }
+    }
+
+    // This selectively sets the FunctionControl mode for the list of functions
+    // existing in 'FunctionDebug.txt' in the default IGC output folder.
+    // This only works when FuncionControl=0!
+    //
+    // For example:
+    // We can set SelectiveFuncionControl=3, and give a list of line-separated function
+    // names in 'FunctionDebug.txt'. These functions, if they exist in the module,
+    // will be stack-called.
+    //
+    auto SelectFCtrl = IGC_GET_FLAG_VALUE(SelectiveFunctionControl);
+    if (SelectFCtrl != FLAG_FCALL_DEFAULT)
+    {
+        IGC_ASSERT_MESSAGE(FCtrl == FLAG_FCALL_DEFAULT, "This flag is only supported when FunctionControl=0!");
+
+        std::ifstream inputFile(IGC::Debug::GetFunctionDebugFile());
+        if (inputFile.is_open())
+        {
+            std::string line;
+            while (std::getline(inputFile, line))
+            {
+                if (Function* F = M.getFunction(line))
+                {
+                    if (SelectFCtrl == FLAG_FCALL_FORCE_INLINE)
+                    {
+                        F->removeFnAttr("referenced-indirectly");
+                        F->removeFnAttr("visaStackCall");
+                        SetAlwaysInline(F);
+                    }
+                    else if (SelectFCtrl == FLAG_FCALL_FORCE_SUBROUTINE)
+                    {
+                        F->removeFnAttr("referenced-indirectly");
+                        F->removeFnAttr("visaStackCall");
+                        SetNoInline(F);
+                    }
+                    else if (SelectFCtrl == FLAG_FCALL_FORCE_STACKCALL)
+                    {
+                        F->removeFnAttr("referenced-indirectly");
+                        F->addFnAttr("visaStackCall");
+                        SetNoInline(F);
+                    }
+                    else if (SelectFCtrl == FLAG_FCALL_FORCE_INDIRECTCALL)
+                    {
+                        pCtx->m_enableFunctionPointer = true;
+                        F->addFnAttr("referenced-indirectly");
+                        F->addFnAttr("visaStackCall");
+                        F->setLinkage(GlobalValue::ExternalLinkage);
+                        SetNoInline(F);
+                    }
+                }
+            }
+            inputFile.close();
         }
     }
 
