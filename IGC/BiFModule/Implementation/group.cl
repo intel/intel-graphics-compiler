@@ -67,428 +67,428 @@ double OVERLOADABLE intel_sub_group_shuffle_up( double identity, double X, uint 
 
 //L2G
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i8_p3i8_i64_i64_i64, )(int Execution, global char *Destination, local char *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i8_p3i8_i64_i64_i64, )(int Execution, global char *Destination, local char *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i8_p3i8_i32_i32_i64, )(int Execution, global char *Destination, local char *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i8_p3i8_i32_i32_i64, )(int Execution, global char *Destination, local char *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i16_p3i16_i64_i64_i64, )(int Execution, global short *Destination, local short *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i16_p3i16_i64_i64_i64, )(int Execution, global short *Destination, local short *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i16_p3i16_i32_i32_i64, )(int Execution, global short *Destination, local short *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i16_p3i16_i32_i32_i64, )(int Execution, global short *Destination, local short *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i32_p3i32_i64_i64_i64, )(int Execution, global int *Destination, local int *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i32_p3i32_i64_i64_i64, )(int Execution, global int *Destination, local int *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i32_p3i32_i32_i32_i64, )(int Execution, global int *Destination, local int *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i32_p3i32_i32_i32_i64, )(int Execution, global int *Destination, local int *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i64_p3i64_i64_i64_i64, )(int Execution, global long *Destination, local long *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i64_p3i64_i64_i64_i64, )(int Execution, global long *Destination, local long *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i64_p3i64_i32_i32_i64, )(int Execution, global long *Destination, local long *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1i64_p3i64_i32_i32_i64, )(int Execution, global long *Destination, local long *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f16_p3f16_i64_i64_i64, )(int Execution, global half *Destination, local half *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f16_p3f16_i64_i64_i64, )(int Execution, global half *Destination, local half *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f16_p3f16_i32_i32_i64, )(int Execution, global half *Destination, local half *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f16_p3f16_i32_i32_i64, )(int Execution, global half *Destination, local half *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f32_p3f32_i64_i64_i64, )(int Execution, global float *Destination, local float *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f32_p3f32_i64_i64_i64, )(int Execution, global float *Destination, local float *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f32_p3f32_i32_i32_i64, )(int Execution, global float *Destination, local float *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f32_p3f32_i32_i32_i64, )(int Execution, global float *Destination, local float *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #if defined(cl_khr_fp64)
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f64_p3f64_i64_i64_i64, )(int Execution, global double *Destination, local double *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f64_p3f64_i64_i64_i64, )(int Execution, global double *Destination, local double *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f64_p3f64_i32_i32_i64, )(int Execution, global double *Destination, local double *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1f64_p3f64_i32_i32_i64, )(int Execution, global double *Destination, local double *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #endif
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i8_p3v2i8_i64_i64_i64, )(int Execution, global char2 *Destination, local char2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i8_p3v2i8_i64_i64_i64, )(int Execution, global char2 *Destination, local char2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i8_p3v2i8_i32_i32_i64, )(int Execution, global char2 *Destination, local char2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i8_p3v2i8_i32_i32_i64, )(int Execution, global char2 *Destination, local char2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i8_p3v3i8_i64_i64_i64, )(int Execution, global char3 *Destination, local char3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i8_p3v3i8_i64_i64_i64, )(int Execution, global char3 *Destination, local char3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i8_p3v3i8_i32_i32_i64, )(int Execution, global char3 *Destination, local char3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i8_p3v3i8_i32_i32_i64, )(int Execution, global char3 *Destination, local char3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i8_p3v4i8_i64_i64_i64, )(int Execution, global char4 *Destination, local char4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i8_p3v4i8_i64_i64_i64, )(int Execution, global char4 *Destination, local char4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i8_p3v4i8_i32_i32_i64, )(int Execution, global char4 *Destination, local char4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i8_p3v4i8_i32_i32_i64, )(int Execution, global char4 *Destination, local char4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i8_p3v8i8_i64_i64_i64, )(int Execution, global char8 *Destination, local char8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i8_p3v8i8_i64_i64_i64, )(int Execution, global char8 *Destination, local char8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i8_p3v8i8_i32_i32_i64, )(int Execution, global char8 *Destination, local char8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i8_p3v8i8_i32_i32_i64, )(int Execution, global char8 *Destination, local char8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i8_p3v16i8_i64_i64_i64, )(int Execution, global char16 *Destination, local char16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i8_p3v16i8_i64_i64_i64, )(int Execution, global char16 *Destination, local char16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i8_p3v16i8_i32_i32_i64, )(int Execution, global char16 *Destination, local char16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i8_p3v16i8_i32_i32_i64, )(int Execution, global char16 *Destination, local char16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i16_p3v2i16_i64_i64_i64, )(int Execution, global short2 *Destination, local short2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i16_p3v2i16_i64_i64_i64, )(int Execution, global short2 *Destination, local short2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i16_p3v2i16_i32_i32_i64, )(int Execution, global short2 *Destination, local short2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i16_p3v2i16_i32_i32_i64, )(int Execution, global short2 *Destination, local short2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i16_p3v3i16_i64_i64_i64, )(int Execution, global short3 *Destination, local short3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i16_p3v3i16_i64_i64_i64, )(int Execution, global short3 *Destination, local short3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i16_p3v3i16_i32_i32_i64, )(int Execution, global short3 *Destination, local short3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i16_p3v3i16_i32_i32_i64, )(int Execution, global short3 *Destination, local short3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i16_p3v4i16_i64_i64_i64, )(int Execution, global short4 *Destination, local short4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i16_p3v4i16_i64_i64_i64, )(int Execution, global short4 *Destination, local short4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i16_p3v4i16_i32_i32_i64, )(int Execution, global short4 *Destination, local short4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i16_p3v4i16_i32_i32_i64, )(int Execution, global short4 *Destination, local short4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i16_p3v8i16_i64_i64_i64, )(int Execution, global short8 *Destination, local short8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i16_p3v8i16_i64_i64_i64, )(int Execution, global short8 *Destination, local short8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i16_p3v8i16_i32_i32_i64, )(int Execution, global short8 *Destination, local short8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i16_p3v8i16_i32_i32_i64, )(int Execution, global short8 *Destination, local short8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i16_p3v16i16_i64_i64_i64, )(int Execution, global short16 *Destination, local short16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i16_p3v16i16_i64_i64_i64, )(int Execution, global short16 *Destination, local short16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i16_p3v16i16_i32_i32_i64, )(int Execution, global short16 *Destination, local short16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i16_p3v16i16_i32_i32_i64, )(int Execution, global short16 *Destination, local short16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i32_p3v2i32_i64_i64_i64, )(int Execution, global int2 *Destination, local int2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i32_p3v2i32_i64_i64_i64, )(int Execution, global int2 *Destination, local int2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i32_p3v2i32_i32_i32_i64, )(int Execution, global int2 *Destination, local int2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i32_p3v2i32_i32_i32_i64, )(int Execution, global int2 *Destination, local int2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i32_p3v3i32_i64_i64_i64, )(int Execution, global int3 *Destination, local int3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i32_p3v3i32_i64_i64_i64, )(int Execution, global int3 *Destination, local int3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i32_p3v3i32_i32_i32_i64, )(int Execution, global int3 *Destination, local int3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i32_p3v3i32_i32_i32_i64, )(int Execution, global int3 *Destination, local int3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i32_p3v4i32_i64_i64_i64, )(int Execution, global int4 *Destination, local int4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i32_p3v4i32_i64_i64_i64, )(int Execution, global int4 *Destination, local int4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i32_p3v4i32_i32_i32_i64, )(int Execution, global int4 *Destination, local int4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i32_p3v4i32_i32_i32_i64, )(int Execution, global int4 *Destination, local int4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i32_p3v8i32_i64_i64_i64, )(int Execution, global int8 *Destination, local int8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i32_p3v8i32_i64_i64_i64, )(int Execution, global int8 *Destination, local int8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i32_p3v8i32_i32_i32_i64, )(int Execution, global int8 *Destination, local int8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i32_p3v8i32_i32_i32_i64, )(int Execution, global int8 *Destination, local int8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i32_p3v16i32_i64_i64_i64, )(int Execution, global int16 *Destination, local int16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i32_p3v16i32_i64_i64_i64, )(int Execution, global int16 *Destination, local int16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i32_p3v16i32_i32_i32_i64, )(int Execution, global int16 *Destination, local int16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i32_p3v16i32_i32_i32_i64, )(int Execution, global int16 *Destination, local int16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i64_p3v2i64_i64_i64_i64, )(int Execution, global long2 *Destination, local long2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i64_p3v2i64_i64_i64_i64, )(int Execution, global long2 *Destination, local long2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i64_p3v2i64_i32_i32_i64, )(int Execution, global long2 *Destination, local long2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2i64_p3v2i64_i32_i32_i64, )(int Execution, global long2 *Destination, local long2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i64_p3v3i64_i64_i64_i64, )(int Execution, global long3 *Destination, local long3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i64_p3v3i64_i64_i64_i64, )(int Execution, global long3 *Destination, local long3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i64_p3v3i64_i32_i32_i64, )(int Execution, global long3 *Destination, local long3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3i64_p3v3i64_i32_i32_i64, )(int Execution, global long3 *Destination, local long3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i64_p3v4i64_i64_i64_i64, )(int Execution, global long4 *Destination, local long4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i64_p3v4i64_i64_i64_i64, )(int Execution, global long4 *Destination, local long4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i64_p3v4i64_i32_i32_i64, )(int Execution, global long4 *Destination, local long4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4i64_p3v4i64_i32_i32_i64, )(int Execution, global long4 *Destination, local long4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i64_p3v8i64_i64_i64_i64, )(int Execution, global long8 *Destination, local long8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i64_p3v8i64_i64_i64_i64, )(int Execution, global long8 *Destination, local long8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i64_p3v8i64_i32_i32_i64, )(int Execution, global long8 *Destination, local long8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8i64_p3v8i64_i32_i32_i64, )(int Execution, global long8 *Destination, local long8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i64_p3v16i64_i64_i64_i64, )(int Execution, global long16 *Destination, local long16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i64_p3v16i64_i64_i64_i64, )(int Execution, global long16 *Destination, local long16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i64_p3v16i64_i32_i32_i64, )(int Execution, global long16 *Destination, local long16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16i64_p3v16i64_i32_i32_i64, )(int Execution, global long16 *Destination, local long16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f16_p3v2f16_i64_i64_i64, )(int Execution, global half2 *Destination, local half2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f16_p3v2f16_i64_i64_i64, )(int Execution, global half2 *Destination, local half2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f16_p3v2f16_i32_i32_i64, )(int Execution, global half2 *Destination, local half2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f16_p3v2f16_i32_i32_i64, )(int Execution, global half2 *Destination, local half2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f16_p3v3f16_i64_i64_i64, )(int Execution, global half3 *Destination, local half3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f16_p3v3f16_i64_i64_i64, )(int Execution, global half3 *Destination, local half3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f16_p3v3f16_i32_i32_i64, )(int Execution, global half3 *Destination, local half3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f16_p3v3f16_i32_i32_i64, )(int Execution, global half3 *Destination, local half3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f16_p3v4f16_i64_i64_i64, )(int Execution, global half4 *Destination, local half4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f16_p3v4f16_i64_i64_i64, )(int Execution, global half4 *Destination, local half4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f16_p3v4f16_i32_i32_i64, )(int Execution, global half4 *Destination, local half4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f16_p3v4f16_i32_i32_i64, )(int Execution, global half4 *Destination, local half4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f16_p3v8f16_i64_i64_i64, )(int Execution, global half8 *Destination, local half8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f16_p3v8f16_i64_i64_i64, )(int Execution, global half8 *Destination, local half8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f16_p3v8f16_i32_i32_i64, )(int Execution, global half8 *Destination, local half8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f16_p3v8f16_i32_i32_i64, )(int Execution, global half8 *Destination, local half8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f16_p3v16f16_i64_i64_i64, )(int Execution, global half16 *Destination, local half16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f16_p3v16f16_i64_i64_i64, )(int Execution, global half16 *Destination, local half16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f16_p3v16f16_i32_i32_i64, )(int Execution, global half16 *Destination, local half16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f16_p3v16f16_i32_i32_i64, )(int Execution, global half16 *Destination, local half16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f32_p3v2f32_i64_i64_i64, )(int Execution, global float2 *Destination, local float2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f32_p3v2f32_i64_i64_i64, )(int Execution, global float2 *Destination, local float2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f32_p3v2f32_i32_i32_i64, )(int Execution, global float2 *Destination, local float2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f32_p3v2f32_i32_i32_i64, )(int Execution, global float2 *Destination, local float2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f32_p3v3f32_i64_i64_i64, )(int Execution, global float3 *Destination, local float3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f32_p3v3f32_i64_i64_i64, )(int Execution, global float3 *Destination, local float3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f32_p3v3f32_i32_i32_i64, )(int Execution, global float3 *Destination, local float3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f32_p3v3f32_i32_i32_i64, )(int Execution, global float3 *Destination, local float3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f32_p3v4f32_i64_i64_i64, )(int Execution, global float4 *Destination, local float4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f32_p3v4f32_i64_i64_i64, )(int Execution, global float4 *Destination, local float4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f32_p3v4f32_i32_i32_i64, )(int Execution, global float4 *Destination, local float4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f32_p3v4f32_i32_i32_i64, )(int Execution, global float4 *Destination, local float4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f32_p3v8f32_i64_i64_i64, )(int Execution, global float8 *Destination, local float8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f32_p3v8f32_i64_i64_i64, )(int Execution, global float8 *Destination, local float8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f32_p3v8f32_i32_i32_i64, )(int Execution, global float8 *Destination, local float8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f32_p3v8f32_i32_i32_i64, )(int Execution, global float8 *Destination, local float8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f32_p3v16f32_i64_i64_i64, )(int Execution, global float16 *Destination, local float16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f32_p3v16f32_i64_i64_i64, )(int Execution, global float16 *Destination, local float16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f32_p3v16f32_i32_i32_i64, )(int Execution, global float16 *Destination, local float16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f32_p3v16f32_i32_i32_i64, )(int Execution, global float16 *Destination, local float16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #if defined(cl_khr_fp64)
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f64_p3v2f64_i64_i64_i64, )(int Execution, global double2 *Destination, local double2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f64_p3v2f64_i64_i64_i64, )(int Execution, global double2 *Destination, local double2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f64_p3v2f64_i32_i32_i64, )(int Execution, global double2 *Destination, local double2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v2f64_p3v2f64_i32_i32_i64, )(int Execution, global double2 *Destination, local double2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f64_p3v3f64_i64_i64_i64, )(int Execution, global double3 *Destination, local double3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f64_p3v3f64_i64_i64_i64, )(int Execution, global double3 *Destination, local double3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f64_p3v3f64_i32_i32_i64, )(int Execution, global double3 *Destination, local double3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v3f64_p3v3f64_i32_i32_i64, )(int Execution, global double3 *Destination, local double3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f64_p3v4f64_i64_i64_i64, )(int Execution, global double4 *Destination, local double4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f64_p3v4f64_i64_i64_i64, )(int Execution, global double4 *Destination, local double4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f64_p3v4f64_i32_i32_i64, )(int Execution, global double4 *Destination, local double4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v4f64_p3v4f64_i32_i32_i64, )(int Execution, global double4 *Destination, local double4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f64_p3v8f64_i64_i64_i64, )(int Execution, global double8 *Destination, local double8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f64_p3v8f64_i64_i64_i64, )(int Execution, global double8 *Destination, local double8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f64_p3v8f64_i32_i32_i64, )(int Execution, global double8 *Destination, local double8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v8f64_p3v8f64_i32_i32_i64, )(int Execution, global double8 *Destination, local double8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f64_p3v16f64_i64_i64_i64, )(int Execution, global double16 *Destination, local double16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f64_p3v16f64_i64_i64_i64, )(int Execution, global double16 *Destination, local double16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f64_p3v16f64_i32_i32_i64, )(int Execution, global double16 *Destination, local double16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f64_p3v16f64_i32_i32_i64, )(int Execution, global double16 *Destination, local double16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
@@ -498,428 +498,428 @@ Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p1v16f64_p3v16f64_
 //G2L
 
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i8_p1i8_i64_i64_i64, )(int Execution, local char *Destination, global char *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i8_p1i8_i64_i64_i64, )(int Execution, local char *Destination, global char *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i8_p1i8_i32_i32_i64, )(int Execution, local char *Destination, global char *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i8_p1i8_i32_i32_i64, )(int Execution, local char *Destination, global char *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i16_p1i16_i64_i64_i64, )(int Execution, local short *Destination, global short *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i16_p1i16_i64_i64_i64, )(int Execution, local short *Destination, global short *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i16_p1i16_i32_i32_i64, )(int Execution, local short *Destination, global short *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i16_p1i16_i32_i32_i64, )(int Execution, local short *Destination, global short *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i32_p1i32_i64_i64_i64, )(int Execution, local int *Destination, global int *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i32_p1i32_i64_i64_i64, )(int Execution, local int *Destination, global int *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i32_p1i32_i32_i32_i64, )(int Execution, local int *Destination, global int *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i32_p1i32_i32_i32_i64, )(int Execution, local int *Destination, global int *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i64_p1i64_i64_i64_i64, )(int Execution, local long *Destination, global long *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i64_p1i64_i64_i64_i64, )(int Execution, local long *Destination, global long *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i64_p1i64_i32_i32_i64, )(int Execution, local long *Destination, global long *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3i64_p1i64_i32_i32_i64, )(int Execution, local long *Destination, global long *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f16_p1f16_i64_i64_i64, )(int Execution, local half *Destination, global half *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f16_p1f16_i64_i64_i64, )(int Execution, local half *Destination, global half *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f16_p1f16_i32_i32_i64, )(int Execution, local half *Destination, global half *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f16_p1f16_i32_i32_i64, )(int Execution, local half *Destination, global half *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f32_p1f32_i64_i64_i64, )(int Execution, local float *Destination, global float *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f32_p1f32_i64_i64_i64, )(int Execution, local float *Destination, global float *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f32_p1f32_i32_i32_i64, )(int Execution, local float *Destination, global float *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f32_p1f32_i32_i32_i64, )(int Execution, local float *Destination, global float *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #if defined(cl_khr_fp64)
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f64_p1f64_i64_i64_i64, )(int Execution, local double *Destination, global double *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f64_p1f64_i64_i64_i64, )(int Execution, local double *Destination, global double *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f64_p1f64_i32_i32_i64, )(int Execution, local double *Destination, global double *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3f64_p1f64_i32_i32_i64, )(int Execution, local double *Destination, global double *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #endif
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i8_p1v2i8_i64_i64_i64, )(int Execution, local char2 *Destination, global char2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i8_p1v2i8_i64_i64_i64, )(int Execution, local char2 *Destination, global char2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i8_p1v2i8_i32_i32_i64, )(int Execution, local char2 *Destination, global char2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i8_p1v2i8_i32_i32_i64, )(int Execution, local char2 *Destination, global char2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i8_p1v3i8_i64_i64_i64, )(int Execution, local char3 *Destination, global char3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i8_p1v3i8_i64_i64_i64, )(int Execution, local char3 *Destination, global char3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i8_p1v3i8_i32_i32_i64, )(int Execution, local char3 *Destination, global char3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i8_p1v3i8_i32_i32_i64, )(int Execution, local char3 *Destination, global char3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i8_p1v4i8_i64_i64_i64, )(int Execution, local char4 *Destination, global char4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i8_p1v4i8_i64_i64_i64, )(int Execution, local char4 *Destination, global char4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i8_p1v4i8_i32_i32_i64, )(int Execution, local char4 *Destination, global char4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i8_p1v4i8_i32_i32_i64, )(int Execution, local char4 *Destination, global char4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i8_p1v8i8_i64_i64_i64, )(int Execution, local char8 *Destination, global char8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i8_p1v8i8_i64_i64_i64, )(int Execution, local char8 *Destination, global char8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i8_p1v8i8_i32_i32_i64, )(int Execution, local char8 *Destination, global char8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i8_p1v8i8_i32_i32_i64, )(int Execution, local char8 *Destination, global char8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i8_p1v16i8_i64_i64_i64, )(int Execution, local char16 *Destination, global char16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i8_p1v16i8_i64_i64_i64, )(int Execution, local char16 *Destination, global char16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i8_p1v16i8_i32_i32_i64, )(int Execution, local char16 *Destination, global char16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i8_p1v16i8_i32_i32_i64, )(int Execution, local char16 *Destination, global char16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i16_p1v2i16_i64_i64_i64, )(int Execution, local short2 *Destination, global short2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i16_p1v2i16_i64_i64_i64, )(int Execution, local short2 *Destination, global short2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i16_p1v2i16_i32_i32_i64, )(int Execution, local short2 *Destination, global short2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i16_p1v2i16_i32_i32_i64, )(int Execution, local short2 *Destination, global short2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i16_p1v3i16_i64_i64_i64, )(int Execution, local short3 *Destination, global short3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i16_p1v3i16_i64_i64_i64, )(int Execution, local short3 *Destination, global short3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i16_p1v3i16_i32_i32_i64, )(int Execution, local short3 *Destination, global short3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i16_p1v3i16_i32_i32_i64, )(int Execution, local short3 *Destination, global short3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i16_p1v4i16_i64_i64_i64, )(int Execution, local short4 *Destination, global short4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i16_p1v4i16_i64_i64_i64, )(int Execution, local short4 *Destination, global short4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i16_p1v4i16_i32_i32_i64, )(int Execution, local short4 *Destination, global short4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i16_p1v4i16_i32_i32_i64, )(int Execution, local short4 *Destination, global short4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i16_p1v8i16_i64_i64_i64, )(int Execution, local short8 *Destination, global short8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i16_p1v8i16_i64_i64_i64, )(int Execution, local short8 *Destination, global short8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i16_p1v8i16_i32_i32_i64, )(int Execution, local short8 *Destination, global short8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i16_p1v8i16_i32_i32_i64, )(int Execution, local short8 *Destination, global short8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i16_p1v16i16_i64_i64_i64, )(int Execution, local short16 *Destination, global short16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i16_p1v16i16_i64_i64_i64, )(int Execution, local short16 *Destination, global short16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i16_p1v16i16_i32_i32_i64, )(int Execution, local short16 *Destination, global short16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i16_p1v16i16_i32_i32_i64, )(int Execution, local short16 *Destination, global short16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i32_p1v2i32_i64_i64_i64, )(int Execution, local int2 *Destination, global int2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i32_p1v2i32_i64_i64_i64, )(int Execution, local int2 *Destination, global int2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i32_p1v2i32_i32_i32_i64, )(int Execution, local int2 *Destination, global int2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i32_p1v2i32_i32_i32_i64, )(int Execution, local int2 *Destination, global int2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i32_p1v3i32_i64_i64_i64, )(int Execution, local int3 *Destination, global int3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i32_p1v3i32_i64_i64_i64, )(int Execution, local int3 *Destination, global int3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i32_p1v3i32_i32_i32_i64, )(int Execution, local int3 *Destination, global int3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i32_p1v3i32_i32_i32_i64, )(int Execution, local int3 *Destination, global int3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i32_p1v4i32_i64_i64_i64, )(int Execution, local int4 *Destination, global int4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i32_p1v4i32_i64_i64_i64, )(int Execution, local int4 *Destination, global int4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i32_p1v4i32_i32_i32_i64, )(int Execution, local int4 *Destination, global int4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i32_p1v4i32_i32_i32_i64, )(int Execution, local int4 *Destination, global int4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i32_p1v8i32_i64_i64_i64, )(int Execution, local int8 *Destination, global int8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i32_p1v8i32_i64_i64_i64, )(int Execution, local int8 *Destination, global int8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i32_p1v8i32_i32_i32_i64, )(int Execution, local int8 *Destination, global int8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i32_p1v8i32_i32_i32_i64, )(int Execution, local int8 *Destination, global int8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i32_p1v16i32_i64_i64_i64, )(int Execution, local int16 *Destination, global int16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i32_p1v16i32_i64_i64_i64, )(int Execution, local int16 *Destination, global int16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i32_p1v16i32_i32_i32_i64, )(int Execution, local int16 *Destination, global int16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i32_p1v16i32_i32_i32_i64, )(int Execution, local int16 *Destination, global int16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i64_p1v2i64_i64_i64_i64, )(int Execution, local long2 *Destination, global long2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i64_p1v2i64_i64_i64_i64, )(int Execution, local long2 *Destination, global long2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i64_p1v2i64_i32_i32_i64, )(int Execution, local long2 *Destination, global long2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2i64_p1v2i64_i32_i32_i64, )(int Execution, local long2 *Destination, global long2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i64_p1v3i64_i64_i64_i64, )(int Execution, local long3 *Destination, global long3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i64_p1v3i64_i64_i64_i64, )(int Execution, local long3 *Destination, global long3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i64_p1v3i64_i32_i32_i64, )(int Execution, local long3 *Destination, global long3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3i64_p1v3i64_i32_i32_i64, )(int Execution, local long3 *Destination, global long3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i64_p1v4i64_i64_i64_i64, )(int Execution, local long4 *Destination, global long4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i64_p1v4i64_i64_i64_i64, )(int Execution, local long4 *Destination, global long4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i64_p1v4i64_i32_i32_i64, )(int Execution, local long4 *Destination, global long4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4i64_p1v4i64_i32_i32_i64, )(int Execution, local long4 *Destination, global long4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i64_p1v8i64_i64_i64_i64, )(int Execution, local long8 *Destination, global long8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i64_p1v8i64_i64_i64_i64, )(int Execution, local long8 *Destination, global long8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i64_p1v8i64_i32_i32_i64, )(int Execution, local long8 *Destination, global long8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8i64_p1v8i64_i32_i32_i64, )(int Execution, local long8 *Destination, global long8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i64_p1v16i64_i64_i64_i64, )(int Execution, local long16 *Destination, global long16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i64_p1v16i64_i64_i64_i64, )(int Execution, local long16 *Destination, global long16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i64_p1v16i64_i32_i32_i64, )(int Execution, local long16 *Destination, global long16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16i64_p1v16i64_i32_i32_i64, )(int Execution, local long16 *Destination, global long16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f16_p1v2f16_i64_i64_i64, )(int Execution, local half2 *Destination, global half2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f16_p1v2f16_i64_i64_i64, )(int Execution, local half2 *Destination, global half2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f16_p1v2f16_i32_i32_i64, )(int Execution, local half2 *Destination, global half2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f16_p1v2f16_i32_i32_i64, )(int Execution, local half2 *Destination, global half2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f16_p1v3f16_i64_i64_i64, )(int Execution, local half3 *Destination, global half3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f16_p1v3f16_i64_i64_i64, )(int Execution, local half3 *Destination, global half3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f16_p1v3f16_i32_i32_i64, )(int Execution, local half3 *Destination, global half3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f16_p1v3f16_i32_i32_i64, )(int Execution, local half3 *Destination, global half3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f16_p1v4f16_i64_i64_i64, )(int Execution, local half4 *Destination, global half4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f16_p1v4f16_i64_i64_i64, )(int Execution, local half4 *Destination, global half4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f16_p1v4f16_i32_i32_i64, )(int Execution, local half4 *Destination, global half4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f16_p1v4f16_i32_i32_i64, )(int Execution, local half4 *Destination, global half4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f16_p1v8f16_i64_i64_i64, )(int Execution, local half8 *Destination, global half8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f16_p1v8f16_i64_i64_i64, )(int Execution, local half8 *Destination, global half8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f16_p1v8f16_i32_i32_i64, )(int Execution, local half8 *Destination, global half8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f16_p1v8f16_i32_i32_i64, )(int Execution, local half8 *Destination, global half8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f16_p1v16f16_i64_i64_i64, )(int Execution, local half16 *Destination, global half16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f16_p1v16f16_i64_i64_i64, )(int Execution, local half16 *Destination, global half16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f16_p1v16f16_i32_i32_i64, )(int Execution, local half16 *Destination, global half16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f16_p1v16f16_i32_i32_i64, )(int Execution, local half16 *Destination, global half16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f32_p1v2f32_i64_i64_i64, )(int Execution, local float2 *Destination, global float2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f32_p1v2f32_i64_i64_i64, )(int Execution, local float2 *Destination, global float2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f32_p1v2f32_i32_i32_i64, )(int Execution, local float2 *Destination, global float2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f32_p1v2f32_i32_i32_i64, )(int Execution, local float2 *Destination, global float2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f32_p1v3f32_i64_i64_i64, )(int Execution, local float3 *Destination, global float3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f32_p1v3f32_i64_i64_i64, )(int Execution, local float3 *Destination, global float3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f32_p1v3f32_i32_i32_i64, )(int Execution, local float3 *Destination, global float3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f32_p1v3f32_i32_i32_i64, )(int Execution, local float3 *Destination, global float3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f32_p1v4f32_i64_i64_i64, )(int Execution, local float4 *Destination, global float4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f32_p1v4f32_i64_i64_i64, )(int Execution, local float4 *Destination, global float4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f32_p1v4f32_i32_i32_i64, )(int Execution, local float4 *Destination, global float4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f32_p1v4f32_i32_i32_i64, )(int Execution, local float4 *Destination, global float4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f32_p1v8f32_i64_i64_i64, )(int Execution, local float8 *Destination, global float8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f32_p1v8f32_i64_i64_i64, )(int Execution, local float8 *Destination, global float8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f32_p1v8f32_i32_i32_i64, )(int Execution, local float8 *Destination, global float8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f32_p1v8f32_i32_i32_i64, )(int Execution, local float8 *Destination, global float8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f32_p1v16f32_i64_i64_i64, )(int Execution, local float16 *Destination, global float16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f32_p1v16f32_i64_i64_i64, )(int Execution, local float16 *Destination, global float16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f32_p1v16f32_i32_i32_i64, )(int Execution, local float16 *Destination, global float16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f32_p1v16f32_i32_i32_i64, )(int Execution, local float16 *Destination, global float16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
 #if defined(cl_khr_fp64)
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f64_p1v2f64_i64_i64_i64, )(int Execution, local double2 *Destination, global double2 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f64_p1v2f64_i64_i64_i64, )(int Execution, local double2 *Destination, global double2 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f64_p1v2f64_i32_i32_i64, )(int Execution, local double2 *Destination, global double2 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v2f64_p1v2f64_i32_i32_i64, )(int Execution, local double2 *Destination, global double2 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f64_p1v3f64_i64_i64_i64, )(int Execution, local double3 *Destination, global double3 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f64_p1v3f64_i64_i64_i64, )(int Execution, local double3 *Destination, global double3 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f64_p1v3f64_i32_i32_i64, )(int Execution, local double3 *Destination, global double3 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v3f64_p1v3f64_i32_i32_i64, )(int Execution, local double3 *Destination, global double3 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f64_p1v4f64_i64_i64_i64, )(int Execution, local double4 *Destination, global double4 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f64_p1v4f64_i64_i64_i64, )(int Execution, local double4 *Destination, global double4 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f64_p1v4f64_i32_i32_i64, )(int Execution, local double4 *Destination, global double4 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v4f64_p1v4f64_i32_i32_i64, )(int Execution, local double4 *Destination, global double4 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f64_p1v8f64_i64_i64_i64, )(int Execution, local double8 *Destination, global double8 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f64_p1v8f64_i64_i64_i64, )(int Execution, local double8 *Destination, global double8 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f64_p1v8f64_i32_i32_i64, )(int Execution, local double8 *Destination, global double8 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v8f64_p1v8f64_i32_i32_i64, )(int Execution, local double8 *Destination, global double8 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f64_p1v16f64_i64_i64_i64, )(int Execution, local double16 *Destination, global double16 *Source, long NumElements, long Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f64_p1v16f64_i64_i64_i64, )(int Execution, local double16 *Destination, global double16 *Source, long NumElements, long Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
-Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f64_p1v16f64_i32_i32_i64, )(int Execution, local double16 *Destination, global double16 *Source, int NumElements, int Stride, Event_t Event)
+__spirv_Event SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f64_p1v16f64_i32_i32_i64, )(int Execution, local double16 *Destination, global double16 *Source, int NumElements, int Stride, __spirv_Event Event)
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
@@ -927,7 +927,7 @@ Event_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAsyncCopy, _i32_p3v16f64_p1v16f64_
 #endif // defined(cl_khr_fp64)
 
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p0i64, )(int Execution, int NumEvents, private Event_t *EventsList)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p0i64, )(int Execution, int NumEvents, private __spirv_Event *EventsList)
 {
     if (Execution == Workgroup)
     {
@@ -942,7 +942,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p0i64, )(int Exe
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p4i64, )(int Execution, int NumEvents, generic Event_t *EventsList)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p4i64, )(int Execution, int NumEvents, generic __spirv_Event *EventsList)
 {
     if (Execution == Workgroup)
     {

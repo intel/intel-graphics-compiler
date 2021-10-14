@@ -245,7 +245,7 @@ typedef SPIRVMap<std::string, SPIRVAccessQualifierKind> SPIRSPIRVAccessQualifier
 template<> inline void
 SPIRVMap<std::string, Op>::init() {
 #define _SPIRV_OP(x,y) add(#x, OpType##y);
-    _SPIRV_OP(opencl.event_t, Event)
+    _SPIRV_OP(spirv.Event, Event)
     _SPIRV_OP(opencl.pipe_t, Pipe)
     _SPIRV_OP(spirv.DeviceEvent, DeviceEvent)
     _SPIRV_OP(opencl.reserve_id_t, ReserveId)

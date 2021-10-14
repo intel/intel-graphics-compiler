@@ -99,20 +99,23 @@ WG_BROADCAST_ALL_DEFN(double, double, f64)
 // Asynchronous copy functions
 //*****************************************************************************/
 
+#define to_spirv_event(e) __builtin_astype(e, __spirv_Event)
+#define to_ocl_event(e)   __builtin_astype(e, event_t)
+
 #define ASYNC_COPY(dst, src, num_elements, evt, mangle_string)                  \
 {                                                                               \
   if (sizeof(num_elements) == 32)                                               \
-    return SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i32_i32_i64, )(Workgroup,dst,src,(int)num_elements,(int)0,evt);\
+    return to_ocl_event(SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i32_i32_i64, )(Workgroup,dst,src,(int)num_elements,(int)0,to_spirv_event(evt)));\
   else                                                                          \
-    return SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i64_i64_i64, )(Workgroup,dst,src,(long)num_elements,(long)0,evt);\
+    return to_ocl_event(SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i64_i64_i64, )(Workgroup,dst,src,(long)num_elements,(long)0,to_spirv_event(evt)));\
 }
 
 #define ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, mangle_string)    \
 {                                                                               \
   if (sizeof(num_elements) == 32)                                               \
-    return SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i32_i32_i64, )(Workgroup,dst,src,(int)num_elements,(int)src_stride,evt);\
+    return to_ocl_event(SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i32_i32_i64, )(Workgroup,dst,src,(int)num_elements,(int)src_stride,to_spirv_event(evt)));\
   else                                                                          \
-    return SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i64_i64_i64, )(Workgroup,dst,src,(long)num_elements,(long)src_stride,evt);\
+    return to_ocl_event(SPIRV_BUILTIN(GroupAsyncCopy, _i32##mangle_string##_i64_i64_i64, )(Workgroup,dst,src,(long)num_elements,(long)src_stride,to_spirv_event(evt)));\
 }
 
 // ************************  Global to local.*********************************
