@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 
 #include "vc/GenXOpts/Utils/CMRegion.h"
+#include "vc/Utils/GenX/TypeSize.h"
 
 #include <cstddef>
 #include <iterator>
@@ -58,13 +59,13 @@ static Value *buildLegalizedConstantVector(ArrayRef<Value *> Vals,
                                            Instruction *InsertPt,
                                            const DebugLoc &DbgLoc) {
   IGC_ASSERT(!Vals.empty());
+  const auto& DL = InsertPt->getModule()->getDataLayout();
   Type *ScalarType = Vals.front()->getType();
-  IGC_ASSERT(ScalarType->isIntegerTy() || ScalarType->isFloatingPointTy());
   Value *Result = undefVector(ScalarType, Vals.size());
   IntegerType *I16Ty = Type::getInt16Ty(InsertPt->getContext());
-  unsigned ElBytes = ScalarType->getPrimitiveSizeInBits() / 8;
+  unsigned ElBytes = vc::getTypeSize(ScalarType, &DL).inBytes();
   for (unsigned j = 0, N = Vals.size(); j < N; ++j) {
-    CMRegion R(Vals[j]);
+    CMRegion R(Vals[j], &DL);
     R.Indirect = ConstantInt::get(I16Ty, ElBytes * j);
     Result = R.createWrRegion(Result, Vals[j], ".vconst", InsertPt, DbgLoc);
   }
@@ -90,7 +91,8 @@ Value *vc::breakConstantVector(ConstantVector *CV, Instruction *CurInst,
     Value *Result = nullptr;
     // Splat the value.
     if (LegalizationStage == vc::LegalizationStage::Legalized) {
-      Result = CMRegion::createRdVectorSplat(CV->getNumOperands(), Inst,
+      const auto &DL = InsertPt->getModule()->getDataLayout();
+      Result = CMRegion::createRdVectorSplat(DL, CV->getNumOperands(), Inst,
                                              ".splat", InsertPt, DbgLoc);
     } else {
       IRBuilder<> Builder(InsertPt);

@@ -432,22 +432,23 @@ Instruction *CMRegion::createRdPredRegion(Value *Input, unsigned Index,
  *
  * Return:  The new rdregion representing vector splat
  */
-Value *CMRegion::createRdVectorSplat(unsigned NumElements, Value *SplattedValue,
-                                     const Twine &Name, Instruction *InsertPt,
-                                     const DebugLoc &DL) {
+Value *CMRegion::createRdVectorSplat(const DataLayout &DL, unsigned NumElements,
+                                     Value *SplattedValue, const Twine &Name,
+                                     Instruction *InsertPt,
+                                     const DebugLoc &DbgLoc) {
   auto *V1Cast = CastInst::Create(
       Instruction::BitCast, SplattedValue,
       IGCLLVM::FixedVectorType::get(SplattedValue->getType(), 1),
       SplattedValue->getName() + ".v1cast", InsertPt);
-  V1Cast->setDebugLoc(DL);
+  V1Cast->setDebugLoc(DbgLoc);
 
-  CMRegion R(V1Cast->getType());
+  CMRegion R(V1Cast->getType(), &DL);
   R.NumElements = NumElements;
   R.Width = 1;
   R.VStride = 0;
   R.Stride = 0;
   return R.createRdRegion(V1Cast, SplattedValue->getName() + ".splat", InsertPt,
-                          DL, false /* AllowScalar */);
+                          DbgLoc, false /* AllowScalar */);
 }
 
 /***********************************************************************
