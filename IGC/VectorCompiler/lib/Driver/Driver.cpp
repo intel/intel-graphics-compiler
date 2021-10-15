@@ -418,9 +418,6 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   const auto ClOptGuard =
       llvm::make_scope_exit([]() { cl::ResetAllOptionOccurrences(); });
 
-  if (Opts.DumpIR && Opts.Dumper)
-    Opts.Dumper->dumpBinary(Input, "input.spv");
-
   LLVMContext Context;
   LLVMInitializeGenXTarget();
   LLVMInitializeGenXTargetInfo();
