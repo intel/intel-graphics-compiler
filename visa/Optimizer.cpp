@@ -12186,8 +12186,24 @@ void Optimizer::doNoMaskWA_postRA()
             }
 
             G4_INST* I = *currII;
+            G4_Predicate_Control thisPredCtrl = waPredCtrl;
+            if (I->isSend() && simdsize < I->getExecSize())
+            {
+                // send's execution mask is 16 bits. With noMask, all 16bit shall be used.
+                // In this case, if send's execution size is bigger than simdsize, we must
+                // use exec size for any predicate control. As wa flag is at least 16 bits
+                // and [simdsize:15] must be zero, any16h is actually the same as any8h.
+                if (I->getExecSize() <= g4::SIMD16)
+                {
+                    thisPredCtrl = PRED_ANY16H;
+                }
+                else
+                {
+                    assert(false && "ICE: unexpected execution size for (spill) send!");
+                }
+            }
             G4_Predicate* newPred = builder.createPredicate(
-                PredState_Plus, flagVar, 0, waPredCtrl);
+                PredState_Plus, flagVar, 0, thisPredCtrl);
             if (I->isMov() && I->getSrc(0) && I->getSrc(0)->isFlag())
             {
                 G4_SrcRegRegion* srcReg = I->getSrc(0)->asSrcRegRegion();
