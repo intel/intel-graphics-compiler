@@ -113,6 +113,9 @@ private:
   // True if subtarget gets HWTID from predefined variable
   bool GetsHWTIDFromPredef = false;
 
+  // True is thread payload should be loaded from memory.
+  bool HasThreadPayloadInMemory = false;
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -240,11 +243,7 @@ public:
     return 64;
   }
 
-  bool hasThreadPayloadInMemory() const {
-    if (isXEHP())
-      return true;
-    return false;
-  }
+  bool hasThreadPayloadInMemory() const { return HasThreadPayloadInMemory; }
 
   /// * hasSad2Support - returns true if sad2/sada2 are supported by target
   bool hasSad2Support() const {
@@ -258,16 +257,6 @@ public:
   }
 
   bool hasBitRotate() const { return HasBitRotate; }
-
-  /// * hneedsArgPatching - some subtarget require special treatment of
-  // certain argument types, returns *true* if this is the case.
-  bool needsArgPatching() const {
-    if (isOCLRuntime())
-      return false;
-    if (isXEHP())
-      return true;
-    return false;
-  }
 
   /// * getsHWTIDFromPredef - some subtargets get HWTID from
   // predefined variable instead of sr0, returns *true* for such ones.

@@ -72,6 +72,13 @@ def FeatureHWTIDFromPredef: SubtargetFeature<"hwtidfrompredef",
                                              "true",
                                              "hwtid is obtained from predefined variable">;
 
+// Targets that use compute walker command require loading of thread
+// payload by compiler.
+def FeatureThreadPayloadInMemory : SubtargetFeature<"thread_payload_in_memory",
+                                                    "HasThreadPayloadInMemory",
+                                                    "true",
+                                                    "need to load thread payload from memory">;
+
 def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
                                     "true", "warn instead of error on callable violation">;
 
@@ -131,6 +138,7 @@ def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
 def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureInstrAdd64,
                                FeatureFP64,
+                               FeatureThreadPayloadInMemory,
                                FeatureInstrBitRotate]>;
 
 def GenX : Target {

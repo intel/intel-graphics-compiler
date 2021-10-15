@@ -1185,9 +1185,9 @@ bool GenXKernelBuilder::run() {
 static bool PatchImpArgOffset(Function *F, const GenXSubtarget *ST,
                               const KernelMetadata &KM) {
   IGC_ASSERT(ST);
-  if (!ST->needsArgPatching())
+  if (ST->isOCLRuntime())
     return false;
-  if (F->hasFnAttribute(genx::FunctionMD::OCLRuntime))
+  if (!ST->hasThreadPayloadInMemory())
     return false;
 
   unsigned Idx = 0;
