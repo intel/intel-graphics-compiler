@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/Scalarizer.h"
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -79,7 +80,7 @@ ScalarizeFunction::~ScalarizeFunction()
 bool ScalarizeFunction::runOnFunction(Function& F)
 {
 
-    if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
+    if (!IGC::ForceAlwaysInline())
     {
         if (F.isDeclaration()) return false;
     }

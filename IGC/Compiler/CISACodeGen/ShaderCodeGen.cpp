@@ -503,7 +503,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(llvm::createAggressiveDCEPass());
         // TODO: we probably should be running other passes on the result
 
-        if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
+        if (!IGC::ForceAlwaysInline())
         {
             mpm.add(new PurgeMetaDataUtils());
         }
@@ -1966,7 +1966,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(CreateGatingSimilarSamples());
 
-        if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
+        if (!IGC::ForceAlwaysInline())
         {
             mpm.add(new PurgeMetaDataUtils());
         }

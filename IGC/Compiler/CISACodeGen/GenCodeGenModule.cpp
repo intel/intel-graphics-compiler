@@ -928,7 +928,7 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
 
         int FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
 
-        if (FCtrl == FLAG_FCALL_FORCE_INLINE)
+        if (IGC::ForceAlwaysInline())
             return IGCLLVM::InlineCost::getAlways();
 
         if (pCtx->m_enableSubroutine == false)

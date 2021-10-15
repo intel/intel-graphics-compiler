@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -86,7 +87,7 @@ bool ImplicitGlobalId::runOnFunction(Function& F)
 
     // When stack calls are enabled, default behavior is to skip these in all functions
     if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL &&
-        IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE &&
+        !IGC::ForceAlwaysInline() &&
         IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
     {
         // Insert in functions only when reg key is set

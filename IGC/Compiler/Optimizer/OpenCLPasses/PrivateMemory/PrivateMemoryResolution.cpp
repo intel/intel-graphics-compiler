@@ -842,7 +842,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
     if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation) &&
         (privateOnStack == false) &&
-        (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE))
+        (IGC::ForceAlwaysInline()))
     {
         IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffset will not be marked as Output");
         if (perThreadOffsetInst)

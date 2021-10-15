@@ -642,20 +642,18 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
     }
 
-    // This selectively sets the FunctionControl mode for the list of functions
-    // existing in 'FunctionDebug.txt' in the default IGC output folder.
-    // This only works when FuncionControl=0!
+    // This selectively sets the FunctionControl mode for the list of line-separated
+    // functions existing in 'FunctionDebug.txt' in the default IGC output folder.
+    // This flag will override the default FunctionControl setting for these functions.
     //
     // For example:
-    // We can set SelectiveFuncionControl=3, and give a list of line-separated function
-    // names in 'FunctionDebug.txt'. These functions, if they exist in the module,
-    // will be stack-called.
+    // We can set FunctionControl=1 and SelectiveFuncionControl=3, such that all functions
+    // in the module are inlined, except those found in the 'FunctionDebug.txt' file, which
+    // are stack-called instead.
     //
     auto SelectFCtrl = IGC_GET_FLAG_VALUE(SelectiveFunctionControl);
     if (SelectFCtrl != FLAG_FCALL_DEFAULT)
     {
-        IGC_ASSERT_MESSAGE(FCtrl == FLAG_FCALL_DEFAULT, "This flag is only supported when FunctionControl=0!");
-
         std::ifstream inputFile(IGC::Debug::GetFunctionDebugFile());
         if (inputFile.is_open())
         {
@@ -718,7 +716,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             IGC_ASSERT_MESSAGE(0, "Recursion detected but not enabled!");
         }
-        if (FCtrl == FLAG_FCALL_FORCE_INLINE)
+        if (IGC::ForceAlwaysInline())
         {
             IGC_ASSERT_MESSAGE(0, "Cannot have recursion when forcing inline!");
         }
@@ -789,7 +787,7 @@ ModulePass *createProcessBuiltinMetaDataPass()
 
 bool ProcessBuiltinMetaData::runOnModule(Module& M)
 {
-    if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE)
+    if (IGC::ForceAlwaysInline())
     {
         return false;
     }

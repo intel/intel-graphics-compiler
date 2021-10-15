@@ -367,7 +367,7 @@ static void CommonOCLBasedPasses(
         // Report undef references after setting func attribs for import linking
         mpm.add(new UndefinedReferencesPass());
 
-        if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
+        if (!IGC::ForceAlwaysInline())
         {
             int Threshold = IGC_GET_FLAG_VALUE(OCLInlineThreshold);
             mpm.add(createFunctionInliningPass(Threshold));
@@ -392,10 +392,7 @@ static void CommonOCLBasedPasses(
             mpm.add(new LegalizeFunctionSignatures());
         }
 
-        if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
-        {
-            mpm.add(createProcessBuiltinMetaDataPass());
-        }
+        mpm.add(createProcessBuiltinMetaDataPass());
         mpm.add(new PurgeMetaDataUtils());
     }
 
@@ -455,10 +452,9 @@ static void CommonOCLBasedPasses(
     mpm.add(new ExtensionArgAnalysis());
     mpm.add(new DeviceEnqueueFuncsAnalysis());
     mpm.add(createGenericAddressAnalysisPass());
-    if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
-    {
-        mpm.add(new BuiltinCallGraphAnalysis());
-    }
+
+    mpm.add(new BuiltinCallGraphAnalysis());
+
     // Adding implicit args based on Analysis passes
     mpm.add(new AddImplicitArgs());
 

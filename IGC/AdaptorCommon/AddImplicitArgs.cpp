@@ -125,7 +125,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         }
     }
 
-    if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
+    if (!IGC::ForceAlwaysInline())
     {
         for (auto I : funcsMappingForReplacement)
         {
@@ -492,7 +492,7 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
 
-    if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE)
+    if (IGC::ForceAlwaysInline())
     {
         return false;
     }
