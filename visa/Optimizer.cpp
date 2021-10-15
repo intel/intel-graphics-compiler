@@ -12398,7 +12398,7 @@ void Optimizer::applyFusedCallWA()
         G4_SrcRegRegion* I4_Src1 = builder.createSrc(sTargetDecl->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
         G4_INST* I4_ip_start = builder.createBinOp(G4_add, g4::SIMD1, I4_Dst, I4_Src0, I4_Src1, InstOpt_WriteEnable, false);
 
-        G4_Declare* I4Target = builder.createTempVar(1, Type_D, Any, "rSmallEUTarget");
+        G4_Declare* I4Target = builder.createTempVar(1, Type_D, GRFALIGN, "rSmallEUTarget");
         G4_DstRegRegion* I4_pDst = builder.createDst(I4Target->getRegVar(), 0, 0, 1, Type_D);
         G4_SrcRegRegion* I4_pSrc0 = builder.createSrc(I4_IP->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
         G4_Imm* I4_pSrc1 = builder.createImm(0x33333333, Type_D);  // to be patched later
@@ -12415,7 +12415,7 @@ void Optimizer::applyFusedCallWA()
         G4_SrcRegRegion* I5_Src1 = builder.createSrc(Target->getBase(), 0, 0, builder.getRegionScalar(), Type_D);
         G4_INST* I5_ip_start = builder.createBinOp(G4_add, g4::SIMD1, I5_Dst, I5_Src0, I5_Src1, InstOpt_WriteEnable, false);
 
-        G4_Declare* I5Target = builder.createTempVar(1, Type_D, Any, "rBigEUTarget");
+        G4_Declare* I5Target = builder.createTempVar(1, Type_D, GRFALIGN, "rBigEUTarget");
         G4_DstRegRegion* I5_pDst = builder.createDst(I5Target->getRegVar(), 0, 0, 1, Type_D);
         G4_SrcRegRegion* I5_pSrc0 = builder.createSrc(I5_IP->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
         G4_Imm* I5_pSrc1 = builder.createImm(0x33333333, Type_D);  // to be patched later
