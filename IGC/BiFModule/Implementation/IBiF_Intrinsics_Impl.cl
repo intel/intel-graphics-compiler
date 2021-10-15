@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "spirv.h"
 #include "IMF/FP32/asin_s_la.cl"
 
-INLINE float __builtin_spirv_OpenCL_fclamp_f32_f32_f32(float x, float minval, float maxval ){
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(float x, float minval, float maxval ){
     return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
 }
 
@@ -543,7 +543,7 @@ float __builtin_spirv_OpenCL_native_tan_f32(float x ){
 }
 
 #ifdef cl_khr_fp16
-INLINE half __builtin_spirv_OpenCL_fclamp_f16_f16_f16(half x, half minval, half maxval ){
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f16_f16_f16, )(half x, half minval, half maxval ){
     return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
 }
 
@@ -674,7 +674,7 @@ half __builtin_spirv_OpenCL_native_tan_f16(half x ){
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_fclamp_f64_f64_f64(double x, double minval, double maxval ){
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f64_f64_f64, )(double x, double minval, double maxval ){
     return __builtin_spirv_OpenCL_fmin_f64_f64(__builtin_spirv_OpenCL_fmax_f64_f64(x, minval), maxval);
 }
 

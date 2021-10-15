@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE smoothstep( float edge0, float edge1, float x )
 {
-    return __builtin_spirv_OpenCL_smoothstep_f32_f32_f32( edge0, edge1, x );
+    return SPIRV_OCL_BUILTIN(smoothstep, _f32_f32_f32, )( edge0, edge1, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( smoothstep, float, float )
@@ -21,7 +21,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SSV( smoothstep, float, float, float )
 
 INLINE double OVERLOADABLE smoothstep( double edge0, double edge1, double x )
 {
-    return __builtin_spirv_OpenCL_smoothstep_f64_f64_f64( edge0, edge1, x );
+    return SPIRV_OCL_BUILTIN(smoothstep, _f64_f64_f64, )( edge0, edge1, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( smoothstep, double, double )
@@ -33,7 +33,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SSV( smoothstep, double, double, double )
 
 INLINE half OVERLOADABLE smoothstep( half edge0, half edge1, half x )
 {
-    return __builtin_spirv_OpenCL_smoothstep_f16_f16_f16( edge0, edge1, x );
+    return SPIRV_OCL_BUILTIN(smoothstep, _f16_f16_f16, )( edge0, edge1, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( smoothstep, half, half )

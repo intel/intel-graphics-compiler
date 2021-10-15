@@ -1230,7 +1230,7 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i8_f32, _Ruchar_rtn)(f
 uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f32, _Ruchar_sat)(float FloatValue)
 {
   //return __builtin_IB_ftouc_sat((float)FloatValue);
-  float res = __builtin_spirv_OpenCL_fclamp_f32_f32_f32(FloatValue, 0.0f, (float)UCHAR_MAX);
+  float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, 0.0f, (float)UCHAR_MAX);
   return (uchar)res;
 }
 
@@ -1288,7 +1288,7 @@ ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i16_f32, _Rushort_rtn)
 ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f32, _Rushort_sat)(float FloatValue)
 {
   //return __builtin_IB_ftous_sat((float)FloatValue);
-  float res = __builtin_spirv_OpenCL_fclamp_f32_f32_f32(FloatValue, 0.0f, (float)USHRT_MAX);
+  float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, 0.0f, (float)USHRT_MAX);
   return (ushort)res;
 }
 
@@ -1910,7 +1910,7 @@ char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i8_f32, _Rchar_rtn)(flo
 
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f32, _Rchar_sat)(float FloatValue)
 {
-  float res = __builtin_spirv_OpenCL_fclamp_f32_f32_f32(FloatValue, (float)CHAR_MIN, (float)CHAR_MAX);
+  float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, (float)CHAR_MIN, (float)CHAR_MAX);
   res = __builtin_spirv_OpenCL_select_f32_f32_i32(res, 0.0f , SPIRV_BUILTIN(IsNan, _f32, )(FloatValue));
   return (char)res;
 }
@@ -1968,7 +1968,7 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i16_f32, _Rshort_rtn)(f
 
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f32, _Rshort_sat)(float FloatValue)
 {
-  float res = __builtin_spirv_OpenCL_fclamp_f32_f32_f32(FloatValue, (float)SHRT_MIN, (float)SHRT_MAX);
+  float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, (float)SHRT_MIN, (float)SHRT_MAX);
   res = __builtin_spirv_OpenCL_select_f32_f32_i32(res, 0.0f , SPIRV_BUILTIN(IsNan, _f32, )(FloatValue));
   return (short)res;
 }

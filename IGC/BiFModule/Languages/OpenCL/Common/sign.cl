@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE sign( float x )
 {
-    return __builtin_spirv_OpenCL_sign_f32( x );
+    return SPIRV_OCL_BUILTIN(sign, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( sign, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( sign, float, float )
 
 INLINE double OVERLOADABLE sign( double x )
 {
-    return __builtin_spirv_OpenCL_sign_f64( x );
+    return SPIRV_OCL_BUILTIN(sign, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( sign, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( sign, double, double )
 
 INLINE half OVERLOADABLE sign( half x )
 {
-    return __builtin_spirv_OpenCL_sign_f16( x );
+    return SPIRV_OCL_BUILTIN(sign, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( sign, half, half )
