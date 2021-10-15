@@ -53,11 +53,11 @@ enum CODE_PATCH_TYPE {
 };
 
 enum LINKER_TYPE {
-    Linker_Subroutine = 0,
-    Linker_Call2Jump = 1,
-    Linker_Inline = 2,
-    Linker_RemoveStackFrame = 4,
-    Linker_RemoveArgRet = 8
+    Linker_Subroutine = 0,       // VALUE 1
+    Linker_Call2Jump = 1,        // VALUE 2
+    Linker_Inline = 2,           // VALUE 4
+    Linker_RemoveStackFrame = 3, // VALUE 8
+    Linker_RemoveArgRet = 4      // VALUE 16
 };
 
 #endif

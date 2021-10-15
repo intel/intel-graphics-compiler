@@ -589,9 +589,9 @@ void CISA_IR_Builder::LinkTimeOptimization(
     std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
     uint32_t options)
 {
-    bool inlining = options & Linker_Inline;
-    bool call2jump = options & Linker_Call2Jump;
-    bool removeArgRet = options & Linker_RemoveArgRet;
+    bool inlining =     options & (1U << Linker_Inline);
+    bool call2jump =    options & (1U << Linker_Call2Jump);
+    bool removeArgRet = options & (1U << Linker_RemoveArgRet);
     std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
     std::map<G4_INST*, std::list<G4_INST*>> rets;
     std::set<G4_Kernel*> visited;
@@ -1086,7 +1086,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         return m_cisaBinary->dumpToStream(os);
     }
 
-    if (m_options.getuInt32Option(vISA_Linker) & Linker_Subroutine)
+    if (m_options.getuInt32Option(vISA_Linker) & (1U << Linker_Subroutine))
     {
         std::map<std::string, G4_Kernel*> functionsNameMap;
         G4_Kernel* mainFunc = m_kernelsAndFunctions.front()->getKernel();
