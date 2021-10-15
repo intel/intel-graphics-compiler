@@ -7033,8 +7033,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     void Optimizer::HWWorkaround()
     {
-        if ((kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) &&
-            builder.hasFusedEUWA() &&
+        if (builder.hasFusedEUWA() &&
             (builder.getJitInfo()->spillMemUsed > 0
              || builder.getJitInfo()->numFlagSpillStore > 0))
         {
