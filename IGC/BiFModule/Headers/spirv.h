@@ -4501,6 +4501,8 @@ typedef struct
 local __namedBarrier* __builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarrier_p3i32(int Count, local __namedBarrier* nb_array, local uint* id);
 void __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(local __namedBarrier* NB, Scope_t Memory, uint Semantics);
 
+void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32(local __namedBarrier* barrier, cl_mem_fence_flags flags);
+void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32_i32(local __namedBarrier* barrier, cl_mem_fence_flags flags, memory_scope scope);
 // Group Instructions
 // TODO: Do we want to split out size_t into i64 and i32 as we've done here?
 

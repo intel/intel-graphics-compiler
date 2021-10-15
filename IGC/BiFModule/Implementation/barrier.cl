@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "../Languages/OpenCL/IBiF_SPIRV_Utils.cl"
 
 extern __constant int __OptDisable;
 
@@ -241,6 +242,15 @@ void __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(local __named
         AtomicStore(&NB->inc, Workgroup, AtomSema, 0);
         AtomicStore(&NB->count, Workgroup, AtomSema, NB->orig_count);
     }
+}
+void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32(local __namedBarrier* barrier, cl_mem_fence_flags flags)
+{
+    __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(barrier, Workgroup, AcquireRelease | get_spirv_mem_fence(flags));
+}
+
+void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32_i32(local __namedBarrier* barrier, cl_mem_fence_flags flags, memory_scope scope)
+{
+    __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(barrier, get_spirv_mem_scope(scope), AcquireRelease | get_spirv_mem_fence(flags));
 }
 
 
