@@ -724,7 +724,9 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     //Local dependence analysis
     for (; ib != bend; ++ib)
     {
-        BBVector[(*ib)->getId()] = new (mem)G4_BB_SB(*(fg.builder),
+        BBVector[(*ib)->getId()] = new (mem)G4_BB_SB(
+            *this,
+            *(fg.builder),
             mem,
             *ib,
             &SBNodes,
@@ -1337,7 +1339,7 @@ void SWSB::SWSBGenerator()
     return;
 }
 
-unsigned SWSB::getDepDelay(const SBNode* curNode) const
+unsigned SWSB::calcDepDelayForNode(const SBNode* curNode) const
 {
     const G4_INST* inst = curNode->GetInstruction();
     int reuseDelay = 0;
@@ -1396,7 +1398,7 @@ void SWSB::examineNodeForTokenReuse(
     //The reuse node is before current node.
     if (nodeID > reuseNode->getNodeID())
     {
-        unsigned curNodeDelay = getDepDelay(reuseNode);
+        unsigned curNodeDelay = reuseNode->getDepDelay();
 
         //reuse Delay is not accurate in different loop level
         reuseDelay = curNodeDelay - (nodeID - reuseNode->getNodeID());
@@ -1473,7 +1475,7 @@ SBNode * SWSB::reuseTokenSelection(const SBNode * node) const
     int delay = tokenAfterWriteSendSamplerCycle; //Assume the longest one
     int distance = 0; //Distance between the node
     const unsigned nodeID = node->getNodeID();
-    const unsigned nodeDelay = getDepDelay(node); // The longest delay the node may cause.
+    const unsigned nodeDelay = node->getDepDelay(); // The longest delay the node may cause.
     const unsigned char nestLoopLevel = BBVector[node->getBBID()]->getBB()->getNestLevel();
     const unsigned loopStartBB = BBVector[node->getBBID()]->getLoopStartBBID();
     const unsigned loopEndBB = BBVector[node->getBBID()]->getLoopEndBBID();
@@ -2471,7 +2473,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
 
         for (SBNode* liveNode : *reachTokenArray[i])
         {
-            unsigned liveNodeDelay = getDepDelay(liveNode);
+            unsigned liveNodeDelay = liveNode->getDepDelay();
             unsigned liveNodeOverhead = 0;
 
             //What about the global send come back to current BB?
@@ -2510,7 +2512,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
         {
             for (SBNode* useNode : *reachUseArray[i])
             {
-                unsigned nodeDelay = getDepDelay(node);
+                unsigned nodeDelay = node->getDepDelay();
                 unsigned nodeOverhead = 0;
 
                 //What about the global send come back to current BB?
@@ -5693,6 +5695,9 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             }
             last_send_node = SBSendNodes->size();
             node->setSendID(int(SBSendNodes->size()));
+            // The dep delay of the node should be constant, so we can
+            // calculate and save it for future uses.
+            node->setDepDelay(swsb.calcDepDelayForNode(node));
             SBSendNodes->push_back(node);
         }
     }

@@ -352,6 +352,7 @@ namespace vISA
         bool          hasAR = false;      // Used for global analysis, if has AR (WAR) dependencies from the node
         bool          hasFollowDistOneAReg = false;
         bool          followDistOneAReg = false;
+        unsigned depDelay = 0;
 
         struct DepToken {
             unsigned short token;
@@ -426,6 +427,8 @@ namespace vISA
         G4_INST*  GetInstruction() const { return instVec.front(); }
         void addInstruction(G4_INST *i) { instVec.push_back(i); }
         G4_INST*  getLastInstruction() const { return instVec.back(); }
+        void setDepDelay(unsigned val) { depDelay = val; }
+        unsigned getDepDelay() const { return depDelay; }
 
         int getALUID() const { return ALUID; }
         unsigned getNodeID() const { return nodeID; };
@@ -1228,6 +1231,7 @@ namespace vISA
 
     class G4_BB_SB {
     private:
+        const SWSB& swsb;
         IR_Builder& builder;
         vISA::Mem_Manager &mem;
         G4_BB             *bb;
@@ -1293,10 +1297,10 @@ namespace vISA
         SBBitSets localReachingSends;
 
         //BB local data dependence analysis
-        G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_VECT* SBSendNodes,
+        G4_BB_SB(const SWSB& sb, IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_VECT* SBSendNodes,
             SBBUCKET_VECTOR *globalSendOpndList,  SWSB_INDEXES *indexes, uint32_t &globalSendNum, LiveGRFBuckets *lb,
             LiveGRFBuckets *globalLB, PointsToAnalysis& p,
-            std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap, const unsigned dpasLatency) : builder(b), mem(m), bb(block), tokenAfterDPASCycle(dpasLatency)
+            std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap, const unsigned dpasLatency) : swsb(sb), builder(b), mem(m), bb(block), tokenAfterDPASCycle(dpasLatency)
         {
             for (int i = 0; i < PIPE_DPAS; i++)
             {
@@ -1564,7 +1568,6 @@ namespace vISA
 
         void examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &curDistance, unsigned nodeID, unsigned nodeDelay, const SBNode *curNode, unsigned char nestLoopLevel, unsigned curLoopStartBB, unsigned curLoopEndBB) const;
         SBNode * reuseTokenSelection(const SBNode * node) const;
-        unsigned getDepDelay(const SBNode *node) const;
         unsigned short reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*& candidateNode, bool& fromUse);
         void addReachingDefineSet(SBNode* node, SBBitSets* globalLiveSet, SBBitSets* localLiveSet);
         void addReachingUseSet(SBNode* node, SBNode* use);
@@ -1674,6 +1677,7 @@ namespace vISA
             }
         }
         void SWSBGenerator();
+        unsigned calcDepDelayForNode(const SBNode *node) const;
     };
 }
 #endif // _SWSB_H_
