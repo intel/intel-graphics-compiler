@@ -67,6 +67,8 @@ namespace IGC
             DWORD size = ::GetModuleFileNameA(NULL, &ret[0], ret.size());
             IGC_ASSERT_MESSAGE(size < ret.size(), "Windows path can have MAX_PATH characters max");
             ret.resize(size);
+#else
+            ret = "unknownProcess";
 #endif
 
             auto pos = ret.rfind('/');
