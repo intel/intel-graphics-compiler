@@ -9,8 +9,6 @@ SPDX-License-Identifier: MIT
 #ifndef __SPIRV_H__
 #define __SPIRV_H__
 
-#include "spirv_macros.h"
-
 /******
  *
  * Mangling Scheme:
@@ -165,6 +163,24 @@ typedef size_t uintptr_t;
 #define M_2_SQRTPI    0x1.20dd750429b6dp+0
 #define M_SQRT2       0x1.6a09e667f3bcdp+0
 #define M_SQRT1_2     0x1.6a09e667f3bcdp-1
+
+#if !defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
+#define SPIRV_OVERLOADABLE
+#define SPIRV_BUILTIN(opcode, old_mangling, new_mangling) \
+    __builtin_spirv_Op##opcode##old_mangling
+#define SPIRV_BUILTIN_NO_OP(opcode, old_mangling, new_mangling) \
+    __builtin_spirv_##opcode##old_mangling
+#define SPIRV_OCL_BUILTIN(func, old_mangling, new_mangling) \
+    __builtin_spirv_OpenCL_##func##old_mangling
+#else
+#define SPIRV_OVERLOADABLE __attribute__((overloadable))
+#define SPIRV_BUILTIN(opcode, old_mangling, new_mangling) \
+    __spirv_##opcode##new_mangling
+#define SPIRV_BUILTIN_NO_OP(opcode, old_mangling, new_mangling) \
+    __spirv_##opcode##new_mangling
+#define SPIRV_OCL_BUILTIN(func, old_mangling, new_mangling) \
+    __spirv_ocl_##func##new_mangling
+#endif
 
 
 #if defined(cl_khr_fp64)

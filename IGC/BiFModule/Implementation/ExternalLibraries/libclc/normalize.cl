@@ -113,7 +113,7 @@ static ushort16 INLINE OVERLOADABLE __convert_ushort16(__bool16 b)
 }
 
 float __builtin_spirv_OpenCL_normalize_f32(float p) {
-  return SPIRV_OCL_BUILTIN(sign, _f32, )(p);
+  return __builtin_spirv_OpenCL_sign_f32(p);
 }
 
 float2 __builtin_spirv_OpenCL_normalize_v2f32(float2 p) {
@@ -183,7 +183,7 @@ float4 __builtin_spirv_OpenCL_normalize_v4f32(float4 p) {
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 double __builtin_spirv_OpenCL_normalize_f64(double p) {
-  return SPIRV_OCL_BUILTIN(sign, _f64, )(p);
+  return __builtin_spirv_OpenCL_sign_f64(p);
 }
 
 double2 __builtin_spirv_OpenCL_normalize_v2f64(double2 p) {
@@ -252,7 +252,7 @@ double4 __builtin_spirv_OpenCL_normalize_v4f64(double4 p) {
 #if defined(cl_khr_fp16)
 
 INLINE half __builtin_spirv_OpenCL_normalize_f16(half p ){
-    return SPIRV_OCL_BUILTIN(sign, _f16, )(p);
+    return __builtin_spirv_OpenCL_sign_f16(p);
 }
 
 half2 __builtin_spirv_OpenCL_normalize_v2f16(half2 p ){
