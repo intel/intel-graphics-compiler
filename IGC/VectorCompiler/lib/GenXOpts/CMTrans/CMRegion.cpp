@@ -442,7 +442,8 @@ Value *CMRegion::createRdVectorSplat(unsigned NumElements, Value *SplattedValue,
   V1Cast->setDebugLoc(DL);
 
   CMRegion R(V1Cast->getType());
-  R.Width = NumElements;
+  R.NumElements = NumElements;
+  R.Width = 1;
   R.VStride = 0;
   R.Stride = 0;
   return R.createRdRegion(V1Cast, SplattedValue->getName() + ".splat", InsertPt,
