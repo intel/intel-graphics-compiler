@@ -172,7 +172,6 @@ bool genx::loadNonSimpleConstants(
         continue;
       ConstantLoader CL(C, Subtarget, DL, Inst, AddedInstructions);
       if (CL.needFixingSimple()) {
-        Modified = true;
         CL.fixSimple(i);
         continue;
       }
@@ -774,7 +773,7 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
         Value *Load = nullptr;
         Instruction *InsertBefore = InsertBB->getTerminator();
         if (!CL.isSimple())
-          Load = CL.loadBig(InsertBefore);
+          Load = CL.loadNonSimple(InsertBefore);
         else
           Load = CL.load(InsertBefore);
         Modified = true;
@@ -853,7 +852,6 @@ bool genx::isReplicatedConstantVector(
 }
 
 void ConstantLoader::fixSimple(int OperandIdx) {
-  IGC_ASSERT_MESSAGE(User, "user must be provided");
   IGC_ASSERT_MESSAGE(NewC, "no need to fix simple case");
   IGC_ASSERT_MESSAGE(User->getOperand(OperandIdx) == C,
     "wrong arguments: wrong operand index was provided");
@@ -872,7 +870,8 @@ void ConstantLoader::fixSimple(int OperandIdx) {
  *
  * Return:  new instruction
  */
-Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
+Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
+{
   IGC_ASSERT(!isSimple());
   if (!isLegalSize())
     return loadBig(Inst);
@@ -1336,7 +1335,8 @@ Instruction *ConstantLoader::loadNonPackedIntConst(Instruction *InsertBefore) {
  * ConstantLoader::loadBig : insert instruction to load a constant that might
  *      be illegally sized
  */
-Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
+Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
+{
   if (isLegalSize() || isa<UndefValue>(C)) {
     // Does not need legalizing.
     if (!isSimple())
@@ -1388,11 +1388,12 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
 /***********************************************************************
  * ConstantLoader::isLegalSize : detect if a constant is a legal size
  */
-bool ConstantLoader::isLegalSize() const {
+bool ConstantLoader::isLegalSize()
+{
   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VT)
     return true;
-  const int NumBits = DL.getTypeSizeInBits(VT);
+  const int NumBits = DL.getTypeSizeInBits(C->getType());
   if (!llvm::isPowerOf2_32(NumBits))
     return false;
   const int GRFSizeInBits = Subtarget.getGRFByteSize() * genx::ByteBits;
@@ -1410,7 +1411,7 @@ bool ConstantLoader::isLegalSize() const {
  * This does not do a thorough check so it misses some cases of a constant
  * that would split into simple constants.
  */
-bool ConstantLoader::isBigSimple() const
+bool ConstantLoader::isBigSimple()
 {
   IGC_ASSERT_MESSAGE(!needFixingSimple(),
     "simple case shall be fixed first before this call");
@@ -1431,7 +1432,7 @@ bool ConstantLoader::isBigSimple() const
  *
  * A simple constant is one we know can be a constant operand in an instruction.
  */
-bool ConstantLoader::isSimple() const
+bool ConstantLoader::isSimple()
 {
   IGC_ASSERT_MESSAGE(!needFixingSimple(),
     "simple case shall be fixed first before this call");
@@ -1464,7 +1465,8 @@ bool ConstantLoader::allowI64Ops() const {
  * ConstantLoader::isPackedIntVector : check for a packed int vector
  *    (having already done the analysis in the ConstantLoader constructor)
  */
-bool ConstantLoader::isPackedIntVector() const {
+bool ConstantLoader::isPackedIntVector()
+{
   // Check for a packed int vector. Either the element type must be i16, or
   // the user (instruction using the constant) must be genx.constanti or
   // wrregion or wrconstregion. Not allowed if the user is a logic op.
@@ -1496,7 +1498,7 @@ bool ConstantLoader::isPackedIntVector() const {
  * ConstantLoader::isPackedFloatVector : check for a packed float vector
  *    (having already done the analysis in the ConstantLoader constructor)
  */
-bool ConstantLoader::isPackedFloatVector() const {
+bool ConstantLoader::isPackedFloatVector() {
   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VT)
     return false;
@@ -1512,7 +1514,8 @@ bool ConstantLoader::isPackedFloatVector() const {
  * A "consolidated constant" is one where a vector of byte or short is
  * turned into the equivalent (as if by bitcast) vector of int.
  */
-Constant *ConstantLoader::getConsolidatedConstant(Constant *C) {
+Constant *ConstantLoader::getConsolidatedConstant(Constant *C)
+{
   if (isa<UndefValue>(C))
     return nullptr;
   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
@@ -1570,7 +1573,8 @@ Constant *ConstantLoader::getConsolidatedConstant(Constant *C) {
  * (integer 8 or fp 4) can be loaded as a packed vector, possibly scaled
  * and adjusted.
  */
-void ConstantLoader::analyze() {
+void ConstantLoader::analyze()
+{
   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VT)
     return;
@@ -1589,7 +1593,8 @@ void ConstantLoader::analyze() {
     analyzeForPackedFloat(NumElements);
 }
 
-void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
+void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
+{
   // Get element values.
   int64_t Min = INT64_MAX;
   int64_t Max = INT64_MIN;
