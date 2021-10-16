@@ -2640,4 +2640,29 @@ std::pair<Value*, unsigned int> GetURBBaseAndOffset(Value* pUrbOffset)
     return std::make_pair(pBase, offset);
 }
 
+std::vector<std::pair<unsigned int, std::string>> GetPrintfStrings(Module &M)
+{
+    std::vector<std::pair<unsigned int, std::string>> printfStrings;
+    std::string MDNodeName = "printf.strings";
+    NamedMDNode* printfMDNode = M.getOrInsertNamedMetadata(MDNodeName);
+
+    for (uint i = 0, NumStrings = printfMDNode->getNumOperands();
+         i < NumStrings;
+         i++)
+    {
+        MDNode* argMDNode = printfMDNode->getOperand(i);
+        ConstantInt* indexOpndVal =
+            mdconst::dyn_extract<ConstantInt>(argMDNode->getOperand(0));
+        MDString* stringOpndVal =
+            dyn_cast<MDString>(argMDNode->getOperand(1));
+
+        printfStrings.push_back({
+            int_cast<unsigned int>(indexOpndVal->getZExtValue()),
+            stringOpndVal->getString().data()
+        });
+    }
+
+    return printfStrings;
+}
+
 } // namespace IGC

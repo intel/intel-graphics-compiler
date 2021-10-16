@@ -469,8 +469,7 @@ namespace IGC
 
     void COpenCLKernel::CreatePrintfStringAnnotations()
     {
-        std::vector<std::pair<unsigned int, std::string>> printfStrings;
-        GetPrintfStrings(printfStrings);
+        auto printfStrings = GetPrintfStrings(*entry->getParent());
 
         for (const auto& printfString : printfStrings)
         {

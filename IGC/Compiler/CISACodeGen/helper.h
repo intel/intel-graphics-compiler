@@ -502,4 +502,6 @@ namespace IGC
     // <nullptr, offset> is returned.
     // In all other cases <pUrbOffset, 0> is returned.
     std::pair<llvm::Value*, unsigned int> GetURBBaseAndOffset(llvm::Value* pUrbOffset);
+
+    std::vector<std::pair<unsigned int, std::string>> GetPrintfStrings(llvm::Module &M);
 } // namespace IGC

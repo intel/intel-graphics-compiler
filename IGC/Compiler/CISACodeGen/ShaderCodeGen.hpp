@@ -523,9 +523,7 @@ public:
     unsigned int GetPrimitiveTypeSizeInRegister(const llvm::Type* Ty) const;
     unsigned int GetScalarTypeSizeInRegisterInBits(const llvm::Type* Ty) const;
     unsigned int GetScalarTypeSizeInRegister(const llvm::Type* Ty) const;
-
 protected:
-    void GetPrintfStrings(std::vector<std::pair<unsigned int, std::string>>& printfStrings);
     bool CompileSIMDSizeInCommon(SIMDMode simdMode);
     uint32_t GetShaderThreadUsageRate();
 private:
