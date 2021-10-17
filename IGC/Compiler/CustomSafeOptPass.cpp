@@ -5314,9 +5314,8 @@ bool LogicalAndToBranch::runOnFunction(Function& F)
 //      ....
 //      output:
 //   Here, i_0 is uniform within the loop,  but it is not outside loop as each WI will
-//   exit with different i, thus i_1 is non-uniform.
-//   If this lcssa phi would be removed, all uses of i_1 will be replaced with a uniform
-//   value i_0, which is wrong.
+//   exit with different i, thus i_1 is non-uniform. (Note that removing lcssa might be
+//   bad in performance, but it should not cause any functional issue.)
 //
 // This is needed to avoid generating the following code for which vISA cannot generate
 // the correct code:
