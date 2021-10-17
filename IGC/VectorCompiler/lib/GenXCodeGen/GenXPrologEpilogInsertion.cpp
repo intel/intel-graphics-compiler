@@ -400,9 +400,7 @@ void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
     }
     RetSize = DL->getTypeSizeInBits(RetVal->getType()) / genx::ByteBits;
     std::vector<Value *> Worklist;
-    bool UndefReturn = false;
     if (isa<StructType>(RetVal->getType())) {
-      UndefReturn = isa<UndefValue>(RetVal);
       while (auto *InsValue = dyn_cast<InsertValueInst>(RetVal)) {
         RetVal = InsValue->getOperand(0);
         if (InsValue->getOperand(1)->getType()->getScalarType()->isIntegerTy(1))
@@ -411,7 +409,7 @@ void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
       }
     } else
       Worklist.push_back(RetVal);
-    IGC_ASSERT(UndefReturn || !Worklist.empty());
+    IGC_ASSERT(!Worklist.empty());
     for (auto *Ins : Worklist) {
       Instruction *InstToReplaceIn = &I;
       unsigned Offset = 0;
