@@ -10,6 +10,7 @@ set(GENX_UTILS_SOURCES
   Printf.cpp
   TypeSize.cpp
   BreakConst.cpp
+  Region.cpp
   )
 
 add_library(VCGenXUtils ${GENX_UTILS_SOURCES})

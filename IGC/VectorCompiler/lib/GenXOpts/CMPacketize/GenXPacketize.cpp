@@ -25,7 +25,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 
-#include "vc/GenXOpts/Utils/CMRegion.h"
+#include "vc/Utils/GenX/Region.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXSimdCFLowering.h"

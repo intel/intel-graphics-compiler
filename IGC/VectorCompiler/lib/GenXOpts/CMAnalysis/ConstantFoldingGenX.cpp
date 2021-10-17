@@ -12,7 +12,8 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "vc/GenXOpts/GenXAnalysis.h"
-#include "vc/GenXOpts/Utils/CMRegion.h"
+#include "vc/Utils/GenX/Region.h"
+
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"

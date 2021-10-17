@@ -14,8 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
-#include "vc/GenXOpts/Utils/CMRegion.h"
-
+#include "vc/Utils/GenX/Region.h"
 #include "vc/Utils/GenX/TypeSize.h"
 
 #include "llvm/ADT/SmallBitVector.h"

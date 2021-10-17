@@ -51,7 +51,8 @@ SPDX-License-Identifier: MIT
 #define GENXREGION_H
 
 #include "GenXAlignmentInfo.h"
-#include "vc/GenXOpts/Utils/CMRegion.h"
+#include "vc/Utils/GenX/Region.h"
+
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallBitVector.h"
 

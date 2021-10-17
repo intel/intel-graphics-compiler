@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/CMRegion.h"
+#include "vc/Utils/GenX/Region.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 

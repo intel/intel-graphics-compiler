@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
-#include "vc/GenXOpts/Utils/CMRegion.h"
+#include "vc/Utils/GenX/Region.h"
 #include "vc/Utils/GenX/TypeSize.h"
 
 #include <cstddef>

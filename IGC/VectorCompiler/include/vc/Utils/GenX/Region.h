@@ -52,8 +52,8 @@ SPDX-License-Identifier: MIT
 /// 
 //===----------------------------------------------------------------------===//
 
-#ifndef VC_GENXOPTS_UTILS_CMREGION_H
-#define VC_GENXOPTS_UTILS_CMREGION_H
+#ifndef VC_UTILS_GENX_REGION_H
+#define VC_UTILS_GENX_REGION_H
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallBitVector.h"
@@ -71,7 +71,6 @@ class Instruction;
 class raw_ostream;
 class Twine;
 class DebugLoc;
-class TargetLibraryInfo;
 
 namespace WrPredRegionOperand {
 enum { OldValue, NewValue, Offset };
@@ -228,4 +227,4 @@ inline raw_ostream &operator<<(raw_ostream &OS, const CMRegion &R) {
 
 } // end namespace llvm 
 
-#endif // VC_GENXOPTS_UTILS_CMREGION_H
+#endif // VC_UTILS_GENX_REGION_H
