@@ -324,7 +324,7 @@ namespace //Anonymous
                 {
                     auto typeName = sType->getName();
                     bool isOpenCLEvent = typeName.equals("opencl.clk_event_t") || typeName.equals("opencl.event_t");
-                    bool isSPIRVEvent = typeName.equals("__spirv.DeviceEvent");
+                    bool isSPIRVEvent = typeName.equals("spirv.DeviceEvent") || typeName.equals("spirv.Event");
                     return isOpenCLEvent || isSPIRVEvent;
                 }
             }
@@ -339,7 +339,7 @@ namespace //Anonymous
                 if (sType->isOpaque())
                 {
                     auto typeName = sType->getName();
-                    return typeName.equals("opencl.queue_t") || typeName.equals("__spirv.Queue");
+                    return typeName.equals("opencl.queue_t") || typeName.equals("spirv.Queue");
                 }
             }
             return false;
