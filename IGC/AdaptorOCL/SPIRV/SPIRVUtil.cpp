@@ -196,6 +196,12 @@ std::string recursive_mangle(const Type* pType)
                     }
                     IGC_ASSERT_MESSAGE(0, "Inconsistent SPIRV image!");
                 }
+                bool isPipe_ro = structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::Pipe) + "._0");
+                if (isPipe_ro) return "Pipe_ro";
+                bool isPipe_wo = structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::Pipe) + "._1");
+                if (isPipe_wo) return "Pipe_wo";
+                bool isReserveId = structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::ReserveId));
+                if (isReserveId) return "ReserveId";
                 return "i64";
             }
 

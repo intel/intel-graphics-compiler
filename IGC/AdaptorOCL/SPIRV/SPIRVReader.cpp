@@ -1600,6 +1600,7 @@ private:
   std::string transOCLSampledImageTypeName(igc_spv::SPIRVTypeSampledImage* ST);
   std::string transOCLImageTypeAccessQualifier(igc_spv::SPIRVTypeImage* ST);
   std::string transOCLPipeTypeAccessQualifier(igc_spv::SPIRVTypePipe* ST);
+  std::string transOCLPipeTypeName(igc_spv::SPIRVTypePipe* PT, SPIRVAccessQualifierKind PipeAccess);
 
   Value *oclTransConstantSampler(igc_spv::SPIRVConstantSampler* BCS);
 
@@ -2115,9 +2116,16 @@ SPIRVToLLVM::transType(SPIRVType *T) {
     pStructTy->setBody(MT, ST->isPacked());
     return pStructTy;
     }
+  case OpTypePipe: {
+    auto PT = static_cast<SPIRVTypePipe*>(T);
+    return mapType(T, getOrCreateOpaquePtrType(
+      M,
+      transOCLPipeTypeName(PT, PT->getAccessQualifier()),
+      getOCLOpaqueTypeAddrSpace(T->getOpCode())));
+  }
   case OpTypePipeStorage:
   {
-      return mapType(T, Type::getInt8PtrTy(*Context, SPIRAS_Global));
+    return mapType(T, Type::getInt8PtrTy(*Context, SPIRAS_Global));
   }
   case OpTypeNamedBarrier:
   {
@@ -2164,6 +2172,17 @@ SPIRVToLLVM::transType(SPIRVType *T) {
     }
   }
   return 0;
+}
+
+std::string
+SPIRVToLLVM::transOCLPipeTypeName(igc_spv::SPIRVTypePipe* PT,
+  SPIRVAccessQualifierKind PipeAccess) {
+  IGC_ASSERT((PipeAccess == AccessQualifierReadOnly ||
+    PipeAccess == AccessQualifierWriteOnly) &&
+    "Invalid access qualifier");
+  return std::string(kSPIRVTypeName::PrefixAndDelim) + kSPIRVTypeName::Pipe +
+    kSPIRVTypeName::Delimiter + kSPIRVTypeName::PostfixDelim +
+    PipeAccess;
 }
 
 std::string
