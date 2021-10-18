@@ -19,10 +19,10 @@ diff --git a/lib/SPIRV/SPIRVReader.cpp b/lib/SPIRV/SPIRVReader.cpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/SPIRVReader.cpp
 +++ b/lib/SPIRV/SPIRVReader.cpp
-@@ -4079,6 +4079,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
-     }
-     if (BA->hasDecorate(DecorationSingleElementVectorINTEL))
-       F->addAttribute(ArgNo + 1, SEVAttr);
+@@ -3745,6 +3745,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
+     SEVAttr = translateSEVMetadata(BA, F->getContext());
+     if (SEVAttr)
+       F->addAttribute(ArgNo + 1, SEVAttr.getValue());
 +    if (BA->hasDecorate(DecorationFuncParamKindINTEL, 0, &Kind)) {
 +      Attribute Attr = Attribute::get(*Context, kVCMetadata::VCArgumentKind,
 +                                      std::to_string(Kind));
@@ -42,10 +42,10 @@ diff --git a/lib/SPIRV/SPIRVWriter.cpp b/lib/SPIRV/SPIRVWriter.cpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/SPIRVWriter.cpp
 +++ b/lib/SPIRV/SPIRVWriter.cpp
-@@ -682,6 +682,19 @@ void LLVMToSPIRV::transVectorComputeMetadata(Function *F) {
-              "This decoration is valid only for Scalar or Pointer types");
-       BA->addDecorate(DecorationSingleElementVectorINTEL);
-     }
+@@ -689,6 +689,19 @@ void LLVMToSPIRV::transVectorComputeMetadata(Function *F) {
+       translateSEVDecoration(
+           Attrs.getAttribute(ArgNo + 1, kVCMetadata::VCSingleElementVector),
+           BA);
 +    if (Attrs.hasAttribute(ArgNo + 1, kVCMetadata::VCArgumentKind)) {
 +      SPIRVWord Kind;
 +      Attrs.getAttribute(ArgNo + 1, kVCMetadata::VCArgumentKind)
@@ -79,7 +79,7 @@ diff --git a/lib/SPIRV/libSPIRV/SPIRVDecorate.cpp b/lib/SPIRV/libSPIRV/SPIRVDeco
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVDecorate.cpp
 +++ b/lib/SPIRV/libSPIRV/SPIRVDecorate.cpp
-@@ -113,6 +113,9 @@ void SPIRVDecorate::encode(spv_ostream &O) const {
+@@ -114,6 +114,9 @@ void SPIRVDecorate::encode(spv_ostream &O) const {
    case DecorationUserSemantic:
      SPIRVDecorateUserSemanticAttr::encodeLiterals(Encoder, Literals);
      break;
@@ -89,7 +89,7 @@ index 00000000..00000000 100644
    default:
      Encoder << Literals;
    }
-@@ -139,6 +142,9 @@ void SPIRVDecorate::decode(std::istream &I) {
+@@ -140,6 +143,9 @@ void SPIRVDecorate::decode(std::istream &I) {
    case DecorationUserSemantic:
      SPIRVDecorateUserSemanticAttr::decodeLiterals(Decoder, Literals);
      break;
@@ -99,7 +99,7 @@ index 00000000..00000000 100644
    default:
      Decoder >> Literals;
    }
-@@ -158,6 +164,9 @@ void SPIRVMemberDecorate::encode(spv_ostream &O) const {
+@@ -175,6 +181,9 @@ void SPIRVMemberDecorate::encode(spv_ostream &O) const {
    case DecorationUserSemantic:
      SPIRVDecorateUserSemanticAttr::encodeLiterals(Encoder, Literals);
      break;
@@ -109,7 +109,7 @@ index 00000000..00000000 100644
    default:
      Encoder << Literals;
    }
-@@ -181,6 +190,9 @@ void SPIRVMemberDecorate::decode(std::istream &I) {
+@@ -198,6 +207,9 @@ void SPIRVMemberDecorate::decode(std::istream &I) {
    case DecorationUserSemantic:
      SPIRVDecorateUserSemanticAttr::decodeLiterals(Decoder, Literals);
      break;
@@ -123,7 +123,7 @@ diff --git a/lib/SPIRV/libSPIRV/SPIRVDecorate.h b/lib/SPIRV/libSPIRV/SPIRVDecora
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVDecorate.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVDecorate.h
-@@ -453,6 +453,15 @@ public:
+@@ -481,6 +481,15 @@ public:
        : SPIRVDecorateStrAttrBase(TheTarget, AnnotateString) {}
  };
  
@@ -143,15 +143,15 @@ diff --git a/lib/SPIRV/libSPIRV/SPIRVEnum.h b/lib/SPIRV/libSPIRV/SPIRVEnum.h
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVEnum.h
-@@ -418,6 +418,8 @@ template <> inline void SPIRVMap<Decoration, SPIRVCapVec>::init() {
+@@ -419,6 +419,8 @@ template <> inline void SPIRVMap<Decoration, SPIRVCapVec>::init() {
    ADD_VEC_INIT(DecorationStallEnableINTEL,
                 {CapabilityFPGAClusterAttributesINTEL});
    ADD_VEC_INIT(DecorationFuseLoopsInFunctionINTEL, {CapabilityLoopFuseINTEL});
 +  ADD_VEC_INIT(DecorationFuncParamKindINTEL, {CapabilityVectorComputeINTEL});
 +  ADD_VEC_INIT(DecorationFuncParamDescINTEL, {CapabilityVectorComputeINTEL});
- }
- 
- template <> inline void SPIRVMap<BuiltIn, SPIRVCapVec>::init() {
+   ADD_VEC_INIT(internal::DecorationAliasScopeINTEL,
+                {internal::CapabilityMemoryAccessAliasingINTEL});
+   ADD_VEC_INIT(internal::DecorationNoAliasINTEL,
 diff --git a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
@@ -162,9 +162,9 @@ index 00000000..00000000 100644
    add(DecorationFuseLoopsInFunctionINTEL, "FuseLoopsInFunctionINTEL");
 +  add(DecorationFuncParamKindINTEL, "FuncParamKindINTEL");
 +  add(DecorationFuncParamDescINTEL, "FuncParamDescINTEL");
+   add(internal::DecorationAliasScopeINTEL, "AliasScopeINTEL");
+   add(internal::DecorationNoAliasINTEL, "NoAliasINTEL");
    add(DecorationMax, "Max");
- }
- SPIRV_DEF_NAMEMAP(Decoration, SPIRVDecorationNameMap)
 diff --git a/lib/SPIRV/libSPIRV/spirv.hpp b/lib/SPIRV/libSPIRV/spirv.hpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/spirv.hpp

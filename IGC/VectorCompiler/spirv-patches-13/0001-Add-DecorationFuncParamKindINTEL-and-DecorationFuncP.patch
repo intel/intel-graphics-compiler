@@ -19,10 +19,10 @@ diff --git a/lib/SPIRV/SPIRVReader.cpp b/lib/SPIRV/SPIRVReader.cpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/SPIRVReader.cpp
 +++ b/lib/SPIRV/SPIRVReader.cpp
-@@ -3869,6 +3869,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
-     }
-     if (BA->hasDecorate(DecorationSingleElementVectorINTEL))
-       F->addAttribute(ArgNo + 1, SEVAttr);
+@@ -3899,6 +3899,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
+     SEVAttr = translateSEVMetadata(BA, F->getContext());
+     if (SEVAttr)
+       F->addAttribute(ArgNo + 1, SEVAttr.getValue());
 +    if (BA->hasDecorate(internal::DecorationFuncParamKindINTEL, 0, &Kind)) {
 +      Attribute Attr = Attribute::get(*Context, kVCMetadata::VCArgumentKind,
 +                                      std::to_string(Kind));
@@ -42,10 +42,10 @@ diff --git a/lib/SPIRV/SPIRVWriter.cpp b/lib/SPIRV/SPIRVWriter.cpp
 index 00000000..00000000 100644
 --- a/lib/SPIRV/SPIRVWriter.cpp
 +++ b/lib/SPIRV/SPIRVWriter.cpp
-@@ -738,6 +738,19 @@ void LLVMToSPIRVBase::transVectorComputeMetadata(Function *F) {
-              "This decoration is valid only for Scalar or Pointer types");
-       BA->addDecorate(DecorationSingleElementVectorINTEL);
-     }
+@@ -749,6 +749,19 @@ void LLVMToSPIRVBase::transVectorComputeMetadata(Function *F) {
+       translateSEVDecoration(
+           Attrs.getAttribute(ArgNo + 1, kVCMetadata::VCSingleElementVector),
+           BA);
 +    if (Attrs.hasAttribute(ArgNo + 1, kVCMetadata::VCArgumentKind)) {
 +      SPIRVWord Kind;
 +      Attrs.getAttribute(ArgNo + 1, kVCMetadata::VCArgumentKind)
