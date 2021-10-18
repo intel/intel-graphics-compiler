@@ -2729,6 +2729,15 @@ Value *SPIRVToLLVM::truncBool(Value *pVal, BasicBlock *BB)
 
     auto *pInst = cast<Instruction>(pVal);
     auto *Cast = CastInst::CreateTruncOrBitCast(pInst, TruncType, "i1trunc");
+    // This is a WA for the case where placeholder instruction is being assigned to a wrong basic block.
+    // The WA will be removed during switchover to Khronos SPIRV - LLVM Translator.
+    auto* nextInst = pInst->getNextNonDebugInstruction();
+    if (nullptr != nextInst && nextInst->getOpcode() == Instruction::Trunc && (nextInst->getOperand(0) == Cast->getOperand(0)))
+    {
+      BB->getInstList().push_back(Cast);
+      return Cast;
+    }
+
     insertCastAfter(pInst, Cast);
     return Cast;
 }
