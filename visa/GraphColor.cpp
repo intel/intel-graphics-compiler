@@ -10419,11 +10419,10 @@ int GlobalRA::coloringRegAlloc()
     // update jit metadata information for spill
     if (auto jitInfo = builder.getJitInfo())
     {
-        jitInfo->isSpill = spillMemUsed > 0 ||
-            builder.kernel.fg.frameSizeInOWord > 0;
+        jitInfo->isSpill = spillMemUsed > 0;
         jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
 
-        if (builder.kernel.fg.frameSizeInOWord != 0) {
+        if (jitInfo->hasStackcalls && builder.getIsKernel()) {
             // jitInfo->spillMemUsed is the entire visa stack size. Consider the caller/callee
             // save size if having caller/callee save
             // globalScratchOffset in unit of byte, others in Oword
@@ -10437,14 +10436,26 @@ int GlobalRA::coloringRegAlloc()
             //  callerSaveAreaOffset    -> ---------------------
             //                             |  caller save      |
             //  paramOverflowAreaOffset -> ---------------------
-            jitInfo->spillMemUsed =
-                builder.kernel.fg.frameSizeInOWord * 16;
 
-            // reserve spillMemUsed #bytes before 8kb boundary
-            kernel.getGTPinData()->setScratchNextFree(8*1024 - kernel.getGTPinData()->getNumBytesScratchUse());
-        } else {
-            jitInfo->spillMemUsed = spillMemUsed;
-            kernel.getGTPinData()->setScratchNextFree(spillMemUsed);
+            // Since it is difficult to predict amount of space needed to store stack, we
+            // reserve 64k. Reserving PTSS is ideal, but it can lead to OOM on machines
+            // with large number of threads.
+            unsigned int scratchAllocation = 64 * 1024;
+            jitInfo->spillMemUsed = scratchAllocation;
+            jitInfo->isSpill = true;
+
+            // reserve spillMemUsed #bytes at upper end
+            kernel.getGTPinData()->setScratchNextFree(scratchAllocation - kernel.getGTPinData()->getNumBytesScratchUse());
+        }
+        else {
+            // stack call functions shouldnt report any scratch usage as it is
+            // kernel's responsibility to account for stack usage of entire call
+            // tree.
+            if (!kernel.fg.getIsStackCallFunc())
+            {
+                jitInfo->spillMemUsed = spillMemUsed;
+                kernel.getGTPinData()->setScratchNextFree(spillMemUsed);
+            }
         }
         jitInfo->numGRFSpillFill = GRFSpillFillCount;
     }
