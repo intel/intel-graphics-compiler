@@ -79,13 +79,14 @@ llvm::FunctionPass* createPromoteConstantStructsPass() {
     return new PromoteConstantStructs();
 }
 
-#define PASS_FLAG     "igc-promoteconstantstructs"
+#define PASS_FLAG     "igc-promote-constant-structs"
 #define PASS_DESC     "Promote constant structs"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(PromoteConstantStructs, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(PromoteConstantStructs, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 // This class visits all alloca uses to check that
@@ -112,6 +113,21 @@ private:
     SmallVector<LoadInst*, 8> Loads;
 
     SetVector<BasicBlock*> StoreBBs;
+
+    void visitMemIntrinsic(MemIntrinsic& I) {
+        StoreBBs.insert(I.getParent());
+    }
+
+    void visitIntrinsicInst(IntrinsicInst& II) {
+        auto IID = II.getIntrinsicID();
+        if (IID == Intrinsic::lifetime_start || IID == Intrinsic::lifetime_end) {
+            return;
+        }
+
+        if (!II.onlyReadsMemory()) {
+            StoreBBs.insert(II.getParent());
+        }
+    }
 
     void visitStoreInst(StoreInst &SI) {
         StoreBBs.insert(SI.getParent());

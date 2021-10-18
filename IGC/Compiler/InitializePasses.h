@@ -159,3 +159,4 @@ void initializeNamedBarriersResolutionPass(llvm::PassRegistry&);
 void initializeUndefinedReferencesPassPass(llvm::PassRegistry&);
 void initializeBreakdownIntrinsicPassPass(llvm::PassRegistry&);
 void initializeCatchAllLineNumberPass(llvm::PassRegistry&);
+void initializePromoteConstantStructsPass(llvm::PassRegistry&);
