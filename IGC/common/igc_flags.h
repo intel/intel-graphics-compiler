@@ -510,9 +510,6 @@ DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true, "Apply WaConservativeRasterization for the platforms enabled", false)
 
 
-DECLARE_IGC_GROUP("OGL Frontend")
-    DECLARE_IGC_REGKEY(bool, OGLMinimumDump, false, "Minimum dump for testing - first and last .ll, .cos and compiler output", true)
-
 DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, VCOptimizeNone, false, "Same as -optimize=none in vector compiler options", true)
     DECLARE_IGC_REGKEY(bool, VCStrictOptionParser, true, "Produce error on unknown API options in vector compiler", true)
