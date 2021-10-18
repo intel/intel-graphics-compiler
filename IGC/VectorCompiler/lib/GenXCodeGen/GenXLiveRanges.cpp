@@ -79,8 +79,9 @@ bool testDuplicates(const llvm::GenXLiveness& Liveness) {
     const llvm::genx::LiveRange *const LR = X.second;
     IGC_ASSERT(nullptr != LR);
     const bool HasSegment = (0 < LR->size());
-    IGC_ASSERT(HasSegment);
-    return HasSegment;
+    const bool UndefVal = isa<UndefValue>(X.first.getValue());
+    IGC_ASSERT(HasSegment || UndefVal);
+    return HasSegment || UndefVal;
   };
 
   const bool Result = std::all_of(Liveness.begin(), Liveness.end(), testRange);
