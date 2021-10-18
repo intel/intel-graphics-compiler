@@ -762,7 +762,7 @@ AVS_(4|8|16)x(4|8) {
 
 
 
-type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|hf|HF) {
+type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|hf|HF|bf|BF) {
         TRACE("** TYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return DECL_DATA_TYPE;
