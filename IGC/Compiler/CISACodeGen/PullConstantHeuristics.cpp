@@ -99,7 +99,8 @@ static std::tuple<unsigned, unsigned, unsigned> getInstStats(const Function& F) 
 //    thread_payload_size > max(simd4_sample_instr, simd4_eu_instr / 16, simd4_rt_write * 2, shader_lifetime / 56)
 unsigned int PullConstantHeuristics::getPSDBottleNeckThreshold(const Function& F)
 {
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    CodeGenContext* ctx = nullptr;
+    ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     const unsigned numThreadsPerSubslice = ctx->platform.getMaxNumberThreadPerSubslice(); //read from ctx.platform
     const unsigned roofLineIPC = 16;
     const unsigned pixelRate = 2;
@@ -157,7 +158,8 @@ bool PullConstantHeuristics::runOnModule(Module& M)
     {
         return false;
     }
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    CodeGenContext* ctx = nullptr;
+    ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (ctx->type == ShaderType::PIXEL_SHADER && ctx->platform.hasPSDBottleneck())
     {
         for (auto& F : M)

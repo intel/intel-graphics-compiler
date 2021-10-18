@@ -748,7 +748,7 @@ namespace IGC
             return std::make_tuple(Val, isSignedDst, false);
 
         // Truncate from signed integer. Need to check further for lower bound.
-        Value* LHS, * RHS;
+        Value* LHS = nullptr, * RHS = nullptr;
         if (!match(Val, m_SMax(m_Value(LHS), m_Value(RHS))))
             return std::make_tuple(nullptr, false, false);
 
@@ -916,8 +916,8 @@ namespace IGC
         if (SI.getType()->isFloatingPointTy())
             return false;
 
-        bool isMin, isUnsigned;
-        llvm::Value* LHS, * RHS;
+        bool isMin = false, isUnsigned = false;
+        llvm::Value* LHS = nullptr, * RHS = nullptr;
 
         if (!isMinOrMax(&SI, LHS, RHS, isMin, isUnsigned))
             return false;
@@ -1485,7 +1485,7 @@ namespace IGC
         };
 
         PairOutputMapTy::iterator MI;
-        bool New;
+        bool New = false;
         std::tie(MI, New) = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
         if (New) {
             AddPairPattern* Pat = new (m_allocator) AddPairPattern();
@@ -1535,7 +1535,7 @@ namespace IGC
         };
 
         PairOutputMapTy::iterator MI;
-        bool New;
+        bool New = false;
         std::tie(MI, New) = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
         if (New) {
             SubPairPattern* Pat = new (m_allocator) SubPairPattern();
@@ -1585,7 +1585,7 @@ namespace IGC
         };
 
         PairOutputMapTy::iterator MI;
-        bool New;
+        bool New = false;
         std::tie(MI, New) = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
         if (New) {
             MulPairPattern* Pat = new (m_allocator) MulPairPattern();
@@ -1635,7 +1635,7 @@ namespace IGC
         };
 
         PairOutputMapTy::iterator MI;
-        bool New;
+        bool New = false;
         std::tie(MI, New) = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
         if (New) {
             PtrToPairPattern* Pat = new (m_allocator) PtrToPairPattern();
@@ -1667,7 +1667,7 @@ namespace IGC
         };
         bool match = false;
         e_modifier mod;
-        Value* source;
+        Value* source = nullptr;
         if (GetModifier(I, mod, source))
         {
             MovModifierPattern* pattern = new (m_allocator) MovModifierPattern();
@@ -2822,8 +2822,8 @@ namespace IGC
             std::swap(LHS, RHS);
 
         bool IsUnsigned = false;
-        llvm::Value* L = nullptr;
-        llvm::Value* R = nullptr;
+        llvm::Value* L;
+        llvm::Value* R;
 
         // Check LHS
         if (match(LHS, m_SExt(m_Value(L)))) {
@@ -2950,7 +2950,7 @@ namespace IGC
         for (int i = 0; i < 2; ++i)
         {
             Value* oprd = I.getOperand(i);
-            Value* L;
+            Value* L = nullptr;
 
             // oprdInfo[i].src == null --> no W operand replacement.
             oprdInfo[i].src = nullptr;

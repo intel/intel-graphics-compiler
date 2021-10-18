@@ -369,7 +369,8 @@ namespace IGC {
         void BeginBlock(llvm::BasicBlock* BB) {
             IGC_ASSERT(m_SimdSize != 0);
             if (m_RPE) {
-                CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+                CodeGenContext* context = nullptr;
+                context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
                 uint32_t BBPresure = m_RPE->getMaxLiveGRFAtBB(BB, m_SimdSize);
                 if (BBPresure <= context->getNumGRFPerThread())
                     m_IsBlockPressureLow = Status::True;

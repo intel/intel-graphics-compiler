@@ -756,9 +756,9 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
             m_DeSSA->getRootValue(I) != dessaRoot)
             return false;
 
-        Value* V;
-        Value* E;
-        int IEI_ix, V_ix;
+        Value* V = nullptr;
+        Value* E = nullptr;
+        int IEI_ix = 0, V_ix = 0;
         if (!getElementValue(I, IEI_ix, E, V, V_ix)) {
             return false;
         }

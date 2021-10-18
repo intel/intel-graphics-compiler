@@ -974,7 +974,8 @@ bool SLMConstProp::runOnFunction(Function& F)
 #endif
 
     // Do this only for the top function
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = nullptr;
+    pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
     {
         return false;

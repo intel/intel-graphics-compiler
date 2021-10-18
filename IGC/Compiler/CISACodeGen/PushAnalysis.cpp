@@ -100,7 +100,8 @@ namespace IGC
     Value* PushAnalysis::addArgumentAndMetadata(llvm::Type* pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency)
     {
         auto pArgInfo = m_pFuncUpgrade.AddArgument(argName, pType);
-        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        ModuleMetaData* modMD = nullptr;
+        modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         IGC::ArgDependencyInfoMD argDepInfoMD;
         argDepInfoMD.argDependency = dependency;
         modMD->pushInfo.pushAnalysisWIInfos.push_back(argDepInfoMD);

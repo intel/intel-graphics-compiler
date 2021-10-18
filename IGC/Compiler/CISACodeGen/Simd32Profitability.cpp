@@ -214,7 +214,7 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
         ConstantInt* CI = dyn_cast<ConstantInt>(BO->getOperand(1));
         if (!CI)
             return std::make_tuple(0, 0);
-        int L, R;
+        int L = 0, R = 0;
         std::tie(L, R) = countOperands(BO->getOperand(0), LHS, RHS);
         uint64_t ShAmt = CI->getZExtValue();
         return std::make_tuple((L << ShAmt), (R << ShAmt));
@@ -224,7 +224,7 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
         ConstantInt* CI = dyn_cast<ConstantInt>(BO->getOperand(1));
         if (!CI || CI->getSExtValue() != -1)
             return std::make_tuple(0, 0);
-        int L, R;
+        int L = 0, R = 0;
         std::tie(L, R) = countOperands(BO->getOperand(0), LHS, RHS);
         return std::make_tuple(-L, -R);
     }
@@ -234,9 +234,9 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
 
     if (isa<Constant>(BO->getOperand(1)))
         return countOperands(BO->getOperand(0), LHS, RHS);
-    int L0, L1;
+    int L0 = 0, L1 = 0;
     std::tie(L0, L1) = countOperands(BO->getOperand(0), LHS, RHS);
-    int R0, R1;
+    int R0 = 0, R1 = 0;
     std::tie(R0, R1) = countOperands(BO->getOperand(1), LHS, RHS);
     if (BO->getOpcode() == Instruction::Add)
         return std::make_tuple(L0 + R0, L1 + R1);
@@ -247,14 +247,14 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
 
 static bool isNegatedByLB(Value* V, Value* X, Value* LB) {
     // Check if `V` is calculated as LB - X +/- C, where C is constant.
-    int L, R;
+    int L = 0, R = 0;
     std::tie(L, R) = countOperands(V, LB, X);
     return (L == 1) && (R == -1);
 }
 
 static bool isNegatedBy2UB(Value* V, Value* X, Value* UB) {
     // Check if `V` is calculated as 2UB - X +/- C, where C is constant.
-    int L, R;
+    int L = 0, R = 0;
     std::tie(L, R) = countOperands(V, UB, X);
     return (L == 2) && (R == -1);
 }
@@ -270,8 +270,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop* L) {
     if (!L->contains(Br->getSuccessor(0)))
         return LOOPCOUNT_UNKNOWN;
 
-    Value* X, * LB, * UB;
-    bool Signed;
+    Value* X = nullptr, * LB = nullptr, * UB = nullptr;
+    bool Signed = false;
     std::tie(X, LB, UB, Signed) = isOutOfRangeComparison(Br->getCondition());
     if (!X) {
         ICmpInst* Cmp = dyn_cast<ICmpInst>(Br->getCondition());
@@ -364,9 +364,9 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop* L) {
             return LOOPCOUNT_UNKNOWN;
         if (RHS != LB)
             return LOOPCOUNT_UNKNOWN;
-        int L0, R0;
+        int L0 = 0, R0 = 0;
         std::tie(L0, R0) = countOperands(X0, LB, nullptr);
-        int L1, R1;
+        int L1 = 0, R1 = 0;
         std::tie(L1, R1) = countOperands(X1, UB, nullptr);
         if (L0 != 1 || L1 != 2)
             return LOOPCOUNT_UNKNOWN;
@@ -394,7 +394,7 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop* L) {
     SmallVector<BasicBlock*, 8> ExitingBBs;
     L->getExitingBlocks(ExitingBBs);
 
-    Value* Init, * Curr, * Next, * Step;
+    Value* Init = nullptr, * Curr= nullptr, * Next= nullptr, * Step= nullptr;
     std::tie(Init, Curr, Step, Next) = getInductionVariable(L);
     if (!Init || !Curr || !Step || !Next)
         return LOOPCOUNT_UNKNOWN;
@@ -541,7 +541,8 @@ static bool hasSubGroupFunc(const Function& F)
 bool Simd32ProfitabilityAnalysis::runOnFunction(Function& F)
 {
     this->F = &F;
-    CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    CodeGenContext* context = nullptr;
+    context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (context->type == ShaderType::OPENCL_SHADER)
     {
         PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
@@ -809,7 +810,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
                 if (Br && Br->isConditional()) {
                     auto ICmp = dyn_cast<ICmpInst>(Br->getCondition());
                     if (ICmp) {
-                        Value* Init, * Curr, * Step, * Next;
+                        Value* Init = nullptr, * Curr = nullptr, * Step= nullptr, * Next = nullptr;
                         std::tie(Init, Curr, Step, Next)
                             = getInductionVariable(loop);
                         if (Init && Curr && Next && Step &&

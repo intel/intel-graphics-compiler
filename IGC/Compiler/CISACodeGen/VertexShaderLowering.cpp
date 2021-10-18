@@ -52,7 +52,8 @@ namespace IGC
     {
         // VS lowering only applies to entry function. Non-entry funtions
         // are emulation functions that do not need to be lowered!
-        MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        MetaDataUtils* pMdUtils = nullptr;
+        pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (!isEntryFunc(pMdUtils, &F))
         {
             return false;
@@ -571,7 +572,8 @@ namespace IGC
             index,
             offset
         };
-        unsigned int inIndex = int_cast<unsigned int>(cast<ConstantInt>(offset)->getZExtValue());
+        unsigned int inIndex = 0;
+        inIndex = int_cast<unsigned int>(cast<ConstantInt>(offset)->getZExtValue());
         IGC_ASSERT(inIndex < MaxNumOfInputs);
 
         Instruction* urbRead = GenIntrinsicInst::Create(
@@ -592,7 +594,8 @@ namespace IGC
                 Instruction* newExt = ExtractElementInst::Create(urbRead, extIdx, "", elem);
                 if (isa<ConstantInt>(extIdx))
                 {
-                    unsigned int channel = int_cast<unsigned int>(
+                    unsigned int channel = 0;
+                    channel = int_cast<unsigned int>(
                         cast<ConstantInt>(extIdx)->getZExtValue());
                     m_inputUsed[inIndex * 4 + channel] = true;
                 }

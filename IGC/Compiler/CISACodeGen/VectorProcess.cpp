@@ -278,7 +278,8 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     else
     {
         // This handles all the other cases
-        CodeGenContext* cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        CodeGenContext* cgCtx = nullptr;
+        cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         bool useA64 = IGC::isA64Ptr(PtrTy, cgCtx);
         uint32_t align;
         if (LI)
@@ -522,7 +523,8 @@ bool VectorProcess::optimizeBitCast(BitCastInst* BC)
 
 bool VectorProcess::runOnFunction(Function& F)
 {
-    CodeGenContext* cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    CodeGenContext* cgCtx = nullptr;
+    cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     bool changed = false;
     m_DL = &F.getParent()->getDataLayout();
     m_C = &F.getContext();
