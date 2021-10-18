@@ -9785,6 +9785,11 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
         // Address space cast is in the form of generic -> {private, local, global}
         // Tag is removed according to the address space of the destination
 
+        // The initial address could be in canonical form, that means bit 47 is replicated
+        // to the upper bits. As bits [60:63] are spoiled already we need to restore the
+        // address to the canonical form. This is done by merging bits [56:59], which we
+        // assume are in canonical form, into bits [60:63].
+
         if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support())
         {
             if (m_currShader->GetContext()->getRegisterPointerSizeInBits(destAddrSpace) == 32)
@@ -9818,6 +9823,10 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
                     numLanes(m_currShader->m_SIMDSize),
                     ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform(),
                     CName(srcV->getName(), "Hi"));
+                CVariable* tempVar = m_currShader->GetNewVariable(
+                    numLanes(m_currShader->m_SIMDSize),
+                    ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform(),
+                    CName::NONE);
 
                 // Split Src into {Low, High}
                 // Low:
@@ -9831,8 +9840,11 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
                 m_encoder->Copy(srcHigh, srcAlias);
                 m_encoder->Push();
 
-                // Add tag to high part
-                m_encoder->And(srcHigh, srcHigh, m_currShader->ImmToVariable(0xFFFFFFF, ISA_TYPE_UD));
+                // Clear tag in the high part and restore address canonical form
+                m_encoder->And(tempVar, srcHigh, m_currShader->ImmToVariable(0x0F000000, ISA_TYPE_UD));
+                m_encoder->Shl(tempVar, tempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+                m_encoder->Xor(tempVar, tempVar, m_currShader->ImmToVariable(0x0, ISA_TYPE_UD));
+                m_encoder->Or(srcHigh, srcHigh, tempVar);
                 m_encoder->Push();
 
                 // Copy to Dst
@@ -9854,7 +9866,11 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
                 numLanes(m_currShader->m_SIMDSize),
                 ISA_TYPE_UQ, m_currShader->getGRFAlignment(),
                 m_destination->IsUniform(), CName::NONE);
-            m_encoder->And(pTempVar, srcV, m_currShader->ImmToVariable(0xFFFFFFFFFFFFFFF, ISA_TYPE_UQ));
+            // Clear tag in the high part and restore address canonical form
+            m_encoder->And(pTempVar, srcV, m_currShader->ImmToVariable(0x0F00000000000000, ISA_TYPE_UQ));
+            m_encoder->Shl(pTempVar, pTempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+            m_encoder->Xor(pTempVar, pTempVar, m_currShader->ImmToVariable(0x0, ISA_TYPE_UQ));
+            m_encoder->Or(pTempVar, srcV, pTempVar);
             m_encoder->Cast(m_destination, pTempVar);
             m_encoder->Push();
         }
