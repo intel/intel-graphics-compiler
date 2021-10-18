@@ -10,17 +10,17 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE clamp( float x, float minval, float maxval )
 {
-    return __builtin_spirv_OpenCL_fclamp_f32_f32_f32(x,minval,maxval);
+    return SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(x,minval,maxval);
 }
 
 INLINE float OVERLOADABLE max( float x, float y )
 {
-    return __builtin_spirv_OpenCL_fmax_common_f32_f32(x, y);
+    return SPIRV_OCL_BUILTIN(fmax_common, _f32_f32, )(x, y);
 }
 
 INLINE float OVERLOADABLE min( float x, float y )
 {
-    return __builtin_spirv_OpenCL_fmin_common_f32_f32(x, y);
+    return SPIRV_OCL_BUILTIN(fmin_common, _f32_f32, )(x, y);
 }
 
 INLINE

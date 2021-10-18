@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __builtin_spirv_OpenCL_sign_f32( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _f32, )( float x )
 {
     float result = x;
     result = ( x > 0.0f ) ?  1.0f : result;
@@ -18,11 +18,11 @@ INLINE float __builtin_spirv_OpenCL_sign_f32( float x )
     return result ;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_sign, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sign, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_sign_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _f64, )( double x )
 {
     double result = x;
     result = ( x > 0.0 ) ?  1.0 : result;
@@ -31,13 +31,13 @@ INLINE double __builtin_spirv_OpenCL_sign_f64( double x )
     return result ;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_sign, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sign, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_sign_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _f16, )( half x )
 {
     half result = x;
     result = ( x > (half)0.0f ) ? (half) 1.0f : result;
@@ -46,6 +46,6 @@ INLINE half __builtin_spirv_OpenCL_sign_f16( half x )
     return result ;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_sign, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sign, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

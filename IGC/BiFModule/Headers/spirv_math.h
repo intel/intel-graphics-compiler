@@ -9,199 +9,201 @@ SPDX-License-Identifier: MIT
 #ifndef __SPIRV_MATH_H__
 #define __SPIRV_MATH_H__
 
+#include "spirv_macros.h"
+
 //
 //  Common
 //        -degrees,fclamp,fmax_common,fmin_common,mix,radians,sign,smoothstep,step
 //
 
-float __builtin_spirv_OpenCL_degrees_f32(float r );
-float2 __builtin_spirv_OpenCL_degrees_v2f32(float2 x);
-float3 __builtin_spirv_OpenCL_degrees_v3f32(float3 x);
-float4 __builtin_spirv_OpenCL_degrees_v4f32(float4 x);
-float8 __builtin_spirv_OpenCL_degrees_v8f32(float8 x);
-float16 __builtin_spirv_OpenCL_degrees_v16f32(float16 x);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _f32, )(float r );
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v2f32, )(float2 x);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v3f32, )(float3 x);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v4f32, )(float4 x);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v8f32, )(float8 x);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v16f32, )(float16 x);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_degrees_f64(double r );
-double2 __builtin_spirv_OpenCL_degrees_v2f64(double2 x);
-double3 __builtin_spirv_OpenCL_degrees_v3f64(double3 x);
-double4 __builtin_spirv_OpenCL_degrees_v4f64(double4 x);
-double8 __builtin_spirv_OpenCL_degrees_v8f64(double8 x);
-double16 __builtin_spirv_OpenCL_degrees_v16f64(double16 x);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _f64, )(double r );
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v2f64, )(double2 x);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v3f64, )(double3 x);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v4f64, )(double4 x);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v8f64, )(double8 x);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v16f64, )(double16 x);
 #endif // defined(cl_khr_fp64)
-half __builtin_spirv_OpenCL_degrees_f16(half r );
-half2 __builtin_spirv_OpenCL_degrees_v2f16(half2 x);
-half3 __builtin_spirv_OpenCL_degrees_v3f16(half3 x);
-half4 __builtin_spirv_OpenCL_degrees_v4f16(half4 x);
-half8 __builtin_spirv_OpenCL_degrees_v8f16(half8 x);
-half16 __builtin_spirv_OpenCL_degrees_v16f16(half16 x);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _f16, )(half r );
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v2f16, )(half2 x);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v3f16, )(half3 x);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v4f16, )(half4 x);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v8f16, )(half8 x);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(degrees, _v16f16, )(half16 x);
 
-float __builtin_spirv_OpenCL_fclamp_f32_f32_f32(float x, float y, float z);
-float2 __builtin_spirv_OpenCL_fclamp_v2f32_v2f32_v2f32(float2 x, float2 y, float2 z);
-float3 __builtin_spirv_OpenCL_fclamp_v3f32_v3f32_v3f32(float3 x, float3 y, float3 z);
-float4 __builtin_spirv_OpenCL_fclamp_v4f32_v4f32_v4f32(float4 x, float4 y, float4 z);
-float8 __builtin_spirv_OpenCL_fclamp_v8f32_v8f32_v8f32(float8 x, float8 y, float8 z);
-float16 __builtin_spirv_OpenCL_fclamp_v16f32_v16f32_v16f32(float16 x, float16 y, float16 z);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(float x, float y, float z);
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v2f32_v2f32_v2f32, )(float2 x, float2 y, float2 z);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v3f32_v3f32_v3f32, )(float3 x, float3 y, float3 z);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v4f32_v4f32_v4f32, )(float4 x, float4 y, float4 z);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v8f32_v8f32_v8f32, )(float8 x, float8 y, float8 z);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v16f32_v16f32_v16f32, )(float16 x, float16 y, float16 z);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_fclamp_f64_f64_f64(double x, double y, double z);
-double2 __builtin_spirv_OpenCL_fclamp_v2f64_v2f64_v2f64(double2 x, double2 y, double2 z);
-double3 __builtin_spirv_OpenCL_fclamp_v3f64_v3f64_v3f64(double3 x, double3 y, double3 z);
-double4 __builtin_spirv_OpenCL_fclamp_v4f64_v4f64_v4f64(double4 x, double4 y, double4 z);
-double8 __builtin_spirv_OpenCL_fclamp_v8f64_v8f64_v8f64(double8 x, double8 y, double8 z);
-double16 __builtin_spirv_OpenCL_fclamp_v16f64_v16f64_v16f64(double16 x, double16 y, double16 z);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f64_f64_f64, )(double x, double y, double z);
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v2f64_v2f64_v2f64, )(double2 x, double2 y, double2 z);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v3f64_v3f64_v3f64, )(double3 x, double3 y, double3 z);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v4f64_v4f64_v4f64, )(double4 x, double4 y, double4 z);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v8f64_v8f64_v8f64, )(double8 x, double8 y, double8 z);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v16f64_v16f64_v16f64, )(double16 x, double16 y, double16 z);
 #endif // defined(cl_khr_fp64)
-half __builtin_spirv_OpenCL_fclamp_f16_f16_f16(half x, half y, half z);
-half2 __builtin_spirv_OpenCL_fclamp_v2f16_v2f16_v2f16(half2 x, half2 y, half2 z);
-half3 __builtin_spirv_OpenCL_fclamp_v3f16_v3f16_v3f16(half3 x, half3 y, half3 z);
-half4 __builtin_spirv_OpenCL_fclamp_v4f16_v4f16_v4f16(half4 x, half4 y, half4 z);
-half8 __builtin_spirv_OpenCL_fclamp_v8f16_v8f16_v8f16(half8 x, half8 y, half8 z);
-half16 __builtin_spirv_OpenCL_fclamp_v16f16_v16f16_v16f16(half16 x, half16 y, half16 z);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f16_f16_f16, )(half x, half y, half z);
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v2f16_v2f16_v2f16, )(half2 x, half2 y, half2 z);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v3f16_v3f16_v3f16, )(half3 x, half3 y, half3 z);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v4f16_v4f16_v4f16, )(half4 x, half4 y, half4 z);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v8f16_v8f16_v8f16, )(half8 x, half8 y, half8 z);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _v16f16_v16f16_v16f16, )(half16 x, half16 y, half16 z);
 
-float __builtin_spirv_OpenCL_fmax_common_f32_f32(float x, float y);
-float2 __builtin_spirv_OpenCL_fmax_common_v2f32_v2f32(float2 x, float2 y);
-float3 __builtin_spirv_OpenCL_fmax_common_v3f32_v3f32(float3 x, float3 y);
-float4 __builtin_spirv_OpenCL_fmax_common_v4f32_v4f32(float4 x, float4 y);
-float8 __builtin_spirv_OpenCL_fmax_common_v8f32_v8f32(float8 x, float8 y);
-float16 __builtin_spirv_OpenCL_fmax_common_v16f32_v16f32(float16 x, float16 y);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _f32_f32, )(float x, float y);
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v2f32_v2f32, )(float2 x, float2 y);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v3f32_v3f32, )(float3 x, float3 y);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v4f32_v4f32, )(float4 x, float4 y);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v8f32_v8f32, )(float8 x, float8 y);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v16f32_v16f32, )(float16 x, float16 y);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_fmax_common_f64_f64(double x, double y);
-double2 __builtin_spirv_OpenCL_fmax_common_v2f64_v2f64(double2 x, double2 y);
-double3 __builtin_spirv_OpenCL_fmax_common_v3f64_v3f64(double3 x, double3 y);
-double4 __builtin_spirv_OpenCL_fmax_common_v4f64_v4f64(double4 x, double4 y);
-double8 __builtin_spirv_OpenCL_fmax_common_v8f64_v8f64(double8 x, double8 y);
-double16 __builtin_spirv_OpenCL_fmax_common_v16f64_v16f64(double16 x, double16 y);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _f64_f64, )(double x, double y);
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v2f64_v2f64, )(double2 x, double2 y);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v3f64_v3f64, )(double3 x, double3 y);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v4f64_v4f64, )(double4 x, double4 y);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v8f64_v8f64, )(double8 x, double8 y);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v16f64_v16f64, )(double16 x, double16 y);
 #endif // defined(cl_khr_fp64)
-half __builtin_spirv_OpenCL_fmax_common_f16_f16(half x, half y);
-half2 __builtin_spirv_OpenCL_fmax_common_v2f16_v2f16(half2 x, half2 y);
-half3 __builtin_spirv_OpenCL_fmax_common_v3f16_v3f16(half3 x, half3 y);
-half4 __builtin_spirv_OpenCL_fmax_common_v4f16_v4f16(half4 x, half4 y);
-half8 __builtin_spirv_OpenCL_fmax_common_v8f16_v8f16(half8 x, half8 y);
-half16 __builtin_spirv_OpenCL_fmax_common_v16f16_v16f16(half16 x, half16 y);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _f16_f16, )(half x, half y);
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v2f16_v2f16, )(half2 x, half2 y);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v3f16_v3f16, )(half3 x, half3 y);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v4f16_v4f16, )(half4 x, half4 y);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v8f16_v8f16, )(half8 x, half8 y);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmax_common, _v16f16_v16f16, )(half16 x, half16 y);
 
-float __builtin_spirv_OpenCL_fmin_common_f32_f32(float x, float y);
-half __builtin_spirv_OpenCL_fmin_common_f16_f16(half x, half y);
-float2 __builtin_spirv_OpenCL_fmin_common_v2f32_v2f32(float2 x, float2 y);
-float3 __builtin_spirv_OpenCL_fmin_common_v3f32_v3f32(float3 x, float3 y);
-float4 __builtin_spirv_OpenCL_fmin_common_v4f32_v4f32(float4 x, float4 y);
-float8 __builtin_spirv_OpenCL_fmin_common_v8f32_v8f32(float8 x, float8 y);
-float16 __builtin_spirv_OpenCL_fmin_common_v16f32_v16f32(float16 x, float16 y);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _f32_f32, )(float x, float y);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _f16_f16, )(half x, half y);
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v2f32_v2f32, )(float2 x, float2 y);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v3f32_v3f32, )(float3 x, float3 y);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v4f32_v4f32, )(float4 x, float4 y);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v8f32_v8f32, )(float8 x, float8 y);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v16f32_v16f32, )(float16 x, float16 y);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_fmin_common_f64_f64(double x, double y);
-double2 __builtin_spirv_OpenCL_fmin_common_v2f64_v2f64(double2 x, double2 y);
-double3 __builtin_spirv_OpenCL_fmin_common_v3f64_v3f64(double3 x, double3 y);
-double4 __builtin_spirv_OpenCL_fmin_common_v4f64_v4f64(double4 x, double4 y);
-double8 __builtin_spirv_OpenCL_fmin_common_v8f64_v8f64(double8 x, double8 y);
-double16 __builtin_spirv_OpenCL_fmin_common_v16f64_v16f64(double16 x, double16 y);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _f64_f64, )(double x, double y);
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v2f64_v2f64, )(double2 x, double2 y);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v3f64_v3f64, )(double3 x, double3 y);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v4f64_v4f64, )(double4 x, double4 y);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v8f64_v8f64, )(double8 x, double8 y);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v16f64_v16f64, )(double16 x, double16 y);
 #endif // defined(cl_khr_fp64)
-half2 __builtin_spirv_OpenCL_fmin_common_v2f16_v2f16(half2 x, half2 y);
-half3 __builtin_spirv_OpenCL_fmin_common_v3f16_v3f16(half3 x, half3 y);
-half4 __builtin_spirv_OpenCL_fmin_common_v4f16_v4f16(half4 x, half4 y);
-half8 __builtin_spirv_OpenCL_fmin_common_v8f16_v8f16(half8 x, half8 y);
-half16 __builtin_spirv_OpenCL_fmin_common_v16f16_v16f16(half16 x, half16 y);
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v2f16_v2f16, )(half2 x, half2 y);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v3f16_v3f16, )(half3 x, half3 y);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v4f16_v4f16, )(half4 x, half4 y);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v8f16_v8f16, )(half8 x, half8 y);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fmin_common, _v16f16_v16f16, )(half16 x, half16 y);
 
-float __builtin_spirv_OpenCL_mix_f32_f32_f32(float x, float y, float a );
-float2 __builtin_spirv_OpenCL_mix_v2f32_v2f32_v2f32(float2 x, float2 y, float2 z);
-float3 __builtin_spirv_OpenCL_mix_v3f32_v3f32_v3f32(float3 x, float3 y, float3 z);
-float4 __builtin_spirv_OpenCL_mix_v4f32_v4f32_v4f32(float4 x, float4 y, float4 z);
-float8 __builtin_spirv_OpenCL_mix_v8f32_v8f32_v8f32(float8 x, float8 y, float8 z);
-float16 __builtin_spirv_OpenCL_mix_v16f32_v16f32_v16f32(float16 x, float16 y, float16 z);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _f32_f32_f32, )(float x, float y, float a );
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v2f32_v2f32_v2f32, )(float2 x, float2 y, float2 z);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v3f32_v3f32_v3f32, )(float3 x, float3 y, float3 z);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v4f32_v4f32_v4f32, )(float4 x, float4 y, float4 z);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v8f32_v8f32_v8f32, )(float8 x, float8 y, float8 z);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v16f32_v16f32_v16f32, )(float16 x, float16 y, float16 z);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_mix_f64_f64_f64(double x, double y, double a );
-double2 __builtin_spirv_OpenCL_mix_v2f64_v2f64_v2f64(double2 x, double2 y, double2 z);
-double3 __builtin_spirv_OpenCL_mix_v3f64_v3f64_v3f64(double3 x, double3 y, double3 z);
-double4 __builtin_spirv_OpenCL_mix_v4f64_v4f64_v4f64(double4 x, double4 y, double4 z);
-double8 __builtin_spirv_OpenCL_mix_v8f64_v8f64_v8f64(double8 x, double8 y, double8 z);
-double16 __builtin_spirv_OpenCL_mix_v16f64_v16f64_v16f64(double16 x, double16 y, double16 z);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _f64_f64_f64, )(double x, double y, double a );
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v2f64_v2f64_v2f64, )(double2 x, double2 y, double2 z);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v3f64_v3f64_v3f64, )(double3 x, double3 y, double3 z);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v4f64_v4f64_v4f64, )(double4 x, double4 y, double4 z);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v8f64_v8f64_v8f64, )(double8 x, double8 y, double8 z);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v16f64_v16f64_v16f64, )(double16 x, double16 y, double16 z);
 #endif // defined(cl_khr_fp64)
-half __builtin_spirv_OpenCL_mix_f16_f16_f16(half x, half y, half a );
-half2 __builtin_spirv_OpenCL_mix_v2f16_v2f16_v2f16(half2 x, half2 y, half2 z);
-half3 __builtin_spirv_OpenCL_mix_v3f16_v3f16_v3f16(half3 x, half3 y, half3 z);
-half4 __builtin_spirv_OpenCL_mix_v4f16_v4f16_v4f16(half4 x, half4 y, half4 z);
-half8 __builtin_spirv_OpenCL_mix_v8f16_v8f16_v8f16(half8 x, half8 y, half8 z);
-half16 __builtin_spirv_OpenCL_mix_v16f16_v16f16_v16f16(half16 x, half16 y, half16 z);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _f16_f16_f16, )(half x, half y, half a );
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v2f16_v2f16_v2f16, )(half2 x, half2 y, half2 z);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v3f16_v3f16_v3f16, )(half3 x, half3 y, half3 z);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v4f16_v4f16_v4f16, )(half4 x, half4 y, half4 z);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v8f16_v8f16_v8f16, )(half8 x, half8 y, half8 z);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mix, _v16f16_v16f16_v16f16, )(half16 x, half16 y, half16 z);
 
-float __builtin_spirv_OpenCL_radians_f32(float d );
-float2 __builtin_spirv_OpenCL_radians_v2f32(float2 x);
-float3 __builtin_spirv_OpenCL_radians_v3f32(float3 x);
-float4 __builtin_spirv_OpenCL_radians_v4f32(float4 x);
-float8 __builtin_spirv_OpenCL_radians_v8f32(float8 x);
-float16 __builtin_spirv_OpenCL_radians_v16f32(float16 x);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _f32, )(float d );
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v2f32, )(float2 x);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v3f32, )(float3 x);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v4f32, )(float4 x);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v8f32, )(float8 x);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v16f32, )(float16 x);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_radians_f64(double d );
-double2 __builtin_spirv_OpenCL_radians_v2f64(double2 x);
-double3 __builtin_spirv_OpenCL_radians_v3f64(double3 x);
-double4 __builtin_spirv_OpenCL_radians_v4f64(double4 x);
-double8 __builtin_spirv_OpenCL_radians_v8f64(double8 x);
-double16 __builtin_spirv_OpenCL_radians_v16f64(double16 x);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _f64, )(double d );
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v2f64, )(double2 x);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v3f64, )(double3 x);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v4f64, )(double4 x);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v8f64, )(double8 x);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v16f64, )(double16 x);
 #endif // defined(cl_khr_fp64)
-half __builtin_spirv_OpenCL_radians_f16(half d );
-half2 __builtin_spirv_OpenCL_radians_v2f16(half2 x);
-half3 __builtin_spirv_OpenCL_radians_v3f16(half3 x);
-half4 __builtin_spirv_OpenCL_radians_v4f16(half4 x);
-half8 __builtin_spirv_OpenCL_radians_v8f16(half8 x);
-half16 __builtin_spirv_OpenCL_radians_v16f16(half16 x);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _f16, )(half d );
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v2f16, )(half2 x);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v3f16, )(half3 x);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v4f16, )(half4 x);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v8f16, )(half8 x);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(radians, _v16f16, )(half16 x);
 
-float __builtin_spirv_OpenCL_sign_f32(float x );
-float2 __builtin_spirv_OpenCL_sign_v2f32(float2 x);
-float3 __builtin_spirv_OpenCL_sign_v3f32(float3 x);
-float4 __builtin_spirv_OpenCL_sign_v4f32(float4 x);
-float8 __builtin_spirv_OpenCL_sign_v8f32(float8 x);
-float16 __builtin_spirv_OpenCL_sign_v16f32(float16 x);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _f32, )(float x );
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v2f32, )(float2 x);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v3f32, )(float3 x);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v4f32, )(float4 x);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v8f32, )(float8 x);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v16f32, )(float16 x);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_sign_f64(double x );
-double2 __builtin_spirv_OpenCL_sign_v2f64(double2 x);
-double3 __builtin_spirv_OpenCL_sign_v3f64(double3 x);
-double4 __builtin_spirv_OpenCL_sign_v4f64(double4 x);
-double8 __builtin_spirv_OpenCL_sign_v8f64(double8 x);
-double16 __builtin_spirv_OpenCL_sign_v16f64(double16 x);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _f64, )(double x );
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v2f64, )(double2 x);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v3f64, )(double3 x);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v4f64, )(double4 x);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v8f64, )(double8 x);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v16f64, )(double16 x);
 #endif // defined(cl_khr_fp64)
-half __builtin_spirv_OpenCL_sign_f16(half x );
-half2 __builtin_spirv_OpenCL_sign_v2f16(half2 x);
-half3 __builtin_spirv_OpenCL_sign_v3f16(half3 x);
-half4 __builtin_spirv_OpenCL_sign_v4f16(half4 x);
-half8 __builtin_spirv_OpenCL_sign_v8f16(half8 x);
-half16 __builtin_spirv_OpenCL_sign_v16f16(half16 x);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _f16, )(half x );
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v2f16, )(half2 x);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v3f16, )(half3 x);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v4f16, )(half4 x);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v8f16, )(half8 x);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sign, _v16f16, )(half16 x);
 
-float __builtin_spirv_OpenCL_smoothstep_f32_f32_f32(float edge0, float edge1, float x );
-float2 __builtin_spirv_OpenCL_smoothstep_v2f32_v2f32_v2f32(float2 x, float2 y, float2 z);
-float3 __builtin_spirv_OpenCL_smoothstep_v3f32_v3f32_v3f32(float3 x, float3 y, float3 z);
-float4 __builtin_spirv_OpenCL_smoothstep_v4f32_v4f32_v4f32(float4 x, float4 y, float4 z);
-float8 __builtin_spirv_OpenCL_smoothstep_v8f32_v8f32_v8f32(float8 x, float8 y, float8 z);
-float16 __builtin_spirv_OpenCL_smoothstep_v16f32_v16f32_v16f32(float16 x, float16 y, float16 z);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _f32_f32_f32, )(float edge0, float edge1, float x );
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v2f32_v2f32_v2f32, )(float2 x, float2 y, float2 z);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v3f32_v3f32_v3f32, )(float3 x, float3 y, float3 z);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v4f32_v4f32_v4f32, )(float4 x, float4 y, float4 z);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v8f32_v8f32_v8f32, )(float8 x, float8 y, float8 z);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v16f32_v16f32_v16f32, )(float16 x, float16 y, float16 z);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_smoothstep_f64_f64_f64(double edge0, double edge1, double x );
-double2 __builtin_spirv_OpenCL_smoothstep_v2f64_v2f64_v2f64(double2 x, double2 y, double2 z);
-double3 __builtin_spirv_OpenCL_smoothstep_v3f64_v3f64_v3f64(double3 x, double3 y, double3 z);
-double4 __builtin_spirv_OpenCL_smoothstep_v4f64_v4f64_v4f64(double4 x, double4 y, double4 z);
-double8 __builtin_spirv_OpenCL_smoothstep_v8f64_v8f64_v8f64(double8 x, double8 y, double8 z);
-double16 __builtin_spirv_OpenCL_smoothstep_v16f64_v16f64_v16f64(double16 x, double16 y, double16 z);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _f64_f64_f64, )(double edge0, double edge1, double x );
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v2f64_v2f64_v2f64, )(double2 x, double2 y, double2 z);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v3f64_v3f64_v3f64, )(double3 x, double3 y, double3 z);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v4f64_v4f64_v4f64, )(double4 x, double4 y, double4 z);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v8f64_v8f64_v8f64, )(double8 x, double8 y, double8 z);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v16f64_v16f64_v16f64, )(double16 x, double16 y, double16 z);
 #endif // defined(cl_khr_fp64)
-half __builtin_spirv_OpenCL_smoothstep_f16_f16_f16(half edge0, half edge1, half x );
-half2 __builtin_spirv_OpenCL_smoothstep_v2f16_v2f16_v2f16(half2 x, half2 y, half2 z);
-half3 __builtin_spirv_OpenCL_smoothstep_v3f16_v3f16_v3f16(half3 x, half3 y, half3 z);
-half4 __builtin_spirv_OpenCL_smoothstep_v4f16_v4f16_v4f16(half4 x, half4 y, half4 z);
-half8 __builtin_spirv_OpenCL_smoothstep_v8f16_v8f16_v8f16(half8 x, half8 y, half8 z);
-half16 __builtin_spirv_OpenCL_smoothstep_v16f16_v16f16_v16f16(half16 x, half16 y, half16 z);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _f16_f16_f16, )(half edge0, half edge1, half x );
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v2f16_v2f16_v2f16, )(half2 x, half2 y, half2 z);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v3f16_v3f16_v3f16, )(half3 x, half3 y, half3 z);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v4f16_v4f16_v4f16, )(half4 x, half4 y, half4 z);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v8f16_v8f16_v8f16, )(half8 x, half8 y, half8 z);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(smoothstep, _v16f16_v16f16_v16f16, )(half16 x, half16 y, half16 z);
 
-float __builtin_spirv_OpenCL_step_f32_f32(float edge, float x );
-float2 __builtin_spirv_OpenCL_step_v2f32_v2f32(float2 x, float2 y);
-float3 __builtin_spirv_OpenCL_step_v3f32_v3f32(float3 x, float3 y);
-float4 __builtin_spirv_OpenCL_step_v4f32_v4f32(float4 x, float4 y);
-float8 __builtin_spirv_OpenCL_step_v8f32_v8f32(float8 x, float8 y);
-float16 __builtin_spirv_OpenCL_step_v16f32_v16f32(float16 x, float16 y);
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _f32_f32, )(float edge, float x );
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v2f32_v2f32, )(float2 x, float2 y);
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v3f32_v3f32, )(float3 x, float3 y);
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v4f32_v4f32, )(float4 x, float4 y);
+float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v8f32_v8f32, )(float8 x, float8 y);
+float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v16f32_v16f32, )(float16 x, float16 y);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpenCL_step_f64_f64(double edge, double x );
-double2 __builtin_spirv_OpenCL_step_v2f64_v2f64(double2 x, double2 y);
-double3 __builtin_spirv_OpenCL_step_v3f64_v3f64(double3 x, double3 y);
-double4 __builtin_spirv_OpenCL_step_v4f64_v4f64(double4 x, double4 y);
-double8 __builtin_spirv_OpenCL_step_v8f64_v8f64(double8 x, double8 y);
-double16 __builtin_spirv_OpenCL_step_v16f64_v16f64(double16 x, double16 y);
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _f64_f64, )(double edge, double x );
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v2f64_v2f64, )(double2 x, double2 y);
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v3f64_v3f64, )(double3 x, double3 y);
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v4f64_v4f64, )(double4 x, double4 y);
+double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v8f64_v8f64, )(double8 x, double8 y);
+double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v16f64_v16f64, )(double16 x, double16 y);
 #endif // defined(cl_khr_fp64)
-half __builtin_spirv_OpenCL_step_f16_f16(half edge, half x );
-half2 __builtin_spirv_OpenCL_step_v2f16_v2f16(half2 x, half2 y);
-half3 __builtin_spirv_OpenCL_step_v3f16_v3f16(half3 x, half3 y);
-half4 __builtin_spirv_OpenCL_step_v4f16_v4f16(half4 x, half4 y);
-half8 __builtin_spirv_OpenCL_step_v8f16_v8f16(half8 x, half8 y);
-half16 __builtin_spirv_OpenCL_step_v16f16_v16f16(half16 x, half16 y);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _f16_f16, )(half edge, half x );
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v2f16_v2f16, )(half2 x, half2 y);
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v3f16_v3f16, )(half3 x, half3 y);
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v4f16_v4f16, )(half4 x, half4 y);
+half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v8f16_v8f16, )(half8 x, half8 y);
+half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(step, _v16f16_v16f16, )(half16 x, half16 y);
 
 
 //

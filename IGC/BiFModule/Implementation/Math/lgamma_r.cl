@@ -131,7 +131,7 @@ INLINE float __builtin_spirv_OpenCL_lgamma_r_f32_p0i32( float          x,
     {
         float g = __builtin_spirv_OpenCL_tgamma_f32(x);
         r = __intel_relaxed_isnan(g) ? INFINITY : __builtin_spirv_OpenCL_native_log_f32(__builtin_spirv_OpenCL_fabs_f32(g));
-        s = __builtin_spirv_OpenCL_sign_f32(g);
+        s = SPIRV_OCL_BUILTIN(sign, _f32, )(g);
     }
     signp[0] = s;
     return r;

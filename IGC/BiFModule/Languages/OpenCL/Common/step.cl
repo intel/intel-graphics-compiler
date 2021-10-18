@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE step( float edge, float x )
 {
-    return __builtin_spirv_OpenCL_step_f32_f32( edge, x );
+    return SPIRV_OCL_BUILTIN(step, _f32_f32, )( edge, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( step, float, float )
@@ -21,7 +21,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_SV( step, float, float, float )
 
 INLINE double OVERLOADABLE step( double edge, double x )
 {
-    return __builtin_spirv_OpenCL_step_f64_f64( edge, x );
+    return SPIRV_OCL_BUILTIN(step, _f64_f64, )( edge, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( step, double, double )
@@ -33,7 +33,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_SV( step, double, double, double )
 
 INLINE half OVERLOADABLE step( half edge, half x )
 {
-    return __builtin_spirv_OpenCL_step_f16_f16( edge, x );
+    return SPIRV_OCL_BUILTIN(step, _f16_f16, )( edge, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( step, half, half )

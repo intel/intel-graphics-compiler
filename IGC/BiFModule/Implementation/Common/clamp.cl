@@ -8,18 +8,18 @@ SPDX-License-Identifier: MIT
 
 #include "../include/BiF_Definitions.cl"
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fclamp, float, float, f32 )
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VSS( __builtin_spirv_OpenCL_fclamp, float, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( fclamp, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS_VSS( fclamp, float, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fclamp, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( fclamp, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #ifdef cl_khr_fp16
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fclamp, half, half, f16 )
-GENERATE_VECTOR_FUNCTIONS_3ARGS_VSS( __builtin_spirv_OpenCL_fclamp, half, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( fclamp, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS_VSS( fclamp, half, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE radians( float d )
 {
-    return __builtin_spirv_OpenCL_radians_f32( d );
+    return SPIRV_OCL_BUILTIN(radians, _f32, )( d );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( radians, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( radians, float, float )
 
 INLINE double OVERLOADABLE radians( double d )
 {
-    return __builtin_spirv_OpenCL_radians_f64( d );
+    return SPIRV_OCL_BUILTIN(radians, _f64, )( d );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( radians, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( radians, double, double )
 
 INLINE half OVERLOADABLE radians( half d )
 {
-    return __builtin_spirv_OpenCL_radians_f16( d );
+    return SPIRV_OCL_BUILTIN(radians, _f16, )( d );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( radians, half, half )
