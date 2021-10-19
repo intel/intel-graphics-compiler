@@ -103,7 +103,7 @@ class StackAnalysis : public InstVisitor<StackAnalysis> {
       NotStarted // function has not started processing but will start
     };
     uint64_t m_UsedSz{0};
-    unsigned m_RequiredAlign{visa::BytesPerSVMPtr};
+    unsigned m_RequiredAlign{0};
     bool m_HasIndirect{false};
     Function *m_pHeavyFunction{nullptr};
     ProcessingState m_ProcessingFlag{ProcessingState::NotStarted};
@@ -216,6 +216,9 @@ StackAnalysis::checkFunction(Function &F) {
 
   StateOfF.m_ProcessingFlag = FunctionState::ProcessingState::Finished;
   StateOfF.m_UsedSz += MostUsedStackSize;
+  // Add the max alignment of the function to the total size used because of
+  // run-time alignment that may vary from 0 to m_RequiredAlign - 1.
+  StateOfF.m_UsedSz += StateOfF.m_RequiredAlign;
 
   LLVM_DEBUG(dbgs() << F.getName() << " size: " << StateOfF.m_UsedSz
                     << " alignment: " << StateOfF.m_RequiredAlign << "\n");
@@ -249,6 +252,7 @@ void StackAnalysis::checkKernel(Function &Kernel) {
   }
   auto [KernelUsedStack, KernelAlignment] = *Res;
 
+  KernelAlignment = std::max(KernelAlignment, visa::BytesPerSVMPtr);
   // align stack size to kernel alignment requirement
   KernelUsedStack = llvm::alignTo(KernelUsedStack, KernelAlignment);
   if (KernelUsedStack > m_MaxStackSize) {
