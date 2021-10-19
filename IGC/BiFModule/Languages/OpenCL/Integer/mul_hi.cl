@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
-#include "../include/mul_hilo.cl"
 
 INLINE
 char OVERLOADABLE mul_hi( char x,

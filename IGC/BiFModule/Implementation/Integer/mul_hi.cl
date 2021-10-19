@@ -493,7 +493,7 @@ long __builtin_spirv_OpenCL_s_mul_hi_i64_i64( long x,
                                        long y )
 {
     ulong temp;
-    return __builtin_spirv___intc_mul_hilo_i64_i64_p0i64(x, y, &temp);
+    return ___intc_mul_hilo(x, y, &temp);
 }
 
 INLINE
@@ -574,7 +574,7 @@ ulong __builtin_spirv_OpenCL_u_mul_hi_i64_i64( ulong x,
                                         ulong y )
 {
     ulong temp;
-    return __builtin_spirv___intc_umul_hilo_i64_i64_p0i64(x, y, &temp);
+    return ___intc_umul_hilo(x, y, &temp);
 }
 
 INLINE

@@ -28,9 +28,9 @@ Output:
     return the high bits of the multiplication.
 
 \*****************************************************************************/
-ulong __builtin_spirv___intc_umul_hilo_i64_i64_p0i64(ulong sourceA,
-                                      ulong sourceB,
-                               __private ulong *destLow)
+ulong ___intc_umul_hilo(ulong sourceA,
+                        ulong sourceB,
+                        __private ulong *destLow)
 {
     ulong lowA, lowB;
     ulong highA, highB;
@@ -132,9 +132,9 @@ Output:
     return the high bits of the multiplication.
 
 \*****************************************************************************/
-long __builtin_spirv___intc_mul_hilo_i64_i64_p0i64(long sourceA,
-                                                 long sourceB,
-                                        __private ulong *destLow)
+long ___intc_mul_hilo(long sourceA,
+                      long sourceB,
+                      __private ulong *destLow)
 {
     // Find sign of result
     long aSign = sourceA >> 63;
@@ -146,9 +146,9 @@ long __builtin_spirv___intc_mul_hilo_i64_i64_p0i64(long sourceA,
     sourceB = (sourceB ^ bSign) - bSign;
 
     ulong hi;
-    hi = __builtin_spirv___intc_umul_hilo_i64_i64_p0i64( (ulong) sourceA,
-                                            (ulong) sourceB,
-                                            destLow );
+    hi = ___intc_umul_hilo( (ulong) sourceA,
+                            (ulong) sourceB,
+                            destLow );
 
     // Fix the sign
     if( resultSign )

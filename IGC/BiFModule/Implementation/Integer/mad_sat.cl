@@ -579,7 +579,7 @@ ulong __builtin_spirv_OpenCL_u_mad_sat_i64_i64_i64( ulong a,
 {
     ulong lo;
     ulong hi;
-    hi = __builtin_spirv___intc_umul_hilo_i64_i64_p0i64(a, b, &lo);
+    hi = ___intc_umul_hilo(a, b, &lo);
     return (hi == 0) ? __builtin_spirv_OpenCL_u_add_sat_i64_i64(lo, c) :
     ULONG_MAX;
 }
