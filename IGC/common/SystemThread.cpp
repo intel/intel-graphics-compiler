@@ -397,7 +397,9 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
 
     GT_SYSTEM_INFO sysInfo = platform.GetGTSystemInfo();
     Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_slices = sysInfo.MaxSlicesSupported;
-    Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_subslices_per_slice = sysInfo.MaxSubSlicesSupported;
+    IGC_ASSERT(sysInfo.MaxSlicesSupported > 0);
+    Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_subslices_per_slice =
+            (sysInfo.MaxSlicesSupported > 0 ? (sysInfo.MaxSubSlicesSupported / sysInfo.MaxSlicesSupported) : sysInfo.MaxSubSlicesSupported);
     Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
     Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu = 0;
 
