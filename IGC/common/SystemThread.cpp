@@ -136,7 +136,7 @@ struct DebugSurfaceLayout
     uint8_t version[VERSION_COUNT * VERSION_ELEMENTS * VERSION_ELEMENT_SIZE + VERSION_ALIGN];
 };
 
-static struct StateSaveAreaHeader Gen12LPSIPCSRDebugBindlessDebugHeader =
+static struct StateSaveAreaHeader Gen12SIPCSRDebugBindlessDebugHeader =
 {
     {"tssarea", 0, {1, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
     {
@@ -391,27 +391,27 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
 
     SIPKernelInfo[GEN12_LP_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&Gen12LPSIPCSRDebugBindless,
             (int)sizeof(Gen12LPSIPCSRDebugBindless),
-            (void*)&Gen12LPSIPCSRDebugBindlessDebugHeader,
-            (int)sizeof(Gen12LPSIPCSRDebugBindlessDebugHeader));
+            (void*)&Gen12SIPCSRDebugBindlessDebugHeader,
+            (int)sizeof(Gen12SIPCSRDebugBindlessDebugHeader));
+
 
     GT_SYSTEM_INFO sysInfo = platform.GetGTSystemInfo();
-    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_slices = sysInfo.MaxSlicesSupported;
-    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_subslices_per_slice = sysInfo.MaxSubSlicesSupported;
-    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
-    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu = 0;
+    Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_slices = sysInfo.MaxSlicesSupported;
+    Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_subslices_per_slice = sysInfo.MaxSubSlicesSupported;
+    Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
+    Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu = 0;
 
     // Avoid division by zero error in case if any of the sysInfo parameter is zero.
-    if ((sysInfo.MaxEuPerSubSlice * sysInfo.MaxSubSlicesSupported * sysInfo.MaxSlicesSupported) != 0)
-        Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu =
-            sysInfo.ThreadCount / (sysInfo.MaxEuPerSubSlice * sysInfo.MaxSubSlicesSupported * sysInfo.MaxSlicesSupported);
+    if (sysInfo.EUCount != 0)
+        Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu = (sysInfo.ThreadCount / sysInfo.EUCount);
 
     if (sizeof(StateSaveAreaHeader) % 16)
-        Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset =
+        Gen12SIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset =
             16 - sizeof(StateSaveAreaHeader) % 16;
 
     // Match SIP alignment of debug surface
-    IGC_ASSERT_MESSAGE(((Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset +
-        Gen12LPSIPCSRDebugBindlessDebugHeader.versionHeader.size * 8) / 16 == 0x14),
+    IGC_ASSERT_MESSAGE(((Gen12SIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset +
+        Gen12SIPCSRDebugBindlessDebugHeader.versionHeader.size * 8) / 16 == 0x14),
         "Gen12 Bindless SIP header size alignment mismatch.");
 
 }
