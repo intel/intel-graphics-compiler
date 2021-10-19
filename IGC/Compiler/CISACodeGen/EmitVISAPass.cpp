@@ -9828,7 +9828,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
                     CName(srcV->getName(), "Hi"));
                 CVariable* tempVar = m_currShader->GetNewVariable(
                     numLanes(m_currShader->m_SIMDSize),
-                    ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform(),
+                    ISA_TYPE_D, EALIGN_GRF, m_destination->IsUniform(),
                     CName::NONE);
 
                 // Split Src into {Low, High}
@@ -9844,10 +9844,8 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
                 m_encoder->Push();
 
                 // Clear tag in the high part and restore address canonical form
-                m_encoder->And(tempVar, srcHigh, m_currShader->ImmToVariable(0x0F000000, ISA_TYPE_UD));
-                m_encoder->Shl(tempVar, tempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
-                m_encoder->Xor(tempVar, tempVar, m_currShader->ImmToVariable(0x0, ISA_TYPE_UD));
-                m_encoder->Or(srcHigh, srcHigh, tempVar);
+                m_encoder->Shl(tempVar, srcHigh, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+                m_encoder->IShr(srcHigh, tempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
                 m_encoder->Push();
 
                 // Copy to Dst
@@ -9867,13 +9865,11 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
         {
             CVariable* pTempVar = m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_UQ, m_currShader->getGRFAlignment(),
+                ISA_TYPE_Q, m_currShader->getGRFAlignment(),
                 m_destination->IsUniform(), CName::NONE);
             // Clear tag in the high part and restore address canonical form
-            m_encoder->And(pTempVar, srcV, m_currShader->ImmToVariable(0x0F00000000000000, ISA_TYPE_UQ));
-            m_encoder->Shl(pTempVar, pTempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
-            m_encoder->Xor(pTempVar, pTempVar, m_currShader->ImmToVariable(0x0, ISA_TYPE_UQ));
-            m_encoder->Or(pTempVar, srcV, pTempVar);
+            m_encoder->Shl(pTempVar, srcV, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+            m_encoder->IShr(pTempVar, pTempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
             m_encoder->Cast(m_destination, pTempVar);
             m_encoder->Push();
         }
