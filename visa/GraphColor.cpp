@@ -3100,6 +3100,16 @@ bool Augmentation::updateDstMaskForGatherRaw(
     case SFID::SAMPLER:
     {
         unsigned respLength = msgDesc->ResponseLength();
+        if (respLength * numEltPerGRF<Type_UB>() != dst->getTopDcl()->getByteSize() &&
+            msgDesc->isFence())
+        {
+            // since send dst size is not exactly equal to ResponseLength encoded in
+            // the descriptor, conservatively treat the send as being non-default
+            auto sz = dst->getTopDcl()->getByteSize();
+            for (unsigned int i = 0; i != sz; ++i)
+                mask[i] = NOMASK_BYTE;
+            return true;
+        }
         unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
         elemSize = msgDesc->is16BitReturn() ? 2 : 4;
         unsigned warpNum = respLength * numEltPerGRF<Type_UB>() / (execSize * elemSize);
