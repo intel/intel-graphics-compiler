@@ -11184,60 +11184,45 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
 
 void EmitPass::emitSymbolRelocation(Function& F)
 {
-    Module* pModule = F.getParent();
+    SmallSet<Function*, 16> funcAddrSymbols;
+    SmallSet<GlobalVariable*, 16> globalAddrSymbols;
+    ModuleMetaData* moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-    // Check if a value is used inside a function
-    std::function<bool(Value*, Function*)> ValueUsedInFunction =
-        [&ValueUsedInFunction](Value* v, Function* currFunc)->bool
+    std::function<void(Value*)> usedValues =
+        [&usedValues, &funcAddrSymbols, &globalAddrSymbols, moduleMD]
+    (Value* v)
     {
-        for (auto it = v->user_begin(), ie = v->user_end(); it != ie; it++)
+        if (Function* pFunc = dyn_cast<Function>(v))
         {
-            if (Instruction* inst = dyn_cast<Instruction>(*it))
-            {
-                if (inst->getParent()->getParent() == currFunc)
-                    return true;
-            }
-            else if (Constant* C = dyn_cast<Constant>(*it))
-            {
-                if (C->isConstantUsed() && ValueUsedInFunction(C, currFunc))
-                    return true;
-            }
+            if (pFunc->hasFnAttribute("referenced-indirectly"))
+                funcAddrSymbols.insert(pFunc);
         }
-        return false;
+        else if (GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(v))
+        {
+            if (moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0)
+                globalAddrSymbols.insert(pGlobal);
+        }
+        else if (Constant* C = dyn_cast<Constant>(v))
+        {
+            for(auto it = C->value_op_begin(), end = C->value_op_end(); it != end; it++)
+                usedValues(*it);
+        }
     };
 
-    // Create relocation symbols for functions
-    SmallSet<Function*, 16> funcAddrSymbols;
-    for (auto& FI : pModule->getFunctionList())
+    for (auto& BB : F)
     {
-        // Create a relocation instruction for every "referenced-indirectly" function being used in the current function
-        if (FI.hasFnAttribute("referenced-indirectly") && !FI.use_empty())
+        for (auto& I : BB)
         {
-            if (ValueUsedInFunction(&FI, &F))
-            {
-                funcAddrSymbols.insert(&FI);
-            }
+            for (auto it = I.value_op_begin(), end = I.value_op_end(); it != end; it++)
+                usedValues(*it);
         }
     }
+
     for (auto pFunc : funcAddrSymbols)
     {
         m_currShader->CreateFunctionSymbol(pFunc);
     }
 
-    // Create relocation symbols for global variables
-    SmallSet<GlobalVariable*, 16> globalAddrSymbols;
-    for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
-    {
-        // Create relocation instruction for global variables
-        GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
-        if (pGlobal &&
-            !pGlobal->use_empty() &&
-            m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0 &&
-            ValueUsedInFunction(pGlobal, &F))
-        {
-            globalAddrSymbols.insert(pGlobal);
-        }
-    }
     for (auto pGlobal : globalAddrSymbols)
     {
         m_currShader->CreateGlobalSymbol(pGlobal);
