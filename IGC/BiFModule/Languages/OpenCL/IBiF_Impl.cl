@@ -92,23 +92,23 @@ INLINE uint OVERLOADABLE get_work_dim() {
 
 INLINE local void* __to_local(generic void* ptr)
 {
-    return SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(ptr,StorageWorkgroup);
+    return SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((ptr), __generic char*), StorageWorkgroup);
 }
 
 INLINE private void* __to_private(generic void* ptr)
 {
-    return SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(ptr,StorageFunction);
+    return SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((ptr), __generic char*), StorageFunction);
 }
 
 INLINE global void* __to_global(generic void* ptr)
 {
-    return SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(ptr,StorageCrossWorkgroup);
+    return SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(__builtin_astype((ptr), __generic char*), StorageCrossWorkgroup);
 }
 
 INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic void* ptr)
 {
 
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(ptr,StorageWorkgroup) != NULL)
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((ptr), __generic char*), StorageWorkgroup) != NULL)
     {
         return CLK_LOCAL_MEM_FENCE;
     }
