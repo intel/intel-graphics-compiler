@@ -20,6 +20,8 @@ parser.add_argument('--patches-dir', required=True,
                     help='Directory with patches')
 parser.add_argument('--patch-executable', required=True,
                     help='Path to patch program')
+parser.add_argument('--patch-disable', required=True,
+                    help='Patch to disable')
 parser.add_argument('--dry-run', action='store_true',
                     help='Only print list of patches that will be applied')
 
@@ -123,5 +125,12 @@ for _, d in ver_to_dir:
 patches = list(patches.values())
 patches.sort(key=lambda p: p.name)
 
+checkDisabledPatch = False
+if args.patch_disable != "None":
+    checkDisabledPatch = True
+
 for patch in patches:
+    if checkDisabledPatch:
+        if args.patch_disable in patch.name:
+            continue
     apply_patch(patch)

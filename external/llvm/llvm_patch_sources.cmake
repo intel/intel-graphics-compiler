@@ -11,6 +11,7 @@
 include_guard(DIRECTORY)
 
 set(IGC_LLVM_SOURCE_DIR ${IGC_LLVM_WORKSPACE_SRC}/llvm)
+set(PATCH_DISABLE "None")
 
 # Already copied and patched. Probably...
 # TODO: handle dependencies on patches changes.
@@ -31,4 +32,5 @@ execute_process(COMMAND
   --llvm-project-dir ${IGC_LLVM_WORKSPACE_SRC}
   --patches-dir ${CMAKE_CURRENT_SOURCE_DIR}/releases
   --patch-executable ${Patch_EXECUTABLE}
+  --patch-disable ${PATCH_DISABLE}
   )

@@ -19,9 +19,10 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include "Probe/Assertion.h"
 
-#include "lldWrapper/Common/Driver.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "lldWrapper/Common/Driver.h"
 #include "lld/Common/Driver.h"
+
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FileSystem.h"
 
