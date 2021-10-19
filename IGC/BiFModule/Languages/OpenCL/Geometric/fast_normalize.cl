@@ -11,20 +11,20 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE fast_normalize( float p )
 {
-    return __builtin_spirv_OpenCL_fast_normalize_f32( p );
+    return SPIRV_OCL_BUILTIN(fast_normalize, _f32, )( p );
 }
 
 INLINE float2 OVERLOADABLE fast_normalize( float2 p )
 {
-    return __builtin_spirv_OpenCL_fast_normalize_v2f32( p );
+    return SPIRV_OCL_BUILTIN(fast_normalize, _v2f32, )( p );
 }
 
 INLINE float3 OVERLOADABLE fast_normalize( float3 p )
 {
-    return __builtin_spirv_OpenCL_fast_normalize_v3f32( p );
+    return SPIRV_OCL_BUILTIN(fast_normalize, _v3f32, )( p );
 }
 
 INLINE float4 OVERLOADABLE fast_normalize( float4 p )
 {
-    return __builtin_spirv_OpenCL_fast_normalize_v4f32( p );
+    return SPIRV_OCL_BUILTIN(fast_normalize, _v4f32, )( p );
 }

@@ -11,20 +11,20 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE fast_length( float p )
 {
-    return __builtin_spirv_OpenCL_fast_length_f32( p );
+    return SPIRV_OCL_BUILTIN(fast_length, _f32, )( p );
 }
 
 INLINE float OVERLOADABLE fast_length( float2 p )
 {
-    return __builtin_spirv_OpenCL_fast_length_v2f32( p );
+    return SPIRV_OCL_BUILTIN(fast_length, _v2f32, )( p );
 }
 
 INLINE float OVERLOADABLE fast_length( float3 p )
 {
-    return __builtin_spirv_OpenCL_fast_length_v3f32( p );
+    return SPIRV_OCL_BUILTIN(fast_length, _v3f32, )( p );
 }
 
 INLINE float OVERLOADABLE fast_length( float4 p )
 {
-    return __builtin_spirv_OpenCL_fast_length_v4f32( p );
+    return SPIRV_OCL_BUILTIN(fast_length, _v4f32, )( p );
 }

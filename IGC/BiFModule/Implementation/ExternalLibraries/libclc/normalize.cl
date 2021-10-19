@@ -112,11 +112,11 @@ static ushort16 INLINE OVERLOADABLE __convert_ushort16(__bool16 b)
     return (ushort16)(__convert_ushort8(b.lo), __convert_ushort8(b.hi));
 }
 
-float __builtin_spirv_OpenCL_normalize_f32(float p) {
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _f32, )(float p) {
   return SPIRV_OCL_BUILTIN(sign, _f32, )(p);
 }
 
-float2 __builtin_spirv_OpenCL_normalize_v2f32(float2 p) {
+float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f32, )(float2 p) {
   if (all(p == (float2)0.0F))
     return p;
 
@@ -138,7 +138,7 @@ float2 __builtin_spirv_OpenCL_normalize_v2f32(float2 p) {
   return p * __builtin_spirv_OpenCL_rsqrt_f32(l2);
 }
 
-float3 __builtin_spirv_OpenCL_normalize_v3f32(float3 p) {
+float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f32, )(float3 p) {
   if (all(p == (float3)0.0F))
     return p;
 
@@ -158,7 +158,7 @@ float3 __builtin_spirv_OpenCL_normalize_v3f32(float3 p) {
   return p * __builtin_spirv_OpenCL_rsqrt_f32(l2);
 }
 
-float4 __builtin_spirv_OpenCL_normalize_v4f32(float4 p) {
+float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f32, )(float4 p) {
   if (all(p == (float4)0.0F))
     return p;
 
@@ -182,11 +182,11 @@ float4 __builtin_spirv_OpenCL_normalize_v4f32(float4 p) {
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-double __builtin_spirv_OpenCL_normalize_f64(double p) {
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _f64, )(double p) {
   return SPIRV_OCL_BUILTIN(sign, _f64, )(p);
 }
 
-double2 __builtin_spirv_OpenCL_normalize_v2f64(double2 p) {
+double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f64, )(double2 p) {
   if (all(p == (double2)0.0))
     return p;
 
@@ -206,7 +206,7 @@ double2 __builtin_spirv_OpenCL_normalize_v2f64(double2 p) {
   return p * __builtin_spirv_OpenCL_rsqrt_f64(l2);
 }
 
-double3 __builtin_spirv_OpenCL_normalize_v3f64(double3 p) {
+double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f64, )(double3 p) {
   if (all(p == (double3)0.0))
     return p;
 
@@ -226,7 +226,7 @@ double3 __builtin_spirv_OpenCL_normalize_v3f64(double3 p) {
   return p * __builtin_spirv_OpenCL_rsqrt_f64(l2);
 }
 
-double4 __builtin_spirv_OpenCL_normalize_v4f64(double4 p) {
+double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f64, )(double4 p) {
   if (all(p == (double4)0.0))
     return p;
 
@@ -251,11 +251,11 @@ double4 __builtin_spirv_OpenCL_normalize_v4f64(double4 p) {
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_normalize_f16(half p ){
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _f16, )(half p ){
     return SPIRV_OCL_BUILTIN(sign, _f16, )(p);
 }
 
-half2 __builtin_spirv_OpenCL_normalize_v2f16(half2 p ){
+half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f16, )(half2 p ){
     if (all(p == (half2)0.0F))
     return p;
 
@@ -275,7 +275,7 @@ half2 __builtin_spirv_OpenCL_normalize_v2f16(half2 p ){
   return p * __builtin_spirv_OpenCL_rsqrt_f16(l2);
 }
 
-half3 __builtin_spirv_OpenCL_normalize_v3f16(half3 p ){
+half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f16, )(half3 p ){
     if (all(p == (half3)0.0F))
     return p;
 
@@ -295,7 +295,7 @@ half3 __builtin_spirv_OpenCL_normalize_v3f16(half3 p ){
   return p * __builtin_spirv_OpenCL_rsqrt_f16(l2);
 }
 
-half4 __builtin_spirv_OpenCL_normalize_v4f16(half4 p ){
+half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f16, )(half4 p ){
     if (all(p == (half4)0.0F))
     return p;
 
