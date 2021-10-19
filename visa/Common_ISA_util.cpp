@@ -340,7 +340,7 @@ G4_Type GetGenTypeFromVISAType(VISA_Type type)
         return Type_UQ;
     case ISA_TYPE_HF:
         return Type_HF;
-    case ISA_TYPE_BF:
+    case ISA_TYPE_BF16:
         return Type_BF;
     default:
         return Type_UNDEF;
@@ -382,7 +382,7 @@ VISA_Type Get_Common_ISA_Type_From_G4_Type(G4_Type type)
     case Type_HF:
         return ISA_TYPE_HF;
     case Type_BF:
-        return ISA_TYPE_BF;
+        return ISA_TYPE_BF16;
     default:
         return ISA_TYPE_NUM;
     }

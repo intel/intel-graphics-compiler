@@ -1682,13 +1682,6 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
         return true;
     }
 
-    if (builder.hasBFMixMode() && extype == Type_F && inst->getDst()->getType() == Type_BF && !inst->isDpas())
-    {
-        // For now, BF mixed mode should not need this check.
-        // If visa may allow any region as input under bf mixed mode, we need to change this.
-        return false;
-    }
-
     bool dstHFMixModeInst = inst->getDst()->getType() == builder.getMixModeType() && extype == Type_F;
     bool dstNotAlignedToExecType = exec_size > 1 && (dst_elsize * h_stride) < extypesize &&
         !(builder.hasMixMode() && dstHFMixModeInst);
