@@ -4553,7 +4553,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
 
     bool zeroLOD = false;
     //SKL+ new message ld_lz
-    if (numSources > 2 && m_currShader->m_Platform->supportSampleAndLd_lz())
+    if (numSources > 2 &&
+        m_currShader->m_Platform->supportSampleAndLd_lz())
     {
         // Check if lod is 0
         CVariable* src = GetSymbol(inst->getOperand(2));
