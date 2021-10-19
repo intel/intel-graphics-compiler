@@ -12297,12 +12297,16 @@ void EmitPass::emitSampleOffset(GenIntrinsicInst* inst)
     CVariable* index = GetSymbol(inst->getOperand(0));
 
     CVariable* pIndexVar = m_currShader->BitCast(index, ISA_TYPE_UW);
-    if (!pIndexVar->IsUniform())
+
     {
-        m_encoder->SetSrcRegion(1, 16, 8, 2);
+        if (!pIndexVar->IsUniform())
+        {
+            m_encoder->SetSrcRegion(1, 16, 8, 2);
+        }
+
+        m_encoder->AddrAdd(pDstArrElm, offsets, pIndexVar);
+        m_encoder->Push();
     }
-    m_encoder->AddrAdd(pDstArrElm, offsets, pIndexVar);
-    m_encoder->Push();
 
     m_encoder->Cast(m_destination, pDstArrElm);
     m_encoder->Push();
