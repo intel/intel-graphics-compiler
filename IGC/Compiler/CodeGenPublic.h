@@ -123,6 +123,7 @@ namespace IGC
         bool            m_UseScratchSpacePrivateMemory = true;
         unsigned int m_scratchSpaceSizeLimit = 0;
         unsigned int m_numGRFTotal = 128;
+        std::string m_VISAAsm;
 
         // Optional statistics
         std::optional<uint64_t> m_NumGRFSpill;

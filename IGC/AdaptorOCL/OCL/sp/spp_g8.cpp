@@ -522,6 +522,7 @@ void CGen8OpenCLProgram::GetZEBinary(
                 kernel->m_kernelInfo,
                 kernel->getGRFSize(),
                 m_Context.btiLayout,
+                pOutput->m_VISAAsm,
                 m_ContextProvider.isProgramDebuggable());
 
             // FIXME: Handle IGC_IS_FLAG_ENABLED(ShaderDumpEnable) and

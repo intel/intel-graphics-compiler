@@ -196,6 +196,7 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
         reinterpret_cast<const char *>(kernel->getProgramOutput().m_programBin),
         kernel->getProgramOutput().m_programSize, kernel->m_kernelInfo,
         kernel->m_GRFSizeInBytes, kernel->m_btiLayout,
+        kernel->getProgramOutput().m_VISAAsm,
         m_ContextProvider.isProgramDebuggable());
   }
 

@@ -56,6 +56,7 @@ public:
         const IGC::SOpenCLKernelInfo& annotations,
         const uint32_t grfSize,
         const IGC::CBTILayout& layout,
+        const std::string& visaasm,
         bool isProgramDebuggable);
 
     // getElfSymbol - find a symbol name in ELF binary and return a symbol entry
@@ -172,6 +173,8 @@ private:
                            const IGC::CBTILayout& layout,
                            zebin::zeInfoKernel& zeinfoKernel);
 
+    /// add visasm of the kernel
+    void addKernelVISAAsm(const std::string& kernel, const std::string& visaasm);
 private:
     // mBuilder - Builder of a ZE ELF object
     zebin::ZEELFObjectBuilder mBuilder;

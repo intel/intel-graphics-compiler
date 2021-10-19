@@ -57,6 +57,7 @@ void ZEBinaryBuilder::createKernel(
     const SOpenCLKernelInfo& annotations,
     const uint32_t grfSize,
     const CBTILayout& layout,
+    const std::string& visaasm,
     bool isProgramDebuggable)
 {
     ZEELFObjectBuilder::SectionID textID =
@@ -80,6 +81,8 @@ void ZEBinaryBuilder::createKernel(
     addPayloadArgsAndBTI(annotations, zeKernel);
     addMemoryBuffer(annotations, zeKernel);
     addGTPinInfo(annotations);
+    if (!visaasm.empty())
+        addKernelVISAAsm(annotations.m_kernelName, visaasm);
     if (isProgramDebuggable)
         addKernelDebugEnv(annotations, layout, zeKernel);
 }
@@ -785,4 +788,14 @@ void ZEBinaryBuilder::addKernelDebugEnv(const SOpenCLKernelInfo& annotations,
     // Now set the sip surface offset to 0 directly. Currently the surface offset
     // is computed locally when creating patch tokens.
     env.sip_surface_offset = 0;
+}
+
+void ZEBinaryBuilder::addKernelVISAAsm(const std::string& kernel,
+                                       const std::string& visaasm)
+{
+    IGC_ASSERT(!visaasm.empty());
+    mBuilder.addSectionVISAAsm(
+        kernel,
+        reinterpret_cast<const uint8_t*>(visaasm.data()),
+        visaasm.size());
 }
