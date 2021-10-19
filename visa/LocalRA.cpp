@@ -514,9 +514,7 @@ bool LocalRA::localRA()
                 globalLRSize = 0;
             }
             evenAlign();
-            kernel.getOptions()->setOption(vISA_enableBundleCR, false);
             needGlobalRA = localRAPass(false, doSplitLLR);
-            kernel.getOptions()->setOption(vISA_enableBundleCR, true);
         }
     }
 
@@ -701,11 +699,6 @@ inline static unsigned short getOccupiedBundle(IR_Builder& builder, GlobalRA& gr
     unsigned bundleNum = 0;
     unsigned int evenBankNum = 0;
     unsigned int oddBankNum = 0;
-
-    if (!(builder.getOption(vISA_enableBundleCR) && builder.getOption(vISA_forceBCR)))
-    {
-        return occupiedBundles;
-    }
 
     if (!builder.hasDPAS() || !builder.getOption(vISA_EnableDPASBundleConflictReduction))
     {
