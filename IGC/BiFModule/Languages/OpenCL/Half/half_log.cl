@@ -11,30 +11,30 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE half_log( float x )
 {
-    return __builtin_spirv_OpenCL_half_log_f32( x );
+    return SPIRV_OCL_BUILTIN(half_log, _f32, )( x );
 }
 
 INLINE float2 OVERLOADABLE half_log( float2 x )
 {
-    return __builtin_spirv_OpenCL_half_log_v2f32( x );
+    return SPIRV_OCL_BUILTIN(half_log, _v2f32, )( x );
 }
 
 INLINE float3 OVERLOADABLE half_log( float3 x )
 {
-    return __builtin_spirv_OpenCL_half_log_v3f32( x );
+    return SPIRV_OCL_BUILTIN(half_log, _v3f32, )( x );
 }
 
 INLINE float4 OVERLOADABLE half_log( float4 x )
 {
-    return __builtin_spirv_OpenCL_half_log_v4f32( x );
+    return SPIRV_OCL_BUILTIN(half_log, _v4f32, )( x );
 }
 
 INLINE float8 OVERLOADABLE half_log( float8 x )
 {
-    return __builtin_spirv_OpenCL_half_log_v8f32( x );
+    return SPIRV_OCL_BUILTIN(half_log, _v8f32, )( x );
 }
 
 INLINE float16 OVERLOADABLE half_log( float16 x )
 {
-    return __builtin_spirv_OpenCL_half_log_v16f32( x );
+    return SPIRV_OCL_BUILTIN(half_log, _v16f32, )( x );
 }
