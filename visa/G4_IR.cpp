@@ -4836,10 +4836,12 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
             unsigned short s_size = horzStride * type_size;
             unsigned totalBytes = (exec_size - 1) * s_size + type_size;
 
-            // For wide dst instructions like madw opcode, the dst(SOA layout) size should be double as it has both low and high results
+            // For wide dst instructions like madw opcode, the dst(SOA layout) size should be the sum of low result size and high
+            // result size, and also both low and high results are GRF-aligned.
             if (INST_WIDE_DST(inst->opcode()))
             {
-                totalBytes *= 2;
+                unsigned totalBytesDstLow = (totalBytes + getGRFSize() - 1) & (~(getGRFSize() - 1)); // GRF-aligned
+                totalBytes = totalBytesDstLow * 2;
             }
 
             right_bound = left_bound + totalBytes - 1;
