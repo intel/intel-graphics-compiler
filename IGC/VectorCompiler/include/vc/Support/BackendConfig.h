@@ -113,6 +113,9 @@ struct GenXBackendOptions {
   // Treat "image2d_t" as non-media 2d images.
   bool UsePlain2DImages = false;
 
+  // Enable preemption (to be switched on by default)
+  bool EnablePreemption = false;
+
   GenXBackendOptions();
 };
 
@@ -240,6 +243,8 @@ public:
   bool saveStackCallLinkage() const { return Options.SaveStackCallLinkage; }
 
   bool usePlain2DImages() const { return Options.UsePlain2DImages; }
+
+  bool enablePreemption() const { return Options.EnablePreemption; }
 };
 } // namespace llvm
 

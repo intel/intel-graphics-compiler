@@ -58,6 +58,9 @@ def vc_disable_finalizer_msg :
 def vc_stateless_private_size : PlainJoined<"stateless-stack-mem-size=">,
   HelpText<"Stateless memory amount per thread">;
 
+def vc_enable_preemption : PlainFlag<"vc-enable-preemption">,
+  HelpText<"Enable preemption for VC path">;
+
 def Xfinalizer : PlainSeparate<"Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
 

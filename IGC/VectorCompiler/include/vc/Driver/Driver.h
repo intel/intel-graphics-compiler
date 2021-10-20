@@ -83,6 +83,7 @@ struct CompileOptions {
   bool ForceFinalizerOptDisable = false;
   bool ForceFinalizerOptEnable = false;
   bool ForceDebugInfoValidation = false;
+  bool EnablePreemption = false;
 
   llvm::FPOpFusion::FPOpFusionMode AllowFPOpFusion = llvm::FPOpFusion::Standard;
 

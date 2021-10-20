@@ -240,6 +240,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   if (Opts.SaveStackCallLinkage)
     BackendOpts.SaveStackCallLinkage = true;
   BackendOpts.UsePlain2DImages = Opts.UsePlain2DImages;
+  BackendOpts.EnablePreemption = Opts.EnablePreemption;
   return BackendOpts;
 }
 
@@ -593,6 +594,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.IsLargeGRFMode = true;
   if (ApiOptions.hasArg(OPT_vc_use_plain_2d_images))
     Opts.UsePlain2DImages = true;
+  if (ApiOptions.hasArg(OPT_vc_enable_preemption))
+    Opts.EnablePreemption = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_fp_contract)) {
     StringRef Val = A->getValue();

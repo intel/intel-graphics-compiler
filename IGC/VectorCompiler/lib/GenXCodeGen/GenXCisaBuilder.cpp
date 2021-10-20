@@ -6446,6 +6446,11 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     Argv.push_back(Saver.save(Arg).data());
   };
 
+  // enable preemption if we have SKL+ and option switched on
+  if (BC.enablePreemption() &&
+      ST.getVisaPlatform() >= TARGET_PLATFORM::GENX_SKL)
+    addArgument("-enablePreemption");
+
   addArgument("-dumpvisa");
   for (const auto &Fos : FinalizerOpts)
     cl::TokenizeGNUCommandLine(Fos, Saver, Argv);

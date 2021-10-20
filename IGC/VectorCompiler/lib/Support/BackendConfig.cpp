@@ -111,6 +111,10 @@ static cl::opt<bool> UseBindlessBuffersOpt("vc-use-bindless-buffers",
                                            cl::desc("Use bindless buffers"),
                                            cl::init(false));
 
+static cl::opt<bool> EnablePreemptionOpt("vc-enable-preemption",
+                                         cl::desc("Enable preemption"),
+                                         cl::init(false));
+
 static cl::opt<bool> SaveStackCallLinkageOpt(
     "save-stack-call-linkage", cl::init(false), cl::Hidden,
     cl::desc("Do not override stack calls linkage as internal"));
@@ -141,7 +145,8 @@ GenXBackendOptions::GenXBackendOptions()
       UseBindlessBuffers(UseBindlessBuffersOpt),
       StatelessPrivateMemSize(StatelessPrivateMemSizeOpt),
       SaveStackCallLinkage(SaveStackCallLinkageOpt),
-      UsePlain2DImages(UsePlain2DImagesOpt) {}
+      UsePlain2DImages(UsePlain2DImagesOpt),
+      EnablePreemption(EnablePreemptionOpt) {}
 
 static std::unique_ptr<MemoryBuffer>
 readBiFModuleFromFile(const cl::opt<std::string> &File) {
