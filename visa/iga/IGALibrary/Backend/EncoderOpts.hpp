@@ -28,11 +28,10 @@ namespace iga
         EncoderOpts(
             bool _autoCompact = false,
             bool _explicitCompactMissIsWarning = false,
-            bool _force_no_compact = false
-            )
+            bool _forceNoCompact = false)
         : autoCompact(_autoCompact),
           explicitCompactMissIsWarning(_explicitCompactMissIsWarning),
-          forceNoCompact(_force_no_compact)
+          forceNoCompact(_forceNoCompact)
         { }
     };
 }

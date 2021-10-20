@@ -1820,7 +1820,8 @@ void Encoder::encodeOptions(const Instruction& inst)
     if (platform() >= Platform::XE && m_opcode != Op::ILLEGAL) {
         SWSB::InstType inst_type = inst.getSWSBInstType(m_opts.swsbEncodeMode);
         uint32_t swsbBinary = inst.getSWSB().encode(m_opts.swsbEncodeMode, inst_type);
-        assert(inst.getSWSB().verify(m_opts.swsbEncodeMode, inst_type));
+        IGA_ASSERT(inst.getSWSB().verify(m_opts.swsbEncodeMode, inst_type),
+            "INTERNAL ERROR: invalid SWSB (parser/IR-creator should have prevented this)");
 
         GED_ENCODE(SWSB, swsbBinary);
     }

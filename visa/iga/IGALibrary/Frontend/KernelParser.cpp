@@ -3729,8 +3729,7 @@ public:
         }
         if (ri->regName != RegName::GRF_R) {
             // dpas must be GRF except src0, which can be null (meaning +0)
-            if ((opIx != 0 || ri->regName != RegName::ARF_NULL)
-                )
+            if (opIx != 0 || ri->regName != RegName::ARF_NULL)
                 FailT("src", opIx, ": invalid register",
                     opIx == 0 ? " (must be GRF or null)" :  " (must be GRF)");
         } else if (!ri->isRegNumberValid(regNum)) {

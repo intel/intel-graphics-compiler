@@ -53,6 +53,7 @@ extern const GED_ADDR_MODE* AddrModeTable1[2];
 extern const GED_ARCH_REG* ArchRegTable0[16];
 extern const GED_ARCH_REG* ArchRegTable1[16];
 extern const GED_ARCH_REG* ArchRegTable2[16];
+extern const GED_ARCH_REG* ArchRegTable3[16];
 extern const GED_ATOMIC_OPERATION_TYPE* AtomicOperationTypeTable0[16];
 extern const GED_ATOMIC_OPERATION_TYPE* AtomicOperationTypeTable1[16];
 extern const GED_BLOCK_SIZE* BlockSizeTable0[8];

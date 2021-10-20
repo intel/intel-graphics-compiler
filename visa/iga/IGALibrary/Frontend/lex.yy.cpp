@@ -543,13 +543,6 @@ static const flex_int32_t yy_rule_can_match_eol[55] =
 #define YY_RESTORE_YY_MORE_OFFSET
 #line 1 "LexicalSpec.flex"
 #line 2 "LexicalSpec.flex"
-/*========================== begin_copyright_notice ============================
-
-Copyright (C) 2017-2021 Intel Corporation
-
-SPDX-License-Identifier: MIT
-
-============================= end_copyright_notice ===========================*/
 
 /*
  * Contains the lexical specification for Intel Gen Assembly.

@@ -617,8 +617,8 @@ static inline void ToSyntaxNoBraces(
         InstOpt::SWITCH,
         InstOpt::SERIALIZE,
         InstOpt::EXBSO,
-        InstOpt::CPS,
-    };
+        InstOpt::CPS
+      };
 
     bool first = true;
     for (size_t i = 0;

@@ -19396,7 +19396,7 @@ const ged_ins_field_entry_t PositionInterpreterTable6[36] =
 }; // PositionInterpreterTable6[]
 const ged_ins_field_entry_t PositionInterpreterTable7[35] =
 {
-    { GED_PSEUDO_FIELD_ArchReg,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {   4,   7,   0,   4,       0xf0 } */ {  0x4000704, (void*)(g_uintptr_t)      0xf0 }, RestrictionTable99 }, // 0
+    { GED_PSEUDO_FIELD_ArchReg,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {   4,   7,   0,   4,       0xf0 } */ {  0x4000704, (void*)(g_uintptr_t)      0xf0 }, RestrictionTable171 }, // 0
     { GED_PSEUDO_FIELD_ArchRegNum,                    GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {   0,   3,   0,   0,        0xf } */ {      0x300, (void*)(g_uintptr_t)       0xf }, NULL }, // 1
     { GED_PSEUDO_FIELD_SwizzleX,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 2
     { GED_PSEUDO_FIELD_SwizzleY,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 3
@@ -19430,5 +19430,5 @@ const ged_ins_field_entry_t PositionInterpreterTable7[35] =
     { GED_PSEUDO_FIELD_MessageTypeDP_DC0Legacy,       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  14,  17,   0,  14,    0x3c000 } */ {  0xe00110e, (void*)(g_uintptr_t)   0x3c000 }, RestrictionTable155 }, // 31
     { GED_PSEUDO_FIELD_MessageTypeDP_DC0ScratchBlock, GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  17,  17,   0,  17,    0x20000 } */ { 0x11001111, (void*)(g_uintptr_t)   0x20000 }, RestrictionTable101 }, // 32
     { GED_PSEUDO_FIELD_MessageTypeDP_DC2,             GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {  14,  18,   0,  14,    0x7c000 } */ {  0xe00120e, (void*)(g_uintptr_t)   0x7c000 }, RestrictionTable157 }, // 33
-    { GED_PSEUDO_FIELD_MessageTypeDP_DCRO,            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {  14,  18,   0,  14,    0x7c000 } */ {  0xe00120e, (void*)(g_uintptr_t)   0x7c000 }, RestrictionTable171 } // 34
+    { GED_PSEUDO_FIELD_MessageTypeDP_DCRO,            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {  14,  18,   0,  14,    0x7c000 } */ {  0xe00120e, (void*)(g_uintptr_t)   0x7c000 }, RestrictionTable172 } // 34
 }; // PositionInterpreterTable7[]

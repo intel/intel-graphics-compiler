@@ -150,8 +150,8 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         // MDC_DB_OW and MDC_64_DB_OW
         // 1L, 1H, 2, 4, 8, 16
         switch (bits) {
-        case 0: ows = 1; descs = "1L (accesses low half of GRF)"; break;
-        case 1: ows = 1; descs = "1H (accesses high half of GRF)"; break;
+        case 0: ows = 1; descs = "1L (accesses low OWord of GRF)"; break;
+        case 1: ows = 1; descs = "1H (accesses second OWord of GRF)"; break;
         case 2: ows = 2; descs = "2 OWords"; break;
         case 3: ows = 4; descs = "4 OWords"; break;
         case 4: ows = 8; descs = "8 OWords"; break;

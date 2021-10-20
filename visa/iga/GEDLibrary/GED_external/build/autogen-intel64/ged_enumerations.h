@@ -42,7 +42,7 @@ typedef enum
     GED_ARCH_REG_f,       ///< all
     GED_ARCH_REG_ce,      ///< all
     GED_ARCH_REG_msg,     ///< 10, 11, TGL, XE.HP, 8, 8.1, 9
-    GED_ARCH_REG_sp,      ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_sp,      ///< 10, 11, TGL, 7.5, 8, 8.1, 9
     GED_ARCH_REG_sr0,     ///< all
     GED_ARCH_REG_cr0,     ///< all
     GED_ARCH_REG_n0,      ///< all

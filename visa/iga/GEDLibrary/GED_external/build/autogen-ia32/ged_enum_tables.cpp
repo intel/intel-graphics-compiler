@@ -453,6 +453,25 @@ const GED_ARCH_REG* ArchRegTable1[16] =
     &ArchRegVar2, // 2
     &ArchRegVar3, // 3
     &ArchRegVar4, // 4
+    &ArchRegVar5, // 5
+    NULL, // 6
+    &ArchRegVar7, // 7
+    &ArchRegVar8, // 8
+    &ArchRegVar9, // 9
+    &ArchRegVar10, // 10
+    &ArchRegVar11, // 11
+    &ArchRegVar12, // 12
+    &ArchRegVar13, // 13
+    NULL, // 14
+    &ArchRegVar14 // 15
+}; // ArchRegTable1[]
+const GED_ARCH_REG* ArchRegTable2[16] =
+{
+    &ArchRegVar0, // 0
+    &ArchRegVar1, // 1
+    &ArchRegVar2, // 2
+    &ArchRegVar3, // 3
+    &ArchRegVar4, // 4
     NULL, // 5
     NULL, // 6
     &ArchRegVar7, // 7
@@ -464,8 +483,8 @@ const GED_ARCH_REG* ArchRegTable1[16] =
     NULL, // 13
     NULL, // 14
     &ArchRegVar14 // 15
-}; // ArchRegTable1[]
-const GED_ARCH_REG* ArchRegTable2[16] =
+}; // ArchRegTable2[]
+const GED_ARCH_REG* ArchRegTable3[16] =
 {
     &ArchRegVar0, // 0
     &ArchRegVar1, // 1
@@ -483,7 +502,7 @@ const GED_ARCH_REG* ArchRegTable2[16] =
     &ArchRegVar13, // 13
     NULL, // 14
     &ArchRegVar14 // 15
-}; // ArchRegTable2[]
+}; // ArchRegTable3[]
 static GED_ATOMIC_OPERATION_TYPE AtomicOperationTypeVar0 = (GED_ATOMIC_OPERATION_TYPE)0;
 static GED_ATOMIC_OPERATION_TYPE AtomicOperationTypeVar1 = (GED_ATOMIC_OPERATION_TYPE)1;
 static GED_ATOMIC_OPERATION_TYPE AtomicOperationTypeVar2 = (GED_ATOMIC_OPERATION_TYPE)2;
