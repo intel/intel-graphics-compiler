@@ -304,6 +304,8 @@ namespace IGC
         // Determines whether the PAYLOAD_HEADER implicit arg must be present
         virtual bool RequirePayloadHeader() const { return true; }
 
+        virtual float getCSSpillThresholdSLM() const { return 12; }
+
 
 
     };
