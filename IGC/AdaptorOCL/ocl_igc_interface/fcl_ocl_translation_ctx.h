@@ -51,9 +51,15 @@ protected:
                                                   uint32_t tracingOptionsCount);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclTranslationCtx, 2, 1) {
+  CIF_INHERIT_CONSTRUCTOR();
+  virtual void GetFclOptions(CIF::Builtins::BufferSimple *options);
+  virtual void GetFclInternalOptions(CIF::Builtins::BufferSimple *internalOptions);
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclTranslationCtx, IGC::OclTranslationOutput, CIF::Builtins::Buffer);
 CIF_MARK_LATEST_VERSION(FclOclTranslationCtxLatest, FclOclTranslationCtx);
-using FclOclTranslationCtxTagOCL = FclOclTranslationCtxLatest; // Note : can tag with different version for
+using FclOclTranslationCtxTagOCL = FclOclTranslationCtx<1>; // Note : can tag with different version for
                                                                //        transition periods
 
 }

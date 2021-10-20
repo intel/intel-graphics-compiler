@@ -75,6 +75,13 @@ CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 1)::TranslateImpl(
                                       tracingOptions, tracingOptionsCount);
 }
 
+void CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 2)::GetFclOptions(CIF::Builtins::BufferSimple* opts){
+   CIF_GET_PIMPL()->GetFclOptions(opts);
+}
+
+void CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 2)::GetFclInternalOptions(CIF::Builtins::BufferSimple* opts){
+   CIF_GET_PIMPL()->GetFclInternalOptions(opts);
+}
 }
 
 namespace IGC {
@@ -512,6 +519,9 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
       VCApiOpts += " -Xfinalizer '" + llvm::join(VCFinalizerOpts, " ") + "'";
 
     finalizeFEOutput(*FEOutput, VCApiOpts, VCLLVMOpts, TargetFeatures, Out);
+
+    FclInternalOpts = std::string(" -llvm-options='" + llvm::join(VCLLVMOpts, " ") + "'");
+    FclOpts = VCApiOpts;
 
 #else
     Out.GetImpl()->SetError(TranslationErrorType::Internal,

@@ -145,6 +145,20 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
     }
 
 protected:
+    std::string FclOpts{};
+    std::string FclInternalOpts{};
+public:
+    void GetFclOptions(CIF::Builtins::BufferSimple *opts){
+      assert(opts && opts->GetSizeRaw() == 0 && "GetFclOptions expects empty buffer");
+      opts->Resize(FclOpts.size() + 1);
+      strcpy((char*)opts->GetMemoryRawWriteable(), FclOpts.c_str());
+    }
+    void GetFclInternalOptions(CIF::Builtins::BufferSimple *opts) {
+      assert(opts && opts->GetSizeRaw() == 0 && "GetFclInternalOptions expects empty buffer");
+      opts->Resize(FclInternalOpts.size() + 1);
+      strcpy((char*)opts->GetMemoryRawWriteable(), FclInternalOpts.c_str());
+    }
+protected:
     static TC::CClangTranslationBlock* CreateLegacyInterface(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {
         if (SupportsTranslation(inType, outType) == false) {
             return nullptr;
