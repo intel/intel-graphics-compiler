@@ -26,79 +26,79 @@ INLINE float OVERLOADABLE min( float x, float y )
 INLINE
 uchar OVERLOADABLE abs( char x )
 {
-    return SPIRV_OCL_BUILTIN(s_abs, _i8, )( x );
+    return __builtin_spirv_OpenCL_s_abs_i8( x );
 }
 
 INLINE
 ushort OVERLOADABLE abs( short x )
 {
-    return SPIRV_OCL_BUILTIN(s_abs, _i16, )( x );
+    return __builtin_spirv_OpenCL_s_abs_i16( x );
 }
 
 INLINE
 uint OVERLOADABLE abs( int x )
 {
-    return SPIRV_OCL_BUILTIN(s_abs, _i32, )( x );
+    return __builtin_spirv_OpenCL_s_abs_i32( x );
 }
 
 INLINE
 char OVERLOADABLE add_sat( char x,
                            char y )
 {
-    return SPIRV_OCL_BUILTIN(s_add_sat, _i8_i8, )( x, y );
+    return __builtin_spirv_OpenCL_s_add_sat_i8_i8( x, y );
 }
 
 INLINE
 uchar OVERLOADABLE add_sat( uchar x,
                             uchar y )
 {
-    return SPIRV_OCL_BUILTIN(u_add_sat, _i8_i8, )( x, y );
+    return __builtin_spirv_OpenCL_u_add_sat_i8_i8( x, y );
 }
 
 INLINE
 short OVERLOADABLE add_sat( short x,
                             short y )
 {
-    return SPIRV_OCL_BUILTIN(s_add_sat, _i16_i16, )( x, y );
+    return __builtin_spirv_OpenCL_s_add_sat_i16_i16( x, y );
 }
 
 INLINE
 ushort OVERLOADABLE add_sat( ushort x,
                              ushort y )
 {
-    return SPIRV_OCL_BUILTIN(u_add_sat, _i16_i16, )( x, y );
+    return __builtin_spirv_OpenCL_u_add_sat_i16_i16( x, y );
 }
 
 INLINE
 int OVERLOADABLE add_sat( int x,
                           int y )
 {
-    return SPIRV_OCL_BUILTIN(s_add_sat, _i32_i32, )( x, y );
+    return __builtin_spirv_OpenCL_s_add_sat_i32_i32( x, y );
 }
 
 INLINE
 uint OVERLOADABLE add_sat( uint x,
                            uint y )
 {
-    return SPIRV_OCL_BUILTIN(u_add_sat, _i32_i32, )( x, y );
+    return __builtin_spirv_OpenCL_u_add_sat_i32_i32( x, y );
 }
 
 INLINE
 uchar OVERLOADABLE ctz( uchar x )
 {
-    return SPIRV_OCL_BUILTIN(ctz, _i8, )( x );
+    return __builtin_spirv_OpenCL_ctz_i8( x );
 }
 
 INLINE
 ushort OVERLOADABLE ctz( ushort x )
 {
-    return SPIRV_OCL_BUILTIN(ctz, _i16, )( x );
+    return __builtin_spirv_OpenCL_ctz_i16( x );
 }
 
 INLINE
 uint OVERLOADABLE ctz( uint x )
 {
-    return as_uint(SPIRV_OCL_BUILTIN(ctz, _i32, )( as_int(x) ) );
+    return __builtin_spirv_OpenCL_ctz_i32( x );
 }
 
 INLINE
@@ -106,7 +106,7 @@ int OVERLOADABLE mad24( int x,
                         int y,
                         int z )
 {
-    return SPIRV_OCL_BUILTIN(s_mad24, _i32_i32_i32, )( x, y, z );
+    return __builtin_spirv_OpenCL_s_mad24_i32_i32_i32( x, y, z );
 }
 
 INLINE
@@ -114,7 +114,7 @@ uint OVERLOADABLE mad24( uint x,
                          uint y,
                          uint z )
 {
-    return SPIRV_OCL_BUILTIN(u_mad24, _i32_i32_i32, )( x, y, z );
+    return __builtin_spirv_OpenCL_u_mad24_i32_i32_i32( x, y, z );
 }
 
 INLINE
@@ -122,7 +122,7 @@ char OVERLOADABLE mad_sat( char a,
                            char b,
                            char c )
 {
-    return SPIRV_OCL_BUILTIN(s_mad_sat, _i8_i8_i8, )( a, b, c );
+    return __builtin_spirv_OpenCL_s_mad_sat_i8_i8_i8( a, b, c );
 }
 
 INLINE
@@ -130,7 +130,7 @@ uchar OVERLOADABLE mad_sat( uchar a,
                             uchar b,
                             uchar c )
 {
-    return SPIRV_OCL_BUILTIN(u_mad_sat, _i8_i8_i8, )( a, b, c );
+    return __builtin_spirv_OpenCL_u_mad_sat_i8_i8_i8( a, b, c );
 }
 
 INLINE
@@ -138,7 +138,7 @@ short OVERLOADABLE mad_sat( short a,
                             short b,
                             short c )
 {
-    return SPIRV_OCL_BUILTIN(s_mad_sat, _i16_i16_i16, )( a, b, c );
+    return __builtin_spirv_OpenCL_s_mad_sat_i16_i16_i16( a, b, c );
 }
 
 INLINE
@@ -146,7 +146,7 @@ ushort OVERLOADABLE mad_sat( ushort a,
                              ushort b,
                              ushort c )
 {
-    return SPIRV_OCL_BUILTIN(u_mad_sat, _i16_i16_i16, )( a, b, c );
+    return __builtin_spirv_OpenCL_u_mad_sat_i16_i16_i16( a, b, c );
 }
 
 INLINE
@@ -154,7 +154,7 @@ int OVERLOADABLE mad_sat( int a,
                           int b,
                           int c )
 {
-    return SPIRV_OCL_BUILTIN(s_mad_sat, _i32_i32_i32, )( a, b, c );
+    return __builtin_spirv_OpenCL_s_mad_sat_i32_i32_i32( a, b, c );
 }
 
 INLINE
@@ -162,7 +162,7 @@ uint OVERLOADABLE mad_sat( uint a,
                            uint b,
                            uint c )
 {
-    return SPIRV_OCL_BUILTIN(u_mad_sat, _i32_i32_i32, )( a, b, c );
+    return __builtin_spirv_OpenCL_u_mad_sat_i32_i32_i32( a, b, c );
 }
 
 INLINE
@@ -279,14 +279,14 @@ INLINE
 uint OVERLOADABLE mul_hi( uint x,
                           uint y )
 {
-    return SPIRV_OCL_BUILTIN(u_mul_hi, _i32_i32, )( x, y );
+    return __builtin_spirv_OpenCL_u_mul_hi_i32_i32( x, y );
 }
 
 INLINE
 int OVERLOADABLE mul_hi( int x,
                          int y )
 {
-    return SPIRV_OCL_BUILTIN(s_mul_hi, _i32_i32, )( x, y );
+    return __builtin_spirv_OpenCL_s_mul_hi_i32_i32( x, y );
 }
 
 INLINE
@@ -311,42 +311,42 @@ INLINE
 char OVERLOADABLE sub_sat( char x,
                            char y )
 {
-    return SPIRV_OCL_BUILTIN(s_sub_sat, _i8_i8, )( x, y );
+    return __builtin_spirv_OpenCL_s_sub_sat_i8_i8( x, y );
 }
 
 INLINE
 uchar OVERLOADABLE sub_sat( uchar x,
                             uchar y )
 {
-    return SPIRV_OCL_BUILTIN(u_sub_sat, _i8_i8, )( x, y );
+    return __builtin_spirv_OpenCL_u_sub_sat_i8_i8( x, y );
 }
 
 INLINE
 short OVERLOADABLE sub_sat( short x,
                             short y )
 {
-    return SPIRV_OCL_BUILTIN(s_sub_sat, _i16_i16, )( x, y );
+    return __builtin_spirv_OpenCL_s_sub_sat_i16_i16( x, y );
 }
 
 INLINE
 ushort OVERLOADABLE sub_sat( ushort x,
                              ushort y )
 {
-    return SPIRV_OCL_BUILTIN(u_sub_sat, _i16_i16, )( x, y );
+    return __builtin_spirv_OpenCL_u_sub_sat_i16_i16( x, y );
 }
 
 INLINE
 int OVERLOADABLE sub_sat( int x,
                           int y )
 {
-    return SPIRV_OCL_BUILTIN(s_sub_sat, _i32_i32, )( x, y );
+    return __builtin_spirv_OpenCL_s_sub_sat_i32_i32( x, y );
 }
 
 INLINE
 uint OVERLOADABLE sub_sat( uint x,
                            uint y )
 {
-    return SPIRV_OCL_BUILTIN(u_sub_sat, _i32_i32, )( x, y );
+    return __builtin_spirv_OpenCL_u_sub_sat_i32_i32( x, y );
 }
 
 INLINE

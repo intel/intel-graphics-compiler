@@ -11,284 +11,284 @@ SPDX-License-Identifier: MIT
 
 
 INLINE
-char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v2i8, )( char2 x )
+uchar2 __builtin_spirv_OpenCL_ctz_v2i8( uchar2 x )
 {
-    char2 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s1);
+    uchar2 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i8(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i8(x.s1);
     return temp;
 }
 
 INLINE
-char3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v3i8, )( char3 x )
+uchar3 __builtin_spirv_OpenCL_ctz_v3i8( uchar3 x )
 {
-    char3 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s2);
+    uchar3 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i8(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i8(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i8(x.s2);
     return temp;
 }
 
 INLINE
-char4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v4i8, )( char4 x )
+uchar4 __builtin_spirv_OpenCL_ctz_v4i8( uchar4 x )
 {
-    char4 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s3);
+    uchar4 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i8(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i8(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i8(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i8(x.s3);
     return temp;
 }
 
 INLINE
-char8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v8i8, )( char8 x )
+uchar8 __builtin_spirv_OpenCL_ctz_v8i8( uchar8 x )
 {
-    char8 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s3);
-    temp.s4 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s4);
-    temp.s5 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s5);
-    temp.s6 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s6);
-    temp.s7 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s7);
+    uchar8 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i8(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i8(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i8(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i8(x.s3);
+    temp.s4 = __builtin_spirv_OpenCL_ctz_i8(x.s4);
+    temp.s5 = __builtin_spirv_OpenCL_ctz_i8(x.s5);
+    temp.s6 = __builtin_spirv_OpenCL_ctz_i8(x.s6);
+    temp.s7 = __builtin_spirv_OpenCL_ctz_i8(x.s7);
     return temp;
 }
 
 INLINE
-char16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v16i8, )( char16 x )
+uchar16 __builtin_spirv_OpenCL_ctz_v16i8( uchar16 x )
 {
-    char16 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s3);
-    temp.s4 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s4);
-    temp.s5 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s5);
-    temp.s6 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s6);
-    temp.s7 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s7);
-    temp.s8 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s8);
-    temp.s9 = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.s9);
-    temp.sa = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.sa);
-    temp.sb = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.sb);
-    temp.sc = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.sc);
-    temp.sd = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.sd);
-    temp.se = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.se);
-    temp.sf = SPIRV_OCL_BUILTIN(ctz, _i8, )(x.sf);
+    uchar16 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i8(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i8(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i8(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i8(x.s3);
+    temp.s4 = __builtin_spirv_OpenCL_ctz_i8(x.s4);
+    temp.s5 = __builtin_spirv_OpenCL_ctz_i8(x.s5);
+    temp.s6 = __builtin_spirv_OpenCL_ctz_i8(x.s6);
+    temp.s7 = __builtin_spirv_OpenCL_ctz_i8(x.s7);
+    temp.s8 = __builtin_spirv_OpenCL_ctz_i8(x.s8);
+    temp.s9 = __builtin_spirv_OpenCL_ctz_i8(x.s9);
+    temp.sa = __builtin_spirv_OpenCL_ctz_i8(x.sa);
+    temp.sb = __builtin_spirv_OpenCL_ctz_i8(x.sb);
+    temp.sc = __builtin_spirv_OpenCL_ctz_i8(x.sc);
+    temp.sd = __builtin_spirv_OpenCL_ctz_i8(x.sd);
+    temp.se = __builtin_spirv_OpenCL_ctz_i8(x.se);
+    temp.sf = __builtin_spirv_OpenCL_ctz_i8(x.sf);
     return temp;
 }
 
 INLINE
-short2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v2i16, )( short2 x )
+ushort2 __builtin_spirv_OpenCL_ctz_v2i16( ushort2 x )
 {
-    short2 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s1);
+    ushort2 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i16(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i16(x.s1);
     return temp;
 }
 
 INLINE
-short3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v3i16, )( short3 x )
+ushort3 __builtin_spirv_OpenCL_ctz_v3i16( ushort3 x )
 {
-    short3 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s2);
+    ushort3 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i16(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i16(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i16(x.s2);
     return temp;
 }
 
 INLINE
-short4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v4i16, )( short4 x )
+ushort4 __builtin_spirv_OpenCL_ctz_v4i16( ushort4 x )
 {
-    short4 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s3);
+    ushort4 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i16(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i16(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i16(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i16(x.s3);
     return temp;
 }
 
 INLINE
-short8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v8i16, )( short8 x )
+ushort8 __builtin_spirv_OpenCL_ctz_v8i16( ushort8 x )
 {
-    short8 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s3);
-    temp.s4 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s4);
-    temp.s5 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s5);
-    temp.s6 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s6);
-    temp.s7 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s7);
+    ushort8 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i16(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i16(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i16(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i16(x.s3);
+    temp.s4 = __builtin_spirv_OpenCL_ctz_i16(x.s4);
+    temp.s5 = __builtin_spirv_OpenCL_ctz_i16(x.s5);
+    temp.s6 = __builtin_spirv_OpenCL_ctz_i16(x.s6);
+    temp.s7 = __builtin_spirv_OpenCL_ctz_i16(x.s7);
     return temp;
 }
 
 INLINE
-short16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v16i16, )( short16 x )
+ushort16 __builtin_spirv_OpenCL_ctz_v16i16( ushort16 x )
 {
-    short16 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s3);
-    temp.s4 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s4);
-    temp.s5 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s5);
-    temp.s6 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s6);
-    temp.s7 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s7);
-    temp.s8 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s8);
-    temp.s9 = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.s9);
-    temp.sa = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.sa);
-    temp.sb = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.sb);
-    temp.sc = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.sc);
-    temp.sd = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.sd);
-    temp.se = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.se);
-    temp.sf = SPIRV_OCL_BUILTIN(ctz, _i16, )(x.sf);
+    ushort16 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i16(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i16(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i16(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i16(x.s3);
+    temp.s4 = __builtin_spirv_OpenCL_ctz_i16(x.s4);
+    temp.s5 = __builtin_spirv_OpenCL_ctz_i16(x.s5);
+    temp.s6 = __builtin_spirv_OpenCL_ctz_i16(x.s6);
+    temp.s7 = __builtin_spirv_OpenCL_ctz_i16(x.s7);
+    temp.s8 = __builtin_spirv_OpenCL_ctz_i16(x.s8);
+    temp.s9 = __builtin_spirv_OpenCL_ctz_i16(x.s9);
+    temp.sa = __builtin_spirv_OpenCL_ctz_i16(x.sa);
+    temp.sb = __builtin_spirv_OpenCL_ctz_i16(x.sb);
+    temp.sc = __builtin_spirv_OpenCL_ctz_i16(x.sc);
+    temp.sd = __builtin_spirv_OpenCL_ctz_i16(x.sd);
+    temp.se = __builtin_spirv_OpenCL_ctz_i16(x.se);
+    temp.sf = __builtin_spirv_OpenCL_ctz_i16(x.sf);
     return temp;
 }
 
 INLINE
-int2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v2i32, )( int2 x )
+uint2 __builtin_spirv_OpenCL_ctz_v2i32( uint2 x )
 {
-    int2 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s1);
+    uint2 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i32(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i32(x.s1);
     return temp;
 }
 
 INLINE
-int3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v3i32, )( int3 x )
+uint3 __builtin_spirv_OpenCL_ctz_v3i32( uint3 x )
 {
-    int3 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s2);
+    uint3 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i32(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i32(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i32(x.s2);
     return temp;
 }
 
 INLINE
-int4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v4i32, )( int4 x )
+uint4 __builtin_spirv_OpenCL_ctz_v4i32( uint4 x )
 {
-    int4 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s3);
+    uint4 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i32(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i32(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i32(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i32(x.s3);
     return temp;
 }
 
 INLINE
-int8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v8i32, )( int8 x )
+uint8 __builtin_spirv_OpenCL_ctz_v8i32( uint8 x )
 {
-    int8 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s3);
-    temp.s4 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s4);
-    temp.s5 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s5);
-    temp.s6 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s6);
-    temp.s7 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s7);
+    uint8 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i32(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i32(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i32(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i32(x.s3);
+    temp.s4 = __builtin_spirv_OpenCL_ctz_i32(x.s4);
+    temp.s5 = __builtin_spirv_OpenCL_ctz_i32(x.s5);
+    temp.s6 = __builtin_spirv_OpenCL_ctz_i32(x.s6);
+    temp.s7 = __builtin_spirv_OpenCL_ctz_i32(x.s7);
     return temp;
 }
 
 INLINE
-int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v16i32, )( int16 x )
+uint16 __builtin_spirv_OpenCL_ctz_v16i32( uint16 x )
 {
-    int16 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s3);
-    temp.s4 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s4);
-    temp.s5 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s5);
-    temp.s6 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s6);
-    temp.s7 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s7);
-    temp.s8 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s8);
-    temp.s9 = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.s9);
-    temp.sa = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.sa);
-    temp.sb = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.sb);
-    temp.sc = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.sc);
-    temp.sd = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.sd);
-    temp.se = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.se);
-    temp.sf = SPIRV_OCL_BUILTIN(ctz, _i32, )(x.sf);
+    uint16 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i32(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i32(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i32(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i32(x.s3);
+    temp.s4 = __builtin_spirv_OpenCL_ctz_i32(x.s4);
+    temp.s5 = __builtin_spirv_OpenCL_ctz_i32(x.s5);
+    temp.s6 = __builtin_spirv_OpenCL_ctz_i32(x.s6);
+    temp.s7 = __builtin_spirv_OpenCL_ctz_i32(x.s7);
+    temp.s8 = __builtin_spirv_OpenCL_ctz_i32(x.s8);
+    temp.s9 = __builtin_spirv_OpenCL_ctz_i32(x.s9);
+    temp.sa = __builtin_spirv_OpenCL_ctz_i32(x.sa);
+    temp.sb = __builtin_spirv_OpenCL_ctz_i32(x.sb);
+    temp.sc = __builtin_spirv_OpenCL_ctz_i32(x.sc);
+    temp.sd = __builtin_spirv_OpenCL_ctz_i32(x.sd);
+    temp.se = __builtin_spirv_OpenCL_ctz_i32(x.se);
+    temp.sf = __builtin_spirv_OpenCL_ctz_i32(x.sf);
     return temp;
 }
 
 INLINE
-long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _i64, )( long x )
+ulong __builtin_spirv_OpenCL_ctz_i64( ulong x )
 {
-    int2 i2 = as_int2(x);
-    ulong ctz_lo = (ulong)(SPIRV_OCL_BUILTIN(ctz, _i32, )(i2.x));
-    ulong ctz_hi = (ulong)(SPIRV_OCL_BUILTIN(ctz, _i32, )(i2.y));
+    uint2 i2 = as_uint2(x);
+    ulong ctz_lo = (ulong)(__builtin_spirv_OpenCL_ctz_i32(i2.x));
+    ulong ctz_hi = (ulong)(__builtin_spirv_OpenCL_ctz_i32(i2.y));
     ulong result = (i2.x == 0) ? ctz_hi + ctz_lo : ctz_lo;
     return result;
 }
 
 INLINE
-long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v2i64, )( long2 x )
+ulong2 __builtin_spirv_OpenCL_ctz_v2i64( ulong2 x )
 {
-    long2 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s1);
+    ulong2 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i64(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i64(x.s1);
     return temp;
 }
 
 INLINE
-long3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v3i64, )( long3 x )
+ulong3 __builtin_spirv_OpenCL_ctz_v3i64( ulong3 x )
 {
-    long3 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s2);
+    ulong3 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i64(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i64(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i64(x.s2);
     return temp;
 }
 
 INLINE
-long4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v4i64, )( long4 x )
+ulong4 __builtin_spirv_OpenCL_ctz_v4i64( ulong4 x )
 {
-    long4 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s3);
+    ulong4 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i64(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i64(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i64(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i64(x.s3);
     return temp;
 }
 
 INLINE
-long8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v8i64, )( long8 x )
+ulong8 __builtin_spirv_OpenCL_ctz_v8i64( ulong8 x )
 {
-    long8 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s3);
-    temp.s4 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s4);
-    temp.s5 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s5);
-    temp.s6 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s6);
-    temp.s7 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s7);
+    ulong8 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i64(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i64(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i64(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i64(x.s3);
+    temp.s4 = __builtin_spirv_OpenCL_ctz_i64(x.s4);
+    temp.s5 = __builtin_spirv_OpenCL_ctz_i64(x.s5);
+    temp.s6 = __builtin_spirv_OpenCL_ctz_i64(x.s6);
+    temp.s7 = __builtin_spirv_OpenCL_ctz_i64(x.s7);
     return temp;
 }
 
 INLINE
-long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _v16i64, )( long16 x )
+ulong16 __builtin_spirv_OpenCL_ctz_v16i64( ulong16 x )
 {
-    long16 temp;
-    temp.s0 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s0);
-    temp.s1 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s1);
-    temp.s2 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s2);
-    temp.s3 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s3);
-    temp.s4 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s4);
-    temp.s5 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s5);
-    temp.s6 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s6);
-    temp.s7 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s7);
-    temp.s8 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s8);
-    temp.s9 = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.s9);
-    temp.sa = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.sa);
-    temp.sb = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.sb);
-    temp.sc = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.sc);
-    temp.sd = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.sd);
-    temp.se = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.se);
-    temp.sf = SPIRV_OCL_BUILTIN(ctz, _i64, )(x.sf);
+    ulong16 temp;
+    temp.s0 = __builtin_spirv_OpenCL_ctz_i64(x.s0);
+    temp.s1 = __builtin_spirv_OpenCL_ctz_i64(x.s1);
+    temp.s2 = __builtin_spirv_OpenCL_ctz_i64(x.s2);
+    temp.s3 = __builtin_spirv_OpenCL_ctz_i64(x.s3);
+    temp.s4 = __builtin_spirv_OpenCL_ctz_i64(x.s4);
+    temp.s5 = __builtin_spirv_OpenCL_ctz_i64(x.s5);
+    temp.s6 = __builtin_spirv_OpenCL_ctz_i64(x.s6);
+    temp.s7 = __builtin_spirv_OpenCL_ctz_i64(x.s7);
+    temp.s8 = __builtin_spirv_OpenCL_ctz_i64(x.s8);
+    temp.s9 = __builtin_spirv_OpenCL_ctz_i64(x.s9);
+    temp.sa = __builtin_spirv_OpenCL_ctz_i64(x.sa);
+    temp.sb = __builtin_spirv_OpenCL_ctz_i64(x.sb);
+    temp.sc = __builtin_spirv_OpenCL_ctz_i64(x.sc);
+    temp.sd = __builtin_spirv_OpenCL_ctz_i64(x.sd);
+    temp.se = __builtin_spirv_OpenCL_ctz_i64(x.se);
+    temp.sf = __builtin_spirv_OpenCL_ctz_i64(x.sf);
     return temp;
 }
 

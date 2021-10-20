@@ -1006,7 +1006,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformElect, _i32, )(int Executio
     if (Execution == Subgroup)
     {
         uint activeChannels = __builtin_IB_WaveBallot(true);
-        uint firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));
+        uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);
         if (__builtin_IB_get_simd_id() == firstActive)
             return true;
         else
@@ -1040,7 +1040,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_##TYPE_ABBR,
     if (Execution == Subgroup)                                                                                                \
     {                                                                                                                         \
         uint activeChannels = __builtin_IB_WaveBallot(true);                                                                  \
-        uint firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                                            \
+        uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                                    \
                                                                                                                               \
         TYPE firstLaneValue = SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i32, )(Execution, Value, as_int(firstActive)); \
         bool isSame = firstLaneValue == Value;                                                                                \
@@ -1997,7 +1997,7 @@ uint4 __builtin_spirv_OpSubgroupBallotKHR_i1(bool Predicate)
 uint __builtin_spirv_OpSubgroupFirstInvocationKHR_i32(uint Value)
 {
     uint chanEnable = __builtin_IB_WaveBallot(true);
-    uint firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(chanEnable));
+    uint firstActive = __builtin_spirv_OpenCL_ctz_i32(chanEnable);
     int3 id = (int3)(firstActive, 0, 0);
     return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(Subgroup, as_int(Value), id);
 }
@@ -2016,7 +2016,7 @@ TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_##TYPE_ABBR
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcastFirst, _i32_##TYPE_ABBR, )(int Execution, TYPE Value)           \
 {                                                                                                                             \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                                                      \
-    int firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                                                 \
+    int firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                                         \
     return SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i32, )(Execution, Value, firstActive);                            \
 }
 
@@ -2084,7 +2084,7 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4
             case GroupOperationInclusiveScan:
                 consideredBits <<= ((sgsize - 1) - sglid);
             case GroupOperationReduce:
-                result = SPIRV_OCL_BUILTIN(popcount, _i32, )(as_int(consideredBits));
+                result = __builtin_spirv_OpenCL_popcount_i32(consideredBits);
                 break;
         }
     }
@@ -2095,7 +2095,7 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotFindLSB, _i32_v4i32, 
 {
     if (Execution == Subgroup)
     {
-        return SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(Value.x));
+        return __builtin_spirv_OpenCL_ctz_i32(Value.x);
     }
     return 0;
 }
@@ -2106,7 +2106,7 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotFindMSB, _i32_v4i32, 
     {
         uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();
         uint consideredBits = Value.x << (32 - sgsize);
-        return (sgsize - 1) - SPIRV_OCL_BUILTIN(clz, _i32, )((int)consideredBits);
+        return (sgsize - 1) - __builtin_spirv_OpenCL_clz_i32(consideredBits);
     }
     return 0;
 }
@@ -2488,25 +2488,25 @@ DEFN_UNIFORM_GROUP_FUNC(FMax, float,  Float, f32, __builtin_spirv_OpenCL_fmax_f3
 #if defined(cl_khr_fp64)
 DEFN_UNIFORM_GROUP_FUNC(FMax, double, Float, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
 #endif
-DEFN_UNIFORM_GROUP_FUNC(SMax, char,  Int, i8,  SPIRV_OCL_BUILTIN(s_max, _i8_i8, ),   CHAR_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, short, Int, i16, SPIRV_OCL_BUILTIN(s_max, _i16_i16, ), SHRT_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, int,   Int, i32, SPIRV_OCL_BUILTIN(s_max, _i32_i32, ), INT_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, long,  Int, i64, SPIRV_OCL_BUILTIN(s_max, _i64_i64, ), LONG_MIN)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  SPIRV_OCL_BUILTIN(u_max, _i8_i8, ),   0)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, SPIRV_OCL_BUILTIN(u_max, _i16_i16, ), 0)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, SPIRV_OCL_BUILTIN(u_max, _i32_i32, ), 0)
-DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max, _i64_i64, ), 0)
+DEFN_UNIFORM_GROUP_FUNC(SMax, char,  Int, i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, short, Int, i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, int,   Int, i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, long,  Int, i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
+DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
 
 #if defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
 #define DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X, signed_cast)                 \
 {                                                                                                        \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                                 \
-    uint firstActive = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                           \
+    uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                   \
                                                                                                          \
     type result = identity;                                                                              \
     while (activeChannels)                                                                               \
     {                                                                                                    \
-        uint activeId = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                          \
+        uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                  \
                                                                                                          \
         type value = intel_sub_group_shuffle(X, activeId);                                               \
         result = op(value, result);                                                                      \
@@ -2524,12 +2524,12 @@ DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max,
 {                                                                                                   \
     uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                       \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                            \
-    uint activeId = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                         \
+    uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                 \
     activeChannels ^= 1 << activeId;                                                                \
     while (activeChannels)                                                                          \
     {                                                                                               \
         type value = intel_sub_group_shuffle(X, activeId);                                          \
-        activeId = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                          \
+        activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                  \
         if (sglid == activeId)                                                                      \
             X = op(value, X);                                                                       \
         activeChannels ^= 1 << activeId;                                                            \
@@ -2543,7 +2543,7 @@ DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max,
     type result = identity;                                                                          \
     while (activeChannels)                                                                           \
     {                                                                                                \
-        uint activeId = SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(activeChannels));                      \
+        uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                              \
         if (sglid == activeId)                                                                       \
         {                                                                                            \
             type value = X;                                                                          \
@@ -2559,7 +2559,7 @@ DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max,
 {                                                                                                           \
     uint clusterIndex = 0;                                                                                  \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                                    \
-    uint numActive = SPIRV_OCL_BUILTIN(popcount, _i32, )(as_int(activeChannels));                           \
+    uint numActive = __builtin_spirv_OpenCL_popcount_i32(activeChannels);                                   \
     uint numClusters = numActive / ClusterSize;                                                             \
                                                                                                             \
     for (uint clusterIndex = 0; clusterIndex < numClusters; clusterIndex++)                                 \
@@ -2569,7 +2569,7 @@ DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max,
         uint clusterBallot = 0;                                                                             \
         while (Counter--)                                                                                   \
         {                                                                                                   \
-            uint trailingOne = 1 << SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(Ballot));                         \
+            uint trailingOne = 1 << __builtin_spirv_OpenCL_ctz_i32(Ballot);                                 \
             clusterBallot |= trailingOne;                                                                   \
             Ballot ^= trailingOne;                                                                          \
         }                                                                                                   \
@@ -2681,15 +2681,15 @@ DEFN_NON_UNIFORM_GROUP_FUNC(FMin, half,   Float, f16, __builtin_spirv_OpenCL_fmi
 #endif // defined(cl_khr_fp16)
 
 // OpGroupNonUniformSMax, OpGroupNonUniformUMax, OpGroupNonUniformFMax
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, char,   Int,   i8,  SPIRV_OCL_BUILTIN(s_max, _i8_i8, ),   CHAR_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, short,  Int,   i16, SPIRV_OCL_BUILTIN(s_max, _i16_i16, ), SHRT_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, int,    Int,   i32, SPIRV_OCL_BUILTIN(s_max, _i32_i32, ), INT_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, long,   Int,   i64, SPIRV_OCL_BUILTIN(s_max, _i64_i64, ), LONG_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, char,   Int,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, short,  Int,   i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, int,    Int,   i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, long,   Int,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
 DEFN_NON_UNIFORM_GROUP_FUNC(FMax, float,  Float, f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  SPIRV_OCL_BUILTIN(u_max, _i8_i8, ),   0)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, SPIRV_OCL_BUILTIN(u_max, _i16_i16, ), 0)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, SPIRV_OCL_BUILTIN(u_max, _i32_i32, ), 0)
-DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max, _i64_i64, ), 0)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
 #if defined(cl_khr_fp64)
 DEFN_NON_UNIFORM_GROUP_FUNC(FMax, double, Float, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
 #endif // defined(cl_khr_fp64)
