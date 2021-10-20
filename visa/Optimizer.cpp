@@ -8093,6 +8093,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // ToDo: add fence only when the writes can reach EOT without a fence in between
     void Optimizer::insertFenceBeforeEOT()
     {
+        // If vISA_removeFence is set, try to remove fence on UGM if there
+        // is no write to UGM in the entire kernel.
+        const bool toRemoveFence = builder.getOption(vISA_removeFence);
         if (!builder.getOption(vISA_clearHDCWritesBeforeEOT))
         {
             return;
@@ -8107,6 +8110,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         bool hasUAVWrites = false;
         bool hasSLMWrites = false;
         bool hasTypedWrites = false;
+        std::list< std::pair<G4_BB*, G4_INST*> >toBeRemoved;
 
         for (auto bb : kernel.fg)
         {
@@ -8126,6 +8130,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 if (inst->isSend())
                 {
                     auto msgDesc = inst->asSendInst()->getMsgDesc();
+                    // Skip fence (fence is both write/read)
+                    if (msgDesc->isFence())
+                    {
+                        continue;
+                    }
+
                     if (msgDesc->isWrite())
                     {
                         if (msgDesc->isHDC())
@@ -8150,7 +8160,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             }
         }
 
-        if (!hasUAVWrites && !hasSLMWrites && !hasTypedWrites)
+        if (toRemoveFence && !toBeRemoved.empty() && !hasUAVWrites)
+        {
+            for (auto II : toBeRemoved)
+            {
+                G4_BB* aBB = II.first;
+                G4_INST* aInst = II.second;
+                aBB->remove(aInst);
+            }
+            toBeRemoved.clear();
+        }
+
+        if (!builder.getOption(vISA_clearHDCWritesBeforeEOT)
+            || !(hasUAVWrites || hasSLMWrites || hasTypedWrites))
         {
             return;
         }
@@ -8161,21 +8183,25 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 auto iter = std::prev(bb->end());
 
+
+                if (builder.getOption(vISA_clearHDCWritesBeforeEOT))
                 {
-                    if (builder.getPlatform() == GENX_ICLLP)
                     {
-                        hasTypedWrites = false; // Workaround Under debug and being clarified
-                        hasSLMWrites = false;   // Workaround not needed for ICL SLM Writes
-                    }
-                    if (hasUAVWrites || hasTypedWrites)
-                    {
-                        auto fenceInst = builder.createFenceInstruction(0, true, true, false);
-                        bb->insertBefore(iter, fenceInst);
-                    }
-                    if (hasSLMWrites)
-                    {
-                        auto fenceInst = builder.createFenceInstruction(0, true, false, false);
-                        bb->insertBefore(iter, fenceInst);
+                        if (builder.getPlatform() == GENX_ICLLP)
+                        {
+                            hasTypedWrites = false; // Workaround Under debug and being clarified
+                            hasSLMWrites = false;   // Workaround not needed for ICL SLM Writes
+                        }
+                        if (hasUAVWrites || hasTypedWrites)
+                        {
+                            auto fenceInst = builder.createFenceInstruction(0, true, true, false);
+                            bb->insertBefore(iter, fenceInst);
+                        }
+                        if (hasSLMWrites)
+                        {
+                            auto fenceInst = builder.createFenceInstruction(0, true, false, false);
+                            bb->insertBefore(iter, fenceInst);
+                        }
                     }
                 }
                 builder.instList.clear();

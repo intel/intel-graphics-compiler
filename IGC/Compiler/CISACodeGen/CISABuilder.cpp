@@ -3834,6 +3834,7 @@ namespace IGC
             SaveOption(vISA_clearHDCWritesBeforeEOT, true);
         }
 
+
         // Disable multi-threaded latencies in the vISA scheduler when not in 3D
         if (context->type == ShaderType::OPENCL_SHADER)
         {

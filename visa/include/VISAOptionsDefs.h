@@ -278,6 +278,7 @@ DEF_VISA_OPTION(vISA_GTPinReRA,           ET_BOOL, "-GTPinReRA",          UNUSED
 DEF_VISA_OPTION(vISA_GetFreeGRFInfo,      ET_BOOL,  "-getfreegrfinfo",    UNUSED, false)
 DEF_VISA_OPTION(vISA_GTPinScratchAreaSize,ET_INT32, "-GTPinScratchAreaSize", UNUSED, 0)
 DEF_VISA_OPTION(vISA_skipFenceCommit,     ET_BOOL,  "-skipFenceCommit", UNUSED, false)
+DEF_VISA_OPTION(vISA_removeFence,         ET_BOOL,  "-removeFence", "Remove fence if no write in a kernel", false)
 
 //=== HW Workarounds ===
 DEF_VISA_OPTION(vISA_clearScratchWritesBeforeEOT,   ET_BOOL,  "-waClearScratchWrite", UNUSED, false)
