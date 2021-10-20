@@ -219,6 +219,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
 using namespace llvm;
@@ -3689,6 +3690,24 @@ void GenXSimdCFConformance::replaceGotoJoinUses(CallInst *GotoJoin,
 }
 
 /***********************************************************************
+ * fixBlockDataBeforeRemoval : clear redundant phi-s and dbg
+ *    instruction, before erase basic block
+ */
+static void fixBlockDataBeforeRemoval(BasicBlock *BB, BasicBlock *SuccBB) {
+  while (auto *PN = dyn_cast<PHINode>(BB->begin()))
+    PN->eraseFromParent();
+
+  IGC_ASSERT_MESSAGE(BB->getSingleSuccessor() == SuccBB,
+                     "Awaiting only one successor");
+  bool HasOnePred = SuccBB->hasNPredecessors(1);
+  while (auto *DBG = dyn_cast<llvm::DbgVariableIntrinsic>(BB->begin())) {
+    DBG->moveBefore(SuccBB->getFirstNonPHI());
+    if (!HasOnePred)
+      IGCLLVM::setDbgVariableLocationToUndef(DBG);
+  }
+}
+
+/***********************************************************************
  * setCategories : set webs of EM and RM values to category EM or RM
  *
  * This also modifies EM uses as needed.
@@ -3724,19 +3743,18 @@ void GenXLateSimdCFConformance::setCategories()
           BasicBlock *TrueSucc = BB->getTerminator()->getSuccessor(0);
           if (BasicBlock *TrueSuccSucc
               = getEmptyCriticalEdgeSplitterSuccessor(TrueSucc)) {
-            for (auto i = TrueSucc->begin(); i != TrueSucc->end(); /*empty*/) {
-              Instruction *Inst = &*i++;
-              auto Phi = dyn_cast<PHINode>(Inst);
-              if (!Phi)
-                break;
-              if (Phi->getNumIncomingValues() == 1) {
-                Phi->replaceAllUsesWith(Phi->getIncomingValue(0));
-                Liveness->eraseLiveRange(Phi);
-                removeFromEMRMVals(Phi);
-                Phi->eraseFromParent();
+            for (PHINode &Phi : TrueSucc->phis()) {
+              if (Phi.getNumIncomingValues() == 1) {
+                auto *PredInst = Phi.getIncomingValue(0);
+                Phi.replaceAllUsesWith(PredInst);
+                Liveness->eraseLiveRange(&Phi);
+                removeFromEMRMVals(&Phi);
+              } else {
+                IGC_ASSERT_MESSAGE(true, "BB has unremovable phi");
               }
             }
-            // now BB should be truely empty
+            // Remove phi and move dbg-info
+            fixBlockDataBeforeRemoval(TrueSucc, TrueSuccSucc);
             IGC_ASSERT_MESSAGE(TrueSucc->front().isTerminator(),
               "BB is not empty for removal");
             // For a branching goto/join where the "true" successor is an empty

@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_IR_INTRINSICINST_H
 
 #include <llvm/Config/llvm-config.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/IntrinsicInst.h>
 
 #include "Probe/Assertion.h"
@@ -25,6 +26,17 @@ namespace IGCLLVM
         IGC_ASSERT_MESSAGE(DbgInst->getNumVariableLocationOps() == 1,
                            "unsupported number of location ops");
         return DbgInst->getVariableLocationOp(0);
+#endif
+    }
+
+    inline void setDbgVariableLocationToUndef(llvm::DbgVariableIntrinsic *DbgInst)
+    {
+        IGC_ASSERT(DbgInst);
+#if LLVM_VERSION_MAJOR <= 12
+        auto *OP = DbgInst->getOperand(0);
+        DbgInst->setOperand(0, llvm::UndefValue::get(OP->getType()));
+#else
+        DbgInst->setUndef();
 #endif
     }
 }
