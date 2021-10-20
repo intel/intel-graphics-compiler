@@ -26,18 +26,17 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "GenX.h"
-#include "vc/Support/BackendConfig.h"
 #include "GenXDebugInfo.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
 #include "GenXPressureTracker.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisaRegAlloc.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/Printf.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
@@ -1751,7 +1750,7 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
   }
 
   // Write the vISA general operand with region:
-  Region R(DstDesc.WrRegion, DstDesc.WrRegionBI);
+  Region R = makeRegionFromBaleInfo(DstDesc.WrRegion, DstDesc.WrRegionBI);
 
   if (SignedRes)
     *SignedRes = RegAlloc->getSigned(Reg);
@@ -2125,7 +2124,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     else if (Signed == DONTCARESIGNED)
       Signed = SIGNED;
     // Write the vISA general operand with region.
-    Region R(Inst, Baling->getBaleInfo(Inst));
+    Region R = makeRegionFromBaleInfo(Inst, Baling->getBaleInfo(Inst));
     if (Offset)
       R.Offset = *Offset;
     if (R.NumElements == 1)
@@ -2249,7 +2248,7 @@ std::string GenXKernelBuilder::createInlineAsmDestinationOperand(
   IGC_ASSERT(!Reg || Reg->Category == RegCategory::GENERAL);
 
   // Write the vISA general operand with region:
-  Region R(DstDesc.WrRegion, DstDesc.WrRegionBI);
+  Region R = makeRegionFromBaleInfo(DstDesc.WrRegion, DstDesc.WrRegionBI);
 
   return createInlineAsmOperand(Reg, &R, true /*IsDst*/, Signed, Ty, Mod);
 }
@@ -2302,7 +2301,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
   if (Signed == DONTCARESIGNED)
     Signed = SIGNED;
   // Write the vISA general operand with region.
-  Region R(Inst, Baling->getBaleInfo(Inst));
+  Region R = makeRegionFromBaleInfo(Inst, Baling->getBaleInfo(Inst));
   if (R.NumElements == 1)
     R.VStride = 0;
   if (R.Width == 1)
@@ -4793,7 +4792,7 @@ void GenXKernelBuilder::deduceRegion(Region *R, bool IsDest,
     R->IndirectAddrOffset = 0;
     if (GenXIntrinsic::isRdRegion(R->Indirect)) {
       auto AddrRdR = cast<Instruction>(R->Indirect);
-      Region AddrR(AddrRdR, BaleInfo());
+      Region AddrR = makeRegionFromBaleInfo(AddrRdR, BaleInfo());
       IGC_ASSERT_MESSAGE(!AddrR.Indirect,
         "cannot have address rdregion that is indirect");
       R->IndirectAddrOffset =
@@ -4960,7 +4959,7 @@ void GenXKernelBuilder::addWriteRegionLifetimeStartInst(Instruction *WrRegion) {
     TotalNumElements = VT->getNumElements();
   Instruction *ThisWr = WrRegion;
   for (;;) {
-    Region R(ThisWr, BaleInfo());
+    Region R = makeRegionFromBaleInfo(ThisWr, BaleInfo());
     if (R.Indirect)
       break;
     if ((unsigned)R.Offset != NumElementsSoFar * R.ElementBytes)
@@ -5452,7 +5451,7 @@ VISA_RawOpnd *GenXKernelBuilder::createRawSourceOperand(const Instruction *Inst,
     bool Baled = Baling->getBaleInfo(Inst).isOperandBaled(OperandNum);
     if (Baled) {
       Instruction *RdRegion = cast<Instruction>(V);
-      Region R(RdRegion, BaleInfo());
+      Region R = makeRegionFromBaleInfo(RdRegion, BaleInfo());
       ByteOffset = R.Offset;
       V = RdRegion->getOperand(0);
     }
@@ -5485,7 +5484,7 @@ GenXKernelBuilder::createRawDestination(Value *V, const DstOpndDesc &DstDesc,
   unsigned ByteOffset = 0;
   if (DstDesc.WrRegion) {
     V = DstDesc.WrRegion;
-    Region R(DstDesc.WrRegion, BaleInfo());
+    Region R = makeRegionFromBaleInfo(DstDesc.WrRegion, BaleInfo());
     ByteOffset = R.Offset;
   }
   Type *OverrideType = nullptr;

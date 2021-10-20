@@ -141,7 +141,6 @@ SPDX-License-Identifier: MIT
 #include "GenXLiveness.h"
 #include "GenXModule.h"
 #include "GenXNumbering.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
 
@@ -1188,15 +1187,19 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
       case BaleInfo::WRREGION:
         // Check wrregion if its result is coalesced with arg.
         if (Liveness->getLiveRange(bi->Inst) == ArgLR) {
-          Region R(bi->Inst, bi->Info);
+          Region R = makeRegionFromBaleInfo(bi->Inst, bi->Info);
           if (R.Indirect)
             break; // already indirect
-          // Fake up scalar indirect index for the benefit of getLegalSize.
-          // It doesn't matter what the value is, as long as it is scalar.
+          // Fake up scalar indirect index for the benefit of
+          // getLegalRegionSizeForTarget. It doesn't matter what the value is,
+          // as long as it is scalar.
           R.Indirect = bi->Inst->getOperand(
               GenXIntrinsic::GenXRegion::WrIndexOperandNum);
-          if (R.NumElements != R.getLegalSize(0, /*Allow2D=*/false,
-                /*InputNumElements=*/UINT_MAX, ST, Align)) {
+          if (R.NumElements != getLegalRegionSizeForTarget(
+                                   *ST, R,
+                                   /*Idx*/ 0,
+                                   /*Allow2D=*/false,
+                                   /*InputNumElements=*/UINT_MAX, Align)) {
             LLVM_DEBUG(dbgs() << "wrregion cannot be indirected: " << R << "\n");
             return false;
           }
@@ -1205,18 +1208,25 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
       case BaleInfo::RDREGION:
         // Check rdregion if its input is coalesced with arg.
         if (Liveness->getLiveRange(bi->Inst->getOperand(0)) == ArgLR) {
-          Region R(bi->Inst, bi->Info);
+          Region R = makeRegionFromBaleInfo(bi->Inst, bi->Info);
           if (R.Indirect)
             break; // already indirect
-          // Fake up scalar indirect index for the benefit of getLegalSize.
-          // It doesn't matter what the value is, as long as it is scalar.
+          // Fake up scalar indirect index for the benefit of
+          // getLegalRegionSizeForTarget. It doesn't matter what the value is,
+          // as long as it is scalar.
           R.Indirect = bi->Inst->getOperand(
               GenXIntrinsic::GenXRegion::RdIndexOperandNum);
-          if (R.NumElements != R.getLegalSize(0, /*Allow2D=*/true,
-                /*InputNumElements=*/UINT_MAX, ST, Align)) {
+          if (R.NumElements != getLegalRegionSizeForTarget(
+                                   *ST, R,
+                                   /*Idx*/ 0,
+                                   /*Allow2D=*/true,
+                                   /*InputNumElements=*/UINT_MAX, Align)) {
             LLVM_DEBUG(dbgs() << "rdregion cannot be indirected: " << R << "\n";
-              dbgs() << R.getLegalSize(0, /*Allow2D=*/true,
-                  /*InputNumElements=*/UINT_MAX, ST, Align) << "\n");
+                       dbgs() << getLegalRegionSizeForTarget(
+                                     *ST, R, /*Idx*/ 0,
+                                     /*Allow2D=*/true,
+                                     /*InputNumElements=*/UINT_MAX, Align)
+                              << "\n");
             return false;
           }
         }

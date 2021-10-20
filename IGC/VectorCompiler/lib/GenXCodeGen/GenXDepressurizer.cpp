@@ -110,8 +110,8 @@ SPDX-License-Identifier: MIT
 #include "GenXIntrinsics.h"
 #include "GenXLiveness.h"
 #include "GenXModule.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
+
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"

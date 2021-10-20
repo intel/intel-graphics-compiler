@@ -263,11 +263,12 @@ SPDX-License-Identifier: MIT
 #include "GenXIntrinsics.h"
 #include "GenXLiveness.h"
 #include "GenXNumbering.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
+
+#include "vc/Support/BackendConfig.h"
+
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/CFG.h"
-#include "vc/Support/BackendConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -1145,7 +1146,7 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
   for (auto ThisWr = StartWr;;) {
     // For elements overwritten by Wr, change corresponding elements in C to
     // undef.
-    Region R(ThisWr, BaleInfo());
+    Region R = makeRegionFromBaleInfo(ThisWr, BaleInfo());
     C = R.evaluateConstantWrRegion(C,
         Constant::getAllOnesValue(ThisWr->getOperand(1)->getType()));
     // Move on to next wrregion.
@@ -1163,7 +1164,7 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
       Instruction *Rd = bi->Inst;
       // See if the rdregion only reads a region that has not been overwritten
       // by any wrregion up to now.
-      Region RdR(Rd, BaleInfo());
+      Region RdR = makeRegionFromBaleInfo(Rd, BaleInfo());
       if (RdR.Indirect)
         return; // Fail if rdregion is indirect
       Constant *SubC = RdR.evaluateConstantRdRegion(C, /*AllowScalar=*/false);
@@ -1187,8 +1188,9 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
     // Check for the case that we have a rdregion-wrregion bale that is now
     // uesless because it reads and writes the same region.
     auto Wr = Baling->getBaleParent(Rd);
-    if (GenXIntrinsic::isWrRegion(Wr)
-        && Region(Wr, BaleInfo()) == Region(Rd, BaleInfo())) {
+    if (GenXIntrinsic::isWrRegion(Wr) &&
+        (makeRegionFromBaleInfo(Wr, BaleInfo()) ==
+         makeRegionFromBaleInfo(Rd, BaleInfo()))) {
       UselessWrRegions.push_back(Wr);
       continue;
     }

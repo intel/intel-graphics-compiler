@@ -77,7 +77,6 @@ SPDX-License-Identifier: MIT
 #include "GenXLiveness.h"
 #include "GenXModule.h"
 #include "GenXNumbering.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm-c/Core.h"
@@ -772,7 +771,7 @@ bool GenXAddressCommoning::tryConvertWholeRegion(SmallVector<Extract, 4> &Extrac
   // check every extract
   for (unsigned Idx = 0, End = Extracts.size(); Idx < End; ++Idx) {
     Instruction *RdR = cast<Instruction>(Extracts[Idx].Addr->getOperand(0));
-    Region R(RdR, BaleInfo());
+    Region R = makeRegionFromBaleInfo(RdR, BaleInfo());
     if (R.NumElements > 1 && R.Stride > 1)
       return false;
     // all address-conv must be in the same basic block
@@ -808,7 +807,7 @@ bool GenXAddressCommoning::tryConvertWholeRegion(SmallVector<Extract, 4> &Extrac
   for (unsigned Idx2 = 0, End2 = Extracts.size(); Idx2 < End2; ++Idx2) {
     auto OldConv = Extracts[Idx2].Addr;
     Instruction *OldExtract = cast<Instruction>(OldConv->getOperand(0));
-    Region R2(OldExtract, BaleInfo());
+    Region R2 = makeRegionFromBaleInfo(OldExtract, BaleInfo());
     while (!OldConv->use_empty()) {
       auto ui = OldConv->use_begin();
       auto user = cast<Instruction>(ui->getUser());
@@ -862,7 +861,8 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
     Instruction *Addr = *i;
     LLVM_DEBUG(Addr->dump());
 
-    Region R(cast<Instruction>(Addr->getOperand(0)), BaleInfo());
+    Region R = makeRegionFromBaleInfo(cast<Instruction>(Addr->getOperand(0)),
+                                      BaleInfo());
     LLVM_DEBUG(dbgs() << " [" << R.Offset << "]\n");
 
     Extracts.push_back(Extract(Addr, R.Offset));
@@ -936,14 +936,16 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
     LLVM_DEBUG(dbgs() << "Sequence of " << Num << " instructions found. First one is:\n");
     LLVM_DEBUG(FirstRdR->dump());
     LLVM_DEBUG(dbgs() << "\n");
-    Region R(FirstRdR, BaleInfo());
+    Region R = makeRegionFromBaleInfo(FirstRdR, BaleInfo());
     R.NumElements = R.Width = Num;
     R.Stride = Diff / R.ElementBytes;
     // See how big we can legally make the region.
     unsigned InputNumElements =
         cast<IGCLLVM::FixedVectorType>(FirstRdR->getOperand(0)->getType())
             ->getNumElements();
-    Num = R.getLegalSize(0, /*Allow2D=*/true, InputNumElements, ST);
+    IGC_ASSERT(ST);
+    Num = getLegalRegionSizeForTarget(*ST, R, 0, true /*Allow2D*/,
+                                      InputNumElements);
     if (Num == 1)
       continue;
     // Even after legalizing the region, we can still vectorize to more than

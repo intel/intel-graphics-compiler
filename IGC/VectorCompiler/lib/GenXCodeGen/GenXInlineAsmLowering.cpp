@@ -20,11 +20,10 @@ SPDX-License-Identifier: MIT
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
 #include "GenXModule.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
-#include "Probe/Assertion.h"
+
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "visa_igc_common_header.h"
@@ -45,6 +44,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;

@@ -33,9 +33,9 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-#include "GenXRegion.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/Instructions.h"
+
 #include <map>
 #include <set>
 
@@ -48,9 +48,8 @@ class PHINode;
 class Type;
 class Use;
 
-namespace gen {
+class GenXSubtarget;
 class Region;
-}
 
 // VectorDecomposer : decomposes vectors in a function
 class VectorDecomposer {
@@ -100,7 +99,7 @@ private:
                          const SmallVectorImpl<Value *> *PartsIn);
   void decomposeWrRegion(Instruction *WrRegion, SmallVectorImpl<Value *> *Parts);
   void decomposeBitCast(Instruction *Inst, SmallVectorImpl<Value *> *Parts);
-  unsigned getPartIndex(genx::Region *R);
+  unsigned getPartIndex(Region *R);
   unsigned getPartOffset(unsigned PartIndex);
   unsigned getPartNumBytes(Type *WholeTy, unsigned PartIndex);
   unsigned getPartNumElements(Type *WholeTy, unsigned PartIndex);

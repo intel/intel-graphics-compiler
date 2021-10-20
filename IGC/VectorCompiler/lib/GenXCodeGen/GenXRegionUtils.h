@@ -47,8 +47,8 @@ SPDX-License-Identifier: MIT
 /// 
 //===----------------------------------------------------------------------===//
 
-#ifndef GENXREGION_H
-#define GENXREGION_H
+#ifndef LIB_GENXCODEGEN_GENXREGIONUTILS_H
+#define LIB_GENXCODEGEN_GENXREGIONUTILS_H
 
 #include "GenXAlignmentInfo.h"
 #include "vc/Utils/GenX/Region.h"
@@ -72,29 +72,25 @@ namespace llvm {
     class TargetLibraryInfo;
 
 namespace genx {
-    struct BaleInfo;
 
-// Region : description of an operand's region
-class Region : public CMRegion {
-public:
-  static Region getWithOffset(Instruction *Inst, bool WantParentWith = false);
-  // Default constructor: assume single element
-  Region() : CMRegion() {}
-  // Construct from a type.
-  Region(Type *Ty, const DataLayout *DL = nullptr) : CMRegion(Ty, DL) {};
-  // Construct from a value.
-  Region(Value *V, const DataLayout *DL = nullptr) : CMRegion(V, DL) {};
-  // Construct from a rd/wr region/element and its BaleInfo
-  Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth = false);
-  // Construct from a bitmap of which elements to set (legal 1D region)
-  Region(unsigned Bits, unsigned ElementBytes)
-    : CMRegion(Bits, ElementBytes) {};
-  // getLegalSize : get the max legal size of a region
-  unsigned getLegalSize(unsigned Idx, bool Allow2D, unsigned InputNumElements,
-                        const GenXSubtarget *ST, AlignmentInfo *AI = nullptr);
-  unsigned getLegalSize(unsigned Idx, bool Allow2D, unsigned InputNumElements,
-                        const GenXSubtarget *ST, Alignment Align);
-};
+struct BaleInfo;
+
+using Region = llvm::Region;
+
+Region makeRegionWithOffset(Instruction *Inst, bool WantParentWidth = false);
+
+Region makeRegionFromBaleInfo(Instruction *Inst, const BaleInfo &BI,
+                              bool WantParentWidth = false);
+
+// getLegalSize : get the max legal size of a region
+unsigned getLegalRegionSizeForTarget(const GenXSubtarget &ST, const Region &R,
+                                     unsigned Idx, bool Allow2D,
+                                     unsigned InputNumElements,
+                                     AlignmentInfo *AI = nullptr);
+unsigned getLegalRegionSizeForTarget(const GenXSubtarget &ST, const Region &R,
+                                     unsigned Idx, bool Allow2D,
+                                     unsigned InputNumElements,
+                                     Alignment Align);
 
 // RdWrRegionSequence : a sequence of rdregion-wrregion pairs probably
 // created by legalization or coalescing, conforming to the following
@@ -178,4 +174,4 @@ bool IsLinearVectorConstantInts(Value* v, int64_t& start, int64_t& stride);
 
 } // end namespace llvm
 
-#endif /* GENXREGION_H */
+#endif // LIB_GENXCODEGEN_GENXREGIONUTILS_H

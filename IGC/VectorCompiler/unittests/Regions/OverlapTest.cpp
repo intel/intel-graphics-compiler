@@ -17,7 +17,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 
-#include "GenXRegion.h"
+#include "GenXRegionUtils.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 

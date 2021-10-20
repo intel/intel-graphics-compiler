@@ -91,11 +91,11 @@ SPDX-License-Identifier: MIT
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
 #include "GenXModule.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
+
 #include "IGC/common/debug/DebugMacros.hpp"
 #include "visa_igc_common_header.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -3643,7 +3643,7 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
   // For a predicated wrregion, widen by separating the predication into a
   // rdregion and select, which can then be widened.
   if (GenXIntrinsic::isWrRegion(Inst)) {
-    Region R(Inst, BaleInfo());
+    Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
     if (R.NumElements == 1 || !R.Mask)
       return false;
     // Can only do this if the predicate is the right size. (We could handle

@@ -22,18 +22,21 @@ SPDX-License-Identifier: MIT
 
 #include "IGC/common/StringMacros.hpp"
 
-#include <algorithm>
 #include "GenX.h"
 #include "GenXAlignmentInfo.h"
+#include "GenXRegionUtils.h"
 #include "GenXBaling.h"
-#include "GenXRegion.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
-#include <set>
+
 #include "Probe/Assertion.h"
+
+#include <algorithm>
+#include <set>
 
 using namespace llvm;
 using namespace genx;
@@ -208,7 +211,7 @@ Alignment AlignmentInfo::get(Value *V)
           // Handle the case of reading a scalar from element of a vector, as
           // a trunc from i32 to i16 is lowered to a bitcast to v2i16 then a
           // rdregion.
-          Region R(WorkInst, BaleInfo());
+          Region R = makeRegionFromBaleInfo(WorkInst, BaleInfo());
           if (!R.Indirect && (R.NumElements == 1))
             A = getFromInstMap(WorkInst->getOperand(0));
           else

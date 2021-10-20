@@ -154,7 +154,6 @@ SPDX-License-Identifier: MIT
 #include "GenXAlignmentInfo.h"
 #include "GenXBaling.h"
 #include "GenXIntrinsics.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
@@ -1180,7 +1179,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
     switch (i->Info.Type) {
     case BaleInfo::WRREGION: {
       bool Unbale = false;
-      Region R(i->Inst, i->Info);
+      Region R = makeRegionFromBaleInfo(i->Inst, i->Info);
       if (R.Mask &&
           !i->Info.isOperandBaled(GenXIntrinsic::GenXRegion::PredicateOperandNum)) {
         // We have a predicate, and it is not a baled in rdpredregion. (A
@@ -1196,12 +1195,12 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         Unbale = true;
       }
       // Get the max legal size for the wrregion.
-      ThisWidth = std::min(ThisWidth,
-                           R.getLegalSize(StartIdx, false /*Allow2D*/,
+      ThisWidth = std::min(ThisWidth, getLegalRegionSizeForTarget(
+                                          *ST, R, StartIdx, false /*Allow2D*/,
                                           cast<IGCLLVM::FixedVectorType>(
                                               i->Inst->getOperand(0)->getType())
                                               ->getNumElements(),
-                                          ST, &(Baling->AlignInfo)));
+                                          &(Baling->AlignInfo)));
       if (!Unbale && R.Mask && PredMinWidth > ThisWidth) {
         // The min predicate size (from this wrregion) is bigger than the
         // legal size for this wrregion. We have to rewrite the wrregion as:
@@ -1256,16 +1255,16 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       // Determine the max region width. If this rdregion is baled into a
       // TWICEWIDTH operand, double the start index and half the resulting
       // size.
-      Region R(i->Inst, i->Info);
+      Region R = makeRegionFromBaleInfo(i->Inst, i->Info);
       unsigned Doubling = TwiceWidth && i->Inst == *TwiceWidth;
       unsigned ModifiedStartIdx = StartIdx << Doubling;
       if (Fixed4 && i->Inst == *Fixed4)
         ModifiedStartIdx = 0;
-      ThisWidth = R.getLegalSize(
-          ModifiedStartIdx, true /*Allow2D*/,
+      ThisWidth = getLegalRegionSizeForTarget(
+          *ST, R, ModifiedStartIdx, true /*Allow2D*/,
           cast<IGCLLVM::FixedVectorType>(i->Inst->getOperand(0)->getType())
               ->getNumElements(),
-          ST, &(Baling->AlignInfo));
+          &(Baling->AlignInfo));
       if (ThisWidth == 1 &&
           R.Indirect && !R.isMultiIndirect()) {
         // This is a single indirect rdregion where we failed to make the
@@ -1471,8 +1470,9 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       if (VecSize != Width) {
         if (!VT->getElementType()->isIntegerTy(1)) {
           Region R(Head->Inst);
-          auto ThisWidth = R.getLegalSize(StartIdx, false /*no 2d for dst*/,
-                                          VecSize, ST, &(Baling->AlignInfo));
+          auto ThisWidth = getLegalRegionSizeForTarget(
+              *ST, R, StartIdx, false /*no 2d for dst*/, VecSize,
+              &(Baling->AlignInfo));
           if (ThisWidth < Width) {
             Width = ThisWidth;
           }
@@ -1807,7 +1807,7 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
                                       unsigned StartIdx, unsigned Width,
                                       Instruction *InsertBefore) {
   IGC_ASSERT_MESSAGE(BInst.Info.Type == BaleInfo::WRREGION, "wrong argument");
-  Region R(BInst.Inst, BInst.Info);
+  Region R = makeRegionFromBaleInfo(BInst.Inst, BInst.Info);
   // For SplitIdx==0, the old vector value comes from the original
   // wrregion. Otherwise it comes from the split wrregion created
   // last time round.
@@ -1917,17 +1917,17 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     StartIdx <<= Doubling;
     Width <<= Doubling;
     // Get the subregion.
-    Region R(BInst.Inst, BInst.Info);
+    Region R = makeRegionFromBaleInfo(BInst.Inst, BInst.Info);
     // Check whether this is an indirect operand that was allowed only
     // because we assumed that we are going to convert it to a multi
     // indirect.
     bool ConvertToMulti =
         R.Indirect && Width != 1 &&
-        R.getLegalSize(
-            StartIdx, true /*Allow2D*/,
+        getLegalRegionSizeForTarget(
+            *ST, R, StartIdx, true /*Allow2D*/,
             cast<IGCLLVM::FixedVectorType>(BInst.Inst->getOperand(0)->getType())
                 ->getNumElements(),
-            ST, &(Baling->AlignInfo)) == 1;
+            &(Baling->AlignInfo)) == 1;
     // The region to read from. This is normally from the input region baled
     // in. If this is reading from and writing to the same region and
     // split progapation is on, then just reading from the last joined value
@@ -2258,12 +2258,12 @@ Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
 
   Value *Src = Rd ? Rd->getOperand(OldValueOperandNum)
                   : Wr->getOperand(NewValueOperandNum);
-  Region SrcRgn =
-      Rd ? Region(Rd, BaleInfo()) : Region(Wr->getOperand(NewValueOperandNum));
+  Region SrcRgn = Rd ? makeRegionFromBaleInfo(Rd, BaleInfo())
+                     : Region(Wr->getOperand(NewValueOperandNum));
   Value *Dst = Wr ? Wr : Rd;
   if (Dst->hasOneUse() && GenXIntrinsic::isWritePredefReg(Dst->user_back()))
     return nullptr;
-  Region DstRgn = Wr ? Region(Wr, BaleInfo()) : Region(Rd);
+  Region DstRgn = Wr ? makeRegionFromBaleInfo(Wr, BaleInfo()) : Region(Rd);
 
   // Check that dst and src regions can be changed on new type.
   if (SrcRgn.Indirect || DstRgn.Indirect || DstRgn.Mask)
@@ -2629,17 +2629,17 @@ GenXLegalization::SplitKind GenXLegalization::checkBaleSplittingKind() {
 
   if (Head->Info.Type == BaleInfo::WRREGION) {
     Value *WrRegionInput = Head->Inst->getOperand(0);
-    Region R1(Head->Inst, Head->Info);
+    Region R1 = makeRegionFromBaleInfo(Head->Inst, Head->Info);
     for (auto &I : B) {
       if (I.Info.Type != BaleInfo::RDREGION)
         continue;
       if (I.Inst->getOperand(0) != WrRegionInput)
         continue;
-      Region R2(I.Inst, I.Info);
+      Region R2 = makeRegionFromBaleInfo(I.Inst, I.Info);
       if (R1 != R2) {
         // Check if R1 overlaps with R2. Create a new region for R1 as we are
         // rewriting region offsets if their difference is a constant.
-        Region R(Head->Inst, Head->Info);
+        Region R = makeRegionFromBaleInfo(Head->Inst, Head->Info);
 
         // Analyze dynamic offset difference, but only for a scalar offset.
         if (R1.Indirect && R2.Indirect) {
@@ -2651,7 +2651,7 @@ GenXLegalization::SplitKind GenXLegalization::checkBaleSplittingKind() {
           auto stripConv = [](Value *Val) {
             if (GenXIntrinsic::isRdRegion(Val)) {
               CallInst *CI = cast<CallInst>(Val);
-              Region R(CI, BaleInfo());
+              Region R = makeRegionFromBaleInfo(CI, BaleInfo());
               if (R.Offset == 0 && R.Width == 1)
                 Val = CI->getOperand(0);
               if (auto BI = dyn_cast<BitCastInst>(Val))

@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXBaling.h"
 #include "GenXLiveness.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
 
 #include "vc/GenXOpts/Utils/RegCategory.h"
@@ -64,7 +63,7 @@ unsigned PressureTracker::getSizeInBytes(LiveRange *LR, bool AllowWidening) {
         return false;
       for (auto UI : Inst->users()) {
         if (GenXIntrinsic::isRdRegion(UI) || GenXIntrinsic::isWrRegion(UI)) {
-          Region R(cast<Instruction>(UI), BaleInfo());
+          Region R = makeRegionFromBaleInfo(cast<Instruction>(UI), BaleInfo());
           if (R.Indirect)
             return false;
         }

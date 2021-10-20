@@ -85,8 +85,8 @@ SPDX-License-Identifier: MIT
 #include "GenXConstants.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
+
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/IR/BasicBlock.h"

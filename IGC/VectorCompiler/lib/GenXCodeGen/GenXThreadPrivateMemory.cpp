@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 
 #include "GenX.h"
 #include "GenXModule.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"

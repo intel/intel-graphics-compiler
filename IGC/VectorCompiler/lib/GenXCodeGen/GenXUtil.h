@@ -10,8 +10,9 @@ SPDX-License-Identifier: MIT
 #define GENX_UTIL_H
 
 #include "FunctionGroup.h"
-#include "GenXRegion.h"
+#include "GenXRegionUtils.h"
 #include "GenXSubtarget.h"
+
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Twine.h"

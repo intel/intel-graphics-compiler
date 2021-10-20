@@ -40,7 +40,6 @@ SPDX-License-Identifier: MIT
 
 #include "GenX.h"
 #include "GenXBaling.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
 #include "vc/GenXOpts/GenXAnalysis.h"
 
@@ -330,7 +329,7 @@ bool GenXDeadVectorRemoval::nullOutInstructions(Function *F)
         // when no elements in the "new value" input of a wrregion are use,
         // then bypass the wrregion with the "old value".
         bool bypass = true;
-        Region R(Inst, BaleInfo());
+        Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
         if (R.Mask || R.Indirect)
           bypass = false;
         else {
@@ -414,7 +413,7 @@ void GenXDeadVectorRemoval::processRdRegion(Instruction *Inst, LiveBits LB)
 {
   auto InInst = dyn_cast<Instruction>(
       Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
-  Region R(Inst, BaleInfo());
+  Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
   if (R.Indirect) {
     markWhollyLive(InInst);
     markWhollyLive(Inst->getOperand(GenXIntrinsic::GenXRegion::RdIndexOperandNum));
@@ -457,7 +456,7 @@ static Constant *undefDeadConstElements(Constant *C, LiveBits LB) {
  */
 void GenXDeadVectorRemoval::processWrRegion(Instruction *Inst, LiveBits LB)
 {
-  Region R(Inst, BaleInfo());
+  Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
   if (R.Mask)
     markWhollyLive(Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum));
   auto NewInInst = dyn_cast<Instruction>(

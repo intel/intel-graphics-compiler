@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXIntrinsics.h"
-#include "GenXRegion.h"
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/Utils/GenX/Printf.h"
@@ -1780,8 +1779,8 @@ bool genx::isIdentityBale(const Bale &B) {
   if (!A0 || GV != getUnderlyingGlobalVariable(A0->getPointerOperand()))
     return false;
 
-  Region R1(A1, BaleInfo());
-  Region R2(B1, BaleInfo());
+  Region R1 = makeRegionFromBaleInfo(A1, BaleInfo());
+  Region R2 = makeRegionFromBaleInfo(B1, BaleInfo());
   return R1 == R2;
 }
 
@@ -1803,7 +1802,7 @@ bool genx::isValueRegionOKForRaw(Value *V, bool IsWrite,
   default:
     return false;
   }
-  Region R(cast<Instruction>(V), BaleInfo());
+  Region R = makeRegionFromBaleInfo(cast<Instruction>(V), BaleInfo());
   return isRegionOKForRaw(R, ST);
 }
 

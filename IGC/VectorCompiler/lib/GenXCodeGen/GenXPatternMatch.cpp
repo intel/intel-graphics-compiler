@@ -46,7 +46,6 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXConstants.h"
 #include "GenXModule.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
@@ -748,7 +747,7 @@ CmpInst *GenXPatternMatch::reduceCmpWidth(CmpInst *Cmp) {
   auto *VTy = cast<IGCLLVM::FixedVectorType>(V0->getType());
   unsigned NumElts = VTy->getNumElements();
 
-  Region R(WII, BaleInfo());
+  Region R = makeRegionFromBaleInfo(WII, BaleInfo());
   if (R.Indirect || R.Offset || R.VStride || R.Stride != 1 ||
       R.Width != NumElts)
     return nullptr;
@@ -950,7 +949,7 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
     return false;
   // Fold and into wrregion, giving rdregion, select and wrregion, as long
   // as the original wrregion is not indirect.
-  Region R(user, BaleInfo());
+  Region R = makeRegionFromBaleInfo(user, BaleInfo());
   if (R.Indirect)
     return false;
   auto NewRdRegion =
@@ -1019,14 +1018,14 @@ bool MadMatcher::isProfitable() const {
   auto isIndirectRdRegion = [](Value *V) -> bool {
     if (!GenXIntrinsic::isRdRegion(V))
       return false;
-    Region R(cast<Instruction>(V), BaleInfo());
+    Region R = makeRegionFromBaleInfo(cast<Instruction>(V), BaleInfo());
     return R.Indirect;
   };
 
   auto isIndirectWrRegion = [](User *U) -> bool {
     if (!GenXIntrinsic::isWrRegion(U))
       return false;
-    Region R(cast<Instruction>(U), BaleInfo());
+    Region R = makeRegionFromBaleInfo(cast<Instruction>(U), BaleInfo());
     return R.Indirect;
   };
 
@@ -1125,7 +1124,7 @@ static Value *getBroadcastFromScalar(Value *V) {
   if (!GenXIntrinsic::isRdRegion(V))
     return nullptr;
   GenXIntrinsicInst *RII = cast<GenXIntrinsicInst>(V);
-  Region R(RII, BaleInfo());
+  Region R = makeRegionFromBaleInfo(RII, BaleInfo());
   if (!R.isScalar() || R.Width != 1 || R.Offset != 0)
     return nullptr;
   Value *Src = RII->getArgOperand(0);
@@ -2275,7 +2274,7 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
         GenXIntrinsicInst *WII = cast<GenXIntrinsicInst>(User);
         if (WII->getOperand(1) != Mul)
           continue;
-        Region W(WII, BaleInfo());
+        Region W = makeRegionFromBaleInfo(WII, BaleInfo());
         Region V(Mul);
         // TODO: Consider the broadcast and similar cases.
         if (!W.isStrictlySimilar(V))
@@ -2291,7 +2290,7 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
           for (auto *U : II->users()) {
             if (GenXIntrinsic::isRdRegion(U)) {
               GenXIntrinsicInst *RII = cast<GenXIntrinsicInst>(U);
-              Region R(RII, BaleInfo());
+              Region R = makeRegionFromBaleInfo(RII, BaleInfo());
               if (R == W) {
                 for (auto *U2 : RII->users())
                   if (!Ring.isAdd(U2)) {
@@ -2307,7 +2306,7 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
               }
             } else if (GenXIntrinsic::isWrRegion(U)) {
               GenXIntrinsicInst *WII2 = cast<GenXIntrinsicInst>(U);
-              Region W2(WII2, BaleInfo());
+              Region W2 = makeRegionFromBaleInfo(WII2, BaleInfo());
               if (W2 == W) {
                 // No more wrregion needs tracing. DO NOTHING.
               } else if (W2.overlap(W)) {
@@ -2387,7 +2386,7 @@ bool GenXPatternMatch::simplifyRdRegion(CallInst* Inst) {
   IGC_ASSERT(GenXIntrinsic::isRdRegion(Inst));
   auto NewVTy = Inst->getType();
   // rewrite indirect rdregion with constant offsets
-  auto R = Region::getWithOffset(Inst, false /*ParentWidth*/);
+  auto R = genx::makeRegionWithOffset(Inst);
   if (R.Indirect && R.IndirectIdx == 0 && R.IndirectAddrOffset == 0) {
     int64_t starti = 0;
     int64_t diffi = 0;
@@ -2467,7 +2466,7 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
   }
 
   // rewrite indirect wrregion with constant offsets
-  auto R = Region::getWithOffset(Inst, false/*ParentWidth*/);
+  auto R = genx::makeRegionWithOffset(Inst);
   if (R.Indirect && R.IndirectIdx == 0 && R.IndirectAddrOffset == 0) {
     int64_t starti = 0;
     int64_t diffi = 0;
@@ -2637,7 +2636,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
 
     Rd = cast<CallInst>(Val);
     Inverted = Val == SI->getTrueValue();
-    Region RdReg(Rd, BaleInfo());
+    Region RdReg = makeRegionFromBaleInfo(Rd, BaleInfo());
 
     auto CanMergeToWrRegion = [&](const Use &U) -> bool {
       if (!GenXIntrinsic::isWrRegion(U.getUser()))
@@ -2645,7 +2644,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
       if (U.getOperandNo() != NewValueOperandNum)
         return false;
       CallInst *Wr = cast<CallInst>(U.getUser());
-      Region WrReg(Wr, BaleInfo());
+      Region WrReg = makeRegionFromBaleInfo(Wr, BaleInfo());
       if (WrReg.Mask) {
         // If wrregion already has mask, it should be all ones constant.
         auto *C = dyn_cast<Constant>(WrReg.Mask);
@@ -2675,7 +2674,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
       if (Inverted)
         Mask = llvm::genx::invertCondition(Mask);
       // Create new wrregion.
-      Region WrReg(Wr, BaleInfo());
+      Region WrReg = makeRegionFromBaleInfo(Wr, BaleInfo());
       WrReg.Mask = Mask;
       Value *NewWr = WrReg.createWrRegion(Rd->getOperand(OldValueOperandNum),
                                           Inverted ? SI->getFalseValue()

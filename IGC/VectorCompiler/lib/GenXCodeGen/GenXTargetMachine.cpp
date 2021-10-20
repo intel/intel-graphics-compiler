@@ -17,8 +17,6 @@ SPDX-License-Identifier: MIT
 ///
 /// .. include:: GenXAlignmentInfo.h
 ///
-/// .. include:: GenXRegion.h
-///
 /// .. include:: GenXSubtarget.h
 ///
 /// Pass documentation

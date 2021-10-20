@@ -19,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include "GenXBaling.h"
 #include "GenXIntrinsics.h"
 #include "GenXNumbering.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
@@ -1232,8 +1231,9 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
   }
 
   Region R(InputVal);
-  unsigned MaxNum =
-      R.getLegalSize(/* StartIdx */ 0, /* Allow2D */ false, R.NumElements, ST);
+  IGC_ASSERT(ST);
+  unsigned MaxNum = getLegalRegionSizeForTarget(
+      *ST, R, /* StartIdx */ 0, /* Allow2D */ false, R.NumElements);
   // Adjust size to Exec size
   MaxNum = std::min(MaxNum, TotalEMSize);
   if (exactLog2(R.NumElements) >= 0 && R.NumElements <= MaxNum) {
@@ -1262,7 +1262,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
       if (!GenXIntrinsic::isWrRegion(V))
         return true;
       IntrinsicInst *WII = cast<IntrinsicInst>(V);
-      Region R(WII, BaleInfo());
+      Region R = makeRegionFromBaleInfo(WII, BaleInfo());
       if (R.Indirect || !R.isContiguous() || !R.isWholeNumRows())
         return true;
       if ((R.Offset % R.ElementBytes) != 0)

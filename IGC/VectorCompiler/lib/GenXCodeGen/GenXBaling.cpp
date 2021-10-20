@@ -17,9 +17,8 @@ SPDX-License-Identifier: MIT
 #include "GenXConstants.h"
 #include "GenXIntrinsics.h"
 #include "GenXLiveness.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
-#include "Probe/Assertion.h"
+
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/InstructionSimplify.h"
@@ -40,6 +39,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#include "Probe/Assertion.h"
 
 // Part of the bodge to allow abs to bale in to sext/zext. This needs to be set
 // to some arbitrary value that does not clash with any
@@ -495,7 +496,7 @@ bool GenXBaling::operandCanBeBaled(
                     (IID != GenXIntrinsic::genx_dpasw) &&
                     (IID != GenXIntrinsic::genx_dpas_nosrc0) &&
                     (IID != GenXIntrinsic::genx_dpasw_nosrc0));
-    Region RdR(Opnd, BaleInfo());
+    Region RdR = makeRegionFromBaleInfo(Opnd, BaleInfo());
     if (!isRegionOKForIntrinsic(AI.Info, RdR, CanSplitBale))
       return false;
 
@@ -509,7 +510,7 @@ bool GenXBaling::operandCanBeBaled(
       for (auto U : Opnd->users())
         if (isa<BitCastInst>(U))
           return false;
-      Region R(cast<CallInst>(Opnd), BaleInfo());
+      Region R = makeRegionFromBaleInfo(cast<CallInst>(Opnd), BaleInfo());
       if (R.Indirect)
         return false;
     }
@@ -608,7 +609,8 @@ void GenXBaling::processWrRegion(Instruction *Inst)
       V = nullptr;
   }
 
-  if (V && isBalableNewValueIntoWrr(V, Region(Inst, BaleInfo())) &&
+  if (V &&
+      isBalableNewValueIntoWrr(V, makeRegionFromBaleInfo(Inst, BaleInfo())) &&
       isSafeToMove(V, V, Inst)) {
     LLVM_DEBUG(llvm::dbgs()
                << __FUNCTION__ << " setting operand #" << OperandNum
@@ -1608,8 +1610,8 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
     if (CI->use_begin()->getOperandNo()
         != GenXIntrinsic::GenXRegion::NewValueOperandNum)
       return;
-    Region RdR(Rd, BaleInfo());
-    Region WrR(Wr, BaleInfo());
+    Region RdR = genx::makeRegionFromBaleInfo(Rd, BaleInfo());
+    Region WrR = genx::makeRegionFromBaleInfo(Wr, BaleInfo());
     if (RdR != WrR || RdR.Indirect || WrR.Mask)
       return;
     if (!isValueRegionOKForRaw(Wr, /*IsWrite=*/true, ST))
@@ -2293,7 +2295,7 @@ bool GenXBaling::prologue(Function *F) {
 
         // Skip if this region write is indirect as
         // this would result an indirect read.
-        Region R(Inst, BaleInfo());
+        Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
         if (R.Indirect)
           continue;
 

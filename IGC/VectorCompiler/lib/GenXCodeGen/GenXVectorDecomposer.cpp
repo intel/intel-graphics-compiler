@@ -16,8 +16,8 @@ SPDX-License-Identifier: MIT
 #include "GenXVectorDecomposer.h"
 #include "GenX.h"
 #include "GenXBaling.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -339,7 +339,7 @@ void VectorDecomposer::adjustDecomposition(Instruction *Inst)
 {
   if (Decomposition.empty())
     return; // Decomposition[] not set up yet
-  Region R(Inst, BaleInfo());
+  Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
   if (R.Indirect) {
     setNotDecomposing(Inst, "indirect region");
     return; // cannot decompose if indirect
@@ -589,7 +589,7 @@ void VectorDecomposer::decomposePhiIncoming(PHINode *Phi, unsigned OperandNum,
 void VectorDecomposer::decomposeRdRegion(Instruction *RdRegion,
     const SmallVectorImpl<Value *> *PartsIn)
 {
-  Region RdR(RdRegion, BaleInfo());
+  Region RdR = makeRegionFromBaleInfo(RdRegion, BaleInfo());
   unsigned PartIndex = getPartIndex(&RdR);
   Value *Part = (*PartsIn)[PartIndex];
   if (isa<UndefValue>(Part)) {
@@ -647,7 +647,7 @@ void VectorDecomposer::decomposeRdRegion(Instruction *RdRegion,
 void VectorDecomposer::decomposeWrRegion(Instruction *WrRegion,
     SmallVectorImpl<Value *> *Parts)
 {
-  Region WrR(WrRegion, BaleInfo());
+  Region WrR = makeRegionFromBaleInfo(WrRegion, BaleInfo());
   unsigned PartIndex = getPartIndex(&WrR);
   Value *Part = (*Parts)[PartIndex];
   if (WrRegion->getOperand(NewValueOperandNum)->getType() == Part->getType()
@@ -979,12 +979,12 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
     // simd 32. Otherwise it makes difficult to bale in this region read.
     if (Width == 32 && GenXIntrinsic::isRdRegion(V)) {
       CallInst *CI = cast<CallInst>(V);
-      Region R(CI, BaleInfo());
-      unsigned LegalSize = R.getLegalSize(
-          0, true /*Allow2D*/,
+      Region R = makeRegionFromBaleInfo(CI, BaleInfo());
+      IGC_ASSERT(ST);
+      unsigned LegalSize = getLegalRegionSizeForTarget(
+          *ST, R, 0 /*idx*/, true /*Allow2D*/,
           cast<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType())
-              ->getNumElements(),
-          ST);
+              ->getNumElements());
       if (LegalSize < 32)
         Width = 16;
     }

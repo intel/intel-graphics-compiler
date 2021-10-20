@@ -215,8 +215,10 @@ SPDX-License-Identifier: MIT
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXAlignmentInfo.h"
-#include "GenXRegion.h"
 #include "GenXSubtarget.h"
+
+#include "vc/Utils/GenX/Region.h"
+
 #include "IgnoreRAUWValueMap.h"
 #include "Probe/Assertion.h"
 #include "llvm/ADT/Hashing.h"
@@ -437,7 +439,7 @@ public:
   static bool isBalableIndexOr(Value *V);
   // isBalableNewValueIntoWrr: check whether the new val operand can
   // be baled into wrr instruction
-  bool isBalableNewValueIntoWrr(Value *V, const genx::Region &WrrR);
+  bool isBalableNewValueIntoWrr(Value *V, const Region &WrrR);
 
   static bool isHighCostBaling(uint16_t Type, Instruction *Inst);
   // Debug dump/print
@@ -474,7 +476,7 @@ private:
   bool operandCanBeBaled(Instruction *Inst, unsigned OperandNum, int ModType,
                          unsigned ArgInfoBits);
 
-  bool  isRegionOKForIntrinsic(unsigned ArgInfoBits, const genx::Region &R,
+  bool  isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
                          bool CanSplitBale);
   bool isSafeToMove(Instruction *Op, Instruction *From, Instruction *To);
 

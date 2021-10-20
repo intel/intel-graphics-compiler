@@ -11,12 +11,12 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-#include "GenXRegion.h"
 #include "GenXAlignmentInfo.h"
 #include "GenXBaling.h"
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
 #include "vc/GenXOpts/GenXAnalysis.h"
+
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -94,9 +94,10 @@ bool testOperator(const llvm::Instruction *const Operator) {
 
 } // namespace
 
+
 /***********************************************************************
- * getWithOffset : get a Region given a rdregion/wrregion, baling in
- *      constant add of offset
+ * makeRegionWithOffset: get a Region given a rdregion/wrregion, baling in
+ * constant add of offset
  *
  * This constructs the Region with a variable index that is a constant add
  * baled in (i.e. Region::Indirect and Region::Offset both set to the
@@ -104,27 +105,26 @@ bool testOperator(const llvm::Instruction *const Operator) {
  * available, but the caller wants the constant offset separated out like
  * that.
  */
-Region Region::getWithOffset(Instruction *Inst, bool WantParentWidth)
-{
+Region genx::makeRegionWithOffset(Instruction *Inst, bool WantParentWidth) {
   unsigned OperandNum = 0;
   switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
-    case GenXIntrinsic::genx_rdregioni:
-    case GenXIntrinsic::genx_rdregionf:
-      OperandNum = GenXIntrinsic::GenXRegion::RdIndexOperandNum;
-      break;
-    case GenXIntrinsic::genx_wrregioni:
-    case GenXIntrinsic::genx_wrregionf:
-    case GenXIntrinsic::genx_wrconstregion:
-      OperandNum = GenXIntrinsic::GenXRegion::WrIndexOperandNum;
-      break;
-    default:
-      IGC_ASSERT_EXIT_MESSAGE(0, "not rdregion or wrregion");
-      break;
+  case GenXIntrinsic::genx_rdregioni:
+  case GenXIntrinsic::genx_rdregionf:
+    OperandNum = GenXIntrinsic::GenXRegion::RdIndexOperandNum;
+    break;
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+  case GenXIntrinsic::genx_wrconstregion:
+    OperandNum = GenXIntrinsic::GenXRegion::WrIndexOperandNum;
+    break;
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "not rdregion or wrregion");
+    break;
   }
   BaleInfo BI;
   if (GenXBaling::isBalableIndexAdd(Inst->getOperand(OperandNum)))
     BI.setOperandBaled(OperandNum);
-  return Region(Inst, BI, WantParentWidth);
+  return makeRegionFromBaleInfo(Inst, BI, WantParentWidth);
 }
 
 /***********************************************************************
@@ -132,9 +132,9 @@ Region Region::getWithOffset(Instruction *Inst, bool WantParentWidth)
  * This also works with rdpredregion and wrpredregion, with Offset in
  * bits rather than bytes, and with ElementBytes set to 1.
  */
-Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
-    : CMRegion()
-{
+Region genx::makeRegionFromBaleInfo(Instruction *Inst, const BaleInfo &BI,
+                                    bool WantParentWidth) {
+  Region Result;
   // Determine where to get the subregion value from and which arg index
   // the region parameters start at.
   unsigned ArgIdx = 0;
@@ -144,20 +144,20 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
   IGC_ASSERT(CallI->getCalledFunction());
   switch (GenXIntrinsic::getGenXIntrinsicID(CallI->getCalledFunction())) {
     case GenXIntrinsic::genx_rdpredregion:
-      NumElements =
+      Result.NumElements =
           cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
-      Width = NumElements;
-      Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
-      ElementBytes = 1;
-      return;
+      Result.Width = Result.NumElements;
+      Result.Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
+      Result.ElementBytes = 1;
+      return Result;
     case GenXIntrinsic::genx_wrpredregion:
-      NumElements =
+      Result.NumElements =
           cast<IGCLLVM::FixedVectorType>(Inst->getOperand(1)->getType())
               ->getNumElements();
-      Width = NumElements;
-      Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
-      ElementBytes = 1;
-      return;
+      Result.Width = Result.NumElements;
+      Result.Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
+      Result.ElementBytes = 1;
+      return Result;
     case GenXIntrinsic::genx_rdregioni:
     case GenXIntrinsic::genx_rdregionf:
       ArgIdx = 1;
@@ -173,39 +173,43 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
       Subregion = Inst->getOperand(1);
       // For wrregion, while we're here, also get the mask. We set mask to NULL
       // if the mask operand is constant 1 (i.e. not predicated).
-      Mask = Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
-      if (auto C = dyn_cast<Constant>(Mask))
+      Result.Mask =
+          Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
+      if (auto C = dyn_cast<Constant>(Result.Mask))
         if (C->isAllOnesValue())
-          Mask = 0;
+          Result.Mask = 0;
       break;
     default:
       IGC_ASSERT(0);
   }
   // Get the region parameters.
   IGC_ASSERT(Subregion);
-  ElementTy = Subregion->getType();
-  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(ElementTy)) {
-    ElementTy = VT->getElementType();
-    NumElements = VT->getNumElements();
+  Result.ElementTy = Subregion->getType();
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Result.ElementTy)) {
+    Result.ElementTy = VT->getElementType();
+    Result.NumElements = VT->getNumElements();
   }
   const DataLayout &DL = Inst->getModule()->getDataLayout();
   static_assert(genx::ByteBits);
-  IGC_ASSERT(DL.getTypeSizeInBits(ElementTy) % genx::ByteBits  == 0);
-  ElementBytes = DL.getTypeSizeInBits(ElementTy) / genx::ByteBits;
-  VStride = cast<ConstantInt>(Inst->getOperand(ArgIdx))->getSExtValue();
-  Width = cast<ConstantInt>(Inst->getOperand(ArgIdx + 1))->getSExtValue();
-  Stride = cast<ConstantInt>(Inst->getOperand(ArgIdx + 2))->getSExtValue();
+  IGC_ASSERT(DL.getTypeSizeInBits(Result.ElementTy) % genx::ByteBits == 0);
+  Result.ElementBytes = DL.getTypeSizeInBits(Result.ElementTy) / genx::ByteBits;
+  Result.VStride = cast<ConstantInt>(Inst->getOperand(ArgIdx))->getSExtValue();
+  Result.Width =
+      cast<ConstantInt>(Inst->getOperand(ArgIdx + 1))->getSExtValue();
+  Result.Stride =
+      cast<ConstantInt>(Inst->getOperand(ArgIdx + 2))->getSExtValue();
   ArgIdx += 3;
   // Get the start index.
   Value *V = Inst->getOperand(ArgIdx);
   IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(16),
     "region index must be i16 or vXi16 type");
-  IGC_ASSERT(testRegionIndexForSizeMismatch(V, Width, NumElements));
+  IGC_ASSERT(
+      testRegionIndexForSizeMismatch(V, Result.Width, Result.NumElements));
 
   if (ConstantInt *CI = dyn_cast<ConstantInt>(V))
-    Offset = CI->getSExtValue(); // Constant index.
+    Result.Offset = CI->getSExtValue(); // Constant index.
   else {
-    Indirect = V; // Index is variable; assume no baled in add.
+    Result.Indirect = V; // Index is variable; assume no baled in add.
     if (BI.isOperandBaled(ArgIdx)) {
       Instruction *Operator = cast<Instruction>(V);
       // The index is variable and has something baled in. We want to process
@@ -220,62 +224,63 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
         if (!CI)
           CI = cast<ConstantInt>(C->getSplatValue());
 
-        Offset = CI->getSExtValue();
+        Result.Offset = CI->getSExtValue();
 
         if (Operator->getOpcode() == Instruction::Sub)
-          Offset = -Offset;
+          Result.Offset = -Result.Offset;
 
-        Indirect = Operator->getOperand(0);
+        Result.Indirect = Operator->getOperand(0);
       }
     }
     // For a variable index, get the parent width arg.
     ConstantInt *PW = dyn_cast<ConstantInt>(Inst->getOperand(ArgIdx + 1));
     if (PW)
-      ParentWidth = PW->getZExtValue();
+      Result.ParentWidth = PW->getZExtValue();
   }
   // We do some trivial legalization here. The legalization pass does not
   // make these changes; instead we do them here so they are not permanently
   // written back into the IR but are made on the fly each time some other
   // pass uses this code to get the region info.
-  if (NumElements == 1) {
-    Width = Stride = 1;
-    VStride = 0;
+  if (Result.NumElements == 1) {
+    Result.Width = Result.Stride = 1;
+    Result.VStride = 0;
   } else {
-    if (NumElements <= Width) {
-      Width = NumElements;
-      VStride = 0;
-    } else if ((unsigned)VStride == Width * Stride) {
+    if (Result.NumElements <= Result.Width) {
+      Result.Width = Result.NumElements;
+      Result.VStride = 0;
+    } else if ((unsigned)Result.VStride == Result.Width * Result.Stride) {
       // VStride == Width * Stride, so we can canonicalize to a 1D region,
       // but only if not indirect or not asked to preserve parentwidth,
       // and never if multi-indirect.
-      if (!Indirect
-          || (!isa<VectorType>(Indirect->getType()) && !WantParentWidth)) {
-        Width = NumElements;
-        VStride = 0;
-        ParentWidth = 0;
+      if (!Result.Indirect ||
+          (!isa<VectorType>(Result.Indirect->getType()) && !WantParentWidth)) {
+        Result.Width = Result.NumElements;
+        Result.VStride = 0;
+        Result.ParentWidth = 0;
       }
-    } else if (Width == 1) {
+    } else if (Result.Width == 1) {
       // We can turn a 2D width 1 region into a 1D region, but if it is
       // indirect it invalidates ParentWidth. So only do it if not asked
       // to keep ParentWidth. Also we cannot do it if it is multi-indirect.
-      if (!Indirect
-          || (!isa<VectorType>(Indirect->getType()) && !WantParentWidth)) {
-        Width = NumElements;
-        Stride = VStride;
-        VStride = 0;
-        ParentWidth = 0;
+      if (!Result.Indirect ||
+          (!isa<VectorType>(Result.Indirect->getType()) && !WantParentWidth)) {
+        Result.Width = Result.NumElements;
+        Result.Stride = Result.VStride;
+        Result.VStride = 0;
+        Result.ParentWidth = 0;
       }
     }
-    if (Stride == 0 && Width == NumElements) {
+    if (Result.Stride == 0 && Result.Width == Result.NumElements) {
       // Canonical scalar region.
-      Width = 1;
-      VStride = 0;
+      Result.Width = 1;
+      Result.VStride = 0;
     }
   }
+  return Result;
 }
 
 /***********************************************************************
- * Region::getLegalSize : get the max legal size of a region
+ * Region::getLegalRegionSizeForTarget: get the max legal size of a region
  *
  * Enter:   Idx = start index into the subregion
  *          Allow2D = whether to allow 2D region
@@ -285,20 +290,23 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
  *          ST = GenXSubtarget (so we can get gen specific crossing rules)
  *          AI = 0 else AlignmentInfo (to determine alignment of indirect index)
  */
-unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
-    unsigned InputNumElements, const GenXSubtarget *ST, AlignmentInfo *AI)
-{
+unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
+                                           const Region &R, unsigned Idx,
+                                           bool Allow2D,
+                                           unsigned InputNumElements,
+                                           AlignmentInfo *AI) {
   Alignment Align;
-  if (Indirect) {
+  if (R.Indirect) {
     Align = Alignment::getUnknown();
     if (AI)
-      Align = AI->get(Indirect);
+      Align = AI->get(R.Indirect);
   }
-  return getLegalSize(Idx, Allow2D, InputNumElements, ST, Align);
+  return getLegalRegionSizeForTarget(ST, R, Idx, Allow2D, InputNumElements,
+                                     Align);
 }
 
 /***********************************************************************
- * Region::getLegalSize : get the max legal size of a region
+ * Region::getLegalRegionSizeForTarget : get the max legal size of a region
  *
  * Enter:   Idx = start index into the subregion
  *          Allow2D = whether to allow 2D region
@@ -314,30 +322,32 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
  * anything of scalar type: single indirect
  * anything of vector type: multi indirect
  */
-unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
-    unsigned InputNumElements, const GenXSubtarget *ST, Alignment Align)
-{
+unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
+                                           const Region &R, unsigned Idx,
+                                           bool Allow2D,
+                                           unsigned InputNumElements,
+                                           Alignment Align) {
   // Determine the max valid width.
   unsigned ValidWidth = 1;
-  IGC_ASSERT(ST);
-  unsigned GRFWidth = ST->getGRFByteSize();
+  unsigned GRFByteSize = ST.getGRFByteSize();
   int MaxStride = 4;
-  unsigned LogGRFWidth = genx::log2(GRFWidth);
-  if ((!Stride || exactLog2(Stride) >= 0) && (Allow2D || Stride <= MaxStride)) {
+  unsigned LogGRFWidth = genx::log2(GRFByteSize);
+  if ((!R.Stride || exactLog2(R.Stride) >= 0) &&
+      (Allow2D || R.Stride <= MaxStride)) {
     // The stride is legal, so we can potentially do more than one element at a
     // time.
     // Disallow 2D if the stride is too large for a real Gen region. For a
     // source operand (Allow2D is true), we allow a 1D region with stride too
     // large, because the vISA writer turns it into a 2D region with width 1.
-    bool StrideValid = (Stride <= MaxStride);
+    bool StrideValid = (R.Stride <= MaxStride);
 
-    if (Indirect && isa<VectorType>(Indirect->getType())) {
+    if (R.Indirect && isa<VectorType>(R.Indirect->getType())) {
       // Multi indirect.
       if (!Allow2D) {
         // Multi indirect not allowed in wrregion.
-        if (!Stride)
-          ValidWidth = 1 << genx::log2(Width);
-      } else if (Width == 1 || !Stride) {
+        if (!R.Stride)
+          ValidWidth = 1 << genx::log2(R.Width);
+      } else if (R.Width == 1 || !R.Stride) {
         // Multi indirect with width 1 or stride 0.
         // Return the max power of two number of elements that:
         // 1. fit in 2 GRFs; and
@@ -347,8 +357,8 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
         //    are only 8 elements in an address register).
         unsigned LogWidth = genx::log2(Width);
         if (1U << LogWidth == Width)
-          LogWidth = genx::log2(NumElements); // legal width
-        unsigned LogElementBytes = genx::log2(ElementBytes);
+          LogWidth = genx::log2(R.NumElements); // legal width
+        unsigned LogElementBytes = genx::log2(R.ElementBytes);
         if (LogWidth + LogElementBytes > (LogGRFWidth + 1))
           LogWidth = LogGRFWidth + 1 - LogElementBytes;
         ValidWidth = 1 << LogWidth;
@@ -359,11 +369,11 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
     } else {
       // Calculate number of elements up to the boundary imposed by GRF
       // crossing rules.
-      unsigned ElementsPerGRF = GRFWidth / ElementBytes;
-      unsigned OffsetElements = Offset / ElementBytes;
+      unsigned ElementsPerGRF = GRFByteSize / R.ElementBytes;
+      unsigned OffsetElements = R.Offset / R.ElementBytes;
       unsigned ElementsToBoundary = 1;
-      unsigned RealIdx = Idx / Width * VStride + Idx % Width * Stride;
-      if (!Indirect) {
+      unsigned RealIdx = Idx / R.Width * R.VStride + Idx % R.Width * R.Stride;
+      if (!R.Indirect) {
         // For a direct operand, just use the constant offset of the
         // region and the index so far to calculate how far into a GRF this
         // subregion starts, and set the boundary at the next-but-one GRF
@@ -395,8 +405,9 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
         // into Nx1 instead of 1xN).  We use Allow2D as a proxy for "is source
         // operand".
         unsigned GRFsPerIndirect =
-            genx::getNumGRFsPerIndirectForRegion(*this, ST, Allow2D);
-        unsigned Last = (NumElements / Width - 1) * VStride + (Width - 1) * Stride;
+            genx::getNumGRFsPerIndirectForRegion(R, &ST, Allow2D);
+        unsigned Last = (R.NumElements / R.Width - 1) * R.VStride +
+                        (R.Width - 1) * R.Stride;
         unsigned Max = InputNumElements - Last - 1 + RealIdx;
         unsigned Min = RealIdx;
         unsigned MinMaxGRFDiff = (Max & -ElementsPerGRF) - (Min & -ElementsPerGRF);
@@ -406,30 +417,32 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
         else if (MinMaxGRFDiff == 1 && GRFsPerIndirect > 1)
           ElementsToBoundary = ElementsPerGRF - (Max & (ElementsPerGRF - 1));
         // We may be able to refine an indirect region legal width further...
-        if (exactLog2(ParentWidth) >= 0 &&
-            ParentWidth <= GRFsPerIndirect * ElementsPerGRF) {
+        if (exactLog2(R.ParentWidth) >= 0 &&
+            R.ParentWidth <= GRFsPerIndirect * ElementsPerGRF) {
           // ParentWidth tells us that a row of our region cannot cross a
           // possible number of elements addressed by indirect region. Say that
           // the boundary is at the next multiple of ParentWidth.
-          ElementsToBoundary = std::max(ParentWidth - RealIdx % ParentWidth,
-                ElementsToBoundary);
-        } else if (!isa<VectorType>(Indirect->getType())) {
+          ElementsToBoundary = std::max(R.ParentWidth - RealIdx % R.ParentWidth,
+                                        ElementsToBoundary);
+        } else if (!isa<VectorType>(R.Indirect->getType())) {
           // Use the alignment+offset of the single indirect index, with alignment
           // limited to one GRF.
           if (!Align.isUnknown()) {
             unsigned LogAlign = Align.getLogAlign();
             unsigned ExtraBits = Align.getExtraBits();
-            ExtraBits += (Offset + RealIdx * ElementBytes);
+            ExtraBits += (R.Offset + RealIdx * R.ElementBytes);
             ExtraBits &= ((1 << LogAlign) - 1);
             if (LogAlign >= LogGRFWidth && !ExtraBits) {
               // Start is GRF aligned, so legal width is 1 GRF for <=BDW or
               // 2 GRFs for >=SKL.
               ElementsToBoundary = ElementsPerGRF * GRFsPerIndirect;
-            } else if (LogAlign > (unsigned)genx::log2(ElementBytes) ||
-                       (LogAlign == (unsigned)genx::log2(ElementBytes) &&
+            } else if (LogAlign > (unsigned)genx::log2(R.ElementBytes) ||
+                       (LogAlign == (unsigned)genx::log2(R.ElementBytes) &&
                         ExtraBits == 0)) {
-              LogAlign = std::min(LogGRFWidth, LogAlign) - genx::log2(ElementBytes);
-              ExtraBits = (ExtraBits & (GRFWidth-1)) >> genx::log2(ElementBytes);
+              LogAlign =
+                  std::min(LogGRFWidth, LogAlign) - genx::log2(R.ElementBytes);
+              ExtraBits =
+                  (ExtraBits & (GRFByteSize - 1)) >> genx::log2(R.ElementBytes);
               // We have some alignment, so we can say that the next GRF boundary
               // is (at least) that many elements away, minus the offset from that
               // alignment.
@@ -447,36 +460,36 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
       // Now calculate what subregion we can fit in before the boundary
       // calculated above.
       if (Allow2D && StrideValid) {
-        if ((!VStride || exactLog2(VStride) >= 0) && exactLog2(Width) >= 0
-          && Width <= 16 && !(Idx % Width)
-            && ElementsToBoundary >= (Width - 1) * Stride + 1) {
+        if ((!R.VStride || exactLog2(R.VStride) >= 0) &&
+            exactLog2(R.Width) >= 0 && R.Width <= 16 && !(Idx % R.Width) &&
+            ElementsToBoundary >= (R.Width - 1) * R.Stride + 1) {
           // The vstride and width are legal, and we're at the start of a
           // row, and ElementsToBoundary is big enough for at least one
           // whole row, so we can potentially do more than one whole row at a
           // time. See how many we can fit, without including the "slack"
           // at the end of the last row.
           unsigned NumRows = 0;
-          if (VStride == 0) // Avoid divide by 0
-            NumRows = (NumElements - Idx) / Width;
+          if (R.VStride == 0) // Avoid divide by 0
+            NumRows = (R.NumElements - Idx) / R.Width;
           else {
-            unsigned LastElementOfRow = (Width - 1) * Stride;
-            unsigned Slack = VStride - (LastElementOfRow + 1);
-            NumRows = (ElementsToBoundary + Slack) / VStride;
+            unsigned LastElementOfRow = (R.Width - 1) * R.Stride;
+            unsigned Slack = R.VStride - (LastElementOfRow + 1);
+            NumRows = (ElementsToBoundary + Slack) / R.VStride;
             if (NumRows) {
-              if (NumRows * Width + Idx > NumElements)
-                NumRows = (NumElements - Idx) / Width;
+              if (NumRows * R.Width + Idx > R.NumElements)
+                NumRows = (R.NumElements - Idx) / R.Width;
             }
           }
-          ValidWidth = (1 << genx::log2(NumRows)) * Width;
+          ValidWidth = (1 << genx::log2(NumRows)) * R.Width;
         }
-        if (ValidWidth == 1 && Idx % Width) {
+        if (ValidWidth == 1 && Idx % R.Width) {
           // That failed. See if we can legally get to the end of the row then
           // the same number of elements again at the start of the next row.
-          unsigned ToEndOfRow = Width - Idx % Width;
+          unsigned ToEndOfRow = R.Width - Idx % R.Width;
           if (exactLog2(ToEndOfRow) >= 0 && ToEndOfRow <= 16) {
-            unsigned NewVStride = VStride + (ToEndOfRow - Width) * Stride;
-            if (exactLog2(NewVStride) >= 0
-                && NewVStride + (ToEndOfRow - 1) * Stride < ElementsToBoundary) {
+            unsigned NewVStride = R.VStride + (ToEndOfRow - R.Width) * R.Stride;
+            if (exactLog2(NewVStride) >= 0 &&
+                NewVStride + (ToEndOfRow - 1) * R.Stride < ElementsToBoundary) {
               // Yes, we can do the end of one row and the same size start of
               // the next row.
               ValidWidth = 2 * ToEndOfRow;
@@ -487,9 +500,9 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
       if (ValidWidth == 1) {
         // That failed. See how many elements we can get, no further than the
         // next end of row.
-        ValidWidth = Width - Idx % Width;
-        if (ValidWidth * Stride - (Stride - 1) > ElementsToBoundary)
-          ValidWidth = (ElementsToBoundary + Stride - 1) / Stride;
+        ValidWidth = R.Width - Idx % R.Width;
+        if (ValidWidth * R.Stride - (R.Stride - 1) > ElementsToBoundary)
+          ValidWidth = (ElementsToBoundary + R.Stride - 1) / R.Stride;
         ValidWidth = 1 << genx::log2(ValidWidth);
       }
       // If the RStride is 0 (which is seen in splat operations) then the
@@ -521,12 +534,12 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
  * be true.
  */
 bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
-    GenXBaling *Baling)
-{
+                                          GenXBaling *Baling) {
   StartWr = ArgStartWr;
   auto Wr = StartWr;
   IGC_ASSERT(GenXIntrinsic::isWrRegion(Wr));
-  Region TotalWrR(Wr, Baling->getBaleInfo(Wr));
+  IGC_ASSERT(Baling);
+  Region TotalWrR = genx::makeRegionFromBaleInfo(Wr, Baling->getBaleInfo(Wr));
   WrR = TotalWrR;
   if (TotalWrR.Mask)
     return false;
@@ -537,7 +550,7 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
     // a sequence of rd-wr pairs.
     if (!GenXIntrinsic::isRdRegion(Rd))
       return false;
-    Region TotalRdR(Rd, Baling->getBaleInfo(Rd));
+    Region TotalRdR = makeRegionFromBaleInfo(Rd, Baling->getBaleInfo(Rd));
     RdR = TotalRdR;
     Input = Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
     EndWr = Wr;
@@ -558,8 +571,9 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
       if (Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum) != Input)
         break;
       // Append to the regions. Give up if either fails.
-      if (!TotalRdR.append(Region(Rd, Baling->getBaleInfo(Rd)))
-          || !TotalWrR.append(Region(Wr, Baling->getBaleInfo(Wr))))
+      if (!TotalRdR.append(
+              makeRegionFromBaleInfo(Rd, Baling->getBaleInfo(Rd))) ||
+          !TotalWrR.append(makeRegionFromBaleInfo(Wr, Baling->getBaleInfo(Wr))))
         break;
       SeenWaitingFor |= Wr == WaitingFor;
       // If both regions are now legal (have a whole number of rows), then
@@ -603,8 +617,8 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
     // Append to the regions. Give up if either fails.
     Region InR(In);
     InR.Offset = TotalRdR.NumElements * TotalRdR.ElementBytes;
-    if (!TotalRdR.append(InR)
-        || !TotalWrR.append(Region(Wr, Baling->getBaleInfo(Wr))))
+    if (!TotalRdR.append(InR) ||
+        !TotalWrR.append(makeRegionFromBaleInfo(Wr, Baling->getBaleInfo(Wr))))
       break;
     SeenWaitingFor |= Wr == WaitingFor;
     // Append the constant.
@@ -799,7 +813,7 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
   // if a region has a constant-vector as its indirect offsets,
   // try to recognize the pattern, and replace it with
   // a direct region with v-stride, h-stride, h-width
-  Region R(Inst, BaleInfo());
+  Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
   if (R.Indirect == nullptr)
     return Inst;
 
@@ -909,8 +923,8 @@ static Value *simplifyRegionWrite(Instruction *Inst) {
   //
   if (GenXIntrinsic::isRdRegion(NewVal)) {
     Instruction *B = cast<Instruction>(NewVal);
-    Region InnerR(B, BaleInfo());
-    Region OuterR(Inst, BaleInfo());
+    Region InnerR = makeRegionFromBaleInfo(B, BaleInfo());
+    Region OuterR = makeRegionFromBaleInfo(Inst, BaleInfo());
     if (OuterR != InnerR)
       return nullptr;
 
@@ -945,8 +959,8 @@ static Value *simplifyRegionRead(Instruction *Inst) {
     // =>
     // replace C by B
     Instruction *WI = cast<Instruction>(Input);
-    Region R1(WI, BaleInfo());
-    Region R2(Inst, BaleInfo());
+    Region R1 = makeRegionFromBaleInfo(WI, BaleInfo());
+    Region R2 = makeRegionFromBaleInfo(Inst, BaleInfo());
     if (R1 == R2) {
       Value *B = WI->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
       if (B->getType() == Inst->getType())

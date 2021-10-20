@@ -192,11 +192,11 @@ SPDX-License-Identifier: MIT
 #include "GenXGotoJoin.h"
 #include "GenXLiveness.h"
 #include "GenXModule.h"
-#include "GenXRegion.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
+
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SetVector.h"

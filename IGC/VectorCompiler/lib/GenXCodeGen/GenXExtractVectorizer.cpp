@@ -22,8 +22,8 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "GENX_ExtractVectorizer"
 
 #include "GenX.h"
-#include "GenXRegion.h"
 #include "GenXUtil.h"
+
 #include "llvm/Analysis/CFG.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -169,7 +169,7 @@ void GenXExtractVectorizer::processExtracted(Value *V)
     }
     // Get the index, possibly as index+offset if the index is a balable add
     // instruction.
-    Region R = Region::getWithOffset(user);
+    Region R = makeRegionWithOffset(user);
     // Add to the bucket. The bucket is indexed by:
     //  - the opcode of the binaryoperator or trunc/zext/sext using the
     //    extracted value

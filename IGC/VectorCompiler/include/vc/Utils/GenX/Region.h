@@ -220,6 +220,23 @@ protected:
   Value *getStartIdx(const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
 };
 
+/* Note: Region is a more specialized class for constructing Regions,
+   the primary difference is that Region class requires only Value interface
+   and is not aware about Instruction stuff.
+*/
+class Region : public CMRegion {
+public:
+  // Default constructor: assume single element
+  Region() : CMRegion() {}
+  // Construct from a type.
+  Region(Type *Ty, const DataLayout *DL = nullptr) : CMRegion(Ty, DL) {};
+  // Construct from a value.
+  Region(Value *V, const DataLayout *DL = nullptr) : CMRegion(V, DL) {};
+  // Construct from a bitmap of which elements to set (legal 1D region)
+  Region(unsigned Bits, unsigned ElementBytes)
+    : CMRegion(Bits, ElementBytes) {};
+};
+
 inline raw_ostream &operator<<(raw_ostream &OS, const CMRegion &R) {
   R.print(OS);
   return OS;

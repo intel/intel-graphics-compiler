@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 
 #include "GenX.h"
 #include "GenXUtil.h"
+#include "GenXRegionUtils.h"
 
 #include "Probe/Assertion.h"
 

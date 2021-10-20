@@ -68,7 +68,7 @@ set(CODEGEN_SOURCES
   GenXRawSendRipper.cpp
   GenXReduceIntSize.cpp
   GenXInstCombineCleanup.cpp
-  GenXRegion.cpp
+  GenXRegionUtils.cpp
   GenXRegionCollapsing.cpp
   GenXRematerialization.cpp
   GenXSimdCFConformance.cpp
