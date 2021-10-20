@@ -158,7 +158,7 @@ INLINE ulong16 OVERLOADABLE __builtin_IB_umod( ulong16 N, ulong16 D )
 // ----------------------------------------------------------------------------
 INLINE long OVERLOADABLE __builtin_IB_sdiv( long N, long D )
 {
-    ulong Q = __builtin_IB_emulate_udiv( __builtin_spirv_OpenCL_s_abs_i64(N), __builtin_spirv_OpenCL_s_abs_i64(D), 0 );
+    ulong Q = __builtin_IB_emulate_udiv( SPIRV_OCL_BUILTIN(s_abs, _i64, )(N), SPIRV_OCL_BUILTIN(s_abs, _i64, )(D), 0 );
 
     ulong SIGN =  ( N ^ D ) & 0x8000000000000000;
 
@@ -227,7 +227,7 @@ INLINE long16 OVERLOADABLE __builtin_IB_sdiv( long16 N, long16 D )
 INLINE long OVERLOADABLE __builtin_IB_smod( long N, long D )
 {
     ulong R = 0;
-    __builtin_IB_emulate_udiv(__builtin_spirv_OpenCL_s_abs_i64(N), __builtin_spirv_OpenCL_s_abs_i64(D), &R);
+    __builtin_IB_emulate_udiv(SPIRV_OCL_BUILTIN(s_abs, _i64, )(N), SPIRV_OCL_BUILTIN(s_abs, _i64, )(D), &R);
 
     uchar SIGN = (N < 0);
     return SIGN ? -R : R;

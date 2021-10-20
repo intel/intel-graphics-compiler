@@ -778,7 +778,7 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i8_i32, _Ruchar)(int Si
 ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertSToU, _i16_i32, _Rushort)(int SignedValue)
 {
       //return __builtin_IB_itous_sat((int)SignedValue);
-      int res = __builtin_spirv_OpenCL_s_clamp_i32_i32_i32(SignedValue, 0, (int)USHRT_MAX);
+      int res = SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )(SignedValue, 0, (int)USHRT_MAX);
       return (ushort)res;
 }
 
@@ -3049,7 +3049,7 @@ long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i64_i8, _Rlong_sat)(char S
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i8_i16, _Rchar_sat)(short SignedValue)
 {
       //return __builtin_IB_stoc_sat((short)SignedValue);
-      short res = __builtin_spirv_OpenCL_s_clamp_i16_i16_i16(SignedValue, (short)CHAR_MIN, (short)CHAR_MAX);
+      short res = SPIRV_OCL_BUILTIN(s_clamp, _i16_i16_i16, )(SignedValue, (short)CHAR_MIN, (short)CHAR_MAX);
       return (char)res;
 }
 
@@ -3071,14 +3071,14 @@ long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i64_i16, _Rlong_sat)(short
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i8_i32, _Rchar_sat)(int SignedValue)
 {
       //return __builtin_IB_itoc_sat((int)SignedValue);
-      int res = __builtin_spirv_OpenCL_s_clamp_i32_i32_i32(SignedValue, (int)CHAR_MIN, (int)CHAR_MAX);
+      int res = SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )(SignedValue, (int)CHAR_MIN, (int)CHAR_MAX);
       return (char)res;
 }
 
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(SConvert, _Sat_i16_i32, _Rshort_sat)(int SignedValue)
 {
       //return __builtin_IB_itos_sat((int)SignedValue);
-      int res = __builtin_spirv_OpenCL_s_clamp_i32_i32_i32(SignedValue, (int)SHRT_MIN, (int)SHRT_MAX);
+      int res = SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )(SignedValue, (int)SHRT_MIN, (int)SHRT_MAX);
       return (short)res;
 }
 
@@ -3504,7 +3504,7 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
     uint Lo = (uint)(value & 0x00000000FFFFFFFF);
     float Res_Rounded;
     float NewValue;
-    uint ShiftAmount = __builtin_spirv_OpenCL_clz_i32(Hi);
+    uint ShiftAmount = SPIRV_OCL_BUILTIN(clz, _i32, )((int)Hi);
 
     //For rtn and rtp we need to switch the rounding mode if
     //the sign bit is negative in order get the correct magnitude
