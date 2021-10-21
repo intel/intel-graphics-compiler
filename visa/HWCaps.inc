@@ -622,6 +622,15 @@ SPDX-License-Identifier: MIT
         return 4;
     }
 
+    uint32_t getNumScalarRegisters(void)
+    {
+        if (hasScalarRegister())
+        {
+            return 1;
+        }
+        return 0;
+    }
+
     bool encodeAccWrEn() const
     {
         return true;
@@ -872,6 +881,11 @@ SPDX-License-Identifier: MIT
    bool hasGather4PO() const
    {
        return getPlatform() <= GENX_TGLLP;
+   }
+
+   bool hasScalarRegister() const
+   {
+       return false;
    }
 
    unsigned int getMaxPTSS() const

@@ -161,6 +161,7 @@ class G4_VarBase;
 
 class G4_SpillIntrinsic;
 class G4_FillIntrinsic;
+class G4_PseudoAddrMovIntrinsic;
 
 
 }
@@ -225,8 +226,8 @@ typedef enum  _SB_INST_PIPE
     PIPE_FLOAT = 2,
     PIPE_LONG = 3,
     PIPE_MATH = 4,
-    PIPE_DPAS = 5,
-    PIPE_SEND = 6
+    PIPE_DPAS = 6,
+    PIPE_SEND = 7,
 } SB_INST_PIPE;
 
 
@@ -272,6 +273,7 @@ public:
 class G4_InstMath;
 class G4_InstCF;
 class G4_InstIntrinsic;
+class G4_PseudoAddrMovIntrinsic;
 class G4_InstSend;
 class G4_InstBfn;
 class G4_InstDpas;
@@ -482,6 +484,7 @@ public:
     G4_SpillIntrinsic* asSpillIntrinsic() const;
     bool isFillIntrinsic() const;
     G4_FillIntrinsic* asFillIntrinsic() const;
+    bool isPseudoAddrMovIntrinsic() const;
     bool isSplitIntrinsic() const;
     bool isCallerSave() const;
     bool isCallerRestore() const;
@@ -585,6 +588,12 @@ public:
         return (G4_InstIntrinsic*) this;
     }
 
+    G4_PseudoAddrMovIntrinsic* asPseudoAddrMovIntrinsic() const
+    {
+        MUST_BE_TRUE(isPseudoAddrMovIntrinsic(), "not a fill intrinsic");
+        return const_cast<G4_PseudoAddrMovIntrinsic*>(reinterpret_cast<const G4_PseudoAddrMovIntrinsic*>(this));
+    }
+
     const G4_InstSend* asSendInst() const
     {
         if (!isSend())
@@ -617,11 +626,7 @@ public:
     }
     bool isComprInvariantSrcRegion(G4_SrcRegRegion* src, int srcPos);
 
-    G4_Operand* getSrc(unsigned i) const
-    {
-        MUST_BE_TRUE(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
-        return srcs[i];
-    }
+    G4_Operand* getSrc(unsigned i) const;
     void setSrc(G4_Operand* opnd, unsigned i);
     int getNumSrc() const;
     int getNumDst() const;
@@ -1526,6 +1531,7 @@ enum class Intrinsic
     CalleeSave,
     CalleeRestore,
     FlagSpill,
+    PseudoAddrMov,
     NumIntrinsics
 };
 
@@ -1571,6 +1577,7 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
     {Intrinsic::CalleeSave,     "callee_save",  1,      0,      Phase::RA,              { 0, 0, 0, false, false } },
     {Intrinsic::CalleeRestore,  "callee_restore", 0,    1,      Phase::RA,              { 0, 0, 0, false, false } },
     {Intrinsic::FlagSpill,            "flagSpill",          0,      1,      Phase::RA,       { 0, 0, 0, false, false } },
+    {Intrinsic::PseudoAddrMov,            "pseudo_addr_mov",          1,      8,      Phase::Optimizer,       { 0, 0, 0, false, false } },
 };
 
 namespace vISA
@@ -1578,6 +1585,7 @@ namespace vISA
 class G4_InstIntrinsic : public G4_INST
 {
     const Intrinsic intrinsicId;
+    std::array<G4_Operand*, G4_MAX_INTRINSIC_SRCS> srcs;
 
     // these should be set by RA if intrinsic requires tmp GRF/addr/flag
     int tmpGRFStart;
@@ -1601,6 +1609,26 @@ public:
     {
 
     }
+
+    G4_InstIntrinsic(
+        const IR_Builder& builder,
+        G4_Predicate* prd,
+        Intrinsic intrinId,
+        G4_ExecSize execSize,
+        G4_DstRegRegion* d,
+        G4_Operand* s0,
+        G4_Operand* s1,
+        G4_Operand* s2,
+        G4_Operand* s3,
+        G4_Operand* s4,
+        G4_Operand* s5,
+        G4_Operand* s6,
+        G4_Operand* s7,
+        G4_InstOpts opt);
+
+    G4_Operand* getIntrinsicSrc(unsigned i) const;
+
+    void setIntrinsicSrc(G4_Operand* opnd, unsigned i);
 
     G4_INST* cloneInst() override;
 
@@ -2140,6 +2168,7 @@ class G4_Operand
     friend class G4_InstSend;
     friend class G4_FillIntrinsic;
     friend class G4_SpillIntrinsic;
+    friend class G4_PseudoMovInstrinsic;
     friend class G4_InstDpas;
 
 public:
@@ -2247,6 +2276,7 @@ public:
     bool isTDRReg() const;
     bool isA0() const;
     bool isAddress() const;
+    bool isScalarAddr() const;
 
     const G4_AddrExp* asAddrExp() const
     {
@@ -2527,7 +2557,7 @@ public:
     bool isRegAllocPartaker() const;
 
     bool noScoreBoard() const;
-
+    bool isScalarAddr() const;
     G4_Areg* getAreg() const;
 
     virtual unsigned short ExRegNum(bool &valid)
@@ -2852,6 +2882,7 @@ namespace vISA
         bool        isRegAllocPartaker() const { return id != UNDEFINED_VAL; }
         unsigned    getRegAllocPartaker() const { return id;  }
         bool        isAddress()  const { return decl->getRegFile() == G4_ADDRESS; }
+        bool        isScalarAddr()  const { return decl->getRegFile() == G4_SCALAR; }
         const G4_VarBase* getPhyReg() const { return reg.phyReg; }
               G4_VarBase* getPhyReg()       { return reg.phyReg; }
         unsigned    getByteAddr() const;
@@ -3090,6 +3121,7 @@ namespace vISA
         bool isWithSwizzle() const {return (swizzle[0] != '\0');}
         bool isScalar() const;
         bool isAddress() const {return base->isAddress();}
+        bool isScalarAddr() const { return base->isScalarAddr(); }
 
         unsigned short             ExRegNum(bool&) const;
         unsigned short             ExSubRegNum(bool&);
@@ -3270,6 +3302,7 @@ public:
     bool isA0()      const { return base->isA0(); }
     bool isGreg()    const { return base->isGreg(); }
     bool isAddress() const { return base->isAddress(); }
+    bool isScalarAddr() const { return base->isScalarAddr(); }
 
     unsigned short             ExRegNum(bool&);
     unsigned short             ExSubRegNum(bool&);
@@ -3666,6 +3699,10 @@ inline bool G4_Operand::isAddress() const
 {
     return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isAddress();
 }
+inline bool G4_Operand::isScalarAddr() const
+{
+    return isRegRegion() && const_cast<G4_VarBase*>(getBase())->isScalarAddr();
+}
 
 // Inlined members of G4_VarBase
 inline bool G4_VarBase::isAreg() const
@@ -3763,6 +3800,12 @@ inline bool G4_VarBase::isAddress() const
     if (isRegVar())
         return asRegVar()->isAddress();
     return isPhyAreg() && asAreg()->isA0();
+}
+inline bool G4_VarBase::isScalarAddr() const
+{
+    if (isRegVar())
+        return asRegVar()->isScalarAddr();
+    return false;
 }
 inline bool G4_VarBase::isSpReg() const
 {
@@ -3944,6 +3987,17 @@ public:
     }
 };
 
+inline G4_Operand* G4_INST::getSrc(unsigned i) const
+{
+    if (isPseudoAddrMovIntrinsic())
+        return asIntrinsicInst()->getIntrinsicSrc(i);
+    else
+    {
+        MUST_BE_TRUE(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
+        return srcs[i];
+    }
+}
+
 inline int G4_INST::getNumSrc() const
 {
     return isIntrinsic() ? asIntrinsicInst()->getNumSrc()
@@ -3991,6 +4045,11 @@ inline G4_FillIntrinsic* G4_INST::asFillIntrinsic() const
 {
     MUST_BE_TRUE(isFillIntrinsic(), "not a fill intrinsic");
     return const_cast<G4_FillIntrinsic*>(reinterpret_cast<const G4_FillIntrinsic*>(this));
+}
+
+inline bool G4_INST::isPseudoAddrMovIntrinsic() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoAddrMov;
 }
 
 inline bool G4_INST::isSplitIntrinsic() const
@@ -4131,6 +4190,26 @@ private:
     G4_Declare* fp = nullptr;
     uint32_t numRows = 0;
     uint32_t offset = InvalidOffset;
+};
+
+class G4_PseudoAddrMovIntrinsic : public G4_InstIntrinsic
+{
+public:
+    G4_PseudoAddrMovIntrinsic(
+        const IR_Builder& builder,
+        Intrinsic intrinId,
+        G4_DstRegRegion* d,
+        G4_Operand* s0,
+        G4_Operand* s1,
+        G4_Operand* s2,
+        G4_Operand* s3,
+        G4_Operand* s4,
+        G4_Operand* s5,
+        G4_Operand* s6,
+        G4_Operand* s7) :
+        G4_InstIntrinsic(builder, nullptr, intrinId, G4_ExecSize(1), d, s0, s1, s2, s3, s4, s5, s6, s7, InstOpt_NoOpt)
+    {
+    }
 };
 
 class G4_FillIntrinsic : public G4_InstIntrinsic

@@ -381,9 +381,10 @@ G4_Type G4_INST::getExecType() const
 
     for (unsigned i = 0; i < G4_MAX_SRCS; i++)
     {
-        if (srcs[i] != NULL)
+        G4_Operand* src = getSrc(i);
+        if (src != NULL)
         {
-            G4_Type srcType = srcs[i]->getType();
+            G4_Type srcType = src->getType();
             if (TypeSize(srcType) >= TypeSize(execType))
             {
                 if (IS_DTYPE(srcType))
@@ -435,7 +436,8 @@ G4_Type G4_INST::getExecType2() const
 
     for (unsigned i = 0; i < G4_MAX_SRCS; i++)
     {
-        if (srcs[i] == NULL)
+        G4_Operand* src = getSrc(i);
+        if (src == NULL)
         {
             continue;
         }
@@ -462,7 +464,7 @@ G4_Type G4_INST::getExecType2() const
         }
         else if (IS_DFTYPE(srcType) && !IS_DFTYPE(execType))
         {
-            execType = srcs[i]->getType();
+            execType = src->getType();
             break;
         }
         else if ((IS_FTYPE(srcType) || srcType == Type_VF) &&
@@ -1018,6 +1020,7 @@ bool G4_INST::isJEUPipeInstructionXe() const
     return false;
 }
 
+
 bool G4_INST::isLongPipeInstructionXe() const
 {
     if (isJEUPipeInstructionXe())
@@ -1035,6 +1038,7 @@ bool G4_INST::isLongPipeInstructionXe() const
     {
         return false;
     }
+
 
     const G4_Operand* dst = getDst();
     if (dst && isLongPipeType(dst->getType()))
@@ -1074,6 +1078,7 @@ bool G4_INST::isIntegerPipeInstructionXe() const
         return false;
     }
 
+
     if (builder.hasFixedCycleMathPipeline() &&
         isMath())
     {
@@ -1109,6 +1114,7 @@ bool G4_INST::isFloatPipeInstructionXe() const
     {
         return false;
     }
+
 
     if (isLongPipeInstructionXe())
     {
@@ -1186,6 +1192,7 @@ SB_INST_PIPE G4_INST::getDataTypePipeXe(G4_Type type)
 
 SB_INST_PIPE G4_INST::getInstructionPipeXe()
 {
+
     if (isLongPipeInstructionXe())
     {
         return PIPE_LONG;
@@ -3291,9 +3298,10 @@ bool G4_INST::isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const
 
     for (unsigned i = 0; i < G4_MAX_SRCS; i++)
     {
-        if (srcs[i] && srcs[i]->isSrcRegRegion() && srcs[i]->asSrcRegRegion()->getBase()->isRegVar())
+        G4_Operand* src = getSrc(i);
+        if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->getBase()->isRegVar())
         {
-            srcs_valid[i] = srcs[i]->asSrcRegRegion()->obeySymbolRegRule();
+            srcs_valid[i] = src->asSrcRegRegion()->obeySymbolRegRule();
             if (!srcs_valid[i])
                 obeyRule = false;
         }
@@ -3343,15 +3351,15 @@ bool G4_INST::isOptBarrier() const
 
     for (int i = 0; i < getNumSrc(); i++)
     {
-        if (srcs[i])
+        if (getSrc(i))
         {
-            if (srcs[i]->isAreg())
+            if (getSrc(i)->isAreg())
             {
-                if (srcs[i]->isNReg() ||
-                    srcs[i]->isSrReg() ||
-                    srcs[i]->isCrReg() ||
-                    srcs[i]->isTmReg() ||
-                    srcs[i]->isTDRReg())
+                if (getSrc(i)->isNReg() ||
+                    getSrc(i)->isSrReg() ||
+                    getSrc(i)->isCrReg() ||
+                    getSrc(i)->isTmReg() ||
+                    getSrc(i)->isTDRReg())
                 {
                     return true;
                 }
@@ -3483,19 +3491,20 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         auto numSrcOpnds = getNumSrc();
         for (int i = 0; i < numSrcOpnds; i++)
         {
-            if (srcs[i])
+            if (getSrc(i))
             {
                 output << "  ";
                 if (symbol_srcs != NULL)
                 {
-                    srcs[i]->emit(output, symbol_srcs[i]);  // emit symbolic/physical register depends on the flag
+                    getSrc(i)->emit(output, symbol_srcs[i]);  // emit symbolic/physical register depends on the flag
                 }
                 else
                 {
-                    srcs[i]->emit(output, false);   // emit physical register
+                    getSrc(i)->emit(output, false);   // emit physical register
                 }
             }
         }
+
         if (isFillIntrinsic())
         {
             output << "  ";
@@ -3622,7 +3631,7 @@ void G4_INST::emit_options(std::ostream& output) const
 
     ////////////////////////////////////////////////////////////
     // SWSB options
-    if (distanceHonourInstruction() && getDistance() != 0) {
+    if (getDistance() != 0) {
         std::stringstream dists;
         switch (getDistanceTypeXe()) {
         case DistanceType::DIST:                    break;
@@ -4366,8 +4375,6 @@ void printRegVarOff(std::ostream&  output,
                 }
                 else if (baseVar->getPhyReg()->isAreg())
                 {
-                    MUST_BE_TRUE(regOff == 0, ERROR_INTERNAL_ARGUMENT);
-
                     (static_cast<G4_Areg*>(baseVar->getPhyReg()))->emit(output);
                     if (!baseVar->isNullReg())
                     {
@@ -4444,7 +4451,9 @@ void printRegVarOff(std::ostream&  output,
                 {
                     (static_cast<G4_Areg*>(baseVar->getPhyReg()))->emit(output);
                     output << '.' << (baseVar->getPhyRegOff() + subRegOffset);
-                    output << ", " << immAddrOff << ']';
+                    {
+                        output << ", " << immAddrOff << ']';
+                    }
                 }
             }
             else //No register assigned yet
@@ -4458,7 +4467,9 @@ void printRegVarOff(std::ostream&  output,
         {
             (static_cast<G4_Areg*>(base))->emit(output);
             output << '.' << subRegOffset;
-            output << ", " << immAddrOff << ']';
+            {
+                output << ", " << immAddrOff << ']';
+            }
         }
         else
         {
@@ -5558,6 +5569,10 @@ void G4_Declare::emit(std::ostream &output) const
     else if (regFile == G4_ADDRESS)
     {
         output << 'a';
+    }
+    else if (regFile == G4_SCALAR)
+    {
+        output << 's';
     }
     else if (regFile == G4_FLAG)
     {
@@ -7049,6 +7064,12 @@ void G4_INST::setPredicate(G4_Predicate* p)
 
 void G4_INST::setSrc(G4_Operand* opnd, unsigned i)
 {
+    if (isPseudoAddrMovIntrinsic())
+    {
+        asIntrinsicInst()->setIntrinsicSrc(opnd, i);
+        return;
+    }
+
     MUST_BE_TRUE(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
 
     if (srcs[i] != NULL)
@@ -8226,6 +8247,75 @@ G4_INST* G4_InstSend::cloneInst()
     }
 
     return newInst;
+}
+
+G4_InstIntrinsic::G4_InstIntrinsic(
+    const IR_Builder& builder,
+    G4_Predicate* prd,
+    Intrinsic intrinId,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* d,
+    G4_Operand* s0,
+    G4_Operand* s1,
+    G4_Operand* s2,
+    G4_Operand* s3,
+    G4_Operand* s4,
+    G4_Operand* s5,
+    G4_Operand* s6,
+    G4_Operand* s7,
+    G4_InstOpts opt) :
+    G4_INST(builder, prd, G4_intrinsic, nullptr, g4::NOSAT, execSize, d, nullptr, nullptr, nullptr, opt),
+    intrinsicId(intrinId), tmpGRFStart(-1), tmpAddrStart(-1), tmpFlagStart(-1)
+{
+    srcs[0] = s0;
+    srcs[1] = s1;
+    srcs[2] = s2;
+    srcs[3] = s3;
+    srcs[4] = s4;
+    srcs[5] = s5;
+    srcs[6] = s6;
+    srcs[7] = s7;
+
+    resetRightBound(s0);
+    resetRightBound(s1);
+    resetRightBound(s2);
+    resetRightBound(s3);
+    resetRightBound(s4);
+    resetRightBound(s5);
+    resetRightBound(s6);
+    resetRightBound(s7);
+
+    associateOpndWithInst(s0, this);
+    associateOpndWithInst(s1, this);
+    associateOpndWithInst(s2, this);
+    associateOpndWithInst(s3, this);
+    associateOpndWithInst(s4, this);
+    associateOpndWithInst(s5, this);
+    associateOpndWithInst(s6, this);
+    associateOpndWithInst(s7, this);
+}
+
+G4_Operand* G4_InstIntrinsic::getIntrinsicSrc(unsigned i) const
+{
+    MUST_BE_TRUE(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
+    return srcs[i];
+}
+
+void G4_InstIntrinsic::setIntrinsicSrc(G4_Operand* opnd, unsigned i)
+{
+    MUST_BE_TRUE(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
+
+    if (srcs[i] != NULL)
+    {
+        if (srcs[i]->getInst() == (G4_INST *)this)
+        {
+            srcs[i]->setInst(NULL);
+        }
+    }
+    srcs[i] = opnd;
+
+    associateOpndWithInst(opnd, (G4_INST*)this);
+    resetRightBound(opnd);
 }
 
 G4_INST* G4_InstIntrinsic::cloneInst()

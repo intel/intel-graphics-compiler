@@ -188,7 +188,7 @@ unsigned short G4_DstRegRegion::ExSubRegNum(bool &valid) {
                 int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
                 if (thisOpSize > declOpSize)
                 {
-                    MUST_BE_TRUE((thisOpSize/declOpSize) == 2 || (thisOpSize/declOpSize) == 4,
+                    MUST_BE_TRUE((thisOpSize/declOpSize) == 2 || (thisOpSize/declOpSize) == 4 || (thisOpSize / declOpSize) == 8,
                         ERROR_DATA_RANGE("operand size"));
                     unsigned shiftVal = ((thisOpSize/declOpSize) == 2) ? 1 : 2;
                     subRegNum >>= shiftVal;

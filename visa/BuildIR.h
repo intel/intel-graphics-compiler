@@ -800,6 +800,10 @@ public:
     // which are all allocated as a UW. name is allocated by caller
     G4_Declare* createFlag(uint16_t numFlagElements, const char* name);
 
+    G4_Declare* createTempScalar(uint16_t numFlagElements, const char* prefix);
+
+    G4_Declare* createScalar(uint16_t numFlagElements, const char* name);
+
     G4_Declare* createPreVar(
         PreDefinedVarsInternal preDefVar_index, unsigned short numElements, G4_Type type);
 
@@ -1258,6 +1262,8 @@ public:
         G4_Predicate* prd, Intrinsic intrinId, G4_ExecSize execSize,
         G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
         G4_InstOpts options);
+
+    G4_INST* createIntrinsicAddrMovInst(Intrinsic intrinId, G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1, G4_Operand* src2, G4_Operand* src3, G4_Operand* src4, G4_Operand* src5, G4_Operand* src6, G4_Operand* src7, bool addToInstList);
 
     G4_INST* createNop(G4_InstOpts options);
     G4_INST* createSync(G4_opcode syncOp, G4_Operand* src);

@@ -63,7 +63,7 @@ G4_Declare* DeclarePool::createDeclare(
     }
     dcl->setRegVar(regVar);
 
-    if (regFile == G4_ADDRESS)
+    if (regFile == G4_ADDRESS || regFile == G4_SCALAR)
     {
         dcl->setSubRegAlign(Any);
     }
@@ -679,6 +679,7 @@ void IR_Builder::createBuiltinDecls()
         1,
         Type_UD);
     builtinA0->getRegVar()->setPhyReg(phyregpool.getAddrReg(), 0);
+
     builtinA0Dot2 = createDeclareNoLookup(
         "BuiltinA0Dot2",  //a0.2
         G4_ADDRESS,
@@ -1069,6 +1070,19 @@ G4_Declare* IR_Builder::createFlag(uint16_t numFlagElements, const char* name)
     uint32_t numWords = (numFlagElements + 15) / 16;
     G4_Declare* dcl = createDeclareNoLookup(name, G4_FLAG, numWords, 1, Type_UW);
     dcl->setNumberFlagElements((uint8_t)numFlagElements);
+    return dcl;
+}
+
+G4_Declare* IR_Builder::createTempScalar(uint16_t numFlagElements, const char* prefix)
+{
+    const char* name = getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++);
+    G4_Declare* dcl = createDeclareNoLookup(name, G4_SCALAR, numFlagElements, 1, Type_UB);
+    return dcl;
+}
+
+G4_Declare* IR_Builder::createScalar(uint16_t numFlagElements, const char* name)
+{
+    G4_Declare* dcl = createDeclareNoLookup(name, G4_SCALAR, numFlagElements, 1, Type_UB);
     return dcl;
 }
 
@@ -2126,6 +2140,35 @@ G4_INST* IR_Builder::createInternalIntrinsicInst(
     auto ii = createIntrinsicInst(prd, intrinId, execSize, dst, src0, src1, src2, options, false);
 
     return ii;
+}
+
+G4_INST* IR_Builder::createIntrinsicAddrMovInst(
+    Intrinsic intrinId,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0, G4_Operand* src1, G4_Operand* src2, G4_Operand* src3,
+    G4_Operand* src4, G4_Operand* src5, G4_Operand* src6, G4_Operand* src7,
+    bool addToInstList)
+{
+    G4_INST* i = nullptr;
+    assert(intrinId == Intrinsic::PseudoAddrMov && "expect pseudo_mov op");
+
+    i = new (mem) G4_PseudoAddrMovIntrinsic(*this, intrinId, dst, src0, src1, src2, src3, src4, src5, src6, src7);
+
+    if (addToInstList)
+    {
+        i->setCISAOff(curCISAOffset);
+
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            i->setLocation(allocateMDLocation(curLine, curFile));
+        }
+
+        instList.push_back(i);
+    }
+
+    instAllocList.push_back(i);
+
+    return i;
 }
 
 G4_MathOp IR_Builder::Get_MathFuncCtrl(ISA_Opcode op, G4_Type type)

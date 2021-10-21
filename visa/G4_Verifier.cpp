@@ -1236,6 +1236,10 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
     auto useGivenType = [](G4_INST* I, G4_Type GivenTy) -> bool
     {
         G4_Operand* dst = I->getDst();
+        if (I->isPseudoAddrMovIntrinsic())
+        {
+            return false;
+        }
         if (dst && !dst->isNullReg())
         {
             if (dst->getType() == GivenTy)

@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #include "common.h"
 
 #define G4_MAX_SRCS       4
-
+#define G4_MAX_INTRINSIC_SRCS       8
 #define UNDEFINED_VAL   0xFFFFFFFF
 #define UNDEFINED_SHORT 0x8000
 #define UNDEFINED_EXEC_SIZE 0xFF
@@ -281,6 +281,7 @@ enum G4_RegFileKind
     G4_ADDRESS     = 0x2,   // architectural register file
     G4_INPUT       = 0x4,   // input payload register
     G4_FLAG        = 0x20,
+    G4_SCALAR      = 0x40,
 };
 
 //
