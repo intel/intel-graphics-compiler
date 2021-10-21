@@ -292,7 +292,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                     {
                         G4_Operand* src = inst->getSrc(i);
                         G4_VarBase* srcPtr = (src && src->isSrcRegRegion()) ? src->asSrcRegRegion()->getBase() : nullptr;
-                        if (srcPtr != nullptr && srcPtr->isRegVar())
+                        //We don't support using "r[a0.0]" as address expression.
+                        //For instructions like following, it's not point-to propagation for simdShuffle and add64_i_i_i_i.
+                        //(W) mov (1)              simdShuffle(0,0)<1>:d  r[A0(0,0), 0]<0;1,0>:d
+                        //    pseudo_mad (16)      add64_i_i_i_i(0,0)<1>:d  0x6:w  simdShuffle(0,0)<0;0>:d  rem_i_i_i_i(0,0)<1;0>:d // $470:
+                        //    shl (16)             add64_i_i_i_i(0,0)<1>:d  add64_i_i_i_i(0,0)<1;1,0>:d  0x2:w // $472:
+                        if (srcPtr != nullptr && srcPtr->isRegVar() && ptr != srcPtr && src->getRegAccess() != IndirGRF)
                         {
                             std::vector<G4_RegVar*>::iterator addrDst = std::find(addrTakenDsts.begin(), addrTakenDsts.end(), srcPtr->asRegVar());
                             if (addrDst != addrTakenDsts.end())
