@@ -486,10 +486,7 @@ void CompileUnit::addSourceLine(DIE* Die, DIType* Ty)
 
 void CompileUnit::addRegisterLoc(IGC::DIEBlock* TheDie, unsigned DWReg, int64_t Offset, const llvm::Instruction* dbgInst)
 {
-    if (isa<llvm::DbgDeclareInst>(dbgInst))
-        addRegisterOffset(TheDie, DWReg, Offset);
-    else
-        addRegisterOp(TheDie, DWReg);
+    addRegisterOp(TheDie, DWReg);
 }
 
 /// addRegisterOp - Add register operand.
