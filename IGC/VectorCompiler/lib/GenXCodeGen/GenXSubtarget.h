@@ -85,6 +85,9 @@ private:
 
   // Only generate warning when callable is used in the middle of the kernel
   bool WarnCallable = false;
+
+  // Size of one general register in bytes.
+  unsigned GRFByteSize = 32;
   // Some targets do not support i64 ops natively, we have an option to emulate
   bool EmulateLongLong = false;
 
@@ -126,7 +129,8 @@ public:
   GenXSubtarget(const Triple &TT, const std::string &CPU,
                 const std::string &FS);
 
-  unsigned getGRFByteSize() const { return 32; }
+  // GRF size in bytes.
+  unsigned getGRFByteSize() const { return GRFByteSize; }
 
   bool isOCLRuntime() const { return OCLRuntime; }
 
