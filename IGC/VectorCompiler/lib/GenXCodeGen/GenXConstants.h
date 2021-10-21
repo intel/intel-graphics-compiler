@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Instructions.h"
 
+#include "Probe/Assertion.h"
+
 namespace llvm {
 namespace genx {
 
@@ -60,6 +62,8 @@ public:
                  SmallVectorImpl<Instruction *> *AddedInstructions = nullptr)
       : C(C), User(User), Subtarget(InSubtarget), DL(InDL),
         AddedInstructions(AddedInstructions) {
+    IGC_ASSERT_MESSAGE(!C->getType()->isAggregateType(),
+                       "aggregate types are not supported by constant loader");
     analyze();
   }
 

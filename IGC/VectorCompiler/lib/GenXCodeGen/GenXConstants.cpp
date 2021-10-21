@@ -113,9 +113,10 @@ using namespace genx;
 /***********************************************************************
  * loadConstantStruct : insert instructions to load a constant struct
  */
-static Value *loadConstantStruct(Constant *C, Instruction *InsertBefore,
-                                 const GenXSubtarget &Subtarget,
-                                 const DataLayout &DL) {
+static Value *loadConstantStruct(
+    Constant *C, Instruction *InsertPt, const GenXSubtarget &Subtarget,
+    const DataLayout &DL,
+    SmallVectorImpl<Instruction *> *AddedInstructions = nullptr) {
   auto ST = cast<StructType>(C->getType());
   Value *Agg = UndefValue::get(ST);
   for (unsigned i = 0, e = ST->getNumElements(); i != e; ++i) {
@@ -124,10 +125,17 @@ static Value *loadConstantStruct(Constant *C, Instruction *InsertBefore,
       continue;
     Value *LoadedEl = nullptr;
     if (isa<StructType>(El->getType()))
-      LoadedEl = loadConstantStruct(El, InsertBefore, Subtarget, DL);
-    else
-      LoadedEl = ConstantLoader(El, Subtarget, DL).load(InsertBefore);
-    Agg = InsertValueInst::Create(Agg, LoadedEl, i, "loadstruct", InsertBefore);
+      LoadedEl =
+          loadConstantStruct(El, InsertPt, Subtarget, DL, AddedInstructions);
+    else {
+      LoadedEl = ConstantLoader(El, Subtarget, DL, nullptr, AddedInstructions)
+                     .loadBig(InsertPt);
+    }
+    auto *InsertInst =
+        InsertValueInst::Create(Agg, LoadedEl, i, "loadstruct", InsertPt);
+    Agg = InsertInst;
+    if (AddedInstructions)
+      AddedInstructions->push_back(InsertInst);
   }
   return Agg;
 }
@@ -170,6 +178,12 @@ bool genx::loadNonSimpleConstants(
         continue;
       if (opMustBeConstant(Inst, i))
         continue;
+      if (C->getType()->isStructTy()) {
+        *U = loadConstantStruct(C, Inst, Subtarget, DL, AddedInstructions);
+        Modified = true;
+        continue;
+      }
+
       ConstantLoader CL(C, Subtarget, DL, Inst, AddedInstructions);
       if (CL.needFixingSimple()) {
         Modified = true;
@@ -307,8 +321,10 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
     if (Ret->getNumOperands() && Ret->getParent()->getParent()->getLinkage()
           == GlobalValue::InternalLinkage) {
       if (auto C = dyn_cast<Constant>(Ret->getOperand(0))) {
-        if (!C->getType()->isVoidTy())
+        if (!C->getType()->isVoidTy() && !isa<UndefValue>(C)) {
           Ret->setOperand(0, ConstantLoader(C, Subtarget, DL).load(Ret));
+          Modified = true;
+        }
       }
     }
     return Modified;
