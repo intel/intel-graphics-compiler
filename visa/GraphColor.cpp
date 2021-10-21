@@ -6400,16 +6400,33 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                         }
                     }
 
-                    // For now it is assumed only 8-byte types will appear
-                    // here. If other sized types will also appear then
-                    // augmentation mask also needs to be sent in
-                    // weak edge data structure below.
+                    // If 2 variables have weak edge, they can either fully overlap
+                    // or have no overlap at all. However, if 1 variable exceeds
+                    // 1 value per channel, then partial overlap can be allowed.
+                    // Assume var1 has weak edge with var2. This means both var1
+                    // and var2 are either Default64Bit or Default32Bit and they
+                    // are > 2 GRFs in size. Assume they're 64-bits in size. By definition
+                    // of AugmentationMask::Default64Bit it means the program defines
+                    // var1 in blocks of N GRFs, where N is #GRFs needed to define all
+                    // channels of 1 variable of the type. In case of SIMD16, GRF row
+                    // size = 32 bytes, N = 4 GRFs. This means 4 GRFs are needed to
+                    // define all 16 channels of a 64-bit variable.
+                    //
+                    // Every block of N GRFs is defined using mask M0, ie for row4, row8, row12,
+                    // etc. mask offset used is reset. This means if var1 is 16 GRFs and
+                    // var2 is 4 GRFs, it is safe to overlap var2 every 4 rows of var1.
+
+
+                    auto simdSize = kernel.getSimdSize();
+                    auto numElemsPerGRF = numEltPerGRF<Type_UQ>();
+                    auto numGRFPerBlock = simdSize / numElemsPerGRF;
+
                     for (unsigned r = pvar; r < (pvar + numRegs); r++)
                     {
                         auto use = regUsage.getWeakEdgeUse(r);
-                        if (use == 0 || use == (r - pvar + 1))
+                        if (use == 0 || use == ((r - pvar + 1) % numGRFPerBlock))
                         {
-                            regUsage.setWeakEdgeUse(r, r - pvar + 1);
+                            regUsage.setWeakEdgeUse(r, (r - pvar + 1) % numGRFPerBlock);
                         }
                         else
                         {
@@ -10120,7 +10137,6 @@ int GlobalRA::coloringRegAlloc()
                     Rematerialization remat(kernel, liveAnalysis, coloring, rpe, *this);
                     remat.run();
                     rematDone = true;
-
                     // Re-run GRA loop only if remat caused changes to IR
                     rerunGRA |= remat.getChangesMade();
                 }
