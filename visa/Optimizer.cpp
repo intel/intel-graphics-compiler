@@ -1270,7 +1270,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(initializePayload,       vISA_InitPayload,             TimerID::NUM_TIMERS);
     INITIALIZE_PASS(cleanupBindless,         vISA_enableCleanupBindless,   TimerID::OPTIMIZER);
     INITIALIZE_PASS(countGRFUsage,           vISA_PrintRegUsage,           TimerID::MISC_OPTS);
-    INITIALIZE_PASS(changeMoveType,          vISA_ChangeMoveType,          TimerID::MISC_OPTS);
+    INITIALIZE_PASS(changeMoveType,          vISA_nonALTMode,              TimerID::MISC_OPTS);
     INITIALIZE_PASS(reRAPostSchedule,        vISA_ReRAPostSchedule,        TimerID::OPTIMIZER);
     INITIALIZE_PASS(accSubBeforeRA,          vISA_accSubBeforeRA,          TimerID::OPTIMIZER);
     INITIALIZE_PASS(accSubPostSchedule,      vISA_accSubstitution,         TimerID::OPTIMIZER);

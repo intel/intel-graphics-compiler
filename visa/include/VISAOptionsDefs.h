@@ -77,7 +77,7 @@ DEF_VISA_OPTION(vISA_StructurizerCF,        ET_BOOL, "-noSCF",           "-noSCF
 DEF_VISA_OPTION(vISA_EnableScalarJmp,       ET_BOOL, "-noScalarJmp",     UNUSED, true)
 DEF_VISA_OPTION(vISA_enableCleanupBindless, ET_BOOL, "-cleanBindless",   UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableSplitVariables,  ET_BOOL, "-noSplitVariables", UNUSED, false)
-DEF_VISA_OPTION(vISA_ChangeMoveType,        ET_BOOL, "-ALTMode",         UNUSED, true)
+DEF_VISA_OPTION(vISA_nonALTMode,            ET_BOOL, "-nonALTMode",       UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubstitution,       ET_BOOL, "-noAccSub",          UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubBeforeRA,        ET_BOOL, "-noAccSubBRA",          UNUSED, false)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",    UNUSED, true)
