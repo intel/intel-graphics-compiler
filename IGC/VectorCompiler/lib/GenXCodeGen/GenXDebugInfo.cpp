@@ -1134,9 +1134,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   const auto &ST = getAnalysis<TargetPassConfig>()
       .getTM<GenXTargetMachine>()
       .getGenXSubtarget();
-  auto *FGA = &getAnalysis<FunctionGroupAnalysis>();
-  FunctionGroup *currentFG = FGA->getAnyGroup(&PI.FIs.front().F);
-  auto &RA = (getAnalysis<GenXVisaRegAllocWrapper>().getFGPassImpl(currentFG));
+  auto &RA = getAnalysis<GenXVisaRegAlloc>();
 
   GenXFunctionPtrList GFPointers = initializeDebugEmitter(
       *Emitter, DebugOpts, PI,
@@ -1185,7 +1183,7 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXModule>();
   AU.addRequired<TargetPassConfig>();
-  AU.addRequired<GenXVisaRegAllocWrapper>();
+  AU.addRequired<GenXVisaRegAlloc>();
   AU.addRequired<CallGraphWrapperPass>();
   AU.setPreservesAll();
 }
@@ -1273,7 +1271,7 @@ INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_DEPENDENCY(GenXModule)
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
-INITIALIZE_PASS_DEPENDENCY(GenXVisaRegAllocWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXVisaRegAlloc)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 INITIALIZE_PASS_END(GenXDebugInfo, "GenXDebugInfo", "GenXDebugInfo", false,
                     true /*analysis*/)

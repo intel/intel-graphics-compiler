@@ -516,24 +516,26 @@ void initializeGenXFuncBalingPass(PassRegistry &);
 //----------------------------------------------------------------------
 // The GenXGroupBaling analysis pass
 // (used for the second baling just before GenXLiveRanges)
-class GenXGroupBaling : public FGPassImplInterface,
-                        public IDMixin<GenXGroupBaling>,
-                        public GenXBaling {
+class GenXGroupBaling : public FunctionGroupPass, public GenXBaling {
 public:
-  explicit GenXGroupBaling(BalingKind Kind = BalingKind::BK_Legalization,
-                           GenXSubtarget *ST = nullptr)
-      : GenXBaling(Kind, ST) {}
-  static StringRef getPassName() {
+  static char ID;
+  explicit GenXGroupBaling(BalingKind Kind = BalingKind::BK_Legalization, GenXSubtarget *ST = nullptr)
+      : FunctionGroupPass(ID), GenXBaling(Kind, ST) {}
+  StringRef getPassName() const override {
     return "GenX instruction baling analysis for a function group";
   }
-  void releaseMemory() { clear(); }
-  static void getAnalysisUsage(AnalysisUsage &AU);
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunctionGroup(FunctionGroup &FG) override;
+  // createPrinterPass : get a pass to print the IR, together with the GenX
+  // specific analyses
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
   // processFunctionGroup : process all the Functions in a FunctionGroup
   bool processFunctionGroup(FunctionGroup *FG);
 };
-void initializeGenXGroupBalingWrapperPass(PassRegistry &);
-using GenXGroupBalingWrapper = FunctionGroupWrapperPass<GenXGroupBaling>;
+void initializeGenXGroupBalingPass(PassRegistry &);
 
 } // end namespace llvm
 

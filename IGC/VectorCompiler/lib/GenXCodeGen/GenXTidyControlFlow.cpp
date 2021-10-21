@@ -96,11 +96,10 @@ namespace {
     void getAnalysisUsage(AnalysisUsage &AU) const override {
       AU.addPreserved<GenXModule>();
       AU.addPreserved<GenXGroupBaling>();
-      AU.addPreserved<GenXLivenessWrapper>();
+      AU.addPreserved<GenXLiveness>();
       AU.addPreserved<GenXNumbering>();
       AU.addPreserved<FunctionGroupAnalysis>();
-      AU.addRequired<FunctionGroupAnalysis>();
-      AU.addRequired<GenXLivenessWrapper>();
+      AU.addRequired<GenXLiveness>();
       AU.addRequired<LoopInfoWrapperPass>();
       AU.addRequired<TargetPassConfig>();
     }
@@ -132,7 +131,7 @@ INITIALIZE_PASS_BEGIN(GenXTidyControlFlow,
                       "GenXTidyControlFlow", false, false)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
-INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
 INITIALIZE_PASS_END(GenXTidyControlFlow, "GenXTidyControlFlow",
                     "GenXTidyControlFlow", false, false)
 
@@ -149,9 +148,7 @@ bool GenXTidyControlFlow::runOnFunction(Function &F)
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  auto *FGA = &getAnalysis<FunctionGroupAnalysis>();
-  Liveness =
-      &(getAnalysis<GenXLivenessWrapper>().getFGPassImpl(FGA->getAnyGroup(&F)));
+  Liveness = &getAnalysis<GenXLiveness>();
   Modified = false;
   removeEmptyBlocks(&F);
   reorderBlocks(&F);

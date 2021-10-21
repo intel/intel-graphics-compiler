@@ -7,8 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 //
-// This file implements FunctionGroup, FunctionGroupAnalysis.
-// See FunctionGroup.h for more details.
+// This file implements FunctionGroup, FunctionGroupAnalysis and
+// FunctionGroupPass. See FunctionGroup.h for more details.
 //
 // The FunctionGroupPass part was adapted from CallGraphSCCPass.cpp.
 //
@@ -241,6 +241,412 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
 }
 
 //===----------------------------------------------------------------------===//
+// FGPassManager
+//
+/// FGPassManager manages FPPassManagers and FunctionGroupPasses.
+/// It actually now imitates MPPassManager because there is no way
+/// to extend pass manager structure without modification of
+/// LLVM pass managers code.
+/// This pass is injected into pass manager stack instead of top-level
+/// MPPassManager when there is first time FunctionGroupPass is created.
+/// After this manager replaces MPPassManager, it handles all Module and
+/// FunctionGroup passes. This manager itself is module pass so it is
+/// actually contained in list of module passes of module pass manager
+/// as last pass that should be run. However, top-level pass manager do
+/// not know anything about this FGPassManager except that it is indirect
+/// pass manager, so it will not run it directly.
+
+namespace {
+
+class FGPassManager : public ModulePass, public IGCLLVM::PMDataManager {
+public:
+  static char ID;
+  explicit FGPassManager() : ModulePass(ID), IGCLLVM::PMDataManager() {}
+
+  /// run - Execute all of the passes scheduled for execution.  Keep track of
+  /// whether any of the passes modifies the module, and if so, return true.
+  bool runOnModule(Module &M) override;
+
+  bool doInitialization(Module &M) override;
+  bool doFinalization(Module &M) override;
+
+  /// Pass Manager itself does not invalidate any analysis info.
+  void getAnalysisUsage(AnalysisUsage &Info) const override {
+    // FGPassManager needs FunctionGroupAnalysis.
+    Info.addRequired<FunctionGroupAnalysis>();
+    Info.setPreservesAll();
+  }
+
+  StringRef getPassName() const override {
+    return "FunctionGroup Pass Manager";
+  }
+
+  PMDataManager *getAsPMDataManager() override { return this; }
+  Pass *getAsPass() override { return this; }
+
+  // Print passes managed by this manager
+  void dumpPassStructure(unsigned Offset) override {
+    errs().indent(Offset * 2) << "FunctionGroup Pass Manager\n";
+    for (unsigned Index = 0; Index < getNumContainedPasses(); ++Index) {
+      Pass *P = getContainedPass(Index);
+      unsigned DumpOffset = Offset + 1;
+      // Pretend that there is no FGPassManager when we need to dump
+      // module pass indentation.
+      if (isModulePass(P))
+        DumpOffset -= 1;
+      P->dumpPassStructure(DumpOffset);
+      dumpLastUses(P, DumpOffset);
+    }
+  }
+
+  Pass *getContainedPass(unsigned N) {
+    IGC_ASSERT_MESSAGE(N < PassVector.size(), "Pass number out of range!");
+    return static_cast<Pass *>(PassVector[N]);
+  }
+
+  PassManagerType getPassManagerType() const override {
+    return PMT_ModulePassManager;
+  }
+
+private:
+  bool runPassesOnFunctionGroup(unsigned Begin, unsigned End, FunctionGroup &FG);
+  bool runPassOnFunctionGroup(Pass *P, FunctionGroup &FG);
+  bool doFGInitialization(unsigned Begin, unsigned End, FunctionGroupAnalysis &FGA);
+  bool doFGFinalization(unsigned Begin, unsigned End, FunctionGroupAnalysis &FGA);
+  bool runFGPassSequence(unsigned &Pass);
+  bool runModulePassSequence(unsigned &Pass, Module &M);
+};
+
+} // end anonymous namespace.
+
+char FGPassManager::ID = 0;
+
+bool FGPassManager::runPassOnFunctionGroup(Pass *P, FunctionGroup &FG) {
+  bool Changed = false;
+  llvm::PMDataManager *PM = P->getAsPMDataManager();
+
+  if (!PM) {
+    FunctionGroupPass *CGSP = (FunctionGroupPass *)P;
+    {
+      TimeRegion PassTimer(getPassTimer(CGSP));
+      Changed = CGSP->runOnFunctionGroup(FG);
+    }
+    return Changed;
+  }
+
+  // TODO: there may be also SCC pass manager.
+  IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_FunctionPassManager,
+    "Invalid FGPassManager member");
+  FPPassManager *FPP = (FPPassManager *)P;
+
+  // Run pass P on all functions in the current FunctionGroup.
+  for (auto &F : FG) {
+    dumpPassInfo(P, EXECUTION_MSG, ON_FUNCTION_MSG, F->getName());
+    {
+      TimeRegion PassTimer(getPassTimer(FPP));
+      Changed |= FPP->runOnFunction(*F);
+    }
+    F->getContext().yield();
+  }
+  return Changed;
+}
+
+
+/// RunPassesOnFunctionGroup -  Execute sequential passes of pass manager
+/// on the specified FunctionGroup
+bool FGPassManager::runPassesOnFunctionGroup(unsigned Begin, unsigned End,
+                                             FunctionGroup &FG) {
+  bool Changed = false;
+
+  // Run selected passes on current FunctionGroup.
+  for (unsigned PassNo = Begin; PassNo != End; ++PassNo) {
+    Pass *P = getContainedPass(PassNo);
+    dumpRequiredSet(P);
+
+    initializeAnalysisImpl(P);
+
+    // Actually run this pass on the current FunctionGroup.
+    Changed |= runPassOnFunctionGroup(P, FG);
+    if (Changed)
+      dumpPassInfo(P, MODIFICATION_MSG, ON_MODULE_MSG, "");
+    dumpPreservedSet(P);
+
+    verifyPreservedAnalysis(P);
+    removeNotPreservedAnalysis(P);
+    recordAvailableAnalysis(P);
+    removeDeadPasses(P, "", ON_MODULE_MSG);
+  }
+
+  return Changed;
+}
+
+/// Initialize sequential FG passes
+bool FGPassManager::doFGInitialization(unsigned Begin, unsigned End,
+                                       FunctionGroupAnalysis &FGA) {
+  bool Changed = false;
+
+  for (unsigned i = Begin; i != End; ++i) {
+    if (llvm::PMDataManager *PM = getContainedPass(i)->getAsPMDataManager()) {
+      // TODO: SCC PassManager?
+      IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_FunctionPassManager,
+        "Invalid FGPassManager member");
+      IGC_ASSERT(FGA.getModule());
+      Changed |= ((FPPassManager*)PM)->doInitialization(*FGA.getModule());
+    } else {
+      Changed |=
+          ((FunctionGroupPass *)getContainedPass(i))->doInitialization(FGA);
+    }
+  }
+
+  return Changed;
+}
+
+/// Finalize sequential FG passes
+bool FGPassManager::doFGFinalization(unsigned Begin, unsigned End,
+                                     FunctionGroupAnalysis &FGA) {
+  bool Changed = false;
+
+  for (int i = End - 1; i >= static_cast<int>(Begin); --i) {
+    if (llvm::PMDataManager *PM = getContainedPass(i)->getAsPMDataManager()) {
+      // TODO: SCC PassManager?
+      IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_FunctionPassManager,
+        "Invalid FGPassManager member");
+      Changed |= ((FPPassManager*)PM)->doFinalization(*FGA.getModule());
+    } else {
+      Changed |=
+          ((FunctionGroupPass *)getContainedPass(i))->doFinalization(FGA);
+    }
+  }
+
+  return Changed;
+}
+
+bool FGPassManager::runFGPassSequence(unsigned &Pass) {
+  const unsigned BeginPass = Pass;
+  const unsigned NumPasses = getNumContainedPasses();
+  while (Pass < NumPasses && !isModulePass(getContainedPass(Pass)))
+    ++Pass;
+
+  // Function group analysis may be invalidated by previous
+  // module passes so we will need to query it every time we
+  // execute sequence of passes.
+  FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
+  if (!FGA.getModule()) {
+#ifndef NDEBUG
+    llvm::errs() << "warning, trying to access stale FGA!\n";
+#endif
+    return false;
+  }
+  bool Changed = false;
+
+  Changed |= doFGInitialization(BeginPass, Pass, FGA);
+  for (auto *FG : FGA.AllGroups())
+    Changed |= runPassesOnFunctionGroup(BeginPass, Pass, *FG);
+  Changed |= doFGFinalization(BeginPass, Pass, FGA);
+
+  return Changed;
+}
+
+bool FGPassManager::runModulePassSequence(unsigned &Pass, Module &M) {
+  const unsigned BeginPass = Pass;
+  const unsigned NumPasses = getNumContainedPasses();
+  while (Pass < NumPasses && isModulePass(getContainedPass(Pass)))
+    ++Pass;
+
+  bool Changed = false;
+
+  // Copied from MPPassManager in LegacyPassManager.cpp.
+  unsigned InstrCount, ModuleCount = 0;
+  StringMap<std::pair<unsigned, unsigned>> FunctionToInstrCount;
+  bool EmitICRemark = M.shouldEmitInstrCountChangedRemark();
+  // Collect the initial size of the module.
+  if (EmitICRemark) {
+    InstrCount = initSizeRemarkInfo(M, FunctionToInstrCount);
+    ModuleCount = InstrCount;
+  }
+
+  for (unsigned Index = BeginPass; Index < Pass; ++Index) {
+    auto *MP = static_cast<ModulePass *>(getContainedPass(Index));
+    bool LocalChanged = false;
+
+    dumpPassInfo(MP, EXECUTION_MSG, ON_MODULE_MSG, M.getModuleIdentifier());
+    dumpRequiredSet(MP);
+
+    initializeAnalysisImpl(MP);
+
+    {
+      PassManagerPrettyStackEntry X(MP, M);
+      TimeRegion PassTimer(getPassTimer(MP));
+
+      LocalChanged |= MP->runOnModule(M);
+      if (EmitICRemark) {
+        // Update the size of the module.
+        ModuleCount = M.getInstructionCount();
+        if (ModuleCount != InstrCount) {
+          int64_t Delta = static_cast<int64_t>(ModuleCount) -
+            static_cast<int64_t>(InstrCount);
+          emitInstrCountChangedRemark(MP, M, Delta, InstrCount,
+            FunctionToInstrCount);
+          InstrCount = ModuleCount;
+        }
+      }
+    }
+
+    Changed |= LocalChanged;
+    if (LocalChanged)
+      dumpPassInfo(MP, MODIFICATION_MSG, ON_MODULE_MSG,
+        M.getModuleIdentifier());
+    dumpPreservedSet(MP);
+    dumpUsedSet(MP);
+
+    verifyPreservedAnalysis(MP);
+    removeNotPreservedAnalysis(MP);
+    recordAvailableAnalysis(MP);
+    removeDeadPasses(MP, M.getModuleIdentifier(), ON_MODULE_MSG);
+  }
+
+  return Changed;
+}
+
+/// run - Execute all of the passes scheduled for execution.  Keep track of
+/// whether any of the passes modifies the module, and if so, return true.
+bool FGPassManager::runOnModule(Module &M) {
+  bool Changed = false;
+
+  unsigned CurPass = 0;
+  unsigned NumPasses = getNumContainedPasses();
+  while (CurPass != NumPasses) {
+    // We will always have chain of fg passes followed by
+    // module passes repeating until there are no passes.
+    Changed |= runFGPassSequence(CurPass);
+    Changed |= runModulePassSequence(CurPass, M);
+  }
+
+  return Changed;
+}
+
+bool FGPassManager::doInitialization(Module &M) {
+  bool Changed = false;
+
+  // Initialize module passes
+  for (unsigned Index = 0; Index < getNumContainedPasses(); ++Index) {
+    auto *P = getContainedPass(Index);
+    if (isModulePass(P))
+      Changed |= P->doInitialization(M);
+  }
+
+  return Changed;
+}
+
+bool FGPassManager::doFinalization(Module &M) {
+  bool Changed = false;
+
+  // Finalize module passes
+  for (int Index = getNumContainedPasses() - 1; Index >= 0; --Index) {
+    auto *P = getContainedPass(Index);
+    if (isModulePass(P))
+      Changed |= P->doFinalization(M);
+  }
+
+  return Changed;
+}
+
+//===----------------------------------------------------------------------===//
+// FunctionGroupPass Implementation
+//===----------------------------------------------------------------------===//
+
+/// Assign pass manager to manage this pass.
+void FunctionGroupPass::assignPassManager(PMStack &PMS,
+                                          PassManagerType PreferredType) {
+  // Find module pass manager.
+  while (!PMS.empty() &&
+         PMS.top()->getPassManagerType() > PMT_ModulePassManager)
+    PMS.pop();
+
+  IGC_ASSERT_MESSAGE(!PMS.empty(), "Unable to handle FunctionGroup Pass");
+  FGPassManager *GFP;
+
+  // Check whether this ModulePassManager is our injected function
+  // group pass manager. If not, replace old module pass manager
+  // with one for function groups.
+  auto *PM = PMS.top();
+  IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_ModulePassManager,
+    "Bad pass manager type for function group pass manager");
+  if (PM->getAsPass()->getPassID() == &FGPassManager::ID)
+    GFP = static_cast<FGPassManager *>(PM);
+  else {
+    // Create new FunctionGroup Pass Manager if it does not exist.
+
+    // [1] Create new FunctionGroup Pass Manager
+    GFP = new FGPassManager();
+
+    // [2] Set up new manager's top level manager
+    PMTopLevelManager *TPM = PM->getTopLevelManager();
+    TPM->addIndirectPassManager(GFP);
+    GFP->setTopLevelManager(TPM);
+
+    // [3] Assign manager to manage this new manager. This should not create
+    // and push new managers into PMS
+    TPM->schedulePass(GFP);
+    IGC_ASSERT_MESSAGE(PMS.top() == PM, "Pass manager unexpectedly changed");
+
+    // [4] Steal analysis info from module pass manager.
+    *GFP->getAvailableAnalysis() = std::move(*PM->getAvailableAnalysis());
+
+    // [5] Replace module pass manager with function group pass manager.
+    PMS.pop();
+    PMS.push(GFP);
+  }
+
+  GFP->add(this);
+}
+
+/// getAnalysisUsage - For this class, we declare that we require and preserve
+/// FunctionGroupAnalysis.  If the derived class implements this method, it
+/// should always explicitly call the implementation here.
+void FunctionGroupPass::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<FunctionGroupAnalysis>();
+  AU.addPreserved<FunctionGroupAnalysis>();
+}
+
+//===----------------------------------------------------------------------===//
+// PrintFunctionGroupPass Implementation
+//===----------------------------------------------------------------------===//
+
+namespace {
+/// PrintFunctionGroupPass - Print a FunctionGroup
+///
+class PrintFunctionGroupPass : public FunctionGroupPass {
+  std::string Banner;
+  raw_ostream &Out; // raw_ostream to print on.
+public:
+  static char ID;
+  PrintFunctionGroupPass(const std::string &B, raw_ostream &o)
+      : FunctionGroupPass(ID), Banner(B), Out(o) {}
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesAll();
+  }
+
+  bool runOnFunctionGroup(FunctionGroup &FG) override {
+    Out << Banner;
+    for (auto I = FG.begin(), E = FG.end(); I != E; ++I) {
+      Function *F = *I;
+      Out << Banner << static_cast<Value &>(*F);
+    }
+    return false;
+  }
+};
+} // end anonymous namespace.
+
+char PrintFunctionGroupPass::ID = 0;
+
+Pass *FunctionGroupPass::createPrinterPass(raw_ostream &O,
+                                           const std::string &Banner) const {
+  return new PrintFunctionGroupPass(Banner, O);
+}
+
+//===----------------------------------------------------------------------===//
 //  DominatorTreeGroupWrapperPass Implementation
 //===----------------------------------------------------------------------===//
 //
@@ -248,10 +654,10 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
 // per Function in a FunctionGroup.
 //
 //===----------------------------------------------------------------------===//
-INITIALIZE_PASS_BEGIN(DominatorTreeGroupWrapperPassWrapper,
-                      "groupdomtreeWrapper",
-                      "Group Dominator Tree Construction Wrapper", true, true)
-INITIALIZE_PASS_END(DominatorTreeGroupWrapperPassWrapper, "groupdomtreeWrapper",
+char DominatorTreeGroupWrapperPass::ID = 0;
+INITIALIZE_PASS_BEGIN(DominatorTreeGroupWrapperPass, "groupdomtree",
+                      "Group Dominator Tree Construction", true, true)
+INITIALIZE_PASS_END(DominatorTreeGroupWrapperPass, "groupdomtree",
                     "Group Dominator Tree Construction", true, true)
 
 void DominatorTreeGroupWrapperPass::releaseMemory() {
@@ -276,7 +682,7 @@ void DominatorTreeGroupWrapperPass::verifyAnalysis() const {
 }
 
 void DominatorTreeGroupWrapperPass::print(raw_ostream &OS,
-                                          const FunctionGroup *) const {
+                                          const Module *) const {
   for (auto i = DTs.begin(), e = DTs.end(); i != e; ++i)
     i->second->print(OS);
 }
@@ -289,11 +695,12 @@ void DominatorTreeGroupWrapperPass::print(raw_ostream &OS,
 // per Function in a FunctionGroup.
 //
 //===----------------------------------------------------------------------===//
-INITIALIZE_PASS_BEGIN(LoopInfoGroupWrapperPassWrapper, "grouploopinfoWrapper",
-                      "Group Loop Info Construction Wrapper", true, true)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
-INITIALIZE_PASS_END(LoopInfoGroupWrapperPassWrapper, "grouploopinfoWrapper",
-                    "Group Loop Info Construction Wrapper", true, true)
+char LoopInfoGroupWrapperPass::ID = 0;
+INITIALIZE_PASS_BEGIN(LoopInfoGroupWrapperPass, "grouploopinfo",
+                      "Group Loop Info Construction", true, true)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
+INITIALIZE_PASS_END(LoopInfoGroupWrapperPass, "grouploopinfo",
+                    "Group Loop Info Construction", true, true)
 
 void LoopInfoGroupWrapperPass::releaseMemory() {
   for (auto i = LIs.begin(), e = LIs.end(); i != e; ++i)
@@ -318,8 +725,7 @@ void LoopInfoGroupWrapperPass::verifyAnalysis() const {
     i->second->verify(*DTs.getDomTree(i->first));
 }
 
-void LoopInfoGroupWrapperPass::print(raw_ostream &OS,
-                                     const FunctionGroup *) const {
+void LoopInfoGroupWrapperPass::print(raw_ostream &OS, const Module *) const {
   for (auto i = LIs.begin(), e = LIs.end(); i != e; ++i)
     i->second->print(OS);
 }

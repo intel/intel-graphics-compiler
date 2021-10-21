@@ -61,17 +61,11 @@ namespace llvm {
   class Type;
   class Value;
 
-  ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
-                                         const std::string &Banner);
+  FunctionGroupPass *createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner);
 
   // GenXVisaRegAlloc : vISA virtual register allocator pass
-  class GenXVisaRegAlloc : public FGPassImplInterface,
-                           public IDMixin<GenXVisaRegAlloc> {
+  class GenXVisaRegAlloc : public FunctionGroupPass {
   public:
-    static void getAnalysisUsage(AnalysisUsage &Info);
-    static StringRef getPassName() {
-      return "GenX vISA virtual register allocator Wrapper";
-    }
 
     // Reg : a virtual register
     class Reg {
@@ -137,7 +131,6 @@ namespace llvm {
     using RegMap_t = std::map<const Function*, KernRegMap_t>;
     using LRPtrVect = std::vector<genx::LiveRange *>;
     using LRCPtrVect = std::vector<const genx::LiveRange *>;
-    void print(raw_ostream &OS, const FunctionGroup *FG) const override;
 
   private:
     FunctionGroup *FG = nullptr;
@@ -173,8 +166,12 @@ namespace llvm {
     } Stats;
 
   public:
-    explicit GenXVisaRegAlloc() {}
-    void releaseMemory() override;
+    static char ID;
+    explicit GenXVisaRegAlloc() : FunctionGroupPass(ID) { }
+    StringRef getPassName() const override {
+      return "GenX vISA virtual register allocator";
+    }
+    void getAnalysisUsage(AnalysisUsage &AU) const override;
     bool runOnFunctionGroup(FunctionGroup &FG) override;
 
     std::list<Reg>& getRegStorage() {
@@ -221,6 +218,16 @@ namespace llvm {
       return &R;
     }
 
+    // createPrinterPass : get a pass to print the IR, together with the GenX
+    // specific analyses
+    Pass *createPrinterPass(raw_ostream &O,
+                            const std::string &Banner) const override {
+      return createGenXGroupPrinterPass(O, Banner);
+    }
+
+    // print : dump the state of the pass. This is used by -genx-dump-regalloc
+    void print(raw_ostream &O, const FunctionGroup *FG) const override;
+
   private:
     void getLiveRanges(LRPtrVect &LRs) const;
     void getLiveRangesForValue(Value *V, LRPtrVect &LRs) const;
@@ -235,7 +242,6 @@ namespace llvm {
     unsigned CoalescingCount = 0;
     Reg* RetIP = nullptr;
   };
-  using GenXVisaRegAllocWrapper = FunctionGroupWrapperPass<GenXVisaRegAlloc>;
 
   namespace visa {
     // Details of a type required for a vISA general register declaration
@@ -249,7 +255,7 @@ namespace llvm {
     };
   } // end namespace visa
 
-  void initializeGenXVisaRegAllocWrapperPass(PassRegistry &);
+  void initializeGenXVisaRegAllocPass(PassRegistry &);
 
 } // end namespace llvm
 #endif //ndef GENXVISAREGALLOC_H

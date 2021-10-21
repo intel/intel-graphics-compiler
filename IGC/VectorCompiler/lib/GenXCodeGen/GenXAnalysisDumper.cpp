@@ -47,25 +47,24 @@ public:
 };
 
 // GenXGroupAnalysisDumper : a pass to dump an analysis to a file
-class GenXModuleAnalysisDumper : public ModulePass {
-  ModulePass *P;
+class GenXGroupAnalysisDumper : public FunctionGroupPass {
+  FunctionGroupPass *P;
   std::string DumpNamePrefix;
   std::string DumpNameSuffix;
 
 public:
   static char ID;
-  GenXModuleAnalysisDumper(ModulePass *P, StringRef DumpNamePrefixIn,
-                           StringRef DumpNameSuffixIn)
-      : ModulePass(ID), P(P), DumpNamePrefix(DumpNamePrefixIn.str()),
+  GenXGroupAnalysisDumper(FunctionGroupPass *P, StringRef DumpNamePrefixIn,
+                          StringRef DumpNameSuffixIn)
+      : FunctionGroupPass(ID), P(P), DumpNamePrefix(DumpNamePrefixIn.str()),
         DumpNameSuffix(DumpNameSuffixIn.str()) {}
-  StringRef getPassName() const override {
-    return "GenX Module analysis dumper pass";
-  }
+  StringRef getPassName() const override { return "GenX analysis dumper pass"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    FunctionGroupPass::getAnalysisUsage(AU);
     AU.addRequired<GenXBackendConfig>();
     AU.setPreservesAll();
   }
-  bool runOnModule(Module &M) override;
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
 };
 
 } // end anonymous namespace
@@ -78,12 +77,11 @@ FunctionPass *llvm::createGenXAnalysisDumperPass(FunctionPass *P,
   return new GenXAnalysisDumper(P, DumpNamePrefix, DumpNameSuffix);
 }
 
-char GenXModuleAnalysisDumper::ID = 0;
+char GenXGroupAnalysisDumper::ID = 0;
 
-ModulePass *llvm::createGenXModuleAnalysisDumperPass(ModulePass *P,
-                                                     StringRef DumpNamePrefix,
-                                                     StringRef DumpNameSuffix) {
-  return new GenXModuleAnalysisDumper(P, DumpNamePrefix, DumpNameSuffix);
+FunctionGroupPass *llvm::createGenXGroupAnalysisDumperPass(
+    FunctionGroupPass *P, StringRef DumpNamePrefix, StringRef DumpNameSuffix) {
+  return new GenXGroupAnalysisDumper(P, DumpNamePrefix, DumpNameSuffix);
 }
 
 static std::string makeOutputName(const Function &F, StringRef DumpNamePrefix,
@@ -117,15 +115,17 @@ bool GenXAnalysisDumper::runOnFunction(Function &F) {
 }
 
 /***********************************************************************
- * GenXAnalysisDumper::runOnFunction : dump analysis to file
+ * GenXGroupAnalysisDumper::runOnFunctionGroup : dump analysis to file
  */
-bool GenXModuleAnalysisDumper::runOnModule(Module &M) {
+bool GenXGroupAnalysisDumper::runOnFunctionGroup(FunctionGroup &FG) {
   std::string SerializedData;
   llvm::raw_string_ostream OS(SerializedData);
-  P->print(OS, &M);
+  P->print(OS, &FG);
 
-  auto DumpName = DumpNamePrefix + "M_" + DumpNameSuffix;
+  auto DumpName =
+      makeOutputName(*FG.getHead(), "fg_" + DumpNamePrefix, DumpNameSuffix);
   const auto &BC = getAnalysis<GenXBackendConfig>();
   vc::produceAuxiliaryShaderDumpFile(BC, DumpName, OS.str());
   return false;
 }
+

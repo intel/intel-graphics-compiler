@@ -287,7 +287,7 @@ using namespace genx;
 
 namespace {
 
-class GenXUnbaling : public FGPassImplInterface, public IDMixin<GenXUnbaling> {
+class GenXUnbaling : public FunctionGroupPass {
   enum { UNKNOWN, BEFORE, AFTER, NOTREACHES, REACHES };
 
   const GenXBackendConfig *BackendConfig = nullptr;
@@ -311,11 +311,15 @@ class GenXUnbaling : public FGPassImplInterface, public IDMixin<GenXUnbaling> {
   SmallVector<ToUnbaleEntry, 4> ToUnbale;
   std::map<Instruction *, Instruction *> CommonBaleMap;
 public:
-  explicit GenXUnbaling() {}
-  static StringRef getPassName() { return "GenX unbaling"; }
-  static void getAnalysisUsage(AnalysisUsage &AU);
+  static char ID;
+  explicit GenXUnbaling() : FunctionGroupPass(ID) {}
+  StringRef getPassName() const override { return "GenX unbaling"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunctionGroup(FunctionGroup &FG) override;
-
+  // createPrinterPass : get a pass to print the IR, together with the GenX
+  // specific analyses
+  Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
+    override { return createGenXGroupPrinterPass(O, Banner); }
 private:
   void processFunc(Function *F);
   void shortenLiveRanges(Function *F);
@@ -328,26 +332,23 @@ private:
 
 } // end anonymous namespace
 
-namespace llvm {
-void initializeGenXUnbalingWrapperPass(PassRegistry &);
-using GenXUnbalingWrapper = FunctionGroupWrapperPass<GenXUnbaling>;
-} // namespace llvm
-INITIALIZE_PASS_BEGIN(GenXUnbalingWrapper, "GenXUnbalingWrapper",
-                      "GenXUnbalingWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
+namespace llvm { void initializeGenXUnbalingPass(PassRegistry &); }
+char GenXUnbaling::ID = 0;
+INITIALIZE_PASS_BEGIN(GenXUnbaling, "GenXUnbaling", "GenXUnbaling", false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
-INITIALIZE_PASS_END(GenXUnbalingWrapper, "GenXUnbalingWrapper",
-                    "GenXUnbalingWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
+INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
+INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
+INITIALIZE_PASS_END(GenXUnbaling, "GenXUnbaling", "GenXUnbaling", false, false)
 
-ModulePass *llvm::createGenXUnbalingWrapperPass() {
-  initializeGenXUnbalingWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXUnbalingWrapper();
+FunctionGroupPass *llvm::createGenXUnbalingPass() {
+  initializeGenXUnbalingPass(*PassRegistry::getPassRegistry());
+  return new GenXUnbaling();
 }
 
-void GenXUnbaling::getAnalysisUsage(AnalysisUsage &AU) {
+void GenXUnbaling::getAnalysisUsage(AnalysisUsage &AU) const {
+  FunctionGroupPass::getAnalysisUsage(AU);
   AU.addRequired<DominatorTreeGroupWrapperPass>();
   AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXGroupBaling>();

@@ -98,23 +98,23 @@ void GenXFuncBaling::getAnalysisUsage(AnalysisUsage &AU) const
 //----------------------------------------------------------------------
 // Administrivia for GenXGroupBaling pass
 //
-INITIALIZE_PASS_BEGIN(GenXGroupBalingWrapper, "GenXGroupBalingWrapper",
-                      "GenXGroupBalingWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
-INITIALIZE_PASS_END(GenXGroupBalingWrapper, "GenXGroupBalingWrapper",
-                    "GenXGroupBalingWrapper", false, false)
+char GenXGroupBaling::ID = 0;
+INITIALIZE_PASS_BEGIN(GenXGroupBaling, "GenXGroupBaling", "GenXGroupBaling", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
+INITIALIZE_PASS_END(GenXGroupBaling, "GenXGroupBaling", "GenXGroupBaling", false, false)
 
-ModulePass *llvm::createGenXGroupBalingWrapperPass(BalingKind Kind,
-                                                   GenXSubtarget *ST) {
-  initializeGenXGroupBalingWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXGroupBalingWrapper(Kind, ST);
+FunctionGroupPass *llvm::createGenXGroupBalingPass(BalingKind Kind, GenXSubtarget *ST)
+{
+  initializeGenXGroupBalingPass(*PassRegistry::getPassRegistry());
+  return new GenXGroupBaling(Kind, ST);
 }
 
-void GenXGroupBaling::getAnalysisUsage(AnalysisUsage &AU) {
-  // FIXME: now use getAnalysisIfAvailable and error if nullptr
-  // if (GenXBaling::Kind == BK_CodeGen)
-  //  AU.addRequired<GenXLivenessWrapper>();
+void GenXGroupBaling::getAnalysisUsage(AnalysisUsage &AU) const
+{
+  FunctionGroupPass::getAnalysisUsage(AU);
+  if (GenXBaling::Kind == BK_CodeGen)
+    AU.addRequired<GenXLiveness>();
   AU.addRequired<DominatorTreeGroupWrapperPass>();
   AU.setPreservesCFG();
   AU.addPreserved<GenXModule>();
@@ -127,9 +127,8 @@ void GenXGroupBaling::getAnalysisUsage(AnalysisUsage &AU) {
  */
 bool GenXGroupBaling::runOnFunctionGroup(FunctionGroup &FG)
 {
+  clear();
   Liveness = getAnalysisIfAvailable<GenXLiveness>();
-  if (Kind == BK_CodeGen)
-    IGC_ASSERT_MESSAGE(Liveness, "expected not nullptr");
   return processFunctionGroup(&FG);
 }
 

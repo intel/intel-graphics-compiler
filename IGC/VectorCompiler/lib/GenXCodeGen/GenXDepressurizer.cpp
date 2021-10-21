@@ -327,8 +327,7 @@ struct SinkCandidate {
 };
 
 // GenX depressurizer pass
-class GenXDepressurizer : public FGPassImplInterface,
-                          public IDMixin<GenXDepressurizer> {
+class GenXDepressurizer : public FunctionGroupPass {
   enum { FlagThreshold = 6, AddrThreshold = 32, GRFThreshold = 2560,
          FlagGRFTolerance = 3840 };
   bool Modified;
@@ -349,10 +348,19 @@ class GenXDepressurizer : public FGPassImplInterface,
   std::map<Value *, CallInst *> TwoAddrValueMap;
 
 public:
-  explicit GenXDepressurizer() {}
-  static StringRef getPassName() { return "GenX register pressure reducer"; }
-  static void getAnalysisUsage(AnalysisUsage &AU);
+  static char ID;
+  explicit GenXDepressurizer() : FunctionGroupPass(ID) {}
+  StringRef getPassName() const override {
+    return "GenX register pressure reducer";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunctionGroup(FunctionGroup &FG) override;
+  // createPrinterPass : get a pass to print the IR, together with the GenX
+  // specific analyses
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
 
 private:
   void processFunction(Function *F);
@@ -375,24 +383,24 @@ private:
 
 } // end anonymous namespace
 
+char GenXDepressurizer::ID = 0;
 namespace llvm {
-void initializeGenXDepressurizerWrapperPass(PassRegistry &);
-using GenXDepressurizerWrapper = FunctionGroupWrapperPass<GenXDepressurizer>;
+void initializeGenXDepressurizerPass(PassRegistry &);
 }
-INITIALIZE_PASS_BEGIN(GenXDepressurizerWrapper, "GenXDepressurizerWrapper",
-                      "GenXDepressurizerWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
-INITIALIZE_PASS_END(GenXDepressurizerWrapper, "GenXDepressurizerWrapper",
-                    "GenXDepressurizerWrapper", false, false)
+INITIALIZE_PASS_BEGIN(GenXDepressurizer, "GenXDepressurizer", "GenXDepressurizer", false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
+INITIALIZE_PASS_END(GenXDepressurizer, "GenXDepressurizer", "GenXDepressurizer", false, false)
 
-ModulePass *llvm::createGenXDepressurizerWrapperPass() {
-  initializeGenXDepressurizerWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXDepressurizerWrapper();
+FunctionGroupPass *llvm::createGenXDepressurizerPass()
+{
+  initializeGenXDepressurizerPass(*PassRegistry::getPassRegistry());
+  return new GenXDepressurizer();
 }
 
-void GenXDepressurizer::getAnalysisUsage(AnalysisUsage &AU) {
+void GenXDepressurizer::getAnalysisUsage(AnalysisUsage &AU) const {
+  FunctionGroupPass::getAnalysisUsage(AU);
   AU.addRequired<DominatorTreeGroupWrapperPass>();
   AU.addRequired<GenXGroupBaling>();
   AU.addPreserved<DominatorTreeGroupWrapperPass>();

@@ -43,31 +43,22 @@ public:
   bool runOnFunction(Function &F) override;
 };
 
-// GenXGroupPrinter : an analysis to print Module with all FunctionGroups, with
-// GenX specific analyses
-class GenXGroupPrinter : public ModulePass {
+// GenXGroupPrinter : an analysis to print a FunctionGroup, with GenX specific analyses
+class GenXGroupPrinter : public FunctionGroupPass {
   raw_ostream &OS;
   const std::string Banner;
 public:
   static char ID;
   explicit GenXGroupPrinter(raw_ostream &OS, const std::string &Banner)
-      : ModulePass(ID), OS(OS), Banner(Banner) {}
+    : FunctionGroupPass(ID), OS(OS), Banner(Banner) { }
   StringRef getPassName() const override {
     return "GenX FunctionGroup printer pass";
   }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<FunctionGroupAnalysis>();
-    AU.addPreserved<FunctionGroupAnalysis>();
+    FunctionGroupPass::getAnalysisUsage(AU);
     AU.setPreservesAll();
   }
-  bool runOnModule(Module &M) {
-    bool Changed = false;
-    FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
-    for (auto *FunctionGroup : FGA.AllGroups())
-      Changed |= runOnFunctionGroup(*FunctionGroup);
-    return Changed;
-  }
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
 };
 
 } // end namespace llvm
@@ -76,18 +67,14 @@ char GenXPrinter::ID = 0;
 
 FunctionPass *llvm::createGenXPrinterPass(raw_ostream &O, const std::string &Banner)
 {
-  FunctionPass *Created = new GenXPrinter(O, Banner);
-  IGC_ASSERT(Created);
-  return Created;
+  return new GenXPrinter(O, Banner);
 }
 
 char GenXGroupPrinter::ID = 0;
 
-ModulePass *llvm::createGenXGroupPrinterPass(raw_ostream &O,
-                                             const std::string &Banner) {
-  ModulePass *Created = new GenXGroupPrinter(O, Banner);
-  IGC_ASSERT(Created);
-  return Created;
+FunctionGroupPass *llvm::createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner)
+{
+  return new GenXGroupPrinter(O, Banner);
 }
 
 /***********************************************************************
@@ -199,21 +186,13 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
  */
 bool GenXPrinter::runOnFunction(Function &F)
 {
-  auto *FGA = getAnalysisIfAvailable<FunctionGroupAnalysis>();
-  GenXVisaRegAlloc *RA = nullptr;
+  GenXVisaRegAlloc *RA = getAnalysisIfAvailable<GenXVisaRegAlloc>();
   GenXLiveness *Liveness = nullptr;
   GenXNumbering *Numbering = nullptr;
-  if (FGA) {
-    auto *currentFG = FGA->getAnyGroup(&F);
-    if (auto *RAWrapper = getAnalysisIfAvailable<GenXVisaRegAllocWrapper>()) {
-      RA = &(RAWrapper->getFGPassImpl(currentFG));
-    }
-    if (auto *NumberingWrapper = getAnalysisIfAvailable<GenXNumberingWrapper>())
-      Numbering = &(NumberingWrapper->getFGPassImpl(currentFG));
-    if (auto *LivenessWrapper = getAnalysisIfAvailable<GenXLivenessWrapper>())
-      Liveness = &(LivenessWrapper->getFGPassImpl(currentFG));
+  if (!RA) {
+    Liveness = getAnalysisIfAvailable<GenXLiveness>();
+    Numbering = getAnalysisIfAvailable<GenXNumbering>();
   }
-
   GenXBaling *Baling = getAnalysisIfAvailable<GenXFuncBaling>();
   OS << Banner;
   printFunction(OS, F, Baling, Liveness, Numbering, RA);
@@ -225,22 +204,14 @@ bool GenXPrinter::runOnFunction(Function &F)
  */
 bool GenXGroupPrinter::runOnFunctionGroup(FunctionGroup &FG)
 {
-  GenXVisaRegAlloc *RA = nullptr;
-  if (auto *RAWrapper = getAnalysisIfAvailable<GenXVisaRegAllocWrapper>())
-    RA = &(RAWrapper->getFGPassImpl(&FG));
-
+  GenXVisaRegAlloc *RA = getAnalysisIfAvailable<GenXVisaRegAlloc>();
   GenXLiveness *Liveness = nullptr;
   GenXNumbering *Numbering = nullptr;
   if (!RA) {
-    if (auto *LivenessWrapper = getAnalysisIfAvailable<GenXLivenessWrapper>())
-      Liveness = &(LivenessWrapper->getFGPassImpl(&FG));
-    if (auto *NumberingWrapper = getAnalysisIfAvailable<GenXNumberingWrapper>())
-      Numbering = &(NumberingWrapper->getFGPassImpl(&FG));
+    Liveness = getAnalysisIfAvailable<GenXLiveness>();
+    Numbering = getAnalysisIfAvailable<GenXNumbering>();
   }
-  GenXBaling *Baling = nullptr;
-  if (auto *GroupBalingWrapper =
-          getAnalysisIfAvailable<GenXGroupBalingWrapper>())
-    Baling = &(GroupBalingWrapper->getFGPassImpl(&FG));
+  GenXBaling *Baling = getAnalysisIfAvailable<GenXGroupBaling>();
   if (!Baling)
     Baling = getAnalysisIfAvailable<GenXFuncBaling>();
   OS << Banner;

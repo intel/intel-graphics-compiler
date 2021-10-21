@@ -302,8 +302,7 @@ namespace {
   };
 
   // GenX coalescing pass
-  class GenXCoalescing : public FGPassImplInterface,
-                         public IDMixin<GenXCoalescing>,
+  class GenXCoalescing : public FunctionGroupPass,
                          public GenXVisitor<GenXCoalescing> {
   private:
     const DataLayout *DL = nullptr;
@@ -322,15 +321,17 @@ namespace {
     std::unordered_map<Instruction *, Value *> CopyCoalesced;
 
   public:
-    explicit GenXCoalescing() {}
-    static StringRef getPassName() {
+    static char ID;
+    explicit GenXCoalescing() : FunctionGroupPass(ID) {}
+    StringRef getPassName() const override {
       return "GenX coalescing and copy insertion";
     }
-    static void getAnalysisUsage(AnalysisUsage &AU) {
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
+      FunctionGroupPass::getAnalysisUsage(AU);
       AU.addRequired<GenXLiveness>();
       AU.addRequired<GenXGroupBaling>();
       AU.addRequired<GenXNumbering>();
-      AU.addRequired<DominatorTreeGroupWrapperPassWrapper>();
+      AU.addRequired<DominatorTreeGroupWrapperPass>();
       AU.addRequired<LoopInfoGroupWrapperPass>();
       AU.addRequired<TargetPassConfig>();
       AU.addPreserved<DominatorTreeGroupWrapperPass>();
@@ -343,6 +344,12 @@ namespace {
       AU.setPreservesCFG();
     }
     bool runOnFunctionGroup(FunctionGroup &FG) override;
+    // createPrinterPass : get a pass to print the IR, together with the GenX
+    // specific analyses
+    Pass *createPrinterPass(raw_ostream &O,
+                            const std::string &Banner) const override {
+      return createGenXGroupPrinterPass(O, Banner);
+    }
 
     void visitPHINode(PHINode &Phi);
     void visitCallInst(CallInst &CI);
@@ -427,23 +434,21 @@ namespace {
 
 } // end anonymous namespace
 
+char GenXCoalescing::ID = 0;
 namespace llvm {
-void initializeGenXCoalescingWrapperPass(PassRegistry &);
-using GenXCoalescingWrapper = FunctionGroupWrapperPass<GenXCoalescing>;
+void initializeGenXCoalescingPass(PassRegistry &);
 }
-INITIALIZE_PASS_BEGIN(GenXCoalescingWrapper, "GenXCoalescingWrapper",
-                      "GenXCoalescingWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper);
-INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPassWrapper);
-INITIALIZE_PASS_END(GenXCoalescingWrapper, "GenXCoalescingWrapper",
-                    "GenXCoalescingWrapper", false, false)
+INITIALIZE_PASS_BEGIN(GenXCoalescing, "GenXCoalescing", "GenXCoalescing", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
+INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
+INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass);
+INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPass);
+INITIALIZE_PASS_END(GenXCoalescing, "GenXCoalescing", "GenXCoalescing", false, false)
 
-ModulePass *llvm::createGenXCoalescingWrapperPass() {
-  initializeGenXCoalescingWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXCoalescingWrapper();
+FunctionGroupPass *llvm::createGenXCoalescingPass() {
+  initializeGenXCoalescingPass(*PassRegistry::getPassRegistry());
+  return new GenXCoalescing();
 }
 
 /***********************************************************************

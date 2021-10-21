@@ -13,11 +13,12 @@ SPDX-License-Identifier: MIT
 /// This file contains to passes: GenXCisaBuilder and GenXFinalizer.
 ///
 /// 1. GenXCisaBuilder transforms LLVM IR to CISA IR via Finalizer' public API.
-///    It is a FunctionGroupWrapperPass, thus it runs once for each kernel and
-///    creates CISA IR for it and all its subroutines. Real building of kernels
-///    is performed by the GenXKernelBuilder class. This splitting is necessary
-///    because GenXCisaBuilder object lives through all Function Groups, but we
-///    don't need to keep all Kernel building specific data in such lifetime.
+///    It is a FunctionGroupPass, thus it runs once for each kernel and creates
+///    CISA IR for it and all its subroutines.
+///    Real building of kernels is performed by the GenXKernelBuilder class.
+///    This splitting is necessary because GenXCisaBuilder object lives
+///    through all Function Groups, but we don't need to keep all Kernel
+///    building specific data in such lifetime.
 ///
 /// 2. GenXFinalizer is a module pass, thus it runs once and all that it does
 ///    is a running of Finalizer for kernels created in GenXCisaBuilder pass.
@@ -468,21 +469,23 @@ public:
 /// ------------------
 ///
 /// This class encapsulates a creation of vISA kernels.
-/// It is a FunctionGroupWrapperPass, thus it runs once for each kernel and
+/// It is a FunctionGroupPass, thus it runs once for each kernel and
 /// builds vISA kernel via class GenXKernelBuilder.
 /// All created kernels are stored in CISA Builder object which is provided
 /// by finalizer.
 ///
 //===----------------------------------------------------------------------===//
-class GenXCisaBuilder : public FGPassImplInterface,
-                        public IDMixin<GenXCisaBuilder> {
+class GenXCisaBuilder : public FunctionGroupPass {
   LLVMContext *Ctx = nullptr;
 
 public:
-  explicit GenXCisaBuilder() {}
+  static char ID;
+  explicit GenXCisaBuilder() : FunctionGroupPass(ID) {}
 
-  static StringRef getPassName() { return "GenX CISA construction pass"; }
-  static void getAnalysisUsage(AnalysisUsage &AU);
+  StringRef getPassName() const override {
+    return "GenX CISA construction pass";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunctionGroup(FunctionGroup &FG) override;
 
   LLVMContext &getContext() {
@@ -491,8 +494,7 @@ public:
   }
 };
 
-void initializeGenXCisaBuilderWrapperPass(PassRegistry &);
-using GenXCisaBuilderWrapper = FunctionGroupWrapperPass<GenXCisaBuilder>;
+void initializeGenXCisaBuilderPass(PassRegistry &);
 
 //===----------------------------------------------------------------------===//
 /// GenXKernelBuilder
@@ -818,26 +820,28 @@ public:
   unsigned addStringToPool(StringRef Str);
   StringRef getStringByIndex(unsigned Val);
 };
-ModulePass *createGenXCisaBuilderWrapperPass() {
-  initializeGenXCisaBuilderWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXCisaBuilderWrapper();
-}
 
 } // end namespace llvm
 
-INITIALIZE_PASS_BEGIN(GenXCisaBuilderWrapper, "GenXCisaBuilderPassWrapper",
-                      "GenXCisaBuilderPassWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPassWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXVisaRegAllocWrapper)
+char GenXCisaBuilder::ID = 0;
+INITIALIZE_PASS_BEGIN(GenXCisaBuilder, "GenXCisaBuilderPass",
+                      "GenXCisaBuilderPass", false, false)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
+INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
+INITIALIZE_PASS_DEPENDENCY(GenXVisaRegAlloc)
 INITIALIZE_PASS_DEPENDENCY(GenXModule)
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
-INITIALIZE_PASS_END(GenXCisaBuilderWrapper, "GenXCisaBuilderPassWrapper",
-                    "GenXCisaBuilderPassWrapper", false, false)
+INITIALIZE_PASS_END(GenXCisaBuilder, "GenXCisaBuilderPass",
+                    "GenXCisaBuilderPass", false, false)
 
-void GenXCisaBuilder::getAnalysisUsage(AnalysisUsage &AU) {
+FunctionGroupPass *llvm::createGenXCisaBuilderPass() {
+  initializeGenXCisaBuilderPass(*PassRegistry::getPassRegistry());
+  return new GenXCisaBuilder();
+}
+
+void GenXCisaBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<LoopInfoGroupWrapperPass>();
   AU.addRequired<GenXGroupBaling>();
   AU.addRequired<GenXLiveness>();

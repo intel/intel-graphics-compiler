@@ -67,8 +67,9 @@ class GenXBaling;
 class PHINode;
 class ReturnInst;
 
-class GenXNumbering : public FGPassImplInterface,
-                      public IDMixin<GenXNumbering> {
+FunctionGroupPass *createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner);
+
+class GenXNumbering : public FunctionGroupPass {
   FunctionGroup *FG = nullptr;
   GenXBaling *Baling = nullptr;
   struct BBNumber {
@@ -100,10 +101,11 @@ class GenXNumbering : public FGPassImplInterface,
   unsigned LastNum = 0;
 
 public:
-  explicit GenXNumbering() : Baling(0) {}
-  ~GenXNumbering() { releaseMemory(); }
-  static StringRef getPassName() { return "GenX numbering"; }
-  static void getAnalysisUsage(AnalysisUsage &AU);
+  static char ID;
+  explicit GenXNumbering() : FunctionGroupPass(ID), Baling(0) { }
+  ~GenXNumbering() { clear(); }
+  StringRef getPassName() const override { return "GenX numbering"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunctionGroup(FunctionGroup &FG) override;
   // get BBNumber struct for a basic block
   const BBNumber *getBBNumber(BasicBlock *BB) { return &BBNumbers[BB]; }
@@ -128,19 +130,25 @@ public:
   // getPhiIncomingFromNumber : get the phi incoming for a number returned from getPhiNumber
   std::unordered_map<PHINode *, unsigned>
   getPhiIncomingFromNumber(unsigned Number);
+  // createPrinterPass : get a pass to print the IR, together with the GenX
+  // specific analyses
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
   // Debug dump
-  void print(raw_ostream &OS) const;
   void dump();
-
-  void releaseMemory() override;
+  using llvm::Pass::print; // enables overloading of print in this class rather
+                           // than override (and stops compiler warnings)
+  void print(raw_ostream &OS) const;
 
 private:
+  void clear();
   unsigned numberInstructionsInFunc(Function *Func, unsigned Num);
   unsigned getPhiOffset(PHINode *Phi) const;
 };
 
-void initializeGenXNumberingWrapperPass(PassRegistry &);
-using GenXNumberingWrapper = FunctionGroupWrapperPass<GenXNumbering>;
+void initializeGenXNumberingPass(PassRegistry &);
 
 } // end namespace llvm
 #endif //ndef GENXNUMBERING_H

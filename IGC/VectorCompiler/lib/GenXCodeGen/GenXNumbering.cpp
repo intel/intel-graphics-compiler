@@ -30,18 +30,20 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
-INITIALIZE_PASS_BEGIN(GenXNumberingWrapper, "GenXNumberingWrapper",
-                      "GenXNumberingWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
-INITIALIZE_PASS_END(GenXNumberingWrapper, "GenXNumberingWrapper",
-                    "GenXNumberingWrapper", false, false)
+char GenXNumbering::ID = 0;
+INITIALIZE_PASS_BEGIN(GenXNumbering, "GenXNumbering", "GenXNumbering", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
+INITIALIZE_PASS_END(GenXNumbering, "GenXNumbering", "GenXNumbering", false, false)
 
-ModulePass *llvm::createGenXNumberingWrapperPass() {
-  initializeGenXNumberingWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXNumberingWrapper();
+FunctionGroupPass *llvm::createGenXNumberingPass()
+{
+  initializeGenXNumberingPass(*PassRegistry::getPassRegistry());
+  return new GenXNumbering();
 }
 
-void GenXNumbering::getAnalysisUsage(AnalysisUsage &AU) {
+void GenXNumbering::getAnalysisUsage(AnalysisUsage &AU) const
+{
+  FunctionGroupPass::getAnalysisUsage(AU);
   AU.addRequired<GenXGroupBaling>();
   AU.setPreservesAll();
 }
@@ -51,6 +53,7 @@ void GenXNumbering::getAnalysisUsage(AnalysisUsage &AU) {
  */
 bool GenXNumbering::runOnFunctionGroup(FunctionGroup &ArgFG)
 {
+  clear();
   FG = &ArgFG;
   Baling = &getAnalysis<GenXGroupBaling>();
   unsigned Num = 0;
@@ -61,9 +64,10 @@ bool GenXNumbering::runOnFunctionGroup(FunctionGroup &ArgFG)
 }
 
 /***********************************************************************
- * releaseMemory : clear the GenXNumbering
+ * clear : clear the GenXNumbering
  */
-void GenXNumbering::releaseMemory() {
+void GenXNumbering::clear()
+{
   BBNumbers.clear();
   Numbers.clear();
   NumberToPhiIncomingMap.clear();

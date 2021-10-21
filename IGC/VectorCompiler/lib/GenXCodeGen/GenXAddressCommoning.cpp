@@ -169,8 +169,7 @@ struct Extract {
 };
 
 // GenX address conversion pass
-class GenXAddressCommoning : public FGPassImplInterface,
-                             public IDMixin<GenXAddressCommoning> {
+class GenXAddressCommoning : public FunctionGroupPass {
   GenXBaling *Baling = nullptr;
   GenXLiveness *Liveness = nullptr;
   GenXNumbering *Numbering = nullptr;
@@ -204,10 +203,12 @@ class GenXAddressCommoning : public FGPassImplInterface,
           bool (*)(BaseRegAndBaleHash, BaseRegAndBaleHash)> OuterMap_t;
   OuterMap_t OuterMap;
 public:
-  explicit GenXAddressCommoning()
-      : OuterMap(OuterMap_t(BaseRegAndBaleHash::less)) {}
-  static StringRef getPassName() { return "GenX address commoning"; }
-  static void getAnalysisUsage(AnalysisUsage &AU) {
+  static char ID;
+  explicit GenXAddressCommoning() : FunctionGroupPass(ID),
+      OuterMap(OuterMap_t(BaseRegAndBaleHash::less)) { }
+  StringRef getPassName() const override { return "GenX address commoning"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    FunctionGroupPass::getAnalysisUsage(AU);
     AU.addRequired<DominatorTreeGroupWrapperPass>();
     AU.addRequired<GenXModule>();
     AU.addRequired<GenXGroupBaling>();
@@ -222,6 +223,12 @@ public:
     AU.setPreservesCFG();
   }
   bool runOnFunctionGroup(FunctionGroup &FG) override;
+  // createPrinterPass : get a pass to print the IR, together with the GenX
+  // specific analyses
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
 
 private:
   bool processFunction(Function *F);
@@ -242,24 +249,19 @@ private:
 
 } // end anonymous namespace
 
-namespace llvm {
-void initializeGenXAddressCommoningWrapperPass(PassRegistry &);
-using GenXAddressCommoningWrapper =
-    FunctionGroupWrapperPass<GenXAddressCommoning>;
-} // namespace llvm
-INITIALIZE_PASS_BEGIN(GenXAddressCommoningWrapper,
-                      "GenXAddressCommoningWrapper",
-                      "GenXAddressCommoningWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
-INITIALIZE_PASS_END(GenXAddressCommoningWrapper, "GenXAddressCommoningWrapper",
-                    "GenXAddressCommoningWrapper", false, false)
+char GenXAddressCommoning::ID = 0;
+namespace llvm { void initializeGenXAddressCommoningPass(PassRegistry &); }
+INITIALIZE_PASS_BEGIN(GenXAddressCommoning, "GenXAddressCommoning", "GenXAddressCommoning", false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
+INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
+INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
+INITIALIZE_PASS_END(GenXAddressCommoning, "GenXAddressCommoning", "GenXAddressCommoning", false, false)
 
-ModulePass *llvm::createGenXAddressCommoningWrapperPass() {
-  initializeGenXAddressCommoningWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXAddressCommoningWrapper();
+FunctionGroupPass *llvm::createGenXAddressCommoningPass()
+{
+  initializeGenXAddressCommoningPass(*PassRegistry::getPassRegistry());
+  return new GenXAddressCommoning();
 }
 
 /***********************************************************************
