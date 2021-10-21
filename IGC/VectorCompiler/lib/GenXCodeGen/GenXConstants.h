@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef GENX_CONSTANTS_H
-#define GENX_CONSTANTS_H
+#ifndef LIB_GENXCODEGEN_GENXCONSTANTS_H
+#define LIB_GENXCODEGEN_GENXCONSTANTS_H
 
 #include "GenXSubtarget.h"
 #include "llvm/ADT/SmallVector.h"
@@ -20,6 +20,10 @@ namespace genx {
 
 // ConstantLoader : class to insert instruction(s) to load a constant
 class ConstantLoader {
+  friend bool loadNonSimpleConstants(
+    Instruction *Inst, const GenXSubtarget &Subtarget, const DataLayout &DL,
+    SmallVectorImpl<Instruction *> *AddedInstructions);
+
   Constant *C;
   Instruction *User;
 
@@ -58,27 +62,34 @@ public:
         AddedInstructions(AddedInstructions) {
     analyze();
   }
+
   Instruction *load(Instruction *InsertBefore);
   Instruction *loadBig(Instruction *InsertBefore);
-  Instruction *loadNonSimple(Instruction *InsertBefore);
-  Instruction *loadNonPackedIntConst(Instruction *InsertBefore);
-  bool needFixingSimple() const { return NewC; }
-  void fixSimple(int OperandIdx);
-  bool isBigSimple();
-  bool isSimple();
-  bool isLegalSize();
+
+  bool isBigSimple() const;
+  bool isSimple() const;
+  bool isLegalSize() const;
 
 private:
   bool allowI64Ops() const;
-  bool isPackedIntVector();
-  bool isPackedFloatVector();
+
   void analyze();
+  void analyzeForPackedInt(unsigned NumElements);
+  void analyzeForPackedFloat(unsigned NumElements);
+
+  bool isPackedIntVector() const;
+  bool isPackedFloatVector() const;
+
   Constant *getConsolidatedConstant(Constant *C);
   unsigned getRegionBits(unsigned NeededBits, unsigned OptionalBits,
                          unsigned VecWidth);
-  void analyzeForPackedInt(unsigned NumElements);
-  void analyzeForPackedFloat(unsigned NumElements);
-  Instruction *loadSplatConstant(Instruction *InsertPos);
+
+  bool needFixingSimple() const { return NewC; }
+  void fixSimple(int OperandIdx);
+
+  Instruction *loadNonSimple(Instruction *InsertBefore);
+  Instruction *loadSplatConstant(Instruction *InsertPt);
+  Instruction *loadNonPackedIntConst(Instruction *InsertPt);
 };
 
 // Some instructions force their operands to be constants.
@@ -134,4 +145,4 @@ bool isReplicatedConstantVector(const ConstantVector *Orig,
 } // namespace genx
 } // namespace llvm
 
-#endif // GENX_CONSTANTS_H
+#endif // LIB_GENXCODEGEN_GENXCONSTANTS_H
