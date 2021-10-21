@@ -93,6 +93,7 @@ struct ZERelocEntry {
     uint32_t      r_offset;      // The binary offset of the relocated target
     std::string   r_symbol;      // The relocation target symbol's name
 
+    ZERelocEntry() = default;
     ZERelocEntry(GenRelocType type, uint32_t offset, std::string targetSymName)
         : r_type(type), r_offset(offset), r_symbol(targetSymName)
     {}

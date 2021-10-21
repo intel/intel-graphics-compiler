@@ -813,6 +813,12 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
                                       ModuleInfo.Global.Symbols);
   ProgramInfo.m_zebinSymbolTable.global = ModuleInfo.Global.Symbols;
   ProgramInfo.m_zebinSymbolTable.globalConst = ModuleInfo.Constant.Symbols;
+
+  // Relocations.
+  ProgramInfo.m_GlobalPointerAddressRelocAnnotation.globalReloc =
+      ModuleInfo.Global.Relocations;
+  ProgramInfo.m_GlobalPointerAddressRelocAnnotation.globalConstReloc =
+      ModuleInfo.Constant.Relocations;
 };
 
 void vc::createBinary(

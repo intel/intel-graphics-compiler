@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Value.h>
 #include <llvm/InitializePasses.h>
 
+#include <algorithm>
 #include <cctype>
 #include <functional>
 #include <iterator>
@@ -378,9 +379,26 @@ GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(KernelInfo &&KI,
 //===----------------------------------------------------------------------===//
 namespace {
 
+// Relates to GenXOCLRuntimeInfo::SectionInfo. GenXOCLRuntimeInfo::SectionInfo
+// can be created from this struct.
+struct RawSectionInfo {
+  genx::BinaryDataAccumulator<const GlobalVariable *> Data;
+  GenXOCLRuntimeInfo::RelocationSeq Relocations;
+};
+
+struct GVEncodingInfo {
+  const GlobalVariable *GV;
+  // Alignment requirments of a global variable that will be encoded after
+  // the considered GV variable.
+  unsigned NextGVAlignment;
+};
+
 struct ModuleDataT {
-  genx::BinaryDataAccumulator<const GlobalVariable *> Constants;
-  genx::BinaryDataAccumulator<const GlobalVariable *> Globals;
+  RawSectionInfo Constant;
+  RawSectionInfo Global;
+
+  ModuleDataT() = default;
+  ModuleDataT(const Module &M);
 };
 
 template <vISA::GenSymType SymbolClass, typename InputIter, typename OutputIter>
@@ -408,13 +426,6 @@ static GenXOCLRuntimeInfo::SymbolSeq constructFunctionSymbols(
 
   return Symbols;
 }
-
-struct GVEncodingInfo {
-  const GlobalVariable *GV;
-  // Alignment requirments of a global variable that will be encoded after
-  // the considered GV variable.
-  unsigned NextGVAlignment;
-};
 
 } // namespace
 
@@ -545,20 +556,30 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
   return std::move(GenBinary);
 }
 
-static void appendGlobalVariableData(
-    genx::BinaryDataAccumulator<const GlobalVariable *> &Accumulator,
-    GVEncodingInfo GVInfo, const DataLayout &DL) {
+static void appendGlobalVariableData(RawSectionInfo &Sect,
+                                     GVEncodingInfo GVInfo,
+                                     const DataLayout &DL) {
   std::vector<char> Data;
-  vc::encodeConstant(*GVInfo.GV->getInitializer(), DL, std::back_inserter(Data));
+  GenXOCLRuntimeInfo::RelocationSeq Relocations;
+  vc::encodeConstant(*GVInfo.GV->getInitializer(), DL, std::back_inserter(Data),
+                     std::back_inserter(Relocations));
+
+  const auto CurrentGVAddress = Sect.Data.getFullSize();
+  const auto UnalignedNextGVAddress = CurrentGVAddress + Data.size();
+  const auto AlignedNextGVAddress =
+      alignTo(UnalignedNextGVAddress, GVInfo.NextGVAlignment);
 
   // Pad before the next global.
-  auto UnalignedNextGVAddress = Accumulator.getFullSize() + Data.size();
-  auto AlignedNextGVAddress =
-      alignTo(UnalignedNextGVAddress, GVInfo.NextGVAlignment);
   std::fill_n(std::back_inserter(Data),
               AlignedNextGVAddress - UnalignedNextGVAddress, 0);
 
-  Accumulator.append(GVInfo.GV, Data.begin(), Data.end());
+  // vc::encodeConstant calculates offsets relative to GV. Need to make it
+  // relative to section start.
+  vc::shiftRelocations(std::make_move_iterator(Relocations.begin()),
+                       std::make_move_iterator(Relocations.end()),
+                       std::back_inserter(Sect.Relocations), CurrentGVAddress);
+
+  Sect.Data.append(GVInfo.GV, Data.begin(), Data.end());
 }
 
 static unsigned getAlignment(const GlobalVariable &GV) {
@@ -586,39 +607,39 @@ prepareGlobalInfosForEncoding(GlobalsRangeT &&Globals) {
   return std::move(Infos);
 }
 
-static ModuleDataT getModuleData(const Module &M) {
-  genx::BinaryDataAccumulator<const GlobalVariable *> ConstantData;
-  genx::BinaryDataAccumulator<const GlobalVariable *> GlobalData;
+ModuleDataT::ModuleDataT(const Module &M) {
   std::vector<GVEncodingInfo> GVInfos =
       prepareGlobalInfosForEncoding(M.globals());
   for (auto GVInfo : GVInfos) {
     if (GVInfo.GV->isConstant())
-      appendGlobalVariableData(ConstantData, GVInfo, M.getDataLayout());
+      appendGlobalVariableData(Constant, GVInfo, M.getDataLayout());
     else
-      appendGlobalVariableData(GlobalData, GVInfo, M.getDataLayout());
+      appendGlobalVariableData(Global, GVInfo, M.getDataLayout());
   }
-  return {std::move(ConstantData), std::move(GlobalData)};
 }
 
 static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
-  auto ModuleData = getModuleData(M);
+  ModuleDataT ModuleData{M};
   GenXOCLRuntimeInfo::ModuleInfoT ModuleInfo;
 
   constructSymbols<vISA::GenSymType::S_GLOBAL_VAR_CONST>(
-      ModuleData.Constants.begin(), ModuleData.Constants.end(),
+      ModuleData.Constant.Data.begin(), ModuleData.Constant.Data.end(),
       std::back_inserter(ModuleInfo.Constant.Symbols));
   constructSymbols<vISA::GenSymType::S_GLOBAL_VAR>(
-      ModuleData.Globals.begin(), ModuleData.Globals.end(),
+      ModuleData.Global.Data.begin(), ModuleData.Global.Data.end(),
       std::back_inserter(ModuleInfo.Global.Symbols));
 
+  ModuleInfo.Constant.Relocations = std::move(ModuleData.Constant.Relocations);
+  ModuleInfo.Global.Relocations = std::move(ModuleData.Global.Relocations);
+
   ModuleInfo.Constant.Data.Buffer =
-      std::move(ModuleData.Constants).emitConsolidatedData();
+      std::move(ModuleData.Constant.Data).emitConsolidatedData();
   // IGC always sets 0
   ModuleInfo.Constant.Data.Alignment = 0;
   ModuleInfo.Constant.Data.AdditionalZeroedSpace = 0;
 
   ModuleInfo.Global.Data.Buffer =
-      std::move(ModuleData.Globals).emitConsolidatedData();
+      std::move(ModuleData.Global.Data).emitConsolidatedData();
   ModuleInfo.Global.Data.Alignment = 0;
   ModuleInfo.Global.Data.AdditionalZeroedSpace = 0;
 

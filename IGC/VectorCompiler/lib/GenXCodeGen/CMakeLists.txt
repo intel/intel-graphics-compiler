@@ -20,6 +20,7 @@ list(APPEND GenXCommonTableGen_dependencies
 add_custom_target(GenXCommonTableGen_target DEPENDS ${GenXCommonTableGen_dependencies})
 
 set(CODEGEN_SOURCES
+  ConstantEncoder.cpp
   FunctionGroup.cpp
   GenXAddressCommoning.cpp
   GenXAggregatePseudoLowering.cpp

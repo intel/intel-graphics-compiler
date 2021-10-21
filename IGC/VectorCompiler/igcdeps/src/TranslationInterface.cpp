@@ -432,6 +432,17 @@ static void dumpPlatform(const vc::CompileOptions &Opts, PLATFORM Platform,
 #endif
 }
 
+static void validateCMProgramForOCLBin(const vc::CGen8CMProgram &CMProgram) {
+  IGC_ASSERT_MESSAGE(
+      CMProgram.m_programInfo->m_GlobalPointerAddressRelocAnnotation.globalReloc
+          .empty(),
+      "global section relocations aren't supported for oclbin");
+  IGC_ASSERT_MESSAGE(
+      CMProgram.m_programInfo->m_GlobalPointerAddressRelocAnnotation
+          .globalConstReloc.empty(),
+      "constant section relocations aren't supported for oclbin");
+}
+
 std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
                                    TC::STB_TranslateOutputArgs *OutputArgs,
                                    TC::TB_DATA_FORMAT InputDataFormatTemp,
@@ -499,6 +510,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
     vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(), IGCPlatform.getWATable()};
     vc::createBinary(CMProgram, CompileResult);
+    validateCMProgramForOCLBin(CMProgram);
     CMProgram.CreateKernelBinaries(Opts);
     Util::BinaryStream ProgramBinary;
     CMProgram.GetProgramBinary(ProgramBinary, CompileResult.PointerSizeInBytes);

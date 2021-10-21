@@ -30,6 +30,7 @@ using SectionInfo = GenXOCLRuntimeInfo::SectionInfo;
 using DataInfo = GenXOCLRuntimeInfo::DataInfo;
 
 LLVM_YAML_IS_SEQUENCE_VECTOR(vISA::ZESymEntry)
+LLVM_YAML_IS_SEQUENCE_VECTOR(vISA::ZERelocEntry)
 
 #define ENUM_MAP(type, name) io.enumCase(Val, #name, type::name)
 template <> struct yaml::ScalarEnumerationTraits<vISA::GenSymType> {
@@ -41,6 +42,16 @@ template <> struct yaml::ScalarEnumerationTraits<vISA::GenSymType> {
     ENUM_MAP(vISA::GenSymType, S_GLOBAL_VAR_CONST);
     ENUM_MAP(vISA::GenSymType, S_CONST_SAMPLER);
     ENUM_MAP(vISA::GenSymType, S_KERNEL);
+  }
+};
+
+template <> struct yaml::ScalarEnumerationTraits<vISA::GenRelocType> {
+  static void enumeration(yaml::IO &io, vISA::GenRelocType &Val) {
+    ENUM_MAP(vISA::GenRelocType, R_NONE);
+    ENUM_MAP(vISA::GenRelocType, R_SYM_ADDR);
+    ENUM_MAP(vISA::GenRelocType, R_SYM_ADDR_32);
+    ENUM_MAP(vISA::GenRelocType, R_SYM_ADDR_32_HI);
+    ENUM_MAP(vISA::GenRelocType, R_PER_THREAD_PAYLOAD_OFFSET_32);
   }
 };
 #undef ENUM_MAP
@@ -63,6 +74,7 @@ template <> struct yaml::MappingTraits<SectionInfo> {
   static void mapping(yaml::IO &io, SectionInfo &Info) {
     MAPPING(Data);
     MAPPING(Symbols);
+    MAPPING(Relocations);
   }
 };
 
@@ -80,6 +92,14 @@ template <> struct yaml::MappingTraits<vISA::ZESymEntry> {
     MAPPING(s_offset);
     MAPPING(s_size);
     MAPPING(s_name);
+  }
+};
+
+template <> struct yaml::MappingTraits<vISA::ZERelocEntry> {
+  static void mapping(yaml::IO &io, vISA::ZERelocEntry &Info) {
+    MAPPING(r_type);
+    MAPPING(r_offset);
+    MAPPING(r_symbol);
   }
 };
 #undef MAPPING

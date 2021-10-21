@@ -10,11 +10,15 @@ SPDX-License-Identifier: MIT
 
 #include "GenX.h"
 #include "GenXUtil.h"
+#include "vc/Utils/GenX/TypeSize.h"
 
-#include <Probe/Assertion.h>
+#include "Probe/Assertion.h"
+#include "RelocationInfo.h"
 
+#include <llvm/ADT/APInt.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Operator.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <llvm/Support/MathExtras.h>
@@ -22,21 +26,47 @@ SPDX-License-Identifier: MIT
 #include <algorithm>
 #include <iterator>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace vc {
 
+// Returns data represented as APInt. APInt bit width is equal to \p C bit size.
+// Relocations are returned in vector with offsets relative to constant
+// beginning.
+std::pair<llvm::APInt, std::vector<vISA::ZERelocEntry>>
+encodeGlobalValueOrConstantExpression(const llvm::Constant &C,
+                                      const llvm::DataLayout &DL);
+
+// Transforms the provided relocations - adds additional \p Offset to their
+// original offset. Original relocations are copied or moved depending on
+// iterator kind.
+template <typename InputIter, typename OutputIter>
+void shiftRelocations(InputIter First, InputIter Last, OutputIter Out,
+                      std::size_t Offset) {
+  std::transform(First, Last, Out, [Offset](vISA::ZERelocEntry Reloc) {
+    Reloc.r_offset += Offset;
+    return Reloc;
+  });
+}
+
 // This class encodes byte representation of the provided constant.
 // The data is written byte by byte (char by char).
-// The storage pointed by OutputIter must have sufficient space to preserve
-// encoded constant.
-template <typename OutputIter> class ConstantEncoder {
+// The storage pointed by DataOutIter must have sufficient space to preserve
+// encoded constant. The storage pointed by RelocOutIter must have sufficient
+// space to preserve all the required relocations.
+template <typename DataOutIter, typename RelocOutIter> class ConstantEncoder {
   const llvm::DataLayout &DL;
-  OutputIter DataIt;
+  // The number of already written bytes. It is updated by emit functions.
+  std::size_t NumWrittenBytes = 0;
+  // Do not write directly to it, use emit functions.
+  DataOutIter DataIt;
+  RelocOutIter RelocIt;
 
 public:
-  ConstantEncoder(const llvm::DataLayout &DLIn, OutputIter DataItIn)
-      : DL{DLIn}, DataIt{DataItIn} {}
+  ConstantEncoder(const llvm::DataLayout &DLIn, DataOutIter DataItIn,
+                  RelocOutIter RelocItIn)
+      : DL{DLIn}, DataIt{DataItIn}, RelocIt{RelocItIn} {}
 
   std::size_t encode(const llvm::Constant &Const) {
     return switchConstants(Const);
@@ -81,7 +111,7 @@ private:
                        "this fast raw method works only when target and host "
                        "endianness are the same");
     llvm::StringRef Data = ConstDataSeq.getRawDataValues();
-    std::copy(Data.begin(), Data.end(), DataIt);
+    emitData(Data.begin(), Data.end());
     return Data.size();
   }
 
@@ -115,6 +145,9 @@ private:
   std::size_t switchConstants(const llvm::Constant &Const) {
     if (llvm::isa<llvm::ConstantData>(Const))
       return switchConstantsInner(llvm::cast<llvm::ConstantData>(Const));
+    if (llvm::isa<llvm::ConstantExpr>(Const) ||
+        llvm::isa<llvm::GlobalValue>(Const))
+      return handleGVOrCE(Const);
     return switchConstantsInner(llvm::cast<llvm::ConstantAggregate>(Const));
   }
 
@@ -129,6 +162,19 @@ private:
     if (llvm::isa<llvm::ConstantTokenNone>(CData))
       return encodeLeafConstImpl(llvm::cast<llvm::ConstantTokenNone>(CData));
     return encodeZeroedConstant(CData);
+  }
+
+  std::size_t handleGVOrCE(const llvm::Constant &Const) {
+    auto [Data, Relocations] = encodeGlobalValueOrConstantExpression(Const, DL);
+    // FIXME: add more restrict TypeSizeWrapper method that asserts that size
+    // is exactly in bytes.
+    auto Size = vc::TypeSizeWrapper{Data.getBitWidth()}.inBytes();
+    auto *DataBegin = reinterpret_cast<const char *>(Data.getRawData());
+    shiftRelocations(std::make_move_iterator(Relocations.begin()),
+                     std::make_move_iterator(Relocations.end()), RelocIt,
+                     NumWrittenBytes);
+    emitData(DataBegin, DataBegin + Size);
+    return Size;
   }
 
   std::size_t switchConstantsInner(const llvm::ConstantAggregate &CAggr) {
@@ -181,19 +227,31 @@ private:
                                   llvm::genx::ByteBits);
       *DataIt++ = static_cast<char>(Masked);
     }
+    NumWrittenBytes += Size;
   }
 
-  void emitZeros(std::size_t Size) { std::fill_n(DataIt, Size, 0); }
+  void emitZeros(std::size_t Size) {
+    std::fill_n(DataIt, Size, 0);
+    NumWrittenBytes += Size;
+  }
+
+  template <typename ForwardIter>
+  void emitData(ForwardIter First, ForwardIter Last) {
+    std::copy(First, Last, DataIt);
+    NumWrittenBytes += std::distance(First, Last);
+  }
 };
 
-template <typename OutputIter>
-ConstantEncoder(const llvm::DataLayout &, OutputIter)
-    -> ConstantEncoder<OutputIter>;
+template <typename DataOutIter, typename RelocOutIter>
+ConstantEncoder(const llvm::DataLayout &, DataOutIter, RelocOutIter)
+    ->ConstantEncoder<DataOutIter, RelocOutIter>;
 
-template <typename OutputIterT>
+template <typename DataOutIterT, typename RelocOutIterT>
 std::size_t encodeConstant(const llvm::Constant &Const,
-                           const llvm::DataLayout &DL, OutputIterT OutIter) {
-  return ConstantEncoder<OutputIterT>{DL, OutIter}.encode(Const);
+                           const llvm::DataLayout &DL, DataOutIterT DataOutIt,
+                           RelocOutIterT RelocOutIt) {
+  return ConstantEncoder<DataOutIterT, RelocOutIterT>{DL, DataOutIt, RelocOutIt}
+      .encode(Const);
 }
 
 } // namespace vc

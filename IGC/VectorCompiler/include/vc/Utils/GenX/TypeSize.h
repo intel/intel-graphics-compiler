@@ -53,6 +53,9 @@ public:
 #endif
 
   TypeSizeWrapper(DLTypeSize TS) : TS(TS){};
+#if LLVM_VERSION_MAJOR >= 10
+  TypeSizeWrapper(uint64_t TSIn) : TS{FixedDLSize(TSIn)} {};
+#endif
 
   SzType inBits() const { return asIntegral<1>(); }
   SzType inBytes() const { return asIntegral<ByteBits>(); }
