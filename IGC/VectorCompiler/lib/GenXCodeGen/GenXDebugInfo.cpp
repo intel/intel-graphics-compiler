@@ -921,7 +921,6 @@ public:
     if (const auto *pDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {
       DbgValue = pDbgAddrInst->getAddress();
       VarDescr = pDbgAddrInst->getVariable();
-      return EmptyLoc("llvm.dbg.declare is not supported");
     } else if (const auto *pDbgValInst = dyn_cast<DbgValueInst>(DbgInst)) {
       DbgValue = pDbgValInst->getValue();
       VarDescr = pDbgValInst->getVariable();
