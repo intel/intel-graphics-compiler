@@ -729,12 +729,18 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
 
     for (const auto& A : data.ArgsMaps)
     {
+        // For the implicit args that have GenISAIntrinsic support,
+        // they do not require to be added as explicit arguments other than in the caller kernel.
         ImplicitArg::ArgType argId = A.first;
-        if (!isEntry && !isStackCall && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
+        if (IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic) &&
+            !isEntry &&
+            ImplicitArgs::hasIntrinsicSupport(argId))
         {
-            // The following implicit args have GenISAIntrinsic support.
-            // They do not require to be added as explicit arguments other than in the caller kernel.
-            if (ImplicitArgs::hasIntrinsicSupport(argId))
+            // Only write the implicit arg metadata if ForceInlineStackCallWithImplArg=1,
+            // since it's needed to check implicit arg usage to determine inlining.
+            // If ForceInlineStackCallWithImplArg=0, we can still use intrinsics to represent
+            // implicit arg usage inside a stackcalled function.
+            if (!isStackCall || IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
                 continue;
         }
         if (argId < ImplicitArg::ArgType::STRUCT_START)
