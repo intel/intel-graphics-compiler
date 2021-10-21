@@ -55,29 +55,35 @@ static cl::opt<unsigned> ArithChainLengthThreshold(
     "acc-split-arith-length", cl::init(4), cl::Hidden,
     cl::desc("Arithmetic chain length to localize for accumulator usage"));
 
-char GenXVisaRegAlloc::ID = 0;
-INITIALIZE_PASS_BEGIN(GenXVisaRegAlloc, "GenXVisaRegAlloc", "GenXVisaRegAlloc", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
-INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
+INITIALIZE_PASS_BEGIN(GenXVisaRegAllocWrapper, "GenXVisaRegAllocWrapper",
+                      "GenXVisaRegAllocWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
-INITIALIZE_PASS_END(GenXVisaRegAlloc, "GenXVisaRegAlloc", "GenXVisaRegAlloc", false, false)
+INITIALIZE_PASS_END(GenXVisaRegAllocWrapper, "GenXVisaRegAllocWrapper",
+                    "GenXVisaRegAllocWrapper", false, false)
 
-FunctionGroupPass *llvm::createGenXVisaRegAllocPass()
-{
-  initializeGenXVisaRegAllocPass(*PassRegistry::getPassRegistry());
-  return new GenXVisaRegAlloc();
+ModulePass *llvm::createGenXVisaRegAllocWrapperPass() {
+  initializeGenXVisaRegAllocWrapperPass(*PassRegistry::getPassRegistry());
+  return new GenXVisaRegAllocWrapper();
 }
 
-void GenXVisaRegAlloc::getAnalysisUsage(AnalysisUsage &AU) const
-{
-  FunctionGroupPass::getAnalysisUsage(AU);
+void GenXVisaRegAlloc::getAnalysisUsage(AnalysisUsage &AU) {
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXNumbering>();
   AU.addRequired<GenXBackendConfig>();
   AU.addRequired<TargetPassConfig>();
   AU.addRequired<FunctionGroupAnalysis>();
   AU.setPreservesAll();
+}
+
+void GenXVisaRegAlloc::releaseMemory() {
+  // Empty out the analysis from the last function it was used on.
+  RegMap.clear();
+  RegStorage.clear();
+  PredefinedSurfaceRegs.clear();
+  PredefinedRegs.clear();
 }
 
 /***********************************************************************
@@ -96,11 +102,6 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  // Empty out the analysis from the last function it was used on.
-  RegMap.clear();
-  RegStorage.clear();
-  PredefinedSurfaceRegs.clear();
-  PredefinedRegs.clear();
   for (unsigned i = 0; i != RegCategory::NUMREALCATEGORIES; ++i) {
     CurrentRegId[i] = 0;
   }

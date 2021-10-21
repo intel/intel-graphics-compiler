@@ -88,14 +88,14 @@ namespace llvm {
 //===----------------------------------------------------------------------===//
 void initializeGenXPasses(PassRegistry &registry) {
   initializeFunctionGroupAnalysisPass(registry);
-  initializeGenXAddressCommoningPass(registry);
-  initializeGenXArgIndirectionPass(registry);
-  initializeGenXCategoryPass(registry);
+  initializeGenXAddressCommoningWrapperPass(registry);
+  initializeGenXArgIndirectionWrapperPass(registry);
+  initializeGenXCategoryWrapperPass(registry);
   initializeGenXCFSimplificationPass(registry);
-  initializeGenXCisaBuilderPass(registry);
-  initializeGenXCoalescingPass(registry);
+  initializeGenXCisaBuilderWrapperPass(registry);
+  initializeGenXCoalescingWrapperPass(registry);
   initializeGenXDeadVectorRemovalPass(registry);
-  initializeGenXDepressurizerPass(registry);
+  initializeGenXDepressurizerWrapperPass(registry);
   initializeGenXEarlySimdCFConformancePass(registry);
   initializeGenXEmulationImportPass(registry);
   initializeGenXEmulatePass(registry);
@@ -103,17 +103,17 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXVectorCombinerPass(registry);
   initializeGenXFuncBalingPass(registry);
   initializeGenXGEPLoweringPass(registry);
-  initializeGenXGroupBalingPass(registry);
+  initializeGenXGroupBalingWrapperPass(registry);
   initializeGenXIMadPostLegalizationPass(registry);
-  initializeGenXLateSimdCFConformancePass(registry);
+  initializeGenXLateSimdCFConformanceWrapperPass(registry);
   initializeGenXLegalizationPass(registry);
-  initializeGenXLiveRangesPass(registry);
-  initializeGenXLivenessPass(registry);
-  initializeGenXLivenessPass(registry);
+  initializeGenXLiveRangesWrapperPass(registry);
+  // initializeGenXLivenessWrapperPass(registry);
+  initializeGenXLivenessWrapperPass(registry);
   initializeGenXLowerAggrCopiesPass(registry);
   initializeGenXLoweringPass(registry);
   initializeGenXModulePass(registry);
-  initializeGenXNumberingPass(registry);
+  initializeGenXNumberingWrapperPass(registry);
   initializeGenXPacketizePass(registry);
   initializeGenXPatternMatchPass(registry);
   initializeGenXPostLegalizationPass(registry);
@@ -122,11 +122,11 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXRawSendRipperPass(registry);
   initializeGenXReduceIntSizePass(registry);
   initializeGenXRegionCollapsingPass(registry);
-  initializeGenXRematerializationPass(registry);
+  initializeGenXRematerializationWrapperPass(registry);
   initializeGenXThreadPrivateMemoryPass(registry);
   initializeGenXTidyControlFlowPass(registry);
-  initializeGenXUnbalingPass(registry);
-  initializeGenXVisaRegAllocPass(registry);
+  initializeGenXUnbalingWrapperPass(registry);
+  initializeGenXVisaRegAllocWrapperPass(registry);
   initializeTransformPrivMemPass(registry);
   initializeGenXFunctionPointersLoweringPass(registry);
   initializeGenXBackendConfigPass(registry);
@@ -471,15 +471,15 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXModule.h
   vc::addPass(PM, createGenXModulePass());
   /// .. include:: GenXLiveness.h
-  vc::addPass(PM,
-              createGenXGroupBalingPass(BalingKind::BK_Analysis, &Subtarget));
-  vc::addPass(PM, createGenXLivenessPass());
-  vc::addPass(PM, createGenXNumberingPass());
-  vc::addPass(PM, createGenXLiveRangesPass());
+  vc::addPass(PM, createGenXGroupBalingWrapperPass(BalingKind::BK_Analysis,
+                                                   &Subtarget));
+  vc::addPass(PM, createGenXLivenessWrapperPass());
+  vc::addPass(PM, createGenXNumberingWrapperPass());
+  vc::addPass(PM, createGenXLiveRangesWrapperPass());
   /// .. include:: GenXRematerialization.cpp
-  vc::addPass(PM, createGenXRematerializationPass());
+  vc::addPass(PM, createGenXRematerializationWrapperPass());
   /// .. include:: GenXCategory.cpp
-  vc::addPass(PM, createGenXCategoryPass());
+  vc::addPass(PM, createGenXCategoryWrapperPass());
   /// Late SIMD CF conformance pass
   /// -----------------------------
   /// This is the same pass as GenXSimdCFConformance above, but run in a
@@ -489,7 +489,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// category. The RM values must have RM register category. The !any result of
   /// a goto/join must have NONE register category.
   ///
-  vc::addPass(PM, createGenXLateSimdCFConformancePass());
+  vc::addPass(PM, createGenXLateSimdCFConformanceWrapperPass());
   /// CodeGen baling pass
   /// -------------------
   /// This is the same pass as GenXBaling above, but run in a slightly different
@@ -498,40 +498,39 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// **IR restriction**: Any pass after this needs to be careful when modifying
   /// code, as it also needs to update baling info.
   ///
-  vc::addPass(PM,
-              createGenXGroupBalingPass(BalingKind::BK_CodeGen, &Subtarget));
+  vc::addPass(
+      PM, createGenXGroupBalingWrapperPass(BalingKind::BK_CodeGen, &Subtarget));
 
   /// .. include:: GenXNumbering.h
-  vc::addPass(PM, createGenXNumberingPass());
+  vc::addPass(PM, createGenXNumberingWrapperPass());
   /// .. include:: GenXLiveRanges.cpp
-  vc::addPass(PM, createGenXLiveRangesPass());
+  vc::addPass(PM, createGenXLiveRangesWrapperPass());
   /// .. include:: GenXUnbaling.cpp
-  vc::addPass(PM, createGenXUnbalingPass());
+  vc::addPass(PM, createGenXUnbalingWrapperPass());
   /// .. include:: GenXDepressurizer.cpp
-  vc::addPass(PM, createGenXDepressurizerPass());
+  vc::addPass(PM, createGenXDepressurizerWrapperPass());
   /// .. include:: GenXNumbering.h
-  vc::addPass(PM, createGenXNumberingPass());
+  vc::addPass(PM, createGenXNumberingWrapperPass());
   /// .. include:: GenXLiveRanges.cpp
-  vc::addPass(PM, createGenXLiveRangesPass());
+  vc::addPass(PM, createGenXLiveRangesWrapperPass());
   /// .. include:: GenXCoalescing.cpp
-  vc::addPass(PM, createGenXCoalescingPass());
+  vc::addPass(PM, createGenXCoalescingWrapperPass());
   /// .. include:: GenXAddressCommoning.cpp
-  vc::addPass(PM, createGenXAddressCommoningPass());
+  vc::addPass(PM, createGenXAddressCommoningWrapperPass());
   /// .. include:: GenXArgIndirection.cpp
-  vc::addPass(PM, createGenXArgIndirectionPass());
+  vc::addPass(PM, createGenXArgIndirectionWrapperPass());
   /// .. include:: GenXTidyControlFlow.cpp
   vc::addPass(PM, createGenXTidyControlFlowPass());
   /// .. include:: GenXVisaRegAlloc.h
-  auto RegAlloc = createGenXVisaRegAllocPass();
+  auto RegAlloc = createGenXVisaRegAllocWrapperPass();
   vc::addPass(PM, RegAlloc);
   if (BackendConfig.enableRegAllocDump())
-    vc::addPass(PM, createGenXGroupAnalysisDumperPass(RegAlloc, FGDumpsPrefix,
-                                                      ".regalloc"));
-
+    vc::addPass(PM, createGenXModuleAnalysisDumperPass(RegAlloc, FGDumpsPrefix,
+                                                       ".regalloc"));
   if (!DisableVerify)
     vc::addPass(PM, createVerifierPass());
   /// .. include:: GenXCisaBuilder.cpp
-  vc::addPass(PM, createGenXCisaBuilderPass());
+  vc::addPass(PM, createGenXCisaBuilderWrapperPass());
   vc::addPass(PM, createGenXFinalizerPass(o));
   vc::addPass(PM, createGenXDebugInfoPass());
 

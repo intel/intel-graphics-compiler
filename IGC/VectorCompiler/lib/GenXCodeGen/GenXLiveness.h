@@ -26,11 +26,11 @@ SPDX-License-Identifier: MIT
 ///   and erases the LiveRange for a value that does not need one (a baled
 ///   in instruction).
 ///
-/// GenXLiveness is a FunctionGroupPass, because we want to share liveness
+/// GenXLiveness is a FunctionGroupWrapperPass, because we want to share liveness
 /// information between all the Functions in a FunctionGroup (i.e. between a
-/// GenX kernel/function and its subroutines). Any pass that uses GenXLiveness,
+/// GenX kernel/function and its subroutines). Any pass that uses  GenXLiveness,
 /// which is almost all passes that run after it, must itself be a
-/// FunctionGroupPass.
+/// FunctionGroupWrapperPass.
 ///
 /// Here is what a LiveRange might look like if you dump() it in the debugger,
 /// or see it as part of the liveness info in a -print-after-all:
@@ -187,7 +187,8 @@ class raw_ostream;
 class ReturnInst;
 class Value;
 
-FunctionGroupPass *createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner);
+ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
+                                       const std::string &Banner);
 
 namespace genx {
 
@@ -474,7 +475,7 @@ public:
 
 } // end namespace genx
 
-class GenXLiveness : public FunctionGroupPass {
+class GenXLiveness : public FGPassImplInterface, public IDMixin<GenXLiveness> {
   FunctionGroup *FG = nullptr;
   using LiveRangeMap_t = std::map<genx::SimpleValue, genx::LiveRange *>;
   LiveRangeMap_t LiveRangeMap;
@@ -491,13 +492,10 @@ class GenXLiveness : public FunctionGroupPass {
   std::multimap<Value *, Value *> BaseToArgAddrMap;
 
 public:
-  static char ID;
-  explicit GenXLiveness()
-      : FunctionGroupPass(ID), CG(nullptr), Baling(nullptr),
-        Numbering(nullptr) {}
-  ~GenXLiveness() { clear(); }
-  StringRef getPassName() const override { return "GenX liveness analysis"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  static void getAnalysisUsage(AnalysisUsage &Info);
+  static StringRef getPassName() { return "GenX liveness analysis"; }
+
+  ~GenXLiveness() { releaseMemory(); }
   bool runOnFunctionGroup(FunctionGroup &FG) override;
   // setBaling : tell GenXLiveness where GenXBaling is
   void setBaling(GenXBaling *B) { Baling = B; }
@@ -603,20 +601,13 @@ public:
   std::vector<Value *> getAddressWithBase(Value *Base);
   // isNoopCastCoalesced : see if the no-op cast has been coalesced away
   bool isNoopCastCoalesced(CastInst *CI);
-  // createPrinterPass : get a pass to print the IR, together with the GenX
-  // specific analyses
-  Pass *createPrinterPass(raw_ostream &O,
-                          const std::string &Banner) const override {
-    return createGenXGroupPrinterPass(O, Banner);
-  }
   // Debug dump
   void dump();
-  using Pass::print; // Indicates we aren't replacing base class version of print
-  void print(raw_ostream &OS) const;
-  void releaseMemory() override { clear(); }
+  void print(raw_ostream &OS,
+             const FunctionGroup *dummy = nullptr) const override;
+  void releaseMemory() override;
 
 private:
-  void clear();
   unsigned numberInstructionsInFunc(Function *Func, unsigned Num);
   unsigned getPhiOffset(PHINode *Phi) const;
   void rebuildLiveRangeForValue(genx::LiveRange *LR, genx::SimpleValue SV);
@@ -624,8 +615,9 @@ private:
   void merge(genx::LiveRange *LR1, genx::LiveRange *LR2);
   void printValueLiveness(Value *V, raw_ostream &OS) const;
 };
+using GenXLivenessWrapper = FunctionGroupWrapperPass<GenXLiveness>;
 
-void initializeGenXLivenessPass(PassRegistry &);
+void initializeGenXLivenessWrapperPass(PassRegistry &);
 
 // Specialize DenseMapInfo for SimpleValue.
 template <> struct DenseMapInfo<genx::SimpleValue> {

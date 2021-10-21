@@ -52,19 +52,7 @@ using namespace genx;
 SimpleValue::SimpleValue(const AssertingSV &ASV)
     : SimpleValue(ASV.getValue(), ASV.getIndex()) {}
 
-char GenXLiveness::ID = 0;
-INITIALIZE_PASS_BEGIN(GenXLiveness, "GenXLiveness", "GenXLiveness", false, false)
-INITIALIZE_PASS_END(GenXLiveness, "GenXLiveness", "GenXLiveness", false, false)
-
-FunctionGroupPass *llvm::createGenXLivenessPass()
-{
-  initializeGenXLivenessPass(*PassRegistry::getPassRegistry());
-  return new GenXLiveness();
-}
-
-void GenXLiveness::getAnalysisUsage(AnalysisUsage &AU) const
-{
-  FunctionGroupPass::getAnalysisUsage(AU);
+void GenXLiveness::getAnalysisUsage(AnalysisUsage &AU) {
   AU.addRequired<TargetPassConfig>();
   AU.setPreservesAll();
 }
@@ -74,7 +62,6 @@ void GenXLiveness::getAnalysisUsage(AnalysisUsage &AU) const
  */
 bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG)
 {
-  clear();
   FG = &ArgFG;
   Subtarget = &getAnalysis<TargetPassConfig>()
                    .getTM<GenXTargetMachine>()
@@ -84,10 +71,9 @@ bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG)
 }
 
 /***********************************************************************
- * clear : clear the GenXLiveness
+ * releaseMemory: clear the GenXLiveness
  */
-void GenXLiveness::clear()
-{
+void GenXLiveness::releaseMemory() {
   while (!LiveRangeMap.empty()) {
     LiveRange *LR = begin()->second;
     for (auto i = LR->value_begin(), e = LR->value_end(); i != e; ++i) {
@@ -1527,8 +1513,7 @@ void GenXLiveness::printValueLiveness(Value *V, raw_ostream &OS) const {
   OS << "\n";
 }
 
-void GenXLiveness::print(raw_ostream &OS) const
-{
+void GenXLiveness::print(raw_ostream &OS, const FunctionGroup *dummy) const {
   OS << "GenXLiveness for FunctionGroup " << FG->getName() << "\n";
   // Print live ranges for global variables;
   for (auto &G : FG->getModule()->globals())
@@ -1721,10 +1706,6 @@ void LiveRange::sortAndMerge() {
  *
  */
 void LiveRange::prepareFuncs(FunctionGroupAnalysis *FGA) {
-  // Funcs must be empty as it's being filled immediately
-  // before it's required in VisaRegAlloc (because most of the passes
-  // invalidate this set) once for every LR
-  IGC_ASSERT(Funcs.empty());
   for (auto &Val : getValues()) {
     auto Inst = dyn_cast<Instruction>(Val.getValue());
     Function *DefFunc = nullptr;
@@ -1977,4 +1958,14 @@ void genx::CallGraph::build(GenXLiveness *Liveness) {
       }
     }
   }
+}
+
+INITIALIZE_PASS_BEGIN(GenXLivenessWrapper, "GenXLivenessWrapper",
+                      "GenXLivenessWrapper", false, false)
+INITIALIZE_PASS_END(GenXLivenessWrapper, "GenXLivenessWrapper",
+                    "GenXLivenessWrapper", false, false)
+
+ModulePass *llvm::createGenXLivenessWrapperPass() {
+  initializeGenXLivenessWrapperPass(*PassRegistry::getPassRegistry());
+  return new GenXLivenessWrapper();
 }
