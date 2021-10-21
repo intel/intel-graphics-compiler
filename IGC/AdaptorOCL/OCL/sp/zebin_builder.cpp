@@ -125,13 +125,15 @@ void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& program
 
 void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
 {
-    if (annotations.m_initConstantAnnotation == nullptr)
+    if (annotations.m_initConstantAnnotation.empty())
         return;
 
     // create a data section for global constant variables
-    // Global constants are: normal global constant variables, const strings (for printf)
-    // and zero-initialized global constants
-    auto& ca = annotations.m_initConstantAnnotation;
+    // There could be two constant data sections: general constants and string literals
+
+    // General constants
+    // create a data section for global constant variables
+    auto& ca = annotations.m_initConstantAnnotation.front();
     if (ca->AllocSize) {
         // the normal .data.const size
         uint32_t dataSize = ca->InlineData.size();
@@ -164,6 +166,23 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
             mGlobalConstSectID = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
                 dataSize, bssSize, alignment);
         }
+    }
+
+    if (annotations.m_initConstantAnnotation.size() < 2)
+      return;
+
+    // At most two const global buffers: general and string literals
+    IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 2);
+
+    // String literals
+    auto& caString = annotations.m_initConstantAnnotation[1];
+    if (caString->InlineData.size() > 0)
+    {
+        uint32_t dataSize = caString->InlineData.size();
+        uint32_t paddingSize = caString->AllocSize - dataSize;
+        uint32_t alignment = caString->Alignment;
+        mConstStringSectID = mBuilder.addSectionData("const.string", (const uint8_t*)caString->InlineData.data(),
+            dataSize, paddingSize, alignment);
     }
 }
 
@@ -346,15 +365,16 @@ void ZEBinaryBuilder::addProgramSymbols(const IGC::SOpenCLProgramInfo& annotatio
     for (auto sym : symbols.globalConst)
         addSymbol(sym, mGlobalConstSectID);
 
-    // add symbols defined for const string defined in global constant section
-    IGC_ASSERT(symbols.globalStringConst.empty() || mGlobalConstSectID != -1);
+    // add symbols defined in global string constant section
+    IGC_ASSERT(symbols.globalStringConst.empty() || mConstStringSectID != -1);
     for (auto sym : symbols.globalStringConst)
-        addSymbol(sym, mGlobalConstSectID);
+        addSymbol(sym, mConstStringSectID);
 
     // add symbols defined in global section
     IGC_ASSERT(symbols.global.empty() || mGlobalSectID != -1);
     for (auto sym : symbols.global)
         addSymbol(sym, mGlobalSectID);
+
 }
 
 void ZEBinaryBuilder::addKernelSymbols(

@@ -189,6 +189,7 @@ private:
     /// sectionID holder for program scope sections
     /// There should be only one global, global constant buffer per program
     zebin::ZEELFObjectBuilder::SectionID mGlobalConstSectID = -1;
+    zebin::ZEELFObjectBuilder::SectionID mConstStringSectID = -1;
     zebin::ZEELFObjectBuilder::SectionID mGlobalSectID = -1;
 };
 

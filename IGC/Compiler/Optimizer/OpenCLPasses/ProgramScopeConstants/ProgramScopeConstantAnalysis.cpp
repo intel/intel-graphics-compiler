@@ -141,9 +141,28 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 ilpsb.alignment = 0;
                 ilpsb.allocSize = 0;
                 m_pModuleMd->inlineConstantBuffers.push_back(ilpsb);
+
+                // String literals
+                InlineProgramScopeBuffer ilpsbString;
+                ilpsbString.alignment = 0;
+                ilpsbString.allocSize = 0;
+                m_pModuleMd->inlineConstantBuffers.push_back(ilpsbString);
                 hasInlineConstantBuffer = true;
             }
-            inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[0].Buffer;
+
+            // When ZeBin is enabled, constant variables that are string literals
+            // will be stored in the second const buffer
+            ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
+            bool isStringConst = cds && (cds->isCString() || cds->isString());
+            if ((IGC_IS_FLAG_ENABLED(EnableZEBinary) || m_pModuleMd->compOpt.EnableZEBinary) &&
+                isStringConst)
+            {
+                inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[1].Buffer;
+            }
+            else
+            {
+                inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[0].Buffer;
+            }
         }
 
         if (initializer->isZeroValue())
@@ -189,6 +208,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     if (hasInlineConstantBuffer)
     {
         m_pModuleMd->inlineConstantBuffers[0].allocSize = m_pModuleMd->inlineConstantBuffers[0].Buffer.size();
+        m_pModuleMd->inlineConstantBuffers[1].allocSize = m_pModuleMd->inlineConstantBuffers[1].Buffer.size();
     }
     // Calculate the correct offsets for zero-initialized globals/constants
     // Total allocation size in runtime needs to include zero-init values, but data copied to compiler output can ignore them
