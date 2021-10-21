@@ -346,8 +346,10 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
 
   GRFSizeInBytes = ST.getGRFByteSize();
 
-  StatelessPrivateMemSize =
-      genx::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize());
+  int StackAmount = genx::getStackAmount(FG.getHead());
+  if (StackAmount == genx::VC_STACK_USAGE_UNKNOWN)
+    StackAmount = BC.getStatelessPrivateMemSize();
+  StatelessPrivateMemSize = StackAmount;
 
   genx::KernelMetadata KM{FG.getHead()};
   IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
