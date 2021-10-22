@@ -4733,12 +4733,6 @@ void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* l
             }
             latestDepALUID[PIPE_INT] = prevID;
             currentID = node->ALUPipe == PIPE_INT ? node->getIntegerID() : integerID;
-            //We may have integer block as a result, we need change the distance to the first instruction of the block.
-            //But for other block like DPAS, the instruction itself has no integerID, so there is no need.
-            if (node->ALUPipe == PIPE_INT)
-            {
-                currentID = currentID - (node->instVec.size() - 1);
-            }
             break;
         case PIPE_FLOAT:
             prevID = liveNode->getFloatID();
@@ -5130,8 +5124,9 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         }
 
 
+
         //Support for DPAS
-        //To fully provide the efficency of DPAS pipeline
+        //To fully provide the efficiency of DPAS pipeline
         //We'd like to promote the dependence to or before the first instruction of a DPAS block
         //At the same time, push all dependence BD to the last instruction.
         //Keeping the dependence within a DPAS block will drop performance a lot.

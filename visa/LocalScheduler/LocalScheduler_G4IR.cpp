@@ -2301,6 +2301,41 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
     // that is their earliest cycle is >= than the current schedule cycle.
     std::priority_queue<Node *, std::vector<Node *>, earlyCmp> preReadyQueue;
 
+    auto updateForSucc = [&](Node* scheduled, std::priority_queue<Node*, std::vector<Node*>, earlyCmp>* preReadyQueue)
+    {
+        for (auto& curSucc : scheduled->succs)
+        {
+            Node* succ = curSucc.getNode();
+            // Recompute the earliest time for each successor.
+            if (scheduled->isLabel())
+            {
+                succ->earliest = 0;
+            }
+            else
+            {
+                // Update the earliest time of the successor and set its last scheduled
+                // predecessor with the largest latency to the currently scheduled node
+                // if the latency incurred by scheduling the successor right after the
+                // "scheduled" node is larger than successor's earliest time.
+                uint32_t latencyToAdd = curSucc.getLatency();
+                uint32_t earliestNew = 0;
+                latencyToAdd = latencyToAdd > scheduled->getOccupancy() ? latencyToAdd : scheduled->getOccupancy();
+                earliestNew = scheduled->schedTime + latencyToAdd;
+
+                if (succ->earliest <= earliestNew || !succ->lastSchedPred)
+                {
+                    succ->lastSchedPred = scheduled;
+                }
+                succ->earliest = (succ->earliest > earliestNew) ? succ->earliest : earliestNew;
+            }
+            // Decrease the number of predecessors not scheduled for the successor node.
+            if ((--(succ->predsNotScheduled)) == 0)
+            {
+                preReadyQueue->push(succ);
+            }
+        }
+    };
+
     collectRoots();
     for (auto N : Roots) {
         preReadyQueue.push(N);
@@ -2505,37 +2540,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
         // Set the cycle at which this node is scheduled.
         scheduled->schedTime = currCycle;
 
-        for (auto &curSucc : scheduled->succs)
-        {
-            Node *succ = curSucc.getNode();
-            // Recompute the earliest time for each successor.
-            if (scheduled->isLabel())
-            {
-                succ->earliest = 0;
-            }
-            else
-            {
-                // Update the earliest time of the successor and set its last scheduled
-                // predecessor with the largest latency to the currently scheduled node
-                // if the latency incurred by scheduling the successor right after the
-                // "scheduled" node is larger than successor's earliest time.
-                uint32_t latencyToAdd = 0;
-                uint32_t earliestNew = 0;
-                latencyToAdd = curSucc.getLatency() > scheduled->getOccupancy() ? curSucc.getLatency() : scheduled->getOccupancy();
-                earliestNew = scheduled->schedTime + latencyToAdd;
-
-                if (succ->earliest <= earliestNew || !succ->lastSchedPred)
-                {
-                    succ->lastSchedPred = scheduled;
-                }
-                succ->earliest = (succ->earliest > earliestNew) ? succ->earliest : earliestNew;
-            }
-            // Decrease the number of predecessors not scheduled for the successor node.
-            if ((--(succ->predsNotScheduled)) == 0)
-            {
-                preReadyQueue.push(succ);
-            }
-        }
+        updateForSucc(scheduled, &preReadyQueue);
 
         // Increment the scheduler's clock after each scheduled node
         currCycle += scheduled->getOccupancy();
