@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
+#include <functional>   // for std::function
 
 using namespace llvm;
 using namespace IGC;
@@ -88,6 +89,7 @@ namespace {
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<LoopInfoWrapperPass>();
         }
     };
 
@@ -214,13 +216,14 @@ char DeadPHINodeElimination::ID = 0;
 #undef PASS_ANALYSIS
 
 #define PASS_FLAG     "igc-phielimination"
-#define PASS_DESC     "Remove dead recurisive PHINode"
+#define PASS_DESC     "Remove Dead Recurisive PHINode"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 namespace IGC {
     IGC_INITIALIZE_PASS_BEGIN(DeadPHINodeElimination, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
         IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
         IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+        IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
         IGC_INITIALIZE_PASS_END(DeadPHINodeElimination, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 }
 
@@ -228,9 +231,9 @@ FunctionPass* IGC::createDeadPHINodeEliminationPass() {
     return new DeadPHINodeElimination();
 }
 
-bool DeadPHINodeElimination::runOnFunction(Function& F)
+static bool eliminateDeadPHINodes(Function& F)
 {
-    // This is to eliminate potential recurive phi like the following:
+    // This is to eliminate potential recursive phi like the following:
     //  Bx:   x = phi [y0, B0], ...[z, Bz]
     //  Bz:   z = phi [x, Bx], ...[]
     //  x and z are recursive phi's that are not used anywhere but in those phi's.
@@ -330,4 +333,179 @@ bool DeadPHINodeElimination::runOnFunction(Function& F)
     }
 
     return (toBeDeleted.size() > 0);
+}
+
+using BlockValueMap = DenseMap<const BasicBlock*, Value*>;
+using BlockValueMapVector = SmallVector<BlockValueMap, 16>;
+using BlockValueMapDuplicateIDs = SmallVector<SmallVector<size_t, 2>, 16>;
+
+static BlockValueMapVector getNodeLoops(const Loop* L) {
+    // Traverse the loop L and collect all the phi nodes
+    // and their phi node predecessors.
+
+    std::function<void(BlockValueMap&, PHINode*)> CollectConnected =
+        [&CollectConnected](BlockValueMap& BlockMap, PHINode* P) {
+        if (BlockMap.insert(make_pair(P->getParent(), P)).second) {
+            for (auto& V : P->incoming_values()) {
+                if (auto N = dyn_cast<PHINode>(V))
+                    CollectConnected(BlockMap, N);
+                else
+                    BlockMap[P->getIncomingBlock(V)] = V;
+            }
+        }
+    };
+
+    BlockValueMapVector BlockMaps;
+    // Start with phi node in a header
+    for (auto& I : *L->getHeader())
+        if (auto P = dyn_cast<PHINode>(&I)) {
+            BlockMaps.emplace_back(BlockValueMap());
+            CollectConnected(BlockMaps.back(), P);
+        }
+
+    return BlockMaps;
+}
+
+static bool isSameTopology(const BlockValueMap& BlockMapX, const BlockValueMap& BlockMapY) {
+    // Check if phi node recursive loops x and y
+    // are of the same topology, e.g. each node in x
+    // loop has unique node in y loop corresponding
+    // to the same block.
+
+    if (BlockMapX.size() != BlockMapY.size())
+        return false;
+
+    for (auto& PairX : BlockMapX) {
+        auto BlockX = PairX.first;
+        auto ValueX = PairX.second;
+        auto PairY = BlockMapY.find(BlockX);
+
+        // Return false if loop of y blocks are different
+        if (PairY == BlockMapY.end())
+            return false;
+
+        auto ValueY = PairY->second;
+
+        // Return false if x and y are different and are both non-phi nodes
+        if (ValueX != ValueY && !(isa<PHINode>(ValueX) && isa<PHINode>(ValueY)))
+            return false;
+    }
+
+    return true;
+}
+
+static BlockValueMapDuplicateIDs splitLoopsIntoDuplicateGroups(const BlockValueMapVector& BlockMaps) {
+    // Split all found recursive phi node loops into
+    // groups of duplicates by comparing each loop
+    // to all others.
+
+    BlockValueMapDuplicateIDs DuplicatesIDs;
+    if (BlockMaps.size()) {
+        SmallVector<bool, 16> Found(BlockMaps.size(), false);
+
+        for (size_t i = 0; i < BlockMaps.size() - 1; ++i) {
+            SmallVector<size_t, 2> Duplicates;
+
+            for (size_t j = i + 1; j < BlockMaps.size(); ++j)
+                if (!Found[j] && isSameTopology(BlockMaps[i], BlockMaps[j])) {
+                    Duplicates.push_back(j);
+                    Found[j] = true;
+                }
+
+            if (Duplicates.size()) {
+                Duplicates.push_back(i);
+                DuplicatesIDs.push_back(Duplicates);
+                Found[i] = true;
+            }
+        }
+    }
+
+    return DuplicatesIDs;
+}
+
+static bool replaceNonPHINodeUses(const BlockValueMapVector& BlockMaps, const BlockValueMapDuplicateIDs& DuplicatesIDs) {
+    // Replace all non-phi uses of nodes x with nodes y
+    // within a group according to the correspondence maps.
+
+    bool Changed = false;
+    for (size_t i = 0; i < DuplicatesIDs.size(); ++i) {
+        auto& Duplicates = DuplicatesIDs[i];
+        IGC_ASSERT_MESSAGE(Duplicates.size() >= 2, "Number of duplicates is expected to be at least 2");
+
+        // Let y be the first loop
+        auto& BlockMapY = BlockMaps[Duplicates[0]];
+
+        for (auto& PairY : BlockMapY) {
+            auto BlockY = PairY.first;
+            auto ValueY = PairY.second;
+
+            // All other loops are considered x
+            for (size_t j = 1; j < Duplicates.size(); ++j) {
+                auto& BlockMapX = BlockMaps[Duplicates[j]];
+
+                auto PairX = BlockMapX.find(BlockY);
+                IGC_ASSERT_MESSAGE(PairX != BlockMapX.end(), "Inconsistent duplicate maps");
+                auto ValueX = PairX->second;
+
+                for (auto U : ValueX->users()) {
+                    // Replace all uses of x with y
+                    U->replaceUsesOfWith(ValueX, ValueY);
+                    Changed = true;
+                }
+            }
+        }
+    }
+
+    return Changed;
+}
+
+static bool resolveDuplicateLoops(Function& F, const Loop* L) {
+    // This is to eliminate duplicate recursive phis like the following:
+    //  B0:   x0 = phi [v, ...], [xN, BN]
+    //  B0:   y0 = phi [v, ...], [yN, BN]
+    //  ...
+    //  B1:   x1 = phi [x0, B0], ...
+    //  B1:   y1 = phi [y0, B0], ...
+    //  ...
+    //  t = add %x1, 1.0
+    //  ...
+    //  B2:   x2 = phi [t, ...], [x1, B1]
+    //  B2:   y2 = phi [t, ...], [y1, B1]
+    //  ...
+    //        store yN ...
+    // xi are recursive duplicate of yi, and are not used anywhere but in those phis.
+    // Thus, they can be eliminated.
+
+    // Find all recursive phis within current loop L:
+    // loops of xi, yi, etc.
+    auto BlockMaps = getNodeLoops(L);
+
+    // Group all recursive phis within current loop L
+    // into duplicate groups:
+    // xi duplicates yi, so put then into the same group
+    auto DuplicatesIDs = splitLoopsIntoDuplicateGroups(BlockMaps);
+
+    // Replace x1 with y1 in t = add %x1, 1.0,
+    // so all xi become unused anywhere except in xi
+    // Unused phi nodes will be eliminated by upcomming
+    // call to eliminateDeadPHINodes(F)
+    return replaceNonPHINodeUses(BlockMaps, DuplicatesIDs);
+}
+
+bool DeadPHINodeElimination::runOnFunction(Function& F) {
+    bool Changed = false;
+
+    if (eliminateDeadPHINodes(F))
+        Changed = true;
+
+    auto LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    for (auto& L : LI->getLoopsInPreorder()) {
+        if (resolveDuplicateLoops(F, L))
+            Changed = true;
+
+        if (eliminateDeadPHINodes(F))
+            Changed = true;
+    }
+
+    return Changed;
 }
