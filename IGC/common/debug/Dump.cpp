@@ -386,10 +386,23 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         std::replace(s.begin(), s.end(), '>', '_');
         std::replace(s.begin(), s.end(), '|', '_');
 
+        // vISA does not support string of length >= 255. Truncate if this
+        // exceeds the limit. Note that vISA may append an extension, so relax
+        // it to a random number 240 here. And this assumes postfix string is
+        // the last chunk to compose the dump name before adding the extension.
+        // TODO: The existing WA does not guarantee the uniqueness of the
+        // filename when truncating the postfix. Will need to fix it.
+        const size_t MAX_VISA_STRING_LENGTH = 240;
+        const size_t curLen = static_cast<size_t>(ss.tellp());
+        const size_t extSize =
+            !m_extension.hasValue() ? 0 : 1 + m_extension.getValue().size();
+        if (curLen + 1 + s.size() + extSize > MAX_VISA_STRING_LENGTH)
+        {
+            s.resize(MAX_VISA_STRING_LENGTH - curLen - 1 - extSize);
+        }
         ss << "_"
             << s;
     }
-
 
     if(m_extension.hasValue())
     {
@@ -726,14 +739,7 @@ DumpName GetDumpNameObj(const IGC::CShader* pProgram, const char* ext)
 
     if(pProgram->entry->getName() != "entry")
     {
-        // TempWA, prevent dump size > 256, limit kernel name to 180 + path size
-        std::string progName = pProgram->entry->getName().str();
-        const int MAX_VISA_STRING_LENGTH = 180;
-        if (progName.size() >= MAX_VISA_STRING_LENGTH)
-        {
-            progName.resize(MAX_VISA_STRING_LENGTH);
-        }
-        dumpName = dumpName.PostFix(progName);
+        dumpName = dumpName.PostFix(pProgram->entry->getName().str());
     }
     if (pProgram->GetShaderType() == ShaderType::PIXEL_SHADER)
     {

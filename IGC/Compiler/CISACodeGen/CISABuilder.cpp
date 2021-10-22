@@ -3569,23 +3569,13 @@ namespace IGC
         V(vbuilder->AddPayloadSection(visaFunc, "PayloadSection"));
         vPayloadSection = visaFunc;
         CodeGenContext* context = m_program->GetContext();
-        std::string kernelName = std::string(m_program->entry->getName());
         std::string asmName;
         if (m_enableVISAdump || context->m_instrTypes.hasDebugInfo)
         {
-            // vISA does not support string of length >= 255. Truncate if this exceeds
-            // the limit. Note that vISA may append an extension, so relax it to a
-            // random number 240 here.
-            const int MAX_VISA_STRING_LENGTH = 240;
-            if (kernelName.size() >= MAX_VISA_STRING_LENGTH)
-            {
-                kernelName.resize(MAX_VISA_STRING_LENGTH);
-            }
             asmName = GetDumpFileName("asm");
         }
         else
         {
-            kernelName = "kernel";
             asmName = "kernel.asm";
         }
         V(vPayloadSection->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));

@@ -854,6 +854,21 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     {
         auto name = IGC::Debug::GetDumpNameObj(m_currShader, "visa.ll");
+        // If the function is in a function group, set the postfix string of
+        // DumpName as "entry name" + "_f" + "id".
+        if (m_FGA && !m_FGA->isGroupHead(&F)) {
+          FunctionGroup* group = m_FGA->getGroup(&F);
+          // To align with visa suffixing, make id start from 0.
+          unsigned id = -1;
+          for (auto it = group->begin(), ie = group->end(); it != ie; ++it)
+          {
+              if (*it == &F)
+                  break;
+              ++id;
+          }
+          std::string postfix = group->getHead()->getName().str() + "_f" + std::to_string(id);
+          name = name.PostFix(postfix);
+        }
         if (name.allow())
             llvmtoVISADump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
     }
