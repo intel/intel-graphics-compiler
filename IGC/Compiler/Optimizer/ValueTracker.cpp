@@ -285,8 +285,18 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
 
         if (auto* GEP = dyn_cast<GetElementPtrInst>(U))
         {
-            if (!GEP->hasAllConstantIndices())
-                return nullptr;
+            if (!GEP->hasAllConstantIndices()) {
+                // We can continue, only if the non-const index was after our depth.
+                unsigned firstNonConstIndex = 0;
+                for (unsigned i = 0; i < GEP->getNumIndices(); ++i) {
+                    if (!isa<ConstantInt>(GEP->getOperand(i + 1))) {
+                        firstNonConstIndex = i;
+                        break;
+                    }
+                }
+                if (firstNonConstIndex < depth)
+                    return nullptr;
+            }
 
             unsigned numIndices = GEP->getNumIndices();
             if (numIndices > depth + 1)
@@ -324,7 +334,8 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
         {
             if (CI->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy)
             {
-                return CI->getOperand(1);
+                // Continue search in current users, handle the memcpy arg in the tracking later.
+                workList.push_back(CI->getOperand(1));
             }
             else if (!CI->getCalledFunction()->isIntrinsic()) // handle user-defined functions
             {
@@ -391,8 +402,14 @@ Value* ValueTracker::trackValue(CallInst* CI, const uint index)
 
     while (true)
     {
-        if (isFinalValue(baseValue))
+        if (isFinalValue(baseValue)) {
             return baseValue;
+        }
+        else if (baseValue == nullptr) {
+            if (workList.empty()) return baseValue;
+            baseValue = workList.back();
+            workList.pop_back();
+        }
 
         visitedValues.insert(baseValue);
 
