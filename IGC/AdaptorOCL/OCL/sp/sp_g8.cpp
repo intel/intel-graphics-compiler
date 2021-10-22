@@ -1986,6 +1986,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.HasDPAS = annotations.m_executionEnivronment.HasDPAS;
 
         patch.UseBindlessMode = annotations.m_executionEnivronment.UseBindlessMode;
+        patch.HasStackCalls = annotations.m_executionEnivronment.HasStackCalls;
         patch.SIMDInfo = annotations.m_executionEnivronment.SIMDInfo;
 
         retValue = AddPatchItem(

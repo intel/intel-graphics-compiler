@@ -10691,6 +10691,9 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     // Set the total alloca size for the entry function
     m_encoder->SetFunctionAllocaStackSize(pKernel, totalAllocaSize);
+
+    if (m_FGA && m_FGA->getGroup(pKernel) && m_FGA->getGroup(pKernel)->hasStackCall())
+        m_currShader->SetHasStackCalls();
 }
 
 // Either do a block load or store to the stack-pointer given a vector of function arguments

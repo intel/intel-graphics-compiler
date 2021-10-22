@@ -307,6 +307,7 @@ struct ExecutionEnivronment
     bool   UseBindlessMode                            = false;
     uint64_t SIMDInfo                                 = 0;
     bool  HasDPAS                                     = false;
+    bool  HasStackCalls = false;
 };
 
 struct KernelTypeProgramBinaryInfo

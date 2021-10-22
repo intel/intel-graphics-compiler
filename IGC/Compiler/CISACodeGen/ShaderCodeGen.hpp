@@ -523,6 +523,10 @@ public:
     unsigned int GetPrimitiveTypeSizeInRegister(const llvm::Type* Ty) const;
     unsigned int GetScalarTypeSizeInRegisterInBits(const llvm::Type* Ty) const;
     unsigned int GetScalarTypeSizeInRegister(const llvm::Type* Ty) const;
+
+    bool HasStackCalls() const { return m_HasStackCalls; }
+    void SetHasStackCalls() { m_HasStackCalls = true; }
+
 protected:
     bool CompileSIMDSizeInCommon(SIMDMode simdMode);
     uint32_t GetShaderThreadUsageRate();
@@ -644,6 +648,8 @@ protected:
     uint32_t m_IndirectStatelessCount = 0;
 
     DebugInfoData diData;
+
+    bool m_HasStackCalls = false;
 };
 
 /// This class contains the information for the different SIMD version

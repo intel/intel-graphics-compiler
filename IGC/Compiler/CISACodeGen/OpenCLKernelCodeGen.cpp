@@ -1890,6 +1890,7 @@ namespace IGC
 
 
         m_kernelInfo.m_executionEnivronment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
+        m_kernelInfo.m_executionEnivronment.HasStackCalls = HasStackCalls();
     }
 
     void COpenCLKernel::RecomputeBTLayout()

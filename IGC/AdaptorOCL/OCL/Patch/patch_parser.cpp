@@ -896,6 +896,9 @@ void DebugPatchList(
                     "\tUseBindlessMode = %d\n",
                     pPatchItem->UseBindlessMode);
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tHasStackCalls = %d\n",
+                    pPatchItem->HasStackCalls);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tSIMDInfo = %lld\n",
                     pPatchItem->SIMDInfo);
             }
