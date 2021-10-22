@@ -5743,23 +5743,42 @@ void GraphColor::computeDegreeForGRF()
             bool isOdd = (lraBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
                 lraBC == BANK_CONFLICT_SECOND_HALF_ODD);
 
-            for (auto it : intfs)
+
+            auto computeDegree = [&](LiveRange* lr1)
             {
-                if (!lrs[it]->getIsPartialDcl())
+                if (!lr1->getIsPartialDcl())
                 {
-                    unsigned edgeDegree = edgeWeightGRF(lrs[i], lrs[it]);
+                    unsigned edgeDegree = edgeWeightGRF(lrs[i], lr1);
 
                     degree += edgeDegree;
 
-                    auto lrsitBC = lrs[it]->getBC();
+                    auto lrsitBC = lr1->getBC();
                     bool isOddBC = (lrsitBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
-                                              lrsitBC == BANK_CONFLICT_SECOND_HALF_ODD);
+                        lrsitBC == BANK_CONFLICT_SECOND_HALF_ODD);
 
                     if ((isOdd && isOddBC) ||
                         (!isOdd && !isOddBC))
                     {
                         bankDegree += edgeDegree;
                     }
+                }
+            };
+
+            for (auto it : intfs)
+            {
+                computeDegree(lrs[it]);
+            }
+
+            // consider weak edges in degree computation
+            auto* weakEdges = intf.getCompatibleSparseIntf(lrs[i]->getDcl());
+            if (weakEdges)
+            {
+                for (auto weakNeighbor : *weakEdges)
+                {
+                    if (!weakNeighbor->getRegVar()->isRegAllocPartaker())
+                        continue;
+
+                    computeDegree(lrs[weakNeighbor->getRegVar()->getId()]);
                 }
             }
 
@@ -5933,32 +5952,51 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange* lr)
         !(lr->getIsPartialDcl()))
     {
         unsigned lr_id = lr->getVar()->getId();
+
+        // relax degree between 2 nodes
+        auto relaxDegree = [&](LiveRange* lr1)
+        {
+            if (lr1->getActive() &&
+                !lr1->getIsPseudoNode() &&
+                !(lr1->getIsPartialDcl()))
+            {
+                unsigned w = edgeWeightGRF(lr1, lr);
+
+#ifdef DEBUG_VERBOSE_ON
+                DEBUG_VERBOSE("\t relax ");
+                lr1->dump();
+                DEBUG_VERBOSE(" degree(" << lr1->getDegree() << ") - " << w << std::endl);
+#endif
+                lr1->subtractDegree(w);
+
+                unsigned availColor = numColor;
+                availColor = numColor - lr1->getNumForbidden();
+
+                if (lr1->getDegree() + lr1->getNumRegNeeded() <= availColor)
+                {
+                    unconstrainedWorklist.push_back(lr1);
+                    lr1->setActive(false);
+                }
+            }
+        };
+
         const std::vector<unsigned>& intfs = intf.getSparseIntfForVar(lr_id);
         for (auto it : intfs)
         {
             LiveRange* lrs_it = lrs[it];
 
-            if (lrs_it->getActive() &&
-                !lrs_it->getIsPseudoNode() &&
-                !(lrs_it->getIsPartialDcl()))
+            relaxDegree(lrs_it);
+        }
+
+        auto* weakEdges = intf.getCompatibleSparseIntf(lr->getDcl());
+        if (weakEdges)
+        {
+            for (auto weakNeighbor : *weakEdges)
             {
-                unsigned w = edgeWeightGRF(lrs_it, lr);
-
-#ifdef DEBUG_VERBOSE_ON
-                DEBUG_VERBOSE("\t relax ");
-                lrs_it->dump();
-                DEBUG_VERBOSE(" degree(" << lrs_it->getDegree() << ") - " << w << std::endl);
-#endif
-                lrs_it->subtractDegree(w);
-
-                unsigned availColor = numColor;
-                availColor = numColor - lrs_it->getNumForbidden();
-
-                if (lrs_it->getDegree() + lrs_it->getNumRegNeeded() <= availColor)
-                {
-                    unconstrainedWorklist.push_back(lrs_it);
-                    lrs_it->setActive(false);
-                }
+                if (!weakNeighbor->getRegVar()->isRegAllocPartaker())
+                    continue;
+                auto lr1 = lrs[weakNeighbor->getRegVar()->getId()];
+                relaxDegree(lr1);
             }
         }
     }
