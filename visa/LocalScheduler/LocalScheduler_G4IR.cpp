@@ -1496,7 +1496,8 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
                     if (curBucket < ACC_BUCKET) {
                         dep = getDepForOpnd(curOpnd, liveOpnd);
                     } else if (curBucket == ACC_BUCKET
-                        || curBucket == A0_BUCKET) {
+                        || curBucket == A0_BUCKET)
+                    {
                         dep = getDepForOpnd(curOpnd, liveOpnd);
                         curKillsBucket = false;
                     } else if (curBucket == SEND_BUCKET) {

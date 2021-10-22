@@ -86,7 +86,7 @@ private:
 
     void addPointsToSetToBB(int bbId, const G4_RegVar* addr)
     {
-        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         const REGVAR_VECTOR& addrTakens = pointsToSets[addrPointsToSetIndex[addr->getId()]];
         for (G4_RegVar* addrTaken : addrTakens)
@@ -108,7 +108,7 @@ private:
 
     void addToPointsToSet(const G4_RegVar* addr, G4_RegVar* var)
     {
-        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         MUST_BE_TRUE(addr->getId() < numAddrs, "addr id is not set");
         int addrPTIndex = addrPointsToSetIndex[addr->getId()];
@@ -181,7 +181,7 @@ public:
 
     const REGVAR_VECTOR* getAllInPointsTo(const G4_RegVar* addr) const
     {
-        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         unsigned int id = getIndexOfRegVar(addr);
 
@@ -205,7 +205,7 @@ public:
 
     G4_RegVar* getPointsTo(const G4_RegVar* addr, int idx) const
     {
-        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         unsigned int id = getIndexOfRegVar(addr);
 
@@ -222,7 +222,7 @@ public:
 
     bool isPresentInPointsTo(const G4_RegVar* addr, const G4_RegVar* var) const
     {
-        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         unsigned int id = getIndexOfRegVar(addr);
 
@@ -244,7 +244,7 @@ public:
     void addFillToPointsTo(unsigned int bbid, G4_RegVar* addr, G4_RegVar* newvar)
     {
         // Adds to points to as well as indirect use in basic block
-        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         unsigned int id = getIndexOfRegVar(addr);
 
@@ -261,7 +261,7 @@ public:
 
     void removeFromPointsTo(G4_RegVar* addr, G4_RegVar* vartoremove)
     {
-        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         unsigned int id = getIndexOfRegVar(addr);
 

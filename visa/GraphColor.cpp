@@ -9223,7 +9223,7 @@ void VarSplit::localSplit(IR_Builder& builder,
                 (topdclLR = gra.getLocalLR(topdcl)) &&
                 topdcl->getIsRefInSendDcl() &&
                 topdclLR->isLiveRangeLocal()) &&
-                topdcl->getRegFile() != G4_INPUT)
+                topdcl->getRegFile() == G4_GRF)
             {
                 varRangesIt = varRanges.find(topdcl->getRegVar());
                 INST_LIST_ITER iterToInsert = rit.base();
@@ -9267,7 +9267,7 @@ void VarSplit::localSplit(IR_Builder& builder,
                     (topdclLR = gra.getLocalLR(topdcl)) &&
                     topdcl->getIsRefInSendDcl() &&
                     topdclLR->isLiveRangeLocal() &&
-                    topdcl->getRegFile() != G4_INPUT)
+                    topdcl->getRegFile() == G4_GRF)
                 {
                     G4_VarBase* base = (topdcl != NULL ? topdcl->getRegVar() : src->asSrcRegRegion()->getBase());
 
