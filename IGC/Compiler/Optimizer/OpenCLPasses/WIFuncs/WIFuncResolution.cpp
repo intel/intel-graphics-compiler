@@ -754,10 +754,9 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
         {
             // This function is invoked when expanding printf call to retrieve printf buffer ptr.
             auto DataTypeI64 = Type::getInt64Ty(CI.getFunction()->getParent()->getContext());
-            auto DataTypeI64Ptr = Type::getInt64PtrTy(CI.getFunction()->getParent()->getContext(), ADDRESS_SPACE_GLOBAL);
             unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::PRINTF_BUFFER;
             auto Result = BuildLoadInst(CI, Offset, DataTypeI64);
-            Result = Builder.CreateIntToPtr(Result, DataTypeI64Ptr);
+            Result = Builder.CreateIntToPtr(Result, CI.getType());
             V = Result;
             break;
         }
