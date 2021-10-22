@@ -204,7 +204,7 @@ static Type *getIntegerEquivalent(Type *matTy) {
         return matTy;
     }
 
-    if (IGCLLVM::FixedVectorType *VT = dyn_cast<IGCLLVM::FixedVectorType>(matTy)) {
+    if (IGCLLVM::FixedVectorType *VT = cast<IGCLLVM::FixedVectorType>(matTy)) {
         unsigned elements = (unsigned) VT->getNumElements();
         unsigned size = VT->getElementType()->getScalarSizeInBits();
         Type *elementType = Type::getIntNTy(matTy->getContext(), size);
