@@ -76,7 +76,7 @@ using namespace llvm;
 #define DEBUG_TYPE "GENX_STRUCT_SPLITTER"
 
 static cl::opt<bool> PerformStructSplitting(
-    "vc-struct-splitting", cl::init(false), cl::Hidden,
+    "vc-struct-splitting", cl::init(true), cl::Hidden,
     cl::desc(
         "Performs splitting complicate-constucted structs to plain structs."));
 
