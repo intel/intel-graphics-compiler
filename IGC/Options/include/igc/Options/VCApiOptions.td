@@ -44,6 +44,9 @@ def : PlainFlag<"no_vector_decomposition">, Alias<no_vector_decomposition>,
 def : PlainFlag<"no-vector-decomposition">, Alias<no_vector_decomposition>,
   HelpText<"Alias for -ze-no-vector-decomposition">;
 
+def vc_fno_struct_splitting : PlainFlag<"fno-struct-splitting">,
+  HelpText<"Disable StructSplitter pass">;
+
 def vc_fno_jump_tables : PlainFlag<"fno-jump-tables">,
   HelpText<"Disable the use of jump tables for lowering switches">;
 

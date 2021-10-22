@@ -256,6 +256,7 @@ if (FCL_ENABLED)
   unset(_allowBifLink)
 endif()
 
+
 # Currently IGC uses 2 legacy SPIRV-LLVM-Translators
 # First one is located at gfx-driver/Source/IGC/AdaptorOCL/SPIRV
 # Second one is taken as prebuilt shared library called SPIRVDLL

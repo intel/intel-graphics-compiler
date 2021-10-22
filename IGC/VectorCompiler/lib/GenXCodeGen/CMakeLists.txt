@@ -82,6 +82,7 @@ set(CODEGEN_SOURCES
   GenXVisaRegAlloc.cpp
   GenXVisa.cpp
   OCLRuntimeInfoPrinter.cpp
+  GenXStructSplitter.cpp
 )
 
 add_library(VCCodeGen ${CODEGEN_SOURCES})

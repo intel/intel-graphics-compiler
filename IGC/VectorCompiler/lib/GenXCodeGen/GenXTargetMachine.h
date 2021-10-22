@@ -184,6 +184,7 @@ void initializeGenXVectorCombinerPass(PassRegistry &);
 void initializeGenXPromoteStatefulToBindlessPass(PassRegistry &);
 void initializeGenXStackUsagePass(PassRegistry &);
 void initializeCMLowerVLoadVStorePass(PassRegistry &);
+void initializeGenXStructSplitterPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

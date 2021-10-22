@@ -68,6 +68,9 @@ struct GenXBackendOptions {
   // Non-owning pointer to ShaderOverride interface
   vc::ShaderOverrider *ShaderOverrider = nullptr;
 
+  // Flag to turn off StructSpliter pass
+  bool DisableStructSplitting = false;
+
   // Whether to enable finalizer dumps.
   bool EnableAsmDumps;
   // Whether to enable dumps of kernel debug information
@@ -237,6 +240,8 @@ public:
   const WA_TABLE *getWATable() const {
     return Options.WATable;
   }
+
+  bool doStructSplitting() const { return !Options.DisableStructSplitting; }
 
   bool useBindlessBuffers() const { return Options.UseBindlessBuffers; }
 

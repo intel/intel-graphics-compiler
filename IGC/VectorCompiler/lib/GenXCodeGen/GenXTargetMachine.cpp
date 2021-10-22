@@ -147,6 +147,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXLoadStoreLoweringPass(registry);
   initializeGenXStackUsagePass(registry);
   initializeGenXOCLRuntimeInfoPass(registry);
+  initializeGenXStructSplitterPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -277,6 +278,14 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGlobalDCEPass());
   vc::addPass(PM, createGenXLowerAggrCopiesPass());
   vc::addPass(PM, createInferAddressSpacesPass());
+  /// .. include:: GenXStructSplitter.cpp
+  vc::addPass(PM, createGenXStructSplitterPass());
+  /// DeadCodeElimination
+  /// -------------------
+  /// This is a standard LLVM pass, run at this point in the GenX backend. It
+  /// removes code that has been made dead by other passes.
+  ///
+  vc::addPass(PM, createDeadCodeEliminationPass());
   vc::addPass(PM, createTransformPrivMemPass());
   vc::addPass(PM, createPromoteMemoryToRegisterPass());
   // All passes which modify the LLVM IR are now complete; run the verifier

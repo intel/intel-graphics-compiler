@@ -223,6 +223,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();
   BackendOpts.ShaderOverrider = Opts.ShaderOverrider.get();
+  BackendOpts.DisableStructSplitting = Opts.DisableStructSplitting;
   BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
   if (Opts.ForceLiveRangesLocalizationForAccUsage)
     BackendOpts.LocalizeLRsForAccUsage = true;
@@ -584,6 +585,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.EmitDebugInformation = true;
     Opts.EmitDebuggableKernels = true;
   }
+  if (ApiOptions.hasArg(OPT_vc_fno_struct_splitting))
+    Opts.DisableStructSplitting = true;
   if (ApiOptions.hasArg(OPT_vc_fno_jump_tables))
     Opts.NoJumpTables = true;
   if (ApiOptions.hasArg(OPT_vc_ftranslate_legacy_memory_intrinsics))

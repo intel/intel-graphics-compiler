@@ -74,6 +74,8 @@ struct CompileOptions {
   bool TranslateLegacyMemoryIntrinsics = false;
   // -disable-finalizer-msg 
   bool DisableFinalizerMsg = false;
+  // -fno-struct-splitting
+  bool DisableStructSplitting = false;
 
   OptimizerLevel OptLevel = OptimizerLevel::Full;
   llvm::Optional<unsigned> StackMemSize;
