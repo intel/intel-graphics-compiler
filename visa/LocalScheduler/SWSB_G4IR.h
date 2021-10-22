@@ -608,99 +608,8 @@ namespace vISA
             }
         }
 
-        //If depends on multiple different ALU pipelines
-        //    If all operands type matching the ALU pipelines --> regDist
-        //    otherwise --> regDistAll
-        //If depends on single different ALU pipeline and other same ALU pipelines.
-        //    If all operands type matching the ALU pipelines --> regDist
-        //    otherwise --> regDistAll
-        //If depends on multiple same ALU pipelines
-        //    If all operands type matching the ALU pipeline --> accurate/regDist
-        //    otherwise--> accurate
-        //If depends on single ALU pipeline
-        //    If operands type matching the ALU pipeline --> accurate/regDist
-        //    otherwise--> accurate
-        //
-        //Note that:
-        // 1. one instruction can have multiple operands.
-        // 2. instruction belongs to single pipeline
-        void finalizeDistanceType(IR_Builder& builder)
-        {
-            if (instVec.front()->getDistanceTypeXe() != G4_INST::DistanceType::DIST_NONE)
-            {  //Forced to a type already
-                return;
-            }
-
-            if (builder.loadThreadPayload() && nodeID <= 8 &&
-                  GetInstruction()->isSend() && distDep.size())
-            {
-                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-                return;
-            }
-            if (distDep.size())
-            {
-                 SB_INST_PIPE depPipe = PIPE_NONE;
-                 bool sameOperandType = true;
-                 int diffPipes = 0;
-
-                 //Check if there is type conversion
-                 for (const SBDISTDEP_ITEM& it : distDep)
-                 {
-                     if (it.operandType != it.liveNodePipe)
-                     {
-                         sameOperandType = false;
-                     }
-                     if (it.liveNodePipe != it.nodePipe) //different pipe instructions
-                     {
-                         diffPipes++;
-                         depPipe = it.liveNodePipe;
-                     }
-                 }
-
-                 instVec.front()->setOperandTypeIndicated(sameOperandType);
-
-                 if (distDep.size() > 1)
-                 {
-                     if (diffPipes) //has different dependent pipeline
-                     {
-                         if (sameOperandType)
-                         {
-                             assert(!GetInstruction()->isSend());
-                             if (GetInstruction()->isDpas())
-                             {
-                                 setAccurateDistType(depPipe);
-                                 instVec.front()->setOperandTypeIndicated(false); //DPAS distance will be in sync inst
-                             }
-                             else //For math and other ALU instructions
-                             {
-                                 instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-                             }
-                         }
-                         else
-                         {
-                             instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-                             instVec.front()->setOperandTypeIndicated(false);
-                         }
-                     }
-                     else
-                     {
-                         setAccurateDistType(ALUPipe);
-                     }
-                 }
-                 else
-                 {
-                     if (depPipe != PIPE_NONE)
-                     {
-                         setAccurateDistType(depPipe);
-                     }
-                     else
-                     {
-                         setAccurateDistType(ALUPipe);
-                     }
-                 }
-            }
-        }
-
+        //This is to reduce the sync instructions.
+        //When A@1 is used to replace I@1, make sure it will not cause the stall for float or long pipelines
         bool isClosedALUType(std::vector<unsigned>** latestInstID, unsigned distance, SB_INST_PIPE type)
         {
             int instDist = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
@@ -741,7 +650,7 @@ namespace vISA
             return type == curType;
         }
 
-        void finalizeDistanceType1(IR_Builder& builder, std::vector<unsigned> **latestInstID)
+        void finalizeDistanceType1(IR_Builder& builder, std::vector<unsigned>** latestInstID)
         {
             if (instVec.front()->getDistanceTypeXe() != G4_INST::DistanceType::DIST_NONE)
             {  //Forced to a type already
@@ -819,7 +728,7 @@ namespace vISA
                 if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
                     !builder.hasRegDistDepIssue())
                 {
-                instVec.front()->setOperandTypeIndicated(sameOperandType);
+                    instVec.front()->setOperandTypeIndicated(sameOperandType);
                 }
 
                 //Multiple dependences
@@ -850,6 +759,151 @@ namespace vISA
                     {
                         setAccurateDistType(ALUPipe);
                         instVec.front()->setIsClosestALUType(isClosedALUType(latestInstID, curDistance, ALUPipe));
+                    }
+                }
+                else //Only one dependency
+                {
+                    if (depPipe != PIPE_NONE) // From different pipeline
+                    {
+                        setAccurateDistType(depPipe);
+                        if (sameOperandType || GetInstruction()->isSend())
+                        {
+                            instVec.front()->setIsClosestALUType(isClosedALUType(latestInstID, curDistance, depPipe));
+                        }
+                    }
+                    else // From same pipeline
+                    {
+                        setAccurateDistType(ALUPipe);
+                        if (sameOperandType)
+                        {
+                            instVec.front()->setIsClosestALUType(isClosedALUType(latestInstID, curDistance, ALUPipe));
+                        }
+                    }
+                }
+            }
+        }
+
+        void finalizeDistanceType2(IR_Builder& builder, std::vector<unsigned> **latestInstID)
+        {
+            if (instVec.front()->getDistanceTypeXe() != G4_INST::DistanceType::DIST_NONE)
+            {  //Forced to a type already
+                return;
+            }
+
+            if (builder.loadThreadPayload() && nodeID <= 8 &&
+                GetInstruction()->isSend() && distDep.size())
+            {
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                return;
+            }
+
+            unsigned curDistance = (unsigned)instVec.front()->getDistance();
+            if (distDep.size())
+            {
+                SB_INST_PIPE depPipe = PIPE_NONE;
+                SB_INST_PIPE sameOpndTypeDepPipe = PIPE_NONE;
+                bool sameOperandType = true;
+                bool depSamePipe = true;
+
+                //Check the potential to use regDist
+                for (int i = 0; i < (int)(distDep.size()); i++)
+                {
+                    SBDISTDEP_ITEM& it = distDep[i];
+
+                    //For regDist, the operand type is same as pipeline type of dependent instruction
+                    if (it.operandType != it.liveNodePipe || it.dstDep)
+                    {
+                        sameOperandType = false;
+                    }
+                }
+
+                //If the dependent instructions belong to different pipelines
+                for (int i = 0; i < (int)(distDep.size()); i++)
+                {
+                    SBDISTDEP_ITEM& it = distDep[i];
+
+                    if (it.liveNodePipe != it.nodePipe)
+                    {
+                        depSamePipe = false; //Current instruction and dependence instruction belong to different pipeline
+                    }
+
+                    if (depPipe == PIPE_NONE)
+                    {
+                        depPipe = it.liveNodePipe;
+                    }
+
+                }
+
+                //In some platforms, A@ need be used for following case when the regDist cannot be used (due to HW issue), and inst depends on different pipes
+                //mov(8 | M0)               r63.0 < 2 > :ud   r15.0 < 1; 1, 0 > : ud{ I@7 }
+                //...
+                //add(8 | M0)               r95.0 < 1 > : q    r87.0 < 1; 1, 0 > : q    r10.0 < 0; 1, 0 > : q{ I@7 }
+                //...
+                //add(8 | M0)               r55.0 < 2 > : d    r95.0 < 1; 1, 0 > : q    r63.0 < 2; 1, 0 > : ud{ A@4 }
+                //In some platforms I@ accurate dependence can used for following case when the regDist cannot be used (due to HW issue), because inst depends on same pipe
+                //The example code piece :
+                //mov(16 | M0) r88.0 < 2 > : d r84.0 < 1; 1, 0 > : d{ F@2 } // $79&103
+                //mov(16 | M16) r90.0 < 2 > : d r85.0 < 1; 1, 0 > : d // $80&104
+                //mov(16 | M0) r88.1 < 2 > : d r86.0 < 1; 1, 0 > : d{ F@1 } // $81&105
+                //mov(16 | M16) r90.1 < 2 > : d r87.0 < 1; 1, 0 > : d // $82&106
+                //mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2/I@2 } // $83&107
+                //Since:q and : d all go to integer pipeline in, @2 should work.However, due to HW bug, we can only set to I@2
+                //Depends on mulitple pipelines but same pipeline
+                bool mulitpleSamePipe = true;
+                if (distDep.size() > 1)
+                {
+                    sameOpndTypeDepPipe = distDep[0].liveNodePipe;
+                    for (int i = 1; i < (int)(distDep.size()); i++)
+                    {
+                        SBDISTDEP_ITEM& it = distDep[i];
+
+                        if (it.liveNodePipe != sameOpndTypeDepPipe)
+                        {
+                            mulitpleSamePipe = false;
+                        }
+                    }
+                }
+
+
+                if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
+                    !builder.hasRegDistDepIssue())
+                {
+                    instVec.front()->setOperandTypeIndicated(sameOperandType);
+                }
+
+                //Multiple dependences
+                if (distDep.size() > 1)
+                {
+                    if (!depSamePipe) //Dependent instruction and current instruction belong to different ALU pipelines.
+                    {
+                        if (sameOperandType) //But the operand type and dependence instruction are from same instruction pipeline.
+                        {
+                            assert(!GetInstruction()->isSend()); //Send operand has no type, sameOperandType is always false
+                            if (mulitpleSamePipe)
+                            {
+                                setAccurateDistType(depPipe);
+                            }
+                            else
+                            {
+                                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                            }
+                            instVec.front()->setOperandTypeIndicated(false); //DPAS distance will be in sync inst
+                        }
+                        else if (mulitpleSamePipe)
+                        {
+                            setAccurateDistType(depPipe);
+                            instVec.front()->setOperandTypeIndicated(false);
+                        }
+                        else // set to DISTALL
+                        {
+                            instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                            instVec.front()->setOperandTypeIndicated(false);
+                        }
+                    }
+                    else //From same pipeline
+                    {
+                        setAccurateDistType(depPipe);
+                        instVec.front()->setIsClosestALUType(isClosedALUType(latestInstID, curDistance, depPipe));
                     }
                 }
                 else //Only one dependency

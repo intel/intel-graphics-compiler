@@ -5613,7 +5613,11 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
         if (node->distDep.size())
         {
-            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+            if (builder.hasFiveALUPipes())
+            {
+                node->finalizeDistanceType2(builder, latestInstID);
+            }
+            else if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
             {
                 node->finalizeDistanceType1(builder, latestInstID);
             }
