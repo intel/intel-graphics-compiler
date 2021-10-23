@@ -95,7 +95,9 @@ void iga::EmitSendDescriptorInfo(
     } else {
         ss << "?";
     }
-    bool hasHeaderBit = true;
+    bool hasHeaderBit =
+        sfid != SFID::UGM && sfid != SFID::UGML &&
+        sfid != SFID::SLM && sfid != SFID::TGM;
     bool hasEncodedDstLen = true;
     if (hasHeaderBit && desc.isImm() && getHeaderBit(desc.imm)) {
         ss << "h";
@@ -165,8 +167,7 @@ void iga::EmitSendDescriptorInfo(
         if (appendUvrLod) {
             // Deduce the number of typed coordinates included
             // (e.g. U, V, R, LOD)
-            const int BITS_PER_REG =
-                    256;
+            const int BITS_PER_REG = p >= Platform::XE_HPC ? 512 : 256;
             // We do this by assuming address coordinates are in GRF padded
             // SOA order:
             //   - U's registers, then V's, then R's, the LOD's

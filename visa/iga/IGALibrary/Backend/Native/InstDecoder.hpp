@@ -43,6 +43,15 @@ namespace iga
     static inline PredCtrl decodePredCtrl(uint64_t bits) {
         return static_cast<PredCtrl>(bits);
     }
+    static inline PredCtrl decodePredCtrlPvc(uint64_t bits) {
+        switch (bits) {
+        case 0: return PredCtrl::NONE;
+        case 1: return PredCtrl::SEQ;
+        case 2: return PredCtrl::ANY;
+        case 3: return PredCtrl::ALL;
+        }
+        return static_cast<PredCtrl>(bits);
+    }
     static inline ExecSize decodeExecSizeBits(uint64_t val) {
         switch (val) {
         case 0: return ExecSize::SIMD1;
@@ -156,6 +165,9 @@ namespace iga
         {
         }
 
+        bool isXeHpcPlus() const {
+            return model.platform >= Platform::XE_HPC;
+        }
 
         void reportError(const char *msg) {
             errorHandler.reportError(loc, msg);
@@ -396,7 +408,9 @@ namespace iga
             const Field &fFLAGREG)
         {
             PredCtrl predCtrl =
-                decodePredCtrl(bits.getField(fPREDCTRL));
+                isXeHpcPlus() ?
+                    decodePredCtrlPvc(bits.getField(fPREDCTRL)) :
+                    decodePredCtrl(bits.getField(fPREDCTRL));
             addDecodedField(fPREDCTRL, ToSyntax(predCtrl));
             bool predInv = decodeBoolField(fPREDINV, "", "~");
             if (predInv && predCtrl == PredCtrl::NONE) {
@@ -642,6 +656,11 @@ namespace iga
             if ((int)unscaled != srb) {
                 reportFieldError(fSUBREG,
                     "subregister offset is misaligned for type size");
+            }
+            bool scaleArfFc = false;
+            scaleArfFc = model.platform >= Platform::XE_HPC;
+            if (opInfo.regOpName == RegName::ARF_FC && scaleArfFc) {
+                scaled /= 2;
             }
             opInfo.regOpReg.subRegNum = scaled;
 

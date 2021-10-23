@@ -19,8 +19,10 @@ set(IGA_Backend_Messages
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoder.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderHDC.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderLSC.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderOther.cpp
-  PARENT_SCOPE)
+  PARENT_SCOPE
+)
 
 ##################################################################
 # GED encoder

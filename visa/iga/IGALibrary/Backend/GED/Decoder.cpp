@@ -117,13 +117,19 @@ void Decoder::decodeSWSB(Instruction* inst)
 
         switch (status)
         {
-        case iga::SWSB_STATUS::ERROR_SET_ON_VARIABLE_LENGTH_ONLY:
+        case SWSB_STATUS::SUCCESS:
+            break;
+        case SWSB_STATUS::ERROR_SET_ON_VARIABLE_LENGTH_ONLY:
             errorT("SBID set is only allowed on variable latency ops");
             break;
-        case iga::SWSB_STATUS::ERROR_INVALID_SBID_VALUE:
+        case SWSB_STATUS::ERROR_INVALID_SBID_VALUE:
             errorT("invalid SBID value 0x%x", swsbBits);
             break;
+        case SWSB_STATUS::ERROR_ENCODE_MODE:
+            errorT("invalid encoding mode for platform");
+            break;
         default:
+            errorT("unknown error decoding SBID value 0x%x", swsbBits);
             break;
         }
         inst->setSWSB(sw);
@@ -1168,6 +1174,17 @@ void Decoder::decodeSendInfoXeHP(SendDescodeInfo &sdi)
     }
 }
 
+void Decoder::decodeSendInfoXeHPG(SendDescodeInfo &sdi)
+{
+    // This is exactly the same as XeHP except that:
+    //  - all immediate descriptors encode Src1Len in the EU bits
+    decodeSendInfoXeHP(sdi);
+    if (sdi.exDesc.isImm()) {
+        // >=XeHPG all immediate descriptors also have Src1Length
+        //   clobber the value XeHP decoding set
+        GED_DECODE_RAW_TO(Src1Length, sdi.src1Len);
+    }
+}
 
 
 Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
@@ -1181,6 +1198,10 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
         decodeSendInfoXe(sdi);
     } else if (platform() == Platform::XE_HP) {
         decodeSendInfoXeHP(sdi);
+    } else if (platform() == Platform::XE_HPG ||
+        platform() == Platform::XE_HPC)
+    {
+        decodeSendInfoXeHPG(sdi);
     } else {
         IGA_ASSERT_FALSE("unsupported platform");
     }
@@ -1214,7 +1235,8 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
         decodeSendSource0(inst);
     }
 
-    bool hasFusionCtrl = platform() >= Platform::XE;
+    // No fusion in XeHPC+
+    bool hasFusionCtrl = platform() >= Platform::XE && platform() < Platform::XE_HPC;
     if (hasFusionCtrl) {
         GED_FUSION_CTRL fusionCtrl = GED_FUSION_CTRL_Normal;
         GED_DECODE_RAW_TO(FusionCtrl, fusionCtrl);
@@ -1561,7 +1583,12 @@ Instruction *Decoder::decodeSyncInstruction(Kernel &kernel)
         //   sync.nop     null
         //   sync.allrd   null
         //   ...
+        // Since XeHPC, sync.bar supports flag src0
+        if (platform() >= Platform::XE_HPC) {
+            decodeSourceBasic<SourceIndex::SRC0>(inst, GED_ACCESS_MODE_Align1);
+        } else {
             inst->setSource(SourceIndex::SRC0, Operand::SRC_REG_NULL_UB);
+        }
     } else {
         // e.g.
         //   sync.allrd   0x15
@@ -1610,8 +1637,17 @@ FlagRegInfo Decoder::decodeFlagRegInfo(bool imm64Src0Overlaps) {
         fri.modifier = FlagModifier::EO;
     }
 
-    if (m_opSpec->supportsPredication())
+    // For XeHPC PredIvn field only exists when
+    // PredCtrl or CondCtrl (flag modifier) exits
+    if (platform() >= Platform::XE_HPC) {
+        if (fri.pred.function != PredCtrl::NONE ||
+            fri.modifier != FlagModifier::NONE)
+            decodePredInv(fri.pred);
+    }
+    else if (m_opSpec->supportsPredication())
+    {
         decodePredInv(fri.pred);
+    }
 
     if (fri.pred.function != PredCtrl::NONE ||
         fri.modifier != FlagModifier::NONE)

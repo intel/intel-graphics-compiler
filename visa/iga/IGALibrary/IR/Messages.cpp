@@ -29,12 +29,10 @@ static void deducePayloadSizes(
     }
     const MessageInfo &mi = result.info;
 
-    const int REG_SIZE_BITS =
-            256;
-    const int FULL_EXEC_SIZE =
-            16;
+    const int REG_SIZE_BITS = p >= Platform::XE_HPC ? 512 : 256;
+    const int FULL_EXEC_SIZE = p >= Platform::XE_HPC ? 32 : 16;
 
-    int execElems = static_cast<int>(execSize);
+    int execElems = int(execSize);
     if (execElems < FULL_EXEC_SIZE/2)
         execElems = FULL_EXEC_SIZE/2;
 
@@ -46,6 +44,9 @@ static void deducePayloadSizes(
         bool isSimd1 = mi.isTransposed() ||
             mi.op == SendOp::LOAD_STRIDED ||
             mi.op == SendOp::STORE_STRIDED;
+        isSimd1 |=
+            mi.op == SendOp::LOAD_BLOCK2D ||
+            mi.op == SendOp::STORE_BLOCK2D;
         return isSimd1;
     };
 
@@ -108,6 +109,8 @@ static void deducePayloadSizes(
     case SendOp::STORE:
     case SendOp::STORE_STRIDED:
     case SendOp::STORE_QUAD:
+    case SendOp::STORE_UNCOMPRESSED:
+    case SendOp::STORE_UNCOMPRESSED_QUAD:
         // normal vector message
         handleVectorMessage();
         break;
@@ -124,6 +127,18 @@ static void deducePayloadSizes(
         // src0 is U, V, R, LOD 32b each (128b total)
         // dst is 1 reg (with room to spare)
         message(1, 1, 0);
+        if (p > Platform::XE_HPG)
+            lens.src0Len = 2; // XeHPG passes 2 GRFs
+        break;
+    case SendOp::LOAD_BLOCK2D:
+        // we can't deduce data size because the tile sizes are part of
+        // the payload
+        message(-1, 1, 0);
+        break;
+    case SendOp::STORE_BLOCK2D:
+        // we can't deduce data size because the tile sizes are part of
+        // the payload
+        message(0, 1, -1);
         break;
     case SendOp::ATOMIC_LOAD:
     case SendOp::ATOMIC_IINC:
@@ -171,6 +186,16 @@ static void deducePayloadSizes(
         break;
     case SendOp::WAIT:
         message(1, 1, 0);
+        if (p >= Platform::XE_HPG) // except on XeHPG+ (uses n0.0 bit 0)
+            message(0, 1, 0);
+        break;
+    case SendOp::CCS_PC:
+    case SendOp::CCS_PU:
+        message(0, 1, 0);
+        break;
+    case SendOp::CCS_SC:
+    case SendOp::CCS_SU:
+        message(0, numAddrRegsForVector(), 0);
         break;
     default:
         break;
@@ -199,6 +224,7 @@ SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
     SFID sfid = SFID::INVALID;
     switch (sfidBits & 0xF) {
     case 0x0: sfid = SFID::NULL_; break;
+    case 0x1: sfid = SFID::UGML; break;
     case 0x2: sfid = SFID::SMPL; break;
     case 0x3: sfid = SFID::GTWY; break;
     case 0x4: sfid = SFID::DC2;  break;
@@ -206,9 +232,15 @@ SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
     case 0x6: sfid = SFID::URB;  break;
     case 0x7:
         sfid = SFID::TS;
+        if (p >= Platform::XE_HPG) {
+            sfid = SFID::BTD;
+        }
         break;
     case 0x8:
         sfid = SFID::VME;
+        if (p >= Platform::XE_HPG) {
+            sfid = SFID::RTA;
+        }
         break;
     case 0x9:
         sfid = SFID::DCRO;
@@ -218,7 +250,12 @@ SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
     case 0xC: sfid = SFID::DC1;  break;
     case 0xD:
         sfid = SFID::CRE;
+        if (p >= Platform::XE_HPG) {
+            sfid = SFID::TGM;
+        }
         break;
+    case 0xE: sfid = SFID::SLM; break;
+    case 0xF: sfid = SFID::UGM; break;
     default:
         sfid = SFID::INVALID;
     }
@@ -324,6 +361,9 @@ std::string iga::ToSymbol(CacheOpt op)
     MK_CASE(READINVALIDATE);
     MK_CASE(CACHED);
     MK_CASE(UNCACHED);
+    MK_CASE(STREAMING);
+    MK_CASE(WRITEBACK);
+    MK_CASE(WRITETHROUGH);
     default:
         std::stringstream ss;
         ss << "0x" << std::hex << (int)op << "?";
@@ -338,6 +378,8 @@ std::string iga::ToSymbol(AddrType op)
     switch (op) {
     MK_CASE(INVALID);
     MK_CASE(FLAT);
+    MK_CASE(BSS);
+    MK_CASE(SS);
     MK_CASE(BTI);
     default:
         std::stringstream ss;
@@ -348,6 +390,18 @@ std::string iga::ToSymbol(AddrType op)
 }
 
 
+static bool isLSC(Platform platform, SFID sfid)
+{
+    switch (sfid) {
+    case SFID::UGM:
+    case SFID::UGML:
+    case SFID::SLM:
+    case SFID::TGM:
+        return true;
+    default:
+        return false;
+    }
+}
 
 
 static bool isHDC(SFID sfid)
@@ -460,6 +514,12 @@ DecodeResult iga::tryDecode(
             exDesc, desc,
             result);
     }
+    else if (isLSC(platform, sfid)) {
+        decodeDescriptorsLSC(
+            platform, sfid, execSize,
+            exDesc, desc,
+            result);
+    }
     else {
         decodeDescriptorsOther(
             platform, sfid, execSize,
@@ -492,7 +552,14 @@ const SendOpDefinition &iga::lookupSendOp(const char *mnemonic)
             return SEND_OPS[i];
         }
     }
-
+    if (mne == "load_cmask")
+        return lookupSendOp(SendOp::LOAD_QUAD);
+    else if (mne == "load_block")
+        return lookupSendOp(SendOp::LOAD_STRIDED);
+    else if (mne == "store_cmask")
+        return lookupSendOp(SendOp::STORE_QUAD);
+    else if (mne == "store_block")
+        return lookupSendOp(SendOp::STORE_STRIDED);
     static constexpr SendOpDefinition INVALID(SendOp::INVALID, "?", "?");
     return INVALID;
 }
@@ -500,7 +567,7 @@ const SendOpDefinition &iga::lookupSendOp(const char *mnemonic)
 
 bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid)
 {
-    bool supported = true;
+    bool supported = isLSC(p, sfid);
     supported &=
         op == SendOp::LOAD ||
         op == SendOp::LOAD_STRIDED ||
@@ -508,11 +575,22 @@ bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid)
         op == SendOp::STORE ||
         op == SendOp::STORE_STRIDED ||
         op == SendOp::STORE_QUAD ||
+        op == SendOp::LOAD_BLOCK2D ||
+        op == SendOp::STORE_BLOCK2D ||
+        op == SendOp::STORE_UNCOMPRESSED ||
+        op == SendOp::STORE_UNCOMPRESSED_QUAD ||
+        // op == SendOp::LOAD_STATUS ||
+        // op == SendOp::FENCE ||
+        // op == SendOp::BARRIER ||
         lookupSendOp(op).isAtomic();
     return supported;
 }
 
 
+bool iga::isLscSFID(Platform p, SFID sfid)
+{
+    return isLSC(p, sfid);
+}
 
 
 bool iga::encodeDescriptors(
@@ -525,6 +603,10 @@ bool iga::encodeDescriptors(
     if (desc.isReg()) {
         err = "cannot encode with register desc";
         return false;
+    }
+    if (isLSC(p, vma.sfid)) {
+        return encodeDescriptorsLSC(p, vma,
+            exDesc, desc, err);
     }
     // TODO: support HDC here
     // encodeVectorMessageHDC(p, vma, exDesc, desc);

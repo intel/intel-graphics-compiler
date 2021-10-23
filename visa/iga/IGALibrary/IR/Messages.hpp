@@ -134,6 +134,16 @@ namespace iga
         //
         // e.g. in the BTI system 0xFF is used for this (coherent)
         UNCACHED,
+        //
+        // a streaming access (line goes into LRU)
+        STREAMING,
+        //
+        // invalidates and writes back lines to the backing store
+        WRITEBACK,
+        //
+        // indicates lines should be written back to the backing store as well
+        // as retained in all levels
+        WRITETHROUGH,
     };
     std::string ToSymbol(CacheOpt op);
 
@@ -142,6 +152,10 @@ namespace iga
         INVALID = 0,
         // stateless
         FLAT,
+        // stateful: bindless surface state (UMD)
+        BSS,
+        // stateful: surface state (KMD)
+        SS,
         // stateful: binding table interface
         BTI,
     };
@@ -249,6 +263,9 @@ namespace iga
         // possible immediate offset if the encoding supports it
         int immediateOffset = 0;
         //
+        // same as the above but only for block2d (mutally exclusive with above)
+        int immediateOffsetBlock2dX = 0, immediateOffsetBlock2dY = 0;
+        //
         // A symbol value for this message (syntax).
         // The syntax is not complete and IGA will not consume it directly
         // (since some information isn't in necessarily in the descriptors).
@@ -353,6 +370,12 @@ namespace iga
     //         SURFACE [ SCALE $addrreg IMMOFFSET ] ADDRTYPE
     //         $datareg DATATYPE
     //
+    // Examples:
+    //   load.ugm.ca.ca (32)          r10:d32x4    bti<0x02>[r20-0x40]:a32
+    //   load.ugm.ca.ca (1)           r10:d32x4t   flat[r20+0x40]:a64
+    //   load.slm (1)                 r10:d32x4t   flat[r20+0x40]:a64
+    //   store_strided.ugm.wt.wb (16) bss<a0.4>[r20+0x40]:a32   r10:d32x4
+    //   atomic_iinc.ugm.un.un (32)   r10:d32   flat[r20-0x40]:a64   null
     struct MessageSyntax {
         enum class Layout {
             // unset
@@ -420,6 +443,7 @@ namespace iga
     // incrementally enable load/store syntax
     bool       sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid);
     //
+    bool       isLscSFID(Platform p, SFID sfid);
     //
     struct VectorMessageArgs {
         SFID           sfid = SFID::INVALID;
@@ -433,6 +457,8 @@ namespace iga
         int            addrScale = 1; // must be 1x, V*D, 2*V*2, or 4*V*D
         int            addrSize = 0;
         int            addrOffset = 0; // imm only
+        int            addrOffsetX = 0; // block2d only
+        int            addrOffsetY = 0; // block2d only
         int            dataSizeReg = 0;
         int            dataSizeMem = 0;
         bool           dataSizeExpandHigh = 0; // d8u32h
@@ -440,6 +466,7 @@ namespace iga
             struct {
                 short  dataVectorSize;
                 bool   dataTranspose;
+                bool   dataVnni;
             };
             //
             // used for LOAD_QUAD, STORE_QUAD, ...

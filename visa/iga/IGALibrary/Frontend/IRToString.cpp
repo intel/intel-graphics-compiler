@@ -31,6 +31,8 @@ std::string iga::ToSymbol(Platform x) {
     MAKE_CASE(Platform, GEN11);
     MAKE_CASE(Platform, XE);
     MAKE_CASE(Platform, XE_HP);
+    MAKE_CASE(Platform, XE_HPG);
+    MAKE_CASE(Platform, XE_HPC);
     MAKE_CASE(Platform, FUTURE);
     MAKE_DEFAULT_CASE(Platform);
     }
@@ -86,6 +88,12 @@ std::string iga::ToSyntax(SFID sfid)
     case SFID::TS:    return "ts";
     case SFID::URB:   return "urb";
     case SFID::VME:   return "vme";
+    case SFID::BTD:   return "btd";
+    case SFID::RTA:   return "rta";
+    case SFID::SLM:   return "slm";
+    case SFID::TGM:   return "tgm";
+    case SFID::UGM:   return "ugm";
+    case SFID::UGML:  return "ugml";
     default:
         std::stringstream ss;
         ss << "SFID::0x" << std::hex << static_cast<int>(sfid) << "?";
@@ -110,6 +118,7 @@ std::string iga::ToSyntax(SyncFC sfc)
     case SyncFC::NOP:   return "nop";
     case SyncFC::ALLRD: return "allrd";
     case SyncFC::ALLWR: return "allwr";
+    case SyncFC::FENCE: return "fence";
     case SyncFC::BAR:   return "bar";
     case SyncFC::HOST:  return "host";
     default:

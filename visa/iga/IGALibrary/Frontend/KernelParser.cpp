@@ -70,6 +70,9 @@ static const IdentMap<Type> SRC_TYPES {
     {"nf", Type::NF},
     {"bf", Type::BF},
     {"bf16", Type::BF},
+    {"bf8", Type::BF8},
+    {"qf", Type::QF},
+    {"tf32", Type::TF32},
     ///////////////////////////////////////////
     // non-standard names
     {"u8",  Type::UB},
@@ -97,6 +100,9 @@ static const IdentMap<Type> DST_TYPES {
     {"hf", Type::HF},
     {"bf", Type::BF},
     {"bf16", Type::BF},
+    {"bf8", Type::BF8},
+    {"qf", Type::QF},
+    {"tf32", Type::TF32},
     {"f",  Type::F},
     {"df", Type::DF},
     {"nf", Type::NF},
@@ -1019,8 +1025,7 @@ public:
             // looking at a regular instruction (non special-ld-st inst)
             m_builder.InstOp(m_opSpec);
             FinishNonLdStInstBody();
-        } else
-        {
+        } else if (!ParseLdStInst()) {
             FailS(m_mnemonicLoc, "invalid mnemonic");
         }
 
@@ -1147,6 +1152,11 @@ public:
     }
 
 
+    bool ParseLdStInst();
+    void ParseLdStOpControls(
+        Loc mneLoc,
+        const SendOpDefinition &opInfo,
+        VectorMessageArgs &vma);
 
     // e.g.  add (8|M8) ...
     //           ^
@@ -1318,6 +1328,8 @@ public:
         ParseSendDescsLegacy();
     }
 
+    // XE_HP offers new : syntax for separate src1Len for certain messages
+    // XE_HPG, XE_HPC require : syntax
     //   We are flexible here and permit src1Len to come out of the immediate
     //   descriptor for certain cases (with a warning).
     void ParseSendInstructionXeHP() {
@@ -1368,6 +1380,8 @@ public:
             {"all16h", PredCtrl::ALL16H},
             {"any32h", PredCtrl::ANY32H},
             {"all32h", PredCtrl::ALL32H},
+            {"any", PredCtrl::ANY},
+            {"all", PredCtrl::ALL},
         };
 
         const Loc prLoc = NextLoc(0);
@@ -2002,6 +2016,10 @@ public:
         // check if the imm offset out of bound
         int addroffMax = 511;
         int addroffMin = -512;
+        if (platform() >= Platform::XE_HPC) {
+            addroffMax = 1023;
+            addroffMin = -1024;
+        }
         if (addrOff < addroffMin || addrOff > addroffMax)
         {
             FailAtT(addrOffLoc,
@@ -3210,6 +3228,40 @@ public:
                     exDesc.imm |= ((uint32_t)src1Length << 6) & 0x1F;
                 }
             }
+            if (platform() >= Platform::XE_HPG) {
+                // XeHPG+: Src1.Length is not part of ExDesc for ExDesc.IsImm,
+                // but are explicit bits in the EU ISA.
+                int exDescSrc1Len = (int)(exDesc.imm >> 6) & 0x1F;
+                if (src1Length < 0) {
+                    WarningAtT(exDescLoc,
+                        "Src1.Length should suffix src1 register (e.g. r10:4)");
+                    // take it from the descriptor
+                    src1Length = exDescSrc1Len;
+                } else if (exDescSrc1Len != 0) { // src1Length >= 0
+                    // they set Src1.Length as part of the descriptor
+                    WarningAtT(exDescLoc,
+                        "Send ExDesc[10:6] is not Src1.Length; suffix length "
+                        "on src1 reg  (e.g. r10:4)");
+                    // if Src1.Length was also set on the register, then ensure
+                    // that it at least matches the descriptor value
+                    if (src1Length >= 0) {
+                        // throw a fit if they mismatch
+                        if (exDescSrc1Len != src1Length)
+                            FailAtT(exDescLoc,
+                                "mismatch of Src1.Length suffix and "
+                                "ExDesc[10:6]");
+                        // else we
+                    } else {
+                        // take it from the descriptor
+                        src1Length = exDescSrc1Len;
+                    }
+                } // else: Src1Length >= 0 && exDescSrc1Len == 0 (prefer reg op)
+
+                if (exDesc.imm & 0x7FF) {
+                    WarningAtT(exDescLoc, "ExDesc[10:0] must be zero");
+                    exDesc.imm &= ~0x7FF; // [10:0] MBZ
+                }
+            } // else <=XeHPG (everything is in the imm descriptor)
 
             if (platform() >= Platform::XE && (exDesc.imm & 0xF)) {
                 FailAtT(exDescLoc,
@@ -3362,6 +3414,15 @@ public:
             auto loc = m_srcLocs[1].isValid() ? m_srcLocs[1] : m_mnemonicLoc;
             FailAtT(loc, "send with ExBSO option should have "
                 "Src1.Length suffixing parameter (e.g. r10:4)");
+        ////////////////////////////
+        //  else if:
+        //    platform() >= Platform::XE_HPG
+        //    m_builder.getExDesc().isImm() &&
+        //    src1LengthSuffixSet
+        // GOOD:  send ... r10:2  IMM ... {}
+        // GOOD:  send ... r10    a0.# ... {}
+        // this is already checked in ExDesc parser
+        //
         } else if (instOpts.contains(InstOpt::EXBSO) &&
             m_builder.getExDesc().isImm())
         {
@@ -3392,6 +3453,9 @@ public:
         InstOpt newOpt = InstOpt::ACCWREN;
         if (ConsumeIdentEq("AccWrEn")) {
             newOpt = InstOpt::ACCWREN;
+            if (platform() >= Platform::XE_HPC) {
+                FailAtT(loc, "AccWrEn not supported on this platform");
+            }
         } else if (ConsumeIdentEq("Atomic")) {
             if (platform() < Platform::GEN7) {
                 FailAtT(loc, "Atomic mot supported on given platform");
@@ -3532,6 +3596,10 @@ public:
                     FailAtT(loc, "CPS is not allowed for non-send instructions");
                 }
                 newOpt = InstOpt::CPS;
+            } else if (ConsumeIdentEq("NoAccSBSet")) {
+                // try swsb special token: NoAccSBSet
+                m_builder.InstDepInfoSpecialToken(loc, SWSB::SpecialToken::NOACCSBSET);
+                isSwsbOpt = true;
             } else if (m_opts.swsbEncodeMode >= SWSB_ENCODE_MODE::ThreeDistPipe) {
                 // swsb XE encoding: the distance could be A@, F@, L@, I@, M@
                 // same pipe dist (e.g. @4) will parse further down
@@ -3557,7 +3625,7 @@ public:
                     || tryParsePipe("I", SWSB::DistType::REG_DIST_INT)
                     || tryParsePipe("L", SWSB::DistType::REG_DIST_LONG)
                     || tryParsePipe("A", SWSB::DistType::REG_DIST_ALL)
-                    ;
+                    || tryParsePipe("M", SWSB::DistType::REG_DIST_MATH);
                 if (parsedNamedPipe && m_model.supportsHwDeps()) {
                     FailAtT(loc,
                         "software dependencies not supported on this platform");
@@ -3624,6 +3692,10 @@ public:
             freg.regNum = 0;
         } else if (ConsumeIdentEq("f1")) {
             freg.regNum = 1;
+        } else if (ConsumeIdentEq("f2")) {
+            freg.regNum = 2;
+        } else if (ConsumeIdentEq("f3")) {
+            freg.regNum = 3;
         } else {
             FailT("unexpected flag register number");
         }
@@ -3803,6 +3875,592 @@ struct ParsedAddrOperand {
     int immOffset = 0;
 };
 
+//
+// parses a subset of LSC ops
+//  EXAMPLES:
+//    load.slm                (32|M0)   r10:2:d32    [r20:2]:a32
+//    load_strided.ugm.ca.ca  (32|M0)   r10:4:d32x2  [r20:4]:a64
+//
+//    store.slm       (32|M0)  [r20:2]:a32   r10:2:d32
+//    store_quad.slm  (32|M0)  [r20:4]:a64   r10:4:d32.xw
+//
+//    atomic_fadd.ugm.uc.uc  (32|M0)   r10:2:d32  [r20:4]:a64  null
+//
+void KernelParser::ParseLdStOpControls(
+    Loc mneLoc, const SendOpDefinition &opInfo, VectorMessageArgs &vma)
+{
+    auto tryParseAddrSize = [&] (std::string ctrl) {
+        if (ctrl == "a16") {
+            vma.addrSize = 16;
+        } else if (ctrl == "a32") {
+            vma.addrSize = 32;
+        } else if (ctrl == "a64") {
+            vma.addrSize = 64;
+        } else {
+            return false;
+        }
+        return true;
+    };
+    //
+    auto tryParseDataType = [&] (Loc dtLoc, std::string dt) {
+        if (dt.size() < 2 || dt[0] != 'd' || !isdigit(dt[1])) {
+            return false;
+        }
+        //
+        auto errorAtOffset =
+            [&] (size_t off, std::string msg) {
+            dtLoc.col += (uint32_t)off;
+            dtLoc.offset += (PC)off;
+            FailS(dtLoc, msg);
+        };
+        size_t ix = 1;
+        auto skip = [&] (size_t i) {
+            ix = std::max<size_t>(i + ix, dt.size());
+        };
+        auto lookingAt = [&] (const char *str) {
+            return dt.find(str, ix) == ix;
+        };
+        auto consumeIf = [&] (const char *str) {
+            if (lookingAt(str)) {
+                skip(strlen(str));
+                return true;
+            }
+            return false;
+        };
+        //////////////////////////////////////////////////////////
+        // data size
+        //    e.g. d32... or d8u32...
+        int dataSize = 0;
+        for (; ix < dt.size() && isdigit(dt[ix]); ix++) {
+            dataSize = 10*dataSize + dt[ix] - '0';
+        }
+        switch (dataSize) {
+        case  8: case 16: case 32: case 64: case 128: case 256:
+            break;
+        default:
+            errorAtOffset(0, "invalid data type size");
+        }
+        // could be d8u32
+        vma.dataSizeExpandHigh = false;
+        vma.dataSizeReg = vma.dataSizeMem = dataSize;
+        if (consumeIf("u32h")) {
+            vma.dataSizeReg = 32;
+            vma.dataSizeExpandHigh = true;
+        } else if (consumeIf("u32")) {
+            vma.dataSizeReg = 32;
+        }
+
+        //////////////////////////////////////////////////////////
+        // vector size
+        //  ...x4 or ...x64t or ....xyw (for quad)
+        if (opInfo.hasChMask()) {
+            if (ix != dt.size())
+                errorAtOffset(ix, "unexpected data type");
+            // e.g. d32.xz
+            //          ^
+            if (LookingAtSeq(DOT, IDENT)) {
+                Skip();
+                auto cmask = ConsumeIdentOrFail("expected op control symbols");
+                for (size_t i = 0; i < cmask.size(); i++) {
+                    auto setElem = [&] (int off) {
+                        if (vma.dataComponentMask & (1<<off)) {
+                            errorAtOffset(ix + i,
+                                "duplicate component mask element");
+                        }
+                        vma.dataComponentMask |= (1<<off);
+                    };
+                    if (cmask[i] == 'x') {
+                        setElem(0);
+                    } else if (cmask[i] == 'y') {
+                        setElem(1);
+                    } else if (cmask[i] == 'z') {
+                        setElem(2);
+                    } else if (cmask[i] == 'w') {
+                        setElem(3);
+                    } else {
+                        errorAtOffset(ix + i, "invalid component mask symbol");
+                    }
+                }
+            } else {
+                FailS(NextLoc(), "expected component mask");
+            }
+        } else {
+            // regular vector type
+            // e.g. d8, d8u32 or d32x16t
+            auto vix = ix;
+            int vecSize = 1;
+            if (ix < dt.size() - 1 && dt[ix] == 'x' && isdigit(dt[ix+1])) {
+                ix++;
+                vecSize = 0;
+                for (; ix < dt.size() && isdigit(dt[ix]); ix++)
+                    vecSize = 10*vecSize + dt[ix] - '0';
+                switch (vecSize) {
+                case  1: case  2: case  3: case  4:
+                case  8: case 16: case 32: case 64:
+                    break;
+                default: errorAtOffset(vix, "invalid vector size"); break;
+                }
+            }
+            vma.dataVectorSize = (short)vecSize;
+            vma.dataTranspose = false;
+            //
+            // maybe a 't' following
+            for (; ix < dt.size(); ix++) {
+                if (dt[ix] == 't') {
+                    if (vma.dataTranspose)
+                        errorAtOffset(ix, "transpose already set");
+                    vma.dataTranspose = true;
+                } else if (dt[ix] == 'v') {
+                    if (vma.dataVnni) {
+                        errorAtOffset(ix, "vnni already set");
+                    } else if (vma.op != SendOp::LOAD_BLOCK2D) {
+                        errorAtOffset(ix,
+                            "vnni only permitted on load_block2d");
+                    } else {
+                        vma.dataVnni = true;
+                    }
+                } else {
+                    errorAtOffset(ix, "malformed data type suffix");
+                }
+            } // data type suffix
+        }
+        //
+        return true;
+    };
+    //
+    auto tryCachingSymbol = [] (std::string cc, CacheOpt &co) {
+        if (cc == "df") {
+            co = CacheOpt::DEFAULT;
+        } else if (cc == "ri") {
+            co = CacheOpt::READINVALIDATE;
+        } else if (cc == "ca") {
+            co = CacheOpt::CACHED;
+        } else if (cc == "uc") {
+            co = CacheOpt::UNCACHED;
+        } else if (cc == "st") {
+            co = CacheOpt::STREAMING;
+        } else if (cc == "wb") {
+            co = CacheOpt::WRITEBACK;
+        } else if (cc == "wt") {
+            co = CacheOpt::WRITETHROUGH;
+        } else {
+            return false;
+        }
+        return true;
+    };
+    //
+    Loc cacheControlLoc = mneLoc;
+    vma.cachingL1 = CacheOpt::DEFAULT;
+    vma.cachingL3 = CacheOpt::DEFAULT;
+    //
+    bool cachingSet = false;
+    bool isAddrSizeSet = false;
+    bool isDataSizeSet = false;
+    //
+    while (Consume(DOT)) {
+        Loc ctrlLoc = NextLoc();
+        auto ctrl = ConsumeIdentOrFail("expected op control symbol");
+        if (tryParseAddrSize(ctrl)) {
+            if (isAddrSizeSet) {
+                FailAtT(ctrlLoc, "duplciate address size");
+            }
+            isAddrSizeSet = true;
+        } else if (tryCachingSymbol(ctrl, vma.cachingL1)) {
+            if (cachingSet) {
+                FailAtT(ctrlLoc, "duplicate caching options");
+            }
+            cachingSet = true;
+            cacheControlLoc = ctrlLoc;
+            if (!LookingAtSeq(DOT, IDENT)) {
+                FailT("expected .");
+            }
+            Skip();
+            auto l3sym = GetTokenAsString();
+            if (!tryCachingSymbol(l3sym, vma.cachingL3)) {
+                FailT("expected caching option");
+            }
+            Skip();
+        } else if (tryParseDataType(ctrlLoc, ctrl)) {
+            if (isDataSizeSet)
+                FailS(ctrlLoc, "data size already set");
+            isDataSizeSet = true;
+        } else {
+            FailT("invalid ld/st option");
+        }
+    }
+    if (!isAddrSizeSet) {
+        FailAtT(mneLoc, "address size not set");
+    }
+    if (!isDataSizeSet) {
+        FailAtT(mneLoc, "data size not set");
+    }
+    bool isDft =
+        vma.cachingL1 != CacheOpt::DEFAULT &&
+        vma.cachingL3 != CacheOpt::DEFAULT;
+    if (isDft && vma.sfid == SFID::SLM) {
+        FailAtT(cacheControlLoc, "SLM forbids cache control options");
+    }
+}
+
+
+bool KernelParser::ParseLdStInst()
+{
+    if (!LookingAtSeq(IDENT, DOT, IDENT)) {
+        return false;
+    }
+
+    VectorMessageArgs vma; // vma {}; crashes VS2019 without dft constructor!
+    //
+    const auto mneLoc = NextLoc();
+    auto mne = GetTokenAsString();
+    const SendOpDefinition &opInfo = lookupSendOp(mne.c_str());
+    if (!opInfo.isValid())
+        return false; // doesn't match a known op
+    vma.op = opInfo.op;
+    //
+    const auto sfidSym = GetTokenAsString(Next(2));
+    vma.sfid = FromSyntax<SFID>(sfidSym);
+    if (!sendOpSupportsSyntax(platform(), vma.op, vma.sfid)) {
+        FailS(NextLoc(), "op not yet supported for ld/st parse");
+    }
+    // IGA op
+    m_opSpec = &m_model.lookupOpSpec(
+        platform() < Platform::XE ? Op::SENDS : Op::SEND);
+    if (!m_opSpec->isValid()) {
+        FailS(NextLoc(), "INTERNAL ERROR: unable to lookup iga::Op");
+    }
+    m_builder.InstOp(m_opSpec);
+    m_builder.InstSubfunction(vma.sfid);
+    //
+    Skip(3);
+    //
+    ParseLdStOpControls(mneLoc, opInfo, vma);
+    //
+    ChannelOffset chOff = ChannelOffset::M0; // sets m_execSize
+    const auto execSizeLoc = NextLoc();
+    ParseExecInfo(m_defaultExecutionSize, m_execSize, chOff);
+    vma.execSize = static_cast<int>(m_execSize);
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    vma.addrType = AddrType::FLAT;
+    //
+    // r13 or null
+    auto parseReg = [&] (ParsedPayloadInfo &ppi) {
+        ppi.regLoc = NextLoc();
+        const RegInfo *regInfo;
+        int regNum;
+        if (!ConsumeReg(regInfo, regNum)) {
+            FailT("expected register");
+            return;
+        } else if (regInfo->regName != RegName::GRF_R &&
+            regInfo->regName != RegName::ARF_NULL)
+        {
+            FailAtT(ppi.regLoc, "register must be GRF or null");
+            return;
+        }
+        ppi.regName = regInfo->regName;
+        ppi.regNum = (uint8_t)regNum;
+    };
+
+    // r13:0, r13 (meaning r13:1)
+    // or null:0, or null meaning (null:0)
+    auto parsePayload = [&] (ParsedPayloadInfo &ppi) {
+        auto regLoc = NextLoc();
+        parseReg(ppi);
+        if (Consume(COLON)) {
+            auto tk = Next();
+            ppi.regLenLoc = tk.loc;
+            ImmVal val;
+            if (!TryParseIntConstExprPrimary(
+                val, "payload suffix expression"))
+            {
+                FailAtT(tk.loc, "expected integral payload suffix expression");
+            }
+            ensureIntegral(tk, val);
+            if (val.s64 < 0 || val.s64 > 0x1F) {
+                FailAtT(tk.loc, "payload size overflow");
+            }
+            ppi.regLen = (int)val.s64;
+        } else {
+            // implicitly 0 or 1 depending on register
+            ppi.regLen = ppi.regName == RegName::ARF_NULL ? 0 : 1;
+            ppi.regLenLoc = regLoc.endOfToken();
+            ppi.regLenWasImplicit = true;
+        }
+    };
+
+    //   the formatter deduces the length just to be nice to the reader
+    auto parsePayloadDst = [&] (ParsedPayloadInfo &ppi) {
+        parsePayload(ppi);
+        auto rgn = m_opSpec->hasImplicitDstRegion(m_builder.isMacroOp()) ?
+            m_opSpec->implicitDstRegion(m_builder.isMacroOp()).getHz() :
+            Region::Horz::HZ_1;
+        auto ty = SendOperandDefaultType(-1);
+        m_builder.InstDstOpRegDirect(
+            ppi.regLoc, ppi.regName, ppi.regNum, rgn, ty);
+    };
+
+    auto parsePayloadSrc1 = [&] (ParsedPayloadInfo &ppi) {
+        parsePayload(ppi);
+        m_sendSrcLens[1] = ppi.regLen;
+        m_sendSrcLenLocs[1] = ppi.regLenLoc;
+        //
+        const auto rgn = defaultSendOperandRegion(ppi.regName, 1);
+        const auto ty = SendOperandDefaultType(1);
+        m_builder.InstSrcOpRegDirect(
+            1, ppi.regLoc, ppi.regName, (int)ppi.regNum, rgn, ty);
+    };
+
+    auto parseA0RegOrImm = [&] () {
+        SendDesc surf;
+        ConsumeOrFail(LBRACK, "expected [");
+        if (ParseAddrRegRefOpt(surf.reg)) {
+            // surface is a register
+            surf.type = SendDesc::Kind::REG32A;
+            if (surf.reg.subRegNum & 1) {
+                FailT("a0 subregister must be even (values are word aligned)");
+            }
+        } else {
+            // surface is a constant integral expression
+            auto loc = NextLoc();
+            surf.type = SendDesc::Kind::IMM;
+            ImmVal v;
+            if (!TryParseIntConstExpr(v, "extended descriptor")) {
+                FailT("expected surface state offset");
+            }
+            if (v.s64 >= 0x03FFFFFF) { // 26b
+                FailAtT(loc, "immediate surface state offset is out of bounds");
+            }
+            surf.imm = (uint32_t)v.s64;
+        }
+        ConsumeOrFail(RBRACK, "expected ]");
+        return surf;
+    };
+
+    Loc exDescLoc = mneLoc;
+    auto parseAddrOperand = [&] (ParsedAddrOperand &addr) {
+        addr.surfArgLoc = exDescLoc = NextLoc();
+        if (ConsumeIdentEq("bti")) {
+            vma.addrType = AddrType::BTI;
+            vma.addrSurface = parseA0RegOrImm();
+        } else if (ConsumeIdentEq("bss")) {
+            vma.addrType = AddrType::BSS;
+            vma.addrSurface = parseA0RegOrImm();
+        } else if (ConsumeIdentEq("ss")) {
+            vma.addrType = AddrType::SS;
+            vma.addrSurface = parseA0RegOrImm();
+        } else {
+            // the "flat" token is optional
+            // (if addrtype is absent, we assume flat)
+            if (!ConsumeIdentEq("flat") && !LookingAt(LBRACK)) {
+                FailT("expected address type or [");
+            }
+            vma.addrType = AddrType::FLAT;
+            vma.addrSurface = 0x0;
+        }
+        //
+        Consume(LBRACK);
+        //
+        ImmVal v;
+        //
+        parsePayload(addr.payload);
+        m_sendSrcLens[0] = addr.payload.regLen;
+        m_sendSrcLenLocs[0] = addr.payload.regLenLoc;
+        //
+        vma.addrOffset = 0x0;
+        //
+        Consume(RBRACK);
+        //
+        const auto rgn = defaultSendOperandRegion(addr.payload.regName, 0);
+        const auto ty = SendOperandDefaultType(0);
+        m_builder.InstSrcOpRegDirect(
+            0, addr.surfArgLoc,
+            addr.payload.regName, (int)addr.payload.regNum,
+            rgn, ty);
+    };
+
+    auto setOpToNull =
+        [&] (int opIx, ParsedPayloadInfo &ppi, Loc loc) {
+            ppi.regLen = 0;
+            ppi.regLoc = ppi.regLenLoc = loc;
+            ppi.regName = RegName::ARF_NULL;
+            ppi.regNum = 0;
+            //
+            const auto rgn = defaultSendOperandRegion(ppi.regName, opIx);
+            const auto ty = SendOperandDefaultType(opIx);
+            if (opIx < 0) {
+                m_builder.InstDstOpRegDirect(
+                    ppi.regLoc, ppi.regName, ppi.regNum,
+                    rgn.getHz(), ty);
+            } else {
+                m_builder.InstSrcOpRegDirect(
+                    opIx, ppi.regLoc, ppi.regName, ppi.regNum,
+                    rgn, ty);
+                m_sendSrcLens[opIx] = 0;
+                m_sendSrcLenLocs[opIx] = loc;
+            }
+        };
+
+    ///////////////////////////////////////////////////////////////////////////
+    // actual parsing
+    ParsedPayloadInfo dstData;
+    ParsedAddrOperand src0Addr;
+    ParsedPayloadInfo src1Data;
+    if (vma.isLoad()) {
+        parsePayloadDst(dstData);
+        parseAddrOperand(src0Addr);
+        setOpToNull(1, src1Data, mneLoc);
+    } else if (vma.isStore()) {
+        setOpToNull(-1, dstData, mneLoc); // build a null operand
+        parseAddrOperand(src0Addr);
+        parsePayloadSrc1(src1Data);
+    } else if (vma.isAtomic()) {
+        parsePayloadDst(dstData);
+        parseAddrOperand(src0Addr);
+        parsePayloadSrc1(src1Data);
+    } else {
+        FailAtT(mneLoc, "unsupported operation for load/store syntax");
+    }
+
+    const int GRF_BYTES = platform() >= Platform::XE_HPC ? 64 : 32;
+    const int DEFAULT_SIMD = GRF_BYTES / 2;
+
+    int expectedDataRegs = -1;
+    int expectedAddrRegs = -1;
+    if (vma.op == SendOp::LOAD_BLOCK2D || vma.op == SendOp::STORE_BLOCK2D) {
+        expectedAddrRegs = 1;
+        // expectedDataRegs = unknown (function of the payload)
+    } else
+    if (vma.dataTranspose) {
+        // a block operation with a single register payload
+        // technically execSize on transpose will be 1, but the
+        // logical extension for higher SIMD's exists too;
+        // for now we reject it
+        if (vma.dataTranspose && vma.execSize != 1) {
+            FailAtT(execSizeLoc, "transpose messages must be SIMD1");
+        }
+        int totalBitsPerSimd = vma.dataSizeReg*vma.elementsPerAddress();
+        expectedDataRegs =
+            vma.execSize*std::max<int>(totalBitsPerSimd/8/GRF_BYTES, 1);
+        expectedAddrRegs = 1;
+    } else {
+        // e.g. SIMD4 rounds up to SIMD8 if messages are SIMD16 by default
+        int execElems = std::max<int>(DEFAULT_SIMD/2, vma.execSize);
+        int grfsPerComponent =
+            std::max<int>(vma.dataSizeReg*execElems/8/GRF_BYTES, 1);
+        expectedDataRegs = grfsPerComponent*vma.elementsPerAddress();
+        if (opInfo.isAddressScalar()) {
+            expectedAddrRegs = 1;
+        } else {
+            expectedAddrRegs = std::max<int>(execElems*vma.addrSize/8/GRF_BYTES, 1);
+        }
+    }
+    ///////////////////////////////////////////////////////////////////////////
+    // for almost all messages we can deduce the number of address registers
+    // needed by the message; one exception is in typed, which uses the address
+    // register count to determine which of U, V, R, and LOD are included
+    bool checkAddrPayloadSize = true;
+    bool hasUvrl =
+        vma.sfid == SFID::TGM &&
+        (vma.op == SendOp::LOAD_QUAD || vma.op == SendOp::STORE_QUAD ||
+            vma.isAtomic());
+    hasUvrl |=
+        vma.sfid == SFID::TGM && vma.op == SendOp::STORE_UNCOMPRESSED_QUAD;
+    bool addrLenIsCorrect = src0Addr.payload.regLen == expectedAddrRegs;
+    addrLenIsCorrect |= hasUvrl &&
+        (src0Addr.payload.regLen != 2 * expectedAddrRegs ||
+         src0Addr.payload.regLen != 3 * expectedAddrRegs ||
+         src0Addr.payload.regLen != 4 * expectedAddrRegs);
+    if (checkAddrPayloadSize && !addrLenIsCorrect) {
+        WarningAtT(
+            src0Addr.payload.regLoc,
+            "Src0.Length: should be ", expectedAddrRegs);
+        if (src0Addr.payload.regLenWasImplicit) {
+            src0Addr.payload.regLen = expectedAddrRegs;
+        }
+    }
+    //
+    if (vma.isLoad() || vma.isAtomic()) {
+        // if prefetch or atomic with no return, then
+        int expectDstRegs =
+            dstData.regName == RegName::ARF_NULL ? 0 : expectedDataRegs;
+        if (!dstData.regLenWasImplicit &&
+            expectedDataRegs >= 0 &&
+            dstData.regLen != expectDstRegs)
+        {
+            // if given an explicit number of dst regs, ensure it is correct
+            WarningAtT(
+                dstData.regLenLoc, "Dst.Length: should be ", expectDstRegs);
+        } else if (dstData.regLenWasImplicit) {
+            if (dstData.regName != RegName::ARF_NULL) {
+                // assign it, but issue a warning
+                dstData.regLen = expectDstRegs;
+                WarningAtT(
+                    dstData.regLenLoc,
+                    "Dst.Length: :", expectDstRegs," should suffix operand");
+            } else {
+                dstData.regLen = 0;
+            }
+        }
+    }
+    if (vma.isStore() || vma.isAtomic()) {
+        int expectSrc1Regs =
+            src1Data.regName == RegName::ARF_NULL ? 0 : expectedDataRegs;
+        if (vma.isAtomic())
+            expectSrc1Regs *= opInfo.numAtomicArgs();
+        if (!src1Data.regLenWasImplicit &&
+            expectSrc1Regs >= 0 &&
+            src1Data.regLen != expectSrc1Regs)
+        {
+            WarningAtT(
+                src1Data.regLenLoc, "Src1.Length: should be ", expectSrc1Regs);
+        } else if (src1Data.regLenWasImplicit &&
+            src1Data.regName != RegName::ARF_NULL)
+        {
+            bool hasSrc1LenSfx = true;
+            if (hasSrc1LenSfx && vma.addrSurface.isReg()) {
+                // with a0 exdesc must omit Src1.Length
+                // if ExBSO is set
+                expectSrc1Regs = -1;
+            } else {
+                WarningAtT(
+                    src1Data.regLenLoc,
+                    "Src1.Length: :", expectSrc1Regs,
+                    " should suffix operand");
+            }
+            src1Data.regLen = expectSrc1Regs;
+        }
+    }
+
+    SendDesc exDesc(0x0), desc(0x0);
+
+    std::string err;
+    if (!encodeDescriptors(
+        platform(),
+        vma,
+        exDesc, desc,
+        err))
+    {
+        if (err.empty())
+            err = "unknown error translating load/store op";
+        FailS(mneLoc, err);
+    }
+
+    desc.imm |= ((uint32_t)src0Addr.payload.regLen & 0xF) << 25;
+    desc.imm |= ((uint32_t)dstData.regLen & 0x1F) << 20;
+    if (platform() < Platform::XE_HP && exDesc.isImm()) {
+        // ExDesc[10:6] on <= XE_HP
+        exDesc.imm |= (((uint32_t)src1Data.regLen << 6) & 0x1F);
+    }
+
+    m_builder.InstSendSrc0Length(src0Addr.payload.regLen);
+    m_builder.InstSendSrc1Length(src1Data.regLen);
+
+    m_builder.InstSendDescs(mneLoc,
+        exDesc, mneLoc, desc);
+
+    return true;
+} // KernelParser::ParseLscOp
 
 
 

@@ -151,6 +151,12 @@ Instruction *Kernel::createSendInstruction(
     if (src1Len < 0) {
         // copy Src1.Length if no one else set it
         bool immExDescHasSrc1Len = exDesc.isImm();
+        // ExBSO case will be handled by decoder/parser
+        //
+        // Src1.Length is imm xlen ExDesc[10:6] when ...:
+        //   - ICL/TGL/XeHP: IsImm()
+        //   - XeHPG+: never (always EU[96:92] for imm descs)
+        immExDescHasSrc1Len &= p < Platform::XE_HPG;
         if (immExDescHasSrc1Len) {
             src1Len = (exDesc.imm >> 6) & 0x1F;
         }

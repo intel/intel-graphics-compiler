@@ -244,6 +244,7 @@ namespace iga
         void decodeSendInfoPreXe(SendDescodeInfo &sdi);
         void decodeSendInfoXe(SendDescodeInfo &sdi);
         void decodeSendInfoXeHP(SendDescodeInfo &sdi);
+        void decodeSendInfoXeHPG(SendDescodeInfo &sdi);
 
         ///////////////////////////////////////////////////////////////////////
         // BRANCH INSTRUCTIONS

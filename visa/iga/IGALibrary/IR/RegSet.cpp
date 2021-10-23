@@ -261,6 +261,8 @@ bool RegSet::addSendOperand(const Instruction &i, int opIx)
     //  reads only 4 dwords
     //   send (1) r10:1 OWORD block read
     //  reads 128b ...
+    //    load.ugm.d32x8t.a32.ca.ca (1|M0) ... 8 DW in a single register
+    //    load.ugm.d32x4.a64 (4|M0) ... // four successive registers with 1 DW
     const auto desc = i.getMsgDescriptor();
     if (op.getDirRegName() == RegName::GRF_R && desc.isImm()) {
         const auto sfid = i.getSendFc();
@@ -362,6 +364,14 @@ bool RegSet::addDpasOperand(const Instruction &i, int opIx)
         size_t bitsAccessed = execSize * typeSizeBits * opsPerChannel * S;
         changed |= add(RegName::GRF_R, startOff, bitsAccessed);
     } else { // src2
+        // this is a little subtle
+        // given bit precisions a src2 operand can stride across the
+        // bottom or top of a GRF without touching the other half
+        //
+        // e.g. dpas.4x2 (8) r24.0:d r24.0:d r6.0:u2 r14.32:u4
+        //       src2 - touches r14[16-31] and r15[16-31]
+        //
+        // TODO: can something like this happen for src1
         for (size_t r = 0; r < R; r++) {
             size_t startSubReg = r * opsPerChannel * typeSizeBits * 8;
             size_t repReads = S * opsPerChannel * typeSizeBits;
@@ -660,11 +670,14 @@ bool RegSet::addImplicitAccumulatorAccess(const Instruction &i, bool isDst)
     accessesAcc |= isDst && i.hasInstOpt(InstOpt::ACCWREN);
     accessesAcc |= isDst && i.is(Op::ADDC) || i.is(Op::SUBB);
     accessesAcc |= !isDst && i.is(Op::MAC);
-
+    accessesAcc |= i.is(Op::MACL);
     if (accessesAcc) {
         Type type = i.getDestination().getType();
         if (i.is(Op::MACH)) {
             type = Type::Q; // acc0[63:0] is written
+        }
+        if (i.is(Op::MACL)) {
+            type = Type::Q; // acc0[63:0] is written according to BXML
         }
         auto typeSizeBytes = TypeSizeInBitsWithDefault(type, 32);
         // unlike flag modifier and predicates the channel offset does not

@@ -108,7 +108,14 @@ typedef enum
     GED_INS_FIELD_ExecMaskOffsetCtrl,
 
     /*!
+     *
+     *
+     * @par 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
      * TBD
+     *
+     * @par XE.HPC.A, XE.HPC
+     * This field provides offset information for ARF selection. The can be thought of as a starting channel offset for the execution
+     * mask and other ARF registers implicitly accessed
      *
      * @par     Models:     all
      */
@@ -158,7 +165,7 @@ typedef enum
     /*!
      * This field allows per instruction accumulator write control.
      *
-     * @par     Models:     all
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_AccWrCtrl,
 
@@ -216,7 +223,7 @@ typedef enum
     /*!
      *
      *
-     * @par TGL, XE.HP
+     * @par TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      * Source 1 Register File. This field identifies the register file of the second source operand (src1).
      *
      * @par 10, 11, 7, 7.5, 8, 8.1, 9
@@ -403,7 +410,7 @@ typedef enum
     /*!
      * Flag Subregister Number.
      *
-     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par 10, 11, TGL, XE.HP, XE.HPG, 8, 8.1, 9
      * This field contains the 16-bit flag subregister number (.0 or .1) for instructions with a non-zero Conditional Modifier. The
      * specified flag subregister is the source for any predication and the destination for new flag values produced by any enabled
      * conditional modifier. A flag subregister can be both a predication source and a conditional modifier destination in the same
@@ -412,6 +419,13 @@ typedef enum
      * @par 7, 7.5
      * This field contains the flag subregister number for instructions with a non-zero Conditional Modifier.
      *
+     * @par XE.HPC.A, XE.HPC
+     * This field specifies the sub-register number for a flag register operand. There are two sub-registers in the flag register.
+     * Each sub-register contains 16 flag bits. The selected flag sub-register is the source for predication if predication is enabled
+     * for the instruction. It is the destination to store conditional flag bits if conditional modifier is enabled for the
+     * instruction. The same flag sub-register can be both the predication source and conditional destination, if both predication and
+     * conditional modifier are enabled.
+     *
      * @par     Models:     all
      */
     GED_INS_FIELD_FlagSubRegNum,
@@ -419,11 +433,14 @@ typedef enum
     /*!
      * Flag Register Number.
      *
-     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par 10, 11, TGL, XE.HP, XE.HPG, 8, 8.1, 9
      * This field contains the 32-bit flag register number (f0 or f1) for instructions with a non-zero Conditional Modifier.
      *
      * @par 7, 7.5
      * This field contains the flag register number for instructions with a non-zero Conditional Modifier.
+     *
+     * @par XE.HPC.A, XE.HPC
+     * This field specifies the register number for a flag register operand.
      *
      * @par     Models:     all
      */
@@ -591,7 +608,7 @@ typedef enum
     /*!
      *
      *
-     * @par TGL, XE.HP
+     * @par TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      * Sub-Register Number. This field provides the sub-register number for the third source operand (src2). For a GRF register
      * operand, it provides the byte address within a 256-bit register.
      *
@@ -607,7 +624,7 @@ typedef enum
     /*!
      *
      *
-     * @par TGL, XE.HP
+     * @par TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      * Register Number. This field provides the register number for the third source operand (src2). For a GRF register operand, it
      * provides the portion of register address aligning to 256-bit.
      *
@@ -654,7 +671,7 @@ typedef enum
     /*!
      *
      *
-     * @par TGL, XE.HP, 7, 7.5
+     * @par TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7, 7.5
      * Message Descriptor Register File. This field describes the message descriptor of the send instruction.
      *
      * @par 10, 11, 8, 8.1, 9
@@ -761,7 +778,7 @@ typedef enum
     /*!
      *
      *
-     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      * Jump Instruction Pointer. The byte aligned jump distance if a jump is taken for the instruction. JIP should reference the end
      * of the innermost conditional block.
      *
@@ -778,7 +795,7 @@ typedef enum
      * @par 7, 7.5
      * The jump distance in number of eight-byte units if a jump is taken for the channel.
      *
-     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      * Update Instruction Pointer. The byte aligned jump distance if a jump is taken for the instruction. UIP should reference the
      * instruction where all channels are expected to come together.
      *
@@ -789,11 +806,15 @@ typedef enum
     /*!
      *
      *
+     * @par XE.HPC.A, XE.HPC
+     * Lookup one of 32 18-bit values. That value is used (from MSB to LSB) for the CondModifier[3:0], Saturate, AtomicCtrl, MaskCtrl,
+     * PredInv, PredCtrl[1:0], ChOff[1:0], FlagRegNum[1:0], FlagSubRegNum, ExecSize[2:0] bit fields.
+     *
      * @par 10, 11, 7, 7.5, 8, 8.1, 9
      * Lookup one of 32 19-bit values. That value is used (from MSB to LSB) for the FlagRegNum, FlagSubRegNum, Saturate, ExecSize,
      * PredInv, PredCtrl, ThreadCtrl, QtrCtrl, DepCtrl, MaskCtrl, and AccessMode bit fields.
      *
-     * @par TGL, XE.HP
+     * @par TGL, XE.HP, XE.HPG
      * Lookup one of 32 21-bit values. That value is used (from MSB to LSB) for the CondCtrl[3:0], Saturate, AccWrCtrl, AtomicCtrl,
      * MaskCtrl, PredInv, PredCtrl[3:0], FlagRegNum, FlagSubRegNum, ChOff[2:0], ExecSize[2:0] bit fields.
      *
@@ -808,7 +829,7 @@ typedef enum
      * Lookup one of 32 18-bit values. That value is used (from MSB to LSB) for the Dst.AddrMode, Dst.HorzStride, Dst.DstType,
      * Dst.RegFile, Src0.SrcType, Src0.RegFile, Src1.SrcType, and Src1.RegType bit fields.
      *
-     * @par TGL, XE.HP
+     * @par TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      * Lookup one of 32 20-bit values. That value is used (from MSB to LSB) for the Src1.RegFile[0], Src1.SrcType[3:0],
      * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
      * bit fields.
@@ -822,14 +843,17 @@ typedef enum
     GED_INS_FIELD_DataTypeIndex,
 
     /*!
-     * Lookup one of 32 15-bit values.
      *
-     * @par TGL, XE.HP
-     * That value is used (from MSB to LSB) for .
+     *
+     * @par XE.HPC.A, XE.HPC
+     * Lookup one of 16 12-bit values. That value is used (from MSB to LSB) for .
+     *
+     * @par TGL, XE.HP, XE.HPG
+     * Lookup one of 32 15-bit values. That value is used (from MSB to LSB) for .
      *
      * @par 10, 11, 7, 7.5, 8, 8.1, 9
-     * That value is used (from MSB to LSB) for various fields for Src1, Src0, and Dst, including ChanEn/ChanSel, SubRegNum, and
-     * AddrImm[4] or AddrImm[4:0], depending on AddrMode and AccessMode.
+     * Lookup one of 32 15-bit values. That value is used (from MSB to LSB) for various fields for Src1, Src0, and Dst, including
+     * ChanEn/ChanSel, SubRegNum, and AddrImm[4] or AddrImm[4:0], depending on AddrMode and AccessMode.
      *
      * @par     Models:     all
      */
@@ -838,7 +862,7 @@ typedef enum
     /*!
      *
      *
-     * @par TGL, XE.HP
+     * @par TGL, XE.HP, XE.HPG
      * Lookup one of 16 12-bit values. That value is used (from MSB to LSB) for the Src0.VertStride, various Src0 bit fields based on
      * AccessMode (Src0.ChanSel[7:4], Src0.Width, Src0.HorzStride), Src0.AddrMode, and Src0.SrcMod bit fields. Note that this field
      * spans a DWord boundary within the QWord compacted instruction.
@@ -853,6 +877,11 @@ typedef enum
      * AccessMode (Src0.ChanSel[7:4], Src0.Width, Src0.HorzStride), Src0.AddrMode, and Src0.SrcMod bit fields. Note that this field
      * spans a DWord boundary within the QWord compacted instruction.
      *
+     * @par XE.HPC.A, XE.HPC
+     * Lookup one of 8 11-bit values. That value is used (from MSB to LSB) for the Src0.VertStride, various Src0 bit fields based on
+     * AccessMode (Src0.ChanSel[7:4], Src0.Width, Src0.HorzStride), Src0.AddrMode, and Src0.SrcMod bit fields. Note that this field
+     * spans a DWord boundary within the QWord compacted instruction.
+     *
      * @par     Models:     all
      */
     GED_INS_FIELD_Src0Index,
@@ -860,7 +889,7 @@ typedef enum
     /*!
      *
      *
-     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      * If not an immediate operand, lookup one of 32 12-bit values that maps to bits 120:109. That value is used (from MSB to LSB) for
      * the Src1.VertStride, various Src1 bit fields based on AccessMode (Src1.ChanSel[7:4], Src1.Width, Src1.HorzStride),
      * Src1.AddrMode, and Src1.SrcMod bit fields.
@@ -908,35 +937,35 @@ typedef enum
     /*!
      * Extended Message Descriptor Register File. This field describes the extended message descriptor of the send instruction.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ExDescRegFile,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_INS_FIELD_DstMathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0MathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1MathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par     Models:     10, 11, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, 11, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2MathMacroExt,
 
@@ -947,14 +976,19 @@ typedef enum
      * will be made inactive and waiting to be joined at the join IP. The join IP is IP + UIP when BranchCtrl is clear else it is the
      * next IP.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_INS_FIELD_BranchCtrl,
 
     /*!
      *
      *
-     * @par TGL, XE.HP
+     * @par XE.HPC.A, XE.HPC
+     * Lookup one of 16 21-bit values. That value is used (from MSB to LSB) for the Src1.RegFile[0], Src1.SrcType[3:0],
+     * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
+     * bit fields.
+     *
+     * @par TGL, XE.HP, XE.HPG
      * Lookup one of 32 20-bit values. That value is used (from MSB to LSB) for the Src1.RegFile[0], Src1.SrcType[3:0],
      * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
      * bit fields.
@@ -969,7 +1003,7 @@ typedef enum
      * Src1.RegNum[7], Src0.SubRegNum, Src0.RegNum[7], Src2.ChanSel, Src1.ChanSel, Src0.ChanSel, Dst.SubRegNum, Dst.ChanEnable,
      * Dst.DstType, SrcType, Src2.Modifier, Src1.Modifier, and Src0.Modifier bit fields.
      *
-     * @par     Models:     10, TGL, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_INS_FIELD_SourceIndex,
 
@@ -985,10 +1019,10 @@ typedef enum
      * This field is only valid when the SrcDataType is :f or :hf and in which case it defines the data type for the third source
      * operand (src2). Otherwise it is reserved and MBZ.
      *
-     * @par 11, TGL, XE.HP
+     * @par 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      * This field specifies the numeric data type of the third source operand (src2).
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8.1, 9
      */
     GED_INS_FIELD_Src2DataType,
 
@@ -1021,7 +1055,7 @@ typedef enum
     /*!
      * Sub-Register Number. This field provides the sub-register number for the extended message descriptor.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
      */
     GED_INS_FIELD_ExDescAddrSubRegNum,
 
@@ -1079,63 +1113,63 @@ typedef enum
     /*!
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_ExecutionDataType,
 
     /*!
      * 16-bit Immediate.
      *
-     * @par     Models:     10, 11, TGL, XE.HP
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src0TernaryImm,
 
     /*!
      * 16-bit Immediate.
      *
-     * @par     Models:     10, 11, TGL, XE.HP
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src2TernaryImm,
 
     /*!
      *
      *
-     * @par     Models:     10, 11, TGL, XE.HP
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src2HorzStride,
 
     /*!
      * SWSB.
      *
-     * @par     Models:     TGL, XE.HP
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_SWSB,
 
     /*!
      * Src1IsImm
      *
-     * @par     Models:     TGL, XE.HP
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src1IsImm,
 
     /*!
      * Src0IsImm
      *
-     * @par     Models:     TGL, XE.HP
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src0IsImm,
 
     /*!
      * TBD
      *
-     * @par     Models:     TGL, XE.HP
+     * @par     Models:     TGL, XE.HP, XE.HPG
      */
     GED_INS_FIELD_Src0SubRegNumByte,
 
     /*!
      * Sync FC.
      *
-     * @par     Models:     TGL, XE.HP
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_SyncFC,
 
@@ -1143,7 +1177,7 @@ typedef enum
      * Fusion Control. For send and sendc instruction, this field provides explicit control for EU fusion lock-step execution. When
      * this bit is set , the instruction is executed serially starting from the first EU to the last EU in the fused set.
      *
-     * @par     Models:     TGL, XE.HP
+     * @par     Models:     TGL, XE.HP, XE.HPG
      */
     GED_INS_FIELD_FusionCtrl,
 
@@ -1152,77 +1186,77 @@ typedef enum
      * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
      * bit fields.
      *
-     * @par     Models:     TGL, XE.HP
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_DataTypeIndexNoDep,
 
     /*!
      * Compacted immediate
      *
-     * @par     Models:     TGL, XE.HP
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_CompactedImm,
 
     /*!
      * This field indicate the number of instructions to be created from a single macro instruction
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_RepeatCount,
 
     /*!
      * This field describes the systolic depth of the operation
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_SystolicDepth,
 
     /*!
      * Source 2 Operand Precision. This field specifies the number of bits per element of the third source operand (src2).
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src2Precision,
 
     /*!
      * Source 2 Operand Precision. This field specifies the number of bits per element of the second source operand (src1).
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src2SubBytePrecision,
 
     /*!
      * Source 1 Operand Precision. This field specifies the number of bits per element of the third source operand (src2).
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src1Precision,
 
     /*!
      * Source 1 Operand Precision. This field specifies the number of bits per element of the second source operand (src1).
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_Src1SubBytePrecision,
 
     /*!
      * Index of the lut8 lookup table for the bfn instruction
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_BfnFC,
 
     /*!
      * This field indicates the Extended Bindless Surface Offset (ExBSO) mode.
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_ExBSO,
 
     /*!
      * CPS LOD Compensation.
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
     GED_INS_FIELD_CPS,
 
@@ -1230,9 +1264,16 @@ typedef enum
      * This field specifies the number of 256-bit GRF registers starting from Src1RegNum to be sent out on the request message
      * payload.
      *
-     * @par     Models:     XE.HP
+     * @par     Models:     XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
-    GED_INS_FIELD_Src1Length
+    GED_INS_FIELD_Src1Length,
+
+    /*!
+     * Src2IsImm
+     *
+     * @par     Models:     XE.HPC.A, XE.HPC
+     */
+    GED_INS_FIELD_Src2IsImm
 } GED_INS_FIELD;
 
 /*!
@@ -1461,42 +1502,42 @@ typedef enum
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC1,
 
     /*!
      * Category of the Data Cache Data Port 0.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP0Category,
 
     /*!
      * Message type of the send instruction, legacy message.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC0Legacy,
 
     /*!
      * Message type of the send instruction, scratch block message.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC0ScratchBlock,
 
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC2,
 
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     10, 11, TGL, XE.HP, 9
+     * @par     Models:     10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DCRO,
 
@@ -1505,6 +1546,70 @@ typedef enum
      *
      * @par     Models:     TGL
      */
-    GED_PSEUDO_FIELD_ExMessageLength
+    GED_PSEUDO_FIELD_ExMessageLength,
+
+    /*!
+     * This field indicates the opcode of DP atomic operation
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPOpcode,
+
+    /*!
+     * This field specifies the type of the address payload item in a DP message
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPAddrType,
+
+    /*!
+     * This field specifies the size of the vector in a DP message
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPVectSize,
+
+    /*!
+     * Specifies the type of cache flush operation to perform after the fence is complete.
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPFlushType,
+
+    /*!
+     * This field specifies if the data payload vector is packed into the register in the normal SIMT layout, or is packed transposed
+     * in the SIMD layout.
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPTranspose,
+
+    /*!
+     * This field specifies if flush operation is the full cache or over an address range.
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPFlushRange,
+
+    /*!
+     * This field specifies the size of the data payload item in a DP message
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPDataSize,
+
+    /*!
+     * This field specifies the scope of the fence
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPFenceScope,
+
+    /*!
+     * This field specifies the size of the address payload item in a DP message
+     *
+     * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_PSEUDO_FIELD_DPAddrSize
 } GED_PSEUDO_FIELD;
 #endif // GED_INS_FIELD_H

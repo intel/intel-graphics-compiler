@@ -551,6 +551,7 @@ public:
                 }
                 break;
             case Type::F:
+            case Type::TF32:
                 if (opts.hexFloats) {
                     emitHex(imm.u32);
                 } else {
@@ -564,6 +565,7 @@ public:
                     emitFloat(imm.f64);
                 }
                 break;
+            case Type::BF8:  emitHex(imm.u8); break;
             case Type::V:    emitHex(imm.u32); break;
             case Type::UV:   emitHex(imm.u32); break;
             case Type::VF:   emitHex(imm.u32); break;
@@ -703,6 +705,8 @@ public:
         switch (mi.addrType) {
         case AddrType::FLAT: emit("\"flat\""); break;
         case AddrType::BTI:  emit("\"bti\""); break;
+        case AddrType::BSS:  emit("\"bss\""); break;
+        case AddrType::SS:   emit("\"ss\""); break;
         default: emitIrError("invalid surface type");
         }
 
@@ -883,6 +887,7 @@ public:
         case SWSB::DistType::REG_DIST_FLOAT:  emitPipeDist("F"); break;
         case SWSB::DistType::REG_DIST_INT:    emitPipeDist("I"); break;
         case SWSB::DistType::REG_DIST_LONG:   emitPipeDist("L"); break;
+        case SWSB::DistType::REG_DIST_MATH:   emitPipeDist("M"); break;
         default: emit("null"); break;
         }
     }
@@ -938,6 +943,17 @@ public:
             }
         }
 
+        const auto &di = i.getSWSB();
+        // special token and dist/token won't co-exist in the same swsb
+        // no need to insert "," after this since there must not be
+        // dist/token swsb
+        if (di.hasSpecialToken()) {
+            IGA_ASSERT(!di.hasDist() && !di.hasToken(), "malformed SWSB IR");
+            if (di.spToken == SWSB::SpecialToken::NOACCSBSET) {
+                emitSeparator();
+                emit("NoAccSBSet");
+            }
+        }
         emit("]");
     }
 

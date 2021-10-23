@@ -72,27 +72,35 @@ namespace iga
     {
         INVALID = -1,
         NULL_ = 0, // the null shared function
+        UGML, // untyped global memory (low bandwidth) for XeHPC
         SMPL, // sampler
         GTWY, // gateway
         DC2,  // data cache 2
         RC,   // render cache
         URB,  // unified return buffer
-        TS,   // thread spawner
-        VME,  // video motion estimation
+        TS,   // thread spawner (until XeHPG)
+        VME,  // video motion estimation (until XeHPG)
         DCRO, // data cache read-only
         DC0,  // data cache 0
         PIXI, // pixel interpolator
         DC1,  // data cache 1
-        CRE,  // check and refinement engine
+        CRE,  // check and refinement engine (until XeHPG)
+        SLM, // shared local memory (XeHPG+)
+        UGM, // untyped global memory (XeHPG+)
+        BTD, // bindless thread dispatcher (XeHPG+)
+        RTA, // ray tracing accellerator (XeHPG+)
+        TGM, // typed global memory (XeHPG+)
         A0REG  = 0x100, // for <XE SFID can be indirect
     };
     static const std::array<SFID,
-        13
+        19
     > ALL_SFIDS {
         SFID::NULL_,
+        SFID::UGML,
         SFID::SMPL, SFID::GTWY, SFID::DC2, SFID::RC, SFID::URB,
         SFID::TS, SFID::VME, SFID::DCRO, SFID::DC0, SFID::PIXI,
         SFID::DC1, SFID::CRE,
+        SFID::SLM, SFID::UGM, SFID::BTD, SFID::RTA, SFID::TGM,
     };
 
 
@@ -103,16 +111,18 @@ namespace iga
         NOP    =   0,
         ALLRD  =   2,
         ALLWR  =   3,
+        FENCE  =  13, // XeHPC
         BAR    =  14,
         HOST   =  15,
     };
     // static const SyncFC ALL_SyncFCs[] ...
     static const std::array<SyncFC,
-        5
+        6
         > ALL_SyncFCs {
         SyncFC::NOP,
         SyncFC::ALLRD,
         SyncFC::ALLWR,
+        SyncFC::FENCE, // XeHPC
         SyncFC::BAR,
         SyncFC::HOST,
     };

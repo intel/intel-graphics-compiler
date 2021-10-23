@@ -55,8 +55,8 @@ namespace iga {
             //
             , result(_result)
             //
-            , DEFAULT_EXEC_SIZE(16)
-            , BITS_PER_REGISTER(256)
+            , DEFAULT_EXEC_SIZE((_platform >= Platform::XE_HPC) ? 32 : 16)
+            , BITS_PER_REGISTER((_platform >= Platform::XE_HPC) ? 512 : 256)
         {
             result.info.op = SendOp::INVALID;
             result.info.cachingL3 = result.info.cachingL1 = CacheOpt::DEFAULT;
@@ -323,6 +323,13 @@ namespace iga {
             mi.attributeSet = extraAttrs | MessageInfo::Attr::VALID;
         }
 
+        // shared by subclasses
+        void addLscFenceFields(
+            std::stringstream &sym, std::stringstream &desc);
+        void addLscFenceScopeField(
+            std::stringstream &sym, std::stringstream &desc);
+        void addLscFencePortFields(
+            std::stringstream &sym, std::stringstream &desc);
     }; // MessageDecoder
 
 
@@ -418,6 +425,17 @@ namespace iga {
         SendDesc exDesc, SendDesc desc,
         DecodeResult &result);
 
+    void decodeDescriptorsLSC(
+        Platform platform, SFID sfid, ExecSize execSize,
+        SendDesc exDesc, SendDesc desc,
+        DecodeResult &result);
+
+    bool encodeDescriptorsLSC(
+        Platform p,
+        const VectorMessageArgs &vma,
+        SendDesc &exDesc,
+        SendDesc &desc,
+        std::string &err);
 
 } // iga::
 

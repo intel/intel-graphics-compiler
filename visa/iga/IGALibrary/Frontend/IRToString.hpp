@@ -49,6 +49,8 @@ static inline std::string ToSymbol(PredCtrl x) {
     MAKE_CASE(PredCtrl, ALL16H);
     MAKE_CASE(PredCtrl, ANY32H);
     MAKE_CASE(PredCtrl, ALL32H);
+    MAKE_CASE(PredCtrl, ANY);
+    MAKE_CASE(PredCtrl, ALL);
     MAKE_DEFAULT_CASE(PredCtrl);
     }
 }
@@ -206,6 +208,9 @@ static inline std::string ToSymbol(Type x)
     MAKE_CASE(Type, S4);
     MAKE_CASE(Type, BF);
 
+    MAKE_CASE(Type, BF8);
+    MAKE_CASE(Type, QF);
+    MAKE_CASE(Type, TF32);
     MAKE_DEFAULT_CASE(Type);
     }
 }
@@ -381,6 +386,9 @@ static inline std::string ToSyntax(Type ot) {
     case Type::S2: return ":s2";
     case Type::S4: return ":s4";
     case Type::BF: return ":bf";
+    case Type::QF: return ":qf";
+    case Type::BF8: return ":bf8";
+    case Type::TF32: return ":tf32";
 
     case Type::INVALID: return ":Type::INVALID";
     default: return MakeErrorString("Type", (int)ot);
@@ -409,6 +417,8 @@ static inline std::string ToSyntax(PredCtrl pc) {
     case PredCtrl::ALL16H: return ".all16h";
     case PredCtrl::ANY32H: return ".any32h";
     case PredCtrl::ALL32H: return ".all32h";
+    case PredCtrl::ANY: return ".any";
+    case PredCtrl::ALL: return ".all";
     default: return MakeErrorString("PredCtrl", (int)pc);
     }
 }

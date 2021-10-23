@@ -69,6 +69,9 @@ namespace iga
             else
                 m_swsbMode = k.getModel().getSWSBEncodeMode();
 
+            if (m_swsbMode == SWSB_ENCODE_MODE::FourDistPipeReduction) {
+                m_LatencyLong64Pipe = 12;
+            }
 
             m_DB = new DepSetBuilder(k.getModel());
             m_buckets = new Bucket[m_DB->getTOTAL_BUCKETS()];
@@ -138,12 +141,22 @@ namespace iga
         // get number of dist pipe according to SWSB_ENCODE_MODE
         uint32_t getNumOfDistPipe();
 
+        // addRMWDependencyIfReqruied - add read dependnecy to input DepSet if the instruction has RMW
+        // behavior, which is, has byte type dst
+        // XeHPC+ feature
+        void addRMWDependencyIfReqruied(DepSet& input, DepSet& output);
+
+        // add swsb into instruction, insert sync if the added swsb is not compatible
+        // with the existed swsb in the inst
+        void addSWSBToInst(Instruction& inst, const SWSB& swsb,
+                           Block& block, InstListIterator inst_it);
 
     private:
         const uint32_t MAX_GRF_BUCKETS = 128;
         // Instruction having 64-bit type destination having 14 latency
         // All the other instructions having 10 latency
         int m_LatencyLong64Pipe = 14;
+        int m_LatencyInOrderMath = 18;
         int m_LatencyInOrderPipe = 10;
 
     private:

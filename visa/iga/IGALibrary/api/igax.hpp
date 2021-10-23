@@ -41,6 +41,9 @@ enum class Platform {
     , GEN10         = IGA_GEN10
     , GEN11         = IGA_GEN11
     , XE            = IGA_XE
+    , XE_HP         = IGA_XE_HP
+    , XE_HPG        = IGA_XE_HPG
+    , XE_HPC        = IGA_XE_HPC
 };
 
 struct PlatformInfo {

@@ -31,6 +31,9 @@ SPDX-License-Identifier: MIT
 #include "ged_model_11.h"
 #include "ged_model_tgl.h"
 #include "ged_model_xe_hp.h"
+#include "ged_model_xe_hpg.h"
+#include "ged_model_xe_hpc_a.h"
+#include "ged_model_xe_hpc.h"
 
 #ifdef GED_OBSCURE_MODEL_NAMES
 #define GED_MODEL_NAME_STRING(name) ""
@@ -40,23 +43,26 @@ SPDX-License-Identifier: MIT
 #endif // GED_OBSCURE_MODEL_NAMES
 
 #ifndef GED_MODELS_ARRAY_HIDDEN
-ModelData ModelsArray[9] =
+ModelData ModelsArray[12] =
 {
-    { GED_MODEL_NS_7::Opcodes, GED_MODEL_NAME_STRING("7"), 127, (const ged_field_enum_table_t)OpcodeTable4, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
-    { GED_MODEL_NS_7_5::Opcodes, GED_MODEL_NAME_STRING("7.5"), 127, (const ged_field_enum_table_t)OpcodeTable5, 30, PositionInterpreterTable1, 3, EnumInterpretersTable0, 0, NULL }, // 1
-    { GED_MODEL_NS_8::Opcodes, GED_MODEL_NAME_STRING("8"), 127, (const ged_field_enum_table_t)OpcodeTable6, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 2
-    { GED_MODEL_NS_8_1::Opcodes, GED_MODEL_NAME_STRING("8.1"), 127, (const ged_field_enum_table_t)OpcodeTable6, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 3
-    { GED_MODEL_NS_9::Opcodes, GED_MODEL_NAME_STRING("9"), 127, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable3, 3, EnumInterpretersTable1, 0, NULL }, // 4
-    { GED_MODEL_NS_10::Opcodes, GED_MODEL_NAME_STRING("10"), 127, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL }, // 5
-    { GED_MODEL_NS_11::Opcodes, GED_MODEL_NAME_STRING("11"), 127, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL }, // 6
-    { GED_MODEL_NS_TGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 127, (const ged_field_enum_table_t)OpcodeTable2, 36, PositionInterpreterTable6, 3, EnumInterpretersTable3, 0, NULL }, // 7
-    { GED_MODEL_NS_XE_HP::Opcodes, GED_MODEL_NAME_STRING("xe.hp"), 127, (const ged_field_enum_table_t)OpcodeTable3, 35, PositionInterpreterTable7, 3, EnumInterpretersTable4, 0, NULL } // 8
+    { GED_MODEL_NS_7::Opcodes, GED_MODEL_NAME_STRING("7"), 128, (const ged_field_enum_table_t)OpcodeTable6, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
+    { GED_MODEL_NS_7_5::Opcodes, GED_MODEL_NAME_STRING("7.5"), 128, (const ged_field_enum_table_t)OpcodeTable7, 30, PositionInterpreterTable1, 3, EnumInterpretersTable0, 0, NULL }, // 1
+    { GED_MODEL_NS_8::Opcodes, GED_MODEL_NAME_STRING("8"), 128, (const ged_field_enum_table_t)OpcodeTable8, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 2
+    { GED_MODEL_NS_8_1::Opcodes, GED_MODEL_NAME_STRING("8.1"), 128, (const ged_field_enum_table_t)OpcodeTable8, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 3
+    { GED_MODEL_NS_9::Opcodes, GED_MODEL_NAME_STRING("9"), 128, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable3, 3, EnumInterpretersTable1, 0, NULL }, // 4
+    { GED_MODEL_NS_10::Opcodes, GED_MODEL_NAME_STRING("10"), 128, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL }, // 5
+    { GED_MODEL_NS_11::Opcodes, GED_MODEL_NAME_STRING("11"), 128, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL }, // 6
+    { GED_MODEL_NS_TGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 128, (const ged_field_enum_table_t)OpcodeTable2, 36, PositionInterpreterTable6, 3, EnumInterpretersTable3, 0, NULL }, // 7
+    { GED_MODEL_NS_XE_HP::Opcodes, GED_MODEL_NAME_STRING("xe.hp"), 128, (const ged_field_enum_table_t)OpcodeTable3, 35, PositionInterpreterTable7, 3, EnumInterpretersTable4, 0, NULL }, // 8
+    { GED_MODEL_NS_XE_HPG::Opcodes, GED_MODEL_NAME_STRING("xe.hpg"), 128, (const ged_field_enum_table_t)OpcodeTable3, 45, PositionInterpreterTable8, 3, EnumInterpretersTable4, 0, NULL }, // 9
+    { GED_MODEL_NS_XE_HPC_A::Opcodes, GED_MODEL_NAME_STRING("xe.hpc.a"), 128, (const ged_field_enum_table_t)OpcodeTable4, 45, PositionInterpreterTable9, 3, EnumInterpretersTable5, 0, NULL }, // 10
+    { GED_MODEL_NS_XE_HPC::Opcodes, GED_MODEL_NAME_STRING("xe.hpc"), 128, (const ged_field_enum_table_t)OpcodeTable5, 45, PositionInterpreterTable9, 3, EnumInterpretersTable6, 0, NULL } // 11
 }; // ModelsArray[]
 #endif // GED_MODELS_ARRAY_HIDDEN
-const unsigned int numOfSupportedModels = 9;
+const unsigned int numOfSupportedModels = 12;
 
 #ifndef GED_MODELS_ARRAY_NAMES_HIDDEN
-const char* modelNames[9] = { GED_MODEL_NAME_STRING("7"), GED_MODEL_NAME_STRING("7_5"), GED_MODEL_NAME_STRING("8"), GED_MODEL_NAME_STRING("8_1"), GED_MODEL_NAME_STRING("9"), GED_MODEL_NAME_STRING("10"), GED_MODEL_NAME_STRING("11"), GED_MODEL_NAME_STRING("tgl"), GED_MODEL_NAME_STRING("xe_hp") };
+const char* modelNames[12] = { GED_MODEL_NAME_STRING("7"), GED_MODEL_NAME_STRING("7_5"), GED_MODEL_NAME_STRING("8"), GED_MODEL_NAME_STRING("8_1"), GED_MODEL_NAME_STRING("9"), GED_MODEL_NAME_STRING("10"), GED_MODEL_NAME_STRING("11"), GED_MODEL_NAME_STRING("tgl"), GED_MODEL_NAME_STRING("xe_hp"), GED_MODEL_NAME_STRING("xe_hpg"), GED_MODEL_NAME_STRING("xe_hpc_a"), GED_MODEL_NAME_STRING("xe_hpc") };
 #endif // GED_MODELS_ARRAY_NAMES_HIDDEN
 
 #ifndef GED_MODELS_ARRAY_FUNCTION_HIDDEN
@@ -80,6 +86,9 @@ bool GetModelByName(const string& name, /* GED_MODEL */ unsigned int& model)
     else if (GED_MODEL_NAME_STRING("11") == name) model = GED_MODEL_11;
     else if (GED_MODEL_NAME_STRING("tgl") == name) model = GED_MODEL_TGL;
     else if (GED_MODEL_NAME_STRING("xe_hp") == name) model = GED_MODEL_XE_HP;
+    else if (GED_MODEL_NAME_STRING("xe_hpg") == name) model = GED_MODEL_XE_HPG;
+    else if (GED_MODEL_NAME_STRING("xe_hpc_a") == name) model = GED_MODEL_XE_HPC_A;
+    else if (GED_MODEL_NAME_STRING("xe_hpc") == name) model = GED_MODEL_XE_HPC;
     else return false;
     return true;
 }
@@ -1450,6 +1459,16 @@ GED_RETURN_VALUE GED_SetSrc1Length(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1Length, value);
 }
+uint32_t GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src2IsImm, *result);
+}
+GED_RETURN_VALUE GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src2IsImm, value);
+}
 int32_t GED_GetIndexedSrcAddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
 {
     if (0 == index) return GED_GetSrc0AddrImm(ins, result);
@@ -1547,6 +1566,21 @@ GED_RETURN_VALUE GED_SetIndexedSrcIndex(ged_ins_t* ins, const uint32_t value, co
 {
     if (0 == index) return GED_SetSrc0Index(ins, value);
     if (1 == index) return GED_SetSrc1Index(ins, value);
+    return GED_RETURN_VALUE_INVALID_OPERAND;
+}
+uint32_t GED_GetIndexedSrcIsImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
+{
+    if (0 == index) return GED_GetSrc0IsImm(ins, result);
+    if (1 == index) return GED_GetSrc1IsImm(ins, result);
+    if (2 == index) return GED_GetSrc2IsImm(ins, result);
+    if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
+    return (uint32_t)-1;
+}
+GED_RETURN_VALUE GED_SetIndexedSrcIsImm(ged_ins_t* ins, const uint32_t value, const uint8_t index)
+{
+    if (0 == index) return GED_SetSrc0IsImm(ins, value);
+    if (1 == index) return GED_SetSrc1IsImm(ins, value);
+    if (2 == index) return GED_SetSrc2IsImm(ins, value);
     return GED_RETURN_VALUE_INVALID_OPERAND;
 }
 GED_MATH_MACRO_EXT GED_GetIndexedSrcMathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
@@ -2067,6 +2101,104 @@ GED_RETURN_VALUE GED_SetExMessageLength(uint32_t* exMsgDesc, const GED_MODEL mod
 {
     return GEDInterpreter::SetInterpretedPosition(*exMsgDesc, GED_PSEUDO_FIELD_ExMessageLength, modelId, length);
 }
+GED_DP_OPCODE GED_GetDPOpcode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPOpcode, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_OPCODE)value : GED_DP_OPCODE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDPOpcode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_OPCODE opcode)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPOpcode, modelId, opcode);
+}
+GED_DP_ADDR_TYPE GED_GetDPAddrType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPAddrType, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_ADDR_TYPE)value : GED_DP_ADDR_TYPE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDPAddrType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_TYPE AddrType)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPAddrType, modelId, AddrType);
+}
+GED_DP_VECT_SIZE GED_GetDPVectSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPVectSize, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_VECT_SIZE)value : GED_DP_VECT_SIZE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDPVectSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_VECT_SIZE VectSize)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPVectSize, modelId, VectSize);
+}
+GED_DP_FLUSH_TYPE GED_GetDPFlushType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPFlushType, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_FLUSH_TYPE)value : GED_DP_FLUSH_TYPE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDPFlushType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_FLUSH_TYPE FlushType)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPFlushType, modelId, FlushType);
+}
+GED_DP_TRANSPOSE GED_GetDPTranspose(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPTranspose, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_TRANSPOSE)value : GED_DP_TRANSPOSE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDPTranspose(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_TRANSPOSE Transpose)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPTranspose, modelId, Transpose);
+}
+uint32_t GED_GetDPFlushRange(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPFlushRange, modelId, *result);
+}
+GED_RETURN_VALUE GED_SetDPFlushRange(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t range)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPFlushRange, modelId, range);
+}
+GED_DP_DATA_SIZE GED_GetDPDataSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPDataSize, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_DATA_SIZE)value : GED_DP_DATA_SIZE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDPDataSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_DATA_SIZE DataSize)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPDataSize, modelId, DataSize);
+}
+GED_DP_FENCE_SCOPE GED_GetDPFenceScope(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPFenceScope, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_FENCE_SCOPE)value : GED_DP_FENCE_SCOPE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDPFenceScope(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_FENCE_SCOPE FenceScope)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPFenceScope, modelId, FenceScope);
+}
+GED_DP_ADDR_SIZE GED_GetDPAddrSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPAddrSize, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_ADDR_SIZE)value : GED_DP_ADDR_SIZE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDPAddrSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_SIZE AddrSize)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPAddrSize, modelId, AddrSize);
+}
 
 #if GED_EXPERIMENTAL
 GED_RETURN_VALUE GED_SetRawBits(ged_ins_t* ins, uint8_t low, uint8_t high, const uint64_t value)
@@ -2187,6 +2319,70 @@ const char* GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue)
 }
 #endif // GED_DEP_CTRL_HIDDEN
 
+#ifndef GED_DP_ADDR_SIZE_HIDDEN
+const char* GED_GetDpAddrSizeString(GED_DP_ADDR_SIZE DpAddrSizeValue)
+{
+    return DpAddrSizeEnumeration[DpAddrSizeValue];
+
+}
+#endif // GED_DP_ADDR_SIZE_HIDDEN
+
+#ifndef GED_DP_ADDR_TYPE_HIDDEN
+const char* GED_GetDpAddrTypeString(GED_DP_ADDR_TYPE DpAddrTypeValue)
+{
+    return DpAddrTypeEnumeration[DpAddrTypeValue];
+
+}
+#endif // GED_DP_ADDR_TYPE_HIDDEN
+
+#ifndef GED_DP_DATA_SIZE_HIDDEN
+const char* GED_GetDpDataSizeString(GED_DP_DATA_SIZE DpDataSizeValue)
+{
+    return DpDataSizeEnumeration[DpDataSizeValue];
+
+}
+#endif // GED_DP_DATA_SIZE_HIDDEN
+
+#ifndef GED_DP_FENCE_SCOPE_HIDDEN
+const char* GED_GetDpFenceScopeString(GED_DP_FENCE_SCOPE DpFenceScopeValue)
+{
+    return DpFenceScopeEnumeration[DpFenceScopeValue];
+
+}
+#endif // GED_DP_FENCE_SCOPE_HIDDEN
+
+#ifndef GED_DP_FLUSH_TYPE_HIDDEN
+const char* GED_GetDpFlushTypeString(GED_DP_FLUSH_TYPE DpFlushTypeValue)
+{
+    return DpFlushTypeEnumeration[DpFlushTypeValue];
+
+}
+#endif // GED_DP_FLUSH_TYPE_HIDDEN
+
+#ifndef GED_DP_OPCODE_HIDDEN
+const char* GED_GetDpOpcodeString(GED_DP_OPCODE DpOpcodeValue)
+{
+    return DpOpcodeEnumeration[DpOpcodeValue];
+
+}
+#endif // GED_DP_OPCODE_HIDDEN
+
+#ifndef GED_DP_TRANSPOSE_HIDDEN
+const char* GED_GetDpTransposeString(GED_DP_TRANSPOSE DpTransposeValue)
+{
+    return DpTransposeEnumeration[DpTransposeValue];
+
+}
+#endif // GED_DP_TRANSPOSE_HIDDEN
+
+#ifndef GED_DP_VECT_SIZE_HIDDEN
+const char* GED_GetDpVectSizeString(GED_DP_VECT_SIZE DpVectSizeValue)
+{
+    return DpVectSizeEnumeration[DpVectSizeValue];
+
+}
+#endif // GED_DP_VECT_SIZE_HIDDEN
+
 #ifndef GED_DST_CHAN_EN_HIDDEN
 const char* GED_GetDstChanEnString(GED_DST_CHAN_EN DstChanEnValue)
 {
@@ -2202,6 +2398,14 @@ const char* GED_GetEOTString(GED_EOT EOTValue)
 
 }
 #endif // GED_EOT_HIDDEN
+
+#ifndef GED_EVICT_HINT_HIDDEN
+const char* GED_GetEvictHintString(GED_EVICT_HINT EvictHintValue)
+{
+    return EvictHintEnumeration[EvictHintValue];
+
+}
+#endif // GED_EVICT_HINT_HIDDEN
 
 #ifndef GED_EXEC_MASK_OFFSET_CTRL_HIDDEN
 const char* GED_GetExecMaskOffsetCtrlString(GED_EXEC_MASK_OFFSET_CTRL ExecMaskOffsetCtrlValue)
@@ -2370,6 +2574,14 @@ const char* GED_GetSrcModString(GED_SRC_MOD SrcModValue)
 
 }
 #endif // GED_SRC_MOD_HIDDEN
+
+#ifndef GED_STORE_HINT_HIDDEN
+const char* GED_GetStoreHintString(GED_STORE_HINT StoreHintValue)
+{
+    return StoreHintEnumeration[StoreHintValue];
+
+}
+#endif // GED_STORE_HINT_HIDDEN
 
 #ifndef GED_SUB_BYTE_PRECISION_HIDDEN
 const char* GED_GetSubBytePrecisionString(GED_SUB_BYTE_PRECISION SubBytePrecisionValue)

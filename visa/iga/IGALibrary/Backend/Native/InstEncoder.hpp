@@ -338,6 +338,9 @@ namespace iga
         ENCODING_CASE(Region::Vert::VT_32, 0x6);
         case Region::Vert::VT_VxH:
             val = 0xF;
+            if (f.encodedLength() == 3) {
+                val = 0x7; // XeHPC+
+            }
             break;
         default: internalErrorBadIR(f);
         }
@@ -410,6 +413,11 @@ namespace iga
         // branches have implicit :d
         val = ty == Type::INVALID ? 4*val :
             SubRegToBinaryOffset((int)val, reg, ty, model.platform);
+        if (platform() >= Platform::XE_HPC &&
+            reg == RegName::ARF_FC)
+        {
+            val = 2 * val;
+        }
         encodeFieldBits(f, val);
     }
 
@@ -419,6 +427,8 @@ namespace iga
         switch (platform()) {
         case Platform::XE:
         case Platform::XE_HP:
+        case Platform::XE_HPG:
+        case Platform::XE_HPC:
         case Platform::FUTURE:
         default:
             // caller checks this and gives a soft error

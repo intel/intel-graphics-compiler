@@ -44,7 +44,7 @@ namespace iga
             Operand::Kind opKind,
             RegName reg,
             uint16_t regNum) const;
-        bool isAlign16MathMacroRegisterCsrOperand(const Operand &op) const{
+        bool isAlign16MathMacroRegisterCsrOperand(const Operand &op) const {
             return isAlign16MathMacroRegisterCsrOperand(
                 op.getKind(),
                 op.getDirRegName(),

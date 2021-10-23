@@ -18,7 +18,7 @@ namespace iga
         SUCCESS,
         ERROR_SET_ON_VARIABLE_LENGTH_ONLY,
         ERROR_INVALID_SBID_VALUE,
-        ERROR_ENCODE_MODE,
+        ERROR_ENCODE_MODE, // invalid encoding mode
         UNKNOWN_INST_TYPE,
         ERROR_DECODE,
         NONE
@@ -27,8 +27,10 @@ namespace iga
     enum class SWSB_ENCODE_MODE : uint32_t
     {
         SWSBInvalidMode = 0,
-        SingleDistPipe  = 1,      // TGL: 1 distance pipe
-        ThreeDistPipe   = 2,      // XEHP: 3 distance pipe
+        SingleDistPipe  = 1,      // Xe: 1 distance pipe
+        ThreeDistPipe   = 2,      // XeHP/XeHPG: 3 distance pipe
+        FourDistPipe    = 3,      // XeHPC (early variant): 4 distance pipes
+        FourDistPipeReduction = 6, // XeHPC variation
     };
 
     struct SWSB
@@ -41,6 +43,7 @@ namespace iga
             REG_DIST_FLOAT,
             REG_DIST_INT,
             REG_DIST_LONG,
+            REG_DIST_MATH // >=XeHPC
         };
 
         enum class TokenType {
@@ -60,6 +63,7 @@ namespace iga
 
         enum class SpecialToken {
             NONE,
+            NOACCSBSET       // XeHPC
         };
 
     public:
@@ -118,6 +122,11 @@ namespace iga
             return spToken != SpecialToken::NONE;
         }
 
+        constexpr static bool isMathPipeInOrder(SWSB_ENCODE_MODE enMode) {
+            return
+                enMode == SWSB_ENCODE_MODE::FourDistPipe ||
+                enMode == SWSB_ENCODE_MODE::FourDistPipeReduction;
+        }
 
         /// decode swsb info to SWSB from the raw encoding into this object
         SWSB_STATUS decode(

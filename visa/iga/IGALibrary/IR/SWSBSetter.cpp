@@ -250,13 +250,19 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                 DEP_CLASS prevDepClass = dep->getDepClass();
 
                 // Send with different SFID could write to different pipes
-                bool send_in_diff_pipe = false;
+                bool sendInDiffPipe = false;
                 if (dep->getInstruction()->getOpSpec().isSendFamily() &&
                     currDep.getInstruction()->getOpSpec().isSendFamily())
                 {
-                    send_in_diff_pipe =
+                    sendInDiffPipe =
                         (dep->getInstruction()->getSendFc() !=
                          currDep.getInstruction()->getSendFc());
+                    // for send in unknown pipe, always treated as different pipe
+                    if (!sendInDiffPipe) {
+                        sendInDiffPipe =
+                            dep->getDepPipe() == DEP_PIPE::SEND_UNKNOWN ||
+                            currDep.getDepPipe() == DEP_PIPE::SEND_UNKNOWN;
+                    }
                 }
 
                 bool isRAW = currDepType == DEP_TYPE::READ &&
@@ -264,11 +270,11 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                 //WAW: different pipelines W2 kill W1  W2-->live      explict dependence
                 bool isWAW = (currDepType == DEP_TYPE::WRITE &&
                               prevDepType == DEP_TYPE::WRITE &&
-                     (currDepPipe != prevDepPipe || send_in_diff_pipe));
+                     (currDepPipe != prevDepPipe || sendInDiffPipe));
                 //WAR: different pipelines W kill R    W-->live       explict dependence
                 bool isWAR = currDepType == DEP_TYPE::WRITE &&
                              prevDepType == DEP_TYPE::READ  &&
-                             (currDepPipe != prevDepPipe || send_in_diff_pipe);
+                             (currDepPipe != prevDepPipe || sendInDiffPipe);
                 bool isWAW_out_of_order
                            = (currDepType == DEP_TYPE::WRITE &&
                               prevDepType == DEP_TYPE::WRITE &&
@@ -372,6 +378,10 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                                 newDistance = m_InstIdCounter.longPipe - dep->getInstIDs().longPipe;
                                 newDepPipe = SWSB::DistType::REG_DIST_LONG;
                                 break;
+                           case DEP_PIPE::MATH_INORDER:
+                                newDistance = m_InstIdCounter.mathPipe - dep->getInstIDs().mathPipe;
+                                newDepPipe = SWSB::DistType::REG_DIST_MATH;
+                                break;
                             default:
                                 IGA_ASSERT(0, "Unsupported DEP_PIPE for in-order instructions");
                                 break;
@@ -393,13 +403,24 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                                     };
                                     // check if the given pipe type is the same with one of the src type
                                     auto haveTypeInSrc = [&](SWSB::DistType swsb_type) {
+                                        // HW restriction (WA): Cannot use @1 on XeHPC-XT, must explicitly set pipe type
+                                        // A@1 or L@1, ... Always return false so that we won't use @1
+                                        // Note that if there isn't this restriction, we should also update op_pipe_type
+                                        // for FourDistPipeReduction mode that non-float-64-bit type should be in INT pipe
+                                        if (m_swsbMode == SWSB_ENCODE_MODE::FourDistPipeReduction) {
+                                            return false;
+                                        }
                                         for (size_t i = 0; i < currInst.getSourceCount(); ++i) {
                                             if (op_pipe_type(currInst.getSource(i).getType()) == swsb_type)
                                                 return true;
                                         }
                                         return false;
                                     };
-                                    if ((distanceDependency.distType != SWSB::DistType::REG_DIST)) {
+                                    if ((distanceDependency.distType == SWSB::DistType::REG_DIST_MATH) ||
+                                        (newDepPipe == SWSB::DistType::REG_DIST_MATH)) {
+                                        // either current of prev dep is MATH, it's not possible to combine them to REG_DIST
+                                        distanceDependency.distType = SWSB::DistType::REG_DIST_ALL;
+                                    } else if ((distanceDependency.distType != SWSB::DistType::REG_DIST)) {
                                         // check if both previous and current dep pipe can be satisfied by currInst src type
                                         if (haveTypeInSrc(distanceDependency.distType) && haveTypeInSrc(newDepPipe))
                                             distanceDependency.distType = SWSB::DistType::REG_DIST;
@@ -595,6 +616,8 @@ void SWSBAnalyzer::clearBuckets(DepSet* input, DepSet* output) {
                 return dep_set.getInstIDs().intPipe;
             case DEP_PIPE::LONG64:
                 return dep_set.getInstIDs().longPipe;
+            case DEP_PIPE::MATH_INORDER:
+                return dep_set.getInstIDs().mathPipe;
             default:
                 IGA_ASSERT(0, "SWSB: unhandled in-order DEP_PIPE for XeHP+ encoding");
                 break;
@@ -605,6 +628,8 @@ void SWSBAnalyzer::clearBuckets(DepSet* input, DepSet* output) {
         auto get_latency = [&](DEP_PIPE pipe_type) {
             if (pipe_type == DEP_PIPE::LONG64)
                 return m_LatencyLong64Pipe;
+            else if (pipe_type == DEP_PIPE::MATH_INORDER)
+                return m_LatencyInOrderMath;
             return m_LatencyInOrderPipe;
         };
 
@@ -714,6 +739,9 @@ uint32_t SWSBAnalyzer::getNumOfDistPipe()
         return 1;
     case SWSB_ENCODE_MODE::ThreeDistPipe:
         return 3;
+    case SWSB_ENCODE_MODE::FourDistPipe:
+    case SWSB_ENCODE_MODE::FourDistPipeReduction:
+        return 4;
     default:
         break;
     }
@@ -736,12 +764,103 @@ void SWSBAnalyzer::advanceInorderInstCounter(DEP_PIPE dep_pipe)
     case DEP_PIPE::LONG64:
         ++m_InstIdCounter.longPipe;
         break;
+    case DEP_PIPE::MATH_INORDER:
+        ++m_InstIdCounter.mathPipe;
+        break;
     default:
         IGA_ASSERT(0, "unhandled in-order DEP_PIPE for XE_HP encoding");
         break;
     }
 }
 
+void SWSBAnalyzer::addRMWDependencyIfReqruied(DepSet& input, DepSet& output) {
+    const Instruction* inst = input.getInstruction();
+    // return if the instruction has no dst, or the dst is not GRF or not byte type
+    const Operand& dst = inst->getDestination();
+    if (dst.getKind() != Operand::Kind::DIRECT)
+        return;
+
+    if (dst.getDirRegName() != RegName::GRF_R)
+        return;
+
+    if (TypeSizeInBitsWithDefault(dst.getType(), 32) != 8)
+        return;
+
+    // When there is RMW behavior, the instruction will read the Word first,
+    // modify the byte value in it and then write back the entire Word.
+    // we assume the instruction will read/write the entire register to simplify
+    // the logic
+
+    // add the entire grf of the dst register into input and output DepSet
+    // All registers being touched are added into Bucket. We can get the touched grf
+    // number from added bucket index
+    const std::vector<size_t>& out_buk = output.getBuckets();
+    for (auto i : out_buk) {
+        // we only need grf bucket
+        if (i >= m_DB->getBucketStart(RegName::ARF_A))
+            continue;
+        input.addGrf(i);
+        input.addToBucket((uint32_t)i);
+        output.addGrf(i);
+    }
+}
+
+void SWSBAnalyzer::addSWSBToInst(Instruction& inst,
+                                 const SWSB& swsb,
+                                 Block& block,
+                                 InstListIterator inst_it)
+{
+    SWSB new_swsb(inst.getSWSB());
+    // handling distance
+    if (swsb.hasDist()) {
+        if (!inst.getSWSB().hasDist()) {
+            new_swsb.distType = swsb.distType;
+            new_swsb.minDist = swsb.minDist;
+        } else {
+            // for single dist pipe platform, distType must be REG_DIST, so won't
+            // be set to REG_DIST_ALL
+            new_swsb.distType = (inst.getSWSB().distType == swsb.distType)?
+                                swsb.distType : SWSB::DistType::REG_DIST_ALL;
+            new_swsb.minDist = std::min(inst.getSWSB().minDist, swsb.minDist);
+        }
+    }
+
+    // handling token
+    if (swsb.hasToken()) {
+        if (!inst.getSWSB().hasToken()) {
+            new_swsb.tokenType = swsb.tokenType;
+            new_swsb.sbid = swsb.sbid;
+        } else {
+            // if both has id, and are different, then insert a sync to carry
+            // the new one, otherwise do nothing
+            if ((inst.getSWSB().tokenType != swsb.tokenType) ||
+                (inst.getSWSB().sbid != swsb.sbid)) {
+                SWSB tmp_swsb(SWSB::DistType::NO_DIST, swsb.tokenType,
+                              0, swsb.sbid);
+                Instruction* sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
+                block.insertInstBefore(inst_it, sync_inst);
+            }
+        }
+    }
+
+    // check if the new swsb combination is valid, if not, move the dist out to a sync
+    // FIXME: move the dist out here to let the sbid set on the instruction could have better
+    // readability, but a potential issue is that A@1 is required to be set on the instruction having
+    // architecture read/write. This case A@1 will be moved out from the instruction
+    if (!new_swsb.verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode))) {
+        SWSB tmp_swsb(swsb.distType, SWSB::TokenType::NOTOKEN,
+                      swsb.minDist, 0);
+        Instruction* sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
+        block.insertInstBefore(inst_it, sync_inst);
+
+        new_swsb.distType = SWSB::DistType::NO_DIST;
+        new_swsb.minDist = 0;
+    }
+
+    inst.setSWSB(new_swsb);
+    IGA_ASSERT(inst.getSWSB().verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode)),
+               "Invalid swsb dist/token combination after merge");
+}
 
 static bool isSyncNop(const Instruction &i) {
     return i.is(Op::SYNC) && i.getSyncFc() == SyncFC::NOP;
@@ -749,6 +868,70 @@ static bool isSyncNop(const Instruction &i) {
 
 void SWSBAnalyzer::postProcess()
 {
+    // revisit all instructions
+    for (Block* bb : m_kernel.getBlockList())
+    {
+        InstList& instList = bb->getInstList();
+        for (auto inst_it = instList.begin(); inst_it != instList.end(); ++inst_it)
+        {
+            Instruction* inst = *inst_it;
+            // move all swsb set on the second instruction to the first for
+            // "instruction combined" case on byte type dst. e.g.
+            //      (W) mov (32|M0)  r13.0<2>:ub   r11.0<1;1,0>:uw   {Atomic}
+            //      (W) mov (32|M0)  r13.1<2>:ub   r10.0<1;1,0>:uw
+            if (m_kernel.getModel().hasReadModifiedWriteOnByteDst() &&
+                inst->hasInstOpt(InstOpt::ATOMIC) &&
+                !inst->getOpSpec().isDpasFamily() &&
+                !inst->getOpSpec().isSendOrSendsFamily() &&
+                inst->getDestination().getDirRegName() == RegName::GRF_R &&
+                TypeSizeInBitsWithDefault(inst->getDestination().getType(), 32) == 8)
+            {
+                auto next_it = inst_it;
+                ++next_it;
+                assert(next_it != instList.end());
+                Instruction* next_inst = *next_it;
+
+                // in case the next instructions have sync carrying its swsb, move
+                // sync to before current instruction
+                // - Make sure current inst is not the last inst other than sync
+                InstList sync_insts;
+                while (next_inst->is(Op::SYNC)) {
+                    sync_insts.push_back(next_inst);
+                    ++next_it;
+                    if (next_it == instList.end())
+                        break;
+                    next_inst = *next_it;
+                }
+
+                if (next_it == instList.end()) {
+                    // An unexpected instruction with {Atomic} set but has no following
+                    // instruction that can be combined with it
+                    assert(next_it != instList.end());
+                    continue;
+                }
+
+                // - move sync to before current inst
+                if (!sync_insts.empty()) {
+                    auto remove_start = inst_it;
+                    ++remove_start;
+                    instList.erase(remove_start, next_it);
+                    instList.insert(inst_it, sync_insts.begin(), sync_insts.end());
+                }
+
+                // the following instruction must not have Atomic set, or we do not
+                // know what should do
+                IGA_ASSERT((!next_inst->hasInstOpt(InstOpt::ATOMIC)),
+                    "Atomic followed by Atomic on fixed latency instructions");
+
+                SWSB next_swsb = next_inst->getSWSB();
+                if (next_swsb.hasSWSB()) {
+                    addSWSBToInst(*inst, next_swsb, *bb, inst_it);
+                    next_inst->setSWSB(SWSB());
+                }
+            }
+
+        }
+    }
     // revisit all instructions to remove redundant sync.nop
     // sync.nop carry the sbid the same as the sbid set on the following instruction can be
     // removed since it'll automatically be sync-ed when sbid is reused. For example:
@@ -887,6 +1070,7 @@ void SWSBAnalyzer::run()
     m_InstIdCounter.floatPipe = 1;
     m_InstIdCounter.intPipe = 1;
     m_InstIdCounter.longPipe = 1;
+    m_InstIdCounter.mathPipe = 1;
 
     // init the math WA struct
     // When there is a math instruction, when the following instruction has different
@@ -957,6 +1141,9 @@ void SWSBAnalyzer::run()
             input->setCompanion(output);
             output->setCompanion(input);
 
+            // XeHPC+ features
+            if (m_kernel.getModel().hasReadModifiedWriteOnByteDst())
+                addRMWDependencyIfReqruied(*input, *output);
 
             SWSB distanceDependency;
 

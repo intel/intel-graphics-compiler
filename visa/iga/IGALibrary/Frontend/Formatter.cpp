@@ -272,6 +272,9 @@ public:
         const bool isSend = i.getOpSpec().isSendOrSendsFamily();
         if (isSend) {
             bool sendPrinted = false;
+            if (platform() >= Platform::XE_HPG && opts.printLdSt) {
+                sendPrinted = formatLoadStoreSyntax(i);
+            }
             if (!sendPrinted) {
                 formatNormalInstructionBody(i, "");
             }
@@ -1027,11 +1030,16 @@ void Formatter::formatSrcOp(
         // to the suffix the source register.
         //   e.g. r1:4
         // This holds for XeHP with ExBSO
+        // and for imm descs in XeHPG+ as well
         auto exDesc = i.getExtMsgDescriptor();
         const bool isSendSrc1 = srcIx == SourceIndex::SRC1 &&
             os.isSendOrSendsFamily();
         auto src1NeedsLenSuffix =
             isSendSrc1 && i.hasInstOpt(InstOpt::EXBSO);
+        src1NeedsLenSuffix |= // includes the XeHPG+ imm cases
+            isSendSrc1 &&
+            exDesc.isImm() &&
+            platform() >= Platform::XE_HPG;
         //
         if (src1NeedsLenSuffix) {
             formatSendSrcWithLength(
@@ -1109,6 +1117,7 @@ void Formatter::formatSrcOp(
             }
             break;
         case Type::F:
+        case Type::TF32:
             if (opts.hexFloats) {
                 emitHex(src.getImmediateValue().u32);
             } else {
@@ -1121,6 +1130,9 @@ void Formatter::formatSrcOp(
             } else {
                 emitFloat(src.getImmediateValue().f64);
             }
+            break;
+        case Type::BF8:
+            emitHex(src.getImmediateValue().u8);
             break;
         case Type::V:
             emitHex(src.getImmediateValue().u32);
@@ -1192,11 +1204,8 @@ void Formatter::formatInstOpts(
 {
     const auto &iopts = i.getInstOpts();
 
-    bool hasDepInfo = false;
-
     const auto &di = i.getSWSB();
-    hasDepInfo =
-        (platform() >= Platform::XE) && di.hasSWSB();
+    bool hasDepInfo = platform() >= Platform::XE && di.hasSWSB();
     if (iopts.empty() &&
         !hasDepInfo &&
         extraInstOpts.empty()) {
@@ -1217,6 +1226,14 @@ void Formatter::formatInstOpts(
         emit(",");
     }
 
+    // special token and dist/token won't co-exist in the same swsb
+    // no need to insert "," after this since there must not be
+    // dist/token swsb
+    if (di.hasSpecialToken()) {
+        assert(!di.hasDist() && !di.hasToken());
+        if (di.spToken == SWSB::SpecialToken::NOACCSBSET)
+            emit("NoAccSBSet");
+    }
 
     if (di.hasDist() || di.hasToken()) {
         switch (di.distType) {
@@ -1238,6 +1255,10 @@ void Formatter::formatInstOpts(
             break;
         case SWSB::DistType::REG_DIST_LONG:
             emit("L@");
+            emit((int)di.minDist);
+            break;
+        case SWSB::DistType::REG_DIST_MATH:
+            emit("M@");
             emit((int)di.minDist);
             break;
         default:
@@ -1270,6 +1291,11 @@ void Formatter::formatInstOpts(
 } // end formatInstOpts
 
 bool Formatter::formatLoadStoreSyntax(const Instruction& i) {
+    // TODO: relax this, but ensure nothing breaks
+    if (platform() < Platform::XE_HPG) {
+        // We will not even try on <=XeHPG
+        return false;
+    }
     const auto desc = i.getMsgDescriptor();
     if (desc.isReg()) {
         // given a register descriptor, we've no hope of decoding the op

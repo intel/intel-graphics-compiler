@@ -101,7 +101,9 @@ typedef enum {
   , IGA_GEN11     = GEN_VER(11,0)
   // XE versions
   , IGA_XE        = XE_VER(1, 0) // TGL
-  , IGA_XE_HP     = XE_VER(1, 1) // XE_HP
+  , IGA_XE_HP     = XE_VER(1, 1)
+  , IGA_XE_HPG    = XE_VER(1, 2)
+  , IGA_XE_HPC    = XE_VER(1, 4)
 
   // TO BE DEPRECATED
   // Preserve the old values to maintain the binary compatibility

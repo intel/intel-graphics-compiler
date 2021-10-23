@@ -16,11 +16,9 @@ SPDX-License-Identifier: MIT
 #define SNPRINTF( dst, size, ... ) snprintf( (dst), (size), __VA_ARGS__  )
 #endif
 
-
 #if !defined(_WIN32)
-#include <time.h>       //clock_gettime()
+#include <time.h>       // clock_gettime()
 #endif
-
 
 
 #include <cstdint>

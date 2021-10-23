@@ -5,7 +5,6 @@ Copyright (C) 2017-2021 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
 #ifndef IGA_BXML_OPS_HPP
 #define IGA_BXML_OPS_HPP
 
@@ -66,6 +65,7 @@ namespace iga
         LZD          = FIRST_OP +  46,
         MAC          = FIRST_OP +  47,
         MACH         = FIRST_OP +  48,
+        MACL         = FIRST_OP +  49,
         MAD          = FIRST_OP +  50,
         MADM         = FIRST_OP +  51,
         MATH         = FIRST_OP +  54,
@@ -93,6 +93,7 @@ namespace iga
         SHL          = FIRST_OP +  79,
         SHR          = FIRST_OP +  80,
         SMOV         = FIRST_OP +  81,
+        SRND         = FIRST_OP +  82,
         SUBB         = FIRST_OP +  83,
         SYNC         = FIRST_OP +  84,
         WAIT         = FIRST_OP +  85,

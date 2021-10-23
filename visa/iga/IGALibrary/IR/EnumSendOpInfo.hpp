@@ -64,10 +64,14 @@ DEFINE_LOAD_OP(LOAD,          "load",            "load", ATTRS_NONE)
 DEFINE_LOAD_OP(LOAD_STRIDED,  "load_strided",    "load strided", ATTRS_SCALARADDR) // AKA load_block
 DEFINE_LOAD_OP(LOAD_QUAD,     "load_quad",       "load quad", ATTRS_CMASK) // AKA load_cmask
 DEFINE_LOAD_OP(LOAD_STATUS,   "load_status",     "load status", ATTRS_NONE)
+DEFINE_LOAD_OP(LOAD_BLOCK2D,  "load_block2d",    "load array of 2d blocks", ATTRS_SCALARADDR)
 
 DEFINE_STORE_OP(STORE,          "store",          "store", ATTRS_NONE)
 DEFINE_STORE_OP(STORE_STRIDED,  "store_strided",  "store strided", ATTRS_SCALARADDR) // AKA store_block
 DEFINE_STORE_OP(STORE_QUAD,     "store_quad",     "store quad", ATTRS_CMASK) // AKA store_cmask
+DEFINE_STORE_OP(STORE_BLOCK2D,  "store_block2d",  "store 2d block", ATTRS_SCALARADDR)
+DEFINE_STORE_OP(STORE_UNCOMPRESSED, "store_uncompressed", "uncompressed store", ATTRS_NONE)
+DEFINE_STORE_OP(STORE_UNCOMPRESSED_QUAD, "store_uncompressed_quad", "uncompressed quad store", ATTRS_CMASK)
 
 DEFINE_ATOMIC_UNARY_OP(ATOMIC_LOAD, "atomic_load", "atomic load")
 DEFINE_ATOMIC_BINARY_OP(ATOMIC_STORE, "atomic_store", "atomic store")
@@ -108,6 +112,12 @@ DEFINE_OTHER_OP(WAIT,          "wait",         "wait for event",  ATTRS_NONE)
 DEFINE_OTHER_OP(SIGNAL,        "signal",       "signal event",    ATTRS_NONE)
 DEFINE_OTHER_OP(EOT,           "eot",          "end of thread",   ATTRS_NONE)
 //
+DEFINE_OTHER_OP(CCS_PC,        "ccs_pc",       "ccs page clear",      ATTRS_NONE)
+DEFINE_OTHER_OP(CCS_PU,        "ccs_pu",       "ccs page uncompress", ATTRS_NONE)
+DEFINE_OTHER_OP(CCS_SC,        "ccs_sc",       "ccs sector clear",      ATTRS_CMASK)
+DEFINE_OTHER_OP(CCS_SU,        "ccs_su",       "ccs sector uncompress", ATTRS_CMASK)
+DEFINE_OTHER_OP(TRACE_RAY,     "trace_ray",    "trace ray",    ATTRS_NONE)
+DEFINE_OTHER_OP(SPAWN,         "spawn",        "spawn thread", ATTRS_NONE) // BTD spawn message #47923, #57487
                                                            //
 // TODO: a domain expert should break this into better ops
 // TODO: all sampler loads should go into the load category

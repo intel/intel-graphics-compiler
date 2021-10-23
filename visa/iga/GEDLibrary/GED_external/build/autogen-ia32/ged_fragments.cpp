@@ -257,3 +257,51 @@ const ged_ins_field_position_fragment_t FragmentsTable42[5] =
     {  96,  97,   3, -10,        0x3 }, // 3
     { 124, 127,   3,  16, 0xf0000000 } // 4
 }; // FragmentsTable42[]
+const ged_ins_field_position_fragment_t FragmentsTable43[4] =
+{
+    {  35,  47,   1,  -8,     0xfff8 }, // 0
+    {  64,  65,   2, -24,        0x3 }, // 1
+    {  96,  97,   3, -26,        0x3 }, // 2
+    { 124, 127,   3,   0, 0xf0000000 } // 3
+}; // FragmentsTable43[]
+const ged_ins_field_position_fragment_t FragmentsTable44[2] =
+{
+    {  33,  33,   1,   1,        0x2 }, // 0
+    {  51,  55,   1,  18,   0xf80000 } // 1
+}; // FragmentsTable44[]
+const ged_ins_field_position_fragment_t FragmentsTable45[2] =
+{
+    {  33,  33,   1,   1,        0x2 }, // 0
+    {  50,  59,   1,  17,  0xffc0000 } // 1
+}; // FragmentsTable45[]
+const ged_ins_field_position_fragment_t FragmentsTable46[2] =
+{
+    {  87,  87,   2,  23,   0x800000 }, // 0
+    {  67,  71,   2,   2,       0xf8 } // 1
+}; // FragmentsTable46[]
+const ged_ins_field_position_fragment_t FragmentsTable47[2] =
+{
+    {  87,  87,   2,  23,   0x800000 }, // 0
+    {  66,  75,   2,   1,      0xffc } // 1
+}; // FragmentsTable47[]
+const ged_ins_field_position_fragment_t FragmentsTable48[2] =
+{
+    {  44,  45,   1,  12,     0x3000 }, // 0
+    {  64,  91,   2,  -2,  0xfffffff } // 1
+}; // FragmentsTable48[]
+const ged_ins_field_position_fragment_t FragmentsTable49[2] =
+{
+    {  26,  28,   0,  26, 0x1c000000 }, // 0
+    {  30,  31,   0,  27, 0xc0000000 } // 1
+}; // FragmentsTable49[]
+const ged_ins_field_position_fragment_t FragmentsTable50[2] =
+{
+    {  43,  45,   1,  11,     0x3800 }, // 0
+    {  35,  35,   1,   0,        0x8 } // 1
+}; // FragmentsTable50[]
+const ged_ins_field_position_fragment_t FragmentsTable51[3] =
+{
+    {  64,  65,   2,   0,        0x3 }, // 0
+    {  83,  83,   2,  17,    0x80000 }, // 1
+    {  96,  97,   3,  -3,        0x3 } // 2
+}; // FragmentsTable51[]

@@ -276,6 +276,8 @@ EXPORTS
   GED_SetCPS
   GED_GetSrc1Length
   GED_SetSrc1Length
+  GED_GetSrc2IsImm
+  GED_SetSrc2IsImm
   GED_GetIndexedSrcAddrImm
   GED_SetIndexedSrcAddrImm
   GED_GetIndexedSrcAddrMode
@@ -290,6 +292,8 @@ EXPORTS
   GED_SetIndexedSrcHorzStride
   GED_GetIndexedSrcIndex
   GED_SetIndexedSrcIndex
+  GED_GetIndexedSrcIsImm
+  GED_SetIndexedSrcIsImm
   GED_GetIndexedSrcMathMacroExt
   GED_SetIndexedSrcMathMacroExt
   GED_GetIndexedSrcRegFile
@@ -380,6 +384,24 @@ EXPORTS
   GED_SetMessageTypeDP_DCRO
   GED_GetExMessageLength
   GED_SetExMessageLength
+  GED_GetDPOpcode
+  GED_SetDPOpcode
+  GED_GetDPAddrType
+  GED_SetDPAddrType
+  GED_GetDPVectSize
+  GED_SetDPVectSize
+  GED_GetDPFlushType
+  GED_SetDPFlushType
+  GED_GetDPTranspose
+  GED_SetDPTranspose
+  GED_GetDPFlushRange
+  GED_SetDPFlushRange
+  GED_GetDPDataSize
+  GED_SetDPDataSize
+  GED_GetDPFenceScope
+  GED_SetDPFenceScope
+  GED_GetDPAddrSize
+  GED_SetDPAddrSize
   GED_SetRawBits
   GED_GetAccessModeString
   GED_GetAccWrCtrlString
@@ -395,8 +417,17 @@ EXPORTS
   GED_GetDataTypeString
   GED_GetDebugCtrlString
   GED_GetDepCtrlString
+  GED_GetDpAddrSizeString
+  GED_GetDpAddrTypeString
+  GED_GetDpDataSizeString
+  GED_GetDpFenceScopeString
+  GED_GetDpFlushTypeString
+  GED_GetDpOpcodeString
+  GED_GetDpTransposeString
+  GED_GetDpVectSizeString
   GED_GetDstChanEnString
   GED_GetEOTString
+  GED_GetEvictHintString
   GED_GetExecMaskOffsetCtrlString
   GED_GetExecutionDataTypeString
   GED_GetFusionCtrlString
@@ -418,6 +449,7 @@ EXPORTS
   GED_GetSIMDModeString
   GED_GetSlotGroupString
   GED_GetSrcModString
+  GED_GetStoreHintString
   GED_GetSubBytePrecisionString
   GED_GetSubFuncIDString
   GED_GetSwizzleString

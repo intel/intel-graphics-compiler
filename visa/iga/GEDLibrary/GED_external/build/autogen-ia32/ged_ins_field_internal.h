@@ -21,20 +21,20 @@ SPDX-License-Identifier: MIT
 /*!
  * Table mapping a GED_INS_FIELD to its GED_FIELD_TYPE.
  */
-extern GED_FIELD_TYPE fieldTypesByField[127];
+extern GED_FIELD_TYPE fieldTypesByField[128];
 
 /*!
  * Table mapping GED_INS_FIELD to its name (string representation).
  */
-extern const char* fieldNameByField[127];
+extern const char* fieldNameByField[128];
 
 /*!
  * Table mapping a GED_PSEUDO_FIELD to its GED_FIELD_TYPE.
  */
-extern GED_FIELD_TYPE pseudoFieldTypesByField[36];
+extern GED_FIELD_TYPE pseudoFieldTypesByField[45];
 
 /*!
  * Table mapping GED_PSEUDO_FIELD to its name (string representation).
  */
-extern const char* fieldNameByPseudoField[36];
+extern const char* fieldNameByPseudoField[45];
 #endif // GED_INS_FIELD_INTERNAL_H

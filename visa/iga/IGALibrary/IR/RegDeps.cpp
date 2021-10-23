@@ -35,9 +35,12 @@ static DEP_CLASS getClassFromPipeType(DEP_PIPE type, const OpSpec& opspec)
         case DEP_PIPE::FLOAT:
         case DEP_PIPE::INTEGER:
         case DEP_PIPE::LONG64:
+        case DEP_PIPE::MATH_INORDER:
             return DEP_CLASS::IN_ORDER;
 
         case DEP_PIPE::DPAS:
+        case DEP_PIPE::SEND_SLM:
+        case DEP_PIPE::SEND_UNKNOWN:
             return DEP_CLASS::OUT_OF_ORDER;
     }
     return DEP_CLASS::NONE;
@@ -95,6 +98,32 @@ static void setSendPipeType(
 {
     assert(inst.getOpSpec().isSendOrSendsFamily());
     pipe_type = DEP_PIPE::SEND;
+    // XeHPG+: slm send should be considered in different pipes
+    // Check if it's SLM
+    if (model.platform >= Platform::XE_HPG) {
+        if (inst.getMsgDescriptor().isReg())
+            pipe_type = DEP_PIPE::SEND_UNKNOWN;
+        else {
+            SFID sfid = inst.getSendFc();
+            if (sfid == SFID::SLM) {
+                pipe_type = DEP_PIPE::SEND_SLM;
+            } else {
+                uint32_t desc = inst.getMsgDescriptor().imm;
+                bool btiSlm = (0xFE == getBits<uint32_t>(desc, 0, 8));
+                bool scratchBlockMsg =
+                    (1 == getBits<uint32_t>(desc, 18, 1));
+                bool headerPresent =
+                    (1 == getBits<uint32_t>(desc, 19, 1));
+                bool sidebandOffsetEn =
+                    (1 == getBits<uint32_t>(desc, 7, 1));
+                if ((sfid == SFID::DC0 && btiSlm && !scratchBlockMsg) ||
+                    (sfid == SFID::DC1 && btiSlm) ||
+                    (sfid == SFID::DC2 && !headerPresent &&
+                        sidebandOffsetEn))
+                    pipe_type = DEP_PIPE::SEND_SLM;
+            }
+        }
+    }
 }
 
 
@@ -166,6 +195,75 @@ static void setDEPPipeClass_ThreeDistPipe(
     dep.setDepPipe(pipe_type);
 }
 
+// XeHPC+
+static void setDEPPipeClass_FourDistPipe(
+    DepSet &dep, const Instruction &inst, const Model &model) {
+    setDEPPipeClass_ThreeDistPipe(dep, inst, model);
+    if (dep.getDepPipe() == DEP_PIPE::MATH) {
+        dep.setDepClass(DEP_CLASS::IN_ORDER);
+        dep.setDepPipe(DEP_PIPE::MATH_INORDER);
+    }
+}
+
+static void setDEPPipeClass_FourDistPipeReduction(
+    DepSet &dep, const Instruction &inst, const Model &model)
+{
+    auto opsec = inst.getOpSpec();
+
+    DEP_PIPE pipe_type = DEP_PIPE::NONE;
+    if (opsec.is(Op::MATH))
+    {
+        dep.setDepClass(DEP_CLASS::IN_ORDER);
+        dep.setDepPipe(DEP_PIPE::MATH_INORDER);
+        return;
+    }
+    else if (opsec.isSendOrSendsFamily())
+    {
+        setSendPipeType(pipe_type, inst, model);
+    }
+    else if (opsec.isDpasFamily())
+    {
+        pipe_type = DEP_PIPE::DPAS;
+    }
+    else if (opsec.isBranching())
+    {
+        pipe_type = DEP_PIPE::INTEGER;
+    }
+    else
+    {
+        // In order instruction:
+        // RegDistFloat: Specify distance dependancy in float32 pipe
+        //               (i.e. all instructions with float32/16/8 dst)
+        // RegDistLong:  Specify distance dependancy in float64 pipe
+        //               (i.e. all instructions with float64 dst)
+        // RegDistInt:   Specify distance dependancy in Int32/16/8 and Int64 pipe
+        //               (i.e. all instructions with integer dst)
+        // RegDistMath:  Specify distance dependancy in Math pipe
+        //               (i.e. all math instructions)
+
+        Type inst_type = Type::INVALID;
+        // only instructions with f64 dst go into Long, others with f32/16/8
+        // go into FLOAT
+        if (opsec.supportsDestination()) {
+            inst_type = inst.getDestination().getType();
+            if (TypeIsFloating(inst_type)) {
+                if (TypeIs64b(inst_type))
+                    pipe_type = DEP_PIPE::LONG64;
+                else
+                    pipe_type = DEP_PIPE::FLOAT;
+            } else {
+                pipe_type = DEP_PIPE::INTEGER;
+            }
+        }
+    }
+
+    // default set to Integer pipe (e.g. NOP)
+    if (pipe_type == DEP_PIPE::NONE)
+        pipe_type = DEP_PIPE::INTEGER;
+
+    dep.setDepClass(getClassFromPipeType(pipe_type, opsec));
+    dep.setDepPipe(pipe_type);
+}
 
 
 static void setDEPPipeClass(
@@ -175,21 +273,25 @@ static void setDEPPipeClass(
         setDEPPipeClass_SingleDistPipe(dep, inst);
     else if (enc_mode == SWSB_ENCODE_MODE::ThreeDistPipe)
         setDEPPipeClass_ThreeDistPipe(dep, inst, model);
+    else if (enc_mode == SWSB_ENCODE_MODE::FourDistPipe)
+        setDEPPipeClass_FourDistPipe(dep, inst, model);
+    else if (enc_mode == SWSB_ENCODE_MODE::FourDistPipeReduction)
+        setDEPPipeClass_FourDistPipeReduction(dep, inst, model);
 }
 
-DepSet::DepSet(const InstIDs& inst_id_counter, const DepSetBuilder& dsb)
+DepSet::DepSet(const InstIDs& instIdCntr, const DepSetBuilder& dsb)
     : m_instruction(nullptr),
       m_dType(DEP_TYPE::NONE),
       m_hasIndirect(false),
       m_hasSR(false),
       m_dPipe(DEP_PIPE::NONE),
       m_dClass(DEP_CLASS::NONE),
-      m_InstIDs(inst_id_counter.global,
-                inst_id_counter.inOrder,
-                inst_id_counter.floatPipe,
-                inst_id_counter.intPipe,
-                inst_id_counter.longPipe
-      ),
+      m_InstIDs(instIdCntr.global,
+                instIdCntr.inOrder,
+                instIdCntr.floatPipe,
+                instIdCntr.intPipe,
+                instIdCntr.longPipe,
+                instIdCntr.mathPipe),
       m_DB(dsb)
 {
     m_bucketList.reserve(4);
@@ -204,6 +306,14 @@ uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty)
     if (src1_ty == Type::HF || src1_ty == Type::BF) {
         IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
         return 2;
+    }
+    else if (src1_ty == Type::BF8) {
+        IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
+        return 4;
+    }
+    else if (src1_ty == Type::TF32) {
+        IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
+        return 1;
     }
     else {
         // if both src1 and src2 are int2 or int4, than ops_per_chan will be 8
@@ -275,9 +385,18 @@ void DepSet::getDpasSrcDependency(
         uint32_t startRegNum = lowBound / m_DB.getGRF_BYTES_PER_REG();
         uint32_t upperRegNum = (upBound - 1) / m_DB.getGRF_BYTES_PER_REG();
         reg_range.push_back(std::make_pair(startRegNum, upperRegNum));
+        // calculate extra_regs for HW workaround: treat Src2 as dpas.8x8 when calculating register footpring (4 registers)
+        if (model.platform == Platform::XE_HPC) {
+            if (srcIx == 2 && (repeatCount != 8 || systolicDepth != 8)) {
+                uint32_t extraUpBound = getDPASSrcDepUpBound(srcIx, tType, execSize, lowBound, 8, 8, ops_per_chan);
+                uint32_t extraUpRegNum = (extraUpBound - 1) / m_DB.getGRF_BYTES_PER_REG();
+                if (extraUpRegNum >= m_DB.getGRF_REGS())
+                    IGA_FATAL("IGA RegDeps: DPAS src2 out of bounds due to HW WA");
+                extra_regs.push_back(std::make_pair(startRegNum, extraUpRegNum));
+            }
+        }
         // calculate extra_regs for HW workaround: src1 always have 8 register footpring
-        if (model.platform == Platform::XE_HP
-            ) {
+        if (model.platform == Platform::XE_HP || model.platform == Platform::XE_HPG) {
             if (srcIx == 1) {
                 uint32_t extraUpBound = lowBound + m_DB.getGRF_BYTES_PER_REG() * 8;
                 uint32_t extraUpRegNum = (extraUpBound - 1) / m_DB.getGRF_BYTES_PER_REG();
@@ -482,6 +601,8 @@ std::pair<DepSet*, DepSet*> DepSetBuilder::createDPASSrcDstDepSet(
             ++instIt;
             if (instIt == insList.end())
                 break;
+            if (mPlatformModel.platform == Platform::XE_HPG)
+                break;
             if (helper_isLastDpas(*cur_inst, **instIt))
                 break;
             SrcRegRangeType new_src_range, new_extra_regs;
@@ -597,7 +718,8 @@ void DepSet::setInputsSrcDep()
 
     // mac/mach has implicitly read to acc0
     if (m_instruction->getOp() == Op::MAC || m_instruction->getOp() == Op::MACH
-        ) {
+        || m_instruction->getOp() == Op::MACL)
+    {
         setSrcRegion(
             RegName::ARF_ACC,
             RegRef(0, 0),
@@ -821,7 +943,9 @@ void DepSet::setOutputsDstcDep()
     if (m_instruction->hasInstOpt(InstOpt::ACCWREN) ||
         m_instruction->getOp() == Op::SUBB ||
         m_instruction->getOp() == Op::ADDC ||
-        m_instruction->getOp() == Op::MACH) {
+        m_instruction->getOp() == Op::MACL ||
+        m_instruction->getOp() == Op::MACH)
+    {
         auto elemsPerAccReg = 8 * m_DB.getARF_ACC_BYTES_PER_REG() / typeSizeBits; // e.g. 8 subreg elems for :f
         RegRef ar;
         ar.regNum = (uint16_t)(execOff / elemsPerAccReg);

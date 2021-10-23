@@ -71,6 +71,9 @@ CompactionResult InstCompactor::tryToCompactImpl() {
     switch (model.platform) {
     case Platform::XE:
     case Platform::XE_HP:
+    case Platform::XE_HPG:
+    case Platform::XE_HPC:
+        return tryToCompactImplFamilyXE();
     case Platform::FUTURE:
     default:
         compactionMissed = true;

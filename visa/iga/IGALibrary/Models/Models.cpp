@@ -23,6 +23,8 @@ SPDX-License-Identifier: MIT
 #include "bxml/ModelGen11.hpp"
 #include "bxml/ModelXe.hpp"
 #include "bxml/ModelXeHP.hpp"
+#include "bxml/ModelXeHPG.hpp"
+#include "bxml/ModelXeHPC.hpp"
 #include "../asserts.hpp"
 #include "../bits.hpp"
 #include "../Backend/Native/MInst.hpp"
@@ -97,6 +99,17 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 0,
         1,
         8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC(Platform::XE_HPG, Platform::XE_HPG,
+        RegName::ARF_ACC, "acc", "Accumulator",
+        0x2, 0,
+        1,
+        8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC_GE(
+        Platform::XE_HPC,
+        RegName::ARF_ACC, "acc", "Accumulator",
+        0x2, 0,
+        1,
+        16, (64,64,64,64,64,64,64,64,64,64,64,64,64,64,64,64)),
     IGA_REGISTER_SPEC_LE(
         Platform::GEN11,
         RegName::ARF_MME, "mme", "Math Macro",
@@ -113,11 +126,30 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 8, // offset by 8 "acc8-15"
         4,
         8, (32,32,32,32,32,32,32,32)),
-    IGA_REGISTER_SPEC_UNIFORM(
+    IGA_REGISTER_SPEC(Platform::XE_HPG, Platform::XE_HPG,
+        RegName::ARF_MME, "mme", "Math Macro",
+        0x2, 8, // offset by 8 "acc8-15"
+        4,
+        8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC_GE(
+        Platform::XE_HPC,
+        RegName::ARF_MME, "mme", "Math Macro",
+        0x2, 8, // offset by 8 "acc8-15"
+        4,
+        8, (64,64,64,64,64,64,64,64)),
+
+    IGA_REGISTER_SPEC_LE(
+        Platform::XE_HPG,
         RegName::ARF_F, "f", "Flag Register",
         0x3, 0,
         2,
         2, (4,4)),
+    IGA_REGISTER_SPEC_GE(
+        Platform::XE_HPC,
+        RegName::ARF_F, "f", "Flag Register",
+        0x3, 0,
+        2,
+        4, (4,4,4,4)),
 
     IGA_REGISTER_SPEC_GE(
         Platform::GEN7P5,
@@ -126,8 +158,8 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         4,
         0, (4)),
 
-    IGA_REGISTER_SPEC_GE(
-        Platform::GEN8,
+    IGA_REGISTER_SPEC_LE(
+        Platform::XE_HPC,
         RegName::ARF_MSG, "msg", "Message Control",
         0x5, 0,
         4,
@@ -310,7 +342,7 @@ uint32_t Model::getNumFlagReg() const
 
 uint32_t Model::getGRFByteSize() const
 {
-    return 32;
+    return platform >= Platform::XE_HPC ? 64 : 32;
 }
 
 uint32_t Model::getRegCount(RegName rn) const {
@@ -326,6 +358,8 @@ uint32_t Model::getBytesPerReg(RegName rn) const {
     IGA_ASSERT(ri, "invalid register for platform");
     if (rn == RegName::GRF_R) {
         // GRF has 0's in numBytesPerReg[..]
+        if (platform >= Platform::XE_HPC)
+            return 64;
         return 32;
     }
     // we assume they are all equal length
@@ -433,6 +467,16 @@ static constexpr Model MODEL_XE(
 static constexpr Model MODEL_XE_HP(
     Platform::XE_HP, &MODEL_XE_HP_OPSPECS[0], "12p5", "xehp"
     );
+static constexpr Model MODEL_XE_HPG(
+    Platform::XE_HPG, &MODEL_XE_HPG_OPSPECS[0],
+    "12p71", // default file extension
+    "xehpg"
+    );
+static constexpr Model MODEL_XE_HPC(
+    Platform::XE_HPC, &MODEL_XE_HPC_OPSPECS[0],
+    "12p72",
+    "xehpc"
+    );
 
 const Model * const iga::ALL_MODELS[] {
     &MODEL_GEN7P5,
@@ -442,6 +486,8 @@ const Model * const iga::ALL_MODELS[] {
     &MODEL_GEN11,
     &MODEL_XE,
     &MODEL_XE_HP,
+    &MODEL_XE_HPG,
+    &MODEL_XE_HPC,
 };
 const size_t iga::ALL_MODELS_LEN = sizeof(ALL_MODELS)/sizeof(ALL_MODELS[0]);
 
@@ -465,6 +511,10 @@ const Model *Model::LookupModel(Platform p)
         return &MODEL_XE;
     case Platform::XE_HP:
         return &MODEL_XE_HP;
+    case Platform::XE_HPG:
+        return &MODEL_XE_HPG;
+    case Platform::XE_HPC:
+        return &MODEL_XE_HPC;
     default:
         return nullptr;
     }

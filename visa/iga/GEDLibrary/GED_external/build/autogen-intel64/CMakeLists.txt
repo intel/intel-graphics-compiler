@@ -29,6 +29,9 @@ set(GED_autogenintel64_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_9.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpg.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp
   PARENT_SCOPE
@@ -58,6 +61,9 @@ set(GED_autogenintel64_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_9.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpg.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.h
   PARENT_SCOPE
 )

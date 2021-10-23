@@ -193,7 +193,8 @@ typedef kv_t* (CDECLATTRIBUTE * pIGAKVCreate)(
     size_t bytes_len,
     iga_status_t *status,
     char *errbuf,
-    size_t errbuf_cap);
+    size_t errbuf_cap,
+    /* iga::SWSB_ENCODE_MODE */ uint32_t swsb_mode);
 #define IGA_KV_GET_INST_SIZE_STR "kv_get_inst_size"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetInstSize)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_INST_TARGETS_STR "kv_get_inst_targets"

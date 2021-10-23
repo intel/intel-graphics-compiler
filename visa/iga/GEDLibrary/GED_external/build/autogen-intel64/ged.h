@@ -102,6 +102,24 @@ typedef enum
      * Supported CPUs: XeHP
      */
     GED_MODEL_XE_HP,
+
+    /*!
+     * GED Model Version: xe.hpg
+     * Supported CPUs: XeHPG
+     */
+    GED_MODEL_XE_HPG,
+
+    /*!
+     * GED Model Version: xe.hpc.a
+     * Supported CPUs: XeHpcA
+     */
+    GED_MODEL_XE_HPC_A,
+
+    /*!
+     * GED Model Version: xe.hpc
+     * Supported CPUs: XeHpc
+     */
+    GED_MODEL_XE_HPC,
     GED_MODEL_INVALID
 } GED_MODEL;
 
@@ -3368,6 +3386,30 @@ extern uint32_t GED_CALLCONV GED_GetSrc1Length(ged_ins_t* ins, GED_RETURN_VALUE*
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Length(ged_ins_t* ins, const uint32_t value);
 
 /*!
+ * Get the value of the Src2IsImm field in the given instruction. See @ref GED_INS_FIELD_Src2IsImm for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the Src2IsImm field in the given instruction. See @ref GED_INS_FIELD_Src2IsImm for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value);
+
+/*!
  * Get the value of the AddrImm field which corresponds to an indexed Src operand in the given instruction. See @ref
  * GED_INS_FIELD_Src0AddrImm, @ref GED_INS_FIELD_Src1AddrImm for the fields' description.
  *
@@ -3562,6 +3604,34 @@ extern uint32_t GED_CALLCONV GED_GetIndexedSrcIndex(ged_ins_t* ins, GED_RETURN_V
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcIndex(ged_ins_t* ins, const uint32_t value, const uint8_t index);
+
+/*!
+ * Get the value of the IsImm field which corresponds to an indexed Src operand in the given instruction. See @ref
+ * GED_INS_FIELD_Src0IsImm, @ref GED_INS_FIELD_Src1IsImm, @ref GED_INS_FIELD_Src2IsImm for the fields' description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ * @param[in]       index  The index (number) of the source operand.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcIsImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
+
+/*!
+ * Set the value of the IsImm field which corresponds to an indexed Src operand in the given instruction. See @ref
+ * GED_INS_FIELD_Src0IsImm, @ref GED_INS_FIELD_Src1IsImm, @ref GED_INS_FIELD_Src2IsImm for the fields' description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ * @param[in]       index  The index (number) of the source operand.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcIsImm(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the MathMacroExt field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4787,6 +4857,241 @@ extern uint32_t GED_CALLCONV GED_GetExMessageLength(const uint32_t exMsgDesc, co
  */
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetExMessageLength(uint32_t* exMsgDesc, const GED_MODEL modelId, const uint32_t length);
 
+/*!
+ * Get the value of the DPOpcode field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpOpcodeString. See @ref
+ * GED_PSEUDO_FIELD_DPOpcode for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPOpcode's enumeration if the field is valid, GED_DP_OPCODE_INVALID otherwise.
+ */
+extern GED_DP_OPCODE GED_CALLCONV GED_GetDPOpcode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPOpcode field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPOpcode for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       opcode     The DP operation.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPOpcode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_OPCODE opcode);
+
+/*!
+ * Get the value of the DPAddrType field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
+ * an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpAddrTypeString. See @ref
+ * GED_PSEUDO_FIELD_DPAddrType for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPAddrType's enumeration if the field is valid, GED_DP_ADDR_TYPE_INVALID otherwise.
+ */
+extern GED_DP_ADDR_TYPE GED_CALLCONV GED_GetDPAddrType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPAddrType field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPAddrType for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       AddrType   The DP addr surface type.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPAddrType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_TYPE AddrType);
+
+/*!
+ * Get the value of the DPVectSize field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
+ * an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpVectSizeString. See @ref
+ * GED_PSEUDO_FIELD_DPVectSize for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPVectSize's enumeration if the field is valid, GED_DP_VECT_SIZE_INVALID otherwise.
+ */
+extern GED_DP_VECT_SIZE GED_CALLCONV GED_GetDPVectSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPVectSize field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPVectSize for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       VectSize   The DP vector size.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPVectSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_VECT_SIZE VectSize);
+
+/*!
+ * Get the value of the DPFlushType field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
+ * an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpFlushTypeString. See @ref
+ * GED_PSEUDO_FIELD_DPFlushType for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPFlushType's enumeration if the field is valid, GED_DP_FLUSH_TYPE_INVALID otherwise.
+ */
+extern GED_DP_FLUSH_TYPE GED_CALLCONV GED_GetDPFlushType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPFlushType field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPFlushType for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       FlushType  The DP flush type.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPFlushType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_FLUSH_TYPE
+                                                        FlushType);
+
+/*!
+ * Get the value of the DPTranspose field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
+ * an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpTransposeString. See @ref
+ * GED_PSEUDO_FIELD_DPTranspose for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPTranspose's enumeration if the field is valid, GED_DP_TRANSPOSE_INVALID otherwise.
+ */
+extern GED_DP_TRANSPOSE GED_CALLCONV GED_GetDPTranspose(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPTranspose field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPTranspose for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       Transpose  The DP transpose.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPTranspose(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_TRANSPOSE Transpose);
+
+/*!
+ * Get the value of the DPFlushRange field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). See @ref
+ * GED_PSEUDO_FIELD_DPFlushRange for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      The flush range if the field is valid, the unchanged msgDesc value otherwise.
+ */
+extern uint32_t GED_CALLCONV GED_GetDPFlushRange(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPFlushRange field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPFlushRange for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       range      The flush range.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPFlushRange(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t range);
+
+/*!
+ * Get the value of the DPDataSize field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
+ * an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpDataSizeString. See @ref
+ * GED_PSEUDO_FIELD_DPDataSize for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPDataSize's enumeration if the field is valid, GED_DP_DATA_SIZE_INVALID otherwise.
+ */
+extern GED_DP_DATA_SIZE GED_CALLCONV GED_GetDPDataSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPDataSize field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPDataSize for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       DataSize   The DP data size.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPDataSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_DATA_SIZE DataSize);
+
+/*!
+ * Get the value of the DPFenceScope field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
+ * returns an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpFenceScopeString. See @ref
+ * GED_PSEUDO_FIELD_DPFenceScope for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPFenceScope's enumeration if the field is valid, GED_DP_FENCE_SCOPE_INVALID otherwise.
+ */
+extern GED_DP_FENCE_SCOPE GED_CALLCONV GED_GetDPFenceScope(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPFenceScope field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPFenceScope for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       FenceScope The DP fence scope.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPFenceScope(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_FENCE_SCOPE
+                                                         FenceScope);
+
+/*!
+ * Get the value of the DPAddrSize field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
+ * an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpAddrSizeString. See @ref
+ * GED_PSEUDO_FIELD_DPAddrSize for the field's description.
+ *
+ * @param[in]       msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPAddrSize's enumeration if the field is valid, GED_DP_ADDR_SIZE_INVALID otherwise.
+ */
+extern GED_DP_ADDR_SIZE GED_CALLCONV GED_GetDPAddrSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DPAddrSize field in the given message descriptor. The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPAddrSize for the field's description.
+ *
+ * @param[in,out]   msgDesc    The message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       AddrSize   The DP address size.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPAddrSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_SIZE AddrSize);
+
 #if GED_EXPERIMENTAL
 
 /*!
@@ -4943,6 +5248,86 @@ extern const char* GED_CALLCONV GED_GetDebugCtrlString(GED_DEBUG_CTRL DebugCtrlV
 extern const char* GED_CALLCONV GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue);
 
 /*!
+ * Get the string representation for the given GED_DP_ADDR_SIZE enumerator. The function returns a NULL pointer for
+ * GED_DP_ADDR_SIZE_INVALID.
+ *
+ * @param[in]       DpAddrSizeValue    The given GED_DP_ADDR_SIZE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDpAddrSizeString(GED_DP_ADDR_SIZE DpAddrSizeValue);
+
+/*!
+ * Get the string representation for the given GED_DP_ADDR_TYPE enumerator. The function returns a NULL pointer for
+ * GED_DP_ADDR_TYPE_INVALID.
+ *
+ * @param[in]       DpAddrTypeValue    The given GED_DP_ADDR_TYPE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDpAddrTypeString(GED_DP_ADDR_TYPE DpAddrTypeValue);
+
+/*!
+ * Get the string representation for the given GED_DP_DATA_SIZE enumerator. The function returns a NULL pointer for
+ * GED_DP_DATA_SIZE_INVALID.
+ *
+ * @param[in]       DpDataSizeValue    The given GED_DP_DATA_SIZE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDpDataSizeString(GED_DP_DATA_SIZE DpDataSizeValue);
+
+/*!
+ * Get the string representation for the given GED_DP_FENCE_SCOPE enumerator. The function returns a NULL pointer for
+ * GED_DP_FENCE_SCOPE_INVALID.
+ *
+ * @param[in]       DpFenceScopeValue  The given GED_DP_FENCE_SCOPE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDpFenceScopeString(GED_DP_FENCE_SCOPE DpFenceScopeValue);
+
+/*!
+ * Get the string representation for the given GED_DP_FLUSH_TYPE enumerator. The function returns a NULL pointer for
+ * GED_DP_FLUSH_TYPE_INVALID.
+ *
+ * @param[in]       DpFlushTypeValue   The given GED_DP_FLUSH_TYPE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDpFlushTypeString(GED_DP_FLUSH_TYPE DpFlushTypeValue);
+
+/*!
+ * Get the string representation for the given GED_DP_OPCODE enumerator. The function returns a NULL pointer for
+ * GED_DP_OPCODE_INVALID.
+ *
+ * @param[in]       DpOpcodeValue  The given GED_DP_OPCODE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDpOpcodeString(GED_DP_OPCODE DpOpcodeValue);
+
+/*!
+ * Get the string representation for the given GED_DP_TRANSPOSE enumerator. The function returns a NULL pointer for
+ * GED_DP_TRANSPOSE_INVALID.
+ *
+ * @param[in]       DpTransposeValue   The given GED_DP_TRANSPOSE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDpTransposeString(GED_DP_TRANSPOSE DpTransposeValue);
+
+/*!
+ * Get the string representation for the given GED_DP_VECT_SIZE enumerator. The function returns a NULL pointer for
+ * GED_DP_VECT_SIZE_INVALID.
+ *
+ * @param[in]       DpVectSizeValue    The given GED_DP_VECT_SIZE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDpVectSizeString(GED_DP_VECT_SIZE DpVectSizeValue);
+
+/*!
  * Get the string representation for the given GED_DST_CHAN_EN enumerator. The function returns a NULL pointer for
  * GED_DST_CHAN_EN_INVALID.
  *
@@ -4960,6 +5345,16 @@ extern const char* GED_CALLCONV GED_GetDstChanEnString(GED_DST_CHAN_EN DstChanEn
  * @return      The requested string.
  */
 extern const char* GED_CALLCONV GED_GetEOTString(GED_EOT EOTValue);
+
+/*!
+ * Get the string representation for the given GED_EVICT_HINT enumerator. The function returns a NULL pointer for
+ * GED_EVICT_HINT_INVALID.
+ *
+ * @param[in]       EvictHintValue The given GED_EVICT_HINT enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetEvictHintString(GED_EVICT_HINT EvictHintValue);
 
 /*!
  * Get the string representation for the given GED_EXEC_MASK_OFFSET_CTRL enumerator. The function returns a NULL pointer for
@@ -5161,6 +5556,16 @@ extern const char* GED_CALLCONV GED_GetSlotGroupString(GED_SLOT_GROUP SlotGroupV
  * @return      The requested string.
  */
 extern const char* GED_CALLCONV GED_GetSrcModString(GED_SRC_MOD SrcModValue);
+
+/*!
+ * Get the string representation for the given GED_STORE_HINT enumerator. The function returns a NULL pointer for
+ * GED_STORE_HINT_INVALID.
+ *
+ * @param[in]       StoreHintValue The given GED_STORE_HINT enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetStoreHintString(GED_STORE_HINT StoreHintValue);
 
 /*!
  * Get the string representation for the given GED_SUB_BYTE_PRECISION enumerator. The function returns a NULL pointer for

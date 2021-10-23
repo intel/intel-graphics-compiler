@@ -67,7 +67,12 @@ namespace iga
         Q,
 
         HF,
+        QF,
         BF,
+        HF8,
+        BF8,
+        TF32,
+
         F,
         DF,
         NF,
@@ -224,18 +229,20 @@ namespace iga
     {
         NONE, // predication is off
         SEQ,  // no explicit function; e.g. f0.0
-        ANYV, // .anyv; e.g. "f0.0.anyv". any from f0.0-f1.0 on the same channel
-        ALLV, // all from f0.0-f1.0 on the same channel
-        ANY2H,
-        ALL2H,
-        ANY4H,
-        ALL4H,
-        ANY8H,
-        ALL8H,
-        ANY16H,
-        ALL16H,
-        ANY32H,
-        ALL32H,
+        ANYV, // .anyv; e.g. "f0.0.anyv". any from f0.0-f1.0 on the same channel  // (<XeHPC)
+        ALLV, // all from f0.0-f1.0 on the same channel  // (<XeHPC)
+        ANY2H, // (<XeHPC)
+        ALL2H, // (<XeHPC)
+        ANY4H, // (<XeHPC)
+        ALL4H, // (<XeHPC)
+        ANY8H, // (<XeHPC)
+        ALL8H, // (<XeHPC)
+        ANY16H, // (<XeHPC)
+        ALL16H, // (<XeHPC)
+        ANY32H, // (<XeHPC)
+        ALL32H, // (<XeHPC)
+        ANY,   // any in execsize channels (>=XeHPC)
+        ALL,   // all in execsize channels (>=XeHPC)
     };
 
     // instruction options

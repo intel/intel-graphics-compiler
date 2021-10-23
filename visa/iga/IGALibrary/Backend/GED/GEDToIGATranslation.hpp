@@ -99,6 +99,8 @@ namespace iga
         case GED_OPCODE_bfn:   opcode = Op::BFN;   break;
         case GED_OPCODE_dpas:  opcode = Op::DPAS;  break;
         case GED_OPCODE_dpasw: opcode = Op::DPASW; break;
+        case GED_OPCODE_macl:  opcode = Op::MACL;  break;
+        case GED_OPCODE_srnd:  opcode = Op::SRND;  break;
         default:
             opcode = Op::ILLEGAL;
             break;
@@ -119,6 +121,8 @@ namespace iga
         case GED_PRECISION_s8:   return Type::B;
         case GED_PRECISION_f16:  return Type::HF;
         case GED_PRECISION_bf16: return Type::BF;
+        case GED_PRECISION_bf8:  return Type::BF8;
+        case GED_PRECISION_tf32: return Type::TF32;
         default:                 return Type::INVALID;
         }
     }
@@ -144,6 +148,8 @@ namespace iga
         case GED_PRED_CTRL_all16h: predCtrl = PredCtrl::ALL16H; break;
         case GED_PRED_CTRL_any32h: predCtrl = PredCtrl::ANY32H; break;
         case GED_PRED_CTRL_all32h: predCtrl = PredCtrl::ALL32H; break;
+        case GED_PRED_CTRL_any: predCtrl = PredCtrl::ANY; break;
+        case GED_PRED_CTRL_all: predCtrl = PredCtrl::ALL; break;
         case GED_PRED_CTRL_INVALID:
         default:
             predCtrl = PredCtrl::NONE;
@@ -240,6 +246,9 @@ namespace iga
 
 
         case GED_DATA_TYPE_bf:   opndType = Type::BF;   break;
+        case GED_DATA_TYPE_qf:   opndType = Type::QF;   break;
+        case GED_DATA_TYPE_bf8:  opndType = Type::BF8;  break;
+        case GED_DATA_TYPE_tf32: opndType = Type::TF32; break;
 
         case GED_DATA_TYPE_INVALID:
         default:
@@ -373,6 +382,12 @@ namespace iga
         case GED_SFID_CRE:        return SFID::CRE;
         case GED_SFID_DP_SAMPLER: return SFID::SMPL; // Pre-SKL
         case GED_SFID_DP_CC:      return SFID::DCRO; // Pre-SKL
+        case GED_SFID_BTD:        return SFID::BTD;
+        case GED_SFID_RTA:        return SFID::RTA;
+        case GED_SFID_TGM:        return SFID::TGM;
+        case GED_SFID_SLM:        return SFID::SLM;
+        case GED_SFID_UGM:        return SFID::UGM;
+        case GED_SFID_UGML:       return SFID::UGML;
         default:                  return SFID::INVALID;
         }
     }
@@ -551,6 +566,7 @@ namespace iga
         case GED_SYNC_FC_allrd: return SyncFC::ALLRD;
         case GED_SYNC_FC_allwr: return SyncFC::ALLWR;
         case GED_SYNC_FC_bar:   return SyncFC::BAR;
+        case GED_SYNC_FC_fence: return SyncFC::FENCE;
         case GED_SYNC_FC_host:  return SyncFC::HOST;
         default:                return SyncFC::INVALID;
         }

@@ -198,6 +198,7 @@ namespace iga
         void encodeSendDescsPreXe(const Instruction& inst);
         void encodeSendDescsXe(const Instruction& inst);
         void encodeSendDescsXeHP(const Instruction& inst);
+        void encodeSendDescsXeHPG(const Instruction& inst);
 
         ///////////////////////////////////////////////////////////////////////
         // SYNC INSTRUCTIONS
@@ -284,6 +285,12 @@ namespace iga
                 // from immediates
                 value = val.u64;
                 break;
+            case Type::BF8:
+                value = (uint64_t)val.u8;
+                break;
+            case Type::TF32:
+                value = (uint64_t)val.u32;
+                break;
             default:
                 break;
             }
@@ -298,6 +305,8 @@ namespace iga
             switch (t) {
             case Type::HF:
             case Type::BF:
+            case Type::BF8:
+            case Type::TF32:
             case Type::F:
             case Type::DF:
             case Type::NF:

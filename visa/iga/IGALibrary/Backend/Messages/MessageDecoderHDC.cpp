@@ -75,6 +75,7 @@ enum DC1 : uint32_t {
     //
     MSD1R_TS       = 0x05,
     MSD1W_TS       = 0x0D,
+    MSD1RS_TS      = 0x0E,
     //
     MSD1A_DWAC     = 0x0B,
     MSD1A_DWTAI    = 0x06,
@@ -155,6 +156,10 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         case 2: ows = 2; descs = "2 OWords"; break;
         case 3: ows = 4; descs = "4 OWords"; break;
         case 4: ows = 8; descs = "8 OWords"; break;
+        case 5:
+            ensurePlatformGE(Platform::XE_HPG);
+            ows = 16; descs = "16 OWords";
+            break;
         default: break;
         }
         addField(fieldName, off, 3, bits, descs);
@@ -202,6 +207,12 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
             simd = bits ? 16 : 8;
         }
 
+        if (platform() >= Platform::XE_HPC) {
+            if (simd == 16) {
+                error(off, 1, "invalid value for this platform");
+            }
+            simd *= 2;
+        }
         return simd;
     }
     int decodeMDC_SM2R(int off) {return decodeMDC_SM2X(off, true);}
@@ -214,6 +225,12 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         case 1: simd = 16; simdStr = "SIMD16"; break;
         case 2: simd = 8;  simdStr = "SIMD8"; break;
         default: error(off, 2, "invalid value"); break;
+        }
+        if (platform() >= Platform::XE_HPC) {
+            if (bits == 2) {
+                // illegal on XeHPC+
+                error(off, 1, "invalid value for this platform");
+            }
         }
         addField("SimdMode:MDC_SM3", off, 2, bits, simdStr);
         return simd;
@@ -251,6 +268,9 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         case 0: sym = "SG4x2"; break;
         case 1:
             sym = "SG8L";
+            // in XeHPC this becomes the default
+            if (platform() >= Platform::XE_HPC)
+                sym = "SIMD16";
             break;
         case 2: sym = "SG8U"; break;
         default:
@@ -266,6 +286,9 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         switch (bits) {
         case 0:
             sym = "SG8L";
+            // in XeHPC this becomes the default
+            if (platform() >= Platform::XE_HPC)
+                sym = "SIMD16";
             break;
         case 1: sym = "SG8U"; break;
         default: break;
@@ -822,6 +845,11 @@ enum DCRO_MT {
     MT_US_CCS_OP     = 0x08, // cannot find BXML page
     MT_A64_US_CCS_OP = 0x18,
     MT_A64_US_UCW    = 0x19,
+    // XeHPG+
+    MT_TS_UCW        = 0x0D,
+    MT_TS_CCS_OP     = 0x0C,
+    MT_US_UCW        = 0x09,
+    MT_A64_CCS_PG_OP = 0x17,
 };
 
 void MessageDecoderHDC::tryDecodeDCRO() {
@@ -869,6 +897,127 @@ void MessageDecoderHDC::tryDecodeDCRO() {
         decodeExpected(9, 1, "LegacySimdMode", 1);
         decodeMDC_H();
         setDoc("7084", "44765", nullptr);
+        break;
+    // case MT_US_CCS_OP: // TODO: find BXML page
+    case MT_A64_US_CCS_OP:
+    {
+        setMessageTypeDesc("A64 untyped surface CCS operation");
+        decodeMDC_HF();
+        auto ccsOp = decodeDescField("SectorUpdateOpcode", 8, 4,
+            [] (std::stringstream &ss, uint32_t val){
+                switch (val) {
+                case 0x1: ss << "Slow Clear"; break;
+                case 0x3: ss << "Slow Uncompress"; break;
+                default: ss << "?";
+                }
+            });
+        setHdcMessage(
+            "a64_untyped_ccs_op",
+            desc,
+            ccsOp == 0x1 ? SendOp::CCS_SC :  SendOp::CCS_SU,
+            64, // addr size
+            0, // data
+            1, // vec elems
+            decodeMDC_SM3(12),
+            MessageInfo::Attr::NONE);
+        setDoc("44763");
+        ensurePlatformGE(Platform::XE_HP);
+        break;
+    }
+    case MT_A64_US_UCW:
+        setMessageTypeDesc("A64 untyped surface uncompressed write");
+        setHdcMessage(
+            "a64_untyped_uncompressed_store_quad",
+            desc,
+            SendOp::STORE_UNCOMPRESSED_QUAD,
+            64, // addr size
+            32, // data size
+            decodeMDC_CMASK(),
+            decodeMDC_SM3(12),
+            MessageInfo::Attr::NONE);
+        decodeMDC_HF();
+        setDoc("44764");
+        ensurePlatformGE(Platform::XE_HP);
+        break;
+    case MT_A64_CCS_PG_OP:
+    {
+        setMessageTypeDesc("A64 page CCS update operation");
+        auto ccsOp = decodeDescField("PageUpdateOpcode", 8, 2,
+            [] (std::stringstream &ss, uint32_t val){
+                switch (val) {
+                case 0: ss << "Fast Clear"; break;
+                case 2: ss << "Fast Uncompress"; break;
+                default: ss << "?";
+                }
+            });
+        int surfId = decodeBTI(64);
+        setSpecialOpX(
+            "a64_ccs_update",
+            desc,
+            ccsOp == 0x0 ? SendOp::CCS_PC : SendOp::CCS_PU,
+            AddrType::BTI,
+            SendDesc(surfId),
+            1,
+            0,
+            MessageInfo::Attr::NONE);
+        decodeMDC_HR();
+        setDoc("44762");
+        ensurePlatformGE(Platform::XE_HPG);
+        break;
+    }
+    case MT_TS_UCW:
+        setMessageTypeDesc("typed surface uncompressed write");
+        setHdcMessage(
+            "typed_uncompressed_store_quad",
+            desc,
+            SendOp::STORE_UNCOMPRESSED_QUAD,
+            32, // addr size
+            32, // data size
+            decodeMDC_CMASK(),
+            decodeMDC_SG3(),
+            MessageInfo::Attr::NONE);
+        decodeMDC_H();
+        setDoc("44773");
+        ensurePlatformGE(Platform::XE_HPG);
+        break;
+    case MT_TS_CCS_OP:
+    {
+        setMessageTypeDesc("typed surface CCS update message");
+        auto ccsOp = decodeDescField("SectorUpdateOpcode", 8, 4,
+            [] (std::stringstream &ss, uint32_t val){
+                switch (val) {
+                case 1: ss << "Slow Clear"; break;
+                case 3: ss << "Slow Uncompress"; break;
+                default: ss << "?";
+                }
+            });
+        setHdcMessage(
+            "a64_typed_ccs_op",
+            desc,
+            ccsOp == 0x1 ? SendOp::CCS_SC :  SendOp::CCS_SU,
+            32, // addr size
+            32, // data
+            1, // vec elems
+            decodeMDC_SG3(),
+            MessageInfo::Attr::NONE);
+        decodeMDC_H();
+        setDoc("44763");
+        break;
+    }
+    case MT_US_UCW:
+        setMessageTypeDesc("untyped surface uncompressed write");
+        setHdcMessage(
+            "untyped_uncompressed_store_quad",
+            desc,
+            SendOp::STORE_UNCOMPRESSED_QUAD,
+            32, // addr size
+            32, // data size
+            decodeMDC_CMASK(),
+            decodeMDC_SM3(12),
+            MessageInfo::Attr::NONE);
+        decodeMDC_H();
+        setDoc("44775");
+        ensurePlatformGE(Platform::XE_HPG);
         break;
     default:
         setMessageTypeDesc("unknown DCRO message");
@@ -978,6 +1127,31 @@ void MessageDecoderHDC::tryDecodeDC0()
         decodeMDC_H();
         break;
     }
+    case MSD0R_QWS: // qword gather
+    case MSD0W_QWS: // qword scatter
+    {
+        auto isRead = MSD0R_QWS;
+        const char *msgName = isRead ?
+            "qword gathering read" : "qword scattering write";
+        addMessageType(msgName);
+        //
+        setHdcMessage(
+            isRead ? "load" : "store",
+            msgName,
+            isRead ? SendOp::LOAD : SendOp::STORE,
+            32, // addrs
+            64, // data
+            decodeMDC_DWS_DS(10),
+            decodeMDC_SM2(8),
+            MessageInfo::Attr::NONE);
+        setDoc(
+            isRead ? "33652" : "33653",
+            isRead ? "44723" : "44731",
+            nullptr);
+        decodeExpected(9, 1, "LegacySimdMode", 1);
+        decodeMDC_H();
+        break;
+    }
     case MSD_MEMFENCE:
         tryDecodeDC0Memfence();
         break;
@@ -1039,6 +1213,16 @@ void MessageDecoderHDC::tryDecodeDC0AlignedBlock()
     const char *descs ="aligned block read";
     const char *doc = "7030";
     bool isHw = false;
+    if (platform() >= Platform::XE_HPG) {
+        isHw = getDescBit(13);
+        addField("BlockMessageSubtype", 13, 1, isHw, isHw ? "HWord" : "OWord");
+        if (isHw) {
+            descs ="aligned block read";
+            doc = "44719";
+        } else {
+            doc = "44721";
+        }
+    } // else: [13] is reserved
     addField("MessageType", 14, 5, msgType, descs);
     if (isHw) {
         setHdcHwBlock(
@@ -1539,7 +1723,8 @@ void MessageDecoderHDC::tryDecodeDC1() {
             setDoc(
                 isRead ? "7034" : "7038", isRead ? "44739" : "44750", nullptr);
         else if (isHword && !isUnaligned) {
-            bool supported = false;
+            bool supported = platform() >= Platform::XE_HPG;
+            setDoc(isRead ? "20861" : "20862");
             if (!supported)
                 error(11, 2, "HWord aligned unsupported on this platform");
         } else if (!isHword && isUnaligned) {
@@ -1625,7 +1810,7 @@ void MessageDecoderHDC::tryDecodeDC1() {
     {
         // the encoding repurposes the SIMD size as the data size and the
         // message and thus the SIMD size is always fixed
-        int simd = 8;
+        int simd = platform() >= Platform::XE_HPC ? 16 : 8;
         auto is64b =
             decodeDescBitField("DataWidth", 12, "32b", "64b");
         const char *msgName = is64b ?
@@ -1729,6 +1914,10 @@ void MessageDecoderHDC::tryDecodeDC1() {
         break;
     case MSD1W_TS: // typed surface write
         setHdcTypedSurfaceMessage(false, "7090", "44756");
+        decodeMDC_H();
+        break;
+    case MSD1RS_TS: // typed surface read with status
+        setHdcTypedSurfaceMessage(true, "19315", "44735", true);
         decodeMDC_H();
         break;
     case MSD1A_DWAC:

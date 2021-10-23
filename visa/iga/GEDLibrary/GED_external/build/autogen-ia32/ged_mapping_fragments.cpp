@@ -213,3 +213,44 @@ const ged_compact_mapping_fragment_t MappingFragmentsTable28[9] =
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  32,  32,   1,   0,        0x1 }, {  90,  90,   2,  26,  0x4000000 } }, // 7
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  33,  36,   1,   1,       0x1e }, {  92,  95,   2,  28, 0xf0000000 } } // 8
 }; // MappingFragmentsTable28[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable29[5] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  10,   0,   0,      0x7ff }, {  18,  28,   0,  18, 0x1ffc0000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  11,  11,   0,  11,      0x800 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  12,  12,   0,  12,     0x1000 }, {  32,  32,   1,   0,        0x1 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  34,  34,   1,   2,        0x4 } }, // 3
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  17,   0,  14,    0x3c000 }, {  92,  95,   2,  28, 0xf0000000 } } // 4
+}; // MappingFragmentsTable29[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable30[4] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   0,   0,   0,        0x1 }, {  33,  33,   1,   1,        0x2 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   1,   5,   0,   1,       0x3e }, {  51,  55,   1,  19,   0xf80000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   6,  10,   0,   6,      0x7c0 }, {  67,  71,   2,   3,       0xf8 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  11,  11,   0,  11,      0x800 }, {  87,  87,   2,  23,   0x800000 } } // 3
+}; // MappingFragmentsTable30[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable31[3] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   1,   0,   0,        0x3 }, {  44,  45,   1,  12,     0x3000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   2,   3,   0,   2,        0xc }, {  64,  65,   2,   0,        0x3 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   4,  10,   0,   4,      0x7f0 }, {  80,  86,   2,  16,   0x7f0000 } } // 2
+}; // MappingFragmentsTable31[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable32[4] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   1,   0,   0,        0x3 }, {  96,  97,   3,   0,        0x3 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   2,   6,   0,   2,       0x7c }, {  99, 103,   3,   3,       0xf8 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   7,  13,   0,   7,     0x3f80 }, { 112, 118,   3,  16,   0x7f0000 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  15,   0,  14,     0xc000 }, { 120, 121,   3,  24,  0x3000000 } } // 3
+}; // MappingFragmentsTable32[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable33[10] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  10,   0,   0,      0x7ff }, {  18,  28,   0,  18, 0x1ffc0000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  11,  11,   0,  11,      0x800 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  12,  12,   0,  12,     0x1000 }, {  32,  32,   1,   0,        0x1 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  34,  34,   1,   2,        0x4 } }, // 3
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  20,   0,  14,   0x1fc000 }, {  36,  42,   1,   4,      0x7f0 } }, // 4
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  21,  23,   0,  21,   0xe00000 }, {  48,  50,   1,  16,    0x70000 } }, // 5
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  24,  26,   0,  24,  0x7000000 }, {  80,  82,   2,  16,    0x70000 } }, // 6
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  27,  29,   0,  27, 0x38000000 }, {  88,  90,   2,  24,  0x7000000 } }, // 7
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  30,  31,   0,  30, 0xc0000000 }, {  92,  93,   2,  28, 0x30000000 } }, // 8
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  32,  33,   1,   0,        0x3 }, {  94,  95,   2,  30, 0xc0000000 } } // 9
+}; // MappingFragmentsTable33[]

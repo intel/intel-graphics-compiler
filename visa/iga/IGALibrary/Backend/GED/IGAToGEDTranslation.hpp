@@ -66,6 +66,8 @@ namespace iga
         case Op::MAC:   op = GED_OPCODE_mac;   break;
         case Op::MACH:  op = GED_OPCODE_mach;  break;
         case Op::MAD:   op = GED_OPCODE_mad;   break;
+        case Op::MACL:  op = GED_OPCODE_macl;  break;
+        case Op::SRND:  op = GED_OPCODE_srnd;  break;
         case Op::MADM:  op = GED_OPCODE_madm;  break;
         //
         case Op::MATH:  op = GED_OPCODE_math; break;
@@ -124,6 +126,9 @@ namespace iga
         case Platform::GEN11:  pltf = GED_MODEL_11;  break;
         case Platform::XE: pltf = GED_MODEL_TGL; break;
         case Platform::XE_HP:  pltf = GED_MODEL_XE_HP;  break;
+        case Platform::XE_HPG: pltf = GED_MODEL_XE_HPG; break;
+        case Platform::XE_HPC: pltf = GED_MODEL_XE_HPC; break;
+
         default:
             break;
         }
@@ -138,6 +143,7 @@ namespace iga
         case SyncFC::ALLRD: return GED_SYNC_FC_allrd;
         case SyncFC::ALLWR: return GED_SYNC_FC_allwr;
         case SyncFC::BAR:   return GED_SYNC_FC_bar;
+        case SyncFC::FENCE: return GED_SYNC_FC_fence;
         case SyncFC::HOST:  return GED_SYNC_FC_host;
         case SyncFC::NOP:   return GED_SYNC_FC_nop;
         default:            return GED_SYNC_FC_INVALID;
@@ -165,6 +171,8 @@ namespace iga
         case PredCtrl::ALL32H: predCtrl = GED_PRED_CTRL_all32h; break;
         case PredCtrl::ANYV:   predCtrl = GED_PRED_CTRL_anyv; break;
         case PredCtrl::ALLV:   predCtrl = GED_PRED_CTRL_allv; break;
+        case PredCtrl::ANY: predCtrl = GED_PRED_CTRL_any; break;
+        case PredCtrl::ALL: predCtrl = GED_PRED_CTRL_all; break;
         default:
             break;
         }
@@ -206,6 +214,12 @@ namespace iga
         case SFID::TS:     sfid = GED_SFID_SPAWNER; break;
         case SFID::URB:    sfid = GED_SFID_URB; break;
         case SFID::VME:    sfid = GED_SFID_VME; break;
+        case SFID::BTD:    sfid = GED_SFID_BTD; break;
+        case SFID::RTA:    sfid = GED_SFID_RTA; break;
+        case SFID::TGM:    sfid = GED_SFID_TGM; break;
+        case SFID::SLM:    sfid = GED_SFID_SLM; break;
+        case SFID::UGM:    sfid = GED_SFID_UGM; break;
+        case SFID::UGML:   sfid = GED_SFID_UGML; break;
         default:
             break;
         }
@@ -231,9 +245,15 @@ namespace iga
         case 6: tfid = GED_SFID_URB; break;
         case 7:
             tfid = GED_SFID_SPAWNER;
+            if (platform >= Platform::XE_HPG) {
+                tfid = GED_SFID_BTD;
+            }
             break;
         case 8:
             tfid = GED_SFID_VME;
+            if (platform >= Platform::XE_HPG) {
+                tfid = GED_SFID_RTA;
+            }
             break;
         case 9:
             if (platform < Platform::GEN9) {
@@ -247,9 +267,16 @@ namespace iga
         case 12: tfid = GED_SFID_DP_DC1; break;
         case 13:
             tfid = GED_SFID_CRE;
+            if (platform >= Platform::XE_HPG) {
+                tfid = GED_SFID_TGM;
+            }
             break;
+        case 14: tfid = GED_SFID_SLM; break;
         case 15:
             tfid = GED_SFID_INVALID;
+            if (platform >= Platform::XE_HPG) {
+                tfid = GED_SFID_UGM;
+            }
             break;
         default:
             break;
@@ -303,6 +330,9 @@ namespace iga
         case Type::U4:
             dataType = GED_DATA_TYPE_ub;
             break;
+        case Type::QF: dataType = GED_DATA_TYPE_qf; break;
+        case Type::BF8:  dataType = GED_DATA_TYPE_bf8;  break;
+        case Type::TF32: dataType = GED_DATA_TYPE_tf32; break;
         default:
             break;
         }
@@ -322,6 +352,8 @@ namespace iga
         case Type::B:  precision = GED_PRECISION_s8; break;
         case Type::BF: precision = GED_PRECISION_bf16; break;
         case Type::HF: precision = GED_PRECISION_f16; break;
+        case Type::BF8:  precision = GED_PRECISION_bf8;  break;
+        case Type::TF32: precision = GED_PRECISION_tf32; break;
         default:
             break;
         }

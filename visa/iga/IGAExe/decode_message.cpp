@@ -307,7 +307,14 @@ bool decodeSendDescriptor(const Opts &opts)
         // sort of pre-decode scam.  It's not ideal, but I can't think of
         // anything better right now.
         execSize =
-                iga::ExecSize::SIMD16;
+            p >= iga::Platform::XE_HPC ?
+                iga::ExecSize::SIMD32 : iga::ExecSize::SIMD16;
+        if (sfid == iga::SFID::TGM) {
+        // typed LSC messages default to half the SIMD size
+            execSize =
+            p >= iga::Platform::XE_HPC ?
+                iga::ExecSize::SIMD16 : iga::ExecSize::SIMD8;
+        }
     }
     //
     iga::DecodedDescFields decodedFields;
@@ -401,6 +408,16 @@ bool decodeSendDescriptor(const Opts &opts)
             ss << "surface binding table index " <<
                 emitDesc(dr.info.surfaceId);
             emitYellowText(os,ss.str());
+            os << "\n";
+        }
+        else if (
+            dr.info.addrType == iga::AddrType::SS ||
+            dr.info.addrType == iga::AddrType::BSS)
+        {
+            os << "  Surface:                    ";
+            std::stringstream ss;
+            ss << "surface object " << emitDesc(dr.info.surfaceId);
+            emitYellowText(os, ss.str());
             os << "\n";
         }
         os << "  Address Size:               ";
@@ -509,10 +526,13 @@ bool decodeSendDescriptor(const Opts &opts)
             mi.op != iga::SendOp::RENDER_READ &&
             mi.op != iga::SendOp::RENDER_WRITE &&
             mi.op != iga::SendOp::FENCE &&
-            true;
+            mi.op != iga::SendOp::CCS_PC &&
+            mi.op != iga::SendOp::CCS_PU &&
+            mi.op != iga::SendOp::CCS_SC &&
+            mi.op != iga::SendOp::CCS_SU;
         if (showDataPayload) {
             os << "DATA PAYLOAD\n";
-            int grfSize = 32;
+            int grfSize = opts.platform >= IGA_XE_HPC ? 64 : 32;
             if (mi.hasAttr(iga::MessageInfo::Attr::TRANSPOSED)) {
                 // formatSIMD(opts, os, msgInfo, grfSize);
                 formatSIMD(opts, os, mi, grfSize);

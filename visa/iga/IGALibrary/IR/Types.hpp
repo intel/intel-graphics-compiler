@@ -48,6 +48,8 @@ enum class Platform
     // XE version
     XE          = IGA_XE_VER_ORDINAL(1, 0), // TGL
     XE_HP       = IGA_XE_VER_ORDINAL(1, 1), // XE_HP
+    XE_HPG      = IGA_XE_VER_ORDINAL(1, 2),
+    XE_HPC      = IGA_XE_VER_ORDINAL(1, 4), // XeHPC-XT, preserved (1, 3) for XeHPC-XL
     FUTURE      = 0x7FFFFFFF
 #undef IGA_GEN_VER_ORDINAL
 };
@@ -114,6 +116,12 @@ static inline std::tuple<uint32_t, uint32_t>
         shl = 1;
         break;
 
+    case Type::QF:
+    case Type::BF8:
+        break;
+    case Type::TF32:
+        shr = 2;
+        break;
 
     // 1-byte types
     case Type::UB:
@@ -164,6 +172,9 @@ static inline bool TypeIsFloating(Type t)
     {
     case Type::F:
     case Type::BF:
+    case Type::QF:
+    case Type::BF8:
+    case Type::TF32:
     case Type::HF:
     case Type::DF:
     case Type::VF:

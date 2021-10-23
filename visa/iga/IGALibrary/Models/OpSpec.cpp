@@ -202,6 +202,8 @@ bool OpSpec::isTypedBranch() const {
 
 bool OpSpec::supportsAccWrEn() const  {
     return
+        // AccWrCtrl is removed from XeHPC
+        (platform <= Platform::XE_HPG) &&
         !supportsBranchCtrl() &&
         !isBranching() &&
         !isSendOrSendsFamily() &&
@@ -242,7 +244,7 @@ unsigned OpSpec::getSourceCount(Subfunction sf) const {
 
 bool OpSpec::isVariableLatency() const {
     return isSendOrSendsFamily()
-        || is(Op::MATH)
+        || (is(Op::MATH) && platform < Platform::XE_HPC) // XeHPC+ math is fixed
         || isDpasFamily();
 }
 

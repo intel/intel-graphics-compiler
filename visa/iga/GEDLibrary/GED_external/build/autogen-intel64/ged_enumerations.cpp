@@ -160,7 +160,7 @@ const char* CondModifierEnumeration[10] =
 #endif // GED_COND_MODIFIER_HIDDEN
 
 #ifndef GED_DATA_TYPE_HIDDEN
-const char* DataTypeEnumeration[17] =
+const char* DataTypeEnumeration[20] =
 {
     "ud", // 0
     "d", // 1
@@ -178,7 +178,10 @@ const char* DataTypeEnumeration[17] =
     "v", // 13
     "nf", // 14
     "bf", // 15
-    NULL // 16
+    "qf", // 16
+    "bf8", // 17
+    "tf32", // 18
+    NULL // 19
 }; // DataTypeEnumeration[]
 #endif // GED_DATA_TYPE_HIDDEN
 
@@ -201,6 +204,126 @@ const char* DepCtrlEnumeration[5] =
     NULL // 4
 }; // DepCtrlEnumeration[]
 #endif // GED_DEP_CTRL_HIDDEN
+
+#ifndef GED_DP_ADDR_SIZE_HIDDEN
+const char* DpAddrSizeEnumeration[4] =
+{
+    "A16", // 0
+    "A32", // 1
+    "A64", // 2
+    NULL // 3
+}; // DpAddrSizeEnumeration[]
+#endif // GED_DP_ADDR_SIZE_HIDDEN
+
+#ifndef GED_DP_ADDR_TYPE_HIDDEN
+const char* DpAddrTypeEnumeration[5] =
+{
+    "FLAT", // 0
+    "BSS", // 1
+    "SS", // 2
+    "BTI", // 3
+    NULL // 4
+}; // DpAddrTypeEnumeration[]
+#endif // GED_DP_ADDR_TYPE_HIDDEN
+
+#ifndef GED_DP_DATA_SIZE_HIDDEN
+const char* DpDataSizeEnumeration[8] =
+{
+    "D8", // 0
+    "D16", // 1
+    "D32", // 2
+    "D64", // 3
+    "D8U32", // 4
+    "D16U32", // 5
+    "D16BF32", // 6
+    NULL // 7
+}; // DpDataSizeEnumeration[]
+#endif // GED_DP_DATA_SIZE_HIDDEN
+
+#ifndef GED_DP_FENCE_SCOPE_HIDDEN
+const char* DpFenceScopeEnumeration[8] =
+{
+    "Threadgroup", // 0
+    "Local", // 1
+    "Tile", // 2
+    "GPU", // 3
+    "AllGPU", // 4
+    "System_Release", // 5
+    "System_Acquire", // 6
+    NULL // 7
+}; // DpFenceScopeEnumeration[]
+#endif // GED_DP_FENCE_SCOPE_HIDDEN
+
+#ifndef GED_DP_FLUSH_TYPE_HIDDEN
+const char* DpFlushTypeEnumeration[7] =
+{
+    "Evict", // 0
+    "Invalidate", // 1
+    "Discard", // 2
+    "Clean", // 3
+    "DGT_L3OnlyFlush", // 4
+    "None", // 5
+    NULL // 6
+}; // DpFlushTypeEnumeration[]
+#endif // GED_DP_FLUSH_TYPE_HIDDEN
+
+#ifndef GED_DP_OPCODE_HIDDEN
+const char* DpOpcodeEnumeration[28] =
+{
+    "LOAD", // 0
+    "LOAD_CMASK", // 1
+    "STORE", // 2
+    "STORE_CMASK", // 3
+    "ATOMIC_INC", // 4
+    "ATOMIC_DEC", // 5
+    "ATOMIC_LOAD", // 6
+    "ATOMIC_STORE", // 7
+    "ATOMIC_ADD", // 8
+    "ATOMIC_SUB", // 9
+    "ATOMIC_MIN", // 10
+    "ATOMIC_MAX", // 11
+    "ATOMIC_UMIN", // 12
+    "ATOMIC_UMAX", // 13
+    "ATOMIC_CMPXCHG", // 14
+    "ATOMIC_FADD", // 15
+    "ATOMIC_FSUB", // 16
+    "ATOMIC_FMIN", // 17
+    "ATOMIC_FMAX", // 18
+    "ATOMIC_FCMPXCHG", // 19
+    "ATOMIC_AND", // 20
+    "ATOMIC_OR", // 21
+    "ATOMIC_XOR", // 22
+    "STORE_UNCOMPRESSED", // 23
+    "FENCE", // 24
+    "LOAD_BLOCK2D", // 25
+    "STORE_BLOCK2D", // 26
+    NULL // 27
+}; // DpOpcodeEnumeration[]
+#endif // GED_DP_OPCODE_HIDDEN
+
+#ifndef GED_DP_TRANSPOSE_HIDDEN
+const char* DpTransposeEnumeration[3] =
+{
+    "SIMT", // 0
+    "SIMD", // 1
+    NULL // 2
+}; // DpTransposeEnumeration[]
+#endif // GED_DP_TRANSPOSE_HIDDEN
+
+#ifndef GED_DP_VECT_SIZE_HIDDEN
+const char* DpVectSizeEnumeration[9] =
+{
+    "V1", // 0
+    "V2", // 1
+    "V3", // 2
+    "V4", // 3
+    "V8", // 4
+    "V16", // 5
+    "V32", // 6
+    "V64", // 7
+    NULL // 8
+}; // DpVectSizeEnumeration[]
+#endif // GED_DP_VECT_SIZE_HIDDEN
 
 #ifndef GED_DST_CHAN_EN_HIDDEN
 const char* DstChanEnEnumeration[17] =
@@ -233,6 +356,20 @@ const char* EOTEnumeration[3] =
     NULL // 2
 }; // EOTEnumeration[]
 #endif // GED_EOT_HIDDEN
+
+#ifndef GED_EVICT_HINT_HIDDEN
+const char* EvictHintEnumeration[8] =
+{
+    "None", // 0
+    "Src0", // 1
+    "Acc0", // 2
+    "Src0Acc0", // 3
+    "Src1", // 4
+    "Src0Src1", // 5
+    "Acc0Src1", // 6
+    NULL // 7
+}; // EvictHintEnumeration[]
+#endif // GED_EVICT_HINT_HIDDEN
 
 #ifndef GED_EXEC_MASK_OFFSET_CTRL_HIDDEN
 const char* ExecMaskOffsetCtrlEnumeration[15] =
@@ -329,7 +466,7 @@ const char* MathMacroExtEnumeration[10] =
 #endif // GED_MATH_MACRO_EXT_HIDDEN
 
 #ifndef GED_MESSAGE_TYPE_HIDDEN
-const char* MessageTypeEnumeration[77] =
+const char* MessageTypeEnumeration[78] =
 {
     "MSD0R_HWB", // 0
     "MSD0W_HWB", // 1
@@ -396,18 +533,19 @@ const char* MessageTypeEnumeration[77] =
     "MT_A64_CCS_PG_OP", // 62
     "MT_A64_US_CCS_OP", // 63
     "MT_A64_US_UCW", // 64
-    "MTR_MB", // 65
-    "MTRR_TS", // 66
-    "MTRA_TA", // 67
-    "MT_MEMFENCE", // 68
-    "MTW_MB", // 69
-    "MTRW_TS", // 70
-    "MT0R_US", // 71
-    "MT0A_UI", // 72
-    "MT0W_US", // 73
-    "MT1A_UF4x2", // 74
-    "MT1A_A64_UF4x2", // 75
-    NULL // 76
+    "MT_BTD_SPAWN", // 65
+    "MTR_MB", // 66
+    "MTRR_TS", // 67
+    "MTRA_TA", // 68
+    "MT_MEMFENCE", // 69
+    "MTW_MB", // 70
+    "MTRW_TS", // 71
+    "MT0R_US", // 72
+    "MT0A_UI", // 73
+    "MT0W_US", // 74
+    "MT1A_UF4x2", // 75
+    "MT1A_A64_UF4x2", // 76
+    NULL // 77
 }; // MessageTypeEnumeration[]
 #endif // GED_MESSAGE_TYPE_HIDDEN
 
@@ -421,7 +559,7 @@ const char* NoSrcDepSetEnumeration[3] =
 #endif // GED_NO_SRC_DEP_SET_HIDDEN
 
 #ifndef GED_OPCODE_HIDDEN
-const char* OpcodeEnumeration[80] =
+const char* OpcodeEnumeration[82] =
 {
     "illegal", // 0
     "mov", // 1
@@ -499,15 +637,17 @@ const char* OpcodeEnumeration[80] =
     "dpas", // 73
     "dpasw", // 74
     "bfn", // 75
-    "f32to16", // 76
-    "f16to32", // 77
-    "dim", // 78
-    NULL // 79
+    "macl", // 76
+    "srnd", // 77
+    "f32to16", // 78
+    "f16to32", // 79
+    "dim", // 80
+    NULL // 81
 }; // OpcodeEnumeration[]
 #endif // GED_OPCODE_HIDDEN
 
 #ifndef GED_PRECISION_HIDDEN
-const char* PrecisionEnumeration[11] =
+const char* PrecisionEnumeration[13] =
 {
     "u8", // 0
     "u4", // 1
@@ -519,12 +659,14 @@ const char* PrecisionEnumeration[11] =
     "s1", // 7
     "f16", // 8
     "bf16", // 9
-    NULL // 10
+    "bf8", // 10
+    "tf32", // 11
+    NULL // 12
 }; // PrecisionEnumeration[]
 #endif // GED_PRECISION_HIDDEN
 
 #ifndef GED_PRED_CTRL_HIDDEN
-const char* PredCtrlEnumeration[19] =
+const char* PredCtrlEnumeration[21] =
 {
     "", // 0
     "", // 1
@@ -544,7 +686,9 @@ const char* PredCtrlEnumeration[19] =
     "y", // 15
     "z", // 16
     "w", // 17
-    NULL // 18
+    "any", // 18
+    "all", // 19
+    NULL // 20
 }; // PredCtrlEnumeration[]
 #endif // GED_PRED_CTRL_HIDDEN
 
@@ -595,7 +739,7 @@ const char* SaturateEnumeration[3] =
 #endif // GED_SATURATE_HIDDEN
 
 #ifndef GED_SFID_HIDDEN
-const char* SFIDEnumeration[16] =
+const char* SFIDEnumeration[22] =
 {
     "NULL", // 0
     "SAMPLER", // 1
@@ -610,9 +754,15 @@ const char* SFIDEnumeration[16] =
     "PI", // 10
     "DP_DC1", // 11
     "CRE", // 12
-    "DP_SAMPLER", // 13
-    "DP_CC", // 14
-    NULL // 15
+    "UGML", // 13
+    "BTD", // 14
+    "RTA", // 15
+    "TGM", // 16
+    "SLM", // 17
+    "UGM", // 18
+    "DP_SAMPLER", // 19
+    "DP_CC", // 20
+    NULL // 21
 }; // SFIDEnumeration[]
 #endif // GED_SFID_HIDDEN
 
@@ -646,6 +796,18 @@ const char* SrcModEnumeration[5] =
     NULL // 4
 }; // SrcModEnumeration[]
 #endif // GED_SRC_MOD_HIDDEN
+
+#ifndef GED_STORE_HINT_HIDDEN
+const char* StoreHintEnumeration[6] =
+{
+    "None", // 0
+    "Src0", // 1
+    "Acc0", // 2
+    "Dst", // 3
+    "Src1", // 4
+    NULL // 5
+}; // StoreHintEnumeration[]
+#endif // GED_STORE_HINT_HIDDEN
 
 #ifndef GED_SUB_BYTE_PRECISION_HIDDEN
 const char* SubBytePrecisionEnumeration[8] =
@@ -687,7 +849,7 @@ const char* SwizzleEnumeration[5] =
 #endif // GED_SWIZZLE_HIDDEN
 
 #ifndef GED_SYNC_FC_HIDDEN
-const char* SyncFCEnumeration[7] =
+const char* SyncFCEnumeration[8] =
 {
     "nop", // 0
     "grfsb", // 1
@@ -695,7 +857,8 @@ const char* SyncFCEnumeration[7] =
     "allwr", // 3
     "bar", // 4
     "host", // 5
-    NULL // 6
+    "fence", // 6
+    NULL // 7
 }; // SyncFCEnumeration[]
 #endif // GED_SYNC_FC_HIDDEN
 

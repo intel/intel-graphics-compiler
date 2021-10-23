@@ -44,6 +44,9 @@ enum class DEP_PIPE
     INTEGER,
     LONG64,
     DPAS,
+    SEND_SLM,     // XeHPG LSC SLM message
+    SEND_UNKNOWN, // XeHPG LSC desc is indirect, not sure if it's SLM
+    MATH_INORDER // XeHPC
 };
 
 enum class DEP_CLASS
@@ -95,14 +98,15 @@ public:
                 uint32_t in_order_id,
                 uint32_t float_pipe_id,
                 uint32_t int_pipe_id,
-                uint32_t long_pipe_id
-        )
+                uint32_t long_pipe_id,
+                uint32_t math_pipe_id)
           : global(global_id),
             inOrder(in_order_id),
             floatPipe(float_pipe_id),
             intPipe(int_pipe_id),
-            longPipe(long_pipe_id)
-        {}
+            longPipe(long_pipe_id),
+            mathPipe(math_pipe_id)
+        { }
 
         // unique id for all instructions
         uint32_t global = 0;
@@ -114,6 +118,8 @@ public:
         uint32_t intPipe = 0;
         // id counter for Long pipe
         uint32_t longPipe = 0;
+        // id counter for in-order math pipe
+        uint32_t mathPipe = 0;
     };
 
 private:

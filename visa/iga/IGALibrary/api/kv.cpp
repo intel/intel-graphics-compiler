@@ -44,12 +44,14 @@ public:
         const Model &model,
         const void *bytes,
         size_t bytesLength,
-        SWSB_ENCODE_MODE swsb_enc_mode)
+        SWSB_ENCODE_MODE swsbOverride)
         : m_model(model)
 
     {
         Decoder decoder(model, m_errHandler);
-        decoder.setSWSBEncodingMode(swsb_enc_mode);
+        if (swsbOverride != SWSB_ENCODE_MODE::SWSBInvalidMode) {
+            decoder.setSWSBEncodingMode(swsbOverride);
+        }
         m_kernel = decoder.decodeKernelBlocks(bytes, bytesLength);
 
         for (const Block *b : m_kernel->getBlockList()) {
@@ -98,8 +100,7 @@ kv_t *kv_create(
     iga_status_t *status,
     char *errbuf,
     size_t errbuf_cap,
-    SWSB_ENCODE_MODE swsb_enc_mode
-)
+    SWSB_ENCODE_MODE swsbMode)
 {
     if (errbuf && errbuf_cap > 0)
         *errbuf = 0;
@@ -117,7 +118,7 @@ kv_t *kv_create(
 
     KernelViewImpl *kvImpl = nullptr;
     try {
-        kvImpl = new (std::nothrow)KernelViewImpl(*model, bytes, bytes_len, swsb_enc_mode);
+        kvImpl = new (std::nothrow)KernelViewImpl(*model, bytes, bytes_len, swsbMode);
         if (!kvImpl) {
             if (errbuf)
                 formatToF(errbuf, errbuf_cap, "%s", "failed to allocate");

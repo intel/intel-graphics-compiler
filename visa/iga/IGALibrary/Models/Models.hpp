@@ -168,6 +168,10 @@ namespace iga
         uint32_t offset, RegName regName, Type type, const Platform platform)
     {
         if (!IsRegisterScaled(regName, platform) || type == Type::INVALID) {
+            // special handle non-scaled ARF on XeHPC+:
+            // the sub reg number should be taken from Src0.SubReg[5:1]
+            if (platform >= Platform::XE_HPC)
+                offset = offset >> 1;
             return (uint8_t)offset;
         }
         auto tsh = TypeSizeShiftsOffsetToSubreg(type);
@@ -181,6 +185,10 @@ namespace iga
         int subRegNum, RegName regName, Type type, const Platform platform)
     {
         if (!IsRegisterScaled(regName, platform) || type == Type::INVALID) {
+            // special handle non-scaled ARF on XeHPC+: Src0.SubReg[0] must be 0
+            // the given sub reg number should be set to Src0.SubReg[5:1]
+            if (platform >= Platform::XE_HPC)
+                subRegNum = subRegNum << 1;
             return subRegNum;
         }
         auto tsh = TypeSizeShiftsOffsetToSubreg(type);
@@ -371,6 +379,10 @@ namespace iga
                 return SWSB_ENCODE_MODE::SingleDistPipe;
             else if (platform == Platform::XE_HP)
                 return SWSB_ENCODE_MODE::ThreeDistPipe;
+            else if (platform == Platform::XE_HPG)
+                return SWSB_ENCODE_MODE::ThreeDistPipe;
+            else if (platform >= Platform::XE_HPC)
+                return SWSB_ENCODE_MODE::FourDistPipeReduction; // XE_HPC is XeHPC-Bstep (PVC-XT)
             return SWSB_ENCODE_MODE::SWSBInvalidMode;
         }
 
@@ -381,6 +393,9 @@ namespace iga
             case SWSB_ENCODE_MODE::ThreeDistPipe:
                 return 16;
 
+            case SWSB_ENCODE_MODE::FourDistPipe:
+            case SWSB_ENCODE_MODE::FourDistPipeReduction:
+                return 32;
             default:
                 break;
             }
@@ -392,6 +407,13 @@ namespace iga
             return 7;
         }
 
+        // hasReadModifiedWriteOnByteDst - on the platform having 64-byte
+        // size GRF, we're not able to perform byte write to a GRF.
+        // The platform will read the other half and perform word write.
+        // This will affect swsb setting behavior.
+        bool hasReadModifiedWriteOnByteDst() const {
+            return getGRFByteSize() == 64;
+        }
     }; // class Model
 
     ///////////////////////////////////////////////////////////////////////////

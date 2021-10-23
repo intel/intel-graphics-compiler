@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 #include "ged_enumerations_internal.h"
 #include "ged_ins_field_internal.h"
 #include "ged_ins_field.h"
-GED_FIELD_TYPE fieldTypesByField[127] =
+GED_FIELD_TYPE fieldTypesByField[128] =
 {
     0x3, // 0
     0x0, // 1
@@ -143,11 +143,12 @@ GED_FIELD_TYPE fieldTypesByField[127] =
     0x100, // 123
     0x100, // 124
     0x100, // 125
-    0x100 // 126
+    0x100, // 126
+    0x100 // 127
 }; // fieldTypesByField[]
 
 #if GED_VALIDATION_API
-const char* fieldNameByField[127] =
+const char* fieldNameByField[128] =
 {
     "Opcode", // 0
     "CmptCtrl", // 1
@@ -275,10 +276,11 @@ const char* fieldNameByField[127] =
     "BfnFC", // 123
     "ExBSO", // 124
     "CPS", // 125
-    "Src1Length" // 126
+    "Src1Length", // 126
+    "Src2IsImm" // 127
 }; // fieldNameByField[]
 #endif // GED_VALIDATION_API
-GED_FIELD_TYPE pseudoFieldTypesByField[36] =
+GED_FIELD_TYPE pseudoFieldTypesByField[45] =
 {
     0x103, // 0
     0x100, // 1
@@ -315,11 +317,20 @@ GED_FIELD_TYPE pseudoFieldTypesByField[36] =
     0x103, // 32
     0x103, // 33
     0x103, // 34
-    0x100 // 35
+    0x100, // 35
+    0x103, // 36
+    0x103, // 37
+    0x103, // 38
+    0x103, // 39
+    0x103, // 40
+    0x100, // 41
+    0x103, // 42
+    0x103, // 43
+    0x103 // 44
 }; // pseudoFieldTypesByField[]
 
 #if GED_VALIDATION_API
-const char* fieldNameByPseudoField[36] =
+const char* fieldNameByPseudoField[45] =
 {
     "ArchReg", // 0
     "ArchRegNum", // 1
@@ -356,6 +367,15 @@ const char* fieldNameByPseudoField[36] =
     "MessageTypeDP_DC0ScratchBlock", // 32
     "MessageTypeDP_DC2", // 33
     "MessageTypeDP_DCRO", // 34
-    "ExMessageLength" // 35
+    "ExMessageLength", // 35
+    "DPOpcode", // 36
+    "DPAddrType", // 37
+    "DPVectSize", // 38
+    "DPFlushType", // 39
+    "DPTranspose", // 40
+    "DPFlushRange", // 41
+    "DPDataSize", // 42
+    "DPFenceScope", // 43
+    "DPAddrSize" // 44
 }; // fieldNameByPseudoField[]
 #endif // GED_VALIDATION_API

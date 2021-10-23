@@ -28,6 +28,8 @@ struct MessageDecoderOther : MessageDecoderLegacy
         switch (sfid) {
         case SFID::GTWY: tryDecodeGTWY();   break;
         case SFID::RC:   tryDecodeRC();   break;
+        case SFID::RTA:  tryDecodeRTA(); break;
+        case SFID::BTD:  tryDecodeBTD(); break;
         case SFID::SMPL: tryDecodeSMPL(); break;
         case SFID::TS:   tryDecodeTS();   break;
         case SFID::URB:  tryDecodeURB();   break;
@@ -37,6 +39,8 @@ struct MessageDecoderOther : MessageDecoderLegacy
 
     void tryDecodeGTWY();
     void tryDecodeRC();
+    void tryDecodeRTA();
+    void tryDecodeBTD();
     void tryDecodeSMPL();
     void tryDecodeTS();
     void tryDecodeURB();
@@ -48,6 +52,8 @@ void MessageDecoderOther::tryDecodeGTWY() {
     //
     using GatewayElement = std::tuple<uint32_t,SendOp,const char *,const char *,const char *>;
     static constexpr GatewayElement GATEWAY_MESSAGES[] = {
+        // before this TS had its own SFID
+        {0x0, SendOp::EOT, nullptr, "54044", "57488"}, // MSD_TS_EOT
         {0x1, SendOp::SIGNAL, "33508", "47927", "57492"}, // MSD_SIGNAL_EVENT
         {0x2, SendOp::MONITOR, "33512", "47925", "57490"}, // MSD_MONITOR_EVENT
         {0x3, SendOp::UNMONITOR, "33513", "47926", "57491"}, // MSD_MONITOR_NO_EVENT
@@ -79,6 +85,12 @@ void MessageDecoderOther::tryDecodeGTWY() {
     sym << sod.mnemonic;
     desc << sod.description;
     int expectMlen = 0, expectRlen = 0;
+    if (sod.op == SendOp::EOT) {
+        if (platform() < Platform::XE_HPG) {
+            error(0, 3, "Gateway EOT not available on this platform");
+        }
+        expectMlen = 1;
+    }
     switch (sod.op) {
     case SendOp::SIGNAL:
     case SendOp::MONITOR: // C.f. MDP_EVENT
@@ -274,6 +286,75 @@ void MessageDecoderOther::tryDecodeRC()
     decodeMDC_H2(); // all render target messages permit a dual-header
 }
 
+void MessageDecoderOther::tryDecodeRTA() {
+    const int TRACERAY_MSD = 0x00;
+    // const int COMP_MESH_MSD = 0x01; (strawman still)
+
+    std::stringstream sym, descs;
+    int opBits = getDescBits(14, 4); // [17:14]
+    if (opBits == TRACERAY_MSD) {
+        int simd = decodeMDC_SM2(8);
+        bool rtIsSimd16 = false;
+        if (rtIsSimd16)
+            error(8, 1, "message must be SIMD16 on this platform");
+
+        // int mlen = getDescBits(25, 4); // [28:25]
+        sym << "trace_ray" << simd;
+        descs << "simd" << simd << " trace ray";
+
+        MessageInfo &mi = result.info;
+        mi.symbol = sym.str();
+        mi.description = descs.str();
+        mi.op = SendOp::TRACE_RAY;
+        // payload is 2 or 3 registers (SIMD8 vs SIMD16)
+        // https://gfxspecs.intel.com/Predator/Home/Index/47937
+        //   - "addr" the first with a uniform pointer to global data
+        //   - "data" the second being ray payloads[7:0] (each 32b)
+        //   - "data" if SIMD16, rays[15:6]
+        // we treat this as a SIMD1 operation (logically)
+        // containing SIMD data 32b elements
+        mi.execWidth = simd;
+        mi.elemSizeBitsRegFile = mi.elemSizeBitsMemory = 32;
+        mi.elemsPerAddr = 1;
+        //
+        mi.addrSizeBits = 64;
+        if (platform() >= Platform::XE_HPC) {
+            // XeHPC has a bit set at Msg[128] as well
+            // e.g. https://gfxspecs.intel.com/Predator/Home/Index/47937
+            mi.addrSizeBits = 129;
+        }
+        mi.addrType = AddrType::FLAT;
+        mi.surfaceId = 0;
+        mi.attributeSet = MessageInfo::Attr::NONE;
+        mi.docs = chooseDoc(nullptr, "47929", "57495");
+        decodeMDC_HF();
+    } else {
+        error(14, 4, "unsupported RTA op");
+    }
+}
+
+void MessageDecoderOther::tryDecodeBTD() {
+    const uint32_t BTD_SPAWN_MSD = 0x01;
+
+    std::stringstream sym, descs;
+    uint32_t opBits = getDescBits(14, 4); // [17:14]
+    if (opBits == BTD_SPAWN_MSD) {
+        int simd = decodeMDC_SM2(8);
+
+        sym << "spawn" << simd;
+        descs << "bindless simd" << simd << " spawn thread";
+
+        MessageInfo &mi = result.info;
+        mi.op = SendOp::SPAWN;
+        mi.description = descs.str();
+        mi.symbol = sym.str();
+        mi.execWidth = simd;
+        mi.docs = chooseDoc(nullptr, "47923", "57487");
+    } else {
+        error(14, 4, "unsupported BTD op");
+    }
+    addField("MessageType", 14, 4, opBits, descs.str());
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 enum class SamplerSIMD {
@@ -285,6 +366,8 @@ enum class SamplerSIMD {
     SIMD8H,
     SIMD16H,
     SIMD32H,
+    SIMD8_INTRET, // with integer return XeHPG+
+    SIMD16_INTRET, // with integer return XeHPG+
 };
 
 
@@ -294,6 +377,16 @@ enum class SamplerSIMD {
 // 010 SIMD16
 // 011 SIMD32/64
 // 100 Reserved
+// 101 SIMD8H
+// 110 SIMD16H
+// 111 Reserved
+//
+// XeHPG+
+// 000 SIMD8 + Integer Return
+// 001 SIMD8
+// 010 SIMD16
+// 011 RESERVED
+// 100 SIMD16 + Integer Return
 // 101 SIMD8H
 // 110 SIMD16H
 // 111 Reserved
@@ -308,42 +401,103 @@ static SamplerSIMD decodeSimdSize(
     SamplerSIMD simdMode = SamplerSIMD::INVALID;
     switch (simdBits) {
     case 0:
+        if (p >= Platform::XE_HPC) {
+            simdMode = SamplerSIMD::SIMD16_INTRET;
+            syms << "simd16_iret";
+            descs << "simd16 with integer return";
+            simdSize = 16;
+            break;
+        } else if (p >= Platform::XE_HPG) {
+            simdMode = SamplerSIMD::SIMD8_INTRET;
+            syms << "simd8_iret";
+            descs << "simd8 with integer return";
+            simdSize = 8;
+            break;
+        }
         simdMode = SamplerSIMD::INVALID;
         syms << "???";
         descs << "unknown simd mode";
         simdSize = 1;
         return simdMode;
     case 1:
+        if (p >= Platform::XE_HPC) {
+            simdMode = SamplerSIMD::SIMD16;
+            simdSize = 16;
+            descs << "simd16";
+            syms << "simd16";
+            break;
+        }
         simdMode = SamplerSIMD::SIMD8;
         simdSize = 8;
         descs << "simd8";
         syms << "simd8";
         break;
     case 2:
+        if (p >= Platform::XE_HPC) {
+            simdMode = SamplerSIMD::SIMD32;
+            simdSize = 32;
+            descs << "simd32";
+            syms << "simd32";
+            break;
+        }
         simdMode = SamplerSIMD::SIMD16;
         simdSize = 16;
         descs << "simd16";
         syms << "simd16";
         break;
     case 3:
+        if (p >= Platform::XE_HPC) {
+            simdMode = SamplerSIMD::INVALID;
+            syms << "???";
+            descs << "unknown simd mode";
+            simdSize = 1;
+            break;
+        }
         simdMode = SamplerSIMD::SIMD32_64;
         descs << "simd32/64";
         syms << "simd32";
         simdSize = 32;
         break;
     case 4:
+        if (p >= Platform::XE_HPC) {
+            simdMode = SamplerSIMD::SIMD16_INTRET;
+            syms << "simd32_iret";
+            descs << "simd32 with integer return";
+            simdSize = 32;
+            break;
+        } else if (p >= Platform::XE_HPG) {
+            syms << "simd16_iret";
+            descs << "simd16 with integer return";
+            simdMode = SamplerSIMD::SIMD16_INTRET;
+            simdSize = 16;
+            break;
+        }
         simdMode = SamplerSIMD::INVALID;
         syms << "???";
         descs << "unknown simd mode";
         simdSize = 1;
         break;
     case 5:
+        if (p >= Platform::XE_HPC) {
+            simdMode = SamplerSIMD::SIMD16H;
+            simdSize = 16;
+            syms << "simd16h";
+            descs << "simd16 high";
+            break;
+        }
         simdMode = SamplerSIMD::SIMD8H;
         simdSize = 8;
         syms << "simd8h";
         descs << "simd8 high";
         break;
     case 6:
+        if (p >= Platform::XE_HPC) {
+            simdMode = SamplerSIMD::SIMD32H;
+            simdSize = 32;
+            syms << "simd32h";
+            descs << "simd32 high";
+            break;
+        }
         simdMode = SamplerSIMD::SIMD16H;
         syms << "simd16h";
         descs << "simd16 high";
