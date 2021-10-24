@@ -2549,7 +2549,7 @@ Instruction *llvm::genx::convertShlShr(Instruction *Inst) {
   auto Trunc = CastInst::Create(Instruction::Trunc, Shl->getOperand(0), ConvTy,
                                 "", Inst);
   Trunc->takeName(Shl);
-  Trunc->setDebugLoc(Shl->getDebugLoc());
+  Trunc->setDebugLoc(Inst->getDebugLoc());
   auto Ext = CastInst::Create(Inst->getOpcode() == Instruction::AShr
                                   ? Instruction::SExt
                                   : Instruction::ZExt,
