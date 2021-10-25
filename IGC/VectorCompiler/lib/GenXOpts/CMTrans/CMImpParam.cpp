@@ -101,6 +101,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/FunctionAttrs.h"
 
 #include "llvm/ADT/SCCIterator.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/CallGraph.h"
@@ -118,11 +119,12 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <map>
 #include <set>
 #include <stack>
-#include <map>
-#include "Probe/Assertion.h"
+#include <vector>
 
+#include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
 
@@ -200,8 +202,10 @@ struct CMImpParam : public ModulePass {
   void print(raw_ostream &OS, const Module *M = nullptr) const override;
 
 private:
+  using ImplArgIntrSeq = std::vector<CallInst *>;
   void replaceWithGlobal(CallInst *CI, unsigned IID);
-  bool AnalyzeImplicitUse(Module &M);
+  ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M);
+  bool replaceImplicitArgIntrinsics(const ImplArgIntrSeq &Workload);
   void WriteArgsLinearizationInfo(Module &M);
 
   LinearizedTy LinearizeAggregateType(Type *AggrTy);
@@ -365,7 +369,8 @@ bool CMImpParam::runOnModule(Module &M) {
   changed |= ConvertToOCLPayload(M);
 
   // Analyze functions for implicit use intrinsic invocation
-  changed |= AnalyzeImplicitUse(M);
+  ImplArgIntrSeq Workload = collectImplicitArgIntrinsics(M);
+  changed |= replaceImplicitArgIntrinsics(Workload);
 
   // Collect all CM kernels from named metadata and also traverse the call graph
   // to determine what the total implicit uses are for the top level kernels
@@ -396,6 +401,7 @@ bool CMImpParam::runOnModule(Module &M) {
 }
 
 // Replace the given instruction with a load from a global
+// The method erases the original call instruction.
 void CMImpParam::replaceWithGlobal(CallInst *CI, unsigned IID) {
   GlobalVariable *GV = getIIDGlobal(CI->getParent()->getParent(), IID);
   LoadInst *Load = new LoadInst(GV->getType()->getPointerElementType(), GV, "",
@@ -403,6 +409,7 @@ void CMImpParam::replaceWithGlobal(CallInst *CI, unsigned IID) {
   Load->takeName(CI);
   Load->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(Load);
+  CI->eraseFromParent();
 }
 
 static bool isSupportedAggregateArgument(Argument &Arg) {
@@ -513,66 +520,51 @@ ArgLinearization CMImpParam::GenerateArgsLinearizationInfo(Function &F) {
   return Lin;
 }
 
+static bool isImplicitArgIntrinsic(const Function &F) {
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&F);
+  switch (IID) {
+  case GenXIntrinsic::genx_local_size:
+  case GenXIntrinsic::genx_local_id:
+  case GenXIntrinsic::genx_local_id16:
+  case GenXIntrinsic::genx_group_count:
+  case GenXIntrinsic::genx_get_scoreboard_deltas:
+  case GenXIntrinsic::genx_get_scoreboard_bti:
+  case GenXIntrinsic::genx_get_scoreboard_depcnt:
+  case GenXIntrinsic::genx_print_buffer:
+    return true;
+  default:
+    return false;
+  }
+}
+
 // For each function, see if it uses an intrinsic that in turn requires an
 // implicit kernel argument
 // (such as llvm.genx.local.size)
-bool CMImpParam::AnalyzeImplicitUse(Module &M) {
-  bool changed = false;
+CMImpParam::ImplArgIntrSeq CMImpParam::collectImplicitArgIntrinsics(Module &M) {
+  ImplArgIntrSeq Workload;
+  auto &&ImplArgIntrinsics = make_filter_range(
+      M, [](const Function &F) { return isImplicitArgIntrinsic(F); });
+  for (Function &Intr : ImplArgIntrinsics)
+    llvm::transform(Intr.users(), std::back_inserter(Workload),
+                    [](User *U) { return cast<CallInst>(U); });
+  return Workload;
+}
 
-  for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
-    Function *Fn = &*I;
-    LLVM_DEBUG(dbgs() << "AnalyzeImplicitUse visiting " << Fn->getName() << "\n");
+// Replace implicit arg intrinsics collected in \p Workload with a load of
+// the corresponding __imparg global variable.
+// Fill implicit args usage data.
+bool CMImpParam::replaceImplicitArgIntrinsics(const ImplArgIntrSeq &Workload) {
+  if (Workload.empty())
+    return false;
 
-    bool implicitUse = false;
-
-    SmallVector<CallInst *, 8> ToErase;
-
-    // FIXME I think this should scan function declarations to find the implicit
-    // arg intrinsics, then scan their uses, instead of scanning the whole code
-    // to find calls to them.
-    for (inst_iterator II = inst_begin(Fn), IE = inst_end(Fn); II != IE; ++II) {
-      Instruction *Inst = &*II;
-      if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
-        if (Function *Callee = CI->getCalledFunction()) {
-          auto IID = GenXIntrinsic::getAnyIntrinsicID(Callee);
-          if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IID)) {
-            switch (IID) {
-              case GenXIntrinsic::genx_local_size:
-              case GenXIntrinsic::genx_local_id:
-              case GenXIntrinsic::genx_local_id16:
-              case GenXIntrinsic::genx_group_count:
-              case GenXIntrinsic::genx_get_scoreboard_deltas:
-              case GenXIntrinsic::genx_get_scoreboard_bti:
-              case GenXIntrinsic::genx_get_scoreboard_depcnt:
-              case GenXIntrinsic::genx_print_buffer:
-                LLVM_DEBUG(dbgs() << "AnalyzeImplicitUse found "
-                             << GenXIntrinsic::getGenXName((GenXIntrinsic::ID)IID, None));
-                addImplicit(Fn, IID);
-                implicitUse = true;
-
-                // Replace the intrinsic with a load of a global at this point
-                replaceWithGlobal(CI, IID);
-                ToErase.push_back(CI);
-                changed = true;
-                break;
-              default:
-                // Ignore (default added to prevent compiler warnings)
-                break;
-            }
-          }
-        }
-      }
-    }
-
-    for (auto CI : ToErase)
-      CI->eraseFromParent();
-
-    // Mark this function as containing an implicit use intrinsic
-    if (implicitUse)
-      ContainImplicit.insert(Fn);
+  for (CallInst *Intr : Workload) {
+    Function *F = Intr->getFunction();
+    ContainImplicit.insert(F);
+    auto IID = GenXIntrinsic::getGenXIntrinsicID(Intr->getCalledFunction());
+    addImplicit(F, IID);
+    replaceWithGlobal(Intr, IID);
   }
-
-  return changed;
+  return true;
 }
 
 // Convert to implicit thread payload related intrinsics.
