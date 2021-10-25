@@ -1261,47 +1261,35 @@ void DwarfDebug::discoverDISPNodes()
 void DwarfDebug::beginModule()
 {
     const Module* M = m_pModule->GetModule();
-    // If module has named metadata anchors then use them, otherwise scan the
-    // module using debug info finder to collect debug info.
-    NamedMDNode* CU_Nodes = M->getNamedMetadata("llvm.dbg.cu");
-    if (!CU_Nodes) return;
+    IGC_ASSERT(M);
+    // TODO: use debug_compile_units.empty() once LLVM 9 support is dropped
+    if (M->debug_compile_units().begin() == M->debug_compile_units().end())
+      return;
+
     // discover DISubprogramNodes for all the registered visaModules
     discoverDISPNodes();
     // Emit initial sections so we can reference labels later.
     emitSectionLabels();
 
-    for (unsigned i = 0, e = CU_Nodes->getNumOperands(); i != e; ++i)
-    {
-        DICompileUnit* CUNode = cast<DICompileUnit>(CU_Nodes->getOperand(i));
-        CompileUnit* CU = constructCompileUnit(CUNode);
+    DICompileUnit* CUNode = *M->debug_compile_units_begin();
+    CompileUnit* CU = constructCompileUnit(CUNode);
 
-        for (auto* DISP : DISubprogramNodes)
-        {
-            constructSubprogramDIE(CU, DISP);
-        }
+    for (auto* DISP : DISubprogramNodes)
+        constructSubprogramDIE(CU, DISP);
 
-        auto EnumTypes = CUNode->getEnumTypes();
-        for (unsigned i = 0, e = EnumTypes.size(); i != e; ++i)
-        {
-            CU->getOrCreateTypeDIE(EnumTypes[i]);
-        }
+    for (auto *Ty : CUNode->getEnumTypes())
+        CU->getOrCreateTypeDIE(Ty);
 
-        auto RetainedTypes = CUNode->getRetainedTypes();
-        for (unsigned i = 0, e = RetainedTypes.size(); i != e; ++i)
-        {
-            CU->getOrCreateTypeDIE(RetainedTypes[i]);
-        }
+    for (auto *Ty : CUNode->getRetainedTypes())
+        CU->getOrCreateTypeDIE(Ty);
 
-        // Emit imported_modules last so that the relevant context is already
-        // available.
-        for (auto* IE : CUNode->getImportedEntities())
-        {
-            constructThenAddImportedEntityDIE(CU, IE);
-        }
+    // Emit imported_modules last so that the relevant context is already
+    // available.
+    for (auto* IE : CUNode->getImportedEntities())
+        constructThenAddImportedEntityDIE(CU, IE);
 
-        // Assume there is a single CU
-        break;
-    }
+    auto NumDebugCUs = std::distance(M->debug_compile_units_begin(), M->debug_compile_units_end());
+    IGC_ASSERT_MESSAGE(NumDebugCUs == 1, "only Modules with one CU are supported at the moment");
 
     // Prime section data.
     SectionMap[Asm->GetTextSection()];
