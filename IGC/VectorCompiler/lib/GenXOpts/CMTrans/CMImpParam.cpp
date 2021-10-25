@@ -398,9 +398,9 @@ bool CMImpParam::runOnModule(Module &M) {
 // Replace the given instruction with a load from a global
 void CMImpParam::replaceWithGlobal(CallInst *CI, unsigned IID) {
   GlobalVariable *GV = getIIDGlobal(CI->getParent()->getParent(), IID);
-  LoadInst *Load =
-      new LoadInst(GV->getType()->getPointerElementType(), GV,
-                   GV->getName() + ".val", /* isVolatile */ false, CI);
+  LoadInst *Load = new LoadInst(GV->getType()->getPointerElementType(), GV, "",
+                                /* isVolatile */ false, CI);
+  Load->takeName(CI);
   Load->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(Load);
 }
@@ -612,8 +612,9 @@ bool CMImpParam::ConvertToOCLPayload(Module &M) {
       auto UInst = dyn_cast<Instruction>(*UI++);
       if (UInst) {
         IRBuilder<> Builder(UInst);
-        Value *Val = Builder.CreateCall(LID16);
+        Value *Val = Builder.CreateCall(LID16, None, UInst->getName() + ".i16");
         Val = Builder.CreateZExt(Val, Ty32);
+        Val->takeName(UInst);
         UInst->replaceAllUsesWith(Val);
         UInst->eraseFromParent();
         Changed = true;
