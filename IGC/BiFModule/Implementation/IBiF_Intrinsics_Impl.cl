@@ -14,17 +14,17 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(float 
 }
 
 INLINE
-uchar __builtin_spirv_OpenCL_s_abs_i8(char x ){
+uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_abs, _i8, )(char x ){
     return x > 0 ? x : -x;
 }
 
 INLINE
-ushort __builtin_spirv_OpenCL_s_abs_i16(short x ){
+ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_abs, _i16, )(short x ){
     return x > 0 ? x : -x;
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_s_abs_i32(int x ){
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_abs, _i32, )(int x ){
     // Convert signed to unsigned to have consistent result.
     // Also, make abs(INT32_MIN) well defined : abs(INT32_MIN) = (ui32)(-(i64)INT32_MIN)
     uint ux = (uint)x;
@@ -32,82 +32,82 @@ uint __builtin_spirv_OpenCL_s_abs_i32(int x ){
 }
 
 INLINE
-char __builtin_spirv_OpenCL_s_add_sat_i8_i8( char x,
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_add_sat, _i8_i8, )( char x,
                                       char y )
 {
-    return (char)SPIRV_OCL_BUILTIN(s_min, _i32_i32, )( __builtin_spirv_OpenCL_s_max_i32_i32( (int)x + (int)y , CHAR_MIN), CHAR_MAX);
+    return (char)SPIRV_OCL_BUILTIN(s_min, _i32_i32, )( SPIRV_OCL_BUILTIN(s_max, _i32_i32, )( (int)x + (int)y , CHAR_MIN), CHAR_MAX);
 }
 
 INLINE
-uchar __builtin_spirv_OpenCL_u_add_sat_i8_i8( uchar x,
+uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_add_sat, _i8_i8, )( uchar x,
                                        uchar y )
 {
-    return (uchar)SPIRV_OCL_BUILTIN(u_min, _i32_i32, )( __builtin_spirv_OpenCL_u_max_i32_i32( (uint)x + (uint)y , 0), UCHAR_MAX);
+    return (uchar)SPIRV_OCL_BUILTIN(u_min, _i32_i32, )( SPIRV_OCL_BUILTIN(u_max, _i32_i32, )( (uint)x + (uint)y , 0), UCHAR_MAX);
 }
 
 INLINE
-short __builtin_spirv_OpenCL_s_add_sat_i16_i16( short x,
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_add_sat, _i16_i16, )( short x,
                                          short y )
 {
-    return (short)SPIRV_OCL_BUILTIN(s_min, _i32_i32, )( __builtin_spirv_OpenCL_s_max_i32_i32( (int)x + (int)y , SHRT_MIN), SHRT_MAX);
+    return (short)SPIRV_OCL_BUILTIN(s_min, _i32_i32, )( SPIRV_OCL_BUILTIN(s_max, _i32_i32, )( (int)x + (int)y , SHRT_MIN), SHRT_MAX);
 }
 
 INLINE
-ushort __builtin_spirv_OpenCL_u_add_sat_i16_i16( ushort x,
+ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_add_sat, _i16_i16, )( ushort x,
                                           ushort y )
 {
-    return (ushort)SPIRV_OCL_BUILTIN(u_min, _i32_i32, )(__builtin_spirv_OpenCL_u_max_i32_i32( (uint)x + (uint)y, 0), USHRT_MAX);
+    return (ushort)SPIRV_OCL_BUILTIN(u_min, _i32_i32, )(SPIRV_OCL_BUILTIN(u_max, _i32_i32, )( (uint)x + (uint)y, 0), USHRT_MAX);
 }
 
 INLINE
-int __builtin_spirv_OpenCL_s_add_sat_i32_i32( int x,
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_add_sat, _i32_i32, )( int x,
                                        int y )
 {
     long tmp = (long) x + (long) y;
-    return (int) __builtin_spirv_OpenCL_s_clamp_i64_i64_i64( tmp, (long)INT_MIN, (long)INT_MAX);
+    return (int) SPIRV_OCL_BUILTIN(s_clamp, _i64_i64_i64, )( tmp, (long)INT_MIN, (long)INT_MAX);
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_u_add_sat_i32_i32( uint x,
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_add_sat, _i32_i32, )( uint x,
                                         uint y )
 {
     long tmp = (long) x + (long) y;
-    return (uint) __builtin_spirv_OpenCL_s_clamp_i64_i64_i64( tmp, 0L, (long)UINT_MAX);
+    return (uint) SPIRV_OCL_BUILTIN(s_clamp, _i64_i64_i64, )( tmp, 0L, (long)UINT_MAX);
 }
 
 INLINE
-uchar __builtin_spirv_OpenCL_ctz_i8(uchar x ){
-    return (uchar)__builtin_spirv_OpenCL_ctz_i32((uint)x | (1U << sizeof(x) * 8));
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _i8, )(char x ){
+    return (char)SPIRV_OCL_BUILTIN(ctz, _i32, )((int)x | (1U << sizeof(x) * 8));
 }
 
 INLINE
-ushort __builtin_spirv_OpenCL_ctz_i16(ushort x ){
-    return (ushort)__builtin_spirv_OpenCL_ctz_i32((uint)x | (1U << sizeof(x) * 8));
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _i16, )(short x ){
+    return (short)SPIRV_OCL_BUILTIN(ctz, _i32, )((int)x | (1U << sizeof(x) * 8));
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_ctz_i32(uint x ){
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _i32, )(int x ){
     uint rev = __builtin_IB_bfrev(x);
-    return __builtin_spirv_OpenCL_clz_i32(rev);
+    return SPIRV_OCL_BUILTIN(clz, _i32, )(as_int(rev));
 }
 
 INLINE
-int __builtin_spirv_OpenCL_s_mad24_i32_i32_i32( int x,
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_mad24, _i32_i32_i32, )( int x,
                                          int y,
                                          int z )
 {
-    return __builtin_spirv_OpenCL_s_mul24_i32_i32(x, y) + z;
+    return SPIRV_OCL_BUILTIN(s_mul24, _i32_i32, )(x, y) + z;
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_u_mad24_i32_i32_i32( uint x,
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_mad24, _i32_i32_i32, )( uint x,
                                           uint y,
                                           uint z )
 {
-    return __builtin_spirv_OpenCL_u_mul24_i32_i32(x, y) + z;
+    return SPIRV_OCL_BUILTIN(u_mul24, _i32_i32, )(x, y) + z;
 }
 
-INLINE char __builtin_spirv_OpenCL_s_mad_sat_i8_i8_i8(
+INLINE char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_mad_sat, _i8_i8_i8, )(
     char a,
     char b,
     char c)
@@ -116,7 +116,7 @@ INLINE char __builtin_spirv_OpenCL_s_mad_sat_i8_i8_i8(
     return SPIRV_BUILTIN(SConvert, _Sat_i8_i16, _Rchar_sat)(res);
 }
 
-INLINE uchar __builtin_spirv_OpenCL_u_mad_sat_i8_i8_i8(
+INLINE uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_mad_sat, _i8_i8_i8, )(
     uchar a,
     uchar b,
     uchar c)
@@ -125,7 +125,7 @@ INLINE uchar __builtin_spirv_OpenCL_u_mad_sat_i8_i8_i8(
     return SPIRV_BUILTIN(UConvert, _Sat_i8_i16, _Ruchar_sat)(res);
 }
 
-INLINE short __builtin_spirv_OpenCL_s_mad_sat_i16_i16_i16(
+INLINE short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_mad_sat, _i16_i16_i16, )(
     short a,
     short b,
     short c)
@@ -134,7 +134,7 @@ INLINE short __builtin_spirv_OpenCL_s_mad_sat_i16_i16_i16(
     return SPIRV_BUILTIN(SConvert, _Sat_i16_i32, _Rshort_sat)(res);
 }
 
-INLINE ushort __builtin_spirv_OpenCL_u_mad_sat_i16_i16_i16(
+INLINE ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_mad_sat, _i16_i16_i16, )(
     ushort a,
     ushort b,
     ushort c)
@@ -143,7 +143,7 @@ INLINE ushort __builtin_spirv_OpenCL_u_mad_sat_i16_i16_i16(
     return SPIRV_BUILTIN(UConvert, _Sat_i16_i32, _Rushort_sat)(res);
 }
 
-INLINE int __builtin_spirv_OpenCL_s_mad_sat_i32_i32_i32(
+INLINE int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_mad_sat, _i32_i32_i32, )(
     int a,
     int b,
     int c)
@@ -153,7 +153,7 @@ INLINE int __builtin_spirv_OpenCL_s_mad_sat_i32_i32_i32(
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_u_mad_sat_i32_i32_i32( uint a,
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_mad_sat, _i32_i32_i32, )( uint a,
                                             uint b,
                                             uint c )
 {
@@ -162,42 +162,42 @@ uint __builtin_spirv_OpenCL_u_mad_sat_i32_i32_i32( uint a,
 }
 
 INLINE
-char __builtin_spirv_OpenCL_s_max_i8_i8(char x, char y ){
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_max, _i8_i8, )(char x, char y ){
     return (x >= y) ? x : y;
 }
 
 INLINE
-uchar __builtin_spirv_OpenCL_u_max_i8_i8(uchar x, uchar y ){
+uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_max, _i8_i8, )(uchar x, uchar y ){
     return (x >= y) ? x : y;
 }
 
 INLINE
-short __builtin_spirv_OpenCL_s_max_i16_i16(short x, short y ){
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_max, _i16_i16, )(short x, short y ){
     return (x >= y) ? x : y;
 }
 
 INLINE
-ushort __builtin_spirv_OpenCL_u_max_i16_i16(ushort x, ushort y ){
+ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_max, _i16_i16, )(ushort x, ushort y ){
     return (x >= y) ? x : y;
 }
 
 INLINE
-int __builtin_spirv_OpenCL_s_max_i32_i32(int x, int y ){
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_max, _i32_i32, )(int x, int y ){
     return (x >= y) ? x : y;
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_u_max_i32_i32(uint x, uint y ){
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_max, _i32_i32, )(uint x, uint y ){
     return (x >= y) ? x : y;
 }
 
 INLINE
-long __builtin_spirv_OpenCL_s_max_i64_i64(long x, long y ){
+long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_max, _i64_i64, )(long x, long y ){
     return (x >= y) ? x : y;
 }
 
 INLINE
-ulong __builtin_spirv_OpenCL_u_max_i64_i64(ulong x, ulong y ){
+ulong SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_max, _i64_i64, )(ulong x, ulong y ){
     return (x >= y) ? x : y;
 }
 
@@ -242,74 +242,74 @@ ulong SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_min, _i64_i64, )(ulong x, ulong y )
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_u_mul_hi_i32_i32( uint x,
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_mul_hi, _i32_i32, )( uint x,
                                        uint y )
 {
     return ((ulong)x * (ulong)y) >> 32;
 }
 
 INLINE
-int __builtin_spirv_OpenCL_s_mul_hi_i32_i32( int x,
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_mul_hi, _i32_i32, )( int x,
                                       int y )
 {
     return ((long)x * (long)y) >> 32;
 }
 
 INLINE
-uchar __builtin_spirv_OpenCL_popcount_i8(uchar x ){
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(popcount, _i8, )(char x ){
     return __builtin_IB_popcount_1u8(x);
 }
 
 INLINE
-ushort __builtin_spirv_OpenCL_popcount_i16(ushort x ){
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(popcount, _i16, )(short x ){
     return __builtin_IB_popcount_1u16(x);
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_popcount_i32(uint x ){
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(popcount, _i32, )(int x ){
     return __builtin_IB_popcount_1u32(x);
 }
 
 INLINE
-char __builtin_spirv_OpenCL_s_sub_sat_i8_i8( char x,
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i8_i8, )( char x,
                                       char y )
 {
     short tmp = (short)x - (short)y;
-    return (char) __builtin_spirv_OpenCL_s_clamp_i16_i16_i16(tmp, (short)CHAR_MIN, (short)CHAR_MAX);
+    return (char) SPIRV_OCL_BUILTIN(s_clamp, _i16_i16_i16, )(tmp, (short)CHAR_MIN, (short)CHAR_MAX);
 }
 
 INLINE
-uchar __builtin_spirv_OpenCL_u_sub_sat_i8_i8( uchar x,
+uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i8_i8, )( uchar x,
                                        uchar y )
 {
     return ( x <= y ) ? 0 : x - y;
 }
 
 INLINE
-short __builtin_spirv_OpenCL_s_sub_sat_i16_i16( short x,
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i16_i16, )( short x,
                                          short y )
 {
     int tmp = (int)x - (int)y;
-    return (short) __builtin_spirv_OpenCL_s_clamp_i32_i32_i32( tmp, (int)SHRT_MIN, (int)SHRT_MAX);
+    return (short) SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )( tmp, (int)SHRT_MIN, (int)SHRT_MAX);
 }
 
 INLINE
-ushort __builtin_spirv_OpenCL_u_sub_sat_i16_i16( ushort x,
+ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i16_i16, )( ushort x,
                                           ushort y )
 {
     return ( x <= y ) ? 0 : x - y;
 }
 
 INLINE
-int __builtin_spirv_OpenCL_s_sub_sat_i32_i32( int x,
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i32_i32, )( int x,
                                        int y )
 {
     long tmp = (long)x - (long)y;
-    return (int) __builtin_spirv_OpenCL_s_clamp_i64_i64_i64( tmp, (long)INT_MIN, (long)INT_MAX);
+    return (int) SPIRV_OCL_BUILTIN(s_clamp, _i64_i64_i64, )( tmp, (long)INT_MIN, (long)INT_MAX);
 }
 
 INLINE
-uint __builtin_spirv_OpenCL_u_sub_sat_i32_i32( uint x,
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i32_i32, )( uint x,
                                         uint y )
 {
     return ( x <= y ) ? 0 : x - y;

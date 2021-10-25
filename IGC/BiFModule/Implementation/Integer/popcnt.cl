@@ -10,13 +10,13 @@ SPDX-License-Identifier: MIT
 #include "../../Headers/spirv.h"
 
 
-INLINE ulong __builtin_spirv_OpenCL_popcount_i64( ulong x )
+INLINE long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(popcount, _i64, )( long x )
 {
-    uint2 v = as_uint2( x );
-    return __builtin_spirv_OpenCL_popcount_i32( v.x ) + __builtin_spirv_OpenCL_popcount_i32( v.y );
+    int2 v = as_int2( x );
+    return SPIRV_OCL_BUILTIN(popcount, _i32, )( v.x ) + SPIRV_OCL_BUILTIN(popcount, _i32, )( v.y );
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_popcount, uchar, uchar, i8 )
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_popcount, ushort, ushort, i16 )
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_popcount, uint, uint, i32 )
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_popcount, ulong, ulong, i64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( popcount, char,  char,  i8 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( popcount, short, short, i16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( popcount, int,   int,   i32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( popcount, long,  long,  i64 )

@@ -189,7 +189,7 @@ void __clc_remainder_piby2_large(double x, double *r, double *rr, int *regn) {
 
     long ux = as_long(x);
     int e = (int)(ux >> 52) -  1023;
-    int i = __builtin_spirv_OpenCL_s_max_i32_i32(23, (e >> 3) + 17);
+    int i = SPIRV_OCL_BUILTIN(s_max, _i32_i32, )(23, (e >> 3) + 17);
     int j = 150 - i;
     int j16 = j & ~0xf;
     double fract_temp;

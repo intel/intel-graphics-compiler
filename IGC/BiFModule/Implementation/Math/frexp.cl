@@ -29,7 +29,7 @@ float __builtin_spirv_OpenCL_frexp_f32_p1i32( float         x,
     else
     {
         int m = as_int( x ) & FLOAT_MANTISSA_MASK;
-        int lz = __builtin_spirv_OpenCL_clz_i32( m );
+        int lz = SPIRV_OCL_BUILTIN(clz, _i32, )( m );
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
@@ -247,7 +247,7 @@ float __builtin_spirv_OpenCL_frexp_f32_p0i32( float          x,
     else
     {
         int m = as_int( x ) & FLOAT_MANTISSA_MASK;
-        int lz = __builtin_spirv_OpenCL_clz_i32( m );
+        int lz = SPIRV_OCL_BUILTIN(clz, _i32, )( m );
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
@@ -465,7 +465,7 @@ float __builtin_spirv_OpenCL_frexp_f32_p3i32( float        x,
     else
     {
         int m = as_int( x ) & FLOAT_MANTISSA_MASK;
-        int lz = __builtin_spirv_OpenCL_clz_i32( m );
+        int lz = SPIRV_OCL_BUILTIN(clz, _i32, )( m );
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
@@ -686,7 +686,7 @@ float __builtin_spirv_OpenCL_frexp_f32_p4i32( float          x,
     else
     {
         int m = as_int( x ) & FLOAT_MANTISSA_MASK;
-        int lz = __builtin_spirv_OpenCL_clz_i32( m );
+        int lz = SPIRV_OCL_BUILTIN(clz, _i32, )( m );
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
@@ -908,7 +908,7 @@ half __builtin_spirv_OpenCL_frexp_f16_p1i32( half          x,
     else
     {
         short m = as_short( x ) & HALF_MANTISSA_MASK;
-        short lz = __builtin_spirv_OpenCL_clz_i16( m );
+        short lz = SPIRV_OCL_BUILTIN(clz, _i16, )( m );
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
@@ -1126,7 +1126,7 @@ half __builtin_spirv_OpenCL_frexp_f16_p0i32( half           x,
     else
     {
         short m = as_short( x ) & HALF_MANTISSA_MASK;
-        short lz = __builtin_spirv_OpenCL_clz_i16( m );
+        short lz = SPIRV_OCL_BUILTIN(clz, _i16, )( m );
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
@@ -1344,7 +1344,7 @@ half __builtin_spirv_OpenCL_frexp_f16_p3i32( half         x,
     else
     {
         short m = as_short( x ) & HALF_MANTISSA_MASK;
-        short lz = __builtin_spirv_OpenCL_clz_i16( m );
+        short lz = SPIRV_OCL_BUILTIN(clz, _i16, )( m );
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
@@ -1566,7 +1566,7 @@ half __builtin_spirv_OpenCL_frexp_f16_p4i32( half           x,
     else
     {
         short m = as_short( x ) & HALF_MANTISSA_MASK;
-        short lz = __builtin_spirv_OpenCL_clz_i16( m );
+        short lz = SPIRV_OCL_BUILTIN(clz, _i16, )( m );
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
@@ -1788,7 +1788,7 @@ double __builtin_spirv_OpenCL_frexp_f64_p1i32( double        x,
     else
     {
         long m = as_long( x ) & DOUBLE_MANTISSA_MASK;
-        long lz = __builtin_spirv_OpenCL_clz_i64( m );
+        long lz = SPIRV_OCL_BUILTIN(clz, _i64, )( m );
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
@@ -2006,7 +2006,7 @@ double __builtin_spirv_OpenCL_frexp_f64_p0i32( double         x,
     else
     {
         long m = as_long( x ) & DOUBLE_MANTISSA_MASK;
-        long lz = __builtin_spirv_OpenCL_clz_i64( m );
+        long lz = SPIRV_OCL_BUILTIN(clz, _i64, )( m );
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
@@ -2224,7 +2224,7 @@ double __builtin_spirv_OpenCL_frexp_f64_p3i32( double       x,
     else
     {
         long m = as_long( x ) & DOUBLE_MANTISSA_MASK;
-        long lz = __builtin_spirv_OpenCL_clz_i64( m );
+        long lz = SPIRV_OCL_BUILTIN(clz, _i64, )( m );
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
@@ -2444,7 +2444,7 @@ double __builtin_spirv_OpenCL_frexp_f64_p4i32( double       x,
     else
     {
         long m = as_long( x ) & DOUBLE_MANTISSA_MASK;
-        long lz = __builtin_spirv_OpenCL_clz_i64( m );
+        long lz = SPIRV_OCL_BUILTIN(clz, _i64, )( m );
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
