@@ -2018,18 +2018,18 @@ float __ocl_svml_tanf (float a)
 
             sInvPi = as_float (__internal_stan_la_data._sInvPi);
             sRShift = as_float (__internal_stan_la_data._sRShifter);
-            sN = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sAbsX, sInvPi, sRShift);
+            sN = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sAbsX, sInvPi, sRShift);
             sY = (sN - sRShift);
 
             sPI1 = as_float (__internal_stan_la_data._sPI1);
-            sR = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sY), sPI1, sAbsX);
+            sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sY), sPI1, sAbsX);
             sPI2 = as_float (__internal_stan_la_data._sPI2);
-            sR = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sY), sPI2, sR);
+            sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sY), sPI2, sR);
             sPI3 = as_float (__internal_stan_la_data._sPI3);
-            sR = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sY), sPI3, sR);
+            sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sY), sPI3, sR);
 
             sPI4 = as_float (__internal_stan_la_data._sPI4);
-            sR = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sY), sPI4, sR);
+            sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sY), sPI4, sR);
             sR2 = (sR * sR);
 
             sSignRes = as_float (((unsigned int) as_uint (sN) << (31)));
@@ -2039,13 +2039,13 @@ float __ocl_svml_tanf (float a)
 
             sP1 = as_float (__internal_stan_la_data._sP1);
             sP0 = as_float (__internal_stan_la_data._sP0);
-            sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP1, sR2, sP0);
+            sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP1, sR2, sP0);
             sQ2 = as_float (__internal_stan_la_data._sQ2);
             sQ1 = as_float (__internal_stan_la_data._sQ1);
-            sQ = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sQ2, sR2, sQ1);
+            sQ = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sQ2, sR2, sQ1);
             sP = (sP * sR);
             sQ0 = as_float (__internal_stan_la_data._sQ0);
-            sQ = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sQ, sR2, sQ0);
+            sQ = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sQ, sR2, sQ0);
 
             sNumP = as_float ((~(as_uint (sInvMask)) & as_uint (sP)));
             sNumQ = as_float ((as_uint (sInvMask) & as_uint (sQ)));
@@ -2488,16 +2488,16 @@ float __ocl_svml_tanf (float a)
             sRecip_hi = as_float ((as_uint (sRecip_hi) & as_uint (sHalfMask)));
 
             sOne = as_float (__internal_stan_la_data._sOne);
-            sEr = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sR_hi), sRecip_hi, sOne);
+            sEr = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sR_hi), sRecip_hi, sOne);
 
-            dR_RE = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sRecip_hi, sEr, sRecip_hi);
-            sE2 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sEr, sEr, sOne);
+            dR_RE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sRecip_hi, sEr, sRecip_hi);
+            sE2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sEr, sEr, sOne);
             sRecip_ok = (dR_RE * sE2);
 
             sR_lo = (sR_lo * sRecip_ok);
 
             dD_E = (sR_lo - sEr);
-            sRecip_lo = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sR_lo, sR_lo, -(dD_E));
+            sRecip_lo = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sR_lo, sR_lo, -(dD_E));
             sRecip_lo = (sRecip_lo * sRecip_ok);
 
             sRecip_hi = (sRecip_hi * sTau);
@@ -2512,17 +2512,17 @@ float __ocl_svml_tanf (float a)
             sH7 = (sH5 + sRecip_lo);
             sH8 = (sH6 + sH2);
             sH9 = (sH7 + sH8);
-            sP3 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sC2, sR, sC1_lo);
-            sP4 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sC4, sR, sC3);
+            sP3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sC2, sR, sC1_lo);
+            sP4 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sC4, sR, sC3);
 
             sZ2 = (sR * sR);
             sC1 = (sC1_hi + sC1_lo);
 
-            sP6 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sZ2, sP4, sP3);
+            sP6 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sZ2, sP4, sP3);
 
             sP9 = (sC0_lo + sH9);
 
-            sP10 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP6, sR, sP9);
+            sP10 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP6, sR, sP9);
 
             sResLarge = (sH4 + sP10);
             sResLarge = as_float ((as_uint (sResLarge) ^ as_uint (sSignX)));

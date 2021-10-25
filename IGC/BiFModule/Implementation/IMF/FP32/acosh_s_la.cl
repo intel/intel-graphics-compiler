@@ -278,25 +278,25 @@ float __ocl_svml_acoshf (float a)
 
         sW = (sTmp5 - sY);
 
-        sZ = (1.0f / __builtin_spirv_OpenCL_sqrt_f32 (sY));
+        sZ = (1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, ) (sY));
         sR = as_float ((as_uint (sZ) & as_uint (sTopMask8)));
 
         sS = (sY * sR);
         sT = (sW * sR);
 
-        sE = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sS), sR, One);
-        sE = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sT), sR, sE);
+        sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sS), sR, One);
+        sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sT), sR, sE);
         sC3 = as_float (__internal_sacosh_la_data.sC3);
         sC2 = as_float (__internal_sacosh_la_data.sC2);
         sC2 = as_float (__internal_sacosh_la_data.sC2);
-        sPol2 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sC3, sE, sC2);
+        sPol2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sC3, sE, sC2);
 
         sC1 = as_float (__internal_sacosh_la_data.sHalf);
-        sPol1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPol2, sE, sC1);
+        sPol1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPol2, sE, sC1);
 
         sCorr = (sPol1 * sE);
         sTmpf1 = (sS + sT);
-        sTmpf2 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sTmpf1, sCorr, sTmpf1);
+        sTmpf2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sTmpf1, sCorr, sTmpf1);
         sH = (sU + sTmpf2);
         A = ((One > sH) ? One : sH);
         B = ((One < sH) ? One : sH);
@@ -331,27 +331,27 @@ float __ocl_svml_acoshf (float a)
         sR = (Rh + Rl);
         sPoly[7] = as_float (__internal_sacosh_la_data.sPoly[7]);
         sPoly[6] = as_float (__internal_sacosh_la_data.sPoly[6]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly[7], sR, sPoly[6]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly[7], sR, sPoly[6]);
         sPoly[5] = as_float (__internal_sacosh_la_data.sPoly[5]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[5]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[5]);
         sPoly[4] = as_float (__internal_sacosh_la_data.sPoly[4]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[4]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[4]);
         sPoly[3] = as_float (__internal_sacosh_la_data.sPoly[3]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[3]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[3]);
         sPoly[2] = as_float (__internal_sacosh_la_data.sPoly[2]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[2]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[2]);
         sPoly[1] = as_float (__internal_sacosh_la_data.sPoly[1]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[1]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[1]);
         sPoly[0] = as_float (__internal_sacosh_la_data.sPoly[0]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[0]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[0]);
         sP = (sP * sR);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sR);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sR);
 
         sThirtyOne = as_float (__internal_sacosh_la_data.sThirtyOne);
         FpExponPlus = (sN + sThirtyOne);
         sN = as_float ((((~as_uint (sModerateMask)) & as_uint (FpExponPlus)) | (as_uint (sModerateMask) & as_uint (sN))));
         sLn2 = as_float (__internal_sacosh_la_data.sLn2);
-        vr1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sN, sLn2, sP);
+        vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sN, sLn2, sP);
     }
 
     if ((vm) != 0)

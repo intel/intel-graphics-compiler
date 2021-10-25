@@ -727,7 +727,7 @@ double __ocl_svml_sinh (double a)
         dXSign = as_double ((as_ulong (dXSign) & as_ulong (va1)));
         dAbsX = as_double ((as_ulong (dXSign) ^ as_ulong (va1)));
 
-        dM = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dAbsX, dbInvLn2, dbShifter);
+        dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dAbsX, dbInvLn2, dbShifter);
 
         lX = as_ulong (dAbsX);
         iAbsX = ((unsigned int) ((unsigned long) lX >> 32));
@@ -741,11 +741,11 @@ double __ocl_svml_sinh (double a)
 
         dN = (dM - dbShifter);
         dbLn2[0] = as_double (__internal_dsinh_la_data._dbLn2hi);
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dbLn2[0]), dN, dAbsX);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dbLn2[0]), dN, dAbsX);
         dbLn2[1] = as_double (__internal_dsinh_la_data._dbLn2lo);
         dTn = as_double (((__constant unsigned long *) (__internal_dsinh_la_data._dbT))[(((0 + lIndex) * (2 * 8)) >> (3)) + 1]);
         dTdif = as_double (((__constant unsigned long *) (__internal_dsinh_la_data._dbT))[(((0 + lIndex) * (2 * 8)) >> (3)) + 0]);
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dbLn2[1]), dN, dR);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dbLn2[1]), dN, dR);
         dR2 = (dR * dR);
 
         lM = ((unsigned long) (lM) << ((52 - 7)));
@@ -764,16 +764,16 @@ double __ocl_svml_sinh (double a)
         dG_3 = (dG_2 + dM);
         dG_2 = (dG_2 - dM);
 
-        dSinh_r = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC[4], dR2, dPC[2]);
+        dSinh_r = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC[4], dR2, dPC[2]);
         dSinh_r = (dSinh_r * dR2);
-        dSinh_r = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinh_r, dR, dR);
+        dSinh_r = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinh_r, dR, dR);
 
-        dOut = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC[3], dR2, dPC[1]);
+        dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC[3], dR2, dPC[1]);
         dOut = (dOut * dR2);
         dG_2 = (dG_1 + dG_2);
         dOut = (dOut * dG_2);
         dG_1 = (dG_1 + dG_3);
-        dOut = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinh_r, dG_1, dOut);
+        dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinh_r, dG_1, dOut);
         dOut = (dOut + dG_2);
 
         vr1 = as_double ((as_ulong (dXSign) | as_ulong (dOut)));

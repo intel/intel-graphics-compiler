@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #if defined(cl_khr_fp64)
 
 INLINE
-double __builtin_spirv_OpenCL_trunc_f64(double x )
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(trunc, _f64, )(double x )
 {
     //Algorithm performs rounding towards zero by truncating bits in the fractional part
     // of the number.This is done by finding out the position of the fractional bits of
@@ -62,16 +62,16 @@ double __builtin_spirv_OpenCL_trunc_f64(double x )
 
 #endif // defined(cl_khr_fp64)
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_trunc, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( trunc, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_trunc, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( trunc, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_trunc, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( trunc, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

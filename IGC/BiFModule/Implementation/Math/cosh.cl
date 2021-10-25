@@ -14,15 +14,15 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/cosh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-float __builtin_spirv_OpenCL_cosh_f32( float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cosh, _f32, )( float x )
 {
     float result;
 
     if(__FastRelaxedMath && (!__APIRS))
     {
         // Implemented as 0.5 * ( exp(x) + exp(-x) ).
-        float pexp = __builtin_spirv_OpenCL_exp_f32(  x );
-        float nexp = __builtin_spirv_OpenCL_exp_f32( -x );
+        float pexp = SPIRV_OCL_BUILTIN(exp, _f32, )(  x );
+        float nexp = SPIRV_OCL_BUILTIN(exp, _f32, )( -x );
         result = 0.5f * ( pexp + nexp );
     }
     else
@@ -33,26 +33,26 @@ float __builtin_spirv_OpenCL_cosh_f32( float x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cosh, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cosh, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_cosh_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cosh, _f64, )( double x )
 {
     return __ocl_svml_cosh(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cosh, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cosh, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_cosh_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cosh, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_cosh_f32((float)x);
+    return SPIRV_OCL_BUILTIN(cosh, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cosh, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cosh, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

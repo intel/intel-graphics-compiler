@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE maxmag( float x, float y )
 {
-    return __builtin_spirv_OpenCL_maxmag_f32_f32( x, y );
+    return SPIRV_OCL_BUILTIN(maxmag, _f32_f32, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( maxmag, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( maxmag, float, float )
 
 INLINE double OVERLOADABLE maxmag( double x, double y )
 {
-    return __builtin_spirv_OpenCL_maxmag_f64_f64( x, y );
+    return SPIRV_OCL_BUILTIN(maxmag, _f64_f64, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( maxmag, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( maxmag, double, double )
 
 INLINE half OVERLOADABLE maxmag( half x, half y )
 {
-    return __builtin_spirv_OpenCL_maxmag_f16_f16( x, y );
+    return SPIRV_OCL_BUILTIN(maxmag, _f16_f16, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( maxmag, half, half )

@@ -86,7 +86,7 @@ ulong _castf64_u64(double a)
 __attribute__((always_inline))
 double _nearbyint(double a)
 {
-  return __builtin_spirv_OpenCL_round_f64(a);
+  return SPIRV_OCL_BUILTIN(round, _f64, )(a);
 }
 #endif
 

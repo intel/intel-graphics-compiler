@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE fma( float a, float b, float c )
 {
-    return __builtin_spirv_OpenCL_fma_f32_f32_f32( a, b, c );
+    return SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( a, b, c );
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( fma, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS( fma, float, float )
 
 INLINE double OVERLOADABLE fma( double a, double b, double c )
 {
-    return __builtin_spirv_OpenCL_fma_f64_f64_f64( a, b, c );
+    return SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )( a, b, c );
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( fma, double, double )

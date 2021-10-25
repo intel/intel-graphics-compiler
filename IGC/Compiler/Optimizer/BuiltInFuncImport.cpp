@@ -1102,11 +1102,22 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
             }
         }
 
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
+        std::string sinBuiltinName = "_Z15__spirv_ocl_sinf";
+        std::string cosBuiltinName = "_Z15__spirv_ocl_cosf";
+        std::string sinPiBuiltinName = "_Z17__spirv_ocl_sinpif";
+        std::string cosPiBuiltinName = "_Z17__spirv_ocl_cospif";
+#else // IGC Legacy SPIRV Translator
+        std::string sinBuiltinName = "__builtin_spirv_OpenCL_sin_f32";
+        std::string cosBuiltinName = "__builtin_spirv_OpenCL_cos_f32";
+        std::string sinPiBuiltinName = "__builtin_spirv_OpenCL_sinpi_f32";
+        std::string cosPiBuiltinName = "__builtin_spirv_OpenCL_cospi_f32";
+#endif
         auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         if ((modMD->compOpt.MatchSinCosPi) &&
             !(modMD->compOpt.FastRelaxedMath) &&
-            (funcName.startswith("__builtin_spirv_OpenCL_cos_f32") ||
-             funcName.startswith("__builtin_spirv_OpenCL_sin_f32"))) {
+            (funcName.startswith(cosBuiltinName) ||
+             funcName.startswith(sinBuiltinName))) {
           for (auto Users : pFunc->users()) {
             if (auto CI = dyn_cast<CallInst>(Users)) {
               IRBuilder<> builder(CI);
@@ -1155,8 +1166,8 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                   if (CallInst* useInst =
                     dyn_cast<CallInst>(fmulUse->getUser())) {
                     StringRef funcName = useInst->getCalledFunction()->getName();
-                    if (!funcName.startswith("__builtin_spirv_OpenCL_cos_f32") &&
-                      !funcName.startswith("__builtin_spirv_OpenCL_sin_f32")) {
+                    if (!funcName.startswith(cosBuiltinName) &&
+                      !funcName.startswith(sinBuiltinName)) {
                       isCandidate = false;
                       break;
                     }
@@ -1192,11 +1203,10 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                       std::pair<Instruction *, double>(fmulInst, intValue));
 
                   std::string newName;
-                  if (funcName.startswith("__builtin_spirv_OpenCL_cos_f32")) {
-                    newName = "__builtin_spirv_OpenCL_cospi_f32";
-                  } else if (funcName.startswith(
-                                 "__builtin_spirv_OpenCL_sin_f32")) {
-                    newName = "__builtin_spirv_OpenCL_sinpi_f32";
+                  if (funcName.startswith(cosBuiltinName)) {
+                    newName = cosPiBuiltinName;
+                  } else if (funcName.startswith(sinBuiltinName)) {
+                    newName = sinPiBuiltinName;
                   }
 
                   if (Function *newFunc = M.getFunction(newName)) {

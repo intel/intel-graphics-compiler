@@ -4497,19 +4497,19 @@ double __ocl_svml_tanpi (double a)
         dP1 = as_double (__internal_dtanpi_la_data._dP1);
         dPI1 = as_double (__internal_dtanpi_la_data._dPI1);
 
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP3, dR2, dP2);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP, dR2, dP1);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP, dR2, dPI1);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP3, dR2, dP2);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dR2, dP1);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dR2, dPI1);
         dQ4 = as_double (__internal_dtanpi_la_data._dQ4);
         dQ3 = as_double (__internal_dtanpi_la_data._dQ3);
         dQ2 = as_double (__internal_dtanpi_la_data._dQ2);
         dQ1 = as_double (__internal_dtanpi_la_data._dQ1);
-        dQ = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dQ4, dR2, dQ3);
-        dQ = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dQ, dR2, dQ2);
-        dQ = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dQ, dR2, dQ1);
+        dQ = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dQ4, dR2, dQ3);
+        dQ = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dQ, dR2, dQ2);
+        dQ = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dQ, dR2, dQ1);
         dP = (dP * dR);
         dQ0 = as_double (__internal_dtanpi_la_data._dQ0);
-        dQ = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dQ, dR2, dQ0);
+        dQ = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dQ, dR2, dQ0);
         dNum = as_double ((((~as_ulong (dInvMask)) & as_ulong (dP)) | (as_ulong (dInvMask) & as_ulong (dQ))));
         dDen = as_double ((((~as_ulong (dInvMask)) & as_ulong (dQ)) | (as_ulong (dInvMask) & as_ulong (dP))));
 

@@ -11,9 +11,9 @@ SPDX-License-Identifier: MIT
 
 INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cross, _v3f32_v3f32, )(float3 p0, float3 p1 ){
     float3 result;
-    result.x = __builtin_spirv_OpenCL_fma_f32_f32_f32(p0.y, p1.z, -p0.z * p1.y );
-    result.y = __builtin_spirv_OpenCL_fma_f32_f32_f32(p0.z, p1.x, -p0.x * p1.z );
-    result.z = __builtin_spirv_OpenCL_fma_f32_f32_f32(p0.x, p1.y, -p0.y * p1.x );
+    result.x = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(p0.y, p1.z, -p0.z * p1.y );
+    result.y = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(p0.z, p1.x, -p0.x * p1.z );
+    result.z = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(p0.x, p1.y, -p0.y * p1.x );
 
     return result;
 }
@@ -30,9 +30,9 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cross, _v4f32_v4f32, )(float4
 
 INLINE double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cross, _v3f64_v3f64, )(double3 p0, double3 p1 ){
     double3 result;
-    result.x = __builtin_spirv_OpenCL_fma_f64_f64_f64(p0.y, p1.z, -p0.z * p1.y );
-    result.y = __builtin_spirv_OpenCL_fma_f64_f64_f64(p0.z, p1.x, -p0.x * p1.z );
-    result.z = __builtin_spirv_OpenCL_fma_f64_f64_f64(p0.x, p1.y, -p0.y * p1.x );
+    result.x = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(p0.y, p1.z, -p0.z * p1.y );
+    result.y = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(p0.z, p1.x, -p0.x * p1.z );
+    result.z = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(p0.x, p1.y, -p0.y * p1.x );
 
     return result;
 }

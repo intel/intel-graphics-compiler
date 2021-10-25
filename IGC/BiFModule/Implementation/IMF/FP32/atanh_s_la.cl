@@ -263,7 +263,7 @@ float __ocl_svml_atanhf (float a)
 
         sTinyRange = as_float (__internal_satanh_la_data.TinyRange);
         sTinyMask = as_float (((unsigned int) (-(signed int) (sInput < sTinyRange))));
-        sTinyRes = __builtin_spirv_OpenCL_fma_f32_f32_f32 (va1, va1, va1);
+        sTinyRes = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (va1, va1, va1);
 
         sSign = as_float (__internal_satanh_la_data.sSign);
         sSign = as_float ((as_uint (va1) & as_uint (sSign)));
@@ -280,8 +280,8 @@ float __ocl_svml_atanhf (float a)
         sZ = (1.0f / (sU));
         sR = as_float ((as_uint (sZ) & as_uint (sTopMask12)));
 
-        sE = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sR), sU, One);
-        sE = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sR), sUTmp, sE);
+        sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sR), sU, One);
+        sE = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sR), sUTmp, sE);
 
         sVHi = as_float ((as_uint (sV) & as_uint (sTopMask12)));
         sVLo = (sV - sVHi);
@@ -289,10 +289,10 @@ float __ocl_svml_atanhf (float a)
         sQHi = (sR * sVHi);
         sQLo = (sR * sVLo);
 
-        sD = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sE, sE, sE);
+        sD = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sE, sE, sE);
 
         sTmp1 = (sD * sQHi);
-        sTmp2 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sD, sQLo, sQLo);
+        sTmp2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sD, sQLo, sQLo);
         sTmp3 = (sTmp1 + sTmp2);
 
         sH = (sQHi + sTmp3);
@@ -327,23 +327,23 @@ float __ocl_svml_atanhf (float a)
         sR = (Rh + Rl);
         sPoly[7] = as_float (__internal_satanh_la_data.sPoly[7]);
         sPoly[6] = as_float (__internal_satanh_la_data.sPoly[6]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly[7], sR, sPoly[6]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly[7], sR, sPoly[6]);
         sPoly[5] = as_float (__internal_satanh_la_data.sPoly[5]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[5]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[5]);
         sPoly[4] = as_float (__internal_satanh_la_data.sPoly[4]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[4]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[4]);
         sPoly[3] = as_float (__internal_satanh_la_data.sPoly[3]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[3]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[3]);
         sPoly[2] = as_float (__internal_satanh_la_data.sPoly[2]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[2]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[2]);
         sPoly[1] = as_float (__internal_satanh_la_data.sPoly[1]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[1]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[1]);
         sPoly[0] = as_float (__internal_satanh_la_data.sPoly[0]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[0]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[0]);
         sP = (sP * sR);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sR);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sR);
         sLn2 = as_float (__internal_satanh_la_data.sLn2);
-        sResult = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sN, sLn2, sP);
+        sResult = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sN, sLn2, sP);
 
         sHalf = as_float (__internal_satanh_la_data.sHalf);
         sHalf = as_float ((as_uint (sHalf) ^ as_uint (sSign)));

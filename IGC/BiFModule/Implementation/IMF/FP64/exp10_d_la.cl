@@ -571,7 +571,7 @@ double __ocl_svml_exp10 (double a)
         iAbsMask = (__internal_dexp10_la_data._iAbsMask);
         iDomainRange = (__internal_dexp10_la_data._iDomainRange);
 
-        dM = __builtin_spirv_OpenCL_fma_f64_f64_f64 (va1, dbLg2_10, dbShifter);
+        dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (va1, dbLg2_10, dbShifter);
         dN = (dM - dbShifter);
 
         lX = as_ulong (va1);
@@ -591,16 +591,16 @@ double __ocl_svml_exp10 (double a)
         lM = ((unsigned long) (lM) << ((52 - 7)));
         lM = (lM & lExpMask);
 
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dN), dbInvLg2_10hi, va1);
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dN), dbInvLg2_10lo, dR);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dN), dbInvLg2_10hi, va1);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dN), dbInvLg2_10lo, dR);
 
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC[4], dR, dPC[3]);
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dR, dPC[2]);
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dR, dPC[1]);
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dR, dPC[0]);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC[4], dR, dPC[3]);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dR, dPC[2]);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dR, dPC[1]);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dR, dPC[0]);
         dN = (dN * dR);
 
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dTj, dTj);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dTj, dTj);
 
         lX = as_ulong (dN);
         lX = (lX + lM);

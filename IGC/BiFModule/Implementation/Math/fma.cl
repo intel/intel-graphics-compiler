@@ -9,16 +9,16 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fma, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( fma, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fma, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( fma, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fma, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( fma, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

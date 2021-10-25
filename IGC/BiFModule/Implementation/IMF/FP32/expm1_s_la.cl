@@ -114,31 +114,31 @@ inline int __internal_sexpm1_la_cout (float *a, float *pres)
     float R, poly, Th;
 
     xf.f = xin;
-    xL2E.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (xf.f, __sexpm1_la_fL2E.f, 0.0f);
-    fN.f = __builtin_spirv_OpenCL_trunc_f32 (xL2E.f);
+    xL2E.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (xf.f, __sexpm1_la_fL2E.f, 0.0f);
+    fN.f = SPIRV_OCL_BUILTIN(trunc, _f32, ) (xL2E.f);
     fS.f = __sexpm1_la_fShifter.f + fN.f;
 
-    R = __builtin_spirv_OpenCL_fma_f32_f32_f32 (fN.f, __sexpm1_la_NL2H.f, xf.f);
-    R = __builtin_spirv_OpenCL_fma_f32_f32_f32 (fN.f, __sexpm1_la_NL2L.f, R);
+    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fN.f, __sexpm1_la_NL2H.f, xf.f);
+    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (fN.f, __sexpm1_la_NL2L.f, R);
 
     T.w = fS.w << 23;
 
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (__sexpm1_la_c6.f, R, __sexpm1_la_c5.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexpm1_la_c4.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexpm1_la_c3.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexpm1_la_c2.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexpm1_la_c1.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexpm1_la_c0.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, R);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__sexpm1_la_c6.f, R, __sexpm1_la_c5.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexpm1_la_c4.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexpm1_la_c3.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexpm1_la_c2.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexpm1_la_c1.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexpm1_la_c0.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, R);
 
     Th = T.f - 1.0f;
 
-    res.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (T.f, poly, Th);
+    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (T.f, poly, Th);
 
-    xa.f = __builtin_spirv_OpenCL_fabs_f32 (xf.f);
+    xa.f = SPIRV_OCL_BUILTIN(fabs, _f32, ) (xf.f);
     res.w |= (xf.w ^ xa.w);
 
-    if (__builtin_spirv_OpenCL_fabs_f32 (xf.f) <= 87.0f)
+    if (SPIRV_OCL_BUILTIN(fabs, _f32, ) (xf.f) <= 87.0f)
     {
         *pres = res.f;
         return nRet;
@@ -172,7 +172,7 @@ inline int __internal_sexpm1_la_cout (float *a, float *pres)
 
     T.w = (fS.w - 64) << 23;
 
-    res.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (T.f, poly, T.f);
+    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (T.f, poly, T.f);
     sc.w = 0x5f800000u;
     res.f *= sc.f;
 

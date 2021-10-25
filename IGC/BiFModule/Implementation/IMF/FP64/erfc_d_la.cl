@@ -4777,27 +4777,27 @@ double __ocl_svml_erfc (double a)
 
         _poly1_0 = as_double (__internal_derfc_la_data._poly1_0);
         _poly1_1 = as_double (__internal_derfc_la_data._poly1_1);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (_poly1_0, T, _poly1_1);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (_poly1_0, T, _poly1_1);
         _poly3_0 = as_double (__internal_derfc_la_data._poly3_0);
         _poly3_1 = as_double (__internal_derfc_la_data._poly3_1);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (_poly3_0, T, _poly3_1);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (_poly3_0, T, _poly3_1);
         _poly5_0 = as_double (__internal_derfc_la_data._poly5_0);
         _poly5_1 = as_double (__internal_derfc_la_data._poly5_1);
-        P5 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (_poly5_0, T, _poly5_1);
+        P5 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (_poly5_0, T, _poly5_1);
 
         _poly1_2 = as_double (__internal_derfc_la_data._poly1_2);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T, _poly1_2);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T, _poly1_2);
         _poly3_2 = as_double (__internal_derfc_la_data._poly3_2);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, T, _poly3_2);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, T, _poly3_2);
         _poly5_2 = as_double (__internal_derfc_la_data._poly5_2);
-        P5 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P5, T, _poly5_2);
+        P5 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P5, T, _poly5_2);
 
         _poly1_3 = as_double (__internal_derfc_la_data._poly1_3);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T, _poly1_3);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T, _poly1_3);
         _poly3_3 = as_double (__internal_derfc_la_data._poly3_3);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, T, _poly3_3);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, T, _poly3_3);
         _poly5_3 = as_double (__internal_derfc_la_data._poly5_3);
-        P5 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P5, T, _poly5_3);
+        P5 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P5, T, _poly5_3);
 
         _Mask32 = (__internal_derfc_la_data._Mask32);
         Index = (Index & _Mask32);
@@ -4806,35 +4806,35 @@ double __ocl_svml_erfc (double a)
         THL[1] = as_double (((__constant unsigned long *) ((__constant double *) (&__internal_derfc_la_data._erfc_tbl[0])))[(Index >> 3) + 1]);
 
         _poly1_4 = as_double (__internal_derfc_la_data._poly1_4);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T, _poly1_4);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T, _poly1_4);
         _poly3_4 = as_double (__internal_derfc_la_data._poly3_4);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, T, _poly3_4);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, T, _poly3_4);
 
         D2 = (Diff * Diff);
 
         _poly1_5 = as_double (__internal_derfc_la_data._poly1_5);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T, _poly1_5);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T, _poly1_5);
         _poly3_5 = as_double (__internal_derfc_la_data._poly3_5);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, T, _poly3_5);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, T, _poly3_5);
         _poly3_6 = as_double (__internal_derfc_la_data._poly3_6);
 
-        P35_tmp6 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (D2, P5, _poly3_6);
+        P35_tmp6 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (D2, P5, _poly3_6);
 
         _poly1_6 = as_double (__internal_derfc_la_data._poly1_6);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T, _poly1_6);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, T, P35_tmp6);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T, _poly1_6);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, T, P35_tmp6);
 
         T2 = (T * T);
 
         _poly1_7 = as_double (__internal_derfc_la_data._poly1_7);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T, _poly1_7);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, D2, -(T));
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T, _poly1_7);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, D2, -(T));
 
         Exp_X0HD = (THL[1] * Diff);
 
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T2, P3);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T2, P3);
 
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, Exp_X0HD, Exp_X0HD);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, Exp_X0HD, Exp_X0HD);
 
         _UF_Threshold = as_double (__internal_derfc_la_data._UF_Threshold);
 

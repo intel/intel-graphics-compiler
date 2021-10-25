@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE lgamma( float x )
 {
-    return __builtin_spirv_OpenCL_lgamma_f32( x );
+    return SPIRV_OCL_BUILTIN(lgamma, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, float, float )
 
 INLINE double OVERLOADABLE lgamma( double x )
 {
-    return __builtin_spirv_OpenCL_lgamma_f64( x );
+    return SPIRV_OCL_BUILTIN(lgamma, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, double, double )
 
 INLINE half OVERLOADABLE lgamma( half x )
 {
-    return __builtin_spirv_OpenCL_lgamma_f16( x );
+    return SPIRV_OCL_BUILTIN(lgamma, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, half, half )

@@ -40,17 +40,17 @@ static float __intel_gamma(float z)
     x += p6 / (z + 6);
 
     float t = z + g + 0.5f;
-    return SQRT_2PI * __builtin_spirv_OpenCL_pow_f32_f32(t, z + 0.5f) * __builtin_spirv_OpenCL_exp_f32(-t) * x;
+    return SQRT_2PI * SPIRV_OCL_BUILTIN(pow, _f32_f32, )(t, z + 0.5f) * SPIRV_OCL_BUILTIN(exp, _f32, )(-t) * x;
 }
 
-float __builtin_spirv_OpenCL_tgamma_f32( float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tgamma, _f32, )( float x )
 {
 #if USE_IMF_TGAMMA_IMPL
     return __ocl_svml_tgammaf(x);
 #else // USE_IMF_TGAMMA_IMPL
     float ret;
-    if ( (x < 0.0f) & (x == __builtin_spirv_OpenCL_floor_f32(x))) {
-        ret = __builtin_spirv_OpenCL_nan_i32((uint)0);
+    if ( (x < 0.0f) & (x == SPIRV_OCL_BUILTIN(floor, _f32, )(x))) {
+        ret = SPIRV_OCL_BUILTIN(nan, _i32, )(0)
     } else {
         float y = 1.0f - x;
         float z = ( x < 0.5f ) ? y : x;
@@ -58,7 +58,7 @@ float __builtin_spirv_OpenCL_tgamma_f32( float x )
         float g = __intel_gamma(z);
 
         ret = ( x < 0.5f ) ?
-            M_PI_F / ( __builtin_spirv_OpenCL_sinpi_f32(x) * g ) :
+            M_PI_F / ( SPIRV_OCL_BUILTIN(sinpi, _f32, )(x) * g ) :
             g;
 
         // Special handling for -0.0f.
@@ -71,26 +71,26 @@ float __builtin_spirv_OpenCL_tgamma_f32( float x )
 #endif // USE_IMF_TGAMMA_IMPL
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tgamma, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tgamma, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_tgamma_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tgamma, _f64, )( double x )
 {
     return libclc_tgamma_f64(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tgamma, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tgamma, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_tgamma_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tgamma, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_tgamma_f32((float)x);
+    return SPIRV_OCL_BUILTIN(tgamma, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tgamma, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tgamma, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

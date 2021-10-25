@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 #include "IMF/FP32/asin_s_la.cl"
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(float x, float minval, float maxval ){
-    return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
+    return SPIRV_OCL_BUILTIN(fmin, _f32_f32, )(SPIRV_OCL_BUILTIN(fmax, _f32_f32, )(x, minval), maxval);
 }
 
 INLINE
@@ -316,7 +316,7 @@ uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i32_i32, )( uint x,
 }
 
 INLINE
-float __builtin_spirv_OpenCL_acos_f32(float x ){
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acos, _f32, )(float x ){
     // The LA acos implementation (IMF/FP32/acos_s_la.cl)
     // seems to be slower on Mandelbulb algorithm..
     float temp1 = 0.0f;
@@ -327,19 +327,19 @@ float __builtin_spirv_OpenCL_acos_f32(float x ){
 
     bool flag = false;
 
-    temp1 = -__builtin_spirv_OpenCL_fabs_f32(x) + 1.0f;
+    temp1 = -SPIRV_OCL_BUILTIN(fabs, _f32, )(x) + 1.0f;
 
     temp1 = temp1  * 0.5f;
 
-    flag = __builtin_spirv_OpenCL_fabs_f32(x) > 0.575f;
+    flag = SPIRV_OCL_BUILTIN(fabs, _f32, )(x) > 0.575f;
 
     if( flag )
     {
-        temp1 = __builtin_spirv_OpenCL_sqrt_f32(temp1);
+        temp1 = SPIRV_OCL_BUILTIN(sqrt, _f32, )(temp1);
     }
     else
     {
-        temp1 = __builtin_spirv_OpenCL_fabs_f32(x);
+        temp1 = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
     }
 
     temp2 = temp1 * temp1;
@@ -382,12 +382,12 @@ float __builtin_spirv_OpenCL_acos_f32(float x ){
 }
 
 INLINE
-float __builtin_spirv_OpenCL_asin_f32(float value ){
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asin, _f32, )(float value ){
     return __ocl_svml_asinf(value);
 }
 
 INLINE
-float __builtin_spirv_OpenCL_atan_f32(float value ){
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan, _f32, )(float value ){
     // The LA atan implementation (IMF/FP32/atan_s_la.cl)
     // seems to be slower on Mandelbulb algorithm..
     float temp1 = 0.0f;
@@ -397,9 +397,9 @@ float __builtin_spirv_OpenCL_atan_f32(float value ){
 
     float destTemp = 0.0f;
 
-    bool flag = __builtin_spirv_OpenCL_fabs_f32(value) > 1.0f;
+    bool flag = SPIRV_OCL_BUILTIN(fabs, _f32, )(value) > 1.0f;
 
-    temp1 = __builtin_spirv_OpenCL_fabs_f32(value);
+    temp1 = SPIRV_OCL_BUILTIN(fabs, _f32, )(value);
 
     if(flag)
     {
@@ -443,14 +443,14 @@ float __builtin_spirv_OpenCL_atan_f32(float value ){
 
     if(value < 0.0f)
     {
-        destTemp = -__builtin_spirv_OpenCL_fabs_f32(destTemp);
+        destTemp = -SPIRV_OCL_BUILTIN(fabs, _f32, )(destTemp);
     }
 
     return destTemp;
 }
 
 INLINE
-float __builtin_spirv_OpenCL_ceil_f32(float x ){
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ceil, _f32, )(float x ){
     return __builtin_IB_frnd_pi(x);
 }
 
@@ -469,23 +469,23 @@ double FDIV_IEEE_DOUBLE( double a,
 }
 
 INLINE
-float __builtin_spirv_OpenCL_fabs_f32(float x ){
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fabs, _f32, )(float x ){
     float neg = -x;
     return (x >= 0) ?  x : neg;
 }
 
 INLINE
-float __builtin_spirv_OpenCL_floor_f32(float x ){
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(floor, _f32, )(float x ){
     return __builtin_IB_frnd_ni(x);
 }
 
 INLINE
-float __builtin_spirv_OpenCL_rint_f32(float x ){
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rint, _f32, )(float x ){
     return __builtin_IB_frnd_ne(x);
 }
 
 INLINE
-float __builtin_spirv_OpenCL_trunc_f32(float x ){
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(trunc, _f32, )(float x ){
     return __builtin_IB_frnd_zi(x);
 }
 
@@ -544,43 +544,43 @@ float __builtin_spirv_OpenCL_native_tan_f32(float x ){
 
 #ifdef cl_khr_fp16
 INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f16_f16_f16, )(half x, half minval, half maxval ){
-    return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
+    return SPIRV_OCL_BUILTIN(fmin, _f32_f32, )(SPIRV_OCL_BUILTIN(fmax, _f32_f32, )(x, minval), maxval);
 }
 
 INLINE
-half __builtin_spirv_OpenCL_acos_f16(half x ){
-    return (half)__builtin_spirv_OpenCL_acos_f32((float)x);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acos, _f16, )(half x ){
+    return (half)SPIRV_OCL_BUILTIN(acos, _f32, )((float)x);
 }
 
 INLINE
-half __builtin_spirv_OpenCL_asin_f16(half x ){
-    return (half)__builtin_spirv_OpenCL_asin_f32((float)x);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asin, _f16, )(half x ){
+    return (half)SPIRV_OCL_BUILTIN(asin, _f32, )((float)x);
 }
 
 INLINE
-half __builtin_spirv_OpenCL_atan_f16(half x ){
-    return (half)__builtin_spirv_OpenCL_atan_f32((float)x);
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan, _f16, )(half x ){
+    return (half)SPIRV_OCL_BUILTIN(atan, _f32, )((float)x);
 }
 
 INLINE
-half __builtin_spirv_OpenCL_ceil_f16(half x ){
-    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(__builtin_spirv_OpenCL_ceil_f32(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ceil, _f16, )(half x ){
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(SPIRV_OCL_BUILTIN(ceil, _f32, )(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
 }
 
 INLINE
-half __builtin_spirv_OpenCL_fabs_f16(half x ){
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fabs, _f16, )(half x ){
     //return __builtin_IB_fabsh(x);
     return (x >= 0) ?  x : -x;
 
 }
 
 INLINE
-half __builtin_spirv_OpenCL_floor_f16(half x ){
-    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(__builtin_spirv_OpenCL_floor_f32(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(floor, _f16, )(half x ){
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(SPIRV_OCL_BUILTIN(floor, _f32, )(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
 }
 
 INLINE
-half __builtin_spirv_OpenCL_fma_f16_f16_f16( half a,
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fma, _f16_f16_f16, )( half a,
                                       half b,
                                       half c )
 {
@@ -588,7 +588,7 @@ half __builtin_spirv_OpenCL_fma_f16_f16_f16( half a,
 }
 
 INLINE
-float __builtin_spirv_OpenCL_fma_f32_f32_f32( float a,
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( float a,
                                       float b,
                                       float c )
 {
@@ -596,7 +596,7 @@ float __builtin_spirv_OpenCL_fma_f32_f32_f32( float a,
 }
 
 INLINE
-double __builtin_spirv_OpenCL_fma_f64_f64_f64( double a,
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )( double a,
                                       double b,
                                       double c )
 {
@@ -605,7 +605,7 @@ double __builtin_spirv_OpenCL_fma_f64_f64_f64( double a,
 
 
 INLINE
-half __builtin_spirv_OpenCL_mad_f16_f16_f16( half a,
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mad, _f16_f16_f16, )( half a,
                                       half b,
                                       half c )
 {
@@ -614,13 +614,13 @@ half __builtin_spirv_OpenCL_mad_f16_f16_f16( half a,
 }
 
 INLINE
-half __builtin_spirv_OpenCL_rint_f16(half x ){
-    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(__builtin_spirv_OpenCL_rint_f32(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rint, _f16, )(half x ){
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(SPIRV_OCL_BUILTIN(rint, _f32, )(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
 }
 
 INLINE
-half __builtin_spirv_OpenCL_trunc_f16(half x ){
-    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(__builtin_spirv_OpenCL_trunc_f32(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(trunc, _f16, )(half x ){
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(SPIRV_OCL_BUILTIN(trunc, _f32, )(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
 }
 
 INLINE
@@ -675,16 +675,16 @@ half __builtin_spirv_OpenCL_native_tan_f16(half x ){
 #if defined(cl_khr_fp64)
 
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f64_f64_f64, )(double x, double minval, double maxval ){
-    return __builtin_spirv_OpenCL_fmin_f64_f64(__builtin_spirv_OpenCL_fmax_f64_f64(x, minval), maxval);
+    return SPIRV_OCL_BUILTIN(fmin, _f64_f64, )(SPIRV_OCL_BUILTIN(fmax, _f64_f64, )(x, minval), maxval);
 }
 
 INLINE
-double __builtin_spirv_OpenCL_ceil_f64(double x ){
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ceil, _f64, )(double x ){
     //First part of the algorithm performs rounding towards zero by truncating bits in
     //the fractional part of the number.This is done by finding out the position of the
     //fractional bits of the mantissa and masking them out with zeros.
 
-    double roundedToZeroVal = __builtin_spirv_OpenCL_trunc_f64(x);
+    double roundedToZeroVal = SPIRV_OCL_BUILTIN(trunc, _f64, )(x);
     unsigned high32Bit = (int)(as_ulong( x ) >> 32);
     ulong fraction = as_ulong(x) - as_ulong(roundedToZeroVal);    // getting fraction
 
@@ -701,18 +701,18 @@ double __builtin_spirv_OpenCL_ceil_f64(double x ){
 }
 
 INLINE
-double __builtin_spirv_OpenCL_fabs_f64(double x ){
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fabs, _f64, )(double x ){
     double neg = -x;
     return (x >= 0) ?  x : neg;
 }
 
 INLINE
-double __builtin_spirv_OpenCL_floor_f64(double x ){
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(floor, _f64, )(double x ){
     //First part of the algorithm performs rounding towards zero by truncating bits in
     //the fractional part of the number.This is done by finding out the position of the
     //fractional bits of the mantissa and masking them out with zeros.
 
-    double roundedToZeroVal = __builtin_spirv_OpenCL_trunc_f64(x);
+    double roundedToZeroVal = SPIRV_OCL_BUILTIN(trunc, _f64, )(x);
 
     ulong fraction = as_ulong(x) - as_ulong( roundedToZeroVal );       // getting fraction
 

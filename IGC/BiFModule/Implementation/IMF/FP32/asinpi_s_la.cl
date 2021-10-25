@@ -137,7 +137,7 @@ float __ocl_svml_asinpif (float a)
 
         BrMask = as_float (((unsigned int) (-(signed int) (One <= X))));
 
-        Y = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(X), OneHalf, OneHalf);
+        Y = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(X), OneHalf, OneHalf);
 
         X2 = (X * X);
 
@@ -149,7 +149,7 @@ float __ocl_svml_asinpif (float a)
         SelMask = as_float (((unsigned int) (-(signed int) (!(X < OneHalf)))));
         {
             float t_Sgn;
-            SQ = (__builtin_spirv_OpenCL_sqrt_f32 (Y));
+            SQ = (SPIRV_OCL_BUILTIN(sqrt, _f32, ) (Y));
             t_Sgn = as_float (__internal_sasinpi_la_data.SgnMask);
             SQ = (SQ + SQ);
             SQ = as_float ((as_uint (SQ) | as_uint (t_Sgn)));
@@ -159,12 +159,12 @@ float __ocl_svml_asinpif (float a)
         poly_coeff[4] = as_float (__internal_sasinpi_la_data.poly_coeff[1]);
         poly_coeff[3] = as_float (__internal_sasinpi_la_data.poly_coeff[2]);
         poly_coeff[2] = as_float (__internal_sasinpi_la_data.poly_coeff[3]);
-        Poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (X2, poly_coeff[5], poly_coeff[4]);
-        P23 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (X2, poly_coeff[3], poly_coeff[2]);
+        Poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (X2, poly_coeff[5], poly_coeff[4]);
+        P23 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (X2, poly_coeff[3], poly_coeff[2]);
         X4 = (X2 * X2);
         poly_coeff[1] = as_float (__internal_sasinpi_la_data.poly_coeff[4]);
-        Poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (Poly, X4, P23);
-        Poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (Poly, X2, poly_coeff[1]);
+        Poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (Poly, X4, P23);
+        Poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (Poly, X2, poly_coeff[1]);
         InvPi = as_float (__internal_sasinpi_la_data.InvPi);
         Poly = (Poly * X2);
 
@@ -172,8 +172,8 @@ float __ocl_svml_asinpif (float a)
 
         OneHalf = as_float ((as_uint (OneHalf) & as_uint (SelMask)));
 
-        OneHalf = __builtin_spirv_OpenCL_fma_f32_f32_f32 (X, InvPi, OneHalf);
-        Poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (Poly, X, OneHalf);
+        OneHalf = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (X, InvPi, OneHalf);
+        Poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (Poly, X, OneHalf);
         vr1 = as_float ((as_uint (Poly) ^ as_uint (Sgn_X)));
     }
 

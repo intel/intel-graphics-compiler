@@ -14,14 +14,14 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/cbrt_d_la.cl"
 #endif
 
-INLINE float __builtin_spirv_OpenCL_cbrt_f32( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cbrt, _f32, )( float x )
 {
     float result;
 
     if(__FastRelaxedMath && (!__APIRS))
     {
         // Implemented as rootn(x, 3).
-        result = __builtin_spirv_OpenCL_rootn_f32_i32( x, 3 );
+        result = SPIRV_OCL_BUILTIN(rootn, _f32_i32, )( x, 3 );
     }
     else
     {
@@ -31,26 +31,26 @@ INLINE float __builtin_spirv_OpenCL_cbrt_f32( float x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_cbrt, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( cbrt, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_cbrt_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cbrt, _f64, )( double x )
 {
     return __ocl_svml_cbrt(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_cbrt, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( cbrt, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_cbrt_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cbrt, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_cbrt_f32((float)x);
+    return SPIRV_OCL_BUILTIN(cbrt, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_cbrt, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( cbrt, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

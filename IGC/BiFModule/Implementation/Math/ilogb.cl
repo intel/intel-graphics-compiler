@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-int __builtin_spirv_OpenCL_ilogb_f32( float x )
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ilogb, _f32, )( float x )
 {
     int result = 0;
 
@@ -35,11 +35,11 @@ int __builtin_spirv_OpenCL_ilogb_f32( float x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_ilogb, int, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-int __builtin_spirv_OpenCL_ilogb_f64( double x )
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ilogb, _f64, )( double x )
 {
     int result = 0;
 
@@ -64,17 +64,17 @@ int __builtin_spirv_OpenCL_ilogb_f64( double x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_ilogb, int, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE int __builtin_spirv_OpenCL_ilogb_f16( half x )
+INLINE int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ilogb, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_ilogb_f32((float)x);
+    return SPIRV_OCL_BUILTIN(ilogb, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_ilogb, int, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, half, f16 )
 
 #endif // defined(cl_khr_fp16)

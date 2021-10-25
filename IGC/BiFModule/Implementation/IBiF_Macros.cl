@@ -430,6 +430,27 @@ SPDX-License-Identifier: MIT
     GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP_SIZE( __func, __rettype, __argtype, 8, __abbrargtype ) \
     GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP_SIZE( __func, __rettype, __argtype, 16, __abbrargtype )
 
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP_SIZE( __opcode, __rettype, __argtype, __vecSize, __abbrargtype ) \
+    __rettype##__vecSize SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v##__vecSize##__abbrargtype, )( __argtype##__vecSize x ) {       \
+        __rettype##__vecSize ret;                                                           \
+        __argtype argx[__vecSize];                                                          \
+        __rettype out[__vecSize];                                                           \
+        VECTOARRAY##__vecSize(argx, x);                                                     \
+        for(uint i = 0; i < __vecSize; i++) {                                               \
+            out[i] = SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype, )(argx[i]);              \
+        }                                                                                   \
+        ARRAYTOVEC##__vecSize(ret, out);                                                    \
+        return ret;                                                                         \
+    }
+
+// Use this macro if the scalar function is big.
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( __opcode, __rettype, __argtype, __abbrargtype )     \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP_SIZE( __opcode, __rettype, __argtype, 2, __abbrargtype ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP_SIZE( __opcode, __rettype, __argtype, 3, __abbrargtype ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP_SIZE( __opcode, __rettype, __argtype, 4, __abbrargtype ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP_SIZE( __opcode, __rettype, __argtype, 8, __abbrargtype ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP_SIZE( __opcode, __rettype, __argtype, 16, __abbrargtype )
+
 
 // TODO: get rid of this #else case when the legalizer can
 // fix up illegal types that GVN generates.
@@ -455,41 +476,63 @@ SPDX-License-Identifier: MIT
     GENERATE_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP_SIZE( __func, __rettype, __argtype, __ptrtype, 8, __abbrargtype, __abbrptrtype )  \
     GENERATE_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP_SIZE( __func, __rettype, __argtype, __ptrtype, 16, __abbrargtype, __abbrptrtype )
 
-#define GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG_EXPLICIT( __func, __sfunc, __rettype, __argtype, __addressspc, __ptrtype, __abbrargtype, __abbrptrtype, __abbraddressspc ) \
-    __rettype##2 __func##_v2##__abbrargtype##_##__abbraddressspc##v2##__abbrptrtype( __argtype##2 x, __addressspc __ptrtype##2 * y ) {                          \
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP_SIZE( __opcode, __rettype, __argtype, __ptrtype, __vecSize, __abbrargtype, __abbrptrtype ) \
+    __rettype##__vecSize SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v##__vecSize##__abbrargtype##_p0v##__vecSize##__abbrptrtype, )( __argtype##__vecSize x, __private __ptrtype##__vecSize * y ) {    \
+        __rettype##__vecSize ret;                                                                                 \
+        __argtype argx[__vecSize];                                                                                \
+        __rettype out[__vecSize];                                                                                 \
+        __private __ptrtype* py_scalar = (__private __ptrtype*)y;                                                 \
+        VECTOARRAY##__vecSize(argx, x);                                                                           \
+        for(uint i = 0; i < __vecSize; i++)                                                                       \
+        {                                                                                                         \
+            out[i] = SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype##_p0##__abbrptrtype, )(argx[i], py_scalar + i); \
+        }                                                                                                         \
+        ARRAYTOVEC##__vecSize(ret, out);                                                                          \
+        return ret;                                                                                               \
+    }
+
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP( __opcode, __rettype, __argtype, __ptrtype, __abbrargtype, __abbrptrtype ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP_SIZE( __opcode, __rettype, __argtype, __ptrtype, 2, __abbrargtype, __abbrptrtype )  \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP_SIZE( __opcode, __rettype, __argtype, __ptrtype, 3, __abbrargtype, __abbrptrtype )  \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP_SIZE( __opcode, __rettype, __argtype, __ptrtype, 4, __abbrargtype, __abbrptrtype )  \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP_SIZE( __opcode, __rettype, __argtype, __ptrtype, 8, __abbrargtype, __abbrptrtype )  \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP_SIZE( __opcode, __rettype, __argtype, __ptrtype, 16, __abbrargtype, __abbrptrtype )
+
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG_EXPLICIT( __opcode, __sopcode, __rettype, __argtype, __addressspc, __ptrtype, __abbrargtype, __abbrptrtype, __abbraddressspc ) \
+    __rettype##2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v2##__abbrargtype##_##__abbraddressspc##v2##__abbrptrtype, )( __argtype##2 x, __addressspc __ptrtype##2 * y ) { \
         __ptrtype##2 a, b;                                                                                                   \
-        a = __sfunc##_v2##__abbrargtype##_p0v2##__abbrptrtype(x, &b);                                            \
+        a = SPIRV_OCL_BUILTIN(__sopcode, _v2##__abbrargtype##_p0v2##__abbrptrtype, )(x, &b);                                 \
         y[0] = b;                                                                                                            \
         return a;                                                                                                            \
     }                                                                                                                        \
-    __rettype##3 __func##_v3##__abbrargtype##_##__abbraddressspc##v3##__abbrptrtype( __argtype##3 x, __addressspc __ptrtype##3 * y ) {                                      \
+    __rettype##3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v3##__abbrargtype##_##__abbraddressspc##v3##__abbrptrtype, )( __argtype##3 x, __addressspc __ptrtype##3 * y ) { \
         __ptrtype##3 a, b;                                                                                                   \
-        a = __sfunc##_v3##__abbrargtype##_p0v3##__abbrptrtype(x, &b);                                            \
+        a = SPIRV_OCL_BUILTIN(__sopcode, _v3##__abbrargtype##_p0v3##__abbrptrtype, )(x, &b);                                 \
         y[0] = b;                                                                                                            \
         return a;                                                                                                            \
     }                                                                                                                        \
-    __rettype##4 __func##_v4##__abbrargtype##_##__abbraddressspc##v4##__abbrptrtype( __argtype##4 x, __addressspc __ptrtype##4 * y ) {                                      \
+    __rettype##4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v4##__abbrargtype##_##__abbraddressspc##v4##__abbrptrtype, )( __argtype##4 x, __addressspc __ptrtype##4 * y ) { \
         __ptrtype##4 a, b;                                                                                                   \
-        a = __sfunc##_v4##__abbrargtype##_p0v4##__abbrptrtype(x, &b);                                            \
+        a = SPIRV_OCL_BUILTIN(__sopcode, _v4##__abbrargtype##_p0v4##__abbrptrtype, )(x, &b);                                 \
         y[0] = b;                                                                                                            \
         return a;                                                                                                            \
     }                                                                                                                        \
-    __rettype##8 __func##_v8##__abbrargtype##_##__abbraddressspc##v8##__abbrptrtype( __argtype##8 x, __addressspc __ptrtype##8 * y ) {                                      \
+    __rettype##8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v8##__abbrargtype##_##__abbraddressspc##v8##__abbrptrtype, )( __argtype##8 x, __addressspc __ptrtype##8 * y ) { \
         __ptrtype##8 a, b;                                                                                                   \
-        a = __sfunc##_v8##__abbrargtype##_p0v8##__abbrptrtype(x, &b);                                            \
+        a = SPIRV_OCL_BUILTIN(__sopcode, _v8##__abbrargtype##_p0v8##__abbrptrtype, )(x, &b);                                 \
         y[0] = b;                                                                                                            \
         return a;                                                                                                            \
     }                                                                                                                        \
-    __rettype##16 __func##_v16##__abbrargtype##_##__abbraddressspc##v16##__abbrptrtype( __argtype##16 x, __addressspc __ptrtype##16 * y ) {                                 \
+    __rettype##16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v16##__abbrargtype##_##__abbraddressspc##v16##__abbrptrtype, )( __argtype##16 x, __addressspc __ptrtype##16 * y ) { \
         __ptrtype##16 a, b;                                                                                                  \
-        a = __sfunc##_v16##__abbrargtype##_p0v16##__abbrptrtype(x, &b);                                            \
+        a = SPIRV_OCL_BUILTIN(__sopcode, _v16##__abbrargtype##_p0v16##__abbrptrtype, )(x, &b);                               \
         y[0] = b;                                                                                                            \
         return a;                                                                                                            \
     }
 
 
-# define GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __func, __rettype, __addressspc, __argptrtype, __abbrargtype, __abbraddressspc ) \
-    GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG_EXPLICIT( __func, __func, __rettype, __argptrtype, __addressspc, __argptrtype, __abbrargtype, __abbrargtype, __abbraddressspc )
+# define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __opcode, __rettype, __addressspc, __argptrtype, __abbrargtype, __abbraddressspc ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1VALARG_1PTRARG_EXPLICIT( __opcode, __opcode, __rettype, __argptrtype, __addressspc, __argptrtype, __abbrargtype, __abbrargtype, __abbraddressspc )
 
 #define GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( __func, __sfunc, __rettype, __argtype, __abbrargtype )         \
     __rettype##2 __func##_v2##__abbrargtype##_v2##__abbrargtype( __argtype##2 x, __argtype##2 y ) {        \
@@ -702,6 +745,51 @@ SPDX-License-Identifier: MIT
                                 __func##_##__abbrargtype0##_##__abbrargtype1(x.sf, y.sf) );                           \
     }
 
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV( __opcode, __rettype, __argtype0, __argtype1, __abbrargtype0, __abbrargtype1 ) \
+    __rettype##2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v2##__abbrargtype0##_v2##__abbrargtype1, )( __argtype0##2 x, __argtype1##2 y ) {      \
+        return (__rettype##2)( SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s0, y.s0),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s1, y.s1) );                            \
+    }                                                                                               \
+    __rettype##3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v3##__abbrargtype0##_v3##__abbrargtype1, )( __argtype0##3 x, __argtype1##3 y ) {      \
+        return (__rettype##3)( SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s0, y.s0),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s1, y.s1),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s2, y.s2) );                            \
+    }                                                                                               \
+    __rettype##4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v4##__abbrargtype0##_v4##__abbrargtype1, )( __argtype0##4 x, __argtype1##4 y ) {      \
+        return (__rettype##4)( SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s0, y.s0),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s1, y.s1),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s2, y.s2),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s3, y.s3) );                            \
+    }                                                                                               \
+    __rettype##8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v8##__abbrargtype0##_v8##__abbrargtype1, )( __argtype0##8 x, __argtype1##8 y ) {      \
+        return (__rettype##8)( SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s0, y.s0),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s1, y.s1),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s2, y.s2),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s3, y.s3),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s4, y.s4),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s5, y.s5),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s6, y.s6),                              \
+                               SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s7, y.s7) );                            \
+    }                                                                                               \
+    __rettype##16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v16##__abbrargtype0##_v16##__abbrargtype1, )( __argtype0##16 x, __argtype1##16 y ) { \
+        return (__rettype##16)( SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s0, y.s0),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s1, y.s1),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s2, y.s2),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s3, y.s3),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s4, y.s4),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s5, y.s5),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s6, y.s6),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s7, y.s7),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s8, y.s8),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.s9, y.s9),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.sa, y.sa),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.sb, y.sb),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.sc, y.sc),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.sd, y.sd),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.se, y.se),                             \
+                                SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(x.sf, y.sf) );                           \
+    }
+
 // TODO: get rid of this #else case when the legalizer can
 // fix up illegal types that GVN generates.
 #define GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __func, __rettype, __argtype0, __argtype1, __vecSize, __abbrargtype0, __abbrargtype1 ) \
@@ -725,6 +813,28 @@ SPDX-License-Identifier: MIT
     GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __func, __rettype, __argtype0, __argtype1, 4, __abbrargtype0, __abbrargtype1 ) \
     GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __func, __rettype, __argtype0, __argtype1, 8, __abbrargtype0, __abbrargtype1 ) \
     GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __func, __rettype, __argtype0, __argtype1, 16, __abbrargtype0, __abbrargtype1 )
+
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __opcode, __rettype, __argtype0, __argtype1, __vecSize, __abbrargtype0, __abbrargtype1 ) \
+    __rettype##__vecSize SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(__opcode, _v##__vecSize##__abbrargtype0##_v##__vecSize##__abbrargtype1, )( __argtype0##__vecSize x, __argtype1##__vecSize y ) {  \
+        __rettype##__vecSize ret;                                                                            \
+        __argtype0 argx[__vecSize];                                                                          \
+        __argtype1 argy[__vecSize];                                                                          \
+        __rettype  out[__vecSize];                                                                           \
+        VECTOARRAY##__vecSize(argx, x);                                                                      \
+        VECTOARRAY##__vecSize(argy, y);                                                                      \
+        for(uint i = 0; i < __vecSize; i++) {                                                                \
+            out[i] = SPIRV_OCL_BUILTIN(__opcode, _##__abbrargtype0##_##__abbrargtype1, )(argx[i], argy[i]);  \
+        }                                                                                                    \
+        ARRAYTOVEC##__vecSize(ret, out);                                                                     \
+        return ret;                                                                                          \
+    }
+
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __opcode, __rettype, __argtype0, __argtype1, __abbrargtype0, __abbrargtype1 )    \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __opcode, __rettype, __argtype0, __argtype1, 2, __abbrargtype0, __abbrargtype1 ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __opcode, __rettype, __argtype0, __argtype1, 3, __abbrargtype0, __abbrargtype1 ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __opcode, __rettype, __argtype0, __argtype1, 4, __abbrargtype0, __abbrargtype1 ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __opcode, __rettype, __argtype0, __argtype1, 8, __abbrargtype0, __abbrargtype1 ) \
+    GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP_SIZE( __opcode, __rettype, __argtype0, __argtype1, 16, __abbrargtype0, __abbrargtype1 )
 
 
 #define GENERATE_SPIRV_VECTOR_FUNCTIONS_2ARGS_VS( __opcode, __rettype, __vargtype, __sargtype, __abbrvargtype, __abbrsargtype ) \

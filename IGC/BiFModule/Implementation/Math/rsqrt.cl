@@ -9,31 +9,31 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __builtin_spirv_OpenCL_rsqrt_f32( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rsqrt, _f32, )( float x )
 {
     return __builtin_spirv_OpenCL_native_rsqrt_f32(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_rsqrt, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_rsqrt_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rsqrt, _f64, )( double x )
 {
     return __builtin_spirv_OpenCL_native_rsqrt_f64(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_rsqrt, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_rsqrt_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rsqrt, _f16, )( half x )
 {
     return __builtin_spirv_OpenCL_native_rsqrt_f16(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_rsqrt, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

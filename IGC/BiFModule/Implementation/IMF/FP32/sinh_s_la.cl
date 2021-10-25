@@ -167,7 +167,7 @@ __attribute__((always_inline))
 inline int __internal_ssinh_la_cout (float *a, float *r)
 {
     int nRet = 0;
-    float x = __builtin_spirv_OpenCL_fabs_f32 (*a);
+    float x = SPIRV_OCL_BUILTIN(fabs, _f32, ) (*a);
     union
     {
         unsigned int w;
@@ -177,11 +177,11 @@ inline int __internal_ssinh_la_cout (float *a, float *r)
     int index_mask;
     float ressign = ((*a) > 0.0f) ? 1.0f : -1.0f;
 
-    S.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (x, __ssinh_la_L2E.f, __ssinh_la_Shifter.f);
+    S.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (x, __ssinh_la_L2E.f, __ssinh_la_Shifter.f);
     N = S.f - __ssinh_la_Shifter.f;
 
-    R = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-N, __ssinh_la_L2H.f, x);
-    R = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-N, __ssinh_la_L2L.f, R);
+    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-N, __ssinh_la_L2H.f, x);
+    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-N, __ssinh_la_L2L.f, R);
 
     Th.w = S.w << 22;
 
@@ -191,11 +191,11 @@ inline int __internal_ssinh_la_cout (float *a, float *r)
 
     Tlr.w = index_mask & 0x329302AEu;
 
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, __ssinh_la_c5.f, __ssinh_la_c4.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, poly, __ssinh_la_c3.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, poly, __ssinh_la_c2.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, poly, __ssinh_la_c1.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, poly, Tlr.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, __ssinh_la_c5.f, __ssinh_la_c4.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __ssinh_la_c3.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __ssinh_la_c2.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __ssinh_la_c1.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, Tlr.f);
 
     xin.f = x;
     xa.w = xin.w & 0x7fffffffu;
@@ -203,7 +203,7 @@ inline int __internal_ssinh_la_cout (float *a, float *r)
     if (xa.w > 0x42AEAC4Fu)
         goto SINHF_SPECIAL;
 
-    res.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, Th.f, Th.f);
+    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Th.f, Th.f);
 
     *r = ressign * 0.5f * res.f;
     return nRet;
@@ -233,7 +233,7 @@ inline int __internal_ssinh_la_cout (float *a, float *r)
 
     Th.w ^= (index_mask & 0x7504F3u);
 
-    res.f = 0.5f * __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, Th.f, Th.f);
+    res.f = 0.5f * SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Th.f, Th.f);
     res.f *= Th2.f;
 
     *r = ressign * res.f;
@@ -293,7 +293,7 @@ float __ocl_svml_sinhf (float a)
         sXSign = as_float ((as_uint (sXSign) & as_uint (va1)));
         sAbsX = as_float ((as_uint (sXSign) ^ as_uint (va1)));
 
-        sM = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sAbsX, sInvLn2, sShifter);
+        sM = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sAbsX, sInvLn2, sShifter);
 
         iAbsX = as_uint (sAbsX);
         iRangeMask = ((unsigned int) (-(signed int) ((signed int) iAbsX > (signed int) iDomainRange)));
@@ -303,8 +303,8 @@ float __ocl_svml_sinhf (float a)
         sN = (sM - sShifter);
         sOut = as_float (__internal_ssinh_la_data._sLn2hi);
         sG1 = as_float (__internal_ssinh_la_data._sLn2lo);
-        sR = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sOut), sN, sAbsX);
-        sR = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sG1), sN, sR);
+        sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sOut), sN, sAbsX);
+        sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sG1), sN, sR);
 
         iM = as_uint (sM);
         iM = ((unsigned int) (iM) << (23));
@@ -318,15 +318,15 @@ float __ocl_svml_sinhf (float a)
         sG1 = (sG1 + sG2);
         sG2 = (sM - sG2);
 
-        sSinh_r = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPC[4], sR2, sPC[2]);
+        sSinh_r = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPC[4], sR2, sPC[2]);
         sSinh_r = (sSinh_r * sR2);
-        sSinh_r = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sSinh_r, sR, sR);
+        sSinh_r = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sSinh_r, sR, sR);
 
-        sOut = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPC[5], sR2, sPC[3]);
-        sOut = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sOut, sR2, sPC[1]);
+        sOut = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPC[5], sR2, sPC[3]);
+        sOut = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sOut, sR2, sPC[1]);
         sOut = (sOut * sR2);
         sOut = (sOut * sG2);
-        sOut = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sG1, sSinh_r, sOut);
+        sOut = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sG1, sSinh_r, sOut);
         sOut = (sOut + sG2);
         vr1 = as_float ((as_uint (sXSign) | as_uint (sOut)));
     }

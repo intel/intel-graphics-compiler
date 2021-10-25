@@ -782,67 +782,67 @@ double __ocl_svml_atanpi (double a)
         AT_dR2 = (AT_dR * AT_dR);
         AT_D_A21 = as_double (__internal_datanpi_la_data.AT_D_A21);
         AT_D_A20 = as_double (__internal_datanpi_la_data.AT_D_A20);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_D_A21, AT_dR2, AT_D_A20);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_D_A21, AT_dR2, AT_D_A20);
 
         AT_D_A19 = as_double (__internal_datanpi_la_data.AT_D_A19);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A19);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A19);
 
         AT_D_A18 = as_double (__internal_datanpi_la_data.AT_D_A18);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A18);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A18);
 
         AT_D_A17 = as_double (__internal_datanpi_la_data.AT_D_A17);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A17);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A17);
 
         AT_D_A16 = as_double (__internal_datanpi_la_data.AT_D_A16);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A16);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A16);
 
         AT_D_A15 = as_double (__internal_datanpi_la_data.AT_D_A15);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A15);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A15);
 
         AT_D_A14 = as_double (__internal_datanpi_la_data.AT_D_A14);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A14);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A14);
 
         AT_D_A13 = as_double (__internal_datanpi_la_data.AT_D_A13);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A13);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A13);
 
         AT_D_A12 = as_double (__internal_datanpi_la_data.AT_D_A12);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A12);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A12);
 
         AT_D_A11 = as_double (__internal_datanpi_la_data.AT_D_A11);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A11);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A11);
 
         AT_D_A10 = as_double (__internal_datanpi_la_data.AT_D_A10);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A10);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A10);
 
         AT_D_A09 = as_double (__internal_datanpi_la_data.AT_D_A09);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A09);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A09);
 
         AT_D_A08 = as_double (__internal_datanpi_la_data.AT_D_A08);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A08);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A08);
 
         AT_D_A07 = as_double (__internal_datanpi_la_data.AT_D_A07);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A07);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A07);
 
         AT_D_A06 = as_double (__internal_datanpi_la_data.AT_D_A06);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A06);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A06);
 
         AT_D_A05 = as_double (__internal_datanpi_la_data.AT_D_A05);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A05);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A05);
 
         AT_D_A04 = as_double (__internal_datanpi_la_data.AT_D_A04);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A04);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A04);
 
         AT_D_A03 = as_double (__internal_datanpi_la_data.AT_D_A03);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A03);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A03);
 
         AT_D_A02 = as_double (__internal_datanpi_la_data.AT_D_A02);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A02);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A02);
 
         AT_D_A01 = as_double (__internal_datanpi_la_data.AT_D_A01);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A01);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A01);
 
         AT_D_A00 = as_double (__internal_datanpi_la_data.AT_D_A00);
-        AT_dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (AT_dP, AT_dR2, AT_D_A00);
+        AT_dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (AT_dP, AT_dR2, AT_D_A00);
 
         AT_dP = (AT_dP * AT_dR);
 

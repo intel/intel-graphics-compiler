@@ -26,14 +26,14 @@ INLINE float __intel_asinh_f32( float x, bool doFast )
         // I don't think we should have to handle it.
         if( x > 1500.0f )
         {
-            result = __builtin_spirv_OpenCL_log_f32(x) + M_LN2_F;
+            result = SPIRV_OCL_BUILTIN(log, _f32, )(x) + M_LN2_F;
         }
         else
         {
             result = x * x + 1.0f;
-            result = __builtin_spirv_OpenCL_sqrt_f32( result );
+            result = SPIRV_OCL_BUILTIN(sqrt, _f32, )( result );
             result = x + result;
-            result = __builtin_spirv_OpenCL_log_f32( result );
+            result = SPIRV_OCL_BUILTIN(log, _f32, )( result );
         }
     }
     else
@@ -44,31 +44,31 @@ INLINE float __intel_asinh_f32( float x, bool doFast )
     return result;
 }
 
-INLINE float __builtin_spirv_OpenCL_asinh_f32( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asinh, _f32, )( float x )
 {
     return __intel_asinh_f32( x, true );
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_asinh, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( asinh, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_asinh_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asinh, _f64, )( double x )
 {
     return __ocl_svml_asinh(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_asinh, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( asinh, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_asinh_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asinh, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_asinh_f32((float)x);
+    return SPIRV_OCL_BUILTIN(asinh, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_asinh, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( asinh, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

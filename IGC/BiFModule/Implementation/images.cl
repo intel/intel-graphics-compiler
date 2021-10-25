@@ -111,7 +111,7 @@ uint4 __intel_sample_image_lod_icoords_Ruint4( SampledImage_t SampledImage, int4
             if( isImageArrayed( SampledImage ) )
             {
                 int dt = __builtin_IB_get_image_array_size(image_id);
-                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(__builtin_spirv_OpenCL_rint_f32((float)Coordinate.y), 0.0f, (float)(dt - 1));
+                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.y), 0.0f, (float)(dt - 1));
                 float floatCoords = SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(Coordinate.x);
                 return as_uint4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, (float2)(floatCoords, layer), Lod));
             }
@@ -125,7 +125,7 @@ uint4 __intel_sample_image_lod_icoords_Ruint4( SampledImage_t SampledImage, int4
             if( isImageArrayed( SampledImage ) )
             {
                 int dt = __builtin_IB_get_image_array_size(image_id);
-                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(__builtin_spirv_OpenCL_rint_f32((float)Coordinate.z), 0.0f, (float)(dt - 1));
+                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.z), 0.0f, (float)(dt - 1));
                 float2 floatCoords = SPIRV_BUILTIN(ConvertSToF, _v2f32_v2i32, _Rfloat2)(Coordinate.xy);
                 return as_uint4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float4)(floatCoords, layer, 0.0f), Lod));
             }
@@ -148,7 +148,7 @@ uint4 __intel_sample_image_lod_icoords_Ruint4( SampledImage_t SampledImage, int4
             if( isImageArrayed( SampledImage ) )
             {
                 int dt = __builtin_IB_get_image_array_size(image_id);
-                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(__builtin_spirv_OpenCL_rint_f32((float)Coordinate.y), 0.0f, (float)(dt - 1));
+                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.y), 0.0f, (float)(dt - 1));
                 return __builtin_IB_OCL_1darr_ldui( image_id, (int2)(Coordinate.x, (int)layer), float_lod );
             }
             else
@@ -161,7 +161,7 @@ uint4 __intel_sample_image_lod_icoords_Ruint4( SampledImage_t SampledImage, int4
             if( isImageArrayed( SampledImage ) )
             {
                 int dt = __builtin_IB_get_image_array_size(image_id);
-                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(__builtin_spirv_OpenCL_rint_f32((float)Coordinate.z), 0.0f, (float)(dt - 1));
+                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.z), 0.0f, (float)(dt - 1));
                 return __builtin_IB_OCL_2darr_ldui( image_id, (int4)(Coordinate.xy, (int)layer, 0), float_lod );
             }
             else
@@ -191,7 +191,7 @@ uint4 __intel_sample_image_lod_fcoords_Ruint4( SampledImage_t SampledImage, floa
             if (Lod == 0.0f)
             {
                 int dt = __builtin_IB_get_image_array_size(image_id);
-                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(__builtin_spirv_OpenCL_rint_f32(Coordinate.y), 0.0f, (float)(dt - 1));
+                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )(Coordinate.y), 0.0f, (float)(dt - 1));
                 if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
                 {
                     float tmpCoords = Coordinate.x;
@@ -200,7 +200,7 @@ uint4 __intel_sample_image_lod_fcoords_Ruint4( SampledImage_t SampledImage, floa
                         float width = (float)(__builtin_IB_get_image_width(image_id));
                         tmpCoords = (float)(width*Coordinate.x);
                     }
-                    int2 intCoords = SPIRV_BUILTIN(ConvertFToS, _v2i32_v2f32, _Rint2)((float2)(__builtin_spirv_OpenCL_floor_f32(tmpCoords),layer));
+                    int2 intCoords = SPIRV_BUILTIN(ConvertFToS, _v2i32_v2f32, _Rint2)((float2)(SPIRV_OCL_BUILTIN(floor, _f32, )(tmpCoords),layer));
                     return __builtin_IB_OCL_1darr_ldui(image_id, intCoords, 0);
                 }
                 else
@@ -226,7 +226,7 @@ uint4 __intel_sample_image_lod_fcoords_Ruint4( SampledImage_t SampledImage, floa
             if (Lod == 0.0f)
             {
                 int dt = __builtin_IB_get_image_array_size(image_id);
-                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(__builtin_spirv_OpenCL_rint_f32(Coordinate.z), 0.0f, (float)(dt - 1));
+                float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )(Coordinate.z), 0.0f, (float)(dt - 1));
                 if ((__builtin_IB_get_address_mode( sampler_id ) & 0x07) == CLK_ADDRESS_CLAMP)
                 {
                     float2 tmpCoords = Coordinate.xy;
@@ -235,7 +235,7 @@ uint4 __intel_sample_image_lod_fcoords_Ruint4( SampledImage_t SampledImage, floa
                         float2 dim = SPIRV_BUILTIN(ConvertUToF, _v2f32_v2i32, _Rfloat2)((uint2)(__builtin_IB_get_image_width(image_id), __builtin_IB_get_image_height(image_id)));
                         tmpCoords = Coordinate.xy*dim;
                     }
-                    int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)((float4)(__builtin_spirv_OpenCL_floor_v2f32(tmpCoords), layer, 0.0f));
+                    int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)((float4)(SPIRV_OCL_BUILTIN(floor, _v2f32, )(tmpCoords), layer, 0.0f));
                     return __builtin_IB_OCL_2darr_ldui(image_id, intCoords, 0);
                 }
                 else
@@ -275,7 +275,7 @@ uint4 __intel_sample_image_lod_fcoords_Ruint4( SampledImage_t SampledImage, floa
                             (uint2)(__builtin_IB_get_image_width(image_id), __builtin_IB_get_image_height(image_id)));
                         coords = coords * dim;
                     }
-                    int2 intCoords = SPIRV_BUILTIN(ConvertFToS, _v2i32_v2f32, _Rint2)(__builtin_spirv_OpenCL_floor_v2f32(coords));
+                    int2 intCoords = SPIRV_BUILTIN(ConvertFToS, _v2i32_v2f32, _Rint2)(SPIRV_OCL_BUILTIN(floor, _v2f32, )(coords));
                     return __builtin_IB_OCL_2d_ldui(image_id, intCoords, 0);
                 }
                 else
@@ -305,7 +305,7 @@ uint4 __intel_sample_image_lod_fcoords_Ruint4( SampledImage_t SampledImage, floa
                             (uint4)(__builtin_IB_get_image_width(image_id), __builtin_IB_get_image_height(image_id), __builtin_IB_get_image_depth(image_id), 0));
                         Coordinate = Coordinate*dim;
                     }
-                    int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)(__builtin_spirv_OpenCL_floor_v4f32(Coordinate));
+                    int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)(SPIRV_OCL_BUILTIN(floor, _v4f32, )(Coordinate));
                     return __builtin_IB_OCL_3d_ldui(image_id, intCoords, 0);
                 }
                 else

@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( atan, float, float )
 
 INLINE double OVERLOADABLE atan( double x )
 {
-    return __builtin_spirv_OpenCL_atan_f64( x );
+    return SPIRV_OCL_BUILTIN(atan, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( atan, double, double )

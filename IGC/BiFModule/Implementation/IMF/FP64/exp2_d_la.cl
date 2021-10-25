@@ -466,12 +466,12 @@ double __ocl_svml_exp2 (double a)
 
         dR = (va1 - dN);
 
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC[3], dR, dPC[2]);
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dR, dPC[1]);
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dR, dPC[0]);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC[3], dR, dPC[2]);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dR, dPC[1]);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dR, dPC[0]);
         dR = (dR * dT);
 
-        dN = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dR, dT);
+        dN = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dR, dT);
 
         lX = as_ulong (dN);
         lX = (lX + lM);

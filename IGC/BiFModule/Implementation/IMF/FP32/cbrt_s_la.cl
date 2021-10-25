@@ -1032,9 +1032,9 @@ float __ocl_svml_cbrtf (float a)
 
         sP3 = as_float (__internal_scbrt_la_data._sP3);
         sP2 = as_float (__internal_scbrt_la_data._sP2);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP3, sR, sP2);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP3, sR, sP2);
         sP1 = as_float (__internal_scbrt_la_data._sP1);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sP1);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sP1);
         sCbrtHiR = (sCbrtHL[0] * sR);
 
         sP = (sP * sCbrtHiR);

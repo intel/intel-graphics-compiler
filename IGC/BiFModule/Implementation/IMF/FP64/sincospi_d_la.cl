@@ -150,17 +150,17 @@ void __ocl_svml_sincospi (double a,  __private double *b, __private double *c)
         c1 = as_double (__internal_dsincospi_data._c1);
         c0 = as_double (__internal_dsincospi_data._c0);
 
-        spoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (c8, Rs2, c7);
-        cpoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (c8, Rc2, c7);
-        spoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (spoly, Rs2, c6);
-        cpoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (cpoly, Rc2, c6);
-        spoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (spoly, Rs2, c5);
-        cpoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (cpoly, Rc2, c5);
-        spoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (spoly, Rs2, c4);
-        cpoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (cpoly, Rc2, c4);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (c8, Rs2, c7);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (c8, Rc2, c7);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (spoly, Rs2, c6);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (cpoly, Rc2, c6);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (spoly, Rs2, c5);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (cpoly, Rc2, c5);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (spoly, Rs2, c4);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (cpoly, Rc2, c4);
 
-        spoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (spoly, Rs2, c3);
-        cpoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (cpoly, Rc2, c3);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (spoly, Rs2, c3);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (cpoly, Rc2, c3);
 
         zero = as_double (__internal_dsincospi_data._zero);
         SgnMask = as_double (__internal_dsincospi_data._SgnMask);
@@ -171,12 +171,12 @@ void __ocl_svml_sincospi (double a,  __private double *b, __private double *c)
         sgn_s = as_double ((((~as_ulong (Rs_msk)) & as_ulong (sgn_x)) | (as_ulong (Rs_msk) & as_ulong (sgn_N))));
         sgn_c = as_double ((as_ulong (sgn_N) & as_ulong (Rc_msk)));
 
-        spoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (spoly, Rs2, c2);
-        cpoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (cpoly, Rc2, c2);
-        spoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (spoly, Rs2, c1);
-        cpoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (cpoly, Rc2, c1);
-        spoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (spoly, Rs2, c0);
-        cpoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (cpoly, Rc2, c0);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (spoly, Rs2, c2);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (cpoly, Rc2, c2);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (spoly, Rs2, c1);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (cpoly, Rc2, c1);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (spoly, Rs2, c0);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (cpoly, Rc2, c0);
 
         Rs = as_double ((as_ulong (Rs) ^ as_ulong (sgn_s)));
         Rc = as_double ((as_ulong (Rc) ^ as_ulong (sgn_c)));

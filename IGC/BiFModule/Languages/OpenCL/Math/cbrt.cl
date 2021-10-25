@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE cbrt( float x )
 {
-    return __builtin_spirv_OpenCL_cbrt_f32( x );
+    return SPIRV_OCL_BUILTIN(cbrt, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( cbrt, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( cbrt, float, float )
 
 INLINE double OVERLOADABLE cbrt( double x )
 {
-    return __builtin_spirv_OpenCL_cbrt_f64( x );
+    return SPIRV_OCL_BUILTIN(cbrt, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( cbrt, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( cbrt, double, double )
 
 INLINE half OVERLOADABLE cbrt( half x )
 {
-    return __builtin_spirv_OpenCL_cbrt_f16( x );
+    return SPIRV_OCL_BUILTIN(cbrt, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( cbrt, half, half )

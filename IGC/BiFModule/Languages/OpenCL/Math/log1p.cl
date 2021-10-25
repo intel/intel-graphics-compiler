@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE log1p( float a )
 {
-    return __builtin_spirv_OpenCL_log1p_f32( a );
+    return SPIRV_OCL_BUILTIN(log1p, _f32, )( a );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, float, float )
 
 INLINE double OVERLOADABLE log1p( double a )
 {
-    return __builtin_spirv_OpenCL_log1p_f64( a );
+    return SPIRV_OCL_BUILTIN(log1p, _f64, )( a );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, double, double )
 
 INLINE half OVERLOADABLE log1p( half x )
 {
-    return __builtin_spirv_OpenCL_log1p_f16( x );
+    return SPIRV_OCL_BUILTIN(log1p, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, half, half )

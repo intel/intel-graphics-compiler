@@ -573,7 +573,7 @@ double __ocl_svml_acosh (double a)
         dU = (va1 - One);
         dV = (va1 + One);
         dTmp5 = (dU * dV);
-        dTmpf2 = (__builtin_spirv_OpenCL_sqrt_f64 (dTmp5));
+        dTmpf2 = (SPIRV_OCL_BUILTIN(sqrt, _f64, ) (dTmp5));
         dH = (dU + dTmpf2);
         A = ((One > dH) ? One : dH);
         B = ((One < dH) ? One : dH);
@@ -647,7 +647,7 @@ double __ocl_svml_acosh (double a)
         FpExpon = (FpExpon - DBias);
         K = (FpExpon * L2);
 
-        Rh = __builtin_spirv_OpenCL_fma_f64_f64_f64 (X, DblRcp1, -(One));
+        Rh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (X, DblRcp1, -(One));
         Rl = (Xl * DblRcp1);
         R = (Rh + Rl);
 
@@ -658,11 +658,11 @@ double __ocl_svml_acosh (double a)
         poly_coeff[3] = as_double (__internal_dacosh_la_data.poly_coeff[1]);
         poly_coeff[2] = as_double (__internal_dacosh_la_data.poly_coeff[2]);
         poly_coeff[1] = as_double (__internal_dacosh_la_data.poly_coeff[3]);
-        P34 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly_coeff[4], R, poly_coeff[3]);
-        P12 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly_coeff[2], R, poly_coeff[1]);
+        P34 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[4], R, poly_coeff[3]);
+        P12 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[2], R, poly_coeff[1]);
         R2 = (R * R);
-        P = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P34, R2, P12);
-        P = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P, R2, Rl);
+        P = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P34, R2, P12);
+        P = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P, R2, Rl);
         R = (R + P);
         R = (R + T);
         vr1 = (R + K);

@@ -9,26 +9,26 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __builtin_spirv_OpenCL_mad_f32_f32_f32( float a, float b, float c )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )( float a, float b, float c )
 {
-    return __builtin_spirv_OpenCL_fma_f32_f32_f32(a,b,c);
+    return SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(a,b,c);
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_mad, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( mad, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_mad_f64_f64_f64( double a, double b, double c )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )( double a, double b, double c )
 {
-    return __builtin_spirv_OpenCL_fma_f64_f64_f64(a,b,c);
+    return SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(a,b,c);
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_mad, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( mad, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_mad, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( mad, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

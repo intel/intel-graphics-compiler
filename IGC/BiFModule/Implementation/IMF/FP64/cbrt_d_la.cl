@@ -646,17 +646,17 @@ double __ocl_svml_cbrt (double a)
         dZ = (dR * dRcp);
         dA7 = as_double (__internal_dcbrt_la_data._dA7);
         dA6 = as_double (__internal_dcbrt_la_data._dA6);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dA7, dZ, dA6);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dA7, dZ, dA6);
         dA5 = as_double (__internal_dcbrt_la_data._dA5);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP, dZ, dA5);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dZ, dA5);
         dA4 = as_double (__internal_dcbrt_la_data._dA4);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP, dZ, dA4);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dZ, dA4);
         dA3 = as_double (__internal_dcbrt_la_data._dA3);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP, dZ, dA3);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dZ, dA3);
         dA2 = as_double (__internal_dcbrt_la_data._dA2);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP, dZ, dA2);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dZ, dA2);
         dA1 = as_double (__internal_dcbrt_la_data._dA1);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP, dZ, dA1);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dZ, dA1);
         dCbrt[0] = (dCbrt[0] * d2k);
 
         dCbrtHiZ = (dCbrt[0] * dZ);

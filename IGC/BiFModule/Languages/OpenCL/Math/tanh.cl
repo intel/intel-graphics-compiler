@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE tanh( float x )
 {
-    return __builtin_spirv_OpenCL_tanh_f32( x );
+    return SPIRV_OCL_BUILTIN(tanh, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, float, float )
 
 INLINE double OVERLOADABLE tanh( double x )
 {
-    return __builtin_spirv_OpenCL_tanh_f64( x );
+    return SPIRV_OCL_BUILTIN(tanh, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, double, double )
 
 INLINE half OVERLOADABLE tanh( half x )
 {
-    return __builtin_spirv_OpenCL_tanh_f16( x );
+    return SPIRV_OCL_BUILTIN(tanh, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, half, half )

@@ -765,7 +765,7 @@ double __ocl_svml_log (double a)
         BrMask1 = as_double ((unsigned long) ((va1 < MinNorm) ? 0xffffffffffffffff : 0x0));
         BrMask2 = as_double ((unsigned long) (((!(va1 <= MaxNorm)) ? 0xffffffffffffffff : 0x0)));
 
-        SglRcp = __builtin_spirv_OpenCL_rint_f32 (SglRcp);
+        SglRcp = SPIRV_OCL_BUILTIN(rint, _f32, ) (SglRcp);
         DblRcp = ((double) (SglRcp));
 
         FpExpon = ((double) ((int) (IExpon)));
@@ -776,7 +776,7 @@ double __ocl_svml_log (double a)
         vm = BrMask;
 
         One = as_double (__internal_dln_la_data.One);
-        R = __builtin_spirv_OpenCL_fma_f64_f64_f64 (Mantissa, DblRcp, -(One));
+        R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (Mantissa, DblRcp, -(One));
 
         Index = as_ulong (DblRcp);
         Index = ((unsigned long) (Index) >> (52 - 9 - 3));
@@ -798,10 +798,10 @@ double __ocl_svml_log (double a)
         poly_coeff[2] = as_double (__internal_dln_la_data.poly_coeff[2]);
         poly_coeff[1] = as_double (__internal_dln_la_data.poly_coeff[3]);
 
-        P34 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly_coeff[4], R, poly_coeff[3]);
-        P12 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly_coeff[2], R, poly_coeff[1]);
+        P34 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[4], R, poly_coeff[3]);
+        P12 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[2], R, poly_coeff[1]);
         R2 = (R * R);
-        P = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P34, R2, P12);
+        P = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P34, R2, P12);
         P = (P * R2);
         R = (R + P);
         R = (R + T);

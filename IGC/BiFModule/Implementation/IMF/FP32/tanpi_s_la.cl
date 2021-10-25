@@ -1839,14 +1839,14 @@ float __ocl_svml_tanpif (float a)
 
         sP1 = as_float (__internal_stanpi_la_data._sP1);
         sP0 = as_float (__internal_stanpi_la_data._sP0);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP1, sR2, sP0);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP1, sR2, sP0);
         sP = (sP * sR);
 
         sQ2 = as_float (__internal_stanpi_la_data._sQ2);
         sQ1 = as_float (__internal_stanpi_la_data._sQ1);
-        sQ = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sQ2, sR2, sQ1);
+        sQ = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sQ2, sR2, sQ1);
         sQ0 = as_float (__internal_stanpi_la_data._sQ0);
-        sQ = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sQ, sR2, sQ0);
+        sQ = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sQ, sR2, sQ0);
 
         sNum = as_float ((((~as_uint (sInvMask)) & as_uint (sP)) | (as_uint (sInvMask) & as_uint (sQ))));
         sDen = as_float ((((~as_uint (sInvMask)) & as_uint (sQ)) | (as_uint (sInvMask) & as_uint (sP))));

@@ -127,25 +127,25 @@ inline int __internal_sexp2_la_cout (float *a, float *r)
         float f;
     } T, T2, xi, res;
 
-    fN = __builtin_spirv_OpenCL_rint_f32 (x);
+    fN = SPIRV_OCL_BUILTIN(rint, _f32, ) (x);
     R = x - fN;
 
     sN = (int) fN;
 
     N = sN;
 
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (__sexp2_la_c6.f, R, __sexp2_la_c5.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__sexp2_la_c6.f, R, __sexp2_la_c5.f);
 
-    High = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, 0.5f, 1.0f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexp2_la_c4.f);
+    High = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, 0.5f, 1.0f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexp2_la_c4.f);
 
     Rh = High - 1.0f;
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexp2_la_c3.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexp2_la_c3.f);
 
-    Rl = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, 0.5f, -Rh);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexp2_la_c2.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sexp2_la_c1.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, Rl);
+    Rl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, 0.5f, -Rh);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexp2_la_c2.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sexp2_la_c1.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, Rl);
     res.f = High + poly;
 
     if (((unsigned int) (N + 0x7f - 2)) > 124 + 0x7f)
@@ -171,9 +171,9 @@ inline int __internal_sexp2_la_cout (float *a, float *r)
         }
     }
 
-    x = __builtin_spirv_OpenCL_fmin_f32_f32 (x, 192.0f);
-    x = __builtin_spirv_OpenCL_fmax_f32_f32 (x, -192.0f);
-    fN = __builtin_spirv_OpenCL_rint_f32 (x);
+    x = SPIRV_OCL_BUILTIN(fmin, _f32_f32, ) (x, 192.0f);
+    x = SPIRV_OCL_BUILTIN(fmax, _f32_f32, ) (x, -192.0f);
+    fN = SPIRV_OCL_BUILTIN(rint, _f32, ) (x);
     sN = (int) fN;
 
     sN2 = sN >> 1;

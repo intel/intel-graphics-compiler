@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/sinh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-float __builtin_spirv_OpenCL_sinh_f32( float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinh, _f32, )( float x )
 {
     float result;
 
@@ -22,14 +22,14 @@ float __builtin_spirv_OpenCL_sinh_f32( float x )
     {
         // For most inputs, we'll use the expansion
         //  sinh(x) = 0.5f * ( e^x - e^-x ):
-        float pexp = __builtin_spirv_OpenCL_exp_f32(  x );
-        float nexp = __builtin_spirv_OpenCL_exp_f32( -x );
+        float pexp = SPIRV_OCL_BUILTIN(exp, _f32, )(  x );
+        float nexp = SPIRV_OCL_BUILTIN(exp, _f32, )( -x );
         result = 0.5f * ( pexp - nexp );
 
         // For x close to zero, we'll simply use x.
         // We use 2^-10 as our cutoff value for
         // "close to zero".
-        float px = __builtin_spirv_OpenCL_fabs_f32( x );
+        float px = SPIRV_OCL_BUILTIN(fabs, _f32, )( x );
         result = ( px > as_float(0x3A800000) ) ? result : x;
     }
     else
@@ -40,26 +40,26 @@ float __builtin_spirv_OpenCL_sinh_f32( float x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sinh, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_sinh_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinh, _f64, )( double x )
 {
     return __ocl_svml_sinh(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sinh, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_sinh_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sinh, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_sinh_f32((float)x);
+    return SPIRV_OCL_BUILTIN(sinh, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sinh, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

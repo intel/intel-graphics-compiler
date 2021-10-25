@@ -1386,16 +1386,16 @@ double __ocl_svml_tanh (double a)
             as_double (((__constant unsigned long *) ((__constant char *) (&__internal_dtanh_la_data._dbP[0]) + 12 * 8))[(iIndex >> 3) + 1]);
 
         dScaledX = (dAbsX + p[12]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (p[11], dScaledX, p[10]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[9]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[8]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[7]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[6]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[5]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[4]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[3]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[2]);
-        poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly, dScaledX, p[1]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (p[11], dScaledX, p[10]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[9]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[8]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[7]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[6]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[5]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[4]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[3]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[2]);
+        poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, dScaledX, p[1]);
 
         vr1 = as_double ((as_ulong (poly) | as_ulong (dSignX)));
     }

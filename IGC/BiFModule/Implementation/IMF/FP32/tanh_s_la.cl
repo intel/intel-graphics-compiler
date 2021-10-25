@@ -229,12 +229,12 @@ float __ocl_svml_tanhf (float a)
         sP[5] = as_float (((__constant unsigned int *) ((__constant float *) (&__internal_stanh_la_data._sP5)))[iIndex >> 2]);
         sP[6] = as_float (((__constant unsigned int *) ((__constant float *) (&__internal_stanh_la_data._sP6)))[iIndex >> 2]);
         sP[7] = as_float (((__constant unsigned int *) ((__constant float *) (&__internal_stanh_la_data._sP7)))[iIndex >> 2]);
-        sPoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP[7], sAbsX, sP[6]);
-        sPoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly, sAbsX, sP[5]);
-        sPoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly, sAbsX, sP[4]);
-        sPoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly, sAbsX, sP[3]);
-        sPoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly, sAbsX, sP[2]);
-        sPoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly, sAbsX, sP[0]);
+        sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP[7], sAbsX, sP[6]);
+        sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly, sAbsX, sP[5]);
+        sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly, sAbsX, sP[4]);
+        sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly, sAbsX, sP[3]);
+        sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly, sAbsX, sP[2]);
+        sPoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly, sAbsX, sP[0]);
         vr1 = as_float ((as_uint (sPoly) | as_uint (sSignX)));
     }
 

@@ -547,22 +547,22 @@ float __ocl_svml_log2f (float a)
         sPoly[7] = as_float (__internal_slog2_la_data.sPoly[1]);
         sPoly[6] = as_float (__internal_slog2_la_data.sPoly[2]);
         sPoly[5] = as_float (__internal_slog2_la_data.sPoly[3]);
-        sP78 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly[8], sR, sPoly[7]);
-        sP56 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly[6], sR, sPoly[5]);
+        sP78 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly[8], sR, sPoly[7]);
+        sP56 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly[6], sR, sPoly[5]);
         sR2 = (sR * sR);
         sPoly[4] = as_float (__internal_slog2_la_data.sPoly[4]);
         sPoly[3] = as_float (__internal_slog2_la_data.sPoly[5]);
-        sP34 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly[4], sR, sPoly[3]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP78, sR2, sP56);
+        sP34 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly[4], sR, sPoly[3]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP78, sR2, sP56);
         sPoly[2] = as_float (__internal_slog2_la_data.sPoly[6]);
         sPoly[1] = as_float (__internal_slog2_la_data.sPoly[7]);
-        sP12 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPoly[2], sR, sPoly[1]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR2, sP34);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR2, sP12);
+        sP12 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPoly[2], sR, sPoly[1]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR2, sP34);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR2, sP12);
         sPoly[0] = as_float (__internal_slog2_la_data.sPoly[8]);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPoly[0]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPoly[0]);
 
-        vr1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, FpExpon);
+        vr1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, FpExpon);
     }
 
     if ((vm) != 0)

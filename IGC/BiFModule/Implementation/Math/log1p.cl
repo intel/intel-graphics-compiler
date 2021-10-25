@@ -14,11 +14,11 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/log1p_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float __builtin_spirv_OpenCL_log1p_f32( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log1p, _f32, )( float x )
 {
     if(__FastRelaxedMath && (!__APIRS))
     {
-        return __builtin_spirv_OpenCL_log_f32( x + 1.0f );
+        return SPIRV_OCL_BUILTIN(log, _f32, )( x + 1.0f );
     }
     else
     {
@@ -26,26 +26,26 @@ INLINE float __builtin_spirv_OpenCL_log1p_f32( float x )
     }
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log1p, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_log1p_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log1p, _f64, )( double x )
 {
     return __ocl_svml_log1p(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log1p, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_log1p_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log1p, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_log1p_f32((float)x);
+    return SPIRV_OCL_BUILTIN(log1p, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log1p, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log1p, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

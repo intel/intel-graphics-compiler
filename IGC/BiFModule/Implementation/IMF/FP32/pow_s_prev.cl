@@ -86,7 +86,7 @@ ulong _castf64_u64(double a)
 __attribute__((always_inline))
 double _nearbyint(double a)
 {
-  return __builtin_spirv_OpenCL_round_f64(a);
+  return SPIRV_OCL_BUILTIN(round, _f64, )(a);
 }
 #endif
 
@@ -1989,7 +1989,7 @@ float __ocl_svml_spow_cout_rare (const float a, const float b)
                             {
                                 flTmp1 = (flAi * flAi);
                                 if (SPIRV_BUILTIN(IsInf, _f32, )(flAi))
-                                    flTmp1 = __builtin_spirv_OpenCL_fabs_f32(flAi);
+                                    flTmp1 = SPIRV_OCL_BUILTIN(fabs, _f32, )(flAi);
                                 else
                                     flTmp1 = (flTmp1 * flBi);
                                 r =
@@ -2278,7 +2278,7 @@ float __ocl_svml_px_powf1 (float a, float b)
         iM = ((VUINT32) iM << 23);
 
         sLn2hi = as_float(__ocl_svml_spow_data._sLn2hi);
-        sR = __builtin_spirv_OpenCL_fma_f32_f32_f32(sZ[0],1.0f,-(sN * sLn2hi));
+        sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(sZ[0],1.0f,-(sN * sLn2hi));
         sLn2lo = as_float(__ocl_svml_spow_data._sLn2lo);
         sR = (sR - (sN * sLn2lo));
         sR = (sR + sZ[1]);

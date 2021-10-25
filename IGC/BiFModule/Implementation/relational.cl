@@ -92,18 +92,18 @@ SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, double, f64)
 
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsInf, _f16, )(half x)
 {
-    return __builtin_spirv_OpenCL_fabs_f16(x) == (half)(INFINITY);
+    return SPIRV_OCL_BUILTIN(fabs, _f16, )(x) == (half)(INFINITY);
 }
 
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsInf, _f32, )(float x)
 {
-    return __builtin_spirv_OpenCL_fabs_f32(x) == (float)(INFINITY);
+    return SPIRV_OCL_BUILTIN(fabs, _f32, )(x) == (float)(INFINITY);
 }
 
 #if defined(cl_khr_fp64)
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsInf, _f64, )(double x)
 {
-    return __builtin_spirv_OpenCL_fabs_f64(x) == (double)(INFINITY);
+    return SPIRV_OCL_BUILTIN(fabs, _f64, )(x) == (double)(INFINITY);
 }
 #endif
 
@@ -115,18 +115,18 @@ SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsInf, __bool, double, f64)
 
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsFinite, _f16, )(half x)
 {
-    return __builtin_spirv_OpenCL_fabs_f16(x) < (half)(INFINITY);
+    return SPIRV_OCL_BUILTIN(fabs, _f16, )(x) < (half)(INFINITY);
 }
 
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsFinite, _f32, )(float x)
 {
-    return __builtin_spirv_OpenCL_fabs_f32(x) < (float)(INFINITY);
+    return SPIRV_OCL_BUILTIN(fabs, _f32, )(x) < (float)(INFINITY);
 }
 
 #if defined(cl_khr_fp64)
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsFinite, _f64, )(double x)
 {
-    return __builtin_spirv_OpenCL_fabs_f64(x) < (double)(INFINITY);
+    return SPIRV_OCL_BUILTIN(fabs, _f64, )(x) < (double)(INFINITY);
 }
 #endif
 
@@ -138,18 +138,18 @@ SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsFinite, __bool, double, f64)
 
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNormal, _f16, )(half x)
 {
-    return SPIRV_BUILTIN(IsFinite, _f16, )(x) & (__builtin_spirv_OpenCL_fabs_f16(x) >= HALF_MIN);
+    return SPIRV_BUILTIN(IsFinite, _f16, )(x) & (SPIRV_OCL_BUILTIN(fabs, _f16, )(x) >= HALF_MIN);
 }
 
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNormal, _f32, )(float x)
 {
-    return SPIRV_BUILTIN(IsFinite, _f32, )(x) & (__builtin_spirv_OpenCL_fabs_f32(x) >= FLT_MIN);
+    return SPIRV_BUILTIN(IsFinite, _f32, )(x) & (SPIRV_OCL_BUILTIN(fabs, _f32, )(x) >= FLT_MIN);
 }
 
 #if defined(cl_khr_fp64)
 bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNormal, _f64, )(double x)
 {
-    return SPIRV_BUILTIN(IsFinite, _f64, )(x) & (__builtin_spirv_OpenCL_fabs_f64(x) >= DBL_MIN);
+    return SPIRV_BUILTIN(IsFinite, _f64, )(x) & (SPIRV_OCL_BUILTIN(fabs, _f64, )(x) >= DBL_MIN);
 }
 #endif
 

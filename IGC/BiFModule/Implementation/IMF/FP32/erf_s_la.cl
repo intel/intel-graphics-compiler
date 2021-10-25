@@ -1152,13 +1152,13 @@ float __ocl_svml_erff (float a)
         Diff = ((Diff < Xa) ? Diff : Xa);
 
         D2 = (D2 * D2);
-        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (_poly3_0, D2, -(T));
+        P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (_poly3_0, D2, -(T));
 
         vm = 0;
 
-        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, Diff, Diff);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (P1, Diff, Diff);
 
-        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, THL[1], THL[0]);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (P1, THL[1], THL[0]);
 
         vr1 = as_float ((as_uint (P1) | as_uint (Sign)));
         {

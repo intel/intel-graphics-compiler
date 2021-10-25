@@ -10,25 +10,25 @@ SPDX-License-Identifier: MIT
 #include "../../Headers/spirv.h"
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_sin, _f32, )(float x ){
-    return __builtin_spirv_OpenCL_sin_f32(x);
+    return SPIRV_OCL_BUILTIN(sin, _f32, )(x);
 }
 
 INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_sin, _v2f32, )(float2 x ){
-    return __builtin_spirv_OpenCL_sin_v2f32(x);
+    return SPIRV_OCL_BUILTIN(sin, _v2f32, )(x);
 }
 
 INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_sin, _v3f32, )(float3 x ){
-    return __builtin_spirv_OpenCL_sin_v3f32(x);
+    return SPIRV_OCL_BUILTIN(sin, _v3f32, )(x);
 }
 
 INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_sin, _v4f32, )(float4 x ){
-    return __builtin_spirv_OpenCL_sin_v4f32(x);
+    return SPIRV_OCL_BUILTIN(sin, _v4f32, )(x);
 }
 
 INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_sin, _v8f32, )(float8 x ){
-    return __builtin_spirv_OpenCL_sin_v8f32(x);
+    return SPIRV_OCL_BUILTIN(sin, _v8f32, )(x);
 }
 
 INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(half_sin, _v16f32, )(float16 x ){
-    return __builtin_spirv_OpenCL_sin_v16f32(x);
+    return SPIRV_OCL_BUILTIN(sin, _v16f32, )(x);
 }

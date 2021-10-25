@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE INLINE float OVERLOADABLE round( float x )
 {
-    return __builtin_spirv_OpenCL_round_f32( x );
+    return SPIRV_OCL_BUILTIN(round, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( round, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( round, float, float )
 
 INLINE INLINE double OVERLOADABLE round( double x )
 {
-    return __builtin_spirv_OpenCL_round_f64( x );
+    return SPIRV_OCL_BUILTIN(round, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( round, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( round, double, double )
 
 INLINE INLINE half OVERLOADABLE round( half x )
 {
-    return __builtin_spirv_OpenCL_round_f16( x );
+    return SPIRV_OCL_BUILTIN(round, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( round, half, half )

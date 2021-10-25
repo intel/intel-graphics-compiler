@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE minmag( float x, float y )
 {
-    return __builtin_spirv_OpenCL_minmag_f32_f32( x, y );
+    return SPIRV_OCL_BUILTIN(minmag, _f32_f32, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( minmag, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( minmag, float, float )
 
 INLINE double OVERLOADABLE minmag( double x, double y )
 {
-    return __builtin_spirv_OpenCL_minmag_f64_f64( x, y );
+    return SPIRV_OCL_BUILTIN(minmag, _f64_f64, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( minmag, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( minmag, double, double )
 
 INLINE half OVERLOADABLE minmag( half x, half y )
 {
-    return __builtin_spirv_OpenCL_minmag_f16_f16( x, y );
+    return SPIRV_OCL_BUILTIN(minmag, _f16_f16, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( minmag, half, half )

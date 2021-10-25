@@ -783,29 +783,29 @@ float __ocl_svml_erfcf (float a)
 
         _poly1_0 = as_float (__internal_serfc_la_data._poly1_0);
         _poly1_1 = as_float (__internal_serfc_la_data._poly1_1);
-        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (_poly1_0, T, _poly1_1);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (_poly1_0, T, _poly1_1);
         _poly3_0 = as_float (__internal_serfc_la_data._poly3_0);
         _poly3_1 = as_float (__internal_serfc_la_data._poly3_1);
-        P3 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (_poly3_0, T, _poly3_1);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (_poly3_0, T, _poly3_1);
 
         THL[0] = as_float (((__constant unsigned int *) ((__constant char *) (&__internal_serfc_la_data._erfc_tbl[0]) - 0x40000000))[Index >> 2]);
         THL[1] =
             as_float (((__constant unsigned int *) ((__constant char *) (&__internal_serfc_la_data._erfc_tbl[0]) - 0x40000000))[(Index >> 2) + 1]);
 
         _poly1_2 = as_float (__internal_serfc_la_data._poly1_2);
-        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, T, _poly1_2);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (P1, T, _poly1_2);
 
         D2 = (Diff * Diff);
 
         _poly1_3 = as_float (__internal_serfc_la_data._poly1_3);
-        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, T, _poly1_3);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (P1, T, _poly1_3);
 
         P3 = (P3 * D2);
 
-        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, T, P3);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (P1, T, P3);
 
-        LowRes = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, THL[1], THL[1]);
-        HighRes = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(Diff), LowRes, THL[0]);
+        LowRes = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (P1, THL[1], THL[1]);
+        HighRes = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(Diff), LowRes, THL[0]);
         vm = 0;
 
         HighRes = (HighRes + NegConst);

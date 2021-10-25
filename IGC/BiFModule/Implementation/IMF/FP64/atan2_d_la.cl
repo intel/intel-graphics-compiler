@@ -1069,32 +1069,32 @@ double __ocl_svml_atan2 (double a, double b)
         dA01 = as_double (__internal_datan2_la_data.dA01);
         dA00 = as_double (__internal_datan2_la_data.dA00);
 
-        dP1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dA19, dR8, dA15);
-        dP2 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dA18, dR8, dA14);
-        dP3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dA17, dR8, dA13);
-        dP4 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dA16, dR8, dA12);
+        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dA19, dR8, dA15);
+        dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dA18, dR8, dA14);
+        dP3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dA17, dR8, dA13);
+        dP4 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dA16, dR8, dA12);
 
-        dP1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP1, dR8, dA11);
-        dP2 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP2, dR8, dA10);
-        dP3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP3, dR8, dA09);
-        dP4 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP4, dR8, dA08);
+        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP1, dR8, dA11);
+        dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP2, dR8, dA10);
+        dP3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP3, dR8, dA09);
+        dP4 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP4, dR8, dA08);
 
-        dP1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP1, dR8, dA07);
-        dP2 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP2, dR8, dA06);
-        dP3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP3, dR8, dA05);
-        dP4 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP4, dR8, dA04);
+        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP1, dR8, dA07);
+        dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP2, dR8, dA06);
+        dP3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP3, dR8, dA05);
+        dP4 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP4, dR8, dA04);
 
-        dP1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP1, dR8, dA03);
-        dP2 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP2, dR8, dA02);
-        dP3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP3, dR8, dA01);
+        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP1, dR8, dA03);
+        dP2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP2, dR8, dA02);
+        dP3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP3, dR8, dA01);
 
         dP4 = (dP4 * dR8);
 
-        dP1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP1, dR2, dP2);
-        dP3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP3, dR2, dP4);
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP1, dR4, dP3);
+        dP1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP1, dR2, dP2);
+        dP3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP3, dR2, dP4);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP1, dR4, dP3);
 
-        dP = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dP, dR, dR);
+        dP = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dP, dR, dR);
         dP = (dP + dPIO2);
         dP = as_double ((as_ulong (dP) | as_ulong (dSX)));
 

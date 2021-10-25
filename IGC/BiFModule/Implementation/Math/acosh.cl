@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/acosh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-float __builtin_spirv_OpenCL_acosh_f32( float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acosh, _f32, )( float x )
 {
     float result;
 
@@ -27,21 +27,21 @@ float __builtin_spirv_OpenCL_acosh_f32( float x )
         // have to handle this case.
         if( x < 1.0f )
         {
-            result = __builtin_spirv_OpenCL_nan_i32((uint)0);
+            result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
         }
         // Conformance test also checks for this "overflow" case, but
         // I don't think we should have to handle it.
         else if( x > 1500.0f )
         {
-            result = __builtin_spirv_OpenCL_log_f32(x) + M_LN2_F;
+            result = SPIRV_OCL_BUILTIN(log, _f32, )(x) + M_LN2_F;
         }
         else
 #endif
         {
             result = x * x - 1.0f;
-            result = __builtin_spirv_OpenCL_sqrt_f32( result );
+            result = SPIRV_OCL_BUILTIN(sqrt, _f32, )( result );
             result = x + result;
-            result = __builtin_spirv_OpenCL_log_f32( result );
+            result = SPIRV_OCL_BUILTIN(log, _f32, )( result );
         }
     }
     else
@@ -52,26 +52,26 @@ float __builtin_spirv_OpenCL_acosh_f32( float x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_acosh, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( acosh, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_acosh_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acosh, _f64, )( double x )
 {
     return __ocl_svml_acosh(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_acosh, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( acosh, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_acosh_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acosh, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_acosh_f32((float)x);
+    return SPIRV_OCL_BUILTIN(acosh, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_acosh, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( acosh, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

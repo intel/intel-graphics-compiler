@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE mad( float a, float b, float c )
 {
-    return __builtin_spirv_OpenCL_mad_f32_f32_f32( a, b, c );
+    return SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )( a, b, c );
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( mad, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS( mad, float, float )
 
 INLINE double OVERLOADABLE mad( double a, double b, double c )
 {
-    return __builtin_spirv_OpenCL_mad_f64_f64_f64( a, b, c );
+    return SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )( a, b, c );
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( mad, double, double )

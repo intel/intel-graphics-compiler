@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE rootn( float x, int n )
 {
-    return __builtin_spirv_OpenCL_rootn_f32_i32( x, n );
+    return SPIRV_OCL_BUILTIN(rootn, _f32_i32, )( x, n );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( rootn, float, float, int )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( rootn, float, float, int )
 
 INLINE double OVERLOADABLE rootn( double y, int x )
 {
-    return __builtin_spirv_OpenCL_rootn_f64_i32( y, x );
+    return SPIRV_OCL_BUILTIN(rootn, _f64_i32, )( y, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( rootn, double, double, int )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( rootn, double, double, int )
 
 INLINE half OVERLOADABLE rootn( half y, int x )
 {
-    return __builtin_spirv_OpenCL_rootn_f16_i32( y, x );
+    return SPIRV_OCL_BUILTIN(rootn, _f16_i32, )( y, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( rootn, half, half, int )

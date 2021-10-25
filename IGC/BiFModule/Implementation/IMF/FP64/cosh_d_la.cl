@@ -514,7 +514,7 @@ double __ocl_svml_cosh (double a)
         dAbsX = as_double ((~(as_ulong (dXSign)) & as_ulong (va1)));
         dXSign = as_double (((unsigned long) as_ulong (dXSign) >> (11)));
 
-        dM = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dAbsX, dbInvLn2, dbShifter);
+        dM = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dAbsX, dbInvLn2, dbShifter);
 
         lX = as_ulong (dAbsX);
         iAbsX = ((unsigned int) ((unsigned long) lX >> 32));
@@ -534,9 +534,9 @@ double __ocl_svml_cosh (double a)
 
         dN = (dM - dbShifter);
         dbLn2[0] = as_double (__internal_dcosh_la_data._dbLn2hi);
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dbLn2[0]), dN, dAbsX);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dbLn2[0]), dN, dAbsX);
         dbLn2[1] = as_double (__internal_dcosh_la_data._dbLn2lo);
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dbLn2[1]), dN, dR);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dbLn2[1]), dN, dR);
         dR2 = (dR * dR);
 
         lM = ((unsigned long) (lM) << ((52 - 8)));
@@ -556,12 +556,12 @@ double __ocl_svml_cosh (double a)
         dTp = (dTp + dM);
 
         dSinh_r = (dPC[1] * dR2);
-        dSinh_r = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinh_r, dR, dR);
+        dSinh_r = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinh_r, dR, dR);
         dSinh_r = (dSinh_r * dTn);
 
-        dOut = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC[2], dR2, dPC[0]);
+        dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC[2], dR2, dPC[0]);
         dOut = (dOut * dR2);
-        dOut = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dOut, dTp, dSinh_r);
+        dOut = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dOut, dTp, dSinh_r);
         vr1 = (dOut + dTp);
     }
 

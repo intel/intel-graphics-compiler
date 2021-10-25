@@ -233,7 +233,7 @@ void __ocl_svml_sincos (double a, double *b, double *c)
         dInvPI = as_double (__internal_dsincos_la_data._dInvPI);
         dRShifter = as_double (__internal_dsincos_la_data._dRShifter);
 
-        dSinY = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinX, dInvPI, dRShifter);
+        dSinY = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinX, dInvPI, dRShifter);
 
         dSinSignRes = as_double (((unsigned long) as_ulong (dSinY) << (63)));
 
@@ -242,9 +242,9 @@ void __ocl_svml_sincos (double a, double *b, double *c)
         dPI1 = as_double (__internal_dsincos_la_data._dPI1);
         dPI2 = as_double (__internal_dsincos_la_data._dPI2);
 
-        dSinR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dSinN), dPI1, dSinX);
+        dSinR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dSinN), dPI1, dSinX);
 
-        dSinR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dSinN), dPI2, dSinR);
+        dSinR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dSinN), dPI2, dSinR);
 
         dSinRSign = as_double ((as_ulong (dSignMask) & as_ulong (dSinR)));
         dOneHalf = as_double (__internal_dsincos_la_data._dOneHalf);
@@ -253,61 +253,61 @@ void __ocl_svml_sincos (double a, double *b, double *c)
 
         dCosN = (dSinN + dOneHalf);
 
-        dCosR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dCosN), dPI1, dSinX);
+        dCosR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dCosN), dPI1, dSinX);
 
-        dCosR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dCosN), dPI2, dCosR);
+        dCosR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dCosN), dPI2, dCosR);
 
         dPI3 = as_double (__internal_dsincos_la_data._dPI3);
 
-        dSinR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dSinN), dPI3, dSinR);
+        dSinR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dSinN), dPI3, dSinR);
 
-        dCosR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dCosN), dPI3, dCosR);
+        dCosR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dCosN), dPI3, dCosR);
 
         dCosRSign = as_double ((as_ulong (dSinRSign) ^ as_ulong (dSignMask)));
         dCosSignRes = as_double ((as_ulong (dSinSignRes) ^ as_ulong (dCosRSign)));
 
         dPI4 = as_double (__internal_dsincos_la_data._dPI4);
 
-        dSinR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dSinN), dPI4, dSinR);
+        dSinR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dSinN), dPI4, dSinR);
 
-        dCosR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dCosN), dPI4, dCosR);
+        dCosR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dCosN), dPI4, dCosR);
         dC7 = as_double (__internal_dsincos_la_data._dC7);
         dC6 = as_double (__internal_dsincos_la_data._dC6);
 
         dSinRp2 = (dSinR * dSinR);
-        dSinPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dC7, dSinRp2, dC6);
+        dSinPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dC7, dSinRp2, dC6);
 
         dCosRp2 = (dCosR * dCosR);
-        dCosPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dC7, dCosRp2, dC6);
+        dCosPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dC7, dCosRp2, dC6);
         dC5 = as_double (__internal_dsincos_la_data._dC5);
-        dSinPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinPoly, dSinRp2, dC5);
-        dCosPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dCosPoly, dCosRp2, dC5);
+        dSinPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinPoly, dSinRp2, dC5);
+        dCosPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dCosPoly, dCosRp2, dC5);
         dC4 = as_double (__internal_dsincos_la_data._dC4);
-        dSinPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinPoly, dSinRp2, dC4);
-        dCosPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dCosPoly, dCosRp2, dC4);
+        dSinPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinPoly, dSinRp2, dC4);
+        dCosPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dCosPoly, dCosRp2, dC4);
         dC3 = as_double (__internal_dsincos_la_data._dC3);
 
-        dSinPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinPoly, dSinRp2, dC3);
+        dSinPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinPoly, dSinRp2, dC3);
 
-        dCosPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dCosPoly, dCosRp2, dC3);
+        dCosPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dCosPoly, dCosRp2, dC3);
         dC2 = as_double (__internal_dsincos_la_data._dC2_0);
 
-        dSinPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinPoly, dSinRp2, dC2);
+        dSinPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinPoly, dSinRp2, dC2);
 
-        dCosPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dCosPoly, dCosRp2, dC2);
+        dCosPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dCosPoly, dCosRp2, dC2);
         dC1 = as_double (__internal_dsincos_la_data._dC1);
 
-        dSinPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinPoly, dSinRp2, dC1);
+        dSinPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinPoly, dSinRp2, dC1);
 
-        dCosPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dCosPoly, dCosRp2, dC1);
+        dCosPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dCosPoly, dCosRp2, dC1);
 
         dSinPoly = (dSinPoly * dSinRp2);
 
         dCosPoly = (dCosPoly * dCosRp2);
 
-        dSinPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dSinPoly, dSinR, dSinR);
+        dSinPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dSinPoly, dSinR, dSinR);
 
-        dCosPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dCosPoly, dCosR, dCosR);
+        dCosPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dCosPoly, dCosR, dCosR);
 
         dSinSignRes = as_double ((as_ulong (dSinSignRes) ^ as_ulong (dSignX)));
 
@@ -621,7 +621,7 @@ void __ocl_svml_sincos (double a, double *b, double *c)
             dS2 = as_double (__internal_dsincos_la_data_ha._dS2);
             dS1 = as_double (__internal_dsincos_la_data_ha._dS1);
 
-            dPS = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dS2, dZp2, dS1);
+            dPS = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dS2, dZp2, dS1);
 
             dPS = (dPS * dZp2);
 
@@ -630,10 +630,10 @@ void __ocl_svml_sincos (double a, double *b, double *c)
             dC3 = as_double (__internal_dsincos_la_data_ha._dC3);
             dC2 = as_double (__internal_dsincos_la_data_ha._dC2);
 
-            dPC = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dC3, dZp2, dC2);
+            dPC = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dC3, dZp2, dC2);
             dC1 = as_double (__internal_dsincos_la_data_ha._dC1);
 
-            dPC = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC, dZp2, dC1);
+            dPC = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC, dZp2, dC1);
 
             dPC = (dPC * dZp2);
 
@@ -643,12 +643,12 @@ void __ocl_svml_sincos (double a, double *b, double *c)
             dCosB = (dCHL + dSigma);
             dSHi = as_double (((__constant unsigned long *) (__internal_dsincos_la_data_ha._dT))[(((0 + lIndex) * (4 * 8)) >> (3)) + 2]);
 
-            dD = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dZ), dSHi, dCosB);
+            dD = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dZ), dSHi, dCosB);
             dSLo = as_double (((__constant unsigned long *) (__internal_dsincos_la_data_ha._dT))[(((0 + lIndex) * (4 * 8)) >> (3)) + 3]);
 
-            dCorr = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dE, dD, dSLo);
+            dCorr = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dE, dD, dSLo);
 
-            dResLo = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPS, dCosB, dCorr);
+            dResLo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPS, dCosB, dCorr);
 
             dZSigma = (dZ * dSigma);
             dResInt = (dSHi + dZSigma);
@@ -660,7 +660,7 @@ void __ocl_svml_sincos (double a, double *b, double *c)
 
             dK0 = (dSHi - dResInt);
             dK2 = (dK0 + dZSigma);
-            dResLo = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC, dSHi, dResLo);
+            dResLo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC, dSHi, dResLo);
 
             dResLo = (dResLo + dK2);
 
@@ -674,12 +674,12 @@ void __ocl_svml_sincos (double a, double *b, double *c)
             dcCosB = (dcCHL + dcSigma);
             dcSHi = as_double (((__constant unsigned long *) (__internal_dsincos_la_data_ha._dT))[(((0 + lcIndex) * (4 * 8)) >> (3)) + 2]);
 
-            dcD = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dZ), dcSHi, dcCosB);
+            dcD = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dZ), dcSHi, dcCosB);
             dcSLo = as_double (((__constant unsigned long *) (__internal_dsincos_la_data_ha._dT))[(((0 + lcIndex) * (4 * 8)) >> (3)) + 3]);
 
-            dcCorr = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dE, dcD, dcSLo);
+            dcCorr = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dE, dcD, dcSLo);
 
-            dcResLo = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPS, dcCosB, dcCorr);
+            dcResLo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPS, dcCosB, dcCorr);
 
             dcMed = (dcCHL * dZ);
             dcZSigma = (dZ * dcSigma);
@@ -691,7 +691,7 @@ void __ocl_svml_sincos (double a, double *b, double *c)
 
             dcK0 = (dcSHi - dcResInt);
             dcK2 = (dcK0 + dcZSigma);
-            dcResLo = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC, dcSHi, dcResLo);
+            dcResLo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC, dcSHi, dcResLo);
 
             dcResLo = (dcResLo + dcK2);
 

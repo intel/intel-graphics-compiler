@@ -74,15 +74,15 @@ inline int __internal_sacos_la_cout (float *pxin, float *pres)
 
         sgn_x = x.w ^ xa.w;
 
-        y.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(xa.f), 0.5f, 0.5f);
+        y.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(xa.f), 0.5f, 0.5f);
 
         R = xin * xin;
-        R = __builtin_spirv_OpenCL_fmin_f32_f32 (R, y.f);
+        R = SPIRV_OCL_BUILTIN(fmin, _f32_f32, ) (R, y.f);
 
         High.f = sgn_x ? __sacos_la_pih.f : 0.0f;
         High.f = (xa.f <= 0.5f) ? __sacos_la_pi2h.f : High.f;
 
-        RS.f = 1.0f / __builtin_spirv_OpenCL_sqrt_f32 ((y.f + __sacos_la_small_float.f));
+        RS.f = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, ) ((y.f + __sacos_la_small_float.f));
 
         RS.w |= sgn_x;
 
@@ -90,15 +90,15 @@ inline int __internal_sacos_la_cout (float *pxin, float *pres)
 
         Shh2.f = -2.0f * Sh;
 
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (__sacos_la_c5.f, R, __sacos_la_c4.f);
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sacos_la_c3.f);
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sacos_la_c2.f);
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sacos_la_c1.f);
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sacos_la_c0.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__sacos_la_c5.f, R, __sacos_la_c4.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sacos_la_c3.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sacos_la_c2.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sacos_la_c1.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sacos_la_c0.f);
 
         R0.f = (xa.f <= 0.5f) ? x.f : Shh2.f;
 
-        res.f = (__builtin_spirv_OpenCL_fma_f32_f32_f32 (-(poly), R0.f, High.f));
+        res.f = (SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(poly), R0.f, High.f));
     }
 
     *pres = res.f;

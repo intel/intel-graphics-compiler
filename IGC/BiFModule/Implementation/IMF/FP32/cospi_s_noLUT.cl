@@ -12,7 +12,7 @@ static float __ocl_svml_cospif_noLUT( float a )
 {
     float result;
 
-    float sAbsX = __builtin_spirv_OpenCL_fabs_f32( a );
+    float sAbsX = SPIRV_OCL_BUILTIN(fabs, _f32, )( a );
     if( sAbsX > as_float( 0x4A800000 ) )            // 2^22
     {
         float   sShifter =
@@ -35,14 +35,14 @@ static float __ocl_svml_cospif_noLUT( float a )
     sR = as_float( as_uint( sR ) ^ usN );
 
     float   sP = as_float( 0x362EDEF8 );
-    sP = __builtin_spirv_OpenCL_fma_f32_f32_f32( sP, sR2, as_float( 0xB94FB7FF ) );
-    sP = __builtin_spirv_OpenCL_fma_f32_f32_f32( sP, sR2, as_float( 0x3C08876A ) );
-    sP = __builtin_spirv_OpenCL_fma_f32_f32_f32( sP, sR2, as_float( 0xBE2AAAA6 ) );
+    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( sP, sR2, as_float( 0xB94FB7FF ) );
+    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( sP, sR2, as_float( 0x3C08876A ) );
+    sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( sP, sR2, as_float( 0xBE2AAAA6 ) );
 
     sP = sP * sR2;
-    result = __builtin_spirv_OpenCL_fma_f32_f32_f32( sP, sR, sR );
+    result = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( sP, sR, sR );
 
-    float n = __builtin_spirv_OpenCL_nan_i32(0U);
+    float n = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     result = __intel_relaxed_isinf( sAbsX ) ? n : result;
 
     return result;

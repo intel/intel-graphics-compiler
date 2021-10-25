@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE acospi( float x )
 {
-    return __builtin_spirv_OpenCL_acospi_f32( x );
+    return SPIRV_OCL_BUILTIN(acospi, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( acospi, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( acospi, float, float )
 
 INLINE double OVERLOADABLE acospi( double x )
 {
-    return __builtin_spirv_OpenCL_acospi_f64( x );
+    return SPIRV_OCL_BUILTIN(acospi, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( acospi, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( acospi, double, double )
 
 INLINE half OVERLOADABLE acospi( half x )
 {
-    return __builtin_spirv_OpenCL_acospi_f16( x );
+    return SPIRV_OCL_BUILTIN(acospi, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( acospi, half, half )

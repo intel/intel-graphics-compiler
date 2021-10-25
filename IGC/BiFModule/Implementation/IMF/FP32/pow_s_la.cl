@@ -1348,23 +1348,23 @@ float __ocl_svml_powf (float a, float b)
         LFR_sYHi = as_float ((as_uint (LFR_sM) & as_uint (S_HI10BITS_MASK)));
         LFR_sYLo = (LFR_sM - LFR_sYHi);
 
-        LFR_sRHi = __builtin_spirv_OpenCL_fma_f32_f32_f32 (LFR_sYHi, LFR_sRcprY, -(S_ONE));
+        LFR_sRHi = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (LFR_sYHi, LFR_sRcprY, -(S_ONE));
         LFR_sRLo = (LFR_sYLo * LFR_sRcprY);
         LFR_sR = (LFR_sRHi + LFR_sRLo);
 
         LFR_S_P4 = as_float (__internal_spow_la_data.LFR_S_P4);
         LFR_S_P3 = as_float (__internal_spow_la_data.LFR_S_P3);
-        LFR_sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (LFR_S_P4, LFR_sR, LFR_S_P3);
+        LFR_sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (LFR_S_P4, LFR_sR, LFR_S_P3);
 
         LFR_S_P2 = as_float (__internal_spow_la_data.LFR_S_P2);
-        LFR_sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (LFR_sP, LFR_sR, LFR_S_P2);
+        LFR_sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (LFR_sP, LFR_sR, LFR_S_P2);
 
         LFR_sR2 = (LFR_sR * LFR_sR);
         LFR_sP = (LFR_sP * LFR_sR2);
 
         S_LOG2_HI = as_float (__internal_spow_la_data.S_LOG2_HI);
 
-        LFR_sNLog2Hi = __builtin_spirv_OpenCL_fma_f32_f32_f32 (LFR_sN, S_LOG2_HI, LFR_sLnRcprYHi);
+        LFR_sNLog2Hi = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (LFR_sN, S_LOG2_HI, LFR_sLnRcprYHi);
 
         S_LOG2_LO = as_float (__internal_spow_la_data.S_LOG2_LO);
         LFR_sNLog2Lo = (LFR_sN * S_LOG2_LO);
@@ -1394,9 +1394,9 @@ float __ocl_svml_powf (float a, float b)
             float V2;;
             V1 = (sL[0] + sL[1]);
             V2 = (V1 * sRSValue);
-            V1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (V1, 1.0f, V2);
-            V2 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (V1, 1.0f, -(V2));
-            V1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sL[0], 1.0f, -(V2));
+            V1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (V1, 1.0f, V2);
+            V2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (V1, 1.0f, -(V2));
+            V1 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sL[0], 1.0f, -(V2));
             V1 = (sL[1] + V1);;
             sL[0] = V2;
             sL[1] = V1;
@@ -1417,8 +1417,8 @@ float __ocl_svml_powf (float a, float b)
             float V2;;
             V1 = (sL[0] * sY[0]);
             V2 = (sL[1] * sY[1]);
-            V2 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sL[0], sY[1], V2);
-            V2 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sL[1], sY[0], V2);;
+            V2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sL[0], sY[1], V2);
+            V2 = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sL[1], sY[0], V2);;
             sZ0[0] = V1;
             sZ0[1] = V2;
         };
@@ -1430,7 +1430,7 @@ float __ocl_svml_powf (float a, float b)
         sInvLn2 = as_float (__internal_spow_la_data._sInvLn2);
         sShifter = as_float (__internal_spow_la_data._sShifter);
 
-        sM = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sZ[0], sInvLn2, sShifter);
+        sM = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sZ[0], sInvLn2, sShifter);
         sN = (sM - sShifter);
 
         iAbsZ = as_uint (sZ[0]);
@@ -1447,22 +1447,22 @@ float __ocl_svml_powf (float a, float b)
         iM = ((unsigned int) (iM) << (23));
 
         sLn2hi = as_float (__internal_spow_la_data._sLn2hi);
-        sR = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sN), sLn2hi, sZ[0]);
+        sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sN), sLn2hi, sZ[0]);
         sLn2lo = as_float (__internal_spow_la_data._sLn2lo);
-        sR = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(sN), sLn2lo, sR);
+        sR = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(sN), sLn2lo, sR);
         sR = (sR + sZ[1]);
         sPC[4] = as_float (__internal_spow_la_data._sPC4);
         sPC[5] = as_float (__internal_spow_la_data._sPC5);
 
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sPC[5], sR, sPC[4]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sPC[5], sR, sPC[4]);
         sPC[3] = as_float (__internal_spow_la_data._sPC3);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPC[3]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPC[3]);
         sPC[2] = as_float (__internal_spow_la_data._sPC2);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPC[2]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPC[2]);
         sPC[1] = as_float (__internal_spow_la_data._sPC1);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPC[1]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPC[1]);
         sPC[0] = as_float (__internal_spow_la_data._sPC0);
-        sP = __builtin_spirv_OpenCL_fma_f32_f32_f32 (sP, sR, sPC[0]);
+        sP = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (sP, sR, sPC[0]);
         iP = as_uint (sP);
 
         iRes = (iM + iP);

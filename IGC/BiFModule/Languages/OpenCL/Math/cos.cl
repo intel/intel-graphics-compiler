@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE cos( float x )
 {
-    return __builtin_spirv_OpenCL_cos_f32( x );
+    return SPIRV_OCL_BUILTIN(cos, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cos, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cos, float, float )
 
 INLINE double OVERLOADABLE cos( double x )
 {
-    return __builtin_spirv_OpenCL_cos_f64( x );
+    return SPIRV_OCL_BUILTIN(cos, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cos, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cos, double, double )
 
 INLINE half OVERLOADABLE cos( half x )
 {
-    return __builtin_spirv_OpenCL_cos_f16( x );
+    return SPIRV_OCL_BUILTIN(cos, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cos, half, half )

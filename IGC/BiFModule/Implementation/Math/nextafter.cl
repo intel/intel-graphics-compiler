@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float __builtin_spirv_OpenCL_nextafter_f32_f32( float x, float y )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f32_f32, )( float x, float y )
 {
     const int maxneg = FLOAT_SIGN_MASK;
 
@@ -51,7 +51,7 @@ float __builtin_spirv_OpenCL_nextafter_f32_f32( float x, float y )
     result = (tcix == tciy) ? y : result;
 
     {
-        float n = __builtin_spirv_OpenCL_nan_i32(0u);
+        float n = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
         int test = __intel_relaxed_isnan(x) | __intel_relaxed_isnan(y);
         result = test ? n : result;
     }
@@ -59,11 +59,11 @@ float __builtin_spirv_OpenCL_nextafter_f32_f32( float x, float y )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( __builtin_spirv_OpenCL_nextafter, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( nextafter, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-double __builtin_spirv_OpenCL_nextafter_f64_f64( double x, double y )
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f64_f64, )( double x, double y )
 {
     const long maxneg = DOUBLE_SIGN_MASK;
 
@@ -85,7 +85,7 @@ double __builtin_spirv_OpenCL_nextafter_f64_f64( double x, double y )
     result = (tcix == tciy) ? y : result;
 
     {
-        double n = __builtin_spirv_OpenCL_nan_i64(0ul);
+        double n = SPIRV_OCL_BUILTIN(nan, _i64, )(0);
         int test = SPIRV_BUILTIN(IsNan, _f64, )(x) | SPIRV_BUILTIN(IsNan, _f64, )(y);
         result = test ? n : result;
     }
@@ -93,13 +93,13 @@ double __builtin_spirv_OpenCL_nextafter_f64_f64( double x, double y )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( __builtin_spirv_OpenCL_nextafter, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( nextafter, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-half __builtin_spirv_OpenCL_nextafter_f16_f16( half x, half y )
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(nextafter, _f16_f16, )( half x, half y )
 {
     const short maxneg = HALF_SIGN_MASK;
 
@@ -121,7 +121,7 @@ half __builtin_spirv_OpenCL_nextafter_f16_f16( half x, half y )
     result = (tcix == tciy) ? y : result;
 
     {
-        half n = __builtin_spirv_OpenCL_nan_i32(0u);
+        half n = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
         int test = SPIRV_BUILTIN(IsNan, _f16, )(x) | SPIRV_BUILTIN(IsNan, _f16, )(y);
         result = test ? n : result;
     }
@@ -129,6 +129,6 @@ half __builtin_spirv_OpenCL_nextafter_f16_f16( half x, half y )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( __builtin_spirv_OpenCL_nextafter, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( nextafter, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

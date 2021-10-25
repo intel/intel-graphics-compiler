@@ -164,11 +164,11 @@ inline int __internal_sexp_la_cout (float *a, float *r)
     float N, R, poly;
     int index_mask;
 
-    S.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (x, __sexp_la_L2E.f, __sexp_la_Shifter.f);
+    S.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (x, __sexp_la_L2E.f, __sexp_la_Shifter.f);
     N = S.f - __sexp_la_Shifter.f;
 
-    R = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-N, __sexp_la_L2H.f, x);
-    R = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-N, __sexp_la_L2L.f, R);
+    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-N, __sexp_la_L2H.f, x);
+    R = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-N, __sexp_la_L2L.f, R);
 
     Th.w = S.w << 22;
 
@@ -178,11 +178,11 @@ inline int __internal_sexp_la_cout (float *a, float *r)
 
     Tlr.w = index_mask & 0x329302AEu;
 
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, __sexp_la_c5.f, __sexp_la_c4.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, poly, __sexp_la_c3.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, poly, __sexp_la_c2.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, poly, __sexp_la_c1.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R, poly, Tlr.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, __sexp_la_c5.f, __sexp_la_c4.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __sexp_la_c3.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __sexp_la_c2.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, __sexp_la_c1.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R, poly, Tlr.f);
 
     xin.f = x;
     xa.w = xin.w & 0x7fffffffu;
@@ -190,7 +190,7 @@ inline int __internal_sexp_la_cout (float *a, float *r)
     if (xa.w > 0x42AEAC4Fu)
         goto EXPF_SPECIAL;
 
-    res.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, Th.f, Th.f);
+    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Th.f, Th.f);
 
     *r = res.f;
     return nRet;
@@ -227,7 +227,7 @@ inline int __internal_sexp_la_cout (float *a, float *r)
 
     Th.w ^= (index_mask & 0x7504F3u);
 
-    res.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, Th.f, Th.f);
+    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, Th.f, Th.f);
     res.f *= Th2.f;
 
     *r = res.f;

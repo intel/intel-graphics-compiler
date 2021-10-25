@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE sinh( float x )
 {
-    return __builtin_spirv_OpenCL_sinh_f32( x );
+    return SPIRV_OCL_BUILTIN(sinh, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, float, float )
 
 INLINE double OVERLOADABLE sinh( double x )
 {
-    return __builtin_spirv_OpenCL_sinh_f64( x );
+    return SPIRV_OCL_BUILTIN(sinh, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, double, double )
 
 INLINE half OVERLOADABLE sinh( half x )
 {
-    return __builtin_spirv_OpenCL_sinh_f16( x );
+    return SPIRV_OCL_BUILTIN(sinh, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinh, half, half )

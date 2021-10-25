@@ -762,7 +762,7 @@ double __ocl_svml_cos (double a)
         dInvPI = as_double (__internal_dcos_la_data._dInvPI);
         dRShifter = as_double (__internal_dcos_la_data._dRShifter);
 
-        dY = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dXAddHalfPi, dInvPI, dRShifter);
+        dY = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dXAddHalfPi, dInvPI, dRShifter);
 
         dN = (dY - dRShifter);
         dOneHalf = as_double (__internal_dcos_la_data._dOneHalf);
@@ -773,36 +773,36 @@ double __ocl_svml_cos (double a)
 
         dPI1 = as_double (__internal_dcos_la_data._dPI1);
 
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dPI1, -(dX0));
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dPI1, -(dX0));
         dPI2 = as_double (__internal_dcos_la_data._dPI2);
 
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dPI2, dR);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dPI2, dR);
         dPI3 = as_double (__internal_dcos_la_data._dPI3);
 
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dPI3, dR);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dPI3, dR);
 
         dPI4 = as_double (__internal_dcos_la_data._dPI4);
-        dR = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, dPI4, dR);
+        dR = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, dPI4, dR);
         dRp2 = (dR * dR);
 
         dR = as_double ((as_ulong (dR) ^ as_ulong (dSignRes)));
 
         dC7 = as_double (__internal_dcos_la_data._dC7);
         dC6 = as_double (__internal_dcos_la_data._dC6);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dC7, dRp2, dC6);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dC7, dRp2, dC6);
         dC5 = as_double (__internal_dcos_la_data._dC5);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC5);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC5);
         dC4 = as_double (__internal_dcos_la_data._dC4);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC4);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC4);
         dC3 = as_double (__internal_dcos_la_data._dC3);
 
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC3);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC3);
         dC2 = as_double (__internal_dcos_la_data._dC2);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC2);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC2);
         dC1 = as_double (__internal_dcos_la_data._dC1);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC1);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC1);
         dR3 = (dRp2 * dR);
-        vr1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dR3, dR);
+        vr1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dR3, dR);
 
         dOne = as_double (__internal_dcos_la_data._dOne);
         vr1 = as_double ((((~as_ulong (dNearZero)) & as_ulong (vr1)) | (as_ulong (dNearZero) & as_ulong (dOne))));
@@ -1109,7 +1109,7 @@ double __ocl_svml_cos (double a)
             dS2 = as_double (__internal_dcos_la_data_ha._dS2);
             dS1 = as_double (__internal_dcos_la_data_ha._dS1);
 
-            dPS = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dS2, dZp2, dS1);
+            dPS = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dS2, dZp2, dS1);
 
             dPS = (dPS * dZp2);
 
@@ -1117,24 +1117,24 @@ double __ocl_svml_cos (double a)
 
             dD = (dCHL + dSigma);
 
-            dResLo = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPS, dD, dResLo);
+            dResLo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPS, dD, dResLo);
 
             dC3 = as_double (__internal_dcos_la_data_ha._dC3);
             dC2 = as_double (__internal_dcos_la_data_ha._dC2);
 
-            dPC = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dC3, dZp2, dC2);
+            dPC = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dC3, dZp2, dC2);
             dC1 = as_double (__internal_dcos_la_data_ha._dC1);
 
-            dPC = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC, dZp2, dC1);
+            dPC = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC, dZp2, dC1);
 
             dPC = (dPC * dZp2);
 
-            dResLo = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPC, dSHi, dResLo);
+            dResLo = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPC, dSHi, dResLo);
 
-            dD = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dZ), dSHi, dD);
+            dD = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dZ), dSHi, dD);
             dSLo = as_double (((__constant unsigned long *) (__internal_dcos_la_data_ha._dT))[(((0 + lIndex) * (4 * 8)) >> (3)) + 3]);
 
-            dCorr = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dE, dD, dSLo);
+            dCorr = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dE, dD, dSLo);
 
             dResLo = (dResLo + dCorr);
 

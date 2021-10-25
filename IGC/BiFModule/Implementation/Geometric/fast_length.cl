@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 #include "../../Headers/spirv.h"
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fast_length, _f32, )(float p ){
-    return __builtin_spirv_OpenCL_fabs_f32(p);
+    return SPIRV_OCL_BUILTIN(fabs, _f32, )(p);
 }
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fast_length, _v2f32, )(float2 p ){

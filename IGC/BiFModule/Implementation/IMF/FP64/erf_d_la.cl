@@ -974,36 +974,36 @@ double __ocl_svml_erf (double a)
 
         _poly1_0 = as_double (__internal_derf_la_data._poly1_0);
         _poly1_1 = as_double (__internal_derf_la_data._poly1_1);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (_poly1_0, T, _poly1_1);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (_poly1_0, T, _poly1_1);
         _poly3_0 = as_double (__internal_derf_la_data._poly3_0);
         _poly3_1 = as_double (__internal_derf_la_data._poly3_1);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (_poly3_0, T, _poly3_1);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (_poly3_0, T, _poly3_1);
         _poly5_0 = as_double (__internal_derf_la_data._poly5_0);
         _poly5_1 = as_double (__internal_derf_la_data._poly5_1);
-        P5 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (_poly5_0, T, _poly5_1);
+        P5 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (_poly5_0, T, _poly5_1);
 
         _poly1_2 = as_double (__internal_derf_la_data._poly1_2);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T, _poly1_2);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T, _poly1_2);
         _poly3_2 = as_double (__internal_derf_la_data._poly3_2);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, T, _poly3_2);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, T, _poly3_2);
         _poly3_3 = as_double (__internal_derf_la_data._poly3_3);
-        _poly3_3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P5, D2, _poly3_3);
+        _poly3_3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P5, D2, _poly3_3);
 
         T2 = (T * T);
 
         _poly1_3 = as_double (__internal_derf_la_data._poly1_3);
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T, _poly1_3);
-        P3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, T, _poly3_3);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T, _poly1_3);
+        P3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, T, _poly3_3);
 
         _Erf_H = as_double ((as_ulong (THL[0]) ^ as_ulong (Sign)));
 
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, T2, -(T));
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, T2, -(T));
 
         _Exp_H_D = (THL[1] * Diff);
 
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P3, D2, P1);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P3, D2, P1);
         vm = 0;
-        P1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P1, _Exp_H_D, _Exp_H_D);
+        P1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P1, _Exp_H_D, _Exp_H_D);
 
         vr1 = (P1 + _Erf_H);
         vr1 = as_double ((as_ulong (vr1) | as_ulong (Sign)));

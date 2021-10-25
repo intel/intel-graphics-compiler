@@ -127,7 +127,7 @@ double4 OVERLOADABLE fast_fmod( double4 xx, double4 yy )
 
 float OVERLOADABLE fmod( float xx, float yy )
 {
-    return __builtin_spirv_OpenCL_fmod_f32_f32( xx, yy );
+    return SPIRV_OCL_BUILTIN(fmod, _f32_f32, )( xx, yy );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( fmod, float, float, float )
@@ -136,7 +136,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( fmod, float, float, float )
 
 double OVERLOADABLE fmod( double xx, double yy )
 {
-    return __builtin_spirv_OpenCL_fmod_f64_f64( xx, yy );
+    return SPIRV_OCL_BUILTIN(fmod, _f64_f64, )( xx, yy );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( fmod, double, double, double )
@@ -147,7 +147,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( fmod, double, double, double )
 
 INLINE half OVERLOADABLE fmod( half x, half y )
 {
-    return __builtin_spirv_OpenCL_fmod_f16_f16( x, y );
+    return SPIRV_OCL_BUILTIN(fmod, _f16_f16, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( fmod, half, half, half )

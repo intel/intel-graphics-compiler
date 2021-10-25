@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE copysign( float x, float y )
 {
-    return __builtin_spirv_OpenCL_copysign_f32_f32( x, y );
+    return SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( copysign, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( copysign, float, float )
 
 INLINE double OVERLOADABLE copysign( double x, double y )
 {
-    return __builtin_spirv_OpenCL_copysign_f64_f64( x, y );
+    return SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( copysign, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( copysign, double, double )
 
 INLINE half OVERLOADABLE copysign( half x, half y )
 {
-    return __builtin_spirv_OpenCL_copysign_f16_f16( x, y );
+    return SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( copysign, half, half )

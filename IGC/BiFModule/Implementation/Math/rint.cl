@@ -9,11 +9,11 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_rint, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rint, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_rint_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rint, _f64, )( double x )
 {
   double absolute_x;
   double rounded_int;
@@ -25,7 +25,7 @@ INLINE double __builtin_spirv_OpenCL_rint_f64( double x )
   // round to nearest int if mantissa contains fractional parts
   exp_ = as_ulong(absolute_x) >> DOUBLE_MANTISSA_BITS;
   double nearest_int = 0.5 * (double)((exp_ < DOUBLE_MANTISSA_BITS + DOUBLE_BIAS) & 1);
-  rounded_int = __builtin_spirv_OpenCL_trunc_f64(absolute_x + nearest_int);
+  rounded_int = SPIRV_OCL_BUILTIN(trunc, _f64, )(absolute_x + nearest_int);
 
   // get the parity bit; does src has a fraction equal to 0.5?
   uint parity = ((ulong)rounded_int) & 0x1;
@@ -41,12 +41,12 @@ INLINE double __builtin_spirv_OpenCL_rint_f64( double x )
   return rounded_int;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_rint, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rint, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_rint, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rint, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( asin, float, float )
 
 INLINE double OVERLOADABLE asin( double x )
 {
-    return __builtin_spirv_OpenCL_asin_f64( x );
+    return SPIRV_OCL_BUILTIN(asin, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( asin, double, double )

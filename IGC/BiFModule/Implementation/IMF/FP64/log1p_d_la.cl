@@ -798,7 +798,7 @@ double __ocl_svml_log1p (double a)
 
         SMant = ((float) (Mantissa));
         SglRcp = (1.0f / (SMant));
-        SglRcp = __builtin_spirv_OpenCL_rint_f32 (SglRcp);
+        SglRcp = SPIRV_OCL_BUILTIN(rint, _f32, ) (SglRcp);
         DblRcp = ((double) (SglRcp));
 
         Expon = as_ulong (X);
@@ -812,7 +812,7 @@ double __ocl_svml_log1p (double a)
         BrMask1 = as_double ((unsigned long) ((va1 < MinLog1p) ? 0xffffffffffffffff : 0x0));
         BrMask2 = as_double ((unsigned long) (((!(va1 <= MaxLog1p)) ? 0xffffffffffffffff : 0x0)));
 
-        R = __builtin_spirv_OpenCL_fma_f64_f64_f64 (Mantissa, DblRcp, -(One));
+        R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (Mantissa, DblRcp, -(One));
 
         FpExpX = as_double (ExpX);
         DblRcp1 = (FpExpX * DblRcp);
@@ -837,17 +837,17 @@ double __ocl_svml_log1p (double a)
         DBias = as_double ((as_ulong (DBias) | as_ulong (Bias1)));;
         FpExpon = (FpExpon - DBias);
         K = (FpExpon * L2);
-        R = __builtin_spirv_OpenCL_fma_f64_f64_f64 (Xl, DblRcp1, R);
+        R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (Xl, DblRcp1, R);
 
         poly_coeff[4] = as_double (__internal_dlog1p_la_data.poly_coeff[0]);
         poly_coeff[3] = as_double (__internal_dlog1p_la_data.poly_coeff[1]);
         poly_coeff[2] = as_double (__internal_dlog1p_la_data.poly_coeff[2]);
         poly_coeff[1] = as_double (__internal_dlog1p_la_data.poly_coeff[3]);
-        P34 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly_coeff[4], R, poly_coeff[3]);
-        P12 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly_coeff[2], R, poly_coeff[1]);
+        P34 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[4], R, poly_coeff[3]);
+        P12 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[2], R, poly_coeff[1]);
         R2 = (R * R);
-        P = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P34, R2, P12);
-        R = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P, R2, R);
+        P = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P34, R2, P12);
+        R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P, R2, R);
         R = (R + T);
         vr1 = (R + K);
 

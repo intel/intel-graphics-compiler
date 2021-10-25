@@ -30,7 +30,7 @@ static INLINE float __intel_cos_f32( float x, bool doFast )
         }
         else
         {
-            float abs_float = __builtin_spirv_OpenCL_fabs_f32(x);
+            float abs_float = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
             if( abs_float > 10000.0f )
             {
                 return libclc_cos_f32(x);
@@ -43,31 +43,31 @@ static INLINE float __intel_cos_f32( float x, bool doFast )
     }
 }
 
-INLINE float __builtin_spirv_OpenCL_cos_f32( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cos, _f32, )( float x )
 {
     return __intel_cos_f32(x, true);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cos, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cos, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_cos_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cos, _f64, )( double x )
 {
     return __ocl_svml_cos(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cos, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cos, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_cos_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cos, _f16, )( half x )
 {
-    return (half)__builtin_spirv_OpenCL_cos_f32((float)x);
+    return (half)SPIRV_OCL_BUILTIN(cos, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cos, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( cos, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

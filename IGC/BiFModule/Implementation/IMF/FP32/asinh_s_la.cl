@@ -156,33 +156,33 @@ inline int __internal_sasinh_la_cout (float *a, float *r)
     int_float Yh, Yl, res, xin, sgn, xa, two_expon;
     int expon, e23, iexpon_corr;
 
-    x2h = __builtin_spirv_OpenCL_fma_f32_f32_f32 (x, x, 0.0f);
+    x2h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (x, x, 0.0f);
     z2h = x2h + 1.0f;
 
-    A = __builtin_spirv_OpenCL_fmax_f32_f32 (x2h, 1.0f);
-    B = __builtin_spirv_OpenCL_fmin_f32_f32 (x2h, 1.0f);
+    A = SPIRV_OCL_BUILTIN(fmax, _f32_f32, ) (x2h, 1.0f);
+    B = SPIRV_OCL_BUILTIN(fmin, _f32_f32, ) (x2h, 1.0f);
 
-    x2l = __builtin_spirv_OpenCL_fma_f32_f32_f32 (x, x, -(x2h));
+    x2l = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (x, x, -(x2h));
     Bh = z2h - A;
     Bl = B - Bh;
     z2l = x2l + Bl;
 
-    RS = 1.0f / __builtin_spirv_OpenCL_sqrt_f32 (z2h);
+    RS = 1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, ) (z2h);
 
-    S0h = __builtin_spirv_OpenCL_fma_f32_f32_f32 (z2h, RS, 0.0f);
+    S0h = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (z2h, RS, 0.0f);
 
     RS *= 0.5f;
 
-    E = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(S0h), S0h, z2h);
+    E = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (-(S0h), S0h, z2h);
     E = E + z2l;
 
-    Sl = __builtin_spirv_OpenCL_fma_f32_f32_f32 (E, RS, 0.0f);
+    Sl = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (E, RS, 0.0f);
 
     Sh = S0h + Sl;
     Yhh = Sh - S0h;
     Sl = Sl - Yhh;
 
-    xa.f = __builtin_spirv_OpenCL_fabs_f32 (x);
+    xa.f = SPIRV_OCL_BUILTIN(fabs, _f32, ) (x);
 
     Yh.f = xa.f + Sh;
     Yhh = Yh.f - Sh;
@@ -209,21 +209,21 @@ inline int __internal_sasinh_la_cout (float *a, float *r)
 
     expon += iexpon_corr;
 
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (__sasinh_la_c8.f, R, __sasinh_la_c7.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sasinh_la_c6.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sasinh_la_c5.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sasinh_la_c4.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sasinh_la_c3.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sasinh_la_c2.f);
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, __sasinh_la_c1.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__sasinh_la_c8.f, R, __sasinh_la_c7.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasinh_la_c6.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasinh_la_c5.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasinh_la_c4.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasinh_la_c3.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasinh_la_c2.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __sasinh_la_c1.f);
 
     xin.f = x;
     sgn.w = xin.w ^ xa.w;
 
     poly *= R;
-    poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R, R);
+    poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, R);
 
-    res.f = __builtin_spirv_OpenCL_fma_f32_f32_f32 (((float) expon), __sasinh_la_ln2.f, poly);
+    res.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (((float) expon), __sasinh_la_ln2.f, poly);
 
     res.w ^= sgn.w;
 

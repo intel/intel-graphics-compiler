@@ -14,19 +14,19 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/tanh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-float __builtin_spirv_OpenCL_tanh_f32( float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanh, _f32, )( float x )
 {
     float result;
 
     if( __intel_relaxed_isnan(x) )
     {
-        result = __builtin_spirv_OpenCL_nan_i32((uint)0);
+        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     }
-    else if(__builtin_spirv_OpenCL_fabs_f32(x) < as_float(0x3A71E7A0))     // 0.00092279352247715
+    else if(SPIRV_OCL_BUILTIN(fabs, _f32, )(x) < as_float(0x3A71E7A0))     // 0.00092279352247715
     {
         result = x;
     }
-    else if( __builtin_spirv_OpenCL_fabs_f32(x) < as_float(0x3EACB527) )   // 0.33731958270072937
+    else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(x) < as_float(0x3EACB527) )   // 0.33731958270072937
     {
         float sinhx, coshx;
         {
@@ -42,7 +42,7 @@ float __builtin_spirv_OpenCL_tanh_f32( float x )
         }
         result = sinhx / coshx;
     }
-    else if (__builtin_spirv_OpenCL_fabs_f32(x) < as_float(0x41987E0C))    // 19.061546325683594
+    else if (SPIRV_OCL_BUILTIN(fabs, _f32, )(x) < as_float(0x41987E0C))    // 19.061546325683594
     {
         float exp2x = __intel_exp_for_hyper(2 * x, 0.0f);
         result = (exp2x - 1) / (exp2x + 1);
@@ -55,26 +55,26 @@ float __builtin_spirv_OpenCL_tanh_f32( float x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tanh, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_tanh_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanh, _f64, )( double x )
 {
     return __ocl_svml_tanh(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tanh, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_tanh_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanh, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_tanh_f32((float)x);
+    return SPIRV_OCL_BUILTIN(tanh, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tanh, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

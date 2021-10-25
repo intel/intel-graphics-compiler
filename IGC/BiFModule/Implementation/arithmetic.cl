@@ -10,20 +10,20 @@ SPDX-License-Identifier: MIT
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(half2 Vector1, half2 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
+    return SPIRV_OCL_BUILTIN(mad, _f16_f16_f16, )(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
 }
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(half3 Vector1, half3 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.x, Vector2.x,
-           __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
+    return SPIRV_OCL_BUILTIN(mad, _f16_f16_f16, )(Vector1.x, Vector2.x,
+           SPIRV_OCL_BUILTIN(mad, _f16_f16_f16, )(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
 }
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(half4 Vector1, half4 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.x, Vector2.x,
-           __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.y, Vector2.y,
-           __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.z, Vector2.z,
+    return SPIRV_OCL_BUILTIN(mad, _f16_f16_f16, )(Vector1.x, Vector2.x,
+           SPIRV_OCL_BUILTIN(mad, _f16_f16_f16, )(Vector1.y, Vector2.y,
+           SPIRV_OCL_BUILTIN(mad, _f16_f16_f16, )(Vector1.z, Vector2.z,
                                            (Vector1.w * Vector2.w))));
 }
 
@@ -40,20 +40,20 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f16_v16f16, )(half16 Vector1, hal
 
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(float2 Vector1, float2 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
+    return SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
 }
 
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(float3 Vector1, float3 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.x, Vector2.x,
-           __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
+    return SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(Vector1.x, Vector2.x,
+           SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
 }
 
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(float4 Vector1, float4 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.x, Vector2.x,
-           __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.y, Vector2.y,
-           __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.z, Vector2.z,
+    return SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(Vector1.x, Vector2.x,
+           SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(Vector1.y, Vector2.y,
+           SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )(Vector1.z, Vector2.z,
                                            (Vector1.w * Vector2.w))));
 }
 
@@ -71,20 +71,20 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f32_v16f32, )(float16 Vector1, f
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(double2 Vector1, double2 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
+    return SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
 }
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(double3 Vector1, double3 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x, Vector2.x,
-           __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
+    return SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )(Vector1.x, Vector2.x,
+           SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
 }
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(double4 Vector1, double4 Vector2)
 {
-    return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x, Vector2.x,
-           __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.y, Vector2.y,
-           __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.z, Vector2.z,
+    return SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )(Vector1.x, Vector2.x,
+           SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )(Vector1.y, Vector2.y,
+           SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )(Vector1.z, Vector2.z,
                                            (Vector1.w * Vector2.w))));
 }
 

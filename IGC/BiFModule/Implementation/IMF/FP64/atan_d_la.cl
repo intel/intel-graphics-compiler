@@ -661,7 +661,7 @@ double __ocl_svml_atan (double a)
         DiffX = (X - X0);
 
         One = as_double (__internal_datan_la_data_avx512.One);
-        Y = __builtin_spirv_OpenCL_fma_f64_f64_f64 (X, X0, One);
+        Y = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (X, X0, One);
 
         LargeX = as_double (__internal_datan_la_data_avx512.LargeX);
         X = ((LargeX < X) ? LargeX : X);
@@ -697,22 +697,22 @@ double __ocl_svml_atan (double a)
         R2 = (R * R);
         coeff[6] = as_double (__internal_datan_la_data_avx512.coeff[0]);
         coeff[5] = as_double (__internal_datan_la_data_avx512.coeff[1]);
-        P56 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (R2, coeff[6], coeff[5]);
+        P56 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, coeff[6], coeff[5]);
         coeff[4] = as_double (__internal_datan_la_data_avx512.coeff[2]);
         coeff[3] = as_double (__internal_datan_la_data_avx512.coeff[3]);
-        P34 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (R2, coeff[4], coeff[3]);
+        P34 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, coeff[4], coeff[3]);
         R4 = (R2 * R2);
 
         R3 = (R2 * R);
 
         coeff[2] = as_double (__internal_datan_la_data_avx512.coeff[4]);
         coeff[1] = as_double (__internal_datan_la_data_avx512.coeff[5]);
-        P12 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (R2, coeff[2], coeff[1]);
+        P12 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, coeff[2], coeff[1]);
 
-        P36 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P56, R4, P34);
-        Poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P36, R4, P12);
+        P36 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P56, R4, P34);
+        Poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P36, R4, P12);
 
-        Poly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (Poly, R3, R);
+        Poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (Poly, R3, R);
         Res = (Poly + Tbl);
         vr1 = as_double ((as_ulong (Res) ^ as_ulong (SgnX)));
     }

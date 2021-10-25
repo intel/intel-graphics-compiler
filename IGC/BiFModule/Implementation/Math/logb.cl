@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float __builtin_spirv_OpenCL_logb_f32( float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(logb, _f32, )( float x )
 {
     float result = 0.0f;
 
@@ -19,7 +19,7 @@ float __builtin_spirv_OpenCL_logb_f32( float x )
     }
     else if( __intel_relaxed_isnan( x ) )
     {
-        result = __builtin_spirv_OpenCL_nan_i32(0U);
+        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     }
     else if( __intel_relaxed_isinf( x ) )
     {
@@ -38,11 +38,11 @@ float __builtin_spirv_OpenCL_logb_f32( float x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_logb, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( logb, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-double __builtin_spirv_OpenCL_logb_f64( double x )
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(logb, _f64, )( double x )
 {
     double result = 0.0;
 
@@ -52,7 +52,7 @@ double __builtin_spirv_OpenCL_logb_f64( double x )
     }
     else if( SPIRV_BUILTIN(IsNan, _f64, )( x ) )
     {
-        result = __builtin_spirv_OpenCL_nan_i64(0UL);
+        result = SPIRV_OCL_BUILTIN(nan, _i64, )(0);
     }
     else if( SPIRV_BUILTIN(IsInf, _f64, )( x ) )
     {
@@ -71,17 +71,17 @@ double __builtin_spirv_OpenCL_logb_f64( double x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_logb, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( logb, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_logb_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(logb, _f16, )( half x )
 {
-    return (half)__builtin_spirv_OpenCL_logb_f32((float)x);
+    return (half)SPIRV_OCL_BUILTIN(logb, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_logb, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( logb, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

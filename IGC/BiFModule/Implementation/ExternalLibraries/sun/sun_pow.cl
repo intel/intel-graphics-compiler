@@ -203,11 +203,11 @@ double sun_pow(double x, double y)
         if(hy==0x40000000) return x*x; /* y is  2 */
         if(hy==0x3fe00000) {    /* y is  0.5 */
         if(hx>=0)    /* x >= +0 */
-        return __builtin_spirv_OpenCL_sqrt_f64(x);
+        return SPIRV_OCL_BUILTIN(sqrt, _f64, )(x);
         }
     }
 
-    ax   = __builtin_spirv_OpenCL_fabs_f64(x);
+    ax   = SPIRV_OCL_BUILTIN(fabs, _f64, )(x);
     /* special value of x */
     if(lx==0) {
         if(ix==0x7ff00000||ix==0||ix==0x3ff00000){

@@ -4452,31 +4452,31 @@ inline int __internal_dtan_la_cout (double *pxin, double *pres)
     if (((unsigned) (leading_xh) >= (0x41300000 - 0)))
         goto TAN_SPECIAL;
 
-    dS.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (x.f, (__dtan_la_INV_PI64).f, (__dtan_la_SHIFTER).f);
+    dS.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (x.f, (__dtan_la_INV_PI64).f, (__dtan_la_SHIFTER).f);
 
     dN = dS.f - (__dtan_la_SHIFTER).f;
 
     R_sgn = (dS).w << 63;
 
-    R = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, (__dtan_la_NPI1_BITS).f, x.f);
+    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, (__dtan_la_NPI1_BITS).f, x.f);
 
-    dR.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, (__dtan_la_NPI2_BITS).f, R);
+    dR.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, (__dtan_la_NPI2_BITS).f, R);
 
-    dR.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dN, (__dtan_la_NPI3_BITS).f, dR.f);
+    dR.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dN, (__dtan_la_NPI3_BITS).f, dR.f);
 
     dR2 = dR.f * dR.f;
 
   TAN_MAIN_PATH:
 
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, (__dtan_la_c9).f, (__dtan_la_c8).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_c7).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_c6).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_c5).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_c4).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_c3).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_c2).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_c1).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_c0).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, (__dtan_la_c9).f, (__dtan_la_c8).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_c7).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_c6).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_c5).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_c4).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_c3).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_c2).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_c1).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_c0).f);
 
     dA.w = R_sgn ? poly.w : dR.w;
     dB.w = R_sgn ? dR.w : poly.w;
@@ -4485,11 +4485,11 @@ inline int __internal_dtan_la_cout (double *pxin, double *pres)
     fRcp = 1.0f / fB;
     dRcp = (double) fRcp;
 
-    eps = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dRcp, -dB.f, 1.0);
-    dRcp = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dRcp, eps, dRcp);
-    eps = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dRcp, -dB.f, 1.0);
-    dRcp = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dRcp, eps, dRcp);
-    res.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dA.f, dRcp, 0.0);
+    eps = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dRcp, -dB.f, 1.0);
+    dRcp = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dRcp, eps, dRcp);
+    eps = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dRcp, -dB.f, 1.0);
+    dRcp = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dRcp, eps, dRcp);
+    res.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dA.f, dRcp, 0.0);
 
     res.w ^= (R_sgn ^ sgn_x);
 
@@ -4518,16 +4518,16 @@ inline int __internal_dtan_la_cout (double *pxin, double *pres)
     lindex = (unsigned long) index;
     lindex <<= 63;
     R_sgn = (lindex);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, (__dtan_la_dc10).f, (__dtan_la_dc9).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc8).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc7).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc6).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc5).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc4).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc3).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc2).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc1).f);
-    poly.f = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dR2, poly.f, (__dtan_la_dc0).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, (__dtan_la_dc10).f, (__dtan_la_dc9).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc8).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc7).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc6).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc5).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc4).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc3).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc2).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc1).f);
+    poly.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dR2, poly.f, (__dtan_la_dc0).f);
 
     dA.f = R_sgn ? poly.f : R;
     dB.f = R_sgn ? R : poly.f;

@@ -83,9 +83,9 @@ inline int __internal_ssinpi_la_cout (float *a, float *pres)
         int iN, sgn;
         int_float xin, res;
 
-        fN = __builtin_spirv_OpenCL_rint_f32 (x);
+        fN = SPIRV_OCL_BUILTIN(rint, _f32, ) (x);
 
-        fNi = -__builtin_spirv_OpenCL_fabs_f32 (fN);
+        fNi = -SPIRV_OCL_BUILTIN(fabs, _f32, ) (fN);
         iN = (int) fNi;
 
         xin.f = x;
@@ -95,10 +95,10 @@ inline int __internal_ssinpi_la_cout (float *a, float *pres)
         R = x - fN;
         R2 = R * R;
 
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (R2, __ssinpi_la_c4.f, __ssinpi_la_c3.f);
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R2, __ssinpi_la_c2.f);
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R2, __ssinpi_la_c1.f);
-        poly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (poly, R2, __ssinpi_la_c0.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (R2, __ssinpi_la_c4.f, __ssinpi_la_c3.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R2, __ssinpi_la_c2.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R2, __ssinpi_la_c1.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R2, __ssinpi_la_c0.f);
 
         res.f = R * poly;
 
@@ -106,7 +106,7 @@ inline int __internal_ssinpi_la_cout (float *a, float *pres)
 
         *pres = res.f;
     }
-    nRet = (__builtin_spirv_OpenCL_fabs_f32 (x) > __ssinpi_la_max_norm.f) ? 1 : 0;
+    nRet = (SPIRV_OCL_BUILTIN(fabs, _f32, ) (x) > __ssinpi_la_max_norm.f) ? 1 : 0;
     return nRet;
 
 }

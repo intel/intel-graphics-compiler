@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 // instead.
 #define FLOAT_PI                (as_float(0x40490FDA)) // 3.1415926535897930f
 
-float __builtin_spirv_OpenCL_atan2_f32_f32( float y, float x )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan2, _f32_f32, )( float y, float x )
 {
     // atan2(y,x) =  atan(y/x)        if  any y, x > 0    atan_yx
     //            =  atan(y/x) + pi   if y >= 0, x < 0    atan_yx + pi
@@ -40,7 +40,7 @@ float __builtin_spirv_OpenCL_atan2_f32_f32( float y, float x )
         //  atan(y/x) for x > 0,
         //  atan(y/x) + M_PI_F for x < 0 and y > 0, and
         //  atan(y/x) -M_PI_F for x < 0 and y < 0.
-        float px = __builtin_spirv_OpenCL_atan_f32( y / x );
+        float px = SPIRV_OCL_BUILTIN(atan, _f32, )( y / x );
         float py = px + M_PI_F;
         float ny = px - M_PI_F;
 
@@ -54,14 +54,14 @@ float __builtin_spirv_OpenCL_atan2_f32_f32( float y, float x )
         if( __intel_relaxed_isnan(x) |
             __intel_relaxed_isnan(y) )
         {
-            result = __builtin_spirv_OpenCL_nan_i32(0U);
+            result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
         }
         else
         {
-            float signy = __builtin_spirv_OpenCL_copysign_f32_f32(1.0f, y);
+            float signy = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(1.0f, y);
             if( y == 0.0f )
             {
-                float signx = __builtin_spirv_OpenCL_copysign_f32_f32(1.0f, x);
+                float signx = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(1.0f, x);
                 float px = signy * 0.0f;
                 float nx = signy * FLOAT_PI;
                 // In this case, we need to compare signx against
@@ -82,8 +82,8 @@ float __builtin_spirv_OpenCL_atan2_f32_f32( float y, float x )
             }
             else
             {
-                float px = __builtin_spirv_OpenCL_atan_f32( y / x );
-                float nx = __builtin_spirv_OpenCL_mad_f32_f32_f32( signy, FLOAT_PI, px );
+                float px = SPIRV_OCL_BUILTIN(atan, _f32, )( y / x );
+                float nx = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )( signy, FLOAT_PI, px );
                 result = ( x > 0.0f ) ? px : nx;
             }
         }
@@ -92,36 +92,36 @@ float __builtin_spirv_OpenCL_atan2_f32_f32( float y, float x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_atan2, float, float, float, f32, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, float, float, float, f32, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_atan2_f64_f64( double y, double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan2, _f64_f64, )( double y, double x )
 {
     return __ocl_svml_atan2(y, x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_atan2, double, double, double, f64, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, double, double, double, f64, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_atan2_f16_f16( half y, half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan2, _f16_f16, )( half y, half x )
 {
     half result;
 
     if( __intel_relaxed_isnan((float)x) |
         __intel_relaxed_isnan((float)y) )
     {
-        result = __builtin_spirv_OpenCL_nan_i32(0U);
+        result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     }
     else
     {
-        half signy = __builtin_spirv_OpenCL_copysign_f16_f16(1.0f, y);
+        half signy = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)(1.0), y);
         if( y == 0.0f )
         {
-            half signx = __builtin_spirv_OpenCL_copysign_f16_f16(1.0f, x);
+            half signx = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )((half)(1.0), x);
             half px = signy * 0.0f;
             half nx = signy * FLOAT_PI;
             // In this case, we need to compare signx against
@@ -142,8 +142,8 @@ INLINE half __builtin_spirv_OpenCL_atan2_f16_f16( half y, half x )
         }
         else
         {
-            half px = __builtin_spirv_OpenCL_atan_f32( (float)y / (float)x );
-            half nx = __builtin_spirv_OpenCL_mad_f32_f32_f32( (float)signy, FLOAT_PI, (float)px );
+            half px = SPIRV_OCL_BUILTIN(atan, _f32, )( (float)y / (float)x );
+            half nx = SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )( (float)signy, FLOAT_PI, (float)px );
             result = ( x > 0.0f ) ? px : nx;
         }
     }
@@ -151,6 +151,6 @@ INLINE half __builtin_spirv_OpenCL_atan2_f16_f16( half y, half x )
     return result;
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_atan2, half, half, half, f16, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, half, half, half, f16, f16 )
 
 #endif // defined(cl_khr_fp16)

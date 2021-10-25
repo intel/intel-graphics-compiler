@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE fdim( float x, float y )
 {
-    return __builtin_spirv_OpenCL_fdim_f32_f32( x, y );
+    return SPIRV_OCL_BUILTIN(fdim, _f32_f32, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( fdim, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( fdim, float, float )
 
 INLINE double OVERLOADABLE fdim( double x, double y )
 {
-    return __builtin_spirv_OpenCL_fdim_f64_f64( x, y );
+    return SPIRV_OCL_BUILTIN(fdim, _f64_f64, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( fdim, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( fdim, double, double )
 
 INLINE half OVERLOADABLE fdim( half x, half y )
 {
-    return __builtin_spirv_OpenCL_fdim_f16_f16( x, y );
+    return SPIRV_OCL_BUILTIN(fdim, _f16_f16, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( fdim, half, half )

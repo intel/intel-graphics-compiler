@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
     //#include "../IMF/FP64/erf_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-INLINE float __builtin_spirv_OpenCL_lgamma_f32( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(lgamma, _f32, )( float x )
 {
 #ifdef USE_IMF_LGAMMA_IMPL
     return __ocl_svml_lgammaf(x);
@@ -27,37 +27,37 @@ INLINE float __builtin_spirv_OpenCL_lgamma_f32( float x )
     float r;
     if( __intel_relaxed_isnan(x) )
     {
-        r = __builtin_spirv_OpenCL_nan_i32(0U);
+        r = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     }
     else
     {
-        float g = __builtin_spirv_OpenCL_tgamma_f32(x);
-        r = SPIRV_BUILTIN(IsNan, _f32, )(g) ? INFINITY : __builtin_spirv_OpenCL_native_log_f32(__builtin_spirv_OpenCL_fabs_f32(g));
+        float g = SPIRV_OCL_BUILTIN(tgamma, _f32, )(x);
+        r = SPIRV_BUILTIN(IsNan, _f32, )(g) ? INFINITY : __builtin_spirv_OpenCL_native_log_f32(SPIRV_OCL_BUILTIN(fabs, _f32, )(g));
     }
     return r;
 #endif // USE_IMF_LGAMMA_IMPL
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_lgamma, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_lgamma_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(lgamma, _f64, )( double x )
 {
     return libclc_lgamma_f64(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_lgamma, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_lgamma_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(lgamma, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_lgamma_f32((float)x);
+    return SPIRV_OCL_BUILTIN(lgamma, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_lgamma, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

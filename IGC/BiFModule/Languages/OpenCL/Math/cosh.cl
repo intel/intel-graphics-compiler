@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE cosh( float x )
 {
-    return __builtin_spirv_OpenCL_cosh_f32( x );
+    return SPIRV_OCL_BUILTIN(cosh, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cosh, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cosh, float, float )
 
 INLINE double OVERLOADABLE cosh( double x )
 {
-    return __builtin_spirv_OpenCL_cosh_f64( x );
+    return SPIRV_OCL_BUILTIN(cosh, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cosh, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cosh, double, double )
 
 INLINE half OVERLOADABLE cosh( half x )
 {
-    return __builtin_spirv_OpenCL_cosh_f16( x );
+    return SPIRV_OCL_BUILTIN(cosh, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cosh, half, half )

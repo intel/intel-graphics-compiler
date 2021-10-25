@@ -573,31 +573,31 @@ double __ocl_svml_asinh (double a)
         dTmp4 = (dTmp1 - dY);
         dW = (dTmp4 + dTmp3);
 
-        dZ = ((double) (1.0f / __builtin_spirv_OpenCL_sqrt_f32 ((float) (dY))));
+        dZ = ((double) (1.0f / SPIRV_OCL_BUILTIN(sqrt, _f32, ) ((float) (dY))));
         dTopMask12 = as_double (__internal_dasinh_la_data.dTopMask12);
         dR = as_double ((as_ulong (dZ) & as_ulong (dTopMask12)));
 
         dS = (dY * dR);
         dT = (dW * dR);
 
-        dE = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dS), dR, One);
-        dE = __builtin_spirv_OpenCL_fma_f64_f64_f64 (-(dT), dR, dE);
+        dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dS), dR, One);
+        dE = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-(dT), dR, dE);
         dC5 = as_double (__internal_dasinh_la_data.dC5);
         dC4 = as_double (__internal_dasinh_la_data.dC4);
-        dPol4 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dC5, dE, dC4);
+        dPol4 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dC5, dE, dC4);
 
         dC3 = as_double (__internal_dasinh_la_data.dC3);
-        dPol3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPol4, dE, dC3);
+        dPol3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPol4, dE, dC3);
 
         dC2 = as_double (__internal_dasinh_la_data.dC2);
-        dPol2 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPol3, dE, dC2);
+        dPol2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPol3, dE, dC2);
 
         dC1 = as_double (__internal_dasinh_la_data.dHalf);
-        dPol1 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPol2, dE, dC1);
+        dPol1 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPol2, dE, dC1);
 
         dCorr = (dPol1 * dE);
         dTmp1 = (dS + dT);
-        dTmp3 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dCorr, dTmp1, dT);
+        dTmp3 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dCorr, dTmp1, dT);
         dTmp4 = (dS - One);
 
         dTmp5 = (dTmp3 + dTmp4);
@@ -606,7 +606,7 @@ double __ocl_svml_asinh (double a)
         dX2 = (dX2Hi + dX2Lo);
         dX2over2 = (dC1 * dX2);
         dX4over4 = (dX2over2 * dX2over2);
-        dX46 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dX2over2, dX4over4, -(dX4over4));
+        dX46 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dX2over2, dX4over4, -(dX4over4));
         dX46over2 = (dX46 * dC1);
 
         dTmpf1 = (dX2over2 + dX46over2);
@@ -696,18 +696,18 @@ double __ocl_svml_asinh (double a)
         FpExpon = (FpExpon - DBias);
         K = (FpExpon * L2);
 
-        Rh = __builtin_spirv_OpenCL_fma_f64_f64_f64 (X, DblRcp1, -(One));
+        Rh = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (X, DblRcp1, -(One));
         Rl = (Xl * DblRcp1);
         R = (Rh + Rl);
         poly_coeff[4] = as_double (__internal_dasinh_la_data.poly_coeff[0]);
         poly_coeff[3] = as_double (__internal_dasinh_la_data.poly_coeff[1]);
         poly_coeff[2] = as_double (__internal_dasinh_la_data.poly_coeff[2]);
         poly_coeff[1] = as_double (__internal_dasinh_la_data.poly_coeff[3]);
-        P34 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly_coeff[4], R, poly_coeff[3]);
-        P12 = __builtin_spirv_OpenCL_fma_f64_f64_f64 (poly_coeff[2], R, poly_coeff[1]);
+        P34 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[4], R, poly_coeff[3]);
+        P12 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly_coeff[2], R, poly_coeff[1]);
         R2 = (R * R);
-        P = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P34, R2, P12);
-        R = __builtin_spirv_OpenCL_fma_f64_f64_f64 (P, R2, R);
+        P = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P34, R2, P12);
+        R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (P, R2, R);
         R = (R + T);
         dResult = (R + K);
         dSign = as_double (__internal_dasinh_la_data.dSign);

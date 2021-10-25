@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/exp_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-float __builtin_spirv_OpenCL_exp_f32(float x)
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f32, )(float x)
 {
     if (__FastRelaxedMath)
     {
@@ -27,7 +27,7 @@ float __builtin_spirv_OpenCL_exp_f32(float x)
 
         // Compute the whole part of x * log2(e)
         // This part is easy!
-        float w = __builtin_spirv_OpenCL_trunc_f32( x * M_LOG2E_F );
+        float w = SPIRV_OCL_BUILTIN(trunc, _f32, )( x * M_LOG2E_F );
 
         // Compute the fractional part of x * log2(e)
         // We have to do this carefully, so we don't lose precision.
@@ -38,8 +38,8 @@ float __builtin_spirv_OpenCL_exp_f32(float x)
         const float C1 = as_float( 0x3F317200 );    // 0.693145751953125
         const float C2 = as_float( 0x35BFBE8E );    // 0.000001428606765330187
         float f = x;
-        f = __builtin_spirv_OpenCL_fma_f32_f32_f32( w, -C1, f );
-        f = __builtin_spirv_OpenCL_fma_f32_f32_f32( w, -C2, f );
+        f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C1, f );
+        f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C2, f );
         f = f * M_LOG2E_F;
 
         w = __builtin_spirv_OpenCL_native_exp2_f32( w );   // this should be exact
@@ -53,26 +53,26 @@ float __builtin_spirv_OpenCL_exp_f32(float x)
     }
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_exp, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_exp_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f64, )( double x )
 {
     return __ocl_svml_exp(x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_exp, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( exp, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_exp_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_exp_f32((float)x);
+    return SPIRV_OCL_BUILTIN(exp, _f32, )((float)x);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_exp, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

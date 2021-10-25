@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( acos, float, float )
 
 INLINE double OVERLOADABLE acos( double x )
 {
-    return __builtin_spirv_OpenCL_acos_f64( x );
+    return SPIRV_OCL_BUILTIN(acos, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( acos, double, double )

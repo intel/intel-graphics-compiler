@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE fmin( float x, float y )
 {
-    return __builtin_spirv_OpenCL_fmin_f32_f32( x, y );
+    return SPIRV_OCL_BUILTIN(fmin, _f32_f32, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( fmin, float, float )
@@ -21,7 +21,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( fmin, float, float, float )
 
 INLINE double OVERLOADABLE fmin( double x, double y )
 {
-    return __builtin_spirv_OpenCL_fmin_f64_f64( x, y );
+    return SPIRV_OCL_BUILTIN(fmin, _f64_f64, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( fmin, double, double )
@@ -33,7 +33,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( fmin, double, double, double )
 
 INLINE half OVERLOADABLE fmin( half x, half y )
 {
-    return __builtin_spirv_OpenCL_fmin_f16_f16( x, y );
+    return SPIRV_OCL_BUILTIN(fmin, _f16_f16, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( fmin, half, half )

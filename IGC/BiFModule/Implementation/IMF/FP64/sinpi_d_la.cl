@@ -290,18 +290,18 @@ double __ocl_svml_sinpi (double a)
 
         dC7 = as_double (__internal_dsinpi_la_data._dC7);
         dC6 = as_double (__internal_dsinpi_la_data._dC6);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dC7, dRp2, dC6);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dC7, dRp2, dC6);
         dC5 = as_double (__internal_dsinpi_la_data._dC5);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC5);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC5);
         dC4 = as_double (__internal_dsinpi_la_data._dC4);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC4);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC4);
         dC3 = as_double (__internal_dsinpi_la_data._dC3);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC3);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC3);
 
         dC2 = as_double (__internal_dsinpi_la_data._dC2);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC2);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC2);
         dC1 = as_double (__internal_dsinpi_la_data._dC1);
-        dPoly = __builtin_spirv_OpenCL_fma_f64_f64_f64 (dPoly, dRp2, dC1);
+        dPoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (dPoly, dRp2, dC1);
         dPoly = (dPoly * dRp2);
         dPoly = (dPoly * dR);
 

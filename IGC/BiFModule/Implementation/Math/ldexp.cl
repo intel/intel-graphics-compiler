@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-float __builtin_spirv_OpenCL_ldexp_f32_i32( float x, int n )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )( float x, int n )
 {
     int delta = 0;
     float m0 = 1.0f;
@@ -36,11 +36,11 @@ float __builtin_spirv_OpenCL_ldexp_f32_i32( float x, int n )
     return res;
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( __builtin_spirv_OpenCL_ldexp, float, float, int, f32, i32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, float, float, int, f32, i32 )
 
 #if defined(cl_khr_fp64)
 
-double __builtin_spirv_OpenCL_ldexp_f64_i32( double x, int n )
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ldexp, _f64_i32, )( double x, int n )
 {
     int delta = 0;
     double m0 = 1.0;
@@ -67,13 +67,13 @@ double __builtin_spirv_OpenCL_ldexp_f64_i32( double x, int n )
     return res;
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( __builtin_spirv_OpenCL_ldexp, double, double, int, f64, i32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, double, double, int, f64, i32 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-half __builtin_spirv_OpenCL_ldexp_f16_i32( half x, int n )
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ldexp, _f16_i32, )( half x, int n )
 {
     float mn = as_float( ( n + FLOAT_BIAS ) << FLOAT_MANTISSA_BITS );
     mn = ( n == 0 ) ? 1.0f : mn;
@@ -85,6 +85,6 @@ half __builtin_spirv_OpenCL_ldexp_f16_i32( half x, int n )
     return res;
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( __builtin_spirv_OpenCL_ldexp, half, half, int, f16, i32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, half, half, int, f16, i32 )
 
 #endif // defined(cl_khr_fp16)

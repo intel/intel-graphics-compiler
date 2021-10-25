@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 
 float OVERLOADABLE atan2( float y, float x )
 {
-    return __builtin_spirv_OpenCL_atan2_f32_f32( y, x );
+    return SPIRV_OCL_BUILTIN(atan2, _f32_f32, )( y, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, float, float, float )
@@ -27,7 +27,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, float, float, float )
 
 INLINE double OVERLOADABLE atan2( double y, double x )
 {
-    return __builtin_spirv_OpenCL_atan2_f64_f64( y, x );
+    return SPIRV_OCL_BUILTIN(atan2, _f64_f64, )( y, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, double, double, double )
@@ -38,7 +38,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, double, double, double )
 
 INLINE half OVERLOADABLE atan2( half y, half x )
 {
-    return __builtin_spirv_OpenCL_atan2_f16_f16( y, x );
+    return SPIRV_OCL_BUILTIN(atan2, _f16_f16, )( y, x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, half, half, half )

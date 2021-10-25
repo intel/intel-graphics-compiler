@@ -76,22 +76,22 @@ float __builtin_spirv_divide_cr_f32_f32( float a,
             q0.f = fa.f * y0.f;
             //printf("q0=0x%08x=%a\n", q0.u, q0.f);
             // Step(2), e0=(1-b*y0)
-            e0.f = __builtin_spirv_OpenCL_fma_f32_f32_f32(-fb.f, y0.f, 1.0f);
+            e0.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-fb.f, y0.f, 1.0f);
             //printf("e0=0x%08x=%a\n", e0.u, e0.f);
             // Step(3), y1=y0+e0*y0
-            y1.f = __builtin_spirv_OpenCL_fma_f32_f32_f32(e0.f, y0.f, y0.f);
+            y1.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(e0.f, y0.f, y0.f);
             //printf("y1=0x%08x=%a\n", y1.u, y1.f);
             // Step(4), r0=a-b*q0
-            r0.f = __builtin_spirv_OpenCL_fma_f32_f32_f32(-fb.f, q0.f, fa.f);
+            r0.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-fb.f, q0.f, fa.f);
             //printf("r0=0x%08x=%a\n", r0.u, r0.f);
             // Step(5), q1=q0+r0*y1
-            q1.f = __builtin_spirv_OpenCL_fma_f32_f32_f32(r0.f, y1.f, q0.f);
+            q1.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(r0.f, y1.f, q0.f);
             //printf("q1=0x%08x=%a\n", q1.u, q1.f);
             // Step(6), r1=a-b*q1
-            r1.f = __builtin_spirv_OpenCL_fma_f32_f32_f32(-fb.f, q1.f, fa.f);
+            r1.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(-fb.f, q1.f, fa.f);
             //printf("r1=0x%08x=%a\n", r1.u, r1.f);
             // Step(7), q=q1+r1*y1, set user rounding mode here
-            q.f = __builtin_spirv_OpenCL_fma_f32_f32_f32(r1.f, y1.f, q1.f);
+            q.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(r1.f, y1.f, q1.f);
             //printf("q=0x%08x=%a\n", q.u, q.f);
             // Scale so that 1<= q < 4
             //q.f = q.f * 2;

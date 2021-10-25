@@ -74,11 +74,11 @@ void __ocl_svml_sincospif (float a, __private float *b, __private float *c)
 
         AbsMask = as_float (__internal_ssincospi_data._AbsMask);
 
-        fN = __builtin_spirv_OpenCL_rint_f32 (va1);
+        fN = SPIRV_OCL_BUILTIN(rint, _f32, ) (va1);
 
         Rs = (va1 - fN);
 
-        iN = ((int) ((-__builtin_spirv_OpenCL_fabs_f64 (fN))));
+        iN = ((int) ((-SPIRV_OCL_BUILTIN(fabs, _f64, ) (fN))));
 
         Half = as_float (__internal_ssincospi_data._Half);
         aRs = as_float ((as_uint (Rs) & as_uint (AbsMask)));
@@ -94,10 +94,10 @@ void __ocl_svml_sincospif (float a, __private float *b, __private float *c)
         c3 = as_float (__internal_ssincospi_data._c3);
         c2 = as_float (__internal_ssincospi_data._c2);
 
-        spoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (c4, Rs2, c3);
-        cpoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (c4, Rc2, c3);
-        spoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (spoly, Rs2, c2);
-        cpoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (cpoly, Rc2, c2);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (c4, Rs2, c3);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (c4, Rc2, c3);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (spoly, Rs2, c2);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (cpoly, Rc2, c2);
         zero = as_float (__internal_ssincospi_data._zero);
         SgnMask = as_float (__internal_ssincospi_data._SgnMask);
 
@@ -110,10 +110,10 @@ void __ocl_svml_sincospif (float a, __private float *b, __private float *c)
         c1 = as_float (__internal_ssincospi_data._c1);
         c0 = as_float (__internal_ssincospi_data._c0);
 
-        spoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (spoly, Rs2, c1);
-        cpoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (cpoly, Rc2, c1);
-        spoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (spoly, Rs2, c0);
-        cpoly = __builtin_spirv_OpenCL_fma_f32_f32_f32 (cpoly, Rc2, c0);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (spoly, Rs2, c1);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (cpoly, Rc2, c1);
+        spoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (spoly, Rs2, c0);
+        cpoly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (cpoly, Rc2, c0);
 
         Rs = as_float ((as_uint (Rs) ^ as_uint (sgn_s)));
         Rc = as_float ((as_uint (Rc) ^ as_uint (sgn_c)));
