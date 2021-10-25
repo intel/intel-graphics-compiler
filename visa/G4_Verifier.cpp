@@ -1299,6 +1299,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         break;
     }
     case G4_mad:
+    case G4_pseudo_mad:
     {
         // case 3
         G4_Operand* src2 = inst->getSrc(2);

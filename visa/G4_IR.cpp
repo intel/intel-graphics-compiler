@@ -442,7 +442,11 @@ G4_Type G4_INST::getExecType2() const
             continue;
         }
         G4_Type srcType = srcs[i]->getType();
-        if (isLowPrecisionFloatTy(srcType) &&
+        if (builder.hasBFMixMode() && srcType == Type_BF)
+        {
+            execType = Type_F;
+        }
+        else if (isLowPrecisionFloatTy(srcType) &&
             TypeSize(srcType) >= TypeSize(execType))
         {
             execType = srcType;
