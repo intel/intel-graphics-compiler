@@ -44,23 +44,6 @@ SpvSplitter::Split(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
                                    diagnostic->error);
   }
 
-  if (!has_spmd_functions_ && !has_esimd_functions_) {
-      return llvm::createStringError(llvm::inconvertibleErrorCode(),
-          "SPIR-V file did not contain any SPMD or ESIMD functions!");
-  }
-
-  // If all entry points are marked as ESIMD, treat this as fully ESIMD module,
-  // even if there are functions that are not marked with ESIMD (known bug in
-  // VC).
-  if (std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
-        return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
-      })) {
-      spmd_program_.clear();
-  } else if (!has_esimd_functions_) {
-      // This is SPMD module as entry points are included in the flag.
-      esimd_program_.clear();
-  }
-
   return std::make_pair(spmd_program_, esimd_program_);
 }
 
@@ -113,17 +96,11 @@ spv_result_t SpvSplitter::HandleInstruction(
     case spv::OpDecorate:
       ret = HandleDecorate(parsed_instruction);
       break;
-    case spv::OpGroupDecorate:
-        ret = HandleGroupDecorate(parsed_instruction);
-        break;
     case spv::OpFunction:
       ret = HandleFunctionStart(parsed_instruction);
       break;
     case spv::OpFunctionEnd:
       ret = HandleFunctionEnd(parsed_instruction);
-      break;
-    case spv::OpEntryPoint:
-      ret = HandleEntryPoint(parsed_instruction);
       break;
     default:
       if (!is_inside_spmd_function_) {
@@ -148,7 +125,7 @@ spv_result_t SpvSplitter::HandleDecorate(
           spv::DecorationVectorComputeFunctionINTEL) {
     uint32_t esimd_function_id =
         parsed_instruction->words[parsed_instruction->operands[0].offset];
-    esimd_decorated_ids_.insert(esimd_function_id);
+    esimd_function_ids_.insert(esimd_function_id);
   } else {
     AddInstToProgram(parsed_instruction, spmd_program_);
   }
@@ -157,38 +134,15 @@ spv_result_t SpvSplitter::HandleDecorate(
   return SPV_SUCCESS;
 }
 
-// Looks for group decorations that mark functions specific to ESIMD module.
-spv_result_t SpvSplitter::HandleGroupDecorate(
-    const spv_parsed_instruction_t* parsed_instruction) {
-    IGC_ASSERT(parsed_instruction && parsed_instruction->opcode == spv::OpGroupDecorate);
-    IGC_ASSERT(parsed_instruction->num_operands > 0);
-    // Look for decoration groups previously marked with VectorComputeFunctionINTEL decoration.
-    uint32_t group_id = parsed_instruction->words[parsed_instruction->operands[0].offset];
-    if (esimd_decorated_ids_.find(group_id) != esimd_decorated_ids_.end()) {
-        for (uint32_t i = 1; i < parsed_instruction->num_operands; ++i) {
-            uint32_t id = parsed_instruction->words[parsed_instruction->operands[i].offset];
-            esimd_decorated_ids_.insert(id);
-        }
-    }
-    else {
-        AddInstToProgram(parsed_instruction, spmd_program_);
-    }
-    AddInstToProgram(parsed_instruction, esimd_program_);
-
-    return SPV_SUCCESS;
-}
-
 spv_result_t SpvSplitter::HandleFunctionStart(
     const spv_parsed_instruction_t* parsed_instruction) {
   IGC_ASSERT(parsed_instruction && parsed_instruction->opcode == spv::OpFunction);
-  if (esimd_decorated_ids_.find(parsed_instruction->result_id) !=
-      esimd_decorated_ids_.end()) {
+  if (esimd_function_ids_.find(parsed_instruction->result_id) !=
+      esimd_function_ids_.end()) {
     is_inside_esimd_function_ = true;
-    has_esimd_functions_ = true;
     AddInstToProgram(parsed_instruction, esimd_program_);
   } else {
     is_inside_spmd_function_ = true;
-    has_spmd_functions_ = true;
     AddInstToProgram(parsed_instruction, spmd_program_);
   }
 
@@ -209,19 +163,6 @@ spv_result_t SpvSplitter::HandleFunctionEnd(
   is_inside_esimd_function_ = false;
   is_inside_spmd_function_ = false;
   return SPV_SUCCESS;
-}
-
-spv_result_t SpvSplitter::HandleEntryPoint(
-    const spv_parsed_instruction_t* parsed_instruction) {
-    IGC_ASSERT(parsed_instruction && parsed_instruction->opcode == spv::OpEntryPoint);
-    IGC_ASSERT(parsed_instruction->num_operands > 0);
-
-    uint32_t id = parsed_instruction->words[parsed_instruction->operands[1].offset];
-    entry_points_.insert(id);
-    AddInstToProgram(parsed_instruction, spmd_program_);
-    AddInstToProgram(parsed_instruction, esimd_program_);
-
-    return SPV_SUCCESS;
 }
 
 void SpvSplitter::AddInstToProgram(
