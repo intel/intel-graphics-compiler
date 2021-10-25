@@ -897,6 +897,7 @@ namespace IGC
         /// Adding multiversioning to partially redundant samples, if AIL is on.
         bool m_enableSampleMultiversioning = false;
 
+        bool m_src1RemovedForBlendOpt = false;
         llvm::AssemblyAnnotationWriter* annotater = nullptr;
 
         RetryManager m_retryManager;
