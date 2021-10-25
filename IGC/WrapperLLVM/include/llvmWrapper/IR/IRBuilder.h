@@ -262,16 +262,14 @@ namespace IGCLLVM
                             AtomicOrdering SuccessOrdering,
                             AtomicOrdering FailureOrdering,
                             SyncScope::ID SSID = SyncScope::System) {
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateAtomicCmpXchg(
-              Ptr, Cmp, New, MaybeAlign(), SuccessOrdering, FailureOrdering,
-              SSID);
+          return createAtomicCmpXchg(*this, Ptr, Cmp, New, SuccessOrdering,
+                                     FailureOrdering, SSID);
         }
 
         AtomicRMWInst *CreateAtomicRMW(AtomicRMWInst::BinOp Op, Value *Ptr,
                                        Value *Val, AtomicOrdering Ordering,
                                        SyncScope::ID SSID = SyncScope::System) {
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateAtomicRMW(
-              Op, Ptr, Val, MaybeAlign(), Ordering, SSID);
+          return createAtomicRMW(*this, Op, Ptr, Val, Ordering, SSID);
         }
 
         CallInst *CreateMaskedLoad(Value *Ptr, Align Alignment, Value *Mask,
@@ -314,6 +312,37 @@ namespace IGCLLVM
 #endif
         }
     };
+
+    template <typename T = llvm::ConstantFolder,
+              typename InserterT = llvm::IRBuilderDefaultInserter>
+    inline llvm::AtomicRMWInst *
+    createAtomicRMW(llvm::IRBuilder<T, InserterT> &IRB,
+                    llvm::AtomicRMWInst::BinOp Op, llvm::Value *Ptr,
+                    llvm::Value *Val, llvm::AtomicOrdering Ordering,
+                    llvm::SyncScope::ID SSID = llvm::SyncScope::System) {
+#if LLVM_VERSION_MAJOR >= 13
+      return IRB.CreateAtomicRMW(Op, Ptr, Val, MaybeAlign{}, Ordering, SSID);
+#else
+      return IRB.CreateAtomicRMW(Op, Ptr, Val, Ordering, SSID);
+#endif
+    }
+
+    template <typename T = llvm::ConstantFolder,
+              typename InserterT = llvm::IRBuilderDefaultInserter>
+    inline llvm::AtomicCmpXchgInst *
+    createAtomicCmpXchg(llvm::IRBuilder<T, InserterT> &IRB, llvm::Value *Ptr,
+                        llvm::Value *Cmp, llvm::Value *New,
+                        llvm::AtomicOrdering SuccessOrdering,
+                        llvm::AtomicOrdering FailureOrdering,
+                        llvm::SyncScope::ID SSID = llvm::SyncScope::System) {
+#if LLVM_VERSION_MAJOR >= 13
+      return IRB.CreateAtomicCmpXchg(Ptr, Cmp, New, MaybeAlign{},
+                                     SuccessOrdering, FailureOrdering, SSID);
+#else
+      return IRB.CreateAtomicCmpXchg(Ptr, Cmp, New, SuccessOrdering,
+                                     FailureOrdering, SSID);
+#endif
+    }
 }
 
 #endif

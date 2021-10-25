@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define CM_CL_DETAIL_BUILTINS_H
 
 #include "vector_impl.h"
+#include <cm-cl/define.h>
 
 #include <opencl_def.h>
 #include <opencl_utility.h>
@@ -88,6 +89,33 @@ vector_impl<uint32_t, 3> __cm_cl_group_count();
 uint32_t __cm_cl_group_id_x();
 uint32_t __cm_cl_group_id_y();
 uint32_t __cm_cl_group_id_z();
+
+template <typename T>
+T __cm_cl_atomicrmw(__global T *ptr, atomic::operation operation, T operand,
+                    memory_order semantics, memory_scope scope);
+
+template <typename T>
+T __cm_cl_atomicrmw(__local T *ptr, atomic::operation operation, T operand,
+                    memory_order semantics, memory_scope scope);
+
+template <typename T>
+T __cm_cl_atomicrmw(__generic T *ptr, atomic::operation operation, T operand,
+                    memory_order semantics, memory_scope scope);
+
+template <typename T>
+T __cm_cl_cmpxchg(__global T *ptr, T operand0, T operand1,
+                  memory_order semantics_on_success,
+                  memory_order semantics_on_failure, memory_scope scope);
+
+template <typename T>
+T __cm_cl_cmpxchg(__local T *ptr, T operand0, T operand1,
+                  memory_order semantics_on_success,
+                  memory_order semantics_on_failure, memory_scope scope);
+
+template <typename T>
+T __cm_cl_cmpxchg(__generic T *ptr, T operand0, T operand1,
+                  memory_order semantics_on_success,
+                  memory_order semantics_on_failure, memory_scope scope);
 
 //========================= soft implementation part =========================//
 //
@@ -266,6 +294,54 @@ inline uint32_t bfrev(uint32_t src) { return __cm_cl_bfrev(src); }
 template <int width>
 vector_impl<uint32_t, width> bfrev(vector_impl<uint32_t, width> src) {
   return __cm_cl_bfrev(src);
+}
+
+template <atomic::operation operation, memory_order semantics,
+          memory_scope scope, typename T>
+T atomicrmw(__global T *ptr, T operand) {
+  static_assert(cl::is_arithmetic<T>::value,
+                "illegal type provided in atomicrmw");
+  return __cm_cl_atomicrmw(ptr, operation, operand, semantics, scope);
+}
+
+template <atomic::operation operation, memory_order semantics,
+          memory_scope scope, typename T>
+T atomicrmw(__local T *ptr, T operand) {
+  static_assert(cl::is_arithmetic<T>::value,
+                "illegal type provided in atomicrmw");
+  return __cm_cl_atomicrmw(ptr, operation, operand, semantics, scope);
+}
+
+template <atomic::operation operation, memory_order semantics,
+          memory_scope scope, typename T>
+T atomicrmw(__generic T *ptr, T operand) {
+  static_assert(cl::is_arithmetic<T>::value,
+                "illegal type provided in atomicrmw");
+  return __cm_cl_atomicrmw(ptr, operation, operand, semantics, scope);
+}
+
+template <memory_order semantics_on_success, memory_order semantics_on_failure,
+          memory_scope scope, typename T>
+T cmpxchg(__global T *ptr, T operand0, T operand1) {
+  static_assert(cl::is_integral<T>::value, "illegal type provided in cmpxchg");
+  return __cm_cl_cmpxchg(ptr, operand0, operand1, semantics_on_success,
+                         semantics_on_failure, scope);
+}
+
+template <memory_order semantics_on_success, memory_order semantics_on_failure,
+          memory_scope scope, typename T>
+T cmpxchg(__local T *ptr, T operand0, T operand1) {
+  static_assert(cl::is_integral<T>::value, "illegal type provided in cmpxchg");
+  return __cm_cl_cmpxchg(ptr, operand0, operand1, semantics_on_success,
+                         semantics_on_failure, scope);
+}
+
+template <memory_order semantics_on_success, memory_order semantics_on_failure,
+          memory_scope scope, typename T>
+T cmpxchg(__generic T *ptr, T operand0, T operand1) {
+  static_assert(cl::is_integral<T>::value, "illegal type provided in cmpxchg");
+  return __cm_cl_cmpxchg(ptr, operand0, operand1, semantics_on_success,
+                         semantics_on_failure, scope);
 }
 
 } // namespace detail

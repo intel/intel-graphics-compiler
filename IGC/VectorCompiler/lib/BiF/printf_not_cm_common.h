@@ -67,7 +67,7 @@ static inline BufferElementTy getInitialBufferOffset(uintptr_t BufferPtr,
   vector<uint64_t, MagicNumber> Offsets(AddrOffset);
   vector<uintptr_t, MagicNumber> Addr = BufferPtr + Offsets;
 
-  Result = svm::atomic<svm::operation::add>(Addr, Size);
+  Result = svm::atomic<atomic::operation::add>(Addr, Size);
   return Result[0];
 }
 

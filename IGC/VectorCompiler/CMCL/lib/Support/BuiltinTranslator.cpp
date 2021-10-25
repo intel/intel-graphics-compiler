@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "cmcl/Support/BuiltinTranslator.h"
+#include "cmcl/Support/AtomicsIface.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
@@ -22,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ErrorHandling.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 
 #include <algorithm>
 #include <array>
@@ -271,6 +273,104 @@ Value &createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands,
       IRB.CreateSelect(RightTypeCond, Operands[SelectOperand::TrueValue],
                        Operands[SelectOperand::FalseValue], "cmcl.sel");
   return *SelectResult;
+}
+
+using CMCLSemantics = cmcl::atomic::MemorySemantics::Enum;
+using CMCLMemoryScope = cmcl::atomic::MemoryScope::Enum;
+using CMCLOperation = cmcl::atomic::Operation::Enum;
+
+static AtomicOrdering getLLVMAtomicOrderingFromCMCL(CMCLSemantics S) {
+  switch (S) {
+  case CMCLSemantics::Relaxed:
+    return AtomicOrdering::Monotonic;
+  case CMCLSemantics::Acquire:
+    return AtomicOrdering::Acquire;
+  case CMCLSemantics::Release:
+    return AtomicOrdering::Release;
+  case CMCLSemantics::AcquireRelease:
+    return AtomicOrdering::AcquireRelease;
+  case CMCLSemantics::SequentiallyConsistent:
+    return AtomicOrdering::SequentiallyConsistent;
+  }
+  llvm_unreachable("unhandled cmcl semantics");
+}
+
+static AtomicRMWInst::BinOp getLLVMAtomicBinOpFromCMCL(CMCLOperation Op) {
+  switch (Op) {
+  default:
+    llvm_unreachable("unexpected cmcl binary op");
+  case CMCLOperation::MinSInt:
+    return AtomicRMWInst::Min;
+  case CMCLOperation::Xchg:
+    return AtomicRMWInst::Xchg;
+  case CMCLOperation::MaxSInt:
+    return AtomicRMWInst::Max;
+  case CMCLOperation::Min:
+    return AtomicRMWInst::UMin;
+  case CMCLOperation::Max:
+    return AtomicRMWInst::UMax;
+  case CMCLOperation::Add:
+    return AtomicRMWInst::Add;
+  case CMCLOperation::Sub:
+    return AtomicRMWInst::Sub;
+  case CMCLOperation::Orl:
+    return AtomicRMWInst::Or;
+  case CMCLOperation::Xorl:
+    return AtomicRMWInst::Xor;
+  case CMCLOperation::Andl:
+    return AtomicRMWInst::And;
+  }
+}
+
+template <>
+Value &
+createMainInst<BuiltinID::AtomicRMW>(const std::vector<Value *> &Operands,
+                                     Type &, IRBuilder<> &IRB) {
+  static_assert(AtomicRMWOperand::Size == 5,
+                "builtin operands should be trasformed into LLVM atomicrmw "
+                "instruction operands without changes");
+  auto &Ctx = IRB.getContext();
+  auto *Ptr = Operands[AtomicRMWOperand::Ptr];
+  auto Ordering = getLLVMAtomicOrderingFromCMCL(static_cast<CMCLSemantics>(
+      cast<ConstantInt>(Operands[AtomicRMWOperand::Semantics])
+          ->getZExtValue()));
+  auto ScopeName = cmcl::atomic::MemoryScope::getScopeNameFromCMCL(
+      static_cast<CMCLMemoryScope>(
+          cast<ConstantInt>(Operands[AtomicRMWOperand::Scope])
+              ->getZExtValue()));
+  auto BinOp = getLLVMAtomicBinOpFromCMCL(static_cast<CMCLOperation>(
+      cast<ConstantInt>(Operands[AtomicRMWOperand::Operation])
+          ->getSExtValue()));
+  return *IGCLLVM::createAtomicRMW(
+      IRB, BinOp, Ptr, Operands[AtomicRMWOperand::Operand], Ordering,
+      Ctx.getOrInsertSyncScopeID(ScopeName));
+}
+
+template <>
+Value &createMainInst<BuiltinID::CmpXchg>(const std::vector<Value *> &Operands,
+                                          Type &, IRBuilder<> &IRB) {
+  static_assert(CmpXchgOperand::Size == 6,
+                "builtin operands should be trasformed into LLVM cmpxchg "
+                "instruction operands without changes");
+  auto *Ptr = Operands[CmpXchgOperand::Ptr];
+  auto &Ctx = IRB.getContext();
+  auto OrderingSuccess =
+      getLLVMAtomicOrderingFromCMCL(static_cast<CMCLSemantics>(
+          cast<ConstantInt>(Operands[CmpXchgOperand::SemanticsSuccess])
+              ->getZExtValue()));
+  auto OrderingFalilure =
+      getLLVMAtomicOrderingFromCMCL(static_cast<CMCLSemantics>(
+          cast<ConstantInt>(Operands[CmpXchgOperand::SemanticsFailure])
+              ->getZExtValue()));
+  auto ScopeName = cmcl::atomic::MemoryScope::getScopeNameFromCMCL(
+      static_cast<CMCLMemoryScope>(
+          cast<ConstantInt>(Operands[CmpXchgOperand::Scope])->getZExtValue()));
+  auto *CmpXchgInst = IGCLLVM::createAtomicCmpXchg(
+      IRB, Ptr, Operands[CmpXchgOperand::Operand0],
+      Operands[CmpXchgOperand::Operand1], OrderingSuccess, OrderingFalilure,
+      Ctx.getOrInsertSyncScopeID(ScopeName));
+  return *IRB.CreateExtractValue(CmpXchgInst, 0 /*CmpXchg result*/,
+                                 ".cmpxchg.res");
 }
 
 // Produces a vector of main inst results from its value.

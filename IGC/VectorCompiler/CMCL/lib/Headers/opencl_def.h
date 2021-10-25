@@ -90,4 +90,27 @@ using double3 = double __attribute__((ext_vector_type(3)));
 using double4 = double __attribute__((ext_vector_type(4)));
 using double8 = double __attribute__((ext_vector_type(8)));
 using double16 = double __attribute__((ext_vector_type(16)));
+
+enum memory_order {
+  memory_order_relaxed = 0,
+  memory_order_acquire = 1,
+  memory_order_release = 2,
+  memory_order_acq_rel = 3,
+  memory_order_seq_cst = 4
+};
+
+enum memory_scope {
+  memory_scope_work_item = 0,
+  memory_scope_work_group = 1,
+  memory_scope_device = 2,
+  memory_scope_all_svm_devices = 3,
+  memory_scope_all_devices = memory_scope_all_svm_devices,
+  memory_scope_sub_group = 4
+};
+
+#define as_double(x) __builtin_astype((x), double)
+#define as_float(x) __builtin_astype((x), float)
+#define as_int(x) __builtin_astype((x), int)
+#define as_long(x) __builtin_astype((x), long)
+
 #endif // OPENCL_DEF

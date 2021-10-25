@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include <cm-cl/svm.h>
 #include <cm-cl/vector.h>
 #include <opencl_def.h>
 

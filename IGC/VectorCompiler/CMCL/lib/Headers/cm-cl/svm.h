@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef CM_CL_SVM_H
 #define CM_CL_SVM_H
 
+#include "define.h"
 #include "detail/builtins.h"
 #include "vector.h"
 
@@ -28,30 +29,10 @@ void scatter(vector<uintptr_t, width> address, vector<T, src_width> src) {
       src.cl_vector());
 }
 
-enum class operation {
-  add = 0x0,
-  sub = 0x1,
-  inc = 0x2,
-  dec = 0x3,
-  min = 0x4,
-  max = 0x5,
-  xchg = 0x6,
-  cmpxchg = 0x7,
-  andl = 0x8,
-  orl = 0x9,
-  xorl = 0xa,
-  minsint = 0xb,
-  maxsint = 0xc,
-  fmax = 0x10,
-  fmin = 0x11,
-  fcmpwr = 0x12,
-  predec = 0xff
-};
-
-template <enum operation op, typename T, int width>
+template <atomic::operation op, typename T, int width>
 vector<T, width> atomic(vector<uintptr_t, width> address,
                         vector<T, width> src) {
-  static_assert(op == operation::add, "only add is yet supported");
+  static_assert(op == atomic::operation::add, "only add is yet supported");
   return detail::svm_atomic_add(
       static_cast<vector<uint64_t, width>>(address).cl_vector(),
       src.cl_vector());

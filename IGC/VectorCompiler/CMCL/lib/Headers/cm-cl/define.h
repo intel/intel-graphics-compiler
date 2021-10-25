@@ -14,4 +14,26 @@ SPDX-License-Identifier: MIT
 #define CM_NODEBUG __attribute__((nodebug))
 #define _CM_BUILTIN_ __declspec(cm_builtin)
 
+namespace cm {
+namespace atomic {
+
+enum class operation {
+  add = 0x0,
+  sub = 0x1,
+  min = 0x2,
+  max = 0x3,
+  xchg = 0x4,
+  andl = 0x5,
+  orl = 0x6,
+  xorl = 0x7,
+  minsint = 0x8,
+  maxsint = 0x9,
+  load = 0xA,
+  store = 0xB,
+  cmpxchg = 0xC
+};
+
+} // namespace atomic
+} // namespace cm
+
 #endif // CM_CL_DEFINE_H

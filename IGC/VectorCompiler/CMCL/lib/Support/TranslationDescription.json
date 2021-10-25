@@ -307,6 +307,50 @@
           {"GetBuiltinOperand": ["Source"]}
         ]
       }
+    },
+    "AtomicRMW": {
+        "Name": "atomicrmw",
+        "Operands": [
+          {"Name": "Ptr", "Kind": "Input"},
+          {"Name": "Operation", "Kind": "Input"},
+          {"Name": "Operand", "Kind": "Input"},
+          {"Name": "Semantics", "Kind": "Input"},
+          {"Name": "Scope", "Kind": "Input"}
+        ],
+        "TranslateInto": {
+          "Instruction": "AtomicRMWInst",
+          "ReturnType": {"GetBuiltinReturnType": []},
+          "Operands": [
+            {"GetBuiltinOperand": ["Ptr"]},
+            {"GetBuiltinOperand": ["Operation"]},
+            {"GetBuiltinOperand": ["Operand"]},
+            {"GetBuiltinOperand": ["Semantics"]},
+            {"GetBuiltinOperand": ["Scope"]}
+        ]
+      }
+    },
+    "CmpXchg": {
+        "Name": "cmpxchg",
+        "Operands": [
+          {"Name": "Ptr", "Kind": "Input"},
+          {"Name": "Operand0", "Kind": "Input"},
+          {"Name": "Operand1", "Kind": "Input"},
+          {"Name": "SemanticsSuccess", "Kind": "Input"},
+          {"Name": "SemanticsFailure", "Kind": "Input"},
+          {"Name": "Scope", "Kind": "Input"}
+        ],
+        "TranslateInto": {
+          "Instruction": "CmpXchgInst",
+          "ReturnType": {"GetBuiltinReturnType": []},
+          "Operands": [
+            {"GetBuiltinOperand": ["Ptr"]},
+            {"GetBuiltinOperand": ["Operand0"]},
+            {"GetBuiltinOperand": ["Operand1"]},
+            {"GetBuiltinOperand": ["SemanticsSuccess"]},
+            {"GetBuiltinOperand": ["SemanticsFailure"]},
+            {"GetBuiltinOperand": ["Scope"]}
+        ]
+      }
     }
   }
 }

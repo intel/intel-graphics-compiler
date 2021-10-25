@@ -73,6 +73,33 @@ template <typename T> struct remove_cv<const T> { using type = T; };
 template <typename T> struct remove_cv<volatile T> { using type = T; };
 template <typename T> struct remove_cv<const volatile T> { using type = T; };
 
+template <typename T> struct pointer_traits;
+
+template <typename T> struct pointer_traits<__generic T *> {
+  using pointer = __generic T *;
+  using element_type = T;
+};
+
+template <typename T> struct pointer_traits<__local T *> {
+  using pointer = __local T *;
+  using element_type = T;
+};
+
+template <typename T> struct pointer_traits<__global T *> {
+  using pointer = __global T *;
+  using element_type = T;
+};
+
+template <typename T> struct pointer_traits<__private T *> {
+  using pointer = __private T *;
+  using element_type = T;
+};
+
+template <typename T> struct pointer_traits<__constant T *> {
+  using pointer = __constant T *;
+  using element_type = T;
+};
+
 template <typename T>
 struct is_floating_point
     : integral_constant<
@@ -97,6 +124,11 @@ struct is_integral
               is_same<long long, typename remove_cv<T>::type>::value ||
               is_same<unsigned long long, typename remove_cv<T>::type>::value> {
 };
+
+template <typename T>
+struct is_arithmetic
+    : integral_constant<bool, is_integral<T>::value ||
+                                  is_floating_point<T>::value> {};
 
 template <typename T>
 struct is_bool
