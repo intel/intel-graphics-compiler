@@ -48,6 +48,9 @@ def FeatureNoJumpTables : SubtargetFeature<"disable_jump_tables", "DisableJumpTa
 def FeatureSwitchjmp : SubtargetFeature<"switchjmp", "HasSwitchjmp", "true",
                                         "supports switchjmp visa instruction">;
 
+def FeaturePreemption : SubtargetFeature<"preemption", "HasPreemption", "true",
+                                         "supports preemption">;
+
 def FeatureWAFusedEUNoMask : SubtargetFeature<
     "wa_nomask_fusedEU", "WaNoMaskFusedEU", "true",
     "needs workaround for nomask operations under divergent control-flow">;
@@ -104,37 +107,45 @@ def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64,
                                FeatureFP64,
-                               FeatureHWTIDFromPredef]>;
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
 def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64,
                                FeatureFP64,
-                               FeatureHWTIDFromPredef]>;
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
 def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64,
                                FeatureFP64,
-                               FeatureHWTIDFromPredef]>;
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
 def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64,
                                FeatureFP64,
-                               FeatureHWTIDFromPredef]>;
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32, FeatureInstrBitRotate,
-                               FeatureHWTIDFromPredef]>;
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHWTIDFromPredef]>;
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
 def : Proc<"RKL",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHWTIDFromPredef]>;
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
 def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHWTIDFromPredef]>;
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
 def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureInstrAdd64,
                                FeatureFP64,

@@ -6446,8 +6446,7 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   };
 
   // enable preemption if we have SKL+ and option switched on
-  if (BC.enablePreemption() &&
-      ST.getVisaPlatform() >= TARGET_PLATFORM::GENX_SKL)
+  if (BC.enablePreemption() && ST.hasPreemption())
     addArgument("-enablePreemption");
 
   addArgument("-dumpvisa");

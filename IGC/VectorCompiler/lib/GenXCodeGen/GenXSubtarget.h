@@ -103,6 +103,9 @@ private:
   // True if subtarget supports switchjmp visa instruction
   bool HasSwitchjmp = false;
 
+  // True if subtarget supports preemption
+  bool HasPreemption = false;
+
   // True if subtarget requires WA for nomask instructions under divergent
   // control flow
   bool WaNoMaskFusedEU = false;
@@ -225,6 +228,9 @@ public:
 
   /// * has switchjmp instruction
   bool hasSwitchjmp() const { return HasSwitchjmp; }
+
+  /// * has preemption
+  bool hasPreemption() const { return HasPreemption; }
 
   /// * needsWANoMaskFusedEU() - true if we need to apply WA for NoMask ops
   bool needsWANoMaskFusedEU() const { return WaNoMaskFusedEU; }
