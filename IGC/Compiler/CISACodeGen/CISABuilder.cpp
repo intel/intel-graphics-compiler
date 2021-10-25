@@ -4103,7 +4103,8 @@ namespace IGC
 
         if (m_program->m_DriverInfo->UseALTMode())
         {
-            SaveOption(vISA_nonALTMode, false);
+            SaveOption(vISA_ChangeMoveType, false);
+            SaveOption(vISA_ALTMode, true);
         }
 
         if (IGC_IS_FLAG_ENABLED(DisableSendS))
