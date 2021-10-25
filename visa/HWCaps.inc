@@ -829,7 +829,7 @@ SPDX-License-Identifier: MIT
 
     bool hasFiveALUPipes() const
     {
-        return false;
+        return hasScalarRegister();
     }
 
     bool hasSrc2ReadSupression() const

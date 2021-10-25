@@ -42,7 +42,13 @@ struct IndrAccessTrackPara
     //void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 };
 
-typedef std::vector<vISA::G4_RegVar*> REGVAR_VECTOR;
+struct pointInfo {
+    vISA::G4_RegVar* var;
+    unsigned char off;
+};
+
+typedef std::vector<pointInfo> REGVAR_VECTOR;
+typedef std::vector<vISA::G4_RegVar*> ORG_REGVAR_VECTOR;
 
 /*
  *  Performs flow-insensitive points-to analysis.
@@ -66,7 +72,7 @@ private:
     // index of an address's points-to set in the pointsToSets vector
     std::vector<unsigned> addrPointsToSetIndex;
     // original regvar ptrs
-    REGVAR_VECTOR regVars;
+    ORG_REGVAR_VECTOR regVars;
 
     void resizePointsToSet(unsigned int newsize)
     {
@@ -89,34 +95,44 @@ private:
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         const REGVAR_VECTOR& addrTakens = pointsToSets[addrPointsToSetIndex[addr->getId()]];
-        for (G4_RegVar* addrTaken : addrTakens)
+        for (auto addrTaken : addrTakens)
         {
             addIndirectUseToBB(bbId, addrTaken);
         }
     }
 
-    void addIndirectUseToBB(unsigned int bbId, G4_RegVar* var)
+    bool isVar(G4_RegVar* var, pointInfo &pt)
+    {
+        return pt.var == var;
+    }
+
+    void addIndirectUseToBB(unsigned int bbId, pointInfo pt)
     {
         MUST_BE_TRUE(bbId < numBBs, "invalid basic block id");
         REGVAR_VECTOR& vec = indirectUses[bbId];
-        bool isPresent = std::find(vec.begin(), vec.end(), var) != vec.end();
-        if (!isPresent)
+        auto it = std::find_if(vec.begin(), vec.end(),
+            [&pt](const pointInfo& element) {return element.var == pt.var && element.off == pt.off; });
+
+        if (it == vec.end())
         {
-            vec.push_back(var);
+            vec.push_back(pt);
         }
     }
 
-    void addToPointsToSet(const G4_RegVar* addr, G4_RegVar* var)
+    void addToPointsToSet(const G4_RegVar* addr, G4_RegVar* var, unsigned char offset)
     {
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         MUST_BE_TRUE(addr->getId() < numAddrs, "addr id is not set");
         int addrPTIndex = addrPointsToSetIndex[addr->getId()];
         REGVAR_VECTOR& vec = pointsToSets[addrPTIndex];
-        bool isPresent = std::find(vec.begin(), vec.end(), var) != vec.end();
-        if (!isPresent)
+        pointInfo pi = { var, offset };
+        auto it = std::find_if(vec.begin(), vec.end(),
+            [&pi](const pointInfo& element) {return element.var == pi.var && element.off == pi.off; });
+
+        if (it == vec.end())
         {
-            vec.push_back(var);
+            vec.push_back(pi);
             DEBUG_VERBOSE("Addr " << addr->getId() << " <-- " << var->getDeclare()->getName() << "\n");
         }
     }
@@ -131,9 +147,9 @@ private:
              "expect address variable");
          int addr2PTIndex = addrPointsToSetIndex[addr2->getId()];
          REGVAR_VECTOR& vec = pointsToSets[addr2PTIndex];
-         for (G4_RegVar* regVar : vec)
+         for (int i = 0; i < (int)vec.size(); i++)
          {
-             addToPointsToSet(addr1, regVar);
+             addToPointsToSet(addr1, vec[i].var, vec[i].off);
          }
          int addr1PTIndex = addrPointsToSetIndex[addr1->getId()];
          addrPointsToSetIndex[addr2->getId()] = addr1PTIndex;
@@ -215,7 +231,28 @@ public:
         const REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
 
         if (idx < (int)vec.size())
-            return vec[idx];
+            return vec[idx].var;
+        else
+            return NULL;
+    }
+
+    G4_RegVar* getPointsTo(const G4_RegVar* addr, int idx, unsigned char& offset) const
+    {
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
+            "expect address variable");
+        unsigned int id = getIndexOfRegVar(addr);
+
+        if (id == UINT_MAX)
+            return NULL;
+        int addrPTIndex = addrPointsToSetIndex[id];
+
+        const REGVAR_VECTOR& vec = pointsToSets[addrPTIndex];
+
+        if (idx < (int)vec.size())
+        {
+            offset = vec[idx].off;
+            return vec[idx].var;
+        }
         else
             return NULL;
     }
@@ -230,9 +267,9 @@ public:
             return false;
 
         const REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
-        for (const G4_RegVar* pointsTo : vec)
+        for (const pointInfo pointsTo : vec)
         {
-            if (pointsTo->getId() == var->getId())
+            if (pointsTo.var->getId() == var->getId())
             {
                 return true;
             }
@@ -254,9 +291,10 @@ public:
         }
 
         REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
-        vec.push_back(newvar);
+        pointInfo pt = { newvar, 0 };
+        vec.push_back(pt);
 
-        addIndirectUseToBB(bbid, newvar);
+        addIndirectUseToBB(bbid, pt);
     }
 
     void removeFromPointsTo(G4_RegVar* addr, G4_RegVar* vartoremove)
@@ -277,9 +315,9 @@ public:
             it != vec.end();
             it++)
         {
-            G4_RegVar* cur = (*it);
+            pointInfo cur = (*it);
 
-            if (cur->getId() == vartoremove->getId())
+            if (cur.var->getId() == vartoremove->getId())
             {
                 vec.erase(it);
                 removed = true;
@@ -302,9 +340,9 @@ public:
                 it != vec.end();
                 it++)
             {
-                G4_RegVar* cur = (*it);
+                pointInfo cur = (*it);
 
-                if (cur->getId() == vartoremove->getId())
+                if (cur.var->getId() == vartoremove->getId())
                 {
                     vec.erase(it);
                     break;

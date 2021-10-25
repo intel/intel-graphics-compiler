@@ -752,7 +752,10 @@ bool LVN::checkIfInPointsTo(const G4_RegVar* addr, const G4_RegVar* var) const
     if (ptrToAllPointsTo)
     {
         const G4_RegVar* topRegVar = var->getDeclare()->getRootDeclare()->getRegVar();
-        return std::find(ptrToAllPointsTo->begin(), ptrToAllPointsTo->end(), topRegVar) != ptrToAllPointsTo->end();
+        auto it = std::find_if(ptrToAllPointsTo->begin(), ptrToAllPointsTo->end(),
+            [&topRegVar](const pointInfo& element) {return element.var == topRegVar && element.off == 0; });
+
+        return it != ptrToAllPointsTo->end();
     }
 
     return false;
@@ -769,7 +772,7 @@ void LVN::removeAliases(G4_INST* inst)
 
     for (auto item : *dstPointsToPtr)
     {
-        auto dcl = item->getDeclare()->getRootDeclare();
+        auto dcl = item.var->getDeclare()->getRootDeclare();
         auto it = dclValueTable.find(dcl);
         if (it == dclValueTable.end())
             continue;

@@ -4308,6 +4308,11 @@ namespace IGC
             SaveOption(vISA_Compaction, false);
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableGatherWithImm))
+        {
+            SaveOption(vISA_EnableGatherWithImm, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableGroupScheduleForBC))
         {
             SaveOption(vISA_EnableGroupScheduleForBC, true);

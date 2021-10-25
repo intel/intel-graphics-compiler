@@ -2268,11 +2268,11 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB* bb,
                     {
                         // make every var in points-to set live
                         const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(srcRgn, bb);
-                        for (auto var : pointsToSet)
+                        for (auto pt : pointsToSet)
                         {
-                            if (var->isRegAllocPartaker())
+                            if (pt.var->isRegAllocPartaker())
                             {
-                                unsigned srcId = var->getId();
+                                unsigned srcId = pt.var->getId();
                                 if (isDstRegAllocPartaker)
                                 {
                                     if (!varSplitCheckBeforeIntf(dstId, srcId))
@@ -2395,11 +2395,11 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
         // add interferences to the list of potential indirect destination accesses.
         //
         const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(dst, bb);
-        for (auto var : pointsToSet)
+        for (auto pt : pointsToSet)
         {
-            if (var->isRegAllocPartaker())
+            if (pt.var->isRegAllocPartaker())
             {
-                buildInterferenceWithLive(live, var->getId());
+                buildInterferenceWithLive(live, pt.var->getId());
             }
         }
     }
@@ -2559,11 +2559,11 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
                 {
                     // make every var in points-to set live
                     const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(srcRegion, bb);
-                    for (auto var : pointsToSet)
+                    for (auto pt : pointsToSet)
                     {
-                        if (var->isRegAllocPartaker())
+                        if (pt.var->isRegAllocPartaker())
                         {
-                            updateLiveness(live, var->getId(), true);
+                            updateLiveness(live, pt.var->getId(), true);
                         }
                     }
                 }
@@ -4252,9 +4252,9 @@ void Augmentation::buildLiveIntervals()
                     const REGVAR_VECTOR& pointsToSet = liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(srcRegion, curBB);
                     for (auto pointsToVar : pointsToSet)
                     {
-                        if (pointsToVar->isRegAllocPartaker())
+                        if (pointsToVar.var->isRegAllocPartaker())
                         {
-                            updateEndInterval(pointsToVar->getDeclare()->getRootDeclare(), inst);
+                            updateEndInterval(pointsToVar.var->getDeclare()->getRootDeclare(), inst);
                         }
                     }
                 }
@@ -6848,7 +6848,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
             }
             else
             {
-                REGVAR_VECTOR indrVars;
+                ORG_REGVAR_VECTOR indrVars;
 
                 unsigned dstSpillRegSize = 0;
                 unsigned indrDstSpillRegSize = 0;
@@ -6889,13 +6889,13 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                             auto pointsToSet = pointsToAnalysis.getAllInPointsTo(dst->getBase()->asRegVar());
                             if (pointsToSet != nullptr)
                             {
-                                for (auto var : *pointsToSet)
+                                for (auto pt : *pointsToSet)
                                 {
-                                    if (var->isRegAllocPartaker() ||
-                                       ((builder.getOption(vISA_HybridRAWithSpill) || builder.getOption(vISA_FastCompileRA)) && livenessCandidate(var->getDeclare())))
+                                    if (pt.var->isRegAllocPartaker() ||
+                                       ((builder.getOption(vISA_HybridRAWithSpill) || builder.getOption(vISA_FastCompileRA)) && livenessCandidate(pt.var->getDeclare())))
                                     {
-                                        indrVars.push_back(var);
-                                        indrDstSpillRegSize += var->getDeclare()->getNumRows();
+                                        indrVars.push_back(pt.var);
+                                        indrDstSpillRegSize += pt.var->getDeclare()->getNumRows();
                                     }
                                 }
                             }
@@ -6930,15 +6930,15 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                             auto pointsToSet = pointsToAnalysis.getAllInPointsTo(src->asSrcRegRegion()->getBase()->asRegVar());
                             if (pointsToSet != nullptr)
                             {
-                                for (auto var : *pointsToSet)
+                                for (auto pt : *pointsToSet)
                                 {
-                                    if (var->isRegAllocPartaker() ||
-                                        ((builder.getOption(vISA_HybridRAWithSpill) || builder.getOption(vISA_FastCompileRA)) && livenessCandidate(var->getDeclare())))
+                                    if (pt.var->isRegAllocPartaker() ||
+                                        ((builder.getOption(vISA_HybridRAWithSpill) || builder.getOption(vISA_FastCompileRA)) && livenessCandidate(pt.var->getDeclare())))
                                     {
-                                        if (std::find(indrVars.begin(), indrVars.end(), var) == indrVars.end())
+                                        if (std::find(indrVars.begin(), indrVars.end(), pt.var) == indrVars.end())
                                         {
-                                            indrVars.push_back(var);
-                                            indirSrcFillRegSize += var->getDeclare()->getNumRows();
+                                            indrVars.push_back(pt.var);
+                                            indirSrcFillRegSize += pt.var->getDeclare()->getNumRows();
                                         }
                                     }
                                 }

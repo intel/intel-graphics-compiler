@@ -1672,6 +1672,7 @@ void Optimizer::accSubPostSchedule()
     accSub.run();
 }
 
+
 void Optimizer::accSubBeforeRA()
 {
     if (!builder.doAccSub() || !builder.getOption(vISA_doAccSubAfterSchedule))
@@ -1763,6 +1764,7 @@ int Optimizer::optimization()
     runPass(PI_insertFenceBeforeEOT);
 
     runPass(PI_varSplit);
+
 
     // PreRA scheduling
     runPass(PI_preRA_Schedule);
@@ -1883,6 +1885,7 @@ int Optimizer::optimization()
     //------NOTE!!!! No instruction change(add/remove, or operand associated change) is allowed after SWSB-------------
     //-----------------------------------------------------------------------------------------------------------------
     runPass(PI_addSWSBInfo);
+
 
     return VISA_SUCCESS;
 }
@@ -2112,6 +2115,7 @@ void Optimizer::reverseOffsetProp(
     addrRegInfo[subReg].canUseImmed = false;
     addrRegInfo[subReg].usedImmed = false;
 }
+
 
 void Optimizer::FoldAddrImmediate()
 {

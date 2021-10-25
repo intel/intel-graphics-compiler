@@ -229,7 +229,7 @@ bool IR_Builder::isOpndAligned(
         else if (opnd->getKind() == G4_Operand::dstRegRegion &&
             // Only care about GRF or half-GRF alignment.
             (align_byte == numEltPerGRF<Type_UB>() || align_byte == numEltPerGRF<Type_UB>() / 2) &&
-            dcl && dcl->getRegFile() == G4_ADDRESS)
+            dcl && (dcl->getRegFile() == G4_ADDRESS))
         {
 
             // Get the single definition of the specified operand from the use
