@@ -301,6 +301,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
     llvm::Instruction* primId = nullptr;
     llvm::Instruction* pointCoordX = nullptr;
     llvm::Instruction* pointCoordY = nullptr;
+    SmallVector<GenIntrinsicInst*, 4> outputInstructions;
     SmallVector<Instruction*, 4> instructionToRemove;
     Function& F = *m_ReturnBlock->getParent();
     Value* btrue = llvm::ConstantInt::get(Type::getInt1Ty(m_module->getContext()), true);
@@ -322,70 +323,13 @@ void PixelShaderLowering::FindIntrinsicOutput(
                 else if (IID == GenISAIntrinsic::GenISA_OUTPUT)
                 {
                     m_outputBlock = inst->getParent();
-
+                    outputInstructions.push_back(inst);
                     uint outputType = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(4))->getZExtValue();
                     IGC_ASSERT(outputType == SHADER_OUTPUT_TYPE_DEFAULT ||
                         outputType == SHADER_OUTPUT_TYPE_DEPTHOUT ||
                         outputType == SHADER_OUTPUT_TYPE_STENCIL ||
                         outputType == SHADER_OUTPUT_TYPE_OMASK);
 
-                    if (outputType == SHADER_OUTPUT_TYPE_DEFAULT)
-                    {
-                        uint RTIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(5))->getZExtValue();
-
-                        unsigned mask = 0;
-                        // if any of the color channel is undef, initialize it
-                        // to 0 for color compression perf.
-                        for (int i = 0; i < 4; i++)
-                        {
-                            if (isa<UndefValue>(inst->getOperand(i)))
-                            {
-                                if (i == 3 &&
-                                    IGC_IS_FLAG_ENABLED(EnableUndefAlphaOutputAsRed))
-                                {
-                                    // if it's alpha, then set default value to
-                                    // color.r, see IGC-959.
-                                    inst->setOperand(i, inst->getOperand(0));
-                                }
-                                else
-                                {
-                                    inst->setOperand(i,
-                                        ConstantFP::get(inst->getOperand(i)->getType(), 0.0f));
-                                }
-                            }
-                            else
-                            {
-                                mask |= 1 << i;
-                            }
-                        }
-                        if (RTIndex == 0)
-                        {
-                            src0Alpha = inst->getOperand(3);
-                        }
-                        m_modMD->psInfo.colorOutputMask[RTIndex] = mask;
-                        ColorOutput data;
-                        data.RTindex = RTIndex;
-                        data.color[0] = inst->getOperand(0);
-                        data.color[1] = inst->getOperand(1);
-                        data.color[2] = inst->getOperand(2);
-                        data.color[3] = inst->getOperand(3);
-                        data.mask = btrue;
-                        data.blendStateIndex = nullptr;
-                        data.bb = inst->getParent();
-                        colors.push_back(data);
-                    }
-                    else if (outputType == SHADER_OUTPUT_TYPE_DEPTHOUT)
-                    {
-                        depth = inst->getOperand(0);
-                    }
-                    else if (outputType == SHADER_OUTPUT_TYPE_STENCIL)
-                    {
-                        stencil = inst->getOperand(0);
-                    }
-                    else if (outputType == SHADER_OUTPUT_TYPE_OMASK)
-                    {
-                        mask = inst->getOperand(0);
-                    }
                     //Need to save debug location
                     debugLocs.push_back(((Instruction*)inst)->getDebugLoc());
 
@@ -545,6 +489,67 @@ void PixelShaderLowering::FindIntrinsicOutput(
             ConstantAsMetadata::get(cval));
         PointCoordMD->addOperand(locationNd);
 
+    }
+    for (GenIntrinsicInst* pInst : outputInstructions)
+    {
+        uint outputType = (uint)llvm::cast<llvm::ConstantInt>(pInst->getOperand(4))->getZExtValue();
+        if (outputType == SHADER_OUTPUT_TYPE_DEFAULT)
+        {
+            uint RTIndex = (uint)llvm::cast<llvm::ConstantInt>(pInst->getOperand(5))->getZExtValue();
+
+            unsigned mask = 0;
+            // if any of the color channel is undef, initialize it
+            // to 0 for color compression perf.
+            for (int i = 0; i < 4; i++)
+            {
+                if (isa<UndefValue>(pInst->getOperand(i)))
+                {
+                    if (i == 3 &&
+                        IGC_IS_FLAG_ENABLED(EnableUndefAlphaOutputAsRed))
+                    {
+                        // if it's alpha, then set default value to
+                        // color.r, see IGC-959.
+                        pInst->setOperand(i, pInst->getOperand(0));
+                    }
+                    else
+                    {
+                        pInst->setOperand(i,
+                            ConstantFP::get(pInst->getOperand(i)->getType(), 0.0f));
+                    }
+                }
+                else
+                {
+                    mask |= 1 << i;
+                }
+            }
+            if (RTIndex == 0)
+            {
+                src0Alpha = pInst->getOperand(3);
+            }
+            m_modMD->psInfo.colorOutputMask[RTIndex] = mask;
+            ColorOutput data;
+            data.RTindex = RTIndex;
+            data.color[0] = pInst->getOperand(0);
+            data.color[1] = pInst->getOperand(1);
+            data.color[2] = pInst->getOperand(2);
+            data.color[3] = pInst->getOperand(3);
+            data.mask = btrue;
+            data.blendStateIndex = nullptr;
+            data.bb = pInst->getParent();
+            colors.push_back(data);
+        }
+        else if (outputType == SHADER_OUTPUT_TYPE_DEPTHOUT)
+        {
+            depth = pInst->getOperand(0);
+        }
+        else if (outputType == SHADER_OUTPUT_TYPE_STENCIL)
+        {
+            stencil = pInst->getOperand(0);
+        }
+        else if (outputType == SHADER_OUTPUT_TYPE_OMASK)
+        {
+            mask = pInst->getOperand(0);
+        }
     }
     for (unsigned int i = 0; i < instructionToRemove.size(); i++)
     {
