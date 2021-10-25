@@ -2124,8 +2124,6 @@ bool CMLowerVLoadVStore::promoteAllocas(Function &F) {
   for (auto &Inst : F.front().getInstList()) {
     if (auto AI = dyn_cast<AllocaInst>(&Inst))
       Allocas.push_back(AI);
-    else
-      break;
   }
 
   for (auto AI : Allocas) {
