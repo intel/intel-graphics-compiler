@@ -61,10 +61,16 @@ namespace IGC {
       spv_result_t HandleDecorate(
         const spv_parsed_instruction_t* parsed_instruction);
 
+      spv_result_t HandleGroupDecorate(
+        const spv_parsed_instruction_t* parsed_instruction);
+
       spv_result_t HandleFunctionStart(
         const spv_parsed_instruction_t* parsed_instruction);
 
       spv_result_t HandleFunctionEnd(
+        const spv_parsed_instruction_t* parsed_instruction);
+
+      spv_result_t HandleEntryPoint(
         const spv_parsed_instruction_t* parsed_instruction);
 
       void AddInstToProgram(const spv_parsed_instruction_t* parsed_instruction,
@@ -72,9 +78,13 @@ namespace IGC {
 
       ProgramStreamType spmd_program_;
       ProgramStreamType esimd_program_;
-      std::unordered_set<uint32_t> esimd_function_ids_;
+      std::unordered_set<uint32_t> esimd_decorated_ids_;
+      std::unordered_set<uint32_t> entry_points_;
+
       bool is_inside_spmd_function_ = false;
       bool is_inside_esimd_function_ = false;
+      bool has_spmd_functions_ = false;
+      bool has_esimd_functions_ = false;
 
       std::string error_message_;
 
