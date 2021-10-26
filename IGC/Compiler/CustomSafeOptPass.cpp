@@ -2471,6 +2471,60 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
         {
             createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 1);
         }
+        else
+        {
+
+            Instruction* AndSrc = nullptr;
+            ConstantInt* CI;
+
+            /*
+            From:
+              %28 = and i32 %24, 255
+              %29 = lshr i32 %24, 8
+              %30 = and i32 %29, 255
+              %31 = lshr i32 %24, 16
+              %32 = and i32 %31, 255
+            To:
+              %temp = bitcast i32 %24 to <4 x i8>
+              %ee1 = extractelement <4 x i8> %temp, i32 0
+              %ee2 = extractelement <4 x i8> %temp, i32 1
+              %ee3 = extractelement <4 x i8> %temp, i32 2
+              %28 = zext i8 %ee1 to i32
+              %30 = zext i8 %ee2 to i32
+              %32 = zext i8 %ee3 to i32
+            */
+            auto pattern_And_0xFF = m_And(m_Instruction(AndSrc), m_SpecificInt(0xFF));
+
+            CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+            bool bytesAllowed = ctx->platform.supportByteALUOperation();
+
+            if (bytesAllowed && match(&I, pattern_And_0xFF) && I.getType()->isIntegerTy(32) && AndSrc->getType()->isIntegerTy(32))
+            {
+                Instruction* LhsSrc = nullptr;
+
+                auto LShr_Pattern = m_LShr(m_Instruction(LhsSrc), m_ConstantInt(CI));
+                bool LShrMatch = match(AndSrc, LShr_Pattern) && LhsSrc->getType()->isIntegerTy(32) && (CI->getZExtValue() % 8 == 0);
+
+                // in case there's no shr, it will be 0
+                uint32_t newIndex = 0;
+
+                if (LShrMatch) // extract inner
+                {
+                    AndSrc = LhsSrc;
+                    newIndex = (uint32_t)CI->getZExtValue() / 8;
+                }
+
+                llvm::IRBuilder<> builder(&I);
+                VectorType* vec4 = VectorType::get(builder.getInt8Ty(), 4, false);
+                Value* BC = builder.CreateBitCast(AndSrc, vec4);
+                Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
+                Value* Zext = builder.CreateZExt(EE, builder.getInt32Ty());
+                I.replaceAllUsesWith(Zext);
+                I.eraseFromParent();
+
+            }
+
+        }
     }
 }
 
