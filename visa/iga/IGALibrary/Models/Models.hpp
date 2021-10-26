@@ -155,6 +155,7 @@ namespace iga
             return true;
 
         case RegName::ARF_FC:
+        case RegName::ARF_MSG:
             return false;
 
         default:
