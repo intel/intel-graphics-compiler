@@ -21,7 +21,7 @@ static const unsigned LARGE_BLOCK_SIZE = 20000;
 static const unsigned LARGE_BLOCK_SIZE_RPE = 32000;
 static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
-static const unsigned PRESSURE_HIGH_THRESHOLD = 120;
+static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_LOW_THRESHOLD = 60;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
 static const unsigned LATENCY_PRESSURE_THRESHOLD = 100;
@@ -513,7 +513,7 @@ static unsigned getRPReductionThreshold(unsigned NumGrfs, unsigned simdSize)
 }
 
 // Register pressure threshold to move to a larger GRF mode
-static unsigned getRPThresholdHigh(unsigned NumGrfs, unsigned simdSize)
+static unsigned getRPThresholdHigh(unsigned NumGrfs)
 {
     float Ratio = NumGrfs / 128.0f;
 
@@ -728,7 +728,7 @@ bool preRA_RegSharing::run()
     }
 
     if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
-        (maxPressure > getRPThresholdHigh(kernel.getNumRegTotal() - kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum), kernel.getSimdSize())))
+        (maxPressure > getRPThresholdHigh(kernel.getNumRegTotal() - kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum))))
     {
         // Update number of threads, GRF, Acc and SWSB
         kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
