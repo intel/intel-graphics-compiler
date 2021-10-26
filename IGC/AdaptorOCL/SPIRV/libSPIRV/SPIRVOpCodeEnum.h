@@ -522,3 +522,12 @@ _SPIRV_OP(MatrixStoreINTEL, 6121)
 _SPIRV_OP(MatrixMadINTEL, 6122)
 // SPV_INTEL_arithmetic_fence
 _SPIRV_OP(ArithmeticFenceINTEL, 6145)
+// SPV_INTEL_uniform_group_instructions
+_SPIRV_OP(GroupIMulINTEL, 6401)
+_SPIRV_OP(GroupFMulINTEL, 6402)
+_SPIRV_OP(GroupBitwiseAndINTEL, 6403)
+_SPIRV_OP(GroupBitwiseOrINTEL, 6404)
+_SPIRV_OP(GroupBitwiseXorINTEL, 6405)
+_SPIRV_OP(GroupLogicalAndINTEL, 6406)
+_SPIRV_OP(GroupLogicalOrINTEL, 6407)
+_SPIRV_OP(GroupLogicalXorINTEL, 6408)

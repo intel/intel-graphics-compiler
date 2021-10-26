@@ -745,7 +745,8 @@ DECL_SUB_GROUP_CLUSTERED_OPERATION(type, type_abbr, operation, reduce)
 // __builtin_IB_sub_group_clustered_reduce_IMul/FMul
 #define DECL_SUB_GROUP_ADD_MUL(type, type_abbr, type_sign)  \
 DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Add)  \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Mul)
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Mul)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##MulINTEL)
 
 DECL_SUB_GROUP_ADD_MUL(char,   i8,  I)
 DECL_SUB_GROUP_ADD_MUL(short,  i16, I)
@@ -792,7 +793,10 @@ DECL_SUB_GROUP_MIN_MAX(half,   f16, F)
 #define DECL_BITWISE_OPERATIONS(type, type_abbr)        \
 DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseAnd)  \
 DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseOr)   \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseXor)
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseXor)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseAndINTEL)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseOrINTEL)   \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseXorINTEL)
 
 DECL_BITWISE_OPERATIONS(char,  i8)
 DECL_BITWISE_OPERATIONS(short, i16)
@@ -806,7 +810,11 @@ DECL_BITWISE_OPERATIONS(long,  i64)
 #define DECL_LOGICAL_OPERATIONS(type, type_abbr)        \
 DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalAnd)  \
 DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalOr)   \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalXor)
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalXor)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalAndINTEL) \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalOrINTEL)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalXorINTEL)
+
 DECL_LOGICAL_OPERATIONS(bool, i1)
 
 // The following mul/fma with rtz is used internally for int div/rem emulation

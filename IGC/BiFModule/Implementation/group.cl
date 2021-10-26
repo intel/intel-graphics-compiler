@@ -2496,6 +2496,36 @@ DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, char,  Int, i8,  SPIRV_OCL_BUILTIN(u_max,
 DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, short, Int, i16, SPIRV_OCL_BUILTIN(u_max, _i16_i16, ), 0)
 DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, int,   Int, i32, SPIRV_OCL_BUILTIN(u_max, _i32_i32, ), 0)
 DEFN_UNIFORM_GROUP_FUNC_UNSIGNED(UMax, long,  Int, i64, SPIRV_OCL_BUILTIN(u_max, _i64_i64, ), 0)
+// ---- Mul ----
+DEFN_UNIFORM_GROUP_FUNC(IMulINTEL, char,   Int,   i8,  __intel_mul, 1)
+DEFN_UNIFORM_GROUP_FUNC(IMulINTEL, short,  Int,   i16, __intel_mul, 1)
+DEFN_UNIFORM_GROUP_FUNC(IMulINTEL, int,    Int,   i32, __intel_mul, 1)
+DEFN_UNIFORM_GROUP_FUNC(IMulINTEL, long,   Int,   i64, __intel_mul, 1)
+DEFN_UNIFORM_GROUP_FUNC(FMulINTEL, half,   Float, f16, __intel_mul, 1)
+DEFN_UNIFORM_GROUP_FUNC(FMulINTEL, float,  Float, f32, __intel_mul, 1)
+#if defined(cl_khr_fp64)
+DEFN_UNIFORM_GROUP_FUNC(FMulINTEL, double, Float, f64, __intel_mul, 1)
+#endif
+// ---- Bitwise Operations ----
+DEFN_UNIFORM_GROUP_FUNC(BitwiseAndINTEL, char,  Int, i8,  __intel_and, 0xFF)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseAndINTEL, short, Int, i16, __intel_and, 0xFFFF)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseAndINTEL, int,   Int, i32, __intel_and, 0xFFFFFFFF)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseAndINTEL, long,  Int, i64, __intel_and, 0xFFFFFFFFFFFFFFFF)
+
+DEFN_UNIFORM_GROUP_FUNC(BitwiseOrINTEL, char,  Int, i8,  __intel_or, 0)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseOrINTEL, short, Int, i16, __intel_or, 0)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseOrINTEL, int,   Int, i32, __intel_or, 0)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseOrINTEL, long,  Int, i64, __intel_or, 0)
+
+DEFN_UNIFORM_GROUP_FUNC(BitwiseXorINTEL, char,  Int, i8,  __intel_xor, 0)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseXorINTEL, short, Int, i16, __intel_xor, 0)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseXorINTEL, int,   Int, i32, __intel_xor, 0)
+DEFN_UNIFORM_GROUP_FUNC(BitwiseXorINTEL, long,  Int, i64, __intel_xor, 0)
+// ---- Logical Operations ----
+DEFN_UNIFORM_GROUP_FUNC(LogicalAndINTEL, bool, Int, i1, __intel_and, 1)
+DEFN_UNIFORM_GROUP_FUNC(LogicalOrINTEL,  bool, Int, i1, __intel_or,  0)
+DEFN_UNIFORM_GROUP_FUNC(LogicalXorINTEL, bool, Int, i1, __intel_xor, 0)
+
 
 #if defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
 #define DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X, signed_cast)                 \
