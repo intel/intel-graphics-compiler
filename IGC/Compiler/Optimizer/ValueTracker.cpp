@@ -286,16 +286,7 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
         if (auto* GEP = dyn_cast<GetElementPtrInst>(U))
         {
             if (!GEP->hasAllConstantIndices()) {
-                // We can continue, only if the non-const index was after our depth.
-                unsigned firstNonConstIndex = 0;
-                for (unsigned i = 0; i < GEP->getNumIndices(); ++i) {
-                    if (!isa<ConstantInt>(GEP->getOperand(i + 1))) {
-                        firstNonConstIndex = i;
-                        break;
-                    }
-                }
-                if (firstNonConstIndex < depth)
-                    return nullptr;
+                continue;
             }
 
             unsigned numIndices = GEP->getNumIndices();
