@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <sstream>
 #include <functional>
+#include <mutex>
 
 using namespace vISA;
 extern "C" int64_t getTimerTicks(unsigned int idx);
@@ -919,9 +920,11 @@ typedef struct yy_buffer_state * YY_BUFFER_STATE;
 extern int CISAparse(CISA_IR_Builder *builder);
 extern YY_BUFFER_STATE CISA_scan_string(const char* yy_str);
 extern void CISA_delete_buffer(YY_BUFFER_STATE buf);
+static std::mutex mtx;
 
 int CISA_IR_Builder::ParseVISAText(const std::string& visaText, const std::string& visaTextFile)
 {
+    const std::lock_guard<std::mutex> lock(mtx);
 #if defined(__linux__) || defined(_WIN64) || defined(_WIN32)
     // Direct output of parser to null
 #if defined(_WIN64) || defined(_WIN32)
