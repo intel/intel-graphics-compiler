@@ -9,21 +9,21 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( __builtin_spirv_OpenCL_native_powr, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( native_powr, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_native_powr_f64_f64( double x, double y )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(native_powr, _f64_f64, )( double x, double y )
 {
-    return __builtin_spirv_OpenCL_native_powr_f32_f32((float)x, (float)y);
+    return SPIRV_OCL_BUILTIN(native_powr, _f32_f32, )((float)x, (float)y);
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( __builtin_spirv_OpenCL_native_powr, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( native_powr, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( __builtin_spirv_OpenCL_native_powr, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( native_powr, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

@@ -20,7 +20,7 @@ static INLINE float __intel_cos_f32( float x, bool doFast )
 {
     if(__FastRelaxedMath && (!__APIRS) && doFast)
     {
-        return __builtin_spirv_OpenCL_native_cos_f32(x);
+        return SPIRV_OCL_BUILTIN(native_cos, _f32, )(x);
     }
     else
     {

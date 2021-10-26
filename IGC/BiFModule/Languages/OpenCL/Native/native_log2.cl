@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( native_log2, float, float )
 
 INLINE double OVERLOADABLE native_log2( double x )
 {
-    return __builtin_spirv_OpenCL_native_log2_f64( x );
+    return SPIRV_OCL_BUILTIN(native_log2, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_log2, double, double )

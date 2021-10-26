@@ -65,7 +65,7 @@ float __builtin_spirv_divide_cr_f32_f32( float a,
             flag &= 1;
             // Scale b to [1,2)
             fb.u  = (fb.u & 0x807fffff) | 0x3f800000;
-            y0.f = __builtin_spirv_OpenCL_native_recip_f32(fb.f);
+            y0.f = SPIRV_OCL_BUILTIN(native_recip, _f32, )(fb.f);
             //printf("y0=0x%08x=%a\n", y0.u, y0.f);
         }
         if (flag) {

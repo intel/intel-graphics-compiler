@@ -17,7 +17,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f32, )(float x)
 {
     if (__FastRelaxedMath)
     {
-        return __builtin_spirv_OpenCL_native_exp_f32(x);
+        return SPIRV_OCL_BUILTIN(native_exp, _f32, )(x);
     }
     else
     {
@@ -42,8 +42,8 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f32, )(float x)
         f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )( w, -C2, f );
         f = f * M_LOG2E_F;
 
-        w = __builtin_spirv_OpenCL_native_exp2_f32( w );   // this should be exact
-        f = __builtin_spirv_OpenCL_native_exp2_f32( f );   // this should be close enough
+        w = SPIRV_OCL_BUILTIN(native_exp2, _f32, )( w );   // this should be exact
+        f = SPIRV_OCL_BUILTIN(native_exp2, _f32, )( f );   // this should be close enough
 
         float res = w * f;
         res = ( x < as_float( 0xC2D20000 ) ) ? as_float( 0x00000000 ) : res;

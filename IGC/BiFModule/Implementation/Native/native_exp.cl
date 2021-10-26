@@ -9,31 +9,31 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __builtin_spirv_OpenCL_native_exp_f32( float x )
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(native_exp, _f32, )( float x )
 {
-    return __builtin_spirv_OpenCL_native_exp2_f32(x * M_LOG2E_F);
+    return SPIRV_OCL_BUILTIN(native_exp2, _f32, )(x * M_LOG2E_F);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_exp, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_exp, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __builtin_spirv_OpenCL_native_exp_f64( double x )
+INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(native_exp, _f64, )( double x )
 {
-    return __builtin_spirv_OpenCL_native_exp2_f32((float)x * M_LOG2E_F);
+    return SPIRV_OCL_BUILTIN(native_exp2, _f32, )((float)x * M_LOG2E_F);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_exp, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_exp, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __builtin_spirv_OpenCL_native_exp_f16( half x )
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(native_exp, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_native_exp2_f16(x * M_LOG2E_H);
+    return SPIRV_OCL_BUILTIN(native_exp2, _f16, )(x * M_LOG2E_H);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_exp, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_exp, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)

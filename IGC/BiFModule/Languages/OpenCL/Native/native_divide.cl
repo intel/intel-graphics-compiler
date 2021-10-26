@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE native_divide( float x, float y )
 {
-    return __builtin_spirv_OpenCL_native_divide_f32_f32( x, y );
+    return SPIRV_OCL_BUILTIN(native_divide, _f32_f32, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( native_divide, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( native_divide, float, float )
 
 INLINE double OVERLOADABLE native_divide( double x, double y )
 {
-    return __builtin_spirv_OpenCL_native_divide_f64_f64( x, y );
+    return SPIRV_OCL_BUILTIN(native_divide, _f64_f64, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( native_divide, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( native_divide, double, double )
 
 INLINE half OVERLOADABLE native_divide( half x, half y )
 {
-    return __builtin_spirv_OpenCL_native_divide_f16_f16( x, y );
+    return SPIRV_OCL_BUILTIN(native_divide, _f16_f16, )( x, y );
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( native_divide, half, half )

@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( native_cos, float, float )
 
 INLINE double OVERLOADABLE native_cos( double x )
 {
-    return __builtin_spirv_OpenCL_native_cos_f64( x );
+    return SPIRV_OCL_BUILTIN(native_cos, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_cos, double, double )

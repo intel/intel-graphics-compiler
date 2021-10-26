@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( native_recip, float, float )
 
 INLINE double OVERLOADABLE native_recip( double x )
 {
-    return __builtin_spirv_OpenCL_native_recip_f64( x );
+    return SPIRV_OCL_BUILTIN(native_recip, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_recip, double, double )

@@ -21,7 +21,7 @@ static INLINE float __intel_sin_f32( float x, bool doFast )
 {
     if(__FastRelaxedMath && (!__APIRS) && doFast)
     {
-        return __builtin_spirv_OpenCL_native_sin_f32(x);
+        return SPIRV_OCL_BUILTIN(native_sin, _f32, )(x);
     }
     else
     {

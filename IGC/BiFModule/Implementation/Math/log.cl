@@ -26,7 +26,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log, _f32, )( float x )
 
     if(__FastRelaxedMath)
     {
-        result = __builtin_spirv_OpenCL_native_log_f32(x);
+        result = SPIRV_OCL_BUILTIN(native_log, _f32, )(x);
     }
     //  Denorm checking is to work-around a llvm issue that demote
     //  "(float) x > 0.0f"  to " (half)x > (half)0.0f" (log(half).
@@ -83,7 +83,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log, _f32, )( float x )
         // have to multiply by M_LN2_F, since the result in
         // these cases is NaN or +/- infinity, therefore the multiply
         // is irrelevant and unnecessary.
-        result = __builtin_spirv_OpenCL_native_log2_f32(x);
+        result = SPIRV_OCL_BUILTIN(native_log2, _f32, )(x);
     }
 
     return result;

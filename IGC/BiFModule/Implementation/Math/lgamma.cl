@@ -32,7 +32,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(lgamma, _f32, )( float x )
     else
     {
         float g = SPIRV_OCL_BUILTIN(tgamma, _f32, )(x);
-        r = SPIRV_BUILTIN(IsNan, _f32, )(g) ? INFINITY : __builtin_spirv_OpenCL_native_log_f32(SPIRV_OCL_BUILTIN(fabs, _f32, )(g));
+        r = SPIRV_BUILTIN(IsNan, _f32, )(g) ? INFINITY : SPIRV_OCL_BUILTIN(native_log, _f32, )(SPIRV_OCL_BUILTIN(fabs, _f32, )(g));
     }
     return r;
 #endif // USE_IMF_LGAMMA_IMPL

@@ -15,7 +15,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( native_sin, float, float )
 
 INLINE double OVERLOADABLE native_sin( double x )
 {
-    return __builtin_spirv_OpenCL_native_sin_f64( x );
+    return SPIRV_OCL_BUILTIN(native_sin, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_sin, double, double )

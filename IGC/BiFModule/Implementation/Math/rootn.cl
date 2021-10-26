@@ -41,7 +41,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rootn, _f32_i32, )( float x, int n )
         pr = pr * 1.0f / n;
         pr = SPIRV_OCL_BUILTIN(exp2, _f32, )( pr );
 #else
-        pr = __builtin_spirv_OpenCL_native_powr_f32_f32( pr, 1.0f / n );
+        pr = SPIRV_OCL_BUILTIN(native_powr, _f32_f32, )( pr, 1.0f / n );
 #endif
 
         // For rootn(), we'll return the positive result for both +0.0f and -0.0f.

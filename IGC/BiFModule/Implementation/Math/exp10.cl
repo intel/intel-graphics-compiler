@@ -18,7 +18,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp10, _f32, )( float x )
 {
     if(__FastRelaxedMath)
     {
-        return __builtin_spirv_OpenCL_native_exp10_f32(x);
+        return SPIRV_OCL_BUILTIN(native_exp10, _f32, )(x);
     }
     else
     {

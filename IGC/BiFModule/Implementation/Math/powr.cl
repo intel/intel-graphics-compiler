@@ -40,7 +40,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(powr, _f32_f32, )( float x, fl
         pr = y * pr;
         pr = SPIRV_OCL_BUILTIN(exp2, _f32, )( pr );
 #else
-        pr = __builtin_spirv_OpenCL_native_powr_f32_f32( pr, y );
+        pr = SPIRV_OCL_BUILTIN(native_powr, _f32_f32, )( pr, y );
 #endif
 
         // For powr(), we're guaranteed that x >= 0, so no need for

@@ -20,7 +20,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanpi, _f32, )( float x )
 
     if(useNative)
     {
-        return __builtin_spirv_OpenCL_native_tan_f32(x * M_PI_F);
+        return SPIRV_OCL_BUILTIN(native_tan, _f32, )(x * M_PI_F);
     }
     else
     {

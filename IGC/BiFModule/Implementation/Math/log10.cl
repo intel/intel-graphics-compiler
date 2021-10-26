@@ -22,7 +22,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log10, _f32, )( float x )
 
     if(__FastRelaxedMath)
     {
-        result = __builtin_spirv_OpenCL_native_log10_f32(x);
+        result = SPIRV_OCL_BUILTIN(native_log10, _f32, )(x);
     }
     else
     {

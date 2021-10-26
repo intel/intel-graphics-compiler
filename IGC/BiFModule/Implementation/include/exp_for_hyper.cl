@@ -60,7 +60,7 @@ float __intel_exp_for_hyper(float x, float scale)
 
     // By doing this computation as 2^(w - 2) * 2^2 we can avoid an
     // overflow case for very large values of w.
-    w = __builtin_spirv_OpenCL_native_exp2_f32( w + scale );   // this should be exact
+    w = SPIRV_OCL_BUILTIN(native_exp2, _f32, )( w + scale );   // this should be exact
 
     float res = w * f;
     res = ( x < as_float( 0xC2D20000 ) ) ? as_float( 0x00000000 ) : res;
@@ -108,13 +108,13 @@ float __intel_exp_for_tanh(float x, float scale)
 
     float ns = -scale;
     scale = ( x >= 0.0f ) ? scale : ns;
-    w = __builtin_spirv_OpenCL_native_exp2_f32( w + scale );  // this should be exact
+    w = SPIRV_OCL_BUILTIN(native_exp2, _f32, )( w + scale );  // this should be exact
 
     float res = w * tf;
     res = ( px < as_float( 0xC2D20000 ) ) ? as_float( 0x00000000 ) : res;
     res = ( px > as_float( 0x42D20000 ) ) ? as_float( 0x7F800000 ) : res;
 
-    float rx = __builtin_spirv_OpenCL_native_recip_f32( res );
+    float rx = SPIRV_OCL_BUILTIN(native_recip, _f32, )( res );
     res = ( x >= 0.0f ) ? res : rx;
 
     return res;

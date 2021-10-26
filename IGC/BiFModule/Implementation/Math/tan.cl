@@ -19,7 +19,7 @@ static INLINE float __intel_tan_f32( float x, bool doFast )
     float result;
     if(__FastRelaxedMath && (!__APIRS) && doFast)
     {
-        result = __builtin_spirv_OpenCL_native_tan_f32(x);
+        result = SPIRV_OCL_BUILTIN(native_tan, _f32, )(x);
     }
     else
     {

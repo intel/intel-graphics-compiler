@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt, _f32, )( float x )
 {
-    return __builtin_spirv_OpenCL_native_sqrt_f32(x);
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f32, )(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, float, float, f32 )
@@ -20,7 +20,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, float, float, f32 )
 
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt, _f64, )( double x )
 {
-    return __builtin_spirv_OpenCL_native_sqrt_f64(x);
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f64, )(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, double, double, f64 )
@@ -31,7 +31,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, double, double, f64 )
 
 INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt, _f16, )( half x )
 {
-    return __builtin_spirv_OpenCL_native_sqrt_f32((float)x);
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt, half, half, f16 )

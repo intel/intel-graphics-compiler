@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp2, _f32, )( float x )
 {
-    return __builtin_spirv_OpenCL_native_exp2_f32(x);
+    return SPIRV_OCL_BUILTIN(native_exp2, _f32, )(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp2, float, float, f32 )

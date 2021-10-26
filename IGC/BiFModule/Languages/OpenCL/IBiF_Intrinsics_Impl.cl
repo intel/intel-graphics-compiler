@@ -400,56 +400,56 @@ float OVERLOADABLE trunc( float x )
 INLINE
 float OVERLOADABLE native_cos( float x )
 {
-    return __builtin_spirv_OpenCL_native_cos_f32( x );
+    return SPIRV_OCL_BUILTIN(native_cos, _f32, )( x );
 }
 
 INLINE
 float OVERLOADABLE native_exp2( float x )
 {
-    return __builtin_spirv_OpenCL_native_exp2_f32( x );
+    return SPIRV_OCL_BUILTIN(native_exp2, _f32, )( x );
 }
 
 INLINE
 float OVERLOADABLE native_log2( float x )
 {
-    return __builtin_spirv_OpenCL_native_log2_f32( x );
+    return SPIRV_OCL_BUILTIN(native_log2, _f32, )( x );
 }
 
 INLINE
 float OVERLOADABLE native_powr( float x,
                                 float y )
 {
-    return __builtin_spirv_OpenCL_native_powr_f32_f32( x, y );
+    return SPIRV_OCL_BUILTIN(native_powr, _f32_f32, )( x, y );
 }
 
 INLINE
 float OVERLOADABLE native_recip( float x )
 {
-    return __builtin_spirv_OpenCL_native_recip_f32( x );
+    return SPIRV_OCL_BUILTIN(native_recip, _f32, )( x );
 }
 
 INLINE
 float OVERLOADABLE native_rsqrt( float x )
 {
-    return __builtin_spirv_OpenCL_native_rsqrt_f32( x );
+    return SPIRV_OCL_BUILTIN(native_rsqrt, _f32, )( x );
 }
 
 INLINE
 float OVERLOADABLE native_sin( float x )
 {
-    return __builtin_spirv_OpenCL_native_sin_f32( x );
+    return SPIRV_OCL_BUILTIN(native_sin, _f32, )( x );
 }
 
 INLINE
 float OVERLOADABLE native_sqrt( float x )
 {
-    return __builtin_spirv_OpenCL_native_sqrt_f32( x );
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f32, )( x );
 }
 
 INLINE
 float OVERLOADABLE native_tan( float x )
 {
-    return __builtin_spirv_OpenCL_native_tan_f32( x );
+    return SPIRV_OCL_BUILTIN(native_tan, _f32, )( x );
 }
 
 #ifdef cl_khr_fp16
@@ -535,56 +535,56 @@ half OVERLOADABLE trunc( half x )
 INLINE
 half OVERLOADABLE native_cos( half x )
 {
-    return __builtin_spirv_OpenCL_native_cos_f16( x );
+    return SPIRV_OCL_BUILTIN(native_cos, _f16, )( x );
 }
 
 INLINE
 half OVERLOADABLE native_exp2( half x )
 {
-    return __builtin_spirv_OpenCL_native_exp2_f16( x );
+    return SPIRV_OCL_BUILTIN(native_exp2, _f16, )( x );
 }
 
 INLINE
 half OVERLOADABLE native_log2( half x )
 {
-    return __builtin_spirv_OpenCL_native_log2_f16( x );
+    return SPIRV_OCL_BUILTIN(native_log2, _f16, )( x );
 }
 
 INLINE
 half OVERLOADABLE native_powr( half x,
                                half y )
 {
-    return __builtin_spirv_OpenCL_native_powr_f16_f16( x, y );
+    return SPIRV_OCL_BUILTIN(native_powr, _f16_f16, )( x, y );
 }
 
 INLINE
 half OVERLOADABLE native_recip( half x )
 {
-    return __builtin_spirv_OpenCL_native_recip_f16( x );
+    return SPIRV_OCL_BUILTIN(native_recip, _f16, )( x );
 }
 
 INLINE
 half OVERLOADABLE native_rsqrt( half x )
 {
-    return __builtin_spirv_OpenCL_native_rsqrt_f16( x );
+    return SPIRV_OCL_BUILTIN(native_rsqrt, _f16, )( x );
 }
 
 INLINE
 half OVERLOADABLE native_sin( half x )
 {
-    return __builtin_spirv_OpenCL_native_sin_f16( x );
+    return SPIRV_OCL_BUILTIN(native_sin, _f16, )( x );
 }
 
 INLINE
 half OVERLOADABLE native_sqrt( half x )
 {
-    return __builtin_spirv_OpenCL_native_sqrt_f16( x );
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f16, )( x );
 }
 
 INLINE
 half OVERLOADABLE native_tan( half x )
 {
-    return __builtin_spirv_OpenCL_native_tan_f16( x );
+    return SPIRV_OCL_BUILTIN(native_tan, _f16, )( x );
 }
 
 #endif
@@ -632,12 +632,12 @@ INLINE double OVERLOADABLE min( double x, double y )
 
 INLINE double OVERLOADABLE native_sqrt( double x )
 {
-    return __builtin_spirv_OpenCL_native_sqrt_f64( x );
+    return SPIRV_OCL_BUILTIN(native_sqrt, _f64, )( x );
 }
 
 INLINE double OVERLOADABLE native_rsqrt( double x )
 {
-    return __builtin_spirv_OpenCL_native_rsqrt_f64( x );
+    return SPIRV_OCL_BUILTIN(native_rsqrt, _f64, )( x );
 }
 
 #endif // defined(cl_khr_fp64)

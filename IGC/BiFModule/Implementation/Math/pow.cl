@@ -43,7 +43,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f32_f32, )( float x, flo
         pr = y * pr;
         pr = SPIRV_OCL_BUILTIN(exp2, _f32, )( pr );
 #else
-        pr = __builtin_spirv_OpenCL_native_powr_f32_f32( pr, y );
+        pr = SPIRV_OCL_BUILTIN(native_powr, _f32_f32, )( pr, y );
 #endif
 
         // Check for a positive x by checking the sign bit as an integer,

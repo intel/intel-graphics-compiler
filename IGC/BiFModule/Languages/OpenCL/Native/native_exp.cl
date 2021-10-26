@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE native_exp( float x )
 {
-    return __builtin_spirv_OpenCL_native_exp_f32( x );
+    return SPIRV_OCL_BUILTIN(native_exp, _f32, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_exp, float, float )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( native_exp, float, float )
 
 INLINE double OVERLOADABLE native_exp( double x )
 {
-    return __builtin_spirv_OpenCL_native_exp_f64( x );
+    return SPIRV_OCL_BUILTIN(native_exp, _f64, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_exp, double, double )
@@ -31,7 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( native_exp, double, double )
 
 INLINE half OVERLOADABLE native_exp( half x )
 {
-    return __builtin_spirv_OpenCL_native_exp_f16( x );
+    return SPIRV_OCL_BUILTIN(native_exp, _f16, )( x );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( native_exp, half, half )

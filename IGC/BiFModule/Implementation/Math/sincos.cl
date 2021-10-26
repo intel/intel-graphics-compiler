@@ -21,8 +21,8 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
     float   sin_x, cos_x;
     if(__FastRelaxedMath && (!__APIRS) && doFast)
     {
-        sin_x = __builtin_spirv_OpenCL_native_sin_f32(x);
-        cos_x = __builtin_spirv_OpenCL_native_cos_f32(x);
+        sin_x = SPIRV_OCL_BUILTIN(native_sin, _f32, )(x);
+        cos_x = SPIRV_OCL_BUILTIN(native_cos, _f32, )(x);
     }
     else
     {
