@@ -151,7 +151,7 @@ inline bool isPromotableStructType(const Module& M, const Type* ty, bool isRetur
     if (ty->isPointerTy())
     {
         StructType* sTy = dyn_cast<StructType>(ty->getPointerElementType());
-        if (sTy && DL.getStructLayout(sTy)->getSizeInBits() < maxSize)
+        if (sTy && DL.getStructLayout(sTy)->getSizeInBits() <= maxSize)
         {
             for (const auto* EltTy : sTy->elements())
             {
