@@ -3221,7 +3221,10 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
         {
             if (C0)
             {
-                C = constantFolder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardZero);
+                C = constantFolder.CreateFPTrunc(C0, Type::getHalfTy(inst->getContext()), llvm::APFloatBase::rmTowardZero);
+                C = constantFolder.CreateBitCast(C, Type::getInt16Ty(inst->getContext()));
+                C = constantFolder.CreateZExtOrBitCast(C, Type::getInt32Ty(inst->getContext()));
+                C = constantFolder.CreateBitCast(C, inst->getType());
             }
         }
         break;
