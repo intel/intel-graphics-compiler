@@ -868,7 +868,7 @@ namespace IGC
         return size;
     }
 
-    unsigned int PushAnalysis::AllocatePushedConstant(
+    void PushAnalysis::AllocatePushedConstant(
         Instruction* load,
         const SimplePushInfo& newChunk,
         const unsigned int maxSizeAllowed)
@@ -876,23 +876,20 @@ namespace IGC
         if (!newChunk.isBindless &&
             newChunk.cbIdx > m_context->m_DriverInfo.MaximumSimplePushBufferID())
         {
-            return 0;
+            return;
         }
         unsigned int size = GetSizeInBits(load->getType()) / 8;
         IGC_ASSERT_MESSAGE(isa<LoadInst>(load) || isa<LdRawIntrinsic>(load),
             "Expected a load instruction");
-        PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
-        bool canPromote = false;
-        unsigned int sizeGrown = 0;
         // greedy allocation for now
         // first check if we are already pushing from the buffer
         unsigned int piIndex;
         bool regionFound = false;
 
-        for (piIndex = 0; piIndex < pushInfo.simplePushBufferUsed; piIndex++)
+        for (piIndex = 0; piIndex < numSimplePush; piIndex++)
         {
-            const SimplePushInfo& info = pushInfo.simplePushInfoArr[piIndex];
+            const SimplePushData& info = CollectAllSimplePushInfoArr[piIndex];
             // Stateless load - GRF offsets need to match.
             if (info.isStateless &&
                 newChunk.isStateless &&
@@ -925,7 +922,7 @@ namespace IGC
         }
         if (regionFound)
         {
-            SimplePushInfo& info = pushInfo.simplePushInfoArr[piIndex];
+            SimplePushData& info = CollectAllSimplePushInfoArr[piIndex];
             unsigned int newStartOffset = iSTD::RoundDown(
                 std::min(newChunk.offset, info.offset),
                 getMinPushConstantBufferAlignmentInBytes());
@@ -934,21 +931,16 @@ namespace IGC
                 getMinPushConstantBufferAlignmentInBytes());
             unsigned int newSize = newEndOffset - newStartOffset;
 
-            if (newSize - info.size <= maxSizeAllowed)
+            if (newSize <= maxSizeAllowed)
             {
-                sizeGrown = newSize - info.size;
-                canPromote = true;
                 info.offset = newStartOffset;
                 info.size = newSize;
+                info.Load[load] = newChunk.offset;
             }
         }
 
-        const unsigned int maxNumberOfPushedBuffers = pushInfo.MaxNumberOfPushedBuffers;
-
         // we couldn't add it to an existing buffer try to add a new one if there is a slot available
-        if (canPromote == false &&
-            maxSizeAllowed > 0 &&
-            pushInfo.simplePushBufferUsed < maxNumberOfPushedBuffers)
+        else
         {
             unsigned int newStartOffset = iSTD::RoundDown(newChunk.offset, getMinPushConstantBufferAlignmentInBytes());
             unsigned int newEndOffset = iSTD::Round(newChunk.offset + size, getMinPushConstantBufferAlignmentInBytes());
@@ -956,11 +948,7 @@ namespace IGC
 
             if (newSize <= maxSizeAllowed)
             {
-                canPromote = true;
-                sizeGrown = newSize;
-
-                piIndex = pushInfo.simplePushBufferUsed;
-                SimplePushInfo& info = pushInfo.simplePushInfoArr[piIndex];
+                SimplePushData& info = CollectAllSimplePushInfoArr[numSimplePush];
                 info.pushableAddressGrfOffset = newChunk.pushableAddressGrfOffset;
                 info.pushableOffsetGrfOffset = newChunk.pushableOffsetGrfOffset;
                 info.cbIdx = newChunk.cbIdx;
@@ -968,20 +956,11 @@ namespace IGC
                 info.isBindless = newChunk.isBindless;
                 info.offset = newStartOffset;
                 info.size = newSize;
-
-                pushInfo.simplePushBufferUsed++;
+                info.Load[load] = newChunk.offset;
+                numSimplePush++;
             }
         }
-
-        if (canPromote)
-        {
-            // promote the load to be pushed
-            PromoteLoadToSimplePush(
-                load,
-                pushInfo.simplePushInfoArr[piIndex],
-                newChunk.offset);
-        }
-        return sizeGrown;
+        return;
     }
 
     void PushAnalysis::PromoteLoadToSimplePush(Instruction* load, SimplePushInfo& info, unsigned int offset)
@@ -1103,12 +1082,44 @@ namespace IGC
                 bool isPushable = IsPushableShaderConstant(instr, info);
                 if(isPushable)
                 {
-                    sizePushed += AllocatePushedConstant(
+                    AllocatePushedConstant(
                         instr,
                         info,
-                        cthreshold - sizePushed); // maxSizeAllowed
+                        cthreshold); // maxSizeAllowed
                 }
             }
+        }
+
+
+        PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
+        while ((pushInfo.simplePushBufferUsed < pushInfo.MaxNumberOfPushedBuffers) && CollectAllSimplePushInfoArr.size())
+        {
+            unsigned int iter = CollectAllSimplePushInfoArr.begin()->first;
+            SimplePushData info;
+            for (auto I = CollectAllSimplePushInfoArr.begin(), E = CollectAllSimplePushInfoArr.end(); I != E; I++)
+            {
+                if (I->second.size > info.size)
+                {
+                    info = I->second;
+                    iter = I->first;
+                }
+            }
+
+            SimplePushInfo& newChunk = pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed];
+            if (sizePushed + info.size <= cthreshold)
+            {
+                newChunk.cbIdx = info.cbIdx;
+                newChunk.isBindless = info.isBindless;
+                newChunk.isStateless = info.isStateless;
+                newChunk.offset = info.offset;
+                newChunk.size = info.size;
+                newChunk.pushableAddressGrfOffset = info.pushableAddressGrfOffset;
+                newChunk.pushableOffsetGrfOffset = info.pushableOffsetGrfOffset;
+                for (auto I = info.Load.rbegin(), E = info.Load.rend(); I != E; I++)
+                    PromoteLoadToSimplePush(I->first, newChunk, I->second);
+                pushInfo.simplePushBufferUsed++;
+            }
+            CollectAllSimplePushInfoArr.erase(iter);
         }
     }
 
