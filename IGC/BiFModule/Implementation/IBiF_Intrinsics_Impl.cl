@@ -77,12 +77,12 @@ uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_add_sat, _i32_i32, )( uint x,
 
 INLINE
 char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _i8, )(char x ){
-    return (char)SPIRV_OCL_BUILTIN(ctz, _i32, )((int)x | (1U << sizeof(x) * 8));
+    return (char)SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int((uint)x | (1U << sizeof(x) * 8)));
 }
 
 INLINE
 short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _i16, )(short x ){
-    return (short)SPIRV_OCL_BUILTIN(ctz, _i32, )((int)x | (1U << sizeof(x) * 8));
+    return (short)SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int((uint)x | (1U << sizeof(x) * 8)));
 }
 
 INLINE
