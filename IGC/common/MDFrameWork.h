@@ -246,6 +246,7 @@ namespace IGC
         unsigned FloatCvtIntRoundingMode                = IGC::ROUND_TO_ZERO;
 
         unsigned VISAPreSchedRPThreshold           = 0;
+        unsigned SetLoopUnrollThreshold            = 0;
         bool UnsafeMathOptimizations                    = false;
         bool FiniteMathOnly                             = false;
         bool FastRelaxedMath                            = false;
@@ -306,6 +307,7 @@ namespace IGC
         unsigned char forcedSIMDSize = 0;  // 0 means not forced
         unsigned int forceTotalGRFNum = 0; // 0 means not forced
         unsigned int VISAPreSchedRPThreshold = 0; // 0 means use the default
+        unsigned int SetLoopUnrollThreshold = 0; // 0 means use the default
         bool forcedVISAPreRAScheduler = false;
         // disables dispatch along y and tiled order optimizations
         bool disableLocalIdOrderOptimizations = false;
