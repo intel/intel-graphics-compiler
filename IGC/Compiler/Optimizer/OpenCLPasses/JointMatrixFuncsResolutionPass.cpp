@@ -52,15 +52,25 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
     return Changed;
 }
 
-static const char *JointMatrixLoadPrefx  = "__builtin_spirv_OpMatrixLoadINTEL";
-static const char *JointMatrixStorePrefx = "__builtin_spirv_OpMatrixStoreINTEL";
-static const char *JointMatrixMadPrefx   = "__builtin_spirv_OpMatrixMadINTEL";
+static const char *JointMatrixLoadPrefx  = "__builtin_spirv_OpJointMatrixLoadINTEL";
+static const char *JointMatrixStorePrefx = "__builtin_spirv_OpJointMatrixStoreINTEL";
+static const char *JointMatrixMadPrefx   = "__builtin_spirv_OpJointMatrixMadINTEL";
+static const char *JointMatrixSUMadPrefx = "__builtin_spirv_OpJointMatrixSUMadINTEL";
+static const char *JointMatrixUSMadPrefx = "__builtin_spirv_OpJointMatrixUSMadINTEL";
+static const char *JointMatrixUUMadPrefx = "__builtin_spirv_OpJointMatrixUUMadINTEL";
 
 enum {
     LayoutRowMajor,
     LayoutColumnMajor,
     LayoutPackedA,
     LayoutPackedB,
+};
+
+enum {
+    MadOpSS,
+    MadOpSU,
+    MadOpUS,
+    MadOpUU,
 };
 
 static unsigned getBitWidthFromFlags(unsigned flags) {
@@ -75,15 +85,32 @@ static bool isElmentTypeFloating(unsigned flags) {
     return !isElmentTypeInteger(flags);
 }
 
+static char getIntSignPrefix(unsigned OperationType, unsigned OperandId) {
+    switch (OperationType) {
+        default:
+        case MadOpSS:
+          return 's';
+        case MadOpUU:
+          return 'u';
+        case MadOpSU:
+          return OperandId == 0 ? 's' : 'u';
+        case MadOpUS:
+          return OperandId == 0 ? 'u' : 's';
+    }
+}
+
 std::string JointMatrixFuncsResolutionPass::getMADMatrixFuncName
-      (uint32_t aTypeFlags, uint32_t bTypeFlags, uint32_t cTypeFlags, unsigned M, unsigned N)
+      (uint32_t aTypeFlags, uint32_t bTypeFlags, uint32_t cTypeFlags,
+       unsigned M, unsigned N, unsigned OperationType)
 {
     std::string name = "__builtin_IB_sub_group";
 
     if (isElmentTypeInteger(cTypeFlags)) {
         name += "_idpas_";
-        name += "s" + std::to_string(getBitWidthFromFlags(aTypeFlags)) + "_";
-        name += "s" + std::to_string(getBitWidthFromFlags(bTypeFlags)) + "_";
+        name += getIntSignPrefix(OperationType, 0);
+        name += std::to_string(getBitWidthFromFlags(aTypeFlags)) + "_";
+        name += getIntSignPrefix(OperationType, 1);
+        name += std::to_string(getBitWidthFromFlags(bTypeFlags)) + "_";
     } else {
         name += "_fdpas_";
         /* bf is passed as uint16_t, hf is using halfs */
@@ -106,7 +133,7 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
     }
 
     std::string name
-      = load ? "__builtin_spriv_OpMatrixLoadINTEL_" : "__builtin_spriv_OpMatrixStoreINTEL_";
+      = load ? "__builtin_spriv_OpJointMatrixLoadINTEL_" : "__builtin_spriv_OpJointMatrixStoreINTEL_";
     switch (matrixLayout) {
       case LayoutPackedA:
         name += "PackedA_";
@@ -281,13 +308,12 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     return CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
 }
 
-Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI)
+Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned OperationType)
 {
     /* Matrix A: */
     Value *aMatVal        = CI->getArgOperand(0);
     uint32_t aMatElemType = (uint32_t) constIntValue(CI->getArgOperand(1));
     unsigned aMatRows     = (unsigned) constIntValue(CI->getArgOperand(2));
-    //uint64_t aMatColumns  = constIntValue(CI->getArgOperand(3));
     /* Matrix B: */
     Value *bMatVal        = CI->getArgOperand(4);
     uint32_t bMatElemType = (uint32_t) constIntValue(CI->getArgOperand(5));
@@ -297,7 +323,6 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI)
     Value *cMatVal        = CI->getArgOperand(8);
     uint32_t cMatElemType = (uint32_t) constIntValue(CI->getArgOperand(9));
     unsigned cMatRows     = (unsigned) constIntValue(CI->getArgOperand(10));
-    //uint64_t cMatColumns  = constIntValue(CI->getArgOperand(11));
 
     unsigned aMatLayout = LayoutRowMajor;
     Type *aMatTy = ResolveType(aMatVal->getType(), aMatElemType, aMatRows, &aMatLayout);
@@ -311,7 +336,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI)
     unsigned M = aMatRows;
     unsigned N = bMatColumns;
     const bool isIntegerMAD = isElmentTypeInteger(cMatElemType);
-    std::string funcName = getMADMatrixFuncName(aMatElemType, bMatElemType, cMatElemType, M, N);
+    std::string funcName = getMADMatrixFuncName(aMatElemType, bMatElemType, cMatElemType, M, N, OperationType);
     FunctionType *funcType = FunctionType::get(cMatTy, { cMatTy, aMatTy, bMatTy }, false);
   
     Value *cMat = Resolve(cMatVal);
@@ -344,7 +369,13 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
         } else if (funcName.startswith(JointMatrixStorePrefx)) {
             NewInst = ResolveStore(CI);
         } else if (funcName.startswith(JointMatrixMadPrefx)) {
-            NewInst = ResolveMad(CI);
+            NewInst = ResolveMad(CI, MadOpSS);
+        } else if (funcName.startswith(JointMatrixSUMadPrefx)) {
+            NewInst = ResolveMad(CI, MadOpSU);
+        } else if (funcName.startswith(JointMatrixUSMadPrefx)) {
+            NewInst = ResolveMad(CI, MadOpUS);
+        } else if (funcName.startswith(JointMatrixUUMadPrefx)) {
+            NewInst = ResolveMad(CI, MadOpUU);
         }
         return NewInst;
     } else if (PHINode *PN = dyn_cast<PHINode>(v)) {

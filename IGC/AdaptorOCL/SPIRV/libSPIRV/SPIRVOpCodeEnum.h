@@ -516,10 +516,13 @@ _SPIRV_OP(TypeTokenINTEL, 6113)
 _SPIRV_OP(ConvertFToBF16INTEL, 6116)
 _SPIRV_OP(ConvertBF16ToFINTEL, 6117)
 // SPV_INTEL_matrix
-_SPIRV_OP(TypeMatrixINTEL, 6119)
-_SPIRV_OP(MatrixLoadINTEL, 6120)
-_SPIRV_OP(MatrixStoreINTEL, 6121)
-_SPIRV_OP(MatrixMadINTEL, 6122)
+_SPIRV_OP(TypeJointMatrixINTEL, 6119)
+_SPIRV_OP(JointMatrixLoadINTEL, 6120)
+_SPIRV_OP(JointMatrixStoreINTEL, 6121)
+_SPIRV_OP(JointMatrixMadINTEL, 6122)
+_SPIRV_OP(JointMatrixSUMadINTEL, 6128)
+_SPIRV_OP(JointMatrixUSMadINTEL, 6129)
+_SPIRV_OP(JointMatrixUUMadINTEL, 6130)
 // SPV_INTEL_arithmetic_fence
 _SPIRV_OP(ArithmeticFenceINTEL, 6145)
 // SPV_INTEL_uniform_group_instructions

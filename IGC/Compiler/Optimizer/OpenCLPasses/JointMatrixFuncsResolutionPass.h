@@ -46,14 +46,14 @@ namespace IGC
     private:
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
         llvm::Instruction *ResolveStore(llvm::CallInst *CI);
-        llvm::Instruction *ResolveMad(llvm::CallInst *CI);
+        llvm::Instruction *ResolveMad(llvm::CallInst *CI, unsigned OperationType);
         llvm::Type *ResolveType(const llvm::Type *opaqueType, uint32_t elementTypeFlags, unsigned rows, unsigned *outLayout);
         llvm::Value *Resolve(llvm::Value *value);
 
         std::string GetLoadStoreMatrixFuncName
             (bool load, unsigned opLayout, unsigned matrixLayout, unsigned elemBitWidth, unsigned rows, unsigned cols);
         std::string getMADMatrixFuncName
-            (uint32_t aTypeFlags, uint32_t bTypeFlags, uint32_t cTypeFlags, unsigned M, unsigned N);
+            (uint32_t aTypeFlags, uint32_t bTypeFlags, uint32_t cTypeFlags, unsigned M, unsigned N, unsigned OperationType);
 
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;

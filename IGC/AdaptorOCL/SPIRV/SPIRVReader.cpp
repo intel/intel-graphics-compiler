@@ -2135,19 +2135,19 @@ SPIRVToLLVM::transType(SPIRVType *T) {
                    getOrCreateOpaquePtrType(M, "intel.buffer_rw_t",
                                             SPIRAddressSpace::SPIRAS_Global));
   }
-  case OpTypeMatrixINTEL:
+  case OpTypeJointMatrixINTEL:
   {
-    SPIRVTypeMatrixINTEL *MT = static_cast<SPIRVTypeMatrixINTEL *>(T);
+    SPIRVTypeJointMatrixINTEL *MT = static_cast<SPIRVTypeJointMatrixINTEL *>(T);
     const char *typeName = nullptr;
     switch (MT->getLayout()) {
-      case SPIRVTypeMatrixINTEL::LayoutPackedA:
+      case SPIRVTypeJointMatrixINTEL::LayoutPackedA:
         typeName = "intel.joint_matrix_packedA_t";
         break;
-      case SPIRVTypeMatrixINTEL::LayoutPackedB:
+      case SPIRVTypeJointMatrixINTEL::LayoutPackedB:
         typeName = "intel.joint_matrix_packedB_t";
         break;
-      case SPIRVTypeMatrixINTEL::LayoutRowMajor:
-      case SPIRVTypeMatrixINTEL::LayoutColumnMajor:
+      case SPIRVTypeJointMatrixINTEL::LayoutRowMajor:
+      case SPIRVTypeJointMatrixINTEL::LayoutColumnMajor:
         typeName = "intel.joint_matrix_acc_t";
         break;
     }
@@ -3697,12 +3697,12 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto* BC = static_cast<SPIRVUnary*>(BV);
     return mapValue(BV, transValue(BC->getOperand(0), F, BB));
   }
-  case OpMatrixLoadINTEL: {
-    SPIRVMatrixLoadINTEL *ML = static_cast<SPIRVMatrixLoadINTEL *>(BV);
+  case OpJointMatrixLoadINTEL: {
+    SPIRVJointMatrixLoadINTEL *ML = static_cast<SPIRVJointMatrixLoadINTEL *>(BV);
     std::vector<SPIRVValue *> BArgs = ML->getOperands();
     enum SPVIdx { Pointer, Stride, Layout, Scope, MemOp };
 
-    SPIRVTypeMatrixINTEL *MatTy = static_cast<SPIRVTypeMatrixINTEL *>(ML->getType());
+    SPIRVTypeJointMatrixINTEL *MatTy = static_cast<SPIRVTypeJointMatrixINTEL *>(ML->getType());
     const unsigned loadLayout = (unsigned)BM->get<SPIRVConstant>(BArgs[Layout]->getId())->getZExtIntValue();
 
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
@@ -3741,14 +3741,14 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     /* Get function to call */
     const char *suffix = nullptr;
     switch (MatTy->getLayout()) {
-      case SPIRVTypeMatrixINTEL::LayoutPackedA:
+      case SPIRVTypeJointMatrixINTEL::LayoutPackedA:
         suffix = "_PackedA";
         break;
-      case SPIRVTypeMatrixINTEL::LayoutPackedB:
+      case SPIRVTypeJointMatrixINTEL::LayoutPackedB:
         suffix = "_PackedB";
         break;
-      case SPIRVTypeMatrixINTEL::LayoutRowMajor:
-      case SPIRVTypeMatrixINTEL::LayoutColumnMajor:
+      case SPIRVTypeJointMatrixINTEL::LayoutRowMajor:
+      case SPIRVTypeJointMatrixINTEL::LayoutColumnMajor:
         suffix = "_Accumulator";
         break;
     }
@@ -3763,12 +3763,12 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     CallInst *CI = CallInst::Create(Func, Args, "matrix", BB);
     return mapValue(BV, CI);
   }
-  case OpMatrixStoreINTEL: {
-    SPIRVMatrixStoreINTEL *MS = static_cast<SPIRVMatrixStoreINTEL *>(BV);
+  case OpJointMatrixStoreINTEL: {
+    SPIRVJointMatrixStoreINTEL *MS = static_cast<SPIRVJointMatrixStoreINTEL *>(BV);
     std::vector<SPIRVValue *> BArgs = MS->getOperands();
     enum SPVIdx { Pointer, Object, Stride, Layout, Scope, MemOp };
 
-    SPIRVTypeMatrixINTEL *MatTy = static_cast<SPIRVTypeMatrixINTEL *>(BArgs[Object]->getType());
+    SPIRVTypeJointMatrixINTEL *MatTy = static_cast<SPIRVTypeJointMatrixINTEL *>(BArgs[Object]->getType());
     const unsigned storeLayout = (unsigned)BM->get<SPIRVConstant>(BArgs[Layout]->getId())->getZExtIntValue();
 
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
@@ -3808,14 +3808,14 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     /* Get function to call */
     const char *suffix = nullptr;
     switch (MatTy->getLayout()) {
-      case SPIRVTypeMatrixINTEL::LayoutPackedA:
+      case SPIRVTypeJointMatrixINTEL::LayoutPackedA:
         suffix = "_PackedA";
         break;
-      case SPIRVTypeMatrixINTEL::LayoutPackedB:
+      case SPIRVTypeJointMatrixINTEL::LayoutPackedB:
         suffix = "_PackedB";
         break;
-      case SPIRVTypeMatrixINTEL::LayoutRowMajor:
-      case SPIRVTypeMatrixINTEL::LayoutColumnMajor:
+      case SPIRVTypeJointMatrixINTEL::LayoutRowMajor:
+      case SPIRVTypeJointMatrixINTEL::LayoutColumnMajor:
         suffix = "_Accumulator";
         break;
     }
@@ -3830,16 +3830,19 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     CallInst *CI = CallInst::Create(Func, Args, "", BB);
     return mapValue(BV, CI);
   }
-  case OpMatrixMadINTEL: {
-    SPIRVMatrixMadINTEL *MM = static_cast<SPIRVMatrixMadINTEL *>(BV);
-    std::vector<SPIRVValue *> BArgs = MM->getOperands();
+  case OpJointMatrixMadINTEL:
+  case OpJointMatrixSUMadINTEL:
+  case OpJointMatrixUSMadINTEL:
+  case OpJointMatrixUUMadINTEL: {
+    SPIRVInstruction *MI = static_cast<SPIRVInstruction *>(BV);
+    std::vector<SPIRVValue *> BArgs = MI->getOperands();
+
     enum SPVIdx { A, B, C, Scope };
+    auto *MatATy = static_cast<SPIRVTypeJointMatrixINTEL *>(BArgs[A]->getType());
+    auto *MatBTy = static_cast<SPIRVTypeJointMatrixINTEL *>(BArgs[B]->getType());
+    auto *MatCTy = static_cast<SPIRVTypeJointMatrixINTEL *>(BArgs[C]->getType());
 
-    auto *MatATy = static_cast<SPIRVTypeMatrixINTEL *>(BArgs[A]->getType());
-    auto *MatBTy = static_cast<SPIRVTypeMatrixINTEL *>(BArgs[B]->getType());
-    auto *MatCTy = static_cast<SPIRVTypeMatrixINTEL *>(BArgs[C]->getType());
-
-    auto *ResMatTy = static_cast<SPIRVTypeMatrixINTEL *>(MM->getType());
+    auto *ResMatTy = static_cast<SPIRVTypeJointMatrixINTEL *>(BV->getType());
 
     const unsigned sizeM = MatATy->getRows();
     const unsigned sizeK = MatATy->getColumns();

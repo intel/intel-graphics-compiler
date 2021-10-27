@@ -677,27 +677,27 @@ protected:
         }
 };
 
-class SPIRVTypeMatrixINTEL : public SPIRVType {
+class SPIRVTypeJointMatrixINTEL : public SPIRVType {
 public:
-    const static Op OC = OpTypeMatrixINTEL;
+    const static Op OC = OpTypeJointMatrixINTEL;
     const static SPIRVWord FixedWC = 7;
     // Complete constructor
-    SPIRVTypeMatrixINTEL(SPIRVModule *M, SPIRVId TheId, SPIRVType *ElemType,
-                         SPIRVId Rows, SPIRVId Columns,
-                         SPIRVId Layout, SPIRVId Scope)
+    SPIRVTypeJointMatrixINTEL(SPIRVModule *M, SPIRVId TheId, SPIRVType *ElemType,
+                              SPIRVId Rows, SPIRVId Columns,
+                              SPIRVId Layout, SPIRVId Scope)
         : SPIRVType(M, FixedWC, OC, TheId), ElemType(ElemType),
           Rows(Rows), Columns(Columns), Layout(Layout), Scope(Scope) {
         validate();
     }
 
     // Incomplete constructor
-    SPIRVTypeMatrixINTEL()
+    SPIRVTypeJointMatrixINTEL()
         : SPIRVType(OC), ElemType(0), Rows(0), Columns(0),
           Layout(0), Scope(0) {
     }
 
     CapVec getRequiredCapability() const override {
-        return getVec(SPIRVCapabilityKind::CapabilityMatrixINTEL);
+        return getVec(SPIRVCapabilityKind::CapabilityJointMatrixINTEL);
     }
 
     SPIRVType *getElemType() const { return ElemType; }

@@ -2318,20 +2318,23 @@ _SPIRV_OP(VariableLengthArray, true, 4)
 _SPIRV_OP(SaveMemory, true, 3)
 _SPIRV_OP(RestoreMemory, false, 2)
 #undef _SPIRV_OP
-class SPIRVMatrixINTELInst: public SPIRVInstTemplateBase {
+class SPIRVJointMatrixINTELInst: public SPIRVInstTemplateBase {
   CapVec getRequiredCapability() const override {
-    return getVec(CapabilityMatrixINTEL);
+    return getVec(CapabilityJointMatrixINTEL);
   }
 };
 
 #define _SPIRV_OP(x, ...)                                                      \
-  typedef SPIRVInstTemplate<SPIRVMatrixINTELInst,                              \
+  typedef SPIRVInstTemplate<SPIRVJointMatrixINTELInst,                         \
                             Op##x##INTEL, __VA_ARGS__>                         \
       SPIRV##x##INTEL;
 
-_SPIRV_OP(MatrixLoad, true, 6, true)
-_SPIRV_OP(MatrixStore, false, 5, true)
-_SPIRV_OP(MatrixMad, true, 7)
+_SPIRV_OP(JointMatrixLoad, true, 6, true)
+_SPIRV_OP(JointMatrixStore, false, 5, true)
+_SPIRV_OP(JointMatrixMad, true, 7)
+_SPIRV_OP(JointMatrixSUMad, true, 7)
+_SPIRV_OP(JointMatrixUSMad, true, 7)
+_SPIRV_OP(JointMatrixUUMad, true, 7)
 #undef _SPIRV_OP
 }
 #endif // SPIRVINSTRUCTION_HPP_
