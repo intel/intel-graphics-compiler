@@ -93,6 +93,41 @@ static constexpr int VCRoundingRTZ = 3 << 4;
 
 namespace {
 
+static cl::opt<bool> OptDbgOnlyDisableDivremEmulation(
+    "vc-dbgonly-emu-disable-divrem", cl::init(false), cl::Hidden,
+    cl::desc("do not load divrem emulation functions"));
+// Currenly, we have no guarantee that each and every genx intrinsic
+// is emulated. Only the most frequently encounted are.
+// This flag is to help finding such undetected cases.
+static cl::opt<bool> OptStrictChecksEnable("vc-i64emu-strict-checks",
+                                           cl::init(false), cl::Hidden,
+                                           cl::desc("enables strict checks"));
+static cl::opt<bool>
+    OptStricterSVM("vc-i64emu-strict-report-svm", cl::init(false), cl::Hidden,
+                   cl::desc("strict check will break on svm* operations"));
+// NOTE: probably should be true by default
+static cl::opt<bool>
+    OptStricterAtomic("vc-i64emu-strict-report-atomic", cl::init(false),
+                      cl::Hidden,
+                      cl::desc("strict check will break on 64-bit atomics"));
+static cl::opt<bool> OptStricterOword(
+    "vc-i64emu-strict-report-oword", cl::init(false), cl::Hidden,
+    cl::desc("strict check will break on 64-bit oword reads/writes"));
+static cl::opt<bool> OptStricterAlloc(
+    "vc-i64emu-strict-report-alloc", cl::init(false), cl::Hidden,
+    cl::desc("strict check will break on 64-bit alloc"));
+static cl::opt<bool> OptStricterFaddr(
+    "vc-i64emu-strict-report-faddr", cl::init(false), cl::Hidden,
+    cl::desc("strict check will break on 64-bit faddr"));
+static cl::opt<bool>
+    OptStricterConst("vc-i64emu-strict-const", cl::init(false), cl::Hidden,
+                     cl::desc("strict check will break on 64-bit constanti"));
+static cl::opt<bool> OptStricterRegions(
+    "vc-i64emu-strict-regions", cl::init(false), cl::Hidden,
+    cl::desc("strict check will break on 64-bit rdregion/wrregion"));
+static cl::opt<bool> OptStricterConverts(
+    "vc-i64emu-strict-converts", cl::init(false), cl::Hidden,
+    cl::desc("strict check will break on 64-bit convers which are NOT noop"));
 // TODO: we expect this to be turned on by default
 static cl::opt<bool> OptStrictEmulationRequests(
     "vc-i64emu-strict-requests", cl::init(false),
@@ -258,6 +293,7 @@ class GenXEmulate : public ModulePass {
         std::map<OpType, Function *, decltype(OpTypeComparator)> *EF = nullptr)
         : ST(ST), SplitBuilder(I), Inst(I), EmulationFuns(EF) {}
 
+    const GenXSubtarget &getSubtarget() const { return ST; }
     Value *tryExpand() {
       if (!needsEmulation())
         return nullptr;
@@ -313,6 +349,7 @@ class GenXEmulate : public ModulePass {
                                      const ShiftInfo &SI);
     static ShiftInfo constructShiftInfo(IRBuilder &B, Value *Base);
 
+    static bool hasStrictEmulationRequirement(Instruction *Inst);
   };
 
 public:
@@ -1168,6 +1205,11 @@ Value *GenXEmulate::Emu64Expander::ensureEmulated(Value *Val) {
 }
 Value *GenXEmulate::Emu64Expander::buildTernaryAddition(
     IRBuilder &Builder, Value &A, Value &B, Value &C, const Twine &Name) const {
+  if (ST.hasAdd3Bfn()) {
+    auto *Add3Funct = GenXIntrinsic::getGenXDeclaration(
+        Inst.getModule(), GenXIntrinsic::genx_add3, {A.getType(), B.getType()});
+    return Builder.CreateCall(Add3Funct, {&A, &B, &C}, "add3." + Name);
+  }
   auto *SubH = Builder.CreateAdd(&A, &B, Name + ".part");
   return Builder.CreateAdd(SubH, &C, Name);
 }
@@ -1590,6 +1632,93 @@ GenXEmulate::Emu64Expander::constructShiftInfo(IRBuilder &B, Value *RawSha) {
 
   return ShiftInfo{Sha, Sh32, Mask1, Mask0};
 }
+bool GenXEmulate::Emu64Expander::hasStrictEmulationRequirement(
+    Instruction *Inst) {
+  auto isI64Type = [](Type *T) {
+    if (T->isVectorTy())
+      T = cast<VectorType>(T)->getElementType();
+    return T->isIntegerTy(64) == true;
+  };
+  bool ret64 = isI64Type(Inst->getType());
+  bool uses64 = false;
+  for (unsigned i = 0; i < Inst->getNumOperands(); ++i) {
+    uses64 |= isI64Type(Inst->getOperand(i)->getType());
+  }
+  // if instruction does not touch i64 - it is free to go
+  if (!ret64 && !uses64 && !isI64PointerOp(*Inst))
+    return false;
+
+  // now things become (a little) complicated. Currently, we ignore some
+  // instructions/intrinsic types, since they are acceptable by finalizer.
+  // More specifically - everything which is lowered to a plain mov
+  // (non-coverting) is fine.
+  // It seems that sends with i64 addresses are fine too
+
+  // skip moves
+  if (GenXIntrinsic::isWrRegion(Inst) || GenXIntrinsic::isRdRegion(Inst)) {
+    return OptStricterRegions;
+  }
+
+  // skip constants
+  if (GenXIntrinsic::getAnyIntrinsicID(Inst) == GenXIntrinsic::genx_constanti)
+    return OptStricterConst;
+
+  switch (GenXIntrinsic::getAnyIntrinsicID(Inst)) {
+  case GenXIntrinsic::genx_svm_scatter:
+  case GenXIntrinsic::genx_svm_gather:
+  case GenXIntrinsic::genx_svm_scatter4_scaled:
+  case GenXIntrinsic::genx_svm_gather4_scaled:
+  case GenXIntrinsic::genx_svm_block_st:
+  case GenXIntrinsic::genx_svm_block_ld:
+  case GenXIntrinsic::genx_svm_block_ld_unaligned:
+    return OptStricterSVM;
+
+  // TODO: not every atomic is covered here, we need to add more
+  case GenXIntrinsic::genx_svm_atomic_add:
+  case GenXIntrinsic::genx_svm_atomic_and:
+  case GenXIntrinsic::genx_svm_atomic_cmpxchg:
+  case GenXIntrinsic::genx_svm_atomic_dec:
+  case GenXIntrinsic::genx_svm_atomic_fcmpwr:
+  case GenXIntrinsic::genx_svm_atomic_fmax:
+  case GenXIntrinsic::genx_svm_atomic_fmin:
+  case GenXIntrinsic::genx_svm_atomic_imax:
+  case GenXIntrinsic::genx_svm_atomic_imin:
+  case GenXIntrinsic::genx_svm_atomic_inc:
+  case GenXIntrinsic::genx_svm_atomic_max:
+  case GenXIntrinsic::genx_svm_atomic_min:
+  case GenXIntrinsic::genx_svm_atomic_or:
+  case GenXIntrinsic::genx_svm_atomic_sub:
+  case GenXIntrinsic::genx_svm_atomic_xchg:
+  case GenXIntrinsic::genx_svm_atomic_xor:
+    return OptStricterAtomic;
+
+  case GenXIntrinsic::genx_oword_st:
+  case GenXIntrinsic::genx_oword_ld:
+  case GenXIntrinsic::genx_oword_ld_unaligned:
+    return OptStricterOword;
+  case GenXIntrinsic::genx_alloca:
+    return OptStricterAlloc;
+  case GenXIntrinsic::genx_faddr:
+    return OptStricterFaddr;
+  }
+
+  switch (Inst->getOpcode()) {
+  case Instruction::PtrToInt:
+  case Instruction::IntToPtr: {
+    const DataLayout &DL = Inst->getModule()->getDataLayout();
+    if (!cast<CastInst>(Inst)->isNoopCast(DL))
+      return OptStricterConverts;
+    return false;
+  }
+  case Instruction::ICmp:
+    return OptStrictChecksEnable;
+  // skip bitcast and phi
+  case Instruction::BitCast:
+  case Instruction::PHI:
+    return false;
+  }
+  return true;
+}
 
 void GenXEmulate::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetPassConfig>();
@@ -1713,6 +1842,16 @@ Value *GenXEmulate::emulateInst(Instruction *Inst) {
   if (ST->emulateLongLong()) {
     Value *NewInst = Emu64Expander(*ST, *Inst, &EmulationFuns).tryExpand();
     if (!NewInst) {
+#ifndef NDEBUG
+      if (Emu64Expander::hasStrictEmulationRequirement(Inst)) {
+        LLVM_DEBUG(dbgs() << "i64-emu::WARNING: instruction may require "
+                          << "emulation: " << *Inst << "\n");
+      }
+#endif // NDEBUG
+      if (OptStrictChecksEnable &&
+          Emu64Expander::hasStrictEmulationRequirement(Inst)) {
+        DiscracedList.push_back(Inst);
+      }
     }
 
     return NewInst;
@@ -1786,6 +1925,8 @@ public:
     AU.addRequired<GenXBackendConfig>();
   }
   bool runOnModule(Module &M) override {
+    if (OptDbgOnlyDisableDivremEmulation)
+      return false;
     const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();
