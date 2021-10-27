@@ -698,9 +698,13 @@ namespace vISA
                 }
 
                 const auto &pointsToSet = liveness.getPointsToAnalysis().getIndrUseVectorForBB(bb->getId());
+                G4_RegVar* srcVar = srcOpndTopDcl->getRegVar();
+                auto it = std::find_if(pointsToSet.begin(), pointsToSet.end(),
+                    [&srcVar](const pointInfo& element) {return element.var == srcVar && element.off == 0; });
+
                 if (srcOpndTopDcl->getAddressed() &&
                     ((uniqueDefBB != bb) ||
-                      std::find(pointsToSet.begin(), pointsToSet.end(), srcOpndTopDcl->getRegVar()) != pointsToSet.end()))
+                      it != pointsToSet.end()))
                 {
                     // Indirectly addressed src opnd should not be extended
                     return false;

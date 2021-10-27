@@ -112,11 +112,11 @@ namespace vISA
                 {
                     // make every var in points-to set live
                     const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(src, bb);
-                    for (auto var : pointsToSet)
+                    for (auto pt : pointsToSet)
                     {
-                        if (var->isRegAllocPartaker())
+                        if (pt.var->isRegAllocPartaker())
                         {
-                            updateLiveness(live, var->getId(), true);
+                            updateLiveness(live, pt.var->getId(), true);
                         }
                     }
                 }

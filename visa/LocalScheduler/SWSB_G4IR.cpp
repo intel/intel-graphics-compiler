@@ -458,14 +458,13 @@ SBFootprint* G4_BB_SB::getFootprintForFlag(G4_Operand* opnd,
     unsigned short LB = 0;
     unsigned short RB = 0;
     G4_Type type = opnd->getType();
-    unsigned short bitToBytes = numEltPerGRF<Type_UB>() / 16;
     bool valid = true;
     unsigned subRegOff = opnd->getBase()->ExSubRegNum(valid);
-    LB = (unsigned short)(opnd->getLeftBound() + subRegOff * 16) * bitToBytes;
-    RB = (unsigned short)(opnd->getRightBound() + subRegOff * 16) * bitToBytes;
+    LB = (unsigned short)(opnd->getLeftBound() + subRegOff * 16) * FLAG_TO_GRF_MAP;
+    RB = (unsigned short)(opnd->getRightBound() + subRegOff * 16) * FLAG_TO_GRF_MAP;
 
-    LB += (builder.kernel.getNumRegTotal() + builder.kernel.getNumAcc()) * numEltPerGRF<Type_UB>();
-    RB += (builder.kernel.getNumRegTotal() + builder.kernel.getNumAcc()) * numEltPerGRF<Type_UB>();
+    LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() + builder.kernel.getNumAcc()) * numEltPerGRF<Type_UB>();
+    RB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() + builder.kernel.getNumAcc()) * numEltPerGRF<Type_UB>();
 
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     SBFootprint* footprint = nullptr;
@@ -474,6 +473,7 @@ SBFootprint* G4_BB_SB::getFootprintForFlag(G4_Operand* opnd,
 
     return footprint;
 }
+
 
 static bool compareInterval(SBNode* n1, SBNode* n2)
 {
@@ -1256,8 +1256,8 @@ void SWSB::SWSBGenerator()
     kernel.fg.findNaturalLoops();
 
     //Note that getNumFlagRegisters() treat each 16 bits as a flag register
-    LiveGRFBuckets LB(mem, kernel.getNumRegTotal() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
-    LiveGRFBuckets globalSendsLB(mem, kernel.getNumRegTotal() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
+    LiveGRFBuckets LB(mem, kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
+    LiveGRFBuckets globalSendsLB(mem, kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
 
     SWSBDepDistanceGenerator(p, LB, globalSendsLB);
 
@@ -3451,6 +3451,7 @@ bool SWSB::insertSyncXe(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER i
                 synInst->setDistance(inst->getDistance());
                 synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
                 inst->setDistance(0);
+                inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
                 insertedSync = true;
             }
         }
@@ -3469,6 +3470,7 @@ bool SWSB::insertSyncXe(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER i
                 synInst->setDistance(inst->getDistance());
                 synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
                 inst->setDistance(0);
+                inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
                 insertedSync = true;
             }
         }
@@ -3488,6 +3490,7 @@ bool SWSB::insertSyncXe(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER i
                 synInst->setDistance(inst->getDistance());
                 synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
                 inst->setDistance(0);
+                inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
                 insertedSync = true;
             }
         }
@@ -4420,6 +4423,7 @@ bool G4_BB_SB::getFootprintForOperand(SBNode* node,
         }
     }
 
+
     return hasDistOneAReg;
 }
 
@@ -4466,7 +4470,8 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
     G4_RegVar* ptvar = NULL;
     int vid = 0;
 
-    while ((ptvar = p.getPointsTo(addrdcl->getRegVar(), vid++)) != NULL)
+    unsigned char offset = 0;
+    while ((ptvar = p.getPointsTo(addrdcl->getRegVar(), vid++, offset)) != NULL)
     {
 
         uint32_t varID = ptvar->getId();
@@ -4496,9 +4501,12 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
             uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
             uint32_t regOff = var->getPhyRegOff();
 
-            linearizedStart = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
-            linearizedEnd = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType()) + dcl->getByteSize() - 1;
+            {
+                linearizedStart = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
+                linearizedEnd = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType()) + dcl->getByteSize() - 1;
+            }
         }
+
 
         void* allocedMem = mem.alloc(sizeof(SBFootprint));
         footprint = new (allocedMem)SBFootprint(GRF_T, type, (unsigned short)linearizedStart, (unsigned short)linearizedEnd, node->GetInstruction());
@@ -4529,11 +4537,11 @@ void G4_BB_SB::getGRFBuckets(SBNode* node,
             continue;
         }
 
-        int aregOffset = totalGRFNum;
         int startingBucket = curFootprint->LeftB / numEltPerGRF<Type_UB>();
         int endingBucket = curFootprint->RightB / numEltPerGRF<Type_UB>();
         if (curFootprint->fType == ACC_T)
         {
+            int aregOffset = totalGRFNum + builder.getNumScalarRegisters();
             startingBucket = startingBucket + aregOffset;
             endingBucket = endingBucket + aregOffset;
         }
@@ -5474,7 +5482,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 if (distanceHonourInstruction(liveInst))
                 {
                     if (dep == RAW &&
-                        curBucket < totalGRFNum)
+                        (curBucket < (totalGRFNum + (int)builder.getNumScalarRegisters())))
                     {//Only need track GRF RAW dependence
                         LB->killOperand(bn_it);
                         setDistance(curFootprint, node, liveNode, false);
@@ -6079,21 +6087,17 @@ void SWSB::dumpTokenLiveInfo()
 void G4_BB_SB::getLiveBucketsFromFootprint(const SBFootprint* firstFootprint, SBBucketNode* sBucketNode, LiveGRFBuckets* send_use_kills) const
 {
     const SBFootprint* footprint = firstFootprint;
-    int aregOffset = totalGRFNum;
 
     while (footprint)
     {
         int startBucket = footprint->LeftB / numEltPerGRF<Type_UB>();
         int endBucket = footprint->RightB / numEltPerGRF<Type_UB>();
-        if (footprint->fType == ACC_T)
+
+        //We only track the global dependence for GRF
+        if (footprint->fType != GRF_T)
         {
-            startBucket = startBucket + aregOffset;
-            endBucket = endBucket + aregOffset;
-        }
-        else if (footprint->fType == FLAG_T)
-        {
-            startBucket = footprint->LeftB + aregOffset + builder.kernel.getNumAcc();
-            endBucket = footprint->RightB + aregOffset + builder.kernel.getNumAcc();
+            footprint = footprint->next;
+            continue;
         }
 
         for (int j = startBucket; j < endBucket + 1; j++)

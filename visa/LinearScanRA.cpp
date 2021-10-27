@@ -1643,9 +1643,9 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
                 if (src->asSrcRegRegion()->isIndirect())
                 {
                     auto pointsToSet = l.getPointsToAnalysis().getAllInPointsTo(src->getBase()->asRegVar());
-                    for (auto var : *pointsToSet)
+                    for (auto pt : *pointsToSet)
                     {
-                        G4_Declare* dcl = var->getDeclare()->getRootDeclare();
+                        G4_Declare* dcl = pt.var->getDeclare()->getRootDeclare();
 
                         setSrcReferences(bb, inst_it, i, dcl, liveIntervals, eotLiveIntervals);
                     }
@@ -1669,9 +1669,9 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
             if (dst->isIndirect())
             {
                 auto pointsToSet = l.getPointsToAnalysis().getAllInPointsTo(dst->getBase()->asRegVar());
-                for (auto var : *pointsToSet)
+                for (auto pt : *pointsToSet)
                 {
-                    G4_Declare* dcl = var->getDeclare()->getRootDeclare();
+                    G4_Declare* dcl = pt.var->getDeclare()->getRootDeclare();
 
                     setDstReferences(bb, inst_it, dcl, liveIntervals, eotLiveIntervals);
                 }
