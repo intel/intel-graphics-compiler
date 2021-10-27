@@ -1741,28 +1741,27 @@ SPIRVToLLVM::setAttrByCalledFunc(CallInst *Call) {
 // are mapped on alias.scope and noalias metadata in LLVM. Translation of
 // optional string operand isn't yet supported in the translator.
 void SPIRVToLLVM::transMemAliasingINTELDecorations(SPIRVValue* BV, Value* V) {
-    if (!BV->isInst())
-        return;
-    Instruction* Inst = dyn_cast<Instruction>(V);
-    if (!Inst)
-        return;
+  if (!BV->isInst())
+    return;
+  Instruction* Inst = dyn_cast<Instruction>(V);
+  if (!Inst)
+    return;
+  if (BV->hasDecorateId(DecorationAliasScopeINTEL)) {
     std::vector<SPIRVId> AliasListIds;
-    uint32_t AliasMDKind;
-    if (BV->hasDecorateId(DecorationAliasScopeINTEL)) {
-        AliasMDKind = LLVMContext::MD_alias_scope;
-        AliasListIds =
-            BV->getDecorationIdLiterals(DecorationAliasScopeINTEL);
-    }
-    else if (BV->hasDecorateId(DecorationNoAliasINTEL)) {
-        AliasMDKind = LLVMContext::MD_noalias;
-        AliasListIds =
-            BV->getDecorationIdLiterals(DecorationNoAliasINTEL);
-    }
-    else
-        return;
-    assert(AliasListIds.size() == 1 &&
-        "Memory aliasing decorations must have one argument");
-    addMemAliasMetadata(Inst, AliasListIds[0], AliasMDKind);
+    AliasListIds =
+      BV->getDecorationIdLiterals(DecorationAliasScopeINTEL);
+    IGC_ASSERT_MESSAGE(AliasListIds.size() == 1,
+      "Memory aliasing decorations must have one argument");
+    addMemAliasMetadata(Inst, AliasListIds[0], LLVMContext::MD_alias_scope);
+  }
+  if (BV->hasDecorateId(DecorationNoAliasINTEL)) {
+    std::vector<SPIRVId> AliasListIds;
+    AliasListIds =
+      BV->getDecorationIdLiterals(DecorationNoAliasINTEL);
+    IGC_ASSERT_MESSAGE(AliasListIds.size() == 1,
+      "Memory aliasing decorations must have one argument");
+    addMemAliasMetadata(Inst, AliasListIds[0], LLVMContext::MD_noalias);
+  }
 }
 
 SPIRAddressSpace
@@ -2759,50 +2758,47 @@ Type *SPIRVToLLVM::truncBoolType(SPIRVType *SPVType, Type *LLType)
 // in the translator.
 template <typename SPIRVInstType>
 void SPIRVToLLVM::transAliasingMemAccess(SPIRVInstType* BI, Instruction* I) {
-    static_assert(std::is_same<SPIRVInstType, SPIRVStore>::value ||
-        std::is_same<SPIRVInstType, SPIRVLoad>::value,
-        "Only stores and loads can be aliased by memory access mask");
-    bool IsAliasScope = BI->SPIRVMemoryAccess::isAliasScope();
-    bool IsNoAlias = BI->SPIRVMemoryAccess::isNoAlias();
-    if (!(IsAliasScope || IsNoAlias))
-        return;
-    uint32_t AliasMDKind = IsAliasScope ? LLVMContext::MD_alias_scope
-        : LLVMContext::MD_noalias;
-    SPIRVId AliasListId = BI->SPIRVMemoryAccess::getAliasing();
-    addMemAliasMetadata(I, AliasListId, AliasMDKind);
+  static_assert(std::is_same<SPIRVInstType, SPIRVStore>::value ||
+                std::is_same<SPIRVInstType, SPIRVLoad>::value,
+                "Only stores and loads can be aliased by memory access mask");
+  if (BI->SPIRVMemoryAccess::isNoAlias())
+    addMemAliasMetadata(I, BI->SPIRVMemoryAccess::getNoAliasInstID(),
+                        LLVMContext::MD_noalias);
+  if (BI->SPIRVMemoryAccess::isAliasScope())
+    addMemAliasMetadata(I, BI->SPIRVMemoryAccess::getAliasScopeInstID(),
+                        LLVMContext::MD_alias_scope);
 }
 
 // Create and apply alias.scope/noalias metadata
 void SPIRVToLLVM::addMemAliasMetadata(Instruction* I, SPIRVId AliasListId,
-    uint32_t AliasMDKind) {
-    SPIRVAliasScopeListDeclINTEL* AliasList =
-        BM->get<SPIRVAliasScopeListDeclINTEL>(AliasListId);
-    std::vector<SPIRVId> AliasScopeIds = AliasList->getArguments();
-    MDBuilder MDB(*Context);
-    SmallVector<Metadata*, 4> MDScopes;
-    for (const auto ScopeId : AliasScopeIds) {
-        SPIRVAliasScopeDeclINTEL* AliasScope =
-            BM->get<SPIRVAliasScopeDeclINTEL>(ScopeId);
-        std::vector<SPIRVId> AliasDomainIds = AliasScope->getArguments();
-        // Currently we expect exactly one argument for aliasing scope
-        // instruction.
-        // TODO: add translation of string scope and domain operand.
-        assert(AliasDomainIds.size() == 1 &&
-            "AliasScopeDeclINTEL must have exactly one argument");
-        SPIRVId AliasDomainId = AliasDomainIds[0];
-        // Create and store unique domain and scope metadata
-        MDAliasDomainMap.emplace(AliasDomainId,
-            MDB.createAnonymousAliasScopeDomain());
-        MDAliasScopeMap.emplace(ScopeId, MDB.createAnonymousAliasScope(
-            MDAliasDomainMap[AliasDomainId]));
-        MDScopes.emplace_back(MDAliasScopeMap[ScopeId]);
-    }
-    // Create and store unique alias.scope/noalias metadata
-    MDAliasListMap.emplace(
-        AliasListId,
-        MDNode::concatenate(I->getMetadata(LLVMContext::MD_alias_scope),
-            MDNode::get(*Context, MDScopes)));
-    I->setMetadata(AliasMDKind, MDAliasListMap[AliasListId]);
+  uint32_t AliasMDKind) {
+  SPIRVAliasScopeListDeclINTEL* AliasList =
+    BM->get<SPIRVAliasScopeListDeclINTEL>(AliasListId);
+  std::vector<SPIRVId> AliasScopeIds = AliasList->getArguments();
+  MDBuilder MDB(*Context);
+  SmallVector<Metadata*, 4> MDScopes;
+  for (const auto ScopeId : AliasScopeIds) {
+    SPIRVAliasScopeDeclINTEL* AliasScope =
+      BM->get<SPIRVAliasScopeDeclINTEL>(ScopeId);
+    std::vector<SPIRVId> AliasDomainIds = AliasScope->getArguments();
+    // Currently we expect exactly one argument for aliasing scope
+    // instruction.
+    // TODO: add translation of string scope and domain operand.
+    IGC_ASSERT_MESSAGE(AliasDomainIds.size() == 1,
+      "AliasScopeDeclINTEL must have exactly one argument");
+    SPIRVId AliasDomainId = AliasDomainIds[0];
+    // Create and store unique domain and scope metadata
+    MDAliasDomainMap.emplace(AliasDomainId,
+                             MDB.createAnonymousAliasScopeDomain());
+    MDAliasScopeMap.emplace(ScopeId, MDB.createAnonymousAliasScope(
+                                       MDAliasDomainMap[AliasDomainId]));
+    MDScopes.emplace_back(MDAliasScopeMap[ScopeId]);
+  }
+  // Create and store unique alias.scope/noalias metadata
+  MDAliasListMap.emplace(AliasListId,
+                         MDNode::concatenate(I->getMetadata(AliasMDKind),
+                                             MDNode::get(*Context, MDScopes)));
+  I->setMetadata(AliasMDKind, MDAliasListMap[AliasListId]);
 }
 
 /// For instructions, this function assumes they are created in order

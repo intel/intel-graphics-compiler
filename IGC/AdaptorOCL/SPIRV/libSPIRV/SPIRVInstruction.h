@@ -389,54 +389,57 @@ public:
 
 class SPIRVMemoryAccess {
 public:
-  SPIRVMemoryAccess(const std::vector<SPIRVWord> &TheMemoryAccess):
-    TheMemoryAccessMask(0), Alignment(0), AliasInstID(0) {
+  SPIRVMemoryAccess(const std::vector<SPIRVWord>& TheMemoryAccess)
+    : TheMemoryAccessMask(0), Alignment(0), AliasScopeInstID(0),
+      NoAliasInstID(0) {
     MemoryAccessUpdate(TheMemoryAccess);
   }
 
-  SPIRVMemoryAccess() : TheMemoryAccessMask(0), Alignment(0), AliasInstID(0) {}
+  SPIRVMemoryAccess()
+    : TheMemoryAccessMask(0), Alignment(0), AliasScopeInstID(0),
+      NoAliasInstID(0) {}
 
   void MemoryAccessUpdate(const std::vector<SPIRVWord> &MemoryAccess) {
     if (!MemoryAccess.size())
       return;
-    IGC_ASSERT_MESSAGE((MemoryAccess.size() == 1 || MemoryAccess.size() == 2 ||
-        MemoryAccess.size() == 3), "Invalid memory access operand size");
+    IGC_ASSERT_MESSAGE(MemoryAccess.size() > 0, "Invalid memory access operand size");
+    IGC_ASSERT_MESSAGE(MemoryAccess.size() < 5, "Invalid memory access operand size");
     TheMemoryAccessMask = MemoryAccess[0];
     size_t MemAccessNumParam = 1;
     if (MemoryAccess[0] & MemoryAccessAlignedMask) {
-        IGC_ASSERT_MESSAGE(MemoryAccess.size() > 1, "Alignment operand is missing");
-        Alignment = MemoryAccess[MemAccessNumParam++];
+      IGC_ASSERT_MESSAGE(MemoryAccess.size() > 1, "Alignment operand is missing");
+      Alignment = MemoryAccess[MemAccessNumParam++];
     }
     if (MemoryAccess[0] & MemoryAccessAliasScopeINTELMask) {
-        IGC_ASSERT_MESSAGE(MemoryAccess.size() > MemAccessNumParam,
-            "Aliasing operand is missing");
-        IGC_ASSERT_MESSAGE(!(MemoryAccess[0] & MemoryAccessNoAliasINTELMask),
-            "AliasScopeINTELMask and NoAliasINTELMask are mutually exclusive");
-        AliasInstID = MemoryAccess[MemAccessNumParam];
+      IGC_ASSERT_MESSAGE(MemoryAccess.size() > MemAccessNumParam,
+        "Aliasing operand is missing");
+      AliasScopeInstID = MemoryAccess[MemAccessNumParam++];
     }
-    else if (MemoryAccess[0] & MemoryAccessNoAliasINTELMask) {
-        IGC_ASSERT_MESSAGE(MemoryAccess.size() > MemAccessNumParam,
-            "Aliasing operand is missing");
-        AliasInstID = MemoryAccess[MemAccessNumParam];
+    if (MemoryAccess[0] & MemoryAccessNoAliasINTELMask) {
+      IGC_ASSERT_MESSAGE(MemoryAccess.size() > MemAccessNumParam,
+        "Aliasing operand is missing");
+      NoAliasInstID = MemoryAccess[MemAccessNumParam];
     }
   }
 
   SPIRVWord isVolatile() const { return getMemoryAccessMask() & MemoryAccessVolatileMask; }
   SPIRVWord isNonTemporal() const { return getMemoryAccessMask() & MemoryAccessNontemporalMask; }
   SPIRVWord isAliasScope() const {
-      return getMemoryAccessMask() & MemoryAccessAliasScopeINTELMask;
+    return getMemoryAccessMask() & MemoryAccessAliasScopeINTELMask;
   }
   SPIRVWord isNoAlias() const {
-      return getMemoryAccessMask() & MemoryAccessNoAliasINTELMask;
+    return getMemoryAccessMask() & MemoryAccessNoAliasINTELMask;
   }
   SPIRVWord getMemoryAccessMask() const { return TheMemoryAccessMask; }
   SPIRVWord getAlignment() const { return Alignment; }
-  SPIRVWord getAliasing() const { return AliasInstID; }
+  SPIRVWord getAliasScopeInstID() const { return AliasScopeInstID; }
+  SPIRVWord getNoAliasInstID() const { return NoAliasInstID; }
 
 protected:
   SPIRVWord TheMemoryAccessMask;
   SPIRVWord Alignment;
-  SPIRVId AliasInstID;
+  SPIRVId AliasScopeInstID;
+  SPIRVId NoAliasInstID;
 };
 
 class SPIRVVariable : public SPIRVInstruction {
