@@ -186,7 +186,6 @@ class Optimizer
 
     void accSubBeforeRA();
 
-
     // return true if BuiltInR0 gets a different allocation than r0
     bool R0CopyNeeded();
 

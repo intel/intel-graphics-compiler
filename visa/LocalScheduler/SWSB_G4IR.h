@@ -59,9 +59,6 @@ enum SBDependenceAttr
 #define DPAS_8x2_GRFREAD_CYCLE 2
 #define DPAS_8x1_GRFREAD_CYCLE 1
 
-//1 GRF map to 1 flag: bytes per bit
-#define FLAG_TO_GRF_MAP  (numEltPerGRF<Type_UB>() / 16)
-
 typedef enum  _DPAS_DEP
 {
     REP_1 = 1,
@@ -113,7 +110,7 @@ namespace vISA
     {
         GRF_T = 1,
         ACC_T = 2,
-        FLAG_T = 4,
+        FLAG_T = 4
     } FOOTPRINT_TYPE;
 
     struct SBFootprint {
@@ -154,10 +151,9 @@ namespace vISA
 
             for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
             {
-                FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
                 for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
                 {
-                    if (curFType == curFootprint2Ptr->fType &&
+                    if (fType == curFootprint2Ptr->fType &&
                            curFootprintPtr->LeftB <= curFootprint2Ptr->RightB && curFootprintPtr->RightB >= curFootprint2Ptr->LeftB)
                     {
                         internalOffset = curFootprint2Ptr->offset;
@@ -217,8 +213,7 @@ namespace vISA
                 }
                 for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
                 {
-                    FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
-                    if (curFType == footprint2Ptr->fType &&
+                    if (fType == footprint2Ptr->fType &&
                             curFootprintPtr->LeftB <= footprint2Ptr->LeftB && curFootprintPtr->RightB >= footprint2Ptr->RightB)
                     {
                         findOverlap = true;
@@ -698,7 +693,6 @@ namespace vISA
                         diffPipes++;
                         depPipe = it.liveNodePipe;
                     }
-
                 }
 
                 //In some platforms, A@ need be used for following case when the regDist cannot be used (due to HW issue), and inst depends on different pipes
@@ -713,7 +707,7 @@ namespace vISA
                 //mov(16 | M16) r90.0 < 2 > : d r85.0 < 1; 1, 0 > : d // $80&104
                 //mov(16 | M0) r88.1 < 2 > : d r86.0 < 1; 1, 0 > : d{ F@1 } // $81&105
                 //mov(16 | M16) r90.1 < 2 > : d r87.0 < 1; 1, 0 > : d // $82&106
-                //mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2/I@2 } // $83&107
+                //mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2 } // $83&107
                 //Since:q and : d all go to integer pipeline in, @2 should work.However, due to HW bug, I@2 is good
                 bool mulitpleSamePipe = false;
                 if (distDep.size() > 1 && sameOperandType)
@@ -1383,6 +1377,7 @@ namespace vISA
         static bool isGRFEdgeAdded(const SBNode* pred, const SBNode* succ, DepType d, SBDependenceAttr a);
         void createAddGRFEdge(SBNode* pred, SBNode* succ, DepType d, SBDependenceAttr a);
 
+        SB_INST_PIPE getDataTypePipeXe(G4_Type type);
         //Bucket and range analysis
         SBFootprint* getFootprintForGRF(G4_Operand * opnd,
             Gen4_Operand_Number opnd_num,
@@ -1433,6 +1428,8 @@ namespace vISA
         void setSpecialDistance(SBNode* node);
         static void footprintMerge(SBNode * node, const SBNode * nextNode);
 
+        void pushItemToQueue(std::vector<unsigned>* nodeIDQueue, unsigned nodeID);
+
         bool isDummyCselInst(SBNode* node);
 
         //Local distance dependence analysis and assignment
@@ -1454,8 +1451,7 @@ namespace vISA
         void addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR *globalSendOpndList, SBNODE_VECT *SBNodes, PointsToAnalysis &p, bool afterWrite);
         void clearKilledBucketNodeXeLP(LiveGRFBuckets * LB, int ALUID);
 
-        void clearKilledBucketNodeXeHP(LiveGRFBuckets* LB, int integerID, int floatID, int longID, int mathID);
-
+        void clearKilledBucketNodeXeHP(LiveGRFBuckets *LB, int integerID, int floatID, int longID, int mathID);
         bool hasInternalDependenceWithinDPAS(SBNode *node);
         bool hasDependenceBetweenDPASNodes(SBNode * node, SBNode * nextNode);
         bool src2SameFootPrintDiffType(SBNode* curNode, SBNode* nextNode) const;
