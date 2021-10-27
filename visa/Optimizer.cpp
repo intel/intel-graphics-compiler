@@ -12303,7 +12303,7 @@ void Optimizer::doNoMaskWA_postRA()
 //         (W)     mov (1 |M0)  tmp<1>:ud    sr0.0<0;1,0>:ud                // I0
 //         (W)     and (16|M0)  (eq)F  null<1>:uw  tmp<0;1,0>:uw   0x80:uw  // I1
 //         (W&~F)  mov (1 |M0)  cr0.2<1>:ud  Target<0;1,0>:ud               // I2
-//         (W&F)   mov (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud          // I3
+//         (W)     mov (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud          // I3
 //         (W)     add (1 |M0)  I4_IP:d   -ip:d  smallEUTarget:d            // I4_ip_start
 //         (W)     add (1 |M0)  I4Target:d   I4_IP:d  0x33333333:d          // I4_patch_add
 //         (W)     add (1 |M0)  I5_IP:d   -ip:d  Target:d                   // I5_ip_start
@@ -12426,13 +12426,11 @@ void Optimizer::applyFusedCallWA()
         G4_INST* I2 = builder.createMov(g4::SIMD1, I2_Dst, I2_Src0, InstOpt_WriteEnable, false);
         I2->setPredicate(pred_m);
 
-        // I3:  (flag) mov smallEUTarget  cr0.2
+        // I3:   mov smallEUTarget  cr0.2
         G4_Declare* sTargetDecl = builder.createTempVar(1, Type_UD, Any, "smallEUTarget");
         G4_DstRegRegion* I3_Dst = builder.createDst(sTargetDecl->getRegVar(), 0, 0, 1, Type_UD);
         G4_SrcRegRegion* I3_Src0 = builder.createSrc(V_cr0, 0, 2, builder.getRegionScalar(), Type_UD);
-        G4_Predicate* pred_p = builder.createPredicate(PredState_Plus, F->getRegVar(), 0);
         G4_INST* I3 = builder.createMov(g4::SIMD1, I3_Dst, I3_Src0, InstOpt_WriteEnable, false);
-        I3->setPredicate(pred_p);
 
         // Insert WA instructions
         BB->pop_back();   // unlink the call inst from BB
@@ -12459,7 +12457,6 @@ void Optimizer::applyFusedCallWA()
         // update local dataflow
         I0->addDefUse(I1, Opnd_src0);
         I1->addDefUse(I2, Opnd_pred);
-        I1->addDefUse(I3, Opnd_pred);
 
         G4_INST* nCallI;
         if (builder.supportCallaRegSrc())
