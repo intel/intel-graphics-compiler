@@ -98,6 +98,9 @@ static cl::opt<bool> DisableNoMaskWA(
     "vc-cg-disable-no-mask-wa", cl::init(false), cl::Hidden,
     cl::desc("do not apply noMask WA (fusedEU)"));
 
+static cl::opt<bool> OptStrictI64Check(
+        "genx-cisa-builder-noi64-check", cl::init(false), cl::Hidden,
+        cl::desc("strict check to ensure we produce no 64-bit operations"));
 
 STATISTIC(NumVisaInsts, "Number of VISA instructions");
 STATISTIC(NumAsmInsts, "Number of Gen asm instructions");
@@ -1251,6 +1254,13 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
     uint16_t Offset = 0;
     if (!PatchImpArgOff) {
       Offset = TheKernelMetadata.getArgOffset(Idx);
+    }
+    else {
+      if ((Kind >> 3) == 3) {
+        Offset = GrfByteSize;
+      } else {
+        Offset = (TheKernelMetadata.getArgOffset(Idx) + GrfByteSize);
+      }
     }
     // Argument size in bytes.
     const unsigned NumBytes = getInputSizeInBytes(
@@ -5850,6 +5860,9 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
       CISA_CALL(Kernel->GetPredefinedVar(R0, PREDEFINED_R0));
       CISA_CALL(Kernel->CreateVISASrcOperand(OpSrc, R0, MODIFIER_NONE, 0, 1, 0,
                                              0, 5));
+      if (OptStrictI64Check)
+        report_fatal_error("CisaBuilder should not produce 64-bit instructions"
+                           " add64", false);
       CISA_CALL(Kernel->AppendVISADataMovementInst(
           ISA_MOV, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
           EXEC_SIZE_1, SpOpDst, OpSrc));
