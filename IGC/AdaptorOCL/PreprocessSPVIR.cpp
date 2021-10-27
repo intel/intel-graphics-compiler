@@ -94,6 +94,11 @@ Value* PreprocessSPVIR::getWidenImageCoordsArg(Value* Coords)
 
         newCoords = m_Builder->CreateShuffleVector(Coords, UndefValue::get(coordsType), ConstantVector::get(shuffleIdx));
     }
+    else
+    {
+        // coordinate argument has already a desired width
+        newCoords = Coords;
+    }
     return newCoords;
 }
 
