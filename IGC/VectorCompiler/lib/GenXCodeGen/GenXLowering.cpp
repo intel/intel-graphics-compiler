@@ -202,6 +202,7 @@ public:
   bool runOnFunction(Function &F) override;
 
 private:
+  bool lowerMediaWalkerAPIs(CallInst *CI, unsigned IID);
   bool translateSLMOWord(CallInst* CI, unsigned IID);
   bool splitGatherScatter(CallInst *CI, unsigned IID);
   bool processTwoAddressOpnd(CallInst *CI);
@@ -1317,6 +1318,41 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
 
 
 /***********************************************************************
+ * lowerMediaIntrinsic : lower media walker intrinsic calls
+ */
+bool GenXLowering::lowerMediaWalkerAPIs(CallInst *CI, unsigned IID) {
+  // translate genx_thread_x -> genx_group_id_x
+  //           genx_thread_y -> genx_group_id_y
+  if (ST->translateMediaWalker()) {
+    auto NewIID = GenXIntrinsic::not_any_intrinsic;
+    switch (IID) {
+    case GenXIntrinsic::genx_thread_x:
+      NewIID = GenXIntrinsic::genx_group_id_x;
+      break;
+    case GenXIntrinsic::genx_thread_y:
+      NewIID = GenXIntrinsic::genx_group_id_y;
+      break;
+    case GenXIntrinsic::genx_get_color:
+      CI->getContext().emitError(CI,
+                                 "get_color not supported on " + ST->getCPU());
+    default:
+      break;
+    }
+
+    if (GenXIntrinsic::isAnyNonTrivialIntrinsic(NewIID)) {
+      IRBuilder<> Builder(CI);
+      auto Fn = GenXIntrinsic::getGenXDeclaration(CI->getModule(), NewIID);
+      Value *Val = Builder.CreateCall(Fn);
+      Val = Builder.CreateTruncOrBitCast(Val, CI->getType());
+      CI->replaceAllUsesWith(Val);
+      ToErase.push_back(CI);
+      return true;
+    }
+  }
+  return false;
+}
+
+/***********************************************************************
  * generatePrecicatedWrrForNewLoad : Generate predicated wrr if result
  *                                   of a load that needs no splits
  * Return: true if predicated wrr was generated
@@ -1421,6 +1457,10 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_absf:
     case GenXIntrinsic::genx_absi:
       break;
+    case GenXIntrinsic::genx_thread_x:
+    case GenXIntrinsic::genx_thread_y:
+    case GenXIntrinsic::genx_get_color:
+      return lowerMediaWalkerAPIs(CI, IntrinsicID);
     default:
     case GenXIntrinsic::genx_constantpred:
     case GenXIntrinsic::genx_constanti:
