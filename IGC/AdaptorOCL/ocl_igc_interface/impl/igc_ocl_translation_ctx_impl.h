@@ -47,22 +47,6 @@ bool TranslateBuild(
   const IGC::CPlatform &platform,
   float profilingTimerResolution);
 
-bool TranslateBuildSPMD(
-  const STB_TranslateInputArgs* pInputArgs,
-  STB_TranslateOutputArgs* pOutputArgs,
-  TB_DATA_FORMAT inputDataFormatTemp,
-  const IGC::CPlatform &platform,
-  float profilingTimerResolution,
-  const ShaderHash& inputShHash);
-
-bool TranslateBuildESIMD(
-  const STB_TranslateInputArgs* pInputArgs,
-  STB_TranslateOutputArgs* pOutputArgs,
-  TB_DATA_FORMAT inputDataFormatTemp,
-  const IGC::CPlatform &platform,
-  float profilingTimerResolution,
-  const ShaderHash& inputShHash);
-
 bool ReadSpecConstantsFromSPIRV(
     std::istream &IS,
     std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo);

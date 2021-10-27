@@ -919,12 +919,53 @@ static void WriteSpecConstantsDump(const STB_TranslateInputArgs *pInputArgs,
                    hash, "_specconst.txt");
 }
 
-bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
-                        STB_TranslateOutputArgs *pOutputArgs,
-                        TB_DATA_FORMAT inputDataFormatTemp,
-                        const IGC::CPlatform &IGCPlatform,
-                        float profilingTimerResolution,
-                        const ShaderHash& inputShHash) {
+bool TranslateBuild(
+    const STB_TranslateInputArgs* pInputArgs,
+    STB_TranslateOutputArgs* pOutputArgs,
+    TB_DATA_FORMAT inputDataFormatTemp,
+    const IGC::CPlatform& IGCPlatform,
+    float profilingTimerResolution)
+{
+    ShaderHash inputShHash = ShaderHashOCL(reinterpret_cast<const UINT *>(pInputArgs->pInput),
+                                           pInputArgs->InputSize / 4);
+
+    // on wrong spec constants, vc::translateBuild may fail
+    // so lets dump those early
+    if (pInputArgs->SpecConstantsSize > 0 &&
+        IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+      WriteSpecConstantsDump(pInputArgs, inputShHash.getAsmHash());
+
+#if defined(IGC_VC_ENABLED)
+    if (pInputArgs->pOptions) {
+        // Currently, VC compiler effectively uses global variables to store
+        // some configuration information. This may lead to problems
+        // during multi-threaded compilations. The mutex below serializes
+        // the whole compilation process.
+        // This is a temporary measure till a proper re-design is done.
+        const std::lock_guard<std::mutex> lock(llvm_mutex);
+
+        std::error_code Status =
+            vc::translateBuild(pInputArgs, pOutputArgs, inputDataFormatTemp,
+                               IGCPlatform, profilingTimerResolution);
+        if (!Status)
+            return true;
+        // If vc codegen option was not specified, then vc was not called.
+        if (static_cast<vc::errc>(Status.value()) != vc::errc::not_vc_codegen)
+            return false;
+    }
+#endif // defined(IGC_VC_ENABLED)
+    if (pInputArgs->pOptions &&
+        strstr(pInputArgs->pOptions,
+               VLD::VLD_compilation_enable_option)) {
+        std::string errorMessage;
+        bool ret = VLD::TranslateBuildSPMDAndESIMD(
+            pInputArgs, pOutputArgs, inputDataFormatTemp, IGCPlatform,
+            profilingTimerResolution, inputShHash, errorMessage);
+        if (!ret) {
+             SetErrorMessage(errorMessage, *pOutputArgs);
+        }
+        return ret;
+  }
 
     // This part of code is a critical-section for threads,
     // due static LLVM object which handles options.
@@ -1329,80 +1370,6 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
     oclContext.metrics.OutputMetrics();
 
     return true;
-}
-
-
-#if defined(IGC_VC_ENABLED)
-bool TranslateBuildESIMD(
-    const STB_TranslateInputArgs* pInputArgs,
-    STB_TranslateOutputArgs* pOutputArgs,
-    TB_DATA_FORMAT inputDataFormatTemp,
-    const IGC::CPlatform& IGCPlatform,
-    float profilingTimerResolution,
-    const ShaderHash& inputShHash) {
-
-    IGC_ASSERT(pInputArgs->pOptions &&
-             (strstr(pInputArgs->pOptions, "-vc-codegen") ||
-              strstr(pInputArgs->pOptions, "-cmc")));
-
-  // Currently, VC compiler effectively uses global variables to store
-  // some configuration information. This may lead to problems
-  // during multi-threaded compilations. The mutex below serializes
-  // the whole compilation process.
-  // This is a temporary measure till a proper re-design is done.
-  const std::lock_guard<std::mutex> lock(llvm_mutex);
-
-  std::error_code Status =
-      vc::translateBuild(pInputArgs, pOutputArgs, inputDataFormatTemp,
-                         IGCPlatform, profilingTimerResolution);
-  if (!Status)
-    return true;
-  return false;
-}
-#endif // defined(IGC_VC_ENABLED)
-
-bool TranslateBuild(
-    const STB_TranslateInputArgs* pInputArgs,
-    STB_TranslateOutputArgs* pOutputArgs,
-    TB_DATA_FORMAT inputDataFormatTemp,
-    const IGC::CPlatform& IGCPlatform,
-    float profilingTimerResolution)
-{
-    ShaderHash inputShHash = ShaderHashOCL(reinterpret_cast<const UINT *>(pInputArgs->pInput),
-                                           pInputArgs->InputSize / 4);
-
-    // on wrong spec constants, vc::translateBuild may fail
-    // so lets dump those early
-    if (pInputArgs->SpecConstantsSize > 0 &&
-        IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-      WriteSpecConstantsDump(pInputArgs, inputShHash.getAsmHash());
-
-#if defined(IGC_VC_ENABLED)
-    // if VC option was specified, go to ESIMD compilation directly.
-    if (pInputArgs->pOptions && (strstr(pInputArgs->pOptions, "-vc-codegen") ||
-                                 strstr(pInputArgs->pOptions, "-cmc"))) {
-      return TranslateBuildESIMD(pInputArgs, pOutputArgs, inputDataFormatTemp,
-                                 IGCPlatform, profilingTimerResolution,
-                                 inputShHash);
-    }
-#endif // defined(IGC_VC_ENABLED)
-
-    if (inputDataFormatTemp != TB_DATA_FORMAT_SPIR_V) {
-      return TranslateBuildSPMD(pInputArgs, pOutputArgs, inputDataFormatTemp,
-                                IGCPlatform, profilingTimerResolution,
-                                inputShHash);
-    }
-
-    // Recognize if SPIR-V module contains SPMD,ESIMD or SPMD+ESIMD code and compile it.
-    std::string errorMessage;
-    bool ret = VLD::TranslateBuildSPMDAndESIMD(
-        pInputArgs, pOutputArgs, inputDataFormatTemp, IGCPlatform,
-        profilingTimerResolution, inputShHash, errorMessage);
-    if (!ret) {
-      SetErrorMessage(errorMessage, *pOutputArgs);
-    }
-    return ret;
-
 }
 
 bool CIGCTranslationBlock::FreeAllocations(

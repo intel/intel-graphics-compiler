@@ -74,24 +74,21 @@ namespace VLD {
   using namespace TC;
 
 
-// Translates ESIMD and SPMD code in the module.
-// 3 cases are handled:
-// 1. only SPMD code is present
-// 2. only ESIMD code is present
-// 3. ESIMD code is invoked from SPMD code
-//
+// Translates SPIR-V module that consists of SPMD code that invokes ESIMD code.
 // The general flow is:
 // 1. Split input SPIR-V module into SPMD and ESIMD parts
 // 2. Invoke SPMD and ESIMD backends with appropriate SPIR-V modules
-// 3. If SPMD code invokes ESIMD code, extract .visaasm from the each output zeBinary
+// 3. Extract .visaasm from the output zeBinary
 // TODO: 4. Link .visaasm files via vISA interfaces
 //
 // The function signature corresponds to TC::TranslateBuild interface, so that
 // it is easy to pass same arguments to SPMD and VC backends.
 //
 // Assumptions:
-// 1. ZEBinary output format is used in SPMD+ESIMD case.
+// 1. ZEBinary output format is used.
 // TODO: error out if patch token output format is used.
+// 2. Input is in SPIR-V format
+// TODO: error out if other input format is used.
 bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
                                   TC::STB_TranslateOutputArgs *pOutputArgs,
                                   TC::TB_DATA_FORMAT inputDataFormatTemp,
@@ -100,53 +97,18 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
                                   const ShaderHash &inputShHash,
                                   std::string& errorMessage) {
 
-  IGC_ASSERT(inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V);
-
     // Split ESIMD and SPMD code.
   auto spmd_esimd_programs_or_err = VLD::SplitSPMDAndESIMD(
       pInputArgs->pInput, pInputArgs->InputSize);
 
   if (!spmd_esimd_programs_or_err) {
-      // Workaround: try to compile on SPMD path if splitting failed.
-      // This is because not all VC opcodes are merged to SPIR-V Tools.
-      return TranslateBuildSPMD(pInputArgs, pOutputArgs, inputDataFormatTemp,
-          IGCPlatform, profilingTimerResolution,
-          inputShHash);
-
-      // TODO: uncomment once above workaround is removed.
-      // Caller releases the error string, so we need to make a copy of the error message here.
-      // TODO: pOutputArgs contains field for error string so we can copy it there.
-      // Not done now, as it would require copy-paste code that is avaiable in dllinterfacecompute. Needs to be refactored.
-      // errorMessage = llvm::toString(spmd_esimd_programs_or_err.takeError());
-      // return false;
+    // Caller releases the error string, so we need to make a copy of the error message here.
+        // TODO: pOutputArgs contains field for error string so we can copy it there.
+    // Not done now, as it would require copy-paste code that is avaiable in dllinterfacecompute. Needs to be refactored.
+    errorMessage = "Error while splitting ESIMD and SPMD code: " +
+      llvm::toString(spmd_esimd_programs_or_err.takeError());
+    return false;
   }
-
-  std::string newOptions{pInputArgs->pOptions ? pInputArgs->pOptions : ""};
-  std::string esimdOptions{ newOptions };
-  esimdOptions += " -vc-codegen";
-
-  IGC_ASSERT(!spmd_esimd_programs_or_err->first.empty() || !spmd_esimd_programs_or_err->second.empty());
-  if (spmd_esimd_programs_or_err->first.empty()) {
-#if defined(IGC_VC_ENABLED)
-      // Only ESIMD code detected.
-      STB_TranslateInputArgs newArgs = *pInputArgs;
-      newArgs.pOptions = esimdOptions.data();
-      newArgs.OptionsSize = esimdOptions.size();
-      return TranslateBuildESIMD(&newArgs, pOutputArgs, inputDataFormatTemp,
-                                 IGCPlatform, profilingTimerResolution,
-                                 inputShHash);
-#else // defined(IGC_VC_ENABLED)
-      errorMessage = "ESIMD code detected, but VC not enabled in this build.";
-      return false;
-#endif // defined(IGC_VC_ENABLED)
-  } else if (spmd_esimd_programs_or_err->second.empty()) {
-      // Only SPMD code detected.
-      return TranslateBuildSPMD(pInputArgs, pOutputArgs, inputDataFormatTemp,
-          IGCPlatform, profilingTimerResolution,
-          inputShHash);
-  }
-
-  // SPMD+ESIMD code detected.
 
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
     const char* pOutputFolder = IGC::Debug::GetShaderOutputFolder();
@@ -172,11 +134,15 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
     dump((*spmd_esimd_programs_or_err).second, ".esimd_split.spv");
   }
 
+  std::string newOptions{pInputArgs->pOptions};
+  IGC_ASSERT(newOptions.find(VLD_compilation_enable_option) !=
+             std::string::npos);
+  newOptions.erase(newOptions.find(VLD_compilation_enable_option),
+                   strnlen(VLD_compilation_enable_option, sizeof(VLD_compilation_enable_option)));
+
   auto translateToVISA =
       [&](VLD::ProgramStreamType& program,
-          const std::string& newOptions,
-          decltype(TranslateBuildSPMD) TranslateFunction
-          ) -> decltype(GetVISAAsmFromZEBinary(0,0)) {
+          const char *newOptions) -> decltype(GetVISAAsmFromZEBinary(0,0)) {
         STB_TranslateInputArgs newArgs = *pInputArgs;
 
         TC::STB_TranslateOutputArgs outputArgs;
@@ -184,12 +150,11 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
 
         newArgs.pInput = reinterpret_cast<char*>(program.data());
         newArgs.InputSize = program.size() * sizeof(*program.begin());;
-        newArgs.pOptions = newOptions.data();
-        newArgs.OptionsSize = newOptions.size();
+        newArgs.pOptions = newOptions;
 
         const bool success =
-            TranslateFunction(&newArgs, &outputArgs, inputDataFormatTemp,
-                           IGCPlatform, profilingTimerResolution, inputShHash);
+            TranslateBuild(&newArgs, &outputArgs, inputDataFormatTemp,
+                           IGCPlatform, profilingTimerResolution);
 
         auto outputData = std::unique_ptr<char[]>(outputArgs.pOutput);
         auto errorString = std::unique_ptr<char[]>(outputArgs.pErrorString);
@@ -205,22 +170,20 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
         return spmdVISAAsmVector;
   };
 
-#if defined(IGC_VC_ENABLED)
+  std::string esimdOptions{ newOptions };
+  esimdOptions += " -vc-codegen";
+
   auto esimdVISA =
-      translateToVISA(spmd_esimd_programs_or_err->second, esimdOptions, TranslateBuildESIMD);
+      translateToVISA(spmd_esimd_programs_or_err->second, esimdOptions.data());
 
   if (!esimdVISA) {
     errorMessage = "VLD: Failed to compile ESIMD part with following error: \n" +
                    llvm::toString(esimdVISA.takeError());
       return false;
   }
-#else // defined(IGC_VC_ENABLED)
-    errorMessage = "Could not compile ESIMD part of SPIR-V module, as VC is not included in this build.";
-    return false;
-#endif // defined(IGC_VC_ENABLED)
 
   auto spmdVISA =
-             translateToVISA(spmd_esimd_programs_or_err->first, newOptions.data(), TranslateBuildSPMD);
+             translateToVISA(spmd_esimd_programs_or_err->first, newOptions.data());
 
   if (!spmdVISA) {
     errorMessage = "VLD: Failed to compile SPMD part with following error: \n" +

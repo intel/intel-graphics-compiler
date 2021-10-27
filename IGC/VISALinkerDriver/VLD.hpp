@@ -21,6 +21,9 @@ namespace IGC {
 namespace IGC {
 namespace VLD {
 
+  // Option that must be passed to enable VLD path
+  static const char VLD_compilation_enable_option[] = "-spmd_esimd_compile";
+
 bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs* pInputArgs,
                                 TC::STB_TranslateOutputArgs* pOutputArgs,
                                 TC::TB_DATA_FORMAT inputDataFormatTemp,
