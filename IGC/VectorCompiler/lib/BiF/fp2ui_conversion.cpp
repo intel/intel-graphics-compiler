@@ -222,17 +222,17 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N>
 __impl_fp2ui__double__(vector<double, N> a) {
   // vector of floats -> vector of ints
   vector<uint32_t, 2 *N> LoHi = a.template format<uint32_t>();
-  const vector<uint32_t, N> Exp_mask(0xff << 20);
-  const vector<uint32_t, N> Mantissa_mask((1u << 20) - 1);
+  const vector<uint32_t, N> MantissaMask((1u << 20) - 1);
+  const vector<uint32_t, N> ExpMask(0x7ff);
   const vector<uint32_t, N> Zero(0);
   const vector<uint32_t, N> Ones(0xffffffff);
   const vector<uint32_t, N> One(1);
   vector<uint32_t, N> Lo = LoHi.template select<N, 2>(0);
   vector<uint32_t, N> Hi = LoHi.template select<N, 2>(1);
-  vector<uint32_t, N> Exp = (Hi >> 20) & vector<uint32_t, N>(0x7ff);
+  vector<uint32_t, N> Exp = (Hi >> 20) & ExpMask;
   // mantissa without hidden bit
   vector<uint32_t, N> LoMant = Lo;
-  vector<uint32_t, N> HiMant = Hi & Mantissa_mask;
+  vector<uint32_t, N> HiMant = Hi & MantissaMask;
   // for normalized numbers (1 + mant/2^52) * 2 ^ (mant-1023)
   vector<int32_t, N> MantShift = Exp - 1023 - 52;
   vector<int32_t, N> OneShift = Exp - 1023;
@@ -272,6 +272,7 @@ __impl_fp2ui__double__(vector<double, N> a) {
   // check for Exponent overflow (when sign bit set)
   auto FlagExpO = (Exp > vector<uint32_t, N>(1089));
   auto FlagExpUO = FlagNoSignSet & FlagExpO;
+  auto IsNaN = (Exp == ExpMask) & ((LoMant != Zero) | (HiMant != Zero));
   if constexpr (isSigned) {
     // calculate (NOT[Lo, Hi] + 1) (integer sign negation)
     vector<uint32_t, N> NegLo = ~LoRes;
@@ -307,13 +308,22 @@ __impl_fp2ui__double__(vector<double, N> a) {
     LoRes.merge(Ones, FlagExpUO);
     HiRes.merge(vector<uint32_t, N>((1u << 31) - 1), FlagExpUO);
 
+    // if (IsNaN)
+    LoRes.merge(Zero, IsNaN);
+    HiRes.merge(Zero, IsNaN);
+
   } else {
     // if (FlagSignSet)
     LoRes.merge(Zero, FlagSignSet);
     HiRes.merge(Zero, FlagSignSet);
+
     // if (FlagExpUO)
     LoRes.merge(Ones, FlagExpUO);
     HiRes.merge(Ones, FlagExpUO);
+
+    // if (IsNaN)
+    LoRes.merge(Zero, IsNaN);
+    HiRes.merge(Zero, IsNaN);
   }
   return __impl_combineLoHi<N>(LoRes, HiRes);
 }
@@ -321,15 +331,15 @@ template <unsigned N, bool isSigned>
 CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
   // vector of floats -> vector of ints
   vector<uint32_t, N> Uifl = a.template format<uint32_t>();
-  const vector<uint32_t, N> Exp_mask(0xff << 23);
-  const vector<uint32_t, N> Mantissa_mask((1u << 23) - 1);
+  const vector<uint32_t, N> ExpMask(0xff);
+  const vector<uint32_t, N> MantissaMask((1u << 23) - 1);
   const vector<uint32_t, N> Zero(0);
   const vector<uint32_t, N> Ones(0xffffffff);
   const vector<uint32_t, N> One(1);
 
-  vector<uint32_t, N> Exp = (Uifl >> 23) & vector<uint32_t, N>(0xff);
+  vector<uint32_t, N> Exp = (Uifl >> 23) & ExpMask;
   // mantissa without hidden bit
-  vector<uint32_t, N> Pmantissa = Uifl & Mantissa_mask;
+  vector<uint32_t, N> Pmantissa = Uifl & MantissaMask;
   // take hidden bit into account
   vector<uint32_t, N> Mantissa = Pmantissa | vector<uint32_t, N>(1 << 23);
   vector<uint32_t, N> Data_h = Mantissa << 8;
@@ -354,8 +364,8 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
 
   // Discard results if shift is greater than 63
   vector<uint32_t, N> Mask = Ones;
-  auto Flag_discard = (Shift > vector<uint32_t, N>(63));
-  Mask.merge(Zero, Flag_discard);
+  auto FlagDiscard = (Shift > vector<uint32_t, N>(63));
+  Mask.merge(Zero, FlagDiscard);
   Lo = Lo & Mask;
   Hi = Hi & Mask;
   vector<uint32_t, N> SignedBitMask(1u << 31);
@@ -365,6 +375,7 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
   // check for Exponent overflow (when sign bit set)
   auto FlagExpO = (Exp > vector<uint32_t, N>(0xbe));
   auto FlagExpUO = FlagNoSignSet & FlagExpO;
+  auto IsNaN = (Exp == ExpMask) & (Pmantissa != Zero);
   if constexpr (isSigned) {
     // calculate (NOT[Lo, Hi] + 1) (integer sign negation)
     vector<uint32_t, N> NegLo = ~Lo;
@@ -401,13 +412,21 @@ CM_NODEBUG CM_INLINE vector<uint64_t, N> __impl_fp2ui__(vector<float, N> a) {
     Lo.merge(Ones, FlagExpUO);
     Hi.merge(vector<uint32_t, N>((1u << 31) - 1), FlagExpUO);
 
+    // if (IsNaN)
+    Lo.merge(Zero, IsNaN);
+    Hi.merge(Zero, IsNaN);
   } else {
     // if (FlagSignSet)
     Lo.merge(Zero, FlagSignSet);
     Hi.merge(Zero, FlagSignSet);
+
     // if (FlagExpUO)
     Lo.merge(Ones, FlagExpUO);
     Hi.merge(Ones, FlagExpUO);
+
+    // if (IsNaN)
+    Lo.merge(Zero, IsNaN);
+    Hi.merge(Zero, IsNaN);
   }
   return __impl_combineLoHi<N>(Lo, Hi);
 }
