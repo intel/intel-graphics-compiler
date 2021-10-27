@@ -98,6 +98,10 @@ namespace IGC
             InitAdlpHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             InitAdlpSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
+        case IGFX_XE_HP_SDV:
+            InitXeHPSDVHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitXeHPSDVSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
         default:
             IGC_ASSERT(0);
             break;

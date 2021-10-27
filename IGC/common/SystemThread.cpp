@@ -32,6 +32,9 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/Gen12LPSIPCSRDebug.h"
 #include "common/SIPKernels/Gen12LPSIPCSRDebugBindless.h"
 #include "Probe/Assertion.h"
+#include "common/SIPKernels/XeHPSIPCSR.h"
+#include "common/SIPKernels/XeHPSIPCSRDebug.h"
+#include "common/SIPKernels/XeHPSIPCSRDebugBindless.h"
 
 using namespace llvm;
 using namespace USC;
@@ -206,6 +209,7 @@ bool SIPSuppoertedOnPlatformFamily(const GFXCORE_FAMILY& family)
     case IGFX_GEN11_CORE:
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
+    case IGFX_XE_HP_CORE:
         return true;
     default:
         return false;
@@ -394,6 +398,11 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
             (void*)&Gen12SIPCSRDebugBindlessDebugHeader,
             (int)sizeof(Gen12SIPCSRDebugBindlessDebugHeader));
 
+    SIPKernelInfo[XE_HP_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&XeHPSIPCSRDebugBindless,
+        (int)sizeof(XeHPSIPCSRDebugBindless),
+        (void*)&Gen12SIPCSRDebugBindlessDebugHeader,
+        (int)sizeof(Gen12SIPCSRDebugBindlessDebugHeader));
+
 
     GT_SYSTEM_INFO sysInfo = platform.GetGTSystemInfo();
     Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_slices = sysInfo.MaxSlicesSupported;
@@ -416,6 +425,8 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
         Gen12SIPCSRDebugBindlessDebugHeader.versionHeader.size * 8) / 16 == 0x14),
         "Gen12 Bindless SIP header size alignment mismatch.");
 
+    SIPKernelInfo[XE_HP_CSR] = std::make_tuple((void*)&XeHPSIPCSR, (int)sizeof(XeHPSIPCSR), nullptr, 0);
+    SIPKernelInfo[XE_HP_CSR_DEBUG] = std::make_tuple((void*)&XeHPSIPCSRDebug, (int)sizeof(XeHPSIPCSRDebug), nullptr, 0);
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
@@ -509,6 +520,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     }
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
+    case IGFX_XE_HP_CORE:
     {
         if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
@@ -520,7 +532,9 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_ALDERLAKE_S:
                 SIPIndex = bindlessMode ? GEN12_LP_CSR_DEBUG_BINDLESS : GEN12_LP_CSR_DEBUG;
                 break;
-
+            case IGFX_XE_HP_SDV:
+                SIPIndex = bindlessMode ? XE_HP_CSR_DEBUG_BINDLESS : XE_HP_CSR_DEBUG;
+                break;
 
             default:
                 break;
@@ -541,7 +555,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_ALDERLAKE_P:
                 SIPIndex = GEN12_LP_CSR;
                 break;
-
+            case IGFX_XE_HP_SDV:
+                SIPIndex = XE_HP_CSR;
 
             default:
                 break;

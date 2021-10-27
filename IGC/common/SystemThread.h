@@ -58,6 +58,9 @@ namespace SIP
         GEN12_LP_CSR,
         GEN12_LP_CSR_DEBUG,
         GEN12_LP_CSR_DEBUG_BINDLESS,
+        XE_HP_CSR,
+        XE_HP_CSR_DEBUG,
+        XE_HP_CSR_DEBUG_BINDLESS,
         GEN_SIP_MAX_INDEX
     };
 
