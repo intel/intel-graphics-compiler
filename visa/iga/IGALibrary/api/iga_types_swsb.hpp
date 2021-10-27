@@ -26,11 +26,11 @@ namespace iga
 
     enum class SWSB_ENCODE_MODE : uint32_t
     {
-        SWSBInvalidMode = 0,
-        SingleDistPipe  = 1,      // Xe: 1 distance pipe
-        ThreeDistPipe   = 2,      // XeHP/XeHPG: 3 distance pipe
-        FourDistPipe    = 3,      // XeHPC (early variant): 4 distance pipes
-        FourDistPipeReduction = 6, // XeHPC variation
+        SWSBInvalidMode       = 0,
+        SingleDistPipe        = 1, // Xe: 1 distance pipe
+        ThreeDistPipe         = 2, // XeHP/XeHPG: 3 distance pipe
+        FourDistPipe          = 3, // XeHPC (early variant): 4 distance pipes
+        FourDistPipeReduction = 6, // XeHPC variation: 4 distance pipes with Long pipe reduction
     };
 
     struct SWSB
@@ -43,7 +43,7 @@ namespace iga
             REG_DIST_FLOAT,
             REG_DIST_INT,
             REG_DIST_LONG,
-            REG_DIST_MATH // >=XeHPC
+            REG_DIST_MATH,  // XeHPC
         };
 
         enum class TokenType {

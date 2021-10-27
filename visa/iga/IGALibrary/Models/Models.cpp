@@ -164,19 +164,18 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x5, 0,
         4,
         8, (4,4,4,4,4,4,4,4)),
-
-    IGA_REGISTER_SPEC_GE(
-        Platform::GEN8,
-        RegName::ARF_SP, "sp", "Stack Pointer",
-        0x6, 0,
-        4,
-        0, (2*8)), // two subregisters of 8 bytes each
     IGA_REGISTER_SPEC(
         Platform::GEN7P5, Platform::GEN7P5,
         RegName::ARF_SP, "sp", "Stack Pointer",
         0x6, 0,
         4,
         0, (2*4)), // two subregisters of 4 bytes each
+    IGA_REGISTER_SPEC(
+        Platform::GEN8, Platform::XE_HPC,
+        RegName::ARF_SP, "sp", "Stack Pointer",
+        0x6, 0,
+        4,
+        0, (2*8)), // two subregisters of 8 bytes each
 
 
     IGA_REGISTER_SPEC_UNIFORM(

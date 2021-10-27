@@ -1327,13 +1327,13 @@ void Decoder::decodeSendSource0(Instruction *inst)
             rgn = decodeSrcRegionVWH<SourceIndex::SRC0>();
         }
 
-        inst->setDirectSource(
-            SourceIndex::SRC0,
-            SrcModifier::NONE,
-            dri.regName,
-            dri.regRef,
-            rgn,
-            dri.type);
+            inst->setDirectSource(
+                SourceIndex::SRC0,
+                SrcModifier::NONE,
+                dri.regName,
+                dri.regRef,
+                rgn,
+                dri.type);
     }
 }
 
@@ -1932,6 +1932,7 @@ void Decoder::decodeSourceBasicAlign1(
             inst->setInidirectSource(
                 toSrcIxE,
                 srcMod,
+                RegName::GRF_R, // set to GRF for indirect register access
                 a0,
                 addrImm,
                 decRgn,
@@ -2031,7 +2032,7 @@ void Decoder::decodeSourceBasicAlign16(
             int32_t addrImm = decodeSrcAddrImm<S>();
             RegRef indReg = {0, (uint8_t)subRegNum};
             inst->setInidirectSource(
-                toSrcIx, srcMod, indReg,
+                toSrcIx, srcMod, RegName::GRF_R, indReg,
                 (int16_t)addrImm, Region::SRC110, decodeSrcType<S>());
         } else {
              // == GED_ADDR_MODE_INVALID

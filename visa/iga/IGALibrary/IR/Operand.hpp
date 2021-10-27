@@ -181,6 +181,7 @@ public:
     // re-initializes this operand as an indirect register operand
     void setInidirectSource(
         SrcModifier srcMod,
+        RegName regName,
         const RegRef &reg,
         int16_t addrImmOff,
         const Region &rgn,

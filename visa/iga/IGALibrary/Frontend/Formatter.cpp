@@ -819,7 +819,7 @@ private:
         emitAnsi(ANSI_REGISTER_GRF, "r");
         emit("[");
 
-        formatScalarRegRead(RegName::ARF_A, op.getIndAddrReg());
+            formatScalarRegRead(RegName::ARF_A, op.getIndAddrReg());
 
         if (op.getIndImmAddr() != 0) {
             int16_t val = op.getIndImmAddr();

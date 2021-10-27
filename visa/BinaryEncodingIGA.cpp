@@ -1333,6 +1333,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(
                 igaInst->setInidirectSource(
                     opIx,
                     srcMod,
+                    iga::RegName::GRF_R, // set to GRF for indirect register access
                     regRef,
                     srcRegion->getAddrImm(),
                     region,

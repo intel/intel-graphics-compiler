@@ -11,9 +11,9 @@ SPDX-License-Identifier: MIT
 #define NOMINMAX // omit min()/max() macros (favor std::min/std::max)
 #endif
 #include <Windows.h>
-#define SNPRINTF( dst, size, ... ) sprintf_s( (dst), (size), __VA_ARGS__ )
+#define SNPRINTF(dst, size, ...) sprintf_s((dst), (size), __VA_ARGS__)
 #else
-#define SNPRINTF( dst, size, ... ) snprintf( (dst), (size), __VA_ARGS__  )
+#define SNPRINTF(dst, size, ...) snprintf((dst), (size), __VA_ARGS__)
 #endif
 
 #if !defined(_WIN32)

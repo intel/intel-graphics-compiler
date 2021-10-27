@@ -56,6 +56,7 @@ const static uint32_t DIST4_FOOTPRINT_SBID = 0x1F;
 const static uint32_t DIST4_NOACEESBSET = 0xF0;
 
 
+
 namespace iga {
 
     template<>
@@ -63,6 +64,7 @@ namespace iga {
         uint32_t swsbBits, InstType instTy)
     {
         SWSB_STATUS stat = SWSB_STATUS::SUCCESS;
+        clear();
         if ((0xF0 & swsbBits) == 0) {
             // distance/nop; low 4b tell us the distance and 0 means nop
             minDist = swsbBits & 0xF;
@@ -175,8 +177,7 @@ namespace iga {
     SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::ThreeDistPipe>(uint32_t swsbBits, InstType instTy)
     {
         SWSB_STATUS stat = SWSB_STATUS::SUCCESS;
-        distType = DistType::NO_DIST;
-        tokenType = TokenType::NOTOKEN;
+        clear();
         // distance
         if ((swsbBits & ~SWSB_3DIST_FOOTPRINT_DIST) == SWSB_3DIST_FLAG_REG_DIST) {
             minDist = (swsbBits & SWSB_3DIST_FOOTPRINT_DIST);
@@ -513,7 +514,6 @@ namespace iga {
                 swsb = DIST4_REG_DIST_MATH | minDist;
                 break;
             default:
-                assert(0);
                 break;
             }
         } else if (tokenType != TokenType::NOTOKEN) { // Token only
@@ -529,7 +529,6 @@ namespace iga {
                 swsb = DIST4_SBID_SET | sbid;
                 break;
             default:
-                assert(0);
                 break;
             }
         }
@@ -586,6 +585,7 @@ namespace iga {
         // others, either token only or no swsb, are valid cases
         return true;
     }
+
 
 
     template<>

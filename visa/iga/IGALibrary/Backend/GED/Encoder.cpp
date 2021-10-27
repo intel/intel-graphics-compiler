@@ -1435,7 +1435,7 @@ void Encoder::encodeSendDestination(const Operand& dst)
 void Encoder::encodeSendSource0(const Operand& src)
 {
     if (m_model.supportsUnarySend()) {
-        switch( src.getKind() )
+        switch(src.getKind())
         {
         case Operand::Kind::DIRECT:
             GED_ENCODE(Src0AddrMode, GED_ADDR_MODE_Direct);
@@ -1468,15 +1468,17 @@ void Encoder::encodeSendSource0(const Operand& src)
     }
     else if (src.getKind() ==  Operand::Kind::INDIRECT)
     {
-        GED_ENCODE(Src0DataType, lowerDataType(t));
-        GED_ENCODE(Src0AddrSubRegNum, src.getIndAddrReg().subRegNum);
-        // For platform >= XeHPC, the ImmAddr is represented in Word Offset in bianry,
-        //     platform <  XeHPC, the ImmAddr is represented in Byte Offset in bianry
-        // And for all platforms, the ImmAddr is represented in Byet Offset in assembly
-        if (platform() >= Platform::XE_HPC) {
-            GED_ENCODE(Src0AddrImm, src.getIndImmAddr() / 2);
-        } else {
-            GED_ENCODE(Src0AddrImm, src.getIndImmAddr());
+        {
+            GED_ENCODE(Src0DataType, lowerDataType(t));
+            GED_ENCODE(Src0AddrSubRegNum, src.getIndAddrReg().subRegNum);
+            // For platform >= XeHPC, the ImmAddr is represented in Word Offset in bianry,
+            //     platform <  XeHPC, the ImmAddr is represented in Byte Offset in bianry
+            // And for all platforms, the ImmAddr is represented in Byet Offset in assembly
+            if (platform() >= Platform::XE_HPC) {
+                GED_ENCODE(Src0AddrImm, src.getIndImmAddr() / 2);
+            } else {
+                GED_ENCODE(Src0AddrImm, src.getIndImmAddr());
+            }
         }
     }
 }

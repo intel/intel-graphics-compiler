@@ -123,6 +123,7 @@ namespace iga
         void setInidirectSource(
             SourceIndex srcIx,
             SrcModifier srcMod,
+            RegName regName,
             RegRef reg,
             int16_t m_immOffset,
             Region rgn,
@@ -248,6 +249,7 @@ namespace iga
         bool               isBranching() const {return getOpSpec().isBranching();}
 
         bool               isMovWithLabel() const;
+
 
         SWSB::InstType     getSWSBInstType(SWSB_ENCODE_MODE mode) const;
 

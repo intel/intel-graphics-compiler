@@ -460,6 +460,7 @@ public:
                 inst->setInidirectSource(
                     opIx,
                     src.regOpSrcMod,
+                    src.regOpName,
                     src.regOpReg,
                     src.regOpIndOff,
                     src.regOpRgn,
@@ -753,6 +754,7 @@ public:
         int srcOpIx, // index of the current source operand
         const Loc &loc,
         const SrcModifier &srcMod, // source modifiers on this operand
+        RegName regName,
         RegRef addrReg,
         int addrOff, // e.g. 16 in r[a0.3,16] (0 if absent)
         Region rgn,

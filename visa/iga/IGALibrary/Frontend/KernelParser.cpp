@@ -815,6 +815,24 @@ class KernelParser : GenParser
     int                   m_sendSrcLens[2]; // send message lengths
     Loc                   m_sendSrcLenLocs[2]; // locations so we can referee
     bool                  m_implicitExBSO; // send src1 suffixed with length implies exBSO, but ensure the inst opt is given
+
+private:
+    // A helper function to add ARF_NULL src to given src operand
+    void addNullSrc(int srcOpIx, bool isImmOrLbl) {
+        // For instructions those have implicit types, match the type to
+        // the expected one. Otherwise, ARF_NULL operand should have Type::INVALID
+        Type type = Type::INVALID;
+        m_opSpec->implicitSrcTypeVal(srcOpIx, isImmOrLbl, type);
+        m_builder.InstSrcOpRegDirect(
+            srcOpIx,
+            m_srcLocs[srcOpIx],
+            SrcModifier::NONE,
+            RegName::ARF_NULL,
+            REGREF_ZERO_ZERO,
+            Region::SRC010,
+            type);
+    }
+
 public:
     KernelParser(
         const Model &model,
@@ -1993,9 +2011,9 @@ public:
     // e.g. [a0.4,  16]
     //  or  [a0.4 + 16]
     //  or  [a0.4 - 16]
-    void ParseIndOpArgs(RegRef &addrRegRef, int &addrOff) {
+    void ParseIndOpArgs(RegRef &addrRegRef, int &addrOff, RegName& regName) {
         ConsumeOrFail(LBRACK, "expected [");
-        if (!ParseAddrRegRefOpt(addrRegRef)) {
+        if (!ParseAddrRegRefOpt(addrRegRef, regName)) {
             FailT("expected address subregister");
         }
         Loc addrOffLoc = NextLoc();
@@ -2037,7 +2055,8 @@ public:
         // [a0.4,16]
         int addrOff;
         RegRef addrRegRef;
-        ParseIndOpArgs(addrRegRef, addrOff);
+        RegName regName = RegName::INVALID;
+        ParseIndOpArgs(addrRegRef, addrOff, regName);
         addrOff += baseAddr;
         //
         // <1>
@@ -2080,14 +2099,18 @@ public:
 
 
     // E.g. 3 in "a0.3"
-    bool ParseAddrRegRefOpt(RegRef& addrReg) {
+    bool ParseAddrRegRefOpt(RegRef& addrReg, RegName& regName) {
         const RegInfo *ri;
         int regNum;
+        regName = RegName::INVALID;
         if (!ConsumeReg(ri, regNum)) {
             return false;
         }
-        if (ri->regName != RegName::ARF_A && regNum != 0) {
-            FailT("expected a0");
+        regName = ri->regName;
+        if (regNum != 0 ||
+            (ri->regName != RegName::ARF_A
+            )) {
+            FailT("expected address register for indirect access (a0)");
         }
         if (!Consume(DOT)) {
             FailT("expected .");
@@ -2261,7 +2284,8 @@ public:
         // [a0.4 + 16]
         int addrOff;
         RegRef addrRegRef;
-        ParseIndOpArgs(addrRegRef, addrOff);
+        RegName regName = RegName::INVALID;
+        ParseIndOpArgs(addrRegRef, addrOff, regName);
         addrOff += baseOff;
 
         // regioning... <V;W,H> or <V,H>
@@ -2270,8 +2294,9 @@ public:
         // :t
         Type sty = ParseSrcOpTypeWithDefault(srcOpIx, true);
 
+        IGA_ASSERT(regName != RegName::INVALID, "SrcOpInd must not have INVALID register name");
         m_builder.InstSrcOpRegIndirect(
-            srcOpIx, opStart, srcMods, addrRegRef, addrOff, rgn, sty);
+            srcOpIx, opStart, srcMods, regName, addrRegRef, addrOff, rgn, sty);
     }
 
 
@@ -2916,7 +2941,6 @@ public:
     void ParseSendSrc1OpWithOptLen(int &src1Len) {
         m_srcLocs[1] = NextLoc();
         src1Len = -1;
-
         const Token regnameTk = Next();
         const RegInfo *regInfo;
         int regNum;
@@ -3201,7 +3225,9 @@ public:
     void ParseSendDescsWithOptSrc1Len(int src1Length) {
         const Loc exDescLoc = NextLoc();
         SendDesc exDesc;
-        if (ParseAddrRegRefOpt(exDesc.reg)) { // ExDesc is register
+        RegName regName = RegName::INVALID;
+        if (ParseAddrRegRefOpt(exDesc.reg, regName)) { // ExDesc is register
+            IGA_ASSERT(regName == RegName::ARF_A, "Indirect send exDesc must be ARF_A");
             exDesc.type = SendDesc::Kind::REG32A;
             if (src1Length >= 0) {
                 m_implicitExBSO = true;
@@ -3275,7 +3301,8 @@ public:
         //
         const Loc descLoc = NextLoc();
         SendDesc desc;
-        if (ParseAddrRegRefOpt(desc.reg)) {
+        if (ParseAddrRegRefOpt(desc.reg, regName)) {
+            IGA_ASSERT(regName == RegName::ARF_A, "Indirect send desc must be ARF_A");
             desc.type = SendDesc::Kind::REG32A;
         } else {
             // constant integral expression
@@ -3302,7 +3329,9 @@ public:
 
     SendDesc ParseDesc(const char *which) {
         SendDesc sd;
-        if (ParseAddrRegRefOpt(sd.reg)) { // ExDesc is register
+        RegName regName = RegName::INVALID;
+        if (ParseAddrRegRefOpt(sd.reg, regName)) { // ExDesc is register
+            IGA_ASSERT(regName == RegName::ARF_A, "Indirect send Desc must be ARF_A");
             sd.type = SendDesc::Kind::REG32A;
 
         } else { // ExDesc is imm
@@ -3329,7 +3358,9 @@ public:
 
         const Loc exDescLoc = NextLoc();
         SendDesc exDesc;
-        if (ParseAddrRegRefOpt(exDesc.reg)) {
+        RegName regName = RegName::INVALID;
+        if (ParseAddrRegRefOpt(exDesc.reg, regName)) {
+            IGA_ASSERT(regName == RegName::ARF_A, "Indirect send exDesc must be ARF_A");
             exDesc.type = SendDesc::Kind::REG32A;
             if (platform() < Platform::XE)
                 m_builder.InstSubfunction(SFID::A0REG);
@@ -3363,7 +3394,8 @@ public:
 
         const Loc descLoc = NextLoc();
         SendDesc desc;
-        if (ParseAddrRegRefOpt(desc.reg)) {
+        if (ParseAddrRegRefOpt(desc.reg, regName)) {
+            IGA_ASSERT(regName == RegName::ARF_A, "Indirect send Desc must be ARF_A");
             desc.type = SendDesc::Kind::REG32A;
         } else {
             // constant integral expression
@@ -3406,7 +3438,8 @@ public:
         // TODO: sink this into the instop parsing once we remerge
         // that with KernelParser... (after we rip out the legacy ld/st tables)
         bool src1LengthSuffixSet = m_sendSrcLens[1] != -1;
-        if (instOpts.contains(InstOpt::EXBSO) && !src1LengthSuffixSet) {
+        if (instOpts.contains(InstOpt::EXBSO) && !src1LengthSuffixSet
+            ) {
             // GOOD:  send ... r10:2  a0.# ... {ExBSO}
             // ERROR: send ... r10    a0.# ... {ExBSO}
             //   Src1.Length comes from EU bits a0.# holds 26b offset
@@ -3433,7 +3466,9 @@ public:
         }
 
         m_builder.InstOptsAdd(instOpts);
-        if (m_implicitExBSO && !instOpts.contains(InstOpt::EXBSO)) {
+
+        if (m_implicitExBSO && !instOpts.contains(InstOpt::EXBSO)
+            ) {
             WarningAtT(m_mnemonicLoc, "send src1 length implicitly added "
                 "(include {ExBSO})");
         }
@@ -3621,11 +3656,11 @@ public:
                 };
                 //
                 bool parsedNamedPipe =
-                    tryParsePipe("F", SWSB::DistType::REG_DIST_FLOAT)
-                    || tryParsePipe("I", SWSB::DistType::REG_DIST_INT)
-                    || tryParsePipe("L", SWSB::DistType::REG_DIST_LONG)
-                    || tryParsePipe("A", SWSB::DistType::REG_DIST_ALL)
-                    || tryParsePipe("M", SWSB::DistType::REG_DIST_MATH);
+                    tryParsePipe("F", SWSB::DistType::REG_DIST_FLOAT)  ||
+                    tryParsePipe("I", SWSB::DistType::REG_DIST_INT)    ||
+                    tryParsePipe("L", SWSB::DistType::REG_DIST_LONG)   ||
+                    tryParsePipe("A", SWSB::DistType::REG_DIST_ALL)    ||
+                    tryParsePipe("M", SWSB::DistType::REG_DIST_MATH);
                 if (parsedNamedPipe && m_model.supportsHwDeps()) {
                     FailAtT(loc,
                         "software dependencies not supported on this platform");
@@ -4214,7 +4249,9 @@ bool KernelParser::ParseLdStInst()
     auto parseA0RegOrImm = [&] () {
         SendDesc surf;
         ConsumeOrFail(LBRACK, "expected [");
-        if (ParseAddrRegRefOpt(surf.reg)) {
+        RegName regName = RegName::INVALID;
+        if (ParseAddrRegRefOpt(surf.reg, regName)) {
+            IGA_ASSERT(regName == RegName::ARF_A, "Indirect send Desc must be ARF_A");
             // surface is a register
             surf.type = SendDesc::Kind::REG32A;
             if (surf.reg.subRegNum & 1) {

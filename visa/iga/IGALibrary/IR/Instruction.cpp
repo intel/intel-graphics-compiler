@@ -104,13 +104,14 @@ void Instruction::setMacroSource(
 void Instruction::setInidirectSource(
     SourceIndex srcIx,
     SrcModifier srcMod,
+    RegName regName,
     RegRef reg,
     int16_t immediateOffset,
     Region rgn,
     Type type)
 {
     unsigned ix = static_cast<unsigned>(srcIx);
-    m_srcs[ix].setInidirectSource(srcMod, reg, immediateOffset, rgn, type);
+    m_srcs[ix].setInidirectSource(srcMod, regName, reg, immediateOffset, rgn, type);
 }
 
 
@@ -183,6 +184,7 @@ bool Instruction::isMovWithLabel() const {
     return (getOp() == Op::MOV &&
         getSource(0).getKind() == Operand::Kind::LABEL);
 }
+
 
 void Instruction::validate() const
 {

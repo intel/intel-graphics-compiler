@@ -381,7 +381,7 @@ namespace iga
                 return SWSB_ENCODE_MODE::ThreeDistPipe;
             else if (platform == Platform::XE_HPG)
                 return SWSB_ENCODE_MODE::ThreeDistPipe;
-            else if (platform >= Platform::XE_HPC)
+            else if (platform == Platform::XE_HPC)
                 return SWSB_ENCODE_MODE::FourDistPipeReduction; // XE_HPC is XeHPC-Bstep (PVC-XT)
             return SWSB_ENCODE_MODE::SWSBInvalidMode;
         }

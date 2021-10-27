@@ -81,6 +81,7 @@ void Operand::setImmediateSource(
 
 void Operand::setInidirectSource(
     SrcModifier srcMod,
+    RegName regName,
     const RegRef &reg,
     int16_t immediateOffset,
     const Region &rgn,
@@ -92,7 +93,7 @@ void Operand::setInidirectSource(
     m_regOpSrcMod = srcMod;
     m_regOpReg = reg;
     m_regOpRgn = rgn;
-    m_regOpName = RegName::GRF_R;
+    m_regOpName = regName;
     m_regOpIndOff = immediateOffset;
     m_type = type;
 }
