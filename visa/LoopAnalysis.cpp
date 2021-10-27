@@ -193,7 +193,7 @@ void Dominator::runDOM()
             if (bb == entryBB)
                 continue;
 
-            oldBS = domsBS[bb->getId()];
+            oldBS.swap(domsBS[bb->getId()]);
 
             domsBS[bb->getId()].setAll();
             // Dominators[BB] = Intersection(Dominators[All Pred BBs]) + BB
