@@ -1829,14 +1829,13 @@ void GenXBaling::doClones()
             GenXIntrinsic::GenXRegion::OldValueOperandNum))) {
       auto *ReadPredef = cast<Instruction>(
           Cloned->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
-      Region R(ReadPredef);
-      auto Wrr =
-          R.createWrRegion(UndefValue::get(ReadPredef->getType()), ReadPredef,
-                           "", ReadPredef->getNextNode(), DebugLoc());
-      ReadPredef->replaceAllUsesWith(Wrr);
-      Wrr->replaceUsesOfWith(Wrr, ReadPredef);
-      BaleInfo BI(BaleInfo::WRREGION);
-      setBaleInfo(Wrr, BI);
+
+      Instruction *ClonedReadPredef = ReadPredef->clone();
+      ClonedReadPredef->insertAfter(ReadPredef);
+      BaleInfo BI(BaleInfo::REGINTR);
+      setBaleInfo(ClonedReadPredef, BI);
+      Cloned->setOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum,
+                         ClonedReadPredef);
     }
     // Change the use.
     NC.Inst->setOperand(NC.OperandNum, Cloned);
