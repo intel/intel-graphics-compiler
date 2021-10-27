@@ -441,6 +441,8 @@ public:
                   const SSource* source,
                   const DstModifier& modifier);
     void emitfcvt(llvm::GenIntrinsicInst *GII);
+    void emitStaticConstantPatchValue(
+        llvm::StaticConstantPatchIntrinsic* staticConstantPatch32);
     // Debug Built-Ins
     void emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
     void emitThreadPause(llvm::GenIntrinsicInst* inst);

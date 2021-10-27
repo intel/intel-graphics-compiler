@@ -9161,6 +9161,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_vectorUniform:
         break;  // pseudo instruction, do nothing
+    case GenISAIntrinsic::GenISA_staticConstantPatchValue:
+        emitStaticConstantPatchValue(cast<StaticConstantPatchIntrinsic>(inst));
+        break;
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
         // therefore we do not handle them in visa-emission.
@@ -17502,6 +17505,12 @@ void IGC::EmitPass::emitCanonicalize(llvm::Instruction* inst)
         CVariable* negativeZero = m_currShader->GetScalarConstant(llvm::ConstantFP::get(inst->getType(), -0.0));
         m_encoder->Add(m_destination, inputVal, negativeZero);
     }
+}
+
+void IGC::EmitPass::emitStaticConstantPatchValue(llvm::StaticConstantPatchIntrinsic* staticConstantPatch32)
+{
+    std::string patchName = staticConstantPatch32->getPatchName().str();
+    m_encoder->AddVISASymbol(patchName, m_destination);
 }
 
 // emit llvm.bswap

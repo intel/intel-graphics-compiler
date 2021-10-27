@@ -603,6 +603,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val) const
     {
         return WIAnalysis::UNIFORM_GLOBAL;
     }
+    else if (isa<StaticConstantPatchIntrinsic>(val))
+    {
+        return WIAnalysis::UNIFORM_GLOBAL;
+    }
     auto EL = m_depMap.GetAttributeWithoutCreating(val);
     if (IGC_IS_FLAG_ENABLED(DisableUniformAnalysis))
     {

@@ -47,7 +47,8 @@ enum GenRelocType {
     R_SYM_ADDR                     = 1, // 64-bit type address
     R_SYM_ADDR_32                  = 2, // 32-bit address or lower 32-bit of a 64-bit address.
     R_SYM_ADDR_32_HI               = 3, // higher 32bits of 64-bit address
-    R_PER_THREAD_PAYLOAD_OFFSET_32 = 4  // 32-bit field of payload offset of per-thread data
+    R_PER_THREAD_PAYLOAD_OFFSET_32 = 4, // 32-bit field of payload offset of per-thread data
+    R_GLOBAL_IMM_32                = 5  // 32-bit global immediate
 };
 
 /// GenRelocEntry - An relocation table entry

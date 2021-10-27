@@ -2092,5 +2092,10 @@ Imported_Intrinsics = \
 "GenISA_frc": ["GENISA_frc for emitting HW Frc",
     [("float",                        "output"),
     [("float",                        "src0")],
-    "NoMem"]]
+    "NoMem"]],
+####################################################################################################
+"GenISA_staticConstantPatchValue": ["GenISA_staticConstantPatchValue returns a static constant patch value as an integer.",
+    [("anyint",                       "symbol value"),
+    [("any",                          "symbol name")],
+    "None"]]
 }

@@ -4822,9 +4822,10 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder& builder) const
         //   Src0.imm[63:32] mapped to Instruction [95:64]
         // When src0 type is 32 bits:
         //   Src0.imm[31:0] mapped to instruction [127:96]
-        assert((target_operand->getType() == Type_UD) || (target_operand->getType() == Type_UQ));
+        assert((target_operand->getType() == Type_UD) || (target_operand->getType() == Type_D) ||
+            (target_operand->getType() == Type_UQ) || (target_operand->getType() == Type_Q));
         assert(opndPos == 0);
-        return (target_operand->getType() == Type_UD) ? 12 : 8;
+        return (target_operand->getType() == Type_UD || target_operand->getType() == Type_D) ? 12 : 8;
 
     case G4_add:
         // add instruction cannot have 64-bit imm
@@ -4853,6 +4854,8 @@ const char * RelocationEntry::getTypeString() const
         return "R_SYM_ADDR_32_HI";
     case RelocationType::R_PER_THREAD_PAYLOAD_OFFSET_32:
         return "R_PER_THREAD_PAYLOAD_OFFSET_32";
+    case RelocationType::R_GLOBAL_IMM_32:
+        return "R_GLOBAL_IMM_32";
     default:
         assert(false && "unhandled relocation type");
         return "";
@@ -4880,6 +4883,9 @@ void RelocationEntry::dump(std::ostream &os) const
             break;
         case RelocationType::R_PER_THREAD_PAYLOAD_OFFSET_32:
             os << "R_PER_THREAD_PAYLOAD_OFFSET_32: symbol name = " << symName;
+            break;
+        case RelocationType::R_GLOBAL_IMM_32:
+            os << "R_GLOBAL_IMM_32: symbol name = " << symName;
             break;
     }
     os << "\n";

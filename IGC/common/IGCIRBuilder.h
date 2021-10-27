@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/TargetFolder.h>
 #include "llvm/IR/InstrTypes.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "GenISAIntrinsics/GenIntrinsics.h"
 
 //This Builder class provides definitions for functions calls that were once available till LLVM version 3.6.0
 //===--------------------------------------------------------------------===
@@ -147,6 +148,24 @@ namespace llvm {
         inline Value* CreateExtractElementOrPropagate(Value* vec, uint64_t idx, const Twine& name = "")
         {
             return CreateExtractElementOrPropagate(vec, this->getInt64(idx), name);
+        }
+
+        inline llvm::Function* llvm_GenISA_staticConstantPatch(uint32_t stringSize) const
+        {
+            llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+
+            llvm::Function* func_llvm_GenISA_staticConstantPatchValue =
+                llvm::GenISAIntrinsic::getDeclaration(
+                    module,
+                    llvm::GenISAIntrinsic::GenISA_staticConstantPatchValue,
+                    { ArrayType::get(llvm::IntegerType::get(module->getContext(), 8), stringSize) });
+            return func_llvm_GenISA_staticConstantPatchValue;
+        }
+
+        inline llvm::Value* CreateStaticConstantPatch(llvm::StringRef patchName)
+        {
+            llvm::Function* func = llvm_GenISA_staticConstantPatch(patchName.size());
+            return this->CreateCall(func, llvm::ConstantDataArray::getString(func->getContext(), patchName, false));
         }
 
     private:

@@ -217,6 +217,13 @@ int IR_Builder::translateVISACFSymbolInst(
         G4_INST* mov = createMov(g4::SIMD1, dst, privateMemPatch, InstOpt_WriteEnable, true);
         RelocationEntry::createRelocation(kernel, *mov, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
     }
+    else if (Type_D == dst->getType())
+    {
+        auto patchImm = createRelocImm(dst->getType());
+        auto movInst = createMov(g4::SIMD1, dst, patchImm, InstOpt_WriteEnable, true);
+
+        RelocationEntry::createRelocation(kernel, *movInst, 0, symbolName, GenRelocType::R_GLOBAL_IMM_32);
+    }
     else if (noInt64() || needSwap64ImmLoHi() || VISA_WA_CHECK(getPWaTable(), WaDisallow64BitImmMov))
     {
         auto* funcAddrLow = createRelocImm(Type_UD);
