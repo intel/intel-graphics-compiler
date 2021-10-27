@@ -585,6 +585,17 @@ void CISA_IR_Builder::RemoveOptimizingFunction(
     }
 }
 
+#define DEBUG_LTO
+#ifdef DEBUG_LTO
+#define DEBUG_PRINT(msg) \
+    std::cerr << __LINE__ << " " << msg;
+#define DEBUG_UTIL(stmt) \
+    stmt;
+#else
+#define DEBUG_PRINT(msg)
+#define DEBUG_UTIL(stmt)
+#endif
+
 // Perform LTO including transforming stack calls to subroutine calls, subroutine calls to jumps, and inlining
 void CISA_IR_Builder::LinkTimeOptimization(
     std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
@@ -593,6 +604,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
     bool inlining =     options & (1U << Linker_Inline);
     bool call2jump =    options & (1U << Linker_Call2Jump);
     bool removeArgRet = options & (1U << Linker_RemoveArgRet);
+    bool removeStackArg = options & (1U << Linker_RemoveStackArg);
     std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
     std::map<G4_INST*, std::list<G4_INST*>> rets;
     std::set<G4_Kernel*> visited;
@@ -711,6 +723,199 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 }
             }
         }
+
+        // A hash map to record how SP is populated from caller to callee
+        std::map<G4_Declare*, long long> stackPointers;
+        // A hash map to record where the instruction is on defs
+        std::map<G4_Declare*, std::list<vISA::G4_INST*>::iterator> defInst;
+
+        if (removeStackArg)
+        {
+            // collect instructions which store args to stack
+            auto& callerBuilder = caller->fg.builder;
+            auto& calleeBuilder = callee->fg.builder;
+            auto getPointerOffset = [&](G4_INST *inst, long long offset)
+            {
+                auto execSize = static_cast<int>(inst->getExecSize());
+                assert(execSize == 1);
+                switch(inst->opcode())
+                {
+                    case G4_mov:
+                        {
+                            return offset;
+                        }
+                    case G4_add:
+                        {
+                            assert(inst->getSrc(1)->isImm());
+                            return offset + inst->getSrc(1)->asImm()->getImm();
+                        }
+                    default:
+                        {
+                            assert(0);
+                            return 0LL;
+                        }
+                }
+            };
+
+            auto getRootDeclare = [&](G4_Operand *opnd)
+            {
+                if (!opnd)
+                    return (G4_Declare*) nullptr;
+                G4_Declare* topDcl = opnd->getTopDcl();
+                if (!topDcl)
+                    return (G4_Declare*) nullptr;
+                return topDcl->getRootDeclare();
+
+            };
+
+            // A list of store in order to perform store-to-load forwarding
+            std::list<std::list<vISA::G4_INST*>::iterator> storeList;
+
+            // SP will be updated twice if it has arguments storing on stack
+            // The first update is for storing private variables
+            int updateCountSP = 0;
+            for (auto callerIt = callerInsts.begin(); callerIt != it; callerIt ++)
+            {
+                G4_INST *inst = *callerIt;
+                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                {
+                    G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
+                    if (!rootDcl) continue;
+                    G4_Operand *dst = inst->getDst();
+                    if (rootDcl == callerBuilder->getFE_SP())
+                    {
+                        stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
+                        defInst[dst->getTopDcl()] = callerIt;
+                        DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                        DEBUG_UTIL(inst->dump());
+                        // the dst is updating SP
+                        if (dst->getTopDcl() == callerBuilder->getFE_SP())
+                            updateCountSP++;
+                    }
+                    else if (stackPointers.find(rootDcl) != stackPointers.end())
+                    {
+                        long long offset = stackPointers[rootDcl];
+                        if (inst->opcode() == G4_mov ||
+                            inst->opcode() == G4_add)
+                        {
+                            auto execSize = static_cast<int>(inst->getExecSize());
+                            if (execSize != 1)
+                            {
+                                // Currently only support scalar type of operations
+                                DEBUG_PRINT("skip nonaddress calc\n");
+                                DEBUG_UTIL(inst->dump());
+                                continue;
+                            }
+                            stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
+                            defInst[dst->getTopDcl()] = callerIt;
+                            DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                            DEBUG_UTIL(inst->dump());
+                        }
+                        else if (inst->opcode() == G4_sends ||
+                                inst->opcode() == G4_send)
+                        {
+                            assert(i == 0);
+                            // Start adding argument stores to the list
+                            if (updateCountSP == 2)
+                                storeList.push_back(callerIt);
+                            DEBUG_PRINT("[ ]");
+                            DEBUG_UTIL(inst->dump());
+                        }
+                        else
+                        {
+                            assert(0 && "not implemented");
+                        }
+                    }
+                }
+            }
+            assert(updateCountSP <= 2 && "SP has been updated more than twice from the caller");
+            // passing SP offset from caller to callee
+            stackPointers[calleeBuilder->getFE_SP()] = stackPointers[callerBuilder->getFE_SP()];
+
+            for (auto calleeIt = calleeInsts.begin(); calleeIt != calleeInsts.end(); calleeIt ++)
+            {
+                G4_INST *inst = *calleeIt;
+                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                {
+                    G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
+                    if (!rootDcl) continue;
+                    G4_Operand *dst = inst->getDst();
+                    if (rootDcl == calleeBuilder->getFE_SP())
+                    {
+                        stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
+                        defInst[dst->getTopDcl()] = calleeIt;
+                        DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                        DEBUG_UTIL(inst->dump());
+                    }
+                    else if (stackPointers.find(rootDcl) != stackPointers.end())
+                    {
+                        long long offset = stackPointers[rootDcl];
+                        if (inst->opcode() == G4_mov)
+                        {
+                            auto execSize = static_cast<int>(inst->getExecSize());
+                            assert(execSize == 1);
+                            stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
+                            defInst[dst->getTopDcl()] = calleeIt;
+                            DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                            DEBUG_UTIL(inst->dump());
+                        }
+                        else if (inst->opcode() == G4_sends ||
+                                inst->opcode() == G4_send)
+                        {
+                            if (storeList.empty())
+                            {
+                                // store prevFP to the callee's frame
+                                if (stackPointers[callerBuilder->getFE_SP()] ==
+                                    stackPointers[getRootDeclare(inst->getSrc(0))])
+                                {
+                                    DEBUG_PRINT("remove prevFP on callee's frame:\n");
+                                    DEBUG_UTIL(inst->dump());
+                                    calleeInsts.erase(calleeIt);
+                                    continue;
+                                }
+                                DEBUG_PRINT("skip for now (private variable on the callee's frame):\n");
+                                DEBUG_UTIL(inst->dump());
+                                assert(0);
+                            }
+                            auto storeIt = storeList.front();
+                            G4_INST *storeInst = *storeIt;
+                            G4_INST  *loadInst = inst;
+                            storeList.pop_front();
+                            DEBUG_PRINT("store-to-load forwarding:\n");
+                            DEBUG_PRINT("\tstore:\t");
+                            DEBUG_UTIL(storeInst->dump());
+                            DEBUG_PRINT("\tload :\t");
+                            DEBUG_UTIL(loadInst->dump());
+                            assert(stackPointers[getRootDeclare(storeInst->getSrc(0))] ==
+                                   stackPointers[getRootDeclare( loadInst->getSrc(0))] &&
+                                   "Store and load have different SP offset");
+                            // promote the load into mov
+                            inst->setOpcode(G4_mov);
+                            loadInst->setSrc(storeInst->getSrc(1), 0);
+                            DEBUG_PRINT("\tforwarded:");
+                            DEBUG_UTIL(inst->dump());
+                            // erase the store
+                            callerInsts.erase(storeIt);
+                        }
+                        else
+                        {
+                            assert(0 && "not implemented");
+                        }
+                    }
+                }
+            }
+
+            // All args has been removed on the stack
+            // Remove SP updating instruction
+            if (storeList.empty())
+            {
+                DEBUG_PRINT("removed:");
+                DEBUG_UTIL((*defInst[callerBuilder->getFE_SP()])->dump());
+                callerInsts.erase(defInst[callerBuilder->getFE_SP()]);
+            }
+
+        }
+
         if (inlining)
         {
             auto& builder = caller->fg.builder;
