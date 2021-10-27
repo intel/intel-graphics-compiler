@@ -33,83 +33,83 @@ THE SOFTWARE.
 #include "../../include/BiF_Definitions.cl"
 #include "../../../Headers/spirv.h"
 
-static uint2 INLINE OVERLOADABLE __convert_uint2(__bool2 b)
+static int2 INLINE OVERLOADABLE __convert_int2(__bool2 b)
 {
-    return as_uint2(-(int2)(b.x, b.y));
+    return (int2)(b.x, b.y);
 }
 
-static uint3 INLINE OVERLOADABLE __convert_uint3(__bool3 b)
+static int3 INLINE OVERLOADABLE __convert_int3(__bool3 b)
 {
-    return as_uint3(-(int3)(b.x, b.y, b.z));
+    return (int3)(b.x, b.y, b.z);
 }
 
-static uint4 INLINE OVERLOADABLE __convert_uint4(__bool4 b)
+static int4 INLINE OVERLOADABLE __convert_int4(__bool4 b)
 {
-    return as_uint4(-(int4)(b.x, b.y, b.z, b.w));
+    return (int4)(b.x, b.y, b.z, b.w);
 }
 
-static uint8 INLINE OVERLOADABLE __convert_uint8(__bool8 b)
+static int8 INLINE OVERLOADABLE __convert_int8(__bool8 b)
 {
-    return (uint8)(__convert_uint4(b.lo), __convert_uint4(b.hi));
+    return (int8)(__convert_int4(b.lo), __convert_int4(b.hi));
 }
 
-static uint16 INLINE OVERLOADABLE __convert_uint16(__bool16 b)
+static int16 INLINE OVERLOADABLE __convert_int16(__bool16 b)
 {
-    return (uint16)(__convert_uint8(b.lo), __convert_uint8(b.hi));
+    return (int16)(__convert_int8(b.lo), __convert_int8(b.hi));
 }
 
 #if defined(cl_khr_fp64)
 
-static ulong2 INLINE OVERLOADABLE __convert_ulong2(__bool2 b)
+static long2 INLINE OVERLOADABLE __convert_long2(__bool2 b)
 {
-    return as_ulong2(-(long2)(b.x, b.y));
+    return (long2)(b.x, b.y);
 }
 
-static ulong3 INLINE OVERLOADABLE __convert_ulong3(__bool3 b)
+static long3 INLINE OVERLOADABLE __convert_long3(__bool3 b)
 {
-    return as_ulong3(-(long3)(b.x, b.y, b.z));
+    return (long3)(b.x, b.y, b.z);
 }
 
-static ulong4 INLINE OVERLOADABLE __convert_ulong4(__bool4 b)
+static long4 INLINE OVERLOADABLE __convert_long4(__bool4 b)
 {
-    return as_ulong4(-(long4)(b.x, b.y, b.z, b.w));
+    return (long4)(b.x, b.y, b.z, b.w);
 }
 
-static ulong8 INLINE OVERLOADABLE __convert_ulong8(__bool8 b)
+static long8 INLINE OVERLOADABLE __convert_long8(__bool8 b)
 {
-    return (ulong8)(__convert_ulong4(b.lo), __convert_ulong4(b.hi));
+    return (long8)(__convert_long4(b.lo), __convert_long4(b.hi));
 }
 
-static ulong16 INLINE OVERLOADABLE __convert_ulong16(__bool16 b)
+static long16 INLINE OVERLOADABLE __convert_long16(__bool16 b)
 {
-    return (ulong16)(__convert_ulong8(b.lo), __convert_ulong8(b.hi));
+    return (long16)(__convert_long8(b.lo), __convert_long8(b.hi));
 }
 
 #endif
 
-static ushort2 INLINE OVERLOADABLE __convert_ushort2(__bool2 b)
+static short2 INLINE OVERLOADABLE __convert_short2(__bool2 b)
 {
-    return as_ushort2(-(short2)(b.x, b.y));
+    return (short2)(b.x, b.y);
 }
 
-static ushort3 INLINE OVERLOADABLE __convert_ushort3(__bool3 b)
+static short3 INLINE OVERLOADABLE __convert_short3(__bool3 b)
 {
-    return as_ushort3(-(short3)(b.x, b.y, b.z));
+    return (short3)(b.x, b.y, b.z);
 }
 
-static ushort4 INLINE OVERLOADABLE __convert_ushort4(__bool4 b)
+static short4 INLINE OVERLOADABLE __convert_short4(__bool4 b)
 {
-    return as_ushort4(-(ushort4)(b.x, b.y, b.z, b.w));
+    return (short4)(b.x, b.y, b.z, b.w);
 }
 
-static ushort8 INLINE OVERLOADABLE __convert_ushort8(__bool8 b)
+static short8 INLINE OVERLOADABLE __convert_short8(__bool8 b)
 {
-    return (ushort8)(__convert_ushort4(b.lo), __convert_ushort4(b.hi));
+    return (short8)(__convert_short4(b.lo), __convert_short4(b.hi));
 }
 
-static ushort16 INLINE OVERLOADABLE __convert_ushort16(__bool16 b)
+static short16 INLINE OVERLOADABLE __convert_short16(__bool16 b)
 {
-    return (ushort16)(__convert_ushort8(b.lo), __convert_ushort8(b.hi));
+    return (short16)(__convert_short8(b.lo), __convert_short8(b.hi));
 }
 
 float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _f32, )(float p) {
@@ -131,7 +131,7 @@ float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f32, )(float2 p) {
     p *= 0x1.0p-65f;
     l2 = SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v2f32_v2f32, )(__builtin_spirv_OpenCL_select_v2f32_v2f32_v2i32((float2)0.0F, (float2)1.0F, __convert_uint2(SPIRV_BUILTIN(IsInf, _v2f32, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v2f32_v2f32, )(SPIRV_OCL_BUILTIN(select, _v2f32_v2f32_v2i32, )((float2)0.0F, (float2)1.0F, __convert_int2(SPIRV_BUILTIN(IsInf, _v2f32, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(p, p);
     }
   }
@@ -151,7 +151,7 @@ float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f32, )(float3 p) {
     p *= 0x1.0p-66f;
     l2 = SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v3f32_v3f32, )(__builtin_spirv_OpenCL_select_v3f32_v3f32_v3i32((float3)0.0F, (float3)1.0F, __convert_uint3(SPIRV_BUILTIN(IsInf, _v3f32, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v3f32_v3f32, )(SPIRV_OCL_BUILTIN(select, _v3f32_v3f32_v3i32, )((float3)0.0F, (float3)1.0F, __convert_int3(SPIRV_BUILTIN(IsInf, _v3f32, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(p, p);
     }
   }
@@ -171,7 +171,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f32, )(float4 p) {
     p *= 0x1.0p-66f;
     l2 = SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v4f32_v4f32, )(__builtin_spirv_OpenCL_select_v4f32_v4f32_v4i32((float4)0.0F, (float4)1.0F, __convert_uint4(SPIRV_BUILTIN(IsInf, _v4f32, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v4f32_v4f32, )(SPIRV_OCL_BUILTIN(select, _v4f32_v4f32_v4i32, )((float4)0.0F, (float4)1.0F, __convert_int4(SPIRV_BUILTIN(IsInf, _v4f32, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(p, p);
     }
   }
@@ -199,7 +199,7 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f64, )(double2 p) {
     p *= 0x1.0p-513;
     l2 = SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v2f64_v2f64, )(__builtin_spirv_OpenCL_select_v2f64_v2f64_v2i64((double2)0.0, (double2)1.0, __convert_ulong2(SPIRV_BUILTIN(IsInf, _v2f64, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v2f64_v2f64, )(SPIRV_OCL_BUILTIN(select, _v2f64_v2f64_v2i64, )((double2)0.0, (double2)1.0, __convert_long2(SPIRV_BUILTIN(IsInf, _v2f64, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p);
     }
   }
@@ -219,7 +219,7 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f64, )(double3 p) {
     p *= 0x1.0p-514;
     l2 = SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v3f64_v3f64, )(__builtin_spirv_OpenCL_select_v3f64_v3f64_v3i64((double3)0.0, (double3)1.0, __convert_ulong3(SPIRV_BUILTIN(IsInf, _v3f64, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v3f64_v3f64, )(SPIRV_OCL_BUILTIN(select, _v3f64_v3f64_v3i64, )((double3)0.0, (double3)1.0, __convert_long3(SPIRV_BUILTIN(IsInf, _v3f64, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p);
     }
   }
@@ -239,7 +239,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f64, )(double4 p) {
     p *= 0x1.0p-514;
     l2 = SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v4f64_v4f64, )(__builtin_spirv_OpenCL_select_v4f64_v4f64_v4i64((double4)0.0, (double4)1.0, __convert_ulong4(SPIRV_BUILTIN(IsInf, _v4f64, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v4f64_v4f64, )(SPIRV_OCL_BUILTIN(select, _v4f64_v4f64_v4i64, )((double4)0.0, (double4)1.0, __convert_long4(SPIRV_BUILTIN(IsInf, _v4f64, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p);
     }
   }
@@ -268,7 +268,7 @@ half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v2f16, )(half2 p ){
     p *= HALF_MIN_SQRT;
     l2 = SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )(__builtin_spirv_OpenCL_select_v2f16_v2f16_v2i16((half2)0.0F, (half2)1.0F, __convert_ushort2(SPIRV_BUILTIN(IsInf, _v2f16, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v2f16_v2f16, )(SPIRV_OCL_BUILTIN(select, _v2f16_v2f16_v2i16, )((half2)0.0F, (half2)1.0F, __convert_short2(SPIRV_BUILTIN(IsInf, _v2f16, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(p, p);
     }
   }
@@ -288,7 +288,7 @@ half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v3f16, )(half3 p ){
     p *= HALF_MIN_SQRT;
     l2 = SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )(__builtin_spirv_OpenCL_select_v3f16_v3f16_v3i16((half3)0.0F, (half3)1.0F, __convert_ushort3(SPIRV_BUILTIN(IsInf, _v3f16, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v3f16_v3f16, )(SPIRV_OCL_BUILTIN(select, _v3f16_v3f16_v3i16, )((half3)0.0F, (half3)1.0F, __convert_short3(SPIRV_BUILTIN(IsInf, _v3f16, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(p, p);
     }
   }
@@ -308,7 +308,7 @@ half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(normalize, _v4f16, )(half4 p ){
     p *= HALF_MIN_SQRT;
     l2 = SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(p, p);
     if (l2 == INFINITY) {
-      p = SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )(__builtin_spirv_OpenCL_select_v4f16_v4f16_v4i16((half4)0.0F, (half4)1.0F, __convert_ushort4(SPIRV_BUILTIN(IsInf, _v4f16, )(p))), p);
+      p = SPIRV_OCL_BUILTIN(copysign, _v4f16_v4f16, )(SPIRV_OCL_BUILTIN(select, _v4f16_v4f16_v4i16, )((half4)0.0F, (half4)1.0F, __convert_short4(SPIRV_BUILTIN(IsInf, _v4f16, )(p))), p);
       l2 = SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(p, p);
     }
   }

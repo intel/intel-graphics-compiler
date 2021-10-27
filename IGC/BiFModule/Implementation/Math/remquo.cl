@@ -26,7 +26,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p1i32, )( float     
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
         *quo = 0;
-        result = __builtin_spirv_OpenCL_select_f32_f32_i32(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
+        result = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
     }
     else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f32, )(yy) )
     {
@@ -322,7 +322,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p0i32, )( float     
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
         *quo = 0;
-        result = __builtin_spirv_OpenCL_select_f32_f32_i32(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
+        result = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
     }
     else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f32, )(yy) )
     {
@@ -618,7 +618,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p3i32, )( float     
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
         *quo = 0;
-        result = __builtin_spirv_OpenCL_select_f32_f32_i32(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
+        result = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
     }
     else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f32, )(yy) )
     {
@@ -916,7 +916,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f32_f32_p4i32, )( flo
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
         *quo = 0;
-        result = __builtin_spirv_OpenCL_select_f32_f32_i32(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
+        result = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(0.0f, xx), xx, __intel_relaxed_isinf(yy));
     }
     else if( SPIRV_OCL_BUILTIN(fabs, _f32, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f32, )(yy) )
     {
@@ -2074,7 +2074,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p1i32, )( double   
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
         *quo = 0;
-        result = __builtin_spirv_OpenCL_select_f64_f64_i64(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
+        result = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
     }
     else if( SPIRV_OCL_BUILTIN(fabs, _f64, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f64, )(yy) )
     {
@@ -2370,7 +2370,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p0i32, )( double   
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
         *quo = 0;
-        result = __builtin_spirv_OpenCL_select_f64_f64_i64(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
+        result = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
     }
     else if( SPIRV_OCL_BUILTIN(fabs, _f64, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f64, )(yy) )
     {
@@ -2666,7 +2666,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p3i32, )( double   
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
         *quo = 0;
-        result = __builtin_spirv_OpenCL_select_f64_f64_i64(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
+        result = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
     }
     else if( SPIRV_OCL_BUILTIN(fabs, _f64, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f64, )(yy) )
     {
@@ -2964,7 +2964,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(remquo, _f64_f64_p4i32, )( double   
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
         *quo = 0;
-        result = __builtin_spirv_OpenCL_select_f64_f64_i64(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
+        result = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )(SPIRV_OCL_BUILTIN(copysign, _f64_f64, )(0.0, xx), xx, (long)__intel_relaxed_isinf(yy));
     }
     else if( SPIRV_OCL_BUILTIN(fabs, _f64, )(xx) == SPIRV_OCL_BUILTIN(fabs, _f64, )(yy) )
     {

@@ -11,87 +11,73 @@ SPDX-License-Identifier: MIT
 
 
 INLINE
-uchar __builtin_spirv_OpenCL_bitselect_i8_i8_i8( uchar a,
-                                          uchar b,
-                                          uchar c )
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i8_i8_i8, )( char a, char b, char c )
 {
-    uchar temp;
+    char temp;
     temp = (c & b) | (~c & a);
     return temp;
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, uchar, uchar, i8 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, char, char, i8 )
 
 INLINE
-ushort __builtin_spirv_OpenCL_bitselect_i16_i16_i16( ushort a,
-                                              ushort b,
-                                              ushort c )
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i16_i16_i16, )( short a, short b, short c )
 {
-    ushort temp;
+    short temp;
     temp = (c & b) | (~c & a);
     return temp;
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, ushort, ushort, i16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, short, short, i16 )
 
 INLINE
-uint __builtin_spirv_OpenCL_bitselect_i32_i32_i32( uint a,
-                                            uint b,
-                                            uint c )
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i32_i32_i32, )( int a, int b, int c )
 {
-    uint temp;
+    int temp;
     temp = (c & b) | (~c & a);
     return temp;
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, uint, uint, i32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, int, int, i32 )
 
 INLINE
-ulong __builtin_spirv_OpenCL_bitselect_i64_i64_i64( ulong a,
-                                             ulong b,
-                                             ulong c )
+long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _i64_i64_i64, )( long a, long b, long c )
 {
-    ulong temp;
+    long temp;
     temp = (c & b) | (~c & a);
     return temp;
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, ulong, ulong, i64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, long, long, i64 )
 
 INLINE
-float __builtin_spirv_OpenCL_bitselect_f32_f32_f32( float a,
-                                             float b,
-                                             float c )
+float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _f32_f32_f32, )( float a, float b, float c )
 {
-    return as_float( __builtin_spirv_OpenCL_bitselect_i32_i32_i32(as_int(a), as_int(b), as_int(c)) );
+    return as_float( SPIRV_OCL_BUILTIN(bitselect, _i32_i32_i32, )(as_int(a), as_int(b), as_int(c)) );
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, float, float, f32 )
 
 #if defined(cl_khr_fp64)
 
 INLINE
-double __builtin_spirv_OpenCL_bitselect_f64_f64_f64( double a,
-                                              double b,
-                                              double c )
+double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _f64_f64_f64, )( double a, double b, double c )
 {
-    return as_double( __builtin_spirv_OpenCL_bitselect_i64_i64_i64(as_long(a), as_long(b), as_long(c)) );
+    return as_double( SPIRV_OCL_BUILTIN(bitselect, _i64_i64_i64, )(as_long(a), as_long(b), as_long(c)) );
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, double, double, f64 )
 
 #endif // defined(cl_khr_fp64)
 
 #ifdef cl_khr_fp16
 
 INLINE
-half __builtin_spirv_OpenCL_bitselect_f16_f16_f16( half a,
-                                            half b,
-                                            half c )
+half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(bitselect, _f16_f16_f16, )( half a, half b, half c )
 {
-    return as_half( __builtin_spirv_OpenCL_bitselect_i16_i16_i16(as_short(a), as_short(b), as_short(c)) );
+    return as_half( SPIRV_OCL_BUILTIN(bitselect, _i16_i16_i16, )(as_short(a), as_short(b), as_short(c)) );
 }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, half, half, f16 )
 
 #endif
