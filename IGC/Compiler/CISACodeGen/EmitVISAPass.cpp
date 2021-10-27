@@ -146,12 +146,15 @@ EmitPass::~EmitPass()
 // Switch to payload section
 // When switching to payload section, the code redirects vKernel pointing to the payload section
 // m_destination (LiveOut of interploation) will be allocated before compiling the kernel.
-void EmitPass::ContextSwitchPayloadSection()
+void EmitPass::ContextSwitchPayloadSection(bool first)
 {
     if (m_encoder->IsCodePatchCandidate())
     {
-        m_tmpDest = m_destination;
-        m_isDuplicate = m_currShader->AppendPayloadSetup(m_destination);
+        if (first)
+        {
+            m_tmpDest = m_destination;
+        }
+        m_isDuplicate = first ? m_currShader->AppendPayloadSetup(m_destination) : false;
         // When duplication happens, multiple instructions in divergent branches write to the same VR.
         if (m_isDuplicate)
         {
@@ -172,12 +175,12 @@ void EmitPass::ContextSwitchPayloadSection()
     }
 }
 
-void EmitPass::ContextSwitchShaderBody()
+void EmitPass::ContextSwitchShaderBody(bool last)
 {
     if (m_encoder->IsCodePatchCandidate())
     {
         m_encoder->SetPayloadSectionAsSecondary();
-        if (m_isDuplicate)
+        if (last && m_isDuplicate)
         {
             m_encoder->Copy(m_tmpDest, m_destination);
             m_encoder->Push();
@@ -8303,7 +8306,6 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             unsigned int subReg = 0;
             if (usage == VFACE)
             {
-                ContextSwitchPayloadSection();
                 for (unsigned int i = 0; i < numTri; i++)
                 {
                     CVariable* src = m_currShader->BitCast(reg, ISA_TYPE_W);
@@ -8316,10 +8318,11 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                     {
                         psProgram->AppendR1Lo(src);
                     }
+                    ContextSwitchPayloadSection(i == 0);
                     m_encoder->Cast(dst, src);
                     m_encoder->Push();
+                    ContextSwitchShaderBody(i == numTri);
                 }
-                ContextSwitchShaderBody();
             }
             else if (usage == RENDER_TARGET_ARRAY_INDEX)
             {

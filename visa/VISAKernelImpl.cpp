@@ -1765,6 +1765,12 @@ int VISAKernelImpl::CreateVISAInputVar(
         }
     }
 
+    // save the G4_declare of "R1" input in builder
+    if (offset == getGRFSize() && size == getGRFSize() && m_builder)
+    {
+        m_builder->setInputR1(input->dcl);
+    }
+
     return status;
 }
 

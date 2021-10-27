@@ -619,8 +619,8 @@ public:
 
     llvm::DominatorTree* m_pDT = nullptr;
     static char ID;
-    inline void ContextSwitchPayloadSection();
-    inline void ContextSwitchShaderBody();
+    inline void ContextSwitchPayloadSection(bool first = true);
+    inline void ContextSwitchShaderBody(bool last = true);
 
 private:
     uint m_labelForDMaskJmp;

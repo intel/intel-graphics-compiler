@@ -1011,7 +1011,9 @@ void GlobalRA::removeUnreferencedDcls()
             getNumRefs(dcl) == 0 &&
             dcl->getRegVar()->isPhyRegAssigned() == false &&
             dcl != kernel.fg.builder->getBuiltinR0()
-            && dcl != kernel.fg.builder->getSpillSurfaceOffset();
+            && dcl != kernel.fg.builder->getSpillSurfaceOffset() &&
+            (!kernel.fg.builder->getOptions()->getuInt32Option(vISA_CodePatch) ||
+             dcl->getAliasDeclare() != kernel.fg.builder->getInputR1());
     };
 
     kernel.Declares.erase(
