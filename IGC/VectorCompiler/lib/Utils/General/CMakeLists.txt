@@ -11,6 +11,7 @@ set(GENERAL_UTILS_SOURCES
   InstRebuilder.cpp
   Types.cpp
   FunctionAttrs.cpp
+  DebugInfo.cpp
   )
 
 add_library(VCGeneralUtils ${GENERAL_UTILS_SOURCES})
