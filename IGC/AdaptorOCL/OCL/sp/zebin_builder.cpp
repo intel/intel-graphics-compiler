@@ -127,16 +127,10 @@ void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& program
 
 void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
 {
-    if (annotations.m_initConstantAnnotation.empty())
-        return;
-
+    // General constants: .data.const and .bss.const
     // create a data section for global constant variables
-    // There could be two constant data sections: general constants and string literals
-
-    // General constants
-    // create a data section for global constant variables
-    auto& ca = annotations.m_initConstantAnnotation.front();
-    if (ca->AllocSize) {
+    if (annotations.m_initConstantAnnotation && annotations.m_initConstantAnnotation->AllocSize) {
+        auto& ca = annotations.m_initConstantAnnotation;
         // the normal .data.const size
         uint32_t dataSize = ca->InlineData.size();
         // the zero-initialize variables size, the .bss.const size
@@ -170,16 +164,10 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
         }
     }
 
-    if (annotations.m_initConstantAnnotation.size() < 2)
-      return;
-
-    // At most two const global buffers: general and string literals
-    IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 2);
-
-    // String literals
-    auto& caString = annotations.m_initConstantAnnotation[1];
-    if (caString->InlineData.size() > 0)
-    {
+    // String literals for printf: .data.const.string
+    if (annotations.m_initConstantStringAnnotation &&
+        annotations.m_initConstantStringAnnotation->AllocSize) {
+        auto& caString = annotations.m_initConstantStringAnnotation;
         uint32_t dataSize = caString->InlineData.size();
         uint32_t paddingSize = caString->AllocSize - dataSize;
         uint32_t alignment = caString->Alignment;
@@ -190,13 +178,11 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
 
 void ZEBinaryBuilder::addGlobals(const IGC::SOpenCLProgramInfo& annotations)
 {
-    if (annotations.m_initGlobalAnnotation.empty())
+    if (annotations.m_initGlobalAnnotation == nullptr)
         return;
 
     // create a data section for global variables
-    // FIXME: not sure in what cases there will be more than one global buffer
-    IGC_ASSERT(annotations.m_initGlobalAnnotation.size() == 1);
-    auto& ca = annotations.m_initGlobalAnnotation.front();
+    auto& ca = annotations.m_initGlobalAnnotation;
 
     if (!ca->AllocSize)
         return;

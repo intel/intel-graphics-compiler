@@ -321,7 +321,9 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
     ICBE_DPF_STR(output, GFXDBG_HARDWARE, "** Program Scope patch lists **\n");
     ICBE_DPF_STR(output, GFXDBG_HARDWARE, "\n");
 
-    for (const auto &iter : annotations.m_initConstantAnnotation)
+    // patch-token path should not have separated buffer for printf string
+    IGC_ASSERT(annotations.m_initConstantStringAnnotation == nullptr);
+    if (annotations.m_initConstantAnnotation)
     {
         iOpenCL::SPatchAllocateConstantMemorySurfaceProgramBinaryInfo   patch;
         memset( &patch, 0, sizeof( patch ) );
@@ -329,38 +331,42 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
         patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_CONSTANT_MEMORY_SURFACE_PROGRAM_BINARY_INFO;
         patch.Size = sizeof( patch );
         patch.ConstantBufferIndex = DEFAULT_CONSTANT_BUFFER_INDEX;
-        patch.InlineDataSize = (DWORD)iter->AllocSize;
+        patch.InlineDataSize = (DWORD)annotations.m_initConstantAnnotation->AllocSize;
 
         retValue = AddPatchItem(
             patch,
             membuf );
 
         // And now write the actual data
-        membuf.Write((char*)iter->InlineData.data(), iter->InlineData.size());
+        membuf.Write((char*)annotations.m_initConstantAnnotation->InlineData.data(),
+            annotations.m_initConstantAnnotation->InlineData.size());
         // Pad the end with zeros
-        unsigned zeroPadding = iter->AllocSize - iter->InlineData.size();
+        unsigned zeroPadding = annotations.m_initConstantAnnotation->AllocSize -
+            annotations.m_initConstantAnnotation->InlineData.size();
         membuf.AddPadding(zeroPadding);
     }
 
-    for (const auto& iter : annotations.m_initGlobalAnnotation)
+    if (annotations.m_initGlobalAnnotation)
     {
-        iOpenCL::SPatchAllocateGlobalMemorySurfaceProgramBinaryInfo   patch;
+        iOpenCL::SPatchAllocateGlobalMemorySurfaceProgramBinaryInfo patch;
         memset( &patch, 0, sizeof( patch ) );
 
         patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_GLOBAL_MEMORY_SURFACE_PROGRAM_BINARY_INFO;
         patch.Size = sizeof( patch );
         patch.Type = iOpenCL::GLOBAL_BUFFER_TYPE_INLINE;
         patch.GlobalBufferIndex = 0;
-        patch.InlineDataSize = (DWORD)iter->AllocSize;
+        patch.InlineDataSize = (DWORD)annotations.m_initGlobalAnnotation->AllocSize;
 
         retValue = AddPatchItem(
             patch,
             membuf );
 
         // And now write the actual data
-        membuf.Write((char*)iter->InlineData.data(), iter->InlineData.size());
+        membuf.Write((char*)annotations.m_initGlobalAnnotation->InlineData.data(),
+            annotations.m_initGlobalAnnotation->InlineData.size());
         // Pad the end with zeros
-        unsigned zeroPadding = iter->AllocSize - iter->InlineData.size();
+        unsigned zeroPadding = annotations.m_initGlobalAnnotation->AllocSize -
+            annotations.m_initGlobalAnnotation->InlineData.size();
         membuf.AddPadding(zeroPadding);
     }
 

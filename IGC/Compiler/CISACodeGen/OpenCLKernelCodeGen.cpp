@@ -2012,7 +2012,7 @@ namespace IGC
             initConstant->InlineData.resize(bufferSize);
             memcpy_s(initConstant->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
-            ctx->m_programInfo.m_initConstantAnnotation.push_back(std::move(initConstant));
+            ctx->m_programInfo.m_initConstantAnnotation = std::move(initConstant);
 
             if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
                 modMD->compOpt.EnableZEBinary)
@@ -2027,7 +2027,7 @@ namespace IGC
                 initStringConstant->InlineData.resize(bufferSize);
                 memcpy_s(initStringConstant->InlineData.data(), bufferSize, ipsbStringMDHandle.Buffer.data(), bufferSize);
 
-                ctx->m_programInfo.m_initConstantAnnotation.push_back(std::move(initStringConstant));
+                ctx->m_programInfo.m_initConstantStringAnnotation = std::move(initStringConstant);
             }
         }
 
@@ -2043,7 +2043,7 @@ namespace IGC
             initGlobal->InlineData.resize(bufferSize);
             memcpy_s(initGlobal->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
-            ctx->m_programInfo.m_initGlobalAnnotation.push_back(std::move(initGlobal));
+            ctx->m_programInfo.m_initGlobalAnnotation = std::move(initGlobal);
         }
 
         {

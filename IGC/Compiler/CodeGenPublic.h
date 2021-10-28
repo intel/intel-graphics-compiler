@@ -709,8 +709,9 @@ namespace IGC
             unsigned int m_entries = 0;
         };
 
-        std::vector<std::unique_ptr<iOpenCL::InitConstantAnnotation> > m_initConstantAnnotation;
-        std::vector<std::unique_ptr<iOpenCL::InitGlobalAnnotation> > m_initGlobalAnnotation;
+        std::unique_ptr<iOpenCL::InitConstantAnnotation> m_initConstantAnnotation;
+        std::unique_ptr<iOpenCL::InitConstantAnnotation> m_initConstantStringAnnotation;
+        std::unique_ptr<iOpenCL::InitGlobalAnnotation> m_initGlobalAnnotation;
         std::vector<std::unique_ptr<iOpenCL::ConstantPointerAnnotation> > m_initConstantPointerAnnotation;
         std::vector<std::unique_ptr<iOpenCL::GlobalPointerAnnotation> > m_initGlobalPointerAnnotation;
         std::vector<std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> > m_initKernelTypeAnnotation;

@@ -799,12 +799,11 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
   auto ConstantAnnotation = getDataAnnotation<iOpenCL::InitConstantAnnotation>(
       ModuleInfo.Constant.Data);
   if (ConstantAnnotation)
-    ProgramInfo.m_initConstantAnnotation.push_back(
-        std::move(ConstantAnnotation));
+    ProgramInfo.m_initConstantAnnotation = std::move(ConstantAnnotation);
   auto GlobalAnnotation =
       getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.Global.Data);
   if (GlobalAnnotation)
-    ProgramInfo.m_initGlobalAnnotation.push_back(std::move(GlobalAnnotation));
+    ProgramInfo.m_initGlobalAnnotation = std::move(GlobalAnnotation);
 
   // Symbols.
   std::tie(ProgramInfo.m_legacySymbolTable.m_buffer,
