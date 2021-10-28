@@ -104,8 +104,12 @@ bool G4Verifier::verifyInst(G4_INST *inst)
             return verifyDefUseChain(inst);
         }
 
-        // feature verification
-        verifyBFMixedMode(inst);
+        if (passIndex == Optimizer::PI_HWConformityChk
+            || passIndex == Optimizer::PI_addSWSBInfo)
+        {
+            // feature verification. Do it twice for now.
+            verifyBFMixedMode(inst);
+        }
     }
     return true;
 }
@@ -1257,8 +1261,8 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         return false;
     };
 
-    // Skip dpas as it has been verified separately
-    if (inst->isDpas())
+    // Skip dpas/send as it has been verified separately
+    if (inst->isDpas() || inst->isSend())
         return;
 
     // Skip if no BF usage
