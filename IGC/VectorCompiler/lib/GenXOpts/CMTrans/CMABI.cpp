@@ -457,13 +457,16 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
   Function *Fn = LI.getFunction();
   for (IteratorTy I = Globals.begin(), E = Globals.end(); I != E; ++I) {
     GlobalVariable *GV = (*I);
-    LLVM_DEBUG(dbgs() << "Localizing global: " << *GV);
+    LLVM_DEBUG(dbgs() << "Localizing global: " << *GV << "\n  ");
 
     Instruction &FirstI = *Fn->getEntryBlock().begin();
     Type *ElemTy = GV->getType()->getElementType();
     AllocaInst *Alloca = new AllocaInst(ElemTy, 0 /*AddressSpace*/,
                                         GV->getName() + ".local", &FirstI);
-    Alloca->setAlignment(IGCLLVM::getCorrectAlign(GV->getAlignment()));
+
+    if (GV->getAlignment())
+      Alloca->setAlignment(IGCLLVM::getCorrectAlign(GV->getAlignment()));
+
     if (!isa<UndefValue>(GV->getInitializer()))
       new StoreInst(GV->getInitializer(), Alloca, &FirstI);
 
