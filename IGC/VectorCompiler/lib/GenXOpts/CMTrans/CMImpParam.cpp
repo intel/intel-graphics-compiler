@@ -295,7 +295,7 @@ private:
     getImplicitUseInfo(F).addImplicit(IID);
   }
 
-  GlobalVariable *getIIDGlobal(Function *F, unsigned IID) {
+  GlobalVariable *getOrCreateGlobalForIID(Function *F, unsigned IID) {
     if (GlobalsMap.count(IID))
       return GlobalsMap[IID];
 
@@ -311,7 +311,7 @@ private:
     return NewVar;
   }
 
-  Type *getIntrinRetType(LLVMContext &Context, unsigned IID) {
+  static Type *getIntrinRetType(LLVMContext &Context, unsigned IID) {
     switch (IID) {
       case GenXIntrinsic::genx_print_buffer:
         return llvm::Type::getInt64Ty(Context);
@@ -403,7 +403,8 @@ bool CMImpParam::runOnModule(Module &M) {
 // Replace the given instruction with a load from a global
 // The method erases the original call instruction.
 void CMImpParam::replaceWithGlobal(CallInst *CI, unsigned IID) {
-  GlobalVariable *GV = getIIDGlobal(CI->getParent()->getParent(), IID);
+  GlobalVariable *GV =
+      getOrCreateGlobalForIID(CI->getParent()->getParent(), IID);
   LoadInst *Load = new LoadInst(GV->getType()->getPointerElementType(), GV, "",
                                 /* isVolatile */ false, CI);
   Load->takeName(CI);
