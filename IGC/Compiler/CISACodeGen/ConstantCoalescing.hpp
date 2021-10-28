@@ -77,6 +77,11 @@ namespace IGC
 
         virtual bool runOnFunction(llvm::Function& func) override;
     private:
+        enum ExtensionKind {
+            EK_NotExtended,
+            EK_SignExt,
+            EK_ZeroExt,
+        };
 
         class IRBuilderWrapper : protected llvm::IGCIRBuilder<>
         {
@@ -186,6 +191,12 @@ namespace IGC
                 return val;
             }
 
+            Value* CreateSExt(Value* V, Type* DestTy, const Twine& Name = "") {
+                Value* val = IRBuilder<>::CreateSExt(V, DestTy, Name);
+                m_TT->RegisterNewValueAndAssignID(val);
+                return val;
+            }
+
             Value* CreateZExtOrTrunc(Value* V, Type* DestTy, const Twine& Name = "") {
                 Value* val = IRBuilder<>::CreateZExtOrTrunc(V, DestTy, Name);
                 if (val != V)
@@ -240,22 +251,26 @@ namespace IGC
         /// check if two access have the same buffer-base
         static bool CompareBufferBase(const llvm::Value* bufIdxV1, uint bufid1, const llvm::Value* bufIdxV2, uint bufid2);
         /// find element base and element imm-offset
-        llvm::Value* SimpleBaseOffset(llvm::Value* elt_idxv, uint& offset);
+        llvm::Value* SimpleBaseOffset(llvm::Value* elt_idxv, uint& offset, ExtensionKind &Extension);
         /// finds the minimum power-of-2 alignment for an offset in buffer
         uint GetOffsetAlignment(llvm::Value* val) const;
         /// used along ocl path, based upon int2ptr
-        bool   DecomposePtrExp(llvm::Value* ptr_val, llvm::Value*& buf_idxv, llvm::Value*& elt_idxv, uint& eltid);
+        bool   DecomposePtrExp(
+            llvm::Value* ptr_val, llvm::Value*& buf_idxv,
+            llvm::Value*& elt_idxv, uint& eltid, ExtensionKind &Extension);
         static uint CheckVectorElementUses(const llvm::Instruction* load);
-        void   AdjustChunk(BufChunk* cov_chunk, uint start_adj, uint size_adj);
+        void   AdjustChunk(BufChunk* cov_chunk, uint start_adj, uint size_adj, const ExtensionKind &Extension);
         void   EnlargeChunk(BufChunk* cov_chunk, uint size_adj);
         void   MoveExtracts(BufChunk* cov_chunk, llvm::Instruction* load, uint start_adj);
-        llvm::Value* FormChunkAddress(BufChunk* chunk);
-        void   CombineTwoLoads(BufChunk* cov_chunk, llvm::Instruction* load, uint eltid, uint numelt);
-        llvm::Instruction* CreateChunkLoad(llvm::Instruction* load, BufChunk* chunk, uint eltid, uint alignment);
+        llvm::Value* FormChunkAddress(BufChunk* chunk, const ExtensionKind &Extension);
+        void   CombineTwoLoads(BufChunk* cov_chunk, llvm::Instruction* load, uint eltid, uint numelt, const ExtensionKind &Extension);
+        llvm::Instruction* CreateChunkLoad(
+            llvm::Instruction* load, BufChunk* chunk, uint eltid, uint alignment, const ExtensionKind &Extension);
         llvm::Instruction* AddChunkExtract(llvm::Instruction* load, uint offset);
         llvm::Instruction* FindOrAddChunkExtract(BufChunk* cov_chunk, uint eltid);
         llvm::Instruction* EnlargeChunkAddExtract(BufChunk* cov_chunk, uint size_adj, uint eltid);
-        llvm::Instruction* AdjustChunkAddExtract(BufChunk* cov_chunk, uint start_adj, uint size_adj, uint eltid);
+        llvm::Instruction* AdjustChunkAddExtract(
+            BufChunk* cov_chunk, uint start_adj, uint size_adj, uint eltid, const ExtensionKind &Extension);
         llvm::Instruction* CreateSamplerLoad(llvm::Value* index, llvm::Value* resourcePtr, uint addrSpace);
         void ReplaceLoadWithSamplerLoad(
             Instruction* loadToReplace,
@@ -265,11 +280,13 @@ namespace IGC
             llvm::Value* bufIdxV, uint addrSpace,
             llvm::Value* eltIdxV, uint offsetInBytes,
             uint maxEltPlus,
+            const ExtensionKind &Extension,
             std::vector<BufChunk*>& chunk_vec);
         void MergeScatterLoad(llvm::Instruction* load,
             llvm::Value* bufIdxV, uint bufid,
             llvm::Value* eltIdxV, uint offsetInBytes,
             uint maxEltPlus,
+            const ExtensionKind &Extension,
             std::vector<BufChunk*>& chunk_vec);
         void ScatterToSampler(llvm::Instruction* load,
             llvm::Value* bufIdxV, uint bufid,
