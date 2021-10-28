@@ -16,7 +16,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p1i32, )( float         x
     if( __intel_relaxed_isnormal( x ) )
     {
         temp = as_float( (int)(( as_int( x ) & FLOAT_MANTISSA_MASK ) + FLOAT_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
+        temp = __builtin_spirv_OpenCL_select_f32_f32_i32( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp, x );
 
         *exp = ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - ( FLOAT_BIAS - (int)(1) );
@@ -33,7 +33,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p1i32, )( float         x
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f32_f32_i32( temp,
                        (float)(0.5f), (int)(temp == (float)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp,
                          x );
@@ -234,7 +234,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( float          
     if( __intel_relaxed_isnormal( x ) )
     {
         temp = as_float( (int)(( as_int( x ) & FLOAT_MANTISSA_MASK ) + FLOAT_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
+        temp = __builtin_spirv_OpenCL_select_f32_f32_i32( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp, x );
 
         *exp = ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - ( FLOAT_BIAS - (int)(1) );
@@ -251,7 +251,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( float          
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f32_f32_i32( temp,
                        (float)(0.5f), (int)(temp == (float)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp,
                          x );
@@ -452,7 +452,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p3i32, )( float        x,
     if( __intel_relaxed_isnormal( x ) )
     {
         temp = as_float( (int)(( as_int( x ) & FLOAT_MANTISSA_MASK ) + FLOAT_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
+        temp = __builtin_spirv_OpenCL_select_f32_f32_i32( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp, x );
 
         *exp = ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - ( FLOAT_BIAS - (int)(1) );
@@ -469,7 +469,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p3i32, )( float        x,
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f32_f32_i32( temp,
                        (float)(0.5f), (int)(temp == (float)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp,
                          x );
@@ -673,7 +673,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( float          
     if( __intel_relaxed_isnormal( x ) )
     {
         temp = as_float( (int)(( as_int( x ) & FLOAT_MANTISSA_MASK ) + FLOAT_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
+        temp = __builtin_spirv_OpenCL_select_f32_f32_i32( temp, (float)(0.5f), (int)(temp == (float)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp, x );
 
         *exp = ( (as_int( x ) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - ( FLOAT_BIAS - (int)(1) );
@@ -690,7 +690,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( float          
         int non_mantissa_bits = FLOAT_BITS - FLOAT_MANTISSA_BITS;
         temp = as_float( (int)(( ( as_int( x ) << ( lz - (non_mantissa_bits - (int)(1)) ) ) & FLOAT_MANTISSA_MASK ))  );
         temp = as_float( (int)(( as_int( temp ) + FLOAT_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f32_f32_i32( temp,
                        (float)(0.5f), (int)(temp == (float)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )( temp,
                          x );
@@ -895,7 +895,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p1i32, )( half          x,
     if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
+        temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp, x );
 
         *exp = ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS) - ( HALF_BIAS - (short)(1) );
@@ -912,7 +912,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p1i32, )( half          x,
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp,
                        (half)(0.5f), (short)(temp == (half)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp,
                          x );
@@ -1113,7 +1113,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( half           x
     if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
+        temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp, x );
 
         *exp = ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS) - ( HALF_BIAS - (short)(1) );
@@ -1130,7 +1130,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( half           x
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp,
                        (half)(0.5f), (short)(temp == (half)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp,
                          x );
@@ -1331,7 +1331,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p3i32, )( half         x,
     if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
+        temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp, x );
 
         *exp = ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS) - ( HALF_BIAS - (short)(1) );
@@ -1348,7 +1348,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p3i32, )( half         x,
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp,
                        (half)(0.5f), (short)(temp == (half)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp,
                          x );
@@ -1553,7 +1553,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( half           x
     if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
+        temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp, x );
 
         *exp = ( (as_short( x ) & HALF_EXPONENT_MASK ) >> HALF_MANTISSA_BITS) - ( HALF_BIAS - (short)(1) );
@@ -1570,7 +1570,7 @@ half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( half           x
         short non_mantissa_bits = HALF_BITS - HALF_MANTISSA_BITS;
         temp = as_half( (short)(( ( as_short( x ) << ( lz - (non_mantissa_bits - (short)(1)) ) ) & HALF_MANTISSA_MASK ))  );
         temp = as_half( (short)(( as_short( temp ) + HALF_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f16_f16_i16, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp,
                        (half)(0.5f), (short)(temp == (half)(1.0f)) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f16_f16, )( temp,
                          x );
@@ -1775,7 +1775,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p1i32, )( double        
     if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp, 0.5, (long)(temp == 1.0) );
+        temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp, 0.5, (long)(temp == 1.0) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp, x );
 
         *exp = ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - ( DOUBLE_BIAS - (long)(1) );
@@ -1792,7 +1792,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p1i32, )( double        
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp,
                        0.5, (long)(temp == 1.0) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp,
                          x );
@@ -1993,7 +1993,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( double        
     if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp, 0.5, (long)(temp == 1.0) );
+        temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp, 0.5, (long)(temp == 1.0) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp, x );
 
         *exp = ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - ( DOUBLE_BIAS - (long)(1) );
@@ -2010,7 +2010,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( double        
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp,
                        0.5, (long)(temp == 1.0) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp,
                          x );
@@ -2211,7 +2211,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p3i32, )( double       x
     if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp, 0.5, (long)(temp == 1.0) );
+        temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp, 0.5, (long)(temp == 1.0) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp, x );
 
         *exp = ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - ( DOUBLE_BIAS - (long)(1) );
@@ -2228,7 +2228,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p3i32, )( double       x
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp,
                        0.5, (long)(temp == 1.0) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp,
                          x );
@@ -2431,7 +2431,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( double       x
     if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp, 0.5, (long)(temp == 1.0) );
+        temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp, 0.5, (long)(temp == 1.0) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp, x );
 
         *exp = ( (as_long( x ) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - ( DOUBLE_BIAS - (long)(1) );
@@ -2448,7 +2448,7 @@ double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( double       x
         long non_mantissa_bits = DOUBLE_BITS - DOUBLE_MANTISSA_BITS;
         temp = as_double( (long)(( ( as_long( x ) << ( lz - (non_mantissa_bits - (long)(1)) ) ) & DOUBLE_MANTISSA_MASK ))  );
         temp = as_double( (long)(( as_long( temp ) + DOUBLE_NEG_ONE_EXP_MASK )) );
-        temp = SPIRV_OCL_BUILTIN(select, _f64_f64_i64, )( temp,
+        temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp,
                        0.5, (long)(temp == 1.0) );
         temp = SPIRV_OCL_BUILTIN(copysign, _f64_f64, )( temp,
                          x );

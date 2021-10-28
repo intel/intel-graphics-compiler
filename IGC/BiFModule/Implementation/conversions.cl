@@ -29,7 +29,7 @@ INLINE float __intel_convert_float_rtp_rtn(double a, uint direction);
 // Helper function for conversions with saturation
 static ushort OVERLOADABLE sat_ushort(half _T, ushort _R)
 {
-  return SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )(
+  return __builtin_spirv_OpenCL_select_i16_i16_i16(
     _R, (ushort)0,
     SPIRV_BUILTIN(ConvertFToU, _i16_f16, _Rushort)(
         (half)((_T < (half)0) | SPIRV_BUILTIN(IsNan, _f16, )(_T))));
@@ -40,18 +40,18 @@ static ushort OVERLOADABLE sat_ushort(half _T, ushort _R)
 // Helper function for conversions with saturation
 static uint OVERLOADABLE sat_uint(half _T, uint _R)
 {
-  return SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
-    as_int(_R), 0,
-    SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(
+  return __builtin_spirv_OpenCL_select_i32_i32_i32(
+    _R, (uint)0,
+    SPIRV_BUILTIN(ConvertFToU, _i32_f16, _Ruint)(
         (half)((_T < (half)0) | SPIRV_BUILTIN(IsNan, _f16, )(_T))));
 }
 #endif
 
 static ulong OVERLOADABLE sat_ulong(half _T, ulong _R)
 {
-  return SPIRV_OCL_BUILTIN(select, _i64_i64_i64, )(
-    as_long(_R), (long)0,
-    SPIRV_BUILTIN(ConvertFToS, _i64_f16, _Rlong)(
+  return __builtin_spirv_OpenCL_select_i64_i64_i64(
+    _R, (ulong)0,
+    SPIRV_BUILTIN(ConvertFToU, _i64_f16, _Rulong)(
         (half)((_T < (half)0) | SPIRV_BUILTIN(IsNan, _f16, )(_T))));
 }
 
@@ -59,15 +59,15 @@ static ulong OVERLOADABLE sat_ulong(half _T, ulong _R)
 // Helper function for conversions with saturation
 static uchar clamp_sat_uchar(half _T, uchar _R)
 {
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
+  _R = __builtin_spirv_OpenCL_select_i8_i8_i8(
     _R, (uchar)0,
     SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(
       (half)(_T < (half)0)));
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
+  _R = __builtin_spirv_OpenCL_select_i8_i8_i8(
     _R, (uchar)UCHAR_MAX,
     SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(
       (half)(_T > (half)UCHAR_MAX)));
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
+  _R = __builtin_spirv_OpenCL_select_i8_i8_i8(
     _R, (uchar)0,
     SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(
       (half) SPIRV_BUILTIN(IsNan, _f16, )(_T)));
@@ -79,15 +79,15 @@ static uchar clamp_sat_uchar(half _T, uchar _R)
 // Helper function for conversions with saturation
 static char clamp_sat_char(half _T, char _R)
 {
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
+  _R = __builtin_spirv_OpenCL_select_i8_i8_i8(
     _R, (char)CHAR_MIN,
     SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(
       (half)(_T < (half)CHAR_MIN)));
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
+  _R = __builtin_spirv_OpenCL_select_i8_i8_i8(
     _R, (char)CHAR_MAX,
     SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(
       (half)(_T > (half)CHAR_MAX)));
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
+  _R = __builtin_spirv_OpenCL_select_i8_i8_i8(
     _R, (char)0,
     SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(
       (half) SPIRV_BUILTIN(IsNan, _f16, )(_T)));
@@ -99,15 +99,15 @@ static char clamp_sat_char(half _T, char _R)
 // Helper function for conversions with saturation
 static short clamp_sat_short(half _T, short _R)
 {
-  _R = SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )(
+  _R = __builtin_spirv_OpenCL_select_i16_i16_i16(
     _R, (short)SHRT_MIN,
     SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(
       (half)(_T < (half)SHRT_MIN)));
-  _R = SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )(
+  _R = __builtin_spirv_OpenCL_select_i16_i16_i16(
     _R, (short)SHRT_MAX,
     SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(
       (half)(_T > (half)SHRT_MAX)));
-  _R = SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )(
+  _R = __builtin_spirv_OpenCL_select_i16_i16_i16(
     _R, (short)0,
     SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(
       (half) SPIRV_BUILTIN(IsNan, _f16, )(_T)));
@@ -119,15 +119,15 @@ static short clamp_sat_short(half _T, short _R)
 // Helper function for conversions with saturation
 static int clamp_sat_int(half _T, int _R)
 {
-    _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
+    _R = __builtin_spirv_OpenCL_select_i32_i32_i32(
         _R, (int)INT_MIN,
         SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(
           (half)(_T < (half)INT_MIN)));
-    _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
+    _R = __builtin_spirv_OpenCL_select_i32_i32_i32(
         _R, (int)INT_MAX,
         SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(
           (half)(_T > (half)INT_MAX)));
-    _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
+    _R = __builtin_spirv_OpenCL_select_i32_i32_i32(
         _R, (int)0,
         SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(
           (half) SPIRV_BUILTIN(IsNan, _f16, )(_T)));
@@ -144,18 +144,18 @@ static int clamp_sat_int(half _T, int _R)
 #define SAT_CLAMP_HELPER_SIGN(TO, FROM, TONAME, TOA, INTTYPE, FROMA)        \
 static TO clamp_sat_##TO##_##FROM(TO _R, FROM _T)                           \
 {                                                                           \
-  _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)(_T < (FROM)TONAME##_MIN)) ? TONAME##_MIN : _R;  \
-  _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)(_T > (FROM)TONAME##_MAX)) ? TONAME##_MAX : _R;  \
-  _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)SPIRV_BUILTIN(IsNan, _##TOA, )(_T)) ? 0 : _R;    \
+  _R = __builtin_spirv_OpenCL_select_##TOA##_##TOA##_##INTTYPE(_R, (TO)TONAME##_MIN, SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)(_T < (FROM)TONAME##_MIN)));  \
+  _R = __builtin_spirv_OpenCL_select_##TOA##_##TOA##_##INTTYPE(_R, (TO)TONAME##_MAX, SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)(_T > (FROM)TONAME##_MAX)));  \
+  _R = __builtin_spirv_OpenCL_select_##TOA##_##TOA##_##INTTYPE(_R, (TO)0,SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)SPIRV_BUILTIN(IsNan, _##TOA, )(_T)));     \
   return _R;                                                                \
 }
 
 #define SAT_CLAMP_HELPER_UNSIGNED(TO, FROM, TONAME, TOA, INTTYPE, FROMA)    \
 static TO clamp_sat_##TO##_##FROM(TO _R, FROM _T)                           \
 {                                                                           \
-  _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)(_T < (FROM)TONAME##_MIN)) ? TONAME##_MIN : _R;  \
-  _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)(_T > (FROM)TONAME##_MAX)) ? TONAME##_MAX : _R;  \
-  _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)SPIRV_BUILTIN(IsNan, _##TOA, )(_T)) ? 0 : _R;    \
+  _R = __builtin_spirv_OpenCL_select_##TOA##_##TOA##_##INTTYPE(_R, (TO)TONAME##_MIN, SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)(_T < (FROM)TONAME##_MIN)));  \
+  _R = __builtin_spirv_OpenCL_select_##TOA##_##TOA##_##INTTYPE(_R, (TO)TONAME##_MAX, SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)(_T > (FROM)TONAME##_MAX)));  \
+  _R = __builtin_spirv_OpenCL_select_##TOA##_##TOA##_##INTTYPE(_R, (TO)0, SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)SPIRV_BUILTIN(IsNan, _##TOA, )(_T)));    \
   return _R;                                                                \
 }
 #if defined(cl_khr_fp64)
@@ -1352,14 +1352,15 @@ uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i32_f32, _Ruint_sa
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i32_f32, _Ruint_sat_rtz)(float FloatValue)
 {
   uint _R = SPIRV_BUILTIN(ConvertFToU, _RTZ_i32_f32, _Ruint_rtz)(FloatValue);
-  _R = SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(
-      (float)(FloatValue > (float)UINT_MAX)) ?
-      (uint)UINT_MAX : _R;
-
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(
+  _R = __builtin_spirv_OpenCL_select_i32_i32_i32(
+    _R, (uint)UINT_MAX,
+    SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(
+      (float)(FloatValue > (float)UINT_MAX)));
+  return __builtin_spirv_OpenCL_select_i32_i32_i32(
+    _R, (uint)0,
+    SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(
       (float)((FloatValue < (float)0) |
-          SPIRV_BUILTIN(IsNan, _f32, )(FloatValue))) ?
-      (uint)0 : _R;
+      SPIRV_BUILTIN(IsNan, _f32, )(FloatValue))));
 }
 
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i32_f32, _Ruint_sat_rtp)(float FloatValue)
@@ -1910,7 +1911,7 @@ char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i8_f32, _Rchar_rtn)(flo
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f32, _Rchar_sat)(float FloatValue)
 {
   float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, (float)CHAR_MIN, (float)CHAR_MAX);
-  res = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(res, 0.0f , SPIRV_BUILTIN(IsNan, _f32, )(FloatValue));
+  res = __builtin_spirv_OpenCL_select_f32_f32_i32(res, 0.0f , SPIRV_BUILTIN(IsNan, _f32, )(FloatValue));
   return (char)res;
 }
 
@@ -1968,7 +1969,7 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i16_f32, _Rshort_rtn)(f
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f32, _Rshort_sat)(float FloatValue)
 {
   float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, (float)SHRT_MIN, (float)SHRT_MAX);
-  res = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(res, 0.0f , SPIRV_BUILTIN(IsNan, _f32, )(FloatValue));
+  res = __builtin_spirv_OpenCL_select_f32_f32_i32(res, 0.0f , SPIRV_BUILTIN(IsNan, _f32, )(FloatValue));
   return (short)res;
 }
 
@@ -2032,15 +2033,15 @@ int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i32_f32, _Rint_sat_
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i32_f32, _Rint_sat_rtz)(float FloatValue)
 {
   int _R = SPIRV_BUILTIN(ConvertFToS, _RTZ_i32_f32, _Rint_rtz)(FloatValue);
-  _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
+  _R = __builtin_spirv_OpenCL_select_i32_i32_i32(
     _R, (int)INT_MIN,
     SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(
       (float)(FloatValue < (float)INT_MIN)));
-  _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
+  _R = __builtin_spirv_OpenCL_select_i32_i32_i32(
     _R, (int)INT_MAX,
     SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(
       (float)(FloatValue > (float)INT_MAX)));
-  return SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
+  return __builtin_spirv_OpenCL_select_i32_i32_i32(
     _R, (int)0,
     SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(
       (float) SPIRV_BUILTIN(IsNan, _f32, )(FloatValue)));

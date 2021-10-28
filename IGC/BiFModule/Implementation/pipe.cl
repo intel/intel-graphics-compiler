@@ -93,9 +93,10 @@ INLINE static __spirv_ReserveId SetInvalidRid()
 
 INLINE static uint advance( __global pipe_control_intel_t* p, uint base, uint stride )
 {
-    return (p->pipe_max_packets <= base + stride) ?
-        (base + stride - p->pipe_max_packets) :
-        (base + stride);
+    return __builtin_spirv_OpenCL_select_i32_i32_i32(
+            base + stride,
+            base + stride - p->pipe_max_packets,
+            ( p->pipe_max_packets <= base + stride ) );
 }
 
 INLINE static __spirv_ReserveId create_reserve_id( uint idx )
@@ -585,7 +586,10 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetNumPipePackets, _Pipe_ro_i32, )( __spir
   uint head = read_head( p );
   uint tail = read_tail( p );
 
-  return (head <= tail) ? (tail - head) : (p->pipe_max_packets - head + tail);
+  return __builtin_spirv_OpenCL_select_i32_i32_i32(
+    p->pipe_max_packets - head + tail,
+    tail - head,
+    (uint)(head <= tail) );
 }
 
 uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetNumPipePackets, _Pipe_wo_i32, )( __spirv_Pipe_wo Pipe, int PacketSize/*, int PacketAlignment */)
@@ -596,7 +600,10 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetNumPipePackets, _Pipe_wo_i32, )( __spir
   uint head = read_head( p );
   uint tail = read_tail( p );
 
-  return (head <= tail) ? (tail - head) : (p->pipe_max_packets - head + tail);
+  return __builtin_spirv_OpenCL_select_i32_i32_i32(
+    p->pipe_max_packets - head + tail,
+    tail - head,
+    (uint)(head <= tail) );
 }
 
 uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetMaxPipePackets, _Pipe_ro_i32, )( __spirv_Pipe_ro Pipe, int PacketSize/*, int PacketAlignment */)

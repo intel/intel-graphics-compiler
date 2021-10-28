@@ -928,22 +928,22 @@ SPDX-License-Identifier: MIT
     }
 
 #define GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __sfunc, __rettype, __argtype, __abbrrettype, __abbrargtype ) \
-    __rettype##2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _v2##__abbrrettype##_v2##__abbrrettype##_v2##__abbrargtype, )( __rettype##2 x, __rettype##2 y, __argtype##2 z ) {             \
+    __rettype##2 __builtin_spirv_OpenCL_select##_v2##__abbrrettype##_v2##__abbrrettype##_v2##__abbrargtype( __rettype##2 x, __rettype##2 y, __argtype##2 z ) {             \
         return (__rettype##2)( __sfunc(x.s0, y.s0, z.s0),                   \
                                __sfunc(x.s1, y.s1, z.s1) );                 \
     }                                                                                                     \
-    __rettype##3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _v3##__abbrrettype##_v3##__abbrrettype##_v3##__abbrargtype, )( __rettype##3 x, __rettype##3 y, __argtype##3 z ) {              \
+    __rettype##3 __builtin_spirv_OpenCL_select##_v3##__abbrrettype##_v3##__abbrrettype##_v3##__abbrargtype( __rettype##3 x, __rettype##3 y, __argtype##3 z ) {              \
         return (__rettype##3)( __sfunc(x.s0, y.s0, z.s0),                   \
                                __sfunc(x.s1, y.s1, z.s1),                   \
                                __sfunc(x.s2, y.s2, z.s2) );                 \
     }                                                                                                         \
-    __rettype##4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _v4##__abbrrettype##_v4##__abbrrettype##_v4##__abbrargtype, )( __rettype##4 x, __rettype##4 y, __argtype##4 z ) {              \
+    __rettype##4 __builtin_spirv_OpenCL_select##_v4##__abbrrettype##_v4##__abbrrettype##_v4##__abbrargtype( __rettype##4 x, __rettype##4 y, __argtype##4 z ) {              \
         return (__rettype##4)( __sfunc(x.s0, y.s0, z.s0),                   \
                                __sfunc(x.s1, y.s1, z.s1),                   \
                                __sfunc(x.s2, y.s2, z.s2),                   \
                                __sfunc(x.s3, y.s3, z.s3) );                 \
     }                                                                                                         \
-    __rettype##8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _v8##__abbrrettype##_v8##__abbrrettype##_v8##__abbrargtype, )( __rettype##8 x, __rettype##8 y, __argtype##8 z ) {              \
+    __rettype##8 __builtin_spirv_OpenCL_select##_v8##__abbrrettype##_v8##__abbrrettype##_v8##__abbrargtype( __rettype##8 x, __rettype##8 y, __argtype##8 z ) {              \
         return (__rettype##8)( __sfunc(x.s0, y.s0, z.s0),                   \
                                __sfunc(x.s1, y.s1, z.s1),                   \
                                __sfunc(x.s2, y.s2, z.s2),                   \
@@ -953,7 +953,7 @@ SPDX-License-Identifier: MIT
                                __sfunc(x.s6, y.s6, z.s6),                   \
                                __sfunc(x.s7, y.s7, z.s7) );                 \
     }                                                                                                     \
-    __rettype##16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(select, _v16##__abbrrettype##_v16##__abbrrettype##_v16##__abbrargtype, )( __rettype##16 x, __rettype##16 y, __argtype##16 z ) {      \
+    __rettype##16 __builtin_spirv_OpenCL_select##_v16##__abbrrettype##_v16##__abbrrettype##_v16##__abbrargtype( __rettype##16 x, __rettype##16 y, __argtype##16 z ) {      \
         return (__rettype##16)( __sfunc(x.s0, y.s0, z.s0),                  \
                                 __sfunc(x.s1, y.s1, z.s1),                  \
                                 __sfunc(x.s2, y.s2, z.s2),                  \
