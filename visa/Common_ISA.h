@@ -606,7 +606,7 @@ struct vector_opnd {
     int getSizeInBinary() const;
 };
 
-typedef struct {
+typedef struct _raw_opnd{
     uint32_t index;
     unsigned short offset;
 

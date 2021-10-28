@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_set>
 #include <optional>
 
-typedef struct{
+typedef struct _AddrSubReg_Node{
     short immAddrOff = 0;
     int subReg = 0;
     INST_LIST_ITER iter;
@@ -81,7 +81,7 @@ typedef std::list<vISA::MSGTable*>::iterator MSGTable_ITER;
 
 #define MESSAGE_HEADER_THRESHOLD 1
 
-typedef struct
+typedef struct _DEFA0
 {
     vISA::G4_INST *pred = nullptr;
     vISA::G4_INST *curr = nullptr;

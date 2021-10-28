@@ -11,14 +11,14 @@ SPDX-License-Identifier: MIT
 
 #include <stdint.h>
 
-typedef struct {
+typedef struct _VISA_BB_INFO{
     int id;
     unsigned staticCycle;
     unsigned sendStallCycle;
     unsigned char loopNestLevel;
 } VISA_BB_INFO;
 
-typedef struct {
+typedef struct _FINALIZER_INFO{
     // Common part
     bool isSpill;
     int numGRFUsed;

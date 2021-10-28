@@ -197,7 +197,7 @@ static bool processCmSrcOptions(
         [&optname](const auto& Item) { return std::strcmp(Item, optname.c_str()) == 0; });
     if (toErase != userArgs.end()) {
         auto itFilename = toErase + 1;
-        if (itFilename != userArgs.end() && *itFilename != "--") {
+        if (itFilename != userArgs.end() && strcmp(*itFilename, "--") != 0) {
             inputFile = *itFilename;
             userArgs.erase(toErase, toErase + 2);
             return true;

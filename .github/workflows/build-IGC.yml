@@ -1,0 +1,32 @@
+#
+# Copyright (C) 2021 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+
+name: Build IGC
+
+on:
+  push:
+    branches: [ master ]
+    
+jobs:
+  build:
+    if: github.repository == 'intel/intel-graphics-compiler'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu1804, ubuntu2004 ]
+        llvm_ver: [ 10, 11 ]
+        compiler: [ gcc, clang ]
+        # include experimental builds
+        include:
+        - llvm_ver: 12
+          compiler: gcc
+          os: ubuntu2004
+          experimental: true
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Script Selectiong Docker
+        run: docker build -f scripts/Dockerfile-${{ matrix.os }} --build-arg BUILD_OS=${{ matrix.os }} --build-arg LLVM_VERSION=${{ matrix.llvm_ver }} --build-arg COMPILER=${{ matrix.compiler }} ./scripts
