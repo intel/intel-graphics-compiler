@@ -687,6 +687,11 @@ SPDX-License-Identifier: MIT
         return getPlatform() >= GENX_ICLLP && getOption(vISA_DstSrcOverlapWA);
     }
 
+    bool avoidSrc1Src2Overlap()
+    {
+        return getOption(vISA_Src1Src2OverlapWA);
+    }
+
     bool hasTwoGRFMathMacro() const
     {
         return false;

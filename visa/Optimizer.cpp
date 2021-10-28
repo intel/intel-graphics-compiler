@@ -10479,6 +10479,11 @@ void Optimizer::changeMoveType()
         return;
     }
 
+    if (builder.avoidSrc1Src2Overlap())
+    {
+        return;
+    }
+
     auto changeType = [this](G4_INST* movInst, G4_Type newTy)
     {
         movInst->getDst()->setType(newTy);

@@ -5120,6 +5120,59 @@ void HWConformity::fixSendInst(G4_BB* bb)
 
 }
 
+void HWConformity::fixsrc1src2Overlap(G4_BB* bb)
+{
+    for (INST_LIST_ITER i = bb->begin(), end = bb->end(); i != end; i++)
+    {
+        G4_INST* inst = *i;
+
+        if (inst->opcode() != G4_mad)
+        {
+            continue;
+        }
+
+        G4_Operand* src1 = inst->getSrc(1);
+        G4_Operand* src2 = inst->getSrc(2);
+
+        if (src1 && src2 &&
+            !src1->isNullReg() && !src2->isNullReg() &&
+            src1->getType() == src2->getType())
+        {
+            G4_CmpRelation cmpResult = src1->compareOperand(src2);
+            if (cmpResult != Rel_disjoint && cmpResult != Rel_undef)
+            {
+                G4_Type movType = src2->getType();
+                bool changeType = true;
+                switch (src2->getType())
+                {
+                case Type_DF:
+                    movType = Type_UQ;
+                    break;
+                case Type_F:
+                    movType = Type_UD;
+                    break;
+                case Type_HF:
+                    movType = Type_UW;
+                    break;
+                default:
+                    changeType = false;
+                    break;
+                }
+                if (changeType)
+                {
+                    G4_Operand* opnd = insertMovBefore(i, 2, movType, bb);
+                    INST_LIST_ITER prev_it = i;
+                    prev_it--;
+                    G4_INST* movInst = (*prev_it);
+                    movInst->getSrc(0)->asSrcRegRegion()->setType(movType);
+                    opnd->asSrcRegRegion()->setType(src2->getType());
+                    inst->setSrc(opnd, 2);
+                }
+            }
+        }
+    }
+}
+
 void HWConformity::fixOverlapInst(G4_BB* bb)
 {
     for (INST_LIST_ITER i = bb->begin(), end = bb->end(); i != end; i++)
@@ -5820,6 +5873,11 @@ void HWConformity::chkHWConformity()
         if (builder.avoidDstSrcOverlap())
         {
             fixOverlapInst(bb);
+        }
+
+        if (builder.avoidSrc1Src2Overlap())
+        {
+            fixsrc1src2Overlap(bb);
         }
 
 #ifdef _DEBUG

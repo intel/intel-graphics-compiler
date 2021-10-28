@@ -88,6 +88,7 @@ DECLARE_IGC_REGKEY(DWORD,EnableSendFusion,              1,     "Enable(!=0)/disa
 DECLARE_IGC_REGKEY(bool, EnableAtomicFusion,            false, "To enable/disable atomic send fusion (simd8 shaders). Valid if EnableSendFusion is on.", false)
 DECLARE_IGC_REGKEY(bool, Use16ByteBindlessSampler,      false, "True if 16-byte aligned bindless sampler state is used", false)
 DECLARE_IGC_REGKEY(bool, AvoidDstSrcGRFOverlap,               false,  "avoid GRF overlap for destination and source operands of an SIMD16/SIMD32 instruction ", false)
+DECLARE_IGC_REGKEY(bool, AvoidSrc1Src2Overlap,               false,  "avoid src1 and src2 GRF overlap to avoid the conflict without read suppression ", false)
 DECLARE_IGC_REGKEY(bool, UseLinearScanRA,               false,  "use Linear Scan as default register allocation algorithm ", false)
 DECLARE_IGC_GROUP("IGC Optimization")
 DECLARE_IGC_REGKEY(bool, AllowMem2Reg,                  false, "Setting this to true makes IGC run mem2reg even when optimizations are disabled", true)

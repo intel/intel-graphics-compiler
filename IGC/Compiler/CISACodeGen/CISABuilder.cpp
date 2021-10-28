@@ -4259,6 +4259,11 @@ namespace IGC
             SaveOption(vISA_DstSrcOverlapWA, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(AvoidSrc1Src2Overlap))
+        {
+            SaveOption(vISA_Src1Src2OverlapWA, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(UseLinearScanRA))
         {
             SaveOption(vISA_LinearScan, true);

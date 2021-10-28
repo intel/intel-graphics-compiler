@@ -293,6 +293,7 @@ DEF_VISA_OPTION(vISA_noMaskWA,                      ET_INT32, "-noMaskWA",  "USA
 DEF_VISA_OPTION(vISA_forceNoMaskWA,                 ET_BOOL,  "-forceNoMaskWA",  UNUSED, false)
 DEF_VISA_OPTION(vISA_fusedCallWA,                   ET_BOOL,  "-fusedCallWA",   "Tmp: indirect call wa, tbd after using WA id", false)
 DEF_VISA_OPTION(vISA_DstSrcOverlapWA,               ET_BOOL,  "-dstSrcOverlapWA",  UNUSED, true)
+DEF_VISA_OPTION(vISA_Src1Src2OverlapWA,               ET_BOOL,  "-src1Src2OverlapWA",  UNUSED, false)
 DEF_VISA_OPTION(vISA_noSendSrcDstOverlap,           ET_BOOL,  "-noSendSrcDstOverlap", UNUSED, false)
 DEF_VISA_OPTION(vISA_enableCloneSampleInst,         ET_BOOL,  "-cloneSampleInst", UNUSED, false)
 DEF_VISA_OPTION(vISA_cloneEvaluateSampleInst,       ET_BOOL,  "-cloneEvaluateSampleInst", UNUSED, false)
