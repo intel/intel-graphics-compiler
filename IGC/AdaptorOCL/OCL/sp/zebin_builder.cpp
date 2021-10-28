@@ -10,9 +10,11 @@ SPDX-License-Identifier: MIT
 
 #include "../../../Compiler/CodeGenPublic.h"
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SmallVector.h"
-#include "Probe/Assertion.h"
 #include "llvm/MC/MCELFObjectWriter.h"
+#include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace IGC;
 using namespace iOpenCL;
