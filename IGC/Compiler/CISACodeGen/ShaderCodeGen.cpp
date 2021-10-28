@@ -745,7 +745,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         {
             mpm.add(createLICMPass());
         }
-        mpm.add(createDeadCodeEliminationPass());
+        mpm.add(createAggressiveDCEPass());
     }
 
     if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) ||
