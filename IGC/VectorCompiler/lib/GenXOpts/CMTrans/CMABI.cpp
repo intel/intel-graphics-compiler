@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/BreakConst.h"
 #include "vc/Utils/GenX/Printf.h"
+#include "vc/Utils/General/DebugInfo.h"
 #include "vc/Utils/General/FunctionAttrs.h"
 #include "vc/Utils/General/InstRebuilder.h"
 #include "vc/Utils/General/STLExtras.h"
@@ -469,6 +470,8 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
 
     if (!isa<UndefValue>(GV->getInitializer()))
       new StoreInst(GV->getInitializer(), Alloca, &FirstI);
+
+    vc::DIBuilder::createDbgDeclareForLocalizedGlobal(*Alloca, *GV, FirstI);
 
     GlobalsToReplace.insert(std::make_pair(GV, Alloca));
   }
@@ -1015,7 +1018,7 @@ static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
                     new StoreInst(&GVArg, Alloca, InsertPt);
                     return Alloca;
                   });
-  // Fancy naming.
+  // Fancy naming and debug info.
   for (auto &&[GAI, GVArg, MaybeAlloca] :
        zip(GlobalArgs.Globals,
            drop_begin(NewFunc.args(), GlobalArgs.FirstGlobalArgIdx),
@@ -1025,6 +1028,9 @@ static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
       IGC_ASSERT_MESSAGE(isa<AllocaInst>(MaybeAlloca),
           "an alloca is expected when pass localized global by value");
       MaybeAlloca->setName(GAI.GV->getName() + ".local");
+
+      vc::DIBuilder::createDbgDeclareForLocalizedGlobal(
+          *cast<AllocaInst>(MaybeAlloca), *GAI.GV, *InsertPt);
     }
   }
 
