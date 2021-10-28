@@ -348,18 +348,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXReduceIntSizePass());
   /// .. include:: GenXGlobalValueLowering.cpp
   vc::addPass(PM, createGenXGlobalValueLoweringPass());
-  /// InstructionCombining
-  /// --------------------
-  /// This is a standard LLVM pass, used at this point in the GenX backend.
-  ///
-  vc::addPass(PM, createInstructionCombiningPass());
-  // Run integer reduction again to revert some trunc/ext patterns transformed
-  // by instcombine.
-  vc::addPass(PM, createGenXReduceIntSizePass());
-  /// .. include:: GenXSimdCFConformance.cpp
-  vc::addPass(PM, createGenXEarlySimdCFConformancePass());
-  /// .. include:: GenXPromotePredicate.cpp
-  vc::addPass(PM, createGenXPromotePredicatePass());
 
   /// .. include:: GenXStackUsage.cpp
   vc::addPass(PM, createGenXStackUsagePass());
@@ -372,6 +360,20 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXLoadStoreLowering.cpp
   vc::addPass(PM, createGenXLoadStoreLoweringPass());
   vc::addPass(PM, createGenXThreadPrivateMemoryPass());
+
+  /// InstructionCombining
+  /// --------------------
+  /// This is a standard LLVM pass, used at this point in the GenX backend.
+  /// Run instcombine after some lowering passes (e.g. GenXLoadStoreLowering) to
+  /// make a cleanup.
+  vc::addPass(PM, createInstructionCombiningPass());
+  // Run integer reduction again to revert some trunc/ext patterns transformed
+  // by instcombine.
+  vc::addPass(PM, createGenXReduceIntSizePass());
+  /// .. include:: GenXSimdCFConformance.cpp
+  vc::addPass(PM, createGenXEarlySimdCFConformancePass());
+  /// .. include:: GenXPromotePredicate.cpp
+  vc::addPass(PM, createGenXPromotePredicatePass());
 
   // Run GEP lowering again to remove possible GEPs after instcombine.
   vc::addPass(PM, createGenXGEPLoweringPass());
