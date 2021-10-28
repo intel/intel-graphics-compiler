@@ -1,0 +1,83 @@
+From 0c65993be186640463ac90415113474d35889dbb Mon Sep 17 00:00:00 2001
+From: Anastasia Stulova <anastasia.stulova@arm.com>
+Date: Thu, 4 Feb 2021 13:46:11 +0000
+Subject: [PATCH] [OpenCL] Fix default address space in template argument
+ deduction.
+
+When deducing a reference type for forwarding references prevent
+adding default address space of a template argument if it is given.
+
+This got reported in PR48896 because in OpenCL all parameters are
+in private address space and therefore when we initialize a
+forwarding reference with a parameter we should just inherit the
+address space from it i.e. keep __private instead of __generic.
+
+Tags: #clang
+
+Differential Revision: https://reviews.llvm.org/D95624
+---
+ clang/lib/Sema/SemaTemplateDeduction.cpp        |  2 +-
+ .../SemaOpenCLCXX/address-space-templates.cl    | 17 +++++++++++++++--
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/clang/lib/Sema/SemaTemplateDeduction.cpp b/clang/lib/Sema/SemaTemplateDeduction.cpp
+index ee4316e7a632..6336f3b99452 100644
+--- a/clang/lib/Sema/SemaTemplateDeduction.cpp
++++ b/clang/lib/Sema/SemaTemplateDeduction.cpp
+@@ -3869,7 +3869,7 @@ static bool AdjustFunctionParmAndArgTypesForDeduction(
+     //   "lvalue reference to A" is used in place of A for type deduction.
+     if (isForwardingReference(QualType(ParamRefType, 0), FirstInnerIndex) &&
+         Arg->isLValue()) {
+-      if (S.getLangOpts().OpenCL)
++      if (S.getLangOpts().OpenCL  && !ArgType.hasAddressSpace())
+         ArgType = S.Context.getAddrSpaceQualType(ArgType, LangAS::opencl_generic);
+       ArgType = S.Context.getLValueReferenceType(ArgType);
+     }
+diff --git a/clang/test/SemaOpenCLCXX/address-space-templates.cl b/clang/test/SemaOpenCLCXX/address-space-templates.cl
+index be187de5684b..b7db0e6de3d2 100644
+--- a/clang/test/SemaOpenCLCXX/address-space-templates.cl
++++ b/clang/test/SemaOpenCLCXX/address-space-templates.cl
+@@ -1,4 +1,4 @@
+-//RUN: %clang_cc1 %s -cl-std=clc++ -pedantic -verify -fsyntax-only
++//RUN: %clang_cc1 %s -cl-std=clc++ -pedantic -verify -ast-dump  | FileCheck %s
+ 
+ template <typename T>
+ struct S {
+@@ -28,8 +28,10 @@ template <class _Tp> struct as_pointer {
+     typedef typename remove_reference<_Tp>::type* type;
+ };
+ 
++// Check address space deduction in template parameter deduction.
+ struct rep {
+-  // CHECK |-CXXConstructorDecl {{.*}} rep 'void (const __generic rep &__private) __generic'
++  // When there is no address space on a reference use __generic.
++  // CHECK: |-CXXConstructorDecl {{.*}} rep 'void (const __generic rep &__private) __generic'
+   template<class U, class = typename as_pointer<U>::type>
+   rep(U&& v) {}
+ };
+@@ -39,11 +41,22 @@ struct rep_outer : private rep {
+     : rep(0) {}
+ };
+ 
++
++template<class T, class F>
++void foo4(T t, F f){
++  f(t);
++}
++
+ void bar() {
+   S<const __global int> sintgl; // expected-note{{in instantiation of template class 'S<const __global int>' requested here}}
+ 
+   foo1<__local int>(1); // expected-error{{no matching function for call to 'foo1'}}
+   foo2<__global int>(0);
+   foo3<__global int>(); // expected-note{{in instantiation of function template specialization 'foo3<__global int>' requested here}}
++
+   rep_outer r;
++  int i;
++  // Preserve the address space of the type in forwarding reference.
++  // CHECK: CXXMethodDecl {{.*}} operator() 'void (__private int &__private) const __generic'
++  foo4(i, [](auto&& x){;});
+ }
+-- 
+2.25.1
+
