@@ -4157,6 +4157,7 @@ namespace IGC
                     SaveOption(vISA_HWThreadNumberPerEU, m_program->getAnnotatedNumThreads());
                 }
                 else if (m_program->m_Platform->supportsAutoGRFSelection() &&
+                    context->m_DriverInfo.supportsAutoGRFSelection() &&
                     !IGC_IS_FLAG_ENABLED(DisableRegSharingHeuristics) &&
                     !ClContext->m_InternalOptions.Intel128GRFPerThread &&
                     !ClContext->m_InternalOptions.Intel256GRFPerThread)
