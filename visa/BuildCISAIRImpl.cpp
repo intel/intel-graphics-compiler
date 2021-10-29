@@ -2176,10 +2176,7 @@ bool CISA_IR_Builder::CISA_attr_directive(
         }
         input_name = "OutputAsmPath"; // normalize to new name
 
-        char asmFileName[MAX_OPTION_STR_LENGTH];
-
-        strncpy_s(asmFileName,
-            MAX_OPTION_STR_LENGTH, input_var, MAX_OPTION_STR_LENGTH - 1);
+        char *asmFileName = strdup(input_var);
         char *pos = strstr(asmFileName, ".asm");
         if (pos != NULL)
         {

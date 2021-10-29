@@ -192,8 +192,6 @@ extern std::stringstream errorMsgs;
 #endif
 
 
-#define MAX_OPTION_STR_LENGTH 256
-
 // sets the platform by enum value
 int SetVisaPlatform(TARGET_PLATFORM vPlatform);
 

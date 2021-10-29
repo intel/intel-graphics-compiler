@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include <algorithm>
 
-#define MAX_OPTION_STR_LENGTH 256
 #define MAX_LABEL_STR_LENGTH 256
 
 enum Stepping {
@@ -263,13 +262,6 @@ private:
             if (! val) {
                 optionsMap[key].value = nullptr;
             } else {
-                MUST_BE_TRUE(strlen(val) < MAX_OPTION_STR_LENGTH, ERROR_OPTION);
-                // size_t strLen = std::min(strlen(val) + 1,
-                //                          (size_t)MAX_OPTION_STR_LENGTH);
-                // // Not sure why new space is allocated.
-                // // It is never freed.
-                // char *newBuf = (char *) malloc(strLen);
-                // strncpy_s(newBuf, strLen, val, strLen);
                 optionsMap[key].value = new VISAOptionsEntryCstr(val);
             }
         }
