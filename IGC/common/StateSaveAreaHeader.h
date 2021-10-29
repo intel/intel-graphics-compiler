@@ -38,6 +38,15 @@ struct alignas(8) regset_desc {
     uint16_t bytes;
 };
 
+#define EXCHANGE_BUFFER_SIZE 112
+
+struct sip_command {
+    uint32_t command;
+    uint32_t size;
+    uint64_t offset;
+    uint8_t buffer[EXCHANGE_BUFFER_SIZE];
+};
+
 struct alignas(8) intelgt_state_save_area {
     uint32_t num_slices;
     uint32_t num_subslices_per_slice;

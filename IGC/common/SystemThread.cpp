@@ -120,7 +120,12 @@ struct DebugSurfaceLayout
     static constexpr size_t VERSION_COUNT = 1;
     static constexpr size_t VERSION_ELEMENTS = 1;
     static constexpr size_t VERSION_ELEMENT_SIZE = 20;
-    static constexpr size_t VERSION_ALIGN = 0;
+    static constexpr size_t VERSION_ALIGN = 8;
+
+    static constexpr size_t SIP_CMD_COUNT = 1;
+    static constexpr size_t SIP_CMD_ELEMENTS = 1;
+    static constexpr size_t SIP_CMD_ELEMENT_SIZE = 128;
+    static constexpr size_t SIP_CMD_ALIGN = 0;
 
     uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
     uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
@@ -137,11 +142,12 @@ struct DebugSurfaceLayout
     uint8_t sp[SP_COUNT * SP_ELEMENTS * SP_ELEMENT_SIZE + SP_ALIGN];
     uint8_t dbg[DBG_COUNT * DBG_ELEMENTS * DBG_ELEMENT_SIZE + DBG_ALIGN];
     uint8_t version[VERSION_COUNT * VERSION_ELEMENTS * VERSION_ELEMENT_SIZE + VERSION_ALIGN];
+    uint8_t sip_cmd[SIP_CMD_COUNT * SIP_CMD_ELEMENTS * SIP_CMD_ELEMENT_SIZE + SIP_CMD_ALIGN];
 };
 
 static struct StateSaveAreaHeader Gen12SIPCSRDebugBindlessDebugHeader =
 {
-    {"tssarea", 0, {1, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
+    {"tssarea", 0, {2, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
     {
         // regHeader
         0,                               // num_slices
@@ -188,7 +194,9 @@ static struct StateSaveAreaHeader Gen12SIPCSRDebugBindlessDebugHeader =
         {offsetof(struct DebugSurfaceLayout, sp), DebugSurfaceLayout::SP_COUNT,
          DebugSurfaceLayout::SP_ELEMENTS* DebugSurfaceLayout::SP_ELEMENT_SIZE * 8,
          DebugSurfaceLayout::SP_ELEMENTS* DebugSurfaceLayout::SP_ELEMENT_SIZE},  // sp
-        {0, 0, 0, 0},                                // cmd
+        {offsetof(struct DebugSurfaceLayout, sip_cmd), DebugSurfaceLayout::SIP_CMD_COUNT,
+         DebugSurfaceLayout::SIP_CMD_ELEMENTS* DebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE * 8,
+         DebugSurfaceLayout::SIP_CMD_ELEMENTS* DebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE},  // cmd
         {offsetof(struct DebugSurfaceLayout, tm), DebugSurfaceLayout::TM_COUNT,
          DebugSurfaceLayout::TM_ELEMENTS* DebugSurfaceLayout::TM_ELEMENT_SIZE * 8,
          DebugSurfaceLayout::TM_ELEMENTS* DebugSurfaceLayout::TM_ELEMENT_SIZE},  // tm
