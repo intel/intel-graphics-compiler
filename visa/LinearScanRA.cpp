@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "LocalRA.h"
 #include "LinearScanRA.h"
 #include "RegAlloc.h"
+#include "SCCAnalysis.h"
 
 #include <fstream>
 #include <tuple>
@@ -643,6 +644,65 @@ void LinearScanRA::markBackEdges()
             {
                 BBVector[succBB->getId()]->setBackEdgeIn(true);
                 BBVector[curBB->getId()]->setBackEdgeOut(true);
+            }
+        }
+    }
+
+    if (!kernel.fg.isReducible())
+    {
+        //Find exit BB of SCC and map it to the head BB of SCC
+        SCCAnalysis SCCFinder(kernel.fg);
+        SCCFinder.run();
+        for (auto iter = SCCFinder.SCC_begin(), iterEnd = SCCFinder.SCC_end(); iter != iterEnd; ++iter)
+        {
+            auto&& anSCC = *iter;
+            std::unordered_set<G4_BB*> SCCSucc; // any successor BB of the SCC
+            G4_BB* headBB = anSCC.getEarliestBB();
+            for (auto BI = anSCC.body_begin(), BIEnd = anSCC.body_end(); BI != BIEnd; ++BI)
+            {
+                G4_BB* bb = *BI;
+                for (auto succ : bb->Succs)
+                {
+                    if (!anSCC.isMember(succ))
+                    {
+                        SCCSucc.insert(succ);
+                    }
+                }
+            }
+            for (auto exitBB : SCCSucc) //map the exitBB to the head of the SCC
+            {
+                loopHeadExitMap[headBB].push_back(exitBB);
+            }
+        }
+    }
+    else
+    {
+        //Find exit BB of loop and map it to the head BB of loop
+        for (auto&& iter : kernel.fg.naturalLoops)
+        {
+            auto&& backEdge = iter.first;
+            G4_BB* headBB = backEdge.second;
+            const std::set<G4_BB*>& loopBody = iter.second;
+
+            for (auto block : loopBody)
+            {
+                for (auto succBB : block->Succs)
+                {
+                    if (loopBody.find(succBB) == loopBody.end())
+                    {
+                        G4_BB* exitBB = succBB;
+
+                        unsigned latchBBId = (backEdge.first)->getId();
+                        unsigned exitBBId = succBB->getId();
+                        if (exitBBId < latchBBId &&
+                            succBB->Succs.size() == 1)
+                        {
+                            exitBB = succBB->Succs.front();
+                        }
+
+                        loopHeadExitMap[headBB].push_back(exitBB); //map the exitBB to the head of the loop
+                    }
+                }
             }
         }
     }
@@ -1529,7 +1589,7 @@ void LinearScanRA::calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>
         }
         LSLiveRange* lr = gra.getLSLR(dcl);
         if (lr && !l.isEmptyLiveness() &&
-            l.isLiveAtEntry(bb, dcl->getRegVar()->getId()))
+            l.isLiveAtEntry(bb, dcl->getRegVar()->getId()))  //Live in current BB
         {
             if (lr->getRegionID() != regionID)
             {
@@ -1548,6 +1608,39 @@ void LinearScanRA::calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>
             if (lr->getFirstRef(curIdx) == NULL && curIdx == 0) //not referenced before, assigned or not assigned?
             {
                 lr->setFirstRef((*bb->begin()), (*bb->begin())->getLexicalId() * 2);
+            }
+        }
+        else //Live in the exist BB of a loop
+        {
+            //Extend the live ranges of live in variable of exit BB of the loop to the head of loop.
+            std::map<G4_BB*, std::vector<G4_BB*>>::iterator loopHEIt = loopHeadExitMap.find(bb);
+            if (loopHEIt != loopHeadExitMap.end()) //If current BB is the head of a loop
+            {
+                for (auto exitBB : loopHeadExitMap[bb]) //for all exit BBs.
+                {
+                    if (lr && !l.isEmptyLiveness() &&
+                        l.isLiveAtEntry(exitBB, dcl->getRegVar()->getId()))
+                    {
+                        if (lr->getRegionID() != regionID) //Is the interval pushed or not
+                        {
+                            if (lr->isGRFRegAssigned() && dcl->getRegVar()->isGreg())
+                            {
+                                setPreAssignedLR(lr, preAssignedLiveIntervals);
+                            }
+                            else
+                            {
+                                liveIntervals.push_back(lr);
+                            }
+                            lr->setRegionID(regionID);
+                        }
+
+                        unsigned curIdx = 0;
+                        if (lr->getFirstRef(curIdx) == NULL && curIdx == 0) //not referenced before
+                        {
+                            lr->setFirstRef((*bb->begin()), (*bb->begin())->getLexicalId() * 2);
+                        }
+                    }
+                }
             }
         }
     }

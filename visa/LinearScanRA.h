@@ -82,6 +82,7 @@ namespace vISA
         std::vector<LSLiveRange*> globalLiveIntervals;
         std::vector<LSLiveRange*> preAssignedLiveIntervals;
         std::vector<LSLiveRange*> liveThroughIntervals;
+        std::map<G4_BB*, std::vector<G4_BB*>> loopHeadExitMap;
         unsigned int numRegLRA = 0;
         unsigned int numRowsEOT = 0;
         unsigned int globalLRSize = 0;
@@ -237,8 +238,18 @@ public:
 
     void setFirstRef(G4_INST* inst, unsigned int idx)
     {
-        firstRef = inst;
-        lrStartIdx = idx;
+        if (!firstRef && lrStartIdx == 0)
+        {
+            firstRef = inst;
+            lrStartIdx = idx;
+            return;
+        }
+
+        if (idx < lrStartIdx)
+        {
+            firstRef = inst;
+            lrStartIdx = idx;
+        }
     }
 
     G4_INST* getFirstRef(unsigned int& idx)
