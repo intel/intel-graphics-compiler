@@ -464,6 +464,7 @@ void CGen8OpenCLProgram::GetZEBinary(
     // If a single kernel in a program then neither temporary files are created nor the linker is in use,
     // hence ELF data is taken directly from the first found kernel's output (i.e. from m_debugData).
     IGC::SProgramOutput* pFirstKernelOutput = nullptr;
+    bool isDebugInfo = true;  // If a kernel does not contain debug info then this flag will be changed to false.
     IGC::CodeGenContext* ctx = nullptr;
 
     for (auto pKernel : m_ShaderProgramList)
@@ -530,7 +531,9 @@ void CGen8OpenCLProgram::GetZEBinary(
 
             // ... Create the debug data binary streams
 
-            if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging))
+            if (pOutput->m_debugDataSize == 0)
+                isDebugInfo = false;
+            if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging) && isDebugInfo)
             {
                 const unsigned int rsrvdForAllButFullName = 64;  // characters will be used for temporary ELF file names.
                 unsigned int spaceAvailableForKernelName = maxElfFileNameLength - rsrvdForAllButFullName - tempDir.size();
@@ -607,7 +610,7 @@ void CGen8OpenCLProgram::GetZEBinary(
         }
     }
 
-    if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging))
+    if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging) && isDebugInfo)
     {
         if (!elfTmpFilesError)
         {
