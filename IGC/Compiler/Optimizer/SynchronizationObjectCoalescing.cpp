@@ -348,6 +348,7 @@ private:
     llvm::Function* m_CurrentFunction = nullptr;
     bool m_HasIndependentSharedMemoryFenceFunctionality = false;
     InstructionMask m_GlobalMemoryInstructionMask = InstructionMask::None;
+    ShaderType m_ShaderType = ShaderType::UNKNOWN;
 
 #if _DEBUG
     std::vector<ExplanationEntry> m_ExplanationEntries;
@@ -372,6 +373,7 @@ bool SynchronizationObjectCoalescingAnalysis::runOnFunction(llvm::Function& F)
     m_CurrentFunction = &F;
     const CodeGenContext* const ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_HasIndependentSharedMemoryFenceFunctionality = ctx->platform.hasSLMFence();
+    m_ShaderType = ctx->type;
     Analyze();
     return isModified;
 }
@@ -603,6 +605,14 @@ IGC::SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObj
             result = static_cast<InstructionMask>(
                 result |
                 SharedMemoryWriteOperation);
+            if (m_ShaderType == ShaderType::HULL_SHADER &&
+                m_HasIndependentSharedMemoryFenceFunctionality)
+            {
+                // This is for ICL+ but should not harm on pre-ICL
+                result = static_cast<InstructionMask>(
+                    result |
+                    UrbWriteOperation);
+            }
         }
         if (hasGlobalInfluence)
         {
@@ -655,6 +665,15 @@ IGC::SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObj
                 result |
                 SharedMemoryWriteOperation |
                 SharedMemoryReadOperation);
+            if (m_ShaderType == ShaderType::HULL_SHADER &&
+                m_HasIndependentSharedMemoryFenceFunctionality)
+            {
+                // This is for ICL+ but should not harm on pre-ICL
+                result = static_cast<InstructionMask>(
+                    result |
+                    UrbWriteOperation |
+                    OutputUrbReadOperation);
+            }
         }
 
         if (hasGlobalInfluence)
