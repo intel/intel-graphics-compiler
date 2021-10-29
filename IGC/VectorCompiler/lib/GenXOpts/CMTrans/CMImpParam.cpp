@@ -99,6 +99,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 
 #include "vc/Utils/General/FunctionAttrs.h"
+#include "vc/Utils/General/DebugInfo.h"
 
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/STLExtras.h"
@@ -301,14 +302,36 @@ private:
 
     Type * Ty = getIntrinRetType(F->getContext(), IID);
     IGC_ASSERT(Ty);
+
+    auto IntrinsicName = GenXIntrinsic::getAnyName(IID, None);
     GlobalVariable *NewVar = new GlobalVariable(
-        *F->getParent(), Ty, false,
-        GlobalVariable::InternalLinkage,
-        Constant::getNullValue(Ty),
-        "__imparg_" + GenXIntrinsic::getAnyName(IID, None));
+        *F->getParent(), Ty, false, GlobalVariable::InternalLinkage,
+        Constant::getNullValue(Ty), "__imparg_" + IntrinsicName);
     GlobalsMap[IID] = NewVar;
 
+    addDebugInfoForImplicitGlobal(*NewVar, IntrinsicName);
+
     return NewVar;
+  }
+
+  static void addDebugInfoForImplicitGlobal(GlobalVariable &Var,
+                                            StringRef Name) {
+    auto &M = *Var.getParent();
+    if (!vc::DIBuilder::checkIfModuleHasDebugInfo(M))
+      return;
+
+    std::string DiName = (Twine("__") + Name).str();
+    std::replace(DiName.begin(), DiName.end(), '.', '_');
+
+    vc::DIBuilder DBuilder(M);
+    auto *DGVType = DBuilder.translateTypeToDIType(*Var.getValueType());
+    if (!DGVType) {
+      LLVM_DEBUG(dbgs() << "ERROR: could not create debug info for implict var:"
+                 << Var << "\n");
+      return;
+    }
+    auto *GVE = DBuilder.createGlobalVariableExpression(DiName, DiName, DGVType);
+    Var.addDebugInfo(GVE);
   }
 
   static Type *getIntrinRetType(LLVMContext &Context, unsigned IID) {
