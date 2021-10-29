@@ -1187,11 +1187,6 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
 //  %281 = fadd fast float %280, %276
 void CustomSafeOptPass::removeHftoFCast(Instruction& I)
 {
-    // Skip if mix mode is supported
-    CodeGenContext* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (Ctx->platform.supportMixMode())
-        return;
-
     if (!I.getType()->isFloatingPointTy())
         return;
 
