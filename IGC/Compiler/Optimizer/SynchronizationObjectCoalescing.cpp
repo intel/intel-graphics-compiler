@@ -218,6 +218,27 @@ private:
         SharedMemoryReadOperation);
 
     ////////////////////////////////////////////////////////////////////////
+    enum SynchronizationCaseMask : uint32_t
+    {
+        ReadSyncWrite = 0x1,
+        WriteSyncWrite = 0x2,
+        AtomicSyncRead = 0x4,
+        AtomicSyncWrite = 0x8,
+        WriteSyncAtomic = 0x10,
+        ReadSyncAtomic = 0x20,
+        WriteSyncRead = 0x40,
+    };
+
+    static constexpr SynchronizationCaseMask sc_FullSynchronizationCaseMask = static_cast<SynchronizationCaseMask>(
+        WriteSyncRead |
+        WriteSyncWrite |
+        AtomicSyncRead |
+        AtomicSyncWrite |
+        WriteSyncAtomic |
+        ReadSyncAtomic |
+        ReadSyncWrite);
+
+    ////////////////////////////////////////////////////////////////////////
     void Analyze();
 
     ////////////////////////////////////////////////////////////////////////
@@ -383,6 +404,11 @@ bool SynchronizationObjectCoalescingAnalysis::runOnFunction(llvm::Function& F)
 /// among synchronization instructions appearing in the analyzed function.
 void SynchronizationObjectCoalescingAnalysis::Analyze()
 {
+    if (IGC_IS_FLAG_ENABLED(DisableSynchronizationObjectCoalescingPass))
+    {
+        return;
+    }
+
     InvalidateMembers();
     GatherInstructions();
     FindRedundancies();
@@ -395,49 +421,33 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
     // This lambda function verifies if there is an obligation to preserve a synchronization instruction for the particular resource.
     // This stems from the forwardly and backwardly visible memory instructions and their interaction with the synchronization
     // instruction.
-    auto IdentifyStrictObligation = [this](
+    auto IdentifyObligation = [this](
         InstructionMask forwardMemoryInstructionMask,
         InstructionMask backwardMemoryInstructionMask,
         InstructionMask readBit,
         InstructionMask writeBit,
-        bool isThreadGroupBarrierOrDependent) -> bool
+        SynchronizationCaseMask synchronizationCaseMask) -> bool
     {
         // write -> barrier/fence -> read
-        bool isObligatory = ((backwardMemoryInstructionMask & writeBit) != 0 && (forwardMemoryInstructionMask & readBit) != 0);
+        bool isObligatory = ((synchronizationCaseMask & SynchronizationCaseMask::WriteSyncRead) !=0) && ((backwardMemoryInstructionMask & writeBit) != 0 && (forwardMemoryInstructionMask & readBit) != 0);
         // write -> barrier/fence -> write
-        isObligatory |= ((backwardMemoryInstructionMask & writeBit) != 0 && (forwardMemoryInstructionMask & writeBit) != 0);
+        isObligatory |= ((synchronizationCaseMask & SynchronizationCaseMask::WriteSyncWrite) != 0) && ((backwardMemoryInstructionMask & writeBit) != 0 && (forwardMemoryInstructionMask & writeBit) != 0);
         // atomic -> barrier/fence -> read
-        isObligatory |= ((backwardMemoryInstructionMask & AtomicOperation) != 0 && (forwardMemoryInstructionMask & readBit) != 0);
+        isObligatory |= ((synchronizationCaseMask & SynchronizationCaseMask::AtomicSyncRead) != 0) && ((backwardMemoryInstructionMask & AtomicOperation) != 0 && (forwardMemoryInstructionMask & readBit) != 0);
         // atomic -> barrier/fence -> write
-        isObligatory |= ((backwardMemoryInstructionMask & AtomicOperation) != 0 && (forwardMemoryInstructionMask & writeBit) != 0);
+        isObligatory |= ((synchronizationCaseMask & SynchronizationCaseMask::AtomicSyncWrite) != 0) && ((backwardMemoryInstructionMask & AtomicOperation) != 0 && (forwardMemoryInstructionMask & writeBit) != 0);
         // write -> barrier/fence -> atomic
-        isObligatory |= ((backwardMemoryInstructionMask & writeBit) != 0 && (forwardMemoryInstructionMask & AtomicOperation) != 0);
+        isObligatory |= ((synchronizationCaseMask & SynchronizationCaseMask::WriteSyncAtomic) != 0) && ((backwardMemoryInstructionMask & writeBit) != 0 && (forwardMemoryInstructionMask & AtomicOperation) != 0);
         // read -> barrier -> atomic
-        isObligatory |= ((backwardMemoryInstructionMask & readBit) != 0 && (forwardMemoryInstructionMask & AtomicOperation) != 0);
+        isObligatory |= ((synchronizationCaseMask & SynchronizationCaseMask::ReadSyncAtomic) != 0) && ((backwardMemoryInstructionMask & readBit) != 0 && (forwardMemoryInstructionMask & AtomicOperation) != 0);
         // read -> barrier -> write
-        isObligatory |= (isThreadGroupBarrierOrDependent && (backwardMemoryInstructionMask & readBit) != 0 && (forwardMemoryInstructionMask & writeBit) != 0);
-
-        return isObligatory;
-    };
-
-    auto IdentifyL1CacheInvalidationObligation = [this](
-        InstructionMask forwardMemoryInstructionMask,
-        InstructionMask backwardMemoryInstructionMask,
-        InstructionMask readBit,
-        InstructionMask writeBit) -> bool
-    {
-        // write -> barrier/fence -> read
-        bool isObligatory = ((backwardMemoryInstructionMask & writeBit) != 0 && (forwardMemoryInstructionMask & readBit) != 0);
-        // write -> barrier/fence -> atomic
-        isObligatory |= ((backwardMemoryInstructionMask & writeBit) != 0 && (forwardMemoryInstructionMask & AtomicOperation) != 0);
-        // atomic -> barrier/fence -> read
-        isObligatory |= ((backwardMemoryInstructionMask & AtomicOperation) != 0 && (forwardMemoryInstructionMask & readBit) != 0);
+        isObligatory |= ((synchronizationCaseMask & SynchronizationCaseMask::ReadSyncWrite) != 0) && ((backwardMemoryInstructionMask & readBit) != 0 && (forwardMemoryInstructionMask & writeBit) != 0);
 
         return isObligatory;
     };
 
     // This lambda function identifies partial and strict redundancies among synchronization operations
-    auto GatherRedundancies = [this, &IdentifyStrictObligation, &IdentifyL1CacheInvalidationObligation](std::vector<llvm::Instruction*>& synchronizationOperations)
+    auto GatherRedundancies = [this, &IdentifyObligation](std::vector<llvm::Instruction*>& synchronizationOperations)
     {
         constexpr bool forwardDirection = true;
         constexpr bool backwardDirection = false;
@@ -467,21 +477,39 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
             SetLocalMemoryInstructionMask();
 
             auto GetStrictObligation = [this, pInst, forwardDirection, backwardDirection, &localForwardMemoryInstructionMask,
-                &localBackwardMemoryInstructionMask, &IdentifyStrictObligation](
+                &localBackwardMemoryInstructionMask, &IdentifyObligation](
                 InstructionMask readBit,
                 InstructionMask writeBit,
                 bool isThreadGroupBarrierDependent = false) -> bool
             {
-                bool isObligatory = IdentifyStrictObligation(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, readBit, writeBit, isThreadGroupBarrierDependent || IsThreadBarrierOperation(pInst));
+                SynchronizationCaseMask synchronizationCaseMask = sc_FullSynchronizationCaseMask;
+
+                if (IsFenceOperation(pInst))
+                {
+                    // Note: Please change the description in igc flags if the value is changed.
+                    static_assert(SynchronizationCaseMask::ReadSyncWrite == 0x01);
+                    bool disableReadFenceWriteCase = (IGC_GET_FLAG_VALUE(SynchronizationObjectCoalescingConfig) & SynchronizationCaseMask::ReadSyncWrite) != 0;
+                    disableReadFenceWriteCase |= !isThreadGroupBarrierDependent;
+                    if (disableReadFenceWriteCase)
+                    {
+                        synchronizationCaseMask = static_cast<SynchronizationCaseMask>((~SynchronizationCaseMask::ReadSyncWrite) & synchronizationCaseMask);
+                    }
+                }
+
+                bool isObligatory = IdentifyObligation(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, readBit, writeBit, synchronizationCaseMask);
                 return isObligatory;
             };
 
             auto GetL1CacheInvalidationObligation = [this, forwardDirection, backwardDirection, &localForwardMemoryInstructionMask,
-                &localBackwardMemoryInstructionMask, &IdentifyL1CacheInvalidationObligation](
+                &localBackwardMemoryInstructionMask, &IdentifyObligation](
                     InstructionMask readBit,
                     InstructionMask writeBit) -> bool
             {
-                bool isObligatory = IdentifyL1CacheInvalidationObligation(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, readBit, writeBit);
+                constexpr SynchronizationCaseMask L1CacheInvalidationCaseMask = static_cast<SynchronizationCaseMask>(
+                    SynchronizationCaseMask::WriteSyncRead |
+                    SynchronizationCaseMask::WriteSyncAtomic |
+                    SynchronizationCaseMask::AtomicSyncRead);
+                bool isObligatory = IdentifyObligation(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, readBit, writeBit, L1CacheInvalidationCaseMask);
                 return isObligatory;
             };
 
@@ -1874,6 +1902,10 @@ SynchronizationObjectCoalescing::~SynchronizationObjectCoalescing()
 /// the scope of influence from synchronization instruction if safe.
 bool SynchronizationObjectCoalescing::runOnFunction(llvm::Function& F)
 {
+    if (IGC_IS_FLAG_ENABLED(DisableSynchronizationObjectCoalescingPass))
+    {
+        return false;
+    }
     const SynchronizationObjectCoalescingAnalysis& analysis = getAnalysis<SynchronizationObjectCoalescingAnalysis>();
     const llvm::DenseSet<llvm::Instruction*>& redundantInstructions = analysis.GetRedundantInstructions();
 
