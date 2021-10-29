@@ -601,8 +601,7 @@ std::pair<DepSet*, DepSet*> DepSetBuilder::createDPASSrcDstDepSet(
             ++instIt;
             if (instIt == insList.end())
                 break;
-            if (mPlatformModel.platform == Platform::XE_HPG)
-                break;
+
             if (helper_isLastDpas(*cur_inst, **instIt))
                 break;
             SrcRegRangeType new_src_range, new_extra_regs;
