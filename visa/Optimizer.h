@@ -224,6 +224,7 @@ private:
     bool chkBwdOutputHazard(G4_INST *, INST_LIST_ITER&);
     bool chkBwdOutputHazard(G4_INST *, INST_LIST_ITER&, G4_INST *);
     bool chkBwdWARdep(G4_INST*, INST_LIST_ITER);
+    bool chkBwdWAWdep(G4_INST*, INST_LIST_ITER);
 
     // various HW WA
     void addSwitchOptionToBB(G4_BB*, bool isSubroutine = false);

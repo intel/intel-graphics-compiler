@@ -4198,6 +4198,12 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
         return false;
     }
 
+    G4_Declare* dstDcl = GetTopDclFromRegRegion(inst->getDst());
+    if (dstDcl->getAddressed() && chkBwdWAWdep(inst, cmpIter))
+    {
+        return false;
+    }
+
     auto isSafeToSink = [](INST_LIST_ITER defIter,
         INST_LIST_ITER beforeIter, int maxDist)
     {
@@ -8819,6 +8825,22 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 return true;
             }
             --endIter;
+        }
+        return false;
+    }
+
+    // Check if there is WAW dependency between startInst and subsequent insts till endIter
+    bool Optimizer::chkBwdWAWdep(G4_INST* startInst, INST_LIST_ITER endIter)
+    {
+        INST_LIST_ITER backIter = std::prev(endIter, 1);
+        while (*backIter != startInst)
+        {
+            G4_INST* inst = *backIter;
+            if (inst->isWAWdep(startInst))
+            {
+                return true;
+            }
+            --backIter;
         }
         return false;
     }
