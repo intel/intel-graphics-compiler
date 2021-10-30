@@ -12453,11 +12453,11 @@ void Optimizer::applyFusedCallWA()
         G4_INST* I0 = builder.createInternalInst(nullptr, G4_mov, nullptr, g4::NOSAT, g4::SIMD1,
             I0_Dst, I0_Src0, nullptr, InstOpt_WriteEnable);
 
-        // I1:  and  (e)F   tmp  0x8F
+        // I1:  and  (e)F   tmp  0x80
         G4_Declare* F = builder.createTempFlag(simdsz > g4::SIMD16 ? 2 : 1, "euid2");
         G4_CondMod* F_cm = builder.createCondMod(Mod_e, F->getRegVar(), 0);
         G4_SrcRegRegion* I1_Src0 = builder.createSrc(tmp->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UW);
-        G4_Imm* Bit7 = builder.createImm(0x8F, Type_UW);
+        G4_Imm* Bit7 = builder.createImm(0x80, Type_UW);
         G4_INST* I1 = builder.createInternalInst(nullptr, G4_and, F_cm, g4::NOSAT,
             simdsz > g4::SIMD16 ? g4::SIMD32 : g4::SIMD16,
             builder.createNullDst(Type_UW), I1_Src0, Bit7, InstOpt_WriteEnable);
