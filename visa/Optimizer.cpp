@@ -6506,6 +6506,33 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     void Optimizer::sendFusion()
     {
+        // Potential problem related to noMask WA
+        //
+        // Send fusion creates the following code:
+        //   1. (W)  mov (1|M0)             f1.0<1>:uw   0x0:uw
+        //   2.      cmp (8|M0)  (eq)f1.0   null<1>:uw   r0.0<8;8,1>:uw  r0.0<8;8,1>:uw
+        //   3. (W)  mov (1|M0)             r18.4<1>:uw  f1.0<0;1,0>:uw
+        //   4. (W)  mov (2|M0)             r18.8<1>:ub  r18.8<0;1,0>:ub
+        //   5. (W)  mov (1|M0)             f0.1<1>:uw   r18.4<0;1,0>:uw
+        //
+        //      (W&f0.1) send.dc1 (16|M0)   r5   r27  r1   0x40      0x02205EFF   <-- fused send
+        //
+        // This code also works if NoMask WA is needed. Actually, this f0.1 behaves the
+        // same as NoMask WA.  And it is critical that all of them should be executed without applying
+        // NoMask WA. Here is the reason why:
+        //     Assume we have a HW bug, no channels are on but it runs thru those instructions. We have
+        //     f1.0 be all 0 at the end of 2.  As result, f0.1 will be all zero. And the fused send
+        //     will not run as its predicate is false.
+        //     But if NoMask WA applies to 3 in postRA WA as it thinks it is a flag spill. (3) becomes:
+        //           (3)  (W& f0.0.any8)  mov (1|M0)   r18.4<1>:uw f1.0<0;1,0>:uw
+        //     therefore,  this instruction will no longer run, as result, f0.1 has garbage and it may
+        //     make the fused send to run, which is wrong.
+        //
+        // The solutions:
+        //  1) turn off send fusion (does it really help?);
+        //  2) don't apply WA on those instructions.
+        // As those 1-5 are all local definitions, postRA WA should skip them. We have a way to do so
+        // now (see set G4_INST::skipPostRA field). For now, we will do 2 to minimize potential impacts.
         (void) doSendFusion(&fg, &mem);
     }
 
@@ -11803,14 +11830,10 @@ void Optimizer::doNoMaskWA()
 
         if ((builder.getuint32Option(vISA_noMaskWA) & 0x4) != 0)
         {
-            // simple flag insertion: every time a flag is needed, calcalate it.
+            // simple flag insertion: every time a flag is needed, calculate it.
             for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
             {
                 G4_INST* I = *II;
-
-                // Mark all instruction as created by preRA to avoid re-processing postRA
-                I->setCreatedPreRA(true);
-
                 if (!isCandidateInst(I, fg))
                 {
                     continue;
@@ -11963,6 +11986,18 @@ void Optimizer::doNoMaskWA()
         // Clear it to prepare for the next BB
         NoMaskCandidates.clear();
     }
+
+    // Setting SkipPostRA for all insts so that postRA WA only applies on new insts
+    // generated in RA, such as spills, stack call sequence, etc.
+    for (auto BI : fg)
+    {
+        G4_BB* BB = BI;
+        for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+        {
+            G4_INST* I = *II;
+            I->setSkipPostRA(true);
+        }
+    }
 }
 
 // Need to apply NoMaskWA on spill.  For example,
@@ -12071,7 +12106,7 @@ void Optimizer::doNoMaskWA_postRA()
     };
 
     auto isCandidate = [&](G4_INST* I, G4_BB* BB) {
-        if (I->getCreatedPreRA() || !I->isWriteEnableInst())
+        if (I->getSkipPostRA() || !I->isWriteEnableInst())
         {
             return false;
         }
