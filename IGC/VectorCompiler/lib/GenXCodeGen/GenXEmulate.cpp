@@ -74,7 +74,7 @@ constexpr std::array<PrefixOpcode, 4> DivRemPrefixes = {
      {EmuLibUDivPrefix, BinaryOperator::UDiv},
      {EmuLibURemPrefix, BinaryOperator::URem}}};
 
-constexpr std::array<PrefixOpcode, 4> EmulationLLPrefixes = {
+constexpr std::array<PrefixOpcode, 4> EmulationFPConvertsPrefixes = {
     {{EmuLibFP2UIPrefix, Instruction::FPToUI},
      {EmuLibFP2SIPrefix, Instruction::FPToSI},
      {EmuLibUI2FPPrefix, Instruction::UIToFP},
@@ -161,6 +161,12 @@ static std::function<bool(const OpType &, const OpType &)> OpTypeComparator =
     return false;
   return ot1.FirstArgType < ot2.FirstArgType;
 };
+
+template <typename T> static void processToEraseList(T &EraseList) {
+  std::for_each(EraseList.begin(), EraseList.end(),
+                [](auto *Item) { Item->eraseFromParent(); });
+  EraseList.clear();
+}
 
 class GenXEmulate : public ModulePass {
 
@@ -1736,9 +1742,7 @@ bool GenXEmulate::runOnModule(Module &M) {
     runOnFunction(F);
 
   Changed |= !ToErase.empty();
-  for (auto *I : ToErase)
-    I->eraseFromParent();
-  ToErase.clear();
+  processToEraseList(ToErase);
 
   auto IsOldEmulationFunction = [](const Function *F) {
     return F->getName().contains("__cm_intrinsic_impl_");
@@ -1823,7 +1827,7 @@ void GenXEmulate::buildEmuFunCache(Module &M) {
     for (auto &PrOp : DivRemPrefixes)
       UpdateCacheIfMatch(F, PrOp.Prefix, PrOp.Opcode);
     if (ST->emulateLongLong()) {
-      for (auto &PrOp : EmulationLLPrefixes)
+      for (auto &PrOp : EmulationFPConvertsPrefixes)
         UpdateCacheIfMatch(F, PrOp.Prefix, PrOp.Opcode);
     }
   }
@@ -1935,10 +1939,8 @@ public:
         LoadEmuFunLib(M.getContext(), M.getDataLayout(), M.getTargetTriple());
     if (!ModEmuFun)
       return false;
-    if (ST.hasIntDivRem32())
-      Purge32BitDivRemFunctions(*ModEmuFun);
-    if (!ST.hasFP64())
-      PurgeFP64Functions(*ModEmuFun);
+
+    PurgeUnneededEmulationFunctions(*ModEmuFun, ST);
 
     if (Linker::linkModules(M, std::move(ModEmuFun)))
       report_fatal_error("Error linking emulation routines");
@@ -1952,38 +1954,73 @@ private:
     return Name.startswith(LibraryFunctionPrefix);
   }
 
-  static void Purge32BitDivRemFunctions(Module &M) {
-    // We should remove 32-bit emulation routines if they are not used
-    for (auto I = M.begin(), E = M.end(); I != E;) {
-      Function &F = *I++;
+  template <typename FilterFunction>
+  static std::vector<Function *> selectEmulationFunctions(Module &M,
+                                                          FilterFunction Flt) {
+    std::vector<Function *> Result;
+    auto &&Selected = make_filter_range(M.functions(), [&Flt](Function &F) {
       if (!IsLibraryFunction(F))
-        continue;
-      if (F.getReturnType()->getScalarType()->isIntegerTy(64))
-        continue;
-      if (std::any_of(DivRemPrefixes.begin(), DivRemPrefixes.end(),
-                      [&F](const auto &PrOp) {
-                        return F.getName().startswith(PrOp.Prefix);
-                      })) {
-        F.eraseFromParent();
-      }
-    }
+        return false;
+      return Flt(F);
+    });
+    llvm::transform(Selected, std::back_inserter(Result),
+                    [](Function &Fn) { return &Fn; });
+    return Result;
   }
 
-  static void PurgeFP64Functions(Module &M) {
-    // We should remove function with double in order not to scare the checkers
-    for (auto I = M.begin(), E = M.end(); I != E;) {
-      Function &F = *I++;
-      if (!IsLibraryFunction(F))
-        continue;
-      bool FoundDouble =
-          std::any_of(F.arg_begin(), F.arg_end(), [](const auto &Arg) {
-            return Arg.getType()->getScalarType()->isDoubleTy();
-          });
-      FoundDouble =
-          FoundDouble || F.getReturnType()->getScalarType()->isDoubleTy();
-      if (FoundDouble)
-        F.eraseFromParent();
-    }
+  static void PurgeNon64BitDivRemFunctions(Module &M) {
+    auto ToErase = selectEmulationFunctions(M, [](Function &F) {
+      if (F.getReturnType()->getScalarType()->isIntegerTy(64))
+        return false;
+      return std::any_of(DivRemPrefixes.begin(), DivRemPrefixes.end(),
+                         [&F](const auto &PrOp) {
+                           return F.getName().startswith(PrOp.Prefix);
+                         });
+    });
+    processToEraseList(ToErase);
+  }
+
+  static void PurgeFPConversionFunctions(Module &M, bool TargetHasFP64,
+                                         bool TargetHasI64) {
+    auto ToErase = selectEmulationFunctions(M, [=](Function &F) {
+      // Skip non-converts
+      if (std::none_of(EmulationFPConvertsPrefixes.begin(),
+                       EmulationFPConvertsPrefixes.end(),
+                       [&F](const auto &PrOp) {
+                         return F.getName().startswith(PrOp.Prefix);
+                       }))
+        return false;
+
+      bool IsFP64Operation =
+          std::any_of(F.arg_begin(), F.arg_end(),
+                      [](const auto &Arg) {
+                        return Arg.getType()->getScalarType()->isDoubleTy();
+                      }) ||
+          F.getReturnType()->getScalarType()->isDoubleTy();
+
+      // if target does not have support for I64 but does have FP64 - then
+      // fp64 converts should be preserved
+      if (!TargetHasI64 && TargetHasFP64 && IsFP64Operation) {
+        return false;
+      }
+
+      // If target does not have support for I64 and FP64 - then
+      // fp64 converts should be removed
+      if (!TargetHasI64 && !TargetHasFP64 && IsFP64Operation) {
+        return true;
+      }
+
+      return TargetHasI64;
+    });
+    processToEraseList(ToErase);
+  }
+
+  static void PurgeUnneededEmulationFunctions(Module &ModEmuFun,
+                                             const GenXSubtarget &ST) {
+    if (ST.hasIntDivRem32())
+      PurgeNon64BitDivRemFunctions(ModEmuFun);
+
+    PurgeFPConversionFunctions(ModEmuFun, ST.hasFP64(), !ST.emulateLongLong());
   }
 
   static void DeriveRoundingAttributes(Function &F) {
