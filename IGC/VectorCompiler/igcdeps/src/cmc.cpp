@@ -662,6 +662,7 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   ExecEnv.CompiledSIMDSize = BackendInfo.getSIMDSize();
   // SLM size in bytes, align to 1KB.
   ExecEnv.SumFixedTGSMSizes = iSTD::Align(BackendInfo.getSLMSize(), 1024);
+  ExecEnv.HasStackCalls = BackendInfo.hasStackCalls();
   ExecEnv.HasBarriers = BackendInfo.usesBarriers();
   ExecEnv.HasDPAS = BackendInfo.usesDPAS();
   ExecEnv.HasReadWriteImages = BackendInfo.usesReadWriteImages();
