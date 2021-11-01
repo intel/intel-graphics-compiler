@@ -219,6 +219,20 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform, Stepping step
     return pWaTable;
 }
 
+// Change default values of some options according to WA_TABLE
+// The values are set before parsing any flags specified by client
+// (either within CreateVISABuilder() call or via VISABuilder interface)
+// and may be overriden by client flags
+static void AddWAOptions(Options &options, const WA_TABLE &waTable)
+{
+    if (waTable.Wa_1808850743 || waTable.Wa_1409909237)
+    {
+        options.setOptionInternally(vISA_noMaskWA, 2u);
+        // Turn off jmpi as there is no wa for jmpi
+        options.setOptionInternally(vISA_EnableScalarJmp, false);
+    }
+}
+
 int CISA_IR_Builder::CreateBuilder(
     CISA_IR_Builder *&builder,
     vISABuilderMode mode,
@@ -243,6 +257,11 @@ int CISA_IR_Builder::CreateBuilder(
     SetVisaPlatform(platform);
 
     builder = new CISA_IR_Builder(buildOption, mode, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER, pWaTable);
+
+    if (pWaTable)
+    {
+        AddWAOptions(builder->m_options, *pWaTable);
+    }
 
     if (!builder->m_options.parseOptions(numArgs, flags))
     {
