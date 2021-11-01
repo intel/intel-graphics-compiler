@@ -2130,7 +2130,7 @@ namespace IGC
             if (m_PosDep->PositionDependsOnInst(&I))
                 return false;
         }
-        
+
         if (IGC_IS_FLAG_ENABLED(DisableMatchMad))
         {
             return false;
