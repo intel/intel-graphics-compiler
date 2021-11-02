@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "../RegAlloc.h"
 #include "visa_wa.h"
 
+#include <algorithm>
 #include <fstream>
 #include <functional>
 #include <sstream>
@@ -917,10 +918,10 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
 
     SWSBGlobalSIMDCFGReachAnalysis();
 
-    //Add dependence according ot analysis result
+    //Add dependence according to analysis result
     addGlobalDependence(globalSendNum, &globalSendOpndList, &SBNodes, p, false);
 
-    //SWSB token alloation with linear scan algorithm.
+    //SWSB token allocation with linear scan algorithm.
     if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation))
     {
         tokenAllocationGlobal();
@@ -929,16 +930,13 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     {
         tokenAllocationGlobalWithPropogation();
     }
+    else if (fg.builder->getOptions()->getOption(vISA_QuickTokenAllocation))
+    {
+        quickTokenAllocation();
+    }
     else
     {
-        if (fg.builder->getOptions()->getOption(vISA_QuickTokenAllocation))
-        {
-            quickTokenAllocation();
-        }
-        else
-        {
-            tokenAllocation();
-        }
+        tokenAllocation();
     }
 
     //Insert test instruction in case the dependences are more than token field in the instruction.
@@ -1966,9 +1964,8 @@ void SWSB::assignToken(SBNode* node,
                         {
                             succ->getLastInstruction()->setSetToken(token);
                             node->setLiveLatestID(succ->getLiveEndID(), succ->getLiveEndBBID());
-                            allTokenNodesMap[token].set(node->sendID, true);
+                            allTokenNodesMap[token].set(succ->sendID, true);
                             succ->setTokenReuseNode(node);
-
                             continue;
                         }
                     }
@@ -1976,7 +1973,7 @@ void SWSB::assignToken(SBNode* node,
                     {
                         succ->getLastInstruction()->setSetToken(token);
                         node->setLiveLatestID(succ->getLiveEndID(), succ->getLiveEndBBID());
-                        allTokenNodesMap[token].set(node->sendID, true);
+                        allTokenNodesMap[token].set(succ->sendID, true);
                         succ->setTokenReuseNode(node);
                         continue;
                     }
@@ -2367,7 +2364,15 @@ void SWSB::tokenAllocation()
     uint32_t AATokenReuseCount = 0;
     uint32_t mathInstCount = 0;
     //Linear scan
-    for (SBNode* node : SBSendNodes)
+    //Assign tokens to nodes in the order of liveness. Here we only need to
+    //iterate SB nodes in that order, and don't actually need to sort
+    //SBSendNodes as it might be referenced through allTokenNodesMap.
+    auto sortInLivenessOrder = [](const SBNODE_VECT& vec) {
+        SBNODE_VECT sorted(vec.size());
+        std::partial_sort_copy(vec.begin(), vec.end(), sorted.begin(), sorted.end(), compareInterval);
+        return sorted;
+    };
+    for (SBNode* node : sortInLivenessOrder(SBSendNodes))
     {
         unsigned startID = node->getLiveStartID();
         G4_INST* inst = node->getLastInstruction();
@@ -3844,7 +3849,7 @@ void SWSB::buildLiveIntervals()
     // Set the live ranges according to dependence edges
     for (SBNode* node : SBSendNodes)
     {
-        node->setLiveEarliesID(node->getNodeID(), node->getBBID());
+        node->setLiveEarliestID(node->getNodeID(), node->getBBID());
         node->setLiveLatestID(node->getNodeID(), node->getBBID());
         for (SBDEP_ITEM& curSucc : node->succs)
         {
@@ -3900,7 +3905,7 @@ void SWSB::buildLiveIntervals()
                 {
                     if (!(*ib)->Preds.empty() || !(BBVector[bbID]->Preds.empty()))
                     {
-                        node->setLiveEarliesID(BBVector[bbID]->first_node, bbID);
+                        node->setLiveEarliestID(BBVector[bbID]->first_node, bbID);
                     }
                 }
                 //FIXME: implicit dependence still have issue.
@@ -3921,7 +3926,7 @@ void SWSB::buildLiveIntervals()
                 {
                     if (!(*ib)->Preds.empty() || !(BBVector[bbID]->Preds.empty()))
                     {
-                        node->setLiveEarliesID(BBVector[bbID]->first_node, bbID);
+                        node->setLiveEarliestID(BBVector[bbID]->first_node, bbID);
                     }
                 }
                 //FIXME: implicit dependence still have issue.
@@ -3937,10 +3942,6 @@ void SWSB::buildLiveIntervals()
             }
         }
     }
-
-    //Sort the live ranges
-    std::sort(SBSendNodes.begin(), SBSendNodes.end(), compareInterval);
-
 #ifdef DEBUG_VERBOSE_ON
     dumpLiveIntervals();
 #endif
@@ -6469,7 +6470,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                 {
                     assert(node->getBBID() == i);
 
-                    node->setLiveEarliesID(node->getNodeID());
+                    node->setLiveEarliestID(node->getNodeID());
                     node->setLiveLatestID(node->getNodeID());
                     if (node->succs.size())
                     {
@@ -6488,7 +6489,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                 }
                 else
                 {
-                    node->setLiveEarliesID(node->getNodeID());
+                    node->setLiveEarliestID(node->getNodeID());
                     node->setLiveLatestID(BBVector[i]->last_node);
                 }
             }

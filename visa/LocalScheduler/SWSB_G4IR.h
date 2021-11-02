@@ -458,7 +458,7 @@ namespace vISA
         unsigned getLiveStartBBID() const { return liveStartBBID; }
         unsigned getLiveEndBBID() const { return liveEndBBID; }
 
-        void setLiveEarliesID(unsigned id, unsigned startBBID)
+        void setLiveEarliestID(unsigned id, unsigned startBBID)
         {
             if (!liveStartID)
             {
@@ -485,7 +485,7 @@ namespace vISA
             }
         }
 
-        void setLiveEarliesID(unsigned id)
+        void setLiveEarliestID(unsigned id)
         {
             liveStartID = id;
         }
