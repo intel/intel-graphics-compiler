@@ -139,8 +139,7 @@ DECLARE_IGC_REGKEY(bool, DisableLoopUnroll,             false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, DisableRuntimeLoopUnrolling,   false, "Setting this to 1/true adds a compiler switch to disable runtime loop unrolling.", false)
 DECLARE_IGC_REGKEY(bool, DisableBranchSwaping,          false, "Setting this to 1/true adds a compiler switch to disable branch swapping.", false)
 DECLARE_IGC_REGKEY(bool, DisableSynchronizationObjectCoalescingPass, false, "Disable SynchronizationObjectCoalescing pass", false)
-DECLARE_IGC_REGKEY(DWORD, SynchronizationObjectCoalescingConfig, 0, "Modify the default behavior of SynchronizationObjectCoalescing, value\
-                                                                     is a bitmask: bit0 – remove fences in read->barrier->write scenario ", true)
+DECLARE_IGC_REGKEY(DWORD, SynchronizationObjectCoalescingConfig, 0, "Modify the default behavior of SynchronizationObjectCoalescing value is a bitmask bit0 â€“ remove fences in read barrier write scenario", true)
 DECLARE_IGC_REGKEY(DWORD,SetLoopUnrollThreshold,        0,     "Set the loop unroll threshold. Value 0 will use the default threshold.", false)
 DECLARE_IGC_REGKEY(DWORD,SetLoopUnrollThresholdForHighRegPressure,        0,     "Set the loop unroll threshold for shaders with high reg pressure. Value 0 will use the default threshold.", false)
 DECLARE_IGC_REGKEY(DWORD,SetRegisterPressureThresholdForLoopUnroll,       64,     "Set the register pressure threshold for limiting the loop unroll to smaller loops", false)
