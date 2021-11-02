@@ -335,7 +335,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     if (LI)
     {
         LoadInst* load = Builder.CreateAlignedLoad(newPtr,
-            IGCLLVM::getAlign(LI->getAlignment()),
+            IGCLLVM::getCorrectAlign(LI->getAlignment()),
             LI->isVolatile(),
             "vCastload");
         load->copyMetadata(*LI);
