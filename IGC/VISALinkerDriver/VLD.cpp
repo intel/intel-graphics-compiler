@@ -26,7 +26,7 @@ llvm::Expected<std::vector<llvm::StringRef>>
 GetVISAAsmFromZEBinary(const char *zeBinary, size_t zeBinarySize) {
   using namespace llvm;
 
-  std::vector<StringRef> OutVSAAsmStrings;
+  std::vector<StringRef> OutVISAAsmStrings;
 
   StringRef zeBinaryData(zeBinary, zeBinarySize);
   MemoryBufferRef inputRef(zeBinaryData, "zebin");
@@ -52,11 +52,11 @@ GetVISAAsmFromZEBinary(const char *zeBinary, size_t zeBinarySize) {
         return SectionDataOrErr.takeError();
       StringRef Data(reinterpret_cast<const char *>((*SectionDataOrErr).data()),
                      (size_t)sect.sh_size);
-      OutVSAAsmStrings.push_back(Data);
+      OutVISAAsmStrings.push_back(Data);
     }
   }
 
-  return OutVSAAsmStrings;
+  return OutVISAAsmStrings;
 }
 } // namespace
 
@@ -151,25 +151,27 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
     const char* pOutputFolder = IGC::Debug::GetShaderOutputFolder();
 
-    auto dump = [&](auto& program, std::string ext) {
+    auto dump = [&](const char* programData, auto programSizeInBytes, std::string ext) {
       TC::DumpShaderFile(
           pOutputFolder,
-          (const char*)program.data(),
-          program.size() * sizeof(uint32_t),
+          programData,
+          programSizeInBytes,
           inputShHash.getAsmHash(), ext);
       spv_text spirvAsm = nullptr;
       if (TC::DisassembleSPIRV(
-              (const char*)program.data(),
-              program.size() * sizeof(uint32_t),
+              programData,
+              programSizeInBytes,
               &spirvAsm) == SPV_SUCCESS) {
         DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length,
                        inputShHash.getAsmHash(), ext+"asm");
       }
       spvTextDestroy(spirvAsm);
     };
-
-    dump((*spmd_esimd_programs_or_err).first, ".spmd_split.spv");
-    dump((*spmd_esimd_programs_or_err).second, ".esimd_split.spv");
+    auto spmdProg = (*spmd_esimd_programs_or_err).first;
+    auto esimdProg = (*spmd_esimd_programs_or_err).second;
+    dump(pInputArgs->pInput, pInputArgs->InputSize, ".spmd_and_esimd.spv");
+    dump((const char*)spmdProg.data(), spmdProg.size() * sizeof(uint32_t), ".spmd_split.spv");
+    dump((const char*)esimdProg.data(), esimdProg.size() * sizeof(uint32_t), ".esimd_split.spv");
   }
 
   auto translateToVISA =
