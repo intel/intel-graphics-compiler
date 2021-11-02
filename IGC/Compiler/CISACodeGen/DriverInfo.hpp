@@ -306,12 +306,9 @@ namespace IGC
 
         virtual float getCSSpillThresholdSLM() const { return 12; }
 
-        virtual bool supportsAutoGRFSelection() const { return autoGRFSelection; }
-        virtual void setAutoGRFSelection(bool value) { autoGRFSelection = value; }
+        virtual bool supportsAutoGRFSelection() const { return false; }
 
 
-protected:
-    bool autoGRFSelection = false;
     };
 
 }//namespace IGC
