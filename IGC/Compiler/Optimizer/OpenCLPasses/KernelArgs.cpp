@@ -163,7 +163,7 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
         {
 
             Type* type = arg->getType();
-            if (typeStr.equals("queue_t"))
+            if (typeStr.equals("queue_t") || typeStr.equals("spirv.Queue"))
             {
                 return KernelArg::ArgType::PTR_DEVICE_QUEUE;
             }
