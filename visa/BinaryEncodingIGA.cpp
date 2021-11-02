@@ -1330,10 +1330,13 @@ void BinaryEncodingIGA::translateInstructionSrcs(
                 RegRef regRef {0, 0};
                 bool valid;
                 regRef.subRegNum = (uint8_t)srcRegion->ExIndSubRegNum(valid);
+                // set to GRF for indirect register access
+                iga::RegName regName = iga::RegName::GRF_R;
+
                 igaInst->setInidirectSource(
                     opIx,
                     srcMod,
-                    iga::RegName::GRF_R, // set to GRF for indirect register access
+                    regName,
                     regRef,
                     srcRegion->getAddrImm(),
                     region,
