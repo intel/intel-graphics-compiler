@@ -509,7 +509,7 @@ bool LivenessAnalysis::setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
                 if (decl->getIsPartialDcl())
                 {
                     auto declSplitDcl = gra.getSplittedDeclare(decl);
-                    if (declSplitDcl->getIsSplittedDcl())
+                    if (declSplitDcl && declSplitDcl->getIsSplittedDcl())
                     {
                         if (numSplitStartID == 0)
                         {
