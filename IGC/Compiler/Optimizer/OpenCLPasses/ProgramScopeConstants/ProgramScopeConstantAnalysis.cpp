@@ -237,40 +237,43 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         IGC::appendToUsed(M, globalArray);
     }
 
-    // Always rely on relocation for ZEBinary, so only need to generate these
-    // implcit args when disabling ZEBinary
-    if (IGC_IS_FLAG_DISABLED(EnableZEBinary) &&
-        !m_pModuleMd->compOpt.EnableZEBinary)
-    {
-        if (hasInlineConstantBuffer)
-        {
-            // Just add the implicit argument to each function if a constant
-            // buffer has been created.  This will technically burn a patch
-            // token on kernels that don't actually use the buffer but it saves
-            // us having to walk the def-use chain (we can't just check if a
-            // constant is used in the kernel; for example, a global buffer
-            // may contain pointers that in turn point into the constant
-            // address space).
-            for (auto& pFunc : M)
-            {
-                if (pFunc.isDeclaration()) continue;
-                // Skip functions called from function marked with stackcall attribute
-                if (AddImplicitArgs::hasStackCallInCG(&pFunc)) continue;
+    // Check if zebin is enabled
+    bool zebinEnable = IGC_IS_FLAG_ENABLED(EnableZEBinary) || m_pModuleMd->compOpt.EnableZEBinary;
 
+    if (hasInlineConstantBuffer)
+    {
+        // Just add the implicit argument to each function if a constant
+        // buffer has been created.  This will technically burn a patch
+        // token on kernels that don't actually use the buffer but it saves
+        // us having to walk the def-use chain (we can't just check if a
+        // constant is used in the kernel; for example, a global buffer
+        // may contain pointers that in turn point into the constant
+        // address space).
+        for (auto& pFunc : M)
+        {
+            if (pFunc.isDeclaration()) continue;
+            // Skip functions called from function marked with stackcall attribute
+            if (AddImplicitArgs::hasStackCallInCG(&pFunc)) continue;
+            // Always add for kernels, but use relocation for subroutines if zebin is enabled
+            if (isEntryFunc(mdUtils, &pFunc) || !zebinEnable)
+            {
                 SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
                 implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
                 ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
             }
         }
+    }
 
-        if (hasInlineGlobalBuffer)
+    if (hasInlineGlobalBuffer)
+    {
+        for (auto& pFunc : M)
         {
-            for (auto& pFunc : M)
+            if (pFunc.isDeclaration()) continue;
+            // Skip functions called from function marked with stackcall attribute
+            if (AddImplicitArgs::hasStackCallInCG(&pFunc)) continue;
+            // Always add for kernels, but use relocation for subroutines if zebin is enabled
+            if (isEntryFunc(mdUtils, &pFunc) || !zebinEnable)
             {
-                if (pFunc.isDeclaration()) continue;
-                // Skip functions called from function marked with stackcall attribute
-                if (AddImplicitArgs::hasStackCallInCG(&pFunc)) continue;
-
                 SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
                 implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);
                 ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
