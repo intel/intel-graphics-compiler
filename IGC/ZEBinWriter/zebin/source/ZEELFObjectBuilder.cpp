@@ -637,7 +637,8 @@ void ELFWriter::writeSections()
         switch(entry.type) {
         case ELF::SHT_PROGBITS:
         case SHT_ZEBIN_VISAASM:
-        case SHT_ZEBIN_SPIRV: {
+        case SHT_ZEBIN_SPIRV:
+        case SHT_ZEBIN_GTPIN_INFO: {
             IGC_ASSERT(nullptr != entry.section);
             IGC_ASSERT(entry.section->getKind() == Section::STANDARD);
             const StandardSection* const stdsect =
