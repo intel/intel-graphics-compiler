@@ -1123,7 +1123,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
         if (!m_encoder->IsCodePatchCandidate() ||
             m_encoder->HasPrevKernel() ||
-            !m_currShader->ProgramOutput()->m_programBin)
+            !m_currShader->ProgramOutput()->m_programBin ||
+            m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills)
         {
             m_pCtx->m_prevShader = nullptr;
             // Postpone destroying VISA builder to
