@@ -731,6 +731,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     }
     else
     {
+        // If kernel function is not compiled for the SIMD size then VISABuilder==nullptr
+        if (m_currShader->GetEncoder().GetVISABuilder() == nullptr)
+        {
+            return false;
+        }
         if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
         {
             return false;
