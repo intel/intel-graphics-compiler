@@ -145,7 +145,7 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_RAW_SENDS,          ISA_Inst_Misc,       "raw_sends",           0, 0 },
     { ISA_LIFETIME,           ISA_Inst_Misc,       "lifetime",            2, 0 },
     { ISA_SBARRIER,           ISA_Inst_Sync,       "sbarrier",            1, 0 },
-    { ISA_DWORD_ATOMIC,       ISA_Inst_Data_Port,  "dword_atomic",        6, 1 },
+    { ISA_DWORD_ATOMIC,       ISA_Inst_Data_Port,  "dword_atomic",        5, 1 },
     { ISA_SQRTM,              ISA_Inst_Arith,      "sqrtm",               1, 1 },
     { ISA_DIVM,               ISA_Inst_Arith,      "divm",                2, 1 },
     { ISA_ROL,                ISA_Inst_Logic,      "rol",                 2, 1 },
