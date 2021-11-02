@@ -853,7 +853,12 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
 }
 
 // split a SIMD32 inst into two SIMD16.
-// there is predicate/conditional modifier used in this inst
+// there is predicate/conditional modifier used in this inst.
+//
+// Result:
+//    Inst refered to by 'iter' is split into two simd16 instrcutions.
+//    One is inserted right before 'iter', the other is to reuse 'iter'.
+// And the caller of this function can access two new instructions via '--iter' and 'iter' !
 void HWConformity::splitSIMD32Inst(INST_LIST_ITER iter, G4_BB* bb)
 {
     G4_INST *inst = *iter;
@@ -1254,6 +1259,9 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
 
 // evenly split an inst into two instructions with half execution size.
 // this is used to split a simd16 math into two simd8 before other reducing exeuction size actions
+//
+// This will has two instructions: one is right before "iter", the other is to re-use "iter". The
+// caller is safe to use "--iter" and "iter" to refer those two instructions.
 bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb, bool checkOverlap)
 {
     G4_INST* inst = *iter;
