@@ -269,14 +269,22 @@ static void setDEPPipeClass_FourDistPipeReduction(
 static void setDEPPipeClass(
     SWSB_ENCODE_MODE enc_mode, DepSet &dep, const Instruction &inst, const Model& model)
 {
-    if (enc_mode == SWSB_ENCODE_MODE::SingleDistPipe)
-        setDEPPipeClass_SingleDistPipe(dep, inst);
-    else if (enc_mode == SWSB_ENCODE_MODE::ThreeDistPipe)
-        setDEPPipeClass_ThreeDistPipe(dep, inst, model);
-    else if (enc_mode == SWSB_ENCODE_MODE::FourDistPipe)
-        setDEPPipeClass_FourDistPipe(dep, inst, model);
-    else if (enc_mode == SWSB_ENCODE_MODE::FourDistPipeReduction)
-        setDEPPipeClass_FourDistPipeReduction(dep, inst, model);
+    switch (enc_mode) {
+        case SWSB_ENCODE_MODE::SingleDistPipe:
+            setDEPPipeClass_SingleDistPipe(dep, inst);
+            break;
+        case SWSB_ENCODE_MODE::ThreeDistPipe:
+            setDEPPipeClass_ThreeDistPipe(dep, inst, model);
+            break;
+        case SWSB_ENCODE_MODE::FourDistPipe:
+            setDEPPipeClass_FourDistPipe(dep, inst, model);
+            break;
+        case SWSB_ENCODE_MODE::FourDistPipeReduction:
+            setDEPPipeClass_FourDistPipeReduction(dep, inst, model);
+            break;
+        default:
+            break;
+    }
 }
 
 DepSet::DepSet(const InstIDs& instIdCntr, const DepSetBuilder& dsb)
@@ -396,7 +404,7 @@ void DepSet::getDpasSrcDependency(
             }
         }
         // calculate extra_regs for HW workaround: src1 always have 8 register footpring
-        if (model.platform == Platform::XE_HP || model.platform == Platform::XE_HPG) {
+        if (model.platform == Platform::XE_HP) {
             if (srcIx == 1) {
                 uint32_t extraUpBound = lowBound + m_DB.getGRF_BYTES_PER_REG() * 8;
                 uint32_t extraUpRegNum = (extraUpBound - 1) / m_DB.getGRF_BYTES_PER_REG();
