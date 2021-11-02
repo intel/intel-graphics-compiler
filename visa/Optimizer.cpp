@@ -6539,6 +6539,11 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //  2) don't apply WA on those instructions.
         // As those 1-5 are all local definitions, postRA WA should skip them. We have a way to do so
         // now (see set G4_INST::skipPostRA field). For now, we will do 2 to minimize potential impacts.
+        if (builder.hasFusedEU())
+        {
+            // Turn off send fusion for EU Fusion platforms.
+            return;
+        }
         (void) doSendFusion(&fg, &mem);
     }
 
