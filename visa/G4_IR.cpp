@@ -1091,6 +1091,15 @@ bool G4_INST::isIntegerPipeInstructionXe() const
         return true;
     }
 
+    if (builder.hasQ2FInIntegerPipe() && dst->getType() == Type_F)
+    {
+        const G4_Operand* src = getSrc(0);
+        if (src && (src->getType() == Type_Q || src->getType() == Type_UQ))
+        {
+            return true;
+        }
+    }
+
     if (!dst)
     {
         const G4_Operand* src = getSrc(0);
@@ -1133,6 +1142,14 @@ bool G4_INST::isFloatPipeInstructionXe() const
             dst->getType() == Type_HF ||
             dst->getType() == Type_BF))
     {
+        if (builder.hasQ2FInIntegerPipe() && dst->getType() == Type_F)
+        {
+            const G4_Operand* src = getSrc(0);
+            if (src && (src->getType() == Type_Q || src->getType() == Type_UQ))
+            {
+                return false;
+            }
+        }
         return true;
     }
 

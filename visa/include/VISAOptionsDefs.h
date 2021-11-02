@@ -206,6 +206,7 @@ DEF_VISA_OPTION(vISA_ReadSuppressionDepth, ET_INT32, "-readSuppressionDepth", UN
 DEF_VISA_OPTION(vISA_ScheduleForReadSuppression, ET_BOOL, "-scheduleForReadSuppression", UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalSchedulingStartBB,   ET_INT32, "-scheduleStartBB", UNUSED, 0)
 DEF_VISA_OPTION(vISA_LocalSchedulingEndBB,     ET_INT32, "-scheduleEndBB", UNUSED, UINT_MAX)
+DEF_VISA_OPTION(vISA_Q2FInIntegerPipe, ET_BOOL, "-Q2FInteger", UNUSED, false)
 
 //=== SWSB options ===
 DEF_VISA_OPTION(vISA_USEL3HIT,      ET_BOOL,  "-SBIDL3Hit",    UNUSED, false)

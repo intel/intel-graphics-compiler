@@ -893,6 +893,11 @@ SPDX-License-Identifier: MIT
        return getPlatform() <= GENX_TGLLP;
    }
 
+   bool hasQ2FInIntegerPipe() const
+   {
+       return false;
+   }
+
    bool hasScalarRegister() const
    {
        return false;
