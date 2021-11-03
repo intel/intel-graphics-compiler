@@ -734,7 +734,12 @@ void SWSBAnalyzer::processActiveSBID(SWSB &distanceDependency, const DepSet* inp
 
 uint32_t SWSBAnalyzer::getNumOfDistPipe()
 {
-    switch(m_swsbMode) {
+    return getNumOfDistPipe(m_swsbMode);
+}
+
+uint32_t SWSBAnalyzer::getNumOfDistPipe(SWSB_ENCODE_MODE mode)
+{
+    switch(mode) {
     case SWSB_ENCODE_MODE::SingleDistPipe:
         return 1;
     case SWSB_ENCODE_MODE::ThreeDistPipe:

@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include <cassert>
 
 #include "iga_types_swsb.hpp"
+#include "../IR/SWSBSetter.hpp"
 
 // SingleDistPipe encoding
 const static uint32_t SWSB_FLAG_SBID_DST          = 0x20;
@@ -659,15 +660,12 @@ void SWSB::clear()
 bool SWSB::verifySpecialToken(SWSB_ENCODE_MODE enMode) const
 {
     assert(hasSpecialToken());
-    // Currently we only support NOACCSBSET on 10-bit four-dist-pipe mode
-    if (enMode != SWSB_ENCODE_MODE::FourDistPipeReduction &&
-        enMode != SWSB_ENCODE_MODE::FourDistPipe)
-        return false;
 
     // special token cannot be encoded with token and dist
     if (hasToken() || hasDist())
         return false;
-    return true;
+
+    return SWSBAnalyzer::getNumOfDistPipe(enMode) >= 4;
 }
 
 bool SWSB::verify(SWSB_ENCODE_MODE enMode, InstType instTy) const

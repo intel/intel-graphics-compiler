@@ -266,6 +266,7 @@ static void setDEPPipeClass_FourDistPipeReduction(
 }
 
 
+
 static void setDEPPipeClass(
     SWSB_ENCODE_MODE enc_mode, DepSet &dep, const Instruction &inst, const Model& model)
 {

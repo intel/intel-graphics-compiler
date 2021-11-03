@@ -69,7 +69,8 @@ namespace iga
             else
                 m_swsbMode = k.getModel().getSWSBEncodeMode();
 
-            if (m_swsbMode == SWSB_ENCODE_MODE::FourDistPipeReduction) {
+            if (m_swsbMode == SWSB_ENCODE_MODE::FourDistPipeReduction
+                ) {
                 m_LatencyLong64Pipe = 12;
             }
 
@@ -91,6 +92,9 @@ namespace iga
         }
 
         void run();
+
+        // getNumOfDistPipe - get number of in-order distance pipes of the given mode
+        static uint32_t getNumOfDistPipe(SWSB_ENCODE_MODE mode);
 
     private:
         // postProcess - last step of "run"
