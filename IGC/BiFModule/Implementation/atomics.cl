@@ -26,16 +26,28 @@ extern __constant int __UseNativeFP16AtomicMinMax;
   void __builtin_IB_eu_thread_pause(uint value);
   void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1);
 
-#define SPINLOCK_START(addr_space) \
+#define LOCAL_SPINLOCK_START() \
   { \
   volatile bool done = false; \
   while(!done) { \
        __builtin_IB_eu_thread_pause(32); \
-       if(atomic_cmpxchg(__builtin_IB_get_##addr_space##_lock(), 0, 1) == 0) {
+       if(SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )(__builtin_IB_get_local_lock(), Device, Relaxed, Relaxed, 1, 0) == 0) {
 
-#define SPINLOCK_END(addr_space) \
+#define LOCAL_SPINLOCK_END() \
             done = true; \
-            atomic_store(__builtin_IB_get_##addr_space##_lock(), 0); \
+            SPIRV_BUILTIN(AtomicStore, _p3i32_i32_i32_i32, )(__builtin_IB_get_local_lock(), Device, SequentiallyConsistent | WorkgroupMemory, 0); \
+  }}}
+
+#define GLOBAL_SPINLOCK_START() \
+  { \
+  volatile bool done = false; \
+  while(!done) { \
+       __builtin_IB_eu_thread_pause(32); \
+       if(SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(__builtin_IB_get_global_lock(), Device, Relaxed, Relaxed, 1, 0) == 0) {
+
+#define GLOBAL_SPINLOCK_END() \
+            done = true; \
+            SPIRV_BUILTIN(AtomicStore, _p1i32_i32_i32_i32, )(__builtin_IB_get_global_lock(), Device, SequentiallyConsistent | CrossWorkgroupMemory, 0); \
   }}}
 
 #define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                      \
@@ -430,7 +442,7 @@ ulong OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __
 
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local);
+    LOCAL_SPINLOCK_START();
     orig = *Pointer;
     switch (atomicOp)
     {
@@ -438,7 +450,7 @@ ulong OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __
         case ATOMIC_UMAX64: *Pointer = ( orig > Value ) ? orig : Value; break;
         default: break; // What should we do here? OCL doesn't have assert
     }
-    SPINLOCK_END(local);
+    LOCAL_SPINLOCK_END();
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -450,7 +462,7 @@ long OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __l
 
     long orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     switch (atomicOp)
     {
@@ -464,7 +476,7 @@ long OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __l
         case ATOMIC_IMAX64: *Pointer = ( orig > Value ) ? orig : Value; break;
         default: break; // What should we do here? OCL doesn't have assert
     }
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -475,10 +487,10 @@ ulong OVERLOADABLE __intel_atomic_unary( bool isInc, volatile __local ulong *Poi
 
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = isInc ? orig + 1 : orig - 1;
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -646,13 +658,13 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Equal, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     if( orig == Comparator )
     {
         *Pointer = Value;
     }
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Equal, false)
     return orig;
 }
@@ -1666,10 +1678,10 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f32_i32_i32_f32, )( __l
 {
     float orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = orig + Value;
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -1719,10 +1731,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )( __
 {
     double orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = orig + Value;
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -1756,10 +1768,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f16_i32_i32_f16, )( glob
     }
     half orig;
     FENCE_PRE_OP(Scope, Semantics, true)
-    SPINLOCK_START(global)
+    GLOBAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = (orig < Value) ? orig : Value;
-    SPINLOCK_END(global)
+    GLOBAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, true)
     return orig;
 }
@@ -1772,10 +1784,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f16_i32_i32_f16, )( loca
     }
     half orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = (orig < Value) ? orig : Value;
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -1856,10 +1868,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f64_i32_i32_f64, )( lo
 {
     double orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = (orig < Value) ? orig : Value;
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -1893,10 +1905,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f16_i32_i32_f16, )( glob
     }
     half orig;
     FENCE_PRE_OP(Scope, Semantics, true)
-    SPINLOCK_START(global)
+    GLOBAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = (orig > Value) ? orig : Value;
-    SPINLOCK_END(global)
+    GLOBAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, true)
     return orig;
 }
@@ -1909,10 +1921,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f16_i32_i32_f16, )( loca
     }
     half orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = (orig > Value) ? orig : Value;
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -1993,10 +2005,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f64_i32_i32_f64, )( lo
 {
     double orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START(local)
+    LOCAL_SPINLOCK_START()
     orig = *Pointer;
     *Pointer = (orig > Value) ? orig : Value;
-    SPINLOCK_END(local)
+    LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
