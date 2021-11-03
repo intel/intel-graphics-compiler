@@ -5512,19 +5512,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                     killed = true;
                                 }
 
-                                /*
-                                 *   Following case will cause dead lock
-                                 *   (W)      mov (32|M0)              r13.0<2>:ub   r11.0<1;1,0>:uw      {Atomic}
-                                 *   (W)      mov (32|M0)              r13.1<2>:ub   r10.0<1;1,0>:uw      {I@1}
-                                 */
-                                if (!(hasRMWOverlap && builder.hasFourALUPipes() &&
-                                    distanceHonourInstruction(node->GetInstruction()) &&
-                                    node->GetInstruction()->isAtomicInst() &&
-                                    (node->getNodeID() - liveNode->getNodeID() == 1)))
-                                {
-                                    setDistance(curFootprint, node, liveNode, true);
-                                }
-
+                                setDistance(curFootprint, node, liveNode, true);
                                 liveNode->setInstKilled(true); //Instrtuction level kill
                                 instKill = true;
                             }
