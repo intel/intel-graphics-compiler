@@ -33,8 +33,12 @@ namespace IGCLLVM
     {
         IGC_ASSERT(DbgInst);
 #if LLVM_VERSION_MAJOR <= 12
-        auto *OP = DbgInst->getOperand(0);
-        DbgInst->setOperand(0, llvm::UndefValue::get(OP->getType()));
+        auto *OP = DbgInst->getVariableLocation();
+        IGC_ASSERT_MESSAGE(OP != nullptr, "Empty dbg var not supported");
+        auto *Undef = llvm::UndefValue::get(OP->getType());
+        DbgInst->setOperand(
+            0, llvm::MetadataAsValue::get(DbgInst->getContext(),
+                                          llvm::ValueAsMetadata::get(Undef)));
 #else
         DbgInst->setUndef();
 #endif
