@@ -651,7 +651,6 @@ const G4_Operand* G4_INST::getOperand(Gen4_Operand_Number opnd_num) const
     return NULL;
 }
 
-
 USE_EDGE_LIST_ITER G4_INST::eraseUse(USE_EDGE_LIST_ITER iter)
 {
     G4_INST *useInst = iter->first;
@@ -1361,8 +1360,12 @@ G4_INST *G4_INST::getSingleDef(Gen4_Operand_Number opndNum, bool MakeUnique)
 // Note that this function does not check for duplicates
 void G4_INST::addDefUse(G4_INST* inst, Gen4_Operand_Number srcPos)
 {
-    MUST_BE_TRUE(srcPos == Opnd_dst || srcPos == Opnd_src0 || srcPos == Opnd_src1 ||
-        srcPos == Opnd_src2 || srcPos == Opnd_src3 || srcPos == Opnd_pred ||
+    MUST_BE_TRUE(srcPos == Opnd_dst ||
+        srcPos == Opnd_src0 || srcPos == Opnd_src1 ||
+        srcPos == Opnd_src2 || srcPos == Opnd_src3 ||
+        srcPos == Opnd_src4 || srcPos == Opnd_src5 ||
+        srcPos == Opnd_src6 || srcPos == Opnd_src7 ||
+        srcPos == Opnd_pred ||
         srcPos == Opnd_implAccSrc, "unexpected operand number");
     useInstList.emplace_back(inst, srcPos);
     inst->defInstList.emplace_back(this, srcPos);
@@ -4892,13 +4895,24 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
 static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operand* opnd)
 {
     assert((regRegion->isSrcRegRegion() || regRegion->isDstRegRegion()) && "expect either src or dst regRegion");
-    bool legal_opnd = opnd->isSrcRegRegion() || opnd->isDstRegRegion() || opnd->isPredicate() || opnd->isCondMod();
+    bool legal_opnd = opnd->isSrcRegRegion() || opnd->isDstRegRegion() || opnd->isPredicate() || opnd->isCondMod() || opnd->isAddrExp();
     G4_VarBase* myBase = regRegion->getBase();
     G4_VarBase *opndBase = opnd->getBase();
     G4_RegAccess myAcc = regRegion->getRegAccess();
     G4_RegAccess opndAcc = opnd->getRegAccess();
     G4_Declare* myDcl = regRegion->getTopDcl();
     G4_Declare* opndDcl = opnd->getTopDcl();
+    if (opnd->isAddrExp())
+    {
+        opndBase = opnd->asAddrExp()->getRegVar()->getBaseRegVar();
+        opndDcl = opnd->asAddrExp()->getRegVar()->getDeclare();
+    }
+
+    if (regRegion->isAddrExp())
+    {
+        myBase = opnd->asAddrExp()->getRegVar()->getBaseRegVar();
+        myDcl = opnd->asAddrExp()->getRegVar()->getDeclare();
+    }
 
     if (!legal_opnd || myBase == nullptr || opndBase == nullptr)
     {
@@ -4917,6 +4931,11 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
         }
 
         if (opndInst && (opndInst->isPseudoKill() || opndInst->isLifeTimeEnd()))
+        {
+            return Rel_interfere;
+        }
+
+        if (opnd->isAddrExp() || regRegion->isAddrExp())
         {
             return Rel_interfere;
         }
@@ -8316,6 +8335,24 @@ G4_Operand* G4_InstIntrinsic::getIntrinsicSrc(unsigned i) const
 {
     MUST_BE_TRUE(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
     return srcs[i];
+}
+
+G4_Operand* G4_InstIntrinsic::getOperand(Gen4_Operand_Number opnd_num) const
+{
+    switch (opnd_num) {
+    case Opnd_src0: return srcs[0];
+    case Opnd_src1: return srcs[1];
+    case Opnd_src2: return srcs[2];
+    case Opnd_src3: return srcs[3];
+    case Opnd_src4: return srcs[4];
+    case Opnd_src5: return srcs[5];
+    case Opnd_src6: return srcs[6];
+    case Opnd_src7: return srcs[7];
+    default:
+        MUST_BE_TRUE(0, "Operand number is out of range.");
+        break;
+    }
+    return NULL;
 }
 
 void G4_InstIntrinsic::setIntrinsicSrc(G4_Operand* opnd, unsigned i)

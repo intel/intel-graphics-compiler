@@ -403,6 +403,10 @@ enum G4_CmpRelation
     DO(Opnd_src1) \
     DO(Opnd_src2) \
     DO(Opnd_src3) \
+    DO(Opnd_src4) \
+    DO(Opnd_src5) \
+    DO(Opnd_src6) \
+    DO(Opnd_src7) \
     DO(Opnd_pred) \
     DO(Opnd_condMod) \
     DO(Opnd_implAccSrc) \

@@ -433,13 +433,23 @@ static void processReadOpnds(G4_BB *BB, G4_INST *Inst, LocalLivenessInfo &LLI)
     for (auto OpNum :
         { Gen4_Operand_Number::Opnd_src0, Gen4_Operand_Number::Opnd_src1,
           Gen4_Operand_Number::Opnd_src2, Gen4_Operand_Number::Opnd_src3,
+          Gen4_Operand_Number::Opnd_src4, Gen4_Operand_Number::Opnd_src5,
+          Gen4_Operand_Number::Opnd_src6, Gen4_Operand_Number::Opnd_src7,
           Gen4_Operand_Number::Opnd_pred, Gen4_Operand_Number::Opnd_implAccSrc }) {
         G4_Operand* opnd = Inst->getOperand(OpNum);
         if (opnd == nullptr || opnd->isImm() || opnd->isNullReg() || opnd->isLabel())
             continue;
 
-        G4_Declare* Dcl = opnd->getTopDcl();
-        LLI.LiveNodes[Dcl].emplace_back(Inst, OpNum);
+        if (Inst->isPseudoAddrMovIntrinsic())
+        {
+            G4_Declare* Dcl = opnd->asAddrExp()->getRegVar()->getDeclare();
+            LLI.LiveNodes[Dcl].emplace_back(Inst, OpNum);
+        }
+        else
+        {
+            G4_Declare* Dcl = opnd->getTopDcl();
+            LLI.LiveNodes[Dcl].emplace_back(Inst, OpNum);
+        }
     }
 }
 

@@ -626,6 +626,8 @@ public:
     }
     bool isComprInvariantSrcRegion(G4_SrcRegRegion* src, int srcPos);
 
+    G4_Operand* getOperand(Gen4_Operand_Number opnd_num);
+
     G4_Operand* getSrc(unsigned i) const;
     void setSrc(G4_Operand* opnd, unsigned i);
     int getNumSrc() const;
@@ -810,13 +812,16 @@ public:
     static bool isSrcNum(Gen4_Operand_Number opndNum)
     {
         return opndNum == Opnd_src0 || opndNum == Opnd_src1 ||
-               opndNum == Opnd_src2 || opndNum == Opnd_src3;
+               opndNum == Opnd_src2 || opndNum == Opnd_src3 ||
+               opndNum == Opnd_src4 || opndNum == Opnd_src5 ||
+               opndNum == Opnd_src6 || opndNum == Opnd_src7;
+    }
+    static bool isInstrinsicOnlySrcNum(Gen4_Operand_Number opndNum)
+    {
+        return opndNum == Opnd_src4 || opndNum == Opnd_src5 ||
+            opndNum == Opnd_src6 || opndNum == Opnd_src7;
     }
     const G4_Operand* getOperand(Gen4_Operand_Number opnd_num) const;
-          G4_Operand* getOperand(Gen4_Operand_Number opnd_num)
-    {
-        return const_cast<G4_Operand*>(((const G4_INST *)this)->getOperand(opnd_num));
-    }
 
     /// Remove all definitons that contribute to this[opndNum] and remove all
     /// uses from their corresponding definitions. To maintain def-use's, this
@@ -1627,6 +1632,7 @@ public:
         G4_InstOpts opt);
 
     G4_Operand* getIntrinsicSrc(unsigned i) const;
+    G4_Operand* getOperand(Gen4_Operand_Number opnd_num) const;
 
     void setIntrinsicSrc(G4_Operand* opnd, unsigned i);
 
@@ -3986,6 +3992,15 @@ public:
         }
     }
 };
+
+inline G4_Operand* G4_INST::getOperand(Gen4_Operand_Number opnd_num)
+{
+    if (isPseudoAddrMovIntrinsic() && isSrcNum(opnd_num))
+        return asIntrinsicInst()->getOperand(opnd_num);
+    if (isInstrinsicOnlySrcNum(opnd_num))
+        return NULL;
+    return const_cast<G4_Operand*>(((const G4_INST*)this)->getOperand(opnd_num));
+}
 
 inline G4_Operand* G4_INST::getSrc(unsigned i) const
 {
