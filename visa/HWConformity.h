@@ -142,7 +142,6 @@ namespace vISA
         void expandPlaneInst(INST_LIST_ITER i, G4_BB* bb);
         bool fixAddcSubb(G4_BB* bb);
         void fixDataLayout();
-        void fixBFMixedMode();
         bool fixMov(INST_LIST_ITER i, G4_BB* bb);
         bool fixRotate(INST_LIST_ITER i, G4_BB* bb);
         bool fixIntToHFMove(G4_BB* bb);
