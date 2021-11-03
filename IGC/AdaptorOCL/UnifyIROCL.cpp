@@ -356,6 +356,8 @@ static void CommonOCLBasedPasses(
 
     // OCL has built-ins so it always need to run inlining
     {
+        // Lower llvm.fma intrinsic to mul/add for exposing more optimizations
+        mpm.add(CreateLowerFmaPass());
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());
