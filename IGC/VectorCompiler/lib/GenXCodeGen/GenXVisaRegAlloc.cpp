@@ -848,9 +848,14 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
     const LiveRange *LR = i->LR;
     SimpleValue SV = *LR->value_begin();
     Reg *RN = getRegForValueUntyped(FG->getHead(), SV);
-    IGC_ASSERT(RN);
-    OS << "[";
-    RN->print(OS);
+    if (!RN) {
+      IGC_ASSERT(Liveness->isUnifiedRet(SV.getValue()));
+      // unified return do not have vISA register allocated
+      OS << "<no allocated Register> for [" << SV;
+    } else {
+      OS << "[";
+      RN->print(OS);
+    }
     Type *ElTy = IndexFlattener::getElementType(SV.getValue()->getType(),
           SV.getIndex());
     unsigned Bytes = vc::getTypeSize(ElTy).inWords() * WordBytes;
