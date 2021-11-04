@@ -6,7 +6,6 @@
 #
 #============================ end_copyright_notice =============================
 
-
 set(IGC_BUILD__PROJ__AdaptorOCL       "${IGC_BUILD__PROJ_NAME_PREFIX}AdaptorOCL")
 set(IGC_BUILD__PROJ__AdaptorOCL       "${IGC_BUILD__PROJ__AdaptorOCL}" PARENT_SCOPE) # set directly
 set(IGC_BUILD__PROJ_LABEL__AdaptorOCL "AdaptorOCL")

@@ -1510,6 +1510,8 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
 //    Use two instructions and F (Float) or a word integer type or a DWord integer type as an intermediate type.
 // -- There is no direct scalar conversion from B/UB to HF or F.
 //    Use two instructions and a WORD or DWORD intermediate type respectively.
+// -- There is no direct conversion from HF to Integer (DWORD or WORD).
+//    Use two instructions and F (Float) as an intermediate type.
 // returns true if a move is inserted
 bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
 {
@@ -1553,7 +1555,15 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
         replaceDst(i, Type_F);
         return true;
     }
-
+    const bool noHFToInteger = builder.noHFToInteger() &&
+        IS_HFTYPE(srcType) &&
+        (dstType == Type_D || dstType == Type_W);
+    if (noHFToInteger)
+    {
+        // mov W/DW HF
+        replaceDst(i, Type_F);
+        return true;
+    }
     return false;
 }
 

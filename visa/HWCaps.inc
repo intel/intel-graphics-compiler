@@ -652,6 +652,11 @@ SPDX-License-Identifier: MIT
         return getPlatform() >= XeHP_SDV;
     }
 
+    bool noHFToInteger() const
+    {
+        return false;
+    }
+
     bool useAccForDF() const
     {
         return getPlatform() >= XeHP_SDV;
