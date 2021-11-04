@@ -6819,22 +6819,6 @@ namespace IGC
             addressOpnd, srcOpnd));
     }
 
-    void CEncoder::bf_cvt(CVariable* dst, CVariable* src)
-    {
-        VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
-        VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src, m_encoderState.m_srcOperand[0]);
-
-        V(vKernel->AppendVISADataMovementInst(
-            ISA_BF_CVT,
-            predOpnd,
-            false,
-            GetAluEMask(dst),
-            visaExecSize(dst->IsUniform()
-                ? m_encoderState.m_uniformSIMDSize : m_encoderState.m_simdSize),
-            dstOpnd,
-            srcOpnd0));
-    }
 
     std::string CEncoder::GetVariableName(CVariable* var)
     {
