@@ -101,6 +101,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CustomUnsafeOptPass.hpp"
 #include "MoveStaticAllocas.h"
 #include "PreprocessSPVIR.h"
+#include "LowerInvokeSIMD.hpp"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 
 #include "common/debug/Debug.hpp"
@@ -296,6 +297,8 @@ static void CommonOCLBasedPasses(
     // This should be removed, once FE will be updated to use LLVM IR that supports
     // AllowContract and ApproxFunc FastMathFlags.
     mpm.add(new FixFastMathFlags());
+
+    mpm.add(new LowerInvokeSIMD());
 
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
