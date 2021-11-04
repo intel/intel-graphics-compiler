@@ -3596,7 +3596,7 @@ CShaderProgram::~CShaderProgram()
 
 unsigned int CShader::GetPrimitiveTypeSizeInRegisterInBits(const Type* Ty) const
 {
-    unsigned int sizeInBits = Ty->getPrimitiveSizeInBits();
+    unsigned int sizeInBits = (unsigned int)Ty->getPrimitiveSizeInBits();
     if (Ty->isPtrOrPtrVectorTy())
     {
         sizeInBits =

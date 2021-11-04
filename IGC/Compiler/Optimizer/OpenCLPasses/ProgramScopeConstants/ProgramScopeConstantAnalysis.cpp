@@ -191,7 +191,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 #if LLVM_VERSION_MAJOR < 11
             alignBuffer(*inlineProgramScopeBuffer, m_DL->getPreferredAlignment(globalVar));
 #else
-            alignBuffer(*inlineProgramScopeBuffer, m_DL->getPreferredAlign(globalVar).value());
+            alignBuffer(*inlineProgramScopeBuffer, (unsigned int)m_DL->getPreferredAlign(globalVar).value());
 #endif
         }
 

@@ -1696,7 +1696,7 @@ namespace //Anonymous
                 if (prefix.equals("opencl"))
                 {
                     IGC_ASSERT(nameFractions.size() >= 2);
-                    imageMetadata.TypeName = nameFractions[1];
+                    imageMetadata.TypeName = nameFractions[1].str();
                     imageMetadata.AccessQual = nameFractions.size() > 2 ? nameFractions[2].str() : "read_write";
                 }
                 else if(prefix.equals("spirv"))
