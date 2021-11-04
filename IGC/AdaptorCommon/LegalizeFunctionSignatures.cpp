@@ -300,6 +300,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
         Function* pNewFunc = Function::Create(signature, pFunc->getLinkage(), pFunc->getName(), pFunc->getParent());
         pNewFunc->takeName(pFunc);
         pNewFunc->setCallingConv(pFunc->getCallingConv());
+        pNewFunc->setAttributes(pFunc->getAttributes());
 
         // Since we need to pass in pointers to be dereferenced by the new function, remove the "readnone" attribute
         // Also we need to create allocas for these pointers, so set the flag to true
