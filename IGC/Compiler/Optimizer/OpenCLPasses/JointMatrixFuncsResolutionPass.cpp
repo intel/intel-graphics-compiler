@@ -48,7 +48,7 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
         I->replaceAllUsesWith(undef);
         I->eraseFromParent();
     }
-    
+
     return Changed;
 }
 
@@ -73,53 +73,26 @@ enum {
     MadOpUU,
 };
 
-static unsigned getBitWidthFromFlags(unsigned flags) {
+static unsigned getElementBitWidth(unsigned flags) {
     return flags & 0x7fffffff;
 }
 
-static bool isElmentTypeInteger(unsigned flags) {
+static bool isElementTypeInteger(unsigned flags) {
     return (flags & (1 << 31)) == 0;
 }
 
-static bool isElmentTypeFloating(unsigned flags) {
-    return !isElmentTypeInteger(flags);
+static bool isElementTypeFloating(unsigned flags) {
+    return !isElementTypeInteger(flags);
 }
 
-static char getIntSignPrefix(unsigned OperationType, unsigned OperandId) {
+static bool isOperandUnsigned(unsigned OperationType, unsigned OperandId) {
     switch (OperationType) {
         default:
-        case MadOpSS:
-          return 's';
-        case MadOpUU:
-          return 'u';
-        case MadOpSU:
-          return OperandId == 0 ? 's' : 'u';
-        case MadOpUS:
-          return OperandId == 0 ? 'u' : 's';
+        case MadOpSS: return false;
+        case MadOpUU: return true;
+        case MadOpSU: return OperandId != 0;
+        case MadOpUS: return OperandId == 0;
     }
-}
-
-std::string JointMatrixFuncsResolutionPass::getMADMatrixFuncName
-      (uint32_t aTypeFlags, uint32_t bTypeFlags, uint32_t cTypeFlags,
-       unsigned M, unsigned N, unsigned OperationType)
-{
-    std::string name = "__builtin_IB_sub_group";
-
-    if (isElmentTypeInteger(cTypeFlags)) {
-        name += "_idpas_";
-        name += getIntSignPrefix(OperationType, 0);
-        name += std::to_string(getBitWidthFromFlags(aTypeFlags)) + "_";
-        name += getIntSignPrefix(OperationType, 1);
-        name += std::to_string(getBitWidthFromFlags(bTypeFlags)) + "_";
-    } else {
-        name += "_fdpas_";
-        /* bf is passed as uint16_t, hf is using halfs */
-        name += isElmentTypeFloating(aTypeFlags) ? "hf_" : "bf_";
-        name += isElmentTypeFloating(bTypeFlags) ? "hf_" : "bf_";
-    }
-    name += std::to_string(M) + "_";
-    name += std::to_string(N);
-    return name;
 }
 
 std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
@@ -211,7 +184,7 @@ Type *JointMatrixFuncsResolutionPass::ResolveType
     } else if (name.equals("intel.joint_matrix_acc_t")) {
         *outLayout = LayoutRowMajor;
         Type *baseType = Type::getInt32Ty(ctx);
-        if (isElmentTypeFloating(elementTypeFlags)) {
+        if (isElementTypeFloating(elementTypeFlags)) {
             baseType = Type::getFloatTy(ctx);
         }
         return IGCLLVM::FixedVectorType::get(baseType, rows);
@@ -259,7 +232,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 
     Module *M = CI->getParent()->getModule();
 
-    unsigned elemBitWidth = getBitWidthFromFlags(elementType);
+    unsigned elemBitWidth = getElementBitWidth(elementType);
     std::string funcName = GetLoadStoreMatrixFuncName(true, loadLayout, matrixLayout, elemBitWidth, rows, columns);
     FunctionType *funcType = FunctionType::get(retTy, { ptrVal->getType(), strideVal->getType() }, false);
     std::vector<Value *> Args = { ptrVal, strideVal };
@@ -296,7 +269,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
         matVal = BitCastInst::Create(Instruction::BitCast, matVal, matTy, "matrix.store.cast", CI);
     }
 
-    unsigned elemBitWidth = getBitWidthFromFlags(elementType);
+    unsigned elemBitWidth = getElementBitWidth(elementType);
     std::string funcName = GetLoadStoreMatrixFuncName(false, storeLayout, matrixLayout, elemBitWidth, rows, columns);
     FunctionType *funcType =
         FunctionType::get(Type::getVoidTy(M->getContext()),
@@ -308,8 +281,19 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     return CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
 }
 
-Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned OperationType)
-{
+static PrecisionType getElementPrecison(unsigned elemType, bool floatOp, bool isUnsigned) {
+  const unsigned width = getElementBitWidth(elemType);
+  if (floatOp && width == 16) {
+      /* bf is passed as uint16_t, hf is using halfs */
+      return isElementTypeInteger(elemType) ? PrecisionType::BF16 : PrecisionType::FP16;
+  }
+  if (!floatOp && width == 8) {
+      return isUnsigned ? PrecisionType::S8 : PrecisionType::U8;
+  }
+  return PrecisionType::PRECISION_UNUSED;
+}
+
+Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned OperationType) {
     /* Matrix A: */
     Value *aMatVal        = CI->getArgOperand(0);
     uint32_t aMatElemType = (uint32_t) constIntValue(CI->getArgOperand(1));
@@ -333,23 +317,51 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
     unsigned cMatLayout = LayoutRowMajor;
     Type *cMatTy = ResolveType(cMatVal->getType(), cMatElemType, cMatRows, &cMatLayout);
 
-    unsigned M = aMatRows;
-    unsigned N = bMatColumns;
-    const bool isIntegerMAD = isElmentTypeInteger(cMatElemType);
-    std::string funcName = getMADMatrixFuncName(aMatElemType, bMatElemType, cMatElemType, M, N, OperationType);
-    FunctionType *funcType = FunctionType::get(cMatTy, { cMatTy, aMatTy, bMatTy }, false);
-  
-    Value *cMat = Resolve(cMatVal);
-    Value *aMat = Resolve(aMatVal);
-    Value *bMat = Resolve(bMatVal);
+    IGC_ASSERT_MESSAGE(aMatLayout == LayoutPackedA || aMatLayout == LayoutRowMajor,
+                       "Unexpected layout for matrix A in MAD operation.");
+    IGC_ASSERT_MESSAGE(bMatLayout == LayoutPackedB, "Unexpected layout for matrix A in MAD operation.");
+    IGC_ASSERT_MESSAGE(cMatLayout == LayoutRowMajor, "Unexpected layout for matrix A in MAD operation.");
 
-    std::vector<Value *> Args = { cMat, aMat, bMat };
+    const bool floatMad = isElementTypeFloating(cMatElemType);
+
+    PrecisionType PA = getElementPrecison(aMatElemType, floatMad, isOperandUnsigned(OperationType, 0));
+    PrecisionType PB = getElementPrecison(bMatElemType, floatMad, isOperandUnsigned(OperationType, 1));
+
+    IGC_ASSERT_MESSAGE(PA != PrecisionType::PRECISION_UNUSED, "Invalid matrix A element type.");
+    IGC_ASSERT_MESSAGE(PB != PrecisionType::PRECISION_UNUSED, "Invalid matrix B element type.");
+
+    int SD = aMatRows; // systolic depth, 8 or 16
+    int RC = bMatColumns; // repeat count, from 1 to 8
+
+    IGC_ASSERT_MESSAGE(SD == 8 || SD == 16, "Unexpected systolic depth in MAD operaion.");
+    IGC_ASSERT_MESSAGE(RC >= 1 && RC <= 8,  "Unexpected repeat count in MAD operaion.");
+
+    bool IsDpasw = false; // is wide
+
+    LLVMContext& Ctx = CI->getContext();
+    Type* intTy = Type::getInt32Ty(Ctx);
+    Type* boolTy = Type::getInt1Ty(Ctx);
+
+    Value* args[8];
+    args[0] = Resolve(cMatVal);
+    args[1] = Resolve(aMatVal);
+    args[2] = Resolve(bMatVal);
+    args[3] = ConstantInt::get(intTy, PA);
+    args[4] = ConstantInt::get(intTy, PB);
+    args[5] = ConstantInt::get(intTy, SD);
+    args[6] = ConstantInt::get(intTy, RC);
+    args[7] = ConstantInt::get(boolTy, IsDpasw);
+
+    Type* ITys[4] = { cMatTy, cMatTy, aMatTy, bMatTy };
 
     Module *Mod = CI->getParent()->getModule();
+    GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_sub_group_dpas;
+    Function *dpasFunc = GenISAIntrinsic::getDeclaration(Mod, iid, ITys);
+    Instruction *dpasCall = CallInst::Create(dpasFunc, args, VALUE_NAME("dpas"), CI);
 
     InstsToErase.insert(CI);
 
-    return CallInst::Create(Mod->getOrInsertFunction(funcName, funcType), Args, "matrix", CI);
+    return dpasCall;
 }
 
 Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
@@ -392,13 +404,13 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
             Value *operand = Resolve(oldOperand);
             NewPN->addIncoming(operand, PN->getIncomingBlock(i));
         }
-        
+
         PN->replaceAllUsesWith(UndefValue::get(PN->getType()));
         PN->eraseFromParent();
 
         return NewPN;
     }
-    
+
     IGC_ASSERT_MESSAGE(false, "Resolve failure.");
     return nullptr;
 }
