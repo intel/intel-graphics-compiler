@@ -237,7 +237,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
     // fc1.0     channel enables
     // fc2       call mask
     // fc3       JEU fused mask
-    IGA_REGISTER_SPEC_GE(Platform::XE,
+    IGA_REGISTER_SPEC(Platform::XE, Platform::XE_HPC,
         RegName::ARF_FC, "fc", "Flow Control",
         0xD, 0,
         4,

@@ -5,7 +5,6 @@ Copyright (C) 2020-2021 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
 #include "asserts.hpp"
 #include "system.hpp"
 
@@ -246,9 +245,8 @@ std::string iga::FormatLastError(unsigned errCode)
 {
     std::string msg;
     char buf[256] {0};
-    char *errMsg = nullptr;
+    char *errMsg = &buf[0];
 #ifdef _WIN32
-    errMsg = &buf[0];
     FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
         NULL,
@@ -260,7 +258,7 @@ std::string iga::FormatLastError(unsigned errCode)
     if (errMsg)
         msg = errMsg;
 #else
-    errMsg = strerror_r(errCode, buf, sizeof(buf));
+    strerror_r(errCode, buf, sizeof(buf));
 #endif // _WIN32
     if (errMsg == nullptr || errMsg[0] == 0)
         return "???";
