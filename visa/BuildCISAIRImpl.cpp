@@ -605,6 +605,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
     bool call2jump =    options & (1U << Linker_Call2Jump);
     bool removeArgRet = options & (1U << Linker_RemoveArgRet);
     bool removeStackArg = options & (1U << Linker_RemoveStackArg);
+    bool removeStackFrame = options & (1U << Linker_RemoveStackFrame);
     std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
     std::map<G4_INST*, std::list<G4_INST*>> rets;
     std::set<G4_Kernel*> visited;
@@ -831,6 +832,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             assert(updateCountSP <= 2 && "SP has been updated more than twice from the caller");
             // passing SP offset from caller to callee
             stackPointers[calleeBuilder->getFE_SP()] = stackPointers[callerBuilder->getFE_SP()];
+            stackPointers[calleeBuilder->getFE_FP()] = stackPointers[callerBuilder->getFE_FP()];
 
             for (auto calleeIt = calleeInsts.begin(); calleeIt != calleeInsts.end(); calleeIt ++)
             {
@@ -840,11 +842,18 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
                     if (!rootDcl) continue;
                     G4_Operand *dst = inst->getDst();
+                    //if (calleeBuilder->isPreDefFEStackVar(rootDcl))
                     if (rootDcl == calleeBuilder->getFE_SP())
                     {
                         stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
                         defInst[dst->getTopDcl()] = calleeIt;
-                        DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                        std::string prefix;
+                        if (removeStackFrame)
+                        {
+                            calleeInsts.erase(calleeIt);
+                            prefix = "removeFrame ";
+                        }
+                        DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
                         DEBUG_UTIL(inst->dump());
                     }
                     else if (stackPointers.find(rootDcl) != stackPointers.end())
@@ -856,7 +865,13 @@ void CISA_IR_Builder::LinkTimeOptimization(
                             assert(execSize == 1);
                             stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
                             defInst[dst->getTopDcl()] = calleeIt;
-                            DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                            std::string prefix;
+                            if (removeStackFrame)
+                            {
+                                calleeInsts.erase(calleeIt);
+                                prefix = "removeFrame ";
+                            }
+                            DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
                             DEBUG_UTIL(inst->dump());
                         }
                         else if (inst->opcode() == G4_sends ||
