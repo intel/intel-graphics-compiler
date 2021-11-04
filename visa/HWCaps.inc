@@ -503,12 +503,7 @@ SPDX-License-Identifier: MIT
 
     bool hasBankCollision() const
     {
-        if(getPlatform() == GENX_TGLLP)
-        {
-            return true;
-        }
-        return (getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11) || getOption(vISA_forceBCR) ||
-        (getOption(vISA_enableBCR) && !hasEarlyGRFRead());
+        return true;
     }
 
     bool oneGRFBankDivision() const
