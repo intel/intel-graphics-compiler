@@ -2668,841 +2668,6 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_FirstBitSh
     return int32_res;
 }
 
-// This method is obsolete and will be removed once GLSL and Vulkan frontends
-// start using the new method CreateImageDataConversion()
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_LdUAVTypedFormatConversion(
-    llvm::Value* pLdUAVTypedResult,
-    IGC::SURFACE_FORMAT surfaceFormat)
-{
-    return this->CreateGen9PlusImageDataConversion(surfaceFormat, pLdUAVTypedResult);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Creates data conversion for typed image reads on Gen9+ HW.
-/// @see Description of GetSubstituteImageFormat() method.
-/// @param format Surface format of the typed image (original i.e. from shader)
-/// @param data Data returned by typed read message
-/// @returns llvm::Value* Vector of data converted to the input surface format.
-///
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusImageDataConversion(
-    IGC::SURFACE_FORMAT surfaceFormat,
-    llvm::Value* pLdUAVTypedResult)
-{
-    IGC_ASSERT(nullptr != m_Platform);
-    IGC_ASSERT(m_Platform->GetPlatformFamily() >= IGFX_GEN9_CORE);
-
-    switch (surfaceFormat)
-    {
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_UNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_SNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_UNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_SNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_UNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_SNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_UNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_SNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_UNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_SNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_UNORM:
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_SNORM:
-        if (m_Platform->hasHDCSupportForTypedReadsUnormSnormToFloatConversion())
-        {
-            return pLdUAVTypedResult;
-        }
-        break;
-    default:
-        break;
-    }
-
-
-    llvm::Value* pFormatConvertedLLVMLdUAVTypedResult = pLdUAVTypedResult;
-    switch (surfaceFormat)
-    {
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_UNORM:
-    {
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-        llvm::Value* pConstFloat = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(this->getFloatTy(), (1.0f / 65535.0f)));
-        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempInt16 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
-        llvm::Value* pMaskLow = this->getInt32(0x0000FFFF);
-        llvm::Value* pShift16 = this->getInt32(0x00000010);
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-
-        // Retrieve unsigned short value (component 0).
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-        pTempInt16 = this->CreateAnd(pTempInt32, pMaskLow);
-
-        // Convert unsigned short to float (component 0).
-        pTempFloat = this->CreateUIToFP(pTempInt16, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        // Retrieve unsigned short value (component 1).
-        pTempInt16 = this->CreateLShr(pTempInt32, pShift16);
-
-        // Convert unsigned short to float (component 1).
-        pTempFloat = this->CreateUIToFP(pTempInt16, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 1 in output vector (pTempVec4[1]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
-
-        // pTempFloat = pLdUAVTypedResult[1];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(1));
-
-        // Retrieve unsigned short value (component 2).
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-        pTempInt16 = this->CreateAnd(pTempInt32, pMaskLow);
-
-        // Convert unsigned short to float (component 2).
-        pTempFloat = this->CreateUIToFP(pTempInt16, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 2 in output vector (pTempVec4[2]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
-
-        // Retrieve unsigned short value (component 3).
-        pTempInt16 = this->CreateLShr(pTempInt32, pShift16);
-
-        // Convert unsigned short to float (component 3).
-        pTempFloat = this->CreateUIToFP(pTempInt16, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 3 in output vector (pTempVec4[3]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
-
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_SNORM:
-    {
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-        llvm::Value* pScalingFactor = this->getFloat(1.0f / 32767.0f);
-        llvm::Value* pTempInt32;
-        llvm::Value* pTempInt16;
-        llvm::Value* pTempFloat;
-        llvm::Value* pNegativeOne = this->getFloat(-1.0f);
-        llvm::Value* pCmp_result;
-        llvm::Value* fieldWidth = this->getInt32(16);
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-
-        // Retrieve unsigned short value (component 0).
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-        pTempInt16 = this->Create_IBFE(fieldWidth, this->getInt32(0), pTempInt32);
-
-        // Convert signed short to float (component 0).
-        pTempFloat = this->CreateSIToFP(pTempInt16, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Compare with -1.0f
-        pCmp_result = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pNegativeOne);
-        pTempFloat = this->CreateSelect(pCmp_result, pTempFloat, pNegativeOne);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        // Retrieve unsigned short value (component 1).
-        pTempInt16 = this->CreateAShr(pTempInt32, 16);
-
-        // Convert signed short to float (component 1).
-        pTempFloat = this->CreateSIToFP(pTempInt16, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Compare with -1.0f
-        pCmp_result = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pNegativeOne);
-        pTempFloat = this->CreateSelect(pCmp_result, pTempFloat, pNegativeOne);
-
-        // Store component 1 in output vector (pTempVec4[1]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
-
-        // pTempFloat = pLdUAVTypedResult[1];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(1));
-
-        // Retrieve unsigned short value (component 2).
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-        pTempInt16 = this->Create_IBFE(fieldWidth, this->getInt32(0), pTempInt32);
-
-        // Convert unsigned short to float (component 2).
-        pTempFloat = this->CreateSIToFP(pTempInt16, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Compare with -1.0f
-        pCmp_result = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pNegativeOne);
-        pTempFloat = this->CreateSelect(pCmp_result, pTempFloat, pNegativeOne);
-
-        // Store component 2 in output vector (pTempVec4[2]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
-
-        // Retrieve unsigned short value (component 3).
-        pTempInt16 = this->CreateAShr(pTempInt32, 16);
-
-        // Convert unsigned short to float (component 3).
-        pTempFloat = this->CreateSIToFP(pTempInt16, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Compare with -1.0f
-        pCmp_result = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pNegativeOne);
-        pTempFloat = this->CreateSelect(pCmp_result, pTempFloat, pNegativeOne);
-
-        // Store component 3 in output vector (pTempVec4[3]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
-
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R10G10B10A2_UNORM:
-    {
-        llvm::Value* pImmediateXYZ = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(this->getFloatTy(), (1.0f / 1023.0f)));
-        llvm::Value* pImmediateW = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(this->getFloatTy(), (1.0f / 3.0f)));
-        llvm::Value* pMaskXYZ = this->getInt32(0x000003ff);
-        llvm::Value* pMaskW = this->getInt32(0x00000003);
-        llvm::Value* pShiftData = this->getInt32(10);
-
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempIntWithMask = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
-        llvm::Value* pTempShiftRightData = llvm::UndefValue::get(this->getInt32Ty());
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-
-        // Retrieve unsigned short value (component 0).
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-        pTempIntWithMask = this->CreateAnd(pTempInt32, pMaskXYZ);
-
-        // Convert unsigned short to float (component 0).
-        pTempFloat = this->CreateUIToFP(pTempIntWithMask, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pImmediateXYZ);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        // Retrieve unsigned short value (component 0).
-        pTempShiftRightData = this->CreateLShr(pTempInt32, pShiftData);
-
-        pTempIntWithMask = this->CreateAnd(pTempShiftRightData, pMaskXYZ);
-
-        // Convert unsigned short to float.
-        pTempFloat = this->CreateUIToFP(pTempIntWithMask, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pImmediateXYZ);
-
-        // Store component 1 in output vector (pTempVec4[1]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
-
-        // Retrieve unsigned short value.
-        pTempShiftRightData = this->CreateLShr(pTempShiftRightData, pShiftData);
-
-        pTempIntWithMask = this->CreateAnd(pTempShiftRightData, pMaskXYZ);
-
-        // Convert unsigned short to float.
-        pTempFloat = this->CreateUIToFP(pTempIntWithMask, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pImmediateXYZ);
-
-        // Store component 2 in output vector (pTempVec4[1]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
-
-        // Retrieve unsigned short value.
-        pTempShiftRightData = this->CreateLShr(pTempShiftRightData, pShiftData);
-
-        pTempIntWithMask = this->CreateAnd(pTempShiftRightData, pMaskW);
-
-        // Convert unsigned short to float.
-        pTempFloat = this->CreateUIToFP(pTempIntWithMask, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pImmediateW);
-
-        // Store component 3 in output vector (pTempVec4[1]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R11G11B10_FLOAT:
-    {
-        // This surface format packs 3 half-float values into 32-bit string.
-        // Half-floats are always non-negative, so to save space sign bit
-        // is not stored and assumed to be zero.
-        // Only 11 or 10 most significant bits (not counting sign bit)
-        // of the 16 bits of IEEE 754 float16 are stored.
-        // The least significant bits of the mantissa are assumed to be zero.
-        // First value is stored in bits 0--10.     (r)
-        // Second value is stored in bits 11 - 22   (g)
-        // Third value is stored in bits 22 - 31    (b)
-        // Fourth value is set to 1.0f.
-
-        llvm::Value* pMaskX = this->getInt32(0x000007ff);
-        llvm::Value* pMaskY = this->getInt32(0x00007ff0);
-        llvm::Value* pMaskZ = this->getInt32(0x00007fe0);
-        llvm::Value* pShiftDataX = this->getInt32(4);
-        llvm::Value* pShiftDataY = this->getInt32(7);
-        llvm::Value* pShiftDataZ = this->getInt32(10);
-        llvm::Value* pTempFloat;
-        llvm::Value* pTempFloat0;
-        llvm::Value* pTempInt;
-        llvm::Value* pTempInt0;
-
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat0 = pLdUAVTypedResult[0];
-        pTempFloat0 = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        pTempInt0 = this->CreateBitCast(pTempFloat0, this->getInt32Ty());
-
-        pTempInt = this->CreateAnd(pTempInt0, pMaskX);
-        pTempInt = this->CreateShl(pTempInt, pShiftDataX);
-        pTempInt = this->CreateTrunc(pTempInt, this->getInt16Ty());
-        pTempFloat = this->CreateBitCast(pTempInt, llvm::Type::getHalfTy(this->getContext()));
-        pTempFloat = this->CreateF16TOF32(pTempFloat);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        pTempInt0 = this->CreateLShr(pTempInt0, pShiftDataY);
-        pTempInt = this->CreateAnd(pTempInt0, pMaskY);
-        pTempInt = this->CreateTrunc(pTempInt, this->getInt16Ty());
-        pTempFloat = this->CreateBitCast(pTempInt, llvm::Type::getHalfTy(this->getContext()));
-        pTempFloat = this->CreateF16TOF32(pTempFloat);
-
-        // Store component 1 in output vector (pTempVec4[1]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
-
-        pTempInt0 = this->CreateLShr(pTempInt0, pShiftDataZ);
-        pTempInt = this->CreateAnd(pTempInt0, pMaskZ);
-        pTempInt = this->CreateTrunc(pTempInt, this->getInt16Ty());
-        pTempFloat = this->CreateBitCast(pTempInt, llvm::Type::getHalfTy(this->getContext()));
-        pTempFloat = this->CreateF16TOF32(pTempFloat);
-
-        // Store component 2 in output vector (pTempVec4[2]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
-
-        // store 1.0 into component 3
-        pTempVec4 = this->CreateInsertElement(pTempVec4, getFloat(1.0f), this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R10G10B10A2_UINT:
-    {
-        // AND          ro.x, ri.x, { 0x000003ff };
-        // SHR          ri.x, ri.x, { 10 };
-        // AND          ro.y, ri.x, { 0x000003ff };
-        // SHR          ri.x, ri.x, { 10 };
-        // AND          ro.z, ri.x, { 0x000003ff };
-        // SHR          ri.x, ri.x, { 10 };
-        // AND          ro.w, ri.x, { 0x00000003 };
-        // copy results
-        llvm::Value* pMaskXYZ = this->getInt32(0x000003ff);
-        llvm::Value* pMaskW = this->getInt32(0x00000003);
-        llvm::Value* pShiftDataXYZ = this->getInt32(10);
-
-        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
-        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempIntRes = llvm::UndefValue::get(this->getInt32Ty());
-
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        // AND          ro.x, ri.x, { 0x000003ff };
-        pTempIntRes = this->CreateAnd(pTempInt32, pMaskXYZ);
-        pTempFloat = this->CreateBitCast(pTempIntRes, this->getFloatTy());
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        // SHR          ri.x, ri.x, { 10 };
-        // AND          ro.y, ri.x, { 0x000003ff };
-        pTempInt32 = this->CreateLShr(pTempInt32, pShiftDataXYZ);
-        pTempIntRes = this->CreateAnd(pTempInt32, pMaskXYZ);
-        pTempFloat = this->CreateBitCast(pTempIntRes, this->getFloatTy());
-
-        // Store component 1 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
-
-        // SHR          ri.x, ri.x, { 10 };
-        // AND          ro.z, ri.x, { 0x000003ff };
-        pTempInt32 = this->CreateLShr(pTempInt32, pShiftDataXYZ);
-        pTempIntRes = this->CreateAnd(pTempInt32, pMaskXYZ);
-        pTempFloat = this->CreateBitCast(pTempIntRes, this->getFloatTy());
-
-        // Store component 2 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
-
-        // SHR          ri.x, ri.x, { 10 };
-        // AND          ro.w, ri.x, { 3 };
-        pTempInt32 = this->CreateLShr(pTempInt32, pShiftDataXYZ);
-        pTempIntRes = this->CreateAnd(pTempInt32, pMaskW);
-        pTempFloat = this->CreateBitCast(pTempIntRes, this->getFloatTy());
-
-        // Store component 3 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_UNORM:
-    {
-        // immX = 0x8, immY = 0x10, immZ = 0x18
-        // immMaskLow = 0x000000FF
-        // AND rTemp.x, ri.x, immMaskLow
-        // ubfe rTemp.y, immX, immX, ri.x
-        // ubfe rTemp.z, immX, immY, ri.x
-        // ubfe rTemp.w, immX, immZ, ri.x
-        // ubtof rTemp, rTemp
-        // Fmul  rOutput, rTemp, 1.0f/255.0f
-        llvm::Value* pMaskLow8 = this->getInt32(0x000000FF);
-        llvm::Value* pImmX = this->getInt32(0x8);
-        llvm::Value* pImmY = this->getInt32(0x10);
-        llvm::Value* pImmZ = this->getInt32(0x18);
-        llvm::Value* pConstFloat = this->getFloat(1.0f / 255.0f);
-        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
-        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        // AND rTemp.x, ri.x, immMaskLow
-        pTempInt32Res = this->CreateAnd(pTempInt32, pMaskLow8);
-
-        // ubtof rTemp.x, rTemp.x
-        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
-
-        // Fmul  rOutput.x, rTemp.x, 1.0f/255.0f
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        // ubfe rTemp.y, immX, immX,  ri.x
-        pTempInt32Res = this->Create_UBFE(pImmX, pImmX, pTempInt32);
-
-        // ubtof rTemp.y, rTemp.y
-        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
-
-        // Fmul  rOutput.y, rTemp.y, 1.0f/255.0f
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 1 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
-
-        // ubfe rTemp.z, immX, immY,  ri.x
-        pTempInt32Res = this->Create_UBFE(pImmX, pImmY, pTempInt32);
-
-        // ubtof rTemp.z, rTemp.z
-        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
-
-        // Fmul  rOutput.z, rTemp.z, 1.0f/255.0f
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 2 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
-
-        // ubfe rTemp.w, immX, immZ,  ri.x
-        pTempInt32Res = this->Create_UBFE(pImmX, pImmZ, pTempInt32);
-
-        // ubtof rTemp.w, rTemp.w
-        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
-
-        // Fmul  rOutput.w, rTemp.w, 1.0f/255.0f
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 3 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
-
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_SNORM:
-    {
-        llvm::Value* pScalingFactor = this->getFloat(1.0f / 127.0f);
-        llvm::Value* fieldWidth = this->getInt32(8);
-        llvm::Value* fpNegOne = this->getFloat(-1.0f);
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        // cast to int32 since result is seen as float
-        llvm::Value* pInputAsInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        // create 4-component output vector
-        llvm::Value* pOutputVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // for each of the four channels
-        for (unsigned int ch = 0; ch < 4; ++ch)
-        {
-            // extract 8 bits with sign extend from position 8*ch..8*ch+7
-            // for bits 24..31 we can use arithmetic shift right instead of bit extract
-            llvm::Value* pTempInt32Res = (ch < 3) ?
-                this->Create_IBFE(fieldWidth, this->getInt32(8 * ch), pInputAsInt32) :
-                this->CreateAShr(pInputAsInt32, 8 * ch);
-
-            // convert to float
-            pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
-
-            // multiply bthis->y the scaling factor 1.0f/127.0f
-            pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-            // Fcmp_ge rFlag, rTemp.x, -1.0f
-            // Sel.rFlag rOutput.x, rTemp.x, -1.0f
-            llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, fpNegOne);
-            pTempFloat = this->CreateSelect(pFlag, pTempFloat, fpNegOne);
-
-            // Store component ch in output vector (pTempVec4[0]).
-            pOutputVec4 = this->CreateInsertElement(pOutputVec4, pTempFloat, this->getInt32(ch));
-        }
-
-        pFormatConvertedLLVMLdUAVTypedResult = pOutputVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_UNORM:
-    {
-        // immMaskHigh = 0x0000FFFF
-        // rImm.zw = {0.0f, 1.0f}
-        // AND rTemp.x, ri.x, immMaskHigh
-        // SHR rTemp.y, ri.x, 0x10,
-        // USTOF rTemp.xy, rTemp.xy
-        // FMUL rOutput.xy, rTemp.xy, 1.0f/65535.0f
-        // MOV rOutput.zw, rImm.zw
-        llvm::Value* pMaskHigh = this->getInt32(0x0000FFFF);
-        llvm::Value* pShiftVal = this->getInt32(0x10);
-        llvm::Value* pImmZ = this->getFloat(0.0f);
-        llvm::Value* pImmW = this->getFloat(1.0f);
-        llvm::Value* pConstFloat = this->getFloat(1.0f / 65535.0f);
-        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
-        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        // AND rTemp.x, ri.x, immMaskHigh
-        pTempInt32Res = this->CreateAnd(pTempInt32, pMaskHigh);
-
-        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        pTempInt32Res = this->CreateLShr(pTempInt32, pShiftVal);
-        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 1 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
-
-        // Store component 2 to value 0.0f in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pImmZ, this->getInt32(2));
-
-        // Store component 3 to Value 1.0f in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pImmW, this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_SNORM:
-    {
-        // immMaskLow16 = 0x0000FFFF
-        // rImm.zw = {0.0f, 1.0f}
-        // AND rTemp.x, ri.x, immMaskLow16
-        // SHR rTemp.y, ri.x, 0x10,
-        // STOF rTemp.xy, rTemp.xy
-        // FMUL rTemp.xy, rTemp.xy, 1.0f / 32767.0f
-        // FCMP_GE rFlag.xy, rTemp.xy, -1.0f
-        // SEL_rFlag.xy rOutput.xy, rTemp.xy, -1.0f
-        // MOV rOutput.zw, rImm.zw
-        llvm::Value* pScalingFactor = getFloat(1.0f / 32767.0f);
-        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        llvm::Value* pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        // extract bits 0..15 and sign extend the result
-        llvm::Value* pTempInt32Res = Create_IBFE(this->getInt32(16), this->getInt32(0), pTempInt32);
-
-        // convert to float and apply scaling factor
-        pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // clamp to range [-1.0f, 1.0f] since the value can be little less than -1.0f
-        // Fcmp_ge rFlag, rTemp.x, -1.0f
-        // Sel.rFlag rOutput.x, rTemp.x, -1.0f
-        llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, this->getFloat(-1.0f));
-        pTempFloat = this->CreateSelect(pFlag, pTempFloat, this->getFloat(-1.0f));
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(0));
-
-        // extract bits 16..31 with sign extension
-        pTempInt32Res = this->CreateAShr(pTempInt32, 16);
-        pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Fcmp_ge rFlag, rTemp.y, -1.0f
-        // Sel.rFlag rOutput.y, rTemp.y, -1.0f
-        pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, this->getFloat(-1.0f));
-
-        pTempFloat = this->CreateSelect(pFlag, pTempFloat, this->getFloat(-1.0f));
-
-        // Store component 1 in output vector (pTempVec4[0]).
-        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(1));
-
-        // Store 0.0f, 1.0f in the remaining components of the output vector
-        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(0.0f), this->getInt32(2));
-        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(1.0f), this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pOutVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_UNORM:
-    {
-        // immMaskLow8 = 0x000000FF
-        // rImm.zw = {0.0f, 1.0f}
-        // AND rTemp.x, ri.x, immMaskLow8
-        // SHR rTemp.y, ri.x, 0x8,
-        // USTOF rTemp.xy, rTemp.xy
-        // FMUL rOutput.xy, rTemp.xy, 1.0f / 255.0f
-        // MOV rOutput.zw, rImm.zw
-        llvm::Value* pMaskLow8 = this->getInt32(0x000000FF);
-        llvm::Value* pShiftVal = this->getInt32(0x8);
-        llvm::Value* pImmZ = this->getFloat(0.0f);
-        llvm::Value* pImmW = this->getFloat(1.0f);
-        llvm::Value* pConstFloat = this->getFloat(1.0f / 255.0f);
-        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
-        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        // AND rTemp.x, ri.x, immMaskHigh
-        pTempInt32Res = this->CreateAnd(pTempInt32, pMaskLow8);
-
-        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        pTempInt32Res = this->CreateLShr(pTempInt32, pShiftVal);
-        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
-
-        // Store component 1 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
-
-        // Store component 2 to value 0.0f in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pImmZ, this->getInt32(2));
-
-        // Store component 3 to Value 1.0f in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pImmW, this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_SNORM:
-    {
-        // immMaskLow8 = 0x000000FF
-        // rImm.zw = {0.0f, 1.0f}
-        // AND rTemp.x, ri.x, immMaskLow8
-        // SHR rTemp.y, ri.x, 0x8,
-        // STOF rTemp.xy, rTemp.xy
-        // FMUL rTemp.xy, rTemp.xy, 1.0f / 127.0f
-        // FCMP_GE rFlag.xy, rTemp.xy, -1.0f
-        // SEL_rFlag.xy rOutput.xy, rTemp.xy, -1.0f
-        // MOV rOutput.zw, rImm.zw
-        llvm::Value* pScalingFactor = getFloat(1.0f / 127.0f);
-
-        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        llvm::Value* fieldWidth = this->getInt32(8);
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        llvm::Value* pInputInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        llvm::Value* pTempInt32Res = Create_IBFE(fieldWidth, this->getInt32(0), pInputInt32);
-        pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Fcmp_ge rFlag, rTemp.x, -1.0f
-        // Sel.rFlag rOutput.x, rTemp.x, -1.0f
-        llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, getFloat(-1.0f));
-
-        pTempFloat = this->CreateSelect(pFlag, pTempFloat, getFloat(-1.0f));
-        // Store component 0 in output vector (pTempVec4[0]).
-        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(0));
-
-        // extract bits 8..15 and sign extend the result
-        pTempInt32Res = this->Create_IBFE(fieldWidth, this->getInt32(8), pInputInt32);
-
-        pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Fcmp_ge rFlag, rTemp.y, -1.0f
-        // Sel.rFlag rOutput.y, rTemp.y, -1.0f
-        pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, getFloat(-1.0f));
-        pTempFloat = this->CreateSelect(pFlag, pTempFloat, getFloat(-1.0f));
-
-        // store the value in component 1 of the output vector
-        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(1));
-
-        // store 0.0f, 1.0f in the remaining components of the output vector
-        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(0.0f), this->getInt32(2));
-        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(1.0f), this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pOutVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_UNORM:
-    {
-        // rImm.yzw = {0.0f, 0.0f, 1.0f}
-        // USTOF rTemp.x, ri.x
-        // FMUL rOutput.x, rTemp.x, 1.0f / 65535.0f
-        // MOV rOutput.yzw, rImm.yzw
-        llvm::Value* pScalingFactor = getFloat(1.0f / 65535.0f);
-        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
-        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        pTempFloat = this->CreateUIToFP(pTempInt32, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-
-        // Store 0.0f, 0.0f, 1.0f, in remaining components of the output
-        llvm::Value* pFPZero = getFloat(0.0f);
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pFPZero, this->getInt32(1));
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pFPZero, this->getInt32(2));
-        pTempVec4 = this->CreateInsertElement(pTempVec4, getFloat(1.0f), this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_SNORM:
-    {
-        // rImm.yzw = {0.0f, 0.0f, 1.0f}
-        // STOF rTemp.x, ri.x
-        // FMUL rTemp.x, rTemp.x, 1.0f / 32767.0f
-        // FCMP_GE rFlag.x, rTemp.x, -1.0f
-        // SEL_rFlag.x rOutput.x, rTemp.x, -1.0f
-        // MOV rOutput.yzw, rImm.yzw
-        llvm::Value* pFPZero = getFloat(0.0f);
-        llvm::Value* pScalingFactor = getFloat(1.0f / 32767.0f);
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        llvm::Value* pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        pTempInt32 = this->Create_IBFE(this->getInt32(16), this->getInt32(0), pTempInt32);
-
-        pTempFloat = this->CreateSIToFP(pTempInt32, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // compare with -1.0f and clamp to -1.0 if less than -1.0
-        // Fcmp_ge rFlag, rTemp.x, -1.0f
-        // Sel.rFlag rOutput.x, rTemp.x, -1.0f
-        llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, getFloat(-1.0f));
-        pTempFloat = this->CreateSelect(pFlag, pTempFloat, getFloat(-1.0f));
-
-        // Store the result in component 0 of the output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-        // Store 0.0f, 0.0f, 1.0f in remaining components
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pFPZero, this->getInt32(1));
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pFPZero, this->getInt32(2));
-        pTempVec4 = this->CreateInsertElement(pTempVec4, getFloat(1.0f), this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_UNORM:
-    {
-        // rImm.yzw = {0.0f, 0.0f, 1.0f}
-        // USTOF rTemp.x, ri.x
-        // FMUL rOutput.x, rTemp.x, 1.0f / 255.0f
-        // MOV rOutput.yzw, rImm.yzw
-        // UBTOF        ro.x, ri.x;
-        llvm::Value* fpZero = this->getFloat(0.0f);
-        llvm::Value* pScalingFactor = getFloat(1.0f / 255.0f);
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        llvm::Value* pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        pTempFloat = this->CreateUIToFP(pTempInt32, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
-        // fill the rest with 0.0f, 0.0f, 1.0f
-        pTempVec4 = this->CreateInsertElement(pTempVec4, fpZero, this->getInt32(1));
-        pTempVec4 = this->CreateInsertElement(pTempVec4, fpZero, this->getInt32(2));
-        pTempVec4 = this->CreateInsertElement(pTempVec4, getFloat(1.0f), this->getInt32(3));
-        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
-        break;
-    }
-    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_SNORM:
-    {
-        // rImm.yzw = {0.0f, 0.0f, 1.0f}
-        // STOF rTemp.x, ri.x
-        // FMUL rTemp.x, rTemp.x, 1.0f / 127.0f
-        // FCMP_GE rFlag.x, rTemp.x, -1.0f
-        // SEL_rFlag.x rOutput.x, rTemp.x, -1.0f
-        // MOV rOutput.yzw, rImm.yzw
-        llvm::Value* pFpZero = getFloat(0.0f);
-        llvm::Value* pFpNegOne = getFloat(-1.0f);
-        llvm::Value* pScalingFactor = getFloat(1.0f / 127.0f);
-        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
-
-        // pTempFloat = pLdUAVTypedResult[0];
-        llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
-        llvm::Value* pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
-
-        // extract bits 0..7 and sign extend the result
-        pTempInt32 = this->Create_IBFE(this->getInt32(8), this->getInt32(0), pTempInt32);
-
-        // convert to float and apply scaling factor
-        pTempFloat = this->CreateSIToFP(pTempInt32, this->getFloatTy());
-        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
-
-        // Fcmp_ge rFlag, rTemp.x, -1.0f
-        // Sel.rFlag rOutput.x, rTemp.x, -1.0f
-        llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pFpNegOne);
-        pTempFloat = this->CreateSelect(pFlag, pTempFloat, pFpNegOne);
-
-        // Store component 0 in output vector (pTempVec4[0]).
-        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(0));
-
-        // Store 0.0f, 0.0f, 1.0f in the remaining components of the output vector
-        pOutVec4 = this->CreateInsertElement(pOutVec4, pFpZero, this->getInt32(1));
-        pOutVec4 = this->CreateInsertElement(pOutVec4, pFpZero, this->getInt32(2));
-        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(1.0f), this->getInt32(3));
-
-        pFormatConvertedLLVMLdUAVTypedResult = pOutVec4;
-        break;
-    }
-    default:
-        break;
-    }
-
-    return pFormatConvertedLLVMLdUAVTypedResult;
-}
-
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_indirectLoad(
     llvm::Value* srcBuffer,
@@ -4703,274 +3868,837 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::readFirstLane(llv
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Internal helper method which fills in all emulation related info
-///     used by typed image conversion methods for Gen8 HW.
-/// @see Description of GetSubstituteImageFormat() method.
-/// @param format Surface format of the typed image (original i.e. from shader)
-/// @param info Output structure with emulation info about the input format
-///
-template<bool preserveNames, typename T, typename Inserter>
-inline
-void LLVM3DBuilder<preserveNames, T, Inserter>::GetGen8ImageFormatInfo(
-    const IGC::SURFACE_FORMAT format, ///< input image format
-    typename LLVM3DBuilder<preserveNames, T, Inserter>::ImageFormatInfo& info) const ///< output image format info
-{
-    switch (format)
-    {
-    case IGC::SURFACE_FORMAT_R32G32B32A32_FLOAT:
-        info = { IGC::SURFACE_FORMAT_R32G32B32A32_FLOAT, 4, 32, true, IGC::SURFACE_FORMAT_R16G16B16A16_UINT,  true };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16B16A16_FLOAT:
-        info = { IGC::SURFACE_FORMAT_R16G16B16A16_FLOAT, 4, 16, true,  IGC::SURFACE_FORMAT_R16G16B16A16_UINT, false };
-        break;
-    case IGC::SURFACE_FORMAT_R32G32_FLOAT:
-        info = { IGC::SURFACE_FORMAT_R32G32_FLOAT,       2, 32, true,  IGC::SURFACE_FORMAT_R16G16B16A16_UINT, false };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16_FLOAT:
-        info = { IGC::SURFACE_FORMAT_R16G16_FLOAT,       2, 16, true,  IGC::SURFACE_FORMAT_R16G16_UINT,       false };
-        break;
-    case  IGC::SURFACE_FORMAT_R11G11B10_FLOAT:
-        info = { IGC::SURFACE_FORMAT_R11G11B10_FLOAT,    3, 0,  true,  IGC::SURFACE_FORMAT_R32_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R32_FLOAT:
-        info = { IGC::SURFACE_FORMAT_R32_FLOAT,          1, 32, false, IGC::SURFACE_FORMAT_R32_FLOAT,         false };
-        break;
-    case IGC::SURFACE_FORMAT_R16_FLOAT:
-        info = { IGC::SURFACE_FORMAT_R16_FLOAT,          1, 16, true,  IGC::SURFACE_FORMAT_R16_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16B16A16_UNORM:
-        info = { IGC::SURFACE_FORMAT_R16G16B16A16_UNORM, 4, 16, true,  IGC::SURFACE_FORMAT_R16G16B16A16_UINT, false };
-        break;
-    case IGC::SURFACE_FORMAT_R10G10B10A2_UNORM:
-        info = { IGC::SURFACE_FORMAT_R10G10B10A2_UNORM,  4, 0,  true,  IGC::SURFACE_FORMAT_R32_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R8G8B8A8_UNORM:
-        info = { IGC::SURFACE_FORMAT_R8G8B8A8_UNORM,     4, 8,  true,  IGC::SURFACE_FORMAT_R8G8B8A8_UINT,     false };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16_UNORM:
-        info = { IGC::SURFACE_FORMAT_R16G16_UNORM,       2, 8,  true,  IGC::SURFACE_FORMAT_R16G16_UINT,       false };
-        break;
-    case IGC::SURFACE_FORMAT_R8G8_UNORM:
-        info = { IGC::SURFACE_FORMAT_R8G8_UNORM,         2, 8,  true,  IGC::SURFACE_FORMAT_R8G8_UINT,         false };
-        break;
-    case IGC::SURFACE_FORMAT_R16_UNORM:
-        info = { IGC::SURFACE_FORMAT_R16_UNORM,          1, 16, true,  IGC::SURFACE_FORMAT_R16_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R8_UNORM:
-        info = { IGC::SURFACE_FORMAT_R8_UNORM,           1, 8,  true,  IGC::SURFACE_FORMAT_R8_UINT,           false };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16B16A16_SNORM:
-        info = { IGC::SURFACE_FORMAT_R16G16B16A16_SNORM, 4, 16, true,  IGC::SURFACE_FORMAT_R16G16B16A16_UINT, false };
-        break;
-    case IGC::SURFACE_FORMAT_R8G8B8A8_SNORM:
-        info = { IGC::SURFACE_FORMAT_R8G8B8A8_SNORM,     4, 8,  true,  IGC::SURFACE_FORMAT_R8G8B8A8_UINT,     false };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16_SNORM:
-        info = { IGC::SURFACE_FORMAT_R16G16_SNORM,       2, 16, true,  IGC::SURFACE_FORMAT_R16G16_UINT,       false };
-        break;
-    case IGC::SURFACE_FORMAT_R8G8_SNORM:
-        info = { IGC::SURFACE_FORMAT_R8G8_SNORM,         2, 8,  true,  IGC::SURFACE_FORMAT_R8G8_UINT,         false };
-        break;
-    case IGC::SURFACE_FORMAT_R16_SNORM:
-        info = { IGC::SURFACE_FORMAT_R16_SNORM,          1, 16, true,  IGC::SURFACE_FORMAT_R16_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R8_SNORM:
-        info = { IGC::SURFACE_FORMAT_R8_SNORM,           1, 8,  true,  IGC::SURFACE_FORMAT_R8_UINT,           false };
-        break;
-    case IGC::SURFACE_FORMAT_R32G32B32A32_SINT:
-        info = { IGC::SURFACE_FORMAT_R32G32B32A32_SINT,  4, 32, true,  IGC::SURFACE_FORMAT_R16G16B16A16_UINT, true  };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16B16A16_SINT:
-        info = { IGC::SURFACE_FORMAT_R16G16B16A16_SINT,  4, 16, true,  IGC::SURFACE_FORMAT_R16G16B16A16_UINT, false };
-        break;
-    case IGC::SURFACE_FORMAT_R8G8B8A8_SINT:
-        info = { IGC::SURFACE_FORMAT_R8G8B8A8_SINT,      4, 8,  true,  IGC::SURFACE_FORMAT_R8G8B8A8_UINT,     false };
-        break;
-    case IGC::SURFACE_FORMAT_R32G32_SINT:
-        info = { IGC::SURFACE_FORMAT_R32G32_SINT,        2, 32, true,  IGC::SURFACE_FORMAT_R32G32_UINT,       false };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16_SINT:
-        info = { IGC::SURFACE_FORMAT_R16G16_SINT,        2, 16, true,  IGC::SURFACE_FORMAT_R16G16_UINT,       false };
-        break;
-    case IGC::SURFACE_FORMAT_R8G8_SINT:
-        info = { IGC::SURFACE_FORMAT_R8G8_SINT,          2, 8,  true,  IGC::SURFACE_FORMAT_R8G8_UINT,         false };
-        break;
-    case IGC::SURFACE_FORMAT_R32_SINT:
-        info = { IGC::SURFACE_FORMAT_R32_SINT,           1, 32, false, IGC::SURFACE_FORMAT_R32_SINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R16_SINT:
-        info = { IGC::SURFACE_FORMAT_R16_SINT,           1, 16, true,  IGC::SURFACE_FORMAT_R16_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R8_SINT:
-        info = { IGC::SURFACE_FORMAT_R8_SINT,            1, 8,  true,  IGC::SURFACE_FORMAT_R8_UINT,           false };
-        break;
-    case IGC::SURFACE_FORMAT_R32G32B32A32_UINT:
-        info = { IGC::SURFACE_FORMAT_R32G32B32A32_UINT,  4, 32, true,  IGC::SURFACE_FORMAT_R16G16B16A16_UINT, true  };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16B16A16_UINT:
-        info = { IGC::SURFACE_FORMAT_R16G16B16A16_UINT,  4, 16, false, IGC::SURFACE_FORMAT_R16G16B16A16_UINT, false };
-        break;
-    case IGC::SURFACE_FORMAT_R10G10B10A2_UINT:
-        info = { IGC::SURFACE_FORMAT_R10G10B10A2_UINT,   4, 0,  true,  IGC::SURFACE_FORMAT_R32_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R8G8B8A8_UINT:
-        info = { IGC::SURFACE_FORMAT_R8G8B8A8_UINT,      4, 8,  false, IGC::SURFACE_FORMAT_R8G8B8A8_UINT,     false };
-        break;
-    case IGC::SURFACE_FORMAT_R32G32_UINT:
-        info = { IGC::SURFACE_FORMAT_R32G32_UINT,        2, 32, true,  IGC::SURFACE_FORMAT_R32G32_UINT,       false };
-        break;
-    case IGC::SURFACE_FORMAT_R16G16_UINT:
-        info = { IGC::SURFACE_FORMAT_R16G16_UINT,        2, 16, false, IGC::SURFACE_FORMAT_R16G16_UINT,       false };
-        break;
-    case IGC::SURFACE_FORMAT_R8G8_UINT:
-        info = { IGC::SURFACE_FORMAT_R8G8_UINT,          2, 8,  false, IGC::SURFACE_FORMAT_R8G8_UINT,         false };
-        break;
-    case IGC::SURFACE_FORMAT_R32_UINT:
-        info = { IGC::SURFACE_FORMAT_R32_UINT,           1, 32, false, IGC::SURFACE_FORMAT_R32_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R16_UINT:
-        info = { IGC::SURFACE_FORMAT_R16_UINT,           1, 16, false, IGC::SURFACE_FORMAT_R16_UINT,          false };
-        break;
-    case IGC::SURFACE_FORMAT_R8_UINT:
-        info = { IGC::SURFACE_FORMAT_R8_UINT,            1, 8,  false, IGC::SURFACE_FORMAT_R8_UINT,           false };
-        break;
-    default:
-        info = { format,                                 0, 0,  false, format,                                false };
-        break;
-    }
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Returns information about image format used for typed image read
-///        emulation.
-///
+/// @brief Creates data conversion for typed image reads.
 ///     Gen HW has supports only limited number of surface formats through data
 /// port data cache typed read messages. Complete lists of formats supported
 /// for read is available in Programmer's Reference Manual.
 /// Some of the unsupported formats are  mandatory in Vulkan and OGL.
 /// In order to support these formats the driver and the compiler implement the
 /// following emulation:
+/// Since Gen9 HW typed read messages return raw data when reading from an
+/// unsupported format. It's enough to call the conversion method
+/// CreateImageDataConversion() using data returned from typed read messages.
 ///
-/// GEN8:
-///     Gen8 HW doesn't return any usable data when reading from unsupported
-/// surface format. SW maps the same image (resource) to an additional surface
-/// state which uses one of the supported formats. Frontends use this emulated,
-/// additional resource for all typed reads. Data returned by typed read
-/// messages from the emulated resource needs to be converted to original,
-/// unsupported image format. Frontends perform this conversion using
-/// CreateImageDataConversion() method. Surface format of the additional
-/// resource MUST match the surface format returned by this method. The second
-/// output parameter "requiresDoubleUSize" when set to true informs the driver
-/// that the "U" size of the image should be doubled. This is used in emulation
-/// of 128 bit formats for which we set a 64 bit format in the emulated surface
-/// state. Also when RequiresDoubleUSize() returns true then frontends need to
-/// adjust the U coordinate and read 2 chunks of data from 2*U and 2*U+1.
-/// Frontends can query the need for additional surface state by calling
-/// this method. If returned and input surface formats are different a new
-/// surface state is required.
-///
-/// GEN9+:
-///     Since Gen9 HW typed read messages return raw data when reading from an
-/// unsupported format. This removes the need for the additional surface state.
-/// It's enough to call the conversion method CreateImageDataConversion() using
-/// data returned from typed read messages.
-///
-/// @param format Surface format of the typed image
-/// @returns IGC::SURFACE_FORMAT Surface format of the additional resource
-///
-template<bool preserveNames, typename T, typename Inserter>
-inline
-IGC::SURFACE_FORMAT LLVM3DBuilder<preserveNames, T, Inserter>::GetSubstituteImageFormat(
-    const IGC::SURFACE_FORMAT format) const
-{
-    if (m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE)
-    {
-        ImageFormatInfo info;
-        this->GetGen8ImageFormatInfo(format, info);
-        if (info.m_RequiresConversion)
-        {
-            return info.m_SubstituteFormat;
-        }
-    }
-    return format;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Returns true when 128 bit format emulation requires to double the
-///     U size of the additional resource.
-///
-/// Gen8 HW doesn't support any of the 128bit formats. For all required 128bit
-/// formats the substitute format set in the additional resource is a 64bit and
-/// hence the need for double U size.
-///
-/// @see Description of GetSubstituteImageFormat() method.
 /// @param format Surface format of the typed image (original i.e. from shader)
 /// @param data Data returned by typed read message
-/// @param dataHi Data returned by the second read form a 128 bit format image
-/// @returns bool True for 128 bit format emulation.
-///
-template<bool preserveNames, typename T, typename Inserter>
-inline
-bool LLVM3DBuilder<preserveNames, T, Inserter>::SubstituteResourceRequiresDoubleUSize(
-    const IGC::SURFACE_FORMAT format) const
-{
-    if (m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE)
-    {
-        ImageFormatInfo info;
-        this->GetGen8ImageFormatInfo(format, info);
-        if (info.m_RequiresConversion)
-        {
-            return info.m_Is128b;
-        }
-    }
-    return false;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Creates data conversion for typed image reads.
-/// @see Description of GetSubstituteImageFormat() method.
-/// @param format Surface format of the typed image (original i.e. from shader)
-/// @param data Data returned by typed read message
-/// @param dataHi Data returned by the second read form a 128 bit format image
 /// @returns llvm::Value* Vector of data converted to the input surface format.
 ///
 template<bool preserveNames, typename T, typename Inserter>
 inline
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateImageDataConversion(
     IGC::SURFACE_FORMAT format,
-    llvm::Value* data,
-    llvm::Value* dataHi)
+    llvm::Value* data)
 {
-    if (m_Platform->GetPlatformFamily() >= IGFX_GEN9_CORE)
-    {
-        IGC_ASSERT(dataHi == nullptr);
-        return this->CreateGen9PlusImageDataConversion(format, data);
-    }
-    else
-    {
-        struct LLVM3DBuilder<preserveNames, T, Inserter>::ImageFormatInfo info;
-        this->GetGen8ImageFormatInfo(format, info);
+    IGC_ASSERT(nullptr != m_Platform);
 
-        if (!info.m_RequiresConversion)
+    switch (format)
+    {
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_SNORM:
+        if (m_Platform->hasHDCSupportForTypedReadsUnormSnormToFloatConversion())
         {
-            IGC_ASSERT(dataHi == nullptr);
             return data;
         }
-
-        if (info.m_Is128b)
-        {
-            IGC_ASSERT(dataHi != nullptr);
-            return this->CreateGen8ImageDataConversion(format, data, dataHi);
-        }
-        else
-        {
-            IGC_ASSERT(dataHi == nullptr);
-            return this->CreateGen8ImageDataConversion(format, data);
-        }
+        break;
+    default:
+        break;
     }
+
+
+    llvm::Value* pFormatConvertedLLVMLdUAVTypedResult = data;
+    switch (format)
+    {
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_UNORM:
+    {
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pConstFloat = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(this->getFloatTy(), (1.0f / 65535.0f)));
+        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempInt16 = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
+        llvm::Value* pMaskLow = this->getInt32(0x0000FFFF);
+        llvm::Value* pShift16 = this->getInt32(0x00000010);
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+
+        // Retrieve unsigned short value (component 0).
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+        pTempInt16 = this->CreateAnd(pTempInt32, pMaskLow);
+
+        // Convert unsigned short to float (component 0).
+        pTempFloat = this->CreateUIToFP(pTempInt16, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        // Retrieve unsigned short value (component 1).
+        pTempInt16 = this->CreateLShr(pTempInt32, pShift16);
+
+        // Convert unsigned short to float (component 1).
+        pTempFloat = this->CreateUIToFP(pTempInt16, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 1 in output vector (pTempVec4[1]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
+
+        // pTempFloat = pLdUAVTypedResult[1];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(1));
+
+        // Retrieve unsigned short value (component 2).
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+        pTempInt16 = this->CreateAnd(pTempInt32, pMaskLow);
+
+        // Convert unsigned short to float (component 2).
+        pTempFloat = this->CreateUIToFP(pTempInt16, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 2 in output vector (pTempVec4[2]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
+
+        // Retrieve unsigned short value (component 3).
+        pTempInt16 = this->CreateLShr(pTempInt32, pShift16);
+
+        // Convert unsigned short to float (component 3).
+        pTempFloat = this->CreateUIToFP(pTempInt16, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 3 in output vector (pTempVec4[3]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
+
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_SNORM:
+    {
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pScalingFactor = this->getFloat(1.0f / 32767.0f);
+        llvm::Value* pTempInt32;
+        llvm::Value* pTempInt16;
+        llvm::Value* pTempFloat;
+        llvm::Value* pNegativeOne = this->getFloat(-1.0f);
+        llvm::Value* pCmp_result;
+        llvm::Value* fieldWidth = this->getInt32(16);
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+
+        // Retrieve unsigned short value (component 0).
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+        pTempInt16 = this->Create_IBFE(fieldWidth, this->getInt32(0), pTempInt32);
+
+        // Convert signed short to float (component 0).
+        pTempFloat = this->CreateSIToFP(pTempInt16, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Compare with -1.0f
+        pCmp_result = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pNegativeOne);
+        pTempFloat = this->CreateSelect(pCmp_result, pTempFloat, pNegativeOne);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        // Retrieve unsigned short value (component 1).
+        pTempInt16 = this->CreateAShr(pTempInt32, 16);
+
+        // Convert signed short to float (component 1).
+        pTempFloat = this->CreateSIToFP(pTempInt16, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Compare with -1.0f
+        pCmp_result = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pNegativeOne);
+        pTempFloat = this->CreateSelect(pCmp_result, pTempFloat, pNegativeOne);
+
+        // Store component 1 in output vector (pTempVec4[1]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
+
+        // pTempFloat = pLdUAVTypedResult[1];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(1));
+
+        // Retrieve unsigned short value (component 2).
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+        pTempInt16 = this->Create_IBFE(fieldWidth, this->getInt32(0), pTempInt32);
+
+        // Convert unsigned short to float (component 2).
+        pTempFloat = this->CreateSIToFP(pTempInt16, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Compare with -1.0f
+        pCmp_result = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pNegativeOne);
+        pTempFloat = this->CreateSelect(pCmp_result, pTempFloat, pNegativeOne);
+
+        // Store component 2 in output vector (pTempVec4[2]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
+
+        // Retrieve unsigned short value (component 3).
+        pTempInt16 = this->CreateAShr(pTempInt32, 16);
+
+        // Convert unsigned short to float (component 3).
+        pTempFloat = this->CreateSIToFP(pTempInt16, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Compare with -1.0f
+        pCmp_result = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pNegativeOne);
+        pTempFloat = this->CreateSelect(pCmp_result, pTempFloat, pNegativeOne);
+
+        // Store component 3 in output vector (pTempVec4[3]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
+
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R10G10B10A2_UNORM:
+    {
+        llvm::Value* pImmediateXYZ = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(this->getFloatTy(), (1.0f / 1023.0f)));
+        llvm::Value* pImmediateW = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(this->getFloatTy(), (1.0f / 3.0f)));
+        llvm::Value* pMaskXYZ = this->getInt32(0x000003ff);
+        llvm::Value* pMaskW = this->getInt32(0x00000003);
+        llvm::Value* pShiftData = this->getInt32(10);
+
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempIntWithMask = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
+        llvm::Value* pTempShiftRightData = llvm::UndefValue::get(this->getInt32Ty());
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+
+        // Retrieve unsigned short value (component 0).
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+        pTempIntWithMask = this->CreateAnd(pTempInt32, pMaskXYZ);
+
+        // Convert unsigned short to float (component 0).
+        pTempFloat = this->CreateUIToFP(pTempIntWithMask, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pImmediateXYZ);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        // Retrieve unsigned short value (component 0).
+        pTempShiftRightData = this->CreateLShr(pTempInt32, pShiftData);
+
+        pTempIntWithMask = this->CreateAnd(pTempShiftRightData, pMaskXYZ);
+
+        // Convert unsigned short to float.
+        pTempFloat = this->CreateUIToFP(pTempIntWithMask, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pImmediateXYZ);
+
+        // Store component 1 in output vector (pTempVec4[1]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
+
+        // Retrieve unsigned short value.
+        pTempShiftRightData = this->CreateLShr(pTempShiftRightData, pShiftData);
+
+        pTempIntWithMask = this->CreateAnd(pTempShiftRightData, pMaskXYZ);
+
+        // Convert unsigned short to float.
+        pTempFloat = this->CreateUIToFP(pTempIntWithMask, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pImmediateXYZ);
+
+        // Store component 2 in output vector (pTempVec4[1]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
+
+        // Retrieve unsigned short value.
+        pTempShiftRightData = this->CreateLShr(pTempShiftRightData, pShiftData);
+
+        pTempIntWithMask = this->CreateAnd(pTempShiftRightData, pMaskW);
+
+        // Convert unsigned short to float.
+        pTempFloat = this->CreateUIToFP(pTempIntWithMask, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pImmediateW);
+
+        // Store component 3 in output vector (pTempVec4[1]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R11G11B10_FLOAT:
+    {
+        // This surface format packs 3 half-float values into 32-bit string.
+        // Half-floats are always non-negative, so to save space sign bit
+        // is not stored and assumed to be zero.
+        // Only 11 or 10 most significant bits (not counting sign bit)
+        // of the 16 bits of IEEE 754 float16 are stored.
+        // The least significant bits of the mantissa are assumed to be zero.
+        // First value is stored in bits 0--10.     (r)
+        // Second value is stored in bits 11 - 22   (g)
+        // Third value is stored in bits 22 - 31    (b)
+        // Fourth value is set to 1.0f.
+
+        llvm::Value* pMaskX = this->getInt32(0x000007ff);
+        llvm::Value* pMaskY = this->getInt32(0x00007ff0);
+        llvm::Value* pMaskZ = this->getInt32(0x00007fe0);
+        llvm::Value* pShiftDataX = this->getInt32(4);
+        llvm::Value* pShiftDataY = this->getInt32(7);
+        llvm::Value* pShiftDataZ = this->getInt32(10);
+        llvm::Value* pTempFloat;
+        llvm::Value* pTempFloat0;
+        llvm::Value* pTempInt;
+        llvm::Value* pTempInt0;
+
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat0 = pLdUAVTypedResult[0];
+        pTempFloat0 = this->CreateExtractElement(data, this->getInt32(0));
+        pTempInt0 = this->CreateBitCast(pTempFloat0, this->getInt32Ty());
+
+        pTempInt = this->CreateAnd(pTempInt0, pMaskX);
+        pTempInt = this->CreateShl(pTempInt, pShiftDataX);
+        pTempInt = this->CreateTrunc(pTempInt, this->getInt16Ty());
+        pTempFloat = this->CreateBitCast(pTempInt, llvm::Type::getHalfTy(this->getContext()));
+        pTempFloat = this->CreateF16TOF32(pTempFloat);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        pTempInt0 = this->CreateLShr(pTempInt0, pShiftDataY);
+        pTempInt = this->CreateAnd(pTempInt0, pMaskY);
+        pTempInt = this->CreateTrunc(pTempInt, this->getInt16Ty());
+        pTempFloat = this->CreateBitCast(pTempInt, llvm::Type::getHalfTy(this->getContext()));
+        pTempFloat = this->CreateF16TOF32(pTempFloat);
+
+        // Store component 1 in output vector (pTempVec4[1]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
+
+        pTempInt0 = this->CreateLShr(pTempInt0, pShiftDataZ);
+        pTempInt = this->CreateAnd(pTempInt0, pMaskZ);
+        pTempInt = this->CreateTrunc(pTempInt, this->getInt16Ty());
+        pTempFloat = this->CreateBitCast(pTempInt, llvm::Type::getHalfTy(this->getContext()));
+        pTempFloat = this->CreateF16TOF32(pTempFloat);
+
+        // Store component 2 in output vector (pTempVec4[2]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
+
+        // store 1.0 into component 3
+        pTempVec4 = this->CreateInsertElement(pTempVec4, getFloat(1.0f), this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R10G10B10A2_UINT:
+    {
+        // AND          ro.x, ri.x, { 0x000003ff };
+        // SHR          ri.x, ri.x, { 10 };
+        // AND          ro.y, ri.x, { 0x000003ff };
+        // SHR          ri.x, ri.x, { 10 };
+        // AND          ro.z, ri.x, { 0x000003ff };
+        // SHR          ri.x, ri.x, { 10 };
+        // AND          ro.w, ri.x, { 0x00000003 };
+        // copy results
+        llvm::Value* pMaskXYZ = this->getInt32(0x000003ff);
+        llvm::Value* pMaskW = this->getInt32(0x00000003);
+        llvm::Value* pShiftDataXYZ = this->getInt32(10);
+
+        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
+        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempIntRes = llvm::UndefValue::get(this->getInt32Ty());
+
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        // AND          ro.x, ri.x, { 0x000003ff };
+        pTempIntRes = this->CreateAnd(pTempInt32, pMaskXYZ);
+        pTempFloat = this->CreateBitCast(pTempIntRes, this->getFloatTy());
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        // SHR          ri.x, ri.x, { 10 };
+        // AND          ro.y, ri.x, { 0x000003ff };
+        pTempInt32 = this->CreateLShr(pTempInt32, pShiftDataXYZ);
+        pTempIntRes = this->CreateAnd(pTempInt32, pMaskXYZ);
+        pTempFloat = this->CreateBitCast(pTempIntRes, this->getFloatTy());
+
+        // Store component 1 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
+
+        // SHR          ri.x, ri.x, { 10 };
+        // AND          ro.z, ri.x, { 0x000003ff };
+        pTempInt32 = this->CreateLShr(pTempInt32, pShiftDataXYZ);
+        pTempIntRes = this->CreateAnd(pTempInt32, pMaskXYZ);
+        pTempFloat = this->CreateBitCast(pTempIntRes, this->getFloatTy());
+
+        // Store component 2 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
+
+        // SHR          ri.x, ri.x, { 10 };
+        // AND          ro.w, ri.x, { 3 };
+        pTempInt32 = this->CreateLShr(pTempInt32, pShiftDataXYZ);
+        pTempIntRes = this->CreateAnd(pTempInt32, pMaskW);
+        pTempFloat = this->CreateBitCast(pTempIntRes, this->getFloatTy());
+
+        // Store component 3 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_UNORM:
+    {
+        // immX = 0x8, immY = 0x10, immZ = 0x18
+        // immMaskLow = 0x000000FF
+        // AND rTemp.x, ri.x, immMaskLow
+        // ubfe rTemp.y, immX, immX, ri.x
+        // ubfe rTemp.z, immX, immY, ri.x
+        // ubfe rTemp.w, immX, immZ, ri.x
+        // ubtof rTemp, rTemp
+        // Fmul  rOutput, rTemp, 1.0f/255.0f
+        llvm::Value* pMaskLow8 = this->getInt32(0x000000FF);
+        llvm::Value* pImmX = this->getInt32(0x8);
+        llvm::Value* pImmY = this->getInt32(0x10);
+        llvm::Value* pImmZ = this->getInt32(0x18);
+        llvm::Value* pConstFloat = this->getFloat(1.0f / 255.0f);
+        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
+        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        // AND rTemp.x, ri.x, immMaskLow
+        pTempInt32Res = this->CreateAnd(pTempInt32, pMaskLow8);
+
+        // ubtof rTemp.x, rTemp.x
+        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
+
+        // Fmul  rOutput.x, rTemp.x, 1.0f/255.0f
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        // ubfe rTemp.y, immX, immX,  ri.x
+        pTempInt32Res = this->Create_UBFE(pImmX, pImmX, pTempInt32);
+
+        // ubtof rTemp.y, rTemp.y
+        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
+
+        // Fmul  rOutput.y, rTemp.y, 1.0f/255.0f
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 1 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
+
+        // ubfe rTemp.z, immX, immY,  ri.x
+        pTempInt32Res = this->Create_UBFE(pImmX, pImmY, pTempInt32);
+
+        // ubtof rTemp.z, rTemp.z
+        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
+
+        // Fmul  rOutput.z, rTemp.z, 1.0f/255.0f
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 2 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(2));
+
+        // ubfe rTemp.w, immX, immZ,  ri.x
+        pTempInt32Res = this->Create_UBFE(pImmX, pImmZ, pTempInt32);
+
+        // ubtof rTemp.w, rTemp.w
+        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
+
+        // Fmul  rOutput.w, rTemp.w, 1.0f/255.0f
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 3 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(3));
+
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_SNORM:
+    {
+        llvm::Value* pScalingFactor = this->getFloat(1.0f / 127.0f);
+        llvm::Value* fieldWidth = this->getInt32(8);
+        llvm::Value* fpNegOne = this->getFloat(-1.0f);
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        llvm::Value* pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        // cast to int32 since result is seen as float
+        llvm::Value* pInputAsInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        // create 4-component output vector
+        llvm::Value* pOutputVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // for each of the four channels
+        for (unsigned int ch = 0; ch < 4; ++ch)
+        {
+            // extract 8 bits with sign extend from position 8*ch..8*ch+7
+            // for bits 24..31 we can use arithmetic shift right instead of bit extract
+            llvm::Value* pTempInt32Res = (ch < 3) ?
+                this->Create_IBFE(fieldWidth, this->getInt32(8 * ch), pInputAsInt32) :
+                this->CreateAShr(pInputAsInt32, 8 * ch);
+
+            // convert to float
+            pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
+
+            // multiply bthis->y the scaling factor 1.0f/127.0f
+            pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+            // Fcmp_ge rFlag, rTemp.x, -1.0f
+            // Sel.rFlag rOutput.x, rTemp.x, -1.0f
+            llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, fpNegOne);
+            pTempFloat = this->CreateSelect(pFlag, pTempFloat, fpNegOne);
+
+            // Store component ch in output vector (pTempVec4[0]).
+            pOutputVec4 = this->CreateInsertElement(pOutputVec4, pTempFloat, this->getInt32(ch));
+        }
+
+        pFormatConvertedLLVMLdUAVTypedResult = pOutputVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_UNORM:
+    {
+        // immMaskHigh = 0x0000FFFF
+        // rImm.zw = {0.0f, 1.0f}
+        // AND rTemp.x, ri.x, immMaskHigh
+        // SHR rTemp.y, ri.x, 0x10,
+        // USTOF rTemp.xy, rTemp.xy
+        // FMUL rOutput.xy, rTemp.xy, 1.0f/65535.0f
+        // MOV rOutput.zw, rImm.zw
+        llvm::Value* pMaskHigh = this->getInt32(0x0000FFFF);
+        llvm::Value* pShiftVal = this->getInt32(0x10);
+        llvm::Value* pImmZ = this->getFloat(0.0f);
+        llvm::Value* pImmW = this->getFloat(1.0f);
+        llvm::Value* pConstFloat = this->getFloat(1.0f / 65535.0f);
+        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
+        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        // AND rTemp.x, ri.x, immMaskHigh
+        pTempInt32Res = this->CreateAnd(pTempInt32, pMaskHigh);
+
+        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        pTempInt32Res = this->CreateLShr(pTempInt32, pShiftVal);
+        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 1 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
+
+        // Store component 2 to value 0.0f in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pImmZ, this->getInt32(2));
+
+        // Store component 3 to Value 1.0f in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pImmW, this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_SNORM:
+    {
+        // immMaskLow16 = 0x0000FFFF
+        // rImm.zw = {0.0f, 1.0f}
+        // AND rTemp.x, ri.x, immMaskLow16
+        // SHR rTemp.y, ri.x, 0x10,
+        // STOF rTemp.xy, rTemp.xy
+        // FMUL rTemp.xy, rTemp.xy, 1.0f / 32767.0f
+        // FCMP_GE rFlag.xy, rTemp.xy, -1.0f
+        // SEL_rFlag.xy rOutput.xy, rTemp.xy, -1.0f
+        // MOV rOutput.zw, rImm.zw
+        llvm::Value* pScalingFactor = getFloat(1.0f / 32767.0f);
+        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        llvm::Value* pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        llvm::Value* pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        // extract bits 0..15 and sign extend the result
+        llvm::Value* pTempInt32Res = Create_IBFE(this->getInt32(16), this->getInt32(0), pTempInt32);
+
+        // convert to float and apply scaling factor
+        pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // clamp to range [-1.0f, 1.0f] since the value can be little less than -1.0f
+        // Fcmp_ge rFlag, rTemp.x, -1.0f
+        // Sel.rFlag rOutput.x, rTemp.x, -1.0f
+        llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, this->getFloat(-1.0f));
+        pTempFloat = this->CreateSelect(pFlag, pTempFloat, this->getFloat(-1.0f));
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(0));
+
+        // extract bits 16..31 with sign extension
+        pTempInt32Res = this->CreateAShr(pTempInt32, 16);
+        pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Fcmp_ge rFlag, rTemp.y, -1.0f
+        // Sel.rFlag rOutput.y, rTemp.y, -1.0f
+        pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, this->getFloat(-1.0f));
+
+        pTempFloat = this->CreateSelect(pFlag, pTempFloat, this->getFloat(-1.0f));
+
+        // Store component 1 in output vector (pTempVec4[0]).
+        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(1));
+
+        // Store 0.0f, 1.0f in the remaining components of the output vector
+        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(0.0f), this->getInt32(2));
+        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(1.0f), this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pOutVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_UNORM:
+    {
+        // immMaskLow8 = 0x000000FF
+        // rImm.zw = {0.0f, 1.0f}
+        // AND rTemp.x, ri.x, immMaskLow8
+        // SHR rTemp.y, ri.x, 0x8,
+        // USTOF rTemp.xy, rTemp.xy
+        // FMUL rOutput.xy, rTemp.xy, 1.0f / 255.0f
+        // MOV rOutput.zw, rImm.zw
+        llvm::Value* pMaskLow8 = this->getInt32(0x000000FF);
+        llvm::Value* pShiftVal = this->getInt32(0x8);
+        llvm::Value* pImmZ = this->getFloat(0.0f);
+        llvm::Value* pImmW = this->getFloat(1.0f);
+        llvm::Value* pConstFloat = this->getFloat(1.0f / 255.0f);
+        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
+        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        // AND rTemp.x, ri.x, immMaskHigh
+        pTempInt32Res = this->CreateAnd(pTempInt32, pMaskLow8);
+
+        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        pTempInt32Res = this->CreateLShr(pTempInt32, pShiftVal);
+        pTempFloat = this->CreateUIToFP(pTempInt32Res, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pConstFloat);
+
+        // Store component 1 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(1));
+
+        // Store component 2 to value 0.0f in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pImmZ, this->getInt32(2));
+
+        // Store component 3 to Value 1.0f in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pImmW, this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_SNORM:
+    {
+        // immMaskLow8 = 0x000000FF
+        // rImm.zw = {0.0f, 1.0f}
+        // AND rTemp.x, ri.x, immMaskLow8
+        // SHR rTemp.y, ri.x, 0x8,
+        // STOF rTemp.xy, rTemp.xy
+        // FMUL rTemp.xy, rTemp.xy, 1.0f / 127.0f
+        // FCMP_GE rFlag.xy, rTemp.xy, -1.0f
+        // SEL_rFlag.xy rOutput.xy, rTemp.xy, -1.0f
+        // MOV rOutput.zw, rImm.zw
+        llvm::Value* pScalingFactor = getFloat(1.0f / 127.0f);
+
+        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        llvm::Value* fieldWidth = this->getInt32(8);
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        llvm::Value* pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        llvm::Value* pInputInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        llvm::Value* pTempInt32Res = Create_IBFE(fieldWidth, this->getInt32(0), pInputInt32);
+        pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Fcmp_ge rFlag, rTemp.x, -1.0f
+        // Sel.rFlag rOutput.x, rTemp.x, -1.0f
+        llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, getFloat(-1.0f));
+
+        pTempFloat = this->CreateSelect(pFlag, pTempFloat, getFloat(-1.0f));
+        // Store component 0 in output vector (pTempVec4[0]).
+        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(0));
+
+        // extract bits 8..15 and sign extend the result
+        pTempInt32Res = this->Create_IBFE(fieldWidth, this->getInt32(8), pInputInt32);
+
+        pTempFloat = this->CreateSIToFP(pTempInt32Res, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Fcmp_ge rFlag, rTemp.y, -1.0f
+        // Sel.rFlag rOutput.y, rTemp.y, -1.0f
+        pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, getFloat(-1.0f));
+        pTempFloat = this->CreateSelect(pFlag, pTempFloat, getFloat(-1.0f));
+
+        // store the value in component 1 of the output vector
+        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(1));
+
+        // store 0.0f, 1.0f in the remaining components of the output vector
+        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(0.0f), this->getInt32(2));
+        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(1.0f), this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pOutVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_UNORM:
+    {
+        // rImm.yzw = {0.0f, 0.0f, 1.0f}
+        // USTOF rTemp.x, ri.x
+        // FMUL rOutput.x, rTemp.x, 1.0f / 65535.0f
+        // MOV rOutput.yzw, rImm.yzw
+        llvm::Value* pScalingFactor = getFloat(1.0f / 65535.0f);
+        llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
+        llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        pTempFloat = this->CreateUIToFP(pTempInt32, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+
+        // Store 0.0f, 0.0f, 1.0f, in remaining components of the output
+        llvm::Value* pFPZero = getFloat(0.0f);
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pFPZero, this->getInt32(1));
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pFPZero, this->getInt32(2));
+        pTempVec4 = this->CreateInsertElement(pTempVec4, getFloat(1.0f), this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_SNORM:
+    {
+        // rImm.yzw = {0.0f, 0.0f, 1.0f}
+        // STOF rTemp.x, ri.x
+        // FMUL rTemp.x, rTemp.x, 1.0f / 32767.0f
+        // FCMP_GE rFlag.x, rTemp.x, -1.0f
+        // SEL_rFlag.x rOutput.x, rTemp.x, -1.0f
+        // MOV rOutput.yzw, rImm.yzw
+        llvm::Value* pFPZero = getFloat(0.0f);
+        llvm::Value* pScalingFactor = getFloat(1.0f / 32767.0f);
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        llvm::Value* pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        llvm::Value* pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        pTempInt32 = this->Create_IBFE(this->getInt32(16), this->getInt32(0), pTempInt32);
+
+        pTempFloat = this->CreateSIToFP(pTempInt32, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // compare with -1.0f and clamp to -1.0 if less than -1.0
+        // Fcmp_ge rFlag, rTemp.x, -1.0f
+        // Sel.rFlag rOutput.x, rTemp.x, -1.0f
+        llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, getFloat(-1.0f));
+        pTempFloat = this->CreateSelect(pFlag, pTempFloat, getFloat(-1.0f));
+
+        // Store the result in component 0 of the output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+        // Store 0.0f, 0.0f, 1.0f in remaining components
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pFPZero, this->getInt32(1));
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pFPZero, this->getInt32(2));
+        pTempVec4 = this->CreateInsertElement(pTempVec4, getFloat(1.0f), this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_UNORM:
+    {
+        // rImm.yzw = {0.0f, 0.0f, 1.0f}
+        // USTOF rTemp.x, ri.x
+        // FMUL rOutput.x, rTemp.x, 1.0f / 255.0f
+        // MOV rOutput.yzw, rImm.yzw
+        // UBTOF        ro.x, ri.x;
+        llvm::Value* fpZero = this->getFloat(0.0f);
+        llvm::Value* pScalingFactor = getFloat(1.0f / 255.0f);
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        llvm::Value* pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        llvm::Value* pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        pTempFloat = this->CreateUIToFP(pTempInt32, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pTempVec4 = this->CreateInsertElement(pTempVec4, pTempFloat, this->getInt32(0));
+        // fill the rest with 0.0f, 0.0f, 1.0f
+        pTempVec4 = this->CreateInsertElement(pTempVec4, fpZero, this->getInt32(1));
+        pTempVec4 = this->CreateInsertElement(pTempVec4, fpZero, this->getInt32(2));
+        pTempVec4 = this->CreateInsertElement(pTempVec4, getFloat(1.0f), this->getInt32(3));
+        pFormatConvertedLLVMLdUAVTypedResult = pTempVec4;
+        break;
+    }
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_SNORM:
+    {
+        // rImm.yzw = {0.0f, 0.0f, 1.0f}
+        // STOF rTemp.x, ri.x
+        // FMUL rTemp.x, rTemp.x, 1.0f / 127.0f
+        // FCMP_GE rFlag.x, rTemp.x, -1.0f
+        // SEL_rFlag.x rOutput.x, rTemp.x, -1.0f
+        // MOV rOutput.yzw, rImm.yzw
+        llvm::Value* pFpZero = getFloat(0.0f);
+        llvm::Value* pFpNegOne = getFloat(-1.0f);
+        llvm::Value* pScalingFactor = getFloat(1.0f / 127.0f);
+        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
+
+        // pTempFloat = pLdUAVTypedResult[0];
+        llvm::Value* pTempFloat = this->CreateExtractElement(data, this->getInt32(0));
+        llvm::Value* pTempInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
+
+        // extract bits 0..7 and sign extend the result
+        pTempInt32 = this->Create_IBFE(this->getInt32(8), this->getInt32(0), pTempInt32);
+
+        // convert to float and apply scaling factor
+        pTempFloat = this->CreateSIToFP(pTempInt32, this->getFloatTy());
+        pTempFloat = this->CreateFMul(pTempFloat, pScalingFactor);
+
+        // Fcmp_ge rFlag, rTemp.x, -1.0f
+        // Sel.rFlag rOutput.x, rTemp.x, -1.0f
+        llvm::Value* pFlag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, pTempFloat, pFpNegOne);
+        pTempFloat = this->CreateSelect(pFlag, pTempFloat, pFpNegOne);
+
+        // Store component 0 in output vector (pTempVec4[0]).
+        pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(0));
+
+        // Store 0.0f, 0.0f, 1.0f in the remaining components of the output vector
+        pOutVec4 = this->CreateInsertElement(pOutVec4, pFpZero, this->getInt32(1));
+        pOutVec4 = this->CreateInsertElement(pOutVec4, pFpZero, this->getInt32(2));
+        pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(1.0f), this->getInt32(3));
+
+        pFormatConvertedLLVMLdUAVTypedResult = pOutVec4;
+        break;
+    }
+    default:
+        break;
+    }
+
+    return pFormatConvertedLLVMLdUAVTypedResult;
 }
 
 
@@ -5065,269 +4793,6 @@ llvm::Constant* LLVM3DBuilder<preserveNames, T, Inserter>::GetSnormFactor(unsign
 {
     float maxSint = (float)(((1 << bits) - 1) / 2);
     return llvm::ConstantFP::get(this->getFloatTy(), (1.0f / maxSint));
-};
-
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Creates data conversion for typed image reads for Gen8 HW.
-/// @see Description of GetSubstituteImageFormat() method.
-/// @param format Surface format of the typed image (original i.e. from shader)
-/// @param data Data returned by typed read message
-/// @returns llvm::Value* Vector of data converted to the input surface format.
-///
-template<bool preserveNames, typename T, typename Inserter>
-inline
-llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen8ImageDataConversion(
-    IGC::SURFACE_FORMAT format,
-    llvm::Value* data)
-{
-    IGC_ASSERT(nullptr != m_Platform);
-    IGC_ASSERT(m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE);
-    if (data == nullptr)
-    {
-        IGC_ASSERT_MESSAGE(0, "Invalid arguments!");
-        return nullptr;
-    }
-
-    ImageFormatInfo info;
-    this->GetGen8ImageFormatInfo(format, info);
-
-    IGC_ASSERT(info.m_RequiresConversion);
-
-    llvm::Constant* zeroFloat = llvm::ConstantFP::get(this->getFloatTy(), 0);
-    llvm::Constant* posOneFloat = llvm::ConstantFP::get(this->getFloatTy(), -1.0f);
-    llvm::Constant* negOneFloat = llvm::ConstantFP::get(this->getFloatTy(), -1.0f);
-
-    llvm::Constant* zeroInt = llvm::ConstantInt::get(this->getInt32Ty(), 0);
-    llvm::Constant* posOneInt = llvm::ConstantInt::get(this->getInt32Ty(), 1);
-
-    llvm::Value* rawData[4];
-    this->VectorToScalars(data, &rawData[0], 4, zeroFloat);
-
-    for (unsigned i = 0; i < 4; i++)
-    {
-        rawData[i] = this->CreateBitCast(
-            rawData[i],
-            this->getInt32Ty());
-    }
-
-    llvm::Value* outData[4] = { zeroFloat, zeroFloat, zeroFloat, posOneFloat };
-
-    switch (format)
-    {
-    // Unorm image formats
-    case IGC::SURFACE_FORMAT_R8_UNORM:
-    case IGC::SURFACE_FORMAT_R8G8_UNORM:
-    case IGC::SURFACE_FORMAT_R8G8B8A8_UNORM:
-    case IGC::SURFACE_FORMAT_R16_UNORM:
-    case IGC::SURFACE_FORMAT_R16G16_UNORM:
-    case IGC::SURFACE_FORMAT_R16G16B16A16_UNORM:
-    {
-        llvm::Constant* factor = this->GetUnormFactor(info.m_BPE);
-        unsigned mask = (1 << info.m_BPE) - 1;
-
-        for (unsigned i = 0; i < info.m_NumComponents; i++)
-        {
-            outData[i] = this->CreateAnd(rawData[i], this->getInt32(mask));
-            outData[i] = this->CreateUIToFP(outData[i], this->getFloatTy());
-            outData[i] = this->CreateFMul(factor, outData[i]);
-        }
-        break;
-    }
-
-    // _SNORM image formats.
-    case IGC::SURFACE_FORMAT_R8_SNORM:
-    case IGC::SURFACE_FORMAT_R8G8_SNORM:
-    case IGC::SURFACE_FORMAT_R8G8B8A8_SNORM:
-    case IGC::SURFACE_FORMAT_R16_SNORM:
-    case IGC::SURFACE_FORMAT_R16G16_SNORM:
-    case IGC::SURFACE_FORMAT_R16G16B16A16_SNORM:
-    {
-        llvm::Constant* factor = this->GetSnormFactor(info.m_BPE);
-
-        for (unsigned i = 0; i < info.m_NumComponents; i++)
-        {
-            IGC_ASSERT((info.m_BPE == 8) || (info.m_BPE == 16) || (info.m_BPE == 32));
-
-            outData[i] = this->CreateTrunc(rawData[i], this->getIntNTy(info.m_BPE));
-            outData[i] = this->CreateSIToFP(outData[i], this->getFloatTy());
-            outData[i] = this->CreateFMul(factor, outData[i]);
-            llvm::Value* flag = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, outData[i], negOneFloat);
-            outData[i] = this->CreateSelect(flag, outData[i], negOneFloat);
-        }
-        break;
-    }
-
-    // 2-channel 64bit integer formats
-    case IGC::SURFACE_FORMAT_R32G32_UINT:
-    case IGC::SURFACE_FORMAT_R32G32_SINT:
-    {
-        outData[0] = outData[1] = outData[2] = zeroInt;
-        outData[3] = posOneInt;
-        for (unsigned i = 0; i < 2; i++)
-        {
-            llvm::Value* lo = this->CreateAnd(rawData[2 * i], this->getInt32(0xffff));
-            llvm::Value* hi = this->CreateShl(rawData[2 * i + 1], this->getInt32(16));
-            outData[i] = this->CreateOr(lo, hi);
-        }
-        break;
-    }
-
-    // 2-channel 64bit float format
-    case IGC::SURFACE_FORMAT_R32G32_FLOAT:
-    {
-        for (unsigned i = 0; i < 2; i++)
-        {
-            llvm::Value* lo = this->CreateAnd(rawData[2 * i], this->getInt32(0xffff));
-            llvm::Value* hi = this->CreateShl(rawData[2 * i + 1], this->getInt32(16));
-            outData[i] = this->CreateOr(lo, hi);
-            outData[i] = this->CreateBitCast(outData[i], this->getFloatTy());
-        }
-        break;
-    }
-
-    // Half float image formats.
-    case IGC::SURFACE_FORMAT_R16_FLOAT:
-    case IGC::SURFACE_FORMAT_R16G16_FLOAT:
-    case IGC::SURFACE_FORMAT_R16G16B16A16_FLOAT:
-    {
-        for (unsigned i = 0; i < info.m_NumComponents; i++)
-        {
-            outData[i] = this->CreateTrunc(rawData[i], this->getInt16Ty());
-            outData[i] = this->CreateBitCast(outData[i], this->getHalfTy());
-            outData[i] = this->CreateFPExt(outData[i], this->getFloatTy());
-        }
-        break;
-    }
-
-    case IGC::SURFACE_FORMAT_R11G11B10_FLOAT:
-    {
-        outData[0] = this->CreateAnd(rawData[0], this->getInt32(0x7ff));
-        outData[0] = this->CreateShl(outData[0], this->getInt32(4));
-        outData[1] = this->CreateLShr(rawData[0], this->getInt32(7));
-        outData[1] = this->CreateAnd(outData[1], this->getInt32(0x7ff0));
-        outData[2] = this->CreateLShr(rawData[0], this->getInt32(17));
-        outData[2] = this->CreateAnd(outData[2], this->getInt32(0x7fe0));
-        for (unsigned i = 0; i < 3; i++)
-        {
-            outData[i] = this->CreateTrunc(outData[i], this->getInt16Ty());
-            outData[i] = this->CreateBitCast(outData[i], this->getHalfTy());
-            outData[i] = this->CreateFPExt(outData[i], this->getFloatTy());
-        }
-        outData[3] = posOneFloat;
-        break;
-    }
-
-    case IGC::SURFACE_FORMAT_R10G10B10A2_UNORM:
-    {
-        outData[0] = this->CreateAnd(rawData[0], this->getInt32(0x3ff));
-        outData[1] = this->CreateLShr(rawData[0], this->getInt32(10));
-        outData[1] = this->CreateAnd(outData[1], this->getInt32(0x3ff));
-        outData[2] = this->CreateLShr(rawData[0], this->getInt32(20));
-        outData[2] = this->CreateAnd(outData[2], this->getInt32(0x3ff));
-        outData[3] = this->CreateLShr(rawData[0], this->getInt32(30));
-        outData[3] = this->CreateAnd(outData[3], this->getInt32(0x3));
-        for (unsigned i = 0; i < 3; i++)
-        {
-            outData[i] = this->CreateUIToFP(outData[i], this->getFloatTy());
-            outData[i] = this->CreateFMul(this->GetUnormFactor(10), outData[i]);
-        }
-        outData[3] = this->CreateUIToFP(outData[3], this->getFloatTy());
-        outData[3] = this->CreateFMul(this->GetUnormFactor(2), outData[3]);
-        break;
-    }
-
-    case IGC::SURFACE_FORMAT_R10G10B10A2_UINT:
-    {
-        outData[0] = this->CreateAnd(rawData[0], this->getInt32(0x3ff));
-        outData[1] = this->CreateLShr(rawData[0], this->getInt32(10));
-        outData[1] = this->CreateAnd(outData[1], this->getInt32(0x3ff));
-        outData[2] = this->CreateLShr(rawData[0], this->getInt32(20));
-        outData[2] = this->CreateAnd(outData[2], this->getInt32(0x3ff));
-        outData[3] = this->CreateLShr(rawData[0], this->getInt32(30));
-        outData[3] = this->CreateAnd(outData[3], this->getInt32(0x3));
-        break;
-    }
-
-    // Int formats
-    case IGC::SURFACE_FORMAT_R8_SINT:
-    case IGC::SURFACE_FORMAT_R8G8_SINT:
-    case IGC::SURFACE_FORMAT_R8G8B8A8_SINT:
-    case IGC::SURFACE_FORMAT_R16_SINT:
-    case IGC::SURFACE_FORMAT_R16G16_SINT:
-    case IGC::SURFACE_FORMAT_R16G16B16A16_SINT:
-    {
-        outData[0] = outData[1] = outData[2] = zeroInt;
-        outData[3] = posOneInt;
-        llvm::Type* dstType = llvm::IntegerType::get(this->getContext(), info.m_BPE);
-        for (unsigned i = 0; i < info.m_NumComponents; i++)
-        {
-            outData[i] = this->CreateTrunc(rawData[i], dstType);
-            outData[i] = this->CreateSExt(outData[i], this->getInt32Ty());
-        }
-        break;
-    }
-    default:
-        break;
-    }
-
-    return this->ScalarsToVector(outData, 4);
-};
-
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Creates data conversion for typed image reads for 128 bit formats
-///        on Gen8 HW
-/// @see Description of GetSubstituteImageFormat() method.
-/// @param format Surface format of the typed image (original i.e. from shader)
-/// @param data Data returned by typed read message
-/// @param dataHi Data returned by the second read form a 128 bit format image
-/// @returns llvm::Value* Vector of data converted to the input surface format.
-///
-template<bool preserveNames, typename T, typename Inserter>
-inline
-llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen8ImageDataConversion(
-    IGC::SURFACE_FORMAT format,
-    llvm::Value* rawDataRGVec,
-    llvm::Value* rawDataBAVec)
-{
-    if (rawDataBAVec == nullptr || rawDataRGVec == nullptr)
-    {
-        IGC_ASSERT_MESSAGE(0, "Invalid arguments!");
-        return nullptr;
-    }
-
-    ImageFormatInfo info;
-    this->GetGen8ImageFormatInfo(format, info);
-
-    IGC_ASSERT(info.m_RequiresConversion);
-    IGC_ASSERT(info.m_NumComponents == 4);
-    IGC_ASSERT(info.m_BPE == 32);
-    IGC_ASSERT((format == IGC::SURFACE_FORMAT_R32G32B32A32_FLOAT) || (format == IGC::SURFACE_FORMAT_R32G32B32A32_UINT) || (format == IGC::SURFACE_FORMAT_R32G32B32A32_SINT));
-
-    llvm::Constant* zeroFloat = llvm::ConstantFP::get(this->getFloatTy(), 0);
-    llvm::Value* rawData[8];
-
-    this->VectorToScalars(rawDataRGVec, &rawData[0], 4, zeroFloat);
-    this->VectorToScalars(rawDataBAVec, &rawData[4], 4, zeroFloat);
-
-    for (unsigned i = 0; i < 8; i++)
-    {
-        rawData[i] = this->CreateBitCast(rawData[i], this->getInt32Ty());
-    }
-
-    llvm::Value* outData[4];
-    for (unsigned i = 0; i < 4; i++)
-    {
-        llvm::Value* lo = this->CreateAnd(rawData[2 * i], this->getInt32(0xffff));
-        llvm::Value* hi = this->CreateShl(rawData[2 * i + 1], this->getInt32(16));
-        outData[i] = this->CreateOr(lo, hi);
-        if (format == IGC::SURFACE_FORMAT_R32G32B32A32_FLOAT)
-        {
-            outData[i] = this->CreateBitCast(outData[i], this->getFloatTy());
-        }
-    }
-    return this->ScalarsToVector(outData, 4);
 };
 
 template<bool preserveNames, typename T, typename Inserter>

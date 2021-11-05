@@ -674,21 +674,12 @@ public:
     llvm::Value* CreateF16TOF32(
         llvm::Value* f16_src);
 
-    // Remove once frontends switch to using CreateTypedImageDataConversion()
-    llvm::Value* Create_LdUAVTypedFormatConversion(
-        llvm::Value* pLdUAVTypedResult,
-        IGC::SURFACE_FORMAT format);
-
     IGC::SURFACE_FORMAT GetSubstituteImageFormat(
-        const IGC::SURFACE_FORMAT format) const;
-
-    bool SubstituteResourceRequiresDoubleUSize(
         const IGC::SURFACE_FORMAT format) const;
 
     llvm::Value* CreateImageDataConversion(
         IGC::SURFACE_FORMAT format,
-        llvm::Value* data,
-        llvm::Value* dataHi);
+        llvm::Value* data);
 
     llvm::Value* Create_UBFE(
         llvm::Value* int32_width,
@@ -793,23 +784,6 @@ private:
 
     llvm::Constant* GetSnormFactor(unsigned bits);
     llvm::Constant* GetUnormFactor(unsigned bits);
-
-    llvm::Value* CreateGen9PlusImageDataConversion(
-        IGC::SURFACE_FORMAT surfaceFormat,
-        llvm::Value* pLdUAVTypedResult);
-
-    llvm::Value* CreateGen8ImageDataConversion(
-        IGC::SURFACE_FORMAT format,
-        llvm::Value* data);
-
-    llvm::Value* CreateGen8ImageDataConversion(
-        IGC::SURFACE_FORMAT format,
-        llvm::Value* data,
-        llvm::Value* dataHi);
-
-    void GetGen8ImageFormatInfo(
-        const IGC::SURFACE_FORMAT format,
-        ImageFormatInfo&          info) const;
 
     bool NeedConversionFor128FormatRead(
         IGC::SURFACE_FORMAT format) const;
