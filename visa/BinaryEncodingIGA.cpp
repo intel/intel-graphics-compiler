@@ -1793,6 +1793,9 @@ SWSB_ENCODE_MODE vISA::GetIGASWSBEncodeMode(const IR_Builder& builder) {
     if (getPlatformGeneration(builder.getPlatform()) < PlatformGen::XE)
         return SWSB_ENCODE_MODE::SWSBInvalidMode;
 
+    if (builder.hasThreeALUPipes()) {
+        return SWSB_ENCODE_MODE::ThreeDistPipe;
+    }
 
     return SWSB_ENCODE_MODE::SingleDistPipe;
 }
