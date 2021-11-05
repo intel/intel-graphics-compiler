@@ -259,8 +259,13 @@ std::string iga::FormatLastError(unsigned errCode)
         NULL);
     if (errMsg)
         msg = errMsg;
-#else
+#elif defined(__GLIBC__)
     errMsg = strerror_r(errCode, buf, sizeof(buf));
+#else
+    if (strerror_r(errCode, buf, sizeof(buf)))
+        errMsg = nullptr;
+    else
+        errMsg = buf;
 #endif // _WIN32
     if (errMsg == nullptr || errMsg[0] == 0)
         return "???";
