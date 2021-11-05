@@ -1412,7 +1412,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             }
 
             if ((kernel->getIsKernel() && isInPatchingMode) ||
-                kernel->getvIsaInstCount() == 0)
+                (kernel->getvIsaInstCount() == 0 && kernel->getIsPayload()))
             {
                 continue;
             }
