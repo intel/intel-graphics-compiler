@@ -352,6 +352,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 {
                     // Create a temp alloca to map the old argument. This will be removed later by SROA.
                     tempAllocaForSRetPointer = builder.CreateAlloca(PromotedStructValueType(M, OldArgIt->getType()));
+                    tempAllocaForSRetPointer = builder.CreateAddrSpaceCast(tempAllocaForSRetPointer, OldArgIt->getType());
                     VMap[&*OldArgIt] = tempAllocaForSRetPointer;
                     continue;
                 }
