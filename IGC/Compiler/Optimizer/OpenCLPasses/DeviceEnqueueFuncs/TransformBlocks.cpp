@@ -1842,6 +1842,10 @@ namespace //Anonymous
             {
                 typeName = "sampler_t";
             }
+            else if (KindQuery::isQueueType(argType))
+            {
+                typeName = "queue_t";
+            }
             else if (KindQuery::isImageType(argType))
             {
                 ImageMetadata imageMetadata = EmitImageTypeMetadata(argType);
