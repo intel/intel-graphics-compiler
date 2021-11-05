@@ -420,20 +420,4 @@ endif(ANDROID AND MEDIA_IGA)
               DESTINATION Release-Internal/lh64/pdb CONFIGURATIONS ReleaseInternal)
       install(FILES $<TARGET_PDB_FILE:IGA_DLL>
               DESTINATION Debug/lh64/pdb            CONFIGURATIONS Debug)
-
-      if(CMAKE_SIZEOF_VOID_P EQUAL 8) # Only copy 64 build
-          install(TARGETS IGA_DLL RUNTIME
-                  DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
-          install(TARGETS IGA_DLL RUNTIME
-                  DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
-          install(TARGETS IGA_DLL RUNTIME
-                  DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
-
-          install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-                  DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
-          install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-                  DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
-          install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-                  DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
-      endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
   endif()

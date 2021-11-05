@@ -110,21 +110,6 @@ if(IGC_BUILD)
                         COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_FILE:IGA_EXE> $<TARGET_FILE_DIR:IGA_DLL>
                         COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_PDB_FILE:IGA_EXE> $<TARGET_FILE_DIR:IGA_DLL>
     )
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "")
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "")
-
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8) # Only copy 64 build
-        install(TARGETS IGA_EXE RUNTIME
-                DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
-        install(TARGETS IGA_EXE RUNTIME
-                DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
-        install(TARGETS IGA_EXE RUNTIME
-                DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
-        # Only copy pdb for Debug mode
-        install(FILES $<TARGET_PDB_FILE:IGA_EXE>
-                DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
-    endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
-
   elseif (UNIX)
     install(TARGETS IGA_EXE RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-media)
   endif (MSVC)
@@ -140,7 +125,7 @@ endif(IGC_BUILD)
 set_target_properties(IGA_EXE PROPERTIES
     OUTPUT_NAME                                "iga${TARGET_MODIFIER}"
     COMPILE_DEFINITIONS                        "${IGA_EXE_DEFINITIONS}"
-    PDB_NAME                                   "iga_exe"
+    PDB_NAME                                   "iga${TARGET_MODIFIER}_exe"
     LINK_FLAGS                                 "${IGA_EXE_LINK_FLAGS}"
     FOLDER                                     "IGAProjs"
   )
@@ -156,3 +141,4 @@ if(NOT WIN32)
 else()
   target_link_libraries(IGA_EXE PUBLIC IGA_SLIB)
 endif()
+
