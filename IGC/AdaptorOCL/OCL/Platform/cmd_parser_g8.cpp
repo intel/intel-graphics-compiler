@@ -43,7 +43,7 @@ Helper functions
 inline bool IsPlatformValid(
     const PLATFORM productID)
 {
-    if (productID.eRenderCoreFamily <= IGFX_GEN12LP_CORE)
+    if (productID.eRenderCoreFamily <= IGFX_XE_HP_CORE)
     {
         return true;
     }
