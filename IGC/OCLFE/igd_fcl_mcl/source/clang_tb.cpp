@@ -1076,7 +1076,7 @@ namespace TC
             // This is because clang will not allow declarations of extension's functions which use avc types otherwise.
             if (!(oclStd >= 120 || oclStd == 0)) continue;
           }
-          definesStr.append(" -D").append(ext);
+          definesStr.append(" -D").append(ext.str());
         }
       }
 
