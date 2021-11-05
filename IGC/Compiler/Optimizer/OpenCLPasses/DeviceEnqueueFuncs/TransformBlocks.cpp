@@ -122,7 +122,11 @@ namespace //Anonymous
         { DeviceEnqueueFunction::PREFERRED_WORK_GROUP_MULTIPLE_IMPL, "__get_kernel_preferred_work_group_multiple_impl" },
         { DeviceEnqueueFunction::MAX_SUB_GROUP_SIZE_FOR_NDRANGE, "_Z41get_kernel_max_sub_group_size_for_ndrange" },
         { DeviceEnqueueFunction::SUB_GROUP_COUNT_FOR_NDRANGE, "_Z38get_kernel_sub_group_count_for_ndrange" },
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
+        { DeviceEnqueueFunction::SPIRV_ENQUEUE_KERNEL, "_Z21__spirv_EnqueueKernel" },
+#else
         { DeviceEnqueueFunction::SPIRV_ENQUEUE_KERNEL, "__builtin_spirv_OpEnqueueKernel" },
+#endif
         { DeviceEnqueueFunction::SPIRV_SUB_GROUP_COUNT_FOR_NDRANGE, "__builtin_spirv_OpGetKernelNDrangeSubGroupCount" },
         { DeviceEnqueueFunction::SPIRV_MAX_SUB_GROUP_SIZE_FOR_NDRANGE, "__builtin_spirv_OpGetKernelNDrangeMaxSubGroupSize" },
         { DeviceEnqueueFunction::SPIRV_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, "__builtin_spirv_OpGetKernelPreferredWorkGroupSizeMultiple" },
