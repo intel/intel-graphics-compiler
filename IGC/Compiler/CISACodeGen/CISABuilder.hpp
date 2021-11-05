@@ -318,6 +318,7 @@ namespace IGC
         void dpas(CVariable* dst, CVariable* input, CVariable* weight, PrecisionType weight_precision,
             CVariable* actication, PrecisionType activation_precision, uint8_t systolicDepth,
             uint8_t repeatCount, bool IsDpasw);
+        void bf_cvt(CVariable* dst, CVariable* src);
         void fcvt(CVariable* dst, CVariable* src);
         void Bfn(uint8_t booleanFuncCtrl, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
         void QWGather(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
