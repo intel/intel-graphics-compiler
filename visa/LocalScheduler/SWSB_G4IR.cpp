@@ -796,7 +796,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     allTokenNodesMap.resize(totalTokenNum);
     for (size_t i = 0; i < totalTokenNum; i++)
     {
-        allTokenNodesMap[i] = BitSet(unsigned(SBSendNodes.size()), false);
+        allTokenNodesMap[i].bitset = BitSet(unsigned(SBSendNodes.size()), false);
     }
 
     // Get the live out, may kill bit sets
@@ -1381,9 +1381,7 @@ unsigned SWSB::calcDepDelayForNode(const SBNode* curNode) const
     return reuseDelay;
 }
 
-void SWSB::examineNodeForTokenReuse(
-    int &reuseDelay,/* out */
-    int &curDistance, /* out */
+std::pair<int, int> SWSB::examineNodeForTokenReuse(
     unsigned nodeID,
     unsigned nodeDelay,
     const SBNode *reuseNode,
@@ -1391,8 +1389,8 @@ void SWSB::examineNodeForTokenReuse(
     unsigned curLoopStartBB,
     unsigned curLoopEndBB) const
 {
-    curDistance = 0;
-
+    int reuseDelay = 0;
+    int curDistance = 0;
     //The reuse node is before current node.
     if (nodeID > reuseNode->getNodeID())
     {
@@ -1463,6 +1461,7 @@ void SWSB::examineNodeForTokenReuse(
             }
         }
     }
+    return std::make_pair(reuseDelay, curDistance);
 }
 
 //The algorithm for reuse selection: The live range which causes the least stall delay of current live range.
@@ -1480,44 +1479,60 @@ SBNode * SWSB::reuseTokenSelection(const SBNode * node) const
 
     assert(linearScanLiveNodes.size() <= totalTokenNum);
 
-    //The live nodes whose dependencies are not resovled in current node.
+    //The live nodes whose dependencies are not resolved in current node.
     SBNode* candidateNode = linearScanLiveNodes.front();
     for (SBNode* curNode : linearScanLiveNodes)
     {
-        int reuseDelay; //The delay may cause if reuse
-        int curDistance; //The distance from the reused node
-        examineNodeForTokenReuse(reuseDelay, curDistance, nodeID, nodeDelay, curNode, nestLoopLevel, loopStartBB, loopEndBB);
-
-        //The token may be reused already, so check the nodes using the same token.
-        //FIXME: sameTokenNodes will cause compilation time over head.
+        int maxTokenDelay = std::numeric_limits<int>::min(); //The delay may cause if reuse
+        int minTokenDistance = std::numeric_limits<int>::max(); //The distance from the reused node
+        // The token may be reused already, so check the 2 nodes that are
+        // closest to the node using the same token. In most cases the
+        // token allocation is done in ascending order. So, searching backward
+        // should be fast. As for searching forward, only do that if there's
+        // indeed a such node.
         const unsigned short token = curNode->getLastInstruction()->getSetToken();
-        int sameTokenDistance = 0x7FFFFFFF;
-        for (const SBNode* snode : sameTokenNodes[token])
+        const unsigned lastBefore = allTokenNodesMap[token].bitset.findLastIn(0, node->getSendID());
+        unsigned firstAfter = -1;
+        if (node->getSendID() < allTokenNodesMap[token].maxSendID)
         {
-            int sReuseDelay;
-            int sDistance;
-            examineNodeForTokenReuse(sReuseDelay, sDistance, nodeID, nodeDelay, snode, nestLoopLevel, loopStartBB, loopEndBB);
-
+            firstAfter = allTokenNodesMap[token].bitset.findFirstIn(node->getSendID() + 1,
+                                                                    allTokenNodesMap[token].maxSendID + 1);
+        }
+        if (lastBefore != -1)
+        {
+            assert(allTokenNodesMap[token].bitset.isSet(lastBefore));
+            const SBNode* n = SBSendNodes[lastBefore];
+            auto res = examineNodeForTokenReuse(nodeID, nodeDelay, n, nestLoopLevel, loopStartBB, loopEndBB);
             //Largest reuse delay
-            reuseDelay = std::max(reuseDelay, sReuseDelay);
-            //Closed distance
-            sameTokenDistance = std::min(sameTokenDistance, sDistance);
+            maxTokenDelay = std::max(maxTokenDelay, res.first);
+            //Closest distance
+            minTokenDistance = std::min(minTokenDistance, res.second);
+        }
+        if (firstAfter != -1)
+        {
+            assert(allTokenNodesMap[token].bitset.isSet(firstAfter));
+            const SBNode* n = SBSendNodes[firstAfter];
+            auto res = examineNodeForTokenReuse(nodeID, nodeDelay, n, nestLoopLevel, loopStartBB, loopEndBB);
+            //Largest reuse delay
+            maxTokenDelay = std::max(maxTokenDelay, res.first);
+            //Closest distance
+            minTokenDistance = std::min(minTokenDistance, res.second);
         }
 
         // Smallest one is the best one
         // if Distance is not 0, count the distance, otherwise, use the delay.
         // Distance is not 0 means there are candidate whose distance is larger than the delay
-        if (!distance && reuseDelay > 0)
+        if (!distance && maxTokenDelay > 0)
         {
-            if (reuseDelay < delay)
+            if (maxTokenDelay < delay)
             {
-                delay = reuseDelay;
+                delay = maxTokenDelay;
                 candidateNode = curNode;
             }
         }
-        else if (curDistance > distance && sameTokenDistance >= distance)
+        else if (minTokenDistance > distance)
         {
-            distance = std::min(curDistance, sameTokenDistance);
+            distance = minTokenDistance;
             candidateNode = curNode;
         }
     }
@@ -1918,7 +1933,6 @@ void SWSB::assignToken(SBNode* node,
         printf("Reuse token: %d,  QUEUE SIZE: %d\n", token, linearScanLiveNodes.size());
 #endif
     }
-    sameTokenNodes[token].push_back(node);
 #ifdef DEBUG_VERBOSE_ON
     printf("Assigned token: %d,  node: %d, send: %d,  QUEUE SIZE: %d\n", token, node->getNodeID(), node->getSendID(), linearScanLiveNodes.size());
 #endif
@@ -1926,7 +1940,7 @@ void SWSB::assignToken(SBNode* node,
     //Set token to send
     node->getLastInstruction()->setSetToken(token);
     //For token reduction
-    allTokenNodesMap[token].set(node->sendID, true);
+    allTokenNodesMap[token].set(node->sendID);
 
     //Sort succs according to the BBID and node ID.
     std::sort(node->succs.begin(), node->succs.end(), nodeSortCompare);
@@ -1964,7 +1978,7 @@ void SWSB::assignToken(SBNode* node,
                         {
                             succ->getLastInstruction()->setSetToken(token);
                             node->setLiveLatestID(succ->getLiveEndID(), succ->getLiveEndBBID());
-                            allTokenNodesMap[token].set(succ->sendID, true);
+                            allTokenNodesMap[token].set(succ->sendID);
                             succ->setTokenReuseNode(node);
                             continue;
                         }
@@ -1973,7 +1987,7 @@ void SWSB::assignToken(SBNode* node,
                     {
                         succ->getLastInstruction()->setSetToken(token);
                         node->setLiveLatestID(succ->getLiveEndID(), succ->getLiveEndBBID());
-                        allTokenNodesMap[token].set(succ->sendID, true);
+                        allTokenNodesMap[token].set(succ->sendID);
                         succ->setTokenReuseNode(node);
                         continue;
                     }
@@ -2091,7 +2105,7 @@ bool SWSB::globalTokenReachAnalysis(G4_BB* bb)
     {
         if (BBVector[bbID]->killedTokens.isSet(token))
         {
-            temp_live_in -= allTokenNodesMap[token];
+            temp_live_in -= allTokenNodesMap[token].bitset;
         }
     }
 
@@ -2690,7 +2704,7 @@ bool SWSB::assignTokenWithPred(SBNode* node, G4_BB* bb)
     if (canidateNode != nullptr)
     {
         node->getLastInstruction()->setSetToken(canidateNode->getLastInstruction()->getSetToken());
-        allTokenNodesMap[canidateNode->getLastInstruction()->getSetToken()].set(node->sendID, true);
+        allTokenNodesMap[canidateNode->getLastInstruction()->getSetToken()].set(node->sendID);
 #ifdef DEBUG_VERBOSE_ON
         printf("Node: %d, pred reuse assign: %d, token: %d\n", node->getNodeID(), canidateNode->getNodeID(), node->getLastInstruction()->getSetToken());
 #endif
@@ -2798,7 +2812,7 @@ void SWSB::allocateToken(G4_BB* bb)
                                 reachUseArray[exToken]->size() == 0)
                             {
                                 node->getLastInstruction()->setSetToken(exToken);
-                                allTokenNodesMap[exToken].set(node->sendID, true);
+                                allTokenNodesMap[exToken].set(node->sendID);
 #ifdef DEBUG_VERBOSE_ON
                                 printf("node: %d :: Use exclusive token: %d\n", node->getNodeID(), exToken);
 #endif
@@ -2819,7 +2833,7 @@ void SWSB::allocateToken(G4_BB* bb)
                         (reachUseArray[k]->size() == 0))
                     {
                         node->getLastInstruction()->setSetToken(k);
-                        allTokenNodesMap[k].set(node->sendID, true);
+                        allTokenNodesMap[k].set(node->sendID);
                         assigned = true;
 #ifdef DEBUG_VERBOSE_ON
                         printf("node: %d :: Use free token: %d\n", node->getNodeID(), k);
@@ -2848,7 +2862,7 @@ void SWSB::allocateToken(G4_BB* bb)
 #endif
 
                 node->getLastInstruction()->setSetToken(reuseToken);
-                allTokenNodesMap[reuseToken].set(node->sendID, true);
+                allTokenNodesMap[reuseToken].set(node->sendID);
             }
         }
     }
@@ -4138,7 +4152,7 @@ void SWSB::tokenEdgePrune(unsigned& prunedEdgeNum,
                             int token = predNode->getLastInstruction()->getSetToken();
                             if (token != (unsigned short)UNKNOWN_TOKEN)
                             {
-                                activateLiveIn -= allTokenNodesMap[token];
+                                activateLiveIn -= allTokenNodesMap[token].bitset;
                                 killedToken.set(token, true);
                             }
                         }
@@ -4154,7 +4168,7 @@ void SWSB::tokenEdgePrune(unsigned& prunedEdgeNum,
                 int token = node->getLastInstruction()->getSetToken();
                 if (token != (unsigned short)UNKNOWN_TOKEN)
                 {
-                    activateLiveIn -= allTokenNodesMap[token];
+                    activateLiveIn -= allTokenNodesMap[token].bitset;
                     activateLiveIn.set(node->sendID, true);
                 }
             }

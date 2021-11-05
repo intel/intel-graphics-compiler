@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 #include "../BitSet.h"
 #include "LocalScheduler_G4IR.h"
+#include <utility>
 
 namespace vISA
 {
@@ -1596,11 +1597,25 @@ namespace vISA
         std::vector<SBNODE_VECT *> reachUseArray;
         SBNODE_VECT localTokenUsage;
 
-        std::vector<const SBNode*> sameTokenNodes[32];
         int topIndex = -1;
 
         std::map<G4_Label*, G4_BB_SB*> labelToBlockMap;
-        std::vector<BitSet> allTokenNodesMap;
+
+        // TokenAllocation uses a BitSet to track nodes assigned by marking the
+        // send IDs of nodes, so that it's possible to get a SBNode using the
+        // send ID to index into SBSendNodes.
+        // Also add a filed to record the max send ID being assigned.
+        struct TokenAllocation
+        {
+            BitSet bitset;
+            int maxSendID = 0;
+            void set(int sendID)
+            {
+                bitset.set(sendID, true);
+                maxSendID = std::max(sendID, maxSendID);
+            }
+        };
+        std::vector<TokenAllocation> allTokenNodesMap;
         SWSB_TOKEN_PROFILE tokenProfile;
 
         //Global dependence analysis
@@ -1624,7 +1639,7 @@ namespace vISA
         void expireIntervals(unsigned startID);
         void addToLiveList(SBNode *node);
 
-        void examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &curDistance, unsigned nodeID, unsigned nodeDelay, const SBNode *curNode, unsigned char nestLoopLevel, unsigned curLoopStartBB, unsigned curLoopEndBB) const;
+        std::pair<int /*reuseDelay*/, int /*curDistance*/> examineNodeForTokenReuse(unsigned nodeID, unsigned nodeDelay, const SBNode *curNode, unsigned char nestLoopLevel, unsigned curLoopStartBB, unsigned curLoopEndBB) const;
         SBNode * reuseTokenSelection(const SBNode * node) const;
         unsigned short reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*& candidateNode, bool& fromUse);
         void addReachingDefineSet(SBNode* node, SBBitSets* globalLiveSet, SBBitSets* localLiveSet);

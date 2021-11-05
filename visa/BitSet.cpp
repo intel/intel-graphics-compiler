@@ -177,3 +177,108 @@ BitSet& BitSet::operator&= (const BitSet &other)
 
     return *this;
 }
+
+// Create a bitmask with the N right-most bits set to 1, and all other bits set
+// to 0.
+static BITSET_ARRAY_TYPE maskTrailingOnes(unsigned n)
+{
+    assert(n <= NUM_BITS_PER_ELT);
+    return n == 0 ? 0 : (BITSET_ARRAY_TYPE(-1) >> (NUM_BITS_PER_ELT - n));
+}
+
+// Create a bitmask with the N right-most bits set to 0, and all other bits set
+// to 1.
+static BITSET_ARRAY_TYPE maskTrailingZeros(unsigned n)
+{
+    return ~maskTrailingOnes(n);
+}
+
+// TODO: Use c++20 bit manipulation utility functions.
+static unsigned countTrailingZeros(BITSET_ARRAY_TYPE val)
+{
+    assert(val != 0);
+    unsigned count = 0;
+    while ((val & 1) == 0)
+    {
+        val >>= 1;
+        ++count;
+    }
+    return count;
+}
+
+static unsigned countLeadingZeros(BITSET_ARRAY_TYPE val)
+{
+    assert(val != 0);
+    unsigned count = 0;
+    while ((val & (1 << (NUM_BITS_PER_ELT - 1))) == 0)
+    {
+        val <<= 1;
+        ++count;
+    }
+    return count;
+}
+
+int BitSet::findFirstIn(unsigned begin, unsigned end) const
+{
+    assert(begin <= end && end <= m_Size);
+    if (begin == end)
+        return -1;
+
+    unsigned firstElt = begin / NUM_BITS_PER_ELT;
+    unsigned lastElt = (end - 1) / NUM_BITS_PER_ELT;
+
+    for (unsigned i = firstElt; i <= lastElt; ++i)
+    {
+      auto elt = getElt(i);
+
+      if (i == firstElt)
+      {
+        unsigned firstBit = begin % NUM_BITS_PER_ELT;
+        elt &= maskTrailingZeros(firstBit);
+      }
+
+      if (i == lastElt)
+      {
+        unsigned lastBit = (end - 1) % NUM_BITS_PER_ELT;
+        elt &= maskTrailingOnes(lastBit + 1);
+      }
+
+      if (elt != 0)
+        return i * NUM_BITS_PER_ELT + countTrailingZeros(elt);
+    }
+
+    return -1;
+}
+
+int BitSet::findLastIn(unsigned begin, unsigned end) const
+{
+    assert(begin <= end && end <= m_Size);
+    if (begin == end)
+        return -1;
+
+    unsigned lastElt = (end - 1) / NUM_BITS_PER_ELT;
+    unsigned firstElt = begin / NUM_BITS_PER_ELT;
+
+    for (unsigned i = lastElt + 1; i >= firstElt + 1; --i)
+    {
+      unsigned currentElt = i - 1;
+      auto elt = getElt(currentElt);
+
+      if (currentElt == lastElt)
+      {
+        unsigned lastBit = (end - 1) % NUM_BITS_PER_ELT;
+        elt &= maskTrailingOnes(lastBit + 1);
+      }
+
+      if (currentElt == firstElt)
+      {
+        unsigned firstBit = begin % NUM_BITS_PER_ELT;
+        elt &= maskTrailingZeros(firstBit);
+      }
+
+      if (elt != 0)
+        return (currentElt + 1) * NUM_BITS_PER_ELT - countLeadingZeros(elt) - 1;
+    }
+
+    return -1;
+}

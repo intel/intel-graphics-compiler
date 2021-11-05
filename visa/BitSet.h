@@ -16,13 +16,12 @@ SPDX-License-Identifier: MIT
 // Array-based bitset implementation where each element occupies a single bit.
 // Inside each array element, bits are stored and indexed from lsb to msb.
 typedef unsigned int BITSET_ARRAY_TYPE;
-
-class BitSet
-{
 #define BITS_PER_BYTE  8
 #define BIT(x)  (((BITSET_ARRAY_TYPE)1 ) << x)
 #define NUM_BITS_PER_ELT ( sizeof(BITSET_ARRAY_TYPE) * BITS_PER_BYTE )
 
+class BitSet
+{
 public:
     BitSet() : m_BitSetArray(nullptr), m_Size(0) {}
     BitSet(unsigned size, bool defaultValue)
@@ -334,6 +333,13 @@ public:
 
     void *operator new(size_t sz, vISA::
         Mem_Manager &m) { return m.alloc(sz); }
+
+    // Return the index of the first set bit in the range [begin, end).
+    // Return -1 if all bits in the range are unset.
+    int findFirstIn(unsigned begin, unsigned end) const;
+    // Return the index of the last set bit in the range [begin, end).
+    // Return -1 if all bits in the range are unset.
+    int findLastIn(unsigned begin, unsigned end) const;
 
 protected:
     BITSET_ARRAY_TYPE* m_BitSetArray;
