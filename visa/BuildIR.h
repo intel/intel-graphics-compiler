@@ -1439,7 +1439,8 @@ public:
         G4_Declare* dcl,
         short refOff,
         short subregOff,
-        bool use_nomask = false);
+        bool use_nomask = false,
+        G4_InstOpts options = InstOpt_NoOpt);
 
     void createMovInst(
         G4_Declare* dcl,

@@ -2268,6 +2268,7 @@ G4_InstSend* IR_Builder::createSendInst(
 // returns a0.2<0;1,0>:ud
 G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
 {
+    G4_InstOpts dbgOpt = m_options->getOption(vISA_markSamplerMoves) ? InstOpt_BreakPoint : InstOpt_NoOpt;
     // virtual var for each exdesc
     G4_SrcRegRegion* T252 = createSrcRegRegion(builtinT252, getRegionScalar());
     const char* buf = getNameString(mem, 20, "ExDesc%d", num_temp_dcl++);
@@ -2276,7 +2277,7 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     G4_DstRegRegion* dst = createDstRegRegion(exDescDecl, 1);
     if (useNewExtDescFormat())
     {
-        createMov(g4::SIMD1, dst, T252, InstOpt_WriteEnable, true);
+        createMov(g4::SIMD1, dst, T252, InstOpt_WriteEnable | dbgOpt, true);
     }
     else
     {
@@ -2949,7 +2950,7 @@ G4_Declare* IR_Builder::createSendPayloadDcl(unsigned num_elt, G4_Type type)
     return dcl;
 }
 
-void IR_Builder::createMovR0Inst(G4_Declare* dcl, short regOff, short subregOff, bool use_nomask)
+void IR_Builder::createMovR0Inst(G4_Declare* dcl, short regOff, short subregOff, bool use_nomask, G4_InstOpts options)
 {
     G4_DstRegRegion* dst1_opnd = createDst(
         dcl->getRegVar(),
@@ -2965,7 +2966,7 @@ void IR_Builder::createMovR0Inst(G4_Declare* dcl, short regOff, short subregOff,
         G4_ExecSize(GENX_DATAPORT_IO_SZ),
         dst1_opnd,
         r0_src_opnd,
-        (use_nomask ? InstOpt_WriteEnable : 0),
+        (use_nomask ? InstOpt_WriteEnable | options : options),
         true);
 }
 

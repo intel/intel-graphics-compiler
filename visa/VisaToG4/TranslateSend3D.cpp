@@ -222,7 +222,7 @@ int IR_Builder::translateVISAResInfoInst(
     }
 
     // Copy over lod vector operand to payload's 1st row
-    Copy_SrcRegRegion_To_Payload(payloadUD, regOff, lod, execSize, instOpt);
+    Copy_SrcRegRegion_To_Payload(payloadUD, regOff, lod, execSize, instOpt | InstOpt_BreakPoint);
 
     // Now create message descriptor
     // 7:0 - BTI
@@ -1725,6 +1725,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
 {
     G4_Declare* dcl = nullptr;
 
+    G4_InstOpts dbgOpt = m_options->getOption(vISA_markSamplerMoves) ? InstOpt_BreakPoint : InstOpt_NoOpt;
     if (m_options->getOption(vISA_cacheSamplerHeader) && !isBindlessSampler)
     {
         dcl = builtinSamplerHeader;
@@ -1743,7 +1744,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
             G4_INST* r0Move = createMov(g4::SIMD8,
                 createDstRegRegion(dcl, 1),
                 createSrcRegRegion(builtinR0, getRegionStride1()),
-                InstOpt_WriteEnable, false);
+                InstOpt_WriteEnable | dbgOpt, false);
             instList.push_front(r0Move);
         }
         if (samplerIndexGE16)
@@ -1755,14 +1756,14 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
             dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
             dcl->setCapableOfReuse();
             G4_SrcRegRegion* src = createSrc(builtinSamplerHeader->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
-            createMovInst(dcl, 0, 0, g4::SIMD8, NULL, NULL, src);
+            createMovInst(dcl, 0, 0, g4::SIMD8, NULL, NULL, src, false, dbgOpt);
         }
     }
     else
     {
         dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
         dcl->setCapableOfReuse();
-        createMovR0Inst(dcl, 0, 0, true);
+        createMovR0Inst(dcl, 0, 0, true, dbgOpt);
         if (hasBindlessSampler() && !isBindlessSampler)
         {
             // make sure we set bit 0 of M0.3:ud to be 0
@@ -1891,6 +1892,7 @@ int IR_Builder::translateVISASampler3DInst(
             header = createSrcRegRegion(dcl, getRegionStride1());
         }
 
+    G4_InstOpts dbgOpt = m_options->getOption(vISA_markSamplerMoves) ? InstOpt_BreakPoint : InstOpt_NoOpt;
     // Collect payload sources.
     unsigned len = numParms + (header ? 1 : 0);
     std::vector<PayloadSource> sources(len);
@@ -1899,7 +1901,7 @@ int IR_Builder::translateVISASampler3DInst(
     if (header) {
         sources[i].opnd = header;
         sources[i].execSize = g4::SIMD8;
-        sources[i].instOpt = InstOpt_WriteEnable;
+        sources[i].instOpt = InstOpt_WriteEnable | dbgOpt;
         ++i;
     }
     // Collect all parameters.
@@ -1909,7 +1911,7 @@ int IR_Builder::translateVISASampler3DInst(
         sources[i].opnd = params[j];
         sources[i].execSize = execSize;
         sources[i].instOpt = (needNoMask && (uPos <= j && j < (uPos + 3))) ?
-            InstOpt_WriteEnable : instOpt;
+            InstOpt_WriteEnable | dbgOpt : instOpt | dbgOpt;
         ++i;
     }
     ASSERT_USER(i == len, "There's mismatching during payload source collecting!");
