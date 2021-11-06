@@ -314,6 +314,7 @@ namespace IGC {
             case ISA_TYPE_Q: return "q";
             case ISA_TYPE_UV: return "uv";
             case ISA_TYPE_HF: return "hf";
+            case ISA_TYPE_BF: return "bf";
             default: return "illegal";
             }
         }

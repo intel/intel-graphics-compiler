@@ -708,6 +708,7 @@ namespace IGC
             return 31;
         case ISA_TYPE_W:
         case ISA_TYPE_HF:
+        case ISA_TYPE_BF:
             return 15;
         case ISA_TYPE_B:
             return 7;
@@ -720,7 +721,7 @@ namespace IGC
 
     bool IsFloat(VISA_Type type)
     {
-        return type == ISA_TYPE_DF || type == ISA_TYPE_F || type == ISA_TYPE_HF;
+        return type == ISA_TYPE_DF || type == ISA_TYPE_F || type == ISA_TYPE_HF || type == ISA_TYPE_BF;
     }
 
     uint64_t CalculateImmediateValue(CVariable* var, e_modifier mod)

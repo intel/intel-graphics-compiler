@@ -211,6 +211,7 @@ uint CVariable::GetCISADataTypeSize(VISA_Type type)
     case ISA_TYPE_Q:     return 8;
     case ISA_TYPE_UQ:    return 8;
     case ISA_TYPE_HF:    return 2;
+    case ISA_TYPE_BF:    return 2;
     default:
         IGC_ASSERT_MESSAGE(0, "Unimplemented CISA Data Type");
         break;
@@ -252,6 +253,8 @@ e_alignment CVariable::GetCISADataTypeAlignment(VISA_Type type)
     case ISA_TYPE_UQ:
         return EALIGN_QWORD;
     case ISA_TYPE_HF:
+        return EALIGN_WORD;
+    case ISA_TYPE_BF:
         return EALIGN_WORD;
     default:
         IGC_ASSERT_MESSAGE(0, "Unimplemented CISA Data Type");

@@ -2003,6 +2003,7 @@ static uint64_t getFPOne(VISA_Type Ty)
     {
     case ISA_TYPE_DF:   return 0x3FF0000000000000;
     case ISA_TYPE_F:    return 0x3F800000;
+    case ISA_TYPE_BF:   return 0x3F80;
     case ISA_TYPE_HF:   return 0x3C00;
     default: break;
     }
