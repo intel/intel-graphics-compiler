@@ -18661,31 +18661,28 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
     if (FP_RM != ERoundingMode::ROUND_TO_ANY)
         SetRoundingMode_FP(FP_RM);
 
-    // BF_CVT vISA instruction doesn't support immediate source
-    if (id == GenISAIntrinsic::GenISA_ftobf ||
-        id == GenISAIntrinsic::GenISA_bftof) {
-        if (src->IsImmediate()) {
-            CVariable* tempMov = m_currShader->GetNewVariable(
-                1, src->GetType(), EALIGN_GRF, true, src->getName());
-            m_encoder->Copy(tempMov, src);
-            m_encoder->Push();
-            src = tempMov;
-        }
+    // vISA instruction doesn't support immediate source of type BF
+    if (id == GenISAIntrinsic::GenISA_bftof && src->IsImmediate())
+    {
+        uint32_t imm32 = ((uint32_t)src->GetImmediateValue()) & 0xFFFF;
+        imm32 = imm32 << 16; // make it as float immediate
+        CVariable* fSrc = m_currShader->ImmToVariable((uint64_t)imm32, ISA_TYPE_F);
+        m_encoder->Copy(dst, fSrc);
+        m_encoder->Push();
+        return;
     }
 
     if (id == GenISAIntrinsic::GenISA_ftobf ||
         id == GenISAIntrinsic::GenISA_bftof)
     {
-        /// Use UW as we are not exposing BF for now.
-        /// vISA will convert it to BF.
         CVariable* tDst = nullptr, * tSrc = nullptr;
         if (id == GenISAIntrinsic::GenISA_ftobf) {
-            tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UW, 0, 0);
+            tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_BF, 0, 0);
             tSrc = src;
         }
         else if (id == GenISAIntrinsic::GenISA_bftof) {
             tDst = dst;
-            tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_UW, 0, 0);
+            tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_BF, 0, 0);
         }
         else {
             IGC_ASSERT_EXIT_MESSAGE(0, "Something wrong in cvt!");
@@ -18710,7 +18707,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                     uint32_t stride = (esize >= 8 ? 8 : esize);
                     m_encoder->SetSrcRegion(0, stride, stride, 1);
                 }
-                m_encoder->bf_cvt(tDst, tSrc);
+                m_encoder->Cast(tDst, tSrc);
                 m_encoder->Push();
             }
         }
@@ -18721,7 +18718,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
             {
                 m_encoder->SetDstSubReg(dstOff);
                 m_encoder->SetSrcSubReg(0, srcOff);
-                m_encoder->bf_cvt(tDst, tSrc);
+                m_encoder->Cast(tDst, tSrc);
                 m_encoder->Push();
 
                 dstOff += (isDstUniform ? 1 : nsimdsize);
@@ -18734,7 +18731,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
         CVariable* srcs[2];
         srcs[0] = src;
         srcs[1] = GetSymbol(GII->getOperand(1));
-        CVariable* tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_HF, 0, 0);
+        CVariable* tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_BF, 0, 0);
         SmallVector<uint32_t, 16> insts;
         getAllExecsize(insts, nelts);
         for (int e = 0; e < 2; ++e)
@@ -18759,7 +18756,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                         uint32_t stride = (esize >= 8 ? 8 : esize);
                         m_encoder->SetSrcRegion(0, stride, stride, 1);
                     }
-                    m_encoder->bf_cvt(tDst, tSrc);
+                    m_encoder->Cast(tDst, tSrc);
                     m_encoder->Push();
                 }
             }
@@ -18771,7 +18768,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                     m_encoder->SetDstSubReg(2 * dstOff + e);
                     m_encoder->SetDstRegion(2);
                     m_encoder->SetSrcSubReg(0, srcOff);
-                    m_encoder->bf_cvt(tDst, tSrc);
+                    m_encoder->Cast(tDst, tSrc);
                     m_encoder->Push();
 
                     dstOff += (isDstUniform ? 1 : nsimdsize);
