@@ -705,8 +705,8 @@ GenObjectWrapper::GenObjectWrapper(VISAKernel &VK, const Function &F)
     setError("could not get gen debug information from finalizer");
     return;
   }
-  if (GenDbgInfoDataPtr <= 0) {
-    setError("invalid gen debug information size reported by finalizer");
+  if (!GenDbgInfoDataPtr) {
+    setError("gen debug information reported by finalizer is inconsistent");
     return;
   }
   DecodedDebugInfo = std::make_unique<IGC::DbgDecoder>(GenDbgInfoDataPtr);
