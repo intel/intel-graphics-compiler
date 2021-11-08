@@ -1154,7 +1154,7 @@ bool GenXKernelBuilder::run() {
     if (genx::requiresStackCall(F) || genx::isReferencedIndirectly(F)) {
       VISAFunction *stackFunc = nullptr;
 
-      FuncName = F->getName();
+      FuncName = F->getName().str();
       CisaBuilder->AddFunction(stackFunc, FuncName.c_str());
       std::string AsmName = buildAsmName().append("_").append(FuncName);
       CISA_CALL(stackFunc->AddKernelAttribute("OutputAsmPath",

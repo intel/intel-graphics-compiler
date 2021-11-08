@@ -296,7 +296,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
 
 void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
     genx::KernelMetadata &KM, const GenXSubtarget &ST) {
-  Name = KM.getName();
+  Name = KM.getName().str();
   SLMSize = KM.getSLMSize();
 
 }
@@ -504,7 +504,6 @@ loadBinaries(genx::BinaryDataAccumulator<const Function *> &GenBinary,
   VISAKernel *BuiltKernel = VB.GetVISAKernel(F.getName().str());
   IGC_ASSERT_MESSAGE(BuiltKernel, "Kernel is null");
   appendFuncBinary(GenBinary, F, *BuiltKernel);
-  
 }
 
 template <typename UnaryPred>

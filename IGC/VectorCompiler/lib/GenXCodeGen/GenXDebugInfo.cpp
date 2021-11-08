@@ -631,7 +631,7 @@ class GenObjectWrapper {
   std::string ErrMsg;
 
   void setError(const Twine &Msg) {
-    ErrMsg.append((Msg + "<" + EntryPoint.getName() + ">").str());
+    ErrMsg.append((Msg + "<" + EntryPoint.getName().str() + ">").str());
 
     LLVM_DEBUG(dbgs() << "GOW creation for <" << EntryPoint.getName()
                       << "> aborted: " << Msg.str());
@@ -723,7 +723,7 @@ class CompiledVisaWrapper {
   std::string ErrMsg;
 
   void setErrorForFunction(const std::string &Err, const Function &F) {
-    ErrMsg.append(Err).append("<").append(F.getName()).append(">");
+    ErrMsg.append(Err).append("<").append(F.getName().str()).append(">");
 
     LLVM_DEBUG(dbgs() << "CW creation for <" << F.getName()
                       << "> aborted: " << ErrMsg);

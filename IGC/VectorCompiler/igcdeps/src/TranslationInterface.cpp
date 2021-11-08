@@ -333,12 +333,12 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
   if (LegacyPayload.IsValid) {
     ApiOptionsHolder = "-vc-codegen";
     ApiOptionsHolder.append(" ");
-    ApiOptionsHolder.append(LegacyPayload.VCApiOpts);
+    ApiOptionsHolder.append(LegacyPayload.VCApiOpts.str());
     ApiOptions = ApiOptionsHolder;
 
     InternalOptionsHolder = InternalOptions.str();
     InternalOptionsHolder.append(" ");
-    InternalOptionsHolder.append(LegacyPayload.VCInternalOpts);
+    InternalOptionsHolder.append(LegacyPayload.VCInternalOpts.str());
     InternalOptions = InternalOptionsHolder;
 
     Input = Input.take_front(static_cast<size_t>(LegacyPayload.IRSize));

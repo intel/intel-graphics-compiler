@@ -655,7 +655,7 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.TimePasses = true;
   if (InternalOptions.hasArg(OPT_print_stats))
     Opts.ShowStats = true;
-  Opts.StatsFile = InternalOptions.getLastArgValue(OPT_stats_file);
+  Opts.StatsFile = InternalOptions.getLastArgValue(OPT_stats_file).str();
   if (InternalOptions.hasArg(OPT_intel_use_bindless_buffers_ze))
     Opts.UseBindlessBuffers = true;
 
