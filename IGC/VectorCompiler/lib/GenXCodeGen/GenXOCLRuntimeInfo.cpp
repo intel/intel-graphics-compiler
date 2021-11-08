@@ -355,7 +355,6 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
   IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
   setMetadataProperties(KM, ST);
   setArgumentProperties(*FG.getHead(), KM, ST, BC);
-  setStackCallsUsage(FG);
   setPrintStrings(*FG.getHead()->getParent());
 }
 
@@ -532,15 +531,6 @@ std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
   }
 
   return Collected;
-}
-
-void GenXOCLRuntimeInfo::KernelInfo::setStackCallsUsage(
-    FunctionGroup const &FG) {
-  HasStackCalls = std::any_of(
-      FG.begin_subgroup(), FG.end_subgroup(), [&](FunctionGroup const *SG) {
-        return genx::requiresStackCall(SG->getHead()) ||
-               genx::isReferencedIndirectly(SG->getHead());
-      });
 }
 
 // Constructs gen binary for provided function group \p FG.

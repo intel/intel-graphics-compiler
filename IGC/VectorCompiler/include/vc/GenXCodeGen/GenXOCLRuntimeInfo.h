@@ -173,7 +173,6 @@ public:
     bool UsesBarriers = false;
 
     bool UsesReadWriteImages = false;
-    bool HasStackCalls = false;
 
     unsigned SLMSize = 0;
     unsigned ThreadPrivateMemSize = 0;
@@ -196,7 +195,6 @@ public:
                                const GenXSubtarget &ST,
                                const GenXBackendConfig &BC);
     void setPrintStrings(const Module &KernelModule);
-    void setStackCallsUsage(FunctionGroup const &FG);
 
   public:
     using arg_iterator = ArgInfoStorageTy::iterator;
@@ -222,8 +220,6 @@ public:
     // SIMD size is always set by igcmc to one. Preserve this here.
     unsigned getSIMDSize() const { return 1; }
     unsigned getSLMSize() const { return SLMSize; }
-
-    bool hasStackCalls() const { return HasStackCalls; }
 
     // Deduced from actual function instructions.
     unsigned getTPMSize() const { return ThreadPrivateMemSize; }
