@@ -156,7 +156,8 @@ std::string recursive_mangle(const Type* pType)
             if (ST && ST->isOpaque())
             {
                 StringRef structName = ST->getName();
-                bool isImage = structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::Image));
+                bool isImage = structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::Image)) ||
+                    structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::SampledImage));
                 if (isImage)
                 {
                     SmallVector<StringRef, 8> matches;

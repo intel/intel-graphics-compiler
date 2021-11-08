@@ -31,6 +31,11 @@ int    __builtin_IB_get_flat_image_width(int) __attribute__((const));
 int    __builtin_IB_get_flat_image_height(int) __attribute__((const));
 int    __builtin_IB_get_flat_image_pitch(int) __attribute__((const));
 
+// Access image or sampler parameter. Argument should be pointer
+// to SampledImage or VMEImageINTEL opaque type.
+long __builtin_IB_get_image(global void*);
+long __builtin_IB_get_sampler(global void*);
+
 // Image sampling and loads
 float4 __builtin_IB_OCL_1d_sample_l(int, int, float,  float);
 float4 __builtin_IB_OCL_1darr_sample_l(int, int, float2,  float);
