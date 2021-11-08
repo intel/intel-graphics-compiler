@@ -152,10 +152,11 @@ static bool hasAggregate(const Instruction &Inst) {
 
 bool GenXAggregatePseudoLowering::runOnFunction(Function &F) {
   std::vector<Instruction *> WorkList;
+  // Atomic cmpxchg returns a struct, though we shouldn't process it here.
   auto WorkRange = make_filter_range(instructions(F), [](Instruction &Inst) {
     return hasAggregate(Inst) && !isa<InsertValueInst>(Inst) &&
            !isa<ExtractValueInst>(Inst) && !isa<CallInst>(Inst) &&
-           !isa<ReturnInst>(Inst);
+           !isa<AtomicCmpXchgInst>(Inst) && !isa<ReturnInst>(Inst);
   });
   llvm::transform(WorkRange, std::back_inserter(WorkList),
                   [](Instruction &Inst) { return &Inst; });
