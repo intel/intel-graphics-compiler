@@ -770,7 +770,6 @@ static void fillKernelInfo(const GenXOCLRuntimeInfo::CompiledKernel &CompKernel,
 
   setGenBinary(CompKernel.getJitterInfo(), CompKernel.getGenBinary(),
                ResKernel);
-  ResKernel.getProgramOutput().m_VISAAsm = CompKernel.getKernelInfo().VISAAsm;
   setDebugInfo(CompKernel.getDebugInfo(), ResKernel);
   setGtpinInfo(CompKernel.getJitterInfo(), CompKernel.getGTPinInfo(),
                ResKernel);

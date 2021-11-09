@@ -506,12 +506,6 @@ loadBinaries(genx::BinaryDataAccumulator<const Function *> &GenBinary,
   appendFuncBinary(GenBinary, F, *BuiltKernel);
 }
 
-// Returns vISA asm for function \p F
-static std::string getVISAAsm(const Function &F, VISABuilder &VB) {
-  VISAKernel *VK = VB.GetVISAKernel(F.getName().str());
-  return VK->getVISAAsm();
-}
-
 template <typename UnaryPred>
 std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
                                                      UnaryPred &&Pred) {
@@ -538,9 +532,8 @@ std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
   return Collected;
 }
 
-// Constructs gen binary and collects vISA asm for provided
-// function group \p FG.
-static std::pair<genx::BinaryDataAccumulator<const Function *>, std::string>
+// Constructs gen binary for provided function group \p FG.
+static genx::BinaryDataAccumulator<const Function *>
 getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
              GenXBackendConfig const &BC,
              std::set<const Function *> &ProcessedCalls) {
@@ -548,7 +541,6 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
   genx::BinaryDataAccumulator<const Function *> GenBinary;
   // load kernel
   loadBinaries(GenBinary, VB, *Kernel, *Kernel, BC);
-  std::string VISAAsm = getVISAAsm(*Kernel, VB);
 
   const auto IndirectFunctions = collectCalledFunctions(
       FG, [](const Function *F) { return genx::isReferencedIndirectly(F); });
@@ -558,10 +550,9 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
     ProcessedCalls.insert(F);
     // load functions
     loadBinaries(GenBinary, VB, *Kernel, *F, BC);
-    VISAAsm += getVISAAsm(*F, VB);
   }
 
-  return {GenBinary, VISAAsm};
+  return std::move(GenBinary);
 }
 
 static void appendGlobalVariableData(RawSectionInfo &Sect,
@@ -728,8 +719,8 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) {
     JitInfo->spillMemUsed += FuncJitInfo->spillMemUsed;
   }
 
-  genx::BinaryDataAccumulator<const Function *> GenBinary;
-  std::tie(GenBinary, Info.VISAAsm) = getGenBinary(FG, VB, BC, ProcessedCalls);
+  genx::BinaryDataAccumulator<const Function *> GenBinary =
+      getGenBinary(FG, VB, BC, ProcessedCalls);
 
   const auto& Dbg = DBG.getModuleDebug();
   auto DbgIt = Dbg.find(KernelFunction);
