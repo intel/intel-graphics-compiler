@@ -196,12 +196,56 @@ analyzeFormatString(const Value &FmtStrOp) {
   return {FmtStr.getValue().size() + 1, parseFormatString(FmtStr.getValue())};
 }
 
+// Marks strings passed as "%s" arguments in printf.
+// Recursive function, long instruction chains aren't expected.
+static void markStringArgument(Value &Arg) {
+  if (isa<GEPOperator>(Arg)) {
+    auto *String = getConstStringGVFromOperandOptional(Arg);
+    if (!String)
+      report_fatal_error(PrintfStringAccessError);
+    String->addAttribute(PrintfStringVariable);
+    return;
+  }
+  if (isa<SelectInst>(Arg)) {
+    auto &SI = cast<SelectInst>(Arg);
+    // The same value can be potentially accessed by different paths. Though
+    // it is probably OK, since the same string can be marked several times
+    // and the most of the time cases would be simple so it is not that
+    // critical to pass same values several times in some rare complicated
+    // cases.
+    markStringArgument(*SI.getFalseValue());
+    markStringArgument(*SI.getTrueValue());
+    return;
+  }
+  // Only direct use and selection between strings is supported.
+  report_fatal_error(PrintfStringAccessError);
+}
+
+// Marks printf strings: format strings, strings passed as "%s" arguments.
+static void markPrintfStrings(CallInst &OrigPrintf,
+                              const PrintfArgInfoSeq &ArgsInfo) {
+  auto &FormatString =
+      getConstStringGVFromOperand(*OrigPrintf.getArgOperand(0));
+  FormatString.addAttribute(PrintfStringVariable);
+
+  // Handle string arguments (%s).
+  auto StringArgs = make_filter_range(
+      zip(drop_begin(OrigPrintf.args(), 1), ArgsInfo), [](auto &&ArgWithInfo) {
+        return std::get<const PrintfArgInfo &>(ArgWithInfo).Type ==
+               PrintfArgInfo::String;
+      });
+  for (auto &&[Arg, ArgInfo] : StringArgs)
+    markStringArgument(*Arg.get());
+}
+
 void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   assertPrintfCall(OrigPrintf);
   auto [FmtStrSize, ArgsInfo] =
       analyzeFormatString(*OrigPrintf.getArgOperand(0));
   if (ArgsInfo.size() != OrigPrintf.getNumArgOperands() - 1)
     report_fatal_error("printf format string and arguments don't correspond");
+
+  markPrintfStrings(OrigPrintf, ArgsInfo);
 
   auto &InitCall = createPrintfInitCall(OrigPrintf, FmtStrSize, ArgsInfo);
   auto &FmtCall = createPrintfFmtCall(OrigPrintf, InitCall);

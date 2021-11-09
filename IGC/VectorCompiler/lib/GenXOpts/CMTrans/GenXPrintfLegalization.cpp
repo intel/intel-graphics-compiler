@@ -259,8 +259,7 @@ void recursivelyTraverseFormatIndexPreds(Value &Pred,
     return;
   Visited.insert(&Pred);
   if (!isa<SelectInst>(Pred))
-    report_fatal_error("Too entangled string access in printf, the compiler "
-                       "cannot resolve it");
+    report_fatal_error(PrintfStringAccessError);
   auto &Sel = cast<SelectInst>(Pred);
   std::array<OperandTreatment, 2> OperandInfos = {
       traverseSelectOperand(Sel, Sel.getOperandUse(1), ToRebuild, Visited),

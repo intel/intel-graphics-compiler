@@ -19,6 +19,15 @@ SPDX-License-Identifier: MIT
 
 namespace vc {
 
+// A name for an attribute to mark global variables which are strings that
+// are used in printf builtin. Format strings and strings passed through %s
+// modifier should be marked.
+inline constexpr const char PrintfStringVariable[] = "VCPrintfStringVariable";
+// A message to display when compiler cannot reach printf string.
+inline constexpr const char PrintfStringAccessError[] =
+    "Too entangled string access in printf, the compiler cannot resolve it in "
+    "compile time";
+
 // Checks whether global variable is constant and has [N x i8] type.
 bool isConstantString(const llvm::GlobalVariable &GV);
 bool isConstantString(const llvm::Value &V);
@@ -26,6 +35,16 @@ bool isConstantString(const llvm::Value &V);
 // Checks whether GEP takes pointer to the first element of a constant string.
 bool isConstantStringFirstElementGEP(const llvm::GEPOperator &GEP);
 bool isConstantStringFirstElementGEP(const llvm::Value &V);
+
+// Returnes global string variable that \p Op points to. \p Op must be a
+// pointer to i8*. Optional variant can return nullptr when there's no such
+// global variable. Standard variant requires from user to provide a correct
+// pointer so it points to a string.
+const llvm::GlobalVariable *
+getConstStringGVFromOperandOptional(const llvm::Value &Op);
+llvm::GlobalVariable *getConstStringGVFromOperandOptional(llvm::Value &Op);
+const llvm::GlobalVariable &getConstStringGVFromOperand(const llvm::Value &Op);
+llvm::GlobalVariable &getConstStringGVFromOperand(llvm::Value &Op);
 
 llvm::Optional<llvm::StringRef>
 getConstStringFromOperandOptional(const llvm::Value &Op);

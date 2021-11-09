@@ -44,6 +44,8 @@ static StringRef extractCStr(const Constant &CStrConst) {
 bool vc::isConstantString(const GlobalVariable &GV) {
   if (!GV.isConstant())
     return false;
+  // FIXME: Check namespace, it should be constant. Though it is not possible
+  //        to check it right now (CM has no addrspaces).
   if (!GV.getValueType()->isArrayTy())
     return false;
   return GV.getValueType()->getArrayElementType()->isIntegerTy(8);
@@ -70,17 +72,42 @@ bool vc::isConstantStringFirstElementGEP(const Value &V) {
   return isConstantStringFirstElementGEP(cast<GEPOperator>(V));
 }
 
-Optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
+const GlobalVariable *vc::getConstStringGVFromOperandOptional(const Value &Op) {
   IGC_ASSERT_MESSAGE(Op.getType()->isPointerTy(),
                      "wrong argument: pointer was expected");
   IGC_ASSERT_MESSAGE(Op.getType()->getPointerElementType()->isIntegerTy(8),
                      "wrong argument: i8* value was expected");
   if (!isa<GEPOperator>(Op))
-    return {};
+    return nullptr;
   auto *StrConst = cast<GEPOperator>(Op).getPointerOperand();
+  // FIXME: Check that indices are {0, 0}.
   if (!isConstantString(*StrConst))
+    return nullptr;
+  return cast<GlobalVariable>(StrConst);
+}
+
+GlobalVariable *vc::getConstStringGVFromOperandOptional(Value &Op) {
+  return const_cast<GlobalVariable *>(
+      getConstStringGVFromOperandOptional(static_cast<const Value &>(Op)));
+}
+
+const GlobalVariable &vc::getConstStringGVFromOperand(const Value &Op) {
+  auto *GV = getConstStringGVFromOperandOptional(Op);
+  IGC_ASSERT_MESSAGE(GV,
+                     "couldn't reach constexpr string through pointer operand");
+  return *GV;
+}
+
+GlobalVariable &vc::getConstStringGVFromOperand(Value &Op) {
+  return const_cast<GlobalVariable &>(
+      getConstStringGVFromOperand(static_cast<const Value &>(Op)));
+}
+
+Optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
+  auto *GV = getConstStringGVFromOperandOptional(Op);
+  if (!GV)
     return {};
-  return extractCStr(*cast<GlobalVariable>(StrConst)->getInitializer());
+  return extractCStr(*GV->getInitializer());
 }
 
 StringRef vc::getConstStringFromOperand(const Value &Op) {
