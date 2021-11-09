@@ -129,8 +129,10 @@ else()
   set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
   set(PRINTF_ZE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ze_genx.cpp)
   set(EMU_DIVREM_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/emulation_divrem.cpp)
-  set(SPIRV_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_builtins_genx.cpp)
   set(FP2UI_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/fp2ui_conversion.cpp)
+  set(SPIRV_MATH_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_math_builtins_genx.cpp)
+  set(SPIRV_ATOMIC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_atomic_builtins_genx.cpp)
+  set(SPIRV_EXEC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_exec_builtins_genx.cpp)
 
   vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32
                DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
@@ -146,8 +148,9 @@ else()
       DEPENDS "${DIVREM_EXTRA_SOURCES}")
 
   get_target_include_opt_list(IGC_SPIRV_HEADERS_INCLUDES IGCSPIRVHeaders)
-  vc_embed_bif(SPIRV_BUILTINS_CPP_PATH ${SPIRV_BUILTINS_SRC_PATH} VCSPIRVBuiltins 64
-               CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES})
+  vc_embed_bif(SPIRV_BUILTINS_CPP_PATH
+               "${SPIRV_MATH_BUILTINS_SRC_PATH};${SPIRV_ATOMIC_BUILTINS_SRC_PATH};${SPIRV_EXEC_BUILTINS_SRC_PATH}"
+               VCSPIRVBuiltins 64 CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES})
 
   add_custom_target(VCBiFPreparation
     DEPENDS ${PRINTF_OCL_32_CPP_PATH}
@@ -158,7 +161,9 @@ else()
             ${SPIRV_BUILTINS_CPP_PATH}
     SOURCES ${PRINTF_OCL_SRC_PATH}
             ${EMU_DIVREM_SRC_PATH}
-            ${SPIRV_BUILTINS_SRC_PATH})
+            ${SPIRV_MATH_BUILTINS_SRC_PATH}
+            ${SPIRV_EXEC_BUILTINS_SRC_PATH}
+            ${SPIRV_ATOMIC_BUILTINS_SRC_PATH})
 
   add_library(VCEmbeddedBiF
     ${PRINTF_OCL_32_CPP_PATH}
