@@ -161,6 +161,7 @@ public:
     // Duplicates Func.Relocations. Cannot unify it on VC side since the
     // duplication happens on Finalizer side.
     TableInfo LegacyFuncRelocations;
+    std::string VISAAsm;
 
   private:
     std::string Name;
