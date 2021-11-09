@@ -12311,18 +12311,21 @@ void EmitPass::emitSampleOffset(GenIntrinsicInst* inst)
     {
         offsets = psProgram->GetSampleOffsetY();
     }
-    CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
-        numLanes(m_currShader->m_SIMDSize),
-        offsets->GetType(),
-        false,
-        true,
-        offsets->getName());
+
+    CVariable* pDstArrElm = nullptr;
 
     CVariable* index = GetSymbol(inst->getOperand(0));
 
     CVariable* pIndexVar = m_currShader->BitCast(index, ISA_TYPE_UW);
 
     {
+        pDstArrElm = m_currShader->GetNewAddressVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            offsets->GetType(),
+            false,
+            true,
+            offsets->getName());
+
         if (!pIndexVar->IsUniform())
         {
             m_encoder->SetSrcRegion(1, 16, 8, 2);
