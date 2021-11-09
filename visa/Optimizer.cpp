@@ -12852,13 +12852,20 @@ void Optimizer::expandMadwPostSchedule()
             newMul->addDefUse(machInst, Opnd_implAccSrc);
 
             auto endIter = it;
+            // always add a dummy mov after mach/macl for HW read suppresion W/A
+            auto dummyMovSrc = builder.createSrc(dst->getBase(),
+                dst->getRegOff() + DstHiRegOffset, 0, builder.getRegionScalar(), Type_D);
+            G4_INST* dummyMov = builder.createMov(g4::SIMD1, builder.createNullDst(Type_D),
+                dummyMovSrc, InstOpt_WriteEnable, false);
+            endIter = bb->insertAfter(endIter, dummyMov);
 
             // optimize: only do multiply if src2 is imme 0
             if (src2->isImm() && src2->asImm()->getImm() == 0)
             {
                 // 3, create a mov inst
                 auto dstLo32 = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), 1, tmpType);
-                auto accSrcOpndMov = builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0, builder.getRegionStride1(), tmpType);
+                auto accSrcOpndMov = builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0,
+                    execSize == g4::SIMD1 ? builder.getRegionScalar() : builder.getRegionStride1(), tmpType);
                 auto movInst = builder.createMov(execSize, dstLo32, accSrcOpndMov, origOptions, false);
                 movInst->setPredicate(origPredicate);
                 endIter = bb->insertAfter(endIter, movInst);
@@ -12867,13 +12874,15 @@ void Optimizer::expandMadwPostSchedule()
             {
                 // 3, create a addc inst
                 auto dstLo32 = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), 1, tmpType);
-                auto accSrcOpnd = builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0, builder.getRegionStride1(), tmpType);
+                auto accSrcOpnd = builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0,
+                    execSize == g4::SIMD1 ? builder.getRegionScalar() : builder.getRegionStride1(), tmpType);
                 auto addcInst = builder.createBinOp(G4_addc, execSize, dstLo32, accSrcOpnd, builder.duplicateOperand(src2), origOptions, false);
                 addcInst->setPredicate(origPredicate);
                 endIter = bb->insertAfter(endIter, addcInst);
 
                 // 4, create a add inst
-                auto src1Add = builder.createSrc(dstLo32->getBase(), dstLo32->getRegOff(), dstLo32->getSubRegOff(), builder.getRegionStride1(), tmpType);
+                auto src1Add = builder.createSrc(dstHi32->getBase(), dstHi32->getRegOff(), dstHi32->getSubRegOff(),
+                    execSize == g4::SIMD1 ? builder.getRegionScalar() : builder.getRegionStride1(), tmpType);
                 auto addInst = builder.createBinOp(G4_add, execSize, builder.duplicateOperand(dstHi32), builder.duplicateOperand(accSrcOpnd), src1Add, origOptions, false);
                 addInst->setPredicate(origPredicate);
                 endIter = bb->insertAfter(endIter, addInst);
