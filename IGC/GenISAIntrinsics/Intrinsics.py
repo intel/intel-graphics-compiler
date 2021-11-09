@@ -63,6 +63,7 @@ attribute_map = {
     "NoMem":               set(["NoUnwind","ReadNone"]),
     "ReadMem":             set(["NoUnwind","ReadOnly"]),
     "ReadArgMem":          set(["NoUnwind","ReadOnly","ArgMemOnly"]),
+    "WriteArgMem":         set(["NoUnwind","WriteOnly","ArgMemOnly"]),
     "WriteMem":            set(["NoUnwind","WriteOnly"]),
     "ReadWriteArgMem":     set(["NoUnwind","ArgMemOnly"]),
     "NoReturn":            set(["NoUnwind","NoReturn"]),

@@ -10,7 +10,7 @@
 #PointerTypes = ["ptr_private","ptr_global","ptr_constant","ptr_local","ptr_generic"]
 #FloatingPointTypes = ["half","float","double"]
 #IntegerTypes = ["bool","char","short","int","long"]
-#IntrinsicsProperties = ["None","NoMem","ReadArgMem","ReadMem","ReadWriteArgMem",
+#IntrinsicsProperties = ["None","NoMem","ReadArgMem","WriteArgMem","ReadMem","ReadWriteArgMem",
 #                        "WriteMem", "NoReturn","NoDuplicate", "Convergent"]
 #IntrinsicsProperties may be specified as a comma separated list (e.g., "Convergent,NoMem")
 
@@ -1887,7 +1887,7 @@ Imported_Intrinsics = \
      ("float",                         "z"),
      ("float",                         "w (4 elements since uav_typed will always write "+\
                                        "4 destinations)")],
-    "None"]],
+    "WriteArgMem"]],
 ####################################################################################################
 "GenISA_uaddc": ["",
     [("anyvector",                     "result"),
