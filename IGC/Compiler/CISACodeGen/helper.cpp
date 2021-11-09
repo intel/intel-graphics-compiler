@@ -1633,6 +1633,15 @@ namespace IGC
         return ival;
     }
 
+    bool getImmValueBool(const llvm::Value* value)
+    {
+        const llvm::ConstantInt* cval = llvm::cast<llvm::ConstantInt>(value);
+        IGC_ASSERT(nullptr != cval);
+        IGC_ASSERT(cval->getBitWidth() == 1);
+
+        return cval->getValue().getBoolValue();
+    }
+
     llvm::Value* ExtractElementFromInsertChain(llvm::Value* inst, int pos)
     {
 

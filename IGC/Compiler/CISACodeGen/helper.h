@@ -108,6 +108,13 @@ namespace IGC
     BufferType GetBufferType(uint addrSpace);
 
     uint getImmValueU32(const llvm::Value* value);
+    bool getImmValueBool(const llvm::Value* value);
+
+    template <typename EnumT>
+    static inline EnumT getImmValueEnum(const llvm::Value* val)
+    {
+        return static_cast<EnumT>(getImmValueU32(val));
+    }
 
     void VectorToElement(
         llvm::Value* inst,

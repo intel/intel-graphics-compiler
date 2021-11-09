@@ -13,12 +13,15 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "IGC/Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "SynchronizationObjectCoalescing.hpp"
+#include "visa_igc_common_header.h"
 #include <memory>
 #include <utility>
 #include <map>
 
+using namespace llvm;
 namespace IGC
 {
 
@@ -47,6 +50,30 @@ struct ExplanationEntry
     std::vector<const llvm::Instruction*> m_BackwardMemoryInstructions;
 };
 #endif // _DEBUG
+
+////////////////////////////////////////////////////////////////////////////////
+enum InstructionMask : uint32_t
+{
+    None = 0x0,
+    AtomicOperation = 0x1,
+    TypedReadOperation = 0x2,
+    TypedWriteOperation = 0x4,
+    OutputUrbReadOperation = 0x8,
+    UrbWriteOperation = 0x10,
+    BufferReadOperation = 0x20,
+    BufferWriteOperation = 0x40,
+    SharedMemoryReadOperation = 0x80,
+    SharedMemoryWriteOperation = 0x100
+};
+inline constexpr InstructionMask operator|(InstructionMask a, InstructionMask b)
+{
+    return InstructionMask(uint32_t(a) | uint32_t(b));
+}
+inline constexpr InstructionMask& operator|=(InstructionMask& a, InstructionMask b)
+{
+    a = a | b;
+    return a;
+}
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Synchronization objects prevents from hazardous situations in kernels.
@@ -187,22 +214,6 @@ public:
     void dump(bool onlyMemoryInstructionMask = true) const;
 #endif // _DEBUG
 private:
-
-    ////////////////////////////////////////////////////////////////////////
-    enum InstructionMask : uint32_t
-    {
-        None = 0x0,
-        AtomicOperation = 0x1,
-        TypedReadOperation = 0x2,
-        TypedWriteOperation = 0x4,
-        OutputUrbReadOperation = 0x8,
-        UrbWriteOperation = 0x10,
-        BufferReadOperation = 0x20,
-        BufferWriteOperation = 0x40,
-        SharedMemoryReadOperation = 0x80,
-        SharedMemoryWriteOperation = 0x100
-    };
-
     static constexpr InstructionMask sc_MemoryWriteInstructionMask = static_cast<InstructionMask>(
         AtomicOperation |
         TypedWriteOperation |
@@ -372,6 +383,7 @@ private:
     ////////////////////////////////////////////////////////////////////////
     bool IsUntypedMemoryFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const;
 
+
     ////////////////////////////////////////////////////////////////////////
     static bool IsFenceOperation(const llvm::Instruction* pInst);
 
@@ -401,6 +413,7 @@ private:
     void RegisterRedundancyExplanation(const llvm::Instruction* pInst, ExplanationEntry::Cause cause);
 #endif // _DEBUG
 };
+
 
 char SynchronizationObjectCoalescingAnalysis::ID = 0;
 
@@ -593,7 +606,7 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
 ////////////////////////////////////////////////////////////////////////
 /// @brief Provides write memory instructions mask which are synchronized
 /// by the instruction.
-IGC::SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultWriteMemoryInstructionMask(const llvm::Instruction* pSourceInst) const
+InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultWriteMemoryInstructionMask(const llvm::Instruction* pSourceInst) const
 {
     InstructionMask result = InstructionMask::None;
     if (IsUntypedMemoryFenceOperation(pSourceInst))
@@ -647,7 +660,7 @@ IGC::SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObj
 ////////////////////////////////////////////////////////////////////////
 /// @brief Provides default memory instruction mask which is used for
 /// graph searching.
-IGC::SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultMemoryInstructionMask(
+InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultMemoryInstructionMask(
     const llvm::Instruction* pSourceInst) const
 {
     // All the rules stems from assumptions in the main comment of this analysis (the paragraph about a strict redundancy).
@@ -982,7 +995,7 @@ void SynchronizationObjectCoalescingAnalysis::GetAllUnsynchronizedMemoryInstruct
 /// a substitute is not crossed by another substitute.
 /// @param pSourceInst the source synchronization instruction
 /// @param forwardDirection the direction of searching
-SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(
+InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(
     const llvm::Instruction* pSourceInst,
     bool forwardDirection) const
 {
@@ -1126,7 +1139,7 @@ SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask Synchronization
 /// memory instructions (in the next synchronization block delineated by
 /// thread group barriers)
 /// @param pSourceInst the source synchronization instruction
-IGC::SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObjectCoalescingAnalysis::GetUnsynchronizedForwardInstructionMask(
+InstructionMask SynchronizationObjectCoalescingAnalysis::GetUnsynchronizedForwardInstructionMask(
     const llvm::Instruction* pSourceInst) const
 {
     std::vector<const llvm::Instruction*> boundaryInstructions;
@@ -1143,7 +1156,7 @@ IGC::SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObj
 /// a substitute is not crossed by another substitute.
 /// @param pSourceInst the source synchronization instruction
 /// @param forwardDirection the direction of searching
-SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(
+InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(
     const std::vector<const llvm::Instruction*>& input) const
 {
     InstructionMask result = InstructionMask::None;
@@ -1554,6 +1567,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsThreadBarrierOperation(const llv
 
     return false;
 }
+
 ////////////////////////////////////////////////////////////////////////
 bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperation(const llvm::Instruction* pInst)
 {
@@ -1569,7 +1583,6 @@ bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperation(cons
             break;
         }
     }
-
     return false;
 }
 
@@ -1600,7 +1613,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperationForGl
 }
 
 ////////////////////////////////////////////////////////////////////////
-SynchronizationObjectCoalescingAnalysis::InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(const llvm::Instruction* pInst) const
+InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(const llvm::Instruction* pInst) const
 {
     if (IsAtomicOperation(pInst))
     {
