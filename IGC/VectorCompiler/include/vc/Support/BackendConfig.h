@@ -116,6 +116,7 @@ struct GenXBackendOptions {
   // Treat "image2d_t" as non-media 2d images.
   bool UsePlain2DImages = false;
 
+
   // Enable preemption (to be switched on by default)
   bool EnablePreemption = false;
 

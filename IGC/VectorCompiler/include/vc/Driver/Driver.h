@@ -103,7 +103,8 @@ struct CompileOptions {
   std::string StatsFile;
   std::string LLVMOptions;
   bool UseBindlessBuffers = false;
-
+  bool HasL1ReadOnlyCache = false;
+  bool HasLocalMemFenceSupress = false;
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;
   bool SaveStackCallLinkage = false;

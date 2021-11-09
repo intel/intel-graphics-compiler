@@ -159,7 +159,10 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
       Features.AddFeature(Feature.str(), Enabled);
     }
   }
-
+  if (Opts.HasL1ReadOnlyCache)
+    Features.AddFeature("has_l1_read_only_cache");
+  if (Opts.HasLocalMemFenceSupress)
+    Features.AddFeature("supress_local_mem_fence");
   if (Opts.NoVecDecomp)
     Features.AddFeature("disable_vec_decomp");
   if (Opts.NoJumpTables)

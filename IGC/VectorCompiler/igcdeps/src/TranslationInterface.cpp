@@ -140,6 +140,8 @@ static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
   unsigned RevId = PlatformInfo.usRevId;
   Opts.CPUStr = cmc::getPlatformStr(PlatformInfo, /* inout */ RevId);
   Opts.RevId = RevId;
+  Opts.HasL1ReadOnlyCache = IGCPlatform.hasL1ReadOnlyCache();
+  Opts.HasLocalMemFenceSupress = IGCPlatform.localMemFenceSupress();
   Opts.WATable = &IGCPlatform.getWATable();
 }
 

@@ -122,6 +122,13 @@ private:
   // True is thread payload should be loaded from memory.
   bool HasThreadPayloadInMemory = false;
 
+  // Has L1 read-only cache.
+  bool HasL1ReadOnlyCache = false;
+
+  // Supress local memory fence.
+  bool HasLocalMemFenceSupress = false;
+
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -267,6 +274,9 @@ public:
   }
 
   bool hasBitRotate() const { return HasBitRotate; }
+
+  bool hasL1ReadOnlyCache() const { return HasL1ReadOnlyCache; }
+  bool hasLocalMemFenceSupress() const { return HasLocalMemFenceSupress; }
 
   /// * getsHWTIDFromPredef - some subtargets get HWTID from
   // predefined variable instead of sr0, returns *true* for such ones.

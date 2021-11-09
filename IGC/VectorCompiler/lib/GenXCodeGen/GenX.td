@@ -75,6 +75,15 @@ def FeatureHWTIDFromPredef: SubtargetFeature<"hwtidfrompredef",
                                              "true",
                                              "hwtid is obtained from predefined variable">;
 
+def FeatureHasL1ReadOnlyCache: SubtargetFeature<"has_l1_read_only_cache",
+                                                "HasL1ReadOnlyCache",
+                                                "true",
+                                                "Has L1 read-only cache">;
+
+def FeatureSupressLocalMemFence: SubtargetFeature<"supress_local_mem_fence",
+                                                  "HasLocalMemFenceSupress",
+                                                  "true",
+                                                  "Supresses local memory fence">;
 // Targets that use compute walker command require loading of thread
 // payload by compiler.
 def FeatureThreadPayloadInMemory : SubtargetFeature<"thread_payload_in_memory",
