@@ -97,8 +97,8 @@ namespace {
     class GASPropagator : public InstVisitor<GASPropagator, bool> {
         friend class InstVisitor<GASPropagator, bool>;
 
-        GASResolving* Resolver;
-        BuilderType* IRB;
+        GASResolving* const Resolver;
+        BuilderType* const IRB;
 
         Use* TheUse;
         Value* TheVal;
@@ -266,8 +266,7 @@ bool GASResolving::resolveOnBasicBlock(BasicBlock* BB) const {
             }
         }
         // Propagate that source through all users of this cast.
-        for (auto it = Uses.begin(); it != Uses.end(); ++it) {
-            Use* U = *it;
+        for (Use* U : Uses) {
             Changed |= Propagator->propagate(U, Src);
         }
         // Re-update next instruction once there's change.
@@ -549,7 +548,7 @@ bool GASPropagator::visitSelect(SelectInst& I) {
     return true;
 }
 
-static bool handelMemTransferInst(MemTransferInst& I) {
+static bool handleMemTransferInst(MemTransferInst& I) {
     Value* NewDst = nullptr;
     Type* NewDstTy = nullptr;
     Use* DstUse = &I.getArgOperandUse(0);
@@ -585,12 +584,12 @@ static bool handelMemTransferInst(MemTransferInst& I) {
         IGC_ASSERT_EXIT_MESSAGE(0, "unsupported memory intrinsic");
 
     I.setCalledFunction(Fn);
-    if(nullptr != NewDst)
+    if (nullptr != NewDst)
     {
         IGC_ASSERT(nullptr != DstUse);
         DstUse->set(NewDst);
     }
-    if(nullptr != NewSrc)
+    if (nullptr != NewSrc)
     {
         IGC_ASSERT(nullptr != SrcUse);
         SrcUse->set(NewSrc);
@@ -599,11 +598,11 @@ static bool handelMemTransferInst(MemTransferInst& I) {
 }
 
 bool GASPropagator::visitMemCpyInst(MemCpyInst& I) {
-    return handelMemTransferInst(I);
+    return handleMemTransferInst(I);
 }
 
 bool GASPropagator::visitMemMoveInst(MemMoveInst& I) {
-    return handelMemTransferInst(I);
+    return handleMemTransferInst(I);
 }
 
 bool GASPropagator::visitMemSetInst(MemSetInst& I) {
@@ -890,7 +889,7 @@ namespace IGC
     // casts with the form of non-generic->generic can safely removed and
     // function updated with non-generic pointer argument.
     //
-    // The complete process to lower generic pointer args consists of 5 steps.
+    // The complete process to lower generic pointer args consists of 5 steps:
     //   1) find all functions that are candidates
     //   2) update functions and their signatures
     //   3) update all call sites
@@ -900,7 +899,7 @@ namespace IGC
     //
     // Current limitations/considerations:
     // - only arguments of non-extern functions can be lowered
-    // - no recursive functions supported
+    // - no recursive functions support
     //
     // (2)
     //   Once (1) is done. Do further check if there is a cast from local to GAS or
@@ -954,7 +953,7 @@ namespace IGC
         bool hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned& addrSpaceCallSite);
         void updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs);
         void updateAllUsesWithNewFunction(FuncToUpdate& f);
-        void FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC);
+        void fixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC);
         bool processCallArg(Module& M);
 
         void checkCastToGAS(Module& M);
@@ -988,13 +987,12 @@ void LowerGPCallArg::checkCastToGAS(llvm::Module& M)
 
     bool hasPrivateCast = false; // true if there is a cast from private to GAS
     bool hasLocalCast = false; // true if there is a cast from local to GAS.
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    for (Function& F : M)
     {
-        Function* func = &(*I);
         // ToDo: replace with generic checks for extern functions
-        if (func->hasFnAttribute("referenced-indirectly"))
+        if (F.hasFnAttribute("referenced-indirectly"))
         {
-            for (auto& arg : func->args())
+            for (auto& arg : F.args())
             {
                 PointerType* argPointerType = dyn_cast<PointerType>(arg.getType());
                 if (argPointerType && argPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
@@ -1004,7 +1002,7 @@ void LowerGPCallArg::checkCastToGAS(llvm::Module& M)
             }
         }
 
-        for (auto FI = inst_begin(func), FE = inst_end(func);
+        for (auto FI = inst_begin(F), FE = inst_end(F);
             (FI != FE) && !(hasPrivateCast && hasLocalCast); ++FI)
         {
             auto addrCast = dyn_cast<AddrSpaceCastInst>(&(*FI));
@@ -1117,8 +1115,8 @@ bool LowerGPCallArg::processCallArg(Module& M)
     // to their non-generic address space.
     for (auto I = funcsToUpdate.rbegin(); I != funcsToUpdate.rend(); I++)
     {
-        Function* F = (*I).oldFunc;
-        GenericPointerArgs& GPArgs = (*I).newArgs;
+        Function* F = I->oldFunc;
+        GenericPointerArgs& GPArgs = I->newArgs;
         // Determine the unique origin address space of generic pointer args
         // If it can't be determined, remove it from the function to update
         GPArgs.erase(std::remove_if(GPArgs.begin(), GPArgs.end(),
@@ -1153,7 +1151,7 @@ bool LowerGPCallArg::processCallArg(Module& M)
         // Update argument list and transfer their uses from old function
         updateFunctionArgs(F, newFunc, GPArgs);
 
-        (*I).newFunc = newFunc;
+        I->newFunc = newFunc;
     }
 
     // At this point, there may be functions without generic pointers to be lowered
@@ -1209,16 +1207,15 @@ bool LowerGPCallArg::processCallArg(Module& M)
     //
     // gp1 is lowered in foo and bar, gp2 is lowered only in foo. When lowering gp2 in foo,
     // all its uses were optimistically updated to lp2. We fix those unsuccessful cases here.
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    for (Function& F : M)
     {
-        Function* func = &(*I);
-        if (func->isVarArg()) continue;
+        if (F.isVarArg()) continue;
 
-        for (auto UI = func->user_begin(), UE = func->user_end(); UI != UE; UI++)
+        for (auto UI = F.user_begin(), UE = F.user_end(); UI != UE; UI++)
         {
             if (CallInst* callInst = dyn_cast<CallInst>(*UI))
             {
-                Function::arg_iterator funcArg = func->arg_begin();
+                Function::arg_iterator funcArg = F.arg_begin();
                 for (unsigned int i = 0; i < callInst->getNumArgOperands(); ++i, ++funcArg)
                 {
                     Value* callArg = callInst->getOperand(i);
@@ -1249,7 +1246,7 @@ bool LowerGPCallArg::processGASInst(Module& M)
     if (!m_ctx->hasNoPrivateToGenericCast() || !m_ctx->hasNoLocalToGenericCast())
         return false;
 
-    // As AddrSpaceCast has been proessed already in GASResolving,
+    // As AddrSpaceCast has been processed already in GASResolving,
     // here only handle non-addrspacecast ptr
     auto toSkip = [](Value* P) {
         if (PointerType* PtrTy = dyn_cast<PointerType>(P->getType()))
@@ -1265,9 +1262,8 @@ bool LowerGPCallArg::processGASInst(Module& M)
     bool changed = false;
     IRBuilder<> IRB(M.getContext());
     // Change GAS inst, such as ld/st, etc to global ld/st, etc.
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    for (Function& F : M)
     {
-        Function* F = &(*I);
         auto NI = inst_begin(F);
         for (auto FI = NI, FE = inst_end(F); FI != FE; FI = NI)
         {
@@ -1356,7 +1352,7 @@ bool LowerGPCallArg::hasSameOriginAddressSpace(Function* func, unsigned argNo, u
 
 
 // Modifies address space in uses of pointer argument
-void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC)
+void LowerGPCallArg::fixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC)
 {
     IGC_ASSERT(newAS != oldAS);
     auto nextUI = ptr->user_begin(), E = ptr->user_end();
@@ -1371,10 +1367,14 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
         {
             // When mutating AS cast and another AS cast is using mutated one,
             // it may result in same space AS cast which is invalid,
-            // so we replace all uses of invalid cast with its operand as they have same AS
-            if (asc->getDestTy() == asc->getSrcTy())
+            // so we replace the invalid cast with:
+            // - a bitcast if pointer types are different
+            // - ptr if cast is eliminated
+            if (asc->getDestAddressSpace() == asc->getSrcAddressSpace())
             {
-                asc->replaceAllUsesWith(ptr);
+                IRBuilder<> IRB(asc);
+                Value* bcOrPtr = IRB.CreateBitCast(ptr, asc->getDestTy());
+                asc->replaceAllUsesWith(bcOrPtr);
                 asc->eraseFromParent();
                 continue;
             }
@@ -1400,7 +1400,7 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
         }
 
         // add inst to partiallyLowered Inst list.  cover select and phi for now, and may add others later
-        if(isa<SelectInst>(inst) || isa<PHINode>(inst))
+        if (isa<SelectInst>(inst) || isa<PHINode>(inst))
         {
             // if not all operands are lowered, add to partiallyLowered list, and don't propagate
             bool partiallylowered = false;
@@ -1409,7 +1409,7 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             {
                 Value* srci = inst->getOperand(i);
 
-                if(PointerType* PtrTy = dyn_cast<PointerType>(srci->getType()))
+                if (PointerType* PtrTy = dyn_cast<PointerType>(srci->getType()))
                 {
                     uint srciAddrSpace = PtrTy->getAddressSpace();
 
@@ -1433,7 +1433,7 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             {
                 continue;
             }
-            if(partiallylowered)
+            if (partiallylowered)
             {
                 m_partiallyLoweredInsts.push_back(inst);
                 continue;
@@ -1452,7 +1452,7 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             // Add an addrspacecast in for cases where the non-generic can't be propagated.
             AddrSpaceCastInst* recoverASC = new AddrSpaceCastInst(inst, instType, "", inst->getNextNode());
 
-            FixAddressSpaceInAllUses(inst, newAS, oldAS, recoverASC);
+            fixAddressSpaceInAllUses(inst, newAS, oldAS, recoverASC);
 
             // Remove addrspacecast if it wasn't used
             if (recoverASC->use_empty())
@@ -1475,7 +1475,7 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
         // Check if the next entry in newArgs is for currentArgIdx arg
         if (newArgIdx < newArgs.size() && currentArgIdx == newArgs[newArgIdx].first)
         {
-            if ((*I).getType() != currArg->getType())
+            if (I->getType() != currArg->getType())
             {
                 PointerType* originalPointerTy = dyn_cast<PointerType>(I->getType());
                 PointerType* newPointerTy = PointerType::get(I->getType()->getPointerElementType(),
@@ -1486,7 +1486,7 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
                 AddrSpaceCastInst* recoverASC = new AddrSpaceCastInst(I, originalPointerTy, "",
                     newFunc->getEntryBlock().getFirstNonPHI());
 
-                FixAddressSpaceInAllUses(I, newArgs[newArgIdx].second, ADDRESS_SPACE_GENERIC, recoverASC);
+                fixAddressSpaceInAllUses(I, newArgs[newArgIdx].second, ADDRESS_SPACE_GENERIC, recoverASC);
 
                 // Remove addrspacecast if it wasn't used
                 if (recoverASC->use_empty())
