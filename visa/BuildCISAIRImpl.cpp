@@ -806,8 +806,14 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     {
                         stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
                         defInst[dst->getTopDcl()] = callerIt;
-                        DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                        bool removeFrameCacl = (removeStackFrame && updateCountSP == 2);
+                        std::string prefix = removeFrameCacl ? "removeFrame " : "";
+                        DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
                         DEBUG_UTIL(inst->dump());
+                        if (removeFrameCacl)
+                        {
+                            callerInsts.erase(callerIt);
+                        }
                         // the dst is updating SP
                         if (dst->getTopDcl() == callerBuilder->getFE_SP())
                             updateCountSP++;
@@ -853,7 +859,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             stackPointers[calleeBuilder->getFE_SP()] = stackPointers[callerBuilder->getFE_SP()];
             stackPointers[calleeBuilder->getFE_FP()] = stackPointers[callerBuilder->getFE_FP()];
 
-            for (auto calleeIt = calleeInsts.begin(); calleeIt != calleeInsts.end(); calleeIt ++)
+            for (auto calleeIt = calleeInsts.begin(); calleeIt != calleeInsts.end(); calleeIt++)
             {
                 G4_INST *inst = *calleeIt;
                 for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
@@ -861,19 +867,18 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
                     if (!rootDcl) continue;
                     G4_Operand *dst = inst->getDst();
-                    //if (calleeBuilder->isPreDefFEStackVar(rootDcl))
                     if (rootDcl == calleeBuilder->getFE_SP())
                     {
                         stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
                         defInst[dst->getTopDcl()] = calleeIt;
-                        std::string prefix;
+                        std::string prefix = removeStackFrame ? "removeFrame " : "";
+                        DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
+                        DEBUG_UTIL(inst->dump());
                         if (removeStackFrame)
                         {
                             calleeInsts.erase(calleeIt);
-                            prefix = "removeFrame ";
+                            break;
                         }
-                        DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
-                        DEBUG_UTIL(inst->dump());
                     }
                     else if (stackPointers.find(rootDcl) != stackPointers.end())
                     {
@@ -884,14 +889,14 @@ void CISA_IR_Builder::LinkTimeOptimization(
                             assert(execSize == 1);
                             stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
                             defInst[dst->getTopDcl()] = calleeIt;
-                            std::string prefix;
+                            std::string prefix = removeStackFrame ? "removeFrame " : "";
+                            DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
+                            DEBUG_UTIL(inst->dump());
                             if (removeStackFrame)
                             {
                                 calleeInsts.erase(calleeIt);
-                                prefix = "removeFrame ";
+                                break;
                             }
-                            DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
-                            DEBUG_UTIL(inst->dump());
                         }
                         else if (inst->opcode() == G4_sends ||
                                 inst->opcode() == G4_send)
@@ -905,7 +910,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                     DEBUG_PRINT("remove prevFP on callee's frame:\n");
                                     DEBUG_UTIL(inst->dump());
                                     calleeInsts.erase(calleeIt);
-                                    continue;
+                                    break;
                                 }
                                 DEBUG_PRINT("skip for now (private variable on the callee's frame):\n");
                                 DEBUG_UTIL(inst->dump());
