@@ -5669,6 +5669,10 @@ namespace IGC
 
         bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || context->getCompilerOption().EnableZEBinary;
 
+        if (ZEBinEnabled) {
+            pOutput->m_VISAAsm = pMainKernel->getVISAAsm();
+        }
+
         if (hasSymbolTable)
         {
             if (ZEBinEnabled)
