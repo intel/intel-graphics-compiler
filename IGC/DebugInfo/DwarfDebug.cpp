@@ -1696,7 +1696,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         {
             TempDotDebugLocEntries.back().end = std::get<0>(it);
             write(TempDotDebugLocEntries.back().loc, (unsigned char*)&std::get<0>(it), pointerSize);
-            auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars);
+            auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars, nullptr);  // No variable DIE
             std::vector<unsigned char> buffer;
             if (block)
                 block->EmitToRawBuffer(buffer);
@@ -1717,7 +1717,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             callerSaveVars.front().var.physicalType = DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory;
             callerSaveVars.front().var.mapping.m.isBaseOffBEFP = 0;
             callerSaveVars.front().var.mapping.m.memoryOffset = std::get<2>(it);
-            block = FirstCU->buildGeneral(*RegVar, &Locs, &callerSaveVars);
+            block = FirstCU->buildGeneral(*RegVar, &Locs, &callerSaveVars, nullptr);  // No variable DIE
             buffer.clear();
             if (block)
                 block->EmitToRawBuffer(buffer);
@@ -1740,7 +1740,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         TempDotDebugLocEntries.back().end = endRange;
         write(TempDotDebugLocEntries.back().loc, (unsigned char*)&endRange, pointerSize);
 
-        auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars);
+        auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars, nullptr);  // No variable DIE
         std::vector<unsigned char> buffer;
         if (block)
             block->EmitToRawBuffer(buffer);

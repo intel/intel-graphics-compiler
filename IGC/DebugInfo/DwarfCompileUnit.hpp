@@ -255,7 +255,8 @@ namespace IGC
         // - stateless surface location, or
         // - bindless surface location or
         // - bindless sampler location
-        void addGTRelativeLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
+        // Returns true in a case of SLM location, otherwise false.
+        bool addGTRelativeLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
 
         // addBindlessOrStatelessLocation - add a sequence of attributes to calculate stateless or
         // bindless location of variable. baseAddr is one of the following base addreses:
@@ -453,9 +454,9 @@ namespace IGC
         void buildLocation(const llvm::Instruction*, IGC::DbgVariable&, IGC::DIE*);
         DIEBlock* buildPointer(const DbgVariable&, const VISAVariableLocation*);
         DIEBlock* buildSampler(const DbgVariable&, const VISAVariableLocation*);
-        DIEBlock* buildSLM(const DbgVariable&, const VISAVariableLocation*);
+        DIEBlock* buildSLM(const DbgVariable&, const VISAVariableLocation*, IGC::DIE*);
         DIEBlock* buildGeneral(const DbgVariable&, std::vector<VISAVariableLocation>*,
-                               const std::vector<DbgDecoder::LiveIntervalsVISA>*);
+                               const std::vector<DbgDecoder::LiveIntervalsVISA>*, IGC::DIE*);
     };
 
 } // namespace IGC
