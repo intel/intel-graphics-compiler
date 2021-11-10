@@ -52,5 +52,5 @@ add_library(igc_metric STATIC ${IGC_METRICS_SRCS} ${IGC_METRICS_HDRS})
 add_dependencies(igc_metric intrinsics_gen)
 
 if(IGC_METRICS)
-  target_link_libraries(igc_metric protobuf::libprotobuf-lite)
+  target_link_libraries(igc_metric protobuf::libprotobuf)
 endif()
