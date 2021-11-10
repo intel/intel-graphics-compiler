@@ -788,13 +788,35 @@ void CISA_IR_Builder::LinkTimeOptimization(
 
             };
 
+            auto getBeginIt = [&](std::list<vISA::G4_INST*>::iterator it)
+            {
+                // Trace backward until it reaches an update for SP
+                // This is where we start to push spilled arguments onto stack
+                auto beginIt = it;
+                for (; beginIt != callerInsts.begin(); --beginIt)
+                {
+                    G4_INST *inst = *beginIt;
+                    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                    {
+                        G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
+                        if (!rootDcl) continue;
+                        G4_Operand *dst = inst->getDst();
+                        if (rootDcl == callerBuilder->getFE_SP())
+                        {
+                            // the dst is updating SP
+                            if (dst->getTopDcl() == callerBuilder->getFE_SP())
+                                return beginIt;
+                        }
+                    }
+                }
+                return it;
+            };
+
             // A list of store in order to perform store-to-load forwarding
             std::list<std::list<vISA::G4_INST*>::iterator> storeList;
 
-            // SP will be updated twice if it has arguments storing on stack
-            // The first update is for storing private variables
-            int updateCountSP = 0;
-            for (auto callerIt = callerInsts.begin(); callerIt != it; callerIt ++)
+            auto beginIt = getBeginIt(it);
+            for (auto callerIt = beginIt; callerIt != it; callerIt ++)
             {
                 G4_INST *inst = *callerIt;
                 for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
@@ -806,17 +828,15 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     {
                         stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
                         defInst[dst->getTopDcl()] = callerIt;
-                        bool removeFrameCacl = (removeStackFrame && updateCountSP == 2);
-                        std::string prefix = removeFrameCacl ? "removeFrame " : "";
+                        // beginIt is the update of SP before pushing arguments onto stack
+                        // We do not remove it immediately since we don't know if all S2L can be perform at this stage
+                        std::string prefix = (removeStackFrame && callerIt != beginIt) ? "removeFrame " : "";
                         DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
                         DEBUG_UTIL(inst->dump());
-                        if (removeFrameCacl)
+                        if (removeStackFrame && callerIt != beginIt)
                         {
                             callerInsts.erase(callerIt);
                         }
-                        // the dst is updating SP
-                        if (dst->getTopDcl() == callerBuilder->getFE_SP())
-                            updateCountSP++;
                     }
                     else if (stackPointers.find(rootDcl) != stackPointers.end())
                     {
@@ -842,8 +862,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                         {
                             assert(i == 0);
                             // Start adding argument stores to the list
-                            if (updateCountSP == 2)
-                                storeList.push_back(callerIt);
+                            storeList.push_back(callerIt);
                             DEBUG_PRINT("[ ]");
                             DEBUG_UTIL(inst->dump());
                         }
@@ -854,7 +873,6 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     }
                 }
             }
-            assert(updateCountSP <= 2 && "SP has been updated more than twice from the caller");
             // passing SP offset from caller to callee
             stackPointers[calleeBuilder->getFE_SP()] = stackPointers[callerBuilder->getFE_SP()];
             stackPointers[calleeBuilder->getFE_FP()] = stackPointers[callerBuilder->getFE_FP()];
