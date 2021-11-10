@@ -150,6 +150,11 @@ namespace llvm {
                 UP.Threshold = 200;
         }
 
+        unsigned MaxTripCount = SE.getSmallConstantMaxTripCount(L);
+        const unsigned MaxTripCountToUseUpperBound = 4;
+        if (MaxTripCount && MaxTripCount <= MaxTripCountToUseUpperBound)
+            UP.UpperBound = true;
+
 #if LLVM_VERSION_MAJOR == 4
         ScalarEvolution* SE = &dummyPass->getAnalysisIfAvailable<ScalarEvolutionWrapperPass>()->getSE();
         if (!SE)
