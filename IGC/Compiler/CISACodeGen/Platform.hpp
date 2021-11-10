@@ -552,6 +552,11 @@ bool supportsAutoGRFSelection() const
     return m_platformInfo.eProductFamily == IGFX_XE_HP_SDV;
 }
 
+float adjustedSpillThreshold() const
+{
+    return 12.0f;
+}
+
 bool isXeHPSDVPlus() const
 {
     return m_platformInfo.eProductFamily >= IGFX_XE_HP_SDV;

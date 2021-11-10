@@ -506,7 +506,7 @@ namespace IGC
 
     float ComputeShaderContext::GetSpillThreshold() const
     {
-        float spillThresholdSLM = m_DriverInfo.getCSSpillThresholdSLM() / 100.0f;
+        float spillThresholdSLM = platform.adjustedSpillThreshold() / 100.0f;
         //enable CSSpillThresholdSLM with desired value to override the default value.
         if(IGC_IS_FLAG_ENABLED(CSSpillThresholdSLM))
             spillThresholdSLM = float(IGC_GET_FLAG_VALUE(CSSpillThresholdSLM)) / 100.0f;
