@@ -175,6 +175,16 @@ static GlobalVariable &cloneString(GlobalVariable &OrigGV) {
   // Avoiding constants merging.
   OrigGV.setUnnamedAddr(GlobalValue::UnnamedAddr::None);
   ClonedGV->setAlignment(IGCLLVM::getAlign(OrigGV));
+
+  // Handle attributes.
+  IGC_ASSERT_MESSAGE(
+      OrigGV.hasAttribute(PrintfStringVariable),
+      "original GV must already have the attribute before the cloning");
+  auto OrigAttrs = OrigGV.getAttributes();
+  OrigAttrs =
+      OrigAttrs.removeAttribute(OrigGV.getContext(), PrintfStringVariable);
+  OrigGV.setAttributes(OrigAttrs);
+  ClonedGV->addAttribute(PrintfStringVariable);
   return *ClonedGV;
 }
 
