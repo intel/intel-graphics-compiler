@@ -108,6 +108,27 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
         return (rightBound - leftBound) > (getGRFSize() * 2u);
     };
 
+    auto useTmpForSrc = [&](G4_SrcRegRegion* src) -> G4_SrcRegRegion*
+    {
+        // insert mov before current instruction
+        G4_Declare* dcl = m_builder->createTempVar(execSize, src->getType(), Any);
+        G4_SrcModifier modifier = src->getModifier();
+        src->setModifier(Mod_src_undef);
+
+        G4_INST* movInst = m_builder->createMov(execSize, m_builder->createDstRegRegion(dcl, 1),
+            src, inst->getOption(), false);
+        movInst->inheritDIFrom(inst);
+
+        INST_LIST_ITER newMovIter = instList.insert(it, movInst);
+
+        // split new mov if needed
+        splitInstruction(newMovIter, instList);
+
+        G4_SrcRegRegion* tmpSrc = m_builder->createSrcRegRegion(modifier, Direct, dcl->getRegVar(),
+            0, 0, m_builder->getRegionStride1(), dcl->getElemType());
+        return tmpSrc;
+    };
+
     // Check sources
     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
     {
@@ -126,8 +147,18 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
             if ((src->getType() == Type_DF || IS_QTYPE(src->getType())) &&
                 !src->getRegion()->isSingleStride(execSize))
             {
-                doSplit = true;
-                break;
+                // Try splitting the inst if it's a mov. Otherwise, legalize
+                // the inst by inserting a mov for the src, and split the new
+                // mov if needed.
+                if (inst->opcode() == G4_mov)
+                {
+                    doSplit = true;
+                    break;
+                }
+
+                auto tmpSrc = useTmpForSrc(src);
+                assert(tmpSrc->getRegion()->isSingleStride(execSize));
+                inst->setSrc(tmpSrc, i);
             }
         }
     }
@@ -163,54 +194,30 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
     }
 
     G4_opcode op = inst->opcode();
-    int numSrc = inst->getNumSrc();
     G4_ExecSize newExecSize {execSize / 2};
 
     G4_DstRegRegion* dst = inst->getDst();
     bool nullDst = dst && inst->hasNULLDst();
 
-    G4_Operand* srcs[3] = {nullptr};
-    for (int i = 0; i < numSrc; i++)
-    {
-        srcs[i] = inst->getSrc(i);
-    }
-
     // Check src/dst dependency
     if (dst && !nullDst)
     {
-        for (int i = 0; i < numSrc; i++)
+        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++)
         {
             bool useTmp = false;
-            G4_CmpRelation rel = compareSrcDstRegRegion(dst, srcs[i]);
+            G4_Operand* src = inst->getSrc(i);
+            G4_CmpRelation rel = compareSrcDstRegRegion(dst, src);
             if (rel != Rel_disjoint)
             {
                 useTmp = (rel != Rel_eq) ||
-                    srcs[i]->asSrcRegRegion()->getRegion()->isRepeatRegion(inst->getExecSize());
+                    src->asSrcRegRegion()->getRegion()->isRepeatRegion(inst->getExecSize());
             }
 
             if (useTmp)
             {
-                // insert mov before current instruction
-                MUST_BE_TRUE(srcs[i] != nullptr && srcs[i]->isSrcRegRegion(), "source must be a SrcRegRegion");
-                G4_SrcRegRegion* origSrc = srcs[i]->asSrcRegRegion();
-
-                G4_Declare* dcl = m_builder->createTempVar(execSize, origSrc->getType(), Any);
-                G4_SrcModifier modifier = origSrc->getModifier();
-                origSrc->setModifier(Mod_src_undef);
-
-                G4_INST* movInst = m_builder->createMov(execSize, m_builder->createDstRegRegion(dcl, 1),
-                    origSrc, InstOpt_WriteEnable, false);
-                movInst->inheritDIFrom(inst);
-
-                INST_LIST_ITER newMovIter = instList.insert(it, movInst);
-
-                G4_SrcRegRegion* tmpSrc = m_builder->createSrcRegRegion(modifier, Direct, dcl->getRegVar(),
-                    0, 0, m_builder->getRegionStride1(), dcl->getElemType());
+                MUST_BE_TRUE(src != nullptr && src->isSrcRegRegion(), "source must be a SrcRegRegion");
+                auto tmpSrc = useTmpForSrc(src->asSrcRegRegion());
                 inst->setSrc(tmpSrc, i);
-                srcs[i] = tmpSrc;
-
-                // split new mov if needed
-                splitInstruction(newMovIter, instList);
             }
         }
     }
@@ -255,26 +262,27 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
         newInstIterator = instList.insert(it, newInst);
 
         // Set new sources
-        for (int j = 0; j < numSrc; j++)
+        for (int j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++)
         {
-            if (srcs[j])
+            G4_Operand* src = inst->getSrc(j);
+            if (!src)
+                continue;
+
+            // Src1 for single source math should be arc reg null.
+            if (src->isImm() ||
+                (inst->opcode() == G4_math && j == 1 && src->isNullReg()))
             {
-                // Src1 for single source math should be arc reg null.
-                if (srcs[j]->isImm() ||
-                    (inst->opcode() == G4_math && j == 1 && srcs[j]->isNullReg()))
-                {
-                    newInst->setSrc(srcs[j], j);
-                }
-                else if (srcs[j]->asSrcRegRegion()->isScalar() || (j == 0 && op == G4_line))
-                {
-                    newInst->setSrc(m_builder->duplicateOperand(srcs[j]), j);
-                }
-                else
-                {
-                    newInst->setSrc(m_builder->createSubSrcOperand(srcs[j]->asSrcRegRegion(), (uint16_t)i,
-                        newExecSize, (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->vertStride),
-                        (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->width)), j);
-                }
+                newInst->setSrc(src, j);
+            }
+            else if (src->asSrcRegRegion()->isScalar() || (j == 0 && op == G4_line))
+            {
+                newInst->setSrc(m_builder->duplicateOperand(src), j);
+            }
+            else
+            {
+                newInst->setSrc(m_builder->createSubSrcOperand(src->asSrcRegRegion(), (uint16_t)i,
+                    newExecSize, (uint8_t)(src->asSrcRegRegion()->getRegion()->vertStride),
+                    (uint8_t)(src->asSrcRegRegion()->getRegion()->width)), j);
             }
         }
 
