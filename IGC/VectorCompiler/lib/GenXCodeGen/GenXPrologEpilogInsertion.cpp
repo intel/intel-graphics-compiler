@@ -44,6 +44,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
@@ -63,25 +64,16 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 #include <unordered_set>
 
+#include "GenXLiveness.h"
+
 using namespace llvm;
 using namespace genx;
-
-static cl::opt<bool>
-    ForceArgMemPassing("vc-stack-force-arg-mem",
-                       cl::desc("Pass all stackcall args via stackmem"),
-                       cl::init(false));
-static cl::opt<bool>
-    ForceRetMemPassing("vc-stack-force-ret-mem",
-                       cl::desc("Pass all stackcall retval via stackmem"),
-                       cl::init(false));
-static cl::opt<bool> HandleMaskArgs("vc-stack-handle-mask-args",
-                                    cl::desc("Pass i1 arguments of stackcalls"),
-                                    cl::init(true));
 
 namespace {
 
@@ -92,6 +84,52 @@ inline unsigned calcPadding(uint64_t Val, unsigned Align) {
   return Align - Val % Align;
 }
 
+// FIXME: This should be transformed to stack analysis eventually.
+class ArgsAnalyzer {
+  const DataLayout &DL;
+  const unsigned ArgRegByteSize;
+  const unsigned RetRegByteSize;
+  const unsigned GRFByteSize;
+
+  unsigned StackBytesUsedForArgs = 0;
+  unsigned StackBytesUsedForRet = 0;
+  unsigned ArgRegBytesUsed = 0;
+  unsigned RetRegBytesUsed = 0;
+
+  struct ArgPlace {
+    unsigned ArgNo = 0;
+    unsigned Offset = 0;
+  };
+  using StorageTy = std::vector<ArgPlace>;
+  using const_iterator = StorageTy::const_iterator;
+  StorageTy InReg;
+  StorageTy InStack;
+
+public:
+  ArgsAnalyzer(unsigned ArgRegByteSizeIn, unsigned RetRegByteSizeIn,
+               unsigned GRFByteSizeIn, const DataLayout &DLIn)
+      : ArgRegByteSize(ArgRegByteSizeIn), RetRegByteSize(RetRegByteSizeIn),
+        GRFByteSize(GRFByteSizeIn), DL(DLIn) {}
+
+  void analyze(const FunctionType &FTy, bool InternalCC);
+  void clear();
+
+  unsigned getStackBytesUsed() const {
+    return StackBytesUsedForArgs + StackBytesUsedForRet;
+  }
+  unsigned getStackBytesUsedForArgs() const { return StackBytesUsedForArgs; }
+  unsigned getStackBytesUsedForRet() const { return StackBytesUsedForRet; }
+  unsigned getArgRegBytesUsed() const { return ArgRegBytesUsed; }
+  unsigned getRetRegBytesUsed() const { return RetRegBytesUsed; }
+
+  iterator_range<const_iterator> in_reg() const {
+    return make_range(InReg.begin(), InReg.end());
+  }
+  iterator_range<const_iterator> in_stack() const {
+    return make_range(InStack.begin(), InStack.end());
+  }
+};
+
 class GenXPrologEpilogInsertion
     : public FunctionPass,
       public InstVisitor<GenXPrologEpilogInsertion> {
@@ -100,59 +138,96 @@ class GenXPrologEpilogInsertion
   const GenXSubtarget *ST = nullptr;
   const GenXBackendConfig *BEConf = nullptr;
 
-  unsigned NumCalls = 0;
-  unsigned PrivMemSize = 0;
+  unsigned ArgRegByteSize = 0;
+  unsigned RetRegByteSize = 0;
 
-  unsigned ArgRegSize = 0;
-  unsigned RetRegSize = 0;
+  // is stack used for stack calls (args, ret) or private memory.
+  bool StackUsed = false;
+  // is arg reg used for arguments passing.
+  bool ArgRegUsed = false;
+  // is ret reg used for return value passing.
+  bool RetRegUsed = false;
 
-  void generateKernelProlog(Function &F);
-  void generateFunctionProlog(Function &F);
-  void generateFunctionEpilog(Function &F, ReturnInst &I);
+  std::vector<AllocaInst *> Allocas;
+
+  void clear();
+
+  void initializeStack(Function &F);
+  void generatePrologEpilog(Function &F);
+  Value *generateStackCallProlog(Function &F, const ArgsAnalyzer &Info);
+  Value *generateSubroutineProlog(Function &F) const;
+  void generateStackCallEpilog(ReturnInst &RI, Value *TmpFP,
+                               const ArgsAnalyzer &Info);
+  void generateSubroutineEpilog(ReturnInst &RI, Value *TmpFP) const;
+
+  void removeAttrs(Function &F) const;
+  bool isStackPrimitivesUsed() const;
+
+  Value *saveFP(IRBuilder<> &IRB) const;
+  void restoreFPAndSP(Value *TmpFP, IRBuilder<> &IRB) const;
 
   // caller side argument layout
-  void generateStackCall(CallInst *CI);
+  void generateStackCall(CallInst &CI);
 
-  // generateStackCall subroutines: writing args, extracting args
-  unsigned writeArgs(CallInst *CI, Value *SpArgs, IRBuilder<> &IRB);
-  std::vector<std::pair<Instruction *, Instruction *>>
-  buildWorkList(CallInst *CI, Value *OrigSp, bool UseMemForRet);
-  void extractResults(CallInst *CI, Value *OrigSp, IRBuilder<> &IRB);
+  void emitPrivateMemoryAllocations();
 
-  Value *push(Value *V, IRBuilder<> &IRB, Value *InitSP);
-  std::pair<Instruction *, Value*> pop(Type *T, IRBuilder<> &IRB, Value *InitSP);
+  void passArgsInReg(CallInst &CI, const ArgsAnalyzer &Info,
+                     IRBuilder<> &IRB) const;
+  void passInReg(Value &Op, unsigned OffsetInReg, IRBuilder<> &IRB,
+                 PreDefined_Vars RegID, unsigned RegSize) const;
+  void passNonAggrInReg(Value &Op, unsigned OffsetInReg, IRBuilder<> &IRB,
+                        PreDefined_Vars RegID, unsigned RegSize) const;
+  void passAggrInReg(Value &Op, unsigned OffsetInReg, IRBuilder<> &IRB,
+                     PreDefined_Vars RegID, unsigned RegSize) const;
+  void readArgsFromReg(Function &F, const ArgsAnalyzer &Info,
+                       IRBuilder<> &IRB) const;
+  void readFromRegAndReplace(Value &V, unsigned OffsetInReg, IRBuilder<> &IRB,
+                             PreDefined_Vars RegID, unsigned RegSize) const;
+  Value *readNonAggrFromReg(Type &Ty, unsigned OffsetInReg, IRBuilder<> &IRB,
+                            PreDefined_Vars RegID, unsigned RegSize) const;
+  Value *readAggrFromReg(Type &Ty, unsigned OffsetInReg, IRBuilder<> &IRB,
+                         PreDefined_Vars RegID, unsigned RegSize) const;
+  void passArgsOnStack(CallInst &CI, const ArgsAnalyzer &Info, IRBuilder<> &IRB,
+                       Value &InitSP) const;
+  void readArgsFromStack(Function &F, const ArgsAnalyzer &Info,
+                         IRBuilder<> &IRB, Value &InitSP) const;
+
+  void push(Value &V, IRBuilder<> &IRB, Value &SP) const;
+  Value *pop(Type &ArgTy, IRBuilder<> &IRB, Value &InitSP) const;
+  Value *getNextSP(Type &Ty, IRBuilder<> &IRB, Value &SP) const;
 
   // *** Helper functions ***
-  // All params should be easy to understand
-  // except for BuildTempVal. It is necessary to generate
-  // a temp copy of predef reg when we have >1 calls within a function,
-  // which copes with code motion done by baling (or other passes).
-  // Temp value is also required when instructions operating by predef
-  // regs directly have >1 uses, but it's easier to handle that in baling.
+  // All params should be easy to understand.
+  // BuildTempVal is used if the predefined register must be copied instead of
+  // simply read. For example, when an argument is in ARGV and we cannot be sure
+  // that between its uses ARGV will not be overwritten, the argument must be
+  // read as a copy from ARG.
   Instruction *buildReadPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
-                                  Type *Ty,
+                                  Type *Ty, bool BuildTempVal = false,
+                                  bool AllowScalar = true, unsigned Offset = 0,
+                                  unsigned Width = 1) const;
+  Instruction *buildReadPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
+                                  Type *Ty, Value *Dep,
                                   bool BuildTempVal = false,
                                   bool AllowScalar = true, unsigned Offset = 0,
-                                  unsigned Width = 0);
-  Instruction *buildReadPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
-                                  Type *Ty,
-                                  Value *Dep,
-                                  bool BuildTempVal = false,
-                                  bool AllowScalar = true, unsigned Offset = 0,
-                                  unsigned Width = 0);
+                                  unsigned Width = 1) const;
+
   Instruction *buildReadPredefRegNoRegion(PreDefined_Vars RegID,
-                                          IRBuilder<> &IRB,
-                                          Type *Ty);
+                                          IRBuilder<> &IRB, Type *Ty) const;
   Instruction *buildReadPredefRegNoRegion(PreDefined_Vars RegID,
-                                          IRBuilder<> &IRB,
-                                          Type *Ty,
-                                          Value *Dep);
+                                          IRBuilder<> &IRB, Type *Ty,
+                                          Value *Dep) const;
 
   Instruction *buildWritePredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
-                                   Value *Input);
+                                   Value *Input) const;
   Instruction *buildWritePredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
                                    Value *Input, Value *Dep,
-                                   Instruction *InsPoint, unsigned Offset = 0);
+                                   unsigned Offset = 0) const;
+
+  std::pair<Value *, Value *>
+  createBinOpPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
+                       Instruction::BinaryOps Opc, unsigned long long Val,
+                       bool Copy = false, bool UpdateReg = true) const;
 
 public:
   static char ID;
@@ -164,7 +239,6 @@ public:
   bool runOnFunction(Function &F) override;
   void visitAllocaInst(AllocaInst &I);
   void visitCallInst(CallInst &I);
-  void visitReturnInst(ReturnInst &I);
 };
 
 } // namespace
@@ -180,12 +254,118 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXPrologEpilogInsertion, "GenXPrologEpilogInsertion",
                     "GenXPrologEpilogInsertion", false, false)
 
-GenXPrologEpilogInsertion::GenXPrologEpilogInsertion() : FunctionPass(ID) {
-  initializeGenXPrologEpilogInsertionPass(*PassRegistry::getPassRegistry());
-}
-
 FunctionPass *llvm::createGenXPrologEpilogInsertionPass() {
   return new GenXPrologEpilogInsertion();
+}
+
+namespace {
+
+// FIXME: Do we really need this MD? Isn't it better to use some analysis here
+// and in cisa builder.
+template <typename T>
+static void appendArgRetMetadata(T &AppendTo, unsigned ArgSize,
+                                 unsigned RetSize, IRBuilder<> &IRB) {
+  LLVMContext &Ctx = AppendTo.getContext();
+  MDNode *ArgMD =
+      MDNode::get(Ctx, ConstantAsMetadata::get(IRB.getInt32(ArgSize)));
+  MDNode *RetMD =
+      MDNode::get(Ctx, ConstantAsMetadata::get(IRB.getInt32(RetSize)));
+  AppendTo.setMetadata(InstMD::FuncArgSize, ArgMD);
+  AppendTo.setMetadata(InstMD::FuncRetSize, RetMD);
+}
+
+void ArgsAnalyzer::clear() {
+  InReg.clear();
+  InStack.clear();
+  ArgRegBytesUsed = 0;
+  RetRegBytesUsed = 0;
+  StackBytesUsedForArgs = 0;
+  StackBytesUsedForRet = 0;
+}
+
+static bool isInternalCC(const Function &F) {
+  return F.hasLocalLinkage() && !genx::isReferencedIndirectly(&F);
+}
+
+static bool isInternalCC(const CallInst &CI) {
+  if (CI.isIndirectCall())
+    return false;
+  Function *F = CI.getCalledFunction();
+  IGC_ASSERT(F);
+  return isInternalCC(*F);
+}
+
+static unsigned getTypeSizeNoPadding(Type *Ty, const DataLayout *DL) {
+  unsigned NumElts = IndexFlattener::getNumElements(Ty);
+  unsigned TotalSize = 0;
+  for (unsigned i = 0; i < NumElts; ++i) {
+    Type *EltTy = IndexFlattener::getElementType(Ty, i);
+    TotalSize += vc::getTypeSize(EltTy, DL).inBytes();
+  }
+  return TotalSize;
+}
+
+// FIXME: bool InternalCC might be replaced with llvm::CallingConv but firslty
+// we should create/adapt some stack analyzes.
+void ArgsAnalyzer::analyze(const FunctionType &FTy, bool InternalCC) {
+  clear();
+
+  for (unsigned i = 0; i < FTy.getNumParams(); ++i) {
+    // Each arg passed on ArgReg must be GRF aligned. Each arg passed on stack
+    // must be oword aligned.
+    IGC_ASSERT_MESSAGE(calcPadding(ArgRegBytesUsed, GRFByteSize) == 0,
+                       "Must be grf aligned");
+    IGC_ASSERT_MESSAGE(calcPadding(StackBytesUsedForArgs, OWordBytes) == 0,
+                       "Must be oword aligned");
+    Type *ArgTy = FTy.getParamType(i);
+    // FIXME: Do we have a way to unambiguously understand whether a struct type
+    // satisfies the IGC calling conv or not?
+    unsigned ArgSize = getTypeSizeNoPadding(ArgTy, &DL);
+    IGC_ASSERT_MESSAGE(ArgSize, "Arg size cannot be zero");
+    bool Overflow = ArgRegBytesUsed + ArgSize > ArgRegByteSize;
+
+    if (!Overflow) {
+      // Fits in ArgReg.
+      InReg.push_back({i, ArgRegBytesUsed});
+      ArgRegBytesUsed += ArgSize;
+      ArgRegBytesUsed += calcPadding(ArgRegBytesUsed, GRFByteSize);
+    } else {
+      // Doesn't fit. The stack must be used.
+      // Stack args are OWord aligned.
+      InStack.push_back({i, StackBytesUsedForArgs});
+      if (ArgTy->isAggregateType()) {
+        IGC_ASSERT_MESSAGE(InternalCC,
+                           "IGC calling convention does not allow passing "
+                           "aggregate operands by value on stack");
+        // Do not pack structs when passing on stack.
+        ArgSize = vc::getTypeSize(ArgTy, &DL).inBytes();
+      }
+      StackBytesUsedForArgs += ArgSize;
+      StackBytesUsedForArgs += calcPadding(StackBytesUsedForArgs, OWordBytes);
+    }
+  }
+
+  Type *RetTy = FTy.getReturnType();
+  if (RetTy->isVoidTy())
+    return;
+
+  unsigned MinSize = getTypeSizeNoPadding(RetTy, &DL);
+  IGC_ASSERT_MESSAGE(MinSize, "Non-void ret type size cannot be zero");
+  IGC_ASSERT_MESSAGE(calcPadding(StackBytesUsedForRet, OWordBytes) == 0,
+                     "Must be oword aligned");
+  if (MinSize > RetRegByteSize) {
+    IGC_ASSERT_MESSAGE(InternalCC,
+                       "Return type is too big to be passed on registers");
+    StackBytesUsedForRet = vc::getTypeSize(RetTy, &DL).inBytes();
+    StackBytesUsedForRet += calcPadding(StackBytesUsedForRet, OWordBytes);
+  } else {
+    RetRegBytesUsed = MinSize;
+    RetRegBytesUsed += calcPadding(RetRegBytesUsed, GRFByteSize);
+  }
+}
+
+GenXPrologEpilogInsertion::GenXPrologEpilogInsertion() : FunctionPass(ID) {
+  initializeGenXPrologEpilogInsertionPass(*PassRegistry::getPassRegistry());
 }
 
 void GenXPrologEpilogInsertion::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -195,111 +375,89 @@ void GenXPrologEpilogInsertion::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
 }
 
-class CallsCalculator : public InstVisitor<CallsCalculator> {
-  unsigned NumCalls = 0;
+bool GenXPrologEpilogInsertion::isStackPrimitivesUsed() const {
+  return StackUsed || ArgRegUsed || RetRegUsed;
+}
 
-public:
-  void visitCallInst(CallInst &CI) {
-    if (CI.isInlineAsm())
-        return;
-    if (IGCLLVM::isIndirectCall(CI) ||
-        !GenXIntrinsic::isAnyNonTrivialIntrinsic(CI.getCalledFunction()))
-      NumCalls++;
-  }
+// If stack or ARG/RET reg used, the function cannot be readnone, readonly or
+// writeonly.
+// FIXME: actually, it can, but it requires deeper analysis. Maybe we can
+// improve this after stack usage analysis improvement.
+void GenXPrologEpilogInsertion::removeAttrs(Function &F) const {
+  if (!isStackPrimitivesUsed())
+    return;
 
-  unsigned getNumCalls(Function &F) {
-    NumCalls = 0;
-    visit(F);
-    return NumCalls;
-  }
-};
+  F.removeFnAttr(Attribute::ReadNone);
+  F.removeFnAttr(Attribute::ReadOnly);
+  F.removeFnAttr(Attribute::WriteOnly);
+}
+
+static void removeCallInstAttrs(CallInst &CI) {
+  CI.removeAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
+  CI.removeAttribute(AttributeList::FunctionIndex, Attribute::ReadOnly);
+  CI.removeAttribute(AttributeList::FunctionIndex, Attribute::WriteOnly);
+}
 
 bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
+  clear();
+
   BEConf = &getAnalysis<GenXBackendConfig>();
   DL = &F.getParent()->getDataLayout();
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  ArgRegSize = visa::ArgRegSizeInGRFs * ST->getGRFByteSize();
-  RetRegSize = visa::RetRegSizeInGRFs * ST->getGRFByteSize();
+  ArgRegByteSize = visa::ArgRegSizeInGRFs * ST->getGRFByteSize();
+  RetRegByteSize = visa::RetRegSizeInGRFs * ST->getGRFByteSize();
+  LLVM_DEBUG(dbgs() << "ArgReg size is " << ArgRegByteSize << "\n");
+  LLVM_DEBUG(dbgs() << "RetReg size is " << RetRegByteSize << "\n");
   if (!(BEConf->useNewStackBuilder() && ST->isOCLRuntime())) {
     LLVM_DEBUG(dbgs() << "Old builder or CMRT used in " << F.getName() << "\n");
     return false;
   }
-  NumCalls = CallsCalculator().getNumCalls(F);
-  LLVM_DEBUG(dbgs() << "Visiting all calls in " << F.getName() << "\n");
+
+  // Generate caller code for stack calls and private memory allocations first.
+  // Only after that generate prolog and epilog code. Such order is important
+  // because it allows saying whether the stack is used inside the function.
+  // This knowledge is required to decide on what must be generated in prolog
+  // and epilog. For example, we can omit to save FP if the stack won't be used.
+  // visit alloca
+  // visit call inst
   visit(F);
-  LLVM_DEBUG(dbgs() << "Visiting finished\n");
-  if (genx::isKernel(&F)) {
-    generateKernelProlog(F);
-    // no epilog is required for kernels
-  } else if (genx::requiresStackCall(&F)) {
-    generateFunctionProlog(F);
-    // function epilog is generated when RetInst is met
-  }
+  // All static allocations were collected. Now we can efficiently generate
+  // private memory allocations. Non-static alloca instructions are not
+  // supported.
+  emitPrivateMemoryAllocations();
 
-  return true;
-}
+  if (genx::isKernel(&F))
+    initializeStack(F);
+  else
+    // stack calls and subroutines
+    generatePrologEpilog(F);
 
-// AllocaPtr = SP + AllocaPadding
-// SP = AllocaPtr + AllocaSize
-void GenXPrologEpilogInsertion::visitAllocaInst(AllocaInst &I) {
-  LLVM_DEBUG(dbgs() << "Visiting alloca " << I << "\n");
-  IGC_ASSERT_MESSAGE(I.isStaticAlloca(), "Non-static alloca is not supported");
-  uint64_t AllocaSize = llvm::divideCeil(*I.getAllocationSizeInBits(*DL),
-                                         genx::ByteBits);
-  unsigned AllocaAlignment = std::max(I.getAlignment(), visa::BytesPerSVMPtr);
-  unsigned AllocaPadding = calcPadding(PrivMemSize, AllocaAlignment);
+  removeAttrs(F);
 
-  IRBuilder<> IRB(&I);
-  auto *SP = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                                DL->getIntPtrType(I.getType()), true);
-  auto *AllocaAddr = IRB.CreateAdd(SP,
-      ConstantInt::get(SP->getType(), AllocaPadding));
-  auto *AllocaPtr = IRB.CreateIntToPtr(AllocaAddr, I.getType());
-  auto *NewSP = IRB.CreateAdd(AllocaAddr,
-      ConstantInt::get(SP->getType(), AllocaSize));
-  buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, NewSP);
-  PrivMemSize += (AllocaPadding + AllocaSize);
-  I.replaceAllUsesWith(AllocaPtr);
-  I.eraseFromParent();
-}
-
-void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
-  if (I.isInlineAsm())
-    return;
-  bool IsIndirectCall = IGCLLVM::isIndirectCall(I);
-  bool IsStackCall =
-      IsIndirectCall || genx::requiresStackCall(I.getCalledFunction());
-  if (IsStackCall)
-    generateStackCall(&I);
-  if (!IsIndirectCall) {
-    auto IID = GenXIntrinsic::getAnyIntrinsicID(I.getCalledFunction());
-    // TODO: conformance fails when we pass i1 args in presence of SIMDCF. Funny
-    // thing is that ISPC doesn't use goto/join in its recursion tests so
-    // they're fine (i.e. they're not affected by this option) unlike CM
-    if (IID == GenXIntrinsic::genx_simdcf_goto)
-      HandleMaskArgs = false;
-  }
-}
-
-void GenXPrologEpilogInsertion::visitReturnInst(ReturnInst &I) {
-  if (genx::requiresStackCall(I.getFunction()))
-    generateFunctionEpilog(*I.getFunction(), I);
+  return isStackPrimitivesUsed();
 }
 
 // FE_SP = PrivateBase + HWTID * PrivMemPerThread
-void GenXPrologEpilogInsertion::generateKernelProlog(Function &F) {
-  LLVM_DEBUG(dbgs() << "Generating kernel prologue for " << F.getName()
-                    << "\n");
-  IRBuilder<> IRB(&F.getEntryBlock().front());
+// FE_FP = FE_SP
+void GenXPrologEpilogInsertion::initializeStack(Function &F) {
+  IGC_ASSERT(genx::isKernel(&F));
+  LLVM_DEBUG(dbgs() << "Initialize stack for kenrel " << F.getName() << "\n");
+  IRBuilder<> IRB(&*F.getEntryBlock().getFirstInsertionPt());
+
   Function *HWID = GenXIntrinsic::getGenXDeclaration(
       F.getParent(), llvm::GenXIntrinsic::genx_get_hwid, {});
   auto *HWIDCall = IRB.CreateCall(HWID);
 
-  int StackAmount = genx::getStackAmount(&F);
-  if (StackAmount == genx::VC_STACK_USAGE_UNKNOWN)
-    StackAmount = BEConf->getStatelessPrivateMemSize();
+  int StackAmount =
+      genx::getStackAmount(&F, BEConf->getStatelessPrivateMemSize());
+
+  // Nothing to do. Stack is guaranteed not to be used.
+  if (StackAmount == 0)
+    return;
+
+  StackUsed |= true;
 
   auto *ThreadOffset = IRB.getInt32(StackAmount);
   auto *Mul = IRB.CreateMul(HWIDCall, ThreadOffset);
@@ -314,438 +472,622 @@ void GenXPrologEpilogInsertion::generateKernelProlog(Function &F) {
 
   auto *Add = IRB.CreateAdd(PrivBase, MulCasted);
   buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, Add);
+  Value *SP = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                                 IRB.getInt64Ty(), false);
+  buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_FP, IRB, SP);
 }
 
-// foreach arg:
-//  if fits in %ARG:
-//    %arg_reg = genx.read.predef.reg %ARG
-//    %arg = rdregion from %arg_reg
-//  else:
-//    read from stackmem
-void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
-  LLVM_DEBUG(dbgs() << "Generating function prologue for " << F.getName()
-                    << "\n");
-  IRBuilder<> IRB(&F.getEntryBlock().front());
-  unsigned Offset = 0;
-  Value *Sp = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                                 IRB.getInt64Ty(), true);
-  for (auto &Arg : F.args()) {
-    auto *ArgScalarType = Arg.getType()->getScalarType();
-    auto NumElements = 1;
-    bool AllowScalar = true;
-    if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Arg.getType()))
-      NumElements = VT->getNumElements();
-    if (ArgScalarType->isIntegerTy(1)) {
-      if (!HandleMaskArgs)
-        continue;
-      NumElements = 1;
-      ArgScalarType = IRB.getInt32Ty();
-      AllowScalar = false;
-    }
-    Offset += calcPadding(Offset, ST->getGRFByteSize());
-    unsigned ArgSize = DL->getTypeSizeInBits(Arg.getType()) / genx::ByteBits;
-    if (ForceArgMemPassing || Offset + ArgSize > ArgRegSize) {
-      auto ReadVal = pop(Arg.getType(), IRB, Sp);
-      Sp = ReadVal.second;
-      Arg.replaceAllUsesWith(ReadVal.first);
-    } else {
-      auto *ArgRegType = IGCLLVM::FixedVectorType::get(
-          ArgScalarType,
-          ArgRegSize / (DL->getTypeSizeInBits(ArgScalarType) / genx::ByteBits));
-      auto *ArgRead = buildReadPredefReg(PreDefined_Vars::PREDEFINED_ARG, IRB,
-                                         ArgRegType, NumCalls > 0,
-                                         AllowScalar, Offset, NumElements);
-      if (Arg.getType()->getScalarType()->isIntegerTy(1)) {
-        IGC_ASSERT(isa<VectorType>(Arg.getType()));
-        ArgRead = cast<Instruction>(IRB.CreateTruncOrBitCast(
-            ArgRead,
-            IGCLLVM::FixedVectorType::get(
-                IRB.getIntNTy(cast<IGCLLVM::FixedVectorType>(Arg.getType())
-                                  ->getNumElements()),
-                1)));
-        ArgRead = cast<Instruction>(IRB.CreateBitCast(ArgRead, Arg.getType()));
-      }
-      Offset += ArgSize;
-      Arg.replaceAllUsesWith(ArgRead);
-    }
-  }
-  F.setMetadata(
-      InstMD::FuncArgSize,
-      MDNode::get(F.getContext(),
-                  ConstantAsMetadata::get(IRB.getInt32(
-                      (Offset + ST->getGRFByteSize() - 1) / ST->getGRFByteSize()))));
+Value *GenXPrologEpilogInsertion::saveFP(IRBuilder<> &IRB) const {
+  Value *TmpFP = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_FP, IRB,
+                                    IRB.getInt64Ty(), true);
+  Value *SP = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                                 IRB.getInt64Ty(), false);
+  buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_FP, IRB, SP);
+  return TmpFP;
 }
 
-//  if fits in %ARG:
-//    %ret = wrregion (%retval)
-//    genx.write.predef.reg %RET %ret
-//  else:
-//    write to stackmem
-void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
-                                                       ReturnInst &I) {
-  LLVM_DEBUG(dbgs() << "Generating function epilogue for " << F.getName()
-                    << "\n");
-  IRBuilder<> IRB(&I);
-  unsigned RetSize = 0;
-  if (!F.getReturnType()->isVoidTy()) {
-    auto *RetVal = I.getReturnValue();
-    // restore SP
-    Value *RetBase = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                                        IRB.getInt64Ty());
-    if (PrivMemSize) {
-      auto *RestoredSP =
-          IRB.CreateSub(RetBase, IRB.getInt64(PrivMemSize), "");
-      buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, RestoredSP);
-    }
-    RetSize = DL->getTypeSizeInBits(RetVal->getType()) / genx::ByteBits;
-    std::vector<Value *> Worklist;
-    bool UndefReturn = false;
-    if (isa<StructType>(RetVal->getType())) {
-      UndefReturn = isa<UndefValue>(RetVal);
-      while (auto *InsValue = dyn_cast<InsertValueInst>(RetVal)) {
-        RetVal = InsValue->getOperand(0);
-        if (InsValue->getOperand(1)->getType()->getScalarType()->isIntegerTy(1))
-          continue;
-        Worklist.push_back(InsValue);
-      }
-    } else
-      Worklist.push_back(RetVal);
-    IGC_ASSERT(UndefReturn || !Worklist.empty());
-    for (auto *Ins : Worklist) {
-      Instruction *InstToReplaceIn = &I;
-      unsigned Offset = 0;
-      if (auto *InsVal = dyn_cast<InsertValueInst>(Ins)) {
-        IRB.SetInsertPoint(InsVal);
-        InstToReplaceIn = InsVal;
-        Ins = InsVal->getOperand(1);
-
-        IGC_ASSERT(InsVal->getIndices().size() == 1);
-        auto IdxVal = InsVal->getIndices()[0];
-        if (auto *StructTy =
-                dyn_cast<StructType>(InsVal->getOperand(0)->getType()))
-          // FIXME: consider calculating offset manually to not waste
-          // GRF space on struct padding
-          Offset = DL->getStructLayout(StructTy)->getElementOffset(IdxVal);
-        else if (auto *ArrTy =
-                     dyn_cast<ArrayType>(InsVal->getOperand(0)->getType()))
-          Offset =
-              (DL->getTypeSizeInBits(ArrTy->getScalarType()) / genx::ByteBits) *
-              IdxVal;
-        else if (auto* VecTy =
-            dyn_cast<VectorType>(InsVal->getOperand(0)->getType()))
-            Offset =
-            (DL->getTypeSizeInBits(VecTy->getScalarType()) / genx::ByteBits) *
-            IdxVal;
-        else
-          IGC_ASSERT_MESSAGE(0, "Unsupported type to extract from stackcall");
-      }
-      RetBase = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                                   IRB.getInt64Ty());
-      if (ForceRetMemPassing ||
-          DL->getTypeSizeInBits(RetVal->getType()) / genx::ByteBits >
-              RetRegSize) {
-        RetBase = push(Ins, IRB, RetBase);
-      } else {
-        auto *RetRegType = IGCLLVM::FixedVectorType::get(
-            Ins->getType()->getScalarType(),
-            RetRegSize /
-                (DL->getTypeSizeInBits(Ins->getType()->getScalarType()) /
-                 genx::ByteBits));
-        auto *RetRegWrite = buildWritePredefReg(
-            PreDefined_Vars::PREDEFINED_RET, IRB, Ins,
-            UndefValue::get(RetRegType), InstToReplaceIn, Offset);
-        InstToReplaceIn->replaceUsesOfWith(Ins, RetRegWrite);
-      }
-    }
-  }
-  F.setMetadata(InstMD::FuncRetSize,
-                MDNode::get(F.getContext(),
-                            ConstantAsMetadata::get(IRB.getInt32(
-                                divideCeil(RetSize, ST->getGRFByteSize())))));
+void GenXPrologEpilogInsertion::restoreFPAndSP(Value *TmpFP,
+                                               IRBuilder<> &IRB) const {
+  Value *FP = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_FP, IRB,
+                                 IRB.getInt64Ty(), false);
+  buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, FP);
+  buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_FP, IRB, TmpFP);
 }
 
-// write stack call args
-// returns total offset
-unsigned GenXPrologEpilogInsertion::writeArgs(CallInst *CI, Value *SpArgs,
-                                              IRBuilder<> &IRB) {
-  unsigned Offset = 0;
-  std::vector<std::pair<int, Value *>> ReplaceArgs; // ArgNo, Arg
-  ReplaceArgs.reserve(CI->getNumArgOperands());
+// Stack call calling conv: behave in accordance with IGC calling conv.
+//   entry:
+//     tmpFP = FP
+//     FP = SP
+//   ...
+//   retBlock: (any)
+//     SP = FP
+//     FP = tmpFP
+//     ret
+//
+// Subroutine calling conv: internal calling conv. We have to create tmpFP
+// variable to store SP so as to restore SP before the returns after possible
+// allocations + run-time alignments.
+//   entry:
+//     tmpFP = SP
+//   ...
+//   retBlock: (any)
+//     SP = tmpFP
+void GenXPrologEpilogInsertion::generatePrologEpilog(Function &F) {
+  ArgsAnalyzer Info(ArgRegByteSize, RetRegByteSize, ST->getGRFByteSize(), *DL);
+  Value *TmpFP = nullptr;
 
-  for (auto &Arg : CI->arg_operands()) {
-    // it is tempting to skip here if Arg already is in ReplaceArgs map
-    // but it will be wrong to do so, because consider:
-    // foo(x, x, y, y, x, y)
-    // on callee side we are expecting 6 positions in predef args
-    // we can not optimize these out on caller side
-    auto *OrigTy = Arg->getType();
-    if (OrigTy->getScalarType()->isIntegerTy(1)) {
-      if (!HandleMaskArgs)
-        continue;
-      IGC_ASSERT(isa<VectorType>(Arg->getType()));
-      Arg = IRB.CreateBitOrPointerCast(
-          Arg, IGCLLVM::FixedVectorType::get(
-                   IRB.getIntNTy(cast<IGCLLVM::FixedVectorType>(Arg->getType())
-                                     ->getNumElements()),
-                   1));
-    }
-    Offset += calcPadding(Offset, ST->getGRFByteSize());
-    auto ArgSize = DL->getTypeSizeInBits(Arg->getType()) / genx::ByteBits;
-    auto *ArgRegType = IGCLLVM::FixedVectorType::get(
-        Arg->getType()->getScalarType(),
-        ArgRegSize / (DL->getTypeSizeInBits(Arg->getType()->getScalarType()) /
-                      genx::ByteBits));
-    if (ForceArgMemPassing || Offset + ArgSize > ArgRegSize) {
-      // to stack
-      SpArgs = push(Arg, IRB, SpArgs);
-    } else {
-      // to %ARG
-      auto *FakeArg = buildReadPredefRegNoRegion(
-          PreDefined_Vars::PREDEFINED_ARG, IRB, ArgRegType);
-      auto *ArgRegWrite = buildWritePredefReg(PreDefined_Vars::PREDEFINED_ARG,
-                                              IRB, Arg, FakeArg, CI, Offset);
-      if (OrigTy->getScalarType()->isIntegerTy(1))
-        ArgRegWrite = cast<Instruction>(
-            IRB.CreateBitOrPointerCast(ArgRegWrite,OrigTy));
-      ReplaceArgs.emplace_back(Arg.getOperandNo(), ArgRegWrite);
-      Offset += ArgSize;
-    }
-  }
-
-  // here ">=" used to account for memory-passing of argument tail
-  IGC_ASSERT_MESSAGE(CI->getNumArgOperands() >= ReplaceArgs.size(),
-                     "ReplaceArgs too large");
-  for (auto &&NewArg : ReplaceArgs)
-    CI->setArgOperand(NewArg.first, NewArg.second);
-  return Offset;
-}
-
-// build worklist for extraction
-// worklist entry format:
-//   first: actual return
-//   second: return insertion point
-// this might be critical for structure return due to odd agreement of
-// returning structures
-std::vector<std::pair<Instruction *, Instruction *>>
-GenXPrologEpilogInsertion::buildWorkList(CallInst *CI, Value *OrigSp,
-                                         bool UseMemForRet) {
-  std::vector<std::pair<Instruction *, Instruction *>> Worklist;
-  if (isa<StructType>(CI->getType())) {
-    for (auto *U : CI->users()) {
-      auto *EV = dyn_cast<ExtractValueInst>(U);
-      IGC_ASSERT(EV && EV->getIndices().size() == 1);
-      if (!U->getType()->getScalarType()->isIntegerTy(1))
-        Worklist.push_back({cast<Instruction>(U), cast<Instruction>(U)});
-    }
+  if (genx::requiresStackCall(&F)) {
+    Info.analyze(*F.getFunctionType(), isInternalCC(F));
+    TmpFP = generateStackCallProlog(F, Info);
   } else
-    // OrigSP as instruction is read.predef.reg
-    Worklist.push_back({CI, UseMemForRet ? cast<Instruction>(OrigSp) : CI});
-  return Worklist;
+    TmpFP = generateSubroutineProlog(F);
+
+  for (auto &BB : F) {
+    auto *RI = dyn_cast<ReturnInst>(BB.getTerminator());
+    if (!RI)
+      continue;
+
+    if (genx::requiresStackCall(&F))
+      generateStackCallEpilog(*RI, TmpFP, Info);
+    else
+      generateSubroutineEpilog(*RI, TmpFP);
+  }
 }
 
-// extract results from stack call return
-void GenXPrologEpilogInsertion::extractResults(CallInst *CI, Value *OrigSp,
-                                               IRBuilder<> &IRB) {
-  IRB.SetInsertPoint(CI->getNextNode());
-  bool UseMemForRet =
-      ForceRetMemPassing ||
-      DL->getTypeSizeInBits(CI->getType()) / genx::ByteBits > RetRegSize;
-  if (UseMemForRet)
-    OrigSp = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                                IRB.getInt64Ty(), CI, true);
-
-  // collect return slots
-  auto Worklist = buildWorkList(CI, OrigSp, UseMemForRet);
-
-  // process return slots
-  for (auto &I : Worklist) {
-    auto *ActualRet = I.first;
-    IRB.SetInsertPoint(I.second->getNextNode());
-    Value *ValToReplaceWith = nullptr;
-    Instruction *InstToFix = nullptr;
-    bool FixReplacement = true;
-    if (UseMemForRet) {
-      // from stack
-      Region R(OrigSp->getType());
-      Value *SpRet =
-          R.createRdRegion(cast<Instruction>(OrigSp)->getOperand(0), "",
-                           &*IRB.GetInsertPoint(), DebugLoc(), true);
-      auto ReadVal = pop(ActualRet->getType(), IRB, SpRet);
-      SpRet = ReadVal.second;
-
-      InstToFix = cast<Instruction>(
-          cast<Instruction>(cast<Instruction>(OrigSp)->getOperand(0))
-              ->getOperand(1));
-      ValToReplaceWith = ReadVal.first;
-    } else {
-      // from %RET arg
-      unsigned Offset = 0;
-      if (auto *EV = dyn_cast<ExtractValueInst>(ActualRet)) {
-        // do not fix anything as we gonna replace extractValue insts,
-        // not the call itself
-        FixReplacement = false;
-        auto IdxVal = EV->getIndices()[0];
-        if (auto *StructTy = dyn_cast<StructType>(CI->getType()))
-          // FIXME: consider calculating offset manually to not waste
-          // GRF space on struct padding
-          Offset = DL->getStructLayout(StructTy)->getElementOffset(IdxVal);
-        else if (auto *ArrTy = dyn_cast<ArrayType>(CI->getType()))
-          Offset =
-              (DL->getTypeSizeInBits(ArrTy->getScalarType()) / genx::ByteBits) *
-              IdxVal;
-        else if (auto* VecTy = dyn_cast<VectorType>(CI->getType()))
-            Offset =
-            (DL->getTypeSizeInBits(VecTy->getScalarType()) / genx::ByteBits) *
-            IdxVal;
-        else
-          IGC_ASSERT_MESSAGE(0, "Unsupported type to extract from stackcall");
-      }
-      unsigned NumElems = 1;
-      if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(ActualRet->getType()))
-        NumElems = VT->getNumElements();
-      auto *RetRegType = IGCLLVM::FixedVectorType::get(
-          ActualRet->getType()->getScalarType(),
-          RetRegSize /
-              (DL->getTypeSizeInBits(ActualRet->getType()->getScalarType()) /
-               genx::ByteBits));
-      auto *RetRead =
-          buildReadPredefReg(PreDefined_Vars::PREDEFINED_RET, IRB, RetRegType,
-                             CI, NumCalls > 1, true, Offset, NumElems);
-      // here RetRead is rdr in a sequence
-      // read_predef_reg->wrr->rdr where wrr exists iff NumCalls>1
-      // and we want InstToFix to be read_predef_reg
-      InstToFix = cast<Instruction>(RetRead->getOperand(0));
-      if (NumCalls > 1)
-        InstToFix = cast<Instruction>(InstToFix->getOperand(1));
-      ValToReplaceWith = RetRead;
-    }
-    ActualRet->replaceAllUsesWith(ValToReplaceWith);
-    // after replacing all of the uses we have to restore one of
-    // in read_predef_reg to create a dependency from the call result
-    // hence prevent its removal
-    // InstToFix has to be read_predef_reg (we guarantee that when setting it)
-    if (FixReplacement)
-      InstToFix->replaceUsesOfWith(ValToReplaceWith, ActualRet);
+void GenXPrologEpilogInsertion::generateSubroutineEpilog(ReturnInst &RI,
+                                                         Value *TmpFP) const {
+  if (!TmpFP) {
+    IGC_ASSERT_MESSAGE(
+        !StackUsed,
+        "SP must be restored from temporary value if stack was used");
+    return;
   }
+
+  IGC_ASSERT_MESSAGE(StackUsed, "Stack was not used, there is no need to "
+                                "restore SP from temporary value");
+  IRBuilder<> IRB(&RI);
+  buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, TmpFP);
+}
+
+void GenXPrologEpilogInsertion::generateStackCallEpilog(
+    ReturnInst &RI, Value *TmpFP, const ArgsAnalyzer &Info) {
+  IRBuilder<> IRB(&RI);
+
+  if (TmpFP)
+    restoreFPAndSP(TmpFP, IRB);
+
+  if (!Info.getRetRegBytesUsed() && !Info.getStackBytesUsedForRet())
+    return;
+
+  Value *RetVal = RI.getReturnValue();
+  if (Info.getRetRegBytesUsed()) {
+    IGC_ASSERT(!Info.getStackBytesUsedForRet());
+    passInReg(*RetVal, 0, IRB, PreDefined_Vars::PREDEFINED_RET, RetRegByteSize);
+    RetRegUsed |= true;
+  } else if (Info.getStackBytesUsedForRet()) {
+    Value *RetSP = nullptr;
+    std::tie(std::ignore, RetSP) = createBinOpPredefReg(
+        PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Sub,
+        Info.getStackBytesUsed(), false, false);
+    push(*RetVal, IRB, *RetSP);
+    StackUsed |= true;
+  }
+}
+
+Value *GenXPrologEpilogInsertion::generateSubroutineProlog(Function &F) const {
+  LLVM_DEBUG(dbgs() << "Generating function prologue for " << F.getName()
+                    << " (subroutine)\n");
+  IRBuilder<> IRB(&F.getEntryBlock().front());
+
+  if (StackUsed)
+    return buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                              IRB.getInt64Ty(), true);
+  return nullptr;
+}
+
+Value *
+GenXPrologEpilogInsertion::generateStackCallProlog(Function &F,
+                                                   const ArgsAnalyzer &Info) {
+  LLVM_DEBUG(dbgs() << "Generating function prologue for " << F.getName()
+                    << " (stackcall)\n");
+  IRBuilder<> IRB(&F.getEntryBlock().front());
+
+  Value *TmpFP = nullptr;
+  if (StackUsed)
+    TmpFP = saveFP(IRB);
+
+  if (Info.getArgRegBytesUsed()) {
+    readArgsFromReg(F, Info, IRB);
+    ArgRegUsed |= true;
+  }
+  if (Info.getStackBytesUsedForArgs()) {
+    StackUsed |= true;
+    Value *SpArgBegin = nullptr;
+    std::tie(std::ignore, SpArgBegin) = createBinOpPredefReg(
+        PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Sub,
+        Info.getStackBytesUsedForArgs(), false, false);
+    IGC_ASSERT(SpArgBegin);
+    readArgsFromStack(F, Info, IRB, *SpArgBegin);
+  }
+
+  IGC_ASSERT(Info.getArgRegBytesUsed() % ST->getGRFByteSize() == 0);
+  IGC_ASSERT(Info.getRetRegBytesUsed() % ST->getGRFByteSize() == 0);
+  appendArgRetMetadata(F, Info.getArgRegBytesUsed() / ST->getGRFByteSize(),
+                       Info.getRetRegBytesUsed() / ST->getGRFByteSize(), IRB);
+
+  return TmpFP;
+}
+
+void GenXPrologEpilogInsertion::visitAllocaInst(AllocaInst &I) {
+  // Check that this alloca is in the entry block (!) and has known size.
+  // Condition on entry block is important because this allows minimizing of
+  // run-time SP alignments.
+  IGC_ASSERT_MESSAGE(I.isStaticAlloca(), "Non-static alloca is not supported");
+  Allocas.push_back(&I);
+}
+
+void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
+  LLVM_DEBUG(dbgs() << "In emitPrivateMemoryAllocations\n");
+  if (Allocas.empty()) {
+    LLVM_DEBUG(dbgs() << "no alloca instructions in the function\n");
+    return;
+  }
+
+  StackUsed |= true;
+
+  IRBuilder IRB(Allocas.front());
+
+  // Sort to have allocas alignment in decreasing order.
+  std::sort(Allocas.begin(), Allocas.end(),
+            [](AllocaInst *LHS, AllocaInst *RHS) {
+              return LHS->getAlignment() > RHS->getAlignment();
+            });
+
+  // SP is oword bytes aligned at this point.
+  unsigned long long LargestAlignment = Allocas.front()->getAlignment();
+  if (LargestAlignment > OWordBytes) {
+    createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                         Instruction::Add, LargestAlignment - 1, false);
+    createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                         Instruction::And, ~(LargestAlignment - 1), false);
+  }
+
+  std::vector<unsigned> NextAlignment;
+  std::transform(std::next(Allocas.begin()), Allocas.end(),
+                 std::back_inserter(NextAlignment), [](AllocaInst *AI) {
+                   // visa::BytesPerSVMPtr is a minimal possible alignment that
+                   // suits all data types.
+                   return std::max(AI->getAlignment(), visa::BytesPerSVMPtr);
+                 });
+  // After all private memory allocations SP must be oword aligned so as to keep
+  // SP alignment statically known.
+  NextAlignment.push_back(OWordBytes);
+
+  unsigned TotalSize = 0;
+  for (auto &&[AI, Alignment] : zip(Allocas, NextAlignment)) {
+    unsigned AllocaSize =
+        llvm::divideCeil(*AI->getAllocationSizeInBits(*DL), genx::ByteBits);
+    TotalSize += AllocaSize;
+    unsigned AllocaPadding = calcPadding(TotalSize, Alignment);
+    TotalSize += AllocaPadding;
+
+    Value *OrigSP = nullptr;
+    std::tie(OrigSP, std::ignore) = createBinOpPredefReg(
+        PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Add,
+        AllocaSize + AllocaPadding, true);
+
+    Value *AllocaAddr = IRB.CreateIntToPtr(OrigSP, AI->getType());
+    AI->replaceAllUsesWith(AllocaAddr);
+  }
+  // erase allocas in a separate loop so as not to invalidate IRBuilder
+  // insertion point.
+  std::for_each(Allocas.begin(), Allocas.end(),
+                [](AllocaInst *AI) { AI->eraseFromParent(); });
+}
+
+void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
+  if (I.isInlineAsm())
+    return;
+  if (GenXIntrinsic::isAnyNonTrivialIntrinsic(&I))
+    return;
+  bool IsIndirectCall = IGCLLVM::isIndirectCall(I);
+  bool IsStackCall =
+      IsIndirectCall || genx::requiresStackCall(I.getCalledFunction());
+
+  // We have a subroutine or stack call that won't be correctly analyzed. The
+  // analysis is supposed to answer a question of whether ARG, RET registers are
+  // used. Until this analysis is implemented, let's assume that the call can
+  // overwrite ARG and RET. This allows generating always correct code.
+  // FIXME: Generated code may be non-optimal since it will always lead to ARG,
+  // REG copy generation in the presence of any calls. The described analysis
+  // should be added.
+  ArgRegUsed = true;
+  RetRegUsed = true;
+
+  if (!IsStackCall)
+    return;
+
+  generateStackCall(I);
+  removeCallInstAttrs(I);
+}
+
+void GenXPrologEpilogInsertion::clear() {
+  DL = nullptr;
+  ST = nullptr;
+  BEConf = nullptr;
+
+  ArgRegByteSize = 0;
+  RetRegByteSize = 0;
+
+  // is stack used for stack calls or private memory.
+  StackUsed = false;
+  ArgRegUsed = false;
+  RetRegUsed = false;
+
+  Allocas.clear();
 }
 
 // generate caller site of stack call
-void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
-  LLVM_DEBUG(dbgs() << "Generating stack call for:\n");
-  LLVM_DEBUG(CI->dump());
-  LLVM_DEBUG(dbgs() << "\n");
-  IRBuilder<> IRB(CI);
-  Value *OrigSp = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                                     IRB.getInt64Ty(), true);
-  // write args, return total offset in arg register
-  unsigned Offset = writeArgs(CI, OrigSp, IRB);
+void GenXPrologEpilogInsertion::generateStackCall(CallInst &CI) {
+  ArgsAnalyzer Info(ArgRegByteSize, RetRegByteSize, ST->getGRFByteSize(), *DL);
+  Info.analyze(*CI.getFunctionType(), isInternalCC(CI));
 
-  CI->setMetadata(
-      InstMD::FuncArgSize,
-      MDNode::get(CI->getContext(),
-                  ConstantAsMetadata::get(IRB.getInt32(
-                      (Offset + ST->getGRFByteSize() - 1) / ST->getGRFByteSize()))));
-  bool isVoidCall = CI->getType()->isVoidTy();
-  CI->setMetadata(
-      InstMD::FuncRetSize,
-      MDNode::get(CI->getContext(),
-                  ConstantAsMetadata::get(IRB.getInt32(divideCeil(
-                      (isVoidCall ? 0
-                                  : (DL->getTypeSizeInBits(CI->getType())) /
-                                        genx::ByteBits),
-                      ST->getGRFByteSize())))));
-  if (isVoidCall)
-    return;
+  IRBuilder<> IRB(&CI);
+  ArgRegUsed |= static_cast<bool>(Info.getArgRegBytesUsed());
+  RetRegUsed |= static_cast<bool>(Info.getRetRegBytesUsed());
+  passArgsInReg(CI, Info, IRB);
 
-  // read retvalue
-  extractResults(CI, OrigSp, IRB);
-}
+  // Generate stack-related instructions only if it is used.
+  if (Info.getStackBytesUsed()) {
+    StackUsed |= true;
 
-Value *GenXPrologEpilogInsertion::push(Value *V, IRBuilder<> &IRB, Value *InitSP) {
-  if (V->getType()->getScalarType()->isIntegerTy(1)) {
-    IGC_ASSERT(isa<VectorType>(V->getType()));
-    V = IRB.CreateBitOrPointerCast(
-        V, IGCLLVM::FixedVectorType::get(
-               IRB.getInt8Ty(),
-               cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements() /
-                   genx::ByteBits));
+    // Allocate space in stack for the ret value.
+    if (Info.getStackBytesUsedForRet())
+      createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                           Instruction::Add, Info.getStackBytesUsedForRet(),
+                           false);
+
+    // Allocate space in stack for the args and copy arg by arg.
+    if (Info.getStackBytesUsedForArgs()) {
+      Value *OrigSp = nullptr;
+      std::tie(OrigSp, std::ignore) = createBinOpPredefReg(
+          PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Add,
+          Info.getStackBytesUsedForArgs(), true);
+      IGC_ASSERT(OrigSp);
+
+      passArgsOnStack(CI, Info, IRB, *OrigSp);
+    }
   }
 
-  // 'allocate' space for the value in stack first.
-  unsigned Size = vc::getTypeSize(V->getType(), DL).inBytes();
-  Size += calcPadding(Size, OWordBytes);
-  Value *SP = IRB.CreateAdd(InitSP, IRB.getInt64(Size));
+  IRB.SetInsertPoint(CI.getNextNode());
 
-  // FIXME: There must be a correct addrspace.
-  Type *SPPtrTy = PointerType::getUnqual(V->getType());
-  InitSP = IRB.CreateIntToPtr(InitSP, SPPtrTy);
+  IGC_ASSERT(Info.getArgRegBytesUsed() % ST->getGRFByteSize() == 0);
+  IGC_ASSERT(Info.getRetRegBytesUsed() % ST->getGRFByteSize() == 0);
 
-  IRB.CreateStore(V, InitSP);
+  appendArgRetMetadata(CI, Info.getArgRegBytesUsed() / ST->getGRFByteSize(),
+                       Info.getRetRegBytesUsed() / ST->getGRFByteSize(), IRB);
 
-  return SP;
-}
-
-std::pair<Instruction *, Value *>
-GenXPrologEpilogInsertion::pop(Type *Ty, IRBuilder<> &IRB, Value *InitSP) {
-  auto *OrigTy = Ty;
-  if (Ty->getScalarType()->isIntegerTy(1)) {
-    IGC_ASSERT(isa<VectorType>(Ty));
-    Ty = IGCLLVM::FixedVectorType::get(
-        IRB.getInt8Ty(),
-        cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() / genx::ByteBits);
+  if (Info.getRetRegBytesUsed())
+    readFromRegAndReplace(CI, 0, IRB, PreDefined_Vars::PREDEFINED_RET,
+                          RetRegByteSize);
+  else if (Info.getStackBytesUsedForRet()) {
+    Value *RetSP = nullptr;
+    std::tie(std::ignore, RetSP) = createBinOpPredefReg(
+        PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Sub,
+        Info.getStackBytesUsed(), false, false);
+    Value *Ret = pop(*CI.getType(), IRB, *RetSP);
+    CI.replaceAllUsesWith(Ret);
   }
 
-  unsigned Size = vc::getTypeSize(Ty, DL).inBytes();
-  Size += calcPadding(Size, OWordBytes);
-  Value *SP = IRB.CreateAdd(InitSP, IRB.getInt64(Size));
+  if (Info.getStackBytesUsed())
+    createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                         Instruction::Sub, Info.getStackBytesUsed(), false);
+}
 
+std::pair<Value *, Value *> GenXPrologEpilogInsertion::createBinOpPredefReg(
+    PreDefined_Vars RegID, IRBuilder<> &IRB, Instruction::BinaryOps Opc,
+    unsigned long long Val, bool Copy, bool UpdateReg) const {
+  Value *RegRead = buildReadPredefReg(RegID, IRB, IRB.getInt64Ty(), Copy, true);
+  Value *NewValue = IRB.CreateBinOp(Opc, RegRead, IRB.getInt64(Val));
+  if (UpdateReg)
+    buildWritePredefReg(RegID, IRB, NewValue);
+  if (!Copy)
+    RegRead = nullptr;
+  return std::make_pair(RegRead, NewValue);
+}
+
+void GenXPrologEpilogInsertion::readArgsFromStack(Function &F,
+                                                  const ArgsAnalyzer &Info,
+                                                  IRBuilder<> &IRB,
+                                                  Value &InitSP) const {
+  LLVM_DEBUG(dbgs() << "Reading these args from stack. Function " << F.getName()
+                    << "\n");
+
+  Value *SP = &InitSP;
+  for (const auto &ArgInfo : Info.in_stack()) {
+    Value *Arg = IGCLLVM::getArg(F, ArgInfo.ArgNo);
+    Type *ArgTy = Arg->getType();
+    Value *RealArg = pop(*ArgTy, IRB, *SP);
+    Arg->replaceAllUsesWith(RealArg);
+    SP = getNextSP(*ArgTy, IRB, *SP);
+  }
+}
+
+void GenXPrologEpilogInsertion::passArgsOnStack(CallInst &CI,
+                                                const ArgsAnalyzer &Info,
+                                                IRBuilder<> &IRB,
+                                                Value &InitSP) const {
+  Value *SP = &InitSP;
+  for (const auto &ArgInfo : Info.in_stack()) {
+    Value *Arg = CI.getArgOperand(ArgInfo.ArgNo);
+    push(*Arg, IRB, *SP);
+    SP = getNextSP(*Arg->getType(), IRB, *SP);
+  }
+}
+
+Value *GenXPrologEpilogInsertion::pop(Type &ArgTy, IRBuilder<> &IRB,
+                                      Value &InitSP) const {
   // FIXME: There must be a correct addrspace.
-  Type *SPPtrTy = PointerType::getUnqual(Ty);
-  InitSP = IRB.CreateIntToPtr(InitSP, SPPtrTy);
+  Type *SPPtrTy = PointerType::getUnqual(&ArgTy);
+  Value *SPPtr = IRB.CreateIntToPtr(&InitSP, SPPtrTy);
 
-  Value *RetVal = IRB.CreateLoad(Ty, InitSP);
+  return IRB.CreateLoad(&ArgTy, SPPtr);
+}
 
-  if (OrigTy->getScalarType()->isIntegerTy(1))
-    RetVal = IRB.CreateBitCast(RetVal, OrigTy);
-  return {cast<Instruction>(RetVal), SP};
+// It does not allocate memory
+Value *GenXPrologEpilogInsertion::getNextSP(Type &Ty, IRBuilder<> &IRB,
+                                            Value &SP) const {
+  // FIXME: type size calculations and padding should be moved to some analysis.
+  unsigned Size = vc::getTypeSize(&Ty, DL).inBytes();
+  Size += calcPadding(Size, OWordBytes);
+  return IRB.CreateAdd(&SP, IRB.getInt64(Size));
+}
+
+void GenXPrologEpilogInsertion::push(Value &V, IRBuilder<> &IRB,
+                                     Value &SP) const {
+  // FIXME: There must be a correct addrspace.
+  Type *SPPtrTy = PointerType::getUnqual(V.getType());
+  Value *SPPtr = IRB.CreateIntToPtr(&SP, SPPtrTy);
+
+  IRB.CreateStore(&V, SPPtr);
+}
+
+void GenXPrologEpilogInsertion::readArgsFromReg(Function &F,
+                                                const ArgsAnalyzer &Info,
+                                                IRBuilder<> &IRB) const {
+  for (const auto &ArgInfo : Info.in_reg()) {
+    Argument *Arg = IGCLLVM::getArg(F, ArgInfo.ArgNo);
+    readFromRegAndReplace(*Arg, ArgInfo.Offset, IRB,
+                          PreDefined_Vars::PREDEFINED_ARG, ArgRegByteSize);
+  }
+}
+
+void GenXPrologEpilogInsertion::readFromRegAndReplace(Value &V,
+                                                      unsigned OffsetInReg,
+                                                      IRBuilder<> &IRB,
+                                                      PreDefined_Vars RegID,
+                                                      unsigned RegSize) const {
+  Type *Ty = V.getType();
+  Value *Read = nullptr;
+  if (Ty->isAggregateType())
+    Read = readAggrFromReg(*Ty, OffsetInReg, IRB, RegID, RegSize);
+  else
+    Read = readNonAggrFromReg(*Ty, OffsetInReg, IRB, RegID, RegSize);
+  V.replaceAllUsesWith(Read);
+}
+
+Value *GenXPrologEpilogInsertion::readNonAggrFromReg(Type &Ty,
+                                                     unsigned OffsetInReg,
+                                                     IRBuilder<> &IRB,
+                                                     PreDefined_Vars RegID,
+                                                     unsigned RegSize) const {
+  IGC_ASSERT(!Ty.isAggregateType());
+  Type *ToReadTy = &Ty;
+  Type *ScalarTy = ToReadTy->getScalarType();
+
+  if (ScalarTy->isIntegerTy(1)) {
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(ToReadTy);
+    IGC_ASSERT(VTy->getNumElements() % genx::ByteBits == 0);
+    ScalarTy = IRB.getInt8Ty();
+    ToReadTy = IGCLLVM::FixedVectorType::get(ScalarTy, VTy->getNumElements() /
+                                                           genx::ByteBits);
+  }
+
+  // Create a type for read.predef
+  Type *RegTy = IGCLLVM::FixedVectorType::get(
+      ScalarTy, RegSize / vc::getTypeSize(ScalarTy, DL).inBytes());
+
+  unsigned NumElts = 1;
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(ToReadTy))
+    NumElts = VT->getNumElements();
+
+  bool CreateCopy = true;
+  if (RegID == PreDefined_Vars::PREDEFINED_ARG && !ArgRegUsed)
+    CreateCopy = false;
+  Value *Read =
+      buildReadPredefReg(RegID, IRB, RegTy, CreateCopy, !ToReadTy->isVectorTy(),
+                         OffsetInReg, NumElts);
+
+  if (ToReadTy != &Ty)
+    Read = IRB.CreateBitCast(Read, &Ty);
+  return Read;
+}
+
+Value *GenXPrologEpilogInsertion::readAggrFromReg(Type &Ty,
+                                                  unsigned OffsetInReg,
+                                                  IRBuilder<> &IRB,
+                                                  PreDefined_Vars RegID,
+                                                  unsigned RegSize) const {
+  IGC_ASSERT(Ty.isAggregateType());
+  IGC_ASSERT_MESSAGE(
+      Ty.isStructTy(),
+      "Passing non-struct aggregates on register is not supported");
+  auto &STy = cast<StructType>(Ty);
+
+  unsigned AggrNumElts = IndexFlattener::getNumElements(&STy);
+  unsigned OffsetInAggr = 0;
+  Value *StructRes = UndefValue::get(&STy);
+  for (unsigned i = 0; i < AggrNumElts; ++i) {
+    Type *EltTy = IndexFlattener::getElementType(&STy, i);
+    unsigned EltTySize = vc::getTypeSize(EltTy, DL).inBytes();
+
+    // Reading each struct elements as a vector of bytes.
+    Type *EltTyAsBytes =
+        IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), EltTySize);
+    Value *Read = readNonAggrFromReg(*EltTyAsBytes, OffsetInReg + OffsetInAggr,
+                                     IRB, RegID, RegSize);
+    Read = IRB.CreateBitCast(Read, EltTy);
+    OffsetInAggr += EltTySize;
+
+    SmallVector<unsigned, 4> Indices;
+    IndexFlattener::unflatten(&STy, i, &Indices);
+
+    StructRes = IRB.CreateInsertValue(StructRes, Read, Indices);
+  }
+
+  return StructRes;
+}
+
+void GenXPrologEpilogInsertion::passArgsInReg(CallInst &CI,
+                                              const ArgsAnalyzer &Info,
+                                              IRBuilder<> &IRB) const {
+  for (const auto &ArgInfo : Info.in_reg()) {
+    Value *Op = CI.getArgOperand(ArgInfo.ArgNo);
+    passInReg(*Op, ArgInfo.Offset, IRB, PreDefined_Vars::PREDEFINED_ARG,
+              ArgRegByteSize);
+  }
+}
+
+void GenXPrologEpilogInsertion::passInReg(Value &Op, unsigned OffsetInReg,
+                                          IRBuilder<> &IRB,
+                                          PreDefined_Vars RegID,
+                                          unsigned RegSize) const {
+  Type *OpTy = Op.getType();
+  if (OpTy->isAggregateType())
+    passAggrInReg(Op, OffsetInReg, IRB, RegID, RegSize);
+  else
+    passNonAggrInReg(Op, OffsetInReg, IRB, RegID, RegSize);
+}
+
+void GenXPrologEpilogInsertion::passNonAggrInReg(Value &Op,
+                                                 unsigned OffsetInReg,
+                                                 IRBuilder<> &IRB,
+                                                 PreDefined_Vars RegID,
+                                                 unsigned RegSize) const {
+  Value *ToWrite = &Op;
+  Type *ToWriteTy = ToWrite->getType();
+  IGC_ASSERT(!ToWriteTy->isAggregateType());
+  Type *ScalarTy = ToWriteTy->getScalarType();
+  if (ScalarTy->isIntegerTy(1)) {
+    auto *VOpTy = cast<IGCLLVM::FixedVectorType>(ToWriteTy);
+    IGC_ASSERT(VOpTy->getNumElements() % genx::ByteBits == 0);
+    ScalarTy = IRB.getInt8Ty();
+    ToWriteTy = IGCLLVM::FixedVectorType::get(
+        ScalarTy, VOpTy->getNumElements() / genx::ByteBits);
+    ToWrite = IRB.CreateBitCast(ToWrite, ToWriteTy);
+  }
+
+  // Each arg is copied to ARG in the way described below. It also contains a
+  // small example for %arg2.
+  //    %arg2 = shl ...
+  //    call void @f(i32 %arg1, i32 %arg2)
+  //
+  // 1. Read current ARG as original arg will only partially override its
+  // content. The scalar type or the read.predef is chosen to be the same as the
+  // original arg has (i32 for %arg2). This simplify the future steps.
+  //    %17 = call <256 x i32> @llvm.genx.read.predef.reg.v256i32.v256i32(i32 8,
+  //    <256 x i32> undef)
+  //
+  // 2. Copy arg to the correct place in the read ARG (Example: copy i32 %arg2
+  // with offset = 32, because of alignment requirements).
+  //    %18 = call <256 x i32> @llvm.genx.wrregioni.v256i32.i32.i16.i1(<256 x
+  //    i32> %17, i32 %arg2, i32 0, i32 1, i32 1, i16 32, i32 undef, i1 true)
+  //
+  // 3. Save the updated ARG
+  //    %19 = call i32 @llvm.genx.write.predef.reg.i32.v256i32(i32 8, <256 x
+  //    i32> %18)
+
+  // Create a type for read.predef
+  Type *RegTy = IGCLLVM::FixedVectorType::get(
+      ScalarTy, RegSize / vc::getTypeSize(ScalarTy, DL).inBytes());
+  // Read ARG
+  Instruction *Reg = buildReadPredefRegNoRegion(RegID, IRB, RegTy);
+  // Write the arg to ARG
+  buildWritePredefReg(RegID, IRB, ToWrite, Reg, OffsetInReg);
+}
+
+void GenXPrologEpilogInsertion::passAggrInReg(Value &Op, unsigned OffsetInReg,
+                                              IRBuilder<> &IRB,
+                                              PreDefined_Vars RegID,
+                                              unsigned RegSize) const {
+  IGC_ASSERT(Op.getType()->isAggregateType());
+  auto *OpTy = dyn_cast<StructType>(Op.getType());
+  IGC_ASSERT_MESSAGE(
+      OpTy, "Passing non-struct aggregates on register is not supported");
+
+  unsigned AggrNumElts = IndexFlattener::getNumElements(OpTy);
+  unsigned OffsetInAggr = 0;
+  for (unsigned i = 0; i < AggrNumElts; ++i) {
+    SmallVector<unsigned, 4> Indices;
+    IndexFlattener::unflatten(OpTy, i, &Indices);
+
+    Value *Elt = IRB.CreateExtractValue(&Op, Indices);
+    IGC_ASSERT_MESSAGE(!Elt->getType()->isAggregateType(),
+                       "Stack call argument was not flattened correctly");
+
+    // Passing each struct element as a vector of bytes.
+    unsigned EltTySize = vc::getTypeSize(Elt->getType(), DL).inBytes();
+    Type *EltTyAsBytes =
+        IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), EltTySize);
+    Elt = IRB.CreateBitCast(Elt, EltTyAsBytes);
+
+    passNonAggrInReg(*Elt, OffsetInReg + OffsetInAggr, IRB, RegID, RegSize);
+
+    OffsetInAggr += EltTySize;
+  }
 }
 
 Instruction *GenXPrologEpilogInsertion::buildReadPredefReg(
-    PreDefined_Vars RegID, IRBuilder<> &IRB, Type *Ty,
-    bool BuildTempVal, bool AllowScalar, unsigned Offset, unsigned Width) {
+    PreDefined_Vars RegID, IRBuilder<> &IRB, Type *Ty, bool BuildTempVal,
+    bool AllowScalar, unsigned Offset, unsigned Width) const {
   return buildReadPredefReg(RegID, IRB, Ty, UndefValue::get(Ty),
                             BuildTempVal, AllowScalar, Offset, Width);
 }
 
 Instruction *GenXPrologEpilogInsertion::buildReadPredefReg(
     PreDefined_Vars RegID, IRBuilder<> &IRB, Type *Ty, Value *Dep,
-    bool BuildTempVal, bool AllowScalar, unsigned Offset, unsigned Width) {
-  auto *RegRead = buildReadPredefRegNoRegion(RegID, IRB, Ty, Dep);
+    bool BuildTempVal, bool AllowScalar, unsigned Offset,
+    unsigned Width) const {
+  auto *Result = buildReadPredefRegNoRegion(RegID, IRB, Ty, Dep);
 
-  auto *Result = RegRead;
-  if (BuildTempVal) {
-    Region RWrite(RegRead);
-    Result = RWrite.createWrRegion(UndefValue::get(RegRead->getType()), RegRead,
-                                   "", &*IRB.GetInsertPoint(), DebugLoc());
-  }
-  Region RRead(RegRead);
-  RRead.Offset = Offset;
+  Region R(Result);
+  R.Offset = Offset;
   if (Width) {
-    RRead.NumElements = Width;
-    RRead.Width = Width;
+    R.NumElements = Width;
+    R.Width = Width;
   }
-  Result = RRead.createRdRegion(Result, "", &*IRB.GetInsertPoint(), DebugLoc(),
-                                AllowScalar);
+  Result = R.createRdRegion(Result, "", &*IRB.GetInsertPoint(),
+                            IRB.getCurrentDebugLocation(),
+                            AllowScalar && !BuildTempVal);
+  if (BuildTempVal) {
+    R.Offset = 0;
+    Result =
+        R.createWrRegion(UndefValue::get(Result->getType()), Result, "",
+                         &*IRB.GetInsertPoint(), IRB.getCurrentDebugLocation());
+    if (Width == 1 && AllowScalar)
+      Result = R.createRdRegion(Result, "", &*IRB.GetInsertPoint(),
+                                IRB.getCurrentDebugLocation(), AllowScalar);
+  }
+
   return Result;
 }
-
 Instruction *GenXPrologEpilogInsertion::buildReadPredefRegNoRegion(
-    PreDefined_Vars RegID, IRBuilder<> &IRB, Type *Ty) {
+    PreDefined_Vars RegID, IRBuilder<> &IRB, Type *Ty) const {
   return buildReadPredefRegNoRegion(RegID, IRB, Ty, UndefValue::get(Ty));
 }
 
 Instruction *GenXPrologEpilogInsertion::buildReadPredefRegNoRegion(
-    PreDefined_Vars RegID, IRBuilder<> &IRB, Type *Ty, Value *Dep) {
+    PreDefined_Vars RegID, IRBuilder<> &IRB, Type *Ty, Value *Dep) const {
   Function *RegReadIntr = GenXIntrinsic::getGenXDeclaration(
       IRB.GetInsertPoint()->getModule(),
       llvm::GenXIntrinsic::genx_read_predef_reg,
@@ -755,20 +1097,19 @@ Instruction *GenXPrologEpilogInsertion::buildReadPredefRegNoRegion(
   return RegRead;
 }
 
-Instruction *
-GenXPrologEpilogInsertion::buildWritePredefReg(PreDefined_Vars RegID,
-                                               IRBuilder<> &IRB, Value *Input) {
+Instruction *GenXPrologEpilogInsertion::buildWritePredefReg(
+    PreDefined_Vars RegID, IRBuilder<> &IRB, Value *Input) const {
   return buildWritePredefReg(RegID, IRB, Input,
-                             UndefValue::get(Input->getType()),
-                             cast<Instruction>(Input)->getNextNode());
+                             UndefValue::get(Input->getType()));
 }
 
 Instruction *GenXPrologEpilogInsertion::buildWritePredefReg(
     PreDefined_Vars RegID, IRBuilder<> &IRB, Value *Input, Value *Dep,
-    Instruction *InsPoint, unsigned Offset) {
+    unsigned Offset) const {
   Region RWrite(Input, DL);
   RWrite.Offset = Offset;
-  auto *Wrr = RWrite.createWrRegion(Dep, Input, "", InsPoint, DebugLoc());
+  auto *Wrr =
+      RWrite.createWrRegion(Dep, Input, "", &*IRB.GetInsertPoint(), DebugLoc());
   Function *RegWriteIntr = GenXIntrinsic::getGenXDeclaration(
       IRB.GetInsertPoint()->getModule(),
       llvm::GenXIntrinsic::genx_write_predef_reg,
@@ -776,3 +1117,4 @@ Instruction *GenXPrologEpilogInsertion::buildWritePredefReg(
   auto *RegWrite = IRB.CreateCall(RegWriteIntr, {IRB.getInt32(RegID), Wrr});
   return RegWrite;
 }
+} // namespace
