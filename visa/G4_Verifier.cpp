@@ -104,8 +104,12 @@ bool G4Verifier::verifyInst(G4_INST *inst)
             return verifyDefUseChain(inst);
         }
 
-        // feature verification
-        verifyBFMixedMode(inst);
+        if (passIndex == Optimizer::PI_HWConformityChk
+            || passIndex == Optimizer::PI_addSWSBInfo)
+        {
+            // feature verification. Do it twice for now.
+            verifyBFMixedMode(inst);
+        }
     }
     return true;
 }
@@ -1240,7 +1244,8 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         {
             return false;
         }
-        if (dst && !dst->isNullReg())
+        // Skip compare's dst (?)
+        if (dst && !dst->isNullReg() && !I->isCompare())
         {
             if (dst->getType() == GivenTy)
                 return true;
@@ -1257,8 +1262,8 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         return false;
     };
 
-    // Skip dpas as it has been verified separately
-    if (inst->isDpas())
+    // Skip dpas/send as it has been verified separately
+    if (inst->isDpas() || inst->isSend())
         return;
 
     // Skip if no BF usage
@@ -1339,7 +1344,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
     uint32_t nativeES = kernel.fg.builder->getNativeExecSize();
     // verify dst
     G4_DstRegRegion* dreg = inst->getDst();
-    if (dreg && !dreg->isNullReg())
+    if (dreg && !dreg->isNullReg() && !inst->isCompare())
     {
         uint32_t hs = dreg->getHorzStride();
         uint32_t so = dreg->getSubRegOff();

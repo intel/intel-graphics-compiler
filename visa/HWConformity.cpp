@@ -77,11 +77,14 @@ G4_SubReg_Align HWConformity::getDclAlignment(int opndBytes, G4_INST* inst, bool
     return subAlign;
 }
 /*
- *  create a new mov instruction and insert it before iter
+ *  create a new mov instruction and insert it after "it"
  *  mov (esize) dst tmp:type
  *  where esize is "inst"'s execution size and insert it after "inst"
  *  return value is the new temp variable as a dst operand
  *  If dstAlign is specified, the new temp will at least be aligend to that size
+ *
+ *  The new mov instruction is inserted right after "it", and caller is safe to
+ *  access it via "++it".
  */
 G4_DstRegRegion* HWConformity::insertMovAfter(INST_LIST_ITER& it, G4_DstRegRegion* dst, G4_Type type, G4_BB* bb, G4_SubReg_Align dstAlign)
 {
@@ -323,7 +326,11 @@ G4_SrcRegRegion* HWConformity::insertCopyAtBBEntry(G4_BB* bb, G4_ExecSize execSi
  *  create a new mov instruction
  *  mov (esize) tmp<1>:type src
  *  where esize is "inst"'s execution size and insert it before "inst"
- *  return value is the new temp variable as a source operand
+ *  return value is the new temp variable as a source operand.
+ *
+ *  "inst" is pointed by "it", and the new mov inst is inserted right
+ *  before "it", so that caller can safely use "--it" to access the new
+ *  mov instruction.
  */
 G4_Operand* HWConformity::insertMovBefore(
     INST_LIST_ITER it, uint32_t srcNum, G4_Type type, G4_BB* bb,
@@ -407,11 +414,22 @@ G4_Operand* HWConformity::insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4
     newInst->addDefUse(inst, Gen4_Operand_Number(srcNum + 1));
 
     G4_SrcModifier modifier = Mod_src_undef;
-    if (src->isSrcRegRegion() && src->asSrcRegRegion()->getModifier() == Mod_Not)
+    if (src->isSrcRegRegion())
     {
-        // mov doesn't support logic modifiers, so we keep it on the new source
-        modifier = Mod_Not;
-        newInst->getSrc(0)->asSrcRegRegion()->setModifier(Mod_src_undef);
+        G4_SrcModifier srcMod = src->asSrcRegRegion()->getModifier();
+        if (srcMod == Mod_Not)
+        {
+            // mov doesn't support logic modifiers, so we keep it on the new source
+            modifier = Mod_Not;
+            newInst->getSrc(0)->asSrcRegRegion()->setModifier(Mod_src_undef);
+        }
+        else if (src->getType() == Type_BF)
+        {
+            // bf mov does not support src mod as it is changed to shl or uw mov.
+            // Keep it on the new source.
+            modifier = srcMod;
+            newInst->getSrc(0)->asSrcRegRegion()->setModifier(Mod_src_undef);
+        }
     }
 
     return builder.createSrcRegRegion(
@@ -5831,9 +5849,388 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
     return changed;
 }
 
+//
+// Mixed mode instruction allows bfloat16 operands in the following cases:
+//   1. dst, src0, and src1 for 2 source instructions format not involving multiplier(mov, add, cmp, sel).
+//   2. dst and src0 for 2 source instructions format involving multiplier(mul, mac etc).
+//   3. dst, src0, and src1 for 3 source instructions format(mad).
+//   4. Broadcast of bfloat16 scalar is not supported.
+//   5. Unpacked bfloat16 destination with stride 2 when register offset is 0 or 1.
+//   6. Packed bfloat16 source and destination when register offset is 0 or 8.
+//   7. Execution size must not be greater than 8.
+//   8. Instructions with pure bfloat16 operands are not supported.
+//
+// **More examples**
+//   1. BF imm is not allowed
+//      mov  (1|M0)  r12.0<1>:f  0xffff:bf - ILLEGAL "Imm operand with BF type is not allowed"
+//   2. BF scalar operand can be used in SIMD1
+//      mul  (1|M0)  r14.0<1>:f  r11.0<0;1,0>:bf  r12.3<0;1,0>:f - OK
+//   3. For SIMD1, scalar operands (both dst/src) of F or BF can have any subreg!
+//      add  (1|M0)  r16.3<1>:bf  r11.0<0;1,0>:f  r12.3<0;1,0>:f - OK
+//   4. F Operand should have subreg = 0 if execSize > SIMD1
+//      add  (2|M0)  r10.4<1>:f  r11.0<1;1,0>:bf   0x12345:f
+//       ILLEGAL "Src0 regioning must be aligned to destination or scalar for Float/64bit pipes"
+//   5. Others
+//     add  (8|M0)  r16.0<2>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
+//     add  (8|M0)  r16.1<2>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
+//     add  (8|M0)  r16.0<1>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
+//     add  (8|M0)  r16.8<1>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
+//         Note that float source operands  can be scalar region <0;1,0>
+//
+void HWConformity::fixBFMixedMode()
+{
+    auto useGivenType = [](G4_INST* I, G4_Type GivenTy)
+    {
+        G4_Operand* dst = I->getDst();
+        // ignore cmp's dst (?)
+        if (dst && !dst->isNullReg() && !I->isCompare())
+        {
+            if (dst->getType() == GivenTy)
+                return true;
+        }
+        for (int i = 0; i < I->getNumSrc(); ++i)
+        {
+            G4_Operand* src = I->getSrc(i);
+            if (src && !src->isNullReg())
+            {
+                if (src->getType() == GivenTy)
+                    return true;
+            }
+        }
+        return false;
+    };
+
+    auto allowBFForInst = [](G4_INST* I, Gen4_Operand_Number OpndNum = Opnd_total_num)
+    {
+        // Only mul/mac/mad/add/cmp/mov/sel support BF mixed mode.
+        switch (I->opcode())
+        {
+        case G4_mul:
+        case G4_mac:
+            {
+                if (OpndNum == Opnd_src1)
+                    return false;
+                return true;
+            }
+        case G4_mad:
+        case G4_pseudo_mad:
+            {
+                if (OpndNum == Opnd_src2)
+                    return false;
+                return true;
+            }
+        case G4_add:
+        case G4_cmp:
+        case G4_mov:
+        case G4_sel:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    };
+
+    auto skipBFCheck = [&useGivenType](G4_INST* I)
+    {
+        // Skip dpas/send
+        if (I->isDpas() || I->isSend())
+            return true;
+
+        // Do not use BF, skip
+        if (!useGivenType(I, Type_BF))
+            return true;
+
+        // Special case:
+        //   1.  mov d:bf  s:bf   --> mov d:uw  s:uw
+        //   2.  mov d:f   s:bf   --> shl d:ud  s:uw  16:ud
+        if (I->opcode() == G4_mov && I->getSrc(0)->getType() == Type_BF)
+        {
+            // this will be handled by fixBFMov.
+            return true;
+        }
+        return false;
+    };
+
+    if (!kernel.fg.builder->hasBFMixMode())
+    {
+        return;
+    }
+
+    const G4_ExecSize nativeES = kernel.fg.builder->getNativeExecSize();
+    for (auto& bb : kernel.fg)
+    {
+        // First iteration:
+        //    1. Legalize scalar BF operand for insts that need splitting
+        //       (If this is done in 3, we will have more than 1 scalar mov.)
+        //         mul (16|M0)  d<1>:f  s0<1;1,0>:bf  s1<0;1,0>:bf
+        //       ==>
+        //         (W) mov (1|M0) t<1>:f   s1<0;1,0>:bf
+        //         mul (16|M0)  d<1>:f  s0<1;1,0>:bf  t<0;1,0>:f
+        //    2. split instructions  (case 7)
+        //         add (16|M0)   d:bf   s0:bf    s1:bf
+        //       ==>
+        //         add (8|M0)   d:bf    s0:bf    s1:bf
+        //         add (8|M8)   d.8:bf  s0.8:bf  s1.8:bf
+        //    3. legalize operands by using cvt mov to BF or from BF. (case 1&2&3)
+        //         mul (8|M0) d:bf   s0:bf  s1:bf
+        //       ==>
+        //         mov (8|M0) s:f   s1:bf
+        //         mul (8|M0) t:bf   s0:bf  s:f
+        //    Note pure BF insts will be handled in the second iteration.
+        INST_LIST_ITER nextII = bb->begin();
+        for (auto II = nextII, IE = bb->end(); II != IE; II = nextII)
+        {
+            ++nextII;
+            G4_INST* Inst = *II;
+            if (skipBFCheck(Inst))
+                continue;
+
+            const bool isBFAllowedInst = allowBFForInst(Inst);
+            const G4_ExecSize currES = Inst->getExecSize();
+            std::list<INST_LIST_ITER> instsToSplit;
+
+            // 1. Handle illegal BF scalar by generating mov
+            //    First generate mov for scalars instead of splitting first and
+            //    than generating mov. Doing so would need just one mov.
+            bool changed = false;
+            if (currES > nativeES)
+            {
+                // If inst's execsize <= nativeES, it doesn't need splitting,
+                // as its operand takes one GRF at most.
+                for (int i = 0, nsrc = (int)Inst->getNumSrc(); i < nsrc; ++i)
+                {
+                    G4_Operand* S = Inst->getSrc(i);
+                    Gen4_Operand_Number opndNum = Inst->getSrcOperandNum(i);
+                    if (S->getType() == Type_BF && S->isSrcRegRegion())
+                    {
+                        if (S->asSrcRegRegion()->getRegion()->isScalar()
+                            && (!isBFAllowedInst || !allowBFForInst(Inst, opndNum)))
+                        {
+                            G4_Operand* newSrc = insertMovBefore(II, i, Type_F, bb);
+                            Inst->setSrc(newSrc, i);
+                            changed = true;
+                        }
+                    }
+                    else if (S->getType() == Type_BF && S->isImm())
+                    {
+                        assert(false && "BF immediate not supported!");
+                    }
+                }
+            }
+
+            // If changed, check if it still uses BF. Skip if not.
+            if (changed && !useGivenType(Inst, Type_BF))
+            {
+                continue;
+            }
+
+            // 2. Split instruction (case 7) if needed
+            //    Now, BF operands are all non-scalar for insts that need splitting.
+            //    We split inst under the following:
+            //      1. If an inst, which don't support BF, has BF operands. Those BF operands
+            //         must be replaced with F operands (by inserting mov to convert BF to F).
+            //         If replacing a BF operand with a F operand makes it cross 2 GRF, it must
+            //         be splitted (currES * F" > 2 GRF); or
+            //      2. Split if currES > nativeES for insts that support BF. (case 7)
+            std::list<INST_LIST_ITER> instsToCheck;
+            if ((!isBFAllowedInst && (TypeSize(Type_F) * currES) > (getGRFSize() * 2))
+                || (isBFAllowedInst && currES > nativeES))
+            {
+                if (currES == g4::SIMD32)
+                {
+                    splitSIMD32Inst(II, bb);
+                    if (isBFAllowedInst && nativeES == g4::SIMD8)
+                    {
+                        // need to split again.
+                        INST_LIST_ITER prev_it = std::prev(II);
+                        evenlySplitInst(prev_it, bb);
+                        instsToCheck.push_back(std::prev(prev_it));
+                        instsToCheck.push_back(prev_it);
+                        evenlySplitInst(II, bb);
+                    }
+                }
+                else
+                {
+                    evenlySplitInst(II, bb);
+                }
+                instsToCheck.push_back(std::prev(II));
+                instsToCheck.push_back(II);
+            }
+            else
+            {
+                instsToCheck.push_back(II);
+            }
+
+            // 3. Change BF operands, which are not legal, to F by generating mov.
+            //    (isBFAllowedInst should be still valid to check if any new instruction
+            //     from splitting is BF allowed or not.)
+            for (auto LI : instsToCheck)
+            {
+                INST_LIST_ITER thisII = LI;
+                G4_INST* tI = *thisII;
+                for (int i = 0, nsrc = (int)tI->getNumSrc(); i < nsrc; ++i)
+                {
+                    G4_Operand* S = tI->getSrc(i);
+                    Gen4_Operand_Number opndNum = tI->getSrcOperandNum(i);
+                    if (S->getType() == Type_BF
+                        && (!isBFAllowedInst || !allowBFForInst(tI, opndNum)))
+                    {
+                        G4_Operand* newSrc = insertMovBefore(thisII, i, Type_F, bb);
+                        tI->setSrc(newSrc, i);
+                    }
+                }
+
+                G4_DstRegRegion* Dst = tI->getDst();
+                if (!isBFAllowedInst && Dst && !Dst->isNullReg() && Dst->getType() == Type_BF)
+                {
+                    G4_DstRegRegion* newDst = insertMovAfter(thisII, Dst, Type_F, bb);
+                    tI->setDest(newDst);
+
+                    auto movII = std::next(II);
+                    instsToSplit.push_back(movII);
+                    G4_INST* movI = *movII;
+
+                    Inst->transferUse(movI);
+                    Inst->addDefUse(movI, Opnd_src0);
+                }
+            }
+            instsToCheck.clear();
+        }
+
+        // Second iteration:
+        //     Legalize regions by using mov.
+        nextII = bb->begin();
+        for (auto II = nextII, IE = bb->end(); II != IE; II = nextII)
+        {
+            ++nextII;
+            G4_INST* Inst = *II;
+            if (skipBFCheck(Inst))
+                continue;
+
+            // Because of the first iteration above, this inst must support bf mixed mode.
+            assert(allowBFForInst(Inst));
+
+            const G4_ExecSize currES = Inst->getExecSize();
+            bool changed = false;
+            // case 4: broadcast of bf is not supported!
+            //    As this bf operand is changed to F. At the end of loop, need to check
+            //    if this inst still has both BF and F, and "changed" is for this purpose.
+            // case 8: pure BF is not allowed.
+            for (int i = 0, nsrc = (int)Inst->getNumSrc(); i < nsrc; ++i)
+            {
+                G4_Operand* S = Inst->getSrc(i);
+                if (S->getType() == Type_BF)
+                {
+                    assert(S->isSrcRegRegion());
+                    G4_SrcRegRegion* srcReg = S->asSrcRegRegion();
+                    if ((srcReg->getRegion()->isScalar() && currES > g4::SIMD1)  // broadcast BF scalar
+                        || (i == (nsrc - 1) && !useGivenType(Inst, Type_F)))     // pure BF.
+                    {
+                        // Insert bf->f, which is just a left-shift.
+                        uint32_t nelts = (uint32_t)(srcReg->getRegion()->isScalar() ? g4::SIMD1 : currES);
+                        G4_Declare* newDcl = builder.createTempVar(nelts,
+                            Type_UD, (nelts == 1) ? Even_Word : GRFALIGN, "cvtF", false);
+                        G4_DstRegRegion* newDst = builder.createDst(newDcl->getRegVar(), Type_UD);
+                        srcReg->setType(Type_UW);
+                        G4_INST* shlInst = builder.createBinOp(G4_shl,
+                            (nelts== 1) ? g4::SIMD1 : currES,
+                            newDst, S, builder.createImm(16, Type_UD), InstOpt_WriteEnable, false);
+                        bb->insertBefore(II, shlInst);
+
+                        // srcMod, if present, must be on the promoted F operand!
+                        G4_SrcModifier sMod = srcReg->getModifier();
+                        srcReg->setModifier(Mod_src_undef);
+                        G4_SrcRegRegion* newSrc = builder.createSrc(
+                            newDcl->getRegVar(), 0, 0,
+                            (nelts == 1) ? builder.getRegionScalar() : builder.getRegionStride1(), Type_F);
+                        newSrc->setModifier(sMod);
+                        Inst->setSrc(newSrc, i);
+
+                        Gen4_Operand_Number opndNum = Inst->getSrcOperandNum(i);
+                        Inst->transferDef(shlInst, opndNum, Opnd_src0);
+                        shlInst->addDefUse(Inst, opndNum);
+
+                        changed = true;
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                // Check again if there is still BF type, if not, we are done.
+                if (!useGivenType(Inst, Type_BF))
+                {
+                    continue;
+                }
+            }
+
+            if (currES == g4::SIMD1)
+            {
+                // Done
+                continue;
+            }
+
+            for (int i = 0, nsrc = (int)Inst->getNumSrc(); i < nsrc; ++i)
+            {
+                G4_Operand* S = Inst->getSrc(i);
+                if (S->getType() == Type_F
+                    && (S->isImm() || (S->isSrcRegRegion() && S->asSrcRegRegion()->getRegion()->isScalar())))
+                {
+                    continue;
+                }
+
+                assert(S->isSrcRegRegion());
+                G4_SrcRegRegion* sReg = S->asSrcRegRegion();
+
+                // case 6: Packed bfloat16 source and destination when register offset is 0 or 8.
+                //         (also for Float dst/src alignment)
+                //         Note that for F, enforce it to have subRegOff = 0 (too restrictive?)
+                bool isPackedSrc = (sReg->getRegion()->isContiguous(Inst->getExecSize())
+                    && (sReg->getSubRegOff() == 0 || (sReg->getType() == Type_BF && sReg->getSubRegOff() == nativeES)));
+                if (isPackedSrc)
+                {
+                    continue;
+                }
+
+                G4_Operand* newSrc = insertMovBefore(II, i, sReg->getType(), bb, GRFALIGN);
+                Inst->setSrc(newSrc, i);
+            }
+
+            if (Inst->isCompare())
+            {
+                // Ignore compare's dst.
+                continue;
+            }
+
+            G4_DstRegRegion* dst = Inst->getDst();
+            uint32_t subOff = dst->getSubRegOff();
+            // case 5
+            bool isUnpackedDst = (dst->getType() == Type_BF
+                && dst->getHorzStride() == 2 && (subOff == 0 || subOff == 1));
+            // case 6, note for F, force it to have subOff = 0
+            bool isPackedDst = (dst->getHorzStride() == 1
+                && (subOff == 0 || (subOff == nativeES && dst->getType() == Type_BF)));
+            if (!(isPackedDst || isUnpackedDst))
+            {
+                // case 5 Unpacked bfloat16 destination with stride 2 when register offset is 0 or 1.
+                G4_DstRegRegion* newDst = insertMovAfter(II, dst, dst->getType(), bb, GRFALIGN);
+                Inst->setDest(newDst);
+
+                auto movII = std::next(II);
+                G4_INST* movI = *movII;
+
+                Inst->transferUse(movI, false);
+                Inst->addDefUse(movI, Opnd_src0);
+            }
+        }
+    }
+}
+
 void HWConformity::chkHWConformity()
 {
     fixDataLayout();
+
+    fixBFMixedMode();
 
     for (auto bb : kernel.fg)
     {
