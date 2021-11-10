@@ -10,6 +10,8 @@ syntax = "proto3";
 
 package IGC_METRICS;
 
+option optimize_for = LITE_RUNTIME;
+
 message InstrStats {
   enum SIMDType {
     SIMD1 = 0;

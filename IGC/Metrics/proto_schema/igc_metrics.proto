@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 
 syntax = "proto3";
 
+option optimize_for = LITE_RUNTIME;
+
 import "Metrics/proto_schema/function.proto";
 import "Metrics/proto_schema/device_enum.proto";
 

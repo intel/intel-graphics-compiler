@@ -95,6 +95,7 @@ namespace IGCMetrics
             }
             else
             {
+                /*
                 // Text readable in JSON format
                 google::protobuf::util::JsonPrintOptions jsonConfig;
 
@@ -104,7 +105,7 @@ namespace IGCMetrics
 
                 std::string json;
                 google::protobuf::util::MessageToJsonString(oclProgram, &json, jsonConfig);
-                metric_data << json;
+                metric_data << json;*/
             }
 
             metric_data.close();
