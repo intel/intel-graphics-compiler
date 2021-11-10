@@ -217,6 +217,15 @@ static bool isRootInst(Instruction *Inst) {
   if (isa<ReturnInst>(Inst) || isa<BranchInst>(Inst) ||
       Inst->isTerminator() || Inst->mayHaveSideEffects())
     return true;
+
+  // Even if the whole region is overwritten by a chain of wrregions, wrregions
+  // to predefined register must not be optimized as they are extremely
+  // specific.
+  if (GenXIntrinsic::isWrRegion(Inst) &&
+      GenXIntrinsic::isReadPredefReg(
+          Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum)))
+    return true;
+
   if (auto CI = dyn_cast<CallInst>(Inst))
     return !CI->onlyReadsMemory();
   return false;
