@@ -606,6 +606,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
     if (isFuncGroupHead)
     {
+        if (hasStackCall)
+        {
+            m_currShader->SetHasStackCalls();
+        }
+
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderDispatchMode);
         // Pre-analysis pass to be executed before call to visa builder so we can pass scratch space offset
         m_currShader->PreAnalysisPass();
@@ -10722,9 +10727,6 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     // Set the total alloca size for the entry function
     m_encoder->SetFunctionAllocaStackSize(pKernel, totalAllocaSize);
-
-    if (m_FGA && m_FGA->getGroup(pKernel) && m_FGA->getGroup(pKernel)->hasStackCall())
-        m_currShader->SetHasStackCalls();
 }
 
 // Either do a block load or store to the stack-pointer given a vector of function arguments
