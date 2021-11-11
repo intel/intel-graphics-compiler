@@ -631,7 +631,7 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
   if (RegMap.count(kernel) == 0)
     return nullptr;
   auto& KernMap = RegMap.at(kernel);
-  KernRegMap_t::const_iterator i = KernMap.find(V);
+  const auto i = KernMap.find(V);
   if (i == KernMap.end()) {
     // Check if it's predefined variables.
     if (GenXIntrinsic::getGenXIntrinsicID(V.getValue()) ==

@@ -52,6 +52,7 @@ SPDX-License-Identifier: MIT
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace llvm {
 
@@ -89,7 +90,7 @@ namespace llvm {
       std::vector<std::pair<unsigned, std::string>> Attributes;
       // Pointer to VISA variable. It is set by CisaBuilder when it creates
       // VISA variables for all registers in RegMap.
-      std::map<VISAKernel*, void*> GenVar;
+      std::unordered_map<VISAKernel*, void*> GenVar;
 
       explicit Reg(
           unsigned Category,
@@ -128,7 +129,7 @@ namespace llvm {
 
     using RegPushHook = void(*)(void* Object, Reg&);
     using KernRegMap_t = std::map<genx::SimpleValue, Reg*>;
-    using RegMap_t = std::map<const Function*, KernRegMap_t>;
+    using RegMap_t = std::unordered_map<const Function*, KernRegMap_t>;
     using LRPtrVect = std::vector<genx::LiveRange *>;
     using LRCPtrVect = std::vector<const genx::LiveRange *>;
 
