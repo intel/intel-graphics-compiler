@@ -67,6 +67,13 @@ namespace llvm {
   // GenXVisaRegAlloc : vISA virtual register allocator pass
   class GenXVisaRegAlloc : public FunctionGroupPass {
   public:
+    inline static const char *Prefix[] = {"ERR", "V", "A", "P", "S", "T"};
+
+    static StringRef categoryToString(unsigned Category) {
+      if (Category >= array_lengthof(Prefix))
+        Category = 0;
+      return Prefix[Category];
+    }
 
     // Reg : a virtual register
     class Reg {
@@ -74,7 +81,7 @@ namespace llvm {
       unsigned short Category = genx::RegCategory::NONE;
       // Register ID. First value of it depends on count of predefined
       // variablse in category. F.e. for general var it is 32.
-      unsigned short Num = 0;
+      unsigned Num = 0;
       // Pointer to register that is aliased by this register.
       Reg* AliasTo = nullptr;
       // Single linked list to store all aliases of real register.
@@ -92,19 +99,14 @@ namespace llvm {
       // VISA variables for all registers in RegMap.
       std::unordered_map<VISAKernel*, void*> GenVar;
 
-      explicit Reg(
-          unsigned Category,
-          unsigned Num,
-          Type *Ty = 0,
+      Reg(unsigned Category, unsigned Num, Type *Ty = 0,
           genx::Signedness Signed = genx::DONTCARESIGNED,
-          unsigned LogAlignment = 0,
-          Reg* AliasTo = nullptr)
+          unsigned LogAlignment = 0, Reg *AliasTo = nullptr)
           : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
             Ty(Ty), Alignment(LogAlignment) {
-        static const char* Prefix[] = { "ERR", "V", "A", "P", "S", "T" };
         IGC_ASSERT(Category);
         IGC_ASSERT(Category < genx::RegCategory::NUMREALCATEGORIES);
-        NameStr = Prefix[Category] + std::to_string(Num);
+        NameStr = (Twine(categoryToString(Category)) + Twine(Num)).str();
       }
 
       // Get VISA variable assigned to register.
@@ -205,14 +207,29 @@ namespace llvm {
       TheRegPushHookObject = Object;
     }
 
+    void reportVisaVarableNumberLimitError(unsigned Category,
+                                           unsigned ID) const;
+
+    static unsigned getMaximumVariableIDForCategory(unsigned Category);
+
+    static bool isVisaVaribleLimitExceeded(unsigned Category,
+                                           unsigned CurrentID) {
+      const auto IDLimit = getMaximumVariableIDForCategory(Category);
+      return CurrentID > IDLimit;
+    }
+
     // Create new register and push it in storage.
     // If RegPushHook was specified it will be called with created register as
     // parameter. Thus, all needed register's variables must be specified
     // at this moment, for example AliasTo.
     template<class ... Args>
     Reg* createReg(unsigned Category, Args&& ... args) {
-      RegStorage.emplace_back(Category, CurrentRegId[Category]++,
-        std::forward<Args>(args) ...);
+      if (isVisaVaribleLimitExceeded(Category, CurrentRegId[Category])) {
+        reportVisaVarableNumberLimitError(Category, CurrentRegId[Category]);
+      }
+      auto NewID = CurrentRegId[Category]++;
+      IGC_ASSERT(CurrentRegId[Category] != 0);
+      RegStorage.emplace_back(Category, NewID, std::forward<Args>(args)...);
       Reg& R = RegStorage.back();
       if (TheRegPushHook)
         TheRegPushHook(TheRegPushHookObject, R);

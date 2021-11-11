@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/Types.h"
 #include "visa_igc_common_header.h"
 
@@ -149,16 +150,6 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   // Allocate a register to each live range.
   for (auto i = LRs.begin(), e = LRs.end(); i != e; ++i)
     allocReg(*i);
-  if (CurrentRegId[RegCategory::GENERAL] > VISA_MAX_GENERAL_REGS)
-    report_fatal_error("Too many vISA general registers");
-  if (CurrentRegId[RegCategory::ADDRESS] > VISA_MAX_ADDRESS_REGS)
-    report_fatal_error("Too many vISA address registers");
-  if (CurrentRegId[RegCategory::PREDICATE] > VISA_MAX_PREDICATE_REGS)
-    report_fatal_error("Too many vISA predicate registers");
-  if (CurrentRegId[RegCategory::SAMPLER] > VISA_MAX_SAMPLER_REGS)
-    report_fatal_error("Too many vISA sampler registers");
-  if (CurrentRegId[RegCategory::SURFACE] > VISA_MAX_SURFACE_REGS)
-    report_fatal_error("Too many vISA surface registers");
 
   if (BackendConfig->enableRegAllocDump())
     Stats.recordLRs(FG, LRs);
@@ -197,6 +188,30 @@ void GenXVisaRegAlloc::getLiveRanges(std::vector<LiveRange *> &LRs) const {
   }
   for (auto *LR : LRs)
     LR->prepareFuncs(FGA);
+}
+
+void GenXVisaRegAlloc::reportVisaVarableNumberLimitError(unsigned Category,
+                                                         unsigned ID) const {
+  vc::diagnose(FGA->getModule()->getContext(), "GenXVisaRegAlloc",
+               "vISA variable limit reached for [" +
+                   categoryToString(Category) + "], ID = " + Twine(ID));
+
+  return;
+}
+
+unsigned GenXVisaRegAlloc::getMaximumVariableIDForCategory(unsigned Category) {
+  if (Category == RegCategory::GENERAL)
+    return VISA_MAX_GENERAL_REGS;
+  if (Category == RegCategory::ADDRESS)
+    return VISA_MAX_ADDRESS_REGS;
+  if (Category == RegCategory::PREDICATE)
+    return VISA_MAX_PREDICATE_REGS;
+  if (Category == RegCategory::SAMPLER)
+    return VISA_MAX_SAMPLER_REGS;
+  if (Category == RegCategory::SURFACE)
+    return VISA_MAX_SURFACE_REGS;
+  IGC_ASSERT_MESSAGE(false, "unknown category specified");
+  return 0;
 }
 
 namespace {
