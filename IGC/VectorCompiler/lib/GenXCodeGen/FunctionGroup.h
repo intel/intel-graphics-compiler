@@ -24,17 +24,20 @@ SPDX-License-Identifier: MIT
 /// is used. It could be moved somewhere more general.
 ///
 //===----------------------------------------------------------------------===//
-#ifndef FUNCTIONGROUP_H
-#define FUNCTIONGROUP_H
+#ifndef LIB_GENXCODEGEN_FUNCTIONGROUP_H
+#define LIB_GENXCODEGEN_FUNCTIONGROUP_H
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/ValueHandle.h"
-#include "llvm/Pass.h"
+
+#include <llvm/ADT/SetVector.h>
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/ValueHandle.h>
+#include <llvm/Pass.h>
 
 #include <list>
+#include <unordered_set>
+
 #include "Probe/Assertion.h"
 
 namespace llvm {
@@ -70,7 +73,7 @@ class FunctionGroup {
 
 public:
   FunctionGroup(FunctionGroupAnalysis *FGA) : FGA(FGA) {}
-  FunctionGroupAnalysis *getParent() { return FGA; }
+  FunctionGroupAnalysis *getParent() const { return FGA; }
   // push_back : push a Function into the group. The first time this is done,
   // the Function is the head Function.
   void push_back(Function *F) { Functions.push_back(AssertingVH<Function>(F)); }
@@ -97,7 +100,7 @@ public:
     IGC_ASSERT(size());
     return *begin();
   }
-  StringRef getName() { return getHead()->getName(); }
+  StringRef getName() const { return getHead()->getName(); }
   LLVMContext &getContext() { return getHead()->getContext(); }
   Module *getModule() { return getHead()->getParent(); }
   void addSubgroup(FunctionGroup *FG) {
@@ -119,6 +122,13 @@ public:
   iterator_range<const_subgroup_iterator> subgroups() const {
     return make_range(begin_subgroup(), end_subgroup());
   }
+
+  bool verify() const;
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  void print(raw_ostream &OS) const;
+  void dump() const;
+#endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 };
 
 //----------------------------------------------------------------------
@@ -140,12 +150,12 @@ public:
 
 private:
   Module *M = nullptr;
-  SmallVector<FunctionGroup *, 8> Groups;
+  SmallVector<std::unique_ptr<FunctionGroup>, 8> Groups;
 
   // storage for FunctionGroups that aren't of type GROUP,
   // i.e. not necessarily GENX_MAIN headed
   // TODO: mb increase 8 as there can be many stack funcs hence may subgroups
-  SmallVector<FunctionGroup *, 8> NonMainGroups;
+  SmallVector<std::unique_ptr<FunctionGroup>, 8> NonMainGroups;
 
   class FGMap {
     using ElementType = std::map<const Function *, FunctionGroup *>;
@@ -164,7 +174,9 @@ private:
   };
 
   FGMap GroupMap;
-  std::map<Function *, bool> Visited;
+  // TODO: "Visited" should not be part of FGA state - it should be an external
+  // entity
+  std::unordered_set<Function *> Visited;
   using CallGraph = std::map<Function *, std::list<Function *>>;
 
 public:
@@ -244,7 +256,12 @@ public:
   bool buildGroup(CallGraph &callees, Function *F,
                   FunctionGroup *curGr = nullptr, FGType Type = FGType::GROUP);
 
-  void clearVisited() { Visited.clear(); }
+  bool verify() const;
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  void print(raw_ostream &OS) const;
+  void dump() const;
+#endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 };
 
 ModulePass *createFunctionGroupAnalysisPass();
@@ -381,6 +398,9 @@ public:
 
   void print(raw_ostream &OS, const Module *M = nullptr) const override;
 };
+
 void initializeLoopInfoGroupWrapperPassPass(PassRegistry &);
+
 } // end namespace llvm
-#endif // ndef FUNCTIONGROUP_H
+
+#endif // LIB_GENXCODEGEN_FUNCTIONGROUP_H

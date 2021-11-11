@@ -31,14 +31,54 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
-using namespace llvm;
+
+#include "GenXUtil.h"
 
 #include "llvmWrapper/IR/LegacyPassManagers.h"
 #include "llvmWrapper/IR/PassTimingInfo.h"
+
 #include "Probe/Assertion.h"
 
-
 #define DEBUG_TYPE "functiongroup-passmgr"
+
+using namespace llvm;
+
+bool FunctionGroup::verify() const {
+  for (auto I = Functions.begin(), E = Functions.end(); I != E; ++I) {
+    Function *F = &(**I);
+    for (auto *U : F->users()) {
+      auto *CI = genx::checkFunctionCall(U, F);
+      if (!CI)
+        continue;
+
+      // Note: it is expected that all users of any function from
+      // Functions array belong to the same FG
+      Function *Caller = CI->getFunction();
+      auto *OtherGroup = FGA->getAnyGroup(Caller);
+      IGC_ASSERT_MESSAGE(OtherGroup == this,
+                         "inconsisten function group detected!");
+      if (OtherGroup != this)
+        return false;
+    }
+  }
+  return true;
+}
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void FunctionGroup::print(raw_ostream &OS) const {
+  OS << "{{{" << getName() << "}}}\n";
+  for (const Function *F : Functions) {
+    OS << "  " << F->getName() << "\n";
+  }
+
+  for (const auto &EnItem : enumerate(Subgroups)) {
+    OS << "--SGR[" << EnItem.index() << "]: ";
+    OS << "<" << EnItem.value()->getHead()->getName() << ">]\n";
+  }
+}
+
+void FunctionGroup::dump() const { print(dbgs()); }
+#endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 
 /***********************************************************************
  * FunctionGroupAnalysis implementation
@@ -57,13 +97,9 @@ void FunctionGroupAnalysis::clear() {
   for (auto T : TypesToProcess)
     GroupMap[T].clear();
 
-  for (auto i = begin(), e = end(); i != e; ++i)
-    delete *i;
-  for (auto i = NonMainGroups.begin(), e = NonMainGroups.end(); i != e; ++i)
-    delete *i;
-
   Groups.clear();
   NonMainGroups.clear();
+  Visited.clear();
   M = nullptr;
 }
 
@@ -140,11 +176,12 @@ void FunctionGroupAnalysis::addToFunctionGroup(FunctionGroup *FG, Function *F,
 // createFunctionGroup : create new FunctionGroup for which F is the head
 FunctionGroup *FunctionGroupAnalysis::createFunctionGroup(Function *F,
                                                           FGType Type) {
-  auto FG = new FunctionGroup(this);
+  auto *FG = new FunctionGroup(this);
+  auto FGOwner = std::unique_ptr<FunctionGroup>(FG);
   if (Type == FGType::GROUP)
-    Groups.push_back(FG);
+    Groups.push_back(std::move(FGOwner));
   else
-    NonMainGroups.push_back(FG);
+    NonMainGroups.push_back(std::move(FGOwner));
   addToFunctionGroup(FG, F, Type);
   return FG;
 }
@@ -211,7 +248,7 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
       }
     }
   } else if (!Visited.count(F)) {
-    Visited[F] = true;
+    Visited.insert(F);
     // group is created either on a function with a corresponding attribute
     // or on a root of a whole function tree that is kernel (genx_main)
     if (F->hasFnAttribute(TypeToAttr(Type)) ||
@@ -239,6 +276,30 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
                     << " on level " << Type << "\n");
   return result;
 }
+
+bool FunctionGroupAnalysis::verify() const {
+  return std::all_of(Groups.begin(), Groups.end(),
+                     [](const auto &GR) { return GR->verify(); });
+}
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void FunctionGroupAnalysis::print(raw_ostream &OS) const {
+  OS << "Number of Groups = " << Groups.size() << "\n";
+  for (const auto &X : enumerate(Groups)) {
+    OS << "GR[" << X.index() << "] = <\n";
+    X.value()->print(OS);
+    OS << ">\n";
+  }
+  OS << "Number of SubGroups = " << NonMainGroups.size() << "\n";
+  for (const auto &X : enumerate(NonMainGroups)) {
+    OS << "SGR[" << X.index() << "] = <\n";
+    X.value()->print(OS);
+    OS << ">\n";
+  }
+}
+
+void FunctionGroupAnalysis::dump() const { print(dbgs()); }
+#endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 
 //===----------------------------------------------------------------------===//
 // FGPassManager

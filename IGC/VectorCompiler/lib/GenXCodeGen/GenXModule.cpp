@@ -159,6 +159,7 @@ bool GenXModule::runOnModule(Module &M) {
     }
   }
 
+  IGC_ASSERT(FGA->verify());
   return ModuleModified;
 }
 void GenXModule::updateVisaMapping(const Function *K, const Instruction *Inst,
