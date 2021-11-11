@@ -88,6 +88,8 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     m_ARGV = nullptr;
     m_RETV = nullptr;
     m_SavedSRetPtr = nullptr;
+    m_ImplArgBufPtr = nullptr;
+    m_LocalIdBufPtr = nullptr;
 
     // SIMD32 is a SIMD16 shader with 2 instance of each instruction
     m_SIMDSize = (simdSize == SIMDMode::SIMD8 ? SIMDMode::SIMD8 : SIMDMode::SIMD16);
@@ -229,6 +231,14 @@ void CShader::InitializeStackVariables()
     // create frame-pointer register
     m_FP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "FP");
     encoder.GetVISAPredefinedVar(m_FP, PREDEFINED_FE_FP);
+    // create pointers locations to buffers
+    if (!m_ctx->platform.isXeHPSDVPlus())
+    {
+        m_ImplArgBufPtr = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "ImplArgPtr");
+        encoder.GetVISAPredefinedVar(m_ImplArgBufPtr, PREDEFINED_IMPL_ARG_BUF_PTR);
+        m_LocalIdBufPtr = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "LocalIdPtr");
+        encoder.GetVISAPredefinedVar(m_LocalIdBufPtr, PREDEFINED_LOCAL_ID_BUF_PTR);
+    }
 }
 
 /// save FP of previous frame when entering a stack-call function
@@ -811,6 +821,18 @@ CVariable* CShader::GetPrivateBase()
     }
     IGC_ASSERT(kerArg);
     return GetSymbol(kerArg);
+}
+
+CVariable* CShader::GetImplArgBufPtr()
+{
+    IGC_ASSERT(m_ImplArgBufPtr);
+    return m_ImplArgBufPtr;
+}
+
+CVariable* CShader::GetLocalIdBufPtr()
+{
+    IGC_ASSERT(m_LocalIdBufPtr);
+    return m_LocalIdBufPtr;
 }
 
 CVariable* CShader::GetFP()

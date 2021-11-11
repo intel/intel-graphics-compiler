@@ -348,6 +348,10 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
     case ImplicitArg::BINDLESS_OFFSET:
         return KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET;
 
+    case ImplicitArg::IMPLICIT_ARG_BUFFER_PTR:
+        return KernelArg::ArgType::IMPLICIT_ARG_BUFFER;
+    case ImplicitArg::IMPLICIT_ARG_LOCALID:
+        return KernelArg::ArgType::IMPLICIT_LOCAL_ID_BUFFER;
     default:
         return KernelArg::ArgType::NOT_TO_ALLOCATE;
     }
@@ -717,7 +721,9 @@ std::map<KernelArg::ArgType, iOpenCL::DATA_PARAMETER_TOKEN> initArgTypeTokenMap(
        { KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS, iOpenCL::DATA_PARAMETER_LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS },
        { KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_SIZE, iOpenCL::DATA_PARAMETER_LOCAL_MEMORY_STATELESS_WINDOW_SIZE },
        { KernelArg::ArgType::IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE, iOpenCL::DATA_PARAMETER_PRIVATE_MEMORY_STATELESS_SIZE },
-       { KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET, iOpenCL::DATA_PARAMETER_BUFFER_OFFSET }
+       { KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET, iOpenCL::DATA_PARAMETER_BUFFER_OFFSET },
+       { KernelArg::ArgType::IMPLICIT_ARG_BUFFER, iOpenCL::DATA_PARAMETER_IMPL_ARG_BUFFER },
+       { KernelArg::ArgType::IMPLICIT_LOCAL_ID_BUFFER, iOpenCL::DATA_PARAMETER_LOCAL_ID_BUFFER }
     };
     return map;
 }
@@ -827,6 +833,9 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::R1,
             KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
 
+            KernelArg::ArgType::IMPLICIT_ARG_BUFFER,
+            KernelArg::ArgType::IMPLICIT_LOCAL_ID_BUFFER,
+
             KernelArg::ArgType::STRUCT,
             KernelArg::ArgType::SAMPLER,
             KernelArg::ArgType::IMAGE_1D,
@@ -906,6 +915,9 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
 
             KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
+
+            KernelArg::ArgType::IMPLICIT_ARG_BUFFER,
+            KernelArg::ArgType::IMPLICIT_LOCAL_ID_BUFFER,
 
             KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
             KernelArg::ArgType::IMPLICIT_IMAGE_WIDTH,

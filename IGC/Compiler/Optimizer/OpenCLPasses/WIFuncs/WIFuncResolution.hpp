@@ -135,6 +135,12 @@ namespace IGC
         /// @brief  The implicit arguments of the current function
         ImplicitArgs m_implicitArgs;
 
+        /// @brief  Emit intrinsics to store implicit buffer
+        ///         pointer and local id pointer.
+        /// @param  Function to add intrinsics to. This has to be
+        ///         an entry level, ie kernel function.
+        void storeImplicitBufferPtrs(llvm::Function& F);
+
     private:
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed = false;
@@ -171,5 +177,7 @@ namespace IGC
 
     private:
         GenXFunctionGroupAnalysis* m_FGA = nullptr;
+        IGC::CodeGenContext* m_ctx = nullptr;
+        llvm::Value* BuildLoadInst(llvm::CallInst& CI, unsigned int Offset, llvm::Type* DataType);
     };
 } // namespace IGC

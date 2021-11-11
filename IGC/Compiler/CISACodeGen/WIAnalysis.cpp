@@ -1333,7 +1333,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_getPrintfBuffer ||
         GII_id == GenISAIntrinsic::GenISA_getStageInGridOrigin ||
         GII_id == GenISAIntrinsic::GenISA_getStageInGridSize ||
-        GII_id == GenISAIntrinsic::GenISA_getSyncBuffer)
+        GII_id == GenISAIntrinsic::GenISA_getSyncBuffer ||
+        GII_id == GenISAIntrinsic::GenISA_GetImplicitBufferPtr ||
+        GII_id == GenISAIntrinsic::GenISA_GetLocalIdBufferPtr)
     {
         switch (GII_id)
         {
@@ -1353,6 +1355,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         case GenISAIntrinsic::GenISA_dual_subslice_id:
             // Make sure they are UNIFORM_WORKGROUP
             //return WIAnalysis::UNIFORM_WORKGROUP;
+            return WIAnalysis::UNIFORM_THREAD;
+        case GenISAIntrinsic::GenISA_GetImplicitBufferPtr:
+        case GenISAIntrinsic::GenISA_GetLocalIdBufferPtr:
             return WIAnalysis::UNIFORM_THREAD;
         case GenISAIntrinsic::GenISA_getR0:
         case GenISAIntrinsic::GenISA_getPayloadHeader:
