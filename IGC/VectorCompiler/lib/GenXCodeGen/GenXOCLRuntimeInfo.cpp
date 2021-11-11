@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "OCLRuntimeInfoPrinter.h"
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
+#include "vc/Utils/GenX/Printf.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
@@ -406,6 +407,7 @@ struct GVEncodingInfo {
 struct ModuleDataT {
   RawSectionInfo Constant;
   RawSectionInfo Global;
+  RawSectionInfo ConstString;
 
   ModuleDataT() = default;
   ModuleDataT(const Module &M);
@@ -604,10 +606,21 @@ ModuleDataT::ModuleDataT(const Module &M) {
   std::vector<GVEncodingInfo> GVInfos =
       prepareGlobalInfosForEncoding(M.globals());
   for (auto GVInfo : GVInfos) {
-    if (GVInfo.GV->isConstant())
-      appendGlobalVariableData(Constant, GVInfo, M.getDataLayout());
-    else
+    if (GVInfo.GV->isConstant()) {
+      if (GVInfo.GV->hasAttribute(vc::PrintfStringVariable))
+        // This section is always empty for oclbin flow. This happens because
+        // of printf legalization that separates globals that will be indexed
+        // and real globals. Only indexed globals are left marked as printf
+        // strings but indexed strings aren't real global variables so they're
+        // skipped here. Indexed strings are handled separately.
+        appendGlobalVariableData(ConstString, GVInfo, M.getDataLayout());
+      else
+        appendGlobalVariableData(Constant, GVInfo, M.getDataLayout());
+    } else {
+      IGC_ASSERT_MESSAGE(!GVInfo.GV->hasAttribute(vc::PrintfStringVariable),
+                         "non-const global variable cannot be a printf string");
       appendGlobalVariableData(Global, GVInfo, M.getDataLayout());
+    }
   }
 }
 
@@ -621,9 +634,14 @@ static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
   constructSymbols<vISA::GenSymType::S_GLOBAL_VAR>(
       ModuleData.Global.Data.begin(), ModuleData.Global.Data.end(),
       std::back_inserter(ModuleInfo.Global.Symbols));
+  constructSymbols<vISA::GenSymType::S_GLOBAL_VAR_CONST>(
+      ModuleData.ConstString.Data.begin(), ModuleData.ConstString.Data.end(),
+      std::back_inserter(ModuleInfo.ConstString.Symbols));
 
   ModuleInfo.Constant.Relocations = std::move(ModuleData.Constant.Relocations);
   ModuleInfo.Global.Relocations = std::move(ModuleData.Global.Relocations);
+  ModuleInfo.ConstString.Relocations =
+      std::move(ModuleData.ConstString.Relocations);
 
   ModuleInfo.Constant.Data.Buffer =
       std::move(ModuleData.Constant.Data).emitConsolidatedData();
@@ -635,6 +653,11 @@ static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
       std::move(ModuleData.Global.Data).emitConsolidatedData();
   ModuleInfo.Global.Data.Alignment = 0;
   ModuleInfo.Global.Data.AdditionalZeroedSpace = 0;
+
+  ModuleInfo.ConstString.Data.Buffer =
+      std::move(ModuleData.ConstString.Data).emitConsolidatedData();
+  ModuleInfo.ConstString.Data.Alignment = 0;
+  ModuleInfo.ConstString.Data.AdditionalZeroedSpace = 0;
 
   return std::move(ModuleInfo);
 }

@@ -809,6 +809,12 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
       getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.Global.Data);
   if (GlobalAnnotation)
     ProgramInfo.m_initGlobalAnnotation = std::move(GlobalAnnotation);
+  auto ConstStringAnnotation =
+      getDataAnnotation<iOpenCL::InitConstantAnnotation>(
+          ModuleInfo.ConstString.Data);
+  if (ConstStringAnnotation)
+    ProgramInfo.m_initConstantStringAnnotation =
+        std::move(ConstStringAnnotation);
 
   // Symbols.
   std::tie(ProgramInfo.m_legacySymbolTable.m_buffer,
@@ -818,12 +824,17 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
                                       ModuleInfo.Global.Symbols);
   ProgramInfo.m_zebinSymbolTable.global = ModuleInfo.Global.Symbols;
   ProgramInfo.m_zebinSymbolTable.globalConst = ModuleInfo.Constant.Symbols;
+  ProgramInfo.m_zebinSymbolTable.globalStringConst =
+      ModuleInfo.ConstString.Symbols;
 
   // Relocations.
   ProgramInfo.m_GlobalPointerAddressRelocAnnotation.globalReloc =
       ModuleInfo.Global.Relocations;
   ProgramInfo.m_GlobalPointerAddressRelocAnnotation.globalConstReloc =
       ModuleInfo.Constant.Relocations;
+  IGC_ASSERT_MESSAGE(
+      ModuleInfo.ConstString.Relocations.empty(),
+      "relocations inside constant string section are not supported");
 };
 
 void vc::createBinary(

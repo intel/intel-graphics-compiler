@@ -273,6 +273,13 @@ public:
   struct ModuleInfoT {
     SectionInfo Constant;
     SectionInfo Global;
+    // Real global string variables that are used in printf.
+    // By design this can be filled only for zebin flow for now.
+    // It should be possible to put all string variables into this section.
+    // Though it would require merging \p Constant and \p ConstString for
+    // oclbin on patch token generation side. So for now it isn't done this
+    // way.
+    SectionInfo ConstString;
 
     void clear() {
       Constant.clear();
