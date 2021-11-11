@@ -5631,7 +5631,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
         if ((builder.getOption(vISA_EnableSwitch) && node->GetInstruction()->isYieldInst()) ||
             (node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) ||
-            (builder.hasEOTWait() && node->GetInstruction()->isEOT()))
+            (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013672992) && node->GetInstruction()->isEOT()))
         {
             node->setDistance(1);
             if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
@@ -6979,7 +6979,7 @@ static G4_INST* setForceDebugSWSB(IR_Builder* builder, G4_BB* bb, INST_LIST_ITER
     if (inst->tokenHonourInstruction())
     {
         inst->setSetToken(0);
-        if (builder->hasEOTWait() && inst->isEOT())
+        if (inst->isEOT())
         {
             inst->setDistance(1);
             if (builder->hasThreeALUPipes() || builder->hasFourALUPipes())
