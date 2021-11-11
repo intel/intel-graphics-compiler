@@ -5656,33 +5656,29 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
 
         // Add buckets of current instruction to bucket list
-        std::vector<SBBucketNode*>  bucketNodes(Opnd_total_num, nullptr);  //The coarse grained footprint of operands
         if (node->instVec.size() > 1)
         {
+            std::map<G4_INST*, std::vector<SBBucketNode*>>  bucketNodes;
             for (const SBBucketDescr& BD : liveBDvec)
             {
-                if (bucketNodes[BD.opndNum] == nullptr)
+                auto iter = std::find_if(bucketNodes[BD.inst].begin(), bucketNodes[BD.inst].end(),
+                    [&BD](SBBucketNode* node) {return BD.opndNum == node->opndNum; });
+                if (iter != bucketNodes[BD.inst].end())
                 {
-                    void* allocedMem = mem.alloc(sizeof(SBBucketNode));
-                    SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.inst);
-                    bucketNodes[BD.opndNum] = newNode;
-                }
-
-                if (bucketNodes[BD.opndNum] != nullptr &&
-                    node->ALUPipe == PIPE_INT && bucketNodes[BD.opndNum]->inst != BD.inst)
-                {
-                    void* allocedMem = mem.alloc(sizeof(SBBucketNode));
-                    SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.inst);
-                    LB->add(newNode, BD.bucket);
+                    LB->add((*iter), BD.bucket);
                 }
                 else
                 {
-                    LB->add(bucketNodes[BD.opndNum], BD.bucket);
+                    void* allocedMem = mem.alloc(sizeof(SBBucketNode));
+                    SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.inst);
+                    bucketNodes[BD.inst].push_back(newNode);
+                    LB->add(newNode, BD.bucket);
                 }
             }
         }
         else
         {
+            std::vector<SBBucketNode*>  bucketNodes(Opnd_total_num, nullptr);  //The coarse grained footprint of operands
             for (const SBBucketDescr& BD : BDvec)
             {
                 if (bucketNodes[BD.opndNum] == nullptr)
