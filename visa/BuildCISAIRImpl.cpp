@@ -613,6 +613,18 @@ void CISA_IR_Builder::RemoveOptimizingFunction(
     }
 }
 
+void CISA_IR_Builder::ProcessSgInvokeList(
+    const std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+    std::unordered_map<G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callee2Callers)
+{
+    for (auto& it : sgInvokeList)
+    {
+        G4_INST* fcall = *it;
+        G4_Kernel* callee = GetCalleeKernel(fcall);
+        callee2Callers[callee].push_back(it);
+    }
+}
+
 #define DEBUG_LTO
 #ifdef DEBUG_LTO
 #define DEBUG_PRINT(msg) \
@@ -626,14 +638,10 @@ void CISA_IR_Builder::RemoveOptimizingFunction(
 
 // Perform LTO including transforming stack calls to subroutine calls, subroutine calls to jumps, and inlining
 void CISA_IR_Builder::LinkTimeOptimization(
-    std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+    std::unordered_map<G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callee2Callers,
     uint32_t options)
 {
-    bool inlining =     options & (1U << Linker_Inline);
-    bool call2jump =    options & (1U << Linker_Call2Jump);
-    bool removeArgRet = options & (1U << Linker_RemoveArgRet);
-    bool removeStackArg = options & (1U << Linker_RemoveStackArg);
-    bool removeStackFrame = options & (1U << Linker_RemoveStackFrame);
+    bool call2jump = options & (1U << Linker_Call2Jump);
     std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
     std::map<G4_INST*, std::list<G4_INST*>> rets;
     std::set<G4_Kernel*> visited;
@@ -641,8 +649,13 @@ void CISA_IR_Builder::LinkTimeOptimization(
     unsigned int raUID = 0;
 
     // append instructions from callee to caller
+    for (auto& [callee, sgInvokeList] : callee2Callers)
     for (auto& it : sgInvokeList)
     {
+        bool inlining =         ( options & (1U << Linker_Inline)           ) && sgInvokeList.size() == 1;
+        bool removeArgRet =     ( options & (1U << Linker_RemoveArgRet)     ) && sgInvokeList.size() == 1;
+        bool removeStackArg =   ( options & (1U << Linker_RemoveStackArg)   ) && sgInvokeList.size() == 1;
+        bool removeStackFrame = ( options & (1U << Linker_RemoveStackFrame) ) && sgInvokeList.size() == 1;
         G4_INST* fcall = *it;
         assert(fcall->opcode() == G4_pseudo_fcall);
 
@@ -1378,8 +1391,11 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
         RemoveOptimizingFunction(m_kernelsAndFunctions, sgInvokeList);
 
+        std::unordered_map<G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>> callee2Callers;
+        ProcessSgInvokeList(sgInvokeList, callee2Callers);
+
         // Copy callees' context to callers and convert to subroutine calls
-        LinkTimeOptimization(sgInvokeList,
+        LinkTimeOptimization(callee2Callers,
                 m_options.getuInt32Option(vISA_Linker));
     }
 

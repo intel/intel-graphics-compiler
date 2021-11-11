@@ -979,9 +979,14 @@ private:
             std::list<VISAKernelImpl *>& functions,
             const std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList);
 
+    // Create callee to a set of callsites map
+    void ProcessSgInvokeList(
+            const std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+            std::unordered_map<vISA::G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callee2Callers);
+
     // Perform LinkTimeOptimization for call related transformations
     void LinkTimeOptimization(
-            std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+            std::unordered_map<vISA::G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callee2Callers,
             uint32_t options);
 
     void emitFCPatchFile();
