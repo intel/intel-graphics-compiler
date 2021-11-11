@@ -4027,6 +4027,13 @@ namespace IGC
             }
         }
 
+        if (m_program->m_Platform->hasFusedEU()
+            && IGC_IS_FLAG_ENABLED(EnableCallWA)
+            && m_program->HasStackCalls())
+        {
+            SaveOption(vISA_fusedCallWA, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(DisableCSEL))
         {
             SaveOption(vISA_enableCSEL, false);

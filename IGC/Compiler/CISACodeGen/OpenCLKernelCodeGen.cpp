@@ -2300,6 +2300,15 @@ namespace IGC
         if (!CompileSIMDSizeInCommon(simdMode))
             return false;
 
+        {
+            // If stack calls are present, disable simd32 in order to do wa in visa
+            bool needCallWA = (IGC_IS_FLAG_ENABLED(EnableCallWA) && m_Context->platform.hasFusedEU());
+            if (needCallWA && simdMode == SIMDMode::SIMD32  && HasStackCalls())
+            {
+                return false;
+            }
+        }
+
         if (!m_Context->m_retryManager.IsFirstTry())
         {
             m_Context->ClearSIMDInfo(simdMode, ShaderDispatchMode::NOT_APPLICABLE);
