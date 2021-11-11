@@ -1767,14 +1767,20 @@ unsigned LiveRange::getLength(bool WithWeak) const {
  */
 void LiveRange::print(raw_ostream &OS) const
 {
-  auto vi = Values.begin(), ve = Values.end();
-  IGC_ASSERT(vi != ve);
-  for (;;) {
-    vi->printName(OS);
-    if (++vi == ve)
-      break;
-    OS << ",";
+  if (Values.empty()) {
+    OS << "Empty LR";
+    return;
   }
+
+  auto vi = Values.begin(), ve = Values.end();
+  bool AllNamesPrinted = false;
+  do {
+    vi->printName(OS);
+    AllNamesPrinted = (++vi == ve);
+    if (!AllNamesPrinted)
+      OS << ",";
+  } while (!AllNamesPrinted);
+
   OS << ":";
   printSegments(OS);
   const char *Cat = "???";
@@ -1805,6 +1811,7 @@ void LiveRange::printSegments(raw_ostream &OS) const
     switch (ri->Strength) {
       case Segment::WEAK: OS << "w"; break;
       case Segment::PHICPY: OS << "ph"; break;
+      case Segment::STRONG: /* do nothing */ break;
     }
     OS << ri->getStart() << "," << ri->getEnd() << ")";
   }

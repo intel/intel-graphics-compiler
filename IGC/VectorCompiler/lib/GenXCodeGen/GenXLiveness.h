@@ -295,15 +295,15 @@ public:
 // Segment : a single range of instruction numbers in which a value is
 // live
 struct Segment {
-  enum { WEAK, PHICPY, STRONG };
-  unsigned Strength : 2; // whether it is a weak or phicpy or strong segment
+  enum SegmentType : unsigned char { WEAK, PHICPY, STRONG };
+  SegmentType Strength;
 
 private:
-  unsigned Start : 30; // inclusive start of range
-  unsigned End : 30;   // exclusive end of range
+  unsigned Start;
+  unsigned End;
 public:
   Segment() :  Strength(STRONG), Start(0), End(0) {}
-  Segment(unsigned S, unsigned E, unsigned Strength = STRONG)
+  Segment(unsigned S, unsigned E, SegmentType Strength = STRONG)
       : Strength(Strength) {
     IGC_ASSERT(E >= S);
     Start = S;
