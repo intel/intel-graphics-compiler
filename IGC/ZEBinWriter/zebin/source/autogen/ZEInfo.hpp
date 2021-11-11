@@ -155,8 +155,6 @@ struct PreDefinedAttrGetter{
         private_base_stateless,
         buffer_offset,
         printf_buffer,
-        implicit_arg_buffer,
-        implicit_local_id_buffer,
         arg_byvalue,
         arg_bypointer
     };
@@ -212,10 +210,6 @@ struct PreDefinedAttrGetter{
             return "buffer_offset";
         case ArgType::printf_buffer:
             return "printf_buffer";
-        case ArgType::implicit_arg_buffer:
-            return "implicit_arg_buffer";
-        case ArgType::implicit_local_id_buffer:
-            return "implicit_local_id_buffer";
         case ArgType::arg_byvalue:
             return "arg_byvalue";
         case ArgType::arg_bypointer:

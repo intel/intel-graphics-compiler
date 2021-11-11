@@ -363,9 +363,6 @@ private:
     // descriptor to stack.
     G4_INST* FDSpillInst = nullptr;
     G4_Declare* tmpFCRet = nullptr;
-    // Used to store implicit arg, local id buffer ptrs for stackcall
-    G4_Declare* implArgBufferPtr = nullptr;
-    G4_Declare* localIdBufferPtr = nullptr;
 
     unsigned short arg_size;
     unsigned short return_var_size;
@@ -490,12 +487,6 @@ public:
         BE_FP = 3, // :ud
         FE_FP = 2, // :uq
         FE_SP = 3, // :uq
-    };
-
-    enum SubRegs_ImplPtrs
-    {
-        ImplBufPtr = 0, // :uq
-        LocalIdBufPtr = 3, // :uq
     };
 
     enum ArgRet_Stackcall

@@ -9181,17 +9181,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;  // pseudo instruction, do nothing
     case GenISAIntrinsic::GenISA_staticConstantPatchValue:
         emitStaticConstantPatchValue(cast<StaticConstantPatchIntrinsic>(inst));
-    case GenISAIntrinsic::GenISA_SetImplicitBufferPtr:
-        emitStoreImplBufferPtr(inst);
-        break;
-    case GenISAIntrinsic::GenISA_SetLocalIdBufferPtr:
-        emitStoreLocalIdBufferPtr(inst);
-        break;
-    case GenISAIntrinsic::GenISA_GetImplicitBufferPtr:
-        emitLoadImplBufferPtr(inst);
-        break;
-    case GenISAIntrinsic::GenISA_GetLocalIdBufferPtr:
-        emitLoadLocalIdBufferPtr(inst);
         break;
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
@@ -18556,34 +18545,6 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
     {
         IGC_ASSERT_MESSAGE(0, "Does not support stackcall as subgroup head!");
     }
-}
-
-void EmitPass::emitStoreImplBufferPtr(llvm::GenIntrinsicInst* I)
-{
-    m_currShader->CopyVariable(m_currShader->GetImplArgBufPtr(), GetSymbol(I->getArgOperand(0)));
-}
-
-void EmitPass::emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
-{
-    m_currShader->CopyVariable(m_currShader->GetLocalIdBufPtr(), GetSymbol(I->getArgOperand(0)));
-}
-
-void EmitPass::emitLoadImplBufferPtr(llvm::GenIntrinsicInst* I)
-{
-    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(1));
-    m_encoder->SetNoMask();
-    m_encoder->SetSrcSubReg(0, 0);
-    m_encoder->Copy(m_destination, m_currShader->GetImplArgBufPtr());
-    m_encoder->Push();
-}
-
-void EmitPass::emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
-{
-    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(1));
-    m_encoder->SetNoMask();
-    m_encoder->SetSrcSubReg(0, 0);
-    m_encoder->Copy(m_destination, m_currShader->GetLocalIdBufPtr());
-    m_encoder->Push();
 }
 
 

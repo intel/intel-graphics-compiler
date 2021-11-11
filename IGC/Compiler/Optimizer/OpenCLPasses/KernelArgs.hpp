@@ -113,9 +113,6 @@ namespace IGC
 
             IMPLICIT_BINDLESS_OFFSET,
 
-            IMPLICIT_ARG_BUFFER,
-            IMPLICIT_LOCAL_ID_BUFFER,
-
             // Argument types that shouldn't be allocated
             NOT_TO_ALLOCATE,
             SAMPLER = NOT_TO_ALLOCATE,

@@ -36,9 +36,7 @@ enum class PreDefinedVarsInternal
     CE0              = 21,
     DBG              = 22,
     COLOR            = 23,
-    IMPL_ARG_BUF_PTR = 24,
-    LOCAL_ID_BUF_PTR = 25,
-    VAR_LAST         = 26
+    VAR_LAST         = 24
 };
 
 const std::array<PreDefinedVarsInternal, (int)PreDefinedVarsInternal::VAR_LAST> allPreDefVars = {
@@ -65,9 +63,7 @@ const std::array<PreDefinedVarsInternal, (int)PreDefinedVarsInternal::VAR_LAST> 
     PreDefinedVarsInternal::CR0,
     PreDefinedVarsInternal::CE0,
     PreDefinedVarsInternal::DBG,
-    PreDefinedVarsInternal::COLOR,
-    PreDefinedVarsInternal::IMPL_ARG_BUF_PTR,
-    PreDefinedVarsInternal::LOCAL_ID_BUF_PTR,
+    PreDefinedVarsInternal::COLOR
 };
 
 typedef struct

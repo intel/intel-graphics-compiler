@@ -454,11 +454,6 @@ public:
     void emitDebugPlaceholder(llvm::GenIntrinsicInst* I);
     void emitDummyInst(llvm::GenIntrinsicInst* GII);
     void emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I);
-    void emitStoreImplBufferPtr(llvm::GenIntrinsicInst* I);
-    void emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I);
-    void emitLoadImplBufferPtr(llvm::GenIntrinsicInst* I);
-    void emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst* I);
-
 
     std::pair<llvm::Value*, llvm::Value*> getPairOutput(llvm::Value*) const;
 

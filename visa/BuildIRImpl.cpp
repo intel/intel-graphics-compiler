@@ -644,22 +644,6 @@ void IR_Builder::createPreDefinedVars()
                     GetGenTypeFromVISAType(getPredefinedVarType(i)));
                 break;
             }
-            case PreDefinedVarsInternal::IMPL_ARG_BUF_PTR:
-            {
-                dcl = createDeclareNoLookup("implBufPtr", G4_GRF, 1, 1, Type_UQ);
-                auto phyReg = phyregpool.getGreg(kernel.getSpillHeaderGRF());
-                dcl->getRegVar()->setPhyReg(phyReg, SubRegs_ImplPtrs::ImplBufPtr);
-                break;
-            }
-
-            case PreDefinedVarsInternal::LOCAL_ID_BUF_PTR:
-            {
-                dcl = createDeclareNoLookup("localIdBufPtr", G4_GRF, 1, 1, Type_UQ);
-                auto phyReg = phyregpool.getGreg(kernel.getSpillHeaderGRF());
-                dcl->getRegVar()->setPhyReg(phyReg, SubRegs_ImplPtrs::LocalIdBufPtr);
-                break;
-            }
-
             default:
             {
                 break;
@@ -753,13 +737,13 @@ G4_Declare* IR_Builder::getOldA0Dot2Temp()
 
 IR_Builder::IR_Builder(
     TARGET_PLATFORM genPlatform,
-    INST_LIST_NODE_ALLOCATOR& alloc,
-    G4_Kernel& k,
-    Mem_Manager& m,
-    Options* options,
+    INST_LIST_NODE_ALLOCATOR &alloc,
+    G4_Kernel &k,
+    Mem_Manager &m,
+    Options *options,
     CISA_IR_Builder* parent,
-    FINALIZER_INFO* jitInfo,
-    const WA_TABLE* pWaTable)
+    FINALIZER_INFO *jitInfo,
+    const WA_TABLE *pWaTable)
     : platform(genPlatform), curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
     type(VISA_BUILD_TYPE::KERNEL), parentBuilder(parent),
     builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
