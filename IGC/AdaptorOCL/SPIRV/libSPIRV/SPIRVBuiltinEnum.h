@@ -54,3 +54,7 @@ _SPIRV_OP(BuiltInSubgroupGeMaskKHR, 4417)
 _SPIRV_OP(BuiltInSubgroupGtMaskKHR, 4418)
 _SPIRV_OP(BuiltInSubgroupLeMaskKHR, 4419)
 _SPIRV_OP(BuiltInSubgroupLtMaskKHR, 4420)
+// SPV_INTEL_hw_thread_queries
+_SPIRV_OP(BuiltInSubDeviceIDINTEL, 6135)
+_SPIRV_OP(BuiltInHWThreadIDINTEL, 6136)
+_SPIRV_OP(BuiltInMaxHWThreadIDPerSubDeviceINTEL, 6137)

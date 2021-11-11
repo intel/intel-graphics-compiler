@@ -623,6 +623,7 @@ enum Capability {
     CapabilityTokenTypeINTEL = 6112,
     CapabilityDebugInfoModuleINTEL = 6114,
     CapabilityJointMatrixINTEL = 6118,
+    CapabilityHWThreadQueryINTEL = 6134,
 };
 
 enum PackedVectorFormat {

@@ -930,6 +930,17 @@ void BIImport::InitializeBIFlags(Module& M)
         gv->setInitializer(ConstantInt::get(Type::getInt32Ty(M.getContext()), value));
     };
 
+    /// @brief Set global variable linkage to extrnal. This is needed for
+    ///        variables that will become relocations.
+    auto makeVarExternal = [&M](StringRef varName)
+    {
+        GlobalVariable *gv = M.getGlobalVariable(varName);
+        if (gv == nullptr)
+            return;
+        //var->setInitializer(ConstantInt::get(Type::getInt32Ty(M->getContext()), value));
+        gv->setLinkage(GlobalValue::ExternalLinkage);
+    };
+
     bool isFlushDenormToZero =
         ((pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
             MD.compOpt.DenormsAreZero);
@@ -968,6 +979,9 @@ void BIImport::InitializeBIFlags(Module& M)
         float profilingTimerResolution = static_cast<OpenCLProgramContext*>(pCtx)->getProfilingTimerResolution();
         initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
     }
+
+    makeVarExternal("__SubDeviceID");
+    makeVarExternal("__MaxHWThreadIDPerSubDevice");
 }
 
 extern "C" llvm::ModulePass* createBuiltInImportPass(

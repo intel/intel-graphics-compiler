@@ -58,6 +58,14 @@ static bool needRunConservatively(const Module& M) {
     return false;
 }
 
+static bool isLoweredToRelocation(const GlobalVariable *GV)
+{
+  StringRef name = GV->getName();
+  if (name == "__SubDeviceID" || name == "__MaxHWThreadIDPerSubDevice")
+      return true;
+  return false;
+}
+
 bool ProgramScopeConstantResolution::runOnModule(Module& M)
 {
     LLVMContext& C = M.getContext();
@@ -94,6 +102,10 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
         GlobalVariable* pGlobalVar = &(*I);
         PointerType* ptrType = cast<PointerType>(pGlobalVar->getType());
         IGC_ASSERT_MESSAGE(ptrType, "The type of a global variable must be a pointer type");
+
+        // Do not convert future relocations to implict argument.
+        if (isLoweredToRelocation(pGlobalVar))
+            continue;
 
         // Pointer's address space should be either constant or global
         const unsigned AS = ptrType->getAddressSpace();
