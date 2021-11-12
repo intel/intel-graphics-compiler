@@ -148,6 +148,9 @@ SPIRVFunction::decodeBB(SPIRVDecoder &Decoder) {
           }
 
           auto newEntry = Decoder.getEntry();
+          if (!newEntry)
+              IGC_ASSERT_EXIT_MESSAGE(0, "No entry found");
+
           if (newEntry->isInst() && !newEntry->isScope())
           {
               SPIRVInstruction *Inst = static_cast<SPIRVInstruction *>(newEntry);
