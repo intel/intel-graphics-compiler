@@ -64,6 +64,10 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
+static cl::opt<bool> ExperimentalDisableCoalescing(
+    "vc-disable-coalescing", cl::init(false), cl::Hidden,
+    cl::desc("disable coalescing of live ranges (experimental)"));
+
 static cl::opt<std::string>
     FGDumpsPrefix("vc-fg-dump-prefix", cl::init(""), cl::Hidden,
                   cl::desc("prefix to use for FG dumps"));
@@ -512,7 +516,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXNumbering.h
   vc::addPass(PM, createGenXNumberingPass());
   /// .. include:: GenXLiveRanges.cpp
-  vc::addPass(PM, createGenXLiveRangesPass());
+  vc::addPass(PM, createGenXLiveRangesPass(ExperimentalDisableCoalescing));
   /// .. include:: GenXCoalescing.cpp
   vc::addPass(PM, createGenXCoalescingPass());
   /// .. include:: GenXAddressCommoning.cpp

@@ -102,7 +102,7 @@ FunctionGroupPass *createGenXUnbalingPass();
 FunctionGroupPass *createGenXDepressurizerPass();
 FunctionGroupPass *createGenXLateLegalizationPass();
 FunctionGroupPass *createGenXNumberingPass();
-FunctionGroupPass *createGenXLiveRangesPass();
+FunctionGroupPass *createGenXLiveRangesPass(bool DisableCoalescing = false);
 FunctionGroupPass *createGenXRematerializationPass();
 FunctionGroupPass *createGenXCoalescingPass();
 FunctionGroupPass *createGenXAddressCommoningPass();

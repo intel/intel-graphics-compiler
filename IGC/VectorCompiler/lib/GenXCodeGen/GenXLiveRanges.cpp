@@ -46,9 +46,13 @@ class GenXLiveRanges : public FunctionGroupPass {
   FunctionGroup *FG = nullptr;
   GenXBaling *Baling = nullptr;
   GenXLiveness *Liveness = nullptr;
+  bool DisableCoalescing = false;
+
 public:
   static char ID;
-  explicit GenXLiveRanges() : FunctionGroupPass(ID) { }
+  explicit GenXLiveRanges(bool DisableCoalescingIn = false)
+      : FunctionGroupPass(ID), DisableCoalescing(DisableCoalescingIn) {}
+
   StringRef getPassName() const override { return "GenX live ranges analysis"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunctionGroup(FunctionGroup &FG) override;
@@ -100,10 +104,9 @@ INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
 INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
 INITIALIZE_PASS_END(GenXLiveRanges, "GenXLiveRanges", "GenXLiveRanges", false, false)
 
-FunctionGroupPass *llvm::createGenXLiveRangesPass()
-{
+FunctionGroupPass *llvm::createGenXLiveRangesPass(bool DisableCoalescing) {
   initializeGenXLiveRangesPass(*PassRegistry::getPassRegistry());
-  return new GenXLiveRanges();
+  return new GenXLiveRanges(DisableCoalescing);
 }
 
 void GenXLiveRanges::getAnalysisUsage(AnalysisUsage &AU) const
@@ -124,6 +127,7 @@ bool GenXLiveRanges::runOnFunctionGroup(FunctionGroup &ArgFG)
   FG = &ArgFG;
   Baling = &getAnalysis<GenXGroupBaling>();
   Liveness = &getAnalysis<GenXLiveness>();
+  Liveness->setNoCoalescingMode(DisableCoalescing);
   Liveness->setBaling(Baling);
   Liveness->setNumbering(&getAnalysis<GenXNumbering>());
   // Build the live ranges.

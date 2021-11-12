@@ -853,8 +853,9 @@ unsigned LiveRange::getOrDefaultCategory()
  * and they are considered to cause interference by
  * checkIfOverlappingSegmentsInterfere below.
  */
-bool GenXLiveness::interfere(LiveRange *LR1, LiveRange *LR2)
-{
+bool GenXLiveness::interfere(LiveRange *LR1, LiveRange *LR2) {
+  if (CoalescingDisabled)
+    return true;
   return getSingleInterferenceSites(LR1, LR2, nullptr);
 }
 
@@ -906,8 +907,9 @@ bool GenXLiveness::interfere(LiveRange *LR1, LiveRange *LR2)
  * of multiple two address results being already coalesced together through phi
  * nodes.
  */
-bool GenXLiveness::twoAddrInterfere(LiveRange *LR1, LiveRange *LR2)
-{
+bool GenXLiveness::twoAddrInterfere(LiveRange *LR1, LiveRange *LR2) {
+  if (CoalescingDisabled)
+    return true;
   SmallVector<unsigned, 4> Sites;
   if (getSingleInterferenceSites(LR1, LR2, &Sites))
     return true; // interferes, not just single number sites
@@ -1114,8 +1116,9 @@ LiveRange *GenXLiveness::coalesce(LiveRange *LR1, LiveRange *LR2,
  * if LR1 includes a value that is a phi node whose definition is within
  * LR2.
  */
-bool GenXLiveness::copyInterfere(LiveRange *LR1, LiveRange *LR2)
-{
+bool GenXLiveness::copyInterfere(LiveRange *LR1, LiveRange *LR2) {
+  if (CoalescingDisabled)
+    return true;
   // Find a phi node value in LR1. It can have at most one, because only
   // copy coalescing has occurred up to now, and copy coalescing does not
   // occur at a phi node.

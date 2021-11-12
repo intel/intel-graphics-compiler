@@ -490,6 +490,8 @@ class GenXLiveness : public FunctionGroupPass {
   // used for different convert.addr instructions.
   std::multimap<Value *, Value *> BaseToArgAddrMap;
 
+  bool CoalescingDisabled = false;
+
 public:
   static char ID;
   explicit GenXLiveness()
@@ -501,6 +503,10 @@ public:
   bool runOnFunctionGroup(FunctionGroup &FG) override;
   // setBaling : tell GenXLiveness where GenXBaling is
   void setBaling(GenXBaling *B) { Baling = B; }
+  // experimental option to extend all LR till the end of a function
+  void setNoCoalescingMode(bool NoCoalescingMode) {
+    CoalescingDisabled = NoCoalescingMode;
+  }
   // Iterator forwarders.
   // This gives you an iterator of LiveRangeMap. The ->first field is the
   // value, and you only get each value once. The ->second field is the
