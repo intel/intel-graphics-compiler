@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 extern __constant int __FlushDenormals;
 extern __constant int __FastRelaxedMath;
+extern __constant int __MadEnable;
 extern __constant int __APIRS;
 extern __constant int __SVML;
 extern __constant int __CRMacros;
