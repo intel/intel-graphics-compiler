@@ -44,8 +44,14 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 bool FunctionGroup::verify() const {
+  // TODO: ideally, we'd like to access call-graph here. However,
+  // we do not maintain it here.
   for (auto I = Functions.begin(), E = Functions.end(); I != E; ++I) {
     Function *F = &(**I);
+    // Note: we do not check FG heads here -
+    // users of FG heads can belong to different FG
+    if (F == getHead())
+      continue;
     for (auto *U : F->users()) {
       auto *CI = genx::checkFunctionCall(U, F);
       if (!CI)
@@ -56,7 +62,7 @@ bool FunctionGroup::verify() const {
       Function *Caller = CI->getFunction();
       auto *OtherGroup = FGA->getAnyGroup(Caller);
       IGC_ASSERT_MESSAGE(OtherGroup == this,
-                         "inconsisten function group detected!");
+                         "inconsistent function group detected!");
       if (OtherGroup != this)
         return false;
     }
@@ -278,8 +284,7 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
 }
 
 bool FunctionGroupAnalysis::verify() const {
-  return std::all_of(Groups.begin(), Groups.end(),
-                     [](const auto &GR) { return GR->verify(); });
+  return llvm::all_of(AllGroups(), [](const auto &GR) { return GR->verify(); });
 }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
