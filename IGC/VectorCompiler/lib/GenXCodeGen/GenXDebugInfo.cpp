@@ -1211,6 +1211,7 @@ void GenXDebugInfo::processPrimaryFunction(
 static void fillDbgInfoOptions(const GenXBackendConfig &BC,
                                IGC::DebugEmitterOpts &DebugOpts) {
   DebugOpts.DebugEnabled = true;
+  DebugOpts.EmitDebugLoc = true;
 
   if (BC.emitDebugInfoForZeBin() || DbgOpt_ZeBinCompatible) {
     DebugOpts.ZeBinCompatible = true;
