@@ -1306,7 +1306,8 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
 
 // FIXME: We should use NM by default once code quality issues are addressed
 // in vISA compiler.
-static bool setNoMaskByDefault(Function *F) {
+static bool setNoMaskByDefault(Function *F,
+                               std::unordered_set<Function *> &Visited) {
   for (auto &BB : F->getBasicBlockList())
     if (GotoJoin::isGotoBlock(&BB))
       return true;
@@ -1314,12 +1315,11 @@ static bool setNoMaskByDefault(Function *F) {
   // Check if this is subroutine call.
   for (auto U : F->users()) {
     if (auto CI = dyn_cast<CallInst>(U)) {
-      Function *G = CI->getParent()->getParent();
-      if (G == F)
-        return false;
-      // FIXME: trivial recursion case is handled above. But any more
-      // complicated one creates infinite recursion here (e.g. S1->S2->S1->...)
-      if (setNoMaskByDefault(G))
+      Function *G = CI->getFunction();
+      if (Visited.count(G))
+        continue;
+      Visited.insert(G);
+      if (setNoMaskByDefault(G, Visited))
         return true;
     }
   }
@@ -1331,7 +1331,10 @@ void GenXKernelBuilder::buildInstructions() {
   for (auto It = FG->begin(), E = FG->end(); It != E; ++It) {
     Func = *It;
     LLVM_DEBUG(dbgs() << "Building IR for func " << Func->getName() << "\n");
-    NoMask = setNoMaskByDefault(Func);
+    NoMask = [this]() {
+      std::unordered_set<Function *> Visited;
+      return setNoMaskByDefault(Func, Visited);
+    }();
 
     LastUsedAliasMap.clear();
 
