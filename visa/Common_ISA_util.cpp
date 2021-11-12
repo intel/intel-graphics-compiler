@@ -92,6 +92,8 @@ GenPrecision_Info_t GenPrecisionTable[] = {
     /*  8 */ { GenPrecision::S8,      8, "s8"    },
     /*  9 */ { GenPrecision::BF16,   16, "bf"    },
     /* 10 */ { GenPrecision::FP16,   16, "hf"    },
+    /* 11 */ { GenPrecision::BF8,     8, "bf8"   },
+    /* 12 */ { GenPrecision::TF32,   32, "tf32"  },
 };
 static_assert((int)GenPrecision::INVALID == 0);
 static_assert((int)GenPrecision::U1 == 1);
@@ -104,7 +106,9 @@ static_assert((int)GenPrecision::U8 == 7);
 static_assert((int)GenPrecision::S8 == 8);
 static_assert((int)GenPrecision::BF16 == 9);
 static_assert((int)GenPrecision::FP16 == 10);
-static_assert((int)GenPrecision::TOTAL_NUM == 11);
+static_assert((int)GenPrecision::BF8 == 11);
+static_assert((int)GenPrecision::TF32 == 12);
+static_assert((int)GenPrecision::TOTAL_NUM == 13);
 
 
 const char* Common_ISA_Get_Modifier_Name(VISA_Modifier modifier)
@@ -180,6 +184,10 @@ G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode opcode)
         case ISA_BFN:
             return G4_bfn;
         case ISA_BF_CVT:
+        case ISA_FCVT:
+            return G4_fcvt;
+        case ISA_SRND:
+            return G4_srnd;
         case ISA_EXP:
             return G4_math;
         case ISA_FRC:
@@ -436,10 +444,14 @@ bool hasPredicate(ISA_Opcode op)
     switch (ISA_Inst_Table[op].type)
     {
     case ISA_Inst_Mov:
-        return !(op == ISA_SETP || op == ISA_MOVS || op == ISA_FMINMAX || op == ISA_BF_CVT);
+        return !(op == ISA_SETP || op == ISA_MOVS || op == ISA_FMINMAX || op == ISA_BF_CVT || op == ISA_FCVT);
     case ISA_Inst_Arith:
     case ISA_Inst_Logic:
     {
+        if (op == ISA_SRND)
+        {
+            return false;
+        }
         return true;
     }
     case ISA_Inst_Compare:
@@ -459,6 +471,8 @@ bool hasPredicate(ISA_Opcode op)
                 );
     case ISA_Inst_Flow:
         return !(op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_SWITCHJMP);
+    case ISA_Inst_LSC:
+        return true;
     case ISA_Inst_SIMD_Flow:
         return op == ISA_GOTO;
     default:
@@ -486,6 +500,8 @@ bool hasExecSize(ISA_Opcode op, uint8_t subOp)
                 return false;
             } else
                 return true;
+        case ISA_Inst_LSC:
+            return true;
         case ISA_Inst_Sampler:
         case ISA_Inst_Misc:
             if (op == ISA_RAW_SEND || op == ISA_RAW_SENDS || op == ISA_3D_SAMPLE ||

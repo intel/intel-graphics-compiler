@@ -36,11 +36,13 @@ enum class LdStOp {
     LOAD = LDST_LOAD_GROUP + 1,
     LOAD_QUAD, // e.g. untyped load (loading XYZW)
     LOAD_STRIDED, // same as load, but 1 address (obeys exec mask)
+    LOAD_BLOCK2D,
     //
     STORE_GROUP = LDST_STORE_GROUP + 1,
     STORE,
     STORE_QUAD,
     STORE_STRIDED,
+    STORE_BLOCK2D,
     //
     // atomics
     ATOMIC_GROUP = LDST_ATOMIC_GROUP + 1,
@@ -80,6 +82,7 @@ enum class AddrType {
     INVALID = 0,
     //
     FLAT,
+    SS, BSS,
     BTI
 };
 
@@ -94,6 +97,8 @@ enum class Caching {
     RI, // read-invalidate (load)
     WB, // writeback (store)
     UC, // uncached (load)
+    ST, // streaming (load/store)
+    WT, // writethrough (store)
 };
 std::string ToSymbol(Caching);
 // default, default returns ""
@@ -216,6 +221,8 @@ public:
     bool isLdSt() const {return kind == Kind::LDST;}
     //
     bool isHDC() const;
+    bool isNewDP() const;
+    bool isLSC() const;
     bool isSampler() const {return getSFID() == SFID::SAMPLER;}
     //
     virtual bool isEOT() const = 0;
@@ -340,6 +347,7 @@ struct G4_SendDescLdSt : G4_SendDesc {
     //    - nullptr for FLAT messages such as stateless global memory or SLM
     //    - reference to an a0.# register
     //    - an immediate value (for an immediate BTI)
+    //    - for BSS/SS this is a reference to an a0 register
     G4_Operand *surface = nullptr;
 
     // Other miscellaneous attributes that cannot be deduced from the
@@ -347,6 +355,8 @@ struct G4_SendDescLdSt : G4_SendDesc {
     LdStAttrs attrs;
 
     // In some rare cases we must explicitly override message payload sizes.
+    //    1. prefetches use a null dst and set rLen = 0
+    //    2. e.g. block2d puts block sizes in a header
     short overrideDstLengthBytesValue = -1;
     short overrideSrc0LengthBytesValue = -1;
     short overrideSrc1LengthBytesValue = -1;
@@ -483,6 +493,10 @@ private:
     G4_Operand *m_sti;
     G4_Operand *m_bti; // BTI or other surface pointer
 
+    /// indicates this message is an LSC message
+    bool        isLscDescriptor = false;
+    // sfid now stored separately from the ExDesc[4:0] since the new LSC format
+    // no longer uses ExDesc for that information
     int         src1Len;
     bool        eotAfterMessage = false;
 
@@ -573,6 +587,16 @@ public:
         return desc.layout.funcCtrl;
     }
 
+    ////////////////////////////////////////////////////////////////////////
+    // LSC-related operations
+    bool isLscOp() const {return isLscDescriptor;}
+    LSC_OP getLscOp() const {
+        assert(isLscOp());
+        return static_cast<LSC_OP>(desc.value & 0x3F);
+    }
+    LSC_ADDR_TYPE getLscAddrType() const;
+    int getLscAddrSizeBytes() const; // e.g. a64 => 8
+    LSC_DATA_ORDER getLscDataOrder() const;
 
     bool isEOTInst() const { return eotAfterMessage; }
     void setEOT();
@@ -659,6 +683,7 @@ public:
     }
 
 
+    bool isLSCTyped() const {return isTyped() && isLSC();}
     // atomic write or explicit barrier
     bool isBarrierOrAtomic() const {
         return isAtomicMessage() || isBarrier();

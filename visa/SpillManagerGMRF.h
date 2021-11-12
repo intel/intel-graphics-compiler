@@ -511,6 +511,37 @@ private:
         G4_SrcRegRegion *  filledRangeRegion,
         G4_ExecSize        execSize);
 
+    G4_SrcRegRegion* getLSCSpillFillHeader(
+        G4_Declare* mRangeDcl,
+        const G4_Declare *fp,
+        int offset);
+
+    G4_INST* createLSCSpill(
+        G4_Declare* spillRangeDcl,
+        G4_Declare* mRangeDcl,
+        unsigned          regOff,
+        unsigned          height,
+        unsigned          spillOff);
+
+    G4_INST* createLSCSpill(
+        G4_Declare* spillRangeDcl,
+        G4_Declare* mRangeDcl,
+        G4_DstRegRegion* spilledRangeRegion,
+        G4_ExecSize       execSize,
+        unsigned          option);
+
+    G4_INST* createLSCFill(
+        G4_Declare* fillRangeDcl,
+        G4_Declare* mRangeDcl,
+        unsigned          regOff,
+        unsigned          height,
+        unsigned          spillOff);
+
+    G4_INST* createLSCFill(
+        G4_Declare* fillRangeDcl,
+        G4_Declare* mRangeDcl,
+        G4_SrcRegRegion* filledRangeRegion,
+        G4_ExecSize        execSize);
 
     void replaceSpilledRange(
         G4_Declare *      spillRangeDcl,
@@ -641,6 +672,8 @@ private:
     bool checkDefUseDomRel(G4_DstRegRegion* dst, G4_BB* bb);
     void updateRMWNeeded();
 
+    bool useLSCMsg = false;
+    bool useLscNonstackCall = false;
 
     bool headerNeeded() const
     {
@@ -653,6 +686,8 @@ private:
             builder_->kernel.fg.getIsStackCallFunc())
             needed = false;
 
+        if (useLSCMsg)
+            needed = false;
 
         return needed;
     }

@@ -41,6 +41,23 @@ typedef enum _HEADER_ORDER_
 
 namespace vISA
 {
+class DPASSrc2RSCache
+{
+public:
+    std::vector<int> GRFCache;
+    unsigned latestID;
+    bool firstDpas;
+
+    DPASSrc2RSCache()
+    {
+        latestID = 0;
+        firstDpas = true;
+        GRFCache.resize(16, -1);
+    }
+    ~DPASSrc2RSCache()
+    {
+    }
+};
 class MSGTable
 {
 public:
@@ -114,6 +131,7 @@ class Optimizer
     void renameRegister();
     void localDefHoisting();
     void reassociateConst();
+    void removePartialMovs();
     void localCopyPropagation();
     void localInstCombine();
     void optimizeLogicOperation();
@@ -134,6 +152,9 @@ class Optimizer
     bool foldCmpToCondMod(G4_BB* BB, INST_LIST_ITER& iter);
     void HWWorkaround();
     void preRA_HWWorkaround();
+    G4_INST* evenlySplitDPASInst(INST_LIST_ITER iter, G4_BB* bb);
+    bool hasDPASSourceTwoReuse(DPASSrc2RSCache* src2GRFCache, G4_INST* inst);
+    void DPASWA(G4_BB* bb, INST_LIST_ITER ii, DPASSrc2RSCache* src2GRFCache);
     void normalizeRegion();
     void initializePayload();
     void dumpPayload();
@@ -246,6 +267,7 @@ private:
     void insertFenceAtEntry();
     void expandMulPostSchedule();
     void expandMadwPostSchedule();
+    void fixReadSuppressioninFPU0();
 
     typedef std::vector<vISA::G4_INST*> InstListType;
     // create instruction sequence to calculate call offset from ip
@@ -317,6 +339,7 @@ public:
         PI_localDefHoisting,
         PI_localCopyPropagation,
         PI_localInstCombine,
+        PI_removePartialMovs,
         PI_cselPeepHoleOpt,
         PI_optimizeLogicOperation,
         PI_HWConformityChk,            // always

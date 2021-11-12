@@ -212,6 +212,15 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform, Stepping step
             VISA_WA_ENABLE(pWaTable, Wa_1406950495);
             VISA_WA_ENABLE(pWaTable, Wa_16013338947);
             break;
+        case GENX_DG2:
+            VISA_WA_ENABLE(pWaTable, Wa_16013338947);
+            break;
+        case GENX_PVC:
+            VISA_WA_ENABLE(pWaTable, Wa_16013338947);
+            break;
+        case GENX_PVCXT:
+            VISA_WA_ENABLE(pWaTable, Wa_16013338947);
+            break;
         default:
             break;
     }
@@ -4099,7 +4108,188 @@ bool CISA_IR_Builder::CISA_create_bf_cvt_instruction(
     return true;
 }
 
+bool CISA_IR_Builder::CISA_create_fcvt_instruction(
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    VISA_opnd *dst,
+    VISA_opnd *src0,
+    int lineNum)
+{
+    VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
+    VISA_CALL_TO_BOOL(AppendVISADataMovementInst,
+        ISA_FCVT, nullptr, false, emask, executionSize,
+        (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0);
+    return true;
+}
 
+bool CISA_IR_Builder::CISA_create_lsc_untyped_inst(
+    VISA_opnd                *pred,
+    LSC_OP                    opcode,
+    LSC_SFID                  sfid,
+    LSC_CACHE_OPTS            caching,
+    VISA_Exec_Size            execSize,
+    VISA_EMask_Ctrl           emask,
+    LSC_ADDR                  addr,
+    LSC_DATA_SHAPE            dataShape,
+    VISA_opnd                *surface,
+    VISA_opnd                *dstData,
+    VISA_opnd                *src0Addr,
+    VISA_opnd                *src1Data,
+    VISA_opnd                *src2Data,
+    int                       lineNum)
+{
+    VISA_CALL_TO_BOOL(AppendVISALscUntypedInst,
+        opcode,
+        sfid,
+        static_cast<VISA_PredOpnd *>(pred),
+        execSize,
+        emask,
+        caching,
+        addr,
+        dataShape,
+        static_cast<VISA_VectorOpnd *>(surface),
+        static_cast<VISA_RawOpnd *>(dstData),
+        static_cast<VISA_RawOpnd *>(src0Addr),
+        static_cast<VISA_RawOpnd *>(src1Data),
+        static_cast<VISA_RawOpnd *>(src2Data));
+    return true;
+}
 
+bool CISA_IR_Builder::CISA_create_lsc_untyped_strided_inst(
+    VISA_opnd                *pred,
+    LSC_OP                    opcode,
+    LSC_SFID                  sfid,
+    LSC_CACHE_OPTS            caching,
+    VISA_Exec_Size            execSize,
+    VISA_EMask_Ctrl           emask,
+    LSC_ADDR                  addr,
+    LSC_DATA_SHAPE            dataShape,
+    VISA_opnd                *surface,
+    VISA_opnd                *dst,
+    VISA_opnd                *src0Base,
+    VISA_opnd                *src0Stride,
+    VISA_opnd                *src1Data,
+    int                       lineNum)
+{
+    VISA_CALL_TO_BOOL(AppendVISALscUntypedStridedInst,
+        opcode,
+        sfid,
+        static_cast<VISA_PredOpnd *>(pred),
+        execSize,
+        emask,
+        caching,
+        addr,
+        dataShape,
+        static_cast<VISA_VectorOpnd *>(surface),
+        static_cast<VISA_RawOpnd *>(dst),
+        static_cast<VISA_RawOpnd *>(src0Base),
+        static_cast<VISA_VectorOpnd *>(src0Stride),
+        static_cast<VISA_RawOpnd *>(src1Data));
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_lsc_untyped_block2d_inst(
+    VISA_opnd               *pred,
+    LSC_OP                   opcode,
+    LSC_SFID                 sfid,
+    LSC_CACHE_OPTS           caching,
+    VISA_Exec_Size           execSize,
+    VISA_EMask_Ctrl          emask,
+    LSC_DATA_SHAPE_BLOCK2D   dataShape2d,
+    VISA_opnd               *dstData,
+    VISA_opnd               *src0AddrsOps[LSC_BLOCK2D_ADDR_PARAMS],
+    VISA_opnd               *src1Data,
+    int                      lineNum)
+{
+    VISA_VectorOpnd *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS] {
+        static_cast<VISA_VectorOpnd *>(src0AddrsOps[0]),
+        static_cast<VISA_VectorOpnd *>(src0AddrsOps[1]),
+        static_cast<VISA_VectorOpnd *>(src0AddrsOps[2]),
+        static_cast<VISA_VectorOpnd *>(src0AddrsOps[3]),
+        static_cast<VISA_VectorOpnd *>(src0AddrsOps[4]),
+        static_cast<VISA_VectorOpnd *>(src0AddrsOps[5]),
+    };
+    VISA_CALL_TO_BOOL(AppendVISALscUntypedBlock2DInst,
+        opcode,
+        sfid,
+        static_cast<VISA_PredOpnd *>(pred),
+        execSize,
+        emask,
+        caching,
+        dataShape2d,
+        static_cast<VISA_RawOpnd *>(dstData),
+        src0Addrs,
+        static_cast<VISA_RawOpnd *>(src1Data));
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_lsc_typed_inst(
+        VISA_opnd               *pred,
+        LSC_OP                   opcode,
+        LSC_SFID                 sfid,
+        LSC_CACHE_OPTS           caching,
+        VISA_Exec_Size           execSize,
+        VISA_EMask_Ctrl          emask,
+        LSC_ADDR_TYPE            addrModel,
+        LSC_ADDR_SIZE            addrSize,
+        LSC_DATA_SHAPE           dataShape,
+        VISA_opnd               *surface,
+        VISA_opnd               *dst_data,
+        VISA_opnd               *src0_Us,
+        VISA_opnd               *src0_Vs,
+        VISA_opnd               *src0_Rs,
+        VISA_opnd               *src0_LODs,
+        VISA_opnd               *src1_data,
+        VISA_opnd               *src2_data,
+        int                      lineNum)
+{
+    VISA_CALL_TO_BOOL(AppendVISALscTypedInst,
+        opcode,
+        static_cast<VISA_PredOpnd *>(pred),
+        execSize,
+        emask,
+        caching,
+        addrModel,
+        addrSize,
+        dataShape,
+        static_cast<VISA_VectorOpnd *>(surface),
+        static_cast<VISA_RawOpnd *>(dst_data),
+        static_cast<VISA_RawOpnd *>(src0_Us),
+        static_cast<VISA_RawOpnd *>(src0_Vs),
+        static_cast<VISA_RawOpnd *>(src0_Rs),
+        static_cast<VISA_RawOpnd *>(src0_LODs),
+        static_cast<VISA_RawOpnd *>(src1_data),
+        static_cast<VISA_RawOpnd *>(src2_data));
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_lsc_fence(
+    LSC_SFID                 sfid,
+    LSC_FENCE_OP             fence,
+    LSC_SCOPE                scope,
+    int                      lineNum)
+{
+    VISA_CALL_TO_BOOL(AppendVISALscFence,
+        sfid, fence, scope);
+
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_nbarrier(
+    bool isWait,
+    VISA_opnd *barrierId,
+    VISA_opnd *threadCount,
+    int lineNum)
+{
+    if (isWait) {
+        VISA_CALL_TO_BOOL(AppendVISANamedBarrierWait,
+            static_cast<VISA_VectorOpnd*>(barrierId));
+    } else {
+        VISA_CALL_TO_BOOL(AppendVISANamedBarrierSignal,
+            static_cast<VISA_VectorOpnd*>(barrierId),
+            static_cast<VISA_VectorOpnd*>(threadCount));
+    }
+    return true;
+}
 
 

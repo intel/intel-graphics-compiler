@@ -49,8 +49,8 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_RSQRT,              ISA_Inst_Arith,      "rsqrt",               1, 1 },
     { ISA_INV,                ISA_Inst_Arith,      "inv",                 1, 1 },
     { ISA_DPASW,              ISA_Inst_Misc,       "dpasw",               3, 1 },
-    { ISA_RESERVED_1D,        ISA_Inst_Reserved,   "reserved1D",          0, 0 },
-    { ISA_RESERVED_1E,        ISA_Inst_Reserved,   "reserved1E",          0, 0 },
+    { ISA_FCVT,               ISA_Inst_Mov,        "fcvt",                1, 1 },
+    { ISA_SRND,               ISA_Inst_Arith,      "srnd",                2, 1 },
     { ISA_LZD,                ISA_Inst_Arith,      "lzd",                 1, 1 },
     { ISA_AND,                ISA_Inst_Logic,      "and",                 2, 1 },
     { ISA_OR,                 ISA_Inst_Logic,      "or",                  2, 1 },
@@ -116,7 +116,7 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_RAW_SEND,           ISA_Inst_Misc,       "raw_send",            0, 0 },
     { ISA_RESERVED_5E,        ISA_Inst_Reserved,   "reserved5E",          0, 0 },
     { ISA_YIELD,              ISA_Inst_Sync,       "yield",               0, 0 },
-    { ISA_RESERVED_60,        ISA_Inst_Reserved,   "reserved60",          0, 0 },
+    { ISA_NBARRIER,           ISA_Inst_Sync,       "nbarrier",            0, 1 },
     { ISA_RESERVED_61,        ISA_Inst_Reserved,   "reserved61",          0, 0 },
     { ISA_RESERVED_62,        ISA_Inst_Reserved,   "reserved62",          0, 0 },
     { ISA_RESERVED_63,        ISA_Inst_Reserved,   "reserved63",          0, 0 },
@@ -157,9 +157,9 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_QW_GATHER,          ISA_Inst_Data_Port,  "qw_gather",           3, 1 },
     { ISA_QW_SCATTER,         ISA_Inst_Data_Port,  "qw_scatter",          4, 0 },
     { ISA_BF_CVT,             ISA_Inst_Mov,        "bf_cvt",              1, 1 },
-    { ISA_RESERVED_89,        ISA_Inst_Reserved,   "reserved89",          0, 0 },
-    { ISA_RESERVED_8A,        ISA_Inst_Reserved,   "reserved8a",          0, 0 },
-    { ISA_RESERVED_8B,        ISA_Inst_Reserved,   "reserved8b",          0, 0 },
+    { ISA_LSC_UNTYPED,        ISA_Inst_LSC,        "lsc_untyped",         0, 0 },
+    { ISA_LSC_TYPED,          ISA_Inst_LSC,        "lsc_typed",           0, 0 },
+    { ISA_LSC_FENCE,          ISA_Inst_LSC,        "lsc_fence",           0, 0 },
     { ISA_RESERVED_8C,        ISA_Inst_Reserved,   "reserved8c",          0, 0 },
     { ISA_RESERVED_8D,        ISA_Inst_Reserved,   "reserved8d",          0, 0 },
     { ISA_RESERVED_8E,        ISA_Inst_Reserved,   "reserved8e",          0, 0 },
@@ -505,12 +505,23 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
     },
 
-    /// 29
-    { ALL, ISA_RESERVED_1D, ISA_Inst_Reserved, "reserved_1d", 0, 0,{},
+    /// 29 (0x1D)
+    { GENX_PVC, ISA_FCVT, ISA_Inst_Mov, "fcvt", 3, SAME_SPECIAL_KIND,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_DST_GEN, ISA_TYPE_UB | ISA_TYPE_UD | ISA_TYPE_HF | ISA_TYPE_F, 0 },
+        { OPND_SRC_GEN, ISA_TYPE_UB | ISA_TYPE_UD | ISA_TYPE_HF | ISA_TYPE_F, 0 },
+    },
     },
 
     /// 30 (0x1E)
-    { ALL, ISA_RESERVED_1E, ISA_Inst_Reserved, "reserved_1e", 0, 0,{},
+    { GENX_PVCXT, ISA_SRND, ISA_Inst_Arith, "srnd", 4, SAME_SPECIAL_KIND,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_DST_GEN, ISA_TYPE_UB | ISA_TYPE_HF, 0 },
+        { OPND_SRC_GEN, ISA_TYPE_F  | ISA_TYPE_HF, 0 },
+        { OPND_SRC_GEN | OPND_IMM, ISA_TYPE_F | ISA_TYPE_HF, 0 },
+    },
     },
 
     /// 31
@@ -1233,10 +1244,12 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 96 (0x60)
-    { ALL, ISA_RESERVED_60, ISA_Inst_Reserved, "reserved_60", 0, 0,
-    {
-    },
-
+    { GENX_PVC, ISA_NBARRIER, ISA_Inst_Sync, "nbarrier", 3, 0,
+        {
+            { OPND_IMM, ISA_TYPE_UB, 0 },
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, 0 },
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, 0 },
+        },
     },
 
     /// 97
@@ -1732,21 +1745,28 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
     },
     /// 137 (0x89)
-    { ALL, ISA_RESERVED_89, ISA_Inst_Reserved, "reserved_89", 0, 0,
+    { GENX_DG2, ISA_LSC_UNTYPED, ISA_Inst_LSC, "lsc_untyped", 1, SAME_SPECIAL_KIND,
         {
+            {OPND_SUBOPCODE, ISA_TYPE_UB, 0}
         },
     },
-
     /// 138 (0x8A)
-    { ALL, ISA_RESERVED_8A, ISA_Inst_Reserved, "reserved_8a", 0, 0,
+    { GENX_DG2, ISA_LSC_TYPED, ISA_Inst_LSC, "lsc_typed", 1, SAME_SPECIAL_KIND,
         {
+            {OPND_SUBOPCODE, ISA_TYPE_UB, 0}
         },
     },
-
     /// 139 (0x8B)
-    { ALL, ISA_RESERVED_8B, ISA_Inst_Reserved, "reserved_8b", 0, 0,
+    { GENX_DG2, ISA_LSC_FENCE, ISA_Inst_LSC, "lsc_fence", 5, 0,
         {
-        },
+            /* execution control */
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */
+            {OPND_PRED,     ISA_TYPE_UW, 0}, /* predicate */
+            /* caching opts */
+            {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_SFID */
+            {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_FENCE_OP */
+            {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_SCOPE */
+        }
     },
     /// 140 (0x8C)
     { ALL, ISA_RESERVED_8C, ISA_Inst_Reserved, "reserved_8c", 0, 0,
@@ -2148,6 +2168,355 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
     }
 };
 
+///////////////////////////////////////////////////////////////////////////
+// New LSC ops
+//
+#define LSC_UNTYPED_OP(ISA_OP, MNEMONIC) \
+    {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 18, \
+    { \
+        /* execution control */\
+        {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */ \
+        {OPND_PRED,     ISA_TYPE_UW, 0}, /* predicate */ \
+        /* getPrimitiveOperand(0) */\
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_SFID */ \
+        /* caching opts */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */ \
+        /* addr stuff */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_ADDR::type */ \
+        {OPND_OTHER,    ISA_TYPE_UW, 0}, /* LSC_ADDR::immScale */ \
+        {OPND_OTHER,    ISA_TYPE_D,  0}, /* LSC_ADDR::immOffset */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_ADDR::size */ \
+        /* data shape stuff */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::size */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::order */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */ \
+        /* operands */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* Surface */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* DstData */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* Src0Addr */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* Src1Data */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* Src2Data */ \
+    } \
+    }
+#define LSC_UNTYPED_STRIDED_OP(ISA_OP, MNEMONIC) \
+    {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 18, \
+    { \
+        /* execution control */\
+        {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */ \
+        {OPND_PRED,     ISA_TYPE_UW, 0}, /* predicate */ \
+        /* getPrimitiveOperand(0) */\
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_SFID */ \
+        /* caching opts */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */ \
+        /* addr stuff */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_ADDR::type */ \
+        {OPND_OTHER,    ISA_TYPE_UW, 0}, /* LSC_ADDR::immScale */ \
+        {OPND_OTHER,    ISA_TYPE_D,  0}, /* LSC_ADDR::immOffset */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_ADDR::size */ \
+        /* data shape stuff */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::size */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::order */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */ \
+        /* operands */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* Surface */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED},              /* DstData */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED},              /* Src0AddrBase */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* Src0AddrPitch */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED},              /* Src1Data */ \
+    } \
+    }
+#define LSC_UNTYPED_BLOCK2D_OP(ISA_OP, MNEMONIC) \
+    {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 19, \
+    { \
+        /* execution control */\
+        {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */ \
+        {OPND_PRED,     ISA_TYPE_UW, 0}, /* predicate */ \
+        /* getPrimitiveOperand(0) */\
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_SFID */ \
+        /* caching opts */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */ \
+        /* block 2d data shape stuff */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE_BLOCK2D::size */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE_BLOCK2D::order */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE_BLOCK2D::blocks */ \
+        {OPND_OTHER,    ISA_TYPE_UW, 0}, /* LSC_DATA_SHAPE_BLOCK2D::width */ \
+        {OPND_OTHER,    ISA_TYPE_UW, 0}, /* LSC_DATA_SHAPE_BLOCK2D::height */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE_BLOCK2D::vnni */ \
+        /* operands */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED},              /* DstData */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* SurfBase */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* SurfWidth */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* SurfHeight */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* SurfPitch */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* SurfOffX */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* SurfOffY */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED},              /* Src1Data */ \
+    } \
+    }
+
+
+// All LSC typed ops encode the same
+#define LSC_TYPED_OP(ISA_OP, MNEMONIC) \
+    {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 18, \
+    { \
+        /* execution control */\
+        {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */ \
+        {OPND_PRED,     ISA_TYPE_UW, 0}, /* predicate */ \
+        /* caching opts */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */ \
+        /* addr stuff */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_ADDR::type */ \
+        /* confirmed with arch that immoff doesn't exist for typed */\
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_ADDR::size */ \
+        /* data shape stuff */ \
+        /* we keep LSC_DATA_SHAPE::order due to lsc_load_status.tgm */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE:size */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::order */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */ \
+        {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */ \
+        /* operands */ \
+        {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* surface reg or imm */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* dst */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Us */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Vs */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Rs */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr LODs */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src1 data */ \
+        {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src2 data */ \
+    } \
+    }
+
+#define LSC_OP_INVALID { }
+
+static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
+    LSC_UNTYPED_OP(LSC_LOAD,          "lsc_load"),
+    LSC_UNTYPED_OP(LSC_LOAD_STRIDED,  "lsc_load_strided"),
+    LSC_UNTYPED_OP(LSC_LOAD_QUAD,     "lsc_load_quad"),
+    LSC_UNTYPED_BLOCK2D_OP(LSC_LOAD_BLOCK2D,  "lsc_load_block2d"),
+    LSC_UNTYPED_OP(LSC_STORE,         "lsc_store"),
+    LSC_UNTYPED_OP(LSC_STORE_STRIDED, "lsc_store_strided"),
+    LSC_UNTYPED_OP(LSC_STORE_QUAD,    "lsc_store_quad"),
+    LSC_UNTYPED_BLOCK2D_OP(LSC_STORE_BLOCK2D, "lsc_store_block2d"),
+    //
+    LSC_UNTYPED_OP(LSC_ATOMIC_IINC,   "lsc_atomic_iinc"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_IDEC,   "lsc_atomic_idec"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_LOAD,   "lsc_atomic_load"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_STORE,  "lsc_atomic_store"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_IADD,   "lsc_atomic_iadd"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_ISUB,   "lsc_atomic_isub"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_SMIN,   "lsc_atomic_smin"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_SMAX,   "lsc_atomic_smax"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_UMIN,   "lsc_atomic_umin"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_UMAX,   "lsc_atomic_umax"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_ICAS,   "lsc_atomic_icas"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_FADD,   "lsc_atomic_fadd"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_FSUB,   "lsc_atomic_fsub"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_FMIN,   "lsc_atomic_fmin"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_FMAX,   "lsc_atomic_fmax"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_FCAS,   "lsc_atomic_fcas"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_AND,    "lsc_atomic_and"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_OR,     "lsc_atomic_or"),
+    LSC_UNTYPED_OP(LSC_ATOMIC_XOR,    "lsc_atomic_xor"),
+    //
+    LSC_UNTYPED_OP(LSC_LOAD_STATUS,       "lsc_load_status"),
+    LSC_UNTYPED_OP(LSC_STORE_UNCOMPRESSED, "lsc_store_uncompressed"),
+    LSC_UNTYPED_OP(LSC_CCS_UPDATE,         "lsc_ccs_update"),
+    LSC_OP_INVALID, // lsc_read_state_info only for typed
+    LSC_OP_INVALID, // fence handled separately
+
+    };
+
+static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
+    LSC_OP_INVALID, // LSC_LOAD only untyped
+    LSC_OP_INVALID, // LSC_LOAD_STRIDED only untyped
+    LSC_TYPED_OP(LSC_LOAD_QUAD,     "lsc_load_quad"),
+    LSC_OP_INVALID, //reserved
+    LSC_OP_INVALID, // LSC_STORE only untyped
+    LSC_OP_INVALID, // LSC_STORE_STRIDED only untyped
+    LSC_TYPED_OP(LSC_STORE_QUAD,    "lsc_store_quad"),
+    LSC_OP_INVALID, //reserved
+    LSC_TYPED_OP(LSC_ATOMIC_IINC,   "lsc_atomic_iinc"),
+    LSC_TYPED_OP(LSC_ATOMIC_IDEC,   "lsc_atomic_idec"),
+    LSC_TYPED_OP(LSC_ATOMIC_LOAD,   "lsc_atomic_load"),
+    LSC_TYPED_OP(LSC_ATOMIC_STORE,  "lsc_atomic_store"),
+    LSC_TYPED_OP(LSC_ATOMIC_IADD,   "lsc_atomic_iadd"),
+    LSC_TYPED_OP(LSC_ATOMIC_ISUB,   "lsc_atomic_isub"),
+    LSC_TYPED_OP(LSC_ATOMIC_SMIN,   "lsc_atomic_smin"),
+    LSC_TYPED_OP(LSC_ATOMIC_SMAX,   "lsc_atomic_smax"),
+    LSC_TYPED_OP(LSC_ATOMIC_UMIN,   "lsc_atomic_umin"),
+    LSC_TYPED_OP(LSC_ATOMIC_UMAX,   "lsc_atomic_umax"),
+    LSC_TYPED_OP(LSC_ATOMIC_ICAS,   "lsc_atomic_icas"),
+    LSC_TYPED_OP(LSC_ATOMIC_FADD,   "lsc_atomic_fadd"),
+    LSC_TYPED_OP(LSC_ATOMIC_FSUB,   "lsc_atomic_fsub"),
+    LSC_TYPED_OP(LSC_ATOMIC_FMIN,   "lsc_atomic_fmin"),
+    LSC_TYPED_OP(LSC_ATOMIC_FMAX,   "lsc_atomic_fmax"),
+    LSC_TYPED_OP(LSC_ATOMIC_FCAS,   "lsc_atomic_fcas"),
+    LSC_TYPED_OP(LSC_ATOMIC_AND,    "lsc_atomic_and"),
+    LSC_TYPED_OP(LSC_ATOMIC_OR,     "lsc_atomic_or"),
+    LSC_TYPED_OP(LSC_ATOMIC_XOR,    "lsc_atomic_xor"),
+    //
+    LSC_TYPED_OP(LSC_LOAD_STATUS,        "lsc_load_status"),
+    LSC_TYPED_OP(LSC_STORE_UNCOMPRESSED, "lsc_store_uncompressed"),
+    LSC_TYPED_OP(LSC_CCS_UPDATE,         "lsc_ccs_update"),
+    LSC_TYPED_OP(LSC_READ_STATE_INFO,    "lsc_read_state_info"),
+    LSC_OP_INVALID, // fence handled separately
+    };
+
+LscOpInfo LscOpInfoGet(LSC_OP op)
+{
+    LscOpInfo opInfo { };
+    if (!LscOpInfoFind(op, opInfo)) {
+        MUST_BE_TRUE(false, "invalid LSC opcode");
+    }
+    return opInfo;
+}
+
+bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo)
+{
+    opInfo.kind = LscOpInfo::OTHER;
+    opInfo.encoding = 0xFFFFFFFF;
+    opInfo.mnemonic = nullptr;
+    opInfo.op = op;
+
+    auto loadOp = [&] (const char *mne, uint32_t bits) {
+        opInfo.kind = LscOpInfo::LOAD;
+        opInfo.encoding = bits;
+        opInfo.mnemonic = mne;
+    };
+    auto storeOp = [&] (const char *mne, uint32_t bits) {
+        opInfo.mnemonic = mne;
+        opInfo.kind = LscOpInfo::STORE;
+        opInfo.encoding = bits;
+    };
+    auto atomicOp = [&] (const char *mne, uint32_t bits, int extraOps) {
+        opInfo.kind = LscOpInfo::ATOMIC;
+        opInfo.encoding = bits;
+        opInfo.mnemonic = mne;
+        opInfo.extraOperands = extraOps;
+    };
+    auto otherOp = [&] (const char *mne, uint32_t bits) {
+        opInfo.kind = LscOpInfo::OTHER;
+        opInfo.encoding = bits;
+        opInfo.mnemonic = mne;
+    };
+    switch (op) {
+    case LSC_LOAD:            loadOp("lsc_load",           0x00); break;
+    case LSC_LOAD_STRIDED:    loadOp("lsc_load_strided",   0x01); break;
+    case LSC_LOAD_QUAD:       loadOp("lsc_load_quad",      0x02); break;
+    case LSC_LOAD_BLOCK2D:    loadOp("lsc_load_block2d",   0x03); break;
+    //
+    case LSC_STORE:           storeOp("lsc_store",         0x04); break;
+    case LSC_STORE_STRIDED:   storeOp("lsc_store_strided", 0x05); break;
+    case LSC_STORE_QUAD:      storeOp("lsc_store_quad",    0x06); break;
+    case LSC_STORE_BLOCK2D:   storeOp("lsc_store_block2d", 0x07); break;
+    //
+    case LSC_ATOMIC_IINC:     atomicOp("lsc_atomic_iinc",  0x08, 0); break;
+    case LSC_ATOMIC_IDEC:     atomicOp("lsc_atomic_idec",  0x09, 0); break;
+    case LSC_ATOMIC_LOAD:     atomicOp("lsc_atomic_load",  0x0A, 0); break;
+    case LSC_ATOMIC_STORE:    atomicOp("lsc_atomic_store", 0x0B, 1); break;
+    case LSC_ATOMIC_IADD:     atomicOp("lsc_atomic_iadd",  0x0C, 1); break;
+    case LSC_ATOMIC_ISUB:     atomicOp("lsc_atomic_isub",  0x0D, 1); break;
+    case LSC_ATOMIC_SMIN:     atomicOp("lsc_atomic_smin",  0x0E, 1); break;
+    case LSC_ATOMIC_SMAX:     atomicOp("lsc_atomic_smax",  0x0F, 1); break;
+    case LSC_ATOMIC_UMIN:     atomicOp("lsc_atomic_umin",  0x10, 1); break;
+    case LSC_ATOMIC_UMAX:     atomicOp("lsc_atomic_umax",  0x11, 1); break;
+    case LSC_ATOMIC_ICAS:     atomicOp("lsc_atomic_icas",  0x12, 2); break;
+    case LSC_ATOMIC_FADD:     atomicOp("lsc_atomic_fadd",  0x13, 1); break;
+    case LSC_ATOMIC_FSUB:     atomicOp("lsc_atomic_fsub",  0x14, 1); break;
+    case LSC_ATOMIC_FMIN:     atomicOp("lsc_atomic_fmin",  0x15, 1); break;
+    case LSC_ATOMIC_FMAX:     atomicOp("lsc_atomic_fmax",  0x16, 1); break;
+    case LSC_ATOMIC_FCAS:     atomicOp("lsc_atomic_fcas",  0x17, 2); break;
+    case LSC_ATOMIC_AND:      atomicOp("lsc_atomic_and",   0x18, 1); break;
+    case LSC_ATOMIC_OR:       atomicOp("lsc_atomic_or",    0x19, 1); break;
+    case LSC_ATOMIC_XOR:      atomicOp("lsc_atomic_xor",   0x1A, 1); break;
+    //
+    case LSC_LOAD_STATUS:        loadOp("lsc_load_status",         0x1B); break;
+    case LSC_STORE_UNCOMPRESSED: storeOp("lsc_store_uncompressed", 0x1C); break;
+    case LSC_CCS_UPDATE:         otherOp("lsc_ccs_update",         0x1D); break;
+    case LSC_READ_STATE_INFO:    loadOp("lsc_read_state_info",     0x1E); break;
+    case LSC_FENCE:              otherOp("lsc_fence",              0x1F); break;
+    //
+    default:
+        return false;
+    }
+    return true;
+}
+
+// retuen the encoding value for descriptor bits[19:17]
+bool LscTryEncodeCacheOptsBits17_19(
+    const LscOpInfo &opInfo,
+    LSC_CACHE_OPTS cacheOpts,
+    uint32_t &cacheEnc)
+{
+    auto matches =
+        [&] (LSC_CACHE_OPT l1,LSC_CACHE_OPT l3) {
+        return (cacheOpts.l1 == l1 && cacheOpts.l3 == l3);
+    };
+
+    if (matches(LSC_CACHING_DEFAULT,LSC_CACHING_DEFAULT)) {
+        // same for load/atomic/store
+        cacheEnc = 0x0;
+    } else if (matches(LSC_CACHING_UNCACHED,LSC_CACHING_UNCACHED)) {
+        // same for load/atomic/store
+        cacheEnc = 0x1;
+    } else if (opInfo.isLoad()) {
+        if (matches(LSC_CACHING_UNCACHED,LSC_CACHING_CACHED)) {
+            cacheEnc = 0x2;
+        } else if (matches(LSC_CACHING_CACHED,LSC_CACHING_UNCACHED)) {
+            cacheEnc = 0x3;
+        } else if (matches(LSC_CACHING_CACHED,LSC_CACHING_CACHED)) {
+            cacheEnc = 0x4;
+        } else if (matches(LSC_CACHING_STREAMING,LSC_CACHING_UNCACHED)) {
+            cacheEnc = 0x5;
+        } else if (matches(LSC_CACHING_STREAMING,LSC_CACHING_CACHED)) {
+            cacheEnc = 0x6;
+        } else if (matches(LSC_CACHING_READINVALIDATE,LSC_CACHING_CACHED)) {
+            cacheEnc = 0x7;
+        } else {
+            return false;
+        }
+    } else if (opInfo.isAtomic()) {
+        if (matches(LSC_CACHING_UNCACHED,LSC_CACHING_WRITEBACK)) {
+            cacheEnc = 0x2;
+        } else {
+            return false;
+        }
+    } else {
+        if (matches(LSC_CACHING_UNCACHED,LSC_CACHING_WRITEBACK)) {
+            cacheEnc = 0x2;
+        } else if (matches(LSC_CACHING_WRITETHROUGH,LSC_CACHING_UNCACHED)) {
+            cacheEnc = 0x3;
+        } else if (matches(LSC_CACHING_WRITETHROUGH,LSC_CACHING_WRITEBACK)) {
+            cacheEnc = 0x4;
+        } else if (matches(LSC_CACHING_STREAMING,LSC_CACHING_UNCACHED)) {
+            cacheEnc = 0x5;
+        } else if (matches(LSC_CACHING_STREAMING,LSC_CACHING_WRITEBACK)) {
+            cacheEnc = 0x6;
+        } else if (matches(LSC_CACHING_WRITEBACK,LSC_CACHING_WRITEBACK)) {
+            cacheEnc = 0x7;
+        } else {
+            return false;
+        }
+    }
+
+    cacheEnc = cacheEnc << 17;
+    return true;
+}
+
+bool LscTryEncodeCacheOpts(
+    const LscOpInfo &opInfo,
+    LSC_CACHE_OPTS cacheOpts,
+    uint32_t &cacheEn,
+    bool isBits17_19)
+{
+    return LscTryEncodeCacheOptsBits17_19(opInfo, cacheOpts, cacheEn);
+}
 
 
 const ISA_SubInst_Desc *getSubInstTable(uint8_t opcode, int &size)
@@ -2166,6 +2535,14 @@ const ISA_SubInst_Desc *getSubInstTable(uint8_t opcode, int &size)
     case ISA_SVM:
         table = SVMSubOpcodeDesc;
         size = sizeof(SVMSubOpcodeDesc)/sizeof(SVMSubOpcodeDesc[0]);
+        break;
+    case ISA_LSC_UNTYPED:
+        table = LscUntypedSubOpcodeDescs;
+        size = sizeof(LscUntypedSubOpcodeDescs)/sizeof(LscUntypedSubOpcodeDescs[0]);
+        break;
+    case ISA_LSC_TYPED:
+        table = LscTypedSubOpcodeDescs;
+        size = sizeof(LscTypedSubOpcodeDescs)/sizeof(LscTypedSubOpcodeDescs[0]);
         break;
     default:
         table = nullptr;

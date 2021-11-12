@@ -241,6 +241,9 @@ bool SendFusion::isAtomicCandidate(const G4_SendDescRaw* msgDesc)
     case DC1_UNTYPED_HALF_FLOAT_ATOMIC:
         intAtomic = false;
         break;
+    // DG2 has simd16 A64 atomic using LSC, and seems no legacy simd16 A64.
+    // Thus, the following will not work. For this reason, turn it off.
+    // (Need to revisit this later when we want to do fusion for LSC messages.)
     case DC1_A64_ATOMIC:
     case DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC:
         if (Builder->getPlatform() != XeHP_SDV)
@@ -1709,6 +1712,13 @@ bool vISA::doSendFusion(FlowGraph* aCFG, Mem_Manager* aMMgr)
 {
     // If split send isn't supported, simply skip send fusion
     if (!aCFG->builder->useSends())
+    {
+        return false;
+    }
+    // SendFusion uses both src0 and src1 for addresses (load), but messages
+    // based on LSC does not support that (it requires addresses to be in src0 only)
+    // and SendFusion does not support it. Just skip.
+    if (getGenxPlatform() >= GENX_DG2)
     {
         return false;
     }

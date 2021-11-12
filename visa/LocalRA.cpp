@@ -642,6 +642,10 @@ void PhyRegsLocalRA::findRegisterCandiateWithAlignForward(int &i, BankAlign alig
 
 unsigned int PhyRegsLocalRA::get_bundle(unsigned int baseReg, int offset)
 {
+    if (builder->hasPartialInt64Support())
+    {
+        return (((baseReg + offset) % 32) / 2);
+    }
     return (((baseReg + offset) % 64) / 4);
 }
 

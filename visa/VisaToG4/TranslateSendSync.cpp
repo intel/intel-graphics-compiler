@@ -12,8 +12,325 @@ SPDX-License-Identifier: MIT
 using namespace vISA;
 
 
+G4_INST* IR_Builder::translateLscFence(
+    SFID                    sfid,
+    LSC_FENCE_OP            fenceOp,
+    LSC_SCOPE               scope,
+    int                    &status)
+{
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
+    status = VISA_SUCCESS;
+    auto check =
+        [&] (bool z, const char *what) {
+        if (!z) {
+            MUST_BE_TRUE(false, what);
+            status = VISA_FAILURE;
+        }
+    };
 
+    // NOTE: fence requires 1 register sent and 1 returned for some foolish
+    // reason (synchronization requires it), so we must create dummy registers.
+    // I'd prefer to use the same register, but vISA blows up
+    // if we dare use the same dst as src (old? hardware restriction?),
+    // so we'll splurge and use two.
+    const RegionDesc *rd = getRegionStride1();
+
+    // G4_Declare *src0DummyRegDecl = createSendPayloadDcl(getGRFSize()/4, Type_UD);
+    G4_Declare *src0DummyRegDecl = getBuiltinR0();
+    G4_SrcRegRegion *src0Dummy = createSrc(
+        src0DummyRegDecl->getRegVar(),
+        0, 0, rd, Type_UD);
+    //
+    // I don't think vISA permits same dst as src0
+    // G4_Declare *dstDummyRegDecl = getBuiltinR0();
+    G4_DstRegRegion* dstDummy = nullptr;
+    if (!hasFenceControl())
+    {
+        G4_Declare* dstDummyRegDecl = createSendPayloadDcl(getGRFSize() / 4, Type_UD);
+        dstDummy = createDstRegRegion(dstDummyRegDecl, 1);
+    }
+    else
+    {
+        dstDummy = createNullDst(Type_UD);
+    }
+
+    G4_SrcRegRegion *src1NullReg = createNullSrc(Type_UD);
+    //
+    const int src1Len = 0; // no data needed in src1
+
+    const G4_ExecSize execSize = g4::SIMD1;
+    const G4_InstOpts instOpt = Get_Gen4_Emask(vISA_EMASK_M1_NM, execSize);
+
+    ///////////////////////////////////////////////////////////////////////////
+    uint32_t desc = 0, exDesc = 0;
+    // fence requires 1 non-null register sent and 1 non-null received,
+    // but the contents are undefined
+    const uint32_t LSC_FENCE_OPCODE = 0x1F;
+    desc |= LSC_FENCE_OPCODE; // LSC_FENCE
+    desc |= 1 << 25;
+    desc |= (hasFenceControl() ? 0 : 1) << 20;
+    //
+    switch (fenceOp) {
+    case LSC_FENCE_OP_NONE:        desc |= 0 << 12; break;
+    case LSC_FENCE_OP_EVICT:       desc |= 1 << 12; break;
+    case LSC_FENCE_OP_INVALIDATE:  desc |= 2 << 12; break;
+    case LSC_FENCE_OP_DISCARD:     desc |= 3 << 12; break;
+    case LSC_FENCE_OP_CLEAN:       desc |= 4 << 12; break;
+    case LSC_FENCE_OP_FLUSHL3:     desc |= 5 << 12; break;
+    case LSC_FENCE_OP_TYPE6:       desc |= 6 << 12; break;
+    default: check(false, "invalid fence op");
+    }
+    switch (scope) {
+    case LSC_SCOPE_GROUP:   desc |= 0 << 9; break;
+    case LSC_SCOPE_LOCAL:   desc |= 1 << 9; break;
+    case LSC_SCOPE_TILE:    desc |= 2 << 9; break;
+    case LSC_SCOPE_GPU:     desc |= 3 << 9; break;
+    case LSC_SCOPE_GPUS:    desc |= 4 << 9; break;
+    case LSC_SCOPE_SYSREL:  desc |= 5 << 9; break;
+    case LSC_SCOPE_SYSACQ:  desc |= 6 << 9; break;
+    default: check(false, "invalid fence scope");
+    }
+
+    if (sfid == SFID::UGM)
+    {
+        // special token telling EU to route the UGM fence to LSC even in
+        // backup mode.  Without bit 18 set, the default behavior is for
+        // the UGM fence to be rerouted to HDC when the backup mode chicken
+        // bit is set.
+        desc |= getOption(vISA_LSCBackupMode) << 18;
+    }
+
+    (void) lscEncodeAddrSize(LSC_ADDR_SIZE_32b, desc, status);
+    G4_SendDescRaw *msgDesc = createSendMsgDesc(
+        sfid,
+        desc,
+        exDesc,
+        src1Len,
+        SendAccess::READ_WRITE,
+        nullptr);
+    G4_InstSend *fenceInst = createLscSendInst(
+        nullptr,
+        dstDummy,
+        src0Dummy,
+        src1NullReg,
+        execSize,
+        msgDesc,
+        instOpt,
+        LSC_ADDR_TYPE_FLAT,
+        true);
+    (void)fenceInst;
+
+    return fenceInst;
+}
+
+void IR_Builder::generateNamedBarrier(
+    int numProducer, int numConsumer,
+    NamedBarrierType type, G4_Operand* barrierId)
+{
+    struct NamedBarrierPayload
+    {
+        uint32_t id : 8;
+        uint32_t fence : 4;
+        uint32_t padding : 2;
+        uint32_t type : 2;
+        uint32_t consumer : 8;
+        uint32_t producer: 8;
+    };
+
+    union
+    {
+        NamedBarrierPayload payload;
+        uint32_t data;
+    } payload;
+
+    payload.data = 0;
+    payload.payload.consumer = numConsumer;
+    payload.payload.producer = numProducer;
+
+    auto getVal = [](NamedBarrierType type)
+    {
+        switch (type)
+        {
+        case NamedBarrierType::BOTH:
+            return 0;
+        case NamedBarrierType::PRODUCER:
+            return 1;
+        case NamedBarrierType::CONSUMER:
+            return 2;
+        default:
+            assert(false && "unrecognized NM barreir type");
+            return -1;
+        }
+    };
+    payload.payload.type = getVal(type);
+
+    G4_Declare* header = createTempVar(8, Type_UD, GRFALIGN);
+    if (barrierId->isImm())
+    {
+        payload.payload.id = (uint8_t)barrierId->asImm()->getInt();
+        auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
+        auto src = createImm(payload.data, Type_UD);
+        createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
+    }
+    else
+    {
+        // barrier id should be a srcRegion with int type
+        // and (1) Hdr.2:ud barrierId 0xFF
+        // or (1) Hdr.2:ud Hdr.2 payload.data
+        assert(barrierId->isSrcRegRegion() && IS_INT(barrierId->getType()) && "expect barrier id to be int");
+        auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
+        auto src1 = createImm(0xFF, Type_UD);
+        createBinOp(G4_and, g4::SIMD1, dst, barrierId, src1, InstOpt_WriteEnable, true);
+        dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
+        auto orSrc0 = createSrc(header->getRegVar(), 0, 2,
+            getRegionScalar(), Type_UD);
+        auto orSrc1 = createImm(payload.data, Type_UD);
+        createBinOp(G4_or, g4::SIMD1, dst, orSrc0, orSrc1, InstOpt_WriteEnable, true);
+    }
+
+    // 1 message length, 0 response length, no header, no ack
+    int desc = (0x1 << 25) + 0x4;
+
+    auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
+    createSendInst(
+        nullptr,
+        G4_send,
+        g4::SIMD1,
+        createNullDst(Type_UD),
+        createSrcRegRegion(header, getRegionStride1()),
+        createImm(desc, Type_UD),
+        InstOpt_WriteEnable,
+        msgDesc,
+        true);
+}
+
+void IR_Builder::generateNamedBarrier(G4_Operand* barrierId, G4_SrcRegRegion* threadCount)
+{
+    G4_Declare* header = createTempVar(8, Type_UD, GRFALIGN);
+
+    // mov (1) Hdr.2<1>:ud 0x0
+    // mov (2) Hdr.10<1>:ub threadcount:ub
+    // mov (1) Hdr.8<1>:ub barrierId:ub
+    auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
+    auto src = createImm(0, Type_UD);
+    createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
+    dst = createDst(header->getRegVar(), 0, 10, 1, Type_UB);
+    createMov(g4::SIMD2, dst, threadCount, InstOpt_WriteEnable, true);
+    dst = createDst(header->getRegVar(), 0, 8, 1, Type_UB);
+    createMov(g4::SIMD1, dst, barrierId, InstOpt_WriteEnable, true);
+
+    // 1 message length, 0 response length, no header, no ack
+    int desc = (0x1 << 25) + 0x4;
+
+    auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
+    createSendInst(
+        nullptr,
+        G4_send,
+        g4::SIMD1,
+        createNullDst(Type_UD),
+        createSrcRegRegion(header, getRegionStride1()),
+        createImm(desc, Type_UD),
+        InstOpt_WriteEnable,
+        msgDesc,
+        true);
+}
+
+void IR_Builder::generateSingleBarrier()
+{
+    // single barrier: # producer = # consumer = # threads, barrier id = 0
+    // For now produce no fence
+    // Number of threads per threadgroup is r0.2[31:24]
+    //   mov (1) Hdr.2<1>:ud 0x0
+    //   mov (2) Hdr.10<1>:ub R0.11<0;1,0>:ub
+    // This SIMD2 byte move is broadcasting the thread group size
+    // from the r0 header into both the producer and consumer slots.
+    //   Hdr.2:d[31:24,23:16]
+    G4_Declare* header = createTempVar(8, Type_UD, GRFALIGN);
+    auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
+    auto src = createImm(0, Type_UD);
+    createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
+    dst = createDst(header->getRegVar(), 0 , 10, 1, Type_UB);
+    auto src0 = createSrc(getBuiltinR0()->getRegVar(), 0, 11,
+        getRegionScalar(), Type_UB);
+    createMov(g4::SIMD2, dst, src0, InstOpt_WriteEnable, true);
+    // 1 message length, 0 response length, no header, no ack
+    int desc = (0x1 << 25) + 0x4;
+
+    auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
+    createSendInst(
+        nullptr,
+        G4_send,
+        g4::SIMD1,
+        createNullDst(Type_UD),
+        createSrcRegRegion(header, getRegionStride1()),
+        createImm(desc, Type_UD),
+        InstOpt_WriteEnable,
+        msgDesc,
+        true);
+}
+
+static void checkNamedBarrierSrc(G4_Operand* src, bool isBarrierId)
+{
+    if (src->isImm())
+    {
+        if (isBarrierId)
+        {
+            uint32_t val = (uint32_t)src->asImm()->getInt();
+            assert(val < 32 && "illegal named barrier id");
+        }
+    }
+    else if (src->isSrcRegRegion())
+    {
+        assert(src->asSrcRegRegion()->isScalar() && "barrier id should have scalar region");
+        assert(IS_BTYPE(src->getType()) && "illegal barrier opperand type");
+    }
+    else
+    {
+        assert(false && "illegal barrier id operand");
+    }
+}
+
+int IR_Builder::translateVISANamedBarrierWait(G4_Operand* barrierId)
+{
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
+    checkNamedBarrierSrc(barrierId, true);
+
+    G4_Operand* barSrc = barrierId;
+    if (barrierId->isSrcRegRegion()) {
+        // sync can take only flag src
+        G4_Declare* flagDecl = createTempFlag(1);
+        createMov(g4::SIMD1, createDstRegRegion(flagDecl, 1), barrierId,
+            InstOpt_WriteEnable, true);
+        barSrc = createSrcRegRegion(flagDecl, getRegionScalar());
+    }
+    // wait barrierId
+    createInst(nullptr, G4_wait, nullptr, g4::NOSAT, g4::SIMD1, nullptr, barSrc, nullptr,
+        InstOpt_WriteEnable, true);
+
+    return VISA_SUCCESS;
+}
+
+int IR_Builder::translateVISANamedBarrierSignal(G4_Operand* barrierId, G4_Operand* threadCount)
+{
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
+    checkNamedBarrierSrc(barrierId, true);
+    checkNamedBarrierSrc(threadCount, false);
+
+    if (threadCount->isImm())
+    {
+        int numThreads = (int)threadCount->asImm()->getInt();
+        generateNamedBarrier(numThreads, numThreads, NamedBarrierType::BOTH, barrierId);
+    }
+    else
+    {
+        generateNamedBarrier(barrierId, threadCount->asSrcRegRegion());
+    }
+
+    return VISA_SUCCESS;
+}
 
 
 // create a fence instruction to the data cache
@@ -31,6 +348,12 @@ G4_INST* IR_Builder::createFenceInstruction(
 #define L1_FLUSH_MASK 0x40
 
     int flushBits = (flushParam >> 1) & 0xF;
+    assert(!supportsLSC() && "LSC fence should be handled elsewhere");
+    if (noL3Flush())
+    {
+        // L3 flush is no longer required for image memory
+        flushBits = 0;
+    }
 
     bool L1Flush = (flushParam & L1_FLUSH_MASK) != 0 &&
         !(hasSLMFence() && !globalMemFence);
@@ -67,6 +390,10 @@ G4_INST* IR_Builder::createFenceInstruction(
 G4_INST* IR_Builder::createSLMFence()
 {
     bool commitEnable = needsFenceCommitEnable();
+    if (supportsLSC())
+    {
+        return translateLscFence(SFID::SLM, LSC_FENCE_OP_NONE, LSC_SCOPE_GROUP);
+    }
     return createFenceInstruction(0, commitEnable, false, false);
 }
 
@@ -100,7 +427,11 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
 
 void IR_Builder::generateBarrierSend()
 {
-
+    if (hasUnifiedBarrier())
+    {
+        generateSingleBarrier();
+        return;
+    }
 
     // 1 message length, 0 response length, no header, no ack
     int desc = (0x1 << 25) + 0x4;
@@ -156,6 +487,15 @@ void IR_Builder::generateBarrierWait()
                 0, 0, getRegionScalar(), Type_UD);
         } else {
             // Xe: sync.bar null
+            waitSrc = createNullSrc(Type_UD);
+        }
+    }
+    else {
+        if (getPlatform() >= GENX_PVC) {
+            // PVC: sync.bar 0
+            waitSrc = createImm(0, Type_UD);
+        } else {
+            // DG2: sync.bar null
             waitSrc = createNullSrc(Type_UD);
         }
     }
@@ -250,6 +590,27 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
             G4_DstRegRegion* sendDst = createDstRegRegion(zeroLOD, 1);
             ChannelMask maskR = ChannelMask::createFromAPI(CHANNEL_MASK_R);
             translateVISAResInfoInst(EXEC_SIZE_8, vISA_EMASK_M1, maskR, surface, sendSrc, sendDst);
+        }
+        else if (supportsLSC())
+        {
+            // translate legacy fence into the LSC fence
+            // for local fence we translate into a SLM fence with TG scope
+            // for global fence we translate into a untyped and typed fence with GPU scope
+            // ToDo: may need a global flag to let user control the fence scope
+            if (globalFence)
+            {
+                auto fenceControl = supportsSampler() ? LSC_FENCE_OP_EVICT : LSC_FENCE_OP_NONE;
+                if (fenceMask.mask.flushRWCache)
+                {
+                    fenceControl = LSC_FENCE_OP_FLUSHL3;
+                }
+                translateLscFence(SFID::UGM, fenceControl, LSC_SCOPE_GPU);
+                translateLscFence(SFID::TGM, fenceControl, LSC_SCOPE_GPU);
+            }
+            else
+            {
+                translateLscFence(SFID::SLM, LSC_FENCE_OP_NONE, LSC_SCOPE_GROUP);
+            }
         }
         else
         {

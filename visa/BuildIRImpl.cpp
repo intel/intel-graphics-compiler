@@ -1891,7 +1891,7 @@ G4_INST* IR_Builder::createInst(
 
     if (op == G4_madw)
     {
-        MUST_BE_TRUE(execSize != g4::SIMD32, "SIMD32 is not supported for madw");
+        MUST_BE_TRUE(getPlatform() >= GENX_PVC || execSize != g4::SIMD32, "SIMD32 is not supported on this platform for madw");
     }
 
     G4_INST* i = NULL;
@@ -2576,7 +2576,323 @@ G4_InstSend *IR_Builder::createSplitSendInst(
         option, msgDesc, extDescOpnd, true);
 }
 
+G4_SendDescRaw* IR_Builder::createLscMsgDesc(
+    LSC_OP                      op,
+    LSC_SFID                    lscSfid,
+    VISA_Exec_Size              execSizeEnum,
+    LSC_CACHE_OPTS              cacheOpts,
+    LSC_ADDR                    addr,
+    LSC_DATA_SHAPE              shape,
+    G4_Operand                 *surface,
+    uint32_t                    dstLen,
+    uint32_t                    addrRegs)
+{
+    //   Desc[5:0] = OPCODE {LOAD{_BLOCK,_QUAD},STORE{_BLOCK,_QUAD},ATOMIC*}
+    //   Desc[8:7] = addr size
+    //   Desc[11:9] = data size
+    //   Desc[15:12] = data vector size (or cmask if *_QUAD)
+    //   Desc[19:17] = caching controls (see the table for allowable combinations)
+    //   Desc[30:29] = addr model (BTI = 3, SS = 2, BSS = 1, FLAT = 0)
+    int status = VISA_SUCCESS;
+    uint32_t desc = 0;
+    uint32_t exDesc = 0;
+    const auto opInfo = LscOpInfoGet(op);
+    MUST_BE_TRUE(!opInfo.isBlock2D(), "block2d has a different layout");
+    desc |= opInfo.encoding; // Desc[5:0]
 
+    lscEncodeAddrSize(addr.size, desc, status); // Desc[8:7]
+
+    int dataSizeBits = lscEncodeDataSize(shape.size, desc, status); // Desc[11:9]
+
+    // Desc[15:12]
+    int vecSize; // definitely assigned
+    if (!opInfo.hasChMask())
+    {
+        vecSize = lscEncodeDataElems(shape.elems, desc, status);
+        lscEncodeDataOrder(shape.order, desc, status);
+    }
+    else
+    {
+        MUST_BE_TRUE(shape.chmask, "channel mask must not be empty");
+        vecSize = 0;
+        if (shape.chmask & LSC_DATA_CHMASK_X)
+        {
+            desc |= 1 << 12;
+            vecSize++;
+        }
+        if (shape.chmask & LSC_DATA_CHMASK_Y)
+        {
+            desc |= 1 << 13;
+            vecSize++;
+        }
+        if (shape.chmask & LSC_DATA_CHMASK_Z)
+        {
+            desc |= 1 << 14;
+            vecSize++;
+        }
+        if (shape.chmask & LSC_DATA_CHMASK_W)
+        {
+            desc |= 1 << 15;
+            vecSize++;
+        }
+    }
+
+    lscEncodeCachingOpts(opInfo, cacheOpts, desc, status); // Desc[19:17]
+    lscEncodeAddrType(addr.type, desc, status);  // Desc[30:29]
+
+    desc |= dstLen << 20;   // Desc[24:20]  dst len
+    desc |= addrRegs << 25; // Desc[29:25]  src0 len
+
+    // promote any immediate surface to the extended descriptor
+    // ExDesc[31:12]
+    if (surface && surface->isImm()) {
+        auto surfaceImm = (uint32_t)surface->asImm()->getImm();
+        if (addr.type == LSC_ADDR_TYPE_BTI) {
+            // promote the immediate BTI to the descriptor
+            exDesc |= surfaceImm << 24;
+            surface = nullptr;
+        }
+        else if (
+            addr.type == LSC_ADDR_TYPE_BSS ||
+            addr.type == LSC_ADDR_TYPE_SS)
+        {
+            if ((surfaceImm & 0x3FF) == 0) {
+                exDesc |= surfaceImm;
+                surface = nullptr;
+            }
+        }
+        else {
+            // flat address type
+            MUST_BE_TRUE(surface->isNullReg() ||
+                surfaceImm == PREDEFINED_SURFACE_SLM ||
+                surfaceImm == PREDEFINED_SURFACE_T255, // not sure what's up here
+                "flat address type must have null reg (or 0)");
+            surface = nullptr;
+        }
+    }
+
+    MUST_BE_TRUE(addr.immOffset == 0,
+        "invalid address immediate offset");
+
+    SFID sfid = LSC_SFID_To_SFID(lscSfid);
+
+    const unsigned execSize = Get_VISA_Exec_Size(execSizeEnum);
+    int src1Len = 0;
+    uint32_t dataRegs = 1;
+    bool isBlock2D =
+        op == LSC_OP::LSC_LOAD_BLOCK2D ||
+        op == LSC_OP::LSC_STORE_BLOCK2D;
+    MUST_BE_TRUE(!isBlock2D, "block2d not implemented yet");
+
+    if (shape.order == LSC_DATA_ORDER_NONTRANSPOSE) {
+        // Non-transpose case is the typical case.
+        //
+        // ceil[ SIMT32*dataSize(b)/512(b/REG) ] * vecSize
+        //   units = (b/b*REG) = REG
+        dataRegs = std::max<uint32_t>(1,
+            execSize*dataSizeBits / 8 / COMMON_ISA_GRF_REG_SIZE)*vecSize;
+    }
+    else
+    { // if (shape.transpose == LSC_DATA_TRANSPOSE) {
+           // The transpose case is a little odder
+           // So the data size is the SIMD size (ExecSize) times the number of
+           // registers consumed by each vector sequence (always a full
+           // register number per seq).
+        uint32_t regsPerVec = vecSize * dataSizeBits / 8 / COMMON_ISA_GRF_REG_SIZE;
+        if (vecSize*dataSizeBits / 8 % COMMON_ISA_GRF_REG_SIZE)
+            regsPerVec++; // pad out to full reg
+        dataRegs = regsPerVec * execSize;
+    }
+
+    // override sizes for special cases
+    if (op == LSC_OP::LSC_LOAD_STATUS)
+    {
+        dataRegs = 1; // just returns a bitset
+    }
+
+    if (opInfo.isLoad())
+    {
+        src1Len = 0;
+    }
+    else if (opInfo.isStore())
+    {
+        src1Len = (int)dataRegs;
+    }
+
+    SendAccess access = opInfo.isLoad() && opInfo.isStore() ?
+        SendAccess::READ_WRITE : (opInfo.isLoad() ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY);
+
+    G4_SendDescRaw *g4desc = createSendMsgDesc(
+        sfid,
+        desc,
+        exDesc,
+        src1Len,
+        access,
+        surface);
+    return g4desc;
+}
+
+G4_SendDescRaw * IR_Builder::createLscDesc(
+    SFID sfid,
+    uint32_t desc,
+    uint32_t extDesc,
+    int src1Len,
+    SendAccess access,
+    G4_Operand* bti)
+{
+    auto msgDesc = new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, true);
+    return msgDesc;
+}
+
+G4_InstSend *IR_Builder::createLscSendInst(
+    G4_Predicate *pred,
+    G4_DstRegRegion *dst,
+    G4_SrcRegRegion *src0,
+    G4_SrcRegRegion *src1,
+    G4_ExecSize execSize,
+    G4_SendDescRaw *msgDesc,
+    G4_InstOpts option,
+    LSC_ADDR_TYPE addrType,
+    bool emitA0RegDef)
+{
+    uint32_t exDesc = msgDesc->getExtendedDesc();
+    G4_Operand *surface = msgDesc->getSurface();   // BTI or SS/BSS
+    G4_Operand *exDescOpnd = nullptr;
+
+    if (surface && surface->isSrcRegRegion()) {
+        if (emitA0RegDef)
+        {
+            // This path is taken when caller hasnt defined a0.2 register for use
+            // as ext msg descriptor of lsc. Currently, spill module defines a0.2
+            // once per BB and reuses it in all spill msgs for that BB. Without this
+            // check, each spill/fill msg would get its own computation of a0.2
+            // which is wasteful.
+            if (addrType == LSC_ADDR_TYPE_BTI) {
+                // .declare shifted_bti v_type=T num_elts=1
+                // ...
+                // (surface is the BTI)
+                //   shl    tmp        surface      24
+                G4_Declare* tmpDecl = createTempVar(1, Type_UD, Any);
+                G4_DstRegRegion* tmpDst = createDstRegRegion(tmpDecl, 1);
+                createBinOp(G4_shl, g4::SIMD1, tmpDst, surface,
+                    createImm(24, Type_UD), InstOpt_WriteEnable, true);
+                auto tmpSrc = createSrcRegRegion(tmpDecl, getRegionScalar());
+                // set src1.length into exDesc. BTI message is required to be on ExBSO=0
+                // mode, so the src.length is part of exDesc
+                exDesc = (exDesc & (~0x7FF)) | (msgDesc->extMessageLength() << 6);
+                G4_DstRegRegion* addrDstOpnd = createDstRegRegion(builtinA0Dot2, 1);
+                // add a0.2 tmpSrc exdesc
+                createBinOp(G4_add, g4::SIMD1, addrDstOpnd, tmpSrc,
+                    createImm(exDesc, Type_UD), InstOpt_WriteEnable, true);
+            }
+            else {
+                // SS or BSS
+                G4_DstRegRegion* addrDstOpnd = createDstRegRegion(builtinA0Dot2, 1);
+                if ((addrType == LSC_ADDR_TYPE_BSS) || (addrType == LSC_ADDR_TYPE_SS))
+                {
+                    //   mov    a0.2  surface
+                    createMov(g4::SIMD1, addrDstOpnd, surface, InstOpt_WriteEnable, true);
+                }
+                else
+                {
+                    assert(false && "FLAT have surface == nullptr here");
+                }
+            }
+        }
+
+        exDescOpnd = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+        msgDesc->setSurface(exDescOpnd); // link a0.2 to the send descriptor
+    } else if (surface && surface->isImm()) {
+        // If by some chance the surface is an immediate value that didn't fold
+        // to ExDesc (c.f. lscTryPromoteSurfaceImmToExDesc),
+        // we can still possibly move it to a0.2 and use that way.
+        // This enables us to access the full ExDesc[31:5] rather than
+        // ExDesc[31:12] (the send instruction lacks room encode [11:6])
+        // This can happen for BSS/SS, for example, with a small
+        // surface state offset.
+        //
+        // Callers that fold the ExDesc value into an immediate descriptor
+        // should pass nullptr as the surface.
+        G4_DstRegRegion* addrDstOpnd = createDstRegRegion(builtinA0Dot2, 1);
+        if (addrType == LSC_ADDR_TYPE_BSS || addrType == LSC_ADDR_TYPE_SS) {
+            //   mov    a0.2   SurfaceAddrImm
+            auto imm = surface->asImm()->getImm();
+            assert(
+                (imm & 0x1F) == 0 &&
+                (imm & 0xFFFFFFFF00000000LL) == 0 && "ExDesc can only access [31:5]");
+            createMov(g4::SIMD1, addrDstOpnd,
+                createImm(imm, Type_UD), InstOpt_WriteEnable, true);
+
+            exDescOpnd = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+            msgDesc->setSurface(exDescOpnd); // link a0.2 to the send descriptor
+        }
+        else
+        {
+            // BTI is in ExDesc[31:24] and that is always available.
+            assert(false && "BTI/FLAT should not reach this. "
+                "FLAT should have surface == nullptr and"
+                "BTI should either use a register for a variable BTI or have "
+                "folded the immediate vlaue into ExDesc"
+                " (and thus surface==nullptr here)");
+        }
+    } else {
+        exDescOpnd = createImm(exDesc, Type_UD);
+    }
+
+    return createSplitSendInst(
+        pred, G4_sends, execSize, dst, src0, src1,
+        createImm(msgDesc->getDesc(), Type_UD),
+        option, msgDesc, exDescOpnd, true);
+}
+
+//Using r0.8:ud to save and restore a0.2
+G4_SrcRegRegion* IR_Builder::getScratchSurfaceStatusIndex()
+{
+    auto dst = createDst(builtinR0->getRegVar(), 0, 8, 1, Type_UD);
+    auto src0 = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+    createMov(g4::SIMD1, dst, src0, InstOpt_WriteEnable, true);
+
+    G4_SrcRegRegion* R0_5 = createSrc(builtinR0->getRegVar(), 0, 5, getRegionScalar(), Type_UD);
+    G4_DstRegRegion* A02Dst = createDstRegRegion(builtinA0Dot2, 1);
+    createMov(g4::SIMD1, A02Dst, R0_5, InstOpt_WriteEnable, true);
+    return createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+}
+
+void IR_Builder::RestoreA0()
+{
+    auto dst = createDstRegRegion(builtinA0Dot2, 1);
+    auto src0 = createSrc(builtinR0->getRegVar(), 0, 8, getRegionStride1(), Type_UD);
+    createMov(g4::SIMD1, dst, src0, InstOpt_WriteEnable, true);
+}
+
+G4_InstSend *IR_Builder::createLscSendInstToScratch(
+    G4_Predicate *pred,
+    G4_DstRegRegion *dst,
+    G4_SrcRegRegion *src0,
+    G4_SrcRegRegion *src1,
+    G4_ExecSize execSize,
+    G4_SendDescRaw *msgDesc,
+    G4_InstOpts options,
+    bool usesBti)
+{
+    uint32_t desc = msgDesc->getDesc();
+    G4_Operand *surface = msgDesc->getSurface();   // BTI or SS/BSS
+    G4_Operand *exDescOpnd = nullptr;
+
+    if (isScratchSpace(surface))
+    {
+        desc = (desc & ~0xFF) | 251;
+    }
+    exDescOpnd = getScratchSurfaceStatusIndex();
+
+    G4_InstSend* inst = createSplitSendInst(
+        pred, G4_sends, execSize, dst, src0, src1,
+        createImm(desc, Type_UD),
+        options, msgDesc, exDescOpnd, true);
+    RestoreA0();
+
+    return inst;
+}
 
 // for reder target messages,
 // desc has a constant BTI value (i.e., no bindless) and no STI

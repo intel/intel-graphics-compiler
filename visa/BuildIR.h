@@ -1353,6 +1353,44 @@ public:
         G4_InstOpts options,
         bool is_sendc);
 
+    // TODO: move to TranslateSendLdStLsc or elide VISA_Exec_Size (pre-convert)
+    G4_SendDescRaw* createLscMsgDesc(
+        LSC_OP                op,
+        LSC_SFID              lscSfid,
+        VISA_Exec_Size        execSizeEnum,
+        LSC_CACHE_OPTS        cacheOpts,
+        LSC_ADDR              addr,
+        LSC_DATA_SHAPE        shape,
+        G4_Operand           *surface,
+        uint32_t              dstLen,
+        uint32_t              addrRegs);
+
+    // ToDo: unify this with above function
+    G4_SendDescRaw* createLscDesc(
+        SFID sfid,
+        uint32_t desc,
+        uint32_t extDesc,
+        int src1Len,
+        SendAccess access,
+        G4_Operand* bti);
+
+    G4_InstSend *createLscSendInst(
+        G4_Predicate *pred,
+        G4_DstRegRegion *dst, G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
+        G4_ExecSize execsize,
+        G4_SendDescRaw *msgDesc,
+        G4_InstOpts option,
+        LSC_ADDR_TYPE addrType,
+        bool emitA0RegDef);
+    G4_SrcRegRegion* getScratchSurfaceStatusIndex();
+
+    void RestoreA0();
+
+    G4_InstSend* createLscSendInstToScratch(
+        G4_Predicate* pred,
+        G4_DstRegRegion* dst, G4_SrcRegRegion* src0, G4_SrcRegRegion* src1,
+        G4_ExecSize execSize, G4_SendDescRaw* msgDesc, G4_InstOpts option,
+        bool usesBti);
 
     G4_InstSend *createSplitSendToRenderTarget(
         G4_Predicate *pred,
@@ -2255,6 +2293,143 @@ public:
         G4_SrcRegRegion    *offsets,
         G4_SrcRegRegion    *src);
 
+    // Minimum execution size for LSC on this platform
+    // Minimum is generally half the full size except rare cases.
+    // Full LSC SIMD size for PVC derivatives is 32, and 16 for DG2 derivatives
+    G4_ExecSize lscMinExecSize(LSC_SFID lscSfid) const;
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    // New LSC-based load and store (type and untyped) are located in
+    // VisaToG4/TranslateSendLdStLsc.cpp
+    int translateLscUntypedInst(
+        LSC_OP                  op,
+        LSC_SFID                lscSfid,
+        G4_Predicate           *pred,
+        VISA_Exec_Size          execSize,
+        VISA_EMask_Ctrl         emask,
+        LSC_CACHE_OPTS          cacheOpts,
+        LSC_ADDR                addrInfo,
+        LSC_DATA_SHAPE          shape,
+        G4_Operand             *surface,  // surface/bti
+        G4_DstRegRegion        *dstData,
+        G4_SrcRegRegion        *src0AddrOrBlockY,
+        G4_Operand             *src0AddrStrideOrBlockX, // only for strided and block2d
+        G4_SrcRegRegion        *src1Data, // store data/extra atomic operands
+        G4_SrcRegRegion        *src2Data // only for fcas/icas
+    );
+
+    int translateLscUntypedBlock2DInst(
+        LSC_OP                  op,
+        LSC_SFID                lscSfid,
+        G4_Predicate           *pred,
+        VISA_Exec_Size          execSize,
+        VISA_EMask_Ctrl         emask,
+        LSC_CACHE_OPTS          cacheOpts,
+        LSC_DATA_SHAPE_BLOCK2D  shape,
+        G4_DstRegRegion        *dstData,
+        G4_Operand             *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS],
+        G4_SrcRegRegion        *src1Data);
+    int translateLscTypedInst(
+        LSC_OP                  op,
+        G4_Predicate           *pred,
+        VISA_Exec_Size          execSize,
+        VISA_EMask_Ctrl         emask,
+        LSC_CACHE_OPTS          cacheOpts,
+        LSC_ADDR_TYPE           addrModel,
+        LSC_ADDR_SIZE           addrSize,
+        LSC_DATA_SHAPE          shape,
+        G4_Operand             *surface,  // surface/bti
+        G4_DstRegRegion        *dstData,  // dst on load/atomic
+        G4_SrcRegRegion        *src0AddrUs,
+        G4_SrcRegRegion        *src0AddrVs,
+        G4_SrcRegRegion        *src0AddrRs,
+        G4_SrcRegRegion        *src0AddrLODs,
+        G4_SrcRegRegion        *src1Data, // store data/extra atomic operands
+        G4_SrcRegRegion        *src2Data // icas/fcas only
+    );
+
+    LSC_DATA_ELEMS lscGetElementNum(unsigned eNum) const;
+    int  lscEncodeAddrSize(LSC_ADDR_SIZE addr_size, uint32_t &desc, int &status) const;
+    int  lscEncodeDataSize(LSC_DATA_SIZE data_size, uint32_t &desc, int &status) const;
+    int  lscEncodeDataElems(LSC_DATA_ELEMS data_elems, uint32_t &desc, int &status) const;
+    void lscEncodeDataOrder(LSC_DATA_ORDER t, uint32_t &desc, int &status) const;
+    void lscEncodeCachingOpts(
+        const LscOpInfo &opInfo,
+        LSC_CACHE_OPTS cacheOpts,
+        uint32_t &desc,
+        int &status) const;
+    void lscEncodeAddrType(LSC_ADDR_TYPE at, uint32_t &desc, int &status) const;
+
+    G4_SrcRegRegion *lscBuildStridedPayload(
+        G4_Predicate        *pred,
+        G4_SrcRegRegion     *src0AddrBase,
+        G4_Operand          *src0AddrStride,
+        int dataSizeBytes, int vecSize, bool transposed);
+    G4_SrcRegRegion *lscBuildBlock2DPayload(
+        LSC_DATA_SHAPE_BLOCK2D  dataShape2D,
+        G4_Predicate           *pred,
+        G4_Operand             *src0Addrs[6]);
+
+    //
+    // LSC allows users to pass an immediate scale and immediate addend.
+    // Hardware may be able to take advantage of that if they satisfy
+    // various constraints.  This also broadcasts if needed.
+    G4_SrcRegRegion *lscLoadEffectiveAddress(
+        LSC_OP                    lscOp,
+        LSC_SFID                  lscSfid,
+        G4_Predicate             *pred,
+        G4_ExecSize               execSize,
+        VISA_EMask_Ctrl           execCtrl,
+        LSC_ADDR                  addrInfo,
+        int                       bytesPerDataElem,
+        const G4_Operand         *surface,
+        G4_SrcRegRegion          *addr,
+        uint32_t                 &exDesc
+    );
+    G4_SrcRegRegion *lscCheckRegion(
+        G4_Predicate             *pred,
+        G4_ExecSize               execSize,
+        VISA_EMask_Ctrl           execCtrl,
+        G4_SrcRegRegion          *src);
+
+    G4_SrcRegRegion *lscMulAdd(
+        G4_Predicate             *pred,
+        G4_ExecSize               execSize,
+        VISA_EMask_Ctrl           execCtrl,
+        G4_SrcRegRegion          *src,
+        int16_t                   mulImm16,
+        int64_t                   addImm64);
+    G4_SrcRegRegion *lscMul(
+        G4_Predicate             *pred,
+        G4_ExecSize               execSize,
+        VISA_EMask_Ctrl           execCtrl,
+        G4_SrcRegRegion          *src,
+        int16_t                   mulImm16);
+    G4_SrcRegRegion *lscAdd(
+        G4_Predicate             *pred,
+        G4_ExecSize               execSize,
+        VISA_EMask_Ctrl           execCtrl,
+        G4_SrcRegRegion          *src,
+        int64_t                   addImm64);
+    G4_SrcRegRegion *lscAdd64AosNative(
+        G4_Predicate             *pred,
+        G4_ExecSize               execSize,
+        VISA_EMask_Ctrl           execCtrl,
+        G4_SrcRegRegion          *src,
+        int64_t                   addImm64);
+    G4_SrcRegRegion *lscAdd64AosEmu(
+        G4_Predicate             *pred,
+        G4_ExecSize               execSize,
+        VISA_EMask_Ctrl           execCtrl,
+        G4_SrcRegRegion          *src,
+        int64_t                   addImm64);
+    G4_SrcRegRegion *lscMul64Aos(
+        G4_Predicate             *pred,
+        G4_ExecSize               execSize,
+        VISA_EMask_Ctrl           execCtrl,
+        G4_SrcRegRegion          *src,
+        int16_t                   mulImm16);
 
     ///////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
@@ -2421,6 +2596,36 @@ public:
     ///////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
     // Raw send related members are in VisaToG4/TranslateSendSync.cpp
+    G4_INST* translateLscFence(
+        SFID                    sfid,
+        LSC_FENCE_OP            fenceOp,
+        LSC_SCOPE               scope,
+        int&                    status);
+
+    G4_INST* translateLscFence(
+        SFID                    sfid,
+        LSC_FENCE_OP            fenceOp,
+        LSC_SCOPE               scope)
+    {
+        int status = VISA_SUCCESS;
+        return translateLscFence(sfid, fenceOp, scope, status);
+    }
+    enum class NamedBarrierType
+    {
+        PRODUCER,
+        CONSUMER,
+        BOTH
+    };
+
+    void generateNamedBarrier(
+        int numProducer, int numConsumer, NamedBarrierType type, G4_Operand* barrierId);
+
+    void generateNamedBarrier(G4_Operand* barrierId, G4_SrcRegRegion* threadValue);
+
+    void generateSingleBarrier();
+
+    int translateVISANamedBarrierWait(G4_Operand* barrierId);
+    int translateVISANamedBarrierSignal(G4_Operand* barrierId, G4_Operand* threadCount);
 
     G4_INST* createFenceInstruction(
         uint8_t flushParam, bool commitEnable, bool globalMemFence, bool isSendc);

@@ -285,9 +285,11 @@ void G4_BB::emitBasicInstructionComment(
             }
             else
             {
-                BCNum = emitBankConflictXe(output, inst, suppressRegs,
+                BCNum = emitBankConflictXe(
+                    output, inst, suppressRegs,
                     sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts,
-                    false, true, false);
+                    parent->builder->hasOneGRFBank16Bundles(),
+                    platform == GENX_TGLLP, parent->builder->has64bundleSize());
             }
             parent->XeBCStats.addBC(BCNum);
             parent->XeBCStats.addSameBankBC(sameBankConflicts);
@@ -1056,6 +1058,21 @@ static bool hasInternalConflict(IR_Builder *builder, int reg1, int reg2)
     int bundleID2 = (reg2 % 16) / 2;
     int bankID2 = reg2 % 2;
 
+    if (builder->hasTwoGRFBank16Bundles())
+    {
+        bundleID1 = (reg1 % 64) / 4;
+        bankID1 = (reg1 % 4) / 2;
+        bundleID2 = (reg2 % 64) / 4;
+        bankID2 = (reg2 % 4) / 2;
+    }
+
+    if (builder->hasOneGRFBank16Bundles())
+    {
+        bundleID1 = (reg1 % 64) / 4;
+        bankID1 = reg1 % 2;
+        bundleID2 = (reg2 % 64) / 4;
+        bankID2 = reg2 % 2;
+    }
 
     return ((bankID1 == bankID2) && (bundleID1 == bundleID2));
 }

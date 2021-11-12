@@ -45,6 +45,11 @@ G4_ExecSize IR_Builder::toExecSize(VISA_Exec_Size execSize)
 // the exec size
 VISA_Exec_Size IR_Builder::roundUpExecSize(VISA_Exec_Size execSize)
 {
+    // for PVC legacy messages must be SIMD16
+    if (getNativeExecSize() == g4::SIMD16)
+    {
+        return EXEC_SIZE_16;
+    }
     if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 || execSize == EXEC_SIZE_4)
     {
         return EXEC_SIZE_8;

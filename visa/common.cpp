@@ -50,6 +50,12 @@ static const PlatformInfo ALL_PLATFORMS[] {
     ),
     PlatformInfo(XeHP_SDV, PlatformGen::XE, 11,
         "XeHP_SDV"),
+    PlatformInfo(GENX_DG2, PlatformGen::XE, 13,
+        "DG2"),
+    PlatformInfo(GENX_PVC, PlatformGen::XE, 14,
+        "PVC"),
+    PlatformInfo(GENX_PVCXT, PlatformGen::XE, 15,
+        "PVCXT"),
 }; // ALL_PLATFORMS
 
 static const PlatformInfo *LookupPlatformInfo(TARGET_PLATFORM p)
@@ -149,6 +155,8 @@ unsigned char getGRFSize()
 {
     unsigned int size = 32;
 
+    if (getGenxPlatform() >= GENX_PVC)
+        size = 64;
 
     return size;
 }
@@ -163,6 +171,9 @@ unsigned char getGRFSize()
 // 10 ICLLP
 // 12 TGLLP
 // 11 XeHP_SDV
+// 13 DG2
+// 14 PVC
+// 15 PVC_XT
 // Note that encoding is not linearized.
 int getGenxPlatformEncoding()
 {

@@ -38,6 +38,7 @@ namespace vISA
 
 #define TOKEN_AFTER_READ_DPAS_CYCLE 8
 #define SWSB_MAX_DPAS_DEPENDENCE_DISTANCE 4
+#define FOUR_THREAD_TOKEN_NUM  32
 
 #define DEPENCENCE_ATTR(DO) \
     DO(DEP_EXPLICT) \
@@ -163,6 +164,77 @@ namespace vISA
                     {
                         internalOffset = curFootprint2Ptr->offset;
                         return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        bool hasOverlap(const SBFootprint *liveFootprint, bool &isRMWOverlap, unsigned short &internalOffset) const
+        {
+            for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
+            {
+                // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB < curFootprint2Ptr->LeftB)
+                if (fType == curFootprint2Ptr->fType)
+                {
+                    if (LeftB <= curFootprint2Ptr->RightB && RightB >= curFootprint2Ptr->LeftB)
+                    {
+                        internalOffset = curFootprint2Ptr->offset;
+                        if (fType == GRF_T
+                            && (type == Type_UB || type == Type_B))
+                        {
+                            isRMWOverlap = true;
+                        }
+                        return true;
+                    }
+                    else if (fType == GRF_T
+                                && (type == Type_UB || type == Type_B))
+                    {
+                        unsigned short w_LeftB = LeftB/2;
+                        unsigned short w_RightB = RightB/2;
+                        unsigned short w_curLeftB = curFootprint2Ptr->LeftB/2;
+                        unsigned short w_curRightB = curFootprint2Ptr->RightB/2;
+                        if (w_LeftB <= w_curRightB && w_RightB >= w_curLeftB)
+                        {
+                            isRMWOverlap = true;
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            //Overlap with other ranges.
+            for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
+            {
+                FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+                for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
+                {
+                    if (curFType == curFootprint2Ptr->fType)
+                    {
+                        if (curFootprintPtr->LeftB <= curFootprint2Ptr->RightB && curFootprintPtr->RightB >= curFootprint2Ptr->LeftB)
+                        {
+                            internalOffset = curFootprint2Ptr->offset;
+                            if (curFType == GRF_T
+                                && (type == Type_UB || type == Type_B))
+                            {
+                                isRMWOverlap = true;
+                            }
+                            return true;
+                        }
+                        else if (curFType == GRF_T
+                                    && (type == Type_UB || type == Type_B))
+                        {
+                            unsigned short w_LeftB = curFootprintPtr->LeftB/2;
+                            unsigned short w_RightB = curFootprintPtr->RightB/2;
+                            unsigned short w_curLeftB = curFootprint2Ptr->LeftB/2;
+                            unsigned short w_curRightB = curFootprint2Ptr->RightB/2;
+                            if (w_LeftB <= w_curRightB && w_RightB >= w_curLeftB)
+                            {
+                                isRMWOverlap = true;
+                                return true;
+                            }
+                        }
                     }
                 }
             }
@@ -670,6 +742,19 @@ namespace vISA
                 return;
             }
 
+            if (builder.hasA0WARHWissue() && builder.hasFourALUPipes())
+            {
+                G4_INST* inst = GetInstruction();
+
+                if (inst->getDst() && inst->getDst()->isA0())
+                {
+                    instVec.front()->setDistance(1);
+                    instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+
+                    return;
+                }
+            }
+
             unsigned curDistance = (unsigned)instVec.front()->getDistance();
             if (distDep.size())
             {
@@ -677,6 +762,7 @@ namespace vISA
                 SB_INST_PIPE sameOpndTypeDepPipe = PIPE_NONE;
                 bool sameOperandType = true;
                 int diffPipes = 0;
+                bool depLongPipe = false;
 
                 //Check if there is type conversion
                 for (int i = 0; i < (int)(distDep.size()); i++)
@@ -700,6 +786,7 @@ namespace vISA
                         depPipe = it.liveNodePipe;
                     }
 
+                    depLongPipe = it.liveNodePipe == PIPE_LONG;
                 }
 
                 //In some platforms, A@ need be used for following case when the regDist cannot be used (due to HW issue), and inst depends on different pipes
@@ -731,6 +818,10 @@ namespace vISA
                     }
                 }
 
+                if (builder.hasLongOperandTypeDepIssue() && depLongPipe)
+                {
+                    sameOperandType = false;
+                }
 
                 if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
                     !builder.hasRegDistDepIssue())
@@ -804,6 +895,19 @@ namespace vISA
                 return;
             }
 
+            if (builder.hasA0WARHWissue() && builder.hasFourALUPipes())
+            {
+                G4_INST* inst = GetInstruction();
+
+                if (inst->getDst() && inst->getDst()->isA0())
+                {
+                    instVec.front()->setDistance(1);
+                    instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+
+                    return;
+                }
+            }
+
             unsigned curDistance = (unsigned)instVec.front()->getDistance();
             if (distDep.size())
             {
@@ -811,6 +915,7 @@ namespace vISA
                 SB_INST_PIPE sameOpndTypeDepPipe = PIPE_NONE;
                 bool sameOperandType = true;
                 bool depSamePipe = true;
+                bool depLongPipe = false;
 
                 //Check the potential to use regDist
                 for (int i = 0; i < (int)(distDep.size()); i++)
@@ -839,6 +944,7 @@ namespace vISA
                         depPipe = it.liveNodePipe;
                     }
 
+                    depLongPipe = it.liveNodePipe == PIPE_LONG;
                 }
 
                 //In some platforms, A@ need be used for following case when the regDist cannot be used (due to HW issue), and inst depends on different pipes
@@ -871,6 +977,10 @@ namespace vISA
                     }
                 }
 
+                if (builder.hasLongOperandTypeDepIssue() && depLongPipe)
+                {
+                    sameOperandType = false;
+                }
 
                 if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
                     !builder.hasRegDistDepIssue())
@@ -1429,6 +1539,7 @@ namespace vISA
             std::vector<SBBucketDescr>& BDvec,
             bool GRFOnly);
 
+        void clearSLMWARWAissue(SBNode* curNode, LiveGRFBuckets* LB);
 
         void setDistance(const SBFootprint * footprint, SBNode *node, SBNode *liveNode, bool dstDep);
         void setSpecialDistance(SBNode* node);
@@ -1436,6 +1547,9 @@ namespace vISA
 
         void pushItemToQueue(std::vector<unsigned>* nodeIDQueue, unsigned nodeID);
 
+        bool hasInternalDependence(SBNode* nodeFirst, SBNode* nodeNext);
+
+        bool is2xDPBlockCandidate(G4_INST* inst, bool accDST);
         //Local distance dependence analysis and assignment
         void SBDDD(G4_BB* bb,
             LiveGRFBuckets* &LB,
@@ -1459,6 +1573,7 @@ namespace vISA
 
         bool hasInternalDependenceWithinDPAS(SBNode *node);
         bool hasDependenceBetweenDPASNodes(SBNode * node, SBNode * nextNode);
+        bool src2FootPrintCachePVC(SBNode* curNode, SBNode* nextNode) const;
         bool src2SameFootPrintDiffType(SBNode* curNode, SBNode* nextNode) const;
         bool isLastDpas(SBNode * curNode, SBNode * nextNode);
 
@@ -1663,6 +1778,8 @@ namespace vISA
         void assignToken(SBNode *node, unsigned short token, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
         void assignDepToken(SBNode *node);
         void assignDepTokens();
+        bool insertSyncTokenPVC(G4_BB * bb, SBNode * node, G4_INST * inst, INST_LIST_ITER inst_it, int newInstID, BitSet * dstTokens, BitSet * srcTokens, bool removeAllToken);
+        bool insertSyncPVC(G4_BB * bb, SBNode * node, G4_INST * inst, INST_LIST_ITER inst_it, int newInstID, BitSet * dstTokens, BitSet * srcTokens);
         bool insertSyncXe(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertTest();

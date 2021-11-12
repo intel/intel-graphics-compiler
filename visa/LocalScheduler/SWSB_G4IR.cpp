@@ -282,6 +282,8 @@ static G4_Type getDPASDataType(GenPrecision p)
     case GenPrecision::S8:   return Type_B;
     case GenPrecision::FP16: return Type_HF;
     case GenPrecision::BF16: return Type_BF;
+    case GenPrecision::BF8:  return Type_UNDEF;
+    case GenPrecision::TF32: return Type_UNDEF;
     default:
         assert(false && "illegal Operand Precision");
         return Type_UD;
@@ -300,6 +302,16 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
     unsigned short RB = 0;
     int aregOffset = totalGRFNum;
     G4_Type type = opnd->getType();
+    if (inst->opcode() == G4_fcvt &&
+        (type == Type_UB ||
+        (type == Type_UD && builder.hasPartialInt64Support())))
+    {
+        type = Type_F;
+    }
+    if (inst->opcode() == G4_srnd)
+    {   // srnd ub  hf  hf | srnd hf f f
+        type = inst->getSrc(0)->getType();
+    }
 
     if (inst->isDpas() && (opnd_num == Opnd_src1 || opnd_num == Opnd_src2))
     {
@@ -341,6 +353,15 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
             if (opnd_num == Opnd_dst)
             {
                 int dstSize = inst->getMsgDesc()->getDstLenRegs();
+                // DG2 A0 W/A to treat SIMD8 SLM load with single GRF return as two GRF return
+                if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14012562260) &&
+                    inst->getExecSize() <= 8 && isSLMMsg(inst) && dstSize == 1)
+                {
+                    if ((LB / numEltPerGRF<Type_UB>()) < 127)
+                    {
+                        dstSize = 2;
+                    }
+                }
 
                 if ((LB / numEltPerGRF<Type_UB>()) < (unsigned short)(totalGRFNum - 1))
                 {
@@ -349,6 +370,15 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
             }
 
             assert(RB < (numEltPerGRF<Type_UB>() * aregOffset) && "Out of register bound");
+        }
+        //HW WA for DPAS src2, treat all source 2 as 8x8 source 2 to avoid the read suppression issue
+        if (builder.hasDPASSrc2ReadSuppressionDepIssue() &&
+            inst->opcode() == G4_dpas && opnd_num == Opnd_src2)
+        {
+            const G4_InstDpas* dpasInst = inst->asDpasInst();
+            uint32_t bytesPerLane = dpasInst->getSrc2SizePerLaneInByte();
+            uint32_t bytes = bytesPerLane * 8* 8;
+            RB = LB + bytes - 1;
         }
 
         //HW WA for DPAS src1, treat all source 1 8GRF size
@@ -1366,6 +1396,10 @@ unsigned SWSB::calcDepDelayForNode(const SBNode* curNode) const
     }
     else if (inst->isMathPipeInst())
     {
+        if (fg.builder->hasFixedCycleMathPipe())
+        {
+            assert(0 && "Math instruction is assigned token which is not supported in fixed mach cycle platform");
+        }
 
         reuseDelay = tokenAfterWriteMathCycle;
     }
@@ -1564,6 +1598,10 @@ bool SWSB::cycleExpired(const SBNode* node, int currentID) const
     }
     else if (node->GetInstruction()->isMathPipeInst())
     {
+        if (fg.builder->hasFixedCycleMathPipe())
+        {
+            assert(0 && "Math instruction is assigned token which is not supported in fixed mach cycle platform");
+        }
         return tokenAfterWriteMathCycle <= (currentID - node->getLiveStartID());
     }
     else if (node->GetInstruction()->isDpas())
@@ -3535,6 +3573,368 @@ bool SWSB::insertSyncXe(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER i
     return insertedSync;
 }
 
+//For dpas/dpasw instructions
+//      RegDist         SBID.set
+//    RegDist         SBID.src
+//    RegDist         SBID.dst
+//For send instruction
+//    RegDistAll     SBID.set
+//    RegDistFloat   SBID.set
+//    RegDistInt     SBID.set
+//For non-send / non-dpas/dpasw instructions
+//    RegDist        SBID.dst
+//    RegDist        SBID.src
+//    RegDistAll     SBID.dst
+bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool removeAllToken)
+{
+    //SBID.set > SBID.dst > SBID.src
+    unsigned int dst = 0;
+    unsigned int src = 0;
+    bool keepDst = false;
+    bool multipleDst = false;
+    bool multipleSrc = false;
+    unsigned short token = (unsigned short)-1;
+    unsigned short dstToken = (unsigned short)-1;
+    unsigned short srcToken = (unsigned short)-1;
+    std::vector<std::pair<unsigned short, unsigned>> dst_loc;
+    std::vector<std::pair<unsigned short, unsigned>> src_loc;
+    SWSBTokenType type = G4_INST::SWSBTokenType::TOKEN_NONE;
+    bool insertedSync = false;
+
+    for (unsigned int i = 0; i < node->getDepTokenNum();)
+    {
+        token = node->getDepToken(i, type);
+        unsigned depNodeID = node->getDepTokenNodeID(i);
+        unsigned int bitToken = (unsigned int)(1 << token);
+        assert(token != (unsigned short)UNKNOWN_TOKEN);
+
+        switch (type)
+        {
+        case SWSBTokenType::AFTER_WRITE:
+        {
+            if (dstTokens->isSet(token))
+            {
+                //Do BB level clean up
+                //So that there will be no case like following redundant sync
+                //     sync.nop {$1.src}
+                //     sync.nop {$1.src}
+                // or
+                //     sync.nop {$1.dst}
+                //     sync.nop {$1.src}
+                // or
+                //     mov        {$1.dst}
+                //     add        {$1.src}
+                node->eraseDepToken(i);
+                continue;
+            }
+            else
+            {
+                if (!removeAllToken &&                  //No set one marked.
+                    !keepDst)                            //No dst one kept yet
+                {
+                    //Token is kept in origional instruction
+                    keepDst = true;
+                    inst->setToken(token);
+                    inst->setTokenType(SWSBTokenType::AFTER_WRITE);
+                    inst->setTokenLoc(token, depNodeID);
+                    token = (unsigned short)UNKNOWN_TOKEN;
+                    i++;
+                    continue;
+                }
+
+                dst |= bitToken;
+                dst_loc.push_back(std::make_pair(token, depNodeID));
+                if (!multipleDst && (dst & ~bitToken))
+                {
+                    multipleDst = true;
+                }
+                dstToken = token;
+                dstTokens->set(token, true);
+
+                node->eraseDepToken(i);
+                continue;
+            }
+        }
+        break;
+        default:
+            assert(type == SWSBTokenType::AFTER_READ && "Wrong dependence type");
+            break;
+        }
+        i++;
+    }
+
+    bool keepSrc = false;
+    for (unsigned int i = 0; i < node->getDepTokenNum();)
+    {
+        token = node->getDepToken(i, type);
+        unsigned depNodeID = node->getDepTokenNodeID(i);
+        unsigned int bitToken = (unsigned int)(1 << token);
+        assert(token != (unsigned short)UNKNOWN_TOKEN);
+
+        switch (type)
+        {
+        case SWSBTokenType::AFTER_READ:
+        {
+            if (dstTokens->isSet(token) || (type == SWSBTokenType::AFTER_READ && srcTokens->isSet(token)))
+            {
+                node->eraseDepToken(i);
+                continue;
+            }
+            else
+            {
+                if (!removeAllToken &&
+                    !keepDst &&
+                    !keepSrc)
+                {
+                    //Token is kept in origional instruction
+                    keepSrc = true;
+                    inst->setToken(token);
+                    inst->setTokenType(SWSBTokenType::AFTER_READ);
+                    inst->setTokenLoc(token, depNodeID);
+                    token = (unsigned short)UNKNOWN_TOKEN;
+                    i++;
+                    continue;
+                }
+                src |= bitToken;
+                src_loc.push_back(std::make_pair(token, depNodeID));
+                if (!multipleSrc && (src & ~bitToken))
+                {
+                    multipleSrc = true;
+                }
+                srcToken = token;
+                srcTokens->set(token, true);
+
+                node->eraseDepToken(i);
+                continue;
+            }
+        }
+        break;
+        default:
+            assert(type == SWSBTokenType::AFTER_WRITE && "Wrong dependence type");
+            break;
+        }
+        i++;
+    }
+
+    G4_INST* synInst;
+
+    if (dst)
+    {
+        if (dst == 0xFFFFFFFF)
+        {
+            synInst = insertSyncAllWRInstruction(bb, 0, inst_it, inst->getCISAOff(), inst->getLineNo());
+        }
+        else if (multipleDst)
+        {
+            synInst = insertSyncAllWRInstruction(bb, dst, inst_it, inst->getCISAOff(), inst->getLineNo());
+        }
+        else
+        {
+            synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+            synInst->setToken(dstToken);
+            synInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+        }
+        synInst->setLexicalId(newInstID);
+        for (auto loc:dst_loc)
+        {
+            synInst->setTokenLoc(loc.first, loc.second);
+        }
+        insertedSync = true;
+    }
+
+    if (src)
+    {
+        if (src == 0xFFFFFFFF)
+        {
+            synInst = insertSyncAllRDInstruction(bb, 0, inst_it, inst->getCISAOff(), inst->getLineNo());
+        }
+        else if (multipleSrc)
+        {
+            synInst = insertSyncAllRDInstruction(bb, src, inst_it, inst->getCISAOff(), inst->getLineNo());
+        }
+        else
+        {
+            synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+            synInst->setToken(srcToken);
+            synInst->setTokenType(SWSBTokenType::AFTER_READ);
+        }
+        synInst->setLexicalId(newInstID);
+        for (auto loc:src_loc)
+        {
+            synInst->setTokenLoc(loc.first, loc.second);
+        }
+        insertedSync = true;
+    }
+
+    return insertedSync;
+}
+
+//If depends on mulitple different ALU pipelines
+//    If all operands type matching the ALU pipelines --> regDist
+//    otherwise --> regDistAll
+//If depends on single different ALU pipeline and other same ALU pipelines.
+//    If all operands type matching the ALU pipelines --> regDist
+//    otherwise --> regDistAll
+//If depends on multiple same ALU pipelines
+//    If all operands type matching the ALU pipeline --> accurate/regDist
+//    otherwise--> accuarte
+//If depends on single ALU pipeline
+//    If operands type matching the ALU pipeline --> accurate/regDist
+//    otherwise--> accuarte
+//
+//Note that:
+// 1. one instruction can have mulitiple operands.
+// 2. instruction belongs to single pipeline
+//Combo:
+//For dpas/dpasw instructions
+//      RegDist         SBID.set
+//    RegDist         SBID.src
+//    RegDist         SBID.dst
+//For send instruction
+//    RegDistAll     SBID.set
+//    RegDistFloat   SBID.set
+//    RegDistInt     SBID.set
+//For non-send / non-dpas/dpasw instructions
+//    RegDist        SBID.dst
+//    RegDist        SBID.src
+//    RegDistAll     SBID.dst
+bool SWSB::insertSyncPVC(G4_BB * bb, SBNode * node, G4_INST * inst, INST_LIST_ITER inst_it, int newInstID, BitSet * dstTokens, BitSet * srcTokens)
+{
+    G4_INST::DistanceType distType = node->GetInstruction()->getDistanceTypeXe();
+    bool operandTypeIndicated = node->GetInstruction()->isOperandTypeIndicated();
+    bool insertedSync = false;
+
+    if (tokenHonourInstruction(inst))
+    {
+        if (inst->getDistance())
+        {
+            //For dpas/dpasw instructions
+            //      RegDist         SBID.set
+            //    RegDist         SBID.src
+            //    RegDist         SBID.dst
+            if (inst->isDpas() ||
+                inst->isMathPipeInst()) //math Will be filtered out by tokenHonourInstruction in PVC
+            {
+                if (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN ||
+                    node->getDepTokenNum())
+                {
+                    if (!operandTypeIndicated)
+                    {
+                        G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                        synInst->setDistance(inst->getDistance());
+                        synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                        inst->setDistance(0);
+                        inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
+                        insertedSync = true;
+                    }
+                    else if (inst->getDistanceTypeXe() != G4_INST::DistanceType::DIST &&
+                        inst->getDistanceTypeXe() != G4_INST::DistanceType::DISTALL)
+                    {
+                        inst->setDistanceTypeXe(G4_INST::DistanceType::DIST);
+                    }
+                }
+            }
+
+            //For send instruction
+            //    RegDistAll     SBID.set
+            //    RegDistFloat   SBID.set
+            //    RegDistInt     SBID.set
+            if (inst->isSend())
+            {
+                if (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN)
+                {  //SBID.set > SBID.dst > SBID.src > distance
+                    if (!(distType == G4_INST::DistanceType::DISTALL ||
+                        distType == G4_INST::DistanceType::DISTINT ||
+                        distType == G4_INST::DistanceType::DISTFLOAT) || (inst != (*inst_it)))
+                    {
+                        G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                        synInst->setDistance(inst->getDistance());
+                        synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                        inst->setDistance(0);
+                        inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
+                        insertedSync = true;
+                    }
+                }
+                else if (node->getDepTokenNum())  //Keep only the SBID deps in the instruction
+                {
+                    G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                    synInst->setDistance(inst->getDistance());
+                    synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                    inst->setDistance(0);
+                    inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
+                    insertedSync = true;
+                }
+            }
+        }
+    }
+    else
+    {
+        //For non-send / non-dpas/dpasw instructions
+        //    RegDist        SBID.dst
+        //    RegDist        SBID.src
+        //    RegDistAll     SBID.dst
+        if (inst->getDistance())
+        {
+            if (inst->opcode() == G4_mad && inst->hasNoACCSBSet())
+            {
+                G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                synInst->setDistance(inst->getDistance());
+                synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                inst->setDistance(0);
+                inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
+                insertedSync = true;
+            }
+            else if (node->getDepTokenNum())  //Keep only the SBID deps in the instruction
+            {
+                if (!operandTypeIndicated && distType != G4_INST::DistanceType::DISTALL)
+                {
+                    G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                    synInst->setDistance(inst->getDistance());
+                    synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                    inst->setDistance(0);
+                    inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
+                    insertedSync = true;
+                }
+
+                if (operandTypeIndicated && distType != G4_INST::DistanceType::DIST && distType != G4_INST::DistanceType::DISTALL)
+                {
+                    inst->setDistanceTypeXe(G4_INST::DistanceType::DIST);
+                }
+
+                if (distType == G4_INST::DistanceType::DISTALL)
+                {
+                    bool hasAfterWrite = false;
+                    for (int i = 0; i < (int)node->getDepTokenNum(); i++)
+                    {
+                        unsigned short token = (unsigned short)-1;
+                        SWSBTokenType type = SWSBTokenType::TOKEN_NONE;
+                        token = node->getDepToken(i, type);
+                        if (type == SWSBTokenType::AFTER_WRITE)
+                        {
+                            hasAfterWrite = true;
+                        }
+                    }
+                    if (!hasAfterWrite)
+                    {
+                        G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                        synInst->setDistance(inst->getDistance());
+                        synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                        inst->setDistance(0);
+                        inst->setDistanceTypeXe(G4_INST::DistanceType::DIST_NONE);
+                        insertedSync = true;
+                    }
+                }
+            }
+        }
+    }
+
+    bool removeAllTokenDep = (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN);
+        removeAllTokenDep = removeAllTokenDep || (inst->opcode() == G4_mad && inst->hasNoACCSBSet());
+    //For out-of-order instruction, all dependence token will be moved out to sync
+    insertedSync |= insertSyncTokenPVC(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, removeAllTokenDep);
+
+    return insertedSync;
+}
 
 void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens)
 {
@@ -3564,7 +3964,11 @@ void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER ins
         }
     }
 
-    if (fg.builder->hasThreeALUPipes()) //XeHP_SDV
+    if (fg.builder->hasFourALUPipes()) //PVC
+    {
+        insertedSync = insertSyncPVC(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens);
+    }
+    else if (fg.builder->hasThreeALUPipes()) //XeHP_SDV
     {
         insertedSync = insertSyncXe(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens);
     }
@@ -4287,6 +4691,8 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
     {
         return;
     }
+
+    bool addGlobalSLMWARWA = false;
     for (int i = first_node; i <= last_node; i++)
     {
         SBNode* node = (*SBNodes)[i];
@@ -4368,6 +4774,29 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                 assert(dep != DEPTYPE_MAX && "dep unassigned?");
                 ++bn_it;
             }
+        }
+
+        if (!addGlobalSLMWARWA && builder.hasSLMWARIssue() && curInst->isSend() &&
+            (isSLMMsg(curInst) && (curInst->getDst() == nullptr || isFence(curInst))))
+        {
+            for (int curBucket = 0; curBucket < globalSendsLB->getNumOfBuckets(); curBucket++)
+            {
+                for (LiveGRFBuckets::BN_iterator bn_it = globalSendsLB->begin(curBucket);
+                    bn_it != globalSendsLB->end(curBucket);)
+                {
+                    SBBucketNode* liveBN = (*bn_it);
+                    SBNode* curLiveNode = liveBN->node;
+                    G4_INST* liveInst = liveBN->inst;
+
+                    if (liveInst->isSend() &&
+                        isSLMMsg(liveInst) && liveInst->getDst() != nullptr && !liveInst->getDst()->isNullReg())
+                    {
+                        send_may_kill.setDst(curLiveNode->globalID, true);
+                    }
+                    ++bn_it;
+                }
+            }
+            addGlobalSLMWARWA = true;
         }
     }
 }
@@ -4739,6 +5168,29 @@ void G4_BB_SB::clearKilledBucketNodeXeHP(LiveGRFBuckets* LB, int integerID, int 
     }
 }
 
+void G4_BB_SB::clearSLMWARWAissue(SBNode* curNode, LiveGRFBuckets* LB)
+{
+    for (int curBucket = 0; curBucket < LB->getNumOfBuckets(); curBucket++)
+    {
+        for (LiveGRFBuckets::BN_iterator it = LB->begin(curBucket); it != LB->end(curBucket);)
+        {
+            SBBucketNode* liveBN = (*it);
+            SBNode* curLiveNode = liveBN->node;
+            G4_INST* liveInst = liveBN->inst;
+
+            if (liveInst->isSend() &&
+                isSLMMsg(liveInst) && liveInst->getDst() != nullptr && !liveInst->getDst()->isNullReg())
+            {
+                createAddGRFEdge(curLiveNode, curNode, RAW, DEP_EXPLICT);
+                curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                LB->killOperand(it);
+                continue;
+            }
+
+            ++it;
+        }
+    }
+}
 
 void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* liveNode, bool dstDep)
 {
@@ -4920,6 +5372,43 @@ bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode)
     return false;
 }
 
+#define SRC2_CACHE_SIZE 1024
+bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
+{
+    unsigned short GRFSize = getGRFSize();
+    BitSet cachedGRF(totalGRFNum, false);
+
+    for (const SBFootprint* fp = curNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
+    {
+        unsigned short leftB = fp->LeftB / GRFSize;
+        unsigned short rightB = fp->RightB / GRFSize;
+        for (unsigned short i = leftB; i <= rightB; i++)
+        {
+            cachedGRF.set(i, true);
+        }
+    }
+
+    for (const SBFootprint* fp = nextNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
+    {
+        unsigned short leftB = fp->LeftB / GRFSize;
+        unsigned short rightB = fp->RightB / GRFSize;
+        for (unsigned short i = leftB; i <= rightB; i++)
+        {
+            cachedGRF.set(i, true);
+        }
+    }
+
+    unsigned short cachedGRFNum = 0;
+    for (unsigned short i = 0; i < totalGRFNum; i++)
+    {
+        if (cachedGRF.isSet(i))
+        {
+            cachedGRFNum++;
+        }
+    }
+
+    return cachedGRFNum <= (SRC2_CACHE_SIZE + GRFSize - 1) / GRFSize;
+}
 
 bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) const
 {
@@ -4997,8 +5486,8 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
         return true;
     }
 
-    if (
-        VISA_WA_CHECK(builder.getPWaTable(), Wa_16011859583) ||
+    if (VISA_WA_CHECK(builder.getPWaTable(), Wa_16011859583) ||
+        VISA_WA_CHECK(builder.getPWaTable(), Wa_14012420496) ||
         builder.getOption(vISA_NoDPASMacro))
     {
         if (curD != 8 || nextD != 8 || curC != 8 || nextC != 8)
@@ -5038,6 +5527,7 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     if (builder.hasSrc2ReadSupression() &&
         curC == nextC &&
         curC == 8 &&
+        src2FootPrintCachePVC(curNode, nextNode) &&
         curNode->getFirstFootprint(Opnd_src2)->isWholeOverlap(nextNode->getFirstFootprint(Opnd_src2)))
     {
         return false;
@@ -5056,6 +5546,74 @@ void G4_BB_SB::pushItemToQueue(std::vector<unsigned> *nodeIDQueue, unsigned node
     }
 }
 
+bool G4_BB_SB::hasInternalDependence(SBNode* nodeFirst, SBNode* nodeNext)
+{
+    for (Gen4_Operand_Number opndNum1
+        : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2})
+    {
+        const SBFootprint* firstfp = nodeFirst->getFirstFootprint(opndNum1);
+
+        for (Gen4_Operand_Number opndNum2
+            : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2})
+        {
+            if (opndNum1 > Opnd_dst && opndNum2 > Opnd_dst) //Don't track read after read.
+            {
+                continue;
+            }
+
+            const SBFootprint* secondfp = nodeNext->getFirstFootprint(opndNum2);
+            unsigned short internalOffset = 0;
+            if (firstfp->hasOverlap(secondfp, internalOffset))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
+bool G4_BB_SB::is2xDPBlockCandidate(G4_INST* inst, bool accDST)
+{
+    if (inst->opcode() != G4_mad)
+    {
+        return false;
+    }
+
+    if (inst->getPredicate())
+    {
+        return false;
+    }
+
+    if (inst->getExecSize() != g4::SIMD16)
+    {
+        return false;
+    }
+
+    if (!inst->getDst() || inst->getDst()->isNullReg())
+    {
+        return false;
+    }
+
+    if (accDST && !inst->getDst()->isAccReg())
+    {
+        return false;
+    }
+
+    for (Gen4_Operand_Number opndNum
+        : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2})
+    {
+        G4_Operand* opnd = inst->getOperand(opndNum);
+
+        if (opnd->getType() != G4_Type::Type_DF)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 void G4_BB_SB::SBDDD(G4_BB* bb,
     LiveGRFBuckets*& LB,
@@ -5146,7 +5704,77 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             }
         }
 
+        //Support for the mad block in DPAS pipeline
+        if (builder.has2xDP() &&
+            builder.getOption(vISA_ScheduleFor2xSP) &&
+            is2xDPBlockCandidate(curInst, true))
+        {
+            int depDistance = curInst->getDst()->getLinearizedEnd() - curInst->getDst()->getLinearizedStart() + 1;
+            std::list<G4_INST*>::iterator iNextInst = iInst;
+            iNextInst++;
+            G4_INST* nInst = *iNextInst;
+            while (is2xDPBlockCandidate(nInst, false))
+            {
+                SBNode nextNode(nodeID, ALUID, bb->getId(), nInst);
+                getGRFFootPrint(&nextNode, p);
 
+                if (hasInternalDependence(node, &nextNode))
+                {
+                    break;
+                }
+                depDistance += nInst->getDst()->getLinearizedEnd() - nInst->getDst()->getLinearizedStart() + 1;
+                iNextInst ++;
+                nInst = *iNextInst;
+                if (iInstNext == iInstEnd)
+                {
+                    break;
+                }
+                if (depDistance >= getGRFSize() * 8)
+                {
+                    break;
+                }
+            }
+
+            if (depDistance >= getGRFSize() * 8)
+            {
+                curInst->setNoACCSBSet();
+            }
+        }
+
+        // Support for atomic write combine
+        // Treat block instructions as one in distance calculation.
+        // The write combine in the local scheduling guarantee that all instructions in the block blong to same instruction pipeline.
+        auto isWriteCombineBlockCandidate = [&](G4_INST * inst)
+        {
+            return (inst->opcode() == G4_mov &&
+                IS_BTYPE(inst->getDst()->getType()) &&
+                (IS_BTYPE(inst->getSrc(0)->getType()) || IS_WTYPE(inst->getSrc(0)->getType()) || IS_DTYPE(inst->getSrc(0)->getType()) || inst->getSrc(0)->getType() == Type_F) &&
+                inst->getPredicate() == nullptr);
+        };
+
+        if (builder.getOption(vISA_writeCombine) && isWriteCombineBlockCandidate(curInst) && curInst->isAtomicInst())
+        {
+            while (nextInst && isWriteCombineBlockCandidate(nextInst))
+            {
+                SBNode nextNode = SBNode(nodeID, ALUID, bb->getId(), nextInst);
+                getGRFFootPrint(&nextNode, p);
+                footprintMerge(node, &nextNode);
+                node->addInstruction(nextInst);
+
+                curInst = nextInst;
+                iInst = iInstNext;
+                iInstNext++;
+                nextInst = *iInstNext;
+
+                if (!curInst->isAtomicInst())
+                {
+                    break;
+                }
+            }
+
+            // check last instruction in the block is correct or not
+            assert(curInst && isWriteCombineBlockCandidate(curInst) && !curInst->isAtomicInst() && "the last instruction in the write combine block is wrong");
+        }
 
         //Support for DPAS
         //To fully provide the efficiency of DPAS pipeline
@@ -5344,6 +5972,11 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
                 bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
                 bool hasRMWOverlap = false;
+                if (builder.hasFourALUPipes() && distanceHonourInstruction(liveInst) &&
+                    distanceHonourInstruction(curInst))
+                {
+                    hasOverlap = curFootprint->hasOverlap(liveFootprint, hasRMWOverlap, internalOffset);
+                }
 
                 //RAW:                     R kill W    R-->live       explict dependence
                 //WAW: same pipeline and inorder   W2 kill W1  W2-->live      implicit dependence
@@ -5363,6 +5996,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 //FIXME, For performance, we need check the 3th instruction as well
 
                 if (!hasOverlap &&
+                    !builder.hasFixedCycleMathPipe() &&
                     dep == RAW &&
                     liveInst->isMath() && !curInst->isMath() &&
                     builder.hasRSForSpecificPlatform() &&
@@ -5654,6 +6288,11 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             }
         }
 
+        if (builder.hasSLMWARIssue() && curInst->isSend() &&
+            (isSLMMsg(curInst) && (curInst->getDst() == nullptr || isFence(curInst))))
+        {
+            clearSLMWARWAissue(node, LB);
+        }
 
         // Add buckets of current instruction to bucket list
         if (node->instVec.size() > 1)
@@ -6367,6 +7006,11 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                     BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
                 }
             }
+            if (fg.builder->hasSLMWARIssue() && curInst->isSend() &&
+                (isSLMMsg(curInst) && (curInst->getDst() == nullptr || isFence(curInst))))
+            {
+                BBVector[i]->clearSLMWARWAissue(node, &send_use_kills);
+            }
         }
     }
 
@@ -6752,6 +7396,11 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                 {
                     BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
                 }
+            }
+            if (fg.builder->hasSLMWARIssue() && curInst->isSend() &&
+                (isSLMMsg(curInst) && (curInst->getDst() == nullptr || isFence(curInst))))
+            {
+                BBVector[i]->clearSLMWARWAissue(node, &send_use_kills);
             }
         }
     }

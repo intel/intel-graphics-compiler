@@ -19,6 +19,11 @@ SPDX-License-Identifier: MIT
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
 
+static int lscCheckExecSize(
+    LSC_SFID sfid,
+    LSC_OP op,
+    LSC_DATA_ORDER data_order,
+    int exec_size);
 
 //VISA_Type variable_declaration_and_type_check(char *var, Common_ISA_Var_Class type);
 void CISAerror(CISA_IR_Builder* builder, char const* msg);
@@ -184,6 +189,46 @@ std::vector<attr_gen_struct*> AttrOptVar;
         uint8_t func_ctrl;
     } bfn_info;
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Support for LSC instructions
+    LSC_OP                  lsc_subOpcode;
+    ISA_Opcode              lsc_opcode;
+    LSC_CACHE_OPTS          lsc_caching_opts;
+    LSC_CACHE_OPT           lsc_caching_opt; // for lexer to parser
+    LSC_FENCE_OP            lsc_fence_op;
+    LSC_SCOPE               lsc_scope;
+    LSC_SFID                lsc_sfid;
+
+    struct {
+        VISA_opnd              *reg;
+        LSC_DATA_SHAPE          shape;
+    } lsc_data_operand;
+    LSC_DATA_SHAPE            lsc_data_shape;
+    struct {
+        VISA_opnd              *reg;
+        LSC_DATA_SHAPE_BLOCK2D  shape2D;
+    } lsc_data_operand2d;
+    LSC_DATA_SHAPE_BLOCK2D    lsc_data_shape2d;
+
+    struct {
+        VISA_opnd               *surface;
+        // for UNTYPED
+        //  simple:  regs[0] = reg addr
+        //  strided: regs[0] = base; regs[1] = strided
+        //  block2d: regs = {surfBase,surfWidth,surfHeight,surfPitch,surfX,surfY}
+        //
+        // for TYPED: {U, V, R, LOD}
+        // for TYPED block2d: regs = {BlockStartX, BlockStartY}
+        VISA_opnd               *regs[6];
+        LSC_ADDR                 addr;
+    } lsc_addr_operand;
+    LSC_ADDR_SIZE              lsc_addr_size;
+    LSC_ADDR_TYPE              lsc_addr_type;
+    VISA_opnd                 *lsc_addr_surface_ident; // vec. opnd imm or reg
+    struct lsc_addr_model_struct {
+        LSC_ADDR_TYPE          type;
+        VISA_opnd             *surface; // can be imm or reg
+    } lsc_addr_model;
 
     // Align Support in Declaration
     VISA_Align             align;
@@ -263,6 +308,8 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token BFN_OP
 %token DPAS_OP
 %token BF_CVT_OP
+%token <opcode> NBARRIER_SIGNAL
+%token <opcode> NBARRIER_WAIT
 %token <type>   ITYPE
 %token <type>   DECL_DATA_TYPE
 %token <type>   DFTYPE         // :df
@@ -512,6 +559,62 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %type <dpas_info>           DPAS_OP
 %type <bfn_info>            BFN_OP
 %token <opcode>             QW_SCATTER_OP
+// elements to support new LSC instructions
+//
+// cache options
+%type  <lsc_caching_opts>      LscCacheOpts
+%token <lsc_caching_opt>       LSC_CACHING_OPT
+%type <RawVar>                 LscPayloadReg
+%type <RawVar>                 LscPayloadNonNullReg
+// address syntax; e.g. bss(S2)[V12]:a64
+%type <lsc_addr_model>         LscAddrModelOpt
+%type <lsc_addr_model>         LscRegAddrModel
+%type <lsc_addr_operand>       LscUntypedAddrOperand
+%type <lsc_addr_operand>       LscUntypedStridedAddrOperand
+%type <lsc_addr_operand>       LscUntypedBlock2dAddrOperand
+%type <lsc_addr_operand>       LscTypedAddrOperand
+%token <lsc_addr_size>         LSC_ADDR_SIZE_TK
+%type <lsc_addr_type>          LscRegAddrModelKind
+%type <intval>                 LscAddrImmOffsetOpt
+%type <intval>                 LscAddrImmScaleOpt
+%type <lsc_addr_surface_ident> LscVectorOpRegOrImm
+%type <lsc_addr_surface_ident> LscVectorOpReg
+%type <lsc_addr_surface_ident> LscVectorOpImm
+
+// data syntax; e.g. V13:u32x4t
+%type <lsc_data_operand>       LscDataOperand
+%type <lsc_data_operand2d>     LscDataOperand2D
+%token <lsc_data_shape>        LSC_DATA_SHAPE_TK
+%token <lsc_data_shape>        LSC_DATA_SHAPE_TK_CHMASK
+%token <lsc_data_shape2d>      LSC_DATA_SHAPE_TK_BLOCK2D
+//
+%token                         LSC_AM_FLAT
+%token                         LSC_AM_BTI
+%token                         LSC_AM_BSS
+%token                         LSC_AM_SS
+//
+%token <lsc_fence_op>          LSC_FENCE_OP_TYPE
+%token <lsc_scope>             LSC_FENCE_SCOPE
+//
+%type  <lsc_sfid>              LscSfid
+%token <lsc_sfid>              LSC_SFID_UNTYPED_TOKEN
+%token <lsc_sfid>              LSC_SFID_TYPED_TOKEN
+////////////////////////////////////////////////////////
+// specific LSC ops
+//
+// load*/store*/atomic* are all subops of LSC_TYPED and LSC_UNTYPED.
+// We infer which parent op based on the grammar (LSC_SFID).
+%token <lsc_subOpcode>         LSC_LOAD_MNEMONIC
+%token <lsc_subOpcode>         LSC_LOAD_STRIDED_MNEMONIC
+%token <lsc_subOpcode>         LSC_LOAD_BLOCK2D_MNEMONIC
+%token <lsc_subOpcode>         LSC_STORE_MNEMONIC
+%token <lsc_subOpcode>         LSC_STORE_STRIDED_MNEMONIC
+%token <lsc_subOpcode>         LSC_STORE_BLOCK2D_MNEMONIC
+%token <lsc_subOpcode>         LSC_ATOMIC_MNEMONIC
+%token <lsc_subOpcode>         LSC_READ_STATE_INFO_MNEMONIC
+// fence is a top-level op (not a subop)
+%token <lsc_opcode>            LSC_FENCE_MNEMONIC
+%token <opcode>                FCVT_OP
 
 
 
@@ -838,6 +941,8 @@ Instruction:
         | BfnInstruction
         | QwScatterInstruction
         | BF_CvtInstruction
+        | LscInstruction
+        | FCvtInstruction
 
 
 Label: LABEL {pBuilder->CISA_create_label($1, CISAlineno);}
@@ -959,6 +1064,11 @@ BF_CvtInstruction: BF_CVT_OP ExecSize VecDstOperand_G VecSrcOperand_G_IMM
         pBuilder->CISA_create_bf_cvt_instruction($2.emask, $2.exec_size, $3.cisa_gen_opnd, $4.cisa_gen_opnd, CISAlineno);
     }
 
+               //   1        2            3            4
+FCvtInstruction: FCVT_OP ExecSize VecDstOperand_G VecSrcOperand_G_IMM
+    {
+        pBuilder->CISA_create_fcvt_instruction($2.emask, $2.exec_size, $3.cisa_gen_opnd, $4.cisa_gen_opnd, CISAlineno);
+    }
 
                      //  1            2           3            4             5                6
 AntiTrigInstruction: Predicate ANTI_TRIG_OP SatModOpt ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM
@@ -1136,6 +1246,12 @@ SynchronizationInstruction:
     }
     | SBARRIER_WAIT {
         pBuilder->CISA_create_sbarrier_instruction(false, CISAlineno);
+    }
+    | NBARRIER_SIGNAL VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM {
+        pBuilder->CISA_create_nbarrier(false, $2.cisa_gen_opnd, $3.cisa_gen_opnd, CISAlineno);
+    }
+    | NBARRIER_WAIT VecSrcOperand_G_I_IMM {
+        pBuilder->CISA_create_nbarrier(true, $2.cisa_gen_opnd, NULL, CISAlineno);
     }
 
 //                      1         2               3             4           5         6     7          8          9          10
@@ -1374,6 +1490,590 @@ AtomicBitwidthOpt:
         $$ = $2;
     }
 
+////////////////////////////////////////////////
+// LSC_LOAD - Load/Store Controller Instructions
+LscInstruction:
+  // untyped loads
+    LscUntypedLoad
+  | LscUntypedStridedLoad
+  | LscUntypedBlock2dLoad
+  // untyped stores
+  | LscUntypedStore
+  | LscUntypedStridedStore
+  | LscUntypedBlock2dStore
+  // untyped atomics
+  | LscUntypedAtomic
+  //
+  // typed*
+  | LscTypedLoad
+  | LscTypedStore
+  | LscTypedAtomic
+  | LscTypedReadStateInfo
+  //
+  | LscFence
+
+//
+// EXAMPLES:
+// FLAT (stateless):
+//     lsc_load.ugm   V53:u32  flat[V52]:a64
+//     lsc_load.slm   V53:u32  flat[V52]:a32
+//
+// FLAT with immediate offset  (32b with x2 elems per addr)
+//     lsc_load.ugm   V53:u32x2  flat[V52+0x100]:a64
+//
+// BTI:
+//     lsc_load.ugm   V53:u32  bti(0x10)[V52]:a32
+//     lsc_load.ugml  V53:u32  bti(V10.2)[V52]:a32
+//
+// SS:
+//     lsc_load.ugm   V53:u64   ss(0x200)[V52+0x100]:a16
+// BSS:
+//     lsc_load.ugm   V53:u8x8  bss(V10)[V52+0x100]:a16
+//
+LscUntypedLoad:
+//  1          2                  3                       4             5
+    Predicate  LSC_LOAD_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
+//  6                  7
+    LscDataOperand  LscUntypedAddrOperand
+    {
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_untyped_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $7.addr,     // address
+            $6.shape,    // data
+            $7.surface,  // surface
+            $6.reg,      // dst
+            $7.regs[0],  // src0
+            nullptr,     // src1
+            nullptr,     // src2
+            CISAlineno);
+    }
+
+//
+// EXAMPLES:
+// FLAT (stateless):
+//     lsc_load_strided.ugm   V53:u32  flat[V52]:a64
+//     lsc_load_strided.ugm   V53:u32  flat[V52, 32]:a32
+//     lsc_load_strided.ugm   V53:u32  flat[4*V52+16, 32]:a32
+LscUntypedStridedLoad:
+//  1          2                          3                       4             5
+    Predicate  LSC_LOAD_STRIDED_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
+//  6               7
+    LscDataOperand  LscUntypedStridedAddrOperand
+    {
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_untyped_strided_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $7.addr,     // address
+            $6.shape,    // data
+            $7.surface,  // surface
+            $6.reg,      // dst
+            $7.regs[0],  // src0 base
+            $7.regs[1],  // src0 stride
+            nullptr,     // src1
+            CISAlineno);
+    }
+
+//
+// EXAMPLES:
+// FLAT (stateless):
+// lsc_load_block2d.ugm   V53:u8.2x32x32  flat[V_BASE,V_SWIDTH,V_SHEIGHT,V_SPITCH,V_X,V_Y]
+LscUntypedBlock2dLoad:
+//  1          2                           3                       4             5
+    Predicate  LSC_LOAD_BLOCK2D_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
+//  6                 7
+    LscDataOperand2D  LscUntypedBlock2dAddrOperand
+    {
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $6.shape2D.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_untyped_block2d_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $6.shape2D,  // data shape
+            $6.reg,      // dst
+            $7.regs,     // src0 surface info / addrs
+            nullptr,     // src1
+            CISAlineno);
+    }
+
+//
+// EXAMPLE:
+//     lsc_store.ugm    flat[V52]:a64      V53:u32
+LscUntypedStore:
+//  1          2                   3                       4             5
+    Predicate  LSC_STORE_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
+//  6                      7
+    LscUntypedAddrOperand  LscDataOperand
+    {
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $7.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_untyped_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // SFID
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $6.addr,     // address
+            $7.shape,    // data
+            $6.surface,  // surface
+            nullptr,     // dst
+            $6.regs[0],  // src0
+            $7.reg,      // src1
+            nullptr,     // src2
+            CISAlineno);
+    }
+LscUntypedStridedStore:
+//  1          2                           3                       4             5
+    Predicate  LSC_STORE_STRIDED_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
+//  6                             7
+    LscUntypedStridedAddrOperand  LscDataOperand
+    {
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $7.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_untyped_strided_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // SFID
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $6.addr,     // address
+            $7.shape,    // data
+            $6.surface,  // surface
+            nullptr,     // dst
+            $6.regs[0],  // src0 base
+            $6.regs[1],  // src0 stride
+            $7.reg,      // src1
+            CISAlineno);
+    }
+
+// EXAMPLES
+//     lsc_store_block2d.ugm   flat[V_BASE,V_X,V_Y,V_PITCH,V_HEIGHT,VBLOCK_X,VBLOCK_Y,32,4]   V53:u64
+LscUntypedBlock2dStore:
+//  1          2                           3                       4             5
+    Predicate  LSC_STORE_BLOCK2D_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
+//  6                            7
+    LscUntypedBlock2dAddrOperand LscDataOperand2D
+    {
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $7.shape2D.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_untyped_block2d_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $7.shape2D,  // data2d
+            nullptr,     // dst
+            $6.regs,     // src0 addrs
+            $7.reg,      // src1
+            CISAlineno);
+    }
+
+// EXAMPLES:
+//     lsc_atomic_iinc.ugm   VRESULT:u32  flat[VADDR]:a64       V0     V0
+//     lsc_atomic_iinc.ugml  VRESULT:u32  flat[VADDR]:a64       V0     V0
+//     lsc_atomic_iadd.slm   VRESULT:u32  flat[VADDR+0x10]:a32  VSRC1  V0
+LscUntypedAtomic:
+//  1         2                    3                       4             5
+    Predicate LSC_ATOMIC_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
+//  6               7                      8              9
+    LscDataOperand  LscUntypedAddrOperand  LscPayloadReg  LscPayloadReg
+    {
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_untyped_inst(
+            $1,  // predicate
+            $2,                // op
+            $3,                // sfid
+            $4,                // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $7.addr,     // address info
+            $6.shape,    // data type
+            $7.surface,  // surface
+            $6.reg,      // dst data
+            $7.regs[0],  // src0 addr
+            $8,          // src1 data
+            $9,          // src2 data (for icas/fcas)
+            CISAlineno);
+    }
+
+//
+// EXAMPLES:
+// SS using only U:
+//     lsc_load_quad.tgm   V60:u32.x     ss(T6)[V52]:a32
+// BSS using U and V:
+//     lsc_load_quad.tgm   V60:u32.xyzw  bss(V10)[V52,V53]:a32
+// BSS using U, V, R, and LOD:
+//     lsc_load_quad.tgm   V60:u32.xz    bss(V10)[V52,V53,V54,V55]:a32
+//
+LscTypedLoad:
+//  1          2                  3                     4             5
+    Predicate  LSC_LOAD_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
+//  6               7
+    LscDataOperand  LscTypedAddrOperand
+    {
+        if ($2 != LSC_LOAD_QUAD) {
+            PARSE_ERROR("unsupported load operation for .tgm");
+        }
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_typed_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $7.addr.type,  // address model
+            $7.addr.size,  // address size
+            $6.shape,    // data type
+            $7.surface,  // surface
+            $6.reg,      // dst data
+            $7.regs[0],  // src0_u
+            $7.regs[1],  // src0_v
+            $7.regs[2],  // src0_r
+            $7.regs[3],  // src0_lod
+            nullptr,     // src1 data
+            nullptr,     // src2 data
+            CISAlineno);
+    }
+//
+// EXAMPLES:
+// SS using only U:
+//     lsc_store_quad.tgm   V60:u32.x     ss(T6)[V52]:a32
+// BSS using U and V:
+//     lsc_store_quad.tgm   V60:u32.xyzw  bss(V10)[V52,V53]:a32
+// BSS using U, V, R, and LOD:
+//     lsc_store_quad.tgm   V60:u32.xz    bss(V10)[V52,V53,V54,V55]:a32
+//
+LscTypedStore:
+//  1          2                   3                     4             5
+    Predicate  LSC_STORE_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
+//  6                    7
+    LscTypedAddrOperand  LscDataOperand
+    {
+        if ($2 != LSC_STORE_QUAD) {
+            PARSE_ERROR("unsupported store operation for .tgm");
+        }
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $7.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_typed_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $6.addr.type,  // address model
+            $6.addr.size,  // address size
+            $7.shape,    // data type
+            $6.surface,  // surface
+            nullptr,     // dst
+            $6.regs[0],  // src0_u
+            $6.regs[1],  // src0_v
+            $6.regs[2],  // src0_r
+            $6.regs[3],  // src0_lod
+            $7.reg,      // src1 data
+            nullptr,     // src2 data
+            CISAlineno);
+    }
+//
+// EXAMPLES:
+// SS using only U:
+//     lsc_atomic_iinc.tgm   ss(T6)[V52]:a32        V0:u32.x      V0  V0
+// BSS using U and V:
+//     lsc_atomic_iadd.tgm   bss(V10)[V52,V53]:a32  V60:u32.xyzw  V0  V70
+// BSS using U, V, R, and LOD:
+//     lsc_atomic_icas.tgm   bss(V10)[V52,V53,V54,V55]:a32  V60:u32.xz  V61 V70
+//
+LscTypedAtomic:
+//  1          2                    3                     4             5
+    Predicate  LSC_ATOMIC_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
+//  6               7                    8              9
+    LscDataOperand  LscTypedAddrOperand  LscPayloadReg  LscPayloadReg
+    {
+        $5.exec_size =
+            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_typed_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $7.addr.type, // address model
+            $7.addr.size,  // address size
+            $6.shape,    // data type
+            $7.surface,  // surface
+            $6.reg,      // dst data
+            $7.regs[0],  // src0 addrs u
+            $7.regs[1],  // src0 addrs v
+            $7.regs[2],  // src0 addrs r
+            $7.regs[3],  // src0 addrs lod
+            $8,          // src1 data
+            $9,          // src2 data
+            CISAlineno);
+    }
+
+// EXAMPLE:
+//   lsc_read_state_info.tgm  VDATA  bti(0x4)
+LscTypedReadStateInfo:
+// 1          2                             3
+   Predicate  LSC_READ_STATE_INFO_MNEMONIC  LSC_SFID_TYPED_TOKEN
+// 4              5
+   LscPayloadReg  LscRegAddrModel
+   {
+        LSC_CACHE_OPTS caching{LSC_CACHING_DEFAULT,LSC_CACHING_DEFAULT};
+        LSC_DATA_SHAPE dataShape{LSC_DATA_SIZE_32b,LSC_DATA_ORDER_NONTRANSPOSE};
+        dataShape.elems = LSC_DATA_ELEMS_1;
+        pBuilder->CISA_create_lsc_typed_inst(
+            $1,              // predicate
+            $2,              // subop
+            $3,              // sfid
+            caching,         // caching settings
+            EXEC_SIZE_1,
+            vISA_EMASK_M1_NM,
+            $5.type,           // address model
+            LSC_ADDR_SIZE_32b, // address size
+            dataShape,         // data type
+            $5.surface,        // surface
+            $4,                // dst data
+            nullptr,           // src0 addrs u
+            nullptr,           // src0 addrs v
+            nullptr,           // src0 addrs r
+            nullptr,           // src0 addrs lod
+            nullptr,           // src1 data
+            nullptr,           // src2 data
+            CISAlineno);
+   }
+
+// EXAMPLES:
+//    lsc_fence.ugm.evict.gpu   // evicts all caches up to the GPU level
+//    lsc_fence.slm.flush.group // flushes cache up to the thread-group level
+//    lsc_fence.tgm.flush.local // typed global memory flush to the local unit
+//
+LscFence:
+//  1                   2        3                  4
+    LSC_FENCE_MNEMONIC  LscSfid  LSC_FENCE_OP_TYPE  LSC_FENCE_SCOPE
+    {
+        pBuilder->CISA_create_lsc_fence($2, $3, $4, CISAlineno);
+    }
+
+LscSfid: LSC_SFID_UNTYPED_TOKEN | LSC_SFID_TYPED_TOKEN
+
+LscCacheOpts:
+    %empty                          {$$ = {LSC_CACHING_DEFAULT,LSC_CACHING_DEFAULT};}
+  | LSC_CACHING_OPT                 {$$ = {$1,LSC_CACHING_DEFAULT};}
+  | LSC_CACHING_OPT LSC_CACHING_OPT {$$ = {$1,$2};}
+
+LscUntypedAddrOperand:
+//  1               2      3                  4
+    LscAddrModelOpt LBRACK LscAddrImmScaleOpt LscPayloadNonNullReg
+//    5                    6             7
+      LscAddrImmOffsetOpt  RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$4},{$1.type,(int)$3,(int)$5,$7}};
+    }
+
+LscUntypedStridedAddrOperand:
+//  1               2      3                  4
+    LscAddrModelOpt LBRACK LscAddrImmScaleOpt LscPayloadNonNullReg
+//    5                    6     7                   8      9
+      LscAddrImmOffsetOpt  COMMA LscVectorOpRegOrImm RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$4,$7},{$1.type,(int)$3,(int)$5,$9}};
+    }
+    | LscUntypedAddrOperand {
+        $$ = $1;
+        $$.regs[1] = nullptr;
+    }
+
+// e.g. flat[VBASE(0,0),VSWIDTH(1,0),VSHEIGHT(1,0),VPITCH(1,0),VX(0,4),VY(0,5)]
+LscUntypedBlock2dAddrOperand:
+//  1            2
+    LSC_AM_FLAT  LBRACK
+//            3 (surfaceAddr)
+              LscVectorOpReg
+//      4     5 (surfaceWidth)
+        COMMA LscVectorOpRegOrImm
+//      6     7 (surfaceHeight)
+        COMMA LscVectorOpRegOrImm
+//      8     9 (surfacePitch)
+        COMMA LscVectorOpRegOrImm
+//      10    11 (baseX)
+        COMMA LscVectorOpRegOrImm
+//      12    13 (baseY)
+        COMMA LscVectorOpRegOrImm
+//      14
+        RBRACK
+    {
+        $$ = {nullptr,{$3,$5,$7,$9,$11,$13},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
+    }
+
+LscTypedAddrOperand:
+//
+// just U
+//  1               2
+    LscRegAddrModel LBRACK
+//    3
+      LscPayloadNonNullReg
+//    4      5
+      RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$3},{$1.type,1,0,$5}};
+    }
+//
+// U, V
+//  1               2
+  | LscRegAddrModel LBRACK
+//  3                    4     5
+    LscPayloadNonNullReg COMMA LscPayloadNonNullReg
+//    6             7
+      RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$3,$5},{$1.type,1,0,$7}};
+    }
+//
+// U, V, R
+//  1               2
+  | LscRegAddrModel LBRACK
+//  3                    4     5                    6     7
+    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg
+//    8             9
+      RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$3,$5,$7},{$1.type,1,0,$9}};
+    }
+//
+// U, V, R, LOD
+//  1               2
+  | LscRegAddrModel LBRACK
+//  3                    4     5                    6     7                    8     9
+    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg
+//    10            11
+      RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$3,$5,$7,$9},{$1.type,1,0,$11}};
+    }
+
+// Enables stuff like
+// [VADDR + 4*0x100 - 32]
+// [VADDR - (32 + 4*0x100)]
+LscAddrImmOffsetOpt:
+    %empty           {$$ =   0;}
+  | PLUS  IntExpAdd  {$$ =  $2;}
+  | MINUS IntExpPrim {$$ = -$2;}
+  ;
+
+// e.g. [4*%sizeof(GRF)*VADDR + ...]
+//       ^
+// Note: we can't allow
+LscAddrImmScaleOpt:
+    %empty            {$$ = 1;}
+    | IntExpMul TIMES {$$ = $1;}
+
+LscAddrModelOpt:
+    %empty       {$$ = {LSC_ADDR_TYPE_FLAT,nullptr};}
+  | LSC_AM_FLAT  {$$ = {LSC_ADDR_TYPE_FLAT,nullptr};}
+  | LscRegAddrModel
+
+LscRegAddrModel:
+    // address models that take a reg parameter
+    LscRegAddrModelKind  LPAREN  LscVectorOpRegOrImm  RPAREN {
+        $$ = {$1,$3};
+    }
+
+LscRegAddrModelKind:
+    LSC_AM_BSS {$$ = LSC_ADDR_TYPE_BSS;}
+  | LSC_AM_SS  {$$ = LSC_ADDR_TYPE_SS;}
+  | LSC_AM_BTI {$$ = LSC_ADDR_TYPE_BTI;}
+
+LscVectorOpRegOrImm: LscVectorOpReg | LscVectorOpImm
+
+LscVectorOpImm:
+    IntExp {
+        $$ = pBuilder->CISA_create_immed($1,ISA_TYPE_UD, CISAlineno);
+    }
+
+LscVectorOpReg:
+    Var {
+        ABORT_ON_FAIL($$ = pBuilder->CISA_create_gen_src_operand(
+            $1,
+            0, 1, 0, // region
+            0, 0, // row and col offset
+            MODIFIER_NONE, CISAlineno));
+    }
+    |
+    Var DOT DEC_LIT {
+        ABORT_ON_FAIL($$ = pBuilder->CISA_create_gen_src_operand(
+            $1,
+            0, 1, 0, // region
+            0, (unsigned char)$3, // row and col offset
+            MODIFIER_NONE, CISAlineno));
+    }
+    |
+    Var LPAREN IntExp COMMA IntExp RPAREN {
+        MUST_HOLD($3 <= 255 || $3 >= 0, "row is out of bounds");
+        MUST_HOLD($5 <= 255 || $5 >= 0, "col is out of bounds");
+        $$ = pBuilder->CISA_create_gen_src_operand(
+            $1,
+            0, 1, 0,
+            (unsigned char)$3, (unsigned char)$5, // row and col offset
+            MODIFIER_NONE, CISAlineno);
+        if ($$ == nullptr) {
+            PARSE_ERROR("cannot find surface variable");
+        }
+    }
+
+LscDataOperand:
+    LscPayloadReg  LSC_DATA_SHAPE_TK {
+        $$ = {$1,$2};
+    }
+    |
+    LscPayloadReg  LSC_DATA_SHAPE_TK_CHMASK {
+        $$ = {$1,$2};
+    }
+
+LscDataOperand2D:
+   // 1             2
+    LscPayloadReg LSC_DATA_SHAPE_TK_BLOCK2D {
+        $$ = {$1,$2};
+    }
+
+LscPayloadReg:
+    RawOperand
+    |
+    // TODO: remove this rule once RawOperand handles no-suffix case
+    Var {
+        ABORT_ON_FAIL($$ = pBuilder->CISA_create_RAW_operand($1, 0, CISAlineno));
+    }
+LscPayloadNonNullReg:
+    RawOperandNonNull
+    |
+    // TODO: remove this rule once RawOperand handles no-suffix case
+    VarNonNull {
+        ABORT_ON_FAIL($$ = pBuilder->CISA_create_RAW_operand($1, 0, CISAlineno));
+    }
 
 SwitchLabels:
     %empty
@@ -2234,3 +2934,32 @@ static bool ParseEMask(
     return false;
 }
 
+static int lscCheckExecSize(
+    LSC_SFID sfid,
+    LSC_OP op,
+    LSC_DATA_ORDER data_order,
+    int exec_size)
+{
+    int is_vector_op =
+        op != LSC_LOAD_BLOCK2D &&
+        op != LSC_STORE_BLOCK2D;
+        // other ops like LSC_LOAD_SURFACE_INFO may be SIMD1
+    if (op == LSC_READ_STATE_INFO) {
+        exec_size = 1;
+    } else if (data_order == LSC_DATA_ORDER_NONTRANSPOSE && is_vector_op) {
+        if (exec_size == UNDEFINED_EXEC_SIZE) {
+            if (getGenxPlatform() == GENX_DG2) // for DG2 typed is 8, untyped is 16
+                exec_size = sfid == LSC_TGM ? 8 : 16;
+            else if (getGenxPlatform() >= GENX_PVC) // on PVC typed is 16, untyped is 32
+                exec_size = sfid == LSC_TGM ? 16 : 32;
+            else
+                exec_size = 32; // the world is finally sane
+        }
+    } else {
+        // block and transpose get SIMD by default
+        if (exec_size == UNDEFINED_EXEC_SIZE) {
+           exec_size = 1; // transpose is implicitly 1 if needed
+        }
+    }
+    return exec_size;
+}

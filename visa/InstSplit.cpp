@@ -303,6 +303,10 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
 
 bool InstSplitPass::needSplitByExecSize(G4_ExecSize execSize) const
 {
+    if (getGRFSize() == 64)
+    {
+        return execSize == g4::SIMD32;
+    }
     return execSize == g4::SIMD16;
 }
 

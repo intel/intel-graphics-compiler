@@ -3138,6 +3138,35 @@ bool Augmentation::updateDstMaskForGatherRaw(
 
     break;
 
+    case SFID::UGM:
+    case SFID::UGML:
+    case SFID::SLM:
+    {
+        uint32_t desc = msgDesc->getDesc();
+        uint32_t op = (desc & 0x3F); // [5:0]
+        uint32_t dszEncd = (desc >> 9) & 0x7; // [11:9]
+        bool isTranspose = ((desc >> 15) & 0x1) != 0; // [15]
+        if (op == LSC_LOAD && !isTranspose) { // transpose not supported yet
+            int dataSzReg = 0;
+            switch (dszEncd) { // dat size [11:9]
+            case 0: dataSzReg = 1; break; // d8
+            case 1: dataSzReg = 2; break; // d16
+            default: dataSzReg = 4; break; // d32, d8u32, d16u32, d16u32h
+            case 3: dataSzReg = 8; break; // d64
+            }
+            int vecSz = 0;
+            int vecSzEncd = (desc >> 12) & 0x7; // [14:12]
+            if (vecSzEncd <= 3) {
+                vecSz = vecSzEncd + 1; // V1, V2, V3, V4
+            } else {
+                vecSz = 4 << (vecSzEncd - 3); // V8, V16, V32, V64
+            }
+            updateMaskSIMT(curEMBit, execSize, mask,
+                (unsigned)dataSzReg,
+                (unsigned)vecSz);
+            return true;
+        }
+    }
     default: return false;
     }
 
@@ -7351,6 +7380,9 @@ unsigned GlobalRA::sendBlockSizeCode(unsigned owordSize)
     case 8:
         code = 4;
         break;
+    case 16:
+        code = 5;
+        break;
     default:
         MUST_BE_TRUE(false, ERROR_REGALLOC);
         code = 0;
@@ -7417,6 +7449,12 @@ void GlobalRA::stackCallProlog()
         const unsigned execSize = 8;
         G4_DstRegRegion* postDst = builder.createNullDst(Type_UD);
         G4_INST* store = nullptr;
+        if (builder.supportsLSC())
+        {
+            auto headerOpnd = getSpillFillHeader(*kernel.fg.builder, nullptr);
+            store = builder.createSpill(postDst, headerOpnd, payloadSrc, G4_ExecSize(execSize), 1, 0, builder.getBESP(), InstOpt_WriteEnable, false);
+        }
+        else
         {
             store = builder.createSpill(postDst, payloadSrc, G4_ExecSize(execSize), 1, 0, builder.getBESP(), InstOpt_WriteEnable, false);
         }
@@ -7460,6 +7498,12 @@ void GlobalRA::saveRegs(
             builder.getRegionStride1(), Type_UD);
         G4_DstRegRegion* dst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
         G4_INST* spillIntrinsic = nullptr;
+        if (builder.supportsLSC())
+        {
+            auto headerOpnd = getSpillFillHeader(*kernel.fg.builder, nullptr);
+            spillIntrinsic = builder.createSpill(dst, headerOpnd, sendSrc2, execSize, messageLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable, false);
+        }
+        else
         spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable, false);
         spillIntrinsic->inheritDIFrom(*insertIt);
         bb->insertBefore(insertIt, spillIntrinsic);
@@ -7552,6 +7596,12 @@ void GlobalRA::restoreRegs(
         dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         G4_DstRegRegion* dstRgn = builder.createDst(dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
         G4_INST* fillIntrinsic = nullptr;
+        if (builder.supportsLSC())
+        {
+            auto headerOpnd = getSpillFillHeader(*kernel.fg.builder, nullptr);
+            fillIntrinsic = builder.createFill(headerOpnd, dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable, false);
+        }
+        else
         fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable, false);
         fillIntrinsic->inheritDIFrom(*insertIt);
         bb->insertBefore(insertIt, fillIntrinsic);
@@ -8018,6 +8068,8 @@ void GlobalRA::addGenxMainStackSetupCode()
     // IGC will not use scratch, so fpInitVal will be 0.
     unsigned frameSize = builder.kernel.fg.frameSizeInOWord;
     uint16_t factor = 1;
+    if (useLscForSpillFill)
+        factor = 16;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
@@ -8066,6 +8118,9 @@ void GlobalRA::addCalleeStackSetupCode()
 {
     int frameSize = (int)builder.kernel.fg.frameSizeInOWord;
     uint16_t factor = 1;
+    // convert framesize to bytes from oword for LSC
+    if (useLscForSpillFill)
+        factor = 16;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
@@ -9831,6 +9886,14 @@ int GlobalRA::coloringRegAlloc()
         flagRegAlloc();
     }
 
+    // LSC messages are used when:
+    // a. Stack call is used on PVC+,
+    // b. Spill size exceeds what can be represented using hword msg on PVC+
+    if (builder.supportsLSC()) {
+        useLscForSpillFill = true;
+        useLscForNonStackCallSpillFill =
+            builder.getOption(vISA_lscNonStackSpill) != 0;
+    }
 
     if (builder.hasFusedEUWA() && !builder.getIsPayload())
     {
@@ -9957,7 +10020,13 @@ int GlobalRA::coloringRegAlloc()
 
     int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
     bool useScratchMsgForSpill = !hasStackCall && (globalScratchOffset < (int)(SCRATCH_MSG_LIMIT * 0.6)
-    );
+        // useScratchMsgForSpill is true for
+        // * scratch msg
+        // * LSC msg
+        // Spill insertion module decides whether to expand a fill/spill to scratch or LSC
+        // depending on spill offset. oword is supported for PVC but it is not emitted in
+        // favor of LSC.
+        || builder.supportsLSC());
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
 
     uint32_t nextSpillOffset = 0;
@@ -9983,6 +10052,21 @@ int GlobalRA::coloringRegAlloc()
     }
 
     unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
+    if (failSafeRAIteration == 0)
+    {
+        builder.getSpillFillHeader();
+        builder.getOldA0Dot2Temp();
+        if (builder.hasScratchSurface())
+        {
+            builder.initScratchSurfaceOffset();
+        }
+        //BuiltinR0 may be spilled which is not allowed.
+        //FIXME: BuiltinR0 spill cost has been set to MAX already,
+        //keep spilling means there is some issue in cost model
+        builder.getBuiltinR0()->setLiveOut();
+        builder.getBuiltinR0()->getRegVar()->setPhyReg(
+            builder.phyregpool.getGreg(0), 0);
+    }
     bool rematDone = false, alignedScalarSplitDone = false;
     VarSplit splitPass(*this);
     while (iterationNo < maxRAIterations)
@@ -10273,6 +10357,8 @@ int GlobalRA::coloringRegAlloc()
                 {
                     // create temp variable to store old a0.2 - this is marked as live-in and live-out.
                     // because the variable is emitted only post RA to preserve old value of a0.2.
+                    kernel.fg.builder->getOldA0Dot2Temp();
+                } else if (useLscForNonStackCallSpillFill) {
                     kernel.fg.builder->getOldA0Dot2Temp();
                 }
 

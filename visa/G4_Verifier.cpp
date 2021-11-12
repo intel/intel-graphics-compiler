@@ -1073,6 +1073,10 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     else if (dpasInst->isFP16() || dpasInst->isBF16())
     {
         G4_Type prec = Type_UNDEF;
+        if (dpasInst->getPlatform() >= GENX_PVC)
+        {
+            prec = dpasInst->isBF16() ? Type_BF : Type_HF;
+        }
         if (!(dTy == Type_F || dTy == prec) || !(s0Ty == Type_F || s0Ty == prec))
         {
             DEBUG_VERBOSE("dpas: incorrect float type for dst or src0!");
@@ -1081,6 +1085,28 @@ void G4Verifier::verifyDpas(G4_INST* inst)
             MUST_BE_TRUE(false, "dpas: wrong float type for dst or src0");
         }
     }
+    else if (dpasInst->isTF32())
+    {
+        if (dTy != Type_F || s0Ty != Type_F)
+        {
+            DEBUG_VERBOSE("dpas: incorrect TF32 type for dst or src0 (expected F)!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: should be float type for dst or src0");
+        }
+    }
+    else if (dpasInst->isBF8())
+    {
+        if (!(dTy == Type_F || dTy == Type_BF || dTy == Type_HF) ||
+            !(s0Ty == Type_F || s0Ty == Type_BF || s0Ty == Type_HF))
+        {
+            DEBUG_VERBOSE("dpas: incorrect type for dst or src0 (expected F, BF, HF)!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: should be type(F, BF, HF) for dst or src0");
+        }
+    }
+
     else
     {
         DEBUG_VERBOSE("dpas: invalid!");
@@ -1235,6 +1261,7 @@ void G4Verifier::verifyAccMov(G4_INST* inst)
 //     add  (8|M0)  r16.8<1>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
 //         Note that float source operands  can be scalar region <0;1,0>
 //
+//   For PVC, case 6 should be "Execution size must not be greater than 16."
 void G4Verifier::verifyBFMixedMode(G4_INST* inst)
 {
     auto useGivenType = [](G4_INST* I, G4_Type GivenTy) -> bool

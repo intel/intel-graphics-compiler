@@ -152,6 +152,11 @@ namespace vISA
         void change64bStride2CopyToUD(INST_LIST_ITER it, G4_BB* bb);
         bool fixBFMove(INST_LIST_ITER i, G4_BB* bb);
         void fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb);
+        bool fixFcvt(INST_LIST_ITER i, G4_BB* bb);
+        void fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb);
+        void fixDPAS(INST_LIST_ITER it, G4_BB* bb);
+        bool fixSrnd(INST_LIST_ITER i, G4_BB* bb);
+        void fixShiftInsts(INST_LIST_ITER i, G4_BB* bb);
 
         void helperGenerateTempDst(
             G4_BB *bb,

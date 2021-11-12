@@ -1824,6 +1824,12 @@ void CoalesceSpillFills::spillFillCleanup()
                     }
 
                     auto type = Type_UD;
+                    // In spill cleanup, all units are in hword units independent of platform.
+                    // For PVC, GRF size is 2x of Gen9. Correction to PVC is postponed to code
+                    // generation time when translating spill/fill intrinsics to actual send.
+                    // Since we're emitting a mov here, we need to do this correction here.
+                    if (getGRFSize() == 64)
+                        type = Type_UQ;
                     // Insert SIMD8 mov per row
                     G4_DstRegRegion* nDst = kernel.fg.builder->createDst(
                         inst->getDst()->getBase(), row + inst->getDst()->asDstRegRegion()->getRegOff() - rowStart,

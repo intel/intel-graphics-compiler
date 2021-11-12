@@ -177,6 +177,11 @@ SpillManagerGRF::SpillManagerGRF(
         splice(entryBB, iter, builder_->instList, UNMAPPABLE_VISA_INDEX);
     }
 
+    // LSC messages are used when:
+    // a. Stack call is used on PVC+,
+    // b. Spill size exceeds what can be represented using hword msg on PVC+
+    useLSCMsg = gra.useLscForSpillFill;
+    useLscNonstackCall = gra.useLscForNonStackCallSpillFill;
 }
 
 SpillManagerGRF::SpillManagerGRF(
@@ -227,6 +232,11 @@ SpillManagerGRF::SpillManagerGRF(
         auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
         splice(entryBB, iter, builder_->instList, UNMAPPABLE_VISA_INDEX);
     }
+    // LSC messages are used when:
+    // a. Stack call is used on PVC+,
+    // b. Spill size exceeds what can be represented using hword msg on PVC+
+    useLSCMsg = gra.useLscForSpillFill;
+    useLscNonstackCall = gra.useLscForNonStackCallSpillFill;
 }
 
 // Get the base regvar for the source or destination region.
@@ -689,6 +699,7 @@ bool SpillManagerGRF::isUnalignedRegion(
     unsigned regionByteSize = getRegionByteSize(region, execSize);
 
     bool needs32ByteAlign = useScratchMsg_;
+    needs32ByteAlign |= useLSCMsg;
 
     auto bytePerGRF = numEltPerGRF<Type_UB>();
     if (needs32ByteAlign)
@@ -1522,6 +1533,10 @@ G4_Declare * SpillManagerGRF::createMRangeDeclare(G4_RegVar * regVar)
     {
         return builder_->getBuiltinR0();
     }
+    else if (useLSCMsg)
+    {
+        return nullptr;
+    }
 
     G4_RegVar * repRegVar =
         (regVar->isRegVarTransient ()) ? regVar->getBaseRegVar(): regVar;
@@ -1573,6 +1588,10 @@ G4_Declare * SpillManagerGRF::createMRangeDeclare(
     {
         return builder_->getBuiltinR0();
     }
+    else if (useLSCMsg)
+    {
+        return nullptr;
+    }
 
     const char * name =
         createImplicitRangeName(
@@ -1622,6 +1641,10 @@ SpillManagerGRF::createMRangeDeclare(
     if (useSplitSend() && useScratchMsg_)
     {
         return builder_->getBuiltinR0();
+    }
+    else if (useLSCMsg)
+    {
+        return nullptr;
     }
 
     const char * name =
@@ -2227,6 +2250,11 @@ SpillManagerGRF::sendInSpilledRegVarPortions(
 
     if (currentStride)
     {
+        if (useLSCMsg)
+        {
+            createLSCFill(fillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
+        }
+        else
         {
             createFillSendInstr(fillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
         }
@@ -2319,6 +2347,11 @@ void SpillManagerGRF::preloadSpillRange(
         builder_->createMov(execSize, builder_->createNullDst(Type_UD), preloadRegion, InstOpt_NoOpt, false);
     }
 
+    if (useLSCMsg)
+    {
+        createLSCFill(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
+    }
+    else
     {
         createFillSendInstr(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
     }
@@ -2327,6 +2360,11 @@ void SpillManagerGRF::preloadSpillRange(
 
 G4_SrcRegRegion* vISA::getSpillFillHeader(IR_Builder& builder, G4_Declare * decl)
 {
+    if (builder.supportsLSC())
+    {
+        // LSC in its current incarnation needs a header to store the address
+        return builder.createSrcRegRegion(builder.getSpillFillHeader(), builder.getRegionStride1());
+    }
     return builder.createSrcRegRegion(decl, builder.getRegionStride1());
 }
 
@@ -2701,6 +2739,149 @@ G4_INST * SpillManagerGRF::createFillSendInstr(
     return fillInst;
 }
 
+// LSC versions of spill/fill, useLSCMsg must be true for these functions
+
+G4_SrcRegRegion *SpillManagerGRF::getLSCSpillFillHeader(
+    G4_Declare* mRangeDcl, const G4_Declare *fp, int offset)
+{
+    G4_SrcRegRegion* headerOpnd = nullptr;
+    if (!fp && offset < SCRATCH_MSG_LIMIT && !useLscNonstackCall) {
+        // using LSC because we exceed 128k of DC0 message
+        headerOpnd = builder_->createSrcRegRegion(builder_->getBuiltinR0(), builder_->getRegionStride1());
+    }
+    else
+    {
+        headerOpnd = getSpillFillHeader(*builder_, mRangeDcl);
+    }
+    return headerOpnd;
+}
+
+// Create the send instruction to perform the spill of the spilled regvars's
+// segment into spill memory.
+//
+// regOff - Offset of sub-spill. If one spill is splitted into more than one spill,
+// this is the offset of them, unit in register size
+// spillOff - Offset of the original variable being spilled, unit in register size.
+G4_INST * SpillManagerGRF::createLSCSpill(
+    G4_Declare*       spillRangeDcl,
+    G4_Declare*       mRangeDcl,
+    unsigned          regOff,
+    unsigned          height,
+    unsigned          spillOff)
+{
+    G4_ExecSize execSize(16);
+
+    G4_DstRegRegion* postDst = builder_->createNullDst(Type_UD);
+
+    G4_SrcRegRegion* srcOpnd = createBlockSpillRangeSrcRegion(spillRangeDcl->getRegVar(), regOff);
+    G4_Declare* fp = builder_->usesStack() ? builder_->kernel.fg.getFramePtrDcl() : nullptr;
+
+    G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*>(spillRangeDcl->getRegVar());
+    int offset = getDisp(rvar->getBaseRegVar());
+    getSpillOffset(offset);
+    // message expects offsets to be in HWord
+    uint32_t offsetHwords = (offset + spillOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+
+    G4_SrcRegRegion* header = getLSCSpillFillHeader(mRangeDcl, fp, offset);
+    auto sendInst = builder_->createSpill(postDst, header, srcOpnd, execSize,
+        height, offsetHwords, fp, InstOpt_WriteEnable, true);
+    sendInst->inheritDIFrom(curInst);
+
+    return sendInst;
+}
+
+// Create the send instruction to perform the spill of the spilled region's
+// segment into spill memory.
+G4_INST * SpillManagerGRF::createLSCSpill(
+    G4_Declare*       spillRangeDcl,
+    G4_Declare*       mRangeDcl,
+    G4_DstRegRegion*  spilledRangeRegion,
+    G4_ExecSize       execSize,
+    unsigned          option)
+{
+    G4_DstRegRegion* postDst = builder_->createNullDst(Type_UD);
+
+    unsigned extMsgLength = spillRangeDcl->getNumRows();
+    const RegionDesc* region = builder_->getRegionStride1();
+    G4_SrcRegRegion* srcOpnd = builder_->createSrcRegRegion(spillRangeDcl, region);
+
+    G4_Declare* fp = builder_->usesStack() ? builder_->kernel.fg.getFramePtrDcl() : nullptr;
+
+    G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*>(spillRangeDcl->getRegVar());
+    int offset = getDisp(rvar->getBaseRegVar());
+    getSpillOffset(offset);
+    // message expects offsets to be in HWord
+    auto regOff = spilledRangeRegion->getRegOff();
+    uint32_t offsetHwords = (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+
+    G4_SrcRegRegion* header = getLSCSpillFillHeader(mRangeDcl, fp, offset);
+    auto sendInst = builder_->createSpill(postDst, header, srcOpnd, execSize,
+        (uint16_t)extMsgLength, offsetHwords, fp, static_cast<G4_InstOption>(option), true);
+    sendInst->inheritDIFrom(curInst);
+
+    return sendInst;
+}
+
+// Create the send instruction to perform the fill of the spilled regvars's
+// segment from spill memory.
+// spillOff - spill offset to the fillRangeDcl, in unit of grf size
+G4_INST * SpillManagerGRF::createLSCFill(
+    G4_Declare * fillRangeDcl,
+    G4_Declare * mRangeDcl,
+    unsigned     regOff,
+    unsigned     height,
+    unsigned     spillOff)
+{
+    G4_DstRegRegion* postDst = builder_->createDst(
+        fillRangeDcl->getRegVar(), (short)regOff, SUBREG_ORIGIN,
+        DEF_HORIZ_STRIDE, Type_UD);
+
+    G4_Declare* fp = builder_->usesStack() ? builder_->kernel.fg.getFramePtrDcl() : nullptr;
+
+    // compute hword offset to emit later when expanding spill/fill intrinsic
+    G4_RegVar* r = fillRangeDcl->getRegVar();
+    G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
+    int offset = getDisp(rvar->getBaseRegVar());
+    getSpillOffset(offset);
+    // fill intrinsic expects offsets to be in HWord
+    uint32_t offsetHwords = (offset + spillOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+
+    G4_SrcRegRegion* header = getLSCSpillFillHeader(mRangeDcl, fp, offset);
+    auto fillInst = builder_->createFill(header, postDst, g4::SIMD16, height,
+        offsetHwords, fp, InstOpt_WriteEnable, true);
+    fillInst->inheritDIFrom(curInst);
+    return fillInst;
+}
+
+// Create the send instruction to perform the fill of the filled region's
+// segment into fill memory.
+G4_INST * SpillManagerGRF::createLSCFill(
+    G4_Declare *      fillRangeDcl,
+    G4_Declare *      mRangeDcl,
+    G4_SrcRegRegion * filledRangeRegion,
+    G4_ExecSize       execSize)
+{
+    auto oldExecSize = execSize;
+
+    G4_DstRegRegion* postDst = builder_->createDst(
+        fillRangeDcl->getRegVar(), 0, SUBREG_ORIGIN,
+        DEF_HORIZ_STRIDE, Type_UD);
+
+    unsigned segmentByteSize = getSegmentByteSize(filledRangeRegion, oldExecSize);
+    G4_Declare* fp = builder_->usesStack() ? builder_->kernel.fg.getFramePtrDcl() : nullptr;
+
+    // compute hword offset to emit later when expanding spill/fill intrinsic
+    int offset = getRegionDisp(filledRangeRegion);
+    getSpillOffset(offset);
+    uint32_t offsetHwords = offset >> SCRATCH_SPACE_ADDRESS_UNIT;
+
+    unsigned responseLength = cdiv(segmentByteSize, REG_BYTE_SIZE);
+    G4_SrcRegRegion* header = getLSCSpillFillHeader(mRangeDcl, fp, offset);
+    auto fillInst = builder_->createFill(header, postDst, execSize,
+        responseLength, offsetHwords, fp, InstOpt_WriteEnable, true);
+    fillInst->inheritDIFrom(curInst);
+    return fillInst;
+}
 
 // Replace the reference to the spilled region with a reference to an
 // equivalent reference to the spill range region.
@@ -2791,6 +2972,11 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions (
     {
         initMWritePayload(spillRangeDcl, mRangeDcl, regOff, currentStride);
 
+        if (useLSCMsg)
+        {
+            createLSCSpill(spillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
+        }
+        else
         {
             createSpillSendInstr(spillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
         }
@@ -3226,6 +3412,12 @@ void SpillManagerGRF::insertSpillRangeCode(
             spillRangeDcl, mRangeDcl, spilledRegion, execSize);
 
 
+        if (useLSCMsg)
+        {
+            spillSendInst = createLSCSpill(
+                spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
+        }
+        else
         {
             spillSendInst = createSpillSendInstr(
                 spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
@@ -3346,6 +3538,11 @@ void SpillManagerGRF::insertFillGRFRangeCode(
         G4_Declare * mRangeDcl =
             createAndInitMHeader(filledRegion, execSize);
 
+        if (useLSCMsg)
+        {
+            fillSendInst = createLSCFill(fillRangeDcl, mRangeDcl, filledRegion, execSize);
+        }
+        else
         {
             fillSendInst = createFillSendInstr(fillRangeDcl, mRangeDcl, filledRegion, execSize);
         }
@@ -4843,6 +5040,176 @@ static G4_INST* createSpillFillAddr(
     }
 }
 
+static std::string makeSpillFillComment(
+    const char *spillFill,
+    const char *toFrom,
+    const char *base,
+    uint32_t spillOffset,
+    const char *of)
+{
+    std::stringstream comment;
+    comment << spillFill << " " <<  toFrom << " ";
+    comment << base << "[" << spillOffset / getGRFSize() << "*" << (int)getGRFSize() << "]";
+    if (!of || *of == 0) // some have "" as name
+        of = "?";
+    comment << " of " << of;
+    return comment.str();
+}
+
+void GlobalRA::expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
+{
+    auto& builder = kernel.fg.builder;
+    auto inst = (*instIt)->asSpillIntrinsic();
+    // offset into scratch surface in bytes
+    auto spillOffset = inst->getOffsetInBytes();
+    uint32_t numRows = inst->getNumRows();
+    auto payload = inst->getSrc(1)->asSrcRegRegion();
+    auto rowOffset = payload->getRegOff();
+
+    LSC_OP op = LSC_STORE;
+    LSC_SFID lscSfid = LSC_UGM;
+    LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+
+    LSC_ADDR addrInfo;
+    addrInfo.type = LSC_ADDR_TYPE_SS; //Scratch memory
+    addrInfo.immScale = 1;
+    addrInfo.immOffset = 0;
+    addrInfo.size = LSC_ADDR_SIZE_32b;
+
+    builder->instList.clear();
+    while (numRows > 0)
+    {
+        auto numGRFToWrite = getPayloadSizeGRF(numRows);
+
+        G4_Declare* spillAddr = inst->getFP() ? kernel.fg.scratchRegDcl : inst->getHeader()->getTopDcl();
+        {
+            // need to calculate spill address
+            createSpillFillAddr(*builder, spillAddr, inst->getFP(), spillOffset);
+        }
+
+        LSC_DATA_SHAPE dataShape;
+        dataShape.size = LSC_DATA_SIZE_32b;
+        dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
+        dataShape.elems = builder->lscGetElementNum(numGRFToWrite * getGRFSize() / 4);
+
+        auto src0Addr = builder->createSrcRegRegion(spillAddr, builder->getRegionStride1());
+        auto payloadToUse = builder->createSrcWithNewRegOff(payload, rowOffset);
+
+        auto surface = builder->createSrcRegRegion(builder->getSpillSurfaceOffset(),
+            builder->getRegionScalar());
+
+        G4_DstRegRegion* postDst = builder->createNullDst(Type_UD);
+        G4_SendDescRaw* desc = builder->createLscMsgDesc(
+            op,
+            lscSfid,
+            EXEC_SIZE_1,
+            cacheOpts,
+            addrInfo,
+            dataShape,
+            surface,
+            0,
+            1);
+
+        auto sendInst = builder->createLscSendInst(
+            nullptr,
+            postDst,
+            src0Addr,
+            payloadToUse,
+            g4::SIMD1,
+            desc,
+            inst->getOption(),
+            LSC_ADDR_TYPE_SS,
+            false);
+
+        sendInst->addComment(makeSpillFillComment(
+            "spill", "to",
+            inst->getFP() ? "FP" : "offset",
+            spillOffset,
+            payload->getTopDcl()->getName()));
+
+        numRows -= numGRFToWrite;
+        rowOffset += numGRFToWrite;
+        spillOffset += numGRFToWrite * getGRFSize();
+    }
+
+    splice(bb, instIt, builder->instList, inst->getCISAOff());
+}
+
+void GlobalRA::expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
+{
+    auto& builder = kernel.fg.builder;
+    auto inst = (*instIt)->asFillIntrinsic();
+    // offset into scratch surface in bytes
+    auto fillOffset = inst->getOffsetInBytes();
+    uint32_t numRows = inst->getNumRows();
+    auto rowOffset = inst->getDst()->getRegOff();
+
+    LSC_OP op = LSC_LOAD;
+    LSC_SFID lscSfid = LSC_UGM;
+    LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+
+    LSC_ADDR addrInfo;
+    addrInfo.type = LSC_ADDR_TYPE_SS; //Scratch memory
+    addrInfo.immScale = 1;
+    addrInfo.immOffset = 0;
+    addrInfo.size = LSC_ADDR_SIZE_32b;
+
+    builder->instList.clear();
+
+    while (numRows > 0)
+    {
+        unsigned responseLength = getPayloadSizeGRF(numRows);
+        LSC_DATA_SHAPE dataShape;
+        dataShape.size = LSC_DATA_SIZE_32b;
+        dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
+        dataShape.elems = builder->lscGetElementNum(responseLength * getGRFSize() / 4);
+
+        G4_Declare* fillAddr = inst->getFP() ? kernel.fg.scratchRegDcl : inst->getHeader()->getTopDcl();
+        {
+            // need to calculate fill address
+            createSpillFillAddr(*builder, fillAddr, inst->getFP(), fillOffset);
+        }
+        auto dstRead = builder->createDst(inst->getDst()->getTopDcl()->getRegVar(),
+            (short)rowOffset, 0, 1, Type_UD);
+
+        auto surface = builder->createSrcRegRegion(builder->getSpillSurfaceOffset(),
+            builder->getRegionScalar());
+
+        G4_SendDescRaw* desc = builder->createLscMsgDesc(
+            op,
+            lscSfid,
+            EXEC_SIZE_1,
+            cacheOpts,
+            addrInfo,
+            dataShape,
+            surface,
+            responseLength,
+            1);
+
+        auto sendInst = builder->createLscSendInst(
+            nullptr,
+            dstRead,
+            builder->createSrcRegRegion(fillAddr, builder->getRegionScalar()),
+            nullptr,
+            g4::SIMD1,
+            desc,
+            inst->getOption(),
+            LSC_ADDR_TYPE_SS,
+            false);
+
+        sendInst->addComment(makeSpillFillComment(
+            "fill", "from",
+            inst->getFP() ? "FP" : "offset",
+            fillOffset,
+            dstRead->getTopDcl()->getName()));
+
+        numRows -= responseLength;
+        rowOffset += responseLength;
+        fillOffset += responseLength * getGRFSize();
+    }
+
+    splice(bb, instIt, builder->instList, inst->getCISAOff());
+}
 
 void GlobalRA::expandSpillNonStackcall(
     uint32_t numRows, uint32_t offset, short rowOffset,
@@ -5050,6 +5417,10 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
             auto spillIt = instIt;
 
             auto rowOffset = payload->getRegOff();
+            if (useLscForNonStackCallSpillFill || spillFillIntrinUsesLSC(inst)) {
+                expandSpillLSC(bb, instIt);
+            }
+            else
             {
                 if (!isOffBP)
                 {
@@ -5252,6 +5623,23 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
     }
 }
 
+bool GlobalRA::spillFillIntrinUsesLSC(G4_INST* spillFillIntrin)
+{
+    G4_Declare* headerDcl = nullptr;
+    if (!spillFillIntrin)
+        return false;
+
+    if (spillFillIntrin->isFillIntrinsic())
+        headerDcl = spillFillIntrin->asFillIntrinsic()->getHeader()->getTopDcl();
+    else if (spillFillIntrin->isSpillIntrinsic())
+        headerDcl = spillFillIntrin->asSpillIntrinsic()->getHeader()->getTopDcl();
+
+    if (useLscForSpillFill && headerDcl != builder.getBuiltinR0()->getRootDeclare())
+    {
+        return true;
+    }
+    return false;
+}
 
 void GlobalRA::expandFillIntrinsic(G4_BB* bb)
 {
@@ -5270,6 +5658,10 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
             auto fillIt = instIt;
 
             auto rowOffset = resultRgn->getRegOff();
+            if (useLscForNonStackCallSpillFill || spillFillIntrinUsesLSC(inst)) {
+                expandFillLSC(bb, instIt);
+            }
+            else
             {
                 if (!isOffBP)
                 {
@@ -5297,6 +5689,40 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes)
     {
         if (builder.hasScratchSurface() &&
             (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc() || kernel.fg.builder->hasValidOldA0Dot2()
+                || (useLscForSpillFill && (spillSizeInBytes + globalScratchOffset) > SCRATCH_MSG_LIMIT &&
+                    spillSizeInBytes > 0)
+                || (useLscForNonStackCallSpillFill && spillSizeInBytes > 0)
+            // Following cases exist:
+            // a. XeHP_SDV without stackcall => use hword scratch msg
+            // b. XeHP_SDV without stackcall => using oword block msg
+            // c. XeHP_SDV with stackcall
+            // d. DG2+ without stackcall => hword scratch msg
+            // e. DG2+ without stackcall => using LSC
+            // f. DG2+ with stackcall    => using LSC
+            //
+            // (a), (d) are similar to SKL with hword scratch msg.
+            //
+            // (c), (f):
+            // a0.2 is saved/restored from r126.6:ud
+            // SSO is saved in r126.7:ud (in replaceSSO function)
+            // XeHP_SDV uses oword msg, DG2+ uses LSC msg
+            // For DG2+, offset is computed in r126.0
+            //
+            // (b):
+            // oword header is prepared in a temp variable, allocated by RA
+            // a0.2 is saved/restored in oldA0Dot2(0,0) whenever required
+            // SSO is allocated to a live-out temp (not tied to r126.7:ud)
+            //
+            // (e):
+            // LSC msg is used for spill/fill
+            // Spill offset is computed in spillHeader(0,0)
+            // a0.2 is saved/restored in oldA0Dot2(0,0) whenever required
+            // spillHeader is marked as live-out
+            //
+            // When needed:
+            // SSO is marked as live-out
+            // r0 is stored in r127
+            //
         ))
         {
             saveRestoreA0(bb);

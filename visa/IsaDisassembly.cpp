@@ -901,6 +901,17 @@ static std::string printInstructionCommon(
             uint8_t mode = getPrimitiveOperand<uint8_t>(inst, i);
             sstr << (mode ? ".signal" : ".wait");
         }
+        else if (opcode == ISA_NBARRIER)
+        {
+            uint8_t mode = getPrimitiveOperand<uint8_t>(inst, i);
+            bool isSignal = mode & 1;
+            sstr << (isSignal ? ".signal" : ".wait");
+            sstr << printOperand(header, inst, 1, opt);
+            if (isSignal)
+            {
+                sstr << printOperand(header, inst, 2, opt);
+            }
+        }
     }
 
     return sstr.str();
@@ -2522,6 +2533,606 @@ static std::string printInstructionDataport(
     return sstr.str();
 }
 
+class LscInstFormatter {
+    ISA_Opcode                         opcode;
+    LSC_OP                             subOp;
+    LscOpInfo                          opInfo;
+
+    std::stringstream                  ss;
+    const print_format_provider_t     *header;
+    const CISA_INST                   *inst;
+    const Options                     *opts;
+
+    int                                currOpIx = 0;
+    bool                               error = false;
+
+public:
+    LscInstFormatter(
+        ISA_Opcode                     _opcode,
+        const print_format_provider_t *_header,
+        const CISA_INST               *_inst,
+        const Options                 *_opts)
+        : opcode(_opcode)
+        , header(_header)
+        , inst(_inst)
+        , opts(_opts)
+    {
+        if (_opcode == ISA_LSC_FENCE) {
+            subOp = LSC_FENCE;
+        } else {
+            subOp = getNextEnumU8<LSC_OP>();
+        }
+        opInfo = LscOpInfoGet(subOp);
+    }
+
+private:
+    template <typename T>
+    T getNextEnumU8() {
+        return (T)getPrimitive<uint8_t>(currOpIx++);
+    }
+
+    template <typename T>
+    T getNext() {
+        return getPrimitive<T>(currOpIx++);
+    }
+    template <typename T>
+    T getPrimitive(int absOpIx) {
+        return getPrimitiveOperand<T>(inst, absOpIx);
+    }
+
+    // LSC_TYPED and non-block2d LSC_UNTYPED
+    // "next" because it advances the operand pointer
+    LSC_DATA_SHAPE getNextDataShape() {
+        auto dataSize = getNextEnumU8<LSC_DATA_SIZE>();
+        auto dataOrder = getNextEnumU8<LSC_DATA_ORDER>();
+        auto dataElems = getNextEnumU8<LSC_DATA_ELEMS>();
+        // chmask only valid on LSC_LOAD_QUAD/LSC_STORE_QUAD
+        // but retained in the binary format
+        int chMask = (int)getNextEnumU8<int>();
+        LSC_DATA_SHAPE dataShape { };
+        dataShape.size = dataSize;
+        dataShape.order = dataOrder;
+        if (opInfo.hasChMask()) {
+            dataShape.chmask = chMask;
+        } else {
+            dataShape.elems = dataElems;
+        }
+        return dataShape;
+    }
+
+    void formatBadEnum(int bits) {
+        error = true;
+        ss << "<<" << std::hex << std::uppercase << bits << "?>>" << std::dec;
+    }
+
+    void formatSfid(LSC_SFID sfid) {
+        ss << ".";
+        switch (sfid) {
+        case LSC_UGM:   ss << "ugm";  break;
+        case LSC_UGML:  ss << "ugml"; break;
+        case LSC_SLM:   ss << "slm";  break;
+        case LSC_TGM:   ss << "tgm";  break;
+        default: formatBadEnum(sfid); break;
+        }
+    }
+
+    // custom so we can conditionally print register operand suffixes
+    void formatVectorOperand(int opIx) {
+        if (getOperandType(inst, opIx) != CISA_OPND_VECTOR) {
+            error = true;
+            ss << "<<BAD_OPERAND_NOT_VECTOR>>";
+        } else {
+            const auto &vo = getVectorOperand(inst, opIx);
+            switch (vo.tag & 0x7) {
+            case OPERAND_IMMEDIATE:
+                ss << "0x" << std::uppercase << std::hex <<
+                    vo.opnd_val.const_opnd._val.ival << std::dec;
+                break;
+            case OPERAND_GENERAL:
+                ss << printVariableDeclName(
+                    header,
+                    vo.getOperandIndex(),
+                    opts,
+                    NOT_A_STATE_OPND);
+                if (vo.opnd_val.gen_opnd.row_offset != 0 ||
+                  vo.opnd_val.gen_opnd.col_offset != 0)
+                {
+                    ss  << std::dec << "("
+                         << (unsigned)vo.opnd_val.gen_opnd.row_offset << ","
+                         << (unsigned)vo.opnd_val.gen_opnd.col_offset << ")";
+                }
+                break;
+            default:
+                error = true;
+                ss << "<<BAD_OPERAND_VECTOR_KIND>>";
+                break;
+          }
+        }
+    }
+
+    void formatRawOperand(int absIx) {
+        if (getOperandType(inst, absIx) != CISA_OPND_RAW) {
+            error = true;
+            ss << "<<BAD_OPERAND_NOT_RAW>>";
+        } else {
+            const raw_opnd &ro = getRawOperand(inst, absIx);
+            ss << printVariableDeclName(header, ro.index, opts, NOT_A_STATE_OPND);
+            if (ro.offset != 0) // only suffix offset if non-zero
+               ss << "." << std::dec << (int)ro.offset;
+        }
+    }
+    void formatDataOperand(LSC_DATA_SHAPE dataShape, int absIx) {
+        formatRawOperand(absIx);
+        formatDataShape(dataShape);
+    }
+
+    void formatAddrType(LSC_ADDR_TYPE addrType, int absSurfOpIx) {
+        switch (addrType) {
+        case LSC_ADDR_TYPE_FLAT:  ss << "flat"; break;
+        case LSC_ADDR_TYPE_BSS:   ss << "bss"; break;
+        case LSC_ADDR_TYPE_SS:    ss << "ss"; break;
+        case LSC_ADDR_TYPE_BTI:   ss << "bti"; break;
+        default: formatBadEnum(addrType); break;
+        }
+        switch (addrType) {
+        case LSC_ADDR_TYPE_BSS:
+        case LSC_ADDR_TYPE_SS:
+        case LSC_ADDR_TYPE_BTI:
+            ss << "(";
+            formatVectorOperand(absSurfOpIx);
+            ss << ")";
+            break;
+        default: break;
+        }
+    }
+
+    void formatAddrSize(LSC_ADDR_SIZE addrSize) {
+        ss << ":";
+        switch (addrSize) {
+        case LSC_ADDR_SIZE_16b: ss << "a16"; break;
+        case LSC_ADDR_SIZE_32b: ss << "a32"; break;
+        case LSC_ADDR_SIZE_64b: ss << "a64"; break;
+        default: formatBadEnum(addrSize); break;
+        }
+    }
+
+    void formatDataSize(LSC_DATA_SIZE dataSize) {
+        ss << ":";
+        switch (dataSize) {
+        case LSC_DATA_SIZE_8b:      ss << "d8"; break;
+        case LSC_DATA_SIZE_16b:     ss << "d16"; break;
+        case LSC_DATA_SIZE_32b:     ss << "d32"; break;
+        case LSC_DATA_SIZE_64b:     ss << "d64"; break;
+        case LSC_DATA_SIZE_8c32b:   ss << "d8c32"; break;
+        case LSC_DATA_SIZE_16c32b:  ss << "d16c32"; break;
+        case LSC_DATA_SIZE_16c32bH: ss << "d16c32h"; break;
+        default: formatBadEnum(dataSize); break;
+        }
+    }
+
+    void formatChannelMaskSuffix(int chEnMask) {
+        ss << ".";
+        auto VALID_MASKS =
+            LSC_DATA_CHMASK_X |
+            LSC_DATA_CHMASK_Y |
+            LSC_DATA_CHMASK_Z |
+            LSC_DATA_CHMASK_W;
+        if (chEnMask & ~VALID_MASKS) {
+            formatBadEnum(chEnMask);
+        } else {
+            if (LSC_DATA_CHMASK_X & chEnMask) {
+                ss << "x";
+            }
+            if (LSC_DATA_CHMASK_Y & chEnMask) {
+                ss << "y";
+            }
+            if (LSC_DATA_CHMASK_Z & chEnMask) {
+                ss << "z";
+            }
+            if (LSC_DATA_CHMASK_W & chEnMask) {
+                ss << "w";
+            }
+        }
+    }
+
+    void formatDataElemsSuffix(
+        LSC_DATA_ELEMS dataElems,
+        LSC_DATA_ORDER dataOrder)
+    {
+        switch (dataElems) {
+        case LSC_DATA_ELEMS_1: break;
+        case LSC_DATA_ELEMS_2:  ss << "x2"; break;
+        case LSC_DATA_ELEMS_3:  ss << "x3"; break;
+        case LSC_DATA_ELEMS_4:  ss << "x4"; break;
+        case LSC_DATA_ELEMS_8:  ss << "x8"; break;
+        case LSC_DATA_ELEMS_16: ss << "x16"; break;
+        case LSC_DATA_ELEMS_32: ss << "x32"; break;
+        case LSC_DATA_ELEMS_64: ss << "x64"; break;
+        default: formatBadEnum(dataElems); break;
+        }
+        formatDataOrder(dataOrder);
+    }
+
+    void formatDataOrder(LSC_DATA_ORDER dataOrder) {
+        switch (dataOrder) {
+        case LSC_DATA_ORDER_NONTRANSPOSE: break;
+        case LSC_DATA_ORDER_TRANSPOSE: ss << "t"; break;
+        default: formatBadEnum(dataOrder); break;
+        }
+    }
+
+    void formatDataShape(LSC_DATA_SHAPE dataShape) {
+        formatDataSize(dataShape.size);
+        if (opInfo.hasChMask()) {
+            formatChannelMaskSuffix(dataShape.chmask);
+        } else {
+            formatDataElemsSuffix(dataShape.elems, dataShape.order);
+        }
+    }
+    void formatDataShape2D(LSC_DATA_SHAPE_BLOCK2D dataShape2D) {
+        formatDataSize(dataShape2D.size);
+        ss << '.';
+        if (dataShape2D.blocks != 1) {
+          ss << std::dec << dataShape2D.blocks << 'x';
+        }
+        ss << std::dec << dataShape2D.width << 'x' << dataShape2D.height;
+        ss << (dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE ? 't' : 'n');
+        ss << (dataShape2D.vnni ? 't' : 'n');
+    }
+
+    void formatCacheOpt(LSC_CACHE_OPT val) {
+        switch (val) {
+        case LSC_CACHING_DEFAULT:        ss << ".df"; break;
+        case LSC_CACHING_UNCACHED:       ss << ".uc"; break;
+        case LSC_CACHING_CACHED:         ss << ".ca"; break;
+        case LSC_CACHING_WRITEBACK:      ss << ".wb"; break;
+        case LSC_CACHING_WRITETHROUGH:   ss << ".wt"; break;
+        case LSC_CACHING_STREAMING:      ss << ".st"; break;
+        case LSC_CACHING_READINVALIDATE: ss << ".ri"; break;
+        default: formatBadEnum(val); break;
+        }
+    }
+
+    void formatCachingOpts() {
+        auto l1 = getNextEnumU8<LSC_CACHE_OPT>();
+        auto l3 = getNextEnumU8<LSC_CACHE_OPT>();
+        bool cachingDefault =
+            l1 == LSC_CACHE_OPT::LSC_CACHING_DEFAULT &&
+            l3 == LSC_CACHE_OPT::LSC_CACHING_DEFAULT;
+        if (!cachingDefault) {
+            // only format cache control if it's non-default
+            // NOTE: cache control doesn't have meaning on SLM, but should the
+            // IR be malformed and accidentally have it, we'll indulge the user
+            // (for debugging sake)
+            formatCacheOpt(l1); // L1
+            formatCacheOpt(l3); // L3
+        }
+    }
+
+    /////////////////////////////////////////////////////////
+    // top-level formatters for each instruction type
+    /////////////////////////////////////////////////////////
+
+    void formatFence() {
+        //
+        ss << "lsc_fence";
+        //
+        auto lscSfid = getNextEnumU8<LSC_SFID>();
+        formatSfid(lscSfid);
+        //
+        auto fenceOp = getNextEnumU8<LSC_FENCE_OP>();
+        switch (fenceOp) {
+        case LSC_FENCE_OP_NONE:       ss << ".none";       break;
+        case LSC_FENCE_OP_EVICT:      ss << ".evict";      break;
+        case LSC_FENCE_OP_INVALIDATE: ss << ".invalidate"; break;
+        case LSC_FENCE_OP_DISCARD:    ss << ".discard";    break;
+        case LSC_FENCE_OP_CLEAN:      ss << ".clean";      break;
+        case LSC_FENCE_OP_FLUSHL3:    ss << ".flushl3";    break;
+        case LSC_FENCE_OP_TYPE6:      ss << ".type6";      break;
+        default: ss << ".???"; break;
+        }
+        //
+        auto scope = getNextEnumU8<LSC_SCOPE>();
+        switch (scope) {
+        case LSC_SCOPE_GROUP:  ss << ".group";  break;
+        case LSC_SCOPE_LOCAL:  ss << ".local";  break;
+        case LSC_SCOPE_TILE:   ss << ".tile";   break;
+        case LSC_SCOPE_GPU:    ss << ".gpu";    break;
+        case LSC_SCOPE_GPUS:   ss << ".gpus";   break;
+        case LSC_SCOPE_SYSREL: ss << ".sysrel"; break;
+        case LSC_SCOPE_SYSACQ: ss << ".sysacq"; break;
+        default: ss << ".???"; break;
+        }
+    } // formatFence
+
+    bool isVectorOpV0(const vector_opnd &vo) const {
+        return (vo.tag & 0x7) == OPERAND_GENERAL &&
+            (vo.opnd_val.gen_opnd.index == 0);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // for all but block2d and append counter atomic
+    void formatUntypedSimple() {
+        //
+        ss << opInfo.mnemonic;
+
+        //////////////////
+        // sfid (e.g. .ugm, .ugml, or .slm)
+        auto sfid = getNextEnumU8<LSC_SFID>();
+        formatSfid(sfid);
+        //
+        //////////////////
+        // caching
+        formatCachingOpts();
+
+        // execution size and offset
+        ss << " " << printExecutionSize(inst->opcode, inst->execsize, subOp);
+        //
+        auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
+        uint16_t immediateScale = getNext<uint16_t>();
+        int32_t immediateOffset = getNext<int32_t>();
+        auto addrSize = getNextEnumU8<LSC_ADDR_SIZE>();
+        //
+        auto dataShape = getNextDataShape();
+        //
+        ss << "  ";
+
+        // see the table below for operand indices
+        auto fmtAddrOperand = [&] () {
+            formatAddrType(addrType, currOpIx);
+            //
+            ss << "[";
+            if (immediateScale > 1) {
+              ss << "0x" << std::hex << immediateScale << "*";
+            }
+            formatRawOperand(currOpIx + 2);
+            if (immediateOffset != 0) {
+                if (immediateOffset < 0) {
+                    immediateOffset = -immediateOffset;
+                    ss << "-";
+                } else {
+                    ss << "+";
+                }
+                ss << "0x" << std::hex << immediateOffset;
+            }
+            if (opInfo.isStrided()) {
+                const vector_opnd &vo = getVectorOperand(inst, currOpIx + 3);
+                if (!isVectorOpV0(vo)) {
+                    // only non-V0 values
+                    ss << ", ";
+                    formatVectorOperand(currOpIx + 3);
+                }
+            }
+            ss << "]";
+            formatAddrSize(addrSize);
+        };
+
+        // parameter order (c.f. IsaDescription.cpp)
+        // =============================+===========================
+        //  regular                     |  strided
+        // =============================+===========================
+        //   0 - surface                |  surface
+        //   1 - dst       (data read)  |  dst         (data read)
+        //   2 - src0      (addr)       |  src0        (addr-base)
+        //   3 - src1      (data sent)  |  src0-stride (data sent)
+        //   4 - src2      (atomic arg) |  src1        (data sent/atomic)
+        //                              |  (src2 doesn't exist in strided)
+        // =============================+===========================
+        int src1AbsIx = opInfo.isStrided() ? currOpIx + 4 : currOpIx + 3;
+        if (opInfo.isLoad()) {
+            formatDataOperand(dataShape, currOpIx + 1); // dst
+            ss << "  ";
+            fmtAddrOperand(); // src0
+        } else if (opInfo.isStore()) {
+            fmtAddrOperand(); // src0
+            ss << "  ";
+            formatDataOperand(dataShape, src1AbsIx); // src1
+        } else if (opInfo.isAtomic()) {
+            formatDataOperand(dataShape, currOpIx + 1); // dst
+            ss << "  ";
+            fmtAddrOperand(); // src0
+            ss << "  ";
+            formatRawOperand(src1AbsIx); // src1
+            ss << "  ";
+            formatRawOperand(src1AbsIx + 1); // src2
+        } else {
+            MUST_BE_TRUE(false, "must be load or store or atomic");
+        }
+    } // formatUntypedSimple
+
+    ///////////////////////////////////////////////////////////////////////////
+    void formatUntypedBlock2D() {
+        ss << opInfo.mnemonic;
+
+        auto sfid = getNextEnumU8<LSC_SFID>();
+        formatSfid(sfid);
+
+        formatCachingOpts();
+
+        // execution size and offset
+        ss << " " << printExecutionSize(inst->opcode, inst->execsize, subOp);
+
+        //
+        LSC_DATA_SHAPE_BLOCK2D dataShape { };
+        dataShape.size = getNextEnumU8<LSC_DATA_SIZE>();
+        dataShape.order = getNextEnumU8<LSC_DATA_ORDER>();
+        dataShape.blocks = (int)getNext<uint8_t>();
+        dataShape.width = (int)getNext<uint16_t>();
+        dataShape.height = (int)getNext<uint16_t>();
+        dataShape.vnni = getNext<uint8_t>() != 0;
+
+        auto formatDataOperand = [&] (int absOpIx) {
+            formatRawOperand(absOpIx);
+            formatDataShape2D(dataShape);
+        };
+        ss << "  ";
+
+        ///////////////////////////////////////////////////////
+        // The rest of the operands are arranged as follows.
+        //   0 - SurfaceBase
+        //   1 - SurfaceWidth
+        //   2 - SurfaceHeight
+        //   3 - SurfacePitch
+        //   4 - SurfaceOffsetX
+        //   5 - SurfaceOffsetY
+        //   6 - DataOperand
+        auto fmtAddrOperand = [&] () {
+            ss << "flat";
+            ss << "[";
+            formatVectorOperand(currOpIx + 1);
+            ss << ", ";
+            formatVectorOperand(currOpIx + 2);
+            ss << ", ";
+            formatVectorOperand(currOpIx + 3);
+            ss << ", ";
+            formatVectorOperand(currOpIx + 4);
+            ss << ", ";
+            formatVectorOperand(currOpIx + 5);
+            ss << ", ";
+            formatVectorOperand(currOpIx + 6);
+            ss << "]";
+        };
+
+        if (opInfo.isLoad()) {
+            formatDataOperand(currOpIx + 0);
+            ss << "  ";
+            fmtAddrOperand();
+        } else {
+            fmtAddrOperand();
+            ss << "  ";
+            formatDataOperand(currOpIx + 7);
+        }
+    } // formatUntypedBlock2D
+
+    ///////////////////////////////////////////////////////////////////////////
+    void formatUntyped() {
+        if (subOp == LSC_LOAD_BLOCK2D || subOp == LSC_STORE_BLOCK2D) {
+            formatUntypedBlock2D();
+        } else {
+            formatUntypedSimple();
+        }
+    } // formatUntyped
+
+    ///////////////////////////////////////////////////////////////////////////
+    void formatTyped() {
+        ss << opInfo.mnemonic;
+
+        formatSfid(LSC_TGM);
+        //////////////////
+        // caching
+        formatCachingOpts();
+
+        // execution size and offset
+        ss << " " << printExecutionSize(inst->opcode, inst->execsize, subOp);
+
+        auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
+        auto addrSize = getNextEnumU8<LSC_ADDR_SIZE>();
+        auto dataShape = getNextDataShape();
+
+        auto fmtAddrOperand = [&] () {
+            // 0 dst, 1-4 u/v/r/lod, 5 src1, 6 src2
+            formatAddrType(addrType, currOpIx);
+            ss << "[";
+            for (int i = 0; i < 4; i++) {
+                // +2 skip surface and dst
+                const raw_opnd &ro = getRawOperand(inst, currOpIx+2+i);
+                auto reg =
+                    printVariableDeclName(header, ro.index, opts, NOT_A_STATE_OPND);
+                if (reg == "V0")
+                    break;
+                if (i > 0)
+                    ss << ", ";
+                ss << reg;
+            }
+            ss << "]";
+            formatAddrSize(addrSize);
+        };
+
+        ss << "  ";
+
+        // parameter order (cf IsaDescription.cpp)
+        //   0 - surface
+        //   1 - dst (data read)
+        //   2 - src0 U's (addr)
+        //   3 - src0 V's (addr)
+        //   4 - src0 R's (addr)
+        //   5 - src0 LOD's (addr)
+        //   6 - src1 (data sent)
+        //   7 - src2 (extra data sent for atomic)
+        if (opInfo.isLoad()) {
+            formatDataOperand(dataShape, currOpIx + 1);
+            ss << "  ";
+            fmtAddrOperand();
+        } else if (opInfo.isStore()) {
+            fmtAddrOperand();
+            ss << "  ";
+            formatDataOperand(dataShape, currOpIx + 6);
+        } else if (opInfo.isAtomic()) {
+            formatDataOperand(dataShape, currOpIx + 1); // dst write back
+            ss << "  ";
+            fmtAddrOperand();
+            ss << "  ";
+            formatRawOperand(currOpIx + 6); // iadd, etc
+            ss << "  ";
+            formatRawOperand(currOpIx + 7); // for {i,f}cas
+        } else {
+            error = true;
+            MUST_BE_TRUE(false, "printInstructionLscTyped unexpected category");
+        }
+    } // formatTyped
+
+    // e.g. lsc_read_state_info.tgm  VDATA  bti(0x4)
+    void formatTypedRSI() {
+        ss << opInfo.mnemonic;
+
+        formatSfid(LSC_TGM);
+
+        // will be default/default (and thus suppressed)
+        formatCachingOpts();
+
+        // exec size is implicit
+        auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
+        (void)getNextEnumU8<LSC_ADDR_SIZE>();
+        (void)getNextDataShape();
+
+        ss << "  ";
+        formatRawOperand(currOpIx + 1); // dst
+        ss << "  ";
+        formatAddrType(addrType, currOpIx);
+    }
+
+public:
+    // the only public entry point (except the constructor)
+    std::string format() {
+        ss << printPredicate(inst->opcode, inst->pred);
+
+        if (opcode == ISA_LSC_FENCE) {
+            formatFence();
+        } else if (opcode == ISA_LSC_UNTYPED) {
+            formatUntyped();
+        } else if (opcode == ISA_LSC_TYPED) {
+            if (opInfo.op == LSC_READ_STATE_INFO) {
+                formatTypedRSI();
+            } else {
+                formatTyped();
+            }
+        } else {
+            MUST_BE_TRUE(false, "invalid LSC op");
+        }
+        return ss.str();
+    }
+};
+
+
+static std::string printInstructionLsc(
+    ISA_Opcode opcode,
+    const print_format_provider_t* header,
+    const CISA_INST* inst,
+    const Options *opt)
+{
+    LscInstFormatter formatter(opcode, header, inst, opt);
+    return formatter.format();
+}
 
 std::string VISAKernel_format_provider::printKernelHeader(
     const common_isa_header& isaHeader)
@@ -2682,6 +3293,7 @@ std::string printInstruction(
             case ISA_Inst_Misc:      sstr << printInstructionMisc        (header, instruction, opt); break;
             case ISA_Inst_Sampler:   sstr << printInstructionSampler     (header, instruction, opt); break;
             case ISA_Inst_Data_Port: sstr << printInstructionDataport    (header, instruction, opt); break;
+            case ISA_Inst_LSC:       sstr << printInstructionLsc         (opcode, header, instruction, opt); break;
             default:
             {
                 sstr << "Illegal or unimplemented CISA instruction (opcode, type): ("

@@ -379,6 +379,23 @@ G4_Type G4_INST::getExecType() const
         return Type_D;
     }
 
+    if (opcode() == G4_fcvt)
+    {
+        // fcvt : cvt b/w standard type and other special float type.
+        //        execution type is the standard type.
+        G4_Type srcTy = srcs[0]->getType();
+        if (IS_TYPE_FLOAT_ALL(srcTy))
+        {
+            return srcTy;
+        }
+        // If src isn't standard float type, dst must be!
+        return dst->getType();
+    }
+    if (opcode() == G4_srnd)
+    {
+        // srnd: src0 is either hf or f
+        return srcs[0]->getType();
+    }
     for (unsigned i = 0; i < G4_MAX_SRCS; i++)
     {
         G4_Operand* src = getSrc(i);
@@ -943,6 +960,10 @@ bool G4_INST::distanceHonourInstruction() const
     }
     if (isMathPipeInst())
     {
+        if (builder.getPlatform() >= GENX_PVC)
+        {
+            return true;
+        }
         return false;
     }
     return true;
@@ -958,6 +979,10 @@ bool G4_INST::tokenHonourInstruction() const
     {
         if (isMathPipeInst())
         {
+            if (builder.getPlatform() >= GENX_PVC)
+            {
+                return false;
+            }
             return true;
         }
         return false;
@@ -967,6 +992,11 @@ bool G4_INST::tokenHonourInstruction() const
 bool G4_INST::hasNoPipe()
 {
     if (op == G4_wait || op == G4_halt || op == G4_nop)
+    {
+        return true;
+    }
+    // PVC only
+    if (op == G4_sync_fence)
     {
         return true;
     }
@@ -1083,6 +1113,14 @@ bool G4_INST::isIntegerPipeInstructionXe() const
     {
         return false;
     }
+    if (op == G4_fcvt)
+    {
+        return false;
+    }
+    if (op == G4_srnd)
+    {
+        return false;
+    }
 
     G4_Operand* dst = getDst();
     if (dst && isIntegerPipeType(dst->getType()))
@@ -1133,6 +1171,14 @@ bool G4_INST::isFloatPipeInstructionXe() const
         isMath())
     {
         return false;
+    }
+    if (opcode() == G4_fcvt)
+    {
+        return true;
+    }
+    if (opcode() == G4_srnd)
+    {
+        return true;
     }
 
     const G4_Operand* dst = getDst();
@@ -2228,6 +2274,27 @@ bool G4_INST::canPropagateTo(
         return false;
     }
 
+    if (useInst->opcode() == G4_fcvt)
+    {
+        // fcvt is not allowed to have immediate src.
+        if (src->isImm() ||
+            !src->isSrcRegRegion() ||
+            !(src->asSrcRegRegion()->getRegion()->isContiguous(useInst->getExecSize())))
+        {
+            return false;
+        }
+    }
+    if (useInst->opcode() == G4_srnd)
+    {
+        // srnd rZ.0<1>:ub  rX.0<1;1,0>:hf rY.0<1;1,0>:hf
+        //   operands should be packed.
+        if (useInst->getDst()->getType() == Type_UB &&
+            src->isSrcRegRegion() &&
+            !(src->asSrcRegRegion()->getRegion()->isContiguous(useInst->getExecSize())))
+        {
+            return false;
+        }
+    }
 
     if (src->isImm())
     {
@@ -2240,6 +2307,17 @@ bool G4_INST::canPropagateTo(
                (isFloatPseudoMAD(useInst) || useInst->opcode() == G4_math))
     {
         return false;
+    }
+    if (getGRFSize() == 64 &&
+        (useInst->opcode() == G4_dpas || useInst->opcode() == G4_dpasw) &&
+        (opndNum == Opnd_src0 || opndNum == Opnd_src1))
+    {
+        uint32_t leftBoundInBytes = src->getLeftBound() * src->getTypeSize();
+        // left bound should be 2grf aligned to propagate into dpas.
+        if (leftBoundInBytes % (numEltPerGRF<Type_UB>()*2))
+        {
+            return false;
+        }
     }
 
     // FIXME: to add specific checks for other instructions.
@@ -2863,7 +2941,24 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         return false;
     }
 
-
+    if (getGRFSize() == 64 &&
+        (defInst->opcode() == G4_dpas || defInst->opcode() == G4_dpasw))
+    {
+        uint32_t leftBoundInBytes = dst->getLeftBound() * dst->getTypeSize();
+        // left bound should be 2grf aligned to hoist dst into dpas.
+        if (leftBoundInBytes % (numEltPerGRF<Type_UB>() * 2))
+        {
+            return false;
+        }
+    }
+    if (defInst->opcode() == G4_fcvt)
+    {
+        return false;
+    }
+    if (defInst->opcode() == G4_srnd)
+    {
+        return false;
+    }
 
     return true;
 }
@@ -3673,6 +3768,7 @@ void G4_INST::emit_options(std::ostream& output) const
     switch (tkType) {
     case TOKEN_NONE:
     case SB_SET:      break;
+    case NoACCSBSet:  tks1 = "NoACC"; break;
     case AFTER_READ:  tks1 = ".R"; break;
     case AFTER_WRITE: tks1 = ".W"; break;
     case READ_ALL:    tks1 = ".R*"; break;
@@ -3681,6 +3777,7 @@ void G4_INST::emit_options(std::ostream& output) const
     }
     if (tkType != TOKEN_NONE)
     {
+        if (tkType != NoACCSBSet)
         {
             tks << '$' << (int)id << tks1;
         }
@@ -3985,6 +4082,8 @@ void G4_Areg::emit(std::ostream& output, bool symbolreg)
     case AREG_F1:      output << "f1";    break;
     case AREG_TDR0:    output << "tdr0";  break;
     case AREG_SP:      output << "sp";    break;
+    case AREG_F2:      output << "f2";    break;
+    case AREG_F3:      output << "f3";    break;
     default:
         output << "unknown architecture reg";
         MUST_BE_TRUE(false, ERROR_UNKNOWN);
@@ -5552,6 +5651,8 @@ PhyRegPool::PhyRegPool(Mem_Manager& m, unsigned int maxRegisterNumber)
     ARF_Table[AREG_F1]       = new (m) G4_Areg(AREG_F1);
     ARF_Table[AREG_TDR0]     = new (m) G4_Areg(AREG_TDR0);
     ARF_Table[AREG_SP]       = new (m)G4_Areg(AREG_SP);
+    ARF_Table[AREG_F2]       = new (m) G4_Areg(AREG_F2);
+    ARF_Table[AREG_F3]       = new (m) G4_Areg(AREG_F3);
 }
 
 void PhyRegPool::rebuildRegPool(Mem_Manager& m, unsigned int numRegisters)
@@ -6835,6 +6936,22 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
                 footprint.resetElt(idx, bitVal);
             }
         }
+        if (getGRFSize() > 32)
+        {
+            for (int i = 0; i < 2 && idx <= endIdx; ++i, ++idx)
+            {
+                uint64_t bits = getBitVecH();
+                uint32_t bitVal = (uint32_t)(i % 2 ? bits >> N : bits);
+                if (isSet)
+                {
+                    footprint.setElt(idx, bitVal);
+                }
+                else
+                {
+                    footprint.resetElt(idx, bitVal);
+                }
+            }
+        }
 
         // beyond the first two GRF we assume every byte is touched
         while (idx <= endIdx)
@@ -6860,6 +6977,15 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
             if (mask0 & (1ULL << i))
                 footprint.set(j, isSet);
         }
+        if (getGRFSize() > 32)
+        {
+            uint64_t mask1 = getBitVecH();
+            for (unsigned i = 0; i < 64 && j <= rb; ++i, ++j)
+            {
+                if (mask1 & (1ULL << i))
+                    footprint.set(j, isSet);
+            }
+        }
         while (j++ <= rb)
             footprint.set(j, isSet);
     }
@@ -6871,6 +6997,10 @@ void G4_Operand::setBitVecFromSize(uint32_t NBytes)
 {
     bitVec[0] = NBytes < 64 ? (1ULL << NBytes) - 1 : ULLONG_MAX;
     bitVec[1] = 0;
+    if (getGRFSize() > 32 && NBytes >= 64)
+    {
+        bitVec[1] = (NBytes < 64 * 2) ? (1ULL << (NBytes - 64)) - 1 : ULLONG_MAX;
+    }
 }
 
 // Left and right bound for every operand is based off
@@ -7668,6 +7798,11 @@ bool G4_INST::supportsNullDst() const
     if (isSend())
     {
         return true;
+    }
+    if (builder.getPlatform() >= GENX_PVC && dst->getTypeSize() == 1)
+    {
+        // null:b not supported
+        return false;
     }
     return getNumSrc() != 3 && !(op == G4_pln && !builder.doPlane());
 }
@@ -8557,6 +8692,10 @@ uint8_t G4_InstDpas::getOpsPerChan() const
 {
     if (isBF16() || isFP16())
         return OPS_PER_CHAN_2;
+    else if (isTF32())
+        return OPS_PER_CHAN_1;
+    else if (isBF8())
+        return OPS_PER_CHAN_4;
     else if (is2xInt8())
         return OPS_PER_CHAN_8;
     // int8

@@ -277,8 +277,9 @@ typedef enum {
     ISA_RSQRT              = 0x1A,
     ISA_INV                = 0x1B,
     ISA_DPASW              = 0x1C,
-    ISA_RESERVED_1D        = 0x1D,
-    ISA_RESERVED_1E        = 0x1E,
+    ISA_FCVT               = 0x1D,
+    ISA_QF_CVT             = ISA_FCVT,  // temp for cmc
+    ISA_SRND               = 0x1E,
     ISA_LZD                = 0x1F,
     ISA_AND                = 0x20,
     ISA_OR                 = 0x21,
@@ -344,7 +345,7 @@ typedef enum {
     ISA_RAW_SEND           = 0x5D,
     ISA_RESERVED_5E        = 0x5E,
     ISA_YIELD              = 0x5F,
-    ISA_RESERVED_60        = 0x60,
+    ISA_NBARRIER           = 0x60,
     ISA_RESERVED_61        = 0x61,
     ISA_RESERVED_62        = 0x62,
     ISA_RESERVED_63        = 0x63,
@@ -385,9 +386,9 @@ typedef enum {
     ISA_QW_GATHER          = 0x86,
     ISA_QW_SCATTER         = 0x87,
     ISA_BF_CVT             = 0x88,
-    ISA_RESERVED_89        = 0x89,
-    ISA_RESERVED_8A        = 0x8A,
-    ISA_RESERVED_8B        = 0x8B,
+    ISA_LSC_UNTYPED        = 0x89,
+    ISA_LSC_TYPED          = 0x8A,
+    ISA_LSC_FENCE          = 0x8B,
     ISA_RESERVED_8C        = 0x8C,
     ISA_RESERVED_8D        = 0x8D,
     ISA_RESERVED_8E        = 0x8E,
@@ -472,6 +473,9 @@ typedef enum {
     GENX_ICLLP,
     GENX_TGLLP,
     XeHP_SDV,
+    GENX_DG2,
+    GENX_PVC,
+    GENX_PVCXT,
     ALL
 } TARGET_PLATFORM;
 
@@ -639,9 +643,265 @@ enum class GenPrecision : unsigned char
     S8 = 8,
     BF16 = 9,   // bfloat16 (1, 8, 7)
     FP16 = 10,  // half (1, 5, 10)
+    BF8 = 11,   // bfloat8 (1, 5, 2)
+    TF32 = 12,  // TensorFloat (1, 8, 10), 19 bits
     TOTAL_NUM
 };
 
+///////////////////////////////////////////////////////////////////////////////
+// Data types to support LSC load/store messages.
+//
+
+// The size of each data element
+enum LSC_DATA_SIZE {
+    LSC_DATA_SIZE_INVALID,
+    LSC_DATA_SIZE_8b,       // DATA:u8...
+    LSC_DATA_SIZE_16b,      // DATA:u16...
+    LSC_DATA_SIZE_32b,      // DATA:u32...
+    LSC_DATA_SIZE_64b,      // DATA:u64...
+    // data types supporting conversion on load
+    // 8c32b reads load (8) bits, (c)onvert to (32) bits (zero extending)
+    // store truncates
+    LSC_DATA_SIZE_8c32b,    // DATA:u8c32...   (zero-extend / truncate)
+    LSC_DATA_SIZE_16c32b,   // DATA:u16c32..   (zero-extend / truncate)
+    LSC_DATA_SIZE_16c32bH,  // DATA:u16c32h..  h means load to (h)igh 16
+                            // data stored in upper 16; zero-fills bottom 16
+                            // (bfloat raw conversion to 32b float)
+};
+
+// The number of elements per address ("vector" size)
+enum LSC_DATA_ELEMS {
+    LSC_DATA_ELEMS_INVALID,
+    LSC_DATA_ELEMS_1,       // DATA:..x1
+    LSC_DATA_ELEMS_2,       // DATA:..x2
+    LSC_DATA_ELEMS_3,       // DATA:..x3
+    LSC_DATA_ELEMS_4,       // DATA:..x4
+    LSC_DATA_ELEMS_8,       // DATA:..x8
+    LSC_DATA_ELEMS_16,      // DATA:..x16
+    LSC_DATA_ELEMS_32,      // DATA:..x32
+    LSC_DATA_ELEMS_64,      // DATA:..x64
+};
+
+enum LSC_DATA_ORDER {
+    LSC_DATA_ORDER_INVALID,
+    LSC_DATA_ORDER_NONTRANSPOSE,
+    LSC_DATA_ORDER_TRANSPOSE,     // DATA:...t
+};
+
+enum LSC_DATA_CHMASK {
+  LSC_DATA_CHMASK_INVALID,
+  LSC_DATA_CHMASK_X = 1 << 0,
+  LSC_DATA_CHMASK_Y = 1 << 1,
+  LSC_DATA_CHMASK_Z = 1 << 2,
+  LSC_DATA_CHMASK_W = 1 << 3,
+};
+
+struct LSC_DATA_SHAPE {
+    LSC_DATA_SIZE       size;
+    LSC_DATA_ORDER      order;
+    union {
+        LSC_DATA_ELEMS  elems; // all other operations use the regular vector
+        int             chmask; // for LSC_*_QUAD; bitmask of LSC_DATA_CHMASK
+    };
+};
+
+struct LSC_DATA_SHAPE_BLOCK2D {
+    LSC_DATA_SIZE   size;
+    LSC_DATA_ORDER  order;
+    int             blocks; // the count of 2d blocks to load (array len)
+    int             width; // the width (in elems) of the 2d region
+    int             height; // the height (in elems) of the 2d region
+    bool            vnni;  // perform a vnni transform on load
+};
+static const unsigned LSC_BLOCK2D_ADDR_PARAMS = 6;
+
+enum LSC_ADDR_SIZE {
+    LSC_ADDR_SIZE_INVALID,
+    LSC_ADDR_SIZE_16b,  // [ADDR]:a16
+    LSC_ADDR_SIZE_32b,  // [ADDR]:a32
+    LSC_ADDR_SIZE_64b,  // [ADDR]:a64
+};
+enum LSC_ADDR_TYPE {
+    LSC_ADDR_TYPE_INVALID,
+    LSC_ADDR_TYPE_FLAT, // aka "stateless"
+    LSC_ADDR_TYPE_BSS,  // bindless surface state offset
+    LSC_ADDR_TYPE_SS,   // surface state offset
+    LSC_ADDR_TYPE_BTI,  // binding table interface (legacy)
+};
+
+//
+// Caching override behavior
+//
+// We support all combinations in IR, though not all are supported in hardware
+// https://gfxspecs.intel.com/Predator/Home/Index/53560
+typedef enum {
+    LSC_CACHING_DEFAULT,        // .df
+    LSC_CACHING_UNCACHED,       // .uc
+    LSC_CACHING_CACHED,         // .ca
+    LSC_CACHING_WRITEBACK,      // .wb
+    LSC_CACHING_WRITETHROUGH,   // .wt
+    LSC_CACHING_STREAMING,      // .st
+    LSC_CACHING_READINVALIDATE, // .ri last use / invalidate after read
+
+} LSC_CACHE_OPT;
+// Only some combinations are legal (per platform)
+struct LSC_CACHE_OPTS {
+    LSC_CACHE_OPT l1;
+    LSC_CACHE_OPT l3;
+};
+
+// L1,L3 available cache policies combinations
+// Auxiliary enums for cache options translation from intrinsics into
+// vISA representation.
+typedef enum {
+    LSC_L1DEF_L3DEF = 0,
+    LSC_L1UC_L3UC,          //  Load: L1 uncached   L3 uncached # Store: L1 uncached      L3 uncached
+    LSC_L1UC_L3C_WB,        //  Load: L1 uncached   L3 cached   # Store: L1 uncached      L3 write-back
+    LSC_L1C_WT_L3UC,        //  Load: L1 cached     L3 uncached # Store: L1 write-through L3 uncached
+    LSC_L1C_WT_L3C_WB,      //  Load: L1 cached     L3 cached   # Store: L1 write-through L3 write-back
+    LSC_L1S_L3UC,           //  Load: L1 streaming  L3 uncached # Store: L1 streaming     L3 uncached
+    LSC_L1S_L3C_WB,         //  Load: L1 streaming  L3 cached   # Store: L1 streaming     L3 write-back
+
+    LSC_L1IAR_WB_L3C_WB,    //  Load: L1 invalidate after read L3 cached # Store: L1 write-back L3 write-back
+    LSC_CC_INVALID,
+} LSC_L1_L3_CC;
+
+// Groups all the necessary address into a product type
+struct LSC_ADDR {
+    // The address model being used (e.g. flat, bti, bss, ss)
+    LSC_ADDR_TYPE       type;
+
+    // An optional uniform immediate scale.  Default this to 1 if
+    // scaling is not desired (or supported).  0 is an illegal value here.
+    int                 immScale;
+
+    // An optional uniform immediate offset; for the given address model,
+    // if hardware supports this and the value is small enough to fit in the
+    // descriptor, then it can be fused into the operation.  Conversely, if the
+    // immediate value is too big or immediate offsets are not supported for
+    // the given address type or device, codegen will generate separate adds
+    // to the address.
+    //
+    // This value is intended to be pre-scaled and 'immScale'
+    // doesn't impact it. I.e. the effective address is
+    //   EA = immScale * ADDR + immOffset (result in bytes)
+    int                 immOffset; // [...+0x100] (can be 0)
+
+    // The number of bits per address; not all address models support all sizes
+    LSC_ADDR_SIZE       size; // e.g. :a64, :a32, ...
+};
+
+// The specific fence op
+enum LSC_FENCE_OP {
+    LSC_FENCE_OP_NONE,    // .none
+    LSC_FENCE_OP_EVICT,   // .evict (dirty lines evicted and invalided;
+                          // clean lines are invalidated)
+    LSC_FENCE_OP_INVALIDATE, // .invalidate (inv. all clean lines; don't evict)
+    LSC_FENCE_OP_DISCARD, // .discard (dirty and clean lines written,
+                          // but stay in cache)
+    LSC_FENCE_OP_CLEAN,   // .clean
+    LSC_FENCE_OP_FLUSHL3, // .flushl3 (flush L3 only, but not L1)
+    LSC_FENCE_OP_TYPE6    // .flushtype6
+};
+
+// The scope of a given IO operation (typically fence)
+enum LSC_SCOPE {
+    LSC_SCOPE_GROUP,  // .group  (thread group)
+    LSC_SCOPE_LOCAL,  // .local (dss?)
+    LSC_SCOPE_TILE,   // .tile
+    LSC_SCOPE_GPU,    // .gpu
+    LSC_SCOPE_GPUS,   // .gpus
+    LSC_SCOPE_SYSREL, // .sysrel
+    LSC_SCOPE_SYSACQ, // .sysacq
+};
+
+// The subset of SFIDs that are permitted for LSC messages
+enum LSC_SFID {
+    LSC_UGM,  // .ugm
+    LSC_UGML, // .ugml
+    LSC_TGM,  // .tgm
+    LSC_SLM,  // .slm
+};
+
+enum LSC_OP {
+  LSC_LOAD          = 0x00,
+  LSC_LOAD_STRIDED  = 0x01, // aka "load_block"
+  LSC_LOAD_QUAD     = 0x02, // aka "load_cmask"
+  LSC_LOAD_BLOCK2D  = 0x03,
+  LSC_STORE         = 0x04,
+  LSC_STORE_STRIDED = 0x05, // aka "load_block"
+  LSC_STORE_QUAD    = 0x06, // aka "store_cmask"
+  LSC_STORE_BLOCK2D = 0x07,
+  //
+  LSC_ATOMIC_IINC  = 0x08,
+  LSC_ATOMIC_IDEC  = 0x09,
+  LSC_ATOMIC_LOAD  = 0x0A,
+  LSC_ATOMIC_STORE = 0x0B,
+  LSC_ATOMIC_IADD  = 0x0C,
+  LSC_ATOMIC_ISUB  = 0x0D,
+  LSC_ATOMIC_SMIN  = 0x0E,
+  LSC_ATOMIC_SMAX  = 0x0F,
+  LSC_ATOMIC_UMIN  = 0x10,
+  LSC_ATOMIC_UMAX  = 0x11,
+  LSC_ATOMIC_ICAS  = 0x12,
+  LSC_ATOMIC_FADD  = 0x13,
+  LSC_ATOMIC_FSUB  = 0x14,
+  LSC_ATOMIC_FMIN  = 0x15,
+  LSC_ATOMIC_FMAX  = 0x16,
+  LSC_ATOMIC_FCAS  = 0x17,
+  LSC_ATOMIC_AND   = 0x18,
+  LSC_ATOMIC_OR    = 0x19,
+  LSC_ATOMIC_XOR   = 0x1A,
+  //
+  LSC_LOAD_STATUS        = 0x1B,
+  LSC_STORE_UNCOMPRESSED = 0x1C,
+  LSC_CCS_UPDATE         = 0x1D,
+  LSC_READ_STATE_INFO    = 0x1E,
+  LSC_FENCE              = 0x1F,
+  //
+
+  LSC_INVALID = 0xFFFFFFFF,
+};
+static_assert(LSC_LOAD == 0x0,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_FENCE == 0x1F,
+    "vISA binary encoding depends on enum ordinal value");
+
+/////////////////////////////////////////////////////////////////////
+// The vISA spec depends on the enum values assigned.  If you really
+// need to change then, fix any consumers encoders dependent on the
+// encoding (e.g. CM binary encoder) as well as the vISA spec.
+//
+static_assert(LSC_DATA_ELEMS_8 == 5,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_ADDR_SIZE_16b == 1,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_DATA_SIZE_8b == 1,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_DATA_SIZE_16b == 2,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_DATA_SIZE_32b == 3,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_DATA_SIZE_64b == 4,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_DATA_SIZE_16c32bH == 7,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_DATA_ORDER_NONTRANSPOSE == 1,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_DATA_ORDER_TRANSPOSE == 2,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_ADDR_TYPE_FLAT == 1,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_ADDR_TYPE_BTI == 4,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_CACHING_DEFAULT == 0,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_CACHING_READINVALIDATE == 6,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_FENCE_OP_NONE == 0,
+    "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_FENCE_OP_FLUSHL3 == 5,
+    "vISA binary encoding depends on enum ordinal value");
 
 // FixedFunctionID: these are hardware FFID values
 enum FFID

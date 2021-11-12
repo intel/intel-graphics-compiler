@@ -212,7 +212,12 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
         ddd.pairTypedWriteOrURBWriteNodes(bb);
     }
 
-    if (getOptions()->getOption(vISA_ScheduleForReadSuppression) && ddd.getIsThreeSourceBlock())
+    if ((ddd.getIs2xFPBlock())&&
+        getOptions()->getOption(vISA_ScheduleFor2xSP))
+    {
+        lastCycle = ddd.listScheduleFor2xFP(this);
+    }
+    else if (getOptions()->getOption(vISA_ScheduleForReadSuppression) && ddd.getIsThreeSourceBlock())
     {
         lastCycle = ddd.listScheduleForSuppression(this);
     }
@@ -1329,6 +1334,7 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
     useMTLatencies = getBuilder()->useMultiThreadLatency();
     totalGRFNum = kernel->getNumRegTotal();
     isThreeSouceBlock = false;
+    is_2XFP_Block = false;
     bool BTIIsRestrict = getOptions()->getOption(vISA_ReorderDPSendToDifferentBti);
 
     GRF_BUCKET = 0;
@@ -1349,6 +1355,8 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
     std::vector<BucketDescr> BDvec;
 
     int threeSrcInstNUm = 0;
+    int FP_InstNum = 0;
+    int sendInstNum = 0;
     for (int nodeId = (int)(bb->size() - 1); iInst != iInstEnd; ++iInst, nodeId--)
     {
         Node *node = nullptr;
@@ -1362,6 +1370,20 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
         if (curInst->getNumSrc() == 3)
         {
             threeSrcInstNUm ++;
+        }
+        G4_DstRegRegion* dstOpnd = curInst->getDst();
+        sendInstNum += curInst->isSend() ? 1 : 0;
+        if (dstOpnd &&
+            dstOpnd->getTopDcl() &&
+            dstOpnd->getTopDcl()->getRegFile() == G4_GRF)
+        {
+            bool isCounted = false;
+            if (getBuilder()->has2xDP() && instCanUse2xDP(curInst))
+            {
+                FP_InstNum++;
+                isCounted = true;
+            }
+
         }
         if (getBuilder()->hasReadSuppression() &&
             getOptions()->getOption(vISA_EnableGroupScheduleForBC))
@@ -1562,6 +1584,9 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
     if (Nodes.size())
     {
         isThreeSouceBlock = ((float)threeSrcInstNUm / Nodes.size()) > THREE_SOURCE_BLOCK_HERISTIC;
+        is_2XFP_Block = (FP_InstNum >= FP_MIN_INST_NUM) &&
+            (((float)FP_InstNum / Nodes.size()) > THREE_SOURCE_BLOCK_HERISTIC) &&
+            (((float)sendInstNum / FP_InstNum) < FP_BLOCK_SEND_HERISTIC);
     }
 }
 
@@ -2282,6 +2307,230 @@ uint32_t DDD::listScheduleForSuppression(G4_BB_Schedule* schedule)
     return currCycle;
 }
 
+//Scheduling for the 2xDP pipeline
+uint32_t DDD::listScheduleFor2xFP(G4_BB_Schedule* schedule)
+{
+    if (getOptions()->getOption(vISA_DumpDagDot))
+    {
+        dumpDagDot(schedule->getBB());
+        dumpNodes(schedule->getBB());
+    }
+
+    // All nodes in root set have no dependency
+    // so they can be immediately scheduled,
+    // and hence are added to readyList.
+    // 2xSP specific, the original order will be kept.
+    std::priority_queue<Node*, std::vector<Node*>, criticalCmpForMad> readyList;
+
+    // Nodes with their predecessors scheduled are pushed into the preReadyQueue
+    // They only get pushed into the real readyList if they are ready to issue,
+    // that is their earliest cycle is >= than the current schedule cycle.
+    std::priority_queue<Node*, std::vector<Node*>, earlyCmp> preReadyQueue;
+
+    auto updateForSucc = [&](Node* scheduled, std::priority_queue<Node*, std::vector<Node*>, earlyCmp>* preReadyQueue)
+    {
+        for (auto& curSucc : scheduled->succs)
+        {
+            Node* succ = curSucc.getNode();
+            // Recompute the earliest time for each successor.
+            if (scheduled->isLabel())
+            {
+                succ->earliest = 0;
+            }
+            else
+            {
+                // Update the earliest time of the successor and set its last scheduled
+                // predecessor with the largest latency to the currently scheduled node
+                // if the latency incurred by scheduling the successor right after the
+                // "scheduled" node is larger than successor's earliest time.
+                uint32_t latencyToAdd = curSucc.getLatency();
+                uint32_t earliestNew = 0;
+                latencyToAdd = latencyToAdd > scheduled->getOccupancy() ? latencyToAdd : scheduled->getOccupancy();
+                earliestNew = scheduled->schedTime + latencyToAdd;
+
+                if (succ->earliest <= earliestNew || !succ->lastSchedPred)
+                {
+                    succ->lastSchedPred = scheduled;
+                }
+                succ->earliest = (succ->earliest > earliestNew) ? succ->earliest : earliestNew;
+            }
+            // Decrease the number of predecessors not scheduled for the successor node.
+            if ((--(succ->predsNotScheduled)) == 0)
+            {
+                preReadyQueue->push(succ);
+            }
+        }
+    };
+
+    auto scheduleSingleInst = [&](window2xSP* curBlock, std::vector<Node*> &popped, uint32_t *currCycle)
+    {
+        // Push back the nodes in current block to ready list
+        for (auto node : curBlock->instList)
+        {
+            if (node != nullptr)
+            {
+                readyList.push(node);
+            }
+        }
+
+        // push back the nodes in popped list to ready list
+        for (auto node : popped)
+        {
+            readyList.push(node);
+        }
+
+        //Only schedule single instruction
+        Node* scheduled = readyList.top();
+        readyList.pop();
+        schedule->scheduledNodes.push_back(scheduled);
+        //Update succ
+        updateForSucc(scheduled, &preReadyQueue);
+        scheduled->schedTime = *currCycle;
+        *currCycle += scheduled->getOccupancy();
+    };
+
+    collectRoots();
+    for (auto N : Roots) {
+        preReadyQueue.push(N);
+    }
+
+    // The scheduler's clock.
+    // This counter is updated in each loop iteration and its
+    // final value represents number of cycles the kernel would
+    // take to execute on the GPU as per the model.
+    uint32_t currCycle = 0;
+
+    //The blocks are used for the 2xDP and 2xSP instruction block, which will be scheduled at the same time
+    //Since the atomic is set according to the dependence of two contigious blocks,
+    //we keep two blocks with two block pointers to use them alternatively.
+    window2xSP madBlock1(kernel);
+    window2xSP madBlock2(kernel);
+    window2xSP *curBlock = &madBlock1;
+    window2xSP *lastBlock = &madBlock2;
+
+    // Keep scheduling until both readyList or preReadyQueue contain instrs.
+    while (!(readyList.empty() && preReadyQueue.empty()))
+    {
+        Node* readyCandidate = preReadyQueue.empty() ? nullptr : preReadyQueue.top();
+        // While non empty, move nodes from preReadyQueue to readyList
+        while (readyCandidate)
+        {
+            readyList.push(readyCandidate);
+            preReadyQueue.pop();
+            readyCandidate = preReadyQueue.empty() ? nullptr : preReadyQueue.top();
+        }
+        // Nothing to issue at this cycle, increment scheduler clock :)
+        if (readyList.empty())
+        {
+            // readyCandidate is not nullptr. Proof: If it was nullptr, then both
+            // preReadyQueue and readyList would be empty. But this cannot
+            // happen because the while() loop will only enter if at least
+            // one of them is non-empty.
+            assert(readyCandidate && "Both readyList and preReadyQ empty!");
+            currCycle = readyCandidate->earliest;
+            continue;
+        }
+
+        // Store the node popped from readyList but not in block
+        std::vector<Node*> popped;
+
+        // Traverse the readyList to try to build the 2xDP/2xSP block
+        int searchSize = (int)readyList.size();
+        for (int i = 0; i < searchSize; ++i)
+        {
+            bool isAddedToBlock = false;  // Used to see if the node has been added into block
+            Node* curNode = readyList.top();
+
+            // On PVC_XT+ platforms, check if the instruction can be added into the block
+            if ((curNode->getInstructions()->size() == 1) && getBuilder()->has2xDP() && curBlock->canAddToBlock2xDP(curNode))
+            {
+                readyList.pop();
+                curBlock->push(curNode);
+                isAddedToBlock = true;
+
+                // Current block is full
+                if (curBlock->isBlockFull())
+                {
+                    break;
+                }
+            }
+
+
+            // Current instruction can't be added into current block, add it into the popped
+            if (!isAddedToBlock)
+            {
+                readyList.pop();
+                popped.push_back(curNode);
+            }
+        }
+
+        // Check if current block is a good block
+        if (curBlock->isGoodBlock())
+        {
+            // Try to see if we can schedule current block. If pre-ready queue updated by the block scheduling is empty, which means
+            // some instructions in popped list depeneded by next block should be scheduled firstly. Then schedule current block.
+            // Considering below case:
+            //    mad (16)             r5.0<1>:df  r92.0<1;0>:df  r45.0<1;0>:df  r84.0<0;0>:df
+            //    mad (16)             r7.0<1>:df  r96.0<1;0>:df  r45.0<1;0>:df  r84.1<0;0>:df
+            //    mov (32)             r86.0<1>:d  r17.0<1;1,0>:d
+            //    mad (16)             r9.0<1>:df  r100.0<1;0>:df  r45.0<1;0>:df  r84.2<0;0>:df
+            //    mad (16)             r11.0<1>:df  r104.0<1;0>:df  r45.0<1;0>:df  r84.3<0;0>:df
+            //
+            //    mad (16)             r5.0<1>:df  r5.0<1;0>:df  r108.0<1;0>:df  r86.0<0;0>:df
+            //    mad (16)             r7.0<1>:df  r7.0<1;0>:df  r108.0<1;0>:df  r86.1<0;0>:df
+            //    mad (16)             r9.0<1>:df  r9.0<1;0>:df  r108.0<1;0>:df  r86.2<0;0>:df
+            //    mad (16)             r11.0<1>:df  r11.0<1;0>:df  r108.0<1;0>:df  r86.3<0;0>:df
+            // The last 4 mad depends on previous 4 mad and mov. In current block, we have built the block successfully
+            // which includes the first 4 instructions, and the popped list has the mov instruction. If shcedule
+            // the block now, then the next sheduled instruction will be the mov as the last 4 mad wouldn't be
+            // sheduled before all the previous 5 instructions scheduled. So the group of blocks will be broken.
+            // Todo: Is there better solution here?
+
+            // Schedule instructions in popped list
+            for (auto node : popped)
+            {
+                schedule->scheduledNodes.push_back(node);
+                updateForSucc(node, &preReadyQueue);
+                node->schedTime = currCycle;
+                currCycle += node->getOccupancy();
+            }
+
+            // Schedule instructions in block together
+            for (auto node : curBlock->instList)
+            {
+                schedule->scheduledNodes.push_back(node);
+                updateForSucc(node, &preReadyQueue);
+                node->schedTime = currCycle;
+                currCycle += node->getOccupancy();
+            }
+
+            window2xSP* tmpBlock = lastBlock;
+            lastBlock = curBlock;
+            curBlock = tmpBlock;
+            curBlock->clean();
+            curBlock->setPreBlock(lastBlock);
+        }
+        else // Not good block
+        {
+            scheduleSingleInst(curBlock, popped, &currCycle);
+
+            // clean the blocks
+            lastBlock->clean();
+            curBlock->clean();
+        }
+    }
+
+
+    // Sanity check: Make sure all nodes are scheduled
+#if defined(_DEBUG)
+    for (auto node : allNodes)
+    {
+        assert(node->schedTime != UINT_MAX && "Node not scheduled!");
+    }
+#endif
+    return currCycle;
+}
+
 // Perform local list scheduling
 uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
 {
@@ -2527,6 +2776,75 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
                         scheduled = readyList.top();
                         readyList.pop();
                     }
+                }
+            }
+        }
+        // For write combine feature
+        else if (kernel->fg.builder->hasWriteCombine() &&
+            getOptions()->getOption(vISA_writeCombine) == true &&
+            scheduled && scheduled->getInstructions()->front()->opcode() == G4_mov &&
+            readyList.size() > 0)
+        {
+            windowWriteCombine block;
+            if (block.isWriteCombineCandidate(scheduled))
+            {
+                block.push(scheduled);
+
+                const int searchSize = (int)readyList.size();
+
+                // build the write combine block from other nodes of readyList
+                for (int i = 0; i < searchSize; i++)
+                {
+                    Node* next = readyList.top();
+                    if (next->getInstructions()->size() == 1 && block.isWriteCombineCandidate(next))
+                    {
+                        readyList.pop();
+                        block.push(next);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                bool isBlockScheduled = false;
+                while (block.getInstList().size() > 1)
+                {
+                    if (block.isGoodBlock())
+                    {
+                        // add atomic to the instructions except for the last one in the block
+                        std::vector<Node*> instList = block.getInstList();
+                        for (size_t index = 0; index < instList.size() - 1; index++)
+                        {
+                            instList[index]->getInstructions()->front()->setOptionOn(InstOpt_Atomic);
+                        }
+
+                        // schedule together
+                        for (auto node : instList)
+                        {
+                            schedule->scheduledNodes.push_back(node);
+                            updateForSucc(node, &preReadyQueue);
+                            scheduled = node;
+                            scheduled->schedTime = currCycle;
+                            currCycle += scheduled->getOccupancy();
+                            lastScheduled = scheduled;
+                        }
+                        isBlockScheduled = true;
+                        break;
+                    }
+                    else // not a good block
+                    {
+                        // pop up the last node from block, and try to see if it is a good block
+                        Node* tmpNode = block.getInstList().back();
+                        block.pop();
+                        readyList.push(tmpNode);
+                        continue;
+                    }
+                }
+
+                if (isBlockScheduled)
+                {
+                    continue;
                 }
             }
         }

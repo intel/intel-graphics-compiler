@@ -79,7 +79,10 @@ void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind,
     for (unsigned i = start_GRF; i < end_GRF; i++)
     {
         availableGregs[i] = false;
-        availableSubRegs[i] = 0xffff0000;
+        if (getGRFSize() == 64)
+            availableSubRegs[i] = 0;
+        else
+            availableSubRegs[i] = 0xffff0000;
     }
 
     if (end_sub_GRF)

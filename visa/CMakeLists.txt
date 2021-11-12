@@ -182,6 +182,7 @@ set(GenX_Common_Sources_VisaToG4
   VisaToG4/TranslateMisc.cpp
   VisaToG4/TranslateSend3D.cpp
   VisaToG4/TranslateSendLdStLegacy.cpp
+  VisaToG4/TranslateSendLdStLsc.cpp
   VisaToG4/TranslateSendMedia.cpp
   VisaToG4/TranslateSendRaw.cpp
   VisaToG4/TranslateSendSync.cpp

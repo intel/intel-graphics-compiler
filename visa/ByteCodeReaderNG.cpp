@@ -755,6 +755,21 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                 uint32_t mode = readOtherOperandNG(bytePos, buf, ISA_TYPE_UB);
                 kernelBuilder->AppendVISASplitBarrierInst(mode != 0);
             }
+            else if (opcode == ISA_NBARRIER)
+            {
+                uint32_t mode = readOtherOperandNG(bytePos, buf, ISA_TYPE_UB);
+                auto barrierId = readVectorOperandNG(bytePos, buf, container, false);
+                VISA_VectorOpnd* threadCount = readVectorOperandNG(bytePos, buf, container, false);
+                bool isWait = (mode & 1) == 0;
+                if (isWait)
+                {
+                    kernelBuilder->AppendVISANamedBarrierWait(barrierId);
+                }
+                else
+                {
+                    kernelBuilder->AppendVISANamedBarrierSignal(barrierId, threadCount);
+                }
+            }
             else
             {
                 bool hasMask = (opcode == ISA_FENCE);
@@ -2103,6 +2118,231 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
     }
 }
 
+static LSC_CACHE_OPTS readLscCacheOpts(unsigned& bytePos, const char* buf) {
+    LSC_CACHE_OPTS caching {};
+    caching.l1 = (LSC_CACHE_OPT)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    caching.l3 = (LSC_CACHE_OPT)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    return caching;
+}
+
+static LSC_ADDR readLscAddr(unsigned& bytePos, const char* buf) {
+    LSC_ADDR addrInfo {};
+    addrInfo.type = (LSC_ADDR_TYPE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    addrInfo.immScale = readPrimitiveOperandNG<uint16_t>(bytePos, buf);
+    addrInfo.immOffset = readPrimitiveOperandNG<int32_t>(bytePos, buf);
+    addrInfo.size = (LSC_ADDR_SIZE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    return addrInfo;
+}
+
+static LSC_DATA_SHAPE readLscDataShape(
+    unsigned& bytePos, const char* buf, bool useChMask)
+{
+    LSC_DATA_SHAPE dataInfo {};
+    dataInfo.size = (LSC_DATA_SIZE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    dataInfo.order = (LSC_DATA_ORDER)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    // even though both chmask and elems are a sum type, the binary holds both
+    auto dataElems =
+        (LSC_DATA_ELEMS)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    int chMask = (int)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    if (useChMask) {
+        dataInfo.chmask = chMask;
+    } else {
+        dataInfo.elems = dataElems;
+    }
+    return dataInfo;
+}
+
+static void readInstructionLscUntyped(
+    LSC_OP subOpcode,
+    unsigned& bytePos, const char* buf,
+    RoutineContainer& container)
+{
+    const LscOpInfo opInfo = LscOpInfoGet(subOpcode);
+
+    VISA_EMask_Ctrl execMask = vISA_EMASK_M1;
+    VISA_Exec_Size  execSize = EXEC_SIZE_ILLEGAL;
+
+    readExecSizeNG(bytePos, buf, execSize, execMask, container);
+    VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
+
+    auto lscSfid =
+        (LSC_SFID)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    LSC_CACHE_OPTS caching = readLscCacheOpts(bytePos, buf);
+    LSC_ADDR addrInfo = readLscAddr(bytePos, buf);
+    LSC_DATA_SHAPE dataInfo = readLscDataShape(
+        bytePos,
+        buf,
+        subOpcode == LSC_LOAD_QUAD || subOpcode == LSC_STORE_QUAD);
+
+    VISA_VectorOpnd *surface =
+        readVectorOperandNG(bytePos, buf, container, false);
+    VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
+    VISA_RawOpnd *src0 = readRawOperandNG(bytePos, buf, container);
+    VISA_VectorOpnd *src0Pitch = nullptr;
+    if (opInfo.isStrided()) {
+        src0Pitch = readVectorOperandNG(bytePos, buf, container, false);
+    }
+    VISA_RawOpnd *src1 = readRawOperandNG(bytePos, buf, container);
+    VISA_RawOpnd *src2 = nullptr;
+    if (!opInfo.isStrided()) {
+         src2 = readRawOperandNG(bytePos, buf, container);
+    }
+
+    if (opInfo.isStrided()) {
+        container.kernelBuilder->AppendVISALscUntypedStridedInst(
+            subOpcode, lscSfid,
+            pred, execSize, execMask,
+            caching, addrInfo, dataInfo,
+            surface, dst, src0, src0Pitch, src1);
+    } else {
+        container.kernelBuilder->AppendVISALscUntypedInst(
+            subOpcode, lscSfid,
+            pred, execSize, execMask,
+            caching, addrInfo, dataInfo,
+            surface, dst, src0, src1, src2);
+    }
+}
+
+static void readInstructionLscUntypedBlock2D(
+    LSC_OP subOpcode,
+    unsigned& bytePos, const char* buf,
+    RoutineContainer& container)
+{
+    VISA_EMask_Ctrl execMask = vISA_EMASK_M1;
+    VISA_Exec_Size  execSize = EXEC_SIZE_ILLEGAL;
+
+    readExecSizeNG(bytePos, buf, execSize, execMask, container);
+    VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
+    //
+    auto sfid = (LSC_SFID)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    //
+    LSC_CACHE_OPTS caching = readLscCacheOpts(bytePos, buf);
+    //
+    LSC_DATA_SHAPE_BLOCK2D dataShape2D { };
+    dataShape2D.size =
+        (LSC_DATA_SIZE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    dataShape2D.order =
+        (LSC_DATA_ORDER)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    dataShape2D.blocks = (int)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    dataShape2D.width = (int)readPrimitiveOperandNG<uint16_t>(bytePos, buf);
+    dataShape2D.height = (int)readPrimitiveOperandNG<uint16_t>(bytePos, buf);
+    dataShape2D.vnni = readPrimitiveOperandNG<uint8_t>(bytePos, buf) != 0;
+    //
+    VISA_RawOpnd *dstData = readRawOperandNG(bytePos, buf, container);
+    VISA_VectorOpnd *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS] { };
+    for (size_t i = 0; i < LSC_BLOCK2D_ADDR_PARAMS; i++) {
+        src0Addrs[i] = readVectorOperandNG(bytePos, buf, container, false);
+    }
+    VISA_RawOpnd *src1Data = readRawOperandNG(bytePos, buf, container);
+    //
+    container.kernelBuilder->AppendVISALscUntypedBlock2DInst(
+        subOpcode,
+        sfid,
+        pred, execSize, execMask,
+        caching,
+        dataShape2D,
+        dstData,
+        src0Addrs,
+        src1Data);
+}
+
+static void readInstructionLscTyped(
+    LSC_OP subOpcode,
+    unsigned& bytePos, const char* buf,
+    RoutineContainer& container)
+{
+    VISA_EMask_Ctrl execMask = vISA_EMASK_M1;
+    VISA_Exec_Size  execSize = EXEC_SIZE_ILLEGAL;
+
+    readExecSizeNG(bytePos, buf, execSize, execMask, container);
+    VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
+
+    // LSC_SFID lscSfid = ... always TGM
+    LSC_CACHE_OPTS caching = readLscCacheOpts(bytePos, buf);
+    auto addrModel =
+        (LSC_ADDR_TYPE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    auto addrSize =
+        (LSC_ADDR_SIZE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    //
+    auto dataSize =
+        (LSC_DATA_SIZE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    auto dataOrder =
+        (LSC_DATA_ORDER)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    auto dataElems =
+        (LSC_DATA_ELEMS)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    auto chMask =
+        (int)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    LSC_DATA_SHAPE dataInfo { };
+    dataInfo.size = dataSize;
+    dataInfo.order = dataOrder;
+    if (subOpcode == LSC_LOAD_QUAD || subOpcode == LSC_STORE_QUAD) {
+        dataInfo.chmask = chMask;
+    } else {
+        dataInfo.elems = dataElems;
+    }
+
+    VISA_VectorOpnd *surface =
+        readVectorOperandNG(bytePos, buf, container, false);
+    VISA_RawOpnd *dstData = readRawOperandNG(bytePos, buf, container);
+    VISA_RawOpnd *src0AddrsU = readRawOperandNG(bytePos, buf, container);
+    VISA_RawOpnd *src0AddrsV = readRawOperandNG(bytePos, buf, container);
+    VISA_RawOpnd *src0AddrsR = readRawOperandNG(bytePos, buf, container);
+    VISA_RawOpnd *src0AddrsLOD = readRawOperandNG(bytePos, buf, container);
+    VISA_RawOpnd *src1Data = readRawOperandNG(bytePos, buf, container);
+    VISA_RawOpnd *src2Data = readRawOperandNG(bytePos, buf, container);
+
+    container.kernelBuilder->AppendVISALscTypedInst(
+        subOpcode,
+        pred, execSize, execMask,
+        caching, addrModel, addrSize, dataInfo,
+        surface,
+        dstData,
+        src0AddrsU, src0AddrsV, src0AddrsR, src0AddrsLOD,
+        src1Data, src2Data);
+}
+static void readInstructionLscFence(
+    unsigned& bytePos, const char* buf,
+    RoutineContainer& container)
+{
+    VISA_EMask_Ctrl execMask = vISA_EMASK_M1;
+    VISA_Exec_Size  execSize = EXEC_SIZE_1;
+
+    readExecSizeNG(bytePos, buf, execSize, execMask, container);
+    (void)readPredicateOperandNG(bytePos, buf, container);
+    LSC_SFID sfid =
+        (LSC_SFID)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    LSC_FENCE_OP fenceOp =
+        (LSC_FENCE_OP)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    LSC_SCOPE scope =
+        (LSC_SCOPE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+
+    container.kernelBuilder->AppendVISALscFence(sfid, fenceOp, scope);
+}
+static void readInstructionLSC(
+    unsigned& bytePos, const char* buf,
+    ISA_Opcode opcode,
+    RoutineContainer& container)
+{
+    if (opcode == ISA_Opcode::ISA_LSC_FENCE) {
+        readInstructionLscFence(bytePos, buf, container);
+    } else if (opcode == ISA_Opcode::ISA_LSC_UNTYPED) {
+        auto subOpcode = (LSC_OP)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+        if (subOpcode == LSC_LOAD_BLOCK2D || subOpcode == LSC_STORE_BLOCK2D) {
+            readInstructionLscUntypedBlock2D(
+                subOpcode, bytePos, buf, container);
+        } else {
+            readInstructionLscUntyped(subOpcode, bytePos, buf, container);
+        }
+    } else if (opcode == ISA_Opcode::ISA_LSC_TYPED) {
+        auto subOpcode = (LSC_OP)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+        {
+            readInstructionLscTyped(
+                subOpcode, bytePos, buf, container);
+        }
+    } else {
+        MUST_BE_TRUE(false,"invalid LSC op");
+    }
+}
 
 void readInstructionNG(
     unsigned& bytePos, const char* buf, RoutineContainer& container, unsigned instID)
@@ -2126,6 +2366,7 @@ void readInstructionNG(
     case ISA_Inst_Misc:      readInstructionMisc       (bytePos, buf, (ISA_Opcode)opcode, container); break;
     case ISA_Inst_SVM:       readInstructionSVM        (bytePos, buf, (ISA_Opcode)opcode, container); break;
     case ISA_Inst_Sampler:   readInstructionSampler    (bytePos, buf, (ISA_Opcode)opcode, container); break;
+    case ISA_Inst_LSC:       readInstructionLSC        (bytePos, buf, (ISA_Opcode)opcode, container); break;
     default:
         {
             std::stringstream sstr;

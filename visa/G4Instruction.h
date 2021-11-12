@@ -42,6 +42,11 @@ HANDLE_INST(sel,   2, 1, InstTypeMov, GENX_BDW, ATTR_NONE)
 HANDLE_INST(movi,  1, 1, InstTypeMov, GENX_BDW, ATTR_NONE)
 HANDLE_INST(smov,  2, 1, InstTypeMov, GENX_BDW, ATTR_NONE)
 HANDLE_INST(csel,  3, 1, InstTypeMov, GENX_SKL, ATTR_FLOAT_SRC_ONLY)
+  //
+  // fcvt: special pseudo instruction for converting b/w a standard float type
+  //       and bf8/tf32, which are denoted by Type_UB/Type_UD, respectively.
+  //
+HANDLE_INST(fcvt,  1, 1, InstTypeMov, GENX_PVCXT, ATTR_PSEUDO)
 
 //
 // InstTypeLogic
@@ -95,6 +100,7 @@ HANDLE_INST(madm,   3, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
   // Following are pseudo instructions
   //
 HANDLE_INST(mulh,   2, 1, InstTypeArith, GENX_BDW, ATTR_COMMUTATIVE)
+HANDLE_INST(srnd,   2, 1, InstTypeArith, GENX_PVCXT, ATTR_PSEUDO)
 HANDLE_INST(madw,   3, 1, InstTypeArith, GENX_BDW, ATTR_WIDE_DST)
 
 //
@@ -172,6 +178,7 @@ HANDLE_INST(nop,    0, 0, InstTypeMisc, GENX_BDW, ATTR_NONE)
 HANDLE_INST(sync_nop,   1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_allrd, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_allwr, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
+HANDLE_INST(sync_fence, 1, 0, InstTypeMisc, GENX_PVC, ATTR_NONE)
 
   //
   // Following are pseudo instructions

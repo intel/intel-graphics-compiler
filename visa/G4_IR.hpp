@@ -230,6 +230,19 @@ typedef enum  _SB_INST_PIPE
     PIPE_SEND = 7,
 } SB_INST_PIPE;
 
+struct lsc_descriptor {
+    uint32_t opcode     : 6; // [5:0]
+    uint32_t reserved6  : 1; // [6]
+    uint32_t addr_size  : 2; // [8:7]
+    uint32_t data_size  : 3; // [11:9]
+    uint32_t data_vec   : 3; // [14:12]
+    uint32_t data_order : 1; // [15]
+    uint32_t reserved16 : 1; // [16]
+    uint32_t cache_opts : 3; // [19:17]
+    uint32_t rlen       : 5; // [24:20]
+    uint32_t mlen       : 5; // [29:25]
+    uint32_t addr_type  : 2; // [31:30]
+};
 
 typedef vISA::std_arena_based_allocator<vISA::G4_INST*> INST_LIST_NODE_ALLOCATOR;
 
@@ -334,6 +347,7 @@ public:
     enum SWSBTokenType {
         TOKEN_NONE,
         SB_SET,
+        NoACCSBSet,
         AFTER_READ,
         AFTER_WRITE,
         READ_ALL,
@@ -391,6 +405,8 @@ public:
     void setSetToken(unsigned short token) {swsb.SBToken = token; swsb.tokenType = SB_SET;}
     unsigned short getSetToken() const { if (swsb.tokenType == SB_SET) return swsb.SBToken; else return -1; }
 
+    void setNoACCSBSet() { swsb.tokenType = NoACCSBSet;}
+    bool hasNoACCSBSet() { return swsb.tokenType == NoACCSBSet;}
 
     void setOperandTypeIndicated(bool indicated) { operandTypeIndicated = indicated; }
     void setIsClosestALUType(bool indicated) { isClosestALUType_ = indicated; }
@@ -1191,6 +1207,8 @@ class G4_InstDpas : public G4_INST
         // Check if this is int dpas or half-float dpas
         bool isBF16() const { return Src1Precision == GenPrecision::BF16; }
         bool isFP16() const { return Src1Precision == GenPrecision::FP16; }
+        bool isBF8() const { return Src1Precision == GenPrecision::BF8; }
+        bool isTF32() const { return Src1Precision == GenPrecision::TF32; }
         bool isInt() const;
         bool is2xInt8() const; // true if it is 2xint8 dpas
 
@@ -2625,6 +2643,8 @@ public:
         {
             case AREG_F0:
             case AREG_F1:
+            case AREG_F2:
+            case AREG_F3:
                 return true;
             default:
                 return false;
@@ -2690,6 +2710,10 @@ public:
             return 0;
         case AREG_F1:
             return 1;
+        case AREG_F2:
+            return 2;
+        case AREG_F3:
+            return 3;
         default:
             assert(false && "should only be called on flag ARF");
             return -1;
@@ -3976,6 +4000,8 @@ public:
     G4_Areg* getF1Reg() { return ARF_Table[AREG_F1]; }
     G4_Areg* getTDRReg() { return ARF_Table[AREG_TDR0]; }
     G4_Areg* getSPReg() { return ARF_Table[AREG_SP]; }
+    G4_Areg* getF2Reg() { return ARF_Table[AREG_F2]; }
+    G4_Areg* getF3Reg() { return ARF_Table[AREG_F3]; }
 
     // map int to flag areg
     G4_Areg* getFlagAreg(int flagNum)
@@ -3986,6 +4012,10 @@ public:
                 return getF0Reg();
             case 1:
                 return getF1Reg();
+            case 2:
+                return getF2Reg();
+            case 3:
+                return getF3Reg();
             default:
                 assert(false && "unexpected flag register value");
                 return nullptr;

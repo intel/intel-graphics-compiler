@@ -343,7 +343,7 @@ bool LiveNode::alignedWithChannelMask(
     // Other cases.
     //
     // Initial value -1 means byte not defined, for [DefLB, DefRB].
-    std::array<int, 64> DefByteMask;
+    std::array<int, 128> DefByteMask;
     DefByteMask.fill(-1);
 
     // Set channel value for each defining byte.

@@ -123,5 +123,9 @@ public:
          uint16_t& row_offset, uint16_t& col_offset,
          uint16_t& v_stride, uint16_t& width, uint16_t& h_stride) const;
 
+     void verifyInstructionLsc(
+         const CISA_INST* inst);
+     void verifyInstructionSrnd(
+         const CISA_INST* inst);
 };
 

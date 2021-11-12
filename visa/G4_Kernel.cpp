@@ -636,6 +636,13 @@ static iga_gen_t getIGAPlatform()
     case GENX_ICLLP: platform = IGA_GEN11; break;
     case GENX_TGLLP:platform = IGA_GEN12p1; break;
     case XeHP_SDV: platform = IGA_XE_HP; break;
+    case GENX_DG2:
+        platform = IGA_XE_HPG;
+        break;
+    case GENX_PVC:
+    case GENX_PVCXT:
+        platform = IGA_XE_HPC;
+        break;
     default:
         break;
     }
@@ -821,10 +828,37 @@ void G4_Kernel::setKernelParameters()
         switch (platform)
         {
         case XeHP_SDV:
+        case GENX_DG2:
             switch (overrideNumThreads)
             {
             case 4:
                 numRegTotal = 256;
+                break;
+            default:
+                numRegTotal = 128;
+            }
+            break;
+        case GENX_PVC:
+        case GENX_PVCXT:
+            switch (overrideNumThreads)
+            {
+            case 4:
+                numRegTotal = 256;
+                break;
+            case 5:
+                numRegTotal = 192;
+                break;
+            case 6:
+                numRegTotal = 160;
+                break;
+            case 8:
+                numRegTotal = 128;
+                break;
+            case 10:
+                numRegTotal = 96;
+                break;
+            case 12:
+                numRegTotal = 64;
                 break;
             default:
                 numRegTotal = 128;
@@ -852,11 +886,53 @@ void G4_Kernel::setKernelParameters()
         // User-provided number of SWSB tokens
         numSWSBTokens = overrideNumSWSB;
     }
+    else if (overrideNumThreads > 0)
+    {
+        switch (platform)
+        {
+        case GENX_PVC:
+        case GENX_PVCXT:
+            switch (overrideNumThreads)
+            {
+            case 4:
+                numSWSBTokens = 32;
+                break;
+            case 5:
+                numSWSBTokens = 24;
+                break;
+            case 6:
+                numSWSBTokens = 20;
+                break;
+            case 8:
+                numSWSBTokens = 16;
+                break;
+            case 10:
+                numSWSBTokens = 12;
+                break;
+            case 12:
+                numSWSBTokens = 8;
+                break;
+            default:
+                numSWSBTokens = 16;
+            }
+            break;
+        default:
+            numSWSBTokens = 16;
+        }
+    }
     else
     {
         // Default value based on platform
         switch (platform)
         {
+        case GENX_PVC:
+        case GENX_PVCXT:
+            numSWSBTokens = 16;
+            if (numRegTotal == 256)
+            {
+                numSWSBTokens *= 2;
+            }
+            break;
         default:
             numSWSBTokens = 16;
         }
@@ -875,6 +951,7 @@ void G4_Kernel::setKernelParameters()
         switch (platform)
         {
         case XeHP_SDV:
+        case GENX_DG2:
             switch (overrideNumThreads)
             {
             case 4:
@@ -882,6 +959,28 @@ void G4_Kernel::setKernelParameters()
                 break;
             default:
                 numAcc = 4;
+            }
+            break;
+        case GENX_PVC:
+        case GENX_PVCXT:
+            switch (overrideNumThreads)
+            {
+            case 4:
+                numAcc = 8;
+                break;
+            case 5:
+                numAcc = 6;
+                break;
+            case 6:
+            case 8:
+                numAcc = 4;
+                break;
+            case 10:
+            case 12:
+                numAcc = 2;
+                break;
+            default:
+                numAcc = 8;
             }
             break;
         default:
@@ -894,6 +993,9 @@ void G4_Kernel::setKernelParameters()
         switch (platform)
         {
         case XeHP_SDV:
+        case GENX_DG2:
+        case GENX_PVC:
+        case GENX_PVCXT:
             numAcc = 4;
             if (numRegTotal == 256)
             {
@@ -917,10 +1019,37 @@ void G4_Kernel::setKernelParameters()
             switch (platform)
             {
             case XeHP_SDV:
+            case GENX_DG2:
                 switch (numRegTotal)
                 {
                 case 256:
                     numThreads = 4;
+                    break;
+                default:
+                    numThreads = 8;
+                }
+                break;
+            case GENX_PVC:
+            case GENX_PVCXT:
+                switch (numRegTotal)
+                {
+                case 256:
+                    numThreads = 4;
+                    break;
+                case 192:
+                    numThreads = 5;
+                    break;
+                case 160:
+                    numThreads = 6;
+                    break;
+                case 128:
+                    numThreads = 8;
+                    break;
+                case 96:
+                    numThreads = 10;
+                    break;
+                case 64:
+                    numThreads = 12;
                     break;
                 default:
                     numThreads = 8;
@@ -1005,6 +1134,8 @@ void G4_Kernel::emitDeviceAsm(
         os << "//.BankConflicts.SameBank: " <<  fg.XeBCStats.sameBankConflicts << "\n";
         os << "//.BankConflicts.TwoSrc: " <<  fg.XeBCStats.twoSrcBC << "\n";
         int nativeSimdSize = 8;
+        if (getGenxPlatform() >= GENX_PVC)
+            nativeSimdSize = 16;
         os << "//.SIMD" << 2*nativeSimdSize << "ReadSuppressions: " <<  fg.XeBCStats.simd16ReadSuppression << "\n";
         os << "//.SIMD" << nativeSimdSize << "s: " <<  fg.XeBCStats.simd8 << "\n//\n";
         os << "//.RMWs: " << fg.numRMWs << "\n//\n";

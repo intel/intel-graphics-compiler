@@ -202,7 +202,7 @@ struct var_info_t {
         VISA_Align typeAlign = ALIGN_WORD;
         if (getSize() >= getGRFSize())
         {
-            typeAlign = ALIGN_HWORD;
+            typeAlign = getGRFSize() == 64 ? ALIGN_32WORD : ALIGN_HWORD;
         }
         else
         {
@@ -829,16 +829,73 @@ namespace vISA
         DP_PI      = 11, //PIXEL INTERPOLATOR
         DP_DC1     = 12, //DATA CACHE DATAPORT1
         CRE        = 13, //CHECK & REFINEMENT ENGINE
+        BTD        = 16, // bindless thread dispatcher
+        RTHW       = 17, // ray trace HW accelerator
+        TGM        = 18, // typed global memory
+        SLM        = 19, // untyped shared local memory
+        UGM        = 20, // untyped global memory
+        UGML       = 21, // untyped global memory (low bandwidth)
     };
 
     inline int SFIDtoInt(SFID id)
     {
+        if (id == SFID::BTD)
+        {
+            return 0x7;
+        }
+        else if (id == SFID::RTHW)
+        {
+            return 0x8;
+        }
+        else if (id == SFID::TGM)
+        {
+            return 0xD;
+        }
+        else if (id == SFID::SLM)
+        {
+            return 0xE;
+        }
+        else if (id == SFID::UGM)
+        {
+            return 0xF;
+        }
         return static_cast<int>(id);
     };
 
     inline SFID intToSFID(int id)
     {
+        if (getGenxPlatform() >= GENX_DG2)
+        {
+            switch (id)
+            {
+                case 0x7:
+                    return SFID::BTD;
+                case 0x8:
+                    return SFID::RTHW;
+                case 0xD:
+                    return SFID::TGM;
+                case 0xE:
+                    return SFID::SLM;
+                case 0xF:
+                    return SFID::UGM;
+                default:
+                    // fall through
+                    break;
+            }
+        }
         return static_cast<SFID>(id);
+    };
+    inline SFID LSC_SFID_To_SFID(LSC_SFID lscId)
+    {
+        switch (lscId) {
+        case LSC_UGM:  return SFID::UGM;
+        case LSC_UGML: return SFID::UGML;
+        case LSC_TGM:  return SFID::TGM;
+        case LSC_SLM:  return SFID::SLM;
+        default:
+            assert(false && "invalid SFID for untyped LSC message");
+            return SFID::NULL_SFID;
+        }
     };
 };
 

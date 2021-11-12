@@ -57,6 +57,7 @@ DEF_VISA_OPTION(vISA_EnableAlways,          ET_BOOL, NULLSTR,            UNUSED,
 DEF_VISA_OPTION(vISA_EnableSendFusion,      ET_BOOL, "-enableSendFusion",   UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableWriteFusion,     ET_BOOL, "-enableWriteFusion",  UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableAtomicFusion,    ET_BOOL, "-enableAtomicFusion", UNUSED, false)
+DEF_VISA_OPTION(vISA_RemovePartialMovs,     ET_BOOL, "-partialMovsProp",      UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalCopyProp,         ET_BOOL, "-nocopyprop",      UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalInstCombine,      ET_BOOL, "-noinstcombine",   UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalFlagOpt,          ET_BOOL, "-noflagopt",       UNUSED, true)
@@ -204,8 +205,12 @@ DEF_VISA_OPTION(vISA_ForceHWThreadNumberPerEU, ET_INT32, "-forceHWThreadNumberPe
 DEF_VISA_OPTION(vISA_NoAtomicSend, ET_BOOL, "-noAtomicSend", UNUSED, false)
 DEF_VISA_OPTION(vISA_ReadSuppressionDepth, ET_INT32, "-readSuppressionDepth", UNUSED, 0)
 DEF_VISA_OPTION(vISA_ScheduleForReadSuppression, ET_BOOL, "-scheduleForReadSuppression", UNUSED, false)
+DEF_VISA_OPTION(vISA_ScheduleFor2xSP, ET_BOOL, "-scheduleFor2xSP", UNUSED, false)
+DEF_VISA_OPTION(vISA_SWSBBlockFor2xSP, ET_BOOL, "-SWSBBlockFor2xSP", UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalSchedulingStartBB,   ET_INT32, "-scheduleStartBB", UNUSED, 0)
 DEF_VISA_OPTION(vISA_LocalSchedulingEndBB,     ET_INT32, "-scheduleEndBB", UNUSED, UINT_MAX)
+DEF_VISA_OPTION(vISA_assumeL1Hit, ET_BOOL, "-assumeL1Hit", UNUSED, false)
+DEF_VISA_OPTION(vISA_writeCombine, ET_BOOL, "-writeCombine", UNUSED, true)
 DEF_VISA_OPTION(vISA_Q2FInIntegerPipe, ET_BOOL, "-Q2FInteger", UNUSED, false)
 
 //=== SWSB options ===
@@ -280,12 +285,26 @@ DEF_VISA_OPTION(vISA_ReRAPostSchedule,    ET_BOOL,  "-rerapostschedule",  UNUSED
 DEF_VISA_OPTION(vISA_GTPinReRA,           ET_BOOL, "-GTPinReRA",          UNUSED, false)
 DEF_VISA_OPTION(vISA_GetFreeGRFInfo,      ET_BOOL,  "-getfreegrfinfo",    UNUSED, false)
 DEF_VISA_OPTION(vISA_GTPinScratchAreaSize,ET_INT32, "-GTPinScratchAreaSize", UNUSED, 0)
+DEF_VISA_OPTION(vISA_LSCBackupMode,       ET_BOOL,  "-LSCBackupMode",     UNUSED, false)
+DEF_VISA_OPTION(vISA_InjectEntryFences,   ET_BOOL,  "-InjectEntryFences", UNUSED, false)
+DEF_VISA_OPTION(vISA_LSCEnableHalfSIMD,   ET_BOOL,  "-enableHalfLSC",     UNUSED, false)
+DEF_VISA_OPTION(vISA_lscNonStackSpill,    ET_BOOL, "-lscNonStackSpill",   UNUSED, false)
+// native int64 adder was removed and then added back (adder lacks saturation)
+// the int64 shifter was never removed
+DEF_VISA_OPTION(vISA_HasInt64Add,         ET_BOOL,  "-hasInt64Add",      UNUSED, false)
+// Corresponds to something slightly different in IGC than vISA_HasInt64Add
+// (C.f. Platform.hpp:hasPartialInt64Support)
+DEF_VISA_OPTION(vISA_HasPartialInt64,     ET_BOOL,  "-partialInt64",      UNUSED, false)
+
+DEF_VISA_OPTION(vISA_EnableDPASBFHFH,     ET_BOOL,  "-enableDPASBFHF",      UNUSED, false)
+DEF_VISA_OPTION(vISA_EnableMathDPASWA,    ET_BOOL,  "-enableMathDPASWA",      UNUSED, false)
 DEF_VISA_OPTION(vISA_skipFenceCommit,     ET_BOOL,  "-skipFenceCommit", UNUSED, false)
 DEF_VISA_OPTION(vISA_removeFence,         ET_BOOL,  "-removeFence", "Remove fence if no write in a kernel", false)
 
 //=== HW Workarounds ===
 DEF_VISA_OPTION(vISA_clearScratchWritesBeforeEOT,   ET_BOOL,  "-waClearScratchWrite", UNUSED, false)
 DEF_VISA_OPTION(vISA_clearHDCWritesBeforeEOT,       ET_BOOL,  "-waClearHDCWrite",    UNUSED, false)
+DEF_VISA_OPTION(vISA_clearLSCUGMWritesBeforeEOT,    ET_BOOL,  "-waLscUgmFence", UNUSED, false)
 DEF_VISA_OPTION(vISA_setA0toTdrForSendc,            ET_BOOL,  "-setA0toTdrForSendc", UNUSED, false)
 DEF_VISA_OPTION(vISA_addFFIDProlog,                 ET_BOOL,  "-noFFIDProlog",       UNUSED, true)
 DEF_VISA_OPTION(vISA_setFFID,                       ET_INT32, "-setFFID", "USAGE: -setFFID <ffid>\n", FFID_INVALID)
@@ -301,6 +320,7 @@ DEF_VISA_OPTION(vISA_cloneEvaluateSampleInst,       ET_BOOL,  "-cloneEvaluateSam
 DEF_VISA_OPTION(vISA_expandMulPostSchedule,         ET_BOOL,  "-expandMulPostSchedule", UNUSED, true)
 DEF_VISA_OPTION(vISA_expandMadwPostSchedule,        ET_BOOL,  "-expandMadwPostSchedule", UNUSED, true)
 DEF_VISA_OPTION(vISA_disableRegDistDep,         ET_BOOL,  "-disableRegDistDep", UNUSED, false)
+DEF_VISA_OPTION(vISA_forceSrc0ToQwForQwShlWA,       ET_BOOL,  "-forceSrc0ToQwForQwShlWA", UNUSED, false)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo,   ET_BOOL,  "-generateDebugInfo", UNUSED, false)
@@ -308,6 +328,7 @@ DEF_VISA_OPTION(vISA_setStartBreakPoint,  ET_BOOL,  "-setstartbp",        UNUSED
 DEF_VISA_OPTION(vISA_InsertHashMovs,      ET_BOOL,  NULLSTR,              UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertDummyMovForHWRSWA,      ET_BOOL,  "-insertRSDummyMov",              UNUSED, false)
 DEF_VISA_OPTION(vISA_GenerateKernelInfo,  ET_BOOL, "-generateKernelInfo", UNUSED, false)
+DEF_VISA_OPTION(vISA_ManualEnableRSWA,      ET_BOOL,  "-manualEnableRSWA",              UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertDummyMovForDPASRSWA,      ET_BOOL,  "-insertDPASRSDummyMov",              UNUSED, true)
 DEF_VISA_OPTION(vISA_registerHWRSWA,      ET_INT32,  "-dummyRegisterHWRSWA",              UNUSED, 0)
 DEF_VISA_OPTION(vISA_InsertDummyCompactInst, ET_BOOL, "-insertDummyCompactInst", UNUSED, false)

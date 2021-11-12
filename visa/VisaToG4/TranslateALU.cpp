@@ -178,8 +178,10 @@ int IR_Builder::translateVISADpasInst(
 
     G4_ExecSize exsize = toExecSize(executionSize);
     G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
-    if (hasBFDstforDPAS() && A == GenPrecision::BF16)
+    if (hasBFDstforDPAS() && (A == GenPrecision::BF16 || A == GenPrecision::BF8))
     {
+        // PVC allows BF dst and src0, and they are W/UW when coming into vISA,
+        // so we fix the type here
         if (dstOpnd->getType() == Type_W || dstOpnd->getType() == Type_UW)
         {
             dstOpnd->setType(Type_BF);
@@ -600,6 +602,11 @@ int IR_Builder::translateVISADataMovementInst(
         }
 
         createMov(exsize, dstOpnd, src0Opnd, inst_opt, true);
+    }
+    else if (opcode == ISA_FCVT)
+    {
+        (void)createInst(nullptr, G4_fcvt, nullptr, g4::NOSAT, exsize,
+                         dstOpnd, src0Opnd, nullptr, inst_opt, true);
     }
     else
     {

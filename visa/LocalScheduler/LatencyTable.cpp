@@ -26,7 +26,12 @@ uint16_t LatencyTable::getDPAS8x8Latency() const
     switch(m_builder->getPlatform())
     {
         case XeHP_SDV:
+        case GENX_PVC:
             return uint16_t(LatenciesXe::DPAS + 7); //28
+        case GENX_PVCXT:
+            return uint16_t(LatenciesXe::DPAS + 1 + 7); //29
+        case GENX_DG2:
+            return 32;
         default: //Not suppport platform
            return 46;
     }
@@ -131,6 +136,27 @@ uint16_t LatencyTable::getLatencyG12(const G4_INST* Inst) const
 
     if (Inst->isSend()) {
         G4_SendDesc* MsgDesc = Inst->getMsgDesc();
+        if (MsgDesc->isLSC())
+        {
+            if (MsgDesc->isFence())
+            {
+                return MsgDesc->isTyped() ?
+                    LatenciesXe::LSC_TYPED_FENCE : LatenciesXe::LSC_UNTYPED_FENCE;
+            }
+            else
+            {
+                bool isCachedInL1 = MsgDesc->getCachingL1() == Caching::CA ||
+                    (MsgDesc->getCachingL1() != Caching::UC && m_builder->getOption(vISA_assumeL1Hit));
+                if (MsgDesc->isLSC() && MsgDesc->isTyped())
+                {
+                    return isCachedInL1 ? LatenciesXe::LSC_TYPED_L1 : LatenciesXe::LSC_TYPED_L3;
+                }
+                else
+                {
+                    return isCachedInL1 ? LatenciesXe::LSC_UNTYPED_L1 : LatenciesXe::LSC_UNTYPED_L3;
+                }
+            }
+        }
         if (MsgDesc->isSLM())
             return Inst->asSendInst()->isFence() ? LatenciesXe::SLM_FENCE : LatenciesXe::SLM;
         if (MsgDesc->isSampler())
@@ -151,8 +177,33 @@ uint16_t LatencyTable::getLatencyG12(const G4_INST* Inst) const
     }
     if (Inst->isDpas()) {
 
+        if (m_builder->getPlatform() ==  GENX_PVC)
+        {
+            G4_InstDpas *dpas = Inst->asDpasInst();
+            return uint16_t(LatenciesXe::DPAS + dpas->getRepeatCount() - 1);
+        }
 
+        if (m_builder->getPlatform() ==  GENX_PVCXT)
+        {
+            G4_InstDpas *dpas = Inst->asDpasInst();
+            return uint16_t(LatenciesXe::DPAS + 1 + dpas->getRepeatCount() - 1); //22 ~29
+        }
 
+        if (m_builder->getPlatform() ==  GENX_DG2)
+        {
+            G4_InstDpas *dpas = Inst->asDpasInst();
+            switch(dpas->getRepeatCount())
+            {
+            case 1:
+                return 21;
+            case 2:
+                return 22;
+            case 8:
+                return 32;
+            default:
+                return 32;
+            }
+        }
         G4_InstDpas* dpas = Inst->asDpasInst();
         return uint16_t(LatenciesXe::DPAS + dpas->getRepeatCount() - 1);
     }

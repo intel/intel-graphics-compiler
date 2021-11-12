@@ -857,7 +857,82 @@ public:
         VISA_opnd *src0,
         int lineNum);
 
+    bool CISA_create_lsc_untyped_inst(
+        VISA_opnd               *pred,
+        LSC_OP                   opcode,
+        LSC_SFID                 sfid,
+        LSC_CACHE_OPTS           caching,
+        VISA_Exec_Size           execSize,
+        VISA_EMask_Ctrl          emask,
+        LSC_ADDR                 addr,
+        LSC_DATA_SHAPE           dataShape,
+        VISA_opnd               *surface,
+        VISA_opnd               *dst,
+        VISA_opnd               *src0,
+        VISA_opnd               *src1,
+        VISA_opnd               *src2,
+        int                      lineNum);
+    bool CISA_create_lsc_untyped_strided_inst(
+        VISA_opnd               *pred,
+        LSC_OP                   opcode,
+        LSC_SFID                 sfid,
+        LSC_CACHE_OPTS           caching,
+        VISA_Exec_Size           execSize,
+        VISA_EMask_Ctrl          emask,
+        LSC_ADDR                 addr,
+        LSC_DATA_SHAPE           dataShape,
+        VISA_opnd               *surface,
+        VISA_opnd               *dstData,
+        VISA_opnd               *src0AddrBase,
+        VISA_opnd               *src0AddrPitch,
+        VISA_opnd               *src1Data,
+        int                      lineNum);
+    bool CISA_create_lsc_untyped_block2d_inst(
+        VISA_opnd               *pred,
+        LSC_OP                   opcode,
+        LSC_SFID                 sfid,
+        LSC_CACHE_OPTS           caching,
+        VISA_Exec_Size           execSize,
+        VISA_EMask_Ctrl          emask,
+        LSC_DATA_SHAPE_BLOCK2D   dataShape,
+        VISA_opnd               *dstData,
+        VISA_opnd               *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS], // {base,surfW,surfH,surfP,x,y}
+        VISA_opnd               *src1Data,
+        int                      lineNum);
+    bool CISA_create_lsc_typed_inst(
+        VISA_opnd               *pred,
+        LSC_OP                   opcode,
+        LSC_SFID                 sfid,
+        LSC_CACHE_OPTS           caching,
+        VISA_Exec_Size           execSize,
+        VISA_EMask_Ctrl          emask,
+        LSC_ADDR_TYPE            addrModel,
+        LSC_ADDR_SIZE            addrSize,
+        LSC_DATA_SHAPE           dataShape,
+        VISA_opnd               *surface,
+        VISA_opnd               *dst_data,
+        VISA_opnd               *src0_Us,
+        VISA_opnd               *src0_Vs,
+        VISA_opnd               *src0_Rs,
+        VISA_opnd               *src0_LODs,
+        VISA_opnd               *src1_data,
+        VISA_opnd               *src2_data,
+        int                      lineNum);
+    bool CISA_create_lsc_fence(
+        LSC_SFID                 lscSfid,
+        LSC_FENCE_OP             fence,
+        LSC_SCOPE                scope,
+        int                      lineNum);
 
+    bool CISA_create_fcvt_instruction(
+        VISA_EMask_Ctrl emask,
+        unsigned exec_size,
+        VISA_opnd* dst,
+        VISA_opnd* src0,
+        int lineNum);
+
+    bool CISA_create_nbarrier(
+        bool isWait, VISA_opnd *barrierId, VISA_opnd *threadCount, int lineNum);
 
 
 private:

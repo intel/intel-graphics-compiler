@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 //   TranslateSend3D           - for 3D send operations
 //   TranslateSendLdStLegacy   - for other legacy send operations inlcuding:
 //                              A64 SVM, A32/SLM, oword block, ...
+//   TranslateSendLdStLsc      - for lsc ops (lsc fences go in SendSync)
 //   TranslateSendMedia        - media, VA, and sampler VA functions
 //   TranslateSendRaw          - for existing raw sends
 //   TranslateSendSync         - fences, barriers, etc...

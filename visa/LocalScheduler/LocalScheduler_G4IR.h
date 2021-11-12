@@ -26,6 +26,8 @@ SPDX-License-Identifier: MIT
 
 #define THREE_SOURCE_BLOCK_HERISTIC 0.5
 
+#define FP_BLOCK_SEND_HERISTIC 0.1
+#define FP_MIN_INST_NUM 12  // at least 3 blocks(4 instructions per block) for either 2XDP or 2XSP
 namespace vISA {
 
 class Node;
@@ -226,6 +228,7 @@ class DDD {
     int HWthreadsPerEU;
     bool useMTLatencies;
     bool isThreeSouceBlock;
+    bool is_2XFP_Block;
     const LatencyTable LT;
 
     int GRF_BUCKET;
@@ -272,6 +275,7 @@ public:
     void dumpNodes(G4_BB *bb);
     void dumpDagDot(G4_BB *bb);
     uint32_t listScheduleForSuppression(G4_BB_Schedule* schedule);
+    uint32_t listScheduleFor2xFP(G4_BB_Schedule* schedule);
     uint32_t listSchedule(G4_BB_Schedule*);
     void setPriority(Node *pred, const Edge &edge);
     void createAddEdge(Node* pred, Node* succ, DepType d);
@@ -290,6 +294,7 @@ public:
     IR_Builder* getBuilder() const { return kernel->fg.builder; }
     const Options* getOptions() const { return kernel->getOptions(); }
     bool getIsThreeSourceBlock() { return isThreeSouceBlock; }
+    bool getIs2xFPBlock() { return is_2XFP_Block; }
 };
 
 class G4_BB_Schedule {
@@ -375,6 +380,452 @@ private:
     Mem_Manager& mem;
     RPE* rpe;
 
+};
+// Restrictions of candidate for 2xDP:
+//    1, Only support SIMD16 DF mad with M0
+//    2, Inst must not have predicate/cond mod
+//    3, The first use of the dst must have DF type as well
+static bool instCanUse2xDP(G4_INST* inst)
+{
+    if (inst->opcode() == G4_mad && inst->getExecSize() == g4::SIMD16 && inst->getDst()->getType() == Type_DF &&
+        inst->getMaskOption() == InstOpt_M0 && inst->getPredicate() == nullptr && inst->getCondMod() == nullptr)
+    {
+        return true;
+    }
+    return false;
+}
+
+
+class window2xSP
+{
+public:
+    std::vector<Node*> instList;
+    std::vector<int> dstGRF;
+    std::vector<int> srcGRF;
+    int instGRFSize = 0;
+    G4_Type instType = Type_UNDEF;
+    G4_Kernel* kernel;
+    window2xSP* preBlock = nullptr;
+
+    window2xSP(G4_Kernel *k)
+        :kernel(k)
+    {
+        instGRFSize = 0;
+        instType = Type_UNDEF;
+        preBlock = nullptr;
+        dstGRF.clear();
+        srcGRF.clear();
+        instList.clear();
+    }
+
+    ~window2xSP()
+    {
+        instGRFSize = 0;
+        instType = Type_UNDEF;
+        preBlock = nullptr;
+        dstGRF.clear();
+        srcGRF.clear();
+        instList.clear();
+    }
+
+    void clean()
+    {
+        instGRFSize = 0;
+        instType = Type_UNDEF;
+        preBlock = nullptr;
+        dstGRF.clear();
+        srcGRF.clear();
+        instList.clear();
+    }
+
+    void setPreBlock(window2xSP* block)
+    {
+        assert(block && block->instList.size() != 0 && "previous block has no instructions");
+        preBlock = block;
+    }
+
+    //Push new instruction into block, update the register size of the block at the same time
+    void push(Node* node)
+    {
+        G4_INST* inst = node->getInstructions()->front();
+        int dstReg = int(inst->getDst()->getLinearizedStart() / getGRFSize());
+        int src0Reg = int(inst->getSrc(0)->getLinearizedStart() / getGRFSize());
+
+        // set instruction GRF size
+        if (instGRFSize == 0)
+        {
+            instGRFSize = (inst->getDst()->getLinearizedEnd() - inst->getDst()->getLinearizedStart() + 1) / getGRFSize();
+        }
+
+        // set instruction type
+        if (instType == Type_UNDEF)
+        {
+            instType = inst->getDst()->getType();
+        }
+
+        if (!preBlock)
+        {    // First block in group, keep the original instruction order
+             instList.push_back(node);
+             for (int i = 0; i < instGRFSize; i++)
+             {
+                 dstGRF.push_back(dstReg);
+                 srcGRF.push_back(src0Reg);
+                 dstReg++;
+                 src0Reg++;
+             }
+        }
+        else  // Non-first block in group
+        {
+            // First instruction in current block
+            // Currnt block and previous block may have different instruction GRF size. For example:
+            //     For K=0
+            //     mad (16 | M0) r50.0<1>:f  r34.0<1,0>:f   r10.0<1,0>:f   r77.0<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r51.0<1>:f  r35.0<1,0>:f   r11.0<1,0>:f   r77.0<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r52.0<1>:f  r36.0<1,0>:f   r10.0<1,0>:f   r77.1<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r53.0<1>:f  r37.0<1,0>:f   r11.0<1,0>:f   r77.1<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r54.0<1>:f  r38.0<1,0>:f   r10.0<1,0>:f   r77.2<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r55.0<1>:f  r39.0<1,0>:f   r11.0<1,0>:f   r77.2<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r56.0<1>:f  r40.0<1,0>:f   r10.0<1,0>:f   r77.3<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r57.0<1>:f  r41.0<1,0>:f   r11.0<1,0>:f   r77.3<0>:f   { Align1, Q1 }
+            //     For K=1
+            //     mad (16  |M0) 60.0<1>:df  50.0<1,0>:df  r12.0<1,0>:df   r78.0<0>:df   { Align1, Q1 }
+            //     mad (16 | M0) 62.0<1>:df  52.0<1,0>:df  r12.0<1,0>:df   r78.1<0>:df   { Align1, Q1 }
+            //     mad (16 | M0) 64.0<1>:df  54.0<1,0>:df  r12.0<1,0>:df   r78.2<0>:df   { Align1, Q1 }
+            //     mad (16 | M0) 66.0<1>:df  56.0<1,0>:df  r12.0<1,0>:df   r78.3<0>:df   { Align1, Q1 }
+            //     For K=2
+            //     mad (16 | M0) r34.0<1>:f  60.0<1,0>:f   r14.0<1,0>:f   r79.0<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r35.0<1>:f  61.0<1,0>:f   r15.0<1,0>:f   r79.0<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r36.0<1>:f  62.0<1,0>:f   r14.0<1,0>:f   r79.1<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r37.0<1>:f  63.0<1,0>:f   r15.0<1,0>:f   r79.1<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r38.0<1>:f  64.0<1,0>:f   r14.0<1,0>:f   r79.2<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r39.0<1>:f  65.0<1,0>:f   r15.0<1,0>:f   r79.2<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r40.0<1>:f  66.0<1,0>:f   r14.0<1,0>:f   r79.3<0>:f   { Align1, Q1 }
+            //     mad (16 | M0) r41.0<1>:f  67.0<1,0>:f   r15.0<1,0>:f   r79.3<0>:f   { Align1, Q1 }
+            assert((std::max(instGRFSize, preBlock->instGRFSize) % std::min(instGRFSize, preBlock->instGRFSize) == 0) && "instructions in ajacent blocks can't be aligned");
+            auto indexInterval = std::max(instGRFSize, preBlock->instGRFSize) / std::min(instGRFSize, preBlock->instGRFSize);
+            if (instList.size() == 0)
+            {
+                auto instListSize = (instGRFSize > preBlock->instGRFSize) ? (preBlock->instList.size() / indexInterval) : (preBlock->instList.size() * indexInterval);
+                instList.resize(instListSize, nullptr);
+                dstGRF.resize(preBlock->dstGRF.size(), -1);
+                srcGRF.resize(preBlock->srcGRF.size(), -1);
+            }
+
+            // For non-first block, the instruction order is decided by previous block
+            // The instruction whose src0 in current block and the instruction whose dst in previous block have the same registers, and
+            // these two instructions should have the same order in their own blocks
+            int src0RegStart = int(inst->getSrc(0)->getLinearizedStart() / getGRFSize());
+            std::vector<int> src0Regs;
+            for (int src0Reg = src0RegStart; src0Reg < (src0RegStart + instGRFSize); src0Reg++)
+            {
+                src0Regs.push_back(src0Reg);
+            }
+            auto it = std::search(preBlock->dstGRF.begin(), preBlock->dstGRF.end(), src0Regs.begin(), src0Regs.end());
+            assert(it != preBlock->dstGRF.end() && "the src0 is not the same as the dst of previous block");
+            auto dstGRFIndexPreBlock = it - preBlock->dstGRF.begin();
+            auto instIndexPreBlock = dstGRFIndexPreBlock / preBlock->instGRFSize;
+            auto instIndex = (instGRFSize > preBlock->instGRFSize) ? (instIndexPreBlock / indexInterval) :  (instIndexPreBlock * indexInterval);
+            this->instList[instIndex] = node;
+            for (int i = 0; i < instGRFSize; i++)
+            {
+                srcGRF[dstGRFIndexPreBlock] = src0Reg;
+                dstGRF[dstGRFIndexPreBlock] = dstReg;
+                src0Reg++;
+                dstReg++;
+                dstGRFIndexPreBlock++;
+            }
+        }
+    }
+
+    //Check GRF size to see if the instruction can be added the block or not
+    bool checkGRFSize(Node* node)
+    {
+        G4_Operand* newOpnd = node->getInstructions()->front()->getDst();
+        unsigned GRFSize = (newOpnd->getLinearizedEnd() - newOpnd->getLinearizedStart() + 1) / getGRFSize();
+
+        // 2xSP/2xDP instruction should be 1 or 2 GRF size in destination
+        // GRF aligned
+        if (!GRFSize || newOpnd->getLinearizedStart() % getGRFSize())
+        {
+            return false;
+        }
+
+        // Check if the first block is less than 2xSP register size requirement.
+        // For non-first block, the size is the same as previous block, so no need to check here.
+        if (!preBlock && (int)(dstGRF.size() + GRFSize) > kernel->getNumAcc())
+        {
+            return false;
+        }
+
+        if (instGRFSize != 0 && GRFSize != instGRFSize)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    // Check if the instruction can be added into 2xDP block
+    bool canAddToBlock2xDP(Node* node)
+    {
+        G4_INST* inst = node->getInstructions()->front();
+
+        if (!instCanUse2xDP(inst))
+        {
+            return false;
+        }
+
+        // All instructions in the block have the same GRF size
+        if (!checkGRFSize(node))
+        {
+            return false;
+        }
+
+        // For non-first blocks, the inst's src0 should have the same registers as the dst of instructions in previous block
+        if (preBlock && !hasSameOperand(inst))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+
+    // Check if block is good or not:
+    //     GRF size should be <= ACC number
+    //     GRF size should be larger than 4
+    //     For the non-first block, the src0 of the block should have the same registers as the dst of previous block
+    bool isGoodBlock()
+    {
+        return (int)dstGRF.size() <= kernel->getNumAcc() && dstGRF.size() >= 4 && checkAllInstsSrc0();
+    }
+
+    // Check if the src0 of the instruction has the same register as the dst of any instruction in previous block
+    bool hasSameOperand(G4_INST* inst)
+    {
+        int src0RegStart = int(inst->getSrc(0)->getLinearizedStart() / getGRFSize());
+        int tmpInstGRFSize = (this->instGRFSize == 0) ? int((inst->getDst()->getLinearizedEnd() - inst->getDst()->getLinearizedStart() + 1) / getGRFSize()) : this->instGRFSize;
+        std::vector<int> src0Regs;
+        for (auto src0Reg = src0RegStart; src0Reg < (src0RegStart + tmpInstGRFSize); src0Reg++)
+        {
+            src0Regs.push_back(src0Reg);
+        }
+
+        auto itDst = std::search(preBlock->dstGRF.begin(), preBlock->dstGRF.end(), src0Regs.begin(), src0Regs.end());
+        auto itSrc = std::search(this->srcGRF.begin(), this->srcGRF.end(), src0Regs.begin(), src0Regs.end());
+        if (itDst != preBlock->dstGRF.end() && itSrc == this->srcGRF.end())
+        {
+            return true;
+        }
+        return false;
+    }
+
+    //Check if the src0 of all instructions in the current block and the dst of all instructions in the previous block have same registers.
+    bool checkAllInstsSrc0()
+    {
+        // No need to check operand if the current block is the first block
+        if (preBlock)
+        {
+            std::vector<int>::iterator itDst = preBlock->dstGRF.begin();
+            std::vector<int>::iterator itSrc = this->srcGRF.begin();
+            while (itDst != preBlock->dstGRF.end() && itSrc != this->srcGRF.end())
+            {
+                auto dstReg = (*itDst);
+                auto srcReg = (*itSrc);
+
+                if (dstReg != srcReg)
+                {
+                    return false;
+                }
+                itDst++;
+                itSrc++;
+            }
+
+            if (itDst != preBlock->dstGRF.end() || itSrc != this->srcGRF.end())
+            {
+                return false;
+            }
+        }
+
+
+        return true;
+    }
+
+    void dump()
+    {
+        for (auto inst : instList)
+        {
+            inst->dump();
+        }
+    }
+
+    // Check if block is full
+    bool isBlockFull()
+    {
+        for (auto const reg : dstGRF)
+        {
+            if (reg == -1)
+                return false;
+        }
+
+        return (dstGRF.size() >= kernel->getNumAcc());
+    }
+};
+
+class windowWriteCombine
+{
+    std::vector<Node*> instList;
+    G4_Type dstType = Type_UNDEF;
+    G4_Type srcType = Type_UNDEF;
+    int dstGRF = -1;
+    bool hasMixedExecSize = false;
+    std::bitset<64> bytesWritten{0x0};
+
+public:
+    std::vector<Node*>& getInstList() { return instList; }
+
+    bool isWriteCombineCandidate(Node *node)
+    {
+        auto inst = node->getInstructions()->front();
+        if (inst->opcode() != G4_mov)
+        {
+            return false;
+        }
+
+        auto dst = inst->getDst();
+        // 1, dst cannot be null and cannot cross GRF boundary
+        if (!dst || dst->asDstRegRegion()->isCrossGRFDst())
+        {
+            return false;
+        }
+
+        // 2, check dst data type: dst can only be byte type, and all insts in the block have the same dst type
+        // Todo: support word and dword dst types.
+        if ((dstType == Type_UNDEF && !IS_BTYPE(dst->getType())) ||
+            (dstType != Type_UNDEF && dst->getType() != dstType))
+        {
+            return false;
+        }
+
+        // 3, should have same dst GRF number.
+        int dstReg = int(dst->getLinearizedStart() / getGRFSize());
+        if (dstGRF != -1 && dstReg != dstGRF)
+        {
+            return false;
+        }
+
+        // 4, for byte write combine atomic sequence, predication must not be used as we cannot gurantee that both bytes
+        // in a word are written.
+        if ((IS_BTYPE(dstType) || (dstType == Type_UNDEF && IS_BTYPE(dst->getType()))) && inst->getPredicate() != nullptr)
+        {
+            return false;
+        }
+
+        // 5, check src data type: must be byte/word/dword/float types, and all insts in the block have same src type.
+        auto src = inst->getSrc(0);
+        if ((srcType == Type_UNDEF && !IS_BTYPE(src->getType()) && !IS_WTYPE(src->getType()) && !IS_DTYPE(src->getType()) && src->getType() != Type_F) ||
+            (srcType != Type_UNDEF && src->getType() != srcType))
+        {
+            return false;
+        }
+
+        // 6, check exec size: mixed exec size is OK for dw-aligned cases only
+        auto execSize = inst->getExecSize();
+        if (hasMixedExecSize || (!instList.empty() && execSize != instList.back()->getInstructions()->front()->getExecSize()))
+        {
+            if (dst->getLinearizedStart() % 4 || dst->getExecTypeSize() % 4)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // push the node to the end
+    void push(Node* node)
+    {
+        auto inst = node->getInstructions()->front();
+        auto dst = inst->getDst();
+        auto src = inst->getSrc(0);
+
+        // set dst data type of the block
+        if (dstType == Type_UNDEF)
+        {
+            dstType = dst->getType();
+        }
+
+        // set dst GRF number
+        if (dstGRF == -1)
+        {
+            dstGRF = int(dst->getLinearizedStart() / getGRFSize());
+        }
+
+        // set src data type of the block
+        if (srcType == Type_UNDEF)
+        {
+            srcType = src->getType();
+        }
+
+        // update hasMixedExecSize
+        if (!hasMixedExecSize && !instList.empty())
+        {
+            hasMixedExecSize = inst->getExecSize() != instList.back()->getInstructions()->front()->getExecSize();
+        }
+
+        // record written bytes in the GRF
+        for (int offset = dst->getLinearizedStart() % getGRFSize(), i = 0; i < inst->getExecSize(); i++, offset += dst->getExecTypeSize())
+        {
+            for (int elementOffset = 0; elementOffset < dst->getElemSize(); elementOffset++)
+            {
+                bytesWritten.set(offset + elementOffset);
+            }
+        }
+
+        instList.push_back(node);
+        return;
+    }
+
+    // remove the last element
+    void pop()
+    {
+        auto inst = instList.back()->getInstructions()->front();
+        auto dst = inst->getDst();
+
+        // clear written bytes in the GRF
+        for (int offset = dst->getLinearizedStart() % getGRFSize(), i = 0; i < inst->getExecSize(); i++, offset += dst->getExecTypeSize())
+        {
+            for (int elementOffset = 0; elementOffset < dst->getElemSize(); elementOffset++)
+            {
+                bytesWritten.set(offset + elementOffset, false);
+            }
+        }
+
+        instList.pop_back();
+        return;
+    }
+
+    // check if current block meets below conditions:
+    // 1, block size >= 2
+    // 2, both bytes in a word need to be written
+    bool isGoodBlock()
+    {
+        if (instList.size() < 2)
+        {
+            return false;
+        }
+
+        // both bytes in a word need to be written
+        for (std::size_t i = 0; i < bytesWritten.size(); i += 2)
+        {
+            if (bytesWritten[i] ^ bytesWritten[i + 1])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 };
 } // namespace vISA
 

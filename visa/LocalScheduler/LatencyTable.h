@@ -80,6 +80,12 @@ namespace vISA
         DP_L3                   = 146,  // Dataport L3 hit
         SAMPLER_L3              = 214,  // Sampler L3 hit
         SLM_FENCE               = 23,   // Fence SLM
+        LSC_UNTYPED_L1          = 45,   // LSC untyped L1 cache hit
+        LSC_UNTYPED_L3          = 200,  // LSC untyped L3 cache hit
+        LSC_UNTYPED_FENCE       = 35,   // LSC untyped fence (best case)
+        LSC_TYPED_L1            = 75,   // LSC typed L1 cache hit
+        LSC_TYPED_L3            = 200,  // LSC typed L3 cache hit
+        LSC_TYPED_FENCE         = 60,   // LSC typed fence
     };
 
 

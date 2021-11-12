@@ -220,7 +220,10 @@ public:
             for (unsigned i = 0; i < numRows; i++)
             {
                 availableGregs[regNum + i] = false;
-                availableSubRegs[regNum + i] = 0xffff0000;
+                if (getGRFSize() == 64)
+                    availableSubRegs[regNum + i] = 0;
+                else
+                    availableSubRegs[regNum + i] = 0xffff0000;
             }
         }
     }

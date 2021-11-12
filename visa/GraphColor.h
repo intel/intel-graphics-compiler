@@ -775,6 +775,9 @@ namespace vISA
         uint32_t numGRFSpill = 0;
         uint32_t numGRFFill = 0;
 
+        bool spillFillIntrinUsesLSC(G4_INST* spillFillIntrin);
+        void expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt);
+        void expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt);
         void expandFillNonStackcall(uint32_t numRows, uint32_t offset, short rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt);
         void expandSpillNonStackcall(uint32_t numRows, uint32_t offset, short rowOffset, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, G4_BB* bb, INST_LIST_ITER& instIt);
         void expandFillStackcall(uint32_t numRows, uint32_t offset, short rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt);
@@ -803,6 +806,8 @@ namespace vISA
         PointsToAnalysis& pointsToAnalysis;
         FCALL_RET_MAP fcallRetMap;
 
+        bool useLscForSpillFill = false;
+        bool useLscForNonStackCallSpillFill = false;
 
         VarSplitPass* getVarSplitPass() const { return kernel.getVarSplitPass(); }
 
@@ -1080,6 +1085,10 @@ namespace vISA
 
         unsigned get_bundle(unsigned baseReg, int offset) const
         {
+            if (builder.hasPartialInt64Support())
+            {
+                return (((baseReg + offset) % 32) / 2);
+            }
             return (((baseReg + offset) % 64) / 4);
         }
 
@@ -1087,6 +1096,16 @@ namespace vISA
         {
             int bankID = (baseReg + offset) % 2;
 
+            if (builder.hasTwoGRFBank16Bundles())
+            {
+                bankID = ((baseReg + offset) % 4) / 2;
+            }
+
+
+            if (builder.hasOneGRFBank16Bundles())
+            {
+                bankID = (baseReg + offset) % 2;
+            }
 
             return bankID;
         }

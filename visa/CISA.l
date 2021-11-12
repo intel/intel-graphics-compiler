@@ -39,6 +39,9 @@ static VISA_Cond_Mod           str2cond(const char *str);
 static VISAAtomicOps           str2atomic_opcode(const char *op_str);
 static ISA_Opcode              str2opcode(const char* op_str);
 static GenPrecision            str2Precision(const char *str, int str_len);
+static LSC_OP                  str2lscop(const char *str);
+static LSC_DATA_SIZE           decodeDataSizePrefix(const char *str,int *off);
+static LSC_DATA_ELEMS          decodeDataElems(const char *str,int *off);
 static VISASampler3DSubOpCode  str2SampleOpcode(const char* str);
 static int64_t                 hexToInt(const char *hex_str, int str_len);
 static MEDIA_LD_mod            mediaMode(const char* str);
@@ -259,6 +262,24 @@ rol|ror {
         return BINARY_LOGIC_OP;
     }
 
+dpas"."tf32"."tf32"."(1|2|4|8)"."[12345678] {
+        TRACE("** DPAS");
+        CISAlval.opcode = ISA_DPAS;
+        CISAlval.dpas_info.src1Precision = GenPrecision::TF32;
+        CISAlval.dpas_info.src2Precision = GenPrecision::TF32;
+        CISAlval.dpas_info.depth = (yytext[15] - '0');
+        CISAlval.dpas_info.count = (yytext[17] - '0');
+        return DPAS_OP;
+    }
+dpas"."bf8"."bf8"."(1|2|4|8)"."[12345678] {
+        TRACE("** DPAS");
+        CISAlval.opcode = ISA_DPAS;
+        CISAlval.dpas_info.src1Precision = GenPrecision::BF8;
+        CISAlval.dpas_info.src2Precision = GenPrecision::BF8;
+        CISAlval.dpas_info.depth = (yytext[13] - '0');
+        CISAlval.dpas_info.count = (yytext[15] - '0');
+        return DPAS_OP;
+    }
 
 dp4a {
         TRACE("** ARITH4_OP");
@@ -322,7 +343,17 @@ bf_cvt {
         return ATOMIC_SUB_OP;
 }
 
+fcvt {
+    TRACE("** special float (bf8, etc) conversion INST");
+    CISAlval.opcode = str2opcode(yytext);
+    return FCVT_OP;
+}
 
+srnd {
+    TRACE("** srnd INST");
+    CISAlval.opcode = str2opcode(yytext);
+    return ARITH3_OP;
+}
 
 addc|subb {
         TRACE("** MATH INST");
@@ -397,7 +428,79 @@ svm_block_ld|svm_block_st|svm_scatter|svm_gather|svm_gather4scaled|svm_scatter4s
         return SVM_OP;
     }
 
+lsc_load|lsc_load_quad|lsc_load_status {
+        TRACE("** lsc_load* INST");
+        CISAlval.lsc_subOpcode = str2lscop(yytext);
+        // this is set in the parser based on the SFID
+        // CISAlval.lsc_opcode = ISA_LSC_UNTYPED OR ISA_LSC_TYPED;
+        return LSC_LOAD_MNEMONIC;
+    }
+lsc_load_strided {
+        TRACE("** lsc_load_strided INST");
+        CISAlval.lsc_subOpcode = str2lscop(yytext);
+        // this is set in the parser based on the SFID
+        // CISAlval.lsc_opcode = ISA_LSC_UNTYPED OR ISA_LSC_TYPED;
+        return LSC_LOAD_STRIDED_MNEMONIC;
+    }
+lsc_load_block2d {
+        TRACE("** lsc_load_block2d INST");
+        CISAlval.lsc_subOpcode = str2lscop(yytext);
+        // this is set in the parser based on the SFID
+        // CISAlval.lsc_opcode = ISA_LSC_UNTYPED OR ISA_LSC_TYPED;
+        return LSC_LOAD_BLOCK2D_MNEMONIC;
+    }
 
+lsc_store|lsc_store_quad|lsc_store_uncompressed|lsc_ccs_update {
+        TRACE("** lsc_store* INST");
+        CISAlval.lsc_subOpcode = str2lscop(yytext);
+        // this is set in the parser based on the SFID
+        // CISAlval.lsc_opcode = ISA_LSC_UNTYPED OR ISA_LSC_TYPED;
+        return LSC_STORE_MNEMONIC;
+    }
+lsc_store_strided {
+        TRACE("** lsc_store_strided INST");
+        CISAlval.lsc_subOpcode = str2lscop(yytext);
+        // this is set in the parser based on the SFID
+        // CISAlval.lsc_opcode = ISA_LSC_UNTYPED;
+        return LSC_STORE_STRIDED_MNEMONIC;
+    }
+lsc_store_block2d {
+        TRACE("** lsc_store_block2d INST");
+        CISAlval.lsc_subOpcode = str2lscop(yytext);
+        // this is set in the parser based on the SFID
+        // CISAlval.lsc_opcode = ISA_LSC_UNTYPED OR ISA_LSC_TYPED;
+        return LSC_STORE_BLOCK2D_MNEMONIC;
+    }
+
+lsc_atomic_iinc|lsc_atomic_idec|lsc_atomic_iadd|lsc_atomic_load|lsc_atomic_store|lsc_atomic_iadd|lsc_atomic_isub|lsc_atomic_smin|lsc_atomic_smax|lsc_atomic_umin|lsc_atomic_umax|lsc_atomic_icas|lsc_atomic_fadd|lsc_atomic_fsub|lsc_atomic_fmin|lsc_atomic_fmax|lsc_atomic_fcas|lsc_atomic_and|lsc_atomic_xor|lsc_atomic_or|lsc_apndctr_atomic_add|lsc_apndctr_atomic_sub {
+        TRACE("** lsc_atomic INST");
+        CISAlval.lsc_subOpcode = str2lscop(yytext);
+        // this is set in the parser based on the SFID
+        // CISAlval.lsc_opcode = ISA_LSC_UNTYPED;
+        return LSC_ATOMIC_MNEMONIC;
+    }
+lsc_read_state_info {
+        TRACE("** lsc_read_state_info INST");
+        CISAlval.lsc_subOpcode = LSC_READ_STATE_INFO;
+        return LSC_READ_STATE_INFO_MNEMONIC;
+    }
+lsc_fence {
+        TRACE("** lsc_fence INST");
+        CISAlval.lsc_opcode = ISA_LSC_FENCE;
+        return LSC_FENCE_MNEMONIC;
+    }
+
+nbarrier\.signal {
+        TRACE("** nbarrier.signal INST");
+        CISAlval.opcode = ISA_NBARRIER;
+        return NBARRIER_SIGNAL;
+    }
+
+nbarrier\.wait {
+        TRACE("** nbarrier.wait INST");
+        CISAlval.opcode = ISA_NBARRIER;
+        return NBARRIER_WAIT;
+    }
 
 oword_ld|oword_st|oword_ld_unaligned {
         TRACE("** oword_load INST");
@@ -848,6 +951,211 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         return VTYPE;
     }
 
+:a(64|32|16) {
+        TRACE("** LSC_ADDR_SIZE_TK");
+        if (yytext[2]  == '6')
+            CISAlval.lsc_addr_size = LSC_ADDR_SIZE_64b;
+        else if (yytext[2]  == '3')
+            CISAlval.lsc_addr_size = LSC_ADDR_SIZE_32b;
+        else
+            CISAlval.lsc_addr_size = LSC_ADDR_SIZE_16b;
+        return LSC_ADDR_SIZE_TK;
+    }
+
+
+:((d64|d32|d16|d8|d8c32|d16c32|d16c32h)|(u64|u32|u16|u8|u8c32|u16c32|u16c32h))(x(64|32|16|8|4|3|2|1))?t? {
+        TRACE("** LSC_DATA_SHAPE_TK");
+
+        int off = 1;
+        LSC_DATA_SIZE dsz = decodeDataSizePrefix(yytext,&off);
+        LSC_DATA_ELEMS vsz = decodeDataElems(yytext,&off);
+        LSC_DATA_ORDER trans = LSC_DATA_ORDER_NONTRANSPOSE;
+        if (yytext[off] == 't') {
+            trans = LSC_DATA_ORDER_TRANSPOSE;
+        }
+
+        CISAlval.lsc_data_shape.size = dsz;
+        CISAlval.lsc_data_shape.elems = vsz;
+        CISAlval.lsc_data_shape.order = trans;
+
+        return LSC_DATA_SHAPE_TK;
+    }
+
+:((d64|d32|d16|d8|d8c32|d16c32|d16c32h)|(u64|u32|u16|u8|u8c32|u16c32|u16c32h))\.((xy?z?w?)|(yz?w?)|(zw?)|(w)) {
+        TRACE("** LSC_DATA_SHAPE_TK_CHMASK");
+        int off = 1; // if there's an x (vector suffix), it starts here
+        LSC_DATA_SIZE dsz = decodeDataSizePrefix(yytext, &off);
+        off++; // skip the .
+        int chmask = 0;
+        while (off < yyleng) {
+            switch (yytext[off++]) {
+            case 'x': chmask |= LSC_DATA_CHMASK_X; break;
+            case 'y': chmask |= LSC_DATA_CHMASK_Y; break;
+            case 'z': chmask |= LSC_DATA_CHMASK_Z; break;
+            case 'w': chmask |= LSC_DATA_CHMASK_W; break;
+            default: break; // unreachable
+            }
+        }
+        CISAlval.lsc_data_shape.size = dsz;
+        CISAlval.lsc_data_shape.order = LSC_DATA_ORDER_NONTRANSPOSE;
+        CISAlval.lsc_data_shape.chmask = chmask;
+        return LSC_DATA_SHAPE_TK_CHMASK;
+    }
+
+:((d64|d32|d16|d8|d8c32|d16c32|d16c32h)|(u64|u32|u16|u8|u8c32|u16c32|u16c32h))"."([1-9][0-9]*x)?([1-9][0-9]*x)([1-9][0-9]*)(n|t)?(n|t)? {
+        TRACE("** LSC_DATA_SHAPE_TK_BLOCK2D");
+
+        int off = 0;
+        off++; // skip 'd' prefix
+
+        LSC_DATA_SIZE dsz = decodeDataSizePrefix(yytext, &off);
+
+        auto parseNextInt =
+            [&]() {
+                if (!isdigit(yytext[off]))
+                    YY_FATAL_ERROR("LEXICAL SPEC ERROR (should be digit)");
+                int val = 0;
+                while (isdigit(yytext[off]))
+                    val = 10*val + yytext[off++] - '0';
+                return val;
+            };
+
+        off++; // skip '.'
+        // e.g.  d8.2x32x32nn or d8.32x64 (implicitly .1x32x64)
+
+        int numBlocks = 1;
+        int width = parseNextInt(); // width
+        off++; // 'x'
+        int height = parseNextInt(); // num blocks or height
+        if (yytext[off] == 'x') {
+            // e.g. 2x32x32...: arrlen x width x height
+            off++;
+            numBlocks = width;
+            width = height;
+            height = parseNextInt();
+        } // else: short form: e.g. 32x32 (width x height)
+        LSC_DATA_ORDER dord = LSC_DATA_ORDER_NONTRANSPOSE;
+        bool vnni = false;
+        if (yytext[off] == 'n' || yytext[off] == 't') {
+            dord = yytext[off] == 't' ?
+                LSC_DATA_ORDER_TRANSPOSE : LSC_DATA_ORDER_NONTRANSPOSE;
+            off++;
+            if (yytext[off] == 'n' || yytext[off] == 't') {
+                vnni = yytext[off] == 't';
+                off++;
+            }
+        }
+        if (yytext[off] != 0)
+            YY_FATAL_ERROR("LEXICAL SPEC ERROR (should NUL)");
+
+        CISAlval.lsc_data_shape2d.size = dsz;
+        CISAlval.lsc_data_shape2d.order = dord;
+        CISAlval.lsc_data_shape2d.blocks = numBlocks;
+        CISAlval.lsc_data_shape2d.width = width;
+        CISAlval.lsc_data_shape2d.height = height;
+        CISAlval.lsc_data_shape2d.vnni = vnni;
+
+        return LSC_DATA_SHAPE_TK_BLOCK2D;
+    }
+
+"."(df|uc|ca|wb|wt|st|cc|ri) {
+        if (strcmp(yytext+1,"df") == 0) {
+            CISAlval.lsc_caching_opt = LSC_CACHING_DEFAULT;
+        } else if (strcmp(yytext+1,"uc") == 0) {
+            CISAlval.lsc_caching_opt = LSC_CACHING_UNCACHED;
+        } else if (strcmp(yytext+1,"ca") == 0) {
+            CISAlval.lsc_caching_opt = LSC_CACHING_CACHED;
+        } else if (strcmp(yytext+1,"wb") == 0) {
+            CISAlval.lsc_caching_opt = LSC_CACHING_WRITEBACK;
+        } else if (strcmp(yytext+1,"wt") == 0) {
+            CISAlval.lsc_caching_opt = LSC_CACHING_WRITETHROUGH;
+        } else if (strcmp(yytext+1,"st") == 0) {
+            CISAlval.lsc_caching_opt = LSC_CACHING_STREAMING;
+        } else { /* ri */
+            CISAlval.lsc_caching_opt = LSC_CACHING_READINVALIDATE;
+        }
+        return LSC_CACHING_OPT;
+    }
+
+flat   {return LSC_AM_FLAT;}
+bti    {return LSC_AM_BTI;}
+ss     {return LSC_AM_SS;}
+bss    {return LSC_AM_BSS;}
+
+".none" {
+        CISAlval.lsc_fence_op = LSC_FENCE_OP_NONE;
+        return LSC_FENCE_OP_TYPE;
+    }
+".evict" {
+        CISAlval.lsc_fence_op = LSC_FENCE_OP_EVICT;
+        return LSC_FENCE_OP_TYPE;
+    }
+".invalidate" {
+        CISAlval.lsc_fence_op = LSC_FENCE_OP_INVALIDATE;
+        return LSC_FENCE_OP_TYPE;
+    }
+".discard" {
+        CISAlval.lsc_fence_op = LSC_FENCE_OP_DISCARD;
+        return LSC_FENCE_OP_TYPE;
+    }
+".clean" {
+        CISAlval.lsc_fence_op = LSC_FENCE_OP_CLEAN;
+        return LSC_FENCE_OP_TYPE;
+    }
+".flushl3" {
+        CISAlval.lsc_fence_op = LSC_FENCE_OP_FLUSHL3;
+        return LSC_FENCE_OP_TYPE;
+    }
+".type6" {
+        CISAlval.lsc_fence_op = LSC_FENCE_OP_TYPE6;
+        return LSC_FENCE_OP_TYPE;
+    }
+
+".group" {
+        CISAlval.lsc_scope = LSC_SCOPE_GROUP;
+        return LSC_FENCE_SCOPE;
+    }
+".local" {
+        CISAlval.lsc_scope = LSC_SCOPE_LOCAL;
+        return LSC_FENCE_SCOPE;
+    }
+".tile" {
+        CISAlval.lsc_scope = LSC_SCOPE_TILE;
+        return LSC_FENCE_SCOPE;
+    }
+".gpu" {
+        CISAlval.lsc_scope = LSC_SCOPE_GPU;
+        return LSC_FENCE_SCOPE;
+    }
+".gpus" {
+        CISAlval.lsc_scope = LSC_SCOPE_GPUS;
+        return LSC_FENCE_SCOPE;
+    }
+".sysrel" {
+        CISAlval.lsc_scope = LSC_SCOPE_SYSREL;
+        return LSC_FENCE_SCOPE;
+    }
+".sysacq" {
+        CISAlval.lsc_scope = LSC_SCOPE_SYSACQ;
+        return LSC_FENCE_SCOPE;
+    }
+
+".ugml" {
+        CISAlval.lsc_sfid = LSC_UGML;
+        return LSC_SFID_UNTYPED_TOKEN;
+    }
+".ugm" {
+        CISAlval.lsc_sfid = LSC_UGM;
+        return LSC_SFID_UNTYPED_TOKEN;
+    }
+".slm" {
+        CISAlval.lsc_sfid = LSC_SLM;
+        return LSC_SFID_UNTYPED_TOKEN;
+    }
+".tgm" {
+        CISAlval.lsc_sfid = LSC_TGM;
+        return LSC_SFID_TYPED_TOKEN;
+    }
 
 
 
@@ -1006,6 +1314,80 @@ static GenPrecision str2Precision(const char *str, int str_len)
     return GenPrecision::INVALID;
 }
 
+static LSC_OP str2lscop(const char *str)
+{
+    // could get called for typed, but untyped has all subops and
+    // will return the correct subopcode.
+    const auto &lsc_op = CISA_INST_table[ISA_LSC_UNTYPED];
+    return (LSC_OP)lsc_op.getSubInstDescByName(str).subOpcode;
+}
+
+static LSC_DATA_SIZE decodeDataSizePrefix(const char *yytext, int *off) {
+    LSC_DATA_SIZE dsz = LSC_DATA_SIZE_INVALID;
+    *off += 1; // 'd' or 'u'
+    if (strncmp(yytext + *off,"8c32", 4) == 0) {
+        dsz = LSC_DATA_SIZE_8c32b;
+        *off += 4;
+    } else if (strncmp(yytext + *off, "16c32h", 6) == 0) {
+        // must be above "u16c32" case (longest match first)
+        dsz = LSC_DATA_SIZE_16c32bH;
+        *off += 6;
+    } else if (strncmp(yytext + *off, "16c32", 5) == 0) {
+        dsz = LSC_DATA_SIZE_16c32b;
+        *off += 5;
+    } else if (strncmp(yytext + *off, "64", 2) == 0) {
+        dsz = LSC_DATA_SIZE_64b;
+        *off += 2;
+    } else if (strncmp(yytext + *off, "32", 2) == 0) {
+        dsz = LSC_DATA_SIZE_32b;
+        *off += 2;
+    } else if (strncmp(yytext + *off, "16", 2) == 0) {
+        dsz = LSC_DATA_SIZE_16b;
+        *off += 2;
+    } else if (strncmp(yytext + *off, "8", 1) == 0) {
+        dsz = LSC_DATA_SIZE_8b;
+        *off += 1;
+    } else {
+        YY_FATAL_ERROR("decodeDataSizePrefix: lexical spec error (the pattern is busted)");
+    }
+    return dsz;
+}
+
+static LSC_DATA_ELEMS decodeDataElems(const char *str, int *off)
+{
+    LSC_DATA_ELEMS vsz = LSC_DATA_ELEMS_1;
+    if (yytext[*off] == 'x') {
+        *off += 1;
+        if (strncmp(yytext + *off,"64", 2) == 0) {
+            vsz = LSC_DATA_ELEMS_64;
+            *off += 2;
+        } else if (strncmp(yytext + *off,"32", 2) == 0) {
+            vsz = LSC_DATA_ELEMS_32;
+            *off += 2;
+        } else if (strncmp(yytext + *off,"16", 2) == 0) {
+            vsz = LSC_DATA_ELEMS_16;
+            *off += 2;
+        } else if (yytext[*off] == '8') {
+            vsz = LSC_DATA_ELEMS_8;
+            *off += 1;
+        } else if (yytext[*off] == '4') {
+            vsz = LSC_DATA_ELEMS_4;
+            *off += 1;
+        } else if (yytext[*off] == '3') {
+            vsz = LSC_DATA_ELEMS_3;
+            *off += 1;
+        } else if (yytext[*off] == '2') {
+            vsz = LSC_DATA_ELEMS_2;
+            *off += 1;
+        } else if (yytext[*off] == '1') {
+            vsz = LSC_DATA_ELEMS_1;
+            *off += 1;
+        } else {
+            YY_FATAL_ERROR("decodeDataElems: lexical spec error (the pattern is busted)");
+        }
+    }
+    return vsz;
+}
 
 // convert "z" to Mod_z
 static VISA_Cond_Mod str2cond(const char *str)

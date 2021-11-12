@@ -139,6 +139,11 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
     G4_INST *inst = *i;
     bool insertedInst = false;
 
+    if (inst->opcode() == G4_srnd)
+    {
+        // Operands can be packed.
+        return false;
+    }
 
     int extypesize = 0;
     G4_Type extype = inst->getOpExecType(extypesize);
