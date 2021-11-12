@@ -5335,7 +5335,7 @@ bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode* node)
     return false;
 }
 
-//No RAW/WAW dependence within a DPAS macro
+//No WAR/RAW/WAW dependence within a DPAS macro
 bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode)
 {
     for (Gen4_Operand_Number opndNum
@@ -5349,14 +5349,13 @@ bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode)
             {
                 const SBFootprint* nextfp = nextNode->getFirstFootprint(opndNum2);
                 unsigned short internalOffset = 0;
-                if (nextfp->hasOverlap(fp, internalOffset))
+                if (fp->hasOverlap(nextfp, internalOffset))
                 {
-                    //Exception: if the dependence distance is far enough, it's ok
-                    if (node->getDPASSize() - internalOffset > tokenAfterDPASCycle)
-                    {
-                        return false;
-                    }
+                    return true;
+                }
 
+                if (opndNum2 == Opnd_dst && nextfp->hasOverlap(fp, internalOffset))
+                {
                     return true;
                 }
             }
@@ -5504,12 +5503,7 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
         return true;
     }
 
-    if (builder.getOption(vISA_forceDPASMacro))
-    {
-        return false;
-    }
-
-    //src1 or src2 read suppression
+    //Same src1 or src2
     if (curSrc1Reg == nextSrc1Reg ||
         (builder.hasSrc2ReadSupression() &&  (curSrc2Reg == nextSrc2Reg &&
             curC == nextC &&
@@ -5518,8 +5512,7 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
         return false;
     }
 
-    //Src2 read suppression with GRF cache.
-    //Using {Atomic} in the last line of a macro (such as in the lines I highlighted) has some implications in the hardware implementation:
+    // Using {Atomic} in the last line of a macro (such as in the lines I highlighted) has some implications in the hardware implementation:
     //1. In 8x8 macros (such as the one you pasted) is fine.
     //2. In other repetitions, it will cause that the src1 of the next macro will be ignored.
     // Hardware uses {Atomic} to indicate that the next instruction will reuse the src1. In an 8x8, they always verify
@@ -6016,7 +6009,8 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     if (dep == RAW || dep == WAW) {
                         if (builder.getOption(vISA_EnableDPASTokenReduction) &&
                             node->getLastInstruction()->isDpas() &&
-                            liveNode->getLastInstruction()->isDpas())
+                            liveNode->getLastInstruction()->isDpas() &&
+                            curFootprint->isWholeOverlap(liveFootprint))
                         {
                             if ((node->getDPASID() + curFootprint->offset - (liveNode->getDPASID() + internalOffset) < tokenAfterDPASCycle))
                             {
@@ -6071,7 +6065,8 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
                             if (builder.getOption(vISA_EnableDPASTokenReduction) &&
                                 node->getLastInstruction()->isDpas() &&
-                                liveNode->getLastInstruction()->isDpas())
+                                liveNode->getLastInstruction()->isDpas() &&
+                                curFootprint->isWholeOverlap(liveFootprint))
                             {
                                 //
                                 //  dpasw.8x7(8 | M0)         r84 : f         r84 : f             r52 : bf            r14.0 : bf{ Atomic }
@@ -6865,7 +6860,8 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                             {
                                 if (fg.builder->getOption(vISA_EnableDPASTokenReduction) &&
                                     node->getLastInstruction()->isDpas() &&
-                                    curLiveNode->getLastInstruction()->isDpas())
+                                    curLiveNode->getLastInstruction()->isDpas() &&
+                                    curFootprint->isWholeOverlap(liveFootprint))
                                 {
                                     if (node->getDPASID() > curLiveNode->getDPASID())
                                     {
@@ -7242,7 +7238,8 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                             {
                                 if (fg.builder->getOption(vISA_EnableDPASTokenReduction) &&
                                     node->getLastInstruction()->isDpas() &&
-                                    curLiveNode->getLastInstruction()->isDpas())
+                                    curLiveNode->getLastInstruction()->isDpas() &&
+                                    curFootprint->isWholeOverlap(liveFootprint))
                                 {
                                     if (node->getDPASID() > curLiveNode->getDPASID())
                                     {
