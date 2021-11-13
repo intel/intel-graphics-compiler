@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Driver/Driver.h"
+#include "vc/Support/ShaderDump.h"
 #include "vc/Support/Status.h"
 #include "vc/igcdeps/cmc.h"
 
@@ -163,7 +164,8 @@ void CGen8CMProgram::CreateKernelBinaries(CompileOptions& Opts) {
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
       Opts.Dumper->dumpCos(m_StateProcessor.m_oclStateDebugMessagePrintOut,
-                           kernel->m_kernelInfo.m_kernelName + ".cos");
+                           vc::legalizeShaderDumpName(
+                               kernel->m_kernelInfo.m_kernelName + ".cos"));
 
     if (kernel->getProgramOutput().m_debugDataSize) {
       data.vcKernelDebugData = std::make_unique<Util::BinaryStream>();

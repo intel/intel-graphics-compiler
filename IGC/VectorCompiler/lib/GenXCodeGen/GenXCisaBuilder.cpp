@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/ShaderDump.h"
 #include "vc/Utils/GenX/Printf.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
@@ -1020,7 +1021,7 @@ std::string GenXKernelBuilder::buildAsmName() const {
   std::string AsmName;
   auto UserAsmName = AsmNameOpt.getValue();
   if (UserAsmName.empty()) {
-    AsmName = legalizeName(TheKernelMetadata.getName().str());
+    AsmName = vc::legalizeShaderDumpName(TheKernelMetadata.getName());
   } else {
     int idx = -1;
     auto *KernelMDs =

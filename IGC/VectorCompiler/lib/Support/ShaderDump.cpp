@@ -61,11 +61,19 @@ static void writeContentToFile(const Twine &Name, llvm::ArrayRef<char> Blob) {
   OS.write(Blob.data(), Blob.size());
 }
 
+std::string vc::legalizeShaderDumpName(const llvm::Twine &FileName) {
+  std::string Result = FileName.str();
+  std::replace_if(Result.begin(), Result.end(),
+                  [](auto c) { return (!std::isalnum(c) && c != '.'); }, '_');
+  return Result;
+}
+
 void vc::produceAuxiliaryShaderDumpFile(const llvm::GenXBackendConfig &BC,
                                         const llvm::Twine &OutputName,
                                         llvm::ArrayRef<char> Blob) {
+  std::string LegalizedName = legalizeShaderDumpName(OutputName);
   if (BC.hasShaderDumper())
-    BC.getShaderDumper().dumpBinary(Blob, OutputName.str());
+    BC.getShaderDumper().dumpBinary(Blob, LegalizedName);
   else
-    writeContentToFile(OutputName, Blob);
+    writeContentToFile(LegalizedName, Blob);
 }
