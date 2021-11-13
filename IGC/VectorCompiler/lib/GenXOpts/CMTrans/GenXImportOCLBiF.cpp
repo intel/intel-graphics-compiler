@@ -436,7 +436,6 @@ static void InitializeBIFlags(Module &M) {
   initializeVarWithValue("__FlushDenormals", 1);
   initializeVarWithValue("__DashGSpecified", 0);
   initializeVarWithValue("__FastRelaxedMath", 0);
-  initializeVarWithValue("__MadEnable", 0);
   initializeVarWithValue("__UseNative64BitIntSubgroupBuiltin", 1);
   initializeVarWithValue("__UseNative64BitFloatSubgroupBuiltin", 1);
   initializeVarWithValue("__CRMacros", 1);

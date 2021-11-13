@@ -946,7 +946,6 @@ void BIImport::InitializeBIFlags(Module& M)
     initializeVarWithValue("__FlushDenormals", isFlushDenormToZero ? 1 : 0);
     initializeVarWithValue("__DashGSpecified", MD.compOpt.DashGSpecified ? 1 : 0);
     initializeVarWithValue("__FastRelaxedMath", MD.compOpt.RelaxedBuiltins ? 1 : 0);
-    initializeVarWithValue("__MadEnable", MD.compOpt.MadEnable ? 1 : 0);
     initializeVarWithValue("__OptDisable", MD.compOpt.OptDisable ? 1 : 0);
     bool isUseMathWithLUTEnabled = false;
     if (IGC_IS_FLAG_ENABLED(UseMathWithLUT))
