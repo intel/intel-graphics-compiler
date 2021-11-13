@@ -516,7 +516,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXNumbering.h
   vc::addPass(PM, createGenXNumberingPass());
   /// .. include:: GenXLiveRanges.cpp
-  vc::addPass(PM, createGenXLiveRangesPass(ExperimentalDisableCoalescing));
+  vc::addPass(PM, createGenXLiveRangesPass(
+                      ExperimentalDisableCoalescing ||
+                      BackendConfig.disableLiveRangesCoalescing()));
   /// .. include:: GenXCoalescing.cpp
   vc::addPass(PM, createGenXCoalescingPass());
   /// .. include:: GenXAddressCommoning.cpp

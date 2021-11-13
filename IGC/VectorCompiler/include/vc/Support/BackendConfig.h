@@ -89,6 +89,9 @@ struct GenXBackendOptions {
   // Force passing "-debug" option to finalizer
   bool PassDebugToFinalizer = false;
 
+  // Disables coalescing of live ranges
+  bool DisableLiveRangesCoalescing = false;
+
   // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
   bool UseNewStackBuilder = true;
 
@@ -104,7 +107,7 @@ struct GenXBackendOptions {
 
   // max private stateless memory size per thread
   unsigned StatelessPrivateMemSize;
-  
+
   // Disable critical messages from CisaBuilder
   bool DisableFinalizerMsg = false;
 
@@ -217,6 +220,10 @@ public:
 
   bool disableNonOverlappingRegionOpt() const {
     return Options.DisableNonOverlappingRegionOpt;
+  }
+
+  bool disableLiveRangesCoalescing() const {
+    return Options.DisableLiveRangesCoalescing;
   }
 
   bool passDebugToFinalizer() const {
