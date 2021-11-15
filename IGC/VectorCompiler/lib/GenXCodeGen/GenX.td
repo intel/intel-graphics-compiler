@@ -84,6 +84,10 @@ def FeatureSupressLocalMemFence: SubtargetFeature<"supress_local_mem_fence",
                                                   "HasLocalMemFenceSupress",
                                                   "true",
                                                   "Supresses local memory fence">;
+def FeatureHasPackedFloat : SubtargetFeature<"has_packed_float",
+                                             "HasPackedFloat",
+                                             "true",
+                                             "true if packed float immediate vector operands are supported">;
 // Targets that use compute walker command require loading of thread
 // payload by compiler.
 def FeatureThreadPayloadInMemory : SubtargetFeature<"thread_payload_in_memory",
@@ -110,12 +114,14 @@ def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureInstrAdd64,
                                FeatureFP64,
+                               FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef]>;
 def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64,
                                FeatureFP64,
+                               FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
                                FeaturePreemption]>;
 def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
@@ -123,6 +129,7 @@ def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64,
                                FeatureFP64,
+                               FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
                                FeaturePreemption]>;
 def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
@@ -130,6 +137,7 @@ def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64,
                                FeatureFP64,
+                               FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
                                FeaturePreemption]>;
 def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
@@ -137,28 +145,34 @@ def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64,
                                FeatureFP64,
+                               FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
                                FeaturePreemption]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32, FeatureInstrBitRotate,
                                FeatureHWTIDFromPredef,
+                               FeatureHasPackedFloat,
                                FeaturePreemption]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
+                               FeatureHasPackedFloat,
                                FeaturePreemption]>;
 def : Proc<"RKL",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
+                               FeatureHasPackedFloat,
                                FeaturePreemption]>;
 def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
+                               FeatureHasPackedFloat,
                                FeaturePreemption]>;
 def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureInstrAdd64,
                                FeatureFP64,
                                FeatureThreadPayloadInMemory,
+                               FeatureHasPackedFloat,
                                FeatureInstrBitRotate]>;
 
 def GenX : Target {

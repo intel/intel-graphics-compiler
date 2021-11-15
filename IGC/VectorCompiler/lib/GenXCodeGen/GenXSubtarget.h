@@ -128,6 +128,9 @@ private:
   // Supress local memory fence.
   bool HasLocalMemFenceSupress = false;
 
+  /// Packed float immediate vector operands are supported.
+  bool HasPackedFloat = false;
+
 
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
@@ -204,6 +207,9 @@ public:
   unsigned bfMixedModeWidth() const {
     return 8;
   }
+
+  /// * hasPackedFloat - true if packed float immediate vector operands are supported
+  bool hasPackedFloat() const { return HasPackedFloat; }
 
   /// * emulateLongLong - true if i64 emulation is requested
   bool emulateLongLong() const { return EmulateLongLong; }

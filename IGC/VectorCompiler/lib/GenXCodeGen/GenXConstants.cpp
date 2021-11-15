@@ -1748,6 +1748,9 @@ static bool is8bitPackedFloat(float f) {
 }
 
 void ConstantLoader::analyzeForPackedFloat(unsigned NumElements) {
+  if (!Subtarget.hasPackedFloat())
+    return;
+
   for (unsigned i = 0; i != NumElements; ++i) {
     auto Elt = C->getAggregateElement(i);
     if (isa<UndefValue>(Elt))
