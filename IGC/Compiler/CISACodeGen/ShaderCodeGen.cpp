@@ -732,10 +732,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(createIGCInstructionCombiningPass());
         }
         mpm.add(new GenSpecificPattern());
-        // Cases with theEmuKind > 0 grow significantly.
-        // We can disable EarlyCSE for theEmuKind > 0,
-        // what causes the values will have shorter lifetime and we can avoid spills.
-        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && theEmuKind == 0)
+        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel)
         {
             mpm.add(createEarlyCSEPass());
         }
