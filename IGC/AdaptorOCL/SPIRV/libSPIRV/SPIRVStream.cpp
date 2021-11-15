@@ -181,6 +181,9 @@ SPIRVDecoder::getEntry() {
     Entry->setWordCount(WordCount);
     IS >> *Entry;
 
+    if (M.getErrorLog().getErrorCode() == SPIRVEC_UnsupportedSPIRVOpcode)
+      return nullptr;
+
     if ((isModuleScopeAllowedOpCode(OpCode) && !Scope) ||
       // No need to attach scope to debug info extension operations
       (Entry->hasNoScope()))

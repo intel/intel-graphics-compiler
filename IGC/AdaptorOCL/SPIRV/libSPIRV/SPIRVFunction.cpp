@@ -102,6 +102,8 @@ SPIRVFunction::decode(std::istream &I) {
     }
     case OpLabel: {
       decodeBB(Decoder);
+      if(Decoder.M.getErrorLog().getErrorCode() == SPIRVEC_UnsupportedSPIRVOpcode)
+        return;
       break;
     }
     default:
@@ -149,7 +151,7 @@ SPIRVFunction::decodeBB(SPIRVDecoder &Decoder) {
 
           auto newEntry = Decoder.getEntry();
           if (!newEntry)
-              IGC_ASSERT_EXIT_MESSAGE(0, "No entry found");
+            return;
 
           if (newEntry->isInst() && !newEntry->isScope())
           {
