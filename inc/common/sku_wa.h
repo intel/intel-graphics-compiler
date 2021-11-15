@@ -375,47 +375,6 @@ typedef struct _WA_TABLE
 #include "sku_wa_defs.h"
 #undef WA_DECLARE
 
-        WA_DECLARE(
-        Wa_14012420496,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14012562260,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_22013689345,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_22010487853,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_22010493955,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_22010725011,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_1507979211,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 } WA_TABLE, *PWA_TABLE;
 
 #ifdef _USC_
