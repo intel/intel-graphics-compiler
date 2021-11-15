@@ -3151,6 +3151,7 @@ std::string VISAKernel_format_provider::printKernelHeader(
         {
             sstr << ".funcdecl ";
             encodeStringLiteral(sstr, isaHeader.functions[i].name);
+            sstr << "\n";
         }
     }
 
