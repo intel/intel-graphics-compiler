@@ -28,8 +28,8 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
         return MSG_BARRIER;
     }
 
-    bool isSend1HDC = send1->getMsgDesc()->isHDC() || send1->getMsgDesc()->isNewDP();
-    bool isSend2HDC = send2->getMsgDesc()->isHDC() || send2->getMsgDesc()->isNewDP();
+    bool isSend1HDC = send1->getMsgDesc()->isHDC();
+    bool isSend2HDC = send2->getMsgDesc()->isHDC();
 
     SFID funcId1 = send1->getMsgDesc()->getSFID();
     SFID funcId2 = send2->getMsgDesc()->getSFID();

@@ -149,14 +149,6 @@ bool G4_SendDesc::isHDC() const
         funcID == SFID::DP_CC;
 }
 
-bool G4_SendDesc::isNewDP() const
-{
-    auto funcID = getSFID();
-    return funcID == SFID::TGM ||
-        funcID == SFID::UGM ||
-        funcID == SFID::UGML;
-}
-
 bool G4_SendDesc::isLSC() const
 {
     switch (getSFID()) {

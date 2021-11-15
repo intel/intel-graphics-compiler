@@ -221,7 +221,6 @@ public:
     bool isLdSt() const {return kind == Kind::LDST;}
     //
     bool isHDC() const;
-    bool isNewDP() const;
     bool isLSC() const;
     bool isSampler() const {return getSFID() == SFID::SAMPLER;}
     //
