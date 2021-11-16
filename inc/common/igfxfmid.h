@@ -31,6 +31,8 @@ typedef enum {
     IGFX_ALDERLAKE_P,
     IGFX_DG1 = 1210,
     IGFX_XE_HP_SDV = 1250,
+    IGFX_DG2 = 1270,
+    IGFX_PVC = 1271,
     IGFX_MAX_PRODUCT,
 
 
@@ -80,6 +82,8 @@ typedef enum {
     IGFX_GEN12_CORE   = 17,     // Gen12 Family
     IGFX_GEN12LP_CORE = 18,     // Gen12 LP Family
     IGFX_XE_HP_CORE   = 0x0c05, // XeHP Family
+    IGFX_XE_HPG_CORE = 0x0c07,  // XE_HPG Family
+    IGFX_XE_HPC_CORE = 0x0c08,  // XE_HPC Family
     IGFX_MAX_CORE,              // Max Family, for lookup table
 
     IGFX_GENNEXT_CORE          = 0x7ffffffe,  //GenNext
@@ -233,6 +237,7 @@ typedef enum __NATIVEGTTYPE
 #define GFX_GET_CURRENT_DISPLAYCORE(p) ( (p).eDisplayCoreFamily )
 #define GFX_GET_CURRENT_RENDERCORE(p)  ( (p).eRenderCoreFamily )
 #define GFX_IS_DISCRETE_FAMILY(p)      ( ( GFX_GET_CURRENT_PRODUCT(p) == IGFX_DG1 )             ||   \
+                                         ( GFX_GET_CURRENT_PRODUCT(p) == IGFX_DG2 )             ||   \
                                          ( GFX_GET_CURRENT_PRODUCT(p) == IGFX_XE_HP_SDV ) )
 // These macros return true/false depending on the current render family.
 #define GFX_IS_NAPA_RENDER_FAMILY(p)   ( ( GFX_GET_CURRENT_RENDERCORE(p) == IGFX_GEN3_CORE )    ||   \
