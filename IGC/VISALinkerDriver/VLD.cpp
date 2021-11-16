@@ -132,9 +132,9 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
       STB_TranslateInputArgs newArgs = *pInputArgs;
       newArgs.pOptions = esimdOptions.data();
       newArgs.OptionsSize = esimdOptions.size();
-      return TranslateBuildESIMD(&newArgs, pOutputArgs, inputDataFormatTemp,
-                                 IGCPlatform, profilingTimerResolution,
-                                 inputShHash);
+      return TranslateBuildVC(&newArgs, pOutputArgs, inputDataFormatTemp,
+                              IGCPlatform, profilingTimerResolution,
+                              inputShHash);
 #else // defined(IGC_VC_ENABLED)
       errorMessage = "ESIMD code detected, but VC not enabled in this build.";
       return false;
@@ -209,7 +209,7 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
 
 #if defined(IGC_VC_ENABLED)
   auto esimdVISA =
-      translateToVISA(spmd_esimd_programs_or_err->second, esimdOptions, TranslateBuildESIMD);
+      translateToVISA(spmd_esimd_programs_or_err->second, esimdOptions, TranslateBuildVC);
 
   if (!esimdVISA) {
     errorMessage = "VLD: Failed to compile ESIMD part with following error: \n" +

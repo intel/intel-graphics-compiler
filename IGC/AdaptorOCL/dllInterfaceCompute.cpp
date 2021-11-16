@@ -1333,7 +1333,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
 
 
 #if defined(IGC_VC_ENABLED)
-bool TranslateBuildESIMD(
+bool TranslateBuildVC(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
     TB_DATA_FORMAT inputDataFormatTemp,
@@ -1378,12 +1378,12 @@ bool TranslateBuild(
       WriteSpecConstantsDump(pInputArgs, inputShHash.getAsmHash());
 
 #if defined(IGC_VC_ENABLED)
-    // if VC option was specified, go to ESIMD compilation directly.
+    // if VC option was specified, go to VC compilation directly.
     if (pInputArgs->pOptions && (strstr(pInputArgs->pOptions, "-vc-codegen") ||
                                  strstr(pInputArgs->pOptions, "-cmc"))) {
-      return TranslateBuildESIMD(pInputArgs, pOutputArgs, inputDataFormatTemp,
-                                 IGCPlatform, profilingTimerResolution,
-                                 inputShHash);
+      return TranslateBuildVC(pInputArgs, pOutputArgs, inputDataFormatTemp,
+                              IGCPlatform, profilingTimerResolution,
+                              inputShHash);
     }
 #endif // defined(IGC_VC_ENABLED)
 

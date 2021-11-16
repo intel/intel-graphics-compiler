@@ -55,7 +55,7 @@ bool TranslateBuildSPMD(
   float profilingTimerResolution,
   const ShaderHash& inputShHash);
 
-bool TranslateBuildESIMD(
+bool TranslateBuildVC(
   const STB_TranslateInputArgs* pInputArgs,
   STB_TranslateOutputArgs* pOutputArgs,
   TB_DATA_FORMAT inputDataFormatTemp,
