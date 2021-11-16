@@ -28,8 +28,8 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
         return MSG_BARRIER;
     }
 
-    bool isSend1HDC = send1->getMsgDesc()->isHDC();
-    bool isSend2HDC = send2->getMsgDesc()->isHDC();
+    bool isSend1DataPort = send1->getMsgDesc()->isHDC() || send1->getMsgDesc()->isLSC();
+    bool isSend2DataPort = send2->getMsgDesc()->isHDC() || send2->getMsgDesc()->isLSC();
 
     SFID funcId1 = send1->getMsgDesc()->getSFID();
     SFID funcId2 = send2->getMsgDesc()->getSFID();
@@ -42,32 +42,42 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
 
 #define MSG_DESC_BTI_MASK 0xFF
 #define RESERVED_BTI_START 240
-    if (isSend1HDC ^ isSend2HDC)
+    if (isSend1DataPort ^ isSend2DataPort)
     {
         // HDC messages will not conflict with other HDC messages (e.g., SAMPLER, URB, RT_WRITE)
         return NODEP;
     }
-    else if (isSend1HDC && isSend2HDC)
+    else if (isSend1DataPort && isSend2DataPort)
     {
+        auto hasImmediateBTI = [](G4_InstSend* send, unsigned int &bti){
+            G4_SendDescRaw* msgDesc = send->getMsgDescRaw();
+            if (msgDesc && msgDesc->isLSC() && msgDesc->getLscAddrType() == LSC_ADDR_TYPE_BTI && msgDesc->getSurface() == nullptr) {
+                // LSC messages
+                bti = msgDesc->getExtendedDesc() >> 24;
+                return true;
+            }
+            else if (msgDesc && msgDesc->isHDC() && msgDesc->getSurface() && send->getMsgDescOperand()->isImm())
+            {
+                // HDC messages
+                bti = (unsigned int)send->getMsgDescOperand()->asImm()->getInt() & MSG_DESC_BTI_MASK;
+                return true;
+            }
+            return false;
+        };
+
+        unsigned int bti1 = 0, bti2 = 0;
         if (send1->getMsgDesc()->isSLM() ^ send2->getMsgDesc()->isSLM())
         {
             // SLM may not conflict with other non-SLM messages
             return NODEP;
         }
-        else if (send1->getMsgDesc()->getSurface() && send2->getMsgDesc()->getSurface())
+        else if (hasImmediateBTI(send1, bti1) && hasImmediateBTI(send2, bti2))
         {
-            G4_Operand* msgDesc1 = send1->getMsgDescOperand();
-            G4_Operand* msgDesc2 = send2->getMsgDescOperand();
-            if (msgDesc1->isImm() && msgDesc2->isImm())
+            auto isBTS = [](uint32_t bti) { return bti < RESERVED_BTI_START; };
+            if (BTIIsRestrict && isBTS(bti1) && isBTS(bti2) && bti1 != bti2)
             {
-                unsigned int bti1 = (unsigned int)msgDesc1->asImm()->getInt() & MSG_DESC_BTI_MASK;
-                unsigned int bti2 = (unsigned int)msgDesc2->asImm()->getInt() & MSG_DESC_BTI_MASK;
-                auto isBTS = [](uint32_t bti) { return bti < RESERVED_BTI_START; };
-                if (BTIIsRestrict && isBTS(bti1) && isBTS(bti2) && bti1 != bti2)
-                {
-                    // different BTI means no conflict for DP messages
-                    return NODEP;
-                }
+                // different BTI means no conflict for DP messages
+                return NODEP;
             }
         }
     }
