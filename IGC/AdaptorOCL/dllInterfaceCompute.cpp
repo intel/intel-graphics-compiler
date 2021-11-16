@@ -488,12 +488,23 @@ bool ProcessElfInput(
                   std::ostringstream spvHashSuffix("_", std::ostringstream::ate);
                   spvHashSuffix << std::hex << std::setfill('0') << std::setw(sizeof(spvHash) * CHAR_BIT / 4) << spvHash;
                   const std::string suffix = spvHashSuffix.str();
-
                   const char* pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+
+                  // Remove any already exising SPIR-V dumps from GetSpecConstantsInfo
+                  // and dump new ones with correct names
+                  std::string spvHashString = suffix.c_str();
+                  spvHashString.erase(0, 1);
+                  std::string prevSpvPath = pOutputFolder;
+                  prevSpvPath += "OCL_asm" + spvHashString + ".spv";
+                  llvm::sys::fs::remove(prevSpvPath);
                   DumpShaderFile(pOutputFolder, pSPIRVBitcode, size, hash, suffix + ".spv");
 
 #if defined(IGC_SPIRV_TOOLS_ENABLED)
                   spv_text spirvAsm = nullptr;
+                  // Similarly replace any spvasm dump from GetSpecConstantsInfo
+                  std::string prevSpvAsmPath = pOutputFolder;
+                  prevSpvAsmPath += "OCL_asm" + spvHashString + ".spvasm";
+                  llvm::sys::fs::remove(prevSpvAsmPath);
                   if (DisassembleSPIRV(pSPIRVBitcode, size, &spirvAsm) == SPV_SUCCESS)
                   {
                       DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, suffix + ".spvasm");

@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/impl/igc_ocl_device_ctx_impl.h"
 
 #include <memory>
+#include <iomanip>
 
 #include "cif/builtins/memory/buffer/impl/buffer_impl.h"
 #include "cif/helpers/error.h"
@@ -23,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "common/debug/Debug.hpp"
 
 #include "cif/macros/enable.h"
+#include <spirv-tools/libspirv.h>
 
 namespace TC{
 
@@ -67,6 +69,18 @@ bool ReadSpecConstantsFromSPIRV(
     std::istream &IS,
     std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo);
 
+void DumpShaderFile(
+    const std::string& dstDir,
+    const char* pBuffer,
+    const UINT bufferSize,
+    const QWORD hash,
+    const std::string& ext,
+    std::string* fileName);
+
+spv_result_t DisassembleSPIRV(
+    const char* pBuffer,
+    UINT bufferSize,
+    spv_text* outSpirvAsm);
 }
 
 bool enableSrcLine(void*);
@@ -139,6 +153,24 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         uint32_t inputSize = static_cast<uint32_t>(src->GetSizeRaw());
 
         if(this->inType == CodeType::spirV){
+            // load registry keys to make sure that flags can be read correctly
+            LoadRegistryKeys();
+            if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+            {
+                // dump SPIRV input if flag is enabled
+                const char* pOutputFolder = Debug::GetShaderOutputFolder();
+                QWORD hash = Debug::ShaderHashOCL(reinterpret_cast<const UINT*>(pInput), inputSize / 4).getAsmHash();
+
+                TC::DumpShaderFile(pOutputFolder, pInput, inputSize, hash, ".spv", nullptr);
+#if defined(IGC_SPIRV_TOOLS_ENABLED)
+                spv_text spirvAsm = nullptr;
+                if (TC::DisassembleSPIRV(pInput, inputSize, &spirvAsm) == SPV_SUCCESS)
+                {
+                    TC::DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, ".spvasm", nullptr);
+                }
+                spvTextDestroy(spirvAsm);
+#endif // defined(IGC_SPIRV_TOOLS_ENABLED)
+            }
             llvm::StringRef strInput = llvm::StringRef(pInput, inputSize);
             std::istringstream IS(strInput.str());
 
