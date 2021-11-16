@@ -20,7 +20,7 @@ include(llvm_flags.cmake)
 
 # Handle registered projects.
 get_llvm_external_projects(projects)
-set_llvm_opt(LLVM_EXTERNAL_PROJECTS "${projects}" CACHE STRING "LLVM external projects")
+set_llvm_opt(LLVM_EXTERNAL_PROJECTS "${projects}" CACHE STRING "LLVM external projects" FORCE)
 foreach(p IN LISTS projects)
   get_llvm_external_project_dir(${p} dir BASE_DIR ${IGC_OPTION__LLVM_SOURCES_DIR})
   string(TOUPPER ${p} up)
