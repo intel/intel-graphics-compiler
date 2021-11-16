@@ -867,7 +867,7 @@ SPDX-License-Identifier: MIT
 
     bool hasSLMWARIssue() const
     {
-        return getPlatform() >= GENX_DG2;
+        return getPlatform() == GENX_DG2 || getPlatform() == GENX_PVC || getPlatform() == GENX_PVCXT;
     }
 
     bool noSelOnALTMode() const
