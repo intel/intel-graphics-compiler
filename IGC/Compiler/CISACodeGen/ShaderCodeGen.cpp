@@ -1707,7 +1707,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
                 mpm.add(CreateHoistFMulInLoopPass());
 
-                if (pContext->m_retryManager.GetRetryId() != 0)
+                if (!pContext->m_retryManager.IsFirstTry())
                 {
                     mpm.add(new DisableLoopUnrollOnRetry());
                 }
