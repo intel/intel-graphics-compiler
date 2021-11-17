@@ -657,12 +657,13 @@ void GenXCoalescing::visitCastInst(CastInst &CI) {
 void GenXCoalescing::visitExtractValueInst(ExtractValueInst &EVI) {
   if (!Liveness->getLiveRangeOrNull(&EVI))
     return;
-  unsigned Index = IndexFlattener::flatten(
-      cast<StructType>(EVI.getAggregateOperand()->getType()),
-      EVI.getIndices());
-  if (!Liveness->getLiveRangeOrNull(SimpleValue(EVI.getOperand(0), Index)))
-    return;
-  recordCopyCandidate(&EVI, 0, Index);
+  unsigned StartIndex = IndexFlattener::flatten(
+      cast<StructType>(EVI.getAggregateOperand()->getType()), EVI.getIndices());
+  unsigned NumElements = IndexFlattener::getNumElements(EVI.getType());
+  for (unsigned i = 0; i < NumElements; ++i)
+    if (Liveness->getLiveRangeOrNull(
+            SimpleValue(EVI.getAggregateOperand(), StartIndex + i)))
+      recordCopyCandidate(SimpleValue(&EVI, i), 0, StartIndex + i);
 }
 
 
@@ -677,15 +678,18 @@ void GenXCoalescing::visitExtractValueInst(ExtractValueInst &EVI) {
 void GenXCoalescing::visitInsertValueInst(InsertValueInst &IVI) {
   auto ST = cast<StructType>(IVI.getType());
   unsigned NumElements = IndexFlattener::getNumElements(ST);
-  if (isa<UndefValue>(IVI.getOperand(0))) {
-    SmallVector<bool, 8> IsDefined;
-    IsDefined.resize(NumElements, false);
+  if (isa<UndefValue>(IVI.getAggregateOperand())) {
+    SmallBitVector IsDefined(NumElements);
     // For each insertvalue in the chain:
     for (auto ThisIVI = &IVI; ThisIVI;) {
       // For the element set by this one, set it as defined (unless the
       // input is undef).
-      IsDefined[IndexFlattener::flatten(ST, ThisIVI->getIndices())]
-        = !isa<UndefValue>(IVI.getOperand(1));
+      unsigned StartIdx = IndexFlattener::flatten(ST, ThisIVI->getIndices());
+      unsigned EndIdx =
+          StartIdx + IndexFlattener::getNumElements(
+                         ThisIVI->getInsertedValueOperand()->getType());
+      if (!isa<UndefValue>(ThisIVI->getInsertedValueOperand()))
+        IsDefined.set(StartIdx, EndIdx);
       // For any element that is still undef, remove its live range.
       for (unsigned i = 0; i != NumElements; ++i)
         if (!IsDefined[i])
@@ -697,15 +701,18 @@ void GenXCoalescing::visitInsertValueInst(InsertValueInst &IVI) {
   }
   // Copy coalesce the element being inserted and the other elements,
   // as long as the appropriate live ranges did not get removed above.
-  unsigned Index = IndexFlattener::flatten(ST, IVI.getIndices());
+  unsigned StartIdx = IndexFlattener::flatten(ST, IVI.getIndices());
+  unsigned EndIdx = StartIdx + IndexFlattener::getNumElements(
+                                   IVI.getInsertedValueOperand()->getType());
   for (unsigned i = 0; i != NumElements; ++i) {
     if (!Liveness->getLiveRangeOrNull(SimpleValue(&IVI, i)))
       continue;
-    if (i == Index) {
-      if (Liveness->getLiveRangeOrNull(IVI.getOperand(1)))
-        recordCopyCandidate(SimpleValue(&IVI, i), 1, 0);
+    if ((StartIdx <= i) && (i < EndIdx)) {
+      if (Liveness->getLiveRangeOrNull(SimpleValue(IVI.getInsertedValueOperand(), i - StartIdx)))
+        recordCopyCandidate(SimpleValue(&IVI, i), 1, i - StartIdx);
     } else {
-      if (Liveness->getLiveRangeOrNull(SimpleValue(IVI.getOperand(0), i)))
+      if (Liveness->getLiveRangeOrNull(
+              SimpleValue(IVI.getAggregateOperand(), i)))
         recordCopyCandidate(SimpleValue(&IVI, i), 0, i);
     }
   }
@@ -1320,8 +1327,6 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           for (unsigned StructIdx = 0,
                         se = IndexFlattener::getNumElements(Arg->getType());
                StructIdx != se; ++StructIdx) {
-            IGC_ASSERT_MESSAGE(!StructIdx,
-              "coalesce failure on struct call arg not tested");
             auto FuncArgSV = SimpleValue(Arg, StructIdx);
             auto CallArgSV = SimpleValue(CallArg, StructIdx);
             // See if they are coalesced.
