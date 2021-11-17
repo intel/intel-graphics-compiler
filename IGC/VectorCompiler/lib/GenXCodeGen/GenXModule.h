@@ -85,6 +85,7 @@ namespace llvm {
     bool InlineAsm = false;
     bool CheckForInlineAsm(Module &M) const;
 
+    bool EmitDebugInformation = false;
     // represents number of visa instructions in a *kernel*
     std::unordered_map<const Function *, unsigned> VisaCounter;
     // stores vISA mappings for each *function* (including kernel subroutines)
@@ -118,6 +119,7 @@ namespace llvm {
     void DestroyVISAAsmReader();
     LLVMContext &getContext();
 
+    bool emitDebugInformation() const { return EmitDebugInformation; }
     void updateVisaMapping(const Function *F, const Instruction *Inst,
                            unsigned VisaIndex, StringRef Reason);
     const genx::di::VisaMapping *getVisaMapping(const Function *F) const;

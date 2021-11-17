@@ -1224,13 +1224,15 @@ static void fillDbgInfoOptions(const GenXBackendConfig &BC,
 }
 
 bool GenXDebugInfo::runOnModule(Module &M) {
-
-  const auto &BC = getAnalysis<GenXBackendConfig>();
-  if (!BC.emitDebugInformation())
+  auto &GM = getAnalysis<GenXModule>();
+  // Note: we check that MVTI dumps were not requested here,
+  // since it is possible to request those without the presence of
+  // debug information
+  if (!GM.emitDebugInformation() && DbgOpt_VisaTransformInfoPath.empty())
     return false;
 
+  const auto &BC = getAnalysis<GenXBackendConfig>();
   const FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
-  auto &GM = getAnalysis<GenXModule>();
 
   VISABuilder *VB = GM.GetCisaBuilder();
   if (GM.HasInlineAsm())
@@ -1247,6 +1249,9 @@ bool GenXDebugInfo::runOnModule(Module &M) {
                                        OS.str());
   }
   LLVM_DEBUG(MVTI.print(dbgs()); dbgs() << "\n");
+
+  if (!GM.emitDebugInformation())
+    return false;
 
   IGC::DebugEmitterOpts DebugInfoOpts;
   fillDbgInfoOptions(BC, DebugInfoOpts);

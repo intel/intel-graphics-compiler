@@ -6455,7 +6455,7 @@ ModulePass *llvm::createGenXFinalizerPass(raw_pwrite_stream &o) {
 
 static SmallVector<const char *, 8>
 collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
-                     const GenXBackendConfig &BC) {
+                     bool EmitDebugInformation, const GenXBackendConfig &BC) {
   SmallVector<const char *, 8> Argv;
   auto addArgument = [&Argv, &Saver](StringRef Arg) {
     // String saver guarantees that string is null-terminated.
@@ -6470,7 +6470,7 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   for (const auto &Fos : FinalizerOpts)
     cl::TokenizeGNUCommandLine(Fos, Saver, Argv);
 
-  if (BC.emitDebugInformation())
+  if (EmitDebugInformation)
     addArgument("-generateDebugInfo");
   if (BC.passDebugToFinalizer())
     addArgument("-debug");
@@ -6512,6 +6512,7 @@ LLVMContext &GenXModule::getContext() {
 
 static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
                                       const GenXBackendConfig &BC,
+                                      bool EmitDebugInformation,
                                       vISABuilderMode Mode, LLVMContext &Ctx,
                                       BumpPtrAllocator &Alloc) {
   auto Platform = ST.getVisaPlatform();
@@ -6521,7 +6522,8 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
 
   // Prepare array of arguments for Builder API.
   StringSaver Saver{Alloc};
-  SmallVector<const char *, 8> Argv = collectFinalizerArgs(Saver, ST, BC);
+  SmallVector<const char *, 8> Argv =
+      collectFinalizerArgs(Saver, ST, EmitDebugInformation, BC);
 
   if (PrintFinalizerOptions)
     dumpFinalizerArgs(Argv, ST.getCPU());
@@ -6552,7 +6554,8 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
 void GenXModule::InitCISABuilder() {
   IGC_ASSERT(ST);
   const vISABuilderMode Mode = HasInlineAsm() ? vISA_ASM_WRITER : vISA_DEFAULT;
-  CisaBuilder = createVISABuilder(*ST, *BC, Mode, getContext(), ArgStorage);
+  CisaBuilder = createVISABuilder(*ST, *BC, EmitDebugInformation, Mode,
+                                  getContext(), ArgStorage);
 }
 
 VISABuilder *GenXModule::GetCisaBuilder() {
@@ -6571,7 +6574,8 @@ void GenXModule::DestroyCISABuilder() {
 void GenXModule::InitVISAAsmReader() {
   IGC_ASSERT(ST);
   VISAAsmTextReader =
-      createVISABuilder(*ST, *BC, vISA_ASM_READER, getContext(), ArgStorage);
+      createVISABuilder(*ST, *BC, EmitDebugInformation, vISA_ASM_READER,
+                        getContext(), ArgStorage);
 }
 
 VISABuilder *GenXModule::GetVISAAsmReader() {

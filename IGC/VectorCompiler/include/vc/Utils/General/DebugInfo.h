@@ -36,8 +36,8 @@ class DIBuilder {
   void registerNewGlobalVariable(llvm::DIGlobalVariableExpression *NewGV) const;
 
 public:
-  static bool checkIfModuleHasDebugInfo(llvm::Module &M);
-  static bool checkIfFunctionHasDebugInfo(llvm::Function &F);
+  static bool checkIfModuleHasDebugInfo(const llvm::Module &M);
+  static bool checkIfFunctionHasDebugInfo(const llvm::Function &F);
 
   static llvm::DbgDeclareInst *
   createDbgDeclareForLocalizedGlobal(llvm::Instruction &Address,

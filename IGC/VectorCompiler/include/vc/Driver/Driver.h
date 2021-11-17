@@ -66,7 +66,6 @@ struct CompileOptions {
   // -ze-no-vector-decomposition
   bool NoVecDecomp = false;
   // -g
-  bool EmitDebugInformation = false;
   bool EmitDebuggableKernels = false;
   // -fno-jump-tables
   bool NoJumpTables = false;

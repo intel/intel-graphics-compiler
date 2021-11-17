@@ -218,7 +218,6 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.StatelessPrivateMemSize = Opts.StackMemSize.getValue();
   }
   BackendOpts.DisableFinalizerMsg = Opts.DisableFinalizerMsg;
-  BackendOpts.EmitDebugInformation = Opts.EmitDebugInformation;
   BackendOpts.EmitDebuggableKernels = Opts.EmitDebuggableKernels;
   BackendOpts.DebugInfoForZeBin = (Opts.Binary == vc::BinaryKind::ZE);
   BackendOpts.DebugInfoValidationEnable = Opts.ForceDebugInfoValidation;
@@ -234,7 +233,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.DisableNonOverlappingRegionOpt = true;
 
   bool IsOptLevel_O0 =
-      Opts.OptLevel == vc::OptimizerLevel::None && Opts.EmitDebugInformation;
+      Opts.OptLevel == vc::OptimizerLevel::None && Opts.EmitDebuggableKernels;
   if (IsOptLevel_O0)
     BackendOpts.DisableLiveRangesCoalescing = true;
   BackendOpts.PassDebugToFinalizer =
@@ -588,11 +587,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
   if (ApiOptions.hasArg(OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
-
-  if (ApiOptions.hasArg(OPT_emit_debug)) {
-    Opts.EmitDebugInformation = true;
+  if (ApiOptions.hasArg(OPT_emit_debug))
     Opts.EmitDebuggableKernels = true;
-  }
   if (ApiOptions.hasArg(OPT_vc_fno_struct_splitting))
     Opts.DisableStructSplitting = true;
   if (ApiOptions.hasArg(OPT_vc_fno_jump_tables))

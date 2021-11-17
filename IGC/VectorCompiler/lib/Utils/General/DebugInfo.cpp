@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-bool vc::DIBuilder::checkIfModuleHasDebugInfo(llvm::Module &M) {
+bool vc::DIBuilder::checkIfModuleHasDebugInfo(const llvm::Module &M) {
   unsigned NumDebugCUs =
       std::distance(M.debug_compile_units_begin(), M.debug_compile_units_end());
 
@@ -36,7 +36,7 @@ bool vc::DIBuilder::checkIfModuleHasDebugInfo(llvm::Module &M) {
   return NumDebugCUs == 1;
 }
 
-bool vc::DIBuilder::checkIfFunctionHasDebugInfo(llvm::Function &F) {
+bool vc::DIBuilder::checkIfFunctionHasDebugInfo(const llvm::Function &F) {
   DISubprogram *SP = F.getSubprogram();
   if (!SP)
     return false;

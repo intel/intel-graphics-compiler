@@ -15,20 +15,20 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "GENX_MODULE"
 
 #include "GenXModule.h"
-
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/General/DebugInfo.h"
 
-#include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/GenXIntrinsics/GenXMetadata.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Transforms/Utils/Cloning.h"
+#include <llvm/CodeGen/TargetPassConfig.h>
+#include <llvm/GenXIntrinsics/GenXMetadata.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/Debug.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 
 #include <set>
 #include "Probe/Assertion.h"
@@ -89,6 +89,8 @@ bool GenXModule::runOnModule(Module &M) {
 
   InlineAsm = CheckForInlineAsm(M);
 
+  EmitDebugInformation =
+      BC->emitDebugInformation() && vc::DIBuilder::checkIfModuleHasDebugInfo(M);
   // Iterate, processing each Function that is not yet assigned to a
   // FunctionGroup.
   bool ModuleModified = false;
