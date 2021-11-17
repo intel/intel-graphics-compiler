@@ -228,6 +228,7 @@ void PrivateMemoryResolution::getAnalysisUsage(llvm::AnalysisUsage& AU) const
     AU.setPreservesCFG();
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<llvm::CallGraphWrapperPass>();
 }
 
 bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
@@ -429,6 +430,56 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         }
         // Resolve collected alloca instructions for current function
         changed |= resolveAllocaInstructions(hasStackCall || hasVLA);
+    }
+
+    if (FGA)
+    {
+        auto DL = M.getDataLayout();
+        auto& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+
+        // lambda to recursively calculate the max private memory usage for each call path
+        std::function<uint32_t(Function*)> PrivateMemUsage =
+            [&PrivateMemUsage, &modMD, &CG, &DL](Function* F)->uint32_t
+        {
+            // Not a valid function, just return 0 private mem
+            if (!F || F->isDeclaration())
+                return 0;
+
+            uint32_t currFuncPrivateMem = (uint32_t)modMD.FuncMD[F].privateMemoryPerWI;
+            CallGraphNode* Node = CG[F];
+
+            // Reached a leaf, return the private memory used by the current function
+            if (Node->empty())
+                return currFuncPrivateMem;
+
+            uint32_t maxSize = 0;
+            for (auto FI = Node->begin(), FE = Node->end(); FI != FE; ++FI)
+            {
+                Function* childF = FI->second->getFunction();
+                // As a conservative measure, assume all stackcall args are stored on private memory
+                uint32_t argSize = 0;
+                for (auto AI = childF->arg_begin(), AE = childF->arg_end(); AI != AE; ++AI)
+                {
+                    argSize += (uint32_t)DL.getTypeAllocSize(AI->getType());
+                }
+                uint32_t size = argSize + currFuncPrivateMem + PrivateMemUsage(childF);
+                maxSize = std::max(maxSize, size);
+            }
+            return maxSize;
+        };
+
+        // If stackcalls are enabled, calculate the max private mem used by each function group
+        // by analyzing the call depth. Store this info in the FunctionGroup container.
+        for (auto GI = FGA->begin(), GE = FGA->end(); GI != GE; ++GI)
+        {
+            FunctionGroup* FG = *GI;
+            if (FG->hasStackCall())
+            {
+                Function* pKernel = FG->getHead();
+                uint32_t maxPrivateMem = PrivateMemUsage(pKernel);
+                FG->setMaxPrivateMemOnStack((unsigned)maxPrivateMem);
+            }
+        }
     }
 
     if (changed)
