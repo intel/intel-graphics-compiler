@@ -4589,7 +4589,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         m_currShader->m_Platform->supportSampleAndLd_lz())
     {
         // Check if lod is 0
-        CVariable* src = GetSymbol(inst->getOperand(2));
+        CVariable* src =
+            GetSymbol(inst->getOperand(2));
         if (src->IsImmediate() && src->GetImmediateValue() == 0)
         {
             zeroLOD = true;
@@ -4606,7 +4607,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         {
             index = CorrectLdIndex(i, m_currShader->m_Platform->hasOldLdOrder());
         }
-        if (zeroLOD && index == 2)
+        if (zeroLOD &&
+            index == 2)
         {
             //3D resources skip lod and read z coordinate
             index = 3;
