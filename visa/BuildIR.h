@@ -579,6 +579,10 @@ public:
         return kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
     }
 
+    bool getLTOInvokeOptTarget() const {
+        return kernel.getBoolKernelAttr(Attributes::ATTR_LTOInvokeOptTarget);
+    }
+
     //
     // Check if opnd is or can be made "alignByte"-byte aligned.
     // These functions will change the underlying variable's alignment
