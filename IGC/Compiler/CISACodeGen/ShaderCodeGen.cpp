@@ -130,6 +130,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/Linker/Linker.h>
+#include <llvm/Analysis/ScopedNoAliasAA.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/IRReader/IRReader.h>
@@ -420,6 +421,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     //Add alias analysis pass
     mpm.add(createAddressSpaceAAWrapperPass());
     mpm.add(createExternalAAWrapperPass(&addAddressSpaceAAResult));
+    mpm.add(createScopedNoAliasAAWrapperPass());
 
     TODO("remove the following once all IGC passes are registered to PassRegistery in their constructor")
     initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
