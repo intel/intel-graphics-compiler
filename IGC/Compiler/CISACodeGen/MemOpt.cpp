@@ -1761,7 +1761,7 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
             return false;
         }
 
-        if (Op->getOpcode() == Instruction::BitCast) {
+        if (Op->getOpcode() == Instruction::BitCast || Op->getOpcode() == Instruction::AddrSpaceCast) {
             Ptr = Op->getOperand(0);
             continue;
         }
