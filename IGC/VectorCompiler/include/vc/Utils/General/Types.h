@@ -15,6 +15,19 @@ SPDX-License-Identifier: MIT
 
 namespace vc {
 
+// Address space indexing follows OCL plus some target specific address spaces.
+// Program addrspace is an addrspace where executable code should be stored.
+namespace AddrSpace {
+enum Enum {
+  Private = 0,
+  Global = 1,
+  Constant = 2,
+  Local = 3,
+  Generic = 4,
+  Program = 5,
+};
+} // namespace AddrSpace
+
 // Returns potentially new pointer type with the provided \p AddrSpace
 // and the original pointee type.
 inline llvm::PointerType *changeAddrSpace(llvm::PointerType *OrigTy,

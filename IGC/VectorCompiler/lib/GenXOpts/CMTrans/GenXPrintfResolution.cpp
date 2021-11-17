@@ -24,13 +24,13 @@ SPDX-License-Identifier: MIT
 /// this pass knows nothing about it.
 //===----------------------------------------------------------------------===//
 
-#include "vc/GenXOpts/GenXOpts.h"
-#include "vc/Utils/GenX/Printf.h"
-#include "vc/Utils/General/BiF.h"
-
 #include "vc/BiF/PrintfIface.h"
 #include "vc/BiF/Tools.h"
+#include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/Printf.h"
+#include "vc/Utils/General/BiF.h"
+#include "vc/Utils/General/Types.h"
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/iterator_range.h>
@@ -64,8 +64,8 @@ static constexpr const char *Name[Size] = {
     "__vc_printf_ret"};
 } // namespace PrintfImplFunc
 
-static constexpr int FormatStringAddrSpace = 2;
-static constexpr int LegacyFormatStringAddrSpace = 0;
+static constexpr int FormatStringAddrSpace = vc::AddrSpace::Constant;
+static constexpr int LegacyFormatStringAddrSpace = vc::AddrSpace::Private;
 
 namespace {
 class GenXPrintfResolution final : public ModulePass {

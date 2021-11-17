@@ -87,9 +87,6 @@ using namespace llvm;
 
 STATISTIC(NumArgumentsTransformed, "Number of pointer arguments transformed");
 
-// FIXME: find a propper place for addrspace enum, agree on addrspace politics
-static constexpr int PrivateAddrSpace = 0;
-
 namespace llvm {
 void initializeCMABIAnalysisPass(PassRegistry &);
 void initializeCMABIPass(PassRegistry &);
@@ -462,7 +459,7 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
 
     Instruction &FirstI = *Fn->getEntryBlock().begin();
     Type *ElemTy = GV->getType()->getElementType();
-    AllocaInst *Alloca = new AllocaInst(ElemTy, 0 /*AddressSpace*/,
+    AllocaInst *Alloca = new AllocaInst(ElemTy, vc::AddrSpace::Private,
                                         GV->getName() + ".local", &FirstI);
 
     if (GV->getAlignment())
@@ -795,7 +792,7 @@ public:
     for (auto *GV : LI.getGlobals()) {
       if (passLocalizedGlobalByPointer(*GV)) {
         NewFuncType.Args.push_back(vc::changeAddrSpace(
-            cast<PointerType>(GV->getType()), PrivateAddrSpace));
+            cast<PointerType>(GV->getType()), vc::AddrSpace::Private));
         GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByPointer});
       } else {
         int ArgIdx = NewFuncType.Args.size();
@@ -1014,7 +1011,7 @@ static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
                     if (GVArg.getType()->isPointerTy())
                       return &GVArg;
                     AllocaInst *Alloca = new AllocaInst(
-                        GVArg.getType(), PrivateAddrSpace, "", InsertPt);
+                        GVArg.getType(), vc::AddrSpace::Private, "", InsertPt);
                     new StoreInst(&GVArg, Alloca, InsertPt);
                     return Alloca;
                   });
@@ -1100,13 +1097,13 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
       "localized global can be passed only by value or by pointer");
   auto *GVTy = cast<PointerType>(GAI.GV->getType());
   // No additional work when addrspaces match
-  if (GVTy->getAddressSpace() == PrivateAddrSpace)
+  if (GVTy->getAddressSpace() == vc::AddrSpace::Private)
     return GAI.GV;
   // Need to add a temprorary cast inst to match types.
   // When this switch to the caller, it'll remove this cast.
-  return new AddrSpaceCastInst{GAI.GV,
-                               vc::changeAddrSpace(GVTy, PrivateAddrSpace),
-                               GAI.GV->getName() + ".tmp", &OrigCall};
+  return new AddrSpaceCastInst{
+      GAI.GV, vc::changeAddrSpace(GVTy, vc::AddrSpace::Private),
+      GAI.GV->getName() + ".tmp", &OrigCall};
 }
 
 namespace {
@@ -1231,8 +1228,8 @@ private:
           switch (Kind) {
           case ArgKind::CopyIn:
           case ArgKind::CopyInOut: {
-            auto *Alloca = new AllocaInst(NewArg.getType(), PrivateAddrSpace,
-                                          "", InsertPt);
+            auto *Alloca = new AllocaInst(NewArg.getType(),
+                                          vc::AddrSpace::Private, "", InsertPt);
             new StoreInst{&NewArg, Alloca, InsertPt};
             return Alloca;
           }
@@ -1436,7 +1433,7 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   //        not in constant addrspace in legacy printf).
   auto ToLocalize =
       make_filter_range(M.globals(), [](const GlobalVariable &GV) {
-        return GV.getAddressSpace() == PrivateAddrSpace &&
+        return GV.getAddressSpace() == vc::AddrSpace::Private &&
                !GV.hasAttribute(genx::FunctionMD::GenXVolatile) &&
                !vc::isConstantString(GV);
       });

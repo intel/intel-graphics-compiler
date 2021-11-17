@@ -23,6 +23,8 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "TargetInfo/GenXTargetInfo.h"
 
+#include "vc/Utils/General/Types.h"
+
 #include "llvm/IR/DataLayout.h"
 #include "llvm/CodeGen/BasicTTIImpl.h"
 
@@ -89,7 +91,7 @@ public:
   GenXTTIImpl(const DataLayout& DL) : BaseT(DL) {}
 
   bool shouldBuildLookupTables() { return false; }
-  unsigned getFlatAddressSpace() { return 4; }
+  unsigned getFlatAddressSpace() { return vc::AddrSpace::Generic; }
 
 #if LLVM_VERSION_MAJOR >= 13
   InstructionCost
