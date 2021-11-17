@@ -330,8 +330,10 @@ public:
     void emitRegInfoKernel(std::ostream& output);
 
     bool hasPerThreadPayloadBB() const { return perThreadPayloadBB != nullptr; }
+    G4_BB* getPerThreadPayloadBB() const { return perThreadPayloadBB; }
     void setPerThreadPayloadBB(G4_BB* bb) { perThreadPayloadBB = bb; }
     bool hasCrossThreadPayloadBB() const { return crossThreadPayloadBB != nullptr; }
+    G4_BB* getCrossThreadPayloadBB() const { return crossThreadPayloadBB; }
     void setCrossThreadPayloadBB(G4_BB* bb) { crossThreadPayloadBB = bb; }
     bool hasComputeFFIDProlog() const {
         return computeFFIDGP != nullptr && computeFFIDGP1 != nullptr;

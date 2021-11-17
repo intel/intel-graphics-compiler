@@ -1415,6 +1415,24 @@ G4_INST * G4_BB::getFirstInst()
     return firstInst;
 }
 
+INST_LIST_ITER G4_BB::getFirstInsertPos()
+{
+    INST_LIST_ITER II = begin();
+    for(INST_LIST_ITER IB = end(); II != IB; ++II)
+    {
+        G4_INST* tI = (*II);
+        if (tI->isLabel()
+            || tI->opcode() == G4_join
+            || tI->opcode() == G4_endif
+            || tI->opcode() == G4_while)
+        {
+            continue;
+        }
+        break;
+    }
+    return II;
+}
+
 //
 //  Add an EOT send to the end of this BB.
 //

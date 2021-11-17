@@ -4029,7 +4029,7 @@ namespace IGC
 
         if (m_program->m_Platform->hasFusedEU()
             && IGC_IS_FLAG_ENABLED(EnableCallWA)
-            && m_program->HasStackCalls())
+            && (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram()))
         {
             SaveOption(vISA_fusedCallWA, true);
         }

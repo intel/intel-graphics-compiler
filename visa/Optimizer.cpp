@@ -173,11 +173,139 @@ void Optimizer::regAlloc()
     }
 }
 
-void Optimizer::patchIPForFusedCallWA()
+void Optimizer::finishFusedCallWA()
 {
-    if (m_labelPatchInsts.empty() && m_waCallInsts.empty())
+    // For each nested stack call like the following:
+    //   (1) (W)  mov  (4|M0)    r59.4<1>:ud     r125.0<4;4,1>:ud     // save code in prolog
+    //   (2)     call (8|M0)    r125.0          inner
+    //   (3) (W)  mov  (4|M0)    r125.0<1>:ud    r59.4<4;4,1>:ud      // restore code in ret.
+    //   (4)      ret  (8|M0)    r125.0
+    // If no active channels,  call inst will always execute due to the hw bug, therefore
+    // r125 will be modified by this call inst at (2). As no active channels, r125 restore
+    // code at (3) is not going to be run. Therefore, r125 returned at (4) is not the
+    // one that is saved into r59.4 at (1), which is wrong.
+    //
+    // The fix is to make save/restore mov instructions run always even though there
+    // are no active channels.  They run if their quarter control is outside the current
+    // JEU size (8 in this case), but still active (dmask still show it is active).
+    // We will set dmask to simd16 in this case, quarter control to M8 instead M0:
+    //   (1) (W)  mov  (4|M*)    r59.4<1>:ud     r125.0<4;4,1>:ud
+    //   (2)      call (8|M0)    r125.0          inner
+    //   (3) (W)  mov  (4|M*)    r125.0<1>:ud    r59.4<4;4,1>:ud
+    //
+    // Note:
+    //    r59.4 needs to write on stack frame before call and read back after call.
+    //    Not sure how to make send works always, also to make send works, its address payload
+    //    need to be correct... This does not seem to be a working WA.
+    bool isValid;  // for getting regNum
+    const uint32_t StackCallABIGRF = kernel.getStackCallStartReg();
+    if (builder.getIsKernel())
+    {
+        // first-level call does not need WA! If it is from scalar IGC, need to extend
+        // its dmask,  for example, simd8 to simd16; or simd16 to simd32.
+        //      or  dmask(sr0.2)  dmasksr0.2  0xFFFF0000
+        if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
+        {
+            assert(kernel.getSimdSize() <= 16);
+            uint32_t orImm = kernel.getSimdSize() == 16 ? 0xFFFF0000 : 0xFF00;
+
+            G4_VarBase* V_sr0 = builder.phyregpool.getSr0Reg();
+            G4_SrcRegRegion* I0_Src0 = builder.createSrc(V_sr0, 0, 2, builder.getRegionScalar(), Type_UD);
+            G4_Imm* newDMask = builder.createImm(orImm, Type_UD);
+            G4_DstRegRegion* I0_Dst = builder.createDst(V_sr0, 0, 2, 1, Type_UD);
+            G4_INST* I0 = builder.createInternalInst(nullptr, G4_or, nullptr, g4::NOSAT,g4::SIMD1,
+                I0_Dst, I0_Src0, newDMask, InstOpt_WriteEnable);
+
+            G4_BB* entryBB = fg.getEntryBB();
+            // Make sure to skip prolog BBs to insert into the 1st BB of a kernel.
+            G4_BB* perThreadBB = kernel.getPerThreadPayloadBB();
+            G4_BB* crossThreadBB = kernel.getCrossThreadPayloadBB();
+            if (perThreadBB != nullptr || crossThreadBB != nullptr)
+            {
+                while (entryBB != nullptr)
+                {
+                    if (entryBB == perThreadBB || entryBB == crossThreadBB)
+                    {
+                        // perthread/crossThread BB has a single succ.
+                        assert(entryBB->Succs.size() == 1);
+                        entryBB = entryBB->Succs.front();
+                        continue;
+                    }
+                    break;
+                }
+            }
+            entryBB->insertBefore(entryBB->getFirstInsertPos(), I0);
+        }
+    }
+    else
+    {
+        // non-entry function
+        G4_BB* prologBB = fg.getEntryBB();
+        G4_BB* epilogBB = fg.back();
+        if (epilogBB->isEndWithFRet())
+        {
+            G4_INST* retInst = epilogBB->back();
+            uint16_t maxlanes = retInst->getMaskOffset() + retInst->getExecSize();
+            assert(maxlanes <= 16 && "For fused Call WA, call's execution size <= 16");
+            G4_InstOption newMaskOff = maxlanes <= 8 ? InstOpt_M8 : InstOpt_M16;
+
+            // Save code use r125 (calling convention) and is in prolog BB.
+            for (auto II = prologBB->begin(), IE = prologBB->end(); II != IE; ++II)
+            {
+                G4_INST* mInst = (*II);
+                if (mInst->opcode() != G4_mov
+                    || !mInst->getSrc(0)->isSrcRegRegion()
+                    || !mInst->isWriteEnableInst()
+                    || mInst->getPredicate() != nullptr
+                    || mInst->getCondMod() != nullptr)
+                {
+                    continue;
+                }
+                G4_SrcRegRegion* src = mInst->getSrc(0)->asSrcRegRegion();
+                assert(src->getBase()->asRegVar()->isPhyRegAssigned());
+                uint32_t regnum = src->ExRegNum(isValid);
+                uint32_t subregnum = src->ExSubRegNum(isValid);
+                if (regnum == StackCallABIGRF && subregnum == 0)
+                {
+                    mInst->setMaskOption(newMaskOff);
+                    break;
+                }
+                else if (mInst->getDst()->ExRegNum(isValid) == StackCallABIGRF)
+                {
+                    // looks like no save, skip
+                    break;
+                }
+            }
+
+            // Restore code defines r125 (calling convention) and is in epilog BB.
+            for (auto RI = epilogBB->rbegin(), RE = epilogBB->rend(); RI != RE; ++RI)
+            {
+                G4_INST* mInst = (*RI);
+                if (mInst->opcode() != G4_mov
+                    || !mInst->getSrc(0)->isSrcRegRegion()
+                    || !mInst->isWriteEnableInst()
+                    || mInst->getPredicate() != nullptr
+                    || mInst->getCondMod() != nullptr)
+                {
+                    continue;
+                }
+                G4_DstRegRegion* dst = mInst->getDst();
+                assert(dst->getBase()->asRegVar()->isPhyRegAssigned());
+                uint32_t regnum = dst->ExRegNum(isValid);
+                uint32_t subregnum = dst->ExSubRegNum(isValid);
+                if (regnum == StackCallABIGRF && subregnum == 0)
+                {
+                    mInst->setMaskOption(newMaskOff);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (m_labelPatchInsts.empty() && m_waCallInsts.empty() && m_instToBBs.empty())
         return;
 
+    // patch ip for fused call WA
 #if defined(_DEBUG)
     // Verify m_labelPatchInsts/m_instToBBs are still valid
     bool found = true;
@@ -255,6 +383,25 @@ void Optimizer::patchIPForFusedCallWA()
         }
         return;
     };
+
+    //    1. (W) mov (1|M0)            r2.0<1>:ud  sr0.0<0;1,0>:ud
+    //    2. (W) and (16|M0) (eq)f1.0  null<1>:uw  r2.0<0;1,0>:uw    0x80:uw
+    //    3. (W & ~f1.0) mov (1|M0)    cr0.2<1>:ud r3.0<0;1,0>:ud
+    //    4. (W)mov (1|M0)            r64.2<1>:ud cr0.2<0;1,0>:ud
+    // WA requires the mov at 4 to be in M8, not M0 in case the BigEU has all channesl off.
+    // Here set quarter control of that mov to M8 (simd8 kernel).
+    for (auto II : m_cr0DstInsts)
+    {
+        G4_INST* cr0MovInst = II.first;
+        G4_INST* callInst = II.second;
+        assert(cr0MovInst->opcode() == G4_mov);
+        assert((callInst->isCall() || callInst->isFCall()));
+
+        uint16_t maxlanes = callInst->getMaskOffset() + callInst->getExecSize();
+        assert(maxlanes <= 16 && "For fused Call WA, call's execution size <= 16");
+        G4_InstOption newMaskOff = maxlanes <= 8 ? InstOpt_M8 : InstOpt_M16;
+        cr0MovInst->setMaskOption(newMaskOff);
+    }
 
     for (auto II : m_labelPatchInsts)
     {
@@ -342,6 +489,7 @@ void Optimizer::patchIPForFusedCallWA()
     m_instToBBs.clear();
     m_labelPatchInsts.clear();
     m_waCallInsts.clear();
+    m_cr0DstInsts.clear();
 }
 
 void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
@@ -458,14 +606,14 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
 
 void Optimizer::addSWSBInfo()
 {
-    bool do_ifcall_wa = builder.hasFusedEU()
+    bool do_fcall_wa = builder.hasFusedEU()
         && builder.getOption(vISA_fusedCallWA)
-        && kernel.hasIndirectCall();
+        && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall());
 
     if (!builder.hasSWSB())
     {
-        if (do_ifcall_wa)
-            patchIPForFusedCallWA();
+        if (do_fcall_wa)
+            finishFusedCallWA();
         return;
     }
 
@@ -492,9 +640,9 @@ void Optimizer::addSWSBInfo()
             builder.getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
     }
 
-    if (do_ifcall_wa)
+    if (do_fcall_wa)
     {
-        patchIPForFusedCallWA();
+        finishFusedCallWA();
     }
     else if (kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
     {
@@ -13041,6 +13189,24 @@ void Optimizer::doNoMaskWA_postRA()
     }
 }
 
+// Assumption:
+//   vISA assumes the call's target would be uniform within a thread. This is consistent with
+//   hardware call instructions. Under EU fusion,  assume that an indirect call invokes A
+//   in thread 0 and invokes B in thread 1, which isn't supported.
+//
+// This function does two things:
+//   1.  For any indirect call like the following:
+//          call
+//       changed it to:
+//          if (BigEU)
+//             call
+//          else   // SmallEU
+//             call
+//   2. HW has a bug in which call always runs and it always uses BigEU's target as targets for both EUs.
+//      This causes several issues and the WA is used to fix this harware bugs.
+//
+// Details of 2
+// ============
 //  Under EU fusion,  assume that an indirect call invokes A in thread 0 and invokes B in thread 1.
 //  Assume that these two threads are fused and run on a pair of fused EUs {bigEU, smallEU}. The hardware
 //  will always invoke A: the callee from thread 0 in bigEU, which is incorrect. To workaround this bug,
@@ -13079,7 +13245,13 @@ void Optimizer::doNoMaskWA_postRA()
 //            join <nextJoin or null>                                       // finalJoin
 //
 // Those I4_patch_add/I5_patch_add, etc are added into m_labelPatchInsts/m_instsToBBs, so
-// that patchIPForFusedCallWA() will have the right immediate to replace 0x33333333.
+// that finishFusedCallWA() will have the right immediate to replace 0x33333333.
+//
+// Note that there is another hardware bug. If BigEU is off, the mov instruction
+//    "(W)     mov (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud"
+// will not run. As result, SmallEU's target cannot be copied into BigEU, which in turn will
+// not run the call for SmallEU (it shall hang as the target is undefined). This issue is
+// also handled in finishFusedCallWA().
 //
 void Optimizer::applyFusedCallWA()
 {
@@ -13225,6 +13397,10 @@ void Optimizer::applyFusedCallWA()
                 nullptr, g4::NOSAT, callI->getExecSize(), nullptr, nSrc, nullptr, callI->getOption());
             smallB0->push_back(nCallI);
 
+            m_cr0DstInsts.insert(std::make_pair(I3, nCallI));
+            m_instToBBs.insert(std::make_pair(I3, BB));
+            m_instToBBs.insert(std::make_pair(nCallI, smallB0));
+
             if (!fg.globalOpndHT.isOpndGlobal(Target))
             {
                 callI->removeDefUse(Opnd_src0);
@@ -13301,6 +13477,9 @@ void Optimizer::applyFusedCallWA()
             m_instToBBs.insert(std::make_pair(I5_patch_add, BB));
             m_instToBBs.insert(std::make_pair(callI, bigB0));
             m_instToBBs.insert(std::make_pair(nCallI, smallB0));
+
+            m_cr0DstInsts.insert(std::make_pair(I3, nCallI));
+            m_instToBBs.insert(std::make_pair(I3, BB));
         }
 
         G4_Label* smallB0Label = smallB0->front()->getLabel();

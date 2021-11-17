@@ -526,6 +526,8 @@ public:
 
     bool HasStackCalls() const { return m_HasStackCalls; }
     void SetHasStackCalls() { m_HasStackCalls = true; }
+    bool IsIntelSymbolTableVoidProgram() const { return m_isIntelSymbolTableVoidProgram; }
+    void SetIsIntelSymbolTableVoidProgram() { m_isIntelSymbolTableVoidProgram = true; }
 
 protected:
     bool CompileSIMDSizeInCommon(SIMDMode simdMode);
@@ -650,6 +652,7 @@ protected:
     DebugInfoData diData;
 
     bool m_HasStackCalls = false;
+    bool m_isIntelSymbolTableVoidProgram = false;
 };
 
 /// This class contains the information for the different SIMD version
