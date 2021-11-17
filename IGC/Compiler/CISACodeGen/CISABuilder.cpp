@@ -4390,6 +4390,11 @@ namespace IGC
                 SaveOption(vISA_numGeneralAcc, numAcc);
             }
 
+            if (IGC_IS_FLAG_ENABLED(RelaxAccSub))
+            {
+                SaveOption(vISA_relaxAccSubstitution, true);
+            }
+
             if (IGC_IS_FLAG_ENABLED(HasDoubleAcc))
             {
                 SaveOption(vISA_hasDoubleAcc, true);
