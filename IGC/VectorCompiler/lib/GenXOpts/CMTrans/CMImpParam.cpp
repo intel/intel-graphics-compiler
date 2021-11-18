@@ -169,7 +169,7 @@ struct CMImpParam : public ModulePass {
 
 private:
   void replaceWithGlobal(CallInst *CI);
-  bool replaceImplicitArgIntrinsics(const ImplArgIntrSeq &Workload);
+  void replaceImplicitArgIntrinsics(const ImplArgIntrSeq &Workload);
   void WriteArgsLinearizationInfo(Module &M);
 
   LinearizedTy LinearizeAggregateType(Type *AggrTy);
@@ -184,7 +184,7 @@ private:
   }
 
   // Convert to implicit thread payload related intrinsics.
-  bool ConvertToOCLPayload(Module &M);
+  void ConvertToOCLPayload(Module &M);
 
   uint32_t MapToKind(unsigned IID) {
     using namespace genx;
@@ -272,9 +272,6 @@ private:
     return nullptr;
   }
 
-  // All kernels (entry points) in module being processed
-  SmallPtrSet<Function *, 8> Kernels;
-
   // GlobalVariables that have been created for an intrinsic
   SmallDenseMap<unsigned, GlobalVariable *> GlobalsMap;
 };
@@ -306,45 +303,58 @@ private:
 static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M);
 static IntrIDMap fillUsedIntrMap(const ImplArgIntrSeq &Workload);
 
+// Collect all CM kernels from named metadata.
+static std::vector<Function *> collectKernels(Module &M) {
+  NamedMDNode *Named = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
+  if (!Named)
+    return {};
+  std::vector<Function *> Kernels;
+  for (unsigned I = 0, E = Named->getNumOperands(); I != E; ++I) {
+    MDNode *Node = Named->getOperand(I);
+    auto *F = cast<Function>(
+        cast<ValueAsMetadata>(Node->getOperand(genx::KernelMDOp::FunctionRef))
+            ->getValue());
+    Kernels.push_back(F);
+  }
+  return Kernels;
+}
+
 bool CMImpParam::runOnModule(Module &M) {
   DL = &M.getDataLayout();
 
-  bool changed = false;
-
   // Apply necessary changes if kernels are compiled for OpenCL runtime.
-  changed |= ConvertToOCLPayload(M);
+  ConvertToOCLPayload(M);
 
   // Analyze functions for implicit use intrinsic invocation
   ImplArgIntrSeq Workload = collectImplicitArgIntrinsics(M);
-  IntrIDMap UsedIntrInfo = fillUsedIntrMap(Workload);
-  changed |= replaceImplicitArgIntrinsics(Workload);
+  auto Kernels = collectKernels(M);
 
-  // Collect all CM kernels from named metadata and also traverse the call graph
-  // to determine what the total implicit uses are for the top level kernels
-  if (NamedMDNode *Named = M.getNamedMetadata(genx::FunctionMD::GenXKernels)) {
-    for (unsigned I = 0, E = Named->getNumOperands(); I != E; ++I) {
-      MDNode *Node = Named->getOperand(I);
-      auto *F = cast<Function>(
-          getValue(Node->getOperand(genx::KernelMDOp::FunctionRef)));
-      Kernels.insert(F);
-    }
-  }
+  if (Workload.empty() && Kernels.empty())
+    // If ConvertToOCLPayload changed code, workload wouldn't be empty (there
+    // would be at least local_id16 intrinsics). So returning false here is
+    // correct.
+    return false;
+
+  IntrIDMap UsedIntrInfo = fillUsedIntrMap(Workload);
+  replaceImplicitArgIntrinsics(Workload);
 
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+  // Kernel transformation should go last since it invalidates the collected
+  // data: kernel functions are changed.
   for (Function *Kernel : Kernels) {
+    // Traverse the call graph to determine what the total implicit uses are for
+    // the top level kernels.
     IntrIDSet RequiredImplArgs =
         CallGraphTraverser{CG, UsedIntrInfo}.collectIndirectlyUsedImplArgs(
             *Kernel);
     genx::internal::createInternalMD(*Kernel);
     // for OCL/L0 RT we should unconditionally add
     // implicit PRIVATE_BASE argument which is not supported on CM RT
-    if (!RequiredImplArgs.empty() || !IsCmRT) {
+    if (!RequiredImplArgs.empty() || !IsCmRT)
       processKernel(Kernel, RequiredImplArgs);
-      changed |= true;
-    }
   }
 
-  return changed;
+  return true;
 }
 
 // Replace the given instruction with a load from a global
@@ -513,16 +523,13 @@ static IntrIDMap fillUsedIntrMap(const ImplArgIntrSeq &Workload) {
 // Replace implicit arg intrinsics collected in \p Workload with a load of
 // the corresponding __imparg global variable.
 // Fill implicit args usage data.
-bool CMImpParam::replaceImplicitArgIntrinsics(const ImplArgIntrSeq &Workload) {
-  if (Workload.empty())
-    return false;
+void CMImpParam::replaceImplicitArgIntrinsics(const ImplArgIntrSeq &Workload) {
   for (CallInst *Intr : Workload)
     replaceWithGlobal(Intr);
-  return true;
 }
 
 // Convert to implicit thread payload related intrinsics.
-bool CMImpParam::ConvertToOCLPayload(Module &M) {
+void CMImpParam::ConvertToOCLPayload(Module &M) {
   // Check if this kernel is compiled for OpenCL runtime.
   bool DoConversion = false;
 
@@ -539,9 +546,8 @@ bool CMImpParam::ConvertToOCLPayload(Module &M) {
   }
 
   if (!DoConversion)
-    return false;
+    return;
 
-  bool Changed = false;
   auto getFn = [=, &M](unsigned ID, Type *Ty) {
     return M.getFunction(GenXIntrinsic::getAnyName(ID, Ty));
   };
@@ -563,11 +569,9 @@ bool CMImpParam::ConvertToOCLPayload(Module &M) {
         Val->takeName(UInst);
         UInst->replaceAllUsesWith(Val);
         UInst->eraseFromParent();
-        Changed = true;
       }
     }
   }
-  return Changed;
 }
 
 // Determine if the named function uses any functions tagged with implicit use
@@ -604,7 +608,8 @@ CallGraphNode *CMImpParam::processKernel(Function *F,
                                          const IntrIDSet &UsedImplicits) {
   LLVMContext &Context = F->getContext();
 
-  IGC_ASSERT_MESSAGE(Kernels.count(F), "ProcessKernel invoked on non-kernel CallGraphNode");
+  IGC_ASSERT_MESSAGE(genx::isKernel(F),
+                     "ProcessKernel invoked on non-kernel CallGraphNode");
 
   AttributeList AttrVec;
   const AttributeList &PAL = F->getAttributes();
