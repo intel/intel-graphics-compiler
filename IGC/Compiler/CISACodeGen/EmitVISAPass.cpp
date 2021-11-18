@@ -7231,7 +7231,6 @@ void EmitPass::emitURBWrite(llvm::GenIntrinsicInst* inst)
     CVariable* channelMask = m_currShader->GetSymbol(inst->getOperand(1));
     CVariable* URBHandle = m_currShader->GetURBOutputHandle();
 
-
     {
         // If offset or channel mask is not immediate value, we need per-slot offsets and/or channel mask
         // to contain data in all the channels. However, if the variable is uniform,
@@ -7248,17 +7247,17 @@ void EmitPass::emitURBWrite(llvm::GenIntrinsicInst* inst)
     }
 
     {
+        CVariable* payload = nullptr;
         int payloadElementOffset = 0;
-        const bool isUniformPayloadAllowed = false;
-        CVariable* payload = m_CE->PrepareExplicitPayload(
-            m_currShader,
-            m_encoder,
-            m_SimdMode,
-            m_DL,
-            inst,
-            payloadElementOffset,
-            isUniformPayloadAllowed);
-
+        {
+            payload = m_CE->PrepareExplicitPayload(
+                m_currShader,
+                m_encoder,
+                m_SimdMode,
+                m_DL,
+                inst,
+                payloadElementOffset);
+        }
 
         m_encoder->URBWrite(payload, payloadElementOffset, offset, URBHandle, channelMask);
         m_encoder->Push();

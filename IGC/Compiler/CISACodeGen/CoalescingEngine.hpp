@@ -106,8 +106,7 @@ namespace IGC {
             SIMDMode simdMode,
             const llvm::DataLayout* pDL,
             llvm::Instruction* inst,
-            int& payloadOffset,
-            const bool isUniformPayloadAllowed);
+            int& payloadOffset);
 
 
         void visitCastInst(llvm::CastInst& I);

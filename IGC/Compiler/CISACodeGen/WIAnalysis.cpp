@@ -1398,7 +1398,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
                 usage != ACTUAL_COARSE_SIZE_Y &&
                 usage != THREAD_GROUP_ID_X &&
                 usage != THREAD_GROUP_ID_Y &&
-                usage != THREAD_GROUP_ID_Z
+                usage != THREAD_GROUP_ID_Z &&
+                usage != XP0 &&
+                usage != XP1 &&
+                usage != XP2
                 )
             {
                 return WIAnalysis::RANDOM;
