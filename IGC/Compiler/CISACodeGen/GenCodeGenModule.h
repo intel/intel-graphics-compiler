@@ -144,22 +144,6 @@ namespace IGC {
         bool hasVariableLengthAlloca() {
             return m_hasVaribleLengthAlloca;
         }
-        /// \brief Function group has indirect calls
-        bool hasIndirectCall() {
-            return m_hasIndirectCall;
-        }
-        /// \brief Function group has recursion
-        bool hasRecursion() {
-            return m_hasRecursion;
-        }
-        /// Set and Get the max private memory used by FG give then call depth
-        /// This is calculated in PrivateMemoryResolution.cpp
-        void setMaxPrivateMemOnStack(unsigned size) {
-            m_MaxPrivateMemOnStack = size;
-        }
-        unsigned getMaxPrivateMemOnStack() {
-            return m_MaxPrivateMemOnStack;
-        }
 
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
             auto headSG = Functions[0];
@@ -172,9 +156,6 @@ namespace IGC {
         bool m_hasStackCall = false;
         bool m_hasInlineAsm = false;
         bool m_hasVaribleLengthAlloca = false;
-        bool m_hasIndirectCall = false;
-        bool m_hasRecursion = false;
-        unsigned m_MaxPrivateMemOnStack = 0;
     };
 
     class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
@@ -299,8 +280,14 @@ namespace IGC {
         /// check if function is stack-called
         bool useStackCall(llvm::Function* F);
 
-        /// sets function group attribute flags
-        void setGroupAttributes();
+        /// sets the stackcall flag for each function group that has stackcalls
+        void setGroupStackCall();
+
+        /// set whether a group contains variable length alloca
+        void setHasVariableLengthAlloca();
+
+        /// set flag for function groups that uses the inline asm instruction
+        void setGroupHasInlineAsm();
 
         typedef llvm::SmallVectorImpl<FunctionGroup*>::iterator iterator;
         iterator begin() { return iterator(Groups.begin()); }

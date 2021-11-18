@@ -424,8 +424,14 @@ bool GenXCodeGenModule::runOnModule(Module& M)
 
     this->pMdUtils->save(M.getContext());
 
-    // Check and set FG attribute flags
-    FGA->setGroupAttributes();
+    // Check and set stack call flag for each group
+    FGA->setGroupStackCall();
+
+    // Check and set VLA flag for each group
+    FGA->setHasVariableLengthAlloca();
+
+    // Check and set inline asm flag for each group
+    FGA->setGroupHasInlineAsm();
 
     // By swapping, we sort the function list to ensure codegen order for
     // functions. This relies on llvm module pass manager's implementation detail.
@@ -555,51 +561,74 @@ bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function* F)
     return (F->hasFnAttribute("visaStackCall"));
 }
 
-void GenXFunctionGroupAnalysis::setGroupAttributes()
+void GenXFunctionGroupAnalysis::setGroupStackCall()
 {
     for (auto FG : Groups)
     {
-        // Ignore the Indirect Call Group, as there is no actual callgraph
+        // Ignore the indirect call group, as it's just a container for all indirect call
+        // functions and does not actually contain a call graph
         if (FG == IndirectCallGroup) continue;
 
-        // Set stackcalls for function groups with more than one function
         FG->m_hasStackCall = (FG->Functions.size() > 1);
 
+        // Traverse each function in the FG to check for indirect calls
+        if (!FG->m_hasStackCall)
+        {
+            for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
+            {
+                // Set hasStackCall if there are any indirect calls
+                for (auto ii = inst_begin(*FI), ei = inst_end(*FI); ii != ei; ii++)
+                {
+                    if (CallInst* call = dyn_cast<CallInst>(&*ii))
+                    {
+                        if (call->isInlineAsm()) continue;
+
+                        Function* calledF = call->getCalledFunction();
+                        if (!calledF || calledF->hasFnAttribute("referenced-indirectly"))
+                        {
+                            FG->m_hasStackCall = true;
+                            break;
+                        }
+                    }
+                }
+                if (FG->m_hasStackCall) break;
+            }
+        }
+    }
+}
+
+void GenXFunctionGroupAnalysis::setHasVariableLengthAlloca()
+{
+    // check all functions in the group to see if there's an vla alloca
+    // function attribute "hasVLA" should be set at ProcessFuncAttributes pass
+    for (auto FG: Groups)
+    {
         for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
         {
             Function* F = *FI;
-
-            // check all functions in the group to see if there's an vla alloca
-            // function attribute "hasVLA" should be set at ProcessFuncAttributes pass
             if (F->hasFnAttribute("hasVLA"))
             {
                 FG->m_hasVaribleLengthAlloca = true;
+                break;
             }
+        }
+    }
+}
 
-            // check if FG uses recursion. The "forceRecurse" attribute is set in
-            // ProcessFuncAttributes pass by using Tarjan's algorithm to find recursion.
-            if (F->hasFnAttribute("forceRecurse"))
+void GenXFunctionGroupAnalysis::setGroupHasInlineAsm()
+{
+    if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_instrTypes.hasInlineAsm)
+    {
+        // check all functions in the group to see it uses inline asm inst
+        for (auto FG : Groups)
+        {
+            for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
             {
-                FG->m_hasRecursion = true;
-            }
-
-            // For the remaining attributes we need to loop through all the call instructions
-            for (auto ii = inst_begin(*FI), ei = inst_end(*FI); ii != ei; ii++)
-            {
-                if (CallInst* call = dyn_cast<CallInst>(&*ii))
+                Function* F = *FI;
+                if (IGC::hasInlineAsmInFunc(*F))
                 {
-                    Function* calledF = call->getCalledFunction();
-                    if (call->isInlineAsm())
-                    {
-                        // Uses inline asm call
-                        FG->m_hasInlineAsm = true;
-                    }
-                    else if (!calledF || calledF->hasFnAttribute("referenced-indirectly"))
-                    {
-                        // indirect calls also count as stackcalls
-                        FG->m_hasStackCall = true;
-                        FG->m_hasIndirectCall = true;
-                    }
+                    FG->m_hasInlineAsm = true;
+                    break;
                 }
             }
         }
@@ -679,8 +708,14 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
         }
     }
 
-    // Reset attribute flags
-    setGroupAttributes();
+    // Reset stack call flag
+    setGroupStackCall();
+
+    // Once FGs are formed, set FG's HasVariableLengthAlloca
+    setHasVariableLengthAlloca();
+
+    // Set FGs flag for inline asm
+    setGroupHasInlineAsm();
 
     // Verification.
     if (!verify())
