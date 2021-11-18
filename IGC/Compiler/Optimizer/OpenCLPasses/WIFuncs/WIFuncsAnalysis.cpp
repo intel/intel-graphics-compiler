@@ -61,6 +61,10 @@ bool WIFuncsAnalysis::runOnModule(Module& M)
     {
         Function* pFunc = &(*I);
         if (pFunc->isDeclaration()) continue;
+        if (!isEntryFunc(m_pMDUtils, pFunc)
+            && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic)
+            && IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL)
+            continue;
         runOnFunction(*pFunc);
     }
 
