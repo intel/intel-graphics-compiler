@@ -23,6 +23,7 @@ namespace IGC
     typedef struct RetryState {
         bool allowLICM;
         bool allowCodeSinking;
+        bool allowAddressArithmeticSinking;
         bool allowSimd32Slicing;
         bool allowPromotePrivateMemory;
         bool allowPreRAScheduler;
@@ -32,8 +33,8 @@ namespace IGC
     } RetryState;
 
     static const RetryState RetryTable[] = {
-        { true, true, false, true, true, true, true, 1 },
-        { false, true, true, false, false, false, false, 500 }
+        { true, true, false, false, true, true, true, true, 1 },
+        { false, true, true, true, false, false, false, false, 500 }
     };
 
     RetryManager::RetryManager() : enabled(false)
@@ -56,6 +57,10 @@ namespace IGC
     bool RetryManager::AllowLICM() {
         IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowLICM;
+    }
+    bool RetryManager::AllowAddressArithmeticSinking() {
+        IGC_ASSERT(stateId < getStateCnt());
+        return RetryTable[stateId].allowAddressArithmeticSinking;
     }
     bool RetryManager::AllowPromotePrivateMemory() {
         IGC_ASSERT(stateId < getStateCnt());

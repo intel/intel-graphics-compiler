@@ -789,6 +789,7 @@ namespace IGC
         bool AllowPreRAScheduler();
         bool AllowVISAPreRAScheduler();
         bool AllowCodeSinking();
+        bool AllowAddressArithmeticSinking();
         bool AllowSimd32Slicing();
         bool AllowLargeURBWrite();
         void SetFirstStateId(int id);

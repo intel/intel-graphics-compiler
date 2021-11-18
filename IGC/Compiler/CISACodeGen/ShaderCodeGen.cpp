@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ScalarizerCodeGen.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
+#include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
 #include "Compiler/CISACodeGen/HoistURBWrites.hpp"
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
@@ -746,6 +747,13 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(createLICMPass());
         }
         mpm.add(createAggressiveDCEPass());
+        // As DPC++ FE apply LICM we cannot reduce register pressure just
+        // by turning off LICM at IGC in some cases so apply sinking address arithmetic
+        if (ctx.m_retryManager.AllowAddressArithmeticSinking() &&
+            ctx.type == ShaderType::OPENCL_SHADER)
+        {
+            mpm.add(new AddressArithmeticSinking());
+        }
     }
 
     if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) ||

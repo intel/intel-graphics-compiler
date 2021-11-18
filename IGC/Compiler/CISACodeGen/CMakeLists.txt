@@ -10,6 +10,7 @@
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(IGC_BUILD__SRC__CISACodeGen_Common
+    "${CMAKE_CURRENT_SOURCE_DIR}/AddressArithmeticSinking.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/AdvCodeMotion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/AdvMemOpt.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/AnnotateUniformAllocas.cpp"
@@ -106,6 +107,7 @@ set(IGC_BUILD__SRC__Compiler_CISACodeGen
     )
 
 set(IGC_BUILD__HDR__CISACodeGen_Common
+    "${CMAKE_CURRENT_SOURCE_DIR}/AddressArithmeticSinking.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/AdvCodeMotion.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/AdvMemOpt.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/AnnotateUniformAllocas.h"
