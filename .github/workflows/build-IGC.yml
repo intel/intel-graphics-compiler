@@ -20,12 +20,6 @@ jobs:
         os: [ ubuntu1804, ubuntu2004 ]
         llvm_ver: [ 10, 11 ]
         compiler: [ gcc, clang ]
-        # include experimental builds
-        include:
-        - llvm_ver: 12
-          compiler: gcc
-          os: ubuntu2004
-          experimental: true
     steps:
       - uses: actions/checkout@v2
       - name: Run Script Selectiong Docker
