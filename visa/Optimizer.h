@@ -423,11 +423,11 @@ private:
     // m_labelPatchInsts: keep the info described above
     // m_instToBBs:  convenient map to BBs that those insts belong to
     // m_waCallInsts: call insts whose targets should be defined outside the smallEU branch.
-    // m_cr0DstInsts: mov insts that copy callee of SmallEU into BigEU:  mov inst --> call inst
+    // m_maskOffWAInsts: insts whose MaskOff needs to be changed for this WA.
     std::unordered_map<G4_INST*, std::pair<G4_INST*, G4_INST*>> m_labelPatchInsts;
     std::unordered_map<G4_INST*, G4_BB*> m_instToBBs;
     std::list<G4_INST*> m_waCallInsts;
-    std::unordered_map <G4_INST*, G4_INST*> m_cr0DstInsts;
+    std::unordered_map <G4_INST*, G4_BB*> m_maskOffWAInsts;
 
 public:
     Optimizer(vISA::Mem_Manager& m, IR_Builder& b, G4_Kernel& k, FlowGraph& f) :

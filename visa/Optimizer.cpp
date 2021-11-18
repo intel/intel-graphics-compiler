@@ -207,7 +207,7 @@ void Optimizer::finishFusedCallWA()
         if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
         {
             assert(kernel.getSimdSize() <= 16);
-            uint32_t orImm = kernel.getSimdSize() == 16 ? 0xFFFF0000 : 0xFF00;
+            uint32_t orImm = kernel.getSimdSize() == 16 ? 0xFFFF0000 : 0xFFFFFF00;
 
             G4_VarBase* V_sr0 = builder.phyregpool.getSr0Reg();
             G4_SrcRegRegion* I0_Src0 = builder.createSrc(V_sr0, 0, 2, builder.getRegionScalar(), Type_UD);
@@ -244,11 +244,6 @@ void Optimizer::finishFusedCallWA()
         G4_BB* epilogBB = fg.back();
         if (epilogBB->isEndWithFRet())
         {
-            G4_INST* retInst = epilogBB->back();
-            uint16_t maxlanes = retInst->getMaskOffset() + retInst->getExecSize();
-            assert(maxlanes <= 16 && "For fused Call WA, call's execution size <= 16");
-            G4_InstOption newMaskOff = maxlanes <= 8 ? InstOpt_M8 : InstOpt_M16;
-
             // Save code use r125 (calling convention) and is in prolog BB.
             for (auto II = prologBB->begin(), IE = prologBB->end(); II != IE; ++II)
             {
@@ -267,7 +262,8 @@ void Optimizer::finishFusedCallWA()
                 uint32_t subregnum = src->ExSubRegNum(isValid);
                 if (regnum == StackCallABIGRF && subregnum == 0)
                 {
-                    mInst->setMaskOption(newMaskOff);
+                    assert((mInst->getMaskOffset() + mInst->getExecSize()) <= 16);
+                    mInst->setMaskOption(InstOpt_M16);
                     break;
                 }
                 else if (mInst->getDst()->ExRegNum(isValid) == StackCallABIGRF)
@@ -295,14 +291,15 @@ void Optimizer::finishFusedCallWA()
                 uint32_t subregnum = dst->ExSubRegNum(isValid);
                 if (regnum == StackCallABIGRF && subregnum == 0)
                 {
-                    mInst->setMaskOption(newMaskOff);
+                    assert((mInst->getMaskOffset() + mInst->getExecSize()) <= 16);
+                    mInst->setMaskOption(InstOpt_M16);
                     break;
                 }
             }
         }
     }
 
-    if (m_labelPatchInsts.empty() && m_waCallInsts.empty() && m_instToBBs.empty())
+    if (m_labelPatchInsts.empty() && m_waCallInsts.empty() && m_maskOffWAInsts.empty())
         return;
 
     // patch ip for fused call WA
@@ -312,35 +309,18 @@ void Optimizer::finishFusedCallWA()
     for (auto II : m_instToBBs)
     {
         G4_BB* BB = II.second;
-        found = false;
-        for (auto b : kernel.fg)
+        if (std::find(kernel.fg.begin(), kernel.fg.end(), BB) == kernel.fg.end())
         {
-            if (BB == b)
-            {
-                found = true;
-                break;
-            }
-        }
-
-        assert(found && "ICE: BB not found in IP patch info!");
-        if (found)
-        {
+            assert(false && "ICE: BB not found in IP patch info!");
             found = false;
-            G4_INST* Inst = II.first;
-            for (auto ii = BB->begin(), ie = BB->end(); ii != ie; ++ii)
-            {
-                G4_INST* currI = *ii;
-                if (Inst == currI)
-                {
-                    found = true;
-                    break;
-                }
-            }
-            assert(found && "ICE: inst not found in IP patch info!");
+            break;
         }
 
-        if (!found)
+        G4_INST* Inst = II.first;
+        if (std::find(BB->begin(), BB->end(), Inst) == BB->end())
         {
+            assert(false && "ICE: inst not found in IP patch info!");
+            found = false;
             break;
         }
     }
@@ -358,12 +338,9 @@ void Optimizer::finishFusedCallWA()
                 && m_instToBBs.find(ip_end) != m_instToBBs.end())
             {
                 found = true;
+                continue;
             }
-
-            if (!found)
-            {
-                break;
-            }
+            break;
         }
         assert(found && "ICE: inst not in m_instToBBs!");
     }
@@ -390,17 +367,24 @@ void Optimizer::finishFusedCallWA()
     //    4. (W)mov (1|M0)            r64.2<1>:ud cr0.2<0;1,0>:ud
     // WA requires the mov at 4 to be in M8, not M0 in case the BigEU has all channesl off.
     // Here set quarter control of that mov to M8 (simd8 kernel).
-    for (auto II : m_cr0DstInsts)
+    for (auto II : m_maskOffWAInsts)
     {
-        G4_INST* cr0MovInst = II.first;
-        G4_INST* callInst = II.second;
-        assert(cr0MovInst->opcode() == G4_mov);
-        assert((callInst->isCall() || callInst->isFCall()));
+        G4_INST* tInst = II.first;
+        G4_BB*  tBB = II.second;
 
-        uint16_t maxlanes = callInst->getMaskOffset() + callInst->getExecSize();
-        assert(maxlanes <= 16 && "For fused Call WA, call's execution size <= 16");
-        G4_InstOption newMaskOff = maxlanes <= 8 ? InstOpt_M8 : InstOpt_M16;
-        cr0MovInst->setMaskOption(newMaskOff);
+        // make sure inst are still valid
+        if (std::find(kernel.fg.begin(), kernel.fg.end(), tBB) == kernel.fg.end())
+        {
+            assert(false && "ICE: BB not in m_maskOffWAInsts!");
+            continue;
+        }
+        if (std::find(tBB->begin(), tBB->end(), tInst) == tBB->end())
+        {
+            assert(false && "ICE: inst not in m_maskOffWAInsts!");
+            continue;
+        }
+        assert((tInst->getMaskOffset() + tInst->getExecSize()) <= 16);
+        tInst->setMaskOption(InstOpt_M16);
     }
 
     for (auto II : m_labelPatchInsts)
@@ -489,7 +473,7 @@ void Optimizer::finishFusedCallWA()
     m_instToBBs.clear();
     m_labelPatchInsts.clear();
     m_waCallInsts.clear();
-    m_cr0DstInsts.clear();
+    m_maskOffWAInsts.clear();
 }
 
 void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
@@ -13397,9 +13381,7 @@ void Optimizer::applyFusedCallWA()
                 nullptr, g4::NOSAT, callI->getExecSize(), nullptr, nSrc, nullptr, callI->getOption());
             smallB0->push_back(nCallI);
 
-            m_cr0DstInsts.insert(std::make_pair(I3, nCallI));
-            m_instToBBs.insert(std::make_pair(I3, BB));
-            m_instToBBs.insert(std::make_pair(nCallI, smallB0));
+            m_maskOffWAInsts.insert(std::make_pair(I3, BB));
 
             if (!fg.globalOpndHT.isOpndGlobal(Target))
             {
@@ -13478,8 +13460,7 @@ void Optimizer::applyFusedCallWA()
             m_instToBBs.insert(std::make_pair(callI, bigB0));
             m_instToBBs.insert(std::make_pair(nCallI, smallB0));
 
-            m_cr0DstInsts.insert(std::make_pair(I3, nCallI));
-            m_instToBBs.insert(std::make_pair(I3, BB));
+            m_maskOffWAInsts.insert(std::make_pair(I3, BB));
         }
 
         G4_Label* smallB0Label = smallB0->front()->getLabel();
