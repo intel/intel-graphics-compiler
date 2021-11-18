@@ -227,6 +227,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.ShaderOverrider = Opts.ShaderOverrider.get();
   BackendOpts.DisableStructSplitting = Opts.DisableStructSplitting;
   BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
+  BackendOpts.ReserveBTIZero = (Opts.Binary != vc::BinaryKind::CM);
   if (Opts.ForceLiveRangesLocalizationForAccUsage)
     BackendOpts.LocalizeLRsForAccUsage = true;
   if (Opts.ForceDisableNonOverlappingRegionOpt)

@@ -107,16 +107,21 @@ public:
 
     ShaderHash getProgramHash() const override { return {}; }
     bool needsSystemKernel() const override { return false; }
-    bool isProgramDebuggable() const override { return IsDebuggable; }
+    // VC Kernels always allocate SIP surface (to allow debugging)
+    bool isProgramDebuggable() const override { return true; }
+    bool hasDebugInformation() const override {
+      return DebugInformationPresent;
+    }
     bool hasProgrammableBorderColor() const override { return false; }
     bool useBindlessMode() const override { return false; }
     bool useBindlessLegacyMode() const override { return false; }
 
-
-    void updateDebuggableStatus(bool Debuggable) { IsDebuggable = Debuggable; }
+    void updateDebugInfoStatus(bool HasDebugInfo) {
+      DebugInformationPresent = HasDebugInfo;
+    }
 
   private:
-    bool IsDebuggable = false;
+    bool DebugInformationPresent = false;
   };
 
   explicit CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable);

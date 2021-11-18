@@ -202,7 +202,7 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
         m_ContextProvider.isProgramDebuggable());
   }
 
-  if (m_ContextProvider.isProgramDebuggable()) {
+  if (m_ContextProvider.hasDebugInformation()) {
     DebugInfoHolder = buildZeDebugInfo(m_kernels, ErrLog);
     if (DebugInfoHolder) {
       // Unfortunately, we do need const_cast here, since API requires void*
