@@ -958,7 +958,7 @@ void Optimizer::insertDummyMovForHWRSWADPAS(G4_BB *bb)
 
 void Optimizer::insertDummyMovForHWRSWA()
 {
-    if (!((VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344) ||
+    if (!((VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344) || VISA_WA_CHECK(builder.getPWaTable(), Wa_22012856258) ||
         VISA_WA_CHECK(builder.getPWaTable(), Wa_16012292205)) && builder.hasRSForSpecificPlatform()))
     {
         return;
