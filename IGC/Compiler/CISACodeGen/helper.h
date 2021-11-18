@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/PassManager.h>
 #include <llvm/ADT/SmallSet.h>
 #include <llvm/ADT/DenseSet.h>
+#include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -489,6 +490,12 @@ namespace IGC
     llvm::Value* CreateMulhS64(llvm::IRBuilder<>& B, llvm::Value* const u, llvm::Value* const v);
     llvm::Value* CreateMulhU64(llvm::IRBuilder<>& B, llvm::Value* const u, llvm::Value* const v);
     llvm::Value* CreateMulh(llvm::Function& F, llvm::IRBuilder<>& B, const bool isSigned, llvm::Value* const u, llvm::Value* const v);
+
+    // Ported from PostDominators.cpp of llvm10 or later
+    // replace this with PDT.dominates(I1, I2) once we upgrade
+    bool PDT_dominates(llvm::PostDominatorTree& PTD,
+        const llvm::Instruction* I1,
+        const llvm::Instruction* I2);
 
     // Returns true if a function has an inline asm call instruction
     bool hasInlineAsmInFunc(llvm::Function& F);
