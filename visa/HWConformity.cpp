@@ -3033,64 +3033,104 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
                 // may be q->uq or uq->q or raw mov
                 // safe to do raw copy for all 3 cases
 
-                // mov (8) r10.0<1>:uq   r20.0<1;1,0>:uq
-                // =>
-                // mov (8) r10.0<2>:ud   r20.0<2;1,0>:ud
-                // mov (8) r10.1<2>:ud   r20.1<2;1,0>:ud
-
-                // 1st half
-                auto newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_UD, dst->getAddrImm())) :
-                    (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, 2 * dstHS, Type_UD));
-                auto newSrc = builder.createSrcRegRegion(Mod_src_undef, src0RR->getRegAccess(), src0RR->getBase(), src0RR->getRegOff(),
-                    src0RR->isIndirect() ? src0RR->getSubRegOff() : (src0RR->getSubRegOff() * 2), rgnToUse, Type_UD);
-                newSrc->setImmAddrOff(src0RR->getAddrImm());
-                auto newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
-                newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
-                iter = bb->insertBefore(origIter, newInst);
-
-                // second half
-                bool dstAddrIncremented = false, src0AddrIncremented = false;
-                unsigned int immAddrOff = 4;
-                if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512)
+                bool isNoMaskInst = !inst->getPredicate() && (inst->isWriteEnableInst() || bb->isAllLaneActive());
+                if (isNoMaskInst && inst->getExecSize() == g4::SIMD1 && src0->asSrcRegRegion()->isScalar())
                 {
-                    // increment dst address register by 4, later decrement it
-                    dstAddrIncremented = true;
-                    immAddrOff = 0;
-                    iter = bb->insertBefore(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, 4));
-                }
-                newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_UD, immAddrOff + dst->getAddrImm())) :
-                    (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 2 * dstHS, Type_UD));
-                newSrc = builder.createSrcRegRegion(Mod_src_undef, src0RR->getRegAccess(), src0RR->getBase(), src0RR->getRegOff(),
-                    src0RR->isIndirect() ? src0RR->getSubRegOff() : (src0RR->getSubRegOff() * 2 + 1), rgnToUse, Type_UD);
-                if (newSrc->isIndirect())
-                {
-                    // upper 4 bytes
-                    if ((4 + src0RR->getAddrImm()) > 512)
+                    // For SIMD1 case that is not under divergent CF, we can change to UD type directly:
+                    // mov (1) r10.1<1>:uq   r20.0<0;1,0>:uq
+                    // =>
+                    // mov (2) r10.2<1>:ud   r20.0<1;1,0>:ud
+                    G4_DstRegRegion* newDst = nullptr;
+                    if (dst->isIndirect())
                     {
-                        src0AddrIncremented = true;
-                        iter = bb->insertBefore(origIter, incrementVar(src0RR, src0RR->getRegion()->width, src0RR->getRegOff(), src0RR->getSubRegOff(), inst, 4));
-                        newSrc->setImmAddrOff(src0RR->getAddrImm());
+                        newDst = builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), dst->getHorzStride(), Type_UD, dst->getAddrImm());
                     }
                     else
-                        newSrc->setImmAddrOff(4 + src0RR->getAddrImm());
-                }
-                newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
-                newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
-                iter = bb->insertBefore(origIter, newInst);
+                    {
+                        newDst = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, dst->getHorzStride(), Type_UD, dst->getAccRegSel());
+                    }
 
-                if (dstAddrIncremented)
+                    G4_SrcRegRegion* newSrc = nullptr;
+                    if (src0->getRegAccess() == Direct)
+                    {
+                        newSrc = builder.createSrcRegRegion(src0RR->getModifier(), Direct, src0RR->getBase(),
+                            src0RR->getRegOff(), src0RR->getSubRegOff() * 2, builder.getRegionStride1(), Type_UD);
+                    }
+                    else
+                    {
+                        newSrc = builder.createIndirectSrc(src0RR->getModifier(), src0RR->getBase(), src0RR->getRegOff(),
+                            src0RR->getSubRegOff(), builder.getRegionStride1(), Type_UD, src0RR->getAddrImm());
+                    }
+
+                    inst->setSrc(newSrc, 0);
+                    inst->setDest(newDst);
+                    inst->setExecSize(G4_ExecSize(inst->getExecSize() * 2u));
+                    inst->setOptionOn(InstOpt_WriteEnable);
+                    inst->setMaskOption(InstOpt_M0);
+
+                    return true;
+                }
+                else
                 {
-                    iter = bb->insertBefore(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, -4));
+                    // mov (8) r10.0<1>:uq   r20.0<1;1,0>:uq
+                    // =>
+                    // mov (8) r10.0<2>:ud   r20.0<2;1,0>:ud
+                    // mov (8) r10.1<2>:ud   r20.1<2;1,0>:ud
+
+                    // 1st half
+                    auto newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_UD, dst->getAddrImm())) :
+                        (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, 2 * dstHS, Type_UD));
+                    auto newSrc = builder.createSrcRegRegion(Mod_src_undef, src0RR->getRegAccess(), src0RR->getBase(), src0RR->getRegOff(),
+                        src0RR->isIndirect() ? src0RR->getSubRegOff() : (src0RR->getSubRegOff() * 2), rgnToUse, Type_UD);
+                    newSrc->setImmAddrOff(src0RR->getAddrImm());
+                    auto newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
+                    newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+                    iter = bb->insertBefore(origIter, newInst);
+
+                    // second half
+                    bool dstAddrIncremented = false, src0AddrIncremented = false;
+                    unsigned int immAddrOff = 4;
+                    if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512)
+                    {
+                        // increment dst address register by 4, later decrement it
+                        dstAddrIncremented = true;
+                        immAddrOff = 0;
+                        iter = bb->insertBefore(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, 4));
+                    }
+                    newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_UD, immAddrOff + dst->getAddrImm())) :
+                        (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 2 * dstHS, Type_UD));
+                    newSrc = builder.createSrcRegRegion(Mod_src_undef, src0RR->getRegAccess(), src0RR->getBase(), src0RR->getRegOff(),
+                        src0RR->isIndirect() ? src0RR->getSubRegOff() : (src0RR->getSubRegOff() * 2 + 1), rgnToUse, Type_UD);
+                    if (newSrc->isIndirect())
+                    {
+                        // upper 4 bytes
+                        if ((4 + src0RR->getAddrImm()) > 512)
+                        {
+                            src0AddrIncremented = true;
+                            iter = bb->insertBefore(origIter, incrementVar(src0RR, src0RR->getRegion()->width, src0RR->getRegOff(), src0RR->getSubRegOff(), inst, 4));
+                            newSrc->setImmAddrOff(src0RR->getAddrImm());
+                        }
+                        else
+                            newSrc->setImmAddrOff(4 + src0RR->getAddrImm());
+                    }
+                    newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
+                    newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+                    iter = bb->insertBefore(origIter, newInst);
+
+                    if (dstAddrIncremented)
+                    {
+                        iter = bb->insertBefore(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, -4));
+                    }
+
+                    if (src0AddrIncremented)
+                    {
+                        iter = bb->insertBefore(origIter, incrementVar(src0RR, src0RR->getRegion()->width, src0RR->getRegOff(), src0RR->getSubRegOff(), inst, -4));
+                    }
+
+                    bb->erase(origIter);
+
+                    return true;
                 }
-
-                if (src0AddrIncremented)
-                {
-                    iter = bb->insertBefore(origIter, incrementVar(src0RR, src0RR->getRegion()->width, src0RR->getRegOff(), src0RR->getSubRegOff(), inst, -4));
-                }
-
-                bb->erase(origIter);
-
-                return true;
             }
             else if (dst->getTypeSize() == 8 && src0->getTypeSize() < 8)
             {
