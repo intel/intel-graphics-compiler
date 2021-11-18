@@ -101,6 +101,16 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
         implicitArgs.push_back(ImplicitArg::R0);
         if (RequirePayloadHeader)
             implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
+
+        if (!m_ctx->platform.isXeHPSDVPlus() &&
+            IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
+        {
+            if (m_hasStackCalls)
+            {
+                implicitArgs.push_back(ImplicitArg::ArgType::IMPLICIT_ARG_BUFFER_PTR);
+                implicitArgs.push_back(ImplicitArg::ArgType::IMPLICIT_ARG_LOCALID);
+            }
+        }
     }
     else
     {

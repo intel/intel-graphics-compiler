@@ -214,6 +214,8 @@ public:
     CVariable* GetARGV();
     CVariable* GetRETV();
     CVariable* GetPrivateBase();
+    CVariable* GetImplArgBufPtr();
+    CVariable* GetLocalIdBufPtr();
 
     void SaveSRet(CVariable* sretPtr);
     CVariable* GetAndResetSRet();
@@ -607,6 +609,8 @@ protected:
     CVariable* m_ARGV;
     CVariable* m_RETV;
     CVariable* m_SavedSRetPtr;
+    CVariable* m_ImplArgBufPtr;
+    CVariable* m_LocalIdBufPtr;
 
     std::vector<USC::SConstantGatherEntry> gatherMap;
     uint     m_ConstantBufferLength;

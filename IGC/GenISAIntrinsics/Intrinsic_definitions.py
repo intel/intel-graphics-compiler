@@ -160,6 +160,16 @@ Imported_Intrinsics = \
      ("int",                           "Resource Type (CB, UAV, etc")],
     "NoMem"]],
 ####################################################################################################
+"GenISA_GetImplicitBufferPtr": ["",
+    [("anyptr",                        "implicit buffer pointer for use in stack call"),
+    [],
+    "InaccessibleMemOnly"]],
+####################################################################################################
+"GenISA_GetLocalIdBufferPtr": ["",
+    [("anyptr",                        "pointer to local id buffer for use in stack call"),
+    [],
+    "InaccessibleMemOnly"]],
+####################################################################################################
 "GenISA_GetPixelMask": ["Get live pixel mask from dmask",
     [("bool",                          ""),
     [("bool",                          "")],
@@ -563,10 +573,20 @@ Imported_Intrinsics = \
     [("int",                           "sample index")],
     "NoMem"]],
 ####################################################################################################
+"GenISA_SetImplicitBufferPtr": ["",
+    [("void",                          "result"),
+    [("anyptr",                        "buffer pointer passed by runtime")],
+    "InaccessibleMemOnly"]],
+####################################################################################################
 "GenISA_SetDebugReg": ["",
     [("int",                           "result (dbg0.1:ud)"),
     [("int",                           "dbg0.0:ud")],
     "None"]],
+####################################################################################################
+"GenISA_SetLocalIdBufferPtr": ["",
+    [("void",                        "result"),
+    [("anyptr",                      "local id buffer pointer passed by runtime")],
+    "InaccessibleMemOnly"]],
 ####################################################################################################
 "GenISA_SetStream": ["",
     [("void",                          ""),

@@ -37,7 +37,9 @@ typedef enum
     PREDEFINED_CE0              = 15,
     PREDEFINED_DBG              = 16,
     PREDEFINED_COLOR            = 17,
-    PREDEFINED_VAR_LAST         = PREDEFINED_COLOR
+    PREDEFINED_IMPL_ARG_BUF_PTR = 18,
+    PREDEFINED_LOCAL_ID_BUF_PTR = 19,
+    PREDEFINED_VAR_LAST         = PREDEFINED_LOCAL_ID_BUF_PTR
 } PreDefined_Vars;
 
 typedef enum

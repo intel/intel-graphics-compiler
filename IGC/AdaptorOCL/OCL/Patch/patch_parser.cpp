@@ -521,6 +521,14 @@ void DebugPatchList(
                         ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                             "\tType = FLAT_IMAGE_PITCH\n");
                         break;
+                    case iOpenCL::DATA_PARAMETER_IMPL_ARG_BUFFER:
+                        ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                            "\tType = IMPL_ARG_BUFFER\n");
+                        break;
+                    case iOpenCL::DATA_PARAMETER_LOCAL_ID_BUFFER:
+                        ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                            "\tType = LOCAL_ID_BUFFER\n");
+                        break;
                     default:
                         ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                             "\tType = UNKNOWN_TYPE\n" );

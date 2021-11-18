@@ -43,6 +43,25 @@ using namespace IGC::IGCMD;
 namespace IGC
 {
 
+    unsigned int getLocalIdBufferSize(SIMDMode mode)
+    {
+        auto simdSize = numLanes(mode);
+        IGC_ASSERT(simdSize != 0);
+
+        // as per spec, size of local id buffer depends on simd size
+        // simd size * size/elem * #dims
+        unsigned int allocSize = simdSize * 2 * 3;
+
+        // simd8 version has some reserved fields
+        if (simdSize == 8)
+            allocSize *= 2;
+
+        // field to hold pointer to local id buffer
+        allocSize += 8;
+
+        return allocSize;
+    }
+
     COpenCLKernel::COpenCLKernel(const OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) :
         CComputeShaderBase(pFunc, pProgram)
     {
@@ -739,6 +758,18 @@ namespace IGC
                 payloadPosition, kernelArg->getAllocateSize());
             break;
 
+        case KernelArg::ArgType::IMPLICIT_ARG_BUFFER:
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::implicit_arg_buffer,
+                payloadPosition, kernelArg->getAllocateSize());
+            break;
+
+        case KernelArg::ArgType::IMPLICIT_LOCAL_ID_BUFFER:
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::implicit_local_id_buffer,
+                payloadPosition, kernelArg->getAllocateSize());
+            break;
+
         // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:
@@ -1022,6 +1053,30 @@ namespace IGC
             m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
         }
         break;
+
+        case KernelArg::ArgType::IMPLICIT_ARG_BUFFER:
+        case KernelArg::ArgType::IMPLICIT_LOCAL_ID_BUFFER:
+        {
+            constantType = kernelArg->getDataParamToken();
+            IGC_ASSERT(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
+
+            auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
+
+            DWORD sizeInBytes = kernelArg->getAllocateSize();
+            if (type == KernelArg::ArgType::IMPLICIT_LOCAL_ID_BUFFER)
+            {
+                sizeInBytes = getLocalIdBufferSize(m_dispatchSize);
+            }
+
+            constInput->ConstantType = constantType;
+            constInput->Offset = sizeInBytes;
+            constInput->PayloadPosition = payloadPosition;
+            constInput->PayloadSizeInBytes = sizeInBytes;
+            constInput->ArgumentNumber = DEFAULT_ARG_NUM;
+            m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
+
+            break;
+        }
 
         case KernelArg::ArgType::IMPLICIT_NUM_GROUPS:
         case KernelArg::ArgType::IMPLICIT_GLOBAL_SIZE:
@@ -1662,6 +1717,11 @@ namespace IGC
             int numAllocInstances = arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ? m_numberInstance : 1;
 
             auto allocSize = arg.getAllocateSize();
+
+            if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_ID_BUFFER)
+            {
+                allocSize = getLocalIdBufferSize(m_dispatchSize);
+            }
 
             if (!IsUnusedArg && !isRuntimeValue)
             {

@@ -115,6 +115,12 @@ namespace IGC
             // Bindless buffer (for stateless to bindless optim)
             BINDLESS_OFFSET,
 
+            // Pointer to implicit arguments prepared by runtime
+            IMPLICIT_ARG_BUFFER_PTR,
+
+            // Inlined local id buffer prepared by runtime
+            IMPLICIT_ARG_LOCALID,
+
             NUM_IMPLICIT_ARGS
         };
 
