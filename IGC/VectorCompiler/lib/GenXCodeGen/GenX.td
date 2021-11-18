@@ -151,23 +151,19 @@ def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32, FeatureInstrBitRotate,
                                FeatureHWTIDFromPredef,
-                               FeatureHasPackedFloat,
-                               FeaturePreemption]>;
+                               FeatureHasPackedFloat]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
-                               FeatureHasPackedFloat,
-                               FeaturePreemption]>;
+                               FeatureHasPackedFloat]>;
 def : Proc<"RKL",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
-                               FeatureHasPackedFloat,
-                               FeaturePreemption]>;
+                               FeatureHasPackedFloat]>;
 def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
-                               FeatureHasPackedFloat,
-                               FeaturePreemption]>;
+                               FeatureHasPackedFloat]>;
 def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureInstrAdd64,
                                FeatureFP64,
