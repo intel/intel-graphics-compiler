@@ -2481,15 +2481,16 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
     return;
   }
 
-  // Real bitcast with possibly different types. Use whichever type has the
-  // largest element size, so we minimize the number of channels used in the
-  // move.
-  Type *Ty = CI->getOperand(0)->getType();
-  if (Ty->getScalarType()->getPrimitiveSizeInBits() <
-      CI->getType()->getScalarType()->getPrimitiveSizeInBits())
-    Ty = CI->getType();
   if (Liveness->isNoopCastCoalesced(CI))
     return; // cast was coalesced away
+
+  // Here we always choose minimal (in size) type in order to avoid issues
+  // with alignment. We expect that execution size should still be valid
+  Type *Ty = CI->getSrcTy();
+  if (Ty->getScalarType()->getPrimitiveSizeInBits() >
+      CI->getDestTy()->getScalarType()->getPrimitiveSizeInBits())
+    Ty = CI->getDestTy();
+
   Register *DstReg =
       getRegForValueAndSaveAlias(KernFunc, CI, DONTCARESIGNED, Ty);
   // Give dest and source the same signedness for byte mov.
