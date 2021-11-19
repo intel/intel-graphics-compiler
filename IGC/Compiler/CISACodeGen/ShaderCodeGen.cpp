@@ -479,6 +479,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
         (ctx.m_DriverInfo.NeedFP64(ctx.platform.getPlatformInfo().eProductFamily) && ctx.platform.hasNoFP64Inst()));
+    bool hasDPDivSqrtEmu = !ctx.platform.hasNoFP64Inst() && !ctx.platform.hasCorrectlyRoundedMacros() && ctx.m_DriverInfo.NeedFP64DivSqrt();
     uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
     theEmuKind |= (ctx.m_DriverInfo.NeedI64BitDivRem() ? EmuKind::EMU_I64DIVREM : 0);
     theEmuKind |=
@@ -732,7 +733,10 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(createIGCInstructionCombiningPass());
         }
         mpm.add(new GenSpecificPattern());
-        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel)
+        // Cases with DPDivSqrtEmu grow significantly.
+        // We can disable EarlyCSE when hasDPDivSqrtEmu is true,
+        // what causes the values will have shorter lifetime and we can avoid spills.
+        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && !hasDPDivSqrtEmu)
         {
             mpm.add(createEarlyCSEPass());
         }
