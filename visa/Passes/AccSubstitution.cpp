@@ -480,6 +480,11 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, b
                 {
                     return false;
                 }
+                if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(2)->getType()) ||
+                   (useInst->getDst() && !IS_TYPE_FLOAT_FOR_ACC(useInst->getDst()->getType())))
+                {
+                    return false;
+                }
                 break;
             case Opnd_src1:
                 if (BC)
@@ -652,6 +657,15 @@ bool AccSubPass::replaceDstWithAcc(G4_INST* inst, int accNum)
             {
                 if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg() ||
                     useInst->getSrc(0)->compareOperand(useInst->getSrc(1)) == G4_CmpRelation::Rel_eq)
+                {
+                    return false;
+                }
+            }
+            else if (builder.relaxedACCRestrictions3() && useInst->opcode() == G4_mul)
+            {
+                if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getDst()->getType()) ||
+                    !IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(0)->getType()) ||
+                    !IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(1)->getType()))
                 {
                     return false;
                 }
