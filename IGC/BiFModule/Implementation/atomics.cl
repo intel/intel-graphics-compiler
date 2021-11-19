@@ -21,8 +21,8 @@ extern __constant int __UseNativeFP32GlobalAtomicAdd;
 extern __constant int __UseNativeFP16AtomicMinMax;
 
 
-  __local uint* __builtin_IB_get_local_lock();
-  __global uint* __builtin_IB_get_global_lock();
+  __local int* __builtin_IB_get_local_lock();
+  __global int* __builtin_IB_get_global_lock();
   void __builtin_IB_eu_thread_pause(uint value);
   void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1);
 
