@@ -10068,6 +10068,7 @@ int GlobalRA::coloringRegAlloc()
             builder.phyregpool.getGreg(0), 0);
     }
     bool rematDone = false, alignedScalarSplitDone = false;
+    bool reserveSpillReg = false;
     VarSplit splitPass(*this);
     while (iterationNo < maxRAIterations)
     {
@@ -10127,12 +10128,12 @@ int GlobalRA::coloringRegAlloc()
 
         bool allowAddrTaken = builder.getOption(vISA_FastSpill) || fastCompile ||
             !kernel.getHasAddrTaken();
-        bool reserveSpillReg = false;
         if (builder.getOption(vISA_FailSafeRA) &&
             kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
             !hasStackCall &&
-            allowAddrTaken &&
-            iterationNo == failSafeRAIteration)
+            ((iterationNo == maxRAIterations - 1) ||
+             (allowAddrTaken &&
+              iterationNo == failSafeRAIteration)))
         {
             if (builder.getOption(vISA_RATrace))
             {
@@ -10481,7 +10482,7 @@ int GlobalRA::coloringRegAlloc()
     //
     // Report failure to allocate due to excessive register pressure.
     //
-    if (iterationNo == maxRAIterations)
+    if (!reserveSpillReg && (iterationNo == maxRAIterations))
     {
         std::stringstream spilledVars;
         for (auto dcl : kernel.Declares)
