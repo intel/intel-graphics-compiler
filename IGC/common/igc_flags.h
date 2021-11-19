@@ -251,6 +251,7 @@ DECLARE_IGC_REGKEY(bool, ForceMemoryFenceBeforeEOT,     false, "Forces inserting
 DECLARE_IGC_REGKEY(bool, EnableRTmaskPso,               true,  "Enable render target mask optimization in PSO opt", false)
 DECLARE_IGC_REGKEY(DWORD, MSAAClearedKernel,            0,     "Insert the discard code for MSAA_MSC_Cleared kernels. 2/4/8/16", false)
 DECLARE_IGC_REGKEY(bool, EnablerReadSuppressionWA,    true, "Enable read suppression WA for the send and indirect access", false)
+DECLARE_IGC_REGKEY(bool, manualEnableRSWA,    true, "Enable read suppression WA for the send and indirect access", false)
 DECLARE_IGC_REGKEY(bool, DPASReadSuppressionWA,    true, "Enable read suppression WA for the send and indirect access", false)
 DECLARE_IGC_REGKEY(DWORD, RSWARegNum,    0, "dummy register used for EnablerReadSuppressionWA", false)
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierCheck,   false,  "Uses WIAnalysis to find barriers in divergent flow control. May have false positives.", false)
