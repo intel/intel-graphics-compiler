@@ -70,6 +70,9 @@ namespace IGC
     {
         virtual void Emit(EmitPass* pass, const DstModifier& modifier) = 0;
         virtual ~Pattern() {}
+
+        // Does the pattern allow destination saturation?
+        virtual bool supportsSaturate() { return true; }
     };
 
     struct SDAG

@@ -1688,10 +1688,12 @@ namespace IGC
         struct FrcPattern : public Pattern
         {
             SSource source;
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            void Emit(EmitPass* pass, const DstModifier& modifier) override
             {
                 pass->Frc(source, modifier);
             }
+
+            bool supportsSaturate() override { return false; }
         };
         IGC_ASSERT(I.getOpcode() == Instruction::FSub);
         llvm::Value* source0 = I.getOperand(0);
@@ -3303,9 +3305,16 @@ namespace IGC
                 // without improve code quality this may be refined in the future
                 if (inst->hasOneUse() && SupportsSaturate(inst))
                 {
-                    satPattern->pattern = Match(*inst);
-                    IGC_ASSERT_MESSAGE(satPattern->pattern, "Failed to match pattern");
-                    match = true;
+                    auto *pattern = Match(*inst);
+                    IGC_ASSERT_MESSAGE(pattern, "Failed to match pattern");
+                    // Even though the original `inst` may support saturate,
+                    // we need to know if the instruction(s) generated from
+                    // the pattern support it.
+                    if (pattern->supportsSaturate())
+                    {
+                        satPattern->pattern = pattern;
+                        match = true;
+                    }
                 }
             }
             if (!match)
