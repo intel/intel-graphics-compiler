@@ -315,6 +315,8 @@ namespace IGC
         bool disableDispatchAlongY = false;
         // If nullopt, then there is no requirement
         std::optional<ThreadIDLayout> neededThreadIdLayout;
+        // force enable tile y optimization
+        bool forceTileYWalk = false;
     };
 
 
