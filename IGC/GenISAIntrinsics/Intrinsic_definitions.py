@@ -1786,7 +1786,7 @@ Imported_Intrinsics = \
      ("any:float",                     "value to store"),
      ("int",                           "aligment in bytes"),
      ("bool",                          "volatile, must be an immediate")],
-    "None"]],
+    "WriteArgMem"]],
 ####################################################################################################
 "GenISA_storerawvector_indexed": ["Write a vector to a buffer pointer at byte offset",
     [("void",                          ""),
@@ -1795,7 +1795,7 @@ Imported_Intrinsics = \
      ("anyvector",                     "value to store"),
      ("int",                           "aligment in bytes"),
      ("bool",                          "volatile, must be an immediate")],
-    "None"]],
+    "WriteArgMem"]],
 ####################################################################################################
 "GenISA_storestructured1": ["",
     [("void",                          ""),
