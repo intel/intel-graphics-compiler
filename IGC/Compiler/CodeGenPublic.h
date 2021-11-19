@@ -895,8 +895,11 @@ namespace IGC
         // Module flag for when we need to compile multiple SIMD sizes to support SIMD variants
         bool m_enableSimdVariantCompilation = false;
 
-        /// Adding multiversioning to partially redundant samples, if AIL is on.
+        // Adding multiversioning to partially redundant samples, if AIL is on.
         bool m_enableSampleMultiversioning = false;
+
+        // Do not generate gen binary, emit vISA only.
+        bool m_compileToVISAOnly = false;
 
         bool m_src1RemovedForBlendOpt = false;
         llvm::AssemblyAnnotationWriter* annotater = nullptr;
