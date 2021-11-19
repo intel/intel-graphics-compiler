@@ -566,7 +566,8 @@ void CISA_IR_Builder::CheckHazardFeatures(
 
 void CISA_IR_Builder::CollectCallSites(
     std::list<VISAKernelImpl *>& functions,
-    std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>>& callSites)
+    std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>>& callSites,
+    std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList)
 {
     auto IsFCall = [](G4_INST* inst)
     {
@@ -587,6 +588,21 @@ void CISA_IR_Builder::CollectCallSites(
             }
             callSites[func->getKernel()].push_back(it);
             it++;
+        }
+    }
+
+    // get sgInvokeList
+    for (auto& [func, callsites] : callSites)
+    {
+        for (auto& it : callsites)
+        {
+            G4_INST* fcall = *it;
+            assert(fcall->opcode() == G4_pseudo_fcall);
+            // When callee is a invoke_simd target
+            if (GetCalleeKernel(fcall)->getBoolKernelAttr(Attributes::ATTR_LTOInvokeOptTarget))
+            {
+                sgInvokeList.push_back(it);
+            }
         }
     }
 }
@@ -1379,12 +1395,10 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         G4_Kernel* mainFunc = m_kernelsAndFunctions.front()->getKernel();
         assert(m_kernelsAndFunctions.front()->getIsKernel() && "mainFunc must be the kernel entry");
         std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>> callSites;
-        CollectCallSites(m_kernelsAndFunctions, callSites);
+        std::list<std::list<G4_INST*>::iterator> sgInvokeList;
+        CollectCallSites(m_kernelsAndFunctions, callSites, sgInvokeList);
 
-        // Assume sg.invoke callsite list is calls in the kernel for now for testing purposes
-        auto& sgInvokeList = callSites.begin()->second;
         assert(callSites.begin()->first == mainFunc);
-
         CheckHazardFeatures(sgInvokeList, callSites);
 
         ResetHasStackCall(sgInvokeList, callSites);

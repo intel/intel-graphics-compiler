@@ -959,7 +959,8 @@ private:
     // To collect call related info for LinkTimeOptimization
     void CollectCallSites(
             std::list<VISAKernelImpl *>& functions,
-            std::unordered_map<vISA::G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callSites);
+            std::unordered_map<vISA::G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callSites,
+            std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList);
 
     // Sanity check to see if sg.invoke list is properly added from front-end
     // We don't support:
