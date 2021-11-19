@@ -27,7 +27,10 @@ SPDX-License-Identifier: MIT
 namespace IGC
 {
     void initializePushAnalysisPass(llvm::PassRegistry&);
-
+    struct SimplePushData :SimplePushInfo
+    {
+        std::vector<std::pair<llvm::Instruction*, unsigned int>> Load;
+    };
     class PushAnalysis : public llvm::ModulePass
     {
         const llvm::DataLayout* m_DL;
@@ -70,7 +73,9 @@ namespace IGC
         // that can be pushed.
         std::map<llvm::Value*, unsigned int> m_bindlessPushArgs;
         FunctionUpgrader m_pFuncUpgrade;
-
+        //Collecting all Simple push
+        std::map<unsigned int, SimplePushData> CollectAllSimplePushInfoArr;
+        unsigned int numSimplePush = 0;
         // Helper function
         /// Return true if the constant is in the range which we are allowed to push
         bool IsPushableShaderConstant(
@@ -96,7 +101,7 @@ namespace IGC
         void BlockPushConstants();
 
         /// Try to push allocate space for the constant to be pushed
-        unsigned int AllocatePushedConstant(
+        void AllocatePushedConstant(
             llvm::Instruction* load,
             const SimplePushInfo& newChunk,
             const unsigned int maxSizeAllowed);
