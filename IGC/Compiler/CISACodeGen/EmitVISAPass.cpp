@@ -10666,23 +10666,40 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     CVariable* pSize = nullptr;
 
-    uint32_t MaxPrivateSize = pModuleMetadata->FuncMD[pKernel].privateMemoryPerWI;
-    FunctionGroup* FG = m_FGA ? m_FGA->getGroup(pKernel) : nullptr;
-    if (FG)
+    // Do a crude estimation of the stack size required per thread.
+    // Estimated size = PrivateMem of Kernel + PrivateMem of Largest StackCall Func in Module + 2KB (for additional nested calls and arguments)
+    // TODO: Can have a better estimate by analyzing callgraph. However, we won't know the exact value for indirect and recursive calls.
+    auto GetMaxPrivateMem = [&](void)->uint32_t
     {
-        // Get the max PrivateMem used in the FG, which is set by
-        // PrivateMemoryResolution.cpp after analyzing the call depth
-        MaxPrivateSize = FG->getMaxPrivateMemOnStack();
+        uint32_t allocMemSize = 0;
+        uint32_t largest = 0;
+        for (auto& iter : pModuleMetadata->FuncMD)
+        {
+            Function* pF = iter.first;
+            if (pF == pKernel)
+            {
+                // Get the private mem size of current kernel
+                allocMemSize += (uint32_t)iter.second.privateMemoryPerWI;
+            }
+            else if (pF->hasFnAttribute("visaStackCall"))
+            {
+                // Get the largest private mem size used by stackcalled funcs
+                largest = std::max((uint32_t)iter.second.privateMemoryPerWI, largest);
+            }
+        }
+        // Only add additional stack memory if there are actual stack calls
+        if (m_FGA && m_FGA->getGroup(pKernel) && m_FGA->getGroup(pKernel)->hasStackCall())
+        {
+            allocMemSize += largest;
+            allocMemSize += (2 * 1024);
+        }
+        return allocMemSize;
+    };
 
-        // If there are indirect calls or recursions, we no longer
-        // know the call depth, so just add 4KB and hope we don't overflow.
-        if (FG->hasIndirectCall() || FG->hasRecursion())
-            MaxPrivateSize += (4 * 1024);
-        // Add another 1KB for VLA
-        if (FG->hasVariableLengthAlloca())
-            MaxPrivateSize += 1024;
-    }
-
+    // Maximun private size in byte, per-workitem
+    // When there's stack call or vla, we don't know the actual stack size being used,
+    // so set a conservative max stack size.
+    uint32_t MaxPrivateSize = GetMaxPrivateMem();
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
     {
         // Experimental: Patch private memory size
