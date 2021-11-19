@@ -51,9 +51,6 @@ bool CGen8OpenCLProgram::CLProgramCtxProvider::needsSystemKernel() const {
 bool CGen8OpenCLProgram::CLProgramCtxProvider::isProgramDebuggable() const {
     return m_Context.m_InternalOptions.KernelDebugEnable;
 }
-bool CGen8OpenCLProgram::CLProgramCtxProvider::hasDebugInformation() const {
-    return isProgramDebuggable();
-}
 bool CGen8OpenCLProgram::CLProgramCtxProvider::hasProgrammableBorderColor() const {
     return m_Context.m_DriverInfo.ProgrammableBorderColorInCompute();
 }

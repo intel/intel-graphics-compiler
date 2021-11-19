@@ -103,7 +103,6 @@ private:
         ShaderHash getProgramHash() const override;
         bool needsSystemKernel() const  override;
         bool isProgramDebuggable() const override;
-        bool hasDebugInformation() const override;
         bool hasProgrammableBorderColor() const override;
         bool useBindlessMode() const override;
         bool useBindlessLegacyMode() const override;

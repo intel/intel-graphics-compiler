@@ -30,7 +30,6 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/ADT/StringRef.h"
 
-#include <llvm/Support/CommandLine.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -43,10 +42,6 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 using namespace llvm;
-
-static cl::opt<bool> EnforceBTIZeroReservation(
-    "vc-reserve-bti-zero", cl::init(false), cl::Hidden,
-    cl::desc("do not assign BTI index to zero (for testing purposes)"));
 
 namespace {
 class BTIAssignment final {
@@ -203,12 +198,9 @@ std::vector<int> BTIAssignment::computeBTIndices(
   int SurfaceID = 0;
   int SamplerID = 0;
 
-  if (BC.isBTIZeroReserved() || EnforceBTIZeroReservation) {
-    // NOTE: at the current moment we don't use BTI=0, since it is reserved
-    // for kernel debugging purposes (SIP uses BTI=0 in order to handle
-    // breakpoints).
+  // If module has Debuggable Kernels, then BTI=0 is reserved
+  if (BC.emitDebuggableKernels())
     SurfaceID = SamplerID = 1;
-  }
 
   std::vector<int> Indices(KM.getArgKinds().size(), -1);
 

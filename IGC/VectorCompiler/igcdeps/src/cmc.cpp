@@ -825,14 +825,14 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
 void vc::createBinary(
     vc::CGen8CMProgram &CMProgram,
     const GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule) {
-  bool HasDebugInfo = false;
+  bool ProgramIsDebuggable = false;
   fillOCLProgramInfo(*CMProgram.m_programInfo, CompiledModule.ModuleInfo);
   for (const GenXOCLRuntimeInfo::CompiledKernel &CompKernel :
        CompiledModule.Kernels) {
     auto K = std::make_unique<CMKernel>(CMProgram.getPlatform());
     fillKernelInfo(CompKernel, *K);
-    HasDebugInfo |= !CompKernel.getDebugInfo().empty();
+    ProgramIsDebuggable |= !CompKernel.getDebugInfo().empty();
     CMProgram.m_kernels.push_back(std::move(K));
   }
-  CMProgram.m_ContextProvider.updateDebugInfoStatus(HasDebugInfo);
+  CMProgram.m_ContextProvider.updateDebuggableStatus(ProgramIsDebuggable);
 }
