@@ -150,6 +150,18 @@ using ImplArgIntrSeq = std::vector<CallInst *>;
 using IntrIDSet = std::unordered_set<unsigned>;
 using IntrIDMap = std::unordered_map<Function *, IntrIDSet>;
 
+// Implicit args in this pass are denoted by the corresponding intrinsic ID.
+// But not all implicit args have a corresponding intrinsic. So for those args
+// pseudo intrinsic IDs are provided. Pseudo ID values are guaranteed to not
+// overlap with real instrinsic IDs.
+namespace PseudoIntrinsic {
+enum Enum : unsigned {
+  First = GenXIntrinsic::not_any_intrinsic,
+  PrivateBase = First,
+  Last
+};
+} // namespace PseudoIntrinsic
+
 struct CMImpParam : public ModulePass {
   static char ID;
   bool IsCmRT;
@@ -206,6 +218,8 @@ private:
         return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_BTI;
       case GenXIntrinsic::genx_get_scoreboard_depcnt:
         return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_DEPCNT;
+      case PseudoIntrinsic::PrivateBase:
+        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRIVATE_BASE;
     }
     return KernelMetadata::AK_NORMAL;
   }
@@ -251,6 +265,7 @@ private:
   static Type *getIntrinRetType(LLVMContext &Context, unsigned IID) {
     switch (IID) {
       case GenXIntrinsic::genx_print_buffer:
+      case PseudoIntrinsic::PrivateBase:
         return llvm::Type::getInt64Ty(Context);
       case GenXIntrinsic::genx_local_id:
       case GenXIntrinsic::genx_local_size:
@@ -303,6 +318,10 @@ private:
 static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M);
 static IntrIDMap fillUsedIntrMap(const ImplArgIntrSeq &Workload);
 
+static bool isPseudoIntrinsic(unsigned IID) {
+  return IID >= PseudoIntrinsic::First && IID < PseudoIntrinsic::Last;
+}
+
 // Collect all CM kernels from named metadata.
 static std::vector<Function *> collectKernels(Module &M) {
   NamedMDNode *Named = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
@@ -347,10 +366,12 @@ bool CMImpParam::runOnModule(Module &M) {
     IntrIDSet RequiredImplArgs =
         CallGraphTraverser{CG, UsedIntrInfo}.collectIndirectlyUsedImplArgs(
             *Kernel);
+    // For OCL/L0 RT we should unconditionally add implicit PRIVATE_BASE
+    // argument which is not supported on CM RT.
+    if (!IsCmRT)
+      RequiredImplArgs.emplace(PseudoIntrinsic::PrivateBase);
     genx::internal::createInternalMD(*Kernel);
-    // for OCL/L0 RT we should unconditionally add
-    // implicit PRIVATE_BASE argument which is not supported on CM RT
-    if (!RequiredImplArgs.empty() || !IsCmRT)
+    if (!RequiredImplArgs.empty())
       processKernel(Kernel, RequiredImplArgs);
   }
 
@@ -600,6 +621,14 @@ void CallGraphTraverser::visitFunction(Function &F) {
   }
 }
 
+static std::string getImplicitArgName(unsigned IID) {
+  if (!isPseudoIntrinsic(IID))
+    return "__arg_" + GenXIntrinsic::getAnyName(IID, None);
+  IGC_ASSERT_MESSAGE(IID == PseudoIntrinsic::PrivateBase,
+                     "there's only private base pseudo intrinsic for now");
+  return "privBase";
+}
+
 // Process a kernel - loads from a global (and the globals) have already been
 // added if required elsewhere (in doInitialization)
 // We've already determined that this is a kernel and that it requires some
@@ -638,9 +667,6 @@ CallGraphNode *CMImpParam::processKernel(Function *F,
     // point
   }
   if (!IsCmRT) {
-    // PRIVATE_BASE arg
-    ArgTys.push_back(Type::getInt64Ty(F->getContext()));
-
     // Add types of implicit aggregates linearization
     for (const auto &ArgLin : ArgsLin) {
       for (const auto &LinTy : ArgLin.second)
@@ -691,13 +717,15 @@ CallGraphNode *CMImpParam::processKernel(Function *F,
     // Rename the arg to something more meaningful here
     IGC_ASSERT_MESSAGE(I2 != NF->arg_end(),
                        "fewer parameters for new function than expected");
-    I2->setName("__arg_" + GenXIntrinsic::getAnyName(IID, None));
+    I2->setName(getImplicitArgName(IID));
 
-    // Also insert a new store at the start of the function to the global
-    // variable used for this implicit argument intrinsic
-    IGC_ASSERT_MESSAGE(GlobalsMap.count(IID),
-                       "no global associated with this imp arg intrinsic");
-    new StoreInst(I2, GlobalsMap[IID], &FirstI);
+    if (!isPseudoIntrinsic(IID)) {
+      // Also insert a new store at the start of the function to the global
+      // variable used for this implicit argument intrinsic
+      IGC_ASSERT_MESSAGE(GlobalsMap.count(IID),
+                         "no global associated with this imp arg intrinsic");
+      new StoreInst(I2, GlobalsMap[IID], &FirstI);
+    }
 
     // Prepare the kinds that will go into the metadata
     ImpKinds.push_back(MapToKind(IID));
@@ -708,12 +736,6 @@ CallGraphNode *CMImpParam::processKernel(Function *F,
   // Collect arguments linearization to store as metadata.
   genx::ArgToImplicitLinearization LinearizedArgs;
   if (!IsCmRT) {
-    // Private base
-    I2->setName("privBase");
-    ImpKinds.push_back(genx::KernelMetadata::AK_NORMAL |
-                       genx::KernelMetadata::IMP_OCL_PRIVATE_BASE);
-    ++I2;
-
     for (const auto &ArgLin : ArgsLin) {
       Argument *ExplicitArg = OldToNewArg[ArgLin.first];
       genx::LinearizedArgInfo &LinearizedArg = LinearizedArgs[ExplicitArg];
