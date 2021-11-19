@@ -2786,7 +2786,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
             readyList.size() > 0)
         {
             windowWriteCombine block;
-            if (block.isWriteCombineCandidate(scheduled))
+            if (block.isWriteCombineCandidate(scheduled, schedule->getBB()))
             {
                 block.push(scheduled);
 
@@ -2796,7 +2796,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
                 for (int i = 0; i < searchSize; i++)
                 {
                     Node* next = readyList.top();
-                    if (next->getInstructions()->size() == 1 && block.isWriteCombineCandidate(next))
+                    if (next->getInstructions()->size() == 1 && block.isWriteCombineCandidate(next, schedule->getBB()))
                     {
                         readyList.pop();
                         block.push(next);

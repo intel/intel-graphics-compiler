@@ -684,7 +684,7 @@ class windowWriteCombine
 public:
     std::vector<Node*>& getInstList() { return instList; }
 
-    bool isWriteCombineCandidate(Node *node)
+    bool isWriteCombineCandidate(Node *node, G4_BB *bb)
     {
         auto inst = node->getInstructions()->front();
         if (inst->opcode() != G4_mov)
@@ -714,9 +714,10 @@ public:
             return false;
         }
 
-        // 4, for byte write combine atomic sequence, predication must not be used as we cannot gurantee that both bytes
+        // 4, for byte write combine atomic sequence, instruction must have no mask as we cannot gurantee that both bytes
         // in a word are written.
-        if ((IS_BTYPE(dstType) || (dstType == Type_UNDEF && IS_BTYPE(dst->getType()))) && inst->getPredicate() != nullptr)
+        bool isNoMaskInst = !inst->getPredicate() && (inst->isWriteEnableInst() || bb->isAllLaneActive());
+        if ((IS_BTYPE(dstType) || (dstType == Type_UNDEF && IS_BTYPE(dst->getType()))) && !isNoMaskInst)
         {
             return false;
         }
