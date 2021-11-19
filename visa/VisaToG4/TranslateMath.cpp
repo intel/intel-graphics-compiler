@@ -438,7 +438,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         {
             // if
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-            inst = createIf(predicateFlagReg, exsize, instOpt);
+            inst = createIf(predicateFlagReg, isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
         }
         {
             // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
@@ -541,14 +541,14 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             if (!hasDefaultRoundDenorm)
             {
                 // else (8) {Q1/Q2}
-                createElse(exsize, instOpt);
+                createElse(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
 
                 // restore Rounding Mode in CR
                 restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
             }
 
             // endif (8) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+            inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
         }
     }; //for loop
 
@@ -753,7 +753,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
 
         // (-f0.1) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
         G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createIf(predicateFlagReg, exsize, instOpt);
+        inst = createIf(predicateFlagReg, isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
 
         // madm (8) r9.acc3 r2.noacc r6.noacc r8.acc2 {Align16, Q1/Q2}
         G4_SrcRegRegion *t2SrcOpnd = createSrcRegRegion(tsrc2);
@@ -829,14 +829,14 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         if (!hasDefaultRoundDenorm)
         {
             // else (8) {Q1/Q2}
-            createElse(exsize, instOpt);
+            createElse(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
 
             // restore Rounding Mode in CR
             restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
         }
 
         // endif (8) {Q1/Q2}
-        inst = createEndif(exsize, instOpt);
+        inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
     };
 
     // make final copy to dst
@@ -995,7 +995,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
         // (-f1.0) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_IF_LABEL__0 {Q1/Q2}
         G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createIf(predicateFlagReg, exsize, instOpt);
+        inst = createIf(predicateFlagReg, isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
 
 
         //madm (8) r9.acc3 r0.noacc r8.noacc r7.acc2 {Aligned16, Q1/Q2}
@@ -1087,14 +1087,14 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         if (!hasDefaultRoundDenorm)
         {
             // else (8) {Q1/Q2}
-            createElse(exsize, instOpt);
+            createElse(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
 
             // restore Rounding Mode in CR
             restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
         }
 
         // endif (exsize) {Q1/Q2}
-        inst = createEndif(exsize, instOpt);
+        inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
     };
 
     // make final copy to dst
@@ -1253,7 +1253,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         {
             // if
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
-            inst = createIf(predicateFlagReg, exsize, instOpt);
+            inst = createIf(predicateFlagReg, isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
         }
 
         {
@@ -1381,14 +1381,14 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             if (!hasDefaultRoundDenorm)
             {
                 // else (8) {Q1/Q2}
-                createElse(exsize, instOpt);
+                createElse(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
 
                 // restore Rounding Mode in CR
                 restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
             }
 
             // endif (8) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+            inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
         }
     };
 
