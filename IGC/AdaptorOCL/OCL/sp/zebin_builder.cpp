@@ -458,6 +458,8 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.has_device_enqueue = annotations.m_executionEnivronment.HasDeviceEnqueue;
     env.has_fence_for_image_access = annotations.m_executionEnivronment.HasReadWriteImages;
     env.has_global_atomics = annotations.m_executionEnivronment.HasGlobalAtomics;
+    env.has_stack_calls = annotations.m_executionEnivronment.HasStackCalls;
+    env.inline_data_payload_size = annotations.m_threadPayload.PassInlineDataSize;
     env.offset_to_skip_per_thread_data_load = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;;
     env.offset_to_skip_set_ffid_gp = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;;
     env.required_sub_group_size = annotations.m_executionEnivronment.CompiledSubGroupsNumber;
@@ -478,7 +480,6 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnivronment.WorkgroupWalkOrder[1]);
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnivronment.WorkgroupWalkOrder[2]);
     }
-    env.has_stack_calls = annotations.m_executionEnivronment.HasStackCalls;
 }
 
 void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,

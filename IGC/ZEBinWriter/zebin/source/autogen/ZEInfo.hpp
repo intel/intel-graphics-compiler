@@ -32,7 +32,7 @@ struct zeInfoExecutionEnv
 {
     bool operator==(const zeInfoExecutionEnv& other) const
     {
-        return barrier_count == other.barrier_count && disable_mid_thread_preemption == other.disable_mid_thread_preemption && grf_count == other.grf_count && has_4gb_buffers == other.has_4gb_buffers && has_device_enqueue == other.has_device_enqueue && has_dpas == other.has_dpas && has_fence_for_image_access == other.has_fence_for_image_access && has_global_atomics == other.has_global_atomics && has_multi_scratch_spaces == other.has_multi_scratch_spaces && has_no_stateless_write == other.has_no_stateless_write && offset_to_skip_per_thread_data_load == other.offset_to_skip_per_thread_data_load && offset_to_skip_set_ffid_gp == other.offset_to_skip_set_ffid_gp && required_sub_group_size == other.required_sub_group_size && required_work_group_size == other.required_work_group_size && simd_size == other.simd_size && slm_size == other.slm_size && subgroup_independent_forward_progress == other.subgroup_independent_forward_progress && work_group_walk_order_dimensions == other.work_group_walk_order_dimensions && has_stack_calls == other.has_stack_calls;
+        return barrier_count == other.barrier_count && disable_mid_thread_preemption == other.disable_mid_thread_preemption && grf_count == other.grf_count && has_4gb_buffers == other.has_4gb_buffers && has_device_enqueue == other.has_device_enqueue && has_dpas == other.has_dpas && has_fence_for_image_access == other.has_fence_for_image_access && has_global_atomics == other.has_global_atomics && has_multi_scratch_spaces == other.has_multi_scratch_spaces && has_no_stateless_write == other.has_no_stateless_write && has_stack_calls == other.has_stack_calls && inline_data_payload_size == other.inline_data_payload_size && offset_to_skip_per_thread_data_load == other.offset_to_skip_per_thread_data_load && offset_to_skip_set_ffid_gp == other.offset_to_skip_set_ffid_gp && required_sub_group_size == other.required_sub_group_size && required_work_group_size == other.required_work_group_size && simd_size == other.simd_size && slm_size == other.slm_size && subgroup_independent_forward_progress == other.subgroup_independent_forward_progress && work_group_walk_order_dimensions == other.work_group_walk_order_dimensions;
     }
     zeinfo_int32_t barrier_count = 0;
     zeinfo_bool_t disable_mid_thread_preemption = false;
@@ -44,6 +44,8 @@ struct zeInfoExecutionEnv
     zeinfo_bool_t has_global_atomics = false;
     zeinfo_bool_t has_multi_scratch_spaces = false;
     zeinfo_bool_t has_no_stateless_write = false;
+    zeinfo_bool_t has_stack_calls = false;
+    zeinfo_int32_t inline_data_payload_size = 0;
     zeinfo_int32_t offset_to_skip_per_thread_data_load = 0;
     zeinfo_int32_t offset_to_skip_set_ffid_gp = 0;
     zeinfo_int32_t required_sub_group_size = 0;
@@ -52,7 +54,6 @@ struct zeInfoExecutionEnv
     zeinfo_int32_t slm_size = 0;
     zeinfo_bool_t subgroup_independent_forward_progress = false;
     std::vector<zeinfo_int32_t> work_group_walk_order_dimensions;
-    zeinfo_bool_t has_stack_calls = false;
 };
 struct zeInfoPayloadArgument
 {
@@ -141,7 +142,7 @@ struct zeInfoContainer
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.7"; }
+    static zeinfo_str_t getVersionNumber() { return "1.8"; }
 
     enum class ArgType {
         packed_local_ids,

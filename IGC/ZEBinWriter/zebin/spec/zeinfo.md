@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.7
+Version 1.8
 
 ## Grammar
 
@@ -98,6 +98,8 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | has_global_atomics | bool | Optional | false | |
 | has_multi_scratch_spaces | bool | Optional | false | |
 | has_no_stateless_write | bool | Optional | false | |
+| has_stack_calls | bool | Optional | false | When this value is true, it indicates that program uses stack calls |
+| inline_data_payload_size | int32 | Optional | 0 | Size of inline data in cross-thread-payload in byte. The value is 0 when inline data is disabled (default). |
 | offset_to_skip_per_thread_data_load | int32 | Optional | 0 | |
 | offset_to_skip_set_ffid_gp | int32 | Optional | 0 | |
 | required_sub_group_size | int32 | Optional | 0 | The value is given by users in kernel attributes "intel_reqd_sub_group_size" |
@@ -106,7 +108,6 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | slm_size | int32 | Optional | 0 | SLM size in bytes |
 | subgroup_independent_forward_progress | bool | Optional | false | |
 | work_group_walk_order_dimensions | int32x3 | Optional | [0, 1, 2] | The value of this key is a sequence of three int32. Valid values are x: [0, 0, 0] , xy: [0, 1, 0], xyz: [0, 1, 2], yx: [1, 0, 0], zyx: [2, 1, 0] |
-| has_stack_calls | bool | Optional | false | when this value is true, it indicates that program uses stack calls |
 <!--- ExecutionEnv -->
 
 ## Payload Arguments
@@ -270,6 +271,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.8**: Add inline_data_payload_size to execution_env.
 - **Version 1.7**: Add debug_env to kernel.
 - **Version 1.6**: Remove actual_kernel_start_offset from execution environment.
 - **Version 1.5**: Add payload_argument type work_dimensions.

@@ -1920,7 +1920,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.UnusedPerThreadConstantPresent = annotations.m_threadPayload.UnusedPerThreadConstantPresent;
         patch.OffsetToSkipPerThreadDataLoad = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;
         patch.OffsetToSkipSetFFIDGP = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;
-        patch.PassInlineData = annotations.m_threadPayload.PassInlineData;
+        patch.PassInlineData = annotations.m_threadPayload.PassInlineDataSize ? true : false;
 
         retValue = AddPatchItem(
             patch,

@@ -47,6 +47,8 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("has_global_atomics", info.has_global_atomics, false);
     io.mapOptional("has_multi_scratch_spaces", info.has_multi_scratch_spaces, false);
     io.mapOptional("has_no_stateless_write", info.has_no_stateless_write, false);
+    io.mapOptional("has_stack_calls", info.has_stack_calls, false);
+    io.mapOptional("inline_data_payload_size", info.inline_data_payload_size, 0);
     io.mapOptional("offset_to_skip_per_thread_data_load", info.offset_to_skip_per_thread_data_load, 0);
     io.mapOptional("offset_to_skip_set_ffid_gp", info.offset_to_skip_set_ffid_gp, 0);
     io.mapOptional("required_sub_group_size", info.required_sub_group_size, 0);
@@ -55,7 +57,6 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("slm_size", info.slm_size, 0);
     io.mapOptional("subgroup_independent_forward_progress", info.subgroup_independent_forward_progress, false);
     io.mapOptional("work_group_walk_order_dimensions", info.work_group_walk_order_dimensions);
-    io.mapOptional("has_stack_calls", info.has_stack_calls, false);
 }
 void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)
 {

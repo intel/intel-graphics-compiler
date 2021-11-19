@@ -262,7 +262,7 @@ struct ThreadPayload
     bool  UnusedPerThreadConstantPresent = false;
     bool  HasStageInGridOrigin = false;
     bool  HasStageInGridSize = false;
-    bool  PassInlineData = false;
+    uint32_t PassInlineDataSize = 0;
     uint32_t OffsetToSkipPerThreadDataLoad = 0;
     uint32_t OffsetToSkipSetFFIDGP = 0;
 };
