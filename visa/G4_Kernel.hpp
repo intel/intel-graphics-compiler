@@ -361,6 +361,30 @@ private:
     void emitDeviceAsmInstructionsIga(std::ostream& os, const void * binary, uint32_t binarySize);
     void emitDeviceAsmInstructionsOldAsm(std::ostream& os);
 
+public:
+    // fused call wa
+    //     add  v10  -ip,  v20                    // ip_start_inst
+    //     add  v11   v10, 0x33 (-label_patch)    // patch inst
+    //     ...
+    //     call v11                               // ip_end_inst
+    // This map keeps  patch inst --> <ip_start_inst, ip_end_inst>
+    // Once encoding is decided, label_path = IP(ip_end_inst) - IP(ip_start_inst)
+    //
+    // m_labelPatchInsts: keep the info described above
+    // m_instToBBs:  convenient map to BBs that those insts belong to
+    // m_waCallInsts: call insts whose targets should be defined outside the smallEU branch.
+    // m_maskOffWAInsts: insts whose MaskOff needs to be changed for this WA.
+    std::unordered_map<G4_INST*, std::pair<G4_INST*, G4_INST*>> m_labelPatchInsts;
+    std::unordered_map<G4_INST*, G4_BB*> m_instToBBs;
+    std::list<G4_INST*> m_waCallInsts;
+    std::unordered_map <G4_INST*, G4_BB*> m_maskOffWAInsts;
+    void setMaskOffset(G4_INST* I, G4_InstOption MO) {
+        // For call WA
+        assert((I->getMaskOffset() + I->getExecSize()) <= 16);
+        assert(I->getPredicate() == nullptr && I->getCondMod() == nullptr);
+        I->setMaskOption(MO);
+    }
+
 }; // G4_Kernel
 }
 

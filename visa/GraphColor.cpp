@@ -6722,6 +6722,12 @@ unsigned GlobalRA::getRegionDisp(
     return rowOffset + columnOffset;
 }
 
+void GlobalRA::addEUFusionWAInsts(G4_INST* inst)
+{
+    if(EUFusionWANeeded())
+        EUFusionWAInsts.insert(inst);
+}
+
 unsigned GlobalRA::getRegionByteSize(
     G4_DstRegRegion * region,
     unsigned          execSize
@@ -7462,6 +7468,16 @@ void GlobalRA::stackCallProlog()
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
         auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
         entryBB->insertBefore(iter, store);
+
+        if (EUFusionWANeeded())
+        {
+            auto oldSaveInst = builder.getPartFDSaveInst();
+            builder.setPartFDSaveInst(store);
+            entryBB->remove(oldSaveInst);
+        }
+
+        addEUFusionWAInsts(store);
+
         return;
     }
 
@@ -8154,6 +8170,9 @@ void GlobalRA::addCalleeStackSetupCode()
             builder.kernel.getKernelDebugInfo()->setFrameSize(frameSize * 16);
         }
 
+        addEUFusionWAInsts(createBEFP);
+        addEUFusionWAInsts(addInst);
+
         insertIt++;
         entryBB->insertBefore(insertIt, createBEFP);
         entryBB->insertBefore(insertIt, addInst);
@@ -8467,12 +8486,38 @@ void GlobalRA::addStoreRestoreToReturn()
     auto insertIt = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
     entryBB->insertBefore(insertIt, saveBE_FPInst);
 
-    restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
-    restoreBE_FPInst->addComment("restore vISA SP/FP from temp");
     auto fretBB = builder.kernel.fg.getUniqueReturnBlock();
     auto iter = std::prev(fretBB->end());
     assert((*iter)->isFReturn() && "fret BB must end with fret");
-    fretBB->insertBefore(iter, restoreBE_FPInst);
+
+    if (!EUFusionWANeeded())
+    {
+        restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
+        fretBB->insertBefore(iter, restoreBE_FPInst);
+    }
+    else
+    {
+        // emit frame descriptor
+        auto dstDcl = builder.createHardwiredDeclare(8, Type_UD, kernel.getFPSPGRF(), 0);
+        dstDcl->setName(builder.getNameString(builder.kernel.fg.mem, 24, "FrameDescriptorGRF"));
+        auto dstData = builder.createDstRegRegion(dstDcl, 1);
+        const unsigned execSize = 8;
+        G4_INST* load = nullptr;
+        if (builder.supportsLSC())
+        {
+            auto headerOpnd = getSpillFillHeader(*kernel.fg.builder, nullptr);
+            load = builder.createFill(headerOpnd, dstData, G4_ExecSize(execSize), 1, 0, builder.getBEFP(), InstOpt_WriteEnable, false);
+        }
+        else
+        {
+            load = builder.createFill(dstData, G4_ExecSize(execSize), 1, 0, builder.getBEFP(), InstOpt_WriteEnable, false);
+        }
+        fretBB->insertBefore(iter, load);
+        addEUFusionWAInsts(load);
+        restoreBE_FPInst = load;
+    }
+
+    restoreBE_FPInst->addComment("restore vISA SP/FP from temp");
 
     if (builder.kernel.getOption(vISA_GenerateDebugInfo))
     {

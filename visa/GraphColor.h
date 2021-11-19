@@ -687,6 +687,14 @@ namespace vISA
 
     class GlobalRA
     {
+    private:
+        std::unordered_set<G4_INST*> EUFusionWAInsts;
+        bool m_EUFusionWANeeded;
+    public:
+        bool EUFusionWANeeded() const { return m_EUFusionWANeeded; }
+        void addEUFusionWAInsts(G4_INST* inst);
+        void removeEUFusionWAInst(G4_INST* inst) { EUFusionWAInsts.erase(inst); }
+        const std::unordered_set<G4_INST*>& getEUFusionWAInsts() { return EUFusionWAInsts; }
     public:
         std::unique_ptr<VerifyAugmentation> verifyAugmentation;
         std::unique_ptr<RegChartDump> regChart;
@@ -1191,6 +1199,12 @@ namespace vISA
             {
                 verifyAugmentation = std::make_unique<VerifyAugmentation>();
             }
+
+            // Need call WA for EU Fusion for non-entry function
+            m_EUFusionWANeeded = builder.hasFusedEU()
+                && builder.getOption(vISA_fusedCallWA)
+                && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall())
+                && !builder.getIsKernel();
         }
 
         void emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const;

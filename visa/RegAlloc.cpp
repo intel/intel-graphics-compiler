@@ -3635,5 +3635,12 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         gra.verifyRA(liveAnalysis);
     }
 
+    // printf("EU Fusion WA insts for func: %s\n", kernel.getName());
+    for (auto inst : gra.getEUFusionWAInsts())
+    {
+        kernel.setMaskOffset(inst, InstOpt_M16);
+        // inst->dump();
+    }
+
     return status;
 }

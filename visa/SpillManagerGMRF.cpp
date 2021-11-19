@@ -5132,6 +5132,13 @@ void GlobalRA::expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
         spillOffset += numGRFToWrite * getGRFSize();
     }
 
+    if (getEUFusionWAInsts().count(inst) > 0)
+    {
+        removeEUFusionWAInst(inst);
+        for (auto inst : builder->instList)
+            addEUFusionWAInsts(inst);
+    }
+
     splice(bb, instIt, builder->instList, inst->getCISAOff());
 }
 
@@ -5206,6 +5213,13 @@ void GlobalRA::expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
         numRows -= responseLength;
         rowOffset += responseLength;
         fillOffset += responseLength * getGRFSize();
+    }
+
+    if (getEUFusionWAInsts().count(inst) > 0)
+    {
+        removeEUFusionWAInst(inst);
+        for (auto inst : builder->instList)
+            addEUFusionWAInsts(inst);
     }
 
     splice(bb, instIt, builder->instList, inst->getCISAOff());
@@ -5379,6 +5393,14 @@ void GlobalRA::expandSpillStackcall(
         spillSends->addComment(comments.str());
 
         bb->insertBefore(spillIt, spillSends);
+
+        if (getEUFusionWAInsts().count(inst) > 0)
+        {
+            removeEUFusionWAInst(inst);
+            addEUFusionWAInsts(spillSends);
+            if (hdrSetInst)
+                addEUFusionWAInsts(hdrSetInst);
+        }
 
         if (kernel.getOption(vISA_GenerateDebugInfo))
         {
@@ -5604,6 +5626,14 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
         }
 
         auto fillSends = createOwordFill(respSizeInOwords, fillDst);
+
+        if (getEUFusionWAInsts().count(inst) > 0)
+        {
+            removeEUFusionWAInst(inst);
+            addEUFusionWAInsts(fillSends);
+            if (hdrSetInst)
+                addEUFusionWAInsts(hdrSetInst);
+        }
 
         std::stringstream comments;
         comments << "stack fill: " << resultRgn->getTopDcl()->getName() << " from FP[" << inst->asFillIntrinsic()->getOffset() << "x32]";
