@@ -83,15 +83,15 @@ struct GenXBackendOptions {
   // Localize live ranges to reduce accumulator usage
   bool LocalizeLRsForAccUsage;
 
+  // Disable LR coalescing
+  bool DisableLiveRangesCoalescing = false;
+
   // Disable non-overlapping region transformation (the case with undef
   // value in two-address operand)
   bool DisableNonOverlappingRegionOpt;
 
   // Force passing "-debug" option to finalizer
   bool PassDebugToFinalizer = false;
-
-  // Disables coalescing of live ranges
-  bool DisableLiveRangesCoalescing = false;
 
   // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
   bool UseNewStackBuilder = true;
@@ -221,12 +221,12 @@ public:
     return Options.LocalizeLRsForAccUsage;
   }
 
-  bool disableNonOverlappingRegionOpt() const {
-    return Options.DisableNonOverlappingRegionOpt;
-  }
-
   bool disableLiveRangesCoalescing() const {
     return Options.DisableLiveRangesCoalescing;
+  }
+
+  bool disableNonOverlappingRegionOpt() const {
+    return Options.DisableNonOverlappingRegionOpt;
   }
 
   bool passDebugToFinalizer() const {

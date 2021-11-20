@@ -51,6 +51,10 @@ enum class BinaryKind { CM, OpenCL, ZE };
 
 enum class GlobalsLocalizationMode { All, No, Vector, Partial };
 
+enum class DisableLRCoalescingControl { Default, Disable, Enable };
+
+enum class NoOptFinalizerControl { Default, Disable, Enable };
+
 struct CompileOptions {
   FileType FType = FileType::SPIRV;
   std::string CPUStr;
@@ -81,8 +85,9 @@ struct CompileOptions {
   bool ForceLiveRangesLocalizationForAccUsage = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
   bool IsLargeGRFMode = false;
-  bool ForceFinalizerOptDisable = false;
-  bool ForceFinalizerOptEnable = false;
+  DisableLRCoalescingControl DisableLRCoalescingMode =
+      DisableLRCoalescingControl::Default;
+  NoOptFinalizerControl NoOptFinalizerMode = NoOptFinalizerControl::Default;
   bool ForceDebugInfoValidation = false;
   bool EnablePreemption = false;
 

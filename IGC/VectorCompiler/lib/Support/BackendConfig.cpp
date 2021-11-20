@@ -79,6 +79,10 @@ static cl::opt<bool> LocalizeLRsForAccUsageOpt(
     "vc-acc-split", cl::init(false), cl::Hidden,
     cl::desc("Localize arithmetic chain to reduce accumulator usages"));
 
+static cl::opt<bool>
+    DisableLRCoalescingOpt("vc-disable-coalescing", cl::init(false), cl::Hidden,
+                           cl::desc("disable coalescing of live ranges"));
+
 static cl::opt<bool> DisableNonOverlappingRegionOptOpt(
     "vc-disable-non-overlapping-region-opt", cl::init(false), cl::Hidden,
     cl::desc("Disable non-overlapping region optimization"));
@@ -139,9 +143,10 @@ GenXBackendOptions::GenXBackendOptions()
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
       UseNewStackBuilder(UseNewStackBuilderOpt),
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
+      DisableLiveRangesCoalescing(DisableLRCoalescingOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
-      PassDebugToFinalizer(PassDebugToFinalizerOpt),
-      FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
+      PassDebugToFinalizer(PassDebugToFinalizerOpt), FCtrl(FunctionControlOpt),
+      IsLargeGRFMode(LargeGRFModeOpt),
       UseBindlessBuffers(UseBindlessBuffersOpt),
       StatelessPrivateMemSize(StatelessPrivateMemSizeOpt),
       SaveStackCallLinkage(SaveStackCallLinkageOpt),

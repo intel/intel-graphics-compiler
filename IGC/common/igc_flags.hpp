@@ -31,6 +31,11 @@ enum {
     FLAG_FCALL_FORCE_STACKCALL = 3,
     FLAG_FCALL_FORCE_INDIRECTCALL = 4,
 
+    // General flags with compiler-defined default value
+    DEFAULTABLE_FLAG_DEFAULT = 0,
+    DEFAULTABLE_FLAG_ENABLE = 1,
+    DEFAULTABLE_FLAG_DISABLE = 2,
+
     FLAG_LAST_Entry
 };
 

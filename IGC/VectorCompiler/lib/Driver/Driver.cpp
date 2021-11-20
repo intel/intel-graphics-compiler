@@ -209,6 +209,17 @@ createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
   return {std::move(TM)};
 }
 
+template <typename T> bool getDefaultOverridableFlag(T OptFlag, bool Default) {
+  switch (OptFlag) {
+  default:
+    return Default;
+  case T::Enable:
+    return true;
+  case T::Disable:
+    return false;
+  }
+}
+
 // Create backend options for immutable config pass. Override default
 // values with provided ones.
 static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
@@ -232,16 +243,6 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.LocalizeLRsForAccUsage = true;
   if (Opts.ForceDisableNonOverlappingRegionOpt)
     BackendOpts.DisableNonOverlappingRegionOpt = true;
-
-  bool IsOptLevel_O0 =
-      Opts.OptLevel == vc::OptimizerLevel::None && Opts.EmitDebuggableKernels;
-  if (IsOptLevel_O0)
-    BackendOpts.DisableLiveRangesCoalescing = true;
-  BackendOpts.PassDebugToFinalizer =
-      Opts.ForceFinalizerOptDisable || IsOptLevel_O0;
-  if (Opts.ForceFinalizerOptEnable)
-    BackendOpts.PassDebugToFinalizer = false;
-
   BackendOpts.FCtrl = Opts.FCtrl;
   BackendOpts.WATable = Opts.WATable;
   BackendOpts.IsLargeGRFMode = Opts.IsLargeGRFMode;
@@ -250,6 +251,13 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.SaveStackCallLinkage = true;
   BackendOpts.UsePlain2DImages = Opts.UsePlain2DImages;
   BackendOpts.EnablePreemption = Opts.EnablePreemption;
+
+  bool IsOptLevel_O0 =
+      Opts.OptLevel == vc::OptimizerLevel::None && Opts.EmitDebuggableKernels;
+  BackendOpts.PassDebugToFinalizer =
+      getDefaultOverridableFlag(Opts.NoOptFinalizerMode, IsOptLevel_O0);
+  BackendOpts.DisableLiveRangesCoalescing =
+      getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, IsOptLevel_O0);
   return BackendOpts;
 }
 

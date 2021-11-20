@@ -195,19 +195,32 @@ static void adjustBinaryFormat(vc::BinaryKind &Binary) {
     Binary = vc::BinaryKind::ZE;
 }
 
+template <typename T> T deriveDefaultableFlagValue(int Flag) {
+  switch (Flag) {
+  default:
+    return T::Default;
+  case DEFAULTABLE_FLAG_ENABLE:
+    return T::Enable;
+  case DEFAULTABLE_FLAG_DISABLE:
+    return T::Disable;
+  }
+}
+
 static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(VCLocalizeAccUsage))
     Opts.ForceLiveRangesLocalizationForAccUsage = true;
   if (IGC_IS_FLAG_ENABLED(VCDisableNonOverlappingRegionOpt))
     Opts.ForceDisableNonOverlappingRegionOpt = true;
-  if (IGC_IS_FLAG_ENABLED(VCEnforceFinalizerOptDisable))
-    Opts.ForceFinalizerOptDisable = true;
-  if (IGC_IS_FLAG_ENABLED(VCEnforceFinalizerOptEnable))
-    Opts.ForceFinalizerOptEnable = true;
   if (IGC_IS_FLAG_ENABLED(VCSaveStackCallLinkage))
     Opts.SaveStackCallLinkage = true;
   if (IGC_IS_FLAG_ENABLED(DebugInfoValidation))
     Opts.ForceDebugInfoValidation = true;
+  Opts.NoOptFinalizerMode =
+      deriveDefaultableFlagValue<vc::NoOptFinalizerControl>(
+          IGC_GET_FLAG_VALUE(VCNoOptFinalizerControl));
+  Opts.DisableLRCoalescingMode =
+      deriveDefaultableFlagValue<vc::DisableLRCoalescingControl>(
+          IGC_GET_FLAG_VALUE(VCDisableLRCoalescingControl));
 }
 
 static void adjustDumpOptions(vc::CompileOptions &Opts) {
