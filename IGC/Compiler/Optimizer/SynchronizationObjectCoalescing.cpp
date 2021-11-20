@@ -55,16 +55,19 @@ struct ExplanationEntry
 enum InstructionMask : uint32_t
 {
     None = 0x0,
-    AtomicOperation = 0x1,
-    TypedReadOperation = 0x2,
-    TypedWriteOperation = 0x4,
-    OutputUrbReadOperation = 0x8,
-    UrbWriteOperation = 0x10,
-    BufferReadOperation = 0x20,
-    BufferWriteOperation = 0x40,
-    SharedMemoryReadOperation = 0x80,
-    SharedMemoryWriteOperation = 0x100
+    AtomicOperation            = (1 << 0),
+    TypedReadOperation         = (1 << 1),
+    TypedWriteOperation        = (1 << 2),
+    OutputUrbReadOperation     = (1 << 3),
+    UrbWriteOperation          = (1 << 4),
+    BufferReadOperation        = (1 << 5),
+    BufferWriteOperation       = (1 << 6),
+    SharedMemoryReadOperation  = (1 << 7),
+    SharedMemoryWriteOperation = (1 << 8),
 };
+constexpr InstructionMask AllNoAtomicMask =
+    InstructionMask{ ((1 << 9) - 1) & ~InstructionMask::AtomicOperation };
+
 inline constexpr InstructionMask operator|(InstructionMask a, InstructionMask b)
 {
     return InstructionMask(uint32_t(a) | uint32_t(b));
@@ -479,7 +482,9 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
                 localBackwardMemoryInstructionMask = GetInstructionMask(pInst, backwardDirection);
 
                 // This assures the below checks are right
-                IGC_ASSERT((localForwardMemoryInstructionMask & GetDefaultMemoryInstructionMask(pInst)) == localForwardMemoryInstructionMask);
+                IGC_ASSERT(
+                    (localForwardMemoryInstructionMask == AllNoAtomicMask) ||
+                    ((localForwardMemoryInstructionMask & GetDefaultMemoryInstructionMask(pInst)) == localForwardMemoryInstructionMask));
                 IGC_ASSERT((localBackwardMemoryInstructionMask & GetDefaultMemoryInstructionMask(pInst)) == localBackwardMemoryInstructionMask);
             };
             SetLocalMemoryInstructionMask();
