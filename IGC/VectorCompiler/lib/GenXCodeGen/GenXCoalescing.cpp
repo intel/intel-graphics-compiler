@@ -1342,6 +1342,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
             NewCopy = insertIntoStruct(Arg->getType(), StructIdx,
                                        CI->getOperand(ArgIdx), NewCopy, CI);
             // Replace operand in call.
+            IGC_ASSERT(CI->getOperand(ArgIdx)->getType() == NewCopy->getType());
             CI->setOperand(ArgIdx, NewCopy);
             // No need to extend the live range like we do in the two address op
             // case in processCandidate(). The live range of a func arg already
@@ -1455,8 +1456,10 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
         if (!AllUsesAreExtract) {
           // Replace uses of the whole return value that existed before we added
           // more uses above.
-          for (unsigned i = 0, e = CIUses.size(); i != e; ++i)
+          for (unsigned i = 0, e = CIUses.size(); i != e; ++i) {
+            IGC_ASSERT(CIUses[i]->get()->getType() == StructValue->getType());
             *CIUses[i] = StructValue;
+          }
         }
       }
     }
@@ -1490,6 +1493,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
         NewCopy = insertIntoStruct(UnifiedRet->getType(), StructIdx,
             RI->getOperand(0), NewCopy, RI);
         // Replace operand in call.
+        IGC_ASSERT(RI->getOperand(0)->getType() == NewCopy->getType());
         RI->setOperand(0, NewCopy);
         // No need to extend the live range like we do in the two address op
         // case in processCandidate(). The live range of the unified return
@@ -2079,6 +2083,7 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
         insertIntoStruct(CD.Dest.getValue()->getType(), CD.Dest.getIndex(),
                          *CD.UseInDest, NewCopy, DestInst);
     // Replace the use of the old source.
+    IGC_ASSERT(CD.UseInDest->get()->getType() == NewCopy->getType());
     *CD.UseInDest = NewCopy;
     // No need to extend the live range, as the result of the two address op was
     // already marked as defined at the pre-copy slot.
