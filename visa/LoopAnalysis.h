@@ -137,6 +137,7 @@ namespace vISA
 
         bool isUniqueDef(G4_DstRegRegion* dst);
         unsigned int getDefCount(G4_Declare* dcl);
+        unsigned int getUseCount(G4_Declare* dcl);
         const Defs* getDefs(G4_Declare* dcl);
         const Uses* getUses(G4_Declare* dcl);
 

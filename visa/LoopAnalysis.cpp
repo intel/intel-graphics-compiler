@@ -1130,7 +1130,7 @@ void LoopDetection::dump(std::ostream& os)
 
     for (auto loop : topLoops)
     {
-        loop->dump();
+        loop->dump(os);
     }
 }
 
@@ -1228,7 +1228,7 @@ void Loop::dump(std::ostream& os)
 
     for (auto& nested : immNested)
     {
-        nested->dump();
+        nested->dump(os);
     }
 }
 
@@ -1273,6 +1273,14 @@ unsigned int VarReferences::getDefCount(G4_Declare* dcl)
     auto defs = getDefs(dcl);
     if (defs)
         return defs->size();
+    return 0;
+}
+
+unsigned int VarReferences::getUseCount(G4_Declare* dcl)
+{
+    auto uses = getUses(dcl);
+    if (uses)
+        return uses->size();
     return 0;
 }
 

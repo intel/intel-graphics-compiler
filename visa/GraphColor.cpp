@@ -5267,6 +5267,11 @@ void Augmentation::augmentIntfGraph()
             gra.verifyAugmentation->loadAugData(sortedIntervals, lrs, intf.liveAnalysis->getNumSelectedVar(), &intf, gra);
         }
 
+        if (kernel.getOption(vISA_SpillAnalysis))
+        {
+            gra.spillAnalysis->LoadAugIntervals(sortedIntervals);
+        }
+
         if (kernel.fg.builder->getOption(vISA_GenerateDebugInfo))
         {
             // Following is done to prevent passing GlobalRA to debug info function
@@ -5826,6 +5831,16 @@ void GraphColor::computeDegreeForGRF()
         }
 
         lrs[i]->setDegree(degree);
+    }
+
+    if (kernel.getOption(vISA_SpillAnalysis))
+    {
+        for (unsigned int i = 0; i != numVar; ++i)
+        {
+            auto dcl = lrs[i]->getDcl();
+            auto degree = lrs[i]->getDegree();
+            gra.spillAnalysis->LoadDegree(dcl, degree);
+        }
     }
 }
 
@@ -9978,6 +9993,11 @@ int GlobalRA::coloringRegAlloc()
             builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
     }
 
+    if (kernel.getOption(vISA_SpillAnalysis))
+    {
+        spillAnalysis = std::make_unique<SpillAnalysis>();
+    }
+
     if (!isReRAPass())
     {
         //Global linear scan RA
@@ -10115,6 +10135,7 @@ int GlobalRA::coloringRegAlloc()
     bool rematDone = false, alignedScalarSplitDone = false;
     bool reserveSpillReg = false;
     VarSplit splitPass(*this);
+
     while (iterationNo < maxRAIterations)
     {
         if (builder.getOption(vISA_RATrace))
@@ -10139,6 +10160,11 @@ int GlobalRA::coloringRegAlloc()
         if (!builder.getOption(vISA_HybridRAWithSpill))
         {
             markGraphBlockLocalVars();
+        }
+
+        if (kernel.getOption(vISA_SpillAnalysis))
+        {
+            spillAnalysis->Clear();
         }
 
         //Do variable splitting in each iteration
@@ -10394,6 +10420,11 @@ int GlobalRA::coloringRegAlloc()
                     enableSpillSpaceCompression,
                     useScratchMsgForSpill,
                     builder.avoidDstSrcOverlap());
+
+                if (kernel.getOption(vISA_SpillAnalysis))
+                {
+                    spillAnalysis->Do(&liveAnalysis, &coloring, &spillGRF);
+                }
 
                 bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
                 nextSpillOffset = spillGRF.getNextOffset();

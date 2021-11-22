@@ -698,6 +698,7 @@ namespace vISA
     public:
         std::unique_ptr<VerifyAugmentation> verifyAugmentation;
         std::unique_ptr<RegChartDump> regChart;
+        std::unique_ptr<SpillAnalysis> spillAnalysis;
         static bool useGenericAugAlign()
         {
             auto gen = getPlatformGeneration(getGenxPlatform());

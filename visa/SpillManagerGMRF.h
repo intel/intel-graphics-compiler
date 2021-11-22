@@ -36,6 +36,7 @@ class LiveRange;
 class LSLiveRange;
 class PointsToAnalysis;
 class GlobalRA;
+class GraphColor;
 }
 struct RegionDesc;
 // Class definitions
@@ -734,6 +735,43 @@ static inline bool isPartialRegion(REGION_TYPE * region, unsigned execSize)
 }
 
 G4_SrcRegRegion* getSpillFillHeader(IR_Builder& builder, G4_Declare* decl);
+
+// Class used to analyze spill/fill decisions
+class SpillAnalysis
+{
+public:
+    SpillAnalysis() = default;
+    ~SpillAnalysis();
+
+    void Dump(std::ostream& OS = std::cerr);
+    void DumpHistogram(std::ostream& OS = std::cerr);
+
+    unsigned int GetDistance(G4_Declare* Dcl);
+    void LoadAugIntervals(DECLARE_LIST&);
+    void LoadDegree(G4_Declare* Dcl, unsigned int degree);
+
+    void SetLivenessAnalysis(LivenessAnalysis* L) { LA = L; }
+    void SetGraphColor(GraphColor* C) { GC = C; }
+    void SetSpillManager(SpillManagerGRF* S) { SM = S; }
+
+    void Clear();
+
+    void Do(LivenessAnalysis* L, GraphColor* C, SpillManagerGRF* S);
+
+private:
+    VarReferences* Refs = nullptr;
+
+    LivenessAnalysis* LA = nullptr;
+    GraphColor* GC = nullptr;
+    SpillManagerGRF* SM = nullptr;
+
+    std::unordered_map<G4_Declare*, std::pair<G4_INST*, G4_INST*>> AugIntervals;
+    std::unordered_map<G4_Declare*, unsigned int> DclDegree;
+
+    std::vector<G4_BB*> GetLiveBBs(G4_Declare*, std::unordered_map<G4_INST*, G4_BB*>&);
+    std::vector<G4_BB*> GetIntervalBBs(G4_INST* Start, G4_INST* End, std::unordered_map<G4_INST*, G4_BB*>& InstBBMap);
+};
+
 } // vISA::
 
 #endif // __SPILLMANAGERGMRF_H__

@@ -172,6 +172,7 @@ DEF_VISA_OPTION(vISA_DoSplitOnSpill,        ET_BOOL, "-splitonspill", UNUSED, fa
 DEF_VISA_OPTION(vISA_VerifyAugmentation,    ET_BOOL, "-verifyaugmentation", UNUSED, false)
 DEF_VISA_OPTION(vISA_VerifyExplicitSplit,   ET_BOOL, "-verifysplit", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpRegChart,          ET_BOOL, "-dumpregchart", UNUSED, false)
+DEF_VISA_OPTION(vISA_SpillAnalysis,         ET_BOOL, "-spillanalysis", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpAllBCInfo,          ET_BOOL, "-dumpAllBCInfo", UNUSED, false)
 DEF_VISA_OPTION(vISA_LinearScan,               ET_BOOL, "-linearScan",       UNUSED, false)
 DEF_VISA_OPTION(vISA_LSFristFit,               ET_BOOL, "-lsFirstFit",       UNUSED, true)
