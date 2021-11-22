@@ -1057,8 +1057,8 @@ namespace IGC {
         // pressure can be reduced.
 
         // L0 is inner loop
-        Loop* L0 = LoopWithPressure;
-        assert(L0);
+        Loop* const L0 = LoopWithPressure;
+        IGC_ASSERT(L0);
 
         // L1 is parent loop
         Loop* L1 = nullptr;

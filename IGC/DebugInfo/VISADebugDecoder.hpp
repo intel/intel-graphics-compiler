@@ -221,8 +221,7 @@ namespace IGC
 
                 // Assume that be_fp is available throughout the function
                 // and at the same location.
-                IGC_ASSERT(befp.front().var.physicalType == VarAlloc::PhyTypeGRF &&
-                    "BE_FP not in register");
+                IGC_ASSERT_MESSAGE(befp.front().var.physicalType == VarAlloc::PhyTypeGRF, "BE_FP not in register");
 
                 regNum = befp.front().var.mapping.r.regNum;
                 subRegNum = befp.front().var.mapping.r.subRegNum;

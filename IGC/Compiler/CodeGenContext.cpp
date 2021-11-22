@@ -720,7 +720,7 @@ namespace IGC
                 llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
                 if (valStr.getAsInteger(10, GTPinScratchAreaSizeValue))
                 {
-                    IGC_ASSERT(false);
+                    IGC_ASSERT(0);
                 }
                 Pos = valEnd;
                 continue;
@@ -767,7 +767,7 @@ namespace IGC
                 llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
                 if (valStr.getAsInteger(10, numThreadsPerEU))
                 {
-                    IGC_ASSERT(false);
+                    IGC_ASSERT(0);
                 }
                 Pos = valEnd;
                 continue;

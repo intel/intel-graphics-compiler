@@ -355,7 +355,7 @@ namespace IGC
 
                 /// UMD has to limit the number of user inputs in order
                 /// to be sure there are 2 free inputs at the end.
-                assert(drawParametersIndex < (ARRAY_COUNT(m_inputUsed) - 8));
+                IGC_ASSERT(drawParametersIndex < (ARRAY_COUNT(m_inputUsed) - 8));
 
                 if (baseVertex || baseInstance)
                 {

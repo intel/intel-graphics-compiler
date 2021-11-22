@@ -2176,9 +2176,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
 std::string
 SPIRVToLLVM::transOCLPipeTypeName(igc_spv::SPIRVTypePipe* PT,
   SPIRVAccessQualifierKind PipeAccess) {
-  IGC_ASSERT((PipeAccess == AccessQualifierReadOnly ||
-    PipeAccess == AccessQualifierWriteOnly) &&
-    "Invalid access qualifier");
+  IGC_ASSERT_MESSAGE((PipeAccess == AccessQualifierReadOnly || PipeAccess == AccessQualifierWriteOnly), "Invalid access qualifier");
   return std::string(kSPIRVTypeName::PrefixAndDelim) + kSPIRVTypeName::Pipe +
     kSPIRVTypeName::Delimiter + kSPIRVTypeName::PostfixDelim +
     PipeAccess;

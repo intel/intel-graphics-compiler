@@ -55,7 +55,7 @@ namespace IGC
             else
             {
                 const CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-                IGC_ASSERT(ctx && "CodeGenContext not initialized.");
+                IGC_ASSERT_MESSAGE(ctx, "CodeGenContext not initialized.");
                 return ctx->platform.getBlockPushConstantGRFThreshold();
             }
 

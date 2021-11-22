@@ -323,8 +323,8 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     currentBlock->getTerminator()->eraseFromParent();
     builder.SetInsertPoint(currentBlock);
 
-    int numPrivateLocal = (hasPrivate && hasLocal) ? 2 : ((hasPrivate || hasLocal) ? 1 : 0);
-    assert(numPrivateLocal > 0);
+    const int numPrivateLocal = (hasPrivate && hasLocal) ? 2 : ((hasPrivate || hasLocal) ? 1 : 0);
+    IGC_ASSERT(0 < numPrivateLocal);
 
     {
         SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, numPrivateLocal);

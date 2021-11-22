@@ -2678,7 +2678,8 @@ bool PDT_dominates(llvm::PostDominatorTree& PTD,
     const Instruction* I1,
     const Instruction* I2)
 {
-    assert(I1 && I2 && "Expecting valid I1 and I2");
+    IGC_ASSERT_MESSAGE(I1, "Expecting valid I1 and I2");
+    IGC_ASSERT_MESSAGE(I2, "Expecting valid I1 and I2");
 
     const BasicBlock* BB1 = I1->getParent();
     const BasicBlock* BB2 = I2->getParent();

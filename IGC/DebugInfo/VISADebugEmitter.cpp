@@ -443,7 +443,7 @@ void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char* pElfBuffer, size_t 
                 // If location of this section changes in the future, then a copy (or move) of this section content
                 // will be required. This future need must be verified if the assertion below hits (then
                 // assertion below must be changed based on results of such verification).
-                IGC_ASSERT(false);
+                IGC_ASSERT(0);
             }
         }
 
@@ -572,7 +572,7 @@ void DebugEmitter::registerVISA(IGC::VISAModule* VM)
     m_pDwarfDebug->registerVISA(VM);
 }
 void DebugEmitter::setCurrentVISA(IGC::VISAModule* VM) {
-    // TODO: add assert to check that this module is registered/owned
+    // TODO: add assertion statement to check that this module is registered/owned
     m_pVISAModule = VM;
 }
 void DebugEmitter::resetModule(std::unique_ptr<IGC::VISAModule> VM) {

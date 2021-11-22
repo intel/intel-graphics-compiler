@@ -495,7 +495,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
     int implicitArgStart = (unsigned)(pF->arg_size()
         - implicitArgs.size()
         - (IsSubroutine ? 0 : m_ModMD->pushInfo.pushAnalysisWIInfos.size()));
-    IGC_ASSERT(implicitArgStart >= 0 && "Function arg size does not match meta data and push args.");
+    IGC_ASSERT_MESSAGE(implicitArgStart >= 0, "Function arg size does not match meta data and push args.");
 
     llvm::Function::arg_iterator ai, ae;
     ai = pF->arg_begin();

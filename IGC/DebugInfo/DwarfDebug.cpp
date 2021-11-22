@@ -465,7 +465,7 @@ void DwarfDebug::registerVISA(IGC::VISAModule* M)
     auto *EM = GetVISAModule(F);
     if (M == EM)
         return;
-    // TODO: we need to change this one to assert
+    // TODO: we need to change this one to assertion statement
     if (EM != nullptr) {
         VISAModToFunc.erase(EM);
     }

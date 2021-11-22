@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Probe/Assertion.h"
+
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
@@ -83,7 +85,7 @@ namespace IGC
 
     // TODO: Unify with the original predicate from InlineLocalsResolution.cpp
     static bool useAsPointerOnly(Value* V) {
-        assert(V->getType()->isPointerTy() && "Expect the input value is a pointer!");
+        IGC_ASSERT_MESSAGE(V->getType()->isPointerTy(), "Expect the input value is a pointer!");
 
         SmallSet<PHINode*, 8> VisitedPHIs;
         SmallVector<Value*, 16> WorkList;

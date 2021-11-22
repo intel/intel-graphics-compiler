@@ -630,7 +630,7 @@ void TransposeHelper::handleGEPInst(
         }
         else
         {
-            IGC_ASSERT(false);
+            IGC_ASSERT(0);
         }
         pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
     }
