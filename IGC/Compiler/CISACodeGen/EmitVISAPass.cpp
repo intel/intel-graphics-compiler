@@ -18559,7 +18559,7 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
     }
     else
     {
-        IGC_ASSERT_MESSAGE(0, "Does not support stackcall as subgroup head!");
+        IGC_ASSERT_MESSAGE(0, "Intrinsics used in stackcalls has not been lowered!");
     }
 }
 

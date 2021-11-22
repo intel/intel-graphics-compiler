@@ -655,7 +655,15 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
 
 Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGCMD::MetaDataUtils* pMdUtils)
 {
-    if (!isEntryFunc(pMdUtils, &F) && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
+    Value* funcArg = getImplicitArg(F, argType);
+
+    if (funcArg)
+    {
+        // If the function argument already exists, just return it
+        return funcArg;
+    }
+
+    if (!isEntryFunc(pMdUtils, &F))
     {
         ImplicitArg iArg = IMPLICIT_ARGS[argType];
         GenISAIntrinsic::ID genID = iArg.getGenIntrinsicID();
@@ -681,8 +689,7 @@ Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType
             return inst;
         }
     }
-    // By default, get it from function arguments list
-    return getImplicitArg(F, argType);
+    return nullptr;
 }
 
 Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType, int argNum) const

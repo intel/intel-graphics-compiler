@@ -81,7 +81,12 @@ bool AddImplicitArgs::runOnModule(Module &M)
         // skip non-entry functions
         if (m_pMdUtils->findFunctionsInfoItem(&func) == m_pMdUtils->end_FunctionsInfo()) continue;
         // Skip functions called from functions marked with stackcall attribute
-        if (hasStackCallInCG(&func)) continue;
+        if (hasStackCallInCG(&func))
+        {
+            FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(&func);
+            funcInfo->clearImplicitArgInfoList();
+            continue;
+        }
 
         // see the detail in StatelessToStatefull.cpp.
         // If SToSProducesPositivePointer is true, do not generate implicit arguments.
@@ -178,7 +183,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
 
 bool AddImplicitArgs::hasStackCallInCG(const Function* F)
 {
-    if (F->hasFnAttribute("visaStackCall"))
+    if (F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("referenced-indirectly"))
         return true;
 
     for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
@@ -538,7 +543,6 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
                             return false;
                         }
                         PrunedFuncs.insert(pFuncOnPath);
-                        changed = true;
                     }
                 }
             }
@@ -546,9 +550,14 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
     }
     for (auto pF : PrunedFuncs)
     {
+        // We can't force inline indirect calls
+        if (pF->hasFnAttribute("referenced-indirectly"))
+            continue;
+
         pF->removeFnAttr("visaStackCall");
         pF->removeFnAttr(llvm::Attribute::NoInline);
         pF->addFnAttr(llvm::Attribute::AlwaysInline);
+        changed = true;
     }
     return changed;
 }
@@ -729,19 +738,15 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
 
     for (const auto& A : data.ArgsMaps)
     {
-        // For the implicit args that have GenISAIntrinsic support,
+        // For the implicit args that have GenISAIntrinsic support used in subroutines,
         // they do not require to be added as explicit arguments other than in the caller kernel.
         ImplicitArg::ArgType argId = A.first;
-        if (IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic) &&
-            !isEntry &&
-            ImplicitArgs::hasIntrinsicSupport(argId))
+        if (!isEntry && ImplicitArgs::hasIntrinsicSupport(argId))
         {
-            // Only write the implicit arg metadata if ForceInlineStackCallWithImplArg=1,
-            // since it's needed to check implicit arg usage to determine inlining.
-            // If ForceInlineStackCallWithImplArg=0, we can still use intrinsics to represent
-            // implicit arg usage inside a stackcalled function.
-            if (!isStackCall || IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
+            if (!isStackCall && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
+            {
                 continue;
+            }
         }
         if (argId < ImplicitArg::ArgType::STRUCT_START)
         {

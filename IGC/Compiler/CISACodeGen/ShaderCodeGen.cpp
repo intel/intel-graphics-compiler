@@ -611,12 +611,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(createGenXCodeGenModulePass());
     }
 
-    // Remove all uses of implicit arg instrinsics in the kernel after
-    // inlining by lowering them to kernel args.
-    if (IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
-    {
-        mpm.add(new LowerImplicitArgIntrinsics());
-    }
+    // Remove all uses of implicit arg instrinsics after inlining by lowering them to kernel args
+    mpm.add(new LowerImplicitArgIntrinsics());
 
     // Resolving private memory allocas
     // In case of late inlining of Unmasked function postpone memory

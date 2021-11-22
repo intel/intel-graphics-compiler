@@ -700,9 +700,11 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
     // still need to use the implicit arg buffer.
     if (!LoadFromImplicitArgBuffer)
     {
-        if (m_FGA && m_FGA->getSubGroupMap(F)->hasFnAttribute("visaStackCall"))
+        if (m_FGA)
         {
-            LoadFromImplicitArgBuffer = true;
+            Function* subGroupMapHead = m_FGA->getSubGroupMap(F);
+            if (subGroupMapHead && subGroupMapHead->hasFnAttribute("visaStackCall"))
+                LoadFromImplicitArgBuffer = true;
         }
     }
 
