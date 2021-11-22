@@ -335,10 +335,6 @@ class GenXEmulate : public ModulePass {
     enum Rounding {
       // Not used currenly
     };
-    static Value *buildFPToI64(Module &M, IRBuilder &B,
-                               IVSplitter &SplitBuilder, Value *V,
-                               bool IsSigned, Rounding rnd = Rounding());
-
     struct ShiftInfo {
       ShiftInfo(Value *ShaIn, Value *Sh32In, Value *Mask1In, Value *Mask0In)
           : Sha{ShaIn}, Sh32{Sh32In}, Mask1{Mask1In}, Mask0{Mask0In} {}
@@ -1517,96 +1513,7 @@ Value *GenXEmulate::Emu64Expander::buildGenericRShift(IRBuilder &Builder,
       {Lo, Hi}, Twine("int_emu.") + Op.getOpcodeName() + ".",
       Op.getType()->isIntegerTy());
 }
-Value *GenXEmulate::Emu64Expander::buildFPToI64(Module &M, IRBuilder &Builder,
-                                                IVSplitter &SplitBuilder,
-                                                Value *V, bool IsSigned,
-                                                Rounding rnd) {
-  (void)rnd; // Currently, only round to zero is supported
 
-  // NOTE: we should factor-out this code to a dedicated function if
-  // we'll ever need to emulate custom rounding facilities.
-
-  auto VFOp = toVector(Builder, V);
-  Type *I32VTy = IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(),
-                                               VFOp.VTy->getNumElements());
-  // vector of floats -> vector of ints
-  Value *Operand = Builder.CreateBitCast(VFOp.V, I32VTy);
-  ConstantEmitter K(Operand);
-
-  auto *Exp = Builder.CreateAnd(Builder.CreateLShr(Operand, K.getSplat(23)),
-                                K.getSplat(0xff));
-  // mantissa without hidden bit
-  auto *PMant = Builder.CreateAnd(Operand, K.getSplat((1u << 23) - 1));
-  auto *Shift = Builder.CreateSub(K.getSplat(0xbe), Exp);
-  // take hidden bit into account
-  auto *Mant = Builder.CreateOr(PMant, K.getSplat(1 << 23));
-
-  auto *DataH = Builder.CreateShl(Mant, K.getSplat(8));
-  auto *DataL = K.getZero();
-
-  // The following 3 statements do Logical Shift Right
-  auto SI = constructShiftInfo(Builder, Shift);
-  auto *Lo = buildPartialRShift(Builder, DataL, DataH, SI);
-  auto *Hi = Builder.CreateAnd(Builder.CreateLShr(DataH, SI.Sha), SI.Mask1);
-
-  // Discard results if shift is greater than 63
-  auto *MASK = Builder.CreateSelect(
-      Builder.CreateICmpUGT(Shift, K.getSplat(63)), K.getZero(), K.getOnes());
-  Lo = Builder.CreateAnd(Lo, MASK);
-  Hi = Builder.CreateAnd(Hi, MASK);
-
-  auto PredicatedUpdate = [&Builder](Value *Predicate,
-                                     const std::pair<Value *, Value *> &New,
-                                     const std::pair<Value *, Value *> &Old) {
-    Value *Lo = Builder.CreateSelect(Predicate, New.first, Old.first);
-    Value *Hi = Builder.CreateSelect(Predicate, New.second, Old.second);
-    return std::make_pair(Lo, Hi);
-  };
-
-  auto *SignedBit = Builder.CreateAnd(Operand, K.getSplat(1 << 31));
-  auto *FlagSignSet = Builder.CreateICmpNE(SignedBit, K.getZero());
-  auto *FlagNoSignSet = Builder.CreateNot(FlagSignSet);
-  // check for Exponent overflow (when sign bit set)
-  auto *FlagExpO = Builder.CreateICmpUGT(Exp, K.getSplat(0xbe));
-  auto *FlagExpUO = Builder.CreateAnd(FlagNoSignSet, FlagExpO);
-  // signed bit alterations
-  if (IsSigned) {
-    // calculate (NOT[Lo, Hi] + 1) (integer sign negation)
-    auto *NegLo = Builder.CreateNot(Lo);
-    auto *NegHi = Builder.CreateNot(Hi);
-    auto AddcRes = buildAddc(&M, Builder, *NegLo, *K.getSplat(1),
-                             "int_emu.fp2ui.arg_negate.");
-    NegHi = Builder.CreateAdd(NegHi, AddcRes.CB);
-    // if sign bit is set, alter the result with negated value
-    std::tie(Lo, Hi) =
-        PredicatedUpdate(FlagSignSet, {AddcRes.Val, NegHi}, {Lo, Hi});
-
-    // Here we process oveflows
-    auto K_SOverflow = std::make_pair(K.getZero(), K.getSplat(1u << 31));
-    auto K_UOverflow = std::make_pair(K.getOnes(), K.getSplat((1u << 31) - 1));
-
-    // Overflow processing...
-    auto *NZ = Builder.CreateICmpNE(Builder.CreateOr(Lo, Hi), K.getZero());
-    // (sign ^ ((result_h  >> 31) & 1)))
-    auto *SS = Builder.CreateXor(SignedBit,
-                                 Builder.CreateAnd(Hi, K.getSplat(1 << 31)));
-    auto *NZ2 = Builder.CreateICmpNE(SS, K.getZero());
-    auto *Ovrfl = Builder.CreateAnd(NZ, NZ2);
-
-    // In case of overflow, HW response is : 7fffffffffffffff
-    std::tie(Lo, Hi) = PredicatedUpdate(Ovrfl, K_UOverflow, {Lo, Hi});
-    std::tie(Lo, Hi) = PredicatedUpdate(FlagExpO, K_SOverflow, {Lo, Hi});
-    std::tie(Lo, Hi) = PredicatedUpdate(FlagExpUO, K_UOverflow, {Lo, Hi});
-  } else {
-    auto *Zero = K.getZero();
-    auto *Ones = K.getOnes();
-    std::tie(Lo, Hi) = PredicatedUpdate(FlagSignSet, {Zero, Zero}, {Lo, Hi});
-    std::tie(Lo, Hi) = PredicatedUpdate(FlagExpUO, {Ones, Ones}, {Lo, Hi});
-  }
-
-  return SplitBuilder.combineLoHiSplit({Lo, Hi}, "int_emu.fp2i.combine.",
-                                       V->getType()->isIntegerTy());
-}
 Value *GenXEmulate::Emu64Expander::buildPartialRShift(IRBuilder &B,
                                                       Value *SrcLo,
                                                       Value *SrcHi,
