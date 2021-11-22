@@ -1333,8 +1333,8 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
               continue; // Called function arg is EM.
             // Need to insert a copy. Give it the number of the arg's pre-copy
             // slot.
-            showCoalesceFail(CallArgSV, CI->getDebugLoc(), "call arg", DestLR,
-                             SourceLR);
+            LLVM_DEBUG(showCoalesceFail(CallArgSV, CI->getDebugLoc(),
+                                        "call arg", DestLR, SourceLR));
             unsigned Num =
                 Numbering->getArgPreCopyNumber(CI, ArgIdx, StructIdx);
             Instruction *NewCopy =
@@ -1404,8 +1404,9 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           Liveness->removeValueNoDelete(SV);
           Liveness->setLiveRange(SV, SourceLR);
           // Need to insert a copy. Give it the number of the post-copy slot.
-          showCoalesceFail(SimpleValue(CI, StructIdx), CI->getDebugLoc(),
-                           "ret postcopy", DestLR, SourceLR);
+          LLVM_DEBUG(showCoalesceFail(SimpleValue(CI, StructIdx),
+                                      CI->getDebugLoc(), "ret postcopy", DestLR,
+                                      SourceLR));
           unsigned Num = Numbering->getRetPostCopyNumber(CI, StructIdx);
           SimpleValue Source(CI, StructIdx);
           Instruction *NewCopy =
@@ -1485,8 +1486,9 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
         if (DestLR == SourceLR)
           continue; // coalesced
         // Need to insert a copy. Give it the number of the ret pre-copy slot.
-        showCoalesceFail(SimpleValue(Input, StructIdx), RI->getDebugLoc(),
-              "ret precopy", DestLR, SourceLR);
+        LLVM_DEBUG(showCoalesceFail(SimpleValue(Input, StructIdx),
+                                    RI->getDebugLoc(), "ret precopy", DestLR,
+                                    SourceLR));
         unsigned Num = Numbering->getNumber(RI) - StructEnd + StructIdx;
         Instruction *NewCopy = insertCopy(SimpleValue(Input, StructIdx),
             DestLR, RI, "retval.precopy", Num);
@@ -2064,8 +2066,8 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
             ? Numbering->getPhiNumber(
                   Phi, Phi->getIncomingBlock(CD.UseInDest->getOperandNo()))
             : Numbering->getNumber(CD.InsertPoint);
-    showCoalesceFail(CD.Dest, CD.InsertPoint->getDebugLoc(), "phi", DestLR,
-                     SourceLR);
+    LLVM_DEBUG(showCoalesceFail(CD.Dest, CD.InsertPoint->getDebugLoc(), "phi",
+                                DestLR, SourceLR));
     NewCopy = insertCopy(Source, DestLR, CD.InsertPoint, "phicopy", Num);
     Phi->setIncomingValue(CD.UseInDest->getOperandNo(), NewCopy);
     break;
@@ -2075,8 +2077,8 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
     // pre-copy slot, which is one less than the number of the two address
     // instruction.
     Instruction *DestInst = cast<Instruction>(CD.Dest.getValue());
-    showCoalesceFail(CD.Dest, DestInst->getDebugLoc(), "two address", DestLR,
-                     SourceLR);
+    LLVM_DEBUG(showCoalesceFail(CD.Dest, DestInst->getDebugLoc(), "two address",
+                                DestLR, SourceLR));
     NewCopy = insertCopy(Source, DestLR, DestInst, "twoaddr",
                          Numbering->getNumber(DestInst) - 1);
     NewCopy =
