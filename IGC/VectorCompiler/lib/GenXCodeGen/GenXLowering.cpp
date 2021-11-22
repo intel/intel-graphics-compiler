@@ -1151,7 +1151,7 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
     // 4-oword is 64 bytes, using simd16 dword gather-scaled
     // 8-oword is 128 bytes, using 2*simd16 dword gather-scaled
     unsigned DWordCnt = (EltSize * EltCount) / 32;
-    assert(DWordCnt == 4 || DWordCnt == 8 || DWordCnt == 16 || DWordCnt == 32);
+    IGC_ASSERT(DWordCnt == 4 || DWordCnt == 8 || DWordCnt == 16 || DWordCnt == 32);
     unsigned SimdWidth = (DWordCnt == 32) ? 16 : DWordCnt;
     auto NewVT = IGCLLVM::FixedVectorType::get(CIntTy, DWordCnt);
     auto GatherVT = IGCLLVM::FixedVectorType::get(CIntTy, SimdWidth);
@@ -1246,7 +1246,7 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
     // 4-oword is 64 bytes, using simd16 dword scatter-scaled
     // 8-oword is 128 bytes, using 2*simd16 dword scatter-scaled
     unsigned DWordCnt = (EltSize * EltCount) / 32;
-    assert(DWordCnt == 4 || DWordCnt == 8 || DWordCnt == 16 || DWordCnt == 32);
+    IGC_ASSERT(DWordCnt == 4 || DWordCnt == 8 || DWordCnt == 16 || DWordCnt == 32);
     auto NewVT = IGCLLVM::FixedVectorType::get(CIntTy, DWordCnt);
     IGC_ASSERT_MESSAGE(CastInst::isBitCastable(NewVT, OrigVT),
         "We expect resulting vectors to be bitcastable");
@@ -3385,9 +3385,9 @@ bool GenXLowering::lowerLzd(Instruction *Inst) {
 #define SYCL_SLM_AS  3
 bool GenXLowering::lowerLLVMMaskedLoad(CallInst* CallOp) {
   auto PtrV = CallOp->getArgOperand(0);
-  assert(PtrV->getType()->isPointerTy());
+  IGC_ASSERT(PtrV->getType()->isPointerTy());
   auto AS = cast<PointerType>(PtrV->getType())->getAddressSpace();
-  assert(AS != SYCL_SLM_AS && "do not expect masked load from SLM");
+  IGC_ASSERT_MESSAGE(AS != SYCL_SLM_AS, "do not expect masked load from SLM");
   auto DTy = CallOp->getType();
   // convert to unaligned-block-load then select
   std::string IntrName =
@@ -3409,9 +3409,9 @@ bool GenXLowering::lowerLLVMMaskedLoad(CallInst* CallOp) {
 
 bool GenXLowering::lowerLLVMMaskedStore(CallInst* CallOp) {
   auto PtrV = CallOp->getArgOperand(1);
-  assert(PtrV->getType()->isPointerTy());
+  IGC_ASSERT(PtrV->getType()->isPointerTy());
   auto AS = cast<PointerType>(PtrV->getType())->getAddressSpace();
-  assert(AS != SYCL_SLM_AS && "do not expected masked store to SLM");
+  IGC_ASSERT_MESSAGE(AS != SYCL_SLM_AS, "do not expected masked store to SLM");
   auto DTV = CallOp->getArgOperand(0);
   auto DL = CallOp->getDebugLoc();
   // convert to unaligned-block-load then select
@@ -3447,11 +3447,12 @@ bool GenXLowering::lowerLLVMMaskedGather(CallInst* CallOp) {
   auto MaskV = CallOp->getArgOperand(2);
   auto OldV = CallOp->getArgOperand(3);
   auto DTy = CallOp->getType();
-  assert(PtrV->getType()->isVectorTy() && DTy->isVectorTy());
+  IGC_ASSERT(PtrV->getType()->isVectorTy());
+  IGC_ASSERT(DTy->isVectorTy());
   auto PtrETy = cast<VectorType>(PtrV->getType())->getElementType();
-  assert(PtrETy->isPointerTy());
+  IGC_ASSERT(PtrETy->isPointerTy());
   auto AS = cast<PointerType>(PtrETy)->getAddressSpace();
-  assert(AS != SYCL_SLM_AS && "do not expect masked gather from SLM");
+  IGC_ASSERT_MESSAGE(AS != SYCL_SLM_AS, "do not expect masked gather from SLM");
   auto EltTy = cast<VectorType>(DTy)->getElementType();
   auto NumElts = cast<IGCLLVM::FixedVectorType>(DTy)->getNumElements();
   auto EltBytes = EltTy->getPrimitiveSizeInBits() / 8;
@@ -3505,11 +3506,12 @@ bool GenXLowering::lowerLLVMMaskedScatter(CallInst* CallOp) {
   auto PtrV = CallOp->getArgOperand(1);
   auto MaskV = CallOp->getArgOperand(3);
   auto DTy = DataV->getType();
-  assert(PtrV->getType()->isVectorTy() && DTy->isVectorTy());
+  IGC_ASSERT(PtrV->getType()->isVectorTy());
+  IGC_ASSERT(DTy->isVectorTy());
   auto PtrETy = cast<VectorType>(PtrV->getType())->getElementType();
-  assert(PtrETy->isPointerTy());
+  IGC_ASSERT(PtrETy->isPointerTy());
   auto AS = cast<PointerType>(PtrETy)->getAddressSpace();
-  assert(AS != SYCL_SLM_AS && "do not expect masked scatter to SLM");
+  IGC_ASSERT_MESSAGE(AS != SYCL_SLM_AS, "do not expect masked scatter to SLM");
   auto EltTy = cast<VectorType>(DTy)->getElementType();
   auto NumElts = cast<IGCLLVM::FixedVectorType>(DTy)->getNumElements();
   auto EltBytes = EltTy->getPrimitiveSizeInBits() / 8;

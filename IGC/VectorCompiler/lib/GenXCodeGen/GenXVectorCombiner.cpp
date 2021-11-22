@@ -134,7 +134,7 @@ bool GenXVectorCombiner::isSupportedGenXIntrinsic(GenXIntrinsic::ID IdCode) {
   case GenXIntrinsic::genx_absi:
     return true;
   }
-  IGC_ASSERT(false);
+  IGC_ASSERT(0);
   return false;
 }
 

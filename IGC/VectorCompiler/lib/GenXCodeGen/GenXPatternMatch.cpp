@@ -2746,9 +2746,9 @@ bool GenXPatternMatch::simplifyVolatileGlobals(Function *F) {
 // of log2 of original vector;
 // input vector consists of only positive integer or only one positive integer
 static Constant *getFloorLog2(const Constant *C) {
-  IGC_ASSERT(C && "getFloorLog2 get nullptr");
-  IGC_ASSERT(C->getType()->isIntOrIntVectorTy() &&
-             "Error: getFloorLog2 get not int or vector of int type");
+  IGC_ASSERT_MESSAGE(C, "getFloorLog2 get nullptr");
+  IGC_ASSERT_MESSAGE(C->getType()->isIntOrIntVectorTy(),
+                     "Error: getFloorLog2 get not int or vector of int type");
   if (C->getType()->isVectorTy()) {
     VectorType *Ty = cast<VectorType>(C->getType());
     SmallVector<Constant *, 4> Elts;
@@ -2772,7 +2772,7 @@ static Constant *getFloorLog2(const Constant *C) {
 // return true if Value is constant data power 2 value
 // input operand - value
 bool isSuitableSdivSremPow2Operand(const Value *Operand) {
-  IGC_ASSERT(Operand && "nullptr in isSuitableSdivSremPow2Operand");
+  IGC_ASSERT_MESSAGE(Operand, "nullptr in isSuitableSdivSremPow2Operand");
   if (!isa<Constant>(Operand)) // constant data vector or constant
     return false;
   if (PatternMatch::match(Operand, PatternMatch::m_Negative()))
@@ -2781,8 +2781,8 @@ bool isSuitableSdivSremPow2Operand(const Value *Operand) {
   if (!Operand->getType()->isIntOrIntVectorTy(genx::DWordBits))
     return false; // not int and not vector of int, or width wrong
   Type *InstElementTy = Operand->getType()->getScalarType();
-  IGC_ASSERT(InstElementTy &&
-             "ERROR: logic error in is isSuitableSdivSremPow2DecomposeInst");
+  IGC_ASSERT_MESSAGE(InstElementTy,
+      "ERROR: logic error in is isSuitableSdivSremPow2DecomposeInst");
   return PatternMatch::match(Operand, PatternMatch::m_Power2());
 }
 
@@ -2794,10 +2794,10 @@ bool isSuitableSdivSremPow2Operand(const Value *Operand) {
 // intWidth = 32
 // x / y = ashr( x + lshr( ashr(x, intWidth - 1), intWidth - log2(y)), log2(y))
 static void decomposeSdivPow2(BinaryOperator &Sdiv) {
-  IGC_ASSERT(Sdiv.getOpcode() == Instruction::SDiv &&
-             "Error: try to decompose sdiv for not sdiv instruction");
-  IGC_ASSERT(isSuitableSdivSremPow2Operand(Sdiv.getOperand(1)) &&
-             "Error: try to decompose sdiv for not suitable instruction");
+  IGC_ASSERT_MESSAGE(Sdiv.getOpcode() == Instruction::SDiv,
+                     "Error: try to decompose sdiv for not sdiv instruction");
+  IGC_ASSERT_MESSAGE(isSuitableSdivSremPow2Operand(Sdiv.getOperand(1)),
+      "Error: try to decompose sdiv for not suitable instruction");
 
   const Twine Name = "genxSdivOpt";
   Value *Op0 = Sdiv.getOperand(0);
@@ -2805,7 +2805,7 @@ static void decomposeSdivPow2(BinaryOperator &Sdiv) {
 
   Type *SdivTy = Sdiv.getType();
   Type *ElementTy = SdivTy->getScalarType();
-  IGC_ASSERT(ElementTy && "ERROR: logic error in decomposeSdivPow2");
+  IGC_ASSERT_MESSAGE(ElementTy, "ERROR: logic error in decomposeSdivPow2");
   unsigned ElementBitWidth = ElementTy->getIntegerBitWidth();
   unsigned OperandWidth =
       SdivTy->isVectorTy()
@@ -2826,7 +2826,7 @@ static void decomposeSdivPow2(BinaryOperator &Sdiv) {
       createConstant(OperandWidth, ElementTy, ElementBitWidth);
 
   Constant *Log2Op1 = getFloorLog2(Op1);
-  IGC_ASSERT(Log2Op1 != nullptr && "getLog2 return nullptr");
+  IGC_ASSERT_MESSAGE(Log2Op1 != nullptr, "getLog2 return nullptr");
 
   Value *ShiftSize = Builder.CreateSub(VecBitWidth, Log2Op1, Name);
   // if op0 is negative, Signdetect all ones, else all zeros
@@ -2848,16 +2848,16 @@ void GenXPatternMatch::visitSDiv(BinaryOperator &I) {
 // suppose that later sdiv operation will be optimized by decomposeSdivPow2
 // x % y = x - y * (x / y)
 static void decomposeSremPow2(BinaryOperator &Srem) {
-  IGC_ASSERT(Srem.getOpcode() == Instruction::SRem &&
-             "Error: try to decomposeSrem not srem");
-  IGC_ASSERT(isSuitableSdivSremPow2Operand(Srem.getOperand(1)) &&
-             "Error: try to decomposeSrem for not suitable Operand 1");
+  IGC_ASSERT_MESSAGE(Srem.getOpcode() == Instruction::SRem,
+                     "Error: try to decomposeSrem not srem");
+  IGC_ASSERT_MESSAGE(isSuitableSdivSremPow2Operand(Srem.getOperand(1)),
+                     "Error: try to decomposeSrem for not suitable Operand 1");
   const Twine Name = "genxSremOpt";
   Value *Op0 = Srem.getOperand(0);
   Constant *Op1 = cast<Constant>(Srem.getOperand(1));
 
   Type *SremTy = Srem.getType();
-  IGC_ASSERT(SremTy && "ERROR: logic error in decomposeSremPow2");
+  IGC_ASSERT_MESSAGE(SremTy, "ERROR: logic error in decomposeSremPow2");
 
   IRBuilder<> Builder(&Srem);
 

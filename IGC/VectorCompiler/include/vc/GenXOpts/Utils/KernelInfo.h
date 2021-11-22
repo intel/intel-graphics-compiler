@@ -56,7 +56,7 @@ inline bool isReferencedIndirectly(const Function *F) {
       F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
   // Note: currently, all indirectly-referenced functions are expected to
   // have FunctionMD::CMStackCall.
-  // The assert should be removed if this property becomes obsolete.
+  // The assertion should be removed if this property becomes obsolete.
   IGC_ASSERT(!HasIndirectReference ||
              F->hasFnAttribute(genx::FunctionMD::CMStackCall));
   return HasIndirectReference;
