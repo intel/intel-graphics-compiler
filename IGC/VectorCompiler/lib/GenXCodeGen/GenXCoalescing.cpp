@@ -2080,7 +2080,7 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
     NewCopy = insertCopy(Source, DestLR, DestInst, "twoaddr",
                          Numbering->getNumber(DestInst) - 1);
     NewCopy =
-        insertIntoStruct(CD.Dest.getValue()->getType(), CD.Dest.getIndex(),
+        insertIntoStruct(CD.UseInDest->get()->getType(), CD.Dest.getIndex(),
                          *CD.UseInDest, NewCopy, DestInst);
     // Replace the use of the old source.
     IGC_ASSERT(CD.UseInDest->get()->getType() == NewCopy->getType());
