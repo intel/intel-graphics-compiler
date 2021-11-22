@@ -2450,12 +2450,6 @@ void SWSB::tokenAllocation()
             }
         }
 
-        if (inst->isDpas() && node->succs.size() == 0 &&
-            fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction))
-        {
-            continue;
-        }
-
         if (inst->isMathPipeInst())
         {
             mathInstCount++;
