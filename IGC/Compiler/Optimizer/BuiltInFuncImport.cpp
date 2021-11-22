@@ -937,7 +937,6 @@ void BIImport::InitializeBIFlags(Module& M)
         GlobalVariable *gv = M.getGlobalVariable(varName);
         if (gv == nullptr)
             return;
-        //var->setInitializer(ConstantInt::get(Type::getInt32Ty(M->getContext()), value));
         gv->setLinkage(GlobalValue::ExternalLinkage);
     };
 

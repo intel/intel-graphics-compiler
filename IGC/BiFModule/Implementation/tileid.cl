@@ -6,17 +6,25 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-extern int __SubDeviceID = 0;
-extern int __MaxHWThreadIDPerSubDevice = 1;
+extern int *__SubDeviceID = NULL;
+extern int *__MaxHWThreadIDPerSubDevice = NULL;
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )(void) {
-    return __SubDeviceID;
-}
-
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInHWThreadIDINTEL, , )(void) {
-    return __builtin_IB_hw_thread_id() + __SubDeviceID * __MaxHWThreadIDPerSubDevice;
+    if (__SubDeviceID == NULL) {
+        return 0;
+    }
+    return *__SubDeviceID;
 }
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInMaxHWThreadIDPerSubDeviceINTEL, , )(void) {
-    return __MaxHWThreadIDPerSubDevice;
+    if (__MaxHWThreadIDPerSubDevice == NULL) {
+        return 1;
+    }
+    return *__MaxHWThreadIDPerSubDevice;
+}
+
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInHWThreadIDINTEL, , )(void) {
+    int subDeviceId = SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )();
+    int maxHWThreadsPerSubDevice = SPIRV_BUILTIN_NO_OP(BuiltInMaxHWThreadIDPerSubDeviceINTEL, , )();
+    return __builtin_IB_hw_thread_id() + subDeviceId * maxHWThreadsPerSubDevice;
 }
