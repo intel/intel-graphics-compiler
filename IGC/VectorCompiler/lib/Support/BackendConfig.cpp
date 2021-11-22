@@ -23,7 +23,7 @@ using namespace llvm;
 //===----------------------------------------------------------------------===//
 
 static cl::opt<bool> GenerateDebugInfoOpt(
-    "vc-emit-debug-info", cl::init(false), cl::Hidden,
+    "vc-emit-debug-info", cl::init(true), cl::Hidden,
     cl::desc("Generate DWARF debug info for each compiled kernel"));
 
 static cl::opt<bool> EmitDebuggableKernelsOpt(
