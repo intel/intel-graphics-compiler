@@ -683,9 +683,10 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
  * unsigned in one place and signed in another), in which case we
  * find/create a vISA register alias.
  */
-GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
-    const Function* kernel, SimpleValue V, Signedness Signed, Type *OverrideType)
-{
+GenXVisaRegAlloc::Reg *
+GenXVisaRegAlloc::getRegForValueOrNull(const Function *kernel, SimpleValue V,
+                                       Signedness Signed, Type *OverrideType,
+                                       bool IsBF) {
   LLVM_DEBUG(dbgs() << "getRegForValueOrNull " << *(V.getValue()) << "\n");
   Reg *R = getRegForValueUntyped(kernel, V);
   if (!R)
@@ -711,6 +712,7 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
   }
 
   Reg *LastAlias = R;
+
   // std::find_if
   for (Reg *CurAlias = R; CurAlias; CurAlias = CurAlias->NextAlias[kernel]) {
     LastAlias = CurAlias;
@@ -718,13 +720,15 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
     ExistingType = &vc::fixDegenerateVectorType(*ExistingType);
     if (ExistingType == OverrideType &&
         CurAlias->Num >= VISA_NUM_RESERVED_REGS &&
-        (CurAlias->Signed == Signed || Signed == DONTCARESIGNED)) {
+        (CurAlias->Signed == Signed || Signed == DONTCARESIGNED) &&
+        CurAlias->IsBF == IsBF) {
       LLVM_DEBUG(dbgs() << "Using alias: "; CurAlias->print(dbgs()); dbgs() << "\n");
       return CurAlias;
     }
   }
   // Run out of aliases. Add a new one.
-  Reg *NewReg = createReg(RegCategory::GENERAL, OverrideType, Signed, 0, R);
+  Reg *NewReg =
+      createReg(RegCategory::GENERAL, OverrideType, Signed, 0, R, IsBF);
   LastAlias->NextAlias[kernel] = NewReg;
   LLVM_DEBUG(dbgs() << "New register: "; NewReg->print(dbgs()); dbgs() << "\n");
   return NewReg;
@@ -756,7 +760,8 @@ void GenXVisaRegAlloc::addRetIPArgument() {
  * Enter:   Ty = LLVM type
  *          Signedness = whether signed type required
  */
-TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed)
+TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
+                         bool IsBF)
     : DL(DL) {
   Type *ElementTy = Ty;
   NumElements = 1;
@@ -782,7 +787,7 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed)
       }
     }
   } else if (ElementTy->isHalfTy()) {
-    VisaType = ISA_TYPE_HF;
+    VisaType = IsBF ? ISA_TYPE_BF : ISA_TYPE_HF;
     BytesPerElement = 2;
   } else if (ElementTy->isFloatTy()) {
     VisaType = ISA_TYPE_F;

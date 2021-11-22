@@ -94,6 +94,9 @@ namespace llvm {
       std::map<const Function*, Reg*> NextAlias;
       genx::Signedness Signed = genx::DONTCARESIGNED;
       Type *Ty = nullptr;
+      // Template, as bfloat not llvm-10 type
+      bool IsBF = false;
+
       // log2 min alignment requested by user of register
       unsigned Alignment = 0;
       // String representation of register, mostly it is combination of
@@ -107,9 +110,10 @@ namespace llvm {
 
       Reg(unsigned Category, unsigned Num, Type *Ty = 0,
           genx::Signedness Signed = genx::DONTCARESIGNED,
-          unsigned LogAlignment = 0, Reg *AliasTo = nullptr)
+          unsigned LogAlignment = 0, Reg *AliasTo = nullptr,
+          bool ArgIsBF = false)
           : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
-            Ty(Ty), Alignment(LogAlignment) {
+            Ty(Ty), Alignment(LogAlignment), IsBF(ArgIsBF) {
         IGC_ASSERT(Category);
         IGC_ASSERT(Category < genx::RegCategory::NUMREALCATEGORIES);
         NameStr = (Twine(categoryToString(Category)) + Twine(Num)).str();
@@ -184,17 +188,18 @@ namespace llvm {
       return RegStorage;
     }
     // Get the vISA virtual register for a value (assertion failure if none).
-    Reg* getRegForValue(const Function *kernel, genx::SimpleValue V,
-        genx::Signedness Signed = genx::DONTCARESIGNED, Type *OverrideType = 0)
-    {
-      Reg* R = getRegForValueOrNull(kernel, V, Signed, OverrideType);
+    Reg *getRegForValue(const Function *kernel, genx::SimpleValue V,
+                        genx::Signedness Signed = genx::DONTCARESIGNED,
+                        Type *OverrideType = nullptr, bool IsBF = false) {
+      Reg *R = getRegForValueOrNull(kernel, V, Signed, OverrideType, IsBF);
       IGC_ASSERT_MESSAGE(R, "no register allocated for this value");
       return R;
     }
     // Get the vISA virtual register for a value or nullptr if there is no
     // register associated with given value.
-    Reg* getRegForValueOrNull(const Function *kernel, genx::SimpleValue V,
-      genx::Signedness Signed = genx::DONTCARESIGNED, Type *OverrideType = 0);
+    Reg *getRegForValueOrNull(const Function *kernel, genx::SimpleValue V,
+                              genx::Signedness Signed = genx::DONTCARESIGNED,
+                              Type *OverrideType = nullptr, bool IsBF = false);
 
     // Get the vISA virtual register for a value (0 if none), ignoring type
     // and signedness so it can be a const method usable from print().
@@ -263,7 +268,8 @@ namespace llvm {
       unsigned NumElements;
       unsigned BytesPerElement;
       unsigned VisaType;
-      TypeDetails(const DataLayout &DL, Type *Ty, genx::Signedness Signed);
+      TypeDetails(const DataLayout &DL, Type *Ty, genx::Signedness Signed,
+                  bool IsBF = false);
     };
   } // end namespace visa
 

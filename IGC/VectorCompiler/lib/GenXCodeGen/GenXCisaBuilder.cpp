@@ -700,7 +700,7 @@ private:
                                 unsigned Mod = 0,
                                 genx::Signedness *SignedRes = nullptr,
                                 unsigned MaxWidth = 16,
-                                unsigned *Offset = nullptr);
+                                unsigned *Offset = nullptr, bool IsBF = false);
   VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed,
                                 unsigned MaxWidth = 16,
                                 unsigned *Offset = nullptr);
@@ -1681,7 +1681,14 @@ VISA_VectorOpnd *
 GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
                                      unsigned Mod, const DstOpndDesc &DstDesc,
                                      Signedness *SignedRes, unsigned *Offset) {
-  LLVM_DEBUG(dbgs() << "createDest for value: " << *Dest << ", wrr: ");
+  bool IsBF = false;
+  if (auto IID = GenXIntrinsic::getGenXIntrinsicID(Dest);
+      IID == GenXIntrinsic::genx_bf_cvt)
+    IsBF = true;
+
+  LLVM_DEBUG(dbgs() << "createDest for value: "
+                    << (IsBF ? " brain " : " non-brain ") << *Dest
+                    << ", wrr: ");
   if (DstDesc.WrRegion)
     LLVM_DEBUG(dbgs() << *(DstDesc.WrRegion));
   else
@@ -1729,7 +1736,7 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
         Dest = cast<Instruction>(Dest->user_back());
     }
     Register *Reg =
-        getRegForValueAndSaveAlias(KernFunc, Dest, Signed, OverrideType);
+        getRegForValueAndSaveAlias(KernFunc, Dest, Signed, OverrideType, IsBF);
     if (SignedRes)
       *SignedRes = RegAlloc->getSigned(Reg);
     // Write the vISA general operand:
@@ -1757,13 +1764,14 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
     IGC_ASSERT_MESSAGE(GV, "out of sync");
     if (OverrideType == nullptr)
       OverrideType = DstDesc.GStore->getOperand(0)->getType();
-    Reg = getRegForValueAndSaveAlias(KernFunc, GV, Signed, OverrideType);
+    Reg = getRegForValueAndSaveAlias(KernFunc, GV, Signed, OverrideType, IsBF);
     V = GV;
   } else {
     V = DstDesc.WrPredefReg ? DstDesc.WrPredefReg : DstDesc.WrRegion;
     // if (!V->user_empty() && GenXIntrinsic::isWritePredefReg(V->user_back()))
     //   V = V->user_back();
-    Reg = getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed, OverrideType);
+    Reg = getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed, OverrideType,
+                                           IsBF);
   }
 
   // Write the vISA general operand with region:
@@ -1787,8 +1795,14 @@ VISA_VectorOpnd *GenXKernelBuilder::createSourceOperand(
     Instruction *Inst, Signedness Signed, unsigned OperandNum,
     genx::BaleInfo BI, unsigned Mod, Signedness *SignedRes, unsigned MaxWidth) {
   Value *V = Inst->getOperand(OperandNum);
+  bool IsBF = false;
+
+  if (auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+      IID == GenXIntrinsic::genx_bf_cvt)
+    IsBF = true;
+
   return createSource(V, Signed, BI.isOperandBaled(OperandNum), Mod, SignedRes,
-                      MaxWidth);
+                      MaxWidth, nullptr, IsBF);
 }
 
 VISA_PredOpnd *
@@ -2081,9 +2095,9 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
                                                  bool Baled, unsigned Mod,
                                                  Signedness *SignedRes,
                                                  unsigned MaxWidth,
-                                                 unsigned *Offset) {
-  LLVM_DEBUG(dbgs() << "createSource for "
-                    << (Baled ? "baled" : "non-baled") << " value: ");
+                                                 unsigned *Offset, bool IsBF) {
+  LLVM_DEBUG(dbgs() << "createSource for " << (Baled ? "baled" : "non-baled")
+                    << (IsBF ? " brain" : " non-brain") << " value: ");
   LLVM_DEBUG(V->dump());
   LLVM_DEBUG(dbgs() << "\n");
   if (SignedRes)
@@ -2100,7 +2114,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     return createImmediateOperand(C, Signed);
   }
   if (!Baled) {
-    Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, Signed);
+    Register *Reg =
+        getRegForValueAndSaveAlias(KernFunc, V, Signed, nullptr, IsBF);
     IGC_ASSERT(Reg->Category == RegCategory::GENERAL ||
            Reg->Category == RegCategory::SURFACE ||
            Reg->Category == RegCategory::SAMPLER);
@@ -2130,7 +2145,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     // and that is OK because the region is indirect so the vISA does not
     // contain the base register.
     Value *V = Inst->getOperand(0);
-    Register *Reg = getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed);
+    Register *Reg =
+        getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed, nullptr, IsBF);
 
     // Ensure we pick a non-DONTCARESIGNED signedness here, as, for an
     // indirect region and DONTCARESIGNED, writeRegion arbitrarily picks a
@@ -3109,7 +3125,7 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
     }
   }
 
-  visa::TypeDetails TD(DL, Reg.Ty, Reg.Signed);
+  visa::TypeDetails TD(DL, Reg.Ty, Reg.Signed, Reg.IsBF);
   LLVM_DEBUG(dbgs() << "Resulting #of elements: " << TD.NumElements << "\n");
 
   VISA_Align VA = getVISA_Align(

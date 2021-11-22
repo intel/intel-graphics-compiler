@@ -2382,8 +2382,9 @@
       "signal_flag": [ "BYTE", 1 ]
     },
     "genx_bf_cvt": {
-      "opc": "ISA_BF_CVT",
+      "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "DIRECTONLY", 0 ],
       "src0": [ "GENERAL", "CONTIGUOUS", "DIRECTONLY", "NOIMM", 1 ]
     },
