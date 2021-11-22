@@ -4259,6 +4259,7 @@ void SWSB::buildLiveIntervals()
 {
     // For all send nodes
     // Set the live ranges according to dependence edges
+    const bool trueDepOnly = fg.builder->getOptions()->getOption(vISA_TrueDepOnly);
     for (SBNode* node : SBSendNodes)
     {
         node->setLiveEarliestID(node->getNodeID(), node->getBBID());
@@ -4266,8 +4267,7 @@ void SWSB::buildLiveIntervals()
         for (SBDEP_ITEM& curSucc : node->succs)
         {
             const SBNode* succ = curSucc.node;
-            if (fg.builder->getOptions()->getOption(vISA_TrueDepOnly) &&
-                node->GetInstruction()->isDpas() && node->getBBID() != succ->getBBID())
+            if (trueDepOnly && node->GetInstruction()->isDpas() && node->getBBID() != succ->getBBID())
             {
                 node->setLiveLatestID(BBVector[node->getBBID()]->last_node, node->getBBID());
             }
@@ -4286,8 +4286,7 @@ void SWSB::buildLiveIntervals()
     //For global send nodes
     //According to layout, extend the live range of each send operand to
     //the start of the first live in BB and end of last live out BB
-    BB_LIST_ITER ib(fg.begin()), bend(fg.end());
-    for (; ib != bend; ++ib)
+    for (BB_LIST_ITER ib(fg.begin()), bend(fg.end()); ib != bend; ++ib)
     {
         unsigned bbID = (*ib)->getId();
         SBBitSets* send_live_in = &BBVector[bbID]->send_live_in;
@@ -4300,17 +4299,17 @@ void SWSB::buildLiveIntervals()
             continue;
         }
 
-        for (size_t i = 0; i < globalSendOpndList.size(); i++)
+        for (SBBucketNode* bucketNode : globalSendOpndList)
         {
-            SBNode* node = globalSendOpndList[i]->node;
+            SBNode* node = bucketNode->node;
             int globalID = node->globalID;
 
-            if (fg.builder->getOptions()->getOption(vISA_TrueDepOnly) && node->GetInstruction()->isDpas())
+            if (trueDepOnly && node->GetInstruction()->isDpas())
             {
                 continue;
             }
 
-            if (globalSendOpndList[i]->opndNum == Opnd_dst)
+            if (bucketNode->opndNum == Opnd_dst)
             {
                 if ((send_live_in_scalar->isDstSet((unsigned)globalID)) &&
                     BBVector[bbID]->first_node != -1)
@@ -4331,7 +4330,7 @@ void SWSB::buildLiveIntervals()
                     }
                 }
             }
-            else if (!fg.builder->getOptions()->getOption(vISA_TrueDepOnly))
+            else if (!trueDepOnly)
             {
                 if ((send_live_in->isSrcSet((unsigned)globalID)) &&
                     BBVector[bbID]->first_node != -1)
