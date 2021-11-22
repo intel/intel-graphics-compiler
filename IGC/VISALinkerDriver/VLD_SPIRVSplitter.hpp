@@ -78,9 +78,6 @@ private:
   spv_result_t
   HandleEntryPoint(const spv_parsed_instruction_t *parsed_instruction);
 
-  spv_result_t HandleFunctionPointerINTEL(
-      const spv_parsed_instruction_t *parsed_instruction);
-
   void AddInstToProgram(const spv_parsed_instruction_t *parsed_instruction,
                         ProgramStreamType &program);
 
