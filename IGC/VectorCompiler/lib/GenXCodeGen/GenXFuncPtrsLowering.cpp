@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/CommandLine.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -41,6 +42,10 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
+static cl::opt<bool> EnableFuncPtrsLowering(
+    "vc-enable-fptr-lowering",
+    llvm::cl::desc("Enable/disable GenXFuncPtrsLowering pass"), cl::init(true),
+    cl::Hidden);
 namespace {
 
 class GenXFunctionPointersLowering : public ModulePass {
@@ -80,10 +85,14 @@ void GenXFunctionPointersLowering::getAnalysisUsage(AnalysisUsage &AU) const {
 }
 
 bool GenXFunctionPointersLowering::runOnModule(Module &M) {
+  if (!EnableFuncPtrsLowering)
+    return false;
+
   bool Modified = false;
 
   for (auto &F : M)
     if (F.hasAddressTaken()) {
+      Modified = true;
       F.addFnAttr(genx::FunctionMD::CMStackCall);
       F.addFnAttr(genx::FunctionMD::ReferencedIndirectly);
     }
