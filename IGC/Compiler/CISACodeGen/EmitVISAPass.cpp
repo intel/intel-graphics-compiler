@@ -1116,15 +1116,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
         m_encoder->Compile(compileWithSymbolTable);
         m_pCtx->m_prevShader = m_currShader;
-        // if we are doing stack-call, do the following:
-        // - Hard-code a large scratch-space for visa
+
         if (hasStackCall)
         {
             // Disable retry when stackcalls are present
             m_pCtx->m_retryManager.Disable();
-
-            m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills =
-                MAX(m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills, 8 * 1024);
         }
     }
 

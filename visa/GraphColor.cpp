@@ -10588,7 +10588,7 @@ int GlobalRA::coloringRegAlloc()
             // Since it is difficult to predict amount of space needed to store stack, we
             // reserve 64k. Reserving PTSS is ideal, but it can lead to OOM on machines
             // with large number of threads.
-            unsigned int scratchAllocation = 64 * 1024;
+            unsigned int scratchAllocation = 1024 * kernel.getOptions()->getuInt32Option(vISA_ScratchAllocForStackInKB);
             jitInfo->spillMemUsed = scratchAllocation;
             jitInfo->isSpill = true;
 

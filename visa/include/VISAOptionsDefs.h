@@ -338,6 +338,7 @@ DEF_VISA_OPTION(vISA_HashVal1,            ET_2xINT32, "-hashmovs1", "USAGE: -has
 DEF_VISA_OPTION(vISA_HashMovsAtPrologue,  ET_BOOL, "-hashatprologue", UNUSED, false)
 DEF_VISA_OPTION(vISA_AddKernelID,         ET_BOOL,  "-addKernelID", UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpPayload,         ET_BOOL, "-dumpPayload",        UNUSED, false)
+DEF_VISA_OPTION(vISA_ScratchAllocForStackInKB, ET_INT32, "-scratchAllocForStackInKB", UNUSED, 64)
 
 DEF_VISA_OPTION(vISA_dumpToCurrentDir,    ET_BOOL, "-dumpToCurrentDir",   UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpTimer,           ET_BOOL, "-timestats",          UNUSED, false)
