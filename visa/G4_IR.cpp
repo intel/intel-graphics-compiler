@@ -2422,6 +2422,8 @@ bool G4_INST::canPropagateTo(
         return false;
     }
 
+#if 0
+    // Allow BF copyprop without restriction, as HWConformity will fix any illegal cases.
     // bfloat specific checks
     if (propType == Type_BF)
     {
@@ -2447,6 +2449,7 @@ bool G4_INST::canPropagateTo(
             return false;
         }
     }
+#endif
 
     // Don't propagate unsupported propType.
     if (!useInst->isLegalType(propType, opndNum))
@@ -2727,7 +2730,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         {
             return false;
         }
-        if (!builder.hasMixMode())
+        if (!builder.hasMixMode() && !builder.hasBFMixMode())
         {
             // normally we should disable the opt, but for the special case where
             // defInst is a move with integer source, we can still hoist since it
