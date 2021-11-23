@@ -1132,6 +1132,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
     auto *TruncFunct = GenXIntrinsic::getGenXDeclaration(
         M, TruncID, {CI.getType(), Result->getType()});
     Result = Builder.CreateCall(TruncFunct, {Result}, "int_emu.trunc.sat");
+    Result = ensureEmulated(Result);
   }
 
   return Result;
@@ -1200,8 +1201,8 @@ Value *GenXEmulate::Emu64Expander::ensureEmulated(Value *Val) {
   if (!Inst)
     return Val;
   auto *Emulated = Emu64Expander(ST, *Inst, EmulationFuns).tryExpand();
-  // we expect to always return an emulated sequence
-  IGC_ASSERT(Emulated);
+  if (!Emulated)
+    return Val;
   Inst->eraseFromParent();
   return Emulated;
 }
