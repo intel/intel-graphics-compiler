@@ -91,8 +91,8 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
 
     ImplicitArg(ImplicitArg::BINDLESS_OFFSET, "bindlessOffset", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
 
-    ImplicitArg(ImplicitArg::IMPLICIT_ARG_BUFFER_PTR, "implicitArgBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, false),
-    ImplicitArg(ImplicitArg::IMPLICIT_ARG_LOCALID, "implicitArgLocalId", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 25, ImplicitArg::ALIGN_GRF, false),
+    ImplicitArg(ImplicitArg::IMPLICIT_ARG_BUFFER_PTR, "implicitArgBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
+    ImplicitArg(ImplicitArg::IMPLICIT_ARG_LOCALID, "implicitArgLocalId", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 25, ImplicitArg::ALIGN_GRF, true),
 
 };
 

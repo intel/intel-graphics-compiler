@@ -18565,12 +18565,14 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
 
 void EmitPass::emitStoreImplBufferPtr(llvm::GenIntrinsicInst* I)
 {
-    m_currShader->CopyVariable(m_currShader->GetImplArgBufPtr(), GetSymbol(I->getArgOperand(0)));
+    if (m_currShader->HasStackCalls())
+        m_currShader->CopyVariable(m_currShader->GetImplArgBufPtr(), GetSymbol(I->getArgOperand(0)));
 }
 
 void EmitPass::emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
 {
-    m_currShader->CopyVariable(m_currShader->GetLocalIdBufPtr(), GetSymbol(I->getArgOperand(0)));
+    if(m_currShader->HasStackCalls())
+        m_currShader->CopyVariable(m_currShader->GetLocalIdBufPtr(), GetSymbol(I->getArgOperand(0)));
 }
 
 void EmitPass::emitLoadImplBufferPtr(llvm::GenIntrinsicInst* I)
