@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include <sstream>
 #include <iostream>
 #include <mutex>
+#include <algorithm>
 #include "Probe/Assertion.h"
 
 // path for IGC registry keys
@@ -638,13 +639,20 @@ static void setRegkeyFromOption(
     }
 }
 
-static const char* GetOptionFile()
+
+static const std::string GetOptionFilePath()
 {
 #if defined(_WIN64) || defined(_WIN32)
-    return "c:\\Intel\\IGC\\debugFlags\\Options.txt";
+    return "c:\\Intel\\IGC\\debugFlags\\";
 #else
-    return "/tmp/IntelIGC/debugFlags/Options.txt";
+    return "/tmp/IntelIGC/debugFlags/";
 #endif
+}
+
+static const std::string GetOptionFile()
+{
+    std::string fname = "Options.txt";
+    return (GetOptionFilePath() + fname);
 }
 
 // parses this syntax:
@@ -689,6 +697,16 @@ static void declareIGCKey(std::string& line, const char* dataType, const char* r
     setRegkeyFromOption(line, dataType, regkeyName, &value, isSet);
     if (isSet)
     {
+        std::cout << std::endl << "** hashes ";
+        for (size_t i = 0; i < hashes.size(); i++) {
+            //            std::cout << std::hex << std::showbase << hashes[i].start << "-" << hashes[i].end << ", ";
+            if (hashes[i].end == hashes[i].start)
+                std::cout << std::hex << std::showbase << hashes[i].start << ", ";
+            else
+                std::cout << std::hex << std::showbase << hashes[i].start << "-" << hashes[i].end << ", ";
+        }
+        std::cout << std::endl;
+
         std::cout << "** regkey " << line << std::endl;
         memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
         regKey->hashes = hashes;
@@ -718,8 +736,24 @@ static void LoadDebugFlagsFromFile()
     }
 }
 
+void appendToOptionsLogFile(std::string const &message)
+{
+    std::string logPath = GetOptionFilePath();
+    logPath.append("Options_log.txt");
+    std::ofstream os(logPath.c_str(), std::ios::app);
+    if (os.is_open())
+    {
+        auto now = std::chrono::system_clock::now();
+        auto now_time = std::chrono::system_clock::to_time_t(now);
+        std::string stime = ctime(&now_time);
+        std::replace(stime.begin(), stime.end(), '\n', '\t');
+        os << stime << message << std::endl;
+    }
+    os.close();
+}
+
 thread_local unsigned long long g_CurrentShaderHash = 0;
-bool CheckHashRange(const std::vector<HashRange>& hashes)
+bool CheckHashRange(const std::vector<HashRange>& hashes, const char *name)
 {
     if(hashes.empty())
     {
@@ -729,6 +763,13 @@ bool CheckHashRange(const std::vector<HashRange>& hashes)
     {
         if(g_CurrentShaderHash >= it.start && g_CurrentShaderHash <= it.end)
         {
+            char msg[100];
+            int size = snprintf(msg, 100, "Shader %#0llx: %s", g_CurrentShaderHash, name);
+            if (size >=0 && size < 100)
+            {
+                appendToOptionsLogFile(msg);
+            }
+
             return true;
         }
     }
