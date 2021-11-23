@@ -102,10 +102,10 @@ void initializeGenXStructSplitterPass(PassRegistry &);
 
 char GenXStructSplitter::ID = 0;
 INITIALIZE_PASS_BEGIN(GenXStructSplitter, "GenXStructSplitter",
-                      "GenXStructSplitter", false, true /*analysis*/)
+                      "GenXStructSplitter", false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXStructSplitter, "GenXStructSplitter",
-                    "GenXStructSplitter", false, true /*analysis*/)
+                    "GenXStructSplitter", false, false)
 
 ModulePass *llvm::createGenXStructSplitterPass() {
   initializeGenXStructSplitterPass(*PassRegistry::getPassRegistry());
@@ -119,6 +119,7 @@ void GenXStructSplitter::getAnalysisUsage(AnalysisUsage &AU) const {
 
 static Type *getArrayFreeTy(Type *Ty);
 static Type *getBaseTy(Type *Ty);
+static char const *getTypePrefix(Type &Ty);
 
 // Class to do first analysis and ban all structures, which cannot be splitted
 // at advance. It bans structures containing array of complex structs. It bans
@@ -148,8 +149,6 @@ public:
 // D : { A, B }
 // Where A,B,C,D are structs; f,i - base unsplitted types.
 class DependencyGraph {
-  static char const *getTypePrefix(Type &Ty);
-
 public:
   //***************************************
   // Part responsible for types definition
@@ -163,8 +162,7 @@ public:
     unsigned Index{0};
 
     SElement() = default;
-    SElement(StructType *const &InTy, unsigned InIndex) noexcept;
-    SElement &operator=(SElement const &Other) noexcept;
+    SElement(StructType *const &InTy, unsigned InIndex);
     void print(raw_ostream &os = llvm::errs()) const;
   };
 
@@ -177,8 +175,6 @@ public:
 
   public:
     SElementsOfType(unsigned Size);
-    SElementsOfType(SElementsOfType const &Other);
-    SElementsOfType(SElementsOfType &&Other) noexcept;
     SElementsOfType(std::vector<Type *> const &InTypes);
 
     void emplaceBack(Type &Ty, unsigned Index);
@@ -366,7 +362,7 @@ public:
   //***************************************
   void printData(raw_ostream &os = llvm::errs()) const;
   void print(raw_ostream &os = llvm::errs()) const;
-  void graphDump(raw_ostream &os = llvm::errs()) const;
+  void printDump(raw_ostream &os = llvm::errs()) const;
   void printGeneration(raw_ostream &os) const;
 };
 
@@ -390,7 +386,7 @@ class Substituter : public InstVisitor<Substituter> {
   generateNewGEPs(GetElementPtrInst &GEPI, Type &DestSTy,
                   DependencyGraph::SElementsOfType LocalIdxPath /*copy*/,
                   std::unordered_map<Type *, Instruction *> const &NewInstr,
-                  unsigned PlainTyIdx, unsigned Size) const;
+                  unsigned PlainTyIdx) const;
 
   static Optional<
       std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>>
@@ -628,7 +624,7 @@ void DependencyGraph::generateGraph() {
 //
 DependencyGraph::Node *DependencyGraph::createNode(StructType &STy,
                                                    NodeTracker &Inserted) {
-  LLVM_DEBUG(dbgs() << "Creating node for struct: " << STy.getName() << "\n");
+  LLVM_DEBUG(dbgs() << "Creating node for struct: " << STy << "\n");
 
   {
     auto FindIt = Inserted.find(&STy);
@@ -642,13 +638,8 @@ DependencyGraph::Node *DependencyGraph::createNode(StructType &STy,
   }
   Node *ThisNode = NodeMM.create(STy);
   auto [It, IsInserted] = Inserted.emplace(&STy, ThisNode);
-
-  if (!IsInserted) {
-    vc::diagnose(Ctx, "StructSplitter",
-                 "Processing Node which already has been processed. Struct: " +
-                     ThisNode->getType()->getName(),
-                 DS_Warning);
-  }
+  IGC_ASSERT_MESSAGE(IsInserted,
+                     "Processing Node which already has been processed.");
 
   for (auto &&[BaseTy, Children] : getStructComponens(STy))
     std::for_each(Children.begin_ty(), Children.end_ty(), [&](Type *Child) {
@@ -677,8 +668,8 @@ void DependencyGraph::processNode(Node &SNode) {
   while (SNode.hasChild())
     processNode(**SNode.child_begin());
 
-  LLVM_DEBUG(dbgs() << "Processing node for struct: "
-                    << SNode.getType()->getName() << "\n");
+  LLVM_DEBUG(dbgs() << "Processing node for struct: " << *SNode.getType()
+                    << "\n");
   // Splitting always gets a plain type, so graph will be changed any way
   if (StructType *OldSTy = SNode.getType(); !isPlain(*OldSTy)) {
     // Splitting
@@ -745,9 +736,8 @@ void DependencyGraph::processNode(Node &SNode) {
 //
 void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
                                    ArrayRef<StructType *> NewReplaceStructs) {
-  LLVM_DEBUG(dbgs() << "Recreating parent node: " << SNode.getType()->getName()
-                    << "\n\tChild node: " << SNodeToChange.getType()->getName()
-                    << "\n");
+  LLVM_DEBUG(dbgs() << "Recreating parent node: " << *SNode.getType()
+                    << "\n\tChild node: " << *SNodeToChange.getType() << "\n");
   StructType *CurrentS = SNode.getType();
   StringRef CurrentSName = CurrentS->getName();
   unsigned const NumElements = CurrentS->getNumElements();
@@ -806,8 +796,7 @@ void DependencyGraph::recreateGraph() {
 //  Records information about structure into AllStructs.
 //
 void DependencyGraph::setInfoAboutStructure(StructType &STy) {
-  LLVM_DEBUG(dbgs() << "Collecting infornation about struct: " << STy.getName()
-                    << "\n");
+  LLVM_DEBUG(dbgs() << "Collecting infornation about struct: " << STy << "\n");
   STypes BaseTypes;
   unsigned Index{0};
   unsigned const NumElements = STy.getNumElements();
@@ -831,13 +820,8 @@ void DependencyGraph::setInfoAboutStructure(StructType &STy) {
   }
 
   auto [It, IsInserted] = AllStructs.emplace(&STy, std::move(BaseTypes));
-  if (!IsInserted) {
-    vc::diagnose(
-        Ctx, "StructSplitter",
-        "Processing Struct which already has been processed. Struct: " +
-            STy.getName(),
-        DS_Warning);
-  }
+  IGC_ASSERT_MESSAGE(IsInserted,
+                     "Processing Struct which already has been processed.");
 }
 
 //
@@ -903,13 +887,7 @@ StructType *DependencyGraph::checkAbilityToMerge(
       else if (STyToCheck != Element.Ty)
         return nullptr;
     }
-
-  // If somehow there is no struct to merge, then do not merge.
-  // Not obviouse if it can occure.
-  if (!STyToCheck) {
-    vc::diagnose(Ctx, "StructSplitter", "Merging with empty structs.",
-                 DS_Warning);
-  }
+  IGC_ASSERT_MESSAGE(STyToCheck, "Merging epmty structs.");
   return isStructProcessed(*STyToCheck) ? STyToCheck : nullptr;
 }
 
@@ -941,7 +919,7 @@ void DependencyGraph::run() {
 //    based on this information.
 //
 Substituter::Substituter(Module &M)
-    : Ctx(M.getContext()), DL(M.getDataLayout()), Filter(M), Graph(M, Filter) {
+    : Ctx{M.getContext()}, DL{M.getDataLayout()}, Filter{M}, Graph{M, Filter} {
   Graph.run();
 
   // visit should be after graph processing
@@ -954,8 +932,7 @@ Substituter::Substituter(Module &M)
 void Substituter::visitAllocaInst(AllocaInst &AI) {
   if (StructType *STy = dyn_cast<StructType>(AI.getAllocatedType()))
     if (Graph.isStructProcessed(*STy)) {
-      LLVM_DEBUG(dbgs() << "Collecting alloca to replace: " << AI.getName()
-                        << "\n");
+      LLVM_DEBUG(dbgs() << "Collecting alloca to replace: " << AI << "\n");
       // In case if struct S marked to be splitted, but there is
       // alloca [5 x %struct.C] then skip.
       // Gets only allocas which will be splitted
@@ -970,8 +947,7 @@ void Substituter::visitAllocaInst(AllocaInst &AI) {
 //
 std::unordered_map<Type *, Instruction *>
 Substituter::generateNewAllocas(AllocaInst &OldInst) const {
-  LLVM_DEBUG(dbgs() << "Generating allocas to replace: " << OldInst.getName()
-                    << "\n");
+  LLVM_DEBUG(dbgs() << "Generating allocas to replace: " << OldInst << "\n");
 
   StructType *STy = dyn_cast<StructType>(OldInst.getAllocatedType());
   IGC_ASSERT_MESSAGE(STy, "Alloca to replace produces non-struct type.");
@@ -982,19 +958,14 @@ Substituter::generateNewAllocas(AllocaInst &OldInst) const {
   std::unordered_map<Type *, Instruction *> NewInstructions;
   NewInstructions.reserve(UniqueSplittedStructs.size());
 
-  IRBuilder<> IRB(&OldInst);
+  IRBuilder<> IRB{&OldInst};
   for (StructType *NewSTy : UniqueSplittedStructs) {
     AllocaInst *NewAlloca = IRB.CreateAlloca(
         NewSTy, 0, OldInst.getName() + "." + NewSTy->getName());
     NewAlloca->setAlignment(IGCLLVM::getAlign(OldInst));
     auto [It, IsInserted] = NewInstructions.emplace(NewSTy, NewAlloca);
-    if (!IsInserted) {
-      vc::diagnose(Ctx, "StructSplitter",
-                   "Alloca instruction responsible for structure has already "
-                   "been created.\n\tVariable name: " +
-                       It->second->getName(),
-                   DS_Warning);
-    }
+    IGC_ASSERT_MESSAGE(IsInserted, "Alloca instruction responsible for "
+                                   "structure has already been created.");
   }
   return NewInstructions;
 }
@@ -1012,29 +983,32 @@ GetElementPtrInst *Substituter::generateNewGEPs(
     GetElementPtrInst &GEPI, Type &PlainType,
     DependencyGraph::SElementsOfType LocalIdxPath /*copy*/,
     std::unordered_map<Type *, Instruction *> const &NewInstr,
-    unsigned PlainTyIdx, unsigned Size) const {
-  LLVM_DEBUG(dbgs() << "Generating GEP to replace: " << GEPI.getName() << "\n");
+    unsigned PlainTyIdx) const {
+  using SElement = DependencyGraph::SElement;
+  using ListOfSplittedElements = DependencyGraph::ListOfSplittedElements;
+  LLVM_DEBUG(dbgs() << "Generating GEP to replace: " << GEPI << "\n");
 
   for (unsigned i = 0; i != PlainTyIdx; ++i) {
     auto &&[Ty, Idx] = LocalIdxPath.at(i);
     StructType *STy = dyn_cast<StructType>(Ty);
-    DependencyGraph::ListOfSplittedElements const &ListOfPossibleTypes =
+    ListOfSplittedElements const &ListOfPossibleTypes =
         Graph.getElementsListOfSTyAtIdx(*STy, Idx);
     // Struct C is splitted to Ci and Cf, so we have to choose
     // are we be indexed via Ci or Cf.
     // %di = gep Ci, 0, 2
     // %df = gep Cf, 0, 2
-    for (auto &&PossibleElement : ListOfPossibleTypes) {
-      // Kind of getting SubType
-      // We choose right "branch" by PlainType.
-      if (&PlainType == Graph.getPlainSubTy(*PossibleElement.Ty)) {
-        Ty = PossibleElement.Ty;
-        Idx = PossibleElement.Index;
-        break;
-      }
-    }
+    auto ElmIt =
+        std::find_if(ListOfPossibleTypes.begin(), ListOfPossibleTypes.end(),
+                     [&PlainType, this](SElement const &Elm) {
+                       return &PlainType == Graph.getPlainSubTy(*Elm.Ty);
+                     });
+    IGC_ASSERT_MESSAGE(ElmIt != ListOfPossibleTypes.end(),
+                       "Cannot find proper substitution.");
+    Ty = ElmIt->Ty;
+    Idx = ElmIt->Index;
   }
 
+  unsigned const Size = LocalIdxPath.size();
   // Generates new IdxList for instruction.
   std::vector<Value *> IdxList;
   IdxList.reserve(Size + 1);
@@ -1053,7 +1027,7 @@ GetElementPtrInst *Substituter::generateNewGEPs(
       "Cannot find instruction according to splitted structure type.");
   Instruction *ToInsert = FindInstrIt->second;
 
-  IRBuilder<> IRB(&GEPI);
+  IRBuilder<> IRB{&GEPI};
   GetElementPtrInst *NewGEP = cast<GetElementPtrInst>(
       IRB.CreateGEP(Inserted, ToInsert, IdxList, GEPI.getName() + ".splitted"));
 
@@ -1085,7 +1059,7 @@ bool Substituter::processAllocasOfOneSTy(
     std::vector<AllocaInst *> const Allocas,
     VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
   for (AllocaInst *Alloca : Allocas) {
-    LLVM_DEBUG(dbgs() << "Processing alloca: " << Alloca->getName() << "\n");
+    LLVM_DEBUG(dbgs() << "Processing alloca: " << *Alloca << "\n");
     auto InstUses = getInstUses(*Alloca);
     if (!InstUses)
       return false;
@@ -1114,7 +1088,7 @@ bool Substituter::processAllocasOfOneSTy(
 Optional<std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>>
 Substituter::getIndicesPath(GetElementPtrInst &GEPI) {
   unsigned const Size = GEPI.getNumIndices() - 1;
-  DependencyGraph::SElementsOfType IdxPath(Size);
+  DependencyGraph::SElementsOfType IdxPath{Size};
   std::vector<Type *> GottenTypeArr;
   GottenTypeArr.reserve(Size);
 
@@ -1189,13 +1163,15 @@ bool Substituter::processGEP(
     GetElementPtrInst &GEPI,
     std::unordered_map<Type *, Instruction *> const &NewInstr,
     VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
-  LLVM_DEBUG(dbgs() << "Processing uses of instruction: " << GEPI.getName()
-                    << "\n");
+  LLVM_DEBUG(dbgs() << "Processing uses of instruction: " << GEPI << "\n");
   auto IndicesPath = getIndicesPath(GEPI);
   if (!IndicesPath)
     return false;
   auto [IdxPath, GottenTypeArr] = std::move(IndicesPath.getValue());
   unsigned const Size = GottenTypeArr.size();
+  IGC_ASSERT_MESSAGE(
+      IdxPath.size() == Size,
+      "IdxPath and GottenTypeArr must be consistent with each other.");
   Type *CurrentType = GottenTypeArr.back();
 
   // Find the first index of plain type.
@@ -1226,8 +1202,8 @@ bool Substituter::processGEP(
     // For each substruct we have to generate it's own IdxPath and GEP
     for (StructType *DestSTy : UniqueSplittedStructs) {
       Type *PlainType = Graph.getPlainSubTy(*DestSTy);
-      GetElementPtrInst *NewGEP = generateNewGEPs(GEPI, *PlainType, IdxPath,
-                                                  NewInstr, PlainTyIdx, Size);
+      GetElementPtrInst *NewGEP =
+          generateNewGEPs(GEPI, *PlainType, IdxPath, NewInstr, PlainTyIdx);
       NewInstructions.emplace(DestSTy, NewGEP);
     }
 
@@ -1241,8 +1217,8 @@ bool Substituter::processGEP(
         return false;
   } else {
     Type *PlainType = getBaseTy(GottenTypeArr[PlainTyIdx]);
-    GetElementPtrInst *NewGEP = generateNewGEPs(GEPI, *PlainType, IdxPath,
-                                                NewInstr, PlainTyIdx + 1, Size);
+    GetElementPtrInst *NewGEP =
+        generateNewGEPs(GEPI, *PlainType, IdxPath, NewInstr, PlainTyIdx + 1);
     LLVM_DEBUG(dbgs() << "New Instruction has been created: " << *NewGEP
                       << "\n");
     InstToInst.emplace_back(cast<Instruction>(&GEPI),
@@ -1325,7 +1301,7 @@ bool Substituter::processPTI(
       "Cannot find instruction according to splitted structure type.");
   Instruction *ToInsert = FindInstrIt->second;
 
-  IRBuilder<> IRB(&PTI);
+  IRBuilder<> IRB{&PTI};
   Value *NewPTI =
       IRB.CreatePtrToInt(ToInsert, PTI.getType(), PTI.getName() + ".splitted");
 
@@ -1422,15 +1398,8 @@ bool Substituter::processPTIsUses(Instruction &I,
 //__________________________________________________________________
 //          Block of SElement definition
 //__________________________________________________________________
-DependencyGraph::SElement::SElement(StructType *const &InTy,
-                                    unsigned InIndex) noexcept
+DependencyGraph::SElement::SElement(StructType *const &InTy, unsigned InIndex)
     : Ty{InTy}, Index{InIndex} {}
-DependencyGraph::SElement &DependencyGraph::SElement::
-operator=(SElement const &Other) noexcept {
-  Ty = Other.Ty;
-  Index = Other.Index;
-  return *this;
-}
 
 //__________________________________________________________________
 //          Block of SElementsOfType definition
@@ -1439,12 +1408,6 @@ DependencyGraph::SElementsOfType::SElementsOfType(unsigned Size) {
   Types.reserve(Size);
   IndicesOfTypes.reserve(Size);
 };
-DependencyGraph::SElementsOfType::SElementsOfType(SElementsOfType const &Other)
-    : Types{Other.Types}, IndicesOfTypes{Other.IndicesOfTypes} {}
-DependencyGraph::SElementsOfType::SElementsOfType(
-    SElementsOfType &&Other) noexcept
-    : Types{std::move(Other.Types)}, IndicesOfTypes{
-                                         std::move(Other.IndicesOfTypes)} {}
 // Automaticaly matches Types with sequential Indices
 DependencyGraph::SElementsOfType::SElementsOfType(
     std::vector<Type *> const &InTypes)
@@ -1554,7 +1517,7 @@ Type *getArrayFreeTy(Type *Ty) {
 //
 //  Help function to get type-specific prefix for naming
 //
-char const *DependencyGraph::getTypePrefix(Type &Ty) {
+char const *getTypePrefix(Type &Ty) {
   Type::TypeID ID = Ty.getTypeID();
   switch (ID) {
   case Type::VoidTyID:
@@ -1632,7 +1595,7 @@ void DependencyGraph::Node::dump(int Tab, raw_ostream &Os) const {
 
 void DependencyGraph::printData(raw_ostream &Os) const {
   for (auto &&[Struct, SubTypes] : AllStructs) {
-    Os << "Struct " << *Struct << "consists of:\n";
+    Os << "Struct " << *Struct << " consists of:\n";
     for (auto &&[SubType, Tys] : SubTypes) {
       Os << "\t"
          << "BaseTy: " << *SubType << "\n";
@@ -1647,13 +1610,13 @@ void DependencyGraph::print(raw_ostream &Os) const {
   Os << "Data:\n";
   printData(Os);
   Os << "\nGraph:\n";
-  graphDump(Os);
+  printDump(Os);
   Os << "\nGenerations:\n";
   printGeneration(Os);
   Os << "\\_________________________________/\n";
 }
 
-void DependencyGraph::graphDump(raw_ostream &Os) const {
+void DependencyGraph::printDump(raw_ostream &Os) const {
   for (auto Head : Heads) {
     Os << "Head:\n";
     Head->dump(1, Os);
@@ -1662,7 +1625,7 @@ void DependencyGraph::graphDump(raw_ostream &Os) const {
 
 void DependencyGraph::printGeneration(raw_ostream &Os) const {
   for (auto &&SplittedStruct : SplittedStructs) {
-    Os << "Splitted struct: " << *SplittedStruct.first << "to: \n";
+    Os << "Splitted struct: " << *SplittedStruct.first << " to: \n";
     for (auto &&ChangedTo : SplittedStruct.second) {
       for (auto &&Elm : ChangedTo) {
         Os << "  ";
