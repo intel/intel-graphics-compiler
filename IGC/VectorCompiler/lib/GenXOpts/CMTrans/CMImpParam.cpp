@@ -220,7 +220,7 @@ private:
     auto IntrinsicName = GenXIntrinsic::getAnyName(IID, None);
     GlobalVariable *NewVar = new GlobalVariable(
         *F->getParent(), Ty, false, GlobalVariable::InternalLinkage,
-        Constant::getNullValue(Ty), "__imparg_" + IntrinsicName);
+        UndefValue::get(Ty), "__imparg_" + IntrinsicName);
     GlobalsMap[IID] = NewVar;
 
     addDebugInfoForImplicitGlobal(*NewVar, IntrinsicName);
