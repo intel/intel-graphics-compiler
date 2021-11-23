@@ -2207,7 +2207,7 @@ namespace IGC
 
     static bool SetKernelProgram(OpenCLProgramContext* ctx, COpenCLKernel* shader, DWORD simdMode)
     {
-        if (shader && shader->ProgramOutput()->m_programSize > 0)
+        if (shader && (shader->ProgramOutput()->m_programSize > 0 || ctx->m_compileToVISAOnly))
         {
             if (simdMode == 32)
             {

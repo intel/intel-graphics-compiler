@@ -5442,14 +5442,22 @@ namespace IGC
                     vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, true);
                 }
                 pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
-                vIsaCompile = vAsmTextBuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
+                std::stringstream ss;
+                vIsaCompile = vAsmTextBuilder->Compile(
+                    m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
+                    (context->m_compileToVISAOnly) ? &ss : nullptr,
+                    context->m_compileToVISAOnly);
             }
         }
         //Compile to generate the V-ISA binary
         else
         {
             pMainKernel = vMainKernel;
-            vIsaCompile = vbuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
+            std::stringstream ss;
+            vIsaCompile = vbuilder->Compile(
+                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
+                (context->m_compileToVISAOnly) ? &ss : nullptr,
+                context->m_compileToVISAOnly);
         }
 
         COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
@@ -5573,6 +5581,16 @@ namespace IGC
         }
 #endif
 
+        bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || context->getCompilerOption().EnableZEBinary;
+
+        if (ZEBinEnabled) {
+            pOutput->m_VISAAsm = pMainKernel->getVISAAsm();
+        }
+
+        if (context->m_compileToVISAOnly) {
+            return;
+        }
+
         void* genxbin = nullptr;
         int size = 0, binSize = 0;
         bool binOverride = false;
@@ -5668,12 +5686,6 @@ namespace IGC
         }
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
-
-        bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || context->getCompilerOption().EnableZEBinary;
-
-        if (ZEBinEnabled) {
-            pOutput->m_VISAAsm = pMainKernel->getVISAAsm();
-        }
 
         if (hasSymbolTable)
         {

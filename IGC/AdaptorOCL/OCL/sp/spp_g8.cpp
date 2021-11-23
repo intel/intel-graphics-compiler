@@ -619,9 +619,12 @@ void CGen8OpenCLProgram::GetZEBinary(
         {
             if (elfVecNames.size() == 0)
             {
-                // Single kernel in a program, no ELF linking required
-                // Copy sections one by one from ELF file to zeBinary with relocations adjusted.
-                zebuilder.addElfSections(pFirstKernelOutput->m_debugData, pFirstKernelOutput->m_debugDataSize);
+                // if kernel was compiled only to visaasm, the output will be empty for gen binary.
+                if (pFirstKernelOutput) {
+                    // Single kernel in a program, no ELF linking required
+                    // Copy sections one by one from ELF file to zeBinary with relocations adjusted.
+                    zebuilder.addElfSections(pFirstKernelOutput->m_debugData, pFirstKernelOutput->m_debugDataSize);
+                }
             }
             else
             {
