@@ -28,19 +28,17 @@ using namespace genx;
 
 namespace {
 
-class GenXRematerialization : public FunctionGroupPass {
+class GenXRematerialization : public FGPassImplInterface,
+                              public IDMixin<GenXRematerialization> {
   GenXBaling *Baling = nullptr;
   GenXLiveness *Liveness = nullptr;
   GenXNumbering *Numbering = nullptr;
   bool Modified = false;
 
 public:
-  static char ID;
-  explicit GenXRematerialization() : FunctionGroupPass(ID) {}
-  StringRef getPassName() const override {
-    return "GenX rematerialization pass";
-  }
-  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  explicit GenXRematerialization() {}
+  static StringRef getPassName() { return "GenX rematerialization pass"; }
+  static void getAnalysisUsage(AnalysisUsage &AU);
   bool runOnFunctionGroup(FunctionGroup &FG) override;
 
 private:
@@ -49,21 +47,27 @@ private:
 
 } // namespace
 
-namespace llvm { void initializeGenXRematerializationPass(PassRegistry &); }
-char GenXRematerialization::ID = 0;
-INITIALIZE_PASS_BEGIN(GenXRematerialization, "GenXRematerialization", "GenXRematerialization", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
-INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
-INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
-INITIALIZE_PASS_END(GenXRematerialization, "GenXRematerialization", "GenXRematerialization", false, false)
+namespace llvm {
+void initializeGenXRematerializationWrapperPass(PassRegistry &);
+using GenXRematerializationWrapper =
+    FunctionGroupWrapperPass<GenXRematerialization>;
+} // namespace llvm
+INITIALIZE_PASS_BEGIN(GenXRematerializationWrapper,
+                      "GenXRematerializationWrapper",
+                      "GenXRematerializationWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
+INITIALIZE_PASS_END(GenXRematerializationWrapper,
+                    "GenXRematerializationWrapper",
+                    "GenXRematerializationWrapper", false, false)
 
-FunctionGroupPass *llvm::createGenXRematerializationPass() {
-  initializeGenXRematerializationPass(*PassRegistry::getPassRegistry());
-  return new GenXRematerialization;
+ModulePass *llvm::createGenXRematerializationWrapperPass() {
+  initializeGenXRematerializationWrapperPass(*PassRegistry::getPassRegistry());
+  return new GenXRematerializationWrapper;
 }
 
-void GenXRematerialization::getAnalysisUsage(AnalysisUsage &AU) const {
-  FunctionGroupPass::getAnalysisUsage(AU);
+void GenXRematerialization::getAnalysisUsage(AnalysisUsage &AU) {
   AU.addRequired<GenXGroupBaling>();
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXNumbering>();

@@ -98,23 +98,23 @@ void GenXFuncBaling::getAnalysisUsage(AnalysisUsage &AU) const
 //----------------------------------------------------------------------
 // Administrivia for GenXGroupBaling pass
 //
-char GenXGroupBaling::ID = 0;
-INITIALIZE_PASS_BEGIN(GenXGroupBaling, "GenXGroupBaling", "GenXGroupBaling", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
-INITIALIZE_PASS_END(GenXGroupBaling, "GenXGroupBaling", "GenXGroupBaling", false, false)
+INITIALIZE_PASS_BEGIN(GenXGroupBalingWrapper, "GenXGroupBalingWrapper",
+                      "GenXGroupBalingWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
+INITIALIZE_PASS_END(GenXGroupBalingWrapper, "GenXGroupBalingWrapper",
+                    "GenXGroupBalingWrapper", false, false)
 
-FunctionGroupPass *llvm::createGenXGroupBalingPass(BalingKind Kind, GenXSubtarget *ST)
-{
-  initializeGenXGroupBalingPass(*PassRegistry::getPassRegistry());
-  return new GenXGroupBaling(Kind, ST);
+ModulePass *llvm::createGenXGroupBalingWrapperPass(BalingKind Kind,
+                                                   GenXSubtarget *ST) {
+  initializeGenXGroupBalingWrapperPass(*PassRegistry::getPassRegistry());
+  return new GenXGroupBalingWrapper(Kind, ST);
 }
 
-void GenXGroupBaling::getAnalysisUsage(AnalysisUsage &AU) const
-{
-  FunctionGroupPass::getAnalysisUsage(AU);
-  if (GenXBaling::Kind == BK_CodeGen)
-    AU.addRequired<GenXLiveness>();
+void GenXGroupBaling::getAnalysisUsage(AnalysisUsage &AU) {
+  // FIXME: now use getAnalysisIfAvailable and error if nullptr
+  // if (GenXBaling::Kind == BK_CodeGen)
+  //  AU.addRequired<GenXLivenessWrapper>();
   AU.addRequired<DominatorTreeGroupWrapperPass>();
   AU.setPreservesCFG();
   AU.addPreserved<GenXModule>();
@@ -127,8 +127,9 @@ void GenXGroupBaling::getAnalysisUsage(AnalysisUsage &AU) const
  */
 bool GenXGroupBaling::runOnFunctionGroup(FunctionGroup &FG)
 {
-  clear();
   Liveness = getAnalysisIfAvailable<GenXLiveness>();
+  if (Kind == BK_CodeGen)
+    IGC_ASSERT_MESSAGE(Liveness, "expected not nullptr");
   return processFunctionGroup(&FG);
 }
 
@@ -235,12 +236,12 @@ void GenXBaling::processInst(Instruction *Inst)
  * This checks that the arg is general (rather than raw) and does not have
  * any stride restrictions that are incompatible with the region.
  *
- * In the legalization pass of baling, we always return true when the main 
+ * In the legalization pass of baling, we always return true when the main
  * instruction can be splitted. Otherwise, a region that would be OK after
  * being split by legalization might here appear not OK, and that would stop
  * legalization considering splitting it. However, if the main instruction
  * cannot be splitted, then we need to check the full restriction
- * otherwise, if the region is considered baled and skip legalization, 
+ * otherwise, if the region is considered baled and skip legalization,
  * we may have illegal standalone read-region.
  */
 bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,

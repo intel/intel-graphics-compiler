@@ -424,16 +424,15 @@ public:
 };
 
 // GenX late SIMD control flow conformance pass
-class GenXLateSimdCFConformance
-    : public GenXSimdCFConformance, public FunctionGroupPass {
+class GenXLateSimdCFConformance : public FGPassImplInterface,
+                                  public IDMixin<GenXLateSimdCFConformance>,
+                                  public GenXSimdCFConformance {
 public:
-  static char ID;
-  explicit GenXLateSimdCFConformance() : FunctionGroupPass(ID) { }
-  StringRef getPassName() const override {
+  explicit GenXLateSimdCFConformance() {}
+  static StringRef getPassName() {
     return "GenX late SIMD control flow conformance";
   }
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    FunctionGroupPass::getAnalysisUsage(AU);
+  static void getAnalysisUsage(AnalysisUsage &AU) {
     AU.addRequired<DominatorTreeGroupWrapperPass>();
     AU.addRequired<GenXLiveness>();
     AU.addRequired<TargetPassConfig>();
@@ -441,13 +440,8 @@ public:
     AU.addPreserved<GenXLiveness>();
     AU.addPreserved<FunctionGroupAnalysis>();
   }
+  void releaseMemory() { clear(); }
   bool runOnFunctionGroup(FunctionGroup &FG) override;
-  // createPrinterPass : get a pass to print the IR, together with the GenX
-  // specific analyses
-  Pass *createPrinterPass(raw_ostream &O,
-                          const std::string &Banner) const override {
-    return createGenXGroupPrinterPass(O, Banner);
-  }
 
 private:
   void setCategories();
@@ -578,19 +572,26 @@ ModulePass *llvm::createGenXEarlySimdCFConformancePass()
   return new GenXEarlySimdCFConformance();
 }
 
-char GenXLateSimdCFConformance::ID = 0;
-namespace llvm { void initializeGenXLateSimdCFConformancePass(PassRegistry &); }
-INITIALIZE_PASS_BEGIN(GenXLateSimdCFConformance, "GenXLateSimdCFConformance", "GenXLateSimdCFConformance", false, false)
+namespace llvm {
+void initializeGenXLateSimdCFConformanceWrapperPass(PassRegistry &);
+using GenXLateSimdCFConformanceWrapper =
+    FunctionGroupWrapperPass<GenXLateSimdCFConformance>;
+} // namespace llvm
+INITIALIZE_PASS_BEGIN(GenXLateSimdCFConformanceWrapper,
+                      "GenXLateSimdCFConformanceWrapper",
+                      "GenXLateSimdCFConformanceWrapper", false, false)
 INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXModule)
-INITIALIZE_PASS_END(GenXLateSimdCFConformance, "GenXLateSimdCFConformance", "GenXLateSimdCFConformance", false, false)
+INITIALIZE_PASS_END(GenXLateSimdCFConformanceWrapper,
+                    "GenXLateSimdCFConformanceWrapper",
+                    "GenXLateSimdCFConformanceWrapper", false, false)
 
-FunctionGroupPass *llvm::createGenXLateSimdCFConformancePass()
-{
-  initializeGenXLateSimdCFConformancePass(*PassRegistry::getPassRegistry());
-  return new GenXLateSimdCFConformance();
+ModulePass *llvm::createGenXLateSimdCFConformanceWrapperPass() {
+  initializeGenXLateSimdCFConformanceWrapperPass(
+      *PassRegistry::getPassRegistry());
+  return new GenXLateSimdCFConformanceWrapper();
 }
 
 static bool hasStackCall(const Module &M) {

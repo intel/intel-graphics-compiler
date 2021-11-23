@@ -36,7 +36,6 @@ class DominatorTree;
 class formatted_raw_ostream;
 class Function;
 class FunctionGroup;
-class FunctionGroupPass;
 class FunctionPass;
 class GenXSubtarget;
 class Instruction;
@@ -56,14 +55,14 @@ enum BalingKind {
 };
 
 FunctionPass *createGenXPrinterPass(raw_ostream &O, const std::string &Banner);
-FunctionGroupPass *createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner);
+ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
+                                       const std::string &Banner);
 FunctionPass *createGenXAnalysisDumperPass(FunctionPass *Analysis,
                                            StringRef DumpNamePrefix,
                                            StringRef DumpNameSuffix);
-FunctionGroupPass *
-createGenXGroupAnalysisDumperPass(FunctionGroupPass *Analysis,
-                                  StringRef DumpNamePrefix,
-                                  StringRef DumpNameSuffix);
+ModulePass *createGenXModuleAnalysisDumperPass(ModulePass *Analysis,
+                                               StringRef DumpNamePrefix,
+                                               StringRef DumpNameSuffix);
 
 FunctionPass *createGenXCFSimplificationPass();
 ModulePass *createGenXEarlySimdCFConformancePass();
@@ -92,24 +91,25 @@ FunctionPass *createGenXPromotePredicatePass();
 FunctionPass *createGenXIMadPostLegalizationPass();
 FunctionPass *createGenXAggregatePseudoLoweringPass();
 ModulePass *createGenXModulePass();
-FunctionGroupPass *createGenXLateSimdCFConformancePass();
-FunctionGroupPass *createGenXLivenessPass();
+ModulePass *createGenXLateSimdCFConformanceWrapperPass();
+ModulePass *createGenXLivenessWrapperPass();
 FunctionPass *createGenXLoadStoreLoweringPass();
 ModulePass *createGenXFunctionPointersLoweringPass();
-FunctionGroupPass *createGenXCategoryPass();
-FunctionGroupPass *createGenXGroupBalingPass(BalingKind Kind, GenXSubtarget *ST);
-FunctionGroupPass *createGenXUnbalingPass();
-FunctionGroupPass *createGenXDepressurizerPass();
-FunctionGroupPass *createGenXLateLegalizationPass();
-FunctionGroupPass *createGenXNumberingPass();
-FunctionGroupPass *createGenXLiveRangesPass(bool DisableCoalescing = false);
-FunctionGroupPass *createGenXRematerializationPass();
-FunctionGroupPass *createGenXCoalescingPass();
-FunctionGroupPass *createGenXAddressCommoningPass();
-FunctionGroupPass *createGenXArgIndirectionPass();
+ModulePass *createGenXCategoryWrapperPass();
+ModulePass *createGenXGroupBalingWrapperPass(BalingKind Kind,
+                                             GenXSubtarget *ST);
+ModulePass *createGenXUnbalingWrapperPass();
+ModulePass *createGenXDepressurizerWrapperPass();
+ModulePass *createGenXLateLegalizationWrapperPass();
+ModulePass *createGenXNumberingWrapperPass();
+ModulePass *createGenXLiveRangesWrapperPass(bool DisableCoalescing = false);
+ModulePass *createGenXRematerializationWrapperPass();
+ModulePass *createGenXCoalescingWrapperPass();
+ModulePass *createGenXAddressCommoningWrapperPass();
+ModulePass *createGenXArgIndirectionWrapperPass();
 FunctionPass *createGenXTidyControlFlowPass();
-FunctionGroupPass *createGenXVisaRegAllocPass();
-FunctionGroupPass *createGenXCisaBuilderPass();
+ModulePass *createGenXVisaRegAllocWrapperPass();
+ModulePass *createGenXCisaBuilderWrapperPass();
 ModulePass *createGenXFinalizerPass(raw_pwrite_stream &o);
 ModulePass *createGenXDebugInfoPass();
 ModulePass *createGenXGlobalValueLoweringPass();

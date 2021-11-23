@@ -42,26 +42,19 @@ using namespace genx;
 
 namespace {
 
-class GenXLiveRanges : public FunctionGroupPass {
+class GenXLiveRanges : public FGPassImplInterface,
+                       public IDMixin<GenXLiveRanges> {
   FunctionGroup *FG = nullptr;
   GenXBaling *Baling = nullptr;
   GenXLiveness *Liveness = nullptr;
   bool DisableCoalescing = false;
 
 public:
-  static char ID;
   explicit GenXLiveRanges(bool DisableCoalescingIn = false)
-      : FunctionGroupPass(ID), DisableCoalescing(DisableCoalescingIn) {}
-
-  StringRef getPassName() const override { return "GenX live ranges analysis"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const override;
+      : DisableCoalescing(DisableCoalescingIn) {}
+  static StringRef getPassName() { return "GenX live ranges analysis"; }
+  static void getAnalysisUsage(AnalysisUsage &AU);
   bool runOnFunctionGroup(FunctionGroup &FG) override;
-  // createPrinterPass : get a pass to print the IR, together with the GenX
-  // specific analyses
-  Pass *createPrinterPass(raw_ostream &O,
-                          const std::string &Banner) const override {
-    return createGenXGroupPrinterPass(O, Banner);
-  }
 
 private:
   void buildLiveRanges();
@@ -95,23 +88,25 @@ bool testDuplicates(const llvm::GenXLiveness& Liveness) {
 
 } // end anonymous namespace
 
-namespace llvm { void initializeGenXLiveRangesPass(PassRegistry &); }
-char GenXLiveRanges::ID = 0;
-INITIALIZE_PASS_BEGIN(GenXLiveRanges, "GenXLiveRanges", "GenXLiveRanges", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
-INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
-INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
+namespace llvm {
+void initializeGenXLiveRangesWrapperPass(PassRegistry &);
+using GenXLiveRangesWrapper = FunctionGroupWrapperPass<GenXLiveRanges>;
+} // namespace llvm
+INITIALIZE_PASS_BEGIN(GenXLiveRangesWrapper, "GenXLiveRangesWrapper",
+                      "GenXLiveRangesWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
 INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
-INITIALIZE_PASS_END(GenXLiveRanges, "GenXLiveRanges", "GenXLiveRanges", false, false)
+INITIALIZE_PASS_END(GenXLiveRangesWrapper, "GenXLiveRangesWrapper",
+                    "GenXLiveRangesWrapper", false, false)
 
-FunctionGroupPass *llvm::createGenXLiveRangesPass(bool DisableCoalescing) {
-  initializeGenXLiveRangesPass(*PassRegistry::getPassRegistry());
-  return new GenXLiveRanges(DisableCoalescing);
+ModulePass *llvm::createGenXLiveRangesWrapperPass(bool DisableCoalescing) {
+  initializeGenXLiveRangesWrapperPass(*PassRegistry::getPassRegistry());
+  return new GenXLiveRangesWrapper(DisableCoalescing);
 }
 
-void GenXLiveRanges::getAnalysisUsage(AnalysisUsage &AU) const
-{
-  FunctionGroupPass::getAnalysisUsage(AU);
+void GenXLiveRanges::getAnalysisUsage(AnalysisUsage &AU) {
   AU.addRequired<GenXGroupBaling>();
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXNumbering>();

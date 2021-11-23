@@ -62,10 +62,12 @@ namespace llvm {
   class Type;
   class Value;
 
-  FunctionGroupPass *createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner);
+  ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
+                                         const std::string &Banner);
 
   // GenXVisaRegAlloc : vISA virtual register allocator pass
-  class GenXVisaRegAlloc : public FunctionGroupPass {
+  class GenXVisaRegAlloc : public FGPassImplInterface,
+                           public IDMixin<GenXVisaRegAlloc> {
   public:
     inline static const char *Prefix[] = {"ERR", "V", "A", "P", "S", "T"};
 
@@ -73,6 +75,10 @@ namespace llvm {
       if (Category >= array_lengthof(Prefix))
         Category = 0;
       return Prefix[Category];
+    }
+    static void getAnalysisUsage(AnalysisUsage &Info);
+    static StringRef getPassName() {
+      return "GenX vISA virtual register allocator Wrapper";
     }
 
     // Reg : a virtual register
@@ -134,6 +140,7 @@ namespace llvm {
     using RegMap_t = std::unordered_map<const Function*, KernRegMap_t>;
     using LRPtrVect = std::vector<genx::LiveRange *>;
     using LRCPtrVect = std::vector<const genx::LiveRange *>;
+    void print(raw_ostream &OS, const FunctionGroup *FG) const override;
 
   private:
     FunctionGroup *FG = nullptr;
@@ -169,12 +176,8 @@ namespace llvm {
     } Stats;
 
   public:
-    static char ID;
-    explicit GenXVisaRegAlloc() : FunctionGroupPass(ID) { }
-    StringRef getPassName() const override {
-      return "GenX vISA virtual register allocator";
-    }
-    void getAnalysisUsage(AnalysisUsage &AU) const override;
+    explicit GenXVisaRegAlloc() {}
+    void releaseMemory() override;
     bool runOnFunctionGroup(FunctionGroup &FG) override;
 
     std::list<Reg>& getRegStorage() {
@@ -236,16 +239,6 @@ namespace llvm {
       return &R;
     }
 
-    // createPrinterPass : get a pass to print the IR, together with the GenX
-    // specific analyses
-    Pass *createPrinterPass(raw_ostream &O,
-                            const std::string &Banner) const override {
-      return createGenXGroupPrinterPass(O, Banner);
-    }
-
-    // print : dump the state of the pass. This is used by -genx-dump-regalloc
-    void print(raw_ostream &O, const FunctionGroup *FG) const override;
-
   private:
     void getLiveRanges(LRPtrVect &LRs) const;
     void getLiveRangesForValue(Value *V, LRPtrVect &LRs) const;
@@ -260,6 +253,7 @@ namespace llvm {
     unsigned CoalescingCount = 0;
     Reg* RetIP = nullptr;
   };
+  using GenXVisaRegAllocWrapper = FunctionGroupWrapperPass<GenXVisaRegAlloc>;
 
   namespace visa {
     // Details of a type required for a vISA general register declaration
@@ -273,7 +267,7 @@ namespace llvm {
     };
   } // end namespace visa
 
-  void initializeGenXVisaRegAllocPass(PassRegistry &);
+  void initializeGenXVisaRegAllocWrapperPass(PassRegistry &);
 
 } // end namespace llvm
 #endif //ndef GENXVISAREGALLOC_H

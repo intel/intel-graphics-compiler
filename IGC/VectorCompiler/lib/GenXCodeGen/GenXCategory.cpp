@@ -165,7 +165,8 @@ namespace {
   class UsesCatInfo;
 
   // GenX category pass
-  class GenXCategory : public FunctionGroupPass {
+  class GenXCategory : public FGPassImplInterface,
+                       public IDMixin<GenXCategory> {
     Function *Func = nullptr;
     KernelMetadata KM;
     GenXLiveness *Liveness = nullptr;
@@ -183,25 +184,17 @@ namespace {
     bool EnforceCategoryPromotion = false;
 
   public:
-    static char ID;
-    explicit GenXCategory() : FunctionGroupPass(ID) { }
-    StringRef getPassName() const override {
-      return "GenX category conversion";
-    }
-    void getAnalysisUsage(AnalysisUsage &AU) const override;
+    explicit GenXCategory() {}
+    static StringRef getPassName() { return "GenX category conversion"; }
+    static void getAnalysisUsage(AnalysisUsage &AU);
     bool runOnFunctionGroup(FunctionGroup &FG) override;
-    // createPrinterPass : get a pass to print the IR, together with the GenX
-    // specific analyses
-    Pass *createPrinterPass(raw_ostream &O,
-                            const std::string &Banner) const override {
-      return createGenXGroupPrinterPass(O, Banner);
-    }
     unsigned getCategoryForPhiIncomings(PHINode *Phi) const;
     unsigned getCategoryForCallArg(Function *Callee, unsigned ArgNo) const;
     unsigned getCategoryForInlasmConstraintedOp(CallInst *CI, unsigned ArgNo,
                                                 bool IsOutput) const;
     CategoryAndAlignment getCategoryAndAlignmentForDef(Value *V) const;
     CategoryAndAlignment getCategoryAndAlignmentForUse(Value::use_iterator U) const;
+
   private:
     using ConvListT = std::array<llvm::Instruction *, RegCategory::NUMCATEGORIES>;
 
@@ -368,31 +361,32 @@ namespace {
 
   } // end anonymous namespace
 
-char GenXCategory::ID = 0;
-namespace llvm { void initializeGenXCategoryPass(PassRegistry &); }
-INITIALIZE_PASS_BEGIN(GenXCategory, "GenXCategory", "GenXCategory", false, false)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
-INITIALIZE_PASS_END(GenXCategory, "GenXCategory", "GenXCategory", false, false)
+  namespace llvm {
+  void initializeGenXCategoryWrapperPass(PassRegistry &);
+  using GenXCategoryWrapper = FunctionGroupWrapperPass<GenXCategory>;
+  } // namespace llvm
+  INITIALIZE_PASS_BEGIN(GenXCategoryWrapper, "GenXCategoryWrapper",
+                        "GenXCategoryWrapper", false, false)
+  INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
+  INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
+  INITIALIZE_PASS_END(GenXCategoryWrapper, "GenXCategoryWrapper",
+                      "GenXCategoryWrapper", false, false)
 
-FunctionGroupPass *llvm::createGenXCategoryPass()
-{
-  initializeGenXCategoryPass(*PassRegistry::getPassRegistry());
-  return new GenXCategory();
-}
+  ModulePass *llvm::createGenXCategoryWrapperPass() {
+    initializeGenXCategoryWrapperPass(*PassRegistry::getPassRegistry());
+    return new GenXCategoryWrapper();
+  }
 
-void GenXCategory::getAnalysisUsage(AnalysisUsage &AU) const
-{
-  FunctionGroupPass::getAnalysisUsage(AU);
-  AU.addRequired<DominatorTreeGroupWrapperPass>();
-  AU.addRequired<GenXLiveness>();
-  AU.addRequired<TargetPassConfig>();
-  AU.addPreserved<GenXModule>();
-  AU.addPreserved<GenXLiveness>();
-  AU.addPreserved<FunctionGroupAnalysis>();
-  AU.addPreserved<DominatorTreeGroupWrapperPass>();
-  AU.setPreservesCFG();
-}
+  void GenXCategory::getAnalysisUsage(AnalysisUsage &AU) {
+    AU.addRequired<DominatorTreeGroupWrapperPass>();
+    AU.addRequired<GenXLiveness>();
+    AU.addRequired<TargetPassConfig>();
+    AU.addPreserved<GenXModule>();
+    AU.addPreserved<GenXLiveness>();
+    AU.addPreserved<FunctionGroupAnalysis>();
+    AU.addPreserved<DominatorTreeGroupWrapperPass>();
+    AU.setPreservesCFG();
+  }
 
 /***********************************************************************
  * runOnFunctionGroup : run the category conversion pass for

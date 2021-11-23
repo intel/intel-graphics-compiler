@@ -26,29 +26,32 @@ SPDX-License-Identifier: MIT
 ///   and erases the LiveRange for a value that does not need one (a baled
 ///   in instruction).
 ///
-/// GenXLiveness is a FunctionGroupPass, because we want to share liveness
-/// information between all the Functions in a FunctionGroup (i.e. between a
-/// GenX kernel/function and its subroutines). Any pass that uses GenXLiveness,
-/// which is almost all passes that run after it, must itself be a
-/// FunctionGroupPass.
+/// GenXLiveness is a FunctionGroupWrapperPass, because we want to share
+/// liveness information between all the Functions in a FunctionGroup (i.e.
+/// between a GenX kernel/function and its subroutines). Any pass that uses
+/// GenXLiveness, which is almost all passes that run after it, must itself be a
+/// FunctionGroupWrapperPass.
 ///
 /// Here is what a LiveRange might look like if you dump() it in the debugger,
 /// or see it as part of the liveness info in a -print-after-all:
 ///
 /// ``add12.split48172:[145,199){general,align32}``
 ///
-/// * ``add12.split48172`` is the Value attached to the LiveRange. As outlined below,
+/// * ``add12.split48172`` is the Value attached to the LiveRange. As outlined
+/// below,
 ///   a LiveRange actually has SimpleValues rather than Values; if the attached
 ///   SimpleValue had been an element of a struct rather than a scalar value in
-///   its own right, the name would have had # then the flattened index appended.
+///   its own right, the name would have had # then the flattened index
+///   appended.
 ///
 /// * A LiveRange can have more than one value attached after GenXCoalescing.
 ///   This would be shown by multiple comma-separated names.
 ///
-/// * ``[145,199)`` is the segment in which the LiveRange is live. A LiveRange can
-///   have multiple segments. This one is a normal (strong) segment; a weak one has
-///   the start number prefixed with 'w' and a phicpy one has the start number
-///   prefixed with 'ph'.
+/// * ``[145,199)`` is the segment in which the LiveRange is live. A LiveRange
+/// can
+///   have multiple segments. This one is a normal (strong) segment; a weak one
+///   has the start number prefixed with 'w' and a phicpy one has the start
+///   number prefixed with 'ph'.
 ///
 /// * ``general`` is the register category of the LiveRange.
 ///
@@ -83,13 +86,12 @@ SPDX-License-Identifier: MIT
 /// ^^^^^^^^
 ///
 /// A live range consists of one or more non-overlapping *segments*, where each
-/// segment has a start (inclusive) and end (exclusive) instruction number, and a
-/// strength, which is strong (normal), weak (see below) or phicpy (see below).
-/// Two segments cannot be abutting if they have the same
-/// strength. Later passes can interrogate this information to find out whether
-/// two live ranges interfere, and can modify it by coalescing (merging) two
-/// live ranges. After coalescing, multiple SimpleValues share the same live
-/// range.
+/// segment has a start (inclusive) and end (exclusive) instruction number, and
+/// a strength, which is strong (normal), weak (see below) or phicpy (see
+/// below). Two segments cannot be abutting if they have the same strength.
+/// Later passes can interrogate this information to find out whether two live
+/// ranges interfere, and can modify it by coalescing (merging) two live ranges.
+/// After coalescing, multiple SimpleValues share the same live range.
 ///
 /// The numbering of instructions is handled in GenXNumbering.
 ///
@@ -187,7 +189,8 @@ class raw_ostream;
 class ReturnInst;
 class Value;
 
-FunctionGroupPass *createGenXGroupPrinterPass(raw_ostream &O, const std::string &Banner);
+ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
+                                       const std::string &Banner);
 
 namespace genx {
 
@@ -474,7 +477,7 @@ public:
 
 } // end namespace genx
 
-class GenXLiveness : public FunctionGroupPass {
+class GenXLiveness : public FGPassImplInterface, public IDMixin<GenXLiveness> {
   FunctionGroup *FG = nullptr;
   using LiveRangeMap_t = std::map<genx::SimpleValue, genx::LiveRange *>;
   LiveRangeMap_t LiveRangeMap;
@@ -493,13 +496,10 @@ class GenXLiveness : public FunctionGroupPass {
   bool CoalescingDisabled = false;
 
 public:
-  static char ID;
-  explicit GenXLiveness()
-      : FunctionGroupPass(ID), CG(nullptr), Baling(nullptr),
-        Numbering(nullptr) {}
-  ~GenXLiveness() { clear(); }
-  StringRef getPassName() const override { return "GenX liveness analysis"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  static void getAnalysisUsage(AnalysisUsage &Info);
+  static StringRef getPassName() { return "GenX liveness analysis"; }
+
+  ~GenXLiveness() { releaseMemory(); }
   bool runOnFunctionGroup(FunctionGroup &FG) override;
   // setBaling : tell GenXLiveness where GenXBaling is
   void setBaling(GenXBaling *B) { Baling = B; }
@@ -609,20 +609,13 @@ public:
   std::vector<Value *> getAddressWithBase(Value *Base);
   // isNoopCastCoalesced : see if the no-op cast has been coalesced away
   bool isNoopCastCoalesced(CastInst *CI);
-  // createPrinterPass : get a pass to print the IR, together with the GenX
-  // specific analyses
-  Pass *createPrinterPass(raw_ostream &O,
-                          const std::string &Banner) const override {
-    return createGenXGroupPrinterPass(O, Banner);
-  }
   // Debug dump
   void dump();
-  using Pass::print; // Indicates we aren't replacing base class version of print
-  void print(raw_ostream &OS) const;
-  void releaseMemory() override { clear(); }
+  void print(raw_ostream &OS,
+             const FunctionGroup *dummy = nullptr) const override;
+  void releaseMemory() override;
 
 private:
-  void clear();
   unsigned numberInstructionsInFunc(Function *Func, unsigned Num);
   unsigned getPhiOffset(PHINode *Phi) const;
   void rebuildLiveRangeForValue(genx::LiveRange *LR, genx::SimpleValue SV);
@@ -630,8 +623,9 @@ private:
   void merge(genx::LiveRange *LR1, genx::LiveRange *LR2);
   void printValueLiveness(Value *V, raw_ostream &OS) const;
 };
+using GenXLivenessWrapper = FunctionGroupWrapperPass<GenXLiveness>;
 
-void initializeGenXLivenessPass(PassRegistry &);
+void initializeGenXLivenessWrapperPass(PassRegistry &);
 
 // Specialize DenseMapInfo for SimpleValue.
 template <> struct DenseMapInfo<genx::SimpleValue> {

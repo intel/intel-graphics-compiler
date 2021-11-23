@@ -350,7 +350,8 @@ private:
 };
 
 // GenX arg indirection pass
-class GenXArgIndirection : public FunctionGroupPass {
+class GenXArgIndirection : public FGPassImplInterface,
+                           public IDMixin<GenXArgIndirection> {
   friend CallSite;
   friend SubroutineArg;
   friend NoOptCallSite;
@@ -378,11 +379,9 @@ private:
   // List of LRs that we need to recalculate.
   SmallVector<LiveRange *, 4> LRsToCalculate;
 public:
-  static char ID;
-  explicit GenXArgIndirection() : FunctionGroupPass(ID) { }
-  StringRef getPassName() const override { return "GenX arg indirection"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    FunctionGroupPass::getAnalysisUsage(AU);
+  explicit GenXArgIndirection() {}
+  static StringRef getPassName() { return "GenX arg indirection"; }
+  static void getAnalysisUsage(AnalysisUsage &AU) {
     AU.addRequired<FunctionGroupAnalysis>();
     AU.addRequired<GenXNumbering>();
     AU.addRequired<GenXLiveness>();
@@ -395,12 +394,6 @@ public:
     AU.addPreserved<FunctionGroupAnalysis>();
   }
   bool runOnFunctionGroup(FunctionGroup &FG) override;
-  // createPrinterPass : get a pass to print the IR, together with the GenX
-  // specific analyses
-  Pass *createPrinterPass(raw_ostream &O,
-                          const std::string &Banner) const override {
-    return createGenXGroupPrinterPass(O, Banner);
-  }
 
 private:
   void gatherArgLRs();
@@ -421,18 +414,21 @@ private:
 
 } // end anonymous namespace
 
-char GenXArgIndirection::ID = 0;
-namespace llvm { void initializeGenXArgIndirectionPass(PassRegistry &); }
-INITIALIZE_PASS_BEGIN(GenXArgIndirection, "GenXArgIndirection", "GenXArgIndirection", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
-INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
-INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
-INITIALIZE_PASS_END(GenXArgIndirection, "GenXArgIndirection", "GenXArgIndirection", false, false)
+namespace llvm {
+void initializeGenXArgIndirectionWrapperPass(PassRegistry &);
+using GenXArgIndirectionWrapper = FunctionGroupWrapperPass<GenXArgIndirection>;
+} // namespace llvm
+INITIALIZE_PASS_BEGIN(GenXArgIndirectionWrapper, "GenXArgIndirectionWrapper",
+                      "GenXArgIndirectionWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
+INITIALIZE_PASS_END(GenXArgIndirectionWrapper, "GenXArgIndirectionWrapper",
+                    "GenXArgIndirectionWrapper", false, false)
 
-FunctionGroupPass *llvm::createGenXArgIndirectionPass()
-{
-  initializeGenXArgIndirectionPass(*PassRegistry::getPassRegistry());
-  return new GenXArgIndirection();
+ModulePass *llvm::createGenXArgIndirectionWrapperPass() {
+  initializeGenXArgIndirectionWrapperPass(*PassRegistry::getPassRegistry());
+  return new GenXArgIndirectionWrapper();
 }
 
 /***********************************************************************

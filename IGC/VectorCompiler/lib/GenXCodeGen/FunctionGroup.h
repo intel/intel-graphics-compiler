@@ -35,16 +35,23 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/ValueHandle.h>
 #include <llvm/Pass.h>
 
-#include <list>
-#include <unordered_set>
-
 #include "Probe/Assertion.h"
+
+#include <functional>
+#include <list>
+#include <map>
+#include <string>
+#include <type_traits>
+#include <unordered_set>
 
 namespace llvm {
 
 class FunctionGroupAnalysis;
 class LLVMContext;
 class PMStack;
+
+ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
+                                       const std::string &Banner);
 
 namespace genx {
 namespace fg {
@@ -283,56 +290,145 @@ inline raw_ostream &operator<<(raw_ostream &OS,
   return OS;
 }
 
-//----------------------------------------------------------------------
-// FunctionGroupPass - a type of pass (with associated pass manager) that
-// runs a pass instance per FunctionGroup.
-//
-class FunctionGroupPass : public Pass {
+template <typename FGPassImpl> struct IDMixin { inline static char ID = 0; };
+
+// FunctionGroupWrapperPass - a type of pass that
+// runs a pass instance per FunctionGroup, and for each FunctionGroup data holds
+// separately
+struct FunctionGroupWrapperMapComparator {
+  bool operator()(const FunctionGroup *Lhs, const FunctionGroup *Rhs) const {
+    return Lhs->getName() < Rhs->getName();
+  }
+};
+template <typename FGPassImpl>
+class FunctionGroupWrapperPass : public IDMixin<FGPassImpl>, public ModulePass {
+  using StoreStruct =
+      std::map<FunctionGroup *, FGPassImpl, FunctionGroupWrapperMapComparator>;
+  StoreStruct Passes;
+  std::function<FGPassImpl &(FunctionGroup *, StoreStruct &)>
+      createPassImplForFunctionGroup;
+
 public:
-  static constexpr unsigned PassType = PT_PassManager + 1;
+  using IDMixin<FGPassImpl>::ID;
 
-  explicit FunctionGroupPass(char &pid) : Pass(static_cast<PassKind>(PassType), pid) {}
-
-  using llvm::Pass::print;
-  virtual void print(raw_ostream &OS, const FunctionGroup *FG) const {
-    print(OS, FG->getHead()->getParent());
+  // NOTE: arguments are copied and used in construction during runOnModule, so
+  // MAKE SURE that all arguments are alive
+  template <typename... FGPassArgs>
+  explicit FunctionGroupWrapperPass(FGPassArgs... FGArgs)
+      : ModulePass(ID),
+        createPassImplForFunctionGroup(
+            [FGArgs...](FunctionGroup *FG,
+                        StoreStruct &Passes) -> FGPassImpl & {
+              [[maybe_unused]] bool isEmplaced =
+                  Passes.try_emplace(FG, FGArgs...).second;
+              IGC_ASSERT_MESSAGE(isEmplaced == true, "PassImpl not created");
+              return Passes.at(FG);
+            }) {}
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<FunctionGroupAnalysis>();
+    AU.addPreserved<FunctionGroupAnalysis>();
+    FGPassImpl::getAnalysisUsage(AU);
   }
-  // createPrinterPass - Get a pass that prints the Module
-  // corresponding to a FunctionGroupAnalysis.
+  StringRef getPassName() const override { return FGPassImpl::getPassName(); }
+
+  // need to set up Passes that collect any data
+  void releaseMemory() override {
+    for (auto &[FG, PassImpl] : Passes)
+      PassImpl.releaseMemory();
+    Passes.clear();
+  }
+  void verifyAnalysis() const override {
+    for (auto &[FG, PassImpl] : Passes)
+      PassImpl.verifyAnalysis();
+  }
+
+  void print(raw_ostream &OS, const Module *M) const override {
+    auto PassName = FGPassImpl::getPassName();
+    const auto *PassInfo = Pass::lookupPassInfo(getPassID());
+    if (PassInfo)
+      PassName = PassInfo->getPassArgument();
+
+    for (auto &[FG, PassImpl] : Passes) {
+      OS << "Dump of <" << PassName << ">"
+         << " for FunctionGroup: " << FG->getName() << " --start\n";
+      PassImpl.getAsFGPassImplInterface().print(OS, FG);
+      OS << "Dump of <" << PassName << ">"
+         << " for FunctionGroup: " << FG->getName() << " --end\n";
+      OS << "\n";
+    }
+  }
+  // createPrinterPass : get a pass to print the IR, together with the GenX
+  // specific analyses
   Pass *createPrinterPass(raw_ostream &O,
-                          const std::string &Banner) const override;
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
+  bool runOnModule(Module &M) {
+    bool Changed = false;
+    FunctionGroupAnalysis &FGA =
+        this->template getAnalysis<FunctionGroupAnalysis>();
+    for (auto *currentFG : FGA.AllGroups()) {
+      FGPassImpl &CurrentPass =
+          createPassImplForFunctionGroup(currentFG, Passes);
+      CurrentPass.Parent = this;
+      CurrentPass.AnalyzedFG = currentFG;
+      Changed |= CurrentPass.runOnFunctionGroup(*currentFG);
+    }
+    return Changed;
+  }
+  FGPassImpl &getFGPassImpl(FunctionGroup *FG) {
+    IGC_ASSERT_MESSAGE(FG, "Nullptr input in getFGPassImpl");
+    IGC_ASSERT_MESSAGE(
+        Passes.count(FG) == 1,
+        "Wrapper does not have PassImpl, associated with this FunctionGroup");
+    return Passes[FG];
+  }
+};
 
-  using llvm::Pass::doFinalization;
-  using llvm::Pass::doInitialization;
-
-  // doInitialization - This method is called before the FunctionGroups of the
-  // program have been processed, allowing the pass to do initialization as
-  // necessary.
-  virtual bool doInitialization(FunctionGroupAnalysis &FGA) { return false; }
-
-  // runOnFunctionGroup - This method should be implemented by the subclass to
-  // perform whatever action is necessary for the specified FunctionGroup.
-  //
-  virtual bool runOnFunctionGroup(FunctionGroup &FG) = 0;
-
-  // doFinalization - This method is called after the FunctionGroups of the
-  // program have been processed, allowing the pass to do final cleanup as
-  // necessary.
-  virtual bool doFinalization(FunctionGroupAnalysis &FGA) { return false; }
-
-  // Assign pass manager to manager this pass
-  void assignPassManager(PMStack &PMS, PassManagerType PMT) override;
-
-  //  Return what kind of Pass Manager can manage this pass.
-  PassManagerType getPotentialPassManagerType() const override {
-    return PMT_ModulePassManager;
+struct FGAnalysisGetter {
+  ModulePass *Parent = nullptr;
+  FunctionGroup *AnalyzedFG = nullptr;
+  template <typename AnalysisPass>
+  typename std::enable_if_t<std::is_base_of_v<FGAnalysisGetter, AnalysisPass>,
+                            AnalysisPass &>
+  getAnalysis() const {
+    return Parent->getAnalysis<FunctionGroupWrapperPass<AnalysisPass>>()
+        .getFGPassImpl(AnalyzedFG);
+  }
+  template <typename AnalysisPass>
+  typename std::enable_if_t<!std::is_base_of_v<FGAnalysisGetter, AnalysisPass>,
+                            AnalysisPass &>
+  getAnalysis() const {
+    return Parent->getAnalysis<AnalysisPass>();
   }
 
-  // getAnalysisUsage - For this class, we declare that we require and
-  // preserve the FunctionGroupAnalysis.
-  // If the derived class implements this method, it should
-  // always explicitly call the implementation here.
-  void getAnalysisUsage(AnalysisUsage &Info) const override;
+  template <typename AnalysisPass>
+  typename std::enable_if_t<std::is_base_of_v<FGAnalysisGetter, AnalysisPass>,
+                            AnalysisPass *>
+  getAnalysisIfAvailable() const {
+    using WrapperT = FunctionGroupWrapperPass<AnalysisPass>;
+    WrapperT *WrapperPtr = Parent->getAnalysisIfAvailable<WrapperT>();
+    if (WrapperPtr)
+      return &(WrapperPtr->getFGPassImpl(AnalyzedFG));
+    return nullptr;
+  }
+  template <typename AnalysisPass>
+  typename std::enable_if_t<!std::is_base_of_v<FGAnalysisGetter, AnalysisPass>,
+                            AnalysisPass *>
+  getAnalysisIfAvailable() const {
+    return Parent->getAnalysisIfAvailable<AnalysisPass>();
+  }
+};
+
+struct FGPassImplInterface : public FGAnalysisGetter {
+  virtual void releaseMemory() {}
+  virtual void print(raw_ostream &OS, const FunctionGroup *FG) const {}
+  virtual bool runOnFunctionGroup(FunctionGroup &FG) = 0;
+  virtual void verifyAnalysis() const {}
+  const FGPassImplInterface &getAsFGPassImplInterface() const { return *this; }
+  // Please define those static function members too:
+  // static getAnalysisUsage(AnalysisUsage& AU)
+  // static getPassName()
 };
 
 //----------------------------------------------------------------------
@@ -340,45 +436,45 @@ public:
 // per Function in the FunctionGroup.
 class DominatorTree;
 
-class DominatorTreeGroupWrapperPass : public FunctionGroupPass {
+class DominatorTreeGroupWrapperPass
+    : public FGPassImplInterface,
+      public IDMixin<DominatorTreeGroupWrapperPass> {
   std::map<Function *, DominatorTree *> DTs;
 
 public:
-  static char ID;
-
-  DominatorTreeGroupWrapperPass() : FunctionGroupPass(ID) {}
+  DominatorTreeGroupWrapperPass() {}
   ~DominatorTreeGroupWrapperPass() { releaseMemory(); }
 
   DominatorTree *getDomTree(Function *F) { return DTs[F]; }
-  const DominatorTree &getDomTree();
 
   bool runOnFunctionGroup(FunctionGroup &FG) override;
 
   void verifyAnalysis() const override;
 
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    FunctionGroupPass::getAnalysisUsage(AU);
-    AU.setPreservesAll();
+  static void getAnalysisUsage(AnalysisUsage &AU) { AU.setPreservesAll(); }
+  static StringRef getPassName() {
+    return "DominatorTreeGroupWrapperPassWrapper";
   }
 
   void releaseMemory() override;
 
-  void print(raw_ostream &OS, const Module *M = nullptr) const override;
+  void print(raw_ostream &OS, const FunctionGroup *FG = nullptr) const override;
 };
-void initializeDominatorTreeGroupWrapperPassPass(PassRegistry &);
+using DominatorTreeGroupWrapperPassWrapper =
+    FunctionGroupWrapperPass<DominatorTreeGroupWrapperPass>;
+void initializeDominatorTreeGroupWrapperPassWrapperPass(PassRegistry &);
 
 //----------------------------------------------------------------------
 // LoopInfoGroupWrapperPass : Analysis pass which computes a LoopInfo
 // per Function in the FunctionGroup.
 class LoopInfo;
 
-class LoopInfoGroupWrapperPass : public FunctionGroupPass {
+class LoopInfoGroupWrapperPass : public FGPassImplInterface,
+                                 public IDMixin<LoopInfoGroupWrapperPass> {
   std::map<Function *, LoopInfo *> LIs;
 
 public:
-  static char ID;
-
-  LoopInfoGroupWrapperPass() : FunctionGroupPass(ID) {}
+  LoopInfoGroupWrapperPass() {}
   ~LoopInfoGroupWrapperPass() { releaseMemory(); }
 
   LoopInfo *getLoopInfo(Function *F) { return LIs[F]; }
@@ -388,19 +484,19 @@ public:
 
   void verifyAnalysis() const override;
 
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    FunctionGroupPass::getAnalysisUsage(AU);
+  static void getAnalysisUsage(AnalysisUsage &AU) {
     AU.addRequired<DominatorTreeGroupWrapperPass>();
     AU.setPreservesAll();
   }
+  static StringRef getPassName() { return "LoopInfoGroupWrapperPassWrapper"; }
 
   void releaseMemory() override;
 
-  void print(raw_ostream &OS, const Module *M = nullptr) const override;
+  void print(raw_ostream &OS, const FunctionGroup *FG = nullptr) const override;
 };
-
-void initializeLoopInfoGroupWrapperPassPass(PassRegistry &);
-
+using LoopInfoGroupWrapperPassWrapper =
+    FunctionGroupWrapperPass<LoopInfoGroupWrapperPass>;
+void initializeLoopInfoGroupWrapperPassWrapperPass(PassRegistry &);
 } // end namespace llvm
 
 #endif // LIB_GENXCODEGEN_FUNCTIONGROUP_H
