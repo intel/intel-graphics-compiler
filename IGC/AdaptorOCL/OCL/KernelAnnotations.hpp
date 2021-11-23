@@ -307,6 +307,9 @@ struct ExecutionEnivronment
     bool   UseBindlessMode                            = false;
     uint64_t SIMDInfo                                 = 0;
     bool  HasDPAS                                     = false;
+    DWORD StatelessWritesCount                        = 0;
+    DWORD IndirectStatelessCount                      = 0;
+    DWORD numThreads                                  = 0;
     bool  HasStackCalls = false;
 };
 
