@@ -260,7 +260,7 @@ static DepType getDepForOpnd(Gen4_Operand_Number cur,
 
 // check if two operands occupy overlapping GRFs
 // we put them here instead of inside G4_Operand since this is only valid till after RA
-// It's the caller's responsibilty to ensure that opnd1 and opnd2 are both GRF allocated
+// It's the caller's responsibility to ensure that opnd1 and opnd2 are both GRF allocated
 static bool operandOverlap(G4_Operand* opnd1, G4_Operand* opnd2)
 {
     return (opnd1->getLinearizedStart() <= opnd2->getLinearizedStart() &&
@@ -596,8 +596,8 @@ void SWSB::addSIMDEdge(G4_BB_SB* pred, G4_BB_SB* succ)
 }
 
 // Build SIMD CFG for the global WAR dependence tracking
-// 1. When buliding CFG, except the backedge, all using JIP branch edge.
-// 2. For the join and endif instructions which are no seperated and place in the head of a BB. We do edge propgation
+// 1. When building CFG, except the backedge, all using JIP branch edge.
+// 2. For the join and endif instructions which are no separated and place in the head of a BB. We do edge propagation
 //    Such as:   BB a, b, c, d,  there is a join in BB b which JIP to d, and there is an edge from a to b, we will add edge from a to d, instead of b to d.
 void SWSB::SWSBBuildSIMDCFG()
 {
@@ -904,7 +904,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
                 {
                     if (bb->getLoopStartBBID() != -1)
                     {
-                        //Innerest loop only
+                        //Innermost loop only
                         if (bb->getLoopStartBBID() <= be.second->getId() &&
                             bb->getLoopEndBBID() >= be.first->getId())
                         {
@@ -925,7 +925,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     //Global analysis until no live in change
     SWSBGlobalScalarCFGReachAnalysis();
 
-    //Add dependence according ot analysis result
+    //Add dependence according to analysis result
     if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation) ||
         fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation))
     {
@@ -1499,7 +1499,7 @@ std::pair<int, int> SWSB::examineNodeForTokenReuse(
 }
 
 //The algorithm for reuse selection: The live range which causes the least stall delay of current live range.
-//Fixme: for global variable, it's not accurate. Because the AFTER_SOURCE and AFTER_WRITE may in different branches.
+//FIXME: for global variable, it's not accurate. Because the AFTER_SOURCE and AFTER_WRITE may in different branches.
 //Try not reuse the tokens set in adjacent instructions.
 SBNode * SWSB::reuseTokenSelection(const SBNode * node) const
 {
@@ -1671,7 +1671,7 @@ void SWSB::tokenDepReduction(SBNode* n1, SBNode* n2)
 
             //When two successors are in same BB, previous one kill the following one
             // FIXME: This may not be good, because the policy is trying to keep the longest dependence and move the short one
-            // Of course, if the two predecssors are lived in from different branch, we can only kill the longer one
+            // Of course, if the two predecessors are lived in from different branch, we can only kill the longer one
             bool killed = false;
             for (auto node2_it = node2->succs.begin();
                 node2_it != node2->succs.end();
@@ -1752,15 +1752,15 @@ void SWSB::tokenDepReduction(SBNode* n1, SBNode* n2)
 
 /*
 *
-*  We need cycle based expieration because for the case like
+*  We need cycle based expiration because for the case like
 *  send   null, r2...      {$0}
 *  add  r2                 {$0.src}
 *  send   r20   r9...      {$0}
 *  The second send should not be assigned with $0.
 *  In compiler, if the live range of the r2 is end in the second instruction, token $0 is treated as free.
 *  However, the SBID $0 will cleared only when the instruction finished the execution.
-*  Assgined the same token to the third instruction will cause a long latency.
-*  We delay the end of the lives of the interverls until the cycles are all consumed, so that the token will not be assigned immediately.
+*  Assigned the same token to the third instruction will cause a long latency.
+*  We delay the end of the lives of the intervals until the cycles are all consumed, so that the token will not be assigned immediately.
 *  But if the dependence is .dst dependence, the live range is over. The stall will be going until the finish of the instruction.
 *
 */
@@ -1805,7 +1805,7 @@ void SWSB::expireIntervals(unsigned startID)
 //This is to avoid the false token sharing.
 //What's the impact on the token reduction?
 //Token reduction will remove the succ, i.e remove the dependence.
-//NOTE THAT: Token reducton happens only when run out of token.
+//NOTE THAT: Token reduction happens only when run out of token.
 void SWSB::shareToken(const SBNode* node, const SBNode* succ, unsigned short token)
 {
     if (node->getBBID() == succ->getBBID())
@@ -1823,7 +1823,7 @@ void SWSB::shareToken(const SBNode* node, const SBNode* succ, unsigned short tok
         {
             G4_BB_SB* curBB = BBVector[node->getBBID()];
             G4_BB_SB* succPredBB = BBVector[succPred->getBBID()];
-            //FIXME: Only define BBs comparision is not enough. It may cause extra delay?
+            //FIXME: Only define BBs comparison is not enough. It may cause extra delay?
             if (!(curBB->send_live_in.isDstSet((unsigned)succPred->globalID) ||
                 curBB->send_live_in.isSrcSet((unsigned)succPred->globalID) ||
                 succPredBB->send_live_in.isDstSet((unsigned)node->globalID) ||
@@ -2138,7 +2138,7 @@ bool SWSB::globalTokenReachAnalysis(G4_BB* bb)
         BBVector[bbID]->liveInTokenNodes = temp_live_in;
     }
 
-    //Caculate the live out according to the live in and killed tokens in current BB
+    //Calculate the live out according to the live in and killed tokens in current BB
     for (uint32_t token = 0; token < totalTokenNum; token++)
     {
         if (BBVector[bbID]->killedTokens.isSet(token))
@@ -2150,7 +2150,7 @@ bool SWSB::globalTokenReachAnalysis(G4_BB* bb)
     //Get the new live out,
     //FIXME: is it right? the live out is always assigned in increasing.
     //Original, we only have local live out.
-    //should we seperate the local ive out vs total live out?
+    //should we separate the local live out vs total live out?
     //Not necessary, can live out, will always be live out.
     BBVector[bbID]->liveOutTokenNodes |= temp_live_in;
 
@@ -2528,7 +2528,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
             unsigned liveNodeOverhead = 0;
 
             //What about the global send come back to current BB?
-            //Shouldn't be assgined
+            //Shouldn't be assigned
             if ((liveNode->globalID != -1) &&
                 (BBVector[bb->getId()]->tokenLiveInDist[liveNode->globalID] != -1) &&
                 (liveNode->getBBID() != bb->getId() || liveNode->getNodeID() > node->getNodeID()) )
@@ -2567,7 +2567,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
                 unsigned nodeOverhead = 0;
 
                 //What about the global send come back to current BB?
-                //Shouldn't be assgined
+                //Shouldn't be assigned
                 if ((node->globalID != -1) &&
                     (BBVector[useNode->getBBID()]->tokenLiveInDist[node->globalID] != -1) &&
                     (useNode->getBBID() != bb->getId() || useNode->getNodeID() > node->getNodeID()))
@@ -2822,7 +2822,7 @@ void SWSB::allocateToken(G4_BB* bb)
         {
             bool assigned = false;
 
-            //Assgined with coalescing
+            //Assigned with coalescing
             if (!fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation) && (node->reachedUses.getSize() != 0))
             {
                 for (size_t i = 0; i < node->succs.size(); i++)
@@ -2858,7 +2858,7 @@ void SWSB::allocateToken(G4_BB* bb)
 
             if (!assigned)
             {
-                //Assgined with first free token
+                //Assigned with first free token
                 for (unsigned k = 0; k < totalTokenNum; k++)
                 {
                     if ((reachTokenArray[k]->size() == 0) &&
@@ -3024,8 +3024,8 @@ void SWSB::buildExclusiveForCoalescing()
                             tokenHonourInstruction(succ->GetInstruction())))
                         //If the use is token honour instruction and be assigned with same token as pred,
                         //it will cause dependence any way, cannot be removed.
-                        //FIXME: But one send can depends on multiple prevoius send.
-                        //Only the one set to the send will cause un-removeable dependence.
+                        //FIXME: But one send can depends on multiple previous send.
+                        //Only the one set to the send will cause non-removable dependence.
                     {
                         addReachingUseSet(liveNode, succ);
                     }
@@ -3312,7 +3312,7 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
                         //FIXME: for tokenhonour instruction, we didn't support memdst only or memsrc only modes.
                         //       To support these two modes, the pre-condition is that current instruction has no SBID.
                 {
-                    //Token is kept in origional instruction
+                    //Token is kept in original instruction
                     keepDst = true;
                     inst->setToken(token);
                     inst->setTokenType(type);
@@ -3626,7 +3626,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_
                 if (!removeAllToken &&                  //No set one marked.
                     !keepDst)                            //No dst one kept yet
                 {
-                    //Token is kept in origional instruction
+                    //Token is kept in original instruction
                     keepDst = true;
                     inst->setToken(token);
                     inst->setTokenType(SWSBTokenType::AFTER_WRITE);
@@ -3680,7 +3680,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_
                     !keepDst &&
                     !keepSrc)
                 {
-                    //Token is kept in origional instruction
+                    //Token is kept in original instruction
                     keepSrc = true;
                     inst->setToken(token);
                     inst->setTokenType(SWSBTokenType::AFTER_READ);
@@ -3763,7 +3763,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_
     return insertedSync;
 }
 
-//If depends on mulitple different ALU pipelines
+//If depends on multiple different ALU pipelines
 //    If all operands type matching the ALU pipelines --> regDist
 //    otherwise --> regDistAll
 //If depends on single different ALU pipeline and other same ALU pipelines.
@@ -3777,7 +3777,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_
 //    otherwise--> accuarte
 //
 //Note that:
-// 1. one instruction can have mulitiple operands.
+// 1. one instruction can have multiple operands.
 // 2. instruction belongs to single pipeline
 //Combo:
 //For dpas/dpasw instructions
@@ -4137,7 +4137,7 @@ void SWSB::insertTest()
                     dstTokens.set(inst->getSetToken(), false);
                     srcTokens.set(inst->getSetToken(), false);
                 }
-                //tmp_it keeps the postion to insert new generated instructions.
+                //tmp_it keeps the position to insert new generated instructions.
                 insertSync(bb, node, inst, tmp_it, newInstID, &dstTokens, &srcTokens);
                 unsigned short token = inst->getSetToken();
                 if (token != (unsigned short)UNKNOWN_TOKEN)
@@ -4399,7 +4399,7 @@ bool SWSB::globalDependenceDefReachAnalysis(G4_BB* bb)
     BBVector[bbID]->send_kill_scalar.src |= temp_kill.src;
 
     //Kill nodes
-    //once dst is killed, src definitly is killed
+    //once dst is killed, src definitely is killed
     temp_live_in -= BBVector[bbID]->send_may_kill;
     temp_live_in.src -= BBVector[bbID]->send_may_kill.dst;
 
@@ -4496,7 +4496,7 @@ void SWSB::tokenEdgePrune(unsigned& prunedEdgeNum,
                             if (currSucc.node == node)
                             {
                                 //Don't do remove previous edge here.
-                                //1. conflict with outer loop
+                                //1. Conflict with outer loop
                                 //2. There is no preds info required any more in following handling
                                 predNode->succs.erase(succ_it);
                                 prunedEdgeNum++;
@@ -4673,8 +4673,8 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
 }
 //
 // Scan to check which global send operand for sends will be killed by current BB.
-// Note that there is no gaurantee the send operand will in the live in set of BB.
-// !!! Note that: since this "may kill" info is used in global anaysis, "may kill" is not accurate, here we in fact record the "definitely kill".
+// Note that there is no guarantee the send operand will in the live in set of BB.
+// !!! Note that: since this "may kill" info is used in global analysis, "may kill" is not accurate, here we in fact record the "definitely kill".
 void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
     SBNODE_VECT* SBNodes,
     PointsToAnalysis& p)
@@ -4719,7 +4719,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                 const SBFootprint* liveFootprint = curLiveNode->getFootprint(liveBN->opndNum,liveInst);
 
                 //Send operands are all GRF aligned, there is no overlap checking required.
-                //Fix me, this is not right, for math intruction, less than 1 GRF may happen.
+                //Fix me, this is not right, for math instruction, less than 1 GRF may happen.
                 //Find DEP type
                 unsigned short internalOffset = 0;
                 bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
@@ -4732,7 +4732,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                 DepType dep = DEPTYPE_MAX;
                 dep = getDepForOpnd(liveOpnd, curOpnd);
 
-                //For SBID global liveness analysis, both explict and implicit kill counted.
+                //For SBID global liveness analysis, both explicit and implicit kill counted.
                 if (dep == RAW || dep == WAW)
                 {
                     send_may_kill.setDst(curLiveNode->globalID, true);
@@ -4748,7 +4748,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                     send_may_kill.setSrc(curLiveNode->globalID, true);
                 }
 
-                //FIXME: for NODEP, there is optimizatoin chance.
+                //FIXME: for NODEP, there is optimization chance.
                 //               if (hasSameFunctionID(liveInst, curInst))
                 //                    send  null,  r1, r73, ...   {$0}
                 //                    send  null,  r1, r60, ...   {$1}
@@ -5048,7 +5048,7 @@ void G4_BB_SB::getGRFBucketsForOperands(SBNode* node,
 bool G4_BB_SB::getGRFFootPrint(SBNode* node, PointsToAnalysis& p)
 {
     bool hasDistOneAReg = false;
-    //We get the descript for source first, so for current instruction, the scan order is src0, src1, src2, src3, dst
+    //We get the description for source first, so for current instruction, the scan order is src0, src1, src2, src3, dst
     for (G4_INST* inst : node->instVec)
     {
         hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_src0, Opnd_src3, p);
@@ -5061,7 +5061,7 @@ bool G4_BB_SB::getGRFFootPrint(SBNode* node, PointsToAnalysis& p)
 
 void G4_BB_SB::getGRFBucketDescrs(SBNode* node, std::vector<SBBucketDescr>& BDvec, bool GRFOnly)
 {
-    //We get the descript for source first, so for current instruction, the scan order is src0, src1, src2, src3, dst
+    //We get the description for source first, so for current instruction, the scan order is src0, src1, src2, src3, dst
     getGRFBucketsForOperands(node, Opnd_src0, Opnd_src3, BDvec, GRFOnly);
     if (!GRFOnly)
     {
@@ -5175,7 +5175,7 @@ void G4_BB_SB::clearSLMWARWAissue(SBNode* curNode, LiveGRFBuckets* LB)
                 isSLMMsg(liveInst) && liveInst->getDst() != nullptr && !liveInst->getDst()->isNullReg())
             {
                 createAddGRFEdge(curLiveNode, curNode, RAW, DEP_EXPLICT);
-                curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                curLiveNode->setInstKilled(true);  //Instruction level kill
                 LB->killOperand(it);
                 continue;
             }
@@ -5312,7 +5312,7 @@ bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode* node)
             {
                 assert(0);
             }
-            //For 8X8, it's allowed that dst and src0 share same registsers (not internal dep). But not including partial overlap.
+            //For 8X8, it's allowed that dst and src0 share same registers (not internal dep). But not including partial overlap.
             if (opndNum == Opnd_src0)
             {
                 const G4_INST* curInst = node->getLastInstruction();
@@ -5434,7 +5434,7 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) co
 
 //restrict a macro to :
 //    1. Consecutive instructions of same opcode, same datatype in all sources and dest and same register for Src1.
-//  2. Allow having variable repcount
+//  2. Allow having variable repeat count
 bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
 {
     G4_INST* curInst = curNode->getLastInstruction();
@@ -5664,7 +5664,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         {
             setSpecialDistance(node);
         }
-        //Record the node IDs of the instrucrtions in BB
+        //Record the node IDs of the instructions in BB
         if (first_node == -1)
         {
             first_node = nodeID;
@@ -5736,7 +5736,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
         // Support for atomic write combine
         // Treat block instructions as one in distance calculation.
-        // The write combine in the local scheduling guarantee that all instructions in the block blong to same instruction pipeline.
+        // The write combine in the local scheduling guarantee that all instructions in the block belong to same instruction pipeline.
         auto isWriteCombineBlockCandidate = [&](G4_INST * inst)
         {
             return (inst->opcode() == G4_mov &&
@@ -5794,7 +5794,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                         const G4_InstDpas* dpasInst = curInst->asDpasInst();
                         node->addDPASSize(dpasInst->getRepeatCount());
                     }
-                    else  //If the first node has internal dependence, break immedidatly
+                    else  //If the first node has internal dependence, break immediately
                     {
                         if (hasInternalDependenceWithinDPAS(node))
                         {
@@ -5916,7 +5916,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         }
 
         // Considering instruction level liveness kill, i.e killing the live instructions/operands,
-        // the dependence checking order must be RAR/RAW --> WAR/WAW, the bucket descripters in BDvec must in the order of src->dst.
+        // the dependence checking order must be RAR/RAW --> WAR/WAW, the bucket descriptions in BDvec must in the order of src->dst.
         // If WAW is done first, RAW may be missed:
         //    If both live and current instructions are in-order instructions, WAW no dependence required, but RAW is required.
         //    If both live and current instructions are out-of-order instructions, WAW and RAW have same effect.
@@ -5930,8 +5930,8 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         //    If live is in-order and current is out-of-order, WAW and RAW have same effect.
         //    If live is out-of-order and current is in-order, WAW and RAW have same effect.
         //                                   Both R will be kept, RAR will not cause WAR miss.
-        // For WAW and RAW, once explict dependencies are required, kill the liveness of instruction.
-        // For WAR, once explict dependencies is required, kill the source operands.
+        // For WAW and RAW, once explicit dependencies are required, kill the liveness of instruction.
+        // For WAR, once explicit dependencies is required, kill the source operands.
         // Others, only operand kill.
         bool instKill = false;
 
@@ -5942,7 +5942,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             const SBFootprint* curFootprint = BD.node->getFootprint(BD.opndNum, BD.inst);
 
             // Check liveness for each live curBucket node.
-            // Add explict dependence if liveness is killed and there is no implicit dependence
+            // Add explicit dependence if liveness is killed and there is no implicit dependence
             for (LiveGRFBuckets::BN_iterator bn_it = LB->begin(curBucket);
                 bn_it != LB->end(curBucket);)
             {
@@ -5971,11 +5971,11 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     hasOverlap = curFootprint->hasOverlap(liveFootprint, hasRMWOverlap, internalOffset);
                 }
 
-                //RAW:                     R kill W    R-->live       explict dependence
+                //RAW:                     R kill W    R-->live       explicit dependence
                 //WAW: same pipeline and inorder   W2 kill W1  W2-->live      implicit dependence
                 //WAW: different pipelines or OOO  W2 kill W1  W2-->live      explict dependence
-                //WAR: different pipelines W kill R    W-->live       explict dependence
-                //WAR: same pipeline       W kill R    W-->live       implict dependence
+                //WAR: different pipelines W kill R    W-->live       explicit dependence
+                //WAR: same pipeline       W kill R    W-->live       implicit dependence
                 //RAR: same pipeline               R2 kill R1  R2-->live      no dependence
                 //RAR: different pipelines         no kill     R1,R2-->live   no dependence
                 //Find DEP type
@@ -5986,7 +5986,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 //1)(~f0.0.anyv) math.cos(2 | M0)      r23.7<2>:hf   r11.7<4; 2, 2> : hf{ $14 }
                 //2)             mul(8 | M0)               acc0.0<1>:ud  r35.3<8; 8, 0> : ud   r23.0<8; 4, 0> : uw   //With execution mask, only r23.0~r23.3 are read
                 //3)             mach(8 | M0)              r52.0<1>:ud   r35.3<8; 8, 0> : ud   r23.0<4; 4, 0> : ud{ $14.dst }
-                //FIXME, For performance, we need check the 3th instruction as well
+                //FIXME, For performance, we need check the 3rd instruction as well
 
                 if (!hasOverlap &&
                     !builder.hasFixedCycleMathPipe() &&
@@ -6016,7 +6016,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                             {
                                 LB->killOperand(bn_it);
                                 createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
-                                liveNode->setInstKilled(true);  //Instrtuction level kill
+                                liveNode->setInstKilled(true);  //Instruction level kill
                                 instKill = true;
                                 continue;
                             }
@@ -6030,7 +6030,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                         {
                             LB->killOperand(bn_it);
                             createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
-                            liveNode->setInstKilled(true);  //Instrtuction level kill
+                            liveNode->setInstKilled(true);  //Instruction level kill
                             instKill = true;
                             continue;
                         }
@@ -6051,7 +6051,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                             killed = true;
                         }
 
-                        //Different pipiline/functionID, added Edge
+                        //Different pipeline/functionID, added Edge
                         //If not whole region overlap, still killed
                         if (WARDepRequired(liveInst, curInst))
                         {
@@ -6135,7 +6135,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
                     if (dep == WAW) {
                         bool killed = false;
-                        //For implict dependence, the previous node can be killed only when it's wholely overlaped by the following one
+                        //For implicit dependence, the previous node can be killed only when it's wholly overlapped by the following one
                         if (curFootprint->isWholeOverlap(liveFootprint))
                         {
                             LB->killOperand(bn_it);
@@ -6155,7 +6155,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                 }
 
                                 setDistance(curFootprint, node, liveNode, true);
-                                liveNode->setInstKilled(true); //Instrtuction level kill
+                                liveNode->setInstKilled(true); //Instruction level kill
                                 instKill = true;
                             }
                         }
@@ -6169,7 +6169,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                     killed = true;
                                 }
                                 setDistance(curFootprint, node, liveNode, true);
-                                liveNode->setInstKilled(true); //Instrtuction level kill
+                                liveNode->setInstKilled(true); //Instruction level kill
                                 instKill = true;
                             }
 
@@ -6181,7 +6181,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
                     if (dep == WAR) {
                         bool killed = false;
-                        //For implict dependence, the previous node can be killed only when it's wholely overlaped by the following one
+                        //For implicit dependence, the previous node can be killed only when it's wholly overlapped by the following one
                         if (curFootprint->isWholeOverlap(liveFootprint))
                         {
                             LB->killOperand(bn_it);
@@ -6198,7 +6198,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                     killed = true;
                                 }
                                 setDistance(curFootprint, node, liveNode, true);
-                                liveNode->setInstKilled(true); //Instrtuction level kill
+                                liveNode->setInstKilled(true); //Instruction level kill
                             }
                         }
                         else if (!hasSameFunctionID(liveInst, curInst))
@@ -6361,7 +6361,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                         send_start = (int)globalSendOpndList->size();
                     }
 
-                    //Record all send operands which live out currnt BB.
+                    //Record all send operands which live out current BB.
                     globalSendOpndList->push_back(liveBN);
                     send_end = (int)globalSendOpndList->size() - 1;
 
@@ -6758,7 +6758,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
 #endif
         //Change the global send operands into live bucket for liveness scan
         //Instruction level liveness kill:
-        //   For token dependence, thereis only implicit RAR and WAR dependencies.
+        //   For token dependence, there is only implicit RAR and WAR dependencies.
         //   the order of the operands are scanned is not an issue anymore.
         //   i.e explicit RAW and WAW can cover all other dependences.
         LiveGRFBuckets send_use_kills(mem, kernel.getNumRegTotal(), BBVector[i]->getBB()->getKernel());
@@ -6822,12 +6822,12 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                     DepType dep = DEPTYPE_MAX;
                     dep = getDepForOpnd(liveOpnd, curOpnd);
 
-                    //RAW:                     R kill W    R-->live       explict dependence
-                    //WAW:                     W2 kill W1  W2-->live      explict dependence
+                    //RAW:                     R kill W    R-->live       explicit dependence
+                    //WAW:                     W2 kill W1  W2-->live      explicit dependence
                     //WAW: same pipeline/inorder W2 kill W1  W2-->live      implicit dependence
-                    //WAR: different pipelines W kill R    W-->live       explict dependence
-                    //WAR: same pipeline       W kill R    W-->live       implict dependence
-                    //RAR: sample pipeline     R2 kill R1  R2-->live      implict dependence
+                    //WAR: different pipelines W kill R    W-->live       explicit dependence
+                    //WAR: same pipeline       W kill R    W-->live       implicit dependence
+                    //RAR: sample pipeline     R2 kill R1  R2-->live      implicit dependence
                     //RAR: different pipelines   no kill     R1,R2-->live   no dependence
                     if (hasOverlap)
                     {
@@ -6837,7 +6837,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                             if (BBVector[i]->isGRFEdgeAdded(curLiveNode, node, dep, DEP_EXPLICT))
                             {
                                 send_use_kills.killOperand(bn_it);
-                                curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                curLiveNode->setInstKilled(true);  //Instruction level kill
                                 instKill = true;
                                 continue;
                             }
@@ -6869,7 +6869,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                         {
                                             send_use_kills.killOperand(bn_it);
                                             BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
-                                            curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                            curLiveNode->setInstKilled(true);  //Instruction level kill
                                             instKill = true;
                                             continue;
                                         }
@@ -6889,12 +6889,12 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                             unsigned frontDist = node->getDPASID() - BBVector[loopStartBB]->first_DPASID;
                                             unsigned endDist = BBVector[loopEndBB]->last_DPASID - curLiveNode->getDPASID();
 
-                                            //Note that if node and live node are in different but nest loop, the caculation will be conservative
+                                            //Note that if node and live node are in different but nest loop, the calculation will be conservative
                                             if ((int)(frontDist + endDist + curFootprint->offset - internalOffset) < tokenAfterDPASCycle)
                                             {
                                                 send_use_kills.killOperand(bn_it);
                                                 BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
-                                                curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                                curLiveNode->setInstKilled(true);  //Instruction level kill
                                                 instKill = true;
                                                 continue;
                                             }
@@ -6918,7 +6918,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                 {
                                     send_use_kills.killOperand(bn_it);
                                     BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
-                                    curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                    curLiveNode->setInstKilled(true);  //Instruction level kill
                                     instKill = true;
                                     continue;
                                 }
@@ -6928,7 +6928,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                         if (dep == WAR)
                         {
                             bool killed = false;
-                            //For implict dependence, the previous node can be killed only when it's wholely overlaped by the following one
+                            //For implicit dependence, the previous node can be killed only when it's wholly overlapped by the following one
                             if (curFootprint->isWholeOverlap(liveFootprint))
                             {
                                 send_use_kills.killOperand(bn_it);
@@ -7062,7 +7062,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
 #endif
         //Change the global send operands into live bucket for liveness scan
         //Instruction level liveness kill:
-        //   For token dependence, thereis only implicit RAR and WAR dependencies.
+        //   For token dependence, there is only implicit RAR and WAR dependencies.
         //   the order of the operands are scanned is not an issue anymore.
         //   i.e explicit RAW and WAW can cover all other dependences.
         LiveGRFBuckets send_use_kills(mem, kernel.getNumRegTotal(), BBVector[i]->getBB()->getKernel());
@@ -7198,12 +7198,12 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                     //Find DEP type
                     DepType dep = getDepForOpnd(liveOpnd, curOpnd);
 
-                    //RAW:                     R kill W    R-->live       explict dependence
-                    //WAW:                     W2 kill W1  W2-->live      explict dependence
+                    //RAW:                     R kill W    R-->live       explicit dependence
+                    //WAW:                     W2 kill W1  W2-->live      explicit dependence
                     //WAW: same pipeline/inorder W2 kill W1  W2-->live      implicit dependence
-                    //WAR: different pipelines W kill R    W-->live       explict dependence
-                    //WAR: same pipeline       W kill R    W-->live       implict dependence
-                    //RAR: sample pipeline     R2 kill R1  R2-->live      implict dependence
+                    //WAR: different pipelines W kill R    W-->live       explicit dependence
+                    //WAR: same pipeline       W kill R    W-->live       implicit dependence
+                    //RAR: sample pipeline     R2 kill R1  R2-->live      implicit dependence
                     //RAR: different pipelines   no kill     R1,R2-->live   no dependence
                     if (hasOverlap)
                     {
@@ -7213,7 +7213,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                             if (BBVector[i]->isGRFEdgeAdded(curLiveNode, node, dep, DEP_EXPLICT))
                             {
                                 send_use_kills.killOperand(bn_it);
-                                curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                curLiveNode->setInstKilled(true);  //Instruction level kill
                                 instKill = true;
                                 addReachingDefineSet(node, &send_live, &BBVector[i]->localReachingSends);
                                 send_live.setDst(curLiveNode->getSendID(), false);
@@ -7247,7 +7247,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                                         {
                                             send_use_kills.killOperand(bn_it);
                                             BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
-                                            curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                            curLiveNode->setInstKilled(true);  //Instruction level kill
                                             instKill = true;
                                             continue;
                                         }
@@ -7272,7 +7272,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                                             {
                                                 send_use_kills.killOperand(bn_it);
                                                 BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
-                                                curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                                curLiveNode->setInstKilled(true);  //Instruction level kill
                                                 instKill = true;
                                                 continue;
                                             }
@@ -7286,7 +7286,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                                         {
                                             send_use_kills.killOperand(bn_it);
                                             BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
-                                            curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                            curLiveNode->setInstKilled(true);  //Instruction level kill
                                             instKill = true;
                                             continue;
                                         }
@@ -7296,7 +7296,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                                 {
                                     send_use_kills.killOperand(bn_it);
                                     BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
-                                    curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                    curLiveNode->setInstKilled(true);  //Instruction level kill
                                     instKill = true;
 
                                     //Kill from live
@@ -7310,7 +7310,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                         if (dep == WAR)
                         {
                             bool killed = false;
-                            //For implict dependence, the previous node can be killed only when it's wholely overlaped by the following one
+                            //For implicit dependence, the previous node can be killed only when it's wholly overlapped by the following one
                             if (curFootprint->isWholeOverlap(liveFootprint))
                             {
                                 send_use_kills.killOperand(bn_it);
@@ -7408,7 +7408,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
 //
 bool G4_BB_SB::isGRFEdgeAdded(const SBNode* pred, const SBNode* succ, DepType d, SBDependenceAttr a)
 {
-    // When there are mulitple dependence edges between two instructions
+    // When there are multiple dependence edges between two instructions
     // We think the RAW and WAW > WAR, which means if WAR co-exists with any other, it will be dropped.
     // This is especially important for send instructions. when there are multiple dependencies from same send instruction.
     // For the case like following, only the dst
@@ -7450,9 +7450,9 @@ void SWSB::removePredsEdges(SBNode* node, SBNode* pred)
 
 void G4_BB_SB::createAddGRFEdge(SBNode* pred, SBNode* succ, DepType d, SBDependenceAttr a)
 {
-    // When there are mulitple dependence edges between two instructions
+    // When there are multiple dependence edges between two instructions
     // We think the RAW and WAW > WAR, which means if WAR co-exists with any other, it will be dropped.
-    // This is especially important for send instructions. when there are multiple dependencies from same send instruction.
+    // This is especially important for send instructions. When there are multiple dependencies from same send instruction.
     // For the case like following, only the dst
     //1. Send r2-r5, r8, ....    $1
     //   ...

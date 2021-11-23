@@ -30,7 +30,7 @@ namespace vISA
     class SWSB;
 }
 
-//FIXME, build a table for different plaforms
+//FIXME, build a table for different platforms
 #define SWSB_MAX_ALU_DEPENDENCE_DISTANCE 11
 #define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT 15
 #define SWSB_MAX_MATH_DEPENDENCE_DISTANCE 18
@@ -311,8 +311,8 @@ namespace vISA
     };
 
     // Bit set which is used for global dependence analysis for SBID.
-    // Since dependencies may come from dst and src and there may be dependence kill between dst and src depencencies,
-    // we use internal bit set to track the live of dst and src seperately.
+    // Since dependencies may come from dst and src and there may be dependence kill between dst and src dependencies,
+    // we use internal bit set to track the live of dst and src separately.
     // Each bit map to one global SBID node according to the node's global ID.
     struct SBBitSets {
         BitSet dst;
@@ -961,7 +961,7 @@ namespace vISA
                 //mov(16 | M16) r90.1 < 2 > : d r87.0 < 1; 1, 0 > : d // $82&106
                 //mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2/I@2 } // $83&107
                 //Since:q and : d all go to integer pipeline in, @2 should work.However, due to HW bug, we can only set to I@2
-                //Depends on mulitple pipelines but same pipeline
+                //Depends on multiple pipelines but same pipeline
                 bool mulitpleSamePipe = true;
                 if (distDep.size() > 1)
                 {
@@ -1290,8 +1290,8 @@ namespace vISA
             else
             {
                 //Current node is assigned with the last one
-                //For caller, same iterator postion need be handled again,
-                //Beause a new node is copied here
+                //For caller, same iterator position need be handled again,
+                //Because a new node is copied here
                 *node_it = vec.back();
                 vec.pop_back();
             }
@@ -1302,7 +1302,7 @@ namespace vISA
         {
             SBBUCKET_VECTOR &vec = *nodeBucketsArray[bn_it.bucket];
             SBBUCKET_VECTOR_ITER &node_it = bn_it.node_it;
-            SBBucketNode *bucketNode = *node_it; //Get the node before it is destroied
+            SBBucketNode *bucketNode = *node_it; //Get the node before it is destroyed
             int aregOffset = k.getNumRegTotal();
 
             //Kill current node
@@ -1314,7 +1314,7 @@ namespace vISA
             else
             {
                 //Current node is assigned with the last one
-                //For caller, same iterator postion need be handled again,
+                //For caller, same iterator position need be handled again,
                 //Because a new node is copied here
                 *node_it = vec.back();
                 vec.pop_back();
