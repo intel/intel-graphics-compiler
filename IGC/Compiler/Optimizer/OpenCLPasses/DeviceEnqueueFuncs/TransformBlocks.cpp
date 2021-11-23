@@ -1600,15 +1600,19 @@ namespace //Anonymous
                                 unsigned blockArgIdx = callInst->hasStructRetAttr() ? 1 : 0;
                                 if (callInst->getNumArgOperands() > blockArgIdx)
                                 {
-                                    if (auto blockDescrStruct = StructValue::get(callInst->getArgOperand(blockArgIdx)->stripPointerCasts()))
+                                    Value* spc = callInst->getArgOperand(blockArgIdx)->stripPointerCasts();
+                                    if (KindQuery::isBlockStructType(spc->getType()))
                                     {
-                                        if (auto blockInvokeFunc = dyn_cast_or_null<llvm::Function>(blockDescrStruct->getValueStoredAtIndex(BLOCK_INDEX_INVOKE_FUNC)))
+                                        if (auto blockDescrStruct = StructValue::get(spc))
                                         {
-                                            callInst->setCalledFunction(blockInvokeFunc);
-                                            changed = true;
-                                            llvm::InlineFunctionInfo IFI;
-                                            inlined = IGCLLVM::InlineFunction(callInst, IFI, nullptr, false);
-                                            IGC_ASSERT_MESSAGE(inlined, "failed inlining block invoke function");
+                                            if (auto blockInvokeFunc = dyn_cast_or_null<llvm::Function>(blockDescrStruct->getValueStoredAtIndex(BLOCK_INDEX_INVOKE_FUNC)))
+                                            {
+                                                callInst->setCalledFunction(blockInvokeFunc);
+                                                changed = true;
+                                                llvm::InlineFunctionInfo IFI;
+                                                inlined = IGCLLVM::InlineFunction(callInst, IFI, nullptr, false);
+                                                IGC_ASSERT_MESSAGE(inlined, "failed inlining block invoke function");
+                                            }
                                         }
                                     }
                                 }
