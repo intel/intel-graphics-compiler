@@ -904,15 +904,6 @@ void LinearScanRA::calculateFuncLastID()
 
 int LinearScanRA::linearScanRA()
 {
-    std::map<unsigned, std::list<vISA::G4_BB*>> regions;
-    std::map<unsigned, std::list<vISA::G4_BB*>>::iterator regionIt;
-
-    G4_BB* entryBB = kernel.fg.getEntryBB();
-    for (auto bb : kernel.fg)
-    {
-        regions[entryBB->getId()].push_back(bb);
-    }
-
     if (kernel.fg.getIsStackCallFunc())
     {
         // Allocate space to store Frame Descriptor
@@ -941,7 +932,7 @@ int LinearScanRA::linearScanRA()
 
         //Input
         PhyRegsLocalRA initPregs = (*pregs);
-        calculateInputIntervalsGlobal(initPregs, (*regions.begin()).second);
+        calculateInputIntervalsGlobal(initPregs);
 #ifdef DEBUG_VERBOSE_ON
         COUT_ERROR << "===== printInputLiveIntervalsGlobal============" << kernel.getName() << std::endl;
         printInputLiveIntervalsGlobal();
@@ -953,17 +944,10 @@ int LinearScanRA::linearScanRA()
         eotLiveIntervals.clear();
         unsigned latestLexID = 0;
 
-        for (regionIt = regions.begin(); regionIt != regions.end(); regionIt++)
+        for (auto bb : kernel.fg)
         {
-#ifdef DEBUG_VERBOSE_ON
-            COUT_ERROR << "===== REGION: " << (*regionIt).first << "============" << std::endl;
-#endif
-            regionID = (*regionIt).first;
-            for (auto bb : (*regionIt).second)
-            {
-                calculateLiveIntervalsGlobal(bb, globalLiveIntervals, eotLiveIntervals);
-                latestLexID = bb->back()->getLexicalId() * 2;
-            }
+            calculateLiveIntervalsGlobal(bb, globalLiveIntervals, eotLiveIntervals);
+            latestLexID = bb->back()->getLexicalId() * 2;
         }
 
         if (liveThroughIntervals.size())
@@ -1192,7 +1176,7 @@ void LinearScanRA::undoLinearScanRAAssignments()
             lr->setFirstRef(NULL, 0);
             lr->setLastRef(NULL, 0);
             lr->clearForbiddenGRF(kernel.getNumRegTotal());
-            lr->setRegionID(-1);
+            lr->setPushed(false);
             if (kernel.getOption(vISA_GenerateDebugInfo))
             {
                 auto lrInfo = kernel.getKernelDebugInfo()->getLiveIntervalInfo(lr->getTopDcl(), false);
@@ -1243,12 +1227,12 @@ void LinearScanRA::setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declar
 
     if (dcl->isLiveIn() && dcl->isOutput() && !lr->isGRFRegAssigned())
     {
-        if (lr->getRegionID() != regionID)
+        if (!lr->isPushedToIntervalList())
         {
             lr->setFirstRef(curInst, 0);
             lr->setLastRef(curInst, lastInstLexID * 2 + 1);
             liveThroughIntervals.push_back(lr);
-            lr->setRegionID(regionID);
+            lr->setPushed(true);
         }
         return;
     }
@@ -1291,10 +1275,10 @@ void LinearScanRA::setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declar
     // Check whether local LR is a candidate
     if (lr->isGRFRegAssigned() == false)
     {
-        if (lr->getRegionID() != regionID)
+        if (!lr->isPushedToIntervalList())
         {
             liveIntervals.push_back(lr);
-            lr->setRegionID(regionID);
+            lr->setPushed(true);
         }
 
         unsigned int startIdx;
@@ -1307,13 +1291,13 @@ void LinearScanRA::setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declar
     else if (dcl->getRegVar()->getPhyReg()->isGreg()) //Assigned already and is GRF
     { //Such as stack call varaibles
         unsigned int startIdx;
-        if (lr->getRegionID() != regionID)
+        if (!lr->isPushedToIntervalList())
         {
             if (!curInst->isFCall())
             {
                 liveIntervals.push_back(lr);
             }
-            lr->setRegionID(regionID);
+            lr->setPushed(true);
 
             //Mark live range as assigned
             setPreAssignedLR(lr, preAssignedLiveIntervals);
@@ -1346,12 +1330,12 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
 
     if (dcl->isLiveIn() && dcl->isOutput() && !lr->isGRFRegAssigned())
     {
-        if (lr->getRegionID() != regionID)
+        if (!lr->isPushedToIntervalList())
         {
             lr->setFirstRef(curInst, 0);
             lr->setLastRef(curInst, lastInstLexID * 2 + 1);
             liveThroughIntervals.push_back(lr);
-            lr->setRegionID(regionID);
+            lr->setPushed(true);
         }
         return;
     }
@@ -1363,10 +1347,10 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
         return;
     }
 
-    if (lr->getRegionID() != regionID)
+    if (!lr->isPushedToIntervalList())
     {
         liveIntervals.push_back(lr);
-        lr->setRegionID(regionID);
+        lr->setPushed(true);
         gra.addUndefinedDcl(dcl);
 
         unsigned int startIdx;
@@ -1445,13 +1429,13 @@ void LinearScanRA::generateInputIntervals(G4_Declare *topdcl, G4_INST* inst, std
 // Generate the input intervals for current BB.
 // The input live ranges either live through current BB or killed by current BB.
 // So, it's enough we check the live out of the BB and the BB it's self
-void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std::list<vISA::G4_BB*> &bbList)
+void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs)
 {
     int numGRF = kernel.getNumRegTotal();
     std::vector<uint32_t> inputRegLastRef(numGRF * numEltPerGRF<Type_UW>(), UINT_MAX);
     G4_INST* lastInst = nullptr;
 
-    for (BB_LIST_RITER bb_it = bbList.rbegin(), bb_rend = bbList.rend();
+    for (BB_LIST_RITER bb_it = kernel.fg.rbegin(), bb_rend = kernel.fg.rend();
         bb_it != bb_rend;
         bb_it++)
     {
@@ -1591,7 +1575,7 @@ void LinearScanRA::calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>
         if (lr && !l.isEmptyLiveness() &&
             l.isLiveAtEntry(bb, dcl->getRegVar()->getId()))  //Live in current BB
         {
-            if (lr->getRegionID() != regionID)
+            if (!lr->isPushedToIntervalList())
             {
                 if (lr->isGRFRegAssigned() && dcl->getRegVar()->isGreg())
                 {
@@ -1601,7 +1585,7 @@ void LinearScanRA::calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>
                 {
                     liveIntervals.push_back(lr);
                 }
-                lr->setRegionID(regionID);
+                lr->setPushed(true);
             }
 
             unsigned curIdx = 0;
@@ -1621,7 +1605,7 @@ void LinearScanRA::calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>
                     if (lr && !l.isEmptyLiveness() &&
                         l.isLiveAtEntry(exitBB, dcl->getRegVar()->getId()))
                     {
-                        if (lr->getRegionID() != regionID) //Is the interval pushed or not
+                        if (!lr->isPushedToIntervalList()) //Is the interval pushed or not
                         {
                             if (lr->isGRFRegAssigned() && dcl->getRegVar()->isGreg())
                             {
@@ -1631,7 +1615,7 @@ void LinearScanRA::calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>
                             {
                                 liveIntervals.push_back(lr);
                             }
-                            lr->setRegionID(regionID);
+                            lr->setPushed(true);
                         }
 
                         unsigned curIdx = 0;
@@ -1676,7 +1660,7 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
             LSLiveRange* lr = CreateLocalLiveRange(scallDcl);
 
             liveIntervals.push_back(lr);
-            lr->setRegionID(regionID);
+            lr->setPushed(true);
             lr->setFirstRef(curInst, curInst->getLexicalId() * 2);
 
             FuncInfo* callee = bb->getCalleeInfo();
@@ -1699,9 +1683,9 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
                 LSLiveRange* stackCallRetLR = new (mem)LSLiveRange();
                 stackCallRetLR->setTopDcl(ret);
                 allocForbiddenVector(stackCallRetLR);
-                stackCallRetLR->setRegionID(regionID);
                 stackCallRetLR->setFirstRef(curInst, curInst->getLexicalId() * 2);
                 liveIntervals.push_back(stackCallRetLR);
+                stackCallRetLR->setPushed(true);
             }
             if (arg && argSize > 0 && arg->getRegVar())
             {
