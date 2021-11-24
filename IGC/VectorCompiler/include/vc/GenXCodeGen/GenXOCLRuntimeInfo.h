@@ -174,6 +174,8 @@ public:
 
     bool UsesReadWriteImages = false;
 
+    bool SupportsDebugging = false;
+
     unsigned SLMSize = 0;
     unsigned ThreadPrivateMemSize = 0;
     unsigned StatelessPrivateMemSize;
@@ -216,6 +218,8 @@ public:
 
     // Deduced from actual function instructions.
     bool usesGroupId() const { return UsesGroupId; }
+
+    bool supportsDebugging() const { return SupportsDebugging; }
 
     // SIMD size is always set by igcmc to one. Preserve this here.
     unsigned getSIMDSize() const { return 1; }

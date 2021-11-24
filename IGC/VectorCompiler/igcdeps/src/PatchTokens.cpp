@@ -155,6 +155,7 @@ void CGen8CMProgram::CreateKernelBinaries(CompileOptions& Opts) {
     iOpenCL::KernelData data;
     data.kernelBinary = std::make_unique<Util::BinaryStream>();
 
+    m_ContextProvider.KernelIsDebuggable = kernel->m_SupportsDebugging;
     m_StateProcessor.CreateKernelBinary(
         reinterpret_cast<const char *>(kernel->getProgramOutput().m_programBin),
         kernel->getProgramOutput().m_programSize, kernel->m_kernelInfo,
@@ -199,10 +200,15 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
         kernel->getProgramOutput().m_programSize, kernel->m_kernelInfo,
         kernel->m_GRFSizeInBytes, kernel->m_btiLayout,
         kernel->getProgramOutput().m_VISAAsm,
-        m_ContextProvider.isProgramDebuggable());
+        kernel->m_SupportsDebugging);
   }
 
-  if (m_ContextProvider.isProgramDebuggable()) {
+  bool HasDebugInformation =
+      std::any_of(m_kernels.begin(), m_kernels.end(),
+                  [](const auto& kernel) {
+                    return kernel->getProgramOutput().m_debugDataSize > 0;
+                  });
+  if (HasDebugInformation) {
     DebugInfoHolder = buildZeDebugInfo(m_kernels, ErrLog);
     if (DebugInfoHolder) {
       // Unfortunately, we do need const_cast here, since API requires void*

@@ -654,6 +654,7 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
 static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
                              const FINALIZER_INFO &JitterInfo,
                              CMKernel &Kernel) {
+  Kernel.m_SupportsDebugging = BackendInfo.supportsDebugging();
   Kernel.m_GRFSizeInBytes = BackendInfo.getGRFSizeInBytes();
   Kernel.m_kernelInfo.m_kernelName = BackendInfo.getName();
 
@@ -825,14 +826,11 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
 void vc::createBinary(
     vc::CGen8CMProgram &CMProgram,
     const GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule) {
-  bool ProgramIsDebuggable = false;
   fillOCLProgramInfo(*CMProgram.m_programInfo, CompiledModule.ModuleInfo);
   for (const GenXOCLRuntimeInfo::CompiledKernel &CompKernel :
        CompiledModule.Kernels) {
     auto K = std::make_unique<CMKernel>(CMProgram.getPlatform());
     fillKernelInfo(CompKernel, *K);
-    ProgramIsDebuggable |= !CompKernel.getDebugInfo().empty();
     CMProgram.m_kernels.push_back(std::move(K));
   }
-  CMProgram.m_ContextProvider.updateDebuggableStatus(ProgramIsDebuggable);
 }

@@ -44,6 +44,7 @@ public:
   IGC::SOpenCLKernelInfo m_kernelInfo;
   IGC::COCLBTILayout m_btiLayout;
   uint32_t m_GRFSizeInBytes;
+  bool m_SupportsDebugging = false;
 
   // getter for convenience
   const IGC::SProgramOutput &getProgramOutput() const {
@@ -107,16 +108,15 @@ public:
 
     ShaderHash getProgramHash() const override { return {}; }
     bool needsSystemKernel() const override { return false; }
-    bool isProgramDebuggable() const override { return IsDebuggable; }
+    // TODO: VC Kernels should always allocate SIP surface (to allow debugging)
+    bool isProgramDebuggable() const override {
+      return KernelIsDebuggable;
+    }
     bool hasProgrammableBorderColor() const override { return false; }
     bool useBindlessMode() const override { return false; }
     bool useBindlessLegacyMode() const override { return false; }
 
-
-    void updateDebuggableStatus(bool Debuggable) { IsDebuggable = Debuggable; }
-
-  private:
-    bool IsDebuggable = false;
+    bool KernelIsDebuggable = false;
   };
 
   explicit CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable);

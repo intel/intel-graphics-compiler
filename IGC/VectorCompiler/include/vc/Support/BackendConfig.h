@@ -78,6 +78,7 @@ struct GenXBackendOptions {
   std::string DebugInfoDumpsNameOverride;
 
   bool ForceArrayPromotion = false;
+  bool ReserveBTIZero = false;
 
   // Localize live ranges to reduce accumulator usage
   bool LocalizeLRsForAccUsage;
@@ -213,6 +214,8 @@ public:
   }
 
   bool isArrayPromotionForced() const { return Options.ForceArrayPromotion; }
+
+  bool isBTIZeroReserved() const { return Options.ReserveBTIZero; }
 
   bool localizeLiveRangesForAccUsage() const {
     return Options.LocalizeLRsForAccUsage;

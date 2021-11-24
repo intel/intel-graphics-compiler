@@ -351,6 +351,8 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
     StackAmount = BC.getStatelessPrivateMemSize();
   StatelessPrivateMemSize = StackAmount;
 
+  SupportsDebugging = BC.emitDebuggableKernels();
+
   genx::KernelMetadata KM{FG.getHead()};
   IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
   setMetadataProperties(KM, ST);
