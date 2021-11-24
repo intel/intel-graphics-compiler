@@ -47,11 +47,8 @@ namespace IGCMetrics
         this->map_InstrLoc2Func.clear();
         this->map_Loops.clear();
 
-#ifndef _WIN32
-        // this code for windows is called in DllMain
         // Optional:  Delete all global objects allocated by libprotobuf.
         google::protobuf::ShutdownProtobufLibrary();
-#endif // !_WIN32
 #endif
     }
     bool IGCMetricImpl::Enable()
