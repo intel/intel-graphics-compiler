@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 // HW Capabilities
 // these functions are part of IR_Builder class and included in Build_IR.h
 
-    // true if it has HF mixed mode support
     bool hasMixMode() const
     {
         if (getOption(vISA_ForceMixMode))
