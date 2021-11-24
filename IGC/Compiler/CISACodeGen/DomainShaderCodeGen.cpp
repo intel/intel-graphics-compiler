@@ -158,7 +158,9 @@ namespace IGC
         {
             encoder.SetSimdSize(m_Platform->getMinDispatchMode());
             encoder.SetSrcRegion(0, 1, 4, 0);
-            encoder.SetSrcSubReg(0, 0);
+            {
+                encoder.SetSrcSubReg(0, 0);
+            }
 
             encoder.Copy(m_pURBReadHandleReg, GetR0());
             encoder.Push();
