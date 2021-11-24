@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "LowerInvokeSIMD.hpp"
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/CodeGenPublic.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
@@ -57,32 +56,11 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
         ArgVals.push_back(CI.getArgOperand(i));
     }
     auto FTy = FunctionType::get(F->getFunctionType()->getReturnType(), ArgTys, false);
+    auto PTy = PointerType::get(FTy, cast<PointerType>(CI.getArgOperand(0)->getType())->getAddressSpace());
     m_Builder->SetInsertPoint(&CI);
 
-    Value* NewCall = nullptr;
-    std::error_code EC;
-    if (Function* Callee = dyn_cast<Function>(CI.getArgOperand(0))) {
-        std::string oldName = std::string(Callee->getName());
-        Callee->setName(Callee->getName() + ".old");
-        auto newFunc = Function::Create(FTy, Callee->getLinkage(), oldName, *Callee->getParent());
-        newFunc->setAttributes(Callee->getAttributes());
-        newFunc->addFnAttr("invoke_simd_target");
-        newFunc->setCallingConv(Callee->getCallingConv());
-        NewCall = m_Builder->CreateCall(newFunc, ArgVals);
-        m_OldFuncToNewFuncMap[Callee] = newFunc;
-
-        // The callee will be a direct call, but the definition will be in the ESIMD visaasm,
-        // that will be linked later in VISALinkerDriver. This module needs to be compiled only
-        // to visaasm.
-        CodeGenContext* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        Ctx->m_compileToVISAOnly = true;
-    } else {
-      auto PTy = PointerType::get(
-          FTy,
-          cast<PointerType>(CI.getArgOperand(0)->getType())->getAddressSpace());
-      auto CastedPointer = m_Builder->CreateBitCast(CI.getArgOperand(0), PTy);
-      NewCall = m_Builder->CreateCall(CastedPointer, ArgVals);
-    }
+    auto CastedPointer = m_Builder->CreateBitCast(CI.getArgOperand(0), PTy);
+    auto NewCall = m_Builder->CreateCall(CastedPointer, ArgVals);
     CI.replaceAllUsesWith(NewCall);
     CI.eraseFromParent();
     m_changed = true;
@@ -91,23 +69,6 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
 bool LowerInvokeSIMD::runOnModule(Module& M) {
     IGCLLVM::IRBuilder<> builder(M.getContext());
     m_Builder = &builder;
-    m_changed = false;
-    m_OldFuncToNewFuncMap.clear();
     visit(M);
-
-    // If there are uses of vc functions outside invoke_simd calls (e.g. function pointer is taken),
-    // replace the old functions with new.
-    for (auto it : m_OldFuncToNewFuncMap) {
-        Function* OldFunc = it.first;
-        Function* NewFunc = it.second;
-        for (auto& use : OldFunc->uses()) {
-            if (!isa<Instruction>(use.getUser())) continue;
-            Instruction* User = cast<Instruction>(use.getUser());
-            m_Builder->SetInsertPoint(cast<Instruction>(User));
-            auto CastedPointer = m_Builder->CreateBitCast(NewFunc, OldFunc->getType());
-            use.set(CastedPointer);
-        }
-    }
-
     return m_changed;
 }
