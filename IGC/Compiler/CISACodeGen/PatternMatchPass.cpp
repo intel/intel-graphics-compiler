@@ -1161,7 +1161,9 @@ namespace IGC
                 }
             }
             // Match indirect call, support declarations for indirect funcs
-            else if (!Callee || Callee->hasFnAttribute("referenced-indirectly"))
+            else if (!Callee ||
+                     Callee->hasFnAttribute("referenced-indirectly") ||
+                     Callee->hasFnAttribute("invoke_simd_target"))
             {
                 match = MatchSingleInstruction(I);
             }

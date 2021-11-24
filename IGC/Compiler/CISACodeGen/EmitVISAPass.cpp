@@ -10965,7 +10965,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     };
 
     CVariable* funcAddr = GetSymbol(IGCLLVM::getCalledValue(inst));
-    if (!isIndirectFCall)
+    if (!isIndirectFCall || F->hasFnAttribute("invoke_simd_target"))
     {
         CopyArgBlkVariables();
         m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);

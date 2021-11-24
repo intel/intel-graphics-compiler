@@ -298,8 +298,6 @@ static void CommonOCLBasedPasses(
     // AllowContract and ApproxFunc FastMathFlags.
     mpm.add(new FixFastMathFlags());
 
-    mpm.add(new LowerInvokeSIMD());
-
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
 
@@ -384,6 +382,8 @@ static void CommonOCLBasedPasses(
 
         // Check after GlobalDCE in case of doubles in dead functions
         mpm.add(new ErrorCheck());
+
+        mpm.add(new LowerInvokeSIMD());
 
         // Fix illegal argument/return types in function calls not already inlined.
         // Structs/arrays are not allowed to be passed by value.

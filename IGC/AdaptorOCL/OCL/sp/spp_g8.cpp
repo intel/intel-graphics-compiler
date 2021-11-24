@@ -432,7 +432,10 @@ void CGen8OpenCLProgram::GetZEBinary(
 {
     auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool
     {
-        return (shader && shader->ProgramOutput()->m_programSize > 0);
+        if (!shader) return false;
+        bool visaAsmOnlyShader = (m_Context.m_compileToVISAOnly &&
+            !shader->ProgramOutput()->m_VISAAsm.empty());
+        return shader->ProgramOutput()->m_programSize > 0 || visaAsmOnlyShader;
     };
 
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> elfStorage;
