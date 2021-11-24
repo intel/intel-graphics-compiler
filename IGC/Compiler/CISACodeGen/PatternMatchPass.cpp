@@ -3356,7 +3356,7 @@ namespace IGC
             {
                 DstModifier mod = modifier;
                 mod.sat = true;
-                pass->EmitUAdd(inst, modifier);
+                pass->EmitUAdd(inst, mod);
             }
         };
 

@@ -18469,6 +18469,7 @@ void EmitPass::emitDP4A(GenIntrinsicInst* GII, const SSource* Sources, const Dst
         GIID == GenISAIntrinsic::GenISA_dp4a_su)
         src2 = m_currShader->BitCast(src2, ISA_TYPE_UD);
     // Emit dp4a.
+    m_encoder->SetDstModifier(modifier);
     m_encoder->dp4a(dst, src0, src1, src2);
     m_encoder->Push();
 }
