@@ -335,23 +335,10 @@ static Value *createBitCast(Value *Input, Type *Ty, const Twine &Name,
 static Value *createBitCastToElementType(Value *Input, Type *ElementTy,
                                          const Twine &Name,
                                          Instruction *InsertBefore,
-                                         const DataLayout *DL,
+                                         const DataLayout &DL,
                                          const DebugLoc &DbgLoc) {
-  unsigned ElBytes = ElementTy->getPrimitiveSizeInBits() / 8U;
-  if (!ElBytes) {
-    IGC_ASSERT(ElementTy->isPointerTy());
-    IGC_ASSERT(ElementTy->getPointerElementType()->isFunctionTy());
-    ElBytes = DL->getTypeSizeInBits(ElementTy) / 8;
-  }
-  unsigned InputBytes = Input->getType()->getPrimitiveSizeInBits() / 8U;
-  if (!InputBytes) {
-    Type *T = Input->getType();
-    if (T->isVectorTy())
-      T = cast<VectorType>(T)->getElementType();
-    IGC_ASSERT(T->isPointerTy());
-    IGC_ASSERT(T->getPointerElementType()->isFunctionTy());
-    InputBytes = DL->getTypeSizeInBits(T) / 8;
-  }
+  unsigned ElBytes = vc::getTypeSize(ElementTy, &DL).inBytes();
+  unsigned InputBytes = vc::getTypeSize(Input->getType(), &DL).inBytes();
   IGC_ASSERT_MESSAGE(!(InputBytes & (ElBytes - 1)), "non-integral number of elements");
   auto Ty = IGCLLVM::FixedVectorType::get(ElementTy, InputBytes / ElBytes);
   return createBitCast(Input, Ty, Name, InsertBefore, DbgLoc);
@@ -622,6 +609,7 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd)
           InnerRd->getName() + ".indexcollapsed",
           InnerRd, InnerRd->getDebugLoc());
     }
+    IGC_ASSERT(DL);
     // If the element type of the combined region does not match that of the
     // outer region, we need to do a bitcast first.
     Value *Input = OuterRd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
@@ -630,7 +618,7 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd)
       Input = createBitCastToElementType(Input, InnerR.ElementTy,
                                          Input->getName() +
                                              ".bitcast_before_collapse",
-                                         OuterRd, DL, OuterRd->getDebugLoc());
+                                         OuterRd, *DL, OuterRd->getDebugLoc());
     // Create the combined rdregion.
     Instruction *CombinedRd = CombinedR.createRdRegion(Input,
         InnerRd->getName() + ".regioncollapsed", InnerRd, InnerRd->getDebugLoc(),
@@ -826,11 +814,11 @@ void GenXRegionCollapsing::processWrRegionBitCast2(Instruction *WrRegion)
   Region R = makeRegionFromBaleInfo(WrRegion, BaleInfo());
   if (!R.changeElementType(BCInputElementType, DL))
     return;
+  IGC_ASSERT(DL);
   // Bitcast the "old value" input.
   Value *OldVal = createBitCastToElementType(
-      OldValue,
-      BCInputElementType, WrRegion->getName() + ".precast", WrRegion, DL,
-      WrRegion->getDebugLoc());
+      OldValue, BCInputElementType, WrRegion->getName() + ".precast", WrRegion,
+      *DL, WrRegion->getDebugLoc());
   // Create the replacement wrregion.
   auto NewInst = R.createWrRegion(OldVal, BC->getOperand(0), "", WrRegion,
                                   WrRegion->getDebugLoc());
@@ -948,13 +936,18 @@ Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
         InnerWr->getOperand(GenXIntrinsic::GenXRegion::WrIndexOperandNum),
         InnerWr->getName() + ".indexcollapsed", OuterWr, InnerWr->getDebugLoc());
   }
+  IGC_ASSERT(DL);
   // Bitcast inputs if necessary.
   Value *OldValInput = OuterRd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-  OldValInput = createBitCastToElementType(OldValInput, InnerR.ElementTy,
-      OldValInput->getName() + ".bitcast_before_collapse", OuterWr, DL, OuterWr->getDebugLoc());
+  OldValInput = createBitCastToElementType(
+      OldValInput, InnerR.ElementTy,
+      OldValInput->getName() + ".bitcast_before_collapse", OuterWr, *DL,
+      OuterWr->getDebugLoc());
   Value *NewValInput = InnerWr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
-  NewValInput = createBitCastToElementType(NewValInput, InnerR.ElementTy,
-      NewValInput->getName() + ".bitcast_before_collapse", OuterWr, DL, OuterWr->getDebugLoc());
+  NewValInput = createBitCastToElementType(
+      NewValInput, InnerR.ElementTy,
+      NewValInput->getName() + ".bitcast_before_collapse", OuterWr, *DL,
+      OuterWr->getDebugLoc());
   // Create the combined wrregion.
   Instruction *CombinedWr = CombinedR.createWrRegion(
       OldValInput, NewValInput, InnerWr->getName() + ".regioncollapsed",
@@ -1045,8 +1038,11 @@ Instruction *GenXRegionCollapsing::processWrRegionSplat(Instruction *OuterWr)
   // Bitcast inputs if necessary.
   Value *OldValInput = OuterSrc;
   Value *NewValInput = InnerWr->getOperand(1);
-  NewValInput = createBitCastToElementType(NewValInput, OuterWr->getType()->getScalarType(),
-      NewValInput->getName() + ".bitcast_before_collapse", OuterWr, DL, OuterWr->getDebugLoc());
+  IGC_ASSERT(DL);
+  NewValInput = createBitCastToElementType(
+      NewValInput, OuterWr->getType()->getScalarType(),
+      NewValInput->getName() + ".bitcast_before_collapse", OuterWr, *DL,
+      OuterWr->getDebugLoc());
   // Create the combined wrregion.
   Instruction *CombinedWr = CombinedR.createWrRegion(
       OldValInput, NewValInput, InnerWr->getName() + ".regioncollapsed",
