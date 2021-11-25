@@ -178,7 +178,7 @@ public:
 
     unsigned SLMSize = 0;
     unsigned ThreadPrivateMemSize = 0;
-    unsigned StatelessPrivateMemSize;
+    unsigned StatelessPrivateMemSize = 0;
 
     unsigned GRFSizeInBytes;
 
@@ -204,6 +204,8 @@ public:
     using arg_size_type = ArgInfoStorageTy::size_type;
 
   public:
+    // Creates kernel info for empty kernel.
+    KernelInfo(const GenXSubtarget &ST);
     // Creates kernel info for given function group.
     KernelInfo(const FunctionGroup &FG, const GenXSubtarget &ST,
                const GenXBackendConfig &BC);
@@ -251,13 +253,7 @@ public:
     const PrintStringStorageTy &getPrintStrings() const { return PrintStrings; }
   };
 
-  class GTPinInfo {
-    std::vector<char> gtpinBuffer;
-  public:
-    GTPinInfo(std::vector<char>&& buf): gtpinBuffer(std::move(buf)) {}
-    unsigned getGTPinBufferSize() const { return gtpinBuffer.size(); }
-    const std::vector<char> &getGTPinBuffer() const { return gtpinBuffer; }
-  };
+  using GTPinInfo = std::vector<char>;
 
   class CompiledKernel {
     KernelInfo CompilerInfo;
@@ -267,8 +263,7 @@ public:
 
   public:
     CompiledKernel(KernelInfo &&KI, const FINALIZER_INFO &JI,
-                   const GTPinInfo &GI,
-                   std::vector<char> DebugInfo);
+                   const GTPinInfo &GI, std::vector<char> DebugInfo);
 
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
     const FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }

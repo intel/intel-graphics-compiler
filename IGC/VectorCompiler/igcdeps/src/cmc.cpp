@@ -751,10 +751,10 @@ static void setGtpinInfo(const FINALIZER_INFO &JitterInfo,
   Kernel.m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace +=
       JitterInfo.numBytesScratchGtpin;
 
-  if (!GtpinInfo.getGTPinBuffer().empty()) {
-    const size_t BufSize = GtpinInfo.getGTPinBuffer().size();
+  if (!GtpinInfo.empty()) {
+    const size_t BufSize = GtpinInfo.size();
     void *GtpinBuffer = IGC::aligned_malloc(BufSize, 16);
-    memcpy_s(GtpinBuffer, BufSize, GtpinInfo.getGTPinBuffer().data(), BufSize);
+    memcpy_s(GtpinBuffer, BufSize, GtpinInfo.data(), BufSize);
     Kernel.getProgramOutput().m_gtpinBufferSize = BufSize;
     Kernel.getProgramOutput().m_gtpinBuffer = GtpinBuffer;
   }

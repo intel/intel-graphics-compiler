@@ -22,7 +22,6 @@ public:
   enum class Extensions { VISAASM, ASM, DAT, LL };
 
   virtual bool override(void *&GenXBin, int &GenXBinSize,
-                        llvm::StringRef KernelName,
                         llvm::StringRef FunctionName, Extensions Ext) const = 0;
 
   virtual ~ShaderOverrider() = default;

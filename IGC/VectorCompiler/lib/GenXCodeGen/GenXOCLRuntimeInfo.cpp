@@ -339,6 +339,10 @@ void GenXOCLRuntimeInfo::KernelInfo::setPrintStrings(
                  });
 }
 
+GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const GenXSubtarget &ST)
+    : Name{"Intel_Symbol_Table_Void_Program"}, GRFSizeInBytes{
+                                                   ST.getGRFByteSize()} {}
+
 GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
                                            const GenXSubtarget &ST,
                                            const GenXBackendConfig &BC) {
@@ -413,18 +417,20 @@ void constructSymbols(InputIter First, InputIter Last, OutputIter Out) {
 }
 
 static GenXOCLRuntimeInfo::SymbolSeq constructFunctionSymbols(
-    genx::BinaryDataAccumulator<const Function *> &GenBinary) {
+    genx::BinaryDataAccumulator<const Function *> &GenBinary, bool HasKernel) {
   GenXOCLRuntimeInfo::SymbolSeq Symbols;
   Symbols.reserve(GenBinary.getNumSections());
-  auto &KernelSection = GenBinary.front();
-  Symbols.emplace_back(vISA::GenSymType::S_KERNEL, KernelSection.Info.Offset,
-                       KernelSection.Info.getSize(),
-                       KernelSection.Key->getName().str());
+  if (HasKernel) {
+    auto &KernelSection = GenBinary.front();
+    Symbols.emplace_back(vISA::GenSymType::S_KERNEL, KernelSection.Info.Offset,
+                         KernelSection.Info.getSize(),
+                         KernelSection.Key->getName().str());
+  }
 
-  // Skipping first section with the kernel.
-  constructSymbols<vISA::GenSymType::S_FUNC>(std::next(GenBinary.begin()),
-                                             GenBinary.end(),
-                                             std::back_inserter(Symbols));
+  // Skipping first section if binary has a kernel.
+  constructSymbols<vISA::GenSymType::S_FUNC>(
+      HasKernel ? std::next(GenBinary.begin()) : GenBinary.begin(),
+      GenBinary.end(), std::back_inserter(Symbols));
 
   return Symbols;
 }
@@ -452,13 +458,12 @@ appendFuncBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
 // Returns the success status of the loading.
 static bool
 loadGenBinaryFromFile(genx::BinaryDataAccumulator<const Function *> &GenBinary,
-                      const Function &Kernel, const Function &F,
-                      vc::ShaderOverrider const &Loader,
+                      const Function &F, vc::ShaderOverrider const &Loader,
                       vc::ShaderOverrider::Extensions Ext) {
   void *GenBin = nullptr;
   int GenBinSize = 0;
 
-  if (!Loader.override(GenBin, GenBinSize, Kernel.getName(), F.getName(), Ext))
+  if (!Loader.override(GenBin, GenBinSize, F.getName(), Ext))
     return false;
 
   if (!GenBin || !GenBinSize) {
@@ -477,29 +482,24 @@ loadGenBinaryFromFile(genx::BinaryDataAccumulator<const Function *> &GenBinary,
 // Returns the success status of the overriding.
 static bool
 tryOverrideBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
-                  const Function &Kernel, const Function &F,
-                  vc::ShaderOverrider const &Loader) {
+                  const Function &F, vc::ShaderOverrider const &Loader) {
   using Extensions = vc::ShaderOverrider::Extensions;
 
   // Attempts to override .asm
-  if (loadGenBinaryFromFile(GenBinary, Kernel, F, Loader, Extensions::ASM))
+  if (loadGenBinaryFromFile(GenBinary, F, Loader, Extensions::ASM))
     return true;
 
   // If it has failed then attempts to override .dat file
-  return loadGenBinaryFromFile(GenBinary, Kernel, F, Loader, Extensions::DAT);
+  return loadGenBinaryFromFile(GenBinary, F, Loader, Extensions::DAT);
 }
 
-// Either loads binaries from VISABuilder or overrides from files.
-// \p Kernel should always be kernel function, meanwhile if \p F is actually a
-// kernel means we are loading kernel, and if \p F is a function means we are
-// loading function.
-static void
-loadBinaries(genx::BinaryDataAccumulator<const Function *> &GenBinary,
-             VISABuilder &VB, const Function &Kernel, const Function &F,
-             GenXBackendConfig const &BC) {
+// Either loads binary from VISABuilder or overrides from file.
+static void loadBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
+                       VISABuilder &VB, const Function &F,
+                       GenXBackendConfig const &BC) {
   // Attempt to override
   if (BC.hasShaderOverrider() &&
-      tryOverrideBinary(GenBinary, Kernel, F, BC.getShaderOverrider()))
+      tryOverrideBinary(GenBinary, F, BC.getShaderOverrider()))
     return;
 
   // If there is no overriding or attemp fails, then gets binary from compilation
@@ -537,23 +537,11 @@ std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
 // Constructs gen binary for provided function group \p FG.
 static genx::BinaryDataAccumulator<const Function *>
 getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
-             GenXBackendConfig const &BC,
-             std::set<const Function *> &ProcessedCalls) {
+             GenXBackendConfig const &BC) {
   Function const *Kernel = FG.getHead();
   genx::BinaryDataAccumulator<const Function *> GenBinary;
   // load kernel
-  loadBinaries(GenBinary, VB, *Kernel, *Kernel, BC);
-
-  const auto IndirectFunctions = collectCalledFunctions(
-      FG, [](const Function *F) { return genx::isReferencedIndirectly(F); });
-  for (const Function *F : IndirectFunctions) {
-    if (ProcessedCalls.count(F) != 0)
-      continue;
-    ProcessedCalls.insert(F);
-    // load functions
-    loadBinaries(GenBinary, VB, *Kernel, *F, BC);
-  }
-
+  loadBinary(GenBinary, VB, *Kernel, BC);
   return std::move(GenBinary);
 }
 
@@ -656,7 +644,6 @@ class RuntimeInfoCollector final {
   const GenXSubtarget &ST;
   const Module &M;
   const GenXDebugInfo &DBG;
-  std::set<const llvm::Function *> ProcessedCalls;
 
 public:
   using KernelStorageTy = GenXOCLRuntimeInfo::KernelStorageTy;
@@ -673,7 +660,9 @@ public:
   CompiledModuleT run();
 
 private:
-  CompiledKernel collectFunctionGroupInfo(const FunctionGroup &FG);
+  CompiledKernel collectFunctionGroupInfo(const FunctionGroup &FG) const;
+  CompiledKernel collectFunctionSubgroupsInfo(
+      const std::vector<FunctionGroup *> &Subgroups) const;
 };
 
 } // namespace
@@ -684,12 +673,20 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
                  [this](const FunctionGroup *FG) {
                    return collectFunctionGroupInfo(*FG);
                  });
+  std::vector<FunctionGroup *> IndirectlyReferencedFuncs;
+  std::copy_if(FGA.subgroup_begin(), FGA.subgroup_end(),
+               std::back_inserter(IndirectlyReferencedFuncs),
+               [](const FunctionGroup *FG) {
+                 return genx::isReferencedIndirectly(FG->getHead());
+               });
+  if (!IndirectlyReferencedFuncs.empty())
+    Kernels.push_back(collectFunctionSubgroupsInfo(IndirectlyReferencedFuncs));
   return {getModuleInfo(M), std::move(Kernels),
           M.getDataLayout().getPointerSize()};
 }
 
 RuntimeInfoCollector::CompiledKernel
-RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) {
+RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
   using GTPinInfo = GenXOCLRuntimeInfo::GTPinInfo;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
@@ -722,7 +719,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) {
   }
 
   genx::BinaryDataAccumulator<const Function *> GenBinary =
-      getGenBinary(FG, VB, BC, ProcessedCalls);
+      getGenBinary(FG, VB, BC);
 
   const auto& Dbg = DBG.getModuleDebug();
   auto DbgIt = Dbg.find(KernelFunction);
@@ -737,18 +734,40 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) {
   CISA_CALL(VK->GetGenRelocEntryBuffer(Info.LegacyFuncRelocations.Buffer,
                                        Info.LegacyFuncRelocations.Size,
                                        Info.LegacyFuncRelocations.Entries));
-  Info.Func.Symbols = constructFunctionSymbols(GenBinary);
+  Info.Func.Symbols = constructFunctionSymbols(GenBinary, /*HasKernel=*/true);
 
   void *GTPinBuffer = nullptr;
   unsigned GTPinBufferSize = 0;
   CISA_CALL(VK->GetGTPinBuffer(GTPinBuffer, GTPinBufferSize));
 
   auto *GTPinBytes = static_cast<char *>(GTPinBuffer);
-  GTPinInfo gtpin{{GTPinBytes, GTPinBytes + GTPinBufferSize}};
+  GTPinInfo gtpin{GTPinBytes, GTPinBytes + GTPinBufferSize};
 
   Info.Func.Data.Buffer = std::move(GenBinary).emitConsolidatedData();
   return CompiledKernel{std::move(Info), *JitInfo, std::move(gtpin),
                         std::move(DebugData)};
+}
+
+RuntimeInfoCollector::CompiledKernel
+RuntimeInfoCollector::collectFunctionSubgroupsInfo(
+    const std::vector<FunctionGroup *> &Subgroups) const {
+  using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
+  using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
+
+  IGC_ASSERT(!Subgroups.empty());
+  KernelInfo Info{ST};
+
+  genx::BinaryDataAccumulator<const Function *> GenBinary;
+  for (auto *FG : Subgroups) {
+    auto *Func = FG->getHead();
+    IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
+    loadBinary(GenBinary, VB, *Func, BC);
+  }
+  Info.Func.Symbols = constructFunctionSymbols(GenBinary, /*HasKernel*/false);
+  Info.Func.Data.Buffer = GenBinary.emitConsolidatedData();
+
+  return CompiledKernel{std::move(Info), FINALIZER_INFO{}, /*GtpinInfo*/ {},
+                        /*DebugInfo*/ {}};
 }
 
 void GenXOCLRuntimeInfo::getAnalysisUsage(AnalysisUsage &AU) const {

@@ -38,8 +38,8 @@ public:
   VC_IGCShaderOverrider(ShaderHash const &Hash, PLATFORM const &Platform);
 
   // Overrides .asm or .dat files
-  bool override(void *&GenXBin, int &GenXBinSize, llvm::StringRef KernelName,
-                llvm::StringRef FunctionName, Extensions Ext) const override;
+  bool override(void *&GenXBin, int &GenXBinSize, llvm::StringRef FunctionName,
+                Extensions Ext) const override;
 };
 
 } // namespace
@@ -60,17 +60,9 @@ static std::string legalizeName(std::string Name) {
 }
 
 bool VC_IGCShaderOverrider::override(void *&GenXBin, int &GenXBinSize,
-                                     llvm::StringRef KernelName,
                                      llvm::StringRef FunctionName,
                                      Extensions Ext) const {
-  // It is possible to override indirect function which has name
-  // "VC_hash_kernelName_functionName.ext". There is a name check to determine
-  // whether a function or kernel is overriding.
-  std::string const FullName =
-      KernelName.str() +
-      (KernelName.equals(FunctionName) ? "" : '_' + FunctionName.str());
-
-  std::string const LegalizedShaderName = legalizeName(FullName);
+  std::string const LegalizedShaderName = legalizeName(FunctionName.str());
   std::string const FullPath = path(LegalizedShaderName, Ext);
   bool Status = false;
 
