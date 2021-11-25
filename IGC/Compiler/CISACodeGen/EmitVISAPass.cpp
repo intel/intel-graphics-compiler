@@ -10833,6 +10833,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     llvm::Function* F = inst->getCalledFunction();
 
     bool isIndirectFCall = !F || F->hasFnAttribute("referenced-indirectly");
+    bool isInvokeSIMDTarget = F && F->hasFnAttribute("invoke_simd_target");
     CVariable* ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
@@ -10961,7 +10962,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     };
 
     CVariable* funcAddr = GetSymbol(IGCLLVM::getCalledValue(inst));
-    if (!isIndirectFCall)
+    if (!isIndirectFCall || isInvokeSIMDTarget)
     {
         CopyArgBlkVariables();
         m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);

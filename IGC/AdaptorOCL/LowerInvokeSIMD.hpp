@@ -11,8 +11,11 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/ValueMap.h>
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include <string>
 
@@ -30,11 +33,18 @@ namespace IGC
             return "LowerInvokeSIMD";
         }
 
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.setPreservesCFG();
+        }
+
         virtual bool runOnModule(llvm::Module& F) override;
         void visitCallInst(llvm::CallInst& CI);
 
     private:
         IGCLLVM::IRBuilder<>* m_Builder = nullptr;
+        llvm::ValueMap<llvm::Function*, llvm::Function*> m_OldFuncToNewFuncMap;
         bool m_changed = false;
     };
 }

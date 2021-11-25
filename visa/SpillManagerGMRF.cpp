@@ -5860,12 +5860,8 @@ unsigned int SpillAnalysis::GetDistance(G4_Declare* Dcl)
     return Distance.second->getLexicalId() - Distance.first->getLexicalId();
 }
 
-void SpillAnalysis::LoadAugIntervals(DECLARE_LIST& SortedIntervals)
+void SpillAnalysis::LoadAugIntervals(DECLARE_LIST& SortedIntervals, GlobalRA& GRA)
 {
-    // Invoked from augmentation after live-ranges are created
-    // and stored in GlobalRA instance.
-    auto& GRA = GC->getGRA();
-
     for (auto& LR : SortedIntervals)
     {
         auto* Start = GRA.getStartInterval(LR);

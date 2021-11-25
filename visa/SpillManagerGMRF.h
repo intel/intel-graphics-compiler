@@ -747,7 +747,7 @@ public:
     void DumpHistogram(std::ostream& OS = std::cerr);
 
     unsigned int GetDistance(G4_Declare* Dcl);
-    void LoadAugIntervals(DECLARE_LIST&);
+    void LoadAugIntervals(DECLARE_LIST&, GlobalRA&);
     void LoadDegree(G4_Declare* Dcl, unsigned int degree);
 
     void SetLivenessAnalysis(LivenessAnalysis* L) { LA = L; }

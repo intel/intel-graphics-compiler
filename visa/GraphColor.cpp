@@ -5269,7 +5269,8 @@ void Augmentation::augmentIntfGraph()
 
         if (kernel.getOption(vISA_SpillAnalysis))
         {
-            gra.spillAnalysis->LoadAugIntervals(sortedIntervals);
+            if (gra.spillAnalysis.get())
+                gra.spillAnalysis->LoadAugIntervals(sortedIntervals, gra);
         }
 
         if (kernel.fg.builder->getOption(vISA_GenerateDebugInfo))
