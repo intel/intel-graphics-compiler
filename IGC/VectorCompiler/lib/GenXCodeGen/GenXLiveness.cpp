@@ -1748,25 +1748,35 @@ unsigned LiveRange::getLength(bool WithWeak) const {
 
 /***********************************************************************
  * LiveRange::print : print the live range
+ * Simplevalues of LR : segments { details }
+ * Detailed mode exists to print LLVM values
  */
-void LiveRange::print(raw_ostream &OS) const
-{
+void LiveRange::print(raw_ostream &OS, bool Details) const {
+  if (Details)
+    OS << "LR values:\n";
+
   if (Values.empty()) {
-    OS << "Empty LR";
+    OS << "<Empty LR>";
     return;
   }
 
-  auto vi = Values.begin(), ve = Values.end();
-  bool AllNamesPrinted = false;
-  do {
-    vi->printName(OS);
-    AllNamesPrinted = (++vi == ve);
-    if (!AllNamesPrinted)
-      OS << ",";
-  } while (!AllNamesPrinted);
+  for (auto &&V : Values) {
+    if (!Details)
+      OS << V << "; ";
+    else
+      OS << *V.getValue() << "\n";
+  }
 
-  OS << ":";
-  printSegments(OS);
+  if (!Details)
+    OS << ":";
+  else
+    OS << "LR Segments and details: ";
+
+  if (Segments.empty()) 
+    OS << "<Empty Segments>";
+  else
+    printSegments(OS);
+
   const char *Cat = "???";
   switch (Category) {
     case RegCategory::NONE: Cat = "none"; break;
@@ -1778,6 +1788,7 @@ void LiveRange::print(raw_ostream &OS) const
     case RegCategory::EM: Cat = "em"; break;
     case RegCategory::RM: Cat = "rm"; break;
   }
+
   OS << "{" << Cat << ",align" << (1U << LogAlignment);
   if (Offset)
     OS << ",offset" << Offset;

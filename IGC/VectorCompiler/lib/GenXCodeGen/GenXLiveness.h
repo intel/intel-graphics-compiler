@@ -426,7 +426,7 @@ public:
   unsigned getLength(bool WithWeak) const;
   // debug dump/print
   void dump() const;
-  void print(raw_ostream &OS) const;
+  void print(raw_ostream &OS, bool Detailed = false) const;
   void printSegments(raw_ostream &OS) const;
 private:
   void value_clear() { Values.clear(); }

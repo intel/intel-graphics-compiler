@@ -70,20 +70,29 @@ private:
  * the LiveRange for a value that does not need it because it is a baled
  * in instruction.
  */
-bool testDuplicates(const llvm::GenXLiveness& Liveness) {
+bool testDuplicates(/*const*/ llvm::GenXLiveness& Liveness) {
+  if (std::any_of(Liveness.begin(), Liveness.end(),
+                  [](const auto &X) { return X.second == nullptr; })) {
+    llvm::errs() << "Liveness contains NULL live ranges\n";
+    return false;
+  }
 
-  auto testRange = [](const std::pair<llvm::genx::SimpleValue, llvm::genx::LiveRange *>& X) {
-    const llvm::genx::LiveRange *const LR = X.second;
-    IGC_ASSERT(nullptr != LR);
-    const bool HasSegment = (0 < LR->size());
-    const bool UndefVal = isa<UndefValue>(X.first.getValue());
-    IGC_ASSERT(HasSegment || UndefVal);
-    return HasSegment || UndefVal;
+  auto testRange = [](const auto &X) {
+    auto HasSegment = (X.second->size() > 0);
+    auto UndefVal = isa<UndefValue>(X.first.getValue());
+    return !(HasSegment || UndefVal);
   };
 
-  const bool Result = std::all_of(Liveness.begin(), Liveness.end(), testRange);
-  IGC_ASSERT(Result);
-  return Result;
+  auto WrongLR = std::find_if(Liveness.begin(), Liveness.end(), testRange);
+  if (WrongLR != Liveness.end()) {
+    llvm::errs() << "Bad live range\n";
+    WrongLR->second->print(llvm::errs(), true);
+    llvm::errs() << "\nWhole liveness:\n";
+    Liveness.dump();
+    llvm::errs() << "\n";
+    return false;
+  }
+  return true;
 }
 
 } // end anonymous namespace
