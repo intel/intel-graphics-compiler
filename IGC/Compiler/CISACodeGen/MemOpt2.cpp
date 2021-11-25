@@ -195,6 +195,9 @@ bool MemOpt2::runOnFunction(Function& F) {
     if (FII == MDU->end_FunctionsInfo())
         return false;
 
+    if (F.hasFnAttribute(llvm::Attribute::OptimizeNone))
+        return false;
+
     IGC::CodeGenContext* cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     DL = &F.getParent()->getDataLayout();
     AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
