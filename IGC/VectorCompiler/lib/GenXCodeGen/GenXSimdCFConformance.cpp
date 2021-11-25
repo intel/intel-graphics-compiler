@@ -440,7 +440,7 @@ public:
     AU.addPreserved<GenXLiveness>();
     AU.addPreserved<FunctionGroupAnalysis>();
   }
-  void releaseMemory() { clear(); }
+  void releaseMemory() override { clear(); }
   bool runOnFunctionGroup(FunctionGroup &FG) override;
 
 private:

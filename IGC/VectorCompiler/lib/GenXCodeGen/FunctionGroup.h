@@ -363,7 +363,7 @@ public:
                           const std::string &Banner) const override {
     return createGenXGroupPrinterPass(O, Banner);
   }
-  bool runOnModule(Module &M) {
+  bool runOnModule(Module &M) override {
     bool Changed = false;
     FunctionGroupAnalysis &FGA =
         this->template getAnalysis<FunctionGroupAnalysis>();

@@ -526,7 +526,7 @@ public:
   static StringRef getPassName() {
     return "GenX instruction baling analysis for a function group";
   }
-  void releaseMemory() { clear(); }
+  void releaseMemory() override { clear(); }
   static void getAnalysisUsage(AnalysisUsage &AU);
   bool runOnFunctionGroup(FunctionGroup &FG) override;
   // processFunctionGroup : process all the Functions in a FunctionGroup

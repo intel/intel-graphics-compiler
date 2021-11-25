@@ -60,7 +60,7 @@ public:
     AU.addPreserved<FunctionGroupAnalysis>();
     AU.setPreservesAll();
   }
-  bool runOnModule(Module &M) {
+  bool runOnModule(Module &M) override {
     bool Changed = false;
     FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
     for (auto *FunctionGroup : FGA.AllGroups())
