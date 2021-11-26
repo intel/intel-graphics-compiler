@@ -3500,6 +3500,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
 
             write(data1, (uint8_t)scratchBaseAddrEncoded);
             writeULEB128(data1, 0);
+            write(data1, (uint8_t)llvm::dwarf::DW_OP_plus);
         }
 
         if (deref)
