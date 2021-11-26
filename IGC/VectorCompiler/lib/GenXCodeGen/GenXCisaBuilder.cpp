@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
+#include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXDebugInfo.h"
 #include "GenXGotoJoin.h"
@@ -796,6 +797,7 @@ private:
   Register *getRegForValueAndSaveAlias(Args &&... args);
 
   void runOnKernel();
+  void runOnFunction();
 
 public:
   GenXKernelBuilder(FunctionGroup &FG)
@@ -1051,13 +1053,12 @@ std::string GenXKernelBuilder::buildAsmName() const {
 }
 
 void GenXKernelBuilder::runOnKernel() {
-  if (!TheKernelMetadata.isKernel())
-    return;
+  IGC_ASSERT(TheKernelMetadata.isKernel());
 
   const std::string KernelName = TheKernelMetadata.getName().str();
   CisaBuilder->AddKernel(MainKernel, KernelName.c_str());
   Kernel = static_cast<VISAFunction *>(MainKernel);
-  Func2Kern[FG->getHead()] = Kernel;
+  Func2Kern[Func] = Kernel;
 
   IGC_ASSERT_MESSAGE(Kernel, "Kernel initialization failed!");
   LLVM_DEBUG(dbgs() << "=== PROCESS KERNEL(" << KernelName << ") ===\n");
@@ -1078,7 +1079,7 @@ void GenXKernelBuilder::runOnKernel() {
   // Populate variable attributes if any.
   unsigned Idx = 0;
   bool IsComposable = false;
-  for (auto &Arg : FG->getHead()->args()) {
+  for (auto &Arg : Func->args()) {
     const char *Kind = nullptr;
     switch (TheKernelMetadata.getArgInputOutputKind(Idx++)) {
     default:
@@ -1094,7 +1095,7 @@ void GenXKernelBuilder::runOnKernel() {
       break;
     }
     if (Kind != nullptr) {
-      auto R = getRegForValueUntypedAndSaveAlias(FG->getHead(), &Arg);
+      auto R = getRegForValueUntypedAndSaveAlias(Func, &Arg);
       IGC_ASSERT(R);
       IGC_ASSERT(R->Category == RegCategory::GENERAL);
       R->addAttribute(addStringToPool(Kind), "");
@@ -1107,11 +1108,11 @@ void GenXKernelBuilder::runOnKernel() {
     CISA_CALL(Kernel->AddKernelAttribute("Caller", 0, ""));
     NeedRetIP = true;
   }
-  if (FG->getHead()->hasFnAttribute("CMCallable")) {
+  if (Func->hasFnAttribute("CMCallable")) {
     CISA_CALL(Kernel->AddKernelAttribute("Callable", 0, ""));
     NeedRetIP = true;
   }
-  if (FG->getHead()->hasFnAttribute("CMEntry")) {
+  if (Func->hasFnAttribute("CMEntry")) {
     CISA_CALL(Kernel->AddKernelAttribute("Entry", 0, ""));
   }
 
@@ -1126,12 +1127,25 @@ void GenXKernelBuilder::runOnKernel() {
   // Emit optimization hints if any.
   emitOptimizationHints();
 
-  Func = FG->getHead();
   // Build variables
   buildVariables();
 
   // Build input variables
-  buildInputs(FG->getHead(), NeedRetIP);
+  buildInputs(Func, NeedRetIP);
+}
+
+void GenXKernelBuilder::runOnFunction() {
+  VISAFunction *visaFunc = nullptr;
+
+  std::string FuncName = Func->getName().str();
+  CisaBuilder->AddFunction(visaFunc, FuncName.c_str());
+  std::string AsmName = buildAsmName().append("_").append(FuncName);
+  CISA_CALL(visaFunc->AddKernelAttribute("OutputAsmPath", AsmName.size(),
+                                         AsmName.c_str()));
+  IGC_ASSERT(visaFunc);
+  Func2Kern[Func] = visaFunc;
+  Kernel = visaFunc;
+  buildVariables();
 }
 
 bool GenXKernelBuilder::run() {
@@ -1143,26 +1157,13 @@ bool GenXKernelBuilder::run() {
 
   IGC_ASSERT(Subtarget);
 
-  runOnKernel();
-
-  std::string FuncName;
-  for (auto &F : *FG) {
-    Func = F;
-    if (genx::requiresStackCall(F) || genx::isReferencedIndirectly(F)) {
-      VISAFunction *stackFunc = nullptr;
-
-      FuncName = F->getName().str();
-      CisaBuilder->AddFunction(stackFunc, FuncName.c_str());
-      std::string AsmName = buildAsmName().append("_").append(FuncName);
-      CISA_CALL(stackFunc->AddKernelAttribute("OutputAsmPath",
-                                              AsmName.size(), AsmName.c_str()));
-      IGC_ASSERT(stackFunc);
-      Func2Kern[F] = stackFunc;
-      Kernel = stackFunc;
-      buildVariables();
-      Kernel = static_cast<VISAFunction *>(MainKernel);
-    }
-  }
+  Func = FG->getHead();
+  if (genx::fg::isGroupHead(*Func))
+    runOnKernel();
+  else if (genx::fg::isSubGroupHead(*Func))
+    runOnFunction();
+  else
+    llvm_unreachable("unknown function group type");
 
   // Build instructions
   buildInstructions();
