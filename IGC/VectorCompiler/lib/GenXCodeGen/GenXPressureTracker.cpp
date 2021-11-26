@@ -38,7 +38,7 @@ unsigned PressureTracker::getSizeInBytes(LiveRange *LR, bool AllowWidening) {
   SimpleValue SV = *LR->value_begin();
   Value *V = SV.getValue();
   Type *Ty = IndexFlattener::getElementType(V->getType(), SV.getIndex());
-  unsigned Bytes = vc::getTypeSize(Ty, &DL).inWords() * WordBytes;
+  unsigned Bytes = vc::getTypeSize(Ty, &DL).inWordsCeil() * WordBytes;
   if (!AllowWidening)
     return Bytes;
 

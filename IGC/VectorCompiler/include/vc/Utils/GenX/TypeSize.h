@@ -57,17 +57,30 @@ public:
   TypeSizeWrapper(uint64_t TSIn) : TS{FixedDLSize(TSIn)} {};
 #endif
 
-  SzType inBits() const { return asIntegral<1>(); }
-  SzType inBytes() const { return asIntegral<ByteBits>(); }
-  SzType inWords() const { return asIntegral<WordBits>(); }
-  SzType inDWords() const { return asIntegral<DWordBits>(); }
-  SzType inQWords() const { return asIntegral<QWordBits>(); }
-  SzType inOWords() const { return asIntegral<OWordBits>(); }
+  SzType inBytesCeil() const { return asIntegralCeil<ByteBits>(); }
+  SzType inWordsCeil() const { return asIntegralCeil<WordBits>(); }
+  SzType inDWordsCeil() const { return asIntegralCeil<DWordBits>(); }
+  SzType inQWordsCeil() const { return asIntegralCeil<QWordBits>(); }
+  SzType inOWordsCeil() const { return asIntegralCeil<OWordBits>(); }
+
+  SzType inBits() const { return asIntegralStrict<1>(); }
+  SzType inBytes() const { return asIntegralStrict<ByteBits>(); }
+  SzType inWords() const { return asIntegralStrict<WordBits>(); }
+  SzType inDWords() const { return asIntegralStrict<DWordBits>(); }
+  SzType inQWords() const { return asIntegralStrict<QWordBits>(); }
+  SzType inOWords() const { return asIntegralStrict<OWordBits>(); }
 
   bool operator==(const TypeSizeWrapper &Other) const { return TS == Other.TS; }
 
 private:
-  template <unsigned UnitBitSize> SzType asIntegral() const {
+  template <unsigned UnitBitSize> SzType asIntegralStrict() const {
+    return asIntegral<UnitBitSize, true>();
+  }
+  template <unsigned UnitBitSize> SzType asIntegralCeil() const {
+    return asIntegral<UnitBitSize, false>();
+  }
+
+  template <unsigned UnitBitSize, bool Strict> SzType asIntegral() const {
 #if LLVM_VERSION_MAJOR >= 10
     IGC_ASSERT(!TS.isScalable());
     uint64_t BitsAsUI = TS.getFixedSize();
@@ -77,7 +90,13 @@ private:
     IGC_ASSERT_MESSAGE(BitsAsUI <= std::numeric_limits<SzType>::max(),
                        "Type is too large to operate on");
     IGC_ASSERT_MESSAGE(BitsAsUI > 0, "Could not determine size of Type");
-    return static_cast<SzType>(llvm::divideCeil(BitsAsUI, UnitBitSize));
+    if constexpr (Strict) {
+      IGC_ASSERT_MESSAGE(BitsAsUI % UnitBitSize == 0,
+          "Type size in bits cannot be represented in requested units exactly");
+      return BitsAsUI / UnitBitSize;
+    } else {
+      return static_cast<SzType>(llvm::divideCeil(BitsAsUI, UnitBitSize));
+    }
   }
   DLTypeSize TS;
 };

@@ -829,7 +829,7 @@ unsigned GenXCoalescing::getPriority(Type *Ty, BasicBlock *BB) const
   constexpr unsigned LoopScale = 4;
 
   // Estimate number of moves required for this type.
-  unsigned VecWidth = vc::getTypeSize(Ty, DL).inBytes();
+  unsigned VecWidth = vc::getTypeSize(Ty, DL).inBytesCeil();
   unsigned Priority = VecWidth / ST->getGRFByteSize() +
     countPopulation(VecWidth % ST->getGRFByteSize());
   // Scale by loop depth.
