@@ -151,12 +151,12 @@ public:
     void GetFclOptions(CIF::Builtins::BufferSimple *opts){
       assert(opts && opts->GetSizeRaw() == 0 && "GetFclOptions expects empty buffer");
       opts->Resize(FclOpts.size() + 1);
-      strcpy((char*)opts->GetMemoryRawWriteable(), FclOpts.c_str());
+      strncpy((char*)opts->GetMemoryRawWriteable(), FclOpts.c_str(), FclOpts.size() + 1);
     }
     void GetFclInternalOptions(CIF::Builtins::BufferSimple *opts) {
       assert(opts && opts->GetSizeRaw() == 0 && "GetFclInternalOptions expects empty buffer");
       opts->Resize(FclInternalOpts.size() + 1);
-      strcpy((char*)opts->GetMemoryRawWriteable(), FclInternalOpts.c_str());
+      strncpy((char*)opts->GetMemoryRawWriteable(), FclInternalOpts.c_str(), FclInternalOpts.size() + 1);
     }
 protected:
     static TC::CClangTranslationBlock* CreateLegacyInterface(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {

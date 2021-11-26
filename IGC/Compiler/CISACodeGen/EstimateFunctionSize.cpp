@@ -42,7 +42,7 @@ IGC::createEstimateFunctionSizePass(EstimateFunctionSize::AnalysisLevel AL) {
 }
 
 EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL)
-    : ModulePass(ID), M(nullptr), AL(AL), HasRecursion(false), EnableSubroutine(false) {}
+    : ModulePass(ID), M(nullptr), AL(AL), tmpHasImplicitArg(false), HasRecursion(false), EnableSubroutine(false) {}
 
 EstimateFunctionSize::~EstimateFunctionSize() { clear(); }
 

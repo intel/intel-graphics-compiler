@@ -28,7 +28,7 @@ namespace IGC
 
     public:
         static char ID;
-        CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr), LI(nullptr)
+        CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr), g_metrics(nullptr), LI(nullptr)
         {
         };
         CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMetric* metrics);
