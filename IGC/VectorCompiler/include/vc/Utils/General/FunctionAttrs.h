@@ -20,6 +20,12 @@ void transferDISubprogram(llvm::Function &From, llvm::Function &To);
 // and set custom attributes
 void transferNameAndCCWithNewAttr(const llvm::AttributeList Attrs,
                                   llvm::Function &From, llvm::Function &To);
+
+// Returns whether \p F is a function which signature cannot be changed.
+// Indirectly called function signature cannot be changed in general case, so
+// this function returns true for such function (though some optimizations may
+// change it for some cases). False is returned for a kerenl.
+bool isFixedSignatureFunc(const llvm::Function &F);
 } // namespace vc
 
 #endif /* end of include guard: VC_UTILS_GENERAL_FUNCTION_ATTRS */

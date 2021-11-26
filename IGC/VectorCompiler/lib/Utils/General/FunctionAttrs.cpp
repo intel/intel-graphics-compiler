@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "vc/Utils/General/FunctionAttrs.h"
 
+#include "Probe/Assertion.h"
+
 void vc::transferDISubprogram(llvm::Function &From, llvm::Function &To) {
   auto *DISp = From.getSubprogram();
   To.setSubprogram(DISp);
@@ -23,4 +25,10 @@ void vc::transferNameAndCCWithNewAttr(const llvm::AttributeList Attrs,
   To.takeName(&From);
   To.setCallingConv(From.getCallingConv());
   To.setAttributes(Attrs);
+}
+
+bool vc::isFixedSignatureFunc(const llvm::Function &F) {
+  if (F.getCallingConv() == llvm::CallingConv::SPIR_KERNEL)
+    return false;
+  return !F.hasLocalLinkage() || F.hasAddressTaken();
 }

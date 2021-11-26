@@ -504,13 +504,15 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
     return 0;
   }
 
-  // Non-kernels, only transforms module locals.
-  if (!F->hasLocalLinkage())
-    return 0;
-
-  // Indirectly called functions cannot be transformed in general case.
-  if (F->hasAddressTaken())
+  // Have to localize implicit arg globals in functions with fixed signature.
+  // FIXME: There's no verification that globals are for implicit args. General
+  //        private globals may be localized here, but it is not possible to
+  //        use them in such functions at all. A nice place for diagnostics.
+  if (vc::isFixedSignatureFunc(*F)) {
+    if (!LI.getGlobals().empty())
+      LocalizeGlobals(LI);
     return nullptr;
+  }
 
   SmallVector<Argument*, 16> PointerArgs;
   for (auto &Arg: F->args())
@@ -1445,8 +1447,11 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   for (const std::vector<CallGraphNode *> &SCCNodes :
        make_range(scc_begin(&CG), scc_end(&CG)))
     for (const CallGraphNode *Caller : SCCNodes)
-      for (const IGCLLVM::CallGraphNode::CallRecord &Callee : *Caller)
-        addIndirectGlobal(Caller->getFunction(), Callee.second->getFunction());
+      for (const IGCLLVM::CallGraphNode::CallRecord &Callee : *Caller) {
+        Function *CalleeF = Callee.second->getFunction();
+        if (CalleeF && !vc::isFixedSignatureFunc(*CalleeF))
+          addIndirectGlobal(Caller->getFunction(), CalleeF);
+      }
 }
 
 /***********************************************************************
