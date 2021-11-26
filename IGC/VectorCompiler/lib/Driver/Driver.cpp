@@ -258,7 +258,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.PassDebugToFinalizer =
       getDefaultOverridableFlag(Opts.NoOptFinalizerMode, IsOptLevel_O0);
   BackendOpts.DisableLiveRangesCoalescing =
-      getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, IsOptLevel_O0);
+      getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, false);
   return BackendOpts;
 }
 
