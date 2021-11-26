@@ -2799,6 +2799,46 @@ void SPIRVToLLVM::addMemAliasMetadata(Instruction* I, SPIRVId AliasListId,
   I->setMetadata(AliasMDKind, MDAliasListMap[AliasListId]);
 }
 
+void transFunctionPointerCallArgumentAttributes(SPIRVValue *BV, CallInst *CI) {
+  std::vector<SPIRVDecorate const *> ArgumentAttributes =
+      BV->getDecorations(DecorationArgumentAttributeINTEL);
+
+  for (const auto *Dec : ArgumentAttributes) {
+    std::vector<SPIRVWord> Literals = Dec->getVecLiteral();
+    SPIRVWord ArgNo = Literals[0];
+    SPIRVWord SpirvAttr = Literals[1];
+    Attribute::AttrKind LlvmAttrKind = SPIRSPIRVFuncParamAttrMap::rmap(
+        static_cast<SPIRVFuncParamAttrKind>(SpirvAttr));
+#if LLVM_VERSION_MAJOR < 13
+    bool IsTypeAttrKind;
+    switch (LlvmAttrKind) {
+    case Attribute::ByVal:
+#if LLVM_VERSION_MAJOR >= 11
+    case Attribute::Preallocated:
+#endif
+#if LLVM_VERSION_MAJOR >= 12
+    case Attribute::ByRef:
+#endif
+    case Attribute::StructRet:
+    case Attribute::InAlloca:
+        IsTypeAttrKind = true;
+        break;
+    default:
+        IsTypeAttrKind = false;
+    }
+#else
+    bool IsTypeAttrKind = Attribute::isTypeAttrKind(LlvmAttrKind);
+#endif
+
+    auto LlvmAttr = IsTypeAttrKind
+            ? Attribute::get(CI->getContext(), LlvmAttrKind,
+                             cast<PointerType>(CI->getOperand(ArgNo)->getType())
+                                 ->getElementType())
+            : Attribute::get(CI->getContext(), LlvmAttrKind);
+    CI->addParamAttr(ArgNo, LlvmAttr);
+  }
+}
+
 /// For instructions, this function assumes they are created in order
 /// and appended to the given basic block. An instruction may use a
 /// instruction from another BB which has not been translated. Such
@@ -3544,6 +3584,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         transValue(BC->getArgumentValues(), F, BB),
         BC->getName(),
         BB);
+    transFunctionPointerCallArgumentAttributes(BV, Call);
     // Assuming we are calling a regular device function
     Call->setCallingConv(CallingConv::SPIR_FUNC);
     // Don't set attributes, because at translation time we don't know which

@@ -400,6 +400,7 @@ enum Decoration {
     DecorationUserSemantic = 5635,
     DecorationAliasScopeINTEL = 5914,
     DecorationNoAliasINTEL = 5915,
+    DecorationArgumentAttributeINTEL = 6409,
 };
 
 enum BuiltIn {
