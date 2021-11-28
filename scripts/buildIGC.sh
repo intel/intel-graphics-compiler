@@ -1,10 +1,12 @@
 #!/bin/sh
 
+#=========================== begin_copyright_notice ============================
 #
 # Copyright (C) 2021 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
+#============================ end_copyright_notice =============================
 
 set -e
 # BUILD_OS         supported value [ ubuntu1804, ubuntu2004 ]                                default ubuntu2004
