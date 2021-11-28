@@ -360,19 +360,6 @@ bool GenXBaling::isSafeToMove(Instruction *Op, Instruction *From, Instruction *T
 }
 
 /***********************************************************************
- * canSplitBale : check if instruction can be splitted
- */
-static bool canSplitBale(Instruction *Inst) {
-  auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
-  if ((IID == GenXIntrinsic::genx_dpas) || (IID == GenXIntrinsic::genx_dpas2) ||
-      (IID == GenXIntrinsic::genx_dpasw) ||
-      (IID == GenXIntrinsic::genx_dpas_nosrc0) ||
-      (IID == GenXIntrinsic::genx_dpasw_nosrc0))
-    return false;
-  return true;
-}
-
-/***********************************************************************
  * checkModifier : check whether instruction is a source modifier
  *
  * Enter:   Inst = instruction to check
@@ -503,8 +490,15 @@ bool GenXBaling::operandCanBeBaled(
     // (Note we call isRegionOKForIntrinsic even when Inst is not an
     // intrinsic, since in that case AI is initialized to a state
     // where there are no region restrictions.)
+    bool CanSplitBale = true;
+    auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+    CanSplitBale = ((IID != GenXIntrinsic::genx_dpas) &&
+                    (IID != GenXIntrinsic::genx_dpas2) &&
+                    (IID != GenXIntrinsic::genx_dpasw) &&
+                    (IID != GenXIntrinsic::genx_dpas_nosrc0) &&
+                    (IID != GenXIntrinsic::genx_dpasw_nosrc0));
     Region RdR = makeRegionFromBaleInfo(Opnd, BaleInfo());
-    if (!isRegionOKForIntrinsic(AI.Info, RdR, canSplitBale(Inst)))
+    if (!isRegionOKForIntrinsic(AI.Info, RdR, CanSplitBale))
       return false;
 
     // Do not bale in a region read with multiple uses if
@@ -1247,7 +1241,12 @@ bool GenXBaling::isBalableNewValueIntoWrr(Value *V, const Region &WrrR) {
       GenXIntrinsicInfo::ArgInfo AI = II.getRetInfo();
       switch (AI.getCategory()) {
       case GenXIntrinsicInfo::GENERAL: {
-        if (isRegionOKForIntrinsic(AI.Info, WrrR, canSplitBale(Inst)))
+        bool CanSplitBale = true;
+        CanSplitBale = ((ValIntrinID != GenXIntrinsic::genx_dpas) &&
+                        (ValIntrinID != GenXIntrinsic::genx_dpasw) &&
+                        (ValIntrinID != GenXIntrinsic::genx_dpas_nosrc0) &&
+                        (ValIntrinID != GenXIntrinsic::genx_dpasw_nosrc0));
+        if (isRegionOKForIntrinsic(AI.Info, WrrR, CanSplitBale))
           return true;
       } break;
       case GenXIntrinsicInfo::RAW: {
