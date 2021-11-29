@@ -54,7 +54,8 @@ def parseCmdArgs():
 
 
 def skipLine(line):
-    if line.find("};") != -1:
+    lineNoComment = line.split("//")[0]
+    if lineNoComment.find("};") != -1:
         return True
     return False
 
@@ -126,8 +127,8 @@ def parseFile(fileName, insideIGCNameSpace):
                     found_struct = DeclHeader(line, words[1], [])
                     while line.find("};") == -1:
                         line = next(file, None)
-                        line = line.split("//")[0]
                         if not skipLine(line):
+                            line = line.split("//")[0]
                             extractVars(line, found_struct)
                     structureNames.append(found_struct)
                     #
@@ -137,12 +138,12 @@ def parseFile(fileName, insideIGCNameSpace):
                     found_enum = DeclHeader(line, words[nameIdx], [])
                     while line.find("};") == -1:
                         line = next(file, None)
-                        line = line.split("//")[0]
                         if not skipLine(line):
+                            line = line.split("//")[0]
                             extractEnumVal(line, found_enum)
                     enumNames.append(found_enum)
                     #
-                if line.find("#include") != -1:
+                if line.lstrip().startswith("#include") == True:
                     words = line.split()
                     parent_dir = os.path.dirname(fileName)
                     include_file = words[1][1:-1]  # cut off the "" or <> surrounding the file name
