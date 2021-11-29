@@ -669,9 +669,9 @@ void CISA_IR_Builder::LinkTimeOptimization(
     for (auto& it : sgInvokeList)
     {
         bool inlining =         ( options & (1U << Linker_Inline)           ) && sgInvokeList.size() == 1;
-        bool removeArgRet =     ( options & (1U << Linker_RemoveArgRet)     ) && sgInvokeList.size() == 1;
-        bool removeStackArg =   ( options & (1U << Linker_RemoveStackArg)   ) && sgInvokeList.size() == 1;
-        bool removeStackFrame = ( options & (1U << Linker_RemoveStackFrame) ) && sgInvokeList.size() == 1;
+        bool removeArgRet =     ( options & (1U << Linker_RemoveArgRet)     );
+        bool removeStackArg =   ( options & (1U << Linker_RemoveStackArg)   );
+        bool removeStackFrame = ( options & (1U << Linker_RemoveStackFrame) );
         G4_INST* fcall = *it;
         assert(fcall->opcode() == G4_pseudo_fcall);
 
@@ -843,7 +843,21 @@ void CISA_IR_Builder::LinkTimeOptimization(
                         {
                             // the dst is updating SP
                             if (dst->getTopDcl() == callerBuilder->getFE_SP())
-                                return beginIt;
+                            {
+                                auto prevIt = beginIt;
+                                prevIt --;
+                                G4_INST *prevInst = *prevIt;
+                                // It reaches the begining of function where it pushes a new frame.
+                                // It is not where we are looking for.
+                                if (prevInst->getDst()->getTopDcl() == callerBuilder->getFE_FP())
+                                {
+                                    return it;
+                                }
+                                else
+                                {
+                                    return beginIt;
+                                }
+                            }
                         }
                     }
                 }
@@ -854,6 +868,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             std::list<std::list<vISA::G4_INST*>::iterator> storeList;
 
             auto beginIt = getBeginIt(it);
+            bool noArgOnStack = (beginIt == it);
             for (auto callerIt = beginIt; callerIt != it; callerIt ++)
             {
                 G4_INST *inst = *callerIt;
@@ -1002,7 +1017,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
 
             // All args has been removed on the stack
             // Remove SP updating instruction
-            if (storeList.empty())
+            if (storeList.empty() && !noArgOnStack)
             {
                 DEBUG_PRINT("removed:");
                 DEBUG_UTIL((*defInst[callerBuilder->getFE_SP()])->dump());
