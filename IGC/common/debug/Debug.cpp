@@ -45,6 +45,11 @@ using namespace llvm;
 #if defined _WIN32 || _WIN64
 //#if defined( _DEBUG )
 #include "psapi.h"
+
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+#include <google/protobuf/message_lite.h>
+#endif
+
 int CatchAssert( int reportType, char *userMessage, int *retVal )
 {
     IGC_ASSERT(0);
@@ -78,6 +83,11 @@ BOOL WINAPI DllMain(
     switch(fdwReason) {
     case DLL_PROCESS_DETACH:
         llvm_shutdown();
+
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+        // Optional:  Delete all global objects allocated by libprotobuf.
+        google::protobuf::ShutdownProtobufLibrary();
+#endif
         break;
 
     case DLL_PROCESS_ATTACH:

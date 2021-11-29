@@ -46,9 +46,6 @@ namespace IGCMetrics
         }
         this->map_InstrLoc2Func.clear();
         this->map_Loops.clear();
-
-        // Optional:  Delete all global objects allocated by libprotobuf.
-        google::protobuf::ShutdownProtobufLibrary();
 #endif
     }
     bool IGCMetricImpl::Enable()
@@ -427,6 +424,13 @@ namespace IGCMetrics
                 if (instr_call != nullptr)
                 {
                     auto calledFunc = instr_call->getCalledFunction();
+
+                    if (calledFunc == nullptr)
+                    {
+                        // TODO: Handle function pointers
+                        continue;
+                    }
+
                     auto calledFuncName = calledFunc->getName();
                     auto funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_INLINE;
 
