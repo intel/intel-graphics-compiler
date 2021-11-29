@@ -1579,7 +1579,7 @@ void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
       continue;
 
     for (auto Arg : OutputArgs) {
-      IGC_ASSERT(CI && "No genx.output.1 intrinsic for output argument");
+      IGC_ASSERT_MESSAGE(CI, "No genx.output.1 intrinsic for output argument");
 
       // This is the final value stored into the output argument.
       // If this is coalesced into kernel argument, nothing to do.

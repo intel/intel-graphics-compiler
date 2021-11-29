@@ -977,8 +977,8 @@ void GenXBaling::processFuncPointer(Instruction *Inst) {
 
 void GenXBaling::processRdWrPredefReg(Instruction *Inst) {
   auto *CI = dyn_cast<CallInst>(Inst);
-  IGC_ASSERT((CI && GenXIntrinsic::isReadWritePredefReg(Inst)) &&
-             "genx.read/write.reg expected");
+  IGC_ASSERT_MESSAGE((CI && GenXIntrinsic::isReadWritePredefReg(Inst)),
+                     "genx.read/write.reg expected");
   BaleInfo BI(BaleInfo::REGINTR);
   setBaleInfo(Inst, BI);
 }

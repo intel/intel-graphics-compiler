@@ -3562,9 +3562,8 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     case llvm::GenXIntrinsic::genx_svm_atomic_xor:
         break;
     default:
-        IGC_ASSERT(false &&
-            "Trying to get bit width for non-svm atomic inst");
-        break;
+      IGC_ASSERT_MESSAGE(0, "Trying to get bit width for non-svm atomic inst");
+      break;
     }
 #endif // !NDEBUG
     auto* T = AI.isRet() ? CI->getType() : CI->getArgOperand(AI.getArgIdx())->getType();
