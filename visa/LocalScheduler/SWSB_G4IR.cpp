@@ -824,11 +824,13 @@ void SWSB::handleFuncCall()
 void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, LiveGRFBuckets& globalSendsLB)
 {
     allTokenNodesMap.resize(totalTokenNum);
-    for (size_t i = 0; i < totalTokenNum; i++)
+    for (TokenAllocation& nodeMap : allTokenNodesMap)
     {
-        allTokenNodesMap[i].bitset = BitSet(unsigned(SBSendNodes.size()), false);
+        nodeMap.bitset = BitSet(SBSendNodes.size(), false);
     }
 
+    const bool enableGlobalTokenAllocation = fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation);
+    const bool enableDistPropTokenAllocation = fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation);
     // Get the live out, may kill bit sets
     for (G4_BB_SB *bb : BBVector)
     {
@@ -843,8 +845,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
         bb->liveOutTokenNodes = BitSet(SBSendNodes.size(), false);
         bb->killedTokens = BitSet(totalTokenNum, false);
 
-        if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation) ||
-            fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation))
+        if (enableGlobalTokenAllocation || enableDistPropTokenAllocation)
         {
             bb->tokenLiveInDist = (unsigned*)mem.alloc(sizeof(unsigned) * globalSendNum);
             bb->tokenLiveOutDist = (unsigned*)mem.alloc(sizeof(unsigned) * globalSendNum);
@@ -926,8 +927,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     SWSBGlobalScalarCFGReachAnalysis();
 
     //Add dependence according to analysis result
-    if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation) ||
-        fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation))
+    if (enableGlobalTokenAllocation || enableDistPropTokenAllocation)
     {
         addGlobalDependenceWithReachingDef(globalSendNum, &globalSendOpndList, &SBNodes, p, true);
     }
@@ -952,11 +952,11 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     addGlobalDependence(globalSendNum, &globalSendOpndList, &SBNodes, p, false);
 
     //SWSB token allocation with linear scan algorithm.
-    if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation))
+    if (enableGlobalTokenAllocation)
     {
         tokenAllocationGlobal();
     }
-    else if (fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation))
+    else if (enableDistPropTokenAllocation)
     {
         tokenAllocationGlobalWithPropogation();
     }
@@ -2404,10 +2404,7 @@ void SWSB::tokenAllocation()
     buildLiveIntervals();
 
     //Initial free token list
-    for (unsigned i = 0; i < totalTokenNum; i++)
-    {
-        freeTokenList.push_back(nullptr);
-    }
+    freeTokenList.resize(totalTokenNum);
     topIndex = 0;
 
     tokenProfile.setTokenInstructionCount((int)SBSendNodes.size());
@@ -2424,6 +2421,8 @@ void SWSB::tokenAllocation()
         std::partial_sort_copy(vec.begin(), vec.end(), sorted.begin(), sorted.end(), compareInterval);
         return sorted;
     };
+    const bool enableSendTokenReduction = fg.builder->getOptions()->getOption(vISA_EnableSendTokenReduction);
+    const bool enableDPASTokenReduction = fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction);
     for (SBNode* node : sortInLivenessOrder(SBSendNodes))
     {
         unsigned startID = node->getLiveStartID();
@@ -2436,12 +2435,12 @@ void SWSB::tokenAllocation()
             continue;
         }
 
-        if (fg.builder->getOptions()->getOption(vISA_EnableSendTokenReduction) && node->succs.size() == 0)
+        if (enableSendTokenReduction && node->succs.size() == 0)
         {
             continue;
         }
 
-        if (fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction))
+        if (enableDPASTokenReduction)
         {
             //If there is no instruction depends on a DPAS instruction, no SBID
             if (inst->isDpas() && node->succs.size() == 0)
@@ -2474,9 +2473,9 @@ void SWSB::tokenAllocation()
 
     if (fg.builder->getOptions()->getOption(vISA_SWSBDepReduction))
     {
-        for (size_t i = 0; i < BBVector.size(); i++)
+        for (G4_BB_SB* sb_bb : BBVector)
         {
-            BBVector[i]->getLiveOutToken(unsigned(SBSendNodes.size()), &SBNodes);
+            sb_bb->getLiveOutToken(unsigned(SBSendNodes.size()), &SBNodes);
         }
 #ifdef DEBUG_VERBOSE_ON
         dumpTokenLiveInfo();
@@ -4289,12 +4288,13 @@ void SWSB::buildLiveIntervals()
     for (BB_LIST_ITER ib(fg.begin()), bend(fg.end()); ib != bend; ++ib)
     {
         unsigned bbID = (*ib)->getId();
-        SBBitSets* send_live_in = &BBVector[bbID]->send_live_in;
-        SBBitSets* send_live_out = &BBVector[bbID]->send_live_out;
-        SBBitSets* send_live_in_scalar = &BBVector[bbID]->send_live_in_scalar;
-        SBBitSets* send_live_out_scalar = &BBVector[bbID]->send_live_out_scalar;
+        G4_BB_SB* sb_bb = BBVector[bbID];
+        SBBitSets& send_live_in = sb_bb->send_live_in;
+        SBBitSets& send_live_out = sb_bb->send_live_out;
+        SBBitSets& send_live_in_scalar = sb_bb->send_live_in_scalar;
+        SBBitSets& send_live_out_scalar = sb_bb->send_live_out_scalar;
 
-        if (send_live_in->isEmpty())
+        if (send_live_in.isEmpty())
         {
             continue;
         }
@@ -4311,43 +4311,43 @@ void SWSB::buildLiveIntervals()
 
             if (bucketNode->opndNum == Opnd_dst)
             {
-                if ((send_live_in_scalar->isDstSet((unsigned)globalID)) &&
-                    BBVector[bbID]->first_node != -1)
+                if (sb_bb->first_node != -1 &&
+                    send_live_in_scalar.isDstSet((unsigned)globalID))
                 {
-                    if (!(*ib)->Preds.empty() || !(BBVector[bbID]->Preds.empty()))
+                    if (!(*ib)->Preds.empty() || !(sb_bb->Preds.empty()))
                     {
-                        node->setLiveEarliestID(BBVector[bbID]->first_node, bbID);
+                        node->setLiveEarliestID(sb_bb->first_node, bbID);
                     }
                 }
                 //FIXME: implicit dependence still have issue.
                 //the live range of implicit dependence may not counted. But that's ok? This may cause the delay. ...
-                if ((send_live_out_scalar->isDstSet((unsigned)globalID)) &&
-                    BBVector[bbID]->first_node != -1)
+                if (sb_bb->first_node != -1 &&
+                    send_live_out_scalar.isDstSet((unsigned)globalID))
                 {
-                    if (!(*ib)->Succs.empty() || !(BBVector[bbID]->Succs.empty()))
+                    if (!(*ib)->Succs.empty() || !(sb_bb->Succs.empty()))
                     {
-                        node->setLiveLatestID(BBVector[bbID]->last_node, bbID);
+                        node->setLiveLatestID(sb_bb->last_node, bbID);
                     }
                 }
             }
             else if (!trueDepOnly)
             {
-                if ((send_live_in->isSrcSet((unsigned)globalID)) &&
-                    BBVector[bbID]->first_node != -1)
+                if (sb_bb->first_node != -1 &&
+                    send_live_in.isSrcSet((unsigned)globalID))
                 {
-                    if (!(*ib)->Preds.empty() || !(BBVector[bbID]->Preds.empty()))
+                    if (!(*ib)->Preds.empty() || !(sb_bb->Preds.empty()))
                     {
-                        node->setLiveEarliestID(BBVector[bbID]->first_node, bbID);
+                        node->setLiveEarliestID(sb_bb->first_node, bbID);
                     }
                 }
                 //FIXME: implicit dependence still have issue.
                 //the live range of implicit dependence may not counted. But that's ok? This may cause the delay. ...
-                if ((send_live_out->isSrcSet((unsigned)globalID)) &&
-                    BBVector[bbID]->first_node != -1)
+                if (sb_bb->first_node != -1 &&
+                    send_live_out.isSrcSet((unsigned)globalID))
                 {
-                    if (!(*ib)->Succs.empty() || !(BBVector[bbID]->Succs.empty()))
+                    if (!(*ib)->Succs.empty() || !(sb_bb->Succs.empty()))
                     {
-                        node->setLiveLatestID(BBVector[bbID]->last_node, bbID);
+                        node->setLiveLatestID(sb_bb->last_node, bbID);
                     }
                 }
             }
