@@ -638,18 +638,6 @@ namespace vISA
             return footprints[opndNum];
         }
 
-        const SBFootprint *getFootprint(Gen4_Operand_Number opndNum, const G4_INST *inst) const
-        {
-            for (const SBFootprint *sbFp = footprints[opndNum]; ; sbFp = sbFp->next)
-            {
-                assert((sbFp != nullptr) && "footprint not found");
-                if (sbFp->inst == inst)
-                {
-                    return sbFp;
-                }
-            }
-        }
-
         void setDistance(unsigned distance)
         {
             distance = std::min(distance, SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE);
@@ -1131,14 +1119,14 @@ typedef std::list<vISA::SBNode*>::iterator     SBNODE_LIST_ITER;
 namespace vISA
 {
     //Similar as SBBucketNode, but it's used for the bucket descriptions got from each operands.
-    struct SBBucketDescr {
+    struct SBBucketDesc {
         const int bucket;
         const Gen4_Operand_Number opndNum;
         SBNode* const node;
-        G4_INST* const inst;
+        const SBFootprint* footprint;
 
-        SBBucketDescr(int Bucket, Gen4_Operand_Number opnd_num, SBNode *sNode, G4_INST *i)
-            : bucket(Bucket), opndNum(opnd_num), inst(i), node(sNode) {
+        SBBucketDesc(int Bucket, Gen4_Operand_Number opnd_num, SBNode *sNode, const SBFootprint *f)
+            : bucket(Bucket), opndNum(opnd_num), node(sNode), footprint(f) {
             ;
         }
     };
@@ -1149,10 +1137,10 @@ namespace vISA
         SBNode*             node;
         Gen4_Operand_Number opndNum;
         int                 sendID = -1;
-        G4_INST*            inst;
+        const SBFootprint*  footprint;
 
-        SBBucketNode(SBNode *node1, Gen4_Operand_Number opndNum1, G4_INST *i)
-            : node(node1), opndNum(opndNum1), inst(i)
+        SBBucketNode(SBNode *node1, Gen4_Operand_Number opndNum1, const SBFootprint *f)
+            : node(node1), opndNum(opndNum1), footprint(f)
         {
         }
 
@@ -1331,7 +1319,7 @@ namespace vISA
                     endBucket = endBucket + aregOffset;
                 }
 
-                if (footprint->inst == bucketNode->inst)
+                if (footprint->inst == bucketNode->footprint->inst)
                 {
                     for (unsigned int i = startBucket; (i < endBucket + 1) && (i < nodeBucketsArray.size()); i++)
                     {
@@ -1516,7 +1504,7 @@ namespace vISA
             G4_INST *inst,
             G4_Operand* opnd,
             Gen4_Operand_Number opnd_num);
-        void getGRFBuckets(SBNode* node, const SBFootprint* footprint, Gen4_Operand_Number opndNum, std::vector<SBBucketDescr>& BDvec, bool GRFOnly);
+        void getGRFBuckets(SBNode* node, const SBFootprint* footprint, Gen4_Operand_Number opndNum, std::vector<SBBucketDesc>& BDvec, bool GRFOnly);
         bool getGRFFootPrintOperands(SBNode *node,
             G4_INST *inst,
             Gen4_Operand_Number first_opnd,
@@ -1529,14 +1517,14 @@ namespace vISA
         void getGRFBucketsForOperands(SBNode *node,
             Gen4_Operand_Number first_opnd,
             Gen4_Operand_Number last_opnd,
-            std::vector<SBBucketDescr>& BDvec,
+            std::vector<SBBucketDesc>& BDvec,
             bool GRFOnly);
 
         bool getGRFFootPrint(SBNode *node,
             PointsToAnalysis &p);
 
-        void getGRFBucketDescrs(SBNode *node,
-            std::vector<SBBucketDescr>& BDvec,
+        void getGRFBucketDescs(SBNode *node,
+            std::vector<SBBucketDesc>& BDvec,
             bool GRFOnly);
 
         void clearSLMWARWAissue(SBNode* curNode, LiveGRFBuckets* LB);

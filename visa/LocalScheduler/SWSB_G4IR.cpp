@@ -4679,7 +4679,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
     SBNODE_VECT* SBNodes,
     PointsToAnalysis& p)
 {
-    std::vector<SBBucketDescr> BDvec;
+    std::vector<SBBucketDesc> BDvec;
     if (first_node == -1)
     {
         return;
@@ -4697,17 +4697,17 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
         }
 
         BDvec.clear();
-        getGRFBucketDescrs(node, BDvec, true);
+        getGRFBucketDescs(node, BDvec, true);
         if (!BDvec.size())
         {
             continue;
         }
 
         // For all bucket descriptors of curInst
-        for (const SBBucketDescr& BD : BDvec) {
+        for (const SBBucketDesc& BD : BDvec) {
             const int& curBucket = BD.bucket;
             const Gen4_Operand_Number& curOpnd = BD.opndNum;
-            const SBFootprint* curFootprint = BD.node->getFootprint(BD.opndNum, BD.inst);
+            const SBFootprint* curFootprint = BD.footprint;
 
             for (LiveGRFBuckets::BN_iterator bn_it = globalSendsLB->begin(curBucket);
                 bn_it != globalSendsLB->end(curBucket);)
@@ -4715,8 +4715,8 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                 SBBucketNode* liveBN = (*bn_it);
                 SBNode* curLiveNode = liveBN->node;
                 Gen4_Operand_Number liveOpnd = liveBN->opndNum;
-                G4_INST* liveInst = liveBN->inst;
-                const SBFootprint* liveFootprint = curLiveNode->getFootprint(liveBN->opndNum,liveInst);
+                const SBFootprint* liveFootprint = liveBN->footprint;
+                G4_INST* liveInst = liveFootprint->inst;
 
                 //Send operands are all GRF aligned, there is no overlap checking required.
                 //Fix me, this is not right, for math instruction, less than 1 GRF may happen.
@@ -4743,7 +4743,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                 }
 
                 if (dep == WAR &&
-                    WARDepRequired(liveInst, BD.inst))
+                    WARDepRequired(liveInst, curFootprint->inst))
                 {
                     send_may_kill.setSrc(curLiveNode->globalID, true);
                 }
@@ -4779,7 +4779,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                 {
                     SBBucketNode* liveBN = (*bn_it);
                     SBNode* curLiveNode = liveBN->node;
-                    G4_INST* liveInst = liveBN->inst;
+                    G4_INST* liveInst = liveBN->footprint->inst;
 
                     if (liveInst->isSend() &&
                         isSLMMsg(liveInst) && liveInst->getDst() != nullptr && !liveInst->getDst()->isNullReg())
@@ -4964,7 +4964,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
 void G4_BB_SB::getGRFBuckets(SBNode* node,
     const SBFootprint* footprint,
     Gen4_Operand_Number opndNum,
-    std::vector<SBBucketDescr>& BDvec,
+    std::vector<SBBucketDesc>& BDvec,
     bool GRFOnly)
 {
     for (const SBFootprint* curFootprint = footprint; curFootprint != nullptr; curFootprint = curFootprint->next)
@@ -4986,7 +4986,7 @@ void G4_BB_SB::getGRFBuckets(SBNode* node,
         for (int j = startingBucket;
             j < (startingBucket + numBuckets); j++)
         {
-            BDvec.push_back(SBBucketDescr(j, opndNum, node, curFootprint->inst));
+            BDvec.push_back(SBBucketDesc(j, opndNum, node, curFootprint));
         }
     }
 }
@@ -5029,7 +5029,7 @@ bool G4_BB_SB::getGRFFootPrintOperands(SBNode* node,
 void G4_BB_SB::getGRFBucketsForOperands(SBNode* node,
     Gen4_Operand_Number first_opnd,
     Gen4_Operand_Number last_opnd,
-    std::vector<SBBucketDescr>& BDvec,
+    std::vector<SBBucketDesc>& BDvec,
     bool GRFOnly)
 {
     for (Gen4_Operand_Number opndNum = first_opnd; opndNum <= last_opnd; opndNum = (Gen4_Operand_Number)(opndNum + 1))
@@ -5059,7 +5059,7 @@ bool G4_BB_SB::getGRFFootPrint(SBNode* node, PointsToAnalysis& p)
     return hasDistOneAReg;
 }
 
-void G4_BB_SB::getGRFBucketDescrs(SBNode* node, std::vector<SBBucketDescr>& BDvec, bool GRFOnly)
+void G4_BB_SB::getGRFBucketDescs(SBNode* node, std::vector<SBBucketDesc>& BDvec, bool GRFOnly)
 {
     //We get the description for source first, so for current instruction, the scan order is src0, src1, src2, src3, dst
     getGRFBucketsForOperands(node, Opnd_src0, Opnd_src3, BDvec, GRFOnly);
@@ -5169,7 +5169,7 @@ void G4_BB_SB::clearSLMWARWAissue(SBNode* curNode, LiveGRFBuckets* LB)
         {
             SBBucketNode* liveBN = (*it);
             SBNode* curLiveNode = liveBN->node;
-            G4_INST* liveInst = liveBN->inst;
+            G4_INST* liveInst = liveBN->footprint->inst;
 
             if (liveInst->isSend() &&
                 isSLMMsg(liveInst) && liveInst->getDst() != nullptr && !liveInst->getDst()->isNullReg())
@@ -5848,15 +5848,15 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         }
 
         //Get buckets for all GRF registers which are used in curInst
-        std::vector<SBBucketDescr> BDvec;
-        std::vector<SBBucketDescr> liveBDvec;
+        std::vector<SBBucketDesc> BDvec;
+        std::vector<SBBucketDesc> liveBDvec;
         BDvec.clear();
         liveBDvec.clear();
 
-        getGRFBucketDescrs(node, BDvec, false);
+        getGRFBucketDescs(node, BDvec, false);
         if (node->instVec.size() > 1)
         {
-            getGRFBucketDescrs(node, liveBDvec, false);
+            getGRFBucketDescs(node, liveBDvec, false);
         }
 
         if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
@@ -5936,10 +5936,10 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         bool instKill = false;
 
         // For all bucket descriptors of curInst
-        for (const SBBucketDescr& BD : BDvec) {
+        for (const SBBucketDesc& BD : BDvec) {
             const int& curBucket = BD.bucket;
             const Gen4_Operand_Number& curOpnd = BD.opndNum;
-            const SBFootprint* curFootprint = BD.node->getFootprint(BD.opndNum, BD.inst);
+            const SBFootprint* curFootprint = BD.footprint;
 
             // Check liveness for each live curBucket node.
             // Add explicit dependence if liveness is killed and there is no implicit dependence
@@ -5960,8 +5960,8 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
                 unsigned short internalOffset = 0;
                 Gen4_Operand_Number liveOpnd = liveBN->opndNum;
-                G4_INST* liveInst = liveBN->inst;
-                const SBFootprint* liveFootprint = liveNode->getFootprint(liveBN->opndNum, liveInst);
+                const SBFootprint* liveFootprint = liveBN->footprint;
+                G4_INST* liveInst = liveFootprint->inst;
 
                 bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
                 bool hasRMWOverlap = false;
@@ -6290,20 +6290,20 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         // Add buckets of current instruction to bucket list
         if (node->instVec.size() > 1)
         {
-            std::map<G4_INST*, std::vector<SBBucketNode*>>  bucketNodes;
-            for (const SBBucketDescr& BD : liveBDvec)
+            std::map<const SBFootprint*, std::vector<SBBucketNode*>> bucketNodes;
+            for (const SBBucketDesc& BD : liveBDvec)
             {
-                auto iter = std::find_if(bucketNodes[BD.inst].begin(), bucketNodes[BD.inst].end(),
+                auto iter = std::find_if(bucketNodes[BD.footprint].begin(), bucketNodes[BD.footprint].end(),
                     [&BD](SBBucketNode* node) {return BD.opndNum == node->opndNum; });
-                if (iter != bucketNodes[BD.inst].end())
+                if (iter != bucketNodes[BD.footprint].end())
                 {
                     LB->add((*iter), BD.bucket);
                 }
                 else
                 {
                     void* allocedMem = mem.alloc(sizeof(SBBucketNode));
-                    SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.inst);
-                    bucketNodes[BD.inst].push_back(newNode);
+                    SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.footprint);
+                    bucketNodes[BD.footprint].push_back(newNode);
                     LB->add(newNode, BD.bucket);
                 }
             }
@@ -6311,12 +6311,12 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         else
         {
             std::vector<SBBucketNode*>  bucketNodes(Opnd_total_num, nullptr);  //The coarse grained footprint of operands
-            for (const SBBucketDescr& BD : BDvec)
+            for (const SBBucketDesc& BD : BDvec)
             {
                 if (bucketNodes[BD.opndNum] == nullptr)
                 {
                     void* allocedMem = mem.alloc(sizeof(SBBucketNode));
-                    SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.inst);
+                    SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.footprint);
                     bucketNodes[BD.opndNum] = newNode;
                 }
 
@@ -6786,14 +6786,14 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
         }
 
         //Scan BB again to figure out the dependence caused by global send operands
-        std::vector<SBBucketDescr> BDvec;
+        std::vector<SBBucketDesc> BDvec;
         for (int j = BBVector[i]->first_node; j <= BBVector[i]->last_node; j++)
         {
             SBNode* node = (*SBNodes)[j];
             G4_INST* curInst = node->getLastInstruction();
 
             BDvec.clear();
-            BBVector[i]->getGRFBucketDescrs(node, BDvec, true);
+            BBVector[i]->getGRFBucketDescs(node, BDvec, true);
             if (!BDvec.size())
             {
                 continue;
@@ -6801,11 +6801,11 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
 
             bool instKill = false;
             // For all bucket descriptors of curInst
-            for (const SBBucketDescr& BD : BDvec)
+            for (const SBBucketDesc& BD : BDvec)
             {
                 const int& curBucket = BD.bucket;
                 const Gen4_Operand_Number& curOpnd = BD.opndNum;
-                const SBFootprint* curFootprint = BD.node->getFootprint(BD.opndNum, BD.inst);
+                const SBFootprint* curFootprint = BD.footprint;
 
                 for (LiveGRFBuckets::BN_iterator bn_it = send_use_kills.begin(curBucket);
                     bn_it != send_use_kills.end(curBucket);)
@@ -6813,8 +6813,8 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                     SBBucketNode* liveBN = (*bn_it);
                     SBNode* curLiveNode = liveBN->node;
                     Gen4_Operand_Number liveOpnd = liveBN->opndNum;
-                    G4_INST* liveInst = liveBN->inst;
-                    const SBFootprint* liveFootprint = curLiveNode->getFootprint(liveBN->opndNum, liveInst);
+                    const SBFootprint* liveFootprint = liveBN->footprint;
+                    G4_INST* liveInst = liveFootprint->inst;
                     unsigned short internalOffset = 0;
                     bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
 
@@ -7144,14 +7144,14 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
         localTokenUsage.clear(); //Add to the live node
 
         //Scan BB again to figure out the dependence caused by global send operands
-        std::vector<SBBucketDescr> BDvec;
+        std::vector<SBBucketDesc> BDvec;
         for (int j = BBVector[i]->first_node; j <= BBVector[i]->last_node; j++)
         {
             SBNode* node = (*SBNodes)[j];
             G4_INST* curInst = (*SBNodes)[j]->getLastInstruction();
 
             BDvec.clear();
-            BBVector[i]->getGRFBucketDescrs(node, BDvec, true);
+            BBVector[i]->getGRFBucketDescs(node, BDvec, true);
             if (!BDvec.size())
             {
                 continue;
@@ -7178,11 +7178,11 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
 
             bool instKill = false;
             // For all bucket descriptors of curInst
-            for (const SBBucketDescr& BD : BDvec)
+            for (const SBBucketDesc& BD : BDvec)
             {
                 const int& curBucket = BD.bucket;
                 const Gen4_Operand_Number& curOpnd = BD.opndNum;
-                const SBFootprint* curFootprint = BD.node->getFootprint(BD.opndNum, BD.inst);
+                const SBFootprint* curFootprint = BD.footprint;
 
                 for (LiveGRFBuckets::BN_iterator bn_it = send_use_kills.begin(curBucket);
                     bn_it != send_use_kills.end(curBucket);)
@@ -7190,8 +7190,8 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                     SBBucketNode* liveBN = (*bn_it);
                     SBNode* curLiveNode = liveBN->node;
                     Gen4_Operand_Number liveOpnd = liveBN->opndNum;
-                    G4_INST* liveInst = liveBN->inst;
-                    const SBFootprint* liveFootprint = curLiveNode->getFootprint(liveBN->opndNum, liveInst);
+                    const SBFootprint* liveFootprint = liveBN->footprint;
+                    G4_INST* liveInst = liveFootprint->inst;
                     unsigned short internalOffset = 0;
                     bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
 
