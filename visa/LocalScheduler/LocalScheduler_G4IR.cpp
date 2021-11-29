@@ -670,59 +670,6 @@ public:
     }
 };
 
-// Return the dependence type {RAW,WAW,WAR,NODEP} for given operand numbers
-static DepType getDepForOpnd(Gen4_Operand_Number cur,
-    Gen4_Operand_Number liv) {
-    switch (cur) {
-    case Opnd_dst:
-    case Opnd_implAccDst:
-    case Opnd_condMod: {
-        switch (liv) {
-        case Opnd_dst:
-        case Opnd_implAccDst:
-        case Opnd_condMod:
-            return WAW;
-        case Opnd_src0:
-        case Opnd_src1:
-        case Opnd_src2:
-        case Opnd_src3:
-        case Opnd_implAccSrc:
-        case Opnd_pred:
-            return RAW;
-        default:
-            assert(0 && "bad opnd numb");
-            return DEPTYPE_MAX; // Unreachable
-        }
-    }
-    case Opnd_src0:
-    case Opnd_src1:
-    case Opnd_src2:
-    case Opnd_src3:
-    case Opnd_implAccSrc:
-    case Opnd_pred: {
-        switch (liv) {
-        case Opnd_dst:
-        case Opnd_implAccDst:
-        case Opnd_condMod:
-            return WAR;
-        case Opnd_src0:
-        case Opnd_src1:
-        case Opnd_src2:
-        case Opnd_src3:
-        case Opnd_implAccSrc:
-        case Opnd_pred:
-            return NODEP;
-        default:
-            assert(0 && "bad opnd numb");
-            return DEPTYPE_MAX; // Unreachable
-        }
-    }
-    default:
-        assert(0 && "bad opnd numb");
-        return DEPTYPE_MAX; // Unreachable
-    }
-}
-
 /*
 Read suppression opportunity checking to group the three source instructions with read suppression into single node
 1. per-source slot

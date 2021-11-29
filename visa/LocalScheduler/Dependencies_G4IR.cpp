@@ -247,3 +247,27 @@ DepType vISA::CheckBarrier(G4_INST *inst)
     return NODEP;
 }
 
+// Return the dependence type {RAW,WAW,WAR,NODEP} for the given operand numbers
+DepType vISA::getDepForOpnd(Gen4_Operand_Number cur, Gen4_Operand_Number liv)
+{
+    assert(Opnd_dst <= cur && cur < Opnd_total_num && "bad operand #");
+    assert(Opnd_dst <= liv && liv < Opnd_total_num && "bad operand #");
+    static constexpr DepType matrix[Opnd_total_num][Opnd_total_num] = {
+                   /*dst,         src0,        src1,        src2,        src3,        src4,        src5,        src6,        src7,        pred,        condMod,     implAccSrc,  implAccDst */
+    /*dst*/        { WAW,         RAW,         RAW,         RAW,         RAW,         DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, RAW,         WAW,         RAW,         WAW         },
+    /*src0*/       { WAR,         NODEP,       NODEP,       NODEP,       NODEP,       DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, NODEP,       WAR,         NODEP,       WAR         },
+    /*src1*/       { WAR,         NODEP,       NODEP,       NODEP,       NODEP,       DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, NODEP,       WAR,         NODEP,       WAR         },
+    /*src2*/       { WAR,         NODEP,       NODEP,       NODEP,       NODEP,       DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, NODEP,       WAR,         NODEP,       WAR         },
+    /*src3*/       { WAR,         NODEP,       NODEP,       NODEP,       NODEP,       DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, NODEP,       WAR,         NODEP,       WAR         },
+    /*src4*/       { DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX },
+    /*src5*/       { DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX },
+    /*src6*/       { DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX },
+    /*src7*/       { DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX },
+    /*pred*/       { WAR,         NODEP,       NODEP,       NODEP,       NODEP,       DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, NODEP,       WAR,         NODEP,       WAR         },
+    /*condMod*/    { WAW,         RAW,         RAW,         RAW,         RAW,         DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, RAW,         WAW,         RAW,         WAW         },
+    /*implAccSrc*/ { WAR,         NODEP,       NODEP,       NODEP,       NODEP,       DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, NODEP,       WAR,         NODEP,       WAR         },
+    /*implAccDst*/ { WAW,         RAW,         RAW,         RAW,         RAW,         DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX, RAW,         WAW,         RAW,         WAW         },
+    };
+    assert(matrix[cur][liv] != DEPTYPE_MAX && "undefined dependency");
+    return matrix[cur][liv];
+}

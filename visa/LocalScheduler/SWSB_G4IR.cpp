@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "SWSB_G4IR.h"
+#include "Dependencies_G4IR.h"
 #include "../G4_Opcode.h"
 #include "../Timer.h"
 #include "../RegAlloc.h"
@@ -203,59 +204,6 @@ static bool WARDepRequired(const G4_INST* inst1, const G4_INST* inst2)
     }
 
     return false;
-}
-
-// Return the dependence type {RAW,WAW,WAR,NODEP} for given operand numbers
-static DepType getDepForOpnd(Gen4_Operand_Number cur,
-    Gen4_Operand_Number liv) {
-    switch (cur) {
-    case Opnd_dst:
-    case Opnd_implAccDst:
-    case Opnd_condMod: {
-        switch (liv) {
-        case Opnd_dst:
-        case Opnd_implAccDst:
-        case Opnd_condMod:
-            return WAW;
-        case Opnd_src0:
-        case Opnd_src1:
-        case Opnd_src2:
-        case Opnd_src3:
-        case Opnd_implAccSrc:
-        case Opnd_pred:
-            return RAW;
-        default:
-            assert(0 && "bad opnd numb");
-            return DEPTYPE_MAX; // Unreachable
-        }
-    }
-    case Opnd_src0:
-    case Opnd_src1:
-    case Opnd_src2:
-    case Opnd_src3:
-    case Opnd_implAccSrc:
-    case Opnd_pred: {
-        switch (liv) {
-        case Opnd_dst:
-        case Opnd_implAccDst:
-        case Opnd_condMod:
-            return WAR;
-        case Opnd_src0:
-        case Opnd_src1:
-        case Opnd_src2:
-        case Opnd_src3:
-        case Opnd_implAccSrc:
-        case Opnd_pred:
-            return NODEP;
-        default:
-            assert(0 && "bad opnd numb");
-            return DEPTYPE_MAX; // Unreachable
-        }
-    }
-    default:
-        assert(0 && "bad opnd numb");
-        return DEPTYPE_MAX; // Unreachable
-    }
 }
 
 // check if two operands occupy overlapping GRFs
@@ -4729,8 +4677,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                     continue;
                 }
 
-                DepType dep = DEPTYPE_MAX;
-                dep = getDepForOpnd(liveOpnd, curOpnd);
+                DepType dep = getDepForOpnd(liveOpnd, curOpnd);
 
                 //For SBID global liveness analysis, both explicit and implicit kill counted.
                 if (dep == RAW || dep == WAW)
@@ -5979,8 +5926,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 //RAR: same pipeline               R2 kill R1  R2-->live      no dependence
                 //RAR: different pipelines         no kill     R1,R2-->live   no dependence
                 //Find DEP type
-                DepType dep = DEPTYPE_MAX;
-                dep = getDepForOpnd(liveOpnd, curOpnd);
+                DepType dep = getDepForOpnd(liveOpnd, curOpnd);
 
                 //W/A for the read suppression caused issue
                 //1)(~f0.0.anyv) math.cos(2 | M0)      r23.7<2>:hf   r11.7<4; 2, 2> : hf{ $14 }
@@ -6819,8 +6765,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                     bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
 
                     //Find DEP type
-                    DepType dep = DEPTYPE_MAX;
-                    dep = getDepForOpnd(liveOpnd, curOpnd);
+                    DepType dep = getDepForOpnd(liveOpnd, curOpnd);
 
                     //RAW:                     R kill W    R-->live       explicit dependence
                     //WAW:                     W2 kill W1  W2-->live      explicit dependence

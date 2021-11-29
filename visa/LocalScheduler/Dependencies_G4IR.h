@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef _DEPENDENCIES_H_
 #define _DEPENDENCIES_H_
 
+#include "../G4_Opcode.h"
+
 class Options;
 
 namespace vISA {
@@ -36,6 +38,7 @@ DepType getDepScratchSend(G4_INST *curInst, G4_INST *liveInst);
 
 DepType CheckBarrier(G4_INST *inst);
 
+DepType getDepForOpnd(Gen4_Operand_Number cur, Gen4_Operand_Number liv);
 } // namespace vISA
 
 #endif
