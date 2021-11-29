@@ -823,7 +823,7 @@ void CompileUnit::addSimdWidth(DIE* Die, uint16_t SimdWidth)
 // - bindless surface location or
 // - bindless sampler location
 // Returns true in a case of SLM location, otherwise false.
-bool CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)
+bool CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const DbgVariable& DV, const VISAVariableLocation* Loc)
 {
     bool isSLM = false;
 
@@ -844,7 +844,7 @@ bool CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariable
             // SLM
             LLVM_DEBUG(dbgs() << "  gt-loc: adding slm location\n");
             isSLM = true;
-            addSLMLocation(Block, Loc);
+            addSLMLocation(Block, DV, Loc);
         }
         else if (bti == BINDLESS_BTI) // 252
         {
@@ -1289,7 +1289,7 @@ void CompileUnit::addScratchLocation(IGC::DIEBlock* Block, uint32_t memoryOffset
 }
 
 // addSLMLocation - add a sequence of attributes to emit SLM location of variable
-void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)
+void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, const DbgVariable& DV, const VISAVariableLocation* Loc)
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
@@ -1297,7 +1297,55 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, const VISAVariableLocatio
         if (Loc->IsRegister())
         {
             // <va> is stored in a GRF register grfRegNum at bit offset
-            addBE_FP(Block);
+            // There is a private value in the current stack frame.
+            // Location encoding is similar to a global variable except SIMD lane location encoding and
+            // storage size connected to this, because since it is uniform we assume this size to be 0.
+            // 1 DW_OP_regx <Frame Pointer reg encoded>
+            // 2 DW_OP_const1u <bit-offset to Frame Pointer reg>
+            // 3 DW_OP_const1u 64  , i.e. size in bits
+            // 4 DW_OP_INTEL_push_bit_piece_stack
+            // 5 DW_OP_plus_uconst  SIZE_OWORD        // i.e. 0x10 taken from getFPOffset(); same as emitted in EmitPass::emitStackAlloca()
+            // 6 DW_OP_plus_uconst storageOffset      // MD: StorageOffset; the offset where each variable is stored in the current stack frame
+
+            const auto* VISAMod = Loc->GetVISAModule();
+            const auto* storageMD = DV.getDbgInst()->getMetadata("StorageOffset");
+            if (!storageMD)
+            {
+                LLVM_DEBUG(dbgs() << "warning: SLM - no storage offset for FP");
+                IGC_ASSERT_MESSAGE(false, "SLM - no storage offset for FP\n");
+                return;
+            }
+
+            auto simdSize = VISAMod->GetSIMDSize();
+            uint64_t storageOffset = simdSize * getIntConstFromMdOperand(storageMD, 0).getZExtValue();
+
+            auto regNumFP = VISAMod->getFPReg();
+
+            // Rely on getVarInfo result here.
+            const auto* VarInfoFP = VISAMod->getVarInfo(*DD->getDecodedDbg(), regNumFP);
+            if (!VarInfoFP) {
+                LLVM_DEBUG(dbgs() << "warning: SLM - no gen loc info for FP (V" << regNumFP << ")");
+                return;
+            }
+            LLVM_DEBUG(dbgs() << "  FramePointer: ";
+            VarInfoFP->print(dbgs()); dbgs() << "\n");
+
+            uint16_t grfRegNumFP = VarInfoFP->lrs.front().getGRF().regNum;
+            uint16_t grfSubRegNumFP = VarInfoFP->lrs.front().getGRF().subRegNum;
+            auto bitOffsetToFPReg = grfSubRegNumFP * 8;  // Bit-offset to GRF with Frame Pointer
+
+            addRegisterOp(Block, grfRegNumFP);                                  // 1 DW_OP_regx <Frame Pointer reg encoded>
+                                                                                //   Register ID is shifted by offset
+            addConstantUValue(Block, bitOffsetToFPReg);                         // 2 DW_OP_const1u/2u <bit-offset to Frame Pointer reg>
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);         // 3 DW_OP_const1u 64  , i.e. size in bits
+            addUInt(Block, dwarf::DW_FORM_data1, 64);
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack); // 4 DW_OP_INTEL_push_bit_piece_stack
+
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus_uconst);     // 5 DW_OP_plus_uconst  SIZE_OWORD (taken from getFPOffset())
+            addUInt(Block, dwarf::DW_FORM_udata, VISAMod->getFPOffset());
+
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus_uconst);     // 6 DW_OP_plus_uconst storageOffset
+            addUInt(Block, dwarf::DW_FORM_udata, storageOffset);                // storageOffset
         }
         else
         {
@@ -2716,7 +2764,7 @@ IGC::DIEBlock* CompileUnit::buildSLM(const DbgVariable& var, const VISAVariableL
         }
         else
         {
-            addSLMLocation(Block, loc); // Emit SLM location expression
+            addSLMLocation(Block, var, loc); // Emit SLM location expression
         }
 
         IGC_ASSERT(loc->GetVectorNumElements() <= 1);
@@ -2735,7 +2783,7 @@ IGC::DIEBlock* CompileUnit::buildSLM(const DbgVariable& var, const VISAVariableL
         }
         else
         {
-            addSLMLocation(Block, loc);  // Emit SLM location expression
+            addSLMLocation(Block, var, loc);  // Emit SLM location expression
         }
 
         IGC_ASSERT(loc->GetVectorNumElements() <= 1);
@@ -3034,7 +3082,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
                     unsigned int subReg = lrToUse.getGRF().subRegNum;
                     addRegisterLoc(Block, regNum, 0, var.getDbgInst());
                     // Emit GT-relative location expression
-                    isSLM = addGTRelativeLocation(Block, loc);
+                    isSLM = addGTRelativeLocation(Block, var, loc);
                     if (!isSLM && loc->IsRegister())
                         addSimdLaneScalar(Block, var, loc, &lrToUse, subReg);
                     var.emitExpression(this, Block);
@@ -3044,7 +3092,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(const DbgVariable& var,
                 {
                     for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                     {
-                        isSLM = addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
+                        isSLM = addGTRelativeLocation(Block, var, loc); // Emit GT-relative location expression
                         // Emit SIMD lane for GRF (unpacked)
                         const auto MaxUI16 = std::numeric_limits<uint16_t>::max();
                         auto SimdOffset = DD->simdWidth * vectorElem;

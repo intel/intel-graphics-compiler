@@ -256,7 +256,7 @@ namespace IGC
         // - bindless surface location or
         // - bindless sampler location
         // Returns true in a case of SLM location, otherwise false.
-        bool addGTRelativeLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
+        bool addGTRelativeLocation(DIEBlock* Block, const DbgVariable& DV, const VISAVariableLocation* Loc);
 
         // addBindlessOrStatelessLocation - add a sequence of attributes to calculate stateless or
         // bindless location of variable. baseAddr is one of the following base addreses:
@@ -287,7 +287,7 @@ namespace IGC
 
 
         // addSLMLocation - add a sequence of attributes to emit SLM location of variable
-        void addSLMLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
+        void addSLMLocation(DIEBlock* Block, const DbgVariable& DV, const VISAVariableLocation* Loc);
 
         // addSimdLane - add a sequence of attributes to calculate location of variable
         // among SIMD lanes, e.g. a GRF subregister.
