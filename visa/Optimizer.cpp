@@ -8848,6 +8848,11 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                             else
                             {
                                 hasUAVWrites = true;
+                                if (builder.supportsLSC() && clearHdcWritesLSCUGM)
+                                {
+                                    // Those HDC msg will go thru LSC, so need wa too.
+                                    needLscUgmFence = true;
+                                }
                             }
                         }
 
