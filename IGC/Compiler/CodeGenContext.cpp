@@ -843,6 +843,11 @@ namespace IGC
                 // some some optimizations disabled to avoid spill/fill instructions.
                 NoSpill = true;
             }
+            // -cl-intel-disable-noMaskWA, -ze-intel-disable-noMaskWA
+            else if (suffix.equals("-disable-noMaskWA"))
+            {
+                DisableNoMaskWA = true;
+            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);

@@ -1341,6 +1341,7 @@ namespace IGC
             bool UseBindlessLegacyMode = true;
             bool EnableZEBinary = false;
             bool NoSpill = false;
+            bool DisableNoMaskWA = false;
 
             // Generic address related
             bool HasNoLocalToGeneric = false;

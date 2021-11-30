@@ -4019,11 +4019,23 @@ namespace IGC
         if (m_program->m_Platform->getWATable().Wa_1808850743 ||
             m_program->m_Platform->getWATable().Wa_1409909237)
         {
-            SaveOption(vISA_noMaskWA, IGC_GET_FLAG_VALUE(NoMaskWA));
-            if (IGC_GET_FLAG_VALUE(NoMaskWA) > 0)
+            bool doWA = true;
+            if (context->type == ShaderType::OPENCL_SHADER)
             {
-                // Turn off jmpi as there is no wa for jmpi
-                SaveOption(vISA_EnableScalarJmp, false);
+                auto ClContext = static_cast<OpenCLProgramContext*>(context);
+                if (ClContext->m_InternalOptions.DisableNoMaskWA)
+                {
+                    doWA = false;
+                }
+            }
+            if (doWA)
+            {
+                SaveOption(vISA_noMaskWA, IGC_GET_FLAG_VALUE(NoMaskWA));
+                if (IGC_GET_FLAG_VALUE(NoMaskWA) > 0)
+                {
+                    // Turn off jmpi as there is no wa for jmpi
+                    SaveOption(vISA_EnableScalarJmp, false);
+                }
             }
         }
 
