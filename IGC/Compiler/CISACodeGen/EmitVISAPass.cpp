@@ -4555,27 +4555,19 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     IGC_ASSERT_MESSAGE(7 < numOperands, "Wrong number of operands");
     IGC_ASSERT_MESSAGE(numOperands < 10, "Wrong number of operands");
 
-    const CShader::ExtractMaskWrapper writeMask(m_currShader, inst);
-    IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
-
     EOPCODE opCode = GetOpCode(inst);
     //Subtract the offsets, resource sources to get
     //the number of texture coordinates and index to texture source
     uint numSources = numOperands - 5;
     uint textureArgIdx = numOperands - 5;
 
-    ResourceDescriptor resource;
-    Value* ptr = inst->getOperand(textureArgIdx);
-    resource = GetResourceVariable(ptr);
     uint offsetSourceIndex = numSources + 1;
-    CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
 
     SmallVector<CVariable*, 4> payload;
 
     for (uint i = numSources - 1; i > 0; i--)
     {
-        uint index = CorrectLdIndex(i, m_currShader->m_Platform->hasOldLdOrder());
-        CVariable* src = GetSymbol(inst->getOperand(index));
+        CVariable* src = GetSymbol(inst->getOperand(i));
         if (!(src->IsImmediate() && src->GetImmediateValue() == 0))
         {
             break;
@@ -4584,33 +4576,26 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     }
 
     bool zeroLOD = false;
-    //SKL+ new message ld_lz
-    if (numSources > 2 &&
-        m_currShader->m_Platform->supportSampleAndLd_lz())
+
+    CVariable* lodSrc =
+        GetSymbol(inst->getOperand(2));
+
+    if (lodSrc->IsImmediate() && lodSrc->GetImmediateValue() == 0)
     {
-        // Check if lod is 0
-        CVariable* src = GetSymbol(inst->getOperand(2));
-        if (src->IsImmediate() && src->GetImmediateValue() == 0)
-        {
-            zeroLOD = true;
-            numSources--;
-        }
+        zeroLOD = true;
     }
 
-    //create send payload for numSources
+    // create send payload for numSources
     for (uint i = 0; i < numSources; i++)
     {
         uint index = i;
-        //no difference in ld_lz between SKL+ and BDW
-        if (!zeroLOD)
+        if (opCode == llvm_ld_ptr && index == 2 && zeroLOD)
         {
-            index = CorrectLdIndex(i, m_currShader->m_Platform->hasOldLdOrder());
-        }
-        if (zeroLOD && index == 2)
-        {
-            //3D resources skip lod and read z coordinate
+            // 3D resources skip lod and read z coordinate
             index = 3;
+            --numSources;
         }
+
         CVariable* src = GetSymbol(inst->getOperand(index));
         if (src->IsUniform())
         {
@@ -4657,15 +4642,24 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         }
     }
 
+    const CShader::ExtractMaskWrapper writeMask(m_currShader, inst);
+    IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
+
     bool feedbackEnable = writeMask.isSet(4);
     uint label = 0;
     CVariable* flag = nullptr;
+    Value* ptr = inst->getOperand(textureArgIdx);
+    ResourceDescriptor resource = GetResourceVariable(ptr);
     bool needLoop = ResourceLoopHeader(resource, flag, label);
     m_encoder->SetPredicate(flag);
     if (m_destination->IsUniform())
     {
         m_encoder->SetUniformSIMDSize(m_currShader->m_Platform->getMinDispatchMode());
     }
+
+
+    CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
+
     m_encoder->Load(
         opCode,
         writeMask.getEM(),
