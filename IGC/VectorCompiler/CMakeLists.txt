@@ -9,10 +9,6 @@
 
 
 # CMake Settings:
-# - SPIRV_PREBUILD_DIR
-# - SPIRVDLL_SRC
-# - SPIRV_SRC
-# - INSTALL_SPIRVDLL
 # - VC_INTRINSICS_SRC
 set(IGC_BUILD__PROJ__VectorCompiler "${IGC_BUILD__PROJ_NAME_PREFIX}VectorCompiler")
 set(IGC_BUILD__PROJ__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}" PARENT_SCOPE)
@@ -58,10 +54,6 @@ set(BUILD_EXTERNAL YES)
 # We are using prebuilt SPIRV and building intrinsics.
 set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
 add_subdirectory(${INTRSRC} ${INTRBUILD} EXCLUDE_FROM_ALL)
-
-if(NOT IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_VC)
-  include(cmake/spirv.cmake)
-endif()
 
 set(IGC_OPTION__VC_DISABLE_BIF_DEFAULT OFF)
 if(LLVM_VERSION_MAJOR LESS 9)

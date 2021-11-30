@@ -256,14 +256,12 @@ if (FCL_ENABLED)
 endif()
 
 
-# Currently IGC uses 2 legacy SPIRV-LLVM-Translators
-# First one is located at gfx-driver/Source/IGC/AdaptorOCL/SPIRV
-# Second one is taken as prebuilt shared library called SPIRVDLL
-# These translators will be replaced with vanilla Khronos translator.
+# Currently IGC uses legacy SPIRV-LLVM-Translator
+# that is located at gfx-driver/Source/IGC/AdaptorOCL/SPIRV
+# This translator will be replaced with vanilla Khronos translator.
 # The following cmake code perfoms search for the such translator.
 # But, until the transition is not completed, this code is under IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR condition
 # Remove this condition after transition period is over
-option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_VC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Vector Compiler" OFF)
 option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Scalar Compiler" OFF)
 
 option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)

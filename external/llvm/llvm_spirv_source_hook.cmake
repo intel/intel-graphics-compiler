@@ -24,7 +24,7 @@
 
 include_guard(DIRECTORY)
 
-option(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR "[Experimental] Enable link against Khronos SPIRV-LLVM-Translator, instead of legacy versions" OFF)
+option(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR "Enable link against Khronos SPIRV-LLVM-Translator, instead of legacy versions" ON)
 
 
 if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
