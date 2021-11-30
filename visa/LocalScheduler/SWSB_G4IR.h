@@ -153,7 +153,6 @@ namespace vISA
             }
 
             //Overlap with other ranges.
-
             for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
             {
                 FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
