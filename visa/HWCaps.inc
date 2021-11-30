@@ -392,6 +392,11 @@ SPDX-License-Identifier: MIT
         return true;
     }
 
+    bool hasSrc1ReadSuppressionIssue() const
+    {
+        return getPlatform() == GENX_PVC && hasRSForSpecificPlatform();
+    }
+
     bool hasReadSuppression() const
     {
         return getPlatform() >= GENX_TGLLP && hasRSForSpecificPlatform();

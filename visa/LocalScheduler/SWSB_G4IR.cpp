@@ -5931,12 +5931,20 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 //3)             mach(8 | M0)              r52.0<1>:ud   r35.3<8; 8, 0> : ud   r23.0<4; 4, 0> : ud{ $14.dst }
                 //FIXME, For performance, we need check the 3rd instruction as well
 
-                if (!hasOverlap &&
-                    !builder.hasFixedCycleMathPipe() &&
-                    dep == RAW &&
-                    liveInst->isMath() && !curInst->isMath() &&
-                    builder.hasRSForSpecificPlatform() &&
-                    (!hasSamePredicator(liveInst, curInst) || builder.hasMathRSIsuue()))
+                //W/A for src1 read suppression of all ALUG instructions on PVC:
+                //  Whenever there is GRF crossover for src1 (for src1, the read data is distributed over 2  GRFs), we need always set a
+                //  Read after Write (RAW)  dependency to any element in the 2 GRFs we are reading for src1  in the current instruction.
+                //      (W)     add (16|M0)     r7.14<1>:f    r61.14<1;1,0>:f   r9.14<1;1,0>:f
+                //      (W)     mad (16|M0)     r26.10<1>:f   r20.10<1;0>:f     r6.10<1;0>:f      r101.10<1>:f     {F@1}
+                if (!hasOverlap && dep == RAW &&
+                    ((!builder.hasFixedCycleMathPipe() &&
+                        liveInst->isMath() && !curInst->isMath() &&
+                        builder.hasRSForSpecificPlatform() &&
+                        (!hasSamePredicator(liveInst, curInst) || builder.hasMathRSIsuue())) ||
+                    (builder.hasSrc1ReadSuppressionIssue() &&
+                        distanceHonourInstruction(curInst) &&
+                        curOpnd == Opnd_src1 && curInst->getSrc(1) && curInst->getSrc(1)->asSrcRegRegion() &&
+                        curInst->getSrc(1)->asSrcRegRegion()->crossGRF())))
                 {
                     hasOverlap = curFootprint->hasGRFGrainOverlap(liveFootprint);
                 }
