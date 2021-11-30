@@ -386,7 +386,7 @@ namespace IGC
         std::vector<StatelessPushInfo> pushableAddresses;
 
         // Indices of RuntimeValues that can be used to compute surface state
-        // offsets for the bindless push along with the Descriptor Table Offset.
+        // offsets for the bindless push.
         std::vector<unsigned int> bindlessPushInfo;
 
         // Dynamic buffer offsets info.
