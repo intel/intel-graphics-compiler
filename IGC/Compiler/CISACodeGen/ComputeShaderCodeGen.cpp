@@ -48,8 +48,9 @@ namespace IGC
             if (bufType == SLM)
             {
                 m_hasSLM = true;
+                m_numSLMAccesses++;
             }
-            if (bufType == RESOURCE || bufType == UAV)
+            else if (bufType == RESOURCE || bufType == UAV)
             {
                 m_num1DAccesses++;
             }
@@ -63,7 +64,12 @@ namespace IGC
             }
             if (bufType == SLM)
             {
+                m_numSLMAccesses++;
                 m_hasSLM = true;
+            }
+            else if (bufType == RESOURCE || bufType == UAV)
+            {
+                m_num1DAccesses++;
             }
         }
         else if (GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(inst))
@@ -75,18 +81,14 @@ namespace IGC
             case GenISAIntrinsic::GenISA_ldrawvector_indexed:
             case GenISAIntrinsic::GenISA_ldraw_indexed:
             {
-                BufferType bufType = DecodeBufferType(
-                    intr->getArgOperand(0)->getType()->getPointerAddressSpace());
-                if (bufType == BINDLESS) // UAV buffer
-                {
-                    m_num1DAccesses++;
-                }
+                m_num1DAccesses++;
                 break;
             }
 
             case GenISAIntrinsic::GenISA_typedwrite:
             case GenISAIntrinsic::GenISA_typedread:
                 m_numberOfTypedAccess++;
+                m_num2DAccesses++;
                 break;
             case GenISAIntrinsic::GenISA_storestructured1:
             case GenISAIntrinsic::GenISA_storestructured2:
@@ -134,6 +136,7 @@ namespace IGC
         m_numberOfUntypedAccess = 0;
         m_num1DAccesses = 0;
         m_num2DAccesses = 0;
+        m_numSLMAccesses = 0;
         CShader::InitEncoder(simdMode, canAbortOnSpill, shaderMode);
     }
 
@@ -404,6 +407,8 @@ namespace IGC
             m_numberOfTypedAccess,
             m_numberOfUntypedAccess,
             m_num1DAccesses,
+            m_num2DAccesses,
+            m_numSLMAccesses,
             m_threadGroupSize_X,
             m_threadGroupSize_Y,
             m_threadGroupSize_Z);

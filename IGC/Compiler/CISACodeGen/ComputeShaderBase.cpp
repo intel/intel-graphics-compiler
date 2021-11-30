@@ -31,6 +31,8 @@ namespace IGC
         uint numberOfTypedAccess,
         uint numberOfUntypedAccess,
         uint num1DAccesses,
+        uint num2DAccesses,
+        uint numSLMAccesses,
         uint threadGroupSize_X,
         uint threadGroupSize_Y,
         uint threadGroupSize_Z)
