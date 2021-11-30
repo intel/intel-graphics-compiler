@@ -128,7 +128,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXUnbalingWrapperPass(registry);
   initializeGenXVisaRegAllocWrapperPass(registry);
   initializeTransformPrivMemPass(registry);
-  initializeGenXFunctionPointersLoweringPass(registry);
   initializeGenXBackendConfigPass(registry);
   initializeGenXImportOCLBiFPass(registry);
   initializeGenXSimplifyPass(registry);
@@ -381,7 +380,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXLoweringPass());
   if (!DisableVerify)
     vc::addPass(PM, createVerifierPass());
-  vc::addPass(PM, createGenXFunctionPointersLoweringPass());
   /// .. include:: GenXRegionCollapsing.cpp
   vc::addPass(PM, createGenXRegionCollapsingPass());
   /// EarlyCSE

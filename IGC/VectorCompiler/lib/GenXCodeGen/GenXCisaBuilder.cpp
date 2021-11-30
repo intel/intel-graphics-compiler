@@ -1336,8 +1336,7 @@ void GenXKernelBuilder::buildInstructions() {
 
     LastUsedAliasMap.clear();
 
-    if (Func->hasFnAttribute(genx::FunctionMD::CMGenXMain) ||
-        genx::requiresStackCall(Func) || genx::isReferencedIndirectly(Func)) {
+    if (genx::isKernel(Func) || genx::requiresStackCall(Func)) {
       KernFunc = Func;
     } else {
       auto *FuncFG = FGA->getAnyGroup(Func);
@@ -2673,7 +2672,7 @@ static bool checkInsertToRetv(InsertValueInst *Inst) {
 
   if (auto RI = dyn_cast<ReturnInst>(Inst->use_begin()->getUser())) {
     const auto *F = RI->getFunction();
-    return genx::requiresStackCall(F) || genx::isReferencedIndirectly(F);
+    return genx::requiresStackCall(F);
   }
 
   return false;
@@ -3135,8 +3134,7 @@ bool GenXKernelBuilder::allowI64Ops() const {
 void GenXKernelBuilder::collectKernelInfo() {
   for (auto It = FG->begin(), E = FG->end(); It != E; ++It) {
     auto Func = *It;
-    HasStackcalls |=
-        genx::requiresStackCall(Func) || genx::isReferencedIndirectly(Func);
+    HasStackcalls |= genx::requiresStackCall(Func);
     for (auto &BB : *Func) {
       for (auto &I : BB) {
         if (CallInst *CI = dyn_cast<CallInst>(&I)) {
@@ -4923,7 +4921,7 @@ bool GenXKernelBuilder::isInLoop(BasicBlock *BB) {
   Function *BBFunc = BB->getParent();
   // Cannot predict for stack calls and indirectly called functions.
   // Let's assume the function is in a loop.
-  if (genx::requiresStackCall(BBFunc) || genx::isReferencedIndirectly(BBFunc))
+  if (genx::requiresStackCall(BBFunc))
     return true;
 
   IGC_ASSERT(LIs->getLoopInfo(BBFunc));
@@ -5325,8 +5323,7 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
       buildControlRegUpdate(DefaultFloatControl, false);
   }
   addDebugInfo();
-  if (!genx::isKernel(F) &&
-      (genx::requiresStackCall(Func) || genx::isReferencedIndirectly(F))) {
+  if (genx::requiresStackCall(Func)) {
     CISA_CALL(Kernel->AppendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1,
                                                   EXEC_SIZE_16));
   } else {
@@ -5877,9 +5874,8 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
         EXEC_SIZE_1, FpOpDst, SpOpSrc));
     unsigned SMO = BackendConfig->getStackSurfaceMaxSize();
     Kernel->AddKernelAttribute("SpillMemOffset", 4, &SMO);
-  } else if (genx::requiresStackCall(Func) ||
-             genx::isReferencedIndirectly(Func)) {
-    if (genx::isReferencedIndirectly(Func)) {
+  } else if (genx::requiresStackCall(Func)) {
+    if (genx::isIndirect(Func)) {
       int ExtVal = 1;
       Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
     }
@@ -5980,9 +5976,9 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
 void GenXKernelBuilder::beginFunctionLight(Function *Func) {
   if (genx::isKernel(Func))
     return;
-  if (!genx::requiresStackCall(Func) && !genx::isReferencedIndirectly(Func))
+  if (!genx::requiresStackCall(Func))
     return;
-  if (genx::isReferencedIndirectly(Func)) {
+  if (genx::isIndirect(Func)) {
     int ExtVal = 1;
     Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
   }
@@ -6016,8 +6012,7 @@ void GenXKernelBuilder::beginFunctionLight(Function *Func) {
  * also see build[Extract|Insert]Value).
  */
 void GenXKernelBuilder::endFunction(Function *Func, ReturnInst *RI) {
-  if (!genx::isKernel(Func) &&
-      (genx::requiresStackCall(Func) || genx::isReferencedIndirectly(Func))) {
+  if (genx::requiresStackCall(Func)) {
     VISA_GenVar *Sp = nullptr, *Fp = nullptr;
     CISA_CALL(Kernel->GetPredefinedVar(Sp, PREDEFINED_FE_SP));
     CISA_CALL(Kernel->GetPredefinedVar(Fp, PREDEFINED_FE_FP));

@@ -57,7 +57,7 @@ namespace genx {
 namespace fg {
 inline bool isGroupHead(const Function &F) { return genx::isKernel(&F); }
 inline bool isSubGroupHead(const Function &F) {
-  return genx::isReferencedIndirectly(&F) || genx::requiresStackCall(&F);
+  return genx::requiresStackCall(F);
 }
 inline bool isHead(const Function &F) {
   return isGroupHead(F) || isSubGroupHead(F);

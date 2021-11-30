@@ -149,7 +149,7 @@ bool GenXGlobalValueLowering::runOnModule(Module &M) {
     if (genx::isRealGlobalVariable(GV))
       fillWorkListForGV(GV);
   for (auto &F : M)
-    if (F.hasAddressTaken())
+    if (genx::isIndirect(F))
       fillWorkListForGV(F);
 
   if (WorkList.empty())

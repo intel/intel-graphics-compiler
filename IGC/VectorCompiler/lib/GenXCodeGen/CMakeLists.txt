@@ -37,7 +37,6 @@ set(CODEGEN_SOURCES
   GenXDebugInfo.cpp
   GenXDepressurizer.cpp
   GenXExtractVectorizer.cpp
-  GenXFuncPtrsLowering.cpp
   GenXGotoJoin.cpp
   GenXGEPLowering.cpp
   GenXGlobalValueLowering.cpp

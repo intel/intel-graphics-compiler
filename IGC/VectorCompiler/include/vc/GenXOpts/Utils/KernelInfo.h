@@ -42,32 +42,42 @@ inline int getStackAmount(const Function *F) {
   return Result;
 }
 
-// Utility function to tell if a Function needs to be called using
-// vISA stack call ABI.
-inline bool requiresStackCall(const Function *F) {
-  IGC_ASSERT(F);
-  return F->hasFnAttribute(genx::FunctionMD::CMStackCall);
-}
-
-// Utility function to tell if a Function referenced indirectly.
-inline bool isReferencedIndirectly(const Function *F) {
-  IGC_ASSERT(F);
-  bool HasIndirectReference =
-      F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
-  // Note: currently, all indirectly-referenced functions are expected to
-  // have FunctionMD::CMStackCall.
-  // The assert should be removed if this property becomes obsolete.
-  IGC_ASSERT(!HasIndirectReference ||
-             F->hasFnAttribute(genx::FunctionMD::CMStackCall));
-  return HasIndirectReference;
-}
-
 // Utility function to tell whether a Function is a vISA kernel.
 inline bool isKernel(const Function *F) {
   // We use DLLExport to represent a kernel in LLVM IR.
   return (F->hasDLLExportStorageClass() ||
           F->hasFnAttribute(genx::FunctionMD::CMGenXMain));
 }
+
+inline bool isKernel(const Function &F) { return isKernel(&F); }
+
+// Utility function to tell if a Function needs to be called using
+// vISA stack call ABI.
+inline bool requiresStackCall(const Function *F) {
+  IGC_ASSERT(F);
+  bool IsStackCall = F->hasFnAttribute(genx::FunctionMD::CMStackCall);
+  IGC_ASSERT_MESSAGE(!IsStackCall || !genx::isKernel(F),
+                     "The kernel cannot be a stack call");
+  return IsStackCall;
+}
+
+inline bool requiresStackCall(const Function &F) {
+  return requiresStackCall(&F);
+}
+
+// Utility function to tell if a Function must be called indirectly.
+inline bool isIndirect(const Function *F) {
+  IGC_ASSERT(F);
+  // FIXME: The condition of which function is considered to be indirectly
+  // called will be changed soon.
+  bool IsIndirect = F->hasAddressTaken();
+  IGC_ASSERT_MESSAGE(
+      !IsIndirect || genx::requiresStackCall(F),
+      "The indirectly-called function is expected to be a stack call");
+  return IsIndirect;
+}
+
+inline bool isIndirect(const Function &F) { return isIndirect(&F); }
 
 // Turn a MDNode into llvm::value or its subclass.
 // Return nullptr if the underlying value has type mismatch.

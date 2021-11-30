@@ -529,7 +529,7 @@ void ModuleToVisaTransformInfo::propagatePrimaryEmitter(
   const Function *F = CGNode.getFunction();
   if (!F)
     return;
-  if (genx::requiresStackCall(F) && !genx::isReferencedIndirectly(F)) {
+  if (genx::requiresStackCall(F) && !genx::isIndirect(F)) {
     auto Range = FunctionOwnersInfo.equal_range(F);
     auto Res =
         std::find_if(Range.first, Range.second, [&PrimaryEmitter](auto Info) {
@@ -568,7 +568,7 @@ void ModuleToVisaTransformInfo::extractVisaFunctionsEmitters(
 
   for (const Function *F : OwnedFunctions) {
     // Skip "KernelFunctions" because they have already been processed.
-    if (genx::isReferencedIndirectly(F) || genx::isKernel(F))
+    if (genx::isIndirect(F) || genx::isKernel(F))
       continue;
     VISAKernel *VF = VB.GetVISAKernel(F->getName().str());
     checkedEmplace(VisaSpawnerInfo, F, VF);
@@ -580,7 +580,7 @@ void ModuleToVisaTransformInfo::extractKernelFunctions(
     VISABuilder &VB, const FunctionGroupAnalysis &FGA) {
   for (const auto *FG : FGA.AllGroups()) {
     for (const Function *F : *FG) {
-      if (!genx::isReferencedIndirectly(F) && !genx::isKernel(F))
+      if (!genx::isIndirect(F) && !genx::isKernel(F))
         continue;
       VISAKernel *VF = VB.GetVISAKernel(F->getName().str());
       if (genx::isKernel(F))

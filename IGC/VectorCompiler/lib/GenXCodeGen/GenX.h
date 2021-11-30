@@ -94,7 +94,6 @@ ModulePass *createGenXModulePass();
 ModulePass *createGenXLateSimdCFConformanceWrapperPass();
 ModulePass *createGenXLivenessWrapperPass();
 FunctionPass *createGenXLoadStoreLoweringPass();
-ModulePass *createGenXFunctionPointersLoweringPass();
 ModulePass *createGenXCategoryWrapperPass();
 ModulePass *createGenXGroupBalingWrapperPass(BalingKind Kind,
                                              GenXSubtarget *ST);

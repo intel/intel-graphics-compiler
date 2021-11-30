@@ -1413,6 +1413,12 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
     if (F.getName().contains("__cm_intrinsic_impl_"))
       continue;
 
+    // Indirect functions are always stack calls.
+    if (F.hasAddressTaken()) {
+      F.addFnAttr(genx::FunctionMD::CMStackCall);
+      IGC_ASSERT(genx::isIndirect(F));
+    }
+
     // Convert non-kernel to stack call if applicable
     if (FCtrl == FunctionControl::StackCall && !genx::requiresStackCall(&F)) {
       LLVM_DEBUG(dbgs() << "Adding stack call to: " << F.getName() << "\n");
