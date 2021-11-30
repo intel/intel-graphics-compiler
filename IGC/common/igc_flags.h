@@ -306,7 +306,8 @@ DECLARE_IGC_REGKEY(bool, DebugInfoValidation,           false, "Enable optional 
 DECLARE_IGC_REGKEY(debugString, ExtraOCLOptions,        0,     "Extra options for OpenCL", true)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLInternalOptions, 0,    "Extra internal options for OpenCL", true)
 DECLARE_IGC_REGKEY(bool, UseVISAVarNames,               false, "Make VISA generate names for virtual variables so they match with dbg file", true)
-DECLARE_IGC_REGKEY(bool, MetricsDumpEnable,             false, "Dump IGC Metrics to file *.optrpt in current working directory", true)
+DECLARE_IGC_REGKEY(DWORD, MetricsDumpEnable,            0,     "Dump IGC Metrics to file *.optrpt in current working directory.\
+                                                                Setting to 0 - disabled, 1 - makes in binary format, 2 - makes in plain-text format.", true)
 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16,               true,  "Enable OCL SIMD16 mode", true)

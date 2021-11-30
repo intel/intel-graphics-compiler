@@ -78,7 +78,7 @@ namespace IGCMetrics
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
 
-        if (IGC_IS_FLAG_ENABLED(MetricsDumpEnable))
+        if (IGC_GET_FLAG_VALUE(MetricsDumpEnable) > 0)
         {
             // Out file with ext OPTRPT - OPTimization RePoT
             std::string fileName = "OCL_" + oclProgram.hash() + ".optrpt";
@@ -88,12 +88,12 @@ namespace IGCMetrics
 
             if (metric_data.is_open())
             {
-                if (true)
+                if (IGC_GET_FLAG_VALUE(MetricsDumpEnable) == 1)
                 {
                     // Binary format of protobuf
                     oclProgram.SerializePartialToOstream(&metric_data);
                 }
-                else
+                else if (IGC_GET_FLAG_VALUE(MetricsDumpEnable) == 2)
                 {
                     // Text readable in JSON format
                     google::protobuf::util::JsonPrintOptions jsonConfig;
