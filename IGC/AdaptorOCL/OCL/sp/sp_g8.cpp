@@ -1511,6 +1511,11 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     {
                         IGC_ASSERT(ptrArg->BindingTableIndex != bti);
                         patch.SurfaceStateHeapOffset = ptrArg->BindingTableIndex;
+                        dataParameterStreamSize = std::max(
+                            dataParameterStreamSize,
+                            ptrArg->BindingTableIndex + ptrArg->SecondPayloadSizeInBytes
+                            );
+
                     }
                     else
                     {

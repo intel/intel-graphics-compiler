@@ -888,6 +888,7 @@ namespace IGC
                 int argNo = kernelArg->getAssociatedArgNo();
                 std::shared_ptr<iOpenCL::PointerArgumentAnnotation> ptrAnnotation = m_kernelInfo.m_argOffsetMap[argNo];
                 ptrAnnotation->BindingTableIndex = payloadPosition;
+                ptrAnnotation->SecondPayloadSizeInBytes = kernelArg->getAllocateSize();
             }
             break;
 

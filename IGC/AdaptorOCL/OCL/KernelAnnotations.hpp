@@ -67,6 +67,7 @@ struct PointerArgumentAnnotation : KernelArgumentAnnotation
     DWORD  PayloadSizeInBytes;
     DWORD  LocationIndex;
     DWORD  LocationCount;
+    DWORD  SecondPayloadSizeInBytes;
     bool   IsEmulationArgument;
     bool   IsBindlessAccess;
 
