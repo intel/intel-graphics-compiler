@@ -61,46 +61,32 @@ static uint8_t getDPASGRFReadCycle(uint8_t repc)
 
 static bool hasSameFunctionID(const G4_INST* inst1, const G4_INST* inst2)
 {
-    if (inst1->isSend() && inst2->isSend())
+    const bool isInst1Send = inst1->isSend();
+    const bool isInst2Send = inst2->isSend();
+    if (isInst1Send && isInst2Send)
     {
         G4_SendDesc* msgDesc1 = inst1->getMsgDesc();
         G4_SendDesc* msgDesc2 = inst2->getMsgDesc();
-
-        if (msgDesc1->isSLM() && msgDesc2->isSLM())
-        {
-            return (msgDesc1->getSFID() == msgDesc2->getSFID());
-        }
-        else if (msgDesc1->isSLM() || msgDesc2->isSLM())
+        if (msgDesc1->isSLM() ^ msgDesc2->isSLM())
         {
             return false;
         }
 
-        return (msgDesc1->getSFID() == msgDesc2->getSFID());
+        return msgDesc1->getSFID() == msgDesc2->getSFID();
     }
-    else if (inst1->isSend() || inst2->isSend())
+    if (isInst1Send ^ isInst2Send)
     {
         return false;
     }
-    else if (inst1->isMathPipeInst() && inst2->isMathPipeInst())
-    {
-        return true;
-    }
-    else if (inst1->isDpas() && inst2->isDpas())
-    {
-        return true;
-    }
-    else if (inst1->isDpas() || inst2->isDpas())
+    if (inst1->isMathPipeInst() ^ inst2->isMathPipeInst())
     {
         return false;
     }
-    else if (inst1->isMathPipeInst() || inst2->isMathPipeInst())
+    if (inst1->isDpas() ^ inst2->isDpas())
     {
         return false;
     }
-    else
-    {
-        return true;
-    }
+    return true;
 }
 
 static bool isSLMMsg(const G4_INST* inst)
@@ -195,14 +181,18 @@ static bool hasSameExecMask(const G4_INST* inst1, const G4_INST* inst2)
 
 static bool WARDepRequired(const G4_INST* inst1, const G4_INST* inst2)
 {
-    if (!hasSameFunctionID(inst1, inst2) ||
-        (hasSameFunctionID(inst1, inst2) &&
-        (!hasSamePredicator(inst1, inst2) ||
-            !hasSameExecMask(inst1, inst2))))
+    if (!hasSameFunctionID(inst1, inst2))
     {
         return true;
     }
-
+    if (!hasSamePredicator(inst1, inst2))
+    {
+        return true;
+    }
+    if (!hasSameExecMask(inst1, inst2))
+    {
+        return true;
+    }
     return false;
 }
 
