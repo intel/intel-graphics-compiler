@@ -77,34 +77,38 @@ namespace IGCMetrics
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        // Out file with ext OPTRPT - OPTimization RePoT
-        std::string fileName = "OCL_" + oclProgram.hash() + ".optrpt";
 
-        std::ofstream metric_data;
-        metric_data.open(fileName);
-
-        if (metric_data.is_open())
+        if (IGC_IS_FLAG_ENABLED(MetricsDumpEnable))
         {
-            if (true)
+            // Out file with ext OPTRPT - OPTimization RePoT
+            std::string fileName = "OCL_" + oclProgram.hash() + ".optrpt";
+
+            std::ofstream metric_data;
+            metric_data.open(fileName);
+
+            if (metric_data.is_open())
             {
-                // Binary format of protobuf
-                oclProgram.SerializePartialToOstream(&metric_data);
+                if (true)
+                {
+                    // Binary format of protobuf
+                    oclProgram.SerializePartialToOstream(&metric_data);
+                }
+                else
+                {
+                    // Text readable in JSON format
+                    google::protobuf::util::JsonPrintOptions jsonConfig;
+
+                    jsonConfig.add_whitespace = true;
+                    jsonConfig.preserve_proto_field_names = true;
+                    jsonConfig.always_print_primitive_fields = true;
+
+                    std::string json;
+                    google::protobuf::util::MessageToJsonString(oclProgram, &json, jsonConfig);
+                    metric_data << json;
+                }
+
+                metric_data.close();
             }
-            else
-            {
-                // Text readable in JSON format
-                google::protobuf::util::JsonPrintOptions jsonConfig;
-
-                jsonConfig.add_whitespace = true;
-                jsonConfig.preserve_proto_field_names = true;
-                jsonConfig.always_print_primitive_fields = true;
-
-                std::string json;
-                google::protobuf::util::MessageToJsonString(oclProgram, &json, jsonConfig);
-                metric_data << json;
-            }
-
-            metric_data.close();
         }
 #endif
     }
