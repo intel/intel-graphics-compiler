@@ -99,17 +99,13 @@ public:
   reverse_iterator rend() { return Functions.rend(); }
   size_t size() const { return Functions.size(); }
   // accessors
-  Function *getHead() {
-    IGC_ASSERT(size());
-    return *begin();
-  }
-  const Function *getHead() const {
+  Function *getHead() const {
     IGC_ASSERT(size());
     return *begin();
   }
   StringRef getName() const { return getHead()->getName(); }
-  LLVMContext &getContext() { return getHead()->getContext(); }
-  Module *getModule() { return getHead()->getParent(); }
+  LLVMContext &getContext() const { return getHead()->getContext(); }
+  Module *getModule() const { return getHead()->getParent(); }
   void addSubgroup(FunctionGroup *FG) {
     IGC_ASSERT(FG);
     IGC_ASSERT(FG->getHead());
