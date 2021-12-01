@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Function.h"
 
 #include "vc/BiF/Tools.h"
-#include "vc/GenXOpts/Utils/InternalMetadata.h"
+#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/BiF.h"
@@ -366,11 +366,6 @@ private:
   Value *emulateInst(Instruction *Inst);
   Function *getEmulationFunction(const Instruction *Inst) const;
   void buildEmuFunCache(Module &M);
-
-  // Check if a function is to emulate instructions.
-  static bool isEmulationFunction(const Function* F) {
-    return F->hasFnAttribute(genx::FunctionMD::VCEmulationRoutine);
-  }
 };
 
 } // end namespace
@@ -1658,7 +1653,7 @@ bool GenXEmulate::runOnModule(Module &M) {
   // Delete unused builtins, make used ones internal.
   for (auto I = M.begin(); I != M.end();) {
     Function &F = *I++;
-    if (isEmulationFunction(&F) || IsOldEmulationFunction(&F)) {
+    if (genx::isEmulationFunction(F) || IsOldEmulationFunction(&F)) {
       Changed = true;
       if (F.use_empty())
         F.eraseFromParent();
@@ -1730,7 +1725,7 @@ void GenXEmulate::buildEmuFunCache(Module &M) {
   };
 
   for (Function &F : M.getFunctionList()) {
-    if (!isEmulationFunction(&F))
+    if (!genx::isEmulationFunction(F))
       continue;
     for (auto &PrOp : DivRemPrefixes)
       UpdateCacheIfMatch(F, PrOp.Prefix, PrOp.Opcode);
@@ -1744,7 +1739,7 @@ void GenXEmulate::buildEmuFunCache(Module &M) {
 Value *GenXEmulate::emulateInst(Instruction *Inst) {
   Function *EmuFn = getEmulationFunction(Inst);
   if (EmuFn) {
-    IGC_ASSERT(isEmulationFunction(EmuFn));
+    IGC_ASSERT(genx::isEmulationFunction(*EmuFn));
     IGC_ASSERT_MESSAGE(!isa<CallInst>(Inst), "call emulation not supported yet");
     llvm::IRBuilder<> Builder(Inst);
     SmallVector<Value *, 8> Args(Inst->operands());

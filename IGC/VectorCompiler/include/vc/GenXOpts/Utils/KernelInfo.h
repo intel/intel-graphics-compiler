@@ -42,6 +42,11 @@ inline int getStackAmount(const Function *F) {
   return Result;
 }
 
+// Check if a function is to emulate instructions.
+inline bool isEmulationFunction(const llvm::Function &F) {
+  return F.hasFnAttribute(llvm::genx::FunctionMD::VCEmulationRoutine);
+}
+
 // Utility function to tell whether a Function is a vISA kernel.
 inline bool isKernel(const Function *F) {
   // We use DLLExport to represent a kernel in LLVM IR.
