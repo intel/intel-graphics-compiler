@@ -742,10 +742,10 @@ __attribute__((inline)) float4 __flush_denormals(float4 in)
 #endif
 
 #define DEF_IMAGE_READ_2D(ACC_QUAL)                                                                                 \
-uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_##ACC_QUAL##_v2i32, _Ruint4)(global Img2d_##ACC_QUAL* Image, int2 Coordinate)   \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_##ACC_QUAL##_v2i32, _Rint4)(global Img2d_##ACC_QUAL* Image, int2 Coordinate)   \
 {                                                                                                                   \
     int id = (int)__builtin_astype(Image, __global void*);                                                          \
-    return __builtin_IB_OCL_2d_ldui(id, Coordinate, 0);                                                             \
+    return as_int4(__builtin_IB_OCL_2d_ldui(id, Coordinate, 0));                                                    \
 }                                                                                                                   \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_##ACC_QUAL##_v2i32, _Rfloat4)(global Img2d_##ACC_QUAL* Image, int2 Coordinate)  \
 {                                                                                                                   \
@@ -755,10 +755,10 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_##ACC_QUAL##_v2i
 }
 
 #define DEF_IMAGE_READ_3D(ACC_QUAL)                                                                                 \
-uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img3d_##ACC_QUAL##_v4i32, _Ruint4)(global Img3d_##ACC_QUAL* Image, int4 Coordinate)   \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img3d_##ACC_QUAL##_v4i32, _Rint4)(global Img3d_##ACC_QUAL* Image, int4 Coordinate)   \
 {                                                                                                                   \
     int id = (int)__builtin_astype(Image, __global void*);                                                          \
-    return __builtin_IB_OCL_3d_ldui( id, Coordinate, 0 );                                                           \
+    return as_int4(__builtin_IB_OCL_3d_ldui( id, Coordinate, 0 ));                                                  \
 }                                                                                                                   \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img3d_##ACC_QUAL##_v4i32, _Rfloat4)(global Img3d_##ACC_QUAL* Image, int4 Coordinate) \
 {                                                                                                                   \
@@ -768,10 +768,10 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img3d_##ACC_QUAL##_v4i
 }
 
 #define DEF_IMAGE_READ_2D_ARRAY(ACC_QUAL)                                                                                        \
-uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_##ACC_QUAL##_v4i32, _Ruint4)(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)    \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_##ACC_QUAL##_v4i32, _Rint4)(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)    \
 {                                                                                                                                \
     int id = (int)__builtin_astype(Image, __global void*);                                                                       \
-    return __builtin_IB_OCL_2darr_ldui( id, Coordinate, 0 );                                                                     \
+    return as_int4(__builtin_IB_OCL_2darr_ldui( id, Coordinate, 0 ));                                                            \
 }                                                                                                                                \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_array_##ACC_QUAL##_v4i32, _Rfloat4)(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)  \
 {                                                                                                                                \
@@ -781,10 +781,10 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_array_##ACC_QUAL
 }
 
 #define DEF_IMAGE_READ_1D(ACC_QUAL)                                                                               \
-uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_##ACC_QUAL##_i32, _Ruint4)(global Img1d_##ACC_QUAL* Image, int Coordinate)    \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_##ACC_QUAL##_i32, _Rint4)(global Img1d_##ACC_QUAL* Image, int Coordinate)    \
 {                                                                                                                 \
     int id = (int)__builtin_astype(Image, __global void*);                                                        \
-    return __builtin_IB_OCL_1d_ldui( id, Coordinate, 0 );                                                         \
+    return as_int4(__builtin_IB_OCL_1d_ldui( id, Coordinate, 0 ));                                                \
 }                                                                                                                 \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_##ACC_QUAL##_i32, _Rfloat4)(global Img1d_##ACC_QUAL* Image, int Coordinate)  \
 {                                                                                                                 \
@@ -794,10 +794,10 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_##ACC_QUAL##_i32
 }
 
 #define DEF_IMAGE_READ_1D_BUFFER(ACC_QUAL)                                                                                      \
-uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_buffer_##ACC_QUAL##_i32, _Ruint4)(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)    \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_buffer_##ACC_QUAL##_i32, _Rint4)(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)    \
 {                                                                                                                               \
     int id = (int)__builtin_astype(Image, __global void*);                                                                      \
-    return __builtin_IB_OCL_1d_ldui( id, Coordinate, 0 );                                                                       \
+    return as_int4(__builtin_IB_OCL_1d_ldui( id, Coordinate, 0 ));                                                              \
 }                                                                                                                               \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_buffer_##ACC_QUAL##_i32, _Rfloat4)(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)  \
 {                                                                                                                               \
@@ -807,10 +807,10 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_buffer_##ACC_QUA
 }
 
 #define DEF_IMAGE_READ_1D_ARRAY(ACC_QUAL)                                                                                       \
-uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_array_##ACC_QUAL##_v2i32, _Ruint4)(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)   \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_array_##ACC_QUAL##_v2i32, _Rint4)(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)   \
 {                                                                                                                               \
     int id = (int)__builtin_astype(Image, __global void*);                                                                      \
-    return __builtin_IB_OCL_1darr_ldui( id, Coordinate, 0 );                                                                    \
+    return as_int4(__builtin_IB_OCL_1darr_ldui( id, Coordinate, 0 ));                                                           \
 }                                                                                                                               \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_array_##ACC_QUAL##_v2i32, _Rfloat4)(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)  \
 {                                                                                                                               \
@@ -877,11 +877,11 @@ DEF_HALF_IMAGE_READ(1d_array_rw, int2, v2i32)
 
 // Image Read MSAA
 
-uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_msaa_ro_v2i32_i32_i32, _Ruint4)(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_msaa_ro_v2i32_i32_i32, _Rint4)(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
 {
     int id = (int)__builtin_astype(Image, __global void*);
     float4 mcs = __builtin_IB_OCL_2d_ldmcs(id, Coordinate);
-    return __builtin_IB_OCL_2d_ld2dmsui(id, Coordinate, Sample, mcs);
+    return as_int4(__builtin_IB_OCL_2d_ld2dmsui(id, Coordinate, Sample, mcs));
 }
 
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_msaa_ro_v2i32_i32_i32, _Rfloat4)(global Img2d_msaa_ro* Image, int2 Coordinate, int ImageOperands, int Sample)
@@ -892,11 +892,11 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_msaa_ro_v2i32_i3
     return __flush_denormals(res);
 }
 
-uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_msaa_ro_v4i32_i32_i32, _Ruint4)(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_msaa_ro_v4i32_i32_i32, _Rint4)(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
 {
     int id = (int)__builtin_astype(Image, __global void*);
     float4 mcs = __builtin_IB_OCL_2darr_ldmcs(id, Coordinate);
-    return __builtin_IB_OCL_2darr_ld2dmsui(id, Coordinate, Sample, mcs);
+    return as_int4(__builtin_IB_OCL_2darr_ld2dmsui(id, Coordinate, Sample, mcs));
 }
 
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_array_msaa_ro_v4i32_i32_i32, _Rfloat4)(global Img2d_array_msaa_ro* Image, int4 Coordinate, int ImageOperands, int Sample)
@@ -1208,25 +1208,25 @@ uint4 __intel_query_image_size_Ruint4(int id)
 // ------------------------OpImageQuerySizeLod------------------------
 // Query the dimensions of Image for mipmap level for Level of Detail.
 
-#define DEF_IMAGE_QUERY_SIZE_BASE(IMAGE_TYPE, INTRINSIC, ACC_QUAL, VEC_SIZE, VEC_SIZE_ABBR)                                                                         \
-uint##VEC_SIZE SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageQuerySize, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL, _Ruint##VEC_SIZE)(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)   \
-{                                                                                                                                                                   \
-    int id = (int)__builtin_astype(Image, __global void*);                                                                                                          \
-    return INTRINSIC##_Ruint##VEC_SIZE(id);                                                                                                                         \
-}                                                                                                                                                                   \
-ulong##VEC_SIZE SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageQuerySize, _##VEC_SIZE_ABBR##i64_img##IMAGE_TYPE##_##ACC_QUAL, _Rulong##VEC_SIZE)(global Img##IMAGE_TYPE##_##ACC_QUAL* Image) \
-{                                                                                                                                                                   \
-    return SPIRV_BUILTIN(UConvert, _##VEC_SIZE_ABBR##i64_##VEC_SIZE_ABBR##i32, _Rulong##VEC_SIZE)(                                                                  \
-        SPIRV_BUILTIN(ImageQuerySize, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL, _Ruint##VEC_SIZE)(Image));                                                \
-}                                                                                                                                                                   \
-uint##VEC_SIZE SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageQuerySizeLod, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL##_i32, _Ruint##VEC_SIZE)(global Img##IMAGE_TYPE##_##ACC_QUAL* Image, int Lod)  \
-{                                                                                                                                                                   \
-    return SPIRV_BUILTIN(ImageQuerySize, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL, _Ruint##VEC_SIZE)(Image);                                              \
-}                                                                                                                                                                   \
-ulong##VEC_SIZE SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageQuerySizeLod, _##VEC_SIZE_ABBR##i64_img##IMAGE_TYPE##_##ACC_QUAL##_i32, _Rulong##VEC_SIZE)(global Img##IMAGE_TYPE##_##ACC_QUAL* Image, int Lod) \
-{                                                                                                                                                                   \
-    return SPIRV_BUILTIN(UConvert, _##VEC_SIZE_ABBR##i64_##VEC_SIZE_ABBR##i32, _Rulong##VEC_SIZE)(                                                                  \
-        SPIRV_BUILTIN(ImageQuerySizeLod, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL##_i32, _Ruint##VEC_SIZE)(Image, Lod));                                  \
+#define DEF_IMAGE_QUERY_SIZE_BASE(IMAGE_TYPE, INTRINSIC, ACC_QUAL, VEC_SIZE, VEC_SIZE_ABBR)                                                                             \
+int##VEC_SIZE SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageQuerySize, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL, _Rint##VEC_SIZE)(global Img##IMAGE_TYPE##_##ACC_QUAL* Image)   \
+{                                                                                                                                                                       \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                                              \
+    return as_int##VEC_SIZE(INTRINSIC##_Ruint##VEC_SIZE(id));                                                                                                           \
+}                                                                                                                                                                       \
+long##VEC_SIZE SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageQuerySize, _##VEC_SIZE_ABBR##i64_img##IMAGE_TYPE##_##ACC_QUAL, _Rlong##VEC_SIZE)(global Img##IMAGE_TYPE##_##ACC_QUAL* Image) \
+{                                                                                                                                                                       \
+    uint##VEC_SIZE result = as_uint##VEC_SIZE(SPIRV_BUILTIN(ImageQuerySize, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL, _Rint##VEC_SIZE)(Image));               \
+    return as_long##VEC_SIZE(SPIRV_BUILTIN(UConvert, _##VEC_SIZE_ABBR##i64_##VEC_SIZE_ABBR##i32, _Rulong##VEC_SIZE)(result));                                           \
+}                                                                                                                                                                       \
+int##VEC_SIZE SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageQuerySizeLod, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL##_i32, _Rint##VEC_SIZE)(global Img##IMAGE_TYPE##_##ACC_QUAL* Image, int Lod)  \
+{                                                                                                                                                                       \
+    return SPIRV_BUILTIN(ImageQuerySize, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL, _Rint##VEC_SIZE)(Image);                                                   \
+}                                                                                                                                                                       \
+long##VEC_SIZE SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageQuerySizeLod, _##VEC_SIZE_ABBR##i64_img##IMAGE_TYPE##_##ACC_QUAL##_i32, _Rlong##VEC_SIZE)(global Img##IMAGE_TYPE##_##ACC_QUAL* Image, int Lod) \
+{                                                                                                                                                                       \
+    uint##VEC_SIZE result = as_uint##VEC_SIZE(SPIRV_BUILTIN(ImageQuerySizeLod, _##VEC_SIZE_ABBR##i32_img##IMAGE_TYPE##_##ACC_QUAL##_i32, _Rint##VEC_SIZE)(Image, Lod)); \
+    return as_long##VEC_SIZE(SPIRV_BUILTIN(UConvert, _##VEC_SIZE_ABBR##i64_##VEC_SIZE_ABBR##i32, _Rulong##VEC_SIZE)(result));                                           \
 }
 
 #define DEF_IMAGE_QUERY_SIZE(IMAGE_TYPE, INTRINSIC, VEC_SIZE, VEC_SIZE_ABBR)  \

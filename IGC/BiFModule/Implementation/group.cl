@@ -1852,37 +1852,37 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ulong8, v8i64, ulong, i64, __builtin_IB_si
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _##TYPE_ABBR##_img2d_ro_v2i32, _R##TYPE)(global Img2d_ro* image, int2 coord)  \
 {                                                                                                                    \
     int id = (int)__builtin_astype(image, __global void*);                                                           \
-    return INTERNAL_FUNC(id, coord);                                                                                 \
+    return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
 }                                                                                                                    \
 TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _##TYPE_ABBR##_img2d_rw_v2i32, _R##TYPE)(global Img2d_rw* image, int2 coord)  \
 {                                                                                                                    \
     int id = (int)__builtin_astype(image, __global void*);                                                           \
-    return INTERNAL_FUNC(id, coord);                                                                                 \
+    return as_##TYPE(INTERNAL_FUNC(id, coord));                                                                      \
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar,   i8,    __builtin_IB_simd_media_block_read_1_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar2,  v2i8,  __builtin_IB_simd_media_block_read_2_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar4,  v4i8,  __builtin_IB_simd_media_block_read_4_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar8,  v8i8,  __builtin_IB_simd_media_block_read_8_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uchar16, v16i8, __builtin_IB_simd_media_block_read_16_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char,   i8,    __builtin_IB_simd_media_block_read_1_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char2,  v2i8,  __builtin_IB_simd_media_block_read_2_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char4,  v4i8,  __builtin_IB_simd_media_block_read_4_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char8,  v8i8,  __builtin_IB_simd_media_block_read_8_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(char16, v16i8, __builtin_IB_simd_media_block_read_16_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ushort,  i16,   __builtin_IB_simd_media_block_read_1_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ushort2, v2i16, __builtin_IB_simd_media_block_read_2_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ushort4, v4i16, __builtin_IB_simd_media_block_read_4_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ushort8, v8i16, __builtin_IB_simd_media_block_read_8_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short,  i16,   __builtin_IB_simd_media_block_read_1_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short2, v2i16, __builtin_IB_simd_media_block_read_2_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short4, v4i16, __builtin_IB_simd_media_block_read_4_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short8, v8i16, __builtin_IB_simd_media_block_read_8_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uint,  i32,   __builtin_IB_simd_media_block_read_1)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uint2, v2i32, __builtin_IB_simd_media_block_read_2)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uint4, v4i32, __builtin_IB_simd_media_block_read_4)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(uint8, v8i32, __builtin_IB_simd_media_block_read_8)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int,  i32,   __builtin_IB_simd_media_block_read_1)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int2, v2i32, __builtin_IB_simd_media_block_read_2)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int4, v4i32, __builtin_IB_simd_media_block_read_4)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int8, v8i32, __builtin_IB_simd_media_block_read_8)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ulong,  i64,   __builtin_IB_simd_media_block_read_1_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ulong2, v2i64, __builtin_IB_simd_media_block_read_2_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ulong4, v4i64, __builtin_IB_simd_media_block_read_4_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(ulong8, v8i64, __builtin_IB_simd_media_block_read_8_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long,  i64,   __builtin_IB_simd_media_block_read_1_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long2, v2i64, __builtin_IB_simd_media_block_read_2_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long4, v4i64, __builtin_IB_simd_media_block_read_4_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(long8, v8i64, __builtin_IB_simd_media_block_read_8_l)
 #endif // cl_intel_subgroups_long
 
 // OpSubgroupImageBlockWriteINTEL
