@@ -900,9 +900,6 @@ namespace IGC
         // Adding multiversioning to partially redundant samples, if AIL is on.
         bool m_enableSampleMultiversioning = false;
 
-        // Do not generate gen binary, emit vISA only.
-        bool m_compileToVISAOnly = false;
-
         bool m_src1RemovedForBlendOpt = false;
         llvm::AssemblyAnnotationWriter* annotater = nullptr;
 
@@ -1437,6 +1434,9 @@ namespace IGC
         bool m_ShouldUseNonCoherentStatelessBTI;
         uint32_t m_numUAVs = 0;
 
+        // Additional text visaasm to link.
+        const char* m_VISAAsmToLink = nullptr;
+
         OpenCLProgramContext(
             const COCLBTILayout& btiLayout,
             const CPlatform& platform,
@@ -1452,6 +1452,9 @@ namespace IGC
             isSpirV(false),
             m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
         {
+            if (pInputArgs && pInputArgs->pVISAAsmToLink) {
+                m_VISAAsmToLink = pInputArgs->pVISAAsmToLink;
+            }
         }
         bool isSPIRV() const;
         void setAsSPIRV();

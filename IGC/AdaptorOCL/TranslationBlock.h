@@ -175,6 +175,9 @@ struct STB_TranslateInputArgs
     const uint32_t* pSpecConstantsIds;    // user-defined spec constants ids
     const uint64_t* pSpecConstantsValues; // spec constants values to be translated
     uint32_t        SpecConstantsSize;    // number of specialization constants
+    const char*     pVISAAsmToLink;       // additional visa assembly in text format
+                                          // that should be linked with compiled module.
+                                          // Used e.g. for "sginvoke" functionality.
 
     STB_TranslateInputArgs()
     {
@@ -191,6 +194,7 @@ struct STB_TranslateInputArgs
         pSpecConstantsIds     = NULL;
         pSpecConstantsValues  = NULL;
         SpecConstantsSize     = 0;
+        pVISAAsmToLink        = NULL;
     }
 };
 

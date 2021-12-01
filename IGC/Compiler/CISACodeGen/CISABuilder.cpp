@@ -5280,6 +5280,11 @@ namespace IGC
         IGC_ASSERT(nullptr != m_program);
         CodeGenContext* const context = m_program->GetContext();
         SProgramOutput* const pOutput = m_program->ProgramOutput();
+        const char* additionalVISAAsmToLink = nullptr;
+        if(context->type == ShaderType::OPENCL_SHADER) {
+            auto cl_context = static_cast<OpenCLProgramContext*>(context);
+            additionalVISAAsmToLink = cl_context->m_VISAAsmToLink;
+        }
 
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
         {
@@ -5353,7 +5358,7 @@ namespace IGC
         }
 
         // Compile generated VISA text string for inlineAsm
-        if (m_hasInlineAsm || visaAsmOverride)
+        if (m_hasInlineAsm || visaAsmOverride || additionalVISAAsmToLink)
         {
             llvm::SmallVector<const char*, 10> params;
             llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> params2;
@@ -5397,13 +5402,6 @@ namespace IGC
                         break;
                     }
                 }
-                // After call to ParseVISAText, we have new VISAKernel, which don't have asm path set.
-                // So we need to set the OutputAsmPath attribute of overridden kernel,
-                // otherwise, we will not get .visaasm dump and .asm file dump
-                auto kernelName = IGC::Debug::GetDumpNameObj(m_program, "").GetKernelName();
-                std::string asmName = GetDumpFileName("asm");
-                auto overriddenKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
-                overriddenKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str());
 
                 // We need to update stackFuncMap for the symbol table for the overridden object,
                 // because stackFuncMap contains information about functions for original object.
@@ -5428,8 +5426,21 @@ namespace IGC
             }
             else
             {
-                std::string parseTextFile = GetDumpFileName("inline.visaasm");
-                auto result = vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextStream().str(), parseTextFile);
+                int result = 0;
+                if (m_hasInlineAsm) {
+                    std::string parseTextFile = GetDumpFileName("inline.visaasm");
+                    result = vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextStream().str(), parseTextFile);
+                }
+
+                if (result == 0 && additionalVISAAsmToLink) {
+                    std::stringstream ss;
+                    result = vbuilder->Compile(
+                        m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
+                        &ss, true);
+                    result = vAsmTextBuilder->ParseVISAText(vMainKernel->getVISAAsm(), "");
+                    result = vAsmTextBuilder->ParseVISAText(additionalVISAAsmToLink, "");
+                }
+
                 if (result != 0)
                 {
                     std::string output;
@@ -5453,23 +5464,28 @@ namespace IGC
                     // vISA verifier is already invoked in ParseVISAText earlier
                     vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, true);
                 }
+
+                if (visaAsmOverride || additionalVISAAsmToLink) {
+                    // After call to ParseVISAText, we have new VISAKernel, which don't have asm path set.
+                    // So we need to set the OutputAsmPath attribute of overridden kernel,
+                    // otherwise, we will not get .visaasm dump and .asm file dump
+                    auto kernelName = IGC::Debug::GetDumpNameObj(m_program, "").GetKernelName();
+                    std::string asmName = GetDumpFileName("asm");
+                    auto vKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
+                    vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str());
+                }
+
                 pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
-                std::stringstream ss;
                 vIsaCompile = vAsmTextBuilder->Compile(
-                    m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
-                    (context->m_compileToVISAOnly) ? &ss : nullptr,
-                    context->m_compileToVISAOnly);
+                    m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
             }
         }
         //Compile to generate the V-ISA binary
         else
         {
             pMainKernel = vMainKernel;
-            std::stringstream ss;
             vIsaCompile = vbuilder->Compile(
-                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
-                (context->m_compileToVISAOnly) ? &ss : nullptr,
-                context->m_compileToVISAOnly);
+                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
         }
 
         COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
@@ -5592,11 +5608,6 @@ namespace IGC
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL32, (int)jitInfo->isSpill);
         }
 #endif
-
-        if (context->m_compileToVISAOnly) {
-            return;
-        }
-
         void* genxbin = nullptr;
         int size = 0, binSize = 0;
         bool binOverride = false;
