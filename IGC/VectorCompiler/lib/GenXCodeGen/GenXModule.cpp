@@ -164,20 +164,18 @@ bool GenXModule::runOnModule(Module &M) {
   IGC_ASSERT(FGA->verify());
   return ModuleModified;
 }
-
-using MappingT = genx::di::VisaMapping::Mapping;
-
 void GenXModule::updateVisaMapping(const Function *K, const Instruction *Inst,
                                    unsigned VisaIndex, StringRef Reason) {
   // NOTE: K stands for "kernel function". That is the function that is
   // for the currently generated vISA object
   IGC_ASSERT(K);
 
-  auto PrevCounter = VisaCounter[K];
-  VisaCounter[K] = VisaIndex;
+  auto &CurrentCounter = VisaCounter[K];
+  auto PrevCounter = CurrentCounter;
+  CurrentCounter = VisaIndex;
   if (!Inst) {
     LLVM_DEBUG(dbgs() << "visaCounter update <" << K->getName() << ">:{"
-                      << PrevCounter << "->" << VisaIndex
+                      << PrevCounter << "->" << CurrentCounter
                       << "}, src: " << Reason << "\n");
     return;
   }
@@ -185,8 +183,8 @@ void GenXModule::updateVisaMapping(const Function *K, const Instruction *Inst,
   const auto *F = Inst->getFunction();
   LLVM_DEBUG(dbgs() << "visaCounter update <" << K->getName() << "/"
                     << ((F == K) ? StringRef(".") : F->getName()) << ">: {"
-                    << PrevCounter << "->" << VisaIndex << "}, inst: " << *Inst
-                    << "\n");
+                    << PrevCounter << "->" << CurrentCounter
+                    << "}, inst: " << *Inst << "\n");
 
   // Unfortunately, our CISA builder routines are not very consistent with
   // respect to the interfaces used to emit vISA.
@@ -196,66 +194,12 @@ void GenXModule::updateVisaMapping(const Function *K, const Instruction *Inst,
   // This check is a workaround for a problem when we may emit an auxiliary
   // visa instruction using the interface which requires us to update the
   // "current instruction" without actually doing so.
-  auto &Map = VisaMapping[F];
+  auto &Mapping = VisaMapping[F];
   const Instruction *LastInst =
-      Map.V2I.empty() ? nullptr : Map.V2I.rbegin()->Inst;
-  if (LastInst != Inst) {
-    bool IsDbgInst = isa<DbgInfoIntrinsic>(Inst);
-    Map.V2I.emplace_back(MappingT{VisaIndex, Inst, 0 /*Count*/, IsDbgInst});
-    LLVM_DEBUG(dbgs() << "Added :" << VisaIndex << ": " << *Inst << " \n");
-  }
-  if (!Map.V2I.empty())
-    LLVM_DEBUG(dbgs() << "Last element <"
-                      << " id =" << Map.V2I.rbegin()->VisaIdx
-                      << " count =" << Map.V2I.rbegin()->VisaCount
-                      << " inst: " << *(Map.V2I.rbegin()->Inst) << "\n");
-}
-
-void GenXModule::updateVisaCountMapping(const Function *K,
-                                        const Instruction *Inst,
-                                        unsigned VisaIndex, StringRef Reason) {
-  IGC_ASSERT(K);
-  IGC_ASSERT(Inst);
-  auto PrevCounter = VisaCounter[K];
-  VisaCounter[K] = VisaIndex;
-  const auto *F = Inst->getFunction();
-  auto &Map = VisaMapping[F];
-  if (Map.V2I.empty())
-    return;
-
-  // Update instruction size or remove instruction mapping, if there is
-  // no visa instruction found for it.
-  auto LastElement = Map.V2I.rbegin();
-  // Do not fill mapping for instructions with empty elements
-  // update counter does not called for debug-instructions
-  if (LastElement->VisaIdx == VisaIndex && LastElement->VisaCount == 0 &&
-      LastElement->Inst == Inst) {
-    LLVM_DEBUG(dbgs() << "Remove empty mapping for ");
-    LLVM_DEBUG(LastElement->Inst->dump());
-    Map.V2I.pop_back();
-  } else if (!LastElement->IsDbgInst) {
-    IGC_ASSERT(VisaIndex - PrevCounter >= 0);
-    LastElement->VisaCount = VisaIndex - LastElement->VisaIdx;
-    LLVM_DEBUG(dbgs() << "visaCounter update Map <" << K->getName() << "/"
-                      << ((F == K) ? StringRef(".") : F->getName())
-                      << "> for :{" << PrevCounter << " count = "
-                      << LastElement->VisaCount << " in_inst =" << *Inst
-                      << "}, src: End " << Reason << "\n");
-  } else {
-    IGC_ASSERT(!isa<DbgInfoIntrinsic>(Inst));
-    LLVM_DEBUG(dbgs() << "remove unused instruction from Map <" << K->getName()
-                      << "/" << ((F == K) ? StringRef(".") : F->getName())
-                      << "> for :{" << PrevCounter << " -> " << VisaIndex
-                      << "} inst =" << *Inst << ", src: Lost " << Reason
-                      << "\n");
-    Map.V2I.emplace_back(MappingT{PrevCounter, Inst, VisaIndex - PrevCounter,
-                                  false /*Not dbg inst!*/});
-  }
-
-  if (!Map.V2I.empty())
-    LLVM_DEBUG(dbgs() << "Last element <" << Map.V2I.rbegin()->VisaIdx
-                      << " id = "
-                      << " inst: " << *(Map.V2I.rbegin()->Inst) << "\n");
+      Mapping.V2I.empty() ? nullptr : Mapping.V2I.rbegin()->Inst;
+  using MappingT = genx::di::VisaMapping::Mapping;
+  if (LastInst != Inst)
+    Mapping.V2I.emplace_back(MappingT{CurrentCounter, Inst});
 }
 
 const genx::di::VisaMapping *

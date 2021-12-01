@@ -43,9 +43,6 @@ struct VisaMapping {
   struct Mapping {
     unsigned VisaIdx = 0;
     const Instruction *Inst = nullptr;
-    // Count of VISA instruction for this llvm Inst
-    unsigned VisaCount = 0;
-    bool IsDbgInst = false;
   };
   std::vector<Mapping> V2I;
 };
