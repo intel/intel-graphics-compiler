@@ -397,6 +397,8 @@ namespace IGC
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
         uint64_t    SIMDInfo;
+        void* m_StagingCtx;
+        bool m_RequestStage2;
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
