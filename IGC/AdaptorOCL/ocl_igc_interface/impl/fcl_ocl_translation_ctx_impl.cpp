@@ -35,9 +35,11 @@ SPDX-License-Identifier: MIT
 #pragma warning(default:4141)
 
 #include <algorithm>
+#include <numeric>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 #if defined(__ANDROID__)
@@ -59,6 +61,138 @@ SPDX-License-Identifier: MIT
 #include "cif/macros/enable.h"
 
 #include <memory>
+
+namespace {
+
+using HashType = unsigned long long;
+
+struct FeShaderDumpData {
+    struct DumpDescriptor {
+        llvm::StringRef OutputName;
+        llvm::StringRef Contents;
+    };
+    FeShaderDumpData(PLATFORM *Platform, const char *Selected,
+                     int Stepping, CIF::Builtins::BufferSimple* src,
+                     CIF::Builtins::BufferSimple* options,
+                     CIF::Builtins::BufferSimple* internalOptions,
+                     CIF::Builtins::BufferSimple* tracingOptions);
+    std::vector<DumpDescriptor> getDumps() const;
+
+private:
+    std::string PlatformInformation;
+    CIF::Builtins::BufferSimple* InputSource = nullptr;
+    CIF::Builtins::BufferSimple* Options = nullptr;
+    CIF::Builtins::BufferSimple* InternalOptions = nullptr;
+    CIF::Builtins::BufferSimple* TracingOptions = nullptr;
+};
+
+FeShaderDumpData::FeShaderDumpData(PLATFORM *Platform, const char *Selected,
+                                   int Stepping,
+                                   CIF::Builtins::BufferSimple* Src,
+                                   CIF::Builtins::BufferSimple* Opts,
+                                   CIF::Builtins::BufferSimple* InternalOpts,
+                                   CIF::Builtins::BufferSimple* TracingOpts) {
+    std::ostringstream Os;
+    if (Platform) {
+        auto Core = Platform->eDisplayCoreFamily;
+        auto RenderCore = Platform->eRenderCoreFamily;
+        auto Product = Platform->eProductFamily;
+        auto RevId = Platform->usRevId;
+
+        Os << "NEO passed: DisplayCore = " << Core
+            << ", RenderCore = " << RenderCore << ", Product = " << Product
+            << ", Revision = " << RevId << "\n";
+        Os << "IGC translated into: " << Selected << ", " << Stepping << "\n";
+    } else {
+        Os << "Nothing came from NEO\n";
+    }
+    PlatformInformation = Os.str();
+
+    InputSource = Src;
+    Options = Opts;
+    InternalOptions = InternalOpts;
+    TracingOptions = TracingOpts;
+}
+
+std::vector<FeShaderDumpData::DumpDescriptor> FeShaderDumpData::getDumps() const {
+    auto AsStringRef = [](CIF::Builtins::BufferSimple* Src) {
+        if (!Src)
+            return llvm::StringRef();
+        size_t Size = Src->GetSize<char>();
+        const char* Buff = Src->GetMemory<char>();
+        return llvm::StringRef(Buff, Size);
+    };
+    return {
+        { "platform", PlatformInformation.c_str() },
+        { "source_code", AsStringRef(InputSource) },
+        { "options", AsStringRef(Options) },
+        { "internal_options", AsStringRef(InternalOptions) },
+        { "tracing_options", AsStringRef(TracingOptions) }
+    };
+}
+
+std::optional<FeShaderDumpData>
+getShaderDumpData(PLATFORM *Platform, const char *Selected,
+                  int Stepping, CIF::Builtins::BufferSimple* Src,
+                  CIF::Builtins::BufferSimple* Options,
+                  CIF::Builtins::BufferSimple* InternalOptions,
+                  CIF::Builtins::BufferSimple* TracingOptions) {
+#if defined( _DEBUG ) || defined( _INTERNAL )
+    if (!FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+        return {};
+
+    return FeShaderDumpData(Platform, Selected, Stepping, Src,
+                            Options, InternalOptions, TracingOptions);
+#else
+    return {};
+#endif
+}
+
+void emitFCLDump(llvm::StringRef FilenamePrefix,
+                        FeShaderDumpData::DumpDescriptor DataToDump) {
+#if defined( _DEBUG ) || defined( _INTERNAL )
+    // do factual dump, this part can be replaced to DumpShaderFile
+    const char *DstDir = FCL::GetShaderOutputFolder();
+    std::ostringstream FullPath(DstDir, std::ostringstream::ate);
+    FullPath << FilenamePrefix.str() << "_" << DataToDump.OutputName.str()
+             << ".txt";
+    // NOTE: for now, we expect only text data here
+    std::ofstream OutF(FullPath.str(), std::ofstream::out);
+    // if we can create dump file at all...
+    if (OutF)
+        OutF.write(DataToDump.Contents.data(), DataToDump.Contents.size());
+#endif
+}
+
+std::string makeShaderDumpPrefixWithHash(llvm::StringRef Prefix,
+                                                HashType Hash) {
+    std::ostringstream OS;
+    OS << Prefix.str() << std::hex << std::setfill('0') <<
+        std::setw(sizeof(Hash) * CHAR_BIT / 4) << Hash;
+    return OS.str();
+}
+
+void DoShaderDumpPreFE(const FeShaderDumpData& DumpInfo) {
+    auto Dumps = DumpInfo.getDumps();
+    auto Hash = std::accumulate(Dumps.begin(), Dumps.end(), 0ull,
+        [](const auto& HashVal, const auto& DI) {
+            const auto *BuffStart = DI.Contents.data();
+            auto BuffSize = DI.Contents.size();
+            return HashVal ^ iSTD::HashFromBuffer(BuffStart, BuffSize);
+        });
+    auto DumpNamePrefix = makeShaderDumpPrefixWithHash("VC_fe_", Hash);
+    for (const auto &DumpDescriptor : Dumps)
+      emitFCLDump(DumpNamePrefix, DumpDescriptor);
+};
+
+void DoShaderDumpPostFE(const FeShaderDumpData& DumpInfo,
+                               HashType Hash) {
+    auto DumpNamePrefix = makeShaderDumpPrefixWithHash("VC_PostFe_", Hash);
+    for (const auto &DumpDescriptor : DumpInfo.getDumps())
+      emitFCLDump(DumpNamePrefix, DumpDescriptor);
+};
+
+}
 
 namespace IGC {
 
@@ -82,9 +216,6 @@ void CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 2)::GetFclOptions(CIF::Builti
 void CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 2)::GetFclInternalOptions(CIF::Builtins::BufferSimple* opts){
    CIF_GET_PIMPL()->GetFclInternalOptions(opts);
 }
-}
-
-namespace IGC {
 
 llvm::Optional<std::vector<char>> readBinaryFile(const std::string& fileName) {
     std::ifstream file(fileName, std::ios_base::binary);
@@ -100,16 +231,17 @@ llvm::Optional<std::vector<char>> readBinaryFile(const std::string& fileName) {
     return binary;
 }
 
+
 #if defined(IGC_VC_ENABLED)
 
 using InvocationInfo = IGC::AdaptorCM::Frontend::IDriverInvocation;
 using PathT = llvm::SmallVector<char, 1024>;
 
 using CMStringVect = IGC::AdaptorCM::Frontend::StringVect_t;
-std::vector<char> makeVcOptPayload(uint64_t IR_size,
-                                   const std::string& VCApiOpts,
-                                   const CMStringVect& VCLLVMOptions,
-                                   const std::string& TargetFeaturesStr) {
+static std::vector<char>
+makeVcOptPayload(uint64_t IR_size, const std::string& VCApiOpts,
+                 const CMStringVect& VCLLVMOptions,
+                 const std::string& TargetFeaturesStr) {
     std::string InternalVcOptions;
     if (!VCLLVMOptions.empty()) {
         InternalVcOptions +=
@@ -145,11 +277,12 @@ std::vector<char> makeVcOptPayload(uint64_t IR_size,
     return VcPayload;
 }
 
-void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs& FEOutput,
-                      const std::string& VCApiOptions,
-                      const CMStringVect& VCLLVMOptions,
-                      const std::string& TargetFeatures,
-                      OclTranslationOutputBase& Output)
+static void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs& FEOutput,
+                             const std::string& VCApiOptions,
+                             const CMStringVect& VCLLVMOptions,
+                             const std::string& TargetFeatures,
+                             OclTranslationOutputBase& Output,
+                             const std::optional<FeShaderDumpData>& ShaderDumpInfo)
 {
     auto& OutputInterface = *Output.GetImpl();
     const auto& ErrLog = FEOutput.getLog();
@@ -187,6 +320,13 @@ void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs& FEOutput,
     {
         OutputInterface.SetError(TranslationErrorType::Internal, "OOM (cm FE)");
         return;
+    }
+
+    if (ShaderDumpInfo)
+    {
+        auto HashValue = iSTD::HashFromBuffer(FinalOutput.data(),
+                                              FinalOutput.size());
+        DoShaderDumpPostFE(*ShaderDumpInfo, HashValue);
     }
 }
 
@@ -361,79 +501,6 @@ static std::string getCMFEWrapperDir() {
 
 #endif // defined(IGC_VC_ENABLED)
 
-// This essentialy duplicates existing DumpShaderFile in dllInterfaceCompute
-// but now I see no way to reuse it. To be converged later
-static void DumpInputs(PLATFORM *Platform, const char *Selected,
-                       int Stepping, CIF::Builtins::BufferSimple* src,
-                       CIF::Builtins::BufferSimple* options,
-                       CIF::Builtins::BufferSimple* internalOptions,
-                       CIF::Builtins::BufferSimple* tracingOptions) {
-#if defined( _DEBUG ) || defined( _INTERNAL )
-  // check for shader dumps enabled
-  if (!FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-    return;
-
-  auto AsStringRef = [](CIF::Builtins::BufferSimple* Src) {
-     if (!Src)
-       return llvm::StringRef();
-     size_t Size = Src->GetSize<char>();
-     const char* Buff = Src->GetMemory<char>();
-     return llvm::StringRef(Buff, Size);
-  };
-  // dump if yes
-  std::ostringstream Os;
-  if (Platform) {
-    auto Core = Platform->eDisplayCoreFamily;
-    auto RenderCore = Platform->eRenderCoreFamily;
-    auto Product = Platform->eProductFamily;
-    auto RevId = Platform->usRevId;
-
-    Os << "NEO passed: DisplayCore = " << Core
-       << ", RenderCore = " << RenderCore << ", Product = " << Product
-       << ", Revision = " << RevId << "\n";
-    Os << "IGC translated into: " << Selected << ", " << Stepping << "\n";
-  } else {
-    Os << "Nothing came from NEO\n";
-  }
-  auto PlatformInfo = Os.str();
-
-  struct DumpDescriptor {
-    llvm::StringRef OutputName;
-    llvm::StringRef Contents;
-  };
-  std::array<DumpDescriptor, 5> Dumps = {{
-    { "platform", PlatformInfo.c_str() },
-    { "options", AsStringRef(options) },
-    { "internal_options", AsStringRef(internalOptions) },
-    { "tracing_options", AsStringRef(tracingOptions) },
-    { "source_code", AsStringRef(src) }
-  }};
-  using HashType = unsigned long long;
-  auto Hash = std::accumulate(Dumps.begin(), Dumps.end(), 0ull,
-      [](const auto& HashVal, const auto& DI) {
-          const auto *BuffStart = DI.Contents.data();
-          auto BuffSize = DI.Contents.size();
-          return HashVal ^ iSTD::HashFromBuffer(BuffStart, BuffSize);
-      });
-
-  std::for_each(Dumps.begin(), Dumps.end(),
-      [&Hash](const auto &DI) {
-          // do factual dump, this part can be replaced to DumpShaderFile
-          const char *DstDir = FCL::GetShaderOutputFolder();
-          std::ostringstream FullPath(DstDir, std::ostringstream::ate);
-          FullPath << "VC_fe_"  << std::hex << std::setfill('0')
-              << std::setw(sizeof(Hash) * CHAR_BIT / 4) << Hash << std::dec
-              << std::setfill(' ') << "_" << DI.OutputName.str() << ".txt";
-          // NOTE: for now, we expect only text data here
-          std::ofstream OutF(FullPath.str(), std::ofstream::out);
-          // if we can create dump file at all...
-          if (OutF)
-            OutF.write(DI.Contents.data(), DI.Contents.size());
-      });
-
-#endif // defined( _DEBUG ) || defined( _INTERNAL )
-}
-
 OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     CIF::Version_t outVersion,
     CIF::Builtins::BufferSimple* src,
@@ -461,8 +528,11 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
       platformStr = cmc::getPlatformStr(PlatformImpl->p, /* inout */ stepping);
     }
 
-    DumpInputs(platformDescr, platformStr, stepping,
-               src, options, internalOptions, tracingOptions);
+    auto ShaderDumpData = getShaderDumpData(platformDescr, platformStr,
+                                            stepping, src, options,
+                                            internalOptions, tracingOptions);
+    if (ShaderDumpData)
+        DoShaderDumpPreFE(*ShaderDumpData);
 
     OclTranslationOutputBase& Out = *outputInterface;
 
@@ -518,7 +588,8 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     if (!VCFinalizerOpts.empty())
       VCApiOpts += " -Xfinalizer '" + llvm::join(VCFinalizerOpts, " ") + "'";
 
-    finalizeFEOutput(*FEOutput, VCApiOpts, VCLLVMOpts, TargetFeatures, Out);
+    finalizeFEOutput(*FEOutput, VCApiOpts, VCLLVMOpts, TargetFeatures, Out,
+                     ShaderDumpData);
 
     FclInternalOpts = std::string(" -llvm-options='" + llvm::join(VCLLVMOpts, " ") + "'");
     FclOpts = VCApiOpts;
