@@ -323,7 +323,7 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
         if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013341720) &&
             inst->opcode() == G4_dpas && opnd_num == Opnd_src1)
         {
-            uint32_t bytes = getGRFSize() * 8;
+            uint32_t bytes = numEltPerGRF<Type_UB>() * 8;
             RB = LB + bytes - 1;
         }
         break;
@@ -5306,13 +5306,12 @@ bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode)
 #define SRC2_CACHE_SIZE 1024
 bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
 {
-    unsigned short GRFSize = getGRFSize();
     BitSet cachedGRF(totalGRFNum, false);
 
     for (const SBFootprint* fp = curNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
     {
-        unsigned short leftB = fp->LeftB / GRFSize;
-        unsigned short rightB = fp->RightB / GRFSize;
+        unsigned short leftB = fp->LeftB / numEltPerGRF<Type_UB>();
+        unsigned short rightB = fp->RightB / numEltPerGRF<Type_UB>();
         for (unsigned short i = leftB; i <= rightB; i++)
         {
             cachedGRF.set(i, true);
@@ -5321,8 +5320,8 @@ bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
 
     for (const SBFootprint* fp = nextNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
     {
-        unsigned short leftB = fp->LeftB / GRFSize;
-        unsigned short rightB = fp->RightB / GRFSize;
+        unsigned short leftB = fp->LeftB / numEltPerGRF<Type_UB>();
+        unsigned short rightB = fp->RightB / numEltPerGRF<Type_UB>();
         for (unsigned short i = leftB; i <= rightB; i++)
         {
             cachedGRF.set(i, true);
@@ -5338,23 +5337,21 @@ bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
         }
     }
 
-    return cachedGRFNum <= (SRC2_CACHE_SIZE + GRFSize - 1) / GRFSize;
+    return cachedGRFNum <= (SRC2_CACHE_SIZE + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
 }
 
 bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) const
 {
-    unsigned short GRFSize = getGRFSize();
-
     for (const SBFootprint* fp = curNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
     {
-        unsigned short leftB = fp->LeftB / GRFSize;
-        unsigned short rightB = fp->RightB / GRFSize;
+        unsigned short leftB = fp->LeftB / numEltPerGRF<Type_UB>();
+        unsigned short rightB = fp->RightB / numEltPerGRF<Type_UB>();
         G4_Type type = fp->type;
 
         for (const SBFootprint* nextfp = nextNode->getFirstFootprint(Opnd_src2); nextfp; nextfp = nextfp->next)
         {
-            unsigned short nextLeftB = nextfp->LeftB / GRFSize;
-            unsigned short nextRightB = nextfp->RightB / GRFSize;
+            unsigned short nextLeftB = nextfp->LeftB / numEltPerGRF<Type_UB>();
+            unsigned short nextRightB = nextfp->RightB / numEltPerGRF<Type_UB>();
             G4_Type nextType = nextfp->type;
 
             if (!(nextLeftB > rightB || nextRightB < leftB))
@@ -5646,7 +5643,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             builder.getOption(vISA_ScheduleFor2xSP) &&
             is2xDPBlockCandidate(curInst, true))
         {
-            int depDistance = curInst->getDst()->getLinearizedEnd() - curInst->getDst()->getLinearizedStart() + 1;
+            unsigned depDistance = curInst->getDst()->getLinearizedEnd() - curInst->getDst()->getLinearizedStart() + 1;
             std::list<G4_INST*>::iterator iNextInst = iInst;
             iNextInst++;
             G4_INST* nInst = *iNextInst;
@@ -5666,13 +5663,13 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 {
                     break;
                 }
-                if (depDistance >= getGRFSize() * 8)
+                if (depDistance >= numEltPerGRF<Type_UB>() * 8)
                 {
                     break;
                 }
             }
 
-            if (depDistance >= getGRFSize() * 8)
+            if (depDistance >= numEltPerGRF<Type_UB>() * 8)
             {
                 curInst->setNoACCSBSet();
             }
