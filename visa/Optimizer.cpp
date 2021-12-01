@@ -13403,6 +13403,8 @@ void Optimizer::applyFusedCallWA()
             kernel.m_instToBBs.insert(std::make_pair(nCallI, smallB0));
 
             kernel.m_maskOffWAInsts.insert(std::make_pair(I3, BB));
+            kernel.m_maskOffWAInsts.insert(std::make_pair(I4_ip_start, BB));
+            kernel.m_maskOffWAInsts.insert(std::make_pair(I4_patch_add, BB));
         }
 
         G4_Label* smallB0Label = smallB0->front()->getLabel();
