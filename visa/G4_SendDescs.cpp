@@ -201,7 +201,7 @@ G4_SendDescLdSt::G4_SendDescLdSt(
 static size_t toExecSlots(const G4_SendDescLdSt &d)
 {
     int minExecSize = 8;
-    if (getGenxPlatform() >= TARGET_PLATFORM::GENX_PVC)
+    if (getGenxPlatform() >= TARGET_PLATFORM::Xe_PVC)
         minExecSize = 16;
     MUST_BE_TRUE(false, "TODO: needs to deal with half size LSC messages");
     MUST_BE_TRUE(false, "TODO: need to deal with varying typed message sizes");

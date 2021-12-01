@@ -208,17 +208,17 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform, Stepping step
             VISA_WA_ENABLE(pWaTable, Wa_1406950495);
             VISA_WA_ENABLE(pWaTable, Wa_16013338947);
             break;
-        case XeHP_SDV:
+        case Xe_XeHPSDV:
             VISA_WA_ENABLE(pWaTable, Wa_1406950495);
             VISA_WA_ENABLE(pWaTable, Wa_16013338947);
             break;
-        case GENX_DG2:
+        case Xe_DG2:
             VISA_WA_ENABLE(pWaTable, Wa_16013338947);
             break;
-        case GENX_PVC:
+        case Xe_PVC:
             VISA_WA_ENABLE(pWaTable, Wa_16013338947);
             break;
-        case GENX_PVCXT:
+        case Xe_PVCXT:
             VISA_WA_ENABLE(pWaTable, Wa_16013338947);
             break;
         default:

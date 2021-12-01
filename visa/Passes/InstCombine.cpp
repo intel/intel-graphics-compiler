@@ -189,7 +189,7 @@ bool InstCombiner::tryInstPropagate(
         return false; // someone clobbers one of the def() sources before the use()
     }
 
-    bool canFoldAdd3 = getGenxPlatform() >= XeHP_SDV;
+    bool canFoldAdd3 = getGenxPlatform() >= Xe_XeHPSDV;
 
     // defer folding until we can prove all uses can be done
     std::vector<std::function<void()>> applyUses;

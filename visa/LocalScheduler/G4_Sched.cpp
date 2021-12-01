@@ -661,15 +661,15 @@ GRFMode::GRFMode()
 {
     switch (getGenxPlatform())
     {
-    case GENX_DG2:
+    case Xe_DG2:
         configurations.resize(2);
         // Configurations for this platform <GRF, numThreads>
         configurations[0] = std::make_pair(128, 8);
         configurations[1] = std::make_pair(256, 4);
         defaultMode = 0; // default GRF mode
         break;
-    case GENX_PVC:
-    case GENX_PVCXT:
+    case Xe_PVC:
+    case Xe_PVCXT:
         configurations.resize(6);
         // Configurations for this platform <GRF, numThreads>
         configurations[0] = std::make_pair(64, 12);

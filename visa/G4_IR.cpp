@@ -960,7 +960,7 @@ bool G4_INST::distanceHonourInstruction() const
     }
     if (isMathPipeInst())
     {
-        if (builder.getPlatform() >= GENX_PVC)
+        if (builder.getPlatform() >= Xe_PVC)
         {
             return true;
         }
@@ -979,7 +979,7 @@ bool G4_INST::tokenHonourInstruction() const
     {
         if (isMathPipeInst())
         {
-            if (builder.getPlatform() >= GENX_PVC)
+            if (builder.getPlatform() >= Xe_PVC)
             {
                 return false;
             }
@@ -7802,7 +7802,7 @@ bool G4_INST::supportsNullDst() const
     {
         return true;
     }
-    if (builder.getPlatform() >= GENX_PVC && dst->getTypeSize() == 1)
+    if (builder.getPlatform() >= Xe_PVC && dst->getTypeSize() == 1)
     {
         // null:b not supported
         return false;
@@ -8305,7 +8305,7 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const
     // dst must be GRF-aligned
     if ((getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
     {
-        if (!(isMixedMode() && builder.getPlatform() == XeHP_SDV))
+        if (!(isMixedMode() && builder.getPlatform() == Xe_XeHPSDV))
             return false;
     }
 

@@ -1915,7 +1915,7 @@ G4_INST* IR_Builder::createInst(
 
     if (op == G4_madw)
     {
-        MUST_BE_TRUE(getPlatform() >= GENX_PVC || execSize != g4::SIMD32, "SIMD32 is not supported on this platform for madw");
+        MUST_BE_TRUE(getPlatform() >= Xe_PVC || execSize != g4::SIMD32, "SIMD32 is not supported on this platform for madw");
     }
 
     G4_INST* i = NULL;

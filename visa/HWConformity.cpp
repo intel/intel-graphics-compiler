@@ -1601,7 +1601,7 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB* bb)
     {
         dst->setType(Type_UD);
     }
-    else if (builder.getPlatform() >= GENX_PVC && dst->getType() == Type_Q)
+    else if (builder.getPlatform() >= Xe_PVC && dst->getType() == Type_Q)
     {
         dst->setType(Type_UQ);
     }
@@ -1614,7 +1614,7 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB* bb)
     {
         src->setType(Type_UD);
     }
-    else if (builder.getPlatform() >= GENX_PVC && src->getType() == Type_Q)
+    else if (builder.getPlatform() >= Xe_PVC && src->getType() == Type_Q)
     {
         src->setType(Type_UQ);
     }
@@ -5822,7 +5822,7 @@ void HWConformity::conformBB(G4_BB* bb)
 #endif
     }
 
-    if (builder.getPlatform() == GENX_PVCXT) {
+    if (builder.getPlatform() == Xe_PVC) {
       for (auto I = bb->begin(), E = bb->end(); I != E;) {
         auto inst = *I;
         auto next = std::next(I);
@@ -9282,7 +9282,7 @@ void HWConformity::fixShiftInsts(INST_LIST_ITER i, G4_BB* bb)
 
     bool needWA = false;
 
-    if (builder.getPlatform() == GENX_PVCXT && !IS_QTYPE(dst->getType()) && !IS_QTYPE(src0->getType()) && IS_QTYPE(src1->getType()))
+    if (builder.getPlatform() == Xe_PVCXT && !IS_QTYPE(dst->getType()) && !IS_QTYPE(src0->getType()) && IS_QTYPE(src1->getType()))
     {
         needWA = true;
     }
@@ -9333,7 +9333,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
     auto execSize = madwInst->getExecSize();
     MUST_BE_TRUE(madwInst->opcode() == G4_madw, "expect madw instruction");
 
-    MUST_BE_TRUE(builder.getPlatform() >= GENX_PVC || execSize != g4::SIMD32, "SIMD32 is not supported on this platform for madw");
+    MUST_BE_TRUE(builder.getPlatform() >= Xe_PVC || execSize != g4::SIMD32, "SIMD32 is not supported on this platform for madw");
 
     auto dst = madwInst->getDst();
     MUST_BE_TRUE(IS_DTYPE(dst->getType()), "dst only supports DW type");

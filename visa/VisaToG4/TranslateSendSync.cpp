@@ -491,7 +491,7 @@ void IR_Builder::generateBarrierWait()
         }
     }
     else {
-        if (getPlatform() >= GENX_PVC) {
+        if (getPlatform() >= Xe_PVC) {
             // PVC: sync.bar 0
             waitSrc = createImm(0, Type_UD);
         } else {

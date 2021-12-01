@@ -25,12 +25,12 @@ uint16_t LatencyTable::getDPAS8x8Latency() const
 {
     switch(m_builder->getPlatform())
     {
-        case XeHP_SDV:
-        case GENX_PVC:
+        case Xe_XeHPSDV:
+        case Xe_PVC:
             return uint16_t(LatenciesXe::DPAS + 7); //28
-        case GENX_PVCXT:
+        case Xe_PVCXT:
             return uint16_t(LatenciesXe::DPAS + 1 + 7); //29
-        case GENX_DG2:
+        case Xe_DG2:
             return 32;
         default: //Not suppport platform
            return 46;
@@ -177,19 +177,19 @@ uint16_t LatencyTable::getLatencyG12(const G4_INST* Inst) const
     }
     if (Inst->isDpas()) {
 
-        if (m_builder->getPlatform() ==  GENX_PVC)
+        if (m_builder->getPlatform() == Xe_PVC)
         {
             G4_InstDpas *dpas = Inst->asDpasInst();
             return uint16_t(LatenciesXe::DPAS + dpas->getRepeatCount() - 1);
         }
 
-        if (m_builder->getPlatform() ==  GENX_PVCXT)
+        if (m_builder->getPlatform() == Xe_PVCXT)
         {
             G4_InstDpas *dpas = Inst->asDpasInst();
             return uint16_t(LatenciesXe::DPAS + 1 + dpas->getRepeatCount() - 1); //22 ~29
         }
 
-        if (m_builder->getPlatform() ==  GENX_DG2)
+        if (m_builder->getPlatform() == Xe_DG2)
         {
             G4_InstDpas *dpas = Inst->asDpasInst();
             switch(dpas->getRepeatCount())

@@ -494,7 +494,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 28 (0x1C)
-    { XeHP_SDV, ISA_DPASW, ISA_Inst_Misc, "dpasw", 6, SAME_DATA_TYPE,
+    { Xe_XeHPSDV, ISA_DPASW, ISA_Inst_Misc, "dpasw", 6, SAME_DATA_TYPE,
     {
         { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
         { OPND_DST_GEN, ISA_TYPE_D | ISA_TYPE_UD | ISA_TYPE_F, GRF_ALIGNED },
@@ -506,7 +506,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 29 (0x1D)
-    { GENX_PVC, ISA_FCVT, ISA_Inst_Mov, "fcvt", 3, SAME_SPECIAL_KIND,
+    { Xe_PVC, ISA_FCVT, ISA_Inst_Mov, "fcvt", 3, SAME_SPECIAL_KIND,
     {
         { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
         { OPND_DST_GEN, ISA_TYPE_UB | ISA_TYPE_UD | ISA_TYPE_HF | ISA_TYPE_F, 0 },
@@ -515,7 +515,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 30 (0x1E)
-    { GENX_PVCXT, ISA_SRND, ISA_Inst_Arith, "srnd", 4, SAME_SPECIAL_KIND,
+    { Xe_PVCXT, ISA_SRND, ISA_Inst_Arith, "srnd", 4, SAME_SPECIAL_KIND,
     {
         { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
         { OPND_DST_GEN, ISA_TYPE_UB | ISA_TYPE_HF, 0 },
@@ -1244,7 +1244,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 96 (0x60)
-    { GENX_PVC, ISA_NBARRIER, ISA_Inst_Sync, "nbarrier", 3, 0,
+    { Xe_PVC, ISA_NBARRIER, ISA_Inst_Sync, "nbarrier", 3, 0,
         {
             { OPND_IMM, ISA_TYPE_UB, 0 },
             { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, 0 },
@@ -1676,7 +1676,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 131 (0x83)
-    { XeHP_SDV, ISA_DPAS, ISA_Inst_Misc, "dpas", 6, SAME_DATA_TYPE,
+    { Xe_XeHPSDV, ISA_DPAS, ISA_Inst_Misc, "dpas", 6, SAME_DATA_TYPE,
     {
         { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
         { OPND_DST_GEN, ISA_TYPE_D | ISA_TYPE_UD | ISA_TYPE_F, GRF_ALIGNED },
@@ -1713,7 +1713,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 134 (0x86)
-    { XeHP_SDV, ISA_QW_GATHER, ISA_Inst_Data_Port, "qw_gather", 6, 0,
+    { Xe_XeHPSDV, ISA_QW_GATHER, ISA_Inst_Data_Port, "qw_gather", 6, 0,
     {
         { OPND_EXECSIZE,           ISA_TYPE_UB, 0 },             /// execution size
         { OPND_PRED,               ISA_TYPE_UW, 0 },             /// predicate
@@ -1725,7 +1725,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 135 (0x87)
-    { XeHP_SDV, ISA_QW_SCATTER, ISA_Inst_Data_Port, "qw_scatter", 6, 0,
+    { Xe_XeHPSDV, ISA_QW_SCATTER, ISA_Inst_Data_Port, "qw_scatter", 6, 0,
     {
         { OPND_EXECSIZE,           ISA_TYPE_UB, 0 },             /// execution size
         { OPND_PRED,               ISA_TYPE_UW, 0 },             /// predicate
@@ -1737,7 +1737,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 136 (0x88)
-    { XeHP_SDV, ISA_BF_CVT, ISA_Inst_Mov, "bf_cvt", 3, SAME_SPECIAL_KIND,
+    { Xe_XeHPSDV, ISA_BF_CVT, ISA_Inst_Mov, "bf_cvt", 3, SAME_SPECIAL_KIND,
     {
         { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
         { OPND_DST_GEN, ISA_TYPE_F, 0 },
@@ -1745,19 +1745,19 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
     },
     /// 137 (0x89)
-    { GENX_DG2, ISA_LSC_UNTYPED, ISA_Inst_LSC, "lsc_untyped", 1, SAME_SPECIAL_KIND,
+    { Xe_DG2, ISA_LSC_UNTYPED, ISA_Inst_LSC, "lsc_untyped", 1, SAME_SPECIAL_KIND,
         {
             {OPND_SUBOPCODE, ISA_TYPE_UB, 0}
         },
     },
     /// 138 (0x8A)
-    { GENX_DG2, ISA_LSC_TYPED, ISA_Inst_LSC, "lsc_typed", 1, SAME_SPECIAL_KIND,
+    { Xe_DG2, ISA_LSC_TYPED, ISA_Inst_LSC, "lsc_typed", 1, SAME_SPECIAL_KIND,
         {
             {OPND_SUBOPCODE, ISA_TYPE_UB, 0}
         },
     },
     /// 139 (0x8B)
-    { GENX_DG2, ISA_LSC_FENCE, ISA_Inst_LSC, "lsc_fence", 5, 0,
+    { Xe_DG2, ISA_LSC_FENCE, ISA_Inst_LSC, "lsc_fence", 5, 0,
         {
             /* execution control */
             {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */

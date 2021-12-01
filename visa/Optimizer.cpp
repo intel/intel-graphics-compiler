@@ -7488,7 +7488,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         G4_INST* inst = *ii;
         assert(inst->opcode() == G4_dpas);
-        assert(builder.getPlatform() >= GENX_PVC);
+        assert(builder.getPlatform() >= Xe_PVC);
         G4_InstDpas* dpasInst = inst->asDpasInst();
         uint8_t depth = dpasInst->getSystolicDepth();
         uint8_t repeatC = dpasInst->getRepeatCount();
@@ -7632,7 +7632,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     addFenceCommit(ii, bb, scheduleFenceCommit);
                 }
 
-                if (builder.getPlatform() >= GENX_PVC && inst->opcode() == G4_dpas)
+                if (builder.getPlatform() >= Xe_PVC && inst->opcode() == G4_dpas)
                 {
                     DPASWA(bb, ii, &src2GRFCache);
                 }

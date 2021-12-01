@@ -46,7 +46,7 @@ HANDLE_INST(csel,  3, 1, InstTypeMov, GENX_SKL, ATTR_FLOAT_SRC_ONLY)
   // fcvt: special pseudo instruction for converting b/w a standard float type
   //       and bf8/tf32, which are denoted by Type_UB/Type_UD, respectively.
   //
-HANDLE_INST(fcvt,  1, 1, InstTypeMov, GENX_PVCXT, ATTR_PSEUDO)
+HANDLE_INST(fcvt,  1, 1, InstTypeMov, Xe_PVCXT, ATTR_PSEUDO)
 
 //
 // InstTypeLogic
@@ -62,7 +62,7 @@ HANDLE_INST(bfi2,  3, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(fbh,   1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(fbl,   1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(cbit,  1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
-HANDLE_INST(bfn,  3, 1, InstTypeLogic, XeHP_SDV, ATTR_NONE)
+HANDLE_INST(bfn,  3, 1, InstTypeLogic, Xe_XeHPSDV, ATTR_NONE)
 
 //
 // InstTypeArith
@@ -90,9 +90,9 @@ HANDLE_INST(addc, 2, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
 HANDLE_INST(subb, 2, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
 
 HANDLE_INST(dp4a, 3, 1, InstTypeArith, GENX_TGLLP, ATTR_NONE)
-HANDLE_INST(dpas,  3, 1, InstTypeArith, XeHP_SDV, ATTR_NONE)
-HANDLE_INST(dpasw, 3, 1, InstTypeArith, XeHP_SDV, ATTR_NONE)
-HANDLE_INST(add3,  3, 1, InstTypeArith, XeHP_SDV, ATTR_COMMUTATIVE)
+HANDLE_INST(dpas,  3, 1, InstTypeArith, Xe_XeHPSDV, ATTR_NONE)
+HANDLE_INST(dpasw, 3, 1, InstTypeArith, Xe_XeHPSDV, ATTR_NONE)
+HANDLE_INST(add3,  3, 1, InstTypeArith, Xe_XeHPSDV, ATTR_COMMUTATIVE)
 
 
 HANDLE_INST(madm,   3, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
@@ -100,7 +100,7 @@ HANDLE_INST(madm,   3, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
   // Following are pseudo instructions
   //
 HANDLE_INST(mulh,   2, 1, InstTypeArith, GENX_BDW, ATTR_COMMUTATIVE)
-HANDLE_INST(srnd,   2, 1, InstTypeArith, GENX_PVCXT, ATTR_PSEUDO)
+HANDLE_INST(srnd,   2, 1, InstTypeArith, Xe_PVCXT, ATTR_PSEUDO)
 HANDLE_INST(madw,   3, 1, InstTypeArith, GENX_BDW, ATTR_WIDE_DST)
 
 //
@@ -178,7 +178,7 @@ HANDLE_INST(nop,    0, 0, InstTypeMisc, GENX_BDW, ATTR_NONE)
 HANDLE_INST(sync_nop,   1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_allrd, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_allwr, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
-HANDLE_INST(sync_fence, 1, 0, InstTypeMisc, GENX_PVC, ATTR_NONE)
+HANDLE_INST(sync_fence, 1, 0, InstTypeMisc, Xe_PVC, ATTR_NONE)
 
   //
   // Following are pseudo instructions

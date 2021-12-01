@@ -895,12 +895,12 @@ struct AccAssignment
         }
         else if (builder.hasDoubleAcc())
         {
-            //      8 thread mode	        4 thread mode
+            //      8 thread mode         4 thread mode
             //DF    acc0-acc3,acc8-acc11  acc0-acc15
             //F     acc0-acc3,acc8-acc11  acc0-acc15
             //HF    acc0-acc3,acc8-acc11  acc0-acc15
             //Q(UQ) acc0-acc3             acc0-acc7
-            //D(UD) acc0/acc2	          acc0/acc2/acc4/acc6
+            //D(UD) acc0/acc2             acc0/acc2/acc4/acc6
             //W(UW) acc0/acc2             acc0/acc2/acc4/acc6
             if (!interval->isAllFloat)
             {
@@ -947,7 +947,7 @@ void AccSubPass::multiAccSub(G4_BB* bb)
 
     std::map<G4_INST*, unsigned int> BCInfo;
 
-    if (builder.getPlatform() == XeHP_SDV)
+    if (builder.getPlatform() == Xe_XeHPSDV)
     {
         int suppressRegs[4];
         for (int i = 0; i < 3; i++)

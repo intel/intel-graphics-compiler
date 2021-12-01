@@ -1073,7 +1073,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     else if (dpasInst->isFP16() || dpasInst->isBF16())
     {
         G4_Type prec = Type_UNDEF;
-        if (dpasInst->getPlatform() >= GENX_PVC)
+        if (dpasInst->getPlatform() >= Xe_PVC)
         {
             prec = dpasInst->isBF16() ? Type_BF : Type_HF;
         }

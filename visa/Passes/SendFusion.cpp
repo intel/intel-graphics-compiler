@@ -246,12 +246,12 @@ bool SendFusion::isAtomicCandidate(const G4_SendDescRaw* msgDesc)
     // (Need to revisit this later when we want to do fusion for LSC messages.)
     case DC1_A64_ATOMIC:
     case DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC:
-        if (Builder->getPlatform() != XeHP_SDV)
+        if (Builder->getPlatform() != Xe_XeHPSDV)
             return false;
         break;
     case DC1_A64_UNTYPED_FLOAT_ATOMIC:
     case DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC:
-        if (Builder->getPlatform() != XeHP_SDV)
+        if (Builder->getPlatform() != Xe_XeHPSDV)
             return false;
         intAtomic = false;
         break;
@@ -1718,7 +1718,7 @@ bool vISA::doSendFusion(FlowGraph* aCFG, Mem_Manager* aMMgr)
     // SendFusion uses both src0 and src1 for addresses (load), but messages
     // based on LSC does not support that (it requires addresses to be in src0 only)
     // and SendFusion does not support it. Just skip.
-    if (getGenxPlatform() >= GENX_DG2)
+    if (getGenxPlatform() >= Xe_DG2)
     {
         return false;
     }

@@ -48,13 +48,13 @@ static const PlatformInfo ALL_PLATFORMS[] {
     PlatformInfo(GENX_TGLLP, PlatformGen::XE, 12,
         "TGLLP", "DG1", "GEN12LP"
     ),
-    PlatformInfo(XeHP_SDV, PlatformGen::XE, 11,
+    PlatformInfo(Xe_XeHPSDV, PlatformGen::XE, 11,
         "XeHP_SDV"),
-    PlatformInfo(GENX_DG2, PlatformGen::XE, 13,
+    PlatformInfo(Xe_DG2, PlatformGen::XE, 13,
         "DG2"),
-    PlatformInfo(GENX_PVC, PlatformGen::XE, 14,
+    PlatformInfo(Xe_PVC, PlatformGen::XE, 14,
         "PVC"),
-    PlatformInfo(GENX_PVCXT, PlatformGen::XE, 15,
+    PlatformInfo(Xe_PVCXT, PlatformGen::XE, 15,
         "PVCXT"),
 }; // ALL_PLATFORMS
 
@@ -155,7 +155,7 @@ unsigned char getGRFSize()
 {
     unsigned int size = 32;
 
-    if (getGenxPlatform() >= GENX_PVC)
+    if (getGenxPlatform() >= Xe_PVC)
         size = 64;
 
     return size;

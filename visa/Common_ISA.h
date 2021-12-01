@@ -864,7 +864,7 @@ namespace vISA
 
     inline SFID intToSFID(int id)
     {
-        if (getGenxPlatform() >= GENX_DG2)
+        if (getGenxPlatform() >= Xe_DG2)
         {
             switch (id)
             {

@@ -342,16 +342,16 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
     case GENX_TGLLP:
         platform = Platform::XE;
         break;
-    case XeHP_SDV:
+    case Xe_XeHPSDV:
         platform = Platform::XE_HP;
         break;
-    case GENX_DG2:
+    case Xe_DG2:
         platform = Platform::XE_HPG;
         break;
-    case GENX_PVC:
+    case Xe_PVC:
         platform = Platform::XE_HPC;
         break;
-    case GENX_PVCXT:
+    case Xe_PVCXT:
         platform = Platform::XE_HPC;
         break;
     default:
@@ -635,7 +635,7 @@ std::pair<const OpSpec *,Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_mac:     igaOp = Op::MAC; break;
     case G4_mach:
         igaOp = Op::MACH;
-        if (inst->getPlatform() >= GENX_PVC && !inst->isAccWrCtrlInst())
+        if (inst->getPlatform() >= Xe_PVC && !inst->isAccWrCtrlInst())
         {
             igaOp = Op::MACL;
         }
@@ -994,7 +994,7 @@ void BinaryEncodingIGA::Encode()
     { // time the encoding
         TIME_SCOPE(IGA_ENCODER);
         bool autoCompact = kernel.getOption(vISA_Compaction);
-        if (platform == GENX_PVC)
+        if (platform == Xe_PVC)
             autoCompact = false; // PVC-A0 compaction is off (IGA only does B0+)
 
         KernelEncoder encoder(IGAKernel, autoCompact);
@@ -1902,7 +1902,7 @@ SWSB_ENCODE_MODE vISA::GetIGASWSBEncodeMode(const IR_Builder& builder) {
         return SWSB_ENCODE_MODE::ThreeDistPipe;
     }
     else if (builder.hasFourALUPipes()) {
-        if (builder.getPlatform() == GENX_PVC)
+        if (builder.getPlatform() == Xe_PVC)
             return SWSB_ENCODE_MODE::FourDistPipe;
         return SWSB_ENCODE_MODE::FourDistPipeReduction;
     }

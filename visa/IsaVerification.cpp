@@ -988,7 +988,7 @@ void vISAVerifier::verifyInstructionMove(
         }
         case ISA_BF_CVT:
         {
-            REPORT_INSTRUCTION(options, getGenxPlatform() >= XeHP_SDV,
+            REPORT_INSTRUCTION(options, getGenxPlatform() >= Xe_XeHPSDV,
                 "BF_CVT is only supported on this platform");
             REPORT_INSTRUCTION(options, operand_class_dst == OPERAND_GENERAL,
                 "Destination operand of BF_CVT instruction only "
@@ -1030,7 +1030,7 @@ void vISAVerifier::verifyInstructionMove(
         }
         case ISA_FCVT:
         {
-            REPORT_INSTRUCTION(options, getGenxPlatform() >= GENX_PVC,
+            REPORT_INSTRUCTION(options, getGenxPlatform() >= Xe_PVC,
                 "fcvt is not supported on the selected platform");
 
             REPORT_INSTRUCTION(options, operand_class_dst == OPERAND_GENERAL,
@@ -1402,7 +1402,7 @@ void vISAVerifier::verifyInstructionMisc(
             };
             auto FNIsIntOrFloat = [](VISA_Type Ty) -> bool {
                 bool isHFOrBF = false;
-                if (getGenxPlatform() >= GENX_PVC)
+                if (getGenxPlatform() >= Xe_PVC)
                 {
                     // W or UW means BF
                     isHFOrBF = (Ty == ISA_TYPE_HF || Ty == ISA_TYPE_UW || Ty == ISA_TYPE_W);
@@ -1414,7 +1414,7 @@ void vISAVerifier::verifyInstructionMisc(
             REPORT_INSTRUCTION(options, inst->pred.isNullPred(), "%s inst does not support predicate", ISA_Inst_Table[opcode].str);
 
             // execsize must be simd8 for XeHP_SDV and simd16 for PVC
-            if (getGenxPlatform() >= GENX_PVC)
+            if (getGenxPlatform() >= Xe_XeHPSDV)
             {
                 REPORT_INSTRUCTION(options, opcode != ISA_DPASW,
                     "%s instuction is not supported on selected platform", ISA_Inst_Table[opcode].str);
@@ -1626,7 +1626,7 @@ void vISAVerifier::verifyInstructionArith(
 
     if ((opcode == ISA_DIV && IsIntType(dstType)) || opcode == ISA_MOD)
     {
-        REPORT_INSTRUCTION(options, platform < XeHP_SDV, "int divide/remainder is not supported for this platform");
+        REPORT_INSTRUCTION(options, platform < Xe_XeHPSDV, "int divide/remainder is not supported for this platform");
     }
 
     /// check dst type is supported by the instruction
@@ -1814,7 +1814,7 @@ void vISAVerifier::verifyInstructionArith(
     // check for IEEE macros support
     // !hasMadm() check
     bool noMadm = (platform == GENX_ICLLP || platform == GENX_TGLLP);
-    noMadm |= platform == GENX_DG2;
+    noMadm |= platform == Xe_DG2;
     if (noMadm)
     {
         bool fOpcodeIEEE = (opcode == ISA_DIVM) || (opcode == ISA_SQRTM);
@@ -1869,7 +1869,7 @@ void vISAVerifier::verifyInstructionLogic(
             case ISA_TYPE_UQ:
             case ISA_TYPE_Q:
                 // This string was changed from "ror/rol only support i64 types on PVC+" due to IP leak concers.
-                REPORT_INSTRUCTION(options, getGenxPlatform() >= GENX_PVC,
+                REPORT_INSTRUCTION(options, getGenxPlatform() >= Xe_PVC,
                     "ror/rol does not support i64 types on the selected platform");
                 break;
             default:

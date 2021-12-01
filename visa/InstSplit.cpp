@@ -139,7 +139,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
             doSplit = true;
             break;
         }
-        if (m_builder->getPlatform() >= XeHP_SDV)
+        if (m_builder->getPlatform() >= Xe_XeHPSDV)
         {
             // Instructions whose operands are 64b and have 2D regioning need to be split
             // up front to help fixUnalignedRegions(..) covering 2D cases.

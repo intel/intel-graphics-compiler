@@ -2948,9 +2948,9 @@ static int lscCheckExecSize(
         exec_size = 1;
     } else if (data_order == LSC_DATA_ORDER_NONTRANSPOSE && is_vector_op) {
         if (exec_size == UNDEFINED_EXEC_SIZE) {
-            if (getGenxPlatform() == GENX_DG2) // for DG2 typed is 8, untyped is 16
+            if (getGenxPlatform() == Xe_DG2) // for DG2 typed is 8, untyped is 16
                 exec_size = sfid == LSC_TGM ? 8 : 16;
-            else if (getGenxPlatform() >= GENX_PVC) // on PVC typed is 16, untyped is 32
+            else if (getGenxPlatform() >= Xe_PVC) // on PVC typed is 16, untyped is 32
                 exec_size = sfid == LSC_TGM ? 16 : 32;
             else
                 exec_size = 32; // the world is finally sane
