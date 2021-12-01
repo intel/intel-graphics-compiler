@@ -1121,11 +1121,10 @@ namespace vISA
     struct SBBucketDesc {
         const int bucket;
         const Gen4_Operand_Number opndNum;
-        SBNode* const node;
         const SBFootprint* footprint;
 
-        SBBucketDesc(int Bucket, Gen4_Operand_Number opnd_num, SBNode *sNode, const SBFootprint *f)
-            : bucket(Bucket), opndNum(opnd_num), node(sNode), footprint(f) {
+        SBBucketDesc(int Bucket, Gen4_Operand_Number opnd_num, const SBFootprint *f)
+            : bucket(Bucket), opndNum(opnd_num), footprint(f) {
             ;
         }
     };
@@ -1496,7 +1495,7 @@ namespace vISA
             G4_INST *inst,
             G4_Operand* opnd,
             Gen4_Operand_Number opnd_num);
-        void getGRFBuckets(SBNode* node, const SBFootprint* footprint, Gen4_Operand_Number opndNum, std::vector<SBBucketDesc>& BDvec, bool GRFOnly);
+        void getGRFBuckets(const SBFootprint* footprint, Gen4_Operand_Number opndNum, std::vector<SBBucketDesc>& BDvec, bool GRFOnly);
         bool getGRFFootPrintOperands(SBNode *node,
             G4_INST *inst,
             Gen4_Operand_Number first_opnd,

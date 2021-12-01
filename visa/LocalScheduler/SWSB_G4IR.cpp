@@ -4900,8 +4900,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
 }
 
 //Create Buckets
-void G4_BB_SB::getGRFBuckets(SBNode* node,
-    const SBFootprint* footprint,
+void G4_BB_SB::getGRFBuckets(const SBFootprint* footprint,
     Gen4_Operand_Number opndNum,
     std::vector<SBBucketDesc>& BDvec,
     bool GRFOnly)
@@ -4917,7 +4916,7 @@ void G4_BB_SB::getGRFBuckets(SBNode* node,
         int endingBucket = curFootprint->RightB / numEltPerGRF<Type_UB>();
         for (int j = startingBucket; j <= endingBucket ; j++)
         {
-            BDvec.push_back(SBBucketDesc(j, opndNum, node, curFootprint));
+            BDvec.push_back(SBBucketDesc(j, opndNum, curFootprint));
         }
     }
 }
@@ -4970,7 +4969,7 @@ void G4_BB_SB::getGRFBucketsForOperands(SBNode* node,
         {
             continue;
         }
-        getGRFBuckets(node, footprint, opndNum, BDvec, GRFOnly);
+        getGRFBuckets(footprint, opndNum, BDvec, GRFOnly);
     }
 
     return;
