@@ -74,7 +74,8 @@ bool PruneUnusedArguments::runOnModule(Module& M) {
             if (F->isDeclaration())
                 continue;
             // Ignore externally linked functions
-            if (F->hasFnAttribute("referenced-indirectly"))
+            if (F->hasFnAttribute("referenced-indirectly") ||
+                F->hasFnAttribute("invoke_simd_target"))
                 continue;
 
             // Collect unused arguments and their indices.

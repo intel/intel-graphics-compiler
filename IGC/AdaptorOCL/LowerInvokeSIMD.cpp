@@ -31,6 +31,11 @@ IGC_INITIALIZE_PASS_END(LowerInvokeSIMD, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_O
 
 char LowerInvokeSIMD::ID = 0;
 
+namespace {
+    static const char* FNATTR_REFERENCED_INDIRECTLY = "referenced-indirectly";
+    static const char* FNATTR_INVOKE_SIMD_TARGET = "invoke_simd_target";
+}
+
 LowerInvokeSIMD::LowerInvokeSIMD() : ModulePass(ID)
 {
     initializeLowerInvokeSIMDPass(*PassRegistry::getPassRegistry());
@@ -66,16 +71,13 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
         Callee->setName(Callee->getName() + ".old");
         auto newFunc = Function::Create(FTy, Callee->getLinkage(), oldName, *Callee->getParent());
         newFunc->setAttributes(Callee->getAttributes());
-        newFunc->addFnAttr("invoke_simd_target");
+        newFunc->addFnAttr(FNATTR_INVOKE_SIMD_TARGET);
+        if (newFunc->hasFnAttribute(FNATTR_REFERENCED_INDIRECTLY)) {
+            newFunc->removeFnAttr(FNATTR_REFERENCED_INDIRECTLY);
+        }
         newFunc->setCallingConv(Callee->getCallingConv());
         NewCall = m_Builder->CreateCall(newFunc, ArgVals);
         m_OldFuncToNewFuncMap[Callee] = newFunc;
-
-        // The callee will be a direct call, but the definition will be in the ESIMD visaasm,
-        // that will be linked later in VISALinkerDriver. This module needs to be compiled only
-        // to visaasm.
-        CodeGenContext* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        Ctx->m_compileToVISAOnly = true;
     } else {
       auto PTy = PointerType::get(
           FTy,

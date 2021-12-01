@@ -608,6 +608,11 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                         FG->m_hasStackCall = true;
                         FG->m_hasIndirectCall = true;
                     }
+                    else if (calledF && calledF->isDeclaration() && calledF->hasFnAttribute("invoke_simd_target"))
+                    {
+                        // Invoke_simd targets use stack call by convention.
+                        FG->m_hasStackCall = true;
+                    }
                 }
             }
         }

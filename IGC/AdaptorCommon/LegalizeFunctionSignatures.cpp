@@ -239,7 +239,9 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
 
         // For binary linking, calling a function outside the module is possible, so declaration
         // signatures has to be fixed as well
-        if (pFunc->isDeclaration() && !pFunc->hasFnAttribute("referenced-indirectly"))
+        if (pFunc->isDeclaration() &&
+            !pFunc->hasFnAttribute("referenced-indirectly") &&
+            !pFunc->hasFnAttribute("invoke_simd_target"))
         {
             continue;
         }
