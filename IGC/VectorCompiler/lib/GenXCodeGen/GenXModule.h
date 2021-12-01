@@ -122,6 +122,8 @@ namespace llvm {
     bool emitDebugInformation() const { return EmitDebugInformation; }
     void updateVisaMapping(const Function *F, const Instruction *Inst,
                            unsigned VisaIndex, StringRef Reason);
+    void updateVisaCountMapping(const Function *F, const Instruction *Inst,
+                                unsigned VisaIndex, StringRef Reason);
     const genx::di::VisaMapping *getVisaMapping(const Function *F) const;
   };
 
