@@ -401,9 +401,11 @@ SBFootprint* G4_BB_SB::getFootprintForACC(G4_Operand* opnd,
     }
     int regNum = 0;
     if (opnd->isDstRegRegion())
-        regNum += opnd->asDstRegRegion()->getRegOff();
+        regNum = opnd->asDstRegRegion()->getRegOff();
     else if (opnd->isSrcRegRegion())
-        regNum += opnd->asSrcRegRegion()->getRegOff();
+        regNum = opnd->asSrcRegRegion()->getRegOff();
+
+    regNum += builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters();
 
     LB += regNum * numEltPerGRF<Type_UB>();
     RB += regNum * numEltPerGRF<Type_UB>();
@@ -729,7 +731,7 @@ void SWSB::handleFuncCall()
         if ((node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) ||
             (node->GetInstruction()->isReturn() || node->GetInstruction()->isFReturn()))
         {
-            LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal(), *fg.getKernel());
+            LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal());
             for (const SBBucketNode* sBucketNode : globalSendOpndList)
             {
                 SBNode* sNode = sBucketNode->node;
@@ -1101,7 +1103,7 @@ void SWSB::genSWSBPatchInfo() {
         if (bb->Succs.size() == 0 &&
             BBVector[bb->getId()]->Succs.size() == 0)
         {
-            LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal(), *fg.getKernel());
+            LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal());
             for (size_t i = 0; i < globalSendOpndList.size(); i++)
             {
                 SBBucketNode* sBucketNode = globalSendOpndList[i];
@@ -1222,8 +1224,8 @@ void SWSB::SWSBGenerator()
     kernel.fg.findNaturalLoops();
 
     //Note that getNumFlagRegisters() treat each 16 bits as a flag register
-    LiveGRFBuckets LB(mem, kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
-    LiveGRFBuckets globalSendsLB(mem, kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
+    LiveGRFBuckets LB(mem, kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters());
+    LiveGRFBuckets globalSendsLB(mem, kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters());
 
     SWSBDepDistanceGenerator(p, LB, globalSendsLB);
 
@@ -4913,15 +4915,7 @@ void G4_BB_SB::getGRFBuckets(SBNode* node,
 
         int startingBucket = curFootprint->LeftB / numEltPerGRF<Type_UB>();
         int endingBucket = curFootprint->RightB / numEltPerGRF<Type_UB>();
-        if (curFootprint->fType == ACC_T)
-        {
-            int aregOffset = totalGRFNum + builder.getNumScalarRegisters();
-            startingBucket = startingBucket + aregOffset;
-            endingBucket = endingBucket + aregOffset;
-        }
-        int numBuckets = endingBucket - startingBucket + 1;
-        for (int j = startingBucket;
-            j < (startingBucket + numBuckets); j++)
+        for (int j = startingBucket; j <= endingBucket ; j++)
         {
             BDvec.push_back(SBBucketDesc(j, opndNum, node, curFootprint));
         }
@@ -6707,7 +6701,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
         //   For token dependence, there is only implicit RAR and WAR dependencies.
         //   the order of the operands are scanned is not an issue anymore.
         //   i.e explicit RAW and WAW can cover all other dependences.
-        LiveGRFBuckets send_use_kills(mem, kernel.getNumRegTotal(), BBVector[i]->getBB()->getKernel());
+        LiveGRFBuckets send_use_kills(mem, kernel.getNumRegTotal());
         for (SBBucketNode* sBucketNode : *globalSendOpndList)
         {
             SBNode* sNode = sBucketNode->node;
@@ -7009,7 +7003,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
         //   For token dependence, there is only implicit RAR and WAR dependencies.
         //   the order of the operands are scanned is not an issue anymore.
         //   i.e explicit RAW and WAW can cover all other dependences.
-        LiveGRFBuckets send_use_kills(mem, kernel.getNumRegTotal(), BBVector[i]->getBB()->getKernel());
+        LiveGRFBuckets send_use_kills(mem, kernel.getNumRegTotal());
         for (size_t j = 0; j < globalSendOpndList->size(); j++)
         {
             SBBucketNode* sBucketNode = (*globalSendOpndList)[j];

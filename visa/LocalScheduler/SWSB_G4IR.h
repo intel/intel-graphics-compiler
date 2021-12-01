@@ -1170,13 +1170,12 @@ namespace vISA
     class LiveGRFBuckets
     {
         std::vector<SBBUCKET_VECTOR *> nodeBucketsArray;
-        G4_Kernel &k;
         vISA::Mem_Manager &mem;
         const int numOfBuckets;
 
     public:
-        LiveGRFBuckets(vISA::Mem_Manager& m, int TOTAL_BUCKETS, G4_Kernel& k)
-            : nodeBucketsArray(TOTAL_BUCKETS), k(k), mem(m), numOfBuckets(TOTAL_BUCKETS)
+        LiveGRFBuckets(vISA::Mem_Manager& m, int TOTAL_BUCKETS)
+            : nodeBucketsArray(TOTAL_BUCKETS), mem(m), numOfBuckets(TOTAL_BUCKETS)
         {
             // Initialize a vector for each bucket
             for (auto& bucket : nodeBucketsArray)
@@ -1290,7 +1289,6 @@ namespace vISA
             SBBUCKET_VECTOR &vec = *nodeBucketsArray[bn_it.bucket];
             SBBUCKET_VECTOR_ITER &node_it = bn_it.node_it;
             SBBucketNode *bucketNode = *node_it; //Get the node before it is destroyed
-            int aregOffset = k.getNumRegTotal();
 
             //Kill current node
             if (*node_it == vec.back())
@@ -1312,11 +1310,6 @@ namespace vISA
             {
                 unsigned int startBucket = footprint->LeftB / numEltPerGRF<Type_UB>();
                 unsigned int endBucket = footprint->RightB / numEltPerGRF<Type_UB>();
-                if (footprint->fType == ACC_T)
-                {
-                    startBucket = startBucket + aregOffset;
-                    endBucket = endBucket + aregOffset;
-                }
 
                 if (footprint->inst == bucketNode->footprint->inst)
                 {
