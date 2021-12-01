@@ -1482,9 +1482,17 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
     G4_DstRegRegion* stateBaseRgn
         = createDst(headerDecl->getRegVar(),
             0, 3, 1, Type_UD);
-    G4_SrcRegRegion* src0
-        = createSrc(
+    G4_SrcRegRegion* src0 = nullptr;
+    if (hasBindlessSampler() && !isBindlessSampler(sampler))
+    {
+        src0 = createSrc(
+            builtinSamplerHeader->getRegVar(), 0, 3, getRegionScalar(), Type_UD);
+    }
+    else
+    {
+        src0 = createSrc(
             builtinR0->getRegVar(), 0, 3, getRegionScalar(), Type_UD);
+    }
     createBinOp(G4_add, g4::SIMD1, stateBaseRgn,
         src0, baseAdjSrc, InstOpt_WriteEnable, true);
 
