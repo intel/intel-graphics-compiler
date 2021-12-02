@@ -141,25 +141,15 @@ namespace vISA
 
         bool hasOverlap(const SBFootprint *liveFootprint, unsigned short &internalOffset) const
         {
-            for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
-            {
-                // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB < curFootprint2Ptr->LeftB)
-                if (fType == curFootprint2Ptr->fType &&
-                    LeftB <= curFootprint2Ptr->RightB && RightB >= curFootprint2Ptr->LeftB)
-                {
-                    internalOffset = curFootprint2Ptr->offset;
-                    return true;
-                }
-            }
-
-            //Overlap with other ranges.
-            for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
+            for (const SBFootprint *curFootprintPtr = this; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
             {
                 FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
                 for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
                 {
+                    // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB < curFootprint2Ptr->LeftB)
                     if (curFType == curFootprint2Ptr->fType &&
-                           curFootprintPtr->LeftB <= curFootprint2Ptr->RightB && curFootprintPtr->RightB >= curFootprint2Ptr->LeftB)
+                        curFootprintPtr->LeftB <= curFootprint2Ptr->RightB &&
+                        curFootprintPtr->RightB >= curFootprint2Ptr->LeftB)
                     {
                         internalOffset = curFootprint2Ptr->offset;
                         return true;
@@ -172,62 +162,31 @@ namespace vISA
 
         bool hasOverlap(const SBFootprint *liveFootprint, bool &isRMWOverlap, unsigned short &internalOffset) const
         {
-            for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
-            {
-                // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB < curFootprint2Ptr->LeftB)
-                if (fType == curFootprint2Ptr->fType)
-                {
-                    if (LeftB <= curFootprint2Ptr->RightB && RightB >= curFootprint2Ptr->LeftB)
-                    {
-                        internalOffset = curFootprint2Ptr->offset;
-                        if (fType == GRF_T
-                            && (type == Type_UB || type == Type_B))
-                        {
-                            isRMWOverlap = true;
-                        }
-                        return true;
-                    }
-                    else if (fType == GRF_T
-                                && (type == Type_UB || type == Type_B))
-                    {
-                        unsigned short w_LeftB = LeftB/2;
-                        unsigned short w_RightB = RightB/2;
-                        unsigned short w_curLeftB = curFootprint2Ptr->LeftB/2;
-                        unsigned short w_curRightB = curFootprint2Ptr->RightB/2;
-                        if (w_LeftB <= w_curRightB && w_RightB >= w_curLeftB)
-                        {
-                            isRMWOverlap = true;
-                            return true;
-                        }
-                    }
-                }
-            }
-
             //Overlap with other ranges.
-            for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
+            for (const SBFootprint *curFootprintPtr = this; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
             {
                 FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+                G4_Type curType = curFootprintPtr->type;
                 for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
                 {
+                    // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB < curFootprint2Ptr->LeftB)
                     if (curFType == curFootprint2Ptr->fType)
                     {
                         if (curFootprintPtr->LeftB <= curFootprint2Ptr->RightB && curFootprintPtr->RightB >= curFootprint2Ptr->LeftB)
                         {
                             internalOffset = curFootprint2Ptr->offset;
-                            if (curFType == GRF_T
-                                && (type == Type_UB || type == Type_B))
+                            if (curFType == GRF_T && IS_BTYPE(curType))
                             {
                                 isRMWOverlap = true;
                             }
                             return true;
                         }
-                        else if (curFType == GRF_T
-                                    && (type == Type_UB || type == Type_B))
+                        else if (curFType == GRF_T && IS_BTYPE(curType))
                         {
-                            unsigned short w_LeftB = curFootprintPtr->LeftB/2;
-                            unsigned short w_RightB = curFootprintPtr->RightB/2;
-                            unsigned short w_curLeftB = curFootprint2Ptr->LeftB/2;
-                            unsigned short w_curRightB = curFootprint2Ptr->RightB/2;
+                            unsigned short w_LeftB = curFootprintPtr->LeftB / 2;
+                            unsigned short w_RightB = curFootprintPtr->RightB / 2;
+                            unsigned short w_curLeftB = curFootprint2Ptr->LeftB / 2;
+                            unsigned short w_curRightB = curFootprint2Ptr->RightB / 2;
                             if (w_LeftB <= w_curRightB && w_RightB >= w_curLeftB)
                             {
                                 isRMWOverlap = true;
@@ -243,22 +202,13 @@ namespace vISA
 
         bool hasGRFGrainOverlap(const SBFootprint *liveFootprint) const
         {
-            for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
+            for (const SBFootprint *curFootprintPtr = this; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
             {
-                if (fType == curFootprint2Ptr->fType &&
-                    ((LeftB / numEltPerGRF<Type_UB>()) <= (curFootprint2Ptr->RightB / numEltPerGRF<Type_UB>())) &&
-                    ((RightB / numEltPerGRF<Type_UB>()) >= (curFootprint2Ptr->LeftB / numEltPerGRF<Type_UB>())))
-                {
-                    return true;
-                }
-            }
-
-            //Overlap with other ranges.
-            for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
-            {
+                FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+                assert(fType == curFType);
                 for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
                 {
-                    if (fType == curFootprint2Ptr->fType &&
+                    if (curFType == curFootprint2Ptr->fType &&
                         ((curFootprintPtr->LeftB  / numEltPerGRF<Type_UB>()) <= (curFootprint2Ptr->RightB  / numEltPerGRF<Type_UB>())) &&
                         ((curFootprintPtr->RightB  / numEltPerGRF<Type_UB>()) >= (curFootprint2Ptr->LeftB  / numEltPerGRF<Type_UB>())))
                     {

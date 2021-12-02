@@ -6656,25 +6656,20 @@ void SWSB::dumpTokenLiveInfo()
 
 void G4_BB_SB::getLiveBucketsFromFootprint(const SBFootprint* firstFootprint, SBBucketNode* sBucketNode, LiveGRFBuckets* send_use_kills) const
 {
-    const SBFootprint* footprint = firstFootprint;
-
-    while (footprint)
+    for (const SBFootprint* footprint = firstFootprint; footprint != nullptr; footprint = footprint->next)
     {
-        int startBucket = footprint->LeftB / numEltPerGRF<Type_UB>();
-        int endBucket = footprint->RightB / numEltPerGRF<Type_UB>();
-
         //We only track the global dependence for GRF
         if (footprint->fType != GRF_T)
         {
-            footprint = footprint->next;
             continue;
         }
 
+        int startBucket = footprint->LeftB / numEltPerGRF<Type_UB>();
+        int endBucket = footprint->RightB / numEltPerGRF<Type_UB>();
         for (int j = startBucket; j < endBucket + 1; j++)
         {
             send_use_kills->add(sBucketNode, j);
         }
-        footprint = footprint->next;
     }
 
     return;
