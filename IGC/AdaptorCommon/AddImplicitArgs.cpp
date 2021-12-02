@@ -537,7 +537,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
                     Function* pFuncOnPath = IT.getPath(i)->getFunction();
                     if (pFuncOnPath)
                     {
-                        if (pFuncOnPath->hasFnAttribute("forceRecurse"))
+                        if (pFuncOnPath->hasFnAttribute("hasRecursion"))
                         {
                             IGC_ASSERT_MESSAGE(0, "Cannot inline for recursion!");
                             return false;

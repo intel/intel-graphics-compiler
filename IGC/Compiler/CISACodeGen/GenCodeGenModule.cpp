@@ -576,9 +576,9 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                 FG->m_hasVaribleLengthAlloca = true;
             }
 
-            // check if FG uses recursion. The "forceRecurse" attribute is set in
+            // check if FG uses recursion. The "hasRecursion" attribute is set in
             // ProcessFuncAttributes pass by using Tarjan's algorithm to find recursion.
-            if (F->hasFnAttribute("forceRecurse"))
+            if (F->hasFnAttribute("hasRecursion"))
             {
                 FG->m_hasRecursion = true;
             }

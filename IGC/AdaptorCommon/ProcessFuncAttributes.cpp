@@ -180,7 +180,7 @@ static bool convertRecursionToStackCall(CallGraph& CG)
             for (auto Node : SCCNodes)
             {
                 Node->getFunction()->addFnAttr("visaStackCall");
-                Node->getFunction()->addFnAttr("forceRecurse");
+                Node->getFunction()->addFnAttr("hasRecursion");
             }
         }
         else
@@ -193,7 +193,7 @@ static bool convertRecursionToStackCall(CallGraph& CG)
                 {
                     hasRecursion = true;
                     Node->getFunction()->addFnAttr("visaStackCall");
-                    Node->getFunction()->addFnAttr("forceRecurse");
+                    Node->getFunction()->addFnAttr("hasRecursion");
                     break;
                 }
             }

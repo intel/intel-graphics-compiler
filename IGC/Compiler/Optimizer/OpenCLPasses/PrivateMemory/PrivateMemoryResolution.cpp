@@ -453,6 +453,10 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
             uint32_t currFuncPrivateMem = (uint32_t)(funcIt->second.privateMemoryPerWI);
             CallGraphNode* Node = CG[F];
 
+            // Function has recursion, don't search CG further
+            if (F->hasFnAttribute("hasRecursion"))
+                return currFuncPrivateMem;
+
             // Reached a leaf, return the private memory used by the current function
             if (Node->empty())
                 return currFuncPrivateMem;
