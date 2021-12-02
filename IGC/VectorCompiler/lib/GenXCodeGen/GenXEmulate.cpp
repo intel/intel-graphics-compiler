@@ -181,9 +181,11 @@ class GenXEmulate : public ModulePass {
   std::vector<Instruction *> ToErase;
   const GenXSubtarget *ST = nullptr;
 
+  class LightEmu64Expander;
   class Emu64Expander : public InstVisitor<Emu64Expander, Value *> {
 
     friend InstVisitor<Emu64Expander, Value *>;
+    friend LightEmu64Expander;
 
     const GenXSubtarget &ST;
     std::map<OpType, Function *, decltype(OpTypeComparator)> *EmulationFuns;
@@ -354,6 +356,67 @@ class GenXEmulate : public ModulePass {
     static bool hasStrictEmulationRequirement(Instruction *Inst);
   };
 
+  class LightEmu64Expander : public InstVisitor<LightEmu64Expander, Value *> {
+
+    friend InstVisitor<LightEmu64Expander, Value *>;
+    Emu64Expander E;
+
+    // TODO: figure out if we need to emulate genx_trunc and (Z|S)Ext
+    // There was no explicit requirement to emulate these for B-step emulation.
+    // No failures of the existing tests were observed.
+    // But it does not mean that situation won't be changed in future.
+    Value *visitAdd(BinaryOperator &Op) {
+      if (E.getSubtarget().hasAdd64())
+        return nullptr;
+      return E.visitAdd(Op);
+    }
+    Value *visitSub(BinaryOperator &Op) {
+      if (E.getSubtarget().hasAdd64())
+        return nullptr;
+      return E.visitSub(Op);
+    }
+    Value *visitAnd(BinaryOperator &Op) { return E.visitAnd(Op); }
+    Value *visitOr(BinaryOperator &Op) { return E.visitOr(Op); }
+    Value *visitXor(BinaryOperator &Op) { return E.visitXor(Op); }
+    Value *visitSelectInst(SelectInst &I) { return E.visitSelectInst(I); }
+    Value *visitICmp(ICmpInst &Cmp) { return E.visitICmp(Cmp); }
+    Value *visitInstruction(Instruction &I) { return nullptr; }
+    Value *visitCallInst(CallInst &CI) {
+      switch (GenXIntrinsic::getAnyIntrinsicID(&CI)) {
+        // saturated add
+        case GenXIntrinsic::genx_suadd_sat:
+        case GenXIntrinsic::genx_usadd_sat:
+        case GenXIntrinsic::genx_uuadd_sat:
+        case GenXIntrinsic::genx_ssadd_sat:
+          if (E.getSubtarget().hasAdd64())
+            return nullptr;
+        // fall through is expected
+        case GenXIntrinsic::genx_umin:
+        case GenXIntrinsic::genx_umax:
+        case GenXIntrinsic::genx_smin:
+        case GenXIntrinsic::genx_smax:
+        case GenXIntrinsic::genx_absi:
+          return E.visitCallInst(CI);
+        default:
+          return nullptr;
+      }
+    }
+  public:
+    LightEmu64Expander(const GenXSubtarget &ST, Instruction &I) : E(ST, I) {}
+
+    Value *tryExpand() {
+      if (!E.needsEmulation())
+        return nullptr;
+
+      LLVM_DEBUG(dbgs() << "bstep-emu: trying " << E.Inst << "\n");
+      auto *Result = visit(E.Inst);
+
+      if (Result)
+        LLVM_DEBUG(dbgs() << "bstep-emu: succesfully replaced candidate\n");
+
+      return Result;
+    }
+  };
 public:
   static char ID;
   explicit GenXEmulate() : ModulePass(ID) {}
@@ -1763,6 +1826,8 @@ Value *GenXEmulate::emulateInst(Instruction *Inst) {
 
     return NewInst;
   }
+  if (ST->partialI64Emulation())
+    return LightEmu64Expander(*ST, *Inst).tryExpand();
   return nullptr;
 }
 
@@ -1781,6 +1846,11 @@ Instruction *llvm::genx::emulateI64Operation(const GenXSubtarget *ST,
     if (NewInst && !ST->emulateLongLong() && OptStrictEmulationRequests) {
       report_fatal_error("int_emu: target does not suport i64 types", false);
     }
+  }
+  else if (ST->partialI64Emulation()) {
+    Value *EmulatedResult =
+        GenXEmulate::LightEmu64Expander(*ST, *Inst).tryExpand();
+    NewInst = cast_or_null<Instruction>(EmulatedResult);
   }
 
   // NewInst can be nullptr if the instruction does not need emulation,

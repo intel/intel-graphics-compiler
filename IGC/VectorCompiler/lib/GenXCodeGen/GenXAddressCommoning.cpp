@@ -236,6 +236,8 @@ private:
   DominatorTree *getDominatorTree();
   bool isValueInCurrentFunc(Value *V);
   unsigned getNumberElementsInAddrReg() const {
+    if (ST)
+      return ST->getNumElementsInAddrReg();
     return 8;
   }
 };

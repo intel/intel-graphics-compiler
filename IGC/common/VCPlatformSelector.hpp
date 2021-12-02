@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 
 namespace cmc {
 
+constexpr int ComputeTileMaskPVC = 0x7;
 inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   // after some consultations with Wndows KMD folks,
   // only render core shall be used in all cases
@@ -36,6 +37,8 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   case IGFX_GEN12_CORE:
   case IGFX_GEN12LP_CORE:
   case IGFX_XE_HP_CORE:
+  case IGFX_XE_HPG_CORE:
+  case IGFX_XE_HPC_CORE:
     if (Product == IGFX_TIGERLAKE_LP)
       return "TGLLP";
     if (Product == IGFX_DG1)
@@ -48,6 +51,15 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
       return "ADLP";
     else if (Product == IGFX_XE_HP_SDV)
       return "XEHP";
+    else if (Product == IGFX_DG2)
+      return "DG2";
+    else if (Product == IGFX_PVC) {
+      // fixing revision id for PVC to compute tile
+      RevId &= cmc::ComputeTileMaskPVC;
+      if (RevId < REVISION_B)
+        return "PVC";
+      return "PVCXT";
+    }
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;

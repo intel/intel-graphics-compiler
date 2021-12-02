@@ -94,6 +94,10 @@ bool testOperator(const llvm::Instruction *const Operator) {
 
 } // namespace
 
+static cl::opt<bool>
+    AdjustValidWidthForTarget("adj-width-for-target", cl::Hidden,
+                              cl::init(false),
+                              cl::desc("Adjust valid width on the CM side"));
 
 /***********************************************************************
  * makeRegionWithOffset: get a Region given a rdregion/wrregion, baling in
@@ -379,6 +383,9 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // subregion starts, and set the boundary at the next-but-one GRF
         // boundary.
         unsigned NumGRF = 2;
+        // For PVC it's legal to read only from one GFR in byte source
+        if (ST.isPVC() && R.ElementBytes == genx::ByteBytes)
+          NumGRF = 1;
         ElementsToBoundary = (NumGRF * ElementsPerGRF) -
                              ((RealIdx + OffsetElements) % ElementsPerGRF);
       } else if (InputNumElements <= ElementsPerGRF) {
@@ -515,6 +522,18 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
 
     }
   }
+  if (AdjustValidWidthForTarget)
+    if (ST.isPVC() && R.is2D()) {
+      while ((ValidWidth * R.ElementBytes) >= 64)
+        ValidWidth /= 2;
+    }
+
+  // Some targets do not have multi indirect byte regioning and in general case
+  // transformation from multi indirect region to indirect is possible for
+  // regions with width = 1.
+  if (R.isMultiIndirect() && R.ElementBytes == genx::ByteBytes &&
+      !ST.hasMultiIndirectByteRegioning())
+    ValidWidth = 1;
   return ValidWidth;
 }
 

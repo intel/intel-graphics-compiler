@@ -61,7 +61,12 @@ protected:
     GENX_TGLLP,
     GENX_RKL,
     GENX_DG1,
+    GENX_ADLS, // Gen12LP 1x2x16
+    GENX_ADLP, // Gen12LP 1x6x16
     XE_HP_SDV,
+    XE_DG2,
+    XE_PVC,
+    XE_PVCXT,
   };
 
   // GenXVariant - GenX Tag identifying the variant to compile for
@@ -88,6 +93,15 @@ private:
 
   // Size of one general register in bytes.
   unsigned GRFByteSize = 32;
+
+  // Maximum width of LSC messages.
+  unsigned LSCMaxWidth = 16;
+
+  // True if legacy data-port messages are disabled
+  bool TranslateLegacyMessages = false;
+
+  // Currenly used for PVC B-stepping (some i64 operations are unsupported)
+  bool PartialI64Emulation = false;
   // Some targets do not support i64 ops natively, we have an option to emulate
   bool EmulateLongLong = false;
 
@@ -116,6 +130,9 @@ private:
   // True if subtarget supports 32-bit rol/ror instructions
   bool HasBitRotate = false;
 
+  // True if subtarget supports 64-bit rol/ror instructions
+  bool Has64BitRotate = false;
+
   // True if subtarget gets HWTID from predefined variable
   bool GetsHWTIDFromPredef = false;
 
@@ -131,6 +148,8 @@ private:
   /// Packed float immediate vector operands are supported.
   bool HasPackedFloat = false;
 
+  /// True if subtarget accepts 16-wide BF mixed mode operations
+  bool HasBfMixedModeWidth16 = false;
 
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
@@ -144,6 +163,21 @@ public:
 
   // GRF size in bytes.
   unsigned getGRFByteSize() const { return GRFByteSize; }
+
+  // LSC instructions can operate either in full SIMD mode or
+  // in half SIMD mode. This defines how many registers are
+  // used by the data payload.
+  // getLSCMinWidth() returns half of the maximum SIMD width.
+  // getLSCMaxWidth() returns the maximum SIMD width.
+  // Instructions narrower than getLSCMinWidth() still use
+  // the same amount of registers for their data payload
+  // as if they were getLSCMinWidth() wide.
+  unsigned getLSCMinWidth() const { return getLSCMaxWidth() / 2; }
+  unsigned getLSCMaxWidth() const { return LSCMaxWidth; }
+
+  // The maximum amount of registers that an LSC message's data payload
+  // can take up.
+  unsigned getLSCMaxDataRegisters() const { return 8; }
 
   bool isOCLRuntime() const { return OCLRuntime; }
 
@@ -196,17 +230,48 @@ public:
   bool isXEHP() const {
     return GenXVariant == XE_HP_SDV;
   }
+  /// * isADLS - true if target is ADLS
+  bool isADLS() const { return GenXVariant == GENX_ADLS; }
+  /// * isADLP - true if target is ADLP
+  bool isADLP() const { return GenXVariant == GENX_ADLP; }
   /// * translateMediaWalker - true if translate media walker APIs
   bool translateMediaWalker() const { return GenXVariant >= XE_HP_SDV; }
   // TODO: consider implementing 2 different getters
   /// * has add3 and bfn instructions
   bool hasAdd3Bfn() const { return GenXVariant >= XE_HP_SDV; }
   int dpasWidth() const {
+    if (isPVC())
+      return 16;
     return 8;
   }
   unsigned bfMixedModeWidth() const {
+    if (HasBfMixedModeWidth16)
+      return 16;
     return 8;
   }
+  /// * isDG2 - true if target is DG2
+  bool isDG2() const { return GenXVariant == XE_DG2; }
+  /// * isPVC - true if target is PVC
+  bool isPVC() const { return isPVCXL() || isPVCXT(); }
+
+  /// * isPVCXT - true if target is PVCXT
+  bool isPVCXT() const { return GenXVariant == XE_PVCXT; }
+
+
+  /// * isPVCXL - true if target is PVCXL
+  bool isPVCXL() const { return GenXVariant == XE_PVC; }
+
+  int getNumElementsInAddrReg() const {
+    if (isPVC())
+      return 16;
+    return 8;
+  }
+
+  bool translateLegacyMessages() const {
+    return (GenXVariant >= XE_PVC && TranslateLegacyMessages);
+  }
+
+  bool partialI64Emulation() const { return PartialI64Emulation; }
 
   /// * hasPackedFloat - true if packed float immediate vector operands are supported
   bool hasPackedFloat() const { return HasPackedFloat; }
@@ -259,9 +324,21 @@ public:
   ///   crossing one GRF boundary
   bool hasIndirectGRFCrossing() const { return isSKLplus(); }
 
+  /// * hasIndirectByteGRFCrossing - true if target supports an indirect region
+  ///   crossing one GRF boundary with byte type
+  bool hasIndirectByteGRFCrossing() const {
+    return hasIndirectGRFCrossing() && !isPVC();
+  }
+
+  /// * hasMultiIndirectByteRegioning - true if target supports an mutli
+  /// indirect regions with byte type
+  bool hasMultiIndirectByteRegioning() const { return !isPVC(); }
+
+  bool hasNBarrier() const { return GenXVariant >= XE_PVC; }
+
   /// * getMaxSlmSize - returns maximum allowed SLM size (in KB)
   unsigned getMaxSlmSize() const {
-    if (isXEHP())
+    if (isXEHP() || isDG2() || isPVC())
       return 128;
     return 64;
   }
@@ -276,10 +353,13 @@ public:
       return false;
     if (isXEHP())
       return false;
+    if (isDG2() || isPVC())
+      return false;
     return true;
   }
 
   bool hasBitRotate() const { return HasBitRotate; }
+  bool has64BitRotate() const { return Has64BitRotate; }
 
   bool hasL1ReadOnlyCache() const { return HasL1ReadOnlyCache; }
   bool hasLocalMemFenceSupress() const { return HasLocalMemFenceSupress; }
@@ -309,6 +389,16 @@ public:
       return TARGET_PLATFORM::GENX_TGLLP;
     case XE_HP_SDV:
       return TARGET_PLATFORM::Xe_XeHPSDV;
+    case GENX_ADLS:
+      return TARGET_PLATFORM::GENX_TGLLP;
+    case GENX_ADLP:
+      return TARGET_PLATFORM::GENX_TGLLP;
+    case XE_DG2:
+      return TARGET_PLATFORM::Xe_DG2;
+    case XE_PVC:
+      return TARGET_PLATFORM::Xe_PVC;
+    case XE_PVCXT:
+      return TARGET_PLATFORM::Xe_PVCXT;
     case GENX_KBL:
       return TARGET_PLATFORM::GENX_SKL;
     case GENX_GLK:

@@ -1470,6 +1470,8 @@ bool ConstantLoader::isSimple() const {
 bool ConstantLoader::allowI64Ops() const {
   if (!Subtarget.hasLongLong())
     return false;
+  if (Subtarget.partialI64Emulation())
+    return false;
   return true;
 }
 /***********************************************************************

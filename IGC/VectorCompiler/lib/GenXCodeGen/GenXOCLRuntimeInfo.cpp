@@ -177,6 +177,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dArray)))
       return ArgKindType::Image2DArray;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dMediaBlock))) {
+      if (ST.translateLegacyMessages())
+        return ArgKindType::Image2D;
       return ArgKindType::Image2DMediaBlock;
     }
     if (any_of(Tokens, getStrPred(OCLAttributes::Image3d)))
@@ -259,7 +261,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
           break;
         case GenXIntrinsic::genx_barrier:
         case GenXIntrinsic::genx_sbarrier:
-          UsesBarriers = true;
+          NumBarriers = 1;
           break;
         case GenXIntrinsic::genx_ssdp4a:
         case GenXIntrinsic::genx_sudp4a:
@@ -299,6 +301,8 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
   Name = KM.getName().str();
   SLMSize = KM.getSLMSize();
 
+  if (ST.hasNBarrier())
+    NumBarriers = KM.getAlignedBarrierCnt(NumBarriers);
 }
 
 void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(

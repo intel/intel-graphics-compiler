@@ -62,7 +62,12 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
     .Case("TGLLP", GENX_TGLLP)
     .Case("RKL", GENX_RKL)
     .Case("DG1", GENX_DG1)
+    .Case("ADLS", GENX_ADLS)
+    .Case("ADLP", GENX_ADLP)
     .Case("XEHP", XE_HP_SDV)
+    .Case("DG2", XE_DG2)
+    .Case("PVC", XE_PVC)
+    .Case("PVCXT", XE_PVCXT)
     .Default(GENX_SKL);
 
   std::string CPUName(CPU);

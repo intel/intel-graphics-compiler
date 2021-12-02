@@ -107,6 +107,13 @@ static cl::opt<bool> EnableAdd3Matcher(IGC_STRDEBUG("enable-add3"), cl::init(tru
 STATISTIC(NumOfBfnMatched, "Number of BFN instructions matched");
 static cl::opt<bool> EnableBfnMatcher("enable-bfn", cl::init(true), cl::Hidden,
                                       cl::desc("Enable bfn matching."));
+static cl::opt<bool> EnableLscAddrFoldOffset("enable-lsc-addr-fold-offset",
+                                             cl::init(true), cl::Hidden,
+                                             cl::desc("Enable LSC offset folding"));
+// Currently not supported in Finalizer
+static cl::opt<bool> EnableLscAddrFoldScale("enable-lsc-addr-fold-scale",
+                                            cl::init(false), cl::Hidden,
+                                            cl::desc("Enable LSC scale folding"));
 
 namespace {
 
@@ -163,6 +170,7 @@ private:
   bool flipBoolNot(Instruction *Inst);
   // foldBoolAnd : fold a (vector) bool and into sel/wrregion if beneficial
   bool matchInverseSqrt(Instruction *I);
+  bool foldLscAddrCalculation(CallInst *Inst);
   bool foldBoolAnd(Instruction *Inst);
   bool simplifyPredRegion(CallInst *Inst);
   bool simplifyWrRegion(CallInst *Inst);
@@ -527,6 +535,33 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_uutrunc_sat:
     Changed |= simplifyTruncSat(&I);
     break;
+  case GenXIntrinsic::genx_lsc_load_slm:
+  case GenXIntrinsic::genx_lsc_load_stateless:
+  case GenXIntrinsic::genx_lsc_load_bindless:
+  case GenXIntrinsic::genx_lsc_load_bti:
+  case GenXIntrinsic::genx_lsc_prefetch_slm:
+  case GenXIntrinsic::genx_lsc_prefetch_bti:
+  case GenXIntrinsic::genx_lsc_prefetch_stateless:
+  case GenXIntrinsic::genx_lsc_prefetch_bindless:
+  case GenXIntrinsic::genx_lsc_load_quad_slm:
+  case GenXIntrinsic::genx_lsc_load_quad_stateless:
+  case GenXIntrinsic::genx_lsc_load_quad_bindless:
+  case GenXIntrinsic::genx_lsc_load_quad_bti:
+  case GenXIntrinsic::genx_lsc_store_slm:
+  case GenXIntrinsic::genx_lsc_store_stateless:
+  case GenXIntrinsic::genx_lsc_store_bindless:
+  case GenXIntrinsic::genx_lsc_store_bti:
+  case GenXIntrinsic::genx_lsc_store_quad_slm:
+  case GenXIntrinsic::genx_lsc_store_quad_stateless:
+  case GenXIntrinsic::genx_lsc_store_quad_bindless:
+  case GenXIntrinsic::genx_lsc_store_quad_bti:
+  case GenXIntrinsic::genx_lsc_xatomic_slm:
+  case GenXIntrinsic::genx_lsc_xatomic_stateless:
+  case GenXIntrinsic::genx_lsc_xatomic_bindless:
+  case GenXIntrinsic::genx_lsc_xatomic_bti:
+    Changed |= foldLscAddrCalculation(&I);
+  case GenXIntrinsic::genx_dword_atomic_fadd:
+  case GenXIntrinsic::genx_dword_atomic_fsub:
   case GenXIntrinsic::genx_dword_atomic_add:
   case GenXIntrinsic::genx_dword_atomic_and:
   case GenXIntrinsic::genx_dword_atomic_cmpxchg:
@@ -913,6 +948,102 @@ bool GenXPatternMatch::matchInverseSqrt(Instruction *I) {
 
   OpInst->eraseFromParent();
   return true;
+}
+
+/***********************************************************************
+ * applyLscAddrFolding : fold address calculation of LSC intriniscs
+ * Addr = ImmOffset + Offsets * Scale
+ * If Offsets is add-like operation (Offsets = Offsets0 + Imm0), it can be
+ * folded in new ImmOffset: (ImmOffset + Imm0 * Scale) + Offsets0 * Scale
+ * If Offsets is mul-like operation (Offsets = Offsets0 * Imm0), it can be
+ * folded in new Scale: ImmOffset + Offsets * (Scale * Imm0)
+ * This folding is done iteratively for chains of such operations.
+ */
+static bool
+applyLscAddrFolding(Value *Offsets, APInt& Scale, APInt& Offset) {
+  if (!Offsets->hasOneUse())
+    return false;
+  if (!isa<BinaryOperator>(Offsets))
+    return false;
+  auto *BinOp = cast<BinaryOperator>(Offsets);
+  unsigned ConstIdx;
+  if (isa<Constant>(BinOp->getOperand(0)))
+    ConstIdx = 0;
+  else if (isa<Constant>(BinOp->getOperand(1)))
+    ConstIdx = 1;
+  else
+    return false;
+  auto *ConstOp = cast<Constant>(BinOp->getOperand(ConstIdx));
+  if (!isa<ConstantInt>(ConstOp) &&
+      (!ConstOp->getType()->isVectorTy() || !ConstOp->getSplatValue()))
+    return false;
+  auto Imm = ConstOp->getUniqueInteger();
+
+  auto NewScale(Scale);
+  auto NewOffset(Offset);
+  bool Overflow = false;
+  switch (BinOp->getOpcode()) {
+    case Instruction::Add:
+    case Instruction::Sub:
+      if (!EnableLscAddrFoldOffset)
+        return false;
+      if (Imm.getMinSignedBits() > Offset.getBitWidth())
+        return false;
+      Imm = Imm.sextOrTrunc(Offset.getBitWidth())
+               .smul_ov(Scale.zext(Imm.getBitWidth()), Overflow);
+      if (Overflow)
+        return false;
+      if (BinOp->getOpcode() == Instruction::Add)
+        NewOffset = Offset.sadd_ov(Imm, Overflow);
+      else if (BinOp->getOpcode() == Instruction::Sub)
+        NewOffset = Offset.ssub_ov(Imm, Overflow);
+      break;
+    case Instruction::Mul:
+      if (!EnableLscAddrFoldScale)
+        return false;
+      if (!Imm.isIntN(Scale.getBitWidth()))
+        return false;
+      if (Imm.getBitWidth() > Scale.getBitWidth())
+        Imm = Imm.trunc(Scale.getBitWidth());
+      NewScale = Scale.umul_ov(Imm, Overflow);
+      break;
+    case Instruction::Shl:
+      if (!EnableLscAddrFoldScale)
+        return false;
+      NewScale = Scale.ushl_ov(Imm, Overflow);
+      break;
+    default:
+      return false;
+  }
+
+  if (Overflow)
+    return false;
+  Scale = NewScale;
+  Offset = NewOffset;
+  BinOp->replaceAllUsesWith(BinOp->getOperand(1 - ConstIdx));
+  BinOp->eraseFromParent();
+  return true;
+}
+
+bool GenXPatternMatch::foldLscAddrCalculation(CallInst *Inst) {
+  constexpr unsigned AddrScaleOpndNum = 4,
+                     ImmOffsetOpndNum = 5,
+                     OffsetsOpndNum = 10;
+  IGC_ASSERT_MESSAGE(isa<ConstantInt>(Inst->getOperand(AddrScaleOpndNum)) &&
+                     isa<ConstantInt>(Inst->getOperand(ImmOffsetOpndNum)),
+                     "Scale and ImmOffset should be constant");
+  auto Scale = cast<ConstantInt>(Inst->getOperand(AddrScaleOpndNum))->getValue();
+  auto Offset = cast<ConstantInt>(Inst->getOperand(ImmOffsetOpndNum))->getValue();
+  bool Changed = false;
+  while (applyLscAddrFolding(Inst->getOperand(OffsetsOpndNum), Scale, Offset))
+    Changed = true;
+  if (Changed) {
+    Inst->setOperand(AddrScaleOpndNum,
+        ConstantInt::get(Type::getInt16Ty(Inst->getContext()), Scale));
+    Inst->setOperand(ImmOffsetOpndNum,
+        ConstantInt::get(Type::getInt32Ty(Inst->getContext()), Offset));
+  }
+  return Changed;
 }
 
 /***********************************************************************

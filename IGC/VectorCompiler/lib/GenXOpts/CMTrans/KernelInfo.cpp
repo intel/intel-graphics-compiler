@@ -178,6 +178,10 @@ KernelMetadata::KernelMetadata(const Function *F) {
   if (ConstantInt *Sz = getValueAsMetadata<ConstantInt>(
           ExternalNode->getOperand(KernelMDOp::SLMSize)))
     SLMSize = Sz->getZExtValue();
+  if (ExternalNode->getNumOperands() > KernelMDOp::NBarrierCnt)
+    if (ConstantInt *Sz = getValueAsMetadata<ConstantInt>(
+            ExternalNode->getOperand(KernelMDOp::NBarrierCnt)))
+      NBarrierCnt = Sz->getZExtValue();
   // Build the argument kinds and offsets arrays that should correspond to the
   // function arguments (both explicit and implicit)
   MDNode *KindsNode =

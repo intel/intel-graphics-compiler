@@ -585,6 +585,7 @@ bool GenXPacketize::isUniformIntrinsic(unsigned id) {
   case GenXIntrinsic::genx_predefined_surface:
   case GenXIntrinsic::genx_barrier:
   case GenXIntrinsic::genx_sbarrier:
+  case GenXIntrinsic::genx_nbarrier:
   case GenXIntrinsic::genx_cache_flush:
   case GenXIntrinsic::genx_fence:
   case GenXIntrinsic::genx_wait:
@@ -1279,6 +1280,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_dword_atomic_imax:
       case GenXIntrinsic::genx_dword_atomic_fmin:
       case GenXIntrinsic::genx_dword_atomic_fmax:
+      case GenXIntrinsic::genx_dword_atomic_fadd:
+      case GenXIntrinsic::genx_dword_atomic_fsub:
       {
         Value *Src0 = getPacketizeValue(CI->getOperand(0));
         Value *BTI = getUniformValue(CI->getOperand(1));
@@ -1625,6 +1628,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_typed_atomic_imax:
       case GenXIntrinsic::genx_typed_atomic_fmin:
       case GenXIntrinsic::genx_typed_atomic_fmax:
+      case GenXIntrinsic::genx_typed_atomic_fadd:
+      case GenXIntrinsic::genx_typed_atomic_fsub:
       {
         Value *Src0 = getPacketizeValue(CI->getOperand(0));
         Value *BTI = getUniformValue(CI->getOperand(1));

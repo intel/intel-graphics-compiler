@@ -23,6 +23,22 @@ def FeatureLongLong : SubtargetFeature<"longlong", "HasLongLong", "true",
                                        "supports long long">;
 def FeatureFP64: SubtargetFeature<"fp64", "HasFP64", "true",
                                   "support for double types">;
+def FeatureGRFByteSize64 : SubtargetFeature<"grf_byte_size_64",
+                                            "GRFByteSize",
+                                            "64",
+                                            "Every GRF byte size is 64">;
+def FeatureLSCMaxWidth32 : SubtargetFeature<"lsc_max_width_32",
+                                            "LSCMaxWidth",
+                                            "32",
+                                            "LSC messages have a maximum width of 32">;
+def FeatureTransLegacy : SubtargetFeature<"translate_legacy_message",
+                                          "TranslateLegacyMessages",
+                                          "true",
+                                          "translate legacy message to LSC">;
+def FeaturePartialI64Emulation : SubtargetFeature<"lightweight_i64_emulation",
+                                       "PartialI64Emulation",
+                                       "true",
+                                       "emulate subset of 64-bit operations">;
 
 def FeatureUseMulDDQ : SubtargetFeature<"mul_ddq",
                                         "UseMulDDQ",
@@ -69,6 +85,10 @@ def FeatureInstrBitRotate: SubtargetFeature<"bitrotate",
                                            "true",
                                            "support of rol/ror instructions">;
 
+def FeatureInstr64BitRotate: SubtargetFeature<"bitrotate64",
+                                              "Has64BitRotate",
+                                              "true",
+                                              "support of 64-bit rol/ror instructions">;
 
 def FeatureHWTIDFromPredef: SubtargetFeature<"hwtidfrompredef",
                                              "GetsHWTIDFromPredef",
@@ -95,6 +115,10 @@ def FeatureThreadPayloadInMemory : SubtargetFeature<"thread_payload_in_memory",
                                                     "true",
                                                     "need to load thread payload from memory">;
 
+def FeatureBfMixedModeWidth16 : SubtargetFeature<"feature_bf_mixed16",
+                                                 "HasBfMixedModeWidth16",
+                                                 "true",
+                                                 "BF mixed mode operations extended width">;
 def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
                                     "true", "warn instead of error on callable violation">;
 
@@ -174,6 +198,37 @@ def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureThreadPayloadInMemory,
                                FeatureHasPackedFloat,
                                FeatureInstrBitRotate]>;
+def : Proc<"ADLS",            [FeatureLongLongEmulation, FeatureIntDivRem32,
+                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
+                               FeatureHasPackedFloat,
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
+def : Proc<"ADLP",            [FeatureLongLongEmulation, FeatureIntDivRem32,
+                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
+                               FeatureHasPackedFloat,
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption]>;
+def : Proc<"DG2",             [FeatureLongLongEmulation,
+                               FeatureThreadPayloadInMemory,
+                               FeatureHasPackedFloat,
+                               FeatureInstrBitRotate]>;
+def : Proc<"PVC",             [FeatureLongLong, FeatureGRFByteSize64,
+                               FeatureLSCMaxWidth32,
+                               FeatureSwitchjmp,
+                               FeatureFP64,
+                               FeatureThreadPayloadInMemory,
+                               FeatureHasPackedFloat,
+                               FeatureInstr64BitRotate,
+                               FeatureBfMixedModeWidth16]>;
+def : Proc<"PVCXT",           [FeatureLongLong, FeatureGRFByteSize64,
+                               FeatureLSCMaxWidth32,
+                               FeaturePartialI64Emulation,
+                               FeatureSwitchjmp,
+                               FeatureInstrAdd64,
+                               FeatureFP64,
+                               FeatureThreadPayloadInMemory,
+                               FeatureInstr64BitRotate,
+                               FeatureBfMixedModeWidth16]>;
 
 def GenX : Target {
   // Nothing here (yet?)

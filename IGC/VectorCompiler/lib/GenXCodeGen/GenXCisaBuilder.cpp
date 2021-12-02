@@ -967,9 +967,11 @@ static bool isExtOperandBaled(Use &U, const GenXBaling *Baling) {
                            Baling);
 }
 
+// Args:
+//    HasBarrier - whether kernel has barrier or sbarrier
 void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
-                                const GenXSubtarget* Subtarget) {
-  IGC_ASSERT(Subtarget);
+                                const GenXSubtarget *Subtarget,
+                                bool HasBarrier) {
   unsigned SLMSizeInKb = divideCeil(KM.getSLMSize(), 1024);
   if (SLMSizeInKb > Subtarget->getMaxSlmSize())
     report_fatal_error("SLM size exceeds target limits");
@@ -1004,6 +1006,11 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
     Kernel.AddKernelAttribute("PerThreadInputSize", sizeof(Bytes), &Bytes);
   }
 
+  if (Subtarget->hasNBarrier()) {
+    uint8_t BarrierCnt =
+        static_cast<uint8_t>(KM.getAlignedBarrierCnt(HasBarrier));
+    Kernel.AddKernelAttribute("NBarrierCnt", 1, &BarrierCnt);
+  }
 }
 
 // Legalize name for using as filename or in visa asm
@@ -1062,7 +1069,7 @@ void GenXKernelBuilder::runOnKernel() {
   IGC_ASSERT_MESSAGE(Kernel, "Kernel initialization failed!");
   LLVM_DEBUG(dbgs() << "=== PROCESS KERNEL(" << KernelName << ") ===\n");
 
-  addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget);
+  addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget, HasBarrier);
 
   // Set CM target for all functions produced by VC.
   // See visa spec for CMTarget value (section 4, Kernel).
@@ -1172,7 +1179,7 @@ bool GenXKernelBuilder::run() {
 
   if (TheKernelMetadata.isKernel()) {
     // For a kernel with no barrier instruction, add a NoBarrier attribute.
-    if (!HasBarrier)
+    if (!HasBarrier && !TheKernelMetadata.hasNBarrier())
       CISA_CALL(Kernel->AddKernelAttribute("NoBarrier", 0, nullptr));
   }
 
@@ -3106,6 +3113,8 @@ bool GenXKernelBuilder::allowI64Ops() const {
   IGC_ASSERT(Subtarget);
   if (!Subtarget->hasLongLong())
     return false;
+  if (Subtarget->partialI64Emulation())
+    return false;
   return true;
 }
 /**************************************************************************************************
@@ -3817,6 +3826,80 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                                    UNSIGNED, Mod, true /* Dst */);
       };
 
+  auto CreateLscUntyped =
+      [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
+          VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
+          LSC_CACHE_OPTS CacheOpts, LSC_ADDR Addr, LSC_DATA_SHAPE DataShape,
+          VISA_VectorOpnd *Surface, VISA_RawOpnd *DstData,
+          VISA_RawOpnd *Src0Addr, VISA_RawOpnd *Src1Data,
+          VISA_RawOpnd *Src2Data) {
+        LLVM_DEBUG(dbgs() << "CreateLscUntyped\n");
+        if (DL.getPointerSize() == QWordBytes && LscSfid != LSC_TGM &&
+            LscSfid != LSC_SLM &&
+            (Addr.type == LSC_ADDR_TYPE_FLAT ||
+             Addr.type == LSC_ADDR_TYPE_SS) &&
+            SubOpcode != LSC_LOAD_BLOCK2D && SubOpcode != LSC_STORE_BLOCK2D)
+          Addr.size = LSC_ADDR_SIZE_64b;
+        if (SubOpcode == LSC_LOAD_STRIDED || SubOpcode == LSC_STORE_STRIDED) {
+          Kernel->AppendVISALscUntypedStridedInst(
+              SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, Addr,
+              DataShape, Surface, DstData, Src0Addr,
+              (VISA_VectorOpnd *)Src0Addr, Src1Data);
+        } else {
+          Kernel->AppendVISALscUntypedInst(
+              SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, Addr,
+              DataShape, Surface, DstData, Src0Addr, Src1Data, Src2Data);
+        }
+      };
+  auto CreateLscUntypedBlock2D =
+      [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
+          VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
+          LSC_CACHE_OPTS CacheOpts, LSC_DATA_SHAPE_BLOCK2D DataShape,
+          VISA_VectorOpnd *Surface, VISA_RawOpnd *DstData,
+          VISA_VectorOpnd *Src0AddrY, VISA_VectorOpnd *Src0AddrX,
+          VISA_RawOpnd *Src1Data) {
+        // FIXME: surface is now FLAT-only
+        // FIXME: fill out the nullptr elements
+        VISA_VectorOpnd *Src0Addrs[LSC_BLOCK2D_ADDR_PARAMS]{
+            nullptr,   // surface base (a 64b scalar addr)
+            nullptr,   // surface width (32b)
+            nullptr,   // surface height (32b)
+            nullptr,   // surface pitch  (32b)
+            Src0AddrX, // block x offset (32b)
+            Src0AddrY, // block y offset (32b)
+        };
+
+        CISA_CALL(Kernel->AppendVISALscUntypedBlock2DInst(
+            SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, DataShape,
+            DstData, Src0Addrs, Src1Data));
+      };
+  auto CreateLscUntypedBlock2DStateless =
+      [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
+          VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
+          LSC_CACHE_OPTS CacheOpts, LSC_DATA_SHAPE_BLOCK2D DataShape,
+          VISA_VectorOpnd *SurfaceBase,  VISA_VectorOpnd *SurfaceWidth,
+          VISA_VectorOpnd *SurfaceHeight, VISA_VectorOpnd *SurfacePitch,
+          VISA_RawOpnd *DstData, VISA_VectorOpnd *Src0AddrY,
+          VISA_VectorOpnd *Src0AddrX, VISA_RawOpnd *Src1Data) {
+        // FIXME: surface is now FLAT-only
+        VISA_VectorOpnd *Src0Addrs[LSC_BLOCK2D_ADDR_PARAMS]{
+            SurfaceBase,   // surface base (a 64b scalar addr)
+            SurfaceWidth,  // surface width (32b)
+            SurfaceHeight, // surface height (32b)
+            SurfacePitch,  // surface pitch  (32b)
+            Src0AddrX,     // block x offset (32b)
+            Src0AddrY,     // block y offset (32b)
+        };
+
+        CISA_CALL(Kernel->AppendVISALscUntypedBlock2DInst(
+            SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, DataShape,
+            DstData, Src0Addrs, Src1Data));
+      };
+  auto CreateLscFence =
+      [&](VISA_Exec_Size ExecSize, VISA_PredOpnd *Pred,
+          LSC_SFID LscSfid, LSC_FENCE_OP LscFenceOp, LSC_SCOPE LscScope) {
+          CISA_CALL(Kernel->AppendVISALscFence(LscSfid, LscFenceOp, LscScope));
+      };
 
   VISA_EMask_Ctrl exec_mask;
 #include "GenXIntrinsicsBuildMap.inc"
@@ -5412,6 +5495,29 @@ void GenXKernelBuilder::buildGetHWID(CallInst *CI, const DstOpndDesc &DstDesc) {
         ISA_MOV, nullptr, false, vISA_EMASK_M1_NM, EXEC_SIZE_1, dst, src));
   };
 
+  if (Subtarget->isPVC()) {
+    // [14:12] Slice ID.
+    // [11:9] SubSlice ID
+    // [8] : EUID[2]
+    // [7:6] : Reserved
+    // [5:4] EUID[1:0]
+    // [3] : Reserved MBZ
+    // [2:0] : TID
+    //
+    // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
+
+    // Load sr0 with [14:0] mask
+    loadMaskedSR0(15);
+
+    // Remove reserved bits
+    removeBitRange(6, 2);
+    removeBitRange(3, 1);
+
+    // Store final value
+    writeHwtidToDst();
+
+    return;
+  }
   // XeHP_SDV
   // [13:11] Slice ID.
   // [10:9] Dual - SubSlice ID

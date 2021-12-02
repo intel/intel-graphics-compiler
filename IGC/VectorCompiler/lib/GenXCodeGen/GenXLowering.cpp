@@ -136,6 +136,11 @@ using namespace genx;
 static cl::opt<bool>
     EnableGenXByteWidening("enable-genx-byte-widening", cl::init(true),
                            cl::Hidden, cl::desc("Enable GenX byte widening."));
+STATISTIC(NumLegacy, "Number of translated legacy messages");
+STATISTIC(NumOword, "Number of translated legacy oword.ld/oword.st messages");
+STATISTIC(NumQuad, "Number of translated legacy gather4/scatter4 messages");
+STATISTIC(NumMedia,
+          "Number of translated legacy media block read/write messages");
 namespace {
 
 // Diagnostic for lowering problems
@@ -202,6 +207,10 @@ public:
   bool runOnFunction(Function &F) override;
 
 private:
+  bool widenSIMD8GatherScatter(CallInst *CI, unsigned IID);
+  IGCLLVM::FixedVectorType *
+  adjustVTForTransposedMessage(IGCLLVM::FixedVectorType *VT);
+  bool translateLegacyToLSC(CallInst *CI, unsigned IID);
   bool lowerMediaWalkerAPIs(CallInst *CI, unsigned IID);
   bool translateSLMOWord(CallInst* CI, unsigned IID);
   bool splitGatherScatter(CallInst *CI, unsigned IID);
@@ -377,6 +386,14 @@ static bool isNewLoadInst(CallInst *Inst) {
   case GenXIntrinsic::genx_gather_scaled2:
   case GenXIntrinsic::genx_gather4_masked_scaled2:
   case GenXIntrinsic::genx_gather_masked_scaled2:
+  // Channel-wise insts:
+  case GenXIntrinsic::genx_lsc_load_slm:
+  case GenXIntrinsic::genx_lsc_load_stateless:
+  case GenXIntrinsic::genx_lsc_load_bindless:
+  case GenXIntrinsic::genx_lsc_load_bti:
+  case GenXIntrinsic::genx_lsc_prefetch_bti:
+  case GenXIntrinsic::genx_lsc_prefetch_stateless:
+  case GenXIntrinsic::genx_lsc_prefetch_bindless:
     return true;
   default:
     return false;
@@ -728,6 +745,9 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   switch (IID) {
   case GenXIntrinsic::genx_typed_atomic_add:
   case GenXIntrinsic::genx_typed_atomic_and:
+  // to be open-sourced soon (need to check)
+  case GenXIntrinsic::genx_typed_atomic_fadd:
+  case GenXIntrinsic::genx_typed_atomic_fsub:
   case GenXIntrinsic::genx_typed_atomic_fmax:
   case GenXIntrinsic::genx_typed_atomic_fmin:
   case GenXIntrinsic::genx_typed_atomic_imax:
@@ -843,6 +863,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     break;
   case GenXIntrinsic::genx_dword_atomic_add:
   case GenXIntrinsic::genx_dword_atomic_and:
+  case GenXIntrinsic::genx_dword_atomic_fadd:
+  case GenXIntrinsic::genx_dword_atomic_fsub:
   case GenXIntrinsic::genx_dword_atomic_fmax:
   case GenXIntrinsic::genx_dword_atomic_fmin:
   case GenXIntrinsic::genx_dword_atomic_imax:
@@ -908,6 +930,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(WidthOperand)->getType())
           ->getNumElements();
   unsigned TargetWidth = IsTyped ? 8 : 16;
+  if (IsTyped && ST && ST->getGRFByteSize() > 32)
+    TargetWidth = 16;
   // If exec size isn't a power of 2, it must be split. For example, exec size
   // 12 -> 8 and 4.
   if (Width <= TargetWidth && isPowerOf2_64(Width))
@@ -1316,6 +1340,1883 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
   return false;
 }
 
+static Value *ExpandPredicate(CallInst *CI, unsigned PredIdx,
+                              unsigned SIMDWidth) {
+  Value *PredV = CI->getArgOperand(PredIdx);
+  auto Width =
+      cast<IGCLLVM::FixedVectorType>(PredV->getType())->getNumElements();
+  if (Width == SIMDWidth)
+    return PredV;
+  IGC_ASSERT(Width < SIMDWidth);
+  auto PredV32Ty = IGCLLVM::FixedVectorType::get(
+      IntegerType::getInt1Ty(CI->getContext()), SIMDWidth);
+  auto ZeroPred32 = Constant::getNullValue(PredV32Ty);
+  if (isa<Constant>(PredV)) {
+    SmallVector<Constant *, 32> PredArray;
+    for (unsigned i = 0; i < Width; ++i)
+      PredArray.push_back(cast<ConstantVector>(PredV)->getOperand(i));
+    for (unsigned i = Width; i < SIMDWidth; ++i)
+      PredArray.push_back(Constant::getNullValue(
+          cast<VectorType>(PredV32Ty)->getElementType()));
+    return ConstantVector::get(PredArray);
+  } else {
+    Region R(ZeroPred32);
+    R.Width = Width;
+    R.NumElements = Width;
+    return R.createWrPredRegion(ZeroPred32, PredV, 0, "", CI,
+                                CI->getDebugLoc());
+  }
+}
+
+/***************************************************************************
+ * ExpandAddrOrData : expands ArgIdx argument of CI instruction to the type
+ * corresponding to SIMDWidth.
+ *
+ * Matrix of N x ArgWidth elements expands to matrix of N x SIMDWidth elements.
+ * First elements of the rows of initial matrix become the first elements of
+ * corresponding rows of a new matrix.
+ *
+ * TODO: After wrregion lowering we will get one mov for every row, as dst
+ * register doesn't have horizontal stride. So it is possible to optimize the
+ * code by copying only those rows that are used.
+ *
+ * Returns new value/instruction/wrregion that represents expanded argument.
+ * Doesn't change the call instruction itself.
+ */
+static Value *ExpandAddrOrData(CallInst *CI, unsigned ArgIdx, unsigned ArgWidth,
+                               unsigned NumChannels, unsigned SIMDWidth) {
+  Value *InitialData = CI->getArgOperand(ArgIdx);
+  if (ArgWidth == SIMDWidth)
+    return InitialData;
+
+  IGC_ASSERT(ArgWidth < SIMDWidth);
+  auto InitialDataNumElem =
+      cast<IGCLLVM::FixedVectorType>(InitialData->getType())->getNumElements();
+  IGC_ASSERT(ArgWidth);
+  IGC_ASSERT_MESSAGE(InitialDataNumElem >= ArgWidth * NumChannels,
+    "there must be enough data and it should be a matrix with ArgWidth width");
+  IGC_ASSERT_MESSAGE(InitialDataNumElem % ArgWidth == 0,
+    "there must be enough data and it should be a matrix with ArgWidth width");
+  auto InitialDataNumRows = InitialDataNumElem / ArgWidth;
+
+  auto ExpandDataTy = IGCLLVM::FixedVectorType::get(
+      cast<VectorType>(InitialData->getType())->getElementType(),
+      SIMDWidth * InitialDataNumRows);
+  auto ExpandDataUndef = UndefValue::get(ExpandDataTy);
+  if (isa<UndefValue>(InitialData))
+    return ExpandDataUndef;
+  Region R(ExpandDataUndef);
+  R.Width = ArgWidth;
+  R.NumElements = InitialDataNumElem;
+  if (NumChannels > 1)
+    R.VStride = SIMDWidth;
+  return R.createWrRegion(ExpandDataUndef, InitialData, "", CI,
+                          CI->getDebugLoc());
+}
+
+// Widen new load intrinsics. Currently only gather4_scaled2 is supported.
+// Example for gather4_scaled2 with two channels.
+// Before:
+//   x = <16> gather4_scaled2 <8> addrs
+// After:
+//   newaddrs = <16> wrregion undef, addrs
+// bale {
+//   tmp = <32> gather4_scaled2 newaddrs
+//   wrrpred = <32> shufflevec oldpred, undef, mask
+//   wrr = wrregion <32> undef, tmp, 0, xpred
+//  }
+// bale {
+//   chR = rdregion <8> wrr, 0
+//   chRpred = <8> shufflevec oldpred, undef, chmask
+//   partialx = wrregion <8> oldval, chR, 0, chRpred
+// }
+// bale {
+//   chG = rdregion <8> wrr, 16 * 4
+//   chGpred = <8> shuffleve oldpred, undef, chmask
+//   x = wrregion <8> partialx, chG, 8 * 4, chGpred
+// }
+static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
+                              const GenXSubtarget *ST,
+                              SmallVectorImpl<Instruction *> &ToErase) {
+  switch (IID) {
+  default:
+    return false;
+  case GenXIntrinsic::genx_gather4_scaled2:
+  case GenXIntrinsic::genx_gather4_masked_scaled2:
+    break;
+  }
+
+  // Probably valid only for gather.
+  // Need to calculate it when other intrinsics will be normalized.
+  constexpr unsigned WidenFactor = 2;
+
+  unsigned NumChannels =
+    countPopulation(cast<ConstantInt>(CI->getOperand(0))->getZExtValue());
+  IGC_ASSERT(NumChannels);
+  const DebugLoc &DL = CI->getDebugLoc();
+  unsigned LoadWidth =
+      cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements();
+  unsigned NewLoadWidth = LoadWidth * WidenFactor;
+  unsigned ChannelWidth = LoadWidth / NumChannels;
+  unsigned NewChannelWidth = ChannelWidth * WidenFactor;
+  Type *ElemType = CI->getType()->getScalarType();
+
+  if (ChannelWidth > 8)
+    return false;
+
+  Value *NewResult;
+  Value *OldPred;
+  unsigned InitialOffset;
+  Instruction *InstToReplace;
+  std::tie(NewResult, OldPred, InitialOffset, InstToReplace) =
+      getLoadTarget(CI, ST);
+
+  if (InstToReplace != CI)
+    ToErase.push_back(InstToReplace);
+  ToErase.push_back(CI);
+
+  // Generate new addresses.
+  Value *NewAddrs;
+  {
+    Value *Addrs = CI->getOperand(4);
+    Type *AddrsType = Addrs->getType();
+    Type *NewAddrsType = IGCLLVM::FixedVectorType::get(
+        AddrsType->getScalarType(), NewChannelWidth);
+    Region Rgn(AddrsType);
+    NewAddrs = Rgn.createWrRegion(UndefValue::get(NewAddrsType), Addrs,
+                                  "load.addrs.wide", CI, DL);
+  }
+
+  // Generate new wide load.
+  Value *NewLoad;
+  {
+    Type *NewLoadType = IGCLLVM::FixedVectorType::get(ElemType, NewLoadWidth);
+    SmallVector<Value *, 8> Args(CI->arg_begin(), CI->arg_end());
+    SmallVector<Type *, 3> Tys;
+    Tys.push_back(NewLoadType);
+    switch (IID) {
+    case GenXIntrinsic::genx_gather4_masked_scaled2: {
+      IGC_ASSERT_MESSAGE(ChannelWidth == 8,
+                         "Unexpected gather4_maked_scaled width");
+      Args[4] = NewAddrs;
+      // Expand predicate to the size of NewAddrs
+      OldPred =
+          ExpandPredicate(CI, 5 /* PredIdx */,
+                          cast<IGCLLVM::FixedVectorType>(NewAddrs->getType())
+                              ->getNumElements());
+      Args[5] = OldPred;
+      Tys.push_back(NewAddrs->getType());
+      Tys.push_back(OldPred->getType());
+      break;
+    }
+    case GenXIntrinsic::genx_gather4_scaled2: {
+      IGC_ASSERT_MESSAGE(ChannelWidth == 8, "Unexpected gather4_scaled width");
+      Tys.push_back(NewAddrs->getType());
+      Args[4] = NewAddrs;
+      break;
+    }
+    default:
+      IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected load");
+    }
+
+    Function *Decl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), static_cast<GenXIntrinsic::ID>(IID), Tys);
+    auto *NewCI = CallInst::Create(Decl, Args, CI->getName() + "wide", CI);
+    NewCI->setDebugLoc(DL);
+    NewLoad = NewCI;
+  }
+
+  // Generate wrregion for new load.
+  {
+    Type *NewLoadType = NewLoad->getType();
+    Value *LoadPred = generatePredicateForLoadWrregion(
+        OldPred, 0, NewLoadWidth, NumChannels, CI, DL, "load.wide.pred");
+    Region Rgn(NewLoadType);
+    Rgn.Mask = LoadPred;
+    // If there is only one channel we can exit early.
+    if (NumChannels == 1) {
+      Rgn.Offset = InitialOffset;
+      NewResult = Rgn.createWrRegion(NewResult, NewLoad, "load.wide.wrregion", CI, DL);
+      InstToReplace->replaceAllUsesWith(NewResult);
+      return true;
+    }
+    NewLoad = Rgn.createWrRegion(UndefValue::get(NewLoadType), NewLoad,
+                                 "load.wide.wrregion", CI, DL);
+  }
+
+  // Shuffle channels.
+  unsigned ElemByteSize = ElemType->getScalarSizeInBits() / 8;
+  Type *ChannelType = IGCLLVM::FixedVectorType::get(ElemType, ChannelWidth);
+  Region RdR(ChannelType);
+  Region WrR(ChannelType);
+  for (unsigned i = 0; i < NumChannels; ++i) {
+    RdR.Offset = i * NewChannelWidth * ElemByteSize;
+    Value *NewChannel =
+        RdR.createRdRegion(NewLoad, "load.wide.channel.read", CI, DL);
+    Value *NewChannelPred = generatePredicateForLoadWrregion(
+        OldPred, 0, ChannelWidth, 1, CI, DL, "load.wide.channel.pred");
+    WrR.Offset = InitialOffset + i * ChannelWidth * ElemByteSize;
+    WrR.Mask = NewChannelPred;
+    NewResult = WrR.createWrRegion(NewResult, NewChannel,
+                                   "load.wide.channel.write", CI, DL);
+  }
+
+  InstToReplace->replaceAllUsesWith(NewResult);
+  return true;
+}
+
+/***********************************************************************
+ * widenSIMD8GatherScatter: widen simd8 gather and scatter
+ *
+ * This performs two functions:
+ *
+ * 1. If the operation is simd8 rather than simd16, expand it into
+ * simd16 instructions because the simd8 gather/scatter/atomic
+ * is either removed by hw (typed gather/scatter/atomic) or semantically
+ * changed by hw (untyped gather4/scatter4, data payload no longer
+ * contiguous in case of simd8).
+ *
+ * 2. For a simd16 scatter4/gather4_typed, when r or both v and r are zero,
+ * replace with undef so that they are not encoded in the vISA instruction and
+ * the message skips them.
+ */
+bool GenXLowering::widenSIMD8GatherScatter(CallInst *CI, unsigned IID) {
+  if (isNewLoadInst(CI))
+    return widenNewSIMD8Load(CI, IID, ST, ToErase);
+
+  enum {
+    MASK_IDX = 0,
+    PRED_IDX = 1,
+    SURF_IDX = 2,
+    U_IDX = 3,
+    DATA_IDX = 6,
+    NONEED = 11
+  };
+  constexpr int WidenSIMD = 16;
+
+  unsigned MaskIdx = NONEED;
+  unsigned PredIdx = NONEED;
+  unsigned AddrIdx = NONEED;
+  unsigned DataIdx = NONEED;
+  bool IsTyped = false;
+  int AtomicNumSrc = (-1); // -1 means not an atomic
+
+  switch (IID) {
+  case GenXIntrinsic::genx_typed_atomic_add:
+  case GenXIntrinsic::genx_typed_atomic_and:
+  case GenXIntrinsic::genx_typed_atomic_fadd:
+  case GenXIntrinsic::genx_typed_atomic_fsub:
+  case GenXIntrinsic::genx_typed_atomic_fmax:
+  case GenXIntrinsic::genx_typed_atomic_fmin:
+  case GenXIntrinsic::genx_typed_atomic_imax:
+  case GenXIntrinsic::genx_typed_atomic_imin:
+  case GenXIntrinsic::genx_typed_atomic_max:
+  case GenXIntrinsic::genx_typed_atomic_min:
+  case GenXIntrinsic::genx_typed_atomic_or:
+  case GenXIntrinsic::genx_typed_atomic_sub:
+  case GenXIntrinsic::genx_typed_atomic_xchg:
+  case GenXIntrinsic::genx_typed_atomic_xor: {
+    DataIdx = 2;
+    PredIdx = 0;
+    AddrIdx = 3;
+    IsTyped = true;
+    AtomicNumSrc = 1;
+  } break;
+  case GenXIntrinsic::genx_typed_atomic_dec:
+  case GenXIntrinsic::genx_typed_atomic_inc: {
+    PredIdx = 0;
+    AddrIdx = 2;
+    IsTyped = true;
+    AtomicNumSrc = 0;
+  } break;
+  case GenXIntrinsic::genx_typed_atomic_cmpxchg:
+  case GenXIntrinsic::genx_typed_atomic_fcmpwr: {
+    DataIdx = 2;
+    PredIdx = 0;
+    AddrIdx = 4;
+    IsTyped = true;
+    AtomicNumSrc = 2;
+  } break;
+  case GenXIntrinsic::genx_scatter4_typed:
+  case GenXIntrinsic::genx_gather4_typed: {
+    DataIdx = DATA_IDX;
+    MaskIdx = MASK_IDX;
+    PredIdx = PRED_IDX;
+    AddrIdx = U_IDX;
+    IsTyped = true;
+  } break;
+  case GenXIntrinsic::genx_scatter4_scaled:
+  case GenXIntrinsic::genx_gather4_scaled: {
+    DataIdx = 6;
+    PredIdx = 0;
+    MaskIdx = 1;
+    AddrIdx = 5;
+  } break;
+  case GenXIntrinsic::genx_svm_scatter4_scaled:
+  case GenXIntrinsic::genx_svm_gather4_scaled: {
+    DataIdx = 5;
+    PredIdx = 0;
+    MaskIdx = 1;
+    AddrIdx = 4;
+  } break;
+  default:
+    return false;
+  }
+
+  if (IsTyped) {
+    Constant *V = dyn_cast<Constant>(CI->getArgOperand(AddrIdx + 1));
+    Constant *R = dyn_cast<Constant>(CI->getArgOperand(AddrIdx + 2));
+    // Only continue when R is known to be zero.
+    if (R && R->isNullValue()) {
+      CI->setOperand(AddrIdx + 2, UndefValue::get(R->getType()));
+      if (V && V->isNullValue())
+        CI->setOperand(AddrIdx + 1, UndefValue::get(V->getType()));
+    }
+    // check if LOD is zero for atomic
+    if (AtomicNumSrc >= 0) {
+      Constant *LOD = dyn_cast<Constant>(CI->getArgOperand(AddrIdx + 3));
+      if (LOD && LOD->isNullValue())
+        CI->setOperand(AddrIdx + 3, UndefValue::get(LOD->getType()));
+    }
+  }
+
+  auto Width =
+      cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+          ->getNumElements();
+  if (Width == 16 || Width == 32)
+    return false;
+
+  IGC_ASSERT(Width == 1 || Width == 2 || Width == 4 || Width == 8);
+  // legacy intrinsic, if width is 1/2/4/8, expand it into 16 wide
+  // on PVC in legacy (no-translation) mode
+  const DebugLoc &DL = CI->getDebugLoc();
+  unsigned NumChannels = 1;
+  if (MaskIdx != NONEED) {
+    NumChannels =
+        (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))->getZExtValue();
+    NumChannels = (NumChannels & 1) + ((NumChannels & 2) >> 1) +
+                  ((NumChannels & 4) >> 2) + ((NumChannels & 8) >> 3);
+  }
+
+  SmallVector<Value *, 8> Args;
+  for (unsigned i = 0; i < CI->getNumArgOperands(); ++i) {
+    Args.push_back(CI->getArgOperand(i));
+  }
+  Args[PredIdx] = ExpandPredicate(CI, PredIdx, WidenSIMD);
+
+  Value *AddrV = CI->getArgOperand(AddrIdx);
+  auto AddrV16Ty = IGCLLVM::FixedVectorType::get(
+      cast<VectorType>(AddrV->getType())->getElementType(), 16);
+  auto UndefAddr16 = UndefValue::get(AddrV16Ty);
+  Region R(UndefAddr16);
+  R.Width = Width;
+  R.NumElements = Width;
+  auto WAddrR = R.createWrRegion(UndefAddr16, AddrV, "", CI, DL);
+  Args[AddrIdx] = WAddrR;
+  // two more address arguments for typed-gather4
+  if (IsTyped) {
+    AddrV = CI->getArgOperand(AddrIdx + 1);
+    if (isa<UndefValue>(AddrV))
+      Args[AddrIdx + 1] = UndefAddr16;
+    else
+      Args[AddrIdx + 1] = R.createWrRegion(UndefAddr16, AddrV, "", CI, DL);
+    AddrV = CI->getArgOperand(AddrIdx + 2);
+    if (isa<UndefValue>(AddrV))
+      Args[AddrIdx + 2] = UndefAddr16;
+    else
+      Args[AddrIdx + 2] = R.createWrRegion(UndefAddr16, AddrV, "", CI, DL);
+    //  typed-atomic, LOD argument
+    if (AtomicNumSrc >= 0) {
+      auto LODV = CI->getArgOperand(AddrIdx + 3);
+      if (isa<UndefValue>(LODV))
+        Args[AddrIdx + 3] = UndefAddr16;
+      else
+        Args[AddrIdx + 3] = R.createWrRegion(UndefAddr16, LODV, "", CI, DL);
+    }
+  }
+
+  unsigned NumSrc = (AtomicNumSrc >= 0) ? AtomicNumSrc : 1;
+  for (unsigned i = 0; i < NumSrc; ++i) {
+    Args[DataIdx + i] =
+        ExpandAddrOrData(CI, DataIdx + i, Width, NumChannels, WidenSIMD);
+  }
+
+  Instruction *NewInst = nullptr;
+  switch (IID) {
+  case GenXIntrinsic::genx_scatter4_typed:
+  case GenXIntrinsic::genx_scatter4_scaled:
+  case GenXIntrinsic::genx_svm_scatter4_scaled: {
+    // Create the 16 wide scatter4 instructions.
+    Type *Tys[] = {Args[PredIdx]->getType(), Args[AddrIdx]->getType(),
+                   Args[DataIdx]->getType()};
+    auto Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(),
+                                                  (GenXIntrinsic::ID)IID, Tys);
+    NewInst = CallInst::Create(Decl, Args, "", CI);
+    NewInst->setDebugLoc(DL);
+    ToErase.push_back(CI);
+  } break;
+  default: {
+    // Create the 16 wide gather4 or atomic instructions
+    auto DataV16Ty =
+        (DataIdx == NONEED)
+            ? IGCLLVM::FixedVectorType::get(
+                  cast<VectorType>(CI->getType())->getElementType(), WidenSIMD)
+            : Args[DataIdx]->getType();
+    Type *Tys[] = {DataV16Ty, Args[PredIdx]->getType(),
+                   Args[AddrIdx]->getType()};
+    auto Decl = GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, Tys);
+    NewInst = CallInst::Create(Decl, Args, CI->getName() + ".expand", CI);
+    NewInst->setDebugLoc(DL);
+    // for gather, need to generate read-region
+    Region R(CI->getType());
+    IGC_ASSERT(WidenSIMD);
+    R.Width = Width;
+    R.NumElements =
+        (cast<IGCLLVM::FixedVectorType>(NewInst->getType())->getNumElements() /
+         WidenSIMD) *
+        Width;
+    if (NumChannels > 1) {
+      R.VStride = WidenSIMD;
+    }
+    auto NewVec = R.createRdRegion(NewInst, "", CI, DL);
+    CI->replaceAllUsesWith(NewVec);
+    ToErase.push_back(CI);
+  } break;
+  }
+  return true;
+}
+
+static Constant *LSCDatumSize(Type *VTy) {
+  auto ETy = cast<VectorType>(VTy)->getElementType();
+  auto ElementBytes = ETy->getPrimitiveSizeInBits() / 8;
+  auto DatumSize = 0;
+  switch (ElementBytes) {
+  case 1:
+    DatumSize = LSC_DATA_SIZE_8b;
+    break;
+  case 2:
+    DatumSize = LSC_DATA_SIZE_16b;
+    break;
+  case 4:
+    DatumSize = LSC_DATA_SIZE_32b;
+    break;
+  case 8:
+    DatumSize = LSC_DATA_SIZE_64b;
+    break;
+  default:
+    IGC_ASSERT_MESSAGE(0, "datum type not support by LSC");
+    break;
+  }
+  IntegerType *I8Ty = Type::getInt8Ty(VTy->getContext());
+  return ConstantInt::get(I8Ty, DatumSize);
+}
+
+static Constant *LSCDatumSize(Value *DataArg) {
+  IGC_ASSERT(DataArg);
+  return LSCDatumSize(DataArg->getType());
+}
+
+static LSC_DATA_ELEMS LSCVectorSize(unsigned N) {
+  switch (N) {
+  case 1:
+    return LSC_DATA_ELEMS_1;
+  case 2:
+    return LSC_DATA_ELEMS_2;
+  case 3:
+    return LSC_DATA_ELEMS_3;
+  case 4:
+    return LSC_DATA_ELEMS_4;
+  case 8:
+    return LSC_DATA_ELEMS_8;
+  case 16:
+    return LSC_DATA_ELEMS_16;
+  case 32:
+    return LSC_DATA_ELEMS_32;
+  case 64:
+    return LSC_DATA_ELEMS_64;
+  default:
+    break;
+  }
+  return LSC_DATA_ELEMS_INVALID;
+}
+
+static Constant *LSCScale(Value *ArgScale) {
+  IGC_ASSERT(isa<ConstantInt>(ArgScale));
+  unsigned Scale = (unsigned)cast<ConstantInt>(ArgScale)->getZExtValue();
+  IntegerType *I16Ty = Type::getInt16Ty(ArgScale->getContext());
+  return ConstantInt::get(I16Ty, (Scale ? Scale : 1));
+}
+
+static void TranslateDWordAtomic(LSC_OP SubOp, CallInst *CI) {
+  IntegerType *I8Ty = Type::getInt8Ty(CI->getContext());
+  auto CZeroInt8 = ConstantInt::get(I8Ty, 0);
+  IntegerType *I16Ty = Type::getInt16Ty(CI->getContext());
+  auto COneInt16 = ConstantInt::get(I16Ty, 1);
+  IntegerType *I32Ty = Type::getInt32Ty(CI->getContext());
+  auto CZeroInt32 = ConstantInt::get(I32Ty, 0);
+
+  unsigned DataIdx = 3;
+  unsigned PredIdx = 0;
+  unsigned AddrIdx = 2;
+
+  auto Width =
+      cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+          ->getNumElements();
+  IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+  SmallVector<Value *, 15> Args;
+  Args.push_back(ExpandPredicate(CI, PredIdx, 32));         // #0, Predicate
+  Args.push_back(ConstantInt::get(I8Ty, SubOp));            // #1, subopcode
+  Args.push_back(CZeroInt8);                                // #2, L1 control
+  Args.push_back(CZeroInt8);                                // #3, L3 control
+  Args.push_back(COneInt16);                                // #4, scale
+  Args.push_back(CZeroInt32);                               // #5, immed-offset
+  Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+  Args.push_back(ConstantInt::get(I8Ty, LSC_DATA_ORDER_NONTRANSPOSE)); // #7
+  Args.push_back(
+      ConstantInt::get(I8Ty, LSCVectorSize(1))); // #8, num-elem is one
+  Args.push_back(CZeroInt8);                     // #9, no-channel-mask
+
+  Value *BTIV = CI->getArgOperand(1);
+  auto AtomicIID = GenXIntrinsic::genx_lsc_atomic_bti;
+  if (isa<ConstantInt>(BTIV)) {
+    if (cast<ConstantInt>(BTIV)->getZExtValue() ==
+        visa::ReservedSurfaceIndex::RSI_Slm) {
+      AtomicIID = GenXIntrinsic::genx_lsc_atomic_slm;
+
+      // in new LSC interface, surface index visa::ReservedSurfaceIndex::RSI_Slm
+      // not used we need to have 0 instead, because only type of message
+      // matters
+      BTIV = ConstantInt::get(BTIV->getType(), 0);
+    }
+  }
+  Args.push_back(BTIV); // #10, SurfaceIndex
+
+  Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #11, address
+
+  Value *DataV = CI->getArgOperand(DataIdx);
+  auto *DataVector = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+  IGC_ASSERT_MESSAGE(Width == DataVector->getNumElements(),
+    "Cannot translate atomic more than one element per lane");
+  auto DataV32Ty = IGCLLVM::FixedVectorType::get(
+      DataVector->getElementType(), 32);
+  if (SubOp == LSC_ATOMIC_IINC || SubOp == LSC_ATOMIC_IDEC) {
+    Args.push_back(UndefValue::get(DataV32Ty));
+    Args.push_back(UndefValue::get(DataV32Ty));
+  } else if (SubOp == LSC_ATOMIC_ICAS || SubOp == LSC_ATOMIC_FCAS) {
+    // exchange src operand order
+    Args.push_back(ExpandAddrOrData(CI, DataIdx+1, Width, 1, 32)); // #12, src1
+    Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #13, src0
+    DataIdx += 2;
+  } else {
+    Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #12, src0
+    Args.push_back(UndefValue::get(DataV32Ty));
+    DataIdx++;
+  }
+
+  Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #14, old-data
+
+  // create the call to 32 wide lsc.atomic.stateless instructions.
+  Type *Tys[] = {Args[0]->getType(), Args[11]->getType(), DataV32Ty};
+  auto Decl =
+      GenXIntrinsic::getGenXDeclaration(CI->getModule(), AtomicIID, Tys);
+  auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+  NewInst->setDebugLoc(CI->getDebugLoc());
+  if (!CI->use_empty()) {
+    if (Width < 32) {
+      Region R(CI->getType());
+      R.Width = Width;
+      R.NumElements = Width;
+      auto NewVec = R.createRdRegion(NewInst, "", CI, CI->getDebugLoc());
+      CI->replaceAllUsesWith(NewVec);
+    } else
+      CI->replaceAllUsesWith(NewInst);
+  }
+}
+
+static void TranslateSVMAtomic(LSC_OP SubOp, CallInst *CI) {
+  IntegerType *I8Ty = Type::getInt8Ty(CI->getContext());
+  auto CZeroInt8 = ConstantInt::get(I8Ty, 0);
+  IntegerType *I16Ty = Type::getInt16Ty(CI->getContext());
+  auto COneInt16 = ConstantInt::get(I16Ty, 1);
+  IntegerType *I32Ty = Type::getInt32Ty(CI->getContext());
+  auto CZeroInt32 = ConstantInt::get(I32Ty, 0);
+
+  unsigned DataIdx = 2;
+  unsigned PredIdx = 0;
+  unsigned AddrIdx = 1;
+
+  auto Width =
+      cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+          ->getNumElements();
+  IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+  SmallVector<Value *, 15> Args;
+  Args.push_back(ExpandPredicate(CI, PredIdx, 32));         // #0, Predicate
+  Args.push_back(ConstantInt::get(I8Ty, SubOp));            // #1, subopcode
+  Args.push_back(CZeroInt8);                                // #2, L1 control
+  Args.push_back(CZeroInt8);                                // #3, L3 control
+  Args.push_back(COneInt16);                                // #4, scale
+  Args.push_back(CZeroInt32);                               // #5, immed-offset
+  Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+  Args.push_back(ConstantInt::get(I8Ty, LSC_DATA_ORDER_NONTRANSPOSE)); // #7
+  Args.push_back(
+      ConstantInt::get(I8Ty, LSCVectorSize(1))); // #8, num-elem is one
+  Args.push_back(CZeroInt8);                     // #9, no-channel-mask
+  Args.push_back(CZeroInt32);                    // #10, SurfaceIndex
+  Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #11, address
+
+  Value *DataV = CI->getArgOperand(DataIdx);
+  auto *DataVector = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+  IGC_ASSERT_MESSAGE(Width == DataVector->getNumElements(),
+    "Cannot translate svm-atomics more than one element per lane");
+  auto DataV32Ty = IGCLLVM::FixedVectorType::get(
+      DataVector->getElementType(), 32);
+  if (SubOp == LSC_ATOMIC_IINC || SubOp == LSC_ATOMIC_IDEC) {
+    Args.push_back(UndefValue::get(DataV32Ty));
+    Args.push_back(UndefValue::get(DataV32Ty));
+  } else if (SubOp == LSC_ATOMIC_ICAS || SubOp == LSC_ATOMIC_FCAS) {
+    // exchange source ooperand order
+    Args.push_back(ExpandAddrOrData(CI, DataIdx+1, Width, 1, 32)); // #12, src1
+    Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #13, src0
+    DataIdx += 2;
+  } else {
+    Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #12, src0
+    Args.push_back(UndefValue::get(DataV32Ty));
+    DataIdx++;
+  }
+
+  Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #14, old-data
+
+  // create the call to 32 wide lsc.atomic.stateless instructions.
+  Type *Tys[] = {Args[0]->getType(), Args[11]->getType(), DataV32Ty};
+  auto Decl = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::genx_lsc_atomic_stateless, Tys);
+  auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+  NewInst->setDebugLoc(CI->getDebugLoc());
+  if (!CI->use_empty()) {
+    if (Width < 32) {
+      Region R(CI->getType());
+      R.Width = Width;
+      R.NumElements = Width;
+      auto NewVec = R.createRdRegion(NewInst, "", CI, CI->getDebugLoc());
+      CI->replaceAllUsesWith(NewVec);
+    } else
+      CI->replaceAllUsesWith(NewInst);
+  }
+}
+
+static void ComputeScatterAddress(CallInst *CI, unsigned ScaleIdx,
+                                  unsigned GoffIdx, unsigned AddrIdx) {
+  IRBuilder<> Builder(CI);
+  Builder.SetCurrentDebugLocation(CI->getDebugLoc());
+  auto ScaleVal = CI->getArgOperand(ScaleIdx);
+  auto GoffVal = CI->getArgOperand(GoffIdx);
+  auto AddrVal = CI->getArgOperand(AddrIdx);
+  IGC_ASSERT(isa<ConstantInt>(ScaleVal));
+  unsigned Scale = (unsigned)cast<ConstantInt>(ScaleVal)->getZExtValue();
+  IGC_ASSERT(isa<VectorType>(AddrVal->getType()));
+  auto Width =
+      cast<IGCLLVM::FixedVectorType>(AddrVal->getType())->getNumElements();
+  if (Scale > 1) {
+    ScaleVal = ConstantInt::get(
+        cast<VectorType>(AddrVal->getType())->getElementType(), Scale);
+    AddrVal = Builder.CreateMul(
+        AddrVal, ConstantVector::getSplat(IGCLLVM::getElementCount(Width),
+                                          cast<Constant>(ScaleVal)));
+  }
+  // broadcast GoffIdx
+  auto BC = Builder.CreateBitCast(
+      GoffVal, IGCLLVM::FixedVectorType::get(GoffVal->getType(), 1));
+  // Create a rdregion with a stride of 0 to represent this splat
+  Region R(BC);
+  R.NumElements = Width;
+  R.Width = R.NumElements;
+  R.Stride = 0;
+  R.VStride = 0;
+  R.Offset = 0;
+  Instruction *Splat =
+      R.createRdRegion(BC, "", CI /*InsertBefore*/, CI->getDebugLoc());
+  auto AV = Builder.CreateAdd(AddrVal, Splat);
+  CI->setArgOperand(AddrIdx, AV);
+  CI->setArgOperand(ScaleIdx, ConstantInt::get(ScaleVal->getType(), 1));
+  CI->setArgOperand(GoffIdx, ConstantInt::get(GoffVal->getType(), 0));
+}
+
+// for transposed cases only (like oword, etc)
+// we want to transform:
+//
+//      N x i8 -> (N / 4) x i32
+//      N x i16 -> (N / 2) x i32
+//      N x half -> N x i16 -> (N / 2) x i32
+//
+// if it is possible. D8 and D16 often illegal in LSC
+IGCLLVM::FixedVectorType *
+GenXLowering::adjustVTForTransposedMessage(IGCLLVM::FixedVectorType *VT) {
+  IGC_ASSERT(VT);
+  auto *ElementType = VT->getElementType();
+
+  if (!ElementType->isIntegerTy() && !ElementType->isFloatingPointTy())
+    return VT;
+
+  unsigned EltSize = DL->getTypeSizeInBits(ElementType);
+  if ((EltSize != 16) && (EltSize != 8))
+    return VT;
+
+  unsigned EltCount = VT->getNumElements();
+  if (((EltCount % 2) != 0) || ((EltSize == 8) && ((EltCount % 4) != 0)))
+    return VT;
+
+  unsigned DataSize = DL->getTypeSizeInBits(VT);
+  IGC_ASSERT(EltSize == DataSize / EltCount);
+  LLVM_DEBUG(dbgs() << "Vector: " << EltCount << " x i" << EltSize << "\n");
+
+  switch (EltSize) {
+  case 8:
+    EltCount = EltCount / 4;
+    break;
+  case 16:
+    EltCount = EltCount / 2;
+    break;
+  default:
+    IGC_ASSERT_MESSAGE(0, "We shall not be there");
+  }
+
+  auto *NewVT = IGCLLVM::FixedVectorType::get(
+      IntegerType::getInt32Ty(VT->getContext()), EltCount);
+
+  return NewVT;
+}
+
+/*************************************************************************
+ * translateLegacyToLSC: translate legacy genx intrinsic to LSC intrinsic
+ *
+ * Gather/Scatter/Atomic translated to the corresponding SIMD32 LSC
+ * intrinsic with predicate-modification and temporary vector-32 in&out
+ *
+ * Gather4/Scatter similar to Gather/Scatter with Channel-Mask
+ *
+ * OWord block read/write translated to simd1-transposed LSC load/store
+ *
+ * media-block read/write translated to simd1 LSC load2d/store2d
+ */
+bool GenXLowering::translateLegacyToLSC(CallInst *CI, unsigned IID) {
+  IntegerType *I8Ty = Type::getInt8Ty(CI->getContext());
+  auto CZeroInt8 = ConstantInt::get(I8Ty, 0);
+  IntegerType *I16Ty = Type::getInt16Ty(CI->getContext());
+  auto COneInt16 = ConstantInt::get(I16Ty, 1);
+  IntegerType *I32Ty = Type::getInt32Ty(CI->getContext());
+  auto CZeroInt32 = ConstantInt::get(I32Ty, 0);
+  // 1xi1 type for block-load and block-store
+  auto PredV1Ty = IGCLLVM::FixedVectorType::get(
+      IntegerType::getInt1Ty(CI->getContext()), 1);
+  auto OnePred1 = Constant::getAllOnesValue(PredV1Ty);
+  auto TransposeConst = ConstantInt::get(I8Ty, LSC_DATA_ORDER_TRANSPOSE);
+
+  // transposed message may live with non-vector predicate
+  auto PredTy = IntegerType::getInt1Ty(CI->getContext());
+  auto OnePredScalar = Constant::getAllOnesValue(PredTy);
+
+  auto DL = CI->getDebugLoc();
+  switch (IID) {
+  case GenXIntrinsic::genx_scatter4_typed:
+  case GenXIntrinsic::genx_gather4_typed: {
+    DiagnosticInfoLowering Err(
+        CI, "Typed gather4/scatter4 typed translation not implemented",
+        DS_Error);
+    CI->getContext().diagnose(Err);
+    return false;
+  }
+  case GenXIntrinsic::genx_scatter_scaled: {
+    unsigned DataIdx = 6;
+    unsigned PredIdx = 0;
+    unsigned AddrIdx = 5;
+    // lsc.load does not support non-constant global offset
+    auto GlobOffset = CI->getArgOperand(4);
+    if (!isa<Constant>(GlobOffset)) {
+      // insert address computation
+      ComputeScatterAddress(CI, 2, 4, AddrIdx);
+    }
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+    SmallVector<Value *, 13> Args;
+    Args.push_back(ExpandPredicate(CI, PredIdx, 32));  // #0, Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_STORE)); // #1, subopcode
+    Args.push_back(CZeroInt8);                         // #2, L1 control
+    Args.push_back(CZeroInt8);                         // #3, L3 control
+    Args.push_back(LSCScale(CI->getArgOperand(2)));    // #4, scale
+    Args.push_back(CI->getArgOperand(4));              // #5, immed-offset
+    Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSCVectorSize(1))); // #7, num-elem is one
+    Args.push_back(ConstantInt::get(I8Ty, LSC_DATA_ORDER_NONTRANSPOSE)); // #8
+    Args.push_back(CZeroInt8); // #9, no-channel-mask
+    Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #10, offsets
+    Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #11, Data
+    Value *BTIV = CI->getArgOperand(3);
+    auto StoreIID = GenXIntrinsic::genx_lsc_store_bti;
+    if (isa<ConstantInt>(BTIV)) {
+      if (cast<ConstantInt>(BTIV)->getZExtValue() ==
+          visa::ReservedSurfaceIndex::RSI_Slm) {
+        StoreIID = GenXIntrinsic::genx_lsc_store_slm;
+
+        // in new LSC interface, surface index
+        // visa::ReservedSurfaceIndex::RSI_Slm not used we need to have 0
+        // instead, because only type of message matters
+        BTIV = ConstantInt::get(BTIV->getType(), 0);
+      }
+    }
+    Args.push_back(BTIV); // #12, SurfaceIndex
+
+    Value *DataV = CI->getArgOperand(DataIdx);
+    auto *DataVector = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+    IGC_ASSERT_MESSAGE(Width == DataVector->getNumElements(),
+      "Cannot translate scatter more than one element per lane");
+    auto DataV32Ty = IGCLLVM::FixedVectorType::get(
+        DataVector->getElementType(), 32);
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+
+    // create the call to 32 wide lsc.load.bti instructions.
+    Type *Tys[] = {Args[0]->getType(), Args[10]->getType(), DataV32Ty};
+    auto Decl =
+        GenXIntrinsic::getGenXDeclaration(CI->getModule(), StoreIID, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, "", CI);
+    NewInst->setDebugLoc(DL);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_gather_scaled:
+  case GenXIntrinsic::genx_gather_scaled2:
+  case GenXIntrinsic::genx_gather_masked_scaled2: {
+    unsigned PredIdx = 0;
+    unsigned NBlocksIdx = 1;
+    unsigned ScaleIdx = 2;
+    unsigned SurfIdx = 3;
+    unsigned OffIdx = 4;
+    unsigned AddrIdx = 5;
+    Value *PredValue;
+
+    if (IID == GenXIntrinsic::genx_gather_scaled2) {
+      NBlocksIdx = 0;
+      ScaleIdx = 1;
+      SurfIdx = 2;
+      OffIdx = 3;
+      AddrIdx = 4;
+      PredValue = OnePredScalar;
+    }
+
+    if (IID == GenXIntrinsic::genx_gather_masked_scaled2) {
+      NBlocksIdx = 0;
+      ScaleIdx = 1;
+      SurfIdx = 2;
+      OffIdx = 3;
+      AddrIdx = 4;
+      PredIdx = 5;
+    }
+
+    if (IID == GenXIntrinsic::genx_gather_scaled ||
+        IID == GenXIntrinsic::genx_gather_masked_scaled2) {
+      PredValue = ExpandPredicate(CI, PredIdx, 32);
+    }
+
+    // data size from return type of gather
+    Constant *DataSize = LSCDatumSize(CI);
+
+    // lsc.load does not support non-constant global offset
+    auto GlobOffset = CI->getArgOperand(OffIdx);
+    if (!isa<Constant>(GlobOffset)) {
+      // insert address computation
+      ComputeScatterAddress(CI, ScaleIdx, OffIdx, AddrIdx);
+    }
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(AddrIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+    SmallVector<Value *, 12> Args;
+    Args.push_back(PredValue);                        // #0, Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_LOAD)); // #1, subopcode
+    Args.push_back(CZeroInt8);                        // #2, L1 control
+    Args.push_back(CZeroInt8);                        // #3, L3 control
+    Args.push_back(LSCScale(CI->getArgOperand(ScaleIdx))); // #4, scale
+    Args.push_back(CI->getArgOperand(OffIdx));             // #5, immed-offset
+    Args.push_back(DataSize);                              // #6
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSCVectorSize(1))); // #7, num-elem is one
+    Args.push_back(ConstantInt::get(I8Ty, LSC_DATA_ORDER_NONTRANSPOSE)); // #8
+    Args.push_back(CZeroInt8); // #9, no-channel-mask
+    Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #10, offsets
+    Value *BTIV = CI->getArgOperand(SurfIdx);
+    auto LoadIID = GenXIntrinsic::genx_lsc_load_bti;
+    if (isa<ConstantInt>(BTIV)) {
+      if (cast<ConstantInt>(BTIV)->getZExtValue() ==
+          visa::ReservedSurfaceIndex::RSI_Slm) {
+        LoadIID = GenXIntrinsic::genx_lsc_load_slm;
+
+        // in new LSC interface, surface index
+        // visa::ReservedSurfaceIndex::RSI_Slm not used we need to have 0
+        // instead, because only type of message matters
+        BTIV = ConstantInt::get(BTIV->getType(), 0);
+      }
+    }
+    Args.push_back(BTIV); // #11, SurfaceIndex
+
+    auto *DataVector = cast<IGCLLVM::FixedVectorType>(CI->getType());
+    IGC_ASSERT_MESSAGE(
+        Width == DataVector->getNumElements(),
+        "Cannot translate gather more than one element per lane");
+    auto DataV32Ty =
+        IGCLLVM::FixedVectorType::get(DataVector->getElementType(), 32);
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+
+    // create the call to 32 wide lsc.load.bti instructions.
+    Type *Tys[] = {DataV32Ty, Args[0]->getType(), Args[10]->getType()};
+    auto Decl =
+        GenXIntrinsic::getGenXDeclaration(CI->getModule(), LoadIID, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+    NewInst->setDebugLoc(DL);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    if (Width < 32) {
+      Region R(CI->getType());
+      R.Width = Width;
+      R.NumElements = Width;
+      auto NewVec = R.createRdRegion(NewInst, "", CI, DL);
+      CI->replaceAllUsesWith(NewVec);
+    } else
+      CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_scatter4_scaled: {
+    unsigned DataIdx = 6;
+    unsigned PredIdx = 0;
+    unsigned MaskIdx = 1;
+    unsigned AddrIdx = 5;
+    // lsc.load does not support non-constant global offset
+    auto GlobOffset = CI->getArgOperand(4);
+    if (!isa<Constant>(GlobOffset)) {
+      // insert address computation
+      ComputeScatterAddress(CI, 2, 4, AddrIdx);
+    }
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+    unsigned Mask =
+        (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))->getZExtValue();
+    unsigned NumChannels =
+        (Mask & 1) + ((Mask & 2) >> 1) + ((Mask & 4) >> 2) + ((Mask & 8) >> 3);
+    SmallVector<Value *, 13> Args;
+    Args.push_back(ExpandPredicate(CI, PredIdx, 32));       // #0, Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_STORE_QUAD)); // #1, subopcode
+    Args.push_back(CZeroInt8);                              // #2, L1 control
+    Args.push_back(CZeroInt8);                              // #3, L3 control
+    Args.push_back(LSCScale(CI->getArgOperand(2)));         // #4, scale
+    Args.push_back(CI->getArgOperand(4));                   // #5, immed-offset
+    Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSCVectorSize(NumChannels))); // #7, num-elements
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSC_DATA_ORDER_NONTRANSPOSE));      // #8, not-transpose
+    Args.push_back(ConstantInt::get(I8Ty, Mask)); // #9, channel-mask
+    Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #10, offsets
+    Args.push_back(
+        ExpandAddrOrData(CI, DataIdx, Width, NumChannels, 32)); //#11 Data
+    Value *BTIV = CI->getArgOperand(3);
+    auto StoreIID = GenXIntrinsic::genx_lsc_store_quad_bti;
+    if (isa<ConstantInt>(BTIV)) {
+      if (cast<ConstantInt>(BTIV)->getZExtValue() ==
+          visa::ReservedSurfaceIndex::RSI_Slm) {
+        StoreIID = GenXIntrinsic::genx_lsc_store_quad_slm;
+
+        // in new LSC interface, surface index
+        // visa::ReservedSurfaceIndex::RSI_Slm not used we need to have 0
+        // instead, because only type of message matters
+        BTIV = ConstantInt::get(BTIV->getType(), 0);
+      }
+    }
+    Args.push_back(BTIV); // #12, SurfaceIndex
+
+    Value *DataV = CI->getArgOperand(DataIdx);
+    auto *DataVTy = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+    IGC_ASSERT(Width * NumChannels == DataVTy->getNumElements());
+    auto DataV32Ty = IGCLLVM::FixedVectorType::get(DataVTy->getElementType(),
+                                                   32 * NumChannels);
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+    NumQuad += 1;
+
+    // create the call to 32 wide lsc.load.bti instructions.
+    Type *Tys[] = {Args[0]->getType(), Args[10]->getType(), DataV32Ty};
+    auto Decl =
+        GenXIntrinsic::getGenXDeclaration(CI->getModule(), StoreIID, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, "", CI);
+    NewInst->setDebugLoc(DL);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_gather4_scaled:
+  case GenXIntrinsic::genx_gather4_scaled2:
+  case GenXIntrinsic::genx_gather4_masked_scaled2: {
+    unsigned PredIdx  = 0;
+    unsigned MaskIdx  = 1;
+    unsigned ScaleIdx = 2;
+    unsigned SurfIdx  = 3;
+    unsigned OffIdx   = 4;
+    unsigned AddrIdx  = 5;
+    Value *PredValue;
+
+    if (IID == GenXIntrinsic::genx_gather4_scaled2) {
+      MaskIdx  = 0;
+      ScaleIdx = 1;
+      SurfIdx  = 2;
+      OffIdx   = 3;
+      AddrIdx  = 4;
+      PredValue = OnePredScalar;
+    }
+
+    if (IID == GenXIntrinsic::genx_gather4_masked_scaled2) {
+      MaskIdx  = 0;
+      ScaleIdx = 1;
+      SurfIdx  = 2;
+      OffIdx   = 3;
+      AddrIdx  = 4;
+      PredIdx  = 5;
+    }
+
+    if (IID == GenXIntrinsic::genx_gather4_scaled ||
+        IID == GenXIntrinsic::genx_gather4_masked_scaled2) {
+      PredValue = ExpandPredicate(CI, PredIdx, 32);
+    }
+
+    // data size from return type of gather
+    Constant *DataSize = LSCDatumSize(CI);
+
+    // lsc.load does not support non-constant global offset
+    auto GlobOffset = CI->getArgOperand(OffIdx);
+    if (!isa<Constant>(GlobOffset)) {
+      // insert address computation
+      ComputeScatterAddress(CI, ScaleIdx, OffIdx, AddrIdx);
+    }
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(AddrIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+    unsigned Mask =
+        (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))->getZExtValue();
+    unsigned NumChannels =
+        (Mask & 1) + ((Mask & 2) >> 1) + ((Mask & 4) >> 2) + ((Mask & 8) >> 3);
+    SmallVector<Value *, 12> Args;
+    Args.push_back(PredValue);                             // #0, Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_LOAD_QUAD)); // #1, subopcode
+    Args.push_back(CZeroInt8);                             // #2, L1 control
+    Args.push_back(CZeroInt8);                             // #3, L3 control
+    Args.push_back(LSCScale(CI->getArgOperand(ScaleIdx))); // #4, scale
+    Args.push_back(CI->getArgOperand(OffIdx));             // #5, immed-offset
+    Args.push_back(DataSize);                              // #6
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSCVectorSize(NumChannels))); // #7 num-elements
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSC_DATA_ORDER_NONTRANSPOSE));      // #8, not-transpose
+    Args.push_back(ConstantInt::get(I8Ty, Mask)); // #9, channel-mask
+    Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #10, offsets
+    Value *BTIV = CI->getArgOperand(SurfIdx);
+    auto LoadIID = GenXIntrinsic::genx_lsc_load_quad_bti;
+    if (isa<ConstantInt>(BTIV)) {
+      if (cast<ConstantInt>(BTIV)->getZExtValue() ==
+          visa::ReservedSurfaceIndex::RSI_Slm) {
+        LoadIID = GenXIntrinsic::genx_lsc_load_quad_slm;
+
+        // in new LSC interface, surface index
+        // visa::ReservedSurfaceIndex::RSI_Slm not used we need to have 0
+        // instead, because only type of message matters
+        BTIV = ConstantInt::get(BTIV->getType(), 0);
+      }
+    }
+    Args.push_back(BTIV); // #11, SurfaceIndex
+
+    auto *DataVector = cast<IGCLLVM::FixedVectorType>(CI->getType());
+    IGC_ASSERT_MESSAGE(Width * NumChannels == DataVector->getNumElements(),
+      "Cannot translate gather more than one element per lane");
+    auto DataV32Ty = IGCLLVM::FixedVectorType::get(
+        DataVector->getElementType(), 32 * NumChannels);
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+    NumQuad += 1;
+
+    // create the call to 32 wide lsc.load.bti instructions.
+    Type *Tys[] = {DataV32Ty, Args[0]->getType(), Args[10]->getType()};
+    auto Decl =
+        GenXIntrinsic::getGenXDeclaration(CI->getModule(), LoadIID, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+    NewInst->setDebugLoc(DL);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    if (Width < 32) {
+      Region R(CI->getType());
+      R.Width = Width;
+      R.NumElements = Width * NumChannels;
+      R.VStride = (NumChannels > 1) ? 32 : 0;
+      auto NewVec = R.createRdRegion(NewInst, "", CI, DL);
+      CI->replaceAllUsesWith(NewVec);
+    } else
+      CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_scatter: {
+    unsigned DataIdx = 3;
+    unsigned PredIdx = 0;
+    unsigned AddrIdx = 2;
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Width == 1 || Width == 2 || Width == 4 || Width == 8 ||
+               Width == 16 || Width == 32);
+    SmallVector<Value *, 13> Args;
+    Args.push_back(CI->getOperand(PredIdx));           // #0, Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_STORE)); // #1, subopcode
+    Args.push_back(CZeroInt8);                         // #2, L1 control
+    Args.push_back(CZeroInt8);                         // #3, L3 control
+    Args.push_back(COneInt16);                         // #4, scale
+    Args.push_back(CZeroInt32);                        // #5, immed-offset
+    Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSCVectorSize(1))); // #7, num-elem is one
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSC_DATA_ORDER_NONTRANSPOSE)); // #8, not-transpose
+    Args.push_back(CZeroInt8);               // #9, no-channel-mask
+    Args.push_back(CI->getOperand(AddrIdx)); // #10, address
+    Args.push_back(CI->getOperand(DataIdx)); // #11, data
+    Args.push_back(CZeroInt32); // #12, SurfaceIndex
+
+    Value *DataV = CI->getArgOperand(DataIdx);
+    auto *DataVector = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+    IGC_ASSERT_MESSAGE(Width == DataVector->getNumElements(),
+      "Cannot translate svm-scatter more than one element per lane");
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+
+    Type *Tys[] = {Args[0]->getType(), Args[10]->getType(), DataVector};
+    auto Decl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), GenXIntrinsic::genx_lsc_store_stateless, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, "", CI);
+    NewInst->setDebugLoc(DL);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+
+  case GenXIntrinsic::genx_svm_gather: {
+    unsigned DataIdx = 3;
+    unsigned PredIdx = 0;
+    unsigned AddrIdx = 2;
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Width == 1 || Width == 2 || Width == 4 || Width == 8 ||
+               Width == 16 || Width == 32);
+    SmallVector<Value *, 12> Args;
+    Args.push_back(CI->getOperand(PredIdx));          // #0, Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_LOAD)); // #1, subopcode
+    Args.push_back(CZeroInt8);                        // #2, L1 control
+    Args.push_back(CZeroInt8);                        // #3, L3 control
+    Args.push_back(COneInt16);                        // #4, scale
+    Args.push_back(CZeroInt32);                       // #5, immed-offset
+    Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSCVectorSize(1))); // #7, num-elem is one
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSC_DATA_ORDER_NONTRANSPOSE)); // #8, not-transpose
+    Args.push_back(CZeroInt8);               // #9, no-channel-mask
+    Args.push_back(CI->getOperand(AddrIdx)); // #10, address
+    Args.push_back(CZeroInt32);              // #11, SurfaceIndex
+
+    Value *DataV = CI->getArgOperand(DataIdx);
+    auto *DataVector = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+    IGC_ASSERT_MESSAGE(
+        Width == DataVector->getNumElements(),
+        "Cannot translate svm-gather more than one element per lane");
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+
+    Type *Tys[] = {DataVector, Args[0]->getType(), Args[10]->getType()};
+    auto Decl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), GenXIntrinsic::genx_lsc_load_stateless, Tys);
+    auto NewInst =
+        CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+    NewInst->setDebugLoc(DL);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+
+  case GenXIntrinsic::genx_svm_scatter4_scaled: {
+    unsigned DataIdx = 5;
+    unsigned PredIdx = 0;
+    unsigned MaskIdx = 1;
+    unsigned AddrIdx = 4;
+    // load.lsc does not take global base address
+    // add it to the address-vector
+    ComputeScatterAddress(CI, 2, 3, AddrIdx);
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+    unsigned Mask =
+        (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))->getZExtValue();
+    unsigned NumChannels =
+        (Mask & 1) + ((Mask & 2) >> 1) + ((Mask & 4) >> 2) + ((Mask & 8) >> 3);
+    SmallVector<Value *, 13> Args;
+    Args.push_back(ExpandPredicate(CI, PredIdx, 32));       // #0, Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_STORE_QUAD)); // #1, subopcode
+    Args.push_back(CZeroInt8);                              // #2, L1 control
+    Args.push_back(CZeroInt8);                              // #3, L3 control
+    Args.push_back(LSCScale(CI->getArgOperand(2)));         // #4, scale
+    Args.push_back(CZeroInt32);                             // #5, immed-offset
+    Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSCVectorSize(NumChannels))); // #7, num-elements
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSC_DATA_ORDER_NONTRANSPOSE));      // #8, not-transpose
+    Args.push_back(ConstantInt::get(I8Ty, Mask)); // #9, channel-mask
+    Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #10, offsets
+    Args.push_back(
+        ExpandAddrOrData(CI, DataIdx, Width, NumChannels, 32)); //#11 Data
+    auto StoreIID = GenXIntrinsic::genx_lsc_store_quad_stateless;
+    Args.push_back(CZeroInt32);   // #12, SurfaceIndex
+
+    Value *DataV = CI->getArgOperand(DataIdx);
+    auto *DataVTy = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+    IGC_ASSERT(Width * NumChannels == DataVTy->getNumElements());
+    auto DataV32Ty = IGCLLVM::FixedVectorType::get(DataVTy->getElementType(),
+                                                   32 * NumChannels);
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+    NumQuad += 1;
+
+    // create the call to 32 wide lsc.load.bti instructions.
+    Type *Tys[] = {Args[0]->getType(), Args[10]->getType(), DataV32Ty};
+    auto Decl =
+        GenXIntrinsic::getGenXDeclaration(CI->getModule(), StoreIID, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, "", CI);
+    NewInst->setDebugLoc(DL);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  }
+  break;
+
+  case GenXIntrinsic::genx_svm_gather4_scaled: {
+    unsigned DataIdx = 5;
+    unsigned PredIdx = 0;
+    unsigned MaskIdx = 1;
+    unsigned AddrIdx = 4;
+    // load.lsc does not take global base address
+    // add it to the address-vector
+    ComputeScatterAddress(CI, 2, 3, AddrIdx);
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+    unsigned Mask =
+        (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))->getZExtValue();
+    unsigned NumChannels =
+        (Mask & 1) + ((Mask & 2) >> 1) + ((Mask & 4) >> 2) + ((Mask & 8) >> 3);
+    SmallVector<Value *, 12> Args;
+    Args.push_back(ExpandPredicate(CI, PredIdx, 32));      // #0, Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_LOAD_QUAD)); // #1, subopcode
+    Args.push_back(CZeroInt8);                             // #2, L1 control
+    Args.push_back(CZeroInt8);                             // #3, L3 control
+    Args.push_back(LSCScale(CI->getArgOperand(2)));        // #4, scale
+    Args.push_back(CZeroInt32);                            // #5, immed-offset
+    Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSCVectorSize(NumChannels))); // #7 num-elements
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSC_DATA_ORDER_NONTRANSPOSE));      // #8, not-transpose
+    Args.push_back(ConstantInt::get(I8Ty, Mask)); // #9, channel-mask
+    Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #10, address
+    Args.push_back(CZeroInt32);            // #11, SurfaceIndex
+
+    Value *DataV = CI->getArgOperand(DataIdx);
+    auto *DataVector = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+    IGC_ASSERT_MESSAGE(Width * NumChannels == DataVector->getNumElements(),
+      "Cannot translate scatter more than one element per lane");
+    auto DataV32Ty = IGCLLVM::FixedVectorType::get(
+        DataVector->getElementType(), 32 * NumChannels);
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+    NumQuad += 1;
+
+    // create the call to 32 wide lsc.load.bti instructions.
+    Type *Tys[] = {DataV32Ty, Args[0]->getType(), Args[10]->getType()};
+    auto Decl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), GenXIntrinsic::genx_lsc_load_quad_stateless, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+    NewInst->setDebugLoc(DL);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    if (Width < 32) {
+      Region R(CI->getType());
+      R.Width = Width;
+      R.NumElements = Width * NumChannels;
+      R.VStride = (NumChannels > 1) ? 32 : 0;
+      auto NewVec = R.createRdRegion(NewInst, "", CI, DL);
+      CI->replaceAllUsesWith(NewVec);
+    } else
+      CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  }
+  break;
+  case GenXIntrinsic::genx_svm_atomic_add: {
+    TranslateSVMAtomic(LSC_ATOMIC_IADD, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_and: {
+    TranslateSVMAtomic(LSC_ATOMIC_AND, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_cmpxchg: {
+    TranslateSVMAtomic(LSC_ATOMIC_ICAS, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_dec: {
+    TranslateSVMAtomic(LSC_ATOMIC_IDEC, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_fcmpwr: {
+    TranslateSVMAtomic(LSC_ATOMIC_FCAS, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_fmax: {
+    TranslateSVMAtomic(LSC_ATOMIC_FMAX, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_fmin: {
+    TranslateSVMAtomic(LSC_ATOMIC_FMIN, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_imax: {
+    TranslateSVMAtomic(LSC_ATOMIC_SMAX, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_imin: {
+    TranslateSVMAtomic(LSC_ATOMIC_SMIN, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_inc: {
+    TranslateSVMAtomic(LSC_ATOMIC_IINC, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_max: {
+    TranslateSVMAtomic(LSC_ATOMIC_UMAX, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_min: {
+    TranslateSVMAtomic(LSC_ATOMIC_UMIN, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_or: {
+    TranslateSVMAtomic(LSC_ATOMIC_OR, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_sub: {
+    TranslateSVMAtomic(LSC_ATOMIC_ISUB, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_xchg: {
+    TranslateSVMAtomic(LSC_ATOMIC_STORE, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_atomic_xor: {
+    TranslateSVMAtomic(LSC_ATOMIC_XOR, CI);
+    ToErase.push_back(CI);
+  } break;
+
+  case GenXIntrinsic::genx_dword_atomic_add: {
+    TranslateDWordAtomic(LSC_ATOMIC_IADD, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_and: {
+    TranslateDWordAtomic(LSC_ATOMIC_AND, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_cmpxchg: {
+    TranslateDWordAtomic(LSC_ATOMIC_ICAS, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_dec: {
+    TranslateDWordAtomic(LSC_ATOMIC_IDEC, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_fadd: {
+    TranslateDWordAtomic(LSC_ATOMIC_FADD, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_fcmpwr: {
+    TranslateDWordAtomic(LSC_ATOMIC_FCAS, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_fmax: {
+    TranslateDWordAtomic(LSC_ATOMIC_FMAX, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_fmin: {
+    TranslateDWordAtomic(LSC_ATOMIC_FMIN, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_fsub: {
+    TranslateDWordAtomic(LSC_ATOMIC_FSUB, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_imax: {
+    TranslateDWordAtomic(LSC_ATOMIC_SMAX, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_imin: {
+    TranslateDWordAtomic(LSC_ATOMIC_SMIN, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_inc: {
+    TranslateDWordAtomic(LSC_ATOMIC_IINC, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_max: {
+    TranslateDWordAtomic(LSC_ATOMIC_UMAX, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_min: {
+    TranslateDWordAtomic(LSC_ATOMIC_UMIN, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_or: {
+    TranslateDWordAtomic(LSC_ATOMIC_OR, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_sub: {
+    TranslateDWordAtomic(LSC_ATOMIC_ISUB, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_xchg: {
+    TranslateDWordAtomic(LSC_ATOMIC_STORE, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_dword_atomic_xor: {
+    TranslateDWordAtomic(LSC_ATOMIC_XOR, CI);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_media_ld:
+  case GenXIntrinsic::genx_media_st: {
+    constexpr unsigned ModIdx = 0;       // arg0: i32 modifiers (assume 0)
+    constexpr unsigned BtiIdx = 1;       // arg1: i32 surface index
+    constexpr unsigned PlaneIdx = 2;     // arg2: i32 plane, constant (assume 0)
+    constexpr unsigned BlockWIdx = 3;    // arg3: i32 block width in bytes
+    constexpr unsigned XOffIdx = 4;      // arg4: i32 x byte offset
+    constexpr unsigned YOffIdx = 5;      // arg5: i32 y byte offset
+    constexpr unsigned StoreDataIdx = 6; // arg6: data to store (store only)
+
+    auto *ModW = cast<ConstantInt>(CI->getArgOperand(ModIdx));
+    auto *BTIV = CI->getArgOperand(BtiIdx);
+    auto *PlaneW = cast<ConstantInt>(CI->getArgOperand(PlaneIdx));
+    auto *BlockW = cast<ConstantInt>(CI->getArgOperand(BlockWIdx));
+    auto *XOffV = CI->getArgOperand(XOffIdx);
+    auto *YOffV = CI->getArgOperand(YOffIdx);
+    Value *StoreDataV = nullptr;
+    if (IID == GenXIntrinsic::genx_media_st)
+      StoreDataV = CI->getArgOperand(StoreDataIdx);
+
+    if (ModW->getZExtValue() != 0) {
+      DiagnosticInfoLowering Err(
+          CI, "Translation with non-zero modifiers not supported", DS_Error);
+      CI->getContext().diagnose(Err);
+    }
+
+    if (PlaneW->getZExtValue() != 0) {
+      DiagnosticInfoLowering Err(
+          CI, "Translation with non-zero plane not supported", DS_Error);
+      CI->getContext().diagnose(Err);
+    }
+
+    unsigned Width = BlockW->getZExtValue();
+    unsigned Height = 1;
+
+    LLVM_DEBUG(dbgs() << "Media width: " << Width << "\n");
+
+    IGC_ASSERT_EXIT_MESSAGE(Width > 0 && Width <= 64, "Media width invalid");
+
+    Type *DataType;
+    if (IID == GenXIntrinsic::genx_media_ld)
+      DataType = CI->getType();
+    else
+      DataType = StoreDataV->getType();
+    auto *VT = cast<VectorType>(DataType);
+    auto *ElementType = VT->getElementType();
+
+    // this->DL because DL hidden by debug location
+    unsigned EltSize =
+        this->DL->getTypeSizeInBits(ElementType) / genx::ByteBits;
+    unsigned DataSize = this->DL->getTypeSizeInBits(VT) / genx::ByteBits;
+
+    unsigned RoundedWidth = genx::roundedVal(Width, 4u);
+
+    if (DataSize > RoundedWidth || DataSize < Width) {
+      IGC_ASSERT_EXIT_MESSAGE(RoundedWidth != 0 &&
+                                  (DataSize % RoundedWidth) == 0,
+                              "We expect DataSize to be RoundedWidth multiple");
+      Height = DataSize / RoundedWidth;
+    }
+
+    // we will need padding if rounded width not equal to width
+    if (RoundedWidth != Width) {
+      DiagnosticInfoLowering Err(CI, "2D with padding not supported", DS_Error);
+      CI->getContext().diagnose(Err);
+    }
+
+    auto *WidthV = ConstantInt::get(BlockW->getType(), Width / EltSize);
+    auto *HeightV = ConstantInt::get(BlockW->getType(), Height);
+
+    SmallVector<Value *, 8> Args;
+    Args.push_back(CZeroInt8); // #0, L1 control
+    Args.push_back(CZeroInt8); // #1, L3 control
+    Args.push_back(BTIV);      // #2, SurfaceIndex
+    Args.push_back(HeightV);   // #3, Height
+    Args.push_back(WidthV);    // #4, Width
+    Args.push_back(XOffV);     // #5, XOff
+    Args.push_back(YOffV);     // #6, YOff
+    if (IID == GenXIntrinsic::genx_media_st)
+      Args.push_back(StoreDataV); // #7, data to write (store only)
+
+    Function *Decl;
+    CallInst *NewInst;
+    Type *Tys[] = {DataType};
+
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+    NumMedia += 1;
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    NewInst->setDebugLoc(DL);
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_oword_ld:
+  case GenXIntrinsic::genx_oword_ld_unaligned: {
+    constexpr unsigned BtiIdx = 1;
+    constexpr unsigned AddrIdx = 2;
+
+    // for now FE don't generate and VISA don't support scaled
+    // so lets artificially scale address
+    IRBuilder<> Builder(CI);
+    Value *AddrV = CI->getArgOperand(AddrIdx);
+    if (IID == GenXIntrinsic::genx_oword_ld) {
+      AddrV =
+          Builder.CreateShl(AddrV, llvm::ConstantInt::get(AddrV->getType(), 4));
+    }
+
+    auto *OldVT = cast<IGCLLVM::FixedVectorType>(CI->getType());
+    auto *VT = adjustVTForTransposedMessage(OldVT);
+    auto Length = VT->getNumElements();
+    IGC_ASSERT(Length <= 128);
+    SmallVector<Value *, 12> Args;
+    Args.push_back(OnePredScalar);                    // #0, i1 Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_LOAD)); // #1, subopcode
+    Args.push_back(CZeroInt8);                        // #2, L1 control
+    Args.push_back(CZeroInt8);                        // #3, L3 control
+    Args.push_back(ConstantInt::get(I16Ty, 1));       // #4, scale
+    Args.push_back(CZeroInt32);                       // #5, immed-offset
+    Args.push_back(LSCDatumSize(VT));                 // #6, datum size
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSCVectorSize(Length))); // #7, num-elem is the Length
+    Args.push_back(TransposeConst);    // #8, transpose
+    Args.push_back(CZeroInt8);         // #9, no-channel-mask
+    Args.push_back(AddrV);             // #10, address
+    Value *BTIV = CI->getArgOperand(BtiIdx);
+    auto LoadIID = GenXIntrinsic::genx_lsc_load_bti;
+    if (isa<ConstantInt>(BTIV)) {
+      if (cast<ConstantInt>(BTIV)->getZExtValue() ==
+          visa::ReservedSurfaceIndex::RSI_Slm) {
+        LoadIID = GenXIntrinsic::genx_lsc_load_slm;
+
+        // in new LSC interface, surface index
+        // visa::ReservedSurfaceIndex::RSI_Slm not used we need to have 0
+        // instead, because only type of message matters
+        BTIV = ConstantInt::get(BTIV->getType(), 0);
+      }
+    }
+    Args.push_back(BTIV); // #11, SurfaceIndex
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+    NumOword += 1;
+
+    // create the call to lsc.load.bti instruction
+    Type *Tys[] = {VT, Args[0]->getType(), Args[10]->getType()};
+    auto Decl =
+        GenXIntrinsic::getGenXDeclaration(CI->getModule(), LoadIID, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+    NewInst->setDebugLoc(DL);
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    // cast back if required
+    Value *Casted = NewInst;
+    if (VT != OldVT)
+      Casted = CastInst::CreateBitOrPointerCast(
+          Casted, OldVT, Casted->getName() + VALUE_NAME(".cast.lsc"), CI);
+    CI->replaceAllUsesWith(Casted);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_oword_st: {
+    constexpr unsigned DataIdx = 2;
+    constexpr unsigned AddrIdx = 1;
+
+    Value *Datum = CI->getArgOperand(DataIdx);
+
+    // same as for oword_ld
+    IRBuilder<> Builder(CI);
+    Value *AddrV = CI->getArgOperand(AddrIdx);
+    AddrV =
+        Builder.CreateShl(AddrV, llvm::ConstantInt::get(AddrV->getType(), 4));
+
+    auto *OldVT = cast<IGCLLVM::FixedVectorType>(Datum->getType());
+    auto *VT = adjustVTForTransposedMessage(OldVT);
+
+    IGC_ASSERT_MESSAGE(CastInst::isBitCastable(VT, Datum->getType()),
+                       "We expect resulting vectors to be bitcastable");
+
+    if (VT != OldVT)
+      Datum = CastInst::CreateBitOrPointerCast(
+          Datum, VT, Datum->getName() + VALUE_NAME(".cast.lsc"), CI);
+
+    auto Length = VT->getNumElements();
+    IGC_ASSERT(Length <= 128);
+    auto VS = ConstantInt::get(I8Ty, LSCVectorSize(Length));
+
+    SmallVector<Value *, 13> Args;
+    Args.push_back(OnePredScalar);                     // #0, i1 Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_STORE)); // #1, subopcode
+    Args.push_back(CZeroInt8);                         // #2, L1 control
+    Args.push_back(CZeroInt8);                         // #3, L3 control
+    Args.push_back(ConstantInt::get(I16Ty, 1));        // #4, scale
+    Args.push_back(CZeroInt32);                        // #5, immed-offset
+    Args.push_back(LSCDatumSize(VT));                  // #6, DS
+    Args.push_back(VS);                                // #7, VS
+    Args.push_back(TransposeConst);                    // #8, transpose
+    Args.push_back(CZeroInt8);                         // #9, no-channel-mask
+    Args.push_back(AddrV);                             // #10, address
+    Args.push_back(Datum);                             // #11, Data
+    Value *BTIV = CI->getArgOperand(0);
+
+    // access to surface visa::ReservedSurfaceIndex::RSI_Slm is BTI access to
+    // SLM
+    auto StoreIID = GenXIntrinsic::genx_lsc_store_bti;
+    if (isa<ConstantInt>(BTIV)) {
+      if (cast<ConstantInt>(BTIV)->getZExtValue() ==
+          visa::ReservedSurfaceIndex::RSI_Slm) {
+        StoreIID = GenXIntrinsic::genx_lsc_store_slm;
+
+        // in new LSC interface, surface index
+        // visa::ReservedSurfaceIndex::RSI_Slm not used we need to have 0
+        // instead, because only type of message matters
+        BTIV = ConstantInt::get(BTIV->getType(), 0);
+      }
+    }
+
+    Args.push_back(BTIV); //#12, SurfaceIndex
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+    NumOword += 1;
+
+    // create the call to lsc.store.bti instruction
+    Type *Tys[] = {Args[0]->getType(), Args[10]->getType(), VT};
+    auto Decl =
+        GenXIntrinsic::getGenXDeclaration(CI->getModule(), StoreIID, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, "", CI);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    NewInst->setDebugLoc(DL);
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_block_ld:
+  case GenXIntrinsic::genx_svm_block_ld_unaligned: {
+    unsigned AddrIdx = 0;
+    auto Length =
+        cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements();
+    IGC_ASSERT(Length <= 128);
+    SmallVector<Value *, 12> Args;
+    Args.push_back(OnePred1);                         // #0, 1xi1 Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_LOAD)); // #1, subopcode
+    Args.push_back(CZeroInt8);                        // #2, L1 control
+    Args.push_back(CZeroInt8);                        // #3, L3 control
+    if (IID == GenXIntrinsic::genx_svm_block_ld_unaligned)
+      Args.push_back(ConstantInt::get(I16Ty, 1)); // #4, scale
+    else
+      Args.push_back(ConstantInt::get(I16Ty, 16)); // #4, scale
+    Args.push_back(CZeroInt32);                    // #5, immed-offset
+    Args.push_back(LSCDatumSize(CI));              // #6
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSCVectorSize(Length))); // #7, num-elem is the Length
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSC_DATA_ORDER_TRANSPOSE)); // #8, transpose
+    Args.push_back(CZeroInt8); // #9, no-channel-mask
+                               // create 1x vector for address
+    Value *AddrV = CI->getArgOperand(AddrIdx);
+    auto AddrV1Ty = IGCLLVM::FixedVectorType::get(AddrV->getType(), 1);
+    auto AddrV1 = CastInst::CreateBitOrPointerCast(
+        AddrV, AddrV1Ty, AddrV->getName() + VALUE_NAME(".lsc"), CI);
+    Args.push_back(AddrV1);     // #10, address
+    Args.push_back(CZeroInt32); // #11, SurfaceIndex
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+
+    // create the call to 32 wide lsc.load.stateless instructions.
+    Type *Tys[] = {CI->getType(), Args[0]->getType(), Args[10]->getType()};
+    auto Decl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), GenXIntrinsic::genx_lsc_load_stateless, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    NewInst->setDebugLoc(DL);
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_svm_block_st: {
+    unsigned DataIdx = 1;
+    unsigned AddrIdx = 0;
+    auto Length =
+        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(DataIdx)->getType())
+            ->getNumElements();
+    IGC_ASSERT(Length <= 128);
+    SmallVector<Value *, 13> Args;
+    Args.push_back(OnePred1);                          // #0, 1xi1 Predicate
+    Args.push_back(ConstantInt::get(I8Ty, LSC_STORE)); // #1, subopcode
+    Args.push_back(CZeroInt8);                         // #2, L1 control
+    Args.push_back(CZeroInt8);                         // #3, L3 control
+    Args.push_back(ConstantInt::get(I16Ty, 16));       // #4, scale
+    Args.push_back(CZeroInt32);                        // #5, immed-offset
+    Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
+    Args.push_back(ConstantInt::get(
+        I8Ty, LSCVectorSize(Length))); // #7, num-elem is the Length
+    Args.push_back(
+        ConstantInt::get(I8Ty, LSC_DATA_ORDER_TRANSPOSE)); // #8, transpose
+    Args.push_back(CZeroInt8); // #9, no-channel-mask
+                               // create 1x vector for address
+    Value *AddrV = CI->getArgOperand(AddrIdx);
+    auto AddrV1Ty = IGCLLVM::FixedVectorType::get(AddrV->getType(), 1);
+    auto AddrV1 = CastInst::CreateBitOrPointerCast(
+        AddrV, AddrV1Ty, AddrV->getName() + VALUE_NAME(".lsc"), CI);
+    Args.push_back(AddrV1);                     // #10, address
+    Args.push_back(CI->getArgOperand(DataIdx)); // #11, Data
+    Args.push_back(CZeroInt32);                 // #12, SurfaceIndex
+
+    // now we sure that all can be converted, so increase statistics
+    NumLegacy += 1;
+
+    // create the call to 32 wide lsc.store.stateless instructions.
+    Type *Tys[] = {Args[0]->getType(), Args[10]->getType(),
+                   Args[11]->getType()};
+    auto Decl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), GenXIntrinsic::genx_lsc_store_stateless, Tys);
+    auto NewInst = CallInst::Create(Decl, Args, "", CI);
+
+    LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "Translated to:\n");
+    LLVM_DEBUG(NewInst->dump());
+
+    NewInst->setDebugLoc(DL);
+    CI->replaceAllUsesWith(NewInst);
+    ToErase.push_back(CI);
+  } break;
+  case GenXIntrinsic::genx_typed_atomic_add:
+  case GenXIntrinsic::genx_typed_atomic_and:
+  case GenXIntrinsic::genx_typed_atomic_cmpxchg:
+  case GenXIntrinsic::genx_typed_atomic_dec:
+  case GenXIntrinsic::genx_typed_atomic_fadd:
+  case GenXIntrinsic::genx_typed_atomic_fsub:
+  case GenXIntrinsic::genx_typed_atomic_fcmpwr:
+  case GenXIntrinsic::genx_typed_atomic_fmax:
+  case GenXIntrinsic::genx_typed_atomic_fmin:
+  case GenXIntrinsic::genx_typed_atomic_imax:
+  case GenXIntrinsic::genx_typed_atomic_imin:
+  case GenXIntrinsic::genx_typed_atomic_inc:
+  case GenXIntrinsic::genx_typed_atomic_max:
+  case GenXIntrinsic::genx_typed_atomic_min:
+  case GenXIntrinsic::genx_typed_atomic_or:
+  case GenXIntrinsic::genx_typed_atomic_sub:
+  case GenXIntrinsic::genx_typed_atomic_xchg:
+  case GenXIntrinsic::genx_typed_atomic_xor:
+    IGC_ASSERT_MESSAGE(0, "typed atomic translation not implemented");
+  default:
+    return false;
+  }
+  return true;
+}
 
 /***********************************************************************
  * lowerMediaIntrinsic : lower media walker intrinsic calls
@@ -1434,7 +3335,28 @@ bool GenXLowering::processInst(Instruction *Inst) {
           return true;
       }
     }
-       // split gather/scatter/atomic into the width legal to the target
+    if (ST) {
+      if (ST->translateLegacyMessages()) {
+        if (translateLegacyToLSC(CI, IntrinsicID))
+          return true;
+        // Error if Message was not translated but it should
+        // supported platform works only for GenxIntrinsics
+      } else {
+        if (GenXIntrinsic::isGenXIntrinsic(IntrinsicID) &&
+            !GenXIntrinsic::isSupportedPlatform(ST->getCPU().str(),
+                                                IntrinsicID)) {
+          Inst->getContext().emitError(
+              Inst, "<" + CI->getCalledFunction()->getName() + "> intrinsic " +
+                        "is unsupported by target platform <" + ST->getCPU() +
+                        ">. Please, enable legacy intrinsics translation");
+        }
+        if (ST->getGRFByteSize() > 32) {
+          if (widenSIMD8GatherScatter(CI, IntrinsicID))
+            return true;
+        }
+      }
+    }
+    // split gather/scatter/atomic into the width legal to the target
     if (splitGatherScatter(CI, IntrinsicID))
       return true;
     else if (isNewLoadInst(CI))
@@ -3600,7 +5522,9 @@ bool GenXLowering::lowerFunnelShift(CallInst *CI, unsigned IntrinsicID) {
   IRBuilder<> Builder(CI);
   // If Fst == Snd, funnel shift is equivalent to rotate. Lower to appropriate
   // intrinsic on supported platforms (>= ICLLP)
-  if (ST->hasBitRotate() && BitWidth != 64 &&
+  // 64-bit rotates are supported only on PVC+. On unsupported platforms lower
+  // it as generic funnel shift, so it will be emulated later.
+  if (((ST->hasBitRotate() && BitWidth != 64) || ST->has64BitRotate()) &&
       Fst == Snd) {
     auto RotateIntrinsicID = IntrinsicID == Intrinsic::fshl
                                  ? GenXIntrinsic::genx_rol

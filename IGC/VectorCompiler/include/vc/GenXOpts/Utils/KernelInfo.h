@@ -93,6 +93,22 @@ template <typename Ty = llvm::Value> Ty *getValueAsMetadata(Metadata *M) {
   return nullptr;
 }
 
+// Number of barriers can only be 0, 1, 2, 4, 8, 16, 24, 32.
+// Alignment here means choosing nearest overlapping legal number of barriers.
+static unsigned alignBarrierCnt(unsigned BarrierCnt) {
+  if (BarrierCnt == 0)
+    return 0;
+  if (BarrierCnt > 32) {
+    report_fatal_error("named barrier count must not exceed 32");
+    return 0;
+  }
+  if (BarrierCnt > 16 && BarrierCnt <= 24)
+    return 24;
+  if (isPowerOf2_32(BarrierCnt))
+    return BarrierCnt;
+  return NextPowerOf2(BarrierCnt);
+}
+
 struct ImplicitLinearizationInfo {
   Argument *Arg;
   ConstantInt *Offset;
@@ -124,6 +140,7 @@ private:
   bool IsKernel = false;
   StringRef Name;
   unsigned SLMSize = 0;
+  unsigned NBarrierCnt = 0;
   SmallVector<unsigned, 4> ArgKinds;
   SmallVector<unsigned, 4> ArgOffsets;
   SmallVector<ArgIOKind, 4> ArgIOKinds;
@@ -183,6 +200,15 @@ public:
   StringRef getName() const { return Name; }
   const Function *getFunction() const { return F; }
   unsigned getSLMSize() const { return SLMSize; }
+  bool hasNBarrier() const { return NBarrierCnt > 0; }
+  // Args:
+  //    HasBarrier - whether kernel has barrier or sbarrier instructions
+  unsigned getAlignedBarrierCnt(bool HasBarrier) const {
+    if (hasNBarrier())
+      // Get legal barrier count based on the number of named barriers plus regular barrier
+      return alignBarrierCnt(NBarrierCnt + (HasBarrier ? 1 : 0));
+    return HasBarrier;
+  }
   ArrayRef<unsigned> getArgKinds() const { return ArgKinds; }
   ArrayRef<ArgIOKind> getArgIOKinds() const { return ArgIOKinds; }
   ArrayRef<StringRef> getArgTypeDescs() const { return ArgTypeDescs; }

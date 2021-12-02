@@ -2131,6 +2131,7 @@ unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
   IGC_ASSERT_MESSAGE(R.Indirect, "Indirect region expected");
   IGC_ASSERT(ST);
   if (ST->hasIndirectGRFCrossing() &&
+      (R.ElementBytes != genx::ByteBytes || ST->hasIndirectByteGRFCrossing()) &&
       // SKL+. See if we can allow GRF crossing.
       (Allow2D || !R.is2D())) {
     return 2;

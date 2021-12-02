@@ -167,15 +167,9 @@ public:
 
     bool UsesGroupId = false;
     bool UsesDPAS = false;
-
-    // Jitter info contains similar field.
-    // Whom should we believe?
-    bool UsesBarriers = false;
-
+    int NumBarriers = 0;
     bool UsesReadWriteImages = false;
-
     bool SupportsDebugging = false;
-
     unsigned SLMSize = 0;
     unsigned ThreadPrivateMemSize = 0;
     unsigned StatelessPrivateMemSize = 0;
@@ -235,8 +229,10 @@ public:
 
     // Deduced from actual function instructions.
     bool usesDPAS() const { return UsesDPAS; }
+    // igcmc always sets this to zero. Preserve this here.
+    unsigned getNumThreads() const { return 0; }
 
-    bool usesBarriers() const { return UsesBarriers; }
+    int getNumBarriers() const { return NumBarriers; }
     bool usesReadWriteImages() const { return UsesReadWriteImages; }
 
     // Arguments accessors.

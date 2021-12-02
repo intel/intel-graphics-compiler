@@ -172,6 +172,7 @@ typedef enum
     ISA_Inst_SIMD_Flow = 0x9,
     ISA_Inst_Sync      = 0xA,
     ISA_Inst_SVM       = 0xB,
+    ISA_Inst_LSC       = 0xC,
     ISA_Inst_Reserved
 } ISA_Inst_Type;
 
@@ -231,6 +232,40 @@ enum SVMSubOpcode
     SVM_LASTOP
 };
 
+struct LscOpInfo {
+    enum OpKind {
+      LOAD,
+      STORE,
+      ATOMIC,
+      OTHER
+    }           kind;
+    LSC_OP      op;
+    uint32_t    encoding; // Desc[5:0]
+    const char *mnemonic;
+    int         extraOperands; // e.g. for atomics (0 for inc, 1 for add, 2 for cas)
+
+    // general op category queries
+    // these groups are equivalence classes
+    // (i.e. only one will be true for any given op)
+    bool isLoad() const {return kind == OpKind::LOAD;}
+    bool isStore() const {return kind == OpKind::STORE;}
+    bool isAtomic() const {return kind == OpKind::ATOMIC;}
+    bool isOther() const {return kind == OpKind::OTHER;}
+
+    // other queries
+    bool hasChMask() const {
+        return op == LSC_LOAD_QUAD || op == LSC_STORE_QUAD;
+    }
+    bool isStrided() const {
+        return op == LSC_LOAD_STRIDED || op == LSC_STORE_STRIDED;
+    }
+    bool isBlock2D() const {
+        return op == LSC_LOAD_BLOCK2D || op == LSC_STORE_BLOCK2D;
+    }
+};
+
+LscOpInfo LscOpInfoGet(LSC_OP op); // hard failure
+bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo); // soft failure
 
 extern struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE];
 

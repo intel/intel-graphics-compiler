@@ -248,6 +248,8 @@ static unsigned getSurfaceOperandNo(GenXIntrinsic::ID Id) {
   case genx_dword_atomic2_imax:
   case genx_dword_atomic2_fmin:
   case genx_dword_atomic2_fmax:
+  case genx_dword_atomic2_fadd:
+  case genx_dword_atomic2_fsub:
   case genx_dword_atomic2_inc:
   case genx_dword_atomic2_dec:
   case genx_dword_atomic2_cmpxchg:
@@ -283,6 +285,15 @@ static bool isBufferIntrinsic(const Instruction &I) {
 
   const auto ID = getGenXIntrinsicID(&I);
   switch (ID) {
+  // LSC.
+  case genx_lsc_load_bti:
+  case genx_lsc_prefetch_bti:
+  case genx_lsc_load_quad_bti:
+  case genx_lsc_store_bti:
+  case genx_lsc_store_quad_bti:
+  case genx_lsc_xatomic_bti:
+    return true;
+
   // DWORD binary atomics.
   case genx_dword_atomic2_add:
   case genx_dword_atomic2_sub:
@@ -298,6 +309,8 @@ static bool isBufferIntrinsic(const Instruction &I) {
   // DWORD floating binary atomics
   case genx_dword_atomic2_fmin:
   case genx_dword_atomic2_fmax:
+  case genx_dword_atomic2_fadd:
+  case genx_dword_atomic2_fsub:
 
   // DWORD unary atomics.
   case genx_dword_atomic2_inc:
@@ -375,6 +388,8 @@ static GenXIntrinsic::ID getBindlessDataportIntrinsicID(GenXIntrinsic::ID Id) {
 
     MAP(genx_dword_atomic2_fmin);
     MAP(genx_dword_atomic2_fmax);
+    MAP(genx_dword_atomic2_fadd);
+    MAP(genx_dword_atomic2_fsub);
 
     MAP(genx_dword_atomic2_inc);
     MAP(genx_dword_atomic2_dec);
@@ -437,6 +452,47 @@ PromoteToBindless::createBindlessSurfaceDataportIntrinsicChain(CallInst &CI) {
                                                 SurfaceOpNo);
 }
 
+// Get bindless version of given bti lsc intrinsic.
+static GenXIntrinsic::ID getBindlessLscIntrinsicID(GenXIntrinsic::ID Id) {
+  using namespace GenXIntrinsic;
+
+#define MAP(intr)                                                              \
+  case intr##_bti:                                                             \
+    return intr##_bindless;
+
+  switch (Id) {
+    MAP(genx_lsc_load);
+    MAP(genx_lsc_prefetch);
+    MAP(genx_lsc_load_quad);
+    MAP(genx_lsc_store);
+    MAP(genx_lsc_store_quad);
+    MAP(genx_lsc_xatomic);
+  default:
+    reportUnhandledIntrinsic("getBindlessLscIntrinsicID", Id);
+  }
+#undef MAP
+
+  return not_genx_intrinsic;
+}
+
+// Create bindless version of lsc bti intrinsic.
+// Return newly created instruction.
+// Bindless lsc intrinsics representation differs from legacy dataport
+// intrinsics. Lsc intrinsics have special addressing mode operand so
+// there is no need to use %bss variable and SSO goes directly to lsc
+// instruction.
+static CallInst *createBindlessLscIntrinsic(CallInst &CI) {
+  const auto ID = GenXIntrinsic::getGenXIntrinsicID(&CI);
+  const auto NewId = getBindlessLscIntrinsicID(ID);
+
+  auto *Decl = vc::getGenXDeclarationForIdFromArgs(CI.getType(), CI.args(),
+                                                   NewId, *CI.getModule());
+
+  IRBuilder<> IRB{&CI};
+  SmallVector<Value *, 16> Args{CI.args()};
+  return IRB.CreateCall(Decl->getFunctionType(), Decl, Args, CI.getName());
+}
+
 void PromoteToBindless::rewriteBufferIntrinsic(CallInst &CI) {
   using namespace GenXIntrinsic;
 
@@ -458,6 +514,8 @@ void PromoteToBindless::rewriteBufferIntrinsic(CallInst &CI) {
   case genx_dword_atomic2_imax:
   case genx_dword_atomic2_fmin:
   case genx_dword_atomic2_fmax:
+  case genx_dword_atomic2_fadd:
+  case genx_dword_atomic2_fsub:
   case genx_dword_atomic2_inc:
   case genx_dword_atomic2_dec:
   case genx_dword_atomic2_cmpxchg:
@@ -470,6 +528,14 @@ void PromoteToBindless::rewriteBufferIntrinsic(CallInst &CI) {
   case genx_oword_ld_unaligned:
   case genx_oword_st:
     BindlessCI = createBindlessSurfaceDataportIntrinsicChain(CI);
+    break;
+  case genx_lsc_load_bti:
+  case genx_lsc_prefetch_bti:
+  case genx_lsc_load_quad_bti:
+  case genx_lsc_store_bti:
+  case genx_lsc_store_quad_bti:
+  case genx_lsc_xatomic_bti:
+    BindlessCI = createBindlessLscIntrinsic(CI);
     break;
   }
 

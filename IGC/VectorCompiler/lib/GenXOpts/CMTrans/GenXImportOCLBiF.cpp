@@ -448,6 +448,8 @@ static void InitializeBIFlags(Module &M) {
   initializeVarWithValue("__ProfilingTimerResolution",
                          *reinterpret_cast<int *>(&profilingTimerResolution));
   initializeVarWithValue("__UseMathWithLUT", 0);
+  // FIXME: target specific, but subtarget cannot be reached in middle-end.
+  initializeVarWithValue("__HasInt64SLMAtomicCAS", 0);
 }
 
 static bool isOCLBuiltinDecl(const Function &F) {

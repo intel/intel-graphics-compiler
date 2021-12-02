@@ -664,8 +664,11 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   // SLM size in bytes, align to 1KB.
   ExecEnv.SumFixedTGSMSizes = iSTD::Align(BackendInfo.getSLMSize(), 1024);
   ExecEnv.HasStackCalls = JitterInfo.hasStackcalls;
-  ExecEnv.HasBarriers = BackendInfo.usesBarriers();
+  // HasBarriers isn't bool and preserves number of barriers for PVC+ targets
+  // dispite misleading naming.
+  ExecEnv.HasBarriers = BackendInfo.getNumBarriers();
   ExecEnv.HasDPAS = BackendInfo.usesDPAS();
+  ExecEnv.numThreads = BackendInfo.getNumThreads();
   ExecEnv.HasReadWriteImages = BackendInfo.usesReadWriteImages();
   ExecEnv.SubgroupIndependentForwardProgressRequired = true;
   ExecEnv.NumGRFRequired = JitterInfo.numGRFTotal;
