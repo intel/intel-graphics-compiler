@@ -1049,14 +1049,16 @@ GenXObjectHolder buildGenXFunctionObject(const ModuleToVisaTransformInfo &MVTI,
 using GenXObjectHolderList = std::vector<GenXObjectHolder>;
 GenXObjectHolderList translateProgramInfoToGenXFunctionObjects(
     const GenObjectWrapper &GOW, const ProgramInfo &PI, const GenXSubtarget &ST,
-    const GenXVisaRegAlloc &RA) {
+    const std::vector<const GenXVisaRegAlloc *> &RAs) {
   const auto &MVTI = PI.MVTI;
   GenXObjectHolderList GenXFunctionHolders;
-  std::transform(PI.FIs.begin(), PI.FIs.end(),
-                 std::back_inserter(GenXFunctionHolders),
-                 [&ST, &RA, &MVTI, &GOW](const auto &FI) {
-                   return buildGenXFunctionObject(MVTI, GOW, FI, ST, RA);
-                 });
+  IGC_ASSERT(PI.FIs.size() == RAs.size());
+  std::transform(
+      PI.FIs.begin(), PI.FIs.end(), RAs.begin(),
+      std::back_inserter(GenXFunctionHolders),
+      [&ST, &MVTI, &GOW](const auto &FI, const GenXVisaRegAlloc *const RA) {
+        return buildGenXFunctionObject(MVTI, GOW, FI, ST, *RA);
+      });
   return GenXFunctionHolders;
 }
 
@@ -1135,12 +1137,16 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
       .getTM<GenXTargetMachine>()
       .getGenXSubtarget();
   auto *FGA = &getAnalysis<FunctionGroupAnalysis>();
-  FunctionGroup *currentFG = FGA->getAnyGroup(&PI.FIs.front().F);
-  auto &RA = (getAnalysis<GenXVisaRegAllocWrapper>().getFGPassImpl(currentFG));
+  std::vector<const GenXVisaRegAlloc *> VisaRegAllocs;
+  for (const auto &FP : PI.FIs) {
+    FunctionGroup *currentFG = FGA->getAnyGroup(&FP.F);
+    VisaRegAllocs.push_back(
+        &(getAnalysis<GenXVisaRegAllocWrapper>().getFGPassImpl(currentFG)));
+  }
 
   GenXFunctionPtrList GFPointers = initializeDebugEmitter(
       *Emitter, DebugOpts, PI,
-      translateProgramInfoToGenXFunctionObjects(GOW, PI, ST, RA));
+      translateProgramInfoToGenXFunctionObjects(GOW, PI, ST, VisaRegAllocs));
 
   auto &KF = GOW.getEntryPoint();
   IGC_ASSERT(ElfOutputs.count(&KF) == 0);
