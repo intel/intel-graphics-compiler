@@ -2967,17 +2967,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
     // need to create a new mapping
     if (!var)
     {
-        // for @llvm.stacksave returned var must be created based on SP instead of LLVM value
-        llvm::IntrinsicInst* IntrinsicInstruction = dyn_cast<llvm::IntrinsicInst>(value);
-        if (IntrinsicInstruction && IntrinsicInstruction->getIntrinsicID() == Intrinsic::stacksave && hasSP())
-        {
-            auto pSP = GetSP();
-            var = GetNewVariable(pSP->GetNumberElement(), pSP->GetType(), pSP->GetAlign(), value->getName());
-        }
-        else
-        {
-            var = GetNewVector(value, preferredAlign);
-        }
+        var = GetNewVector(value, preferredAlign);
     }
 
     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
