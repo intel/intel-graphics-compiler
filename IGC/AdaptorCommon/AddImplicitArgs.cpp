@@ -550,9 +550,13 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
     }
     for (auto pF : PrunedFuncs)
     {
-        // We can't force inline indirect calls
+        // We can only remove the "visaStackCall" attribute if the function isn't called indirectly,
+        // since these attributes are always coupled together.
         if (pF->hasFnAttribute("referenced-indirectly"))
+        {
+            IGC_ASSERT_MESSAGE(0, "Cannot force inline indirect calls! Requires ForceInlineStackCallWithImplArg=0 and IA buffer support.");
             continue;
+        }
 
         pF->removeFnAttr("visaStackCall");
         pF->removeFnAttr(llvm::Attribute::NoInline);
@@ -727,22 +731,21 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
 
 void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDetail& data, Function * f)
 {
-    if (f->hasFnAttribute("referenced-indirectly"))
-        return;
-
     FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(f);
     funcInfo->clearImplicitArgInfoList();
 
     bool isEntry = isEntryFunc(m_pMdUtils, f);
-    bool isStackCall = f->hasFnAttribute("visaStackCall");
 
     for (const auto& A : data.ArgsMaps)
     {
         // For the implicit args that have GenISAIntrinsic support used in subroutines,
         // they do not require to be added as explicit arguments other than in the caller kernel.
+        // Always add metadata for stackcalls to provide info for inlining. They won't be added
+        // to function argument list.
         ImplicitArg::ArgType argId = A.first;
         if (!isEntry && ImplicitArgs::hasIntrinsicSupport(argId))
         {
+            bool isStackCall = f->hasFnAttribute("visaStackCall");
             if (!isStackCall && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
             {
                 continue;

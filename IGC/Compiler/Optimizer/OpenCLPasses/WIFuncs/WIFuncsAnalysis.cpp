@@ -61,10 +61,6 @@ bool WIFuncsAnalysis::runOnModule(Module& M)
     {
         Function* pFunc = &(*I);
         if (pFunc->isDeclaration()) continue;
-        if (!isEntryFunc(m_pMDUtils, pFunc)
-            && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic)
-            && IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL)
-            continue;
         runOnFunction(*pFunc);
     }
 
@@ -182,13 +178,20 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
 
 void WIFuncsAnalysis::visitCallInst(CallInst& CI)
 {
-    if (!CI.getCalledFunction())
+    Function* F = CI.getCalledFunction();
+
+    if (CI.isIndirectCall() || (F && F->hasFnAttribute("visaStackCall")))
+    {
+        m_hasStackCalls = true;
+        return;
+    }
+    if (F == nullptr)
     {
         return;
     }
 
     // Check for OpenCL WI function calls
-    StringRef funcName = CI.getCalledFunction()->getName();
+    StringRef funcName = F->getName();
     if (funcName.equals(GET_LOCAL_ID_X) ||
         funcName.equals(GET_LOCAL_ID_Y) ||
         funcName.equals(GET_LOCAL_ID_Z))
@@ -234,10 +237,5 @@ void WIFuncsAnalysis::visitCallInst(CallInst& CI)
     }
     else if (funcName.equals(GET_SYNC_BUFFER)) {
         m_hasSyncBuffer = true;
-    }
-
-    if (CI.getCalledFunction()->hasFnAttribute("visaStackCall"))
-    {
-        m_hasStackCalls = true;
     }
 }
