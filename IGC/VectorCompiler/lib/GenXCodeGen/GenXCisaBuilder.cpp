@@ -2661,6 +2661,7 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
       createSource(Src, Signed, Baled, 0)));
 }
 
+// FIXME: use vc::TypeSizeWrapper instead.
 static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
   unsigned TySz = 0;
   if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
@@ -2675,7 +2676,9 @@ static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
     for (Type *Ty : STy->elements())
       TySz += getResultedTypeSize(Ty, DL);
   } else if (Ty->isPointerTy())
-    TySz = DL.getPointerSize();
+    // FIXME: fix data layout description.
+    TySz = Ty->getPointerElementType()->isFunctionTy() ? genx::DWordBytes
+                                                       : DL.getPointerSize();
   else {
     TySz = Ty->getPrimitiveSizeInBits() / CHAR_BIT;
     IGC_ASSERT_MESSAGE(TySz, "Ty is not primitive?");
