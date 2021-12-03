@@ -531,12 +531,10 @@ class GenXKernelBuilder {
   // GRF width in unit of byte
   unsigned GrfByteSize = defaultGRFByteSize;
 
-  unsigned LastLine = 0;
-  unsigned PendingLine = 0;
-  StringRef LastFilename;
-  StringRef PendingFilename;
-  StringRef LastDirectory;
-  StringRef PendingDirectory;
+  // Line in code, filename and dir for emit loc/file in visa
+  unsigned LastEmittedVisaLine = 0;
+  StringRef LastFilename = "";
+  StringRef LastDirectory = "";
 
   // function currently being written during constructor
   Function *Func = nullptr;
@@ -561,7 +559,6 @@ class GenXKernelBuilder {
   bool NoMask = false;
 
   genx::AlignmentInfo AI;
-  const Instruction *CurrentInst = nullptr;
 
   // Map from LLVM Value to pointer to the last used register alias for this
   // Value.
@@ -736,7 +733,9 @@ private:
 
   VISA_VectorOpnd *createAddressOperand(Value *V, bool IsDst);
 
-  void addDebugInfo();
+  void emitFileAndLocVisa(Instruction *CurrentInst);
+
+  void addDebugInfo(Instruction *CurrentInst, bool Finalize);
 
   void deduceRegion(Region *R, bool IsDest, unsigned MaxWidth = 16);
 
@@ -1398,14 +1397,20 @@ void GenXKernelBuilder::buildInstructions() {
         if (!NeedsLabel)
           NeedsLabel = GotoJoin::isJoinLabel(BB);
       }
+
       if (NeedsLabel) {
         unsigned LabelID = getOrCreateLabel(BB, LABEL_BLOCK);
         CISA_CALL(Kernel->AppendVISACFLabelInst(Labels[LabelID]));
+        LLVM_DEBUG(dbgs() << "Append Label visa inst: " << LabelID << "\n");
       }
       NeedsLabel = true;
       for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be;
            ++bi) {
         Instruction *Inst = &*bi;
+        LLVM_DEBUG(dbgs() << "Current Inst to build = " << *Inst << "\n");
+        // Fill debug info for current instruction
+        addDebugInfo(Inst, false /*do not finalize*/);
+        emitFileAndLocVisa(Inst);
         if (Inst->isTerminator()) {
           // Before the terminator inst of a basic block, if there is a single
           // successor and it is the header of a loop, for any vector of at
@@ -1437,6 +1442,8 @@ void GenXKernelBuilder::buildInstructions() {
         } else {
           LLVM_DEBUG(dbgs() << "Skip baled inst: " << *Inst << "\n");
         }
+        // Finalize debug info after build instruction
+        addDebugInfo(Inst, true /*finalize*/);
       }
     }
   }
@@ -1444,18 +1451,6 @@ void GenXKernelBuilder::buildInstructions() {
 
 bool GenXKernelBuilder::buildInstruction(Instruction *Inst) {
   LLVM_DEBUG(dbgs() << "Build inst: " << *Inst << "\n");
-  // Make the source location pending, so it is output as vISA FILE and LOC
-  // instructions next time an opcode is written.
-  const DebugLoc &DL = Inst->getDebugLoc();
-  CurrentInst = Inst;
-  if (DL) {
-    StringRef Filename = DL->getFilename();
-    if (Filename != "") {
-      PendingFilename = Filename;
-      PendingDirectory = DL->getDirectory();
-    }
-    PendingLine = DL.getLine();
-  }
   // Process the bale that this is the head instruction of.
   BaleInfo BI = Baling->getBaleInfo(Inst);
   LLVM_DEBUG(dbgs() << "Bale type " << BI.Type << "\n");
@@ -2026,7 +2021,6 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
     auto ISAExecSize = static_cast<VISA_Exec_Size>(genx::log2(ExecSize));
     auto Dst = createDestination(CI, UNSIGNED, 0, DstDesc);
     auto Src = createSourceOperand(CI, UNSIGNED, 0, BI);
-    addDebugInfo();
     CISA_CALL(Kernel->AppendVISADataMovementInst(
         ISA_MOVS, nullptr /*Pred*/, false /*Mod*/,
         NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1, ISAExecSize, Dst, Src));
@@ -2068,7 +2062,6 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
   Src1 =
       createImmediateOperand(Constant::getNullValue(CI->getType()), UNSIGNED);
 
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISAAddrAddInst(vISA_EMASK_M1_NM, ISAExecSize, Dst,
                                           Src0, Src1));
 }
@@ -2403,7 +2396,6 @@ void GenXKernelBuilder::buildSelectInst(SelectInst *SI, BaleInfo BI,
   VISA_VectorOpnd *Src0 = createSourceOperand(SI, DONTCARESIGNED, 1, BI);
   VISA_VectorOpnd *Src1 = createSourceOperand(SI, DONTCARESIGNED, 2, BI);
 
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISADataMovementInst(
       ISA_SEL, PredOp, Mod & MODIFIER_SAT, MaskCtrl,
       getExecSizeFromValue(ExecSize), Dst, Src0, Src1));
@@ -2439,7 +2431,6 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
         C = ConstantInt::get(
             Type::getIntNTy(CI->getContext(), std::max(Size, 8U)), IntVal);
 
-        addDebugInfo();
         CISA_CALL(Kernel->AppendVISASetP(
             vISA_EMASK_M1_NM, VISA_Exec_Size(genx::log2(Size)),
             getPredicateVar(Reg), createSourceOperand(CI, UNSIGNED, 0, BI)));
@@ -2462,7 +2453,6 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
 
     VISA_PredVar *PredVar = getPredicateVar(CI);
 
-    addDebugInfo();
     CISA_CALL(Kernel->AppendVISASetP(
         vISA_EMASK_M1_NM,
         VISA_Exec_Size(
@@ -2480,7 +2470,6 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
 
     VISA_EMask_Ctrl ctrlMask = getExecMaskFromWrRegion(DstDesc, true);
     VISA_Exec_Size execSize = getExecSizeFromValue(ExecSize);
-    addDebugInfo();
     CISA_CALL(Kernel->AppendVISADataMovementInst(
         ISA_MOV, createPredFromWrRegion(DstDesc), Mod & MODIFIER_SAT, ctrlMask,
         execSize, createDestination(CI, DONTCARESIGNED, Mod, DstDesc),
@@ -2492,7 +2481,6 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
     Register *PredReg =
         getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0), DONTCARESIGNED);
     IGC_ASSERT(PredReg->Category == RegCategory::PREDICATE);
-    addDebugInfo();
     CISA_CALL(Kernel->AppendVISAPredicateMove(
         createDestination(CI, UNSIGNED, 0, DstDesc),
         PredReg->GetVar<VISA_PredVar>(Kernel)));
@@ -2529,7 +2517,6 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
   Region SourceR(CI->getOperand(0));
 
   VISA_EMask_Ctrl ctrlMask = NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISADataMovementInst(
       ISA_MOV, nullptr, Mod, ctrlMask, ExecSize,
       createRegionOperand(&DestR, DstReg->GetVar<VISA_GenVar>(Kernel), DONTCARESIGNED,
@@ -2565,7 +2552,6 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
   VISA_EMask_Ctrl ExecMask = getExecMaskFromWrRegion(DstDesc, true);
 
   // TODO: fix signedness of the source
-  addDebugInfo();
   auto *Src = createSource(Input, DONTCARESIGNED, false, 0);
   auto *Dst = createDestination(Input, DONTCARESIGNED, 0, DstDesc);
   CISA_CALL(Kernel->AppendVISADataMovementInst(
@@ -2591,7 +2577,6 @@ void GenXKernelBuilder::buildLoneWrPredRegion(Instruction *Inst, BaleInfo BI) {
   unsigned IntVal = getPredicateConstantAsInt(C);
   C = ConstantInt::get(Type::getIntNTy(Inst->getContext(), std::max(Size, 8U)),
                        IntVal);
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISASetP(ctrlMask, execSize, getPredicateVar(Inst),
                                    createImmediateOperand(C, UNSIGNED)));
 }
@@ -2654,7 +2639,6 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
     }
   }
   // TODO: mb need to get signed from dest for src and then modify that
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISADataMovementInst(
       Opcode, (Opcode != ISA_MOVS ? createPredFromWrRegion(DstDesc) : nullptr),
       Mod & MODIFIER_SAT, ExecMask, ExecSize, Dest,
@@ -2787,8 +2771,6 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       switch (IntrinID) {
       case Intrinsic::dbg_value:
       case Intrinsic::dbg_declare:
-        addDebugInfo();
-        break;
       case GenXIntrinsic::genx_predefined_surface:
       case GenXIntrinsic::genx_output:
       case GenXIntrinsic::genx_output_1:
@@ -2964,7 +2946,6 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
   unsigned LabelID = getOrCreateLabel(BranchTarget, LABEL_BLOCK);
 
   VISA_LabelOpnd *label = Labels[LabelID];
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISACFGotoInst(pred, emask, esize, label));
 }
 
@@ -3940,7 +3921,6 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       };
 
   VISA_EMask_Ctrl exec_mask;
-  addDebugInfo();
 #include "GenXIntrinsicsBuildMap.inc"
 }
 
@@ -3973,7 +3953,6 @@ void GenXKernelBuilder::buildControlRegUpdate(unsigned Mask, bool Clear) {
   VISA_VectorOpnd *src1 = nullptr;
   CISA_CALL(Kernel->CreateVISAImmediate(src1, &Mask, ISA_TYPE_UD));
 
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISALogicOrShiftInst(Opcode, nullptr, false,
                                                vISA_EMASK_M1, EXEC_SIZE_1, dst,
                                                src0, src1, nullptr, nullptr));
@@ -3991,7 +3970,6 @@ bool GenXKernelBuilder::buildBranch(BranchInst *Branch) {
     if (Branch->getOperand(0) == Next)
       return true; // fall through to successor
     auto labelId = getOrCreateLabel(Branch->getSuccessor(0), LABEL_BLOCK);
-    addDebugInfo();
     CISA_CALL(Kernel->AppendVISACFJmpInst(nullptr, Labels[labelId]));
     return false;
   }
@@ -4028,14 +4006,12 @@ bool GenXKernelBuilder::buildBranch(BranchInst *Branch) {
   // Write the conditional branch.
   VISA_PredVar *PredVar = getPredicateVar(Pred);
   VISA_PredOpnd *PredOperand = createPredOperand(PredVar, State, Control);
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISACFJmpInst(
       PredOperand, Labels[getOrCreateLabel(True, LABEL_BLOCK)]));
   // If the other successor is not the next block, write an unconditional
   // jmp to that.
   if (False == Next)
     return true; // fall through to successor
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISACFJmpInst(
       nullptr, Labels[getOrCreateLabel(False, LABEL_BLOCK)]));
   return false;
@@ -4062,7 +4038,6 @@ void GenXKernelBuilder::buildIndirectBr(IndirectBrInst *Br) {
   for (unsigned I = 0; I < NumDest; ++I)
     JMPLabels[I] = Labels[getOrCreateLabel(Br->getDestination(I), LABEL_BLOCK)];
 
-  addDebugInfo();
   CISA_CALL(
       Kernel->AppendVISACFSwitchJMPInst(JMPIdx, NumDest, JMPLabels.data()));
 }
@@ -4123,8 +4098,6 @@ void GenXKernelBuilder::buildUnaryOperator(UnaryOperator *UO, BaleInfo BI,
   Src0 = createSourceOperand(UO, SrcSigned, 0, BI, Mod1);
 
   auto ExecMask = getExecMaskFromWrRegion(DstDesc);
-
-  addDebugInfo();
 
   if (Opcode == ISA_MOV) {
     CISA_CALL(Kernel->AppendVISADataMovementInst(
@@ -4372,7 +4345,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
 
   auto ExecMask = getExecMaskFromWrRegion(DstDesc);
 
-  addDebugInfo();
   if (IsLogic) {
     CISA_CALL(Kernel->AppendVISALogicOrShiftInst(
         Opcode, Pred, Mod, ExecMask, ExecSize, Dst, Src0, Src1, NULL, NULL));
@@ -4433,7 +4405,6 @@ void GenXKernelBuilder::buildBoolBinaryOperator(BinaryOperator *BO) {
   VISA_PredVar *Src1 =
       Opcode != ISA_NOT ? getPredicateVar(BO->getOperand(1)) : nullptr;
 
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISALogicOrShiftInst(
       Opcode, NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1, ExecSize, Dst, Src0,
       Src1));
@@ -4555,7 +4526,6 @@ void GenXKernelBuilder::buildCastInst(CastInst *CI, BaleInfo BI, unsigned Mod,
     InSigned = OutSigned;
   VISA_VectorOpnd *Src0 = createSourceOperand(CI, InSigned, 0, BI);
 
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISADataMovementInst(
       ISA_MOV, Pred, Mod & MODIFIER_SAT, ExecMask, ExecSize, Dst, Src0, NULL));
 }
@@ -4666,14 +4636,12 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
     ctrlMask = getExecMaskFromWrPredRegion(DstDesc.WrRegion, false);
     VISA_PredVar *PredVar =
         getPredicateVar(DstDesc.WrRegion ? DstDesc.WrRegion : Cmp);
-    addDebugInfo();
     CISA_CALL(Kernel->AppendVISAComparisonInst(opSpec, ctrlMask, ExecSize,
                                                PredVar, Src0, Src1));
   } else {
     ctrlMask = getExecMaskFromWrRegion(DstDesc);
     Value *Val = DstDesc.WrRegion ? DstDesc.WrRegion : Cmp->user_back();
     Dst = createDestination(Val, Signed, 0, DstDesc);
-    addDebugInfo();
     CISA_CALL(Kernel->AppendVISAComparisonInst(opSpec, ctrlMask, ExecSize, Dst,
                                                Src0, Src1));
   }
@@ -4760,7 +4728,6 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
     }
   }
   VISA_VectorOpnd *Src2 = createSourceOperand(CI, UNSIGNED, 0, BI);
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISAAddrAddInst(MaskCtrl, ExecSize, Dst, Src1, Src2));
 }
 
@@ -5124,46 +5091,79 @@ void GenXKernelBuilder::addLifetimeStartInst(Instruction *Inst) {
     report_fatal_error("createLifetimeStartInst: Invalid register category");
     break;
   }
-  addDebugInfo();
   CISA_CALL(Kernel->AppendVISALifetime(LIFETIME_START, opnd));
 }
 
 /***********************************************************************
- * addDebugInfo : add debug infromation
+ * emitFileAndLocVisa : emit special visa instructions LOC and FILE
+ *
  */
-void GenXKernelBuilder::addDebugInfo() {
-  // Check if we have a pending debug location.
-  if (PendingLine) {
+void GenXKernelBuilder::emitFileAndLocVisa(Instruction *CurrentInst) {
+  // Make the source location pending, so it is output as vISA FILE and LOC
+  // instructions next time an opcode is written.
+  const DebugLoc &DL = CurrentInst->getDebugLoc();
+  if (!DL || isa<DbgInfoIntrinsic>(CurrentInst))
+    return;
+
+  StringRef Filename = DL->getFilename();
+  if (Filename != "") {
+    // Check if we have a pending debug location.
+    StringRef PendingDirectory = DL->getDirectory();
     // Do the source location debug info with vISA FILE and LOC instructions.
-    if (PendingFilename != "" && (PendingFilename != LastFilename ||
-                                  PendingDirectory != LastDirectory)) {
-      SmallString<256> Filename;
-      // Bodge here to detect Windows absolute path even when built on cygwin.
-      if (sys::path::is_absolute(PendingFilename) ||
-          (PendingFilename.size() > 2 && PendingFilename[1] == ':'))
-        Filename = PendingFilename;
-      else {
-        Filename = PendingDirectory;
-        sys::path::append(Filename, PendingFilename);
+    if (Filename != LastFilename || PendingDirectory != LastDirectory) {
+      SmallString<256> EmittedFilename = Filename;
+      if (!sys::path::is_absolute(Filename)) {
+        EmittedFilename = PendingDirectory;
+        sys::path::append(EmittedFilename, Filename);
       }
-      CISA_CALL(Kernel->AppendVISAMiscFileInst(Filename.c_str()));
-      GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(),
-                            "FILE");
+      LLVM_DEBUG(dbgs() << "FILENAME instruction append " << EmittedFilename
+                        << "\n");
+      CISA_CALL(Kernel->AppendVISAMiscFileInst(EmittedFilename.c_str()));
       LastDirectory = PendingDirectory;
-      LastFilename = PendingFilename;
-    }
-    if (PendingLine != LastLine) {
-      LLVM_DEBUG(dbgs() << "LOC instruction appended:" << PendingLine << "\n");
-      CISA_CALL(Kernel->AppendVISAMiscLOC(PendingLine));
-      GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(),
-                            "LOC");
-      LastLine = PendingLine;
-      PendingLine = 0;
+      LastFilename = Filename;
     }
   }
+
+  unsigned PendingLine = DL.getLine();
+  if (PendingLine != LastEmittedVisaLine) {
+    LLVM_DEBUG(dbgs() << "LOC instruction appended:" << PendingLine << "\n");
+    CISA_CALL(Kernel->AppendVISAMiscLOC(PendingLine));
+    LastEmittedVisaLine = PendingLine;
+  }
+
+  LLVM_DEBUG(dbgs() << "Visa inst current count = "
+                    << Kernel->getvIsaInstCount() << "\n");
+}
+
+/***********************************************************************
+ * addDebugInfo : add debug infromation
+ *
+ * Enter:   CurrentInst = llvm-instruction for add to mapping
+ *          Finalize = if true - updating only count of instructions for
+ *                     current visa-llvm mapping, else create new
+ *                     visa-llvm mapping element
+ */
+void GenXKernelBuilder::addDebugInfo(Instruction *CurrentInst, bool Finalize) {
+  LLVM_DEBUG(dbgs() << " ----- gen VisaDebug Info for visa inst count = "
+                    << Kernel->getvIsaInstCount() << " Finalize = " << Finalize
+                    << "\n");
+
   // +1 since we update debug info BEFORE appending the instruction
-  GM->updateVisaMapping(KernFunc, CurrentInst, Kernel->getvIsaInstCount() + 1,
-                        CurrentInst ? CurrentInst->getName() : "Init_Special");
+  auto CurrentCount = Kernel->getvIsaInstCount() + 1;
+
+  IGC_ASSERT(CurrentInst);
+  auto Reason = CurrentInst->getName();
+  if (!Finalize) {
+    GM->updateVisaMapping(KernFunc, CurrentInst, CurrentCount, Reason);
+    return;
+  }
+  // Do not modify debug-instructions count
+  if (isa<DbgInfoIntrinsic>(CurrentInst)) {
+    return;
+  }
+  LLVM_DEBUG(dbgs() << "Update visa map for next inst with id = "
+                    << CurrentCount << "\n");
+  GM->updateVisaCountMapping(KernFunc, CurrentInst, CurrentCount, Reason);
 }
 
 void GenXKernelBuilder::emitOptimizationHints() {
@@ -5193,7 +5193,6 @@ void GenXKernelBuilder::emitOptimizationHints() {
  * addLabelInst : add a label instruction for a basic block or join
  */
 void GenXKernelBuilder::addLabelInst(const Value *BB) {
-  GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(), "LBL");
   auto LabelID = getOrCreateLabel(BB, LABEL_BLOCK);
   IGC_ASSERT(LabelID < Labels.size());
   CISA_CALL(Kernel->AppendVISACFLabelInst(Labels[LabelID]));
@@ -5395,14 +5394,12 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
   }
 
   if (EMOperandNum < 0) {
-    addDebugInfo();
     // Scalar calls must be marked with NoMask
     CISA_CALL(Kernel->AppendVISACFCallInst(
         nullptr, vISA_EMASK_M1_NM, EXEC_SIZE_1,
         Labels[getOrCreateLabel(Callee, LabelKind)]));
   } else {
     auto PredicateOpnd = NoMask ? nullptr : createPred(CI, BaleInfo(), EMOperandNum);
-    addDebugInfo();
     auto *VTy = cast<IGCLLVM::FixedVectorType>(
         CI->getArgOperand(EMOperandNum)->getType());
     VISA_Exec_Size ExecSize = getExecSizeFromValue(VTy->getNumElements());
@@ -5424,7 +5421,6 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
     if (DefaultFloatControl)
       buildControlRegUpdate(DefaultFloatControl, false);
   }
-  addDebugInfo();
   if (genx::requiresStackCall(Func)) {
     CISA_CALL(Kernel->AppendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1,
                                                   EXEC_SIZE_16));
@@ -6296,7 +6292,6 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
         CI->getArgOperand(EMOperandNum)->getType());
     Esz = getExecSizeFromValue(VTy->getNumElements());
   }
-  addDebugInfo();
   auto *MDArg = CI->getMetadata(InstMD::FuncArgSize);
   auto *MDRet = CI->getMetadata(InstMD::FuncRetSize);
   IGC_ASSERT(MDArg && MDRet);
@@ -6437,7 +6432,6 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
         CI->getArgOperand(EMOperandNum)->getType());
     Esz = getExecSizeFromValue(VTy->getNumElements());
   }
-  addDebugInfo();
 
   auto *RetVar = &CisaVars[Kernel].at("retv");
   bool ProcessRet = !FuncTy->getReturnType()->isVoidTy() &&
