@@ -180,6 +180,8 @@ private:
         return (colors.size() == 2 && m_dualSrcBlendEnabled);
     }
 
+    bool needsSingleSourceRTWWithDualSrcBlend() const;
+
     llvm::Module* m_module;
     llvm::PostDominatorTree* PDT;
     IGC::ModuleMetaData* m_modMD;

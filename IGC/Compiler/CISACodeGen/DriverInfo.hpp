@@ -308,6 +308,12 @@ namespace IGC
         virtual void setAutoGRFSelection(bool value) { autoGRFSelection = value; }
 
 
+
+        // When dual-source blending is enabled, enable sending the
+        // single-source RTW message (with data for the second color) after the
+        // dual-source blending RTW message. The second message must be send
+        // when the state of dual-source blending is not known at compile time.
+        virtual bool sendSingleSourceRTWAfterDualSourceRTW() const { return true; }
 protected:
     bool autoGRFSelection = false;
     };

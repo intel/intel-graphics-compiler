@@ -378,6 +378,7 @@ DECLARE_IGC_REGKEY(bool, EnableImplicitArgAsIntrinsic,  true,  "Use GenISAIntrin
 
 DECLARE_IGC_REGKEY(bool, EnableGlobalStateBuffer,              false, "This key allows stack calls to read implicit args from side buffer. It also emits a relocatable add in VISA.", true)
 DECLARE_IGC_REGKEY(bool, LateInlineUnmaskedFunc,        false, "Postpone inlining of Unmasked functions till end of CG to avoid code movement inside/outside of unmasked region", false)
+DECLARE_IGC_REGKEY(bool, ForceSingleSourceRTWAfterDualSourceRTW, false, "Force the compiler to always send single-source RTW after the dual-source RTW", false)
 
 DECLARE_IGC_GROUP("Performance experiments")
 DECLARE_IGC_REGKEY(bool, ForceNonCoherentStatelessBTI,  false, "Enable gneeration of non cache coherent stateless messages", false)

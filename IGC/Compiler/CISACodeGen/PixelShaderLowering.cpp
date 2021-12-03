@@ -831,22 +831,31 @@ void PixelShaderLowering::EmitRTWrite(
     if (RTindexVal != -1)
     {
         //dual source RTWrite first
-        colors[RTindexVal].inst = addDualBlendWrite(
+        CallInst* dualSourceRTW = addDualBlendWrite(
             colors[RTindexVal].bb,
             oMask,
             colors[RTindexVal],
             colors[1 - RTindexVal],
             depth, stencil, 0);
-        colors[RTindexVal].inst->setDebugLoc(debugLocs[RTindexVal]);
+        dualSourceRTW->setDebugLoc(debugLocs[RTindexVal]);
 
-        //Single source RTWrite
-        colors[1 - RTindexVal].inst = addRTWrite(
-            colors[1 - RTindexVal].bb,
-            src0Alpha,
-            oMask, colors[1 - RTindexVal],
-            depth,
-            stencil);
-        colors[1 - RTindexVal].inst->setDebugLoc(debugLocs[1 - RTindexVal]);
+        if (needsSingleSourceRTWWithDualSrcBlend())
+        {
+            //Single source RTWrite
+            CallInst* singleSourceRTW = addRTWrite(
+                colors[1 - RTindexVal].bb,
+                src0Alpha,
+                oMask, colors[1 - RTindexVal],
+                depth,
+                stencil);
+            singleSourceRTW->setDebugLoc(debugLocs[1 - RTindexVal]);
+            colors[RTindexVal].inst = dualSourceRTW;
+            colors[1 - RTindexVal].inst = singleSourceRTW;
+        }
+        else
+        {
+            colors[0].inst = dualSourceRTW;
+        }
     }
     else
     {
@@ -1333,7 +1342,8 @@ void PixelShaderLowering::moveRTWritesToReturnBlock(
             predBB.push_back(*PI);
         }
 
-        if (useDualSrcBlend(colors))
+        if (useDualSrcBlend(colors) &&
+            needsSingleSourceRTWWithDualSrcBlend())
         {
             // For SIMD16 PS thread with two output colors must send
             // messages in the following sequence for each RT: SIMD8 dual
@@ -1429,6 +1439,14 @@ void PixelShaderLowering::checkAndCreateNullRTWrite(
             oMask, color,
             depth, stencil);
     }
+}
+
+bool PixelShaderLowering::needsSingleSourceRTWWithDualSrcBlend() const
+{
+    bool needsSingleSourceMessage =
+        m_cgCtx->m_DriverInfo.sendSingleSourceRTWAfterDualSourceRTW() ||
+        IGC_IS_FLAG_ENABLED(ForceSingleSourceRTWAfterDualSourceRTW);
+    return needsSingleSourceMessage;
 }
 
 ///////////////////////////////////////////////////////////////////////
