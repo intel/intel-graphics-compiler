@@ -5822,7 +5822,7 @@ void HWConformity::conformBB(G4_BB* bb)
 #endif
     }
 
-    if (builder.getPlatform() == Xe_PVC) {
+    if (builder.getPlatform() == Xe_PVCXT) {
       for (auto I = bb->begin(), E = bb->end(); I != E;) {
         auto inst = *I;
         auto next = std::next(I);

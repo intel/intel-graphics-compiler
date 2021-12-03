@@ -1414,7 +1414,7 @@ void vISAVerifier::verifyInstructionMisc(
             REPORT_INSTRUCTION(options, inst->pred.isNullPred(), "%s inst does not support predicate", ISA_Inst_Table[opcode].str);
 
             // execsize must be simd8 for XeHP_SDV and simd16 for PVC
-            if (getGenxPlatform() >= Xe_XeHPSDV)
+            if (getGenxPlatform() >= Xe_PVC)
             {
                 REPORT_INSTRUCTION(options, opcode != ISA_DPASW,
                     "%s instuction is not supported on selected platform", ISA_Inst_Table[opcode].str);
