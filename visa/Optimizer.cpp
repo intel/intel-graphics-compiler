@@ -13281,7 +13281,11 @@ void Optimizer::applyFusedCallWA()
         I2->setPredicate(pred_m);
 
         // I3:   mov smallEUTarget  cr0.2
-        G4_Declare* sTargetDecl = builder.createTempVar(1, Type_UD, Any, "smallEUTarget");
+        //     Note that both operands of call need to be GRF aligned due to bug. With calla, we need to
+        //     create grf-aligned sTargetDecl. With call, the relative ip temp, created later as I5Target,
+        //     will be grf-aligned, thus, sTargetDecl here does not need to be grf-aligned.
+        G4_SubReg_Align calleeAlign = builder.supportCallaRegSrc() ? GRFALIGN : Any;
+        G4_Declare* sTargetDecl = builder.createTempVar(1, Type_UD, calleeAlign, "smallEUTarget");
         G4_DstRegRegion* I3_Dst = builder.createDst(sTargetDecl->getRegVar(), 0, 0, 1, Type_UD);
         G4_SrcRegRegion* I3_Src0 = builder.createSrc(V_cr0, 0, 2, builder.getRegionScalar(), Type_UD);
         G4_INST* I3 = builder.createMov(g4::SIMD1, I3_Dst, I3_Src0, InstOpt_WriteEnable, false);
