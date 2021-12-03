@@ -369,6 +369,17 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   // Run integer reduction again to revert some trunc/ext patterns transformed
   // by instcombine.
   vc::addPass(PM, createGenXReduceIntSizePass());
+  /// BreakCriticalEdges
+  /// ------------------
+  /// In the control flow graph, a critical edge is one from a basic block with
+  /// multiple successors (a conditional branch) to a basic block with multiple
+  /// predecessors.
+  ///
+  /// We use this standard LLVM pass to split such edges, to ensure that
+  /// constant loader and GenXCoalescing have somewhere to insert a phi copy if
+  /// needed.
+  ///
+  vc::addPass(PM, createBreakCriticalEdgesPass());
   /// .. include:: GenXSimdCFConformance.cpp
   vc::addPass(PM, createGenXEarlySimdCFConformancePass());
   /// .. include:: GenXPromotePredicate.cpp
@@ -389,17 +400,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// subexpressions are related by one dominating the other.
   ///
   vc::addPass(PM, createEarlyCSEPass());
-  /// BreakCriticalEdges
-  /// ------------------
-  /// In the control flow graph, a critical edge is one from a basic block with
-  /// multiple successors (a conditional branch) to a basic block with multiple
-  /// predecessors.
-  ///
-  /// We use this standard LLVM pass to split such edges, to ensure that
-  /// constant loader and GenXCoalescing have somewhere to insert a phi copy if
-  /// needed.
-  ///
-  vc::addPass(PM, createBreakCriticalEdgesPass());
   /// .. include:: GenXPatternMatch.cpp
   vc::addPass(PM, createGenXPatternMatchPass());
   if (!DisableVerify)
