@@ -256,6 +256,10 @@ namespace IGC
                     IGC_ASSERT_MESSAGE(0, "should not compile again if already got a non spill kernel");
                 }
             }
+            else
+            {
+                simd32Shader->ProgramOutput()->Destroy();
+            }
         }
 
         if (hasShaderOutput(simd16Shader))
@@ -274,6 +278,10 @@ namespace IGC
                     IGC_ASSERT_MESSAGE(0, "should not compile again if already got a non spill kernel");
                 }
             }
+            else
+            {
+                simd16Shader->ProgramOutput()->Destroy();
+            }
         }
 
         if (hasShaderOutput(simd8Shader))
@@ -291,6 +299,10 @@ namespace IGC
                 {
                     IGC_ASSERT_MESSAGE(0, "should not compile again if already got a non spill kernel");
                 }
+            }
+            else
+            {
+                simd8Shader->ProgramOutput()->Destroy();
             }
         }
     }
