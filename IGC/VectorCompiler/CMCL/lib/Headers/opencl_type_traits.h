@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #ifndef OPENCL_TYPE_TRAITS
 #define OPENCL_TYPE_TRAITS
+#include <opencl_detail.h>
 
 namespace cl {
 
@@ -62,11 +63,8 @@ template <typename T, typename U> struct is_same : false_type {};
 
 template <typename T> struct is_same<T, T> : true_type {};
 
-template<bool B, typename T, typename F>
-struct conditional { using type = T; };
-
-template<typename T, typename F>
-struct conditional<false, T, F> { using type = F; };
+template <bool B, typename T, typename F>
+using conditional = detail::conditional<B, T, F>;
 
 template <typename T> struct remove_cv { using type = T; };
 template <typename T> struct remove_cv<const T> { using type = T; };
