@@ -81,7 +81,7 @@ DEF_VISA_OPTION(vISA_enableCleanupBindless, ET_BOOL, "-cleanBindless",   UNUSED,
 DEF_VISA_OPTION(vISA_EnableSplitVariables,  ET_BOOL, "-noSplitVariables", UNUSED, false)
 DEF_VISA_OPTION(vISA_ChangeMoveType,        ET_BOOL, "-ALTMode",       UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubstitution,       ET_BOOL, "-noAccSub",          UNUSED, true)
-DEF_VISA_OPTION(vISA_accSubBeforeRA,        ET_BOOL, "-noAccSubBRA",          UNUSED, false)
+DEF_VISA_OPTION(vISA_accSubBeforeRA,        ET_BOOL, "-noAccSubBRA",          UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableGatherWithImm,      ET_BOOL, "-gatherWithImm",        UNUSED, 0)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",    UNUSED, true)
 DEF_VISA_OPTION(vISA_localizationForAccSub, ET_BOOL, "-localizeForACC",    UNUSED, false)
