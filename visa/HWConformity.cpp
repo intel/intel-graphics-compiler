@@ -5602,6 +5602,17 @@ void HWConformity::conformBB(G4_BB* bb)
                 evenlySplitInst(i, bb);
             }
         }
+
+        if (inst->opcode() == G4_madw)
+        {
+            next_iter = fixMadwInst(i, bb);
+            continue;
+        }
+
+#ifdef _DEBUG
+        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
+#endif
+
         fix3SrcInst(i, bb);
 
         G4_Operand* dst = inst->getDst();
@@ -5645,16 +5656,6 @@ void HWConformity::conformBB(G4_BB* bb)
         {
             fixMULHInst(i, bb);
             next_iter = i;
-            continue;
-        }
-
-#ifdef _DEBUG
-        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
-#endif
-
-        if (inst->opcode() == G4_madw)
-        {
-            next_iter = fixMadwInst(i, bb);
             continue;
         }
 
