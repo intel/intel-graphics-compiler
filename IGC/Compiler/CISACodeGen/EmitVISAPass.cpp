@@ -10841,7 +10841,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         CVariable* Src = GetSymbol(operand);
         Type* argType = operand->getType();
 
-        if (!isIndirectFCall)
+        if (!isInvokeSIMDTarget && !isIndirectFCall)
         {
             // Skip unused arguments if any for direct call
             auto argIter = F->arg_begin();
