@@ -73,6 +73,9 @@ void initializeGenXBTIAssignmentPass(PassRegistry &);
 ModulePass *createGenXTranslateSPIRVBuiltinsPass();
 void initializeGenXTranslateSPIRVBuiltinsPass(PassRegistry &);
 
+ModulePass *createGenXTrampolineInsertionPass();
+void initializeGenXTrampolineInsertionPass(PassRegistry &);
+
 } // End llvm namespace
 
 #endif // VC_GENXOPTS_GENXOPTS_H

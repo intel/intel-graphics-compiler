@@ -18,6 +18,7 @@ set(OPT_SOURCES
   CMTrans/GenXPrintfResolution.cpp
   CMTrans/GenXImportOCLBiF.cpp
   CMTrans/GenXTranslateSPIRVBuiltins.cpp
+  CMTrans/GenXTrampolineInsertion.cpp
   CMPacketize/GenXPacketize.cpp
   CMPacketize/PacketBuilder.cpp
   CMPacketize/PacketBuilder_math.cpp
