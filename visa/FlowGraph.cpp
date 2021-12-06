@@ -665,6 +665,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         builder->initScratchSurfaceOffset();
     }
     if (builder->hasFusedEU() &&
+        !builder->getOption(vISA_KeepScalarJmp) &&
         getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
     {
         getKernel()->getOptions()->setOptionInternally(vISA_EnableScalarJmp, false);

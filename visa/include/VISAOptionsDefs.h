@@ -76,6 +76,7 @@ DEF_VISA_OPTION(vISA_enableUnsafeCP_DF,     ET_BOOL, "-enableUnsafeCP_DF", UNUSE
 DEF_VISA_OPTION(vISA_EnableStructurizer,    ET_BOOL, "-enableStructurizer",  UNUSED, false)
 DEF_VISA_OPTION(vISA_StructurizerCF,        ET_BOOL, "-noSCF",           "-noSCF: structurizer generates UCF only", true)
 DEF_VISA_OPTION(vISA_EnableScalarJmp,       ET_BOOL, "-noScalarJmp",     UNUSED, true)
+DEF_VISA_OPTION(vISA_KeepScalarJmp,         ET_BOOL, "-keepScalarJmp",   "-keepScalarJmp: don't convert scalar jmp to goto", false)
 DEF_VISA_OPTION(vISA_enableCleanupBindless, ET_BOOL, "-cleanBindless",   UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableSplitVariables,  ET_BOOL, "-noSplitVariables", UNUSED, false)
 DEF_VISA_OPTION(vISA_ChangeMoveType,        ET_BOOL, "-ALTMode",       UNUSED, true)

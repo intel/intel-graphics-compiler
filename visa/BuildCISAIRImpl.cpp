@@ -238,7 +238,10 @@ static void AddWAOptions(Options &options, const WA_TABLE &waTable)
     {
         options.setOptionInternally(vISA_noMaskWA, 2u);
         // Turn off jmpi as there is no wa for jmpi
-        options.setOptionInternally(vISA_EnableScalarJmp, false);
+        if (!options.getOption(vISA_KeepScalarJmp))
+        {
+            options.setOptionInternally(vISA_EnableScalarJmp, false);
+        }
     }
 }
 
