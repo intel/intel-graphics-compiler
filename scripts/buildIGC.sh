@@ -44,7 +44,7 @@ fi
 
 
 apt-get update
-apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common
+apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip
 apt-get update
 echo "[Build Status] flex bison libz-dev cmake curl wget build-essential git software-properties-common INSTALLED"
 
@@ -62,8 +62,25 @@ fi
 apt-get install -y llvm-"$LLVM_VERSION" llvm-"$LLVM_VERSION"-dev clang-"$LLVM_VERSION" liblld-"$LLVM_VERSION" liblld-"$LLVM_VERSION"-dev
 echo "[Build Status] LLVM INSTALLED"
 
+if [ "$BUILD_OS" = "ubuntu1804" ] && [ "$LLVM_VERSION" = "11" ]; then
+    LLVM_VERSION_PREFERRED="$LLVM_VERSION".1.0
+else
+    LLVM_VERSION_PREFERRED="$LLVM_VERSION".0.0
+fi
+echo "[Build Status] LLVM_VERSION_PREFERRED = $LLVM_VERSION_PREFERRED"
+
 mkdir workspace
 cd workspace
+
+echo "[Build Status] build and install SPIRV-LLVM-Translator"
+/usr/bin/git clone --branch llvm_release_"$LLVM_VERSION"0 https://github.com/KhronosGroup/SPIRV-LLVM-Translator
+mkdir SPIRV-LLVM-Translator/build && cd SPIRV-LLVM-Translator/build
+cmake .. -DBASE_LLVM_VERSION="$LLVM_VERSION_PREFERRED"
+make llvm-spirv -j`nproc`
+make install
+cd ../..
+echo "[Build Status] SPIRV-LLVM-Translator INSTALLED"
+
 /usr/bin/git version
 /usr/bin/git clone https://github.com/intel/intel-graphics-compiler ./igc
 cd igc
@@ -72,20 +89,12 @@ echo "[Build Status] IGC commit hash below:"
 /usr/bin/git clone https://github.com/intel/vc-intrinsics ../vc-intrinsics
 /usr/bin/git clone https://github.com/KhronosGroup/SPIRV-Headers.git ../SPIRV-Headers
 /usr/bin/git clone https://github.com/KhronosGroup/SPIRV-Tools.git ../SPIRV-Tools
-/usr/bin/git clone --branch llvm_release_"$LLVM_VERSION"0 https://github.com/KhronosGroup/SPIRV-LLVM-Translator ../llvm-project/llvm/projects/llvm-spirv
 echo "[Build Status] All necessary repository CLONED"
 mkdir build
 cd build
 curl -s https://api.github.com/repos/intel/intel-graphics-compiler/releases/latest | grep browser_download_url | egrep 'opencl_|core_' | cut -d '"' -f 4 | wget -qi -
 dpkg -i *.deb
 echo "[Build Status] Old IGC with opencl-clang downloaded and INSTALLED, WA to install opencl-clang"
-
-if [ "$BUILD_OS" = "ubuntu1804" ] && [ "$LLVM_VERSION" = "11" ]; then
-    LLVM_VERSION_PREFERRED="$LLVM_VERSION".1.0
-else
-    LLVM_VERSION_PREFERRED="$LLVM_VERSION".0.0
-fi
-echo "[Build Status] LLVM_VERSION_PREFERRED = $LLVM_VERSION_PREFERRED"
 
 CONFIG_VARS="-DIGC_OPTION__LLVM_MODE=Prebuilds -DIGC_OPTION__LLVM_PREFERRED_VERSION=$LLVM_VERSION_PREFERRED"
 case $COMPILER in
