@@ -226,6 +226,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 
@@ -255,6 +256,7 @@ class GenXLegalization : public FunctionPass {
   enum { DETERMINEWIDTH_UNBALE = 0, DETERMINEWIDTH_NO_SPLIT = 256 };
   GenXBaling *Baling = nullptr;
   const GenXSubtarget *ST = nullptr;
+  DominatorTree *DT = nullptr;
   ScalarEvolution *SE = nullptr;
   // Work variables when in the process of splitting a bale.
   // The Bale being split. (Also info on whether it has FIXED4 and TWICEWIDTH
@@ -508,6 +510,7 @@ INITIALIZE_PASS_BEGIN(GenXLegalization, "GenXLegalization", "GenXLegalization",
                       false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXFuncBaling)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXLegalization, "GenXLegalization", "GenXLegalization",
                     false, false)
 
@@ -520,6 +523,7 @@ void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXFuncBaling>();
   AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addRequired<TargetPassConfig>();
+  AU.addRequired<DominatorTreeWrapperPass>();
   AU.addPreserved<GenXModule>();
 }
 
@@ -533,6 +537,7 @@ bool GenXLegalization::runOnFunction(Function &F) {
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
+  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   // Check args for illegal predicates.
   for (Function::arg_iterator fi = F.arg_begin(), fe = F.arg_end(); fi != fe;
        ++fi) {
@@ -1132,6 +1137,7 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
                                    Constant::getNullValue(I16Ty),
                                    NewBC->getName(), InsertBefore);
     NewPred->setDebugLoc(DL);
+    NewBC->setDebugLoc(DL);
     NewWr->setOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum,
                       UndefValue::get(Inst->getType()));
     Inst->replaceAllUsesWith(NewPred);
@@ -1185,6 +1191,7 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
   auto Cmp = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, Result, Zero,
                              Inst->getName() + ".joincmp", InsertBefore);
   // Replace and erase the old all/any.
+  Cmp->setDebugLoc(DL);
   Inst->replaceAllUsesWith(Cmp);
   eraseInst(Inst);
   return false;
@@ -2074,8 +2081,10 @@ Value *GenXLegalization::joinGStore(Value *PrevSliceRes, BaleInst GStore,
   IGC_ASSERT_MESSAGE(GStore.Info.Type == BaleInfo::GSTORE, "wrong argument");
   Value *Op =
       joinAnyWrRegion(PrevSliceRes, WrRegion, StartIdx, Width, InsertBefore);
-  return new StoreInst(Op, GStore.Inst->getOperand(1), /*volatile*/ true,
-                       InsertBefore);
+  auto *Inst = new StoreInst(Op, GStore.Inst->getOperand(1), /*volatile*/ true,
+                             InsertBefore);
+  Inst->setDebugLoc(GStore.Inst->getDebugLoc());
+  return Inst;
 }
 
 // specialized join function for wrregion instruction
@@ -2093,8 +2102,11 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
     Instruction *ST = B.getHead()->Inst;
     IGC_ASSERT(isa<StoreInst>(ST));
     Value *GV = ST->getOperand(1);
-    In = new LoadInst(GV->getType()->getPointerElementType(), GV, ".gload",
-                      /*volatile*/ true, InsertBefore);
+    auto *Load =
+        new LoadInst(GV->getType()->getPointerElementType(), GV, ".gload",
+                     /*volatile*/ true, InsertBefore);
+    Load->setDebugLoc(BInst.Inst->getDebugLoc());
+    In = Load;
   }
   if (auto MainInst = baleMainInstLSC()) {
     IGC_ASSERT(MainInst == BInst.Inst->getOperand(1));
@@ -2567,7 +2579,8 @@ GenXLegalization::convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
 
 // Get value bitcasted to NewTy.
 static Value *createBitCastIfNeeded(Value *V, Type *NewTy,
-                                    Instruction *InsertBefore) {
+                                    Instruction *InsertBefore,
+                                    const DebugLoc &DbgLoc) {
   if (auto *C = dyn_cast<Constant>(V))
     return ConstantFoldCastOperand(Instruction::BitCast, C, NewTy,
                                    InsertBefore->getModule()->getDataLayout());
@@ -2578,15 +2591,19 @@ static Value *createBitCastIfNeeded(Value *V, Type *NewTy,
     Function *RegReadIntr = GenXIntrinsic::getGenXDeclaration(
         InsertBefore->getModule(), llvm::GenXIntrinsic::genx_read_predef_reg,
         {NewTy, CI->getOperand(1)->getType()});
-    return CallInst::Create(RegReadIntr, {CI->getOperand(0), CI->getOperand(1)},
-                            "", InsertBefore);
+    auto *Inst = CallInst::Create(
+        RegReadIntr, {CI->getOperand(0), CI->getOperand(1)}, "", InsertBefore);
+    Inst->setDebugLoc(DbgLoc);
+    return Inst;
   }
   if (auto *BCI = dyn_cast<BitCastInst>(V)) {
     if (BCI->getSrcTy() == NewTy)
       return BCI->getOperand(0);
   }
-  return CastInst::Create(Instruction::BitCast, V, NewTy,
-                          V->getName() + ".cast", InsertBefore);
+  auto *Inst = CastInst::Create(Instruction::BitCast, V, NewTy,
+                                V->getName() + ".cast", InsertBefore);
+  Inst->setDebugLoc(DbgLoc);
+  return Inst;
 }
 
 // Get type that represents OldTy as vector of NewScalarType.
@@ -2675,30 +2692,32 @@ Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
     return nullptr;
 
   IGC_ASSERT(SrcRgn.NumElements == DstRgn.NumElements);
-
+  const auto &RdDbgLoc = Rd ? Rd->getDebugLoc() : Wr->getDebugLoc();
   Instruction *NewWr = nullptr, *NewRd = nullptr;
   // Transform src operand.
-  Value *NewSrc = createBitCastIfNeeded(Src, NewSrcTy, HeadInst);
+  Value *NewSrc = createBitCastIfNeeded(Src, NewSrcTy, HeadInst, RdDbgLoc);
   if (Rd) {
-    NewSrc = NewRd = SrcRgn.createRdRegion(NewSrc, Rd->getName(), HeadInst,
-                                           Rd->getDebugLoc());
+    NewSrc = NewRd =
+        SrcRgn.createRdRegion(NewSrc, Rd->getName(), HeadInst, RdDbgLoc);
     Baling->setBaleInfo(NewRd, Baling->getBaleInfo(Rd));
   }
   // Transform dst operand.
   Value *NewDst = NewSrc;
+  const auto &WrDbgLoc = Wr ? Wr->getDebugLoc() : Rd->getDebugLoc();
   if (Wr) {
     Value *NewOldVal = createBitCastIfNeeded(Wr->getOperand(OldValueOperandNum),
-                                             NewDstTy, HeadInst);
+                                             NewDstTy, HeadInst, WrDbgLoc);
     NewDst = NewWr = DstRgn.createWrRegion(NewOldVal, NewSrc, Wr->getName(),
-                                           HeadInst, Wr->getDebugLoc());
+                                           HeadInst, WrDbgLoc);
     Baling->setBaleInfo(NewWr, Baling->getBaleInfo(Wr));
   }
   IGC_ASSERT(NewWr || NewRd);
 
   // Create bitcast to OldTy of NewDst
-  Dst->replaceAllUsesWith(CastInst::Create(Instruction::BitCast, NewDst,
-                                           Dst->getType(),
-                                           Dst->getName() + ".cast", HeadInst));
+  auto *Bitcast = CastInst::Create(Instruction::BitCast, NewDst, Dst->getType(),
+                                   Dst->getName() + ".cast", HeadInst);
+  Bitcast->setDebugLoc(WrDbgLoc);
+  Dst->replaceAllUsesWith(Bitcast);
 
   if (Wr)
     eraseInst(Wr);
@@ -2825,10 +2844,11 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
       for (unsigned StartIdx = 0; StartIdx != WholeSize;) {
         // Create a split phi node.
         PP = getPredPart(Phi, StartIdx);
-        auto NewPhi = PHINode::Create(
+        auto *NewPhi = PHINode::Create(
             IGCLLVM::FixedVectorType::get(Phi->getType()->getScalarType(),
                                           PP.Size),
             NumIncoming, Phi->getName() + ".split" + Twine(StartIdx), Phi);
+        NewPhi->setDebugLoc(Phi->getDebugLoc());
         // Do a rdpredregion for each incoming.
         for (unsigned ii = 0; ii != NumIncoming; ++ii) {
           BasicBlock *IncomingBlock = Phi->getIncomingBlock(ii);
@@ -3129,9 +3149,9 @@ void GenXLegalization::fixIntrinsicCalls(Function *F) {
   BasicBlock *EntryBB = &F->getEntryBlock();
   Instruction *InsertPos = &*EntryBB->getFirstInsertionPt();
 
-  for (auto I = Calls.begin(), E = Calls.end(); I != E; ++I) {
+  for (const auto &I : Calls) {
     Instruction *EntryDef = nullptr;
-    for (auto Inst : I->second) {
+    for (auto *Inst : I.second) {
       if (Inst->getParent() == EntryBB) {
         EntryDef = Inst;
         break;
@@ -3140,13 +3160,15 @@ void GenXLegalization::fixIntrinsicCalls(Function *F) {
 
     // No entry definition found, then clone one.
     if (EntryDef == nullptr) {
-      EntryDef = I->second.front()->clone();
+      EntryDef = I.second.front()->clone();
       EntryDef->insertBefore(InsertPos);
+      llvm::replaceAllDbgUsesWith(*I.second.front(), *EntryDef, *InsertPos,
+                                  *DT);
     } else
       EntryDef->moveBefore(InsertPos);
 
     // Now replace all uses with this new definition.
-    for (auto Inst : I->second) {
+    for (auto *Inst : I.second) {
       std::vector<Instruction *> WorkList{Inst};
       while (!WorkList.empty()) {
         Instruction *CurI = WorkList.back();
