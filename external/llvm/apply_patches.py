@@ -1,10 +1,10 @@
-#=========================== begin_copyright_notice ============================
+# ========================== begin_copyright_notice ============================
 #
 # Copyright (C) 2021 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
-#============================ end_copyright_notice =============================
+# =========================== end_copyright_notice =============================
 
 import argparse
 import os
