@@ -4450,10 +4450,10 @@ namespace IGC
             }
         }
 
-        // With statelessToStatefull on, it is possible that two different BTI messages
+        // With StatelessToStateful on, it is possible that two different BTI messages
         // (two kernel arguments) might refer to the same memory. To be safe, turn off
         // visa DPSend reordering.
-        if (IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
+        if (IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
             context->type == ShaderType::OPENCL_SHADER)
         {
             SaveOption(vISA_ReorderDPSendToDifferentBti, false);

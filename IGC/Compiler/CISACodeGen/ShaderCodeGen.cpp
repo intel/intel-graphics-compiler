@@ -73,7 +73,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DisableLoopUnrollOnRetry/DisableLoopUnrollOnRetry.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
@@ -646,14 +646,14 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     if (!isOptDisabled &&
         ctx.m_instrTypes.hasLoadStore &&
-        ctx.m_DriverInfo.SupportsStatelessToStatefullBufferTransformation() &&
+        ctx.m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
         !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
-        IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
+        IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
         !ctx.m_instrTypes.hasInlineAsmPointerAccess)
     {
         bool hasBufOff = (IGC_IS_FLAG_ENABLED(EnableSupportBufferOffset) ||
                             ctx.getModuleMetaData()->compOpt.HasBufferOffsetArg);
-        mpm.add(new StatelessToStatefull(hasBufOff));
+        mpm.add(new StatelessToStateful(hasBufOff));
     }
 
     // Light cleanup for subroutines after cloning. Note that the constant

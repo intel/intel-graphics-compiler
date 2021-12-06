@@ -88,7 +88,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
             continue;
         }
 
-        // see the detail in StatelessToStatefull.cpp.
+        // see the detail in StatelessToStateful.cpp.
         // If SToSProducesPositivePointer is true, do not generate implicit arguments.
         if (IGC_IS_FLAG_DISABLED(SToSProducesPositivePointer) &&
             (ctx->getModuleMetaData()->compOpt.HasBufferOffsetArg ||

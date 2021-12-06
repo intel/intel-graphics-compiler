@@ -588,7 +588,7 @@ namespace IGC
             // creating non-bti payload arg
             /*
             bool is_bti_only =
-                IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
+                IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
                 IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
                 m_DriverInfo->SupportStatefulToken() &&
                 kernelArg->getArg() &&
@@ -675,7 +675,7 @@ namespace IGC
         case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
         {
             // the image arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
-            // For statefull image argument, the arg has 0 offset and 0 size
+            // For stateful image argument, the arg has 0 offset and 0 size
             zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
                 zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
             uint arg_off = 0;
@@ -717,8 +717,8 @@ namespace IGC
         case KernelArg::ArgType::BINDLESS_SAMPLER:
         {
             // the sampler arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
-            // For statefull image argument, the arg has 0 offset and 0 size
-            // NOTE: we only have statefull sampler now
+            // For stateful image argument, the arg has 0 offset and 0 size
+            // NOTE: we only have stateful sampler now
             zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
                 zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
             uint arg_off = 0;
@@ -1421,7 +1421,7 @@ namespace IGC
         //   converted to stateful (by StatelessToStateful optimization). Thus, the ptr itself
         //   is no longer referenced at all.
         //
-        if (IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
+        if (IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
             IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
             m_DriverInfo->SupportStatefulToken() &&
             arg &&

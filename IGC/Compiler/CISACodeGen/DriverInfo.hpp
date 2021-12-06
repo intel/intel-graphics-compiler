@@ -174,7 +174,7 @@ namespace IGC
         virtual bool AlwaysEnableSimd32() const { return false; }
 
         /// Driver supports promoting buffers to bindful
-        virtual bool SupportsStatelessToStatefullBufferTransformation() const { return false; }
+        virtual bool SupportsStatelessToStatefulBufferTransformation() const { return false; }
 
         /// Need emulation of 64bits type for HW not supporting it natively
         virtual bool Enable64BitEmu() const { return false; }

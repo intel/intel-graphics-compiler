@@ -54,7 +54,7 @@ namespace {
             // all address spaces except generic are disjoint.
             //
             // Address spaces greater than ADDRESS_SPACE_NUM_ADDRESSES are used for
-            // statefull accesses and may alias.
+            // stateful accesses and may alias.
             //
             if (AS1 < ADDRESS_SPACE_NUM_ADDRESSES &&
                 AS2 < ADDRESS_SPACE_NUM_ADDRESSES &&
@@ -64,7 +64,7 @@ namespace {
                 return IGCLLVM::AliasResultEnum::NoAlias;
 
 
-            // Shared local memory doesn't alias any statefull memory.
+            // Shared local memory doesn't alias any stateful memory.
             if ((AS1 == ADDRESS_SPACE_LOCAL && AS2 > ADDRESS_SPACE_NUM_ADDRESSES) ||
                 (AS1 > ADDRESS_SPACE_NUM_ADDRESSES && AS2 == ADDRESS_SPACE_LOCAL))
             {
@@ -85,7 +85,7 @@ namespace {
             IGC_ASSERT(CGC.getModuleMetaData());
             if (AS1 > ADDRESS_SPACE_NUM_ADDRESSES &&
                 AS2 > ADDRESS_SPACE_NUM_ADDRESSES &&
-                CGC.getModuleMetaData()->statefullResourcesNotAliased)
+                CGC.getModuleMetaData()->statefulResourcesNotAliased)
             {
                 bool isDirectAccess[2] = { false, false };
                 unsigned resourceIndex[2] = { 0, 0 };

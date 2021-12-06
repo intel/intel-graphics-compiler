@@ -484,7 +484,7 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, const IGCMD::MetaDataU
 
     IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
-    // StatelessToStatefull optimization is not applied on non-kernel functions.
+    // StatelessToStateful optimization is not applied on non-kernel functions.
     if (!isEntryFunc(pMdUtils, &F))
         return;
 
@@ -531,7 +531,7 @@ void ImplicitArgs::addBindlessOffsetArgs(llvm::Function& F, const IGCMD::MetaDat
 
     IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
-    // StatelessToStatefull optimization is not applied on non-kernel functions.
+    // StatelessToStateful optimization is not applied on non-kernel functions.
     if (!isEntryFunc(pMdUtils, &F))
         return;
 

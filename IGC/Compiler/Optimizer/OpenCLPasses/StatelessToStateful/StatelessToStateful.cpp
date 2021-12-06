@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/Optimizer/CodeAssumption.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "common/Stats.hpp"
 #include "common/secure_string.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -28,16 +28,16 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 // Register pass to igc-opt
-#define PASS_FLAG "igc-stateless-to-statefull-resolution"
-#define PASS_DESCRIPTION "Tries to convert stateless to statefull accesses"
+#define PASS_FLAG "igc-stateless-to-stateful-resolution"
+#define PASS_DESCRIPTION "Tries to convert stateless to stateful accesses"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(StatelessToStateful, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
-IGC_INITIALIZE_PASS_END(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(StatelessToStateful, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-// This pass turns a global/constants address space (stateless) load/store into a statefull a load/store.
+// This pass turns a global/constants address space (stateless) load/store into a stateful a load/store.
 //
 // The conservative approach is to search for any directly positively-indexed kernels argument, such as:
 //
@@ -47,18 +47,18 @@ IGC_INITIALIZE_PASS_END(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_
 //     dst[ get_global_id(0) ] = data;
 // }
 //
-// ...and trun these accesses into statefull accesses.
+// ...and turn these accesses into stateful accesses.
 //
 // This has a several benefits
-//  - Statefull pointer size is always 32bit - we always know the base so the binding table is always known
+//  - Stateful pointer size is always 32bit - we always know the base so the binding table is always known
 //  - OBus bandwidth is reduced with pointer size reduction
 //    - 32bit data type bandwidth increases by ~50%
 //  - Pointer math overhead is reduced by 50% on 64bit systems
-//  - UMD has ability to set cachability control per surface instead of globally
+//  - UMD has ability to set cacheability control per surface instead of globally
 //
 // Limitations:
-//   - This is not safe unless the UMD can guarentee allocations can fit in a surface state
-//     - linux platforms allow > 4GB  allocations.
+//   - This is not safe unless the UMD can guarantee allocations can fit in a surface state
+//     - Linux platforms allow > 4GB  allocations.
 //       An internal flag "-cl-intel-greater-than-4GB-buffer-required" is used to pass buffer size
 //       info to the compiler. If 4GB buffer is required, this optimization is off.
 //   - Does not work for 'system SVM' platforms without knowing extra information about the platform
@@ -88,8 +88,8 @@ IGC_INITIALIZE_PASS_END(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_
 //    We handle this case by passing "offset" in "P + offset" to the kernel, so that compiler
 //    will add this offset to the address computation. With the above example,
 //         kernel void test(global float* svmptr, int32 svmptr_offset,....)
-//             stateless:   address = svmpotr - c
-//             statefull:   offset = svmptr_offset - c
+//             stateless:   address = svmptr - c
+//             stateful:   offset = svmptr_offset - c
 //    Note that offset will be in 32 bit integer,  either signed or unsigned, the final result
 //    should be correct if the kernel's code does not have out-of-bound memory access (in this case,
 //    the kernel code is wrong, and we don't really care what the wrong address will be.).
@@ -104,7 +104,7 @@ IGC_INITIALIZE_PASS_END(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_
 //            This is needed as the classic ocl runtime does not need to support it. The presence of
 //            this flag means BUFFER_OFFSET is supported.
 //      Those three keys are for debugging purpose:
-//        igc key: EnableStatelessToStatefull --> to turn this optimization on/off.
+//        igc key: EnableStatelessToStateful --> to turn this optimization on/off.
 //        igc key: EnableSupportBufferOffset
 //                 this is the key version of -cl-intel-has-buffer-offset-arg.
 //        igc key: SToSProducesPositivePointer
@@ -114,10 +114,10 @@ IGC_INITIALIZE_PASS_END(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_
 
 // Future things to look out for:
 //  - This transformation cannot be done if a pointer is stored to or loaded from memory
-//    In general, if an address of load/store cannot be resolevd to the kernel argument, the load/store
-//    will still use stateless access. Note that the mix of stateless and statefull accesses is okay
-//    in terms of correctness, and it is true even though cachability is set.
-//  - Need to watch out for a final address that less than the address of kenrel argument:
+//    In general, if an address of load/store cannot be resolved to the kernel argument, the load/store
+//    will still use stateless access. Note that the mix of stateless and stateful accesses is okay
+//    in terms of correctness, and it is true even though cacheability is set.
+//  - Need to watch out for a final address that less than the address of kernel argument:
 //     example: kernelArg[-2]
 //
 //
@@ -126,9 +126,9 @@ IGC_INITIALIZE_PASS_END(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_
 //  - Handle > 2 operand GetElementPtr instructions // DONE!
 //
 
-char StatelessToStatefull::ID = 0;
+char StatelessToStateful::ID = 0;
 
-StatelessToStatefull::StatelessToStatefull(bool hasBufOff)
+StatelessToStateful::StatelessToStateful(bool hasBufOff)
     : FunctionPass(ID),
     m_hasBufferOffsetArg(hasBufOff),
     m_hasOptionalBufferOffsetArg(false),
@@ -139,10 +139,10 @@ StatelessToStatefull::StatelessToStatefull(bool hasBufOff)
     m_pKernelArgs(nullptr),
     m_changed(false)
 {
-    initializeStatelessToStatefullPass(*PassRegistry::getPassRegistry());
+    initializeStatelessToStatefulPass(*PassRegistry::getPassRegistry());
 }
 
-bool StatelessToStatefull::runOnFunction(llvm::Function& F)
+bool StatelessToStateful::runOnFunction(llvm::Function& F)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -188,7 +188,7 @@ bool StatelessToStatefull::runOnFunction(llvm::Function& F)
     return m_changed;
 }
 
-Argument* StatelessToStatefull::getBufferOffsetArg(Function* F, uint32_t ArgNumber)
+Argument* StatelessToStateful::getBufferOffsetArg(Function* F, uint32_t ArgNumber)
 {
     uint32_t nImplicitArgs = m_pImplicitArgs->size();
     uint32_t totalArgs = (uint32_t)F->arg_size();
@@ -216,7 +216,7 @@ Argument* StatelessToStatefull::getBufferOffsetArg(Function* F, uint32_t ArgNumb
 //
 // The final instruction of the expansion is returned in 'offset'
 //
-bool StatelessToStatefull::getOffsetFromGEP(
+bool StatelessToStateful::getOffsetFromGEP(
     Function* F, SmallVector<GetElementPtrInst*, 4> GEPs,
     uint32_t argNumber, bool isImplicitArg, Value*& offset)
 {
@@ -318,7 +318,7 @@ bool StatelessToStatefull::getOffsetFromGEP(
     return true;
 }
 
-const KernelArg* StatelessToStatefull::getKernelArgFromPtr(const PointerType& ptrType, Value* pVal)
+const KernelArg* StatelessToStateful::getKernelArgFromPtr(const PointerType& ptrType, Value* pVal)
 {
     if (pVal == nullptr)
         return nullptr;
@@ -335,7 +335,7 @@ const KernelArg* StatelessToStatefull::getKernelArgFromPtr(const PointerType& pt
     return nullptr;
 }
 
-bool StatelessToStatefull::pointerIsFromKernelArgument(Value& ptr)
+bool StatelessToStateful::pointerIsFromKernelArgument(Value& ptr)
 {
     // find the last gep
     Value* base = ptr.stripPointerCasts();
@@ -354,7 +354,7 @@ bool StatelessToStatefull::pointerIsFromKernelArgument(Value& ptr)
     return false;
 }
 
-bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
+bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
     Function* F, Value* V, Value*& offset, unsigned int& argNumber, const KernelArg*& kernelArg)
 {
     auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> unsigned {
@@ -472,7 +472,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
     return false;
 }
 
-void StatelessToStatefull::visitCallInst(CallInst& I)
+void StatelessToStateful::visitCallInst(CallInst& I)
 {
     auto doPromoteUntypedAtomics = [](const GenISAIntrinsic::ID intrinID, const GenIntrinsicInst* Inst)-> bool
     {
@@ -488,7 +488,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
             }
         }
 
-        // Qword untyped atomic int only support A64, so can't promote to statefull
+        // Qword untyped atomic int only support A64, so can't promote to stateful
         if (Inst->getType()->isIntegerTy() && Inst->getType()->getScalarSizeInBits() == 64)
         {
             return false;
@@ -659,7 +659,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
     }
 }
 
-void StatelessToStatefull::visitLoadInst(LoadInst& I)
+void StatelessToStateful::visitLoadInst(LoadInst& I)
 {
     Module* M = I.getParent()->getParent()->getParent();
     Function* F = I.getParent()->getParent();
@@ -716,7 +716,7 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
     }
 }
 
-void StatelessToStatefull::visitStoreInst(StoreInst& I)
+void StatelessToStateful::visitStoreInst(StoreInst& I)
 {
     Module* M = I.getParent()->getParent()->getParent();
     Function* F = I.getParent()->getParent();
@@ -766,7 +766,7 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
     }
 }
 
-CallInst* StatelessToStatefull::createBufferPtr(unsigned addrSpace, Constant* argNumber, Instruction* InsertBefore)
+CallInst* StatelessToStateful::createBufferPtr(unsigned addrSpace, Constant* argNumber, Instruction* InsertBefore)
 {
     Module* M = InsertBefore->getParent()->getParent()->getParent();
 
@@ -796,7 +796,7 @@ CallInst* StatelessToStatefull::createBufferPtr(unsigned addrSpace, Constant* ar
 // memory layout.)
 //
 // Note this is consistent with CodeGenContext::getRegisterPointerSizeInBits() for now.
-void StatelessToStatefull::setPointerSizeTo32bit(int32_t AddrSpace, Module* M)
+void StatelessToStateful::setPointerSizeTo32bit(int32_t AddrSpace, Module* M)
 {
     const DataLayout& DL = M->getDataLayout();
 
@@ -830,7 +830,7 @@ void StatelessToStatefull::setPointerSizeTo32bit(int32_t AddrSpace, Module* M)
     M->setDataLayout(newStrDL);
 }
 
-void StatelessToStatefull::updateArgInfo(
+void StatelessToStateful::updateArgInfo(
     const KernelArg* kernelArg, bool isPositive)
 {
     auto II = m_argsInfo.find(kernelArg);
@@ -844,7 +844,7 @@ void StatelessToStatefull::updateArgInfo(
     }
 }
 
-void StatelessToStatefull::finalizeArgInitialValue(Function* F)
+void StatelessToStateful::finalizeArgInitialValue(Function* F)
 {
     if (!m_hasOptionalBufferOffsetArg)
     {

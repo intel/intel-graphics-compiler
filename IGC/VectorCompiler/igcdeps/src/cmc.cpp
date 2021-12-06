@@ -280,7 +280,7 @@ void CMKernel::createImageAnnotation(
     ArgAccessKind Access)
 {
     auto imageInput = std::make_unique<iOpenCL::ImageArgumentAnnotation>();
-    // As VC uses only statefull addrmode.
+    // As VC uses only stateful addrmode.
     constexpr int PayloadPosition = 0;
     constexpr int ArgSize = 0;
 

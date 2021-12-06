@@ -29,7 +29,7 @@ add_subdirectory(ReplaceUnsupportedIntrinsics)
 add_subdirectory(ResourceAllocator)
 add_subdirectory(SetFastMathFlags)
 add_subdirectory(SubGroupFuncs)
-add_subdirectory(StatelessToStatefull)
+add_subdirectory(StatelessToStateful)
 add_subdirectory(UndefinedReferences)
 add_subdirectory(VolatileWorkaround)
 add_subdirectory(WGFuncs)
@@ -76,7 +76,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_ResourceAllocator}
     ${IGC_BUILD__SRC__OpenCLPasses_SetFastMathFlags}
     ${IGC_BUILD__SRC__OpenCLPasses_SubGroupFuncs}
-    ${IGC_BUILD__SRC__OpenCLPasses_StatelessToStatefull}
+    ${IGC_BUILD__SRC__OpenCLPasses_StatelessToStateful}
     ${IGC_BUILD__SRC__OpenCLPasses_UndefinedReferences}
     ${IGC_BUILD__SRC__OpenCLPasses_VolatileWorkaround}
     ${IGC_BUILD__SRC__OpenCLPasses_WGFuncs}
@@ -166,7 +166,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
     Compiler__OpenCLPasses_SetFastMathFlags
     Compiler__OpenCLPasses_SubGroupFuncs
-    Compiler__OpenCLPasses_StatelessToStatefull
+    Compiler__OpenCLPasses_StatelessToStateful
     Compiler__OpenCLPasses_UndefinedReferences
     Compiler__OpenCLPasses_VolatileWorkaround
     Compiler__OpenCLPasses_WGFuncs

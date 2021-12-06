@@ -22,20 +22,20 @@ SPDX-License-Identifier: MIT
 namespace IGC
 {
     // Too many stateful promotion will overwhelm the surface state
-    // cache(32 entries per HDC), which will significally impact the
-    // performace. Simplily disable stateful promotion after 32 args.
+    // cache(32 entries per HDC), which will significantly impact the
+    // performance. Simply disable stateful promotion after 32 args.
     constexpr uint maxPromotionCount = 32;
 
-    class StatelessToStatefull : public llvm::FunctionPass, public llvm::InstVisitor<StatelessToStatefull>
+    class StatelessToStateful : public llvm::FunctionPass, public llvm::InstVisitor<StatelessToStateful>
     {
     public:
         typedef llvm::DenseMap<const KernelArg*, int> ArgInfoMap;
 
         static char ID;
 
-        StatelessToStatefull(bool NoNegOffset = false);
+        StatelessToStateful(bool NoNegOffset = false);
 
-        ~StatelessToStatefull() {}
+        ~StatelessToStateful() {}
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
@@ -47,7 +47,7 @@ namespace IGC
 
         virtual llvm::StringRef getPassName() const override
         {
-            return "StatelessToStatefull";
+            return "StatelessToStateful";
         }
 
         virtual bool runOnFunction(llvm::Function& F) override;

@@ -479,7 +479,7 @@ namespace IGC
 
         // When true compiler can assume that resources bound to two different
         // bindings do not alias.
-        bool statefullResourcesNotAliased = false;
+        bool statefulResourcesNotAliased = false;
         bool disableMixMode = false;
 
         unsigned int privateMemoryPerWI = 0;

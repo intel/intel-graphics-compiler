@@ -71,7 +71,7 @@ namespace TC
     class CDriverInfoOCLNEO : public CDriverInfoOCLCommon
     {
     public:
-        bool SupportsStatelessToStatefullBufferTransformation() const override { return true; }
+        bool SupportsStatelessToStatefulBufferTransformation() const override { return true; }
         unsigned getVISAPreRASchedulerCtrl() const override { return 6; }
         bool SupportStatefulToken() const override { return true; }
         bool SupportInlineAssembly() const override { return true; }
