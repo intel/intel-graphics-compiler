@@ -62,6 +62,7 @@ void GenXLiveness::getAnalysisUsage(AnalysisUsage &AU) {
  */
 bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG)
 {
+  LLVM_DEBUG(dbgs() << "init GenXLiveness\n");
   FG = &ArgFG;
   Subtarget = &getAnalysis<TargetPassConfig>()
                    .getTM<GenXTargetMachine>()
@@ -74,6 +75,7 @@ bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG)
  * releaseMemory: clear the GenXLiveness
  */
 void GenXLiveness::releaseMemory() {
+  LLVM_DEBUG(dbgs() << "releaseMemory for GenXLivness\n");
   while (!LiveRangeMap.empty()) {
     LiveRange *LR = begin()->second;
     for (auto i = LR->value_begin(), e = LR->value_end(); i != e; ++i) {
@@ -104,6 +106,7 @@ void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
   IGC_ASSERT_MESSAGE(
       LiveRangeMap.find(V) == end(),
       "Attempting to set LiveRange for Value that already has one");
+  LLVM_DEBUG(dbgs() << "Setting LiveRange " << *LR << " for SV: " << V << "\n");
   LR->addValue(V);
   LiveRangeMap[V] = LR;
   LR->setAlignmentFromValue(
@@ -115,13 +118,16 @@ void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
  */
 void LiveRange::setAlignmentFromValue(const DataLayout &DL, const SimpleValue V,
                                       const unsigned GRFWidth) {
+  LLVM_DEBUG(dbgs() << "Setting Alignment for value " << V);
   const unsigned AlignInBytes = getValueAlignmentInBytes(*(V.getValue()), DL);
   const unsigned LogByteAlign = Log2_32(AlignInBytes);
   // Set max alignment to GRF.
   const unsigned MaxLogAlign =
       genx::getLogAlignment(VISA_Align::ALIGN_GRF, GRFWidth);
   const unsigned SaturatedLogAlign = std::clamp(LogByteAlign, 0u, MaxLogAlign);
-  setLogAlignment(ceilLogAlignment(SaturatedLogAlign, GRFWidth));
+  unsigned ResultAlign = ceilLogAlignment(SaturatedLogAlign, GRFWidth);
+  LLVM_DEBUG(dbgs() << " result: " << ResultAlign << "\n");
+  setLogAlignment(ResultAlign);
 }
 
 /***********************************************************************
@@ -129,6 +135,7 @@ void LiveRange::setAlignmentFromValue(const DataLayout &DL, const SimpleValue V,
  */
 void GenXLiveness::rebuildCallGraph()
 {
+  LLVM_DEBUG(dbgs() << "Rebuilding CallGraph\n");
   CG = std::make_unique<genx::CallGraph>(FG);
   CG->build(this);
 }
@@ -147,8 +154,11 @@ void GenXLiveness::rebuildCallGraph()
  */
 void GenXLiveness::buildSubroutineLRs()
 {
-  if (FG->size() == 1)
+  LLVM_DEBUG(dbgs() << "BuildingSubroutineLRs\n");
+  if (FG->size() == 1) {
+    LLVM_DEBUG(dbgs() << "No subroutines\n");
     return; // no subroutines
+  }
   // Build a call graph for the FunctionGroup. It is acyclic because there is
   // no recursion.
   rebuildCallGraph();
@@ -163,6 +173,7 @@ void GenXLiveness::buildSubroutineLRs()
  */
 LiveRange *GenXLiveness::visitPropagateSLRs(Function *F)
 {
+  LLVM_DEBUG(dbgs() << "VisitPropagateSLRs begin\n");
   LiveRange *LR = getOrCreateLiveRange(F);
   // Add a segment for just this function.
   LR->push_back(Segment(Numbering->getNumber(F),
@@ -176,6 +187,7 @@ LiveRange *GenXLiveness::visitPropagateSLRs(Function *F)
     LR->addSegments(ChildLR);
   }
   LR->sortAndMerge();
+  LLVM_DEBUG(dbgs() << "VisitPropagateSLRs return: " << *LR << "\n");
   return LR;
 }
 
@@ -189,13 +201,18 @@ LiveRange *GenXLiveness::visitPropagateSLRs(Function *F)
  */
 void GenXLiveness::buildLiveRange(Value *V)
 {
+  LLVM_DEBUG(dbgs() << "Building LiveRange for :" << *V << "\n");
   auto ST = dyn_cast<StructType>(V->getType());
   if (!ST) {
+    LLVM_DEBUG(dbgs() << "It is not struct, build for one\n");
     buildLiveRange(SimpleValue(V));
     return;
   }
-  for (unsigned i = 0, e = IndexFlattener::getNumElements(ST); i != e; ++i)
+  for (unsigned i = 0, e = IndexFlattener::getNumElements(ST); i != e; ++i) {
+    LLVM_DEBUG(dbgs() << "Bulding for struct Index " << i << " from " << e
+                      << "\n");
     buildLiveRange(SimpleValue(V, i));
+  }
 }
 
 /***********************************************************************
@@ -223,28 +240,36 @@ void GenXLiveness::buildLiveRange(Value *V)
  */
 LiveRange *GenXLiveness::buildLiveRange(SimpleValue V)
 {
+  LLVM_DEBUG(dbgs() << "Building LiveRange for SimpleValue: " << V << "\n");
   LiveRange *LR = getOrCreateLiveRange(V);
   rebuildLiveRange(LR);
+  LLVM_DEBUG(dbgs() << "Building LiveRange for SimpleValue return: " << *LR
+                    << "\n");
   return LR;
 }
 
 void GenXLiveness::rebuildLiveRange(LiveRange *LR)
 {
+  LLVM_DEBUG(dbgs() << "Rebuilding LiveRange: " << *LR << "\n");
   LR->getOrDefaultCategory();
   LR->Segments.clear();
   for (auto vi = LR->value_begin(), ve = LR->value_end(); vi != ve; ++vi)
     rebuildLiveRangeForValue(LR, *vi);
   LR->sortAndMerge();
+  LLVM_DEBUG(dbgs() << "Rebuilding LiveRange result: " << *LR << "\n");
 }
 
 void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
 {
+  LLVM_DEBUG(dbgs() << "rebuilding LiveRange: " << *LR
+                    << " for SimpleValue: " << SV << "\n");
   Value *V = SV.getValue();
 
   // This value is a global variable. Its live range is the entire kernel.
   if (auto GV = getUnderlyingGlobalVariable(V)) {
     (void)GV;
     LR->push_back(0, Numbering->getLastNumber());
+    LLVM_DEBUG(dbgs() << "It is global value, rebuilded LR: " << *LR << "\n");
     return;
   }
 
@@ -254,15 +279,22 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     // range is from the call to where its post-copy would go just afterwards
     // for each call site, also from the site of the pre-copy to the return
     // instruction.
+    LLVM_DEBUG(dbgs() << "It is UnifiedRet\n");
     for (auto *U: Func->users()) {
-      if (auto *CI = genx::checkFunctionCall(U, Func))
+      if (auto *CI = genx::checkFunctionCall(U, Func)) {
         LR->push_back(Numbering->getNumber(CI),
                       Numbering->getRetPostCopyNumber(CI, SV.getIndex()));
+        LLVM_DEBUG(dbgs() << "Adding Segment: " << *LR << "\n");
+      }
     }
     for (auto fi = Func->begin(), fe = Func->end(); fi != fe; ++fi)
-      if (auto RI = dyn_cast<ReturnInst>(fi->getTerminator()))
+      if (auto RI = dyn_cast<ReturnInst>(fi->getTerminator())) {
         LR->push_back(Numbering->getRetPreCopyNumber(RI, SV.getIndex()),
             Numbering->getNumber(RI));
+        LLVM_DEBUG(dbgs() << "It is ReturnInst, Adding Segment: " << *LR
+                          << "\n");
+      }
+    LLVM_DEBUG(dbgs() << "It is UnifiedRet, return LR: " << *LR << "\n");
     return;
   }
 
@@ -458,6 +490,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
 }
 
 void GenXLiveness::removeBale(Bale &B) {
+  LLVM_DEBUG(dbgs() << "Removing Bale: " << B << "\n");
   for (auto bi = B.begin(), be = B.end(); bi != be; ++bi)
     removeValue(bi->Inst);
 }
@@ -474,12 +507,14 @@ void GenXLiveness::removeBale(Bale &B) {
  */
 void GenXLiveness::removeValue(Value *V)
 {
+  LLVM_DEBUG(dbgs() << "Removing Value: " << *V << "\n");
   for (unsigned i = 0, e = IndexFlattener::getNumElements(V->getType()); i != e; ++i)
     removeValue(SimpleValue(V, i));
 }
 
 void GenXLiveness::removeValue(SimpleValue V)
 {
+  LLVM_DEBUG(dbgs() << "Removing SimpleValue: " << V << "\n");
   LiveRange *LR = removeValueNoDelete(V);
   if (LR && !LR->Values.size()) {
     // V was the only value in LR. Remove LR completely.
@@ -511,6 +546,7 @@ LiveRange *GenXLiveness::removeValueNoDelete(SimpleValue V)
  */
 void GenXLiveness::removeValuesNoDelete(LiveRange *LR)
 {
+  LLVM_DEBUG(dbgs() << "Removing all Values in LR, not delete " << *LR << "\n");
   for (auto vi = LR->value_begin(), ve = LR->value_end(); vi != ve; ++vi)
     LiveRangeMap.erase(*vi);
   LR->value_clear();
@@ -522,6 +558,8 @@ void GenXLiveness::removeValuesNoDelete(LiveRange *LR)
  */
 void GenXLiveness::replaceValue(Value *OldVal, Value *NewVal)
 {
+  LLVM_DEBUG(dbgs() << "Replace Values: from " << *OldVal << " to " << *NewVal
+                    << "\n");
   for (unsigned i = 0, e = IndexFlattener::getNumElements(OldVal->getType());
       i != e; ++i)
     replaceValue(SimpleValue(OldVal, i), SimpleValue(NewVal, i));
@@ -529,6 +567,8 @@ void GenXLiveness::replaceValue(Value *OldVal, Value *NewVal)
 
 void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal)
 {
+  LLVM_DEBUG(dbgs() << "Replace SimpleValues: from " << OldVal << " to "
+                    << NewVal << "\n");
   LiveRangeMap_t::iterator i = LiveRangeMap.find(OldVal);
   IGC_ASSERT(i != end());
   LiveRange *LR = i->second;
@@ -546,8 +586,9 @@ void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal)
  */
 LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
 {
-  LiveRangeMap_t::iterator i = LiveRangeMap.insert(
-      LiveRangeMap_t::value_type(V, 0)).first;
+  auto [i, isInserted] = LiveRangeMap.insert(LiveRangeMap_t::value_type(V, 0));
+  LLVM_DEBUG(dbgs() << "getOrCreateLiveRange for SimpleValue: " << V << " "
+                    << (isInserted ? "Inserted" : "Not inserted") << "\n");
   LiveRange *LR = i->second;
   if (!LR) {
     // Newly created map entry. Create the LiveRange for it.
@@ -578,13 +619,18 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
     V.getValue()->setName(Name);
   }
 #endif
+  LLVM_DEBUG(dbgs() << "Resulted LR: " << *LR << "\n");
   return LR;
 }
 
 LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V, unsigned Cat, unsigned LogAlign) {
+  LLVM_DEBUG(dbgs() << "getOrCreateLiveRange with SimpleValue: " << V
+                    << " Category: " << Cat << " LogAlign: " << LogAlign
+                    << "\n");
   auto LR = getOrCreateLiveRange(V);
   LR->setCategory(Cat);
   LR->setLogAlignment(LogAlign);
+  LLVM_DEBUG(dbgs() << "getOrCreateLiveRange return: " << *LR << "\n");
   return LR;
 }
 
@@ -594,6 +640,7 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V, unsigned Cat, unsig
  */
 void GenXLiveness::eraseLiveRange(Value *V)
 {
+  LLVM_DEBUG(dbgs() << "Erasing LiveRange for Value: " << *V << "\n");
   auto ST = dyn_cast<StructType>(V->getType());
   if (!ST) {
     eraseLiveRange(SimpleValue(V));
@@ -608,6 +655,7 @@ void GenXLiveness::eraseLiveRange(Value *V)
  */
 void GenXLiveness::eraseLiveRange(SimpleValue V)
 {
+  LLVM_DEBUG(dbgs() << "Erasing LiveRange for SimpleValue: " << V << "\n");
   auto LR = getLiveRangeOrNull(V);
   if (LR)
     eraseLiveRange(LR);
@@ -619,6 +667,7 @@ void GenXLiveness::eraseLiveRange(SimpleValue V)
  */
 void GenXLiveness::eraseLiveRange(LiveRange *LR)
 {
+  LLVM_DEBUG(dbgs() << "Erasing LiveRange: " << *LR << "\n");
   for (auto vi = LR->value_begin(), ve = LR->value_end(); vi != ve; ++vi)
     LiveRangeMap.erase(*vi);
   delete LR;
@@ -632,9 +681,13 @@ void GenXLiveness::eraseLiveRange(LiveRange *LR)
  */
 const LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V) const
 {
+  LLVM_DEBUG(dbgs() << "Getting LiveRangeOrNull for: " << V);
   auto i = LiveRangeMap.find(V);
-  if (i == end())
+  if (i == end()) {
+    LLVM_DEBUG(dbgs() << " Not found, nullptr return\n");
     return nullptr;
+  }
+  LLVM_DEBUG(dbgs() << " Found: " << *(i->second) << "\n");
   return i->second;
 }
 
@@ -1772,7 +1825,7 @@ void LiveRange::print(raw_ostream &OS, bool Details) const {
   else
     OS << "LR Segments and details: ";
 
-  if (Segments.empty()) 
+  if (Segments.empty())
     OS << "<Empty Segments>";
   else
     printSegments(OS);
