@@ -674,17 +674,6 @@ namespace IGC
         case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
         {
-            int arg_idx = kernelArg->getAssociatedArgNo();
-            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
-
-            // check if the image is writeable
-            bool writeable = false;
-            if (resInfo.Type == SOpenCLKernelInfo::SResourceInfo::RES_UAV &&
-                kernelArg->getAccessQual() != IGC::KernelArg::AccessQual::READ_ONLY)
-                writeable = true;
-            IGC_ASSERT_MESSAGE(resInfo.Type == SOpenCLKernelInfo::SResourceInfo::RES_UAV ||
-                resInfo.Type == SOpenCLKernelInfo::SResourceInfo::RES_SRV, "Unknown resource type");
-
             // the image arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
             // For statefull image argument, the arg has 0 offset and 0 size
             zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
@@ -692,6 +681,7 @@ namespace IGC
             uint arg_off = 0;
             uint arg_size = 0;
 
+            int arg_idx = kernelArg->getAssociatedArgNo();
             if (kernelArg->needsAllocation()) {
                 // set to bindless
                 arg_addrmode =
@@ -700,17 +690,24 @@ namespace IGC
                 arg_size = kernelArg->getAllocateSize();
             } else {
                 // add bti index for this arg if it's stateful
+                SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
                 zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
                     getBTI(resInfo), arg_idx);
             }
 
+            auto access_type = [](KernelArg::AccessQual qual) {
+                if (qual == KernelArg::AccessQual::READ_ONLY)
+                    return zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
+                if (qual == KernelArg::AccessQual::WRITE_ONLY)
+                    return zebin::PreDefinedAttrGetter::ArgAccessType::writeonly;
+                return zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
+            } (kernelArg->getAccessQual());
+
             // add the payload argument
             zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
                 arg_off, arg_size, arg_idx, arg_addrmode,
-                  zebin::PreDefinedAttrGetter::ArgAddrSpace::image,
-                writeable ?
-                  zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
-                  zebin::PreDefinedAttrGetter::ArgAccessType::readonly
+                zebin::PreDefinedAttrGetter::ArgAddrSpace::image,
+                access_type
             );
         }
         break;
