@@ -2390,14 +2390,12 @@
     },
     "genx_qf_cvt": {
       "opc": "ISA_FCVT",
-      "gen_opc": "ISA_BF_CVT",
       "exec_size": [ "EXECSIZE" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
     },
     "genx_tf32_cvt": {
       "opc": "ISA_FCVT",
-      "gen_opc": "ISA_BF_CVT",
       "exec_size": [ "EXECSIZE" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
@@ -4972,7 +4970,7 @@
         ]
       ]
     ],
-    "ISA_BF_CVT": [
+    "ISA_FCVT": [
       [ "CISA_CALL",
         [ "Kernel->AppendVISADataMovementInst",
           "opc",
