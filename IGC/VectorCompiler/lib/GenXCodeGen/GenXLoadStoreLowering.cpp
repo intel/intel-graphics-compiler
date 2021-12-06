@@ -68,6 +68,21 @@ static cl::opt<bool> EnableLL("enable-ldst-lowering", cl::init(true),
 
 namespace {
 
+enum class Atomicity : bool { Atomic = true, NonAtomic = false };
+
+// Define which intrinsics to use: legacy ones (svm.scatter, gather.scaled, ...)
+// or LSC ones (lsc.store.stateless, lsc.store.slm, ...).
+enum class MessageKind : char {
+  Legacy,
+  LSC,
+};
+
+enum class HWAddrSpace : char {
+  A32, // Global memory (SVM), addressed with 32-bit pointers.
+  A64, // Global memory (SVM), addressed with 64-bit pointers.
+  SLM, // Shared local memory.
+};
+
 // load and store lowering pass
 class GenXLoadStoreLowering : public FunctionPass,
                               public InstVisitor<GenXLoadStoreLowering> {
@@ -88,10 +103,38 @@ private:
                                    IRBuilder<> &Builder) const;
 
 private:
-  Instruction *createLoad(LoadInst &LdI, Value &NormalizedOldVal,
-                          unsigned ValueEltSz, IRBuilder<> &Builder) const;
-  Instruction *createStore(StoreInst &StI, Value &NormalizedOldVal,
-                           unsigned ValueEltSz, IRBuilder<> &Builder) const;
+  // Creates replacement (series of instructions) for the provided memory
+  // instruction \p I. Considers all the required properties of the instruction
+  // and the target, and generates the proper intrinsic and some supporting
+  // insturctions. A replacement for the provided instruction is returned (smth
+  // that can be used in RAUW).
+  template <typename MemoryInstT>
+  Instruction *createMemoryInstReplacement(MemoryInstT &I) const;
+
+  // Methods to switch through all the possible memory operations and
+  // corresponding VC-intrinsics for them. Branching goes in the following
+  // order: instruction (load, store, ...) -> atomicity -> message kind
+  // (legacy, lsc) -> HW addrspace.
+  template <typename MemoryInstT>
+  Instruction *switchAtomicity(MemoryInstT &I) const;
+  template <Atomicity A, typename MemoryInstT>
+  Instruction *switchMessage(MemoryInstT &I) const;
+  template <MessageKind MK, Atomicity A, typename MemoryInstT>
+  Instruction *switchAddrSpace(MemoryInstT &I) const;
+
+  // Creates a replacement for \p I instruction. The template parameters
+  // describe the provided instruction and how it should be lowered.
+  template <HWAddrSpace HWAS, MessageKind MK, Atomicity A, typename MemoryInstT>
+  Instruction *createIntrinsic(MemoryInstT &I) const;
+
+  Instruction *createSVMGather(LoadInst &LdI) const;
+  Instruction *createSVMGatherImpl(LoadInst &LdI, Value &NormalizedOldVal,
+                                   unsigned ValueEltSz,
+                                   IRBuilder<> &Builder) const;
+  Instruction *createSVMScatter(StoreInst &StI) const;
+  Instruction *createSVMScatterImpl(StoreInst &StI, Value &NormalizedOldVal,
+                                    unsigned ValueEltSz,
+                                    IRBuilder<> &Builder) const;
 
 public:
   void visitStoreInst(StoreInst &StI) const;
@@ -383,12 +426,10 @@ GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
   return cast<IGCLLVM::FixedVectorType>(LdTy);
 }
 
-// creates load
-// in future this will be extended to create different loads (now SVM only)
-Instruction *GenXLoadStoreLowering::createLoad(LoadInst &LdI,
-                                               Value &NormalizedOldVal,
-                                               unsigned ValueEltSz,
-                                               IRBuilder<> &Builder) const {
+// Creates svm.gather intrinsic and returns it.
+Instruction *GenXLoadStoreLowering::createSVMGatherImpl(
+    LoadInst &LdI, Value &NormalizedOldVal, unsigned ValueEltSz,
+    IRBuilder<> &Builder) const {
   Type *I64Ty = Builder.getInt64Ty();
   LLVM_DEBUG(dbgs() << "Creating load from: " << LdI << "\n");
   IGCLLVM::FixedVectorType *LdTy = getLoadVType(LdI);
@@ -402,10 +443,6 @@ Instruction *GenXLoadStoreLowering::createLoad(LoadInst &LdI,
 
   ZExtOrTruncIfNeeded(Offset, I64Ty, &LdI);
 
-  // below everything is for SVM scatter only
-  // when other intrinsics will be supported, this will be extended
-
-  // this shall depend on LdI addrspace
   auto IID = llvm::GenXIntrinsic::genx_svm_gather;
 
   Value *EltsOffset =
@@ -441,10 +478,20 @@ Instruction *GenXLoadStoreLowering::extractFirstElement(
   return LdVal;
 }
 
-// logic inside replace load is slightly over complicated
-// to be simplified in future
 void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
   LLVM_DEBUG(dbgs() << "Replacing load " << LdI << " ===>\n");
+  auto *Replacement = createMemoryInstReplacement(LdI);
+  LLVM_DEBUG(dbgs() << "Proper gather to replace uses: " << *Replacement
+                    << "\n");
+  LdI.replaceAllUsesWith(Replacement);
+  LdI.eraseFromParent();
+}
+
+// Creates a svm.gather intrinsic replacement for the provided \p LdI load
+// instruction. Returns the replacement. The returned value may not be a
+// svm.gather intrinsic, e.g. when replacement is a chain svm.gather -> bitcast,
+// in this case bitcast is returned.
+Instruction *GenXLoadStoreLowering::createSVMGather(LoadInst &LdI) const {
   IRBuilder<> Builder(&LdI);
 
   IGCLLVM::FixedVectorType *LdTy = getLoadVType(LdI);
@@ -458,7 +505,8 @@ void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
   auto [NormalizedOldVal, ValueEltSz] =
       NormalizeVector(OldValOfTheDataRead, LdTy, &LdI, Builder);
 
-  auto *Gather = createLoad(LdI, *NormalizedOldVal, ValueEltSz, Builder);
+  auto *Gather =
+      createSVMGatherImpl(LdI, *NormalizedOldVal, ValueEltSz, Builder);
   Gather->setDebugLoc(LdI.getDebugLoc());
   Gather->insertAfter(&LdI);
 
@@ -481,18 +529,13 @@ void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
 
   LLVM_DEBUG(dbgs() << "Replaced with: " << *Gather << "\n");
   IGC_ASSERT(LdI.getType() == ProperGather->getType());
-  LLVM_DEBUG(dbgs() << "Proper gather to replace uses: " << *ProperGather
-                    << "\n");
-  LdI.replaceAllUsesWith(ProperGather);
-  LdI.eraseFromParent();
+  return ProperGather;
 }
 
-// creates store
-// in future this will be extended to create different stores (now SVM only)
-Instruction *GenXLoadStoreLowering::createStore(StoreInst &StI,
-                                                Value &NormalizedOldVal,
-                                                unsigned ValueEltSz,
-                                                IRBuilder<> &Builder) const {
+// Creates svm.scatter intrinsic and returns it.
+Instruction *GenXLoadStoreLowering::createSVMScatterImpl(
+    StoreInst &StI, Value &NormalizedOldVal, unsigned ValueEltSz,
+    IRBuilder<> &Builder) const {
   Value *PointerOp = StI.getPointerOperand();
   Type *I64Ty = Builder.getInt64Ty();
   Value *PredVal = Builder.getTrue();
@@ -504,10 +547,6 @@ Instruction *GenXLoadStoreLowering::createStore(StoreInst &StI,
           ->getNumElements();
   Value *Pred = Builder.CreateVectorSplat(ValueNumElts, PredVal);
 
-  // below everything is for SVM scatter only
-  // when other intrinsics will be supported, this will be extended
-
-  // this shall depend on StI addrspace
   auto IID = llvm::GenXIntrinsic::genx_svm_scatter;
 
   Value *EltsOffset =
@@ -543,6 +582,15 @@ Value *GenXLoadStoreLowering::splatStoreIfNeeded(StoreInst &StI,
 
 void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
   LLVM_DEBUG(dbgs() << "Replacing store " << StI << " ===>\n");
+  auto *Replacement = createMemoryInstReplacement(StI);
+  LLVM_DEBUG(dbgs() << *Replacement << "\n");
+  StI.eraseFromParent();
+}
+
+// Creates a svm.scatter intrinsic replacement for the provided \p StI store
+// instruction. Returns the constructed svm.scatter. May insert some additional
+// instructions besides the svm.scatter.
+Instruction *GenXLoadStoreLowering::createSVMScatter(StoreInst &StI) const {
   IRBuilder<> Builder(&StI);
   Value *ValueOp = splatStoreIfNeeded(StI, Builder);
   // old Value type to restore into
@@ -552,17 +600,15 @@ void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
       NormalizeVector(ValueOp, ValueOpTy, &StI, Builder);
 
   // creating store after StI, using NormalizedOldVal
-  auto *Scatter = createStore(StI, *NormalizedOldVal, ValueEltSz, Builder);
+  auto *Scatter =
+      createSVMScatterImpl(StI, *NormalizedOldVal, ValueEltSz, Builder);
   Scatter->setDebugLoc(StI.getDebugLoc());
   Scatter->insertAfter(&StI);
   Scatter->setMetadata(
       InstMD::SVMBlockType,
       MDNode::get(StI.getContext(), llvm::ValueAsMetadata::get(UndefValue::get(
                                         ValueOpTy->getScalarType()))));
-
-  LLVM_DEBUG(dbgs() << *Scatter << "\n");
-  StI.replaceAllUsesWith(Scatter);
-  StI.eraseFromParent();
+  return Scatter;
 }
 
 void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Intrinsic) const {
@@ -573,4 +619,59 @@ void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Intrinsic) const {
     Intrinsic.eraseFromParent();
     break;
   }
+}
+
+template <typename MemoryInstT>
+Instruction *
+GenXLoadStoreLowering::createMemoryInstReplacement(MemoryInstT &I) const {
+  return switchAtomicity(I);
+}
+
+template <typename MemoryInstT>
+Instruction *GenXLoadStoreLowering::switchAtomicity(MemoryInstT &I) const {
+  if (I.isAtomic())
+    return switchMessage<Atomicity::Atomic>(I);
+  return switchMessage<Atomicity::NonAtomic>(I);
+}
+
+template <Atomicity A, typename MemoryInstT>
+Instruction *GenXLoadStoreLowering::switchMessage(MemoryInstT &I) const {
+  // FIXME: support LSC messages.
+  return switchAddrSpace<MessageKind::Legacy, A>(I);
+}
+
+template <MessageKind MK, Atomicity A, typename MemoryInstT>
+Instruction *GenXLoadStoreLowering::switchAddrSpace(MemoryInstT &I) const {
+  auto *PtrTy = cast<PointerType>(I.getPointerOperand()->getType());
+  auto AS = PtrTy->getAddressSpace();
+  if (AS == vc::AddrSpace::Local)
+    return createIntrinsic<HWAddrSpace::SLM, MK, A>(I);
+  // All other address spaces are placed in global memory (SVM).
+  unsigned PtrSize = DL_->getPointerTypeSizeInBits(PtrTy);
+  if (PtrSize == 32)
+    return createIntrinsic<HWAddrSpace::A32, MK, A>(I);
+  IGC_ASSERT_MESSAGE(PtrSize == 64, "only 32 and 64 bit pointers are expected");
+  return createIntrinsic<HWAddrSpace::A64, MK, A>(I);
+}
+
+template <HWAddrSpace HWAS, MessageKind MK, Atomicity A, typename MemoryInstT>
+Instruction *GenXLoadStoreLowering::createIntrinsic(MemoryInstT &I) const {
+  IGC_ASSERT_MESSAGE(0, "unsupported kind of memory operation");
+  return &I;
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
+                                       Atomicity::NonAtomic, LoadInst>(
+    LoadInst &I) const {
+  return createSVMGather(I);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
+                                       Atomicity::NonAtomic, StoreInst>(
+    StoreInst &I) const {
+  return createSVMScatter(I);
 }
