@@ -228,18 +228,27 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
     BackendOpts.StatelessPrivateMemSize = Opts.StackMemSize.getValue();
   }
+
+  BackendOpts.DebuggabilityEmitDebuggableKernels = Opts.EmitDebuggableKernels;
+  BackendOpts.DebuggabilityForLegacyPath =
+      (Opts.Binary != vc::BinaryKind::CM) && Opts.EmitDebuggableKernels;
+  BackendOpts.DebuggabilityZeBinCompatibleDWARF =
+      (Opts.Binary == vc::BinaryKind::ZE);
+  BackendOpts.DebuggabilityEmitBreakpoints = Opts.EmitExtendedDebug;
+  bool IsOptLevel_O0 =
+      Opts.OptLevel == vc::OptimizerLevel::None && Opts.EmitExtendedDebug;
+  BackendOpts.DebuggabilityExtendedDebug =
+      getDefaultOverridableFlag(Opts.NoOptFinalizerMode, IsOptLevel_O0);
+
+  BackendOpts.DebuggabilityValidateDWARF = Opts.ForceDebugInfoValidation;
+
   BackendOpts.DisableFinalizerMsg = Opts.DisableFinalizerMsg;
-  BackendOpts.EmitDebuggableKernels = Opts.EmitDebuggableKernels;
-  BackendOpts.DebugInfoForZeBin = (Opts.Binary == vc::BinaryKind::ZE);
-  BackendOpts.DebugInfoValidationEnable = Opts.ForceDebugInfoValidation;
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();
   BackendOpts.ShaderOverrider = Opts.ShaderOverrider.get();
   BackendOpts.DisableStructSplitting = Opts.DisableStructSplitting;
   BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
-  BackendOpts.ReserveBTIZero = (Opts.Binary != vc::BinaryKind::CM) &&
-                                Opts.EmitDebuggableKernels;
   if (Opts.ForceLiveRangesLocalizationForAccUsage)
     BackendOpts.LocalizeLRsForAccUsage = true;
   if (Opts.ForceDisableNonOverlappingRegionOpt)
@@ -253,10 +262,6 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.UsePlain2DImages = Opts.UsePlain2DImages;
   BackendOpts.EnablePreemption = Opts.EnablePreemption;
 
-  bool IsOptLevel_O0 =
-      Opts.OptLevel == vc::OptimizerLevel::None && Opts.EmitDebuggableKernels;
-  BackendOpts.PassDebugToFinalizer =
-      getDefaultOverridableFlag(Opts.NoOptFinalizerMode, IsOptLevel_O0);
   BackendOpts.DisableLiveRangesCoalescing =
       getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, false);
   return BackendOpts;
@@ -597,8 +602,10 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
   if (ApiOptions.hasArg(OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
-  if (ApiOptions.hasArg(OPT_emit_debug))
-    Opts.EmitDebuggableKernels = true;
+  if (ApiOptions.hasArg(OPT_emit_debug)) {
+    Opts.EmitExtendedDebug = true;
+    Opts.EmitDebuggableKernels = true; // TODO: we should not depend on "-g"
+  }
   if (ApiOptions.hasArg(OPT_vc_fno_struct_splitting))
     Opts.DisableStructSplitting = true;
   if (ApiOptions.hasArg(OPT_vc_fno_jump_tables))

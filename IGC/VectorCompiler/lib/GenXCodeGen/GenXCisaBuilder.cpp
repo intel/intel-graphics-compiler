@@ -6587,9 +6587,9 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-generateDebugInfo");
   if (Info.EmitCrossThreadOffsetRelocation)
     addArgument("-emitCrossThreadOffR0Reloc");
-  if (BC.passDebugToFinalizer())
+  if (BC.emitExtendedDebugInfo())
     addArgument("-debug");
-  if (BC.emitDebuggableKernels()) {
+  if (BC.emitBreakpointAtKernelEntry()) {
     addArgument("-addKernelID");
     addArgument("-setstartbp");
   }

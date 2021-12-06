@@ -70,12 +70,14 @@ struct CompileOptions {
   // -ze-no-vector-decomposition
   bool NoVecDecomp = false;
   // -g
-  bool EmitDebuggableKernels = false;
+  bool EmitExtendedDebug = false;
+  // emit kernels that can interact with debugger
+  bool EmitDebuggableKernels = false; // TODO: this should be true
   // -fno-jump-tables
   bool NoJumpTables = false;
   // -ftranslate-legacy-memory-intrinsics
   bool TranslateLegacyMemoryIntrinsics = false;
-  // -disable-finalizer-msg 
+  // -disable-finalizer-msg
   bool DisableFinalizerMsg = false;
   // -fno-struct-splitting
   bool DisableStructSplitting = false;

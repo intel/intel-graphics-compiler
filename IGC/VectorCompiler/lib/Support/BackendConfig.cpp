@@ -26,6 +26,7 @@ static cl::opt<bool> GenerateDebugInfoOpt(
     "vc-emit-debug-info", cl::init(true), cl::Hidden,
     cl::desc("Generate DWARF debug info for each compiled kernel"));
 
+// TODO: replace this to true once transition to always debuggable is done
 static cl::opt<bool> EmitDebuggableKernelsOpt(
     "vc-emit-debuggable-kernels", cl::init(false), cl::Hidden,
     cl::desc("Emit kernels suitable for interaction with the debugger"));
@@ -135,8 +136,9 @@ static cl::opt<bool> UsePlain2DImagesOpt(
 char GenXBackendConfig::ID = 0;
 
 GenXBackendOptions::GenXBackendOptions()
-    : EmitDebugInformation(GenerateDebugInfoOpt),
-      EmitDebuggableKernels(EmitDebuggableKernelsOpt),
+    : DebuggabilityEmitDebuggableKernels(EmitDebuggableKernelsOpt),
+      DebuggabilityExtendedDebug(PassDebugToFinalizerOpt),
+      DebuggabilityEmitDWARF(GenerateDebugInfoOpt),
       DumpRegAlloc(DumpRegAllocOpt), StackSurfaceMaxSize(StackMemSizeOpt),
       EnableAsmDumps(EnableAsmDumpsOpt),
       EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
@@ -145,8 +147,7 @@ GenXBackendOptions::GenXBackendOptions()
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
       DisableLiveRangesCoalescing(DisableLRCoalescingOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
-      PassDebugToFinalizer(PassDebugToFinalizerOpt), FCtrl(FunctionControlOpt),
-      IsLargeGRFMode(LargeGRFModeOpt),
+      FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
       UseBindlessBuffers(UseBindlessBuffersOpt),
       StatelessPrivateMemSize(StatelessPrivateMemSizeOpt),
       SaveStackCallLinkage(SaveStackCallLinkageOpt),

@@ -203,7 +203,7 @@ std::vector<int> BTIAssignment::computeBTIndices(
   int SurfaceID = 0;
   int SamplerID = 0;
 
-  if (BC.isBTIZeroReserved() || EnforceBTIZeroReservation) {
+  if (BC.emitDebuggableKernelsForLegacyPath() || EnforceBTIZeroReservation) {
     // NOTE: at the current moment we don't use BTI=0, since it is reserved
     // for kernel debugging purposes (SIP uses BTI=0 in order to handle
     // breakpoints).

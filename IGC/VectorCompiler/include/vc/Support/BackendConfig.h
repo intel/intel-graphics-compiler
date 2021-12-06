@@ -49,14 +49,20 @@ void initializeGenXBackendConfigPass(PassRegistry &PR);
 // Plain structure to be filled by users who want to create backend
 // configuration. Some values are default-initialized from cl options.
 struct GenXBackendOptions {
-  // EmitDebuggable Kernels (allocate SIP Surface and avoid using BTI=0)
-  bool EmitDebuggableKernels = false;
+  // EmitDebuggable Kernels (allocate SIP Surface)
+  bool DebuggabilityEmitDebuggableKernels = false;
+  // Legacy path requires kernel to reserve BTI=0
+  bool DebuggabilityForLegacyPath = false;
+  // Emit breakpoints at the start of each kernel
+  bool DebuggabilityEmitBreakpoints = false;
+  // Force passing "-debug" option to finalizer
+  bool DebuggabilityExtendedDebug = false;
   // Enable emission of DWARF debug information
-  bool EmitDebugInformation = false;
+  bool DebuggabilityEmitDWARF = false;
   // Generate Debug Info in a format compatible with zebin
-  bool DebugInfoForZeBin = false;
+  bool DebuggabilityZeBinCompatibleDWARF = false;
   // Enable strict debug info validation
-  bool DebugInfoValidationEnable = false;
+  bool DebuggabilityValidateDWARF = false;
 
   // Enable/disable regalloc dump.
   bool DumpRegAlloc;
@@ -78,7 +84,6 @@ struct GenXBackendOptions {
   std::string DebugInfoDumpsNameOverride;
 
   bool ForceArrayPromotion = false;
-  bool ReserveBTIZero = false;
 
   // Localize live ranges to reduce accumulator usage
   bool LocalizeLRsForAccUsage;
@@ -89,9 +94,6 @@ struct GenXBackendOptions {
   // Disable non-overlapping region transformation (the case with undef
   // value in two-address operand)
   bool DisableNonOverlappingRegionOpt;
-
-  // Force passing "-debug" option to finalizer
-  bool PassDebugToFinalizer = false;
 
   // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
   bool UseNewStackBuilder = true;
@@ -183,10 +185,26 @@ public:
     return Data.BiFModule[Kind];
   }
 
-  bool emitDebugInformation() const { return Options.EmitDebugInformation; }
-  bool emitDebuggableKernels() const { return Options.EmitDebuggableKernels; }
-  bool emitDebugInfoForZeBin() const { return Options.DebugInfoForZeBin; }
-  bool enableDebugInfoValidation() const { return Options.DebugInfoValidationEnable; }
+  bool emitBreakpointAtKernelEntry() const {
+    return Options.DebuggabilityEmitBreakpoints;
+  }
+  bool emitDebuggableKernels() const {
+    return Options.DebuggabilityEmitDebuggableKernels;
+  }
+  bool emitDebuggableKernelsForLegacyPath() const {
+    return Options.DebuggabilityForLegacyPath && emitDebuggableKernels();
+  }
+  bool emitExtendedDebugInfo() const {
+    return Options.DebuggabilityExtendedDebug;
+  }
+  bool emitDWARFDebugInfo() const { return Options.DebuggabilityEmitDWARF; }
+  bool emitDWARFDebugInfoForZeBin() const {
+    return Options.DebuggabilityZeBinCompatibleDWARF && emitDWARFDebugInfo();
+  }
+  bool enableDebugInfoValidation() const {
+    return Options.DebuggabilityValidateDWARF;
+  }
+
   // Return whether shader dumper is installed.
   bool hasShaderDumper() const { return Options.Dumper; }
 
@@ -215,8 +233,6 @@ public:
 
   bool isArrayPromotionForced() const { return Options.ForceArrayPromotion; }
 
-  bool isBTIZeroReserved() const { return Options.ReserveBTIZero; }
-
   bool localizeLiveRangesForAccUsage() const {
     return Options.LocalizeLRsForAccUsage;
   }
@@ -227,10 +243,6 @@ public:
 
   bool disableNonOverlappingRegionOpt() const {
     return Options.DisableNonOverlappingRegionOpt;
-  }
-
-  bool passDebugToFinalizer() const {
-    return Options.PassDebugToFinalizer;
   }
 
   bool useNewStackBuilder() const { return Options.UseNewStackBuilder; }

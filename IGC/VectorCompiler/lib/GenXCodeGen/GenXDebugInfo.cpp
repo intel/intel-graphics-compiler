@@ -1258,7 +1258,7 @@ static void fillDbgInfoOptions(const GenXBackendConfig &BC,
   DebugOpts.DebugEnabled = true;
   DebugOpts.EmitDebugLoc = true;
 
-  if (BC.emitDebugInfoForZeBin() || DbgOpt_ZeBinCompatible) {
+  if (BC.emitDWARFDebugInfoForZeBin() || DbgOpt_ZeBinCompatible) {
     DebugOpts.ZeBinCompatible = true;
     DebugOpts.EnableRelocation = true;
     DebugOpts.EnforceAMD64Machine = true;

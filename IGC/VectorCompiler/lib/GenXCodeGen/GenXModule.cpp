@@ -107,8 +107,9 @@ bool GenXModule::runOnModule(Module &M) {
   InlineAsm = CheckForInlineAsm(M);
 
   EmitDebugInformation =
-      BC->emitDebugInformation() && vc::DIBuilder::checkIfModuleHasDebugInfo(M);
+      BC->emitDWARFDebugInfo() && vc::DIBuilder::checkIfModuleHasDebugInfo(M);
   ImplicitArgsBufferIsUsed = isImplicitArgsBufferUsed(M);
+
   // Iterate, processing each Function that is not yet assigned to a
   // FunctionGroup.
   bool ModuleModified = false;
