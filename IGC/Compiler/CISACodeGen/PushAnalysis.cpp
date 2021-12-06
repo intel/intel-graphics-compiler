@@ -1115,7 +1115,7 @@ namespace IGC
                 newChunk.size = info.size;
                 newChunk.pushableAddressGrfOffset = info.pushableAddressGrfOffset;
                 newChunk.pushableOffsetGrfOffset = info.pushableOffsetGrfOffset;
-                for (auto I = info.Load.rbegin(), E = info.Load.rend(); I != E; I++)
+                for (auto I = info.Load.begin(), E = info.Load.end(); I != E; I++)
                     PromoteLoadToSimplePush(I->first, newChunk, I->second);
                 pushInfo.simplePushBufferUsed++;
                 sizePushed += info.size;
