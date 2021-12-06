@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/ImplicitArgsBuffer.h"
 #include "vc/Utils/General/DebugInfo.h"
 
 #include <llvm/CodeGen/TargetPassConfig.h>
@@ -68,6 +69,22 @@ bool GenXModule::CheckForInlineAsm(Module &M) const {
   return false;
 }
 
+static bool isImplicitArgsBufferUsed(const Module &M) {
+  NamedMDNode *Named = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
+  if (!Named)
+    return false;
+  // FIXME: use std::any_of.
+  for (unsigned I = 0, E = Named->getNumOperands(); I != E; ++I) {
+    MDNode *Node = Named->getOperand(I);
+    auto *F = cast<Function>(
+        cast<ValueAsMetadata>(Node->getOperand(genx::KernelMDOp::FunctionRef))
+            ->getValue());
+    if (F->hasFnAttribute(vc::ImplicitArgs::KernelAttr))
+      return true;
+  }
+  return false;
+}
+
 /***********************************************************************
  * runOnModule : run GenXModule analysis
  *
@@ -91,6 +108,7 @@ bool GenXModule::runOnModule(Module &M) {
 
   EmitDebugInformation =
       BC->emitDebugInformation() && vc::DIBuilder::checkIfModuleHasDebugInfo(M);
+  ImplicitArgsBufferIsUsed = isImplicitArgsBufferUsed(M);
   // Iterate, processing each Function that is not yet assigned to a
   // FunctionGroup.
   bool ModuleModified = false;
@@ -262,4 +280,15 @@ const genx::di::VisaMapping *
 GenXModule::getVisaMapping(const Function *F) const {
   IGC_ASSERT(VisaMapping.count(F));
   return &VisaMapping.at(F);
+}
+
+GenXModule::InfoForFinalizer GenXModule::getInfoForFinalizer() const {
+  InfoForFinalizer Info;
+  Info.EmitDebugInformation = EmitDebugInformation;
+  IGC_ASSERT_MESSAGE(
+      ST,
+      "GenXSubtarget must be defined to call GenXModule::getInfoForFinalizer");
+  Info.EmitCrossThreadOffsetRelocation =
+      ST->hasThreadPayloadInMemory() && ImplicitArgsBufferIsUsed;
+  return Info;
 }
