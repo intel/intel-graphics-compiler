@@ -78,6 +78,13 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
         return false;
     }
 
+    if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMD->compOpt.EnableZEBinary)
+    {
+        // ZEBinary always relies on relocation, so we can ignore this pass
+        return false;
+    }
+
+
     if (RunCautiously) {
         if (!needRunConservatively(M))
             return false;
@@ -177,11 +184,6 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
                 IGC_ASSERT(userFunc->use_empty() && Function::isDiscardableIfUnused(userFunc->getLinkage()));
                 continue;
             }
-
-            // Skip subroutines when zebin is enabled
-            bool zebinEnable = IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMD->compOpt.EnableZEBinary;
-            if (!isEntryFunc(mdUtils, userFunc) && zebinEnable)
-                continue;
 
             ImplicitArgs implicitArgs(*userFunc, mdUtils);
 
