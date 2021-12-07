@@ -1201,7 +1201,7 @@ namespace IGC
     }
 
     /// this is texture-load not buffer-load
-    bool isLdInstruction(llvm::Instruction* inst)
+    bool isLdInstruction(const llvm::Instruction* inst)
     {
         return isa<SamplerLoadIntrinsic>(inst);
     }
@@ -1258,7 +1258,7 @@ namespace IGC
         return textureIdx;
     }
 
-    bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst)
+    bool isSampleLoadGather4InfoInstruction(const llvm::Instruction* inst)
     {
         if (isa<GenIntrinsicInst>(inst))
         {
@@ -1292,22 +1292,22 @@ namespace IGC
         return false;
     }
 
-    bool isSampleInstruction(llvm::Instruction* inst)
+    bool isSampleInstruction(const llvm::Instruction* inst)
     {
         return isa<SampleIntrinsic>(inst);
     }
 
-    bool isInfoInstruction(llvm::Instruction* inst)
+    bool isInfoInstruction(const llvm::Instruction* inst)
     {
         return isa<InfoIntrinsic>(inst);
     }
 
-    bool isGather4Instruction(llvm::Instruction* inst)
+    bool isGather4Instruction(const llvm::Instruction* inst)
     {
         return isa<SamplerGatherIntrinsic>(inst);
     }
 
-    bool IsMediaIOIntrinsic(llvm::Instruction* inst)
+    bool IsMediaIOIntrinsic(const llvm::Instruction* inst)
     {
         if (auto * pGI = dyn_cast<llvm::GenIntrinsicInst>(inst))
         {
@@ -1320,7 +1320,7 @@ namespace IGC
         return false;
     }
 
-    bool IsSIMDBlockIntrinsic(llvm::Instruction* inst)
+    bool IsSIMDBlockIntrinsic(const llvm::Instruction* inst)
     {
         if (auto * pGI = dyn_cast<llvm::GenIntrinsicInst>(inst))
         {
