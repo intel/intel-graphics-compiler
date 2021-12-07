@@ -12,6 +12,7 @@ list(APPEND IGC_LLVM_SPIRV_PATHS
   ${CMAKE_CURRENT_LIST_DIR}/../../../../SPIRV-LLVM-Translator
   ${CMAKE_CURRENT_LIST_DIR}/../../../llvm-spirv
   ${CMAKE_CURRENT_LIST_DIR}/../../../../llvm-spirv
+  ${CMAKE_CURRENT_LIST_DIR}/../../../llvm-project/llvm/projects/llvm-spirv
   )
 
 find_path(DEFAULT_SPIRV_TRANSLATOR_SOURCE_DIR
