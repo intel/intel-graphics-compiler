@@ -215,7 +215,6 @@ class FlowGraph
     // ToDo: We should use FuncInfo instead, but at the time it was needed FuncInfo was not constructed yet..
     std::unordered_map<G4_Label*, std::vector<G4_BB*>> subroutines;
 
-    vISA::Dominator dom;
     vISA::ImmDominator immDom;
     vISA::PostDom pDom;
     vISA::LoopDetection loops;
@@ -451,7 +450,7 @@ public:
       pKernel(kernel), mem(m), instListAlloc(alloc),
       kernelInfo(NULL), builder(NULL), globalOpndHT(m), framePtrDcl(NULL),
       stackPtrDcl(NULL), scratchRegDcl(NULL), pseudoVCEDcl(NULL),
-      dom(*kernel), immDom(*kernel), pDom(*kernel), loops(*kernel) {}
+      immDom(*kernel), pDom(*kernel), loops(*kernel) {}
 
     ~FlowGraph();
 
@@ -639,7 +638,6 @@ public:
     void print(std::ostream& OS) const;
     void dump() const;  // used in debugger
 
-    Dominator& getDominator() { return dom; }
     ImmDominator& getImmDominator() { return immDom; }
     PostDom& getPostDominator() { return pDom; }
     LoopDetection& getLoops() { return loops; }
