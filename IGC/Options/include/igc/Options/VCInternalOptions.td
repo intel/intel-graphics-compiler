@@ -56,8 +56,5 @@ def stats_file : PlainSeparate<"stats-file">,
 def : PlainJoined<"stats-file=">, Alias<stats_file>,
   HelpText<"Alias for -stats-file">;
 
-def fdisable_debuggable_kernels : PlainFlag<"vc-disable-debuggable-kernels">,
-  HelpText<"Disable emission of debuggable kernels for legacy path">;
-
 }
 // }} VC internal options

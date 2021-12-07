@@ -234,9 +234,9 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
       (Opts.Binary != vc::BinaryKind::CM) && Opts.EmitDebuggableKernels;
   BackendOpts.DebuggabilityZeBinCompatibleDWARF =
       (Opts.Binary == vc::BinaryKind::ZE);
-  BackendOpts.DebuggabilityEmitBreakpoints = Opts.ExtendedDebuggingSupport;
-  bool IsOptLevel_O0 = Opts.IROptLevel == vc::OptimizerLevel::None &&
-                       Opts.ExtendedDebuggingSupport;
+  BackendOpts.DebuggabilityEmitBreakpoints = Opts.EmitExtendedDebug;
+  bool IsOptLevel_O0 =
+      Opts.IROptLevel == vc::OptimizerLevel::None && Opts.EmitExtendedDebug;
   BackendOpts.DebuggabilityExtendedDebug =
       getDefaultOverridableFlag(Opts.NoOptFinalizerMode, IsOptLevel_O0);
 
@@ -626,8 +626,10 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
   if (ApiOptions.hasArg(OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
-  if (ApiOptions.hasArg(OPT_emit_debug))
-    Opts.ExtendedDebuggingSupport = true;
+  if (ApiOptions.hasArg(OPT_emit_debug)) {
+    Opts.EmitExtendedDebug = true;
+    Opts.EmitDebuggableKernels = true; // TODO: we should not depend on "-g"
+  }
   if (ApiOptions.hasArg(OPT_vc_fno_struct_splitting))
     Opts.DisableStructSplitting = true;
   if (ApiOptions.hasArg(OPT_vc_fno_jump_tables))
@@ -735,9 +737,6 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     IGCLLVM::printHelp(IGC::getInternalOptTable(), llvm::errs(), Usage, Title,
                        FlagsToInclude, FlagsToExclude, ShowAllAliases);
   }
-
-  if (InternalOptions.hasArg(OPT_fdisable_debuggable_kernels))
-    Opts.EmitDebuggableKernels = false;
 
   return Error::success();
 }
