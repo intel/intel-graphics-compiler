@@ -8556,9 +8556,6 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
     }
 }
 
-// emulate mov HF BF8
-// with
-// shl UW UB 8
 bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
 {
     G4_INST* inst = *i;
@@ -8567,129 +8564,93 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         return false;
     }
 
-    if (inst->getDst()->getType() == Type_UB)
+    // Format conversion allowed between fp16and fp8 operands in the following cases:
+    // 1, Execution size must not be 1.
+    // 2, fp8 operand is packed.
+    // 3, Source and destination register offset is restricted to 0 (GRF aligned).
+    if (inst->getDst()->getType() == Type_UB || inst->getSrc(0)->getType() == Type_UB)
     {
-        assert((inst->getSrc(0)->getType() == Type_HF) &&
-            "Only HF->BF8 conversion is supported");
+        assert(((inst->getDst()->getType() == Type_UB && inst->getSrc(0)->getType() == Type_HF)
+            || (inst->getSrc(0)->getType() == Type_UB && inst->getDst()->getType() == Type_HF)) &&
+            "Only BF8<->HF conversion is supported");
         assert(!inst->getPredicate() && !inst->getCondMod() && !inst->getSaturate() &&
-            "HF->BF8 move does not support pred/cond mod/sat");
+            "BF8<->HF move does not support pred/cond mod/sat");
         assert(inst->getSrc(0)->isSrcRegRegion() &&
-            "HF->BF8 currently supports non-imm source only");
-        assert(inst->getSrc(0)->asSrcRegRegion()->getRegAccess() == Direct &&
-            inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
-            "HF->BF8 move does not support source modifier");
-
-        // fix regioning <0;1,0> to <1;1,0> for execution sizes higher than 1.
-        if (inst->getSrc(0)->asSrcRegRegion()->getRegion()->isScalar() &&
-            inst->getExecSize() != g4::SIMD1)
-        {
-            inst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionStride1());
-            inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, ThirtyTwo_Word), 0);
-            INST_LIST_ITER newMovIter = i;
-            newMovIter--;
-            G4_INST* newMovInst = *newMovIter;
-            newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionScalar());
-        }
-        assert(inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()) &&
-            "HF->BF8 only support <1;1,0> regioning");
-        if (inst->getDst()->getHorzStride() != 1)
-        {
-            replaceDst(i, inst->getDst()->getType(), ThirtyTwo_Word);
-            INST_LIST_ITER newMovIter = i;
-            newMovIter++;
-            G4_INST* newMovInst = *newMovIter;
-            newMovInst->getSrc(0)->asSrcRegRegion()->setType(Type_UB);
-            newMovInst->getDst()->asDstRegRegion()->setType(Type_UB);
-            if (inst->getExecSize() != g4::SIMD1)
-            {
-                newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionStride1());
-            }
-            inst->getDst()->setHorzStride(1);
-            inst->setOptionOn(InstOpt_WriteEnable);
-        }
-        if (!builder.isOpndAligned(inst->getDst(), 64) ||
-            !inst->isWriteEnableInst())
-        {
-            replaceDst(i, inst->getDst()->getType(), ThirtyTwo_Word);
-            INST_LIST_ITER newMovIter = i;
-            newMovIter++;
-            G4_INST* newMovInst = *newMovIter;
-            newMovInst->getSrc(0)->asSrcRegRegion()->setType(Type_UB);
-            newMovInst->getDst()->asDstRegRegion()->setType(Type_UB);
-            inst->setOptionOn(InstOpt_WriteEnable);
-        }
-        if (!builder.isOpndAligned(inst->getSrc(0), 64))
-        {
-            inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, ThirtyTwo_Word), 0);
-        }
-        return true;
-    }
-
-    if (inst->getSrc(0)->getType() == Type_UB)
-    {
-        assert((inst->getDst()->getType() == Type_HF) &&
-            "Only BF8->HF conversion is supported");
-        assert(!inst->getPredicate() && !inst->getCondMod() && !inst->getSaturate() &&
-            "BF8->HF move does not support pred/cond mod/sat");
-        // don't support QF imm for now
+            "HF<->BF8 currently supports non-imm source only");
         assert(inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->asSrcRegRegion()->getRegAccess() == Direct &&
             inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
-            "BF8->HF move does not support source modifier");
+            "BF8<->HF move does not support source modifier");
 
-        // fix regioning <0;1,0> to <1;1,0> for execution sizes higher than 1.
-        if (inst->getSrc(0)->asSrcRegRegion()->getRegion()->isScalar() &&
-            inst->getExecSize() != g4::SIMD1)
+        if (!inst->getSrc(0)->asSrcRegRegion()->checkGRFAlign() || //case 3
+            (inst->getSrc(0)->getType() == Type_UB && !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))) // case 2
         {
-            inst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionStride1());
-            inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, ThirtyTwo_Word), 0);
-            INST_LIST_ITER newMovIter = i;
-            newMovIter--;
-            G4_INST* newMovInst = *newMovIter;
-            newMovInst->getSrc(0)->asSrcRegRegion()->setType(Type_UB);
-            newMovInst->getDst()->asDstRegRegion()->setType(Type_UB);
-            newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionScalar());
-        }
-        assert(inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()) &&
-            "BF8->HF only support <1;1,0> regioning");
-        if (inst->getDst()->getHorzStride() != 1)
-        {
+            inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, GRFALIGN), 0);
+            G4_INST* newMovInst = *(std::prev(i));
+            if (newMovInst->getSrc(0)->getType() == Type_HF)
+            {
+                newMovInst->getSrc(0)->asSrcRegRegion()->setType(Type_UW);
+                newMovInst->getDst()->asDstRegRegion()->setType(Type_UW);
+            }
+            newMovInst->getDst()->setHorzStride(1);
             if (inst->getExecSize() != g4::SIMD1)
             {
-                replaceDst(i, inst->getDst()->getType(), ThirtyTwo_Word);
-                INST_LIST_ITER newMovIter = i;
-                newMovIter++;
-                G4_INST* newMovInst = *newMovIter;
+                inst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionStride1());
+            }
+            inst->setOptionOn(InstOpt_WriteEnable);
+        }
+
+        // case 1.1: SIMD1 hf->bf8
+        // (W)  mov (1|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
+        // =>
+        // (W)  mov (2|M0)   r20.0<1>:bf8   r12.0<0;1,0>:hf
+        // (W)  mov (1|M0)   r10.0<1>:ub    r20.0<0;1,0>:ub
+        if (inst->getExecSize() == g4::SIMD1 && inst->getDst()->getType() == Type_UB)  //case 1.1
+        {
+            G4_Declare* dcl = builder.createTempVar(2, Type_UB, GRFALIGN);
+            G4_SrcRegRegion* srcRegion = builder.createSrcRegRegion(dcl, builder.getRegionScalar());
+            uint32_t newOption = InstOpt_WriteEnable | inst->getMaskOption();
+            G4_INST* newMovInst = builder.createMov(g4::SIMD1, inst->getDst(), srcRegion, newOption, false);
+            bb->insertAfter(i, newMovInst);
+
+            G4_DstRegRegion* newDst = builder.createDstRegRegion(dcl, 1);
+            inst->setDest(newDst);
+            inst->setExecSize(g4::SIMD2);
+        }
+
+        if ((inst->getDst()->getType() == Type_UB && inst->getDst()->getHorzStride() != 1) ||  //case 2
+            !inst->getDst()->checkGRFAlign())  // case 3
+        {
+            replaceDst(i, inst->getDst()->getType(), GRFALIGN);
+            G4_INST* newMovInst = *(std::next(i));
+            if (newMovInst->getDst()->getType() == Type_HF)
+            {
+                newMovInst->getSrc(0)->asSrcRegRegion()->setType(Type_UW);
+                newMovInst->getDst()->asDstRegRegion()->setType(Type_UW);
+            }
+            if (inst->getExecSize() != g4::SIMD1)
+            {
                 newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionStride1());
             }
             inst->getDst()->setHorzStride(1);
+            inst->setOptionOn(InstOpt_WriteEnable);
         }
-        if (!builder.isOpndAligned(inst->getDst(), 64))
+
+        // case 1.2: SIMD1 bf8->hf
+        // (W)  mov (1|M0)   r10.0<1>:hf   r12.0<0;1,0>:bf8
+        // =>
+        // (W)  shl (1|M0)   r10.0<1>:uw   r12.0<0;1,0>:ub   0x8:uw
+        if (inst->getExecSize() == g4::SIMD1 && inst->getSrc(0)->getType() == Type_UB)
         {
-            replaceDst(i, inst->getDst()->getType(), ThirtyTwo_Word);
+            inst->getDst()->setType(Type_UW);
+            auto newShlInst = builder.createBinOp(G4_shl,
+                inst->getExecSize(), inst->getDst(), inst->getSrc(0)->asSrcRegRegion(), builder.createImm(8, Type_UW), inst->getOption(), false);
+            bb->insertBefore(i, newShlInst);
+            bb->erase(i);
         }
-        if (!builder.isOpndAligned(inst->getSrc(0), 64))
-        {
-            inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, ThirtyTwo_Word), 0);
-            INST_LIST_ITER newMovIter = i;
-            newMovIter--;
-            G4_INST* newMovInst = *newMovIter;
-            newMovInst->getSrc(0)->asSrcRegRegion()->setType(Type_UB);
-            newMovInst->getDst()->asDstRegRegion()->setType(Type_UB);
-        }
-
-        inst->getSrc(0)->asSrcRegRegion()->setType(Type_UB);
-        G4_SrcRegRegion* newSrc0 = inst->getSrc(0)->asSrcRegRegion();
-
-        inst->getDst()->setType(Type_UW);
-        auto newDst = inst->getDst();
-
-        auto shlInst = builder.createBinOp(G4_shl,
-            inst->getExecSize(), newDst, newSrc0, builder.createImm(8, Type_UW), inst->getOption(), false);
-        bb->insertBefore(i, shlInst);
-        bb->erase(i);
 
         return true;
     }
+
     if (inst->getSrc(0)->getType() == Type_UD)
     {
         // fcvt  a:F   b:tf32
@@ -8757,6 +8718,12 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
 void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
 {
     G4_INST* inst = *it;
+
+    // G4_fcvt should be fixed in fixFcvt()
+    if (inst->opcode() == G4_fcvt)
+    {
+        return;
+    }
 
     if (!inst->getDst() || inst->isSend() || inst->isDpas() ||
         inst->getExecSize() == g4::SIMD1)
