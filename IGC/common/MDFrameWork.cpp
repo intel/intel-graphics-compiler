@@ -192,7 +192,7 @@ MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name)
             static bool printWarningFirstTime = true;
             if (printWarningFirstTime)
             {
-                printf("\n%s\n\n", warningMessage.c_str());
+                fprintf(stderr, "\n%s\n\n", warningMessage.c_str());
                 printWarningFirstTime = false;
             }
             nodes.push_back(CreateNode(false, module, warningMessage + " " + flagName + " currently equals"));
