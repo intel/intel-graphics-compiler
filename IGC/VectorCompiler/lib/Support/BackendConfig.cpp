@@ -26,9 +26,8 @@ static cl::opt<bool> GenerateDebugInfoOpt(
     "vc-emit-debug-info", cl::init(true), cl::Hidden,
     cl::desc("Generate DWARF debug info for each compiled kernel"));
 
-// TODO: replace this to true once transition to always debuggable is done
 static cl::opt<bool> EmitDebuggableKernelsOpt(
-    "vc-emit-debuggable-kernels", cl::init(false), cl::Hidden,
+    "vc-emit-debuggable-kernels", cl::init(true), cl::Hidden,
     cl::desc("Emit kernels suitable for interaction with the debugger"));
 
 static cl::opt<bool> DumpRegAllocOpt(
