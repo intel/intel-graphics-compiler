@@ -177,7 +177,7 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
 }
 
 static CodeGenOpt::Level getCodeGenOptLevel(const vc::CompileOptions &Opts) {
-  if (Opts.OptLevel == vc::OptimizerLevel::None)
+  if (Opts.CodegenOptLevel == vc::OptimizerLevel::None)
     return CodeGenOpt::None;
   return CodeGenOpt::Default;
 }
@@ -236,7 +236,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
       (Opts.Binary == vc::BinaryKind::ZE);
   BackendOpts.DebuggabilityEmitBreakpoints = Opts.EmitExtendedDebug;
   bool IsOptLevel_O0 =
-      Opts.OptLevel == vc::OptimizerLevel::None && Opts.EmitExtendedDebug;
+      Opts.IROptLevel == vc::OptimizerLevel::None && Opts.EmitExtendedDebug;
   BackendOpts.DebuggabilityExtendedDebug =
       getDefaultOverridableFlag(Opts.NoOptFinalizerMode, IsOptLevel_O0);
 
@@ -302,7 +302,7 @@ static void optimizeIR(const vc::CompileOptions &Opts,
       createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
 
   unsigned OptLevel;
-  if (Opts.OptLevel == vc::OptimizerLevel::None)
+  if (Opts.IROptLevel == vc::OptimizerLevel::None)
     OptLevel = 0;
   else
     OptLevel = 2;
@@ -596,6 +596,27 @@ static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
   return make_error<vc::OptionError>(BadOpt, IsInternal);
 }
 
+static Optional<vc::OptimizerLevel>
+parseOptimizationLevelString(StringRef Val) {
+  return StringSwitch<Optional<vc::OptimizerLevel>>(Val)
+      .Case("none", vc::OptimizerLevel::None)
+      .Case("full", vc::OptimizerLevel::Full)
+      .Default(None);
+}
+
+template <typename OptSpecifier>
+static Optional<vc::OptimizerLevel>
+deriveOptimizationLevel(opt::Arg *A, OptSpecifier PrimaryOpt) {
+  using namespace IGC::options::api;
+  if (A->getOption().matches(PrimaryOpt)) {
+    StringRef Val = A->getValue();
+    return parseOptimizationLevelString(Val);
+  } else {
+    IGC_ASSERT(A->getOption().matches(OPT_opt_disable_ze));
+    return vc::OptimizerLevel::None;
+  }
+}
+
 static Error fillApiOptions(const opt::ArgList &ApiOptions,
                             vc::CompileOptions &Opts) {
   using namespace IGC::options::api;
@@ -636,19 +657,18 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
   if (opt::Arg *A =
           ApiOptions.getLastArg(OPT_vc_optimize, OPT_opt_disable_ze)) {
-    if (A->getOption().matches(OPT_vc_optimize)) {
-      StringRef Val = A->getValue();
-      auto MaybeLevel = StringSwitch<Optional<vc::OptimizerLevel>>(Val)
-                            .Case("none", vc::OptimizerLevel::None)
-                            .Case("full", vc::OptimizerLevel::Full)
-                            .Default(None);
-      if (!MaybeLevel)
-        return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
-      Opts.OptLevel = MaybeLevel.getValue();
-    } else {
-      IGC_ASSERT(A->getOption().matches(OPT_opt_disable_ze));
-      Opts.OptLevel = vc::OptimizerLevel::None;
-    }
+    auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_optimize);
+    if (!MaybeLevel)
+      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
+    Opts.IROptLevel = MaybeLevel.getValue();
+  }
+
+  if (opt::Arg *A =
+          ApiOptions.getLastArg(OPT_vc_codegen_optimize, OPT_opt_disable_ze)) {
+    auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_codegen_optimize);
+    if (!MaybeLevel)
+      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
+    Opts.CodegenOptLevel = MaybeLevel.getValue();
   }
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_vc_stateless_private_size)) {

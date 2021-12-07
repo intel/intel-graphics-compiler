@@ -164,7 +164,7 @@ static void adjustFileType(TC::TB_DATA_FORMAT DataFormat,
 
 static void adjustOptLevel(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(VCOptimizeNone))
-    Opts.OptLevel = vc::OptimizerLevel::None;
+    Opts.IROptLevel = vc::OptimizerLevel::None;
 }
 
 static void adjustStackCalls(vc::CompileOptions &Opts, BuildDiag &Diag) {

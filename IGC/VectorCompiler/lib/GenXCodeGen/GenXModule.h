@@ -85,6 +85,7 @@ namespace llvm {
     bool InlineAsm = false;
     bool CheckForInlineAsm(Module &M) const;
 
+    bool DisableFinalizerOpts = false;
     bool EmitDebugInformation = false;
     bool ImplicitArgsBufferIsUsed = false;
     // represents number of visa instructions in a *kernel*
@@ -106,6 +107,7 @@ namespace llvm {
 
     // Additional info requred to create VISABuilder.
     struct InfoForFinalizer final {
+      bool DisableFinalizerOpts = false;
       bool EmitDebugInformation = false;
       bool EmitCrossThreadOffsetRelocation = false;
     };

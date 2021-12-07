@@ -98,14 +98,15 @@ static bool isImplicitArgsBufferUsed(const Module &M) {
  */
 bool GenXModule::runOnModule(Module &M) {
   auto FGA = &getAnalysis<FunctionGroupAnalysis>();
-  ST = &getAnalysis<TargetPassConfig>()
-            .getTM<GenXTargetMachine>()
-            .getGenXSubtarget();
+  const auto &TM = getAnalysis<TargetPassConfig>().getTM<GenXTargetMachine>();
+
+  ST = &TM.getGenXSubtarget();
   Ctx = &M.getContext();
   BC = &getAnalysis<GenXBackendConfig>();
 
   InlineAsm = CheckForInlineAsm(M);
 
+  DisableFinalizerOpts = BC->emitExtendedDebugInfo();
   EmitDebugInformation =
       BC->emitDWARFDebugInfo() && vc::DIBuilder::checkIfModuleHasDebugInfo(M);
   ImplicitArgsBufferIsUsed = isImplicitArgsBufferUsed(M);
@@ -286,6 +287,7 @@ GenXModule::getVisaMapping(const Function *F) const {
 GenXModule::InfoForFinalizer GenXModule::getInfoForFinalizer() const {
   InfoForFinalizer Info;
   Info.EmitDebugInformation = EmitDebugInformation;
+  Info.DisableFinalizerOpts = DisableFinalizerOpts;
   IGC_ASSERT_MESSAGE(
       ST,
       "GenXSubtarget must be defined to call GenXModule::getInfoForFinalizer");

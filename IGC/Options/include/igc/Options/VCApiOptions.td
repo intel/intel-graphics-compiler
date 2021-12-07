@@ -31,6 +31,12 @@ def : PlainJoined<"optimize=">, Alias<vc_optimize>,
 def : PlainFlag<"no-optimize">, Alias<vc_optimize>,
   AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
 
+def vc_codegen_optimize : PlainSeparate<"codegen-optimize">,
+  HelpText<"Set codegen optimization level to either 'none' or 'full'">,
+  MetaVarName<"<level>">;
+def : PlainJoined<"codegen-optimize=">, Alias<vc_codegen_optimize>,
+  HelpText<"Alias for -codegen-optimize">;
+
 // This option switches off vector splitting in parts to better fit
 // into GRF. It may have both positive and negative consequences for
 // performance so shall be used with extreme caution.

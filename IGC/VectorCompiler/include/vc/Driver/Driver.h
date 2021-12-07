@@ -82,7 +82,9 @@ struct CompileOptions {
   // -fno-struct-splitting
   bool DisableStructSplitting = false;
 
-  OptimizerLevel OptLevel = OptimizerLevel::Full;
+  OptimizerLevel IROptLevel = OptimizerLevel::Full;
+  OptimizerLevel CodegenOptLevel = OptimizerLevel::Full;
+
   llvm::Optional<unsigned> StackMemSize;
   bool ForceLiveRangesLocalizationForAccUsage = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
