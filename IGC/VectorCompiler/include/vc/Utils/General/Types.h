@@ -56,6 +56,11 @@ llvm::Type *getNewTypeForCast(llvm::Type *OldOutType, llvm::Type *OldInType,
 const llvm::Type &fixDegenerateVectorType(const llvm::Type &Ty);
 llvm::Type &fixDegenerateVectorType(llvm::Type &Ty);
 
+// If \p Ty is a fixed vector, it is returned. Otherwise \p Ty is wrapped into
+// a degenerate vector: <1 x Ty>.
+// To some extend this function is the opposite of vc::fixDegenerateVectorType.
+IGCLLVM::FixedVectorType &getVectorType(llvm::Type &Ty);
+
 } // namespace vc
 
 #endif // VC_UTILS_GENERAL_TYPES_H

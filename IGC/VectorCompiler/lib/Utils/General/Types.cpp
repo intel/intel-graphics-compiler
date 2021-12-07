@@ -120,3 +120,9 @@ Type *vc::getNewTypeForCast(Type *OldOutType, Type *OldInType,
                      "Error: unexpected type change");
   return NewOutType;
 }
+
+IGCLLVM::FixedVectorType &vc::getVectorType(Type &Ty) {
+  if (isa<IGCLLVM::FixedVectorType>(Ty))
+    return cast<IGCLLVM::FixedVectorType>(Ty);
+  return *IGCLLVM::FixedVectorType::get(&Ty, 1);
+}

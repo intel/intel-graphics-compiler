@@ -52,6 +52,7 @@ public:
   }
 #endif
 
+  TypeSizeWrapper() = default;
   TypeSizeWrapper(DLTypeSize TS) : TS(TS){};
 #if LLVM_VERSION_MAJOR >= 10
   TypeSizeWrapper(uint64_t TSIn) : TS{FixedDLSize(TSIn)} {};
@@ -70,7 +71,30 @@ public:
   SzType inQWords() const { return asIntegralStrict<QWordBits>(); }
   SzType inOWords() const { return asIntegralStrict<OWordBits>(); }
 
-  bool operator==(const TypeSizeWrapper &Other) const { return TS == Other.TS; }
+  friend bool operator==(const TypeSizeWrapper &LHS,
+                         const TypeSizeWrapper &RHS) {
+    return LHS.TS == RHS.TS;
+  }
+  friend bool operator<(const TypeSizeWrapper &LHS,
+                        const TypeSizeWrapper &RHS) {
+    return LHS.TS < RHS.TS;
+  }
+  friend bool operator!=(const TypeSizeWrapper &LHS,
+                         const TypeSizeWrapper &RHS) {
+    return !(LHS == RHS);
+  }
+  friend bool operator>=(const TypeSizeWrapper &LHS,
+                         const TypeSizeWrapper &RHS) {
+    return !(LHS < RHS);
+  }
+  friend bool operator<=(const TypeSizeWrapper &LHS,
+                         const TypeSizeWrapper &RHS) {
+    return (LHS < RHS) || (LHS == RHS);
+  }
+  friend bool operator>(const TypeSizeWrapper &LHS,
+                        const TypeSizeWrapper &RHS) {
+    return !(LHS <= RHS);
+  }
 
 private:
   template <unsigned UnitBitSize> SzType asIntegralStrict() const {
@@ -98,8 +122,15 @@ private:
       return static_cast<SzType>(llvm::divideCeil(BitsAsUI, UnitBitSize));
     }
   }
-  DLTypeSize TS;
+  DLTypeSize TS = FixedDLSize(0);
 };
+
+inline const TypeSizeWrapper BoolSize{BoolBits};
+inline const TypeSizeWrapper ByteSize{ByteBits};
+inline const TypeSizeWrapper WordSize{WordBits};
+inline const TypeSizeWrapper DWordSize{DWordBits};
+inline const TypeSizeWrapper QWordSize{QWordBits};
+inline const TypeSizeWrapper OWordSize{OWordBits};
 
 // Utility function to get type size in diffrent units.
 // TODO: make DataLyout as non-optional argument

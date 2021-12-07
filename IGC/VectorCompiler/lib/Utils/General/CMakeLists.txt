@@ -12,6 +12,7 @@ set(GENERAL_UTILS_SOURCES
   Types.cpp
   FunctionAttrs.cpp
   DebugInfo.cpp
+  IRBuilder.cpp
   )
 
 add_library(VCGeneralUtils ${GENERAL_UTILS_SOURCES})
