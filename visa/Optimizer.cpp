@@ -531,10 +531,13 @@ void Optimizer::addSWSBInfo()
         && builder.getOption(vISA_fusedCallWA)
         && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall());
 
+    if (do_fcall_wa)
+    {
+        finishFusedCallWA();
+    }
+
     if (!builder.hasSWSB())
     {
-        if (do_fcall_wa)
-            finishFusedCallWA();
         return;
     }
 
@@ -561,11 +564,7 @@ void Optimizer::addSWSBInfo()
             builder.getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
     }
 
-    if (do_fcall_wa)
-    {
-        finishFusedCallWA();
-    }
-    else if (kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
+    if (!do_fcall_wa && kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
     {
         adjustIndirectCallOffsetAfterSWSBSet();
     }
