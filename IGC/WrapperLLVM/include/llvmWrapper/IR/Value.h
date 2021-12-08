@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_IR_VALUE_H
 
 #include "Probe/Assertion.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Value.h"
 
