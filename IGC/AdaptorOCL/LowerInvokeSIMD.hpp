@@ -46,5 +46,7 @@ namespace IGC
         IGCLLVM::IRBuilder<>* m_Builder = nullptr;
         llvm::ValueMap<llvm::Function*, llvm::Function*> m_OldFuncToNewFuncMap;
         bool m_changed = false;
+
+        void detectUniformParams(const llvm::Function* ESIMDFunction, llvm::CallInst& NewCall);
     };
 }

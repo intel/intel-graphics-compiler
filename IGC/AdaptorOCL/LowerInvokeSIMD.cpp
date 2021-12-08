@@ -27,6 +27,7 @@ using namespace IGC;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(LowerInvokeSIMD, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(LowerInvokeSIMD, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char LowerInvokeSIMD::ID = 0;
@@ -64,20 +65,23 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
     auto FTy = FunctionType::get(F->getFunctionType()->getReturnType(), ArgTys, false);
     m_Builder->SetInsertPoint(&CI);
 
-    Value* NewCall = nullptr;
+    CallInst* NewCall = nullptr;
     std::error_code EC;
     if (Function* Callee = dyn_cast<Function>(CI.getArgOperand(0))) {
         std::string oldName = std::string(Callee->getName());
         Callee->setName(Callee->getName() + ".old");
-        auto newFunc = Function::Create(FTy, Callee->getLinkage(), oldName, *Callee->getParent());
-        newFunc->setAttributes(Callee->getAttributes());
-        newFunc->addFnAttr(FNATTR_INVOKE_SIMD_TARGET);
-        if (newFunc->hasFnAttribute(FNATTR_REFERENCED_INDIRECTLY)) {
-            newFunc->removeFnAttr(FNATTR_REFERENCED_INDIRECTLY);
+        auto NewFunc = Function::Create(FTy, Callee->getLinkage(), oldName, *Callee->getParent());
+        NewFunc->setAttributes(Callee->getAttributes());
+        NewFunc->addFnAttr(FNATTR_INVOKE_SIMD_TARGET);
+        if (NewFunc->hasFnAttribute(FNATTR_REFERENCED_INDIRECTLY)) {
+            NewFunc->removeFnAttr(FNATTR_REFERENCED_INDIRECTLY);
         }
-        newFunc->setCallingConv(Callee->getCallingConv());
-        NewCall = m_Builder->CreateCall(newFunc, ArgVals);
-        m_OldFuncToNewFuncMap[Callee] = newFunc;
+        NewFunc->setCallingConv(Callee->getCallingConv());
+        NewCall = m_Builder->CreateCall(NewFunc, ArgVals);
+        m_OldFuncToNewFuncMap[Callee] = NewFunc;
+
+        detectUniformParams(Callee, *NewCall);
+
     } else {
       auto PTy = PointerType::get(
           FTy,
@@ -88,6 +92,35 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
     CI.replaceAllUsesWith(NewCall);
     CI.eraseFromParent();
     m_changed = true;
+}
+
+// Compare arguments of the original ESIMD function with argument types deduced from invoke_simd builtin and used in the NewCall.
+// If an argument is same in both, it is treated as scalar on ESIMD path.
+void LowerInvokeSIMD::detectUniformParams(const llvm::Function* ESIMDFunction, llvm::CallInst& NewCall) {
+    auto ESIMDFuncType = ESIMDFunction->getFunctionType();
+    auto SPMDFuncType = NewCall.getCalledFunction()->getFunctionType();
+    int ParamNumber = 0;
+    for (auto ESIMDParamType = ESIMDFuncType->param_begin(),
+        SPMDParamType = SPMDFuncType->param_begin();
+        ESIMDParamType != ESIMDFuncType->param_end() &&
+        SPMDParamType != SPMDFuncType->param_end();
+        ++ESIMDParamType, ++SPMDParamType, ++ParamNumber) {
+
+        if (*ESIMDParamType == *SPMDParamType) {
+            Value* args[3];
+            args[0] = NewCall.getArgOperand(ParamNumber);
+            args[1] = m_Builder->getInt32(0);
+            args[2] = m_Builder->getInt32(0);
+
+            // Get the first SIMD channel, as the spec says that all work items in the group must execute it.
+            Function* simdShuffleFunc = GenISAIntrinsic::getDeclaration(NewCall.getModule(),
+                GenISAIntrinsic::GenISA_WaveShuffleIndex, args[0]->getType());
+            m_Builder->SetInsertPoint(&NewCall);
+            auto ShuffleCall = m_Builder->CreateCall(simdShuffleFunc, args);
+
+            NewCall.setArgOperand(ParamNumber, ShuffleCall);
+        }
+    }
 }
 
 bool LowerInvokeSIMD::runOnModule(Module& M) {

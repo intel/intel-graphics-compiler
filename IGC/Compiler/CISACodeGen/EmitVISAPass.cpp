@@ -10871,7 +10871,9 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
         // check if an argument can be written to ARGV based upon offset + arg-size
         unsigned argSize = Src->GetSize();
-        if (Src->IsUniform())
+        // Uniform invoke simd target must not be vectorized - callee is compiled by vector compiler
+        // where the size is set explicitly and it is treated as scalar.
+        if (Src->IsUniform() && !isInvokeSIMDTarget)
         {
             argSize = Src->GetSize() * numLanes(m_currShader->m_dispatchSize);
         }
@@ -10884,7 +10886,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         else
         {
             // Vectorize, then push to stack
-            if (Src->IsUniform())
+            if (Src->IsUniform() && !isInvokeSIMDTarget)
             {
                 uint16_t nElts = (uint16_t)m_currShader->GetNumElts(argType, false);
                 CVariable* SrcVec = m_currShader->GetNewVariable(nElts, Src->GetType(), m_currShader->getGRFAlignment(), false, Src->getName());
