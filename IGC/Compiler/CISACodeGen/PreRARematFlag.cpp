@@ -261,6 +261,92 @@ bool PreRARematFlag::runOnFunction(Function& F) {
         }
     }
 
+    // Return the flag used in the specified instruction.
+    auto GetFlag = [](Instruction *I) -> Value * {
+        // Flag is used in conditional branches.
+        if (auto BI = dyn_cast<BranchInst>(I)) {
+            if (!BI->isConditional())
+                return nullptr;
+            return BI->getCondition();
+        }
+        // Flag is also used in `select` instructions.
+        if (auto SI = dyn_cast<SelectInst>(I))
+            return SI->getCondition();
+        return nullptr;
+    };
+    // Check if the specified flag evaluation is a trivial one.
+    auto IsTrivialFlagDef = [](Instruction *I) {
+      // Trivial flag evaluations include a comparison with constants.
+      if (auto Cmp = dyn_cast<CmpInst>(I))
+        return isa<Constant>(Cmp->getOperand(0)) ||
+               isa<Constant>(Cmp->getOperand(1));
+      return false;
+    };
+
+    // Sink trivial flag definitions back into loops.
+    SmallPtrSet<Instruction *, 16> Visited; // Flag def already visited.
+    for (auto TLI = LI->begin(), TLE = LI->end(); TLI != TLE; ++TLI) {
+      for (auto NLI = df_begin(*TLI), NLE = df_end(*TLI); NLI != NLE; ++NLI) {
+        Loop *L = *NLI;
+        for (auto *BB : L->blocks()) {
+          for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+            auto I = &*BI;
+            Value *Flag = GetFlag(I);
+            // Skip if there's no flag use.
+            if (!Flag)
+              continue;
+            auto *Def = dyn_cast<Instruction>(Flag);
+            // Skip if flag is not defined by an instruction or it's defined
+            // within the current loop.
+            if (!Def || L->contains(Def))
+              continue;
+            // Skip if it's not a trivial definition.
+            if (!IsTrivialFlagDef(Def))
+              continue;
+            // Skip if it's already visited.
+            if (!Visited.insert(Def).second)
+              continue;
+            // Scan all users to figure out how to sink that trivial flag
+            // evaluation. If any user is out of the current loop, stop
+            // sinking it; otherwise, all users are within the same loop.
+            // For that case, we need to decide where to insert it.
+            // Basically, that position should dominate all users. If there
+            // is a user dominating all other users, the position should be
+            // just before that user; otherwise, we have to find the NCA
+            // and sink that flag evaluation before its terminator.
+            Instruction *Pos = nullptr;
+            for (auto *User : Def->users()) {
+              auto *UI = cast<Instruction>(User);
+              if (!L->contains(UI)) {
+                // Clear the position and bail out.
+                Pos = nullptr;
+                break;
+              }
+              if (!Pos) {
+                Pos = UI;
+                continue;
+              }
+              if (DT->dominates(UI, Pos)) {
+                Pos = UI;
+              } else if (!DT->dominates(Pos, UI)) {
+                // Neither UI dominates Pos nor Pos dominates UI.
+                auto NCA = DT->findNearestCommonDominator(Pos->getParent(),
+                                                          UI->getParent());
+                IGC_ASSERT(NCA && "Blocks in the same loop has no NCA!");
+                Pos = NCA->getTerminator();
+              }
+            }
+            // If the postion is available, sink that trivial flag
+            // evaluation.
+            if (Pos) {
+              Def->moveBefore(Pos);
+              Changed = true;
+            }
+          }
+        }
+      }
+    }
+
     return Changed;
 }
 
