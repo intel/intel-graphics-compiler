@@ -156,7 +156,8 @@ std::string recursive_mangle(const Type* pType)
             if (ST && ST->isOpaque())
             {
                 StringRef structName = ST->getName();
-                bool isImage = structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::Image));
+                bool isImage = structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::Image)) ||
+                    structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::SampledImage));
                 if (isImage)
                 {
                     SmallVector<StringRef, 8> matches;
@@ -467,6 +468,18 @@ std::string getSPIRVImageSampledTypeName(SPIRVType* Ty) {
     }
     llvm_unreachable("Invalid sampled type for image");
     return std::string();
+}
+
+bool isSPIRVSamplerType(llvm::Type* Ty) {
+  if (auto PT = dyn_cast<PointerType>(Ty))
+    if (auto ST = dyn_cast<StructType>(PT->getElementType()))
+      if (ST->isOpaque()) {
+        auto Name = ST->getName();
+        if (Name.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + kSPIRVTypeName::Sampler)) {
+          return true;
+        }
+      }
+  return false;
 }
 
 }
