@@ -2046,13 +2046,18 @@ bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
   return Offset == 0 || Offset == 16;
 }
 
-CallInst *genx::checkFunctionCall(Value *V, Function *F) {
+const CallInst *genx::checkFunctionCall(const Value *V, const Function *F) {
   if (!V || !F)
     return nullptr;
-  auto *CI = dyn_cast<CallInst>(V);
+  const auto *CI = dyn_cast<CallInst>(V);
   if (CI && CI->getCalledFunction() == F)
     return CI;
   return nullptr;
+}
+
+CallInst *genx::checkFunctionCall(Value *V, const Function *F) {
+  return const_cast<CallInst *>(
+      genx::checkFunctionCall(static_cast<const Value *>(V), F));
 }
 
 unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,

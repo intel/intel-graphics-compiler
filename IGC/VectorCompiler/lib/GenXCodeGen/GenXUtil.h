@@ -564,7 +564,8 @@ bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);
 // another function, e.g. genx.faddr intrinsic.
 // Returns V casted to CallInst if the check is true,
 // nullptr otherwise.
-CallInst *checkFunctionCall(Value *V, Function *F);
+const CallInst *checkFunctionCall(const Value *V, const Function *F);
+CallInst *checkFunctionCall(Value *V, const Function *F);
 
 // Get possible number of GRFs for indirect region
 unsigned getNumGRFsPerIndirectForRegion(const genx::Region &R,

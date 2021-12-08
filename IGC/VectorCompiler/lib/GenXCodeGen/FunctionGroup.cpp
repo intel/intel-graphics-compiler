@@ -32,6 +32,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
+#include <algorithm>
+
 #include "GenXUtil.h"
 
 #include "llvmWrapper/IR/LegacyPassManagers.h"
@@ -42,6 +44,10 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "functiongroup-passmgr"
 
 using namespace llvm;
+
+static cl::opt<bool> PrintFunctionsUsers(
+    "fga-print-functions-users", cl::init(true), cl::Hidden,
+    cl::desc("FunctionGroupAnalysis::print emits users of functions"));
 
 bool FunctionGroup::verify() const {
   // TODO: ideally, we'd like to access call-graph here. However,
@@ -59,7 +65,7 @@ bool FunctionGroup::verify() const {
 
       // Note: it is expected that all users of any function from
       // Functions array belong to the same FG
-      Function *Caller = CI->getFunction();
+      const Function *Caller = CI->getFunction();
       auto *OtherGroup = FGA->getAnyGroup(Caller);
       IGC_ASSERT_MESSAGE(OtherGroup == this,
                          "inconsistent function group detected!");
@@ -70,19 +76,25 @@ bool FunctionGroup::verify() const {
   return true;
 }
 
-#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 void FunctionGroup::print(raw_ostream &OS) const {
-  OS << "{{{" << getName() << "}}}\n";
-  for (const Function *F : Functions) {
-    OS << "  " << F->getName() << "\n";
+  OS << "{" << getName() << "}\n";
+
+  std::vector<StringRef> FuncsNames;
+  llvm::transform(Functions, std::back_inserter(FuncsNames),
+                  [](const Function *F) { return F->getName(); });
+  // The head remains the first.
+  std::sort(std::next(FuncsNames.begin()), FuncsNames.end());
+  for (const auto &F : FuncsNames) {
+    OS << "  " << F << "\n";
   }
 
   for (const auto &EnItem : enumerate(Subgroups)) {
     OS << "--SGR[" << EnItem.index() << "]: ";
-    OS << "<" << EnItem.value()->getHead()->getName() << ">]\n";
+    OS << "<" << EnItem.value()->getHead()->getName() << ">\n";
   }
 }
 
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 void FunctionGroup::dump() const { print(dbgs()); }
 #endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 
@@ -287,8 +299,7 @@ bool FunctionGroupAnalysis::verify() const {
   return llvm::all_of(AllGroups(), [](const auto &GR) { return GR->verify(); });
 }
 
-#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-void FunctionGroupAnalysis::print(raw_ostream &OS) const {
+void FunctionGroupAnalysis::print(raw_ostream &OS, const Module *) const {
   OS << "Number of Groups = " << Groups.size() << "\n";
   for (const auto &X : enumerate(Groups)) {
     OS << "GR[" << X.index() << "] = <\n";
@@ -301,9 +312,33 @@ void FunctionGroupAnalysis::print(raw_ostream &OS) const {
     X.value()->print(OS);
     OS << ">\n";
   }
+  if (!PrintFunctionsUsers)
+    return;
+
+  for (auto T : TypesToProcess) {
+    std::map<StringRef, std::set<StringRef>> FuncUsers;
+    for (auto [F, FG] : GroupMap[T]) {
+      FuncUsers[F->getName()];
+      for (auto *U : F->users()) {
+        auto *CI = genx::checkFunctionCall(U, F);
+        if (!CI)
+          continue;
+        const Function *Caller = CI->getFunction();
+        FuncUsers[F->getName()].insert(Caller->getName());
+      }
+    }
+    for (const auto &[FuncName, UsersNames] : FuncUsers) {
+      OS << "Users of " << FuncName << ":";
+      for (const auto &UserName : UsersNames) {
+        OS << " " << UserName;
+      }
+      OS << "\n";
+    }
+  }
 }
 
-void FunctionGroupAnalysis::dump() const { print(dbgs()); }
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void FunctionGroupAnalysis::dump() const { print(dbgs(), nullptr); }
 #endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 
 //===----------------------------------------------------------------------===//

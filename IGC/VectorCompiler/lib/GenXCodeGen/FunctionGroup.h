@@ -261,8 +261,8 @@ public:
 
   bool verify() const;
 
+  void print(raw_ostream &OS, const Module *) const override;
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-  void print(raw_ostream &OS) const;
   void dump() const;
 #endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 };
