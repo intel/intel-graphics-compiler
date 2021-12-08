@@ -343,11 +343,12 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
             Ctx.type == ShaderType::DOMAIN_SHADER ||
             Ctx.type == ShaderType::GEOMETRY_SHADER;
 
-        // Start with simd16, which allows the medium size of space per WI
+        //FIXME: Below heuristics is not a clean design. Revisit this!
+        //Start with simd16 or simd32 correspondingly if MinDispatchMode() is 8 or 16, which allows the medium size of space per WI
         // (simd8: largest, simd32, smallest). In doing so, there will be
         // some space left for spilling in simd8 if spilling happens.
         int32_t simd_size = isGeometryStageShader ? numLanes(Ctx.platform.getMinDispatchMode()) :
-            numLanes(SIMDMode::SIMD16);
+            (Ctx.platform.getMinDispatchMode() == SIMDMode::SIMD8 ? numLanes(SIMDMode::SIMD16) : numLanes(SIMDMode::SIMD32));
         const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
         if (subGrpSize > simd_size)
             simd_size = std::min(subGrpSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
