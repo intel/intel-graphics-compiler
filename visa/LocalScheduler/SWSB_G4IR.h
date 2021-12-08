@@ -1461,6 +1461,8 @@ namespace vISA
             std::vector<SBBucketDesc>& BDvec,
             bool GRFOnly);
 
+        bool hasIndirectSource(SBNode* node);
+
         bool getGRFFootPrint(SBNode *node,
             PointsToAnalysis &p);
 

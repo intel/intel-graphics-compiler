@@ -4974,6 +4974,40 @@ void G4_BB_SB::getGRFBucketsForOperands(SBNode* node,
     return;
 }
 
+bool G4_BB_SB::hasIndirectSource(SBNode* node)
+{
+    if (!distanceHonourInstruction(node->GetInstruction()))
+    {
+        return false;
+    }
+
+    for (Gen4_Operand_Number opndNum = Opnd_src0; opndNum <= Opnd_src3; opndNum = (Gen4_Operand_Number)(opndNum + 1))
+    {
+        G4_Operand* opnd = node->GetInstruction()->getOperand(opndNum);
+
+        if (!opnd || !opnd->getBase())
+        {
+            continue;
+        }
+
+        if (opnd->isLabel() || opnd->isImm())
+        {
+            continue;
+        }
+
+        if (!opnd->isSrcRegRegion())
+        {
+            continue;
+        }
+        if (hasIndirection(opnd, opndNum))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool G4_BB_SB::getGRFFootPrint(SBNode* node, PointsToAnalysis& p)
 {
     bool hasDistOneAReg = false;
@@ -5568,6 +5602,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
     }
     SBNODE_LIST tmpSBSendNodes;
     bool hasFollowDistOneAReg = false;
+    bool hasFollowDistOneIndirectReg = false;
 
     std::list<G4_INST*>::iterator iInst(bb->begin()), iInstEnd(bb->end()), iInstNext(bb->begin());
     for (; iInst != iInstEnd; ++iInst)
@@ -5606,16 +5641,22 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         nodeID++;
 
         //For architecture registers ce#, sp, sr0.#, cr0.#, ip, tm0, dbg0, set distance 1
-        if (hasFollowDistOneAReg)
+        if (hasFollowDistOneAReg || hasFollowDistOneIndirectReg)
         {
             node->setDistance(1);
             node->setFollowDistOneAReg();
             hasFollowDistOneAReg = false;
+            hasFollowDistOneIndirectReg = false;
             if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
             {
                 node->instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
             }
         }
+
+        hasFollowDistOneIndirectReg = builder.getOption(vISA_InsertDummyMovForHWRSWA) &&
+            (VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344) ||
+             VISA_WA_CHECK(builder.getPWaTable(), Wa_16012292205)) &&
+            hasIndirectSource(node);
 
         hasFollowDistOneAReg = getGRFFootPrint(node, p);
 

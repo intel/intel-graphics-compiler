@@ -1805,7 +1805,8 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
 void HWConformity::fixPredicateIndirectInst(INST_LIST_ITER it, G4_BB* bb)
 {
     G4_INST* inst = (*it);
-    if (inst->getDst() &&
+    if (inst->getPredicate() &&
+        inst->getDst() &&
         !inst->getDst()->isNullReg() &&
         inst->getDst()->getRegAccess() == Direct)
     {
