@@ -257,20 +257,16 @@ void*
 \*****************************************************************************/
 inline void* CAllocator::Malloc(size_t size)
 {
-    void* ptr = malloc(size);
+    void* const ptr = malloc(size);
 
 #ifdef _DEBUG
-    if(ptr)
+    if(nullptr != ptr)
     {
         std::memset(ptr, 0xcc, size);
     }
 #endif
 #ifdef _WIN32
-    if(ptr == nullptr)
-    {
-        IGC_ASSERT_EXIT_MESSAGE(0,
-            "Could not allocate the required memory to storage");
-    }
+    IGC_ASSERT_EXIT_MESSAGE(nullptr != ptr, "Could not allocate the required memory to storage");
 #endif
     return ptr;
 }
