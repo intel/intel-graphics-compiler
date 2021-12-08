@@ -55,13 +55,6 @@ SPDX-License-Identifier: MIT
 ///     metadata and as an extra arg to the definition of the kernel itself,
 ///     and its value is stored into the global variable;
 ///
-///   - for any fixed signature function (implicit args cannot be passed as an
-///     additional function parameter) the implicit arg is loaded from implicit
-///     args buffer (it is always available during the execution) and then
-///     stored into the corresponding global variable;
-///
-///   - kernels that require implicit args buffer being allocated are marked;
-///
 /// * each use of the intrinsic for a CM runtime implicit arg is transformed into
 ///   a load of the corresponding global variable.
 ///
@@ -104,7 +97,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/Utils/GenX/ImplicitArgsBuffer.h"
+
 #include "vc/Utils/General/FunctionAttrs.h"
 #include "vc/Utils/General/DebugInfo.h"
 
@@ -127,10 +120,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <algorithm>
-#include <iterator>
 #include <map>
-#include <numeric>
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
@@ -145,21 +135,6 @@ using namespace llvm;
 static cl::opt<bool>
     CMRTOpt("cmimpparam-cmrt", cl::init(true), cl::Hidden,
             cl::desc("Should be used only in llvm opt to switch RT"));
-
-// Sometimes full list of elements cannot be defined, e.g. list of called
-// functions when indirect call instructions are present.
-// In this type set vector means that the full list can be defined and the
-// vector represents it. When the vector is not set, the full list cannot be
-// defined but it is not empty. Empty vector means that the full set can be
-// defined but it is just empty.
-template <typename T> using MaybeUndefSeq = Optional<std::vector<T>>;
-using MaybeUndefFuncSeq = MaybeUndefSeq<Function *>;
-
-// Checks whether the provided vector \p has unique elements.
-template <typename T> static bool isUnique(const std::vector<T> &V) {
-  std::unordered_set<T> TestUnique{V.begin(), V.end()};
-  return TestUnique.size() == V.size();
-}
 
 namespace {
 
@@ -212,19 +187,7 @@ private:
   LinearizedTy LinearizeAggregateType(Type *AggrTy);
   ArgLinearization GenerateArgsLinearizationInfo(Function &F);
 
-  void
-  processKernels(const std::vector<Function *> &Kernels,
-                 const IntrIDMap &UsedIntrInfo,
-                 const std::unordered_set<Function *> &RequireImplArgsBuffer);
   CallGraphNode *processKernel(Function *F, const IntrIDSet &UsedImplicits);
-
-  std::pair<IntrIDMap, std::unordered_set<Function *>>
-  analyzeFixedSignatureFunctions(Module &M, const IntrIDMap &UsedIntrInfo);
-  void processFixedSignatureFunction(Function &F,
-                                     const IntrIDSet &UsedIntrInfo);
-  void storeImplArgInFixedSignatureFunction(unsigned IID,
-                                            Value &ImplArgsBufferPtr,
-                                            IRBuilder<> &IRB);
 
   static Value *getValue(Metadata *M) {
     if (auto VM = dyn_cast<ValueAsMetadata>(M))
@@ -337,37 +300,17 @@ class CallGraphTraverser {
   const IntrIDMap &UsedIntr;
   std::unordered_set<Function *> Visited;
   IntrIDSet CollectedIID;
-  MaybeUndefFuncSeq CalledFixedSignFuncs{MaybeUndefFuncSeq::value_type{}};
 
 public:
   CallGraphTraverser(const CallGraph &CGIn, const IntrIDMap &UsedIntrIn)
       : CG{CGIn}, UsedIntr{UsedIntrIn} {}
-
-  // Returns a pair of indirectly used implicit args and called fixed signature
-  // functions. Indirectly used implicit args are those implicit args that are
-  // used in the provided function \p F and its recursively called (called from
-  // \p F, called from those that called from \p, called from those that called
-  // from those that...) non-fixed signature functions. Fixed signature
-  // functions or indirect call stop the traversal, their indirectly used
-  // implicit args aren't collected. The 2nd return value describes whether
-  // some fixed signature functions were called and if so what functions were
-  // called if this set can be defined (case when some were but the distinct
-  // set cannot be defined is considered).
-  std::pair<IntrIDSet, MaybeUndefFuncSeq>
-  collectIndirectlyUsedImplArgs(Function &F) && {
-    IGC_ASSERT_MESSAGE(
-        vc::isFixedSignatureDefinition(F) | genx::isKernel(&F),
-        "entry point must be a fixed signature function or a kernel");
-    visitFunction</*IsEntry =*/true>(F);
-    if (CalledFixedSignFuncs.hasValue()) {
-      IGC_ASSERT_MESSAGE(isUnique(CalledFixedSignFuncs.getValue()),
-                         "values in CalledFixedSignFuncs must be unique");
-    }
-    return {CollectedIID, CalledFixedSignFuncs};
+  IntrIDSet collectIndirectlyUsedImplArgs(Function &F) && {
+    visitFunction(F);
+    return CollectedIID;
   }
 
 private:
-  template <bool IsEntry = false> void visitFunction(Function &F);
+  void visitFunction(Function &F);
 };
 
 } // namespace
@@ -395,23 +338,6 @@ static std::vector<Function *> collectKernels(Module &M) {
   return Kernels;
 }
 
-// Checks whether kernel calls some function with a fixed signature that uses
-// implicit args or may call such function (in case of some externally defined
-// function, or indirect call). In this case kernel should have access to
-// implicit arg buffer.
-bool kernelRequiresImplArgBuffer(
-    const MaybeUndefFuncSeq &CalledFixedSignFuncs,
-    const std::unordered_set<Function *> &RequireImplArgsBuffer) {
-  if (!CalledFixedSignFuncs.hasValue())
-    // Set of called functions cannot be defined. Presume that the buffer is
-    // required.
-    return true;
-  return llvm::any_of(CalledFixedSignFuncs.getValue(),
-                      [&RequireImplArgsBuffer](Function *F) {
-                        return RequireImplArgsBuffer.count(F);
-                      });
-}
-
 bool CMImpParam::runOnModule(Module &M) {
   DL = &M.getDataLayout();
 
@@ -421,42 +347,25 @@ bool CMImpParam::runOnModule(Module &M) {
   // Analyze functions for implicit use intrinsic invocation
   ImplArgIntrSeq Workload = collectImplicitArgIntrinsics(M);
   auto Kernels = collectKernels(M);
-  IntrIDMap UsedIntrInfo = fillUsedIntrMap(Workload);
-  auto [FixedSignFuncInfo, RequireImplArgsBuffer] =
-      analyzeFixedSignatureFunctions(M, UsedIntrInfo);
 
-  if (Workload.empty() && Kernels.empty() && FixedSignFuncInfo.empty())
+  if (Workload.empty() && Kernels.empty())
     // If ConvertToOCLPayload changed code, workload wouldn't be empty (there
     // would be at least local_id16 intrinsics). So returning false here is
     // correct.
     return false;
 
+  IntrIDMap UsedIntrInfo = fillUsedIntrMap(Workload);
   replaceImplicitArgIntrinsics(Workload);
 
-  for (auto [F, RequiredImplArgs] : FixedSignFuncInfo)
-    processFixedSignatureFunction(*F, RequiredImplArgs);
-
+  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
   // Kernel transformation should go last since it invalidates the collected
   // data: kernel functions are changed.
-  processKernels(Kernels, UsedIntrInfo, RequireImplArgsBuffer);
-
-  return true;
-}
-
-void CMImpParam::processKernels(
-    const std::vector<Function *> &Kernels, const IntrIDMap &UsedIntrInfo,
-    const std::unordered_set<Function *> &RequireImplArgsBuffer) {
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-
   for (Function *Kernel : Kernels) {
     // Traverse the call graph to determine what the total implicit uses are for
     // the top level kernels.
-    auto [RequiredImplArgs, CalledFixedSignFuncs] =
+    IntrIDSet RequiredImplArgs =
         CallGraphTraverser{CG, UsedIntrInfo}.collectIndirectlyUsedImplArgs(
             *Kernel);
-    if (kernelRequiresImplArgBuffer(CalledFixedSignFuncs,
-                                    RequireImplArgsBuffer))
-      Kernel->addFnAttr(vc::ImplicitArgs::KernelAttr);
     // For OCL/L0 RT we should unconditionally add implicit PRIVATE_BASE
     // argument which is not supported on CM RT.
     if (!IsCmRT)
@@ -465,158 +374,8 @@ void CMImpParam::processKernels(
     if (!RequiredImplArgs.empty())
       processKernel(Kernel, RequiredImplArgs);
   }
-}
 
-// Returns:
-//    0: Map from a fixed signature function to the set of implicit args used in
-//       the function and its subroutines. Implicit args are defined by IIDs.
-//    1: Set of functions which require kernel that calls them to have implicit
-//       args buffer. This set is wider than set of functions in the 0 return
-//       value since implicit args may be used not only in the function and
-//       subroutines but also in some called fixed signature function which
-//       doesn't require loading implicit args in the considered function but
-//       does require implicit args buffer to be present to be able to load
-//       implicit args on their side.
-// Note: by subroutines above were meant functions which signatures will be
-// changed and implicit args in which will be passed as additional parameters.
-// This also may be an internal stack call.
-std::pair<IntrIDMap, std::unordered_set<Function *>>
-CMImpParam::analyzeFixedSignatureFunctions(Module &M,
-                                           const IntrIDMap &UsedIntrInfo) {
-  IntrIDMap FixedSignFuncInfo;
-  std::unordered_set<Function *> RequireImplArgsBuffer;
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-
-  auto FixedSignatureDefinitions = make_filter_range(
-      M, [](const Function &F) { return vc::isFixedSignatureDefinition(F); });
-
-  for (Function &F : FixedSignatureDefinitions) {
-    auto [RequiredImplArgs, CalledFixedSignFuncs] =
-        CallGraphTraverser{CG, UsedIntrInfo}.collectIndirectlyUsedImplArgs(F);
-    // Function should be marked if it uses implicit args or it calls some
-    // function that may use it via implicit args buffer.
-    if (!RequiredImplArgs.empty() || !CalledFixedSignFuncs.hasValue() ||
-        !CalledFixedSignFuncs.getValue().empty())
-      RequireImplArgsBuffer.emplace(&F);
-
-    if (!RequiredImplArgs.empty())
-      FixedSignFuncInfo.emplace(&F, std::move(RequiredImplArgs));
-  }
-  return {FixedSignFuncInfo, RequireImplArgsBuffer};
-}
-
-// Accesses all the required implicit args and stores them into implicit arg
-// global variables. The set of requred implicit args must be provided in
-// \p UsedIntrInfo.
-void CMImpParam::processFixedSignatureFunction(Function &F,
-                                               const IntrIDSet &UsedIntrInfo) {
-  IRBuilder<> IRB{&*F.getEntryBlock().getFirstInsertionPt()};
-  auto &ImplArgsBufferPtr = vc::ImplicitArgs::Buffer::getPointer(IRB);
-  for (unsigned IID : UsedIntrInfo)
-    storeImplArgInFixedSignatureFunction(IID, ImplArgsBufferPtr, IRB);
-}
-
-// Returns an array of indices of implicit args buffer structure fields that
-// should be loaded to obtain the value of an implicit arg defined by the
-// corresponding intrinsic ID.
-template <unsigned IID>
-std::array<vc::ImplicitArgs::Buffer::Indices::Enum, 3>
-getIABufferIndicesForIID();
-
-template <>
-std::array<vc::ImplicitArgs::Buffer::Indices::Enum, 3>
-getIABufferIndicesForIID<GenXIntrinsic::genx_local_size>() {
-  return {vc::ImplicitArgs::Buffer::Indices::LocalSizeX,
-          vc::ImplicitArgs::Buffer::Indices::LocalSizeY,
-          vc::ImplicitArgs::Buffer::Indices::LocalSizeZ};
-}
-
-template <>
-std::array<vc::ImplicitArgs::Buffer::Indices::Enum, 3>
-getIABufferIndicesForIID<GenXIntrinsic::genx_group_count>() {
-  return {vc::ImplicitArgs::Buffer::Indices::GroupCountX,
-          vc::ImplicitArgs::Buffer::Indices::GroupCountY,
-          vc::ImplicitArgs::Buffer::Indices::GroupCountZ};
-}
-
-// Inserts a code that loads 3-component implicit argument from the buffer.
-// An implicit argument is defined via the corresponding intrinsic ID.
-// Arguments:
-//    \p ImplArgsBufferPtr - a pointer to implicit args buffer structure;
-//    \p IRB - IR builder used to insert the code.
-template <unsigned IID>
-Value &loadVec3ArgFromIABuffer(Value &ImplArgsBufferPtr, IRBuilder<> &IRB) {
-  auto Indices = getIABufferIndicesForIID<IID>();
-  std::array<Value *, 3> VectorElements;
-  std::transform(
-      Indices.begin(), Indices.end(), VectorElements.begin(),
-      [&ImplArgsBufferPtr, &IRB](vc::ImplicitArgs::Buffer::Indices::Enum Idx) {
-        return &vc::ImplicitArgs::Buffer::loadField(ImplArgsBufferPtr, Idx, IRB,
-                                                    "impl.arg.vec.elem");
-      });
-  Value *Result = UndefValue::get(
-      IGCLLVM::FixedVectorType::get(VectorElements.front()->getType(), 3));
-  auto VectorElementsWithIndices = enumerate(VectorElements);
-  Result = std::accumulate(
-      VectorElementsWithIndices.begin(), VectorElementsWithIndices.end(),
-      Result, [&IRB](Value *Accumulator, auto VectorElementWithIndex) {
-        return IRB.CreateInsertElement(
-            Accumulator, VectorElementWithIndex.value(),
-            VectorElementWithIndex.index(), "impl.arg.vec.combine");
-      });
-  return *Result;
-}
-
-// Inserts a code that loads implicit argument from the buffer.
-// Arguments:
-//    \p IID - the ID of intrinsic that corresponds to the required implicit
-//             arg;
-//    \p ImplArgsBufferPtr - a pointer to implicit args buffer structure;
-//    \p IRB - IR builder used to insert the code.
-static Value &loadArgFromIABuffer(unsigned IID, Value &ImplArgsBufferPtr,
-                                  IRBuilder<> &IRB) {
-  switch (IID) {
-  default:
-    IGC_ASSERT_MESSAGE(0, "unexpected intrinsic id");
-    return ImplArgsBufferPtr;
-  case GenXIntrinsic::genx_local_id16:
-    report_fatal_error(
-        "Local IDs aren't yet supported for external and indirect functions");
-  case GenXIntrinsic::genx_local_id:
-  case GenXIntrinsic::genx_get_scoreboard_deltas:
-  case GenXIntrinsic::genx_get_scoreboard_bti:
-  case GenXIntrinsic::genx_get_scoreboard_depcnt:
-    report_fatal_error("Intrinsic: " + GenXIntrinsic::getAnyName(IID) +
-                       ". Requested implicit argument is not supported for "
-                       "external and indirect functions");
-  case GenXIntrinsic::genx_local_size:
-    return loadVec3ArgFromIABuffer<GenXIntrinsic::genx_local_size>(
-        ImplArgsBufferPtr, IRB);
-  case GenXIntrinsic::genx_group_count:
-    return loadVec3ArgFromIABuffer<GenXIntrinsic::genx_group_count>(
-        ImplArgsBufferPtr, IRB);
-  case GenXIntrinsic::genx_print_buffer:
-    return vc::ImplicitArgs::Buffer::loadField(
-        ImplArgsBufferPtr, vc::ImplicitArgs::Buffer::Indices::PrintfBufferPtr,
-        IRB, "printf.buffer.ptr");
-  }
-}
-
-// Accesses the required implicit arg and stores it into the corresponding
-// implicit arg global variable.
-// Arguments:
-//    \p IID - the ID of intrinsic that corresponds to the required implicit
-//             arg;
-//    \p ImplArgsBufferPtr - a pointer to implicit args buffer structure;
-//    \p IRB - IR builder used to insert the code.
-void CMImpParam::storeImplArgInFixedSignatureFunction(unsigned IID,
-                                                      Value &ImplArgsBufferPtr,
-                                                      IRBuilder<> &IRB) {
-  auto &ImplicitArg = loadArgFromIABuffer(IID, ImplArgsBufferPtr, IRB);
-  IGC_ASSERT_MESSAGE(GlobalsMap.count(IID),
-                     "must have a corresponding global since the arg use was "
-                     "already replaced with a load from the global");
-  IRB.CreateStore(&ImplicitArg, GlobalsMap[IID]);
+  return true;
 }
 
 // Replace the given instruction with a load from a global
@@ -836,33 +595,15 @@ void CMImpParam::ConvertToOCLPayload(Module &M) {
   }
 }
 
-// Recursively visits \p F and its children in call graph that are not fixed
-// signature functions. Collects the required info through the traversal.
-// \p IsEntry indicates that the provided \p F is the start of traversal and
-// the method is not called from itself (we're not inside recursion yet).
-template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
+// Determine if the named function uses any functions tagged with implicit use
+// in the call-graph
+void CallGraphTraverser::visitFunction(Function &F) {
   // If this node has already been processed then return immediately
   if (Visited.count(&F))
     return;
 
   // Add this node to the already visited list
   Visited.insert(&F);
-
-  // Have to stop on functions which signatures cannot be changed (won't be
-  // able to pass an implicit argument as an additional argument there).
-  // Entry is an external function by definition, don't stop on entry.
-  if constexpr (!IsEntry) {
-    IGC_ASSERT_MESSAGE(!genx::isKernel(&F), "kernel call is unexpected");
-    if (vc::isFixedSignatureFunc(F)) {
-      IGC_ASSERT_MESSAGE(!F.isDeclaration(),
-                         "declarations are unexpected: call graph edge cannot "
-                         "lead to a declaration");
-      if (CalledFixedSignFuncs.hasValue())
-        // Adding only if undef calling endge haven't been met.
-        CalledFixedSignFuncs.getValue().push_back(&F);
-      return;
-    }
-  }
 
   // Handle current node: add its used implicit intrinisic IDs if present.
   if (UsedIntr.count(&F))
@@ -872,13 +613,11 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
   const CallGraphNode *N = CG[&F];
   // Inspect all children (recursive)
   for (auto CallEdge : *N) {
-    // Returns nullptr in case of indirect call.
+    // Returns nullptr for externally defined functions or in case of indirect
+    // call.
     auto *Child = CallEdge.second->getFunction();
-    if (Child && !Child->isDeclaration())
+    if (Child)
       visitFunction(*Child);
-    else
-      // Cannot define the set of called functions.
-      CalledFixedSignFuncs.reset();
   }
 }
 
