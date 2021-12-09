@@ -8694,8 +8694,6 @@ uint8_t G4_InstDpas::getOpsPerChan() const
         return OPS_PER_CHAN_2;
     else if (isTF32())
         return OPS_PER_CHAN_1;
-    else if (isBF8())
-        return OPS_PER_CHAN_4;
     else if (is2xInt8())
         return OPS_PER_CHAN_8;
     // int8

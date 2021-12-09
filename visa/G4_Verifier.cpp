@@ -1095,18 +1095,6 @@ void G4Verifier::verifyDpas(G4_INST* inst)
             MUST_BE_TRUE(false, "dpas: should be float type for dst or src0");
         }
     }
-    else if (dpasInst->isBF8())
-    {
-        if (!(dTy == Type_F || dTy == Type_BF || dTy == Type_HF) ||
-            !(s0Ty == Type_F || s0Ty == Type_BF || s0Ty == Type_HF))
-        {
-            DEBUG_VERBOSE("dpas: incorrect type for dst or src0 (expected F, BF, HF)!");
-            inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
-            MUST_BE_TRUE(false, "dpas: should be type(F, BF, HF) for dst or src0");
-        }
-    }
-
     else
     {
         DEBUG_VERBOSE("dpas: invalid!");

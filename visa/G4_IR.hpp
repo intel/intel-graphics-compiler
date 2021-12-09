@@ -1207,7 +1207,6 @@ class G4_InstDpas : public G4_INST
         // Check if this is int dpas or half-float dpas
         bool isBF16() const { return Src1Precision == GenPrecision::BF16; }
         bool isFP16() const { return Src1Precision == GenPrecision::FP16; }
-        bool isBF8() const { return Src1Precision == GenPrecision::BF8; }
         bool isTF32() const { return Src1Precision == GenPrecision::TF32; }
         bool isInt() const;
         bool is2xInt8() const; // true if it is 2xint8 dpas

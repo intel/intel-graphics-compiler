@@ -7413,7 +7413,6 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
         uint32_t src1Bits = GenPrecisionTable[(int)src1Precision].BitSize;
         uint32_t src2Bits = GenPrecisionTable[(int)src2Precision].BitSize;
         if (src2Precision == GenPrecision::FP16 || src2Precision == GenPrecision::BF16 ||
-            src2Precision == GenPrecision::TF32 || src2Precision == GenPrecision::BF8 ||
             src2Bits == 8 || (src1Bits <= 4 && src2Bits == 4))
         {
             G4_SubReg_Align srAlign = GRFALIGN;

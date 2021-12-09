@@ -178,7 +178,7 @@ int IR_Builder::translateVISADpasInst(
 
     G4_ExecSize exsize = toExecSize(executionSize);
     G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
-    if (hasBFDstforDPAS() && (A == GenPrecision::BF16 || A == GenPrecision::BF8))
+    if (hasBFDstforDPAS() && A == GenPrecision::BF16)
     {
         // PVC allows BF dst and src0, and they are W/UW when coming into vISA,
         // so we fix the type here

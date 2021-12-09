@@ -220,7 +220,6 @@ static G4_Type getDPASDataType(GenPrecision p)
     case GenPrecision::S8:   return Type_B;
     case GenPrecision::FP16: return Type_HF;
     case GenPrecision::BF16: return Type_BF;
-    case GenPrecision::BF8:  return Type_UNDEF;
     case GenPrecision::TF32: return Type_UNDEF;
     default:
         assert(false && "illegal Operand Precision");

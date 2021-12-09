@@ -253,7 +253,6 @@ private:
         case GenPrecision::S8:   return Type::B;
         case GenPrecision::FP16: return Type::HF;
         case GenPrecision::BF16: return Type::BF;
-        case GenPrecision::BF8:  return Type::BF8;
         case GenPrecision::TF32: return Type::TF32;
         default:
             assert(false && "illegal Operand Precision");

@@ -271,15 +271,6 @@ dpas"."tf32"."tf32"."(1|2|4|8)"."[12345678] {
         CISAlval.dpas_info.count = (yytext[17] - '0');
         return DPAS_OP;
     }
-dpas"."bf8"."bf8"."(1|2|4|8)"."[12345678] {
-        TRACE("** DPAS");
-        CISAlval.opcode = ISA_DPAS;
-        CISAlval.dpas_info.src1Precision = GenPrecision::BF8;
-        CISAlval.dpas_info.src2Precision = GenPrecision::BF8;
-        CISAlval.dpas_info.depth = (yytext[13] - '0');
-        CISAlval.dpas_info.count = (yytext[15] - '0');
-        return DPAS_OP;
-    }
 
 dp4a {
         TRACE("** ARITH4_OP");
