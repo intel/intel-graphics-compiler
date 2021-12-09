@@ -228,23 +228,6 @@ public:
       OpDebugExpression dbgExpr(inst);
 
       auto numOperations = dbgExpr.getNumOperations();
-
-      // Detect if any address class pattern is here. Then remove all opcodes of this pattern.
-      // Pattern 1: !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)
-      bool pattern1 = false;
-      if (numOperations >= 3)
-      {
-          OpDebugOperation operation1(BM->get<SPIRVExtInst>(dbgExpr.getOperation(numOperations - 3)));
-          OpDebugOperation operation2(BM->get<SPIRVExtInst>(dbgExpr.getOperation(numOperations - 2)));
-          OpDebugOperation operation3(BM->get<SPIRVExtInst>(dbgExpr.getOperation(numOperations - 1)));
-          SPIRVDebug::ExpressionOpCode op1 = (SPIRVDebug::ExpressionOpCode)operation1.getOperation();
-          SPIRVDebug::ExpressionOpCode op2 = (SPIRVDebug::ExpressionOpCode)operation2.getOperation();
-          SPIRVDebug::ExpressionOpCode op3 = (SPIRVDebug::ExpressionOpCode)operation3.getOperation();
-          if (op1 == SPIRVDebug::ExpressionOpCode::Constu && op2 == SPIRVDebug::ExpressionOpCode::Swap && op3 == SPIRVDebug::ExpressionOpCode::Xderef)
-              pattern1 = true;
-      }
-
-      bool pattern1op1 = false;
       llvm::SmallVector<uint64_t, 5> Exprs;
       for (unsigned int i = 0; i != numOperations; ++i)
       {
@@ -259,21 +242,10 @@ public:
               CASE(dwarf::DW_OP_minus, SPIRVDebug::ExpressionOpCode::Minus);
               CASE(dwarf::DW_OP_plus_uconst, SPIRVDebug::ExpressionOpCode::PlusUconst);
               CASE(dwarf::DW_OP_bit_piece, SPIRVDebug::ExpressionOpCode::BitPiece);
-              case SPIRVDebug::ExpressionOpCode::Swap:
-                  if (!pattern1 || i != (numOperations - 2))
-                      Exprs.push_back(dwarf::DW_OP_swap);
-                  break;
-              case SPIRVDebug::ExpressionOpCode::Xderef:
-                  if (!pattern1 || i != (numOperations - 1))
-                      Exprs.push_back(dwarf::DW_OP_xderef);
-                  break;
+              CASE(dwarf::DW_OP_swap, SPIRVDebug::ExpressionOpCode::Swap);
+              CASE(dwarf::DW_OP_xderef, SPIRVDebug::ExpressionOpCode::Xderef);
               CASE(dwarf::DW_OP_stack_value, SPIRVDebug::ExpressionOpCode::StackValue);
-              case SPIRVDebug::ExpressionOpCode::Constu:
-                  if (!pattern1 || i != (numOperations - 3))
-                      Exprs.push_back(dwarf::DW_OP_constu);
-                  else
-                      pattern1op1 = true;
-                  break;
+              CASE(dwarf::DW_OP_constu, SPIRVDebug::ExpressionOpCode::Constu);
               CASE(dwarf::DW_OP_LLVM_fragment, SPIRVDebug::ExpressionOpCode::Fragment);
 #if LLVM_VERSION_MAJOR >= 9
               CASE(dwarf::DW_OP_LLVM_convert, SPIRVDebug::ExpressionOpCode::Convert);
@@ -444,10 +416,7 @@ public:
           {
               for (unsigned int j = 1; j != numOperands; ++j)
               {
-                  if (!pattern1op1)
-                      Exprs.push_back(operation.getLiteral(j));
-                  else
-                      pattern1op1 = false;
+                  Exprs.push_back(operation.getLiteral(j));
               }
           }
       }

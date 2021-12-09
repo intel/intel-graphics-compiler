@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/ScalarVISAModule.h"
 #include "DebugInfo/DwarfDebug.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
+#include "llvm/IR/IntrinsicInst.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -274,6 +275,73 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg)
     SProgramOutput* pOutput = m_currShader->ProgramOutput();
     pOutput->m_debugData = dbgInfo;
     pOutput->m_debugDataSize = dbgInfo ? buffer.size() : 0;
+}
+
+
+// Detect instructions with an address class pattern. Then remove all opcodes of this pattern from
+// this instruction's last operand (metadata of DIExpression).
+// Pattern 1: !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)
+void DebugInfoData::extractAddressClass(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter)
+{
+    IGC_ASSERT_MESSAGE(pDebugEmitter, "Missing debug emitter");
+    VISAModule* visaModule = pDebugEmitter->getCurrentVISA();
+    IGC_ASSERT_MESSAGE(visaModule, "Missing visa module");
+
+    llvm::IRBuilder<> Builder(F.getParent()->getContext());
+    DIBuilder di(*F.getParent());
+
+    for (auto& bb : F)
+    {
+        for (auto& pInst : bb)
+        {
+            if (isa<CallInst>(&pInst))
+            {
+                CallInst* CI = cast<CallInst>(&pInst);
+                IGC_ASSERT_MESSAGE(CI, "Missing call instruction");
+                if (!CI->arg_empty() &&
+                    CI->arg_size() >= 3 &&
+                    (CI->getIntrinsicID() == Intrinsic::dbg_declare || CI->getIntrinsicID() == Intrinsic::dbg_value))
+                {
+                    DIExpression* DIExpr = nullptr;
+                    if (auto* DDI = dyn_cast<DbgDeclareInst>(&pInst))
+                    {
+                        DIExpr = DDI->getExpression();
+                    }
+                    else if (auto* DVI = dyn_cast<DbgValueInst>(&pInst))
+                    {
+                        DIExpr = DVI->getExpression();
+                    }
+
+                    llvm::SmallVector<uint64_t, 5> Exprs;
+                    if (DIExpr)
+                    {
+                        auto numElements = DIExpr->getNumElements();
+                        // If DWARF opcodes in this call instruction's last operand,
+                        // which is metadata of DIExpression, match the pattern,
+                        // then prepare a new DIExpression with the same content
+                        // except the pattern's DWARF opcodes. The currently processed
+                        // instruction's last operand will be replaced with
+                        // this new DIExpression.
+                        if (numElements >= 4 &&
+                            DIExpr->getElement(numElements - 4) == dwarf::DW_OP_constu &&
+                            DIExpr->getElement(numElements - 2) == dwarf::DW_OP_swap &&
+                            DIExpr->getElement(numElements - 1) == dwarf::DW_OP_xderef)
+                        {
+                            for (unsigned int j = 0; j != numElements - 4; ++j)
+                            {
+                                Exprs.push_back(DIExpr->getElement(j));
+                            }
+
+                            DIExpression* newDIExpr = di.createExpression(Exprs);
+                            Value* newMD = MetadataAsValue::get(F.getContext(), newDIExpr);
+
+                            CI->setArgOperand(CI->getNumArgOperands() - 1, newMD);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging

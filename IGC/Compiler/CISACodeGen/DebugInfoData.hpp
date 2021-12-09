@@ -40,6 +40,10 @@ namespace IGC
         CShader* m_pShader = nullptr;
         IDebugEmitter* m_pDebugEmitter = nullptr;
 
+        // Detect instructions with an address class pattern. Then remove all opcodes of this pattern from
+        // this instruction's last operand (metadata of DIExpression).
+        static void extractAddressClass(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter);
+
         static void markOutputPrivateBase(CShader* pShader, IDebugEmitter* pDebugEmitter);
         static void markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter, llvm::Instruction* pInst, const char* pMetaDataName);
         static void markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter);
