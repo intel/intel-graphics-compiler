@@ -37,6 +37,8 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXRegionUtils.h"
 
+#include "vc/Support/BackendConfig.h"
+
 #include "Probe/Assertion.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
@@ -131,6 +133,7 @@ void initializeGenXGlobalValueLoweringPass(PassRegistry &);
 
 INITIALIZE_PASS_BEGIN(GenXGlobalValueLowering, "GenXGlobalValueLowering",
                       "GenXGlobalValueLowering", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXGlobalValueLowering, "GenXGlobalValueLowering",
                     "GenXGlobalValueLowering", false, false)
 
@@ -141,15 +144,17 @@ ModulePass *llvm::createGenXGlobalValueLoweringPass() {
 
 void GenXGlobalValueLowering::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
+  AU.addRequired<GenXBackendConfig>();
 }
 
 bool GenXGlobalValueLowering::runOnModule(Module &M) {
   DL = &M.getDataLayout();
+  auto &&BECfg = getAnalysis<GenXBackendConfig>();
   for (auto &GV : M.globals())
     if (genx::isRealGlobalVariable(GV))
       fillWorkListForGV(GV);
   for (auto &F : M)
-    if (genx::isIndirect(F))
+    if (genx::isIndirect(F) && !BECfg.directCallsOnly())
       fillWorkListForGV(F);
 
   if (WorkList.empty())

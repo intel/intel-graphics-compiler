@@ -530,3 +530,4 @@ DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(DWORD, VCDisableLRCoalescingControl, 0, "Controls if LR coalescing", true)
     DECLARE_IGC_REGKEY(bool, VCSaveStackCallLinkage, false,
                        "Do not override stack calls linkage as internal", true)
+    DECLARE_IGC_REGKEY(bool, VCDirectCallsOnly, false, "Generate code under the assumption all unknown calls are direct", true)

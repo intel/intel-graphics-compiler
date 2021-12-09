@@ -264,6 +264,9 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 
   BackendOpts.DisableLiveRangesCoalescing =
       getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, false);
+
+  if (Opts.DirectCallsOnly)
+    BackendOpts.DirectCallsOnly = true;
   return BackendOpts;
 }
 

@@ -83,6 +83,10 @@ public:
     initializeGenXTrampolineInsertionPass(*PassRegistry::getPassRegistry());
   }
 
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<GenXBackendConfig>();
+  }
+
   StringRef getPassName() const override { return "GenXTrampolineInsertion"; }
 
   bool runOnModule(Module &M) override;
@@ -162,6 +166,16 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
   if (!EnableTrampolineInsertion)
     return false;
 
+  auto &&BECfg = getAnalysis<GenXBackendConfig>();
+  if (BECfg.directCallsOnly()) {
+    IGC_ASSERT_MESSAGE(
+        llvm::none_of(M.functions(),
+                      [](const Function &F) { return F.hasAddressTaken(); }),
+        "A function has address taken inside the module that contradicts "
+        "DirectCallsOnly option");
+    return false;
+  }
+
   visit(M);
 
   IRBuilder<> IRB(M.getContext());
@@ -204,6 +218,7 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
 char GenXTrampolineInsertion::ID = 0;
 INITIALIZE_PASS_BEGIN(GenXTrampolineInsertion, "GenXTrampolineInsertion",
                       "GenXTrampolineInsertion", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXTrampolineInsertion, "GenXTrampolineInsertion",
                     "GenXTrampolineInsertion", false, false)
 

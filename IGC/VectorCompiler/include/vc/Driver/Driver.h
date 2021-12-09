@@ -117,6 +117,7 @@ struct CompileOptions {
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;
   bool SaveStackCallLinkage = false;
+  bool DirectCallsOnly = false;
 };
 
 struct ExternalData {

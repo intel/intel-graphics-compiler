@@ -5995,7 +5995,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
     unsigned SMO = BackendConfig->getStackSurfaceMaxSize();
     Kernel->AddKernelAttribute("SpillMemOffset", 4, &SMO);
   } else if (genx::requiresStackCall(Func)) {
-    if (genx::isIndirect(Func)) {
+    if (genx::isIndirect(Func) && !BackendConfig->directCallsOnly()) {
       int ExtVal = 1;
       Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
     }
@@ -6098,7 +6098,7 @@ void GenXKernelBuilder::beginFunctionLight(Function *Func) {
     return;
   if (!genx::requiresStackCall(Func))
     return;
-  if (genx::isIndirect(Func)) {
+  if (genx::isIndirect(Func) && !BackendConfig->directCallsOnly()) {
     int ExtVal = 1;
     Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
   }

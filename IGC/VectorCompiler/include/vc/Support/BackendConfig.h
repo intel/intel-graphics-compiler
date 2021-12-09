@@ -126,6 +126,10 @@ struct GenXBackendOptions {
   // Enable preemption (to be switched on by default)
   bool EnablePreemption = false;
 
+  // Temporary solution. When is set, code is generated under the assumption all
+  // calls are direct. Extern call are still extern in LLVM IR.
+  bool DirectCallsOnly = false;
+
   GenXBackendOptions();
 };
 
@@ -273,6 +277,8 @@ public:
   bool usePlain2DImages() const { return Options.UsePlain2DImages; }
 
   bool enablePreemption() const { return Options.EnablePreemption; }
+
+  bool directCallsOnly() const { return Options.DirectCallsOnly; }
 };
 } // namespace llvm
 

@@ -703,8 +703,9 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
   std::vector<FunctionGroup *> IndirectlyReferencedFuncs;
   std::copy_if(FGA.subgroup_begin(), FGA.subgroup_end(),
                std::back_inserter(IndirectlyReferencedFuncs),
-               [](const FunctionGroup *FG) {
-                 return genx::isIndirect(FG->getHead());
+               [&BECfg = BC](const FunctionGroup *FG) {
+                 return genx::isIndirect(FG->getHead()) &&
+                        !BECfg.directCallsOnly();
                });
   if (!IndirectlyReferencedFuncs.empty())
     Kernels.push_back(collectFunctionSubgroupsInfo(IndirectlyReferencedFuncs));
