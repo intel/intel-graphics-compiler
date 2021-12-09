@@ -1210,8 +1210,11 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
 
     AddAnalysisPasses(*ctx, PassMgr);
 
-    SIMDMode simdModeAllowed = ctx->GetLeastSIMDModeAllowed();
-    SIMDMode maxSimdMode = ctx->GetMaxSIMDMode();
+    SIMDMode minSimdModeAllowed = ctx->GetLeastSIMDModeAllowed();
+    SIMDMode maxSimdModeAllowed = ctx->GetMaxSIMDMode();
+    IGC_ASSERT(minSimdModeAllowed <= maxSimdModeAllowed);
+
+
     unsigned int waveSize = ctx->getModuleMetaData()->csInfo.waveSize;
 
     if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32 || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
@@ -1219,7 +1222,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, false);
         ctx->m_ForceOneSIMD = true;
     }
-    else if (((IGC_IS_FLAG_ENABLED(ForceCSSIMD16) || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 16) && simdModeAllowed <= SIMDMode::SIMD16) ||
+    else if (((IGC_IS_FLAG_ENABLED(ForceCSSIMD16) || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 16) && minSimdModeAllowed <= SIMDMode::SIMD16) ||
         waveSize == 16)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, false);
@@ -1230,12 +1233,12 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
     else if (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD)
         || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 8 || waveSize == 8)
     {
-        AddCodeGenPasses(*ctx, shaders, PassMgr, simdModeAllowed, false);
+        AddCodeGenPasses(*ctx, shaders, PassMgr, minSimdModeAllowed, false);
         ctx->m_ForceOneSIMD = true;
     }
     else
     {
-        AddCodeGenPasses(*ctx, shaders, PassMgr, simdModeAllowed, maxSimdMode, setEarlyExit16Stat);
+        AddCodeGenPasses(*ctx, shaders, PassMgr, minSimdModeAllowed, maxSimdModeAllowed, setEarlyExit16Stat);
     }
 
     COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
