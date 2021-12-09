@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 // release_mode - The value is responsible for the availability of the flag in the Linux release
 
 DECLARE_IGC_GROUP("VISA optimization")
+DECLARE_IGC_REGKEY(DWORD, VISALTO,                          0, "vISA LTO optimization flags. check LINKER_TYPE for more details", false)
 DECLARE_IGC_REGKEY(bool, DisableSendS,                  false, "Setting this to 1/true adds a compiler switch to not generate sends commands, default is to enable sends ", false)
 DECLARE_IGC_REGKEY(bool, EnablePreemption,              true,  "Enable generating preeemptable code (SKL+)", false)
 DECLARE_IGC_REGKEY(bool, EnableVISANoSchedule,          false, "Enable VISA No-Schedule", true)

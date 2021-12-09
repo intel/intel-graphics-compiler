@@ -3724,6 +3724,8 @@ namespace IGC
         bool KernelDebugEnable = false;
         bool ForceNonCoherentStatelessBti = false;
         bool AllowSpill = true;
+
+        SaveOption(vISA_Linker, IGC_GET_FLAG_VALUE(VISALTO));
         if (context->type == ShaderType::OPENCL_SHADER)
         {
             auto ClContext = static_cast<OpenCLProgramContext*>(context);
