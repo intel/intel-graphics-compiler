@@ -174,7 +174,9 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisitor.h"
+
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/RegCategory.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/InstrTypes.h"
@@ -522,7 +524,8 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
  * candidate a high priority to ensure it gets coalesced first.
  */
 void GenXCoalescing::visitPHINode(PHINode &Phi) {
-  if (Liveness->getLiveRange(&Phi)->getCategory() >= RegCategory::NUMREALCATEGORIES)
+  if (Liveness->getLiveRange(&Phi)->getCategory() >=
+      vc::RegCategory::NumRealCategories)
     return;
   for (unsigned i = 0; i < Phi.getNumIncomingValues(); ++i) {
     auto IncomingBlock = Phi.getIncomingBlock(i);
@@ -1122,7 +1125,7 @@ void GenXCoalescing::analysePhiCopies(PHINode *Phi,
                                       std::vector<PhiCopy> &ToProcess) {
   // Scan each incoming to see if it was successfully coalesced.
   LiveRange *DestLR = Liveness->getLiveRange(Phi);
-  if (DestLR->getCategory() >= RegCategory::NUMREALCATEGORIES)
+  if (DestLR->getCategory() >= vc::RegCategory::NumRealCategories)
     return; // Ignore phi node of EM/RM value.
   for (unsigned i = 0, e = Phi->getNumIncomingValues(); i != e; ++i) {
     Value *Incoming = Phi->getIncomingValue(i);
@@ -1154,8 +1157,8 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
   Value *Incoming = Phi->getIncomingValue(Inc);
   auto *IncomingBlock = Phi->getIncomingBlock(Inc);
   // Should be checked in analysePhiCopies
-  IGC_ASSERT_MESSAGE(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES,
-    "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(DestLR->getCategory() < vc::RegCategory::NumRealCategories,
+                     "Should be checked earlier!");
   IGC_ASSERT_MESSAGE(!isa<UndefValue>(Incoming), "Should be checked earlier!");
   IGC_ASSERT_MESSAGE(!isa<Constant>(Incoming), "Should be checked earlier!");
   // Check it again: something could change
@@ -1203,8 +1206,8 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
   Value *Incoming = Phi->getIncomingValue(Inc);
   auto *IncomingBlock = Phi->getIncomingBlock(Inc);
   // Should be checked in analysePhiCopies
-  IGC_ASSERT_MESSAGE(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES,
-    "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(DestLR->getCategory() < vc::RegCategory::NumRealCategories,
+                     "Should be checked earlier!");
   IGC_ASSERT_MESSAGE(!isa<UndefValue>(Incoming), "Should be checked earlier!");
   IGC_ASSERT_MESSAGE(!isa<Constant>(Incoming), "Should be checked earlier!");
   // Should be checked in processPhiCopy
@@ -1329,7 +1332,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
             auto SourceLR = Liveness->getLiveRange(CallArgSV);
             if (!DestLR || DestLR == SourceLR || F == CI->getFunction())
               continue;
-            if (DestLR->getCategory() >= RegCategory::NUMREALCATEGORIES)
+            if (DestLR->getCategory() >= vc::RegCategory::NumRealCategories)
               continue; // Called function arg is EM.
             // Need to insert a copy. Give it the number of the arg's pre-copy
             // slot.
@@ -1395,7 +1398,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           if (DestLR == SourceLR)
             continue; // coalesced
           IGC_ASSERT(SourceLR);
-          if (SourceLR->getCategory() >= RegCategory::NUMREALCATEGORIES)
+          if (SourceLR->getCategory() >= vc::RegCategory::NumRealCategories)
             continue; // Unified return value is EM, ignore.
           // Remove (the element of) CI, the actual return value, from its
           // own live range, and add it instead to the unified return value.

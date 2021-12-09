@@ -6,31 +6,29 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef VC_GENXOPTS_UTILS_REGCATEGORY_H
-#define VC_GENXOPTS_UTILS_REGCATEGORY_H
+#ifndef VC_UTILS_GENX_REGCATEGORY_H
+#define VC_UTILS_GENX_REGCATEGORY_H
 
-namespace llvm {
-namespace genx {
+namespace vc {
 
 // The encoding for register category, used in GenXCategory,
 // GenXLiveness and GenXVisaRegAlloc.  It is an anonymous enum inside a class
 // rather than a named enum so you don't need to cast to/from int.
-struct RegCategory {
-  enum {
-    NONE,
-    GENERAL,
-    ADDRESS,
-    PREDICATE,
-    SAMPLER,
-    SURFACE,
-    NUMREALCATEGORIES,
-    EM,
-    RM,
-    NUMCATEGORIES
-  };
+namespace RegCategory {
+enum Enum {
+  None,
+  General,
+  Address,
+  Predicate,
+  Sampler,
+  Surface,
+  NumRealCategories,
+  EM,
+  RM,
+  NumCategories
 };
+} // namespace RegCategory
 
-} // namespace genx
-} // namespace llvm
+} // namespace vc
 
-#endif // VC_GENXOPTS_UTILS_REGCATEGORY_H
+#endif // VC_UTILS_GENX_REGCATEGORY_H

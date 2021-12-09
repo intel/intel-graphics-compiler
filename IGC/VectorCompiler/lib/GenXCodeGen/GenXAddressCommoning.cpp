@@ -78,7 +78,9 @@ SPDX-License-Identifier: MIT
 #include "GenXModule.h"
 #include "GenXNumbering.h"
 #include "GenXUtil.h"
-#include "vc/GenXOpts/Utils/RegCategory.h"
+
+#include "vc/Utils/GenX/RegCategory.h"
+
 #include "llvm-c/Core.h"
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/MapVector.h"
@@ -91,8 +93,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
-#include "Probe/Assertion.h"
 
+#include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
@@ -831,7 +833,7 @@ bool GenXAddressCommoning::tryConvertWholeRegion(SmallVector<Extract, 4> &Extrac
   }
   // Give the new vectorized address conversion a live range.
   auto LR = Liveness->getOrCreateLiveRange(NewConv);
-  LR->setCategory(RegCategory::ADDRESS);
+  LR->setCategory(vc::RegCategory::Address);
   Liveness->rebuildLiveRange(LR);
   return true;
 }
@@ -1019,7 +1021,7 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
     }
     // Give the new vectorized address conversion a live range.
     auto LR = Liveness->getOrCreateLiveRange(NewConv);
-    LR->setCategory(RegCategory::ADDRESS);
+    LR->setCategory(vc::RegCategory::Address);
     Liveness->rebuildLiveRange(LR);
     Modified = true;
   }

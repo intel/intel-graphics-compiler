@@ -22,9 +22,10 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+
 #include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
-#include "vc/GenXOpts/Utils/RegCategory.h"
+#include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 
@@ -839,9 +840,9 @@ LiveRange::iterator LiveRange::find(unsigned Pos)
 static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
   const unsigned Category =
       llvm::StringSwitch<unsigned>(SV.getValue()->getName())
-          .Case(genx::BSSVariableName, RegCategory::SURFACE)
-          .Default(RegCategory::NUMCATEGORIES);
-  IGC_ASSERT_MESSAGE(Category != RegCategory::NUMCATEGORIES,
+          .Case(genx::BSSVariableName, vc::RegCategory::Surface)
+          .Default(vc::RegCategory::NumCategories);
+  IGC_ASSERT_MESSAGE(Category != vc::RegCategory::NumCategories,
                      "Unhandled predefined variable");
   return Category;
 }
@@ -866,7 +867,7 @@ static bool isPredefinedVariable(SimpleValue SV) {
 unsigned LiveRange::getOrDefaultCategory()
 {
   unsigned Cat = getCategory();
-  if (Cat != RegCategory::NONE)
+  if (Cat != vc::RegCategory::None)
     return Cat;
   IGC_ASSERT(!value_empty());
   SimpleValue SV = *value_begin();
@@ -878,9 +879,9 @@ unsigned LiveRange::getOrDefaultCategory()
   Type *Ty = IndexFlattener::getElementType(
       SV.getValue()->getType(), SV.getIndex());
   if (Ty->getScalarType()->isIntegerTy(1))
-    Cat = RegCategory::PREDICATE;
+    Cat = vc::RegCategory::Predicate;
   else
-    Cat = RegCategory::GENERAL;
+    Cat = vc::RegCategory::General;
   setCategory(Cat);
   return Cat;
 }
@@ -1280,8 +1281,8 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
   MaxNum = std::min(MaxNum, TotalEMSize);
   if (exactLog2(R.NumElements) >= 0 && R.NumElements <= MaxNum) {
     // Can be done with a single copy.
-    if (SourceLR && (SourceLR->Category != RegCategory::GENERAL
-        || (LR && LR->Category != RegCategory::GENERAL))) {
+    if (SourceLR && (SourceLR->Category != vc::RegCategory::General ||
+                     (LR && LR->Category != vc::RegCategory::General))) {
       // Need a category conversion (including the case that the two
       // categories are the same but not GENERAL).
       NewInst = createConvert(InputVal, Name, InsertBefore);
@@ -1832,14 +1833,30 @@ void LiveRange::print(raw_ostream &OS, bool Details) const {
 
   const char *Cat = "???";
   switch (Category) {
-    case RegCategory::NONE: Cat = "none"; break;
-    case RegCategory::GENERAL: Cat = "general"; break;
-    case RegCategory::ADDRESS: Cat = "address"; break;
-    case RegCategory::PREDICATE: Cat = "predicate"; break;
-    case RegCategory::SAMPLER: Cat = "sampler"; break;
-    case RegCategory::SURFACE: Cat = "surface"; break;
-    case RegCategory::EM: Cat = "em"; break;
-    case RegCategory::RM: Cat = "rm"; break;
+  case vc::RegCategory::None:
+    Cat = "none";
+    break;
+  case vc::RegCategory::General:
+    Cat = "general";
+    break;
+  case vc::RegCategory::Address:
+    Cat = "address";
+    break;
+  case vc::RegCategory::Predicate:
+    Cat = "predicate";
+    break;
+  case vc::RegCategory::Sampler:
+    Cat = "sampler";
+    break;
+  case vc::RegCategory::Surface:
+    Cat = "surface";
+    break;
+  case vc::RegCategory::EM:
+    Cat = "em";
+    break;
+  case vc::RegCategory::RM:
+    Cat = "rm";
+    break;
   }
 
   OS << "{" << Cat << ",align" << (1U << LogAlignment);

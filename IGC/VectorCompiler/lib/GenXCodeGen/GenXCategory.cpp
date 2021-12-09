@@ -127,7 +127,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/GenXOpts/Utils/RegCategory.h"
+#include "vc/Utils/GenX/RegCategory.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -196,7 +196,8 @@ namespace {
     CategoryAndAlignment getCategoryAndAlignmentForUse(Value::use_iterator U) const;
 
   private:
-    using ConvListT = std::array<llvm::Instruction *, RegCategory::NUMCATEGORIES>;
+    using ConvListT =
+        std::array<llvm::Instruction *, vc::RegCategory::NumCategories>;
 
     bool processFunction(Function *F);
     bool fixCircularPhis(Function *F);
@@ -236,7 +237,7 @@ namespace {
       ShiftedMask_ /= 2;
       ++CurCat_;
       if (ShiftedMask_ == 0) {
-        CurCat_ = RegCategory::NUMCATEGORIES;
+        CurCat_ = vc::RegCategory::NumCategories;
         validate();
         return *this;
       }
@@ -257,8 +258,9 @@ namespace {
 
   private:
     void validate() const {
-      IGC_ASSERT_MESSAGE((ShiftedMask_ % 2 == 1 || CurCat_ == RegCategory::NUMCATEGORIES),
-        "invalid state");
+      IGC_ASSERT_MESSAGE(
+          (ShiftedMask_ % 2 == 1 || CurCat_ == vc::RegCategory::NumCategories),
+          "invalid state");
     }
   };
 
@@ -283,7 +285,7 @@ namespace {
       return ++FalseBegin;
     }
 
-    Iterator end() const { return Iterator(0, RegCategory::NUMCATEGORIES); }
+    Iterator end() const { return Iterator(0, vc::RegCategory::NumCategories); }
   };
 
   // Encapsulates Category'n'Alignment analysis of value uses.
@@ -298,13 +300,13 @@ namespace {
     UsesCatInfo() : Uses_(), Mask_(0), MaxAlign_(0) {}
 
     UsesCatInfo(const GenXCategory &PassInfo, Value *V) : UsesCatInfo() {
-      std::array<int, RegCategory::NUMCATEGORIES> Stat = {0};
+      std::array<int, vc::RegCategory::NumCategories> Stat = {0};
       for (auto ui = V->use_begin(), ue = V->use_end(); ui != ue; ++ui) {
         auto CatAlign = PassInfo.getCategoryAndAlignmentForUse(ui);
         MaxAlign_ = std::max(MaxAlign_, CatAlign.Align);
         Uses_.push_back(AUse(ui, CatAlign.Cat));
         Mask_ |= 1 << CatAlign.Cat;
-        if (CatAlign.Cat != RegCategory::NONE)
+        if (CatAlign.Cat != vc::RegCategory::None)
           ++Stat[CatAlign.Cat];
       }
       auto MaxInStatIt = std::max_element(Stat.begin(), Stat.end());
@@ -324,8 +326,9 @@ namespace {
     unsigned getMostUsedCat() const {
       IGC_ASSERT_MESSAGE(!empty(),
         "works only for cases when there are uses with real categories");
-      IGC_ASSERT_MESSAGE(!allHaveCat(RegCategory::NONE),
-        "works only for cases when there are uses with real categories");
+      IGC_ASSERT_MESSAGE(
+          !allHaveCat(vc::RegCategory::None),
+          "works only for cases when there are uses with real categories");
       return MostUsedCat_;
     }
 
@@ -626,15 +629,14 @@ bool GenXCategory::processValue(Value *V)
     // Value not used: set its category and then ignore it. If the definition
     // did not give us a category (probably an unused function arg), then
     // arbitrarily make it general.
-    if (DefInfo.Cat == RegCategory::NONE)
-      Liveness->getOrCreateLiveRange(V, RegCategory::GENERAL, DefInfo.Align);
+    if (DefInfo.Cat == vc::RegCategory::None)
+      Liveness->getOrCreateLiveRange(V, vc::RegCategory::General,
+                                     DefInfo.Align);
     else
       Liveness->getOrCreateLiveRange(V, DefInfo.Cat, DefInfo.Align);
     return true;
-  }
-  else if (UsesInfo.allHaveCat(RegCategory::NONE))
-  {
-    if (DefInfo.Cat == RegCategory::NONE) {
+  } else if (UsesInfo.allHaveCat(vc::RegCategory::None)) {
+    if (DefInfo.Cat == vc::RegCategory::None) {
       // The "no categories at all" case can only happen for a value that is
       // defined by a function argument or a phi node and used only in phi
       // nodes or subroutine call args.
@@ -647,11 +649,11 @@ bool GenXCategory::processValue(Value *V)
   }
 
   // main case
-  if (DefInfo.Cat == RegCategory::NONE) {
+  if (DefInfo.Cat == vc::RegCategory::None) {
     // NONE means that we're free to choose the category
     if (isa<PHINode>(V))
       // currently we'd like to propogate general through phi
-      DefInfo.Cat = RegCategory::GENERAL;
+      DefInfo.Cat = vc::RegCategory::General;
     else
       DefInfo.Cat = UsesInfo.getMostUsedCat();
   }
@@ -659,9 +661,9 @@ bool GenXCategory::processValue(Value *V)
   Liveness->getOrCreateLiveRange(V, DefInfo.Cat, std::max(DefInfo.Align, UsesInfo.getMaxAlign()));
   auto Convs = buildConversions(V, DefInfo, UsesInfo);
   for (auto UseInfo : UsesInfo.getUses()) {
-    if (UseInfo.Cat != DefInfo.Cat && UseInfo.Cat != RegCategory::NONE) {
+    if (UseInfo.Cat != DefInfo.Cat && UseInfo.Cat != vc::RegCategory::None) {
       Instruction *Conv;
-      if (UseInfo.Cat == RegCategory::ADDRESS) {
+      if (UseInfo.Cat == vc::RegCategory::Address) {
         // Case of address category requires a separate conversion for each use, at least until we
         // get to GenXAddressCommoning where we decide whether we can common some of them up.
         Conv = createConversion(V, UseInfo.Cat);
@@ -695,7 +697,7 @@ Instruction *GenXCategory::createConversion(Value *V, unsigned Cat)
 {
   IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(),
     "createConversion expects int type");
-  if (Cat == RegCategory::ADDRESS) {
+  if (Cat == vc::RegCategory::Address) {
     Value *Input = V;
     int Offset = 0;
     for (;;) {
@@ -724,7 +726,7 @@ Instruction *GenXCategory::createConversion(Value *V, unsigned Cat)
   // intrinsic call directly rather than using the result of the intrinsic.
   // This helps the jitter to generate better code when surface constants
   // are used in send intructions.
-  if (Cat != RegCategory::ADDRESS) {
+  if (Cat != vc::RegCategory::Address) {
     if (GenXIntrinsic::getGenXIntrinsicID(V) == GenXIntrinsic::genx_constanti)
       V = cast<CallInst>(V)->getArgOperand(0);
     return createConvert(V, V->getName() + ".categoryconv", nullptr,
@@ -749,8 +751,8 @@ GenXCategory::buildConversions(Value *Def, CategoryAndAlignment DefInfo,
   for (auto Cat : UsesInfo.getCategories()) {
     // NONE doesn't require conversion, ADDRESS requirs conversion before
     // every use (not after def, so we won't create it here)
-    if (Cat != DefInfo.Cat && Cat != RegCategory::NONE &&
-        Cat != RegCategory::ADDRESS) {
+    if (Cat != DefInfo.Cat && Cat != vc::RegCategory::None &&
+        Cat != vc::RegCategory::Address) {
       auto Conv = createConversion(Def, Cat);
       placeConvAfterDef(Func, Conv, Def);
       Liveness->getOrCreateLiveRange(Conv)->setCategory(Cat);
@@ -772,29 +774,29 @@ static unsigned intrinsicCategoryToRegCategory(unsigned ICat)
 {
   switch (ICat) {
     case GenXIntrinsicInfo::ADDRESS:
-      return RegCategory::ADDRESS;
+      return vc::RegCategory::Address;
     case GenXIntrinsicInfo::PREDICATION:
     case GenXIntrinsicInfo::PREDICATE:
-      return RegCategory::PREDICATE;
+      return vc::RegCategory::Predicate;
     case GenXIntrinsicInfo::SAMPLER:
-      return RegCategory::SAMPLER;
+      return vc::RegCategory::Sampler;
     case GenXIntrinsicInfo::SURFACE:
-      return RegCategory::SURFACE;
+      return vc::RegCategory::Surface;
     default:
-      return RegCategory::GENERAL;
+      return vc::RegCategory::General;
   }
 }
 
 /***********************************************************************
  * getCategoryAndAlignmentForDef : get register category and alignment for a def
  *
- * This returns RegCategory:: value, or RegCategory::NONE if no category
+ * This returns RegCategory:: value, or RegCategory::None if no category
  * is discernable.
  */
 CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
 {
   if (V->getType()->getScalarType()->getPrimitiveSizeInBits() == 1)
-    return RegCategory::PREDICATE;
+    return vc::RegCategory::Predicate;
   if (Argument *Arg = dyn_cast<Argument>(V)) {
     auto *F = Arg->getParent();
     // This is a function Argument.
@@ -847,7 +849,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
       // using this function to determine its category.
       IGC_ASSERT(IntrinsicID != GenXIntrinsic::genx_convert);
       if (IntrinsicID == GenXIntrinsic::genx_convert_addr)
-        return RegCategory::ADDRESS;
+        return vc::RegCategory::Address;
       if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IntrinsicID) && !GenXIntrinsic::isRdRegion(IntrinsicID)
           && !GenXIntrinsic::isWrRegion(IntrinsicID) && !GenXIntrinsic::isAbs(IntrinsicID)) {
         // For any normal intrinsic, look up the argument class.
@@ -863,15 +865,15 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
         // or SamplerIndex type
         auto RC = getCategoryAndAlignmentForDef(
             CI->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
-        if (RC.Cat == RegCategory::SURFACE ||
-            RC.Cat == RegCategory::SAMPLER)
+        if (RC.Cat == vc::RegCategory::Surface ||
+            RC.Cat == vc::RegCategory::Sampler)
           return RC.Cat;
       }
     } else if (CI->isInlineAsm()) {
       return getCategoryForInlasmConstraintedOp(CI, 0, true /*IsOutput*/);
     }
   }
-  return RegCategory::GENERAL;
+  return vc::RegCategory::General;
 }
 
 /***********************************************************************
@@ -900,20 +902,20 @@ unsigned GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI,
   case ConstraintType::Constraint_a:
   case ConstraintType::Constraint_rw:
   case ConstraintType::Constraint_r:
-    return RegCategory::GENERAL;
+    return vc::RegCategory::General;
   case ConstraintType::Constraint_n:
   case ConstraintType::Constraint_i:
   case ConstraintType::Constraint_F:
-    return RegCategory::NONE;
+    return vc::RegCategory::None;
   case ConstraintType::Constraint_cr:
-    return RegCategory::PREDICATE;
+    return vc::RegCategory::Predicate;
   }
 }
 
 /***********************************************************************
  * getCategoryAndAlignmentForUse : get register category for a use
  *
- * This returns RegCategory:: value, or RegCategory::NONE if no category
+ * This returns RegCategory:: value, or vc::RegCategory::None if no category
  * is discernable.
  */
 CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
@@ -921,7 +923,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
 {
   Value *V = U->get();
   if (V->getType()->getScalarType()->isIntegerTy(1))
-    return RegCategory::PREDICATE;
+    return vc::RegCategory::Predicate;
   auto user = cast<Instruction>(U->getUser());
   if (PHINode *Phi = dyn_cast<PHINode>(user)) {
     // This is a phi node. Get the category (if any) from the result, or from
@@ -930,18 +932,18 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
     // of all the others.)
     if (auto LR = Liveness->getLiveRangeOrNull(Phi)) {
       auto Cat = LR->getCategory();
-      if (Cat != RegCategory::NONE)
+      if (Cat != vc::RegCategory::None)
         return Cat;
     }
     return getCategoryForPhiIncomings(Phi);
   }
-  unsigned Category = RegCategory::GENERAL;
+  unsigned Category = vc::RegCategory::General;
   if (CallInst *CI = dyn_cast<CallInst>(user)) {
     if (CI->isInlineAsm())
       Category = getCategoryForInlasmConstraintedOp(CI, U->getOperandNo(),
                                                     false /*IsOutput*/);
     else if (IGCLLVM::isIndirectCall(*CI))
-      Category = RegCategory::GENERAL;
+      Category = vc::RegCategory::General;
     else {
       Function *Callee = CI->getCalledFunction();
       unsigned IntrinID = GenXIntrinsic::not_any_intrinsic;
@@ -961,19 +963,19 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
           Category = getCategoryForCallArg(Callee, U->getOperandNo());
           break;
         case GenXIntrinsic::genx_convert_addr:
-          Category = RegCategory::GENERAL;
+          Category = vc::RegCategory::General;
           break;
         case GenXIntrinsic::genx_rdregioni:
         case GenXIntrinsic::genx_rdregionf:
           if (U->getOperandNo() == 4) // is addr-operand
-            Category = RegCategory::ADDRESS;
+            Category = vc::RegCategory::Address;
           else if (GenXIntrinsic::GenXRegion::OldValueOperandNum == U->getOperandNo())
-            Category = RegCategory::NONE; // do not assign use-category
+            Category = vc::RegCategory::None; // do not assign use-category
           break;
         case GenXIntrinsic::genx_wrregioni:
         case GenXIntrinsic::genx_wrregionf:
           if (U->getOperandNo() == 5) // is addr-operand
-            Category = RegCategory::ADDRESS;
+            Category = vc::RegCategory::Address;
            break;
         case GenXIntrinsic::genx_absf:
         case GenXIntrinsic::genx_absi:
@@ -1014,12 +1016,12 @@ unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
                    [](const Use &Op) { return isa<Constant>(Op.get()); }))
     // All incomings are constant. Arbitrarily make the phi node value
     // general category.
-    return RegCategory::GENERAL;
+    return vc::RegCategory::General;
 
   auto IncomingWithCategory =
       llvm::find_if(Phi->incoming_values(), [this](const Use &Op) {
         auto *LR = Liveness->getLiveRangeOrNull(Op.get());
-        return LR && LR->getCategory() != RegCategory::NONE;
+        return LR && LR->getCategory() != vc::RegCategory::None;
       });
   if (IncomingWithCategory != Phi->incoming_values().end()) {
     auto PhiCategory =
@@ -1028,7 +1030,8 @@ unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
         llvm::all_of(Phi->incoming_values(),
                      [this, PhiCategory](const Use &Op) {
                        auto *LR = Liveness->getLiveRangeOrNull(Op.get());
-                       return !LR || LR->getCategory() == RegCategory::NONE ||
+                       return !LR ||
+                              LR->getCategory() == vc::RegCategory::None ||
                               LR->getCategory() == PhiCategory;
                      }),
         "Phi incoming values categories don't correspond");
@@ -1040,9 +1043,9 @@ unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
   if (EnforceCategoryPromotion &&
       llvm::any_of(Phi->incoming_values(),
                    [](const Use &Op) { return isa<Constant>(Op.get()); }))
-    return RegCategory::GENERAL;
+    return vc::RegCategory::General;
 
-  return RegCategory::NONE;
+  return vc::RegCategory::None;
 }
 
 /***********************************************************************
@@ -1068,7 +1071,7 @@ unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) c
     ;
   if (auto LR = Liveness->getLiveRangeOrNull(&*ai)) {
     unsigned Cat = LR->getCategory();
-    if (Cat != RegCategory::NONE)
+    if (Cat != vc::RegCategory::None)
       return Cat;
   }
   // Then try the arg at each call site.
@@ -1077,7 +1080,7 @@ unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) c
       auto ArgV = CI->getArgOperand(ArgNo);
         if (auto LR = Liveness->getLiveRangeOrNull(ArgV)) {
           unsigned Cat = LR->getCategory();
-          if (Cat != RegCategory::NONE)
+          if (Cat != vc::RegCategory::None)
             return Cat;
         }
     }
@@ -1085,6 +1088,7 @@ unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) c
   // special case handling to break deadlock when all uses are undef or stack
   // call arg category cannot be deduced from the uses in the function, force
   // the argument to be GENERAL
-  return EnforceCategoryPromotion ? RegCategory::GENERAL : RegCategory::NONE;
+  return EnforceCategoryPromotion ? vc::RegCategory::General
+                                  : vc::RegCategory::None;
 }
 

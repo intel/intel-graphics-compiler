@@ -10,16 +10,18 @@ SPDX-License-Identifier: MIT
 #define VC_GENXOPTS_UTILS_KERNELINFO_H
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
-#include "vc/GenXOpts/Utils/RegCategory.h"
+#include "vc/Utils/GenX/RegCategory.h"
+
+#include "Probe/Assertion.h"
+#include "llvmWrapper/ADT/StringRef.h"
+
+#include "llvm/GenXIntrinsics/GenXMetadata.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
-#include "llvm/GenXIntrinsics/GenXMetadata.h"
-#include "Probe/Assertion.h"
 
 #include <unordered_map>
-
-#include "llvmWrapper/ADT/StringRef.h"
 
 namespace llvm {
 namespace genx {
@@ -224,11 +226,11 @@ public:
   unsigned getArgCategory(unsigned Idx) const {
     switch (getArgKind(Idx) & 7) {
     case AK_SAMPLER:
-      return RegCategory::SAMPLER;
+      return vc::RegCategory::Sampler;
     case AK_SURFACE:
-      return RegCategory::SURFACE;
+      return vc::RegCategory::Surface;
     default:
-      return RegCategory::GENERAL;
+      return vc::RegCategory::General;
     }
   }
 

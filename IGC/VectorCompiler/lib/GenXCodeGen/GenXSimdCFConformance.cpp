@@ -194,8 +194,9 @@ SPDX-License-Identifier: MIT
 #include "GenXModule.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/GenXOpts/Utils/RegCategory.h"
+#include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -800,8 +801,8 @@ void GenXSimdCFConformance::gatherEMVals()
     SimpleValue EMVal = EMVals[i];
     // For this EM value, get the connected values.
     SmallVector<SimpleValue, 8> ConnectedVals;
-    getConnectedVals(EMVal, RegCategory::EM, /*IncludeOptional=*/true,
-        /*OkJoin=*/nullptr, &ConnectedVals);
+    getConnectedVals(EMVal, vc::RegCategory::EM, /*IncludeOptional=*/true,
+                     /*OkJoin=*/nullptr, &ConnectedVals);
     // Add the connected values to EMVals.
     for (auto j = ConnectedVals.begin(), je = ConnectedVals.end();
         j != je; ++j)
@@ -829,8 +830,8 @@ void GenXSimdCFConformance::gatherRMVals()
       // RM is a value in this join's RM web. Get other values related by phi
       // nodes and extractvalues and gotos.
       SmallVector<SimpleValue, 8> ConnectedVals;
-      getConnectedVals(RM, RegCategory::RM, /*IncludeOptional=*/true,
-          Join, &ConnectedVals);
+      getConnectedVals(RM, vc::RegCategory::RM, /*IncludeOptional=*/true, Join,
+                       &ConnectedVals);
       for (auto j = ConnectedVals.begin(), je = ConnectedVals.end();
           j != je; ++j)
         if (!isa<Constant>(j->getValue()))
@@ -852,7 +853,9 @@ Value *GenXSimdCFConformance::findGotoJoinVal(int Cat, BasicBlock *Loc, Instruct
 {
   IGC_ASSERT(TrueEdge.getStart() == FalseEdge.getStart());
   IGC_ASSERT(TrueEdge.getEnd() != FalseEdge.getEnd());
-  IGC_ASSERT_MESSAGE((Cat == RegCategory::EM || Cat == RegCategory::PREDICATE), "Handling only EM and Cond!");
+  IGC_ASSERT_MESSAGE(
+      (Cat == vc::RegCategory::EM || Cat == vc::RegCategory::Predicate),
+      "Handling only EM and Cond!");
 
   LLVM_DEBUG(dbgs() << "Entering " << Loc->getName() << "\n");
 
@@ -884,7 +887,7 @@ Value *GenXSimdCFConformance::findGotoJoinVal(int Cat, BasicBlock *Loc, Instruct
   if (IDom->getBlock() == GotoJoinEV->getParent())
     PhiLoc = Loc;
 
-  std::string Name = (Cat == RegCategory::EM) ? "ExecMaskEV" : "CondEV";
+  std::string Name = (Cat == vc::RegCategory::EM) ? "ExecMaskEV" : "CondEV";
   auto PHI = PHINode::Create(GotoJoinEV->getType(), pred_size(PhiLoc), Name, &PhiLoc->front());
   foundVals[PhiLoc] = PHI;
   if (PhiLoc != Loc)
@@ -972,7 +975,10 @@ void GenXSimdCFConformance::updateBadCondEVUsers(GenXSimdCFConformance::GotoJoin
       if (CondEV != User->getOperand(idx))
         continue;
 
-      User->setOperand(idx, findGotoJoinVal(RegCategory::PREDICATE, User->getParent(), CondEV, TrueEdge, FalseEdge, TrueVal, FalseVal, FoundCondEV));
+      User->setOperand(idx, findGotoJoinVal(vc::RegCategory::Predicate,
+                                            User->getParent(), CondEV, TrueEdge,
+                                            FalseEdge, TrueVal, FalseVal,
+                                            FoundCondEV));
     }
   }
 }
@@ -1359,8 +1365,8 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto, uns
     if (Loc == Goto->getParent())
       NewOperand = TrueVal;
     else
-      NewOperand = findGotoJoinVal(RegCategory::EM, Loc, Inst, TrueEdge, FalseEdge,
-        TrueVal, FalseVal, foundVals);
+      NewOperand = findGotoJoinVal(vc::RegCategory::EM, Loc, Inst, TrueEdge,
+                                   FalseEdge, TrueVal, FalseVal, foundVals);
 
     newOperands.push_back(NewOperand);
   }
@@ -2044,8 +2050,9 @@ bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal)
   // Check connected values. Do not lower bad users in Late Pass because
   // current SIMD CF Conformance check approach expects that SIMD CF must
   // be OK at this point if it wasn't lowered during Early Pass.
-  if (!getConnectedVals(EMVal, RegCategory::EM, /*IncludeOptional=*/true,
-        /*OkJoin=*/nullptr, &ConnectedVals, /*LowerBadUsers=*/!FG)) {
+  if (!getConnectedVals(EMVal, vc::RegCategory::EM, /*IncludeOptional=*/true,
+                        /*OkJoin=*/nullptr, &ConnectedVals,
+                        /*LowerBadUsers=*/!FG)) {
     LLVM_DEBUG(dbgs() << "invalid def or uses\n");
     return false; // something invalid about the EM value itself
   }
@@ -2155,8 +2162,8 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
     // RM is a value in this join's RM web. Get other values related by phi
     // nodes and extractvalues and gotos.
     SmallVector<SimpleValue, 8> ConnectedVals;
-    bool Ok = getConnectedVals(RM, RegCategory::RM, /*IncludeOptional=*/false,
-        Join, &ConnectedVals);
+    bool Ok = getConnectedVals(RM, vc::RegCategory::RM,
+                               /*IncludeOptional=*/false, Join, &ConnectedVals);
     LLVM_DEBUG(
       dbgs() << "getConnectedVals: " << RM.getValue()->getName() << "#" << RM.getIndex() << "\n";
       for (auto i = ConnectedVals.begin(), e = ConnectedVals.end(); i != e; ++i)
@@ -2302,8 +2309,8 @@ void GenXSimdCFConformance::removeBadEMVal(SimpleValue EMVal)
     return; // was not in EMVals
   // Push anything related to it onto the stack for re-checking.
   SmallVector<SimpleValue, 8> ConnectedVals;
-  getConnectedVals(EMVal, RegCategory::EM, /*IncludeOptional=*/true,
-        /*OkJoin=*/nullptr, &ConnectedVals);
+  getConnectedVals(EMVal, vc::RegCategory::EM, /*IncludeOptional=*/true,
+                   /*OkJoin=*/nullptr, &ConnectedVals);
   for (auto i = ConnectedVals.begin(), e = ConnectedVals.end(); i != e; ++i) {
     SimpleValue ConnectedVal = *i;
     if (EMVals.count(ConnectedVal))
@@ -2436,8 +2443,8 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
  *    args and return values
  *
  * Enter:   Val = SimpleValue to start at
- *          Cat = RegCategory::EM to do EM connections
- *                RegCategory::RM to do RM connections
+ *          Cat = vc::RegCategory::EM to do EM connections
+ *                vc::RegCategory::RM to do RM connections
  *          IncludeOptional = for EM connections, include optional connections
  *                where Val is a function arg and it is connected to call args,
  *                and where Val is the operand to return and it is connected to
@@ -2472,7 +2479,7 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
 {
   // Check the def first.
   if (auto Arg = dyn_cast<Argument>(Val.getValue())) {
-    if (Cat != RegCategory::EM)
+    if (Cat != vc::RegCategory::EM)
       return false; // can't have RM argument
     // Connected to some return value. There is a problem here in that it might
     // find another predicate return value that is nothing to do with SIMD CF,
@@ -2538,7 +2545,7 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
     switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {
       case GenXIntrinsic::genx_simdcf_goto:
         // goto: invalid unless it is the EM/RM result of goto as applicable
-        if (Val.getIndex() != (Cat == RegCategory::EM ? 0U : 1U))
+        if (Val.getIndex() != (Cat == vc::RegCategory::EM ? 0U : 1U))
           return false;
         // Add the corresponding input.
         ConnectedVals->push_back(CI->getOperand(Val.getIndex()));
@@ -2547,14 +2554,14 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
         // since GotoJoinMap has not yet been set up for our goto. We tolerate
         // that situation; if the goto really has no linked join, that is
         // picked up later in checkGoto.
-        if (Cat == RegCategory::EM)
+        if (Cat == vc::RegCategory::EM)
           if (auto Join = GotoJoinMap[cast<CallInst>(Val.getValue())])
             ConnectedVals->push_back(
                 SimpleValue(Join, 0/* struct idx of EM result */));
         break;
       case GenXIntrinsic::genx_simdcf_join: {
         // join: invalid unless it is the EM result
-        if (Val.getIndex() || Cat != RegCategory::EM)
+        if (Val.getIndex() || Cat != vc::RegCategory::EM)
           return false;
         // Add the corresponding input.
         ConnectedVals->push_back(CI->getOperand(Val.getIndex()));
@@ -2583,7 +2590,7 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
         return true;
       case GenXIntrinsic::not_any_intrinsic: {
         // Value returned from a call.
-        if (Cat != RegCategory::EM)
+        if (Cat != vc::RegCategory::EM)
           return false; // invalid for RM
         // Add the corresponding value at each return in the called function.
         auto CalledFunc = CI->getCalledFunction();
@@ -2658,7 +2665,7 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
     }
     if (isa<ReturnInst>(User)) {
       // Use in a return.
-      if (Cat != RegCategory::EM)
+      if (Cat != vc::RegCategory::EM)
         return false; // invalid for RM
       // Connected to some function arg. There is a problem here in that it might
       // find another predicate arg that is nothing to do with SIMD CF, and
@@ -2693,7 +2700,7 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
     }
     if (isa<SelectInst>(User)) {
       // A use in a select is allowed only for EM used as the condition.
-      if (Cat != RegCategory::EM || ui->getOperandNo() != 0)
+      if (Cat != vc::RegCategory::EM || ui->getOperandNo() != 0)
         UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
       continue;
     }
@@ -2719,28 +2726,28 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
     if (auto CI = dyn_cast<CallInst>(User)) {
       switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {
         case GenXIntrinsic::genx_simdcf_get_em:
-          IGC_ASSERT(Cat == RegCategory::EM);
+          IGC_ASSERT(Cat == vc::RegCategory::EM);
           // Skip it if the category is right. This
           // intrinsic doesn't produce EM
           break;
         case GenXIntrinsic::genx_simdcf_unmask:
         case GenXIntrinsic::genx_simdcf_remask:
-          IGC_ASSERT(Cat == RegCategory::EM);
+          IGC_ASSERT(Cat == vc::RegCategory::EM);
           ConnectedVals->push_back(SimpleValue(CI, 0));
           break;
         case GenXIntrinsic::genx_simdcf_goto:
           // use in goto: valid only if arg 0 (EM) or 1 (RM)
-          if (ui->getOperandNo() != (Cat == RegCategory::EM ? 0U : 1U))
+          if (ui->getOperandNo() != (Cat == vc::RegCategory::EM ? 0U : 1U))
             return false;
           // Add corresponding result.
           ConnectedVals->push_back(SimpleValue(CI, ui->getOperandNo()));
           break;
         case GenXIntrinsic::genx_simdcf_join:
           // use in join: valid only if arg 0 (EM) or 1 (RM)
-          if (ui->getOperandNo() != (Cat == RegCategory::EM ? 0U : 1U))
+          if (ui->getOperandNo() != (Cat == vc::RegCategory::EM ? 0U : 1U))
             return false;
           // If EM, add corresponding result.
-          if (Cat == RegCategory::EM)
+          if (Cat == vc::RegCategory::EM)
             ConnectedVals->push_back(SimpleValue(CI, 0));
           else if (OkJoin && OkJoin != CI) {
             // RM value used in a join other than OkJoin. That is illegal, as we
@@ -3127,7 +3134,7 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
     BasicBlockEdge TrueEdge(DefBB, TrueBlock);
     BasicBlockEdge FalseEdge(DefBB, FalseBlock);
 
-    return findGotoJoinVal(RegCategory::EM, Loc, EVI, TrueEdge, FalseEdge,
+    return findGotoJoinVal(vc::RegCategory::EM, Loc, EVI, TrueEdge, FalseEdge,
                            TrueVal, FalseVal, foundVals);
   }
 
@@ -3720,7 +3727,7 @@ void GenXLateSimdCFConformance::setCategories()
     SimpleValue EMVal = *ei;
     ei++;
     // For this EM value, set its category and modify its uses.
-    Liveness->getOrCreateLiveRange(EMVal)->setCategory(RegCategory::EM);
+    Liveness->getOrCreateLiveRange(EMVal)->setCategory(vc::RegCategory::EM);
     LLVM_DEBUG(dbgs() << "Set category for:\n" << *EMVal.getValue() << "\n");
     if (!isa<StructType>(EMVal.getValue()->getType()))
       modifyEMUses(EMVal.getValue());
@@ -3731,7 +3738,8 @@ void GenXLateSimdCFConformance::setCategories()
         for (auto vi = RMValsEntry->begin(), ve = RMValsEntry->end(); vi != ve; ++vi) {
           SimpleValue RMVal = *vi;
           // For this RM value, set its category.
-          Liveness->getOrCreateLiveRange(RMVal)->setCategory(RegCategory::RM);
+          Liveness->getOrCreateLiveRange(RMVal)->setCategory(
+              vc::RegCategory::RM);
         }
       }
       // Fall through...

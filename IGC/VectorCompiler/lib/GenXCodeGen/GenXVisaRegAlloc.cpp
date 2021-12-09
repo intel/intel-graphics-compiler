@@ -103,30 +103,32 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  for (unsigned i = 0; i != RegCategory::NUMREALCATEGORIES; ++i) {
+  for (unsigned i = 0; i != vc::RegCategory::NumRealCategories; ++i) {
     CurrentRegId[i] = 0;
   }
   for (unsigned i = 0; i < VISA_NUM_RESERVED_SURFACES; ++i) {
-    RegStorage.emplace_back(RegCategory::SURFACE, i);
+    RegStorage.emplace_back(vc::RegCategory::Surface, i);
     PredefinedSurfaceRegs.push_back(&RegStorage.back());
   }
 
-  RegStorage.emplace_back(
-      RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_ARG,
-      IGCLLVM::FixedVectorType::get(Type::getInt8Ty(FGArg.getContext()),
-                      visa::ArgRegSizeInGRFs * ST->getGRFByteSize()));
+  RegStorage.emplace_back(vc::RegCategory::General,
+                          PreDefined_Vars::PREDEFINED_ARG,
+                          IGCLLVM::FixedVectorType::get(
+                              Type::getInt8Ty(FGArg.getContext()),
+                              visa::ArgRegSizeInGRFs * ST->getGRFByteSize()));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(vc::RegCategory::General,
+                          PreDefined_Vars::PREDEFINED_RET,
+                          IGCLLVM::FixedVectorType::get(
+                              Type::getInt8Ty(FGArg.getContext()),
+                              visa::RetRegSizeInGRFs * ST->getGRFByteSize()));
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
-      RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_RET,
-      IGCLLVM::FixedVectorType::get(Type::getInt8Ty(FGArg.getContext()),
-                      visa::RetRegSizeInGRFs * ST->getGRFByteSize()));
-  PredefinedRegs.push_back(&RegStorage.back());
-  RegStorage.emplace_back(
-      RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_FE_SP,
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_FE_SP,
       IGCLLVM::FixedVectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
-      RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_FE_FP,
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_FE_FP,
       IGCLLVM::FixedVectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
   PredefinedRegs.push_back(&RegStorage.back());
 
@@ -136,9 +138,9 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
       RegMap[F] = KernRegMap_t();
   }
   // Reserve the reserved registers.
-  CurrentRegId[RegCategory::GENERAL] = VISA_NUM_RESERVED_REGS;
-  CurrentRegId[RegCategory::PREDICATE] = VISA_NUM_RESERVED_PREDICATES;
-  CurrentRegId[RegCategory::SURFACE] = VISA_NUM_RESERVED_SURFACES;
+  CurrentRegId[vc::RegCategory::General] = VISA_NUM_RESERVED_REGS;
+  CurrentRegId[vc::RegCategory::Predicate] = VISA_NUM_RESERVED_PREDICATES;
+  CurrentRegId[vc::RegCategory::Surface] = VISA_NUM_RESERVED_SURFACES;
   // Do some extra coalescing.
   extraCoalescing();
   // Get the live ranges in a reproducible order.
@@ -201,15 +203,15 @@ void GenXVisaRegAlloc::reportVisaVarableNumberLimitError(unsigned Category,
 }
 
 unsigned GenXVisaRegAlloc::getMaximumVariableIDForCategory(unsigned Category) {
-  if (Category == RegCategory::GENERAL)
+  if (Category == vc::RegCategory::General)
     return VISA_MAX_GENERAL_REGS;
-  if (Category == RegCategory::ADDRESS)
+  if (Category == vc::RegCategory::Address)
     return VISA_MAX_ADDRESS_REGS;
-  if (Category == RegCategory::PREDICATE)
+  if (Category == vc::RegCategory::Predicate)
     return VISA_MAX_PREDICATE_REGS;
-  if (Category == RegCategory::SAMPLER)
+  if (Category == vc::RegCategory::Sampler)
     return VISA_MAX_SAMPLER_REGS;
-  if (Category == RegCategory::SURFACE)
+  if (Category == vc::RegCategory::Surface)
     return VISA_MAX_SURFACE_REGS;
   IGC_ASSERT_MESSAGE(false, "unknown category specified");
   return 0;
@@ -256,7 +258,7 @@ void GenXVisaRegAlloc::localizeLiveRangesForAccUsage(
 
   for (auto *LR : LRs) {
     // Only general variable can be an accumulator
-    if (LR->Category != RegCategory::GENERAL)
+    if (LR->Category != vc::RegCategory::General)
       continue;
     Localizer.getSplitForLiveRange(LR, std::back_inserter(NewLRs));
   }
@@ -278,7 +280,7 @@ void GenXVisaRegAlloc::localizeLiveRangesForAccUsage(
 template <typename OutIter>
 void AccumulatorUsageLocalizer::getSplitForLiveRange(genx::LiveRange *LR,
                                                      OutIter Iter) {
-  IGC_ASSERT(LR && LR->Category == RegCategory::GENERAL);
+  IGC_ASSERT(LR && LR->Category == vc::RegCategory::General);
 
   // Map all LR's values to each BB. Provide iteration in
   // insertion order to preserve deterministic behaviour
@@ -305,7 +307,7 @@ void AccumulatorUsageLocalizer::getSplitForLiveRange(genx::LiveRange *LR,
     // live range and remove them from the old one
     Liveness.removeValueNoDelete(*Start);
     genx::LiveRange *NewLR = Liveness.getOrCreateLiveRange(*Start);
-    NewLR->setCategory(RegCategory::GENERAL);
+    NewLR->setCategory(vc::RegCategory::General);
 
     for (auto *I : make_range(std::next(Start), End)) {
       Liveness.removeValueNoDelete(I);
@@ -399,7 +401,7 @@ void GenXVisaRegAlloc::getLiveRangesForValue(
       i != e; ++i) {
     SimpleValue SV(V, i);
     LiveRange *LR = Liveness->getLiveRangeOrNull(SV);
-    if (!LR || LR->getCategory() == RegCategory::NONE)
+    if (!LR || LR->getCategory() == vc::RegCategory::None)
       continue;
     // Only process an LR if the map iterator is on the value that appears
     // first in the LR. That avoids processing the same LR multiple times.
@@ -422,8 +424,8 @@ static LiveRange *coalesceConstState(Instruction &ToCoalesce,
                                      LiveRange *CommonLR,
                                      GenXLiveness &Liveness) {
   auto *LR = Liveness.getLiveRange(&ToCoalesce);
-  IGC_ASSERT_MESSAGE(LR->Category == RegCategory::SURFACE ||
-                         LR->Category == RegCategory::SAMPLER,
+  IGC_ASSERT_MESSAGE(LR->Category == vc::RegCategory::Surface ||
+                         LR->Category == vc::RegCategory::Sampler,
                      "wrong argument: ToCoalesce should have surface category");
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&ToCoalesce);
   if (IID != GenXIntrinsic::genx_convert &&
@@ -469,15 +471,15 @@ void GenXVisaRegAlloc::extraCoalescing()
         auto LR = Liveness->getLiveRangeOrNull(Inst);
         if (!LR)
           continue;
-        if (LR->Category == RegCategory::SURFACE) {
+        if (LR->Category == vc::RegCategory::Surface) {
           CommonSurface = coalesceConstState(*Inst, CommonSurface, *Liveness);
           continue;
         }
-        if (LR->Category == RegCategory::SAMPLER) {
+        if (LR->Category == vc::RegCategory::Sampler) {
           CommonSampler = coalesceConstState(*Inst, CommonSampler, *Liveness);
           continue;
         }
-        if (LR->Category != RegCategory::GENERAL)
+        if (LR->Category != vc::RegCategory::General)
           continue;
         // We have a non-struct non-wrregion instruction whose result has a
         // live range (it is not baled into anything else).
@@ -561,7 +563,7 @@ void GenXVisaRegAlloc::extraCoalescing()
           if (isRestrictedByVisa(GenXIntrinsic::getGenXIntrinsicID(Inst), oi))
             continue;
           auto OperandLR = Liveness->getLiveRangeOrNull(Operand);
-          if (!OperandLR || OperandLR->Category != RegCategory::GENERAL)
+          if (!OperandLR || OperandLR->Category != vc::RegCategory::General)
             continue;
           // Do not coalesce with kernel arguments as they are input variables
           // (after coalescing alignment requirements can become stricter, and
@@ -591,7 +593,7 @@ void GenXVisaRegAlloc::extraCoalescing()
 void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   if (LR->value_empty())
     return;
-  if (LR->getCategory() >= RegCategory::NUMREALCATEGORIES)
+  if (LR->getCategory() >= vc::RegCategory::NumRealCategories)
     return; // don't allocate register to EM or RM value
   LLVM_DEBUG(dbgs() << "Allocating "; LR->print(dbgs()); dbgs() << "\n");
   SimpleValue V = *LR->value_begin();
@@ -605,7 +607,7 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
       Ty = Ty->getPointerElementType();
   }
   IGC_ASSERT(!Ty->isVoidTy());
-  if (LR->Category == RegCategory::PREDICATE) {
+  if (LR->Category == vc::RegCategory::Predicate) {
     auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     IGC_ASSERT_MESSAGE((!VT || genx::exactLog2(VT->getNumElements()) >= 0),
       "invalid predicate width");
@@ -691,7 +693,7 @@ GenXVisaRegAlloc::getRegForValueOrNull(const Function *kernel, SimpleValue V,
   Reg *R = getRegForValueUntyped(kernel, V);
   if (!R)
     return nullptr; // no register allocated
-  if (R->Category != RegCategory::GENERAL)
+  if (R->Category != vc::RegCategory::General)
     return R;
   LLVM_DEBUG(dbgs() << "Found reg " << R->Num << "\n");
 
@@ -728,7 +730,7 @@ GenXVisaRegAlloc::getRegForValueOrNull(const Function *kernel, SimpleValue V,
   }
   // Run out of aliases. Add a new one.
   Reg *NewReg =
-      createReg(RegCategory::GENERAL, OverrideType, Signed, 0, R, IsBF);
+      createReg(vc::RegCategory::General, OverrideType, Signed, 0, R, IsBF);
   LastAlias->NextAlias[kernel] = NewReg;
   LLVM_DEBUG(dbgs() << "New register: "; NewReg->print(dbgs()); dbgs() << "\n");
   return NewReg;
@@ -744,14 +746,15 @@ GenXVisaRegAlloc::getRegForValueOrNull(const Function *kernel, SimpleValue V,
  */
 genx::Signedness GenXVisaRegAlloc::getSigned(Reg* R)
 {
-  return (R && R->Category == RegCategory::GENERAL) ?
-      R->Signed : DONTCARESIGNED;
+  return (R && R->Category == vc::RegCategory::General) ? R->Signed
+                                                        : DONTCARESIGNED;
 }
 
 // addRetIPArgument : Add the RetIP argument required for caller kernels and
 // their caller.
 void GenXVisaRegAlloc::addRetIPArgument() {
-  RetIP = createReg(RegCategory::GENERAL, Type::getInt64Ty(FG->getContext()));
+  RetIP =
+      createReg(vc::RegCategory::General, Type::getInt64Ty(FG->getContext()));
 }
 
 /***********************************************************************
@@ -997,13 +1000,27 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
  */
 void GenXVisaRegAlloc::Reg::print(raw_ostream &OS) const {
   switch (Category) {
-    case RegCategory::NONE: OS << "-"; return;
-    case RegCategory::GENERAL: OS << "v"; break;
-    case RegCategory::ADDRESS: OS << "a"; break;
-    case RegCategory::PREDICATE: OS << "p"; break;
-    case RegCategory::SAMPLER: OS << "s"; break;
-    case RegCategory::SURFACE: OS << "t"; break;
-    default: OS << "?"; break;
+  case vc::RegCategory::None:
+    OS << "-";
+    return;
+  case vc::RegCategory::General:
+    OS << "v";
+    break;
+  case vc::RegCategory::Address:
+    OS << "a";
+    break;
+  case vc::RegCategory::Predicate:
+    OS << "p";
+    break;
+  case vc::RegCategory::Sampler:
+    OS << "s";
+    break;
+  case vc::RegCategory::Surface:
+    OS << "t";
+    break;
+  default:
+    OS << "?";
+    break;
   }
   OS << Num;
 }
