@@ -6680,15 +6680,21 @@ void G4_BB_SB::getLiveBucketsFromFootprint(const SBFootprint* firstFootprint, SB
 */
 void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSendOpndList, SBNODE_VECT* SBNodes, PointsToAnalysis& p, bool afterWrite)
 {
-    for (size_t i = 0; i < BBVector.size(); i++)
+    const bool enableDPASTokenReduction = fg.builder->getOption(vISA_EnableDPASTokenReduction);
+    for (G4_BB_SB* sb_bb : BBVector)
     {
+        if (sb_bb->first_node == -1)
+        {
+            continue;
+        }
+
         //Get global send operands killed by current BB
         SBBitSets send_kill(globalSendNum);
-        send_kill |= BBVector[i]->send_live_in;
-        send_kill &= BBVector[i]->send_may_kill;
+        send_kill |= sb_bb->send_live_in;
+        send_kill &= sb_bb->send_may_kill;
 
 #ifdef DEBUG_VERBOSE_ON
-        BBVector[i]->dumpLiveInfo(globalSendOpndList, globalSendNum, &send_kill);
+        sb_bb->dumpLiveInfo(globalSendOpndList, globalSendNum, &send_kill);
 #endif
         //Change the global send operands into live bucket for liveness scan
         //Instruction level liveness kill:
@@ -6704,30 +6710,25 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                 sBucketNode->opndNum == Opnd_src2 ||
                 sBucketNode->opndNum == Opnd_src3))
             {
-                BBVector[i]->getLiveBucketsFromFootprint(sNode->getFirstFootprint(sBucketNode->opndNum), sBucketNode, &send_use_kills);
+                sb_bb->getLiveBucketsFromFootprint(sNode->getFirstFootprint(sBucketNode->opndNum), sBucketNode, &send_use_kills);
             }
             if (send_kill.isDstSet(sNode->globalID) && (sBucketNode->opndNum == Opnd_dst))
             {
-                BBVector[i]->getLiveBucketsFromFootprint(sNode->getFirstFootprint(sBucketNode->opndNum), sBucketNode, &send_use_kills);
+                sb_bb->getLiveBucketsFromFootprint(sNode->getFirstFootprint(sBucketNode->opndNum), sBucketNode, &send_use_kills);
             }
             sNode->setInstKilled(false);
             sNode->setSourceKilled(false);
         }
 
-        if (BBVector[i]->first_node == -1)
-        {
-            continue;
-        }
-
         //Scan BB again to figure out the dependence caused by global send operands
         std::vector<SBBucketDesc> BDvec;
-        for (int j = BBVector[i]->first_node; j <= BBVector[i]->last_node; j++)
+        for (int j = sb_bb->first_node; j <= sb_bb->last_node; j++)
         {
             SBNode* node = (*SBNodes)[j];
             G4_INST* curInst = node->getLastInstruction();
 
             BDvec.clear();
-            BBVector[i]->getGRFBucketDescs(node, BDvec, true);
+            sb_bb->getGRFBucketDescs(node, BDvec, true);
             if (!BDvec.size())
             {
                 continue;
@@ -6767,7 +6768,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                         assert(tokenHonourInstruction(liveInst));
                         if (dep == RAW || dep == WAW)
                         {
-                            if (BBVector[i]->isGRFEdgeAdded(curLiveNode, node, dep, DEP_EXPLICT))
+                            if (sb_bb->isGRFEdgeAdded(curLiveNode, node, dep, DEP_EXPLICT))
                             {
                                 send_use_kills.killOperand(bn_it);
                                 curLiveNode->setInstKilled(true);  //Instruction level kill
@@ -6791,7 +6792,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                             //Scalar CFG cannot capture the dependence v1-->v2 when they are assigned with same registers.
                             if (afterWrite || dep == WAW)  //There is no RAW kill for SIMDCF
                             {
-                                if (fg.builder->getOption(vISA_EnableDPASTokenReduction) &&
+                                if (enableDPASTokenReduction &&
                                     node->getLastInstruction()->isDpas() &&
                                     curLiveNode->getLastInstruction()->isDpas())
                                 {
@@ -6800,7 +6801,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                         if ((node->getDPASID() + curFootprint->offset - (curLiveNode->getDPASID() + internalOffset) < tokenAfterDPASCycle))
                                         {
                                             send_use_kills.killOperand(bn_it);
-                                            BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                            sb_bb->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
                                             curLiveNode->setInstKilled(true);  //Instruction level kill
                                             instKill = true;
                                             continue;
@@ -6825,7 +6826,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                             if ((int)(frontDist + endDist + curFootprint->offset - internalOffset) < tokenAfterDPASCycle)
                                             {
                                                 send_use_kills.killOperand(bn_it);
-                                                BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                                sb_bb->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
                                                 curLiveNode->setInstKilled(true);  //Instruction level kill
                                                 instKill = true;
                                                 continue;
@@ -6839,7 +6840,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                         else
                                         {
                                             send_use_kills.killOperand(bn_it);
-                                            BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                            sb_bb->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
                                             curLiveNode->setInstKilled(true);
                                             instKill = true;
                                             continue;
@@ -6849,7 +6850,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                 else
                                 {
                                     send_use_kills.killOperand(bn_it);
-                                    BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                    sb_bb->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
                                     curLiveNode->setInstKilled(true);  //Instruction level kill
                                     instKill = true;
                                     continue;
@@ -6885,14 +6886,14 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                                 instKill = true;
                                 if (!afterWrite) //After read dependence is more comprehensive in SIMDCF, so add edge only in SIMDCF pass
                                 {
-                                    BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                    sb_bb->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
                                 }
                             }
                             else
                             {
                                 if (!afterWrite) //After read dependence is more comprehensive in SIMDCF, so add edge only in SIMDCF pass
                                 {
-                                    BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_IMPLICIT);
+                                    sb_bb->createAddGRFEdge(curLiveNode, node, dep, DEP_IMPLICIT);
                                 }
                             }
 
@@ -6924,17 +6925,17 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
             {
                 if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
                 {
-                    BBVector[i]->clearKilledBucketNodeXeHP(&send_use_kills, 0, 0, 0, 0);
+                    sb_bb->clearKilledBucketNodeXeHP(&send_use_kills, 0, 0, 0, 0);
                 }
                 else
                 {
-                    BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
+                    sb_bb->clearKilledBucketNodeXeLP(&send_use_kills, 0);
                 }
             }
             if (fg.builder->hasSLMWARIssue() && curInst->isSend() &&
                 (isSLMMsg(curInst) && (curInst->getDst() == nullptr || isFence(curInst))))
             {
-                BBVector[i]->clearSLMWARWAissue(node, &send_use_kills);
+                sb_bb->clearSLMWARWAissue(node, &send_use_kills);
             }
         }
     }
