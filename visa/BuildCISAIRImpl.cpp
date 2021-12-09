@@ -671,7 +671,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
     for (auto& [callee, sgInvokeList] : callee2Callers)
     for (auto& it : sgInvokeList)
     {
-        bool inlining =         ( options & (1U << Linker_Inline)           ) && sgInvokeList.size() == 1;
+        bool inlining =         ( options & (1U << Linker_Inline)           );
         bool removeArgRet =     ( options & (1U << Linker_RemoveArgRet)     );
         bool removeStackArg =   ( options & (1U << Linker_RemoveStackArg)   );
         bool removeStackFrame = ( options & (1U << Linker_RemoveStackFrame) );

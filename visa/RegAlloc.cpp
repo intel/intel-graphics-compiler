@@ -941,6 +941,8 @@ void LivenessAnalysis::computeLiveness()
     for (unsigned i = 0; i < numVarId; i++)
     {
         bool setLiveIn = false;
+        if (!vars[i])
+            continue;
 
         G4_Declare *decl = vars[i]->getDeclare();
 
