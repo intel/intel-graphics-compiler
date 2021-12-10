@@ -37,18 +37,16 @@ It can be done either by using packaged releases or building those yourself:
 For **LLVM**, **LLD** and **Clang** packages please visit this [link](https://apt.llvm.org/) to download and install desired version.
 For `apt` package manager you can use this command:
 ```shell
-$ sudo apt-get install llvm-11 llvm-11-dev clang-11 liblld-11 liblld-11-dev
+$ sudo apt-get install llvm-11 llvm-11-dev clang-11 liblld-11 liblld-11-dev libllvmspirvlib11 libllvmspirvlib-dev
 ```
 As of now **OpenCL Clang** is still needed to be built and installed manually. Sources are available [here](https://github.com/intel/opencl-clang). You can use out-of-tree build method with LLVM and Clang preinstalled.
 **VC Intrinsics** is a lightweight library that is built from sources with IGC and there is no package for it.
-Currently, in this mode **SPIRV-LLVM Translator** sources should be present too.
 
 Installing LLVM, Clang, and OpenCL Clang components means you no longer have to download their sources alongside IGC, so the workspace tree in the next step may look like this:
 ```
 <workspace>
       |- igc                          https://github.com/intel/intel-graphics-compiler
       |- vc-intrinsics                https://github.com/intel/vc-intrinsics
-      |- llvm-spirv                   https://github.com/KhronosGroup/SPIRV-LLVM-Translator
       |- SPIRV-Tools                  https://github.com/KhronosGroup/SPIRV-Tools
       |- SPIRV-Headers                https://github.com/KhronosGroup/SPIRV-Headers
 ```
