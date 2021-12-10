@@ -92,6 +92,7 @@ enum class HWAddrSpace : char {
 class GenXLoadStoreLowering : public FunctionPass,
                               public InstVisitor<GenXLoadStoreLowering> {
   const DataLayout *DL_ = nullptr;
+  const GenXSubtarget *ST = nullptr;
 
 private:
   Value *ZExtOrTruncIfNeeded(Value *From, Type *To,
@@ -192,14 +193,15 @@ bool GenXLoadStoreLowering::runOnFunction(Function &F) {
 
   auto &M = *F.getParent();
   DL_ = &M.getDataLayout();
-  auto &ST = getAnalysis<TargetPassConfig>()
+  ST = &getAnalysis<TargetPassConfig>()
                  .getTM<GenXTargetMachine>()
                  .getGenXSubtarget();
+  IGC_ASSERT(ST);
   // auto &BEConf = getAnalysis<GenXBackendConfig>();
   // BEConf.getStatelessPrivateMemSize() will be required
 
   // pass don't work for CMRT for now, legacy TPM will be used
-  if (!ST.isOCLRuntime())
+  if (!ST->isOCLRuntime())
     return false;
 
   // see visitXXInst members for main logic:
