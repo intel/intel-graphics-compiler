@@ -1713,28 +1713,28 @@ TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockReadINTEL, _##TYPE_ABBR##_p1#
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar,   i8,    uchar, i8, __builtin_IB_simd_block_read_1_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar2,  v2i8,  uchar, i8, __builtin_IB_simd_block_read_2_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar4,  v4i8,  uchar, i8, __builtin_IB_simd_block_read_4_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar8,  v8i8,  uchar, i8, __builtin_IB_simd_block_read_8_global_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uchar16, v16i8, uchar, i8, __builtin_IB_simd_block_read_16_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char,   i8,    uchar, i8, __builtin_IB_simd_block_read_1_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char2,  v2i8,  uchar, i8, __builtin_IB_simd_block_read_2_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char4,  v4i8,  uchar, i8, __builtin_IB_simd_block_read_4_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char8,  v8i8,  uchar, i8, __builtin_IB_simd_block_read_8_global_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(char16, v16i8, uchar, i8, __builtin_IB_simd_block_read_16_global_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ushort,  i16,   ushort, i16, __builtin_IB_simd_block_read_1_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ushort2, v2i16, ushort, i16, __builtin_IB_simd_block_read_2_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ushort4, v4i16, ushort, i16, __builtin_IB_simd_block_read_4_global_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ushort8, v8i16, ushort, i16, __builtin_IB_simd_block_read_8_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short,  i16,   ushort, i16, __builtin_IB_simd_block_read_1_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short2, v2i16, ushort, i16, __builtin_IB_simd_block_read_2_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short4, v4i16, ushort, i16, __builtin_IB_simd_block_read_4_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short8, v8i16, ushort, i16, __builtin_IB_simd_block_read_8_global_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uint,  i32,   uint, i32, __builtin_IB_simd_block_read_1_global)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uint2, v2i32, uint, i32, __builtin_IB_simd_block_read_2_global)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uint4, v4i32, uint, i32, __builtin_IB_simd_block_read_4_global)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(uint8, v8i32, uint, i32, __builtin_IB_simd_block_read_8_global)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int,  i32,   uint, i32, __builtin_IB_simd_block_read_1_global)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int2, v2i32, uint, i32, __builtin_IB_simd_block_read_2_global)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int4, v4i32, uint, i32, __builtin_IB_simd_block_read_4_global)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int8, v8i32, uint, i32, __builtin_IB_simd_block_read_8_global)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ulong,  i64,   ulong, i64, __builtin_IB_simd_block_read_1_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ulong2, v2i64, ulong, i64, __builtin_IB_simd_block_read_2_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ulong4, v4i64, ulong, i64, __builtin_IB_simd_block_read_4_global_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(ulong8, v8i64, ulong, i64, __builtin_IB_simd_block_read_8_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long,  i64,   ulong, i64, __builtin_IB_simd_block_read_1_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long2, v2i64, ulong, i64, __builtin_IB_simd_block_read_2_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long4, v4i64, ulong, i64, __builtin_IB_simd_block_read_4_global_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long8, v8i64, ulong, i64, __builtin_IB_simd_block_read_8_global_l)
 #endif // cl_intel_subgroups_long
 
 #ifdef cl_intel_subgroup_local_block_io
@@ -1746,28 +1746,28 @@ TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockReadINTEL, _##TYPE_ABBR##_p3#
 }
 
 #ifdef cl_intel_subgroups_char
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar,   i8,    uchar, i8, __builtin_IB_simd_block_read_1_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar2,  v2i8,  uchar, i8, __builtin_IB_simd_block_read_2_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar4,  v4i8,  uchar, i8, __builtin_IB_simd_block_read_4_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar8,  v8i8,  uchar, i8, __builtin_IB_simd_block_read_8_local_b)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uchar16, v16i8, uchar, i8, __builtin_IB_simd_block_read_16_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char,   i8,    uchar, i8, __builtin_IB_simd_block_read_1_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char2,  v2i8,  uchar, i8, __builtin_IB_simd_block_read_2_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char4,  v4i8,  uchar, i8, __builtin_IB_simd_block_read_4_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char8,  v8i8,  uchar, i8, __builtin_IB_simd_block_read_8_local_b)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(char16, v16i8, uchar, i8, __builtin_IB_simd_block_read_16_local_b)
 #endif // cl_intel_subgroups_char
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ushort,  i16,   ushort, i16, __builtin_IB_simd_block_read_1_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ushort2, v2i16, ushort, i16, __builtin_IB_simd_block_read_2_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ushort4, v4i16, ushort, i16, __builtin_IB_simd_block_read_4_local_h)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ushort8, v8i16, ushort, i16, __builtin_IB_simd_block_read_8_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short,  i16,   ushort, i16, __builtin_IB_simd_block_read_1_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short2, v2i16, ushort, i16, __builtin_IB_simd_block_read_2_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short4, v4i16, ushort, i16, __builtin_IB_simd_block_read_4_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short8, v8i16, ushort, i16, __builtin_IB_simd_block_read_8_local_h)
 
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uint,  i32,   uint, i32, __builtin_IB_simd_block_read_1_local)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uint2, v2i32, uint, i32, __builtin_IB_simd_block_read_2_local)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uint4, v4i32, uint, i32, __builtin_IB_simd_block_read_4_local)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(uint8, v8i32, uint, i32, __builtin_IB_simd_block_read_8_local)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int,  i32,   uint, i32, __builtin_IB_simd_block_read_1_local)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int2, v2i32, uint, i32, __builtin_IB_simd_block_read_2_local)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int4, v4i32, uint, i32, __builtin_IB_simd_block_read_4_local)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int8, v8i32, uint, i32, __builtin_IB_simd_block_read_8_local)
 
 #ifdef cl_intel_subgroups_long
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ulong,  i64,   ulong, i64, __builtin_IB_simd_block_read_1_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ulong2, v2i64, ulong, i64, __builtin_IB_simd_block_read_2_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ulong4, v4i64, ulong, i64, __builtin_IB_simd_block_read_4_local_l)
-DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(ulong8, v8i64, ulong, i64, __builtin_IB_simd_block_read_8_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long,  i64,   ulong, i64, __builtin_IB_simd_block_read_1_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long2, v2i64, ulong, i64, __builtin_IB_simd_block_read_2_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long4, v4i64, ulong, i64, __builtin_IB_simd_block_read_4_local_l)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(long8, v8i64, ulong, i64, __builtin_IB_simd_block_read_8_local_l)
 #endif // cl_intel_subgroups_long
 
 #endif // cl_intel_subgroup_local_block_io
