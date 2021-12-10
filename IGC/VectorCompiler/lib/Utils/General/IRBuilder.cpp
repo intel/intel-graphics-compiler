@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/General/IRBuilder.h"
+#include "vc/Utils/General/Types.h"
 
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Type.h>
@@ -49,4 +50,24 @@ Value *vc::castFromIntOrFloat(Value &V, Type &DestTy, IRBuilder<> &IRB,
   auto *IntPtrTy = DL.getIntPtrType(&DestTy);
   auto *BC = IRB.CreateBitCast(&V, IntPtrTy, V.getName() + ".bc");
   return IRB.CreateIntToPtr(BC, &DestTy, V.getName() + ".i2p");
+}
+
+Type *vc::getFloatNTy(IRBuilder<> &Builder, unsigned N) {
+  switch (N) {
+  default:
+    IGC_ASSERT_MESSAGE(false, "Unexpected number of bits");
+    return nullptr;
+  case 16:
+    return Builder.getHalfTy();
+  case 32:
+    return Builder.getFloatTy();
+  case 64:
+    return Builder.getDoubleTy();
+  }
+}
+
+// Cast one-element result of instruction  to scalar.
+Instruction *vc::fixDegenerateVector(Instruction &Inst, IRBuilder<> &Builder) {
+  return cast<Instruction>(Builder.CreateBitCast(
+      &Inst, &vc::fixDegenerateVectorType(*Inst.getType())));
 }

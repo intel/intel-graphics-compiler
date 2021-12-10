@@ -48,6 +48,13 @@ llvm::Value *castFromIntOrFloat(llvm::Value &V, llvm::Type &DestTy,
                                 llvm::IRBuilder<> &Builder,
                                 const llvm::DataLayout &DL);
 
+// Creates floating point type with specified number of bits.
+llvm::Type *getFloatNTy(llvm::IRBuilder<> &Builder, unsigned N);
+
+// Cast one-element result of instruction  to scalar.
+llvm::Instruction *fixDegenerateVector(llvm::Instruction &Inst,
+                                       llvm::IRBuilder<> &Builder);
+
 } // namespace vc
 
 #endif // VC_UTILS_GENERAL_IRBUILDER_H
