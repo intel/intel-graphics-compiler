@@ -5,6 +5,7 @@ Copyright (C) 2017-2021 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
 #ifndef IGA_MODELS_GEN9_HPP
 #define IGA_MODELS_GEN9_HPP
 
