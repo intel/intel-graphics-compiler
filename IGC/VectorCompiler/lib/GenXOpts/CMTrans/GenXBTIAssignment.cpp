@@ -207,7 +207,7 @@ std::vector<int> BTIAssignment::computeBTIndices(
     // NOTE: at the current moment we don't use BTI=0, since it is reserved
     // for kernel debugging purposes (SIP uses BTI=0 in order to handle
     // breakpoints).
-    SurfaceID = SamplerID = 1;
+    SurfaceID = 1;
   }
 
   std::vector<int> Indices(KM.getArgKinds().size(), -1);
