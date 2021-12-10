@@ -4026,6 +4026,8 @@ namespace IGC
                 if (ClContext->m_InternalOptions.DisableNoMaskWA)
                 {
                     doWA = false;
+                    SaveOption(vISA_noMaskWA, 0u);
+                    SaveOption(vISA_EnableScalarJmp, true);
                 }
             }
             if (doWA)
