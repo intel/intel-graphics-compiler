@@ -592,7 +592,7 @@ static void setRegkeyFromOption(
     }
     size_t pos = sPos + strlen(regkeyName);
     pos = (pos < optionValue.size()) ? pos : std::string::npos;
-    std::string vstring;
+    std::string vstring, exactNameStr;
     if(pos != std::string::npos && optionValue.at(pos) == '=')
     {
         // Get value for this option, ',' is a value separator.
@@ -600,6 +600,13 @@ static void setRegkeyFromOption(
         pos = optionValue.find(',', sPos);
         size_t len = (pos == std::string::npos) ? pos : (pos - sPos);
         vstring = optionValue.substr(sPos, len);
+        exactNameStr = optionValue.substr(0, optionValue.find('='));
+    }
+    if (!exactNameStr.empty())
+    {
+        bool reqKeysNotEqual = (exactNameStr.compare(regkeyName) != 0) ? true : false;
+        if (reqKeysNotEqual)
+            return;
     }
 
     bool isBool = (strcmp(dataTypeName, "bool") == 0);
@@ -699,7 +706,7 @@ static void declareIGCKey(std::string& line, const char* dataType, const char* r
     {
         std::cout << std::endl << "** hashes ";
         for (size_t i = 0; i < hashes.size(); i++) {
-            //            std::cout << std::hex << std::showbase << hashes[i].start << "-" << hashes[i].end << ", ";
+            regKey->hashes.push_back(hashes[i]);
             if (hashes[i].end == hashes[i].start)
                 std::cout << std::hex << std::showbase << hashes[i].start << ", ";
             else
@@ -709,7 +716,6 @@ static void declareIGCKey(std::string& line, const char* dataType, const char* r
 
         std::cout << "** regkey " << line << std::endl;
         memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
-        regKey->hashes = hashes;
     }
 }
 
@@ -723,7 +729,7 @@ static void LoadDebugFlagsFromFile()
         std::cout << std::endl << "** DebugFlags " << GetOptionFile() << " is opened" << std::endl;
 
     while (std::getline(input, line)) {
-        if (line.front() == '#')
+        if (line.empty() || line.front() == '#')
             continue;
         ParseHashRange(line, hashes);
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)         \
@@ -753,8 +759,9 @@ void appendToOptionsLogFile(std::string const &message)
 }
 
 thread_local unsigned long long g_CurrentShaderHash = 0;
-bool CheckHashRange(const std::vector<HashRange>& hashes, const char *name)
+bool CheckHashRange(const SRegKeyVariableMetaData& varname)
 {
+    std::vector<HashRange>hashes = varname.hashes;
     if(hashes.empty())
     {
         return true;
@@ -764,7 +771,7 @@ bool CheckHashRange(const std::vector<HashRange>& hashes, const char *name)
         if(g_CurrentShaderHash >= it.start && g_CurrentShaderHash <= it.end)
         {
             char msg[100];
-            int size = snprintf(msg, 100, "Shader %#0llx: %s", g_CurrentShaderHash, name);
+            int size = snprintf(msg, 100, "Shader %#0llx: %s=%d", g_CurrentShaderHash, varname.GetName(), varname.m_Value);
             if (size >=0 && size < 100)
             {
                 appendToOptionsLogFile(msg);

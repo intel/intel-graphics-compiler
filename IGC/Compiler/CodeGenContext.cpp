@@ -879,6 +879,8 @@ namespace IGC
 
     static void initCompOptionFromRegkey(CodeGenContext* ctx)
     {
+        SetCurrentDebugHash(ctx->hash.asmHash);
+
         CompOptions& opt = ctx->getModuleMetaData()->compOpt;
 
         opt.pixelShaderDoNotAbortOnSpill =
