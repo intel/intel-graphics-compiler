@@ -440,7 +440,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
 
         // lambda to recursively calculate the max private memory usage for each call path
         std::function<uint32_t(Function*)> AnalyzeCGPrivateMemUsage =
-            [&AnalyzeCGPrivateMemUsage, &modMD, &CG, &DL](Function* F)->uint32_t
+            [&AnalyzeCGPrivateMemUsage, &modMD, &CG, &DL, &Ctx, &M](Function* F)->uint32_t
         {
             // Not a valid function, just return 0
             if (!F || F->isDeclaration())
@@ -462,22 +462,57 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
             if (Node->empty())
                 return currFuncPrivateMem;
 
-            uint32_t maxSize = 0;
+            SmallSet<Function*, 16> childFuncs;
+            // Collect the list of all direct callees
             for (auto FI = Node->begin(), FE = Node->end(); FI != FE; ++FI)
             {
                 if (Function* childF = FI->second->getFunction())
                 {
-                    // As a conservative measure, assume all stackcall args are stored on private memory
-                    uint32_t argSize = 0;
-                    for (auto AI = childF->arg_begin(), AE = childF->arg_end(); AI != AE; ++AI)
-                    {
-                        argSize += (uint32_t)DL.getTypeAllocSize(AI->getType());
-                    }
-                    argSize = iSTD::RoundPower2(static_cast<DWORD>(argSize));
-
-                    uint32_t size = currFuncPrivateMem + argSize + AnalyzeCGPrivateMemUsage(childF);
-                    maxSize = std::max(maxSize, size);
+                    childFuncs.insert(childF);
                 }
+            }
+            // To get a better estimate for indirect calls, we also count address-taken
+            // references as a callee by checking if the current function uses the function address
+            // of an indirectly-called function.
+            // This will not always be accurate, as it won't account for external function calls,
+            // or if the callee function pointer is loaded from a buffer/argument.
+            // However it does provide a better estimate than not counting them altogether.
+            if (Ctx.m_enableFunctionPointer)
+            {
+                for (auto& FI : M)
+                {
+                    if (!FI.isDeclaration() && FI.hasFnAttribute("referenced-indirectly"))
+                    {
+                        for (auto user : FI.users())
+                        {
+                            if (Instruction* inst = dyn_cast<Instruction>(user))
+                            {
+                                // Ignore direct calls, it's already handled above
+                                if (isa<CallInst>(inst)) continue;
+                                // Check if the caller matches the current function being processed,
+                                // if so add the function whose address is taken as a callee.
+                                Function* parentFunc = inst->getParent()->getParent();
+                                if (F == parentFunc)
+                                    childFuncs.insert(&FI);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Recursively calculate the private mem usage of all callees
+            uint32_t maxSize = currFuncPrivateMem;
+            for (auto childF : childFuncs)
+            {
+                IGC_ASSERT(childF);
+                // As a conservative measure, assume all stackcall args are stored on private memory
+                uint32_t argSize = 0;
+                for (auto AI = childF->arg_begin(), AE = childF->arg_end(); AI != AE; ++AI)
+                {
+                    argSize += iSTD::RoundPower2(static_cast<DWORD>(DL.getTypeAllocSize(AI->getType())));
+                }
+                uint32_t size = currFuncPrivateMem + argSize + AnalyzeCGPrivateMemUsage(childF);
+                maxSize = std::max(maxSize, size);
             }
             return maxSize;
         };
@@ -493,6 +528,12 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
             {
                 Function* pKernel = FG->getHead();
                 uint32_t maxPrivateMem = AnalyzeCGPrivateMemUsage(pKernel);
+                // If indirect calls, recursions, or VLAs exist, allocate a minimum of 8KB private mem for this FG
+                if (FG->hasIndirectCall() || FG->hasRecursion() || FG->hasVariableLengthAlloca())
+                {
+                    maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(8 * 1024));
+                }
+                maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));
                 FG->setMaxPrivateMemOnStack((unsigned)maxPrivateMem);
             }
         }
