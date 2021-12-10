@@ -808,7 +808,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     // coalesce scalar loads into loads of larger quantity.
     // This require and preserves uniform analysis we should keep
     // other passes using uniformness together to avoid re-running it several times
-    if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing))
+    if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing) && ctx.m_retryManager.AllowConstantCoalescing())
     {
         mpm.add(createBreakCriticalEdgesPass());
         mpm.add(new ConstantCoalescing());

@@ -29,12 +29,13 @@ namespace IGC
         bool allowPreRAScheduler;
         bool allowVISAPreRAScheduler;
         bool allowLargeURBWrite;
+        bool allowConstantCoalescing;
         unsigned nextState;
     } RetryState;
 
     static const RetryState RetryTable[] = {
-        { true, true, false, false, true, true, true, true, 1 },
-        { false, true, true, true, false, false, false, false, 500 }
+        { true, true, false, false, true, true, true, true, true, 1 },
+        { false, true, true, true, false, false, false, false, false, 500 }
     };
 
     RetryManager::RetryManager() : enabled(false)
@@ -85,6 +86,10 @@ namespace IGC
     bool RetryManager::AllowLargeURBWrite() {
         IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowLargeURBWrite;
+    }
+    bool RetryManager::AllowConstantCoalescing() {
+        IGC_ASSERT(stateId < getStateCnt());
+        return RetryTable[stateId].allowConstantCoalescing;
     }
     void RetryManager::SetFirstStateId(int id) {
         firstStateId = id;

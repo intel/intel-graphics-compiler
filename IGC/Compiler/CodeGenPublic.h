@@ -792,6 +792,7 @@ namespace IGC
         bool AllowAddressArithmeticSinking();
         bool AllowSimd32Slicing();
         bool AllowLargeURBWrite();
+        bool AllowConstantCoalescing();
         void SetFirstStateId(int id);
         bool IsFirstTry();
         bool IsLastTry();
