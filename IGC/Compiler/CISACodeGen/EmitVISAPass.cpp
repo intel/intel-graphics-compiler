@@ -10660,11 +10660,20 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     CVariable* pSize = nullptr;
 
     uint32_t MaxPrivateSize = pModuleMetadata->FuncMD[pKernel].privateMemoryPerWI;
-    if (m_FGA && m_FGA->getGroupForHead(pKernel))
+    FunctionGroup* FG = m_FGA ? m_FGA->getGroup(pKernel) : nullptr;
+    if (FG)
     {
         // Get the max PrivateMem used in the FG, which is set by
         // PrivateMemoryResolution.cpp after analyzing the call depth
-        MaxPrivateSize = m_FGA->getGroupForHead(pKernel)->getMaxPrivateMemOnStack();
+        MaxPrivateSize = FG->getMaxPrivateMemOnStack();
+
+        // If there are indirect calls or recursions, we no longer
+        // know the call depth, so just add 4KB and hope we don't overflow.
+        if (FG->hasIndirectCall() || FG->hasRecursion())
+            MaxPrivateSize += (4 * 1024);
+        // Add another 1KB for VLA
+        if (FG->hasVariableLengthAlloca())
+            MaxPrivateSize += 1024;
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
