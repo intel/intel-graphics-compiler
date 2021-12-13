@@ -5988,10 +5988,9 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
 //   3. dst, src0, and src1 for 3 source instructions format(mad).
 //   4. Broadcast of bfloat16 scalar is not supported.
 //   5. Unpacked bfloat16 destination with stride 2 when register offset is 0 or 1.
-//   6. Packed bfloat16 source and destination when register offset is 0 or 8.
-//   7. Execution size must not be greater than 8.
+//   6. Packed bfloat16 source and destination when register offset is 0 or 8 (16 for PVC+).
+//   7. Execution size must not be greater than 8 (16 for PVC+)
 //   8. Instructions with pure bfloat16 operands are not supported.
-//   6 & 7: register offset would be 0 or 16; execution size is at most 16
 //
 // **More examples**
 //   1. BF imm is not allowed

@@ -8864,9 +8864,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                                 hasUAVWrites = true;
                                 if (clearHdcWritesLSCUGM)
                                 {
-                                    if ((msgDesc->isAtomic() && !msgDesc->isRead())   // case 1
-                                        || msgDesc->getCachingL1() == Caching::UC     // case 2
-                                        || (msgDesc->getCachingL1() == Caching::DF && !msgDesc->isScratchWrite())) // case 3
+                                    if ((msgDesc->isAtomic() && !msgDesc->isRead())      // case 1
+                                        || (!(msgDesc->getCachingL1() == Caching::WB ||  // case 2
+                                              msgDesc->getCachingL1() == Caching::WT ||
+                                              msgDesc->getCachingL1() == Caching::ST) && !msgDesc->isScratchWrite()))
                                     {
                                         needLscUgmFence = true;
                                     }
@@ -8915,11 +8916,16 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     if (needLscUgmFence)
                     {
-                        //  WA: Need to add fence.ugm.invalidate.tile if there is ugm write.
-                        // auto fenceInst = builder.translateLscFence(SFID::UGM, LSC_FENCE_OP_INVALIDATE, LSC_SCOPE_TILE);
-
-                        // use fence.ugm.6.tile. 6 is reserved and is the same as none.
-                        auto fenceInst = builder.translateLscFence(SFID::UGM, LSC_FENCE_OP_TYPE6, LSC_SCOPE_TILE);
+                        G4_INST* fenceInst = nullptr;
+                        if (builder.getPlatform() == Xe_PVCXT)
+                        {
+                            fenceInst = builder.translateLscFence(SFID::UGM, LSC_FENCE_OP_NONE, LSC_SCOPE_TILE);
+                        }
+                        else
+                        {
+                            // use fence.ugm.6.tile. 6 is reserved and is the same as none.
+                            fenceInst = builder.translateLscFence(SFID::UGM, LSC_FENCE_OP_TYPE6, LSC_SCOPE_TILE);
+                        }
                         bb->insertBefore(iter, fenceInst);
                     }
                 }
