@@ -4021,25 +4021,20 @@ namespace IGC
         if (m_program->m_Platform->getWATable().Wa_1808850743 ||
             m_program->m_Platform->getWATable().Wa_1409909237)
         {
-            bool doWA = true;
+            uint32_t nomask_val = IGC_GET_FLAG_VALUE(NoMaskWA);
             if (context->type == ShaderType::OPENCL_SHADER)
             {
                 auto ClContext = static_cast<OpenCLProgramContext*>(context);
                 if (ClContext->m_InternalOptions.DisableNoMaskWA)
                 {
-                    doWA = false;
-                    SaveOption(vISA_noMaskWA, 0u);
-                    SaveOption(vISA_EnableScalarJmp, true);
+                    nomask_val = 0;
                 }
             }
-            if (doWA)
+            SaveOption(vISA_noMaskWA, nomask_val);
+            if (nomask_val > 0)
             {
-                SaveOption(vISA_noMaskWA, IGC_GET_FLAG_VALUE(NoMaskWA));
-                if (IGC_GET_FLAG_VALUE(NoMaskWA) > 0)
-                {
-                    // Turn off jmpi as there is no wa for jmpi
-                    SaveOption(vISA_EnableScalarJmp, false);
-                }
+                // Turn off jmpi as there is no wa for jmpi
+                SaveOption(vISA_EnableScalarJmp, false);
             }
         }
 
