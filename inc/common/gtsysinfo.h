@@ -211,6 +211,8 @@ typedef struct GT_SYSTEM_INFO
     uint32_t        ReservedCCSWays;                // Reserved CCS ways provides value of reserved L3 ways for CCS when CCS is enabled.
                                                     // This is a hardcoded value as suggested by HW. No MMIO read is needed for same.
 
+    GT_MULTI_TILE_ARCH_INFO MultiTileArchInfo;      // MultiTileArchInfo provides details(enabled/disabled) of GT Tiles in case of Multi Tile Architecture SKUs
+
     uint32_t        SLMSizeInKb;                    // SLM Size
 
 } GT_SYSTEM_INFO, *PGT_SYSTEM_INFO;
