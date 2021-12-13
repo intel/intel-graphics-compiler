@@ -18,6 +18,7 @@ import "Metrics/proto_schema/mem_alloc_stats.proto";
 import "Metrics/proto_schema/code_reference.proto";
 import "Metrics/proto_schema/local_reg_stats.proto";
 import "Metrics/proto_schema/cfg_stats.proto";
+import "Metrics/proto_schema/cost_model_stats.proto";
 
 package IGC_METRICS;
 
@@ -51,4 +52,6 @@ message Function
   LocalRegStats local_reg_stats = 11;
 
   CFGStats cfg_stats = 12;
+
+  CostModelStats costModel_stats = 13;
 }

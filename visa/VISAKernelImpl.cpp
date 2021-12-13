@@ -498,50 +498,9 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
 
     if (getOptions()->getOption(vISA_GenerateKernelInfo))
     {
-        auto kernel = getKernel();
-        m_kernelInfo = new KERNEL_INFO();
-
-        m_kernelInfo->name = kernel->getName();
-
-        BB_LIST_ITER bbItEnd = kernel->fg.end();
-        for (auto bbIt = kernel->fg.begin();
-            bbIt != bbItEnd;
-            bbIt++)
-        {
-            G4_BB* bb = (*bbIt);
-            for (auto inst : bb->getInstList())
-            {
-                auto loc = inst->getLocation();
-                if (loc == nullptr) continue;
-                auto dstRg = inst->getDst();
-                if (dstRg == nullptr) continue;
-                auto decl = dstRg->getTopDcl();
-                if (decl == nullptr) continue;
-                //auto reg = decl->getRegVar();
-
-                VarInfo* varInfo = nullptr;
-
-                if ((varInfo = m_kernelInfo->AddVarInfo(decl->getName())) != nullptr)
-                {
-                    varInfo->lineNb = loc->getLineNo();
-                    varInfo->srcFilename = loc->getSrcFilename();
-                    varInfo->isSpill = decl->isSpilled();
-                    // fixed values == const variable?
-                    varInfo->isConst = dstRg->isImm();
-                    varInfo->promoted2GRF = dstRg->isGreg();
-                    varInfo->size = decl->getByteSize();
-
-                    varInfo->type = (short)decl->getElemType();
-
-                    //varInfo->isUniform = N\A
-                    //varInfo->addrModel = N\A
-                    //varInfo->memoryAccess = N\A
-                    //varInfo->bc_count = N\A
-                    //varInfo->bc_sameBank = N\A
-                    //varInfo->bc_twoSrc = N\A
-                }
-            }
-        }
+        //auto kernel = getKernel();
+        //m_kernelInfo = new KERNEL_INFO();
+        // TODO check if this will be needed anymore
     }
 
     if (m_options->getOption(vISA_outputToFile))

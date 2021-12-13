@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #include "IGCMetric.h"
 #include "IGCMetricImpl.h"
 
+class VISAModule;
+
 namespace IGCMetrics
 {
     inline IGCMetricImpl* get(void* pIGCMetric)
@@ -74,8 +76,57 @@ namespace IGCMetrics
         get(igcMetric)->CollectLoops(loopInfo);
     }
 
+    void IGCMetric::CollectLoopCyclomaticComplexity(
+        llvm::Function* pFunc,
+        int LoopCyclomaticComplexity,
+        int LoopCyclomaticComplexity_Max)
+    {
+        get(igcMetric)->CollectLoopCyclomaticComplexity(
+            pFunc,
+            LoopCyclomaticComplexity,
+            LoopCyclomaticComplexity_Max);
+    }
+
+    void IGCMetric::CollectNestedLoopsWithMultipleExits(
+        llvm::Function* pFunc,
+        float NestedLoopsWithMultipleExitsRatio,
+        float NestedLoopsWithMultipleExitsRatio_Max)
+    {
+        get(igcMetric)->CollectNestedLoopsWithMultipleExits(
+            pFunc,
+            NestedLoopsWithMultipleExitsRatio,
+            NestedLoopsWithMultipleExitsRatio_Max);
+    }
+
+    void IGCMetric::CollectLongStridedLdStInLoop(
+        llvm::Function* pFunc,
+        llvm::Loop* pProblematicLoop,
+        int LongStridedLdStInLoop_LdCnt,
+        int LongStridedLdStInLoop_StCnt,
+        int LongStridedLdStInLoop_MaxCntLdOrSt)
+    {
+        get(igcMetric)->CollectLongStridedLdStInLoop(
+            pFunc,
+            pProblematicLoop,
+            LongStridedLdStInLoop_LdCnt,
+            LongStridedLdStInLoop_StCnt,
+            LongStridedLdStInLoop_MaxCntLdOrSt);
+    }
+
+    void IGCMetric::CollectIsGeminiLakeWithDoubles(
+        llvm::Function* pFunc,
+        bool IsGeminiLakeWithDoubles)
+    {
+        get(igcMetric)->CollectIsGeminiLakeWithDoubles(pFunc, IsGeminiLakeWithDoubles);
+    }
+
     void IGCMetric::FinalizeStats()
     {
         get(igcMetric)->FinalizeStats();
+    }
+
+    void IGCMetric::CollectDataFromDebugInfo(IGC::DebugInfoData* pDebugInfo, IGC::DbgDecoder* pDebugDecoder)
+    {
+        get(igcMetric)->CollectDataFromDebugInfo(pDebugInfo, pDebugDecoder);
     }
 }

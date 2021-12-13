@@ -1086,6 +1086,11 @@ else()
         "/ignore:4197"
       )
 endif()
+
+set(IGC_BUILD__EXPORT_SYMBOLS_LINK_FLAGS_DEBUG
+  "${IGC_BUILD__EXPORT_SYMBOLS_LINK_FLAGS_DEBUG}"
+  "/ignore:4099")
+
   # Disable LTCG due to release build time increase
   #igc_config_flag_apply_settings(
   #    LinkerOptions
@@ -1120,6 +1125,7 @@ if(_igc_compiler_is_clang)
         -Wl,-headerpad_max_install_names
     )
 endif()
+
 
 
 # ================================== Compiler preprocessor definitions =================================
@@ -1352,10 +1358,9 @@ add_subdirectory(common)
 igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
 
-#Metrcis
-include(igc_find_protobuf)
-include(Metrics/protobuf_metrics.cmake)
 
+# Add protobuf
+include(igc_find_protobuf)
 
 set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
 
@@ -1427,6 +1432,9 @@ if(MSVC)
     ${IGC_BUILD__RES__IGC__igc_dll}
   )
 endif()
+
+#Metrcis
+include(Metrics/protobuf_metrics.cmake)
 
 # Sources/headers for main libraries.
 set(IGC_BUILD__SRC__IGC__igc_common
@@ -1882,6 +1890,7 @@ if(UNIX)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_interface DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/common/StateSaveAreaHeader.h DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc/common COMPONENT igc-opencl-devel)
+
 
   if(IGC_BUILD__LLVM_SOURCES AND IGC_OPTION__LLVM_LLD)
     # For now lld could be included only via building from LLVM sources

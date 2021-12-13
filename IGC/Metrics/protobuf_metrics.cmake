@@ -50,6 +50,7 @@ list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetricImpl.h")
 add_library(igc_metric STATIC ${IGC_METRICS_SRCS} ${IGC_METRICS_HDRS})
 
 add_dependencies(igc_metric intrinsics_gen)
+add_dependencies(igc_metric ${IGC_BUILD__PROJ__GenISAIntrinsics})
 
 if(IGC_METRICS)
   target_link_libraries(igc_metric protobuf::libprotobuf)

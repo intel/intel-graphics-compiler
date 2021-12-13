@@ -928,7 +928,6 @@ static bool hasMultipleExits(Loop* L, WIAnalysis* WI) {
 ///          L6
 ///             L7
 /// then it returns {L2, L5}
-///
 static void getNestedLoopsWithMultpleExists(Loop* L, WIAnalysis* WI,
     SmallVectorImpl<Loop*>& Result) {
     if (getNumOfNonUniformExits(L, WI) > 1) {
@@ -947,9 +946,10 @@ static void getNestedLoopsWithMultpleExists(Loop* L, WIAnalysis* WI,
         getNestedLoopsWithMultpleExists(InnerL, WI, Result);
 }
 
+static const float NestedLoopsWithMultipleExits_THRESHOLD = 0.7f;
 
-/// Check if loops with multiple exists dominate the entire function.
-static bool hasNestedLoopsWithMultipleExits(Function* F, LoopInfo* LI,
+/// Return the ratio between loops with multiple exists to other instructions in function.
+static float NestedLoopsWithMultipleExitsRatio(Function* F, LoopInfo* LI,
     WIAnalysis* WI) {
     // Find top level nested loops with multiple non-uniform exists.
     SmallVector<Loop*, 8> Loops;
@@ -971,16 +971,26 @@ static bool hasNestedLoopsWithMultipleExits(Function* F, LoopInfo* LI,
     for (auto& BB : F->getBasicBlockList())
         FuncSize += (unsigned)BB.size();
 
-    bool retVal = false;
     if (FuncSize > 0)
     {
-        retVal = float(LoopSize) / FuncSize >= 0.7f;
+        return float(LoopSize) / FuncSize;
     }
-
-    return retVal;
+    else
+    {
+        return 0.0f;
+    }
 }
 
-static bool hasLongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) {
+static const unsigned LongStridedLdStInLoop_THRESHOLD = 3;
+
+typedef struct {
+  unsigned LDs = 0;
+  unsigned STs = 0;
+  llvm::Loop* pProblematicLoop = nullptr;
+} LdStInLoop;
+
+static const LdStInLoop LongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) {
+    LdStInLoop retVal;
     SmallVector<Loop*, 32> Loops;
     // Collect innermost simple loop.
     for (auto I = LI->begin(), E = LI->end(); I != E; ++I) {
@@ -1018,27 +1028,65 @@ static bool hasLongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) 
                 ++STs;
             }
         }
-        if (LDs > 3 || STs > 3)
-            return true;
+        if (LDs > LongStridedLdStInLoop_THRESHOLD ||
+            STs > LongStridedLdStInLoop_THRESHOLD)
+        {
+            retVal.LDs = LDs;
+            retVal.STs = STs;
+            retVal.pProblematicLoop = L;
+            return retVal;
+        }
     }
-    return false;
+    return retVal;
 }
 
 bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext* ctx) {
-    if ((IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x1) &&
-        getLoopCyclomaticComplexity() >= CYCLOMATIC_COMPLEXITY_THRESHOLD) {
-        return false;
+    if ((IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x1))
+    {
+        int loopCyclomaticComplexity = getLoopCyclomaticComplexity();
+
+        ctx->metrics.CollectLoopCyclomaticComplexity(
+            F,
+            loopCyclomaticComplexity,
+            CYCLOMATIC_COMPLEXITY_THRESHOLD);
+
+        if (loopCyclomaticComplexity >= CYCLOMATIC_COMPLEXITY_THRESHOLD)
+        {
+            return false;
+        }
     }
 
-    if ((IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x2) &&
-        hasNestedLoopsWithMultipleExits(F, LI, WI)) {
-        return false;
+    if (IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x2)
+    {
+        float nestedLoopsWithMultipleExits = NestedLoopsWithMultipleExitsRatio(F, LI, WI);
+
+        ctx->metrics.CollectNestedLoopsWithMultipleExits(
+            F,
+            nestedLoopsWithMultipleExits,
+            NestedLoopsWithMultipleExits_THRESHOLD);
+
+        if (nestedLoopsWithMultipleExits >= NestedLoopsWithMultipleExits_THRESHOLD)
+        {
+            return false;
+        }
     }
 
     // If there's wider vector load/store in a loop, skip SIMD16.
-    if ((IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x4) &&
-        hasLongStridedLdStInLoop(F, LI, WI)) {
-        return false;
+    if (IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x4)
+    {
+        LdStInLoop ldStInLoop = LongStridedLdStInLoop(F, LI, WI);
+
+        ctx->metrics.CollectLongStridedLdStInLoop(
+            F,
+            ldStInLoop.pProblematicLoop,
+            ldStInLoop.LDs,
+            ldStInLoop.STs,
+            LongStridedLdStInLoop_THRESHOLD);
+
+        if (ldStInLoop.pProblematicLoop != nullptr)
+        {
+            return false;
+        }
     }
 
     auto hasDouble = [](Function& F) {
@@ -1056,8 +1104,14 @@ bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext* ctx) {
     const CPlatform* platform = &ctx->platform;
     if (platform->GetPlatformFamily() == IGFX_GEN9_CORE &&
         platform->getPlatformInfo().eProductFamily == IGFX_GEMINILAKE &&
-        hasDouble(*F)) {
+        hasDouble(*F))
+    {
+        ctx->metrics.CollectIsGeminiLakeWithDoubles(F, false);
         return false;
+    }
+    else
+    {
+        ctx->metrics.CollectIsGeminiLakeWithDoubles(F, true);
     }
 
     return true;

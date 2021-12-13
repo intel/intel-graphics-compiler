@@ -14,6 +14,8 @@ SPDX-License-Identifier: MIT
 #include <string.h>
 #include <stdio.h>
 
+#ifndef MEMCPY_S
+#define MEMCPY_S
 typedef int errno_t;
 inline errno_t memcpy_s( void *dst, size_t numberOfElements, const void *src, size_t count )
 {
@@ -28,9 +30,10 @@ inline errno_t memcpy_s( void *dst, size_t numberOfElements, const void *src, si
     memcpy( dst, src, count );
     return 0;
 }
+#endif
 
 inline errno_t fopen_s( FILE** pFile, const char* filename, const char *mode )
-{   
+{
     if( pFile == NULL )
     {
         return EINVAL;

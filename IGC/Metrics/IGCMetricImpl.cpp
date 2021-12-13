@@ -6,25 +6,30 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Instructions.h>
-#include <llvm/Support/Path.h>
-#include "common/LLVMWarningsPop.hpp"
-
 #include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <iostream>
 #include <fstream>
-#include <Metrics/IGCMetricImpl.h>
-#include <Probe/Assertion.h>
+
 #include <iomanip>
 #include <common/igc_regkeys.hpp>
-#include <visa/G4_IR.hpp>
-#include <visa/SpillManagerGMRF.h>
-#include <visa/LinearScanRA.h>
-#include <visa/LocalRA.h>
-#include <visa/LocalScheduler/Dependencies_G4IR.h>
+#include <Metrics/IGCMetricImpl.h>
+
+#include <Probe/Assertion.h>
+#include <Compiler/CISACodeGen/ShaderCodeGen.hpp>
+#include <DebugInfo/VISAModule.hpp>
+#include <Compiler/DebugInfo/ScalarVISAModule.h>
+#include <visaBuilder_interface.h>
+#include <visa/Common_ISA.h>
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/Path.h>
+#include <llvm/IR/DebugInfo.h>
+#include "common/LLVMWarningsPop.hpp"
+
+#define DEBUG_METRIC 0
 
 namespace IGCMetrics
 {
@@ -40,11 +45,6 @@ namespace IGCMetrics
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         this->map_EmuCalls.clear();
         this->map_Func.clear();
-        for (auto func : map_InstrLoc2Func)
-        {
-            delete func.second;
-        }
-        this->map_InstrLoc2Func.clear();
         this->map_Loops.clear();
 #endif
     }
@@ -65,9 +65,9 @@ namespace IGCMetrics
         std::stringstream ss;
 
         ss << std::hex
-           << std::setfill('0')
-           << std::setw(sizeof(Hash->asmHash) * CHAR_BIT / 4)
-           << Hash->asmHash;
+            << std::setfill('0')
+            << std::setw(sizeof(Hash->asmHash) * CHAR_BIT / 4)
+            << Hash->asmHash;
 
         oclProgram.set_hash(ss.str());
 #endif
@@ -81,7 +81,7 @@ namespace IGCMetrics
         if (IGC_GET_FLAG_VALUE(MetricsDumpEnable) > 0)
         {
             // Out file with ext OPTRPT - OPTimization RePoT
-            std::string fileName = "OCL_" + oclProgram.hash() + ".optrpt";
+            std::string fileName = oclProgram.hash() + ".optrpt";
 
             std::ofstream metric_data;
             metric_data.open(fileName);
@@ -147,49 +147,47 @@ namespace IGCMetrics
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         llvm::DILocation* debLoc = (llvm::DILocation*)emulatedInstruction->getDebugLoc();
 
-        auto func_m_list = GetFuncMetric(emulatedInstruction);
-        if (func_m_list == nullptr)
+        auto func_m = GetFuncMetric(emulatedInstruction);
+        if (func_m == nullptr)
         {
             return;
         }
-        for (auto func_m : *func_m_list)
+
+        IGC_METRICS::InstrStats* stats = func_m->mutable_instruction_stats();
+        IGC_METRICS::FuncEmuCalls* emuCall_m = nullptr;
+
+        // Count how many instructions we added
+        int extraInstrAdded = CountInstInFunc(emulatedInstruction->getParent()->getParent()) -
+            countInstInFunc;
+        // reset counter
+        countInstInFunc = 0;
+
+        if (map_EmuCalls.find(debLoc) != map_EmuCalls.end())
         {
-            IGC_METRICS::InstrStats* stats = func_m->mutable_instruction_stats();
-            IGC_METRICS::FuncEmuCalls* emuCall_m = nullptr;
+            // For case when receive extra instruction to already recoreded emu-function
+            emuCall_m = map_EmuCalls[debLoc];
+        }
+        else
+        {
+            // For case if we discover new emulated function
+            emuCall_m = func_m->add_emufunctioncalls();
+            map_EmuCalls.insert({ debLoc, emuCall_m });
 
-            // Count how many instructions we added
-            int extraInstrAdded = CountInstInFunc(emulatedInstruction->getParent()->getParent()) -
-                countInstInFunc;
-            // reset counter
-            countInstInFunc = 0;
+            auto emuCall_m_loc = emuCall_m->add_funccallloc();
+            FillCodeRef(emuCall_m_loc, debLoc);
+            stats->set_countemulatedinst(stats->countemulatedinst() + 1);
 
-            if (map_EmuCalls.find(debLoc) != map_EmuCalls.end())
+            if (IGC_IS_FLAG_ENABLED(ForceDPEmulation) && isDPType(emulatedInstruction))
             {
-                // For case when receive extra instruction to already recoreded emu-function
-                emuCall_m = map_EmuCalls[debLoc];
+                emuCall_m->set_type(IGC_METRICS::FuncEmuCalls_Reason4FuncEmu_FP_MODEL_MODE);
             }
             else
             {
-                // For case if we discover new emulated function
-                emuCall_m = func_m->add_emufunctioncalls();
-                map_EmuCalls.insert({ debLoc, emuCall_m });
-
-                auto emuCall_m_loc = emuCall_m->add_funccallloc();
-                FillCodeRef(emuCall_m_loc, debLoc);
-                stats->set_countemulatedinst(stats->countemulatedinst() + 1);
-
-                if (IGC_IS_FLAG_ENABLED(ForceDPEmulation) && isDPType(emulatedInstruction))
-                {
-                    emuCall_m->set_type(IGC_METRICS::FuncEmuCalls_Reason4FuncEmu_FP_MODEL_MODE);
-                }
-                else
-                {
-                    emuCall_m->set_type(IGC_METRICS::FuncEmuCalls_Reason4FuncEmu_NO_HW_SUPPORT);
-                }
+                emuCall_m->set_type(IGC_METRICS::FuncEmuCalls_Reason4FuncEmu_NO_HW_SUPPORT);
             }
-            // Count amount of instructions created to emulate not supported instruction
-            emuCall_m->set_count(emuCall_m->count() + extraInstrAdded);
         }
+        // Count amount of instructions created to emulate not supported instruction
+        emuCall_m->set_count(emuCall_m->count() + extraInstrAdded);
 #endif
     }
 
@@ -197,16 +195,14 @@ namespace IGCMetrics
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        auto func_m_list = GetFuncMetric(coalescedAccess);
-        if (func_m_list == nullptr)
+        auto func_m = GetFuncMetric(coalescedAccess);
+        if (func_m == nullptr)
         {
             return;
         }
-        for (auto func_m : *func_m_list)
-        {
-            IGC_METRICS::InstrStats* stats = func_m->mutable_instruction_stats();
-            stats->set_countcoalescedaccess(stats->countcoalescedaccess() + 1);
-        }
+
+        IGC_METRICS::InstrStats* stats = func_m->mutable_instruction_stats();
+        stats->set_countcoalescedaccess(stats->countcoalescedaccess() + 1);
 #endif
     }
 
@@ -217,63 +213,6 @@ namespace IGCMetrics
         if (kernelInfo == nullptr)
         {
             return;
-        }
-
-        for (auto record = kernelInfo->variables.begin();
-            record != kernelInfo->variables.end(); ++record)
-        {
-            auto varInfo = record->second;
-            // Find to which function this var info belongs
-            auto keyMap = GetHash(varInfo->srcFilename, varInfo->lineNb);
-            auto func_m_list = GetFuncMetric(keyMap);
-
-            if (func_m_list == nullptr)
-            {
-                continue;
-            }
-
-            for (auto func_m : *func_m_list)
-            {
-                bool alreadyRecord = false;
-                for (int i = 0; i < func_m->variables_size(); ++i)
-                {
-                    if (func_m->variables(i).name() == record->first)
-                    {
-                        alreadyRecord = true;
-                        break;
-                    }
-                }
-                if (alreadyRecord)
-                {
-                    continue;
-                }
-
-
-                auto varInfo_m = func_m->add_variables();
-                varInfo_m->set_name(record->first);
-                varInfo_m->set_type((IGC_METRICS::VarInfo_VarType)varInfo->type);
-                varInfo_m->set_memoryaccess((IGC_METRICS::VarInfo_MemAccess)varInfo->memoryAccess);
-                varInfo_m->set_addrmodel((IGC_METRICS::VarInfo_AddressModel)varInfo->addrModel);
-                varInfo_m->set_size(varInfo->size);
-                varInfo_m->set_promoted2grf(varInfo->promoted2GRF);
-                varInfo_m->set_isspill(varInfo->isSpill);
-                varInfo_m->set_isuniform(varInfo->isUniform);
-                varInfo_m->set_isconst(varInfo->isConst);
-
-                auto bcInfo = varInfo_m->mutable_bc_stats();
-                bcInfo->set_count(varInfo->bc_count);
-                bcInfo->set_samebank(varInfo->bc_sameBank);
-                bcInfo->set_twosrc(varInfo->bc_twoSrc);
-
-                if (varInfo->srcFilename == nullptr)
-                {
-                    continue;
-                }
-
-                auto codeRef = varInfo_m->mutable_varloc();
-
-                FillCodeRef(codeRef, varInfo->srcFilename, varInfo->lineNb);
-            }
         }
 #endif
     }
@@ -343,47 +282,315 @@ namespace IGCMetrics
 #endif
     }
 
+    void IGCMetricImpl::CollectLoopCyclomaticComplexity(
+        llvm::Function* pFunc,
+        int LoopCyclomaticComplexity,
+        int LoopCyclomaticComplexity_Max)
+    {
+        if (!Enable()) return;
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
+
+        if (func_metric)
+        {
+            auto costmodel = func_metric->mutable_costmodel_stats();
+            auto simd16cost = costmodel->mutable_simd16();
+            simd16cost->set_loopcyclomaticcomplexity(LoopCyclomaticComplexity);
+            simd16cost->set_loopcyclomaticcomplexity_max(LoopCyclomaticComplexity_Max);
+            simd16cost->set_loopcyclomaticcomplexity_status(
+                LoopCyclomaticComplexity < LoopCyclomaticComplexity_Max ?
+                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK :
+                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
+        }
+#endif
+    }
+
+    void IGCMetricImpl::CollectNestedLoopsWithMultipleExits(
+        llvm::Function* pFunc,
+        float NestedLoopsWithMultipleExitsRatio,
+        float NestedLoopsWithMultipleExitsRatio_Max)
+    {
+        if (!Enable()) return;
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
+
+        if (func_metric)
+        {
+            auto costmodel = func_metric->mutable_costmodel_stats();
+            auto simd16cost = costmodel->mutable_simd16();
+            simd16cost->set_nestedloopswithmultipleexitsratio(NestedLoopsWithMultipleExitsRatio);
+            simd16cost->set_nestedloopswithmultipleexitsratio_max(NestedLoopsWithMultipleExitsRatio_Max);
+            simd16cost->set_nestedloopswithmultipleexitsratio_status(
+                NestedLoopsWithMultipleExitsRatio < NestedLoopsWithMultipleExitsRatio_Max ?
+                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK :
+                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
+        }
+#endif
+    }
+
+    void IGCMetricImpl::CollectLongStridedLdStInLoop(
+        llvm::Function* pFunc,
+        llvm::Loop* pProblematicLoop,
+        int LongStridedLdStInLoop_LdCnt,
+        int LongStridedLdStInLoop_StCnt,
+        int LongStridedLdStInLoop_MaxCntLdOrSt)
+    {
+        if (!Enable()) return;
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
+
+        if (func_metric)
+        {
+            auto costmodel = func_metric->mutable_costmodel_stats();
+            auto simd16cost = costmodel->mutable_simd16();
+
+            if (pProblematicLoop == nullptr)
+            {
+                simd16cost->set_longstridedldstinloop_status(
+                    IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK);
+            }
+            else
+            {
+                simd16cost->set_longstridedldstinloop_status(
+                    IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
+                simd16cost->set_longstridedldstinloop_ldcnt(LongStridedLdStInLoop_LdCnt);
+                simd16cost->set_longstridedldstinloop_stcnt(LongStridedLdStInLoop_StCnt);
+                simd16cost->set_longstridedldstinloop_maxcntldorst(LongStridedLdStInLoop_MaxCntLdOrSt);
+
+                FillCodeRef(simd16cost->mutable_longstridedldstinloop_problematicloop(),
+                    pProblematicLoop->getStartLoc());
+            }
+        }
+#endif
+    }
+
+    void IGCMetricImpl::CollectIsGeminiLakeWithDoubles(
+        llvm::Function* pFunc,
+        bool IsGeminiLakeWithDoubles)
+    {
+        if (!Enable()) return;
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
+
+        if (func_metric)
+        {
+            auto costmodel = func_metric->mutable_costmodel_stats();
+            auto simd16cost = costmodel->mutable_simd16();
+
+            simd16cost->set_isgeminilakewithdoubles_status(IsGeminiLakeWithDoubles ?
+                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK :
+                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
+        }
+#endif
+    }
+
     void IGCMetricImpl::FinalizeStats()
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         UpdateLoopsInfo();
+        UpdateModelCost();
+#endif
+    }
+
+
+    void IGCMetricImpl::CollectDataFromDebugInfo(IGC::DebugInfoData* pDebugInfo, IGC::DbgDecoder* pDebugDecoder)
+    {
+        if (!Enable()) return;
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+
+        oclProgram.set_device((IGC_METRICS::DeviceType)
+            pDebugInfo->m_pShader->m_Platform->getPlatformInfo().eProductFamily);
+
+        llvm::DenseMap<llvm::Function*, IGC::VISAModule*>* pListFuncData =
+            &pDebugInfo->m_VISAModules;
+        llvm::DenseMap< llvm::DIVariable*, IGC_METRICS::VarInfo*> var_db2metric;
+
+        for (auto pListFuncData_it = pListFuncData->begin();
+            pListFuncData_it != pListFuncData->end(); ++pListFuncData_it)
+        {
+            llvm::Function* pFunc = pListFuncData_it->first;
+            IGC::VISAModule* vISAData = pListFuncData_it->second;
+
+            //IGC::ScalarVisaModule* scalarVM = llvm::dyn_cast<IGC::ScalarVisaModule>(vISAData);
+
+#ifdef DEBUG_METRIC
+            std::printf("\nList of symbols:\n");
+
+            for (auto it_dbgInfo = pDebugInfo->m_FunctionSymbols[pFunc].begin();
+                it_dbgInfo != pDebugInfo->m_FunctionSymbols[pFunc].end(); ++it_dbgInfo)
+            {
+                std::printf("pointer{%p} key{%s} val{%s}\n",
+                    it_dbgInfo->first,
+                    it_dbgInfo->first->getName().str().c_str(), it_dbgInfo->second->getName().getCString());
+                it_dbgInfo->first->dump();
+            }
+#endif
+
+            const llvm::Value* pVal = nullptr;
+            llvm::MDNode* pNode = nullptr;
+
+            // Iterate over all instruction ported to vISA
+            for (auto instr = vISAData->begin(); instr != vISAData->end(); ++instr)
+            {
+                llvm::DebugLoc* dbLoc = nullptr;
+                if (const llvm::DbgDeclareInst* pDbgAddrInst =
+                    llvm::dyn_cast<llvm::DbgDeclareInst>(*instr))
+                {
+                    // Get : call void @llvm.dbg.value
+                    dbLoc = (llvm::DebugLoc*) & pDbgAddrInst->getDebugLoc();
+                    pVal = pDbgAddrInst->getAddress();
+                    pNode = pDbgAddrInst->getVariable();
+                }
+                else if (const llvm::DbgValueInst* pDbgValInst =
+                    llvm::dyn_cast<llvm::DbgValueInst>(*instr))
+                {
+                    // Get : call void @llvm.dbg.value
+
+                    // Avoid undef values in metadata
+                    {
+                        llvm::MetadataAsValue* mdAv = llvm::dyn_cast<llvm::MetadataAsValue>(pDbgValInst->getArgOperand(0));
+                        if (mdAv != nullptr)
+                        {
+                            llvm::ValueAsMetadata* vAsMD = llvm::dyn_cast<llvm::ValueAsMetadata>(mdAv->getMetadata());
+                            if (vAsMD != nullptr &&
+                                llvm::isa<llvm::UndefValue>(vAsMD->getValue()))
+                            {
+                                continue;
+                            }
+                        }
+                    }
+
+                    dbLoc = (llvm::DebugLoc*) & pDbgValInst->getDebugLoc();
+                    pVal = pDbgValInst->getValue();
+                    pNode = pDbgValInst->getVariable();
+                }
+                else
+                {
+                    continue;
+                }
+
+                // Extract debuginfo variable data
+                llvm::DIVariable* diVar = llvm::cast<llvm::DIVariable>(pNode);
+
+                std::string varName = diVar->getName().str();
+                // Get CVariable data for this user variable
+                auto cvar = pDebugInfo->getMapping(*pFunc, pVal);
+
+                if (cvar == nullptr)
+                {
+                    // If not found check in whole shader data
+                    cvar = pDebugInfo->m_pShader->GetSymbol((llvm::Value*)pVal);
+                }
+
+                IGC_METRICS::Function* func_m = GetFuncMetric(*instr);
+
+#ifdef DEBUG_METRIC
+                std::printf("\ninstr (varname:%s, pointer:%p) :\n", varName.c_str(), pVal);
+                (*instr)->dump();
+#endif
+                IGC_METRICS::VarInfo* varInfo_m = nullptr;
+                if (var_db2metric.find(diVar) != var_db2metric.end())
+                {
+                    // Already added user variable
+
+                    // It is for case when one of the user variables
+                    // is referenced in many places and requires new registers
+                    varInfo_m = var_db2metric[diVar];
+                }
+                else
+                {
+                    // New user variable
+                    varInfo_m = func_m->add_variables();
+
+                    varInfo_m->set_name(varName);
+                    varInfo_m->set_size(cvar->GetSize());
+                    varInfo_m->set_type((IGC_METRICS::VarInfo_VarType)cvar->GetType());
+                    FillCodeRef(varInfo_m->mutable_varloc(),
+                        diVar);
+
+                    var_db2metric.insert(std::pair{ diVar, varInfo_m });
+                }
+
+                // Loop in case when we have simd32 splitted into two simd16
+                auto varLocList = vISAData->GetVariableLocation(*instr);
+                for (auto varLoc = varLocList.begin(); varLoc != varLocList.end(); ++varLoc)
+                {
+                    const auto* varInfo = vISAData->getVarInfo(*pDebugDecoder, varLoc->GetRegister());
+                    auto varInfo_reg_m = varInfo_m->add_reg();
+
+                    varInfo_reg_m->set_addrmodel(varLoc->IsInGlobalAddrSpace() ?
+                        IGC_METRICS::VarInfo_AddressModel::VarInfo_AddressModel_GLOBAL :
+                        IGC_METRICS::VarInfo_AddressModel::VarInfo_AddressModel_LOCAL);
+                    varInfo_reg_m->set_promoted2grf(varLoc->IsRegister());
+
+                    //varInfo_m->set_memoryaccess((IGC_METRICS::VarInfo_MemAccess)varInfo->memoryAccess);
+
+                    if (varInfo != nullptr)
+                    {
+                        // check if any?
+                        varInfo_reg_m->set_isspill(varInfo->lrs[0].isSpill());
+                        varInfo_reg_m->set_liverangestart(varInfo->lrs[0].start);
+                        varInfo_reg_m->set_liverangeend(varInfo->lrs[0].end);
+                    }
+                    varInfo_reg_m->set_isuniform(cvar->IsUniform());
+                    varInfo_reg_m->set_isconst(cvar->IsImmediate());
+                }
+            }
+        }
 #endif
     }
 
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-    void IGCMetricImpl::UpdateCollectInstructions(llvm::Function* func)
+
+    void IGCMetricImpl::UpdateModelCost()
     {
-        for (auto bb = func->begin(); bb != func->end(); ++bb)
+        // Function which checks the overall model cost of kernel status for SIMD16 and SIMD32
+
+        auto isOkStatus = [](IGC_METRICS::CostModelStats_CostStatus Status)
         {
-            for (auto inst_i = bb->begin(); inst_i != bb->end(); ++inst_i)
+            return Status !=
+                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD;
+        };
+
+        for (auto func_m_i = map_Func.begin(); func_m_i != map_Func.end(); ++func_m_i)
+        {
+            auto func_m = func_m_i->second;
+
+            if (func_m->has_costmodel_stats())
             {
-                llvm::DILocation* dbLoc = inst_i->getDebugLoc();
+                auto costmodel = func_m->mutable_costmodel_stats();
 
-                if (dbLoc)
+                if (costmodel->has_simd16())
                 {
-                    MFuncList* func_m_list = nullptr;
-                    HashKey key = GetHash(dbLoc);
-                    llvm::DISubprogram* subProg = func->getSubprogram();
+                    auto simd16 = costmodel->mutable_simd16();
 
-                    if (map_InstrLoc2Func.find(key) == map_InstrLoc2Func.end())
-                    {
-                        func_m_list = new MFuncList();
-                        func_m_list->push_back(map_Func[subProg]);
-                        map_InstrLoc2Func.insert({ key, func_m_list });
-                    }
-                    else
-                    {
-                        func_m_list = map_InstrLoc2Func[key];
-                        if (std::find(func_m_list->begin(),
-                            func_m_list->end(), map_Func[subProg]) == func_m_list->end())
-                        {
-                            func_m_list->push_back(map_Func[subProg]);
-                        }
-                    }
+                    simd16->set_overallstatus(
+                        isOkStatus(simd16->loopcyclomaticcomplexity_status()) &&
+                        isOkStatus(simd16->nestedloopswithmultipleexitsratio_status()) &&
+                        isOkStatus(simd16->longstridedldstinloop_status()) &&
+                        isOkStatus(simd16->isgeminilakewithdoubles_status()));
+                }
+
+                if (costmodel->has_simd32())
+                {
+                    auto simd32 = costmodel->mutable_simd32();
+
+                    simd32->set_overallstatus(
+                        isOkStatus(simd32->instructioncount_status()) &&
+                        isOkStatus(simd32->threadgroupsize_status()) &&
+                        isOkStatus(simd32->threadgroupsizehint_status()) &&
+                        isOkStatus(simd32->subgroupfunctionarepresent_status()) &&
+                        isOkStatus(simd32->gen9orgen10withieeesqrtordivfunc_status()) &&
+                        isOkStatus(simd32->nonuniformloop_status()));
                 }
             }
         }
+    }
+
+    void IGCMetricImpl::UpdateCollectInstructions(llvm::Function* func)
+    {
+
     }
 
     void IGCMetricImpl::CollectLoop(llvm::Loop* loop)
@@ -392,22 +599,20 @@ namespace IGCMetrics
         {
             if (map_Loops.find(loop->getStartLoc()->getScope()) == map_Loops.end())
             {
-                auto func_m_list = GetFuncMetric(loop);
-                if (func_m_list == nullptr)
+                auto func_m = GetFuncMetric(loop);
+                if (func_m == nullptr)
                 {
                     return;
                 }
-                for (auto func_m : *func_m_list)
-                {
-                    auto cfg_stats = func_m->mutable_cfg_stats();
-                    auto loop_m = cfg_stats->add_loops_stats();
-                    auto loopLoc = loop_m->mutable_looploc();
 
-                    FillCodeRef(loopLoc, loop->getStartLoc());
-                    loop_m->set_nestinglevel(loop->getLoopDepth());
+                auto cfg_stats = func_m->mutable_cfg_stats();
+                auto loop_m = cfg_stats->add_loops_stats();
+                auto loopLoc = loop_m->mutable_looploc();
 
-                    map_Loops.insert({ loop->getStartLoc()->getScope(), loop_m });
-                }
+                FillCodeRef(loopLoc, loop->getStartLoc());
+                loop_m->set_nestinglevel(loop->getLoopDepth());
+
+                map_Loops.insert({ loop->getStartLoc()->getScope(), loop_m });
             }
         }
     }
@@ -467,7 +672,7 @@ namespace IGCMetrics
                             func_m->functioncalls(i).name()))
                         {
                             // For case if we have already record created
-                            callFunc_m = (IGC_METRICS::FuncCalls*)&func_m->functioncalls(i);
+                            callFunc_m = (IGC_METRICS::FuncCalls*) & func_m->functioncalls(i);
                             callFunc_m->set_count(callFunc_m->count() + 1);
                             break;
                         }
@@ -515,71 +720,32 @@ namespace IGCMetrics
         return instCount;
     }
 
-    MFuncList* IGCMetricImpl::GetFuncMetric(HashKey Key)
+    IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(const llvm::Instruction* const pInstr)
     {
-        if (Key == HashKey_NULL)
+        return map_Func[
+            pInstr->getDebugLoc()->getScope()->getSubprogram()];
+    }
+
+    IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(llvm::Instruction* pInstr)
+    {
+        return GetFuncMetric(pInstr->getParent()->getParent());
+    }
+
+    IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(llvm::Loop* pLoop)
+    {
+        return GetFuncMetric(pLoop->getBlocks()[0]->getParent());
+    }
+
+    IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(llvm::Function* pFunc)
+    {
+        if (map_Func.find(pFunc->getSubprogram()) == map_Func.end())
         {
             return nullptr;
         }
-        if (map_InstrLoc2Func.find(Key) == map_InstrLoc2Func.end())
+        else
         {
-            return nullptr;
+            return map_Func[pFunc->getSubprogram()];
         }
-        return map_InstrLoc2Func[Key];
-    }
-
-    MFuncList* IGCMetricImpl::GetFuncMetric(llvm::Instruction* pInstr)
-    {
-        return GetFuncMetric(GetHash(pInstr->getDebugLoc()));
-    }
-
-    MFuncList* IGCMetricImpl::GetFuncMetric(llvm::Loop* pLoop)
-    {
-        return GetFuncMetric(GetHash(pLoop->getStartLoc()));
-    }
-
-    HashKey IGCMetricImpl::GetHash(llvm::DILocation* Loc)
-    {
-        if (Loc == nullptr || Loc->getDirectory().empty() || Loc->getFilename().empty())
-        {
-            return HashKey_NULL;
-        }
-        return GetHash(
-            GetFullPath(Loc->getDirectory().str(), Loc->getFilename().str()),
-            Loc->getLine());
-    }
-
-    HashKey IGCMetricImpl::GetHash(const std::string& dir, const std::string& fileName, int line)
-    {
-        return GetHash(GetFullPath(dir, fileName), line);
-    }
-
-    HashKey IGCMetricImpl::GetHash(const char* dir, const char* fileName, int line)
-    {
-        if (dir == nullptr || fileName == nullptr)
-        {
-            return HashKey_NULL;
-        }
-        return GetHash(std::string(dir), std::string(fileName), line);
-    }
-
-    HashKey IGCMetricImpl::GetHash(const char* filePathName, int line)
-    {
-        if (filePathName == nullptr)
-        {
-            return HashKey_NULL;
-        }
-        return GetHash(std::string(filePathName), line);
-    }
-
-    HashKey IGCMetricImpl::GetHash(const std::string& filePathName, int line)
-    {
-        if (filePathName.length() == 0 && line == 0)
-        {
-            return HashKey_NULL;
-        }
-        std::hash<std::string> hasher;
-        return hasher(filePathName + std::to_string(line));
     }
 
     void IGCMetricImpl::FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DISubprogram* Loc)
@@ -600,6 +766,16 @@ namespace IGCMetrics
         }
         FillCodeRef(codeRef, GetFullPath(Loc->getDirectory().str(), Loc->getFilename().str()),
             Loc->getLine());
+    }
+
+    void IGCMetricImpl::FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DIVariable* Var)
+    {
+        if (Var == nullptr || Var->getDirectory().empty() || Var->getFilename().empty())
+        {
+            return;
+        }
+        FillCodeRef(codeRef, GetFullPath(Var->getDirectory().str(), Var->getFilename().str()),
+            Var->getLine());
     }
 
     void IGCMetricImpl::FillCodeRef(IGC_METRICS::CodeRef* codeRef, const std::string& filePathName, int line)

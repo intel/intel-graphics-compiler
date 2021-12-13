@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DebugLoc.h"
 #include <llvm/Analysis/LoopInfo.h>
@@ -16,24 +17,23 @@ SPDX-License-Identifier: MIT
 #include <3d/common/iStdLib/types.h>
 #include <common/shaderHash.hpp>
 #include "KernelInfo.h"
+#include "IGCMetric.h"
 
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
 #include <google/protobuf/util/json_util.h>
 #include <Metrics/proto_schema/igc_metrics.pb.h>
 #include <Metrics/proto_schema/instruction_stats.pb.h>
 
-#define HashKey size_t
-#define HashKey_NULL 0
 #endif // IGC_METRICS
+
+#include "Compiler/CISACodeGen/CVariable.hpp"
+#include <Compiler/CISACodeGen/DebugInfoData.hpp>
+#include <DebugInfo/VISADebugDecoder.hpp>
 
 #pragma once
 
 namespace IGCMetrics
 {
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-    typedef std::vector<IGC_METRICS::Function*> MFuncList;
-#endif
-
     class IGCMetricImpl
     {
     private:
@@ -42,9 +42,6 @@ namespace IGCMetrics
         IGC_METRICS::Program oclProgram;
 
         // Helpers
-        // Map all instruction line number, filepath to Function
-        // { Key: Hash(fullPathFile+LineNb), Value:Function list containing this instruction }
-        std::map<HashKey, MFuncList*> map_InstrLoc2Func;
         // Map Function debuginfo to Function metrics
         std::map<llvm::DISubprogram*, IGC_METRICS::Function*> map_Func;
         // helpers for emulated calls
@@ -58,23 +55,21 @@ namespace IGCMetrics
 
         void GetFunctionCalls(IGC_METRICS::Function* func_m, llvm::Function& func);
 
-        inline MFuncList* GetFuncMetric(llvm::Instruction* pInstr);
-        inline MFuncList* GetFuncMetric(llvm::Loop* pLoop);
-        inline MFuncList* GetFuncMetric(HashKey Key);
+        inline IGC_METRICS::Function* GetFuncMetric(const llvm::Instruction* const pInstr);
+        inline IGC_METRICS::Function* GetFuncMetric(llvm::Instruction* pInstr);
+        inline IGC_METRICS::Function* GetFuncMetric(llvm::Loop* pLoop);
+
+        inline IGC_METRICS::Function* GetFuncMetric(llvm::Function* pFunc);
 
         void CollectInstructions(llvm::Module* pModule);
 
         void UpdateLoopsInfo();
+        void UpdateModelCost();
         void CollectLoop(llvm::Loop* loop);
-
-        static HashKey GetHash(const char* dir, const char* fileName, int line);
-        static HashKey GetHash(const char* filePathName, int line);
-        static HashKey GetHash(const std::string& dir, const std::string& fileName, int line);
-        static HashKey GetHash(const std::string& filePathName, int line);
-        static HashKey GetHash(llvm::DILocation* Loc);
 
         static inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DISubprogram* Loc);
         static inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DILocation* Loc);
+        static inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DIVariable* Var);
         static inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, const std::string& filePathName, int line);
 
         static inline const std::string GetFullPath(const char* dir, const char* fileName);
@@ -100,6 +95,29 @@ namespace IGCMetrics
         void StatIncCoalesced(llvm::Instruction* coalescedAccess);
 
         void CollectRegStats(KERNEL_INFO* vISAstats);
+
+        void CollectLoopCyclomaticComplexity(
+            llvm::Function* pFunc,
+            int LoopCyclomaticComplexity,
+            int LoopCyclomaticComplexity_Max);
+
+        void CollectNestedLoopsWithMultipleExits(
+            llvm::Function* pFunc,
+            float NestedLoopsWithMultipleExitsRatio,
+            float NestedLoopsWithMultipleExitsRatio_Max);
+
+        void CollectLongStridedLdStInLoop(
+            llvm::Function* pFunc,
+            llvm::Loop* pProblematicLoop,
+            int LongStridedLdStInLoop_LdCnt,
+            int LongStridedLdStInLoop_StCnt,
+            int LongStridedLdStInLoop_MaxCntLdOrSt);
+
+        void CollectIsGeminiLakeWithDoubles(
+            llvm::Function* pFunc,
+            bool IsGeminiLakeWithDoubles);
+
+        void CollectDataFromDebugInfo(IGC::DebugInfoData* pDebugInfo, IGC::DbgDecoder* pDebugDecoder);
 
         void FinalizeStats();
 

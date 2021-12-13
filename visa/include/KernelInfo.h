@@ -49,8 +49,7 @@ public:
 class KERNEL_INFO
 {
 public:
-    std::map<std::string, VarInfo*> variables;
-    std::string name;
+    std::map<int, VarInfo*> variables;
 
     KERNEL_INFO() { }
     ~KERNEL_INFO()
@@ -60,19 +59,6 @@ public:
             delete i->second;
         }
         variables.clear();
-    }
-
-    VarInfo* AddVarInfo(const char* name)
-    {
-        // Add only not existing item
-        if (variables.find(name) == variables.end())
-        {
-            VarInfo* varInfo = new VarInfo();
-            variables.insert({name, varInfo });
-            return varInfo;
-        }
-        // If exists, return nullptr
-        return nullptr;
     }
 };
 

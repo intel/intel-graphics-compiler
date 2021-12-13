@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 #include <errno.h>
 #include "common/secure_string.h"
 
+#ifndef MEMCPY_S
+#define MEMCPY_S
 typedef int errno_t;
 static errno_t memcpy_s(void* dst, size_t numberOfElements, const void* src, size_t count)
 {
@@ -36,6 +38,7 @@ static errno_t memcpy_s(void* dst, size_t numberOfElements, const void* src, siz
 
     return 0;
 }
+#endif
 #endif
 
 /* stdio.h portability code end */

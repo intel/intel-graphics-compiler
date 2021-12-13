@@ -232,6 +232,9 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 
         if (finalize)
         {
+            m_currShader->GetContext()->metrics.CollectDataFromDebugInfo(
+                &m_currShader->GetDebugInfoData(), &decodedDbg);
+
             IDebugEmitter::Release(m_pDebugEmitter);
         }
     }

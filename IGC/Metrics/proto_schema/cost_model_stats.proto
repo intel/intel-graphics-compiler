@@ -1,0 +1,88 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2021 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+syntax = "proto3";
+
+import "Metrics/proto_schema/code_reference.proto";
+
+package IGC_METRICS;
+
+message CostModelStats
+{
+  enum CostStatus
+  {
+    NOT_CHECK = 0;
+    OK = 1;
+    BAD = 2;
+  }
+
+  message CostSIMD16
+  {
+    CostStatus LoopCyclomaticComplexity_Status = 1;
+    int32 LoopCyclomaticComplexity = 2;
+    int32 LoopCyclomaticComplexity_Max = 3;
+
+    CostStatus NestedLoopsWithMultipleExitsRatio_Status = 4;
+    float NestedLoopsWithMultipleExitsRatio = 5;
+    float NestedLoopsWithMultipleExitsRatio_Max = 6;
+
+    // If LdCnt OR StCnt is bigger than MaxCntLdOrSt
+    // then LongStridedLdStInLoop_Status is BAD
+    CostStatus LongStridedLdStInLoop_Status = 7;
+    // If LongStridedLdStInLoop_Status is BAD
+    // then data below will have the information
+    // for problematic loop
+    int32 LongStridedLdStInLoop_LdCnt = 8;
+    int32 LongStridedLdStInLoop_StCnt = 9;
+    int32 LongStridedLdStInLoop_MaxCntLdOrSt = 10;
+    CodeRef LongStridedLdStInLoop_ProblematicLoop = 11;
+
+    // If this flag is true - then we don't have GeminiLake
+    // or existing doubles in shader
+    CostStatus IsGeminiLakeWithDoubles_Status = 12;
+
+    // If we met all requirements for SIMD 16 then set true
+    bool OverallStatus = 13;
+  }
+
+  message CostSIMD32
+  {
+    enum LoopCount
+    {
+      LIKELY_SMALL = 0;
+      LOOPCOUNT_LIKELY_LARGE = 1;
+      LOOPCOUNT_UNKNOWN = 2;
+    }
+
+    CostStatus InstructionCount_Status = 1;
+    int32 InstructionCount = 2;
+    int32 InstructionCount_Max = 3;
+
+    CostStatus ThreadGroupSize_Status = 4;
+    int32 ThreadGroupSize = 5;
+    int32 ThreadGroupSize_Max = 6;
+
+    CostStatus ThreadGroupSizeHint_Status = 7;
+    int32 ThreadGroupSizeHint = 8;
+    int32 ThreadGroupSizeHint_Max = 9;
+
+    CostStatus SubgroupFunctionArePresent_Status = 10;
+
+    CostStatus Gen9OrGen10WithIEEESqrtOrDivFunc_Status = 11;
+
+    CostStatus NonUniformLoop_Status = 12;
+    LoopCount NonUniformLoop_Count = 13;
+    CodeRef NonUniformLoop_ProblematicLoop = 14;
+
+    // If we met all requirements for SIMD 32 then set true
+    bool OverallStatus = 15;
+  }
+
+  CostSIMD16 simd16 = 1;
+  CostSIMD32 simd32 = 2;
+}
