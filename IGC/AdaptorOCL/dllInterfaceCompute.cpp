@@ -1294,9 +1294,10 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
         // ze binary foramt
         llvm::SmallVector<char, 64> buf;
         llvm::raw_svector_ostream llvm_os(buf);
+        const bool excludeIRFromZEBinary = IGC_IS_FLAG_ENABLED(ExcludeIRFromZEBinary) || oclContext.getModuleMetaData()->compOpt.ExcludeIRFromZEBinary;
         const char* spv_data = nullptr;
         uint32_t spv_size = 0;
-        if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V) {
+        if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V && !excludeIRFromZEBinary) {
             spv_data = pInputArgs->pInput;
             spv_size = pInputArgs->InputSize;
         }

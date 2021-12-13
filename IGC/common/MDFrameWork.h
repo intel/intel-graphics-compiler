@@ -287,6 +287,7 @@ namespace IGC
         // patch-token based binary if the input contains features those
         // are not supported by ZEBinary
         bool EnableZEBinary                             = false;
+        bool ExcludeIRFromZEBinary                      = false;
     };
 
     enum class ThreadIDLayout
