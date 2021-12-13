@@ -59,7 +59,7 @@ struct zeInfoPayloadArgument
 {
     bool operator==(const zeInfoPayloadArgument& other) const
     {
-        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index;
+        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset;
     }
     zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
@@ -69,6 +69,7 @@ struct zeInfoPayloadArgument
     zeinfo_str_t addrspace;
     zeinfo_str_t access_type;
     zeinfo_int32_t sampler_index = -1;
+    zeinfo_int32_t source_offset = -1;
 };
 struct zeInfoPerThreadPayloadArgument
 {
@@ -142,7 +143,7 @@ struct zeInfoContainer
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.8"; }
+    static zeinfo_str_t getVersionNumber() { return "1.9"; }
 
     enum class ArgType {
         packed_local_ids,
