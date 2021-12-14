@@ -475,7 +475,7 @@ DiagnosticInfoLegalization::DiagnosticInfoLegalization(const Instruction *I,
 
 std::string DiagnosticInfoLegalization::getDescription() const {
   std::string str;
-  llvm::raw_string_ostream(str) << *Inst;
+  vc::printToString(str, *Inst);
   return (Twine("GenXLegalization failed for instruction \"") +
           StringRef(str).ltrim() + "\": " + Description).str();
 }

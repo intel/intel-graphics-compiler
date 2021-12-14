@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
 #include "vc/Utils/GenX/Printf.h"
 
@@ -155,7 +156,7 @@ public:
                           DiagnosticSeverity Severity)
       : DiagnosticInfo(getKindID(), Severity) {
     std::string Str;
-    llvm::raw_string_ostream(Str) << *Inst;
+    vc::printToString(Str, *Inst);
     Description =
         (Twine("CISA builder failed for intruction <") + Str + ">: " + Desc)
             .str();

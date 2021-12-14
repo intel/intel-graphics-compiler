@@ -178,7 +178,7 @@ DiagnosticInfoLowering::DiagnosticInfoLowering(Instruction *Inst,
     Col = DL.getCol();
   }
   std::string str;
-  llvm::raw_string_ostream(str) << *Inst;
+  vc::printToString(str, *Inst);
 
   Description =
       (Twine("GenXLowering failed for instruction ") + str + ": " + Desc).str();

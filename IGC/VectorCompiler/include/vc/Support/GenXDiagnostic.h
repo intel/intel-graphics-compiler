@@ -25,6 +25,16 @@ SPDX-License-Identifier: MIT
 
 namespace vc {
 
+// Prints \p V to string \p Str.
+template <typename T> void printToString(std::string &Str, T &V) {
+#if LLVM_VERSION_MAJOR < 10
+  llvm::raw_string_ostream StrStream{Str};
+  StrStream << V;
+#else
+  llvm::raw_string_ostream{Str} << V;
+#endif
+}
+
 // Diagnostic information for errors/warnings
 class DiagnosticInfo : public llvm::DiagnosticInfo {
 private:
@@ -50,7 +60,7 @@ public:
                  llvm::DiagnosticSeverity Severity = llvm::DS_Error)
       : llvm::DiagnosticInfo(getKindID(), Severity) {
     std::string Str;
-    llvm::raw_string_ostream(Str) << *Val;
+    printToString(Str, *Val);
     Description =
         (Prefix + " failed for: <" + Str.c_str() + ">: " + Desc).str();
   }
@@ -61,7 +71,7 @@ public:
                  llvm::DiagnosticSeverity Severity = llvm::DS_Error)
       : llvm::DiagnosticInfo(getKindID(), Severity) {
     std::string Str;
-    llvm::raw_string_ostream(Str) << *Ty;
+    printToString(Str, *Ty);
     Description =
         (Prefix + " failed for: <" + Str.c_str() + ">: " + Desc).str();
   }
