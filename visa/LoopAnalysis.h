@@ -40,33 +40,6 @@ namespace vISA
         bool inProgress = false;
     };
 
-    class Dominator : public Analysis
-    {
-    public:
-        Dominator(G4_Kernel& k) : kernel(k)
-        {
-        }
-
-        ~Dominator()
-        {
-        }
-
-        std::unordered_set<G4_BB*>& getDom(G4_BB*);
-        void dumpDom(std::ostream& os = std::cerr);
-        bool dominates(G4_BB* bb1, G4_BB* bb2);
-
-    private:
-        G4_Kernel& kernel;
-        G4_BB* entryBB = nullptr;
-        std::vector<std::unordered_set<G4_BB*>> Doms;
-
-        void runDOM();
-
-        void reset() override;
-        void run() override;
-        void dump(std::ostream& os = std::cerr) override;
-    };
-
     class ImmDominator : public Analysis
     {
     public:
@@ -79,9 +52,7 @@ namespace vISA
 
         }
 
-        std::vector<G4_BB*>& getImmDom(G4_BB*);
-        G4_BB* getCommonImmDom(const std::unordered_set<G4_BB*>& bbs);
-        G4_BB* InterSect(G4_BB* bb, int i, int k);
+        bool dominates(G4_BB *bb1, G4_BB *bb2);
         void dumpImmDom(std::ostream& os = std::cerr);
         const std::vector<G4_BB*>& getIDoms();
 
@@ -89,10 +60,11 @@ namespace vISA
         G4_Kernel& kernel;
         G4_BB* entryBB = nullptr;
         std::vector<G4_BB*> iDoms;
+        // TODO: Internal data to be removed.
         std::vector<std::vector<G4_BB*>> immDoms;
 
         void runIDOM();
-        void updateImmDom();
+        G4_BB* InterSect(G4_BB* bb, int i, int k);
 
         void reset() override;
         void run() override;
