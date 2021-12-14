@@ -4045,6 +4045,15 @@ namespace IGC
             SaveOption(vISA_fusedCallWA, true);
         }
 
+        if (context->type == ShaderType::OPENCL_SHADER)
+        {
+            auto ClContext = static_cast<OpenCLProgramContext*>(context);
+            if (ClContext->m_InternalOptions.IgnoreBFRounding)
+            {
+                SaveOption(vISA_ignoreBFRounding, true);
+            }
+        }
+
         if (IGC_IS_FLAG_ENABLED(DisableCSEL))
         {
             SaveOption(vISA_enableCSEL, false);

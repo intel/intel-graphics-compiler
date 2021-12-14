@@ -1342,6 +1342,7 @@ namespace IGC
             bool EnableZEBinary = false;
             bool NoSpill = false;
             bool DisableNoMaskWA = false;
+            bool IgnoreBFRounding = false;   // If true, ignore BFloat rounding when folding bf operations
 
             // Generic address related
             bool HasNoLocalToGeneric = false;

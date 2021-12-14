@@ -853,6 +853,11 @@ namespace IGC
             {
                 DisableNoMaskWA = true;
             }
+            // -cl-intel-ignoreBFRounding, -ze-intel-ignoreBFRounding
+            else if (suffix.equals("-ignoreBFRounding"))
+            {
+                IgnoreBFRounding = true;
+            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);
