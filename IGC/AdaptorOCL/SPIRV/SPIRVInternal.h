@@ -470,16 +470,10 @@ _SPIRV_OP(OpJointMatrixMadINTEL)
 _SPIRV_OP(OpJointMatrixSUMadINTEL)
 _SPIRV_OP(OpJointMatrixUSMadINTEL)
 _SPIRV_OP(OpJointMatrixUUMadINTEL)
-#undef _SPIRV_OP
-
-#define _SPIRV_OP(x, y) add(Op##y, #x);
 // Intel media_block_io builtins
-_SPIRV_OP(intel_sub_group_media_block_read, SubgroupImageMediaBlockReadINTEL)
-_SPIRV_OP(intel_sub_group_media_block_write, SubgroupImageMediaBlockWriteINTEL)
-#undef _SPIRV_OP
-
+_SPIRV_OP(OpSubgroupImageMediaBlockReadINTEL)
+_SPIRV_OP(OpSubgroupImageMediaBlockWriteINTEL)
 // VME
-#define _SPIRV_OP(x) add(x, #x);
 _SPIRV_OP(OpVmeImageINTEL)
 // Initialization phase functions
 _SPIRV_OP(OpSubgroupAvcImeInitializeINTEL)

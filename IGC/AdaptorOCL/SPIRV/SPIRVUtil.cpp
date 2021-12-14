@@ -264,51 +264,7 @@ isFunctionBuiltin(llvm::Function* F) {
 
 std::string
 getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, std::string suffix) {
-  std::string name = "";
-  bool hasI32Postfix = false;
-
-  if (OC == OpSubgroupImageMediaBlockReadINTEL || OC == OpSubgroupImageMediaBlockWriteINTEL) {
-    std::stringstream tmpName;
-    SPIRVType *DataTy = nullptr;
-    switch (OC) {
-    case OpSubgroupImageMediaBlockReadINTEL:
-      tmpName << OCLSPIRVBuiltinMap::map(OC);
-      DataTy = BI->getType();
-      hasI32Postfix = true;
-      break;
-    case OpSubgroupImageMediaBlockWriteINTEL:
-      tmpName << OCLSPIRVBuiltinMap::map(OC);
-      DataTy = (*BI->getOperands().rbegin())->getType();
-      hasI32Postfix = true;
-      break;
-    default:
-      tmpName << OCLSPIRVBuiltinMap::map(OC);
-    }
-    if (DataTy) {
-      if (DataTy->getBitWidth() == 8) {
-        tmpName << "_uc";
-      }
-      else if (DataTy->getBitWidth() == 16) {
-        tmpName << "_us";
-      }
-      else if (DataTy->getBitWidth() == 32 && hasI32Postfix) {
-        tmpName << "_ui";
-      }
-      else if (DataTy->getBitWidth() == 64) {
-        tmpName << "_ul";
-      }
-
-      if (DataTy->isTypeVector()) {
-        if (unsigned ComponentCount = DataTy->getVectorComponentCount())
-          tmpName << ComponentCount;
-      }
-    }
-    name = tmpName.str();
-  }
-  else
-  {
-    name = OCLSPIRVBuiltinMap::map(OC);
-  }
+  std::string name = OCLSPIRVBuiltinMap::map(OC);
 
   if (!name.empty()) {
     name = name + suffix;
