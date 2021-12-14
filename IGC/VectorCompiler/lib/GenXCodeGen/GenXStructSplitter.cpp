@@ -123,9 +123,8 @@ static char const *getTypePrefix(Type &Ty);
 
 // Class to do first analysis and ban all structures, which cannot be splitted
 // at advance. It bans structures containing array of complex structs. It bans
-// structures containing banned structs. It bans structures, which are allocated
-// as an array.
-class StructFilter : public InstVisitor<StructFilter> {
+// structures containing banned structs.
+class StructFilter {
   std::unordered_set<StructType *> BannedStructs;
 
   bool checkForArrayOfComplicatedStructs(StructType &STy) const;
@@ -134,7 +133,6 @@ class StructFilter : public InstVisitor<StructFilter> {
 public:
   StructFilter(Module &M);
   bool isStructBanned(StructType &STy) const;
-  void visitAllocaInst(AllocaInst &AI);
 
   void print(raw_ostream &os = llvm::errs()) const;
 };
@@ -423,13 +421,12 @@ class Substituter : public InstVisitor<Substituter> {
   DataLayout const &DL;
   StructFilter Filter;
   DependencyGraph Graph;
-  std::unordered_map<StructType *, std::vector<AllocaInst *>> Allocas;
+  std::vector<AllocaInst *> Allocas;
   // Contains all instruction to substitute.
   using VecOfInstructionSubstitution =
       std::vector<std::pair<Instruction *, Instruction *>>;
 
-  bool processAllocasOfOneSTy(std::vector<AllocaInst *> const Allocas,
-                              VecOfInstructionSubstitution /*OUT*/ &InstToInst);
+  bool processAlloca(AllocaInst &Alloca);
 
   std::unordered_map<Type *, Instruction *>
   generateNewAllocas(AllocaInst &OldInst) const;
@@ -496,9 +493,6 @@ StructFilter::StructFilter(Module &M) {
       It = NotBannedYet.begin();
     } else
       ++It;
-
-  // Looks for an allocation an array.
-  visit(M);
 }
 
 //
@@ -506,21 +500,6 @@ StructFilter::StructFilter(Module &M) {
 //
 bool StructFilter::isStructBanned(StructType &STy) const {
   return BannedStructs.find(&STy) != BannedStructs.end();
-}
-
-//
-//  Visits all allocas and checks if it allocates an array of structure.
-//
-void StructFilter::visitAllocaInst(AllocaInst &AI) {
-  Type *AllocaTy = AI.getAllocatedType();
-  Type *AllocaBTy = getArrayFreeTy(AllocaTy);
-  bool const IsSeq = AllocaBTy != AllocaTy;
-  if (StructType *STy = dyn_cast<StructType>(AllocaBTy))
-    if (IsSeq) {
-      // If allocating an array of structs -> ban splitting
-      BannedStructs.emplace(STy);
-      return;
-    }
 }
 
 //
@@ -1024,7 +1003,7 @@ void Substituter::visitAllocaInst(AllocaInst &AI) {
       // alloca [5 x %struct.C] then skip.
       // Gets only allocas which will be splitted
       // InfoToMerge contains this info
-      Allocas[STy].emplace_back(&AI);
+      Allocas.emplace_back(&AI);
     }
 }
 
@@ -1153,42 +1132,37 @@ Instruction *Substituter::generateNewGEPs(
 //
 bool Substituter::processAllocas() {
   bool Changed{false};
-  for (auto &&[STy, VecOfAllocas] : Allocas) {
-    VecOfInstructionSubstitution InstToInst;
-    if (processAllocasOfOneSTy(VecOfAllocas, InstToInst)) {
-      Changed = true;
-      for (auto [InstToReplace, ToInst] : InstToInst)
-        InstToReplace->replaceAllUsesWith(ToInst);
-    }
-  }
+  for (AllocaInst *Alloca : Allocas)
+    Changed |= processAlloca(*Alloca);
+
   return Changed;
 }
 //
-//  Processes allocas which allocates memory for certain structure type.
-//  Returns true, if all usage of structure is appropriate and outs vector of
-//  substutited intructions. Returns false, if some instruction is prohibited
-//  to split.
+//  Processes Alloca and all users of it. If processing current alloca fails,
+//  process the next one.
 //
-bool Substituter::processAllocasOfOneSTy(
-    std::vector<AllocaInst *> const Allocas,
-    VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
-  for (AllocaInst *Alloca : Allocas) {
-    LLVM_DEBUG(dbgs() << "Processing alloca: " << *Alloca << "\n");
-    auto InstUses = getInstUses(*Alloca);
-    if (!InstUses)
+bool Substituter::processAlloca(AllocaInst &Alloca) {
+  LLVM_DEBUG(dbgs() << "Processing alloca: " << Alloca << "\n");
+  auto InstUses = getInstUses(Alloca);
+  if (!InstUses)
+    return false;
+  auto [UsesGEP, UsesPTI] = std::move(InstUses.getValue());
+
+  std::unordered_map<Type *, Instruction *> NewInstructions =
+      generateNewAllocas(Alloca);
+
+  VecOfInstructionSubstitution InstToInst;
+
+  for (GetElementPtrInst *GEP : UsesGEP)
+    if (!processGEP(*GEP, NewInstructions, InstToInst))
       return false;
-    auto [UsesGEP, UsesPTI] = std::move(InstUses.getValue());
+  for (PtrToIntInst *PTI : UsesPTI)
+    if (!processPTI(*PTI, NewInstructions, InstToInst))
+      return false;
 
-    std::unordered_map<Type *, Instruction *> NewInstructions =
-        generateNewAllocas(*Alloca);
+  for (auto [InstToReplace, ToInst] : InstToInst)
+    InstToReplace->replaceAllUsesWith(ToInst);
 
-    for (GetElementPtrInst *GEP : UsesGEP)
-      if (!processGEP(*GEP, NewInstructions, InstToInst))
-        return false;
-    for (PtrToIntInst *PTI : UsesPTI)
-      if (!processPTI(*PTI, NewInstructions, InstToInst))
-        return false;
-  }
   return true;
 }
 
@@ -1241,7 +1215,7 @@ Substituter::getIndicesPath(GetElementPtrInst &GEPI) {
 Optional<
     std::tuple<std::vector<GetElementPtrInst *>, std::vector<PtrToIntInst *>>>
 Substituter::getInstUses(Instruction &I) {
-  // Checks That users of GEP are apropreate.
+  // Checks That users of Instruction are appropriate.
   std::vector<GetElementPtrInst *> UsesGEP;
   std::vector<PtrToIntInst *> UsesPTI;
   UsesGEP.reserve(I.getNumUses());
@@ -1251,10 +1225,24 @@ Substituter::getInstUses(Instruction &I) {
       UsesGEP.push_back(I);
     else if (PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(U.getUser()))
       UsesPTI.push_back(PTI);
-    else {
+    else if (BitCastInst *BC = dyn_cast<BitCastInst>(U.getUser())) {
+      auto UnsupportedBCUser = llvm::find_if_not(BC->users(), [](User *BCU) {
+        auto IID = GenXIntrinsic::getAnyIntrinsicID(BCU);
+        return IID == llvm::Intrinsic::lifetime_start ||
+               IID == llvm::Intrinsic::lifetime_end;
+      });
+
+      if (UnsupportedBCUser != BC->users().end()) {
+        LLVM_DEBUG(
+            dbgs()
+            << "WARN:: Bitcast is used where it cannot be used!\n\tBitcast: "
+            << *BC << "\n\tUser:    " << **UnsupportedBCUser << "\n");
+        return None;
+      }
+    } else {
       LLVM_DEBUG(
           dbgs()
-          << "WARN:: Struct uses where it cannot be used!\n\tInstruction: "
+          << "WARN:: Struct is used where it cannot be used!\n\tInstruction: "
           << *U.getUser() << "\n");
       return None;
     }
@@ -1871,10 +1859,7 @@ void DependencyGraph::printGeneration(raw_ostream &Os) const {
 
 void Substituter::printAllAllocas(raw_ostream &Os) {
   Os << "Allocas\n";
-  for (auto &&[STy, VecOfAllocas] : Allocas) {
-    Os << "  For struct: " << *STy << "\n";
-    for (auto &&Alloca : VecOfAllocas)
-      Os << "    " << *Alloca << "\n";
-  }
+  for (auto &&Alloca : Allocas)
+    Os << *Alloca << "\n";
   Os << "\n";
 }
