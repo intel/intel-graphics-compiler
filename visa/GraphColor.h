@@ -261,7 +261,7 @@ namespace vISA
     {
     private:
         // pair of default mask, non-default mask
-        using MaskDeclares = std::pair<BitSet, BitSet>;
+        using MaskDeclares = std::pair<std::vector<unsigned>, std::vector<unsigned>>;
         G4_Kernel& kernel;
         Interference& intf;
         GlobalRA& gra;

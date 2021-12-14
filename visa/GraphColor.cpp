@@ -4833,13 +4833,19 @@ void Augmentation::addSIMDIntfDclForCallSite(MaskDeclares* maskDeclares)
 {
     for (auto defaultDcl : defaultMask)
     {
-        maskDeclares->first.set(defaultDcl->getRegVar()->getId(), true);
+        maskDeclares->first.push_back(defaultDcl->getRegVar()->getId());
     }
+    std::sort(maskDeclares->first.begin(), maskDeclares->first.end());
+    auto last = std::unique(maskDeclares->first.begin(), maskDeclares->first.end());
+    maskDeclares->first.erase(last, maskDeclares->first.end());
 
     for (auto nonDefaultDcl : nonDefaultMask)
     {
-        maskDeclares->second.set(nonDefaultDcl->getRegVar()->getId(), true);
+        maskDeclares->second.push_back(nonDefaultDcl->getRegVar()->getId());
     }
+    std::sort(maskDeclares->second.begin(), maskDeclares->second.end());
+    last = std::unique(maskDeclares->second.begin(), maskDeclares->second.end());
+    maskDeclares->second.erase(last, maskDeclares->second.end());
 }
 
 void Augmentation::addSIMDIntfForRetDclares(G4_Declare* newDcl)
@@ -4849,8 +4855,8 @@ void Augmentation::addSIMDIntfForRetDclares(G4_Declare* newDcl)
     if (dclIt == retDeclares.end())
     {
         MaskDeclares newMask;
-        newMask.first.resize(liveAnalysis.getNumSelectedGlobalVar());
-        newMask.second.resize(liveAnalysis.getNumSelectedGlobalVar());
+        newMask.first.reserve(liveAnalysis.getNumSelectedGlobalVar()/32);
+        newMask.second.reserve(liveAnalysis.getNumSelectedGlobalVar()/32);
         retDeclares[newDcl] = std::move(newMask);
         mask = &retDeclares[newDcl];
     }
@@ -5070,72 +5076,68 @@ void Augmentation::buildInterferenceIncompatibleMask()
 
 void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MaskDeclares* mask)
 {
-
-    for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
+    for (unsigned i : mask->first)
     {
         auto newDclAugMask = gra.getAugmentationMask(newDcl);
 
-        if (mask->first.isSet(i))
+        G4_Declare* defaultDcl = lrs[i]->getDcl();
+        auto augMask = gra.getAugmentationMask(defaultDcl);
+        if (augMask != newDclAugMask)
         {
-            G4_Declare* defaultDcl = lrs[i]->getDcl();
-            if (gra.getAugmentationMask(defaultDcl) != newDclAugMask)
+            handleSIMDIntf(defaultDcl, newDcl, true);
+        }
+        else
+        {
+            if (liveAnalysis.livenessClass(G4_GRF) &&
+                // Populate compatible sparse intf data structure
+                // only for weak edges.
+                weakEdgeNeeded(augMask, newDclAugMask))
             {
-                handleSIMDIntf(defaultDcl, newDcl, true);
-            }
-            else
-            {
-                if (liveAnalysis.livenessClass(G4_GRF) &&
-                    // Populate compatible sparse intf data structure
-                    // only for weak edges.
-                    weakEdgeNeeded(gra.getAugmentationMask(defaultDcl), newDclAugMask))
+                if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
+                    newDcl->getRegVar()->isPhyRegAssigned())
                 {
-                    if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
-                        newDcl->getRegVar()->isPhyRegAssigned())
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    if (intf.isStrongEdgeBetween(defaultDcl, newDcl))
-                    {
-                        // No need to add weak edge
-                        continue;
-                    }
+                if (intf.isStrongEdgeBetween(defaultDcl, newDcl))
+                {
+                    // No need to add weak edge
+                    continue;
+                }
 
-                    // defaultDcl and newDcl are compatible live-ranges and can have weak edge in intf graph
-                    auto it = intf.compatibleSparseIntf.find(defaultDcl);
-                    if (it != intf.compatibleSparseIntf.end())
-                    {
-                        it->second.push_back(newDcl);
-                    }
-                    else
-                    {
-                        std::vector<G4_Declare*> v(1, newDcl);
-                        intf.compatibleSparseIntf.insert(
-                            std::make_pair(defaultDcl, v));
-                    }
+                // defaultDcl and newDcl are compatible live-ranges and can have weak edge in intf graph
+                auto it = intf.compatibleSparseIntf.find(defaultDcl);
+                if (it != intf.compatibleSparseIntf.end())
+                {
+                    it->second.push_back(newDcl);
+                }
+                else
+                {
+                    std::vector<G4_Declare*> v(1, newDcl);
+                    intf.compatibleSparseIntf.insert(
+                        std::make_pair(defaultDcl, v));
+                }
 
-                    it = intf.compatibleSparseIntf.find(newDcl);
-                    if (it != intf.compatibleSparseIntf.end())
-                    {
-                        it->second.push_back(defaultDcl);
-                    }
-                    else
-                    {
-                        std::vector<G4_Declare*> v(1, defaultDcl);
-                        intf.compatibleSparseIntf.insert(
-                            std::make_pair(newDcl, v));
-                    }
+                it = intf.compatibleSparseIntf.find(newDcl);
+                if (it != intf.compatibleSparseIntf.end())
+                {
+                    it->second.push_back(defaultDcl);
+                }
+                else
+                {
+                    std::vector<G4_Declare*> v(1, defaultDcl);
+                    intf.compatibleSparseIntf.insert(
+                        std::make_pair(newDcl, v));
                 }
             }
         }
-
-        // Mark interference among non-default mask variables
-        if (mask->second.isSet(i))
-        {
-            G4_Declare* nonDefaultDcl = lrs[i]->getDcl();
-            // Non-default masks are different so mark interference
-            handleSIMDIntf(nonDefaultDcl, newDcl, true);
-        }
+    }
+    // Mark interference among non-default mask variables
+    for (unsigned i : mask->second)
+    {
+        G4_Declare* nonDefaultDcl = lrs[i]->getDcl();
+        // Non-default masks are different so mark interference
+        handleSIMDIntf(nonDefaultDcl, newDcl, true);
     }
 }
 
@@ -5231,8 +5233,8 @@ void Augmentation::augmentIntfGraph()
     for (auto func : kernel.fg.funcInfoTable)
     {
         auto& item = callsiteDeclares[func];
-        item.first.resize(liveAnalysis.getNumSelectedGlobalVar());
-        item.second.resize(liveAnalysis.getNumSelectedGlobalVar());
+        item.first.reserve(liveAnalysis.getNumSelectedGlobalVar()/32);
+        item.second.reserve(liveAnalysis.getNumSelectedGlobalVar()/32);
     }
 
     if (kernel.getOption(vISA_LocalRA))
