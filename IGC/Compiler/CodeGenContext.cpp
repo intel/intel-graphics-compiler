@@ -863,6 +863,11 @@ namespace IGC
             {
                 IgnoreBFRounding = true;
             }
+            // -cl-compile-one-at-time
+            else if (suffix.equals("-compile-one-at-time"))
+            {
+                CompileOneKernelAtTime = true;
+            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);
@@ -1014,6 +1019,14 @@ namespace IGC
         llvmCtxWrapper->Release();
         module = nullptr;
         llvmCtxWrapper = nullptr;
+    }
+
+    void CodeGenContext::clearMD()
+    {
+        delete modMD;
+        delete m_pMdUtils;
+        modMD = nullptr;
+        m_pMdUtils = nullptr;
     }
 
     static const llvm::Function *getRelatedFunction(const llvm::Value *value)

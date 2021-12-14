@@ -1034,6 +1034,7 @@ namespace IGC
         virtual void InitVarMetaData();
         virtual ~CodeGenContext();
         void clear();
+        void clearMD();
         void EmitError(std::ostream &OS, const char* errorstr, const llvm::Value *context) const;
         void EmitError(const char* errorstr, const llvm::Value *context);
         void EmitWarning(const char* warningstr);
@@ -1344,6 +1345,7 @@ namespace IGC
             bool NoSpill = false;
             bool DisableNoMaskWA = false;
             bool IgnoreBFRounding = false;   // If true, ignore BFloat rounding when folding bf operations
+            bool CompileOneKernelAtTime = false;
 
             // Generic address related
             bool HasNoLocalToGeneric = false;
