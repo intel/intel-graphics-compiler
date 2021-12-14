@@ -5447,6 +5447,18 @@ namespace IGC
                         &ss, true);
                     result = vAsmTextBuilder->ParseVISAText(vMainKernel->getVISAAsm(), "");
                     result = vAsmTextBuilder->ParseVISAText(additionalVISAAsmToLink, "");
+
+                    // Mark invoke_simd targets with LTO_InvokeOptTarget attribute.
+                    IGC_ASSERT(m_program && m_program->GetContext() && m_program->GetContext()->getModule());
+                    for (auto& F : m_program->GetContext()->getModule()->getFunctionList())
+                    {
+                        if (F.hasFnAttribute("invoke_simd_target")) {
+                            auto vFunc = vAsmTextBuilder->GetVISAKernel(F.getName().data());
+                            IGC_ASSERT(vFunc);
+                            bool enabled = true;
+                            vFunc->AddKernelAttribute("LTO_InvokeOptTarget", 1, &enabled);
+                        }
+                    }
                 }
 
                 if (result != 0)
