@@ -2437,6 +2437,8 @@ void CFGStructurizer::reConstructDoWhileforBreak(ANodeHG *whileNode)
             newIf->setBeginBB(pred->getBeginBB());
             newIf->setEndBB(ndbb->getEndBB());
             newIf->setExitBB(predTarget->getBeginBB());
+            pred->parent = newIf;
+            ndbb->parent = newIf;
 
             ndbb->setHasBreak(true);
             newIf->setHasBreak(true);
@@ -2476,6 +2478,9 @@ void CFGStructurizer::reConstructDoWhileforBreak(ANodeHG *whileNode)
             newIf->setBeginBB(pred->getBeginBB());
             newIf->setEndBB(ndbb->getEndBB());
             newIf->setExitBB(phySucc->getBeginBB());
+            pred->parent = newIf;
+            phyPred->parent = newIf;
+            ndbb->parent = newIf;
 
             ndbb->setHasBreak(true);
             newIf->setHasBreak(true);
