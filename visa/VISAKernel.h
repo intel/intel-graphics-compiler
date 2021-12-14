@@ -956,6 +956,8 @@ public:
     bool isFCComposableKernel() const { return mIsFCComposableKernel; }
     void setFCComposableKernel(bool value) { mIsFCComposableKernel = value; }
 
+    void setLocalSheduleable(bool value);
+
     unsigned int getGenVarCount() const
     {
         return (uint32_t)m_var_info_list.size();

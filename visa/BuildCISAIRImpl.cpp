@@ -1459,12 +1459,19 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         int i;
         unsigned int k = 0;
         bool isInPatchingMode = m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Enable_NoLTO && m_prevKernel;
+        uint32_t localScheduleStartKernelId = m_options.getuInt32Option(vISA_LocalScheduleingStartKernel);
+        uint32_t localScheduleEndKernelId = m_options.getuInt32Option(vISA_LocalScheduleingEndKernel);
         VISAKernelImpl* mainKernel = nullptr;
         std::list<VISAKernelImpl*>::iterator iter = m_kernelsAndFunctions.begin();
         std::list<VISAKernelImpl*>::iterator end = m_kernelsAndFunctions.end();
         for (i = 0; iter != end; iter++, i++)
         {
             VISAKernelImpl* kernel = (*iter);
+            if ((uint32_t)i < localScheduleStartKernelId || (uint32_t)i > localScheduleEndKernelId)
+            {
+                kernel->setLocalSheduleable(false);
+            }
+
             mainKernel = (kernel->getIsKernel()) ? kernel : mainKernel;
             kernel->finalizeAttributes();
             kernel->getIRBuilder()->setType(kernel->getType());

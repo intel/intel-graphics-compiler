@@ -181,6 +181,9 @@ private:
     // There's two entires prolog for setting FFID for compute shaders.
     G4_BB* computeFFIDGP = nullptr;
     G4_BB* computeFFIDGP1 = nullptr;
+
+    // For debug purpose: kernel is local-scheduled or not according to options.
+    bool isLocalSchedulable = true;
 public:
     FlowGraph              fg;
     DECLARE_LIST           Declares;
@@ -345,6 +348,9 @@ public:
     unsigned getPerThreadNextOff() const;
     unsigned getComputeFFIDGPNextOff() const;
     unsigned getComputeFFIDGP1NextOff() const;
+
+    bool isLocalSheduleable() const { return isLocalSchedulable; }
+    void setLocalSheduleable(bool value) { isLocalSchedulable = value; }
 
 private:
     G4_BB* getNextBB(G4_BB* bb) const;
