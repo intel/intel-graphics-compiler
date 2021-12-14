@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 namespace vc {
 
 // Address space indexing follows OCL plus some target specific address spaces.
-// Program addrspace is an addrspace where executable code should be stored.
 namespace AddrSpace {
 enum Enum {
   Private = 0,
@@ -24,7 +23,12 @@ enum Enum {
   Constant = 2,
   Local = 3,
   Generic = 4,
+  // Program addrspace is an addrspace where executable code should be stored.
   Program = 5,
+  // Global A32 addrspace is for 32-bit pointers to global memory (global
+  // pointers may be 32 or 64 bit, but global A32 pointers are always 32 bit
+  // and can coexist with 64 bit pointers).
+  GlobalA32 = 6,
 };
 } // namespace AddrSpace
 
