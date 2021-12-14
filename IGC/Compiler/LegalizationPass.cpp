@@ -225,7 +225,7 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
             }
             if (flippable)
             {
-                Value* invert;
+                Instruction* invert;
                 if (I.getOpcode() == Instruction::And)
                 {
                     invert =
@@ -244,6 +244,7 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
                             "",
                             &I);
                 }
+                invert->setDebugLoc(I.getDebugLoc());
                 while (!I.user_empty())
                 {
                     auto U = I.user_begin();
@@ -521,7 +522,12 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
                     m_instructionsToRemove->push_back(BI);
                 }
 
-                TI->replaceAllUsesWith(UndefValue::get(TI->getType()));
+                Value* tempUndefValue = UndefValue::get(TI->getType());
+                Instruction* UndefValueAsTempInst = dyn_cast<Instruction>(tempUndefValue);
+                if (UndefValueAsTempInst)
+                    UndefValueAsTempInst->setDebugLoc(TI->getDebugLoc());
+
+                TI->replaceAllUsesWith(tempUndefValue);
                 if (m_instructionsToRemove)
                 {
                     m_instructionsToRemove->push_back(TI);
@@ -543,7 +549,12 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
 
             if (BO)
             {
-                BO->replaceAllUsesWith(UndefValue::get(BO->getType()));
+                Value* tempUndefValue = UndefValue::get(BO->getType());
+                Instruction* UndefValueAsTempInst = dyn_cast<Instruction>(tempUndefValue);
+                if (UndefValueAsTempInst)
+                    UndefValueAsTempInst->setDebugLoc(BO->getDebugLoc());
+
+                BO->replaceAllUsesWith(tempUndefValue);
                 if (m_instructionsToRemove)
                 {
                     m_instructionsToRemove->push_back(BO);
@@ -597,7 +608,12 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
             }
             if (BO)
             {
-                BO->replaceAllUsesWith(UndefValue::get(BO->getType()));
+                Value* tempUndefValue = UndefValue::get(BO->getType());
+                Instruction* UndefValueAsTempInst = dyn_cast<Instruction>(tempUndefValue);
+                if (UndefValueAsTempInst)
+                    UndefValueAsTempInst->setDebugLoc(BO->getDebugLoc());
+
+                BO->replaceAllUsesWith(tempUndefValue);
                 if (m_instructionsToRemove)
                 {
                     m_instructionsToRemove->push_back(BO);
@@ -632,6 +648,9 @@ void Legalization::visitBitCastInst(llvm::BitCastInst& I)
             // Yes, this is a hack. double result = static_cast<double>(rslt) didn't generate the correct double equivalent for rslt
             double result = *(double*)& rslt;
             ConstantFP* newVec = cast<ConstantFP>(ConstantFP::get(Type::getDoubleTy(I.getContext()), result));
+            auto tempInst = dyn_cast<Instruction>(newVec);
+            if (tempInst)
+                tempInst->setDebugLoc(I.getDebugLoc());
 
             I.replaceAllUsesWith(newVec);
             I.eraseFromParent();
@@ -695,8 +714,11 @@ void Legalization::visitBitCastInst(llvm::BitCastInst& I)
         auto* pMask = ConstantDataVector::get(I.getContext(), maskVals);
 
         auto* pNewY = BitCastInst::CreateBitOrPointerCast(pX, pBCType, "", pZ);
+        pNewY->setDebugLoc(pY->getDebugLoc());
+
         auto* pNewZ = new ShuffleVectorInst(pNewY, UndefValue::get(pBCType), pMask);
         pNewZ->insertAfter(pNewY);
+        pNewZ->setDebugLoc(pZ->getDebugLoc());
 
         pZ->replaceAllUsesWith(pNewZ);
         pZ->eraseFromParent();
@@ -722,15 +744,19 @@ void Legalization::visitSelectInst(SelectInst& I)
         LLVMContext& context = I.getContext();
         llvm::Instruction* pSrc0ZExt =
             llvm::CastInst::CreateZExtOrBitCast(pSrc0, Type::getInt32Ty(context), "", &I);
+        pSrc0ZExt->setDebugLoc(I.getDebugLoc());
 
         llvm::Instruction* pSrc1ZExt =
             llvm::CastInst::CreateZExtOrBitCast(pSrc1, Type::getInt32Ty(context), "", &I);
+        pSrc1ZExt->setDebugLoc(I.getDebugLoc());
 
         // Create a new Select instruction
         llvm::SelectInst* pNewSel = llvm::SelectInst::Create(pCond, pSrc0ZExt, pSrc1ZExt, "", &I);
+        pNewSel->setDebugLoc(I.getDebugLoc());
+
         llvm::CastInst* pTruncInst =
             llvm::CastInst::CreateTruncOrBitCast(pNewSel, Type::getInt1Ty(context), "", &I);
-
+        pTruncInst->setDebugLoc(I.getDebugLoc());
         I.replaceAllUsesWith(pTruncInst);
         I.eraseFromParent();
     }
@@ -796,6 +822,7 @@ void Legalization::visitPHINode(PHINode& phi)
         unsigned int nbOperand = phi.getNumOperands();
         Type* newType = Type::getInt32Ty(context);
         PHINode* newPhi = PHINode::Create(newType, nbOperand, "", &phi);
+        newPhi->setDebugLoc(phi.getDebugLoc());
         for (unsigned int i = 0; i < nbOperand; i++)
         {
             Value* source = phi.getOperand(i);
@@ -804,9 +831,10 @@ void Legalization::visitPHINode(PHINode& phi)
             Value* newSource = m_builder->CreateSExt(source, newType);
             newPhi->addIncoming(newSource, phi.getIncomingBlock(i));
         }
-        Value* boolean =
+        Instruction* boolean =
             CmpInst::Create(
                 Instruction::ICmp, CmpInst::ICMP_NE, newPhi, ConstantInt::get(newType, 0), "", phi.getParent()->getFirstNonPHI());
+        boolean->setDebugLoc(phi.getDebugLoc());
         phi.replaceAllUsesWith(boolean);
         phi.eraseFromParent();
     }
@@ -834,8 +862,10 @@ void Legalization::visitICmpInst(ICmpInst& IC)
     Value* Op1 = IC.getOperand(1);
     Type* Ty = Op0->getType();
     if (Ty->isIntegerTy(1)) {
-        Value* operand0_i8 = CastInst::CreateIntegerCast(Op0, Type::getInt8Ty(IC.getContext()), IC.isSigned(), "", &IC);
-        Value* operand1_i8 = CastInst::CreateIntegerCast(Op1, Type::getInt8Ty(IC.getContext()), IC.isSigned(), "", &IC);
+        Instruction* operand0_i8 = CastInst::CreateIntegerCast(Op0, Type::getInt8Ty(IC.getContext()), IC.isSigned(), "", &IC);
+        operand0_i8->setDebugLoc(IC.getDebugLoc());
+        Instruction* operand1_i8 = CastInst::CreateIntegerCast(Op1, Type::getInt8Ty(IC.getContext()), IC.isSigned(), "", &IC);
+        operand1_i8->setDebugLoc(IC.getDebugLoc());
         IRBuilder<> m_build(&IC);
         Value* new_IC = m_build.CreateICmp(IC.getPredicate(), operand0_i8, operand1_i8, "");
         IC.replaceAllUsesWith(new_IC);
@@ -896,8 +926,9 @@ Value* Legalization::addFCmpWithUNO(FCmpInst& FC)
     if (isa<ConstantFP>(src0))
         std::swap(src0, src1);
 
-    Value* c0 =
+    Instruction* c0 =
         FCmpInst::Create(Instruction::FCmp, CmpInst::FCMP_UNE, src0, src0, "", &FC);
+    c0->setDebugLoc(FC.getDebugLoc());
 
     if (ConstantFP * CFP = dyn_cast<ConstantFP>(src1))
     {
@@ -905,11 +936,13 @@ Value* Legalization::addFCmpWithUNO(FCmpInst& FC)
             return c0;
     }
 
-    Value* c1 =
+    Instruction* c1 =
         FCmpInst::Create(Instruction::FCmp, CmpInst::FCMP_UNE, src1, src1, "", &FC);
+    c1->setDebugLoc(FC.getDebugLoc());
 
-    Value* isAnySourceUnordered =
+    Instruction* isAnySourceUnordered =
         llvm::BinaryOperator::CreateOr(c0, c1, "", &FC);
+    isAnySourceUnordered->setDebugLoc(FC.getDebugLoc());
 
     return isAnySourceUnordered;
 }
@@ -933,7 +966,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
         // %2 = fcmp une %a %b
         // %c = and %1 %2
         Value* sourcesOrdered = addFCmpWithORD(FC);
-        Value* fcmpNotEqual =
+        Instruction* fcmpNotEqual =
             FCmpInst::Create(
                 Instruction::FCmp,
                 FCmpInst::FCMP_UNE,
@@ -941,6 +974,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
                 FC.getOperand(1),
                 "",
                 &FC);
+        fcmpNotEqual->setDebugLoc(FC.getDebugLoc());
         result =
             llvm::BinaryOperator::CreateAnd(
                 sourcesOrdered,
@@ -957,7 +991,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
         // %2 = fcmp oeq %a %b
         // %c = or %1 %2
         Value* sourcesUnordered = addFCmpWithUNO(FC);
-        Value* fcmpEqual =
+        Instruction* fcmpEqual =
             FCmpInst::Create(
                 Instruction::FCmp,
                 FCmpInst::FCMP_OEQ,
@@ -965,6 +999,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
                 FC.getOperand(1),
                 "",
                 &FC);
+        fcmpEqual->setDebugLoc(FC.getDebugLoc());
         result =
             llvm::BinaryOperator::CreateOr(
                 sourcesUnordered,
@@ -984,7 +1019,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
         //      =>
         //      %1 = fcmp olt %a %b
         //      %c = not %1
-        Value* invertedOrderedInst =
+        Instruction* invertedOrderedInst =
             FCmpInst::Create(
                 Instruction::FCmp,
                 FCmpInst::getInversePredicate(FC.getPredicate()),
@@ -992,6 +1027,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
                 FC.getOperand(1),
                 "",
                 &FC);
+        invertedOrderedInst->setDebugLoc(FC.getDebugLoc());
 
         while (!FC.user_empty())
         {
@@ -1041,6 +1077,9 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
 
     if (result)
     {
+        auto resultAsTempInst = dyn_cast<Instruction>(result);
+        if (resultAsTempInst)
+            resultAsTempInst->setDebugLoc(FC.getDebugLoc());
         FC.replaceAllUsesWith(result);
         FC.eraseFromParent();
     }
@@ -1137,6 +1176,9 @@ void Legalization::visitFCmpInstUndorderedFlushNan(FCmpInst& FC)
 
     if (result)
     {
+        auto tempInst = dyn_cast<Instruction>(result);
+        if (tempInst)
+            tempInst->setDebugLoc(FC.getDebugLoc());
         FC.replaceAllUsesWith(result);
         FC.eraseFromParent();
     }
@@ -1160,9 +1202,11 @@ void Legalization::visitStoreInst(StoreInst& I)
                     ConstantInt::get(Type::getInt32Ty(I.getContext()), i),
                     "",
                     &I);
+                Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+                if (newVecAsTempInst)
+                    newVecAsTempInst->setDebugLoc(I.getDebugLoc());
             }
         }
-
         I.setOperand(0, newVec);
     }
     else if (ConstantVector * vec = dyn_cast<ConstantVector>(I.getOperand(0)))
@@ -1180,9 +1224,11 @@ void Legalization::visitStoreInst(StoreInst& I)
                     ConstantInt::get(Type::getInt32Ty(I.getContext()), i),
                     "",
                     &I);
+                Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+                if (newVecAsTempInst)
+                    newVecAsTempInst->setDebugLoc(I.getDebugLoc());
             }
         }
-
         I.setOperand(0, newVec);
     }
     else if (ConstantAggregateZero * vec = dyn_cast<ConstantAggregateZero>(I.getOperand(0)))
@@ -1200,9 +1246,11 @@ void Legalization::visitStoreInst(StoreInst& I)
                     ConstantInt::get(Type::getInt32Ty(I.getContext()), i),
                     "",
                     &I);
+                Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+                if (newVecAsTempInst)
+                    newVecAsTempInst->setDebugLoc(I.getDebugLoc());
             }
         }
-
         I.setOperand(0, newVec);
     }
     else if (I.getOperand(0)->getType()->isIntegerTy(1))
@@ -1240,7 +1288,8 @@ void Legalization::visitStoreInst(StoreInst& I)
             return;
 
         Type* legalTy = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), intSize), srcWidth / intSize);
-        Value* storeVal = BitCastInst::Create(Instruction::BitCast, I.getOperand(0), legalTy, "", &I);
+        Instruction* storeVal = BitCastInst::Create(Instruction::BitCast, I.getOperand(0), legalTy, "", &I);
+        storeVal->setDebugLoc(I.getDebugLoc());
         Value* storePtr = I.getPointerOperand();
 
         IGC_ASSERT(nullptr != storePtr);
@@ -1260,6 +1309,9 @@ void Legalization::visitStoreInst(StoreInst& I)
         {
             storePtr = BitCastInst::CreatePointerCast(storePtr, ptrTy, "", &I);
         }
+        Instruction* storePtrAsTempInst = dyn_cast<Instruction>(storePtr);
+        if (storePtrAsTempInst)
+            storePtrAsTempInst->setDebugLoc(I.getDebugLoc());
         IGC::cloneStore(&I, storeVal, storePtr);
         I.eraseFromParent();
 
@@ -1297,6 +1349,9 @@ void Legalization::PromoteInsertElement(Value* I, Value* newVec)
             IEinst->getOperand(2),
             "",
             IEinst);
+        Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+        if (newVecAsTempInst)
+            newVecAsTempInst->setDebugLoc(IEinst->getDebugLoc());
 
         for (Value::user_iterator useI = I->user_begin(), useE = I->user_end(); useI != useE; ++useI)
         {
@@ -1311,6 +1366,9 @@ void Legalization::PromoteInsertElement(Value* I, Value* newVec)
             EEinst->getOperand(1),
             "",
             EEinst);
+        Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+        if (newVecAsTempInst)
+            newVecAsTempInst->setDebugLoc(EEinst->getDebugLoc());
 
         for (Value::user_iterator useI = I->user_begin(), useE = I->user_end(); useI != useE; ++useI)
         {
@@ -1320,12 +1378,16 @@ void Legalization::PromoteInsertElement(Value* I, Value* newVec)
                 castI->getSrcTy()->isIntegerTy(1) &&
                 castI->getDestTy()->isIntegerTy(32))
             {
+                Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+                if (newVecAsTempInst)
+                    newVecAsTempInst->setDebugLoc(castI->getDebugLoc());
                 castI->replaceAllUsesWith(newVec);
             }
             else
             {
                 llvm::Instruction* pSrc1ZExt =
                     llvm::CastInst::CreateTruncOrBitCast(newVec, Type::getInt1Ty(I->getContext()), "", EEinst);
+                pSrc1ZExt->setDebugLoc(EEinst->getDebugLoc());
                 I->replaceAllUsesWith(pSrc1ZExt);
             }
         }
@@ -1350,9 +1412,15 @@ void Legalization::visitInsertElementInst(InsertElementInst& I)
                     ConstantInt::get(Type::getInt32Ty(I.getContext()), i),
                     "",
                     &I);
+                Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+                if (newVecAsTempInst)
+                    newVecAsTempInst->setDebugLoc(I.getDebugLoc());
             }
         }
         newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", &I);
+        Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+        if (newVecAsTempInst)
+            newVecAsTempInst->setDebugLoc(I.getDebugLoc());
         I.replaceAllUsesWith(newVec);
     }
     else if (ConstantVector * vec = dyn_cast<ConstantVector>(I.getOperand(0)))
@@ -1370,9 +1438,15 @@ void Legalization::visitInsertElementInst(InsertElementInst& I)
                     ConstantInt::get(Type::getInt32Ty(I.getContext()), i),
                     "",
                     &I);
+                Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+                if (newVecAsTempInst)
+                    newVecAsTempInst->setDebugLoc(I.getDebugLoc());
             }
         }
         newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", &I);
+        Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+        if (newVecAsTempInst)
+            newVecAsTempInst->setDebugLoc(I.getDebugLoc());
         I.replaceAllUsesWith(newVec);
     }
     else if (ConstantAggregateZero * vec = dyn_cast<ConstantAggregateZero>(I.getOperand(0)))
@@ -1388,8 +1462,14 @@ void Legalization::visitInsertElementInst(InsertElementInst& I)
                 ConstantInt::get(Type::getInt32Ty(I.getContext()), i),
                 "",
                 &I);
+            Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+            if (newVecAsTempInst)
+                newVecAsTempInst->setDebugLoc(I.getDebugLoc());
         }
         newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", &I);
+        Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+        if (newVecAsTempInst)
+            newVecAsTempInst->setDebugLoc(I.getDebugLoc());
         I.replaceAllUsesWith(newVec);
     }
     else if (I.getOperand(1)->getType()->isIntegerTy(1))
@@ -1503,6 +1583,9 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
                         ConstantInt::get(index->getType(), srcIndex),
                         "",
                         &I);
+                    Instruction* srcValAsTempInst = dyn_cast<Instruction>(srcVal);
+                    if (srcValAsTempInst)
+                        srcValAsTempInst->setDebugLoc(I.getDebugLoc());
                 }
             }
 
@@ -1511,9 +1594,14 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
                 ConstantInt::get(index->getType(), dstIndex),
                 "",
                 &I);
+            Instruction* newVecAsTempInst = dyn_cast<Instruction>(newVec);
+            if (newVecAsTempInst)
+                newVecAsTempInst->setDebugLoc(I.getDebugLoc());
         }
     }
-
+    auto newVecAsTempInst = dyn_cast<Instruction>(newVec);
+    if (newVecAsTempInst)
+        newVecAsTempInst->setDebugLoc(I.getDebugLoc());
     I.replaceAllUsesWith(newVec);
     I.eraseFromParent();
 }
@@ -1544,7 +1632,7 @@ llvm::Value* Legalization::findInsert(llvm::Value* vector, unsigned int index)
 
 Value* Cast(Value* val, Type* type, Instruction* insertBefore)
 {
-    Value* newVal = nullptr;
+    Instruction* newVal = nullptr;
     if (type->isIntegerTy())
     {
         newVal = CastInst::CreateIntegerCast(val, type, false, "", insertBefore);
@@ -1557,6 +1645,7 @@ Value* Cast(Value* val, Type* type, Instruction* insertBefore)
     {
         IGC_ASSERT_MESSAGE(0, "unexpected type");
     }
+    newVal->setDebugLoc(insertBefore->getDebugLoc());
     return newVal;
 }
 
@@ -1569,12 +1658,16 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction
         {
             SmallVector<Value*, 8> Idx(gep->idx_begin(), gep->idx_end());
             GetElementPtrInst* newGep = GetElementPtrInst::Create(nullptr, newPtr, Idx, "", gep);
+            newGep->setDebugLoc(gep->getDebugLoc());
             RecursivelyChangePointerType(gep, newGep);
         }
         else if (LoadInst * load = dyn_cast<LoadInst>(*II))
         {
             Instruction* newLoad = IGC::cloneLoad(load, newPtr);
             newVal = Cast(newLoad, load->getType(), load->getNextNode());
+            auto tempInst = dyn_cast<Instruction>(newVal);
+            if (tempInst)
+                tempInst->setDebugLoc(load->getDebugLoc());
             load->replaceAllUsesWith(newVal);
         }
         else if (StoreInst * store = dyn_cast<StoreInst>(*II))
@@ -1585,7 +1678,8 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction
         }
         else if (CastInst * cast = dyn_cast<CastInst>(*II))
         {
-            Value* newCast = CastInst::CreatePointerCast(newPtr, cast->getType(), "", cast);
+            Instruction* newCast = CastInst::CreatePointerCast(newPtr, cast->getType(), "", cast);
+            newCast->setDebugLoc(cast->getDebugLoc());
             cast->replaceAllUsesWith(newCast);
         }
         // We cannot delete any instructions as the visitor
@@ -1747,8 +1841,8 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         Value* src0 = I.getArgOperand(0);
         Value* src1 = I.getArgOperand(1);
 
-        Value* res = nullptr;
-        Value* isOverflow = nullptr;
+        Instruction* res = nullptr;
+        Instruction* isOverflow = nullptr;
 
         switch (intrinsicID)
         {
@@ -1765,19 +1859,26 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             case Intrinsic::sadd_with_overflow:
             case Intrinsic::ssub_with_overflow:
             {
-                Value* usrc0 = BitCastInst::CreateZExtOrBitCast(src0, src0->getType(), "", &I);
-                Value* usrc1 = BitCastInst::CreateZExtOrBitCast(src1, src1->getType(), "", &I);
+                Instruction* usrc0 = BitCastInst::CreateZExtOrBitCast(src0, src0->getType(), "", &I);
+                usrc0->setDebugLoc(I.getDebugLoc());
+                Instruction* usrc1 = BitCastInst::CreateZExtOrBitCast(src1, src1->getType(), "", &I);
+                usrc1->setDebugLoc(I.getDebugLoc());
                 res = BinaryOperator::Create(
                     intrinsicID == Intrinsic::sadd_with_overflow ? Instruction::Add : Instruction::Sub,
                     usrc0, usrc1, "", &I);
                 if (intrinsicID == Intrinsic::ssub_with_overflow)
                 {
                     usrc1 = BinaryOperator::CreateNot(usrc1, "", &I);
+                    usrc1->setDebugLoc(I.getDebugLoc());
                 }
-                Value* usrc0_xor_usrc1 = BinaryOperator::Create(Instruction::Xor, usrc0, usrc1, "", &I);
-                Value* res_xor_usrc0 = BinaryOperator::Create(Instruction::Xor, res, usrc0, "", &I);
-                Value* negOpt = BinaryOperator::CreateNot(usrc0_xor_usrc1, "", &I);
-                Value* andOpt = BinaryOperator::CreateAnd(negOpt, res_xor_usrc0, "", &I);
+                Instruction* usrc0_xor_usrc1 = BinaryOperator::Create(Instruction::Xor, usrc0, usrc1, "", &I);
+                usrc0_xor_usrc1->setDebugLoc(I.getDebugLoc());
+                Instruction* res_xor_usrc0 = BinaryOperator::Create(Instruction::Xor, res, usrc0, "", &I);
+                res_xor_usrc0->setDebugLoc(I.getDebugLoc());
+                Instruction* negOpt = BinaryOperator::CreateNot(usrc0_xor_usrc1, "", &I);
+                negOpt->setDebugLoc(I.getDebugLoc());
+                Instruction* andOpt = BinaryOperator::CreateAnd(negOpt, res_xor_usrc0, "", &I);
+                andOpt->setDebugLoc(I.getDebugLoc());
                 auto zero = ConstantInt::get(src0->getType(), 0, true);
                 // Signed a - b overflows if the sign of a and -b are the same, but diffrent from the result
                 // Signed a + b overflows if the sign of a and b are the same, but diffrent from the result
@@ -1807,7 +1908,8 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                         // Signed a * b overflows if Mulh(a, b) != 0 or -1   and consequently
                         // if Mulh(a, b) + 1 > 1 (for an unsigned comparison)
                         Value* const one = ConstantInt::get(src0->getType(), 1, true);
-                        Value* const add1 = BinaryOperator::Create(Instruction::Add, hiDst, one, "", &I);
+                        Instruction* const add1 = BinaryOperator::Create(Instruction::Add, hiDst, one, "", &I);
+                        add1->setDebugLoc(I.getDebugLoc());
                         isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGT, add1, one, "", &I);
                     }
                     else
@@ -1820,7 +1922,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                 else
                 {
                     IGC_ASSERT(bitWidth < 32);
-                    Value* ores = nullptr;
+                    Instruction* ores = nullptr;
                     if (isSigned)
                     {
                         // Signed a * b overflows if (a * b) + (1 << (bitWidth-1)) >= (1 << bitWidth)
@@ -1833,20 +1935,26 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                         //   ores is 0x00000081     (1 + 128)
                         //   overflowed is 0x00000100    (1 << 8)
                         //   isOverflow is false    (129 >= 256)
-                        Value* const src0SExt = BitCastInst::CreateSExtOrBitCast(src0, Builder.getInt32Ty(), "", &I);
-                        Value* const src1SExt = BitCastInst::CreateSExtOrBitCast(src1, Builder.getInt32Ty(), "", &I);
-                        Value* const mulRes = BinaryOperator::Create(Instruction::Mul, src0SExt, src1SExt, "", &I);
+                        Instruction* const src0SExt = BitCastInst::CreateSExtOrBitCast(src0, Builder.getInt32Ty(), "", &I);
+                        src0SExt->setDebugLoc(I.getDebugLoc());
+                        Instruction* const src1SExt = BitCastInst::CreateSExtOrBitCast(src1, Builder.getInt32Ty(), "", &I);
+                        src1SExt->setDebugLoc(I.getDebugLoc());
+                        Instruction* const mulRes = BinaryOperator::Create(Instruction::Mul, src0SExt, src1SExt, "", &I);
+                        mulRes->setDebugLoc(I.getDebugLoc());
                         Value* const oneShl = ConstantInt::get(Builder.getInt32Ty(), 1LL << (bitWidth - 1), true);
                         ores = BinaryOperator::Create(Instruction::Add, mulRes, oneShl, "", &I);
                     }
                     else
                     {
                         // Unsigned a * b overflows if a * b >= (1 << bitWidth) (for an unsigned comparison)
-                        Value* const src0ZExt = BitCastInst::CreateZExtOrBitCast(src0, Builder.getInt32Ty(), "", &I);
-                        Value* const src1ZExt = BitCastInst::CreateZExtOrBitCast(src1, Builder.getInt32Ty(), "", &I);
+                        Instruction* const src0ZExt = BitCastInst::CreateZExtOrBitCast(src0, Builder.getInt32Ty(), "", &I);
+                        src0ZExt->setDebugLoc(I.getDebugLoc());
+                        Instruction* const src1ZExt = BitCastInst::CreateZExtOrBitCast(src1, Builder.getInt32Ty(), "", &I);
+                        src1ZExt->setDebugLoc(I.getDebugLoc());
                         ores = BinaryOperator::Create(Instruction::Mul, src0ZExt, src1ZExt, "", &I);
                     }
                     Value* const overflowed = ConstantInt::get(Builder.getInt32Ty(), 1LL << bitWidth, false);
+                    ores->setDebugLoc(I.getDebugLoc());
                     isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGE, ores, overflowed, "", &I);
                 }
             }
@@ -1871,10 +1979,12 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             ArrayRef<unsigned int> indices = extract->getIndices();
             if (indices[0] == 0)
             {
+                res->setDebugLoc(I.getDebugLoc());
                 extract->replaceAllUsesWith(res);
             }
             else if (indices[0] == 1)
             {
+                isOverflow->setDebugLoc(I.getDebugLoc());
                 extract->replaceAllUsesWith(isOverflow);
             }
             else
@@ -2064,6 +2174,7 @@ void Legalization::PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst& I)
 
     llvm::Function* f0 = GenISAIntrinsic::getDeclaration(m_ctx->getModule(), CI->getIntrinsicID(), types);
     llvm::CallInst* I0 = GenIntrinsicInst::Create(f0, args);
+    I0->setDebugLoc(I.getDebugLoc());
     llvm::ReplaceInstWithInst(&I, I0);
 }
 
@@ -2159,6 +2270,9 @@ void Legalization::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst& I) {
         if (!AS) // FIXME: Skip nullify on default AS as it's still used in VA builtins.
             return;
         Value* Null = Constant::getNullValue(DstPtrTy);
+        auto tempInst = dyn_cast<Instruction>(Null);
+        if (tempInst)
+            tempInst->setDebugLoc(I.getDebugLoc());
         I.replaceAllUsesWith(Null);
         I.eraseFromParent();
         return;
@@ -2176,6 +2290,9 @@ void Legalization::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst& I) {
     //local pointer casted to different address spaces in dynamic flow
     if (isa<ConstantPointerNull>(I.getPointerOperand())) {
         Constant* Null = Constant::getNullValue(I.getType());
+        auto tempInst = dyn_cast<Instruction>(Null);
+        if (tempInst)
+            tempInst->setDebugLoc(I.getDebugLoc());
         I.replaceAllUsesWith(Null);
         I.eraseFromParent();
         return;
