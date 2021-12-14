@@ -77,7 +77,7 @@ void BitSet::setAll(void)
     if (m_BitSetArray)
     {
         unsigned index = m_Size / NUM_BITS_PER_ELT;
-        std::fill_n(m_BitSetArray, index, ~(BITSET_ARRAY_TYPE) 0);
+        std::memset(m_BitSetArray, ~(BITSET_ARRAY_TYPE) 0, index * sizeof(BITSET_ARRAY_TYPE));
 
         // do the leftover bits, make sure we don't change the values of the unused bits,
         // so isEmpty() can be implemented faster
