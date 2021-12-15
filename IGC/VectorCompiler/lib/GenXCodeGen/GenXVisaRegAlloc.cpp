@@ -134,8 +134,11 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
 
   for (auto &F : *FG) {
     if (F->hasFnAttribute(genx::FunctionMD::CMGenXMain) ||
-        genx::requiresStackCall(F))
+        genx::requiresStackCall(F)) {
+      LLVM_DEBUG(dbgs() << "Regalloc fill kern map for " << F->getName()
+                        << " \n");
       RegMap[F] = KernRegMap_t();
+    }
   }
   // Reserve the reserved registers.
   CurrentRegId[vc::RegCategory::General] = VISA_NUM_RESERVED_REGS;
@@ -644,10 +647,13 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
 GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *kernel,
     SimpleValue V) const
 {
+  IGC_ASSERT(genx::isKernel(kernel) || genx::requiresStackCall(kernel));
   LLVM_DEBUG(dbgs() << "getRegForValueUntyped " << *(V.getValue()) << "\n");
   // is possible if called for GenXPrinter
-  if (RegMap.count(kernel) == 0)
+  if (RegMap.count(kernel) == 0) {
+    LLVM_DEBUG(dbgs() << "Empty RegMap for " << kernel->getName() << "\n");
     return nullptr;
+  }
   auto& KernMap = RegMap.at(kernel);
   const auto i = KernMap.find(V);
   if (i == KernMap.end()) {

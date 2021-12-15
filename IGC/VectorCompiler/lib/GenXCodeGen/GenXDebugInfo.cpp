@@ -945,7 +945,11 @@ public:
     if (auto *ConstVal = dyn_cast<Constant>(DbgValue)) {
       return ConstantLoc(ConstVal);
     }
-    auto *Reg = RA.getRegForValueUntyped(&F, const_cast<Value *>(DbgValue));
+    auto *Kernel = &F;
+    if (MVTI.isSubroutine(&F))
+      Kernel = MVTI.getSubroutineOwner(&F);
+
+    auto *Reg = RA.getRegForValueUntyped(Kernel, const_cast<Value *>(DbgValue));
     if (!Reg) {
       return EmptyLoc("could not find virtual register");
     }
