@@ -382,12 +382,10 @@ static bool canSplitBale(Instruction *Inst) {
 static int checkModifier(Instruction *Inst)
 {
   switch (Inst->getOpcode()) {
-#if LLVM_VERSION_MAJOR > 8
   case Instruction::FNeg:
     LLVM_DEBUG(llvm::dbgs()
                << "Instruction " << *Inst << " detected as NEGMOD\n");
     return BaleInfo::NEGMOD;
-#endif
   case Instruction::Sub:
   case Instruction::FSub:
     // Negate is represented in LLVM IR by subtract from 0.
@@ -1292,10 +1290,8 @@ static bool acceptableMainInst(Instruction *Inst) {
     return BaleCast;
   if (isa<SelectInst>(Inst))
     return BaleSelect;
-#if LLVM_VERSION_MAJOR > 8
   if (Inst->getOpcode() == Instruction::FNeg)
     return BaleFNeg;
-#endif
   return false;
 }
 

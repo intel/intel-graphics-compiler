@@ -636,10 +636,8 @@ private:
                        const DstOpndDesc &DstDesc);
   void buildBinaryOperator(BinaryOperator *BO, genx::BaleInfo BI, unsigned Mod,
                            const DstOpndDesc &DstDesc);
-#if (LLVM_VERSION_MAJOR > 8)
   void buildUnaryOperator(UnaryOperator *UO, genx::BaleInfo BI, unsigned Mod,
                           const DstOpndDesc &DstDesc);
-#endif
   void buildBoolBinaryOperator(BinaryOperator *BO);
   void buildSymbolInst(CallInst *GAddrInst, unsigned Mod,
                        const DstOpndDesc &DstDesc);
@@ -2175,12 +2173,10 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     Mod |= MODIFIER_ABS;
     break;
   case BaleInfo::NEGMOD:
-#if LLVM_VERSION_MAJOR > 8
     if (Inst->getOpcode() == Instruction::FNeg) {
       Mod ^= MODIFIER_NEG;
       break;
     }
-#endif
     if (!(Mod & MODIFIER_ABS))
       Mod ^= MODIFIER_NEG;
     Idx = 1; // the input we want in "0-x" is x, not 0.
@@ -2754,10 +2750,8 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     IGC_ASSERT_MESSAGE(vc::isLegalPrintFormatIndexGEP(*GEPI),
                        "only genx.print.format.index src GEP can still be "
                        "present at this stage");
-#if (LLVM_VERSION_MAJOR > 8)
   } else if (UnaryOperator *UO = dyn_cast<UnaryOperator>(Inst)) {
     buildUnaryOperator(UO, BI, Mod, DstDesc);
-#endif
   } else if (auto *CI = dyn_cast<CallInst>(Inst)) {
     if (CI->isInlineAsm())
       buildInlineAsm(CI);
@@ -4061,7 +4055,6 @@ void GenXKernelBuilder::buildJoin(CallInst *Join, BranchInst *Branch) {
   // looking for gotos targeting the basic block's label.
 }
 
-#if (LLVM_VERSION_MAJOR > 8)
 /***********************************************************************
  * buildUnaryOperator : build code for an unary operator
  *
@@ -4107,7 +4100,6 @@ void GenXKernelBuilder::buildUnaryOperator(UnaryOperator *UO, BaleInfo BI,
   }
   report_fatal_error("buildUnaryOperator: unimplemented opcode");
 }
-#endif
 
 /***********************************************************************
  * getCommonSignedness : predict the most suitable sign of a instruction based

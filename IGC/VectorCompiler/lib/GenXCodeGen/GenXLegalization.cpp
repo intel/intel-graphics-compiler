@@ -2322,7 +2322,6 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     NewInst->setDebugLoc(DL);
     return NewInst;
   }
-#if (LLVM_VERSION_MAJOR > 8)
   if (UnaryOperator *UO = dyn_cast<UnaryOperator>(BInst.Inst)) {
     Instruction *NewInst = UnaryOperator::Create(
         UO->getOpcode(),
@@ -2331,7 +2330,6 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     NewInst->setDebugLoc(DL);
     return NewInst;
   }
-#endif
   if (CmpInst *CI = dyn_cast<CmpInst>(BInst.Inst)) {
     auto Split1 = getSplitOperand(CI, 0, StartIdx, Width, InsertBefore, DL),
          Split2 = getSplitOperand(CI, 1, StartIdx, Width, InsertBefore, DL);
