@@ -12124,6 +12124,14 @@ void Optimizer::doNoMaskWA()
         G4_DstRegRegion* dst = Inst->getDst();
         G4_CondMod* condmod = getFlagModifier(Inst);
         bool dstGlb = (dst && !dst->isNullReg() && cfg.globalOpndHT.isOpndGlobal(dst));
+        if (dst && !dst->isNullReg() && dst->isIndirect())
+        {
+            // If dst is indirect like the following:
+            //     (W)  mov (1|M0)   r[a0.0]<1>:d  r23.0<0;1,0>:d
+            // Even if r[a0.0] is local, a0.0 could be garbage, which could clobber some
+            // other global GRF. Thus, need to WA it always no matter if it's global or local.
+            dstGlb = true;
+        }
         bool condmodGlb = (condmod && cfg.globalOpndHT.isOpndGlobal(condmod));
         if (Inst->isSend() || dstGlb || condmodGlb)
         {
