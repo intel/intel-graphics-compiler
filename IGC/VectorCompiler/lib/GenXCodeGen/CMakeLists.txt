@@ -67,7 +67,6 @@ set(CODEGEN_SOURCES
   GenXPromotePredicate.cpp
   GenXRawSendRipper.cpp
   GenXReduceIntSize.cpp
-  GenXInstCombineCleanup.cpp
   GenXRegionUtils.cpp
   GenXRegionCollapsing.cpp
   GenXRematerialization.cpp

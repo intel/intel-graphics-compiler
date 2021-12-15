@@ -321,8 +321,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   ///
   vc::addPass(PM, createSROAPass());
 
-  vc::addPass(PM, createGenXInstCombineCleanup());
-
   if (!ExperimentalEnforceLateEmulationImports)
     vc::addPass(PM, createGenXEmulationImportPass());
 
