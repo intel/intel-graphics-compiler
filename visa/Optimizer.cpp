@@ -2936,11 +2936,6 @@ static void doHoisting(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
             defInst->setOptions((defInst->getOption() & ~0xFFF000C) |
                                 (inst->getMaskOption()));
         }
-        // Retain breakpoint option.
-        if (inst->isBreakPointInst() && !defInst->isBreakPointInst())
-        {
-            defInst->setOptionOn(InstOpt_BreakPoint);
-        }
     }
 
     // (1), (2), (3) Remove all defs/uses and it is ready to be deleted.
