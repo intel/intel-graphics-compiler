@@ -975,7 +975,8 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
     PayloadArgumentsTy& arg_list,
     int32_t offset,
     int32_t size,
-    int32_t arg_index)
+    int32_t arg_index,
+    int32_t source_offset)
 {
     arg_list.emplace_back();
     zeInfoPayloadArgument& arg = arg_list.back();
@@ -983,6 +984,7 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
     arg.offset = offset;
     arg.size = size;
     arg.arg_index = arg_index;
+    arg.source_offset = source_offset;
     return arg;
 }
 

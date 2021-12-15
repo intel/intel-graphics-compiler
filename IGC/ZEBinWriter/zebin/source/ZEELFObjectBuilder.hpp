@@ -411,7 +411,8 @@ public:
         PayloadArgumentsTy& arg_list,
         int32_t offset,
         int32_t size,
-        int32_t arg_index);
+        int32_t arg_index,
+        int32_t source_offset);
 
     // addPayloadArgumentSampler - add explicit kernel argument for sampler
     // into given arg_list

@@ -88,6 +88,16 @@ bool CorrectlyRoundedDivSqrt::processDeclaration(Function& F)
         F.setName(newName);
         return true;
     }
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
+    else if (name.startswith("_Z16__spirv_ocl_sqrt"))
+    {
+        std::string newName = name.str();
+        newName[3] = '9';
+        newName.insert(20, "_cr");
+        F.setName(newName);
+        return true;
+    }
+#else
     else if (name.startswith("__builtin_spirv_OpenCL_sqrt_") &&
         !name.startswith("__builtin_spirv_OpenCL_sqrt_cr"))
     {
@@ -96,6 +106,7 @@ bool CorrectlyRoundedDivSqrt::processDeclaration(Function& F)
         F.setName(newName);
         return true;
     }
+#endif
 
     // not sqrt function
     return false;

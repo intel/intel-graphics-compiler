@@ -983,7 +983,7 @@ static float NestedLoopsWithMultipleExitsRatio(Function* F, LoopInfo* LI,
 
 static const unsigned LongStridedLdStInLoop_THRESHOLD = 3;
 
-typedef struct {
+typedef struct _LdStInLoop {
   unsigned LDs = 0;
   unsigned STs = 0;
   llvm::Loop* pProblematicLoop = nullptr;

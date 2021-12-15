@@ -4088,7 +4088,6 @@ void vISA::FlowGraph::markStale()
     // structural changes include addition/removal of BB or edge.
     // mark analysis passes as stale so getters lazily re-run
     // analysis when queried.
-    dom.setStale();
     immDom.setStale();
     pDom.setStale();
     loops.setStale();

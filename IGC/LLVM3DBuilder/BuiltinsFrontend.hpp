@@ -432,6 +432,7 @@ public:
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
         llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
     SampleD_DC_FromCubeParams Prepare_SAMPLE_D_DC_Cube_Params(SampleD_DC_FromCubeParams& params);
@@ -509,6 +510,7 @@ public:
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
         llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
     llvm::CallInst* Create_SAMPLEC_LZ(
@@ -532,6 +534,7 @@ public:
         llvm::Value* float_address_3,
         llvm::Value* int32_textureIdx_356,
         llvm::Value* int32_sampler_357,
+        bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
     llvm::CallInst* Create_gather4(
@@ -624,7 +627,8 @@ public:
         llvm::Value* int32_sampler_357,
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
-        llvm::Value* int32_srcChannel);
+        llvm::Value* int32_srcChannel,
+        bool feedback_enabled = false);
 
     llvm::Value* Create_gather4PositionOffsetsC(
         llvm::Value* float_reference_0,
@@ -636,7 +640,8 @@ public:
         llvm::Value* int32_sampler_357,
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
-        llvm::Value* int32_srcChannel);
+        llvm::Value* int32_srcChannel,
+        bool feedback_enabled = false);
 
     llvm::CallInst* Create_SAMPLEBC(
         llvm::Value* float_ref_value,
@@ -650,6 +655,7 @@ public:
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
         llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
     llvm::Value* create_indirectLoad(

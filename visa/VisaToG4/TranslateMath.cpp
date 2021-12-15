@@ -254,7 +254,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     }
 
     bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, getGRFSize()) &&
-        dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1;
+        dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1 && instExecSize == exsize;
     if (noDstMove && (dstOpnd->getTopDcl() == src0Opnd->getTopDcl() || dstOpnd->getTopDcl() == src1Opnd->getTopDcl()))
     {
         noDstMove = false;

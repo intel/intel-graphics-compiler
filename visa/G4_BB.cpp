@@ -1641,5 +1641,5 @@ void G4_BB::addSamplerFlushBeforeEOT()
 
 bool G4_BB::dominates(G4_BB* other)
 {
-    return getParent().getDominator().dominates(this, other);
+    return getParent().getImmDominator().dominates(this, other);
 }

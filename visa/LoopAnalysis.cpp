@@ -89,16 +89,40 @@ void ImmDominator::runIDOM()
         }
     }
 
+    auto getPostOrder = [](G4_BB *S, std::vector<G4_BB *> &PO) {
+      std::stack<std::pair<G4_BB *, BB_LIST_ITER>> Stack;
+      std::set<G4_BB *> Visited;
+
+      Stack.push({S, S->Succs.begin()});
+      Visited.insert(S);
+      while (!Stack.empty()) {
+        G4_BB *Curr = Stack.top().first;
+        BB_LIST_ITER It = Stack.top().second;
+
+        if (It != Curr->Succs.end()) {
+          G4_BB *Child = *Stack.top().second++;
+          if (Visited.insert(Child).second) {
+            Stack.push({Child, Child->Succs.begin()});
+          }
+          continue;
+        }
+        PO.push_back(Curr);
+        Stack.pop();
+      }
+    };
+
     entryBB = kernel.fg.getEntryBB();
     iDoms[entryBB->getId()] = { entryBB };
+
+    std::vector<G4_BB *> PO;
+    getPostOrder(entryBB, PO);
 
     // Actual dom computation
     bool change = true;
     while (change)
     {
         change = false;
-        for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
-        {
+        for (auto I = PO.rbegin(), E = PO.rend(); I != E; ++I) {
             auto bb = *I;
             if (bb == entryBB)
                 continue;
@@ -159,143 +183,6 @@ void ImmDominator::runIDOM()
     }
 }
 
-void Dominator::runDOM()
-{
-    // Use bit-set to represent BBs in dominator computation.
-
-    // domBS holds a bitset for every BB in program. Bitset instance
-    // at given index represents list of BBs that dominate BB#index.
-    std::vector<BitSet> domsBS;
-
-    // Construct bitsets corresponding to all BBs. Initialize all
-    // bits to 1.
-    for (unsigned int i = 0; i != kernel.fg.size(); ++i)
-        domsBS.emplace_back(kernel.fg.size(), true);
-
-    entryBB = kernel.fg.getEntryBB();
-
-    MUST_BE_TRUE(entryBB != nullptr, "Entry BB not found!");
-
-    // In dominator computation, entryBB is it's only dominator. All
-    // other BBs have dominator set to every other BB in program.
-    domsBS[entryBB->getId()].clear();
-    domsBS[entryBB->getId()].set(entryBB->getId(), true);
-
-    // Actual dom computation
-    bool change = true;
-    BitSet oldBS(kernel.fg.size(), false);
-    while (change)
-    {
-        change = false;
-        for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
-        {
-            auto bb = *I;
-            if (bb == entryBB)
-                continue;
-
-            oldBS.swap(domsBS[bb->getId()]);
-
-            domsBS[bb->getId()].setAll();
-            // Dominators[BB] = Intersection(Dominators[All Pred BBs]) + BB
-            for (auto preds : bb->Preds)
-            {
-                domsBS[bb->getId()] &= domsBS[preds->getId()];
-            }
-
-            // Add bb to it's own dominator set
-            domsBS[bb->getId()].set(bb->getId(), true);
-
-            if (oldBS != domsBS[bb->getId()])
-            {
-                // Dominator for bb was modified
-                change = true;
-                break;
-            }
-        }
-    }
-
-    std::vector<G4_BB*> indexedBBs;
-    indexedBBs.resize(kernel.fg.size());
-    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
-    {
-        auto BB = *I;
-        indexedBBs[BB->getId()] = BB;
-    }
-
-    Doms.resize(kernel.fg.size());
-    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
-    {
-        auto BB = *I;
-
-        auto& domBS = domsBS[BB->getId()];
-
-        for (unsigned int i = 0; i != domsBS.size(); ++i)
-        {
-            if (domBS.isSet(i))
-            {
-                auto domBB = indexedBBs[i];
-                Doms[BB->getId()].insert(domBB);
-            }
-        }
-    }
-}
-
-
-std::unordered_set<G4_BB*>& Dominator::getDom(G4_BB* bb)
-{
-    recomputeIfStale();
-
-    return Doms[bb->getId()];
-}
-
-std::vector<G4_BB*>& ImmDominator::getImmDom(G4_BB* bb)
-{
-    recomputeIfStale();
-
-    return immDoms[bb->getId()];
-}
-
-void ImmDominator::updateImmDom()
-{
-    std::vector<BitSet> domBits(kernel.fg.size());
-
-    for (size_t i = 0; i < kernel.fg.size(); i++)
-    {
-        domBits[i] = BitSet(unsigned(kernel.fg.size()), false);
-    }
-
-    // Update immDom vector with correct ordering
-    for (auto bb : kernel.fg)
-    {
-        auto& DomBBs = kernel.fg.getDominator().getDom(bb);
-
-        for (auto domBB : DomBBs)
-        {
-            domBits[bb->getId()].set(domBB->getId(), true);
-        }
-    }
-
-    iDoms.resize(kernel.fg.size());
-    for (auto bb : kernel.fg)
-    {
-        auto& DomBBs = kernel.fg.getDominator().getDom(bb);
-        BitSet tmpBits = domBits[bb->getId()];
-        tmpBits.set(bb->getId(), false);
-        iDoms[bb->getId()] = bb;
-
-        for (auto domBB : DomBBs)
-        {
-            if (domBB == bb)
-                continue;
-
-            if (tmpBits == domBits[domBB->getId()])
-            {
-                iDoms[bb->getId()] = domBB;
-            }
-        }
-    }
-}
-
 void ImmDominator::reset()
 {
     iDoms.clear();
@@ -306,13 +193,35 @@ void ImmDominator::reset()
 
 void ImmDominator::run()
 {
-    // this function re-runs analysis. caller needs to check if
-    // analysis is stale.
-    entryBB = kernel.fg.getEntryBB();
-
     runIDOM();
-
     setValid();
+}
+
+bool ImmDominator::dominates(G4_BB *bb1, G4_BB *bb2)
+{
+    recomputeIfStale();
+
+    // A block always dominates itself.
+    if (bb1 == bb2)
+        return true;
+
+    // If either of them is the root (entry) block, bb1 dominates bb2
+    // if and only if bb1 is that root block.
+    auto Root = kernel.fg.getEntryBB();
+    if (bb1 == Root || bb2 == Root)
+        return (bb1 == Root);
+
+    // Track back from bb2 if neither of them is the root block.
+    auto IDoms = kernel.fg.getImmDominator().getIDoms();
+    G4_BB *idom = bb2;
+    do {
+        idom = IDoms[idom->getId()];
+        // bb1 dominates bb2 if it's one of dominators of bb2.
+        if (idom == bb1)
+            return true;
+    } while (idom != Root);
+
+    return false;
 }
 
 void ImmDominator::dump(std::ostream& os)
@@ -324,78 +233,11 @@ void ImmDominator::dump(std::ostream& os)
     dumpImmDom(os);
 }
 
-void Dominator::reset()
-{
-    Doms.clear();
-
-    setStale();
-}
-
-void Dominator::run()
-{
-    // this function re-runs analysis. caller needs to check if
-    // analysis is stale.
-    entryBB = kernel.fg.getEntryBB();
-
-    runDOM();
-
-    setValid();
-}
-
-void Dominator::dump(std::ostream& os)
-{
-    if (isStale())
-        os << "Dominator data is stale.\n";
-
-    os << "Dom:\n";
-    dumpDom(os);
-}
-
 const std::vector<G4_BB*>& ImmDominator::getIDoms()
 {
     recomputeIfStale();
 
     return iDoms;
-}
-
-G4_BB* ImmDominator::getCommonImmDom(const std::unordered_set<G4_BB*>& bbs)
-{
-    recomputeIfStale();
-
-    if (bbs.size() == 0)
-        return nullptr;
-
-    unsigned int maxId = (*bbs.begin())->getId();
-
-    auto commonImmDoms = getImmDom(*bbs.begin());
-    for (auto bb : bbs)
-    {
-        maxId = std::max(maxId, bb->getId());
-
-        const auto& DomBB = kernel.fg.getDominator().getDom(bb);
-        for (G4_BB*& dom : commonImmDoms)
-        {
-            if (dom != nullptr && DomBB.find(dom) == DomBB.end())
-            {
-                dom = nullptr;
-            }
-        }
-    }
-
-    // Return first imm dom that is not a BB from bbs set
-    for (G4_BB* dom : commonImmDoms)
-    {
-        if (dom &&
-            // Common imm pdom must be lexically last BB
-            dom->getId() >= maxId &&
-            ((dom->size() > 1 && dom->front()->isLabel()) ||
-                (dom->size() > 0 && !dom->front()->isLabel())))
-        {
-            return dom;
-        }
-    }
-
-    return entryBB;
 }
 
 void ImmDominator::dumpImmDom(std::ostream& os)
@@ -415,37 +257,6 @@ void ImmDominator::dumpImmDom(std::ostream& os)
         }
         os << "\n";
     }
-}
-
-void vISA::Dominator::dumpDom(std::ostream& os)
-{
-    for (auto bb : kernel.fg)
-    {
-        os << "BB" << bb->getId() << " - ";
-        auto& domBBs = Doms[bb->getId()];
-        for (auto domBB : domBBs)
-        {
-            os << "BB" << domBB->getId();
-            if (domBB->getLabel())
-            {
-                os << " (" << domBB->getLabel()->getLabel() << ")";
-            }
-            os << ", ";
-        }
-        os << "\n";
-    }
-}
-
-// return true if bb1 dominates bb2
-bool Dominator::dominates(G4_BB* bb1, G4_BB* bb2)
-{
-    recomputeIfStale();
-
-    auto& dom = getDom(bb2);
-    if (dom.find(bb1) != dom.end())
-        return true;
-
-    return false;
 }
 
 void Analysis::recomputeIfStale()
@@ -993,8 +804,7 @@ void LoopDetection::populateLoop(BackEdge& backEdge)
     auto src = const_cast<G4_BB*>(backEdge.first);
     auto dst = const_cast<G4_BB*>(backEdge.second);
 
-    auto& domSecond = fg.getDominator().getDom(src);
-    if (domSecond.find(dst) != domSecond.end())
+    if (fg.getImmDominator().dominates(dst, src))
     {
         // this is a natural loop back edge. populate all bbs in loop.
         Loop newLoop(backEdge);

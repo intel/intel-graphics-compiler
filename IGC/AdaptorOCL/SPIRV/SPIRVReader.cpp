@@ -4202,7 +4202,9 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
        OC != OpImageQuerySamples &&
        OC != OpVmeImageINTEL &&
        OC != OpSampledImage &&
-       OC != OpImageSampleExplicitLod);
+       OC != OpImageSampleExplicitLod &&
+       OC != OpSubgroupImageMediaBlockReadINTEL &&
+       OC != OpSubgroupImageMediaBlockWriteINTEL);
 
   if (convertImageToI64)
   {
@@ -4281,7 +4283,8 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       OC == OpSubgroupBlockReadINTEL ||
       OC == OpSubgroupImageBlockReadINTEL ||
       OC == OpImageRead ||
-      OC == OpImageSampleExplicitLod)
+      OC == OpImageSampleExplicitLod ||
+      OC == OpSubgroupImageMediaBlockReadINTEL)
   {
       hasReturnTypeInTypeList = true;
   }

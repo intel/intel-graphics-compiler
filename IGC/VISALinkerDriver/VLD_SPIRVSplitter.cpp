@@ -25,7 +25,7 @@ SplitSPMDAndESIMD(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
 
 llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
 SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
-  const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_3;
+  const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_5;
   spv_context context = spvContextCreate(target_env);
   const uint32_t *const binary = reinterpret_cast<const uint32_t *>(spv_buffer);
   const size_t word_count = (spv_buffer_size_in_bytes / sizeof(uint32_t));

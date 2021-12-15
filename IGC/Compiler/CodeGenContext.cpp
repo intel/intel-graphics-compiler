@@ -838,6 +838,11 @@ namespace IGC
             {
                 EnableZEBinary = true;
             }
+            // -cl-intel-exclude-ir-from-zebin
+            else if (suffix.equals("-exclude-ir-from-zebin"))
+            {
+                ExcludeIRFromZEBinary = true;
+            }
             // -cl-intel-no-spill
             else if (suffix.equals("-no-spill"))
             {

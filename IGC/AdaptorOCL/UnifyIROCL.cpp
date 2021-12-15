@@ -273,6 +273,9 @@ static void CommonOCLBasedPasses(
     CompilerOpts.EnableZEBinary =
         pContext->m_InternalOptions.EnableZEBinary;
 
+    CompilerOpts.ExcludeIRFromZEBinary =
+        pContext->m_InternalOptions.ExcludeIRFromZEBinary;
+
     IGCPassManager mpmSPIR(pContext, "Unify");
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new PreprocessSPVIR());

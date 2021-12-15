@@ -212,17 +212,17 @@ enum Indirectability {
 };
 
 // A call site and the action that we want to take when indirecting the arg.
-// This is then subclassed by the *CallSite classes below.
-class CallSite {
+// This is then subclassed by the *ArgCallSite classes below.
+class ArgIndCallSite {
 public:
   CallInst *CI;
 protected:
   Indirectability State;
   Value *Index;
 public:
-  CallSite(CallInst *CI, Indirectability State, Value *Index)
+  ArgIndCallSite(CallInst *CI, Indirectability State, Value *Index)
       : CI(CI), State(State), Index(Index) {}
-  virtual ~CallSite() {}
+  virtual ~ArgIndCallSite() {}
   Indirectability getState() const { return State; }
   Value *getIndex() const { return Index; }
   virtual Value *process(GenXArgIndirection *Pass, SubroutineArg *SubrArg) = 0;
@@ -230,16 +230,16 @@ public:
   void print(raw_ostream &OS) const { printImpl(OS); }
 };
 
-raw_ostream &operator<<(raw_ostream &OS, const CallSite &CS) {
+raw_ostream &operator<<(raw_ostream &OS, const ArgIndCallSite &CS) {
   CS.print(OS); return OS;
 }
 
 // A call site in a subroutine that is itself indirecting the arg.
-class CallerIndirectingCallSite : public CallSite {
+class CallerIndirectingCallSite : public ArgIndCallSite {
   SubroutineArg *CallerSubrArg;
 public:
   CallerIndirectingCallSite(CallInst *CI, SubroutineArg *CallerSubrArg)
-      : CallSite(CI, Indirectability::CALLER_INDIRECTING, nullptr),
+      : ArgIndCallSite(CI, Indirectability::CALLER_INDIRECTING, nullptr),
         CallerSubrArg(CallerSubrArg) {}
   virtual Value *process(GenXArgIndirection *Pass, SubroutineArg *SubrArg);
   virtual void printImpl(raw_ostream &OS) const {
@@ -250,10 +250,10 @@ public:
 // A call site where indirecting the arg does not give any optimization because
 // we did not find copies or rd/wr regions that we can get rid of. We can still
 // indirect it though if other call sites do get an optimization.
-class NoOptCallSite : public CallSite {
+class NoOptCallSite : public ArgIndCallSite {
 public:
   NoOptCallSite(CallInst *CI)
-      : CallSite(CI, Indirectability::NO_OPTIMIZATION, nullptr) {}
+      : ArgIndCallSite(CI, Indirectability::NO_OPTIMIZATION, nullptr) {}
   virtual Value *process(GenXArgIndirection *Pass, SubroutineArg *SubrArg);
   virtual void printImpl(raw_ostream &OS) const {
     OS << "NoOptCallSite " << *CI;
@@ -263,13 +263,13 @@ public:
 // A call site where the arg is constant (including undef) and the arg is
 // coalesced with a retval that is used only in a legalized wrregion
 // whose "old value" input is constant.
-class ConstArgRetCallSite : public CallSite {
+class ConstArgRetCallSite : public ArgIndCallSite {
   Constant *LdConst; // the constant that needs to be loaded
   AssertingVH<Instruction> RetEndWr; // the last wrregion in the sequence for the retval
 public:
   ConstArgRetCallSite(CallInst *CI, Constant *LdConst, Instruction *RetEndWr,
                       Value *Index)
-      : CallSite(CI, Indirectability::WANT_INDIRECTION, Index),
+      : ArgIndCallSite(CI, Indirectability::WANT_INDIRECTION, Index),
         LdConst(LdConst), RetEndWr(RetEndWr) {}
   virtual Value *process(GenXArgIndirection *Pass, SubroutineArg *SubrArg);
   virtual void printImpl(raw_ostream &OS) const {
@@ -280,7 +280,7 @@ public:
 
 // A call site where the arg is a legalized rdregion or copy, and there is no
 // retval coalesced with it.
-class IndirectArgCallSite : public CallSite {
+class IndirectArgCallSite : public ArgIndCallSite {
 protected:
   // Some use of input (arg or inst) in legalized rdregion or copy. This is
   // kept as a Use * rather than the value it actually uses to allow for the
@@ -289,7 +289,7 @@ protected:
   Use *InputUse;
 public:
   IndirectArgCallSite(CallInst *CI, Use *InputUse, Value *Index)
-      : CallSite(CI, Indirectability::WANT_INDIRECTION, Index),
+      : ArgIndCallSite(CI, Indirectability::WANT_INDIRECTION, Index),
         InputUse(InputUse) {}
   virtual Value *process(GenXArgIndirection *Pass, SubroutineArg *SubrArg);
   virtual void printImpl(raw_ostream &OS) const {
@@ -325,7 +325,7 @@ public:
 private:
   int CoalescedRetIdx = -1;
   bool CanCoalesceWithoutKill = false;
-  SmallVector<CallSite *, 4> CallSites;
+  SmallVector<ArgIndCallSite *, 4> CallSites;
   Alignment Align;
   Function *F = nullptr;
   Function *NewFunc = nullptr;
@@ -338,7 +338,7 @@ public:
       delete *i;
   }
   Indirectability checkIndirectability();
-  CallSite *createCallSite(CallInst *CI);
+  ArgIndCallSite *createCallSite(CallInst *CI);
   Alignment getIndirectAlignment(unsigned GRFWidth) const;
   void gatherBalesToModify(Alignment Align);
   std::pair<Value *, Value *> addAddressArg();
@@ -352,7 +352,7 @@ private:
 // GenX arg indirection pass
 class GenXArgIndirection : public FGPassImplInterface,
                            public IDMixin<GenXArgIndirection> {
-  friend CallSite;
+  friend ArgIndCallSite;
   friend SubroutineArg;
   friend NoOptCallSite;
   friend ConstArgRetCallSite;
@@ -779,22 +779,22 @@ Indirectability SubroutineArg::checkIndirectability()
     }
   }
 
-  // Create an object of some subclass of CallSite for each call site.
+  // Create an object of some subclass of ArgIndCallSite for each call site.
   for (auto &U: F->uses()) {
     if (auto *CI = checkFunctionCall(U.getUser(), F)) {
       IGC_ASSERT(U.getOperandNo() == CI->getNumArgOperands());
-      auto CallSite = createCallSite(CI);
-      if (!CallSite)
+      auto CS = createCallSite(CI);
+      if (!CS)
         return Indirectability::CANNOT_INDIRECT;
-      CallSites.push_back(CallSite);
-      LLVM_DEBUG(dbgs() << "  " << *CallSite << "\n");
+      CallSites.push_back(CS);
+      LLVM_DEBUG(dbgs() << "  " << *CS << "\n");
     }
   }
   // Check indirection state for each call site.
   unsigned States = 0;
   for (auto csi = CallSites.begin(), cse = CallSites.end(); csi != cse; ++csi) {
-    auto CallSite = *csi;
-    States |= CallSite->getState();
+    auto CS = *csi;
+    States |= CS->getState();
   }
   switch (States & (Indirectability::NO_OPTIMIZATION | Indirectability::WANT_INDIRECTION)) {
   case Indirectability::NO_OPTIMIZATION | Indirectability::WANT_INDIRECTION:
@@ -806,18 +806,18 @@ Indirectability SubroutineArg::checkIndirectability()
 }
 
 /***********************************************************************
- * createCallSite : create a CallSite object for this call
+ * createCallSite : create a ArgIndCallSite object for this call
  *
  * Enter:   CI = CallInst
  *          this->Arg = the Argument to look at
  *          this->ArgLR = its LiveRange
- *          this->CoalescedRetIdx = -1 else struct index of coalesced return value
+ *          this->CoalescedRetIdx = -1 else struct index of coalesced return
+ * value
  *
  * Return:  0 if this call stops arg indirection happening for this arg
  *          otherwise object of some subclass of CallSite
  */
-CallSite *SubroutineArg::createCallSite(CallInst *CI)
-{
+ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
   // Check if this call site is in a function that is itself indirecting the
   // arg.
   if (auto SubrArg = Pass->FuncMap[CI->getParent()->getParent()])
@@ -885,7 +885,7 @@ CallSite *SubroutineArg::createCallSite(CallInst *CI)
   }
 
   // Now check the various cases. This results in the creation of an object of
-  // some subclass of CallSite.
+  // some subclass of ArgIndCallSite.
 
   // Check that the regions are contiguous, and report if they are not.
   if (ArgRWS.isNull() && !ArgRWS.RdR.isContiguous()) {
@@ -1007,8 +1007,8 @@ Alignment SubroutineArg::getIndirectAlignment(unsigned GRFWidth) const {
   Alignment Align(genx::log2(GRFWidth), 0); // best case is GRF aligned
   for (auto csi = CallSites.begin(), cse = CallSites.end();
       csi != cse; ++csi) {
-    auto CallSite = *csi;
-    Value *Index = CallSite->getIndex();
+    auto CS = *csi;
+    Value *Index = CS->getIndex();
     if (!Index)
       continue;
     Align = Align.merge(Pass->AI->get(Index));
@@ -1300,36 +1300,36 @@ std::pair<Value *, Value *> SubroutineArg::addAddressArg() {
  *    function instead and passes the extra address arg
  *
  * For each call site, this calls the process() method on the object of a
- * subclass of CallSite set up by createCallSite(). That returns the extra
+ * subclass of ArgIndCallSite set up by createCallSite(). That returns the extra
  * address arg, which this function then uses to create a replacement call
  * instruction.
  */
 void SubroutineArg::fixCallSites()
 {
   for (auto csi = CallSites.begin(), cse = CallSites.end(); csi != cse; ++csi) {
-    auto CallSite = *csi;
-    LLVM_DEBUG(dbgs() << "  fixCallSites: [" << Pass->Numbering->getNumber(CallSite->CI)
-        << "] " << *CallSite << "\n");
+    auto CS = *csi;
+    LLVM_DEBUG(dbgs() << "  fixCallSites: ["
+                      << Pass->Numbering->getNumber(CS->CI) << "] " << *CS
+                      << "\n");
     // Process the call site.
     // Create the replacement call instruction, with an added address arg that
     // for now we set to undef. We do this first so that process() called below
     // can modify the arg being indirected such that the eraseUnusedTree erases
     // the rd-wr sequence that sets up the arg in the old call.
     SmallVector<Value *, 4> Args;
-    for (unsigned oi = 0, oe = CallSite->CI->getNumArgOperands();
-        oi != oe; ++oi)
-      Args.push_back(CallSite->CI->getArgOperand(oi));
-    Args.push_back(UndefValue::get(Type::getInt16Ty(CallSite->CI->getContext())));
-    CallInst *OldCI = CallSite->CI;
-    CallSite->CI = CallInst::Create(NewFunc, Args, "", OldCI);
-    CallSite->CI->takeName(OldCI);
-    CallSite->CI->setDebugLoc(OldCI->getDebugLoc());
-    Pass->Numbering->setNumber(CallSite->CI, Pass->Numbering->getNumber(OldCI));
-    Pass->Numbering->setStartNumber(CallSite->CI,
-          Pass->Numbering->getStartNumber(OldCI));
-    // Get the subclass of CallSite to do its processing, returning the extra
-    // address arg for the call.
-    Value *AddressArg = CallSite->process(Pass, this);
+    for (unsigned oi = 0, oe = CS->CI->getNumArgOperands(); oi != oe; ++oi)
+      Args.push_back(CS->CI->getArgOperand(oi));
+    Args.push_back(UndefValue::get(Type::getInt16Ty(CS->CI->getContext())));
+    CallInst *OldCI = CS->CI;
+    CS->CI = CallInst::Create(NewFunc, Args, "", OldCI);
+    CS->CI->takeName(OldCI);
+    CS->CI->setDebugLoc(OldCI->getDebugLoc());
+    Pass->Numbering->setNumber(CS->CI, Pass->Numbering->getNumber(OldCI));
+    Pass->Numbering->setStartNumber(CS->CI,
+                                    Pass->Numbering->getStartNumber(OldCI));
+    // Get the subclass of ArgIndCallSite to do its processing, returning the
+    // extra address arg for the call.
+    Value *AddressArg = CS->process(Pass, this);
     LLVM_DEBUG(dbgs() << "    AddressArg is " << AddressArg->getName() << "\n");
     if (!isa<UndefValue>(AddressArg)) {
       // Create a live range for the address arg, and ensure it is recalculated.
@@ -1338,12 +1338,12 @@ void SubroutineArg::fixCallSites()
       Pass->LRsToCalculate.push_back(AddressArgLR);
     }
     // Use the address arg in the new call.
-    CallSite->CI->setOperand(Args.size() - 1, AddressArg);
+    CS->CI->setOperand(Args.size() - 1, AddressArg);
     // Replace the old call with the new one, and erase the old one. We use
     // eraseUnusedTree so that any rd-wr sequence for the indirected arg is also
     // erased.
-    OldCI->replaceAllUsesWith(CallSite->CI);
-    Pass->Liveness->replaceValue(OldCI, CallSite->CI);
+    OldCI->replaceAllUsesWith(CS->CI);
+    Pass->Liveness->replaceValue(OldCI, CS->CI);
     Pass->Liveness->eraseUnusedTree(OldCI);
   }
 }
@@ -1623,8 +1623,8 @@ void SubroutineArg::coalesceAddressArgs()
   LiveRange *AddressLR = Pass->Liveness->getLiveRange(AddressArgument);
   unsigned ArgNum = AddressArgument->getArgNo();
   for (unsigned csi = 0, cse = CallSites.size(); csi != cse; ++csi) {
-    auto CallSite = CallSites[csi];
-    Value *CallArg = CallSite->CI->getArgOperand(ArgNum);
+    auto CS = CallSites[csi];
+    Value *CallArg = CS->CI->getArgOperand(ArgNum);
     if (isa<UndefValue>(CallArg))
       continue;
     LiveRange *CallArgLR = Pass->Liveness->getLiveRange(CallArg);
@@ -1640,19 +1640,19 @@ void SubroutineArg::coalesceAddressArgs()
     // subroutine where we are indirecting the arg -- the new address args
     // for each subroutine should coalesce together.
     LLVM_DEBUG(dbgs() << "Failed to coalesce:\n " << *AddressLR << "\n " << *CallArgLR << "\n");
-    IGC_ASSERT_MESSAGE(!Pass->FuncMap[CallSite->CI->getParent()->getParent()],
-      "new address args should coalesce together");
+    IGC_ASSERT_MESSAGE(!Pass->FuncMap[CS->CI->getParent()->getParent()],
+                       "new address args should coalesce together");
     // We need to insert a copy, in the address arg's pre-copy slot. An address
     // copy is done with a genx.convert, even though it is not actually doing a
     // conversion.
-    auto Copy = createConvert(CallArg, CallArg->getName() + ".coalescefail",
-        CallSite->CI);
-    Copy->setDebugLoc(CallSite->CI->getDebugLoc());
-    Pass->Numbering->setNumber(Copy, Pass->Numbering->getArgPreCopyNumber(
-          CallSite->CI, ArgNum, 0));
+    auto Copy =
+        createConvert(CallArg, CallArg->getName() + ".coalescefail", CS->CI);
+    Copy->setDebugLoc(CS->CI->getDebugLoc());
+    Pass->Numbering->setNumber(
+        Copy, Pass->Numbering->getArgPreCopyNumber(CS->CI, ArgNum, 0));
     // Add the new value in to AddressLR.
     Pass->Liveness->setLiveRange(Copy, AddressLR);
-    CallSite->CI->setOperand(ArgNum, Copy);
+    CS->CI->setOperand(ArgNum, Copy);
   }
 }
 

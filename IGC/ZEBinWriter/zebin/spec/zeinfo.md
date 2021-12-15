@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.8
+Version 1.9
 
 ## Grammar
 
@@ -129,6 +129,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | addrspace | <address_space> | Optional | | Present when arg_type is "arg_bypointer" |
 | access_type | <access_type> | Optional | | Present when arg_type is "arg_bypointer" |
 | sampler_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer" and address_space is "sampler" |
+| source_offset | int32 | Optional | -1 | Present when arg_type is "arg_byvalue" and the arg is a flattened aggregate element |
 <!--- PayloadArgument PayloadArguments -->
 
 ### Supported argument types:
@@ -271,6 +272,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.9**: Add source_offset to payload argument.
 - **Version 1.8**: Add inline_data_payload_size to execution_env.
 - **Version 1.7**: Add debug_env to kernel.
 - **Version 1.6**: Remove actual_kernel_start_offset from execution environment.

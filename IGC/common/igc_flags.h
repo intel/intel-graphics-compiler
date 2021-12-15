@@ -247,6 +247,13 @@ DECLARE_IGC_REGKEY(DWORD, ForcePerThreadPrivateMemorySize, 0,  "Useful for ensur
 DECLARE_IGC_REGKEY(DWORD, RetryManagerFirstStateId,     0,     "For debugging purposes, it can be useful to start on a particular id rather than id 0.", false)
 DECLARE_IGC_REGKEY(bool, DisableSendSrcDstOverlapWA,    false, "Disable Send Source/destination overlap WA which is enabled for GEN10/GEN11 and whenever Wddm2Svm is set in WATable", false)
 DECLARE_IGC_REGKEY(debugString, DisablePassToggles,     0,     "Disable each IGC pass by setting the bit. HEXADECIMAL ONLY!. Ex: C0 is to disable pass 6 and pass 7.", false)
+DECLARE_IGC_REGKEY(bool, ShaderDisplayAllPassesNames,   false, "Display to console all passes name with their ID and occurrence number.", false)
+DECLARE_IGC_REGKEY(debugString, ShaderPassDisable,      0,     "Disable specific passes eg. '9;17-19;239-;Error Check;ResolveOCLAtomics:2;Dead Code Elimination:3-5;BreakConstantExprPass:7-' \
+                                                                disable pass 9, disable passes from 17 to 19, disable all passes after 238, disable all occurrences of pass Error Check, \
+                                                                disable second occurrence of ResolveOCLAtomics, disable pass Dead Code Elimination occurrences from 3 to 5, \
+                                                                disable all BreakConstantExprPass after his 6 occurrence \
+                                                                To show a list of pass names and their occurrence set ShaderDisplayAllPassesNames.\
+                                                                Must be used with ShaderDumpEnableAll flag.", false)
 DECLARE_IGC_REGKEY(bool, ForceStatelessForQueueT,       true,  "In OCL, force to use stateless memory to hold queue_t*. This is a legacy feature to be removed.", false)
 DECLARE_IGC_REGKEY(bool, ForceMemoryFenceBeforeEOT,     false, "Forces inserting SLM or gloabal memory fence before EOT if shader writes to SLM or goblam memory respectively.", false)
 DECLARE_IGC_REGKEY(bool, EnableRTmaskPso,               true,  "Enable render target mask optimization in PSO opt", false)
@@ -506,6 +513,7 @@ DECLARE_IGC_REGKEY(bool, HybridRAWithSpill, false, "Did Hybrid RA with Spill", f
 DECLARE_IGC_REGKEY(bool, StripDebugInfo, false, "Strip debug info from llvm IR lowered from input to IGC", false)
 DECLARE_IGC_REGKEY(bool, EmitPreDefinedForAllFunctions, false, "When enabled, pre-defined variables for gid, grid, lid are emitted for all functions. This causes those functions to be inlined even when stack calls is enabled.", true)
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, false,  "Enable output in ZE binary format", true)
+DECLARE_IGC_REGKEY(bool, ExcludeIRFromZEBinary, false, "Exclude IR sections from ZE binary", true)
 DECLARE_IGC_REGKEY(bool, AllocateZeroInitializedVarsInBss, false,  "Allocate zero initialized global variables in .bss section in ZEBinary", true)
 DECLARE_IGC_REGKEY(DWORD, OverrideOCLMaxParamSize, 0,  "Override the value imposed on the kernel by CL_DEVICE_MAX_PARAMETER_SIZE. Value in bytes, if value==0 no override happens.", true)
 

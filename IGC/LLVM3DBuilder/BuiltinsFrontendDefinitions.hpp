@@ -1112,6 +1112,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     llvm::Value* int32_offsetU,
     llvm::Value* int32_offsetV,
     llvm::Value* int32_offsetW,
+    bool feedback_enabled,
     llvm::Type* returnType)
 {
     llvm::Value * packed_tex_params[] = {
@@ -1137,6 +1138,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
+    if (feedback_enabled)
+    {
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
+    }
     llvm::Function* func_llvm_GenISA_sampleLCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleLCptr, types);
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleLCptr_v4f32_f32, packed_tex_params);
@@ -1348,11 +1353,15 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
     llvm::Value* int32_sampler,
     llvm::Value* int32_offsetU,
     llvm::Value* int32_offsetV,
-    llvm::Value* int32_srcChannel)
+    llvm::Value* int32_srcChannel,
+    bool feedback_enabled)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
-    llvm::Value *gatherReturn = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4));
+    unsigned int gatherReturnSize = feedback_enabled ? 5 : 4;
+    llvm::Value *gatherReturn = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), gatherReturnSize));
+    llvm::Value* feedbackValue = this->getInt32(0xffffffff);
+
     for (int i = 0, j = 0; i < 7; i = i + 2, j++)
     {
         llvm::Value* packed_tex_call = Create_gather4PO(
@@ -1366,7 +1375,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
             int32_offsetU,
             int32_offsetV,
             int32_srcChannel,
-            false,
+            feedback_enabled,
             llvm::Type::getFloatTy(module->getContext()));
 
 
@@ -1375,6 +1384,24 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
             this->CreateExtractElement(packed_tex_call, this->getInt32(3)),
             this->getInt32(j),
             "call_inst");
+
+        if (feedback_enabled)
+        {
+            llvm::Value* callFeedbackValue = this->CreateExtractElement(packed_tex_call, this->getInt32(4));
+            callFeedbackValue = this->CreateBitCast(callFeedbackValue, this->getInt32Ty());
+            feedbackValue = this->CreateAnd(feedbackValue, callFeedbackValue);
+        }
+    }
+
+    if (feedback_enabled)
+    {
+        IGC_ASSERT(feedbackValue);
+        feedbackValue = this->CreateBitCast(feedbackValue, this->getFloatTy());
+        gatherReturn = this->CreateInsertElement(
+            gatherReturn,
+            feedbackValue,
+            4
+        );
     }
 
     return gatherReturn;
@@ -1391,11 +1418,15 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
     llvm::Value* int32_sampler_357,
     llvm::Value* int32_offsetU,
     llvm::Value* int32_offsetV,
-    llvm::Value* int32_srcChannel)
+    llvm::Value* int32_srcChannel,
+    bool feedback_enabled)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
-    llvm::Value *gatherReturn = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4));
+    unsigned int gatherReturnSize = feedback_enabled ? 5 : 4;
+    llvm::Value *gatherReturn = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), gatherReturnSize));
+    llvm::Value* feedbackValue = this->getInt32(0xffffffff);
+
     for (int i = 0, j = 0; i < 7; i = i + 2, j++)
     {
         llvm::Value* packed_tex_1527_call = Create_gather4POC(
@@ -1410,7 +1441,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
             int32_offsetU,
             int32_offsetV,
             int32_srcChannel,
-            false,
+            feedback_enabled,
             llvm::Type::getFloatTy(module->getContext()));
 
         gatherReturn = this->CreateInsertElement(
@@ -1418,6 +1449,24 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
             this->CreateExtractElement(packed_tex_1527_call, this->getInt32(3)),
             this->getInt32(j),
             "call_inst");
+
+        if (feedback_enabled)
+        {
+            llvm::Value* callFeedbackValue = this->CreateExtractElement(packed_tex_1527_call, this->getInt32(4));
+            callFeedbackValue = this->CreateBitCast(callFeedbackValue, this->getInt32Ty());
+            feedbackValue = this->CreateAnd(feedbackValue, callFeedbackValue);
+        }
+    }
+
+    if (feedback_enabled)
+    {
+        IGC_ASSERT(feedbackValue);
+        feedbackValue = this->CreateBitCast(feedbackValue, this->getFloatTy());
+        gatherReturn = this->CreateInsertElement(
+            gatherReturn,
+            feedbackValue,
+            4
+        );
     }
 
     return gatherReturn;
@@ -1615,7 +1664,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
-
     llvm::Function* func_llvm_GenISA_sampleDptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleDptr, types);
 
@@ -1642,6 +1690,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Value* int32_offsetU,
     llvm::Value* int32_offsetV,
     llvm::Value* int32_offsetW,
+    bool feedback_enabled,
     llvm::Type* returnType)
 {
     //   %tex = call <4 x float> @llvm.GenISA.sample.v4f32.f32D(float %float_ref, float %float_src_u, float %dxu, float %dxu, float %dyu, float float_src_v,
@@ -1675,7 +1724,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
-
+    if (feedback_enabled)
+    {
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
+    }
     llvm::Function* func_llvm_GenISA_sampleDCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleDCptr, types);
 
@@ -1692,6 +1744,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_lod(
     llvm::Value* float_address_3,
     llvm::Value* int32_textureIdx_356,
     llvm::Value* int32_sampler_357,
+    bool feedback_enabled,
     llvm::Type* returnType)
 {
     llvm::Value * packed_tex_params[] = {
@@ -1712,7 +1765,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_lod(
         int32_textureIdx_356->getType(),
         int32_sampler_357->getType()
     };
-
+    if (feedback_enabled)
+    {
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
+    }
     llvm::Function* func_llvm_GenISA_lodptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_lodptr, types);
 
@@ -3375,6 +3431,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     llvm::Value* int32_offsetU,
     llvm::Value* int32_offsetV,
     llvm::Value* int32_offsetW,
+    bool feedback_enabled,
     llvm::Type* returnType)
 {
     llvm::Value * packed_tex_params[] = {
@@ -3400,6 +3457,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
+    if (feedback_enabled)
+    {
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
+    }
     llvm::Function* func_llvm_GenISA_sampleBCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleBCptr, types);
 

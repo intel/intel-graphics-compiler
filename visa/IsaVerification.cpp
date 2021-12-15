@@ -3642,6 +3642,7 @@ struct LscInstVerifier {
         case LSC_FENCE_OP_DISCARD:
         case LSC_FENCE_OP_CLEAN:
         case LSC_FENCE_OP_FLUSHL3:
+        case LSC_FENCE_OP_TYPE6:
           verify(sfid != LSC_SLM, "lsc_fence.slm fence op must be .none");
           break;
         default:
