@@ -106,7 +106,7 @@ bool GenXModule::runOnModule(Module &M) {
 
   InlineAsm = CheckForInlineAsm(M);
 
-  DisableFinalizerOpts = BC->emitExtendedDebugInfo();
+  DisableFinalizerOpts = TM.getOptLevel() == CodeGenOpt::Level::None;
   EmitDebugInformation =
       BC->emitDWARFDebugInfo() && vc::DIBuilder::checkIfModuleHasDebugInfo(M);
   ImplicitArgsBufferIsUsed = isImplicitArgsBufferUsed(M);

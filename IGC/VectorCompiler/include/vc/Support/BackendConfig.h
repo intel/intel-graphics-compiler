@@ -55,8 +55,6 @@ struct GenXBackendOptions {
   bool DebuggabilityForLegacyPath = false;
   // Emit breakpoints at the start of each kernel
   bool DebuggabilityEmitBreakpoints = false;
-  // Force passing "-debug" option to finalizer
-  bool DebuggabilityExtendedDebug = false;
   // Enable emission of DWARF debug information
   bool DebuggabilityEmitDWARF = false;
   // Generate Debug Info in a format compatible with zebin
@@ -197,9 +195,6 @@ public:
   }
   bool emitDebuggableKernelsForLegacyPath() const {
     return Options.DebuggabilityForLegacyPath && emitDebuggableKernels();
-  }
-  bool emitExtendedDebugInfo() const {
-    return Options.DebuggabilityExtendedDebug;
   }
   bool emitDWARFDebugInfo() const { return Options.DebuggabilityEmitDWARF; }
   bool emitDWARFDebugInfoForZeBin() const {

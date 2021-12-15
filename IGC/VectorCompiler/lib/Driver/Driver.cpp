@@ -234,11 +234,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
       (Opts.Binary != vc::BinaryKind::CM) && Opts.EmitDebuggableKernels;
   BackendOpts.DebuggabilityZeBinCompatibleDWARF =
       (Opts.Binary == vc::BinaryKind::ZE);
-  BackendOpts.DebuggabilityEmitBreakpoints = Opts.EmitExtendedDebug;
-  bool IsOptLevel_O0 =
-      Opts.IROptLevel == vc::OptimizerLevel::None && Opts.EmitExtendedDebug;
-  BackendOpts.DebuggabilityExtendedDebug =
-      getDefaultOverridableFlag(Opts.NoOptFinalizerMode, IsOptLevel_O0);
+  BackendOpts.DebuggabilityEmitBreakpoints = Opts.ExtendedDebuggingSupport;
 
   BackendOpts.DebuggabilityValidateDWARF = Opts.ForceDebugInfoValidation;
 
@@ -627,8 +623,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   if (ApiOptions.hasArg(OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
   if (ApiOptions.hasArg(OPT_emit_debug)) {
-    Opts.EmitExtendedDebug = true;
-    Opts.EmitDebuggableKernels = true; // TODO: we should not depend on "-g"
+    Opts.ExtendedDebuggingSupport = true;
+    Opts.EmitDebuggableKernels = true;
   }
   if (ApiOptions.hasArg(OPT_vc_fno_struct_splitting))
     Opts.DisableStructSplitting = true;
@@ -664,6 +660,10 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     if (!MaybeLevel)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
     Opts.IROptLevel = MaybeLevel.getValue();
+
+    if (ApiOptions.hasArg(OPT_emit_debug) &&
+        MaybeLevel.getValue() == vc::OptimizerLevel::None)
+      Opts.CodegenOptLevel = vc::OptimizerLevel::None;
   }
 
   if (opt::Arg *A =
