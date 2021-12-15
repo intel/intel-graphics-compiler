@@ -2507,16 +2507,15 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
                 {
                     AndSrc = LhsSrc;
                     newIndex = (uint32_t)CI->getZExtValue() / 8;
+
+                    llvm::IRBuilder<> builder(&I);
+                    VectorType* vec4 = VectorType::get(builder.getInt8Ty(), 4, false);
+                    Value* BC = builder.CreateBitCast(AndSrc, vec4);
+                    Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
+                    Value* Zext = builder.CreateZExt(EE, builder.getInt32Ty());
+                    I.replaceAllUsesWith(Zext);
+                    I.eraseFromParent();
                 }
-
-                llvm::IRBuilder<> builder(&I);
-                VectorType* vec4 = VectorType::get(builder.getInt8Ty(), 4, false);
-                Value* BC = builder.CreateBitCast(AndSrc, vec4);
-                Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
-                Value* Zext = builder.CreateZExt(EE, builder.getInt32Ty());
-                I.replaceAllUsesWith(Zext);
-                I.eraseFromParent();
-
             }
 
         }
