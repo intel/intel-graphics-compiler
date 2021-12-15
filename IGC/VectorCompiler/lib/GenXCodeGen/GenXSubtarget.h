@@ -151,6 +151,9 @@ private:
   /// True if subtarget accepts 16-wide BF mixed mode operations
   bool HasBfMixedModeWidth16 = false;
 
+  /// True if subtarget supports LSC messages
+  bool HasLSCMessages = false;
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -268,7 +271,7 @@ public:
   }
 
   bool translateLegacyMessages() const {
-    return (GenXVariant >= XE_PVC && TranslateLegacyMessages);
+    return (HasLSCMessages && TranslateLegacyMessages);
   }
 
   bool partialI64Emulation() const { return PartialI64Emulation; }
