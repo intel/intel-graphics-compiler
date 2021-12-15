@@ -984,13 +984,32 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
     int32_t arg_index,
     int32_t source_offset)
 {
-    arg_list.emplace_back();
+    // Here we merge the specified payload argument from the flattened byval
+    // aggregate elements into the previous contiguous zeinfo payload argument
+    // when the host data layout is same as the payload layout, so that there
+    // will be less zeinfo payload arguments and it'll be easier for runtime to
+    // manage.
+    bool mergeable = false;
+    if (!arg_list.empty()) {
+        zeInfoPayloadArgument& prev = arg_list.back();
+        mergeable = prev.arg_index == arg_index && (prev.source_offset + prev.size == source_offset);
+    }
+
+    if (!mergeable)
+        arg_list.emplace_back();
+
     zeInfoPayloadArgument& arg = arg_list.back();
-    arg.arg_type = PreDefinedAttrGetter::get(PreDefinedAttrGetter::ArgType::arg_byvalue);
-    arg.offset = offset;
-    arg.size = size;
-    arg.arg_index = arg_index;
-    arg.source_offset = source_offset;
+
+    if (mergeable) {
+        IGC_ASSERT_MESSAGE(arg.offset + arg.size == offset, "flattened aggregate elements should be contiguous");
+        arg.size += size;
+    } else  {
+        arg.arg_type = PreDefinedAttrGetter::get(PreDefinedAttrGetter::ArgType::arg_byvalue);
+        arg.offset = offset;
+        arg.size = size;
+        arg.arg_index = arg_index;
+        arg.source_offset = source_offset;
+    }
     return arg;
 }
 
