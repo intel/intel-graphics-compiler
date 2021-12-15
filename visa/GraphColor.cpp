@@ -960,6 +960,17 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
         }
     }
 
+    if (dcls[0] && dcls[1])
+    {
+        gra.addBundleConflictDcl(dcls[0], dcls[1], offset[0] - offset[1]);
+        gra.addBundleConflictDcl(dcls[1], dcls[0], offset[1] - offset[0]);
+    }
+    if (dcls[1] && dcls[2])
+    {
+        gra.addBundleConflictDcl(dcls[2], dcls[1], offset[2] - offset[1]);
+        gra.addBundleConflictDcl(dcls[1], dcls[2], offset[1] - offset[2]);
+    }
+
     for (int k = 0; k < 2; k++)
     {
         for (int i = 2; i != -1; i--)
@@ -7169,9 +7180,7 @@ bool GraphColor::regAlloc(
                     if (!success && doBankConflictReduction)
                     {
                         resetTemporaryRegisterAssignments();
-                        kernel.getOptions()->setOption(vISA_enableBundleCR, false);
                         assignColors(FIRST_FIT, false, false);
-                        kernel.getOptions()->setOption(vISA_enableBundleCR, true);
                     }
                 }
             }
@@ -10196,6 +10205,10 @@ int GlobalRA::coloringRegAlloc()
 
             reduceBCInRR = bc.setupBankConflictsForKernel(true, reduceBCInTAandFF, SECOND_HALF_BANK_START_GRF * 2, highInternalConflict);
             doBankConflictReduction = reduceBCInRR && reduceBCInTAandFF;
+            if (!doBankConflictReduction)
+            {
+                kernel.getOptions()->setOption(vISA_enableBundleCR, false);
+            }
         }
 
         bool allowAddrTaken = builder.getOption(vISA_FastSpill) || fastCompile ||
