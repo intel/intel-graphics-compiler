@@ -961,11 +961,6 @@ SPDX-License-Identifier: MIT
     }
 
 
-   bool has8bundles() const
-   {
-        return getPlatform() == GENX_TGLLP;
-   }
-
    bool has64bundleSize() const
    {
         return false;
