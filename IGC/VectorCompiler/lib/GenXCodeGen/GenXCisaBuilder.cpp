@@ -1312,6 +1312,13 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
 // in vISA compiler.
 static bool setNoMaskByDefault(Function *F,
                                std::unordered_set<Function *> &Visited) {
+  // We lower SIMDCF for stackcalls, so only predicates are significant. If VISA
+  // makes scalar jmp to goto transformation and goto has width less than 32, NM
+  // must be used by default. Otherwise, each legalized instruction that uses
+  // M5-M8 will work incorrectly if at least one lane is disabled.
+  if (genx::requiresStackCall(F))
+    return true;
+
   for (auto &BB : F->getBasicBlockList())
     if (GotoJoin::isGotoBlock(&BB))
       return true;
