@@ -19,6 +19,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Error.h>
 
 #include <algorithm>
+#if (defined(__GNUC__) && __GNUC__ >= 9) || (defined(_MSC_VER) && (_MSVC_LANG >= 201703L))
+// Temporary WA for VC issue.
+#include <filesystem>
+#include <fstream>
+#endif
 
 namespace TC {
     // Declarations for utility functions declared in other libraries that will be linked.
@@ -209,10 +214,29 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
     return false;
   }
 
+#if (defined(__GNUC__) && __GNUC__ >= 9) || (defined(_MSC_VER) && (_MSVC_LANG >= 201703L))
   if (esimdVISA->empty()) {
-    errorMessage = "VLD: ZeBinary did not contain any .visaasm sections for "
-                   "ESIMD kernel!";
-    return false;
+    // Temporary hack. VC backend currently doesn't populate the .visaasm
+    // section. Get it from the dumps, if they are enabled.
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
+      const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+      for (auto &p : std::filesystem::directory_iterator{pOutputFolder}) {
+        if (p.is_regular_file() && p.path().extension() == ".visaasm" &&
+            llvm::StringRef(p.path().filename().string()).startswith("VC")) {
+          std::ifstream file(p.path().string());
+          std::stringstream ss;
+          ss << file.rdbuf();
+          esimdVISA->push_back(ss.str());
+        }
+      }
+    }
+  }
+#endif // compiler version check
+
+  if (esimdVISA->empty()) {
+      errorMessage = "VLD: ZeBinary did not contain any .visaasm sections for "
+          "ESIMD kernel!";
+      return false;
   }
 
   std::string esimdVISACombined;
