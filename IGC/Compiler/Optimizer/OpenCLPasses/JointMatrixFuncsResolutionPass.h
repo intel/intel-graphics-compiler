@@ -47,8 +47,14 @@ namespace IGC
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
         llvm::Instruction *ResolveStore(llvm::CallInst *CI);
         llvm::Instruction *ResolveMad(llvm::CallInst *CI, unsigned OperationType);
-        llvm::Type *ResolveType(const llvm::Type *opaqueType, uint32_t elementTypeFlags, unsigned rows, unsigned *outLayout);
+        llvm::Value *ResolveFill(llvm::CallInst *CI);
+        llvm::Value *ResolveWILength(llvm::CallInst *CI);
+        llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
+        llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
+        llvm::Value *ResolveCall(llvm::CallInst *CI);
         llvm::Value *Resolve(llvm::Value *value);
+
+        llvm::Type *ResolveType(const llvm::Type *opaqueType, uint32_t elementTypeFlags, unsigned rows, unsigned *outLayout);
 
         std::string GetLoadStoreMatrixFuncName
             (bool load, unsigned opLayout, unsigned matrixLayout, unsigned elemBitWidth, unsigned rows, unsigned cols);

@@ -52,12 +52,17 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
     return Changed;
 }
 
+static const char *CommonBIPrefix = "__builtin_spirv_";
 static const char *JointMatrixLoadPrefx  = "__builtin_spirv_OpJointMatrixLoadINTEL";
 static const char *JointMatrixStorePrefx = "__builtin_spirv_OpJointMatrixStoreINTEL";
 static const char *JointMatrixMadPrefx   = "__builtin_spirv_OpJointMatrixMadINTEL";
 static const char *JointMatrixSUMadPrefx = "__builtin_spirv_OpJointMatrixSUMadINTEL";
 static const char *JointMatrixUSMadPrefx = "__builtin_spirv_OpJointMatrixUSMadINTEL";
 static const char *JointMatrixUUMadPrefx = "__builtin_spirv_OpJointMatrixUUMadINTEL";
+static const char *JointMatrixFillPrefx  = "__builtin_spirv_OpCompositeConstructJointMatrixINTEL";
+static const char *JointMatrixWorkItemLengthPrefx = "__builtin_spirv_OpJointMatrixWorkItemLengthINTEL";
+static const char *JointMatrixSliceInsert  = "__builtin_spirv_OpVectorInsertDynamicJointMatrixINTEL";
+static const char *JointMatrixSliceExtract = "__builtin_spirv_OpVectorExtractDynamicJointMatrixINTEL";
 
 enum {
     LayoutRowMajor,
@@ -364,6 +369,99 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
     return dpasCall;
 }
 
+static int getSliceSize(Type *matrixType) {
+    IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matrixType);
+    IGC_ASSERT_MESSAGE(ty, "Unexpected type when calculating slice size.");
+    return (int)ty->getNumElements();
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
+    Value *fillValue     = CI->getArgOperand(0);
+    uint32_t elementType = (uint32_t) constIntValue(CI->getArgOperand(1));
+    unsigned rows        = (unsigned) constIntValue(CI->getArgOperand(2));
+
+    unsigned matrixLayout = LayoutRowMajor;
+    Type *matTy = ResolveType(CI->getType(), elementType, rows, &matrixLayout);
+
+    IRBuilder builder(CI);
+    const int sliceSize = getSliceSize(matTy);
+    Value *slice = UndefValue::get(matTy);
+    for (int i = 0; i < sliceSize; i++) {
+        slice = builder.CreateInsertElement(slice, fillValue, i);
+    }
+
+    InstsToErase.insert(CI);
+    return slice;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
+    Value *matrix = Resolve(CI->getArgOperand(0));
+
+    const int sliceSize = getSliceSize(matrix->getType());
+    Value *lenght = ConstantInt::get(CI->getType(), sliceSize, "matrix.slice.size");
+
+    CI->replaceAllUsesWith(lenght);
+    InstsToErase.insert(CI);
+    return lenght;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
+    Value *matrix = Resolve(CI->getArgOperand(0));
+    Value *component = CI->getArgOperand(1);
+    Value *index = CI->getArgOperand(2);
+
+    IRBuilder builder(CI);
+    Value *slice = builder.CreateInsertElement(matrix, component, index);
+
+    InstsToErase.insert(CI);
+    return slice;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
+    Value *matrix = Resolve(CI->getArgOperand(0));
+    Value *index = CI->getArgOperand(1);
+
+    IRBuilder builder(CI);
+    Value *element = builder.CreateExtractElement(matrix, index, "matrix.element");
+
+    CI->replaceAllUsesWith(element);
+    InstsToErase.insert(CI);
+    return element;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
+    Function* func = CI->getCalledFunction();
+    if (!func)
+        return nullptr;
+
+    IGC_ASSERT_MESSAGE(func, "Unexpected missing function.");
+
+    Value *NewValue = nullptr;
+    StringRef funcName = func->getName();
+    if (funcName.startswith(JointMatrixLoadPrefx)) {
+        NewValue = ResolveLoad(CI);
+    } else if (funcName.startswith(JointMatrixStorePrefx)) {
+        NewValue = ResolveStore(CI);
+    } else if (funcName.startswith(JointMatrixMadPrefx)) {
+        NewValue = ResolveMad(CI, MadOpSS);
+    } else if (funcName.startswith(JointMatrixSUMadPrefx)) {
+        NewValue = ResolveMad(CI, MadOpSU);
+    } else if (funcName.startswith(JointMatrixUSMadPrefx)) {
+        NewValue = ResolveMad(CI, MadOpUS);
+    } else if (funcName.startswith(JointMatrixUUMadPrefx)) {
+        NewValue = ResolveMad(CI, MadOpUU);
+    } else if (funcName.startswith(JointMatrixFillPrefx)) {
+        NewValue = ResolveFill(CI);
+    } else if (funcName.startswith(JointMatrixWorkItemLengthPrefx)) {
+        NewValue = ResolveWILength(CI);
+    } else if (funcName.startswith(JointMatrixSliceInsert)) {
+        NewValue = ResolveSliceInsert(CI);
+    } else if (funcName.startswith(JointMatrixSliceExtract)) {
+        NewValue = ResolveSliceExtract(CI);
+    }
+    return NewValue;
+}
+
 Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 {
     if (ResolvedValues.count(v) > 0) {
@@ -371,25 +469,7 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
     }
 
     if (CallInst *CI = dyn_cast<CallInst>(v)) {
-        Function* func = CI->getCalledFunction();
-        IGC_ASSERT_MESSAGE(func, "Unexpected missing function.");
-
-        Instruction *NewInst = nullptr;
-        StringRef funcName = func->getName();
-        if (funcName.startswith(JointMatrixLoadPrefx)) {
-            NewInst = ResolveLoad(CI);
-        } else if (funcName.startswith(JointMatrixStorePrefx)) {
-            NewInst = ResolveStore(CI);
-        } else if (funcName.startswith(JointMatrixMadPrefx)) {
-            NewInst = ResolveMad(CI, MadOpSS);
-        } else if (funcName.startswith(JointMatrixSUMadPrefx)) {
-            NewInst = ResolveMad(CI, MadOpSU);
-        } else if (funcName.startswith(JointMatrixUSMadPrefx)) {
-            NewInst = ResolveMad(CI, MadOpUS);
-        } else if (funcName.startswith(JointMatrixUUMadPrefx)) {
-            NewInst = ResolveMad(CI, MadOpUU);
-        }
-        return NewInst;
+        return ResolveCall(CI);
     } else if (PHINode *PN = dyn_cast<PHINode>(v)) {
         unsigned IncomingCount = PN->getNumIncomingValues();
         ResolvedValues[v] = v;
@@ -426,7 +506,7 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
      * by them. In future when returning and passing matrices by argument is
      * supported this also basic block terminators should be used as
      * transformation starting point */
-    if (funcName.startswith(JointMatrixStorePrefx)) {
-        ResolveStore(&CI);
+    if (funcName.startswith(CommonBIPrefix)) {
+        ResolveCall(&CI);
     }
 }

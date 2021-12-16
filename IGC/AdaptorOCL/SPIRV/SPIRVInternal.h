@@ -268,6 +268,10 @@ typedef SPIRVMap<SPIRVBuiltinVariableKind, std::string, mapSPIRVBuiltinVariableK
 template<> inline void
 SPIRVMap<Op, std::string, SPIRVInstruction>::init() {
 #define _SPIRV_OP(x) add(x, #x);
+// Composite
+_SPIRV_OP(OpCompositeConstruct)
+_SPIRV_OP(OpVectorExtractDynamic)
+_SPIRV_OP(OpVectorInsertDynamic)
 // Memory
 _SPIRV_OP(OpGenericPtrMemSemantics)
 // Atomics
@@ -470,6 +474,7 @@ _SPIRV_OP(OpJointMatrixMadINTEL)
 _SPIRV_OP(OpJointMatrixSUMadINTEL)
 _SPIRV_OP(OpJointMatrixUSMadINTEL)
 _SPIRV_OP(OpJointMatrixUUMadINTEL)
+_SPIRV_OP(OpJointMatrixWorkItemLengthINTEL)
 // Intel media_block_io builtins
 _SPIRV_OP(OpSubgroupImageMediaBlockReadINTEL)
 _SPIRV_OP(OpSubgroupImageMediaBlockWriteINTEL)
