@@ -56,6 +56,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapRequired("simd_size", info.simd_size);
     io.mapOptional("slm_size", info.slm_size, 0);
     io.mapOptional("subgroup_independent_forward_progress", info.subgroup_independent_forward_progress, false);
+    io.mapOptional("thread_scheduling_mode", info.thread_scheduling_mode, std::string());
     io.mapOptional("work_group_walk_order_dimensions", info.work_group_walk_order_dimensions);
 }
 void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)

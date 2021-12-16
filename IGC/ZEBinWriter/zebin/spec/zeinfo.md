@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.9
+Version 1.10
 
 ## Grammar
 
@@ -107,8 +107,19 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | simd_size | int32 | Required | | Valid value {1, 8, 16, 32} |
 | slm_size | int32 | Optional | 0 | SLM size in bytes |
 | subgroup_independent_forward_progress | bool | Optional | false | |
+| thread_scheduling_mode | <thread_scheduling_mode> | Optional | | Suggested thread arbitration policy. |
 | work_group_walk_order_dimensions | int32x3 | Optional | [0, 1, 2] | The value of this key is a sequence of three int32. Valid values are x: [0, 0, 0] , xy: [0, 1, 0], xyz: [0, 1, 2], yx: [1, 0, 0], zyx: [2, 1, 0] |
 <!--- ExecutionEnv -->
+
+### Supported thread scheduling mode:
+Supported <thread_scheduling_mode> of execution_env.
+
+| Thread Scheduling Mode | Description |
+| ----- | ----- |
+| age_based | |
+| round_robin | |
+| round_robin_stall | |
+<!--- <thread_scheduling_mode> ArgThreadSchedulingMode -->
 
 ## Payload Arguments
 This section defines payload_arguments attribute.
@@ -272,6 +283,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.10**: Add thread_scheduling_mode to execution_env.
 - **Version 1.9**: Add source_offset to payload argument.
 - **Version 1.8**: Add inline_data_payload_size to execution_env.
 - **Version 1.7**: Add debug_env to kernel.
