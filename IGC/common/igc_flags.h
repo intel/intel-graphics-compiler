@@ -559,6 +559,6 @@ DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, VCEnableExtraDebugLogging, false, "Turns on extra debug output to trace IGC/VC-specific execution", true)
     DECLARE_IGC_REGKEY(DWORD, VCNoOptFinalizerControl, 0, "Controls if finalizer is invoked with -debug flag", true)
     DECLARE_IGC_REGKEY(DWORD, VCDisableLRCoalescingControl, 0, "Controls if LR coalescing", true)
-    DECLARE_IGC_REGKEY(bool, VCSaveStackCallLinkage, false,
+    DECLARE_IGC_REGKEY(bool, VCSaveStackCallLinkage, true,
                        "Do not override stack calls linkage as internal", true)
     DECLARE_IGC_REGKEY(bool, VCDirectCallsOnly, false, "Generate code under the assumption all unknown calls are direct", true)

@@ -11,10 +11,12 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/Utils/GenX/RegCategory.h"
+#include "vc/Utils/GenX/Intrinsics.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/ADT/StringRef.h"
 
+#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 
 #include "llvm/IR/Constants.h"
@@ -75,13 +77,18 @@ inline bool requiresStackCall(const Function &F) {
 // Utility function to tell if a Function must be called indirectly.
 inline bool isIndirect(const Function *F) {
   IGC_ASSERT(F);
-  // FIXME: The condition of which function is considered to be indirectly
-  // called will be changed soon.
-  bool IsIndirect = F->hasAddressTaken();
+  if (GenXIntrinsic::isAnyNonTrivialIntrinsic(F))
+    return false;
+  if (genx::isKernel(F))
+    return false;
+  if (genx::isEmulationFunction(*F))
+    return false;
+  if (!F->hasAddressTaken() && F->hasLocalLinkage())
+    return false;
   IGC_ASSERT_MESSAGE(
-      !IsIndirect || genx::requiresStackCall(F),
+      genx::requiresStackCall(F),
       "The indirectly-called function is expected to be a stack call");
-  return IsIndirect;
+  return true;
 }
 
 inline bool isIndirect(const Function &F) { return isIndirect(&F); }
