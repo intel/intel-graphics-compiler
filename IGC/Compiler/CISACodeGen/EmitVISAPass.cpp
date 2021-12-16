@@ -4583,7 +4583,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     CVariable* lodSrc =
         GetSymbol(inst->getOperand(2));
 
-    if (lodSrc->IsImmediate() && lodSrc->GetImmediateValue() == 0)
+    if (m_currShader->m_Platform->supportSampleAndLd_lz() && lodSrc->IsImmediate() && lodSrc->GetImmediateValue() == 0)
     {
         zeroLOD = true;
     }
