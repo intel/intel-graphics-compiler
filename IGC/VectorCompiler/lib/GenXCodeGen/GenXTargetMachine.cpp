@@ -646,7 +646,6 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
 
   // CM ABI.
   auto AddCMABI = [](const PassManagerBuilder &Builder, PassManagerBase &PM) {
-    PM.add(createIPSCCPPass());
     PM.add(createCMABIPass());
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly, AddCMABI);
