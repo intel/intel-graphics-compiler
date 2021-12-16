@@ -52,6 +52,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/UniformAssumptions.hpp"
 #include "Compiler/Optimizer/LinkMultiRateShaders.hpp"
 #include "Compiler/CISACodeGen/MergeURBWrites.hpp"
+#include "Compiler/CISACodeGen/MergeURBReads.hpp"
 #include "Compiler/CISACodeGen/URBPartialWrites.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/InsertGenericPtrArithmeticMetadata.hpp"
@@ -195,6 +196,10 @@ static void AddURBWriteRelatedPass(CodeGenContext& ctx, IGCPassManager& mpm)
             // per-primitive URB offsets created in lowering.
             mpm.add(llvm::createEarlyCSEPass());
             mpm.add(createMergeURBWritesPass());
+        }
+        if (IGC_IS_FLAG_DISABLED(DisableURBReadMerge))
+        {
+            mpm.add(createMergeURBReadsPass());
         }
         if (IGC_IS_FLAG_ENABLED(EnableTEFactorsClear) && (ctx.type == ShaderType::HULL_SHADER))
         {
