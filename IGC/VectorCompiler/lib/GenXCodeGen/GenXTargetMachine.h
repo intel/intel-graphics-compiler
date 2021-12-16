@@ -185,6 +185,7 @@ void initializeGenXPromoteStatefulToBindlessPass(PassRegistry &);
 void initializeGenXStackUsagePass(PassRegistry &);
 void initializeCMLowerVLoadVStorePass(PassRegistry &);
 void initializeGenXStructSplitterPass(PassRegistry &);
+void initializeGenXPredRegionLoweringPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

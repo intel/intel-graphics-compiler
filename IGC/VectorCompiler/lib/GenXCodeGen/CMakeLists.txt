@@ -60,6 +60,7 @@ set(CODEGEN_SOURCES
   GenXPostLegalization.cpp
   GenXPrinter.cpp
   GenXPressureTracker.cpp
+  GenXPredRegionLowering.cpp
   GenXPrologEpilogInsertion.cpp
   GenXPromoteArray.cpp
   GenXPromoteStatefulToBindless.cpp

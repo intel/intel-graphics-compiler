@@ -148,6 +148,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXOCLRuntimeInfoPass(registry);
   initializeGenXStructSplitterPass(registry);
   initializeGenXTrampolineInsertionPass(registry);
+  initializeGenXPredRegionLoweringPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -470,6 +471,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXLiveness.h
   vc::addPass(PM, createGenXGroupBalingWrapperPass(BalingKind::BK_Analysis,
                                                    &Subtarget));
+  // GenXPredRegionLowering must be run after GenXLegalization and requires
+  // updated baling analysis (and preserves it).
+  vc::addPass(PM, createGenXPredRegionLoweringPass());
   vc::addPass(PM, createGenXLivenessWrapperPass());
   vc::addPass(PM, createGenXNumberingWrapperPass());
   vc::addPass(PM, createGenXLiveRangesWrapperPass());

@@ -210,6 +210,8 @@ void GenXBaling::processInst(Instruction *Inst)
     processRdWrPredefReg(Inst);
   else if (GenXIntrinsic::isRdRegion(IntrinID))
     processRdRegion(Inst);
+  else if (IntrinID == GenXIntrinsic::genx_rdpredregion)
+    processRdPredRegion(Inst);
   else if (BranchInst *Branch = dyn_cast<BranchInst>(Inst))
     processBranch(Branch);
   else if (auto SI = dyn_cast<StoreInst>(Inst))
@@ -534,14 +536,26 @@ bool GenXBaling::operandCanBeBaled(
 void GenXBaling::processWrPredRegion(Instruction *Inst)
 {
   Value *V = Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
-  IGC_ASSERT(isa<CmpInst>(V) || isa<Constant>(V));
   BaleInfo BI(BaleInfo::WRPREDREGION);
-  if (isa<CmpInst>(V)) {
+  bool isRdPredR =
+      GenXIntrinsic::getAnyIntrinsicID(V) == GenXIntrinsic::genx_rdpredregion;
+  if (isa<CmpInst>(V) || isRdPredR) {
     LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #"
                             << GenXIntrinsic::GenXRegion::NewValueOperandNum
                             << " to bale in instruction " << *Inst << "\n");
+    if (isRdPredR)
+      setBaleInfo(cast<Instruction>(V), BaleInfo(BaleInfo::RDPREDREGION));
     setOperandBaled(Inst, GenXIntrinsic::GenXRegion::NewValueOperandNum, &BI);
   }
+  setBaleInfo(Inst, BI);
+}
+
+/***********************************************************************
+ * processRdPredRegion : set up baling info for rdpredregion
+ *
+ */
+void GenXBaling::processRdPredRegion(Instruction *Inst) {
+  BaleInfo BI(BaleInfo::RDPREDREGION);
   setBaleInfo(Inst, BI);
 }
 

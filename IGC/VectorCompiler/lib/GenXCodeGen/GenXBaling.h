@@ -457,6 +457,7 @@ private:
   bool processPredicate(Instruction *Inst, unsigned OperandNum);
   void processSat(Instruction *Inst);
   void processRdRegion(Instruction *Inst);
+  void processRdPredRegion(Instruction *Inst);
   void processInlineAsm(Instruction *Inst);
   void processExtractValue(ExtractValueInst *EV);
   void processFuncPointer(Instruction *Inst);
