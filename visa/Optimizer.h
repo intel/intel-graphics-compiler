@@ -262,6 +262,7 @@ private:
     void replaceRetWithJmpi();
     void doNoMaskWA();
     void applyFusedCallWA();
+    void setDMaskFusedCallWA();
     void finishFusedCallWA();
     void doNoMaskWA_postRA();
     void insertFenceAtEntry();

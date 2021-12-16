@@ -173,6 +173,53 @@ void Optimizer::regAlloc()
     }
 }
 
+// This could be done in applyFusedCallWA().
+// Here, we add or inst to modify dmask. Doing so here has minimum impact to visa.
+void Optimizer::setDMaskFusedCallWA()
+{
+    if (builder.getIsKernel())
+    {
+        // If it is from scalar IGC, need to extend its dmask. For example, simd8 to simd16
+        // or simd16 to simd32 by adding or instructions on the entry.  Note that the first
+        // BB is not necessarily the kernel's entry when kernel needs to load its payload!
+        //    (W) or (1|M0)  dmask(sr0.2)  dmasksr0.2  0xFFFF0000
+        if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
+        {
+            // Use M16 always.
+            assert(kernel.getSimdSize() <= 16);
+            uint32_t orImm = kernel.getSimdSize() == 16 ? 0xFFFF0000 : 0xFFFFFF00;
+
+            G4_VarBase* V_sr0 = builder.phyregpool.getSr0Reg();
+            G4_SrcRegRegion* I0_Src0 = builder.createSrc(V_sr0, 0, 2, builder.getRegionScalar(), Type_UD);
+            G4_Imm* newDMask = builder.createImm(orImm, Type_UD);
+            G4_DstRegRegion* I0_Dst = builder.createDst(V_sr0, 0, 2, 1, Type_UD);
+            G4_INST* I0 = builder.createInternalInst(nullptr, G4_or, nullptr, g4::NOSAT, g4::SIMD1,
+                I0_Dst, I0_Src0, newDMask, InstOpt_WriteEnable);
+
+            G4_BB* entryBB = fg.getEntryBB();
+            // Make sure to skip prolog BBs to insert into the 1st BB of a kernel.
+            G4_BB* perThreadBB = kernel.getPerThreadPayloadBB();
+            G4_BB* crossThreadBB = kernel.getCrossThreadPayloadBB();
+            if (perThreadBB != nullptr || crossThreadBB != nullptr)
+            {
+                while (entryBB != nullptr)
+                {
+                    if (entryBB == perThreadBB || entryBB == crossThreadBB)
+                    {
+                        // perthread/crossThread BB has a single succ.
+                        assert(entryBB->Succs.size() == 1);
+                        entryBB = entryBB->Succs.front();
+                        continue;
+                    }
+                    break;
+                }
+            }
+            entryBB->insertBefore(entryBB->getFirstInsertPos(), I0);
+        }
+    }
+}
+
+// Need to be done after SWSB so we can set call relative IP correctly.
 void Optimizer::finishFusedCallWA()
 {
     // For each nested stack call like the following:
@@ -197,46 +244,7 @@ void Optimizer::finishFusedCallWA()
     //    r59.4 needs to write on stack frame before call and read back after call and
     //    its address payload needs to be correct. For this purpose, all call stack-related
     //    WA is done in RA, not here.
-    if (builder.getIsKernel())
-    {
-        // If it is from scalar IGC, need to extend its dmask. For example, simd8 to simd16
-        // or simd16 to simd32 by adding or instructions on the entry.  Note that the first
-        // BB is not necessarily the kernel's entry when kernel needs to load its payload!
-        //    (W) or (1|M0)  dmask(sr0.2)  dmasksr0.2  0xFFFF0000
-        if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
-        {
-            assert(kernel.getSimdSize() <= 16);
-            uint32_t orImm = kernel.getSimdSize() == 16 ? 0xFFFF0000 : 0xFFFFFF00;
-
-            G4_VarBase* V_sr0 = builder.phyregpool.getSr0Reg();
-            G4_SrcRegRegion* I0_Src0 = builder.createSrc(V_sr0, 0, 2, builder.getRegionScalar(), Type_UD);
-            G4_Imm* newDMask = builder.createImm(orImm, Type_UD);
-            G4_DstRegRegion* I0_Dst = builder.createDst(V_sr0, 0, 2, 1, Type_UD);
-            G4_INST* I0 = builder.createInternalInst(nullptr, G4_or, nullptr, g4::NOSAT,g4::SIMD1,
-                I0_Dst, I0_Src0, newDMask, InstOpt_WriteEnable);
-
-            G4_BB* entryBB = fg.getEntryBB();
-            // Make sure to skip prolog BBs to insert into the 1st BB of a kernel.
-            G4_BB* perThreadBB = kernel.getPerThreadPayloadBB();
-            G4_BB* crossThreadBB = kernel.getCrossThreadPayloadBB();
-            if (perThreadBB != nullptr || crossThreadBB != nullptr)
-            {
-                while (entryBB != nullptr)
-                {
-                    if (entryBB == perThreadBB || entryBB == crossThreadBB)
-                    {
-                        // perthread/crossThread BB has a single succ.
-                        assert(entryBB->Succs.size() == 1);
-                        entryBB = entryBB->Succs.front();
-                        continue;
-                    }
-                    break;
-                }
-            }
-            entryBB->insertBefore(entryBB->getFirstInsertPos(), I0);
-        }
-    }
-
+    //
     if (kernel.m_labelPatchInsts.empty() && kernel.m_waCallInsts.empty() && kernel.m_maskOffWAInsts.empty())
         return;
 
@@ -533,11 +541,16 @@ void Optimizer::addSWSBInfo()
 
     if (do_fcall_wa)
     {
-        finishFusedCallWA();
+        // Need to be done before SWSB
+        setDMaskFusedCallWA();
     }
 
     if (!builder.hasSWSB())
     {
+        if (do_fcall_wa)
+        {
+            finishFusedCallWA();
+        }
         return;
     }
 
@@ -564,7 +577,12 @@ void Optimizer::addSWSBInfo()
             builder.getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
     }
 
-    if (!do_fcall_wa && kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
+    if (do_fcall_wa)
+    {
+        // Need to be done when code is stable (no add, no delete).
+        finishFusedCallWA();
+    }
+    else if (kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
     {
         adjustIndirectCallOffsetAfterSWSBSet();
     }
