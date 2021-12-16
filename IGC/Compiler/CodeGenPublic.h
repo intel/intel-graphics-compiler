@@ -1441,7 +1441,7 @@ namespace IGC
         uint32_t m_numUAVs = 0;
 
         // Additional text visaasm to link.
-        const char* m_VISAAsmToLink = nullptr;
+        std::vector<const char*> m_VISAAsmToLink;
 
         OpenCLProgramContext(
             const COCLBTILayout& btiLayout,
@@ -1458,8 +1458,10 @@ namespace IGC
             isSpirV(false),
             m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
         {
-            if (pInputArgs && pInputArgs->pVISAAsmToLink) {
-                m_VISAAsmToLink = pInputArgs->pVISAAsmToLink;
+            if (pInputArgs && pInputArgs->pVISAAsmToLinkArray) {
+                for (uint32_t i = 0; i < pInputArgs->NumVISAAsmsToLink; ++i) {
+                    m_VISAAsmToLink.push_back(pInputArgs->pVISAAsmToLinkArray[i]);
+                }
             }
         }
         bool isSPIRV() const;

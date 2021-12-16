@@ -239,17 +239,19 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
       return false;
   }
 
-  std::string esimdVISACombined;
-  for (auto &s : esimdVISA.get()) {
-    esimdVISACombined += s;
+  auto visaStrings = std::make_unique<const char* []>(esimdVISA.get().size());
+  int i = 0;
+  for (auto& s : esimdVISA.get()) {
+    visaStrings[i++] = s.c_str();
   }
 
   // Compile SPMD part with ESIMD visaasm attached.
   STB_TranslateInputArgs newArgsSPMD = *pInputArgs;
 
-  newArgsSPMD.pInput = reinterpret_cast<char*>(spmdProg.data());
-  newArgsSPMD.InputSize = spmdProg.size() * sizeof(*spmdProg.begin());
-  newArgsSPMD.pVISAAsmToLink = esimdVISACombined.c_str();
+  newArgsSPMD.pInput = reinterpret_cast<char*>(spmd_esimd_programs_or_err->first.data());
+  newArgsSPMD.InputSize = spmd_esimd_programs_or_err->first.size() * sizeof(*spmd_esimd_programs_or_err->first.begin());
+  newArgsSPMD.pVISAAsmToLinkArray = visaStrings.get();
+  newArgsSPMD.NumVISAAsmsToLink = esimdVISA.get().size();
 
   return TranslateBuildSPMD(&newArgsSPMD, pOutputArgs, inputDataFormatTemp,
       IGCPlatform, profilingTimerResolution,
