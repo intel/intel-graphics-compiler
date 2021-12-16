@@ -220,10 +220,6 @@ bool GenParser::PeekReg(const RegInfo*& regInfo, int& regNum) {
                 regInfo = mme;
                 // adjust the reg num (e.g. acc2 -> mme0 on GEN8)
                 regNum -= mme->regNumBase;
-
-                if (regNum < 0)
-                    ErrorAtT(tk.loc, "invalid acc register access");
-
                 WarningAtT(tk.loc,
                     "old-style access to mme via acc "
                     "(use mme", regNum,

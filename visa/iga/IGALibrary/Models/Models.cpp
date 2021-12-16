@@ -94,11 +94,16 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 0,
         1,
         8, (32,32,32,32,32,32,32,32)),
-    IGA_REGISTER_SPEC(Platform::XE_HP, Platform::XE_HPG,
+    IGA_REGISTER_SPEC(Platform::XE_HP, Platform::XE_HP,
         RegName::ARF_ACC, "acc", "Accumulator",
         0x2, 0,
         1,
-        4, (32,32,32,32)),
+        8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC(Platform::XE_HPG, Platform::XE_HPG,
+        RegName::ARF_ACC, "acc", "Accumulator",
+        0x2, 0,
+        1,
+        8, (32,32,32,32,32,32,32,32)),
     IGA_REGISTER_SPEC_GE(
         Platform::XE_HPC,
         RegName::ARF_ACC, "acc", "Accumulator",
@@ -111,7 +116,17 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 2, // offset by 2 "acc2-9"
         4,
         8, (32,32,32,32,32,32,32,32)),
-    IGA_REGISTER_SPEC(Platform::XE, Platform::XE_HPG,
+    IGA_REGISTER_SPEC(Platform::XE, Platform::XE,
+        RegName::ARF_MME, "mme", "Math Macro",
+        0x2, 8, // offset by 8 "acc8-15"
+        4,
+        8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC(Platform::XE_HP, Platform::XE_HP,
+        RegName::ARF_MME, "mme", "Math Macro",
+        0x2, 8, // offset by 8 "acc8-15"
+        4,
+        8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC(Platform::XE_HPG, Platform::XE_HPG,
         RegName::ARF_MME, "mme", "Math Macro",
         0x2, 8, // offset by 8 "acc8-15"
         4,
