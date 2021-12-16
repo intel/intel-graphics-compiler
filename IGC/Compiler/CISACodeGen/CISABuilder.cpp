@@ -5056,6 +5056,7 @@ namespace IGC
 
                     vISA::GenSymEntry fEntry;
                     IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                    memset(fEntry.s_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                     strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
 
                     // Query vISA for the function's byte offset within the compiled module
@@ -5079,6 +5080,7 @@ namespace IGC
             {
                 vISA::GenSymEntry fEntry;
                 IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                memset(fEntry.s_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
 
                 bool isTrue = false;
