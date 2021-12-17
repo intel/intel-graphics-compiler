@@ -275,6 +275,20 @@ Value &createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands,
   return *SelectResult;
 }
 
+template <>
+Value &createMainInst<BuiltinID::Fma>(const std::vector<Value *> &Operands,
+                                      Type &, IRBuilder<> &IRB) {
+  static_assert(FmaOperand::Size == 3,
+                "builtin operands should be trasformed into LLVM fma "
+                "intrinsic operands without changes");
+  Function *FMA = Intrinsic::getDeclaration(
+      IRB.GetInsertBlock()->getModule(), Intrinsic::fma,
+      Operands[FmaOperand::Operand0]->getType());
+  return *IRB.CreateCall(FMA, {Operands[FmaOperand::Operand0],
+                               Operands[FmaOperand::Operand1],
+                               Operands[FmaOperand::Operand2]});
+}
+
 using CMCLSemantics = cmcl::atomic::MemorySemantics::Enum;
 using CMCLMemoryScope = cmcl::atomic::MemoryScope::Enum;
 using CMCLOperation = cmcl::atomic::Operation::Enum;

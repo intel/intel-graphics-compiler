@@ -308,6 +308,23 @@
         ]
       }
     },
+    "Fma": {
+      "Name": "fma",
+      "Operands": [
+        {"Name": "Operand0", "Kind": "Input"},
+        {"Name": "Operand1", "Kind": "Input"},
+        {"Name": "Operand2", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "Instruction": "FmaInst",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Operand0"]},
+          {"GetBuiltinOperand": ["Operand1"]},
+          {"GetBuiltinOperand": ["Operand2"]}
+        ]
+      }
+    },
     "AtomicRMW": {
         "Name": "atomicrmw",
         "Operands": [

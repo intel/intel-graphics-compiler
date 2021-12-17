@@ -190,6 +190,20 @@ inline uint32_t count_population(int64_t src) {
   return count_population(static_cast<uint64_t>(src));
 }
 
+/*========================= Mad ============================*/
+
+template <typename T, int width,
+          cl::enable_if_t<cl::is_floating_point<T>::value, int> = 0>
+vector<T, width> mad(vector<T, width> src0, vector<T, width> src1,
+                     vector<T, width> src2) {
+  return detail::fma(src0.cl_vector(), src1.cl_vector(), src2.cl_vector());
+}
+
+template <typename T, cl::enable_if_t<cl::is_floating_point<T>::value, int> = 0>
+T mad(T src0, T src1, T src2) {
+  return detail::fma(src0, src1, src2);
+}
+
 /*==========================================================*/
 
 } // namespace math

@@ -79,6 +79,12 @@ template <typename T> uint32_t __cm_cl_cbit(T src);
 template <typename T, int width>
 vector_impl<uint32_t, width> __cm_cl_cbit(vector_impl<T, width> src);
 
+template <typename T> T __cm_cl_fma(T src0, T src1, T src2);
+template <typename T, int width>
+vector_impl<T, width> __cm_cl_fma(vector_impl<T, width> src0,
+                                  vector_impl<T, width> src1,
+                                  vector_impl<T, width> src2);
+
 uint32_t __cm_cl_bfrev(uint32_t src);
 template <int width>
 vector_impl<uint32_t, width> __cm_cl_bfrev(vector_impl<uint32_t, width> src);
@@ -287,6 +293,21 @@ template <typename T> uint32_t cbit(T src) {
                     sizeof(T) <= sizeof(uint32_t),
                 "illegal type provided in cbit");
   return __cm_cl_cbit(src);
+}
+
+template <typename T, int width>
+vector_impl<T, width> fma(vector_impl<T, width> src0,
+                          vector_impl<T, width> src1,
+                          vector_impl<T, width> src2) {
+  static_assert(cl::is_floating_point<T>::value,
+                "illegal type provided in fma");
+  return __cm_cl_fma(src0, src1, src2);
+}
+
+template <typename T> T fma(T src0, T src1, T src2) {
+  static_assert(cl::is_floating_point<T>::value,
+                "illegal type provided in fma");
+  return __cm_cl_fma(src0, src1, src2);
 }
 
 inline uint32_t bfrev(uint32_t src) { return __cm_cl_bfrev(src); }
