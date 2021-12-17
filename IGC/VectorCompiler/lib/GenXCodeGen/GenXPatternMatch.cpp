@@ -1213,7 +1213,7 @@ bool MadMatcher::isProfitable() const {
     if (!C) {
       if (!isa<Constant>(V))
         return false;
-      C = dyn_cast<ConstantInt>(cast<Constant>(V)->getSplatValue());
+      C = dyn_cast_or_null<ConstantInt>(cast<Constant>(V)->getSplatValue());
       if (!C)
         return false;
     }
