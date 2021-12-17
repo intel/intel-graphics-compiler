@@ -534,7 +534,8 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
             isGlobalAddrSpace = true;
         }
     }
-    else if (pVal->getType()->isPointerTy())
+
+    if (pVal->getType()->isPointerTy())
     {
         unsigned int addrSpace = pVal->getType()->getPointerAddressSpace();
         if (addrSpace == ADDRESS_SPACE_LOCAL)
