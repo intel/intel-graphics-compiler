@@ -426,6 +426,8 @@ void constructSymbols(InputIter First, InputIter Last, OutputIter Out) {
 static GenXOCLRuntimeInfo::SymbolSeq constructFunctionSymbols(
     genx::BinaryDataAccumulator<const Function *> &GenBinary, bool HasKernel) {
   GenXOCLRuntimeInfo::SymbolSeq Symbols;
+  if (GenBinary.begin() == GenBinary.end())
+    return Symbols;
   Symbols.reserve(GenBinary.getNumSections());
   if (HasKernel) {
     auto &KernelSection = GenBinary.front();
@@ -689,8 +691,10 @@ public:
 
 private:
   CompiledKernel collectFunctionGroupInfo(const FunctionGroup &FG) const;
-  CompiledKernel collectFunctionSubgroupsInfo(
-      const std::vector<FunctionGroup *> &Subgroups) const;
+  template <typename Range>
+  CompiledKernel
+  collectFunctionSubgroupsInfo(const std::vector<FunctionGroup *> &Subgroups,
+                               const Range &DeclsRange) const;
 };
 
 } // namespace
@@ -708,8 +712,16 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
                  return genx::isIndirect(FG->getHead()) &&
                         !BECfg.directCallsOnly();
                });
-  if (!IndirectlyReferencedFuncs.empty())
-    Kernels.push_back(collectFunctionSubgroupsInfo(IndirectlyReferencedFuncs));
+  auto &&DeclsRange =
+      llvm::make_filter_range(M.functions(), [](const Function &F) {
+        if (!F.isDeclaration())
+          return false;
+        return genx::isIndirect(F);
+      });
+  if (!IndirectlyReferencedFuncs.empty() ||
+      DeclsRange.begin() != DeclsRange.end())
+    Kernels.push_back(
+        collectFunctionSubgroupsInfo(IndirectlyReferencedFuncs, DeclsRange));
   return {getModuleInfo(M), std::move(Kernels),
           M.getDataLayout().getPointerSize()};
 }
@@ -777,9 +789,11 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
                         std::move(DebugData)};
 }
 
+template <typename Range>
 RuntimeInfoCollector::CompiledKernel
 RuntimeInfoCollector::collectFunctionSubgroupsInfo(
-    const std::vector<FunctionGroup *> &Subgroups) const {
+    const std::vector<FunctionGroup *> &Subgroups,
+    const Range &DeclsRange) const {
   using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
 
@@ -793,6 +807,9 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
     loadBinary(GenBinary, VB, *Func, BC);
   }
   Info.Func.Symbols = constructFunctionSymbols(GenBinary, /*HasKernel*/false);
+  for (auto &&Decl : DeclsRange)
+    Info.Func.Symbols.emplace_back(vISA::GenSymType::S_UNDEF, 0, 0,
+                                   Decl.getName().str());
   Info.Func.Data.Buffer = GenBinary.emitConsolidatedData();
 
   return CompiledKernel{std::move(Info), FINALIZER_INFO{}, /*GtpinInfo*/ {},
