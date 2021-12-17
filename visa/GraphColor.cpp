@@ -4866,8 +4866,6 @@ void Augmentation::addSIMDIntfForRetDclares(G4_Declare* newDcl)
     if (dclIt == retDeclares.end())
     {
         MaskDeclares newMask;
-        newMask.first.reserve(liveAnalysis.getNumSelectedGlobalVar()/32);
-        newMask.second.reserve(liveAnalysis.getNumSelectedGlobalVar()/32);
         retDeclares[newDcl] = std::move(newMask);
         mask = &retDeclares[newDcl];
     }
@@ -5244,8 +5242,6 @@ void Augmentation::augmentIntfGraph()
     for (auto func : kernel.fg.funcInfoTable)
     {
         auto& item = callsiteDeclares[func];
-        item.first.reserve(liveAnalysis.getNumSelectedGlobalVar()/32);
-        item.second.reserve(liveAnalysis.getNumSelectedGlobalVar()/32);
     }
 
     if (kernel.getOption(vISA_LocalRA))
