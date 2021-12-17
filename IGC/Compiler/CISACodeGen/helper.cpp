@@ -1355,6 +1355,38 @@ namespace IGC
         }
     }
 
+    bool isSubGroupIntrinsicPVC(const llvm::Instruction* I)
+    {
+        const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I);
+        if (!GII)
+            return false;
+
+        switch (GII->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_simdMediaBlockRead:
+        case GenISAIntrinsic::GenISA_simdMediaBlockWrite:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool hasSubGroupIntrinsicPVC(llvm::Function& F)
+    {
+        for (auto& BB : F)
+        {
+            for (auto& I : BB)
+            {
+                if (isSubGroupIntrinsicPVC(&I))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     bool isURBWriteIntrinsic(const llvm::Instruction* I)
     {
         const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I);

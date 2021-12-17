@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/PrepareLoadsStoresUtils.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -145,6 +146,34 @@ bool AdvMemOpt::runOnFunction(Function& F) {
         hoistUniformLoad(Line);
     }
 
+    auto* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (Ctx->platform.isDG2Plus()) {
+        // split 64-bit uniform store into <2 x i32>, so it has better chance
+        // to merge with other i32 stores in order to form 16-byte stores that
+        // can use L1 cache
+        auto& DL = F.getParent()->getDataLayout();
+        IRBuilder<> IRB(F.getContext());
+        for (auto II = inst_begin(&F), EI = inst_end(&F); II != EI; /* empty */) {
+            auto* I = &*II++;
+            if (auto* SI = dyn_cast<StoreInst>(I)) {
+                if (!WI->isUniform(SI))
+                    continue;
+
+                auto* PtrTy = SI->getPointerOperandType();
+                if (PtrTy->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+                    continue;
+
+                IRB.SetInsertPoint(SI);
+
+                if (auto NewSI = expand64BitStore(IRB, DL, SI)) {
+                    WI->incUpdateDepend(NewSI, WIAnalysis::UNIFORM_THREAD);
+                    WI->incUpdateDepend(NewSI->getValueOperand(), WIAnalysis::UNIFORM_THREAD);
+                    WI->incUpdateDepend(NewSI->getPointerOperand(), WIAnalysis::UNIFORM_THREAD);
+                    SI->eraseFromParent();
+                }
+            }
+        }
+    }
     return false;
 }
 

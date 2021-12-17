@@ -341,6 +341,26 @@ namespace IGC
         std::vector<int> colorOutputMask;
     };
 
+    struct MeshShaderInfo
+    {
+        unsigned int PrimitiveTopology            = 3; // IGC::GFX3DMESH_OUTPUT_TOPOLOGY::NUM_MAX
+        unsigned int MaxNumOfPrimitives           = 0;
+        unsigned int MaxNumOfVertices             = 0;
+        unsigned int MaxNumOfPerPrimitiveOutputs  = 0;
+        unsigned int MaxNumOfPerVertexOutputs     = 0;
+        unsigned int WorkGroupSize                = 0;
+        unsigned int WorkGroupMemorySizeInBytes   = 0;
+        unsigned int IndexFormat                  = 6; //  IGC::GFX3DMESH_INDEX_FORMAT::NUM_MAX
+        unsigned int SubgroupSize                 = 0; // force a wave size
+    };
+
+    struct TaskShaderInfo
+    {
+        unsigned int MaxNumOfOutputs = 0;
+        unsigned int WorkGroupSize = 0;
+        unsigned int WorkGroupMemorySizeInBytes = 0;
+        unsigned int SubgroupSize = 0; // force a wave size
+    };
 
     struct SInputDesc
     {
@@ -456,6 +476,7 @@ namespace IGC
         PushInfo pushInfo;
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
+        uint32_t NBarrierCnt = 0;
         uint32_t CurUniqueIndirectIdx = DefaultIndirectIdx;
         std::map<uint32_t, std::array<uint32_t, 4>> inlineDynTextures;
         std::vector<InlineResInfo> inlineResInfoData;
@@ -466,6 +487,8 @@ namespace IGC
         std::vector<PointerProgramBinaryInfo> ConstantPointerProgramBinaryInfos;
         std::vector<PointerAddressRelocInfo> GlobalBufferAddressRelocInfo;
         std::vector<PointerAddressRelocInfo> ConstantBufferAddressRelocInfo;
+        std::map<uint32_t, uint32_t> forceLscCacheList;
+        std::vector<uint32_t> RasterizerOrderedByteAddressBuffer;
         unsigned int MinNOSPushConstantSize = 0;
         llvm::MapVector<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;
@@ -486,6 +509,7 @@ namespace IGC
         unsigned int privateMemoryPerWI = 0;
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask{};
         unsigned int computedDepthMode = 0; //Defaults to 0 meaning depth mode is off
+        bool isHDCFastClearShader = false;
         // set by LowerGPCallArg pass
         bool hasNoLocalToGenericCast = false;
         bool hasNoPrivateToGenericCast = false;
@@ -493,4 +517,7 @@ namespace IGC
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
     void deserialize(IGC::ModuleMetaData &deserializedMD, const llvm::Module* module);
 
+
+    // User annotations query functions
+    unsigned extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD);
 }

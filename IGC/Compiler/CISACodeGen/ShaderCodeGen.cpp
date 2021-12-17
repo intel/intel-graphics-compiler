@@ -160,6 +160,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/HalfPromotion.h"
 #include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
+#include "Compiler/CISACodeGen/PartialEmuI64OpsPass.h"
 
 
 /***********************************************************************************
@@ -825,7 +826,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         (ctx.m_DriverInfo.Enable64BitEmu() &&
             (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
             (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) &&
-            ctx.platform.need64BitEmulation())))
+            ctx.platform.need64BitEmulation()))) ||
+            ctx.platform.hasPartialInt64Support()
         )
     {
         mpm.add(new BreakConstantExpr());
@@ -844,7 +846,16 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         // as legalization passes do not always clear unused (operating
         // on illegal types) instructions.
         mpm.add(llvm::createDeadCodeEliminationPass());
-        mpm.add(createEmu64OpsPass());
+
+        if (ctx.platform.hasPartialEmuI64Enabled())
+        {
+            mpm.add(createPartialEmuI64OpsPass());
+        }
+        else
+        {
+            mpm.add(createEmu64OpsPass());
+        }
+
         ctx.m_hasEmu64BitInsts = true;
         if (!isOptDisabled)
         {

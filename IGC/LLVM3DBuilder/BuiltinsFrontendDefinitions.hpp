@@ -3971,6 +3971,14 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateImageDataConversio
             return data;
         }
         break;
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R10G10B10A2_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R11G11B10_FLOAT:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R10G10B10A2_UINT:
+        if (m_Platform->hasSupportForAllOCLImageFormats())
+        {
+            return data;
+        }
+        break;
     default:
         break;
     }

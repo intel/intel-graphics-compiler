@@ -266,6 +266,10 @@ struct ThreadPayload
     uint32_t PassInlineDataSize = 0;
     uint32_t OffsetToSkipPerThreadDataLoad = 0;
     uint32_t OffsetToSkipSetFFIDGP = 0;
+    bool     generateLocalID = false;
+    uint32_t emitLocalMask   = 0;
+    uint32_t walkOrder       = 0;
+    bool     tileY           = false;
 };
 
 struct ExecutionEnivronment
@@ -291,6 +295,7 @@ struct ExecutionEnivronment
     //new design:   hold private memory used by shader if non-ZERO
     DWORD  SumFixedTGSMSizes                          = 0;
     bool   HasDeviceEnqueue                           = false;
+    // for PVC+ targets this field preserves the number of barriers
     uint32_t HasBarriers                              = 0;
     bool   IsSingleProgramFlow                        = false;
     //DWORD  PerSIMDLanePrivateMemorySize               = 0;

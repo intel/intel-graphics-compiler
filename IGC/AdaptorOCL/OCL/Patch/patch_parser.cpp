@@ -824,6 +824,18 @@ void DebugPatchList(
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tPassInlineData = %s\n",
                     pPatchItem->PassInlineData ? "true" : "false");
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tgenerateLocalID = %s\n",
+                    pPatchItem->generateLocalID ? "true" : "false");
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\temitLocalMask = %d\n",
+                    pPatchItem->emitLocalMask);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\twalkOrder = %d\n",
+                    pPatchItem->walkOrder);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\ttileY = %s\n",
+                    pPatchItem->tileY ? "true" : "false");
             }
             break;
 

@@ -1926,6 +1926,10 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.OffsetToSkipPerThreadDataLoad = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;
         patch.OffsetToSkipSetFFIDGP = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;
         patch.PassInlineData = annotations.m_threadPayload.PassInlineDataSize ? true : false;
+        patch.generateLocalID = annotations.m_threadPayload.generateLocalID;
+        patch.emitLocalMask   = annotations.m_threadPayload.emitLocalMask;
+        patch.walkOrder       = annotations.m_threadPayload.walkOrder;
+        patch.tileY           = annotations.m_threadPayload.tileY;
 
         retValue = AddPatchItem(
             patch,
@@ -1970,7 +1974,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.LargestCompiledSIMDSize = patch.CompiledSIMD32 ? 32 : patch.LargestCompiledSIMDSize;
         }
 
-        patch.HasBarriers                       = annotations.m_executionEnivronment.HasBarriers;
+        patch.HasBarriers                       = iOpenCL::EncodeNumBarriers(annotations.m_executionEnivronment.HasBarriers);
         patch.DisableMidThreadPreemption        = annotations.m_executionEnivronment.DisableMidThreadPreemption;
 
         patch.UsesStatelessSpillFill = (annotations.m_executionEnivronment.PerThreadScratchSpace > 0);
@@ -2561,6 +2565,15 @@ RETVAL CGen8OpenCLStateProcessor::AddSamplerState(
         else
         {
             samplerState.DW0.Gen7.SamplerDisable = true;
+        }
+        if (m_WATable.Wa_22012532006)
+        {
+            if (samplerState.DW3.Gen7.TCXAddressControlMode == G6HWC::GFXSHAREDSTATE_TEXCOORDMODE_MIRROR &&
+                samplerState.DW0.Gen7.MinModeFilter == G6HWC::GFXSHAREDSTATE_MAPFILTER_NEAREST)
+            {
+                samplerState.DW3.Gen7.RAddressMinFilterAddressRoundingEnable = true;
+                samplerState.DW3.Gen7.RAddressMagFilterAddressRoundingEnable = true;
+            }
         }
 
         if( membuf.Write( samplerState ) == false )

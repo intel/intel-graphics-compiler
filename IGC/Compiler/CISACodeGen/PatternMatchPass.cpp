@@ -3840,6 +3840,10 @@ namespace IGC
         {
             return false;
         }
+        if (typebits == 64 && !m_Platform.supportQWRotateInstructions())
+        {
+            return false;
+        }
 
         // Found the pattern.
         funnelShiftRotatePattern* pattern = new (m_allocator) funnelShiftRotatePattern();

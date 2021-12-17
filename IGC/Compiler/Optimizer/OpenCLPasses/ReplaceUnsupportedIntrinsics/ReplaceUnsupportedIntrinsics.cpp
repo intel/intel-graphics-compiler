@@ -901,6 +901,9 @@ void ReplaceUnsupportedIntrinsics::replaceFunnelShift(IntrinsicInst* I) {
     if (I->getArgOperand(0) == I->getArgOperand(1) && !I->getType()->isVectorTy() &&
         m_Ctx->platform.supportRotateInstruction())
     {
+        if (m_Ctx->platform.supportQWRotateInstructions() && sizeInBits == 64) {
+            return;
+        }
         if (sizeInBits == 16 || sizeInBits == 32) {
             return;
         }

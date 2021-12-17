@@ -102,6 +102,42 @@ namespace IGC
             InitXeHPSDVHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             InitXeHPSDVSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
+        case IGFX_DG2:
+            if (TRUE == GFX_IS_DG2_G11_CONFIG(platform->getPlatformInfo().usDeviceID))
+            {
+                InitAcm_G11HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                InitAcm_G11SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            }
+            else
+            {
+                InitAcm_G10HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                InitAcm_G10SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            }
+            break;
+        case IGFX_PVC:
+            InitPvcHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            stWaInitParam.usRevId &= 7; // ComputeChiplet CT RevID is [2:0]
+            if (stWaInitParam.usRevId == 0x1) // PVC XL A0p CT RevID
+            {
+                // changing PVC XL A0p RevID 0x1 to 0x0 REVISION_A0
+                // as A0 and A0p has identical set of features
+                stWaInitParam.usRevId = 0x0; // PVC XL A0 CT IGC internal stepping REVISION_A0
+            }
+            platform->OverrideRevId(stWaInitParam.usRevId);
+
+            // Temporary solution to allow enabling the PVC-B0 WAs.
+            if (IGC_IS_FLAG_ENABLED(Enable_Wa1807084924))
+                waTable.Wa_1807084924 = 1;
+            if (IGC_IS_FLAG_ENABLED(Enable_Wa1507979211))
+                waTable.Wa_1507979211 = 1;
+            if (IGC_IS_FLAG_ENABLED(Enable_Wa14010017096))
+                waTable.Wa_14010017096 = 1;
+            if (IGC_IS_FLAG_ENABLED(Enable_Wa22010487853))
+                waTable.Wa_22010487853 = 1;
+            if (IGC_IS_FLAG_ENABLED(Enable_Wa22010493955))
+                waTable.Wa_22010493955 = 1;
+
+            break;
         default:
             IGC_ASSERT(0);
             break;

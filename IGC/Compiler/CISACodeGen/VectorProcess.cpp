@@ -756,4 +756,99 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
     IGC_ASSERT_MESSAGE(numInsts <= (sizeof(insts) / sizeof(*insts)), "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
 }
 
+void VectorMessage::getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* ctx, bool useA32, bool transpose)
+{
+    IGC_ASSERT(nullptr != ctx);
+    IGC_ASSERT(nullptr != m_emitter);
+    IGC_ASSERT(nullptr != m_emitter->m_currShader);
+
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    Type* eTy = VTy ? VTy->getContainedType(0) : Ty;
+    unsigned eltSize = m_emitter->GetScalarTypeSizeInRegister(eTy);
+    unsigned nElts = VTy ? (unsigned)VTy->getNumElements() : 1;
+    // total bytes
+    const unsigned TBytes = nElts * eltSize;
+    char TRANS_VEC_SIZE[8] = { 1, 2, 3, 4, 8, 16, 32, 64 };
+    MESSAGE_KIND kind = useA32
+        ? MESSAGE_A32_LSC_RW
+        : MESSAGE_A64_LSC_RW;
+
+    VISA_Type dataType = GetType(Ty, ctx);
+    uint16_t blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
+
+    // Per-channel Max Bytes (MB) that can be read/written by a single send inst
+    const unsigned int numLanesForSIMDSize = numLanes(m_emitter->m_currShader->m_SIMDSize);
+    IGC_ASSERT(numLanesForSIMDSize);
+    unsigned int MB = (8 * ctx->platform.getGRFSize()) / numLanesForSIMDSize;
+    if (Align < 4 || (eltSize == 8 && Align < 8)) {
+        MB = eltSize;
+    }
+
+    size_t i = 0;
+    if (transpose)
+    {
+        unsigned bytes = TBytes;
+        for (int j = 0; j < 8; j++)
+        {
+            const unsigned int denominator = blkInBytes * TRANS_VEC_SIZE[7 - j];
+            IGC_ASSERT(denominator);
+
+            if (bytes % denominator == 0)
+            {
+                IGC_ASSERT(i < (sizeof(insts) / sizeof(*insts)));
+                insts[i].startByte = (uint16_t)(TBytes - bytes);
+                insts[i].kind = kind;
+                insts[i].blkType = dataType;
+                insts[i].blkInBytes = blkInBytes;
+                insts[i].numBlks = TRANS_VEC_SIZE[7 - j];
+                bytes -= insts[i].numBlks * blkInBytes;
+                i++;
+                break;
+            }
+            else //
+            {
+                if (bytes / denominator != 0)
+                {
+                    IGC_ASSERT(i < (sizeof(insts) / sizeof(*insts)));
+                    insts[i].startByte = (uint16_t)(TBytes - bytes);
+                    insts[i].kind = kind;
+                    insts[i].blkType = dataType;
+                    insts[i].blkInBytes = blkInBytes;
+                    insts[i].numBlks = TRANS_VEC_SIZE[7 - j];
+                    bytes -= insts[i].numBlks * blkInBytes;
+                    i++;
+                }  // else j++;
+            }
+        }
+        IGC_ASSERT(bytes == 0);
+    }
+    else
+    {
+        unsigned bytes = TBytes;
+        for (; bytes >= MB; ++i, bytes -= MB)
+        {
+            insts[i].startByte = (uint16_t)(TBytes - bytes);
+            insts[i].kind = kind;
+            insts[i].blkType = dataType;
+            insts[i].blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
+            IGC_ASSERT(insts[i].blkInBytes);
+            insts[i].numBlks = MB / insts[i].blkInBytes;
+        }
+
+        if (bytes > 0)
+        {
+            insts[i].startByte = (uint16_t)(TBytes - bytes);
+            insts[i].kind = kind;
+            insts[i].blkType = dataType;
+            insts[i].blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
+            IGC_ASSERT(insts[i].blkInBytes);
+            insts[i].numBlks = (uint16_t)bytes / insts[i].blkInBytes;
+            ++i;
+        }
+    }
+
+    numInsts = i;
+    IGC_ASSERT_MESSAGE(numInsts <= VECMESSAGEINFO_MAX_LEN, "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
+    IGC_ASSERT_MESSAGE(numInsts <= (sizeof(insts) / sizeof(*insts)), "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
+}
 

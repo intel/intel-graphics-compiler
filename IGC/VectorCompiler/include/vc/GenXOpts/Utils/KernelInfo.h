@@ -13,13 +13,12 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/RegCategory.h"
 
 #include "Probe/Assertion.h"
-#include "llvmWrapper/ADT/StringRef.h"
-
-#include "llvm/GenXIntrinsics/GenXMetadata.h"
-
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
+#include "llvmWrapper/ADT/StringRef.h"
+
+#include "llvm/GenXIntrinsics/GenXMetadata.h"
 
 #include <unordered_map>
 

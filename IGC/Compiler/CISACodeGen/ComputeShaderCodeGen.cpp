@@ -407,6 +407,14 @@ namespace IGC
         const ComputeShaderContext* pCtx =
             static_cast<const ComputeShaderContext*>(GetContext());
 
+        if (m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID()) {
+            if (IGC_GET_FLAG_VALUE(DispatchGPGPUWalkerAlongYFirst) == 1 &&
+                !pCtx->getModuleMetaData()->csInfo.disableDispatchAlongY) {
+                m_dispatchAlongY = true;
+            } else
+                m_dispatchAlongY = false;
+        }
+        else
         // Assume DispatchGPGPUWalkerAlongYFirst is on here unless off explicitly
         if (IGC_GET_FLAG_VALUE(DispatchGPGPUWalkerAlongYFirst) == 0)
             m_dispatchAlongY = false;
@@ -417,7 +425,7 @@ namespace IGC
             m_dispatchAlongY = true;
         }
         selectWalkOrder(
-            false,
+            pCtx->m_UseLinearWalk,
             m_numberOfTypedAccess,
             m_numberOfUntypedAccess,
             m_num1DAccesses,
@@ -483,6 +491,40 @@ namespace IGC
             ctx->SetSIMDInfo(SIMD_RETRY, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
         }
 
+        // check if SLM fits in DG2 DSS
+        if (IGC_IS_FLAG_ENABLED(CheckCSSLMLimit) &&
+            ctx->getModuleMetaData()->csInfo.waveSize == 0 &&
+            ctx->platform.getPlatformInfo().eProductFamily == IGFX_DG2 &&
+            m_DriverInfo->SupportCSSLMLimit() &&
+            ctx->m_slmSize > 0)
+        {
+            unsigned int slmPerDSS = 0; // in kB
+            switch (simdMode)
+            {
+                // # Unfused EU = 16
+                // # HW threads/EU = 8
+                // SIMD16: 16*8*16 = 2048 pixelsPerDSS
+                // SIMD32: 16*8*32 = 4096 pixelsPerDSS
+                //
+                // To calculate SLM/DSS in kB
+                // ThreadGroupSize (TGSize) is # pixels in Thread Group
+                // (m_slmSize * pixelsPerDSS / TGSize) / 1024
+            case SIMDMode::SIMD16:
+                slmPerDSS = ctx->m_slmSize * 2 / ctx->GetThreadGroupSize();
+                break;
+            case SIMDMode::SIMD32:
+                slmPerDSS = ctx->m_slmSize * 4 / ctx->GetThreadGroupSize();
+                break;
+            default:
+                break;
+            }
+
+            if (slmPerDSS > 128) {
+                ctx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return false;
+            }
+
+        }
 
         // skip simd32 if simd16 spills
         if (simdMode == SIMDMode::SIMD32 && simd16Program &&

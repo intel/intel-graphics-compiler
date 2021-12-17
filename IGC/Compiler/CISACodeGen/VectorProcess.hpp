@@ -35,6 +35,9 @@ namespace IGC
             MESSAGE_A32_BYTE_SCATTERED_RW,
             MESSAGE_A64_UNTYPED_SURFACE_RW,
             MESSAGE_A64_SCATTERED_RW,
+            MESSAGE_A32_QWORD_SCATTERED_RW,
+            MESSAGE_A32_LSC_RW,
+            MESSAGE_A64_LSC_RW
         };
 
         // VECMESSAGEINFO_MAX_LEN:
@@ -74,6 +77,7 @@ namespace IGC
             bool forceByteScatteredRW = false);
 
 
+        void getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* ctx, bool useA32, bool transpose);
 
     private:
         const EmitPass* m_emitter;

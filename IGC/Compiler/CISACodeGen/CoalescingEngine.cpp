@@ -1250,6 +1250,83 @@ namespace IGC
         return payload;
     }
 
+    // Prepares payload for the uniform URB Write messages that are used in
+    // mesh and task shader stages.
+    // On DG2 platform a uniform URB write is a simd1 message that writes data
+    // from the fist DWORDs of each GRF of payload, e.g.:
+    //   (W)     mov (1|M0)               r16.0<1>:ud   0x0:ud
+    //   (W)     mov (1|M0)               r17.0<1>:f   -1.0:f
+    //   (W)     mov (1|M0)               r18.0<1>:f    0.0:f
+    //   (W)     mov (1|M0)               r19.0<1>:f    1.0:f
+    //   (W)     send.urb (1|M0)          null     r2   r16:4  0x0  0x020827F7
+    CVariable* CoalescingEngine::PrepareUniformUrbWritePayload(
+        CShader* shader,
+        CEncoder* encoder,
+        llvm::GenIntrinsicInst* inst)
+    {
+        IGC_ASSERT(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite);
+        CVariable* payload = nullptr;
+        const uint numOperands = m_PayloadMapping.GetNumPayloadElements(inst);
+        const uint grfSize = shader->GetContext()->platform.getGRFSize();
+        {
+            // Payload spans multiple GRFs, only the first DWORD of each GRF
+            // will be populated with (uniform) data.
+            const uint elemsPerGrf = grfSize / CVariable::GetCISADataTypeSize(ISA_TYPE_F);
+            payload = shader->GetNewVariable(
+                numOperands * elemsPerGrf, ISA_TYPE_F,
+                (grfSize == 64 ? EALIGN_32WORD : EALIGN_HWORD),
+                "CEExplicitPayload");
+        }
+        for (uint i = 0; i < numOperands; i++)
+        {
+            Value* val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
+            CVariable* data = shader->GetSymbol(val);
+            IGC_ASSERT(isUniform(val) && data->IsUniform());
+            encoder->SetNoMask();
+            encoder->SetSimdSize(SIMDMode::SIMD1);
+            {
+                encoder->SetDstSubVar(i);
+            }
+            encoder->Copy(payload, data);
+        }
+        return payload;
+    }
+
+    // Returns URB write payload for a split simd8 message in a simd16 mesh/task
+    // shader.
+    // TODO: This method does not use the CoalescingEngine currently and mearly
+    // copies payload to a newly created variable.
+    CVariable* CoalescingEngine::PrepareSplitUrbWritePayload(
+        CShader* outProgram,
+        CEncoder* encoder,
+        SIMDMode  simdMode, ///< must be SIMD16
+        uint32_t  splitPartNo, ///< can be either 0 - lower quarter, or 1 upper quarter
+        llvm::Instruction* inst)
+    {
+        SetCurrentPart(inst, 0);
+        IGC_ASSERT(outProgram->m_SIMDSize == SIMDMode::SIMD16);
+        IGC_ASSERT(splitPartNo < 2);
+        const GenIntrinsicInst* const intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
+        IGC_ASSERT(nullptr != intrinsicInst);
+        IGC_ASSERT(intrinsicInst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite);
+
+        const uint numOperands = m_PayloadMapping.GetNumPayloadElements(inst);
+        CVariable* payload =
+            outProgram->GetNewVariable(numOperands * numLanes(SIMDMode::SIMD8), ISA_TYPE_F, outProgram->GetContext()->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD, CName::NONE);
+
+        for (uint i = 0; i < numOperands; i++)
+        {
+            Value* val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
+            CVariable* data = outProgram->GetSymbol(val);
+            encoder->SetSimdSize(SIMDMode::SIMD8);
+            encoder->SetMask((splitPartNo == 0) ? EMASK_Q1 : EMASK_Q2);
+            encoder->SetSrcSubVar(0, data->IsUniform() ? 0 : splitPartNo);
+            encoder->SetDstSubVar(i);
+            encoder->Copy(payload, data);
+            encoder->Push();
+        }
+        return payload;
+    }
 
     CoalescingEngine::ElementNode*
         CoalescingEngine::ElementNode::getLeader() {

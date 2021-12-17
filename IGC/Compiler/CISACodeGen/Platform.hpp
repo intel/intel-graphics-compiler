@@ -925,10 +925,26 @@ unsigned int getMaxNumberHWThreadForEachWG() const
     return 0;
 }
 
+uint32_t getGRFSize() const
+{
+    switch (m_platformInfo.eProductFamily)
+    {
+    case IGFX_PVC:
+        return 64;
+    default:
+        return 32;
+    }
+}
+
 bool hasFusedEU() const
 {
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE &&
         m_platformInfo.eProductFamily != IGFX_PVC;
+}
+
+bool hasPartialEmuI64Enabled() const
+{
+    return hasPartialInt64Support() && IGC_IS_FLAG_ENABLED(EnablePartialEmuI64);
 }
 
 
@@ -1014,11 +1030,6 @@ bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
 bool useScratchSpaceForOCL() const
 {
     return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
-}
-
-uint32_t getGRFSize() const
-{
-    return 32;
 }
 
 uint32_t maxPerThreadScratchSpace() const
@@ -1236,6 +1247,11 @@ unsigned getURBFullWriteMinGranularity() const
     return isXeHPSDVPlus() ? 16 : 32; // in bytes
 }
 
+unsigned forceQwAtSrc0ForQwShlWA() const
+{
+    // PVC XT A0: RevID==0X3==REVISION_B
+    return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId == REVISION_B);
+}
 };
 
 }//namespace IGC

@@ -58,8 +58,8 @@ namespace IGC
         EALIGN_AUTO
     };
 
-#define EALIGN_GRF EALIGN_HWORD
-#define EALIGN_2GRF EALIGN_32WORD
+#define EALIGN_GRF (getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD)
+#define EALIGN_2GRF (getGRFSize() == 64 ? EALIGN_64WORD : EALIGN_32WORD)
 
     // XMACRO defining the CISA opCode
     // need to move to the CISA encoding file when breaking down code

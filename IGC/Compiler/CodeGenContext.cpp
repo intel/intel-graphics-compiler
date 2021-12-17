@@ -783,6 +783,11 @@ namespace IGC
                 continue;
             }
 
+            // -cl-intel-force-disable-4GB-buffer
+            else if (suffix.equals("-force-disable-4GB-buffer"))
+            {
+                IntelForceDisable4GBBuffer = true;
+            }
             // -cl-intel-use-bindless-buffers
             else if (suffix.equals("-use-bindless-buffers"))
             {
@@ -876,6 +881,10 @@ namespace IGC
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);
+        }
+        if (IntelForceDisable4GBBuffer)
+        {
+            IntelGreaterThan4GBBufferRequired = false;
         }
     }
 

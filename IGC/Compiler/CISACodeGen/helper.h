@@ -174,6 +174,8 @@ namespace IGC
     bool IsMediaIOIntrinsic(const llvm::Instruction* inst);
     bool IsSIMDBlockIntrinsic(const llvm::Instruction* inst);
     bool isSubGroupIntrinsic(const llvm::Instruction* I);
+    bool isSubGroupIntrinsicPVC(const llvm::Instruction* I);
+    bool hasSubGroupIntrinsicPVC(llvm::Function& F);
 
     bool IsStatelessMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id);
     bool IsStatelessMemStoreIntrinsic(llvm::GenISAIntrinsic::ID id);

@@ -469,3 +469,18 @@ void IGC::serialize(const IGC::ModuleMetaData &moduleMD, Module* module)
     LLVMMetadata->addOperand(node);
 }
 
+
+unsigned IGC::extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD)
+{
+    unsigned numThreadsPerEU = 0;
+    for (std::string annotation : funcMD.UserAnnotations)
+    {
+        if (const char* op = strstr(annotation.c_str(), "num-thread-per-eu"))
+        {
+            numThreadsPerEU = atoi(op + strlen("num-thread-per-eu"));
+            break;
+        }
+    }
+
+    return numThreadsPerEU;
+}

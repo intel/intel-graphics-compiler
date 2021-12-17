@@ -146,6 +146,9 @@ namespace IGC
         EATOMIC_FADD,
         EATOMIC_FSUB,
         EATOMIC_FADD64,
+        EATOMIC_FSUB64,
+        EATOMIC_LOAD,
+        EATOMIC_STORE,
         //64 bit
         EATOMIC_IADD64,
         EATOMIC_SUB64,

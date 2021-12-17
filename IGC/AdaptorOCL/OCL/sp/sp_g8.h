@@ -291,4 +291,39 @@ inline DWORD CGen8OpenCLStateProcessor::GetSamplerStateSizeMultiplier(
     return multiplier;
 }
 
+enum NumBarriersCode {
+    None,
+    B1,
+    B2,
+    B4,
+    B8,
+    B16,
+    B24,
+    B32
+};
+
+static inline uint32_t EncodeNumBarriers(uint32_t NumBarriers) {
+    switch (NumBarriers)
+    {
+    case 0:
+        return NumBarriersCode::None;
+    case 1:
+        return NumBarriersCode::B1;
+    case 2:
+        return NumBarriersCode::B2;
+    case 4:
+        return NumBarriersCode::B4;
+    case 8:
+        return NumBarriersCode::B8;
+    case 16:
+        return NumBarriersCode::B16;
+    case 24:
+        return NumBarriersCode::B24;
+    case 32:
+        return NumBarriersCode::B32;
+    default:
+        IGC_ASSERT_EXIT_MESSAGE(0, "invalid number of barriers is provided");
+        return NumBarriersCode::None;
+    }
+}
 }

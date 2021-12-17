@@ -768,6 +768,56 @@ namespace IGC
         return messageDesc.Value;
     }
 
+    uint URBFence()
+    {
+        URBFenceGen12 messageDescriptor;
+        memset(&messageDescriptor, 0, sizeof(messageDescriptor));
+
+        messageDescriptor.DW0.All.URBOpcode = EU_URB_OPCODE_FENCE;
+        messageDescriptor.DW0.All.ResponseLength = 1;
+        messageDescriptor.DW0.All.MessageLength = 1;
+
+        return messageDescriptor.DW0.Value;
+    }
+
+    uint EOTGateway(const EU_GW_FENCE_PORTS fencePorts)
+    {
+        EOTMessageDescriptorGen12 messageDescriptor;
+        memset(&messageDescriptor, 0, sizeof(messageDescriptor));
+
+        // The only one subfunction is available so far.
+        messageDescriptor.DW0.All.EOTSubfunction = 0;
+        messageDescriptor.DW0.All.FenceDataPorts = fencePorts;
+        messageDescriptor.DW0.All.ResponseLength = 0;
+        messageDescriptor.DW0.All.MessageLength = 1;
+
+        return messageDescriptor.DW0.Value;
+    }
+
+    uint BindlessThreadDispatch(
+        const uint   messageLength,
+        const uint   SIMDMode,
+        const bool   IsTraceMessage,
+        const bool   IsRayQueryMessage)
+    {
+        // TODO: move this to vISA
+        IGC_ASSERT(messageLength > 0);
+        IGC_ASSERT(messageLength < 16);
+
+        TraceRayBTDMessageDescriptorGen12 messageDescriptor;
+        memset(&messageDescriptor, 0, sizeof(messageDescriptor));
+
+        messageDescriptor.DW0.All.SIMDMode = SIMDMode;
+        messageDescriptor.DW0.All.MessageType = IsTraceMessage ? 0x0 : 0x1;
+        // 'HeaderPresent' Must be programmed to 0
+        messageDescriptor.DW0.All.HeaderPresent = 0;
+        messageDescriptor.DW0.All.MessageLength = messageLength;
+        // isRayQueryMessage can be set only for TraceRayMessage
+        IGC_ASSERT(IsTraceMessage || !IsRayQueryMessage);
+        messageDescriptor.DW0.All.ResponseLength = IsRayQueryMessage ? 1 : 0;
+
+        return messageDescriptor.DW0.Value;
+    }
 
 
 } // namespace IGC

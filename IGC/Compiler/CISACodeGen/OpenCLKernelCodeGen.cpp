@@ -75,6 +75,17 @@ namespace IGC
         m_Platform = &(ctx->platform);
         m_DriverInfo = &(ctx->m_DriverInfo);
 
+        m_annotatedNumThreads = 0;
+        if (m_Platform->supportsStaticRegSharing())
+        {
+            // Obtain number of threads from user annotations if it is set
+            auto& FuncInfo = m_Context->getModuleMetaData()->FuncMD[pFunc];
+            unsigned numThreads = extractAnnotatedNumThreads(FuncInfo);
+            if (numThreads > 0 && m_Platform->isValidNumThreads(numThreads))
+            {
+                m_annotatedNumThreads = numThreads;
+            }
+        }
     }
 
     COpenCLKernel::~COpenCLKernel()
@@ -141,6 +152,41 @@ namespace IGC
                 m_localOffsetsMap[loHandle.m_Var] = loHandle.m_Offset;
             }
         }
+        if (m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID())
+            tryHWGenerateLocalIDs();
+    }
+    void COpenCLKernel::tryHWGenerateLocalIDs()
+    {
+        if (hasWorkGroupWalkOrder())
+            return;
+
+        auto Dims = IGCMetaDataHelper::getThreadGroupDims(
+            *m_pMdUtils, entry);
+
+        if (!Dims)
+            return;
+
+        // OpenCL currently emits all local IDs even if only one dimension
+        // is requested. Let's mirror that for now.
+        ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+        if (implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_ID_X) ||
+            implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_ID_Y) ||
+            implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_ID_Z))
+        {
+            setEmitLocalMask(THREAD_ID_IN_GROUP_Z);
+        }
+
+        selectWalkOrder(
+            false,
+            0,
+            0,
+            0, /* dummy 1D accesses */
+            0, /* dummy 2D accesses */
+            0, /* dummy SLM accessed */
+            (*Dims)[0],
+            (*Dims)[1],
+            (*Dims)[2]);
+        encoder.GetVISABuilder()->SetOption(vISA_autoLoadLocalID, m_enableHWGenerateLID);
     }
 
     bool COpenCLKernel::hasWorkGroupWalkOrder()
@@ -1791,6 +1837,11 @@ namespace IGC
                     {
                         offset += allocSize;
                     }
+                    // FIXME: Should we allocate R0 to be 64 byte for PVC?
+                    if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_R0 && m_Platform->getGRFSize() == 64)
+                    {
+                        offset += 32;
+                    }
                 }
             }
 
@@ -2392,6 +2443,10 @@ namespace IGC
 
         SIMDStatus simdStatus = checkSIMDCompileConds(simdMode, EP, F);
 
+        if (m_Context->platform.getMinDispatchMode() == SIMDMode::SIMD16)
+        {
+            simdStatus = checkSIMDCompileCondsPVC(simdMode, EP, F);
+        }
 
         // Func and Perf checks pass, compile this SIMD
         if (simdStatus == SIMDStatus::SIMD_PASS)
@@ -2413,6 +2468,127 @@ namespace IGC
         return simdStatus == SIMDStatus::SIMD_PASS;
     }
 
+    SIMDStatus COpenCLKernel::checkSIMDCompileCondsPVC(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
+    {
+        if (simdMode == SIMDMode::SIMD8)
+        {
+            return SIMDStatus::SIMD_FUNC_FAIL;
+        }
+
+        EP.m_canAbortOnSpill = false; // spill is always allowed since we don't do SIMD size lowering
+        // Next we check if there is a required sub group size specified
+        CodeGenContext* pCtx = GetContext();
+        MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
+        int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+        bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
+
+        // Finds the kernel and get the group simd size from the kernel
+        if (m_FGA)
+        {
+            llvm::Function* Kernel = &F;
+            auto FG = m_FGA->getGroup(&F);
+            Kernel = FG->getHead();
+            funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
+            simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+        }
+
+        if (m_FGA && m_FGA->getGroup(&F) && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
+        {
+            if (!PVCLSCEnabled())
+            {
+                // Only support simd32 for function calls if LSC is enabled
+                if (simdMode == SIMDMode::SIMD32)
+                {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                    return SIMDStatus::SIMD_FUNC_FAIL;
+                }
+
+                // Must force simd16 with LSC disabled
+                pCtx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)numLanes(SIMDMode::SIMD16);
+            }
+        }
+
+        bool optDisable = this->GetContext()->getModuleMetaData()->compOpt.OptDisable;
+
+        if (optDisable)
+        {
+            if (simdMode == SIMDMode::SIMD32)
+            {
+                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return SIMDStatus::SIMD_FUNC_FAIL;
+            }
+
+            // simd16 forced when all optimizations disabled due to compile time optimization
+            pCtx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)numLanes(SIMDMode::SIMD16);
+        }
+
+
+        if (simd_size)
+        {
+            if (simd_size != numLanes(simdMode))
+            {
+                if (simd_size == 8 && simdMode == SIMDMode::SIMD32)
+                {
+                    // allow for now to avoid NEO build failures
+                    // ToDo: remove once NEO removes all SIMD8 kernel ULTs from driver build
+                    return SIMDStatus::SIMD_PASS;
+                }
+                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return SIMDStatus::SIMD_FUNC_FAIL;
+            }
+            switch (simd_size)
+            {
+            case 8:
+                //IGC_ASSERT_MESSAGE(0, "Unsupported required sub group size for PVC");
+                break;
+            case 16:
+            case 32:
+                break;
+            default:
+                IGC_ASSERT_MESSAGE(0, "Unsupported required sub group size");
+                break;
+            }
+        }
+        else
+        {
+            // Checking registry/flag here. Note that if ForceOCLSIMDWidth is set to
+            // 8/16/32, only corresponding EnableOCLSIMD<N> is set to true. Therefore,
+            // if any of EnableOCLSIMD<N> is disabled, ForceOCLSIMDWidth must set to
+            // a value other than <N> if set. See igc_regkeys.cpp for detail.
+            if ((simdMode == SIMDMode::SIMD32 && IGC_IS_FLAG_DISABLED(EnableOCLSIMD32)) ||
+                (simdMode == SIMDMode::SIMD16 && IGC_IS_FLAG_DISABLED(EnableOCLSIMD16)))
+            {
+                return SIMDStatus::SIMD_FUNC_FAIL;
+            }
+
+            // Check if we force code generation for the current SIMD size.
+            // Note that for SIMD8, we always force it!
+            //ATTN: This check is redundant!
+            if (numLanes(simdMode) == pCtx->getModuleMetaData()->csInfo.forcedSIMDSize)
+            {
+                return SIMDStatus::SIMD_PASS;
+            }
+
+            if (simdMode == SIMDMode::SIMD16 && !hasSubGroupForce)
+            {
+                pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return SIMDStatus::SIMD_FUNC_FAIL;
+            }
+
+            if (simdMode == SIMDMode::SIMD32 && hasSubGroupForce)
+            {
+                pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return SIMDStatus::SIMD_FUNC_FAIL;
+            }
+        }
+
+        return SIMDStatus::SIMD_PASS;
+    }
+
+    unsigned COpenCLKernel::getAnnotatedNumThreads() {
+        return m_annotatedNumThreads;
+    }
 
     SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {

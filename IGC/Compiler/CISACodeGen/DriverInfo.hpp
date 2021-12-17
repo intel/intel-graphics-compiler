@@ -239,6 +239,9 @@ namespace IGC
         /// WA for failures with HS with push constants
         virtual bool WaDisablePushConstantsForHS() const { return false; }
 
+        /// WA for failures with push constants and no pushed attributes
+        virtual bool WaDisablePushConstantsWithNoPushedAttributes() const { return false; }
+
         /// Check if we have to worry about stack overflow while recursing in loop analysis
         virtual bool HasSmallStack() const { return false; }
 
@@ -306,7 +309,24 @@ namespace IGC
 
         virtual bool supportsAutoGRFSelection() const { return autoGRFSelection; }
         virtual void setAutoGRFSelection(bool value) { autoGRFSelection = value; }
+        /// Enables HWGenerateThreadID from API level. To help debug, we must enable it from both API level AND IGC Core level.
+        virtual bool SupportHWGenerateTID() const { return false; }
+        // Enables the use of simple push constants when on platforms with local (device) memory
+        virtual bool supportsSimplePushForLocalMem() const { return false; }
+        // disable dual8 with discard
+        virtual bool DisableDual8WithDiscard() const { return false; }
+        // support force routing to HDC and LCS caching options
+        virtual bool SupportForceRouteAndCache() const { return false; }
 
+        // Enable LSC on DG2 for the following:
+        //   GenISAIntrinsic::GenISA_ldraw_indexed
+        //   GenISAIntrinsic::GenISA_ldrawvector_indexed
+        //   GenISAIntrinsic::GenISA_storeraw_indexed
+        //   GenISAIntrinsic::GenISA_storerawvector_indexed
+        // todo: remove when all APIs enable LSC
+        virtual bool EnableLSCForLdRawAndStoreRawOnDG2() const { return false; }
+        // Check SLM limit on compute shader to select SIMD8
+        virtual bool SupportCSSLMLimit() const { return false; }
 
 
         // When dual-source blending is enabled, enable sending the

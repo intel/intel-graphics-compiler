@@ -238,6 +238,53 @@ namespace IGC
             unsigned char blockHeight,
             uint plane);
         void GatherA64(CVariable* dst, CVariable* offset, unsigned elementSize, unsigned numElems);
+        VISA_VectorOpnd* GetVISALSCSurfaceOpnd(e_predefSurface surfaceType, CVariable* bti);
+        static LSC_DATA_SIZE LSC_GetElementSize(unsigned eSize, bool is2DBlockMsg = false);
+        static LSC_DATA_ELEMS LSC_GetElementNum(unsigned eNum);
+        static LSC_ADDR_TYPE getLSCAddrType(const ResourceDescriptor * resource);
+        static LSC_ADDR_TYPE getLSCAddrType(e_predefSurface surfaceType);
+        void LSC_LoadGather(
+            LSC_OP subOp, CVariable* dst, CVariable* offset,
+            LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
+            unsigned blockOffset, ResourceDescriptor* resource,
+            LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order,
+            int immOffset, LSC_CACHE_OPTS cacheOpts);
+        void LSC_StoreScatter(
+            LSC_OP subOp, CVariable * src, CVariable * offset,
+            LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
+            unsigned blockOffset, ResourceDescriptor * resource,
+            LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order,
+            int immOffset, LSC_CACHE_OPTS cacheOpts);
+        void LSC_LoadBlock1D(
+            CVariable* dst, CVariable* offset,
+            LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
+            ResourceDescriptor* resource,
+            LSC_ADDR_SIZE addrSize, int addrImmOffset,
+            LSC_CACHE_OPTS cacheOpts);
+        void LSC_StoreBlock1D(
+            CVariable * src, CVariable * offset,
+            LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
+            ResourceDescriptor * resource,
+            LSC_ADDR_SIZE addrSize, int addrImmOffset,
+            LSC_CACHE_OPTS cacheOpts);
+        void LSC_AtomicRaw(
+            AtomicOp atomic_op, CVariable * dst, CVariable * offset,
+            CVariable * src0, CVariable * src1,
+            unsigned short bitwidth, ResourceDescriptor * resource,
+            LSC_ADDR_SIZE addr_size,
+            int immOff, LSC_CACHE_OPTS cacheOpts);
+        void LSC_Fence(LSC_SFID sfid, LSC_SCOPE scope, LSC_FENCE_OP op);
+        void LSC_2DBlockMessage(
+            LSC_OP subOp, ResourceDescriptor* resource,
+            CVariable* dst, CVariable* bufId,
+            CVariable* xOffset, CVariable* yOffset,
+            unsigned char blockWidth,
+            unsigned char blockHeight,
+            unsigned elemSize, unsigned numBlocks,
+            bool isTranspose, bool isVnni,
+            CVariable* flatImageBaseoffset, CVariable* flatImageWidth,
+            CVariable* flatImageHeight, CVariable* flatImagePitch);
+        void NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1);
         void ScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteGather(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteScatter(CVariable* src, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
@@ -319,6 +366,7 @@ namespace IGC
             CVariable* actication, PrecisionType activation_precision, uint8_t systolicDepth,
             uint8_t repeatCount, bool IsDpasw);
         void fcvt(CVariable* dst, CVariable* src);
+        void srnd(CVariable* D, CVariable* S0, CVariable* R);
         void Bfn(uint8_t booleanFuncCtrl, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
         void QWGather(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
         void QWScatter(CVariable* src, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
@@ -562,6 +610,10 @@ namespace IGC
 
         bool needsSplitting(VISA_Exec_Size ExecSize) const
         {
+            if (getGRFSize() == 64)
+            {
+                return ExecSize == EXEC_SIZE_32;
+            }
             return ExecSize == EXEC_SIZE_16;
         }
 

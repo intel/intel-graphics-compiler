@@ -108,6 +108,17 @@ namespace IGC {
             llvm::Instruction* inst,
             int& payloadOffset);
 
+        CVariable* PrepareUniformUrbWritePayload(
+            CShader* shader,
+            CEncoder* encoder,
+            llvm::GenIntrinsicInst* inst);
+
+        CVariable* PrepareSplitUrbWritePayload(
+            CShader* outProgram,
+            CEncoder* encoder,
+            SIMDMode simdMode,
+            uint32_t splitPartNo,
+            llvm::Instruction* inst);
 
         void visitCastInst(llvm::CastInst& I);
         void visitBinaryOperator(llvm::BinaryOperator& I);

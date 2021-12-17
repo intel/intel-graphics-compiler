@@ -35,6 +35,8 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/XeHPSIPCSR.h"
 #include "common/SIPKernels/XeHPSIPCSRDebug.h"
 #include "common/SIPKernels/XeHPSIPCSRDebugBindless.h"
+#include "common/SIPKernels/XeHPGSIPCSRDebug.h"
+#include "common/SIPKernels/XeHPGSIPCSRDebugBindless.h"
 
 using namespace llvm;
 using namespace USC;
@@ -218,6 +220,8 @@ bool SIPSuppoertedOnPlatformFamily(const GFXCORE_FAMILY& family)
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
     case IGFX_XE_HP_CORE:
+    case IGFX_XE_HPG_CORE:
+    case IGFX_XE_HPC_CORE:
         return true;
     default:
         return false;
@@ -411,6 +415,10 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
         (void*)&Gen12SIPCSRDebugBindlessDebugHeader,
         (int)sizeof(Gen12SIPCSRDebugBindlessDebugHeader));
 
+    SIPKernelInfo[XE_HPG_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&XeHPGSIPCSRDebugBindless,
+            (int)sizeof(XeHPGSIPCSRDebugBindless),
+            (void*)&Gen12SIPCSRDebugBindlessDebugHeader,
+            (int)sizeof(Gen12SIPCSRDebugBindlessDebugHeader));
 
     GT_SYSTEM_INFO sysInfo = platform.GetGTSystemInfo();
     Gen12SIPCSRDebugBindlessDebugHeader.regHeader.num_slices = sysInfo.MaxSlicesSupported;
@@ -529,6 +537,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
     case IGFX_XE_HP_CORE:
+    case IGFX_XE_HPG_CORE:
+    case IGFX_XE_HPC_CORE:
     {
         if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
@@ -543,6 +553,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_XE_HP_SDV:
                 SIPIndex = bindlessMode ? XE_HP_CSR_DEBUG_BINDLESS : XE_HP_CSR_DEBUG;
                 break;
+            case IGFX_DG2:
+            case IGFX_PVC:
 
             default:
                 break;
@@ -565,6 +577,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 break;
             case IGFX_XE_HP_SDV:
                 SIPIndex = XE_HP_CSR;
+            case IGFX_DG2:
+            case IGFX_PVC:
 
             default:
                 break;

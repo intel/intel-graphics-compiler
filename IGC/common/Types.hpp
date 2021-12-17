@@ -35,6 +35,7 @@ namespace IGC
     enum PrecisionType : uint8_t
     {
         PRECISION_UNUSED, U8, U4, U2, S8, S4, S2,
+        TF32,
         BF16, FP16
     };
 
@@ -56,6 +57,9 @@ namespace IGC
         case U2:
         case S2:
             return 2;
+        // PVC
+        case TF32:
+            return 32;
         }
         return 0;
     }
@@ -121,9 +125,13 @@ enum class ShaderType
     HULL_SHADER,
     DOMAIN_SHADER,
     GEOMETRY_SHADER,
+    TASK_SHADER,
+    MESH_SHADER,
     PIXEL_SHADER,
     COMPUTE_SHADER,
     OPENCL_SHADER,
+    RAYTRACING_SHADER,
+    BINDLESS_SHADER,
     END,
     BEGIN = 0
 };
@@ -134,6 +142,7 @@ enum class ShaderDispatchMode
     SINGLE_PATCH,
     DUAL_PATCH,
     EIGHT_PATCH,
+    DUAL_SIMD8,
     END,
     BEGIN = 0
 };
@@ -144,9 +153,13 @@ static const char *ShaderTypeString[] = {
     "HS",
     "DS",
     "GS",
+    "TASK",
+    "MESH",
     "PS",
     "CS",
     "OCL",
+    "RAYDISPATCH",
+    "BINDLESS",
     "ERROR"
 };
 

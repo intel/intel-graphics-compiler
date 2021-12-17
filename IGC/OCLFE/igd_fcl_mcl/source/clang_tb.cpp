@@ -1328,6 +1328,7 @@ namespace TC
                             (strcmp(pParam, "-dwarf-column-info") == 0) ||
                             (strcmp(pParam, "-cl-intel-no-prera-scheduling") == 0) || //temporary options
                             (strcmp(pParam, "-igc_opts") == 0) || //temporary options
+                            (strcmp(pParam, "-cl-intel-force-disable-4GB-buffer") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-greater-than-4GB-buffer-required") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-greater-than-4GB-buffer-required") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-has-buffer-offset-arg") == 0) || //temporary options

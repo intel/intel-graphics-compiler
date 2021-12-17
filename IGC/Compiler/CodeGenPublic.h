@@ -132,6 +132,7 @@ namespace IGC
         std::optional<uint64_t> m_NumCycles;
         std::optional<uint64_t> m_NumSendStallCycles;
 
+        unsigned int m_numThreads = 0;
 
         void Destroy()
         {
@@ -584,6 +585,16 @@ namespace IGC
         unsigned int                        ThreadGroupModifier_X;
         unsigned int                        ThreadGroupModifier_Y;
 
+        bool                                generateLocalID;
+        unsigned int                        emitLocalMask;
+        unsigned int                        walkOrder;
+        unsigned int                        emitInlineParameter;
+        unsigned int                        localXMaximum;
+        unsigned int                        localYMaximum;
+        unsigned int                        localZMaximum;
+        //See HAS, no matter what bpe is chosen, tile block size is fixed for one specific simdmode.
+        //so, actually, HW only needs to know if tileY is needed or not, and bpe is NOT needed.
+        bool                                tileY;
         /* Output related to only the PingPong Textures */
         bool                                SecondCompile;
         bool                                IsRowMajor;
@@ -1204,6 +1215,8 @@ namespace IGC
         unsigned m_slmSize;
         bool numWorkGroupsUsed;
         bool m_ForceOneSIMD = false;
+        bool m_UseLinearWalk = false;
+        bool m_InlineDataPointerRequested = false;
 
         ComputeShaderContext(
             const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
@@ -1360,6 +1373,11 @@ namespace IGC
             bool Intel256GRFPerThread = false;
             bool IntelNumThreadPerEU = false;
             uint32_t numThreadsPerEU = 0;
+            // IntelForceInt32DivRemEmu is used only if fp64 is supported natively.
+            // IntelForceInt32DivRemEmu wins if both are set and can be applied.
+            bool IntelForceInt32DivRemEmu = false;
+            bool IntelForceInt32DivRemEmuSP = false;
+            bool IntelForceDisable4GBBuffer = false;
 
             private:
                 void parseOptions(const char* IntOptStr);

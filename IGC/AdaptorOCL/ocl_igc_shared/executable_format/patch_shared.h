@@ -143,25 +143,29 @@ STRUCT: SPatchThreadPayload
 struct SPatchThreadPayload :
        SPatchItemHeader
 {
-    uint32_t    HeaderPresent;
-    uint32_t    LocalIDXPresent;
-    uint32_t    LocalIDYPresent;
-    uint32_t    LocalIDZPresent;
-    uint32_t    LocalIDFlattenedPresent;
-    uint32_t    IndirectPayloadStorage;
-    uint32_t    UnusedPerThreadConstantPresent;
-    uint32_t    GetLocalIDPresent;
-    uint32_t    GetGroupIDPresent;
-    uint32_t    GetGlobalOffsetPresent;
-    uint32_t    StageInGridOriginPresent;
-    uint32_t    StageInGridSizePresent;
-    uint32_t    OffsetToSkipPerThreadDataLoad;
-    uint32_t    OffsetToSkipSetFFIDGP;
-    uint32_t    PassInlineData;
+    uint32_t HeaderPresent;
+    uint32_t LocalIDXPresent;
+    uint32_t LocalIDYPresent;
+    uint32_t LocalIDZPresent;
+    uint32_t LocalIDFlattenedPresent;
+    uint32_t IndirectPayloadStorage;
+    uint32_t UnusedPerThreadConstantPresent;
+    uint32_t GetLocalIDPresent;
+    uint32_t GetGroupIDPresent;
+    uint32_t GetGlobalOffsetPresent;
+    uint32_t StageInGridOriginPresent;
+    uint32_t StageInGridSizePresent;
+    uint32_t OffsetToSkipPerThreadDataLoad;
+    uint32_t OffsetToSkipSetFFIDGP;
+    uint32_t PassInlineData;
+    uint32_t generateLocalID;
+    uint32_t emitLocalMask;
+    uint32_t walkOrder;
+    uint32_t tileY;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchThreadPayload) == (60 + sizeof(SPatchItemHeader)), "The size of SPatchThreadPayload is not what is expected");
+static_assert(sizeof(SPatchThreadPayload) == (76 + sizeof(SPatchItemHeader)), "The size of SPatchThreadPayload is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchExecutionEnvironment

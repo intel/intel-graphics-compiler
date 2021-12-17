@@ -184,6 +184,13 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Unsupported required sub group size", spirKernel->getFunction());
                 return false;
             }
+            else if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getPlatformInfo().eProductFamily == IGFX_PVC
+                && simd_size == 8)
+            {
+                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
+                    "Kernel compiled with required subgroup size 8, which is unsupported on this platform", spirKernel->getFunction());
+                return false;
+            }
             sgHandle->setSIMD_size(simd_size);
         }
 

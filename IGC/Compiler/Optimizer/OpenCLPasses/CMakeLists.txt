@@ -22,6 +22,7 @@ add_subdirectory(ExtenstionFuncs)
 add_subdirectory(GenericAddressResolution)
 add_subdirectory(ImageFuncs)
 add_subdirectory(LocalBuffers)
+add_subdirectory(NamedBarriers)
 add_subdirectory(OpenCLPrintf)
 add_subdirectory(PrivateMemory)
 add_subdirectory(ProgramScopeConstants)
@@ -69,6 +70,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_ImageFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__SRC__OpenCLPasses_LowerLocalMemPool}
+    ${IGC_BUILD__SRC__OpenCLPasses_NamedBarriers}
     ${IGC_BUILD__SRC__OpenCLPasses_OpenCLPrintf}
     ${IGC_BUILD__SRC__OpenCLPasses_PrivateMemory}
     ${IGC_BUILD__SRC__OpenCLPasses_ProgramScopeConstants}
@@ -118,6 +120,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_ImageFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__HDR__OpenCLPasses_LowerLocalMemPool}
+    ${IGC_BUILD__HDR__OpenCLPasses_NamedBarriers}
     ${IGC_BUILD__HDR__OpenCLPasses_OpenCLPrintf}
     ${IGC_BUILD__HDR__OpenCLPasses_PrivateMemory}
     ${IGC_BUILD__HDR__OpenCLPasses_ProgramScopeConstants}
@@ -160,6 +163,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_ImageFuncs
     Compiler__OpenCLPasses_LocalBuffers
     Compiler__OpenCLPasses_LowerLocalMemPool
+    Compiler__OpenCLPasses_NamedBarriers
     Compiler__OpenCLPasses_OpenCLPrintf
     Compiler__OpenCLPasses_PrivateMemory
     Compiler__OpenCLPasses_ProgramScopeConstants

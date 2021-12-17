@@ -33,6 +33,8 @@ namespace IGC
         bool        CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F) override;
         SIMDStatus  checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F);
 
+        SIMDStatus  checkSIMDCompileCondsPVC(SIMDMode simdMode, EmitPass& EP, llvm::Function& F);
+        unsigned getAnnotatedNumThreads() override;
         void        FillKernel();
 
         // Recomputes the binding table layout according to the present kernel args
@@ -105,6 +107,7 @@ namespace IGC
         bool m_HasTID;
         bool m_HasGlobalSize;
         bool m_disableMidThreadPreemption;
+        unsigned m_annotatedNumThreads;
 
         // Maps GlobalVariables representing local address-space pointers
         // to their offsets in SLM.
@@ -115,6 +118,7 @@ namespace IGC
         void ClearKernelInfo();
     private:
         bool hasWorkGroupWalkOrder();
+        void tryHWGenerateLocalIDs();
     };
 
 }

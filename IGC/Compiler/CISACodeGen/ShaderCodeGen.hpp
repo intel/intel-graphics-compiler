@@ -103,6 +103,8 @@ public:
     virtual void ExtractGlobalVariables() {}
     void         EOTURBWrite();
     void         EOTRenderTarget(CVariable* r1, bool isPerCoarse);
+    CVariable* URBFence();
+    void         EOTGateway(CVariable* payload = nullptr);
     virtual void AddEpilogue(llvm::ReturnInst* ret);
 
     virtual CVariable* GetURBOutputHandle()
@@ -276,8 +278,10 @@ public:
     bool        IsPatchablePS();
     bool        IsValueCoalesced(llvm::Value* v);
 
-    bool        GetHasBarrier() const { return m_HasBarrier; }
-    void        SetHasBarrier() { m_HasBarrier = true; }
+    bool        GetHasBarrier() const { return m_BarrierNumber > 0; }
+    void        SetHasBarrier() { if (m_BarrierNumber == 0) m_BarrierNumber = 1; }
+    void        SetBarrierNumber(int BarrierNumber) { m_BarrierNumber = BarrierNumber; }
+    int         GetBarrierNumber() const { return m_BarrierNumber; }
 
     void        GetSimdOffsetBase(CVariable*& pVar);
     /// Returns a simd8 register filled with values [24, 20, 16, 12, 8, 4, 0]
@@ -500,6 +504,11 @@ public:
     // in DWORDs
     uint32_t getMinPushConstantBufferAlignmentInBytes() const { return m_Platform->getMinPushConstantBufferAlignment() * sizeof(DWORD); }
 
+    // Note that for PVC A0 simd16, PVCLSCEnabled() returns true
+    // but no LSC is generated!
+    bool PVCLSCEnabled() const {
+        return m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC && m_Platform->hasLSC();
+    }
 
     e_alignment getGRFAlignment() const { return CVariable::getAlignment(getGRFSize()); }
 
@@ -627,7 +636,7 @@ protected:
     /// holds max number of inputs that can be pushed for this shader unit
     static const uint32_t m_pMaxNumOfPushedInputs;
 
-    bool m_HasBarrier;
+    int m_BarrierNumber;
     SProgramOutput m_simdProgram;
 
     // Holds max used binding table entry index.

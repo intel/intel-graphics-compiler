@@ -35,7 +35,7 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     : entry(pFunc)
     , m_parent(pProgram)
     , encoder()
-    , m_HasBarrier(false)
+    , m_BarrierNumber(0)
 {
     m_ctx = m_parent->GetContext();
     m_WI = nullptr;
@@ -210,6 +210,56 @@ void CShader::EOTRenderTarget(CVariable* r1, bool isPerCoarse)
     encoder.Push();
 }
 
+// Creates a URB Fence message.
+// If return value is not a nullptr, the returned variable is a send message
+// writeback variable that must be read in order to wait for URB Fence
+// completion, e.g. the variable may be used as payload to EOTGateway.
+CVariable* CShader::URBFence()
+{
+    {
+        // A legacy HDC URB fence message issued by a thread causes further
+        // messages issued by the thread to be blocked until all previous URB
+        // messages have completed, or the results can be globally observed from
+        // the point of view of other threads in the system. The execution mask
+        // is ignored.No bounds checking is performed. The URB fence message
+        // signals completion by returning data into the writeback register. The
+        // data returned in the writeback register is undefined. When an
+        // instruction reads the writeback register value, then this thread is
+        // blocked until all previous URB messages are globally observable. The
+        // writeback register must be read before this thread sends another data
+        // port message.
+        const uint desc = ::IGC::URBFence();
+        constexpr uint exDesc = EU_MESSAGE_TARGET_URB;
+
+        // Message length is of size 1, and is ignored (thus it is left uninitialized).
+        CVariable* payload = GetNewVariable(1 * numLanes(SIMDMode::SIMD8), ISA_TYPE_D, EALIGN_GRF, "URBPayload");
+        // Message response length is of size 1.
+        CVariable* dst = GetNewVariable(1 * numLanes(SIMDMode::SIMD8), ISA_TYPE_D, EALIGN_GRF, "URBReturnValue");
+
+        encoder.SetSimdSize(SIMDMode::SIMD1);
+        encoder.Send(dst, payload, exDesc, ImmToVariable(desc, ISA_TYPE_D));
+        encoder.Push();
+        return dst;
+    }
+}
+
+// Payload may be non-nullptr if it is e.g. a response payload from fence.
+void CShader::EOTGateway(CVariable* payload)
+{
+    const uint desc = ::IGC::EOTGateway(EU_GW_FENCE_PORTS_None);
+    constexpr uint exDesc = EU_MESSAGE_TARGET_GATEWAY | cMessageExtendedDescriptorEOTBit;
+
+    // Message length is of size 1, and is ignored.
+    if (!payload)
+    {
+        // Message length is of size 1, and is ignored (thus it is left uninitialized).
+        payload = GetNewVariable(getGRFSize(), ISA_TYPE_D, EALIGN_GRF, "EOTPayload");
+    }
+
+    encoder.SetSimdSize(SIMDMode::SIMD1);
+    encoder.Send(nullptr, payload, exDesc, ImmToVariable(desc, ISA_TYPE_D));
+    encoder.Push();
+}
 
 void CShader::AddEpilogue(llvm::ReturnInst* ret)
 {
@@ -767,6 +817,33 @@ CVariable* CShader::GetHWTID()
                 encoder.Or(src, rightHalf, leftHalf);
                 encoder.Push();
             };
+
+            if (m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC)
+            {
+                // [14:12] Slice ID.
+                // [11:9] SubSlice ID
+                // [8] : EUID[2]
+                // [7:6] : Reserved
+                // [5:4] EUID[1:0]
+                // [3] : Reserved MBZ
+                // [2:0] : TID
+                //
+                // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
+
+                uint32_t bitmask = BITMASK(15);
+                m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
+                encoder.SetNoMask();
+                encoder.SetSrcSubReg(0, 0);
+                encoder.And(m_HW_TID, GetSR0(), ImmToVariable(bitmask, ISA_TYPE_D));
+                encoder.Push();
+
+                // Remove bit [7:6]
+                RemoveBitRange(m_HW_TID, 6, 2);
+                // Remove bit [3]
+                RemoveBitRange(m_HW_TID, 3, 1);
+
+                return m_HW_TID;
+            }
 
             // XeHP_SDV
             // [13:11] Slice ID.
@@ -3474,7 +3551,17 @@ bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 
 uint32_t CShader::GetShaderThreadUsageRate()
 {
-    return 1;
+    uint32_t grfNum = GRF_TOTAL_NUM;
+    if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
+    {
+        grfNum = IGC_GET_FLAG_VALUE(TotalGRFNum);
+    }
+    else if (GetContext()->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
+    {
+        grfNum = IGC_GET_FLAG_VALUE(TotalGRFNum4CS);
+    }
+    // prevent callee divide by zero
+    return std::max<uint32_t>(1, grfNum / GRF_TOTAL_NUM);
 }
 
 CShader* CShaderProgram::GetShader(SIMDMode simd, ShaderDispatchMode mode)

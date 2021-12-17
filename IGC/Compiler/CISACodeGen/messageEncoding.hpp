@@ -611,6 +611,83 @@ namespace IGC
         } DW0;
     };
 
+    /*****************************************************************************\
+    ENUM: EU_GW_FENCE_PORTS. Spec: Enumeration_GW_FENCE_PORTS.
+    \*****************************************************************************/
+    enum EU_GW_FENCE_PORTS
+    {
+        EU_GW_FENCE_PORTS_None = 0x0,
+        EU_GW_FENCE_PORTS_SLM = 0x1,
+        EU_GW_FENCE_PORTS_UGM = 0x2,
+        EU_GW_FENCE_PORTS_UGML = 0x4,
+        EU_GW_FENCE_PORTS_TGM = 0x8,
+    };
+
+    /*****************************************************************************\
+    STRUCT: URBFenceGen12. Spec: Instruction_URBFence (symbol: MSD_URBFENCE).
+    \*****************************************************************************/
+    struct URBFenceGen12
+    {
+        union _DW0
+        {
+            struct _All
+            {
+                unsigned int       URBOpcode : 4; // [3:0]
+                unsigned int : 16;
+                unsigned int       ResponseLength : 5; // [24:20]
+                unsigned int       MessageLength : 4; // [28:25]
+                unsigned int : 3;
+            } All;
+
+            unsigned int   Value;
+        } DW0;
+    };
+
+    /*****************************************************************************\
+    STRUCT: EOTMessageDescriptorGen12. Spec: Instruction_EOT (symbol: MSD_EOT).
+    \*****************************************************************************/
+    struct EOTMessageDescriptorGen12
+    {
+        union _DW0
+        {
+            struct _All
+            {
+                unsigned int       EOTSubfunction : 3; // [2:0]
+                unsigned int : 9;
+                unsigned int       FenceDataPorts : 4; // [15:12]
+                unsigned int : 4;
+                unsigned int       ResponseLength : 5; // [24:20]
+                unsigned int       MessageLength : 4; // [28:25]
+                unsigned int : 3;
+            } All;
+
+            unsigned int   Value;
+        } DW0;
+    };
+
+    /*****************************************************************************\
+    STRUCT: TraceRayBTDMessageDescriptorGen12
+    \*****************************************************************************/
+    struct TraceRayBTDMessageDescriptorGen12
+    {
+        union _DW0
+        {
+            struct _All
+            {
+                unsigned int                      : 8;
+                unsigned int       SIMDMode       : 1; // [8]
+                unsigned int                      : 5;
+                unsigned int       MessageType    : 4; // [17:14]
+                unsigned int                      : 1;
+                unsigned int       HeaderPresent  : 1; // [19]
+                unsigned int       ResponseLength : 5; // [20:24]
+                unsigned int       MessageLength  : 4; // [28:25]
+                unsigned int : 3;
+            } All;
+
+            unsigned int   Value;
+        } DW0;
+    };
 
     /*****************************************************************************\
     STRUCT: VMEMessageDescriptorGen8_0
@@ -700,6 +777,7 @@ namespace IGC
         EU_URB_OPCODE_ATOMIC_ADD = 6,
         EU_URB_OPCODE_SIMD8_WRITE = 7,
         EU_URB_OPCODE_SIMD8_READ = 8,
+        EU_URB_OPCODE_FENCE = 9,
     };
 
     EU_GEN6_SAMPLER_MESSAGE_TYPE GetSampleMessage(EOPCODE opCode);
@@ -828,5 +906,15 @@ namespace IGC
         const uint32_t regs2rcv
     );
 
+    uint URBFence();
+
+    uint EOTGateway(
+        const EU_GW_FENCE_PORTS fencePorts);
+
+    uint BindlessThreadDispatch(
+        const uint   messageLength,
+        const uint   SIMDMode,
+        const bool   IsTraceMessage,
+        const bool   IsRayQueryMessage);
 
 }

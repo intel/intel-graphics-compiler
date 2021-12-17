@@ -90,6 +90,7 @@ bool GenRotate::runOnFunction(Function& F)
     m_SupportInt16 = true;
     m_SupportInt32 = true;
     m_SupportInt64 = false;
+    m_SupportInt64 = m_Ctx->platform.supportQWRotateInstructions();
 
     m_Changed = false;
     for (auto BBI = F.begin(), BBE = F.end(); BBI != BBE; ++BBI)

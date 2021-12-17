@@ -121,3 +121,6 @@ DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_cmpxchg_local_f16", EATOMIC_FCMPWR, SLM)
 
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_global_f32", EATOMIC_FADD, POINTER)
 DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_sub_global_f32", EATOMIC_FSUB, POINTER)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_add_global_f64", EATOMIC_FADD64, POINTER)
+DEF_OCL_IGC_ATOMIC("__builtin_IB_atomic_cmpxchg_local_i64", EATOMIC_CMPXCHG64, POINTER)
+
