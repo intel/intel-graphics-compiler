@@ -346,7 +346,7 @@ namespace IGC
         llvm::DenseMap<unsigned, const llvm::Instruction*> VISAIndexToInst;
         llvm::DenseMap<unsigned, VisaInterval> VISAIndexToSize;
         llvm::DenseMap<unsigned, unsigned> GenISAInstSizeBytes;
-        llvm::DenseMap<unsigned, std::vector<unsigned>> VISAIndexToAllGenISAOff;
+        std::map<unsigned, std::vector<unsigned>> VISAIndexToAllGenISAOff;
         std::vector<IDX_Gen2Visa> GenISAToVISAIndex;
 
     private:

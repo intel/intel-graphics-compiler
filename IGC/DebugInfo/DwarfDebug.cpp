@@ -1603,47 +1603,24 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         return (DbgVariable*)nullptr;
     };
 
-    auto findClosestStartEnd = [this](uint16_t start, uint16_t end)
+    using interval_type = decltype(DbgDecoder::LiveIntervalsVISA::start);
+    auto findSemiOpenInterval =
+        [this](interval_type start,
+               interval_type end) -> std::pair<interval_type, interval_type>
     {
-        std::pair<uint64_t, uint64_t> startEnd = std::make_pair(0, 0);
         if (start >= end)
-            return startEnd;
+            return std::make_pair(0, 0);
+        const auto &Map = m_pModule->VISAIndexToAllGenISAOff;
+        auto LB = Map.lower_bound(start);
+        auto UB = Map.upper_bound(end);
+        if (LB == Map.end() || UB == Map.end())
+            return std::make_pair(0, 0);
 
-        while (start < end)
-        {
-            auto startIt = m_pModule->VISAIndexToAllGenISAOff.find(start);
-            if (startIt == m_pModule->VISAIndexToAllGenISAOff.end())
-            {
-                start++;
-            }
-            else
-            {
-                startEnd.first = startIt->second.front();
-                break;
-            }
-        }
-
+        start = LB->second.front();
+        end = UB->second.front();
         if (start >= end)
-            return startEnd;
-
-        while (end > start && end > 0)
-        {
-            auto endIt = m_pModule->VISAIndexToAllGenISAOff.find(end);
-            if (endIt == m_pModule->VISAIndexToAllGenISAOff.end())
-            {
-                end--;
-            }
-            else
-            {
-                startEnd.second = endIt->second.back();
-                break;
-            }
-        }
-
-        if (start >= end)
-            return startEnd;
-
-        return startEnd;
+            return std::make_pair(0, 0);
+        return std::make_pair(start, end);
     };
 
     auto encodeImm = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t& offset,
@@ -1681,11 +1658,11 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                          uint64_t startRange, uint64_t endRange,
                          uint32_t pointerSize, DbgVariable* RegVar,
                          std::vector<VISAVariableLocation>& Locs,
-                         DbgDecoder::LiveIntervalsVISA& genIsaRange)
+                         DbgDecoder::LiveIntervalsVISA& visaRange)
     {
         auto allCallerSave = m_pModule->getAllCallerSave(*decodedDbg,
-                                                         startRange, endRange, genIsaRange);
-        std::vector<DbgDecoder::LiveIntervalsVISA> vars = { genIsaRange };
+                                                         startRange, endRange, visaRange);
+        std::vector<DbgDecoder::LiveIntervalsVISA> vars = { visaRange };
 
         auto oldSize = dotLoc.loc.size();
         dotLoc.start = startRange;
@@ -1934,7 +1911,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 const ConstantInt* imm = nullptr;
 
                 std::vector<VISAVariableLocation> Locs;
-                DbgDecoder::LiveIntervalsVISA genIsaRange;
+                DbgDecoder::LiveIntervalsVISA visaRange;
             };
 
             PrevLoc p;
@@ -1951,7 +1928,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 }
                 else
                 {
-                    encodeReg(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.Locs, p.genIsaRange);
+                    encodeReg(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.Locs, p.visaRange);
                 }
                 p.t = PrevLoc::Type::Empty;
             };
@@ -2021,9 +1998,9 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                     const auto* VarInfo = m_pModule->getVarInfo(*decodedDbg, regNum);
                     if (!VarInfo)
                         continue;
-                    for (const auto& genIsaRange : VarInfo->lrs)
+                    for (const auto& visaRange : VarInfo->lrs)
                     {
-                        auto startEnd = findClosestStartEnd(genIsaRange.start, genIsaRange.end);
+                        auto startEnd = findSemiOpenInterval(visaRange.start, visaRange.end);
 
                         uint64_t startRange = startEnd.first;
                         uint64_t endRange = startEnd.second;
@@ -2042,10 +2019,10 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                         if (p.t == PrevLoc::Type::Reg &&
                             p.end < endRange)
                         {
-                            if ((p.genIsaRange.isGRF() && genIsaRange.isGRF() &&
-                                p.genIsaRange.getGRF() == genIsaRange.getGRF()) ||
-                                (p.genIsaRange.isSpill() && genIsaRange.isSpill() &&
-                                    p.genIsaRange.getSpillOffset() == genIsaRange.getSpillOffset()))
+                            if ((p.visaRange.isGRF() && visaRange.isGRF() &&
+                                p.visaRange.getGRF() == visaRange.getGRF()) ||
+                                (p.visaRange.isSpill() && visaRange.isSpill() &&
+                                    p.visaRange.getSpillOffset() == visaRange.getSpillOffset()))
                             {
                                 // extend
                                 p.end = endRange;
@@ -2069,8 +2046,13 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                         p.end = endRange;
                         p.dbgVar = RegVar;
                         p.Locs = Locs;
-                        p.genIsaRange = genIsaRange;
+                        p.visaRange = visaRange;
                         p.pInst = pInst;
+
+                        LLVM_DEBUG(dbgs() << "  Fix IP Range to: [0x";
+                                   dbgs().write_hex(p.start) << "; " << "0x";
+                                   dbgs().write_hex(p.end) << ")\n";);
+
                     }
                 }
             }
