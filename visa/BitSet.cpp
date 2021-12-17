@@ -109,6 +109,9 @@ void BitSet::invert(void)
 }
 
 template <typename T>
+#ifdef __GNUC__
+__attribute__((optimize("tree-vectorize")))
+#endif
 void vector_and(T *__restrict__ p1, const T *const p2, unsigned n)
 {
     for (unsigned i = 0; i < n; ++i)
@@ -118,6 +121,9 @@ void vector_and(T *__restrict__ p1, const T *const p2, unsigned n)
 }
 
 template <typename T>
+#ifdef __GNUC__
+__attribute__((optimize("tree-vectorize")))
+#endif
 void vector_or(T *__restrict__ p1, const T *const p2, unsigned n)
 {
     for (unsigned i = 0; i < n; ++i)
@@ -127,6 +133,9 @@ void vector_or(T *__restrict__ p1, const T *const p2, unsigned n)
 }
 
 template <typename T>
+#ifdef __GNUC__
+__attribute__((optimize("tree-vectorize")))
+#endif
 void vector_minus(T *__restrict__ p1, const T *const p2, unsigned n)
 {
     for (unsigned i = 0; i < n; ++i)
