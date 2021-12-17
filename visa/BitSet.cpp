@@ -7,9 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "BitSet.h"
-#ifdef __SSE2__
-    #include <emmintrin.h>
-#endif
 
 void BitSet::create(unsigned size)
 {
@@ -112,57 +109,27 @@ void BitSet::invert(void)
 }
 
 template <typename T>
-void vector_and(T *__restrict__ p1, const T *const p2, int n)
+void vector_and(T *__restrict__ p1, const T *const p2, unsigned n)
 {
-    int i = 0;
-#ifdef __SSE2__
-    for (; i < n - 4; i+= 4)
-    {
-        __m128i m1 = _mm_loadu_si128((__m128i *)(&p1[i]));
-        __m128i m2 = _mm_loadu_si128((__m128i *)(&p2[i]));
-        __m128i r = _mm_and_si128(m1, m2);
-        _mm_storeu_si128((__m128i *)(&p1[i]), r);
-    }
-#endif
-    for (; i < n; ++i)
+    for (unsigned i = 0; i < n; ++i)
     {
         p1[i] &= p2[i];
     }
 }
 
 template <typename T>
-void vector_or(T *__restrict__ p1, const T *const p2, int n)
+void vector_or(T *__restrict__ p1, const T *const p2, unsigned n)
 {
-    int i = 0;
-#ifdef __SSE2__
-    for (; i < n - 4; i+= 4)
-    {
-        __m128i m1 = _mm_loadu_si128((__m128i *)(&p1[i]));
-        __m128i m2 = _mm_loadu_si128((__m128i *)(&p2[i]));
-        __m128i r = _mm_or_si128(m1, m2);
-        _mm_storeu_si128((__m128i *)(&p1[i]), r);
-    }
-#endif
-    for (; i < n; ++i)
+    for (unsigned i = 0; i < n; ++i)
     {
         p1[i] |= p2[i];
     }
 }
 
 template <typename T>
-void vector_minus(T *__restrict__ p1, const T *const p2, int n)
+void vector_minus(T *__restrict__ p1, const T *const p2, unsigned n)
 {
-    int i = 0;
-#ifdef __SSE2__
-    for (; i < n - 4; i+= 4)
-    {
-        __m128i m1 = _mm_loadu_si128((__m128i *)(&p1[i]));
-        __m128i m2 = _mm_loadu_si128((__m128i *)(&p2[i]));
-        __m128i r = _mm_andnot_si128(m2, m1);
-        _mm_storeu_si128((__m128i *)(&p1[i]), r);
-    }
-#endif
-    for (; i < n; ++i)
+    for (unsigned i = 0; i < n; ++i)
     {
         p1[i] &= ~p2[i];
     }
