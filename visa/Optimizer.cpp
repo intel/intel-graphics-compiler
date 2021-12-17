@@ -7831,7 +7831,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     continue;
                 }
 
-                if (builder.noSelOnALTMode() &&
+                if (VISA_WA_CHECK(builder.getPWaTable(), Wa_22013880840) &&
                     builder.getOption(vISA_ALTMode) == true &&
                     inst->opcode() == G4_sel &&
                     inst->getPredicate() != nullptr &&

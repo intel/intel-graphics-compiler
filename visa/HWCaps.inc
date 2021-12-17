@@ -880,11 +880,6 @@ SPDX-License-Identifier: MIT
         return getPlatform() == Xe_DG2 || getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT;
     }
 
-    bool noSelOnALTMode() const
-    {
-        return getPlatform() == Xe_DG2;
-    }
-
     bool hasLongOperandTypeDepIssue() const
     {
         return getPlatform() == Xe_PVCXT;
