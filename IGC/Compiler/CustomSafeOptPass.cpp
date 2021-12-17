@@ -5487,3 +5487,117 @@ bool CleanPHINode::runOnFunction(Function& F)
     }
     return changed;
 }
+
+namespace {
+    class InsertBranchOpt : public FunctionPass
+    {
+    public:
+        static char ID;
+        InsertBranchOpt();
+
+        StringRef getPassName() const override { return "InsertBranchOpt"; }
+
+        bool runOnFunction(Function& F) override;
+    };
+}
+
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG "igc-InsertBranchOpt"
+#define PASS_DESCRIPTION "Insert Branch Opt"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(InsertBranchOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(InsertBranchOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+char InsertBranchOpt::ID = 0;
+FunctionPass* IGC::createInsertBranchOptPass()
+{
+    return new InsertBranchOpt();
+}
+
+InsertBranchOpt::InsertBranchOpt() : FunctionPass(ID)
+{
+    initializeInsertBranchOptPass(*PassRegistry::getPassRegistry());
+}
+
+bool InsertBranchOpt::runOnFunction(Function& F)
+{
+    std::vector<GenIntrinsicInst*>atomicSplit;
+    for (auto BI = F.begin(), BE = F.end(); BI != BE; BI++)
+    {
+        for (auto II = BI->begin(); II != BI->end(); II++)
+        {
+            if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(II))
+            {
+                if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomictyped)
+                {
+                    Instruction* src = dyn_cast<Instruction>(inst->getOperand(4));
+                    ConstantInt* op = dyn_cast<ConstantInt>(inst->getOperand(5));
+
+                    if (!src || !op)
+                        continue;
+
+                    if (op->getZExtValue() == AtomicOp::EATOMIC_IADD ||
+                        op->getZExtValue() == AtomicOp::EATOMIC_SUB ||
+                        op->getZExtValue() == AtomicOp::EATOMIC_UMAX)
+                    {
+                        atomicSplit.push_back(inst);
+                    }
+                }
+            }
+        }
+    }
+
+    for (auto iter : atomicSplit)
+    {
+        Instruction* inst = &(*iter);
+        // Create an if-then-else structure.
+        // if (cond!=0)
+        //    use the original atomic add inst
+        // else
+        //    use typedread
+        IRBuilder<> builder(inst);
+        Instruction* src = dyn_cast<Instruction>(inst->getOperand(4));
+        Instruction* condInst = dyn_cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, src, builder.getInt32(0)));
+        Function* pLdIntrinsic = llvm::GenISAIntrinsic::getDeclaration(
+            inst->getModule(),
+            GenISAIntrinsic::GenISA_typedread,
+            inst->getOperand(0)->getType());
+
+        SmallVector<Value*, 5> ld_FunctionArgList(5);
+        ld_FunctionArgList[0] = inst->getOperand(0);
+        ld_FunctionArgList[1] = inst->getOperand(1);
+        ld_FunctionArgList[2] = inst->getOperand(2);
+        ld_FunctionArgList[3] = ConstantInt::get(inst->getType(), 0);
+        ld_FunctionArgList[4] = ConstantInt::get(inst->getType(), 0);
+
+        CallInst* NewInst = builder.CreateCall(pLdIntrinsic, ld_FunctionArgList);
+        Value* ExtractE = builder.CreateExtractElement(NewInst, (uint64_t)0);
+        Value* castI = builder.CreateBitCast(ExtractE, inst->getType());
+
+        Instruction* ThenTerm = nullptr;
+        Instruction* ElseTerm = nullptr;
+        SplitBlockAndInsertIfThenElse(condInst, inst, &ThenTerm, &ElseTerm);
+        BasicBlock* ThenBlock = ThenTerm->getParent();
+        BasicBlock* ElseBlock = ElseTerm->getParent();
+        BasicBlock* MergeBlock = inst->getParent();
+
+        ThenBlock->setName("atomic.if.true");
+        ElseBlock->setName("atomic.if.false");
+        MergeBlock->setName("atomic.if.end");
+
+        inst->moveBefore(ThenTerm);
+        NewInst->moveBefore(ElseTerm);
+        dyn_cast<ExtractElementInst>(ExtractE)->moveBefore(ElseTerm);
+        dyn_cast<BitCastInst>(castI)->moveBefore(ElseTerm);
+
+        PHINode* newPhi = PHINode::Create(inst->getType(), 2, "", &MergeBlock->front());
+        inst->replaceUsesOutsideBlock(newPhi, ThenBlock);
+        newPhi->addIncoming(inst, ThenBlock);
+        newPhi->addIncoming(castI, ElseBlock);
+    }
+    return false;
+}

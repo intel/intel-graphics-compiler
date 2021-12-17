@@ -1931,6 +1931,11 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createGenOptLegalizer());
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableAtomicBranch) || pContext->getModuleMetaData()->csInfo.atomicBranch)
+        {
+            mpm.add(createInsertBranchOptPass());
+        }
+
         if (pContext->m_enableSubroutine &&
             IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
         {
