@@ -131,6 +131,9 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
       pInputArgs->pInput, pInputArgs->InputSize);
 
   if (!spmd_esimd_programs_or_err) {
+      // The error must be handled. Doing nothing for now.
+      handleAllErrors(spmd_esimd_programs_or_err.takeError(),
+                      [](const llvm::ErrorInfoBase &EI) {});
       // Workaround: try to compile on SPMD path if splitting failed.
       // This is because not all VC opcodes are merged to SPIR-V Tools.
       return TranslateBuildSPMD(pInputArgs, pOutputArgs, inputDataFormatTemp,
