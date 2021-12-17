@@ -61,12 +61,15 @@ void SPIRMetaDataTranslation::WarpFunctionMetadata(Module& M)
     std::set<llvm::Function*> Functions;
     for (uint i = 0; i < opencl_kernels->getNumOperands(); i++)
     {
-        auto pMdNode = opencl_kernels->getOperand(i);
-        if (pMdNode != NULL)
+        if (auto pMdNode = opencl_kernels->getOperand(i))
         {
-            llvm::Function* opFunc =
-                mdconst::dyn_extract<llvm::Function>(pMdNode->getOperand(0));
-            Functions.insert(opFunc);
+            if (pMdNode->getOperand(0))
+            {
+                llvm::Function* opFunc =
+                    mdconst::dyn_extract<llvm::Function>(pMdNode->getOperand(0));
+                Functions.insert(opFunc);
+            }
+
         }
     }
 
@@ -146,6 +149,9 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
         IGC::FunctionMetaData& funcMD = modMD->FuncMD[spirKernel->getFunction()];
         fHandle->setType(FunctionTypeMD::KernelFunction);
+
+        if(spirKernel->getFunction() == nullptr)
+            continue;
 
         // Handling Thread Group Size
         SPIRMD::WorkGroupDimensionsMetaDataHandle reqdWorkGroupSize = spirKernel->getRequiredWorkGroupSize();

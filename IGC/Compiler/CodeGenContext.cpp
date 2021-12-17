@@ -29,12 +29,13 @@ namespace IGC
         bool allowPreRAScheduler;
         bool allowVISAPreRAScheduler;
         bool allowLargeURBWrite;
+        bool allowConstantCoalescing;
         unsigned nextState;
     } RetryState;
 
     static const RetryState RetryTable[] = {
-        { true, true, false, false, true, true, true, true, 1 },
-        { false, true, true, true, false, false, false, false, 500 }
+        { true, true, false, false, true, true, true, true, true, 1 },
+        { false, true, true, true, false, false, false, false, false, 500 }
     };
 
     RetryManager::RetryManager() : enabled(false)
@@ -85,6 +86,10 @@ namespace IGC
     bool RetryManager::AllowLargeURBWrite() {
         IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowLargeURBWrite;
+    }
+    bool RetryManager::AllowConstantCoalescing() {
+        IGC_ASSERT(stateId < getStateCnt());
+        return RetryTable[stateId].allowConstantCoalescing;
     }
     void RetryManager::SetFirstStateId(int id) {
         firstStateId = id;
@@ -863,6 +868,11 @@ namespace IGC
             {
                 IgnoreBFRounding = true;
             }
+            // -cl-compile-one-at-time
+            else if (suffix.equals("-compile-one-at-time"))
+            {
+                CompileOneKernelAtTime = true;
+            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);
@@ -1014,6 +1024,14 @@ namespace IGC
         llvmCtxWrapper->Release();
         module = nullptr;
         llvmCtxWrapper = nullptr;
+    }
+
+    void CodeGenContext::clearMD()
+    {
+        delete modMD;
+        delete m_pMdUtils;
+        modMD = nullptr;
+        m_pMdUtils = nullptr;
     }
 
     static const llvm::Function *getRelatedFunction(const llvm::Value *value)

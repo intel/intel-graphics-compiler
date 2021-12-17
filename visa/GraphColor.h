@@ -1098,6 +1098,12 @@ namespace vISA
             {
                 return (((baseReg + offset) % 32) / 2);
             }
+
+            if (builder.has8bundles())
+            {
+                return (((baseReg + offset) % 16) / 2);
+            }
+
             return (((baseReg + offset) % 64) / 4);
         }
 

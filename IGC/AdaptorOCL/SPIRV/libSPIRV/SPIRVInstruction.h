@@ -1498,7 +1498,8 @@ protected:
     SPIRVInstruction::validate();
     if (getValue(VectorId)->isForward())
       return;
-    IGC_ASSERT(getValueType(VectorId)->isTypeVector());
+    IGC_ASSERT(getValueType(VectorId)->isTypeVector()
+        || getValue(VectorId)->getType()->getOpCode() == OpTypeJointMatrixINTEL);
   }
   SPIRVId VectorId;
   SPIRVId IndexId;
@@ -1520,7 +1521,8 @@ protected:
     SPIRVInstruction::validate();
     if (getValue(VectorId)->isForward())
       return;
-    IGC_ASSERT(getValueType(VectorId)->isTypeVector());
+    IGC_ASSERT(getValueType(VectorId)->isTypeVector()
+        || getValue(VectorId)->getType()->getOpCode() == OpTypeJointMatrixINTEL);
   }
   SPIRVId VectorId;
   SPIRVId IndexId;
@@ -2335,6 +2337,7 @@ _SPIRV_OP(JointMatrixMad, true, 7)
 _SPIRV_OP(JointMatrixSUMad, true, 7)
 _SPIRV_OP(JointMatrixUSMad, true, 7)
 _SPIRV_OP(JointMatrixUUMad, true, 7)
+_SPIRV_OP(JointMatrixWorkItemLength, true, 4)
 #undef _SPIRV_OP
 }
 #endif // SPIRVINSTRUCTION_HPP_

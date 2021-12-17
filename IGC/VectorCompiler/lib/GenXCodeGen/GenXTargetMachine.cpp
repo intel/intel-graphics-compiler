@@ -78,8 +78,7 @@ static cl::opt<bool> EmitVLoadStore(
 
 // There's another copy of DL string in clang/lib/Basic/Targets.cpp
 static std::string getDL(bool Is64Bit) {
-  return Is64Bit ? "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"
-                 : "e-p:32:32-p6:32:32-i64:64-n8:16:32";
+  return Is64Bit ? "e-p:64:64-i64:64-n8:16:32:64" : "e-p:32:32-i64:64-n8:16:32";
 }
 
 namespace llvm {
@@ -320,8 +319,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// **IR restriction**: alloca, load, store not supported after this pass.
   ///
   vc::addPass(PM, createSROAPass());
-
-  vc::addPass(PM, createGenXInstCombineCleanup());
 
   if (!ExperimentalEnforceLateEmulationImports)
     vc::addPass(PM, createGenXEmulationImportPass());
@@ -648,7 +645,6 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
 
   // CM ABI.
   auto AddCMABI = [](const PassManagerBuilder &Builder, PassManagerBase &PM) {
-    PM.add(createIPSCCPPass());
     PM.add(createCMABIPass());
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly, AddCMABI);

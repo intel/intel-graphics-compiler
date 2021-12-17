@@ -2566,7 +2566,7 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     else
     {
         // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh to get better performance.
-        if (m_currShader->m_Platform->noNativeDwordMulSupport())
+        if (false && m_currShader->m_Platform->noNativeDwordMulSupport())
         {
             // (Cr, E) = A * B
             // dst size should be GRF-aligned and doubled as it has both low and high results.
@@ -3698,7 +3698,7 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     // dstHigh = F + G + carry
 
     // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh to get better performance.
-    if (m_currShader->m_Platform->noNativeDwordMulSupport())
+    if (false && m_currShader->m_Platform->noNativeDwordMulSupport())
     {
         // (Cr, E) = A * B
         EncoderInit();
@@ -4583,7 +4583,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     CVariable* lodSrc =
         GetSymbol(inst->getOperand(2));
 
-    if (lodSrc->IsImmediate() && lodSrc->GetImmediateValue() == 0)
+    if (m_currShader->m_Platform->supportSampleAndLd_lz() && lodSrc->IsImmediate() && lodSrc->GetImmediateValue() == 0)
     {
         zeroLOD = true;
     }
@@ -10654,27 +10654,14 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     auto pModuleMetadata = pCtx->getModuleMetaData();
 
     CVariable* pStackBufferBase = m_currShader->GetPrivateBase();
-
     CVariable* pHWTID = m_currShader->GetHWTID();
-
     CVariable* pSize = nullptr;
 
-    uint32_t MaxPrivateSize = pModuleMetadata->FuncMD[pKernel].privateMemoryPerWI;
-    FunctionGroup* FG = m_FGA ? m_FGA->getGroup(pKernel) : nullptr;
-    if (FG)
-    {
-        // Get the max PrivateMem used in the FG, which is set by
-        // PrivateMemoryResolution.cpp after analyzing the call depth
-        MaxPrivateSize = FG->getMaxPrivateMemOnStack();
+    IGC_ASSERT(pModuleMetadata->FuncMD.find(pKernel) != pModuleMetadata->FuncMD.end());
+    unsigned kernelAllocaSize = pModuleMetadata->FuncMD[pKernel].privateMemoryPerWI;
 
-        // If there are indirect calls or recursions, we no longer
-        // know the call depth, so just add 4KB and hope we don't overflow.
-        if (FG->hasIndirectCall() || FG->hasRecursion())
-            MaxPrivateSize += (4 * 1024);
-        // Add another 1KB for VLA
-        if (FG->hasVariableLengthAlloca())
-            MaxPrivateSize += 1024;
-    }
+    auto FG = m_FGA ? m_FGA->getGroup(pKernel) : nullptr;
+    uint32_t MaxPrivateSize = FG ? FG->getMaxPrivateMemOnStack() : kernelAllocaSize;
 
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
     {
@@ -10693,14 +10680,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     m_encoder->Mul(pThreadOffset, pHWTID, pSize);
     m_encoder->Push();
 
-    unsigned totalAllocaSize = 0;
-
-    // reserve space for alloca
-    auto funcMDItr = pModuleMetadata->FuncMD.find(pKernel);
-    if (funcMDItr != pModuleMetadata->FuncMD.end() && funcMDItr->second.privateMemoryPerWI != 0)
-    {
-        totalAllocaSize += funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
-    }
+    unsigned totalAllocaSize = kernelAllocaSize * numLanes(m_currShader->m_dispatchSize);
 
     if (IGC_IS_FLAG_DISABLED(EnableRuntimeFuncAttributePatching))
     {

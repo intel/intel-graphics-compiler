@@ -165,15 +165,14 @@ namespace IGC
     bool getConstantAddress(llvm::Instruction& I, ConstantAddress& cl, CodeGenContext* pContext, bool& directBuf, bool& statelessBuf, bool& bindlessBuf);
 
 
-    bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst);
-    bool isSampleInstruction(llvm::Instruction* inst);
-    bool isInfoInstruction(llvm::Instruction* inst);
-    bool isLdInstruction(llvm::Instruction* inst);
-    bool isGather4Instruction(llvm::Instruction* inst);
-    bool isVectorInputInstruction(llvm::Instruction* inst);
+    bool isSampleLoadGather4InfoInstruction(const llvm::Instruction* inst);
+    bool isSampleInstruction(const llvm::Instruction* inst);
+    bool isInfoInstruction(const llvm::Instruction* inst);
+    bool isLdInstruction(const llvm::Instruction* inst);
+    bool isGather4Instruction(const llvm::Instruction* inst);
 
-    bool IsMediaIOIntrinsic(llvm::Instruction* inst);
-    bool IsSIMDBlockIntrinsic(llvm::Instruction* inst);
+    bool IsMediaIOIntrinsic(const llvm::Instruction* inst);
+    bool IsSIMDBlockIntrinsic(const llvm::Instruction* inst);
     bool isSubGroupIntrinsic(const llvm::Instruction* I);
 
     bool IsStatelessMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id);

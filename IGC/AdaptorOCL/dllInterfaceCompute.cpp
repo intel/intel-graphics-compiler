@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include "common/secure_mem.h"
 #include "common/shaderOverride.hpp"
+#include "common/ModuleSplitter.h"
 
 #include "CLElfLib/ElfReader.h"
 
@@ -1094,165 +1095,202 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
     unsigned PtrSzInBits = pKernelModule->getDataLayout().getPointerSizeInBits();
     //TODO: Again, this should not happen on each compilation
 
+    bool doSplitModule = oclContext.m_InternalOptions.CompileOneKernelAtTime;
     /// set retry manager
     bool retry = false;
     oclContext.m_retryManager.Enable();
     do
     {
-        std::unique_ptr<llvm::Module> BuiltinGenericModule = nullptr;
-        std::unique_ptr<llvm::Module> BuiltinSizeModule = nullptr;
-        std::unique_ptr<llvm::MemoryBuffer> pGenericBuffer = nullptr;
-        std::unique_ptr<llvm::MemoryBuffer> pSizeTBuffer = nullptr;
+        llvm::TinyPtrVector<const llvm::Function *> kernelFunctions;
+        if (doSplitModule)
         {
-            // IGC has two BIF Modules:
-            //            1. kernel Module (pKernelModule)
-            //            2. BIF Modules:
-            //                 a) generic Module (BuiltinGenericModule)
-            //                 b) size Module (BuiltinSizeModule)
-            //
-            // OCL builtin types, such as clk_event_t/queue_t, etc., are struct (opaque) types. For
-            // those types, its original names are themselves; the derived names are ones with
-            // '.<digit>' appended to the original names. For example,  clk_event_t is the original
-            // name, its derived names are clk_event_t.0, clk_event_t.1, etc.
-            //
-            // When llvm reads in multiple modules, say, M0, M1, under the same llvmcontext, if both
-            // M0 and M1 has the same struct type,  M0 will have the original name and M1 the derived
-            // name for that type.  For example, clk_event_t,  M0 will have clk_event_t, while M1 will
-            // have clk_event_t.2 (number is arbitary). After linking, those two named types should be
-            // mapped to the same type, otherwise, we could have type-mismatch (for example, OCL GAS
-            // builtin_functions tests will assertion fail during inlining due to type-mismatch).  Furthermore,
-            // when linking M1 into M0 (M0 : dstModule, M1 : srcModule), the final type is the type
-            // used in M0.
-
-            // Load the builtin module -  Generic BC
-            // Load the builtin module -  Generic BC
+            for (const auto& F : pKernelModule->functions())
             {
-                COMPILER_TIME_START(&oclContext, TIME_OCL_LazyBiFLoading);
-
-                pGenericBuffer = GetGenericModuleBuffer();
-
-                if (pGenericBuffer == NULL)
+                if (F.getCallingConv() == llvm::CallingConv::SPIR_KERNEL)
                 {
-                    SetErrorMessage("Error loading the Generic builtin resource", *pOutputArgs);
-                    return false;
+                    kernelFunctions.push_back(&F);
+                }
+            }
+
+            if (retry)
+            {
+                fprintf(stderr, "IGC recompiles whole module with different optimization strategy, recompiling all kernels \n");
+            }
+            IGC_ASSERT_EXIT_MESSAGE(kernelFunctions.empty() == false, "No kernels found!");
+            fprintf(stderr, "IGC compiles kernels one by one... (%d total)\n", kernelFunctions.size());
+        }
+
+        // for Module splitting feature; if it's inactive, flow is as normal
+        do {
+            KernelModuleSplitter splitter(oclContext, *pKernelModule);
+            if (doSplitModule)
+            {
+                const llvm::Function* pKernelFunction = kernelFunctions.back();
+
+                fprintf(stderr, "Compiling kernel #%d: %s\n", kernelFunctions.size(), pKernelFunction->getName().data());
+                kernelFunctions.pop_back();
+
+                splitter.splitModuleForKernel(pKernelFunction);
+                splitter.setSplittedModuleInOCLContext();
+            }
+
+            std::unique_ptr<llvm::Module> BuiltinGenericModule = nullptr;
+            std::unique_ptr<llvm::Module> BuiltinSizeModule = nullptr;
+            std::unique_ptr<llvm::MemoryBuffer> pGenericBuffer = nullptr;
+            std::unique_ptr<llvm::MemoryBuffer> pSizeTBuffer = nullptr;
+            {
+                // IGC has two BIF Modules:
+                //            1. kernel Module (pKernelModule)
+                //            2. BIF Modules:
+                //                 a) generic Module (BuiltinGenericModule)
+                //                 b) size Module (BuiltinSizeModule)
+                //
+                // OCL builtin types, such as clk_event_t/queue_t, etc., are struct (opaque) types. For
+                // those types, its original names are themselves; the derived names are ones with
+                // '.<digit>' appended to the original names. For example,  clk_event_t is the original
+                // name, its derived names are clk_event_t.0, clk_event_t.1, etc.
+                //
+                // When llvm reads in multiple modules, say, M0, M1, under the same llvmcontext, if both
+                // M0 and M1 has the same struct type,  M0 will have the original name and M1 the derived
+                // name for that type.  For example, clk_event_t,  M0 will have clk_event_t, while M1 will
+                // have clk_event_t.2 (number is arbitary). After linking, those two named types should be
+                // mapped to the same type, otherwise, we could have type-mismatch (for example, OCL GAS
+                // builtin_functions tests will assertion fail during inlining due to type-mismatch).  Furthermore,
+                // when linking M1 into M0 (M0 : dstModule, M1 : srcModule), the final type is the type
+                // used in M0.
+
+                // Load the builtin module -  Generic BC
+                // Load the builtin module -  Generic BC
+                {
+                    COMPILER_TIME_START(&oclContext, TIME_OCL_LazyBiFLoading);
+
+                    pGenericBuffer = GetGenericModuleBuffer();
+
+                    if (pGenericBuffer == NULL)
+                    {
+                        SetErrorMessage("Error loading the Generic builtin resource", *pOutputArgs);
+                        return false;
+                    }
+
+                    llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
+                        getLazyBitcodeModule(pGenericBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
+
+                    if (llvm::Error EC = ModuleOrErr.takeError())
+                    {
+                        std::string error_str = "Error lazily loading bitcode for generic builtins,"
+                                                "is bitcode the right version and correctly formed?";
+                        SetErrorMessage(error_str, *pOutputArgs);
+                        return false;
+                    }
+                    else
+                    {
+                        BuiltinGenericModule = std::move(*ModuleOrErr);
+                    }
+
+                    if (BuiltinGenericModule == NULL)
+                    {
+                        SetErrorMessage("Error loading the Generic builtin module from buffer", *pOutputArgs);
+                        return false;
+                    }
+                    COMPILER_TIME_END(&oclContext, TIME_OCL_LazyBiFLoading);
                 }
 
-                llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                    getLazyBitcodeModule(pGenericBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
-
-                if (llvm::Error EC = ModuleOrErr.takeError())
+                // Load the builtin module -  pointer depended
                 {
-                    std::string error_str = "Error lazily loading bitcode for generic builtins,"
-                                            "is bitcode the right version and correctly formed?";
-                    SetErrorMessage(error_str, *pOutputArgs);
-                    return false;
+                    char ResNumber[5] = { '-' };
+                    switch (PtrSzInBits)
+                    {
+                    case 32:
+                        _snprintf_s(ResNumber, sizeof(ResNumber), 5, "#%d", OCL_BC_32);
+                        break;
+                    case 64:
+                        _snprintf_s(ResNumber, sizeof(ResNumber), 5, "#%d", OCL_BC_64);
+                        break;
+                    default:
+                        IGC_ASSERT_MESSAGE(0, "Unknown bitness of compiled module");
+                    }
+
+                    // the MemoryBuffer becomes owned by the module and does not need to be managed
+                    pSizeTBuffer.reset(llvm::LoadBufferFromResource(ResNumber, "BC"));
+                    IGC_ASSERT_MESSAGE(pSizeTBuffer, "Error loading builtin resource");
+
+                    llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
+                        getLazyBitcodeModule(pSizeTBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
+                    if (llvm::Error EC = ModuleOrErr.takeError())
+                        IGC_ASSERT_MESSAGE(0, "Error lazily loading bitcode for size_t builtins");
+                    else
+                        BuiltinSizeModule = std::move(*ModuleOrErr);
+
+                    IGC_ASSERT_MESSAGE(BuiltinSizeModule, "Error loading builtin module from buffer");
+                }
+
+                BuiltinGenericModule->setDataLayout(BuiltinSizeModule->getDataLayout());
+                BuiltinGenericModule->setTargetTriple(BuiltinSizeModule->getTargetTriple());
+            }
+
+            oclContext.getModuleMetaData()->csInfo.forcedSIMDSize |= IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
+
+            if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir"))
+            {
+                IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+            }
+            else // not SPIR
+            {
+                IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+            }
+
+            if (oclContext.HasError())
+            {
+                if (oclContext.HasWarning())
+                {
+                    SetOutputMessage(oclContext.GetErrorAndWarning(), *pOutputArgs);
                 }
                 else
                 {
-                    BuiltinGenericModule = std::move(*ModuleOrErr);
+                    SetOutputMessage(oclContext.GetError(), *pOutputArgs);
                 }
-
-                if (BuiltinGenericModule == NULL)
-                {
-                    SetErrorMessage("Error loading the Generic builtin module from buffer", *pOutputArgs);
-                    return false;
-                }
-                COMPILER_TIME_END(&oclContext, TIME_OCL_LazyBiFLoading);
-            }
-
-            // Load the builtin module -  pointer depended
-            {
-                char ResNumber[5] = { '-' };
-                switch (PtrSzInBits)
-                {
-                case 32:
-                    _snprintf(ResNumber, sizeof(ResNumber), "#%d", OCL_BC_32);
-                    break;
-                case 64:
-                    _snprintf(ResNumber, sizeof(ResNumber), "#%d", OCL_BC_64);
-                    break;
-                default:
-                    IGC_ASSERT_MESSAGE(0, "Unknown bitness of compiled module");
-                }
-
-                // the MemoryBuffer becomes owned by the module and does not need to be managed
-                pSizeTBuffer.reset(llvm::LoadBufferFromResource(ResNumber, "BC"));
-                IGC_ASSERT_MESSAGE(pSizeTBuffer, "Error loading builtin resource");
-
-                llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                    getLazyBitcodeModule(pSizeTBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
-                if (llvm::Error EC = ModuleOrErr.takeError())
-                    IGC_ASSERT_MESSAGE(0, "Error lazily loading bitcode for size_t builtins");
-                else
-                    BuiltinSizeModule = std::move(*ModuleOrErr);
-
-                IGC_ASSERT_MESSAGE(BuiltinSizeModule, "Error loading builtin module from buffer");
-            }
-
-            BuiltinGenericModule->setDataLayout(BuiltinSizeModule->getDataLayout());
-            BuiltinGenericModule->setTargetTriple(BuiltinSizeModule->getTargetTriple());
-        }
-
-        oclContext.getModuleMetaData()->csInfo.forcedSIMDSize |= IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
-
-        if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir"))
-        {
-            IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
-        }
-        else // not SPIR
-        {
-            IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
-        }
-
-        if (oclContext.HasError())
-        {
-            if (oclContext.HasWarning())
-            {
-                SetOutputMessage(oclContext.GetErrorAndWarning(), *pOutputArgs);
-            }
-            else
-            {
-                SetOutputMessage(oclContext.GetError(), *pOutputArgs);
-            }
-            return false;
-        }
-
-        // Compiler Options information available after unification.
-        ModuleMetaData *modMD = oclContext.getModuleMetaData();
-        if (modMD->compOpt.DenormsAreZero)
-        {
-            oclContext.m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
-            oclContext.m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
-        }
-        if( IGC_GET_FLAG_VALUE( ForceFastestSIMD ) )
-        {
-            oclContext.m_retryManager.AdvanceState();
-            oclContext.m_retryManager.SetFirstStateId(oclContext.m_retryManager.GetRetryId());
-        }
-        // Optimize the IR. This happens once for each program, not per-kernel.
-        IGC::OptimizeIR(&oclContext);
-
-        // Now, perform code generation
-        IGC::CodeGen(&oclContext);
-
-        retry = (!oclContext.m_retryManager.kernelSet.empty() &&
-                 oclContext.m_retryManager.AdvanceState());
-
-        if (retry)
-        {
-            oclContext.clear();
-
-            // Create a new LLVMContext
-            oclContext.initLLVMContextWrapper();
-
-            IGC::Debug::RegisterComputeErrHandlers(*oclContext.getLLVMContext());
-
-            if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *oclContext.getLLVMContext(), inputDataFormatTemp))
-            {
                 return false;
             }
-            oclContext.setModule(pKernelModule);
-        }
+
+            // Compiler Options information available after unification.
+            ModuleMetaData *modMD = oclContext.getModuleMetaData();
+            if (modMD->compOpt.DenormsAreZero)
+            {
+                oclContext.m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
+                oclContext.m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
+            }
+            if( IGC_GET_FLAG_VALUE( ForceFastestSIMD ) )
+            {
+                oclContext.m_retryManager.AdvanceState();
+                oclContext.m_retryManager.SetFirstStateId(oclContext.m_retryManager.GetRetryId());
+            }
+            // Optimize the IR. This happens once for each program, not per-kernel.
+            IGC::OptimizeIR(&oclContext);
+
+            // Now, perform code generation
+            IGC::CodeGen(&oclContext);
+
+            retry = (!oclContext.m_retryManager.kernelSet.empty() &&
+                     oclContext.m_retryManager.AdvanceState());
+
+            if (retry)
+            {
+                splitter.retry();
+                kernelFunctions.clear();
+                oclContext.clear();
+
+                // Create a new LLVMContext
+                oclContext.initLLVMContextWrapper();
+
+                IGC::Debug::RegisterComputeErrHandlers(*oclContext.getLLVMContext());
+
+                if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *oclContext.getLLVMContext(), inputDataFormatTemp))
+                {
+                    return false;
+                }
+                oclContext.setModule(pKernelModule);
+            }
+        } while (!kernelFunctions.empty());
     } while (retry);
 
     if (oclContext.HasError())

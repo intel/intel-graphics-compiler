@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
 #include "vc/Utils/GenX/Printf.h"
+#include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 
@@ -273,7 +274,7 @@ bool testPhiNodeHasNoMismatchedRegs(const llvm::PHINode *const Phi,
       const genx::SimpleValue SVI(const_cast<llvm::Value *> (Incoming));
       const genx::LiveRange *const LRI = Liveness->getLiveRangeOrNull(SVI);
       if (LRI) {
-        if (LRI->getCategory() < RegCategory::NUMREALCATEGORIES) {
+        if (LRI->getCategory() < vc::RegCategory::NumRealCategories) {
           const genx::SimpleValue SVP(const_cast<llvm::PHINode *> (Phi));
           const genx::LiveRange *const LRP = Liveness->getLiveRangeOrNull(SVP);
           Result = (LRI == LRP);
@@ -635,10 +636,8 @@ private:
                        const DstOpndDesc &DstDesc);
   void buildBinaryOperator(BinaryOperator *BO, genx::BaleInfo BI, unsigned Mod,
                            const DstOpndDesc &DstDesc);
-#if (LLVM_VERSION_MAJOR > 8)
   void buildUnaryOperator(UnaryOperator *UO, genx::BaleInfo BI, unsigned Mod,
                           const DstOpndDesc &DstDesc);
-#endif
   void buildBoolBinaryOperator(BinaryOperator *BO);
   void buildSymbolInst(CallInst *GAddrInst, unsigned Mod,
                        const DstOpndDesc &DstDesc);
@@ -1104,7 +1103,7 @@ void GenXKernelBuilder::runOnKernel() {
     if (Kind != nullptr) {
       auto R = getRegForValueUntypedAndSaveAlias(Func, &Arg);
       IGC_ASSERT(R);
-      IGC_ASSERT(R->Category == RegCategory::GENERAL);
+      IGC_ASSERT(R->Category == vc::RegCategory::General);
       R->addAttribute(addStringToPool(Kind), "");
       IsComposable = true;
     }
@@ -1218,11 +1217,11 @@ static unsigned getStateVariableSizeInBytes(const Type *Ty,
 static unsigned getInputSizeInBytes(const DataLayout &DL,
                                     const unsigned ArgCategory, Type *Ty) {
   switch (ArgCategory) {
-  case RegCategory::GENERAL:
+  case vc::RegCategory::General:
     return DL.getTypeSizeInBits(Ty) / genx::ByteBits;
-  case RegCategory::SAMPLER:
+  case vc::RegCategory::Sampler:
     return getStateVariableSizeInBytes(Ty, genx::SamplerElementBytes);
-  case RegCategory::SURFACE:
+  case vc::RegCategory::Surface:
     return getStateVariableSizeInBytes(Ty, genx::SurfaceElementBytes);
   default:
     break;
@@ -1559,7 +1558,7 @@ VISA_PredVar *GenXKernelBuilder::createPredicateDeclFromSelect(
   // all/any/not and the predicate register number.
   Register *Reg = getRegForValueAndSaveAlias(KernFunc, Mask);
   IGC_ASSERT(Reg);
-  IGC_ASSERT(Reg->Category == RegCategory::PREDICATE);
+  IGC_ASSERT(Reg->Category == vc::RegCategory::Predicate);
   if (NoMask)
     *MaskCtrl |= vISA_EMASK_M1_NM;
   return getPredicateVar(Reg);
@@ -1589,7 +1588,7 @@ GenXKernelBuilder::createPredFromWrRegion(const DstOpndDesc &DstDesc) {
       // not has a register allocated, it must be EM.
       Register *Reg = getRegForValueOrNullAndSaveAlias(KernFunc, Mask);
       if (Reg) {
-        IGC_ASSERT(Reg->Category == RegCategory::PREDICATE);
+        IGC_ASSERT(Reg->Category == vc::RegCategory::Predicate);
         result = createPredOperand(getPredicateVar(Reg), State, Control);
       }
     }
@@ -1626,7 +1625,7 @@ VISA_PredOpnd *GenXKernelBuilder::createPred(Instruction *Inst, BaleInfo BI,
     Register *Reg = getRegForValueOrNullAndSaveAlias(KernFunc, Mask);
     VISA_PredVar *PredVar = nullptr;
     if (Reg) {
-      IGC_ASSERT(Reg->Category == RegCategory::PREDICATE);
+      IGC_ASSERT(Reg->Category == vc::RegCategory::Predicate);
       PredVar = getPredicateVar(Reg);
     } else
       return nullptr;
@@ -1641,11 +1640,11 @@ VISA_VectorOpnd *GenXKernelBuilder::createState(Register *Reg, unsigned Offset,
   VISA_VectorOpnd *Op = nullptr;
 
   switch (Reg->Category) {
-  case RegCategory::SURFACE:
+  case vc::RegCategory::Surface:
     CISA_CALL(Kernel->CreateVISAStateOperand(Op, Reg->GetVar<VISA_SurfaceVar>(Kernel),
                                              Size, Offset, IsDst));
     break;
-  case RegCategory::SAMPLER:
+  case vc::RegCategory::Sampler:
     CISA_CALL(Kernel->CreateVISAStateOperand(Op, Reg->GetVar<VISA_SamplerVar>(Kernel),
                                              Size, Offset, IsDst));
     break;
@@ -1736,15 +1735,15 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
     if (SignedRes)
       *SignedRes = RegAlloc->getSigned(Reg);
     // Write the vISA general operand:
-    if (Reg->Category == RegCategory::GENERAL) {
+    if (Reg->Category == vc::RegCategory::General) {
       Region DestR(Dest);
       if (Offset)
         DestR.Offset = *Offset;
       return createRegionOperand(&DestR, Reg->GetVar<VISA_GenVar>(Kernel),
                                  DONTCARESIGNED, Mod, true /*isDest*/);
     } else {
-      IGC_ASSERT(Reg->Category == RegCategory::SURFACE ||
-             Reg->Category == RegCategory::SAMPLER);
+      IGC_ASSERT(Reg->Category == vc::RegCategory::Surface ||
+                 Reg->Category == vc::RegCategory::Sampler);
 
       return createState(Reg, 0 /*Offset*/, true /*IsDst*/);
     }
@@ -1776,12 +1775,12 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
   if (SignedRes)
     *SignedRes = RegAlloc->getSigned(Reg);
 
-  if (Reg && (Reg->Category == RegCategory::SAMPLER ||
-              Reg->Category == RegCategory::SURFACE)) {
+  if (Reg && (Reg->Category == vc::RegCategory::Sampler ||
+              Reg->Category == vc::RegCategory::Surface)) {
     IGC_ASSERT(R.ElementBytes);
     return createState(Reg, R.Offset / R.ElementBytes, true /*IsDest*/);
   } else {
-    IGC_ASSERT(!Reg || Reg->Category == RegCategory::GENERAL);
+    IGC_ASSERT(!Reg || Reg->Category == vc::RegCategory::General);
     auto Decl = Reg ? Reg->GetVar<VISA_GenVar>(Kernel) : nullptr;
     return createRegionOperand(&R, Decl, Signed, Mod, true /*IsDest*/);
   }
@@ -1837,7 +1836,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createCisaDstOperand(VISA_GenVar *Decl,
 VISA_VectorOpnd *GenXKernelBuilder::createAddressOperand(Value *V, bool IsDst) {
   VISA_VectorOpnd *ResultOperand = nullptr;
   Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, DONTCARESIGNED);
-  IGC_ASSERT(Reg->Category == RegCategory::ADDRESS);
+  IGC_ASSERT(Reg->Category == vc::RegCategory::Address);
   unsigned Width = 1;
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(V->getType()))
     Width = VT->getNumElements();
@@ -2005,14 +2004,14 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
     Instruction *OrigInst = getOriginalInstructionForSource(CI, BI);
     Register *SrcReg =
         getRegForValueAndSaveAlias(KernFunc, OrigInst->getOperand(0));
-    const bool SrcCategory = (SrcReg->Category != RegCategory::GENERAL);
-    const bool DstCategory = (DstReg->Category != RegCategory::GENERAL);
+    const bool SrcCategory = (SrcReg->Category != vc::RegCategory::General);
+    const bool DstCategory = (DstReg->Category != vc::RegCategory::General);
     const bool Categories = (SrcCategory || DstCategory);
     IGC_ASSERT_MESSAGE(Categories, "expected a category conversion");
     (void)Categories;
   }
 
-  if (DstReg->Category != RegCategory::ADDRESS) {
+  if (DstReg->Category != vc::RegCategory::Address) {
     // State copy.
     int ExecSize = 1;
     if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType())) {
@@ -2038,7 +2037,7 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
 
   auto ISAExecSize = static_cast<VISA_Exec_Size>(genx::log2(ExecSize));
   Register *SrcReg = getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0));
-  IGC_ASSERT(SrcReg->Category == RegCategory::ADDRESS);
+  IGC_ASSERT(SrcReg->Category == vc::RegCategory::Address);
 
   (void)SrcReg;
   // This is an address->address copy, inserted due to coalescing failure of
@@ -2110,9 +2109,9 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
   if (!Baled) {
     Register *Reg =
         getRegForValueAndSaveAlias(KernFunc, V, Signed, nullptr, IsBF);
-    IGC_ASSERT(Reg->Category == RegCategory::GENERAL ||
-           Reg->Category == RegCategory::SURFACE ||
-           Reg->Category == RegCategory::SAMPLER);
+    IGC_ASSERT(Reg->Category == vc::RegCategory::General ||
+               Reg->Category == vc::RegCategory::Surface ||
+               Reg->Category == vc::RegCategory::Sampler);
     // Write the vISA general operand.
     Region R(V);
     if (Offset)
@@ -2121,7 +2120,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
       R.VStride = R.Stride = 0;
     if (SignedRes)
       *SignedRes = RegAlloc->getSigned(Reg);
-    if (Reg->Category == RegCategory::GENERAL) {
+    if (Reg->Category == vc::RegCategory::General) {
       return createRegionOperand(&R, Reg->GetVar<VISA_GenVar>(Kernel), Signed, Mod,
                                  false /*IsDst*/, MaxWidth);
     } else {
@@ -2158,7 +2157,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
       R.VStride = 0;
     if (R.Width == 1)
       R.Stride = 0;
-    if (!Reg || Reg->Category == RegCategory::GENERAL || R.Indirect) {
+    if (!Reg || Reg->Category == vc::RegCategory::General || R.Indirect) {
       if (SignedRes)
         *SignedRes = Signed;
       return createRegionOperand(&R, Reg ? Reg->GetVar<VISA_GenVar>(Kernel) : nullptr,
@@ -2174,12 +2173,10 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     Mod |= MODIFIER_ABS;
     break;
   case BaleInfo::NEGMOD:
-#if LLVM_VERSION_MAJOR > 8
     if (Inst->getOpcode() == Instruction::FNeg) {
       Mod ^= MODIFIER_NEG;
       break;
     }
-#endif
     if (!(Mod & MODIFIER_ABS))
       Mod ^= MODIFIER_NEG;
     Idx = 1; // the input we want in "0-x" is x, not 0.
@@ -2212,7 +2209,7 @@ std::string GenXKernelBuilder::createInlineAsmOperand(
     IGC_ASSERT_EXIT_MESSAGE(0, "constraint unhandled");
   case ConstraintType::Constraint_cr: {
     IGC_ASSERT(Reg);
-    IGC_ASSERT(Reg->Category == RegCategory::PREDICATE);
+    IGC_ASSERT(Reg->Category == vc::RegCategory::Predicate);
     VISA_PredVar *PredVar = getPredicateVar(Reg);
     VISA_PredOpnd *PredOperand =
         createPredOperand(PredVar, PredState_NO_INVERSE, PRED_CTRL_NON);
@@ -2272,7 +2269,7 @@ std::string GenXKernelBuilder::createInlineAsmDestinationOperand(
     Reg = getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed, OverrideType);
   }
 
-  IGC_ASSERT(!Reg || Reg->Category == RegCategory::GENERAL);
+  IGC_ASSERT(!Reg || Reg->Category == vc::RegCategory::General);
 
   // Write the vISA general operand with region:
   Region R = makeRegionFromBaleInfo(DstDesc.WrRegion, DstDesc.WrRegionBI);
@@ -2334,7 +2331,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
   if (R.Width == 1)
     R.Stride = 0;
 
-  IGC_ASSERT(Reg->Category == RegCategory::GENERAL || R.Indirect);
+  IGC_ASSERT(Reg->Category == vc::RegCategory::General || R.Indirect);
 
   return createInlineAsmOperand(Reg, &R, false /*IsDst*/, Signed, Ty, Mod);
 }
@@ -2345,7 +2342,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
 VISA_PredVar *GenXKernelBuilder::getPredicateVar(Value *V) {
   auto Reg = getRegForValueAndSaveAlias(KernFunc, V, DONTCARESIGNED);
   IGC_ASSERT(Reg);
-  IGC_ASSERT(Reg->Category == RegCategory::PREDICATE);
+  IGC_ASSERT(Reg->Category == vc::RegCategory::Predicate);
   return getPredicateVar(Reg);
 }
 
@@ -2355,7 +2352,7 @@ VISA_PredVar *GenXKernelBuilder::getPredicateVar(Value *V) {
 VISA_PredVar *GenXKernelBuilder::getZeroedPredicateVar(Value *V) {
   auto Reg = getRegForValueAndSaveAlias(KernFunc, V, DONTCARESIGNED);
   IGC_ASSERT(Reg);
-  IGC_ASSERT(Reg->Category == RegCategory::PREDICATE);
+  IGC_ASSERT(Reg->Category == vc::RegCategory::Predicate);
   auto PredVar = getPredicateVar(Reg);
   unsigned Size = V->getType()->getPrimitiveSizeInBits();
   auto C = Constant::getNullValue(V->getType());
@@ -2481,7 +2478,7 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
     // Bitcast from predicate to scalar int
     Register *PredReg =
         getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0), DONTCARESIGNED);
-    IGC_ASSERT(PredReg->Category == RegCategory::PREDICATE);
+    IGC_ASSERT(PredReg->Category == vc::RegCategory::Predicate);
     CISA_CALL(Kernel->AppendVISAPredicateMove(
         createDestination(CI, UNSIGNED, 0, DstDesc),
         PredReg->GetVar<VISA_PredVar>(Kernel)));
@@ -2634,8 +2631,8 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
     } else {
       DstReg = getRegForValueAndSaveAlias(KernFunc, Inst, DONTCARESIGNED);
     }
-    if (DstReg && (DstReg->Category == RegCategory::SURFACE ||
-                   DstReg->Category == RegCategory::SAMPLER)) {
+    if (DstReg && (DstReg->Category == vc::RegCategory::Surface ||
+                   DstReg->Category == vc::RegCategory::Sampler)) {
       Opcode = ISA_MOVS;
     }
   }
@@ -2753,10 +2750,8 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     IGC_ASSERT_MESSAGE(vc::isLegalPrintFormatIndexGEP(*GEPI),
                        "only genx.print.format.index src GEP can still be "
                        "present at this stage");
-#if (LLVM_VERSION_MAJOR > 8)
   } else if (UnaryOperator *UO = dyn_cast<UnaryOperator>(Inst)) {
     buildUnaryOperator(UO, BI, Mod, DstDesc);
-#endif
   } else if (auto *CI = dyn_cast<CallInst>(Inst)) {
     if (CI->isInlineAsm())
       buildInlineAsm(CI);
@@ -2926,7 +2921,7 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
     State ^= StateInvert;
     PredReg = getRegForValueOrNullAndSaveAlias(KernFunc, Pred);
     IGC_ASSERT(PredReg);
-    IGC_ASSERT(PredReg->Category == RegCategory::PREDICATE);
+    IGC_ASSERT(PredReg->Category == vc::RegCategory::Predicate);
   }
 
   uint8_t execSize = genx::log2(
@@ -3178,12 +3173,12 @@ void GenXKernelBuilder::buildVariables() {
   for (auto &It : RegAlloc->getRegStorage()) {
     Register *Reg = &(It);
     switch (Reg->Category) {
-    case RegCategory::GENERAL:
+    case vc::RegCategory::General:
       if (Reg->Num >= visa::VISA_NUM_RESERVED_REGS)
         AddGenVar(*Reg);
       break;
 
-    case RegCategory::ADDRESS: {
+    case vc::RegCategory::Address: {
       VISA_AddrVar *Decl = nullptr;
       unsigned NumElements = 1;
       if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Reg->Ty))
@@ -3198,7 +3193,7 @@ void GenXKernelBuilder::buildVariables() {
       }
     } break;
 
-    case RegCategory::PREDICATE: {
+    case vc::RegCategory::Predicate: {
       VISA_PredVar *Decl = nullptr;
       unsigned NumElements = 1;
       if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Reg->Ty))
@@ -3213,7 +3208,7 @@ void GenXKernelBuilder::buildVariables() {
       }
     } break;
 
-    case RegCategory::SAMPLER: {
+    case vc::RegCategory::Sampler: {
       unsigned NumElements = 1;
       if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Reg->Ty))
         NumElements = VT->getNumElements();
@@ -3223,7 +3218,7 @@ void GenXKernelBuilder::buildVariables() {
       Reg->SetVar(Kernel, Decl);
     } break;
 
-    case RegCategory::SURFACE: {
+    case vc::RegCategory::Surface: {
       VISA_SurfaceVar *Decl = nullptr;
       if (Reg->Num < visa::VISA_NUM_RESERVED_SURFACES) {
         Kernel->GetPredefinedSurface(Decl, (PreDefined_Surface)Reg->Num);
@@ -3369,8 +3364,8 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       Kernel->GetPredefinedSurface(SurfDecl, visa::getReservedSurface(Index));
     } else {
       Register *Reg = getRegForValueAndSaveAlias(KernFunc, Arg);
-      IGC_ASSERT_MESSAGE(Reg->Category == RegCategory::SURFACE,
-        "Expected surface register");
+      IGC_ASSERT_MESSAGE(Reg->Category == vc::RegCategory::Surface,
+                         "Expected surface register");
       SurfDecl = Reg->GetVar<VISA_SurfaceVar>(Kernel);
     }
     VISA_StateOpndHandle *ResultOperand = nullptr;
@@ -3391,8 +3386,8 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     LLVM_DEBUG(dbgs() << "CreateSamplerOperand\n");
     Register *Reg =
         getRegForValueAndSaveAlias(KernFunc, CI->getArgOperand(AI.getArgIdx()));
-    IGC_ASSERT_MESSAGE(Reg->Category == RegCategory::SAMPLER,
-      "Expected sampler register");
+    IGC_ASSERT_MESSAGE(Reg->Category == vc::RegCategory::Sampler,
+                       "Expected sampler register");
     VISA_StateOpndHandle *ResultOperand = nullptr;
     CISA_CALL(Kernel->CreateVISAStateOperandHandle(
         ResultOperand, Reg->GetVar<VISA_SamplerVar>(Kernel)));
@@ -4060,7 +4055,6 @@ void GenXKernelBuilder::buildJoin(CallInst *Join, BranchInst *Branch) {
   // looking for gotos targeting the basic block's label.
 }
 
-#if (LLVM_VERSION_MAJOR > 8)
 /***********************************************************************
  * buildUnaryOperator : build code for an unary operator
  *
@@ -4106,7 +4100,6 @@ void GenXKernelBuilder::buildUnaryOperator(UnaryOperator *UO, BaleInfo BI,
   }
   report_fatal_error("buildUnaryOperator: unimplemented opcode");
 }
-#endif
 
 /***********************************************************************
  * getCommonSignedness : predict the most suitable sign of a instruction based
@@ -4688,17 +4681,17 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
   VISA_VectorOpnd *Dst = createAddressOperand(CI, true);
   VISA_VectorOpnd *Src1 = nullptr;
 
-  if (BaseReg->Category == RegCategory::SURFACE ||
-      BaseReg->Category == RegCategory::SAMPLER) {
+  if (BaseReg->Category == vc::RegCategory::Surface ||
+      BaseReg->Category == vc::RegCategory::Sampler) {
     uint8_t offset = Offset >> 2;
     switch (BaseReg->Category) {
-    case RegCategory::SURFACE: {
+    case vc::RegCategory::Surface: {
       VISA_SurfaceVar *Decl = BaseReg->GetVar<VISA_SurfaceVar>(Kernel);
       unsigned int offsetB = offset * 2; // 2 is bytes size of UW
       CISA_CALL(Kernel->CreateVISAAddressOfOperand(Src1, Decl, offsetB));
       break;
     }
-    case RegCategory::SAMPLER: {
+    case vc::RegCategory::Sampler: {
       VISA_SurfaceVar *Decl = BaseReg->GetVar<VISA_SurfaceVar>(Kernel);
       unsigned int offsetB = offset * 2; // 2 is bytes size of UW
       CISA_CALL(Kernel->CreateVISAAddressOfOperand(Src1, Decl, offsetB));
@@ -4718,7 +4711,7 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
     auto TypeSize = BaseReg->Ty->getScalarType()->getPrimitiveSizeInBits() >> 3;
     unsigned int offset = colOffset * TypeSize + rowOffset * GrfByteSize;
 
-    if (BaseReg->Category == RegCategory::ADDRESS) {
+    if (BaseReg->Category == vc::RegCategory::Address) {
       VISA_AddrVar *Decl = BaseReg->GetVar<VISA_AddrVar>(Kernel);
       unsigned Width = 1;
       CISA_CALL(Kernel->CreateVISAAddressSrcOperand(Src1, Decl, offset, Width));
@@ -4916,7 +4909,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createIndirectOperand(Region *R,
   // Write the vISA indirect operand.
   Register *IdxReg =
       getRegForValueAndSaveAlias(KernFunc, Indirect, DONTCARESIGNED);
-  IGC_ASSERT(IdxReg->Category == RegCategory::ADDRESS);
+  IGC_ASSERT(IdxReg->Category == vc::RegCategory::Address);
 
   bool NotCrossGrf = !(R->Offset & (GrfByteSize - 1));
   if (!NotCrossGrf) {
@@ -5076,15 +5069,15 @@ void GenXKernelBuilder::addLifetimeStartInst(Instruction *Inst) {
     return; // no register allocated such as being indirected.
 
   switch (Reg->Category) {
-  case RegCategory::GENERAL:
+  case vc::RegCategory::General:
     opnd = createCisaDstOperand(Reg->GetVar<VISA_GenVar>(Kernel), 1, 0, 0);
     break;
-  case RegCategory::ADDRESS:
+  case vc::RegCategory::Address:
     CISA_CALL(Kernel->CreateVISAAddressDstOperand(
         opnd, Reg->GetVar<VISA_AddrVar>(Kernel), 0));
     break;
 #if 0  // Not currently used.
-    case RegCategory::PREDICATE:
+    case vc::RegCategory::Predicate:
       break;
 #endif // 0
   default:
@@ -5362,10 +5355,6 @@ void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
 void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
   LLVM_DEBUG(dbgs() << CI << "\n");
   Function *Callee = CI->getCalledFunction();
-  IGC_ASSERT_MESSAGE(
-      !Callee || !Callee->isDeclaration(),
-      "Currently VC backend does not support modules with external functions");
-
   if (!Callee || genx::requiresStackCall(Callee)) {
     if (UseNewStackBuilder)
       buildStackCallLight(CI, DstDesc);
@@ -5387,7 +5376,7 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
     auto Arg = &*ai;
     if (!Arg->getType()->getScalarType()->isIntegerTy(1))
       continue;
-    if (Liveness->getLiveRange(Arg)->getCategory() == RegCategory::EM) {
+    if (Liveness->getLiveRange(Arg)->getCategory() == vc::RegCategory::EM) {
       EMOperandNum = Arg->getArgNo();
       break;
     }
@@ -5590,7 +5579,7 @@ VISA_RawOpnd *GenXKernelBuilder::createRawSourceOperand(const Instruction *Inst,
     LLVM_DEBUG(V->dump());
     LLVM_DEBUG(dbgs() << "\n");
     Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, Signed);
-    IGC_ASSERT(Reg->Category == RegCategory::GENERAL);
+    IGC_ASSERT(Reg->Category == vc::RegCategory::General);
     LLVM_DEBUG(dbgs() << "CreateVISARawOperand: "; Reg->print(dbgs()); dbgs() << "\n");
     CISA_CALL(Kernel->CreateVISARawOperand(
         ResultOperand, Reg->GetVar<VISA_GenVar>(Kernel), ByteOffset));
@@ -5636,7 +5625,7 @@ GenXKernelBuilder::createRawDestination(Value *V, const DstOpndDesc &DstDesc,
     // result is marked as RAW_NULLALLOWED in GenXIntrinsics.
     CISA_CALL(Kernel->CreateVISANullRawOperand(ResultOperand, true));
   } else {
-    IGC_ASSERT(Reg->Category == RegCategory::GENERAL);
+    IGC_ASSERT(Reg->Category == vc::RegCategory::General);
     LLVM_DEBUG(dbgs() << "CreateVISARawOperand: "; Reg->print(dbgs()); dbgs() << "\n");
     CISA_CALL(Kernel->CreateVISARawOperand(
         ResultOperand, Reg->GetVar<VISA_GenVar>(Kernel), ByteOffset));
@@ -6033,7 +6022,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
     // any though
     for (auto &FArg : Func->args()) {
       if (Liveness->getLiveRange(&FArg) &&
-          Liveness->getLiveRange(&FArg)->getCategory() == RegCategory::EM)
+          Liveness->getLiveRange(&FArg)->getCategory() == vc::RegCategory::EM)
         continue;
 
       RowOff = 0, ColOff = 0;
@@ -6045,7 +6034,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
         NoStackSize++;
       }
       if (Liveness->getLiveRange(&FArg)->getCategory() ==
-          RegCategory::PREDICATE) {
+          vc::RegCategory::Predicate) {
         VISA_VectorOpnd *argSrc = nullptr;
         Kernel->CreateVISASrcOperand(
             argSrc,
@@ -6168,9 +6157,9 @@ void GenXKernelBuilder::endFunction(Function *Func, ReturnInst *RI) {
         !Func->getReturnType()->isAggregateType() &&
         Liveness->getLiveRangeOrNull(RI->getReturnValue()) &&
         (Liveness->getLiveRange(RI->getReturnValue())->getCategory() !=
-             RegCategory::EM &&
+             vc::RegCategory::EM &&
          Liveness->getLiveRange(RI->getReturnValue())->getCategory() !=
-             RegCategory::PREDICATE)) {
+             vc::RegCategory::Predicate)) {
       GenericCisaVariable *RetVar = &CisaVars[Kernel].at("retv");
       IGC_ASSERT(!Func->getReturnType()->isAggregateType());
 
@@ -6281,7 +6270,7 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
   // Check whether the called function has a predicate arg that is EM.
   auto *EMArg = std::find_if(CI->arg_begin(), CI->arg_end(), [this](Use &Arg) {
     return Arg->getType()->getScalarType()->isIntegerTy(1) &&
-           Liveness->getLiveRange(Arg)->getCategory() == RegCategory::EM;
+           Liveness->getLiveRange(Arg)->getCategory() == vc::RegCategory::EM;
   });
   VISA_PredOpnd *Pred = nullptr;
   VISA_Exec_Size Esz = EXEC_SIZE_16;
@@ -6328,7 +6317,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
     ++EMIdx;
     if (!Arg->getType()->getScalarType()->isIntegerTy(1))
       continue;
-    if (Liveness->getLiveRange(Arg)->getCategory() == RegCategory::EM) {
+    if (Liveness->getLiveRange(Arg)->getCategory() == vc::RegCategory::EM) {
       EMOperandNum = EMIdx;
       break;
     }
@@ -6351,7 +6340,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
   // pack arguments
   for (auto &CallArg : CI->arg_operands()) {
     auto *CallArgLR = Liveness->getLiveRangeOrNull(CallArg.get());
-    if (CallArgLR && CallArgLR->getCategory() == RegCategory::EM)
+    if (CallArgLR && CallArgLR->getCategory() == vc::RegCategory::EM)
       continue;
 
     IGC_ASSERT(!CallArg->getType()->isAggregateType());
@@ -6374,7 +6363,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
         "cannot pass arg via stack and %arg as well");
 
       SrcRowOff = 0, SrcColOff = 0;
-      if (!IsUndef && CallArgLR->getCategory() == RegCategory::PREDICATE) {
+      if (!IsUndef && CallArgLR->getCategory() == vc::RegCategory::Predicate) {
         VISA_VectorOpnd *PredDst = nullptr;
         Kernel->CreateVISADstOperand(
             PredDst,
@@ -6471,7 +6460,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
                        : 0));
   // unpack retval
   if (ProcessRet && Liveness->getLiveRange(CI) &&
-      Liveness->getLiveRange(CI)->getCategory() != RegCategory::EM) {
+      Liveness->getLiveRange(CI)->getCategory() != vc::RegCategory::EM) {
     unsigned RowOff = 0, ColOff = 0, SrcRowOff = 0, SrcColOff = 0;
     if (getValueSize(FuncTy->getReturnType()) <= RetVar->getByteSize()) {
       emitVectorCopy(CI, RetVar->getAlias(CI, Kernel), RowOff, ColOff,

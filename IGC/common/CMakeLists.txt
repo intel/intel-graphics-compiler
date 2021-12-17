@@ -27,6 +27,7 @@ set(IGC_BUILD__SRC__common
 
     "${CMAKE_CURRENT_SOURCE_DIR}/SystemThread.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MDFrameWork.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ModuleSplitter.cpp"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntrinsicAnnotator.cpp"
@@ -60,6 +61,7 @@ set(IGC_BUILD__HDR__common
     "${CMAKE_CURRENT_SOURCE_DIR}/LLVMWarningsPush.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LLVMUtils.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/MemStats.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ModuleSplitter.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/shaderOverride.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Stats.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SysUtils.hpp"

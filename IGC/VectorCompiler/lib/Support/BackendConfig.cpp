@@ -26,7 +26,6 @@ static cl::opt<bool> GenerateDebugInfoOpt(
     "vc-emit-debug-info", cl::init(true), cl::Hidden,
     cl::desc("Generate DWARF debug info for each compiled kernel"));
 
-// TODO: replace this to true once transition to always debuggable is done
 static cl::opt<bool> EmitDebuggableKernelsOpt(
     "vc-emit-debuggable-kernels", cl::init(false), cl::Hidden,
     cl::desc("Emit kernels suitable for interaction with the debugger"));
@@ -88,10 +87,6 @@ static cl::opt<bool> DisableNonOverlappingRegionOptOpt(
     "vc-disable-non-overlapping-region-opt", cl::init(false), cl::Hidden,
     cl::desc("Disable non-overlapping region optimization"));
 
-static cl::opt<bool> PassDebugToFinalizerOpt(
-    "vc-pass-debug-to-finalizer", cl::init(false), cl::Hidden,
-    cl::desc("Pass -debug option to finalizer"));
-
 static cl::opt<bool>
     UseNewStackBuilderOpt("vc-use-new-stack-builder",
                           cl::desc("Use prolog/epilog insertion pass"),
@@ -143,7 +138,6 @@ char GenXBackendConfig::ID = 0;
 
 GenXBackendOptions::GenXBackendOptions()
     : DebuggabilityEmitDebuggableKernels(EmitDebuggableKernelsOpt),
-      DebuggabilityExtendedDebug(PassDebugToFinalizerOpt),
       DebuggabilityEmitDWARF(GenerateDebugInfoOpt),
       DumpRegAlloc(DumpRegAllocOpt), StackSurfaceMaxSize(StackMemSizeOpt),
       EnableAsmDumps(EnableAsmDumpsOpt),

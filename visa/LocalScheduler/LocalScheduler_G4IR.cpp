@@ -22,6 +22,12 @@ using namespace vISA;
 /* Entry to the local scheduling. */
 void LocalScheduler::localScheduling()
 {
+    // This is controlled by options for debugging
+    if (!fg.getKernel()->isLocalSheduleable())
+    {
+        return;
+    }
+
     DEBUG_VERBOSE("[Scheduling]: Starting...");
     BB_LIST_ITER ib(fg.begin()), bend(fg.end());
     MUST_BE_TRUE(ib != bend, ERROR_SCHEDULER);

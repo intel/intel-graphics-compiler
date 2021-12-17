@@ -146,7 +146,7 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
                 // Alos set the padding size to 0 that we always put the padding into bss section
                 uint32_t normal_alignment = bssSize ? 0 : alignment;
                 normal_id = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
-                    dataSize, 0, normal_alignment);
+                    dataSize, 0, normal_alignment, /*rodata*/true);
             }
             if (bssSize) {
                 bss_id = mBuilder.addSectionBss("const", bssSize, alignment);
@@ -160,7 +160,7 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
             // before runtime can support bss section, we create all 0s in .const.data section by adding
             // bssSize of padding
             mGlobalConstSectID = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
-                dataSize, bssSize, alignment);
+                dataSize, bssSize, alignment, /*rodata*/true);
         }
     }
 
@@ -172,7 +172,7 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
         uint32_t paddingSize = caString->AllocSize - dataSize;
         uint32_t alignment = caString->Alignment;
         mConstStringSectID = mBuilder.addSectionData("const.string", (const uint8_t*)caString->InlineData.data(),
-            dataSize, paddingSize, alignment);
+            dataSize, paddingSize, alignment, /*rodata*/true);
     }
 }
 
@@ -198,7 +198,7 @@ void ZEBinaryBuilder::addGlobals(const IGC::SOpenCLProgramInfo& annotations)
         if (dataSize) {
             uint32_t normal_alignment = bssSize ? 0 : alignment;
             normal_id = mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
-                dataSize, 0, normal_alignment);
+                dataSize, 0, normal_alignment, /*rodata*/false);
         }
         if (bssSize) {
             bss_id = mBuilder.addSectionBss("global", bssSize, alignment);
@@ -211,7 +211,7 @@ void ZEBinaryBuilder::addGlobals(const IGC::SOpenCLProgramInfo& annotations)
         // before runtime can support bss section, we create all 0s in .global.data section by adding
         // bssSize of padding
         mGlobalSectID = mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
-            dataSize, bssSize, alignment);
+            dataSize, bssSize, alignment, /*rodata*/false);
     }
 }
 

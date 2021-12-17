@@ -70,9 +70,9 @@ struct CompileOptions {
   // -ze-no-vector-decomposition
   bool NoVecDecomp = false;
   // -g
-  bool EmitExtendedDebug = false;
+  bool ExtendedDebuggingSupport = false;
   // emit kernels that can interact with debugger
-  bool EmitDebuggableKernels = false; // TODO: this should be true
+  bool EmitDebuggableKernels = false;
   // -fno-jump-tables
   bool NoJumpTables = false;
   // -ftranslate-legacy-memory-intrinsics

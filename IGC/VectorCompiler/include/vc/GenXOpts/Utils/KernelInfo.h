@@ -10,16 +10,20 @@ SPDX-License-Identifier: MIT
 #define VC_GENXOPTS_UTILS_KERNELINFO_H
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
-#include "vc/GenXOpts/Utils/RegCategory.h"
+#include "vc/Utils/GenX/RegCategory.h"
+#include "vc/Utils/GenX/Intrinsics.h"
+
+#include "Probe/Assertion.h"
+#include "llvmWrapper/ADT/StringRef.h"
+
+#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
+#include "llvm/GenXIntrinsics/GenXMetadata.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
-#include "llvm/GenXIntrinsics/GenXMetadata.h"
-#include "Probe/Assertion.h"
 
 #include <unordered_map>
-
-#include "llvmWrapper/ADT/StringRef.h"
 
 namespace llvm {
 namespace genx {
@@ -73,13 +77,18 @@ inline bool requiresStackCall(const Function &F) {
 // Utility function to tell if a Function must be called indirectly.
 inline bool isIndirect(const Function *F) {
   IGC_ASSERT(F);
-  // FIXME: The condition of which function is considered to be indirectly
-  // called will be changed soon.
-  bool IsIndirect = F->hasAddressTaken();
+  if (GenXIntrinsic::isAnyNonTrivialIntrinsic(F))
+    return false;
+  if (genx::isKernel(F))
+    return false;
+  if (genx::isEmulationFunction(*F))
+    return false;
+  if (!F->hasAddressTaken() && F->hasLocalLinkage())
+    return false;
   IGC_ASSERT_MESSAGE(
-      !IsIndirect || genx::requiresStackCall(F),
+      genx::requiresStackCall(F),
       "The indirectly-called function is expected to be a stack call");
-  return IsIndirect;
+  return true;
 }
 
 inline bool isIndirect(const Function &F) { return isIndirect(&F); }
@@ -224,11 +233,11 @@ public:
   unsigned getArgCategory(unsigned Idx) const {
     switch (getArgKind(Idx) & 7) {
     case AK_SAMPLER:
-      return RegCategory::SAMPLER;
+      return vc::RegCategory::Sampler;
     case AK_SURFACE:
-      return RegCategory::SURFACE;
+      return vc::RegCategory::Surface;
     default:
-      return RegCategory::GENERAL;
+      return vc::RegCategory::General;
     }
   }
 

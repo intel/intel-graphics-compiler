@@ -4014,9 +4014,8 @@ void NanHandling::loopNanCases(Function& F)
     {
         FastMathFlags FMF;
         FMF.clear();
-        for (LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I)
+        for (Loop* loop : *LI)
         {
-            Loop* loop = *I;
             BranchInst* br = cast<BranchInst>(loop->getLoopLatch()->getTerminator());
             BasicBlock* header = loop->getHeader();
             if (br && br->isConditional() && header)
@@ -4097,11 +4096,8 @@ void NanHandling::visitBranchInst(llvm::BranchInst& I)
         return;
 
     // if this branch is part of a loop, it is taken care of already in loopNanCases
-    for (auto iter = visitedInst.begin(); iter != visitedInst.end(); iter++)
-    {
-        if (&I == *iter)
-            return;
-    }
+    if (std::find(visitedInst.begin(), visitedInst.end(), &I) != visitedInst.end())
+        return;
 
     FCmpInst* brCmpInst = dyn_cast<FCmpInst>(I.getCondition());
     FCmpInst* src0 = nullptr;
@@ -4491,7 +4487,7 @@ IGC_INITIALIZE_PASS_BEGIN(GenStrengthReduction, "GenStrengthReduction",
 
     /*========================== FlattenSmallSwitch ==============================
 
-    This class flatten small switch. For example,
+    This class flattens small switch. For example,
 
     before optimization:
         then153:
@@ -4554,10 +4550,6 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
     const unsigned maxSwitchCases = 3;  // only apply to switch with 3 cases or less
     const unsigned maxCaseInsts = 3;    // only apply optimization when each case has 3 instructions or less.
 
-    BasicBlock* Default = SI->getDefaultDest();
-    Value* Val = SI->getCondition();  // The value we are switching on...
-    IRBuilder<> builder(SI);
-
     if (SI->getNumCases() > maxSwitchCases || SI->getNumCases() == 0)
     {
         return false;
@@ -4611,7 +4603,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
     // We can speculatively execute a basic block if it
     // is small, unconditionally branches to Dest, and doesn't
     // have high latency or unsafe to speculate instructions.
-    auto canSpeculateBlock = [&](BasicBlock* BB)
+    auto canSpeculateBlock = [&](const BasicBlock* BB)
     {
         if (BB->size() > maxCaseInsts)
             return false;
@@ -4650,12 +4642,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
         {
             if (BB == SI->getDefaultDest())
                 continue;
-            bool successorFound = false;
-            for (auto Case : SI->cases()) {
-                if (Case.getCaseSuccessor() == BB)
-                    successorFound = true;
-            }
-            if (successorFound)
+            if (std::any_of(SI->case_begin(), SI->case_end(), [BB](auto &Case) { return Case.getCaseSuccessor() == BB; }))
                 continue;
             return false;
         }
@@ -4672,6 +4659,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
 
     // Is the default case of the switch the block
     // where all other cases meet?
+    BasicBlock* Default = SI->getDefaultDest();
     const bool DefaultMergeBlock = (Dest == Default);
 
     // If we merge to the default block, there is no block
@@ -4697,6 +4685,9 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
 
     if (PhiNodes.empty())
         return false;
+
+    Value* Val = SI->getCondition();  // The value we are switching on...
+    IRBuilder<> builder(SI);
 
     // Move all instructions except the last (i.e., the branch)
     // from BB to the InsertPoint.
@@ -4742,7 +4733,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
         }
 
         Phi->replaceAllUsesWith(vTemp);
-        Phi->removeFromParent();
+        Phi->eraseFromParent();
     }
 
     // connect the original block and the phi node block with a pass through branch
@@ -5250,7 +5241,7 @@ bool LogicalAndToBranch::isSafeToConvert(
     iset.insert(cond1);
     for (auto i = ++is0; i != is1; ++i)
     {
-        if ((*i).mayHaveSideEffects())
+        if (i->mayHaveSideEffects())
         {
             isSafe = false;
             break;
@@ -5452,14 +5443,11 @@ CleanPHINode::CleanPHINode() : FunctionPass(ID)
 
 bool CleanPHINode::runOnFunction(Function& F)
 {
-    auto isLCSSAPHINode = [](PHINode* PHI) { return (PHI->getNumIncomingValues() == 1); };
-
     bool changed = false;
-    for (auto BI = F.begin(), BE = F.end(); BI != BE; ++BI)
+    for (BasicBlock& BB : F)
     {
-        BasicBlock* BB = &*BI;
-        auto II = BB->begin();
-        auto IE = BB->end();
+        auto II = BB.begin();
+        auto IE = BB.end();
         while (II != IE)
         {
             auto currII = II;
@@ -5470,7 +5458,7 @@ bool CleanPHINode::runOnFunction(Function& F)
                 // proceed to the next BB
                 break;
             }
-            if (isLCSSAPHINode(PHI))
+            if (PHI->getNumIncomingValues() == 1)
             {
                 // Keep LCSSA PHI as uniform analysis needs it.
                 continue;
@@ -5480,7 +5468,7 @@ bool CleanPHINode::runOnFunction(Function& F)
             {
                 Value* sameVal = PHI->getIncomingValue(0);
                 bool isAllSame = true;
-                for (int i = 1, sz = (int)PHI->getNumIncomingValues(); i < sz; ++i)
+                for (unsigned i = 1, sz = PHI->getNumIncomingValues(); i < sz; ++i)
                 {
                     if (sameVal != PHI->getIncomingValue(i))
                     {

@@ -67,7 +67,6 @@ int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
   {
     llvm::Module *SpirM;
     std::string ErrMsg;
-#if LLVM_VERSION_MAJOR > 7
     SPIRV::TranslatorOpts Opts;
     Opts.enableAllExtensions();
     Opts.setFPContractMode(SPIRV::FPContractMode::On);
@@ -78,18 +77,6 @@ int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
 
     // This returns true on success...
     bool Status = llvm::readSpirv(Context, Opts, IS, SpirM, ErrMsg);
-#else
-    if (SpecConstSz != 0) {
-      std::ostringstream OSS;
-      OSS << "spirv_read_verify: Specialization constants are not supported in "
-             "this translator version (700) "
-          << ErrMsg;
-      ErrSaver(OSS.str().c_str(), ErrUserData);
-      return -1;
-    }
-    // This returns true on success...
-    bool Status = llvm::readSpirv(Context, IS, SpirM, ErrMsg);
-#endif
     if (!Status) {
       std::ostringstream OSS;
       OSS << "spirv_read_verify: readSpirv failed: " << ErrMsg;

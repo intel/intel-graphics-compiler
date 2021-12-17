@@ -43,8 +43,8 @@ SPDX-License-Identifier: MIT
 #include "GenXLiveness.h"
 #include "GenXModule.h"
 
-#include "vc/GenXOpts/Utils/RegCategory.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/RegCategory.h"
 
 #include "Probe/Assertion.h"
 #include "visaBuilder_interface.h"
@@ -84,7 +84,7 @@ namespace llvm {
     // Reg : a virtual register
     class Reg {
     public:
-      unsigned short Category = genx::RegCategory::NONE;
+      unsigned short Category = vc::RegCategory::None;
       // Register ID. First value of it depends on count of predefined
       // variablse in category. F.e. for general var it is 32.
       unsigned Num = 0;
@@ -115,7 +115,7 @@ namespace llvm {
           : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
             Ty(Ty), Alignment(LogAlignment), IsBF(ArgIsBF) {
         IGC_ASSERT(Category);
-        IGC_ASSERT(Category < genx::RegCategory::NUMREALCATEGORIES);
+        IGC_ASSERT(Category < vc::RegCategory::NumRealCategories);
         NameStr = (Twine(categoryToString(Category)) + Twine(Num)).str();
       }
 
@@ -169,7 +169,7 @@ namespace llvm {
     std::vector<Reg*> PredefinedRegs;
 
     // Array of current indexes being assigned to new register.
-    unsigned CurrentRegId[genx::RegCategory::NUMREALCATEGORIES];
+    unsigned CurrentRegId[vc::RegCategory::NumRealCategories];
 
     struct RegAllocStats {
       const LRCPtrVect *getLRs(const FunctionGroup *FG) const;

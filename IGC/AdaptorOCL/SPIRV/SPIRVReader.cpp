@@ -3054,6 +3054,33 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       return mapValue( BV,elm1 );
     }
     break;
+    case OpTypeJointMatrixINTEL:
+    {
+      IGC_ASSERT(CV.size() == 1);
+
+      SPIRVTypeJointMatrixINTEL *MatTy = static_cast<SPIRVTypeJointMatrixINTEL *>( BV->getType() );
+      Type *T = transType( BV->getType() );
+
+      Type *ElemTypeTy = Type::getInt32Ty( *Context );
+      Type *SizeTy     = Type::getInt32Ty( *Context );
+
+      std::vector<Type *> ArgTys = { CV[0]->getType(), ElemTypeTy, SizeTy };
+
+      Value *ElementTypeVal = ConstantInt::get( ElemTypeTy, MatTy->getElementTypeFlags() );
+      Value *RowsVal        = ConstantInt::get( SizeTy, MatTy->getRows() );
+
+      std::vector<Value *> Args = { CV[0], ElementTypeVal, RowsVal };
+
+      FunctionType *builtinTy = FunctionType::get( T, ArgTys, false );
+
+      auto BI = static_cast<SPIRVInstruction *>( BV );
+      std::string builtinName( getSPIRVBuiltinName( BV->getOpCode(), BI, ArgTys, "JointMatrixINTEL" ) );
+      Function *Func = cast<Function>( M->getOrInsertFunction( builtinName, builtinTy ) );
+
+      CallInst *CI = CallInst::Create( Func, Args, "matrix", BB );
+      return mapValue( BV, CI );
+    }
+    break;
     default:
       llvm_unreachable( "not implemented" );
       return nullptr;
@@ -3516,10 +3543,32 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpVectorExtractDynamic: {
     auto CE = static_cast<SPIRVVectorExtractDynamic *>(BV);
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-    return mapValue(BV, ExtractElementInst::Create(
-      transValue(CE->getVector(), F, BB),
-      transValue(CE->getIndex(), F, BB),
-      BV->getName(), BB));
+    if (CE->getVector()->getType()->getOpCode() == OpTypeJointMatrixINTEL)
+    {
+        Value *matrix = transValue(CE->getVector(), F, BB);
+        Value *index = transValue(CE->getIndex(), F, BB);
+
+        Type *returnType = transType(CE->getType());
+
+        std::vector<Type *> ArgTys = { matrix->getType(), index->getType() };
+        std::vector<Value *> Args = { matrix, index };
+
+        FunctionType *builtinTy = FunctionType::get(returnType, ArgTys, false);
+
+        auto BI = static_cast<SPIRVInstruction *>(BV);
+        std::string builtinName(getSPIRVBuiltinName(BV->getOpCode(), BI, ArgTys, "JointMatrixINTEL"));
+        Function *Func = cast<Function>(M->getOrInsertFunction( builtinName, builtinTy ));
+
+        CallInst *CI = CallInst::Create(Func, Args, "slice_element", BB);
+        return mapValue(BV, CI);
+    }
+    else
+    {
+        return mapValue(BV, ExtractElementInst::Create(
+            transValue(CE->getVector(), F, BB),
+            transValue(CE->getIndex(), F, BB),
+            BV->getName(), BB));
+    }
     }
     break;
 
@@ -3550,11 +3599,36 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpVectorInsertDynamic: {
     auto CI = static_cast<SPIRVVectorInsertDynamic *>(BV);
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-    return mapValue(BV, InsertElementInst::Create(
-      transValue(CI->getVector(), F, BB),
-      transValue(CI->getComponent(), F, BB),
-      transValue(CI->getIndex(), F, BB),
-      BV->getName(), BB));
+    if (CI->getVector()->getType()->getOpCode() == OpTypeJointMatrixINTEL)
+    {
+        Value *matrix = transValue(CI->getVector(), F, BB);
+        Value *component = transValue(CI->getComponent(), F, BB);
+        Value *index = transValue(CI->getIndex(), F, BB);
+
+        Type *returnType = transType(CI->getType());
+
+        std::vector<Type *> ArgTys = {
+            matrix->getType(), component->getType(), index->getType()
+        };
+        std::vector<Value *> Args = { matrix, component, index };
+
+        FunctionType *builtinTy = FunctionType::get(returnType, ArgTys, false);
+
+        auto BI = static_cast<SPIRVInstruction *>(BV);
+        std::string builtinName(getSPIRVBuiltinName(BV->getOpCode(), BI, ArgTys, "JointMatrixINTEL"));
+        Function *Func = cast<Function>(M->getOrInsertFunction( builtinName, builtinTy ));
+
+        CallInst *CI = CallInst::Create(Func, Args, "matrix", BB);
+        return mapValue(BV, CI);
+    }
+    else
+    {
+        return mapValue(BV, InsertElementInst::Create(
+          transValue(CI->getVector(), F, BB),
+          transValue(CI->getComponent(), F, BB),
+          transValue(CI->getIndex(), F, BB),
+          BV->getName(), BB));
+    }
     }
     break;
 

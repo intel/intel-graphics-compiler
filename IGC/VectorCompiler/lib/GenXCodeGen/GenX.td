@@ -119,6 +119,12 @@ def FeatureBfMixedModeWidth16 : SubtargetFeature<"feature_bf_mixed16",
                                                  "HasBfMixedModeWidth16",
                                                  "true",
                                                  "BF mixed mode operations extended width">;
+
+def FeatureHasLSC : SubtargetFeature<"feature_has_lsc",
+                                     "HasLSCMessages",
+                                     "true",
+                                     "Target supports LSC messages">;
+
 def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
                                     "true", "warn instead of error on callable violation">;
 
@@ -210,7 +216,8 @@ def : Proc<"ADLP",            [FeatureLongLongEmulation, FeatureIntDivRem32,
 def : Proc<"DG2",             [FeatureLongLongEmulation,
                                FeatureThreadPayloadInMemory,
                                FeatureHasPackedFloat,
-                               FeatureInstrBitRotate]>;
+                               FeatureInstrBitRotate,
+                               FeatureHasLSC]>;
 def : Proc<"PVC",             [FeatureLongLong, FeatureGRFByteSize64,
                                FeatureLSCMaxWidth32,
                                FeatureSwitchjmp,
@@ -218,7 +225,8 @@ def : Proc<"PVC",             [FeatureLongLong, FeatureGRFByteSize64,
                                FeatureThreadPayloadInMemory,
                                FeatureHasPackedFloat,
                                FeatureInstr64BitRotate,
-                               FeatureBfMixedModeWidth16]>;
+                               FeatureBfMixedModeWidth16,
+                               FeatureHasLSC]>;
 def : Proc<"PVCXT",           [FeatureLongLong, FeatureGRFByteSize64,
                                FeatureLSCMaxWidth32,
                                FeaturePartialI64Emulation,
@@ -227,7 +235,8 @@ def : Proc<"PVCXT",           [FeatureLongLong, FeatureGRFByteSize64,
                                FeatureFP64,
                                FeatureThreadPayloadInMemory,
                                FeatureInstr64BitRotate,
-                               FeatureBfMixedModeWidth16]>;
+                               FeatureBfMixedModeWidth16,
+                               FeatureHasLSC]>;
 
 def GenX : Target {
   // Nothing here (yet?)

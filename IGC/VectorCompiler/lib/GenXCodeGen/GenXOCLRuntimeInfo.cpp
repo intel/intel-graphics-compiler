@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/Utils/GenX/Printf.h"
+#include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
@@ -155,14 +156,14 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
   switch (KM.getArgCategory(ArgNo)) {
   default:
     return ArgKindType::General;
-  case genx::RegCategory::GENERAL:
+  case vc::RegCategory::General:
     if (any_of(Tokens, getStrPred(OCLAttributes::SVM)))
       return ArgKindType::SVM;
     // Bindless buffers have general category but buffer annotation.
     if (any_of(Tokens, getStrPred(OCLAttributes::Buffer)))
       return ArgKindType::BindlessBuffer;
     return ArgKindType::General;
-  case genx::RegCategory::SURFACE:
+  case vc::RegCategory::Surface:
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1d)))
       return ArgKindType::Image1D;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1dArray)))
@@ -185,7 +186,7 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     if (any_of(Tokens, getStrPred(OCLAttributes::Image3d)))
       return ArgKindType::Image3D;
     return ArgKindType::Buffer;
-  case genx::RegCategory::SAMPLER:
+  case vc::RegCategory::Sampler:
     return ArgKindType::Sampler;
   }
 }

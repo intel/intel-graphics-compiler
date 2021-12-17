@@ -31,7 +31,7 @@ typedef enum {
     IGFX_ALDERLAKE_P,
     IGFX_DG1 = 1210,
     IGFX_XE_HP_SDV = 1250,
-    IGFX_DG2 = 1270,
+    IGFX_DG2 = 1270, // aka - ACM/Alchemist
     IGFX_PVC = 1271,
     IGFX_MAX_PRODUCT,
 
@@ -62,7 +62,7 @@ typedef enum {
 } PCH_PRODUCT_FAMILY;
 
 typedef enum {
-    IGFX_UNKNOWN_CORE = 0,        
+    IGFX_UNKNOWN_CORE = 0,
     IGFX_GEN3_CORE    = 1,      // Gen3 Family
     IGFX_GEN3_5_CORE  = 2,      // Gen3.5 Family
     IGFX_GEN4_CORE    = 3,      // Gen4 Family
@@ -131,7 +131,7 @@ typedef enum __GTTYPE
         PLATFORM_DESKTOP    = 0x01,
         PLATFORM_MOBILE     = 0x02,
         PLATFORM_TABLET     = 0X03,
-        PLATFORM_ALL        = 0xff, // flag used for applying any feature/WA for All platform types 
+        PLATFORM_ALL        = 0xff, // flag used for applying any feature/WA for All platform types
     } PLATFORM_TYPE;
 #endif
 typedef struct PLATFORM_STR {
@@ -152,7 +152,7 @@ typedef struct PLATFORM_STR {
     GTTYPE              eGTType;
 } PLATFORM;
 
-// add enums at the end 
+// add enums at the end
 typedef enum __SKUIDTYPE
 {
     SKU_FULL_TYPE = 0x0,
@@ -402,11 +402,11 @@ typedef enum __NATIVEGTTYPE
 #define IBDW_GT2_ULT_MOBL_DEVICE_F0_ID          0x1616
 #define IBDW_GT2_RSVD_DEVICE_F0_ID              0x161B
 #define IBDW_GT2_SERV_DEVICE_F0_ID              0x161A
-#define IBDW_GT2_WRK_DEVICE_F0_ID               0x161D 
+#define IBDW_GT2_WRK_DEVICE_F0_ID               0x161D
 #define IBDW_GT2_ULX_DEVICE_F0_ID               0x161E
 #define IBDW_GT3_HALO_MOBL_DEVICE_F0_ID         0x1622
 #define IBDW_GT3_ULT_MOBL_DEVICE_F0_ID          0x1626
-#define IBDW_GT3_ULT25W_MOBL_DEVICE_F0_ID       0x162B 
+#define IBDW_GT3_ULT25W_MOBL_DEVICE_F0_ID       0x162B
 #define IBDW_GT3_SERV_DEVICE_F0_ID              0x162A
 #define IBDW_GT3_WRK_DEVICE_F0_ID               0x162D
 #define IBDW_GT3_ULX_DEVICE_F0_ID               0x162E
@@ -419,30 +419,30 @@ typedef enum __NATIVEGTTYPE
 
 //skl placeholder
 
-#define ISKL_GT4_DT_DEVICE_F0_ID                0x1932 
+#define ISKL_GT4_DT_DEVICE_F0_ID                0x1932
 #define ISKL_GT2_DT_DEVICE_F0_ID                0x1912 // Used on actual Silicon
 
-#define ISKL_GT1_DT_DEVICE_F0_ID                0x1902  
+#define ISKL_GT1_DT_DEVICE_F0_ID                0x1902
 
 
-#define ISKL_GT2_ULT_DEVICE_F0_ID               0x1916 
+#define ISKL_GT2_ULT_DEVICE_F0_ID               0x1916
 #define ISKL_GT2F_ULT_DEVICE_F0_ID              0x1921
-#define ISKL_GT3e_ULT_DEVICE_F0_ID_540          0x1926 
+#define ISKL_GT3e_ULT_DEVICE_F0_ID_540          0x1926
 #define ISKL_GT3e_ULT_DEVICE_F0_ID_550          0x1927
 
-#define ISKL_GT2_ULX_DEVICE_F0_ID               0x191E  
-#define ISKL_GT1_ULT_DEVICE_F0_ID               0x1906 
+#define ISKL_GT2_ULX_DEVICE_F0_ID               0x191E
+#define ISKL_GT1_ULT_DEVICE_F0_ID               0x1906
 #define ISKL_GT3_MEDIA_SERV_DEVICE_F0_ID        0x192D
-#define ISKL_GT1_5_ULT_DEVICE_F0_ID             0x1913  
+#define ISKL_GT1_5_ULT_DEVICE_F0_ID             0x1913
 
-#define ISKL_GT3_ULT_DEVICE_F0_ID               0x1923 
+#define ISKL_GT3_ULT_DEVICE_F0_ID               0x1923
 
-#define ISKL_GT2_HALO_MOBL_DEVICE_F0_ID         0x191B 
+#define ISKL_GT2_HALO_MOBL_DEVICE_F0_ID         0x191B
 
-#define ISKL_GT4_HALO_MOBL_DEVICE_F0_ID         0x193B 
-#define ISKL_GT4_SERV_DEVICE_F0_ID              0x193A 
-#define ISKL_GT2_WRK_DEVICE_F0_ID               0x191D 
-#define ISKL_GT4_WRK_DEVICE_F0_ID               0x193D 
+#define ISKL_GT4_HALO_MOBL_DEVICE_F0_ID         0x193B
+#define ISKL_GT4_SERV_DEVICE_F0_ID              0x193A
+#define ISKL_GT2_WRK_DEVICE_F0_ID               0x191D
+#define ISKL_GT4_WRK_DEVICE_F0_ID               0x193D
 
 
 #define ISKL_GT0_DESK_DEVICE_F0_ID              0x0900
@@ -466,15 +466,15 @@ typedef enum __NATIVEGTTYPE
 // KabyLake Device ids
 #define IKBL_GT1_ULT_DEVICE_F0_ID               0x5906
 #define IKBL_GT1_5_ULT_DEVICE_F0_ID             0x5913
-#define IKBL_GT2_ULT_DEVICE_F0_ID               0x5916 
+#define IKBL_GT2_ULT_DEVICE_F0_ID               0x5916
 #define IKBL_GT2F_ULT_DEVICE_F0_ID              0x5921
-#define IKBL_GT3_15W_ULT_DEVICE_F0_ID           0x5926 
+#define IKBL_GT3_15W_ULT_DEVICE_F0_ID           0x5926
 //#define IKBL_GT3E_ULT_DEVICE_F0_ID              0x5926
 #define IKBL_GT1_ULX_DEVICE_F0_ID               0x590E
 #define IKBL_GT1_5_ULX_DEVICE_F0_ID             0x5915
 #define IKBL_GT2_ULX_DEVICE_F0_ID               0x591E
 #define IKBL_GT1_DT_DEVICE_F0_ID                0x5902
-#define IKBL_GT2_R_ULT_DEVICE_F0_ID             0x5917 
+#define IKBL_GT2_R_ULT_DEVICE_F0_ID             0x5917
 #define IKBL_GT2_DT_DEVICE_F0_ID                0x5912
 #define IKBL_GT1_HALO_DEVICE_F0_ID              0x590B
 #define IKBL_GT1F_HALO_DEVICE_F0_ID             0x5908
@@ -518,14 +518,14 @@ typedef enum __NATIVEGTTYPE
 #define ICNL_4x8_ULT_DEVICE_F0_ID               0x5A5A      //GT1.5
 #define ICNL_3x8_ULT_DEVICE_F0_ID               0x5A42      //GT1
 #define ICNL_2x8_ULT_DEVICE_F0_ID               0x5A4A      //GT0.5
-#define ICNL_9x8_ULT_DEVICE_F0_ID               0x5A62      
-#define ICNL_9x8_SUPERSKU_DEVICE_F0_ID          0x5A60      
+#define ICNL_9x8_ULT_DEVICE_F0_ID               0x5A62
+#define ICNL_9x8_SUPERSKU_DEVICE_F0_ID          0x5A60
 #define ICNL_5x8_SUPERSKU_DEVICE_F0_ID          0x5A50      //GT2
 #define ICNL_1x6_5x8_SUPERSKU_DEVICE_F0_ID      0x5A40      //GTx
 #define ICNL_5x8_HALO_DEVICE_F0_ID              0x5A54      //GT2
 #define ICNL_3x8_HALO_DEVICE_F0_ID              0x5A44      //GT1
-#define ICNL_5x8_DESKTOP_DEVICE_F0_ID           0x5A55      
-#define ICNL_3x8_DESKTOP_DEVICE_F0_ID           0x5A45      
+#define ICNL_5x8_DESKTOP_DEVICE_F0_ID           0x5A55
+#define ICNL_3x8_DESKTOP_DEVICE_F0_ID           0x5A45
 #define ICNL_4x8_ULX_DEVICE_F0_ID               0x5A59      //GT1.5
 #define ICNL_3x8_ULX_DEVICE_F0_ID               0x5A41      //GT1
 #define ICNL_2x8_ULX_DEVICE_F0_ID               0x5A49      //GT0.5
@@ -535,10 +535,10 @@ typedef enum __NATIVEGTTYPE
 #define ICFL_GT1_S41_DT_DEVICE_F0_ID            0x3E93
 #define ICFL_GT2_S62_DT_DEVICE_F0_ID            0x3E92
 #define ICFL_GT2_HALO_DEVICE_F0_ID              0x3E9B
-#define ICFL_GT2_SERV_DEVICE_F0_ID              0x3E96 
-#define ICFL_GT2_HALO_WS_DEVICE_F0_ID           0x3E94 
+#define ICFL_GT2_SERV_DEVICE_F0_ID              0x3E96
+#define ICFL_GT2_HALO_WS_DEVICE_F0_ID           0x3E94
 #define ICFL_GT2_S42_DT_DEVICE_F0_ID            0x3E91
-#define ICFL_GT3_ULT_15W_DEVICE_F0_ID           0x3EA6   
+#define ICFL_GT3_ULT_15W_DEVICE_F0_ID           0x3EA6
 #define ICFL_GT3_ULT_15W_42EU_DEVICE_F0_ID      0x3EA7
 #define ICFL_GT3_ULT_28W_DEVICE_F0_ID           0x3EA8
 #define ICFL_GT3_ULT_DEVICE_F0_ID               0x3EA5
@@ -640,5 +640,50 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_46C1                             0x46C1
 #define DEV_ID_46C2                             0x46C2
 #define DEV_ID_46C3                             0x46C3
+
+// DG2
+#define DEV_ID_4F80                             0x4F80
+#define DEV_ID_4F81                             0x4F81
+#define DEV_ID_4F82                             0x4F82
+#define DEV_ID_4F83                             0x4F83
+#define DEV_ID_4F84                             0x4F84
+#define DEV_ID_4F85                             0x4F85
+#define DEV_ID_4F86                             0x4F86
+#define DEV_ID_4F87                             0x4F87
+#define DEV_ID_4F88                             0x4F88
+#define DEV_ID_5690                             0x5690
+#define DEV_ID_5691                             0x5691
+#define DEV_ID_5692                             0x5692
+#define DEV_ID_5693                             0x5693
+#define DEV_ID_5694                             0x5694
+#define DEV_ID_5695                             0x5695
+#define DEV_ID_5696                             0x5696
+#define DEV_ID_5697                             0x5697
+#define DEV_ID_5698                             0x5698
+#define DEV_ID_56A0                             0x56A0
+#define DEV_ID_56A1                             0x56A1
+#define DEV_ID_56A2                             0x56A2
+#define DEV_ID_56A3                             0x56A3
+#define DEV_ID_56A4                             0x56A4
+#define DEV_ID_56A5                             0x56A5
+#define DEV_ID_56A6                             0x56A6
+#define DEV_ID_56A7                             0x56A7
+#define DEV_ID_56A8                             0x56A8
+#define DEV_ID_56A9                             0x56A9
+#define DEV_ID_56B0                             0x56B0
+#define DEV_ID_56B1                             0x56B1
+#define DEV_ID_56C0                             0x56C0
+#define DEV_ID_56C1                             0x56C1
+#define DEV_ID_56CF                             0x56CF
+
+#define GFX_IS_DG2_G11_CONFIG(d) ( ( d == DEV_ID_56A5 )             ||   \
+                                 ( d == DEV_ID_56A6 )             ||   \
+                                 ( d == DEV_ID_5693 )             ||   \
+                                 ( d == DEV_ID_5694 )             ||   \
+                                 ( d == DEV_ID_56B0 )             ||   \
+                                 ( d == DEV_ID_56B1 )             ||   \
+                                 ( d == DEV_ID_56C1 )             ||   \
+                                 ( d == DEV_ID_4F87 )             ||   \
+                                 ( d == DEV_ID_4F88 ))
 
 #endif

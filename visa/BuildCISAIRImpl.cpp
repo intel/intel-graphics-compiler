@@ -220,6 +220,10 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform, Stepping step
             break;
         case Xe_PVCXT:
             VISA_WA_ENABLE(pWaTable, Wa_16013338947);
+            if (step == Step_A)
+            {
+                VISA_WA_ENABLE(pWaTable, Wa_16012725276);
+            }
             break;
         default:
             break;
@@ -1459,12 +1463,19 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         int i;
         unsigned int k = 0;
         bool isInPatchingMode = m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Enable_NoLTO && m_prevKernel;
+        uint32_t localScheduleStartKernelId = m_options.getuInt32Option(vISA_LocalScheduleingStartKernel);
+        uint32_t localScheduleEndKernelId = m_options.getuInt32Option(vISA_LocalScheduleingEndKernel);
         VISAKernelImpl* mainKernel = nullptr;
         std::list<VISAKernelImpl*>::iterator iter = m_kernelsAndFunctions.begin();
         std::list<VISAKernelImpl*>::iterator end = m_kernelsAndFunctions.end();
         for (i = 0; iter != end; iter++, i++)
         {
             VISAKernelImpl* kernel = (*iter);
+            if ((uint32_t)i < localScheduleStartKernelId || (uint32_t)i > localScheduleEndKernelId)
+            {
+                kernel->setLocalSheduleable(false);
+            }
+
             mainKernel = (kernel->getIsKernel()) ? kernel : mainKernel;
             kernel->finalizeAttributes();
             kernel->getIRBuilder()->setType(kernel->getType());

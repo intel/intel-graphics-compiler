@@ -152,7 +152,6 @@ void initializeGenXExtractVectorizerPass(PassRegistry &);
 void initializeGenXFuncBalingPass(PassRegistry &);
 void initializeGenXGEPLoweringPass(PassRegistry &);
 void initializeGenXGroupBalingWrapperPass(PassRegistry &);
-void initializeGenXInstCombineCleanup(PassRegistry &);
 void initializeGenXIMadPostLegalizationPass(PassRegistry &);
 void initializeGenXLateSimdCFConformanceWrapperPass(PassRegistry &);
 void initializeGenXLegalizationPass(PassRegistry &);

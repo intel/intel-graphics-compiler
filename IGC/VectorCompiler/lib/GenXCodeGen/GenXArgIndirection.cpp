@@ -145,7 +145,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/GenXOpts/Utils/RegCategory.h"
+#include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -653,7 +653,7 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
   //  - other values inside the subroutines that we are indirecting
   // We do not want it to get a register allocated, since those values will be
   // indirected. We achieve that by setting ArgLR's category to NONE.
-  ArgLR->setCategory(RegCategory::NONE);
+  ArgLR->setCategory(vc::RegCategory::None);
   LLVM_DEBUG(dbgs() << " Not allocating register for arg's LR\n");
   // Arg to indirected arg map.
   std::map<Value *, Value *> ArgToAddressArg;
@@ -1285,7 +1285,7 @@ std::pair<Value *, Value *> SubroutineArg::addAddressArg() {
   AddressArgument = NewArgs.back();
   // Give the address arg a live range, and mark that it needs calculating.
   auto LR = Pass->Liveness->getOrCreateLiveRange(AddressArgument);
-  LR->setCategory(RegCategory::ADDRESS);
+  LR->setCategory(vc::RegCategory::Address);
   Pass->LRsToCalculate.push_back(LR);
   // Set the name of the new address arg.
   NewArgs[OldArgs.size()]->setName(Arg->getName() + ".addr");
@@ -1334,7 +1334,7 @@ void SubroutineArg::fixCallSites()
     if (!isa<UndefValue>(AddressArg)) {
       // Create a live range for the address arg, and ensure it is recalculated.
       LiveRange *AddressArgLR = Pass->Liveness->getOrCreateLiveRange(AddressArg);
-      AddressArgLR->setCategory(RegCategory::ADDRESS);
+      AddressArgLR->setCategory(vc::RegCategory::Address);
       Pass->LRsToCalculate.push_back(AddressArgLR);
     }
     // Use the address arg in the new call.
@@ -1476,7 +1476,7 @@ Value *ConstArgRetCallSite::process(GenXArgIndirection *Pass,
     }
     if (!LR) {
       LR = Pass->Liveness->getOrCreateLiveRange(Inst);
-      LR->setCategory(RegCategory::GENERAL);
+      LR->setCategory(vc::RegCategory::General);
     }
     Pass->LRsToCalculate.push_back(LR);
   }
@@ -1778,7 +1778,7 @@ void GenXArgIndirection::indirectRegion(Use *U, Value *AddressArg,
     } else {
       // Otherwise, give it a live range, and mark it as needing calculating.
       auto LR = Liveness->getOrCreateLiveRange(NewAdd);
-      LR->setCategory(RegCategory::ADDRESS);
+      LR->setCategory(vc::RegCategory::Address);
       LRsToCalculate.push_back(LR);
     }
     return;
@@ -1823,11 +1823,11 @@ void GenXArgIndirection::indirectRegion(Use *U, Value *AddressArg,
   Numbering->setNumber(NewAddAddr, Numbering->getNumber(AddrInst) - 1);
   AddrInst->replaceAllUsesWith(NewAddAddr);
   LiveRange *LR = Liveness->getOrCreateLiveRange(NewAddAddr);
-  LR->setCategory(RegCategory::ADDRESS);
+  LR->setCategory(vc::RegCategory::Address);
   LRsToCalculate.push_back(LR);
   // AddrSrc (source of convert_addr) should get a live range as well
   LiveRange *SrcLR = Liveness->getOrCreateLiveRange(AddrSrc);
-  SrcLR->setCategory(RegCategory::GENERAL);
+  SrcLR->setCategory(vc::RegCategory::General);
   LRsToCalculate.push_back(SrcLR);
   // remove the old convert_addr
   Liveness->eraseLiveRange(AddrInst);

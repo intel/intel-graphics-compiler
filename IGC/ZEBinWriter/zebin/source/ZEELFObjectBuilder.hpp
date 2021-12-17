@@ -91,7 +91,7 @@ public:
     // - align: alignment requirement in byte
     // - return a unique id for referencing in addSymbol
     SectionID addSectionData(
-        std::string name, const uint8_t* data, uint64_t size, uint32_t padding = 0, uint32_t align = 0);
+        std::string name, const uint8_t* data, uint64_t size, uint32_t padding = 0, uint32_t align = 0, bool rodata = false);
 
     // add a bss section which occupies no space in the ELF, but with size and other section information
     // The bss sections could be used for zero-initialized variables.
@@ -224,9 +224,9 @@ private:
     class StandardSection : public Section {
     public:
         StandardSection(std::string sectName, const uint8_t* data, uint64_t size,
-            unsigned type, uint32_t padding, uint32_t id)
+            unsigned type, unsigned flags, uint32_t padding, uint32_t id)
             : Section(id), m_sectName(sectName), m_data(data), m_size(size), m_type(type),
-              m_padding(padding)
+              m_flags(flags), m_padding(padding)
         {}
 
         Kind getKind() const { return STANDARD; }
@@ -238,6 +238,7 @@ private:
         uint64_t m_size;
         // section type
         unsigned m_type;
+        unsigned m_flags = 0;
         uint32_t m_padding;
     };
 
@@ -327,8 +328,8 @@ private:
 
 private:
     Section& addStandardSection(
-        std::string sectName, const uint8_t* data, uint64_t size,
-        unsigned type, uint32_t padding, uint32_t align, StandardSectionListTy& sections);
+        std::string sectName, const uint8_t* data, uint64_t size, unsigned type,
+        unsigned flags, uint32_t padding, uint32_t align, StandardSectionListTy& sections);
 
     // isRelFormat - rel or rela relocation format
     RelocSection& getOrCreateRelocSection(SectionID targetSectId, bool isRelFormat);

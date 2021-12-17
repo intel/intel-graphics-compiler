@@ -5288,10 +5288,12 @@ namespace IGC
         IGC_ASSERT(nullptr != m_program);
         CodeGenContext* const context = m_program->GetContext();
         SProgramOutput* const pOutput = m_program->ProgramOutput();
-        const char* additionalVISAAsmToLink = nullptr;
+        const std::vector<const char*>* additionalVISAAsmToLink = nullptr;
         if(context->type == ShaderType::OPENCL_SHADER) {
             auto cl_context = static_cast<OpenCLProgramContext*>(context);
-            additionalVISAAsmToLink = cl_context->m_VISAAsmToLink;
+            if(!cl_context->m_VISAAsmToLink.empty()) {
+                additionalVISAAsmToLink = &cl_context->m_VISAAsmToLink;
+            }
         }
 
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
@@ -5445,8 +5447,10 @@ namespace IGC
                     result = vbuilder->Compile(
                         m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
                         &ss, true);
-                    result = vAsmTextBuilder->ParseVISAText(vMainKernel->getVISAAsm(), "");
-                    result = vAsmTextBuilder->ParseVISAText(additionalVISAAsmToLink, "");
+                    result = (result == 0) ? vAsmTextBuilder->ParseVISAText(vMainKernel->getVISAAsm(), "") : result;
+                    for(auto visaAsm : *additionalVISAAsmToLink) {
+                        result = (result == 0) ? vAsmTextBuilder->ParseVISAText(visaAsm, "") : result;
+                    }
 
                     // Mark invoke_simd targets with LTO_InvokeOptTarget attribute.
                     IGC_ASSERT(m_program && m_program->GetContext() && m_program->GetContext()->getModule());

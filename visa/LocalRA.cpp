@@ -646,6 +646,12 @@ unsigned int PhyRegsLocalRA::get_bundle(unsigned int baseReg, int offset)
     {
         return (((baseReg + offset) % 32) / 2);
     }
+
+    if (builder->has8bundles())
+    {
+        return (((baseReg + offset) % 16) / 2);
+    }
+
     return (((baseReg + offset) % 64) / 4);
 }
 
@@ -704,7 +710,7 @@ inline static unsigned short getOccupiedBundle(IR_Builder& builder, GlobalRA& gr
     unsigned int evenBankNum = 0;
     unsigned int oddBankNum = 0;
 
-    if (!builder.hasDPAS() || !builder.getOption(vISA_EnableDPASBundleConflictReduction))
+    if (!builder.getOption(vISA_enableBundleCR))
     {
         return 0;
     }
@@ -3133,7 +3139,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
         return false;
     }
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << gra.getBankConflict(lr->getTopDcl()) << std::endl;
+    COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << gra.getBankConflict(lr->getTopDcl()) << " Occupied Bundle: " << occupiedBundles << std::endl;
 #endif
 
     lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
