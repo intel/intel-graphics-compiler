@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
+#include <string>
+
 using namespace IGC;
 using namespace iOpenCL;
 using namespace zebin;
@@ -461,8 +463,20 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.has_stack_calls = annotations.m_executionEnivronment.HasStackCalls;
     env.inline_data_payload_size = annotations.m_threadPayload.PassInlineDataSize;
     env.offset_to_skip_per_thread_data_load = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;;
-    env.offset_to_skip_set_ffid_gp = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;;
-    env.required_sub_group_size = annotations.m_executionEnivronment.CompiledSubGroupsNumber;
+    env.offset_to_skip_set_ffid_gp = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;
+
+    // extract required_sub_group_size from kernel attribute list
+    // it will be in the format of "reqd_sub_group_size(16)"
+    const std::string pat = "intel_reqd_sub_group_size(";
+    const std::string& attrs = annotations.m_kernelAttributeInfo;
+    size_t p1 = attrs.find(pat);
+    if (p1 != std::string::npos) {
+        p1 += pat.size();
+        size_t p2 = attrs.find(')', p1);
+        IGC_ASSERT(p2 != std::string::npos && p1 + 1 < p2);
+        env.required_sub_group_size = std::stoul(attrs.substr(p1, p2 - p1));
+    }
+
     if(annotations.m_executionEnivronment.HasFixedWorkGroupSize)
     {
         env.required_work_group_size.push_back(annotations.m_executionEnivronment.FixedWorkgroupSize[0]);
