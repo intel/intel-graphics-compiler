@@ -632,8 +632,7 @@ bool hasHalfSIMDLSC() const
 
 bool NeedsLSCFenceUGMBeforeEOT() const
 {
-    return m_platformInfo.eProductFamily == IGFX_DG2
-        || m_platformInfo.eProductFamily == IGFX_PVC;
+    return getWATable().Wa_22013689345 != 0;
 }
 
 bool hasPartialInt64Support() const
