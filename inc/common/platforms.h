@@ -32,6 +32,8 @@ typedef enum {
     DG2_G11 =  0x0c0201,
     DG2_G10_B0 =  0x0c0201,
     DG2_G12 =  0x0c0202,
+    PVC_XL_A0 =  0x0c0300,
+    PVC_XL_B0 =  0x0c0301,
     PVC_XT_A0 =  0x0c0400,
     PVC_XT_B0 =  0x0c0401,
     CONFIG_MAX_PLATFORM,
