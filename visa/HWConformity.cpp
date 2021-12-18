@@ -1330,12 +1330,6 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         return;
     }
 
-    if (inst->isBFMixedMode())
-    {
-        // Skip as it has been checked in fixBFMixedMode().
-        return;
-    }
-
     if (builder.hasAlign1Ternary())
     {
         fixAlign13SrcInst(iter, bb);
@@ -4487,16 +4481,6 @@ void HWConformity::fixMADInst(G4_BB* bb)
         G4_INST* inst = *i;
         if (inst->opcode() != G4_pseudo_mad)
         {
-            continue;
-        }
-
-        // If it is BF mixed inst, it has been checked in fixBFMixedMode(). Skip it
-        if (inst->isBFMixedMode())
-        {
-            assert(inst->opcode() == G4_pseudo_mad);
-            inst->setOpcode(G4_mad);
-            //swap src0 and src2 (vISA MAD is src0*src1+src2, while GEN MAD is src1*src2+src0)
-            inst->swapSrc(0, 2);
             continue;
         }
 
@@ -7692,12 +7676,6 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
 
         if (inst->mayExceedTwoGRF() || !inst->getDst())
         {
-            continue;
-        }
-
-        if (inst->isBFMixedMode())
-        {
-            // Skip. It has been checked in fixedBFMixedMode()
             continue;
         }
 
