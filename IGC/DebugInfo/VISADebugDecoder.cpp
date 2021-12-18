@@ -8,8 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "VISADebugDecoder.hpp"
 
-#include <llvm/ADT/Twine.h>
-
 template <typename T>
 static void PrintItems(llvm::raw_ostream& OS, const T& Items,
                        const char* Separator = " ") {
@@ -111,7 +109,7 @@ void IGC::DbgDecoder::LiveIntervalGenISA::dump() const
 void IGC::DbgDecoder::SubroutineInfo::print(llvm::raw_ostream& OS) const
 {
     OS << "Name=" << name << " [" << startVISAIndex << ";" << endVISAIndex <<
-        "], retvals: ";
+        "), retvals: ";
     PrintItems(OS, retval, ", ");
 }
 
@@ -202,8 +200,7 @@ void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream& OS) const
     std::for_each(CISAIndexMap.begin(), CISAIndexMap.end(), [&OS](const auto& V) {
             auto VisaIndex = V.first;
             auto GenOff = V.second;
-            OS << "  GI: 0x" << llvm::Twine::utohexstr(GenOff) << " -> VI: "
-               << VisaIndex << "\n";
+            OS << "  GI: " << GenOff << " -> VI: " << VisaIndex << "\n";
         });
     OS << "</VISADebugInfo>";
 }
