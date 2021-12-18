@@ -6065,12 +6065,9 @@ void HWConformity::fixBFMixedMode()
                 return true;
             }
         case G4_mad:
+            return OpndNum != Opnd_src2;  // gen mad: s0+s1*s2
         case G4_pseudo_mad:
-            {
-                if (OpndNum == Opnd_src2)
-                    return false;
-                return true;
-            }
+            return OpndNum != Opnd_src0;  // s0*s1+s2
         case G4_add:
         case G4_cmp:
         case G4_mov:

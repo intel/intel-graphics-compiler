@@ -1322,7 +1322,10 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
     case G4_pseudo_mad:
     {
         // case 3
-        G4_Operand* src2 = inst->getSrc(2);
+        //    Note that G4_pseudo_mad : src0*src1 + src2
+        //                    gen mad : src0 + src1*src2
+        //    Need to switch 0 with 2 for pseudo_mad
+        G4_Operand* src2 = inst->getSrc(inst->opcode() == G4_pseudo_mad ? 0 : 2);
         if (src2->getType() != Type_F)
         {
             DEBUG_VERBOSE("Src2 in BF mixed mode must be F!");
