@@ -258,12 +258,4 @@ typedef enum {
     VISA_3D = 1
 } VISATarget;
 
-
-template<typename Type>
-constexpr Type AlignUp(const Type value, const size_t alignment)
-{
-    Type common = value + alignment - 1;
-    return common - (common % alignment);
-}
-
 #endif //_COMMON_H_
