@@ -76,6 +76,9 @@ void initializeGenXTranslateSPIRVBuiltinsPass(PassRegistry &);
 ModulePass *createGenXTrampolineInsertionPass();
 void initializeGenXTrampolineInsertionPass(PassRegistry &);
 
+ModulePass *createGenXLinkageCorruptorPass();
+void initializeGenXLinkageCorruptorPass(PassRegistry &);
+
 } // End llvm namespace
 
 #endif // VC_GENXOPTS_GENXOPTS_H

@@ -33,7 +33,6 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/BreakConst.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/DebugInfo.h"
@@ -239,7 +238,6 @@ int DiagnosticInfoOverlappingArgs::KindID = 0;
 class CMABIAnalysis : public ModulePass {
   // This map captures all global variables to be localized.
   std::vector<LocalizationInfo *> LocalizationInfoObjs;
-  bool SaveStackCallLinkage = false;
 
 public:
   static char ID;
@@ -250,14 +248,10 @@ public:
   // Map from function to the index of its LI in LI storage
   SmallDenseMap<Function *, LocalizationInfo *> GlobalInfo;
 
-  // Function control option if any
-  FunctionControl FCtrl;
-
   CMABIAnalysis() : ModulePass{ID} {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<CallGraphWrapperPass>();
-    AU.addRequired<GenXBackendConfig>();
     AU.setPreservesAll();
   }
 
@@ -348,15 +342,10 @@ char CMABIAnalysis::ID = 0;
 INITIALIZE_PASS_BEGIN(CMABIAnalysis, "cmabi-analysis",
                       "helper analysis pass to get info for CMABI", false, true)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(CMABIAnalysis, "cmabi-analysis",
                     "Fix ABI issues for the genx backend", false, true)
 
 bool CMABIAnalysis::runOnModule(Module &M) {
-  auto &&BCfg = getAnalysis<GenXBackendConfig>();
-  FCtrl = BCfg.getFCtrl();
-  SaveStackCallLinkage = BCfg.saveStackCallLinkage();
-
   runOnCallGraph(getAnalysis<CallGraphWrapperPass>().getCallGraph());
   return false;
 }
@@ -1403,35 +1392,7 @@ void CMABIAnalysis::defineGVDirectUsers(GlobalVariable &GV) {
 // copy-in and copy-out arguments.
 void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   Module &M = CG.getModule();
-  for (auto& F : M.getFunctionList()) {
-    if (F.isDeclaration() || F.hasDLLExportStorageClass())
-      continue;
-    if (GenXIntrinsic::getAnyIntrinsicID(&F) !=
-        GenXIntrinsic::not_any_intrinsic)
-      continue;
-    // __cm_intrinsic_impl_* could be used for emulation mul/div etc
-    if (F.getName().contains("__cm_intrinsic_impl_"))
-      continue;
 
-    // Indirect functions are always stack calls.
-    if (F.hasAddressTaken()) {
-      F.addFnAttr(genx::FunctionMD::CMStackCall);
-      IGC_ASSERT(genx::isIndirect(F));
-    }
-
-    // Convert non-kernel to stack call if applicable
-    if (FCtrl == FunctionControl::StackCall && !genx::requiresStackCall(&F)) {
-      LLVM_DEBUG(dbgs() << "Adding stack call to: " << F.getName() << "\n");
-      F.addFnAttr(genx::FunctionMD::CMStackCall);
-    }
-
-    // Do not change stack calls linkage as we may have both types of stack
-    // calls.
-    if (genx::requiresStackCall(&F) && SaveStackCallLinkage)
-      continue;
-
-    F.setLinkage(GlobalValue::InternalLinkage);
-  }
   // No global variables.
   if (M.global_empty())
     return;

@@ -149,6 +149,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXStructSplitterPass(registry);
   initializeGenXTrampolineInsertionPass(registry);
   initializeGenXPredRegionLoweringPass(registry);
+  initializeGenXLinkageCorruptorPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -636,6 +637,20 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                            AddFuncInternalization);
   }
+
+  // Have to internalize functions before CM implicit parameters as all
+  // implicit parameters cannot be supported at once for external functions
+  // and some frontends already depend on them working as the linkage is
+  // internal.
+  // FIXME: move back to CMABI or better remove this pass.
+  auto AddLinkageCorruptor = [](const PassManagerBuilder &Builder,
+                                PassManagerBase &PM) {
+    PM.add(createGenXLinkageCorruptorPass());
+  };
+  PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
+                         AddLinkageCorruptor);
+  PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                         AddLinkageCorruptor);
 
   // CM implicit parameters.
   auto AddCMImpParam = [this](const PassManagerBuilder &Builder,
