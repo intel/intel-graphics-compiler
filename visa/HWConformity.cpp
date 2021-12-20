@@ -3651,9 +3651,9 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                 }
             }
         }
-    }
-    return false;
-}
+            }
+            return false;
+        }
 
 //------------------------------------------------------------------------------
 //
@@ -5824,54 +5824,35 @@ void HWConformity::conformBB(G4_BB* bb)
 #endif
     }
 
-    if (VISA_WA_CHECK(builder.getPWaTable(), Wa_16012725276))
-    {
-        for (auto it = bb->begin(), itEnd = bb->end(); it != itEnd; ++it)
-        {
-            auto inst = *it;
-            if (!inst->getDst() || inst->isSend() || inst->isDpas() || inst->getExecSize() == g4::SIMD1)
-            {
-                continue;
-            }
+    if (builder.getPlatform() == Xe_PVCXT) {
+      for (auto I = bb->begin(), E = bb->end(); I != E;) {
+        auto inst = *I;
+        auto next = std::next(I);
 
-            bool hasNonQTypeScalarSrc = false;
-            bool hasQTypeDst = false;
-            bool hasQTypeSrc = false;
+        G4_DstRegRegion *dst = inst->getDst();
+        bool crossGRFDst = dst && dst->isCrossGRFDst();
 
-            if (IS_QTYPE(inst->getDst()->getType()))
-            {
-                hasQTypeDst = true;
+        if (crossGRFDst && IS_QTYPE(dst->getType()) && !inst->isSend() &&
+            !inst->isDpas()) {
+          bool hasQTypeSrc = false;
+          for (int i = 0; i < inst->getNumSrc(); i++) {
+            if (IS_QTYPE(inst->getSrc(i)->getType())) {
+              hasQTypeSrc = true;
+              break;
             }
+          }
 
-            for (int i = 0; i < inst->getNumSrc(); i++)
-            {
-                auto src = inst->getSrc(i);
-                if (IS_QTYPE(src->getType()))
-                {
-                    hasQTypeSrc = true;
-                }
-                else if (src->isSrcRegRegion() && src->asSrcRegRegion()->getRegion()->isScalar())
-                {
-                    hasNonQTypeScalarSrc = true;
-                }
-            }
-
-            if ((hasQTypeDst || hasQTypeSrc) && hasNonQTypeScalarSrc)
-            {
-                for (int i = 0; i < inst->getNumSrc(); i++)
-                {
-                    auto src = inst->getSrc(i);
-                    if (!IS_QTYPE(src->getType()) && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegion()->isScalar())
-                    {
-                        inst->setSrc(insertMovBefore(it, i, IS_SIGNED_INT(src->getType()) ? Type_Q : Type_UQ, bb, GRFALIGN), i);
-                    }
-                }
-            }
+          if (!hasQTypeSrc) {
+            evenlySplitInst(I, bb);
 
 #ifdef _DEBUG
             verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
+          }
         }
+
+        I = next;
+      }
     }
 }
 

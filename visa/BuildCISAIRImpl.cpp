@@ -220,10 +220,6 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform, Stepping step
             break;
         case Xe_PVCXT:
             VISA_WA_ENABLE(pWaTable, Wa_16013338947);
-            if (step == Step_A)
-            {
-                VISA_WA_ENABLE(pWaTable, Wa_16012725276);
-            }
             break;
         default:
             break;
