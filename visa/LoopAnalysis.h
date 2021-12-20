@@ -96,7 +96,6 @@ namespace vISA
 
     // Computes and stores direct references of variables.
     // Indirects references are not computed here.
-    // Doesnt include predicates/condition modifiers.
     class VarReferences : public Analysis
     {
     public:
@@ -107,7 +106,7 @@ namespace vISA
         using Defs = std::vector<std::tuple<G4_INST*, G4_BB*, unsigned int, unsigned int>>;
         using Uses = std::vector<std::tuple<G4_INST*, G4_BB*>>;
 
-        bool isUniqueDef(G4_DstRegRegion* dst);
+        bool isUniqueDef(G4_Operand* dst);
         unsigned int getDefCount(G4_Declare* dcl);
         unsigned int getUseCount(G4_Declare* dcl);
         const Defs* getDefs(G4_Declare* dcl);

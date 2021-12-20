@@ -433,6 +433,158 @@ void SpillManager::replaceSpilledPredicate(G4_BB* bb,
         }
     }
 }
+
+bool SpillManager::checkDefUseDomRel(G4_Operand* dst, G4_BB* defBB)
+{
+    auto dcl = dst->getTopDcl();
+
+    // check whether this def dominates all its uses
+    auto uses = refs.getUses(dcl);
+
+    for (auto& use : *uses)
+    {
+        auto useBB = std::get<1>(use);
+
+        // check if def dominates use
+        if (!defBB->dominates(useBB))
+            return false;
+
+        if (defBB == useBB)
+        {
+            // defBB dominates useBB since its the same BB.
+            // ensure def instruction appears lexically before use BB.
+            auto useInst = std::get<0>(use);
+            if (dst->getInst()->getLexicalId() > useInst->getLexicalId())
+                return false;
+        }
+    }
+
+    // if def is in loop then ensure all uses are in same loop level
+    // or inner loop nest of def's closest loop.
+    auto defLoop = gra.kernel.fg.getLoops().getInnerMostLoop(defBB);
+    if (defLoop)
+    {
+        // since def is in loop, check whether uses are also in same loop.
+        for (auto& use : *uses)
+        {
+            auto useBB = std::get<1>(use);
+            auto useLoop = gra.kernel.fg.getLoops().getInnerMostLoop(useBB);
+            if (!useLoop)
+                return false;
+
+            if (!useLoop->fullSubset(defLoop))
+                return false;
+        }
+    }
+
+    return true;
+}
+
+bool SpillManager::isDominatingDef(G4_Operand* opnd, G4_BB* bb)
+{
+    // return true if this opnd is dominates all other defs
+    auto dcl = opnd->getTopDcl();
+
+    auto defs = refs.getDefs(dcl);
+
+    for (auto& def : *defs)
+    {
+        auto otherDefBB = std::get<1>(def);
+
+        if (!bb->dominates(otherDefBB))
+            return false;
+
+        if (bb == otherDefBB)
+        {
+            auto otherDefInst = std::get<0>(def);
+            if (opnd->getInst()->getLexicalId() > otherDefInst->getLexicalId())
+                return false;
+        }
+    }
+
+    return true;
+}
+
+// update RMW information for flag operands
+void SpillManager::updateRMWNeeded()
+{
+    if (!gra.kernel.getOption(vISA_SkipRedundantFillInRMW))
+        return;
+
+    auto isRMWNeededForSpill = [&](G4_BB* bb, G4_Operand* spilledRegion)
+    {
+        bool isUniqueDef = (refs.getDefCount(spilledRegion->getTopDcl()) < 2);
+
+        // Check0 : Def is NoMask, -- checked before inserting RMW fill already
+        // Check1 : Def is unique def OR def is dominating all other defs,
+        // Check2 : Def is in loop L and all use(s) of dcl are in loop L or it's inner loop nest
+        // Check3 : Flowgraph is reducible
+        // RMW_Not_Needed = Check0 || (Check1 && Check2 && Check3)
+        bool RMW_Needed = true;
+
+        if ((isUniqueDef || isDominatingDef(spilledRegion, bb)) && kernel.fg.isReducible() && checkDefUseDomRel(spilledRegion, bb))
+        {
+            RMW_Needed = false;
+        }
+
+        return RMW_Needed;
+    };
+
+    auto isOpndSpilled = [&](G4_Operand* opnd)
+    {
+        auto base = opnd->getBase();
+        if (base &&
+            base->isRegVar() &&
+            base->asRegVar()->isRegAllocPartaker())
+        {
+            auto dstRegVar = base->asRegVar();
+            if (dstRegVar && base->asRegVar()->getDeclare()->getSpilledDeclare())
+                return true;
+        }
+        return false;
+    };
+
+    // update rmw set if opnd is spilled, nop if opnd isnt spilled.
+    auto updateRMW = [&](G4_BB* bb, G4_Operand* opnd)
+    {
+        auto RMW_Needed = isRMWNeededForSpill(bb, opnd);
+        if (!RMW_Needed)
+        {
+            // Any spilled dst region that doesnt need RMW
+            // is added to noRMWNeeded set. This set is later
+            // checked when inserting spill/fill code.
+            noRMWNeeded.insert(opnd);
+        }
+    };
+
+    // First pass to setup lexical ids of instruction so dominator relation can be
+    // computed correctly intra-BB.
+    unsigned int lexId = 0;
+    for (auto bb : gra.kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            inst->setLexicalId(lexId++);
+        }
+    }
+
+    for (auto bb : gra.kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            if (inst->isPseudoKill())
+                continue;
+
+            // flags are used only as cond modifiers with non-NoMask
+            auto condMod = inst->getCondMod();
+            if (condMod && isOpndSpilled(condMod))
+            {
+                updateRMW(bb, condMod);
+            }
+        }
+    }
+}
+
 //
 // check if flag dst is spilled and insert spill code
 //
@@ -469,11 +621,20 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
             if (flagDcl->getNumberFlagElements() > inst->getExecSize() ||
                 (!bb->isAllLaneActive() && !inst->isWriteEnableInst()))
             {
-                genRegMov(bb, it,
-                    spDcl->getRegVar(), 0,
-                    tmpDcl->getRegVar(),
-                    tmpDcl->getNumElems());
-                ++numFlagSpillLoad;
+                if (noRMWNeeded.find(mod) == noRMWNeeded.end())
+                {
+                    genRegMov(bb, it,
+                        spDcl->getRegVar(), 0,
+                        tmpDcl->getRegVar(),
+                        tmpDcl->getNumElems());
+                    ++numFlagSpillLoad;
+                }
+                else
+                {
+                    // insert kill for temp flag
+                    auto pseudoKill = builder.createPseudoKill(tmpDcl, PseudoKillType::Other);
+                    bb->insertBefore(it, pseudoKill);
+                }
             }
 
             G4_CondMod *newCondMod = builder.createCondMod(mod->getMod(), tmpDcl->getRegVar(), 0);
@@ -544,6 +705,8 @@ void SpillManager::insertSpillCode()
     // create spill locations
     //
     createSpillLocations(kernel);
+
+    updateRMWNeeded();
 
     for (G4_BB* bb : kernel.fg)
     {

@@ -1047,7 +1047,7 @@ bool Loop::contains(const G4_BB* bb)
     return BBsLookup.find(bb) != BBsLookup.end();
 }
 
-bool VarReferences::isUniqueDef(G4_DstRegRegion* dst)
+bool VarReferences::isUniqueDef(G4_Operand* dst)
 {
     recomputeIfStale();
 
@@ -1147,6 +1147,19 @@ void VarReferences::run()
                 }
             }
 
+            auto condMod = inst->getCondMod();
+            if (condMod)
+            {
+                auto topdcl = condMod->getTopDcl();
+                if (topdcl)
+                {
+                    auto lb = condMod->getLeftBound();
+                    auto rb = condMod->getRightBound();
+                    auto& Defs = VarRefs[topdcl].first;
+                    Defs.push_back(std::make_tuple(inst, bb, lb, rb));
+                }
+            }
+
             for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
             {
                 auto src = inst->getSrc(i);
@@ -1158,6 +1171,17 @@ void VarReferences::run()
                         auto& Uses = VarRefs[topdcl].second;
                         Uses.push_back(std::make_tuple(inst, bb));
                     }
+                }
+            }
+
+            auto pred = inst->getPredicate();
+            if (pred)
+            {
+                auto topdcl = pred->getTopDcl();
+                if (topdcl)
+                {
+                    auto& Uses = VarRefs[topdcl].second;
+                    Uses.push_back(std::make_tuple(inst, bb));
                 }
             }
         }

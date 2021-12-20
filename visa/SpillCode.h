@@ -20,6 +20,7 @@ class SpillManager
     GlobalRA& gra;
     G4_Kernel& kernel;
     PointsToAnalysis& pointsToAnalysis;
+    VarReferences refs;
 
     //
     // for creating insts
@@ -45,6 +46,9 @@ class SpillManager
     unsigned numFlagSpillLoad;
 
     unsigned int currCISAOffset;
+
+    // store spilled operands that dont need RMW for spills
+    std::unordered_set<G4_Operand*> noRMWNeeded;
 
     void genRegMov(G4_BB* bb,
                    INST_LIST_ITER it,
@@ -77,12 +81,19 @@ class SpillManager
 
     void createSpillLocations(const G4_Kernel& kernel);
 
+    void updateRMWNeeded();
+
+    bool checkDefUseDomRel(G4_Operand* dst, G4_BB* defBB);
+
+    bool isDominatingDef(G4_Operand* opnd, G4_BB* bb);
+
 public:
 
 
-    SpillManager(GlobalRA& g, const LIVERANGE_LIST & splrs, uint32_t startTempDclId) :
-        gra(g), kernel(g.kernel), pointsToAnalysis(g.pointsToAnalysis), builder(*g.kernel.fg.builder),
-        bbId(UINT_MAX), spilledLRs(splrs), origTempDclId(startTempDclId)
+    SpillManager(GlobalRA& g, const LIVERANGE_LIST& splrs, uint32_t startTempDclId) :
+        gra(g), kernel(g.kernel), pointsToAnalysis(g.pointsToAnalysis), refs(g.kernel),
+        builder(*g.kernel.fg.builder), bbId(UINT_MAX), spilledLRs(splrs),
+        origTempDclId(startTempDclId)
     {
         tempDclId = startTempDclId;
         numFlagSpillStore = numFlagSpillLoad = 0;
