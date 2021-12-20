@@ -302,6 +302,9 @@ private:
     void varSplit();
     void cloneSampleInst();
 
+    // helper function to find the size of cross thread data which needs to be loaded
+    uint32_t findLoadedInputSize();
+
     /// Each optimization should be a member function of this class.
     /// This defines a pass type as a pointer to member function.
     typedef void (Optimizer::*PassType)();
