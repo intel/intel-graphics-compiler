@@ -702,20 +702,20 @@ private:
                                 unsigned MaxWidth = 16,
                                 unsigned *Offset = nullptr);
 
-  std::string createInlineAsmOperand(Register *Reg, genx::Region *R, bool IsDst,
+  std::string createInlineAsmOperand(const Instruction *Inst, Register *Reg,
+                                     genx::Region *R, bool IsDst,
                                      genx::Signedness Signed,
                                      genx::ConstraintType Ty, unsigned Mod);
 
-  std::string createInlineAsmSourceOperand(Value *V, genx::Signedness Signed,
-                                           bool Baled, genx::ConstraintType Ty,
+  std::string createInlineAsmSourceOperand(const Instruction *Inst, Value *V,
+                                           genx::Signedness Signed, bool Baled,
+                                           genx::ConstraintType Ty,
                                            unsigned Mod = 0,
                                            unsigned MaxWidth = 16);
 
-  std::string createInlineAsmDestinationOperand(Value *Dest,
-                                                genx::Signedness Signed,
-                                                genx::ConstraintType Ty,
-                                                unsigned Mod,
-                                                const DstOpndDesc &DstDesc);
+  std::string createInlineAsmDestinationOperand(
+      const Instruction *Inst, Value *Dest, genx::Signedness Signed,
+      genx::ConstraintType Ty, unsigned Mod, const DstOpndDesc &DstDesc);
 
   VISA_VectorOpnd *createImmediateOperand(Constant *V, genx::Signedness Signed);
 
@@ -2205,15 +2205,37 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
                       Mod, SignedRes, MaxWidth);
 }
 
+static void diagnoseInlineAsm(llvm::LLVMContext &Context,
+                              const Instruction *Inst, const std::string Suffix,
+                              DiagnosticSeverity DS_type) {
+  auto *CI = cast<CallInst>(Inst);
+  const InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
+  const std::string Message = '"' + IA->getAsmString() + '"' + Suffix;
+  llvm::DiagnosticInfoInlineAsm Diagnostic{*Inst, Message, DS_type};
+  Context.diagnose(Diagnostic);
+}
+
 std::string GenXKernelBuilder::createInlineAsmOperand(
-    Register *Reg, genx::Region *R, bool IsDst, genx::Signedness Signed,
-    genx::ConstraintType Ty, unsigned Mod) {
+    const Instruction *Inst, Register *Reg, genx::Region *R, bool IsDst,
+    genx::Signedness Signed, genx::ConstraintType Ty, unsigned Mod) {
   deduceRegion(R, IsDst);
 
   VISA_VectorOpnd *ResultOperand = nullptr;
   switch (Ty) {
-  default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "constraint unhandled");
+  default: {
+    diagnoseInlineAsm(getContext(), Inst,
+                      " constraint incorrect in inline assembly", DS_Error);
+    break;
+  }
+  case ConstraintType::Constraint_i: {
+    diagnoseInlineAsm(
+        getContext(), Inst,
+        " immediate constraint in inline assembly was satisfied to value",
+        DS_Warning);
+    ResultOperand = createGeneralOperand(R, Reg->GetVar<VISA_GenVar>(Kernel),
+                                         Signed, Mod, IsDst);
+    break;
+  }
   case ConstraintType::Constraint_cr: {
     IGC_ASSERT(Reg);
     IGC_ASSERT(Reg->Category == vc::RegCategory::Predicate);
@@ -2240,8 +2262,8 @@ std::string GenXKernelBuilder::createInlineAsmOperand(
 }
 
 std::string GenXKernelBuilder::createInlineAsmDestinationOperand(
-    Value *Dest, genx::Signedness Signed, genx::ConstraintType Ty, unsigned Mod,
-    const DstOpndDesc &DstDesc) {
+    const Instruction *Inst, Value *Dest, genx::Signedness Signed,
+    genx::ConstraintType Ty, unsigned Mod, const DstOpndDesc &DstDesc) {
 
   Type *OverrideType = nullptr;
 
@@ -2255,8 +2277,8 @@ std::string GenXKernelBuilder::createInlineAsmDestinationOperand(
         getRegForValueAndSaveAlias(KernFunc, Dest, Signed, OverrideType);
 
     Region DestR(Dest);
-    return createInlineAsmOperand(Reg, &DestR, true /*IsDst*/, DONTCARESIGNED,
-                                  Ty, Mod);
+    return createInlineAsmOperand(Inst, Reg, &DestR, true /*IsDst*/,
+                                  DONTCARESIGNED, Ty, Mod);
   }
   // We need to allow for the case that there is no register allocated if it is
   // an indirected arg, and that is OK because the region is indirect so the
@@ -2281,12 +2303,12 @@ std::string GenXKernelBuilder::createInlineAsmDestinationOperand(
   // Write the vISA general operand with region:
   Region R = makeRegionFromBaleInfo(DstDesc.WrRegion, DstDesc.WrRegionBI);
 
-  return createInlineAsmOperand(Reg, &R, true /*IsDst*/, Signed, Ty, Mod);
+  return createInlineAsmOperand(Inst, Reg, &R, true /*IsDst*/, Signed, Ty, Mod);
 }
 
 std::string GenXKernelBuilder::createInlineAsmSourceOperand(
-    Value *V, genx::Signedness Signed, bool Baled, genx::ConstraintType Ty,
-    unsigned Mod, unsigned MaxWidth) {
+    const Instruction *AsmInst, Value *V, genx::Signedness Signed, bool Baled,
+    genx::ConstraintType Ty, unsigned Mod, unsigned MaxWidth) {
 
   if (auto C = dyn_cast<Constant>(V)) {
     if (Ty != genx::ConstraintType::Constraint_n) {
@@ -2312,7 +2334,8 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
     if (R.NumElements == 1)
       R.VStride = R.Stride = 0;
 
-    return createInlineAsmOperand(Reg, &R, false /*IsDst*/, Signed, Ty, Mod);
+    return createInlineAsmOperand(AsmInst, Reg, &R, false /*IsDst*/, Signed, Ty,
+                                  Mod);
   }
 
   Instruction *Inst = cast<Instruction>(V);
@@ -2340,7 +2363,8 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
 
   IGC_ASSERT(Reg->Category == vc::RegCategory::General || R.Indirect);
 
-  return createInlineAsmOperand(Reg, &R, false /*IsDst*/, Signed, Ty, Mod);
+  return createInlineAsmOperand(Inst, Reg, &R, false /*IsDst*/, Signed, Ty,
+                                Mod);
 }
 
 /***********************************************************************
@@ -5321,7 +5345,7 @@ void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
           DstDesc.WrRegionBI = BI;
         }
         InlasmOpAsString = createInlineAsmDestinationOperand(
-            InlasmOp, DONTCARESIGNED, Info.getConstraintType(), 0, DstDesc);
+            CI, InlasmOp, DONTCARESIGNED, Info.getConstraintType(), 0, DstDesc);
       } else {
         // Can't deduce output operand because there are no users
         // but we have register allocated. If region is needed we can use
@@ -5331,7 +5355,7 @@ void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
             getRegForValueAndSaveAlias(KernFunc, SV, DONTCARESIGNED);
         Region R(SV.getType());
         InlasmOpAsString =
-            createInlineAsmOperand(Reg, &R, true /*IsDst*/, DONTCARESIGNED,
+            createInlineAsmOperand(CI, Reg, &R, true /*IsDst*/, DONTCARESIGNED,
                                    Info.getConstraintType(), 0);
       }
     } else {
@@ -5343,7 +5367,7 @@ void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
         IsBaled = Baling->isBaled(RdR);
       }
       InlasmOpAsString = createInlineAsmSourceOperand(
-          InlasmOp, DONTCARESIGNED, IsBaled, Info.getConstraintType());
+          CI, InlasmOp, DONTCARESIGNED, IsBaled, Info.getConstraintType());
     }
     // Substitute string name of the variable until
     // there are no possible sustitutions. Do-while
