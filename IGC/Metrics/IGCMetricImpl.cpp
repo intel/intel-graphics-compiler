@@ -470,6 +470,8 @@ namespace IGCMetrics
                     continue;
                 }
 
+                auto varLocList = vISAData->GetVariableLocation(*instr);
+
                 // Extract debuginfo variable data
                 llvm::DIVariable* diVar = llvm::cast<llvm::DIVariable>(pNode);
 
@@ -477,19 +479,65 @@ namespace IGCMetrics
                 // Get CVariable data for this user variable
                 auto cvar = pDebugInfo->getMapping(*pFunc, pVal);
 
-                if (cvar == nullptr)
-                {
-                    // If not found check in whole shader data
-                    cvar = pDebugInfo->m_pShader->GetSymbol((llvm::Value*)pVal);
-                }
-
+                IGC_METRICS::VarInfo* varInfo_m = nullptr;
                 IGC_METRICS::Function* func_m = GetFuncMetric(*instr);
 
 #ifdef DEBUG_METRIC
-                std::printf("\ninstr (varname:%s, pointer:%p) :\n", varName.c_str(), pVal);
+                int users_count = (int)std::distance(pVal->user_begin(), pVal->user_end());
+                pVal->dump();
+                std::printf("\ninstr (varname:%s, pointer:%p, usage count:%d) :\n", varName.c_str(), pVal, users_count);
                 (*instr)->dump();
 #endif
-                IGC_METRICS::VarInfo* varInfo_m = nullptr;
+
+                if (!varLocList[0].IsRegister() &&
+                    !varLocList[0].IsImmediate() &&
+                    !varLocList[0].IsSLM())
+                {
+                    if (var_db2metric.find(diVar) == var_db2metric.end())
+                    {
+                        varInfo_m = func_m->add_variables();
+
+                        varInfo_m->set_name(varName);
+                        FillCodeRef(varInfo_m->mutable_varloc(),
+                            diVar);
+
+                        var_db2metric.insert(std::pair{ diVar, varInfo_m });
+                    }
+                    continue;
+                }
+                // As for now support only registers, immediates and slm memory to report
+
+                if (cvar == nullptr &&
+                    pDebugInfo->m_pShader->GetSymbolMapping().find((llvm::Value*)pVal)
+                    != pDebugInfo->m_pShader->GetSymbolMapping().end())
+                {
+                    cvar = pDebugInfo->m_pShader->GetSymbolMapping()[(llvm::Value*)pVal];
+                }
+
+                if (cvar == nullptr &&
+                    pDebugInfo->m_pShader->GetGlobalMapping().find((llvm::Value*)pVal)
+                    != pDebugInfo->m_pShader->GetGlobalMapping().end())
+                {
+                    cvar = pDebugInfo->m_pShader->GetGlobalMapping()[(llvm::Value*)pVal];
+                }
+
+                if (cvar == nullptr)
+                {
+                    auto cvar_const = llvm::dyn_cast<llvm::Constant>(pVal);
+                    if (cvar_const != nullptr &&
+                        pDebugInfo->m_pShader->GetConstantMapping().find((llvm::Constant*)cvar_const)
+                        != pDebugInfo->m_pShader->GetConstantMapping().end())
+                    {
+                        cvar = pDebugInfo->m_pShader->GetConstantMapping()[(llvm::Constant*)cvar_const];
+                    }
+                }
+
+                if (cvar == nullptr)
+                {
+                    // If not found check in whole shader data
+                    cvar = pDebugInfo->m_pShader->GetSymbol((llvm::Value*)pVal, false);
+                }
+
                 if (var_db2metric.find(diVar) != var_db2metric.end())
                 {
                     // Already added user variable
@@ -513,7 +561,6 @@ namespace IGCMetrics
                 }
 
                 // Loop in case when we have simd32 splitted into two simd16
-                auto varLocList = vISAData->GetVariableLocation(*instr);
                 for (auto varLoc = varLocList.begin(); varLoc != varLocList.end(); ++varLoc)
                 {
                     const auto* varInfo = vISAData->getVarInfo(*pDebugDecoder, varLoc->GetRegister());
