@@ -1068,7 +1068,7 @@ public:
     VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaText, const std::string& visaTextFile) = 0;
     VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaFile) = 0;
     VISA_BUILDER_API virtual std::stringstream& GetAsmTextStream() = 0;
-    VISA_BUILDER_API virtual VISAKernel* GetVISAKernel(const std::string& kernelName = "") = 0;
+    VISA_BUILDER_API virtual VISAKernel* GetVISAKernel(const std::string& kernelName = "") const = 0;
     VISA_BUILDER_API virtual int ClearAsmTextStreams() = 0;
     VISA_BUILDER_API virtual std::string GetCriticalMsg() = 0;
 };

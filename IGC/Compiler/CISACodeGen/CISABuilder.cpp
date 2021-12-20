@@ -5857,6 +5857,13 @@ namespace IGC
                 auto cl_context = static_cast<OpenCLProgramContext*>(context);
                 CreateSymbolTable(pOutput->m_symbols,
                     cl_context->m_programInfo.m_zebinSymbolTable);
+                // Set up per-function GTPIN information.
+                for (auto& sym : pOutput->m_symbols.function) {
+                    void* buffer = nullptr;
+                    unsigned size = 0;
+                    vbuilder->GetVISAKernel(sym.s_name)->GetGTPinBuffer(buffer, size);
+                    pOutput->m_FuncGTPinInfoList.push_back({sym.s_name, buffer, size});
+                }
             }
             else
             {

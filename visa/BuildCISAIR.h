@@ -74,7 +74,7 @@ public:
     VISA_BUILDER_API int ParseVISAText(const std::string& visaText, const std::string& visaTextFile) override;
     VISA_BUILDER_API int ParseVISAText(const std::string& visaFile) override;
     VISA_BUILDER_API std::stringstream& GetAsmTextStream() override { return m_ssIsaAsm; }
-    VISA_BUILDER_API VISAKernel* GetVISAKernel(const std::string& kernelName) override;
+    VISA_BUILDER_API VISAKernel* GetVISAKernel(const std::string& kernelName) const override;
     VISA_BUILDER_API int ClearAsmTextStreams() override;
 
     /**************END VISA BUILDER API*************************/
@@ -802,6 +802,8 @@ public:
 
     // getKernels - get all kernels and functions added into this builder
     std::list<VISAKernelImpl*>& getKernels() { return m_kernelsAndFunctions; }
+
+    const VISAKernelImpl* getKernel(const std::string& name) const;
 
     Options m_options;
     std::stringstream m_ssIsaAsm;

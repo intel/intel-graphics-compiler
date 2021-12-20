@@ -86,6 +86,13 @@ namespace IGC
             SymbolListTy sampler;           // sampler symbols
             SymbolListTy local;             // local symbols
         };
+        // function scope gtpin info
+        struct ZEBinFuncGTPinInfo {
+            std::string name;
+            void* buffer = nullptr;
+            unsigned bufferSize = 0;
+        };
+        typedef std::vector<ZEBinFuncGTPinInfo> FuncGTPinInfoListTy;
 
     public:
         void* m_programBin = nullptr;     //<! Must be 16 byte aligned, and padded to a 64 byte boundary
@@ -105,6 +112,7 @@ namespace IGC
         unsigned int    m_BasicBlockCount = 0;
         void* m_gtpinBuffer = nullptr;              // Will be populated by VISA only when special switch is passed by gtpin
         unsigned int    m_gtpinBufferSize = 0;
+        FuncGTPinInfoListTy m_FuncGTPinInfoList;
         void* m_funcSymbolTable = nullptr;
         unsigned int    m_funcSymbolTableSize = 0;
         unsigned int    m_funcSymbolTableEntries = 0;

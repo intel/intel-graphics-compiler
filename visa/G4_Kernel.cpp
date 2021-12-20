@@ -14,6 +14,8 @@ SPDX-License-Identifier: MIT
 // #include "iga/IGALibrary/api/igaEncoderWrapper.hpp"
 #include "iga/IGALibrary/api/kv.hpp"
 #include "BinaryEncodingIGA.h"
+#include "Common_ISA_framework.h"
+#include "VISAKernel.h"
 
 #include <list>
 #include <fstream>
@@ -306,12 +308,20 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
     // Dump buffer with shader dumps
     if (kernel.getOption(vISA_outputToFile))
     {
-        auto asmName = kernel.getOptions()->getOptionCstr(VISA_AsmFileName);
-        if (asmName)
+        std::string asmName = kernel.getOptions()->getOptionCstr(VISA_AsmFileName);
+        if (!asmName.empty())
         {
+            const VISAKernelImpl* vKernel = kernel.fg.builder->getParent()->getKernel(kernel.getName());
+            if (vKernel && vKernel->getIsFunction())
+            {
+                unsigned funcID = -1;
+                vKernel->GetFunctionId(funcID);
+                asmName += "_f" + std::to_string(funcID);
+            }
+
             std::ofstream ofInit;
             std::stringstream ssInit;
-            ssInit << std::string(asmName) << ".gtpin_igc_init";
+            ssInit << asmName << ".gtpin_igc_init";
             ofInit.open(ssInit.str(), std::ofstream::binary);
             if (gtpin_init)
             {

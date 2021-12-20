@@ -337,7 +337,7 @@ int CISA_IR_Builder::DestroyBuilder(CISA_IR_Builder *builder)
     return VISA_SUCCESS;
 }
 
-VISAKernel* CISA_IR_Builder::GetVISAKernel(const std::string& kernelName)
+VISAKernel* CISA_IR_Builder::GetVISAKernel(const std::string& kernelName) const
 {
     if (kernelName.empty())
     {
@@ -4348,3 +4348,10 @@ bool CISA_IR_Builder::CISA_create_nbarrier(
 }
 
 
+const VISAKernelImpl* CISA_IR_Builder::getKernel(const std::string& name) const
+{
+    auto it = m_nameToKernel.find(name);
+    if (it == m_nameToKernel.end())
+        return nullptr;
+    return it->second;
+}

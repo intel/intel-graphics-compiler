@@ -786,6 +786,10 @@ void ELFWriter::writeHeader()
     m_W.write<uint16_t>(is64Bit() ?
         sizeof(ELF::Elf64_Shdr) : sizeof(ELF::Elf32_Shdr));
 
+    // TODO: We do not support the case that the number of sections is greater
+    // than or equal to SHN_LORESERVE now.
+    IGC_ASSERT_MESSAGE(numOfSections() < ELF::SHN_LORESERVE,
+        "# of sections should be less than SHN_LORESERVE (oxff00)");
     // e_shnum
     m_W.write<uint16_t>(numOfSections());
 

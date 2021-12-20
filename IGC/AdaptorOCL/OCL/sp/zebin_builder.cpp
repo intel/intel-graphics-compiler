@@ -94,29 +94,25 @@ void ZEBinaryBuilder::createKernel(
 void ZEBinaryBuilder::addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations)
 {
     const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
-    uint8_t* buffer = nullptr;
-    uint32_t size = 0;
+    const SProgramOutput* output = nullptr;
     switch (annotations.m_executionEnivronment.CompiledSIMDSize) {
-    case 1:
-        buffer = (uint8_t*)program->simd1.m_gtpinBuffer;
-        size = program->simd1.m_gtpinBufferSize;
-        break;
-    case 8:
-        buffer = (uint8_t*)program->simd8.m_gtpinBuffer;
-        size = program->simd8.m_gtpinBufferSize;
-        break;
-    case 16:
-        buffer = (uint8_t*)program->simd16.m_gtpinBuffer;
-        size = program->simd16.m_gtpinBufferSize;
-        break;
-    case 32:
-        buffer = (uint8_t*)program->simd32.m_gtpinBuffer;
-        size = program->simd32.m_gtpinBufferSize;
-        break;
+    case 1:  output = &(program->simd1); break;
+    case 8:  output = &(program->simd8); break;
+    case 16: output = &(program->simd16); break;
+    case 32: output = &(program->simd32); break;
+    default: IGC_ASSERT(output != nullptr); break;
     }
 
+    uint8_t* buffer = (uint8_t*)output->m_gtpinBuffer;
+    uint32_t size = output->m_gtpinBufferSize;
     if (buffer != nullptr && size)
         mBuilder.addSectionGTPinInfo(annotations.m_kernelName, buffer, size);
+    for (auto& funcGTPin : output->m_FuncGTPinInfoList) {
+        buffer = (uint8_t*)funcGTPin.buffer;
+        size = funcGTPin.bufferSize;
+        if (buffer != nullptr && size)
+            mBuilder.addSectionGTPinInfo(funcGTPin.name, buffer, size);
+    }
 }
 
 void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& programInfo)
