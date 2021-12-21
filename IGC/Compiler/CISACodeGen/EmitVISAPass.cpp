@@ -14935,7 +14935,7 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence) const
     LSC_FENCE_OP op = LSC_FENCE_OP_NONE;
     if (IsGlobalMemFence && m_currShader->m_Platform->getWATable().Wa_14012437816)
     {
-        op = LSC_FENCE_OP_TYPE6;
+        op = LSC_FENCE_OP_INVALIDATE;
     }
 
     // For experiment on XeHP SDV
@@ -20856,7 +20856,7 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
         flushType == LSC_FENCE_OP_NONE &&
         scope > LSC_SCOPE_LOCAL)
     {
-        flushType = LSC_FENCE_OP_TYPE6;
+        flushType = LSC_FENCE_OP_INVALIDATE;
     }
     // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2
     if (scope == LSC_SCOPE_GPU &&
