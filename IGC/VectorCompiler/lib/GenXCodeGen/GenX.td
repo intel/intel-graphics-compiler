@@ -71,6 +71,8 @@ def FeatureWAFusedEUNoMask : SubtargetFeature<
     "wa_nomask_fusedEU", "WaNoMaskFusedEU", "true",
     "needs workaround for nomask operations under divergent control-flow">;
 
+def FeatureFusedEU : SubtargetFeature<"fusedEU", "HasFusedEU", "true", "has fused EUs">;
+
 def FeatureIntDivRem32: SubtargetFeature<"divrem32",
                                          "HasIntDivRem32",
                                          "true",
@@ -186,38 +188,38 @@ def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
                                FeatureHasPackedFloat,
-                               FeaturePreemption]>;
+                               FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"RKL",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
                                FeatureHasPackedFloat,
-                               FeaturePreemption]>;
+                               FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
                                FeatureHasPackedFloat,
-                               FeaturePreemption]>;
+                               FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureInstrAdd64,
                                FeatureFP64,
                                FeatureThreadPayloadInMemory,
                                FeatureHasPackedFloat,
-                               FeatureInstrBitRotate]>;
+                               FeatureInstrBitRotate, FeatureFusedEU]>;
 def : Proc<"ADLS",            [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
-                               FeaturePreemption]>;
+                               FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"ADLP",            [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
-                               FeaturePreemption]>;
+                               FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"DG2",             [FeatureLongLongEmulation,
                                FeatureThreadPayloadInMemory,
                                FeatureHasPackedFloat,
                                FeatureInstrBitRotate,
-                               FeatureHasLSC]>;
+                               FeatureHasLSC, FeatureFusedEU]>;
 def : Proc<"PVC",             [FeatureLongLong, FeatureGRFByteSize64,
                                FeatureLSCMaxWidth32,
                                FeatureSwitchjmp,

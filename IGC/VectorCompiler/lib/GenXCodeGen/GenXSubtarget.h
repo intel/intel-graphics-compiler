@@ -124,6 +124,9 @@ private:
   // control flow
   bool WaNoMaskFusedEU = false;
 
+  // True if subtarget has fused EUs
+  bool HasFusedEU = false;
+
   // True if subtarget supports 32-bit integer division
   bool HasIntDivRem32 = false;
 
@@ -315,6 +318,9 @@ public:
 
   /// * needsWANoMaskFusedEU() - true if we need to apply WA for NoMask ops
   bool needsWANoMaskFusedEU() const { return WaNoMaskFusedEU; }
+
+  /// * hasFusedEU() - true if subtarget has fused EUs
+  bool hasFusedEU() const { return HasFusedEU; }
 
   /// * has integer div/rem instruction
   bool hasIntDivRem32() const { return HasIntDivRem32; }
