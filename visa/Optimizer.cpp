@@ -12747,56 +12747,55 @@ void Optimizer::doNoMaskWA()
                 }
             }
         }
-        if (NoMaskCandidates.empty())
+
+        if (!NoMaskCandidates.empty())
         {
-            continue;
+            // 2. Do initialization for per-BB flag.
+            INST_LIST_ITER& II0 = NoMaskCandidates[0];
+
+            G4_INST* flagDefInst = nullptr;
+            uint32_t flagBits = need32BitFlag ? 32 : 16;
+            G4_RegVar* flagVarForBB = createFlagFromCmp(flagDefInst, flagBits, BB, II0);
+
+            // 3. Do WA by adding predicate to each candidate
+            for (int i = 0, sz = (int)NoMaskCandidates.size(); i < sz; ++i)
+            {
+                INST_LIST_ITER& II = NoMaskCandidates[i];
+                G4_INST* I = *II;
+
+                G4_CondMod* condmod = I->getCondMod();
+                G4_Predicate* pred = I->getPredicate();
+                if (!condmod && !pred)
+                {
+                    // case 1: no predicate, no flagModifier (common case)
+                    G4_Predicate* newPred = builder.createPredicate(
+                        PredState_Plus, flagVarForBB, 0, getPredCtrl(useAnyh));
+                    newPred->setSameAsNoMask(true);
+                    I->setPredicate(newPred);
+
+                    // update defUse
+                    flagDefInst->addDefUse(I, Opnd_pred);
+                }
+                else if (pred && !condmod)
+                {
+                    // case 2: has predicate, no flagModifier
+                    doPredicateInstWA(flagDefInst, flagVarForBB, BB, II);
+                }
+                else if (!pred && condmod)
+                {
+                    // case 3: has flagModifier, no predicate
+                    doFlagModifierInstWA(flagDefInst, flagVarForBB, BB, II);
+                }
+                else
+                {
+                    // case 4: both predicate and flagModifier are present
+                    //         (rare or never happen)
+                    doPredicateAndFlagModifierInstWA(flagDefInst, flagVarForBB, BB, II);
+                }
+            }
+            // Clear it to prepare for the next BB
+            NoMaskCandidates.clear();
         }
-
-        // 2. Do initialization for per-BB flag.
-        INST_LIST_ITER& II0 = NoMaskCandidates[0];
-
-        G4_INST* flagDefInst = nullptr;
-        uint32_t flagBits = need32BitFlag ? 32 : 16;
-        G4_RegVar* flagVarForBB = createFlagFromCmp(flagDefInst, flagBits, BB, II0);
-
-        // 3. Do WA by adding predicate to each candidate
-        for (int i = 0, sz = (int)NoMaskCandidates.size(); i < sz; ++i)
-        {
-            INST_LIST_ITER& II = NoMaskCandidates[i];
-            G4_INST* I = *II;
-
-            G4_CondMod* condmod = I->getCondMod();
-            G4_Predicate* pred = I->getPredicate();
-            if (!condmod && !pred)
-            {
-                // case 1: no predicate, no flagModifier (common case)
-                G4_Predicate* newPred = builder.createPredicate(
-                    PredState_Plus, flagVarForBB, 0, getPredCtrl(useAnyh));
-                newPred->setSameAsNoMask(true);
-                I->setPredicate(newPred);
-
-                // update defUse
-                flagDefInst->addDefUse(I, Opnd_pred);
-            }
-            else if (pred && !condmod)
-            {
-                // case 2: has predicate, no flagModifier
-                doPredicateInstWA(flagDefInst, flagVarForBB, BB, II);
-            }
-            else if (!pred && condmod)
-            {
-                // case 3: has flagModifier, no predicate
-                doFlagModifierInstWA(flagDefInst, flagVarForBB, BB, II);
-            }
-            else
-            {
-                // case 4: both predicate and flagModifier are present
-                //         (rare or never happen)
-                doPredicateAndFlagModifierInstWA(flagDefInst, flagVarForBB, BB, II);
-            }
-        }
-        // Clear it to prepare for the next BB
-        NoMaskCandidates.clear();
     }
 
     // Setting SkipPostRA for all insts so that postRA WA only applies on new insts
