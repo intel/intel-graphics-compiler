@@ -8189,6 +8189,11 @@ void GlobalRA::addCalleeStackSetupCode()
         addEUFusionWAInsts(createBEFP);
         addEUFusionWAInsts(addInst);
 
+        if (EUFusionWANeeded())
+        {
+            builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(createBEFP);
+        }
+
         insertIt++;
         entryBB->insertBefore(insertIt, createBEFP);
         entryBB->insertBefore(insertIt, addInst);
@@ -8539,7 +8544,8 @@ void GlobalRA::addStoreRestoreToReturn()
     {
         builder.kernel.getKernelDebugInfo()->setCallerBEFPRestoreInst(restoreBE_FPInst);
         builder.kernel.getKernelDebugInfo()->setCallerSPRestoreInst(restoreBE_FPInst);
-        builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(saveBE_FPInst);
+        if(!EUFusionWANeeded())
+            builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(saveBE_FPInst);
     }
 
     auto gtpin = builder.kernel.getGTPinData();

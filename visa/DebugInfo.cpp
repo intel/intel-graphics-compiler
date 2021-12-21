@@ -2098,6 +2098,7 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
         MUST_BE_TRUE(end >= reloc_offset, "Failed to update live-interval for retval");
         MUST_BE_TRUE(start >= reloc_offset, "Failed to update start for retval");
         MUST_BE_TRUE(end >= start, "end less then start for retval");
+        MUST_BE_TRUE(end != 0xffffffff, "end uninitialized");
         for (uint32_t i = start - reloc_offset; i <= end - reloc_offset; i++)
         {
             updateDebugInfo(*kernel, fretVar, i);
@@ -2127,6 +2128,7 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
 
         MUST_BE_TRUE(start != 0xffffffff, "Cannot update stack vars1");
         MUST_BE_TRUE(end != 0, "Cannot update stack vars2");
+        MUST_BE_TRUE(end != 0xffffffff, "end uninitialized");
     }
 
     auto callerbefp = getCallerBEFP();
@@ -2198,6 +2200,23 @@ void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic* spillOrFill, G4_
             calleeSaveRestore.second.insert(it, inst);
             return;
         }
+    }
+
+    if (spillOrFill == getCallerBEFPRestoreInst())
+    {
+        // caller be fp restore is a fill intrinsic that reads from FDE. it is expanded to
+        // a regular fill instruction. so update the pointer to new instruction.
+        setCallerBEFPRestoreInst(inst);
+    }
+
+    if (spillOrFill == getCallerSPRestoreInst())
+    {
+        setCallerSPRestoreInst(inst);
+    }
+
+    if (spillOrFill == getCallerBEFPSaveInst())
+    {
+        setCallerBEFPSaveInst(inst);
     }
 }
 
