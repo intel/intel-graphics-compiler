@@ -1387,6 +1387,8 @@ namespace IGC
             bool IntelForceInt32DivRemEmuSP = false;
             bool IntelForceDisable4GBBuffer = false;
 
+            bool AllowRelocAdd = true;
+
             private:
                 void parseOptions(const char* IntOptStr);
         };

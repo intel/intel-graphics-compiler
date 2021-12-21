@@ -878,6 +878,11 @@ namespace IGC
             {
                 CompileOneKernelAtTime = true;
             }
+            // -cl-skip-reloc-add
+            else if (suffix.equals("-skip-reloc-add"))
+            {
+                AllowRelocAdd = false;
+            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);

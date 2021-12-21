@@ -3728,7 +3728,11 @@ namespace IGC
         }
         if (IGC_IS_FLAG_ENABLED(EnableGlobalStateBuffer))
         {
-            params.push_back(param_uptr("-emitCrossThreadOffR0Reloc", literal_deleter));
+            if (context->type == ShaderType::OPENCL_SHADER &&
+                static_cast<OpenCLProgramContext*>(context)->m_InternalOptions.AllowRelocAdd)
+            {
+                params.push_back(param_uptr("-emitCrossThreadOffR0Reloc", literal_deleter));
+            }
         }
         // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
         // strings are checked by vISA and freed out of this function.
