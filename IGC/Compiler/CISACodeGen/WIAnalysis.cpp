@@ -1399,20 +1399,93 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
 
         if (intrinsic_name == llvm_sgv)
         {
-            SGVUsage usage = (SGVUsage)cast<ConstantInt>(inst->getOperand(0))->getZExtValue();
-            if ((usage != VFACE
-                ) &&
-                usage != ACTUAL_COARSE_SIZE_X &&
-                usage != ACTUAL_COARSE_SIZE_Y &&
-                usage != THREAD_GROUP_ID_X &&
-                usage != THREAD_GROUP_ID_Y &&
-                usage != THREAD_GROUP_ID_Z &&
-                usage != XP0 &&
-                usage != XP1 &&
-                usage != XP2
-                )
+            IGC_ASSERT(isa<SGVIntrinsic>(inst));
+            const SGVIntrinsic* systemValueIntr = cast<SGVIntrinsic>(inst);
+            switch (systemValueIntr->getUsage())
+            {
+            case VFACE: // palygon front/back facing from PS payload
+            case RENDER_TARGET_ARRAY_INDEX: // render target array index from PS payload
+            case VIEWPORT_INDEX: // viewport index from PS payload
+            {
+                IGC_ASSERT(m_CGCtx->type == ShaderType::PIXEL_SHADER);
+                const bool hasMultipolyDispatch =
+                    m_CGCtx->platform.supportDualSimd8PS();
+                return hasMultipolyDispatch ? WIAnalysis::RANDOM : WIAnalysis::UNIFORM_THREAD;
+            }
+            case POSITION_X: // position from VUE header in GS or pixel position X in PS
+            case POSITION_Y: // position from VUE header in GS or pixel position Y in PS
+            case POSITION_Z: // position from VUE header in GS or source depth in PS
+            case POSITION_W: // position from VUE header in GS or source W in PS
+            case PRIMITIVEID: // primitive id payload phase in GS
+            case GS_INSTANCEID: // GS instance id, calculated from URB handles
+            case POINT_WIDTH: // point width in VUE header in GS
+            case INPUT_COVERAGE_MASK: // pixel coverage mask payload phase in PS
+            case SAMPLEINDEX:  // sample index from PS payload
+            case CLIP_DISTANCE: // unused
+            case THREAD_ID_X: // global invocation id X in CS or OCL Kernel
+            case THREAD_ID_Y: // global invocation id Y in CS or OCL Kernel
+            case THREAD_ID_Z: // global invocation id Z in CS or OCL Kernel
+            case THREAD_ID_IN_GROUP_X: // local invocation id X in CS or OCL Kernel
+            case THREAD_ID_IN_GROUP_Y: // local invocation id Y in CS or OCL Kernel
+            case THREAD_ID_IN_GROUP_Z: // local invocation id Z in CS or OCL Kernel
+            case OUTPUT_CONTROL_POINT_ID: // unused
+            case DOMAIN_POINT_ID_X: // domain point U from DS payload
+            case DOMAIN_POINT_ID_Y: // domain point V from DS payload
+            case DOMAIN_POINT_ID_Z: // domain point W from DS payload
+            case VERTEX_ID: // vertex id in VS, delivered as an attribute
+            case REQUESTED_COARSE_SIZE_X: // requested per-subspan coarse pixel size X from PS payload
+            case REQUESTED_COARSE_SIZE_Y: // requested per-subspan coarse pixel size Y from PS payload
+            case CLIP_DISTANCE_X: // DX10 clip distance X from VUE header in GS
+            case CLIP_DISTANCE_Y: // DX10 clip distance Y from VUE header in GS
+            case CLIP_DISTANCE_Z: // DX10 clip distance Z from VUE header in GS
+            case CLIP_DISTANCE_W: // DX10 clip distance W from VUE header in GS
+            case POSITION_X_OFFSET: // pixel position offset X in PS
+            case POSITION_Y_OFFSET: // pixel position offset Y in PS
+            case POINT_COORD_X: // point-sprite coordinate X from PS attributes
+            case POINT_COORD_Y: // point-sprite coordinate Y from PS attributes
             {
                 return WIAnalysis::RANDOM;
+            }
+            case MSAA_RATE: // multisample rate from PS payload
+            case DISPATCH_DIMENSION_X: // dispatch size X from MS payload
+            case DISPATCH_DIMENSION_Y: // dispatch size Y from MS payload
+            case DISPATCH_DIMENSION_Z: // dispatch size Z from MS payload
+            case INDIRECT_DATA_ADDRESS: // indirect data address from MS payload
+            {
+                return WIAnalysis::UNIFORM_GLOBAL;
+            }
+            case THREAD_GROUP_ID_X: // workgroup id X in CS or OCL Kernel
+            case THREAD_GROUP_ID_Y: // workgroup id Y in CS or OCL Kernel
+            case THREAD_GROUP_ID_Z: // workgroup id Z in CS or OCL Kernel
+            {
+                return WIAnalysis::UNIFORM_WORKGROUP;
+            }
+            case ACTUAL_COARSE_SIZE_X: // actual coarse pixel size X from PS payload
+            case ACTUAL_COARSE_SIZE_Y: // actual coarse pixel size Y from PS payload
+            case THREAD_ID_WITHIN_THREAD_GROUP: // (physical) thread id in thread group from CS payload
+            {
+                return WIAnalysis::UNIFORM_THREAD;
+            }
+            case XP0: // base vertex from VS attributes
+            case XP1: // base instance from VS attributes
+            case XP2: // draw index from VS attributes
+            {
+                if (m_CGCtx->type == ShaderType::TASK_SHADER ||
+                    m_CGCtx->type == ShaderType::MESH_SHADER)
+                {
+                    // XP0 is used for draw index in mesh and task
+                    return WIAnalysis::UNIFORM_GLOBAL;
+                }
+                // Extended parameters are delivered in VS as attributes. Values
+                // are uniform but delivered per-vertex, frontends can use
+                // subgroup operations to get the uniform value.
+                return WIAnalysis::RANDOM;
+            }
+            case NUM_SGV:
+                IGC_ASSERT_MESSAGE(0, "Unexpected value");
+                break;
+            // This switch intentionally has no `default:` case. Whenever a new
+            // SGV type is added this code must be updated.
             }
         }
         if (intrinsic_name == llvm_getMessagePhaseX ||
