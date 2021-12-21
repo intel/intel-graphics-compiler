@@ -412,6 +412,7 @@ namespace {
     // Functions for creating copies
     void applyCopies();
     Instruction *createCopy(const CopyData &CD);
+    void replaceAllUsesWith(Instruction *OldInst, Instruction *NewInst);
     // Functions for opimized copies generation
     SortedCopies getSortedCopyData();
     void applyCopiesOptimized();
@@ -1432,7 +1433,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
                   IndexFlattener::flatten(cast<StructType>(CI->getType()),
                                           EV->getIndices())) {
                 NewCopy->takeName(EV);
-                EV->replaceAllUsesWith(NewCopy);
+                replaceAllUsesWith(EV, NewCopy);
                 if (EV == InsertBefore)
                   InsertBefore = InsertBefore->getNextNode();
                 Liveness->removeValue(SimpleValue(EV));
@@ -2106,6 +2107,28 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
   IGC_ASSERT_MESSAGE(NewCopy, "Bad copy");
 
   return NewCopy;
+}
+
+/***********************************************************************
+ * replaceAllUsesWith : replace all uses of OldInst with new instruction
+ *   with regard to GenXCoalescing structs
+ */
+void GenXCoalescing::replaceAllUsesWith(Instruction *OldInst,
+                                        Instruction *NewInst) {
+  for (auto &&CD : ToCopy) {
+    if (CD.InsertPoint == OldInst)
+      CD.InsertPoint = cast<Instruction>(NewInst);
+  }
+  ToCopy.erase(std::remove_if(ToCopy.begin(), ToCopy.end(),
+                              [&](CopyData const &CD) {
+                                if (CD.Dest.getValue() == OldInst)
+                                  return true;
+                                if (CD.Source.getValue() == OldInst)
+                                  return true;
+                                return false;
+                              }),
+               ToCopy.end());
+  OldInst->replaceAllUsesWith(NewInst);
 }
 
 /***********************************************************************
