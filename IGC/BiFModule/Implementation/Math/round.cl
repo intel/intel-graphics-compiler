@@ -39,7 +39,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( round, double, double, f64 )
 
 INLINE INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(round, _f16, )( half x )
 {
-    return SPIRV_OCL_BUILTIN(round, _f32, )(x);
+    return SPIRV_OCL_BUILTIN(round, _f32, )((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( round, half, half, f16 )
