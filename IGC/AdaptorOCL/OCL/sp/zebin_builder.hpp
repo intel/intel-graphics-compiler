@@ -95,6 +95,9 @@ private:
     /// add spir-v section
     void addSPIRV(const uint8_t* data, uint32_t size);
 
+    /// add runtime symbols
+    void addRuntimeSymbols();
+
     /// add program scope symbols (e.g. symbols defined in global/const buffer)
     void addProgramSymbols(const IGC::SOpenCLProgramInfo& annotations);
 
