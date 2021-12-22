@@ -104,4 +104,12 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
+
+    // Components affected: i915_kmd igc kmd
+    SI_WA_ENABLE(
+        Wa_1807084924,
+        "No link provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
 }
