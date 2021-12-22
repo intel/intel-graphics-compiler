@@ -73,6 +73,10 @@ private:
     std::vector<unsigned> addrPointsToSetIndex;
     // original regvar ptrs
     ORG_REGVAR_VECTOR regVars;
+    // store mapping of each address dcl -> vector of all pointees
+    std::unordered_map<G4_Declare*, std::vector<G4_Declare*>> addrTakenMap;
+    // store mapping of each pointee -> addr regs pointing to it
+    std::unordered_map<G4_Declare*, std::vector<G4_Declare*>> revAddrTakenMap;
 
     void resizePointsToSet(unsigned int newsize)
     {
@@ -168,6 +172,10 @@ private:
 
 public:
     PointsToAnalysis(const DECLARE_LIST& declares, unsigned numBBs);
+    // addr reg -> pointee regs
+    const std::unordered_map<G4_Declare*, std::vector<G4_Declare*>>& getPointsToMap();
+    // pointee -> addr reg
+    const std::unordered_map<G4_Declare*, std::vector<G4_Declare*>>& getRevPointsToMap();
 
     void doPointsToAnalysis(FlowGraph& fg);
 
@@ -186,8 +194,7 @@ public:
         addr2->setId(numAddrs);
         MUST_BE_TRUE(regVars.size() == numAddrs, "Inconsistency found between size of regvars and number of addr vars");
 
-        if (addr2->getId() >= numAddrs)
-            resizePointsToSet(numAddrs + 1);
+        resizePointsToSet(numAddrs + 1);
 
         regVars.push_back(addr2);
 

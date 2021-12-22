@@ -50,7 +50,7 @@ PointsToAnalysis::PointsToAnalysis(const DECLARE_LIST &declares, unsigned int nu
             decl->getAliasDeclare() != NULL)
         {
             // participate liveness analysis
-            decl->getRegVar()->setId(decl->getRegVar()->getId());
+            decl->getRegVar()->setId(decl->getRootDeclare()->getRegVar()->getId());
         }
     }
 
@@ -79,6 +79,47 @@ PointsToAnalysis::PointsToAnalysis(const DECLARE_LIST &declares, unsigned int nu
     }
 }
 
+// This function is intended to be invoked only in GRF RA. As that ensures points-to
+// data structures are well populated and no new entry would be added to points-to
+// table. If this condition is no longer true, then this function should be modified.
+const std::unordered_map<G4_Declare*, std::vector<G4_Declare*>>& PointsToAnalysis::getPointsToMap() {
+    // return map computed earlier
+    // assume no updates are made to points-to analysis table since first update
+    if (addrTakenMap.size() > 0)
+        return addrTakenMap;
+
+    unsigned idx = 0;
+
+    // populate map from each addr reg -> addr taken targets
+    for (auto& RV : regVars)
+    {
+        auto ptsToIdx = addrPointsToSetIndex[idx];
+        for(auto& item : pointsToSets[ptsToIdx])
+            addrTakenMap[RV->getDeclare()->getRootDeclare()].push_back(item.var->getDeclare()->getRootDeclare());
+        ++idx;
+    }
+
+    return addrTakenMap;
+}
+
+const std::unordered_map<G4_Declare*, std::vector<G4_Declare*>>& PointsToAnalysis::getRevPointsToMap()
+{
+    if (revAddrTakenMap.size() > 0)
+        return revAddrTakenMap;
+
+    // call the function instead of using direct member to guarantee the map is populated
+    auto& forwardMap = getPointsToMap();
+
+    for (auto& entry : forwardMap)
+    {
+        for (auto& var : entry.second)
+        {
+            revAddrTakenMap[var].push_back(entry.first);
+        }
+    }
+
+    return revAddrTakenMap;
+}
 
 //
 //  A flow-insensitive algroithm to compute the register usage for indirect accesses.

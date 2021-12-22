@@ -2400,6 +2400,10 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
             if (pt.var->isRegAllocPartaker())
             {
                 buildInterferenceWithLive(live, pt.var->getId());
+                if (kernel.getOption(vISA_IncSpillCostAllAddrTaken))
+                {
+                    lrs[pt.var->getId()]->setRefCount(lrs[pt.var->getId()]->getRefCount() + refCount);
+                }
             }
         }
     }
@@ -2564,6 +2568,10 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
                         if (pt.var->isRegAllocPartaker())
                         {
                             updateLiveness(live, pt.var->getId(), true);
+                            if (kernel.getOption(vISA_IncSpillCostAllAddrTaken))
+                            {
+                                lrs[pt.var->getId()]->setRefCount(lrs[pt.var->getId()]->getRefCount() + refCount);
+                            }
                         }
                     }
                 }
@@ -5869,6 +5877,27 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
     std::vector <LiveRange *> addressSensitiveVars;
     float maxNormalCost = 0.0f;
 
+    auto incSpillCostCandidate = [&](LiveRange* lr)
+    {
+        if (kernel.getOption(vISA_IncSpillCostAllAddrTaken))
+            return true;
+
+        auto& addrTakenMap = const_cast<PointsToAnalysis&>(liveAnalysis.getPointsToAnalysis()).getPointsToMap();
+        auto& revAddrTakenMap = const_cast<PointsToAnalysis&>(liveAnalysis.getPointsToAnalysis()).getRevPointsToMap();
+
+        // this condition is a safety measure and isnt expected to be true.
+        auto it = revAddrTakenMap.find(lr->getDcl());
+        if(it == revAddrTakenMap.end())
+            return true;
+
+        for (auto& addrVar : (*it).second)
+        {
+            if (addrTakenMap.count(addrVar) > 1)
+                return true;
+        }
+        return false;
+    };
+
     for (unsigned i = 0; i < numVar; i++)
     {
         G4_Declare* dcl = lrs[i]->getDcl();
@@ -5957,7 +5986,8 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
             lrs[i]->setSpillCost(spillCost);
 
             // Track address sensitive live range.
-            if (liveAnalysis.isAddressSensitive(i))
+            if (liveAnalysis.isAddressSensitive(i) &&
+                incSpillCostCandidate(lrs[i]))
             {
                 addressSensitiveVars.push_back(lrs[i]);
             }
