@@ -83,6 +83,10 @@ static cl::opt<bool>
     DisableLRCoalescingOpt("vc-disable-coalescing", cl::init(false), cl::Hidden,
                            cl::desc("disable coalescing of live ranges"));
 
+static cl::opt<bool>
+    DisableExtraCoalescingOpt("vc-disable-extra-coalescing", cl::init(false), cl::Hidden,
+                              cl::desc("disable extrac coalescing"));
+
 static cl::opt<bool> DisableNonOverlappingRegionOptOpt(
     "vc-disable-non-overlapping-region-opt", cl::init(false), cl::Hidden,
     cl::desc("Disable non-overlapping region optimization"));
@@ -146,6 +150,7 @@ GenXBackendOptions::GenXBackendOptions()
       UseNewStackBuilder(UseNewStackBuilderOpt),
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
       DisableLiveRangesCoalescing(DisableLRCoalescingOpt),
+      DisableExtraCoalescing(DisableLRCoalescingOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
       FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
       UseBindlessBuffers(UseBindlessBuffersOpt),

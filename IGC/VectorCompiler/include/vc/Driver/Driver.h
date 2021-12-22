@@ -87,6 +87,7 @@ struct CompileOptions {
 
   llvm::Optional<unsigned> StackMemSize;
   bool ForceLiveRangesLocalizationForAccUsage = false;
+  bool ForceDisableExtraCoalescing = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
   bool IsLargeGRFMode = false;
   DisableLRCoalescingControl DisableLRCoalescingMode =

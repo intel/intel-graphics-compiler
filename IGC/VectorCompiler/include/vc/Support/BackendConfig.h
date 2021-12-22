@@ -89,6 +89,9 @@ struct GenXBackendOptions {
   // Disable LR coalescing
   bool DisableLiveRangesCoalescing = false;
 
+  // Disable extra coalescing
+  bool DisableExtraCoalescing = false;
+
   // Disable non-overlapping region transformation (the case with undef
   // value in two-address operand)
   bool DisableNonOverlappingRegionOpt;
@@ -238,6 +241,10 @@ public:
 
   bool disableLiveRangesCoalescing() const {
     return Options.DisableLiveRangesCoalescing;
+  }
+
+  bool disableExtraCoalescing() const {
+    return Options.DisableExtraCoalescing;
   }
 
   bool disableNonOverlappingRegionOpt() const {

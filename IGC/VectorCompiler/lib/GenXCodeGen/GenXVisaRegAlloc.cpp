@@ -145,7 +145,8 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   CurrentRegId[vc::RegCategory::Predicate] = VISA_NUM_RESERVED_PREDICATES;
   CurrentRegId[vc::RegCategory::Surface] = VISA_NUM_RESERVED_SURFACES;
   // Do some extra coalescing.
-  extraCoalescing();
+  if (!BackendConfig->disableExtraCoalescing())
+    extraCoalescing();
   // Get the live ranges in a reproducible order.
   std::vector<LiveRange *> LRs;
   getLiveRanges(LRs);
