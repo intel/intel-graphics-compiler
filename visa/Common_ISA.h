@@ -926,7 +926,7 @@ extern vISAPreDefinedSurface vISAPreDefSurf[COMMON_ISA_NUM_PREDEFINED_SURF_VER_3
 const int BINDLESS_SAMPLER_ID = 31;
 static const char* BINDLESS_SAMPLER_NAME = "S31";
 
-const char* getSampleOp3DName(int opcode);
+const char* getSampleOp3DName(VISASampler3DSubOpCode opcode);
 VISASampler3DSubOpCode getSampleOpFromName(const char *str);
 
 /// ChannelMask - Channel mask used in vISA builder.

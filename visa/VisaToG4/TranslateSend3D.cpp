@@ -2281,9 +2281,9 @@ int IR_Builder::translateVISASamplerNormInst(
     G4_DstRegRegion* d = checkSendDst(dst_opnd->asDstRegRegion());
 
     // Set bit 12-17 for the message descriptor
-    unsigned temp = 0;
-    temp += 0xc << 12;   // Bit 16-12 = 1100 for Sampler Message Type
-    temp += 0x3 << 17;   // Bit 18-17 = 11 for SIMD32 mode
+    unsigned descFc = 0;
+    descFc |= 0xC << 12;   // Bit 16-12 = 1100 for Sampler Message Type
+    descFc |= 0x3 << 17;   // Bit 18-17 = 11 for SIMD32 mode
 
     createSendInst(
         NULL,
@@ -2292,7 +2292,7 @@ int IR_Builder::translateVISASamplerNormInst(
         2,
         32*numEnabledChannels*TypeSize(Type_UW)/numEltPerGRF<Type_UB>(),
         g4::SIMD32,
-        temp,
+        descFc,
         SFID::SAMPLER,
         1,
         SendAccess::READ_ONLY,
@@ -2410,23 +2410,22 @@ int IR_Builder::translateVISASamplerInst(
     G4_DstRegRegion* d = checkSendDst(dstOpnd->asDstRegRegion());
 
     // Set bit 9-8 for the message descriptor
-    unsigned temp = 0;
+    unsigned descFc = 0;
 
-    //Bit 17-18 = 10 for SIMD mode
-    if (simdMode == 8)
-    {
-        temp += 0x1 << 17;
+    // Bit 17-18 = 10 for SIMD mode
+    if (simdMode == 8) {
+        descFc |= 0x1 << 17;
     }
     else
     {
-        temp += 0x2 << 17;
+        descFc |= 0x2 << 17;
     }
 
-    if (sampler == NULL)
+    if (sampler == nullptr)
     {
-#define SAMPLER_MESSAGE_TYPE_OFFSET    12
-        //LD message
-        temp += VISASampler3DSubOpCode::VISA_3D_LD << SAMPLER_MESSAGE_TYPE_OFFSET;
+        static const unsigned SAMPLER_MESSAGE_TYPE_OFFSET = 12;
+        // LD message
+        descFc += VISASampler3DSubOpCode::VISA_3D_LD << SAMPLER_MESSAGE_TYPE_OFFSET;
     }
 
     if (simdMode == 16) {
@@ -2455,7 +2454,7 @@ int IR_Builder::translateVISASamplerInst(
         1 + simdMode/2,
         ((simdMode == 8) ? 32 : (numEnabledChannels*16))*TypeSize(Type_F)/numEltPerGRF<Type_UB>(),
         G4_ExecSize(simdMode),
-        temp,
+        descFc,
         SFID::SAMPLER,
         1,
         SendAccess::READ_ONLY,
