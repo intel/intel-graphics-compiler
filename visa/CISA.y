@@ -1128,6 +1128,13 @@ MovInstruction:
             $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
     }
     |
+    Predicate MOV_OP SatModOpt ExecSize VecDstOperand_A VecSrcOperand_G_I_IMM_A_AO
+    {
+        pBuilder->CISA_create_mov_instruction(
+            $1, $2, $4.emask, $4.exec_size, $3, 
+            $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
+    }
+    |
     Predicate MOV_OP SatModOpt ExecSize VecDstOperand_G_I PredVar
     {
         ABORT_ON_FAIL(pBuilder->CISA_create_mov_instruction($5.cisa_gen_opnd, $6, CISAlineno));
