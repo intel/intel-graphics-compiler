@@ -1,3 +1,11 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2021 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SetVector.h>
 #include <llvm/IR/InstIterator.h>
