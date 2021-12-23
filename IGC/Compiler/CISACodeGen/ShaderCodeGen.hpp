@@ -522,6 +522,11 @@ public:
         return globalSymbolMapping;
     }
 
+    llvm::DenseMap<llvm::Constant*, CVariable*>& GetConstantMapping()
+    {
+        return ConstantPool;
+    }
+
     int64_t GetKernelArgOffset(CVariable* argV)
     {
         auto it = kernelArgToPayloadOffsetMap.find(argV);
