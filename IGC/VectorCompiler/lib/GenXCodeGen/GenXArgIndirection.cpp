@@ -146,6 +146,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
+#include "vc/Utils/General/FunctionAttrs.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -1252,9 +1253,9 @@ std::pair<Value *, Value *> SubroutineArg::addAddressArg() {
   ArgTys.push_back(Type::getInt16Ty(F->getContext()));
   FTy = FunctionType::get(FTy->getReturnType(), ArgTys, false);
   // Create the new function.
-  NewFunc = Function::Create(FTy, F->getLinkage(), "");
-  NewFunc->takeName(F);
-  NewFunc->copyAttributesFrom(F);
+  NewFunc = Function::Create(FTy, F->getLinkage(), F->getName());
+  vc::transferNameAndCCWithNewAttr(F->getAttributes(), *F, *NewFunc);
+  vc::transferDISubprogram(*F, *NewFunc);
   F->getParent()->getFunctionList().insert(F->getIterator(), NewFunc);
   // Set the new function's number to the same as the old function.
   Pass->Numbering->setNumber(NewFunc, Pass->Numbering->getNumber(F));
