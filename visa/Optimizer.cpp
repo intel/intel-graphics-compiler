@@ -7348,8 +7348,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //                  each time it is needed, that is, created per each inst.
         //  (See comments for more details at doNoMaskWA().
         if (/*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&*/
-            ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
-              builder.getOption(vISA_forceNoMaskWA)))
+            builder.hasFusedEUWA())
         {
             doNoMaskWA();
         }
@@ -12137,6 +12136,20 @@ void Optimizer::doNoMaskWA()
     bool enableAnyh = true; // try to use anyh if possible
     bool  useAnyh = enableAnyh;  // Set for each BB/inst.
 
+    // Reserve 2 DW for WA flags, used in both preRA and postRA.
+    G4_Declare* WAFlagReserve = nullptr;
+    auto reserveGRFForWAFlag = [this]()
+    {
+        assert(!builder.getOption(vISA_LinearScan) && "LinearScan not used when WA is needed!");
+
+        G4_BB* entryBB = (*kernel.fg.begin());
+        assert(entryBB);
+        INST_LIST_ITER inst_it = entryBB->getFirstInsertPos();
+        G4_INST* euWAInst = builder.createEUWASpill(false);
+        entryBB->insertBefore(inst_it, euWAInst);
+        return builder.getEUFusionWATmpVar();
+    };
+
     auto getPredCtrl = [&](bool isUseAnyh) -> G4_Predicate_Control
     {
         if (isUseAnyh)
@@ -12666,6 +12679,13 @@ void Optimizer::doNoMaskWA()
             nestedDivergentBBs[BB] < 2)
         {
             continue;
+        }
+
+        // This BB might need WA, thus reserved GRF for wa flags.
+        // (If postRA needs WA, WAFlagReserve shoud be set here.)
+        if (WAFlagReserve == nullptr)
+        {
+            WAFlagReserve = reserveGRFForWAFlag();
         }
 
         if ((builder.getuint32Option(vISA_noMaskWA) & 0x4) != 0)
