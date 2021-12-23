@@ -236,6 +236,10 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
+static cl::opt<bool> UseUpper16Lanes("vc-use-upper16-lanes", cl::init(true),
+                                     cl::Hidden,
+                                     cl::desc("Limit legalization width"));
+
 namespace {
 
 // Information on a part of a predicate.
@@ -355,6 +359,9 @@ class GenXLegalization : public FunctionPass {
   // Illegally sized predicate values that need splitting at the end of
   // processing the function.
   SetVector<Instruction *> IllegalPredicates;
+  // Whether the function's module has stack calls or not. Used for making
+  // legalization decisions.
+  bool HasStackCalls = false;
 
 public:
   static char ID;
@@ -538,6 +545,12 @@ bool GenXLegalization::runOnFunction(Function &F) {
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  // FIXME: Non-optimal solution. FGs info or some stackcalls-related analysis
+  // will be useful here.
+  HasStackCalls =
+      llvm::any_of(F.getParent()->functions(), [](const Function &MF) {
+        return genx::requiresStackCall(MF);
+      });
   // Check args for illegal predicates.
   for (Function::arg_iterator fi = F.arg_begin(), fe = F.arg_end(); fi != fe;
        ++fi) {
@@ -1329,6 +1342,15 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
   // Prepare to keep track of whether an instruction with a minimum width
   // (e.g. dp4) would be split too small, and whether we need to unbale.
   unsigned ExecSizeAllowedBits = adjustTwiceWidthOrFixed4(B);
+  if (!UseUpper16Lanes || (HasStackCalls && ST->hasFusedEU()))
+    // Actually, we should legalize with these more strict requirements only FGs
+    // of indirectly called functions. But there are two design issues that make
+    // us legalize everything if the module has a stack call:
+    //   * jmpi to goto transformation is appied in VISA and it transforms more
+    //   than necessary
+    //   * this legalization pass does not have access to FGs
+    ExecSizeAllowedBits &= 0x1f;
+
   unsigned MainInstMinWidth =
       1 << countTrailingZeros(ExecSizeAllowedBits, ZB_Undefined);
   // Determine the vector width that we need to split into.
