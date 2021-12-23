@@ -5098,30 +5098,20 @@ void HWConformity::fixSendInst(G4_BB* bb)
         {
             auto sendSrc = isSrc0 ? inst->getSrc(0)->asSrcRegRegion() : inst->getSrc(1)->asSrcRegRegion();
             uint16_t rows = isSrc0 ? inst->getMsgDesc()->getSrc0LenRegs() : inst->getMsgDesc()->getSrc1LenRegs();
-
-            G4_Declare* sendSrcDcl = sendSrc->getBase()->asRegVar()->getDeclare();
             G4_Type type = sendSrc->getType();
+            G4_Declare* dcl = builder.createTempVar(rows * builder.getNativeExecSize(), type, GRFALIGN);
+
+            MUST_BE_TRUE(TypeSize(type) == 4, "Invalid src opnd type for send.");
+
+            const RegionDesc* region = builder.getRegionStride1();
             G4_VarBase* base = sendSrc->getBase();
             short baseOff = sendSrc->getRegOff();
             short baseSubOff = sendSrc->getSubRegOff();
-
-            if (TypeSize(type) != 4) {
-              unsigned int byteSize = sendSrcDcl->getByteSize();
-              MUST_BE_TRUE(byteSize % 4 == 0, "Unexpected src opnd type for send.");
-              G4_Declare* tmpDcl = builder.createTempVar(byteSize / 4, Type_UD, sendSrcDcl->getSubRegAlign());
-              tmpDcl->setAliasDeclare(sendSrcDcl, 0);
-              base = tmpDcl->getRegVar();
-              baseSubOff *= TypeSize(type) / 4;
-              type = Type_UD;
-            }
-
-            G4_Declare* dcl = builder.createTempVar(rows * builder.getNativeExecSize(), type, GRFALIGN);
-            const RegionDesc* region = builder.getRegionStride1();
             for (uint16_t idx = 0; idx != rows; ++idx) {
-              G4_SrcRegRegion* src = builder.createSrc(base, baseOff + idx, baseSubOff + 0, region, type);
-              G4_DstRegRegion* dst = builder.createDst(dcl->getRegVar(), idx, 0, 1, type);
-              G4_INST* newInst = builder.createMov(builder.getNativeExecSize(), dst, src, InstOpt_WriteEnable, false);
-              bb->insertBefore(i, newInst);
+                G4_SrcRegRegion* src = builder.createSrc(base, baseOff + idx, baseSubOff + 0, region, type);
+                G4_DstRegRegion* dst = builder.createDst(dcl->getRegVar(), idx, 0, 1, type);
+                G4_INST* newInst = builder.createMov(builder.getNativeExecSize(), dst, src, InstOpt_WriteEnable, false);
+                bb->insertBefore(i, newInst);
             }
 
             G4_Operand* newSrc = builder.createSrcRegRegion(dcl, builder.getRegionStride1());
