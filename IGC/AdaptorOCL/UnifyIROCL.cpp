@@ -52,7 +52,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/ExtenstionFuncs/ExtensionFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ImageFuncsAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ImageFuncResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ResolveSampledImageBuiltins.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
@@ -438,8 +437,6 @@ static void CommonOCLBasedPasses(
     mpm.add(new BreakConstantExpr());
 
     mpm.add(CreateFoldKnownWorkGroupSizes());
-
-    mpm.add(new ResolveSampledImageBuiltins());
 
     // 64-bit atomics have to be resolved before AddImplicitArgs pass as it uses
     // local ids for spin lock initialization

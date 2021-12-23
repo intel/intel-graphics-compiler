@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #define __SPIRV_H__
 
 #include "spirv_macros.h"
-#include "spirv_types.h"
 
 /******
  *
@@ -156,8 +155,52 @@ typedef uchar __bool4 __attribute__((ext_vector_type(4)));
 typedef uchar __bool8 __attribute__((ext_vector_type(8)));
 typedef uchar __bool16 __attribute__((ext_vector_type(16)));
 
+typedef ulong    ImageType_t;
+typedef ulong    Image_t;
+typedef ulong    Sampler_t;
+typedef ulong3   SampledImage_t;
+
 #define INTEL_PIPE_RESERVE_ID_VALID_BIT (1U << 30)
 #define CLK_NULL_RESERVE_ID (__builtin_astype(((void*)(~INTEL_PIPE_RESERVE_ID_VALID_BIT)), __spirv_ReserveId))
+
+// ImageType_t Encoding
+//  Sampeled       & 0x3 << 62
+//      0 = Unknown at compile time
+//      1 = Will be sampled
+//      2 = Will not be sampled
+//  Dimension      & 0x7 << 59
+//      0 = 1D
+//      1 = 2D
+//      2 = 3D
+//      3 = Cube
+//      4 = Rect
+//      5 = Buffer
+//      6 = SubpassData
+//  Depth          & 0x1 << 58
+//      0 == Non-Depth
+//      1 == Depth
+//  Arrayed        & 0x1 << 57
+//      0 == Non-Arrayed
+//      1 == Arrayed
+//  MultiSampled  & 0x1 << 56
+//      0 == Non-Multisampled
+//      1 == Multisampled
+//  AccessQualifer & 0x3 << 54
+//      0 = Read Only
+//      1 = Write Only
+//      2 = Read/Write
+
+typedef enum
+{
+    Dim1D = 0,
+    Dim2D,
+    Dim3D,
+    DimCube,
+    DimRect,
+    DimBuffer,
+    DimSubpassData,
+    DimEnd
+} Dimensionality_t;
 
 #define IMAGETYPE_SAMPLED_SHIFT 62
 #define IMAGETYPE_DIM_SHIFT 59
@@ -165,6 +208,32 @@ typedef uchar __bool16 __attribute__((ext_vector_type(16)));
 #define IMAGETYPE_ARRAYED_SHIFT 57
 #define IMAGETYPE_MULTISAMPLED_SHIFT 56
 #define IMAGETYPE_ACCESSQUALIFER_SHIFT 54
+
+#define DEF_IMAGE_TYPE(SPIRV_IMAGE_TYPE, SHORT_IMAGE_TYPE) \
+typedef struct  SPIRV_IMAGE_TYPE##_0 SHORT_IMAGE_TYPE##_ro; \
+typedef struct  SPIRV_IMAGE_TYPE##_1 SHORT_IMAGE_TYPE##_wo; \
+typedef struct  SPIRV_IMAGE_TYPE##_2 SHORT_IMAGE_TYPE##_rw;
+
+DEF_IMAGE_TYPE(__spirv_Image__void_0_0_0_0_0_0, Img1d)
+DEF_IMAGE_TYPE(__spirv_Image__void_5_0_0_0_0_0, Img1d_buffer)
+DEF_IMAGE_TYPE(__spirv_Image__void_0_0_1_0_0_0, Img1d_array)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_0_0_0_0_0, Img2d)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_0_1_0_0_0, Img2d_array)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_1_0_0_0_0, Img2d_depth)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_1_1_0_0_0, Img2d_array_depth)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_0_0_1_0_0, Img2d_msaa)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_0_1_1_0_0, Img2d_array_msaa)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_1_0_1_0_0, Img2d_msaa_depth)
+DEF_IMAGE_TYPE(__spirv_Image__void_1_1_1_1_0_0, Img2d_array_msaa_depth)
+DEF_IMAGE_TYPE(__spirv_Image__void_2_0_0_0_0_0, Img3d)
+
+typedef global  struct __spirv_Pipe__0*     __spirv_Pipe_ro;
+typedef global  struct __spirv_Pipe__1*     __spirv_Pipe_wo;
+typedef private struct __spirv_ReserveId*   __spirv_ReserveId;
+typedef private struct __spirv_DeviceEvent* __spirv_DeviceEvent;
+typedef private struct __spirv_Event*       __spirv_Event;
+typedef private struct __spirv_Queue*       __spirv_Queue;
+
 
 // Keep track of SaturatedConversion
 
@@ -203,60 +272,16 @@ uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId,
 // Image Instructions
 //
 
-__spirv_SampledImage_1D SPIRV_OVERLOADABLE SPIRV_BUILTIN(SampledImage, _img1d_ro_i64, )(global Img1d_ro* Image, __spirv_Sampler Sampler);
-__spirv_SampledImage_2D SPIRV_OVERLOADABLE SPIRV_BUILTIN(SampledImage, _img2d_ro_i64, )(global Img2d_ro* Image, __spirv_Sampler Sampler);
-__spirv_SampledImage_3D SPIRV_OVERLOADABLE SPIRV_BUILTIN(SampledImage, _img3d_ro_i64, )(global Img3d_ro* Image, __spirv_Sampler Sampler);
-__spirv_SampledImage_1D_array SPIRV_OVERLOADABLE SPIRV_BUILTIN(SampledImage, _img1d_array_ro_i64, )(global Img1d_array_ro* Image, __spirv_Sampler Sampler);
-__spirv_SampledImage_2D_array SPIRV_OVERLOADABLE SPIRV_BUILTIN(SampledImage, _img2d_array_ro_i64, )(global Img2d_array_ro* Image, __spirv_Sampler Sampler);
-__spirv_SampledImage_2D_depth SPIRV_OVERLOADABLE SPIRV_BUILTIN(SampledImage, _img2d_depth_ro_i64, )(global Img2d_depth_ro* Image, __spirv_Sampler Sampler);
-__spirv_SampledImage_2D_array_depth SPIRV_OVERLOADABLE SPIRV_BUILTIN(SampledImage, _img2d_array_depth_ro_i64, )(global Img2d_array_depth_ro* Image, __spirv_Sampler Sampler);
+SampledImage_t __builtin_spirv_OpSampledImage_i64_i64_i64(Image_t Image, ImageType_t ImageType, Sampler_t Sampler);
 
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_ro_v2f32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D SampledImage, float2 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_ro_v2i32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D SampledImage, int2 Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2f32_i32_f32, _Rint4)(__spirv_SampledImage_2D SampledImage, float2 Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2i32_i32_f32, _Rint4)(__spirv_SampledImage_2D SampledImage, int2 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_v4f32_i32_f32, _Rfloat4)(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_v4i32_i32_f32, _Rfloat4)(__spirv_SampledImage_3D SampledImage, int4 Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4f32_i32_f32, _Rint4)(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4i32_i32_f32, _Rint4)(__spirv_SampledImage_3D SampledImage, int4 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4i32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4f32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4i32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_f32_i32_f32, _Rfloat4)(__spirv_SampledImage_1D SampledImage, float Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_i32_i32_f32, _Rfloat4)(__spirv_SampledImage_1D SampledImage, int Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_f32_i32_f32, _Rint4)(__spirv_SampledImage_1D SampledImage, float Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_i32_i32_f32, _Rint4)(__spirv_SampledImage_1D SampledImage, int Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_array_ro_v2f32_i32_f32, _Rfloat4)(__spirv_SampledImage_1D_array SampledImage, float2 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_array_ro_v2i32_i32_f32, _Rfloat4)(__spirv_SampledImage_1D_array SampledImage, int2 Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array_ro_v2f32_i32_f32, _Rint4)(__spirv_SampledImage_1D_array SampledImage, float2 Coordinate, int ImageOperands, float Lod);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array_ro_v2i32_i32_f32, _Rint4)(__spirv_SampledImage_1D_array SampledImage, int2 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_depth_ro_v2f32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_depth SampledImage, float2 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_depth_ro_v2i32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_depth SampledImage, int2 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_depth_ro_v4f32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_array_depth SampledImage, float4 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_depth_ro_v4i32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_array_depth SampledImage, int4 Coordinate, int ImageOperands, float Lod);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_ro_v2f32_i32_v2f32_v2f32, _Rfloat4)(__spirv_SampledImage_2D SampledImage, float2 Coordinate, int ImageOperands, float2 dx, float2 dy);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2f32_i32_v2f32_v2f32, _Rint4)(__spirv_SampledImage_2D SampledImage, float2 Coordinate, int ImageOperands, float2 dx, float2 dy);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_v4f32_i32_v4f32_v4f32, _Rfloat4)(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float4 dx, float4 dy);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4f32_i32_v4f32_v4f32, _Rint4)(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float4 dx, float4 dy);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_v2f32_v2f32, _Rfloat4)(__spirv_SampledImage_2D SampledImage, float4 Coordinate, int ImageOperands, float2 dx, float2 dy);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4f32_i32_v2f32_v2f32, _Rint4)(__spirv_SampledImage_2D SampledImage, float4 Coordinate, int ImageOperands, float2 dx, float2 dy);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_f32_i32_f32_f32, _Rfloat4)(__spirv_SampledImage_1D SampledImage, float Coordinate, int ImageOperands, float dx, float dy);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_f32_i32_f32_f32, _Rint4)(__spirv_SampledImage_1D SampledImage, float Coordinate, int ImageOperands, float dx, float dy);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_array_ro_v2f32_i32_f32_f32, _Rfloat4)(__spirv_SampledImage_1D_array SampledImage, float2 Coordinate, int ImageOperands, float dx, float dy);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array_ro_v2f32_i32_f32_f32, _Rint4)(__spirv_SampledImage_1D_array SampledImage, float2 Coordinate, int ImageOperands, float dx, float dy);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_depth_ro_v2f32_i32_v2f32_v2f32, _Rfloat4)(__spirv_SampledImage_2D_depth SampledImage, float2 Coordinate, int ImageOperands, float2 dx, float2 dy);
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_depth_ro_v4f32_i32_v2f32_v2f32, _Rfloat4)(__spirv_SampledImage_2D_array_depth SampledImage, float4 Coordinate, int ImageOperands, float2 dx, float2 dy);
+uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32(SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod);
+uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod);
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4i32_i32_f32(SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod);
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod);
 
 #ifdef cl_khr_fp16
-half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img2d_ro_v2f32_i32_f32, _Rhalf4)(__spirv_SampledImage_2D SampledImage, float2 Coordinate, int ImageOperands, float Lod);
-half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img2d_ro_v2i32_i32_f32, _Rhalf4)(__spirv_SampledImage_2D SampledImage, int2 Coordinate, int ImageOperands, float Lod);
-half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img3d_ro_v4f32_i32_f32, _Rhalf4)(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float Lod);
-half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img3d_ro_v4i32_i32_f32, _Rhalf4)(__spirv_SampledImage_3D SampledImage, int4 Coordinate, int ImageOperands, float Lod);
-half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img2d_array_ro_v4f32_i32_f32, _Rhalf4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod);
-half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img2d_array_ro_v4i32_i32_f32, _Rhalf4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod);
-half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img1d_array_ro_v2f32_i32_f32, _Rhalf4)(__spirv_SampledImage_1D_array SampledImage, float2 Coordinate, int ImageOperands, float Lod);
-half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img1d_array_ro_v2i32_i32_f32, _Rhalf4)(__spirv_SampledImage_1D_array SampledImage, int2 Coordinate, int ImageOperands, float Lod);
+half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4i32_i32_f32( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod );
+half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4f32_i32_f32( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod );
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4f16, )(global Img2d_wo* Image, int2 Coordinate, half4 Texel);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_rw_v2i32_v4f16, )(global Img2d_rw* Image, int2 Coordinate, half4 Texel);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4f16, )(global Img3d_wo* Image, int4 Coordinate, half4 Texel);

@@ -1600,9 +1600,8 @@ private:
   std::string transOCLImageTypeAccessQualifier(igc_spv::SPIRVTypeImage* ST);
   std::string transOCLPipeTypeAccessQualifier(igc_spv::SPIRVTypePipe* ST);
   std::string transOCLPipeTypeName(igc_spv::SPIRVTypePipe* PT, SPIRVAccessQualifierKind PipeAccess);
-  std::string transVMEImageTypeName(igc_spv::SPIRVTypeVmeImageINTEL* VT);
 
-  Value *oclTransConstantSampler(igc_spv::SPIRVConstantSampler* BCS, BasicBlock *BB);
+  Value *oclTransConstantSampler(igc_spv::SPIRVConstantSampler* BCS);
 
   template<class Source, class Func>
   bool foreachFuncCtlMask(Source, Func);
@@ -1772,9 +1771,6 @@ getOCLOpaqueTypeAddrSpace(Op OpCode)
     case OpTypePipe:
         // these types are handled in special way at SPIRVToLLVM::transType
         return SPIRAS_Global;
-    case OpConstantSampler:
-    case OpTypeSampler:
-        return SPIRAS_Constant;
     default:
         //OpTypeQueue:
         //OpTypeEvent:
@@ -1888,27 +1884,8 @@ SPIRVToLLVM::transOCLImageTypeName(igc_spv::SPIRVTypeImage* ST) {
 }
 
 std::string
-SPIRVToLLVM::transVMEImageTypeName(igc_spv::SPIRVTypeVmeImageINTEL* VT) {
-  return getSPIRVTypeName(
-    kSPIRVTypeName::VmeImageINTEL,
-    getSPIRVImageTypePostfixes(
-      getSPIRVImageSampledTypeName(VT->getImageType()->getSampledType()),
-      VT->getImageType()->getDescriptor(),
-      VT->getImageType()->hasAccessQualifier()
-      ? VT->getImageType()->getAccessQualifier()
-      : AccessQualifierReadOnly));
-}
-
-std::string
 SPIRVToLLVM::transOCLSampledImageTypeName(igc_spv::SPIRVTypeSampledImage* ST) {
-  return getSPIRVTypeName(
-    kSPIRVTypeName::SampledImage,
-    getSPIRVImageTypePostfixes(
-      getSPIRVImageSampledTypeName(ST->getImageType()->getSampledType()),
-      ST->getImageType()->getDescriptor(),
-      ST->getImageType()->hasAccessQualifier()
-      ? ST->getImageType()->getAccessQualifier()
-      : AccessQualifierReadOnly));
+   return std::string(kLLVMName::builtinPrefix) + kSPIRVTypeName::SampledImage;
 }
 
 inline llvm::Metadata *SPIRVToLLVM::getMetadataFromName(std::string Name) {
@@ -2113,14 +2090,13 @@ SPIRVToLLVM::transType(SPIRVType *T) {
    return mapType(T, getOrCreateOpaquePtrType(M,
           transOCLImageTypeName(static_cast<SPIRVTypeImage *>(T))));
   }
-  case OpTypeSampledImage: {
-    auto ST = static_cast<SPIRVTypeSampledImage*>(T);
-    return mapType(
-      T, getOrCreateOpaquePtrType(M, transOCLSampledImageTypeName(ST)));
-  }
+  case OpTypeSampler:
+     //ulong __builtin_spirv_OpTypeSampler
+     return mapType(T, Type::getInt64Ty(*Context));
+  case OpTypeSampledImage:
   case OpTypeVmeImageINTEL: {
-    auto* VT = static_cast<SPIRVTypeVmeImageINTEL*>(T);
-    return mapType(T, getOrCreateOpaquePtrType(M, transVMEImageTypeName(VT)));
+     //ulong3 __builtin_spirv_OpSampledImage
+     return mapType(T, IGCLLVM::FixedVectorType::get(Type::getInt64Ty(*Context), 3));
   }
   case OpTypeStruct: {
     auto ST = static_cast<SPIRVTypeStruct *>(T);
@@ -2183,7 +2159,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
         isSubgroupAvcINTELTypeOpCode(OC))
     {
         auto name = isSubgroupAvcINTELTypeOpCode(OC) ?
-            SPIRVSubgroupINTELTypeOpCodeMap::rmap(OC) :
+            OCLSubgroupINTELTypeOpCodeMap::rmap(OC) :
             BuiltinOpaqueGenericTypeOpCodeMap::rmap(OC);
         auto *pST = IGCLLVM::getTypeByName(M, name);
         pST = pST ? pST : StructType::create(*Context, name);
@@ -2637,20 +2613,12 @@ SPIRVToLLVM::transOCLPipeTypeAccessQualifier(igc_spv::SPIRVTypePipe* ST) {
 }
 
 Value *
-SPIRVToLLVM::oclTransConstantSampler(igc_spv::SPIRVConstantSampler* BCS, BasicBlock* BB) {
-  auto* SamplerT = getOrCreateOpaquePtrType(
-    M,
-    std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::Sampler),
-    SPIRAS_Constant);
-  auto* I32Ty = IntegerType::getInt32Ty(*Context);
-  auto* FTy = FunctionType::get(SamplerT, { I32Ty }, false);
-
-  Function* Func = cast<Function>(M->getOrInsertFunction("__translate_sampler_initializer", FTy));
-
-  auto Lit = (BCS->getAddrMode() << 1) | BCS->getNormalized() |
-             ((BCS->getFilterMode() + 1) << 4);
-
-  return CallInst::Create(Func, { ConstantInt::get(I32Ty, Lit) }, "", BB);
+SPIRVToLLVM::oclTransConstantSampler(igc_spv::SPIRVConstantSampler* BCS) {
+  auto Lit = (BCS->getAddrMode() << 1) |
+      BCS->getNormalized() |
+      ((BCS->getFilterMode() + 1) << 4);
+  auto Ty = IntegerType::getInt64Ty(*Context);
+  return ConstantInt::get(Ty, Lit);
 }
 
 static void insertCastAfter(Instruction* I, Instruction* Cast)
@@ -3089,7 +3057,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   break;
   case OpConstantSampler: {
     auto BCS = static_cast<SPIRVConstantSampler*>(BV);
-    return oclTransConstantSampler(BCS, BB);
+    return mapValue(BV, oclTransConstantSampler(BCS));
   }
 
   case OpSpecConstantOp: {
@@ -3153,17 +3121,6 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     Constant *Initializer = nullptr;
     SPIRVStorageClassKind BS = BVar->getStorageClass();
     SPIRVValue *Init = BVar->getInitializer();
-
-    if (isSPIRVSamplerType(Ty) && BS == StorageClassUniformConstant) {
-      // Skip generating llvm code during translation of a variable definition,
-      // generate code only for its uses
-      if (!BB)
-        return nullptr;
-
-      IGC_ASSERT_MESSAGE(Init, "UniformConstant OpVariable with sampler type must have an initializer!");
-      return transValue(Init, F, BB);
-    }
-
     if (Init)
         Initializer = dyn_cast<Constant>(transValue(Init, F, BB, false));
     else if (LinkageTy == GlobalValue::CommonLinkage)
@@ -4210,6 +4167,26 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       operands.push_back(transValue(I, BB->getParent(), BB, true, Action));
   }
 
+  {
+      // Update image ops to add 'image type' to operands:
+      switch (OC)
+      {
+      case OpSampledImage:
+      case OpVmeImageINTEL:
+      {
+          // resolving argument imageType for
+          // __builtin_spirv_OpSampledImage(%opencl.image2d_t.read_only addrspace(1)* %srcimg0,
+          //  i64 imageType, i32 20)
+          Type *pType = Type::getInt64Ty(*Context);
+          uint64_t ImageType = calcImageType(BI->getOperands()[0]);
+          operands.insert(operands.begin() + 1, ConstantInt::get(pType, ImageType));
+          break;
+      }
+      default:
+          break;
+      }
+  }
+
   bool hasReturnTypeInTypeList = false;
 
   std::string suffix;
@@ -4273,12 +4250,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
        OC != OpImageQuerySizeLod &&
        OC != OpImageQuerySize &&
        OC != OpImageQueryLevels &&
-       OC != OpImageQuerySamples &&
-       OC != OpVmeImageINTEL &&
-       OC != OpSampledImage &&
-       OC != OpImageSampleExplicitLod &&
-       OC != OpSubgroupImageMediaBlockReadINTEL &&
-       OC != OpSubgroupImageMediaBlockWriteINTEL);
+       OC != OpImageQuerySamples);
 
   if (convertImageToI64)
   {
@@ -4305,7 +4277,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       }
   }
 
-  if (isImageOpCode(OC) && OC != OpImageRead && OC != OpImageWrite && OC != OpImageSampleExplicitLod)
+  if (isImageOpCode(OC) && OC != OpImageRead && OC != OpImageWrite)
   {
       hasReturnTypeInTypeList = true;
 
@@ -4356,9 +4328,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       OC == OpImageQuerySize ||
       OC == OpSubgroupBlockReadINTEL ||
       OC == OpSubgroupImageBlockReadINTEL ||
-      OC == OpImageRead ||
-      OC == OpImageSampleExplicitLod ||
-      OC == OpSubgroupImageMediaBlockReadINTEL)
+      OC == OpImageRead)
   {
       hasReturnTypeInTypeList = true;
   }
@@ -4379,6 +4349,22 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   }
 
   std::string builtinName(getSPIRVBuiltinName(OC, BI, ArgTys, suffix));
+
+  // Fix mangling of VME builtins.
+  if (isIntelVMEOpCode(OC)) {
+    decltype(ArgTys) ArgTysWithVME_WA;
+    for (auto t : ArgTys) {
+      if (isa<PointerType>(t) &&
+        t->getPointerElementType()->isStructTy()) {
+        ArgTysWithVME_WA.push_back(t->getPointerElementType());
+      }
+
+      else {
+        ArgTysWithVME_WA.push_back(t);
+      }
+    }
+    builtinName = getSPIRVBuiltinName(OC, BI, ArgTysWithVME_WA, suffix);
+  }
 
   if (hasReturnTypeInTypeList)
   {
