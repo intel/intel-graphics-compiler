@@ -236,10 +236,6 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
-static cl::opt<bool> UseUpper16Lanes("vc-use-upper16-lanes", cl::init(true),
-                                     cl::Hidden,
-                                     cl::desc("Limit legalization width"));
-
 namespace {
 
 // Information on a part of a predicate.
@@ -359,9 +355,6 @@ class GenXLegalization : public FunctionPass {
   // Illegally sized predicate values that need splitting at the end of
   // processing the function.
   SetVector<Instruction *> IllegalPredicates;
-  // Whether the function's module has stack calls or not. Used for making
-  // legalization decisions.
-  bool HasStackCalls = false;
 
 public:
   static char ID;
@@ -384,7 +377,7 @@ private:
     Fixed4 = nullptr;
     TwiceWidth = nullptr;
   }
-  unsigned adjustTwiceWidthOrFixed4(const Bale &B);
+  unsigned getExecSizeAllowedBits(Instruction *Inst);
   bool checkIfLongLongSupportNeeded(Instruction *Inst) const;
   void verifyLSCFence(const Instruction *Inst);
   void verifyLSCAtomic(const Instruction *Inst);
@@ -545,12 +538,6 @@ bool GenXLegalization::runOnFunction(Function &F) {
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  // FIXME: Non-optimal solution. FGs info or some stackcalls-related analysis
-  // will be useful here.
-  HasStackCalls =
-      llvm::any_of(F.getParent()->functions(), [](const Function &MF) {
-        return genx::requiresStackCall(MF);
-      });
   // Check args for illegal predicates.
   for (Function::arg_iterator fi = F.arg_begin(), fe = F.arg_end(); fi != fe;
        ++fi) {
@@ -588,30 +575,84 @@ bool GenXLegalization::runOnFunction(Function &F) {
   return true;
 }
 
-unsigned GenXLegalization::adjustTwiceWidthOrFixed4(const Bale &B) {
-  auto Main = B.getMainInst();
-  if (!Main)
-    return 0x3f;
-  // Spot whether we have a FIXED operand and/or a TWICEWIDTH operand.
-  if (GenXIntrinsic::isGenXIntrinsic(Main->Inst)) {
-    GenXIntrinsicInfo II(GenXIntrinsic::getAnyIntrinsicID(Main->Inst));
+/***********************************************************************
+ * getExecSizeAllowedBits : get bitmap of allowed execution sizes
+ *
+ * Enter:   Inst = main instruction of bale
+ *
+ * Return:  bit N set if execution size 1<<N is allowed
+ *
+ * Most instructions have a minimum width of 1. But some instructions,
+ * such as dp4 and lrp, have a minimum width of 4, and legalization cannot
+ * allow such an instruction to be split to a smaller width.
+ *
+ * This also sets up fields in GenXLegalization: Fixed4 is set to a use
+ * that is a FIXED4 operand, and TwiceWidth is set to a use that is a
+ * TWICEWIDTH operand.
+ */
+unsigned GenXLegalization::getExecSizeAllowedBits(Instruction *Inst) {
+
+  switch (Inst->getOpcode()) {
+  default:
+    break;
+  case BinaryOperator::SDiv:
+  case BinaryOperator::UDiv:
+  case BinaryOperator::SRem:
+  case BinaryOperator::URem:
+    // If integer division IS supported.
+    //   Set maximum SIMD width to 16:
+    //      Recent HW does not support SIMD16/SIMD32 division, however,
+    //      finalizer splits such SIMD16 operations and we piggy-back
+    //      on this behavior.
+    // If integer division IS NOT supported.
+    //   The expectation is for GenXEmulate pass to replace such operations
+    //   with emulation routines (which has no restriction on SIMD width)
+    return ST->hasIntDivRem32() ? 0x1f : 0x3f;
+  }
+
+  unsigned ID = GenXIntrinsic::getAnyIntrinsicID(Inst);
+  switch (ID) {
+    case GenXIntrinsic::genx_ssmad:
+    case GenXIntrinsic::genx_sumad:
+    case GenXIntrinsic::genx_usmad:
+    case GenXIntrinsic::genx_uumad:
+    case GenXIntrinsic::genx_ssmad_sat:
+    case GenXIntrinsic::genx_sumad_sat:
+    case GenXIntrinsic::genx_usmad_sat:
+    case GenXIntrinsic::genx_uumad_sat:
+    case Intrinsic::fma:
+      // Do not emit simd32 mad for pre-ICLLP.
+      return ST->isICLLPplus() ? 0x3f : 0x1f;
+    default:
+      break;
+  }
+
+  if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
+    // We have a call instruction, so we can assume it is an intrinsic since
+    // otherwise processInst would not have got as far as calling us as
+    // a non-intrinsic call forces isSplittable() to be false.
+    auto CalledF = CI->getCalledFunction();
+    IGC_ASSERT(CalledF);
+    GenXIntrinsicInfo II(GenXIntrinsic::getAnyIntrinsicID(CalledF));
+    // While we have the intrinsic info, we also spot whether we have a FIXED4
+    // operand and/or a TWICEWIDTH operand.
     for (auto i = II.begin(), e = II.end(); i != e; ++i) {
       auto ArgInfo = *i;
-      if (!ArgInfo.isArgOrRet())
-       continue;
-      switch (ArgInfo.getRestriction()) {
-      case GenXIntrinsicInfo::FIXED4:
-        Fixed4 = &Main->Inst->getOperandUse(ArgInfo.getArgIdx());
-        break;
-      case GenXIntrinsicInfo::TWICEWIDTH:
-        TwiceWidth = &Main->Inst->getOperandUse(ArgInfo.getArgIdx());
-        break;
+      if (ArgInfo.isArgOrRet()) {
+        switch (ArgInfo.getRestriction()) {
+        case GenXIntrinsicInfo::FIXED4:
+          Fixed4 = &CI->getOperandUse(ArgInfo.getArgIdx());
+          break;
+        case GenXIntrinsicInfo::TWICEWIDTH:
+          TwiceWidth = &CI->getOperandUse(ArgInfo.getArgIdx());
+          break;
+        }
       }
     }
+    return II.getExecSizeAllowedBits();
   }
-  return genx::getExecSizeAllowedBits(Main->Inst, ST);
+  return 0x3f;
 }
-
 /***********************************************************************
  * checkIfLongLongSupportNeeded: checks if an instruction requires
  *  target to support 64-bit integer operations
@@ -1341,16 +1382,9 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
                                           unsigned StartIdx) {
   // Prepare to keep track of whether an instruction with a minimum width
   // (e.g. dp4) would be split too small, and whether we need to unbale.
-  unsigned ExecSizeAllowedBits = adjustTwiceWidthOrFixed4(B);
-  if (!UseUpper16Lanes || (HasStackCalls && ST->hasFusedEU()))
-    // Actually, we should legalize with these more strict requirements only FGs
-    // of indirectly called functions. But there are two design issues that make
-    // us legalize everything if the module has a stack call:
-    //   * jmpi to goto transformation is appied in VISA and it transforms more
-    //   than necessary
-    //   * this legalization pass does not have access to FGs
-    ExecSizeAllowedBits &= 0x1f;
-
+  unsigned ExecSizeAllowedBits = 0x3f;
+  if (auto Main = B.getMainInst())
+    ExecSizeAllowedBits = getExecSizeAllowedBits(Main->Inst);
   unsigned MainInstMinWidth =
       1 << countTrailingZeros(ExecSizeAllowedBits, ZB_Undefined);
   // Determine the vector width that we need to split into.
@@ -2570,6 +2604,20 @@ static Value *createBitCastIfNeeded(Value *V, Type *NewTy,
   return Inst;
 }
 
+// Get type that represents OldTy as vector of NewScalarType.
+static Type *getNewVectorType(Type *OldTy, IntegerType *NewScalarType) {
+  IGC_ASSERT(OldTy->isIntOrIntVectorTy());
+  unsigned OldElemSize = OldTy->getScalarSizeInBits();
+  IGC_ASSERT(OldElemSize > 0);
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(OldTy);
+  unsigned OldNumElems = VTy ? VTy->getNumElements() : 1;
+  unsigned NewElemSize = NewScalarType->getBitWidth();
+  if (OldElemSize * OldNumElems % NewElemSize)
+    return nullptr;
+  return IGCLLVM::FixedVectorType::get(NewScalarType,
+                         OldElemSize * OldNumElems / NewElemSize);
+}
+
 /***********************************************************************
  * transformMoveType : transform move bale to new integer type.
  *
@@ -2623,13 +2671,16 @@ Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
     return nullptr;
   Region DstRgn = Wr ? makeRegionFromBaleInfo(Wr, BaleInfo()) : Region(Rd);
 
+  // Check that dst and src regions can be changed on new type.
+  if (SrcRgn.Indirect || DstRgn.Indirect || DstRgn.Mask)
+    return nullptr;
   // If destination region is not contiguous, changing element type can be achived
   // by conversion to 2D region, but we try to avoid it because such dst operands
   // are not supported in HW and require additional code for emulation.
   if (DstRgn.Stride != 1)
     return nullptr;
-  Type *NewSrcTy = genx::changeVectorType(Src->getType(), ToTy),
-       *NewDstTy = genx::changeVectorType(Dst->getType(), ToTy);
+  Type *NewSrcTy = getNewVectorType(Src->getType(), ToTy),
+       *NewDstTy = getNewVectorType(Dst->getType(), ToTy);
   if (!NewSrcTy || !NewDstTy)
     return nullptr;
 

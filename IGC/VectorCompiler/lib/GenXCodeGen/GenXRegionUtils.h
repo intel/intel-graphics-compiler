@@ -6,10 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-//
 /// GenXRegion : region information
 /// -------------------------------
-/// 
+///
 /// Refer to the comments in the base class CMRegion defined in
 /// llvm/Transform/Scalar.
 ///
@@ -20,8 +19,8 @@ SPDX-License-Identifier: MIT
 ///   BaleInfo as an argument, allowing a variable index that is a baled in
 ///   constant add to be considered as a separate variable index and constant
 ///   offset.
-/// 
-/// GenXLegalization uses GenXRegion to determine whether a region is legal, 
+///
+/// GenXLegalization uses GenXRegion to determine whether a region is legal,
 /// and split it up if necessary. First it constructs a GenXRegion, then it
 /// has a loop to split it into legal regions. Each loop iteration calls:
 ///
@@ -31,20 +30,20 @@ SPDX-License-Identifier: MIT
 ///
 /// GenXRegion::getLegalSize
 /// ^^^^^^^^^^^^^^^^^^^^^^^^
-/// 
+///
 /// The ``getLegalSize`` method is used by GenXLegalization and some other
 /// passes to determine whether a region is legal, and if not how small
 /// a split is required to make it legal.
-/// 
+///
 /// It takes the GenXSubtarget as an argument, because it needs to know
-/// architecture-specific details, currently just whether a single GRF 
+/// architecture-specific details, currently just whether a single GRF
 /// crossing is allowed in an indirect region.
-/// 
+///
 /// It also takes either an AlignmentInfo object, or the actual alignment
 /// of the indirect index (if any). Knowing the alignment of the indirect
 /// index can help allow a larger legal region, and avoid needing to split
 /// into simd1.
-/// 
+///
 //===----------------------------------------------------------------------===//
 
 #ifndef LIB_GENXCODEGEN_GENXREGIONUTILS_H
@@ -163,10 +162,8 @@ inline raw_ostream &operator<<(raw_ostream &OS, const RdWrRegionSequence &RWS) {
   return OS;
 }
 
-Value *simplifyRegionInst(Instruction *Inst, const DataLayout *DL = nullptr,
-                          const GenXSubtarget *ST = nullptr);
-bool simplifyRegionInsts(Function *F, const DataLayout *DL = nullptr,
-                         const GenXSubtarget *ST = nullptr);
+Value *simplifyRegionInst(Instruction *Inst, const DataLayout *DL);
+bool simplifyRegionInsts(Function *F, const DataLayout *DL);
 
 bool cleanupLoads(Function *F);
 
