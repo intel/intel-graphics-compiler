@@ -231,6 +231,10 @@ static cl::opt<std::string> DbgOpt_VisaTransformInfoPath(
     "vc-dump-module-to-visa-transform-info-path", cl::init(""), cl::Hidden,
     cl::desc("filename into which MVTI is dumped"));
 
+static cl::opt<bool> DbgOpt_VisaMappingPrintDbgIntrinsics(
+    "vc-dump-visa-mapping-includes-dbgintrin", cl::init(false), cl::Hidden,
+    cl::desc("include llvm.dbg intrinsics in visa mapping dump"));
+
 template <typename ContainerT>
 using EmplaceTy = decltype(std::declval<ContainerT>().emplace());
 
@@ -679,10 +683,10 @@ public:
     GenDbgInfoDataSize = 0;
   }
 
-  void printDecodedGenXDebug(raw_ostream &OS) {
+  void printDecodedGenXDebug(raw_ostream &OS) const {
     IGC_ASSERT(!hasErrors());
     LLVM_DEBUG(dbgs() << "GenXDebugInfo size: " << GenDbgInfoDataSize << "\n");
-    IGC::DbgDecoder(GenDbgInfoDataPtr).print(OS);
+    getDecodedGenDbg().print(OS);
   }
 };
 
@@ -836,16 +840,17 @@ public:
     LLVM_DEBUG(dbgs() << "~GenXFunction() called for " << F.getName() << "\n");
   }
 
+  bool isSubroutine() const { return GetType() == ObjectType::SUBROUTINE; }
+
+  bool isStackCall() const { return GetType() == ObjectType::STACKCALL_FUNC; }
+
+  bool isKernel() const { return GetType() == ObjectType::KERNEL; }
+
   const IGC::DbgDecoder::DbgInfoFormat*
       getCompileUnit(const IGC::DbgDecoder& VD) const override {
 
-    StringRef CompiledObjectName;
-    if (MVTI.isSubroutine(&F)) {
-      IGC_ASSERT(GetType() == ObjectType::SUBROUTINE);
-      CompiledObjectName = MVTI.getSubroutineOwner(&F)->getName();
-    } else {
-      CompiledObjectName = F.getName();
-    }
+    StringRef CompiledObjectName =
+        isSubroutine() ? MVTI.getSubroutineOwner(&F)->getName() : F.getName();
 
     auto FoundIt = std::find_if(VD.compiledObjs.begin(), VD.compiledObjs.end(),
                                 [&CompiledObjectName](const auto &CO) {
@@ -945,14 +950,12 @@ public:
     if (auto *ConstVal = dyn_cast<Constant>(DbgValue)) {
       return ConstantLoc(ConstVal);
     }
-    auto *Kernel = &F;
-    if (MVTI.isSubroutine(&F))
-      Kernel = MVTI.getSubroutineOwner(&F);
 
-    auto *Reg = RA.getRegForValueUntyped(Kernel, const_cast<Value *>(DbgValue));
+    auto *Reg = getRegisterForValue(DbgValue);
     if (!Reg) {
       return EmptyLoc("could not find virtual register");
     }
+
     const bool IsRegister = true;
     const bool IsMemory = false;
     const bool IsGlobalASI = false;
@@ -983,6 +986,73 @@ public:
   int getFPReg() const override { return -1; }
   uint64_t getFPOffset() const override { return 16; }
 
+  const GenXVisaRegAlloc::Reg *getRegisterForValue(const Value *V) const {
+    const Function *VisaOwner =
+        isSubroutine() ? MVTI.getSubroutineOwner(&F) : &F;
+    return RA.getRegForValueUntyped(VisaOwner, const_cast<Value *>(V));
+  }
+
+  void printVisaMapping(raw_ostream &OS, unsigned Level = 0) const {
+    const std::string Prefix(Level * 4, ' ');
+    OS << Prefix;
+    OS << "VisaMapping for <" << getFunction()->getName() << ">(";
+    for (const auto &Arg : enumerate(getFunction()->args())) {
+      OS << "a" << Arg.index() << ":";
+      auto *Reg = getRegisterForValue(&Arg.value());
+      if (Reg)
+        Reg->print(OS);
+      else
+        OS << "_";
+      OS << ";";
+    }
+    OS << ") - {\n";
+
+    size_t SkippedIndex = 0;
+    size_t SkippedCount = 0;
+    auto PrintSkippedAndClearCount = [&SkippedIndex, &SkippedCount, &Prefix,
+                                      &OS]() {
+      if (!SkippedCount)
+        return;
+      OS << Prefix << "    <" << SkippedIndex << ">: "
+         << "skipped " << SkippedCount << " llvm.dbg.* intrinsics\n";
+      SkippedCount = 0;
+    };
+
+    for (const auto &Mapping : VisaMapping.V2I) {
+      auto VisaIndexCurr = Mapping.VisaIdx;
+      auto VisaIndexNext = Mapping.VisaIdx + Mapping.VisaCount;
+      const auto *Inst = Mapping.Inst;
+
+      if (Mapping.IsDbgInst && !DbgOpt_VisaMappingPrintDbgIntrinsics) {
+        if (!SkippedCount)
+          SkippedIndex = VisaIndexCurr;
+        ++SkippedCount;
+        continue;
+      }
+
+      PrintSkippedAndClearCount();
+
+      OS << Prefix;
+      OS << "  [" << VisaIndexCurr << ";" << VisaIndexNext << "): ";
+
+      auto *Reg = getRegisterForValue(Inst);
+      OS << "<";
+      if (Reg)
+        Reg->print(OS);
+      OS << "> ";
+
+      Inst->print(OS);
+      OS << "\n";
+    }
+
+    PrintSkippedAndClearCount();
+
+    OS << Prefix;
+    OS << "}\n";
+  }
+
+  const ModuleToVisaTransformInfo &getMVTI() const { return MVTI; }
+
 private:
   const Function &F;
   const GenXSubtarget &ST;
@@ -996,15 +1066,13 @@ using VisaMapType = std::vector<genx::di::VisaMapping::Mapping>;
 
 static bool validateVisaMapping(const VisaMapType &V2I) {
   // Last used visa index
-  unsigned LastId = V2I.cbegin()->VisaIdx;
+  auto ExpectedNextId = V2I.cbegin()->VisaIdx;
   for (auto MappingIt = V2I.cbegin(); MappingIt != V2I.cend(); ++MappingIt) {
     auto VisaIndexCurr = MappingIt->VisaIdx;
     auto VisaIndexNext = MappingIt->VisaIdx + MappingIt->VisaCount;
-    auto *Inst = const_cast<Instruction *>(MappingIt->Inst);
+    const auto *Inst = MappingIt->Inst;
 
-    LLVM_DEBUG(dbgs() << "  VisaMapping: [" << VisaIndexCurr << ";"
-                      << VisaIndexNext << "):" << *Inst << "\n");
-
+    IGC_ASSERT(VisaIndexCurr <= VisaIndexNext);
     if (MappingIt->IsDbgInst) {
       IGC_ASSERT(isa<DbgInfoIntrinsic>(MappingIt->Inst));
       IGC_ASSERT(MappingIt->VisaCount == 0);
@@ -1013,37 +1081,39 @@ static bool validateVisaMapping(const VisaMapType &V2I) {
       IGC_ASSERT(MappingIt->VisaCount > 0);
     }
 
-    // Major check - next id for visa mapping
-    // in previous iteration - is same to current index
-    // (there is no spaces between instructions)
-    if (LastId != VisaIndexCurr)
+    // ExpectedNextId (from the previous iteration) should be the same as
+    // the current index
+    // In other words, we should have no gaps in vISA mapping
+    if (ExpectedNextId != VisaIndexCurr) {
+      LLVM_DEBUG(dbgs() << "Detected inconsistency, current visa-Index: "
+                        << VisaIndexCurr
+                        << " is not equal to expected visa-Index: "
+                        << ExpectedNextId << "\n");
       return false;
-    LastId = VisaIndexNext;
+    }
 
-    // Mapping may interupts in calls, because functions
-    // may be inlined. Just do not check lastId for next instruction.
+    ExpectedNextId = VisaIndexNext;
+    // Mapping may interupts in calls, because functions may be inlined.
+    // Just do not check ExpectedNextId for the next instruction.
     if (isa<CallInst>(Inst) && !isa<DbgInfoIntrinsic>(Inst))
-      LastId = std::next(MappingIt)->VisaIdx;
+      ExpectedNextId = std::next(MappingIt)->VisaIdx;
 
-    // Skip checking between basic-blocks:
-    // In visa-mapping there is no guarantee, that
-    // last-bb instruction will be in mapping.
-    // This predicate will triggered on last instruction in bb.
+    // Marker that this is the last instruction of a BB
     bool lastBlockInst = ((std::next(MappingIt) != V2I.cend()) &&
                           (MappingIt->Inst->getParent() !=
                            (std::next(MappingIt)->Inst->getParent())));
 
-    // In current implementation - there is no way to make mapping for
-    // label visa instruction. That's why next mapping is considered correct:
+    // Current implementation does not create mapping for vISA labels.
+    // That's why the next mapping is considered to be correct:
     //    VisaMapping: [18;20):  br label %1, !dbg !147
     //    VisaMapping: [21;22):  %icmp = icmp ult i32 %.06, 8, !dbg !148
-    // In visaasm-file 20-th instruction will be bb-label:
+    // In visaasm-file 20-th instruction will be a bb-label:
     //     lifetime.start V51                        /// $19
     //   BB_1:
     //     cmp.lt (M1, 1) P1 V105(0,0)<0;1,0> 0x8:ud /// $21
-    // Here just do not check lastId for next instruction - [21;22).
+    // We avoid checking of the ExpectedNextId in such cases - [21;22).
     if (lastBlockInst) {
-      LastId = std::next(MappingIt)->VisaIdx;
+      ExpectedNextId = std::next(MappingIt)->VisaIdx;
     }
   }
   return true;
@@ -1103,6 +1173,7 @@ GenXObjectHolderList translateProgramInfoToGenXFunctionObjects(
 }
 
 using GenXFunctionPtrList = std::vector<GenXFunction *>;
+using GenXFunctionConstPtrList = std::vector<const GenXFunction *>;
 GenXFunctionPtrList initializeDebugEmitter(
     IGC::IDebugEmitter &Emitter, const IGC::DebugEmitterOpts &DebugOpts,
     const ProgramInfo &PI, GenXObjectHolderList &&GFsHolderIn) {
@@ -1129,27 +1200,143 @@ GenXFunctionPtrList initializeDebugEmitter(
   return GFPointers;
 }
 
-} // namespace
+std::string makePrefixForAuxiliaryShaderDump(const GenXBackendConfig &BC,
+                                             const GenObjectWrapper &GOW) {
 
-namespace llvm {
-
-static void dumpDebugInfo(const GenXBackendConfig &BC,
-                          const StringRef KernelName,
-                          const ArrayRef<char> ElfBin,
-                          const ArrayRef<char> GenDbgBlob,
-                          const ArrayRef<char> ErrLog) {
+  const auto &KernelName = GOW.getEntryPoint().getName();
   std::string Prefix = "dbginfo_";
   if (!BC.dbgInfoDumpsNameOverride().empty())
     Prefix.append(BC.dbgInfoDumpsNameOverride()).append("_");
-
-  vc::produceAuxiliaryShaderDumpFile(BC, Prefix + KernelName + "_dwarf.elf",
-                                     ElfBin);
-  vc::produceAuxiliaryShaderDumpFile(BC, Prefix + KernelName + "_gen.dump",
-                                     GenDbgBlob);
-  if (!ErrLog.empty())
-    vc::produceAuxiliaryShaderDumpFile(BC, Prefix + KernelName + ".dbgerr",
-                                       ErrLog);
+  Prefix.append(KernelName.str());
+  return Prefix;
 }
+
+std::string serializeDecodedGenDebugInfo(const GenObjectWrapper &GOW) {
+  std::string Result;
+  llvm::raw_string_ostream OS(Result);
+  GOW.printDecodedGenXDebug(OS);
+  OS.flush();
+  return Result;
+}
+
+using GFPtrSet = std::unordered_set<const GenXFunction *>;
+using KernelAndVisaOwners =
+    std::pair<const GenXFunction *, GenXFunctionConstPtrList>;
+
+void printVisaMapping(raw_ostream &OS, const GenXFunction &GF, unsigned Level,
+                      GFPtrSet &NotPrinted) {
+  IGC_ASSERT(NotPrinted.count(&GF));
+  GF.printVisaMapping(OS, Level);
+  NotPrinted.erase(&GF);
+}
+
+void printSubroutinesVisaMapping(raw_ostream &OS,
+                                 GenXFunctionConstPtrList Subroutines,
+                                 unsigned Level, GFPtrSet &NotPrinted) {
+  std::sort(Subroutines.begin(), Subroutines.end(),
+            [](const auto *L, const auto *R) {
+              const auto &V2IL = L->getVisaMapping().V2I;
+              const auto &V2IR = R->getVisaMapping().V2I;
+              if (V2IL.empty() && V2IR.empty())
+                return compareFunctionNames(L->getFunction(), R->getFunction());
+              if (V2IL.empty())
+                return false;
+              if (V2IR.empty())
+                return true;
+              return V2IL.front().VisaIdx < V2IR.front().VisaIdx;
+            });
+  for (const auto *SGF : Subroutines)
+    printVisaMapping(OS, *SGF, Level, NotPrinted);
+}
+
+void printVisaOwnerVisaMapping(raw_ostream &OS, const GenXFunction &VO,
+                               const GenXFunctionConstPtrList &Subroutines,
+                               unsigned Level, GFPtrSet &NotPrinted) {
+  printVisaMapping(OS, VO, Level, NotPrinted);
+
+  printSubroutinesVisaMapping(OS, Subroutines, Level + 1, NotPrinted);
+}
+
+bool isStackCallGF(const GenXFunction *GF) {
+  IGC_ASSERT(GF);
+  return GF->isStackCall();
+}
+
+bool isKernelGF(const GenXFunction *GF) {
+  IGC_ASSERT(GF);
+  return GF->isKernel();
+}
+
+KernelAndVisaOwners
+getKernelAndVisaOwners(const GenXFunctionConstPtrList &GFs) {
+  IGC_ASSERT(!GFs.empty());
+  GenXFunctionConstPtrList StackCalls;
+  std::copy_if(GFs.begin(), GFs.end(), std::back_inserter(StackCalls),
+               isStackCallGF);
+  auto KGFIt = std::find_if(GFs.begin(), GFs.end(), isKernelGF);
+  IGC_ASSERT(std::count_if(GFs.begin(), GFs.end(), isKernelGF) == 1);
+  return {*KGFIt, std::move(StackCalls)};
+}
+
+GenXFunctionConstPtrList
+getSubroutinesForVisaOwner(const GenXFunction &VO,
+                           const GenXFunctionConstPtrList &AllGFs) {
+  const auto &MVTI = VO.getMVTI();
+  GenXFunctionConstPtrList Result;
+  std::copy_if(AllGFs.begin(), AllGFs.end(), std::back_inserter(Result),
+               [&MVTI, &VO](const auto *GF) {
+                 if (!GF->isSubroutine())
+                   return false;
+                 const Function *F = GF->getFunction();
+                 return MVTI.getSubroutineOwner(F) == VO.getFunction();
+               });
+  return Result;
+}
+
+std::string serializeGFsVisaMapping(const GenXFunctionConstPtrList &GFs) {
+  std::string Result;
+  llvm::raw_string_ostream OS(Result);
+
+  GFPtrSet ToPrint(GFs.begin(), GFs.end());
+
+  auto [KGF, VisaOwners] = getKernelAndVisaOwners(GFs);
+
+  printVisaOwnerVisaMapping(OS, *KGF, getSubroutinesForVisaOwner(*KGF, GFs), 0,
+                            ToPrint);
+  for (const auto *SpawnerGF : VisaOwners)
+    printVisaOwnerVisaMapping(OS, *SpawnerGF,
+                              getSubroutinesForVisaOwner(*SpawnerGF, GFs), 1,
+                              ToPrint);
+  IGC_ASSERT(ToPrint.empty());
+
+  OS.flush();
+  return Result;
+}
+
+void dumpDebugInfo(const GenXBackendConfig &BC, const GenObjectWrapper &GOW,
+                   const GenXFunctionPtrList &GFs, const ArrayRef<char> ElfBin,
+                   const ArrayRef<char> ErrLog) {
+
+  auto DecodedGenInfo = serializeDecodedGenDebugInfo(GOW);
+  GenXFunctionConstPtrList CGFs;
+  std::copy(GFs.begin(), GFs.end(), std::back_inserter(CGFs));
+  auto SerializedVisaMapping = serializeGFsVisaMapping(CGFs);
+
+  std::string Prefix = makePrefixForAuxiliaryShaderDump(BC, GOW);
+
+  vc::produceAuxiliaryShaderDumpFile(BC, Twine(Prefix) + "_dwarf.elf", ElfBin);
+  vc::produceAuxiliaryShaderDumpFile(BC, Twine(Prefix) + "_gen.dump",
+                                     GOW.getGenDebug());
+  vc::produceAuxiliaryShaderDumpFile(BC, Twine(Prefix) + "_gen.decoded.dump",
+                                     DecodedGenInfo);
+  vc::produceAuxiliaryShaderDumpFile(BC, Twine(Prefix) + "_visa.mapping",
+                                     SerializedVisaMapping);
+
+  if (!ErrLog.empty())
+    vc::produceAuxiliaryShaderDumpFile(BC, Twine(Prefix) + ".dbgerr", ErrLog);
+}
+
+} // namespace
 
 void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
                                   const ProgramInfo &PI) {
@@ -1195,6 +1382,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   for (auto *GF : GFPointers) {
     LLVM_DEBUG(dbgs() << "--- Processing GenXFunction:  "
                       << GF->getFunction()->getName().str() << " ---\n");
+    LLVM_DEBUG(GF->printVisaMapping(dbgs()));
     IGC_ASSERT(validateVisaMapping(GF->getVisaMapping().V2I));
     processGenXFunction(*Emitter, *GF);
     bool ExpectMore = GF != GFPointers.back();
@@ -1216,8 +1404,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   const auto &BC = getAnalysis<GenXBackendConfig>();
   if (BC.dbgInfoDumpsEnabled()) {
     const auto &ErrLog = Emitter->getErrors();
-    dumpDebugInfo(BC, KernelName, ElfBin, GOW.getGenDebug(),
-                  {ErrLog.data(), ErrLog.size()});
+    dumpDebugInfo(BC, GOW, GFPointers, ElfBin, {ErrLog.data(), ErrLog.size()});
   }
 
   return;
@@ -1312,6 +1499,8 @@ bool GenXDebugInfo::runOnModule(Module &M) {
 }
 
 char GenXDebugInfo::ID = 0;
+
+namespace llvm {
 
 ModulePass *createGenXDebugInfoPass() {
   initializeGenXDebugInfoPass(*PassRegistry::getPassRegistry());
