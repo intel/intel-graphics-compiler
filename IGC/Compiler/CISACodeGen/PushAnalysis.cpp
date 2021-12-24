@@ -1096,22 +1096,15 @@ namespace IGC
         {
             unsigned int iter = CollectAllSimplePushInfoArr.begin()->first;
             SimplePushData info;
-            if (IGC_IS_FLAG_ENABLED(EnableSimplePushSizeBasedOpimization))
+            for (auto I = CollectAllSimplePushInfoArr.begin(), E = CollectAllSimplePushInfoArr.end(); I != E; I++)
             {
-                for (auto I = CollectAllSimplePushInfoArr.begin(), E = CollectAllSimplePushInfoArr.end(); I != E; I++)
+                if (I->second.size > info.size)
                 {
-                    if (I->second.size > info.size)
-                    {
-                        info = I->second;
-                        iter = I->first;
-                    }
+                    info = I->second;
+                    iter = I->first;
                 }
             }
-            else
-            {
-                info = CollectAllSimplePushInfoArr[pushInfo.simplePushBufferUsed];
-                iter = pushInfo.simplePushBufferUsed;
-            }
+
             SimplePushInfo& newChunk = pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed];
             if (sizePushed + info.size <= cthreshold)
             {

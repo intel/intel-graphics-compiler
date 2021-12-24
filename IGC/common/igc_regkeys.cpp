@@ -924,7 +924,6 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
             IGC_SET_FLAG_VALUE(DisableCSEL, true);
             IGC_SET_FLAG_VALUE(DisableFlagOpt, true);
             IGC_SET_FLAG_VALUE(DisableScalarAtomics, true);
-            IGC_SET_FLAG_VALUE(EnableSimplePushSizeBasedOpimization, true);
         }
 
 
