@@ -100,7 +100,7 @@ ModulePass *createGenXUnbalingWrapperPass();
 ModulePass *createGenXDepressurizerWrapperPass();
 ModulePass *createGenXLateLegalizationWrapperPass();
 ModulePass *createGenXNumberingWrapperPass();
-ModulePass *createGenXLiveRangesWrapperPass(bool DisableCoalescing = false);
+ModulePass *createGenXLiveRangesWrapperPass();
 ModulePass *createGenXRematerializationWrapperPass();
 ModulePass *createGenXCoalescingWrapperPass();
 ModulePass *createGenXAddressCommoningWrapperPass();

@@ -29,6 +29,9 @@ SPDX-License-Identifier: MIT
 #include "GenXIntrinsics.h"
 #include "GenXLiveness.h"
 #include "GenXNumbering.h"
+
+#include "vc/Support/BackendConfig.h"
+
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
@@ -47,11 +50,9 @@ class GenXLiveRanges : public FGPassImplInterface,
   FunctionGroup *FG = nullptr;
   GenXBaling *Baling = nullptr;
   GenXLiveness *Liveness = nullptr;
-  bool DisableCoalescing = false;
 
 public:
-  explicit GenXLiveRanges(bool DisableCoalescingIn = false)
-      : DisableCoalescing(DisableCoalescingIn) {}
+  explicit GenXLiveRanges() {}
   static StringRef getPassName() { return "GenX live ranges analysis"; }
   static void getAnalysisUsage(AnalysisUsage &AU);
   bool runOnFunctionGroup(FunctionGroup &FG) override;
@@ -110,15 +111,16 @@ INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
 INITIALIZE_PASS_END(GenXLiveRangesWrapper, "GenXLiveRangesWrapper",
                     "GenXLiveRangesWrapper", false, false)
 
-ModulePass *llvm::createGenXLiveRangesWrapperPass(bool DisableCoalescing) {
+ModulePass *llvm::createGenXLiveRangesWrapperPass() {
   initializeGenXLiveRangesWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXLiveRangesWrapper(DisableCoalescing);
+  return new GenXLiveRangesWrapper();
 }
 
 void GenXLiveRanges::getAnalysisUsage(AnalysisUsage &AU) {
   AU.addRequired<GenXGroupBaling>();
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXNumbering>();
+  AU.addRequired<GenXBackendConfig>();
   AU.addRequired<FunctionGroupAnalysis>();
   AU.setPreservesAll();
 }
@@ -129,9 +131,10 @@ void GenXLiveRanges::getAnalysisUsage(AnalysisUsage &AU) {
 bool GenXLiveRanges::runOnFunctionGroup(FunctionGroup &ArgFG)
 {
   FG = &ArgFG;
+  const auto &BC = getAnalysis<GenXBackendConfig>();
   Baling = &getAnalysis<GenXGroupBaling>();
   Liveness = &getAnalysis<GenXLiveness>();
-  Liveness->setNoCoalescingMode(DisableCoalescing);
+  Liveness->setNoCoalescingMode(BC.disableLiveRangesCoalescing());
   Liveness->setBaling(Baling);
   Liveness->setNumbering(&getAnalysis<GenXNumbering>());
   // Build the live ranges.
