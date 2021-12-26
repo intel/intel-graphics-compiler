@@ -24,10 +24,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
 #include <unordered_map>
+#include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -922,67 +922,14 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
   return Inst;
 }
 
-// fold bitcast with wrregion:
-//                                  ==>  %oldval.cast = bitcast(%oldval)
-// %2 = bitcast(%1)                      %3 = wrregion(%oldval.cast, %1, ...)
-// %3 = wrregion(%oldval, %2, ...)       %2 = bitcast(%3)
-// so it can be baled later.
-static Value *simplifyBitCastWithRegionWrite(Instruction *WrR,
-                                             const DataLayout &DL,
-                                             const GenXSubtarget &ST) {
-  using namespace GenXIntrinsic::GenXRegion;
-  IGC_ASSERT(GenXIntrinsic::isWrRegion(WrR));
-  Value *NewVal = WrR->getOperand(NewValueOperandNum);
-  auto *BCI = dyn_cast<BitCastInst>(NewVal);
-  if (!BCI)
-    return nullptr;
-  if (WrR->hasOneUse() && GenXIntrinsic::isWritePredefReg(WrR->user_back()))
-    return nullptr;
-  auto *NewScalarTy = BCI->getSrcTy()->getScalarType();
-  // Do not change register category to predicate.
-  if (NewScalarTy->isIntegerTy(1))
-    return nullptr;
-  auto *OldVal = WrR->getOperand(OldValueOperandNum);
-  if (GenXIntrinsic::isReadWritePredefReg(OldVal))
-    return nullptr;
-  auto *NewVecTy = genx::changeVectorType(OldVal->getType(), NewScalarTy);
-  if (!NewVecTy)
-    return nullptr;
-  Region R = makeRegionFromBaleInfo(WrR, BaleInfo());
-  if (!R.changeElementType(NewScalarTy, &DL))
-    return nullptr;
-  // Transformation is not profitable for 2D regions or if it will require
-  // legalization.
-  if (R.is2D() || R.NumElements > llvm::PowerOf2Floor(
-                                      genx::getExecSizeAllowedBits(WrR, &ST)))
-    return nullptr;
-  IRBuilder<> IRB(WrR);
-  auto *OldValCast =
-      IRB.CreateBitCast(OldVal, NewVecTy, OldVal->getName() + ".cast");
-  auto *NewWrR = R.createWrRegion(OldValCast, BCI->getOperand(0),
-                                  WrR->getName(), WrR, WrR->getDebugLoc());
-  auto *NewBCI = IRB.CreateBitCast(NewWrR, WrR->getType(), BCI->getName());
-  return NewBCI;
-}
+static Value *simplifyRegionWrite(Instruction *Inst) {
+  IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst));
+  Value *NewVal = Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
 
-static Value *simplifyRegionWrite(Instruction *WrR) {
-  using namespace GenXIntrinsic::GenXRegion;
-  IGC_ASSERT(GenXIntrinsic::isWrRegion(WrR));
-  Value *NewVal = WrR->getOperand(NewValueOperandNum);
-
-  // Replace C with B if R - whole region
-  // C = wrregion(A, B, R)
-  if (std::none_of(
-          WrR->user_begin(), WrR->user_end(),
-          [](auto *U) { return GenXIntrinsic::isWritePredefReg(U); }) &&
-      !GenXIntrinsic::isReadPredefReg(NewVal) &&
-      makeRegionFromBaleInfo(WrR, BaleInfo()).isWhole(WrR->getType()) &&
-      NewVal->getType() == WrR->getType())
-    return NewVal;
   // Replace C with A
   // C = wrregion(A, undef, R)
   if (isa<UndefValue>(NewVal))
-    return WrR->getOperand(OldValueOperandNum);
+    return Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
 
   // When A and undef have the same type, replace C with A
   // B = rdregion(A, R)
@@ -994,68 +941,29 @@ static Value *simplifyRegionWrite(Instruction *WrR) {
   // C = wrregion(A, B, R)
   //
   if (GenXIntrinsic::isRdRegion(NewVal)) {
-    Instruction *RdR = cast<Instruction>(NewVal);
-    Region InnerR = makeRegionFromBaleInfo(RdR, BaleInfo());
-    Region OuterR = makeRegionFromBaleInfo(WrR, BaleInfo());
+    Instruction *B = cast<Instruction>(NewVal);
+    Region InnerR = makeRegionFromBaleInfo(B, BaleInfo());
+    Region OuterR = makeRegionFromBaleInfo(Inst, BaleInfo());
     if (OuterR != InnerR)
       return nullptr;
 
-    auto OldValRdR = RdR->getOperand(OldValueOperandNum);
-    if (GenXIntrinsic::isReadPredefReg(OldValRdR))
+    auto OldValB = B->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+    if (GenXIntrinsic::isReadPredefReg(OldValB))
       return nullptr;
-    auto OldValWrR = WrR->getOperand(OldValueOperandNum);
-    if ((isa<UndefValue>(OldValWrR) &&
-         OldValRdR->getType() == OldValWrR->getType()) ||
-        OldValRdR == OldValWrR)
-      return OldValRdR;
+    auto OldValC = Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+    if ((isa<UndefValue>(OldValC) &&
+         OldValB->getType() == OldValC->getType()) ||
+        OldValB == OldValC)
+      return OldValB;
   }
-  return nullptr;
-}
 
-// fold bitcast with rdregion:
-// %2 = rdregion(%1, ...)  ==>  %3 = bitcast(%1)
-// %3 = bitcast(%2)             %2 = rdregion(%3, ...)
-// so it can be baled later.
-static Value *simplifyBitCastFromRegionRead(BitCastInst *BCI,
-                                            const DataLayout &DL,
-                                            const GenXSubtarget &ST) {
-  using namespace GenXIntrinsic::GenXRegion;
-  Instruction *RdR = dyn_cast<Instruction>(BCI->getOperand(0));
-  if (!RdR || !GenXIntrinsic::isRdRegion(RdR) || !RdR->hasOneUse())
-    return nullptr;
-  auto *OldVal = RdR->getOperand(OldValueOperandNum);
-  if (GenXIntrinsic::isReadPredefReg(OldVal))
-    return nullptr;
-  auto *NewScalarTy = BCI->getDestTy()->getScalarType();
-  // Do not change register category to predicate.
-  if (NewScalarTy->isIntegerTy(1))
-    return nullptr;
-  auto *NewVecTy = genx::changeVectorType(OldVal->getType(), NewScalarTy);
-  if (!NewVecTy)
-    return nullptr;
-  Region R = makeRegionFromBaleInfo(RdR, BaleInfo());
-  if (!R.changeElementType(NewScalarTy, &DL))
-    return nullptr;
-  // Transformation is not profitable for 2D regions or if it will require
-  // legalization.
-  if (R.is2D() || R.NumElements > llvm::PowerOf2Floor(
-                                      genx::getExecSizeAllowedBits(RdR, &ST)))
-    return nullptr;
-  auto *NewBCI =
-      IRBuilder<>(BCI).CreateBitCast(OldVal, NewVecTy, BCI->getName());
-  auto *NewRdR =
-      R.createRdRegion(NewBCI, RdR->getName(), BCI, RdR->getDebugLoc());
-  return NewRdR;
+  return nullptr;
 }
 
 static Value *simplifyRegionRead(Instruction *Inst) {
   IGC_ASSERT(GenXIntrinsic::isRdRegion(Inst));
   Value *Input = Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-  if (!GenXIntrinsic::isReadPredefReg(Input) &&
-      makeRegionFromBaleInfo(Inst, BaleInfo()).isWhole(Input->getType()) &&
-      Input->getType() == Inst->getType())
-    return Input;
-  else if (isa<UndefValue>(Input))
+  if (isa<UndefValue>(Input))
     return UndefValue::get(Inst->getType());
   else if (auto C = dyn_cast<Constant>(Input)) {
     if (auto Splat = C->getSplatValue()) {
@@ -1082,8 +990,7 @@ static Value *simplifyRegionRead(Instruction *Inst) {
 }
 
 // Simplify a region read or write.
-Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
-                                      const GenXSubtarget *ST) {
+Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL) {
   if (Inst->use_empty())
     return nullptr;
 
@@ -1106,17 +1013,11 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
   if (Constant *C = ConstantFoldGenX(Inst, *DL))
     return C;
 
-  if (auto *BCI = dyn_cast<BitCastInst>(Inst); BCI && DL && ST)
-    return simplifyBitCastFromRegionRead(BCI, *DL, *ST);
   ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
   switch (ID) {
   case GenXIntrinsic::genx_wrregionf:
   case GenXIntrinsic::genx_wrregioni:
-    if (auto *Res = simplifyRegionWrite(Inst))
-      return Res;
-    if (DL && ST)
-      return simplifyBitCastWithRegionWrite(Inst, *DL, *ST);
-    break;
+    return simplifyRegionWrite(Inst);
   case GenXIntrinsic::genx_rdregionf:
   case GenXIntrinsic::genx_rdregioni:
     return simplifyRegionRead(Inst);
@@ -1126,13 +1027,12 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
   return nullptr;
 }
 
-bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL,
-                                     const GenXSubtarget *ST) {
+bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL) {
   bool Changed = false;
   for (auto &BB : F->getBasicBlockList()) {
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
-      if (auto V = simplifyRegionInst(Inst, DL, ST)) {
+      if (auto V = simplifyRegionInst(Inst, DL)) {
         Inst->replaceAllUsesWith(V);
         Inst->eraseFromParent();
         Changed = true;
