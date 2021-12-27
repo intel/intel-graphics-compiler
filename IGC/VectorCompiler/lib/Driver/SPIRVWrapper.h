@@ -7,12 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 //
-// Currently VectorCompiler uses a special type of LLVM-SPIRV-Translator
-// in a form of shared library called "SPIRVDLL"
-// It is expected to move from this solution in favour of original Khronos
-// LLVMSPIRVLib library.
-// This file was created for the purpose of smooth transit between these two
-// library versions.
+// Legacy SPIRVDLL-like interface for translation of SPIRV to LLVM IR.
 //
 //===----------------------------------------------------------------------===//
 
