@@ -5823,9 +5823,15 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
         //Get buckets for all GRF registers which are used in curInst
         std::vector<SBBucketDesc> BDvec;
+        std::vector<SBBucketDesc> liveBDvec;
         BDvec.clear();
+        liveBDvec.clear();
 
         getGRFBucketDescs(node, BDvec, false);
+        if (node->instVec.size() > 1)
+        {
+            getGRFBucketDescs(node, liveBDvec, false);
+        }
 
         if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
         {
@@ -6263,17 +6269,22 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         // Add buckets of current instruction to bucket list
         if (node->instVec.size() > 1)
         {
-            std::map<std::pair<const SBFootprint*, Gen4_Operand_Number>, SBBucketNode*> bucketNodes;
-            for (const SBBucketDesc& BD : BDvec)
+            std::map<const SBFootprint*, std::vector<SBBucketNode*>> bucketNodes;
+            for (const SBBucketDesc& BD : liveBDvec)
             {
-                auto res = bucketNodes.insert({std::make_pair(BD.footprint, BD.opndNum), nullptr});
-                if (res.second)
+                auto iter = std::find_if(bucketNodes[BD.footprint].begin(), bucketNodes[BD.footprint].end(),
+                    [&BD](SBBucketNode* node) {return BD.opndNum == node->opndNum; });
+                if (iter != bucketNodes[BD.footprint].end())
+                {
+                    LB->add((*iter), BD.bucket);
+                }
+                else
                 {
                     void* allocedMem = mem.alloc(sizeof(SBBucketNode));
                     SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.footprint);
-                    res.first->second = newNode;
+                    bucketNodes[BD.footprint].push_back(newNode);
+                    LB->add(newNode, BD.bucket);
                 }
-                LB->add(res.first->second, BD.bucket);
             }
         }
         else
