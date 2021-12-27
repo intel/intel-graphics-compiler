@@ -133,6 +133,25 @@ struct is_bool
     : integral_constant<bool,
                         is_same<bool, typename remove_cv<T>::type>::value> {};
 
+template <typename T>
+struct is_signed
+    : integral_constant<bool, is_arithmetic<T>::value && T(-1) < T(0)> {};
+
+// Specializations for vector_impl
+// --------------------------------------------------------
+template <typename T, int width>
+struct is_integral<cl::detail::vector_impl<T, width>>
+    : integral_constant<bool, is_integral<T>::value> {};
+
+template <typename T, int width>
+struct is_signed<cl::detail::vector_impl<T, width>>
+    : integral_constant<bool, is_signed<T>::value> {};
+
+template <typename T, int width>
+struct is_floating_point<cl::detail::vector_impl<T, width>>
+    : integral_constant<bool, is_floating_point<T>::value> {};
+// --------------------------------------------------------
+
 } // namespace cl
 
 #endif // OPENCL_TYPE_TRAITS

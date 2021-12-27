@@ -204,6 +204,17 @@ T mad(T src0, T src1, T src2) {
   return detail::fma(src0, src1, src2);
 }
 
+/*================== Absolute function =====================*/
+
+// Calculates the absolute value.
+// Floating point and integer types are supported.
+// Unsigned values are returned without a change.
+template <typename T> T absolute(T src) { return detail::absolute(src); }
+template <typename T, int width>
+vector<T, width> absolute(vector<T, width> src) {
+  return detail::absolute(src.cl_vector());
+}
+
 /*==========================================================*/
 
 } // namespace math

@@ -89,6 +89,9 @@ uint32_t __cm_cl_bfrev(uint32_t src);
 template <int width>
 vector_impl<uint32_t, width> __cm_cl_bfrev(vector_impl<uint32_t, width> src);
 
+template <typename T> T __cm_cl_abs_int(T src);
+template <typename T> T __cm_cl_abs_float(T src);
+
 vector_impl<uint32_t, 3> __cm_cl_local_id();
 vector_impl<uint32_t, 3> __cm_cl_local_size();
 vector_impl<uint32_t, 3> __cm_cl_group_count();
@@ -315,6 +318,19 @@ inline uint32_t bfrev(uint32_t src) { return __cm_cl_bfrev(src); }
 template <int width>
 vector_impl<uint32_t, width> bfrev(vector_impl<uint32_t, width> src) {
   return __cm_cl_bfrev(src);
+}
+
+// Usigned values are returned without a change.
+template <typename T> T absolute(T src) {
+  if constexpr (cl::is_floating_point<T>::value)
+    return __cm_cl_abs_float(src);
+  else
+    static_assert(cl::is_integral<T>::value && !cl::is_bool<T>::value,
+                  "Absolute function expects integer or floating point type.");
+
+  if constexpr (cl::is_signed<T>::value)
+    return __cm_cl_abs_int(src);
+  return src;
 }
 
 template <atomic::operation operation, memory_order semantics,

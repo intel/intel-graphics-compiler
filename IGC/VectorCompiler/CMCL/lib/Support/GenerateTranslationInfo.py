@@ -240,6 +240,8 @@ def generate_handlers_array(builtin_descs):
 def get_intrinsic_id(translation_desc):
   if "VC-Intrinsic" in translation_desc:
     return "GenXIntrinsic::" + translation_desc["VC-Intrinsic"]
+  if "LLVM-Intrinsic" in translation_desc:
+    return "Intrinsic::" + translation_desc["LLVM-Intrinsic"]
   return "~0u"
 
 # Generates an array that represents map between builtin ID and intrinsic ID.

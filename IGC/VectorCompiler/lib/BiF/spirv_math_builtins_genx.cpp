@@ -337,6 +337,24 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, long,
                                            cm::math::count_population)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, ulong,
                                            cm::math::count_population)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, char, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, short, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, int, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, long, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(fabs, float, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(fabs, double, cm::math::absolute)
+
+#define SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CAST(FUNC_NAME, TYPE, CAST_TYPE,   \
+                                                 CUSTOM_NAME)                  \
+  CM_NODEBUG CM_INLINE TYPE __spirv_ocl_##FUNC_NAME(TYPE x) {                  \
+    return CUSTOM_NAME(static_cast<CAST_TYPE>(x));                             \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CAST(s_abs, uchar, char, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CAST(s_abs, ushort, short,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CAST(s_abs, uint, int, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CAST(s_abs, ulong, long, cm::math::absolute)
 
 #define SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(FUNC_NAME, ELEMENT_TYPE, N, \
                                                    CUSTOM_NAME)                \
@@ -525,6 +543,85 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 8,
                                            cm::math::count_trailing_zeros)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 16,
                                            cm::math::count_trailing_zeros)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, char, 2, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, char, 3, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, char, 4, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, char, 8, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, char, 16, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, short, 2, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, short, 3, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, short, 4, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, short, 8, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, short, 16, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, int, 2, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, int, 3, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, int, 4, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, int, 8, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, int, 16, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 2, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 3, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 4, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 8, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 16, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, float, 2, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, float, 3, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, float, 4, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, float, 8, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, float, 16, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 2, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 3, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 4, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 8, cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 16, cm::math::absolute)
+
+#define SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(FUNC_NAME, TYPE, CAST_TYPE,   \
+                                                 N, CUSTOM_NAME)               \
+  CM_NODEBUG CM_INLINE cl_vector<CAST_TYPE, N> __spirv_ocl_##FUNC_NAME(        \
+      cl_vector<TYPE, N> x) {                                                  \
+    vector<CAST_TYPE, N> x_vec{x};                                                \
+    return static_cast<vector<CAST_TYPE, N>>(CUSTOM_NAME(x_vec)).cl_vector();  \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uchar, char, 2,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uchar, char, 3,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uchar, char, 4,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uchar, char, 8,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uchar, char, 16,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ushort, short, 2,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ushort, short, 3,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ushort, short, 4,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ushort, short, 8,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ushort, short, 1,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uint, int, 2,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uint, int, 3,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uint, int, 4,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uint, int, 8,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, uint, int, 16,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ulong, long, 2,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ulong, long, 3,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ulong, long, 4,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ulong, long, 8,
+                                         cm::math::absolute)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ulong, long, 16,
+                                         cm::math::absolute)
 
 #define SPIRV_MATH_BUILTIN_DECL_3ARG_SCALAR_CUSTOM(FUNC_NAME, TYPE,            \
                                                    CUSTOM_NAME)                \

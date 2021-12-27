@@ -325,6 +325,32 @@
         ]
       }
     },
+    "AbsInt": {
+      "Name": "abs_int",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_absi",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
+    "AbsFloat": {
+      "Name": "abs_float",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "fabs",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
     "AtomicRMW": {
         "Name": "atomicrmw",
         "Operands": [

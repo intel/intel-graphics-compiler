@@ -257,6 +257,19 @@ Value &createMainInst(const std::vector<Value *> &Operands, Type &RetTy,
 }
 
 template <>
+Value &createMainInst<BuiltinID::AbsFloat>(const std::vector<Value *> &Operands,
+                                           Type &RetTy, IRBuilder<> &IRB) {
+  auto IID =
+      static_cast<Intrinsic::ID>(IntrinsicForBuiltin[BuiltinID::AbsFloat]);
+  assert(IID != Intrinsic::not_intrinsic && "Expected LLVM intrinsic");
+
+  Module *M = IRB.GetInsertBlock()->getModule();
+  auto *Decl = Intrinsic::getDeclaration(M, IID, {&RetTy});
+
+  return *IRB.CreateCall(Decl, Operands, "cmcl.builtin");
+}
+
+template <>
 Value &createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands,
                                          Type &, IRBuilder<> &IRB) {
   static_assert(SelectOperand::Size == 3,

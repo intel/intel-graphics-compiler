@@ -263,6 +263,7 @@ private:
   bool lowerFMulAdd(CallInst *CI);
   bool lowerBitreverse(CallInst *CI);
   bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
+  bool lowerFAbs(CallInst *CI);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -3375,6 +3376,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case Intrinsic::fshl:
     case Intrinsic::fshr:
       return lowerFunnelShift(CI, IntrinsicID);
+    case Intrinsic::fabs:
+      return lowerFAbs(CI);
+      break;
     }
     return false;
   }
@@ -5326,7 +5330,7 @@ bool GenXLowering::lowerLLVMMaskedGather(CallInst* CallOp) {
   return true;
 }
 
-bool GenXLowering::lowerLLVMMaskedScatter(CallInst* CallOp) {
+bool GenXLowering::lowerLLVMMaskedScatter(CallInst *CallOp) {
   auto DataV = CallOp->getArgOperand(0);
   auto PtrV = CallOp->getArgOperand(1);
   auto MaskV = CallOp->getArgOperand(3);
@@ -5471,6 +5475,18 @@ bool GenXLowering::lowerFMulAdd(CallInst *CI) {
   FMA->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(FMA);
 
+  ToErase.push_back(CI);
+  return true;
+}
+
+bool GenXLowering::lowerFAbs(CallInst *CI) {
+  IGC_ASSERT(CI);
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::genx_absf, {CI->getType()});
+  SmallVector<Value *, 2> Args{CI->args()};
+  IRBuilder<> Builder{CI};
+  auto *Res = Builder.CreateCall(Decl, Args, CI->getName());
+  CI->replaceAllUsesWith(Res);
   ToErase.push_back(CI);
   return true;
 }
