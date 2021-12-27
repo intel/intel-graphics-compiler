@@ -68,10 +68,11 @@ SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   // If all entry points are marked as ESIMD, treat this as fully ESIMD module,
   // even if there are functions that are not marked with ESIMD (known bug in
   // VC).
-  if (std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+  if (!entry_points_.empty() && std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
         return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
       })) {
     spmd_program_.clear();
+    IGC_ASSERT(has_esimd_functions_);
   } else if (!has_esimd_functions_) {
     // This is SPMD module as entry points are included in the flag.
     esimd_program_.clear();
