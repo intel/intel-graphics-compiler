@@ -193,6 +193,11 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
   newArgs.pOptions = esimdOptions.data();
   newArgs.OptionsSize = esimdOptions.size();
 
+  std::string esimdInternalOptions{ pInputArgs->pInternalOptions ? pInputArgs->pInternalOptions : "" };
+  esimdInternalOptions += " -emit-zebin-visa-sections";
+  newArgs.pInternalOptions = esimdInternalOptions.data();
+  newArgs.InternalOptionsSize = esimdInternalOptions.size();
+
   const bool success =
       TranslateBuildVC(&newArgs, &outputArgs, inputDataFormatTemp, IGCPlatform,
                        profilingTimerResolution, inputShHash);
