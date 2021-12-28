@@ -470,6 +470,7 @@ typedef unique_ptr<IOCLFEBinaryResult, decltype(&ReleaseDP) > IOCLFEBinaryResult
 
 namespace TC
 {
+    constexpr bool is64bit = sizeof(void*) == sizeof(uint64_t);
     //Misc utility functions used only in the current module
     namespace Utils
     {
@@ -543,11 +544,7 @@ namespace TC
             pszProgramSource(NULL),
             pPCHBuffer(NULL),
             uiPCHBufferSize(0),
-#if !defined(_WIN64) && !defined(__x86_64__)
-            b32bit(true)
-#else
-            b32bit(false)
-#endif
+            b32bit(!is64bit)
         {
         }
 
@@ -838,11 +835,7 @@ namespace TC
             }
         }
 
-#if !defined(_WIN64) && !defined(__x86_64__)
-        return true;
-#else
-        return false;
-#endif
+        return !is64bit;
     }
 
   /*****************************************************************************\
