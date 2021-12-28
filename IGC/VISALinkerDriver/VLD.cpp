@@ -195,6 +195,7 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
 
   std::string esimdInternalOptions{ pInputArgs->pInternalOptions ? pInputArgs->pInternalOptions : "" };
   esimdInternalOptions += " -emit-zebin-visa-sections";
+  esimdInternalOptions += " -binary-format=ze";
   newArgs.pInternalOptions = esimdInternalOptions.data();
   newArgs.InternalOptionsSize = esimdInternalOptions.size();
 
