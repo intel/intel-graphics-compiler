@@ -1710,21 +1710,11 @@ void CoalesceSpillFills::spillFillCleanup()
         auto startIt = bb->begin();
         auto endIt = bb->end();
         const auto& splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
-        unsigned int regPressure = 0;
         for (auto instIt = startIt;
             instIt != endIt;
             instIt++)
         {
             auto inst = (*instIt);
-
-            // register pressue estimate is computed per instruction before liveness
-            // analysis.
-            auto RP = rpe.getRegisterPressure(inst);
-            // spill code is inserted after coloring is complete. so newly generated
-            // spill instructions would not have valid register pressure estimate.
-            // in case current instruction doesnt have valid register pressure estimate,
-            // use a valid one from an earlier instruction.
-            regPressure = (RP > 0) ? RP : regPressure;
 
             if (splitInsts.find(inst) != splitInsts.end())
                 continue;
@@ -1745,16 +1735,6 @@ void CoalesceSpillFills::spillFillCleanup()
                 auto pInstIt = instIt;
                 pInstIt--;
                 unsigned int w = cSpillFillCleanupWindowSize;
-
-                if (inst->asFillIntrinsic()->getDst()->getTopDcl()->getNumRows() >= 8)
-                {
-                    // avoid attempting cleanup for high reg pressure
-                    if (regPressure > highRegPressureForCleanup)
-                    {
-                        continue;
-                    }
-                }
-
                 while (pInstIt != startIt &&
                     w > 0)
                 {
