@@ -133,7 +133,7 @@ DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTextures, false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTypedBuffers,  false, "Setting this to use HDC message rather than sampler ld for buffer read", false)
 DECLARE_IGC_REGKEY(bool, DisableUniformTypedAccess,     false, "Setting this will disable uniform typed access handling", false)
 DECLARE_IGC_REGKEY(bool, DisableURBWriteMerge,          false, "Setting this to 1/true adds a compiler switch to disable URB write merge", false)
-DECLARE_IGC_REGKEY(bool, DisableURBReadMerge,           true, "Disable IGC pass that merges URB Read instructions.", false)
+DECLARE_IGC_REGKEY(bool, DisableURBReadMerge,           false, "Disable IGC pass that merges URB Read instructions.", false)
 DECLARE_IGC_REGKEY(bool, DisableURBPartialWritesPass,   false, "Disable IGC pass that converts URB partial writes to full-mask writes.", false)
 DECLARE_IGC_REGKEY(DWORD, SetURBFullWriteGranularity,   0, "Overrides the minimum access granularity for URB full writes.\
                                                             Valid values are 0, 16 and 32, value 0 means use default for the platform.", true)
