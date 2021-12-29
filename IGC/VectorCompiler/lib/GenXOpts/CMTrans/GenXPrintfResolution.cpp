@@ -64,9 +64,6 @@ static constexpr const char *Name[Size] = {
     "__vc_printf_ret"};
 } // namespace PrintfImplFunc
 
-static constexpr int FormatStringAddrSpace = vc::AddrSpace::Constant;
-static constexpr int LegacyFormatStringAddrSpace = vc::AddrSpace::Private;
-
 namespace {
 class GenXPrintfResolution final : public ModulePass {
   const DataLayout *DL = nullptr;
@@ -93,6 +90,10 @@ private:
   CallInst &createPrintfArgStrCall(CallInst &OrigPrintf, CallInst &PrevCall,
                                    Value &Arg);
   CallInst &createPrintfRetCall(CallInst &OrigPrintf, CallInst &PrevCall);
+
+  template <PrintfImplFunc::Enum DefaulDeclID>
+  CallInst &createCallWithStringArg(CallInst &OrigPrintf, Value &StrArg,
+                                    Value &AuxArg);
 };
 } // namespace
 
@@ -280,16 +281,16 @@ static PrintfImplTypeStorage getPrintfImplTypes(LLVMContext &Ctx) {
   PrintfImplTypeStorage FuncTys;
   FuncTys[PrintfImplFunc::Init] =
       FunctionType::get(TransferDataTy, ArgsInfoTy, IsVarArg);
-  FuncTys[PrintfImplFunc::Fmt] = FunctionType::get(
-      TransferDataTy,
-      {TransferDataTy,
-       PointerType::get(Type::getInt8Ty(Ctx), FormatStringAddrSpace)},
-      IsVarArg);
-  FuncTys[PrintfImplFunc::FmtLegacy] = FunctionType::get(
-      TransferDataTy,
-      {TransferDataTy,
-       PointerType::get(Type::getInt8Ty(Ctx), LegacyFormatStringAddrSpace)},
-      IsVarArg);
+  FuncTys[PrintfImplFunc::Fmt] =
+      FunctionType::get(TransferDataTy,
+                        {TransferDataTy, PointerType::get(Type::getInt8Ty(Ctx),
+                                                          AddrSpace::Constant)},
+                        IsVarArg);
+  FuncTys[PrintfImplFunc::FmtLegacy] =
+      FunctionType::get(TransferDataTy,
+                        {TransferDataTy, PointerType::get(Type::getInt8Ty(Ctx),
+                                                          AddrSpace::Private)},
+                        IsVarArg);
   FuncTys[PrintfImplFunc::Arg] = FunctionType::get(
       TransferDataTy, {TransferDataTy, Type::getInt32Ty(Ctx), ArgDataTy},
       IsVarArg);
@@ -369,21 +370,70 @@ CallInst &GenXPrintfResolution::createPrintfInitCall(
                          OrigPrintf.getName() + ".printf.init");
 }
 
-CallInst &GenXPrintfResolution::createPrintfFmtCall(CallInst &OrigPrintf,
-                                                    CallInst &InitCall) {
+template <PrintfImplFunc::Enum DefaulDeclID, unsigned StrAS>
+static PrintfImplFunc::Enum mutateDeclIDImpl();
+
+template <>
+PrintfImplFunc::Enum
+mutateDeclIDImpl<PrintfImplFunc::Fmt, AddrSpace::Constant>() {
+  return PrintfImplFunc::Fmt;
+}
+
+template <>
+PrintfImplFunc::Enum
+mutateDeclIDImpl<PrintfImplFunc::Fmt, AddrSpace::Private>() {
+  return PrintfImplFunc::FmtLegacy;
+}
+
+template <>
+PrintfImplFunc::Enum
+mutateDeclIDImpl<PrintfImplFunc::ArgStr, AddrSpace::Constant>() {
+  return PrintfImplFunc::ArgStr;
+}
+
+template <>
+PrintfImplFunc::Enum
+mutateDeclIDImpl<PrintfImplFunc::ArgStr, AddrSpace::Private>() {
+  return PrintfImplFunc::ArgStrLegacy;
+}
+
+// Transforms the provided declaration ID depending on the string address space
+// \p StrAS. Only PrintfImplFunc::Fmt and PrintfImplFunc::ArgStr can be passed
+// as \p DefaulDeclID.
+template <PrintfImplFunc::Enum DefaulDeclID>
+static PrintfImplFunc::Enum mutateDeclID(unsigned StrAS) {
+  switch (StrAS) {
+  default:
+    IGC_ASSERT_MESSAGE(0, "unexpected address space for a string argument");
+  case AddrSpace::Constant:
+    return mutateDeclIDImpl<DefaulDeclID, AddrSpace::Constant>();
+  case AddrSpace::Private:
+    return mutateDeclIDImpl<DefaulDeclID, AddrSpace::Private>();
+  }
+}
+
+// Common interface to generate call for format string or "%s" string argument
+// handler.
+// PrintfImplFunc::Fmt should be provided in template parameter to handle format
+// string, PrintfImplFunc::ArgStr - for "%s" argument. Only those 2 declaration
+// IDs can be passed. The function itself will consider string address space and
+// mutate the provided declaration ID.
+template <PrintfImplFunc::Enum DefaulDeclID>
+CallInst &GenXPrintfResolution::createCallWithStringArg(CallInst &OrigPrintf,
+                                                        Value &StrArg,
+                                                        Value &AuxArg) {
   assertPrintfCall(OrigPrintf);
   IRBuilder<> IRB{&OrigPrintf};
-  auto FmtAS =
-      cast<PointerType>(OrigPrintf.getOperand(0)->getType())->getAddressSpace();
-  if (FmtAS == FormatStringAddrSpace)
-    return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Fmt],
-                           {&InitCall, OrigPrintf.getOperand(0)},
-                           OrigPrintf.getName() + ".printf.fmt");
-  IGC_ASSERT_MESSAGE(FmtAS == LegacyFormatStringAddrSpace,
-                     "unexpected address space for format string");
-  return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::FmtLegacy],
-                         {&InitCall, OrigPrintf.getOperand(0)},
-                         OrigPrintf.getName() + ".printf.fmt");
+  auto StrAS = StrArg.getType()->getPointerAddressSpace();
+  PrintfImplFunc::Enum DeclID = mutateDeclID<DefaulDeclID>(StrAS);
+  return *IRB.CreateCall(PrintfImplDecl[DeclID], {&AuxArg, &StrArg},
+                         OrigPrintf.getName() + ".printf.str.arg");
+}
+
+CallInst &GenXPrintfResolution::createPrintfFmtCall(CallInst &OrigPrintf,
+                                                    CallInst &InitCall) {
+  return createCallWithStringArg<PrintfImplFunc::Fmt>(
+      OrigPrintf, *OrigPrintf.getOperand(0), InitCall);
 }
 
 static ArgKind::Enum getIntegerArgKind(Type &ArgTy) {
@@ -511,18 +561,8 @@ static Value &getArgAsVector(Value &Arg, IRBuilder<> &IRB,
 CallInst &GenXPrintfResolution::createPrintfArgStrCall(CallInst &OrigPrintf,
                                                        CallInst &PrevCall,
                                                        Value &Arg) {
-  assertPrintfCall(OrigPrintf);
-  IRBuilder<> IRB{&OrigPrintf};
-  auto StrAS = cast<PointerType>(Arg.getType())->getAddressSpace();
-  if (StrAS == FormatStringAddrSpace)
-    return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::ArgStr],
-                           {&PrevCall, &Arg},
-                           OrigPrintf.getName() + ".printf.arg");
-  IGC_ASSERT_MESSAGE(StrAS == LegacyFormatStringAddrSpace,
-                     "unexpected address space for a string argument");
-  return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::ArgStrLegacy],
-                         {&PrevCall, &Arg},
-                         OrigPrintf.getName() + ".printf.arg");
+  return createCallWithStringArg<PrintfImplFunc::ArgStr>(OrigPrintf, Arg,
+                                                         PrevCall);
 }
 
 CallInst &GenXPrintfResolution::createPrintfArgCall(CallInst &OrigPrintf,
