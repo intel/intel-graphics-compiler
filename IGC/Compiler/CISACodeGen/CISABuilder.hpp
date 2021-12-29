@@ -659,13 +659,13 @@ namespace IGC
 
     protected:
         // encoder states
-        SEncoderState m_encoderState;
+        SEncoderState m_encoderState = {};
 
         llvm::DenseMap<SAlias, CVariable*, SAliasMapInfo> m_aliasesMap;
 
         // vISA needs its own Wa-table as some of the W/A are applicable
         // only to certain APIs/shader types/reg key settings/etc.
-        WA_TABLE m_vISAWaTable;
+        WA_TABLE m_vISAWaTable = {};
 
         enum OpType
         {
@@ -703,8 +703,8 @@ namespace IGC
 
         int m_nestLevelForcedNoMaskRegion = 0;
 
-        bool m_enableVISAdump;
-        bool m_hasInlineAsm;
+        bool m_enableVISAdump = false;
+        bool m_hasInlineAsm = false;
 
         std::vector<VISA_LabelOpnd*> labelMap;
         std::vector<CName> labelNameMap; // parallel to labelMap

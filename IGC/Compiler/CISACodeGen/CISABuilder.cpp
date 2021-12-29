@@ -359,6 +359,12 @@ namespace IGC
         m_program = nullptr;
         vbuilder = nullptr;
         vAsmTextBuilder = nullptr;
+        vKernel = nullptr;
+        vMainKernel = nullptr;
+        vPayloadSection = nullptr;
+        vKernelTmp = nullptr;
+        dummySurface = nullptr;
+        samplervar = nullptr;
     }
 
     CEncoder::~CEncoder()
