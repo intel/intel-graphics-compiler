@@ -116,7 +116,7 @@ namespace IGC
             break;
         case IGFX_PVC:
             InitPvcHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-            stWaInitParam.usRevId &= 7; // ComputeChiplet CT RevID is [2:0]
+            stWaInitParam.usRevId &= 0b111; // ComputeChiplet CT RevID is [2:0]
             if (stWaInitParam.usRevId == 0x1) // PVC XL A0p CT RevID
             {
                 // changing PVC XL A0p RevID 0x1 to 0x0 REVISION_A0
