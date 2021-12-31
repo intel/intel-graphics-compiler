@@ -286,8 +286,17 @@ private:
         bool forwardDirection) const;
 
     ////////////////////////////////////////////////////////////////////////
+    InstructionMask GetAtomicInstructionMaskFromPointer(
+        const llvm::Instruction* pSourceInst) const;
+
+    ////////////////////////////////////////////////////////////////////////
     InstructionMask GetUnsynchronizedForwardInstructionMask(
         const llvm::Instruction* pSourceInst) const;
+
+    ////////////////////////////////////////////////////////////////////////
+    bool IsRequiredForAtomicOperationsOrdering(
+        const llvm::Instruction* pSourceInst,
+        bool onlyGlobalAtomics = false) const;
 
     ////////////////////////////////////////////////////////////////////////
     InstructionMask GetInstructionMask(
@@ -536,6 +545,7 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
                     }
                     SynchronizationCaseMask referenceSyncCaseMask = GetStrictSynchronizationMask(pInst);
                     bool isObligatory = (syncCaseMask & referenceSyncCaseMask) != 0;
+                    isObligatory |= IsRequiredForAtomicOperationsOrdering(pInst, true /*onlyGlobalAtomics*/);
                     bool verifyUnsynchronizedInstructions = IsFenceOperation(pInst);
                     verifyUnsynchronizedInstructions &= (!isObligatory || syncCaseMask == ReadSyncWrite);
 
@@ -580,9 +590,11 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
             /// * in this context read and write instructions contributes to the same type of memory.
 
             // identify strict redundancies
+
             SynchronizationCaseMask syncCaseMask = GetSynchronizationMaskForAllResources(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask);
             SynchronizationCaseMask referenceSyncCaseMask = GetStrictSynchronizationMask(pInst);
             bool isObligatory = (syncCaseMask & referenceSyncCaseMask) != 0;
+            isObligatory |= IsRequiredForAtomicOperationsOrdering(pInst);
             bool verifyUnsynchronizedInstructions = IsFenceOperation(pInst);
             verifyUnsynchronizedInstructions &= (!isObligatory || syncCaseMask == ReadSyncWrite);
 
@@ -1011,6 +1023,41 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(
 }
 
 ////////////////////////////////////////////////////////////////////////
+/// @brief Provides the memory instruction mask from the atomic operation
+/// instruction based on the destination memory address.
+/// @param pSourceInst the atomic operation operation instruction
+IGC::InstructionMask SynchronizationObjectCoalescingAnalysis::GetAtomicInstructionMaskFromPointer(const llvm::Instruction* pSourceInst) const
+{
+    InstructionMask memoryInstructionMask = GetInstructionMask(pSourceInst);
+    InstructionMask result{};
+    if (memoryInstructionMask == InstructionMask::AtomicOperation)
+    {
+        const llvm::GenIntrinsicInst* pGenIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(pSourceInst);
+        if (pGenIntrinsicInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_intatomictyped ||
+            pGenIntrinsicInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_icmpxchgatomictyped)
+        {
+            result = static_cast<InstructionMask>(result | InstructionMask::TypedReadOperation);
+            result = static_cast<InstructionMask>(result | InstructionMask::TypedWriteOperation);
+        }
+        else
+        {
+            llvm::Type* pPointerType = pGenIntrinsicInst->getOperand(0)->getType();
+            if (IsGlobalResource(pPointerType))
+            {
+                result = static_cast<InstructionMask>(result | InstructionMask::BufferReadOperation);
+                result = static_cast<InstructionMask>(result | InstructionMask::BufferWriteOperation);
+            }
+            else if (IsSharedMemoryResource(pPointerType))
+            {
+                result = static_cast<InstructionMask>(result | InstructionMask::SharedMemoryReadOperation);
+                result = static_cast<InstructionMask>(result | InstructionMask::SharedMemoryWriteOperation);
+            }
+        }
+    }
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////
 /// @brief This function verifies which cases of synchronization can be
 /// attributed to this synchronization instruction in the case of the particular resource.
 /// This stems from the forwardly and backwardly visible memory instructions and
@@ -1151,6 +1198,154 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetUnsynchronizedForwar
     std::vector<const llvm::Instruction*> memoryInstructions;
     GetAllUnsynchronizedMemoryInstructions(pSourceInst, boundaryInstructions, memoryInstructions);
     return GetInstructionMask(memoryInstructions);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the fence is required to assure correct ordering of atomic
+/// operations present before the fence (in program order)
+/// @param pSourceInst the source synchronization instruction
+/// @param onlyGlobalAtomics check only TGM and UGM atomic operations
+bool SynchronizationObjectCoalescingAnalysis::IsRequiredForAtomicOperationsOrdering(
+    const llvm::Instruction* pSourceInst,
+    bool onlyGlobalAtomics /*= false*/) const
+{
+    if (!IsFenceOperation(pSourceInst))
+    {
+        // Not a fence, nothing to check
+        return false;
+    }
+    InstructionMask defaultSourceInstructionMask = GetDefaultMemoryInstructionMask(pSourceInst);
+    if (onlyGlobalAtomics)
+    {
+        // Change the mask to include only global memory operations
+        InstructionMask globalOnlyMask = InstructionMask::None;
+        InstructionMask typedReadOrWrite = static_cast<InstructionMask>(TypedReadOperation | TypedWriteOperation);
+        InstructionMask globalReadOrWrite = static_cast<InstructionMask>(BufferReadOperation | BufferWriteOperation);
+        if ((defaultSourceInstructionMask & typedReadOrWrite) != InstructionMask::None)
+        {
+            globalOnlyMask = typedReadOrWrite;
+        }
+        if ((defaultSourceInstructionMask & globalReadOrWrite) != InstructionMask::None)
+        {
+            globalOnlyMask |= globalReadOrWrite;
+        }
+        defaultSourceInstructionMask = globalOnlyMask;
+    }
+    if (defaultSourceInstructionMask == InstructionMask::None)
+    {
+        return false;
+    }
+
+    // Gather all instructions that the source fence operation affects.
+    constexpr bool backwardDirection = false;
+    std::vector<const llvm::Instruction*> boundaryInstructions;
+    std::vector<const llvm::Instruction*> memoryInstructions;
+    GetVisibleMemoryInstructions(pSourceInst, backwardDirection, boundaryInstructions, memoryInstructions);
+    for (const llvm::Instruction* pInst : memoryInstructions)
+    {
+        InstructionMask memoryInstructionMask = GetInstructionMask(pInst);
+        if (memoryInstructionMask != InstructionMask::AtomicOperation)
+        {
+            // Only atomic operations are checked.
+            continue;
+        }
+        InstructionMask atomicPointerMemoryInstructionMask = GetAtomicInstructionMaskFromPointer(pInst);
+        bool isPotentiallyUnsynchronizedAtomic = (atomicPointerMemoryInstructionMask & defaultSourceInstructionMask) != 0;
+        if (!isPotentiallyUnsynchronizedAtomic)
+        {
+            // The source fence does not affect the atomic instruction.
+            continue;
+        }
+        // Check if the atomic operation is not synchronized by a different
+        // fence operation with different scope or memory operation.
+        // e.g.:
+        // %0 = call i32 @llvm.genx.GenISA.atomiccounterinc.p2490368i8(i8 addrspace(2490368)* %atomic_address)
+        // call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false)
+        // call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 true, i1 true)
+        // store float %value, float addrspace(1)* %global_address
+        {
+            isPotentiallyUnsynchronizedAtomic = false;
+            // Lambda that checks if a fence operation synchronizes the atomic operation.
+            std::function<bool(const llvm::Instruction*)> BoundaryPredicate =
+                [this,
+                &atomicPointerMemoryInstructionMask,
+                &isPotentiallyUnsynchronizedAtomic,
+                pSourceInst](
+                    const llvm::Instruction* pInst)
+            {
+                if (pInst == pSourceInst)
+                {
+                    // Instruction search reached the source instruction, there is
+                    // no other fence instruction that assures ordering of the atomic.
+                    isPotentiallyUnsynchronizedAtomic = true;
+                }
+                bool isFence = IsFenceOperation(pInst);
+                if (isFence &&
+                    m_RedundantInstructions.find(pInst) == m_RedundantInstructions.end())
+                {
+                    InstructionMask memoryInstructionMask = GetDefaultMemoryInstructionMask(pInst);
+                    bool isBoundary = (atomicPointerMemoryInstructionMask & memoryInstructionMask) != 0;
+                    return isBoundary;
+                }
+                return false;
+            };
+            // Dummy lambda to disable collection of instructions
+            std::function<bool(const llvm::Instruction*)> CollectNone = [](
+                const llvm::Instruction* pInst)
+            {
+                return false;
+            };
+
+            llvm::DenseSet<const llvm::BasicBlock*> visitedBasicBlocks;
+            llvm::BasicBlock::const_iterator firstIt = ++pInst->getIterator();
+            std::list<llvm::BasicBlock::const_iterator> workList{ firstIt };
+            std::vector<const llvm::Instruction*> boundaryInstructions;;
+            std::vector<const llvm::Instruction*> collectedInstructions;
+            // Start from the atomic operation and check all instruction in the
+            // forward direction.
+            SearchInstructions(
+                workList,
+                visitedBasicBlocks,
+                collectedInstructions,
+                CollectNone,
+                boundaryInstructions,
+                BoundaryPredicate);
+            IGC_ASSERT(boundaryInstructions.size() > 0);
+        }
+
+        // Check if any of the instructions that immediately follow the fence
+        // instruction is a fence that assures ordering of current atomic
+        // operation.
+        // Note: this approach addresses the simplest cases like the example
+        // below and can be improved in the future:
+        // %0 = call i32 @llvm.genx.GenISA.atomiccounterinc.p2490368i8(i8 addrspace(2490368)* %atomic_address)
+        // call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false)
+        // call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 true, i1 true)
+        // store float %value, float addrspace(1)* %global_address
+        // %1 = load float, float addrspace(1)* %global_address
+        if (isPotentiallyUnsynchronizedAtomic)
+        {
+            bool substituteFenceFound = false;
+            for (llvm::BasicBlock::const_iterator it = ++pSourceInst->getIterator(); it != pSourceInst->getParent()->end(); ++it)
+            {
+                const llvm::Instruction* pCurrInst = &(*it);
+                if (IsFenceOperation(pCurrInst) &&
+                    IsSubsituteInstruction(pCurrInst, pSourceInst) &&
+                    m_RedundantInstructions.find(pInst) == m_RedundantInstructions.end())
+                {
+                    substituteFenceFound = true;
+                    break;
+                }
+            }
+            if (!substituteFenceFound)
+            {
+                // Found an atomic operation that requires the source fence
+                // instruction for correct memory ordering.
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1294,30 +1489,8 @@ void SynchronizationObjectCoalescingAnalysis::GatherInstructions()
                 memoryInstructionMask != InstructionMask::None)
             {
                 m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | memoryInstructionMask);
-                if (memoryInstructionMask == InstructionMask::AtomicOperation)
-                {
-                    llvm::GenIntrinsicInst* pGenIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(&inst);
-                    if (pGenIntrinsicInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_intatomictyped ||
-                        pGenIntrinsicInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_icmpxchgatomictyped)
-                    {
-                        m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | InstructionMask::TypedReadOperation);
-                        m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | InstructionMask::TypedWriteOperation);
-                    }
-                    else
-                    {
-                        llvm::Type* pPointerType = inst.getOperand(0)->getType();
-                        if (IsGlobalResource(pPointerType))
-                        {
-                            m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | InstructionMask::BufferReadOperation);
-                            m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | InstructionMask::BufferWriteOperation);
-                        }
-                        else if (IsSharedMemoryResource(pPointerType))
-                        {
-                            m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | InstructionMask::SharedMemoryReadOperation);
-                            m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | InstructionMask::SharedMemoryWriteOperation);
-                        }
-                    }
-                }
+                InstructionMask pointerMemoryInstructionMask = GetAtomicInstructionMaskFromPointer(&inst);
+                m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | pointerMemoryInstructionMask);
             }
         }
     }
