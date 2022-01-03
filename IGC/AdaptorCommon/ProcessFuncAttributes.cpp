@@ -152,7 +152,9 @@ static bool containsImageType(llvm::Type *T)
             if (buf.size() < 2) return false;
             bool isOpenCLImage = buf[0].equals("opencl") && buf[1].startswith("image") && buf[1].endswith("_t");
             bool isSPIRVImage = buf[0].equals("spirv") && buf[1].startswith("Image");
-            return isOpenCLImage || isSPIRVImage;
+
+            if (isOpenCLImage || isSPIRVImage)
+                return true;
         }
     }
 

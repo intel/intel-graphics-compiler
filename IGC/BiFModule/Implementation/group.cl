@@ -1929,6 +1929,78 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong4, v4i64, __builtin_IB_simd_media_blo
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ulong8, v8i64, __builtin_IB_simd_media_block_write_8_l)
 #endif // cl_intel_subgroups_long
 
+// OpSubgroupImageMediaBlockReadINTEL
+//
+// Reads a block of data from a 2D region of the specified 'Image'.
+
+#define DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(TYPE, TYPE_ABBR)                                                         \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockReadINTEL, _##TYPE_ABBR##_img2d_ro_v2i32_i32_i32, _R##TYPE)(   \
+    global Img2d_ro* image, int2 coord, int width, int height)                                                              \
+{                                                                                                                           \
+    int id = (int)__builtin_astype(image, global void*);                                                                    \
+    return as_##TYPE(__builtin_IB_media_block_read_u##TYPE(id, coord, width, height));                                      \
+}                                                                                                                           \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockReadINTEL, _##TYPE_ABBR##_img2d_rw_v2i32_i32_i32, _R##TYPE)(   \
+    global Img2d_rw* image, int2 coord, int width, int height)                                                              \
+{                                                                                                                           \
+    int id = (int)__builtin_astype(image, global void*);                                                                    \
+    return as_##TYPE(__builtin_IB_media_block_read_u##TYPE(id, coord, width, height));                                      \
+}
+
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(char,   i8)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(char2,  v2i8)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(char4,  v4i8)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(char8,  v8i8)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(char16, v16i8)
+
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(short,   i16)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(short2,  v2i16)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(short4,  v4i16)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(short8,  v8i16)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(short16, v16i16)
+
+// Integer block reads don't have 16 element version.
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(int,  i32)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(int2, v2i32)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(int4, v4i32)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_READ_IMAGE(int8, v8i32)
+
+// OpSubgroupImageMediaBlockWriteINTEL
+//
+// Writes a block of data into a 2D region of the specified 'Image'.
+
+#define DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(TYPE, TYPE_ABBR)                                                \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockWriteINTEL, _img2d_wo_v2i32_i32_i32_##TYPE_ABBR, )(    \
+    global Img2d_wo* image, int2 coord, int width, int height, TYPE data)                                           \
+{                                                                                                                   \
+    int id = (int)__builtin_astype(image, global void*);                                                            \
+    __builtin_IB_media_block_write_u##TYPE(id, coord, width, height, as_u##TYPE(data));                             \
+}                                                                                                                   \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageMediaBlockWriteINTEL, _img2d_rw_v2i32_i32_i32_##TYPE_ABBR, )(    \
+    global Img2d_rw* image, int2 coord, int width, int height, TYPE data)                                           \
+{                                                                                                                   \
+    int id = (int)__builtin_astype(image, global void*);                                                            \
+    __builtin_IB_media_block_write_u##TYPE(id, coord, width, height, as_u##TYPE(data));                             \
+}
+
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(char,   i8)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(char2,  v2i8)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(char4,  v4i8)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(char8,  v8i8)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(char16, v16i8)
+
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(short,   i16)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(short2,  v2i16)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(short4,  v4i16)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(short8,  v8i16)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(short16, v16i16)
+
+// Integer block writes don't have 16 element version.
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(int,  i32)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(int2, v2i32)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(int4, v4i32)
+DEF_INTEL_SUB_GROUP_MEDIA_BLOCK_WRITE_IMAGE(int8, v8i32)
+
 // Ballot Functions
 
 uint intel_sub_group_ballot(bool p)

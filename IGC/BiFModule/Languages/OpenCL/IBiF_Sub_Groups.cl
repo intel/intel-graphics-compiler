@@ -528,13 +528,6 @@ TYPE##LEN intel_sub_group_media_block_read_##TYPE_POSTFIX##LEN(         \
     int id = (int)__builtin_astype(image, global void*);                \
     return __builtin_IB_media_block_read_##TYPE##LEN(                   \
         id, src_offset, width, height);                                 \
-}                                                                       \
-TYPE##LEN __builtin_spirv_intel_sub_group_media_block_read_             \
-##TYPE_POSTFIX##LEN##_i64_v2i32_i32_i32(                                \
-    ulong image, int2 src_offset, int width, int height)                \
-{                                                                       \
-    return __builtin_IB_media_block_read_##TYPE##LEN(                   \
-        image, src_offset, width, height);                              \
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
@@ -565,13 +558,6 @@ void intel_sub_group_media_block_write_##TYPE_POSTFIX##LEN(                 \
     int id = (int)__builtin_astype(image, global void*);                    \
     __builtin_IB_media_block_write_##TYPE##LEN(                             \
         id, src_offset, width, height, pixels);                             \
-}                                                                           \
-void __builtin_spirv_intel_sub_group_media_block_write_                     \
-##TYPE_POSTFIX##LEN##_i64_v2i32_i32_i32_##TYPE_ABBR(                        \
-    ulong image, int2 src_offset, int width, int height, TYPE##LEN pixels)  \
-{                                                                           \
-    __builtin_IB_media_block_write_##TYPE##LEN(                             \
-        image, src_offset, width, height, pixels);                          \
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD

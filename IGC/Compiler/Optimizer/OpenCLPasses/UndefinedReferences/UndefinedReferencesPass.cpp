@@ -93,6 +93,13 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
             if (!funcName.startswith("__builtin_IB") && funcName != "printf" &&
                 !funcName.startswith("__igcbuiltin_") &&
                 !funcName.startswith("__translate_sampler_initializer") &&
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
+                !funcName.startswith("_Z20__spirv_SampledImage") &&
+                !funcName.startswith("_Z21__spirv_VmeImageINTEL") &&
+#else
+                !funcName.startswith("__builtin_spirv_OpSampledImage") &&
+                !funcName.startswith("__builtin_spirv_OpVmeImageINTEL") &&
+#endif
                 !F.hasFnAttribute("referenced-indirectly"))
             {
                 ReportUndefinedReference(CGC, funcName, &F);
