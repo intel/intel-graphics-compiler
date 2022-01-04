@@ -1036,6 +1036,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    bool skipPrologue = false;
+
     if (isFuncGroupHead)
     {
         if (!needKernelArgOverrideWA)
@@ -1048,23 +1050,26 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_currShader->AllocatePayload();
         }
 
-        if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills)
-        {
-            if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
-            {
-                errs() << "Skip Prologue : " << m_encoder->GetShaderName() << "\n";
-            }
-            return false;
-        }
         if (m_encoder->IsCodePatchCandidate())
         {
-            if (IGC_GET_FLAG_VALUE(CodePatchLimit) >= 2)
+            if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills)
             {
-                IGC_SET_FLAG_VALUE(CodePatchLimit, IGC_GET_FLAG_VALUE(CodePatchLimit) - 1);
+                if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
+                {
+                    errs() << "Skip Prologue : " << m_encoder->GetShaderName() << "\n";
+                }
+                skipPrologue = true;
             }
-            if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
+            else
             {
-                errs() << IGC_GET_FLAG_VALUE(CodePatchLimit) << " Prologue/CodePatch : " << m_encoder->GetShaderName() << "\n";
+                if (IGC_GET_FLAG_VALUE(CodePatchLimit) >= 2)
+                {
+                    IGC_SET_FLAG_VALUE(CodePatchLimit, IGC_GET_FLAG_VALUE(CodePatchLimit) - 1);
+                }
+                if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
+                {
+                    errs() << IGC_GET_FLAG_VALUE(CodePatchLimit) << " Prologue/CodePatch : " << m_encoder->GetShaderName() << "\n";
+                }
             }
         }
         else
@@ -1118,7 +1123,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             compileWithSymbolTable = true;
         }
-        m_encoder->Compile(compileWithSymbolTable);
+        if (!skipPrologue)
+        {
+            m_encoder->Compile(compileWithSymbolTable);
+        }
         m_pCtx->m_prevShader = m_currShader;
 
         if (hasStackCall)
