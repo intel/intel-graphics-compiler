@@ -840,6 +840,23 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_FlushSampler()
 }
 
 template<bool preserveNames, typename T, typename Inserter>
+llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_LscFence(
+    llvm::Value* SFID,
+    llvm::Value* FenceOp,
+    llvm::Value* Scope)
+{
+    llvm::Value* parameters[] =
+    {
+        SFID,
+        Scope,
+        FenceOp,
+    };
+    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    return this->CreateCall(
+        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_LSCFence),
+        parameters);
+}
+template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MemoryFence(
     bool commit,
     bool flushRWDataCache,

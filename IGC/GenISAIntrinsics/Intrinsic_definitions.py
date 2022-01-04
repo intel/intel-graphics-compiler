@@ -2306,5 +2306,73 @@ Imported_Intrinsics = \
     [("anyvector",                     "dst: hf or bf8 (as ub)"),
     [("anyvector",                     "src0: F or HF"),
      ("anyvector",                     "src1: random number. F or HF(the same as src0's)")],
-    "NoMem"]]
+    "NoMem"]],
+####################################################################################################
+"GenISA_OutputMeshPrimitiveData": ["",
+    [("void",                          ""),
+    [("float",                         "x"),
+     ("float",                         "y"),
+     ("float",                         "z"),
+     ("float",                         "w"),
+     ("int",                           "usage"),
+     ("int",                           "owordOffset :  ignored for output types other than " +\
+                                       "SHADER_OUTPUT_TYPE_DEFAULT (may be undef) "),
+     ("int",                           "primitiveIndex"),
+     ("int",                           "mask")],
+    "None"]],
+####################################################################################################
+"GenISA_OutputMeshPrimitiveDataInput": ["Load data from mesh per-primitive output",
+    [("float4",                        ""),
+    [("int",                           "usage"),
+     ("int",                           "owordOffset (see GenISA_OutputMeshPrimitiveData"),
+     ("int",                           "primitiveIndex")],
+    "ReadMem"]],
+####################################################################################################
+"GenISA_OutputMeshSivDataInput": ["Load data from mesh siv output",
+    [("float4",                        ""),
+    [("int",                           "usage"),
+     ("int",                           "primitiveIndex : ignored for PrimitiveCount")],
+    "ReadMem"]],
+####################################################################################################
+"GenISA_OutputMeshVertexData": ["",
+    [("void",                          ""),
+    [("float",                         "x"),
+     ("float",                         "y"),
+     ("float",                         "z"),
+     ("float",                         "w"),
+     ("int",                           "usage"),
+     ("int",                           "owordOffset : for SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO "+\
+                                           "or SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI "+\
+                                           "it refers to either low (=0) or high (=1) "+\
+                                           "half of the Vertex Header's clipCullDistanceArray[8] "+\
+                                           "for SHADER_OUTPUT_TYPE_REPLICATED_POSITION it is viewId "+\
+                                           "for remained output types other than "+\
+                                           "SHADER_OUTPUT_TYPE_DEFAULT it is ignored (may be undef)"),
+     ("int",                           "vertexIndex"),
+     ("int",                           "mask")],
+    "None"]],
+####################################################################################################
+"GenISA_OutputMeshVertexDataInput": ["Load data from mesh per-vertex output",
+    [("float4",                        ""),
+    [("int",                           "usage"),
+     ("int",                           "owordOffset (see GenISA_OutputMeshVertexData)"),
+     ("int",                           "vertexIndex")],
+    "ReadMem"]],
+####################################################################################################
+"GenISA_OutputTaskData": ["",
+    [("void",                          ""),
+    [("float",                         ""),
+     ("float",                         ""),
+     ("float",                         ""),
+     ("float",                         ""),
+     ("int",                           ""),
+     ("int",                           ""),
+     ("int",                           "")],
+    "None"]],
+####################################################################################################
+"GenISA_OutputTaskDataInput": ["Load from task output",
+    [("float4",                        ""),
+    [("int",                           "usage"),
+     ("int",                           "owordOffset")],
+    "ReadMem"]]
 }

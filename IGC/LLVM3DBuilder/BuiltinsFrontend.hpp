@@ -363,6 +363,10 @@ public:
 
     llvm::Value* Create_SyncThreadGroup();
     llvm::Value* Create_FlushSampler();
+    llvm::Value* Create_LscFence(
+        llvm::Value* SFID,
+        llvm::Value* FenceOp,
+        llvm::Value* Scope);
     llvm::Value* Create_MemoryFence(
         bool commit,
         bool flushRWDataCache,

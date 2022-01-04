@@ -955,6 +955,8 @@ void BIImport::InitializeBIFlags(Module& M)
     initializeVarWithValue("__UseMathWithLUT", isUseMathWithLUTEnabled ? 1 : 0);
     initializeVarWithValue("__UseNativeFP32GlobalAtomicAdd", pCtx->platform.hasFP32GlobalAtomicAdd() ? 1 : 0);
     initializeVarWithValue("__UseNativeFP16AtomicMinMax", pCtx->platform.hasFP16AtomicMinMax() ? 1 : 0);
+    initializeVarWithValue("__HasInt64SLMAtomicCAS", pCtx->platform.hasInt64SLMAtomicCAS() ? 1 : 0);
+    initializeVarWithValue("__UseNativeFP64GlobalAtomicAdd", pCtx->platform.hasFP64GlobalAtomicAdd() ? 1 : 0);
     initializeVarWithValue("__UseNative64BitIntBuiltin", pCtx->platform.hasNoFullI64Support() ? 0 : 1);
     initializeVarWithValue("__UseNative64BitFloatBuiltin", pCtx->platform.hasNoFP64Inst() ? 0 : 1);
     initializeVarWithValue("__CRMacros",

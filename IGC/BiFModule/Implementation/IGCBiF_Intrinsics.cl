@@ -265,6 +265,7 @@ long     __builtin_IB_atomic_inc_global_i64(__global long*);
 long     __builtin_IB_atomic_dec_global_i64(__global long*);
 long     __builtin_IB_atomic_cmpxchg_global_i64(__global long*, long, long);
 double   __builtin_IB_atomic_cmpxchg_global_f64(__global double*, double, double);
+double   __builtin_IB_atomic_add_global_f64(__global double*, double);
 #endif // defined(cl_intel_64bit_global_atomics_placeholder)
 
 // Atomic operations
@@ -837,10 +838,41 @@ double __builtin_IB_fma_rtp_f64(double x, double y, double z) __attribute__((con
 // x * y + z, using round-to-negative-infinity
 double __builtin_IB_fma_rtn_f64(double x, double y, double z) __attribute__((const));
 
+// 2d block read
+ushort2  __builtin_IB_subgroup_block_read_flat_u8_m1k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+ushort4  __builtin_IB_subgroup_block_read_flat_u8_m2k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+ushort8  __builtin_IB_subgroup_block_read_flat_u8_m4k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+ushort16 __builtin_IB_subgroup_block_read_flat_u8_m8k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+ushort2  __builtin_IB_subgroup_block_read_flat_u16_m1k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+ushort4  __builtin_IB_subgroup_block_read_flat_u16_m2k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+ushort8  __builtin_IB_subgroup_block_read_flat_u16_m4k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+ushort16 __builtin_IB_subgroup_block_read_flat_u16_m8k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+uint8 __builtin_IB_subgroup_block_read_flat_transform_u8_k32(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+uint8 __builtin_IB_subgroup_block_read_flat_transform_u16_k16(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+// equivalent to transpose_transform_u8_k32 and transpose_transform_u16_k16
+uint8 __builtin_IB_subgroup_block_read_flat_transpose_u32_k8(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
 
+// system memory fence (PVC+)
+void  __builtin_IB_system_memfence(bool fence_typed_memory);
+
+// i64 CAS SLM atomic (PVC+)
+long  __builtin_IB_atomic_cmpxchg_local_i64(__local long*, long, long);
+
+#ifdef cl_intel_pvc_rt_validation
+// PVC raytracing extensions
+void* __builtin_IB_intel_get_rt_stack(rtglobals_t rt_dispatch_globals);
+void* __builtin_IB_intel_get_thread_btd_stack(rtglobals_t rt_dispatch_globals);
+void* __builtin_IB_intel_get_global_btd_stack(rtglobals_t rt_dispatch_globals);
+void* __builtin_IB_intel_get_global_btd_stack(rtglobals_t rt_dispatch_globals);
+rtfence_t __builtin_IB_intel_dispatch_trace_ray_query(
+  rtglobals_t rt_dispatch_globals, uint bvh_level, uint traceTayCtrl);
+void __builtin_IB_intel_rt_sync(rtfence_t fence);
+global void* __builtin_IB_intel_get_implicit_dispatch_globals();
+#endif // cl_intel_pvc_rt_validation
+
+void    __builtin_IB_hdc_uncompressed_write_uchar(__global uchar *buf, uchar val);
 
 #include "IGCBiF_Intrinsics_Dpas.cl"
-
-
+#include "IGCBiF_Intrinsics_Lsc.cl"
 
 #endif // IGCBIF_INTRINSICS_CL

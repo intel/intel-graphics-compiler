@@ -28,7 +28,7 @@ SPDX-License-Identifier: MIT
     for (int i = 0; i < M; i++) \
         wi_contrib[i] = *(ptr + slid + (i * stride)); \
 
-/* PackedA load i16 */ 
+/* PackedA load i16 */
 INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x16_i16_v8i8_pi32_i32(char *mem, int stride) {
     LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, int, 8, 16)
     return ARR_TO_VEC8(int, wi_contrib);
@@ -49,7 +49,7 @@ INLINE int __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_1x16_i16_v8i8
     return ARR_TO_VEC1(int, wi_contrib);
 }
 
-/* PackedA load i8 */ 
+/* PackedA load i8 */
 INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x32_i8_v8i8_pi32_i32(char *mem, int stride) {
     LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, int, 8, 32)
     return ARR_TO_VEC8(int, wi_contrib);
@@ -70,6 +70,47 @@ INLINE int __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_1x32_i8_v8i8_
     return ARR_TO_VEC1(int, wi_contrib);
 }
 
+/* PackedA load i16 SG16 */
+INLINE short8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x16_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, short, 8, 16)
+    return ARR_TO_VEC8(short, wi_contrib);
+}
+
+INLINE short4 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_4x16_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, short, 4, 16)
+    return ARR_TO_VEC4(short, wi_contrib);
+}
+
+INLINE short2 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_2x16_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, short, 2, 16)
+    return ARR_TO_VEC2(short, wi_contrib);
+}
+
+INLINE short __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x16_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, short, 2, 16)
+    return ARR_TO_VEC1(short, wi_contrib);
+}
+
+/* PackedA load i8 SG16 */
+INLINE short8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x32_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 8, 32)
+    return ARR_TO_VEC8(short, wi_contrib);
+}
+
+INLINE short4 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_4x32_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 4, 32)
+    return ARR_TO_VEC4(short, wi_contrib);
+}
+
+INLINE short2 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_2x32_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 2, 32)
+    return ARR_TO_VEC2(short, wi_contrib);
+}
+
+INLINE short __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x32_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 2, 32)
+    return ARR_TO_VEC1(short, wi_contrib);
+}
 
 #define LOAD_PACKED_B_FROM_COL_MAJOR(mem, stride, element_type, N, K) \
     int *ptr = (int *)mem; \
@@ -80,12 +121,12 @@ INLINE int __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_1x32_i8_v8i8_
         wi_contrib[i] = *(ptr + i + (slid * stride)); \
 
 INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_ColumnMajor_16x8_i16_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_B_FROM_COL_MAJOR(mem, stride, short, 8, 16) 
+    LOAD_PACKED_B_FROM_COL_MAJOR(mem, stride, short, 8, 16)
     return ARR_TO_VEC8(int, wi_contrib);
 }
 
 INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_ColumnMajor_32x8_i8_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_B_FROM_COL_MAJOR(mem, stride, char, 8, 32) 
+    LOAD_PACKED_B_FROM_COL_MAJOR(mem, stride, char, 8, 32)
     return ARR_TO_VEC8(int, wi_contrib);
 }
 

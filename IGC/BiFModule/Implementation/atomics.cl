@@ -20,6 +20,8 @@ SPDX-License-Identifier: MIT
 extern __constant int __UseNativeFP32GlobalAtomicAdd;
 extern __constant int __UseNativeFP16AtomicMinMax;
 
+extern __constant int __HasInt64SLMAtomicCAS;
+extern __constant int __UseNativeFP64GlobalAtomicAdd;
 
   __local int* __builtin_IB_get_local_lock();
   __global int* __builtin_IB_get_global_lock();
@@ -439,6 +441,23 @@ enum IntAtomicOp
 ulong OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __local ulong *Pointer,
     uint Scope, uint Semantics, ulong Value )
 {
+    if (__HasInt64SLMAtomicCAS)
+    {
+        ulong orig, newVal;
+        FENCE_PRE_OP(Scope, Semantics, false)
+        do
+        {
+            orig = *Pointer;
+            switch (atomicOp)
+            {
+                case ATOMIC_UMIN64: newVal = ( orig < Value ) ? orig : Value; break;
+                case ATOMIC_UMAX64: newVal = ( orig > Value ) ? orig : Value; break;
+                default: break; // What should we do here? OCL doesn't have assert
+            }
+        } while (__builtin_IB_atomic_cmpxchg_local_i64(Pointer, orig, newVal) != orig);
+        FENCE_POST_OP(Scope, Semantics, false)
+        return orig;
+    }
 
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics, false)
@@ -459,6 +478,30 @@ ulong OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __
 long OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __local long *Pointer,
     uint Scope, uint Semantics, long Value )
 {
+    if (__HasInt64SLMAtomicCAS)
+    {
+        long orig, newVal;
+        FENCE_PRE_OP(Scope, Semantics, false)
+        do
+        {
+            orig = *Pointer;
+            newVal = orig;
+            switch (atomicOp)
+            {
+                case ATOMIC_IADD64: newVal += Value; break;
+                case ATOMIC_SUB64:  newVal -= Value; break;
+                case ATOMIC_AND64:  newVal &= Value; break;
+                case ATOMIC_OR64:   newVal |= Value; break;
+                case ATOMIC_XOR64:  newVal ^= Value; break;
+                case ATOMIC_XCHG64: newVal = Value; break;
+                case ATOMIC_IMIN64: newVal = ( orig < Value ) ? orig : Value; break;
+                case ATOMIC_IMAX64: newVal = ( orig > Value ) ? orig : Value; break;
+                default: break; // What should we do here? OCL doesn't have assert
+            }
+        } while (__builtin_IB_atomic_cmpxchg_local_i64(Pointer, orig, newVal) != orig);
+        FENCE_POST_OP(Scope, Semantics, false)
+        return orig;
+    }
 
     long orig;
     FENCE_PRE_OP(Scope, Semantics, false)
@@ -484,6 +527,18 @@ long OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __l
 // handle uint64 SLM atomic inc/dec
 ulong OVERLOADABLE __intel_atomic_unary( bool isInc, volatile __local ulong *Pointer, uint Scope, uint Semantics )
 {
+    if (__HasInt64SLMAtomicCAS)
+    {
+        long orig, newVal;
+        FENCE_PRE_OP(Scope, Semantics, false)
+        do
+        {
+            orig = *Pointer;
+            newVal = isInc ? orig + 1 : orig - 1;
+        } while (__builtin_IB_atomic_cmpxchg_local_i64(Pointer, orig, newVal) != orig);
+        FENCE_POST_OP(Scope, Semantics, false)
+        return orig;
+    }
 
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics, false)
@@ -656,6 +711,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_
 
 long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )( __local long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
+    if (__HasInt64SLMAtomicCAS)
+    {
+        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i64, ulong, (local long*)Pointer, Scope, Equal, Value, Comparator, false );
+    }
     ulong orig;
     FENCE_PRE_OP(Scope, Equal, false)
     LOCAL_SPINLOCK_START()
@@ -1709,6 +1768,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f64_i32_i32_f64, )( __
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value)
 {
+    if (__UseNativeFP64GlobalAtomicAdd)
+    {
+        atomic_operation_1op_as_double( __builtin_IB_atomic_add_global_f64, double, Pointer, Scope, Semantics, Value, true );
+    }
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     // Another important reason of using do-while loop emulation is to avoid HW Bug on XeHP SDV:
     // "NodeDSS works in fixed arbitration mode where writes are always prioritized over reads.

@@ -198,6 +198,173 @@ float2 __builtin_IB_sub_group_fdpasw_hf_hf_8_2 (float2 acc, int  a, int8 b) __at
 float4 __builtin_IB_sub_group_fdpasw_hf_hf_8_4 (float4 acc, int2 a, int8 b) __attribute__((const));
 float8 __builtin_IB_sub_group_fdpasw_hf_hf_8_8 (float8 acc, int4 a, int8 b) __attribute__((const));
 
+// Names of SIMD16 dpas builtin functions are in the form:
+//    __builtin_IB_sub_group16_idpas_<a's precision>_<b's precision>_<depth>_<repeatCount>
+//    __builtin_IB_sub_group16_fdpas_<retty>_<accty>_<a's precision>_<b's precision>_<depth>_<repeatCount>
+//        Note that for fdpas, a and b must have the same precision!
+//
+// In addition to the operand types supported on XeHP_SDV, PVC has supported additional types. here are all
+// supported types:
+//
+// retty, accty:
+//    f, bf, hf
+//
+//  Precision:
+//     idpas
+//         u8/s8 : unsigned/signed 8 bits
+//         u4/s4 : unsigned/signed 4 bits
+//         u2/s2 : unsigned/signed 2 bits
+//     fdpas
+//         bf    : bfloat16
+//         hf    : fp16 (half)
+//         bf8   : bfloat8
+//         tf32  : tensorFloat
+//  depth : 8
+//  repeatCount: 1|2|4|8
+//     No official support 3|5|6|7 even though igc handles these repeatCount already,
+//     as other related features (types for 5/6/7, block read/write for vector3/5/6/7)
+//     are not supported yet.
+//
+//   SIMD16 DPAS, the base type of 'a' will be halfed for each work-item compared
+//   with XeHP_SDV SIMD8 dpas.  Thus, a's type is changed from int to short,  short to
+//   char.  As there is no 4-bit integer type,  SIMD16 version of simd8 dpas with char
+//   as a's base type will not be provided, thus no support via intrinsics for now. Those
+//   are for src1-src2 pair [2-bit, 8-bit precision] only.
+//
+//   Also, the intrinsic is not overloaded, substring "sub_group16" is used to
+//   distinguish with XeHP_SDV's simd8 intrinsic "sub_group". And for fdpas, the
+//   return type and acc's type are encoded in the names. See format defined
+//   right before XeHP_SDV intrinsics in this file.
+//
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int,   short,   int8,  8, 8, 1 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int,   char,    int8,  4, 8, 1 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int,   short,   int4,  8, 4, 1 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int,   short,   int2,  8, 2, 1 )
+
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int2,  short2,  int8,  8, 8, 2 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int2,  char2,   int8,  4, 8, 2 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int2,  short2,  int4,  8, 4, 2 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int2,  short2,  int2,  8, 2, 2 )
+
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int4,  short4,  int8,  8, 8, 4 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int4,  char4,   int8,  4, 8, 4 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int4,  short4,  int4,  8, 4, 4 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int4,  short4,  int2,  8, 2, 4 )
+
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int8,  short8,  int8,  8, 8, 8 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int8,  char8,   int8,  4, 8, 8 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int8,  short8,  int4,  8, 4, 8 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int8,  short8,  int2,  8, 2, 8 )
+
+// 2xint8 (double throughput, a & b are doubled in size)
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int,   short,   int8,  4, 4, 1 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int,   char,    int8,  2, 4, 1 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int,   short,   int4,  4, 2, 1 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int,   char,    int4,  2, 2, 1 )
+
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int2,  short2,  int8,  4, 4, 2 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int2,  char2,   int8,  2, 4, 2 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int2,  short2,  int4,  4, 2, 2 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int2,  char2,   int4,  2, 2, 2 )
+
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int4,  short4,  int8,  4, 4, 4 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int4,  char4,   int8,  2, 4, 4 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int4,  short4,  int4,  4, 2, 4 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int4,  char4,   int4,  2, 2, 4 )
+
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int8,  short8,  int8,  4, 4, 8 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int8,  char8,   int8,  2, 4, 8 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int8,  short8,  int4,  4, 2, 8 )
+DPAS_DEPTH_8( __builtin_IB_sub_group16_idpas,  int8,  char8,   int4,  2, 2, 8 )
+
+//
+//  float/bfloat sub_group dpas naming convention (PVC, simd16 only)
+//    __builtin_IB_sub_group16_fdpas_<rty>_<accty>_<aty>_<bty>_<depth>_<rcount>
+//        rty:  return base type:  f (float32), hf(half), bf(bfloat)
+//      accty:  acc's base type:   f (float32), hf(half), bf(bfloat)
+//    aty/bty:  a/b's base type:  bf (bfloat),  hf(half)
+//                                bf8, tf32(tensorFloat)
+//
+//  Note that as OCL has no bfloat type, use short instead.
+//
+
+// bfloat16, rcount = 1, simd16
+float  __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_1   (float  acc, short  a, int8 b) __attribute__((const));
+short  __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_1  (float  acc, short  a, int8 b) __attribute__((const));
+float  __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_1  (short  acc, short  a, int8 b) __attribute__((const));
+short  __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_1 (short  acc, short  a, int8 b) __attribute__((const));
+
+// bfloat16, rcount = 2, simd16
+float2  __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_2   (float2  acc, short2  a, int8 b) __attribute__((const));
+short2  __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_2  (float2  acc, short2  a, int8 b) __attribute__((const));
+float2  __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_2  (short2  acc, short2  a, int8 b) __attribute__((const));
+short2  __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_2 (short2  acc, short2  a, int8 b) __attribute__((const));
+
+// bfloat16, rcount = 4, simd16
+float4  __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_4   (float4  acc, short4  a, int8 b) __attribute__((const));
+short4  __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_4  (float4  acc, short4  a, int8 b) __attribute__((const));
+float4  __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_4  (short4  acc, short4  a, int8 b) __attribute__((const));
+short4  __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_4 (short4  acc, short4  a, int8 b) __attribute__((const));
+
+// bfloat16, rcount = 8, simd16
+float8  __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_8   (float8  acc, short8  a, int8 b) __attribute__((const));
+short8  __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_8  (float8  acc, short8  a, int8 b) __attribute__((const));
+float8  __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_8  (short8  acc, short8  a, int8 b) __attribute__((const));
+short8  __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_8 (short8  acc, short8  a, int8 b) __attribute__((const));
+
+// half, rcount = 1, simd16
+float  __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_1   (float acc,  short  a, int8 b) __attribute__((const));
+half   __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_1  (float acc,  short  a, int8 b) __attribute__((const));
+float  __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_1  (half  acc,  short  a, int8 b) __attribute__((const));
+half   __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_1 (half  acc,  short  a, int8 b) __attribute__((const));
+
+// half, rcount = 2, simd16
+float2  __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_2   (float2 acc,  short2  a, int8 b) __attribute__((const));
+half2   __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_2  (float2 acc,  short2  a, int8 b) __attribute__((const));
+float2  __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_2  (half2  acc,  short2  a, int8 b) __attribute__((const));
+half2   __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_2 (half2  acc,  short2  a, int8 b) __attribute__((const));
+
+// half, rcount = 4, simd16
+float4  __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_4   (float4 acc,  short4  a, int8 b) __attribute__((const));
+half4   __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_4  (float4 acc,  short4  a, int8 b) __attribute__((const));
+float4  __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_4  (half4  acc,  short4  a, int8 b) __attribute__((const));
+half4   __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_4 (half4  acc,  short4  a, int8 b) __attribute__((const));
+
+// half, rcount = 8, simd16
+float8  __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_8   (float8 acc,  short8  a, int8 b) __attribute__((const));
+half8   __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_8  (float8 acc,  short8  a, int8 b) __attribute__((const));
+float8  __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_8  (half8  acc,  short8  a, int8 b) __attribute__((const));
+half8   __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_8 (half8  acc,  short8  a, int8 b) __attribute__((const));
+
+
+// tf32, rcount = 1, simd16
+float   __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_1  (float  acc, short  a, int8 b) __attribute__((const));
+
+// tf32, rcount = 2, simd16
+float2  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_2  (float2 acc, short2 a, int8 b) __attribute__((const));
+
+// tf32, rcount = 4, simd16
+float4  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_4  (float4 acc, short4 a, int8 b) __attribute__((const));
+
+// tf32, rcount = 8, simd16
+float8  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_8  (float8 acc, short8 a, int8 b) __attribute__((const));
+
+
+//
+// Pure bloat16/half float DPAS (acc and return type are also bloat16/half)
+short __builtin_IB_bfdpas_bf_bf_8_1 (short acc, int8 a, int8 b) __attribute__((const));  // deprecated
+half  __builtin_IB_hfdpas_hf_hf_8_1 (half acc, int8 a, int8 b) __attribute__((const));   // deprecated
+// pure sub group version of fdpas. (suffix: <pa-bits>_<pb-bits>_<depth>_<rcount>)
+// pure bfloat16  -- deprecated
+short  __builtin_IB_sub_group_bfdpas_bf_bf_8_1 (short  acc, int  a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group_bfdpas_bf_bf_8_2 (short2 acc, int2 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group_bfdpas_bf_bf_8_4 (short4 acc, int4 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group_bfdpas_bf_bf_8_8 (short8 acc, int8 a, int8 b) __attribute__((const));
+// pure half -- deprecated
+half  __builtin_IB_sub_group_hfdpas_hf_hf_8_1 (half  acc, int  a, int8 b) __attribute__((const));
+half2 __builtin_IB_sub_group_hfdpas_hf_hf_8_2 (half2 acc, int2 a, int8 b) __attribute__((const));
+half4 __builtin_IB_sub_group_hfdpas_hf_hf_8_4 (half4 acc, int4 a, int8 b) __attribute__((const));
+half8 __builtin_IB_sub_group_hfdpas_hf_hf_8_8 (half8 acc, int8 a, int8 b) __attribute__((const));
 
 
 // bf <--> float conversion
@@ -228,5 +395,87 @@ int8  __builtin_IB_2fto2bf_8 (float8  a, float8  b) __attribute__((const));
 int16 __builtin_IB_2fto2bf_16(float16 a, float16 b) __attribute__((const));
 
 
+// bf8 <--> half float conversion
+//    bf8 : no igc type for bf8 yet. Use char as *opaque* type for it.
+//
+// hf -> bf8 conversion builtins (rte rounding mode)
+char   __builtin_IB_hftobf8_1 (half   a) __attribute__((const));
+char2  __builtin_IB_hftobf8_2 (half2  a) __attribute__((const));
+char3  __builtin_IB_hftobf8_3 (half3  a) __attribute__((const));
+char4  __builtin_IB_hftobf8_4 (half4  a) __attribute__((const));
+char8  __builtin_IB_hftobf8_8 (half8  a) __attribute__((const));
+char16 __builtin_IB_hftobf8_16(half16 a) __attribute__((const));
+
+// bf8 -> hf conversion builtins (precise conversion)
+half   __builtin_IB_bf8tohf_1 (char   a) __attribute__((const));
+half2  __builtin_IB_bf8tohf_2 (char2  a) __attribute__((const));
+half3  __builtin_IB_bf8tohf_3 (char3  a) __attribute__((const));
+half4  __builtin_IB_bf8tohf_4 (char4  a) __attribute__((const));
+half8  __builtin_IB_bf8tohf_8 (char8  a) __attribute__((const));
+half16 __builtin_IB_bf8tohf_16(char16 a) __attribute__((const));
+
+// tf32 <--> float float conversion
+//    tf32 : no igc type for tf32. Use int as *opaque* type for it.
+//           (tf32: 19 bits, taking 32bit storage)
+//
+// f -> tf32 conversion builtins (rte rounding mode)
+int   __builtin_IB_ftotf32_1 (float   a) __attribute__((const));
+int2  __builtin_IB_ftotf32_2 (float2  a) __attribute__((const));
+int3  __builtin_IB_ftotf32_3 (float3  a) __attribute__((const));
+int4  __builtin_IB_ftotf32_4 (float4  a) __attribute__((const));
+int8  __builtin_IB_ftotf32_8 (float8  a) __attribute__((const));
+int16 __builtin_IB_ftotf32_16(float16 a) __attribute__((const));
+
+// tf32 -> f conversion builtins (precise conversion, use shl a, 13)
+float   __builtin_IB_tf32tof_1 (int   a) __attribute__((const));
+float2  __builtin_IB_tf32tof_2 (int2  a) __attribute__((const));
+float3  __builtin_IB_tf32tof_3 (int3  a) __attribute__((const));
+float4  __builtin_IB_tf32tof_4 (int4  a) __attribute__((const));
+float8  __builtin_IB_tf32tof_8 (int8  a) __attribute__((const));
+float16 __builtin_IB_tf32tof_16(int16 a) __attribute__((const));
+
+// Stochastic rounding : srnd d  a  r
+//      d: bf8 | hf
+//      a: hf | f
+//      r: random number, has the same type as a's
+//  HF -> BF8
+char   __builtin_IB_srnd_hftobf8_1 (half   a, half   r) __attribute__((const));
+char2  __builtin_IB_srnd_hftobf8_2 (half2  a, half2  r) __attribute__((const));
+char3  __builtin_IB_srnd_hftobf8_3 (half3  a, half3  r) __attribute__((const));
+char4  __builtin_IB_srnd_hftobf8_4 (half4  a, half4  r) __attribute__((const));
+char8  __builtin_IB_srnd_hftobf8_8 (half8  a, half8  r) __attribute__((const));
+char16 __builtin_IB_srnd_hftobf8_16(half16 a, half16 r) __attribute__((const));
+
+// F -> HF
+half   __builtin_IB_srnd_ftohf_1 (float   a, float   r) __attribute__((const));
+half2  __builtin_IB_srnd_ftohf_2 (float2  a, float2  r) __attribute__((const));
+half3  __builtin_IB_srnd_ftohf_3 (float3  a, float3  r) __attribute__((const));
+half4  __builtin_IB_srnd_ftohf_4 (float4  a, float4  r) __attribute__((const));
+half8  __builtin_IB_srnd_ftohf_8 (float8  a, float8  r) __attribute__((const));
+half16 __builtin_IB_srnd_ftohf_16(float16 a, float16 r) __attribute__((const));
+
+// [Deprecated. Use bf8 version instead]
+// Note: qf is renamed to bf8. Those cvt builtins are the same as
+//       those cvt builtins between bf8 and hf (qf is deprecated)
+//       Once all apps/tests move to use bf8 cvt, those can be deleted
+//
+// quarter float <--> half float conversion
+//    qf : no igc type for qf yet. Use char as *opaque* type for it.
+//
+// hf -> qf conversion builtins (rte rounding mode)
+char   __builtin_IB_hftoqf_1 (half   a) __attribute__((const));
+char2  __builtin_IB_hftoqf_2 (half2  a) __attribute__((const));
+char3  __builtin_IB_hftoqf_3 (half3  a) __attribute__((const));
+char4  __builtin_IB_hftoqf_4 (half4  a) __attribute__((const));
+char8  __builtin_IB_hftoqf_8 (half8  a) __attribute__((const));
+char16 __builtin_IB_hftoqf_16(half16 a) __attribute__((const));
+
+// qf -> hf conversion builtins (precise conversion)
+half   __builtin_IB_qftohf_1 (char   a) __attribute__((const));
+half2  __builtin_IB_qftohf_2 (char2  a) __attribute__((const));
+half3  __builtin_IB_qftohf_3 (char3  a) __attribute__((const));
+half4  __builtin_IB_qftohf_4 (char4  a) __attribute__((const));
+half8  __builtin_IB_qftohf_8 (char8  a) __attribute__((const));
+half16 __builtin_IB_qftohf_16(char16 a) __attribute__((const));
 
 #endif // IGCBIF_INTRINSICS_DPAS_CL

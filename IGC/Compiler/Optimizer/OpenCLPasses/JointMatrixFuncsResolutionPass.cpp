@@ -142,6 +142,11 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
         IGC_ASSERT_MESSAGE(false, "Unexpected load/store layout.");
     }
 
+    /* On PVC due to SIMD16 different SIMD lane contribution is used for matrix A.
+     * Therefore different load function is required. */
+    if (Context->platform.hasExecSize16DPAS() && matrixLayout == LayoutPackedA) {
+        name += "SG16_";
+    }
 
     name += std::to_string(rows);
     name += "x";
@@ -181,6 +186,9 @@ Type *JointMatrixFuncsResolutionPass::ResolveType
     if (name.equals("intel.joint_matrix_packedA_t")) {
         *outLayout = LayoutPackedA;
         Type *baseType = Type::getInt32Ty(ctx);
+        if (Context->platform.hasExecSize16DPAS()) {
+            baseType = Type::getInt16Ty(ctx);
+        }
         return IGCLLVM::FixedVectorType::get(baseType, rows);
     } else if (name.equals("intel.joint_matrix_packedB_t")) {
         *outLayout = LayoutPackedB;
@@ -246,7 +254,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 
     Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "matrix", CI);
     if (retTy != matTy) {
-        newCall = BitCastInst::Create(Instruction::BitCast, newCall, matTy,"matrix.load.cast", CI); 
+        newCall = BitCastInst::Create(Instruction::BitCast, newCall, matTy,"matrix.load.cast", CI);
     }
     return newCall;
 }
