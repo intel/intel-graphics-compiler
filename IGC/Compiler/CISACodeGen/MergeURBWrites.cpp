@@ -53,6 +53,7 @@ public:
     static char ID;
 
     MergeURBWrites() :
+        m_ForceFullMask(false),
         FunctionPass(ID)
     {
         initializeMergeURBWritesPass(*PassRegistry::getPassRegistry());
@@ -77,6 +78,11 @@ private:
     // Does this by going through write list containing stored write instructions
     // in order of offsets and merging adjacent writes.
     void MergeInstructions();
+    // Analyzes if there is possibility to use full mask writes
+    bool IsPossibleToForceFullWriteMask(Function& F);
+
+    bool m_ForceFullMask;
+
     // represents the map (urb index) --> (instruction, instruction index in BB)
     // The key consists of a dynamic URB base offset (key.first) and
     // an immediate offset from this dynamic base
@@ -115,6 +121,7 @@ static unsigned int GetChannelMask(CallInst* inst)
 bool MergeURBWrites::runOnFunction(Function& F)
 {
     bool fModified = false;
+    m_ForceFullMask = IsPossibleToForceFullWriteMask(F);
     for (auto& BB : F)
     {
         FillWriteList(BB);
@@ -278,6 +285,11 @@ void MergeURBWrites::MergeInstructions()
         IGC_ASSERT(highWriteMask <= 0x0F);
         auto mergedMask = lowWriteMask | (highWriteMask << 4);
 
+        // Set full mask for perf using LSC
+        if (m_ForceFullMask)
+        {
+            mergedMask = 0xff;
+        }
 
         // Move the data operands from the earlier instruction to the later instruction.
         // If instructions are in order, we need to add new operands to positions 2..5 while
@@ -312,6 +324,60 @@ void MergeURBWrites::MergeInstructions()
     } // for
 
 } // MergeInstructions
+
+
+bool MergeURBWrites::IsPossibleToForceFullWriteMask(Function& F)
+{
+    bool supportsLSC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.hasLSC();
+    bool result = false;
+    if (IGC_IS_FLAG_ENABLED(forceFullUrbWriteMask) && supportsLSC)
+    {
+        // The analysis is simplified because barriers are supposed to be the point to force
+        // flush all writes. There is no necessity to do this before URB read instructions.
+        // Hence, the operation can be improved considering interaction of barriers and URB
+        // access instructions. The approach is formed taking the way of merging URB writes
+        // into account.
+        llvm::BasicBlock* pBasicBlockContainingLastUrbWrite = nullptr;
+        bool hasUrbWritesInMultipleBasicBlock = false;
+        bool hasThreadGroupBarrier = false;
+        bool hasOutputUrbReads = false;
+        bool hasDynamicOffsets = false;
+        bool hasDynamicMasks = false;
+        for (llvm::BasicBlock& basicBlock : F)
+        {
+            for (auto iit = basicBlock.begin(); iit != basicBlock.end(); ++iit)
+            {
+                llvm::GenIntrinsicInst* intrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(iit);
+                if (intrinsic == nullptr) continue;
+                switch (intrinsic->getIntrinsicID())
+                {
+                case GenISAIntrinsic::GenISA_URBReadOutput:
+                    hasOutputUrbReads = true;
+                    break;
+                case GenISAIntrinsic::GenISA_threadgroupbarrier:
+                    hasThreadGroupBarrier = true;
+                    break;
+                case GenISAIntrinsic::GenISA_URBWrite:
+                    hasUrbWritesInMultipleBasicBlock = hasUrbWritesInMultipleBasicBlock ||
+                        (pBasicBlockContainingLastUrbWrite != nullptr && pBasicBlockContainingLastUrbWrite != intrinsic->getParent());
+                    pBasicBlockContainingLastUrbWrite = intrinsic->getParent();
+                    hasDynamicOffsets = hasDynamicOffsets || llvm::isa<llvm::ConstantInt>(intrinsic->getOperand(0)) == false;
+                    hasDynamicMasks = hasDynamicMasks || llvm::isa<llvm::ConstantInt>(intrinsic->getOperand(1)) == false;
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+
+        result = !hasThreadGroupBarrier &&
+            !hasOutputUrbReads &&
+            !hasUrbWritesInMultipleBasicBlock &&
+            !hasDynamicOffsets &&
+            !hasDynamicMasks;
+    }
+    return result;
+}
 
 
 #define PASS_FLAG "igc-merge-urb-writes"

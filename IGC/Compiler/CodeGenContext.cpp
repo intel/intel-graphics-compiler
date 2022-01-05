@@ -1293,5 +1293,114 @@ namespace IGC
         }
     }
 
+    unsigned MeshShaderContext::GetThreadGroupSize()
+    {
+        unsigned int threadGroupSize = ((type == ShaderType::MESH_SHADER) ?
+            getModuleMetaData()->msInfo.WorkGroupSize : getModuleMetaData()->taskInfo.WorkGroupSize);
+
+        return threadGroupSize;
+    }
+
+    unsigned MeshShaderContext::GetHwThreadPerWorkgroup()
+    {
+        unsigned hwThreadPerWorkgroup = platform.getMaxNumberHWThreadForEachWG();
+
+        if (platform.supportPooledEU())
+        {
+            hwThreadPerWorkgroup = platform.getMaxNumberThreadPerWorkgroupPooledMax();
+        }
+        return hwThreadPerWorkgroup;
+    }
+
+    unsigned int MeshShaderContext::GetSlmSize() const
+    {
+        unsigned int slmSize = ((type == ShaderType::MESH_SHADER) ?
+            getModuleMetaData()->msInfo.WorkGroupMemorySizeInBytes :
+            getModuleMetaData()->taskInfo.WorkGroupMemorySizeInBytes);
+        return slmSize;
+    }
+
+    // Use compute shader thresholds.
+    float MeshShaderContext::GetSpillThreshold() const
+    {
+        float spillThresholdSLM =
+            float(IGC_GET_FLAG_VALUE(CSSpillThresholdSLM)) / 100.0f;
+        float spillThresholdNoSLM =
+            float(IGC_GET_FLAG_VALUE(CSSpillThresholdNoSLM)) / 100.0f;
+        return GetSlmSize() > 0 ? spillThresholdSLM : spillThresholdNoSLM;
+    }
+
+    // Calculates thread occupancy for given simd size.
+    float MeshShaderContext::GetThreadOccupancy(SIMDMode simdMode)
+    {
+        return GetThreadOccupancyPerSubslice(
+            simdMode,
+            GetThreadGroupSize(),
+            GetHwThreadsPerWG(platform),
+            GetSlmSize(),
+            platform.getSlmSizePerSsOrDss());
+    }
+
+    SIMDMode MeshShaderContext::GetLeastSIMDModeAllowed()
+    {
+        unsigned threadGroupSize = GetThreadGroupSize();
+        unsigned hwThreadPerWorkgroup = GetHwThreadPerWorkgroup();
+
+        if ((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
+            threadGroupSize <= 512)
+        {
+            return platform.getMinDispatchMode();
+        }
+        else
+        {
+            if (threadGroupSize <= hwThreadPerWorkgroup * 16)
+            {
+                return SIMDMode::SIMD16;
+            }
+            else
+            {
+                return SIMDMode::SIMD32;
+            }
+        }
+    }
+
+    SIMDMode MeshShaderContext::GetMaxSIMDMode()
+    {
+        unsigned threadGroupSize = GetThreadGroupSize();
+
+        if (threadGroupSize <= 8)
+        {
+            return platform.getMinDispatchMode();
+        }
+        else if (threadGroupSize <= 16)
+        {
+            return SIMDMode::SIMD16;
+        }
+        else
+        {
+            return SIMDMode::SIMD32;
+        }
+    }
+
+    SIMDMode MeshShaderContext::GetBestSIMDMode()
+    {
+        const SIMDMode minMode = GetLeastSIMDModeAllowed();
+        const SIMDMode maxMode = GetMaxSIMDMode();
+
+        SIMDMode bestMode = SIMDMode::SIMD16;
+
+        if (bestMode < minMode)
+        {
+            bestMode = minMode;
+        }
+
+        if (bestMode > maxMode)
+        {
+            bestMode = maxMode;
+        }
+
+        return bestMode;
+    }
+
 
 }

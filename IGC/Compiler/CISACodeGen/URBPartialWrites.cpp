@@ -44,6 +44,9 @@ namespace IGC
 //  - check if there exists a different URB write instruction (B) that
 //    potentially writes to the same chunk of URB and that B is not strictly
 //    dominated by A and does not strictly post-dominates A
+//    The dominance/post-dominance condition is not valid in mesh and task
+//    shaders. In mesh and task shaders a single URB location may be (partially)
+//    written from multiple HW threads.
 //  - check if there exists a URB read instruction (C) that potentially reads
 //    the same chunk of URB accessed by A and is reachable from A
 // If both conditions above are `false` the full mask can be set.
@@ -54,6 +57,7 @@ public:
 
     URBPartialWrites() :
         m_SafeToExtend(std::make_pair(true, true)),
+        m_SharedURB(false),
         FunctionPass(ID)
     {
         initializeURBPartialWritesPass(*PassRegistry::getPassRegistry());
@@ -102,6 +106,7 @@ private:
         const URBAccess& write0) const;
 private:
     const std::pair<bool, bool> m_SafeToExtend;
+    bool m_SharedURB; // multiple HW threads may write the same URB location
     std::vector<URBAccess> m_UrbWrites;
     std::vector<URBAccess> m_UrbReads;
 };
@@ -313,6 +318,7 @@ std::pair<bool, bool> URBPartialWrites::IsSafeToExtendChannelMask(
             return true;
         }
         if (immMask0 &&
+            !m_SharedURB &&
             (mask0 | mask1) == mask0)
         {
             // The second URB access is for a subset of channels accessed by the
@@ -436,6 +442,12 @@ std::pair<bool, bool> URBPartialWrites::CheckURBWrites(
             safeToExtend.first &= extendMask.first;
             safeToExtend.second &= extendMask.second;
         }
+        // In Mesh and Task shaders URB may be written from multiple HW threads.
+        else if (write0 != write1 && m_SharedURB)
+        {
+            safeToExtend.first &= extendMask.first;
+            safeToExtend.second &= extendMask.second;
+        };
         if (!safeToExtend.first && !safeToExtend.second)
         {
             break;
@@ -641,6 +653,21 @@ bool URBPartialWrites::runOnFunction(Function& F)
     GetURBWritesAndReads(F);
 
     const CodeGenContext* const ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (ctx->type == ShaderType::MESH_SHADER ||
+        ctx->type == ShaderType::TASK_SHADER)
+    {
+        // In Mesh and Task shaders a single URB location may be written from
+        // multiple HW threads.
+        const IGC::ModuleMetaData* md =
+            getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        const uint workGroupSize = ctx->type == ShaderType::MESH_SHADER ?
+            md->msInfo.WorkGroupSize : md->taskInfo.WorkGroupSize;
+        uint minSimd = ctx->platform.getMinDispatchMode() == SIMDMode::SIMD8 ? 8 : 16;
+        if (workGroupSize > minSimd)
+        {
+            m_SharedURB = true;
+        }
+    }
     const uint fullWriteGranularity = ctx->platform.getURBFullWriteMinGranularity();
     if (fullWriteGranularity == 16)
     {

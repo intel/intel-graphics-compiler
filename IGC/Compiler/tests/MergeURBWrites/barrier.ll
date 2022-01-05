@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN:          igc_opt -S --inpuths --platformskl --igc-merge-urb-writes %s | FileCheck %s 
+; RUN:          igc_opt -S --inpuths --platformdg2 --igc-merge-urb-writes %s | FileCheck %s
+; RUN:          igc_opt -S --inpuths --platformskl --igc-merge-urb-writes %s | FileCheck %s
 ;
 ; CHECK:          call void @llvm.genx.GenISA.URBWrite
 ; CHECK-SAME:     (i32 0, i32 17, float 0x3FD5555560000000, float undef, float undef, float undef, float 0x3FD5555560000000, float undef, float undef, float undef)

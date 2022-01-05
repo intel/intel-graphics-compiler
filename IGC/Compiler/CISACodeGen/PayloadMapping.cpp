@@ -350,6 +350,10 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
     case llvm_sample_killpix:
     case llvm_lodptr:
     {
+        if (m_CodeGenContext->platform.getWATable().Wa_14012688258 && isCube)
+        {
+            numberofSrcs = numberofSrcs >= 3 ? numberofSrcs : 3;
+        }
     }
     break;
 
@@ -357,6 +361,10 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
     case llvm_sample_cptr:
     case llvm_sample_lptr:
     {
+        if (m_CodeGenContext->platform.getWATable().Wa_14012688258 && isCube)
+        {
+            numberofSrcs = numberofSrcs >= 4 ? numberofSrcs : 4;
+        }
 
         switch (numberofSrcs)
         {
@@ -369,6 +377,10 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
 
     case llvm_sample_dptr:
     {
+        if (m_CodeGenContext->platform.getWATable().Wa_14012688258 && isCube)
+        {
+            numberofSrcs = numberofSrcs >= 7 ? numberofSrcs : 7;
+        }
 
         switch (numberofSrcs)
         {
@@ -381,6 +393,10 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
             numberofSrcs++;
             break;
         case 8:
+            if (!m_CodeGenContext->platform.supports3DAndCubeSampleD())
+            {
+                break;
+            }
             numberofSrcs++;
             break;
         }
@@ -388,6 +404,10 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
     break;
     case llvm_sample_dcptr:
     {
+        if (m_CodeGenContext->platform.getWATable().Wa_14012688258 && isCube)
+        {
+            numberofSrcs = numberofSrcs >= 8 ? numberofSrcs : 8;
+        }
 
         switch (numberofSrcs)
         {
@@ -413,6 +433,10 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
     case llvm_sample_lcptr:
     case llvm_sample_bcptr:
     {
+        if (m_CodeGenContext->platform.getWATable().Wa_14012688258 && isCube)
+        {
+            numberofSrcs = numberofSrcs >= 5 ? numberofSrcs : 5;
+        }
 
         switch (numberofSrcs)
         {

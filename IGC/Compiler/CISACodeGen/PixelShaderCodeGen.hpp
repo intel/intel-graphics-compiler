@@ -43,6 +43,7 @@ public:
     CVariable* GetBaryRegLoweredHalf(e_interpolation mode);
     CVariable* GetBaryRegLoweredFloat(e_interpolation mode);
     CVariable* GetInputDelta(uint index, bool loweredInput = false);
+    CVariable* GetPerPrimitiveSetupVar(uint index);
     CVariable* GetInputDeltaLowered(uint index);
     CVariable* GetZWDelta();
     CVariable* GetPositionZ();
@@ -114,6 +115,8 @@ public:
     std::set<uint> loweredSetupIndexes;
     std::bitset<NUMBER_EINTERPOLATION> m_ModeUsedHalf;
     std::bitset<NUMBER_EINTERPOLATION> m_ModeUsedFloat;
+    bool IsDualSIMD8() const { return m_ShaderDispatchMode == ShaderDispatchMode::DUAL_SIMD8; }
+    bool IsMultiPoly() const { return IsDualSIMD8(); }
     bool LowerPSInput();
     static bool IsInterpolationLinear(e_interpolation mode);
     // attribute "packing"

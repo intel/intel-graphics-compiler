@@ -1696,6 +1696,13 @@ namespace IGC
         m_kernelInfo.m_syncBufferAnnotation = nullptr;
         m_kernelInfo.m_threadPayload.HasStageInGridOrigin = false;
         m_kernelInfo.m_threadPayload.HasStageInGridSize = false;
+        if (m_enableHWGenerateLID)
+        {
+            m_kernelInfo.m_threadPayload.generateLocalID = true;
+            m_kernelInfo.m_threadPayload.emitLocalMask = m_emitMask;
+            m_kernelInfo.m_threadPayload.walkOrder = m_walkOrder;
+            m_kernelInfo.m_threadPayload.tileY = (m_ThreadIDLayout == ThreadIDLayout::TileY);
+        }
 
         // Set the amount of the private memory used by the kernel
         // Set only if the private memory metadata actually exists and we don't use

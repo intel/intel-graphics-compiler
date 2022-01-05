@@ -257,7 +257,7 @@ bool PixelShaderLowering::runOnFunction(llvm::Function& F)
         // Emitting a fence to ensure that the uav write is completed before an EOT is issued
         IRBuilder<> builder(F.getContext());
 
-        bool fenceFlushNone = 0;
+        bool fenceFlushNone = IGC_GET_FLAG_VALUE(RovOpt) & 1;
         EmitMemoryFence(builder, fenceFlushNone);
     }
 
@@ -577,6 +577,12 @@ void PixelShaderLowering::EmitMemoryFence(IRBuilder<>& builder, bool forceFlushN
         arguments,
         "",
         m_ReturnBlock->getTerminator());
+
+    if (forceFlushNone && m_cgCtx->platform.hasLSC() && (IGC_GET_FLAG_VALUE(RovOpt) & 1))
+    {
+        MDNode* indM = MDNode::get(memFence->getContext(), ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(memFence->getContext()), 1)));
+        memFence->setMetadata("forceFlushNone", indM);
+    }
 }
 
 CallInst* PixelShaderLowering::addRTWrite(

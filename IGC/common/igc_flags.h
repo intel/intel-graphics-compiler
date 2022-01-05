@@ -415,6 +415,15 @@ DECLARE_IGC_REGKEY(bool, EnableLSC, false, "Enables the new dataport encoding fo
 DECLARE_IGC_REGKEY(bool, ForceNoLSC, false, "Disables the new dataport encoding for LSC messages.", true)
 
 DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true, "Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id", false)
+DECLARE_IGC_REGKEY(DWORD, LscImmOffsMatch, 1, \
+    "Match address patterns that have an immediate offset for the vISA LSC API" \
+    "(0 means off/no matching," \
+    " 2 means force on for all platforms (vISA will emulate the addition);" \
+    " also see LscImmOffsVisaOpts", true)
+DECLARE_IGC_REGKEY(DWORD, LscImmOffsVisaOpts,           0x3001E, \
+    "This maps to vISA_lscEnableImmOffsFor" \
+    "(enables/disables immediate offsets for various address types; " \
+    "see that option for semantics)", true)
 DECLARE_IGC_REGKEY(bool, Enable_Wa1807084924,  false, "Enable Wa_1807084924 regardless of the platfrom stepping", true)
 DECLARE_IGC_REGKEY(bool, Enable_Wa1507979211,  false, "Enable Wa_1507979211 regardless of the platfrom stepping", true)
 DECLARE_IGC_REGKEY(bool, Enable_Wa14010017096, false, "Enable Wa_14010017096 regardless of the platfrom stepping", true)

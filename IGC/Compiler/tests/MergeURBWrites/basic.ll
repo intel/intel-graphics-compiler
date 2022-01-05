@@ -6,6 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; RUN:          igc_opt -S --inpuths --platformdg2 --igc-merge-urb-writes %s | FileCheck %s -check-prefix=DG2
+;
+; DG2:          call void @llvm.genx.GenISA.URBWrite
+; DG2-SAME:     (i32 0, i32 255, float 0x3FD5555560000000, float undef, float undef, float undef, float 0x3FD5555560000000, float undef, float undef, float undef)
+; DG2-NOT:      call void @llvm.genx.GenISA.URBWrite({{.*}})
 
 ; RUN:          igc_opt -S --inpuths --platformskl --igc-merge-urb-writes %s | FileCheck %s -check-prefix=SKL
 ;

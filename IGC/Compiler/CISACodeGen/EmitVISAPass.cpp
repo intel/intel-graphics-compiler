@@ -14917,6 +14917,16 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
             skipBarrierInstructionInCS = true;
         }
     }
+    else if (m_currShader->GetShaderType() == ShaderType::MESH_SHADER ||
+        m_currShader->GetShaderType() == ShaderType::TASK_SHADER)
+    {
+        unsigned int threadGroupSize =
+            static_cast<MeshShaderContext*>(m_currShader->GetContext())->GetThreadGroupSize();
+        if (threadGroupSize <= numLanes(m_SimdMode))
+        {
+            skipBarrierInstructionInCS = true;
+        }
+    }
 
     if (!skipBarrierInstructionInCS)
     {
@@ -20852,6 +20862,37 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
     LSC_SFID memoryPort     = static_cast<LSC_SFID>(cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
     LSC_SCOPE scope         = static_cast<LSC_SCOPE>(cast<ConstantInt>(inst->getOperand(1))->getZExtValue());
     LSC_FENCE_OP flushType  = static_cast<LSC_FENCE_OP>(cast<ConstantInt>(inst->getOperand(2))->getZExtValue());
+
+    if (memoryPort == LSC_SLM)
+    {
+        // OPT: Remove slm fence instruction when thread group size is less or equal than simd size for DG2.
+        if (m_currShader->GetShaderType() == ShaderType::COMPUTE_SHADER)
+        {
+            unsigned int threadGroupSizeCS = (static_cast<CComputeShader*>(m_currShader))->GetThreadGroupSize();
+            if (threadGroupSizeCS <= numLanes(m_SimdMode))
+            {
+                return;
+            }
+        }
+        else if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) {
+            Function* F = inst->getParent()->getParent();
+            MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+            uint32_t sz = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, F);
+            if (sz != 0 && sz <= numLanes(m_SimdMode)) {
+                return;
+            }
+        }
+        else if (m_currShader->GetShaderType() == ShaderType::MESH_SHADER ||
+            m_currShader->GetShaderType() == ShaderType::TASK_SHADER)
+        {
+            unsigned int threadGroupSize =
+                static_cast<MeshShaderContext*>(m_currShader->GetContext())->GetThreadGroupSize();
+            if (threadGroupSize <= numLanes(m_SimdMode))
+            {
+                return;
+            }
+        }
+    }
 
     if ((memoryPort != LSC_UGM) &&
         (scope == LSC_SCOPE_SYSREL || scope == LSC_SCOPE_SYSACQ))

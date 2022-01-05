@@ -333,6 +333,9 @@ namespace IGC
         if (threadCount == 1 && hasBarrier)
         {
             // With a single thread, there is no need for thread barriers.
+            // This optimization is always required on DG2+. Unified barrier
+            // programming requires that InstanceCount be at least 2 if TCS has
+            // barrier instructions.
 
             RemoveBarrierInstructions(pNewTCSFunction);
             hasBarrier = false;

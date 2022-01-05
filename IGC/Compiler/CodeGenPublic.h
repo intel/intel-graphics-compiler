@@ -646,6 +646,52 @@ namespace IGC
         unsigned int                        BindingTableEntryBitmap;
     };
 
+    // XeHPC/XeHPG Task/Mesh Extended Parameters: XP0 (DrawID), XP1, XP2
+    struct SMeshExtendedParameters
+    {
+        static constexpr size_t             drawIdXPIndex = 0;
+        bool                                enabled[3] = {};
+    };
+
+    struct SMeshShaderKernelProgram : SKernelProgram
+    {
+        USC::GFXMEDIA_GPUWALKER_SIMD        SimdWidth;
+
+        USC::GFX3DSTATE_PROGRAM_FLOW        SingleProgramFlow;
+
+        bool                                BarrierUsed;
+
+        bool                                EmitLocalIDX;
+
+        SMeshExtendedParameters             ExtendedParameters;
+
+        OctEltUnit                          URBAllocationSize;
+        unsigned int                        URBEntriesNum;
+        unsigned int                        URBEntryAllocationSize;
+
+        /// Refer 3DSTATE_MESH_SHADER_BODY
+        OctEltUnit                          PerPrimitiveDataPitch;
+        OctEltUnit                          PerVertexDataPitch;
+
+        /// Refer 3DSTATE_SBE_MESH_BODY
+        OctEltUnit                          PerPrimitiveUrbEntryOutputReadOffset;
+        OctEltUnit                          PerPrimitiveUrbEntryOutputReadLength;
+        OctEltUnit                          PerVertexUrbEntryOutputReadOffset;
+        OctEltUnit                          PerVertexUrbEntryOutputReadLength;
+
+        bool                                DeclaresVPAIndex;
+        bool                                DeclaresRTAIndex;
+        bool                                DeclaresCullPrimitive;
+        bool                                DeclaresCPSize;  // indicates that the shader writes a value into the output header for Coarse Pixel Size (primitive shading rate)
+        bool                                isCPSizeRuntime; // indicates that the shader writes CPS a run-time value into the output header for Coarse Pixel Size (primitive shading rate)
+        unsigned char                       CPSizeX;         // stores a constant value written into the output header for Coarse Pixel Size (primitive shading rate) on the axis X
+        unsigned char                       CPSizeY;         // stores a constant value written into the output header for Coarse Pixel Size (primitive shading rate) on the axis Y
+
+        unsigned int                        ThreadGroupSize;
+        unsigned int                        WorkGroupMemorySizeInBytes;
+    };
+
+
 
     struct SOpenCLKernelInfo
     {
@@ -880,6 +926,13 @@ namespace IGC
         void Release();
     };
 
+    struct RoutingIndex
+    {
+        unsigned int resourceRangeID;
+        unsigned int indexIntoRange;
+        unsigned int routeTo;
+        unsigned int lscCacheCtrl;
+    };
 
     class CodeGenContext
     {
@@ -983,6 +1036,14 @@ namespace IGC
         DWORD dsInSize = 0;
         DWORD LtoUsedMask = 0;
         uint64_t m_SIMDInfo;
+        uint32_t HdcEnableIndexSize = 0;
+        std::vector<RoutingIndex> HdcEnableIndexValues;
+
+        // Raytracing (any shader type)
+        // If provided, the BVH has been constructed such that the root node
+        // is at a constant offset from the start of the BVH. This allows
+        // us to skip loading the offset at BVH::rootNodeOffset.
+        std::optional<size_t> BVHFixedOffset;
     private:
         //For storing error message
         std::stringstream oclErrorMessage;
@@ -1297,6 +1358,36 @@ namespace IGC
         {
         }
     };
+
+    class MeshShaderContext : public CodeGenContext
+    {
+    public:
+        SMeshShaderKernelProgram programOutput;
+        MeshShaderContext(
+            const ShaderType shaderType,
+            const CBTILayout& btiLayout,
+            const CPlatform& platform,
+            const CDriverInfo& driverInfo,
+            const bool createResourceDimTypes = true,
+            LLVMContextWrapper* llvmCtxWrapper = nullptr)
+            : CodeGenContext(shaderType, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
+            programOutput()
+        {
+            IGC_ASSERT(shaderType == ShaderType::TASK_SHADER || shaderType == ShaderType::MESH_SHADER);
+        }
+
+        SIMDMode     GetLeastSIMDModeAllowed();
+        SIMDMode     GetMaxSIMDMode();
+        SIMDMode     GetBestSIMDMode();
+        unsigned int GetThreadGroupSize();
+        unsigned int GetHwThreadPerWorkgroup();
+        unsigned int GetSlmSize() const;
+        float        GetSpillThreshold() const;
+        float        GetThreadOccupancy(SIMDMode simdMode);
+    };
+
+
+
     class OpenCLProgramContext : public CodeGenContext
     {
     public:
@@ -1513,6 +1604,7 @@ namespace IGC
     void CodeGen(VertexShaderContext* ctx);
     void CodeGen(GeometryShaderContext* ctx);
     void CodeGen(OpenCLProgramContext* ctx);
+    void CodeGen(MeshShaderContext* ctx);
 
     void OptimizeIR(CodeGenContext* ctx);
 

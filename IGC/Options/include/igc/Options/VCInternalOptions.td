@@ -56,5 +56,9 @@ def stats_file : PlainSeparate<"stats-file">,
 def : PlainJoined<"stats-file=">, Alias<stats_file>,
   HelpText<"Alias for -stats-file">;
 
+def gpu_scope_fence : PlainFlag<"gpu-scope-fence-on-single-tile">,
+  HelpText<"Allow the use of \"GPU\" fence scope on single-tile GPUs">;
+def flush_l3_for_global : PlainFlag<"flush-l3-for-global">,
+  HelpText<"Enable flushing L3 cache for globals">;
 }
 // }} VC internal options

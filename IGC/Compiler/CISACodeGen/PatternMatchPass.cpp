@@ -1087,7 +1087,9 @@ namespace IGC
             case GenISAIntrinsic::GenISA_ldraw_indexed:
             case GenISAIntrinsic::GenISA_storerawvector_indexed:
             case GenISAIntrinsic::GenISA_storeraw_indexed:
-                match = MatchSingleInstruction(I);
+                match = m_Platform.matchImmOffsetsLSC() ?
+                    MatchImmOffsetLSC(I) || MatchSingleInstruction(I) :
+                    MatchSingleInstruction(I);
                 break;
             case GenISAIntrinsic::GenISA_GradientX:
             case GenISAIntrinsic::GenISA_GradientY:
@@ -1245,13 +1247,17 @@ namespace IGC
 
     void CodeGenPatternMatch::visitStoreInst(StoreInst& I)
     {
-         bool match = MatchSingleInstruction(I);
+         bool match = m_Platform.matchImmOffsetsLSC() ?
+             MatchImmOffsetLSC(I) || MatchSingleInstruction(I) :
+             MatchSingleInstruction(I);
         IGC_ASSERT(match);
     }
 
     void CodeGenPatternMatch::visitLoadInst(LoadInst& I)
     {
-        bool match = MatchSingleInstruction(I);
+        bool match = m_Platform.matchImmOffsetsLSC() ?
+            MatchImmOffsetLSC(I) || MatchSingleInstruction(I) :
+            MatchSingleInstruction(I);
         IGC_ASSERT(match);
     }
 
@@ -2417,6 +2423,155 @@ namespace IGC
         return false;
     }
 
+    // Pattern matching to detect and handle immediate offsets in load/store
+    // instructions.  It detects offsets of the form "add dst, var, imm"
+    // The add instruction is removed, and imm included in the LSC message descriptor.
+    //
+    // OpenCL Load/Store launder the address through an inttoptr....
+    //   %2 = add i32 %0, 64
+    //   %3 = inttoptr i32 %2 to i32 addrspace(131072)*
+    //   store i32 16, i32 addrspace(131072)* %3, align 8
+    // Fold to vISA lsc_store... [%0 + 64].
+    //
+    // Stuff like 3D GenISA_ldrawvector_indexed directly reference the add.
+    //   %723 = add i32 %713, 16
+    //   %724 = call <4 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v4i32.p2621448v4f32(
+    //            <4 x float> addrspace(2621448)* %runtime_value_1, i32 %723, i32 4, i1 false)
+    // Fold to lsc_load [%713 + 16].
+    bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction& I)
+    {
+        struct LSCImmOffsetPattern : public Pattern
+        {
+            explicit LSCImmOffsetPattern(
+                Instruction* I,
+                llvm::Value* varOffset,
+                llvm::ConstantInt* immOffset)
+                : m_inst(I), m_varOff(varOffset), m_immOff(immOffset)
+            {
+            }
+
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                if (isa<LoadInst>(m_inst)) {
+                    pass->emitLoad(cast<LoadInst>(m_inst), m_varOff, m_immOff);
+                } else if (isa<StoreInst>(m_inst)) {
+                    pass->emitStore(cast<StoreInst>(m_inst), m_varOff, m_immOff);
+                } else if (isa<LdRawIntrinsic>(m_inst)) {
+                    pass->emitLoadRawIndexed(cast<LdRawIntrinsic>(m_inst), m_varOff, m_immOff);
+                } else if (isa<StoreRawIntrinsic>(m_inst)) {
+                    pass->emitStoreRawIndexed(cast<StoreRawIntrinsic>(m_inst), m_varOff, m_immOff);
+                } else {
+                    IGC_ASSERT_MESSAGE(false, "unmatched imm off pattern");
+                }
+            }
+
+        private:
+            llvm::Instruction* m_inst;
+            llvm::Value* m_varOff;
+            llvm::ConstantInt* m_immOff;
+        }; // LSCImmOffsetPattern
+
+        // match:
+        //   %addr = (add/sub %var, %imm) | (add %imm, %var)
+        //   [ %addr = inttoptr %addr, ... ]
+        //   load/store/whatever ... %addr
+        int addrOpnd = -1;
+        if (llvm::isa<LoadInst>(&I) || llvm::isa<StoreInst>(&I)) {
+            // buffer load/store instructions in compute languages are usually
+            // buried behind a inttoptr op
+            addrOpnd = llvm::isa<LoadInst>(&I) ? 0 : 1;
+        } else if (llvm::isa<llvm::GenIntrinsicInst>(I)) {
+            llvm::GenIntrinsicInst &GI = llvm::cast<llvm::GenIntrinsicInst>(I);
+            switch (GI.getIntrinsicID()) {
+            // TODO: incrementally enable others
+            //
+            // case GenISAIntrinsic::GenISA_intatomicraw:
+            // case GenISAIntrinsic::GenISA_floatatomicraw:
+            // case GenISAIntrinsic::GenISA_intatomicrawA64:
+            // case GenISAIntrinsic::GenISA_floatatomicrawA64:
+            // case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+            // case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+            // case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+            //  all these will target => emitAtomicRaw
+            //
+            case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+            case GenISAIntrinsic::GenISA_ldraw_indexed:
+            case GenISAIntrinsic::GenISA_storerawvector_indexed:
+            case GenISAIntrinsic::GenISA_storeraw_indexed:
+                addrOpnd = 1;
+                break;
+                // return false;
+            // TODO: are these even reachable here???
+            // case GenISAIntrinsic::GenISA_ldstructured:
+            // case GenISAIntrinsic::GenISA_storestructured1:
+            // case GenISAIntrinsic::GenISA_storestructured2:
+            // case GenISAIntrinsic::GenISA_storestructured3:
+            // case GenISAIntrinsic::GenISA_storestructured4:
+            //    addrOpnd = 2;
+            //    break;
+            default:
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+        if (addrOpnd < 0) {
+            return false;
+        }
+
+        llvm::Instruction *addSubInst =
+            llvm::dyn_cast<llvm::Instruction>(I.getOperand((unsigned)addrOpnd));
+        llvm::Instruction *intToPtrInst = nullptr;
+        if (!addSubInst) {
+            // e.g. the address is a constant
+            return false;
+        }
+        if (addSubInst->getOpcode() == llvm::Instruction::IntToPtr) {
+            intToPtrInst = addSubInst;
+            addSubInst = llvm::dyn_cast<llvm::Instruction>(addSubInst->getOperand(0));
+        }
+        if (!addSubInst) {
+            return false; // e.g. intToPtr of constant
+        } else if (
+            addSubInst->getOpcode() != llvm::Instruction::Add &&
+            addSubInst->getOpcode() != llvm::Instruction::Sub)
+        {
+            return false;
+        }
+
+        const bool isConstant0 = llvm::isa<llvm::ConstantInt>(addSubInst->getOperand(0));
+        const bool isConstant1 = llvm::isa<llvm::ConstantInt>(addSubInst->getOperand(1));
+        if (isConstant1 || (isConstant0 && addSubInst->getOpcode() == llvm::Instruction::Add))
+        {
+            // YES: var + imm
+            // YES: var - imm
+            // YES: imm + var
+            // NO:  imm - var  (IGC drops the negation otherwise)
+            IGC_ASSERT_MESSAGE(!isConstant0 || !isConstant1,
+                "Both operands are immediate - constants should be folded elsewhere.");
+
+            unsigned numSources = GetNbSources(I);
+            for (unsigned i = 0; i < numSources; i++) {
+                if (I.getOperand(i) != intToPtrInst && I.getOperand(i) != addSubInst) {
+                    MarkAsSource(I.getOperand(i));
+                }
+            }
+
+            llvm::Value* immOffset = isConstant0 ?
+                addSubInst->getOperand(0) : addSubInst->getOperand(1);
+            llvm::Value* varOffset = isConstant0 ?
+                addSubInst->getOperand(1) : addSubInst->getOperand(0);
+            MarkAsSource(varOffset);
+
+            LSCImmOffsetPattern* pattern = new (m_allocator)
+                LSCImmOffsetPattern(&I, varOffset, llvm::dyn_cast<llvm::ConstantInt>(immOffset));
+            AddPattern(pattern);
+            return true;
+        }
+
+        return false;
+    }
 
     bool CodeGenPatternMatch::MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal)
     {

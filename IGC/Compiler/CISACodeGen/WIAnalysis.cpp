@@ -1474,6 +1474,33 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             }
         }
 
+        if (intrinsic_name == llvm_URBRead ||
+            intrinsic_name == llvm_URBReadOutput)
+        {
+            if (!m_CGCtx->platform.isDG2Plus())
+            {
+                return WIAnalysis::RANDOM;
+            }
+            if (m_CGCtx->type != ShaderType::TASK_SHADER &&
+                m_CGCtx->type != ShaderType::MESH_SHADER)
+            {
+                return WIAnalysis::RANDOM;
+            }
+        }
+
+        if (intrinsic_name == llvm_URBWrite)
+        {
+            // TODO: enable this for other platforms/shader types if needed
+            if (!m_CGCtx->platform.isDG2Plus())
+            {
+                return WIAnalysis::RANDOM;
+            }
+            if (m_CGCtx->type != ShaderType::TASK_SHADER &&
+                m_CGCtx->type != ShaderType::MESH_SHADER)
+            {
+                return WIAnalysis::RANDOM;
+            }
+        }
 
         // Iterate over all input dependencies. If all are uniform - propagate it.
         // otherwise - return RANDOM

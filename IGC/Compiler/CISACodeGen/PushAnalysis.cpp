@@ -770,6 +770,17 @@ namespace IGC
             return false;
         }
 
+        if (m_context->m_DriverInfo.WaDisablePushConstantsWithNoPushedAttributes() &&
+            m_context->platform.getWATable().Wa_16011983264 &&
+            m_context->type == ShaderType::HULL_SHADER)
+        {
+            Function* URBReadFunction = GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead);
+            if (GetMaxNumberOfPushedInputs() == 0 ||
+                none_of(URBReadFunction->users(), [](const User* user) { return isa<GenIntrinsicInst>(user); }))
+            {
+                return false;
+            }
+        }
 
         switch (m_context->type)
         {

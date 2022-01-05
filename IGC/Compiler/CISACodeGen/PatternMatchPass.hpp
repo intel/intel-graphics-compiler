@@ -200,6 +200,7 @@ namespace IGC
         bool MatchCondModifier(llvm::CmpInst& I);
         bool MatchBoolOp(llvm::BinaryOperator& I);
         bool MatchFunnelShiftRotate(llvm::IntrinsicInst& I);
+        bool MatchImmOffsetLSC(llvm::Instruction& I);
         bool MatchBfn(llvm::Instruction& I);
         bool MatchCmpSelect(llvm::SelectInst& I);
         bool MatchAdd3(llvm::Instruction& I);

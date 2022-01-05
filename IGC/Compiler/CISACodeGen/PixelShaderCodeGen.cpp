@@ -264,6 +264,24 @@ void CPixelShader::AllocatePSPayload()
     // allocate space for NOS constants and pushed constants
     AllocateConstants3DShader(offset);
 
+    // RPC0 and subsequent regs: per-primitive constant data
+    for (uint index = 0; index < perPrimitiveSetup.size(); index++)
+    {
+        CVariable* var = perPrimitiveSetup[index];
+        if (var && var->GetAlias() == NULL)
+        {
+            AllocateInput(var, offset);
+        }
+
+        if (IsDualSIMD8())
+        {
+            offset += 2 * getGRFSize();
+        }
+        else
+        {
+            offset += getGRFSize();
+        }
+    }
 
     // Allocate size for attributes coming from VS
     IGC_ASSERT(offset % getGRFSize() == 0);
@@ -503,6 +521,37 @@ CVariable* CPixelShader::GetBaryRegLoweredFloat(e_interpolation mode)
 }
 
 
+CVariable* CPixelShader::GetPerPrimitiveSetupVar(uint inputIndex)
+{
+
+    // A single setupVar holds up to GRF of per-primitive data.
+    const uint grfSizeInDwords = getGRFSize() / sizeof(DWORD);
+    const uint setupIndex = inputIndex / grfSizeInDwords;
+    if (setupIndex >= perPrimitiveSetup.size())
+    {
+        perPrimitiveSetup.resize(setupIndex + 1, nullptr);
+    }
+
+    CVariable* inputVar = perPrimitiveSetup[setupIndex];
+    if (inputVar == nullptr)
+    {
+        if (IsDualSIMD8())
+        {
+            // In dual-simd8 mode per-primitive data is interleaved.
+            // Each piece of 32 bytes of data for Primitive0 is followed by
+            // 32 bytes of data for Primitve1.
+
+            // Use 2 GRFs per 32 bytes of data.
+            inputVar = GetNewVariable(16, ISA_TYPE_F, EALIGN_GRF, CName::NONE);
+        }
+        else
+        {
+            inputVar = GetNewVariable(grfSizeInDwords, ISA_TYPE_F, EALIGN_GRF, CName::NONE);
+        }
+        perPrimitiveSetup[setupIndex] = inputVar;
+    }
+    return inputVar;
+}
 
 CVariable* CPixelShader::GetInputDelta(uint index, bool loweredInput)
 {
@@ -1264,6 +1313,8 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
     if (ctx->PsHighSimdDisable)
     {
         if (simdMode == SIMDMode::SIMD32)
+            return false;
+        if (EP.m_ShaderDispatchMode == ShaderDispatchMode::DUAL_SIMD8)
             return false;
     }
 

@@ -948,6 +948,16 @@ bool hasPartialEmuI64Enabled() const
 }
 
 
+bool matchImmOffsetsLSC() const
+{
+    enum LscMatchImmMode {
+        OFF = 0,
+        ON = 2,
+    };
+    auto immOffsetMode = (LscMatchImmMode)IGC_GET_FLAG_VALUE(LscImmOffsMatch);
+    return hasLSC() && immOffsetMode >= ON;
+}
+
 bool isXeHPSDVPlus() const
 {
     return m_platformInfo.eProductFamily >= IGFX_XE_HP_SDV;

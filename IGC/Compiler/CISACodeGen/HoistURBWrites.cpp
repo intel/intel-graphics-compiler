@@ -97,6 +97,10 @@ static inline bool IsAliased(
     GenIntrinsicInst* urbWrite,
     GenIntrinsicInst* urbAccess)
 {
+    if (urbAccess->isGenIntrinsic(GenISAIntrinsic::GenISA_urbfence))
+    {
+        return true;
+    }
     if (urbAccess->isGenIntrinsic(GenISAIntrinsic::GenISA_threadgroupbarrier))
     {
         return true;
@@ -304,6 +308,7 @@ void HoistURBWrites::GatherURBAccesses(llvm::Function& F)
             if (intrin &&
                 (intrin->isGenIntrinsic(GenISAIntrinsic::GenISA_URBRead) ||
                  intrin->isGenIntrinsic(GenISAIntrinsic::GenISA_URBReadOutput) ||
+                 intrin->isGenIntrinsic(GenISAIntrinsic::GenISA_urbfence) ||
                  intrin->isGenIntrinsic(GenISAIntrinsic::GenISA_threadgroupbarrier) ||
                  intrin->isGenIntrinsic(GenISAIntrinsic::GenISA_URBWrite)))
             {

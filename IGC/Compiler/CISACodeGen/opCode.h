@@ -171,6 +171,7 @@ DECLARE_OPCODE(GenISA_storerawvector_indexed, GenISAIntrinsic, llvm_storerawvect
 // Gen IR intrinsics
 DECLARE_OPCODE(GenISA_URBWrite, GenISAIntrinsic, llvm_URBWrite, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_URBRead, GenISAIntrinsic, llvm_URBRead, false, false, false, false, false, false, false)
+DECLARE_OPCODE(GenISA_URBReadOutput, GenISAIntrinsic, llvm_URBReadOutput, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_RTWrite, GenISAIntrinsic, llvm_RTWrite, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_RTDualBlendSource, GenISAIntrinsic, llvm_dualRTWrite, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_simdLaneId, GenISAIntrinsic, llvm_simdLaneId, false, false, false, false, false, false, false)

@@ -591,6 +591,8 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
     else if (isa<LdRawIntrinsic>(I) || isa<StoreRawIntrinsic>(I))
     {
         bytes = (uint32_t)VPConst::RAW_SPLIT_SIZE;
+        if (EmitPass::shouldGenerateLSCQuery(*m_CGCtx, I) == Tristate::True)
+            bytes = (uint32_t)VPConst::SPLIT_SIZE;
     }
     else
     {

@@ -606,6 +606,7 @@ protected:
     std::vector<CVariable*> payloadLiveOutSetup;
     std::vector<CVariable*> payloadTempSetup;
     std::vector<CVariable*> patchConstantSetup;
+    std::vector<CVariable*> perPrimitiveSetup;
 
     uint m_maxBlockId;
 

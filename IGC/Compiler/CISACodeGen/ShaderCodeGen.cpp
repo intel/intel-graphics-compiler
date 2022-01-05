@@ -934,6 +934,7 @@ static void AddCodeGenPasses(
 
 // Adds Compute Shader CodeGen passes for all simd sizes required, used in
 // default case when no special registry keys are set.
+// Also used in mesh and task shaders.
 template<typename ContextType>
 void AddCodeGenPasses(
     ContextType& ctx,
@@ -1215,6 +1216,37 @@ static void PSCodeGen(
     COMPILER_TIME_END(ctx, TIME_CodeGen);
 } // PSCodeGen
 
+static bool ForceSimdWA(ComputeShaderContext& ctx, SIMDMode & forceSimd, SIMDMode minSimdMode, SIMDMode maxSimdMode)
+{
+    // WA for better utilization of SIMD lanes
+    if (ctx.platform.needsWAForThreadsUtilization() &&
+        ctx.getModuleMetaData()->csInfo.waveSize == 0)
+    {
+        unsigned sizeX = ctx.GetThreadGroupSizeX();
+        unsigned sizeY = ctx.GetThreadGroupSizeY();
+        unsigned sizeZ = ctx.GetThreadGroupSizeZ();
+
+        // Force SIMD8 on thread group size 16x1x1
+        if (sizeX == 16 && sizeY == 1 && sizeZ == 1 &&
+            minSimdMode >= SIMDMode::SIMD8)
+        {
+            forceSimd = SIMDMode::SIMD8;
+            return true;
+        }
+        // Force SIMD16 or lower on thread group size 32x1x1
+        else if (sizeX == 32 && sizeY == 1 && sizeZ == 1 &&
+            minSimdMode <= SIMDMode::SIMD16 &&
+            maxSimdMode >= SIMDMode::SIMD16)
+        {
+            forceSimd = SIMDMode::SIMD16;
+            return true;
+        }
+    }
+
+    forceSimd = SIMDMode::UNKNOWN;
+    return false;
+}
+
 template<>
 void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders)
 {
@@ -1234,6 +1266,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
     IGC_ASSERT(minSimdModeAllowed <= maxSimdModeAllowed);
 
 
+    SIMDMode forceWASimdMode = SIMDMode::UNKNOWN;
     unsigned int waveSize = ctx->getModuleMetaData()->csInfo.waveSize;
 
     if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32 || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
@@ -1254,6 +1287,30 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, minSimdModeAllowed, false);
         ctx->m_ForceOneSIMD = true;
+    }
+    else if (ForceSimdWA(*ctx, forceWASimdMode, minSimdModeAllowed, maxSimdModeAllowed))
+    {
+        if (forceWASimdMode == SIMDMode::SIMD8)
+        {
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false);
+            ctx->m_ForceOneSIMD = true;
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
+        }
+        else if (forceWASimdMode == SIMDMode::SIMD16)
+        {
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, false);
+            if (minSimdModeAllowed >= SIMDMode::SIMD8)
+            {
+                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false);
+            }
+            else
+            {
+                ctx->m_ForceOneSIMD = true;
+                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
+            }
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
+        }
     }
     else
     {
@@ -1960,6 +2017,8 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(new TrivialLocalMemoryOpsElimination());
 #endif
         if (
+            pContext->type == ShaderType::TASK_SHADER ||
+            pContext->type == ShaderType::MESH_SHADER ||
             pContext->type == ShaderType::HULL_SHADER ||
             pContext->type == ShaderType::COMPUTE_SHADER)
         {

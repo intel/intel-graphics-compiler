@@ -479,6 +479,8 @@ namespace IGC
         PushInfo pushInfo;
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
+        MeshShaderInfo msInfo;
+        TaskShaderInfo taskInfo;
         uint32_t NBarrierCnt = 0;
         uint32_t CurUniqueIndirectIdx = DefaultIndirectIdx;
         std::map<uint32_t, std::array<uint32_t, 4>> inlineDynTextures;
