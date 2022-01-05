@@ -6121,12 +6121,12 @@ void HWConformity::fixBFMixedMode()
 
             // 1. Handle illegal BF scalar by generating mov
             //    First generate mov for scalars instead of splitting first and
-            //    than generating mov. Doing so would need just one mov.
+            //    than generating mov. Doing so reduces the number of mov insts.
             bool changed = false;
             if (currES > nativeES)
             {
-                // If inst's execsize <= nativeES, it doesn't need splitting,
-                // as its operand takes one GRF at most.
+                // No spliting needed for an inst whose execsize <= nativeES, as
+                // its operand takes one GRF at most.
                 for (int i = 0, nsrc = (int)Inst->getNumSrc(); i < nsrc; ++i)
                 {
                     G4_Operand* S = Inst->getSrc(i);

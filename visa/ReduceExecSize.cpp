@@ -916,6 +916,7 @@ void HWConformity::splitSIMD32Inst(INST_LIST_ITER iter, G4_BB* bb)
         G4_INST* newInst;
         if ((i + currExSize) < instExSize)
         {
+            // 1st simd16 (M0)
             newInst = builder.makeSplittingInst(inst, currExSize);
             newInst->setDest(newDst);
             newInst->setPredicate(newPredOpnd);
@@ -924,7 +925,11 @@ void HWConformity::splitSIMD32Inst(INST_LIST_ITER iter, G4_BB* bb)
         }
         else
         {
-            // reuse the original inst
+            // 2nd simd16 (M16). reuse the original inst and may need to reset mask offset.
+            if (!inst->isWriteEnableInst() || newPredOpnd || newCondMod)
+            {
+                inst->setMaskOption(InstOpt_M16);
+            }
             newInst = inst;
             newInst->setExecSize(currExSize);
             newInst->setDest(newDst);
