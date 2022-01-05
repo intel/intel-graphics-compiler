@@ -457,7 +457,7 @@ namespace IGC
             return false;
 
         // this can be changed to SIMD32 if that is better after testing on HW
-        SIMDMode DefaultSimdMode = SIMDMode::SIMD16;
+        static const SIMDMode BestSimdMode = SIMDMode::SIMD16;
 
         ComputeShaderContext* ctx = (ComputeShaderContext*)GetContext();
 
@@ -586,7 +586,7 @@ namespace IGC
 
         if (simdMode == SIMDMode::SIMD32)
         {
-            if (IGC_IS_FLAG_ENABLED(EnableCSSIMD32) || DefaultSimdMode == SIMDMode::SIMD32)
+            if (IGC_IS_FLAG_ENABLED(EnableCSSIMD32) || BestSimdMode == SIMDMode::SIMD32)
             {
                 return true;
             }
@@ -645,7 +645,7 @@ namespace IGC
                     return false;
                 }
 
-                if ((hasSimd8 || hasSimd16) && DefaultSimdMode != SIMDMode::SIMD32)
+                if ((hasSimd8 || hasSimd16) && BestSimdMode != SIMDMode::SIMD32)
                 {
                     return false;
                 }
