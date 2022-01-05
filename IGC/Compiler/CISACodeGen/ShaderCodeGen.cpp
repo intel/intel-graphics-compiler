@@ -1782,6 +1782,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                     mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
 
+                mpm.add(llvm::createLoopLoadEliminationPass());
+
                 if (!extensiveShader(pContext) && pContext->m_instrTypes.hasNonPrimitiveAlloca)
                 {
                         if (pContext->m_DriverInfo.NeedCountSROA())
@@ -1985,6 +1987,8 @@ void OptimizeIR(CodeGenContext* const pContext)
             // more efficient sequences of multiplies, shifts, and adds
             mpm.add(createIntDivConstantReductionPass());
         }
+
+        mpm.add(createConstantMergePass());
 
         mpm.add(CreateMCSOptimization());
 
