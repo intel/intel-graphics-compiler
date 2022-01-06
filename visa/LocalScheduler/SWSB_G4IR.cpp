@@ -5225,7 +5225,13 @@ void G4_BB_SB::setSpecialDistance(SBNode* node)
         return;
     }
 
-    if (inst->getDst()->isA0())
+    bool isIndirect = false;
+    if (inst->getDst()->isDstRegRegion())
+    {
+        isIndirect = inst->getDst()->asDstRegRegion()->isIndirect();
+    }
+
+    if (inst->getDst()->isA0() && !isIndirect)
     {
         SBDISTDEP_ITEM depItem;
         depItem.liveNodePipe = PIPE_FLOAT;
@@ -5628,7 +5634,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         SBNodes->emplace_back(node);
         curInst->setLocalId(0);
 
-        if (builder.hasA0WARHWissue() && builder.hasThreeALUPipes())
+        if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes()))
         {
             setSpecialDistance(node);
         }
