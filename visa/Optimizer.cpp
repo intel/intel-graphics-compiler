@@ -1488,6 +1488,31 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
         freeGRFs[i] = false;
     }
 
+    // Also mark Output dcls as busy
+    for (auto dcl : kernel.Declares)
+    {
+        if (dcl->getAliasDeclare())
+            continue;
+        // iterate over root declares only
+        if (dcl->isOutput())
+        {
+            if (!dcl->getRegVar()->getPhyReg())
+                continue;
+            if (!dcl->getRegVar()->getPhyReg()->isGreg())
+                continue;
+            auto phyReg = dcl->getRegVar()->getPhyReg()->asGreg();
+            auto regNum = phyReg->getRegNum();
+            auto subReg = dcl->getRegVar()->getPhyRegOff();
+            start = regNum * numEltPerGRF<Type_UB>();
+            start += subReg * dcl->getElemSize();
+            end = start + dcl->getByteSize() - 1;
+            for (unsigned int i = start; i <= end; i++)
+            {
+                freeGRFs[i] = false;
+            }
+        }
+    }
+
     for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
