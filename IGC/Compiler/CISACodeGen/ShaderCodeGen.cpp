@@ -390,6 +390,9 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     bool highAllocaPressure = ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold);
     bool isPotentialHPCKernel = (ctx.m_instrTypes.numInsts > IGC_GET_FLAG_VALUE(HPCInstNumThreshold)) ||
         (ctx.m_instrTypes.numGlobalInsts > IGC_GET_FLAG_VALUE(HPCGlobalInstNumThreshold)) || IGC_GET_FLAG_VALUE(HPCFastCompilation);
+    highAllocaPressure = IGC_GET_FLAG_VALUE(DisableFastRAWA) ? false : highAllocaPressure;
+    isPotentialHPCKernel = IGC_GET_FLAG_VALUE(DisableFastRAWA) ? false : isPotentialHPCKernel;
+
     if (highAllocaPressure || isPotentialHPCKernel)
     {
         IGC_SET_FLAG_VALUE(FastCompileRA, 1);

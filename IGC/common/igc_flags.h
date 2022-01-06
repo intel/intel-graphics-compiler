@@ -555,6 +555,7 @@ DECLARE_IGC_REGKEY(DWORD, HPCInstNumThreshold, 1000000, "The threshold for the r
 DECLARE_IGC_REGKEY(DWORD, HPCGlobalInstNumThreshold, 500000, "The threshold for the register pressure potential", false)
 DECLARE_IGC_REGKEY(bool, HPCFastCompilation, false, "Force to do fast compilation for HPC kernel", false)
 DECLARE_IGC_REGKEY(bool, UseOldSubRoutineAugIntf, false, "Use the old subroutine augmentation code which is slower", false)
+DECLARE_IGC_REGKEY(bool, DisableFastRAWA, true, "Disable Fast RA for hanging issues on large workloads", false)
 DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin path for RA, fail safe at first iteration", false)
 DECLARE_IGC_REGKEY(bool, HybridRAWithSpill, false, "Did Hybrid RA with Spill", false)
 DECLARE_IGC_REGKEY(bool, StripDebugInfo, false, "Strip debug info from llvm IR lowered from input to IGC", false)
