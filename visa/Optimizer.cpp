@@ -8697,6 +8697,15 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             }
             instBuffer.push_back(addInst);
 
+            if (kernel.getOption(vISA_emitCrossThreadOffR0Reloc))
+            {
+                // per thread payload is stored after cross thread
+                // payload in memory. when implicit arg buffer
+                // pointer is present, we need to shift load address
+                // of per thread payload as well.
+                emitRelocAddInst(2);
+            }
+
             // (W) mad (1) r127.2 r127.2 r127.0 per_thread_size
             auto madSrc0 = builder.createSrc(rtail->getRegVar(), 0, 2,
                 builder.getRegionScalar(), Type_UD);
