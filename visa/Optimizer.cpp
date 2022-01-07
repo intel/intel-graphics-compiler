@@ -10868,6 +10868,9 @@ static bool isCandidateDecl(G4_Declare *Dcl, const IR_Builder& builder)
         return false;
     }
 
+    if (Dcl->isOutput())
+        return false;
+
     // ToDo: add more special declares to exclude list
 
     return true;
