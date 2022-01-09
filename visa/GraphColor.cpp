@@ -9992,6 +9992,21 @@ int GlobalRA::coloringRegAlloc()
             builder.getOption(vISA_lscNonStackSpill) != 0;
     }
 
+    if (builder.hasFusedEUWA() && !builder.getIsPayload())
+    {
+        if (G4_BB* entryBB = (*kernel.fg.begin()))
+        {
+            INST_LIST_ITER inst_it = entryBB->begin();
+            const INST_LIST_ITER inst_ie = entryBB->end();
+            while (inst_it != inst_ie && (*inst_it)->isLabel())
+            {
+                inst_it++;
+            }
+            G4_INST* euWAInst = builder.createEUWASpill(false);
+            entryBB->insertBefore(inst_it, euWAInst);
+        }
+    }
+
     //
     // If the graph has stack calls, then add the caller-save/callee-save pseudo
     // declares and code. This currently must be done after flag/addr RA due to
