@@ -305,13 +305,6 @@ public:
     G4_INST* getFirstInst();
 
     // Return the first insert position if any; otherwise return end().
-    // It skips label and join/while/endif (ending CF insts). For example,
-    //    BB:
-    //        label       // skipped
-    //        join        // skipped
-    //        add     <-- first insert position
-    //        ...
-    //        goto ...
     INST_LIST_ITER getFirstInsertPos();
 
     void addEOTSend(G4_INST* lastInst = NULL);

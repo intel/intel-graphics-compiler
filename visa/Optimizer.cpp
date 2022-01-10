@@ -7348,7 +7348,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //                  each time it is needed, that is, created per each inst.
         //  (See comments for more details at doNoMaskWA().
         if (/*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&*/
-            builder.hasFusedEUWA())
+            ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
+              builder.getOption(vISA_forceNoMaskWA)))
         {
             doNoMaskWA();
         }
@@ -7634,7 +7635,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     void Optimizer::HWWorkaround()
     {
         if (builder.hasFusedEUWA() &&
-            (builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
+            (builder.getJitInfo()->spillMemUsed > 0
+             || builder.getJitInfo()->numFlagSpillStore > 0))
         {
             doNoMaskWA_postRA();
         }

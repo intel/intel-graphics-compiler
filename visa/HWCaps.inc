@@ -866,8 +866,8 @@ SPDX-License-Identifier: MIT
 
     bool hasFusedEUWA() const
     {
-        return hasFusedEU() && !getIsPayload() &&
-            ((getuint32Option(vISA_noMaskWA) & 0x3) > 0 || getOption(vISA_forceNoMaskWA));
+        return ((getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
+                getOption(vISA_forceNoMaskWA)) && !getOption(vISA_LinearScan) && hasFusedEU();
     }
 
     bool hasFusedEU() const
