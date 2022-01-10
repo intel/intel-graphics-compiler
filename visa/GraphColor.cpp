@@ -9992,7 +9992,7 @@ int GlobalRA::coloringRegAlloc()
             builder.getOption(vISA_lscNonStackSpill) != 0;
     }
 
-    if (builder.hasFusedEUWA() && !builder.getIsPayload())
+    if (builder.hasFusedEUWA())
     {
         if (G4_BB* entryBB = (*kernel.fg.begin()))
         {
