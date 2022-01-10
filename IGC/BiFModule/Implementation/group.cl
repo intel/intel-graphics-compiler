@@ -2145,7 +2145,7 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4
     uint result = 0;
     if (Execution == Subgroup)
     {
-        uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();
+        uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
         uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
         uint consideredBits = Value.x << (32 - sgsize);
         // intended fallthrough in the switch statement
@@ -2176,7 +2176,7 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotFindMSB, _i32_v4i32, 
 {
     if (Execution == Subgroup)
     {
-        uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();
+        uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
         uint consideredBits = Value.x << (32 - sgsize);
         return (sgsize - 1) - SPIRV_OCL_BUILTIN(clz, _i32, )((int)consideredBits);
     }
