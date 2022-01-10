@@ -473,6 +473,15 @@ unsigned getInlineAsmNumOutputs(CallInst *CI);
 
 Type *getCorrespondingVectorOrScalar(Type *Ty);
 
+// Get bitmap of instruction allowed execution sizes
+unsigned getExecSizeAllowedBits(const Instruction *Inst,
+                                const GenXSubtarget *ST);
+
+// Get type that represents OldTy as vector of NewScalarType, e.g.
+// <4 x i16> -> <2 x i32>, returns nullptr if it's inpossible.
+IGCLLVM::FixedVectorType *changeVectorType(const Type *OldTy,
+                                           Type *NewScalarType);
+
 /* scalarVectorizeIfNeeded: scalarize of vectorize \p Inst if it is required
  *
  * Result of some instructions can be both Ty and <1 x Ty> value e.g. rdregion.
