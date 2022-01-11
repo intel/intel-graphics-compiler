@@ -356,10 +356,8 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
 
   GRFSizeInBytes = ST.getGRFByteSize();
 
-  int StackAmount = genx::getStackAmount(FG.getHead());
-  if (StackAmount == genx::VC_STACK_USAGE_UNKNOWN)
-    StackAmount = BC.getStatelessPrivateMemSize();
-  StatelessPrivateMemSize = StackAmount;
+  StatelessPrivateMemSize =
+      genx::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize());
 
   SupportsDebugging = BC.emitDebuggableKernels();
 

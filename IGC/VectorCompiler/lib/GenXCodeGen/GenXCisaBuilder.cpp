@@ -6278,20 +6278,7 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
   LLVM_DEBUG(dbgs() << "Build stack call " << *CI << "\n");
   Function *Callee = CI->getCalledFunction();
 
-  // Check whether the called function has a predicate arg that is EM.
-  auto *EMArg = std::find_if(CI->arg_begin(), CI->arg_end(), [this](Use &Arg) {
-    return Arg->getType()->getScalarType()->isIntegerTy(1) &&
-           Liveness->getLiveRange(Arg)->getCategory() == vc::RegCategory::EM;
-  });
   VISA_PredOpnd *Pred = nullptr;
-  VISA_Exec_Size Esz = EXEC_SIZE_16;
-  if (EMArg != CI->arg_end()) {
-    auto EMOperandNum = EMArg->getOperandNo();
-    Pred = createPred(CI, BaleInfo(), EMOperandNum);
-    auto *VTy = cast<IGCLLVM::FixedVectorType>(
-        CI->getArgOperand(EMOperandNum)->getType());
-    Esz = getExecSizeFromValue(VTy->getNumElements());
-  }
   auto *MDArg = CI->getMetadata(InstMD::FuncArgSize);
   auto *MDRet = CI->getMetadata(InstMD::FuncRetSize);
   IGC_ASSERT(MDArg && MDRet);

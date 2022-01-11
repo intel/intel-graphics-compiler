@@ -628,6 +628,18 @@ void GenXBaling::processWrRegion(Instruction *Inst)
       V = nullptr;
   }
 
+  // Do not bale if NewValue is raw operand and wrr is used in predef reg.
+  if (std::any_of(Inst->user_begin(), Inst->user_end(), [](User *U) {
+        return GenXIntrinsic::isReadWritePredefReg(U);
+      })) {
+    unsigned ValIntrinID = GenXIntrinsic::getAnyIntrinsicID(V);
+    GenXIntrinsicInfo II(ValIntrinID);
+    if (GenXIntrinsic::isGenXIntrinsic(ValIntrinID) &&
+        (II.getRetInfo().getCategory() == GenXIntrinsicInfo::RAW)) {
+      V = nullptr;
+    }
+  }
+
   if (V &&
       isBalableNewValueIntoWrr(V, makeRegionFromBaleInfo(Inst, BaleInfo())) &&
       isSafeToMove(V, V, Inst)) {

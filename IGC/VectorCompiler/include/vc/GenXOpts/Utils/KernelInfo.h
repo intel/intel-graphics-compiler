@@ -31,10 +31,11 @@ enum { VC_STACK_USAGE_UNKNOWN = -1 };
 
 // Utility function to tell how much stack required
 // returns VC_STACK_USAGE_UNKNOWN if no attribute found
-inline int getStackAmount(const Function *F) {
+inline int getStackAmount(const Function *F,
+                          int Default = VC_STACK_USAGE_UNKNOWN) {
   IGC_ASSERT(F);
   if (!F->hasFnAttribute(genx::FunctionMD::VCStackAmount))
-    return VC_STACK_USAGE_UNKNOWN;
+    return Default;
   StringRef Val =
       F->getFnAttribute(genx::FunctionMD::VCStackAmount).getValueAsString();
   int Result;
