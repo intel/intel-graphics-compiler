@@ -25,7 +25,6 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "vc/BiF/PrintfIface.h"
-#include "vc/BiF/Tools.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/Printf.h"
@@ -172,9 +171,6 @@ std::unique_ptr<Module> GenXPrintfResolution::getBiFModule(LLVMContext &Ctx) {
   MemoryBufferRef PrintfBiFModuleBuffer =
       getAnalysis<GenXBackendConfig>().getBiFModule(BiFKind::VCPrintf);
   if (!PrintfBiFModuleBuffer.getBufferSize()) {
-    IGC_ASSERT_MESSAGE(
-        vc::bif::disabled(),
-        "printf bif module can be empty only if vc bif was disabled");
     report_fatal_error("printf implementation module is absent");
   }
   return vc::getBiFModuleOrReportError(PrintfBiFModuleBuffer, Ctx);

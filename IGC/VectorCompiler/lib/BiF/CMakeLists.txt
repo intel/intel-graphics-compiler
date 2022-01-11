@@ -75,7 +75,7 @@ function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   endif()
   set(BC_PATH_LIST "")
   list(LENGTH CMCL_SRC_PATH LENGTH_CMCL_SRC_PATH)
-  
+
   foreach(CMCL_SRC IN LISTS CMCL_SRC_PATH)
      get_filename_component(OBJ_PREFIX ${CMCL_SRC} NAME)
      if (LENGTH_CMCL_SRC_PATH GREATER 1)
@@ -119,62 +119,55 @@ function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   set(${RES_FILE} ${BIF_CPP_PATH} PARENT_SCOPE)
 endfunction()
 
-if (IGC_OPTION__VC_DISABLE_BIF)
-  target_compile_definitions(VCHeaders INTERFACE IGC_VC_DISABLE_BIF)
-# Adding it just to get binary dir property in lit and eventually xfail.
-  add_custom_target(VCBiFPreparation)
-else()
+set(PRINTF_NOT_CM_COMMON_H_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_not_cm_common.h)
+set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
+set(PRINTF_ZE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ze_genx.cpp)
+set(EMU_DIVREM_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/emulation_divrem.cpp)
+set(FP2UI_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/fp2ui_conversion.cpp)
+set(SPIRV_MATH_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_math_builtins_genx.cpp)
+set(SPIRV_ATOMIC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_atomic_builtins_genx.cpp)
+set(SPIRV_EXEC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_exec_builtins_genx.cpp)
 
-  set(PRINTF_NOT_CM_COMMON_H_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_not_cm_common.h)
-  set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
-  set(PRINTF_ZE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ze_genx.cpp)
-  set(EMU_DIVREM_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/emulation_divrem.cpp)
-  set(FP2UI_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/fp2ui_conversion.cpp)
-  set(SPIRV_MATH_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_math_builtins_genx.cpp)
-  set(SPIRV_ATOMIC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_atomic_builtins_genx.cpp)
-  set(SPIRV_EXEC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_exec_builtins_genx.cpp)
+vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32
+             DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
+vc_embed_bif(PRINTF_OCL_64_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 64
+             DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
+vc_embed_bif(PRINTF_ZE_32_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 32
+             DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
+vc_embed_bif(PRINTF_ZE_64_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 64
+             DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
 
-  vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32
-               DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-  vc_embed_bif(PRINTF_OCL_64_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 64
-               DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-  vc_embed_bif(PRINTF_ZE_32_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 32
-               DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-  vc_embed_bif(PRINTF_ZE_64_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 64
-               DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
+get_target_property(DIVREM_EXTRA_SOURCES VCEmuDivremBoilerplate SOURCES)
+vc_embed_bif(EMULATION_CPP_PATH "${FP2UI_SRC_PATH};${EMU_DIVREM_SRC_PATH}" VCEmulation 64
+    DEPENDS "${DIVREM_EXTRA_SOURCES}")
 
-  get_target_property(DIVREM_EXTRA_SOURCES VCEmuDivremBoilerplate SOURCES)
-  vc_embed_bif(EMULATION_CPP_PATH "${FP2UI_SRC_PATH};${EMU_DIVREM_SRC_PATH}" VCEmulation 64
-      DEPENDS "${DIVREM_EXTRA_SOURCES}")
+get_target_include_opt_list(IGC_SPIRV_HEADERS_INCLUDES IGCSPIRVHeaders)
+vc_embed_bif(SPIRV_BUILTINS_CPP_PATH
+             "${SPIRV_MATH_BUILTINS_SRC_PATH};${SPIRV_ATOMIC_BUILTINS_SRC_PATH};${SPIRV_EXEC_BUILTINS_SRC_PATH}"
+             VCSPIRVBuiltins 64 CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES})
 
-  get_target_include_opt_list(IGC_SPIRV_HEADERS_INCLUDES IGCSPIRVHeaders)
-  vc_embed_bif(SPIRV_BUILTINS_CPP_PATH
-               "${SPIRV_MATH_BUILTINS_SRC_PATH};${SPIRV_ATOMIC_BUILTINS_SRC_PATH};${SPIRV_EXEC_BUILTINS_SRC_PATH}"
-               VCSPIRVBuiltins 64 CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES})
+add_custom_target(VCBiFPreparation
+  DEPENDS ${PRINTF_OCL_32_CPP_PATH}
+          ${PRINTF_OCL_64_CPP_PATH}
+          ${PRINTF_ZE_32_CPP_PATH}
+          ${PRINTF_ZE_64_CPP_PATH}
+          ${EMULATION_CPP_PATH}
+          ${SPIRV_BUILTINS_CPP_PATH}
+  SOURCES ${PRINTF_OCL_SRC_PATH}
+          ${EMU_DIVREM_SRC_PATH}
+          ${SPIRV_MATH_BUILTINS_SRC_PATH}
+          ${SPIRV_EXEC_BUILTINS_SRC_PATH}
+          ${SPIRV_ATOMIC_BUILTINS_SRC_PATH})
 
-  add_custom_target(VCBiFPreparation
-    DEPENDS ${PRINTF_OCL_32_CPP_PATH}
-            ${PRINTF_OCL_64_CPP_PATH}
-            ${PRINTF_ZE_32_CPP_PATH}
-            ${PRINTF_ZE_64_CPP_PATH}
-            ${EMULATION_CPP_PATH}
-            ${SPIRV_BUILTINS_CPP_PATH}
-    SOURCES ${PRINTF_OCL_SRC_PATH}
-            ${EMU_DIVREM_SRC_PATH}
-            ${SPIRV_MATH_BUILTINS_SRC_PATH}
-            ${SPIRV_EXEC_BUILTINS_SRC_PATH}
-            ${SPIRV_ATOMIC_BUILTINS_SRC_PATH})
+add_library(VCEmbeddedBiF
+  ${PRINTF_OCL_32_CPP_PATH}
+  ${PRINTF_OCL_64_CPP_PATH}
+  ${PRINTF_ZE_32_CPP_PATH}
+  ${PRINTF_ZE_64_CPP_PATH}
+  ${EMULATION_CPP_PATH}
+  ${SPIRV_BUILTINS_CPP_PATH})
 
-  add_library(VCEmbeddedBiF
-    ${PRINTF_OCL_32_CPP_PATH}
-    ${PRINTF_OCL_64_CPP_PATH}
-    ${PRINTF_ZE_32_CPP_PATH}
-    ${PRINTF_ZE_64_CPP_PATH}
-    ${EMULATION_CPP_PATH}
-    ${SPIRV_BUILTINS_CPP_PATH})
-
-  add_dependencies(VCBiFPreparation VCBifUtils)
-  add_dependencies(VCEmbeddedBiF VCBiFPreparation)
-  target_link_libraries(VCEmbeddedBiF VCHeaders)
-endif()
+add_dependencies(VCBiFPreparation VCBifUtils)
+add_dependencies(VCEmbeddedBiF VCBiFPreparation)
+target_link_libraries(VCEmbeddedBiF VCHeaders)
 
