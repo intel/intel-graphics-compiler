@@ -3611,7 +3611,6 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     //
     PointsToAnalysis pointsToAnalysis(kernel.Declares, kernel.fg.getNumBB());
     pointsToAnalysis.doPointsToAnalysis(kernel.fg);
-
     GlobalRA gra(kernel, regPool, pointsToAnalysis);
 
     //
@@ -3658,6 +3657,15 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     if (auto jitInfo = builder.getJitInfo())
     {
         jitInfo->numBytesScratchGtpin = kernel.getGTPinData()->getNumBytesScratchUse();
+    }
+
+    // propagate address takens to gtpin info
+    const auto& addrTakenMap = pointsToAnalysis.getPointsToMap();
+    auto gtpinData = kernel.getGTPinData();
+    for (auto& indirRef : addrTakenMap)
+    {
+        for (auto target : indirRef.second)
+            gtpinData->addIndirRef(indirRef.first, target);
     }
 
     recordRAStats(builder, kernel, status);

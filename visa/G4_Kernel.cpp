@@ -157,6 +157,128 @@ void gtPinData::setGTPinInit(void* buffer)
         kernel.getOptions()->setOption(vISA_GetFreeGRFInfo, true);
 }
 
+template<class T>
+void write(void* buffer, const T& data, unsigned int& offset)
+{
+    memcpy_s((char*)buffer+offset, sizeof(T), &data, sizeof(T));
+    offset += sizeof(T);
+}
+
+void* gtPinData::getIndirRefs(unsigned int& size)
+{
+    // Store indirect access per %ip
+    // %ip -> vector[start byte, size]
+    std::map<unsigned int, std::vector<std::pair<unsigned int, unsigned int>>> indirRefMap;
+
+    // return %ip of first executable instruction in kernel
+    auto getIpOfFirstInst = [&]()
+    {
+        unsigned int startIp = 0;
+        if (kernel.fg.getIsStackCallFunc())
+        {
+            for (auto bb : kernel.fg.getBBList())
+            {
+                if (startIp > 0)
+                    break;
+                for (auto inst : bb->getInstList())
+                {
+                    startIp = (unsigned int)inst->getGenOffset();
+
+                    // verify truncation is still legal
+                    MUST_BE_TRUE(inst->getGenOffset() == (uint32_t)inst->getGenOffset(),
+                        "%ip out of bounds");
+
+                    if (startIp > 0)
+                        break;
+                }
+            }
+        }
+        return startIp;
+    };
+
+    unsigned int startIp = getIpOfFirstInst();
+
+    auto getIndirRefData = [&](G4_Declare* addr)
+    {
+        // for given addr, return std::vector<std::pair<start byte, size>>
+        std::vector<std::pair<unsigned int, unsigned int>> indirs;
+
+        auto it = indirRefs.find(addr);
+        if (it == indirRefs.end())
+            return indirs;
+
+        for (auto target : (*it).second)
+        {
+            if (target->getAddrTakenSpillFill())
+            {
+                target = target->getAddrTakenSpillFill();
+            }
+            auto start = target->getGRFBaseOffset();
+            auto size = target->getByteSize();
+            indirs.push_back(std::make_pair(start, size));
+        }
+        return std::move(indirs);
+    };
+
+    for (auto bb : kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            auto dst = inst->getDst();
+            if (dst && dst->isIndirect())
+            {
+                // encode dst indirect reference
+                auto indirs = getIndirRefData(dst->getTopDcl());
+                auto& mapEntry = indirRefMap[(uint32_t)-inst->getGenOffset() - startIp];
+                mapEntry.insert(mapEntry.end(),
+                    indirs.begin(), indirs.end());
+            }
+
+            for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+            {
+                auto src = inst->getSrc(i);
+                if (src && src->isSrcRegRegion() &&
+                    src->asSrcRegRegion()->isIndirect())
+                {
+                    // encode src indirect reference
+                    auto indirs = getIndirRefData(src->asSrcRegRegion()->getTopDcl());
+                    auto& mapEntry = indirRefMap[(uint32_t)inst->getGenOffset() - startIp];
+                    mapEntry.insert(mapEntry.end(),
+                        indirs.begin(), indirs.end());
+                }
+            }
+        }
+    }
+
+    unsigned int numRanges = 0;
+    for (auto& item : indirRefMap)
+    {
+        numRanges += item.second.size();
+    }
+
+    // see gtpin_IGC_interface.h for format of igc_token_indirect_access_info_t
+    size = sizeof(gtpin::igc::igc_token_indirect_access_info_t::num_ranges) + numRanges * sizeof(gtpin::igc::ins_reg_range_t);
+    auto buffer = malloc(size);
+    unsigned int offset = 0;
+    write<uint32_t>(buffer, numRanges, offset);
+    for (auto& item : indirRefMap)
+    {
+        MUST_BE_TRUE(offset < size, "Out of bounds");
+        write<uint32_t>(buffer, item.first, offset);
+        for (const auto& arg : item.second)
+        {
+            MUST_BE_TRUE(offset < size, "Out of bounds");
+            write<uint16_t>(buffer, arg.first, offset);
+            MUST_BE_TRUE(offset < size, "Out of bounds");
+            write<uint16_t>(buffer, arg.second, offset);
+        }
+    }
+
+    MUST_BE_TRUE(offset == size, "Unexpected bounds");
+
+    return buffer;
+}
+
 template<typename T>
 static void writeBuffer(
     std::vector<unsigned char>& buffer,
@@ -213,6 +335,15 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
             t.scratch_area_size = getNumBytesScratchUse();
             numTokens++;
         }
+
+        if (!t.grf_info &&
+            kernel.getOptions()->getOption(vISA_GetFreeGRFInfo))
+        {
+            // this check is to report out indir references, irrespective of
+            // whether stack call is present.
+            t.grf_info = 1;
+            numTokens++;
+        }
     }
     else
     {
@@ -239,6 +370,13 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
             t.scratch_area_size = gtpin_init->scratch_area_size;
             numTokens++;
         }
+
+        if (!t.grf_info &&
+            gtpin_init->grf_info)
+        {
+            t.grf_info = 1;
+            numTokens++;
+        }
     }
 
     // For payload offsets
@@ -252,21 +390,39 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
 
     if (t.grf_info)
     {
-        // create token
-        void* rerabuffer = nullptr;
-        unsigned rerasize = 0;
+        if (!stackABI)
+        {
+            // create token
+            void* rerabuffer = nullptr;
+            unsigned rerasize = 0;
 
-        rerabuffer = getFreeGRFInfo(rerasize);
+            rerabuffer = getFreeGRFInfo(rerasize);
+
+            gtpin::igc::igc_token_header_t th;
+            th.token = gtpin::igc::GTPIN_IGC_TOKEN::GTPIN_IGC_TOKEN_GRF_INFO;
+            th.token_size = sizeof(gtpin::igc::igc_token_header_t) + rerasize;
+
+            // write token and data to buffer
+            writeBuffer(buffer, bufferSize, &th, sizeof(th));
+            writeBuffer(buffer, bufferSize, rerabuffer, rerasize);
+
+            free(rerabuffer);
+        }
+        // report indir refs
+        void* indirRefs = nullptr;
+        unsigned int indirRefsSize = 0;
+
+        indirRefs = getIndirRefs(indirRefsSize);
 
         gtpin::igc::igc_token_header_t th;
-        th.token = gtpin::igc::GTPIN_IGC_TOKEN::GTPIN_IGC_TOKEN_GRF_INFO;
-        th.token_size = sizeof(gtpin::igc::igc_token_header_t) + rerasize;
+        th.token = gtpin::igc::GTPIN_IGC_TOKEN::GTPIN_IGC_TOKEN_INDIRECT_ACCESS_INFO;
+        th.token_size = sizeof(gtpin::igc::igc_token_header_t) + indirRefsSize;
 
         // write token and data to buffer
         writeBuffer(buffer, bufferSize, &th, sizeof(th));
-        writeBuffer(buffer, bufferSize, rerabuffer, rerasize);
+        writeBuffer(buffer, bufferSize, indirRefs, indirRefsSize);
 
-        free(rerabuffer);
+        free(indirRefs);
     }
 
     if (t.scratch_area_size)

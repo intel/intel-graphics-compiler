@@ -1,9 +1,14 @@
 /*========================== begin_copyright_notice ============================
-
 Copyright (C) 2017-2021 Intel Corporation
 
-SPDX-License-Identifier: MIT
+This software and the related documents are Intel copyrighted materials, and your
+use of them is governed by the express license under which they were provided to
+you ("License"). Unless the License provides otherwise, you may not use, modify,
+copy, publish, distribute, disclose or transmit this software or the related
+documents without Intel's prior written permission.
 
+This software and the related documents are provided as is, with no express or
+implied warranties, other than those that are expressly stated in the License.
 ============================= end_copyright_notice ===========================*/
 
 /*!
@@ -46,7 +51,7 @@ namespace gtpin
 /*!
  * GTPin <-> IGC driver interface version
  */
-        static const uint32_t GTPIN_IGC_INTERFACE_VERSION = 4;
+        static const uint32_t GTPIN_IGC_INTERFACE_VERSION = 5;
 
         /*!
          * Tokens for patches IGC can pass to GTPin
@@ -56,7 +61,8 @@ namespace gtpin
             GTPIN_IGC_TOKEN_GRF_INFO = 0,    // GRF usage in the kernel
             GTPIN_IGC_TOKEN_SCRATCH_AREA_INFO = 1,    // Scratch Space allocated for GTPin; since version 1
             GTPIN_IGC_TOKEN_KERNEL_START_INFO = 2,    // Kernel's payload information; since version 2
-            GTPIN_IGC_TOKEN_NUM_GRF_REGS = 3     // Number of per-thread GRF registers; since version 4
+            GTPIN_IGC_TOKEN_NUM_GRF_REGS = 3,    // Number of per-thread GRF registers; since version 4
+            GTPIN_IGC_TOKEN_INDIRECT_ACCESS_INFO = 4     // Indirectly accessed GRF registers; since version 5
         } GTPIN_IGC_TOKEN;
 
         /*!
@@ -76,9 +82,9 @@ namespace gtpin
         typedef struct GTPIN_IGC_PACK_ATTRIBUTE igc_init_v0_s
         {
             uint32_t    version;                // Interface version. Must be the first member
-            uint8_t     re_ra;                  // Active RERA - on/off
-            uint8_t     grf_info;               // Active free GRF info - on/off
-            uint8_t     srcline_mapping;        // Active source line mapping - on/off
+            uint8_t     re_ra;                  // RERA - on/off
+            uint8_t     grf_info;               // Free GRF registers and/or indirect GRF accesses - on/off
+            uint8_t     srcline_mapping;        // Source line mapping - on/off
             uint8_t     padding[1];             // Alignment padding
         } igc_init_v0_t;
 
@@ -171,7 +177,7 @@ namespace gtpin
          */
 
          /*!
-          * A sequence of consecutive bytes, all of which are unused in the current kernel.
+          * A sequence of consecutive bytes in GRF
           */
         typedef struct GTPIN_IGC_PACK_ATTRIBUTE reg_sequence_t
         {
@@ -179,6 +185,15 @@ namespace gtpin
             uint16_t num_consecutive_bytes;     // Number of consecutive bytes in the sequence, starting from start_byte
         } reg_sequence_t;
 
+        /*!
+         * A sequence of consecutive bytes in GRF referenced by the instruction
+         */
+        typedef struct GTPIN_IGC_PACK_ATTRIBUTE ins_reg_range_t
+        {
+            uint32_t        ins_offset;         // Offset of the instruction within the compilation object (kernel or function)
+            reg_sequence_t  reg_range;          // A GRF range referenced by the instruction. Note, the instruction may access one
+                                                // or more GRF ranges
+        } ins_reg_range_t;
 
         /*!
          * Patch item detailing unused registers in a kernel
@@ -226,13 +241,24 @@ namespace gtpin
             uint32_t    num_grf_regs;    // Number of GRF registers allocated for each thread of the kernel
         } igc_token_num_grf_regs_t;
 
+        /*!
+         * Patch item that holds information about indirect GRF accesses in the compilation object (kernel or function)
+         * Token ID = GTPIN_IGC_TOKEN_INDIRECT_ACCESS_INFO
+         */
+        typedef struct GTPIN_IGC_PACK_ATTRIBUTE igc_token_indirect_access_info_t : igc_token_header_t
+        {
+            uint32_t            num_ranges;         // Number of indirectly referenced GRF ranges. Number of elements in the
+                                                    // immediately following 'ins_reg_ranges' array
+            // ins_reg_range_t  ins_reg_ranges[];   // Array of ins_reg_range_t elements detailing indirect GRF acceses in
+                                                    // the compilation object (kernel or function)
+        } igc_token_indirect_access_info_t;
+
 #if defined(_MSC_VER)
 #pragma pack(pop)
 #undef GTPIN_IGC_PACK_ATTRIBUTE
 #elif defined (__GNUC__)
 #undef GTPIN_IGC_PACK_ATTRIBUTE
 #endif
-
     } // namespace igc
 } // namespace gtpin
 

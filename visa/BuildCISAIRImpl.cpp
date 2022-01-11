@@ -1716,7 +1716,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             }
             restoreFCallState(func->getKernel(), origFCallFRet);
 
-
         }
 
 

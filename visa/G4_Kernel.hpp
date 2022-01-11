@@ -93,6 +93,11 @@ public:
     void* getFreeGRFInfo(unsigned& size);
     void  setGTPinInit(void* buffer);
 
+    // This function internally mallocs memory to hold buffer
+    // of indirect references. It is meant to be freed by caller
+    // after last use of buffer.
+    void* getIndirRefs(unsigned int& size);
+
     gtpin::igc::igc_init_t* getGTPinInit() { return gtpin_init; }
 
     // return igc_info_t format buffer. caller casts it to igc_info_t.
@@ -105,6 +110,11 @@ public:
 
     void setGTPinInitFromL0(bool val) { gtpinInitFromL0 = val; }
     bool isGTPinInitFromL0() const { return gtpinInitFromL0; }
+
+    void addIndirRef(G4_Declare* addr, G4_Declare* target)
+    {
+        indirRefs[addr].push_back(target);
+    }
 
 private:
     G4_Kernel& kernel;
@@ -119,6 +129,9 @@ private:
 
     bool gtpinInitFromL0 = false;
     gtpin::igc::igc_init_t* gtpin_init = nullptr;
+
+    // Store Addr Var -> Array of targets
+    std::unordered_map<G4_Declare*, std::vector<G4_Declare*>> indirRefs;
 }; // class gtPinData
 
 class G4_BB;

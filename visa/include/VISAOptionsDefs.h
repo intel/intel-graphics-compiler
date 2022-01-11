@@ -292,6 +292,7 @@ DEF_VISA_OPTION(vISA_ReRAPostSchedule,    ET_BOOL,  "-rerapostschedule",  UNUSED
 DEF_VISA_OPTION(vISA_GTPinReRA,           ET_BOOL, "-GTPinReRA",          UNUSED, false)
 DEF_VISA_OPTION(vISA_GetFreeGRFInfo,      ET_BOOL,  "-getfreegrfinfo",    UNUSED, false)
 DEF_VISA_OPTION(vISA_GTPinScratchAreaSize,ET_INT32, "-GTPinScratchAreaSize", UNUSED, 0)
+DEF_VISA_OPTION(vISA_GTPinGetIndirRef,   ET_BOOL, "-GTPinIndirRef",      UNUSED, false)
 DEF_VISA_OPTION(vISA_LSCBackupMode,       ET_BOOL,  "-LSCBackupMode",     UNUSED, false)
 DEF_VISA_OPTION(vISA_InjectEntryFences,   ET_BOOL,  "-InjectEntryFences", UNUSED, false)
 DEF_VISA_OPTION(vISA_LSCEnableHalfSIMD,   ET_BOOL,  "-enableHalfLSC",     UNUSED, false)

@@ -3822,6 +3822,10 @@ namespace IGC
             {
                 SaveOption(vISA_GTPinScratchAreaSize, ClContext->m_InternalOptions.GTPinScratchAreaSizeValue);
             }
+            if (ClContext->m_InternalOptions.GTPinIndirRef)
+            {
+                SaveOption(vISA_GTPinGetIndirRef, true);
+            }
         }
 
         bool EnableBarrierInstCounterBits = false;

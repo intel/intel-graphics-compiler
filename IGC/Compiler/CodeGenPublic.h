@@ -1435,6 +1435,7 @@ namespace IGC
             bool GTPinReRA = false;
             bool GTPinGRFInfo = false;
             bool GTPinScratchAreaSize = false;
+            bool GTPinIndirRef = false;
             uint32_t GTPinScratchAreaSizeValue = 0;
 
             // stateless to stateful optimization

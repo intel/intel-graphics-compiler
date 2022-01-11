@@ -735,6 +735,10 @@ namespace IGC
                 Pos = valEnd;
                 continue;
             }
+            else if (suffix.equals("-gtpin-indir-ref"))
+            {
+                GTPinIndirRef = true;
+            }
 
             // -cl-intel-no-prera-scheduling
             else if (suffix.equals("-no-prera-scheduling"))
