@@ -50,6 +50,8 @@ __cm_cl_wrregion_float(vector_impl<T, dst_width> dst,
 uint64_t __cm_cl_printf_buffer();
 
 int __cm_cl_printf_format_index(__constant const char *str);
+// DPC++ tend to place constant strings in global address space.
+int __cm_cl_printf_format_index(__global const char *str);
 // FIXME: Need this overload as a workaround for some frontends that didn't
 //        switch to using addrspaces.
 int __cm_cl_printf_format_index(__private const char *str);
@@ -222,6 +224,10 @@ inline __global void *printf_buffer() {
 }
 
 inline int printf_format_index(__constant const char *str) {
+  return __cm_cl_printf_format_index(str);
+}
+
+inline int printf_format_index(__global const char *str) {
   return __cm_cl_printf_format_index(str);
 }
 

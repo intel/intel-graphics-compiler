@@ -56,11 +56,27 @@ using namespace vc;
 using namespace vc::bif::printf;
 
 namespace PrintfImplFunc {
-enum Enum { Init, Fmt, FmtLegacy, Arg, ArgStr, ArgStrLegacy, Ret, Size };
-static constexpr const char *Name[Size] = {
-    "__vc_printf_init", "__vc_printf_fmt",     "__vc_printf_fmt_legacy",
-    "__vc_printf_arg",  "__vc_printf_arg_str", "__vc_printf_arg_str_legacy",
-    "__vc_printf_ret"};
+enum Enum {
+  Init,
+  Fmt,
+  FmtGlobal,
+  FmtLegacy,
+  Arg,
+  ArgStr,
+  ArgStrGlobal,
+  ArgStrLegacy,
+  Ret,
+  Size
+};
+static constexpr const char *Name[Size] = {"__vc_printf_init",
+                                           "__vc_printf_fmt",
+                                           "__vc_printf_fmt_global",
+                                           "__vc_printf_fmt_legacy",
+                                           "__vc_printf_arg",
+                                           "__vc_printf_arg_str",
+                                           "__vc_printf_arg_str_global",
+                                           "__vc_printf_arg_str_legacy",
+                                           "__vc_printf_ret"};
 } // namespace PrintfImplFunc
 
 namespace {
@@ -282,6 +298,11 @@ static PrintfImplTypeStorage getPrintfImplTypes(LLVMContext &Ctx) {
                         {TransferDataTy, PointerType::get(Type::getInt8Ty(Ctx),
                                                           AddrSpace::Constant)},
                         IsVarArg);
+  FuncTys[PrintfImplFunc::FmtGlobal] =
+      FunctionType::get(TransferDataTy,
+                        {TransferDataTy, PointerType::get(Type::getInt8Ty(Ctx),
+                                                          AddrSpace::Global)},
+                        IsVarArg);
   FuncTys[PrintfImplFunc::FmtLegacy] =
       FunctionType::get(TransferDataTy,
                         {TransferDataTy, PointerType::get(Type::getInt8Ty(Ctx),
@@ -291,6 +312,7 @@ static PrintfImplTypeStorage getPrintfImplTypes(LLVMContext &Ctx) {
       TransferDataTy, {TransferDataTy, Type::getInt32Ty(Ctx), ArgDataTy},
       IsVarArg);
   FuncTys[PrintfImplFunc::ArgStr] = FuncTys[PrintfImplFunc::Fmt];
+  FuncTys[PrintfImplFunc::ArgStrGlobal] = FuncTys[PrintfImplFunc::FmtGlobal];
   FuncTys[PrintfImplFunc::ArgStrLegacy] = FuncTys[PrintfImplFunc::FmtLegacy];
   FuncTys[PrintfImplFunc::Ret] =
       FunctionType::get(Type::getInt32Ty(Ctx), TransferDataTy, IsVarArg);
@@ -377,6 +399,12 @@ mutateDeclIDImpl<PrintfImplFunc::Fmt, AddrSpace::Constant>() {
 
 template <>
 PrintfImplFunc::Enum
+mutateDeclIDImpl<PrintfImplFunc::Fmt, AddrSpace::Global>() {
+  return PrintfImplFunc::FmtGlobal;
+}
+
+template <>
+PrintfImplFunc::Enum
 mutateDeclIDImpl<PrintfImplFunc::Fmt, AddrSpace::Private>() {
   return PrintfImplFunc::FmtLegacy;
 }
@@ -385,6 +413,12 @@ template <>
 PrintfImplFunc::Enum
 mutateDeclIDImpl<PrintfImplFunc::ArgStr, AddrSpace::Constant>() {
   return PrintfImplFunc::ArgStr;
+}
+
+template <>
+PrintfImplFunc::Enum
+mutateDeclIDImpl<PrintfImplFunc::ArgStr, AddrSpace::Global>() {
+  return PrintfImplFunc::ArgStrGlobal;
 }
 
 template <>
@@ -403,6 +437,8 @@ static PrintfImplFunc::Enum mutateDeclID(unsigned StrAS) {
     IGC_ASSERT_MESSAGE(0, "unexpected address space for a string argument");
   case AddrSpace::Constant:
     return mutateDeclIDImpl<DefaulDeclID, AddrSpace::Constant>();
+  case AddrSpace::Global:
+    return mutateDeclIDImpl<DefaulDeclID, AddrSpace::Global>();
   case AddrSpace::Private:
     return mutateDeclIDImpl<DefaulDeclID, AddrSpace::Private>();
   }

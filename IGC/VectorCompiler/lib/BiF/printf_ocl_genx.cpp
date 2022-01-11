@@ -68,6 +68,12 @@ __vc_printf_fmt(cl_vector<BufferElementTy, TransferDataSize> TransferData,
   return printf_fmt_impl(TransferData, FormatString).cl_vector();
 }
 
+extern "C" cl_vector<BufferElementTy, TransferDataSize> __vc_printf_fmt_global(
+    cl_vector<BufferElementTy, TransferDataSize> TransferData,
+    __global char *FormatString) {
+  return printf_fmt_impl(TransferData, FormatString).cl_vector();
+}
+
 // legacy VC IR has no address spaces, so every pointer is "private".
 extern "C" cl_vector<BufferElementTy, TransferDataSize> __vc_printf_fmt_legacy(
     cl_vector<BufferElementTy, TransferDataSize> TransferData,
@@ -85,6 +91,13 @@ __vc_printf_arg(cl_vector<BufferElementTy, TransferDataSize> TransferData,
 extern "C" cl_vector<BufferElementTy, TransferDataSize>
 __vc_printf_arg_str(cl_vector<BufferElementTy, TransferDataSize> TransferData,
                     __constant char *String) {
+  return printf_arg_str_impl(TransferData, String).cl_vector();
+}
+
+extern "C" cl_vector<BufferElementTy, TransferDataSize>
+__vc_printf_arg_str_global(
+    cl_vector<BufferElementTy, TransferDataSize> TransferData,
+    __global char *String) {
   return printf_arg_str_impl(TransferData, String).cl_vector();
 }
 

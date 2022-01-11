@@ -44,8 +44,8 @@ static StringRef extractCStr(const Constant &CStrConst) {
 bool vc::isConstantString(const GlobalVariable &GV) {
   if (!GV.isConstant())
     return false;
-  // FIXME: Check namespace, it should be constant. Though it is not possible
-  //        to check it right now (CM has no addrspaces).
+  // FIXME: Check namespace, it should be constant or global. Though it is not
+  //        possible to check it right now (CM has no addrspaces).
   if (!GV.getValueType()->isArrayTy())
     return false;
   return GV.getValueType()->getArrayElementType()->isIntegerTy(8);
