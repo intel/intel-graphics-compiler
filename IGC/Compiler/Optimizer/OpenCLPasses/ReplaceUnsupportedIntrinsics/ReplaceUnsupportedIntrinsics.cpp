@@ -465,10 +465,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
     Value* Src = MC->getRawSource();
     Value* LPCount = MC->getLength();
     uint32_t Align = MC->getDestAlignment();
-    uint32_t SrcAlign = MC->getSourceAlignment();
     Align = Align != 0 ? Align : 1;
-    SrcAlign = SrcAlign != 0 ? SrcAlign : 1;
-    Align = SrcAlign < Align ? SrcAlign : Align;
     const bool IsVolatile = MC->isVolatile();
     const uint32_t SrcAS = MC->getSourceAddressSpace();
     const uint32_t DstAS = MC->getDestAddressSpace();
