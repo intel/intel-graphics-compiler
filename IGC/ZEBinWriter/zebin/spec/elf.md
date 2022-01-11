@@ -23,14 +23,16 @@ SPDX-License-Identifier: MIT
 | .visaasm.{*visa_module_name*} | vISA asm of the module (if required) | SHT_ZEBIN_VISAASM |
 | .debug_* | the debug information (if required) | SHT_PROGBITS |
 | .ze_info | the metadata section for runtime information | SHT_ZEBIN_ZEINFO |
-| .gtpin_info | the metadata section for gtpin information (if any) | SHT_ZEBIN_GTPIN_INFO |
+| .gtpin_info.{*kernel_name*\|*function_name*} | the metadata section for gtpin information (if any) | SHT_ZEBIN_GTPIN_INFO |
 | .misc | the miscellaneous data for multiple purposes (if required) | SHT_ZEBIN_MISC |
 | .note.intelgt.compat | the compatibility notes for runtime information | SHT_NOTE |
 | .strtab | the string table for section/symbol names | SHT_STRTAB |
 
-An ZE binary contains information of one compiled module.
-A compiled module could contain more than one kernel, each kernel binary represented in a text section.
-*kernel_name* is the name of the kernel, the same as represented in ZE Info **functions** attributes' **name**
+An ZE binary contains information of one compiled module. A compiled module
+could contain more than one kernel, each kernel binary represented in a text
+section. *kernel_name* is the name of the kernel, the same as represented in ZE
+Info **functions** attributes' **name**. *function_name* is the name of
+a function.
 
 ## ELF Header Values
 
