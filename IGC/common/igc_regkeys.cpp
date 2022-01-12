@@ -640,7 +640,7 @@ static void setRegkeyFromOption(
         if(!vstring.empty())
         {
             char* s = (char*)pRegkeyVar;
-            strcpy_s(s, vstring.size(), vstring.c_str());
+            strcpy_s(s, sizeof(debugString), vstring.c_str());
             isKeySet = true;
         }
     }
