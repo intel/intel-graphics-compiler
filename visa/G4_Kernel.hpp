@@ -127,7 +127,9 @@ class VarSplitPass;
 
 
 // NoMask WA info : about WA applied in a BB.
-typedef struct {
+class NoMaskWA_info_t
+{
+public:
     G4_INST* Inst_kill;        // (W) pseudoKill p  2
     G4_INST* Inst_save;        // (W) mov (1|M0)  t  P
     G4_INST* WAFlag_mov0;      // (W) mov (1|M0)  P  0
@@ -136,7 +138,7 @@ typedef struct {
     G4_INST* Inst_restore;     // (W) mov (1|M0)  P  t
     // G4_INST* WAFlag_spill;  // (W) mov (1|M0)  DW1  P  [used by postRA]
     G4_INST* getWAFlagDefInst() const { return WAFlag_allOne ? WAFlag_allOne : WAFlag_cmp; }
-} NoMaskWA_info_t;
+};
 
 class G4_Kernel
 {
