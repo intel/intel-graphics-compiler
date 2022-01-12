@@ -814,6 +814,9 @@ bool CMRegion::changeElementType(Type *NewElementType, const DataLayout *DL) {
 
   unsigned NewElementBytes = vc::getTypeSize(NewElementType, DL).inBytes();
 
+  if (Indirect || Mask)
+    return false;
+
   if (NewElementBytes == ElementBytes) {
     // No change in element size
     ElementTy = NewElementType;
