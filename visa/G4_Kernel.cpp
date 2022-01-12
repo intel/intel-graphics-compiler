@@ -443,6 +443,12 @@ void G4_Kernel::computeChannelSlicing()
         return;
     }
 
+    if (simdSize == g4::SIMD32 && numEltPerGRF<Type_UB>() >= 64)
+    {
+        // For 64 bytes GRF, simd32 kernel, there is no slicing
+        channelSliced = false;
+        return;
+    }
     // .dcl V1 size = 128 bytes
     // op (16|M0) V1(0,0)     ..
     // op (16|M16) V1(2,0)    ..
