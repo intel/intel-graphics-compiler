@@ -5147,11 +5147,11 @@ namespace IGC
             context->m_retryManager.IsFirstTry();
     }
 
-    void CEncoder::CreateKernelSymbol(const std::string& kernelName, unsigned offset,
-        unsigned size, SProgramOutput::ZEBinFuncSymbolTable& symbols)
+    void CEncoder::CreateLocalSymbol(const std::string& kernelName, vISA::GenSymType type,
+        unsigned offset, unsigned size, SProgramOutput::ZEBinFuncSymbolTable& symbols)
     {
         // kernel symbols are local symbols
-        symbols.local.emplace_back(vISA::GenSymType::S_KERNEL, offset, size, kernelName);
+        symbols.local.emplace_back(type, offset, size, kernelName);
     }
 
     void CEncoder::CreateSymbolTable(ValueToSymbolList& symbolTableList)
@@ -5867,7 +5867,7 @@ namespace IGC
                 auto cl_context = static_cast<OpenCLProgramContext*>(context);
                 CreateSymbolTable(pOutput->m_symbols,
                     cl_context->m_programInfo.m_zebinSymbolTable);
-                // Set up per-function GTPIN information.
+                // Set up per-function GTPIN information for indirect functions.
                 for (auto& sym : pOutput->m_symbols.function) {
                     void* buffer = nullptr;
                     unsigned size = 0;
@@ -5888,8 +5888,8 @@ namespace IGC
             // create symbols for kernel.
             // The kernel Symbol has the same name as the kernel, and offset
             // pointed to 0.
-            CreateKernelSymbol(m_program->entry->getName().str(), 0,
-                (unsigned)pMainKernel->getGenSize(), pOutput->m_symbols);
+            CreateLocalSymbol(m_program->entry->getName().str(), vISA::GenSymType::S_KERNEL,
+                0, (unsigned)pMainKernel->getGenSize(), pOutput->m_symbols);
 
             // Emit symbol "_entry' as the actual kernel start. Maybe we can
             // consider to use the value of the _main label in this case. Now
@@ -5899,8 +5899,30 @@ namespace IGC
                 std::max(std::max(jitInfo->offsetToSkipPerThreadDataLoad,
                                   jitInfo->offsetToSkipCrossThreadDataLoad),
                          jitInfo->offsetToSkipSetFFIDGP1);
-            CreateKernelSymbol("_entry", actual_kernel_start_off,
-                (unsigned)pMainKernel->getGenSize() - actual_kernel_start_off, pOutput->m_symbols);
+            CreateLocalSymbol("_entry", vISA::GenSymType::S_FUNC, actual_kernel_start_off,
+                (unsigned)pMainKernel->getGenSize() - actual_kernel_start_off,
+                pOutput->m_symbols);
+
+            // Create local function symbols for direct stackcall functions.
+            for (auto &stackFunc : stackFuncMap) {
+                Function* func = stackFunc.first;
+                if (func->hasFnAttribute("referenced-indirectly"))
+                    continue;
+
+                const std::string funcName = func->getName().str();
+                VISAFunction* visaFunc = stackFunc.second;
+                CreateLocalSymbol(funcName,
+                    vISA::GenSymType::S_FUNC,
+                    (uint32_t)visaFunc->getGenOffset(),
+                    (uint32_t)visaFunc->getGenSize(),
+                    pOutput->m_symbols);
+                // Set up per-function GTPIN information for direct stackcall
+                // functions as well.
+                void* buffer = nullptr;
+                unsigned size = 0;
+                visaFunc->GetGTPinBuffer(buffer, size);
+                pOutput->m_FuncGTPinInfoList.push_back({funcName, buffer, size});
+            }
         }
 
         if (ZEBinEnabled)
