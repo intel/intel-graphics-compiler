@@ -3600,20 +3600,23 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
     // For loop with backedge Tail->Head, if Tail is divergent, its divergence should be
     // propagated to the entire loop as Tail jumps to head, which could go all BBs in the loop.
     //
-    // In another word, the whole loop's divergence level is the same as Tail's. Once the
-    // entire loop has been handled and Tail's divergence is known, invoking this lambda func
-    // to carry out propagation.
+    // In another word, the whole loop's divergence level should be at least the same as Tail's.
+    // Once the entire loop has been handled and Tail's divergence is known, invoking this lambda
+    // function to carry out propagation.
     //
     // An example to show WA is needed (nested divergence for Tail):
-    //      Head:                   // initial fuseMask = 11;  2nd iter: fuseMask = 11 (should be 10)
+    //      Head:                   // initial fuseMask = 11;  2nd iter: fuseMask = 11 (should be 01)
+    //                              // Need to propagae nested divergence to the entire loop!
     //         if (...) goto Tail;  // fuseMask = 11
-    //                              // After if, fusedMask = 01 (bigEU is Off)
+    //                              // After if, fusedMask = 10 (bigEU is Off)
     //         ...
-    //         goto out             // fuseMask = 01 (BigEU off, SmallEU on)
-    //                              // after goto, fuseMask = 00, but HW remains 01
+    //         goto out             // fuseMask = 10 (BigEU off, SmallEU on)
+    //                              // after goto, fuseMask = 00, but HW remains 10
     //      Tail:
-    //           goto Head          // fuseMask should 10, but HW remains 11, and jump to Head at 2nd iter
+    //         join                 // after join, bigEU is on again.  fusedMask == 11. It should be 01
+    //         goto Head            // fuseMask should 01, but HW remains 11, and jump to Head at 2nd iter
     //      out:
+    //         join
     auto propLoopDivergence = [&](G4_BB* LoopTail)
     {
         // LoopTail must be divergent.

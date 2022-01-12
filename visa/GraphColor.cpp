@@ -9991,8 +9991,10 @@ int GlobalRA::coloringRegAlloc()
         useLscForNonStackCallSpillFill =
             builder.getOption(vISA_lscNonStackSpill) != 0;
     }
-
-    if (builder.hasFusedEUWA() && !builder.getIsPayload())
+    // Skip it for new NoMask WA. [Todo] remove the following code later.
+    if (builder.hasFusedEUWA() && !builder.getIsPayload() &&
+        !(builder.getOption(vISA_newNoMaskWA) &&
+          kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM))
     {
         if (G4_BB* entryBB = (*kernel.fg.begin()))
         {

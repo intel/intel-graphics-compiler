@@ -126,6 +126,18 @@ class KernelDebugInfo;
 class VarSplitPass;
 
 
+// NoMask WA info : about WA applied in a BB.
+typedef struct {
+    G4_INST* Inst_kill;        // (W) pseudoKill p  2
+    G4_INST* Inst_save;        // (W) mov (1|M0)  t  P
+    G4_INST* WAFlag_mov0;      // (W) mov (1|M0)  P  0
+    G4_INST* WAFlag_cmp;       //     cmp (simdsize|M0)  r0.0:uw r0.0:uw
+    G4_INST* WAFlag_allOne;    // (W&P.anyh) mov  P  0xFFFFFFFF
+    G4_INST* Inst_restore;     // (W) mov (1|M0)  P  t
+    // G4_INST* WAFlag_spill;  // (W) mov (1|M0)  DW1  P  [used by postRA]
+    G4_INST* getWAFlagDefInst() const { return WAFlag_allOne ? WAFlag_allOne : WAFlag_cmp; }
+} NoMaskWA_info_t;
+
 class G4_Kernel
 {
 public:
@@ -367,8 +379,57 @@ private:
     void emitDeviceAsmInstructionsIga(std::ostream& os, const void * binary, uint32_t binarySize);
     void emitDeviceAsmInstructionsOldAsm(std::ostream& os);
 
+    // WA related
+private:
+    // NoMaskWA under EU Fusion
+    //   PreRA WA creates WA flag and applies WA. This map keeps info around.
+    //   storage used will be freed after postRA WA is done.
+    std::unordered_map<G4_BB*, NoMaskWA_info_t*> m_noMaskWAInfo;
+    std::unordered_map<G4_BB*, std::list<G4_INST*> > m_WAInstsPostRA; // post RA insts that need WAs
 public:
-    // fused call wa
+    void addNoMaskWAInfo(G4_BB* aBB,
+        G4_INST* aInstKill, G4_INST* aInstSave, G4_INST* aInstRestore,
+        G4_INST* aWAFlag_mov0, G4_INST* aWAFlag_cmp, G4_INST* aWAFlag_allOne)
+    {
+        NoMaskWA_info_t* pinfo = new NoMaskWA_info_t();
+        pinfo->Inst_kill = aInstKill;
+        pinfo->Inst_save = aInstSave;
+        pinfo->WAFlag_mov0 = aWAFlag_mov0;
+        pinfo->WAFlag_cmp = aWAFlag_cmp;
+        pinfo->WAFlag_allOne = aWAFlag_allOne;
+        pinfo->Inst_restore = aInstRestore;
+        //pinfo->WAFlag_spill = nullptr;
+        m_noMaskWAInfo.insert(std::make_pair(aBB, pinfo));
+    }
+    NoMaskWA_info_t* getNoMaskWAInfo(G4_BB* BB) const
+    {
+        auto iter = m_noMaskWAInfo.find(BB);
+        return iter != m_noMaskWAInfo.end() ? iter->second : nullptr;
+    }
+    void clearNoMaskInfo()
+    {
+        for (auto iter : m_noMaskWAInfo)
+        {
+            NoMaskWA_info_t* pinfo = iter.second;
+            delete pinfo;
+        }
+        m_noMaskWAInfo.clear();
+    }
+    void addWAInst(G4_BB* aBB, G4_INST* aInst)
+    {
+        // Add aInst into the map for BB that needs to apply WA.
+        if ((aBB->getBBType() & G4_BB_NM_WA_TYPE) != 0)
+        {
+            std::list<G4_INST*>& alist = m_WAInstsPostRA[aBB];
+            alist.push_back(aInst);
+        }
+    }
+    std::unordered_map<G4_BB*, std::list<G4_INST*> >& getWAInsts()
+    {
+        return m_WAInstsPostRA;
+    }
+
+    // Call WA under EU fusion
     //     add  v10  -ip,  v20                    // ip_start_inst
     //     add  v11   v10, 0x33 (-label_patch)    // patch inst
     //     ...
@@ -390,6 +451,7 @@ public:
         assert(I->getPredicate() == nullptr && I->getCondMod() == nullptr);
         I->setMaskOption(MO);
     }
+    // end of WA related
 
 }; // G4_Kernel
 }

@@ -261,10 +261,12 @@ private:
     void setA0toTdrForSendc();
     void replaceRetWithJmpi();
     void doNoMaskWA();
+    void newDoNoMaskWA();
     void applyFusedCallWA();
     void setDMaskFusedCallWA();
     void finishFusedCallWA();
     void doNoMaskWA_postRA();
+    void newDoNoMaskWA_postRA();
     void insertFenceAtEntry();
     void expandMulPostSchedule();
     void expandMadwPostSchedule();
