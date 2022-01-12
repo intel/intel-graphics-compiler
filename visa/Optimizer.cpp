@@ -13271,7 +13271,7 @@ void Optimizer::doNoMaskWA()
         assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
 
         // add pseudoKill
-        addPseudoKillIfFullDstWrite(currBB, currII, dst);
+        //addPseudoKillIfFullDstWrite(currBB, currII, dst);
 
         // Create a temp that's big enough to hold data and possible gap
         // b/w data due to alignment/hw restriction.
@@ -13361,7 +13361,7 @@ void Optimizer::doNoMaskWA()
         }
 
         // Add pseudo kill for dst
-        addPseudoKillIfFullDstWrite(currBB, currII, I->getDst());
+        //addPseudoKillIfFullDstWrite(currBB, currII, I->getDst());
 
         bool condModGlb = fg.globalOpndHT.isOpndGlobal(P);
         G4_Declare* modDcl = P->getTopDcl();
@@ -13632,7 +13632,7 @@ void Optimizer::doNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    addPseudoKillIfFullDstWrite(BB, II, I->getDst());
+                    //addPseudoKillIfFullDstWrite(BB, II, I->getDst());
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
@@ -13730,7 +13730,7 @@ void Optimizer::doNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    addPseudoKillIfFullDstWrite(BB, II, I->getDst());
+                    //addPseudoKillIfFullDstWrite(BB, II, I->getDst());
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
