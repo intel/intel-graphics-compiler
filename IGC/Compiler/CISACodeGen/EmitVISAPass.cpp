@@ -14195,8 +14195,12 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
 
 
     unsigned short bitwidth = pInsn->getType()->getScalarSizeInBits();
-    const bool is16Bit = (pInsn->getType()->getScalarSizeInBits() == 16);
+    const bool is16Bit = (bitwidth == 16);
 
+    if (is16Bit)
+    {
+        IGC_ASSERT_MESSAGE(m_currShader->m_Platform->isXeHPSDVPlus(), "16-bit atomics are not supported on this platform!");
+    }
 
     // atomic_inc and atomic_dec don't have both src0 and src1.
     if (atomic_op != EATOMIC_INC && atomic_op != EATOMIC_DEC &&

@@ -4078,6 +4078,15 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f64_i32_i32, )(generic do
 #endif // defined(cl_khr_int64_base_atomics)
 #endif // defined(cl_khr_fp64)
 
+#if defined(cl_khr_fp16)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p0f16_i32_i32, )(private half* Pointer, int Scope, int Semantics);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p1f16_i32_i32, )(global half* Pointer, int Scope, int Semantics);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p3f16_i32_i32, )(local half* Pointer, int Scope, int Semantics);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f16_i32_i32, )(generic half* Pointer, int Scope, int Semantics);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_fp16)
+
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0i32_i32_i32_i32, )(private int *Pointer, int Scope, int Semantics, int Value);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p1i32_i32_i32_i32, )(global int *Pointer, int Scope, int Semantics, int Value);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p3i32_i32_i32_i32, )(local int *Pointer, int Scope, int Semantics, int Value);
@@ -4109,6 +4118,15 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f64_i32_i32_f64, )(generic
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
 #endif // defined(cl_khr_fp64)
+
+#if defined(cl_khr_fp16)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0f16_i32_i32_f16, )(private half* Pointer, int Scope, int Semantics, half Value);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p1f16_i32_i32_f16, )(global half* Pointer, int Scope, int Semantics, half Value);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p3f16_i32_i32_f16, )(local half* Pointer, int Scope, int Semantics, half Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f16_i32_i32_f16, )(generic half* Pointer, int Scope, int Semantics, half Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_fp16)
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0i32_i32_i32_i32, )(private int *Pointer, int Scope, int Semantics, int Value);
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1i32_i32_i32_i32, )(global int *Pointer, int Scope, int Semantics, int Value);
@@ -4142,6 +4160,15 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f64_i32_i32_f64, )(ge
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_int64_base_atomics)
 #endif // defined(cl_khr_fp64)
+
+#if defined(cl_khr_fp16)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0f16_i32_i32_f16, )(__private half* Pointer, int Scope, int Semantics, half Value);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1f16_i32_i32_f16, )(__global half* Pointer, int Scope, int Semantics, half Value);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3f16_i32_i32_f16, )(__local half* Pointer, int Scope, int Semantics, half Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f16_i32_i32_f16, )(__generic half* Pointer, int Scope, int Semantics, half Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_fp16)
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p0i32_i32_i32_i32_i32_i32, )(private int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator);
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(global int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator);
