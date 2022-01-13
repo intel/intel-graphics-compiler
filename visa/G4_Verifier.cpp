@@ -331,7 +331,10 @@ void G4Verifier::verifySend(G4_INST* inst)
 
         if (inst->isSplitSend())
         {
-            if (src0->getBase()->isGreg() && src1 && src1->getBase()->isGreg())
+            // simd1 split send is allowed to have srcs overlap. When it's simd1, overlap for the rest
+            // of the payload shouldn't matter
+            bool allowSrcOverlap = inst->getExecSize() == g4::SIMD1;
+            if (!allowSrcOverlap && src0->getBase()->isGreg() && src1 && src1->getBase()->isGreg())
             {
                 int src0Start = src0->getLinearizedStart() / numEltPerGRF<Type_UB>();
                 int src0End = src0Start + inst->getMsgDesc()->getSrc0LenRegs() - 1;
