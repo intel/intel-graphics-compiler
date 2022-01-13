@@ -12443,20 +12443,17 @@ void Optimizer::newDoNoMaskWA()
         return flagVar;
     };
 
-    auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII, G4_DstRegRegion* aDst)
+    auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII)
     {
         // Only NoMask Inst without predicate will call this function!
         G4_INST* I = *aII;
+        G4_DstRegRegion* aDst = I->getDst();
         if (!aDst || aDst->isNullReg() ||
             I->getImplAccSrc() != nullptr || I->isSend() ||
             aDst->getBase()->asRegVar()->getPhyReg())
         {
             return;
         }
-
-        bool needKill = false;
-        const G4_Declare* decl = ((const G4_RegVar*)aDst->getBase())->getDeclare();
-        const G4_Declare* primaryDcl = decl->getRootDeclare();
 
         // Make sure dst var is not used in this inst.
         {
@@ -12474,6 +12471,10 @@ void Optimizer::newDoNoMaskWA()
             }
         }
 
+        bool needKill = false;
+        const G4_Declare* decl = ((const G4_RegVar*)aDst->getBase())->getDeclare();
+        const G4_Declare* primaryDcl = decl->getRootDeclare();
+
         if (aDst->isFlag())
         {
             // Using >= instead of = as dcl may be 8bits, but flag dst could be 16 bits
@@ -12490,9 +12491,9 @@ void Optimizer::newDoNoMaskWA()
                 aDst->getHorzStride() != 1 ||
                 I->isPartialWrite())
             {
-                needKill = false;
+                return;
             }
-            else if (fg.isPseudoDcl(primaryDcl) ||
+            if (fg.isPseudoDcl(primaryDcl) ||
                 primaryDcl->getRegVar()->isRegVarTransient() ||
                 ((aDst->getTypeSize() * I->getExecSize()) ==
                     (primaryDcl->getElemSize() * primaryDcl->getNumElems() * primaryDcl->getNumRows())))
@@ -12617,7 +12618,7 @@ void Optimizer::newDoNoMaskWA()
         assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
 
         // add pseudoKill
-        addPseudoKillIfFullDstWrite(aBB, aII, dst);
+        addPseudoKillIfFullDstWrite(aBB, aII);
 
         // Create a temp that's big enough to hold data and possible gap
         // b/w data due to alignment/hw restriction.
@@ -12709,7 +12710,7 @@ void Optimizer::newDoNoMaskWA()
         }
 
         // Add pseudo kill for dst
-        addPseudoKillIfFullDstWrite(aBB, aII, I->getDst());
+        addPseudoKillIfFullDstWrite(aBB, aII);
 
         const bool condModGlb = fg.globalOpndHT.isOpndGlobal(P);
         G4_Declare* modDcl = P->getTopDcl();
@@ -13038,7 +13039,7 @@ void Optimizer::newDoNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    addPseudoKillIfFullDstWrite(BB, II, I->getDst());
+                    addPseudoKillIfFullDstWrite(BB, II);
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
@@ -13238,10 +13239,11 @@ void Optimizer::doNoMaskWA()
         return flagVar;
     };
 
-    auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII, G4_DstRegRegion* aDst)
+    auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII)
     {
         // Only NoMask Inst without predicate will call this function!
         G4_INST* I = *aII;
+        G4_DstRegRegion* aDst = I->getDst();
         if (!aDst || aDst->isNullReg() ||
             I->getImplAccSrc() != nullptr || I->isSend() ||
             aDst->getBase()->asRegVar()->getPhyReg())
@@ -13284,9 +13286,9 @@ void Optimizer::doNoMaskWA()
                 aDst->getHorzStride() != 1 ||
                 I->isPartialWrite())
             {
-                needKill = false;
+                return;
             }
-            else if (fg.isPseudoDcl(primaryDcl) ||
+            if (fg.isPseudoDcl(primaryDcl) ||
                 primaryDcl->getRegVar()->isRegVarTransient() ||
                 ((aDst->getTypeSize() * I->getExecSize()) ==
                     (primaryDcl->getElemSize() * primaryDcl->getNumElems() * primaryDcl->getNumRows())))
@@ -13391,7 +13393,7 @@ void Optimizer::doNoMaskWA()
         assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
 
         // add pseudoKill
-        addPseudoKillIfFullDstWrite(currBB, currII, dst);
+        addPseudoKillIfFullDstWrite(currBB, currII);
 
         // Create a temp that's big enough to hold data and possible gap
         // b/w data due to alignment/hw restriction.
@@ -13481,7 +13483,7 @@ void Optimizer::doNoMaskWA()
         }
 
         // Add pseudo kill for dst
-        addPseudoKillIfFullDstWrite(currBB, currII, I->getDst());
+        addPseudoKillIfFullDstWrite(currBB, currII);
 
         bool condModGlb = fg.globalOpndHT.isOpndGlobal(P);
         G4_Declare* modDcl = P->getTopDcl();
@@ -13752,7 +13754,7 @@ void Optimizer::doNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    addPseudoKillIfFullDstWrite(BB, II, I->getDst());
+                    addPseudoKillIfFullDstWrite(BB, II);
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
@@ -13850,7 +13852,7 @@ void Optimizer::doNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    addPseudoKillIfFullDstWrite(BB, II, I->getDst());
+                    addPseudoKillIfFullDstWrite(BB, II);
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
