@@ -244,6 +244,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.Dumper = Opts.Dumper.get();
   BackendOpts.ShaderOverrider = Opts.ShaderOverrider.get();
   BackendOpts.DisableStructSplitting = Opts.DisableStructSplitting;
+  BackendOpts.EmitZebinVisaSections = Opts.EmitZebinVisaSections;
   BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
   if (Opts.ForceLiveRangesLocalizationForAccUsage)
     BackendOpts.LocalizeLRsForAccUsage = true;
@@ -704,6 +705,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   Opts.StatsFile = InternalOptions.getLastArgValue(OPT_stats_file).str();
   if (InternalOptions.hasArg(OPT_intel_use_bindless_buffers_ze))
     Opts.UseBindlessBuffers = true;
+  if (InternalOptions.hasArg(OPT_emit_zebin_visa_sections))
+    Opts.EmitZebinVisaSections = true;
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_binary_format)) {
     StringRef Val = A->getValue();

@@ -109,6 +109,9 @@ struct GenXBackendOptions {
   // Use bindless mode for buffers.
   bool UseBindlessBuffers;
 
+  // Add vISA asm as sections in ZeBin
+  bool EmitZebinVisaSections = false;
+
   // max private stateless memory size per thread
   unsigned StatelessPrivateMemSize;
 
@@ -273,6 +276,8 @@ public:
   bool doStructSplitting() const { return !Options.DisableStructSplitting; }
 
   bool useBindlessBuffers() const { return Options.UseBindlessBuffers; }
+
+  bool emitZebinVisaSections() const { return Options.EmitZebinVisaSections; }
 
   bool saveStackCallLinkage() const { return Options.SaveStackCallLinkage; }
 

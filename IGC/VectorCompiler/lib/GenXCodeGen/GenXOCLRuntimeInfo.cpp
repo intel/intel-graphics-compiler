@@ -500,21 +500,6 @@ tryOverrideBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
   return loadGenBinaryFromFile(GenBinary, F, Loader, Extensions::DAT);
 }
 
-// Either loads binary from VISABuilder or overrides from file.
-static void loadBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
-                       VISABuilder &VB, const Function &F,
-                       GenXBackendConfig const &BC) {
-  // Attempt to override
-  if (BC.hasShaderOverrider() &&
-      tryOverrideBinary(GenBinary, F, BC.getShaderOverrider()))
-    return;
-
-  // If there is no overriding or attemp fails, then gets binary from compilation
-  VISAKernel *BuiltKernel = VB.GetVISAKernel(F.getName().str());
-  IGC_ASSERT_MESSAGE(BuiltKernel, "Kernel is null");
-  appendFuncBinary(GenBinary, F, *BuiltKernel);
-}
-
 template <typename UnaryPred>
 std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
                                                      UnaryPred &&Pred) {
@@ -541,15 +526,42 @@ std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
   return Collected;
 }
 
-// Constructs gen binary for provided function group \p FG.
-static genx::BinaryDataAccumulator<const Function *>
-getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
-             GenXBackendConfig const &BC) {
-  Function const *Kernel = FG.getHead();
-  genx::BinaryDataAccumulator<const Function *> GenBinary;
-  // load kernel
-  loadBinary(GenBinary, VB, *Kernel, BC);
-  return std::move(GenBinary);
+// Returns vISA asm for function \p F.
+static std::string getVISAAsmForFunction(const Function &F, VISABuilder &VB) {
+  VISAKernel *VK = VB.GetVISAKernel(F.getName().str());
+  return VK->getVISAAsm();
+}
+
+// Returns vISA asm for the FG's head and its direct stack calls.
+static std::string getVISAAsm(const FunctionGroup &FG, VISABuilder &VB) {
+  std::string VISAAsm = getVISAAsmForFunction(*FG.getHead(), VB);
+  const auto StackCalls = collectCalledFunctions(FG, [](const Function *F) {
+    return genx::requiresStackCall(F) && !genx::isIndirect(F);
+  });
+  return std::accumulate(StackCalls.begin(), StackCalls.end(), VISAAsm,
+                         [&VB](std::string S, const Function *F) {
+                           return std::move(S += getVISAAsmForFunction(*F, VB));
+                         });
+}
+
+// Either loads binary from VISABuilder or overrides from file.
+static void loadBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
+                       std::string &VISAAsm, VISABuilder &VB,
+                       const FunctionGroup &FG, const GenXBackendConfig &BC) {
+  const Function &F = *FG.getHead();
+
+  // Attempt to override
+  if (BC.hasShaderOverrider() &&
+      tryOverrideBinary(GenBinary, F, BC.getShaderOverrider()))
+    return;
+
+  // If there is no overriding or attemp fails, then gets binary from
+  // compilation
+  VISAKernel *BuiltKernel = VB.GetVISAKernel(F.getName().str());
+  IGC_ASSERT_MESSAGE(BuiltKernel, "Kernel is null");
+  appendFuncBinary(GenBinary, F, *BuiltKernel);
+  if (BC.emitZebinVisaSections())
+    VISAAsm += getVISAAsm(FG, VB);
 }
 
 static void appendGlobalVariableData(RawSectionInfo &Sect,
@@ -757,8 +769,8 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
     JitInfo->spillMemUsed += FuncJitInfo->spillMemUsed;
   }
 
-  genx::BinaryDataAccumulator<const Function *> GenBinary =
-      getGenBinary(FG, VB, BC);
+  genx::BinaryDataAccumulator<const Function *> GenBinary;
+  loadBinary(GenBinary, Info.VISAAsm, VB, FG, BC);
 
   const auto& Dbg = DBG.getModuleDebug();
   auto DbgIt = Dbg.find(KernelFunction);
@@ -802,7 +814,7 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
   for (auto *FG : Subgroups) {
     auto *Func = FG->getHead();
     IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
-    loadBinary(GenBinary, VB, *Func, BC);
+    loadBinary(GenBinary, Info.VISAAsm, VB, *FG, BC);
   }
   Info.Func.Symbols = constructFunctionSymbols(GenBinary, /*HasKernel*/false);
   for (auto &&Decl : DeclsRange)

@@ -735,6 +735,10 @@ static void setGenBinary(const FINALIZER_INFO &JitterInfo,
   PO.m_InstructionCount = JitterInfo.numAsmCount;
 }
 
+static void setVISAAsm(const std::string &VISAAsm, CMKernel &Kernel) {
+  Kernel.getProgramOutput().m_VISAAsm = VISAAsm;
+}
+
 static void setDebugInfo(const std::vector<char> &DebugInfo, CMKernel &Kernel) {
   if (DebugInfo.empty())
     return;
@@ -774,6 +778,7 @@ static void fillKernelInfo(const GenXOCLRuntimeInfo::CompiledKernel &CompKernel,
 
   setGenBinary(CompKernel.getJitterInfo(), CompKernel.getGenBinary(),
                ResKernel);
+  setVISAAsm(CompKernel.getKernelInfo().VISAAsm, ResKernel);
   setDebugInfo(CompKernel.getDebugInfo(), ResKernel);
   setGtpinInfo(CompKernel.getJitterInfo(), CompKernel.getGTPinInfo(),
                ResKernel);

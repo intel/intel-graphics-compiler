@@ -112,6 +112,7 @@ struct CompileOptions {
   std::string StatsFile;
   std::string LLVMOptions;
   bool UseBindlessBuffers = false;
+  bool EmitZebinVisaSections = false;
   bool HasL1ReadOnlyCache = false;
   bool HasLocalMemFenceSupress = false;
   // from IGC_XXX env
