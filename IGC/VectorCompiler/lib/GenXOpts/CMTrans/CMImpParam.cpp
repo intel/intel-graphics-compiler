@@ -98,8 +98,9 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 
-#include "vc/Utils/General/FunctionAttrs.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/DebugInfo.h"
+#include "vc/Utils/General/FunctionAttrs.h"
 
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/STLExtras.h"
@@ -315,7 +316,7 @@ private:
 
 } // namespace
 
-static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M);
+static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M, bool IsCMRT);
 static IntrIDMap fillUsedIntrMap(const ImplArgIntrSeq &Workload);
 
 static bool isPseudoIntrinsic(unsigned IID) {
@@ -345,7 +346,7 @@ bool CMImpParam::runOnModule(Module &M) {
   ConvertToOCLPayload(M);
 
   // Analyze functions for implicit use intrinsic invocation
-  ImplArgIntrSeq Workload = collectImplicitArgIntrinsics(M);
+  ImplArgIntrSeq Workload = collectImplicitArgIntrinsics(M, IsCmRT);
   auto Kernels = collectKernels(M);
 
   if (Workload.empty() && Kernels.empty())
@@ -502,17 +503,21 @@ ArgLinearization CMImpParam::GenerateArgsLinearizationInfo(Function &F) {
   return Lin;
 }
 
-static bool isImplicitArgIntrinsic(const Function &F) {
+static bool isImplicitArgIntrinsic(const Function &F, bool IsCMRT) {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&F);
   switch (IID) {
   case GenXIntrinsic::genx_local_size:
   case GenXIntrinsic::genx_local_id:
   case GenXIntrinsic::genx_local_id16:
   case GenXIntrinsic::genx_group_count:
+  case GenXIntrinsic::genx_print_buffer:
+    return true;
   case GenXIntrinsic::genx_get_scoreboard_deltas:
   case GenXIntrinsic::genx_get_scoreboard_bti:
   case GenXIntrinsic::genx_get_scoreboard_depcnt:
-  case GenXIntrinsic::genx_print_buffer:
+    if (!IsCMRT)
+      vc::diagnose(F.getContext(), "GenXImplicitParameters", &F,
+                   "scoreboarding intrinsics are supported only for CM RT");
     return true;
   default:
     return false;
@@ -522,10 +527,11 @@ static bool isImplicitArgIntrinsic(const Function &F) {
 // For each function, see if it uses an intrinsic that in turn requires an
 // implicit kernel argument
 // (such as llvm.genx.local.size)
-static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M) {
+static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M, bool IsCMRT) {
   ImplArgIntrSeq Workload;
-  auto &&ImplArgIntrinsics = make_filter_range(
-      M, [](const Function &F) { return isImplicitArgIntrinsic(F); });
+  auto &&ImplArgIntrinsics = make_filter_range(M, [IsCMRT](const Function &F) {
+    return isImplicitArgIntrinsic(F, IsCMRT);
+  });
   for (Function &Intr : ImplArgIntrinsics)
     llvm::transform(Intr.users(), std::back_inserter(Workload),
                     [](User *U) { return cast<CallInst>(U); });
