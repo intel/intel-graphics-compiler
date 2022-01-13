@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Value.h>
 
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Operator.h"
 
 using namespace llvm;
 
@@ -70,4 +71,19 @@ Type *vc::getFloatNTy(IRBuilder<> &Builder, unsigned N) {
 Instruction *vc::fixDegenerateVector(Instruction &Inst, IRBuilder<> &Builder) {
   return cast<Instruction>(Builder.CreateBitCast(
       &Inst, &vc::fixDegenerateVectorType(*Inst.getType())));
+}
+
+bool vc::isCastToGenericAS(const Value &Op) {
+  if (!isa<IGCLLVM::AddrSpaceCastOperator>(Op))
+    return false;
+  return Op.getType()->getPointerAddressSpace() == AddrSpace::Generic;
+}
+
+Constant &vc::castArrayToFirstElemPtr(GlobalVariable &Array) {
+  IGC_ASSERT_MESSAGE(isa<ArrayType>(Array.getValueType()),
+                     "Array global variable was expected");
+  Constant *Zero =
+      Constant::getNullValue(IntegerType::getInt32Ty(Array.getContext()));
+  return *ConstantExpr::getInBoundsGetElementPtr(
+      Array.getValueType(), &Array, ArrayRef<Constant *>{Zero, Zero});
 }

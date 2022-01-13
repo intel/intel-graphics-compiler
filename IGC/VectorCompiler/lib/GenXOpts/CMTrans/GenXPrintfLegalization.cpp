@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/InstRebuilder.h"
+#include "vc/Utils/General/IRBuilder.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -194,10 +195,7 @@ static void handleGEP(const FormatIndexGEPInfo &GEPInfo,
   IGC_ASSERT_MESSAGE(GEP.getNumIndices() == 2 && GEP.hasAllZeroIndices(),
                      "format index GEP should just reach zero string element");
   IGC_ASSERT_MESSAGE(GEP.isInBounds(), "format index GEP should be in bounds");
-  IRBuilder<> IRB{GEP.getContext()};
-  std::vector<Constant *> Indices = {IRB.getInt32(0), IRB.getInt32(0)};
-  auto *NewGEP = ConstantExpr::getInBoundsGetElementPtr(
-      IndexedString.getValueType(), &IndexedString, Indices);
+  auto *NewGEP = &castArrayToFirstElemPtr(IndexedString);
   for (CallInst &FormatIndex : GEPInfo.FormatIndices)
     FormatIndex.setArgOperand(0, NewGEP);
 }

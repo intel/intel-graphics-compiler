@@ -17,6 +17,8 @@ namespace llvm {
 class Value;
 class Type;
 class DataLayout;
+class Constant;
+class GlobalVariable;
 } // namespace llvm
 
 namespace vc {
@@ -54,6 +56,15 @@ llvm::Type *getFloatNTy(llvm::IRBuilder<> &Builder, unsigned N);
 // Cast one-element result of instruction  to scalar.
 llvm::Instruction *fixDegenerateVector(llvm::Instruction &Inst,
                                        llvm::IRBuilder<> &Builder);
+
+// Checks whether \p Op is an address space cast operator, which casts a
+// pointer to generic address space pointer.
+bool isCastToGenericAS(const llvm::Value &Op);
+
+// Creates GEP constant expression that effectively implements implicit cast
+// of an array to its first element pointer.
+// \p Array must be a global variable of an array type.
+llvm::Constant &castArrayToFirstElemPtr(llvm::GlobalVariable &Array);
 
 } // namespace vc
 

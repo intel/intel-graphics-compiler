@@ -27,8 +27,10 @@ SPDX-License-Identifier: MIT
 #include "vc/BiF/PrintfIface.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/BiF.h"
+#include "vc/Utils/General/IRBuilder.h"
 #include "vc/Utils/General/Types.h"
 
 #include <llvm/ADT/STLExtras.h>
@@ -44,6 +46,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ErrorHandling.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Operator.h"
 
 #include <algorithm>
 #include <functional>
@@ -230,7 +233,10 @@ static void markStringArgument(Value &Arg) {
     markStringArgument(*SI.getTrueValue());
     return;
   }
-  // Only direct use and selection between strings is supported.
+  if (isCastToGenericAS(Arg))
+    return markStringArgument(
+        *cast<IGCLLVM::AddrSpaceCastOperator>(Arg).getPointerOperand());
+  // An unsupported instruction or instruction sequence was met.
   report_fatal_error(PrintfStringAccessError);
 }
 
@@ -444,6 +450,28 @@ static PrintfImplFunc::Enum mutateDeclID(unsigned StrAS) {
   }
 }
 
+// If \p StrArg is a generic pointer this function returns the resolved
+// pointer - a non-generic pointer to the same object generic pointer was
+// pointing to. When \p StrArg is already an non-generic pointer it is returned
+// unchanged.
+// \p StrArg must have a i8 pointer type.
+static Value &resolveStringInGenericASIf(Value &StrArg) {
+  auto StrAS = StrArg.getType()->getPointerAddressSpace();
+  if (StrAS != AddrSpace::Generic)
+    return StrArg;
+  auto *GV = getConstStringGVFromOperandOptional(StrArg);
+  if (!GV)
+    // FIXME: String marking should already exclude too entangled string
+    //        accesses. Though it is still possible to have series of switch
+    //        instructions mixed with addrspace casts. This case is not
+    //        supported here, but the string marking won't exclude it.
+    //        Select instructions should be supported for consistancy.
+    vc::diagnose(StrArg.getContext(), "GenXPrintfResolution", &StrArg,
+                 "The pass cannot resolve generic address space "
+                 "to access the provided string");
+  return castArrayToFirstElemPtr(*GV);
+}
+
 // Common interface to generate call for format string or "%s" string argument
 // handler.
 // PrintfImplFunc::Fmt should be provided in template parameter to handle format
@@ -456,9 +484,10 @@ CallInst &GenXPrintfResolution::createCallWithStringArg(CallInst &OrigPrintf,
                                                         Value &AuxArg) {
   assertPrintfCall(OrigPrintf);
   IRBuilder<> IRB{&OrigPrintf};
-  auto StrAS = StrArg.getType()->getPointerAddressSpace();
+  auto &ResolvedStrArg = resolveStringInGenericASIf(StrArg);
+  auto StrAS = ResolvedStrArg.getType()->getPointerAddressSpace();
   PrintfImplFunc::Enum DeclID = mutateDeclID<DefaulDeclID>(StrAS);
-  return *IRB.CreateCall(PrintfImplDecl[DeclID], {&AuxArg, &StrArg},
+  return *IRB.CreateCall(PrintfImplDecl[DeclID], {&AuxArg, &ResolvedStrArg},
                          OrigPrintf.getName() + ".printf.str.arg");
 }
 

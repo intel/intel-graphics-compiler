@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/GenX/Printf.h"
+#include "vc/Utils/General/IRBuilder.h"
 #include "vc/Utils/General/RegexIterator.h"
+#include "vc/Utils/General/Types.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
@@ -28,6 +30,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/IR/Operator.h"
 #include "llvmWrapper/Support/Regex.h"
 
 using namespace llvm;
@@ -72,18 +75,26 @@ bool vc::isConstantStringFirstElementGEP(const Value &V) {
   return isConstantStringFirstElementGEP(cast<GEPOperator>(V));
 }
 
+static const Value &ignoreCastToGenericAS(const Value &Op) {
+  if (isCastToGenericAS(Op))
+    return *cast<IGCLLVM::AddrSpaceCastOperator>(Op).getPointerOperand();
+  return Op;
+}
+
 const GlobalVariable *vc::getConstStringGVFromOperandOptional(const Value &Op) {
   IGC_ASSERT_MESSAGE(Op.getType()->isPointerTy(),
                      "wrong argument: pointer was expected");
   IGC_ASSERT_MESSAGE(Op.getType()->getPointerElementType()->isIntegerTy(8),
                      "wrong argument: i8* value was expected");
-  if (!isa<GEPOperator>(Op))
+  auto &MaybeGEP = ignoreCastToGenericAS(Op);
+  if (!isa<GEPOperator>(MaybeGEP))
     return nullptr;
-  auto *StrConst = cast<GEPOperator>(Op).getPointerOperand();
+  auto &GEPPtrOp = *cast<GEPOperator>(MaybeGEP).getPointerOperand();
   // FIXME: Check that indices are {0, 0}.
-  if (!isConstantString(*StrConst))
+  auto &MaybeGV = ignoreCastToGenericAS(GEPPtrOp);
+  if (!isConstantString(MaybeGV))
     return nullptr;
-  return cast<GlobalVariable>(StrConst);
+  return &cast<GlobalVariable>(MaybeGV);
 }
 
 GlobalVariable *vc::getConstStringGVFromOperandOptional(Value &Op) {
