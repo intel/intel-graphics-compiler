@@ -9626,6 +9626,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_dummyInst:
         emitDummyInst(inst);
         break;
+    case GenISAIntrinsic::GenISA_dummyInstID:
+        break;  // pseudo instruction, do nothing
     case GenISAIntrinsic::GenISA_vectorUniform:
         break;  // pseudo instruction, do nothing
     case GenISAIntrinsic::GenISA_staticConstantPatchValue:
