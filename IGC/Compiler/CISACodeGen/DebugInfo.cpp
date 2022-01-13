@@ -377,10 +377,6 @@ void DebugInfoData::markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter
     IGC_ASSERT_MESSAGE(IGC_IS_FLAG_ENABLED(UseOffsetInLocation), "UseOffsetInLocation not enabled");
     IGC_ASSERT_MESSAGE(pInst, "Missing instruction");
 
-    // No dummy instruction needs to be marked with "Output"
-    if (dyn_cast<GenIntrinsicInst>(pValue))
-        return;
-
     CVariable* pVar = pShader->GetSymbol(pValue);
     if (pVar->GetVarType() == EVARTYPE_GENERAL)
     {
@@ -391,8 +387,7 @@ void DebugInfoData::markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter
         // This will help debugger examine their values anywhere in the code till they
         // are in scope. However, emit "Output" attribute when -g and -cl-opt-disable
         // are both passed -g by itself shouldnt alter generated code.
-        if (static_cast<OpenCLProgramContext*>(pShader->GetContext())->m_InternalOptions.KernelDebugEnable ||
-            pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
+        if (pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
         {
             // If "Output" attribute is emitted for perThreadOffset variable(s)
             // then debug info emission is preserved for this:

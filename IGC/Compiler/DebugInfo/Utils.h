@@ -19,8 +19,6 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 namespace Utils {
 
-    #define __OCL_DBG_VARIABLES 9
-
     /// @brief return true if given module contain debug info
     /// @param M The LLVM module.
     /// @return true if given module contain debug info
@@ -38,9 +36,7 @@ namespace Utils {
             llvm::GlobalVariable* pGlobalVar, llvm::Value* pNewVal,
             llvm::Instruction* pEntryPoint, bool isIndirect);
 
-    unsigned int GetSpecialDebugVariableHash(const std::string& name);
     bool IsSpecialDebugVariable(const std::string& name);
-    std::string GetSpecialVariableMetaName(const llvm::Instruction* CI);
 
 } // namespace Utils
 } // namespace IGC
