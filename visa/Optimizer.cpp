@@ -12445,12 +12445,35 @@ void Optimizer::newDoNoMaskWA()
 
     auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII, G4_DstRegRegion* aDst)
     {
+        // Only NoMask Inst without predicate will call this function!
         G4_INST* I = *aII;
-        if (!aDst || aDst->isNullReg()) return;
+        if (!aDst || aDst->isNullReg() ||
+            I->getImplAccSrc() != nullptr || I->isSend() ||
+            aDst->getBase()->asRegVar()->getPhyReg())
+        {
+            return;
+        }
 
         bool needKill = false;
         const G4_Declare* decl = ((const G4_RegVar*)aDst->getBase())->getDeclare();
         const G4_Declare* primaryDcl = decl->getRootDeclare();
+
+        // Make sure dst var is not used in this inst.
+        {
+            G4_Operand* src0_0 = I->getSrc(0);
+            G4_Operand* src0_1 = I->getSrc(1);
+            G4_Operand* src0_2 = I->getSrc(2);
+            G4_Operand* src0_3 = I->getSrc(3);
+
+            if ((src0_0 && src0_0->compareOperand(aDst) != Rel_disjoint) ||
+                (src0_1 && src0_1->compareOperand(aDst) != Rel_disjoint) ||
+                (src0_2 && src0_2->compareOperand(aDst) != Rel_disjoint) ||
+                (src0_3 && src0_3->compareOperand(aDst) != Rel_disjoint))
+            {
+                return;
+            }
+        }
+
         if (aDst->isFlag())
         {
             // Using >= instead of = as dcl may be 8bits, but flag dst could be 16 bits
@@ -13217,8 +13240,30 @@ void Optimizer::doNoMaskWA()
 
     auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII, G4_DstRegRegion* aDst)
     {
+        // Only NoMask Inst without predicate will call this function!
         G4_INST* I = *aII;
-        if (!aDst || aDst->isNullReg()) return;
+        if (!aDst || aDst->isNullReg() ||
+            I->getImplAccSrc() != nullptr || I->isSend() ||
+            aDst->getBase()->asRegVar()->getPhyReg())
+        {
+            return;
+        }
+
+        // Make sure dst var is not used in this inst.
+        {
+            G4_Operand* src0_0 = I->getSrc(0);
+            G4_Operand* src0_1 = I->getSrc(1);
+            G4_Operand* src0_2 = I->getSrc(2);
+            G4_Operand* src0_3 = I->getSrc(3);
+
+            if ((src0_0 && src0_0->compareOperand(aDst) != Rel_disjoint) ||
+                (src0_1 && src0_1->compareOperand(aDst) != Rel_disjoint) ||
+                (src0_2 && src0_2->compareOperand(aDst) != Rel_disjoint) ||
+                (src0_3 && src0_3->compareOperand(aDst) != Rel_disjoint))
+            {
+                return;
+            }
+        }
 
         bool needKill = false;
         const G4_Declare* decl = ((const G4_RegVar*)aDst->getBase())->getDeclare();
@@ -13346,7 +13391,7 @@ void Optimizer::doNoMaskWA()
         assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
 
         // add pseudoKill
-        //addPseudoKillIfFullDstWrite(currBB, currII, dst);
+        addPseudoKillIfFullDstWrite(currBB, currII, dst);
 
         // Create a temp that's big enough to hold data and possible gap
         // b/w data due to alignment/hw restriction.
@@ -13436,7 +13481,7 @@ void Optimizer::doNoMaskWA()
         }
 
         // Add pseudo kill for dst
-        //addPseudoKillIfFullDstWrite(currBB, currII, I->getDst());
+        addPseudoKillIfFullDstWrite(currBB, currII, I->getDst());
 
         bool condModGlb = fg.globalOpndHT.isOpndGlobal(P);
         G4_Declare* modDcl = P->getTopDcl();
@@ -13707,7 +13752,7 @@ void Optimizer::doNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    //addPseudoKillIfFullDstWrite(BB, II, I->getDst());
+                    addPseudoKillIfFullDstWrite(BB, II, I->getDst());
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
@@ -13805,7 +13850,7 @@ void Optimizer::doNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    //addPseudoKillIfFullDstWrite(BB, II, I->getDst());
+                    addPseudoKillIfFullDstWrite(BB, II, I->getDst());
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
