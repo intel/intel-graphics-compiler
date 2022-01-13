@@ -1114,6 +1114,174 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     I.replaceAllUsesWith(Res);
 }
 
+void CustomSafeOptPass::hoistDp3(BinaryOperator& I)
+{
+    if (I.getOpcode() != Instruction::BinaryOps::FAdd)
+    {
+        return;
+    }
+
+    using namespace PatternMatch;
+
+    Value* X1 = nullptr;
+    Value* Y1 = nullptr;
+    Value* Z1 = nullptr;
+    Value* X2 = nullptr;
+    Value* Y2 = nullptr;
+    Value* Z2 = nullptr;
+
+    // dp3
+    bool isdp3 = match(cast<Instruction>(&I),
+                        m_FAdd(
+                            m_FMul(m_Value(Z1), m_Value(Z2)),
+                            m_FAdd(
+                                m_FMul(m_Value(X1), m_Value(X2)),
+                                m_FMul(m_Value(Y1), m_Value(Y2)))));
+
+    // need to try matching for when fadd and fmul are switched
+    if (!isdp3)
+    {
+        isdp3 = match(cast<Instruction>(&I),
+                    m_FAdd(
+                        m_FAdd(
+                            m_FMul(m_Value(X1), m_Value(X2)),
+                            m_FMul(m_Value(Y1), m_Value(Y2))),
+                        m_FMul(m_Value(Z1), m_Value(Z2))));
+    }
+
+    if (isdp3)
+    {
+        // quick check to verify that all source instructions exist in the same basic block.
+        // that way we don't need to iterate through the basic block if we don't need to.
+        BasicBlock* currentBB = I.getParent();
+        unsigned numSourcesAreInst = 0;
+        if (auto I = dyn_cast<Instruction>(X1))
+        {
+            if (I->getParent() == currentBB)
+                numSourcesAreInst++;
+            else
+                return;
+        }
+        if (auto I = dyn_cast<Instruction>(X2))
+        {
+            if (I->getParent() == currentBB)
+                numSourcesAreInst++;
+            else
+                return;
+        }
+        if (auto I = dyn_cast<Instruction>(Y1))
+        {
+            if (I->getParent() == currentBB)
+                numSourcesAreInst++;
+            else
+                return;
+        }
+        if (auto I = dyn_cast<Instruction>(Y2))
+        {
+            if (I->getParent() == currentBB)
+                numSourcesAreInst++;
+            else
+                return;
+        }
+        if (auto I = dyn_cast<Instruction>(Z1))
+        {
+            if (I->getParent() == currentBB)
+                numSourcesAreInst++;
+            else
+                return;
+        }
+        if (auto I = dyn_cast<Instruction>(Z2))
+        {
+            if (I->getParent() == currentBB)
+                numSourcesAreInst++;
+            else
+                return;
+        }
+
+        // find the last source as it appears in the shader.
+        // needed for hoist location
+        Value* lastSource = nullptr;
+        unsigned char i = 0;
+        for (BasicBlock::iterator inst = I.getParent()->begin(); inst != I.getParent()->end(); inst++)
+        {
+            // break if we found the last source
+            // no need to iterate rest of BB
+            if (i == numSourcesAreInst)
+                break;
+            if (&(*inst) == X1)
+            {
+                lastSource = X1;
+                i++;
+            }
+            else if (&(*inst) == Y1)
+            {
+                lastSource = Y1;
+                i++;
+            }
+            else if (&(*inst) == Z1)
+            {
+                lastSource = Z1;
+                i++;
+            }
+            else if (&(*inst) == X2)
+            {
+                lastSource = X2;
+                i++;
+            }
+            else if (&(*inst) == Y2)
+            {
+                lastSource = Y2;
+                i++;
+            }
+            else if (&(*inst) == Z2)
+            {
+                lastSource = Z2;
+                i++;
+            }
+        }
+
+        // Obtain each instruction of dp3
+        Instruction* fmul_x = nullptr;
+        Instruction* fmul_y = nullptr;
+        Instruction* fadd_xy = nullptr;
+        Instruction* fmul_z = nullptr;
+
+        Instruction* t1 = cast<Instruction>(I.getOperand(0));
+        Instruction* t2 = cast<Instruction>(I.getOperand(1));
+
+        if (t1->getOperand(0) == Z1 || t1->getOperand(0) == Z2)
+        {
+            fmul_z = t1;
+            fadd_xy = t2;
+        }
+        else
+        {
+            fmul_z = t2;
+            fadd_xy = t1;
+        }
+
+        t1 = cast<Instruction>(fadd_xy->getOperand(0));
+        t2 = cast<Instruction>(fadd_xy->getOperand(1));
+
+        if (t1->getOperand(0) == X1 || t1->getOperand(0) == X2)
+        {
+            fmul_x = t1;
+            fmul_y = t2;
+        }
+        else
+        {
+            fmul_x = t2;
+            fmul_y = t1;
+        }
+
+        fmul_x->moveAfter(cast<Instruction>(lastSource));
+        fmul_y->moveAfter(fmul_x);
+        fadd_xy->moveAfter(fmul_y);
+        fmul_z->moveAfter(fadd_xy);
+        I.moveAfter(fmul_z);
+    }
+}
+
 bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
 {
     if (I.getOpcode() == Instruction::Or)
@@ -1396,6 +1564,11 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
         }
     } else if (I.getType()->isFloatingPointTy()) {
         removeHftoFCast(I);
+    }
+
+    if (IGC_IS_FLAG_ENABLED(ForceHoistDp3) || (!pContext->m_retryManager.IsFirstTry() && IGC_IS_FLAG_ENABLED(EnableHoistDp3)))
+    {
+        hoistDp3(I);
     }
 }
 

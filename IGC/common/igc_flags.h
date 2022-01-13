@@ -238,6 +238,8 @@ DECLARE_IGC_REGKEY(bool, DisableFDivReassociation,      false,   "Disable reasso
 DECLARE_IGC_REGKEY(bool, EnableTrigFuncRangeReduction,    false,    "reduce the sin and cosing function domain range", true)
 DECLARE_IGC_REGKEY(bool, EnableUnmaskedFunctions,    true,    "Enable unmaksed functions SYCL feature.", true)
 DECLARE_IGC_REGKEY(bool, EnableStatefulAtomic,       false,   "Enable promoting stateless atomic to stateful atomic.", false)
+DECLARE_IGC_REGKEY(bool, EnableHoistDp3,             false,    "Enable dp3 Hoisting.", false)
+DECLARE_IGC_REGKEY(bool, ForceHoistDp3,              false,   "force dp3 Hoisting.", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ForceDisableShaderDebugHashCodeInKernel,   false,  "Disable hash code addition to the binary after EOT", false)
