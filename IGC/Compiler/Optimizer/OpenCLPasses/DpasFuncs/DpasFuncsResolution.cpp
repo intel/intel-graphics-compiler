@@ -15,11 +15,13 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
+using IGCLLVM::FixedVectorType;
 
 namespace {
     // Types for destination and accumulate.
@@ -375,10 +377,10 @@ void DpasFuncsResolution::visitCallInst(CallInst& CI)
         Type* ACCTy = ACC->getType();
         Type* ATy = A->getType();
         Type* BTy = B->getType();
-        int D_nelts = DTy->isVectorTy() ? (int)cast<VectorType>(DTy)->getNumElements() : 1;
-        int ACC_nelts = ACCTy->isVectorTy() ? (int)cast<VectorType>(ACCTy)->getNumElements() : 1;
-        int A_nelts = ATy->isVectorTy() ? (int)cast<VectorType>(ATy)->getNumElements() : 1;
-        int B_nelts = BTy->isVectorTy() ? (int)cast<VectorType>(BTy)->getNumElements() : 1;
+        int D_nelts = DTy->isVectorTy() ? (int)cast<FixedVectorType>(DTy)->getNumElements() : 1;
+        int ACC_nelts = ACCTy->isVectorTy() ? (int)cast<FixedVectorType>(ACCTy)->getNumElements() : 1;
+        int A_nelts = ATy->isVectorTy() ? (int)cast<FixedVectorType>(ATy)->getNumElements() : 1;
+        int B_nelts = BTy->isVectorTy() ? (int)cast<FixedVectorType>(BTy)->getNumElements() : 1;
         Type* D_BaseTy = DTy->getScalarType();
         Type* ACC_BaseTy = ACCTy->getScalarType();
         Type* A_BaseTy = ATy->getScalarType();
@@ -584,10 +586,10 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         return true;
     }
     Type* Ty = CI.getType();
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    FixedVectorType* VTy = dyn_cast<FixedVectorType>(Ty);
     Type* ETy = VTy ? VTy->getElementType() : Ty;
     Type* Opnd0Ty = CI.getArgOperand(0)->getType();
-    VectorType* VOpnd0Ty = dyn_cast<VectorType>(Opnd0Ty);
+    FixedVectorType* VOpnd0Ty = dyn_cast<FixedVectorType>(Opnd0Ty);
     Type* EOpnd0Ty = VOpnd0Ty ? VOpnd0Ty->getElementType() : Opnd0Ty;
     uint32_t n = VTy ? (uint32_t)VTy->getNumElements() : 1;
     uint32_t n0 = VOpnd0Ty ? (uint32_t)VOpnd0Ty->getNumElements() : 1;
@@ -702,11 +704,11 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
 #if defined( _DEBUG )
     {   // Verify arguments
         Type* Ty = CI.getType();
-        VectorType* VTy = dyn_cast<VectorType>(Ty);
+        FixedVectorType* VTy = dyn_cast<FixedVectorType>(Ty);
         Type* ETy = VTy ? VTy->getElementType() : Ty;
         Type* Opnd0Ty = CI.getArgOperand(0)->getType();
         Type* Opnd1Ty = CI.getArgOperand(1)->getType();
-        VectorType* VOpnd0Ty = dyn_cast<VectorType>(Opnd0Ty);
+        FixedVectorType* VOpnd0Ty = dyn_cast<FixedVectorType>(Opnd0Ty);
         Type* EOpnd0Ty = VOpnd0Ty ? VOpnd0Ty->getElementType() : Opnd0Ty;
         uint32_t n = VTy ? (uint32_t)VTy->getNumElements() : 1;
         uint32_t n0 = VOpnd0Ty ? (uint32_t)VOpnd0Ty->getNumElements() : 1;

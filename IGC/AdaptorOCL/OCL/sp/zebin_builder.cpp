@@ -442,8 +442,11 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.grf_count = annotations.m_executionEnivronment.NumGRFRequired;
     env.has_4gb_buffers = annotations.m_executionEnivronment.CompiledForGreaterThan4GBBuffers;
     env.has_device_enqueue = annotations.m_executionEnivronment.HasDeviceEnqueue;
+    env.has_dpas = annotations.m_executionEnivronment.HasDPAS;
     env.has_fence_for_image_access = annotations.m_executionEnivronment.HasReadWriteImages;
     env.has_global_atomics = annotations.m_executionEnivronment.HasGlobalAtomics;
+    env.has_multi_scratch_spaces = CPlatform(mPlatform).hasScratchSurface() && IGC_IS_FLAG_ENABLED(SeparateSpillPvtScratchSpace);
+    env.has_no_stateless_write = (annotations.m_executionEnivronment.StatelessWritesCount == 0);
     env.has_stack_calls = annotations.m_executionEnivronment.HasStackCalls;
     env.inline_data_payload_size = annotations.m_threadPayload.PassInlineDataSize;
     env.offset_to_skip_per_thread_data_load = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;;

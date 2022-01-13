@@ -255,6 +255,16 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
     bool supportsStatelessSpacePrivateMemory = Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory();
     bool bOCLLegacyStatelessCheck = true;
 
+    if (supportsScratchSpacePrivateMemory) {
+        if (Ctx.type == ShaderType::OPENCL_SHADER) {
+            if (Ctx.platform.hasScratchSurface() && !Ctx.m_DriverInfo.UseScratchSpaceForATSPlus()) {
+                supportsScratchSpacePrivateMemory = Ctx.platform.useScratchSpaceForOCL();
+                //IGC has some legacy cases where stateless private memory must be used. This flag is to remove them. If regression happens, revert it.
+                bOCLLegacyStatelessCheck = !(Ctx.platform.hasScratchSurface() && IGC_IS_FLAG_ENABLED(RemoveLegacyOCLStatelessPrivateMemoryCases));
+            }
+        }
+    }
+
     if (Ctx.allocatePrivateAsGlobalBuffer())
     {
         return false;
@@ -358,6 +368,11 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
         if (groupSize > simd_size)
             simd_size = std::min(groupSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
 
+        // if one API doesn't support stateless, we should try to use smallest dispatch mode
+        // which can hold more pvt_data to avoid error out.
+        if (Ctx.platform.hasScratchSurface() && Ctx.m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace() && !supportsStatelessSpacePrivateMemory)
+            simd_size = numLanes(Ctx.platform.getMinDispatchMode());
+
         unsigned maxScratchSpaceBytes = Ctx.platform.maxPerThreadScratchSpace();
         unsigned scratchSpaceLimitPerWI = maxScratchSpaceBytes / simd_size;
         //
@@ -368,6 +383,18 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
         const unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(&F);
 
         if (totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
+            // IGC errors out when we are trying to remove statelesspvtmem of OCL (even though OCl still supports statelesspvtmem).
+            // This assertion tests a scenario where (pvt_mem_usage > 256k) while statelessprivatememory is not supported.
+            IGC_ASSERT_EXIT(bOCLLegacyStatelessCheck);
+
+            if (!supportsStatelessSpacePrivateMemory)
+            {
+                // For XeHP_SDV and above, if any API doesn't support statelesspvtmem, error it out if we find a case where (pvt_mem > 256k).
+                // This assertion found a scenario where (pvt_mem_usage > 256k) while statelessprivatememory is not supported.
+                IGC_ASSERT(0);
+                return true;
+            }
+
             return false;
         }
     }
@@ -1045,6 +1072,12 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // What is the size limit of this scratch memory? If we use >= 128 KB for private data, then we have
     // no space left for later spilling.
     bool useStateless = false;
+
+    if (Ctx.type != ShaderType::OPENCL_SHADER && Ctx.platform.hasScratchSurface()) {
+        useStateless = Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory();
+    }
+
+    //NOTE: Below if block logic is used either for SSS RW or non-OCL stateless RW
     if (modMD && (modMD->compOpt.UseScratchSpacePrivateMemory || useStateless)) {
         // We want to use this pass to lower alloca instruction
         // to remove some redundant instruction caused by alloca. For original approach,
@@ -1178,6 +1211,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
         return true;
     }
+
+    // Only OCL is supposed to reach here.
+    IGC_ASSERT_EXIT(ShaderType::OPENCL_SHADER == Ctx.type);
 
     // Find the implicit argument representing r0 and the private memory base.
     Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, m_pMdUtils);

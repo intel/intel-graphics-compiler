@@ -40,6 +40,9 @@ namespace IGC
         bool        HasSLM() const { return m_hasSLM; }
         bool        HasFullDispatchMask() override;
 
+        bool        passNOSInlineData() override;
+        bool        loadThreadPayload() override;
+
     protected:
         uint                   m_numberOfUntypedAccess;
         uint                   m_numberOfTypedAccess;

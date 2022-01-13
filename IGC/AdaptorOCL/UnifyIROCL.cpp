@@ -92,6 +92,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/SPIRMetaDataTranslation.h"
 #include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/DpasFuncs/DpasFuncsResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/JointMatrixFuncsResolutionPass.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
@@ -346,6 +349,7 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new JointMatrixFuncsResolutionPass(pContext));
 
+    mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eProductFamily));
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
@@ -473,6 +477,8 @@ static void CommonOCLBasedPasses(
     mpm.add(new ResolveOCLAtomics());
     mpm.add(new ResourceAllocator());
     mpm.add(new SubGroupFuncsResolution());
+    mpm.add(createDpasFuncsResolutionPass());
+    mpm.add(createLSCFuncsResolutionPass());
 
     // Run InlineLocals and GenericAddressDynamic together
     mpm.add(new InlineLocalsResolution());

@@ -62,8 +62,10 @@ namespace IGC
 
         unsigned int m_perWIStatelessPrivateMemSize;
 
-        bool        GetDisableMidThreadPreemption() const { return m_disableMidThreadPreemption; }
-        void        SetDisableMidthreadPreemption() { m_disableMidThreadPreemption = true; }
+        bool GetDisableMidThreadPreemption() const { return m_disableMidThreadPreemption; }
+        void SetDisableMidthreadPreemption() { m_disableMidThreadPreemption = true; }
+        bool passNOSInlineData() override;
+        bool loadThreadPayload() override;
 
     protected:
         // Creates appropriate annotation based on the kernel arg

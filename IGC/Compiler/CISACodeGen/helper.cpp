@@ -2544,6 +2544,52 @@ namespace IGC
         }
     }
 
+    // This function generates code for sample or gather parameters combining.
+    // The first parameter is converted to unsigned integer value and copied
+    // into the `numBits` LSB of second param's mantissa.
+    // The function is used to combine:
+    // - LOD and AI params in sample_l and sample_l_c
+    // - BIAS and AI params in sample_b and sample_b_c
+    Value* CombineSampleOrGather4Params(
+        IRBuilder<>& builder,
+        Value* param1, // first param to be copied into the second param
+        Value* param2, // second parameter
+        uint numBits, // number of bits to use to for the second param
+        const std::string& param1Name, // debug name for the first param
+        const std::string& param2Name) // debug name for the second param
+    {
+        Value* maskLo = builder.getInt32(BITMASK(numBits));
+        Value* maskHi = builder.getInt32((~(BITMASK(numBits))));
+
+        Function* rdneFunc = GenISAIntrinsic::getDeclaration(
+            builder.GetInsertBlock()->getModule(),
+            GenISAIntrinsic::GenISA_ROUNDNE);
+        Value* intParam1 = builder.CreateFPToUI(
+            builder.CreateCall(rdneFunc, param1),
+            builder.getInt32Ty(),
+            VALUE_NAME(std::string("_int") + param1Name));
+        Value* intParam1Lsb = builder.CreateAnd(
+            intParam1,
+            maskLo,
+            VALUE_NAME(intParam1->getName() + "LSB"));
+        intParam1Lsb = builder.CreateSelect(
+            builder.CreateICmp(CmpInst::Predicate::ICMP_EQ, intParam1, intParam1Lsb),
+            intParam1Lsb,
+            maskLo,
+            VALUE_NAME(intParam1->getName() + "ClampedLSB"));
+        Value* param2Int = builder.CreateBitCast(
+            param2,
+            builder.getInt32Ty(),
+            VALUE_NAME(param2Name + "Int"));
+        Value* param2IntMsb = builder.CreateAnd(
+            param2Int,
+            maskHi,
+            VALUE_NAME(intParam1->getName() + "MSB"));
+        return builder.CreateBitCast(
+            builder.CreateOr(intParam1Lsb, param2IntMsb),
+            builder.getFloatTy(),
+            VALUE_NAME(param1Name + param2Name + "Combined"));
+    };
 
 std::pair<Value*, unsigned int> GetURBBaseAndOffset(Value* pUrbOffset)
 {

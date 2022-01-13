@@ -61,6 +61,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderLowering.hpp"
 #include "Compiler/CISACodeGen/CrossPhaseConstProp.hpp"
+#include "Compiler/ConvertMSAAPayloadTo16Bit.hpp"
+#include "Compiler/MSAAInsertDiscard.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
@@ -157,6 +159,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "DebugInfo.hpp"
+#include "Compiler/SamplerPerfOptPass.hpp"
 #include "Compiler/CISACodeGen/HalfPromotion.h"
 #include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
@@ -1683,6 +1686,18 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createIPConstantPropagationPass());
 #endif
         }
+
+        if (IGC_IS_FLAG_ENABLED(MSAA16BitPayloadEnable) &&
+            pContext->platform.support16bitMSAAPayload())
+        {
+            mpm.add(new ConvertMSAAPayloadTo16Bit());
+        }
+
+        if (IGC_GET_FLAG_VALUE(MSAAClearedKernel) > 0)
+        {
+            mpm.add(new MSAAInsertDiscard());
+        }
+        mpm.add(createSamplerPerfOptPass());
 
         // enable this only when Pooled EU is not supported
         if ((IGC_IS_FLAG_ENABLED(EnableThreadCombiningOpt) ||

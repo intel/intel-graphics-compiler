@@ -1898,6 +1898,31 @@ namespace IGC
         CreatePrintfStringAnnotations();
     }
 
+    bool COpenCLKernel::passNOSInlineData()
+    {
+        bool passInlineData = false;
+        const bool loadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
+        const bool inlineDataSupportEnabled =
+            (m_Platform->supportInlineDataOCL() &&
+            (m_DriverInfo->UseInlineData() || IGC_IS_FLAG_ENABLED(EnablePassInlineData)));
+        if (loadThreadPayload &&
+            inlineDataSupportEnabled)
+        {
+            passInlineData = true;
+            // FIXME: vISA assumes inline data size is 1 GRF, but it's 8 dword in HW.
+            // The generated cross-thread-load payload would be incorrect when inline data is enabled on
+            // platforms those GRF size are not 8 dword.
+            // Passed the value assumed by vISA for error detection at runtime side.
+            // vISA should be updated to use 8 dword.
+            m_kernelInfo.m_threadPayload.PassInlineDataSize = getGRFSize();
+        }
+        return passInlineData;
+    }
+
+    bool COpenCLKernel::loadThreadPayload()
+    {
+        return true;
+    }
 
     unsigned int COpenCLKernel::GetGlobalMappingValue(llvm::Value* c)
     {
@@ -1945,7 +1970,9 @@ namespace IGC
         m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads() / GetShaderThreadUsageRate();
 
         m_kernelInfo.m_executionEnivronment.SumFixedTGSMSizes = getSumFixedTGSMSizes(entry);
-        m_kernelInfo.m_executionEnivronment.HasBarriers = this->GetHasBarrier();
+
+        // TODO: need to change misleading HasBarriers to NumberofBarriers
+        m_kernelInfo.m_executionEnivronment.HasBarriers = this->GetBarrierNumber();
         m_kernelInfo.m_executionEnivronment.DisableMidThreadPreemption = GetDisableMidThreadPreemption();
         m_kernelInfo.m_executionEnivronment.SubgroupIndependentForwardProgressRequired =
             m_Context->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired;
@@ -2005,6 +2032,10 @@ namespace IGC
 
         m_kernelInfo.m_executionEnivronment.NumGRFRequired = ProgramOutput()->m_numGRFTotal;
 
+        m_kernelInfo.m_executionEnivronment.HasDPAS = GetHasDPAS();
+        m_kernelInfo.m_executionEnivronment.StatelessWritesCount = GetStatelessWritesCount();
+        m_kernelInfo.m_executionEnivronment.IndirectStatelessCount = GetIndirectStatelessCount();
+        m_kernelInfo.m_executionEnivronment.numThreads = ProgramOutput()->m_numThreads;
 
         m_kernelInfo.m_executionEnivronment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
         m_kernelInfo.m_executionEnivronment.HasStackCalls = HasStackCalls();

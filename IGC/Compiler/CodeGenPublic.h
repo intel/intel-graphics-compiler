@@ -396,6 +396,7 @@ namespace IGC
         unsigned int bufferSlot = 0;
         unsigned int statelessCBPushedSize = 0;
 
+        bool         hasEvalSampler = false;
         std::vector<SResInfoFoldingOutput> m_ResInfoFoldingOutput;
         // GenUpdateCB outputs
         void*       m_ConstantBufferReplaceShaderPatterns = nullptr;

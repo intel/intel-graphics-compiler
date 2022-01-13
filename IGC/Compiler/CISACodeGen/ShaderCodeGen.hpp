@@ -494,6 +494,8 @@ public:
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
     bool GetHasDPAS() const { return m_HasDPAS; }
     void SetHasDPAS() { m_HasDPAS = true; }
+    bool GetHasEval() const { return m_HasEval; }
+    void SetHasEval() { m_HasEval = true; }
     void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
     void IncIndirectStatelessCount() { ++m_IndirectStatelessCount; }
     uint32_t GetStatelessWritesCount() const { return m_StatelessWritesCount; }
@@ -664,6 +666,8 @@ protected:
     bool m_HasGlobalAtomics = false;
 
     bool m_HasDPAS = false;
+    bool m_HasEval = false;
+    bool m_passNOSInlinedata = false;
 
     uint32_t m_StatelessWritesCount = 0;
     uint32_t m_IndirectStatelessCount = 0;

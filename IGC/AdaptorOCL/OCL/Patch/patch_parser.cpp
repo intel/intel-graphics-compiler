@@ -861,8 +861,8 @@ void DebugPatchList(
                     "\tLargestCompiledSIMDSize = %d\n",
                     pPatchItem->LargestCompiledSIMDSize );
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
-                    "\tHasBarriers = %s\n",
-                    pPatchItem->HasBarriers ? "true" : "false" );
+                    "\tHasBarriers = %d\n",
+                    pPatchItem->HasBarriers);
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tDisableMidThreadPreemption = %s\n",
                     pPatchItem->DisableMidThreadPreemption ?

@@ -1979,6 +1979,12 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         patch.UsesStatelessSpillFill = (annotations.m_executionEnivronment.PerThreadScratchSpace > 0);
         patch.UsesMultiScratchSpaces = false;
+        if (CPlatform(m_Platform).hasScratchSurface() && IGC_IS_FLAG_ENABLED(SeparateSpillPvtScratchSpace))
+        {
+            //we don't support stateless anymore, will error out if >256k.
+            patch.UsesStatelessSpillFill = false;
+            patch.UsesMultiScratchSpaces = true;
+        }
 
         patch.HasDeviceEnqueue = (bool)hasDeviceEnqueue;
 

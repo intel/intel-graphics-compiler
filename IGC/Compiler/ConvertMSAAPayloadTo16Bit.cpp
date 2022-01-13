@@ -71,6 +71,11 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
             GenIntrinsicInst* ldmcs = intr;
 
             Type* coordType = m_builder->getInt32Ty();
+            if (m_pCtxWrapper->getCodeGenContext()->platform.supports16BitLdMcs())
+            {
+                coordType = m_builder->getInt16Ty();
+            }
+
             Type* types_ldmcs[] = {
                 IGCLLVM::FixedVectorType::get(m_builder->getInt16Ty(), 4),
                 coordType,

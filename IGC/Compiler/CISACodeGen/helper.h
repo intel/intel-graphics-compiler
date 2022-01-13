@@ -509,6 +509,13 @@ namespace IGC
     // Function modifies address space in selected uses of given input value
     void FixAddressSpaceInAllUses(llvm::Value* ptr, uint newAS, uint oldAS);
 
+    llvm::Value* CombineSampleOrGather4Params(
+        llvm::IRBuilder<>& builder,
+        llvm::Value* param1,
+        llvm::Value* param2,
+        uint numBits,
+        const std::string& param1Name,
+        const std::string& param2Name);
 
     // Returns the dynamic URB base offset and an immediate const offset
     // from the dynamic base. The function calculates the result by walking

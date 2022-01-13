@@ -226,6 +226,30 @@ namespace IGC
         }
     }
 
+    // Returns true when vISA_useInlineData option must set.
+    // The vISA_useInlineData must be set when per-thread payload is loaded from
+    // memory and there is inline data to pass.
+    bool CComputeShader::passNOSInlineData()
+    {
+        // Currently we cannot support InlineData in ZEBinary so always disable it
+        auto modMD = static_cast<const ComputeShaderContext*>(GetContext())->getModuleMetaData();
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMD->compOpt.EnableZEBinary)
+            return false;
+
+        const bool loadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
+        const bool hasConstants = pushInfo.constantReg.size() > 0 || modMD->MinNOSPushConstantSize > 0;
+        const bool inlineDataSupportEnabled =
+            (m_Platform->supportInlineData() &&
+            (m_DriverInfo->UseInlineData() || IGC_IS_FLAG_ENABLED(EnablePassInlineData)));
+
+        const bool passInlineData = inlineDataSupportEnabled && loadThreadPayload && hasConstants;
+        return passInlineData;
+    }
+
+    bool CComputeShader::loadThreadPayload()
+    {
+        return true;
+    }
 
     void CShaderProgram::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
     {
@@ -373,6 +397,26 @@ namespace IGC
 
         pKernelProgram->BindingTableEntryCount = this->GetMaxUsedBindingTableEntryCount();
 
+        if (m_enableHWGenerateLID) {
+            pKernelProgram->generateLocalID = true;
+            pKernelProgram->emitLocalMask = m_emitMask;
+            pKernelProgram->walkOrder = m_walkOrder;
+            pKernelProgram->emitInlineParameter = passNOSInlineData();
+            pKernelProgram->localXMaximum = m_threadGroupSize_X - 1;
+            pKernelProgram->localYMaximum = m_threadGroupSize_Y - 1;
+            pKernelProgram->localZMaximum = m_threadGroupSize_Z - 1;
+            pKernelProgram->tileY = (m_ThreadIDLayout == ThreadIDLayout::TileY);
+        }
+        //else
+        //{     //use default values
+        //    pKernelProgram->generateLocalID = false;
+        //    pKernelProgram->emitLocalMask = static_cast<uint>(EMIT_LOCAL_MASK::NONE);
+        //    pKernelProgram->walkOrder = static_cast<uint>(WALK_ORDER::WO_XYZ);
+        //    pKernelProgram->localXMaximum = 0;
+        //    pKernelProgram->localYMaximum = 0;
+        //    pKernelProgram->localZMaximum = 0;
+        //}
+        pKernelProgram->hasEvalSampler = GetHasEval();
     }
 
     void CComputeShader::ExtractGlobalVariables()

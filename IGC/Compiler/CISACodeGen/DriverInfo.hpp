@@ -309,6 +309,7 @@ namespace IGC
 
         virtual bool supportsAutoGRFSelection() const { return autoGRFSelection; }
         virtual void setAutoGRFSelection(bool value) { autoGRFSelection = value; }
+        virtual bool UseScratchSpaceForATSPlus() const { return false; }
         /// Enables HWGenerateThreadID from API level. To help debug, we must enable it from both API level AND IGC Core level.
         virtual bool SupportHWGenerateTID() const { return false; }
         // Enables the use of simple push constants when on platforms with local (device) memory

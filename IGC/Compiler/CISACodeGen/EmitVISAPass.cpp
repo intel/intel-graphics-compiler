@@ -222,7 +222,14 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
     m_encoder->SetSubSpanDestination(false);
     uint numInstance = m_currShader->m_numberInstance;
 
-    slicing = (m_SimdMode == SIMDMode::SIMD32);  // set to false if we don't want slicing
+    if (!shouldGenerateLSC())
+    {
+        slicing = (m_SimdMode == SIMDMode::SIMD32);
+    }
+    else
+    {
+        slicing = false;  // set to false, not matter SIMD32 or SIMD16 of PVC, no slicing
+    }
 
     bool hasValidDestination = (sdag.m_root->getType()->getTypeID() != llvm::Type::VoidTyID);
 
@@ -10484,6 +10491,40 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             pOffset3 = pOffset2;
         }
 
+        uint16_t dstNElts = m_destination->GetNumberElement();
+        if (dstNElts > 16 &&
+            m_currShader->m_numberInstance == 1 &&
+            m_currShader->m_SIMDSize == SIMDMode::SIMD32 && !pIndexVar->IsUniform())
+        {
+            CVariable* dstAlias[2];
+            CVariable* indexAlias[2];
+
+            // there are only 16 address registers on PVC, so for SIMD32 VxH we have to split
+            for (int i = 0; i < 2; i++)
+            {
+                // address variable represents register a0
+                CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
+                    numLanes(SIMDMode::SIMD16),
+                    m_destination->GetType(),
+                    false,
+                    vector->IsUniform(),
+                    m_destination->getName());
+                // we add offsets to the base that is the beginning of the vector variable
+                m_encoder->SetSimdSize(SIMDMode::SIMD16);
+                m_encoder->SetMask(i == 0 ? EMASK_H1 : EMASK_H2);
+                indexAlias[i] = m_currShader->GetNewAlias(pOffset3, pOffset3->GetType(), (pOffset3->GetNumberElement() / 2) * 2 * i, pOffset3->GetNumberElement() / 2);
+                m_encoder->AddrAdd(pDstArrElm, vector, indexAlias[i]);
+                m_encoder->Push();
+
+                dstAlias[i] = m_currShader->GetNewAlias(m_destination, m_destination->GetType(), (dstNElts / 2) * vecTypeSize * i, dstNElts / 2);
+                // finally, we move the indirectly addressed values to the destination register
+                m_encoder->SetMask(i == 0 ? EMASK_H1 : EMASK_H2);
+                m_encoder->SetSimdSize(SIMDMode::SIMD16);
+                m_encoder->Copy(dstAlias[i], pDstArrElm);
+                m_encoder->Push();
+            }
+        }
+        else
         {
             // address variable represents register a0
             CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
@@ -13031,6 +13072,18 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
     // to ensure that for each such pair the src data elements are in separate GRFs
     // and that their regioning patterns match.
     bool isRearrangementRequired = isInt64Mul;
+    // For XeHP (DG2, XeHP_SDV, PVC)
+    // 1. In case where source or destination datatype is 64b or operation is integer DWord multiply:
+    //    Register Regioning patterns where register data bit locations are changed between source and destination
+    //    are not supported on Src0 and Src1 except for broadcast of a scalar.
+    // 2. In case of Float or Half-float data used in destination:
+    //    Register Regioning patterns where register data bit locations are changed between source and destination
+    //    are not supported on Src0 and Src1 except for broadcast of a scalar.
+    const bool isIntegerDwordMultiply = (op == EOPCODE_MUL) && (type == ISA_TYPE_D || type == ISA_TYPE_UD);
+    const bool isFloatOrHalfFloat = type == ISA_TYPE_F || type == ISA_TYPE_HF;
+    isRearrangementRequired |= m_currShader->m_Platform->doScalar64bScan() &&
+        (is64bitType || isIntegerDwordMultiply || isFloatOrHalfFloat);
+
     if (isRearrangementRequired)
     {
         // Rearrange src
@@ -13555,6 +13608,84 @@ void EmitPass::emitPreOrPostFixOp(
         }
     };
 
+    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32 && !isSimd32)
+    {
+        // handling the single SIMD32 size case in PVC
+        // the logic is mostly similar to the legacy code sequence below, except that
+        // we have a single SIMD32 variable instead of two SIMD16 variables
+
+        // 64-bit types is handled using the scalar version as there's no regioning support
+        IGC_ASSERT_MESSAGE(m_encoder->GetCISADataTypeSize(type) < 8, "64-bit type is not supported for this function");
+
+        {
+            uint numInst = 1;
+            auto simdSize = SIMDMode::SIMD16;
+            const uint srcRegion[3] = { 2, 1, 0 };
+            CreateAlu(
+                simdSize, numInst, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0],
+                0 /*src0 subreg*/, srcRegion /*src0 region*/,
+                1 /*src1 subreg*/, srcRegion /*src1 region*/,
+                1 /*dst subreg*/, 2 /*dst region*/);
+        }
+
+        {
+            uint numInst = 1;
+            auto simdSize = SIMDMode::SIMD8;
+            const uint srcRegion[3] = { 4, 1, 0 };
+            CreateAlu(
+                simdSize, numInst, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0],
+                2 /*src0 subreg*/, srcRegion /*src0 region*/,
+                1 /*src1 subreg*/, srcRegion /*src1 region*/,
+                2 /*dst subreg*/, 4 /*dst region*/);
+        }
+
+        {
+            uint numInst = 1;
+            auto simdSize = SIMDMode::SIMD8;
+            const uint srcRegion[3] = { 4, 1, 0 };
+            CreateAlu(
+                simdSize, numInst, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0],
+                3 /*src0 subreg*/, srcRegion /*src0 region*/,
+                1 /*src1 subreg*/, srcRegion /*src1 region*/,
+                3 /*dst subreg*/, 4 /*dst region*/);
+        }
+
+        // Merge: 4 SIMD4's to get 4 SIMD8 prefix sequences
+        for (uint loop_counter = 0; loop_counter < 4; ++loop_counter)
+        {
+            const uint src0Region[3] = { 0, 1, 0 };
+            const uint src1Region[3] = { 4, 4, 1 };
+            CreateAlu(
+                SIMDMode::SIMD4, 1, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0],
+                (loop_counter * 8 + 3) /*src0 subreg*/, src0Region /*src0 region*/,
+                (loop_counter * 8 + 4) /*src1 subreg*/, src1Region /*src1 region*/,
+                (loop_counter * 8 + 4) /*dst subreg*/, 1 /*dst region*/);
+        }
+
+        // Merge: 2 SIMD8's to get 2 SIMD16 prefix sequence
+        for (uint loop_counter = 0; loop_counter < 2; ++loop_counter)
+        {
+            const uint src0Region[3] = { 0, 1, 0 };
+            const uint src1Region[3] = { 1, 1, 0 };
+            CreateAlu(
+                SIMDMode::SIMD8, 1, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0],
+                loop_counter * 16 + 7 /*src0 subreg*/, src0Region /*src0 region*/,
+                loop_counter * 16 + 8 /*src1 subreg*/, src1Region /*src1 region*/,
+                loop_counter * 16 + 8 /*dst subreg*/, 1 /*dst region*/);
+        }
+
+        // final merge to get 1 SIMD32 prefix sequence and viola!
+        {
+            const uint src0Region[3] = { 0, 1, 0 };
+            const uint src1Region[3] = { 1, 1, 0 };
+            CreateAlu(
+                SIMDMode::SIMD16, 1, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0],
+                15 /*src0 subreg*/, src0Region /*src0 region*/,
+                16 /*src1 subreg*/, src1Region /*src1 region*/,
+                16 /*dst subreg*/, 1 /*dst region*/);
+        }
+        return;
+    }
 
     for (int i = 0; i < counter; ++i)
     {
@@ -19189,6 +19320,16 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
     }
     else
     {
+        if (m_currShader->m_Platform->hasScratchSurface() &&
+            resourcePtr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE)
+        {
+            ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+            if (modMD && modMD->compOpt.UseScratchSpacePrivateMemory)
+            {
+                resource.m_surfaceType = ESURFACE_SCRATCH;
+                return resource;
+            }
+        }
         resource.m_surfaceType = ESURFACE_STATELESS;
     }
     return resource;

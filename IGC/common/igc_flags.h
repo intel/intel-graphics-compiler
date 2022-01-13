@@ -80,6 +80,14 @@ DECLARE_IGC_REGKEY(bool, SetDefaultTileYWalk,           false, "Use TileY walk a
 DECLARE_IGC_REGKEY(bool, ForceTileY,                    false, "Force TileY mode on DG2", false)
 DECLARE_IGC_REGKEY(bool, EnableNewTileYCheck,           false, "Enable new TileY check on DG2", false)
 DECLARE_IGC_REGKEY(bool, KeepTileYForFlattened,         false, "Keep TileY for FlattenedThreadIdInGroup on DG2", false)
+DECLARE_IGC_REGKEY(bool, EnablePassInlineData,          false,  "Pass 1st GRF of cross-thread payload as inline data", true)
+DECLARE_IGC_REGKEY(DWORD,ScratchSpaceSizeReserved,      0,      "Reserved size of scratch space. XeHP and above only. Test only. Remove it once stabalized.", true)
+DECLARE_IGC_REGKEY(DWORD,ScratchSpaceSizeLimit,         0,      "Size limit of scratch space. XeHP and above only. Test only. Remove it once stabalized.", true)
+DECLARE_IGC_REGKEY(bool, EnablePromoteI8,               true,   "Enable promoting i8 (char) to i16 on all ALU insts that does support i8. It's only for PVC for now.", true)
+DECLARE_IGC_REGKEY(bool, ForcePromoteI8,                false,  "Force promoting i8 (char) to i16 on all ALU insts (for testing).", true)
+DECLARE_IGC_REGKEY(bool, EnablePromoteI8Vec,            true,   "Control if a certain i8 vector needs to be promoted (detail in code)", true)
+DECLARE_IGC_REGKEY(DWORD,ForceTexelMaskClear,           0,      "If set to 1 or 2, forces evaluate messages to clear the texel mask to 0 or 1, respectively.", true)
+DECLARE_IGC_REGKEY(bool, EnablePvtMemHalfToFloat,       true,   "Enable conversion from half to float for private memory.", true)
 DECLARE_IGC_REGKEY(bool, EnableQWRotateInstructions,    true, "Enable QW type support for rotate instructions. PVC only.", true)
 DECLARE_IGC_REGKEY(bool, DPASTokenReduction,            false, "optimization to reduce the tokens used for DPAS instruction.", true)
 DECLARE_IGC_REGKEY(bool, EnableAdd3,                    true,  "Enable Add3 (temporary for testing). XeHP only", true)
@@ -389,6 +397,39 @@ DECLARE_IGC_REGKEY(bool, Enable16BitLDMCS,              true, "Enable 16-bit ld_
 DECLARE_IGC_REGKEY(bool, EnableDualSIMD8,               true, "enable dual SIMD8 on supported platforms", true)
 DECLARE_IGC_REGKEY(bool, EnableSampleDEmulation,        true, "Enable emulation of sample_d.", true)
 DECLARE_IGC_REGKEY(bool, EnableSampleDEmulationForTesting, false, "Enable emulation of sample_d on pre-XeHP platforms.", true)
+DECLARE_IGC_REGKEY(bool, EnableOCLScratchPrivateMemoryForDG2Plus, false,  "Enable the use of scratch space for private memory in XeHP and above [OCL only]", true)
+DECLARE_IGC_REGKEY(bool, RemoveLegacyOCLStatelessPrivateMemoryCases, false,  "Remove cases where OCL uses stateless private memory. XeHP and above only! [OCL only]", true)
+DECLARE_IGC_REGKEY(DWORD, SkipPsSimdWithDualSimd,       1,     "Setting it to values def in igc.h will force SIMD mode to skip if the dual-SIMD8 kernel exists", true)
+DECLARE_IGC_REGKEY(bool, EnableRastyJitter,             false, "Enable Rasty JIT of shader to x86 for fast simulation", true)
+DECLARE_IGC_REGKEY(bool, EnablePostCullPatchFIFOLP,     true,  "Enable Post-Cull Patch Decoupling FIFO. GEN12LP.", true)
+DECLARE_IGC_REGKEY(bool, EnablePostCullPatchFIFOHP,     true,  "Enable Post-Cull Patch Decoupling FIFO. XeHP.", true)
+DECLARE_IGC_REGKEY(bool, EnableAIParameterCombiningWithLODBias, true, "Enable AI parameter combining With LOD Bias parameter. XeHP", true)
+DECLARE_IGC_REGKEY(DWORD, ForceMeshShaderSimdSize,      0,     "Force mesh shader simd size,\
+                                                                valid values are 0 (not set), 8, 16 and 32\
+                                                                ignored if produces invalid cofiguration, e.g. simd size too small for workgroup size", true)
+DECLARE_IGC_REGKEY(DWORD, ForceTaskShaderSimdSize,      0,     "Force task shader simd size,\
+                                                                valid values are 0 (not set), 8, 16 and 32\
+                                                                ignored if produces invalid cofiguration, e.g. simd size too small for workgroup size", true)
+DECLARE_IGC_REGKEY(DWORD, EnableMeshShaderSimdSize,     0,     "Set allowed simd sizes for mesh shader compilation,\
+                                                                bitmask bit0 - simd8, bit1 - simd16, bit2 - simd32,\
+                                                                e.g. 0x7 enables all simd sizes and 0x2 enables only simd16,\
+                                                                valid values are from 0 to 7\
+                                                                ignored if produces invalid cofiguration, e.g. simd size too small for workgroup size,\
+                                                                ignored if ForceMeshShaderSimdSize is set", true)
+DECLARE_IGC_REGKEY(DWORD, EnableTaskShaderSimdSize,     0,     "Set allowed simd sizes for task shader compilation,\
+                                                                bitmask bit0 - simd8, bit1 - simd16, bit2 - simd32,\
+                                                                e.g. 0x7 enables all simd sizes and 0x2 enables only simd16,\
+                                                                valid values are from 0 to 7\
+                                                                ignored if produces invalid cofiguration, e.g. simd size too small for workgroup size,\
+                                                                ignored if ForceMeshShaderSimdSize is set", true)
+DECLARE_IGC_REGKEY(DWORD, EnableMeshSLMCache,           0,     "Enables caching Mesh shader outputs in SLM,\
+                                                                bitmask:\
+                                                                bit0 - cache AND flush mode, enable caching of Primitive Count and Primitive Indices, \
+                                                                bit1 - cache AND flush mode, enable caching of per-vertex outputs,\
+                                                                bit2 - cache AND flush mode, enable caching of per-primitive outputs,\
+                                                                bit3 - mirror mode, if this bit is set bits 0, 1 and 2 are ignored, \
+                                                                       enable caching of outputs that are read in the shader\
+                                                                       data is only mirrored in SLM", true)
 DECLARE_IGC_REGKEY(bool, EnableL3FlushForGlobal,        false, "Enable/disable flushing L3 cache for globals", false)
 DECLARE_IGC_REGKEY(bool, EnableCPSOmaskWA,              true,  "Enable workaround for oMask with CPS", false)
 DECLARE_IGC_REGKEY(bool, EnableSampleBMLODWA,           true, "Enable workaround for sample_b messages that use the mlod parameter", false)

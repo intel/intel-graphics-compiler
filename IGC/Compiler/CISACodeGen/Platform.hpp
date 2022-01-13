@@ -958,6 +958,34 @@ bool matchImmOffsetsLSC() const
     return hasLSC() && immOffsetMode >= ON;
 }
 
+bool WaCubeHFPrecisionBug() const
+{
+    return m_WaTable.Wa_18012201914 != 0;
+}
+
+//The max size in bytes of the scratch space per thread.
+//  XeHP_SDV and above are for each physical thread: 256k.
+//  TGLLP and below are for each FFTID: 2M.
+uint32_t maxPerThreadScratchSpace() const
+{
+    return (hasScratchSurface() ? 0x40000 : 0x200000);
+}
+
+bool supportAIParameterCombiningWithLODBiasEnabled() const
+{
+    return IGC_IS_FLAG_ENABLED(EnableAIParameterCombiningWithLODBias) &&
+           (m_platformInfo.eProductFamily == IGFX_DG2 && SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0)) ||
+           GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID);
+}
+
+//todo: delete this once it's not true!!!
+//temporary solution!
+bool supportInlineDataOCL() const
+{
+    return isXeHPSDVPlus() &&
+        m_platformInfo.eProductFamily != IGFX_PVC;
+}
+
 bool isXeHPSDVPlus() const
 {
     return m_platformInfo.eProductFamily >= IGFX_XE_HP_SDV;
@@ -967,11 +995,6 @@ bool isDG2Plus() const
 {
     return m_platformInfo.eProductFamily == IGFX_DG2
         || m_platformInfo.eProductFamily == IGFX_PVC;
-}
-
-bool supportInlineDataOCL() const
-{
-    return isXeHPSDVPlus();
 }
 
 bool has64BMediaBlockRW() const
@@ -1040,11 +1063,6 @@ bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
 bool useScratchSpaceForOCL() const
 {
     return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
-}
-
-uint32_t maxPerThreadScratchSpace() const
-{
-    return 0x200000;
 }
 
 bool supportByteALUOperation() const

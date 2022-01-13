@@ -39,11 +39,10 @@ add_subdirectory(ClampLoopUnroll)
 add_subdirectory(Image3dToImage2darray)
 add_subdirectory(RewriteLocalSize)
 add_subdirectory(UnreachableHandling)
+add_subdirectory(DpasFuncs)
+add_subdirectory(LSCFuncs)
 
 
-
-#
-#
 
 set(IGC_BUILD__SRC__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelArgs.cpp"
@@ -65,11 +64,13 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_DebuggerSupport}
     ${IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DisableLoopUnrollOnRetry}
+    ${IGC_BUILD__SRC__OpenCLPasses_DpasFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_ExtenstionFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_ImageFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__SRC__OpenCLPasses_LowerLocalMemPool}
+    ${IGC_BUILD__SRC__OpenCLPasses_LSCFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_NamedBarriers}
     ${IGC_BUILD__SRC__OpenCLPasses_OpenCLPrintf}
     ${IGC_BUILD__SRC__OpenCLPasses_PrivateMemory}
@@ -157,12 +158,14 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_DebuggerSupport
     Compiler__OpenCLPasses_DeviceEnqueueFuncs
     Compiler__OpenCLPasses_DisableLoopUnrollOnRetry
+    Compiler__OpenCLPasses_DpasFuncs
     Compiler__OpenCLPasses_ExtenstionFuncs
     Compiler__OpenCLPasses_GenericAddressResolution
     Compiler__OpenCLPasses_GenericAddressSpaceStaticResolution
     Compiler__OpenCLPasses_ImageFuncs
     Compiler__OpenCLPasses_LocalBuffers
     Compiler__OpenCLPasses_LowerLocalMemPool
+    Compiler__OpenCLPasses_LSCFuncs
     Compiler__OpenCLPasses_NamedBarriers
     Compiler__OpenCLPasses_OpenCLPrintf
     Compiler__OpenCLPasses_PrivateMemory
