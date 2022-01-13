@@ -311,17 +311,17 @@
     "Fma": {
       "Name": "fma",
       "Operands": [
-        {"Name": "Operand0", "Kind": "Input"},
-        {"Name": "Operand1", "Kind": "Input"},
-        {"Name": "Operand2", "Kind": "Input"}
+        {"Name": "Factor0", "Kind": "Input"},
+        {"Name": "Factor1", "Kind": "Input"},
+        {"Name": "Addend", "Kind": "Input"}
       ],
       "TranslateInto": {
-        "Instruction": "FmaInst",
+        "LLVM-Intrinsic": "fma",
         "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
-          {"GetBuiltinOperand": ["Operand0"]},
-          {"GetBuiltinOperand": ["Operand1"]},
-          {"GetBuiltinOperand": ["Operand2"]}
+          {"GetBuiltinOperand": ["Factor0"]},
+          {"GetBuiltinOperand": ["Factor1"]},
+          {"GetBuiltinOperand": ["Addend"]}
         ]
       }
     },
