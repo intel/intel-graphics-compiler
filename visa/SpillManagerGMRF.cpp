@@ -3060,6 +3060,9 @@ bool SpillManagerGRF::checkUniqueDefAligned(G4_DstRegRegion* dst, G4_BB* defBB)
     // part of same row of variable dst.
     auto dcl = dst->getTopDcl();
 
+    if (dcl->getAddressed())
+        return false;
+
     auto defs = refs.getDefs(dcl);
     unsigned int GRFSize = numEltPerGRF<Type_UB>();
     unsigned int lb = dst->getLeftBound();
