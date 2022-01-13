@@ -115,7 +115,6 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
         !isa<Argument>(srcPtr))
     {
         // Cannot trace the resource pointer back to it's source, cannot promote
-        IGC_ASSERT_MESSAGE(0, "Stateless buffer pointer not traceable, cannot promote stateless to bindless");
         return;
     }
 
