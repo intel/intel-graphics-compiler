@@ -33,7 +33,6 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/BreakConst.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/DebugInfo.h"
@@ -1398,7 +1397,6 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   if (M.global_empty())
     return;
 
-  // FIXME: Use isRealGlobalVariable instead of just checking for genx.volatile.
   // FIXME: String constants must be localized too. Excluding them there
   //        to WA legacy printf implementation in CM FE (printf strings are
   //        not in constant addrspace in legacy printf).
@@ -1408,17 +1406,6 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
                !GV.hasAttribute(genx::FunctionMD::GenXVolatile) &&
                !vc::isConstantString(GV);
       });
-
-  // The only way to support private/thread-local (currently kernel-local, which
-  // may be a wrong interpretation) global variables is by localizing them.
-  // Localized variables cannot be externally visible so external private global
-  // variables aren't supported.
-  if (llvm::any_of(ToLocalize, [](const GlobalVariable &GV) {
-        return !GV.hasLocalLinkage();
-      }))
-    vc::diagnose(M.getContext(), "GlobalVariableLocalization",
-                 "external global variables in private address space aren't "
-                 "yet supported");
 
   // Collect direct and indirect (GV is used in a called function)
   // uses of globals.
