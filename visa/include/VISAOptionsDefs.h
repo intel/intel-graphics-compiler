@@ -271,6 +271,8 @@ DEF_VISA_OPTION(vISA_StripComments,       ET_BOOL, "-stripcomments",      UNUSED
 DEF_VISA_OPTION(vISA_dumpNewSyntax,       ET_BOOL, "-disableIGASyntax",   UNUSED, true)
 DEF_VISA_OPTION(vISA_NumGenBinariesWillBePatched, ET_INT32, "-numGenBinariesWillBePatched", "USAGE: missing number of gen binaries that will be patched.\n", 0)
 DEF_VISA_OPTION(vISA_ISAASMNamesFile,   ET_CSTR, "-isaasmNamesOutputFile", "USAGE: File Name with isaasm paths.\n", NULL)
+DEF_VISA_OPTION(vISA_ExtraIntfFile,   ET_CSTR, "-extraIntfFile", "USAGE: File Name with extra interference info.\n", NULL)
+DEF_VISA_OPTION(vISA_AddExtraIntfInfo, ET_BOOL, NULLSTR,               UNUSED, false)
 DEF_VISA_OPTION(vISA_GetvISABinaryName, ET_CSTR, "-outputCisaBinaryName",  UNUSED,                                  NULL)
 DEF_VISA_OPTION(vISA_OutputvISABinaryName, ET_BOOL, NULLSTR,               UNUSED, false)
 DEF_VISA_OPTION(vISA_LabelStr,          ET_CSTR,  "-uniqueLabels",         "Label String is not provided for the -uniqueLabels option.", NULL)

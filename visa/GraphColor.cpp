@@ -5666,6 +5666,147 @@ bool Interference::linearScanVerify() const
     return true;
 }
 
+
+/*
+ * Find declare according to the name from the declare list
+ */
+G4_Declare * GraphColor::findDeclare(char *name)
+{
+    for (G4_Declare* dcl : gra.kernel.Declares)
+    {
+        if (!strcmp(dcl->getName(), name))
+        {
+            return dcl;
+        }
+    }
+
+    return NULL;
+}
+
+/*
+ * For RA debugging
+ * Add extra interference info into intf graph
+ */
+void GraphColor::getExtraInterferenceInfo()
+{
+    //Get the file name
+    std::string m_asmName;
+    const char* fileName = builder.getOptions()->getOptionCstr(vISA_ExtraIntfFile);
+    if (!fileName)
+    {
+        //Without specific file name, assume the file name is the name of assembly file + ".extraintf" suffix
+        //and the file is put under path c:\Intel\IGC\ShaderOverride
+        std::string folderPath("c:\\Intel\\IGC\\ShaderOverride\\");
+        const char* asmFileName = nullptr;
+        m_options->getOption(VISA_AsmFileName, asmFileName);
+
+        std::string str(asmFileName);
+        auto found = str.find_last_of(DIR_WIN32_SEPARATOR);
+        if (found == std::string::npos)
+        {
+            found = str.find_last_of(DIR_UNIX_SEPARATOR);
+        }
+
+        if (found != std::string::npos)
+        {
+            str = str.substr(found + 1);
+        }
+        m_asmName = sanitizePathString(str);
+
+        found = m_asmName.find(".asm");
+        if (found != std::string::npos)
+        {
+            m_asmName.erase(found, m_asmName.length());
+        }
+        m_asmName = folderPath + m_asmName + ".extraintf";
+        fileName = m_asmName.c_str();
+    }
+
+    // open extra inteference info file
+    FILE* intfInput = NULL;
+    if ((intfInput = fopen(fileName, "rb")) == NULL)
+    {
+        //No file, just return;
+        return;
+    }
+
+
+    //Read the declare variable inteference info from the file
+    //The file is composed with the lines with following format in each line:
+    //Keydeclare:vardeclare0,vardeclare1,vardeclare2,...
+    //Which means the Keydeclare interferences with following vardeclares
+    int c;
+    char stringBuf[1024];
+    char* buf_ptr = stringBuf;
+    G4_Declare* keyDeclare = nullptr;
+    G4_Declare* varDeclare = nullptr;
+    while ((c = fgetc(intfInput)) != EOF)
+    {
+        if (c == '\n' ||
+            c == ',')
+        {
+            *buf_ptr = '\0'; //End of string
+
+            //Find the declare according to the string name
+            varDeclare = findDeclare(stringBuf);
+
+            //Must have a KeyDeclare
+            if (!keyDeclare)
+            {
+                assert(0);
+                return;
+            }
+
+            if (varDeclare)
+            {
+                int src0Id = keyDeclare->getRegVar()->getId();
+                int src1Id = varDeclare->getRegVar()->getId();
+
+                //Set inteference
+                intf.checkAndSetIntf(src0Id, src1Id);
+#ifdef DEBUG_VERBOSE_ON
+                std::cout << keyDeclare->getName() << ":" << varDeclare->getName() << "\n";
+#endif
+            }
+
+            //End of line, the key declare set to null
+            if (c == '\n')
+            {
+                keyDeclare = nullptr;
+            }
+            buf_ptr = stringBuf;
+            continue;
+        }
+
+        //Jump over space
+        if (c == '\t' ||
+            c == ' ' ||
+            c == '\r')
+        {
+            continue;
+        }
+
+        //':' is the end of key declare name
+        if (c == ':')
+        {
+            *buf_ptr = '\0';
+            keyDeclare = findDeclare(stringBuf);
+            if (!keyDeclare)
+            {
+                assert(0);
+                return;
+            }
+            buf_ptr = stringBuf;
+            continue;
+        }
+
+        *buf_ptr = c;
+        buf_ptr++;
+    }
+
+    fclose(intfInput);
+}
+
 void Interference::dumpInterference() const
 {
 
@@ -7116,6 +7257,12 @@ bool GraphColor::regAlloc(
     //
     intf.init(mem);
     intf.computeInterference();
+
+    //If option is true, try to get extra interference info from file
+    if (liveAnalysis.livenessClass(G4_GRF) && kernel.getOption(vISA_AddExtraIntfInfo))
+    {
+        getExtraInterferenceInfo();
+    }
 
     TIME_SCOPE(COLORING);
     //

@@ -4163,6 +4163,12 @@ namespace IGC
             SaveOption(vISA_GenerateISAASM, true);
             m_enableVISAdump = true;
         }
+
+        if (IGC_IS_FLAG_ENABLED(AddExtraIntfInfo))
+        {
+            SaveOption(vISA_AddExtraIntfInfo, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableVISANoSchedule))
         {
             SaveOption(vISA_LocalScheduling, false);

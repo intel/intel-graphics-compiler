@@ -577,6 +577,8 @@ namespace vISA
         bool redundantAddrFill(G4_DstRegRegion*, G4_SrcRegRegion*, unsigned execSize);
 
     public:
+        G4_Declare* findDeclare(char* name);
+        void getExtraInterferenceInfo();
         GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_);
 
         const Options * getOptions() const { return m_options; }
