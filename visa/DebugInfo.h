@@ -66,7 +66,7 @@ void addCallFrameInfo(VISAKernelImpl* kernel);
 
 // For ranges colored during graph coloring
 void updateDebugInfo(vISA::G4_Kernel& kernel, vISA::G4_INST* inst,
-    const vISA::LivenessAnalysis& liveAnalysis, vISA::LiveRange* lrs[], BitSet& live,
+    const vISA::LivenessAnalysis& liveAnalysis, vISA::LiveRange* lrs[], SparseBitSet& live,
     vISA::DebugInfoState* state, bool closeAllOpenIntervals);
 // For ranges allocated by local RA
 void updateDebugInfo(vISA::G4_Kernel& kernel,
@@ -419,7 +419,7 @@ class DebugInfoState
 {
     // Class used to store state during RA.
 public:
-    void setPrevBitset(const BitSet& b)
+    void setPrevBitset(const SparseBitSet& b)
     {
         prevBitset = b;
     }
@@ -431,7 +431,7 @@ public:
         }
     }
 
-    BitSet* getPrevBitset()
+    SparseBitSet* getPrevBitset()
     {
         if (prevBitset.getSize() == 0)
             return nullptr;
@@ -440,7 +440,7 @@ public:
     G4_INST* getPrevInst() { return prevInst; }
 
 private:
-    BitSet prevBitset;
+    SparseBitSet prevBitset;
     G4_INST* prevInst = nullptr;
 };
 }

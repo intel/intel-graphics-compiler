@@ -54,12 +54,12 @@ namespace vISA
         double regPressure = 0;
         uint32_t maxRP = 0;
         const Options* options;
-        BitSet live;
+        SparseBitSet live;
         const std::vector<G4_RegVar*>& vars;
 
         void regPressureBBExit(G4_BB*);
         void updateRegisterPressure(unsigned int, unsigned int, unsigned int);
-        void updateLiveness(BitSet&, uint32_t, bool);
+        void updateLiveness(SparseBitSet&, uint32_t, bool);
     };
 }
 #endif

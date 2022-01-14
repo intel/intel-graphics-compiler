@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 
 namespace vISA
 {
-    RPE::RPE(const GlobalRA& g, const LivenessAnalysis* l) : m(1024), gra(g), liveAnalysis(l), live(l->getNumSelectedVar(), false),
+    RPE::RPE(const GlobalRA& g, const LivenessAnalysis* l) : m(1024), gra(g), liveAnalysis(l), live(l->getNumSelectedVar()),
         vars(l->vars)
     {
         options = g.kernel.getOptions();
@@ -134,9 +134,8 @@ namespace vISA
         // for each. For scalar variables, add them up separately.
         regPressure = 0;
         unsigned int numScalars = 0;
-        for (unsigned int i = 0, size = live.getSize(); i < size; i++)
-        {
-            if (live.isSet(i))
+        for (auto LI = live.begin(), LE = live.end(); LI != LE; ++LI) {
+            unsigned i = *LI;
             {
                 auto range = vars[i];
                 G4_Declare* rootDcl = range->getDeclare()->getRootDeclare();
@@ -154,7 +153,7 @@ namespace vISA
         regPressure += numScalars / 8.0;
     }
 
-    void RPE::updateLiveness(BitSet& live, uint32_t id, bool val)
+    void RPE::updateLiveness(SparseBitSet& live, uint32_t id, bool val)
     {
         auto oldVal = live.getElt(id / NUM_BITS_PER_ELT);
         live.set(id, val);

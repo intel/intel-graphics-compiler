@@ -15,6 +15,10 @@ namespace vISA
         unsigned int id = 0;
         for (auto bb : kernel.fg)
         {
+            // Skip empty blocks.
+            if (bb->empty())
+                continue;
+
             for (auto inst : *bb)
             {
                 inst->setLexicalId(id++);
@@ -74,9 +78,12 @@ namespace vISA
             }
 
             // Update lastUseLexId based on BB live-out set
-            for (unsigned int i = 0; i < liveness.getNumSelectedVar(); i++)
+            const SparseBitSet &UseOut = liveness.use_out[bb->getId()];
+            const SparseBitSet &DefOut = liveness.def_out[bb->getId()];
+            for (auto I = UseOut.and_begin(DefOut), E = UseOut.and_end(DefOut); I != E; ++I)
             {
-                if (bb->size() > 0 && liveness.isLiveAtExit(bb, i))
+                unsigned i = *I;
+                if (liveness.isLiveAtExit(bb, i))
                 {
                     auto lr = coloring.getLiveRanges()[i];
                     auto dclIt = operations.find(lr->getDcl()->getRootDeclare());

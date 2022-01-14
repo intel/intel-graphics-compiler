@@ -261,7 +261,7 @@ namespace vISA
     {
     private:
         // pair of default mask, non-default mask
-        using MaskDeclares = std::pair<BitSet, BitSet>;
+        using MaskDeclares = std::pair<SparseBitSet, SparseBitSet>;
         G4_Kernel& kernel;
         Interference& intf;
         GlobalRA& gra;
@@ -359,7 +359,7 @@ namespace vISA
         std::vector<std::unordered_set<uint32_t> > sparseMatrix;
         static const uint32_t denseMatrixLimit = 0x80000;
 
-        static void updateLiveness(BitSet& live, uint32_t id, bool val)
+        static void updateLiveness(SparseBitSet& live, uint32_t id, bool val)
         {
             live.set(id, val);
         }
@@ -416,17 +416,17 @@ namespace vISA
             return matrix[idx];
         }
 
-        void addCalleeSaveBias(const BitSet& live);
+        void addCalleeSaveBias(const SparseBitSet& live);
 
-        void buildInterferenceAtBBExit(const G4_BB* bb, BitSet& live);
-        void buildInterferenceWithinBB(G4_BB* bb, BitSet& live);
-        void buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst);
-        void buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, const G4_VarBase* regVar);
+        void buildInterferenceAtBBExit(const G4_BB* bb, SparseBitSet& live);
+        void buildInterferenceWithinBB(G4_BB* bb, SparseBitSet& live);
+        void buildInterferenceForDst(G4_BB* bb, SparseBitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst);
+        void buildInterferenceForFcall(G4_BB* bb, SparseBitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, const G4_VarBase* regVar);
 
         inline void filterSplitDclares(unsigned startIdx, unsigned endIdx, unsigned n, unsigned col, unsigned &elt, bool is_split);
 
-        void buildInterferenceWithLive(const BitSet& live, unsigned i);
-        void buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf);
+        void buildInterferenceWithLive(const SparseBitSet& live, unsigned i);
+        void buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, SparseBitSet& live, bool setLive, bool setIntf);
         void buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2);
 
         void markInterferenceForSend(G4_BB* bb, G4_INST* inst, G4_DstRegRegion* dst);

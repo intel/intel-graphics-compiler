@@ -1714,7 +1714,7 @@ bool Interference::interfereBetween(unsigned v1, unsigned v2) const
 // to indicate that this live range does not have exclusive sequential uses and hence
 // is not a candidate for being marked with an infinite spill cost.
 //
-void Interference::buildInterferenceAtBBExit(const G4_BB* bb, BitSet& live)
+void Interference::buildInterferenceAtBBExit(const G4_BB* bb, SparseBitSet& live)
 {
 
     // live must be empty at this point
@@ -1762,7 +1762,7 @@ inline void Interference::filterSplitDclares(unsigned startIdx, unsigned endIdx,
 // b. current parent declare does not interference with its children declares, can children declare interference with parent declare?
 // c. current partial declare does not interference with hybrid declares added by local RA, the reason is simple, these declares are assigned register already.
 //
-void Interference::buildInterferenceWithLive(const BitSet& live, unsigned i)
+void Interference::buildInterferenceWithLive(const SparseBitSet& live, unsigned i)
 {
     const LiveRange* lr = lrs[i];
     bool is_partial = lr->getIsPartialDcl();
@@ -1854,7 +1854,7 @@ void Interference::buildInterferenceWithLive(const BitSet& live, unsigned i)
     }
 }
 
-void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf)
+void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, SparseBitSet& live, bool setLive, bool setIntf)
 {
 
     const G4_Declare *dcl = lrs[lr_id]->getDcl();
@@ -1910,7 +1910,7 @@ void Interference::buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2)
 // are live through a stack call. Exclude file scope variables as they are always
 // save/restore before/after call and are better assigned to the caller-save space.
 //
-void Interference::addCalleeSaveBias(const BitSet& live)
+void Interference::addCalleeSaveBias(const SparseBitSet& live)
 {
     for (unsigned i = 0; i < maxId; i++)
     {
@@ -2323,7 +2323,7 @@ uint32_t GlobalRA::getRefCount(int loopNestLevel)
 }
 
 // handle return value interference for fcall
-void Interference::buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, const G4_VarBase* regVar)
+void Interference::buildInterferenceForFcall(G4_BB* bb, SparseBitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, const G4_VarBase* regVar)
 {
     assert(inst->opcode() == G4_pseudo_fcall && "expect fcall inst");
     unsigned refCount = GlobalRA::getRefCount(kernel.getOption(vISA_ConsiderLoopInfoInRA) ?
@@ -2346,7 +2346,7 @@ bool GlobalRA::isReRAPass()
     return reRAPass;
 }
 
-void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst)
+void Interference::buildInterferenceForDst(G4_BB* bb, SparseBitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst)
 {
     unsigned refCount = GlobalRA::getRefCount(kernel.getOption(vISA_ConsiderLoopInfoInRA) ?
         bb->getNestLevel() : 0);
@@ -2421,7 +2421,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
 }
 
 
-void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
+void Interference::buildInterferenceWithinBB(G4_BB* bb, SparseBitSet& live)
 {
     DebugInfoState state;
     unsigned refCount = GlobalRA::getRefCount(kernel.getOption(vISA_ConsiderLoopInfoInRA) ?
@@ -2683,7 +2683,7 @@ void Interference::computeInterference()
     //
     // create bool vector, live, to track live ranges that are currently live
     //
-    BitSet live(maxId, false);
+    SparseBitSet live(maxId);
 
     buildInterferenceAmongLiveOuts();
 
@@ -5089,12 +5089,14 @@ void Augmentation::buildInterferenceIncompatibleMask()
 
 void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MaskDeclares* mask)
 {
+    auto newDclAugMask = gra.getAugmentationMask(newDcl);
 
-    for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
+    for (auto LI = mask->first.begin(), LE = mask->first.end(); LI != LE; ++LI)
     {
-        auto newDclAugMask = gra.getAugmentationMask(newDcl);
-
-        if (mask->first.isSet(i))
+        unsigned i = *LI;
+        // Bail out if non-global variable is iterated.
+        if (i >= liveAnalysis.getNumSelectedGlobalVar())
+            break;
         {
             G4_Declare* defaultDcl = lrs[i]->getDcl();
             if (gra.getAugmentationMask(defaultDcl) != newDclAugMask)
@@ -5147,9 +5149,15 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, M
                 }
             }
         }
+    }
 
+    for (auto LI = mask->second.begin(), LE = mask->second.end(); LI != LE; ++LI)
+    {
+        unsigned i = *LI;
+        // Bail out if non-global variable is iterated.
+        if (i >= liveAnalysis.getNumSelectedGlobalVar())
+            break;
         // Mark interference among non-default mask variables
-        if (mask->second.isSet(i))
         {
             G4_Declare* nonDefaultDcl = lrs[i]->getDcl();
             // Non-default masks are different so mark interference
@@ -5338,7 +5346,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
     }
 
     BitSet cur(kernel.getNumRegTotal(), true);
-    BitSet live(maxId, false);
+    SparseBitSet live(maxId);
     std::vector<int> curUpdate;
 
     buildInterferenceAtBBExit(bb, live);
