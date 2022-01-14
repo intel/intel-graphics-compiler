@@ -70,7 +70,7 @@ enum {
 
 All others fields in ELF header follow what are defined in the standard.
 
-## ZE Info Section Type
+## ZE Info Sections
 
 **sh_type**
 ~~~
@@ -83,6 +83,15 @@ enum SHT_ZEBIN : uint32_t
     SHT_ZEBIN_MISC       = 0xff000014  // .misc section
 }
 ~~~
+
+**sh_link and and sh_info Interpretation**
+
+Two members in the section header, sh_link and sh_info, hold special
+information, depending on section type.
+
+| sh_type | sh_link | sh_info |
+| ------ | ------ |  ------ |
+| SHT_ZEBIN_GTPIN_INFO | 0 | The symbol table index to the corresponding kernel/function symbol |
 
 ## ELF note type for INTELGT
 

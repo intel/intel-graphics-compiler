@@ -60,6 +60,8 @@ private:
         uint32_t entsize = 0;
 
         const Section* section = nullptr;
+        // Cache the section name for writer's reference
+        llvm::StringRef sectName;
     };
     typedef std::vector<SectionHdrEntry> SectionHdrListTy;
 
@@ -520,6 +522,8 @@ uint64_t ELFWriter::writeSymTab()
             0, sect_idx);
         // global symbol name must be unique
         IGC_ASSERT(sym.binding() != llvm::ELF::STB_GLOBAL || m_SymNameIdxMap.find(sym.name()) == m_SymNameIdxMap.end());
+        // FIXME: This may not set the symidx correctly when there're multiple
+        // same-name local symbols.
         m_SymNameIdxMap.insert(std::make_pair(sym.name(), symidx));
         ++symidx;
     };
@@ -640,10 +644,23 @@ void ELFWriter::writeSections()
         entry.offset = m_W.OS.tell();
 
         switch(entry.type) {
+        case SHT_ZEBIN_GTPIN_INFO: {
+            // Encode the sh_info field with the index of the corresponding
+            // kernel or function symbol in .symtab so that gtpin can do a fast
+            // lookup.
+            llvm::StringRef symName = entry.sectName;
+            auto res = symName.consume_front(m_ObjBuilder.m_GTPinInfoName);
+            IGC_ASSERT(res);
+            if (symName.consume_front(".")) {
+                auto it = m_SymNameIdxMap.find(symName.str());
+                IGC_ASSERT(it != m_SymNameIdxMap.end());
+                entry.info = it->second;
+            }
+            /* Fall-through */
+        }
         case ELF::SHT_PROGBITS:
         case SHT_ZEBIN_VISAASM:
-        case SHT_ZEBIN_SPIRV:
-        case SHT_ZEBIN_GTPIN_INFO: {
+        case SHT_ZEBIN_SPIRV: {
             IGC_ASSERT(nullptr != entry.section);
             IGC_ASSERT(entry.section->getKind() == Section::STANDARD);
             const StandardSection* const stdsect =
@@ -697,18 +714,9 @@ void ELFWriter::writeSections()
             break;
 
         case ELF::SHT_NOTE: {
-            // Currently we don't seem to reorder strings in the .strtab, and
-            // the offset returned by LLVM StringTableBuilder::add() will still
-            // be valid, so the section name can be checked in this way. Other
-            // possibilities are creating a new section kind and set the
-            // appropriate section pointer, or emitting .strtab before the note
-            // section.
-            auto strtabSize = m_StrTabBuilder.getSize();
-            if (entry.name == m_StrTabBuilder.add(m_ObjBuilder.m_CompatNoteName)) {
-                IGC_ASSERT(entry.name < strtabSize);
+            if (entry.sectName == m_ObjBuilder.m_CompatNoteName)
                 std::tie(entry.offset, entry.size) = writeCompatibilityNote();
-                break;
-            }
+            break;
         }
 
         default:
@@ -838,6 +846,7 @@ ELFWriter::SectionHdrEntry& ELFWriter::createSectionHdrEntry(
     entry.type = type;
     entry.flags = flags;
     entry.section = sect;
+    entry.sectName = name;
     uint32_t nameoff = m_StrTabBuilder.add(StringRef(name));
     entry.name = nameoff;
     return entry;
