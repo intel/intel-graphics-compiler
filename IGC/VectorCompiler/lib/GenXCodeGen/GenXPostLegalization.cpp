@@ -138,7 +138,7 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   // Run the vector decomposer for this function.
   Modified |= VD.run(DT);
   // Cleanup region reads and writes.
-  Modified |= simplifyRegionInsts(&F, DL);
+  Modified |= simplifyRegionInsts(&F, DL, ST);
   // Cleanup redundant global loads.
   Modified |= cleanupLoads(&F);
   // Cleanup constant loads.
