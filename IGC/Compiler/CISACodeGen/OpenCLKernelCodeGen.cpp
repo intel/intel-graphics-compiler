@@ -1470,6 +1470,7 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
             IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
             m_DriverInfo->SupportStatefulToken() &&
+            !m_Context->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
             arg &&
             ((type == KernelArg::ArgType::PTR_GLOBAL &&
             (arg->use_empty() || !GetHasGlobalStatelessAccess())) ||
