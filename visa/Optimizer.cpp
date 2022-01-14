@@ -14036,6 +14036,7 @@ void Optimizer::newDoNoMaskWA_postRA()
             uint32_t r=0xff, sr=0xff; // not used
             (void)checkAndGetFlag(BI, EI, WAI, FTy, r, sr, retFreg, retFsreg, false);
         }
+        // Return true if flag(r, sr):FTy is referenced in [BI, EI).
         bool isReferenced(INST_LIST_ITER BI, INST_LIST_ITER EI, G4_Type FTy, uint32_t R, uint32_t SR)
         {
             const uint32_t DUBits = getInstsBits(BI, EI);
@@ -14264,16 +14265,23 @@ void Optimizer::newDoNoMaskWA_postRA()
 
         // If PreRA has done WA in this BB, it has range [preRA_start, preRA_end]
         NoMaskWA_info_t* preRA_WAInfo = kernel.getNoMaskWAInfo(BB);
+        INST_LIST_ITER preRA_waStartI = BB->end();
+        INST_LIST_ITER preRA_waEndI = BB->end();
         int preRA_start_id = -1, preRA_end_id = -1;
         if (preRA_WAInfo != nullptr)
         {
             verifyBBWAInfo(BB, preRA_WAInfo);
 
             G4_INST* inst_restore = preRA_WAInfo->Inst_restore;
-            preRA_start_id = preRA_WAInfo->getWAFlagDefInst()->getLocalId();
+            G4_INST* flagDefInst = preRA_WAInfo->getWAFlagDefInst();
+            preRA_start_id = flagDefInst->getLocalId();
             preRA_end_id = inst_restore->getLocalId();
-            WAFlagVar = inst_restore->getDst()->getTopDcl()->getRegVar();
+            auto  tII= std::find(BB->begin(), BB->end(), flagDefInst);
+            // preRA wa ranges [preRA_waStartI, preRA_waEndI]
+            preRA_waStartI = std::next(tII);
+            preRA_waEndI = std::find(BB->begin(), BB->end(), inst_restore);
 
+            WAFlagVar = inst_restore->getDst()->getTopDcl()->getRegVar();
             G4_Type Ty;
             FlagDefUse::getFlagRegAndSubreg(inst_restore->getDst(), WAFreg, WAFsreg, Ty);
             assert(Ty == WATy);
@@ -14337,20 +14345,11 @@ void Optimizer::newDoNoMaskWA_postRA()
             //            (1)  (W) mov (1|M0)  DW0  P1
             //                 ......
             //            (5)  (W) mov (1|M0)  DW1  P1
-            //  With this, optional1&2 and FlagSpill must be present.
+            //  With this, need to handle wa inst that crosses [preRA_waStartI, preRA_waEndI] later.
             //
-            INST_LIST_ITER preRA_waStartI;
-            if (preRA_WAInfo->WAFlag_allOne)
-            {
-                preRA_waStartI = std::find(BB->begin(), BB->end(), preRA_WAInfo->WAFlag_allOne);
-            }
-            else
-            {
-                preRA_waStartI = std::find(BB->begin(), BB->end(), preRA_WAInfo->WAFlag_cmp);
-            }
-            ++preRA_waStartI;
 
-            // pseuduKill is gone at this time.
+            // Those insts are ones prior to [preRA_waStartI, preRA_waEndI].
+            // Note that pseuduKill is gone at this time.
             BB->remove(preRA_WAInfo->Inst_save);
             BB->insertBefore(waStartI, preRA_WAInfo->Inst_save);
             BB->remove(preRA_WAInfo->WAFlag_mov0);
@@ -14371,10 +14370,6 @@ void Optimizer::newDoNoMaskWA_postRA()
                 G4_Declare* FDcl = builder.createTempFlag((WATy == Type_UD ? 2 : 1), "pwaFlag");
                 FVar = FDcl->getRegVar();
                 FVar->setPhyReg(builder.phyregpool.getFlagAreg(Freg), Fsreg);
-
-                // Add [optional1] and [optional2]
-                optional1 = createSIMD1Mov(BB, preRA_waStartI, saveVar, saveOff, WAFlagVar, 0, WATy);
-                optional2 = createSIMD1Mov(BB, preRA_waStartI, WAFlagVar, 0, saveVar, waSaveOff, WATy);
 
                 // Change (1) - (5)'s P with the new P1(FVar) if needed.
                 if (Freg != WAFreg || Fsreg != WAFsreg)
@@ -14400,14 +14395,12 @@ void Optimizer::newDoNoMaskWA_postRA()
         else if (preRA_start_id != -1 && waStart->getLocalId() < preRA_end_id)
         {
             // waStart is inside preRA WA range.
-            PrevII = std::find(BB->begin(), BB->end(), preRA_WAInfo->getWAFlagDefInst());
-            ++PrevII;
-            spillPos = PrevII;
+            PrevII = preRA_waStartI;
+            spillPos = preRA_waStartI;
         }
         else if (preRA_start_id != -1 && waStart->getLocalId() > preRA_end_id)
         {
-            spillPos = std::find(BB->begin(), BB->end(), preRA_WAInfo->getWAFlagDefInst());
-            ++spillPos;
+            spillPos = preRA_waStartI;
         }
         else
         {
@@ -14456,6 +14449,8 @@ void Optimizer::newDoNoMaskWA_postRA()
         // Save them in case they need spill to DW1.
         G4_RegVar* saveFVar = FVar;
 
+        // Used for detecting if wa inst just crosses [preRA_waStartI, preRA_waEndI],
+        // as crossing needs special handling.
         bool firstAfterPreRA = true;
         bool firstInPreRA = true;
         for (auto wII = waInsts.begin(), wIE = waInsts.end(); wII != wIE; ++wII)
@@ -14471,59 +14466,84 @@ void Optimizer::newDoNoMaskWA_postRA()
             // P is the original WA flag created by the WA flag generation sequence.
             G4_RegVar* P = FVar;
             uint32_t Preg = Freg, Psreg = Fsreg;
-            if (preRA_start_id != -1 && I->getLocalId() < preRA_end_id && I->getLocalId() > preRA_start_id)
+            //if (preRA_start_id != -1 && I->getLocalId() < preRA_end_id && I->getLocalId() > preRA_start_id)
+            if (preRA_start_id != -1 && I->getLocalId() > preRA_start_id)
             {
                 if (firstInPreRA)
                 {
+                    // If 1st wa inst is inside [preRA_waStartI, preRA_waEndI], no entry crossing
+                    // and thus, no entry special handling.
                     if (I != waStart)
                     {
-                        if (optional1 != nullptr)
+                        // We have the following case, need to handle entry to
+                        // preRA wa range [preRA_waStartI, preRA_waEndI]
+                        //     waInst0
+                        //     ...
+                        //     waInst_k-1
+                        //     ...
+                        //     preRA_start
+                        //     ...
+                        //     waInst_k            <-- current inst
+                        //     ...
+                        //     preRA_end
+                        //     ...
+                        if (!(WAFreg == Freg && WAFsreg == Fsreg)
+                            || FlagDUInfo.isReferenced(PrevII, preRA_waStartI, WATy, Preg, Psreg))
                         {
-                            auto OPTI1 = std::find(BB->begin(), BB->end(), optional1);
-                            OPTI1 = std::prev(OPTI1);
-                            if (!(WAFreg == Freg && WAFsreg == Fsreg)
-                                || FlagDUInfo.isReferenced(PrevII, OPTI1, WATy, Preg, Psreg))
-                            {
-                                prevNeedRestore = true;
-                            }
-                            else
-                            {
-                                // optional1 and optional2 not needed.
-                                auto OPTI2 = std::find(BB->begin(), BB->end(), optional2);
-                                BB->erase(OPTI1);
-                                BB->erase(OPTI2);
-                            }
+                            (void)createSIMD1Mov(BB, PrevII, P, 0, saveVar, saveOff, WATy);
+
+                            assert(FlagSpill);
+                            // Add [optional1] and [optional2]
+                            optional1 = createSIMD1Mov(BB, preRA_waStartI, saveVar, saveOff, WAFlagVar, 0, WATy);
+                            optional2 = createSIMD1Mov(BB, preRA_waStartI, WAFlagVar, 0, saveVar, waSaveOff, WATy);
                         }
                     }
                     firstInPreRA = false;
                 }
-                // Using preRA WA flag
-                FVar = WAFlagVar;
-                Freg = WAFreg;
-                Fsreg = WAFsreg;
-            }
-            else if (firstAfterPreRA && preRA_start_id != -1 && I->getLocalId() > preRA_end_id)
-            {
-                firstAfterPreRA = false;
 
-                auto preRA_restoreII = std::find(BB->begin(), BB->end(), preRA_WAInfo->Inst_restore);
-                PrevII = std::next(preRA_restoreII);
-                prevNeedRestore = false;
-                if (!FlagDUInfo.checkAndGetFlag(PrevII, NextII, I, WATy, WAFreg, WAFsreg, Freg, Fsreg))
+                if (I->getLocalId() < preRA_end_id)
                 {
-                    BB->erase(preRA_restoreII);
-                    // use preRA WA flag.
+                    // Inside [preRA_waStartI, preRA_waEndI], using preRA WA flag
                     FVar = WAFlagVar;
                     Freg = WAFreg;
                     Fsreg = WAFsreg;
                 }
                 else
                 {
-                    needSave = true;
+                    assert(I->getLocalId() > preRA_end_id);
+                    if (firstAfterPreRA)
+                    {
+                        PrevII = std::next(preRA_waEndI);
+                        prevNeedRestore = false;
+                        if (FlagDUInfo.checkAndGetFlag(PrevII, NextII, I, WATy, WAFreg, WAFsreg, Freg, Fsreg))
+                        {
+                            needSave = true;
+                        }
+                        else
+                        {
+                            auto toBeRemoved = preRA_waEndI;
+                            preRA_waEndI = std::prev(preRA_waEndI);
+                            BB->erase(toBeRemoved);
+                            // use preRA WA flag.
+                            FVar = WAFlagVar;
+                            Freg = WAFreg;
+                            Fsreg = WAFsreg;
+                        }
+                        firstAfterPreRA = false;
+                    }
+                    else
+                    {
+                        if (FlagDUInfo.checkAndGetFlag(PrevII, NextII, I, WATy, Preg, Psreg, Freg, Fsreg))
+                        {
+                            needSave = true;
+                            prevNeedRestore = true;
+                        }
+                    }
                 }
             }
             else
             {
+                // Either no preRA WA, or I is prior to [preRA_waStartI, preRA_waEndI].
                 if (I != waStart
                     && FlagDUInfo.checkAndGetFlag(PrevII, NextII, I, WATy, Preg, Psreg, Freg, Fsreg))
                 {
@@ -14563,28 +14583,24 @@ void Optimizer::newDoNoMaskWA_postRA()
         }
         else if (waEnd->getLocalId() < preRA_start_id)
         {
-            // postRA insts are all prior to preRA. If options1/options2 are
+            // All postRA insts are prior to preRA. If options1/options2 are
             // generated, make sure they are indeed needed. Otherwise, they must
             // be removed.
             assert(preRA_start_id != 1);
-            if (optional1 != nullptr)
+            if (!(WAFreg == Freg && WAFsreg == Fsreg)
+                || FlagDUInfo.isReferenced(PrevII, preRA_waStartI, WATy, Freg, Fsreg))
             {
-                auto OPTI1 = std::find(BB->begin(), BB->end(), optional1);
-                OPTI1 = std::prev(OPTI1);
-                if (!(WAFreg == Freg && WAFsreg == Fsreg)
-                    || FlagDUInfo.isReferenced(PrevII, OPTI1, WATy, Freg, Fsreg))
-                {
-                    (void)createSIMD1Mov(BB, PrevII, FVar, 0, saveVar, saveOff, WATy);
-                }
-                else
-                {
-                    // optional1 and optional2 not needed.
-                    auto OPTI2 = std::find(BB->begin(), BB->end(), optional2);
-                    BB->erase(OPTI1);
-                    BB->erase(OPTI2);
-                }
+                (void)createSIMD1Mov(BB, PrevII, FVar, 0, saveVar, saveOff, WATy);
+
+                assert(FlagSpill);
+                // Add [optional1] and [optional2]
+                optional1 = createSIMD1Mov(BB, preRA_waStartI, saveVar, saveOff, WAFlagVar, 0, WATy);
+                optional2 = createSIMD1Mov(BB, preRA_waStartI, WAFlagVar, 0, saveVar, waSaveOff, WATy);
             }
         }
+
+        assert((optional1 == nullptr && optional2 == nullptr)
+            || (optional1 != nullptr && optional2 != nullptr && FlagSpill != nullptr));
     }
 
     kernel.clearNoMaskInfo();
