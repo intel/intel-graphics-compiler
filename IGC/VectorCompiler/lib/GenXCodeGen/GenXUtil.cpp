@@ -1793,6 +1793,9 @@ bool genx::isValueRegionOKForRaw(Value *V, bool IsWrite,
   case GenXIntrinsic::genx_rdregionf:
     if (IsWrite)
       return false;
+    if (GenXIntrinsic::isReadPredefReg(cast<Instruction>(V)->getOperand(
+            GenXIntrinsic::GenXRegion::OldValueOperandNum)))
+      return false;
     break;
   case GenXIntrinsic::genx_wrregioni:
   case GenXIntrinsic::genx_wrregionf:
