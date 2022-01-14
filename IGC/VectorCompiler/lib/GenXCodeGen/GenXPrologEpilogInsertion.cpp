@@ -943,15 +943,19 @@ Value *GenXPrologEpilogInsertion::readAggrFromReg(Type &Ty,
   Value *StructRes = UndefValue::get(&STy);
   for (unsigned i = 0; i < AggrNumElts; ++i) {
     Type *EltTy = IndexFlattener::getElementType(&STy, i);
-    unsigned EltTySize = vc::getTypeSize(EltTy, DL).inBytes();
+    auto EltTySize = vc::getTypeSize(EltTy, DL);
 
     // Reading each struct elements as a vector of bytes.
     Type *EltTyAsBytes =
-        IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), EltTySize);
+        IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), EltTySize.inBytes());
     Value *Read = readNonAggrFromReg(*EltTyAsBytes, OffsetInReg + OffsetInAggr,
                                      IRB, RegID, RegSize);
-    Read = IRB.CreateBitCast(Read, EltTy);
-    OffsetInAggr += EltTySize;
+    if (EltTy->isPointerTy()) {
+      Value *IntP = IRB.CreateBitCast(Read, IRB.getIntNTy(EltTySize.inBits()));
+      Read = IRB.CreateIntToPtr(IntP, EltTy);
+    } else
+      Read = IRB.CreateBitCast(Read, EltTy);
+    OffsetInAggr += EltTySize.inBytes();
 
     SmallVector<unsigned, 4> Indices;
     IndexFlattener::unflatten(&STy, i, &Indices);
@@ -1050,14 +1054,16 @@ void GenXPrologEpilogInsertion::passAggrInReg(Value &Op, unsigned OffsetInReg,
                        "Stack call argument was not flattened correctly");
 
     // Passing each struct element as a vector of bytes.
-    unsigned EltTySize = vc::getTypeSize(Elt->getType(), DL).inBytes();
+    auto EltTySize = vc::getTypeSize(Elt->getType(), DL);
     Type *EltTyAsBytes =
-        IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), EltTySize);
+        IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), EltTySize.inBytes());
+    if (Elt->getType()->isPointerTy())
+      Elt = IRB.CreatePtrToInt(Elt, IRB.getIntNTy(EltTySize.inBits()));
     Elt = IRB.CreateBitCast(Elt, EltTyAsBytes);
 
     passNonAggrInReg(*Elt, OffsetInReg + OffsetInAggr, IRB, RegID, RegSize);
 
-    OffsetInAggr += EltTySize;
+    OffsetInAggr += EltTySize.inBytes();
   }
 }
 
