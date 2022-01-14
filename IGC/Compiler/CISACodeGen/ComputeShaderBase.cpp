@@ -50,7 +50,7 @@ namespace IGC
         bool is_pow2_y = iSTD::IsPowerOfTwo(threadGroupSize_Y);
         bool is_pow2_z = iSTD::IsPowerOfTwo(threadGroupSize_Z);
         if (IGC_IS_FLAG_ENABLED(SetDefaultTileYWalk) && is_pow2_x &&
-            m_Platform->enableSetDefaultTileYWalk() && m_DriverInfo->SupportHWGenerateTID()) {
+            m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID()) {
             m_ThreadIDLayout = ThreadIDLayout::TileY;
             m_walkOrder = WO_YXZ;
         }
@@ -141,7 +141,6 @@ namespace IGC
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableNewTileYCheck) &&
-            IGC_IS_FLAG_ENABLED(SetDefaultTileYWalk) &&
             (m_ThreadIDLayout == ThreadIDLayout::TileY) &&
             EMIT_LOCAL_MASK::XY == m_emitMask)
         {
