@@ -392,7 +392,7 @@ namespace {
 // Relates to GenXOCLRuntimeInfo::SectionInfo. GenXOCLRuntimeInfo::SectionInfo
 // can be created from this struct.
 struct RawSectionInfo {
-  genx::BinaryDataAccumulator<const GlobalVariable *> Data;
+  genx::BinaryDataAccumulator<const GlobalValue *> Data;
   GenXOCLRuntimeInfo::RelocationSeq Relocations;
 };
 
@@ -422,7 +422,8 @@ void constructSymbols(InputIter First, InputIter Last, OutputIter Out) {
 }
 
 static GenXOCLRuntimeInfo::SymbolSeq constructFunctionSymbols(
-    genx::BinaryDataAccumulator<const Function *> &GenBinary, bool HasKernel) {
+    genx::BinaryDataAccumulator<const GlobalValue *> &GenBinary,
+    bool HasKernel) {
   GenXOCLRuntimeInfo::SymbolSeq Symbols;
   if (GenBinary.begin() == GenBinary.end())
     return Symbols;
@@ -447,7 +448,7 @@ static GenXOCLRuntimeInfo::SymbolSeq constructFunctionSymbols(
 // Appends the binary of function/kernel represented by \p Func and \p BuiltFunc
 // to \p GenBinary.
 static void
-appendFuncBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
+appendFuncBinary(genx::BinaryDataAccumulator<const GlobalValue *> &GenBinary,
                  const Function &Func, const VISAKernel &BuiltFunc) {
   void *GenBin = nullptr;
   int GenBinSize = 0;
@@ -463,10 +464,10 @@ appendFuncBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
 
 // Loads if it is possible external files.
 // Returns the success status of the loading.
-static bool
-loadGenBinaryFromFile(genx::BinaryDataAccumulator<const Function *> &GenBinary,
-                      const Function &F, vc::ShaderOverrider const &Loader,
-                      vc::ShaderOverrider::Extensions Ext) {
+static bool loadGenBinaryFromFile(
+    genx::BinaryDataAccumulator<const GlobalValue *> &GenBinary,
+    const Function &F, vc::ShaderOverrider const &Loader,
+    vc::ShaderOverrider::Extensions Ext) {
   void *GenBin = nullptr;
   int GenBinSize = 0;
 
@@ -488,7 +489,7 @@ loadGenBinaryFromFile(genx::BinaryDataAccumulator<const Function *> &GenBinary,
 // Constructs gen binary for Function but loading is from injected file.
 // Returns the success status of the overriding.
 static bool
-tryOverrideBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
+tryOverrideBinary(genx::BinaryDataAccumulator<const GlobalValue *> &GenBinary,
                   const Function &F, vc::ShaderOverrider const &Loader) {
   using Extensions = vc::ShaderOverrider::Extensions;
 
@@ -545,21 +546,23 @@ static std::string getVISAAsm(const FunctionGroup &FG, VISABuilder &VB) {
 }
 
 // Either loads binary from VISABuilder or overrides from file.
-static void loadBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
-                       std::string &VISAAsm, VISABuilder &VB,
-                       const FunctionGroup &FG, const GenXBackendConfig &BC) {
+// vISA assembly that corresponds to the obtained binary is appended to
+// \p VISAAsm when shader override is off.
+static void loadBinary(RawSectionInfo &TextSection, std::string &VISAAsm,
+                       VISABuilder &VB, const FunctionGroup &FG,
+                       const GenXBackendConfig &BC) {
   const Function &F = *FG.getHead();
 
   // Attempt to override
   if (BC.hasShaderOverrider() &&
-      tryOverrideBinary(GenBinary, F, BC.getShaderOverrider()))
+      tryOverrideBinary(TextSection.Data, F, BC.getShaderOverrider()))
     return;
 
   // If there is no overriding or attemp fails, then gets binary from
   // compilation
   VISAKernel *BuiltKernel = VB.GetVISAKernel(F.getName().str());
   IGC_ASSERT_MESSAGE(BuiltKernel, "Kernel is null");
-  appendFuncBinary(GenBinary, F, *BuiltKernel);
+  appendFuncBinary(TextSection.Data, F, *BuiltKernel);
   if (BC.emitZebinVisaSections())
     VISAAsm += getVISAAsm(FG, VB);
 }
@@ -769,8 +772,8 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
     JitInfo->spillMemUsed += FuncJitInfo->spillMemUsed;
   }
 
-  genx::BinaryDataAccumulator<const Function *> GenBinary;
-  loadBinary(GenBinary, Info.VISAAsm, VB, FG, BC);
+  RawSectionInfo TextSection;
+  loadBinary(TextSection, Info.VISAAsm, VB, FG, BC);
 
   const auto& Dbg = DBG.getModuleDebug();
   auto DbgIt = Dbg.find(KernelFunction);
@@ -785,7 +788,8 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   CISA_CALL(VK->GetGenRelocEntryBuffer(Info.LegacyFuncRelocations.Buffer,
                                        Info.LegacyFuncRelocations.Size,
                                        Info.LegacyFuncRelocations.Entries));
-  Info.Func.Symbols = constructFunctionSymbols(GenBinary, /*HasKernel=*/true);
+  Info.Func.Symbols =
+      constructFunctionSymbols(TextSection.Data, /*HasKernel=*/true);
 
   void *GTPinBuffer = nullptr;
   unsigned GTPinBufferSize = 0;
@@ -794,7 +798,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   auto *GTPinBytes = static_cast<char *>(GTPinBuffer);
   GTPinInfo gtpin{GTPinBytes, GTPinBytes + GTPinBufferSize};
 
-  Info.Func.Data.Buffer = std::move(GenBinary).emitConsolidatedData();
+  Info.Func.Data.Buffer = std::move(TextSection.Data).emitConsolidatedData();
   return CompiledKernel{std::move(Info), *JitInfo, std::move(gtpin),
                         std::move(DebugData)};
 }
@@ -810,17 +814,18 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
   IGC_ASSERT(!Subgroups.empty());
   KernelInfo Info{ST};
 
-  genx::BinaryDataAccumulator<const Function *> GenBinary;
+  RawSectionInfo TextSection;
   for (auto *FG : Subgroups) {
     auto *Func = FG->getHead();
     IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
-    loadBinary(GenBinary, Info.VISAAsm, VB, *FG, BC);
+    loadBinary(TextSection, Info.VISAAsm, VB, *FG, BC);
   }
-  Info.Func.Symbols = constructFunctionSymbols(GenBinary, /*HasKernel*/false);
+  Info.Func.Symbols =
+      constructFunctionSymbols(TextSection.Data, /*HasKernel*/ false);
   for (auto &&Decl : DeclsRange)
     Info.Func.Symbols.emplace_back(vISA::GenSymType::S_UNDEF, 0, 0,
                                    Decl.getName().str());
-  Info.Func.Data.Buffer = GenBinary.emitConsolidatedData();
+  Info.Func.Data.Buffer = TextSection.Data.emitConsolidatedData();
 
   return CompiledKernel{std::move(Info), FINALIZER_INFO{}, /*GtpinInfo*/ {},
                         /*DebugInfo*/ {}};
