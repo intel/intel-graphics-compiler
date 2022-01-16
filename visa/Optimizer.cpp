@@ -12364,7 +12364,7 @@ void Optimizer::newDoNoMaskWA()
         // update DefUse
         aInstAllOne->addDefUse(aInstMov0, Opnd_pred);
         aInstAllOne->addDefUse(aInstCmp, Opnd_pred);
-        aInstAllOne = aInstAllOne;
+        aFlagDefInst = aInstAllOne;
         return flagVar;
     };
 
