@@ -14221,14 +14221,15 @@ void Optimizer::newDoNoMaskWA_postRA()
     G4_RegVar* saveVar = saveTmp->getRegVar();
     G4_Predicate_Control waPredCtrl =
         (simdsize == g4::SIMD8 ? PRED_ANY8H : (simdsize == g4::SIMD16 ? PRED_ANY16H : PRED_ANY32H));
+    bool useAnyh = true;
     unsigned saveOff = 0, waSaveOff = (simdsize == g4::SIMD32 ? 1 : 2);
     // WA flag size is simdsize. PostRA should have no wa inst whose execsize > simdsize
     const G4_Type WATy = (simdsize == g4::SIMD32 ? Type_UD : Type_UW);
 
-    auto applyWAToInst = [&](G4_INST* waI, G4_RegVar* FVar, uint32_t Fsreg)
+    auto applyWAToInst = [&](G4_INST* waI, G4_RegVar* FVar, uint32_t Fsreg, const bool UseAnyh)
     {
-        G4_Predicate_Control thisPredCtrl = waPredCtrl;
-        if (waI->isSend() && simdsize < waI->getExecSize())
+        G4_Predicate_Control thisPredCtrl = UseAnyh ? waPredCtrl : PRED_DEFAULT;
+        if (UseAnyh && waI->isSend() && simdsize < waI->getExecSize())
         {
             // send's execution mask is 16 bits. With noMask, all 16bit shall be used.
             // In this case, if send's execution size is bigger than simdsize, we must
@@ -14275,6 +14276,7 @@ void Optimizer::newDoNoMaskWA_postRA()
         INST_LIST_ITER preRA_waStartI = BB->end();
         INST_LIST_ITER preRA_waEndI = BB->end();
         int preRA_start_id = -1, preRA_end_id = -1;
+        useAnyh = true;  // default to use anyh for wa flag
         if (preRA_WAInfo != nullptr)
         {
             verifyBBWAInfo(BB, preRA_WAInfo);
@@ -14292,6 +14294,8 @@ void Optimizer::newDoNoMaskWA_postRA()
             G4_Type Ty;
             FlagDefUse::getFlagRegAndSubreg(inst_restore->getDst(), WAFreg, WAFsreg, Ty);
             assert(Ty == WATy);
+
+            useAnyh = (flagDefInst == preRA_WAInfo->WAFlag_cmp);
         }
 
         // All WA insts are in [waStart, waEnd] (inclusive).
@@ -14423,6 +14427,7 @@ void Optimizer::newDoNoMaskWA_postRA()
 
             (void)createSIMD1Mov(BB, waStartI, saveVar, saveOff, FVar, 0, WATy);
             createFlagFromCmp(BB, waStartI, FVar, WATy);
+            useAnyh = true;  // postRA uses anyh only.
         }
 
         // Given the following:
@@ -14579,7 +14584,7 @@ void Optimizer::newDoNoMaskWA_postRA()
                 (void)createSIMD1Mov(BB, CurrII, FVar, 0, saveVar, waSaveOff, WATy);
             }
 
-            applyWAToInst(I, FVar, 0);
+            applyWAToInst(I, FVar, 0, useAnyh);
             PrevII = NextII;
         }
 
