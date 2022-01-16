@@ -423,8 +423,19 @@ public:
         if ((aBB->getBBType() & G4_BB_NM_WA_TYPE) != 0)
         {
             std::list<G4_INST*>& alist = m_WAInstsPostRA[aBB];
-            alist.push_back(aInst);
+            if (std::find(alist.begin(), alist.end(), aInst) == alist.end())
+            {
+                alist.push_back(aInst);
+            }
+            else
+            {
+                assert(false && "Should not add a WA inst more than once!");
+            }
         }
+    }
+    void clearWAInst()
+    {
+        m_WAInstsPostRA.clear();
     }
     std::unordered_map<G4_BB*, std::list<G4_INST*> >& getWAInsts()
     {

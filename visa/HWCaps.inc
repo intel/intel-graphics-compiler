@@ -875,6 +875,12 @@ SPDX-License-Identifier: MIT
         return (getPlatform() == GENX_TGLLP || getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_DG2);
     }
 
+    bool hasFusedEUNoMaskWA() const
+    {
+        return (hasFusedEU() &&
+                ((getuint32Option(vISA_noMaskWA) & 0x3) > 0 || getOption(vISA_forceNoMaskWA)));
+    }
+
     bool hasSLMWARIssue() const
     {
         return getPlatform() == Xe_DG2 || getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT;

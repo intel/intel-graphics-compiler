@@ -7347,16 +7347,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //              1 - simple insertion of "emask flag". A new flag is created
         //                  each time it is needed, that is, created per each inst.
         //  (See comments for more details at doNoMaskWA().
-        if (/*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&*/
-            ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
-              builder.getOption(vISA_forceNoMaskWA)))
+        if (builder.getOption(vISA_newNoMaskWA) &&
+            kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
         {
-            if (builder.getOption(vISA_newNoMaskWA) &&
-                kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+            if (builder.hasFusedEUNoMaskWA())
             {
                 newDoNoMaskWA();
             }
-            else
+        }
+        else
+        {
+            if (/*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&*/
+            ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
+              builder.getOption(vISA_forceNoMaskWA)))
             {
                 doNoMaskWA();
             }
@@ -7642,19 +7645,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     void Optimizer::HWWorkaround()
     {
-        if (builder.hasFusedEUWA() &&
-            (builder.getJitInfo()->spillMemUsed > 0
-             || builder.getJitInfo()->numFlagSpillStore > 0))
+        if (builder.getOption(vISA_newNoMaskWA) &&
+            kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
         {
-            if (builder.getOption(vISA_newNoMaskWA) &&
-                kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+            if (builder.hasFusedEUNoMaskWA() &&
+                (builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
             {
                 newDoNoMaskWA_postRA();
             }
-            else
-            {
-                doNoMaskWA_postRA();
-            }
+        }
+        else if (builder.hasFusedEUWA() &&
+                 (builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
+        {
+            doNoMaskWA_postRA();
         }
 
         // Ensure the first instruction of a stack function has switch option.
@@ -12211,8 +12214,6 @@ void Optimizer::newDoNoMaskWA()
     G4_Declare* WAFlagReserve = nullptr;
     auto reserveGRFForWAFlag = [this]()
     {
-        assert(!builder.getOption(vISA_LinearScan) && "LinearScan not used when WA is needed!");
-
         G4_BB* entryBB = (*kernel.fg.begin());
         assert(entryBB);
         INST_LIST_ITER inst_it = entryBB->getFirstInsertPos();
@@ -14148,19 +14149,25 @@ void Optimizer::newDoNoMaskWA_postRA()
         return tI;
     };
 
-    // For now, collect insts that need WA. This will be provided later by RA.
-    for (G4_BB* BB : kernel.fg)
+    const bool useRAWAInst = false;
+    if (!useRAWAInst)
     {
-        if ((BB->getBBType() & G4_BB_NM_WA_TYPE) == 0)
+        kernel.clearWAInst();
+
+        // For now, collect insts that need WA. This will be provided later by RA.
+        for (G4_BB* BB : kernel.fg)
         {
-            continue;
-        }
-        for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
-        {
-            G4_INST* I = *II;
-            if (isCandidate(I, BB))
+            if ((BB->getBBType() & G4_BB_NM_WA_TYPE) == 0)
             {
-                kernel.addWAInst(BB, I);
+                continue;
+            }
+            for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+            {
+                G4_INST* I = *II;
+                if (isCandidate(I, BB))
+                {
+                    kernel.addWAInst(BB, I);
+                }
             }
         }
     }
