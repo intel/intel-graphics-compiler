@@ -451,6 +451,11 @@ static void dumpPlatform(const vc::CompileOptions &Opts, PLATFORM Platform,
 #endif
 }
 
+static bool textRelocationsMatch(const vc::CMKernel &K) {
+  auto &Info = K.getProgramOutput();
+  return Info.m_relocs.size() == Info.m_funcSymbolTableEntries;
+}
+
 static void validateCMProgramForOCLBin(const vc::CGen8CMProgram &CMProgram) {
   IGC_ASSERT_MESSAGE(
       CMProgram.m_programInfo->m_GlobalPointerAddressRelocAnnotation.globalReloc
@@ -460,6 +465,19 @@ static void validateCMProgramForOCLBin(const vc::CGen8CMProgram &CMProgram) {
       CMProgram.m_programInfo->m_GlobalPointerAddressRelocAnnotation
           .globalConstReloc.empty(),
       "constant section relocations aren't supported for oclbin");
+  // FIXME: Relocations in indirect functions are unsupported for oclbin. They
+  // are supported for zebin. So zebin and oclbin data is compared here to
+  // diagnose the issue.
+  // FIXME: It is possible to have a legal case where the number of relocations
+  // for zebin and oclbin differs in future. The check must be updated in
+  // this case. For now number of relocations is expected to match or to be 0
+  // for oclbin and not 0 for zebin in case of relocations in indirect
+  // functions.
+  IGC_ASSERT_MESSAGE(llvm::all_of(CMProgram.m_kernels,
+                                  [](const std::unique_ptr<vc::CMKernel> &K) {
+                                    return textRelocationsMatch(*K);
+                                  }),
+                     "some text relocations are lost for oclbin");
 }
 
 std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,

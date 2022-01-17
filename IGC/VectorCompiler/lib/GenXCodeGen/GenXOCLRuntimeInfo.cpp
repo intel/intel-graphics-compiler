@@ -545,6 +545,21 @@ static std::string getVISAAsm(const FunctionGroup &FG, VISABuilder &VB) {
                          });
 }
 
+// Appends relocations of \p Func to \p SectionRelocations. Added relocations
+// are shifted by \p Offset.
+static void
+appendTextRelocations(GenXOCLRuntimeInfo::RelocationSeq &SectionRelocations,
+                      VISAKernel &Func, std::size_t Offset) {
+  if (!Offset) {
+    CISA_CALL(Func.GetRelocations(SectionRelocations));
+    return;
+  }
+  GenXOCLRuntimeInfo::RelocationSeq FuncRelocations;
+  CISA_CALL(Func.GetRelocations(FuncRelocations));
+  vc::shiftRelocations(FuncRelocations.begin(), FuncRelocations.end(),
+                       std::back_inserter(SectionRelocations), Offset);
+}
+
 // Either loads binary from VISABuilder or overrides from file.
 // vISA assembly that corresponds to the obtained binary is appended to
 // \p VISAAsm when shader override is off.
@@ -562,7 +577,10 @@ static void loadBinary(RawSectionInfo &TextSection, std::string &VISAAsm,
   // compilation
   VISAKernel *BuiltKernel = VB.GetVISAKernel(F.getName().str());
   IGC_ASSERT_MESSAGE(BuiltKernel, "Kernel is null");
+  appendTextRelocations(TextSection.Relocations, *BuiltKernel,
+                        TextSection.Data.getFullSize());
   appendFuncBinary(TextSection.Data, F, *BuiltKernel);
+
   if (BC.emitZebinVisaSections())
     VISAAsm += getVISAAsm(FG, VB);
 }
@@ -782,7 +800,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
     const auto &ElfImage = DbgIt->second;
     DebugData = {ElfImage.begin(), ElfImage.end()};
   }
-  CISA_CALL(VK->GetRelocations(Info.Func.Relocations));
+  Info.Func.Relocations = TextSection.Relocations;
   // Still have to duplicate function relocations because they are constructed
   // inside Finalizer.
   CISA_CALL(VK->GetGenRelocEntryBuffer(Info.LegacyFuncRelocations.Buffer,
@@ -820,6 +838,10 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
     IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
     loadBinary(TextSection, Info.VISAAsm, VB, *FG, BC);
   }
+  // FIXME: cannot initialize legacy relocations as the relocation structure is
+  // opaque and cannot be modified. But having multiple functions inside a
+  // section requires shifting (modifying) the relocations.
+  Info.Func.Relocations = TextSection.Relocations;
   Info.Func.Symbols =
       constructFunctionSymbols(TextSection.Data, /*HasKernel*/ false);
   for (auto &&Decl : DeclsRange)
