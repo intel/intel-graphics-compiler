@@ -830,12 +830,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     mpm.add(new BreakConstantExpr());
     mpm.add(new Legalization(preserveNan));
 
-    // Split big vector & 3-element load/store, etc.
-    // This is second invocation of the pass and it can be optimized.
-    // Legalization pass replaces 'store i24' with 'store <3 x i8>'
-    // 3-element load/store should not exist at this point.
-    mpm.add(createVectorPreProcessPass());
-
     // Scalarizer in codegen to handle the vector instructions
     mpm.add(new ScalarizerCodeGen());
 
