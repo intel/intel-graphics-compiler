@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "llvmWrapper/ADT/StringRef.h"
 
+#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 
 #include <unordered_map>
@@ -75,6 +76,10 @@ inline bool requiresStackCall(const Function &F) {
 // Utility function to tell if a Function must be called indirectly.
 inline bool isIndirect(const Function *F) {
   IGC_ASSERT(F);
+// FIXME: Temporary solution until SPIRV translator conversion of unnamed
+// structure types is fixed for intrinsics.
+  if (GenXIntrinsic::isAnyNonTrivialIntrinsic(F))
+    return false;
   // FIXME: The condition of which function is considered to be indirectly
   // called will be changed soon.
   bool IsIndirect = F->hasAddressTaken();

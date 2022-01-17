@@ -692,8 +692,21 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
   if (GenXIntrinsic::isAnyNonTrivialIntrinsic(&I))
     return;
   bool IsIndirectCall = IGCLLVM::isIndirectCall(I);
+// FIXME: Temporary solution until SPIRV translator conversion of unnamed
+// structure types is fixed for intrinsics.
+  bool IsIntrinsicIndirect = false;
+  Value *Op = I.getCalledOperand();
+  if (auto *CE = dyn_cast<ConstantExpr>(Op);
+      CE && CE->getOpcode() == Instruction::BitCast) {
+    auto *CalledFunction = cast<Function>(CE->getOperand(0));
+    IsIntrinsicIndirect =
+        GenXIntrinsic::isAnyNonTrivialIntrinsic(CalledFunction);
+    IGC_ASSERT_MESSAGE(IsIntrinsicIndirect, "Only intrinsic is expected");
+  }
+
   bool IsStackCall =
-      IsIndirectCall || genx::requiresStackCall(I.getCalledFunction());
+      !IsIntrinsicIndirect &&
+      (IsIndirectCall || genx::requiresStackCall(I.getCalledFunction()));
 
   // We have a subroutine or stack call that won't be correctly analyzed. The
   // analysis is supposed to answer a question of whether ARG, RET registers are
