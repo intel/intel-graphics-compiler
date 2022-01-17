@@ -447,6 +447,7 @@ public:
 private:
   void setCategories();
   void modifyEMUses(Value *EM);
+  void hoistExtractEMInstructions();
 };
 
 /***********************************************************************
@@ -667,6 +668,8 @@ bool GenXLateSimdCFConformance::runOnFunctionGroup(FunctionGroup &ArgFG)
   gatherEMVals();
   // Gather the RM values from gotos and phi nodes.
   gatherRMVals();
+  // hoist EM extraction instructions and delete duplicates in simple cases
+  hoistExtractEMInstructions();
   // Move code in goto and join blocks as necessary.
   moveCodeInGotoBlocks();
   moveCodeInJoinBlocks();
@@ -3890,6 +3893,38 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
     Sel->eraseFromParent();
     Modified = true;
   }
+}
+
+/***********************************************************************
+ * hoistExtractEMInstructions : hoist EM-related extractvalue
+ * instructions and remove duplicates if there are such to comply
+ * EM conformance
+ *
+ * Duplicates may be insterted by LICM before late pass. This method
+ * is not needed in early pass, because redundant extractvalues are
+ * deleted by preceding EarlyCSE there.
+ *
+ * Currently, RM duplicates are not handled, because no case where it
+ * might be needed was found as of yet
+ */
+void GenXLateSimdCFConformance::hoistExtractEMInstructions() {
+  DenseMap<SimpleValue, ExtractValueInst *> EVs;
+  llvm::SmallVector<ExtractValueInst *, 8> ToRemove;
+
+  for (auto &&EMVal : EMVals)
+    if (auto *V = dyn_cast<ExtractValueInst>(EMVal.getValue())) {
+      auto *StructVal = cast<Instruction>(V->getAggregateOperand());
+      auto [It, IsInserted] = EVs.try_emplace(SimpleValue{StructVal, V->getIndices()}, V);
+      if (IsInserted)
+        V->moveAfter(StructVal);
+      else {
+        ToRemove.push_back(V);
+        V->replaceAllUsesWith(It->second);
+        V->eraseFromParent();
+      }
+    }
+  for (auto &&V : ToRemove)
+    removeFromEMRMVals(V);
 }
 
 /***********************************************************************
