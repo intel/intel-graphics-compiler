@@ -14145,7 +14145,7 @@ void EmitPass::emitScalarAtomicLoad(
 {
     if (pDstAddr->IsImmediate())
     {
-        CVariable* pDstAddrCopy = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, pDstAddr->getName());
+        CVariable* pDstAddrCopy = m_currShader->GetNewVariable(1, pDstAddr->GetType(), EALIGN_GRF, true, pDstAddr->getName());
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
         m_encoder->Copy(pDstAddrCopy, pDstAddr);
@@ -14155,7 +14155,7 @@ void EmitPass::emitScalarAtomicLoad(
 
     {
         // pSrc is imm zero
-        CVariable* pSrcCopy = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, pSrc->getName());
+        CVariable* pSrcCopy = m_currShader->GetNewVariable(1, pSrc->GetType(), EALIGN_GRF, true, pSrc->getName());
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
         m_encoder->Copy(pSrcCopy, pSrc);
@@ -14169,7 +14169,7 @@ void EmitPass::emitScalarAtomicLoad(
     CVariable* atomicDst = !pInst->use_empty() ?
         m_currShader->GetNewVariable(
             1,
-            ISA_TYPE_UD,
+            GetTypeFromSize(bitWidth / 8),
             isA64 ? EALIGN_2GRF : EALIGN_GRF,
             true,
             pDstAddr->getName()) : nullptr;
