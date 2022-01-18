@@ -881,6 +881,12 @@ SPDX-License-Identifier: MIT
                 ((getuint32Option(vISA_noMaskWA) & 0x3) > 0 || getOption(vISA_forceNoMaskWA)));
     }
 
+    // temp
+    bool useNewNoMaskWA() const
+    {
+        return getOption(vISA_newNoMaskWA) && m_options->getTarget() == VISA_CM;
+    }
+
     bool hasSLMWARIssue() const
     {
         return getPlatform() == Xe_DG2 || getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT;

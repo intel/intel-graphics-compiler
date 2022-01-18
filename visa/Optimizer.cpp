@@ -7347,8 +7347,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //              1 - simple insertion of "emask flag". A new flag is created
         //                  each time it is needed, that is, created per each inst.
         //  (See comments for more details at doNoMaskWA().
-        if (builder.getOption(vISA_newNoMaskWA) &&
-            kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+        if (builder.useNewNoMaskWA())
         {
             if (builder.hasFusedEUNoMaskWA())
             {
@@ -7645,8 +7644,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     void Optimizer::HWWorkaround()
     {
-        if (builder.getOption(vISA_newNoMaskWA) &&
-            kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+        if (builder.useNewNoMaskWA())
         {
             if (builder.hasFusedEUNoMaskWA() &&
                 (builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
