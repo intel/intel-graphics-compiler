@@ -206,7 +206,7 @@ void GenXVisaRegAlloc::reportVisaVarableNumberLimitError(unsigned Category,
   return;
 }
 
-unsigned GenXVisaRegAlloc::getMaximumVariableIDForCategory(unsigned Category) {
+static unsigned getMaximumNumberOfVariablesForCategory(unsigned Category) {
   if (Category == vc::RegCategory::General)
     return VISA_MAX_GENERAL_REGS;
   if (Category == vc::RegCategory::Address)
@@ -219,6 +219,13 @@ unsigned GenXVisaRegAlloc::getMaximumVariableIDForCategory(unsigned Category) {
     return VISA_MAX_SURFACE_REGS;
   IGC_ASSERT_MESSAGE(false, "unknown category specified");
   return 0;
+}
+
+unsigned GenXVisaRegAlloc::getMaximumVariableIDForCategory(unsigned Category) {
+  const unsigned Result = getMaximumNumberOfVariablesForCategory(Category);
+  IGC_ASSERT_MESSAGE(Result > 0, "could not detect maximum number of variables "
+                                 "for the specified category");
+  return Result - 1;
 }
 
 namespace {
