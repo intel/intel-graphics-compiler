@@ -467,6 +467,20 @@ void ModuleToVisaTransformInfo::print(raw_ostream &OS) const {
     }
   }
 }
+
+using VMap = decltype(genx::di::VisaMapping::V2I);
+// Compare two functions with their visa-mapping
+static bool visaMapComparer(const Function *L, const Function *R,
+                            const VMap &V2IL, const VMap &V2IR) {
+  if (V2IL.empty() && V2IR.empty())
+    return compareFunctionNames(L, R);
+  if (V2IL.empty())
+    return false;
+  if (V2IR.empty())
+    return true;
+  return V2IL.front().VisaIdx < V2IR.front().VisaIdx;
+}
+
 std::vector<const Function *> ModuleToVisaTransformInfo::getSecondaryFunctions(
     const Function *PrimaryFunction) const {
   auto IsSecondaryFunction = [PrimaryFunction, this](const Function *F) {
@@ -486,7 +500,6 @@ std::vector<const Function *> ModuleToVisaTransformInfo::getSecondaryFunctions(
     if (IsSecondaryFunction(F))
       Result.push_back(F);
   }
-  std::sort(Result.begin(), Result.end(), compareFunctionNames);
   return Result;
 }
 
@@ -1233,17 +1246,13 @@ void printVisaMapping(raw_ostream &OS, const GenXFunction &GF, unsigned Level,
 void printSubroutinesVisaMapping(raw_ostream &OS,
                                  GenXFunctionConstPtrList Subroutines,
                                  unsigned Level, GFPtrSet &NotPrinted) {
+  // Sort is needed for printing elements with less visa index first
   std::sort(Subroutines.begin(), Subroutines.end(),
-            [](const auto *L, const auto *R) {
+            [](const GenXFunction *L, const GenXFunction *R) {
               const auto &V2IL = L->getVisaMapping().V2I;
               const auto &V2IR = R->getVisaMapping().V2I;
-              if (V2IL.empty() && V2IR.empty())
-                return compareFunctionNames(L->getFunction(), R->getFunction());
-              if (V2IL.empty())
-                return false;
-              if (V2IR.empty())
-                return true;
-              return V2IL.front().VisaIdx < V2IR.front().VisaIdx;
+              return visaMapComparer(L->getFunction(), R->getFunction(), V2IL,
+                                     V2IR);
             });
   for (const auto *SGF : Subroutines)
     printVisaMapping(OS, *SGF, Level, NotPrinted);
@@ -1435,7 +1444,15 @@ void GenXDebugInfo::processPrimaryFunction(
   using FunctionInfo = ProgramInfo::FunctionInfo;
   std::vector<FunctionInfo> FIs;
   FIs.push_back(FunctionInfo{*GM.getVisaMapping(&PF), PF});
-  const auto &SecondaryFunctions = MVTI.getSecondaryFunctions(&PF);
+  auto SecondaryFunctions = MVTI.getSecondaryFunctions(&PF);
+  // Sorting by visa-elements, because finalizer expect sorted sequence
+  // for emmiting correct debug hi/low pc for functions
+  std::sort(SecondaryFunctions.begin(), SecondaryFunctions.end(),
+            [&GM](const Function *L, const Function *R) {
+              const auto &V2IL = GM.getVisaMapping(L)->V2I;
+              const auto &V2IR = GM.getVisaMapping(R)->V2I;
+              return visaMapComparer(L, R, V2IL, V2IR);
+            });
   std::transform(SecondaryFunctions.begin(), SecondaryFunctions.end(),
                  std::back_inserter(FIs), [&GM](const Function *F) {
                    const auto &Mapping = *GM.getVisaMapping(F);
