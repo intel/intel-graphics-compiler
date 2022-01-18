@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "common/Types.hpp"
 #include "Probe/Assertion.h"
 
 namespace IGC {
@@ -168,6 +169,11 @@ namespace IGC {
             HVH = NH;
         }
 
+        // For a single FG, an SIMD mode is valid only if SIMD modes of all
+        // functions in that group are valid.
+        bool checkSimdModeValid(SIMDMode Mode) const;
+        void setSimdModeInvalid(SIMDMode Mode);
+
     private:
         bool m_hasStackCall = false;
         bool m_hasInlineAsm = false;
@@ -175,6 +181,7 @@ namespace IGC {
         bool m_hasIndirectCall = false;
         bool m_hasRecursion = false;
         unsigned m_MaxPrivateMemOnStack = 0;
+        bool SIMDModeValid[3] = {true, true, true};
     };
 
     class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {

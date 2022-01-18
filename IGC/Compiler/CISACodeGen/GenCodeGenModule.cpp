@@ -958,3 +958,24 @@ Pass* IGC::createSubroutineInlinerPass()
     initializeSubroutineInlinerPass(*PassRegistry::getPassRegistry());
     return new SubroutineInliner();
 }
+
+bool FunctionGroup::checkSimdModeValid(SIMDMode Mode) const {
+    switch (Mode) {
+    default:
+        break;
+    case SIMDMode::SIMD8: return SIMDModeValid[0];
+    case SIMDMode::SIMD16: return SIMDModeValid[1];
+    case SIMDMode::SIMD32: return SIMDModeValid[2];
+    }
+    return true;
+}
+
+void FunctionGroup::setSimdModeInvalid(SIMDMode Mode) {
+    switch (Mode) {
+    default:
+        break;
+    case SIMDMode::SIMD8: SIMDModeValid[0] = false; break;
+    case SIMDMode::SIMD16: SIMDModeValid[1] = false; break;
+    case SIMDMode::SIMD32: SIMDModeValid[2] = false; break;
+    }
+}

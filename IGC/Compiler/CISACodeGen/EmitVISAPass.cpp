@@ -625,8 +625,12 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderDispatchMode);
         // Pre-analysis pass to be executed before call to visa builder so we can pass scratch space offset
         m_currShader->PreAnalysisPass();
-        if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
-        {
+        if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F)) {
+            if (m_FGA) {
+                auto *FG = m_FGA->getGroup(&F);
+                if (FG)
+                    FG->setSimdModeInvalid(m_SimdMode);
+            }
             return false;
         }
 
@@ -755,6 +759,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
         if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
         {
+            if (m_FGA) {
+                auto *FG = m_FGA->getGroup(&F);
+                if (FG)
+                    FG->setSimdModeInvalid(m_SimdMode);
+            }
             return false;
         }
         m_currShader->BeginFunction(&F);
@@ -1118,6 +1127,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     // Compile only when this is the last function for this kernel.
     bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
+    if (m_FGA) {
+        auto *FG = m_FGA->getGroup(&F);
+        // If the current SIMD mode for this funtion group is invalid, skip
+        // compiling it.
+        if (FG)
+            finalize = finalize && FG->checkSimdModeValid(m_SimdMode);
+    }
     bool destroyVISABuilder = false;
     if (finalize)
     {
