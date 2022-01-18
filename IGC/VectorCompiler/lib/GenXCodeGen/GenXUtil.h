@@ -482,6 +482,11 @@ unsigned getExecSizeAllowedBits(const Instruction *Inst,
 IGCLLVM::FixedVectorType *changeVectorType(const Type *OldTy,
                                            Type *NewScalarType);
 
+// Check if V is reading form predfined register.
+bool isPredefRegSource(const Value *V);
+// Check if V is writing to predefined register.
+bool isPredefRegDestination(const Value *V);
+
 /* scalarVectorizeIfNeeded: scalarize of vectorize \p Inst if it is required
  *
  * Result of some instructions can be both Ty and <1 x Ty> value e.g. rdregion.

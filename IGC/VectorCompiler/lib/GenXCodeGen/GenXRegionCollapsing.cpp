@@ -915,6 +915,8 @@ Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
   IGC_ASSERT(OuterRd);
   if (!isBitwiseIdentical(OuterRd->getOperand(0), OuterWr->getOperand(0), DT))
     return OuterWr;
+  if (GenXIntrinsic::isReadPredefReg(OuterRd->getOperand(0)))
+    return OuterWr;
   Region InnerR = genx::makeRegionWithOffset(InnerWr, /*WantParentWidth=*/true);
   Region OuterR = genx::makeRegionWithOffset(OuterWr);
   if (OuterR != genx::makeRegionWithOffset(OuterRd))
@@ -1029,6 +1031,9 @@ Instruction *GenXRegionCollapsing::processWrRegionSplat(Instruction *OuterWr)
   Region CombinedR;
   if (!combineRegions(&OuterR, &InnerR, &CombinedR))
     return OuterWr; // cannot combine
+  if (genx::isPredefRegSource(
+          InnerWr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum)))
+    return OuterWr;
   // Calculate index if necessary.
   if (InnerR.Indirect) {
     calculateIndex(&OuterR, &InnerR, &CombinedR,

@@ -2004,6 +2004,23 @@ IGCLLVM::FixedVectorType *genx::changeVectorType(const Type *OldTy,
                                        OldElemSize * OldNumElems / NewElemSize);
 }
 
+// Check if V is reading form predfined register.
+bool genx::isPredefRegSource(const Value *V) {
+  if (GenXIntrinsic::isRdRegion(V))
+    return GenXIntrinsic::isReadPredefReg(cast<Instruction>(V)->getOperand(
+        GenXIntrinsic::GenXRegion::OldValueOperandNum));
+  return GenXIntrinsic::isReadPredefReg(V);
+}
+
+// Check if V is writing to predefined register.
+bool genx::isPredefRegDestination(const Value *V) {
+  if (GenXIntrinsic::isWrRegion(V))
+    return std::any_of(V->user_begin(), V->user_end(), [](auto *U) {
+      return GenXIntrinsic::isWritePredefReg(U);
+    });
+  return GenXIntrinsic::isWritePredefReg(V);
+}
+
 // info is at main template function
 CastInst *genx::scalarizeOrVectorizeIfNeeded(Instruction *Inst, Type *RefType) {
   return scalarizeOrVectorizeIfNeeded(Inst, &RefType, std::next(&RefType));
