@@ -706,8 +706,7 @@ public:
     unsigned getRows() const;
     unsigned getColumns() const;
     unsigned getScope() const;
-
-    uint32_t getElementTypeFlags() const;
+    std::string getMangledName() const;
 
     enum {
         LayoutColumnMajor = 0,

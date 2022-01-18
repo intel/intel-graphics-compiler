@@ -37,6 +37,7 @@ JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass(OpenCLProgramCont
 
 bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
 {
+    PlaceholderInstructions.clear();
     ResolvedValues.clear();
     InstsToErase.clear();
     Changed = false;
@@ -78,16 +79,14 @@ enum {
     MadOpUU,
 };
 
-static unsigned getElementBitWidth(unsigned flags) {
-    return flags & 0x7fffffff;
-}
-
-static bool isElementTypeInteger(unsigned flags) {
-    return (flags & (1 << 31)) == 0;
-}
-
-static bool isElementTypeFloating(unsigned flags) {
-    return !isElementTypeInteger(flags);
+namespace IGC {
+struct JointMatrixTypeDescription {
+    unsigned layout = 0;
+    unsigned rows = 0;
+    unsigned columns = 0;
+    unsigned bitWidth = 0;
+    bool isFloating = false;
+};
 }
 
 static bool isOperandUnsigned(unsigned OperationType, unsigned OperandId) {
@@ -101,17 +100,17 @@ static bool isOperandUnsigned(unsigned OperationType, unsigned OperandId) {
 }
 
 std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
-        (bool load, unsigned loadLayout, unsigned matrixLayout,
-         unsigned elemBitWidth, unsigned rows, unsigned cols)
+        (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc)
 {
     /* Treat row major matrices with types not supported by accumulators as
      * PackedA matrices. Both are in row major format. */
-    if (load && matrixLayout == LayoutRowMajor && elemBitWidth <= 16) {
+    unsigned matrixLayout = desc->layout;
+    if (isLoad && matrixLayout == LayoutRowMajor && desc->bitWidth <= 16) {
         matrixLayout = LayoutPackedA;
     }
 
     std::string name
-      = load ? "__builtin_spriv_OpJointMatrixLoadINTEL_" : "__builtin_spriv_OpJointMatrixStoreINTEL_";
+      = isLoad ? "__builtin_spriv_OpJointMatrixLoadINTEL_" : "__builtin_spriv_OpJointMatrixStoreINTEL_";
     switch (matrixLayout) {
       case LayoutPackedA:
         name += "PackedA_";
@@ -127,7 +126,7 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
         IGC_ASSERT_MESSAGE(false, "Unexpected matrix layout.");
     }
 
-    switch (loadLayout) {
+    switch (operationLayout) {
       case LayoutRowMajor:
         name += "RowMajor_";
         break;
@@ -135,7 +134,7 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
         name += "ColumnMajor_";
         break;
       case LayoutPackedB:
-        IGC_ASSERT_MESSAGE(matrixLayout == loadLayout, "Unexpected load/store layout.");
+        IGC_ASSERT_MESSAGE(matrixLayout == operationLayout, "Unexpected load/store layout.");
         name += "PackedB_";
         break;
       default:
@@ -148,22 +147,22 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
         name += "SG16_";
     }
 
-    name += std::to_string(rows);
+    name += std::to_string(desc->rows);
     name += "x";
-    name += std::to_string(cols);
+    name += std::to_string(desc->columns);
     name += "_";
 
-    if (elemBitWidth == 8) {
+    if (desc->bitWidth == 8) {
         name += "i8_";
-    } else if (elemBitWidth == 16) {
+    } else if (desc->bitWidth == 16) {
         name += "i16_";
-    } else if (elemBitWidth == 32) {
+    } else if (desc->bitWidth == 32) {
         name += "i32_";
     } else {
         IGC_ASSERT_MESSAGE(false, "Unexpected matrix element size.");
     }
 
-    if (load) {
+    if (isLoad) {
         name += "v8i8_pi32_i32";
     } else {
         name += "pi64_v8i8";
@@ -171,36 +170,77 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
     return name;
 }
 
-Type *JointMatrixFuncsResolutionPass::ResolveType
-          (const Type *opaqueType, uint32_t elementTypeFlags, unsigned rows,
-           unsigned *outLayout)
+static unsigned parseNumber(StringRef name, unsigned *offset) {
+#define BUFFER_SIZE 16
+    char buffer[BUFFER_SIZE];
+    unsigned count = 0;
+    while (std::isdigit(name[*offset]) && count < BUFFER_SIZE) {
+        buffer[count] = name[*offset];
+        *offset += 1;
+        count += 1;
+    }
+    buffer[count] = '\0';
+    return std::stoi(buffer);
+}
+
+/* This function extracts metadata from JointMatrix type names. They use the
+ * following convention: intel.joint_matrix_acc_8x8_i32_t */
+static void parseMatrixTypeName(const Type *opaqueType, JointMatrixTypeDescription *outDescription) {
+    const PointerType *ptrType = cast<PointerType>(opaqueType);
+    StringRef name = ptrType->getElementType()->getStructName();
+
+    unsigned offset = 0;
+    if (name.startswith("intel.joint_matrix_packedA_")) {
+        outDescription->layout = LayoutPackedA;
+        offset += sizeof "intel.joint_matrix_packedA_";
+    } else if (name.startswith("intel.joint_matrix_packedB_")) {
+        outDescription->layout = LayoutPackedB;
+        offset += sizeof "intel.joint_matrix_packedB_";
+    } else if (name.startswith("intel.joint_matrix_acc_")) {
+        outDescription->layout = LayoutRowMajor;
+        offset += sizeof "intel.joint_matrix_acc_";
+    }
+    offset -= 1; /* Go back to the end of prefix. */
+    outDescription->rows = parseNumber(name, &offset);
+
+    offset += 1; /* Skip delimiter, 'x'. */
+    outDescription->columns = parseNumber(name, &offset);
+
+    offset += 1; /* Skip delimiter, '_' */
+    outDescription->isFloating = name[offset] == 'f';
+
+    offset += 1; /* Skip type specifier, [f|i] */
+    outDescription->bitWidth = parseNumber(name, &offset);
+}
+
+Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointMatrixTypeDescription *outDesc)
 {
     IGC_ASSERT_EXIT_MESSAGE(opaqueType && opaqueType->isPointerTy(),
         "Unexpected type in matrix function resolution.");
 
-    const PointerType *ptrType = cast<PointerType>(opaqueType);
-    StringRef name = ptrType->getElementType()->getStructName();
+    JointMatrixTypeDescription desc;
+    parseMatrixTypeName(opaqueType, &desc);
+
+    if (outDesc != nullptr)
+      *outDesc = desc;
 
     LLVMContext &ctx = opaqueType->getContext();
 
-    if (name.equals("intel.joint_matrix_packedA_t")) {
-        *outLayout = LayoutPackedA;
+    if (desc.layout == LayoutPackedA) {
         Type *baseType = Type::getInt32Ty(ctx);
         if (Context->platform.hasExecSize16DPAS()) {
             baseType = Type::getInt16Ty(ctx);
         }
-        return IGCLLVM::FixedVectorType::get(baseType, rows);
-    } else if (name.equals("intel.joint_matrix_packedB_t")) {
-        *outLayout = LayoutPackedB;
+        return IGCLLVM::FixedVectorType::get(baseType, desc.rows);
+    } else if (desc.layout == LayoutPackedB) {
         Type *baseType = Type::getInt32Ty(ctx);
         return IGCLLVM::FixedVectorType::get(baseType, 8);
-    } else if (name.equals("intel.joint_matrix_acc_t")) {
-        *outLayout = LayoutRowMajor;
+    } else if (desc.layout == LayoutRowMajor) {
         Type *baseType = Type::getInt32Ty(ctx);
-        if (isElementTypeFloating(elementTypeFlags)) {
+        if (desc.isFloating) {
             baseType = Type::getFloatTy(ctx);
         }
-        return IGCLLVM::FixedVectorType::get(baseType, rows);
+        return IGCLLVM::FixedVectorType::get(baseType, desc.rows);
     }
 
     IGC_ASSERT_EXIT_MESSAGE(false, "Failed to resolve matrix type.");
@@ -233,20 +273,16 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     Value *ptrVal        = CI->getArgOperand(0);
     Value *strideVal     = CI->getArgOperand(1);
     unsigned loadLayout  = (unsigned) constIntValue(CI->getArgOperand(2));
-    uint32_t elementType = (uint32_t) constIntValue(CI->getArgOperand(3));
-    unsigned rows        = (unsigned) constIntValue(CI->getArgOperand(4));
-    unsigned columns     = (unsigned) constIntValue(CI->getArgOperand(5));
 
-    unsigned matrixLayout = LayoutRowMajor;
-    Type *matTy = ResolveType(CI->getType(), elementType, rows, &matrixLayout);
+    JointMatrixTypeDescription desc;
+    Type *matTy = ResolveType(CI->getType(), &desc);
     /* Cast floating types to integer types of the same size. This allows to
      * have a single set of store builtins for floats and integer */
     Type *retTy = getIntegerEquivalent(matTy);
 
     Module *M = CI->getParent()->getModule();
 
-    unsigned elemBitWidth = getElementBitWidth(elementType);
-    std::string funcName = GetLoadStoreMatrixFuncName(true, loadLayout, matrixLayout, elemBitWidth, rows, columns);
+    std::string funcName = GetLoadStoreMatrixFuncName(true, loadLayout, &desc);
     FunctionType *funcType = FunctionType::get(retTy, { ptrVal->getType(), strideVal->getType() }, false);
     std::vector<Value *> Args = { ptrVal, strideVal };
 
@@ -265,12 +301,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     Value *matrixVal     = CI->getArgOperand(1);
     Value *strideVal     = CI->getArgOperand(2);
     unsigned storeLayout = (unsigned) constIntValue(CI->getArgOperand(3));
-    uint32_t elementType = (uint32_t) constIntValue(CI->getArgOperand(4));
-    unsigned rows        = (unsigned) constIntValue(CI->getArgOperand(5));
-    unsigned columns     = (unsigned) constIntValue(CI->getArgOperand(6));
 
-    unsigned matrixLayout = LayoutRowMajor;
-    Type *matTy = ResolveType(matrixVal->getType(), elementType, rows, &matrixLayout);
+    JointMatrixTypeDescription desc;
+    Type *matTy = ResolveType(matrixVal->getType(), &desc);
     /* Cast floating types to integer types of the same size. This allows to
      * have a single set of store builtins for floats and integers */
     matTy = getIntegerEquivalent(matTy);
@@ -282,8 +315,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
         matVal = BitCastInst::Create(Instruction::BitCast, matVal, matTy, "matrix.store.cast", CI);
     }
 
-    unsigned elemBitWidth = getElementBitWidth(elementType);
-    std::string funcName = GetLoadStoreMatrixFuncName(false, storeLayout, matrixLayout, elemBitWidth, rows, columns);
+    std::string funcName = GetLoadStoreMatrixFuncName(false, storeLayout, &desc);
     FunctionType *funcType =
         FunctionType::get(Type::getVoidTy(M->getContext()),
             { ptrVal->getType(), matTy, strideVal->getType() }, false);
@@ -294,57 +326,47 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     return CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
 }
 
-static PrecisionType getElementPrecison(unsigned elemType, bool floatOp, bool isUnsigned) {
-  const unsigned width = getElementBitWidth(elemType);
+static PrecisionType getElementPrecison(const JointMatrixTypeDescription *desc, bool floatOp, bool isUnsigned) {
+  const unsigned width = desc->bitWidth;
   if (floatOp && width == 16) {
       /* bf is passed as uint16_t, hf is using halfs */
-      return isElementTypeInteger(elemType) ? PrecisionType::BF16 : PrecisionType::FP16;
+      return desc->isFloating ? PrecisionType::FP16 : PrecisionType::BF16;
   }
   if (!floatOp && width == 8) {
-      return isUnsigned ? PrecisionType::S8 : PrecisionType::U8;
+      return isUnsigned ? PrecisionType::U8 : PrecisionType::S8;
   }
   return PrecisionType::PRECISION_UNUSED;
 }
 
 Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned OperationType) {
-    /* Matrix A: */
-    Value *aMatVal        = CI->getArgOperand(0);
-    uint32_t aMatElemType = (uint32_t) constIntValue(CI->getArgOperand(1));
-    unsigned aMatRows     = (unsigned) constIntValue(CI->getArgOperand(2));
-    /* Matrix B: */
-    Value *bMatVal        = CI->getArgOperand(4);
-    uint32_t bMatElemType = (uint32_t) constIntValue(CI->getArgOperand(5));
-    unsigned bMatRows     = (unsigned) constIntValue(CI->getArgOperand(6));
-    unsigned bMatColumns  = (unsigned) constIntValue(CI->getArgOperand(7));
-    /* Matrix C: */
-    Value *cMatVal        = CI->getArgOperand(8);
-    uint32_t cMatElemType = (uint32_t) constIntValue(CI->getArgOperand(9));
-    unsigned cMatRows     = (unsigned) constIntValue(CI->getArgOperand(10));
+    Value *aMatVal = CI->getArgOperand(0);
+    Value *bMatVal = CI->getArgOperand(1);
+    Value *cMatVal = CI->getArgOperand(2);
 
-    unsigned aMatLayout = LayoutRowMajor;
-    Type *aMatTy = ResolveType(aMatVal->getType(), aMatElemType, aMatRows, &aMatLayout);
+    JointMatrixTypeDescription aDesc;
+    Type *aMatTy = ResolveType(aMatVal->getType(), &aDesc);
 
-    unsigned bMatLayout = LayoutRowMajor;
-    Type *bMatTy = ResolveType(bMatVal->getType(), bMatElemType, bMatRows, &bMatLayout);
+    JointMatrixTypeDescription bDesc;
+    Type *bMatTy = ResolveType(bMatVal->getType(), &bDesc);
 
-    unsigned cMatLayout = LayoutRowMajor;
-    Type *cMatTy = ResolveType(cMatVal->getType(), cMatElemType, cMatRows, &cMatLayout);
+    JointMatrixTypeDescription cDesc;
+    Type *cMatTy = ResolveType(cMatVal->getType(), &cDesc);
 
-    IGC_ASSERT_MESSAGE(aMatLayout == LayoutPackedA || aMatLayout == LayoutRowMajor,
+    IGC_ASSERT_MESSAGE(aDesc.layout == LayoutPackedA || aDesc.layout == LayoutRowMajor,
                        "Unexpected layout for matrix A in MAD operation.");
-    IGC_ASSERT_MESSAGE(bMatLayout == LayoutPackedB, "Unexpected layout for matrix A in MAD operation.");
-    IGC_ASSERT_MESSAGE(cMatLayout == LayoutRowMajor, "Unexpected layout for matrix A in MAD operation.");
+    IGC_ASSERT_MESSAGE(bDesc.layout == LayoutPackedB, "Unexpected layout for matrix A in MAD operation.");
+    IGC_ASSERT_MESSAGE(cDesc.layout == LayoutRowMajor, "Unexpected layout for matrix A in MAD operation.");
 
-    const bool floatMad = isElementTypeFloating(cMatElemType);
+    const bool floatMad = cDesc.isFloating;
 
-    PrecisionType PA = getElementPrecison(aMatElemType, floatMad, isOperandUnsigned(OperationType, 0));
-    PrecisionType PB = getElementPrecison(bMatElemType, floatMad, isOperandUnsigned(OperationType, 1));
+    PrecisionType PA = getElementPrecison(&aDesc, floatMad, isOperandUnsigned(OperationType, 0));
+    PrecisionType PB = getElementPrecison(&bDesc, floatMad, isOperandUnsigned(OperationType, 1));
 
     IGC_ASSERT_MESSAGE(PA != PrecisionType::PRECISION_UNUSED, "Invalid matrix A element type.");
     IGC_ASSERT_MESSAGE(PB != PrecisionType::PRECISION_UNUSED, "Invalid matrix B element type.");
 
-    int SD = aMatRows; // systolic depth, 8 or 16
-    int RC = bMatColumns; // repeat count, from 1 to 8
+    int SD = aDesc.rows; // systolic depth, 8 or 16
+    int RC = bDesc.columns; // repeat count, from 1 to 8
 
     IGC_ASSERT_MESSAGE(SD == 8 || SD == 16, "Unexpected systolic depth in MAD operaion.");
     IGC_ASSERT_MESSAGE(RC >= 1 && RC <= 8,  "Unexpected repeat count in MAD operaion.");
@@ -384,12 +406,8 @@ static int getSliceSize(Type *matrixType) {
 }
 
 Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
-    Value *fillValue     = CI->getArgOperand(0);
-    uint32_t elementType = (uint32_t) constIntValue(CI->getArgOperand(1));
-    unsigned rows        = (unsigned) constIntValue(CI->getArgOperand(2));
-
-    unsigned matrixLayout = LayoutRowMajor;
-    Type *matTy = ResolveType(CI->getType(), elementType, rows, &matrixLayout);
+    Value *fillValue = CI->getArgOperand(0);
+    Type *matTy = ResolveType(CI->getType(), nullptr);
 
     IRBuilder builder(CI);
     const int sliceSize = getSliceSize(matTy);
@@ -470,9 +488,29 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
     return NewValue;
 }
 
+Instruction *JointMatrixFuncsResolutionPass::CreatePlaceholder(Value *v) {
+    Type *type = ResolveType(v->getType(), nullptr);
+    Instruction *predecesor = nullptr;
+    if (Instruction *inst = dyn_cast<Instruction>(v)) {
+        predecesor = inst;
+    }
+    /* I'm using bit-casts as placeholder values. Undefs of each type are unique per
+     * module and cannot be used as unique placeholders. */
+    return BitCastInst::Create(Instruction::BitCast, UndefValue::get(type),
+                               type, "tmp.value", predecesor);
+}
+
 Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 {
     if (ResolvedValues.count(v) > 0) {
+        Value *value = ResolvedValues[v];
+        if (value == v) {
+            /* We are still resolving 'v'. Create a dummy value that will be
+             * replaced later when 'v' is finally resolved. */
+            Instruction *placeholder = CreatePlaceholder(v);
+            PlaceholderInstructions[v] = placeholder;
+            return placeholder;
+        }
         return ResolvedValues[v];
     }
 
@@ -485,6 +523,13 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 
         PHINode *NewPN = PHINode::Create(First->getType(), IncomingCount, "matrix.phi.node", PN);
         ResolvedValues[v] = NewPN;
+
+        if (PlaceholderInstructions.count(v) > 0) {
+            Instruction *placeholder = PlaceholderInstructions[v];
+            PlaceholderInstructions.erase(v);
+            placeholder->replaceAllUsesWith(NewPN);
+            InstsToErase.insert(placeholder);
+        }
 
         NewPN->addIncoming(First, PN->getIncomingBlock(0));
         for (unsigned i = 1; i < IncomingCount; i++) {

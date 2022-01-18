@@ -18,6 +18,8 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
+    struct JointMatrixTypeDescription;
+
     class JointMatrixFuncsResolutionPass final
         : public llvm::FunctionPass
         , public llvm::InstVisitor<JointMatrixFuncsResolutionPass>
@@ -54,13 +56,14 @@ namespace IGC
         llvm::Value *ResolveCall(llvm::CallInst *CI);
         llvm::Value *Resolve(llvm::Value *value);
 
-        llvm::Type *ResolveType(const llvm::Type *opaqueType, uint32_t elementTypeFlags, unsigned rows, unsigned *outLayout);
+        llvm::Type *ResolveType(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDesc);
+
+        llvm::Instruction *CreatePlaceholder(llvm::Value *value);
 
         std::string GetLoadStoreMatrixFuncName
-            (bool load, unsigned opLayout, unsigned matrixLayout, unsigned elemBitWidth, unsigned rows, unsigned cols);
-        std::string getMADMatrixFuncName
-            (uint32_t aTypeFlags, uint32_t bTypeFlags, uint32_t cTypeFlags, unsigned M, unsigned N, unsigned OperationType);
+            (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc);
 
+        llvm::ValueMap<llvm::Value *, llvm::Instruction *> PlaceholderInstructions;
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
 

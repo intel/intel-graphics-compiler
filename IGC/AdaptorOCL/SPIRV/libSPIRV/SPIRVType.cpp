@@ -369,10 +369,32 @@ unsigned SPIRVTypeJointMatrixINTEL::getScope() const {
   return (unsigned)get<SPIRVConstant>(Scope)->getZExtIntValue();
 }
 
-uint32_t SPIRVTypeJointMatrixINTEL::getElementTypeFlags() const {
-  const uint32_t bitWidth = ElemType->getBitWidth();
-  const bool isFloating = ElemType->isTypeFloat();
-  return bitWidth | (isFloating << 31);
+std::string SPIRVTypeJointMatrixINTEL::getMangledName() const {
+    std::string name;
+    switch (getLayout()) {
+      case SPIRVTypeJointMatrixINTEL::LayoutPackedA:
+        name += "packedA_";
+        break;
+      case SPIRVTypeJointMatrixINTEL::LayoutPackedB:
+        name += "packedB_";
+        break;
+      case SPIRVTypeJointMatrixINTEL::LayoutRowMajor:
+      case SPIRVTypeJointMatrixINTEL::LayoutColumnMajor:
+        name += "acc_";
+        break;
+    }
+    name += std::to_string(getRows());
+    name += "x";
+    name += std::to_string(getColumns());
+    name += "_";
+
+    if (ElemType->isTypeFloat()) {
+        name += "f";
+    } else {
+        name += "i";
+    }
+    name += std::to_string(ElemType->getBitWidth());
+    return std::move(name);
 }
 }
 
