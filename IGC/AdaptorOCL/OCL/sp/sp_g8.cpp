@@ -2004,6 +2004,9 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.HasGlobalAtomics = annotations.m_executionEnivronment.HasGlobalAtomics;
 
         patch.HasDPAS = annotations.m_executionEnivronment.HasDPAS;
+        patch.NumThreadsRequired = annotations.m_executionEnivronment.numThreads;
+        patch.StatelessWritesCount = annotations.m_executionEnivronment.StatelessWritesCount;
+        patch.IndirectStatelessCount = annotations.m_executionEnivronment.IndirectStatelessCount;
 
         patch.UseBindlessMode = annotations.m_executionEnivronment.UseBindlessMode;
         patch.HasStackCalls = annotations.m_executionEnivronment.HasStackCalls;

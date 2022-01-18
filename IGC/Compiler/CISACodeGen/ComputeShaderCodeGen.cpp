@@ -111,6 +111,34 @@ namespace IGC
                     m_num2DAccesses++;
                 }
                 break;
+            case GenISAIntrinsic::GenISA_sampleptr:
+            case GenISAIntrinsic::GenISA_sampleBptr:
+            case GenISAIntrinsic::GenISA_sampleCptr:
+            case GenISAIntrinsic::GenISA_sampleDptr:
+            case GenISAIntrinsic::GenISA_sampleDCptr:
+            case GenISAIntrinsic::GenISA_sampleLptr:
+            case GenISAIntrinsic::GenISA_sampleLCptr:
+            case GenISAIntrinsic::GenISA_sampleBCptr:
+
+            case GenISAIntrinsic::GenISA_gather4ptr:
+            case GenISAIntrinsic::GenISA_gather4Cptr:
+            case GenISAIntrinsic::GenISA_gather4POptr:
+            case GenISAIntrinsic::GenISA_gather4POCptr:
+                if (llvm::ConstantInt* pInt = llvm::dyn_cast<llvm::ConstantInt>(intr->getOperand(2)))
+                {
+                    int index = int_cast<int>(pInt->getZExtValue());
+                    index == 0 ? m_num1DAccesses++ : m_num2DAccesses++;
+                }
+                else
+                {
+                    m_num2DAccesses++;
+                }
+                break;
+            case GenISAIntrinsic::GenISA_DCL_SystemValue:
+                //emitLocal mask has to be set before real compile
+                if (m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID())
+                    setEmitLocalMask(static_cast<SGVUsage>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue()));
+                break;
             default:
                 break;
             }
@@ -119,6 +147,29 @@ namespace IGC
 
     void CComputeShader::CreateThreadPayloadData(void*& pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength)
     {
+        if (m_Platform->supportLoadThreadPayloadForCompute())
+        {
+            if (m_enableHWGenerateLID)
+            {
+                curbeTotalDataLength = m_NOSBufferSize;
+                curbeReadLength = 0;
+                if (!curbeTotalDataLength)
+                {
+                    return;
+                }
+
+                //todo: this is to follow legacy behavior, but I do not know any API using below memory.
+                //Not sure why legacy behavior allocates memory for nosdata at IGC side even though IGC never fills it.
+                //when inline data is used, IGC assumes UMD is aware of m_NOSBufferSize includes inlinedata.size.
+                typedef uint32_t ThreadPayloadEntry;
+                unsigned threadPayloadEntries = curbeTotalDataLength / sizeof(ThreadPayloadEntry);
+                ThreadPayloadEntry* pThreadPayloadMem =
+                    (ThreadPayloadEntry*)IGC::aligned_malloc(threadPayloadEntries * sizeof(ThreadPayloadEntry), getGRFSize());
+                std::fill(pThreadPayloadMem, pThreadPayloadMem + threadPayloadEntries, 0);
+                pThreadPayload = pThreadPayloadMem;
+                return;
+            }
+        }
 
         CComputeShaderCommon::CreateThreadPayloadData(
             pThreadPayload,
@@ -142,6 +193,26 @@ namespace IGC
 
     CVariable* CComputeShader::CreateThreadIDsinGroup(SGVUsage channelNum)
     {
+        switch (m_emitMask)
+        {
+        case IGC::CComputeShader::NONE:
+            break;
+        case IGC::CComputeShader::X:
+            CreateThreadIDinGroup(THREAD_ID_IN_GROUP_X);
+            break;
+        case IGC::CComputeShader::XY:
+            CreateThreadIDinGroup(THREAD_ID_IN_GROUP_X);
+            CreateThreadIDinGroup(THREAD_ID_IN_GROUP_Y);
+            break;
+        case IGC::CComputeShader::XYZ:
+            CreateThreadIDinGroup(THREAD_ID_IN_GROUP_X);
+            CreateThreadIDinGroup(THREAD_ID_IN_GROUP_Y);
+            CreateThreadIDinGroup(THREAD_ID_IN_GROUP_Z);
+            break;
+        default:
+            break;
+        }
+
         return CreateThreadIDinGroup(channelNum);
     }
 
@@ -478,6 +549,8 @@ namespace IGC
             m_threadGroupSize_X,
             m_threadGroupSize_Y,
             m_threadGroupSize_Z);
+
+        encoder.GetVISABuilder()->SetOption(vISA_autoLoadLocalID, m_enableHWGenerateLID);
     }
 
     void CComputeShader::AddPrologue()
@@ -599,6 +672,7 @@ namespace IGC
                 float occu32 = ctx->GetThreadOccupancy(SIMDMode::SIMD32);
                 if (!ctx->isSecondCompile &&
                     (occu32 > occu16 ||
+                    (occu32 == occu16 && m_Platform->loosenSimd32occu()) ||
                     (occu32 == occu16 && ctx->m_instrTypes.hasBarrier)))
                 {
                     return true;

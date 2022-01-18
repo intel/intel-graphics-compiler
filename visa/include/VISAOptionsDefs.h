@@ -130,6 +130,7 @@ DEF_VISA_OPTION(vISA_loadThreadPayloadStartReg, ET_INT32, "-setStartReg",UNUSED,
 DEF_VISA_OPTION(vISA_emitCrossThreadOffR0Reloc,  ET_BOOL, "-emitCrossThreadOffR0Reloc",    UNUSED, false)
 DEF_VISA_OPTION(vISA_CodePatch,   ET_INT32, "-codePatch",        UNUSED, 0)
 DEF_VISA_OPTION(vISA_Linker,      ET_INT32, "-linker",        UNUSED, 0)
+DEF_VISA_OPTION(vISA_lscEnableImmOffsFor,   ET_INT32, "-lscEnableImmOffsFor", UNUSED, 0x3001E)
 
 //=== RA options ===
 DEF_VISA_OPTION(vISA_RoundRobin,            ET_BOOL, "-noroundrobin",    UNUSED, true)

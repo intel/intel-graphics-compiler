@@ -198,7 +198,7 @@ struct SPatchExecutionEnvironment :
     uint32_t    HasGlobalAtomics;
     uint32_t    HasDPAS;
     uint32_t    reserved1;
-    uint32_t    reserved2;
+    uint32_t    NumThreadsRequired;
     uint32_t    StatelessWritesCount;
     uint32_t    IndirectStatelessCount;
     uint32_t    UseBindlessMode;

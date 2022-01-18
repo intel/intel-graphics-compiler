@@ -247,6 +247,17 @@ bool LowerGEPForPrivMem::IsNativeType(Type* type)
     {
         return false;
     }
+
+    if (type->isIntegerTy(8) &&
+        (IGC_IS_FLAG_ENABLED(ForcePromoteI8) ||
+         (IGC_IS_FLAG_ENABLED(EnablePromoteI8) && !m_ctx->platform.supportByteALUOperation())))
+    {
+        // Byte indirect: not supported for Vx1 and VxH on PVC.
+        // As GRF from promoted privMem may use indirect accesses, disable it
+        // to prevent Vx1 and VxH accesses.
+        return false;
+    }
+
     return true;
 }
 

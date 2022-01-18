@@ -913,6 +913,15 @@ void DebugPatchList(
                     "\tHasDPAS = %s\n",
                     pPatchItem->HasDPAS ? "true" : "false");
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tNumThreadsRequired = %d\n",
+                    pPatchItem->NumThreadsRequired);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tNumStatelessWrites = %d\n",
+                    pPatchItem->StatelessWritesCount);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tNumIndirectStateless = %d\n",
+                    pPatchItem->IndirectStatelessCount);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tUseBindlessMode = %d\n",
                     pPatchItem->UseBindlessMode);
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,

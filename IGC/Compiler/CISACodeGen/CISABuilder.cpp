@@ -4662,6 +4662,13 @@ namespace IGC
             }
         }
 
+        if (IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 0) {
+            auto val = IGC_GET_FLAG_VALUE(LscImmOffsVisaOpts);
+            SaveOption(vISA_lscEnableImmOffsFor, val);
+        } else {
+            SaveOption(vISA_lscEnableImmOffsFor, (uint32_t)0);
+        }
+
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

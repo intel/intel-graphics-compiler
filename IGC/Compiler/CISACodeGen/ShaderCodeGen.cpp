@@ -494,11 +494,25 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         (ctx.m_DriverInfo.NeedFP64(ctx.platform.getPlatformInfo().eProductFamily) && ctx.platform.hasNoFP64Inst()));
     bool hasDPDivSqrtEmu = !ctx.platform.hasNoFP64Inst() && !ctx.platform.hasCorrectlyRoundedMacros() && ctx.m_DriverInfo.NeedFP64DivSqrt();
     uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
+    theEmuKind |= (hasDPDivSqrtEmu ? EmuKind::EMU_DP_DIV_SQRT : 0);
     theEmuKind |= (ctx.m_DriverInfo.NeedI64BitDivRem() ? EmuKind::EMU_I64DIVREM : 0);
     theEmuKind |=
         ((IGC_IS_FLAG_ENABLED(ForceSPDivEmulation) ||
             (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
         ? EmuKind::EMU_SP_DIV : 0);
+    if (ctx.platform.Enable32BitIntDivRemEmu())
+    {
+        if (!ctx.platform.hasNoFP64Inst())
+        {
+            // Use DP (and float) opeations to emulate int32 div/rem
+            theEmuKind |= EmuKind::EMU_I32DIVREM;
+        }
+        else
+        {
+            // Use SP floating operations to emulate int32 div/rem
+            theEmuKind |= EmuKind::EMU_I32DIVREM_SP;
+        }
+    }
 
     if (theEmuKind > 0 || IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin))
     {
@@ -1151,6 +1165,15 @@ static void PSCodeGen(
         // don't retry SIMD16 for ForcePSBestSIMD
         if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
         {
+            if (ctx->platform.supportDualSimd8PS())
+            {
+                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::DUAL_SIMD8, pSignature);
+            }
+            else
+            {
+                ctx->SetSIMDInfo(SIMD_SKIP_SPILL, SIMDMode::SIMD16, ShaderDispatchMode::DUAL_SIMD8);
+            }
+
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit16, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         }
         else {
@@ -1195,6 +1218,18 @@ static void PSCodeGen(
 
     if (!useRegKeySimd)
     {
+        if (ctx->platform.supportDualSimd8PS())
+        {
+            // the condition for dualsimd8 should be the same as SIMD16, since they are very similar
+            if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck)) {
+                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit, ShaderDispatchMode::DUAL_SIMD8, pSignature);
+            }
+            else
+            {
+                ctx->SetSIMDInfo(SIMD_SKIP_SPILL, SIMDMode::SIMD16, ShaderDispatchMode::DUAL_SIMD8);
+            }
+        }
+
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
 
         if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
@@ -1377,6 +1412,13 @@ void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& kernels
         // function compilations.
         SIMDMode pass1Mode;
         SIMDMode pass2Mode;
+
+        if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
+        {
+            pass1Mode = SIMDMode::SIMD32;
+            pass2Mode = SIMDMode::SIMD16;
+        }
+        else
         {
             pass1Mode = SIMDMode::SIMD16;
             pass2Mode = SIMDMode::SIMD8;
@@ -1435,6 +1477,14 @@ void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& kernels
     }
     else
     {
+        if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
+        {
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, false);
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, false);
+
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
+        }
+        else
         {
             // The order in which we call AddCodeGenPasses matters, please to not change order
             AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
@@ -1904,7 +1954,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             mpm.add(new BreakConstantExpr());
             mpm.add(new IGCConstProp(IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
-            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
+
+            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt) && pContext->platform.enableImmConstantOpt())
             {
                 mpm.add(createIGCIndirectICBPropagaionPass());
             }
@@ -1981,7 +2032,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
         else
         {
-            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
+            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt) && pContext->platform.enableImmConstantOpt())
             {
                 mpm.add(createIGCIndirectICBPropagaionPass());
             }

@@ -984,6 +984,18 @@ bool supportAIParameterCombiningWithLODBiasEnabled() const
 }
 
 
+bool useScratchSpaceForOCL() const
+{
+    // Disable using scratch surface for private memory on XeHP_SDV
+    // because it does not support byte-aligned (byte-scattered) messages.
+    if (hasScratchSurface()) {
+        return LSCEnabled() && IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemoryForDG2Plus);
+    }
+    else {
+        return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
+    }
+}
+
 bool isXeHPSDVPlus() const
 {
     return m_platformInfo.eProductFamily >= IGFX_XE_HP_SDV;
@@ -1058,10 +1070,6 @@ bool supportMixMode() const {
             m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
 }
 bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
-bool useScratchSpaceForOCL() const
-{
-    return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
-}
 
 bool supportByteALUOperation() const
 {
