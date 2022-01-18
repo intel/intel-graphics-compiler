@@ -1831,34 +1831,7 @@ void LiveRange::print(raw_ostream &OS, bool Details) const {
   else
     printSegments(OS);
 
-  const char *Cat = "???";
-  switch (Category) {
-  case vc::RegCategory::None:
-    Cat = "none";
-    break;
-  case vc::RegCategory::General:
-    Cat = "general";
-    break;
-  case vc::RegCategory::Address:
-    Cat = "address";
-    break;
-  case vc::RegCategory::Predicate:
-    Cat = "predicate";
-    break;
-  case vc::RegCategory::Sampler:
-    Cat = "sampler";
-    break;
-  case vc::RegCategory::Surface:
-    Cat = "surface";
-    break;
-  case vc::RegCategory::EM:
-    Cat = "em";
-    break;
-  case vc::RegCategory::RM:
-    Cat = "rm";
-    break;
-  }
-
+  StringRef Cat = vc::getRegCategoryName(Category);
   OS << "{" << Cat << ",align" << (1U << LogAlignment);
   if (Offset)
     OS << ",offset" << Offset;

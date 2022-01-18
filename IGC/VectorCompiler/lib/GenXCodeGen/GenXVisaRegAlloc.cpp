@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/GenX/RegCategory.h"
 #include "vc/Utils/General/Types.h"
 #include "visa_igc_common_header.h"
 
@@ -1013,29 +1014,7 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
  * RegNum::print : print a regnum
  */
 void GenXVisaRegAlloc::Reg::print(raw_ostream &OS) const {
-  switch (Category) {
-  case vc::RegCategory::None:
-    OS << "-";
-    return;
-  case vc::RegCategory::General:
-    OS << "v";
-    break;
-  case vc::RegCategory::Address:
-    OS << "a";
-    break;
-  case vc::RegCategory::Predicate:
-    OS << "p";
-    break;
-  case vc::RegCategory::Sampler:
-    OS << "s";
-    break;
-  case vc::RegCategory::Surface:
-    OS << "t";
-    break;
-  default:
-    OS << "?";
-    break;
-  }
+  OS << vc::getRegCategoryShortName(Category);
   OS << Num;
 }
 

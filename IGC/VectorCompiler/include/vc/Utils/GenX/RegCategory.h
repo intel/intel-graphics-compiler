@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef VC_UTILS_GENX_REGCATEGORY_H
 #define VC_UTILS_GENX_REGCATEGORY_H
 
+#include <llvm/ADT/StringRef.h>
+
 namespace vc {
 
 // The encoding for register category, used in GenXCategory,
@@ -28,6 +30,14 @@ enum Enum {
   NumCategories
 };
 } // namespace RegCategory
+
+// Get name of register category for debugging purposes.
+// For anything unknown "???" is returned.
+llvm::StringRef getRegCategoryName(unsigned Category);
+
+// Get short code of register category for debugging purposes.
+// For None "-" is returned, for anything unknown -- "?".
+llvm::StringRef getRegCategoryShortName(unsigned Category);
 
 } // namespace vc
 

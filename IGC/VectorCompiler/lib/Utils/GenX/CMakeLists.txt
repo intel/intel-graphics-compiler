@@ -10,6 +10,7 @@ set(GENX_UTILS_SOURCES
   Printf.cpp
   TypeSize.cpp
   BreakConst.cpp
+  RegCategory.cpp
   Region.cpp
   ImplicitArgsBuffer.cpp
   )
