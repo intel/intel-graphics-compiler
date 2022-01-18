@@ -463,7 +463,7 @@ public:
         unsigned int hintReg);
 
     void freeRegs(int regnum, int subregnum, int numwords, int instID);
-    PhyRegsLocalRA * getAvaialableRegs() { return &availableRegs; }
+    PhyRegsLocalRA * getAvailableRegs() { return &availableRegs; }
     int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int& regnum, int& subregnum, int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc, std::unordered_set<unsigned int>& forbidden);
     int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int& regnum, int& subregnum, int startRegNum, int endRegNum, unsigned int instID, const bool* forbidden);
 };

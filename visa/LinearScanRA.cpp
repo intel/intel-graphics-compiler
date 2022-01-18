@@ -2232,17 +2232,17 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
                 {
                     if (size % numEltPerGRF<Type_UW>() == 0)
                     {
-                        pregManager.getAvaialableRegs()->setGRFBusy(startregnum, lr->getTopDcl()->getNumRows());
+                        pregManager.getAvailableRegs()->setGRFBusy(startregnum, lr->getTopDcl()->getNumRows());
                     }
                     else
                     {
-                        pregManager.getAvaialableRegs()->setGRFBusy(startregnum, lr->getTopDcl()->getNumRows() - 1);
-                        pregManager.getAvaialableRegs()->setWordBusy(startregnum + lr->getTopDcl()->getNumRows() - 1, 0, lastRowSize);
+                        pregManager.getAvailableRegs()->setGRFBusy(startregnum, lr->getTopDcl()->getNumRows() - 1);
+                        pregManager.getAvailableRegs()->setWordBusy(startregnum + lr->getTopDcl()->getNumRows() - 1, 0, lastRowSize);
                     }
                 }
                 else
                 {
-                    pregManager.getAvaialableRegs()->setWordBusy(startregnum, subregnum, size);
+                    pregManager.getAvailableRegs()->setWordBusy(startregnum, subregnum, size);
                 }
             }
         }
@@ -2448,7 +2448,7 @@ int globalLinearScan::findSpillCandidate(LSLiveRange* tlr)
         bool canBeFree = true;
         LSLiveRange* analyzedLV = nullptr;
 
-        pregManager.getAvaialableRegs()->findRegisterCandiateWithAlignForward(i, bankAlign, false);
+        pregManager.getAvailableRegs()->findRegisterCandiateWithAlignForward(i, bankAlign, false);
 
         // Check the following adjacent registers
         for (int k = i; k < i + requiredRows; k++)
@@ -2499,7 +2499,7 @@ int globalLinearScan::findSpillCandidate(LSLiveRange* tlr)
                     break;
                 }
             }
-            else if (pregManager.getAvaialableRegs()->isGRFAvailable(k) && !pregManager.getAvaialableRegs()->isGRFBusy(k))
+            else if (pregManager.getAvailableRegs()->isGRFAvailable(k) && !pregManager.getAvailableRegs()->isGRFBusy(k))
             {
                 lastIdxs += lastLexicalID - tStartIdx;
             }

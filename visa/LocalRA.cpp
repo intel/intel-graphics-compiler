@@ -848,6 +848,36 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, b
         // in all basic blocks.
         PhyRegsManager phyRegMgr(*pregs, twoBanksRA);
 
+        if (!hybridWithSpill && kernel.getOption(vISA_Debug))
+        {
+            // when doing trivial RA, if any kernel input registers
+            // are unreferenced, they're overwritten by other
+            // variables. when running in -O0 mode, which is usually
+            // for debug info generation, mark those input
+            // registers as busy so they're not overwritten.
+            // this is a problem for trivial assignments because
+            // live-range computation is not done when trivial RA
+            // succeeds. all variables are expected to be available
+            // throughout the program since they're trivial assignments.
+            for (auto dcl : kernel.Declares)
+            {
+                if (!dcl->getRootDeclare())
+                    continue;
+                if (!dcl->isInput())
+                    continue;
+
+                if (gra.getNumRefs(dcl) == 0)
+                {
+                    // this is an unreferenced input
+                    auto phyReg = dcl->getRegVar()->getPhyReg();
+                    if (!phyReg || !phyReg->isGreg())
+                        continue;
+
+                    phyRegMgr.getAvailableRegs()->markPhyRegs(dcl);
+                }
+            }
+        }
+
         for (auto bb : kernel.fg)
         {
             PhyRegSummary* summary = kernel.fg.getBBLRASummary(bb);
@@ -857,7 +887,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, b
                 {
                     if (summary->isGRFBusy(i))
                     {
-                        phyRegMgr.getAvaialableRegs()->setGRFBusy(i, 1);
+                        phyRegMgr.getAvailableRegs()->setGRFBusy(i, 1);
                     }
                 }
             }
@@ -982,7 +1012,13 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, b
                 {
                     if (dcl->isInput())
                     {
-                        updateDebugInfo(kernel, dcl, start, end);
+                        // if an input is never referenced in the program, its
+                        // GRF storage may be overwritten in -O2 mode. only in
+                        // presence of -debug switch does compiler preserve
+                        // kernel inputs registers even when unreferenced with
+                        // trivial RA.
+                        if (gra.getNumRefs(dcl) > 0 || kernel.getOption(vISA_Debug))
+                            updateDebugInfo(kernel, dcl, start, end);
                     }
                 }
             }
@@ -2594,19 +2630,19 @@ LinearScan::LinearScan(GlobalRA& g, std::vector<LocalLiveRange*>& localLiveInter
 
     int bank1AvailableRegNum = 0;
     for (int i = 0; i < SECOND_HALF_BANK_START_GRF; i++) {
-        if (pregManager.getAvaialableRegs()->isGRFAvailable(i) && !pregManager.getAvaialableRegs()->isGRFBusy(i)) {
+        if (pregManager.getAvailableRegs()->isGRFAvailable(i) && !pregManager.getAvailableRegs()->isGRFBusy(i)) {
             bank1AvailableRegNum++;
         }
     }
-    pregManager.getAvaialableRegs()->setBank1AvailableRegNum(bank1AvailableRegNum);
+    pregManager.getAvailableRegs()->setBank1AvailableRegNum(bank1AvailableRegNum);
 
     int bank2AvailableRegNum = 0;
     for (unsigned int i = SECOND_HALF_BANK_START_GRF; i < numRegLRA; i++) {
-        if (pregManager.getAvaialableRegs()->isGRFAvailable(i) && !pregManager.getAvaialableRegs()->isGRFBusy(i)) {
+        if (pregManager.getAvailableRegs()->isGRFAvailable(i) && !pregManager.getAvailableRegs()->isGRFBusy(i)) {
             bank2AvailableRegNum++;
         }
     }
-    pregManager.getAvaialableRegs()->setBank2AvailableRegNum(bank2AvailableRegNum);
+    pregManager.getAvailableRegs()->setBank2AvailableRegNum(bank2AvailableRegNum);
 }
 
 // Linear scan implementation
@@ -3210,10 +3246,10 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
     int regnum, subregnum;
     unsigned int tmpLocalRABound = 0;
     int nrows = 0;
-    int lastUseSum1 = pregManager.getAvaialableRegs()->getLastUseSum1();
-    int lastUseSum2 = pregManager.getAvaialableRegs()->getLastUseSum2();
-    int bank1AvailableRegNum = pregManager.getAvaialableRegs()->getBank1AvailableRegNum();
-    int bank2AvailableRegNum = pregManager.getAvaialableRegs()->getBank2AvailableRegNum();
+    int lastUseSum1 = pregManager.getAvailableRegs()->getLastUseSum1();
+    int lastUseSum2 = pregManager.getAvailableRegs()->getLastUseSum2();
+    int bank1AvailableRegNum = pregManager.getAvailableRegs()->getBank1AvailableRegNum();
+    int bank2AvailableRegNum = pregManager.getAvailableRegs()->getBank2AvailableRegNum();
     int size = lr->getSizeInWords();
     BankAlign align = gra.isEvenAligned(lr->getTopDcl()) ? BankAlign::Even : BankAlign::Either;
     G4_SubReg_Align subalign = gra.getSubRegAlign(lr->getTopDcl());
