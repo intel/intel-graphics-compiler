@@ -94,13 +94,15 @@ ModulePass *llvm::createGenXGroupPrinterPass(raw_ostream &O,
  * printFunction : print function with GenX analyses
  */
 static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
-    GenXLiveness *Liveness, GenXNumbering *Numbering, GenXVisaRegAlloc *RA)
-{
+                          GenXLiveness *Liveness, GenXNumbering *Numbering,
+                          GenXVisaRegAlloc *RA, Function *FGHead) {
   // This code is a downmarket version of AssemblyWriter::printFunction.
   // We have our own version so we can show bales.
   OS << "\ndefine ";
   cast<FunctionType>(cast<PointerType>(F.getType())->getElementType())->getReturnType()->print(OS);
   OS << " @" << F.getName() << "(";
+  if (RA)
+    IGC_ASSERT_MESSAGE(FGHead, "Expected FGHead available with RA");
   for (Function::arg_iterator fb = F.arg_begin(), fi = fb, fe = F.arg_end();
       fi != fe; ) {
     if (fi != fb)
@@ -112,7 +114,7 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
     // Only show register number if there is a register allocator.
     GenXVisaRegAlloc::Reg* Reg = nullptr;
     if (RA)
-      Reg = RA->getRegForValueUntyped(&F, SimpleValue(Arg));
+      Reg = RA->getRegForValueUntyped(FGHead, SimpleValue(Arg));
     if (Reg) {
       OS << "[";
       Reg->print(OS);
@@ -135,11 +137,12 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
           for (unsigned i = 0,
               e = IndexFlattener::getNumElements(Inst->getType());
               i != e; ++i) {
-            auto Reg = RA->getRegForValueUntyped(&F, SimpleValue(Inst, i));
+            auto Reg = RA->getRegForValueUntyped(FGHead, SimpleValue(Inst, i));
             if (Reg && Reg->Category) {
               OS << (!i ? "[" : ",");
               Reg->print(OS);
-              auto BaseReg = RA->getRegForValueUntyped(&F, SimpleValue(Inst, i));
+              auto BaseReg =
+                  RA->getRegForValueUntyped(FGHead, SimpleValue(Inst, i));
               if (BaseReg != Reg) {
                 OS << "{";
                 IGC_ASSERT(BaseReg);
@@ -203,6 +206,7 @@ bool GenXPrinter::runOnFunction(Function &F)
   GenXVisaRegAlloc *RA = nullptr;
   GenXLiveness *Liveness = nullptr;
   GenXNumbering *Numbering = nullptr;
+  Function *FGHead = nullptr;
   if (FGA) {
     auto *currentFG = FGA->getAnyGroup(&F);
     if (auto *RAWrapper = getAnalysisIfAvailable<GenXVisaRegAllocWrapper>()) {
@@ -212,11 +216,12 @@ bool GenXPrinter::runOnFunction(Function &F)
       Numbering = &(NumberingWrapper->getFGPassImpl(currentFG));
     if (auto *LivenessWrapper = getAnalysisIfAvailable<GenXLivenessWrapper>())
       Liveness = &(LivenessWrapper->getFGPassImpl(currentFG));
+    FGHead = currentFG->getHead();
   }
 
   GenXBaling *Baling = getAnalysisIfAvailable<GenXFuncBaling>();
   OS << Banner;
-  printFunction(OS, F, Baling, Liveness, Numbering, RA);
+  printFunction(OS, F, Baling, Liveness, Numbering, RA, FGHead);
   return false;
 }
 
@@ -247,7 +252,7 @@ bool GenXGroupPrinter::runOnFunctionGroup(FunctionGroup &FG)
   if (Liveness)
     OS << " (see below for GenXLiveness)";
   for (auto i = FG.begin(), e = FG.end(); i != e; ++i)
-    printFunction(OS, **i, Baling, Liveness, Numbering, RA);
+    printFunction(OS, **i, Baling, Liveness, Numbering, RA, FG.getHead());
   if (Liveness) {
     Liveness->print(OS);
     OS << "\n";
