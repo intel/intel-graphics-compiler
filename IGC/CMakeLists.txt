@@ -871,6 +871,40 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
     endif()
 
   elseif(_igc_compiler_is_gnu_or_clang)
+    if("${IGC_OPTION__ARCHITECTURE_TARGET}" STREQUAL "LinuxARM")
+      igc_config_flag_apply_settings(
+          CompilerOptions
+          "${_compilerFlagName}"
+          ALL_PATTERN ""
+          SET_RAW
+            -pipe
+            -fmessage-length=0
+            #-march=armv8.2-a+fp+simd+sve2
+            -march=armv8-a+fp+simd
+            -fms-extensions
+            -Werror
+            -Wno-unused-parameter
+            -Wno-missing-field-initializers
+            -Wwrite-strings
+            -Wno-long-long
+            -Wswitch
+            -Wno-sign-compare
+            -Wno-unused-result
+            -Wno-enum-compare
+            -Wno-type-limits
+            -Wno-ignored-qualifiers
+            -Wno-shadow
+            -Wformat
+            -Wformat-security
+            -Wno-extra
+            -Wno-write-strings
+            -finline
+            -fno-strict-aliasing
+            -Wno-unknown-pragmas
+            -fPIC
+            -Bsymbolic
+      )
+    else()
     igc_config_flag_apply_settings(
         CompilerOptions
         "${_compilerFlagName}"
@@ -910,6 +944,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -fPIC
           -Bsymbolic
     )
+    endif()
     igc_config_flag_apply_settings(
         CompilerOptions
         "${_compilerFlagName}"
@@ -1195,6 +1230,9 @@ add_compile_definitions(
     $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux64>:USE_SSE2>
     $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux64>:USE_SSE3>
     $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},Linux64>:USE_SSSE3>
+    $<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},LinuxARM>:USE_NEON>
+    #$<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},LinuxARM>:USE_SVE>
+    #$<$<STREQUAL:${IGC_OPTION__ARCHITECTURE_TARGET},LinuxARM>:USE_SVE2>
     $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:ICBE_LHDM>
     $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:_WIN32>
     $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:"WIN32">
@@ -1975,8 +2013,18 @@ if(UNIX)
     endif()
   endif()
 
+  # Architecture-related options
+  if("${IGC_OPTION__ARCHITECTURE_TARGET}" STREQUAL "LinuxARM")
+    set(CPACK_PACKAGE_ARCHITECTURE "arm64")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "arm64")
+  else()
+    set(CPACK_PACKAGE_ARCHITECTURE "x86_64")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
+  endif()
+
   set(CPACK_DEBIAN_PACKAGE_MAINTAINER "intel")
-  set(CPACK_PACKAGE_ARCHITECTURE "x86_64")
   set(CPACK_PACKAGE_NAME "intel")
   set(CPACK_PACKAGE_VERSION_MAJOR ${IGC_API_MAJOR_VERSION})
   set(CPACK_PACKAGE_VERSION_MINOR ${IGC_API_MINOR_VERSION})
@@ -1986,9 +2034,7 @@ if(UNIX)
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "postinst;postrm")
   set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "Intel(R) Graphics Compiler for OpenCL(TM)")
   set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-  set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
   set(CPACK_RPM_PACKAGE_RELOCATABLE TRUE)
-  set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
 
   set(CPACK_DEBIAN_IGC-CORE_FILE_NAME "intel-igc-core_${CPACK_PACKAGE_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
   set(CPACK_DEBIAN_IGC-MEDIA_FILE_NAME "intel-igc-media_${CPACK_PACKAGE_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")

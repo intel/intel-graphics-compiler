@@ -10,8 +10,11 @@ SPDX-License-Identifier: MIT
 
 #include "types.h"
 #include "utility.h"
-#include "UFO/portable_cpuid.h"
 
+#if defined(_M_IX86) || defined(_M_AMD64) || \
+    defined(__i386__) || defined(__x86_64_)
+#include "UFO/portable_cpuid.h"
+#endif
 
 namespace iSTD
 {
@@ -50,7 +53,8 @@ inline CPU_INSTRUCTION_LEVEL GetCpuInstructionLevel( void )
 {
 #if defined(ANDROID) && defined(__SSE4_1__)
     return CPU_INSTRUCTION_LEVEL_SSE4_1;
-#else
+#elif defined(_M_IX86) || defined(_M_AMD64) || \
+      defined(__i386__) || defined(__x86_64_)
     int CPUInfo[4] = { 0, 0, 0, 0 };
 
     __cpuid(CPUInfo, 1);
@@ -78,6 +82,8 @@ inline CPU_INSTRUCTION_LEVEL GetCpuInstructionLevel( void )
     }
 
     return CpuInstructionLevel;
+#else
+    return CPU_INSTRUCTION_LEVEL_UNKNOWN;
 #endif
 }
 

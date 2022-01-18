@@ -28,13 +28,24 @@ SPDX-License-Identifier: MIT
         // warning C4985: 'ceil': attributes not present on previous declaration.
         #include <math.h>
     #endif
+
     #include <intrin.h>
+
+    #define USE_X86
     #define USE_SSE4_1
-#else
+#elif defined(__i386__) || defined(__x86_64__)
     #include <x86intrin.h>
+    #define USE_X86
+
+    #if defined(__SSE4_1__)
+        #define USE_SSE4_1
+    #endif // defined(__SSE4_1__)
 #endif
 
+#if defined(USE_SSE4_1)
 typedef __m128              DQWORD;         // 128-bits,   16-bytes
+#endif
+
 typedef DWORD               PREFETCH[8];    //             32-bytes
 typedef DWORD               CACHELINE[8];   //             32-bytes
 typedef WORD                DHWORD[32];     // 512-bits,   64-bytes
@@ -81,16 +92,16 @@ inline void MemCopy( void*, const void* );
 inline void MemCopy( void*, const void*, const size_t );
 inline void MemCopyWC( void*, const void*, const size_t );
 inline void MemCopySwapBytes( void*, const void*, const size_t, const unsigned int);
-inline void ScalarSwapBytes( __m128i**, const __m128i**, const size_t, const unsigned int);
+inline void ScalarSwapBytes( void**, const void**, const size_t, const unsigned int);
 
 inline void SafeMemSet( void*, const int, const size_t );
 inline int  SafeMemCompare( const void*, const void*, const size_t );
 inline void SafeMemMove( void*, const void*, const size_t );
 
-#ifndef _WIN64
+#if defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
 inline void  __fastcall FastBlockCopyFromUSWC_SSE4_1_movntdqa_movdqa(void* dst, const void* src );
 inline void  __fastcall FastBlockCopyFromUSWC_SSE4_1_movntdqa_movdqu(void* dst, const void* src );
-#endif
+#endif // defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
 inline void FastMemCopyFromWC( void* dst, const void* src, const size_t bytes, CPU_INSTRUCTION_LEVEL cpuInstructionLevel);
 
 inline void FastCpuBlt( BYTE*, const DWORD, BYTE*, const DWORD, const DWORD, DWORD );
@@ -114,7 +125,11 @@ Description:
 \*****************************************************************************/
 inline void Prefetch( const void* ptr )
 {
+#if defined(USE_X86)
     _mm_prefetch( (const char*)ptr, _MM_HINT_NTA );
+#elif defined(__GNUC__) || defined(__clang__)
+    __builtin_prefetch(ptr, 0, 0);
+#endif
 }
 
 /*****************************************************************************\
@@ -130,8 +145,12 @@ inline void PrefetchBuffer( const void* pBuffer, const size_t bytes )
 
     for( size_t i = 0; i <= cachelines; i++ )
     {
+#if defined(USE_X86)
         _mm_prefetch( (const char*)pBuffer + i * sizeof(PREFETCH),
             _MM_HINT_NTA );
+#elif defined(__GNUC__) || defined(__clang__)
+    __builtin_prefetch((const char*)pBuffer + i * sizeof(PREFETCH), 0, 0);
+#endif
     }
 }
 
@@ -144,7 +163,9 @@ Description:
 \*****************************************************************************/
 inline void CachelineFlush( const void* ptr )
 {
+#if defined(USE_X86)
     _mm_clflush( (char*)ptr );
+#endif
 }
 
 /*****************************************************************************\
@@ -192,6 +213,7 @@ inline void MemCopy<8>( void* dst, const void* src )
     *pDst = *pSrc;
 }
 
+#if defined(USE_SSE4_1)
 template <>
 inline void MemCopy<16>( void* dst, const void* src )
 {
@@ -223,6 +245,7 @@ inline void MemCopy<28>( void* dst, const void* src )
     UINT32*         pDst32 = reinterpret_cast<UINT32*>( pDst64 );
     *pDst32 = *pSrc32;
 }
+#endif // defined(USE_SSE4_1)
 
 /*****************************************************************************\
 Inline Function:
@@ -233,7 +256,7 @@ Description:
 \*****************************************************************************/
 inline void MemCopy( void* dst, const void* src, const size_t bytes )
 {
-#if defined ( _MSC_VER )
+#if defined ( USE_SSE4_1 )
     UINT8*            pDst8 = reinterpret_cast<UINT8*>( dst );
     const UINT8*    pSrc8 = reinterpret_cast<const UINT8*>( src );
     size_t            bytesRemaining = bytes;
@@ -619,7 +642,7 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
             }
         }
     }
-#else // #if defined ( _MSC_VER )
+#else // !defined ( USE_SSE4_1 )
     // Linux projects do not support standard types or memcpy_s
     ::memcpy_s(dst, bytes, src, bytes);
 #endif
@@ -639,7 +662,7 @@ Input:
 \*****************************************************************************/
 inline void MemCopyWC( void* dst, const void* src, const size_t bytes )
 {
-#if defined ( _MSC_VER )
+#if defined ( USE_SSE4_1 )
     const __m128i           s_SSE2CmpMask   = _mm_setr_epi8( 0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 );
     const __m128i*          pMMSrc          = reinterpret_cast<const __m128i*>(src);
     __m128i*                pMMDest         = reinterpret_cast<__m128i*>(dst);
@@ -797,8 +820,8 @@ Description:
     Helper function for MemCopySwapBytes
 \*****************************************************************************/
 inline void ScalarSwapBytes(
-    __m128i** dst,
-    const __m128i** src,
+    void** dst,
+    const void** src,
     const size_t byteCount,
     const unsigned int swapbytes)
 {
@@ -817,8 +840,8 @@ inline void ScalarSwapBytes(
                 wSrc     += 1;
             }
 
-            *src  = reinterpret_cast<const __m128i*>(wSrc);
-            *dst = reinterpret_cast<__m128i*>(wDst);
+            *src  = reinterpret_cast<const void*>(wSrc);
+            *dst = reinterpret_cast<void*>(wDst);
         }
         break;
     case 4:
@@ -836,8 +859,8 @@ inline void ScalarSwapBytes(
                 dwSrc     += 1;
             }
 
-            *src  = reinterpret_cast<const __m128i*>(dwSrc);
-            *dst = reinterpret_cast<__m128i*>(dwDst);
+            *src  = reinterpret_cast<const void*>(dwSrc);
+            *dst = reinterpret_cast<void*>(dwDst);
         }
         break;
     default:
@@ -847,8 +870,8 @@ inline void ScalarSwapBytes(
 
         ::memcpy_s(bDst, byteCount, bSrc, byteCount);
 
-        *src = reinterpret_cast<const __m128i*>(bSrc + byteCount);
-        *dst = reinterpret_cast<__m128i*>(bDst + byteCount);
+        *src = reinterpret_cast<const void*>(bSrc + byteCount);
+        *dst = reinterpret_cast<void*>(bDst + byteCount);
     }
 }
 
@@ -871,6 +894,14 @@ inline void MemCopySwapBytes(
     const size_t bytes,
     const unsigned int swapbytes)
 {
+    // only handle 2 and 4 bytes swapping
+    if (swapbytes != 2 && swapbytes != 4)
+    {
+        MemCopy(dst, src, bytes);
+        return;
+    }
+
+#if defined(USE_SSE4_1)
     const __m128i*      pMMSrc  = reinterpret_cast<const __m128i*>(src);
     __m128i*            pMMDest = reinterpret_cast<__m128i*>(dst);
     size_t              count   = bytes;
@@ -887,27 +918,8 @@ inline void MemCopySwapBytes(
                             0x03, 0x02, 0x01, 0x00, 0x07, 0x06, 0x05, 0x04,
                             0x0b, 0x0a, 0x09, 0x08, 0x0f, 0x0e, 0x0d, 0x0c);
 
-    // SSE3 support required
-    CPU_INSTRUCTION_LEVEL cpuInstructionLevel = GetCpuInstructionLevel();
-    if (cpuInstructionLevel < CPU_INSTRUCTION_LEVEL_SSE3)
-    {
-        ScalarSwapBytes(&pMMDest, &pMMSrc, count, swapbytes);
-        return;
-    }
-
-    // only handle 2 and 4 bytes swapping
-    if (swapbytes != 2 && swapbytes != 4)
-    {
-        MemCopy(pMMDest, pMMSrc, count);
-        return;
-    }
-
     // when size is < 16 rely, must use scalar swap
-    if (count < INSTR_WIDTH_128)
-    {
-        ScalarSwapBytes(&pMMDest, &pMMSrc, count, swapbytes);
-    }
-    else
+    if (count >= INSTR_WIDTH_128)
     {
         const __m128i shuffleMask = (swapbytes == 2) ? wordMask : dwordMask;
 
@@ -933,7 +945,7 @@ inline void MemCopySwapBytes(
             {
                 align = INSTR_WIDTH_128 - align;
                 cnt = align >> DWORD_SHIFT;
-                ScalarSwapBytes(&pMMDest, &pMMSrc, cnt * sizeof(DWORD), swapbytes);
+                ScalarSwapBytes((void**)&pMMDest, (const void**)&pMMSrc, cnt * sizeof(DWORD), swapbytes);
                 cnt = align & BYTE_TAIL;
 
                 // only words should remain, not bytes
@@ -941,7 +953,7 @@ inline void MemCopySwapBytes(
                 {
                     ASSERT(cnt % 2 == 0);
                     ASSERT(swapbytes == 2);
-                    ScalarSwapBytes(&pMMDest, &pMMSrc, cnt, swapbytes);
+                    ScalarSwapBytes((void**)&pMMDest, (const void**)&pMMSrc, cnt, swapbytes);
                 }
             }
 
@@ -1055,7 +1067,7 @@ inline void MemCopySwapBytes(
         if (count != 0)
         {
             cnt = count >> DWORD_SHIFT;
-            ScalarSwapBytes(&pMMDest, &pMMSrc, cnt * sizeof(DWORD), swapbytes);
+            ScalarSwapBytes((void**)&pMMDest, (const void**)&pMMSrc, cnt * sizeof(DWORD), swapbytes);
             cnt = count & BYTE_TAIL;
 
             // only words should remain, not bytes
@@ -1063,10 +1075,13 @@ inline void MemCopySwapBytes(
             {
                 ASSERT(cnt % 2 == 0);
                 ASSERT(swapbytes == 2);
-                ScalarSwapBytes(&pMMDest, &pMMSrc, cnt, swapbytes);
+                ScalarSwapBytes((void**)&pMMDest, (const void**)&pMMSrc, cnt, swapbytes);
             }
         }
+        return;
     }
+#endif // defined(USE_SSE4_1)
+    ScalarSwapBytes(&dst, &src, bytes, swapbytes);
 }
 
 /*****************************************************************************\
@@ -1156,6 +1171,7 @@ inline void SafeMemMove( void *dst, const void *src, const size_t bytes )
     }
 }
 
+#if defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
 /*****************************************************************************\
 MACROS:
     EMIT_R_MR
@@ -1240,7 +1256,6 @@ Input:
     dst - 16-byte aligned pointer to (cacheable) destination buffer
     src - 16-byte(req)/64-byte(optimal) aligned pointer to (USWC) source buffer
 \*****************************************************************************/
-#if defined( _MSC_VER ) && !defined (_WIN64)
 __forceinline void __fastcall FastBlockCopyFromUSWC_SSE4_1_movntdqa_movdqa( void* dst, const void* src )
 {
 
@@ -1279,7 +1294,6 @@ __forceinline void __fastcall FastBlockCopyFromUSWC_SSE4_1_movntdqa_movdqa( void
     }
 
 } // FastMemCopy_SSE4_1_movntdqa_movdqa()
-#endif //#if defined( _MSC_VER ) && !defined (_WIN64)
 
 /*****************************************************************************\
 Inline Function:
@@ -1291,7 +1305,6 @@ Input:
     dst - 16-byte (unaligned) pointer to (cacheable) destination buffer
     src - 16-byte(req)/64-byte(optimal) aligned pointer to (USWC) source buffer
 \*****************************************************************************/
-#if defined ( _MSC_VER ) && !defined(_WIN64)
 __forceinline void  __fastcall FastBlockCopyFromUSWC_SSE4_1_movntdqa_movdqu(void* dst, const void* src )
 {
     __asm
@@ -1328,19 +1341,20 @@ __forceinline void  __fastcall FastBlockCopyFromUSWC_SSE4_1_movntdqa_movdqu(void
         movdqu xmmword ptr [ecx+48], xmm3
     }
 } // FastMemCopy_SSE4_1_movntdqa_movdqu()
-#endif // #if defined( _MSC_VER ) && !defined (_WIN64)
+#endif // defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
 
 
 inline void FastMemCopyFromWC( void* dst, const void* src, const size_t bytes, CPU_INSTRUCTION_LEVEL cpuInstructionLevel )
 {
-#if defined( _MSC_VER ) && (!defined (_WIN64)  || defined ( _In_ ) ) || defined (__GNUC__)
+    // Cache pointers to memory
+    BYTE* p_dst = (BYTE*)dst;
+    BYTE* p_src = (BYTE*)src;
+
+    size_t count = bytes;
+
+#if defined(USE_SSE4_1)
     if( cpuInstructionLevel >= CPU_INSTRUCTION_LEVEL_SSE4_1 )
     {
-        // Cache pointers to memory
-        BYTE* p_dst = (BYTE*)dst;
-        BYTE* p_src = (BYTE*)src;
-
-        size_t count = bytes;
 
         if( count >= sizeof(DHWORD) )
         {
@@ -1370,11 +1384,11 @@ inline void FastMemCopyFromWC( void* dst, const void* src, const size_t bytes, C
                 const bool isDstDoubleQuadWordAligned =
                     IsAligned( p_dst, sizeof(DQWORD) );
 
-#if defined(_WIN64) || defined(__GNUC__)
+#if !defined(USE_INLINE_ASM) || USE_INLINE_ASM == 0
                 __m128i* pMMSrc = (__m128i*)(p_src);
                 __m128i* pMMDest = reinterpret_cast<__m128i*>(p_dst);
                 __m128i  xmm0, xmm1, xmm2, xmm3;
-#endif
+#endif // !defined(USE_INLINE_ASM) || USE_INLINE_ASM == 0
 
                 if( isDstDoubleQuadWordAligned )
                 {
@@ -1385,9 +1399,9 @@ inline void FastMemCopyFromWC( void* dst, const void* src, const size_t bytes, C
                     for( size_t i=0; i<DoubleHexWordsToCopy; i++ )
                     {
 
-#if !defined(_WIN64) && !defined(__GNUC__)
+#if defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
                         FastBlockCopyFromUSWC_SSE4_1_movntdqa_movdqa( p_dst, p_src );
-#else
+#else // !(defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1)
                         xmm0 = _mm_stream_load_si128(pMMSrc);
                         xmm1 = _mm_stream_load_si128(pMMSrc + 1);
                         xmm2 = _mm_stream_load_si128(pMMSrc + 2);
@@ -1399,7 +1413,7 @@ inline void FastMemCopyFromWC( void* dst, const void* src, const size_t bytes, C
                         _mm_store_si128(pMMDest + 2, xmm2);
                         _mm_store_si128(pMMDest + 3, xmm3);
                         pMMDest += 4;
-#endif
+#endif // defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
 
                         p_dst += sizeof(DHWORD);
                         p_src += sizeof(DHWORD);
@@ -1415,9 +1429,9 @@ inline void FastMemCopyFromWC( void* dst, const void* src, const size_t bytes, C
                     for( size_t i=0; i<DoubleHexWordsToCopy; i++ )
                     {
 
-#if !defined(_WIN64) && !defined(__GNUC__)
+#if defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
                         FastBlockCopyFromUSWC_SSE4_1_movntdqa_movdqu( p_dst, p_src );
-#else
+#else // !(defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1)
                         xmm0 = _mm_stream_load_si128(pMMSrc);
                         xmm1 = _mm_stream_load_si128(pMMSrc + 1);
                         xmm2 = _mm_stream_load_si128(pMMSrc + 2);
@@ -1429,7 +1443,7 @@ inline void FastMemCopyFromWC( void* dst, const void* src, const size_t bytes, C
                         _mm_storeu_si128(pMMDest + 2, xmm2);
                         _mm_storeu_si128(pMMDest + 3, xmm3);
                         pMMDest += 4;
-#endif
+#endif // defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
 
                         p_dst += sizeof(DHWORD);
                         p_src += sizeof(DHWORD);
@@ -1438,17 +1452,12 @@ inline void FastMemCopyFromWC( void* dst, const void* src, const size_t bytes, C
                 }
             }
         }
-
-        // Copy remaining BYTE(s)
-        if( count )
-        {
-            MemCopy( p_dst, p_src, count );
-        }
     }
-    else
-#endif //!defined ( _WIN64 ) || defined ( _In_ )
+#endif // defined(USE_SSE4_1)
+    // Copy remaining BYTE(s)
+    if( count )
     {
-        MemCopy( dst, src, bytes );
+        MemCopy( p_dst, p_src, count );
     }
 }
 
@@ -1547,8 +1556,7 @@ inline void FastCpuBltFromUSWC(
     DWORD count,
     CPU_INSTRUCTION_LEVEL level)
 {
-#ifndef _WIN64
-
+#if defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
     //back up the XMM registers just in case
      __declspec( align(16) ) BYTE backUpRegisters[16*4];
 
@@ -1559,8 +1567,8 @@ inline void FastCpuBltFromUSWC(
     __asm movdqa xmmword ptr [ecx + 16*1], xmm1
     __asm movdqa xmmword ptr [ecx + 16*2], xmm2
     __asm movdqa xmmword ptr [ecx + 16*3], xmm3
+#endif // defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
 
-#endif //_WIN64
     do
     {
         iSTD::FastMemCopyFromWC( dst, src, stride, level );
@@ -1569,15 +1577,13 @@ inline void FastCpuBltFromUSWC(
         src += srcPitch;
     }
     while( --count > 0 );
-#ifndef _WIN64
-#if defined ( _MSC_VER )
+#if defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
     __asm mov ecx, tempPtr
     __asm movdqa xmm0, xmmword ptr [ecx + 16*0]
     __asm movdqa xmm1, xmmword ptr [ecx + 16*1]
     __asm movdqa xmm2, xmmword ptr [ecx + 16*2]
     __asm movdqa xmm3, xmmword ptr [ecx + 16*3]
-#endif
-#endif //_WIN64
+#endif // defined(USE_INLINE_ASM) && USE_INLINE_ASM == 1
 }
 #endif
 
@@ -1611,6 +1617,8 @@ inline void FindWordBufferMinMax(
     WORD wMaxValue = 0x0000;
 
     size_t count = bytes / sizeof(WORD);
+
+#if defined(USE_SSE4_1)
     size_t i = 0;
 
     if( IsAligned( pBuffer, sizeof(WORD) ) )
@@ -1854,7 +1862,8 @@ inline void FindWordBufferMinMax(
 
         } // if( count >= WordsPerQuadWord )
     }
-#endif
+#endif // _WIN64
+#endif // defined(USE_SSE4_1)
 
     // Find min/max per value
     while( count > 0 )
@@ -1949,26 +1958,12 @@ inline void FindWordBufferMinMaxRestart(
             if( count >= WordsPerDoubleQuadWord )
             {
                 __m128i mInput, mRestarts, mMask;
-                __m128i mAll_ones;
-                __m128i mMinValue128i, mMaxValue128i;
-
-                // This is just used for andnot mInput
-                mAll_ones.m128i_u64[0] = 0xFFFFFFFFFFFFFFFF;
-                mAll_ones.m128i_u64[1] = 0xFFFFFFFFFFFFFFFF;
-
-                // start with really high min and really low max
-                // What should happen if all values are restart?
-                mMinValue128i.m128i_u64[0] = 0xFFFFFFFFFFFFFFFF;
-                mMinValue128i.m128i_u64[1] = 0xFFFFFFFFFFFFFFFF;
-                mMaxValue128i.m128i_u64[0] = 0x0000000000000000;
-                mMaxValue128i.m128i_u64[1] = 0x0000000000000000;
+                __m128i mAll_ones = _mm_setr_epi32(0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                __m128i mMinValue128i = _mm_setr_epi32(0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                __m128i mMaxValue128i = _mm_setzero_si128();
 
                 // Initialize register used for testing for restart index.
-                mRestarts.m128i_u64[0] = mRestarts.m128i_u64[1] =
-                    (((UINT64) restart) << 48) |
-                    (((UINT64) restart) << 32) |
-                    (((UINT64) restart) << 16) |
-                    ((UINT64) restart);
+                mRestarts = _mm_setr_epi16(restart, restart, restart, restart, restart, restart, restart, restart);
 
                 while( count >= WordsPerPrefetch )
                 {
@@ -2106,6 +2101,8 @@ inline void FindDWordBufferMinMax(
     DWORD wMaxValue = 0x00000000;
 
     DWORD count = bytes / sizeof(DWORD);
+
+#if defined(USE_SSE4_1)
     DWORD i = 0;
 
     if( IsAligned( pBuffer, sizeof(DWORD) ) )
@@ -2240,6 +2237,7 @@ inline void FindDWordBufferMinMax(
             } // if( count >= DWordsPerDoubleQuadWord )
         } // if( count >= DWordsPerDoubleQuadWord )
     }
+#endif // defined(USE_SSE4_1)
 
     // Find min/max per value
     while( count > 0 )
@@ -2334,22 +2332,12 @@ inline void FindDWordBufferMinMaxRestart(
             if( count >= DWordsPerPrefetch )
             {
                 __m128i mInput, mRestarts, mMask;
-                __m128i mAll_ones;
-                __m128i mMinValue128i, mMaxValue128i;
-
-                // This is just used for andnot mInput
-                mAll_ones.m128i_u64[0] = 0xFFFFFFFFFFFFFFFF;
-                mAll_ones.m128i_u64[1] = 0xFFFFFFFFFFFFFFFF;
-
-                // start with really high min and really low max
-                // What should happen if all values are restart?
-                mMinValue128i.m128i_u64[0] = 0xFFFFFFFFFFFFFFFF;
-                mMinValue128i.m128i_u64[1] = 0xFFFFFFFFFFFFFFFF;
-                mMaxValue128i.m128i_u64[0] = 0x0000000000000000;
-                mMaxValue128i.m128i_u64[1] = 0x0000000000000000;
+                __m128i mAll_ones = _mm_setr_epi32(0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                __m128i mMinValue128i = _mm_setr_epi32(0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                __m128i mMaxValue128i = _mm_setzero_si128();
 
                 // Initialize register used for testing for restart index.
-                mRestarts.m128i_u64[0] = mRestarts.m128i_u64[1] = (((UINT64) restart) << 32) | ((UINT64) restart);
+                mRestarts = _mm_setr_epi32(restart, restart, restart, restart);
 
                 while( count >= DWordsPerPrefetch )
                 {
@@ -2484,6 +2472,8 @@ inline void FindWordBufferMinMaxCopy(
     WORD wMaxValue = 0x0000;
 
     size_t count = bytes / sizeof(WORD);
+
+#if defined(USE_SSE4_1)
     size_t i = 0;
 
     if( IsAligned( pBuffer, sizeof(WORD) ) )
@@ -2735,7 +2725,8 @@ inline void FindWordBufferMinMaxCopy(
 
         } // if( count >= WordsPerQuadWord )
     }
-#endif
+#endif // _WIN64
+#endif // defined(USE_SSE4_1)
 
     // Find min/max per value
     while( count > 0 )
@@ -2784,6 +2775,8 @@ inline void FindDWordBufferMinMaxCopy(
     DWORD wMaxValue = 0x00000000;
 
     DWORD count = bytes / sizeof(DWORD);
+
+#if defined(USE_SSE4_1)
     DWORD i = 0;
 
     if( IsAligned( pBuffer, sizeof(DWORD) ) )
@@ -2922,6 +2915,7 @@ inline void FindDWordBufferMinMaxCopy(
             } // if( count >= DWordsPerDoubleQuadWord )
         } // if( count >= DWordsPerDoubleQuadWord )
     }
+#endif // defined(USE_SSE4_1)
 
     // Find min/max per value
     while( count > 0 )
@@ -3019,26 +3013,12 @@ inline void FindWordBufferMinMaxRestartCopy(
             if( count >= WordsPerDoubleQuadWord )
             {
                 __m128i mInput, mRestarts, mMask;
-                __m128i mAll_ones;
-                __m128i mMinValue128i, mMaxValue128i;
-
-                // This is just used for andnot mInput
-                mAll_ones.m128i_u64[0] = 0xFFFFFFFFFFFFFFFF;
-                mAll_ones.m128i_u64[1] = 0xFFFFFFFFFFFFFFFF;
-
-                // start with really high min and really low max
-                // What should happen if all values are restart?
-                mMinValue128i.m128i_u64[0] = 0xFFFFFFFFFFFFFFFF;
-                mMinValue128i.m128i_u64[1] = 0xFFFFFFFFFFFFFFFF;
-                mMaxValue128i.m128i_u64[0] = 0x0000000000000000;
-                mMaxValue128i.m128i_u64[1] = 0x0000000000000000;
+                __m128i mAll_ones = _mm_setr_epi32(0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                __m128i mMinValue128i = _mm_setr_epi32(0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                __m128i mMaxValue128i = _mm_setzero_si128();
 
                 // Initialize register used for testing for restart index.
-                mRestarts.m128i_u64[0] = mRestarts.m128i_u64[1] =
-                    (((UINT64) restart) << 48) |
-                    (((UINT64) restart) << 32) |
-                    (((UINT64) restart) << 16) |
-                    ((UINT64) restart);
+                mRestarts = _mm_setr_epi16(restart, restart, restart, restart, restart, restart, restart, restart);
 
                 while( count >= WordsPerPrefetch )
                 {
@@ -3231,22 +3211,12 @@ inline void FindDWordBufferMinMaxRestartCopy(
             if( count >= DWordsPerPrefetch )
             {
                 __m128i mInput, mRestarts, mMask;
-                __m128i mAll_ones;
-                __m128i mMinValue128i, mMaxValue128i;
-
-                // This is just used for andnot mInput
-                mAll_ones.m128i_u64[0] = 0xFFFFFFFFFFFFFFFF;
-                mAll_ones.m128i_u64[1] = 0xFFFFFFFFFFFFFFFF;
-
-                // start with really high min and really low max
-                // What should happen if all values are restart?
-                mMinValue128i.m128i_u64[0] = 0xFFFFFFFFFFFFFFFF;
-                mMinValue128i.m128i_u64[1] = 0xFFFFFFFFFFFFFFFF;
-                mMaxValue128i.m128i_u64[0] = 0x0000000000000000;
-                mMaxValue128i.m128i_u64[1] = 0x0000000000000000;
+                __m128i mAll_ones = _mm_setr_epi32(0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                __m128i mMinValue128i = _mm_setr_epi32(0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                __m128i mMaxValue128i = _mm_setzero_si128();
 
                 // Initialize register used for testing for restart index.
-                mRestarts.m128i_u64[0] = mRestarts.m128i_u64[1] = (((UINT64) restart) << 32) | ((UINT64) restart);
+                mRestarts = _mm_setr_epi32(restart, restart, restart, restart);
 
                 while( count >= DWordsPerPrefetch )
                 {
@@ -3356,3 +3326,11 @@ inline void FindDWordBufferMinMaxRestartCopy(
 
 
 } // iSTD
+
+#if defined(USE_X86)
+# undef USE_X86
+#endif // defined(USE_X86)
+
+#if defined(USE_SSE4_1)
+# undef USE_SSE4_1
+#endif // defined(USE_SSE4_1)

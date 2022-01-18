@@ -50,7 +50,7 @@ static void * GetProcAddress(
 #if defined(WIN32)
 #define CDECLATTRIBUTE __cdecl
 #elif __GNUC__
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__ARM_ARCH)
 #define CDECLATTRIBUTE
 #else
 #define CDECLATTRIBUTE                 __attribute__((__cdecl__))

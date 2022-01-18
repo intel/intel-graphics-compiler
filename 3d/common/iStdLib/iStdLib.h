@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "Print.h"
 #include "Debug.h"
 #include "utility.h"
-#include "utilitySSE.h"
 #include "CpuUtil.h"
 #include "FloatUtil.h"
 #include "FloatSafe.h"
@@ -47,4 +46,3 @@ SPDX-License-Identifier: MIT
 #include "LRUSet.h"
 #include "LruHashTable.h"
 #endif
-

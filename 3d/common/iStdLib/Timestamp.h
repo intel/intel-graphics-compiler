@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #   include <intrin.h>
 #else
 #   include <time.h>
-#   include <x86intrin.h>
 #   ifndef NSEC_PER_SEC
 #       define NSEC_PER_SEC 1000000000L
 #   endif
@@ -33,7 +32,10 @@ Description:
 \*****************************************************************************/
 __forceinline void Pause( void )
 {
+#if defined(_M_IX86) || defined (_M_AMD64) || \
+    defined(__i386__) || defined(__x86_64__)
     _mm_pause();
+#endif
 }
 
 #if defined _WIN32

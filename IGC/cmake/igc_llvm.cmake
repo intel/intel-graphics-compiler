@@ -25,6 +25,13 @@ set(CMAKE_MODULE_PATH
   )
 
 set(LLVM_TABLEGEN_EXE "llvm-tblgen")
+if(CMAKE_CROSSCOMPILING)
+  if(DEFINED LLVM_TABLEGEN)
+    set(LLVM_TABLEGEN_EXE ${LLVM_TABLEGEN})
+  else()
+    find_program(LLVM_TABLEGEN_EXE "llvm-tblgen" ${LLVM_TOOLS_BINARY_DIR} NO_DEFAULT_PATH)
+  endif()
+endif()
 
 set(LLVM_LINK_EXE "llvm-link" CACHE STRING "")
 

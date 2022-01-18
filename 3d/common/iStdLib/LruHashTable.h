@@ -214,7 +214,7 @@ Input:
     ValueType touch_value - the associated value stored with the key.
 
 Output:
-    bool - true if the item was evicted from the set. 
+    bool - true if the item was evicted from the set.
 \*****************************************************************************/
 template<LruHashTableTemplateList>
 bool LruHashTableType::TouchItem(
@@ -247,7 +247,7 @@ Input:
     value which was evicted to add the touch_value to the set.
 
 Output:
-    bool - true if the item was evicted from the set. 
+    bool - true if the item was evicted from the set.
 \*****************************************************************************/
 template<LruHashTableTemplateList>
 bool LruHashTableType::TouchItem(
@@ -277,10 +277,11 @@ Output:
 template<LruHashTableTemplateList>
 DWORD LruHashTableType::MakeHashValue(const KeyType& in_key)
 {
-    const __m128i* keyPointer = (__m128i*)&in_key;
     DWORD hashCode = 0;
 
 #if defined(_WIN32) && defined(_MSC_VER)
+    const __m128i* keyPointer = (__m128i*)&in_key;
+
     ASSERT( HashingFunctions::HashingFunctionCount == 1 );
 
     switch(m_hashingFunction)

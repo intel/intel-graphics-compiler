@@ -19,7 +19,11 @@ SPDX-License-Identifier: MIT
 namespace iOpenCL
 {
 
+#if __ARM_ARCH
+void DebugMessageStr(std::string& output, unsigned int ulDebugLevel, const char* fmt, ...)
+#else
 void __cdecl DebugMessageStr(std::string& output, unsigned int ulDebugLevel, const char* fmt, ...)
+#endif
 {
     if(IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_ENABLED(EnableCosDump))
     //if( str && ( ( g_DebugControl.MsgLevel & ulDebugLevel ) != GFXDBG_OFF ) )

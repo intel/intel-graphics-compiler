@@ -103,17 +103,26 @@ elseif(${CCLANG_BUILD_PREBUILDS})
   set(CLANG_TOOL_PATH "${CCLANG_BUILD_PREBUILDS_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}")
   set(LLVM_PACKAGE_VERSION "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
 
-  # Get clang-tool version
-  execute_process(
-    COMMAND ${CLANG_TOOL_PATH} -v
-    ERROR_VARIABLE CLANG_TOOL_V_CALL)
-  string(REGEX MATCH "clang version ([0-9]*\\.[0-9]*\\.[0-9]*[a-zA-Z0-9]*)" CLANG_TOOL_VERSION "${CLANG_TOOL_V_CALL}")
-  set(CLANG_TOOL_VERSION "${CMAKE_MATCH_1}")
+  if(CMAKE_CROSSCOMPILING)
+    # In case of cross compilation we could not execute prebuilt opencl library,
+    # so we trust version number provided externally or assume it's the same as
+    # LLVM version
+    if(NOT DEFINED CLANG_TOOL_VERSION)
+      set(CLANG_TOOL_VERSION "${LLVM_PACKAGE_VERSION}")
+    endif()
+  else(CMAKE_CROSSCOMPILING)
+    # Get clang-tool version
+    execute_process(
+      COMMAND ${CLANG_TOOL_PATH} -v
+      ERROR_VARIABLE CLANG_TOOL_V_CALL)
+    string(REGEX MATCH "clang version ([0-9]*\\.[0-9]*\\.[0-9]*[a-zA-Z0-9]*)" CLANG_TOOL_VERSION "${CLANG_TOOL_V_CALL}")
+    set(CLANG_TOOL_VERSION "${CMAKE_MATCH_1}")
 
-  # Check if we parse clang tool version correctly
-  if(NOT CLANG_TOOL_VERSION)
-    message(FATAL_ERROR "[IGC] : Cannot read version of clang tool, please check the output of execution `clang -v` : ${CLANG_TOOL_V_CALL}")
-  endif()
+    # Check if we parse clang tool version correctly
+    if(NOT CLANG_TOOL_VERSION)
+      message(FATAL_ERROR "[IGC] : Cannot read version of clang tool, please check the output of execution `clang -v` : ${CLANG_TOOL_V_CALL}")
+    endif()
+  endif(CMAKE_CROSSCOMPILING)
 
   # Check if llvm version for IGC is newer or equal with the clang-tool version
   if(${LLVM_PACKAGE_VERSION} VERSION_GREATER ${CLANG_TOOL_VERSION} OR
