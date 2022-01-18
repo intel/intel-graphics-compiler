@@ -453,7 +453,7 @@ static void dumpPlatform(const vc::CompileOptions &Opts, PLATFORM Platform,
 
 static bool textRelocationsMatch(const vc::CMKernel &K) {
   auto &Info = K.getProgramOutput();
-  return Info.m_relocs.size() == Info.m_funcSymbolTableEntries;
+  return Info.m_relocs.size() == Info.m_funcRelocationTableEntries;
 }
 
 static void validateCMProgramForOCLBin(const vc::CGen8CMProgram &CMProgram) {
