@@ -266,6 +266,9 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 
   if (Opts.DirectCallsOnly)
     BackendOpts.DirectCallsOnly = true;
+
+  BackendOpts.enforceLLVMOptions();
+
   return BackendOpts;
 }
 

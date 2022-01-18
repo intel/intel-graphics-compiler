@@ -56,16 +56,16 @@ struct GenXBackendOptions {
   // Emit breakpoints at the start of each kernel
   bool DebuggabilityEmitBreakpoints = false;
   // Enable emission of DWARF debug information
-  bool DebuggabilityEmitDWARF = false;
+  bool DebuggabilityEmitDWARF = true;
   // Generate Debug Info in a format compatible with zebin
   bool DebuggabilityZeBinCompatibleDWARF = false;
   // Enable strict debug info validation
   bool DebuggabilityValidateDWARF = false;
 
   // Enable/disable regalloc dump.
-  bool DumpRegAlloc;
+  bool DumpRegAlloc = false;
   // Maximum available memory for stack (in bytes).
-  unsigned StackSurfaceMaxSize;
+  unsigned StackSurfaceMaxSize = 8 * 1024;
 
   // Non-owning pointer to abstract shader dumper for debug dumps.
   vc::ShaderDumper *Dumper = nullptr;
@@ -76,15 +76,15 @@ struct GenXBackendOptions {
   bool DisableStructSplitting = false;
 
   // Whether to enable finalizer dumps.
-  bool EnableAsmDumps;
+  bool EnableAsmDumps = false;
   // Whether to enable dumps of kernel debug information
-  bool EnableDebugInfoDumps;
+  bool EnableDebugInfoDumps = false;
   std::string DebugInfoDumpsNameOverride;
 
   bool ForceArrayPromotion = false;
 
   // Localize live ranges to reduce accumulator usage
-  bool LocalizeLRsForAccUsage;
+  bool LocalizeLRsForAccUsage = false;
 
   // Disable LR coalescing
   bool DisableLiveRangesCoalescing = false;
@@ -94,12 +94,12 @@ struct GenXBackendOptions {
 
   // Disable non-overlapping region transformation (the case with undef
   // value in two-address operand)
-  bool DisableNonOverlappingRegionOpt;
+  bool DisableNonOverlappingRegionOpt = false;
 
   // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
   bool UseNewStackBuilder = true;
 
-  FunctionControl FCtrl;
+  FunctionControl FCtrl = FunctionControl::Default;
 
   // Non-owning pointer to workaround table.
   const WA_TABLE *WATable = nullptr;
@@ -107,13 +107,13 @@ struct GenXBackendOptions {
   bool IsLargeGRFMode = false;
 
   // Use bindless mode for buffers.
-  bool UseBindlessBuffers;
+  bool UseBindlessBuffers = false;
 
   // Add vISA asm as sections in ZeBin
   bool EmitZebinVisaSections = false;
 
   // max private stateless memory size per thread
-  unsigned StatelessPrivateMemSize;
+  unsigned StatelessPrivateMemSize = 8192;
 
   // Disable critical messages from CisaBuilder
   bool DisableFinalizerMsg = false;
@@ -134,7 +134,17 @@ struct GenXBackendOptions {
   // calls are direct. Extern call are still extern in LLVM IR.
   bool DirectCallsOnly = false;
 
-  GenXBackendOptions();
+  // Calling enforceLLVMOptions queries the state of LLVM options and
+  // updates BackendOptions accordingly.
+  // Note: current implementation allows backend options to be configured by
+  // both driver and LLVM command line. LLVM options take presedence over
+  // driver-derived values.
+  void enforceLLVMOptions();
+
+  struct InitFromLLVMOpts {};
+
+  GenXBackendOptions() = default;
+  GenXBackendOptions(InitFromLLVMOpts) { enforceLLVMOptions(); }
 };
 
 enum BiFKind {

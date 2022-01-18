@@ -23,31 +23,28 @@ using namespace llvm;
 //===----------------------------------------------------------------------===//
 
 static cl::opt<bool> GenerateDebugInfoOpt(
-    "vc-emit-debug-info", cl::init(true), cl::Hidden,
+    "vc-emit-debug-info", cl::Hidden,
     cl::desc("Generate DWARF debug info for each compiled kernel"));
 
 static cl::opt<bool> EmitDebuggableKernelsOpt(
-    "vc-emit-debuggable-kernels", cl::init(false), cl::Hidden,
+    "vc-emit-debuggable-kernels", cl::Hidden,
     cl::desc("Emit kernels suitable for interaction with the debugger"));
 
 static cl::opt<bool> DumpRegAllocOpt(
-    "genx-dump-regalloc", cl::init(false), cl::Hidden,
+    "genx-dump-regalloc", cl::Hidden,
     cl::desc(
         "Enable dumping of GenX liveness and register allocation to a file."));
 
 static cl::opt<unsigned> StackMemSizeOpt("stack-mem-size",
-                                         cl::desc("Available space for stack"),
-                                         cl::init(8 * 1024));
+                                         cl::desc("Available space for stack"));
 
 static cl::opt<bool>
     EnableAsmDumpsOpt("genx-enable-asm-dumps",
-                      cl::desc("Enable finalizer assembly dumps"),
-                      cl::init(false));
+                      cl::desc("Enable finalizer assembly dumps"));
 static cl::opt<bool>
     EnableDebugInfoDumpOpt("vc-enable-dbginfo-dumps",
-                           cl::desc("Enable debug information-related dumps"),
-                           cl::init(false));
-static cl::opt<std::string> DebugInfoDumpNameOverride(
+                           cl::desc("Enable debug information-related dumps"));
+static cl::opt<std::string> DebugInfoDumpsNameOverrideOpt(
     "vc-dbginfo-dumps-name-override",
     cl::desc("Override for 'suffix' part of debug info dump name"));
 
@@ -76,60 +73,55 @@ static cl::opt<std::string>
                     cl::init(""));
 
 static cl::opt<bool> LocalizeLRsForAccUsageOpt(
-    "vc-acc-split", cl::init(false), cl::Hidden,
+    "vc-acc-split", cl::Hidden,
     cl::desc("Localize arithmetic chain to reduce accumulator usages"));
 
 static cl::opt<bool>
-    DisableLRCoalescingOpt("vc-disable-coalescing", cl::init(false), cl::Hidden,
+    DisableLRCoalescingOpt("vc-disable-coalescing", cl::Hidden,
                            cl::desc("disable coalescing of live ranges"));
 
 static cl::opt<bool>
-    DisableExtraCoalescingOpt("vc-disable-extra-coalescing", cl::init(false), cl::Hidden,
+    DisableExtraCoalescingOpt("vc-disable-extra-coalescing", cl::Hidden,
                               cl::desc("disable extrac coalescing"));
 
 static cl::opt<bool> DisableNonOverlappingRegionOptOpt(
-    "vc-disable-non-overlapping-region-opt", cl::init(false), cl::Hidden,
+    "vc-disable-non-overlapping-region-opt", cl::Hidden,
     cl::desc("Disable non-overlapping region optimization"));
 
 static cl::opt<bool>
     UseNewStackBuilderOpt("vc-use-new-stack-builder",
-                          cl::desc("Use prolog/epilog insertion pass"),
-                          cl::init(true));
+                          cl::desc("Use prolog/epilog insertion pass"));
 
 static cl::opt<unsigned>
     StatelessPrivateMemSizeOpt("dbgonly-enforce-privmem-stateless",
-                               cl::desc("Enforce stateless privmem size"),
-                               cl::init(8192));
+                               cl::desc("Enforce stateless privmem size"));
 
 static cl::opt<FunctionControl> FunctionControlOpt(
     "vc-function-control", cl::desc("Force special calls (see supported enum)"),
-    cl::init(FunctionControl::Default),
     cl::values(clEnumValN(FunctionControl::Default, "default", "Default"),
-               clEnumValN(FunctionControl::StackCall, "stackcall", "Default")));
+               clEnumValN(FunctionControl::StackCall, "stackcall",
+                          "Stackcall")));
 
 static cl::opt<bool> LargeGRFModeOpt("vc-large-grf",
-                                     cl::desc("Enable large GRF mode"),
-                                     cl::init(false));
+                                     cl::desc("Enable large GRF mode"));
 
 static cl::opt<bool> UseBindlessBuffersOpt("vc-use-bindless-buffers",
-                                           cl::desc("Use bindless buffers"),
-                                           cl::init(false));
+                                           cl::desc("Use bindless buffers"));
 
 static cl::opt<bool> EnablePreemptionOpt("vc-enable-preemption",
-                                         cl::desc("Enable preemption"),
-                                         cl::init(false));
+                                         cl::desc("Enable preemption"));
 
 static cl::opt<bool> SaveStackCallLinkageOpt(
-    "save-stack-call-linkage", cl::init(false), cl::Hidden,
+    "save-stack-call-linkage", cl::Hidden,
     cl::desc("Do not override stack calls linkage as internal"));
 
 static cl::opt<bool> UsePlain2DImagesOpt(
-    "vc-use-plain-2d-images", cl::init(false), cl::Hidden,
+    "vc-use-plain-2d-images", cl::Hidden,
     cl::desc("Treat \"image2d_t\" annotation as non-media image"));
 
 
 static cl::opt<bool> DirectCallsOnlyOpt(
-    "direct-calls-only", cl::init(false), cl::Hidden,
+    "direct-calls-only", cl::Hidden,
     cl::desc(
         "Generate code under the assumption all unknown calls are direct"));
 
@@ -140,25 +132,36 @@ static cl::opt<bool> DirectCallsOnlyOpt(
 //===----------------------------------------------------------------------===//
 char GenXBackendConfig::ID = 0;
 
-GenXBackendOptions::GenXBackendOptions()
-    : DebuggabilityEmitDebuggableKernels(EmitDebuggableKernelsOpt),
-      DebuggabilityEmitDWARF(GenerateDebugInfoOpt),
-      DumpRegAlloc(DumpRegAllocOpt), StackSurfaceMaxSize(StackMemSizeOpt),
-      EnableAsmDumps(EnableAsmDumpsOpt),
-      EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
-      DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
-      UseNewStackBuilder(UseNewStackBuilderOpt),
-      LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
-      DisableLiveRangesCoalescing(DisableLRCoalescingOpt),
-      DisableExtraCoalescing(DisableLRCoalescingOpt),
-      DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
-      FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
-      UseBindlessBuffers(UseBindlessBuffersOpt),
-      StatelessPrivateMemSize(StatelessPrivateMemSizeOpt),
-      SaveStackCallLinkage(SaveStackCallLinkageOpt),
-      UsePlain2DImages(UsePlain2DImagesOpt),
-      EnablePreemption(EnablePreemptionOpt),
-      DirectCallsOnly(DirectCallsOnlyOpt) {
+template <typename DstT, typename OptT>
+static void enforceOptionIfSpecified(DstT &Opt, OptT &OptValue) {
+  if (OptValue.getNumOccurrences())
+    Opt = OptValue;
+}
+
+void GenXBackendOptions::enforceLLVMOptions() {
+  enforceOptionIfSpecified(DebuggabilityEmitDebuggableKernels,
+                           EmitDebuggableKernelsOpt);
+  enforceOptionIfSpecified(DebuggabilityEmitDWARF, GenerateDebugInfoOpt);
+  enforceOptionIfSpecified(DumpRegAlloc, DumpRegAllocOpt);
+  enforceOptionIfSpecified(StackSurfaceMaxSize, StackMemSizeOpt);
+  enforceOptionIfSpecified(EnableAsmDumps, EnableAsmDumpsOpt);
+  enforceOptionIfSpecified(EnableDebugInfoDumps, EnableDebugInfoDumpOpt);
+  enforceOptionIfSpecified(DebugInfoDumpsNameOverride,
+                           DebugInfoDumpsNameOverrideOpt);
+  enforceOptionIfSpecified(UseNewStackBuilder, UseNewStackBuilderOpt);
+  enforceOptionIfSpecified(LocalizeLRsForAccUsage, LocalizeLRsForAccUsageOpt);
+  enforceOptionIfSpecified(DisableLiveRangesCoalescing, DisableLRCoalescingOpt);
+  enforceOptionIfSpecified(DisableExtraCoalescing, DisableExtraCoalescingOpt);
+  enforceOptionIfSpecified(DisableNonOverlappingRegionOpt,
+                           DisableNonOverlappingRegionOptOpt);
+  enforceOptionIfSpecified(FCtrl, FunctionControlOpt);
+  enforceOptionIfSpecified(IsLargeGRFMode, LargeGRFModeOpt);
+  enforceOptionIfSpecified(UseBindlessBuffers, UseBindlessBuffersOpt);
+  enforceOptionIfSpecified(StatelessPrivateMemSize, StatelessPrivateMemSizeOpt);
+  enforceOptionIfSpecified(SaveStackCallLinkage, SaveStackCallLinkageOpt);
+  enforceOptionIfSpecified(UsePlain2DImages, UsePlain2DImagesOpt);
+  enforceOptionIfSpecified(EnablePreemption, EnablePreemptionOpt);
+  enforceOptionIfSpecified(DirectCallsOnly, DirectCallsOnlyOpt);
 }
 
 static std::unique_ptr<MemoryBuffer>
@@ -198,7 +201,8 @@ void GenXBackendData::setOwningBiFModuleIf(
 }
 
 GenXBackendConfig::GenXBackendConfig()
-    : ImmutablePass(ID), Data{GenXBackendData::InitFromLLMVOpts{}} {
+    : ImmutablePass(ID), Options{GenXBackendOptions::InitFromLLVMOpts{}},
+      Data{GenXBackendData::InitFromLLMVOpts{}} {
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());
 }
 
