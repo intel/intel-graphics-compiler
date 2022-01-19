@@ -992,6 +992,7 @@ public:
         return (option & InstOpt_NoSrcDepSet) != 0;
     }
     bool isMixedMode() const;
+    bool isBFMixedMode() const;   // return true if this is a BF mixed mode inst.
     bool canSupportCondMod() const;
     bool canSwapSource() const;
     bool canSupportSaturate() const;
