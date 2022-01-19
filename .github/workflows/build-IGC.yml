@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2021 Intel Corporation
+# Copyright (C) 2022 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -13,16 +13,160 @@ on:
     branches: [ master ]
     
 jobs:
-  build:
+  download-OpenCL-Clang: # openCL Clang is downloaded from intel/intel-graphics-compiler releases
+    if: github.repository == 'intel/intel-graphics-compiler'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: oprypin/find-latest-tag@v1
+        with:
+          repository: intel/intel-graphics-compiler
+          releases-only: true
+        id: get-latest-IGC-release-tag
+      - name: caching downloaded OpenCL Clang # Downloading a new OpenCL Clang only after the new IGC is released
+        id: cache-igc-release
+        uses: actions/cache@v2
+        with:
+          path: ./igc-official-release
+          key: ${{ steps.get-latest-IGC-release-tag.outputs.tag }}
+      - name: creating a folder for downloaded deb files
+        if: steps.cache-igc-release.outputs.cache-hit != 'true'
+        run: mkdir igc-official-release
+      - name: download latest igc release
+        if: steps.cache-igc-release.outputs.cache-hit != 'true'
+        working-directory: ./igc-official-release
+        # To install openCL clang from Deb package, IGC must also be installed. Therefore, the last IGC release is also downloaded.
+        run: curl -s https://api.github.com/repos/intel/intel-graphics-compiler/releases/latest | grep browser_download_url | egrep 'opencl_|core_' | cut -d '"' -f 4 | wget -qi -
+      - name: checking if downloaded deb files are here
+        run: ls ./igc-official-release
+
+  build-SPIRV-LLVM-Translator:
     if: github.repository == 'intel/intel-graphics-compiler'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu1804, ubuntu2004 ]
+        ubuntu_version: [ 18, 20 ]
+        llvm_ver: [ 10, 11 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cloning SPIRV-LLVM-Translator repository
+        run: git clone --branch llvm_release_${{ matrix.llvm_ver }}0 https://github.com/KhronosGroup/SPIRV-LLVM-Translator
+      - name: getting latest commit hash from SPIRV-LLVM-Translator repository
+        id: SPIRV-LLVM-Translator-hash
+        working-directory: ./SPIRV-LLVM-Translator
+        run: |
+          SPIRV_TRANSLATOR_SHA_SHORT=$(git log -1 --pretty=format:"%h")
+          echo "This is SPIRV-LLVM-Translator repository latest commit hash = ${SPIRV_TRANSLATOR_SHA_SHORT}"
+          echo "::set-output name=spirv_translator_sha_short::${SPIRV_TRANSLATOR_SHA_SHORT}"
+      - name: caching SPIRV-LLVM-Translator deb files
+        id: cache-spirv-llvm-translator
+        uses: actions/cache@v2
+        with:
+          path: ./build-SPIRV-LLVM-Translator
+          key: ${{ steps.SPIRV-LLVM-Translator-hash.outputs.spirv_translator_sha_short }}-ubuntu${{ matrix.ubuntu_version }}-llvm${{ matrix.llvm_ver }}
+      - name: run Docker
+        if: steps.cache-spirv-llvm-translator.outputs.cache-hit != 'true'
+        run: |
+          docker run --name=buildslt \
+            -v $(pwd)/scripts/buildSLT.sh:/buildSLT.sh \
+            --env DEBIAN_FRONTEND="noninteractive" \
+            --env UBUNTU_VERSION=${{ matrix.ubuntu_version }} \
+            --env LLVM_VERSION=${{ matrix.llvm_ver }} \
+            ubuntu:${{ matrix.ubuntu_version }}.04 \
+            sh /buildSLT.sh
+      - name: creating folders to store SPIRV-LLVM-Translator build outputs
+        if: steps.cache-spirv-llvm-translator.outputs.cache-hit != 'true'
+        run: mkdir build-SPIRV-LLVM-Translator && mkdir temp-SPIRV-LLVM-Translator-build
+      - name: copying artifact from docker to github host
+        if: steps.cache-spirv-llvm-translator.outputs.cache-hit != 'true'
+        run: sudo docker cp buildslt:/SPIRV-LLVM-Translator/build ./temp-SPIRV-LLVM-Translator-build
+      - name: copy deb file to main artifact folder
+        if: steps.cache-spirv-llvm-translator.outputs.cache-hit != 'true'
+        run: sudo cp ./temp-SPIRV-LLVM-Translator-build/build/*.deb ./build-SPIRV-LLVM-Translator
+
+  build-IGC:
+    needs: [build-SPIRV-LLVM-Translator, download-OpenCL-Clang]
+    if: github.repository == 'intel/intel-graphics-compiler'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu_version: [ 18, 20 ]
         llvm_ver: [ 10, 11 ]
         compiler: [ gcc, clang ]
     steps:
       - uses: actions/checkout@v2
-      - name: Run Script Selectiong Docker
-        run: docker build -f scripts/Dockerfile-${{ matrix.os }} --build-arg BUILD_OS=${{ matrix.os }} --build-arg LLVM_VERSION=${{ matrix.llvm_ver }} --build-arg COMPILER=${{ matrix.compiler }} ./scripts
+
+#Get OpenCL Clang
+      - uses: oprypin/find-latest-tag@v1
+        with:
+          repository: intel/intel-graphics-compiler
+          releases-only: true
+        id: get-latest-IGC-release-tag
+      - name: getting OpenCL Clang from cache from the previous job
+        id: cache-igc-release
+        uses: actions/cache@v2
+        with:
+          path: ./igc-official-release
+          key: ${{ steps.get-latest-IGC-release-tag.outputs.tag }}
+      - name: checking if deb files are here
+        run: ls ./igc-official-release
+
+#Get SPIRV-LLVM-Translator
+      - name: cloning SPIRV-LLVM-Translator repository
+        run: git clone --branch llvm_release_${{ matrix.llvm_ver }}0 https://github.com/KhronosGroup/SPIRV-LLVM-Translator
+      - name: getting latest commit hash from SPIRV-LLVM-Translator repository
+        id: SPIRV-LLVM-Translator-hash
+        working-directory: ./SPIRV-LLVM-Translator
+        run: |
+          SPIRV_TRANSLATOR_SHA_SHORT=$(git log -1 --pretty=format:"%h")
+          echo "This is SPIRV-LLVM-Translator hash = ${SPIRV_TRANSLATOR_SHA_SHORT}"
+          echo "::set-output name=spirv_translator_sha_short::${SPIRV_TRANSLATOR_SHA_SHORT}"
+      - name: getting SPIRV-LLVM-Translator deb files from cache from the previous job
+        id: cache-spirv-llvm-translator
+        uses: actions/cache@v2
+        with:
+          path: ./build-SPIRV-LLVM-Translator
+          key: ${{ steps.SPIRV-LLVM-Translator-hash.outputs.spirv_translator_sha_short }}-ubuntu${{ matrix.ubuntu_version }}-llvm${{ matrix.llvm_ver }}
+
+#Build IGC
+      - name: run Docker
+        run: |
+          docker run --name=buildigc \
+            -v $(pwd)/scripts/buildIGC.sh:/buildIGC.sh \
+            -v $(pwd)/igc-official-release:/igc-official-release \
+            -v $(pwd)/build-SPIRV-LLVM-Translator:/build-SPIRV-LLVM-Translator \
+            --env DEBIAN_FRONTEND="noninteractive" \
+            --env UBUNTU_VERSION=${{ matrix.ubuntu_version }} \
+            --env LLVM_VERSION=${{ matrix.llvm_ver }} \
+            --env COMPILER=${{ matrix.compiler }} \
+            ubuntu:${{ matrix.ubuntu_version }}.04 \
+            sh /buildIGC.sh
+      - name: creating folder to store output artifacts
+        run: mkdir Artifacts
+      - name: copying artifact from docker to github host
+        run: sudo docker cp buildigc:/workspace/igc/build/DEB-FILES ./Artifacts
+      - name: get short hash
+        id: igc-current-short-Hash
+        run: echo "::set-output name=sha_short::${GITHUB_SHA::7}"
+      - uses: actions/upload-artifact@v2
+        continue-on-error: true
+        with:
+          name: IGC_Ubuntu${{ matrix.ubuntu_version }}_llvm${{ matrix.llvm_ver }}_${{ matrix.compiler }}-${{ steps.igc-current-short-Hash.outputs.sha_short }}
+          path: ./Artifacts/DEB-FILES/*.deb
+          retention-days: 7
+      - name: Send mail
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{secrets.MAIL_ADDRESS}}
+          password: ${{secrets.MAIL_PASSWORD}}
+          subject: Github Actions IGC build failed
+          to: marcin.naczk@intel.com
+          from: Github Action
+          secure: true
+          body: Build Failed. The job ${{github.job}} of ${{github.repository}}--${github.sha} Failed. Run ID ${{github.run_id}}. Run Number ${{github.run_number}}
+          ignore_cert: true
+          priority: low
