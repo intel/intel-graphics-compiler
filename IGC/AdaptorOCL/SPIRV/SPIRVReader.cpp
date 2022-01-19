@@ -1810,8 +1810,44 @@ SPIRVToLLVM::transOCLKernelArgTypeName(SPIRVFunctionParameter *Arg) {
   return MDString::get(*Context, transTypeToOCLTypeName(Ty, !Arg->isZext()));
 }
 
+//
+// The function performs a DFS on an instruction graph (dir: instruction -> users).
+// In each node, it checks if the instruction type is the same as the corresponding
+// type passed as a template parameter and then runs the callback. The deep of search
+// is determined by the number of template parameters (not counting Callback type).
+// The function returns true if and only if all types match. Pattern types should be
+// passed in the same order as the instructions in IR.
+//
+template <typename PatternTypeFirst, typename Callback>
+bool checkAndProcessInstructionPattern(Instruction* instruction, Callback callback) {
+  if (auto inst = dyn_cast<PatternTypeFirst>(instruction)) {
+    callback(inst);
+    return true;
+  }
+  return false;
+}
+
+template <typename PatternTypeFirst, typename PatternTypeSecond, typename... PatternTypeRest, typename Callback>
+bool checkAndProcessInstructionPattern(Instruction* instruction, Callback callback) {
+  if (auto inst = dyn_cast<PatternTypeFirst>(instruction)) {
+    for (auto user : inst->users()) {
+      if (!checkAndProcessInstructionPattern<PatternTypeSecond, PatternTypeRest...>(cast<Instruction>(&*user), callback)) {
+        return false;
+      }
+    }
+    callback(inst);
+    return true;
+  }
+  return false;
+}
+
 // Variable like GlobalInvocationId[x] -> get_global_id(x).
 // Variable like WorkDim -> get_work_dim().
+//
+// Supported patterns:
+// 1. Load(GlobalVariable)
+// 2. Load(AddrSpaceCastInst(GlobalVariable))
+// 3. Load(GetElementPtr(AddrSpaceCastInst(GlobalVariable)))
 bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
                                               SPIRVBuiltinVariableKind Kind) {
   std::string FuncName;
@@ -1831,27 +1867,45 @@ bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
 
   SmallVector<Instruction *, 4> Deletes;
   SmallVector<Instruction *, 4> Users;
-  for (auto UI : GV->users()) {
-    LoadInst *LD = nullptr;
-    if (auto ASCast = dyn_cast<AddrSpaceCastInst>(&*UI)) {
-      for (auto ASCastUser : ASCast->users()) {
-        LD = cast<LoadInst>(&*ASCastUser);
-        Users.push_back(LD);
-        Deletes.push_back(LD);
-      }
-      Deletes.push_back(ASCast);
-    } else {
-      LD = cast<LoadInst>(&*UI);
-      Users.push_back(LD);
-      Deletes.push_back(LD);
+  auto addToDeletesOrUsers = [&Deletes, &Users](Instruction* inst) {
+    if (auto load = dyn_cast<LoadInst>(&*inst)) {
+      Users.push_back(load);
     }
+    Deletes.push_back(inst);
+  };
+
+  for (auto user : GV->users()) {
+    auto inst = cast<Instruction>(&*user);
+
+    if (checkAndProcessInstructionPattern<LoadInst>(inst, addToDeletesOrUsers))
+      continue;
+    if (checkAndProcessInstructionPattern<AddrSpaceCastInst, LoadInst>(inst, addToDeletesOrUsers))
+      continue;
+    if (checkAndProcessInstructionPattern<AddrSpaceCastInst, GetElementPtrInst, LoadInst>(inst, addToDeletesOrUsers))
+      continue;
+
+    IGC_ASSERT_MESSAGE(false, "Unknown pattern");
   }
-  for (auto &I : Users) {
-    auto Call = CallInst::Create(Func, "", I);
-    Call->takeName(I);
-    Call->setDebugLoc(I->getDebugLoc());
-    setAttrByCalledFunc(Call);
-    I->replaceAllUsesWith(Call);
+
+  for (auto& user : Users) {
+    auto load = cast<LoadInst>(user);
+
+    auto call = CallInst::Create(Func, "", load);
+    call->takeName(load);
+    call->setDebugLoc(load->getDebugLoc());
+    setAttrByCalledFunc(call);
+
+    Value* substitution = call;
+    // Check if an ExtractElement instruction is needed.
+    if (Func->getFunctionType()->getReturnType()->isVectorTy() &&
+        !load->getPointerOperandType()->getPointerElementType()->isVectorTy()) {
+      auto gep = cast<GetElementPtrInst>(load->getOperand(0));
+      IGC_ASSERT_MESSAGE(gep, "Expected GetElementrPtr instruction");
+      IGC_ASSERT_MESSAGE(gep->getNumIndices() == 2, "Expected GetElementrPtr with exactly two indices");
+      auto offset = cast<Value>(gep->idx_begin()[1]);
+      substitution = ExtractElementInst::Create(substitution, offset, "", load);
+    }
+    load->replaceAllUsesWith(substitution);
   }
   for (auto &I : Deletes) {
     if (I->use_empty())
