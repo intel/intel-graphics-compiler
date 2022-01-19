@@ -499,11 +499,6 @@ bool supportLoadThreadPayloadForCompute() const
     return isXeHPSDVPlus();
 }
 
-bool support16BitAtomics() const
-{
-    return m_platformInfo.eProductFamily >= IGFX_GEN12_CORE;
-}
-
 bool Enable32BitIntDivRemEmu() const
 {
     return isXeHPSDVPlus();

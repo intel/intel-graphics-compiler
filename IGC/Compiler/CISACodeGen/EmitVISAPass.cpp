@@ -14346,7 +14346,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
 
     if (is16Bit)
     {
-        IGC_ASSERT_MESSAGE(m_currShader->m_Platform->support16BitAtomics(), "16-bit atomics are not supported on this platform!");
+        IGC_ASSERT_MESSAGE(m_currShader->m_Platform->isXeHPSDVPlus(), "16-bit atomics are not supported on this platform!");
     }
 
     // atomic_inc and atomic_dec don't have both src0 and src1.
