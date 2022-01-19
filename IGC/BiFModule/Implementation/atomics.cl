@@ -717,12 +717,12 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0f16_i32_i32_f16, )(__pr
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1f16_i32_i32_f16, )(__global half* Pointer, int Scope, int Semantics, half Value)
 {
-    atomic_operation_1op_as_half(__builtin_IB_atomic_xchg_global_i16, half, (__global short*)Pointer, Scope, Semantics, Value, true);
+    atomic_operation_1op_as_half(__builtin_IB_atomic_xchg_global_i16, half, (__global short*)Pointer, Scope, Semantics, as_short(Value), true);
 }
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3f16_i32_i32_f16, )(__local half* Pointer, int Scope, int Semantics, half Value)
 {
-    atomic_operation_1op_as_half(__builtin_IB_atomic_xchg_local_i16, half, (__local short*)Pointer, Scope, Semantics, Value, false);
+    atomic_operation_1op_as_half(__builtin_IB_atomic_xchg_local_i16, half, (__local short*)Pointer, Scope, Semantics, as_short(Value), false);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
