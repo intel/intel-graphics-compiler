@@ -201,7 +201,6 @@ DECLARE_IGC_REGKEY(bool, EnableBlendToDiscard,          true,  "Enable blend to 
 DECLARE_IGC_REGKEY(bool, EnableBlendToFill,             true,  "Enable blend to fill based on blend state.", false)
 DECLARE_IGC_REGKEY(bool, UseTiledCSThreadOrder,         true,  "Use 4x4 disaptch for CS order when it seems beneficial", false)
 DECLARE_IGC_REGKEY(bool, EnableWaveForce32,             false, "Force Wave to use simd32", false)
-DECLARE_IGC_REGKEY(bool, EnableMergeTransposeSLM,       false, "Transpose SLM float3 storage from 3 separate x,y,z buffers to 1 big buffer with xyz consecutively", false)
 DECLARE_IGC_REGKEY(bool, ForceLinearWalkOnLinearUAV,    false, "Force linear walk on linear UAV buffer", false)
 DECLARE_IGC_REGKEY(bool, ForceSupportsStaticRegSharing, false, "ForceSupportsStaticRegSharing", true)
 DECLARE_IGC_REGKEY(bool, ForceSupportsAutoGRFSelection, false, "ForceSupportsAutoGRFSelection", true)
