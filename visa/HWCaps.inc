@@ -1048,4 +1048,14 @@ SPDX-License-Identifier: MIT
       // Max PTSS supported is 2MB
       return 2 * 1024 * 1024;
    }
+
+
+   uint32_t getInlineDataSize() const
+   {
+        if (getPlatform() >= Xe_XeHPSDV)
+        {
+            return 32;
+        }
+        return 0;
+   }
    // end HW capabilities

@@ -8412,19 +8412,41 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
     }
 
-    void Optimizer::loadThreadPayload()
+    uint32_t Optimizer::findLoadedInputSize(uint32_t& loadStartOffset)
     {
-        if (!builder.loadThreadPayload() || !builder.getIsKernel())
-        {
-            return;
-        }
-        // indirect data address is at r0.0[5:31]
-        // local thread id is at r0.2[0:7]
-        // use r127 as the header for each oword load
-        uint32_t startGRF =
+        const uint32_t startGRF =
             kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
+        const uint32_t inputsStart = startGRF * getGRFSize();
+        const uint32_t inputCount = kernel.fg.builder->getInputCount();
+
+        const bool useInlineData = builder.getOption(vISA_useInlineData);
+        const int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
+        const uint32_t inlineDataSize = builder.getInlineDataSize();
+
+        // Checks if input_info is cross-thread-input
+        auto isInCrossThreadData = [&](const input_info_t* const input_info)
+        {
+            return (uint32_t)input_info->offset >= inputsStart + PTIS;
+        };
+
+        // Checks if input_info fits in inlineData
+        auto isInInlineData = [&](const input_info_t* const input_info)
+        {
+            if (!useInlineData)
+            {
+                return false;
+            }
+            uint32_t inputEnd = input_info->offset + input_info->size;
+            bool fitsInInlineData = inputEnd <= inputsStart + PTIS + inlineDataSize;
+            return isInCrossThreadData(input_info) && fitsInInlineData;
+        };
+
+        uint32_t firstNotInlinedCrossThreadInput = std::numeric_limits<uint32_t>::max();
         uint32_t inputEnd = 32;
-        uint32_t inputCount = kernel.fg.builder->getInputCount();
+
+        // iterate over inputs and find:
+        // - where they end
+        // - where first not inlined cross thread input is
         for (unsigned int id = 0; id < inputCount; id++)
         {
             input_info_t* input_info = kernel.fg.builder->getInputArg(id);
@@ -8435,20 +8457,52 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             }
             if (kernel.fg.builder->getFCPatchInfo()->getIsEntryKernel())
             {
-              vISA::G4_Declare* dcl = input_info->dcl;
-              if (INPUT_GENERAL == input_info->getInputClass() && !(dcl->isLiveIn()))
-              {
-                  break;
-              }
+                vISA::G4_Declare* dcl = input_info->dcl;
+                if (INPUT_GENERAL == input_info->getInputClass() && !(dcl->isLiveIn()))
+                {
+                    break;
+                }
             }
             if (inputEnd < (unsigned)(input_info->size + input_info->offset))
             {
                 inputEnd = input_info->size + input_info->offset;
             }
+            // let's find first cross thread input position which is not delivered in inlineData
+            if (isInCrossThreadData(input_info) &&
+                !isInInlineData(input_info) &&
+                firstNotInlinedCrossThreadInput > (uint32_t)input_info->offset)
+            {
+                firstNotInlinedCrossThreadInput = input_info->offset;
+            }
         }
-        int numGRF = ((inputEnd + getGRFSize() - 1) / getGRFSize()) - startGRF;
+
+        loadStartOffset = firstNotInlinedCrossThreadInput;
+        // check if we have anything to load
+        if (firstNotInlinedCrossThreadInput == std::numeric_limits<uint32_t>::max())
+        {
+            return 0;
+        }
+        return inputEnd - firstNotInlinedCrossThreadInput;
+    }
+
+    void Optimizer::loadThreadPayload()
+    {
+        if (!builder.loadThreadPayload() || !builder.getIsKernel())
+        {
+            return;
+        }
+
+        const bool useInlineData = builder.getOption(vISA_useInlineData);
+        const uint32_t startGRF = kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
+
+        uint32_t crossThreadLoadStart = 0;
+        const uint32_t loadedCrossThreadInputSize = findLoadedInputSize(crossThreadLoadStart);
+
         std::vector<G4_INST*> instBuffer;
 
+        // indirect data address is at r0.0[5:31]
+        // local thread id is at r0.2[0:7]
+        // use r127 as the header for each oword load
         G4_Declare* r0 = builder.createHardwiredDeclare(8, Type_UD, 0, 0);
         auto totalGRF = kernel.getNumRegTotal();
 
@@ -8647,8 +8701,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return kernel.fg.createNewLabelInst(builder.createLabel(label, LABEL_BLOCK));
         };
 
-        bool useInlineData = builder.getOption(vISA_useInlineData);
-
         int addrSubreg = 2;
         bool useLSC = builder.useLSCForPayloadLoad();
         addrSubreg = useLSC ? 0 : 2;
@@ -8662,15 +8714,33 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // forward start label is 64B aligned.
         if (builder.needsToLoadLocalID())
         {
-            int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
-            int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
-            uint32_t numPerThreadGRF = PTIS / numEltPerGRF<Type_UB>();
-            uint32_t numCrossThreadGRF = (CTIS < 0) ? numGRF - numPerThreadGRF : CTIS / numEltPerGRF<Type_UB>();
+            const int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
+            const int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
+            const uint32_t inlineDataSize = builder.getInlineDataSize();
 
-            if (useInlineData)
+            uint32_t numPerThreadGRF = PTIS / numEltPerGRF<Type_UB>();
+
+            uint32_t localIDsOffset = 0;
+
+            if (CTIS < 0)
             {
-                numCrossThreadGRF--;
+                uint32_t correction = useInlineData ? inlineDataSize : 0;
+                // N = inlinedata size
+                // Payload is aligned to grf size,
+                // if inlinedata is used, runtime puts first N bytes of payload in inlinedata.
+                // Rest of payload is shifted in the buffer by N bytes.
+                // So payload args which start at N offset, now start at 0 offset.
+                // Because of this we need to calculate localID offset:
+                localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, getGRFSize());
+                localIDsOffset -= useInlineData ? inlineDataSize : 0;
             }
+            else
+            {
+                localIDsOffset = CTIS;
+                localIDsOffset -= useInlineData ? getGRFSize() : 0;
+            }
+
+
             instBuffer.push_back(getLabel("per_thread_prolog"));
 
             // compute per-thread starting address (r127.2)
@@ -8699,7 +8769,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             // create a relocation for cross_thread_size (per_thread_payload_offset). In case of the
             // cross_thread_size is changed after compilation (e.g. gtpin inserted argument), the relocation
             // need to be resolved to the new cross_thread_size.
-            G4_Operand* addSrc1 = builder.createRelocImm(numCrossThreadGRF * numEltPerGRF<Type_UB>(), Type_UW);
+            G4_Operand* addSrc1 = builder.createRelocImm(localIDsOffset, Type_UW);
             auto addDst = builder.createDst(rtail->getRegVar(), 0, 2, 1, Type_UD);
             // instruction has relocation must not be compacted
             auto addInst = builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0,
@@ -8796,14 +8866,24 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
 
                 uint32_t numPerThreadGRF = PTIS / numEltPerGRF<Type_UB>();
-                uint32_t numCrossThreadGRF = (CTIS < 0) ? numGRF - numPerThreadGRF : CTIS / numEltPerGRF<Type_UB>();
-                uint32_t crossThreadStart = startGRF + numPerThreadGRF;
+                uint32_t numCrossThreadGRF = 0;
+                uint32_t crossThreadStart = 0;
 
-                if (useInlineData)
+                if (CTIS < 0)
                 {
-                    // first GRF of cross-thread data is already loaded
-                    crossThreadStart++;
-                    numCrossThreadGRF--;
+                    numCrossThreadGRF = AlignUp(loadedCrossThreadInputSize, getGRFSize()) / numEltPerGRF<Type_UB>();
+                    crossThreadStart = crossThreadLoadStart / getGRFSize();
+                }
+                else
+                {
+                    numCrossThreadGRF = CTIS / numEltPerGRF<Type_UB>();
+                    crossThreadStart = startGRF + numPerThreadGRF;
+                    if (useInlineData)
+                    {
+                        // first GRF of cross-thread data is already loaded
+                        crossThreadStart++;
+                        numCrossThreadGRF--;
+                    }
                 }
 
                 if (useLSC)

@@ -1740,6 +1740,11 @@ namespace IGC
             kernelArgs.checkForZeroPerThreadData();
         }
 
+        bool needToHandleInlineDataIn64ByteGRF = passNOSInlineData() && m_Platform->getGRFSize() == 64;
+        bool inlineDataProcessed = false;
+        uint inlineDataEndOffset = 0;
+        uint offsetCorrection = 0;
+
         for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i)
         {
             KernelArg arg = *i;
@@ -1798,6 +1803,43 @@ namespace IGC
                         offset = iSTD::Align(offset, getGRFSize());
                     }
 
+                    // If inline data is used and a plaftorm has 64B GRFs,
+                    // we must correct the offset of cross-thread arguments
+                    // which are not loaded in inline data
+                    // the reason behind this is that inline data has only 32B,
+                    // so the position of next arg needs to be aligned to next GRF,
+                    // because the input arguments are loaded with alignment of GRF
+                    if (needToHandleInlineDataIn64ByteGRF &&
+                        !inlineDataProcessed &&
+                        arg.getArgType() != KernelArg::ArgType::IMPLICIT_LOCAL_IDS &&
+                        arg.getArgType() != KernelArg::ArgType::IMPLICIT_R0)
+                    {
+                        // Calc if we can fit this arg in inlinedata:
+                        // We check if arg exceeds inline data boundaries,
+                        // if it does, we align it to next GRF.
+                        if (offset - constantBufferStart + allocSize > 32)
+                        {
+                            inlineDataProcessed = true;
+                            offset = iSTD::Align(offset, getGRFSize());
+                            // Aligning offset in register is not enough:
+                            // we need to correct the offset in the annotations
+                            // lack of this correction would result in gap of size: input_offset - inlineDataSize
+                            // in input data we are loading.
+                            // We don't want this, because this gap would be a first thing to be loaded from memory
+                            // and first argument after inlineData args would be put in register
+                            // with an offset of the gap size
+                            //
+                            // numAllocInstances can be greater than 1, only when:
+                            // artype == IMPLICIT_LOCAL_IDS
+                            // so there is no need to handle it here
+                            offsetCorrection = offset - inlineDataEndOffset;
+                        }
+                        else
+                        {
+                            inlineDataEndOffset = offset + allocSize;
+                        }
+                    }
+
                     // And now actually tell vISA we need this space.
                     // (Except for r0, which is a predefined variable, and should never be allocated as input!)
                     const llvm::Argument* A = arg.getArg();
@@ -1820,7 +1862,8 @@ namespace IGC
 
                 // Create annotations for the kernel argument
                 // If an arg is unused, don't generate patch token for it.
-                CreateAnnotations(&arg, offset - constantBufferStart);
+                CreateAnnotations(&arg, offset - constantBufferStart - offsetCorrection);
+
                 if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
                     m_Context->getCompilerOption().EnableZEBinary) {
                     // FIXME: once we transit to zebin completely, we don't need to do
@@ -1828,7 +1871,8 @@ namespace IGC
 
                     // During the transition, we disable ZEBinary if there are unsupported
                     // arguments
-                    bool success = CreateZEPayloadArguments(&arg, offset - constantBufferStart);
+                    bool success = CreateZEPayloadArguments(&arg, offset - constantBufferStart - offsetCorrection);
+
                     if (!success) {
                         // assertion tests if we force to EnableZEBinary but encounter unsupported features
                         IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary),
@@ -1903,7 +1947,7 @@ namespace IGC
         bool passInlineData = false;
         const bool loadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
         const bool inlineDataSupportEnabled =
-            (m_Platform->supportInlineDataOCL() &&
+            (m_Platform->supportInlineData() &&
             (m_DriverInfo->UseInlineData() || IGC_IS_FLAG_ENABLED(EnablePassInlineData)));
         if (loadThreadPayload &&
             inlineDataSupportEnabled)
