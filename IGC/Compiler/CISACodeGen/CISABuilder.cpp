@@ -4068,7 +4068,7 @@ namespace IGC
             SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
         }
 
-        if (IGC_IS_FLAG_ENABLED(disableRemat))
+        if (IGC_IS_FLAG_ENABLED(disableRemat) || context->getModuleMetaData()->compOpt.allowDisableRematforCS)
         {
             SaveOption(vISA_NoRemat, true);
         }
