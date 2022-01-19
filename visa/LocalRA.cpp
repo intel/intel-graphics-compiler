@@ -2355,7 +2355,7 @@ void PhyRegsLocalRA::markPhyRegs(G4_Declare* topdcl)
     unsigned numwords = 0;
     unsigned int regnum = 0;
 
-    if (builder->hasFusedEUWA() && rvar->getPhyReg() == nullptr)
+    if (rvar->getPhyReg() == nullptr)
     {
         return;
     }
