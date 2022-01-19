@@ -721,10 +721,10 @@ bool CMRegion::isContiguous() const {
  * CMRegion::isWhole : test whether a region covers exactly the whole of the
  *      given type, allowing for the element type being different
  */
-bool CMRegion::isWhole(Type *Ty) const
+bool CMRegion::isWhole(Type *Ty, const DataLayout *DL) const
 {
-  return isContiguous() && NumElements * ElementBytes * 8
-      == Ty->getPrimitiveSizeInBits();
+  return isContiguous() && Offset == 0 &&
+    NumElements * ElementBytes == vc::getTypeSize(Ty, DL).inBytes();
 }
 
 /***********************************************************************

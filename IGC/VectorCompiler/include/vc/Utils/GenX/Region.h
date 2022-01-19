@@ -174,7 +174,7 @@ public:
   bool isContiguous() const;
   // Test whether a region covers exactly the whole of the given type, allowing
   // for the element type being different.
-  bool isWhole(Type *Ty) const;
+  bool isWhole(Type *Ty, const DataLayout *DL = nullptr) const;
   // Test whether the region has a whole number of rows. (append() can result
   // in a region with an incomplete final row, which is normally not allowed.)
   bool isWholeNumRows() const { return !(NumElements % Width); }

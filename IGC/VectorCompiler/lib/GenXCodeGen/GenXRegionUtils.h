@@ -162,8 +162,10 @@ inline raw_ostream &operator<<(raw_ostream &OS, const RdWrRegionSequence &RWS) {
   return OS;
 }
 
-Value *simplifyRegionInst(Instruction *Inst, const DataLayout *DL);
-bool simplifyRegionInsts(Function *F, const DataLayout *DL);
+Value *simplifyRegionInst(Instruction *Inst, const DataLayout *DL = nullptr,
+                          const GenXSubtarget *ST = nullptr);
+bool simplifyRegionInsts(Function *F, const DataLayout *DL = nullptr,
+                         const GenXSubtarget *ST = nullptr);
 
 bool cleanupLoads(Function *F);
 
