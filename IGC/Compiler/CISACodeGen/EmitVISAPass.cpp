@@ -21043,6 +21043,7 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
                 return;
             }
         }
+        /*
         else if (m_currShader->GetShaderType() == ShaderType::MESH_SHADER ||
             m_currShader->GetShaderType() == ShaderType::TASK_SHADER)
         {
@@ -21052,7 +21053,7 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
             {
                 return;
             }
-        }
+        }*/
     }
 
     if ((memoryPort != LSC_UGM) &&
