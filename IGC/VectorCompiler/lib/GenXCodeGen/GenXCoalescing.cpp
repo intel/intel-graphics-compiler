@@ -1036,6 +1036,10 @@ void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
     return; // Return value pre-copy, defer copy insertion
   if (!Cand.UseInDest)
     return; // Return value post-copy, defer copy insertion
+  // Ignore SIMD CF
+  auto DestCategory = Liveness->getLiveRange(Cand.Dest)->getCategory();
+  if (DestCategory >= vc::RegCategory::NumRealCategories)
+    return;
   if (auto *CI = dyn_cast<CastInst>(Dest.getValue());
       CI && genx::isNoopCast(CI)) {
     // A bitcast is normally copy coalesced, which means it cannot fail to
