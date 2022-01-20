@@ -21,6 +21,9 @@ namespace IGC {
 
     llvm::ModulePass* createLowerGPCallArg();
     void initializeLowerGPCallArgPass(llvm::PassRegistry&);
+
+    llvm::ModulePass* createCastToGASAnalysisPass();
+    void initializeCastToGASAnalysisPass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_RESOLVEGAS_H_

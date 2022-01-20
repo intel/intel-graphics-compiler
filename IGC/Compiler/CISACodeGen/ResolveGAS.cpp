@@ -956,7 +956,6 @@ namespace IGC
         void fixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC);
         bool processCallArg(Module& M);
 
-        void checkCastToGAS(Module& M);
         bool processGASInst(Module& M);
     };
 } // End anonymous namespace
@@ -977,61 +976,6 @@ namespace IGC
     IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
     IGC_INITIALIZE_PASS_END(LowerGPCallArg, GP_PASS_FLAG, GP_PASS_DESC, GP_PASS_CFG_ONLY, GP_PASS_ANALYSIS)
 }
-
-void LowerGPCallArg::checkCastToGAS(llvm::Module& M)
-{
-    if (IGC_IS_FLAG_DISABLED(DetectCastToGAS))
-    {
-        return;
-    }
-
-    bool hasPrivateCast = false; // true if there is a cast from private to GAS
-    bool hasLocalCast = false; // true if there is a cast from local to GAS.
-    for (Function& F : M)
-    {
-        // ToDo: replace with generic checks for extern functions
-        if (F.hasFnAttribute("referenced-indirectly"))
-        {
-            for (auto& arg : F.args())
-            {
-                PointerType* argPointerType = dyn_cast<PointerType>(arg.getType());
-                if (argPointerType && argPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
-                {
-                    return;
-                }
-            }
-        }
-
-        for (auto FI = inst_begin(F), FE = inst_end(F);
-            (FI != FE) && !(hasPrivateCast && hasLocalCast); ++FI)
-        {
-            auto addrCast = dyn_cast<AddrSpaceCastInst>(&(*FI));
-            if (addrCast && addrCast->getDestAddressSpace() == ADDRESS_SPACE_GENERIC)
-            {
-                if (addrCast->getSrcAddressSpace() == ADDRESS_SPACE_LOCAL)
-                    hasLocalCast = true;
-                else if (addrCast->getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE)
-                    hasPrivateCast = true;
-            }
-            else
-            {
-                Value* Ptr = nullptr;
-                if (match(&(*FI), m_PtrToInt(m_Value(Ptr))))
-                {
-                    if (Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
-                        hasLocalCast = true;
-                    else if (Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE)
-                        hasPrivateCast = true;
-                }
-            }
-        }
-    }
-
-    // Set those so that dynamic resolution can use them.
-    m_ctx->getModuleMetaData()->hasNoLocalToGenericCast = !hasLocalCast;
-    m_ctx->getModuleMetaData()->hasNoPrivateToGenericCast = !hasPrivateCast;
-}
-
 
 bool LowerGPCallArg::runOnModule(llvm::Module& M)
 {
@@ -1241,8 +1185,6 @@ bool LowerGPCallArg::processCallArg(Module& M)
 
 bool LowerGPCallArg::processGASInst(Module& M)
 {
-    checkCastToGAS(M);
-
     if (!m_ctx->hasNoPrivateToGenericCast() || !m_ctx->hasNoLocalToGenericCast())
         return false;
 
@@ -1696,4 +1638,121 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(FuncToUpdate& f)
         IGC_ASSERT(i->user_empty());
         i->eraseFromParent();
     }
+}
+
+namespace IGC
+{
+    class CastToGASAnalysis : public ModulePass
+    {
+    public:
+        static char ID;
+
+        CastToGASAnalysis() : ModulePass(ID)
+        {
+            initializeCastToGASAnalysisPass(*PassRegistry::getPassRegistry());
+        }
+
+        bool runOnModule(Module&) override;
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<CodeGenContextWrapper>();
+        }
+
+        virtual StringRef getPassName() const override
+        {
+            return "GenericPointerUsageAnalysis";
+        }
+
+    private:
+        CodeGenContext* m_ctx = nullptr;
+    };
+} // End anonymous namespace
+
+ModulePass* IGC::createCastToGASAnalysisPass() { return new CastToGASAnalysis(); }
+
+char CastToGASAnalysis::ID = 0;
+
+#define CAST_TO_GAS_PASS_FLAG "generic-pointer-analysis"
+#define CAST_TO_GAS_PASS_DESC "Analyze generic pointer usage"
+#define CAST_TO_GAS_PASS_CFG_ONLY false
+#define CAST_TO_GAS_PASS_ANALYSIS false
+namespace IGC
+{
+    IGC_INITIALIZE_PASS_BEGIN(CastToGASAnalysis, CAST_TO_GAS_PASS_FLAG, CAST_TO_GAS_PASS_DESC, CAST_TO_GAS_PASS_CFG_ONLY, CAST_TO_GAS_PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+    IGC_INITIALIZE_PASS_END(CastToGASAnalysis, CAST_TO_GAS_PASS_FLAG, CAST_TO_GAS_PASS_DESC, CAST_TO_GAS_PASS_CFG_ONLY, CAST_TO_GAS_PASS_ANALYSIS)
+}
+
+bool CastToGASAnalysis::runOnModule(llvm::Module& M)
+{
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    bool hasPrivateCast = false; // true if there is a cast from private to GAS
+    bool hasLocalCast = false; // true if there is a cast from local to GAS.
+
+    bool hasIntToGeneric = false;
+    bool hasLocalToInt = false;
+    bool hasPrivateToInt = false;
+
+    for (Function& F : M)
+    {
+        // ToDo: replace with generic checks for extern functions
+        if (F.hasFnAttribute("referenced-indirectly"))
+        {
+            for (auto& arg : F.args())
+            {
+                PointerType* argPointerType = dyn_cast<PointerType>(arg.getType());
+                if (argPointerType && argPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
+                {
+                    return false;
+                }
+            }
+        }
+
+        for (auto FI = inst_begin(F), FE = inst_end(F);
+            (FI != FE) && !(hasPrivateCast && hasLocalCast); ++FI)
+        {
+            Instruction* I = &*FI;
+            if(auto* ASC = dyn_cast<AddrSpaceCastInst>(I))
+            {
+                if (ASC->getDestAddressSpace() != ADDRESS_SPACE_GENERIC)
+                    continue;
+
+                unsigned AS = ASC->getSrcAddressSpace();
+                if (AS == ADDRESS_SPACE_LOCAL)
+                    hasLocalCast = true;
+                else if (AS == ADDRESS_SPACE_PRIVATE)
+                    hasPrivateCast = true;
+            }
+            else if (auto* ITP = dyn_cast<IntToPtrInst>(I))
+            {
+                if (ITP->getAddressSpace() == ADDRESS_SPACE_GENERIC)
+                    hasIntToGeneric = true;
+            }
+            else if (auto* PTI = dyn_cast<PtrToIntInst>(I))
+            {
+                unsigned AS = PTI->getPointerAddressSpace();
+                if (AS == ADDRESS_SPACE_LOCAL)
+                    hasLocalToInt = true;
+                else if (AS == ADDRESS_SPACE_PRIVATE)
+                    hasPrivateToInt = true;
+            }
+        }
+    }
+
+    // Take `ptrtoint` instructions into account only if there is a GAS `inttoptr` instruction
+    if (hasIntToGeneric)
+    {
+        if (!hasLocalCast)
+            hasLocalCast = hasLocalToInt;
+        if (!hasPrivateCast)
+            hasPrivateCast = hasPrivateToInt;
+    }
+
+    // Set those so that dynamic resolution can use them.
+    m_ctx->getModuleMetaData()->hasNoLocalToGenericCast = !hasLocalCast;
+    m_ctx->getModuleMetaData()->hasNoPrivateToGenericCast = !hasPrivateCast;
+
+    return true;
 }
