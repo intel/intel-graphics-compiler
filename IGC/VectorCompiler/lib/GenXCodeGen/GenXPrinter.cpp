@@ -99,7 +99,7 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
   // This code is a downmarket version of AssemblyWriter::printFunction.
   // We have our own version so we can show bales.
   OS << "\ndefine ";
-  cast<FunctionType>(cast<PointerType>(F.getType())->getElementType())->getReturnType()->print(OS);
+  F.getReturnType()->print(OS, /*IsForDebug=*/false, /*NoDetails=*/true);
   OS << " @" << F.getName() << "(";
   if (RA)
     IGC_ASSERT_MESSAGE(FGHead, "Expected FGHead available with RA");
@@ -109,7 +109,7 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
       OS << ", ";
     Argument *Arg = &*fi;
     ++fi;
-    Arg->getType()->print(OS);
+    Arg->getType()->print(OS, /*IsForDebug=*/false, /*NoDetails=*/true);
     OS << " ";
     // Only show register number if there is a register allocator.
     GenXVisaRegAlloc::Reg* Reg = nullptr;
