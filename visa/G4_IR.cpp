@@ -2422,10 +2422,8 @@ bool G4_INST::canPropagateTo(
         return false;
     }
 
-    // bfloat specific checks (BF and F mixed mode)
-    const bool hasBF = (srcType == Type_BF || dstType == Type_BF);
-    if (builder.hasBFMixMode() && hasBF &&
-        (srcType == Type_F || srcType == Type_BF) && (dstType == Type_F || dstType == Type_BF))
+    // bfloat specific checks
+    if (propType == Type_BF)
     {
         // If the useInst is G4_pseudo_mad and the use operand has source modifier, a invalid bf->bf mov with source modifier
         // may be inserted in fixMADInst(). So avoid propagating to G4_pseudo_mad source with source modifier.
@@ -2438,15 +2436,14 @@ bool G4_INST::canPropagateTo(
             return false;
         }
         if (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() &&
-            useInst->opcode() != G4_mov && useInst->getExecSize() > 1)
+            useInst->opcode() != G4_mov)
         {
-            // BF scalar broadcast is not allowed. See fixBFMixedMode() for details.
+            // HW has bug with scalar bfloat in mix mode instructions
             return false;
         }
-        if (useInst->getDst() != nullptr && !useInst->getDst()->isNullReg() &&
-            useInst->getDst()->getType() != Type_F && useInst->getDst()->getType() != Type_BF)
+        if (useInst->getDst()->getType() != Type_F)
         {
-            // Only F/BF are allowed, see fixBFMixedMode() for details.
+            // we currently don't handle BF->HF or BF->DF conversion
             return false;
         }
     }
@@ -3880,39 +3877,6 @@ bool G4_INST::isMixedMode() const
         }
     }
 
-    return false;
-}
-
-bool G4_INST::isBFMixedMode() const
-{
-    if (!builder.hasBFMixMode())
-        return false;
-
-    switch (opcode())
-    {
-    case G4_mov:
-    case G4_mul:
-    case G4_cmp:
-    case G4_pseudo_mad:
-    case G4_add:
-    case G4_mac:
-    case G4_sel:
-        break;
-    default:
-        return false;
-    }
-
-    auto Dst = getDst();
-    // Ignore cmp's dst
-    if (opcode() != G4_cmp && Dst && !Dst->isNullReg() && Dst->getType() == Type_BF)
-        return true;
-
-    for (int i = 0, sz = (int)getNumSrc(); i < sz; ++i)
-    {
-        G4_Operand* src = getSrc(i);
-        if (src && !src->isNullReg() && src->getType() == Type_BF)
-            return true;
-    }
     return false;
 }
 
