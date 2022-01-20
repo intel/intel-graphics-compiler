@@ -874,10 +874,9 @@ void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
     unsigned SourceIndex, unsigned Priority, std::vector<Candidate> &Candidates)
 {
   LLVM_DEBUG(dbgs() << "Trying to record cand " << *(Dest.getValue()) << "\n");
-  if (UseInDest && isa<UndefValue>(*UseInDest))
+  if (UseInDest && (isa<UndefValue>(*UseInDest) || isa<Constant>(*UseInDest)))
     return;
   LLVM_DEBUG(dbgs() << "Recording cand " << *(Dest.getValue()) << "\n");
-  IGC_ASSERT(!UseInDest || !isa<Constant>(*UseInDest));
   Candidates.emplace_back(Dest, UseInDest, SourceIndex, Priority);
   ++NumCoalescingCandidates;
 }
