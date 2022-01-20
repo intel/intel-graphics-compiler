@@ -1943,6 +1943,8 @@ elseif (WIN32)
             DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
     install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
             DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
+
+
   endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 
   if (FCL_ENABLED)
