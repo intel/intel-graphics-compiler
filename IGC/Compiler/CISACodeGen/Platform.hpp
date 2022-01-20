@@ -983,6 +983,13 @@ bool supportAIParameterCombiningWithLODBiasEnabled() const
            GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID);
 }
 
+//todo: delete this once it's not true!!!
+//temporary solution!
+bool supportInlineDataOCL() const
+{
+    return isXeHPSDVPlus() &&
+        m_platformInfo.eProductFamily != IGFX_PVC;
+}
 
 bool useScratchSpaceForOCL() const
 {
