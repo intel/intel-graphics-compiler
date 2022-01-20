@@ -12454,7 +12454,7 @@ void Optimizer::newDoNoMaskWA()
         G4_DstRegRegion* aDst = I->getDst();
         if (!aDst || aDst->isNullReg() ||
             I->getImplAccSrc() != nullptr || I->isSend() ||
-            aDst->getBase()->asRegVar()->getPhyReg())
+            !aDst->getBase()->isRegVar() || aDst->getBase()->asRegVar()->getPhyReg())
         {
             return;
         }
