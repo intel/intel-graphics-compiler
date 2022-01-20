@@ -53,6 +53,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_STACK;
 
   GenXVariant = llvm::StringSwitch<GenXTag>(CPU)
+    .Case("generic", GENERIC_ARCH)
     .Case("BDW", GENX_BDW)
     .Case("SKL", GENX_SKL)
     .Case("BXT", GENX_BXT)
@@ -64,7 +65,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
     .Case("DG1", GENX_DG1)
     .Case("ADLS", GENX_ADLS)
     .Case("ADLP", GENX_ADLP)
-    .Case("XEHP", XE_HP_SDV)
+    .Cases("XEHP", "XEHP_SDV", XE_HP_SDV)
     .Case("DG2", XE_DG2)
     .Case("PVC", XE_PVC)
     .Case("PVCXT", XE_PVCXT)

@@ -51,7 +51,8 @@ protected:
   Triple TargetTriple;
 
   enum GenXTag {
-    GENX_GENERIC,
+    UNDEFINED_ARCH,
+    GENERIC_ARCH,
     GENX_BDW,
     GENX_SKL,
     GENX_BXT,
