@@ -22,7 +22,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
@@ -32,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -103,13 +103,9 @@ int DiagnosticVectorDecomposition::KindID = 0;
  *
  * Return:  true if code modified
  */
-bool VectorDecomposer::run(DominatorTree *ArgDT)
-{
-  DT = ArgDT;
-  DL = &DT->
-        getRoot()
-            ->getModule()
-            ->getDataLayout();
+bool VectorDecomposer::run(const DataLayout &ArgDL) {
+  DL = &ArgDL;
+
   bool Modified = false;
   // Process each start wrregion added with addStartWrRegion().
   for (auto swi = StartWrRegions.begin(), swe = StartWrRegions.end();

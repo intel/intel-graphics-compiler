@@ -40,7 +40,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
@@ -58,7 +57,6 @@ namespace {
 
 // GenXPostLegalization : post-legalization pass
 class GenXPostLegalization : public FunctionPass {
-  DominatorTree *DT = nullptr;
   VectorDecomposer VD;
   const DataLayout *DL = nullptr;
   const GenXSubtarget *ST = nullptr;
@@ -77,19 +75,17 @@ public:
 
 char GenXPostLegalization::ID = 0;
 namespace llvm { void initializeGenXPostLegalizationPass(PassRegistry &); }
-INITIALIZE_PASS_BEGIN(GenXPostLegalization, "GenXPostLegalization", "GenXPostLegalization", false, false)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-INITIALIZE_PASS_END(GenXPostLegalization, "GenXPostLegalization", "GenXPostLegalization", false, false)
+INITIALIZE_PASS_BEGIN(GenXPostLegalization, "GenXPostLegalization",
+                      "GenXPostLegalization", false, false)
+INITIALIZE_PASS_END(GenXPostLegalization, "GenXPostLegalization",
+                    "GenXPostLegalization", false, false)
 
-FunctionPass *llvm::createGenXPostLegalizationPass()
-{
+FunctionPass *llvm::createGenXPostLegalizationPass() {
   initializeGenXPostLegalizationPass(*PassRegistry::getPassRegistry());
   return new GenXPostLegalization;
 }
 
-void GenXPostLegalization::getAnalysisUsage(AnalysisUsage &AU) const
-{
-  AU.addRequired<DominatorTreeWrapperPass>();
+void GenXPostLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetPassConfig>();
   AU.setPreservesCFG();
 }
@@ -103,7 +99,6 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   bool Modified = false;
   Modified |= vc::breakConstantExprs(&F, vc::LegalizationStage::Legalized);
@@ -136,7 +131,7 @@ bool GenXPostLegalization::runOnFunction(Function &F)
     }
   }
   // Run the vector decomposer for this function.
-  Modified |= VD.run(DT);
+  Modified |= VD.run(*DL);
   // Cleanup region reads and writes.
   Modified |= simplifyRegionInsts(&F, DL, ST);
   // Cleanup redundant global loads.

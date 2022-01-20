@@ -42,7 +42,6 @@ SPDX-License-Identifier: MIT
 namespace llvm {
 
 class Constant;
-class DominatorTree;
 class Instruction;
 class PHINode;
 class Type;
@@ -53,7 +52,6 @@ class Region;
 
 // VectorDecomposer : decomposes vectors in a function
 class VectorDecomposer {
-  DominatorTree *DT = nullptr;
   const DataLayout *DL = nullptr;
   SmallVector<Instruction *, 16> StartWrRegions;
   std::set<Instruction *> Seen;
@@ -79,7 +77,8 @@ public:
   // addStartWrRegion : add a wrregion with undef input to the list
   void addStartWrRegion(Instruction *Inst) { StartWrRegions.push_back(Inst); }
   // run : run the vector decomposer on the stored StartWrRegions
-  bool run(DominatorTree *DT);
+  bool run(const DataLayout &ArgDL);
+
 private:
   // clearOne : clear from processing one web
   void clearOne() {
