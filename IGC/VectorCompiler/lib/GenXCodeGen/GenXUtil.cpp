@@ -2256,7 +2256,7 @@ bool genx::splitStructPhis(Function *F) {
 }
 
 bool genx::hasMemoryDeps(Instruction *L1, Instruction *L2, Value *Addr,
-                         DominatorTree *DT) {
+                         const DominatorTree *DT) {
   // Return false for non global loads
   if (!(GenXIntrinsic::isVLoad(L1) && GenXIntrinsic::isVLoad(L2)) &&
       !(isGlobalLoad(L1) && isGlobalLoad(L2)))

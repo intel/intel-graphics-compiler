@@ -721,7 +721,7 @@ std::size_t getStructElementPaddedSize(unsigned ElemIdx, unsigned NumOperands,
 // Determine if there is a store to global variable Addr in between of L1 and
 // L2. L1 and L2 can be either vloads or regular stores.
 bool hasMemoryDeps(Instruction *L1, Instruction *L2, Value *Addr,
-                   DominatorTree *DT);
+                   const DominatorTree *DT);
 
 // Return true if V is rdregion from a load result.
 bool isRdRFromGlobalLoad(Value *V);

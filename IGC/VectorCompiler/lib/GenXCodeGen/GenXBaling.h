@@ -372,7 +372,7 @@ class GenXBaling {
   typedef llvm::ValueMap<const Value*, genx::BaleInfo,
                          IgnoreRAUWValueMapConfig<const Value *>>
       InstMap_t;
-  GenXSubtarget *ST;
+  const GenXSubtarget *ST;
   InstMap_t InstMap;
   struct NeedClone {
     Instruction *Inst;
@@ -388,14 +388,13 @@ class GenXBaling {
   SmallVector<CallInst *, 4> TwoAddrSends;
 protected:
   BalingKind Kind;
-  DominatorTree *DT;
+  const DominatorTree *DT;
   GenXLiveness *Liveness; // only in group baling
 public:
   genx::AlignmentInfo AlignInfo;
 public:
-  explicit GenXBaling(BalingKind BKind, GenXSubtarget *Subtarget)
-      : Kind(BKind), ST(Subtarget),
-        Liveness(nullptr), DT(nullptr) {}
+  explicit GenXBaling(BalingKind BKind, const GenXSubtarget *Subtarget)
+      : Kind(BKind), ST(Subtarget), Liveness(nullptr), DT(nullptr) {}
   // clear : clear out the analysis
   void clear() { InstMap.clear(); }
   // processFunction : process one Function
@@ -411,13 +410,13 @@ public:
   void setBaleInfo(const Instruction *Inst, genx::BaleInfo BI);
   // isBaled : test whether all uses of an instruction would be baled in to
   // users
-  bool isBaled(Instruction *Inst) { return getBaleParent(Inst); }
+  bool isBaled(Instruction *Inst) const { return getBaleParent(Inst); }
   // getBaleParent : return the instruction baled into, 0 if none
-  Instruction *getBaleParent(Instruction *Inst);
+  Instruction *getBaleParent(Instruction *Inst) const;
   // unbale : unbale an instruction from its bale parent
   void unbale(Instruction *Inst);
   // getBaleHead : return the head of the bale containing this instruction
-  Instruction *getBaleHead(Instruction *Inst);
+  Instruction *getBaleHead(Instruction *Inst) const;
   // buildBale : build Bale from head instruction. B assumed empty on entry
   void buildBale(Instruction *Inst, genx::Bale *B, bool IncludeAddr = false) const;
   // store : store updated BaleInfo for Instruction (used to unbale by
@@ -491,7 +490,8 @@ private:
 class GenXFuncBaling : public FunctionPass, public GenXBaling {
 public:
   static char ID;
-  explicit GenXFuncBaling(BalingKind Kind = BalingKind::BK_Legalization, GenXSubtarget *ST = nullptr)
+  explicit GenXFuncBaling(BalingKind Kind = BalingKind::BK_Legalization,
+                          const GenXSubtarget *ST = nullptr)
       : FunctionPass(ID), GenXBaling(Kind, ST) {}
   StringRef getPassName() const override {
     return "GenX instruction baling analysis for a function";
@@ -522,7 +522,7 @@ class GenXGroupBaling : public FGPassImplInterface,
                         public GenXBaling {
 public:
   explicit GenXGroupBaling(BalingKind Kind = BalingKind::BK_Legalization,
-                           GenXSubtarget *ST = nullptr)
+                           const GenXSubtarget *ST = nullptr)
       : GenXBaling(Kind, ST) {}
   static StringRef getPassName() {
     return "GenX instruction baling analysis for a function group";

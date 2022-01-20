@@ -63,7 +63,7 @@ namespace {
 // GenX region collapsing pass
 class GenXRegionCollapsing : public FunctionPass {
   const DataLayout *DL = nullptr;
-  DominatorTree *DT = nullptr;
+  const DominatorTree *DT = nullptr;
   bool Modified = false;
 public:
   static char ID;
@@ -830,7 +830,7 @@ void GenXRegionCollapsing::processWrRegionBitCast2(Instruction *WrRegion)
 }
 
 // Check whether two values are bitwise identical.
-static bool isBitwiseIdentical(Value *V1, Value *V2, DominatorTree *DT) {
+static bool isBitwiseIdentical(Value *V1, Value *V2, const DominatorTree *DT) {
   IGC_ASSERT_MESSAGE(V1, "null value");
   IGC_ASSERT_MESSAGE(V2, "null value");
   if (V1 == V2)
