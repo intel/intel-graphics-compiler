@@ -55,7 +55,7 @@ std::string vc_error_category::message(int condition) const {
   IGC_ASSERT_EXIT_MESSAGE(0, "Unknown error code");
 }
 
-static vc_error_category vc_err_category;
+static const vc_error_category vc_err_category;
 
 namespace vc {
 

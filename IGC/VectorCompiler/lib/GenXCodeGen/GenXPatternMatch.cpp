@@ -2330,7 +2330,7 @@ namespace {
 class MulLike {
 public:
   virtual ~MulLike() {}
-  static MulLike &get(Instruction *I);
+  static const MulLike &get(Instruction *I);
 
   virtual Instruction *getMul(Instruction *) const { return nullptr; }
   virtual bool isAdd(User *) const { return false; }
@@ -2374,17 +2374,17 @@ public:
   }
 };
 
-MulLike &MulLike::get(Instruction *I) {
+const MulLike &MulLike::get(Instruction *I) {
   Type *Ty = I->getType()->getScalarType();
   if (Ty->isFloatingPointTy()) {
-    static FPMulLike FPMul;
+    static const FPMulLike FPMul;
     return FPMul;
   }
   if (Ty->isIntegerTy()) {
-    static IntMulLike IntMul;
+    static const IntMulLike IntMul;
     return IntMul;
   }
-  static MulLike Null;
+  static const MulLike Null;
   return Null;
 }
 } // End anonymous namespace
@@ -2394,7 +2394,7 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
   bool Changed = false;
   for (auto *BB : RPOT)
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
-      MulLike &Ring = MulLike::get(&*BI);
+      const MulLike &Ring = MulLike::get(&*BI);
       Instruction *Mul = Ring.getMul(&*BI);
       if (!Mul)
         continue;
