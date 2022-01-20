@@ -3596,6 +3596,68 @@ void CShader::PackAndCopyVariable(
     encoder.Push();
 }
 
+// Copies entire variable using simd16, UD type and NoMask
+void CShader::CopyVariableRaw(
+    CVariable* dst,
+    CVariable* src)
+{
+    VISA_Type dataType = ISA_TYPE_UD;
+    uint dataTypeSizeInBytes = CEncoder::GetCISADataTypeSize(dataType);
+    uint offset = 0;
+    uint bytesToCopy = src->GetSize() * src->GetNumberInstance();
+    while (bytesToCopy > 0)
+    {
+        bool dstSeconfHalf = offset >= dst->GetSize();
+        bool srcSeconfHalf = offset >= src->GetSize();
+        encoder.SetSecondHalf(dstSeconfHalf || srcSeconfHalf);
+        SIMDMode simdMode = SIMDMode::SIMD16;
+        uint movSize = numLanes(simdMode) * dataTypeSizeInBytes;
+        while (movSize > bytesToCopy ||
+            (!srcSeconfHalf && ((offset + movSize) > src->GetSize())) ||
+            (!dstSeconfHalf && ((offset + movSize) > dst->GetSize())))
+        {
+            simdMode = lanesToSIMDMode(numLanes(simdMode) / 2);
+            movSize = numLanes(simdMode) * dataTypeSizeInBytes;
+        }
+        CVariable* dst0 = GetNewAlias(
+            dst,
+            dataType,
+            dstSeconfHalf ? (offset - dst->GetSize()) : offset,
+            numLanes(simdMode));
+        CVariable* src0 = GetNewAlias(
+            src,
+            dataType,
+            srcSeconfHalf ? (offset - src->GetSize()) : offset,
+            numLanes(simdMode));
+        encoder.SetSimdSize(simdMode);
+        encoder.SetNoMask();
+        encoder.Copy(dst0, src0);
+        encoder.Push();
+        encoder.SetSecondHalf(false);
+        bytesToCopy -= movSize;
+        offset += movSize;
+    }
+}
+
+// Creates a new variable and copies entire src using simd16, UD type and
+// NoMask. If `singleInstancde` is true the new variable is a single-instance
+// variable.
+CVariable* CShader::CopyVariableRaw(CVariable* src, bool singleInstance)
+{
+    uint numInstance = src->GetNumberInstance();
+    uint numElements = src->GetNumberElement();
+    CName name(src->getName(), singleInstance ? "SingleInstanceCopy" : "Copy");
+    CVariable* dst = GetNewVariable(
+        singleInstance ? numElements * numInstance : numElements,
+        src->GetType(),
+        src->GetAlign(),
+        src->IsUniform(),
+        singleInstance ? 1 : numInstance,
+        name);
+    CopyVariableRaw(dst, src);
+    return dst;
+}
+
 bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 {
     bool ret = (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());

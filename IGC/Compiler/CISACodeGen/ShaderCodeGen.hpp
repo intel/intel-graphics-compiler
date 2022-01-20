@@ -190,6 +190,8 @@ public:
 
     void        CopyVariable(CVariable* dst, CVariable* src, uint dstSubVar = 0, uint srcSubVar = 0);
     void        PackAndCopyVariable(CVariable* dst, CVariable* src, uint subVar = 0);
+    void        CopyVariableRaw(CVariable* dst, CVariable* src);
+    CVariable*  CopyVariableRaw(CVariable* src, bool singleInstance = true);
     bool        IsValueUsed(llvm::Value* value);
     CVariable*  GetGlobalCVar(llvm::Value* value);
     uint        GetNbElementAndMask(llvm::Value* value, uint32_t& mask);

@@ -162,6 +162,7 @@ public:
     // Only remaining GEPs are for scratch in GFX path
     void emitGEP(llvm::Instruction* inst);
 
+
     // Emit lifetime start right before inst V. If ForAllInstance is true, emit lifestart
     // for both instances; otherwise, just the current instance set in the calling context.
     void emitLifetimeStart(CVariable* Var, llvm::BasicBlock* BB, llvm::Instruction* I, bool ForAllInstance);

@@ -287,6 +287,15 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
             if (m_deSSA->getRootValue(sdag.m_root))
                 slicing = false;
         }
+        else if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(sdag.m_root))
+        {
+            GenISAIntrinsic::ID id = pIntrinsic->getIntrinsicID();
+            if (id == GenISAIntrinsic::GenISA_dpas)
+            {
+                numInstance = 1;
+                slicing = false;
+            }
+        }
     }
     else
     {
@@ -11248,6 +11257,7 @@ void EmitPass::emitLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
     emitVectorLoad(inst, offset, immOffset);
 }
 
+
 void EmitPass::EmitNoModifier(llvm::Instruction* inst)
 {
     // This is a single instruction pattern emitter
@@ -20564,6 +20574,36 @@ void EmitPass::emitDpas(GenIntrinsicInst* GII, const SSource* Sources, const Dst
     CVariable* activation = GetSrcVariable(Sources[1]);
     CVariable* weight = GetSrcVariable(Sources[2]);
 
+    // Lambda creates a single-instance variable to hold data from both slices
+    // of `src`. Returns `src if `src` is a single-instance variable. Used in
+    // simd32 shaders only.
+    auto GetSingleInstanceTemp = [this](CVariable* src)
+    {
+        CVariable* ret = src;
+        if (src->GetNumberInstance() == 2)
+        {
+            ret = m_currShader->GetNewVariable(
+                2 * src->GetNumberElement(),
+                src->GetType(),
+                EALIGN_GRF,
+                CName(src->getName(), "SingleInstanceCopy"));
+        }
+        return ret;
+    };
+    // Lambda creates a single-instance copy of `src` if `src` is
+    // a dual-instance variable. Used in simd32 shaders only.
+    auto GetSingleInstanceCopy = [this, GetSingleInstanceTemp](
+        CVariable* src)
+    {
+        CVariable* ret = src;
+        if (src->GetNumberInstance() == 2)
+        {
+            ret = GetSingleInstanceTemp(src);
+            m_currShader->CopyVariableRaw(ret, src);
+        }
+        return ret;
+    };
+
     // input could be null if it is integer 0 or float positive 0.0f
     CVariable* input = nullptr;
     Constant* CSTVal = dyn_cast<Constant>(Sources[0].value);
@@ -20593,7 +20633,12 @@ void EmitPass::emitDpas(GenIntrinsicInst* GII, const SSource* Sources, const Dst
     weight = BroadcastIfUniform(weight);
     if (input) {
         input = BroadcastIfUniform(input);
+        input = GetSingleInstanceCopy(input);
     }
+
+    activation = GetSingleInstanceCopy(activation);
+    weight = GetSingleInstanceCopy(weight);
+    dst = GetSingleInstanceTemp(dst);
 
     // Sanity: Make sure that activation and weight are D/UD always
     if (activation->GetType() != ISA_TYPE_UD && activation->GetType() != ISA_TYPE_D)
@@ -20608,6 +20653,10 @@ void EmitPass::emitDpas(GenIntrinsicInst* GII, const SSource* Sources, const Dst
     m_encoder->dpas(dst, input, weight, (PrecisionType)PB, activation, (PrecisionType)PA,
         (uint8_t)SD, (uint8_t)RC, IsDpasw);
     m_encoder->Push();
+    if (m_destination != dst)
+    {
+        m_currShader->CopyVariableRaw(m_destination, dst);
+    }
 }
 
 // Conversion between float types

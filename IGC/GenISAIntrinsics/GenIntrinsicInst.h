@@ -58,6 +58,11 @@ protected:
     {
         return cast<ConstantInt>(cv)->getZExtValue();
     }
+    inline uint32_t valueToImm32(Value* cv) const
+    {
+        uint64_t v = valueToImm64(cv);
+        return int_cast<uint32_t>(v);
+    }
 
 public:
     /// getIntrinsicID - Return the intrinsic ID of this intrinsic.
@@ -723,6 +728,7 @@ public:
         return getOperand(0);
     }
 };
+
 
 class SGVIntrinsic : public GenIntrinsicInst {
 public:
