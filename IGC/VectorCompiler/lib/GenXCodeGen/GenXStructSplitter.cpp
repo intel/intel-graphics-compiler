@@ -54,8 +54,10 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/General/DebugInfo.h"
 
 #include <llvm/CodeGen/TargetPassConfig.h>
+#include <llvm/IR/DebugInfo.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstVisitor.h>
@@ -64,6 +66,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/PassRegistry.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include <llvmWrapper/Support/Alignment.h>
 
 #include "Probe/Assertion.h"
@@ -311,7 +314,7 @@ private:
   std::unordered_map<StructType *, VecOfStructInfo::const_reverse_iterator>
       InfoToMerge;
 
-  // Node represents a aggregative StructType with Nodes(another Structs) on
+  // Node represents an aggregative StructType with Nodes(another Structs) on
   // which it depends.
   class Node {
     StructType *STy{nullptr};
@@ -421,20 +424,26 @@ class Substituter : public InstVisitor<Substituter> {
   DataLayout const &DL;
   StructFilter Filter;
   DependencyGraph Graph;
+  vc::DIBuilder DIB;
+
   std::vector<AllocaInst *> Allocas;
   // Contains all instruction to substitute.
   using VecOfInstructionSubstitution =
       std::vector<std::pair<Instruction *, Instruction *>>;
+  // Contains map of instructions and base type this instruction operates.
+  using TypeToInstrMap = std::unordered_map<Type *, Instruction *>;
 
   bool processAlloca(AllocaInst &Alloca);
 
-  std::unordered_map<Type *, Instruction *>
-  generateNewAllocas(AllocaInst &OldInst) const;
-  Instruction *
-  generateNewGEPs(GetElementPtrInst &GEPI, Type &DestSTy,
-                  DependencyGraph::SElementsOfType const &IdxPath,
-                  std::unordered_map<Type *, Instruction *> const &NewInstr,
-                  unsigned PlainTyIdx) const;
+  void updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI, AllocaInst &AI,
+                     AllocaInst &NewAI, DbgDeclareInst &DbgDeclare);
+  TypeToInstrMap generateNewAllocas(AllocaInst &OldInst);
+  AllocaInst *generateAlloca(AllocaInst &AI,
+                             const DependencyGraph::SElement &TyElm);
+  Instruction *generateNewGEPs(GetElementPtrInst &GEPI, Type &DestSTy,
+                               DependencyGraph::SElementsOfType const &IdxPath,
+                               TypeToInstrMap const &NewInstr,
+                               unsigned PlainTyIdx) const;
 
   static Optional<
       std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>>
@@ -444,11 +453,9 @@ class Substituter : public InstVisitor<Substituter> {
   getInstUses(Instruction &I);
   static Optional<uint64_t> processAddInst(Instruction &I, BinaryOperator &BO);
 
-  bool processGEP(GetElementPtrInst &GEPI,
-                  std::unordered_map<Type *, Instruction *> const &NewInstr,
+  bool processGEP(GetElementPtrInst &GEPI, TypeToInstrMap const &NewInstr,
                   VecOfInstructionSubstitution /*OUT*/ &InstToInst);
-  bool processPTI(PtrToIntInst &PTI,
-                  std::unordered_map<Type *, Instruction *> const &NewInstr,
+  bool processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
                   VecOfInstructionSubstitution /*OUT*/ &InstToInst);
   static bool processPTIsUses(Instruction &I, uint64_t /*OUT*/ &MaxPtrOffset);
 
@@ -985,8 +992,10 @@ void DependencyGraph::run() {
 //    based on this information.
 //
 Substituter::Substituter(Module &M)
-    : Ctx{M.getContext()}, DL{M.getDataLayout()}, Filter{M}, Graph{M, Filter} {
+    : Ctx{M.getContext()}, DL{M.getDataLayout()}, Filter{M}, Graph{M, Filter},
+      DIB{M} {
   Graph.run();
+  LLVM_DEBUG(Graph.print(dbgs()));
 
   // visit should be after graph processing
   visit(M);
@@ -1008,34 +1017,233 @@ void Substituter::visitAllocaInst(AllocaInst &AI) {
 }
 
 //
-//  By VecOfIndices into which substructures to split the structure.
-//  Returns Instruction set within substructures for easy access.
+//  Generates new allocas.
+//  Returns Instruction set within base types for easy access
+//  and Instruction vector in order of generation.
 //
-std::unordered_map<Type *, Instruction *>
-Substituter::generateNewAllocas(AllocaInst &OldInst) const {
+Substituter::TypeToInstrMap
+Substituter::generateNewAllocas(AllocaInst &OldInst) {
   LLVM_DEBUG(dbgs() << "Generating allocas to replace: " << OldInst << "\n");
-  using SElement = DependencyGraph::SElement;
-  StructType *STy = dyn_cast<StructType>(OldInst.getAllocatedType());
-  IGC_ASSERT_MESSAGE(STy, "Alloca to replace produces non-struct type.");
+  StructType &STy = *cast<StructType>(OldInst.getAllocatedType());
 
-  std::vector<Type *> UniqueSplittedTypes = Graph.getUniqueSplittedTypes(*STy);
+  std::unordered_set<Type *> UniqueSplitTypes;
+  TypeToInstrMap NewInstructions;
 
-  std::unordered_map<Type *, Instruction *> NewInstructions;
-  NewInstructions.reserve(UniqueSplittedTypes.size());
-
-  IRBuilder<> IRB{&OldInst};
-  for (Type *NewTy : UniqueSplittedTypes) {
-    AllocaInst *NewAlloca = IRB.CreateAlloca(
-        NewTy, 0, OldInst.getName() + "." + getTypePrefix(*getBaseTy(NewTy)));
-    NewAlloca->setAlignment(IGCLLVM::getAlign(OldInst));
-    // Generating one alloca to each unique type.
-    auto [It, IsInserted] =
-        NewInstructions.emplace(getBaseTy(NewTy), NewAlloca);
-    IGC_ASSERT_MESSAGE(IsInserted,
-                       "Alloca instruction responsible for structure(type) has "
-                       "already been created.\n");
-  }
+  for (auto &&ListOfBaseTys : Graph.getVecOfStructIdxMapping(STy))
+    for (auto &&BaseTy : ListOfBaseTys) {
+      Type *NewTy = BaseTy.getTy();
+      auto [_, IsTypeInserted] = UniqueSplitTypes.emplace(NewTy);
+      if (IsTypeInserted) {
+        // Generating one alloca to each unique type.
+        AllocaInst *NewAlloca = generateAlloca(OldInst, BaseTy);
+        auto [_, IsAllocaInserted] =
+            NewInstructions.emplace(getBaseTy(NewTy), NewAlloca);
+        IGC_ASSERT_MESSAGE(IsAllocaInserted,
+                           "Alloca instruction responsible for structure(type) "
+                           "has already been created.\n");
+      }
+    }
   return NewInstructions;
+}
+
+// Help function to print info about unsupported debug intrinsics.
+static void reportUnsupportedDbgIntrinsics(
+    raw_ostream &Os, StringRef Reason,
+    const SmallVectorImpl<DbgVariableIntrinsic *> &DbgIntrinsics) {
+  Os << Reason << ":\n";
+  for (auto *DbgIntrinsic : DbgIntrinsics)
+    Os << '\t' << *DbgIntrinsic << '\n';
+}
+
+// Finds DbgDeclareInst in mix of debug intrinsics
+// that Val points to. Can return only one dbg.declare.
+// Returns nullptr it there is no any dbg.declare or more than one.
+static DbgDeclareInst *getDbgDeclare(Value &Val) {
+  // Gets the mix of dbg.declare and dbg.addr.
+  SmallVector<DbgVariableIntrinsic *, 4> DbgIntrinsics;
+  findDbgUsers(DbgIntrinsics, &Val);
+
+  // If there is no DI at all, returns nullptr without warning.
+  if (DbgIntrinsics.empty())
+    return nullptr;
+
+  SmallVector<DbgVariableIntrinsic *, 4> DbgDeclares;
+  llvm::copy_if(
+      DbgIntrinsics, std::back_inserter(DbgDeclares),
+      [](DbgVariableIntrinsic *Intr) { return isa<DbgDeclareInst>(Intr); });
+
+  // Returns nullptr if there is no dbg.declare at all.
+  if (DbgDeclares.empty()) {
+    LLVM_DEBUG(reportUnsupportedDbgIntrinsics(
+        dbgs(), "No dbg.declare for value", DbgIntrinsics));
+    return nullptr;
+  }
+
+  // Returns nullptr if there are more than one dbg.declares.
+  if (DbgDeclares.size() > 1) {
+    LLVM_DEBUG(reportUnsupportedDbgIntrinsics(
+        dbgs(), "Too many dbg.declare for value", DbgDeclares));
+    return nullptr;
+  }
+
+  return cast<DbgDeclareInst>(DbgDeclares.front());
+}
+
+//
+// Generates new alloca for TyElm to replace AI - the old one.
+// For TyElm generates DI.
+//
+AllocaInst *
+Substituter::generateAlloca(AllocaInst &AI,
+                            const DependencyGraph::SElement &TyElm) {
+  IRBuilder<> IRB{&AI};
+
+  Type *NewTy = TyElm.getTy();
+  AllocaInst &NewAI = *IRB.CreateAlloca(
+      NewTy, 0, AI.getName() + "." + getTypePrefix(*getBaseTy(NewTy)));
+  NewAI.setAlignment(IGCLLVM::getAlign(AI));
+
+  DbgDeclareInst *DbgDeclare = getDbgDeclare(AI);
+  if (!DbgDeclare)
+    return &NewAI;
+
+  // *NewTy can be:
+  // - base type, non-split struct (also base type).
+  // - split struct (for each element to generate DI).
+  std::vector<Type *> TypesToGenerateDI;
+  if (TyElm.isUnwrapped()) {
+    TypesToGenerateDI.push_back(NewTy);
+  } else {
+    StructType &STy = *TyElm.getStructTy();
+    llvm::copy(STy.elements(), std::back_inserter(TypesToGenerateDI));
+  }
+  updateDbgInfo(TypesToGenerateDI, AI, NewAI, *DbgDeclare);
+
+  return &NewAI;
+}
+
+//
+// Help-function to go other the list and check if Type with possition Idx is
+// found. FirstMatch is for search regardless of index. Finds the firts match of
+// type.
+//
+static bool isElementInList(const DependencyGraph::ListOfSplittedElements &List,
+                            Type *Ty, unsigned Idx, bool FirstMatch) {
+  auto ListIt =
+      std::find_if(List.begin(), List.end(),
+                   [Idx, Ty, FirstMatch](const DependencyGraph::SElement &Elm) {
+                     // FirstMatch is needed only for searching in
+                     // substructures, where the first occurrence of type is to
+                     // be found.
+                     if (FirstMatch)
+                       return Elm.getTy() == Ty;
+                     // If element is unwrapped -> only checks on types match.
+                     // If element is not unwrapped -> additionaly checks Index.
+                     return Elm.getTy() == Ty &&
+                            (Elm.isUnwrapped() ||
+                             !Elm.isUnwrapped() && Elm.getIndex() == Idx);
+                   });
+  return ListIt != List.end();
+}
+
+//
+// Finds record in IdxMap of Ty placed on Idx position.
+// FirstMatch is for search regardless of index.
+//
+static auto
+findRecord(const DependencyGraph::VecOfNewIndiciesDefinition &IdxMap, Type *Ty,
+           unsigned Idx, bool FirstMatch) {
+  auto FindIt = std::find_if(
+      IdxMap.begin(), IdxMap.end(), [&Ty, &Idx, FirstMatch](auto &&List) {
+        return isElementInList(List, Ty, Idx, FirstMatch);
+      });
+  IGC_ASSERT_MESSAGE(FindIt != IdxMap.end(), "Record has to be found!");
+  return FindIt;
+};
+
+//
+// For NewAI for each TypesToGenerateDI (elements of the new structure/type)
+// generates DI based on DI about AI. Calculates proper fragments of the
+// elements for new types.
+// TODO: Cannot proper handle cases when order of elements is in mess.
+// ex:
+//  A = {i, f, f, i}; B = {i, A, f};
+//  A will split to: Ai = {i, i};
+//                   Af = {f, f};
+//  B will split to: Bi = {i, Ai};
+//                   Bf = {Af, f};
+//  DI fragments about B will be:
+//  - about Bi:
+//    dbg.declare(..., ..., fragment(0, 32)) <- the first element of B.
+//    dbg.declare(..., ..., fragment(32, 64)) <- problem:
+//      should be like fragment(32, 32) <- from the first element of A
+//                and  fragment(128, 32) <- from the last element of A.
+//    But as Bi consists of { i, Ai }: elements of Bi are i and
+//    Ai, that already contains { i, i } so fragment is (32, 64).
+//  B actually is {i, {i, f, f, i}, f}, but after splitting
+//                    ^- from A
+//  B is {i, {i, i}, {f, f}, f}
+//           ^- Ai   ^- Af
+//
+void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
+                                AllocaInst &AI, AllocaInst &NewAI,
+                                DbgDeclareInst &DbgDeclare) {
+  LLVM_DEBUG(dbgs() << "Rewritting dbg info about: " << AI << "\n");
+  DILocalVariable &Var = *DbgDeclare.getVariable();
+  DIExpression &Expr = *DbgDeclare.getExpression();
+  DILocation &DbgLoc = *DbgDeclare.getDebugLoc();
+
+  Type *NewTy = NewAI.getAllocatedType();
+
+  using VecOfNewIndiciesDefinition =
+      DependencyGraph::VecOfNewIndiciesDefinition;
+  using SElement = DependencyGraph::SElement;
+  StructType &STy = *cast<StructType>(AI.getAllocatedType());
+  const VecOfNewIndiciesDefinition &IdxMap =
+      Graph.getVecOfStructIdxMapping(STy);
+
+  // For each element of the new structure generates DI.
+  for (auto &&TypeEnum : enumerate(TypesToGenerateDI)) {
+    unsigned Offset{0};
+
+    // Type and position of the element.
+    Type *TyToGenDI = TypeEnum.value();
+    unsigned ElmIdx = TypeEnum.index();
+
+    auto getOffsetInBits = [this](unsigned Idx, StructType *STy) {
+      return DL.getStructLayout(STy)->getElementOffsetInBits(Idx);
+    };
+
+    // Finds original type from which element came.
+    auto VecIt = findRecord(IdxMap, NewTy, ElmIdx, false);
+    unsigned IdxOfOrigStruct = VecIt - IdxMap.begin();
+    Type *OrigTy = STy.getElementType(IdxOfOrigStruct);
+
+    // If it is processed Structure, offset of the element in this substructure
+    // has to be calculated.
+    if (StructType *OrigSTy = dyn_cast<StructType>(OrigTy);
+        OrigSTy && Graph.isStructProcessed(*OrigSTy)) {
+      const VecOfNewIndiciesDefinition &SubSIdxMap =
+          Graph.getVecOfStructIdxMapping(*OrigSTy);
+      // Offset from OrigStruct + Offset from SubStruct.
+      auto SubSVecIt =
+          findRecord(SubSIdxMap, TyToGenDI, /*does not matter*/ 0, true);
+      unsigned IdxOfSubStruct = SubSVecIt - SubSIdxMap.begin();
+      Offset = getOffsetInBits(IdxOfOrigStruct, &STy) +
+               getOffsetInBits(IdxOfSubStruct, OrigSTy);
+    } else
+      // Offset from OrigStruct
+      Offset = getOffsetInBits(IdxOfOrigStruct, &STy);
+
+    auto FragExpr = DIExpression::createFragmentExpression(
+        &Expr, Offset, DL.getTypeAllocSizeInBits(TyToGenDI));
+    IGC_ASSERT_MESSAGE(FragExpr.hasValue(), "Failed to create new expression");
+
+    Instruction &NewDbgDeclare =
+        *DIB.createDbgDeclare(NewAI, Var, *FragExpr.getValue(), DbgLoc, AI);
+    LLVM_DEBUG(dbgs() << "New dbg.declare is created: " << NewDbgDeclare
+                      << '\n';);
+  }
 }
 
 //
@@ -1058,11 +1266,11 @@ static Instruction *findProperInstruction(
 //  NewInstr - instruction map to set proper uses.
 //  PlainTyIdx - index of the first plain type..
 //
-Instruction *Substituter::generateNewGEPs(
-    GetElementPtrInst &GEPI, Type &PlainType,
-    DependencyGraph::SElementsOfType const &IdxPath,
-    std::unordered_map<Type *, Instruction *> const &NewInstr,
-    unsigned PlainTyIdx) const {
+Instruction *
+Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
+                             DependencyGraph::SElementsOfType const &IdxPath,
+                             TypeToInstrMap const &NewInstr,
+                             unsigned PlainTyIdx) const {
   using SElement = DependencyGraph::SElement;
   using ListOfSplittedElements = DependencyGraph::ListOfSplittedElements;
   using SElementsOfType = DependencyGraph::SElementsOfType;
@@ -1148,16 +1356,15 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
     return false;
   auto [UsesGEP, UsesPTI] = std::move(InstUses.getValue());
 
-  std::unordered_map<Type *, Instruction *> NewInstructions =
-      generateNewAllocas(Alloca);
+  TypeToInstrMap NewInstrs = generateNewAllocas(Alloca);
 
   VecOfInstructionSubstitution InstToInst;
 
   for (GetElementPtrInst *GEP : UsesGEP)
-    if (!processGEP(*GEP, NewInstructions, InstToInst))
+    if (!processGEP(*GEP, NewInstrs, InstToInst))
       return false;
   for (PtrToIntInst *PTI : UsesPTI)
-    if (!processPTI(*PTI, NewInstructions, InstToInst))
+    if (!processPTI(*PTI, NewInstrs, InstToInst))
       return false;
 
   for (auto [InstToReplace, ToInst] : InstToInst)
@@ -1261,10 +1468,9 @@ Substituter::getInstUses(Instruction &I) {
 //  * FE2: %a = gep C, 0, 4, 0
 //     -> %a = gep Cf, 0, 2, 0
 //
-bool Substituter::processGEP(
-    GetElementPtrInst &GEPI,
-    std::unordered_map<Type *, Instruction *> const &NewInstr,
-    VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
+bool Substituter::processGEP(GetElementPtrInst &GEPI,
+                             TypeToInstrMap const &NewInstr,
+                             VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
   LLVM_DEBUG(dbgs() << "Processing uses of instruction: " << GEPI << "\n");
   using SElement = DependencyGraph::SElement;
   using ListOfSplittedElements = DependencyGraph::ListOfSplittedElements;
@@ -1301,7 +1507,7 @@ bool Substituter::processGEP(
     ListOfSplittedElements const &ListOfPossibleTypes =
         Graph.getElementsListOfSTyAtIdx(*STyToBeSplitted, Idx);
 
-    std::unordered_map<Type *, Instruction *> NewInstructions;
+    TypeToInstrMap NewInstructions;
     NewInstructions.reserve(ListOfPossibleTypes.size());
 
     // For each substruct we have to generate it's own IdxPath and GEP.
@@ -1344,10 +1550,8 @@ bool Substituter::processGEP(
 //  read/write, then check if max offset lies within unsplited block. If it
 //  does, then substitutes struct. Overwise we cannot split struct.
 //
-bool Substituter::processPTI(
-    PtrToIntInst &PTI,
-    std::unordered_map<Type *, Instruction *> const &NewInstr,
-    VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
+bool Substituter::processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
+                             VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
 
   StructType *STy = dyn_cast<StructType>(
       PTI.getPointerOperand()->getType()->getPointerElementType());
