@@ -77,7 +77,9 @@ elseif(IGC_BUILD__LLVM_PREBUILDS)
     LLD_INCLUDE_DIR
     NAMES "Driver.h"
     PATHS "${IGC_OPTION__LLDELF_H_DIR}"
-    PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/include/lld/Common/"
+    PATH_SUFFIXES
+      "llvm-${LLVM_VERSION_MAJOR}/include/lld/Common/"
+      "include/lld/Common/"
   )
 
   if(LLD_INCLUDE_DIR-NOTFOUND)
