@@ -65,6 +65,8 @@ class VectorDecomposer {
   SmallVector<unsigned, 8> Offsets;
   std::map<PHINode *, SmallVector<Value *, 8>> PhiParts;
   SmallVector<Instruction *, 8> NewInsts;
+  unsigned DecomposedCount = 0;
+
 public:
   // clear : clear anything stored
   void clear() {
@@ -72,6 +74,7 @@ public:
     StartWrRegions.clear();
     Seen.clear();
     ToDelete.clear();
+    DecomposedCount = 0;
   }
   // addStartWrRegion : add a wrregion with undef input to the list
   void addStartWrRegion(Instruction *Inst) { StartWrRegions.push_back(Inst); }

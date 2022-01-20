@@ -143,11 +143,10 @@ bool VectorDecomposer::processStartWrRegion(Instruction *Inst)
   // and determine the decomposition that we can do to the web.
   if (!determineDecomposition(Inst))
     return false;
-  static unsigned Count = 0;
-  if (++Count > LimitGenXVectorDecomposer)
+  if (++DecomposedCount > LimitGenXVectorDecomposer)
     return false;
   if (LimitGenXVectorDecomposer != UINT_MAX)
-    dbgs() << "genx vector decomposer " << Count << "\n";
+    dbgs() << "genx vector decomposer " << DecomposedCount << "\n";
   decompose();
   clearOne();
   return true;

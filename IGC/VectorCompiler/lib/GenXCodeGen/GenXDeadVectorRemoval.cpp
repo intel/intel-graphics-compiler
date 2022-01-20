@@ -161,6 +161,8 @@ class GenXDeadVectorRemoval : public FunctionPass {
   std::queue<Instruction *> WorkList;
   std::set<Instruction *> WrRegionsWithUsedOldInput;
   bool WorkListPhase = false;
+  unsigned RemovedCount = 0;
+
 public:
   static char ID;
   explicit GenXDeadVectorRemoval() : FunctionPass(ID) { }
@@ -177,6 +179,7 @@ private:
     IGC_ASSERT(WorkList.empty());
     WrRegionsWithUsedOldInput.clear();
     WorkListPhase = false;
+    RemovedCount = 0;
   }
   bool nullOutInstructions(Function *F);
   void processInst(Instruction *Inst);
@@ -285,9 +288,7 @@ bool GenXDeadVectorRemoval::runOnFunction(Function &F)
  * - when no elements in the "old value" input of a wrregion are used,
  *   then changes the input to undef.
  */
-bool GenXDeadVectorRemoval::nullOutInstructions(Function *F)
-{
-  static unsigned Count = 0;
+bool GenXDeadVectorRemoval::nullOutInstructions(Function *F) {
   bool Modified = false;
   for (auto fi = F->begin(), fe = F->end(); fi != fe; ++fi) {
     for (auto bi = fi->begin(), be = fi->end(); bi != be; ++bi) {
@@ -298,10 +299,10 @@ bool GenXDeadVectorRemoval::nullOutInstructions(Function *F)
       // See if the instruction has no used elements. If so, null out its uses.
       auto LB = getLiveBits(Inst);
       if (LB.isAllZero()) {
-        if (++Count > LimitGenXDeadVectorRemoval)
+        if (++RemovedCount > LimitGenXDeadVectorRemoval)
           return Modified;
         if (LimitGenXDeadVectorRemoval != UINT_MAX)
-          dbgs() << "-limit-genx-dead-vector-removal " << Count << "\n";
+          dbgs() << "-limit-genx-dead-vector-removal " << RemovedCount << "\n";
         LLVM_DEBUG(if (!Inst->use_empty())
           dbgs() << "nulled out uses of " << *Inst << "\n");
         while (!Inst->use_empty()) {
@@ -326,10 +327,11 @@ bool GenXDeadVectorRemoval::nullOutInstructions(Function *F)
         if (WrRegionsWithUsedOldInput.find(Inst)
           == WrRegionsWithUsedOldInput.end()) {
           if (!isa<UndefValue>(*U)) {
-            if (++Count > LimitGenXDeadVectorRemoval)
+            if (++RemovedCount > LimitGenXDeadVectorRemoval)
               return Modified;
             if (LimitGenXDeadVectorRemoval != UINT_MAX)
-              dbgs() << "-limit-genx-dead-vector-removal " << Count << "\n";
+              dbgs() << "-limit-genx-dead-vector-removal " << RemovedCount
+                     << "\n";
             *U = UndefValue::get((*U)->getType());
             LLVM_DEBUG(dbgs() << "null out old value input in " << *Inst << "\n");
             Modified = true;

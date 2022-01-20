@@ -347,6 +347,7 @@ class GenXDepressurizer : public FGPassImplInterface,
   // loop backedge. The converse is not necessarily true.
   std::map<Instruction *, unsigned> InstNumbers;
   std::map<Value *, CallInst *> TwoAddrValueMap;
+  unsigned SunkCount = 0;
 
 public:
   explicit GenXDepressurizer() {}
@@ -412,6 +413,7 @@ bool GenXDepressurizer::runOnFunctionGroup(FunctionGroup &FG) {
     return false;
 
   Modified = false;
+  SunkCount = 0;
   Baling = &getAnalysis<GenXGroupBaling>();
   // Process functions in the function group in reverse order, so we know the
   // max pressure in a subroutine when we see a call to it.
@@ -1027,11 +1029,10 @@ void GenXDepressurizer::fillTwoAddrValueMap(BasicBlock *BB) {
  */
 bool GenXDepressurizer::sink(Instruction *InsertBefore, Superbale *SB,
                              bool AllowClone) {
-  static unsigned Count = 0;
-  if (++Count > LimitGenXDepressurizer)
+  if (++SunkCount > LimitGenXDepressurizer)
     return false;
   if (LimitGenXDepressurizer != UINT_MAX)
-    dbgs() << "genx depressurizer " << Count << '\n';
+    dbgs() << "genx depressurizer " << SunkCount << '\n';
   unsigned CurNumber = InstNumbers[InsertBefore];
   LLVM_DEBUG(dbgs() << "sink(" << SB->getHead()->getName() << ")\n");
   // Gather the uses that we are going to modify.
