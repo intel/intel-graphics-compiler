@@ -9115,6 +9115,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_frc:
         emitFrc(inst);
         break;
+    case GenISAIntrinsic::GenISA_nativeMad:
+        emitNativeMad(inst);
+        break;
     case GenISAIntrinsic::GenISA_RenderTargetRead:
     case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
         emitRenderTargetRead(inst);
@@ -16210,6 +16213,18 @@ void EmitPass::emitFMArtn(llvm::GenIntrinsicInst *inst) {
   m_encoder->Push();
 
   ResetRoundingMode(inst);
+}
+
+void EmitPass::emitNativeMad(llvm::GenIntrinsicInst* inst) {
+    IGC_ASSERT_MESSAGE(inst->getNumArgOperands() == 3, "ICE: incorrect gen intrinsic");
+
+    CVariable* src0 = GetSymbol(inst->getOperand(0));
+    CVariable* src1 = GetSymbol(inst->getOperand(1));
+    CVariable* src2 = GetSymbol(inst->getOperand(2));
+    CVariable* dst = m_destination;
+
+    m_encoder->NativeMad(dst, src0, src1, src2);
+    m_encoder->Push();
 }
 
 void EmitPass::emitftoi(llvm::GenIntrinsicInst* inst)

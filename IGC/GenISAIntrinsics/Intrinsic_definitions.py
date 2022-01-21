@@ -2374,5 +2374,12 @@ Imported_Intrinsics = \
     [("float4",                        ""),
     [("int",                           "usage"),
      ("int",                           "owordOffset")],
-    "ReadMem"]]
+    "ReadMem"]],
+####################################################################################################
+"GenISA_nativeMad": ["Native Mad instruction intrinsic",
+    [("anyfloat",                 "dest"),
+    [(0,                 "src0"),
+     (0,                 "src1"),
+     (0,                 "src2")],
+    "NoMem"]]
 }

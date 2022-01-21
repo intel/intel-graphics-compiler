@@ -218,6 +218,11 @@ public:
         llvm::Value* float_src1,
         llvm::Value* float_src2);
 
+    llvm::Value* Create_MAD(
+        llvm::Value* float_src0,
+        llvm::Value* float_src1,
+        llvm::Value* float_src2);
+
     llvm::Value* Create_resinfo(
         llvm::Value* int32_src_s_mip,
         llvm::Value* int32_textureIdx);

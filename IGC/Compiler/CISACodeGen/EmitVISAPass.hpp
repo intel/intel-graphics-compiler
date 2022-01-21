@@ -449,6 +449,8 @@ public:
     void emitLLVMStackSave(llvm::IntrinsicInst* inst);
     void emitLLVMStackRestore(llvm::IntrinsicInst* inst);
 
+    void emitNativeMad(llvm::GenIntrinsicInst* inst);
+
     void emitUnmaskedRegionBoundary(bool start);
     void emitDpas(llvm::GenIntrinsicInst *GII,
                   const SSource* source,
