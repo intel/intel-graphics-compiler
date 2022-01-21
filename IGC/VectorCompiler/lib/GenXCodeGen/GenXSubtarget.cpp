@@ -69,11 +69,11 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
     .Case("DG2", XE_DG2)
     .Case("PVC", XE_PVC)
     .Case("PVCXT", XE_PVCXT)
-    .Default(GENX_SKL);
+    .Default(UNDEFINED_ARCH);
 
   std::string CPUName(CPU);
-  if (CPUName.empty())
-    CPUName = "generic";
+  if (CPUName.empty() || GenXVariant == UNDEFINED_ARCH)
+    report_fatal_error("Undefined or blank arch passed");
 
   ParseSubtargetFeatures(CPUName,
 #if LLVM_VERSION_MAJOR >= 12

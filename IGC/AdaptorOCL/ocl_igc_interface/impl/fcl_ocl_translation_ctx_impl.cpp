@@ -393,7 +393,7 @@ static std::vector<const char*>
     // but if it is null, it may be still useful, so let it be for a while
     auto cmfeDefaultArchOpt = llvm::sys::Process::GetEnv("IGC_CMFE_DEFAULT_ARCH");
     const std::string& cmfeDefaultArch =
-        cmfeDefaultArchOpt ? cmfeDefaultArchOpt.getValue() : "SKL";
+        cmfeDefaultArchOpt ? cmfeDefaultArchOpt.getValue() : "";
 
     std::string inputFile = "src.cm";
     isMemFile = processCmSrcOptions(userArgs, "-cm-src", inputFile) ||

@@ -6639,9 +6639,9 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
                                       vISABuilderMode Mode, LLVMContext &Ctx,
                                       BumpPtrAllocator &Alloc) {
   auto Platform = ST.getVisaPlatform();
-  // Use SKL for unknown platforms
+  // Fail for unknown platforms
   if (Platform == TARGET_PLATFORM::GENX_NONE)
-    Platform = TARGET_PLATFORM::GENX_SKL;
+    report_fatal_error("Platform unknown");
 
   // Prepare array of arguments for Builder API.
   StringSaver Saver{Alloc};
