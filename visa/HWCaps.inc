@@ -884,7 +884,7 @@ SPDX-License-Identifier: MIT
     // temp
     bool useNewNoMaskWA() const
     {
-        return getOption(vISA_newNoMaskWA);
+        return getOption(vISA_newNoMaskWA) && m_options->getTarget() == VISA_CM;
     }
 
     bool hasSLMWARIssue() const
