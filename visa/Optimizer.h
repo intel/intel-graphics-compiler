@@ -189,6 +189,9 @@ class Optimizer
 
     void adjustIndirectCallOffsetAfterSWSBSet();
 
+    // For HW debugging
+    void zeroSomeARF();
+
     void addSWSBInfo();
 
     void lowerMadSequence();
@@ -395,6 +398,7 @@ public:
         PI_analyzeMove,
         PI_removeInstrinsics,
         PI_expandMulPostSchedule,
+        PI_zeroSomeARF,
         PI_addSWSBInfo,
         PI_expandMadwPostSchedule,
         PI_NUM_PASSES

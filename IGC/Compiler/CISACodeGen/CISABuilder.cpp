@@ -4302,6 +4302,11 @@ namespace IGC
             SaveOption(vISA_HashMovsAtPrologue, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableZeroSomeARF))
+        {
+            SaveOption(vISA_zeroSomeARF, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(SystemThreadEnable))
         {
             /* Some tools only use 32bits hash, to maintain compatibility

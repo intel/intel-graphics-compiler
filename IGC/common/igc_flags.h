@@ -250,6 +250,7 @@ DECLARE_IGC_REGKEY(int,  ShaderDebugHashCode,           0,     "The driver will 
                                                                 Ex: VS_asm2df26246434553ad_nos0000000000000000 , only the LowPart Need \
                                                                 to be Enterd in Registry Ex : 0x434553ad ,i.e Lower 8 Hex Digits of the 16 Digit Hash Code \
                                                                 for Compatibilty Reasons", false)
+DECLARE_IGC_REGKEY(bool, EnableZeroSomeARF,             false,  "If set, insert mov inst to zero a0, acc, etc to assist HW debugging.", false)
 DECLARE_IGC_REGKEY(DWORD, ShaderDisableOptPassesAfter,  0,     "Will only run first N optimization passes, any further passes will be ignored. This flag can be used to bisect optimization passes.", false)
 DECLARE_IGC_REGKEY(bool, ShaderOverride,                false, "Will override any LLVM shader with matching name in c:\\Intel\\IGC\\ShaderOverride", false)
 DECLARE_IGC_REGKEY(bool, SystemThreadEnable,            false, "This key forces software to create a system thread. The system thread may still be created by software even \

@@ -347,6 +347,7 @@ DEF_VISA_OPTION(vISA_HashVal,             ET_2xINT32, "-hashmovs", "USAGE: -hash
 DEF_VISA_OPTION(vISA_HashVal1,            ET_2xINT32, "-hashmovs1", "USAGE: -hashmovs1 hi32 lo32\n", 0)
 DEF_VISA_OPTION(vISA_HashMovsAtPrologue,  ET_BOOL, "-hashatprologue", UNUSED, false)
 DEF_VISA_OPTION(vISA_AddKernelID,         ET_BOOL,  "-addKernelID", UNUSED, false)
+DEF_VISA_OPTION(vISA_zeroSomeARF,         ET_BOOL, "-zeroSomeARF",  "Zero address reg, acc, etc. on entry to kernel.", false)
 DEF_VISA_OPTION(vISA_dumpPayload,         ET_BOOL, "-dumpPayload",        UNUSED, false)
 DEF_VISA_OPTION(vISA_ScratchAllocForStackInKB, ET_INT32, "-scratchAllocForStackInKB", UNUSED, 64)
 

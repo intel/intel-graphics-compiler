@@ -533,6 +533,53 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
     }
 }
 
+// HW debugging needs to zero certain ARF registers such as a0, acc, etc.
+// Here, we zero a0 and acc on entry to a kernel.
+void Optimizer::zeroSomeARF()
+{
+    if (builder.getIsKernel())
+    {
+        // The first BB is not necessarily the kernel's entry when kernel needs to load its payload!
+        G4_BB* mainBB = fg.getEntryBB();
+        if (builder.loadThreadPayload())
+        {
+            // Make sure to skip prolog BBs to insert into the 1st BB of a kernel.
+            //   [perThreadBB:]
+            //   crossThreadBB:
+            //   main:
+            if (G4_BB* crossThreadBB = kernel.getCrossThreadPayloadBB())
+            {
+                assert(crossThreadBB->Succs.size() == 1);
+                mainBB = crossThreadBB->Succs.front();
+            }
+            else if (G4_BB* perThreadBB = kernel.getPerThreadPayloadBB())
+            {
+                assert(perThreadBB->Succs.size() == 1);
+                mainBB = perThreadBB->Succs.front();
+            }
+        }
+
+        INST_LIST_ITER insertBeforePos = mainBB->getFirstInsertPos();
+
+        // Zero all address ARF
+        G4_DstRegRegion* A0Dst = builder.createDst(builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UD);
+        G4_INST* zeroA0 = builder.createMov(
+            g4::SIMD8, A0Dst, builder.createImm(0, Type_UD), InstOpt_WriteEnable, false);
+        (void)mainBB->insertBefore(insertBeforePos, zeroA0);
+
+        // Zero acc ARF (at least two, some platform has more).
+        G4_DstRegRegion* Acc0Dst = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, Type_UD);
+        G4_INST* zeroAcc0 = builder.createMov(
+            builder.getNativeExecSize(), Acc0Dst, builder.createImm(0, Type_UD), InstOpt_WriteEnable, false);
+        (void)mainBB->insertBefore(insertBeforePos, zeroAcc0);
+
+        G4_DstRegRegion* Acc1Dst = builder.createDst(builder.phyregpool.getAcc1Reg(), 0, 0, 1, Type_UD);
+        G4_INST* zeroAcc1 = builder.createMov(
+            builder.getNativeExecSize(), Acc1Dst, builder.createImm(0, Type_UD), InstOpt_WriteEnable, false);
+        (void)mainBB->insertBefore(insertBeforePos, zeroAcc1);
+    }
+}
+
 void Optimizer::addSWSBInfo()
 {
     bool do_fcall_wa = builder.hasFusedEU()
@@ -1380,6 +1427,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(analyzeMove,             vISA_analyzeMove,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(removeInstrinsics,       vISA_removeInstrinsics,       TimerID::MISC_OPTS);
     INITIALIZE_PASS(expandMulPostSchedule,   vISA_expandMulPostSchedule,   TimerID::MISC_OPTS);
+    INITIALIZE_PASS(zeroSomeARF,             vISA_zeroSomeARF,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(addSWSBInfo,             vISA_addSWSBInfo,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(expandMadwPostSchedule,  vISA_expandMadwPostSchedule,  TimerID::MISC_OPTS);
 
@@ -1993,6 +2041,8 @@ int Optimizer::optimization()
     runPass(PI_analyzeMove);
 
     runPass(PI_removeInstrinsics);
+
+    runPass(PI_zeroSomeARF);
 
     //-----------------------------------------------------------------------------------------------------------------
     //------NOTE!!!! No instruction change(add/remove, or operand associated change) is allowed after SWSB-------------
