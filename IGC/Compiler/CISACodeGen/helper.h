@@ -384,6 +384,7 @@ namespace IGC
         llvm::IRBuilder<>& builder, const llvm::Twine& name = "");
 
     unsigned int AppendConservativeRastWAHeader(IGC::SProgramOutput* program, SIMDMode simdmode);
+    unsigned int AppendConservativeRastWAHeader(void*& pBinary, unsigned int& binarySize, SIMDMode simdmode);
 
     bool DSDualPatchEnabled(class CodeGenContext* ctx);
 

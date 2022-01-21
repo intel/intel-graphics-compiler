@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "common/secure_mem.h"
 #include <stack>
 #include "Probe/Assertion.h"
+#include "helper.h"
 
 using namespace llvm;
 using namespace GenISAIntrinsic;
@@ -2020,10 +2021,20 @@ namespace IGC
 
     unsigned int AppendConservativeRastWAHeader(IGC::SProgramOutput* program, SIMDMode simdmode)
     {
+        uint32_t headerSize = 0;
+        if (program && (program->m_programSize > 0))
+        {
+            headerSize = AppendConservativeRastWAHeader(program->m_programBin, program->m_programSize, simdmode);
+        }
+        return headerSize;
+    }
+
+    unsigned int AppendConservativeRastWAHeader(void*& pBinary, unsigned int& binarySize, SIMDMode simdmode)
+    {
         unsigned int headerSize = 0;
         const unsigned int* pHeader = nullptr;
 
-        if (program && (program->m_programSize > 0))
+        if (pBinary && (binarySize > 0))
         {
             switch (simdmode)
             {
@@ -2047,13 +2058,13 @@ namespace IGC
                 break;
             }
 
-            unsigned int newSize = program->m_programSize + headerSize;
+            unsigned int newSize = binarySize + headerSize;
             void* newBinary = IGC::aligned_malloc(newSize, 16);
             memcpy_s(newBinary, newSize, pHeader, headerSize);
-            memcpy_s((char*)newBinary + headerSize, newSize, program->m_programBin, program->m_programSize);
-            IGC::aligned_free(program->m_programBin);
-            program->m_programBin = newBinary;
-            program->m_programSize = newSize;
+            memcpy_s((char*)newBinary + headerSize, newSize, pBinary, binarySize);
+            IGC::aligned_free(pBinary);
+            pBinary = newBinary;
+            binarySize = newSize;
         }
         return headerSize;
     }
