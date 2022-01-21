@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define VC_GENXOPTS_UTILS_KERNELINFO_H
 
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
+#include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
 #include "Probe/Assertion.h"
@@ -80,13 +81,16 @@ inline bool isIndirect(const Function *F) {
 // structure types is fixed for intrinsics.
   if (GenXIntrinsic::isAnyNonTrivialIntrinsic(F))
     return false;
-  // FIXME: The condition of which function is considered to be indirectly
-  // called will be changed soon.
-  bool IsIndirect = F->hasAddressTaken();
+  if (genx::isKernel(F))
+    return false;
+  if (genx::isEmulationFunction(*F))
+    return false;
+  if (!F->hasAddressTaken() && F->hasLocalLinkage())
+    return false;
   IGC_ASSERT_MESSAGE(
-      !IsIndirect || genx::requiresStackCall(F),
+      genx::requiresStackCall(F),
       "The indirectly-called function is expected to be a stack call");
-  return IsIndirect;
+  return true;
 }
 
 inline bool isIndirect(const Function &F) { return isIndirect(&F); }
