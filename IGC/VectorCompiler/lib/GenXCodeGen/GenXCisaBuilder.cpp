@@ -255,6 +255,24 @@ void handleCisaCallError(const Twine &Call, LLVMContext &Ctx) {
   Ctx.diagnose(Err);
 }
 
+void handleInlineAsmParseError(const GenXBackendConfig &BC, StringRef VisaErr,
+                               StringRef VisaText, LLVMContext &Ctx) {
+  std::string ErrMsg;
+  raw_string_ostream SS{ErrMsg};
+  SS << "Failed to parse inline visa assembly\n";
+  if (!VisaErr.empty())
+    SS << VisaErr << '\n';
+  if (BC.hasShaderDumper() && BC.asmDumpsEnabled()) {
+    const char *DumpModuleName = "inline_asm_text.visaasm";
+    SS << "Full module dumped as '" << DumpModuleName << "'\n";
+    BC.getShaderDumper().dumpText(VisaText, DumpModuleName);
+  } else {
+    SS << "Enable dumps to see failed visa module\n";
+  }
+  DiagnosticInfoCisaBuild Err(SS.str(), DS_Error);
+  Ctx.diagnose(Err);
+}
+
 /***********************************************************************
  * Local function for testing one assertion statement.
  * It returns true if all is ok.
@@ -864,7 +882,8 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
   KernelBuilder->Subtarget = &getAnalysis<TargetPassConfig>()
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();
-  KernelBuilder->BackendConfig = &getAnalysis<GenXBackendConfig>();
+  const auto &BC = getAnalysis<GenXBackendConfig>();
+  KernelBuilder->BackendConfig = &BC;
 
   KernelBuilder->run();
 
@@ -872,7 +891,10 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
   if (GM->HasInlineAsm()) {
     auto VISAAsmTextReader = GM->GetVISAAsmReader();
     auto VISAText = KernelBuilder->CisaBuilder->GetAsmTextStream().str();
-    CISA_CALL(VISAAsmTextReader->ParseVISAText(VISAText, ""));
+    const int R = VISAAsmTextReader->ParseVISAText(VISAText, "");
+    if (R != 0)
+      handleInlineAsmParseError(BC, VISAAsmTextReader->GetCriticalMsg(),
+                                VISAText, *Ctx);
   }
 
   return false;
