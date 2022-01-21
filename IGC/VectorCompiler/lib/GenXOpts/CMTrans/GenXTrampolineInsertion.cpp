@@ -67,7 +67,7 @@ using namespace llvm;
 
 static cl::opt<bool> EnableTrampolineInsertion(
     "vc-enable-trampoline-insertion",
-    llvm::cl::desc("Enable/disable GenXTrampolineInsertion"), cl::init(true),
+    llvm::cl::desc("Enable/disable GenXTrampolineInsertion"), cl::init(false),
     cl::Hidden);
 
 namespace {
