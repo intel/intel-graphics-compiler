@@ -119,6 +119,7 @@ struct CompileOptions {
   FunctionControl FCtrl = FunctionControl::Default;
   bool SaveStackCallLinkage = false;
   bool DirectCallsOnly = false;
+  bool StripDebugInfo = false;
 };
 
 struct ExternalData {

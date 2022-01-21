@@ -219,6 +219,8 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
     Opts.DirectCallsOnly = true;
   if (IGC_IS_FLAG_ENABLED(DebugInfoValidation))
     Opts.ForceDebugInfoValidation = true;
+  if (IGC_IS_FLAG_ENABLED(VCStripDebugInfo))
+    Opts.StripDebugInfo = true;
   Opts.NoOptFinalizerMode =
       deriveDefaultableFlagValue<vc::NoOptFinalizerControl>(
           IGC_GET_FLAG_VALUE(VCNoOptFinalizerControl));

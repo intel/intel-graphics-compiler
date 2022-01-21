@@ -643,3 +643,4 @@ DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, VCSaveStackCallLinkage, false,
                        "Do not override stack calls linkage as internal", true)
     DECLARE_IGC_REGKEY(bool, VCDirectCallsOnly, false, "Generate code under the assumption all unknown calls are direct", true)
+    DECLARE_IGC_REGKEY(bool, VCStripDebugInfo, false, "Discard all the debug infromation from the input IR", true)

@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
@@ -463,6 +464,8 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
     Opts.Dumper->dumpModule(M, "after_spirv_reader.ll");
 
   vc::PassManager PerModulePasses;
+  if (Opts.StripDebugInfo)
+    llvm::StripDebugInfo(M);
   PerModulePasses.add(createGenXSPIRVReaderAdaptorPass());
   PerModulePasses.add(createGenXRestoreIntrAttrPass());
   PerModulePasses.run(M);
