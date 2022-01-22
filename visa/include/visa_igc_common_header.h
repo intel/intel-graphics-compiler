@@ -426,7 +426,8 @@ typedef enum
     VISA_3D_LD_LZ           = 26,
     VISA_3D_LD2DMS_W        = 28,
     VISA_3D_LD_MCS          = 29,
-    VISA_3D_TOTAL_NUM_OPS   = 30
+    // positional offsets
+    VISA_3D_TOTAL_NUM_OPS,
 } VISASampler3DSubOpCode;
 
 typedef enum {

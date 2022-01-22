@@ -737,17 +737,27 @@ sample_3d|sample_b|sample_l|sample_c|sample_d|sample_b_c|sample_l_c|sample_d_c|s
     }
 
 
+
+
 load_3d|load_mcs|load_2dms_w|load_lz {
         TRACE("** LOAD_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext);
         return LOAD_3D_OP;
     }
 
-sample4|sample4_c|sample4_po|sample4_po_c {
+sample4|sample4_c {
         TRACE("** SAMPLE4_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext);
         return SAMPLE4_3D_OP;
     }
+
+sample4_po|sample4_po_c {
+        TRACE("** SAMPLE4_3D");
+        CISAlval.sample3DOp = str2SampleOpcode(yytext);
+        return SAMPLE4_3D_OP;
+    }
+
+
 
 resinfo {
         TRACE("** RESINFO_3D");
