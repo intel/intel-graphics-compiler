@@ -636,18 +636,6 @@ prepareGlobalInfosForEncoding(GlobalsRangeT &&Globals) {
   return std::move(Infos);
 }
 
-// Fetches DWARF data associated with the specified function.
-// Empty vector is returned if none is found.
-static std::vector<char> getDebugInformation(const GenXDebugInfo &Dbg,
-                                             const Function *F) {
-  const auto &DbgInfoStorage = Dbg.getModuleDebug();
-  auto DbgInfoIt = DbgInfoStorage.find(F);
-  if (DbgInfoIt == DbgInfoStorage.end())
-    return {};
-  const auto &ElfImage = DbgInfoIt->second;
-  return {ElfImage.begin(), ElfImage.end()};
-}
-
 ModuleDataT::ModuleDataT(const Module &M) {
   std::vector<GVEncodingInfo> GVInfos =
       prepareGlobalInfosForEncoding(M.globals());
@@ -805,8 +793,13 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   RawSectionInfo TextSection;
   loadBinary(TextSection, Info.VISAAsm, VB, FG, BC);
 
-  auto DebugData = getDebugInformation(DBG, KernelFunction);
-
+  const auto& Dbg = DBG.getModuleDebug();
+  auto DbgIt = Dbg.find(KernelFunction);
+  std::vector<char> DebugData;
+  if (DbgIt != std::end(Dbg)) {
+    const auto &ElfImage = DbgIt->second;
+    DebugData = {ElfImage.begin(), ElfImage.end()};
+  }
   Info.Func.Relocations = TextSection.Relocations;
   // Still have to duplicate function relocations because they are constructed
   // inside Finalizer.
@@ -845,14 +838,6 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
     IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
     loadBinary(TextSection, Info.VISAAsm, VB, *FG, BC);
   }
-
-  // FIXME: current implementation does not properly handle debug information
-  // in the presence of indirect calls. Several indirect functions are embedded
-  // into one "section" - which means that the associated DWARF file should
-  // contain information about all of them. Currently, we provide DWARF info
-  // only about the first function.
-  auto DebugInfo = getDebugInformation(DBG, Subgroups.front()->getHead());
-
   // FIXME: cannot initialize legacy relocations as the relocation structure is
   // opaque and cannot be modified. But having multiple functions inside a
   // section requires shifting (modifying) the relocations.
@@ -865,7 +850,7 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
   Info.Func.Data.Buffer = TextSection.Data.emitConsolidatedData();
 
   return CompiledKernel{std::move(Info), FINALIZER_INFO{}, /*GtpinInfo*/ {},
-                        DebugInfo};
+                        /*DebugInfo*/ {}};
 }
 
 void GenXOCLRuntimeInfo::getAnalysisUsage(AnalysisUsage &AU) const {
