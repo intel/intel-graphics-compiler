@@ -54,10 +54,12 @@ struct VisaMapping {
 
 //--------------------------------------------------------------------
 // Builds and holds the debug information for the current module
-class GenXDebugInfo : public ModulePass {
+struct GenXDebugInfo : public ModulePass {
 
   using ElfBin = std::vector<char>;
   using DbgInfoStorage = std::unordered_map<const Function *, ElfBin>;
+
+private:
   DbgInfoStorage ElfOutputs;
 
   void cleanup();
