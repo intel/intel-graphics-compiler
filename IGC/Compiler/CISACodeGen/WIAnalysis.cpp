@@ -1550,7 +1550,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         if (intrinsic_name == llvm_URBRead ||
             intrinsic_name == llvm_URBReadOutput)
         {
-            if (!m_CGCtx->platform.isDG2Plus())
+            if (!m_CGCtx->platform.isProductChildOf(IGFX_DG2))
             {
                 return WIAnalysis::RANDOM;
             }
@@ -1564,7 +1564,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         if (intrinsic_name == llvm_URBWrite)
         {
             // TODO: enable this for other platforms/shader types if needed
-            if (!m_CGCtx->platform.isDG2Plus())
+            if (!m_CGCtx->platform.isProductChildOf(IGFX_DG2))
             {
                 return WIAnalysis::RANDOM;
             }

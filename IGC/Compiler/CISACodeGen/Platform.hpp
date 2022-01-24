@@ -134,9 +134,29 @@ bool support16BitImmSrcForMad() const {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
 }
 
-bool isPVCPlus() const
+//This function is for handling special cases,
+//where simple >= comparison between products/cores doesn't produce expected results.
+bool isProductChildOf(PRODUCT_FAMILY product) const
 {
-    return m_platformInfo.eRenderCoreFamily >= IGFX_XE_HPC_CORE;
+    bool result;
+    switch (product) {
+    case IGFX_PVC:
+        result = m_platformInfo.eRenderCoreFamily >= IGFX_XE_HPC_CORE;
+        break;
+    case IGFX_XE_HP_SDV:
+                result = m_platformInfo.eProductFamily == IGFX_XE_HP_SDV
+                || m_platformInfo.eProductFamily == IGFX_DG2
+                || m_platformInfo.eProductFamily == IGFX_PVC;
+        break;
+    case IGFX_DG2:
+        result = m_platformInfo.eProductFamily == IGFX_DG2
+                || m_platformInfo.eProductFamily == IGFX_PVC;
+        break;
+    default:
+        result = m_platformInfo.eProductFamily >= product;
+        break;
+    }
+    return result;
 }
 
 bool supports8DWLSCMessage() const {
@@ -471,22 +491,22 @@ bool canForcePrivateToGlobal() const
 
 bool getHWTIDFromSR0() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool supportAdd3Instruction() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool supportBfnInstruction() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool supportDpasInstruction() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool hasPackedRestrictedFloatVector() const
@@ -496,7 +516,7 @@ bool hasPackedRestrictedFloatVector() const
 
 bool supportLoadThreadPayloadForCompute() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool support16BitAtomics() const
@@ -506,84 +526,84 @@ bool support16BitAtomics() const
 
 bool Enable32BitIntDivRemEmu() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool support16DWURBWrite() const
 {
-    return IGC_IS_FLAG_ENABLED(Enable16DWURBWrite) && isXeHPSDVPlus();
+    return IGC_IS_FLAG_ENABLED(Enable16DWURBWrite) && isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool hasScratchSurface() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool hasAtomicPreDec() const
 {
-    return !isXeHPSDVPlus();
+    return !isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool support26BitBSOFormat() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool needsHeaderForAtomicCounter() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool doScalar64bScan() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool hasHWLocalThreadID() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 unsigned int getOfflineCompilerMaxWorkGroupSize() const
 {
-    if (isXeHPSDVPlus())
+    if (isProductChildOf(IGFX_XE_HP_SDV))
         return 1024;
     return 448;
 }
 
 bool hasFP16AtomicMinMax() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool hasFP32GlobalAtomicAdd() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool has16OWSLMBlockRW() const
 {
-    return IGC_IS_FLAG_ENABLED(Enable16OWSLMBlockRW) && isXeHPSDVPlus();
+    return IGC_IS_FLAG_ENABLED(Enable16OWSLMBlockRW) && isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool supportInlineData() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool supportsAutoGRFSelection() const
 {
-    return isPVCPlus() || m_platformInfo.eProductFamily == IGFX_XE_HP_SDV || (m_platformInfo.eProductFamily == IGFX_DG2 && IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection));
+    return isProductChildOf(IGFX_PVC) || m_platformInfo.eProductFamily == IGFX_XE_HP_SDV || (m_platformInfo.eProductFamily == IGFX_DG2 && IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection));
 }
 
 float adjustedSpillThreshold() const
 {
-    return isDG2Plus() ? 9.0f : 12.0f;
+    return isProductChildOf(IGFX_DG2) ? 9.0f : 12.0f;
 }
 
 bool hasLSC() const
 {
-    return IGC_IS_FLAG_DISABLED(ForceNoLSC) && !WaEnableLSCBackupMode() && isDG2Plus();
+    return IGC_IS_FLAG_DISABLED(ForceNoLSC) && !WaEnableLSCBackupMode() && isProductChildOf(IGFX_DG2);
 }
 
 bool WaEnableLSCBackupMode() const
@@ -609,7 +629,7 @@ bool hasLocalMemory() const
 
 bool enableImmConstantOpt() const
 {
-    return !isXeHPSDVPlus();
+    return !isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool supportsTier2VRS() const
@@ -624,7 +644,7 @@ bool supportsSIMD16TypedRW() const
 
 bool supportHWGenerateTID() const
 {
-    return IGC_IS_FLAG_ENABLED(EnableHWGenerateThreadID) && isDG2Plus();
+    return IGC_IS_FLAG_ENABLED(EnableHWGenerateThreadID) && isProductChildOf(IGFX_DG2);
 }
 
 bool hasHalfSIMDLSC() const
@@ -706,7 +726,7 @@ SIMDMode getPreferredRayTracingSIMDSize() const
 
 bool supportRayTracing() const
 {
-    return isDG2Plus();
+    return isProductChildOf(IGFX_DG2);
 }
 
 bool isValidNumThreads(uint32_t numThreadsPerEU) const
@@ -847,24 +867,24 @@ bool hasFP64GlobalAtomicAdd() const
 
 bool supports16BitLdMcs() const
 {
-    return isXeHPSDVPlus() && IGC_IS_FLAG_ENABLED(Enable16BitLDMCS);
+    return isProductChildOf(IGFX_XE_HP_SDV) && IGC_IS_FLAG_ENABLED(Enable16BitLDMCS);
 }
 
 bool supportsGather4PO() const
 {
-    return !isXeHPSDVPlus();
+    return !isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 // Typed read supports all renderable image formats, no image data conversion is
 // required.
 bool typedReadSupportsAllRenderableFormats() const
 {
-    bool isDG2B0Plus = SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0);
-    bool isDG2C0Plus = SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_C0);
+    bool isChildOfDG2B0 = SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0);
+    bool isChildOfDG2C0 = SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_C0);
     bool isDG2G11Config = GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID);
 
-    if ((m_platformInfo.eProductFamily == IGFX_DG2 && isDG2C0Plus) ||
-        (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G11Config && isDG2B0Plus) ||
+    if ((m_platformInfo.eProductFamily == IGFX_DG2 && isChildOfDG2C0) ||
+        (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G11Config && isChildOfDG2B0) ||
         (m_platformInfo.eProductFamily == IGFX_PVC))
     {
         return IGC_IS_FLAG_DISABLED(ForceFormatConversionDG2Plus);
@@ -987,8 +1007,7 @@ bool supportAIParameterCombiningWithLODBiasEnabled() const
 //temporary solution!
 bool supportInlineDataOCL() const
 {
-    return isXeHPSDVPlus() &&
-        m_platformInfo.eProductFamily != IGFX_PVC;
+        return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool useScratchSpaceForOCL() const
@@ -1003,29 +1022,19 @@ bool useScratchSpaceForOCL() const
     }
 }
 
-bool isXeHPSDVPlus() const
-{
-    return m_platformInfo.eProductFamily >= IGFX_XE_HP_SDV;
-}
-
-bool isDG2Plus() const
-{
-    return m_platformInfo.eProductFamily == IGFX_DG2
-        || m_platformInfo.eProductFamily == IGFX_PVC;
-}
 
 bool has64BMediaBlockRW() const
 {
-    return IGC_IS_FLAG_ENABLED(Enable64BMediaBlockRW) && isXeHPSDVPlus();
+    return IGC_IS_FLAG_ENABLED(Enable64BMediaBlockRW) && isProductChildOf(IGFX_XE_HP_SDV);
 }
 
 bool supportsStaticRegSharing() const
 {
-    return isXeHPSDVPlus();
+    return isProductChildOf(IGFX_XE_HP_SDV);
 }
 bool emulateByteScraterMsgForSS() const
 {
-    return isXeHPSDVPlus() && (m_platformInfo.usRevId == 0 || IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS));
+    return isProductChildOf(IGFX_XE_HP_SDV) && (m_platformInfo.usRevId == 0 || IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS));
 }
 
 //all the platforms which DONOT support 64 bit int operations
@@ -1249,7 +1258,7 @@ bool hasSCF() const
 {
     bool doscf = true;
     // DG2 and PVC still has SCF, but igc will stop using them.
-    doscf = !isDG2Plus();
+    doscf = !isProductChildOf(IGFX_DG2);
     return doscf;
 }
 
@@ -1262,7 +1271,7 @@ bool supportHeaderRTW() const
 
 bool preemptionSupported() const
 {
-    if (isPVCPlus())
+    if (isProductChildOf(IGFX_PVC))
         return false;
 
     return GetPlatformFamily() >= IGFX_GEN9_CORE;
@@ -1285,7 +1294,7 @@ unsigned getURBFullWriteMinGranularity() const
     {
         return overrideValue;
     }
-    return isXeHPSDVPlus() ? 16 : 32; // in bytes
+    return isProductChildOf(IGFX_XE_HP_SDV) ? 16 : 32; // in bytes
 }
 
 unsigned forceQwAtSrc0ForQwShlWA() const

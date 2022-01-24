@@ -5483,7 +5483,7 @@ void EmitPass::emitPatchInstanceId(llvm::Instruction* inst)
     // Set barrier encountered to true so we can program the instance Count accordingly
     hsProgram->SetBarrierEncountered();
 
-    if (m_currShader->m_Platform->isDG2Plus())
+    if (m_currShader->m_Platform->isProductChildOf(IGFX_DG2))
     {
         // On DG2+ instance number is in R0.2 bits 7:0
         m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -21283,7 +21283,7 @@ Tristate EmitPass::shouldGenerateLSCQuery(
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)
         {
-            IGC_ASSERT(Platform.isDG2Plus());
+            IGC_ASSERT(Platform.isProductChildOf(IGFX_DG2));
             IGC_ASSERT(Platform.hasLSC());
 
             bool Result =

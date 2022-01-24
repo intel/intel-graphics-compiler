@@ -236,7 +236,7 @@ bool SamplerPerfOptPass::runOnFunction(Function& F)
 
     bool changed = false;
 
-    if (ctx->platform.isDG2Plus())
+    if (ctx->platform.isProductChildOf(IGFX_DG2))
     {
         for (auto BI = F.begin(), BE = F.end(); BI != BE; BI++)
         {

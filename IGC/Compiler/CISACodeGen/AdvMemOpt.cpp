@@ -147,7 +147,7 @@ bool AdvMemOpt::runOnFunction(Function& F) {
     }
 
     auto* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (Ctx->platform.isDG2Plus()) {
+    if (Ctx->platform.isProductChildOf(IGFX_DG2)) {
         // split 64-bit uniform store into <2 x i32>, so it has better chance
         // to merge with other i32 stores in order to form 16-byte stores that
         // can use L1 cache

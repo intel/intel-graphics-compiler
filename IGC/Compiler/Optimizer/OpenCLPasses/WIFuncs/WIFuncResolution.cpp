@@ -44,7 +44,7 @@ void WIFuncResolution::storeImplicitBufferPtrs(llvm::Function& F)
     CodeGenContext* m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     if (isEntryFunc(m_pMdUtils, &F)
-        && !m_ctx->platform.isXeHPSDVPlus())
+        && !m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV))
     {
         if (m_implicitArgs.isImplicitArgExist(ImplicitArg::ArgType::IMPLICIT_ARG_BUFFER_PTR))
         {
@@ -331,7 +331,7 @@ llvm::Value* LowerImplicitArgIntrinsics::BuildLoadInst(llvm::CallInst& CI, unsig
 
     IGCLLVM::IRBuilder<> Builder(&CI);
     unsigned int AddrSpace = ADDRESS_SPACE_GLOBAL;
-    if (m_ctx->platform.isXeHPSDVPlus())
+    if (m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV))
     {
         AddrSpace = ADDRESS_SPACE_A32;
     }
@@ -720,7 +720,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
         case GenISAIntrinsic::GenISA_getLocalID_Z:
         {
             bool Cond = true;
-            if (m_ctx->platform.isXeHPSDVPlus())
+            if (m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV))
             {
                 Cond = false;
             }

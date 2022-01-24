@@ -295,7 +295,7 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
     }
 
     // LSC is not supported/enabled
-    if (!m_pCtx->platform.isDG2Plus()) {
+    if (!m_pCtx->platform.isProductChildOf(IGFX_DG2)) {
         IGC_ASSERT_MESSAGE(0, "LSC not supported on this platform");
         reportError("LSC not supported on this platform");
         return;

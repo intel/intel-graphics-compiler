@@ -102,7 +102,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
         if (RequirePayloadHeader)
             implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
 
-        if (!m_ctx->platform.isXeHPSDVPlus() &&
+        if (!m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV) &&
             IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
         {
             if (m_hasStackCalls)
