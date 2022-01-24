@@ -1100,6 +1100,8 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     extractElementOrderOpt(ArrA);
     extractElementOrderOpt(ArrB);
 
+    Builder.SetInsertPoint(I.getNextNode());
+
     Value* VectorA = UndefValue::get(IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
     Value* VectorB = UndefValue::get(IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
     for (int i = 0; i < NUM_DP4A_COMPONENTS; ++i) {
