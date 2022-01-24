@@ -53,6 +53,8 @@ enum class GlobalsLocalizationMode { All, No, Vector, Partial };
 
 enum class DisableLRCoalescingControl { Default, Disable, Enable };
 
+enum class DisableExtraCoalescingControl { Default, Disable, Enable };
+
 enum class NoOptFinalizerControl { Default, Disable, Enable };
 
 struct CompileOptions {
@@ -87,13 +89,17 @@ struct CompileOptions {
 
   llvm::Optional<unsigned> StackMemSize;
   bool ForceLiveRangesLocalizationForAccUsage = false;
-  bool ForceDisableExtraCoalescing = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
   bool IsLargeGRFMode = false;
+
   DisableLRCoalescingControl DisableLRCoalescingMode =
       DisableLRCoalescingControl::Default;
+  DisableExtraCoalescingControl DisableExtraCoalescingMode =
+      DisableExtraCoalescingControl::Default;
+
   NoOptFinalizerControl NoOptFinalizerMode = NoOptFinalizerControl::Default;
   bool ForceDebugInfoValidation = false;
+
   bool EnablePreemption = false;
 
   llvm::FPOpFusion::FPOpFusionMode AllowFPOpFusion = llvm::FPOpFusion::Standard;

@@ -209,8 +209,6 @@ template <typename T> T deriveDefaultableFlagValue(int Flag) {
 static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(VCLocalizeAccUsage))
     Opts.ForceLiveRangesLocalizationForAccUsage = true;
-  if (IGC_IS_FLAG_ENABLED(VCDisableExtraCoalescing))
-    Opts.ForceDisableExtraCoalescing = true;
   if (IGC_IS_FLAG_ENABLED(VCDisableNonOverlappingRegionOpt))
     Opts.ForceDisableNonOverlappingRegionOpt = true;
   if (IGC_IS_FLAG_ENABLED(VCSaveStackCallLinkage))
@@ -221,12 +219,17 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
     Opts.ForceDebugInfoValidation = true;
   if (IGC_IS_FLAG_ENABLED(VCStripDebugInfo))
     Opts.StripDebugInfo = true;
+
   Opts.NoOptFinalizerMode =
       deriveDefaultableFlagValue<vc::NoOptFinalizerControl>(
           IGC_GET_FLAG_VALUE(VCNoOptFinalizerControl));
+
   Opts.DisableLRCoalescingMode =
       deriveDefaultableFlagValue<vc::DisableLRCoalescingControl>(
           IGC_GET_FLAG_VALUE(VCDisableLRCoalescingControl));
+  Opts.DisableExtraCoalescingMode =
+      deriveDefaultableFlagValue<vc::DisableExtraCoalescingControl>(
+          IGC_GET_FLAG_VALUE(VCDisableExtraCoalescing));
 }
 
 static void adjustDumpOptions(vc::CompileOptions &Opts) {

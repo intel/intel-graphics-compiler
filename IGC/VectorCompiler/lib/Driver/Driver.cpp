@@ -249,8 +249,6 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
   if (Opts.ForceLiveRangesLocalizationForAccUsage)
     BackendOpts.LocalizeLRsForAccUsage = true;
-  if (Opts.ForceDisableExtraCoalescing)
-    BackendOpts.DisableExtraCoalescing = true;
   if (Opts.ForceDisableNonOverlappingRegionOpt)
     BackendOpts.DisableNonOverlappingRegionOpt = true;
   BackendOpts.FCtrl = Opts.FCtrl;
@@ -264,6 +262,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 
   BackendOpts.DisableLiveRangesCoalescing =
       getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, false);
+  BackendOpts.DisableExtraCoalescing =
+      getDefaultOverridableFlag(Opts.DisableExtraCoalescingMode, false);
 
   if (Opts.DirectCallsOnly)
     BackendOpts.DirectCallsOnly = true;
