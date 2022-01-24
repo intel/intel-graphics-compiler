@@ -451,8 +451,6 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   LLVMContext Context;
   LLVMInitializeGenXTarget();
   LLVMInitializeGenXTargetInfo();
-  llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
-  llvm::initializeTarget(Registry);
 
   Expected<std::unique_ptr<llvm::Module>> ExpModule =
       getModule(Input, Opts.FType, SpecConstIds, SpecConstValues, Context);
