@@ -2155,6 +2155,12 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createDeadPHINodeEliminationPass());
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableSLSR)) {
+            mpm.add(createStraightLineStrengthReducePass());
+            mpm.add(createNaryReassociatePass());
+            mpm.add(createEarlyCSEPass());
+        }
+
         mpm.run(*pContext->getModule());
     } // end scope
     COMPILER_TIME_END(pContext, TIME_OptimizationPasses);

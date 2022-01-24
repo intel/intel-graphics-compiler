@@ -240,6 +240,7 @@ DECLARE_IGC_REGKEY(bool, EnableUnmaskedFunctions,    true,    "Enable unmaksed f
 DECLARE_IGC_REGKEY(bool, EnableStatefulAtomic,       false,   "Enable promoting stateless atomic to stateful atomic.", false)
 DECLARE_IGC_REGKEY(bool, EnableHoistDp3,             false,    "Enable dp3 Hoisting.", false)
 DECLARE_IGC_REGKEY(bool, ForceHoistDp3,              false,   "force dp3 Hoisting.", false)
+DECLARE_IGC_REGKEY(bool, EnableSLSR, true, "Enable StraightLineStrengthReduce", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ForceDisableShaderDebugHashCodeInKernel,   false,  "Disable hash code addition to the binary after EOT", false)
