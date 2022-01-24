@@ -239,8 +239,6 @@ private:
   bool lowerExtractValue(ExtractValueInst *Inst);
   bool lowerInsertValue(InsertValueInst *Inst);
   bool lowerUAddWithOverflow(CallInst *CI);
-  CallInst *buildUAddWithSat(CallInst *CI, Value *Arg0, Value *Arg1,
-                             Instruction *InsertPoint);
   bool lowerUAddWithSat(CallInst *CI);
   bool lowerUSubWithSat(CallInst *CI);
   bool lowerCtpop(CallInst *CI);
@@ -4561,16 +4559,19 @@ bool GenXLowering::lowerUAddWithOverflow(CallInst *CI) {
 }
 
 // common subroutine for sub+sat and add+sat: builds uadd with sat
-CallInst *GenXLowering::buildUAddWithSat(CallInst *CI, Value *Arg0, Value *Arg1,
-                                         Instruction *InsertPoint) {
+static CallInst *buildUAddWithSat(CallInst *CI, Value *Arg0, Value *Arg1,
+                                  Instruction *InsertPoint, bool IsSignedSrc) {
   IGC_ASSERT(CI);
   const DebugLoc &DL = CI->getDebugLoc();
   Module *M = CI->getModule();
   IRBuilder<> Builder(InsertPoint);
   Type *ArgTypes[] = {CI->getType(), Arg0->getType()};
   Value *Args[] = {Arg0, Arg1};
-  auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_uuadd_sat,
-                                              ArgTypes);
+  auto Fn = GenXIntrinsic::getGenXDeclaration(
+      M,
+      IsSignedSrc ? GenXIntrinsic::genx_usadd_sat
+                  : GenXIntrinsic::genx_uuadd_sat,
+      ArgTypes);
   auto *UUAddInst = Builder.CreateCall(Fn, Args, CI->getName());
   UUAddInst->setDebugLoc(DL);
   return UUAddInst;
@@ -4582,7 +4583,7 @@ bool GenXLowering::lowerUAddWithSat(CallInst *CI) {
   IGC_ASSERT(CI);
   Value *Arg0 = CI->getArgOperand(0);
   Value *Arg1 = CI->getArgOperand(1);
-  auto *UUAddInst = buildUAddWithSat(CI, Arg0, Arg1, CI);
+  auto *UUAddInst = buildUAddWithSat(CI, Arg0, Arg1, CI, /*IsSignedSrc*/ false);
   CI->replaceAllUsesWith(UUAddInst);
   ToErase.push_back(CI);
   return true;
@@ -4592,13 +4593,9 @@ bool GenXLowering::lowerUAddWithSat(CallInst *CI) {
 // i.e. we are building -b and then uadd with saturation
 bool GenXLowering::lowerUSubWithSat(CallInst *CI) {
   IGC_ASSERT(CI);
-  const DebugLoc &DL = CI->getDebugLoc();
   Value *Arg0 = CI->getArgOperand(0);
-  Instruction *InstNeg = BinaryOperator::Create(
-      BinaryOperator::Xor, CI->getArgOperand(1),
-      Constant::getAllOnesValue(CI->getType()), CI->getName(), CI);
-  InstNeg->setDebugLoc(DL);
-  auto *UUAddInst = buildUAddWithSat(CI, Arg0, InstNeg, CI);
+  Value *Arg1 = IRBuilder<>(CI).CreateNeg(CI->getArgOperand(1), CI->getName());
+  auto *UUAddInst = buildUAddWithSat(CI, Arg0, Arg1, CI, /*IsSignedSrc*/ true);
   CI->replaceAllUsesWith(UUAddInst);
   ToErase.push_back(CI);
   return true;
