@@ -2270,6 +2270,7 @@ public:
 
     const G4_Declare *getTopDcl() const { return top_dcl; }
           G4_Declare* getTopDcl() { return top_dcl; }
+    void setTopDcl(G4_Declare* dcl) { top_dcl = dcl; }
 
     const G4_VarBase *getBase() const { return base; }
           G4_VarBase *getBase() { return base; }

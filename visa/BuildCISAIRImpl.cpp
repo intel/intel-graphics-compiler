@@ -1039,24 +1039,56 @@ void CISA_IR_Builder::LinkTimeOptimization(
             std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
             G4_Label *raLabel = builder->createLabel(funcName + "_ret" + std::to_string(raUID++), LABEL_BLOCK);
             G4_INST* ra = caller->fg.createNewLabelInst(raLabel);
+            // Append declarations from callee to caller
+            auto callerDclCount = caller->Declares.size();
+            for (auto curDcl : callee->Declares)
+            {
+                if (!curDcl->isPreDefinedVar())
+                {
+                    // we only need to separate ID for local vars
+                    curDcl->setDeclId(curDcl->getDeclId() + callerDclCount);
+                }
+                auto alias = curDcl->getAliasDeclare();
+                if (alias == callee->fg.builder->getStackCallArg())
+                {
+                    curDcl->setAliasDeclare(caller->fg.builder->getStackCallArg(), curDcl->getAliasOffset());
+                }
+                else if (alias == callee->fg.builder->getStackCallRet())
+                {
+                    curDcl->setAliasDeclare(caller->fg.builder->getStackCallRet(), curDcl->getAliasOffset());
+                }
+                caller->Declares.push_back(curDcl);
+            }
             // We don't need calleeLabel (first instruction) anymore after inlining
             calleeInsts.pop_front();
             for (G4_INST* fret : calleeInsts)
             {
                 G4_INST* inst = fret->cloneInst();
+                auto replaceTopDcl = [&](G4_INST* inst, G4_Declare* fromTopDcl, G4_Declare* toTopDcl)
+                {
+                    G4_Operand *opd;
+                    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                    {
+                        opd = inst->getSrc(i);
+                        if (opd && opd->getTopDcl() == fromTopDcl)
+                        {
+                            opd->setTopDcl(toTopDcl);
+                        }
+                    }
+                    opd = inst->getDst();
+                    if (opd && opd->getTopDcl() == fromTopDcl)
+                    {
+                        opd->setTopDcl(toTopDcl);
+                    }
+                };
+                replaceTopDcl(inst, callee->fg.builder->getStackCallArg(), caller->fg.builder->getStackCallArg());
+                replaceTopDcl(inst, callee->fg.builder->getStackCallRet(), caller->fg.builder->getStackCallRet());
                 callerInsts.insert(it, inst);
                 if (inst->opcode() != G4_pseudo_fret)
                     continue;
                 // Change inst to goto
                 inst->setOpcode(G4_goto);
                 inst->asCFInst()->setUip(raLabel);
-            }
-            // Append declarations from callee to caller
-            auto callerDclCount = caller->Declares.size();
-            for (auto curDcl : callee->Declares)
-            {
-                curDcl->setDeclId(curDcl->getDeclId() + callerDclCount);
-                caller->Declares.push_back(curDcl);
             }
             // insert return label for goto
             callerInsts.insert(it, ra);
