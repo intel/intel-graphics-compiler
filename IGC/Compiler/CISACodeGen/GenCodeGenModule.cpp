@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/InstVisitor.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Inliner.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
@@ -841,7 +842,7 @@ void GenXFunctionGroupAnalysis::dump() {
 namespace {
 
     /// \brief Custom inliner for subroutines.
-    class SubroutineInliner : public LegacyInlinerBase
+    class SubroutineInliner : public LegacyInlinerBase, public llvm::InstVisitor<SubroutineInliner>
     {
         EstimateFunctionSize* FSA;
     public:
@@ -856,6 +857,8 @@ namespace {
 
         void getAnalysisUsage(AnalysisUsage& AU) const override;
         bool runOnSCC(CallGraphSCC& SCC) override;
+        void verifyIfGEPIandLoadHasTheSameAS(CallGraphSCC& SCC);
+        void visitGetElementPtrInst(GetElementPtrInst& I);
 
         using llvm::Pass::doFinalization;
         bool doFinalization(CallGraph& CG) override {
@@ -879,10 +882,58 @@ void SubroutineInliner::getAnalysisUsage(AnalysisUsage& AU) const
     LegacyInlinerBase::getAnalysisUsage(AU);
 }
 
+
+void SubroutineInliner::visitGetElementPtrInst(GetElementPtrInst& GEPI)
+{
+    for (auto* useOfGEPI : GEPI.users())
+    {
+        if (LoadInst* loadInst = dyn_cast<LoadInst>(useOfGEPI))
+        {
+            auto GepReturnValueAS = GEPI.getPointerAddressSpace();
+            auto LoadOperandAS = loadInst->getPointerAddressSpace();
+            if (GepReturnValueAS != LoadOperandAS)
+            {
+                auto* GEPIPointerOperand = GEPI.getPointerOperand();
+                SmallVector<llvm::Value*, 8> Idx(GEPI.idx_begin(), GEPI.idx_end());
+                // we need to create a new GEPI because the old one has coded old AS,
+                // and we can not create new load instruction with the old GEPI with the correct AS
+                // This is WA for a bug in LLVM 11.
+                GetElementPtrInst* newGEPI = GetElementPtrInst::Create(GEPI.getSourceElementType(), GEPIPointerOperand, Idx, "", &GEPI);
+                newGEPI->setIsInBounds(GEPI.isInBounds());
+                newGEPI->setDebugLoc(GEPI.getDebugLoc());
+
+                auto* newLoad = new LoadInst(loadInst->getType(), newGEPI, "", loadInst);
+                newLoad->setAlignment(IGCLLVM::getAlign(loadInst->getAlignment()));
+                loadInst->replaceAllUsesWith(newLoad);
+                newLoad->setDebugLoc(loadInst->getDebugLoc());
+            }
+        }
+    }
+}
+
+// When this pass encounters a byVal argument, it creates an alloca to then copy the data from global memory to local memory.
+// When creating a new alloca, it replaces all occurrences of the argument in the function with that alloca.
+// The problem arises when the pointer operant (or more precisely its address space) is replaced in GetElementPtrInst.
+// Because from now on the resulting pointer of this instruction is in a different address space.
+// On the other hand, a load instruction that uses the returned GetElementPtrInst pointer still operates on the old address space.
+// By which we are referring to the wrong area of ​​memory. The resolution for this problem is to create new load instruction.
+// This is WA for a bug in LLVM 11.
+void SubroutineInliner::verifyIfGEPIandLoadHasTheSameAS(CallGraphSCC& SCC)
+{
+    for (CallGraphNode* Node : SCC)
+    {
+        Function* F = Node->getFunction();
+        if (F) visit(F);
+    }
+}
+
 bool SubroutineInliner::runOnSCC(CallGraphSCC& SCC)
 {
     FSA = &getAnalysis<EstimateFunctionSize>();
-    return LegacyInlinerBase::runOnSCC(SCC);
+    bool changed = LegacyInlinerBase::runOnSCC(SCC);
+    if (changed) verifyIfGEPIandLoadHasTheSameAS(SCC);
+
+    return changed;
 }
 
 /// \brief Get the inline cost for the subroutine-inliner.
