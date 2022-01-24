@@ -355,9 +355,8 @@ class LiveRange {
   Segments_t Segments;
   typedef SmallVector<AssertingSV, 2> Values_t;
   Values_t Values;
+
 public:
-  // kernel/stack functions that this LR spans across
-  std::set<llvm::Function*> Funcs;
   unsigned Category :8;
   unsigned LogAlignment :7;
   bool DisallowCASC: 1; // disallow call arg special coalescing
@@ -419,9 +418,6 @@ public:
   // sortAndMerge : after doing some push_backs, sort the segments
   //    and merge overlapping/adjacent ones
   void sortAndMerge();
-  // prepareFuncs : fill the Funcs set with kernel or stack functions which this
-  //    LR is alive in
-  void prepareFuncs(FunctionGroupAnalysis *FGA);
   // getLength : add up the number of instructions covered by this LR
   unsigned getLength(bool WithWeak) const;
   // debug dump/print

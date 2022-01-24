@@ -1755,39 +1755,6 @@ void LiveRange::sortAndMerge() {
 }
 
 /***********************************************************************
- * LiveRange::prepareFuncs : fill the Funcs set with kernel or stack functions
- * which this LR is alive in
- *
- * To support RegAlloc for function groups that consist of kernel and stack
- * functions we have to track which kernel/stack functions the LR spans across.
- *
- */
-void LiveRange::prepareFuncs(FunctionGroupAnalysis *FGA) {
-  for (auto &Val : getValues()) {
-    auto Inst = dyn_cast<Instruction>(Val.getValue());
-    Function *DefFunc = nullptr;
-    if (Inst && Inst->getParent())
-      DefFunc = Inst->getFunction();
-    else if (auto Arg = dyn_cast<Argument>(Val.getValue()))
-      DefFunc = Arg->getParent();
-
-    if (DefFunc) {
-      auto *DefFuncFG = FGA->getAnyGroup(DefFunc);
-      IGC_ASSERT_MESSAGE(DefFuncFG, "Cannot find the function group");
-      Funcs.insert(DefFuncFG->getHead());
-    }
-
-    for (auto U : Val.getValue()->users())
-      if (Instruction *UserInst = dyn_cast<Instruction>(U)) {
-        auto F = UserInst->getFunction();
-        auto *FG = FGA->getAnyGroup(F);
-        IGC_ASSERT_MESSAGE(FG, "Cannot find the function group");
-        Funcs.insert(FG->getHead());
-      }
-  }
-}
-
-/***********************************************************************
  * LiveRange::getLength : add up the number of instructions covered by this LR
  */
 unsigned LiveRange::getLength(bool WithWeak) const {

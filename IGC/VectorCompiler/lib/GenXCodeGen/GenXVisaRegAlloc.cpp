@@ -194,8 +194,6 @@ void GenXVisaRegAlloc::getLiveRanges(std::vector<LiveRange *> &LRs) const {
         getLiveRangesForValue(&*bi, LRs);
     }
   }
-  for (auto *LR : LRs)
-    LR->prepareFuncs(FGA);
 }
 
 void GenXVisaRegAlloc::reportVisaVarableNumberLimitError(unsigned Category,
@@ -275,8 +273,6 @@ void GenXVisaRegAlloc::localizeLiveRangesForAccUsage(
     Localizer.getSplitForLiveRange(LR, std::back_inserter(NewLRs));
   }
 
-  std::for_each(NewLRs.begin(), NewLRs.end(),
-                [this](genx::LiveRange *LR) { return LR->prepareFuncs(FGA); });
   LRs.insert(LRs.end(), std::make_move_iterator(NewLRs.begin()),
              std::make_move_iterator(NewLRs.end()));
 }
@@ -630,20 +626,16 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
       createReg(LR->Category, Ty, DONTCARESIGNED, LR->getLogAlignment());
   // Assign to the values. If any value is an input arg, ensure the register
   // gets its type, to avoid needing an alias for an input arg.
-  for (LiveRange::value_iterator vi = LR->value_begin(), ve = LR->value_end();
-       vi != ve; ++vi) {
-    for (auto &F : LR->Funcs) {
-      if (FGA->getAnyGroup(F) == FG) {
-        IGC_ASSERT(RegMap.count(F) > 0);
-        LLVM_DEBUG(dbgs() << "Allocating reg " << NewReg->Num << " for "
-                          << *(vi->getValue()) << " in func " << F->getName()
-                          << "\n");
-        IGC_ASSERT(RegMap.at(F).find(*vi) == RegMap.at(F).end());
-        RegMap.at(F)[*vi] = NewReg;
-      }
-    }
-    if (isa<Argument>(vi->getValue()))
-      NewReg->Ty = vi->getType();
+  const Function *FGHead = FG->getHead();
+  for (auto &&Val : LR->getValues()) {
+    IGC_ASSERT(RegMap.count(FGHead) > 0);
+    LLVM_DEBUG(dbgs() << "Allocating reg " << NewReg->Num << " for "
+                      << *Val.getValue() << " in FG for " << FGHead->getName()
+                      << "\n");
+    IGC_ASSERT(RegMap.at(FGHead).find(Val) == RegMap.at(FGHead).end());
+    RegMap.at(FGHead)[Val] = NewReg;
+    if (isa<Argument>(Val.getValue()))
+      NewReg->Ty = Val.getType();
   }
 }
 
@@ -872,14 +864,9 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
     const LiveRange *LR = i->LR;
     SimpleValue SV = *LR->value_begin();
     Reg *RN = getRegForValueUntyped(FG->getHead(), SV);
-    if (!RN) {
-      IGC_ASSERT(Liveness->isUnifiedRet(SV.getValue()));
-      // unified return do not have vISA register allocated
-      OS << "<no allocated Register> for [" << SV;
-    } else {
-      OS << "[";
-      RN->print(OS);
-    }
+    IGC_ASSERT_MESSAGE(RN, "No register allocated for LR");
+    OS << "[";
+    RN->print(OS);
     Type *ElTy = IndexFlattener::getElementType(SV.getValue()->getType(),
           SV.getIndex());
     unsigned Bytes = vc::getTypeSize(ElTy).inBytes();
