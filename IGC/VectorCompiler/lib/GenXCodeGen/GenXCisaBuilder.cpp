@@ -1958,7 +1958,6 @@ VISA_VectorOpnd *GenXKernelBuilder::createImmediateOperand(Constant *V,
   if (isDerivedFromUndef(V))
     V = Constant::getNullValue(V->getType());
   else if (isa<ConstantPointerNull>(V)) {
-    const DataLayout &DL = Func->getParent()->getDataLayout();
     T = DL.getIntPtrType(V->getType());
     V = Constant::getNullValue(T);
   }
@@ -1969,7 +1968,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createImmediateOperand(Constant *V,
     // I think we need to use the appropriate one of getZExtValue or
     // getSExtValue to avoid an assertion failure on very large 64 bit values...
     int64_t Val = Signed == UNSIGNED ? CI->getZExtValue() : CI->getSExtValue();
-    visa::TypeDetails TD(Func->getParent()->getDataLayout(), IT, Signed);
+    visa::TypeDetails TD(DL, IT, Signed);
     VISA_VectorOpnd *ImmOp = nullptr;
     CISA_CALL(
         Kernel->CreateVISAImmediate(ImmOp, &Val, getVISAImmTy(TD.VisaType)));
@@ -3102,8 +3101,6 @@ Value *GenXKernelBuilder::getPredicateOperand(
 }
 
 void GenXKernelBuilder::AddGenVar(Register &Reg) {
-  auto &DL = FG->getModule()->getDataLayout();
-
   VISA_GenVar *parentDecl = nullptr;
   VISA_GenVar *Decl = nullptr;
 
@@ -4985,8 +4982,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createIndirectOperand(Region *R,
       }
     }
   }
-  visa::TypeDetails TD(Func->getParent()->getDataLayout(), R->ElementTy,
-                       Signed);
+  visa::TypeDetails TD(DL, R->ElementTy, Signed);
   unsigned VStride = R->VStride;
   if (isa<VectorType>(R->Indirect->getType()))
     // multi indirect (vector index), set vstride
@@ -5216,7 +5212,6 @@ void GenXKernelBuilder::emitOptimizationHints() {
   if (skipOptWithLargeBlock(*FG))
     return;
 
-  const auto &DL = FG->getModule()->getDataLayout();
   // Track rp considering byte variable widening.
   PressureTracker RP(DL, *FG, Liveness, /*ByteWidening*/ true);
   const std::vector<genx::LiveRange *> &WidenLRs = RP.getWidenVariables();
@@ -5737,7 +5732,7 @@ unsigned GenXKernelBuilder::getValueSize(Type *T, unsigned Mod) const {
     }
     Result *= Mod;
   } else
-    Result = FG->getModule()->getDataLayout().getTypeSizeInBits(T) / 8;
+    Result = DL.getTypeSizeInBits(T) / 8;
   return Result;
 }
 
