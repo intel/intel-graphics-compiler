@@ -150,11 +150,11 @@ typedef size_t uintptr_t;
 #define cl_fp64_basic_ops
 #endif // cl_fp64_basic_ops
 
-typedef uchar __bool2 __attribute__((ext_vector_type(2)));
-typedef uchar __bool3 __attribute__((ext_vector_type(3)));
-typedef uchar __bool4 __attribute__((ext_vector_type(4)));
-typedef uchar __bool8 __attribute__((ext_vector_type(8)));
-typedef uchar __bool16 __attribute__((ext_vector_type(16)));
+typedef char __bool2 __attribute__((ext_vector_type(2)));
+typedef char __bool3 __attribute__((ext_vector_type(3)));
+typedef char __bool4 __attribute__((ext_vector_type(4)));
+typedef char __bool8 __attribute__((ext_vector_type(8)));
+typedef char __bool16 __attribute__((ext_vector_type(16)));
 
 #define INTEL_PIPE_RESERVE_ID_VALID_BIT (1U << 30)
 #define CLK_NULL_RESERVE_ID (__builtin_astype(((void*)(~INTEL_PIPE_RESERVE_ID_VALID_BIT)), __spirv_ReserveId))
