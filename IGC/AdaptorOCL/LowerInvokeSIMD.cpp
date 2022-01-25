@@ -68,18 +68,23 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
     CallInst* NewCall = nullptr;
     std::error_code EC;
     if (Function* Callee = dyn_cast<Function>(CI.getArgOperand(0))) {
-        std::string oldName = std::string(Callee->getName());
-        Callee->setName(Callee->getName() + ".old");
-        auto NewFunc = Function::Create(FTy, Callee->getLinkage(), oldName, *Callee->getParent());
-        NewFunc->setAttributes(Callee->getAttributes());
-        NewFunc->addFnAttr(FNATTR_INVOKE_SIMD_TARGET);
-        if (NewFunc->hasFnAttribute(FNATTR_REFERENCED_INDIRECTLY)) {
-            NewFunc->removeFnAttr(FNATTR_REFERENCED_INDIRECTLY);
+        Function* NewFunc = nullptr;
+        if (m_OldFuncToNewFuncMap.find(Callee) == m_OldFuncToNewFuncMap.end()) {
+            std::string oldName = std::string(Callee->getName());
+            Callee->setName(Callee->getName() + ".old");
+            NewFunc = Function::Create(FTy, Callee->getLinkage(), oldName, *Callee->getParent());
+            NewFunc->setAttributes(Callee->getAttributes());
+            NewFunc->addFnAttr(FNATTR_INVOKE_SIMD_TARGET);
+            if (NewFunc->hasFnAttribute(FNATTR_REFERENCED_INDIRECTLY)) {
+                NewFunc->removeFnAttr(FNATTR_REFERENCED_INDIRECTLY);
+            }
+            NewFunc->setCallingConv(Callee->getCallingConv());
+            m_OldFuncToNewFuncMap[Callee] = NewFunc;
+        } else {
+            NewFunc = m_OldFuncToNewFuncMap[Callee];
         }
-        NewFunc->setCallingConv(Callee->getCallingConv());
-        NewCall = m_Builder->CreateCall(NewFunc, ArgVals);
-        m_OldFuncToNewFuncMap[Callee] = NewFunc;
 
+        NewCall = m_Builder->CreateCall(NewFunc, ArgVals);
         detectUniformParams(Callee, *NewCall);
 
     } else {
