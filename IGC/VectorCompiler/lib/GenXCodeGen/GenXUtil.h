@@ -606,8 +606,8 @@ Instruction *emulateI64Operation(const GenXSubtarget *ST, Instruction *In,
 // Information about each stored section can be accessed via the key with
 // which it was stored. The key must be unique.
 // Accumulated/consolidated binary data can be accesed.
-template <typename KeyT, typename DataT = uint8_t> class BinaryDataAccumulator {
-public:
+template <typename KeyT, typename DataT = uint8_t, DataT Zero = 0u>
+struct BinaryDataAccumulator final {
   struct SectionInfoT {
     int Offset = 0;
     ArrayRef<DataT> Data;
@@ -647,15 +647,37 @@ public:
   reference back() { return *std::prev(end()); }
   const_reference back() const { return *std::prev(end()); }
 
+  // Pad the end of the buffer with \p Size zeros.
+  void pad(int Size) {
+    IGC_ASSERT_MESSAGE(Size >= 0,
+                       "wrong argument: size must be a non-negative number");
+    std::fill_n(std::back_inserter(Data), Size, Zero);
+  }
+
+  // Align the end of the buffer to \p Alignment bytes.
+  void align(int Alignment) {
+    IGC_ASSERT_MESSAGE(Alignment > 0,
+                       "wrong argument: alignment must be a positive number");
+    if (Alignment == 1 || Data.size() == 0)
+      return;
+    pad(alignTo(Data.size(), Alignment) - Data.size());
+  }
+
   // Append the data that is referenced by a \p Key and represented
   // in range [\p First, \p Last), to the buffer.
   // The range must consist of DataT elements.
+  // The data is placed with alignment \p Alignment.
   template <typename InputIter>
-  void append(KeyT Key, InputIter First, InputIter Last) {
+  void append(KeyT Key, InputIter First, InputIter Last, int Alignment = 1) {
     IGC_ASSERT_MESSAGE(
         std::none_of(Sections.begin(), Sections.end(),
                      [&Key](const SectionT &S) { return S.Key == Key; }),
         "There's already a section with such key");
+    IGC_ASSERT_MESSAGE(Alignment > 0,
+                       "wrong argument: alignment must be a positive number");
+
+    align(Alignment);
+
     SectionT Section;
     Section.Key = std::move(Key);
     int Offset = Data.size();

@@ -585,32 +585,6 @@ static void loadBinary(RawSectionInfo &TextSection, std::string &VISAAsm,
     VISAAsm += getVISAAsm(FG, VB);
 }
 
-static void appendGlobalVariableData(RawSectionInfo &Sect,
-                                     GVEncodingInfo GVInfo,
-                                     const DataLayout &DL) {
-  std::vector<char> Data;
-  GenXOCLRuntimeInfo::RelocationSeq Relocations;
-  vc::encodeConstant(*GVInfo.GV->getInitializer(), DL, std::back_inserter(Data),
-                     std::back_inserter(Relocations));
-
-  const auto CurrentGVAddress = Sect.Data.getFullSize();
-  const auto UnalignedNextGVAddress = CurrentGVAddress + Data.size();
-  const auto AlignedNextGVAddress =
-      alignTo(UnalignedNextGVAddress, GVInfo.NextGVAlignment);
-
-  // Pad before the next global.
-  std::fill_n(std::back_inserter(Data),
-              AlignedNextGVAddress - UnalignedNextGVAddress, 0);
-
-  // vc::encodeConstant calculates offsets relative to GV. Need to make it
-  // relative to section start.
-  vc::shiftRelocations(std::make_move_iterator(Relocations.begin()),
-                       std::make_move_iterator(Relocations.end()),
-                       std::back_inserter(Sect.Relocations), CurrentGVAddress);
-
-  Sect.Data.append(GVInfo.GV, Data.begin(), Data.end());
-}
-
 static unsigned getAlignment(const GlobalVariable &GV) {
   unsigned Align = GV.getAlignment();
   if (Align)
@@ -618,22 +592,22 @@ static unsigned getAlignment(const GlobalVariable &GV) {
   return GV.getParent()->getDataLayout().getABITypeAlignment(GV.getValueType());
 }
 
-template <typename GlobalsRangeT>
-std::vector<GVEncodingInfo>
-prepareGlobalInfosForEncoding(GlobalsRangeT &&Globals) {
-  auto RealGlobals = make_filter_range(Globals, [](const GlobalVariable &GV) {
-    return genx::isRealGlobalVariable(GV);
-  });
-  if (RealGlobals.begin() == RealGlobals.end())
-    return {};
-  std::vector<GVEncodingInfo> Infos;
-  std::transform(RealGlobals.begin(), std::prev(RealGlobals.end()),
-                 std::next(RealGlobals.begin()), std::back_inserter(Infos),
-                 [](const GlobalVariable &GV, const GlobalVariable &NextGV) {
-                   return GVEncodingInfo{&GV, getAlignment(NextGV)};
-                 });
-  Infos.push_back({&*std::prev(RealGlobals.end()), 1u});
-  return std::move(Infos);
+static void appendGlobalVariableData(RawSectionInfo &Sect,
+                                     const GlobalVariable &GV,
+                                     const DataLayout &DL) {
+  std::vector<char> Data;
+  GenXOCLRuntimeInfo::RelocationSeq Relocations;
+  vc::encodeConstant(*GV.getInitializer(), DL, std::back_inserter(Data),
+                     std::back_inserter(Relocations));
+
+  Sect.Data.append(&GV, Data.begin(), Data.end(), getAlignment(GV));
+
+  // vc::encodeConstant calculates offsets relative to GV. Need to make it
+  // relative to section start.
+  vc::shiftRelocations(std::make_move_iterator(Relocations.begin()),
+                       std::make_move_iterator(Relocations.end()),
+                       std::back_inserter(Sect.Relocations),
+                       Sect.Data.back().Info.Offset);
 }
 
 // Fetches DWARF data associated with the specified function.
@@ -662,23 +636,21 @@ static GenXDebugInfo::ElfBin getDebugInfoForIndirectFunctions(
 }
 
 ModuleDataT::ModuleDataT(const Module &M) {
-  std::vector<GVEncodingInfo> GVInfos =
-      prepareGlobalInfosForEncoding(M.globals());
-  for (auto GVInfo : GVInfos) {
-    if (GVInfo.GV->isConstant()) {
-      if (GVInfo.GV->hasAttribute(vc::PrintfStringVariable))
+  for (auto &GV : M.globals()) {
+    if (GV.isConstant()) {
+      if (GV.hasAttribute(vc::PrintfStringVariable))
         // This section is always empty for oclbin flow. This happens because
         // of printf legalization that separates globals that will be indexed
         // and real globals. Only indexed globals are left marked as printf
         // strings but indexed strings aren't real global variables so they're
         // skipped here. Indexed strings are handled separately.
-        appendGlobalVariableData(ConstString, GVInfo, M.getDataLayout());
+        appendGlobalVariableData(ConstString, GV, M.getDataLayout());
       else
-        appendGlobalVariableData(Constant, GVInfo, M.getDataLayout());
+        appendGlobalVariableData(Constant, GV, M.getDataLayout());
     } else {
-      IGC_ASSERT_MESSAGE(!GVInfo.GV->hasAttribute(vc::PrintfStringVariable),
+      IGC_ASSERT_MESSAGE(!GV.hasAttribute(vc::PrintfStringVariable),
                          "non-const global variable cannot be a printf string");
-      appendGlobalVariableData(Global, GVInfo, M.getDataLayout());
+      appendGlobalVariableData(Global, GV, M.getDataLayout());
     }
   }
 }
