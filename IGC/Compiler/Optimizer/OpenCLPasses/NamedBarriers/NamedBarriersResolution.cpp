@@ -377,10 +377,14 @@ void NamedBarriersResolution::visitCallInst(CallInst& CI)
 
     if (isNamedBarrierInit(funcName))
     {
-        HandleNamedBarrierInit(CI);
+        m_GFX_GEN == IGFX_PVC
+            ? HandleNamedBarrierInitPVC(CI)
+            : HandleNamedBarrierInit(CI);
     }
     else if (isNamedBarrierSync(funcName))
     {
-        HandleNamedBarrierSync(CI);
+        m_GFX_GEN == IGFX_PVC
+            ? HandleNamedBarrierSyncPVC(CI)
+            : HandleNamedBarrierSync(CI);
     }
 }
