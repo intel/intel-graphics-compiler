@@ -6917,10 +6917,13 @@ unsigned GlobalRA::getRegionDisp(
     return rowOffset + columnOffset;
 }
 
-void GlobalRA::addEUFusionWAInsts(G4_INST* inst)
+void GlobalRA::addEUFusionWAInsts(G4_BB* bb, G4_INST* inst)
 {
-    if(EUFusionWANeeded())
+    if (EUFusionWANeeded())
+    {
         EUFusionWAInsts.insert(inst);
+        kernel.addWAInst(bb, inst);
+    }
 }
 
 unsigned GlobalRA::getRegionByteSize(
@@ -7670,15 +7673,6 @@ void GlobalRA::stackCallProlog()
         auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
         entryBB->insertBefore(iter, store);
 
-        if (EUFusionWANeeded())
-        {
-            auto oldSaveInst = builder.getPartFDSaveInst();
-            builder.setPartFDSaveInst(store);
-            entryBB->remove(oldSaveInst);
-        }
-
-        addEUFusionWAInsts(store);
-
         return;
     }
 
@@ -8371,14 +8365,6 @@ void GlobalRA::addCalleeStackSetupCode()
             builder.kernel.getKernelDebugInfo()->setFrameSize(frameSize * 16);
         }
 
-        addEUFusionWAInsts(createBEFP);
-        addEUFusionWAInsts(addInst);
-
-        if (EUFusionWANeeded())
-        {
-            builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(createBEFP);
-        }
-
         insertIt++;
         entryBB->insertBefore(insertIt, createBEFP);
         entryBB->insertBefore(insertIt, addInst);
@@ -8696,13 +8682,11 @@ void GlobalRA::addStoreRestoreToReturn()
     auto iter = std::prev(fretBB->end());
     assert((*iter)->isFReturn() && "fret BB must end with fret");
 
-    if (!EUFusionWANeeded())
-    {
-        restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
-        fretBB->insertBefore(iter, restoreBE_FPInst);
-    }
-    else
-    {
+    restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
+    fretBB->insertBefore(iter, restoreBE_FPInst);
+
+    //TODO: Evaluate following for improving stack save/restore
+#if 0
         // emit frame descriptor
         auto dstDcl = builder.createHardwiredDeclare(8, Type_UD, kernel.getFPSPGRF(), 0);
         dstDcl->setName(builder.getNameString(builder.kernel.fg.mem, 24, "FrameDescriptorGRF"));
@@ -8719,9 +8703,8 @@ void GlobalRA::addStoreRestoreToReturn()
             load = builder.createFill(dstData, G4_ExecSize(execSize), 1, 0, builder.getBEFP(), InstOpt_WriteEnable, false);
         }
         fretBB->insertBefore(iter, load);
-        addEUFusionWAInsts(load);
         restoreBE_FPInst = load;
-    }
+#endif
 
     restoreBE_FPInst->addComment("restore vISA SP/FP from temp");
 
@@ -8729,8 +8712,6 @@ void GlobalRA::addStoreRestoreToReturn()
     {
         builder.kernel.getKernelDebugInfo()->setCallerBEFPRestoreInst(restoreBE_FPInst);
         builder.kernel.getKernelDebugInfo()->setCallerSPRestoreInst(restoreBE_FPInst);
-        if(!EUFusionWANeeded())
-            builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(saveBE_FPInst);
     }
 
     auto gtpin = builder.kernel.getGTPinData();
@@ -9234,6 +9215,11 @@ void VarSplit::insertMovesToTemp(
                 (gra.getSubOffset(subDcl)) / numEltPerGRF<Type_UB>(), 0, builder.getRegionStride1(), oldDcl->getElemType());
             G4_INST* splitInst = builder.createMov(G4_ExecSize(subDcl->getTotalElems()), dst, src, maskFlag, false);
             bb->insertBefore(iter, splitInst);
+            if (splitInst->isWriteEnableInst() &&
+                gra.EUFusionWANeeded())
+            {
+                gra.addEUFusionWAInsts(bb, splitInst);
+            }
         }
     }
 
@@ -9286,6 +9272,11 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                 G4_INST* movInst = kernel.fg.builder->createMov(
                     G4_ExecSize(subDcl->getTotalElems()), dst, src, InstOpt_WriteEnable, false);
                 bb->insertBefore(instIter, movInst);
+                if (movInst->isWriteEnableInst() &&
+                    gra.EUFusionWANeeded())
+                {
+                    gra.addEUFusionWAInsts(bb, movInst);
+                }
             }
         }
         auto newSrc = kernel.fg.builder->createSrcRegRegion(oldSrc->getModifier(), Direct, newDcl->getRegVar(),

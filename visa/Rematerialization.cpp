@@ -966,7 +966,6 @@ namespace vISA
             rematSrc = createSrcRgn(src, dst, newTemp);
 
             newInst.push_back(dupOp);
-
             cacheInst = newInst.back();
         }
         else
@@ -1268,6 +1267,11 @@ namespace vISA
                                 while (!newInsts.empty())
                                 {
                                     bb->insertBefore(instIt, newInsts.front());
+                                    if (newInsts.front()->isWriteEnableInst() &&
+                                        gra.EUFusionWANeeded())
+                                    {
+                                        gra.addEUFusionWAInsts(bb, newInsts.front());
+                                    }
                                     newInsts.pop_front();
                                 }
 
