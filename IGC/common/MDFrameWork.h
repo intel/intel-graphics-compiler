@@ -292,6 +292,8 @@ namespace IGC
 
         //when true, compiler disables the Remat optimization for compute shaders
         bool allowDisableRematforCS                     = false;
+
+        bool DisableIncSpillCostAllAddrTaken            = false;
     };
 
     enum class ThreadIDLayout

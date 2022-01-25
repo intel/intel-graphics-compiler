@@ -4667,6 +4667,11 @@ namespace IGC
             }
         }
 
+        if (context->getModuleMetaData()->compOpt.DisableIncSpillCostAllAddrTaken)
+        {
+            SaveOption(vISA_IncSpillCostAllAddrTaken, false);
+        }
+
         if (IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 0) {
             auto val = IGC_GET_FLAG_VALUE(LscImmOffsVisaOpts);
             SaveOption(vISA_lscEnableImmOffsFor, val);
