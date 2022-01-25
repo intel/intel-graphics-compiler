@@ -190,7 +190,7 @@ std::unique_ptr<Module> GenXPrintfResolution::getBiFModule(LLVMContext &Ctx) {
   MemoryBufferRef PrintfBiFModuleBuffer =
       getAnalysis<GenXBackendConfig>().getBiFModule(BiFKind::VCPrintf);
   if (!PrintfBiFModuleBuffer.getBufferSize()) {
-    report_fatal_error("printf implementation module is absent");
+    IGC_ASSERT_MESSAGE(0, "printf implementation module is absent");
   }
   return vc::getBiFModuleOrReportError(PrintfBiFModuleBuffer, Ctx);
 }
@@ -207,8 +207,8 @@ static std::pair<int, PrintfArgInfoSeq>
 analyzeFormatString(const Value &FmtStrOp) {
   auto FmtStr = getConstStringFromOperandOptional(FmtStrOp);
   if (!FmtStr)
-    report_fatal_error(
-        "printf resolution cannot access format string during compile time");
+    diagnose(FmtStrOp.getContext(), "GenXPrintfResolution",
+             PrintfStringAccessError);
   return {FmtStr.getValue().size() + 1, parseFormatString(FmtStr.getValue())};
 }
 
@@ -218,7 +218,8 @@ static void markStringArgument(Value &Arg) {
   if (isa<GEPOperator>(Arg)) {
     auto *String = getConstStringGVFromOperandOptional(Arg);
     if (!String)
-      report_fatal_error(PrintfStringAccessError);
+      diagnose(Arg.getContext(), "GenXPrintfResolution",
+               PrintfStringAccessError);
     String->addAttribute(PrintfStringVariable);
     return;
   }
@@ -237,7 +238,7 @@ static void markStringArgument(Value &Arg) {
     return markStringArgument(
         *cast<IGCLLVM::AddrSpaceCastOperator>(Arg).getPointerOperand());
   // An unsupported instruction or instruction sequence was met.
-  report_fatal_error(PrintfStringAccessError);
+  diagnose(Arg.getContext(), "GenXPrintfResolution", PrintfStringAccessError);
 }
 
 // Marks printf strings: format strings, strings passed as "%s" arguments.
@@ -262,7 +263,8 @@ void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   auto [FmtStrSize, ArgsInfo] =
       analyzeFormatString(*OrigPrintf.getArgOperand(0));
   if (ArgsInfo.size() != OrigPrintf.getNumArgOperands() - 1)
-    report_fatal_error("printf format string and arguments don't correspond");
+    diagnose(OrigPrintf.getContext(), "GenXPrintfResolution",
+             "printf format string and arguments don't correspond");
 
   markPrintfStrings(OrigPrintf, ArgsInfo);
 
@@ -466,9 +468,9 @@ static Value &resolveStringInGenericASIf(Value &StrArg) {
     //        instructions mixed with addrspace casts. This case is not
     //        supported here, but the string marking won't exclude it.
     //        Select instructions should be supported for consistancy.
-    vc::diagnose(StrArg.getContext(), "GenXPrintfResolution", &StrArg,
-                 "The pass cannot resolve generic address space "
-                 "to access the provided string");
+    diagnose(StrArg.getContext(), "GenXPrintfResolution", &StrArg,
+             "The pass cannot resolve generic address space "
+             "to access the provided string");
   return castArrayToFirstElemPtr(*GV);
 }
 
