@@ -718,8 +718,9 @@ void DependencyGraph::processNode(Node &SNode) {
     // new splitted structs.
     VecOfNewIndiciesDefinition IndicesMap(OldSTy->getNumElements());
 
-    std::vector<Type *> GeneratedTypes;
-    GeneratedTypes.reserve(Types.size());
+    // First initialization with zeros as pos in vector will be Index of
+    // Element.
+    std::vector<Type *> GeneratedTypesInOrder(OldSTy->getNumElements());
 
     StringRef OldSTyName = OldSTy->getName();
 
@@ -730,7 +731,7 @@ void DependencyGraph::processNode(Node &SNode) {
         // It means that structure contains only one element that can be used
         // directly without structure.
         NewPlainType = Elements.getTyAt(0);
-        IndicesMap[Elements.getIdxAt(0)].emplace_front(NewPlainType);
+        IndicesMap[Elements.getIdxAt(0)].emplace_back(NewPlainType);
       } else if (!isPlain(*OldSTy)) {
         StructType *NewPlainStruct = StructType::create(
             Ctx, Elements.getTypesArray(),
@@ -740,19 +741,31 @@ void DependencyGraph::processNode(Node &SNode) {
         // Update AllStructs info.
         setInfoAboutStructure(*NewPlainStruct);
         // Match old elements with new elements.
-        // for (auto ElmIndex : enumerate(Elements))
         for (auto ElmIndex : enumerate(Elements.indices()))
-          IndicesMap[ElmIndex.value()].emplace_front(NewPlainStruct,
-                                                     ElmIndex.index());
+          IndicesMap[ElmIndex.value()].emplace_back(NewPlainStruct,
+                                                    ElmIndex.index());
       } else
         // Plain structs with more than 1 elements -> skip as there is nothing
         // to do.
         continue;
-      GeneratedTypes.push_back(NewPlainType);
+      // Way to implement ordering in Types placing.
+      // Affects on ordering in List and ordering of elements in structures.
+      // Prevents from cases like this:
+      //
+      // A { int, float, int, float };
+      // C_BS { Af, Ai, float } and at another time: C_BS { Ai, Af, float };
+      //
+      // Order defined by elements in original structure.
+      GeneratedTypesInOrder[Elements.getIdxAt(0)] = NewPlainType;
     }
 
+    // Cleans an array from nullptr elements.
+    GeneratedTypesInOrder.erase(
+        llvm::remove_if(GeneratedTypesInOrder, [](Type *Ty) { return !Ty; }),
+        GeneratedTypesInOrder.end());
+
     // Do if there is splitting or simplification.
-    if (GeneratedTypes.size()) {
+    if (GeneratedTypesInOrder.size()) {
       // Update SplittedStructs
       SplittedStructs.emplace_back(OldSTy, std::move(IndicesMap));
 
@@ -774,7 +787,7 @@ void DependencyGraph::processNode(Node &SNode) {
       // F { float } C { F, float } C_BS -> { float , float }
       std::for_each(SNode.parent_begin(), SNode.parent_end(),
                     [&](Node *ParentNode) {
-                      remakeParent(*ParentNode, SNode, GeneratedTypes);
+                      remakeParent(*ParentNode, SNode, GeneratedTypesInOrder);
                     });
     }
   }
@@ -817,8 +830,8 @@ void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
       // this element with new.
       for (auto &&NewSTy : NewReplaceTypes) {
         NewElements.emplace_back(NewSTy);
-        NewIndices[Index].emplace_front(BeforeSplitingS,
-                                        Index + ExpandIndicies++);
+        NewIndices[Index].emplace_back(BeforeSplitingS,
+                                       Index + ExpandIndicies++);
       }
       // The Index will be inc, so there is no need of extra offset
       --ExpandIndicies;
@@ -826,7 +839,7 @@ void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
       // If element of structure is not changed, then just copies info about it
       // and places right indices.
       NewElements.emplace_back(Elm);
-      NewIndices[Index].emplace_front(BeforeSplitingS, Index + ExpandIndicies);
+      NewIndices[Index].emplace_back(BeforeSplitingS, Index + ExpandIndicies);
     }
     ++Index;
   }
@@ -892,14 +905,19 @@ void DependencyGraph::mergeStructGenerationInfo() {
   LLVM_DEBUG(dbgs() << "Merging structs.\n");
   for (auto It = SplittedStructs.rbegin(), End = SplittedStructs.rend();
        It != End; ++It) {
-    if (StructType *SToMerge = checkAbilityToMerge(It->second)) {
-      LLVM_DEBUG(dbgs() << "Able to merge: " << *It->first << "\n\tWith "
-                        << *SToMerge << "\n");
+    StructType &SToMerge = *It->first;
+    VecOfNewIndiciesDefinition &InfoAboutS = It->second;
+
+    if (StructType *SToMergeWith = checkAbilityToMerge(InfoAboutS)) {
+      LLVM_DEBUG(dbgs() << "Able to merge: " << SToMerge << "\n\tWith "
+                        << *SToMergeWith << "\n");
 
       VecOfNewIndiciesDefinition const &InfoAboutTemporaryS =
-          getVecOfStructIdxMapping(*SToMerge);
-
-      for (ListOfSplittedElements &ElementsList : It->second) {
+          getVecOfStructIdxMapping(*SToMergeWith);
+      // Every element of the structure SToMerge will be substituted with
+      // element from the structure SToMergeWith and/or new elements from
+      // SToMergeWith will be placed in SToMerge.
+      for (ListOfSplittedElements &ElementsList : InfoAboutS) {
         for (SElement &Element : ElementsList) {
           IGC_ASSERT_MESSAGE(!Element.isUnwrapped(),
                              "Attempt to merge unwrapped type.");
@@ -908,12 +926,25 @@ void DependencyGraph::mergeStructGenerationInfo() {
           ListOfSplittedElements const &NewElement =
               InfoAboutTemporaryS.at(Element.getIndex());
 
-          ListOfSplittedElements::const_iterator EIt = NewElement.begin();
-          // Changes current element and if on this 'Element.Index' lots of new
-          // elements are to be placed, then extend list from begining not to
-          // invalidate iterations.
+          auto EIt = NewElement.rbegin();
+          // Changes current element and, if on this 'Element.Index' lots of new
+          // elements are to be placed, extends list with new elements.
+          // Pushes front new element not to invalidate iterations.
+          // Iterates from end to begin (rbegin to rend) to keep order of
+          // elements.
+          // FE, merges information
+          // G    : (G_BS, 0) (...)
+          //        (...)
+          // G_BS : (SomeS, 5) (Gf, 0) (Gi, 0)
+          //
+          // Will become
+          // G    : (SomeS, 5) (Gf, 0) (Gi, 0) (...)
+
+          // Element (G_BS, 0) will become (Gi, 0).
           Element = *EIt;
-          while (++EIt != NewElement.end())
+          // Elements (SomeS, 5) (Gf, 0) will be placed before (G_BS, 0) in the
+          // same order as in G_BS.
+          while (++EIt != NewElement.rend())
             ElementsList.push_front(*EIt);
         }
       }
