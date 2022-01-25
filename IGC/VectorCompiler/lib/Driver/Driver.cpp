@@ -14,12 +14,9 @@ SPDX-License-Identifier: MIT
 #include "igc/Options/Options.h"
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/GenXCodeGen/GenXTarget.h"
-#include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/Status.h"
 #include "llvm/GenXIntrinsics/GenXIntrOpts.h"
-#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
 
 #include "llvm/ADT/ScopeExit.h"
@@ -31,12 +28,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Bitcode/BitcodeReader.h"
-#include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
-#include "llvm/InitializePasses.h"
 #include "llvm/Option/ArgList.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Support/CommandLine.h"
@@ -46,7 +41,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/StringSaver.h"
 #include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetOptions.h"
@@ -59,13 +53,8 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
-#include <cctype>
 #include <memory>
-#include <new>
-#include <set>
-#include <sstream>
 #include <string>
-#include <vector>
 
 using namespace llvm;
 
