@@ -300,6 +300,21 @@ Value &createMainInst<BuiltinID::Fma>(const std::vector<Value *> &Operands,
   return *IRB.CreateCall(FMA, Operands);
 }
 
+template <>
+Value &createMainInst<BuiltinID::Sqrt>(const std::vector<Value *> &Operands,
+                                       Type &RetTy, IRBuilder<> &IRB) {
+  static_assert(SqrtOperand::Size == 2,
+                "builtin operands should be trasformed into LLVM sqrt "
+                "intrinsic operands without changes");
+  auto IID = static_cast<Intrinsic::ID>(IntrinsicForBuiltin[BuiltinID::Sqrt]);
+  Function *Sqrt =
+      Intrinsic::getDeclaration(IRB.GetInsertBlock()->getModule(), IID, &RetTy);
+  auto *InstSqrt = IRB.CreateCall(Sqrt, Operands[SqrtOperand::Source]);
+  if (cast<ConstantInt>(Operands[SqrtOperand::IsFast])->getSExtValue())
+    InstSqrt->setFast(true);
+  return *InstSqrt;
+}
+
 using CMCLSemantics = cmcl::atomic::MemorySemantics::Enum;
 using CMCLMemoryScope = cmcl::atomic::MemoryScope::Enum;
 using CMCLOperation = cmcl::atomic::Operation::Enum;

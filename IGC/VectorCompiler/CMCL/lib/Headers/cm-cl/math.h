@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef CM_CL_MATH_H
 #define CM_CL_MATH_H
 
+#include "define.h"
 #include "detail/builtins.h"
 #include "vector.h"
 
@@ -213,6 +214,34 @@ template <typename T> T absolute(T src) { return detail::absolute(src); }
 template <typename T, int width>
 vector<T, width> absolute(vector<T, width> src) {
   return detail::absolute(src.cl_vector());
+}
+
+/*================== Square root ===========================*/
+
+template <typename T> T square_root(T src) {
+  static_assert(cl::is_floating_point<T>::value,
+                "square root expects floating point type");
+  return detail::sqrt</* is fast */ false>(src);
+}
+
+template <typename T, int width>
+vector<T, width> square_root(vector<T, width> src) {
+  static_assert(cl::is_floating_point<T>::value,
+                "square root expects floating point type");
+  return detail::sqrt</* is fast */ false>(src.cl_vector());
+}
+
+template <typename T> T square_root(T src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "square root expects floating point type");
+  return detail::sqrt</* is fast */ true>(src);
+}
+
+template <typename T, int width>
+vector<T, width> square_root(vector<T, width> src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "square root expects floating point type");
+  return detail::sqrt</* is fast */ true>(src.cl_vector());
 }
 
 /*==========================================================*/

@@ -34,6 +34,15 @@ enum class operation {
 };
 
 } // namespace atomic
+
+namespace tag {
+
+// Tag for fast math.
+struct fast_t final {};
+constexpr fast_t fast{};
+
+} // namespace tag
+
 } // namespace cm
 
 #endif // CM_CL_DEFINE_H

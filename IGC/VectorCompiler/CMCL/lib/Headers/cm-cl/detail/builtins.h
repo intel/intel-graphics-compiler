@@ -94,6 +94,10 @@ vector_impl<uint32_t, width> __cm_cl_bfrev(vector_impl<uint32_t, width> src);
 template <typename T> T __cm_cl_abs_int(T src);
 template <typename T> T __cm_cl_abs_float(T src);
 
+template <typename T> T __cm_cl_sqrt(T src, bool use_fast);
+template <typename T, int width>
+vector_impl<T, width> __cm_cl_sqrt(vector_impl<T, width> src, bool use_fast);
+
 vector_impl<uint32_t, 3> __cm_cl_local_id();
 vector_impl<uint32_t, 3> __cm_cl_local_size();
 vector_impl<uint32_t, 3> __cm_cl_group_count();
@@ -337,6 +341,19 @@ template <typename T> T absolute(T src) {
   if constexpr (cl::is_signed<T>::value)
     return __cm_cl_abs_int(src);
   return src;
+}
+
+template <bool use_fast, typename T> T sqrt(T src) {
+  static_assert(cl::is_floating_point<T>::value,
+                "illegal type provided in sqrt");
+  return __cm_cl_sqrt(src, use_fast);
+}
+
+template <bool use_fast, typename T, int width>
+vector_impl<T, width> sqrt(vector_impl<T, width> src) {
+  static_assert(cl::is_floating_point<T>::value,
+                "illegal type provided in sqrt");
+  return __cm_cl_sqrt(src, use_fast);
 }
 
 template <atomic::operation operation, memory_order semantics,

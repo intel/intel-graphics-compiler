@@ -337,12 +337,27 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, long,
                                            cm::math::count_population)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, ulong,
                                            cm::math::count_population)
+
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, char, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, short, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, int, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, long, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(fabs, float, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(fabs, double, cm::math::absolute)
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(sqrt, float, cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(sqrt, double, cm::math::square_root)
+
+#define SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM_FAST(FUNC_NAME, TYPE,       \
+                                                        CUSTOM_NAME)           \
+  CM_NODEBUG CM_INLINE TYPE __spirv_ocl_##FUNC_NAME(TYPE x) {                  \
+    return CUSTOM_NAME(x, cm::tag::fast);                                      \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM_FAST(native_sqrt, float,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM_FAST(native_sqrt, double,
+                                                cm::math::square_root)
 
 #define SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CAST(FUNC_NAME, TYPE, CAST_TYPE,   \
                                                  CUSTOM_NAME)                  \
@@ -543,6 +558,7 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 8,
                                            cm::math::count_trailing_zeros)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ctz, ulong, 16,
                                            cm::math::count_trailing_zeros)
+
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, char, 2, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, char, 3, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, char, 4, cm::math::absolute)
@@ -573,6 +589,58 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 3, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 4, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 8, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 16, cm::math::absolute)
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, float, 2,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, float, 3,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, float, 4,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, float, 8,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, float, 16,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, double, 2,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, double, 3,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, double, 4,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, double, 8,
+                                           cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, double, 16,
+                                           cm::math::square_root)
+
+#define SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(                       \
+    FUNC_NAME, ELEMENT_TYPE, N, CUSTOM_NAME)                                   \
+  CM_NODEBUG CM_INLINE cl_vector<ELEMENT_TYPE, N> __spirv_ocl_##FUNC_NAME(     \
+      cl_vector<ELEMENT_TYPE, N> x) {                                          \
+    vector<ELEMENT_TYPE, N> x_vec = x;                                         \
+    return static_cast<vector<ELEMENT_TYPE, N>>(                               \
+               CUSTOM_NAME(x_vec, cm::tag::fast))                              \
+        .cl_vector();                                                          \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, float, 2,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, float, 3,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, float, 4,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, float, 8,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, float, 16,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, double, 2,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, double, 3,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, double, 4,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, double, 8,
+                                                cm::math::square_root)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, double, 16,
+                                                cm::math::square_root)
 
 #define SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(FUNC_NAME, TYPE, CAST_TYPE,   \
                                                  N, CUSTOM_NAME)               \

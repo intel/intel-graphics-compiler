@@ -351,6 +351,21 @@
         ]
       }
     },
+    "Sqrt": {
+      "Name": "sqrt",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "IsFast", "Kind": "Constant"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "sqrt",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["IsFast"]}
+        ]
+      }
+    },
     "AtomicRMW": {
         "Name": "atomicrmw",
         "Operands": [
