@@ -57,13 +57,11 @@ namespace IGC
         llvm::Value *Resolve(llvm::Value *value);
 
         llvm::Type *ResolveType(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDesc);
-
-        llvm::Instruction *CreatePlaceholder(llvm::Value *value);
+        void CacheResolvedValue(llvm::Value *oldValue, llvm::Value *newValue);
 
         std::string GetLoadStoreMatrixFuncName
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc);
 
-        llvm::ValueMap<llvm::Value *, llvm::Instruction *> PlaceholderInstructions;
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
 

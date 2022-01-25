@@ -37,7 +37,6 @@ JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass(OpenCLProgramCont
 
 bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
 {
-    PlaceholderInstructions.clear();
     ResolvedValues.clear();
     InstsToErase.clear();
     Changed = false;
@@ -485,32 +484,18 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
     } else if (funcName.startswith(JointMatrixSliceExtract)) {
         NewValue = ResolveSliceExtract(CI);
     }
+
+    CacheResolvedValue(CI, NewValue);
     return NewValue;
 }
 
-Instruction *JointMatrixFuncsResolutionPass::CreatePlaceholder(Value *v) {
-    Type *type = ResolveType(v->getType(), nullptr);
-    Instruction *predecesor = nullptr;
-    if (Instruction *inst = dyn_cast<Instruction>(v)) {
-        predecesor = inst;
-    }
-    /* I'm using bit-casts as placeholder values. Undefs of each type are unique per
-     * module and cannot be used as unique placeholders. */
-    return BitCastInst::Create(Instruction::BitCast, UndefValue::get(type),
-                               type, "tmp.value", predecesor);
+void JointMatrixFuncsResolutionPass::CacheResolvedValue(Value *oldValue, Value *newValue) {
+    ResolvedValues[oldValue] = newValue;
 }
 
 Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 {
     if (ResolvedValues.count(v) > 0) {
-        Value *value = ResolvedValues[v];
-        if (value == v) {
-            /* We are still resolving 'v'. Create a dummy value that will be
-             * replaced later when 'v' is finally resolved. */
-            Instruction *placeholder = CreatePlaceholder(v);
-            PlaceholderInstructions[v] = placeholder;
-            return placeholder;
-        }
         return ResolvedValues[v];
     }
 
@@ -518,29 +503,18 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
         return ResolveCall(CI);
     } else if (PHINode *PN = dyn_cast<PHINode>(v)) {
         unsigned IncomingCount = PN->getNumIncomingValues();
-        ResolvedValues[v] = v;
-        Value *First = Resolve(PN->getIncomingValue(0));
 
-        PHINode *NewPN = PHINode::Create(First->getType(), IncomingCount, "matrix.phi.node", PN);
-        ResolvedValues[v] = NewPN;
+        Type *type = ResolveType(v->getType(), nullptr);
+        PHINode *NewPN = PHINode::Create(type, IncomingCount, "matrix.phi.node", PN);
+        CacheResolvedValue(v, NewPN);
 
-        if (PlaceholderInstructions.count(v) > 0) {
-            Instruction *placeholder = PlaceholderInstructions[v];
-            PlaceholderInstructions.erase(v);
-            placeholder->replaceAllUsesWith(NewPN);
-            InstsToErase.insert(placeholder);
-        }
-
-        NewPN->addIncoming(First, PN->getIncomingBlock(0));
-        for (unsigned i = 1; i < IncomingCount; i++) {
+        for (unsigned i = 0; i < IncomingCount; i++) {
             Value *oldOperand = PN->getIncomingValue(i);
             Value *operand = Resolve(oldOperand);
             NewPN->addIncoming(operand, PN->getIncomingBlock(i));
         }
 
-        PN->replaceAllUsesWith(UndefValue::get(PN->getType()));
-        PN->eraseFromParent();
-
+        InstsToErase.insert(PN);
         return NewPN;
     }
 
@@ -555,11 +529,11 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
         return;
 
     StringRef funcName = func->getName();
-    /* Look for store functions and then recursively trace values that are used
-     * by them. In future when returning and passing matrices by argument is
-     * supported this also basic block terminators should be used as
+    /* Resolve calls to JointMatrix BIs that haven't been resolved yet. In
+     * future when returning and passing matrices by argument is
+     * supported also basic block terminators should be used as
      * transformation starting point */
-    if (funcName.startswith(CommonBIPrefix)) {
+    if (funcName.startswith(CommonBIPrefix) && ResolvedValues.count(&CI) <= 0) {
         ResolveCall(&CI);
     }
 }
