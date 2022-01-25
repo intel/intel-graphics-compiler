@@ -33,4 +33,9 @@ execute_process(COMMAND
   --patches-dir ${CMAKE_CURRENT_SOURCE_DIR}/releases
   --patch-executable ${Patch_EXECUTABLE}
   --patch-disable ${PATCH_DISABLE}
-  )
+  RESULT_VARIABLE PATCH_SCRIPT_RESULT
+)
+
+if(NOT PATCH_SCRIPT_RESULT EQUAL 0)
+  message(FATAL_ERROR "[LLVM] : Could not apply LLVM patches.")
+endif()
