@@ -104,6 +104,7 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
+  DL = &FG->getModule()->getDataLayout();
   for (unsigned i = 0; i != vc::RegCategory::NumRealCategories; ++i) {
     CurrentRegId[i] = 0;
   }
@@ -133,14 +134,6 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
       IGCLLVM::FixedVectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
   PredefinedRegs.push_back(&RegStorage.back());
 
-  for (auto &F : *FG) {
-    if (F->hasFnAttribute(genx::FunctionMD::CMGenXMain) ||
-        genx::requiresStackCall(F)) {
-      LLVM_DEBUG(dbgs() << "Regalloc fill kern map for " << F->getName()
-                        << " \n");
-      RegMap[F] = KernRegMap_t();
-    }
-  }
   // Reserve the reserved registers.
   CurrentRegId[vc::RegCategory::General] = VISA_NUM_RESERVED_REGS;
   CurrentRegId[vc::RegCategory::Predicate] = VISA_NUM_RESERVED_PREDICATES;
@@ -628,12 +621,11 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   // gets its type, to avoid needing an alias for an input arg.
   const Function *FGHead = FG->getHead();
   for (auto &&Val : LR->getValues()) {
-    IGC_ASSERT(RegMap.count(FGHead) > 0);
     LLVM_DEBUG(dbgs() << "Allocating reg " << NewReg->Num << " for "
                       << *Val.getValue() << " in FG for " << FGHead->getName()
                       << "\n");
-    IGC_ASSERT(RegMap.at(FGHead).find(Val) == RegMap.at(FGHead).end());
-    RegMap.at(FGHead)[Val] = NewReg;
+    IGC_ASSERT(!RegMap.count(Val));
+    RegMap[Val] = NewReg;
     if (isa<Argument>(Val.getValue()))
       NewReg->Ty = Val.getType();
   }
@@ -645,19 +637,11 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
  *
  * This is a const method so it can be called from print().
  */
-GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *kernel,
-    SimpleValue V) const
-{
-  IGC_ASSERT(genx::isKernel(kernel) || genx::requiresStackCall(kernel));
+GenXVisaRegAlloc::Reg *
+GenXVisaRegAlloc::getRegForValueUntyped(SimpleValue V) const {
   LLVM_DEBUG(dbgs() << "getRegForValueUntyped " << *(V.getValue()) << "\n");
-  // is possible if called for GenXPrinter
-  if (RegMap.count(kernel) == 0) {
-    LLVM_DEBUG(dbgs() << "Empty RegMap for " << kernel->getName() << "\n");
-    return nullptr;
-  }
-  auto& KernMap = RegMap.at(kernel);
-  const auto i = KernMap.find(V);
-  if (i == KernMap.end()) {
+  const auto i = RegMap.find(V);
+  if (i == RegMap.end()) {
     // Check if it's predefined variables.
     if (GenXIntrinsic::getGenXIntrinsicID(V.getValue()) ==
         GenXIntrinsic::genx_predefined_surface) {
@@ -693,11 +677,10 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
  * find/create a vISA register alias.
  */
 GenXVisaRegAlloc::Reg *
-GenXVisaRegAlloc::getRegForValueOrNull(const Function *kernel, SimpleValue V,
-                                       Signedness Signed, Type *OverrideType,
-                                       bool IsBF) {
+GenXVisaRegAlloc::getRegForValueOrNull(SimpleValue V, Signedness Signed,
+                                       Type *OverrideType, bool IsBF) {
   LLVM_DEBUG(dbgs() << "getRegForValueOrNull " << *(V.getValue()) << "\n");
-  Reg *R = getRegForValueUntyped(kernel, V);
+  Reg *R = getRegForValueUntyped(V);
   if (!R)
     return nullptr; // no register allocated
   if (R->Category != vc::RegCategory::General)
@@ -712,18 +695,17 @@ GenXVisaRegAlloc::getRegForValueOrNull(const Function *kernel, SimpleValue V,
       OverrideType = OverrideType->getPointerElementType();
   }
   OverrideType = &vc::fixDegenerateVectorType(*OverrideType);
-  auto &DL = kernel->getParent()->getDataLayout();
   if (R->Num < VISA_NUM_RESERVED_REGS) {
     OverrideType = IGCLLVM::FixedVectorType::get(
         OverrideType->getScalarType(),
         R->Ty->getPrimitiveSizeInBits() /
-            DL.getTypeSizeInBits(OverrideType->getScalarType()));
+            DL->getTypeSizeInBits(OverrideType->getScalarType()));
   }
 
   Reg *LastAlias = R;
 
   // std::find_if
-  for (Reg *CurAlias = R; CurAlias; CurAlias = CurAlias->NextAlias[kernel]) {
+  for (Reg *CurAlias = R; CurAlias; CurAlias = CurAlias->NextAlias) {
     LastAlias = CurAlias;
     Type *ExistingType = CurAlias->Ty;
     ExistingType = &vc::fixDegenerateVectorType(*ExistingType);
@@ -738,7 +720,7 @@ GenXVisaRegAlloc::getRegForValueOrNull(const Function *kernel, SimpleValue V,
   // Run out of aliases. Add a new one.
   Reg *NewReg =
       createReg(vc::RegCategory::General, OverrideType, Signed, 0, R, IsBF);
-  LastAlias->NextAlias[kernel] = NewReg;
+  LastAlias->NextAlias = NewReg;
   LLVM_DEBUG(dbgs() << "New register: "; NewReg->print(dbgs()); dbgs() << "\n");
   return NewReg;
 }
@@ -863,7 +845,7 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
     // Dump a single live range.
     const LiveRange *LR = i->LR;
     SimpleValue SV = *LR->value_begin();
-    Reg *RN = getRegForValueUntyped(FG->getHead(), SV);
+    Reg *RN = getRegForValueUntyped(SV);
     IGC_ASSERT_MESSAGE(RN, "No register allocated for LR");
     OS << "[";
     RN->print(OS);

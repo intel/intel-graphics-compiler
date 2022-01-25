@@ -1000,9 +1000,7 @@ public:
   uint64_t getFPOffset() const override { return 16; }
 
   const GenXVisaRegAlloc::Reg *getRegisterForValue(const Value *V) const {
-    const Function *VisaOwner =
-        isSubroutine() ? MVTI.getSubroutineOwner(&F) : &F;
-    return RA.getRegForValueUntyped(VisaOwner, const_cast<Value *>(V));
+    return RA.getRegForValueUntyped(const_cast<Value *>(V));
   }
 
   void printVisaMapping(raw_ostream &OS, unsigned Level = 0) const {
