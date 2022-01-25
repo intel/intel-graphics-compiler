@@ -37,6 +37,7 @@ namespace IGCMetrics
     class IGCMetricImpl
     {
     private:
+
         bool isEnabled;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         IGC_METRICS::Program oclProgram;
@@ -67,9 +68,9 @@ namespace IGCMetrics
         void UpdateModelCost();
         void CollectLoop(llvm::Loop* loop);
 
-        static inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DISubprogram* Loc);
-        static inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DILocation* Loc);
-        static inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DIVariable* Var);
+        inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DISubprogram* Loc);
+        inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DILocation* Loc);
+        inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DIVariable* Var);
         static inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, const std::string& filePathName, int line);
 
         static inline const std::string GetFullPath(const char* dir, const char* fileName);

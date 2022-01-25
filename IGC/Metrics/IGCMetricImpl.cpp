@@ -221,6 +221,7 @@ namespace IGCMetrics
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
+
         for (auto func_i = pModule->begin(); func_i != pModule->end(); ++func_i)
         {
             llvm::Function& func = *func_i;
