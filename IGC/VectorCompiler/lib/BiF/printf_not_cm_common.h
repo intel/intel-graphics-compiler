@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef VC_BIF_PRINTF_NOT_CM_COMMON_H
 #define VC_BIF_PRINTF_NOT_CM_COMMON_H
 
-#include <cm-cl/svm.h>
+#include <cm-cl/atomic.h>
 #include <cm-cl/vector.h>
 #include <opencl_def.h>
 
@@ -56,24 +56,27 @@ inline int calcRequiredBufferSize(vector<int, ArgsInfoVector::Size> ArgsInfo) {
   return BufferSize;
 }
 
-static inline BufferElementTy getInitialBufferOffset(uintptr_t BufferPtr,
-                                                     int RequiredSize) {
-  constexpr int MagicNumber = 8;
-  constexpr cl_vector<uint64_t, MagicNumber> AddrOffset{0,  4,  8,  12,
-                                                        16, 20, 24, 28};
-  vector<BufferElementTy, MagicNumber> Result;
-  vector<BufferElementTy, MagicNumber> Size = 0;
-  Size[0] = RequiredSize;
-  vector<uint64_t, MagicNumber> Offsets(AddrOffset);
-  vector<uintptr_t, MagicNumber> Addr = BufferPtr + Offsets;
-
-  Result = svm::atomic<atomic::operation::add>(Addr, Size);
-  return Result[0];
+// Return initial buffer offset in BufferElementTy elements (not in bytes).
+static inline BufferElementTy
+getInitialBufferOffset(__global BufferElementTy *BufferPtr,
+                       BufferElementTy RequiredSize) {
+#if __clang_major__ > 9
+  int ByteOffset =
+      atomic::execute<atomic::operation::add, memory_order_relaxed,
+                      memory_scope_all_devices>(BufferPtr, RequiredSize);
+#else  // __clang_major__ > 9
+  // Helping clang-9 correctly deduce the argument type.
+  int ByteOffset =
+      atomic::execute<atomic::operation::add, memory_order_relaxed,
+                      memory_scope_all_devices, __global BufferElementTy>(
+          BufferPtr, RequiredSize);
+#endif // __clang_major__ > 9
+  return ByteOffset / sizeof(BufferElementTy);
 }
 
-static inline vector<BufferElementTy, AddressVectorWidth>
-castPointerToVector(uintptr_t Ptr) {
-  vector<uint64_t, 1> Tmp = Ptr;
+template <typename T>
+static vector<BufferElementTy, AddressVectorWidth> castPointerToVector(T *Ptr) {
+  vector<uint64_t, 1> Tmp = reinterpret_cast<uintptr_t>(Ptr);
   return Tmp.format<BufferElementTy>();
 }
 
@@ -81,23 +84,25 @@ castPointerToVector(uintptr_t Ptr) {
 // elements of \p TransferData vector by the provided \p Ptr.
 static inline void
 setCurAddress(vector<BufferElementTy, TransferDataSize> &TransferData,
-              uintptr_t Ptr) {
+              __global BufferElementTy *Ptr) {
   TransferData.select<AddressVectorWidth, 1>(
       TransferDataLayout::CurAddressLow) = castPointerToVector(Ptr);
 }
 
 // A helper function to properly extract current address from \p TransferData.
-static inline uintptr_t
+static inline __global BufferElementTy *
 getCurAddress(vector<BufferElementTy, TransferDataSize> TransferData) {
   vector<BufferElementTy, AddressVectorWidth> Address =
       TransferData.select<AddressVectorWidth, 1>(
           TransferDataLayout::CurAddressLow);
   // Bit-casting to 64-bit int and then truncating if necessary.
-  return Address.format<uint64_t>();
+  return reinterpret_cast<__global BufferElementTy *>(
+      static_cast<uintptr_t>(Address.format<uint64_t>()));
 }
 
 static inline vector<BufferElementTy, TransferDataSize>
-generateTransferData(uintptr_t InitPtr, BufferElementTy ReturnValue) {
+generateTransferData(__global BufferElementTy *InitPtr,
+                     BufferElementTy ReturnValue) {
   vector<BufferElementTy, TransferDataSize> TransferData;
   setCurAddress(TransferData, InitPtr);
   TransferData[TransferDataLayout::ReturnValue] = ReturnValue;
@@ -111,21 +116,27 @@ vector<BufferElementTy, TransferDataSize>
 printf_init_impl(vector<int, ArgsInfoVector::Size> ArgsInfo) {
   auto FmtStrSize = ArgsInfo[ArgsInfoVector::FormatStrSize];
   if (FmtStrSize > MaxFormatStrSize)
-    return generateTransferData(/* BufferPtr */ 0, /* ReturnValue */ -1);
+    return generateTransferData(/* BufferPtr */ nullptr, /* ReturnValue */ -1);
   auto BufferSize = calcRequiredBufferSize<StringAnnotationSize>(ArgsInfo);
-  auto BufferPtr = reinterpret_cast<uintptr_t>(cm::detail::printf_buffer());
+#if __clang_major__ > 9
+  auto *BufferPtr =
+      static_cast<__global BufferElementTy *>(cm::detail::printf_buffer());
+#else  // __clang_major__ > 9
+  // clang-9 cannot handle this auto.
+  __global BufferElementTy *BufferPtr =
+      static_cast<__global BufferElementTy *>(cm::detail::printf_buffer());
+#endif // __clang_major__ > 9
   auto Offset = getInitialBufferOffset(BufferPtr, BufferSize);
   return generateTransferData(BufferPtr + Offset, /* ReturnValue */ 0);
 }
 
 // Writes \p Data to printf buffer via \p CurAddress pointer.
 // Returns promoted pointer.
-static inline uintptr_t writeElementToBuffer(uintptr_t CurAddress,
-                                             BufferElementTy Data) {
-  vector<uintptr_t, 1> CurAddressVec = CurAddress;
-  vector<BufferElementTy, 1> DataVec = Data;
-  svm::scatter(CurAddressVec, DataVec);
-  return CurAddress + sizeof(Data);
+static inline __global BufferElementTy *
+writeElementToBuffer(__global BufferElementTy *CurAddress,
+                     BufferElementTy Data) {
+  *CurAddress = Data;
+  return ++CurAddress;
 }
 
 // ArgCode is written into printf buffer before every argument.
@@ -189,7 +200,7 @@ printf_arg_impl(vector<BufferElementTy, TransferDataSize> TransferData,
     // Just skip.
     return TransferData;
   vector<BufferElementTy, ArgInfo::Size> Info = getArgInfo<StringArgSize>(Kind);
-  uintptr_t CurAddress = getCurAddress(TransferData);
+  __global BufferElementTy *CurAddress = getCurAddress(TransferData);
   CurAddress = writeElementToBuffer(CurAddress, Info[ArgInfo::Code]);
   for (int Idx = 0; Idx != Info[ArgInfo::NumDWords]; ++Idx)
     CurAddress = writeElementToBuffer(CurAddress, Arg[Idx]);

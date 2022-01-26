@@ -28,7 +28,7 @@ printf_fmt_impl(vector<BufferElementTy, TransferDataSize> TransferData,
   if (TransferData[TransferDataLayout::ReturnValue])
     // Just skip.
     return TransferData;
-  uintptr_t CurAddress = getCurAddress(TransferData);
+  __global BufferElementTy *CurAddress = getCurAddress(TransferData);
   BufferElementTy Index = detail::printf_format_index(FormatString);
   CurAddress = writeElementToBuffer(CurAddress, Index);
   setCurAddress(TransferData, CurAddress);
@@ -49,7 +49,7 @@ printf_arg_str_impl(vector<BufferElementTy, TransferDataSize> TransferData,
   if (TransferData[TransferDataLayout::ReturnValue])
     // Just skip.
     return TransferData;
-  uintptr_t CurAddress = getCurAddress(TransferData);
+  __global BufferElementTy *CurAddress = getCurAddress(TransferData);
   BufferElementTy Index = detail::printf_format_index(String);
   CurAddress = writeElementToBuffer(CurAddress, ArgCode::String);
   CurAddress = writeElementToBuffer(CurAddress, Index);

@@ -56,17 +56,6 @@ int __cm_cl_printf_format_index(__global const char *str);
 //        switch to using addrspaces.
 int __cm_cl_printf_format_index(__private const char *str);
 
-// SVM memory operations have only 64 bit addressing. One can extend the address
-// or use statefull operations for 32 bit addressing.
-template <typename T, int width>
-void __cm_cl_svm_scatter(int num_blocks, vector_impl<uint64_t, width> address,
-                         vector_impl<T, width> src);
-
-template <typename T, int width>
-vector_impl<T, width>
-__cm_cl_svm_atomic_add(vector_impl<uint64_t, width> address,
-                       vector_impl<T, width> src);
-
 uint32_t __cm_cl_lzd(uint32_t src);
 template <int width>
 vector_impl<uint32_t, width> __cm_cl_lzd(vector_impl<uint32_t, width> src);
@@ -237,22 +226,6 @@ inline int printf_format_index(__global const char *str) {
 
 inline int printf_format_index(__private const char *str) {
   return __cm_cl_printf_format_index(str);
-}
-
-template <int num_blocks, typename T, int width>
-void svm_scatter(vector_impl<uint64_t, width> address,
-                 vector_impl<T, num_blocks * width> src) {
-  static_assert(sizeof(T) == 1 || sizeof(T) == 4 || sizeof(T) == 8,
-                "invalid type");
-  constexpr auto lowered_num_blocks = encode_num_blocks(num_blocks);
-  static_assert(lowered_num_blocks >= 0, "invalid number of blocks");
-  __cm_cl_svm_scatter(lowered_num_blocks, address, src);
-}
-
-template <typename T, int width>
-vector_impl<T, width> svm_atomic_add(vector_impl<uint64_t, width> address,
-                                     vector_impl<T, width> src) {
-  return __cm_cl_svm_atomic_add(address, src);
 }
 
 inline uint32_t lzd(uint32_t src) { return __cm_cl_lzd(src); }

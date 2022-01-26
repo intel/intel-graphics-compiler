@@ -149,50 +149,6 @@
         ]
       }
     },
-    "SVMScatter": {
-      "Name": "svm_scatter",
-      "Operands": [
-        {"Name": "NumBlocks", "Kind": "Constant"},
-        {"Name": "Address", "Kind": "Input"},
-        {"Name": "Source", "Kind": "Input"}
-      ],
-      "TranslateInto": {
-        "VC-Intrinsic": "genx_svm_scatter",
-        "ReturnType": {"GetBuiltinReturnType": []},
-        "Operands": [
-          {"Code": [
-            "*IRB.CreateVectorSplat(getVectorWidth({}), IRB.getTrue())",
-            {"GetBuiltinOperandType": ["Address"]}
-          ]},
-          {"GetBuiltinOperand": ["NumBlocks"]},
-          {"GetBuiltinOperand": ["Address"]},
-          {"GetBuiltinOperand": ["Source"]}
-        ]
-      }
-    },
-    "SVMAtomicAdd": {
-      "Name": "svm_atomic_add",
-      "Operands": [
-        {"Name": "Address", "Kind": "Input"},
-        {"Name": "Source", "Kind": "Input"}
-      ],
-      "TranslateInto": {
-        "VC-Intrinsic": "genx_svm_atomic_add",
-        "ReturnType": {"GetBuiltinReturnType": []},
-        "Operands": [
-          {"Code": [
-            "*IRB.CreateVectorSplat(getVectorWidth({}), IRB.getTrue())",
-            {"GetBuiltinOperandType": ["Address"]}
-          ]},
-          {"GetBuiltinOperand": ["Address"]},
-          {"GetBuiltinOperand": ["Source"]},
-          {"Code": [
-            "*UndefValue::get(&{})",
-            {"GetBuiltinOperandType": ["Source"]}
-          ]}
-        ]
-      }
-    },
     "LZD": {
       "Name": "lzd",
       "Operands": [
