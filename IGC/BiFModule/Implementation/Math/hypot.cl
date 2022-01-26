@@ -108,7 +108,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, double, double, double
 
 half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(hypot, _f16_f16, )( half x, half y )
 {
-    return (half)SPIRV_OCL_BUILTIN(hypot, _f32_f32, )(x, y);
+    return (half)SPIRV_OCL_BUILTIN(hypot, _f32_f32, )((float)x, (float)y);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, half, half, half, f16, f16 )
