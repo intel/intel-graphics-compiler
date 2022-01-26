@@ -446,7 +446,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
                     createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
 
                 G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag2->getRegVar(),
-                    0, getPlatform() >= Xe_PVC ? PRED_DEFAULT : PRED_ANY32H);
+                    0, predCtrlHasWidth() ? PRED_ANY32H : PRED_ANY_WHOLE);
                 inst = createIf(predicateFlagReg, G4_ExecSize(32), instOpt);
             }
             else
@@ -775,7 +775,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
                 createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
 
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag2->getRegVar(),
-                0, getPlatform() >= Xe_PVC ? PRED_DEFAULT : PRED_ANY32H);
+                0, predCtrlHasWidth() ? PRED_ANY32H : PRED_ANY_WHOLE);
             inst = createIf(predicateFlagReg, G4_ExecSize(32), instOpt);
         }
         else
@@ -1032,7 +1032,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
                 createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
 
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag2->getRegVar(),
-                0, getPlatform() >= Xe_PVC ? PRED_DEFAULT : PRED_ANY32H);
+                0, predCtrlHasWidth() ? PRED_ANY32H : PRED_ANY_WHOLE);
             inst = createIf(predicateFlagReg, G4_ExecSize(32), instOpt);
         }
         else
@@ -1305,7 +1305,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
                     createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
 
                 G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(),
-                    0, getPlatform() >= Xe_PVC ? PRED_DEFAULT : PRED_ANY32H);
+                    0, predCtrlHasWidth() ? PRED_ANY32H : PRED_ANY_WHOLE);
                 inst = createIf(predicateFlagReg, G4_ExecSize(32), instOpt);
             }
             else
