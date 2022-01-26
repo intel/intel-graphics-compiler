@@ -1529,7 +1529,6 @@ void CodeGenCommon(ContextType* ctx)
 {
 CShaderProgram::KernelShaderMap shaders;
 
-
     CodeGen(ctx, shaders);
 
     IGCPassManager DIPass(ctx, "DI");
@@ -1542,7 +1541,6 @@ CShaderProgram::KernelShaderMap shaders;
         CShaderProgram* shaderProgram = kv.second;
         FillProgram(ctx, shaderProgram);
     }
-
 
     destroyShaderMap(shaders);
 }
@@ -1571,9 +1569,7 @@ void CodeGen(GeometryShaderContext* ctx)
 
 void CodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders, PSSignature* pSignature)
 {
-
     PSCodeGen(ctx, shaders, pSignature);
-
 } // CodeGen(PixelShaderContext*, ...)
 
 void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& shaders)

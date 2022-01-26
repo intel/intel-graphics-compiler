@@ -424,7 +424,6 @@ namespace IGC
             shader->FillProgram(pKernelProgram);
             pKernelProgram->SIMDInfo = cgCtx->GetSIMDInfo();
 
-
             // free allocated memory for the remaining kernels
             FreeAllocatedMemForNotPickedCS(simdMode);
 

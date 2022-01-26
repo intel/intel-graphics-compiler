@@ -403,7 +403,6 @@ DECLARE_IGC_REGKEY(bool, EnableSampleDEmulationForTesting, false, "Enable emulat
 DECLARE_IGC_REGKEY(bool, EnableOCLScratchPrivateMemoryForDG2Plus, false,  "Enable the use of scratch space for private memory in XeHP and above [OCL only]", true)
 DECLARE_IGC_REGKEY(bool, RemoveLegacyOCLStatelessPrivateMemoryCases, false,  "Remove cases where OCL uses stateless private memory. XeHP and above only! [OCL only]", true)
 DECLARE_IGC_REGKEY(DWORD, SkipPsSimdWithDualSimd,       1,     "Setting it to values def in igc.h will force SIMD mode to skip if the dual-SIMD8 kernel exists", true)
-DECLARE_IGC_REGKEY(bool, EnableRastyJitter,             false, "Enable Rasty JIT of shader to x86 for fast simulation", true)
 DECLARE_IGC_REGKEY(bool, EnablePostCullPatchFIFOLP,     true,  "Enable Post-Cull Patch Decoupling FIFO. GEN12LP.", true)
 DECLARE_IGC_REGKEY(bool, EnablePostCullPatchFIFOHP,     true,  "Enable Post-Cull Patch Decoupling FIFO. XeHP.", true)
 DECLARE_IGC_REGKEY(bool, EnableAIParameterCombiningWithLODBias, true, "Enable AI parameter combining With LOD Bias parameter. XeHP", true)

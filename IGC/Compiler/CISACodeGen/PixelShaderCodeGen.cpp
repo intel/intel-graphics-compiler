@@ -1673,7 +1673,6 @@ void CodeGen(PixelShaderContext* ctx)
         COMPILER_SHADER_STATS_DEL(shaders[pFunc]->m_shaderStats);
         delete shaders[pFunc];
     }
-
 }
 
 void CPixelShader::CreatePassThroughVar()
