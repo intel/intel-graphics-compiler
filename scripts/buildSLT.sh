@@ -30,8 +30,8 @@ else
 fi
 
 apt-get update
-apt-get install -y cmake build-essential git
-echo "[Build Status] cmake build-essential git INSTALLED"
+apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip
+echo "[Build Status] flex bison libz-dev cmake curl wget build-essential git software-properties-common INSTALLED"
 
 if [ "$UBUNTU_VERSION" = "18" ]; then
     wget --no-check-certificate -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
