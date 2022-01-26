@@ -76,7 +76,7 @@ public:
         const G4_INST *inst, const Model *m, bool allowUnknownOp, const IR_Builder& builder);
 private:
     static PredCtrl getIGAPredCtrl(G4_Predicate_Control g4PredCntrl);
-    static Predication getIGAPredication(G4_Predicate* predG4);
+    static Predication getIGAPredication(const G4_Predicate* predG4, G4_ExecSize execSize, const IR_Builder& builder);
     static BranchCntrl getIGABranchCntrl(bool isOn)
     {
         return isOn ? BranchCntrl::ON : BranchCntrl::OFF;
@@ -818,7 +818,7 @@ void BinaryEncodingIGA::getIGAFlagInfo(
 
     if (opSpec->supportsPredication() && predG4 != nullptr)
     {
-        pred = getIGAPredication(predG4);
+        pred = getIGAPredication(predG4, inst->getExecSize(), *kernel.fg.builder);
         predFlag = getIGAFlagReg(predG4->getBase());
         flagReg = predFlag;
         hasPredFlag = true;
@@ -1772,12 +1772,54 @@ PredCtrl BinaryEncodingIGA::getIGAPredCtrl(G4_Predicate_Control g4PrCtl)
     }
 }
 
-Predication BinaryEncodingIGA::getIGAPredication(G4_Predicate* predG4)
+Predication BinaryEncodingIGA::getIGAPredication(const G4_Predicate* predG4,
+    G4_ExecSize execSize, const IR_Builder& builder)
 {
+    // Xe_PVC+ has removed predCtrl width. Only .any, .all and .seq (default) are supported.
+    // Try to translate PredCtrl values to compatible ones on Xe_PVC+
+    // Return true on success, false on fail
+    auto translatePredCtrl = [&](G4_Predicate_Control& predCtrl) {
+        if (builder.predCtrlHasWidth())
+            return true;
+        if (predCtrl == PRED_ANY_WHOLE || predCtrl == PRED_ALL_WHOLE || predCtrl == PRED_DEFAULT)
+            return true;
+        // .any*h/.all*h (pre-pvc) is equal to .any/.all (pvc+) only when the instruction execSize
+        // match the predCtrl group size
+        if (execSize != predG4->getPredCtrlGroupSize())
+            return false;
+
+        // translate to equivalent .any or .all whenever possible
+        switch (predCtrl)
+        {
+        case PRED_ANY2H:
+        case PRED_ANY4H:
+        case PRED_ANY8H:
+        case PRED_ANY16H:
+        case PRED_ANY32H:
+            predCtrl = PRED_ANY_WHOLE;
+            break;
+        case PRED_ALL2H:
+        case PRED_ALL4H:
+        case PRED_ALL8H:
+        case PRED_ALL16H:
+        case PRED_ALL32H:
+            predCtrl = PRED_ALL_WHOLE;
+            break;
+        default:
+            // PRED_ANY_WHOLE, PRED_ALL_WHOLE, PRED_DEFAULT are handled above
+            // PRED_ANYV, PRED_ALLV are not supported
+            return false;
+        }
+        return true;
+    };
+
     Predication pred;
     if (predG4)
     {
-        pred.function = getIGAPredCtrl(predG4->getControl());
+        G4_Predicate_Control g4PrCtl = predG4->getControl();
+        ASSERT_USER(translatePredCtrl(g4PrCtl), "illegal predicate control");
+
+        pred.function = getIGAPredCtrl(g4PrCtl);
         pred.inverse = predG4->getState() != PredState_Plus;
     }
     return pred;
