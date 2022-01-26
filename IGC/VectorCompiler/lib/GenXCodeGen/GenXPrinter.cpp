@@ -90,6 +90,44 @@ ModulePass *llvm::createGenXGroupPrinterPass(raw_ostream &O,
   return Created;
 }
 
+// Print additional info for simple value.
+// If there is no reg then print "-". Otherwise print assigned register.
+static void printPropertiesForSimpleValue(raw_ostream &OS, SimpleValue SV,
+                                          GenXVisaRegAlloc &RA) {
+  auto *Reg = RA.getRegForValueUntyped(SV);
+  if (!Reg) {
+    OS << "-";
+    return;
+  }
+  Reg->print(OS);
+  // FIXME: currently it is impossible to print base reg for alias.
+  // Visa regalloc does not store aliases for simple values, they
+  // are created during cisa builder without actual mapping update.
+  // To fix this, we should either change IR to actually represent
+  // register aliasing (partially implemented by bitcasts) or change
+  // regalloc API to store map of Use to Reg.
+  // First option is preferrable because it allows cisa builder to
+  // work without modification of regalloc maps.
+}
+
+// Show allocated register (if any) in brackets. If it is a struct
+// type, then show multiple registers.
+static void printPropertiesForValue(raw_ostream &OS, Value &V,
+                                    GenXVisaRegAlloc &RA) {
+  const unsigned SVNum = IndexFlattener::getNumElements(V.getType());
+  // Void or empty struct.
+  if (SVNum == 0)
+    return;
+
+  OS << "[";
+  printPropertiesForSimpleValue(OS, {&V, 0}, RA);
+  for (unsigned I = 1; I != SVNum; ++I) {
+    OS << ",";
+    printPropertiesForSimpleValue(OS, {&V, I}, RA);
+  }
+  OS << "]";
+}
+
 /***********************************************************************
  * printFunction : print function with GenX analyses
  */
@@ -109,15 +147,8 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
     ++fi;
     Arg->getType()->print(OS, /*IsForDebug=*/false, /*NoDetails=*/true);
     OS << " ";
-    // Only show register number if there is a register allocator.
-    GenXVisaRegAlloc::Reg* Reg = nullptr;
     if (RA)
-      Reg = RA->getRegForValueUntyped(SimpleValue(Arg));
-    if (Reg) {
-      OS << "[";
-      Reg->print(OS);
-      OS << "]";
-    }
+      printPropertiesForValue(OS, *Arg, *RA);
     OS << "%" << Arg->getName();
   }
   OS << ") {\n";
@@ -128,29 +159,8 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
     for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
       Instruction *Inst = &*bi;
       if (!Baling || !Baling->isBaled(Inst)) {
-        if (RA && !Inst->getType()->isVoidTy()) {
-          // Show allocated register in brackets. If it is struct type,
-          // we show the multiple registers. For an alias, show its base
-          // register in braces as well.
-          for (unsigned i = 0,
-              e = IndexFlattener::getNumElements(Inst->getType());
-              i != e; ++i) {
-            auto Reg = RA->getRegForValueUntyped(SimpleValue(Inst, i));
-            if (Reg && Reg->Category) {
-              OS << (!i ? "[" : ",");
-              Reg->print(OS);
-              auto BaseReg = RA->getRegForValueUntyped(SimpleValue(Inst, i));
-              if (BaseReg != Reg) {
-                OS << "{";
-                IGC_ASSERT(BaseReg);
-                BaseReg->print(OS);
-                OS << "}";
-              }
-              if (i + 1 == e)
-                OS << "]";
-            }
-          }
-        }
+        if (RA)
+          printPropertiesForValue(OS, *Inst, *RA);
         // Show instruction number in brackets.
         unsigned Num = 0;
         if (Numbering)
