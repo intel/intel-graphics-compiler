@@ -2065,9 +2065,19 @@ kill_if(bool pred, std::vector<T, AllocTy>& Elts,
 }
 
 // Compute {RAW,WAW,WAR,NODEP} for given operand to a live node.
-//
-static std::pair<DepType, G4_CmpRelation>
+static DepType
 getDep(G4_Operand* Opnd, const preDDD::LiveNode& LN)
+{
+    DepType Deps[] = { DepType::NODEP, DepType::RAW, DepType::WAR, DepType::WAW };
+    int i = int(LN.isWrite());
+    int j = int(Opnd->isDstRegRegion() || Opnd->isCondMod());
+    return Deps[i * 2 + j];
+}
+
+// Compute relation for given operand to a live node. This function may return
+// a different dependency when checking acc dependency.
+static std::pair<DepType, G4_CmpRelation>
+getDepAndRel(G4_Operand* Opnd, const preDDD::LiveNode& LN, DepType Dep)
 {
     G4_CmpRelation Rel = G4_CmpRelation::Rel_undef;
     G4_Operand *Other = LN.N->getInst()->getOperand(LN.OpNum);
@@ -2095,7 +2105,7 @@ getDep(G4_Operand* Opnd, const preDDD::LiveNode& LN)
 
         if (AccOther == AccOpnd &&
             AccOther != G4_AccRegSel::ACC_UNDEFINED) {
-            // While compairing V3:Acc2 to V4:Acc2, we cannot kill this live
+            // While comparing V3:Acc2 to V4:Acc2, we cannot kill this live
             // node, as there is no overlap on V3 and V4. So only returns
             // Rel_interfere relation, not Rel_eq.
             //
@@ -2110,11 +2120,7 @@ getDep(G4_Operand* Opnd, const preDDD::LiveNode& LN)
         // No dependency.
         return std::make_pair(DepType::NODEP, Rel);
     }
-
-    DepType Deps[] = { DepType::NODEP, DepType::RAW, DepType::WAR, DepType::WAW };
-    int i = int(LN.isWrite());
-    int j = int(Opnd->isDstRegRegion() || Opnd->isCondMod());
-    return std::make_pair(Deps[i * 2 + j], Rel);
+    return std::make_pair(Dep, Rel);
 }
 
 // This is not a label nor a barrier and check the dependency
@@ -2133,15 +2139,20 @@ void preDDD::processReadWrite(preNode* curNode)
         // Iterate all live nodes associated to the same declaration.
         for (auto Iter = Nodes.begin(); Iter != Nodes.end(); /*empty*/) {
             LiveNode& liveNode = *Iter;
-            auto DepRel = getDep(opnd, liveNode);
-            if (DepRel.first != DepType::NODEP) {
-                addEdge(curNode, liveNode.N, DepRel.first);
-                // Check if this kills current live node. If yes, remove it.
-                bool pred = DepRel.second == G4_CmpRelation::Rel_eq ||
-                            DepRel.second == G4_CmpRelation::Rel_gt;
-                Iter = kill_if(pred, Nodes, Iter);
-            } else
+            DepType Dep = getDep(opnd, liveNode);
+            if (Dep == DepType::NODEP) {
                 ++Iter;
+            } else {
+                auto DepRel = getDepAndRel(opnd, liveNode, Dep);
+                if (DepRel.first != DepType::NODEP) {
+                    addEdge(curNode, liveNode.N, Dep);
+                    // Check if this kills current live node. If yes, remove it.
+                    bool pred = DepRel.second == G4_CmpRelation::Rel_eq ||
+                                DepRel.second == G4_CmpRelation::Rel_gt;
+                    Iter = kill_if(pred, Nodes, Iter);
+                } else
+                    ++Iter;
+            }
         }
 
         // If this is a physically allocated regvar, then check dependency on the
@@ -2149,15 +2160,20 @@ void preDDD::processReadWrite(preNode* curNode)
         if (isPhyicallyAllocatedRegVar(opnd)) {
             for (auto Iter = LivePhysicalNodes.begin(); Iter != LivePhysicalNodes.end(); /*empty*/) {
                 LiveNode& liveNode = *Iter;
-                auto DepRel = getDep(opnd, liveNode);
-                if (DepRel.first != DepType::NODEP) {
-                    addEdge(curNode, liveNode.N, DepRel.first);
-                    // Check if this kills current live node. If yes, remove it.
-                    bool pred = DepRel.second == G4_CmpRelation::Rel_eq ||
-                                DepRel.second == G4_CmpRelation::Rel_gt;
-                    Iter = kill_if(pred, LivePhysicalNodes, Iter);
-                } else
+                DepType Dep = getDep(opnd, liveNode);
+                if (Dep == DepType::NODEP) {
                     ++Iter;
+                } else {
+                    auto DepRel = getDepAndRel(opnd, liveNode, Dep);
+                    if (DepRel.first != DepType::NODEP) {
+                        addEdge(curNode, liveNode.N, Dep);
+                        // Check if this kills current live node. If yes, remove it.
+                        bool pred = DepRel.second == G4_CmpRelation::Rel_eq ||
+                                    DepRel.second == G4_CmpRelation::Rel_gt;
+                        Iter = kill_if(pred, LivePhysicalNodes, Iter);
+                    } else
+                        ++Iter;
+                }
             }
         }
 
@@ -2180,7 +2196,10 @@ void preDDD::processReadWrite(preNode* curNode)
             if (liveNode.isRead())
                 continue;
 
-            std::pair<DepType, G4_CmpRelation> DepRel = getDep(opnd, liveNode);
+            DepType Dep = getDep(opnd, liveNode);
+            if (Dep == DepType::NODEP)
+                continue;
+            std::pair<DepType, G4_CmpRelation> DepRel = getDepAndRel(opnd, liveNode, Dep);
             if (DepRel.first != DepType::NODEP)
                 addEdge(curNode, liveNode.N, DepRel.first);
         }
@@ -2192,7 +2211,10 @@ void preDDD::processReadWrite(preNode* curNode)
                 // Skip read live nodes.
                 if (liveNode.isRead())
                     continue;
-                std::pair<DepType, G4_CmpRelation> DepRel = getDep(opnd, liveNode);
+                DepType Dep = getDep(opnd, liveNode);
+                if (Dep == DepType::NODEP)
+                    continue;
+                std::pair<DepType, G4_CmpRelation> DepRel = getDepAndRel(opnd, liveNode, Dep);
                 if (DepRel.first != DepType::NODEP)
                     addEdge(curNode, liveNode.N, DepRel.first);
             }
