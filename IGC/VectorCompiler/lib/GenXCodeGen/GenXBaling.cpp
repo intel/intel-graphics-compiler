@@ -474,6 +474,10 @@ bool GenXBaling::operandCanBeBaled(
         break;
       case BaleInfo::ZEXT:
       case BaleInfo::SEXT: {
+        if (CmpInst *CmpI = dyn_cast<CmpInst>(Inst)) {
+          if ((Mod == BaleInfo::SEXT) != CmpI->isSigned())
+            return false;
+        }
         // NOTE: mulh does not allow sext/zext bailing, as it allows only
         // D/UD operands
         auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
