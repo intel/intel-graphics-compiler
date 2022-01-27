@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <functional>
 #include <fstream>
 #include <iostream>
+#include <queue>
 
 using namespace vISA;
 
@@ -882,7 +883,7 @@ protected:
     // The data-dependency graph.
     preDDD& ddd;
 
-    // Registre pressure related data.
+    // Register pressure related data.
     RegisterPressure& rp;
 
     // Options to customize scheduler.
@@ -920,6 +921,8 @@ public:
         if (TheCurrTupleParts == 0)
             TheCurrTupleLead = nullptr;
     }
+    virtual void push(preNode* N)  = 0;
+    virtual preNode* pop() = 0;
 
 protected:
     // The current (send) tuple lead.
@@ -947,7 +950,7 @@ public:
     }
 
     // Add a new ready node.
-    void push(preNode* N)
+    void push(preNode* N) override
     {
         // Clustering nodes have been added.
         if (N->isClustered && !N->isClusterLead)
@@ -962,7 +965,7 @@ public:
     }
 
     // Schedule the top node.
-    preNode* pop()
+    preNode* pop() override
     {
         return select();
     }
@@ -1323,29 +1326,33 @@ class LatencyQueue : public QueueBase {
     // group will be scheduled for latency.
     std::map<G4_INST *, unsigned> GroupInfo;
 
-    // Instrction latency information.
+    // Instruction latency information.
     const LatencyTable &LT;
+
+    // TODO: Try to apply priority queue to SethiUllmanQueue as well.
+    std::priority_queue<preNode*, std::vector<preNode*>, std::function<bool(preNode*, preNode*)>> ReadyList;
 
 public:
     LatencyQueue(preDDD& ddd, RegisterPressure& rp, SchedConfig config,
         const LatencyTable& LT)
         : QueueBase(ddd, rp, config)
         , LT(LT)
+        , ReadyList([this](preNode* a, preNode* b){ return compare(a, b);})
     {
         init();
     }
 
     // Add a new ready node.
-    void push(preNode* N)
+    void push(preNode* N) override
     {
         if (N->getInst() && N->getInst()->isPseudoKill())
             pseudoKills.push_back(N);
         else
-            Q.push_back(N);
+            ReadyList.push(N);
     }
 
     // Schedule the top node.
-    preNode* pop()
+    preNode* pop() override
     {
         // Pop all pseudo-kills if any.
         if (!pseudoKills.empty()) {
@@ -1353,7 +1360,10 @@ public:
             pseudoKills.pop_back();
             return N;
         }
-        return select();
+        assert(!ReadyList.empty());
+        preNode* N = ReadyList.top();
+        ReadyList.pop();
+        return N;
     }
 
     bool empty() const
@@ -1364,8 +1374,6 @@ public:
 private:
     void init();
     unsigned calculatePriority(preNode *N);
-
-    preNode* select();
 
     // Compare two ready nodes and decide which one should be scheduled first.
     // Return true if N2 has a higher priority than N1, false otherwise.
@@ -1634,22 +1642,6 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
     }
 
     return std::max(1U, Priority);
-}
-
-preNode* LatencyQueue::select()
-{
-    assert(!Q.empty());
-    auto TopIter = Q.end();
-    for (auto I = Q.begin(), E = Q.end(); I != E; ++I) {
-        preNode* N = *I;
-        if (TopIter == Q.end() || compare(*TopIter, N))
-            TopIter = I;
-    }
-    assert(TopIter != Q.end());
-    preNode* Top = *TopIter;
-    std::swap(*TopIter, Q.back());
-    Q.pop_back();
-    return Top;
 }
 
 // Compare two ready nodes and decide which one should be scheduled first.
