@@ -50,7 +50,7 @@ void initializeGenXBackendConfigPass(PassRegistry &PR);
 // configuration. Some values are default-initialized from cl options.
 struct GenXBackendOptions {
   // EmitDebuggable Kernels (allocate SIP Surface)
-  bool DebuggabilityEmitDebuggableKernels = false;
+  bool DebuggabilityEmitDebuggableKernels = true;
   // Legacy path requires kernel to reserve BTI=0
   bool DebuggabilityForLegacyPath = false;
   // Emit breakpoints at the start of each kernel

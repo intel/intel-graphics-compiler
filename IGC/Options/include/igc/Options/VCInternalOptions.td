@@ -56,6 +56,9 @@ def stats_file : PlainSeparate<"stats-file">,
 def : PlainJoined<"stats-file=">, Alias<stats_file>,
   HelpText<"Alias for -stats-file">;
 
+def fdisable_debuggable_kernels : PlainFlag<"vc-disable-debuggable-kernels">,
+  HelpText<"Disable emission of debuggable kernels for legacy path">;
+
 def gpu_scope_fence : PlainFlag<"gpu-scope-fence-on-single-tile">,
   HelpText<"Allow the use of \"GPU\" fence scope on single-tile GPUs">;
 def flush_l3_for_global : PlainFlag<"flush-l3-for-global">,

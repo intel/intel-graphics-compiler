@@ -619,10 +619,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
   if (ApiOptions.hasArg(OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
-  if (ApiOptions.hasArg(OPT_emit_debug)) {
+  if (ApiOptions.hasArg(OPT_emit_debug))
     Opts.ExtendedDebuggingSupport = true;
-    Opts.EmitDebuggableKernels = true;
-  }
   if (ApiOptions.hasArg(OPT_vc_fno_struct_splitting))
     Opts.DisableStructSplitting = true;
   if (ApiOptions.hasArg(OPT_vc_fno_jump_tables))
@@ -701,6 +699,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.UseBindlessBuffers = true;
   if (InternalOptions.hasArg(OPT_emit_zebin_visa_sections))
     Opts.EmitZebinVisaSections = true;
+  if (InternalOptions.hasArg(OPT_fdisable_debuggable_kernels))
+    Opts.EmitDebuggableKernels = false;
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_binary_format)) {
     StringRef Val = A->getValue();

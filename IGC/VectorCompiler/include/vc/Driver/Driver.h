@@ -73,8 +73,9 @@ struct CompileOptions {
   bool NoVecDecomp = false;
   // -g
   bool ExtendedDebuggingSupport = false;
-  // emit kernels that can interact with debugger
-  bool EmitDebuggableKernels = false;
+  // emit kernels that can interact with debugger, can be disabled by
+  // -vc-disable-debuggable-kernels internal option
+  bool EmitDebuggableKernels = true;
   // -fno-jump-tables
   bool NoJumpTables = false;
   // -ftranslate-legacy-memory-intrinsics
