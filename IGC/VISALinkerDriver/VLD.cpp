@@ -229,6 +229,8 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
     // section. Get it from the dumps, if they are enabled.
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
       const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+      if (pOutputFolder && std::strlen(pOutputFolder) == 0) pOutputFolder = ".";
+
       for (auto &p : std::filesystem::directory_iterator{pOutputFolder}) {
         if (p.is_regular_file() && p.path().extension() == ".visaasm" &&
             llvm::StringRef(p.path().filename().string()).startswith("VC")) {
