@@ -18,9 +18,13 @@ SPDX-License-Identifier: MIT
 #include "GenXLiveness.h"
 #include "GenXNumbering.h"
 #include "GenXVisaRegAlloc.h"
+
+#include "vc/Utils/GenX/RegCategory.h"
+
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/raw_ostream.h"
+
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -100,15 +104,15 @@ ModulePass *llvm::createGenXGroupPrinterPass(raw_ostream &O,
   return Created;
 }
 
-// Print additional info for simple value.
-// If there is no reg then print "-". Otherwise print assigned register.
-static void printPropertiesForSimpleValue(raw_ostream &OS, SimpleValue SV,
-                                          GenXVisaRegAlloc &RA) {
-  auto *Reg = RA.getRegForValueUntyped(SV);
-  if (!Reg) {
-    OS << "-";
-    return;
-  }
+// If possible, print register info and return true.
+// Otherwise do nothing and return false.
+static bool tryPrintRegInfo(raw_ostream &OS, SimpleValue SV,
+                            GenXVisaRegAlloc *RA) {
+  if (!RA)
+    return false;
+  auto *Reg = RA->getRegForValueUntyped(SV);
+  if (!Reg)
+    return false;
   Reg->print(OS);
   // FIXME: currently it is impossible to print base reg for alias.
   // Visa regalloc does not store aliases for simple values, they
@@ -118,22 +122,59 @@ static void printPropertiesForSimpleValue(raw_ostream &OS, SimpleValue SV,
   // regalloc API to store map of Use to Reg.
   // First option is preferrable because it allows cisa builder to
   // work without modification of regalloc maps.
+  return true;
 }
 
-// Show allocated register (if any) in brackets. If it is a struct
-// type, then show multiple registers.
+// If possible, print category info and return true.
+// Otherwise do nothing and return false.
+static bool tryPrintCategoryInfo(raw_ostream &OS, SimpleValue SV,
+                                 GenXLiveness *Liveness) {
+  if (!Liveness)
+    return false;
+
+  auto *LR = Liveness->getLiveRangeOrNull(SV);
+  if (!LR || LR->Category == vc::RegCategory::None)
+    return false;
+
+  OS << vc::getRegCategoryShortName(LR->Category);
+  return true;
+}
+
+// Print additional info for simple value.
+// If there is allocated register then print it.
+// Otherwise if category is assigned then print it.
+// Otherwise print "-".
+static void printPropertiesForSimpleValue(raw_ostream &OS, SimpleValue SV,
+                                          GenXLiveness *Liveness,
+                                          GenXVisaRegAlloc *RA) {
+  if (tryPrintRegInfo(OS, SV, RA))
+    return;
+
+  if (tryPrintCategoryInfo(OS, SV, Liveness))
+    return;
+
+  OS << "-";
+}
+
+// Show allocated register or category (if any) in brackets. If it is
+// a struct type, then show info for each simple value.
 static void printPropertiesForValue(raw_ostream &OS, Value &V,
-                                    GenXVisaRegAlloc &RA) {
+                                    GenXLiveness *Liveness,
+                                    GenXVisaRegAlloc *RA) {
+  // No info available.
+  if (!RA && !Liveness)
+    return;
+
   const unsigned SVNum = IndexFlattener::getNumElements(V.getType());
   // Void or empty struct.
   if (SVNum == 0)
     return;
 
   OS << "[";
-  printPropertiesForSimpleValue(OS, {&V, 0}, RA);
+  printPropertiesForSimpleValue(OS, {&V, 0}, Liveness, RA);
   for (unsigned I = 1; I != SVNum; ++I) {
     OS << ",";
-    printPropertiesForSimpleValue(OS, {&V, I}, RA);
+    printPropertiesForSimpleValue(OS, {&V, I}, Liveness, RA);
   }
   OS << "]";
 }
@@ -157,8 +198,7 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
     ++fi;
     Arg->getType()->print(OS, /*IsForDebug=*/false, /*NoDetails=*/true);
     OS << " ";
-    if (RA)
-      printPropertiesForValue(OS, *Arg, *RA);
+    printPropertiesForValue(OS, *Arg, Liveness, RA);
     OS << "%" << Arg->getName();
   }
   OS << ") {\n";
@@ -169,8 +209,7 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
     for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
       Instruction *Inst = &*bi;
       if (!Baling || !Baling->isBaled(Inst)) {
-        if (RA)
-          printPropertiesForValue(OS, *Inst, *RA);
+        printPropertiesForValue(OS, *Inst, Liveness, RA);
         // Show instruction number in brackets.
         unsigned Num = 0;
         if (Numbering)
