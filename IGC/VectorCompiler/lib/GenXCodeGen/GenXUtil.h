@@ -122,6 +122,9 @@ Instruction *convertShlShr(Instruction *Inst);
 bool splitStructPhis(Function *F);
 bool splitStructPhi(PHINode *Phi);
 
+// Get original value before bit-casting chain.
+Value *getBitCastedValue(Value *V);
+
 // normalize g_load with bitcasts.
 //
 // When a single g_load is being bitcast'ed to different types, clone g_loads.

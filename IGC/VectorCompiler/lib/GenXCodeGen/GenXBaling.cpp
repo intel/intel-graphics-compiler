@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
@@ -1649,12 +1650,10 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
     // different bitcasts on the two inputs is ok, as long as the original value
     // is the same, because bitcasts are always copy coalesced so will be in the
     // same register.
-    Value *RdIn = Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-    Value *WrIn = Wr->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-    while (auto BC = dyn_cast<BitCastInst>(RdIn))
-      RdIn = BC->getOperand(0);
-    while (auto BC = dyn_cast<BitCastInst>(WrIn))
-      WrIn = BC->getOperand(0);
+    Value *RdIn = genx::getBitCastedValue(
+        Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
+    Value *WrIn = genx::getBitCastedValue(
+        Wr->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
     if (RdIn != WrIn)
       return;
     // We can do the baling.
@@ -1702,12 +1701,8 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
   // different bitcasts on the two inputs is ok, as long as the original value
   // is the same, because bitcasts are always copy coalesced so will be in the
   // same register.
-  Value *RdIn = RdSeq.Input;
-  Value *WrIn = WrSeq.OldVal;
-  while (auto BC = dyn_cast<BitCastInst>(RdIn))
-    RdIn = BC->getOperand(0);
-  while (auto BC = dyn_cast<BitCastInst>(WrIn))
-    WrIn = BC->getOperand(0);
+  Value *RdIn = genx::getBitCastedValue(RdSeq.Input);
+  Value *WrIn = genx::getBitCastedValue(WrSeq.OldVal);
   if (RdIn != WrIn)
     return;
   // Check that there are no uses of CI other than in WrSeq. We can do that by
@@ -2221,12 +2216,23 @@ static void normalizeGStore(StoreInst &SI) {
   SI.setOperand(0 /*Value operand idx*/, WrR);
 }
 
+// Normalize ill-formed g_stores.
+static void normalizeGStores(Function &F) {
+  for (auto &I : instructions(F)) {
+    if (!isGlobalStore(&I))
+      continue;
+    auto *SI = cast<StoreInst>(&I);
+    if (!isGlobalStoreLegal(SI))
+      normalizeGStore(*SI);
+  }
+}
+
 // If operand of gstore is phi and all its incoming values
 // form legal values for gstore, then return true.
 // All incoming blocks should have single successor.
 // Otherwise return false.
 static bool canPropagatePhiGStore(StoreInst &SI) {
-  Value *Val = SI.getValueOperand();
+  Value *Val = genx::getBitCastedValue(SI.getValueOperand());
   auto *Phi = dyn_cast<PHINode>(Val);
   if (!Phi)
     return false;
@@ -2246,42 +2252,29 @@ static bool canPropagatePhiGStore(StoreInst &SI) {
 // After that, there will be legal gstores that can be baled later.
 // Old gstore with phi is deleted.
 static void propagatePhiGStore(StoreInst &SI) {
-  auto *Phi = cast<PHINode>(SI.getValueOperand());
+  auto *StoreVal = SI.getValueOperand();
+  auto *Phi = cast<PHINode>(genx::getBitCastedValue(StoreVal));
   for (Use &U : Phi->incoming_values()) {
-    auto *NewSI = cast<StoreInst>(SI.clone());
-    auto *WrrInst = cast<Instruction>(U);
-    NewSI->insertBefore(WrrInst->getParent()->getTerminator());
-    NewSI->setOperand(0 /*Value operand idx*/, WrrInst);
+    IRBuilder<> IRB(cast<Instruction>(U)->getParent()->getTerminator());
+    IRB.CreateStore(IRB.CreateBitCast(U, StoreVal->getType()),
+                    SI.getPointerOperand(), SI.isVolatile());
   }
   SI.eraseFromParent();
-  if (Phi->user_empty())
-    Phi->eraseFromParent();
+  RecursivelyDeleteTriviallyDeadInstructions(StoreVal);
 }
 
-// Normalize gstores.
-// There are two main cases:
-// 1) gstore of phi, then there will be attempt to hoist gstore to
-// its value, if that will give correct gstores.
-// 2) Otherwise, just ill-formed gstore. Normalize it.
-static void normalizeGStores(Function &F) {
-  SmallVector<StoreInst *, 8> PhiWorklist;
-  SmallVector<StoreInst *, 8> NormalizeWorklist;
-  // Collect phi and ill-formed gloads.
+// If g_store value comes from phi node, try to hoist it.
+static void propagatePhiGStores(Function &F) {
+  SmallVector<StoreInst *, 8> Worklist;
   for (auto &I : instructions(F)) {
     auto *SI = dyn_cast<StoreInst>(&I);
     if (!SI || !isGlobalStore(SI))
       continue;
     if (canPropagatePhiGStore(*SI))
-      PhiWorklist.push_back(SI);
-    else if (!isGlobalStoreLegal(SI))
-      NormalizeWorklist.push_back(SI);
+      Worklist.push_back(SI);
   }
-
-  // Handle everything.
-  for (auto *SI : PhiWorklist)
+  for (auto *SI : Worklist)
     propagatePhiGStore(*SI);
-  for (auto *SI : NormalizeWorklist)
-    normalizeGStore(*SI);
 }
 
 // Cleanup and optimization before do baling on a function.
@@ -2355,6 +2348,8 @@ bool GenXBaling::prologue(Function *F) {
       }
     }
   }
+
+  propagatePhiGStores(*F);
 
   // fold bitcast into store/load if any. This allows to bale a g_store instruction
   // crossing a bitcast.

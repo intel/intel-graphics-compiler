@@ -1566,6 +1566,12 @@ void genx::LayoutBlocks(Function &func)
   }
 }
 
+Value *genx::getBitCastedValue(Value *V) {
+  while (auto *BCI = dyn_cast<BitCastInst>(V))
+    V = BCI->getOperand(0);
+  return V;
+}
+
 // normalize g_load with bitcasts.
 //
 // When a single g_load is being bitcast'ed to different types, clone g_loads.
@@ -1724,14 +1730,14 @@ bool genx::isGlobalLoad(LoadInst *LI) {
 
 bool genx::isLegalValueForGlobalStore(Value *V, Value *StorePtr) {
   // Value should be wrregion.
-  auto *Wrr = dyn_cast<CallInst>(V);
+  auto *Wrr = dyn_cast<CallInst>(getBitCastedValue(V));
   if (!Wrr || !GenXIntrinsic::isWrRegion(Wrr))
     return false;
 
   // With old value obtained from load instruction with StorePtr.
   Value *OldVal =
       Wrr->getArgOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-  auto *LI = dyn_cast<LoadInst>(OldVal);
+  auto *LI = dyn_cast<LoadInst>(getBitCastedValue(OldVal));
   return LI && (getUnderlyingGlobalVariable(LI->getPointerOperand()) ==
                 getUnderlyingGlobalVariable(StorePtr));
 }
