@@ -80,17 +80,23 @@ class DiagnosticInfoPromoteArray : public DiagnosticInfo {
 private:
   std::string Description;
 
+  static const int KindID;
+
+  static int getKindID() { return KindID; }
+
 public:
   // Initialize from description
   DiagnosticInfoPromoteArray(const Twine &Desc,
                              DiagnosticSeverity Severity = DS_Error)
-      : DiagnosticInfo(llvm::getNextAvailablePluginDiagnosticKind(), Severity),
-        Description(Desc.str()) {}
+      : DiagnosticInfo(getKindID(), Severity), Description(Desc.str()) {}
 
   void print(DiagnosticPrinter &DP) const override {
     DP << "GenXPromoteArray: " << Description;
   }
 };
+
+const int DiagnosticInfoPromoteArray::KindID =
+    llvm::getNextAvailablePluginDiagnosticKind();
 
 class TransposeHelper {
 public:

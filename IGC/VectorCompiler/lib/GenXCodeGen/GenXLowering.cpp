@@ -150,12 +150,10 @@ private:
   StringRef Filename;
   unsigned Line;
   unsigned Col;
-  static int KindID;
-  static int getKindID() {
-    if (KindID == 0)
-      KindID = llvm::getNextAvailablePluginDiagnosticKind();
-    return KindID;
-  }
+
+  static const int KindID;
+
+  static int getKindID() { return KindID; }
 
 public:
   DiagnosticInfoLowering(Instruction *Inst, const Twine &Desc,
@@ -165,7 +163,10 @@ public:
     return DI->getKind() == getKindID();
   }
 };
-int DiagnosticInfoLowering::KindID = 0;
+
+const int DiagnosticInfoLowering::KindID =
+    llvm::getNextAvailablePluginDiagnosticKind();
+;
 
 DiagnosticInfoLowering::DiagnosticInfoLowering(Instruction *Inst,
                                                const Twine &Desc,

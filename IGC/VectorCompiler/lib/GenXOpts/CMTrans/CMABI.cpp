@@ -217,12 +217,11 @@ private:
   StringRef Filename;
   unsigned Line;
   unsigned Col;
-  static int KindID;
-  static int getKindID() {
-    if (KindID == 0)
-      KindID = llvm::getNextAvailablePluginDiagnosticKind();
-    return KindID;
-  }
+
+  static const int KindID;
+
+  static int getKindID() { return KindID; }
+
 public:
   // Initialize from an Instruction and an Argument.
   DiagnosticInfoOverlappingArgs(Instruction *Inst,
@@ -233,7 +232,9 @@ public:
     return DI->getKind() == getKindID();
   }
 };
-int DiagnosticInfoOverlappingArgs::KindID = 0;
+
+const int DiagnosticInfoOverlappingArgs::KindID =
+    llvm::getNextAvailablePluginDiagnosticKind();
 
 class CMABIAnalysis : public ModulePass {
   // This map captures all global variables to be localized.
