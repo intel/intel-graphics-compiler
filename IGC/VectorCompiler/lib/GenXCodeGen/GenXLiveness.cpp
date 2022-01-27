@@ -587,7 +587,7 @@ void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal)
  */
 LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
 {
-  auto [i, isInserted] = LiveRangeMap.insert(LiveRangeMap_t::value_type(V, 0));
+  auto [i, isInserted] = LiveRangeMap.emplace(V, nullptr);
   LLVM_DEBUG(dbgs() << "getOrCreateLiveRange for SimpleValue: " << V << " "
                     << (isInserted ? "Inserted" : "Not inserted") << "\n");
   LiveRange *LR = i->second;
