@@ -593,7 +593,11 @@ unsigned DIEBlock::SizeOf(StreamEmitter* /*AP*/, dwarf::Form Form) const
 #ifndef NDEBUG
 void DIEBlock::print(raw_ostream& O) const
 {
-    O << "Blk: ";
-    DIE::print(O, 5);
+    O << "    Blk: ";
+    DIE::print(O, 6);
+}
+
+void DIEBlock::dump() const {
+    print(dbgs());
 }
 #endif

@@ -62,8 +62,7 @@ public:
       const auto& PO = *m_pShader->ProgramOutput();
       return llvm::ArrayRef<char>((const char*)PO.m_programBin, PO.m_programSize);
     }
-    std::vector<VISAVariableLocation>
-        GetVariableLocation(const llvm::Instruction* pInst) const override;
+    VISAVariableLocation GetVariableLocation(const llvm::Instruction* pInst) const override;
 
     void UpdateVisaId() override;
     void ValidateVisaId() override;

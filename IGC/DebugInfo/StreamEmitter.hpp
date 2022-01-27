@@ -40,7 +40,7 @@ namespace IGC
 {
     class DbgVariable;
     class DwarfDebug;
-    struct VISAVariableLocation;
+    class VISAVariableLocation;
 
     /// @brief StreamEmitter provides API methods for emitting elf object.
     ///        It will be used to emit the debug info sections in dwarf format.

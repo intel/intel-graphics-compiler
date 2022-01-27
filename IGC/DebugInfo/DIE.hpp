@@ -572,6 +572,7 @@ namespace IGC
 
 #ifndef NDEBUG
         virtual void print(llvm::raw_ostream& O) const;
+        virtual void dump() const;
 #endif
     };
 

@@ -1657,7 +1657,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                          DotDebugLocEntryVect& TempDotDebugLocEntries,
                          uint64_t startRange, uint64_t endRange,
                          uint32_t pointerSize, DbgVariable* RegVar,
-                         std::vector<VISAVariableLocation>& Locs,
+                         VISAVariableLocation &Loc,
                          DbgDecoder::LiveIntervalsVISA& visaRange)
     {
         auto allCallerSave = m_pModule->getAllCallerSave(*decodedDbg,
@@ -1673,7 +1673,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         {
             TempDotDebugLocEntries.back().end = std::get<0>(it);
             write(TempDotDebugLocEntries.back().loc, (unsigned char*)&std::get<0>(it), pointerSize);
-            auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars, nullptr);  // No variable DIE
+            auto block = FirstCU->buildGeneral(*RegVar, Loc, &vars, nullptr);  // No variable DIE
             std::vector<unsigned char> buffer;
             if (block)
                 block->EmitToRawBuffer(buffer);
@@ -1694,7 +1694,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             callerSaveVars.front().var.physicalType = DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory;
             callerSaveVars.front().var.mapping.m.isBaseOffBEFP = 0;
             callerSaveVars.front().var.mapping.m.memoryOffset = std::get<2>(it);
-            block = FirstCU->buildGeneral(*RegVar, &Locs, &callerSaveVars, nullptr);  // No variable DIE
+            block = FirstCU->buildGeneral(*RegVar, Loc, &callerSaveVars, nullptr);  // No variable DIE
             buffer.clear();
             if (block)
                 block->EmitToRawBuffer(buffer);
@@ -1717,7 +1717,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         TempDotDebugLocEntries.back().end = endRange;
         write(TempDotDebugLocEntries.back().loc, (unsigned char*)&endRange, pointerSize);
 
-        auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars, nullptr);  // No variable DIE
+        auto block = FirstCU->buildGeneral(*RegVar, Loc, &vars, nullptr);  // No variable DIE
         std::vector<unsigned char> buffer;
         if (block)
             block->EmitToRawBuffer(buffer);
@@ -1837,10 +1837,9 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             }
 
             // assume that VISA preserves location thoughout its lifetime
-            auto Locs = m_pModule->GetVariableLocation(pInst);
-            auto& Loc = Locs.front();
+            auto Loc = m_pModule->GetVariableLocation(pInst);
 
-            LLVM_DEBUG(VISAVariableLocation::print(dbgs(), Locs));
+            LLVM_DEBUG(Loc.print(dbgs()));
 
             if (Loc.IsSampler() || Loc.IsSLM() || Loc.HasSurface())
             {
@@ -1910,7 +1909,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 const llvm::DbgVariableIntrinsic* pInst = nullptr;
                 const ConstantInt* imm = nullptr;
 
-                std::vector<VISAVariableLocation> Locs;
+                VISAVariableLocation Loc;
                 DbgDecoder::LiveIntervalsVISA visaRange;
             };
 
@@ -1928,7 +1927,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 }
                 else
                 {
-                    encodeReg(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.Locs, p.visaRange);
+                    encodeReg(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.Loc, p.visaRange);
                 }
                 p.t = PrevLoc::Type::Empty;
             };
@@ -1936,27 +1935,27 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             {
                 auto startIp = std::get<0>(range);
                 auto endIp = std::get<1>(range);
+                // TODO do we really need this variables in tuple
                 auto RegVar = std::get<2>(range);
                 auto pInst = std::get<3>(range);
 
-                auto Locs = m_pModule->GetVariableLocation(pInst);
-                auto& Loc = Locs.front();
+                auto CurLoc = m_pModule->GetVariableLocation(pInst);
 
                 LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x";
                            dbgs().write_hex(startIp) << "; " << "0x";
                            dbgs().write_hex(endIp) << "]\n";
-                           VISAVariableLocation::print(dbgs(), Locs));
+                           CurLoc.print(dbgs()););
 
                 // Variable has a constant value so inline it in DIE
-                if (d.second.size() == 1 && Loc.IsImmediate())
+                if (d.second.size() == 1 && CurLoc.IsImmediate())
                     continue;
 
                 DotDebugLocEntry dotLoc(startIp, endIp, pInst, DV);
                 dotLoc.setOffset(offset);
 
-                if (Loc.IsImmediate())
+                if (CurLoc.IsImmediate())
                 {
-                    const Constant* pConstVal = Loc.GetImmediate();
+                    const Constant* pConstVal = CurLoc.GetImmediate();
                     if (const ConstantInt* pConstInt = dyn_cast<ConstantInt>(pConstVal))
                     {
                         // Always emit an 8-byte value
@@ -1992,9 +1991,9 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                         p.pInst = pInst;
                     }
                 }
-                else if (Loc.IsRegister())
+                else if (CurLoc.IsRegister())
                 {
-                    auto regNum = Loc.GetRegister();
+                    auto regNum = CurLoc.GetRegister();
                     const auto* VarInfo = m_pModule->getVarInfo(*decodedDbg, regNum);
                     if (!VarInfo)
                         continue;
@@ -2045,7 +2044,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                         p.start = startRange;
                         p.end = endRange;
                         p.dbgVar = RegVar;
-                        p.Locs = Locs;
+                        p.Loc = CurLoc;
                         p.visaRange = visaRange;
                         p.pInst = pInst;
 

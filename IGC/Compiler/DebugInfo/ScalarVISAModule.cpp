@@ -370,13 +370,13 @@ const Argument* ScalarVisaModule::GetTracedArgument(const Value* pVal, bool isAd
     // If reach this point. Return nullptr.
     return nullptr;
 }
-std::vector<VISAVariableLocation>
+
+VISAVariableLocation
 ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
 {
     const Value* pVal = nullptr;
     MDNode* pNode = nullptr;
     bool isDbgDclInst = false;
-    std::vector<VISAVariableLocation> ret;
     if (const DbgDeclareInst * pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst))
     {
         pVal = pDbgAddrInst->getAddress();
@@ -396,8 +396,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     if (!pVal || isa<UndefValue>(pVal))
     {
         // No debug info value, return empty location!
-        ret.push_back(VISAVariableLocation(this));
-        return ret;
+        return VISAVariableLocation(this);
     }
 
     if (const Constant * pConstVal = dyn_cast<Constant>(pVal))
@@ -405,8 +404,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
         {
             IGC_ASSERT_MESSAGE(!isDbgDclInst, "address cannot be immediate!");
-            ret.push_back(VISAVariableLocation(pConstVal, this));
-            return ret;
+            return VISAVariableLocation(pConstVal, this);
         }
     }
 
@@ -463,8 +461,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
                     break;
                 case KernelArg::ArgType::SAMPLER:
                     IGC_ASSERT_MESSAGE(index < SAMPLER_REGISTER_NUM, "Bad sampler index");
-                    ret.push_back(VISAVariableLocation(SAMPLER_REGISTER_BEGIN + index, this));
-                    return ret;
+                    return VISAVariableLocation(SAMPLER_REGISTER_BEGIN + index, this);
                 case KernelArg::ArgType::IMAGE_1D:
                 case KernelArg::ArgType::IMAGE_1D_BUFFER:
                 case KernelArg::ArgType::IMAGE_2D:
@@ -484,18 +481,15 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
                         // Found write image
                         index = m_pShader->m_pBtiLayout->GetUavIndex(index);
                         IGC_ASSERT_MESSAGE(index < TEXTURE_REGISTER_NUM, "Bad texture index");
-                        ret.push_back(VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this));
-                        return ret;
+                        return VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this);
                     case SRVResourceType:
                         // Found read image
                         index = m_pShader->m_pBtiLayout->GetTextureIndex(index);
                         IGC_ASSERT_MESSAGE(index < TEXTURE_REGISTER_NUM, "Bad texture index");
-                        ret.push_back(VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this));
-                        return ret;
+                        return VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this);
                     default:
                         IGC_ASSERT_MESSAGE(0, "Unknown texture resource");
-                        ret.push_back(VISAVariableLocation(this));
-                        return ret;
+                        return VISAVariableLocation(this);
                     }
                 }
             }
@@ -512,8 +506,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
             // TODO: Re-enable this assert once -O2 fixes bug where llvm.dbg.declare points
             // to a non-address value.
             //IGC_ASSERT_MESSAGE(0, "DBG declare intrinsic must point to an address");
-            ret.push_back(VISAVariableLocation(this));
-            return ret;
+            return VISAVariableLocation(this);
         }
         pType = pType->getPointerElementType();
     }
@@ -550,11 +543,9 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         unsigned int offset = m_pShader->GetGlobalMappingValue(pValue);
         if (isInSurface)
         {
-            ret.push_back(VISAVariableLocation(surfaceReg, offset, false, isDbgDclInst, 0, false, this));
-            return ret;
+            return VISAVariableLocation(surfaceReg, offset, false, isDbgDclInst, 0, false, this);
         }
-        ret.push_back(VISAVariableLocation(offset, false, isDbgDclInst, 0, false, false, this));
-        return ret;
+        return VISAVariableLocation(offset, false, isDbgDclInst, 0, false, false, this);
     }
 
     // At this point we expect only a register
@@ -565,8 +556,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         pVar = m_pShader->GetDebugInfoData().getMapping(*pInst->getFunction(), pValue);
         if (!pVar)
         {
-            ret.push_back(VISAVariableLocation(this));
-            return ret;
+            return VISAVariableLocation(this);
         }
     }
     else
@@ -575,16 +565,16 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     IGC_ASSERT_MESSAGE(false == pVar->IsImmediate(), "Do not expect an immediate value at this level");
 
     std::string varName = cast<DIVariable>(pNode)->getName().str();
-    unsigned int reg = 0, reg2 = 0;
     unsigned int vectorNumElements = 0;
 
     switch (pVar->GetVarType()) {
     case EVARTYPE_GENERAL:
+    {
         // We want to attach "Output" attribute to all src variables
         // so that finalizer can extend their liveness to end of
         // the program. This will help debugger examine their
         // values anywhere in the code till they are in scope.
-        reg = m_pShader->GetDebugInfoData().getVISADclId(pVar, 0);
+        unsigned int reg = m_pShader->GetDebugInfoData().getVISADclId(pVar, 0);
         IGC_ASSERT_MESSAGE(reg < GENERAL_REGISTER_NUM, "Bad VISA general register");
 
         if (pType->isVectorTy())
@@ -598,32 +588,30 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
 
         if (isInSurface)
         {
-            ret.push_back(VISAVariableLocation(surfaceReg, GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), this));
-            return ret;
+            return VISAVariableLocation(surfaceReg, GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), this);
         }
-        ret.push_back(VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this));
+        VISAVariableLocation genReg(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this);
+        // SIMD32 locations can't into one register. See VISAVariableLocation::m_locationSecondReg field description for more information
         if (GetSIMDSize() == 32 && pVar->visaGenVariable[1] && !pVar->IsUniform())
         {
-            reg2 = m_pShader->GetDebugInfoData().getVISADclId(pVar, 1);
-            ret.push_back(VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg2, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this));
+            unsigned int reg2 = m_pShader->GetDebugInfoData().getVISADclId(pVar, 1);
+            genReg.AddSecondReg(GENERAL_REGISTER_BEGIN + reg2);
         }
-        return ret;
+        return genReg;
+    }
     case EVARTYPE_ADDRESS:
     case EVARTYPE_PREDICATE:
     case EVARTYPE_SURFACE:
     case EVARTYPE_SAMPLER:
         // TODO: Handle case where variable is mapped to flag/address register
-        ret.push_back(VISAVariableLocation(this));
-        return ret;
-        break;
+        return VISAVariableLocation(this);
     default:
         IGC_ASSERT_MESSAGE(0, "Unhandled VISA register type!");
         break;
     }
 
     IGC_ASSERT_MESSAGE(0, "Empty variable location");
-    ret.push_back(VISAVariableLocation(this));
-    return ret;
+    return VISAVariableLocation(this);
 }
 
 bool ScalarVisaModule::IsCatchAllIntrinsic(const llvm::Instruction* pInst) const

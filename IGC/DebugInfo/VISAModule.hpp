@@ -48,9 +48,13 @@ namespace IGC
     ///        location with respect to the VISA virtual machine.
     ///        Also holds attribute to state whether the variable was
     ///        vectorized or is uniform.
-    struct VISAVariableLocation
+    class VISAVariableLocation
     {
     public:
+        // @brief Default Constructor. Creates empty location.
+        VISAVariableLocation() = default;
+
+
         /// @brief Default Constructor. Creates empty location.
         VISAVariableLocation(const VISAModule* m)
         {
@@ -120,6 +124,17 @@ namespace IGC
             m_pVISAModule = m;
         }
 
+        /// @brief Copy Constructor.
+        /// @param copied value.
+        VISAVariableLocation(const VISAVariableLocation&) = default;
+
+        /// @brief Move Constructor. Creates constant value location.
+        /// @param copied value.
+        VISAVariableLocation& operator=(const VISAVariableLocation&) = default;
+
+        /// @brief Destructor
+        ~VISAVariableLocation() {};
+
         // Getter methods
         bool IsImmediate() const { return m_isImmediate; }
         bool HasSurface() const { return m_hasSurface; }
@@ -131,20 +146,26 @@ namespace IGC
 
         const llvm::Constant* GetImmediate() { return m_pConstVal; }
         unsigned int GetSurface() const { return m_surfaceReg; }
+        void SetRegister(unsigned int locationReg) { m_locationReg = locationReg; }
         unsigned int GetRegister() const { return m_locationReg; }
         unsigned int GetOffset() const { return m_locationOffset; }
         unsigned int GetVectorNumElements() const { return m_vectorNumElements; }
-        const VISAModule* GetVISAModule() const { return m_pVISAModule; }
+        const VISAModule* GetVISAModule() const { IGC_ASSERT(m_pVISAModule); return m_pVISAModule; }
 
         bool IsSampler() const;
         bool IsTexture() const;
         bool IsSLM() const;
 
+        void AddSecondReg(unsigned int locationValue) {
+            IGC_ASSERT_MESSAGE(m_isRegister, "Second location must be filled only for regs");
+            m_locationSecondReg = locationValue;
+        }
+        bool HasLocationSecondReg() const { return m_locationSecondReg != ~0; }
+        unsigned int GetSecondReg() const { IGC_ASSERT(HasLocationSecondReg()); return m_locationSecondReg; }
+
         void dump() const;
         void print (llvm::raw_ostream &OS) const;
 
-        static void print(llvm::raw_ostream &OS,
-                          const std::vector<VISAVariableLocation> &Locs);
     private:
 
         bool m_isImmediate = false;
@@ -158,6 +179,9 @@ namespace IGC
         const llvm::Constant* m_pConstVal = nullptr;
         unsigned int m_surfaceReg = ~0;
         unsigned int m_locationReg = ~0;
+        // In case of SIMD 32, each register is treated to be one half of SIMD16.
+        // Next variable is used to save second half in SIMD32-mode(first in m_locationReg):
+        unsigned int m_locationSecondReg = ~0;
         unsigned int m_locationOffset = ~0;
         unsigned int m_vectorNumElements = ~0;
         const VISAModule* m_pVISAModule = nullptr;
@@ -441,12 +465,9 @@ namespace IGC
         const std::string& GetTargetTriple() const;
 
         /// @brief Return variable location in VISA for from given debug info instruction.
-        /// Return type is a vector since for SIMD32 a single src variable may map to 2
-        /// VISA variables. In case of SIMD32, each entry is treated to be one half of SIMD16.
         /// @param Instruction to query.
         /// @return variable location in VISA.
-        virtual std::vector<VISAVariableLocation>
-            GetVariableLocation(const llvm::Instruction* pInst) const = 0;
+        virtual VISAVariableLocation GetVariableLocation(const llvm::Instruction* pInst) const = 0;
 
         /// @brief Updates VISA instruction id to current instruction number.
         virtual void UpdateVisaId() = 0;

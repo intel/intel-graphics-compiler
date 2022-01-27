@@ -39,23 +39,6 @@ void VISAVariableLocation::dump() const
     print(llvm::dbgs());
 }
 
-void VISAVariableLocation::print(llvm::raw_ostream &OS,
-                                 const std::vector<VISAVariableLocation> &Locs)
-{
-    IGC_ASSERT(!Locs.empty());
-    if (Locs.size() == 1)
-    {
-        Locs.front().print(OS);
-    }
-    else
-    {
-        for (size_t i = 0; i < Locs.size(); ++i)
-        {
-            OS << "    Loc[" << i << "]";
-            Locs[i].print(OS);
-        }
-    }
-}
 void VISAVariableLocation::print(raw_ostream &OS) const
 {
     OS << "   - VarLoc = { ";
@@ -91,9 +74,17 @@ void VISAVariableLocation::print(raw_ostream &OS) const
             // Simple surface entry
             OS << "Type: SimpleSurface, " << "SurfaceReg: " << m_surfaceReg;
             if (m_isRegister)
+            {
                 OS << ", Offset: [VReg=" << m_locationReg << "]";
+                if (HasLocationSecondReg())
+                {
+                  OS << ", [VReg2=" << m_locationSecondReg << "]";
+                }
+            }
             else
+            {
                 OS << ", Offset: " << m_locationOffset;
+            }
             OS << ", IsMem: " << m_isInMemory;
             OS << ", Vectorized: ";
             if (m_isVectorized)

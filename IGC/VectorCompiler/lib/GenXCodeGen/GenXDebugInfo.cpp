@@ -913,22 +913,18 @@ public:
 
   const genx::di::VisaMapping &getVisaMapping() const { return VisaMapping; }
 
-  std::vector<IGC::VISAVariableLocation>
+  IGC::VISAVariableLocation
   GetVariableLocation(const Instruction *DbgInst) const override {
 
     using Location = IGC::VISAVariableLocation;
     auto EmptyLoc = [this](StringRef Reason) {
       LLVM_DEBUG(dbgs() << "  Empty Location Returned (" << Reason
                         << ")\n <<<\n");
-      std::vector<Location> Res;
-      Res.emplace_back(this);
-      return Res;
+      return Location(this);
     };
     auto ConstantLoc = [this](const Constant *C) {
       LLVM_DEBUG(dbgs() << "  ConstantLoc\n <<<\n");
-      std::vector<Location> Res;
-      Res.emplace_back(C, this);
-      return Res;
+      return Location(C, this);
     };
 
     IGC_ASSERT(isa<DbgInfoIntrinsic>(DbgInst));
@@ -976,11 +972,9 @@ public:
     unsigned NumElements = VTy ? VTy->getNumElements() : 1;
     const bool IsVectorized = false;
 
-    std::vector<Location> Res;
     // Source/IGC/DebugInfo/VISAModule.hpp:128
-    Res.emplace_back(GENERAL_REGISTER_BEGIN + Reg->Num, IsRegister,
-                     IsMemory, NumElements, IsVectorized, IsGlobalASI, this);
-    return Res;
+    return Location(GENERAL_REGISTER_BEGIN + Reg->Num, IsRegister, IsMemory,
+                    NumElements, IsVectorized, IsGlobalASI, this);
   }
 
   void UpdateVisaId() override {
