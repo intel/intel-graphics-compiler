@@ -4916,6 +4916,10 @@ void GlobalRA::saveRestoreA0(G4_BB * bb)
                 }
                auto a0SSO = a0SSOMove();
                bb->insertBefore(instIt, a0SSO);
+               if (EUFusionCallWANeeded())
+               {
+                   addEUFusionCallWAInsts(a0SSO);
+               }
                hasActiveSpillFill = true;
             }
         }
