@@ -152,7 +152,7 @@ namespace {
         /// \brief A single step to expand F: accumulate the size and remove it
         /// from the callee list.
         void expand(FunctionNode* Node) {
-            if (IGC_IS_FLAG_ENABLED(ForceInlineImplicitArgFuncs) && HasImplicitArg == false && Node->HasImplicitArg == true)
+            if( IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs) && HasImplicitArg == false && Node->HasImplicitArg == true )
             {
                 HasImplicitArg = true;
                 if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x40 ) != 0 )
@@ -311,7 +311,7 @@ void EstimateFunctionSize::analyze() {
         }
     }
     // check functions and mark those that use implicit args.
-    if (IGC_IS_FLAG_ENABLED(ForceInlineImplicitArgFuncs))
+    if( IGC_IS_FLAG_ENABLED( ControlInlineImplicitArgs ) )
     {
         for( auto I = ECG.begin(), E = ECG.end(); I != E; ++I )
         {
@@ -469,7 +469,7 @@ bool EstimateFunctionSize::funcIsGoodtoTrim( llvm::Function* F)
         return false; /* user specified alwaysInline */
     if ( isTrimmedFunction( F ) ) /* already trimmed by other kernels */
         return false;
-    if (IGC_IS_FLAG_ENABLED(ForceInlineImplicitArgFuncs) && func->HasImplicitArg)
+    if( IGC_IS_FLAG_ENABLED( ControlInlineImplicitArgs ) && func->HasImplicitArg )
     {
         if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x20 ) != 0 )
         {
