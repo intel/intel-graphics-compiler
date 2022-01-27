@@ -71,10 +71,6 @@ template <typename T, int width>
 vector_impl<uint32_t, width> __cm_cl_cbit(vector_impl<T, width> src);
 
 template <typename T> T __cm_cl_fma(T src0, T src1, T src2);
-template <typename T, int width>
-vector_impl<T, width> __cm_cl_fma(vector_impl<T, width> src0,
-                                  vector_impl<T, width> src1,
-                                  vector_impl<T, width> src2);
 
 uint32_t __cm_cl_bfrev(uint32_t src);
 template <int width>
@@ -84,8 +80,6 @@ template <typename T> T __cm_cl_abs_int(T src);
 template <typename T> T __cm_cl_abs_float(T src);
 
 template <typename T> T __cm_cl_sqrt(T src, bool use_fast);
-template <typename T, int width>
-vector_impl<T, width> __cm_cl_sqrt(vector_impl<T, width> src, bool use_fast);
 
 vector_impl<uint32_t, 3> __cm_cl_local_id();
 vector_impl<uint32_t, 3> __cm_cl_local_size();
@@ -281,15 +275,6 @@ template <typename T> uint32_t cbit(T src) {
   return __cm_cl_cbit(src);
 }
 
-template <typename T, int width>
-vector_impl<T, width> fma(vector_impl<T, width> src0,
-                          vector_impl<T, width> src1,
-                          vector_impl<T, width> src2) {
-  static_assert(cl::is_floating_point<T>::value,
-                "illegal type provided in fma");
-  return __cm_cl_fma(src0, src1, src2);
-}
-
 template <typename T> T fma(T src0, T src1, T src2) {
   static_assert(cl::is_floating_point<T>::value,
                 "illegal type provided in fma");
@@ -317,13 +302,6 @@ template <typename T> T absolute(T src) {
 }
 
 template <bool use_fast, typename T> T sqrt(T src) {
-  static_assert(cl::is_floating_point<T>::value,
-                "illegal type provided in sqrt");
-  return __cm_cl_sqrt(src, use_fast);
-}
-
-template <bool use_fast, typename T, int width>
-vector_impl<T, width> sqrt(vector_impl<T, width> src) {
   static_assert(cl::is_floating_point<T>::value,
                 "illegal type provided in sqrt");
   return __cm_cl_sqrt(src, use_fast);
