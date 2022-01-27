@@ -467,20 +467,34 @@ namespace IGC
 #endif
         }
 
+        std::string& GetShaderOverridePathString()
+        {
+            static std::string path = IGC_IS_FLAG_ENABLED(ShaderOverride) ?
+                std::string(GetBaseIGCOutputFolder()) + "ShaderOverride/" :
+                "";
+            return path;
+        }
+
+        void IGC_DEBUG_API_CALL SetShaderOverridePath(OutputFolderName pOutputFolderName)
+        {
+            static std::mutex m;
+            std::lock_guard<std::mutex> lck(m);
+            std::string& path = GetShaderOverridePathString();
+            if (pOutputFolderName != nullptr)
+            {
+                path = pOutputFolderName;
+            }
+            else
+            {
+                path = "";
+            }
+        }
+
         OutputFolderName IGC_DEBUG_API_CALL GetShaderOverridePath()
         {
-            if(IGC_IS_FLAG_ENABLED(ShaderOverride))
-            {
-                static std::mutex m;
-                std::lock_guard<std::mutex> lck(m);
-                static std::string overridePath;
-                if(overridePath == "")
-                {
-                    overridePath = std::string(GetBaseIGCOutputFolder()) + "ShaderOverride/";
-                }
-                return overridePath.c_str();
-            }
-            return "";
+            // Return overridePath even though ShaderOverride is not set.
+            std::string& overridePath = GetShaderOverridePathString();
+            return overridePath.c_str();
         }
 
         OutputFolderName IGC_DEBUG_API_CALL GetShaderOutputFolder()
