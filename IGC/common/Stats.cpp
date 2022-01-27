@@ -664,7 +664,7 @@ void TimeStats::printTime( ShaderType type, ShaderHash hash, void* context ) con
 void TimeStats::printSumTime() const
 {
     // If using regkey to turn on timestats, CorpusName is not initialized properly
-    if (strlen(IGC::Debug::GetShaderCorpusName()) == 0)
+    if (sizeof(IGC::Debug::GetShaderCorpusName()) == 0)
     {
         std::stringstream corpusName;
         corpusName << m_totalShaderCount << " shaders";
@@ -1040,11 +1040,11 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
     IGC_ASSERT_MESSAGE(m_isPostProcessed, "Print functions should only be called on a Post-Processed TimeStats object");
 
     std::string subFile = "TimeStat_";
-    if (strlen(IGC::Debug::GetShaderCorpusName()) == 0)
+    if (sizeof(IGC::Debug::GetShaderCorpusName()) == 0)
         subFile += "Shaders";
     else
         subFile += IGC::Debug::GetShaderCorpusName();
-    const std::string outputFilePath = 
+    const std::string outputFilePath =
 #if defined(__linux__)
     subFile + ".csv";
 #else
@@ -1104,7 +1104,7 @@ void TimeStats::printPerPassTimeCSV(std::string const& corpusName) const
     }
 
     std::string subFile = "TimeStatPerPass_";
-    if (strlen(IGC::Debug::GetShaderCorpusName()) == 0)
+    if (sizeof(IGC::Debug::GetShaderCorpusName()) == 0)
         subFile += "Shaders";
     else
         subFile += IGC::Debug::GetShaderCorpusName();
@@ -1267,7 +1267,8 @@ void CMemoryReport::DumpMemoryStats( ShaderType type, ShaderHash hash )
             shaderName = shaderName.substr(shaderName.find_last_of("\\") + 1, shaderName.size());
         }
 
-        sprintf(m_DumpMemoryStatsFileName, "%s", shaderName.c_str());
+        sprintf_s(m_DumpMemoryStatsFileName, sizeof(m_DumpMemoryStatsFileName),
+            "%s", shaderName.c_str());
 
         iSTD::FileWrite(  csvFileGlobal, "%s,%u", m_DumpMemoryStatsFileName, g_MemoryReport.m_Stat.HeapUsedPeak/1024 );
         iSTD::FileWrite(  csvFileAllocs, "%s,%u", m_DumpMemoryStatsFileName, g_MemoryReport.m_Stat.NumAllocations );
