@@ -694,7 +694,7 @@ namespace vISA
         bool m_EUFusionWANeeded;
     public:
         bool EUFusionWANeeded() const { return m_EUFusionWANeeded; }
-        void addEUFusionWAInsts(G4_BB* bb, G4_INST* inst);
+        void addEUFusionWAInsts(G4_INST* inst);
         void removeEUFusionWAInst(G4_INST* inst) { EUFusionWAInsts.erase(inst); }
         const std::unordered_set<G4_INST*>& getEUFusionWAInsts() { return EUFusionWAInsts; }
     public:
@@ -1203,7 +1203,11 @@ namespace vISA
                 verifyAugmentation = std::make_unique<VerifyAugmentation>();
             }
 
-            m_EUFusionWANeeded = builder.hasFusedEU();
+            // Need call WA for EU Fusion for non-entry function
+            m_EUFusionWANeeded = builder.hasFusedEU()
+                && builder.getOption(vISA_fusedCallWA)
+                && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall())
+                && !builder.getIsKernel();
         }
 
         void emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const;

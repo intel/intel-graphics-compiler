@@ -112,11 +112,6 @@ void CoalesceSpillFills::copyToOldFills(
 
             bb->insertBefore(f, copy);
 
-            if (gra.EUFusionWANeeded())
-            {
-                gra.addEUFusionWAInsts(bb, copy);
-            }
-
             numGRFs -= simdSize == 8 ? 1 : 2;
             rowOff += simdSize == 8 ? 1 : 2;
         }
@@ -1415,12 +1410,6 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
                         G4_INST* copyInst = kernel.fg.builder->createMov(
                             g4::SIMD8, dstRgn, srcRgn, InstOpt_WriteEnable, false);
                         bb->insertBefore(instIt, copyInst);
-
-                        if (gra.EUFusionWANeeded())
-                        {
-                            gra.addEUFusionWAInsts(bb, copyInst);
-                        }
-
                         elems -= 8;
                         row++;
                     }
@@ -1877,11 +1866,6 @@ void CoalesceSpillFills::spillFillCleanup()
                     G4_INST* mov = kernel.fg.builder->createMov(
                         execSize, nDst, nSrc, InstOpt_WriteEnable, false);
                     bb->insertBefore(instIt, mov);
-
-                    if (gra.EUFusionWANeeded())
-                    {
-                        gra.addEUFusionWAInsts(bb, mov);
-                    }
 
                     row += execSize / 8;
                 }
