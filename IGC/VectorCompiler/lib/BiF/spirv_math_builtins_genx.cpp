@@ -701,6 +701,9 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(s_abs, ulong, long, 16,
 SPIRV_MATH_BUILTIN_DECL_3ARG_SCALAR_CUSTOM(mad, float, cm::math::mad)
 SPIRV_MATH_BUILTIN_DECL_3ARG_SCALAR_CUSTOM(mad, double, cm::math::mad)
 
+SPIRV_MATH_BUILTIN_DECL_3ARG_SCALAR_CUSTOM(fma, float, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_SCALAR_CUSTOM(fma, double, cm::math::mad)
+
 #define SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(FUNC_NAME, ELEMENT_TYPE, N, \
                                                    CUSTOM_NAME)                \
   CM_NODEBUG CM_INLINE cl_vector<ELEMENT_TYPE, N> __spirv_ocl_##FUNC_NAME(     \
@@ -724,3 +727,14 @@ SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(mad, double, 3, cm::math::mad)
 SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(mad, double, 4, cm::math::mad)
 SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(mad, double, 8, cm::math::mad)
 SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(mad, double, 16, cm::math::mad)
+
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, float, 2, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, float, 3, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, float, 4, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, float, 8, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, float, 16, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, double, 2, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, double, 3, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, double, 4, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, double, 8, cm::math::mad)
+SPIRV_MATH_BUILTIN_DECL_3ARG_VECTOR_CUSTOM(fma, double, 16, cm::math::mad)
