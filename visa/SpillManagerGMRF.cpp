@@ -4918,7 +4918,7 @@ void GlobalRA::saveRestoreA0(G4_BB * bb)
                bb->insertBefore(instIt, a0SSO);
                if (EUFusionCallWANeeded())
                {
-                   addEUFusionCallWAInsts(a0SSO);
+                   addEUFusionCallWAInst(a0SSO);
                }
                hasActiveSpillFill = true;
             }
@@ -5143,7 +5143,7 @@ void GlobalRA::expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
     {
         removeEUFusionCallWAInst(inst);
         for (auto inst : builder->instList)
-            addEUFusionCallWAInsts(inst);
+            addEUFusionCallWAInst(inst);
     }
 
     splice(bb, instIt, builder->instList, inst->getCISAOff());
@@ -5226,7 +5226,7 @@ void GlobalRA::expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
     {
         removeEUFusionCallWAInst(inst);
         for (auto inst : builder->instList)
-            addEUFusionCallWAInsts(inst);
+            addEUFusionCallWAInst(inst);
     }
 
     splice(bb, instIt, builder->instList, inst->getCISAOff());
@@ -5404,9 +5404,9 @@ void GlobalRA::expandSpillStackcall(
         if (getEUFusionCallWAInsts().count(inst) > 0)
         {
             removeEUFusionCallWAInst(inst);
-            addEUFusionCallWAInsts(spillSends);
+            addEUFusionCallWAInst(spillSends);
             if (hdrSetInst)
-                addEUFusionCallWAInsts(hdrSetInst);
+                addEUFusionCallWAInst(hdrSetInst);
         }
 
         if (kernel.getOption(vISA_GenerateDebugInfo))
@@ -5637,9 +5637,9 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
         if (getEUFusionCallWAInsts().count(inst) > 0)
         {
             removeEUFusionCallWAInst(inst);
-            addEUFusionCallWAInsts(fillSends);
+            addEUFusionCallWAInst(fillSends);
             if (hdrSetInst)
-                addEUFusionCallWAInsts(hdrSetInst);
+                addEUFusionCallWAInst(hdrSetInst);
         }
 
         std::stringstream comments;

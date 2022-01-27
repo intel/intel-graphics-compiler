@@ -6917,7 +6917,7 @@ unsigned GlobalRA::getRegionDisp(
     return rowOffset + columnOffset;
 }
 
-void GlobalRA::addEUFusionCallWAInsts(G4_INST* inst)
+void GlobalRA::addEUFusionCallWAInst(G4_INST* inst)
 {
     if(EUFusionCallWANeeded())
         EUFusionCallWAInsts.insert(inst);
@@ -7677,7 +7677,7 @@ void GlobalRA::stackCallProlog()
             entryBB->remove(oldSaveInst);
         }
 
-        addEUFusionCallWAInsts(store);
+        addEUFusionCallWAInst(store);
 
         return;
     }
@@ -8371,8 +8371,8 @@ void GlobalRA::addCalleeStackSetupCode()
             builder.kernel.getKernelDebugInfo()->setFrameSize(frameSize * 16);
         }
 
-        addEUFusionCallWAInsts(createBEFP);
-        addEUFusionCallWAInsts(addInst);
+        addEUFusionCallWAInst(createBEFP);
+        addEUFusionCallWAInst(addInst);
 
         if (EUFusionCallWANeeded())
         {
@@ -8719,7 +8719,7 @@ void GlobalRA::addStoreRestoreToReturn()
             load = builder.createFill(dstData, G4_ExecSize(execSize), 1, 0, builder.getBEFP(), InstOpt_WriteEnable, false);
         }
         fretBB->insertBefore(iter, load);
-        addEUFusionCallWAInsts(load);
+        addEUFusionCallWAInst(load);
         restoreBE_FPInst = load;
     }
 

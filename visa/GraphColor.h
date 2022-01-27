@@ -694,7 +694,7 @@ namespace vISA
         bool m_EUFusionCallWANeeded;
     public:
         bool EUFusionCallWANeeded() const { return m_EUFusionCallWANeeded; }
-        void addEUFusionCallWAInsts(G4_INST* inst);
+        void addEUFusionCallWAInst(G4_INST* inst);
         void removeEUFusionCallWAInst(G4_INST* inst) { EUFusionCallWAInsts.erase(inst); }
         const std::unordered_set<G4_INST*>& getEUFusionCallWAInsts() { return EUFusionCallWAInsts; }
     public:
