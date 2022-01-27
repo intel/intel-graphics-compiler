@@ -1740,6 +1740,11 @@ namespace IGC
             kernelArgs.checkForZeroPerThreadData();
         }
 
+        const bool useInlineData = passNOSInlineData();
+        const uint inlineDataSize = 32;
+        bool inlineDataProcessed = false;
+        uint offsetCorrection = 0;
+
         for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i)
         {
             KernelArg arg = *i;
@@ -1798,6 +1803,53 @@ namespace IGC
                         offset = iSTD::Align(offset, getGRFSize());
                     }
 
+                    bool isFirstCrossThreadArgument = constantBufferStartSet && prevOffset == constantBufferStart;
+                    if (!useInlineData && isFirstCrossThreadArgument)
+                    {
+                        // if we don't use inline data and first argument does not start in first avaliable register
+                        // because of its alignment (which can be greater than GRF size), we correct the offset in payload,
+                        // so that it can be loaded properly in prolog, we want it to be on 0 offset in payload
+                        //
+                        // payload_position = offset - constant_buffer_start - correction
+                        //
+                        // examples:
+                        //  alignment   offset   constant_buffer_start  correction  payload_position
+                        //   128         128      32                     96          0
+                        //   8           32       32                     0           0
+                        offsetCorrection = offset - constantBufferStart;
+                    }
+
+                    if (useInlineData && !inlineDataProcessed &&
+                        arg.getArgType() != KernelArg::ArgType::IMPLICIT_LOCAL_IDS &&
+                        arg.getArgType() != KernelArg::ArgType::IMPLICIT_R0)
+                    {
+                        // Calc if we can fit this arg in inlinedata:
+                        // We check if arg exceeds inline data boundaries,
+                        // if it does, we align it to next GRF.
+                        if (offset + allocSize - constantBufferStart > inlineDataSize)
+                        {
+                            inlineDataProcessed = true;
+                            if (getGRFSize() > inlineDataSize)
+                            {
+                                // If inline data is used and a plaftorm has 64B GRFs,
+                                // we must correct the offset of cross-thread arguments
+                                // which are not loaded in inline data
+                                // the reason behind this is that inline data has only 32B,
+                                // so the position of next arg needs to be aligned to next GRF,
+                                // because the input arguments are loaded with alignment of GRF
+                                offset = iSTD::Align(offset, getGRFSize());
+                            }
+
+                            // numAllocInstances can be greater than 1, only when:
+                            // artype == IMPLICIT_LOCAL_IDS
+                            // so there is no need to handle it here
+
+                            // current arg is first to be loaded (it does not come in inlinedata)
+                            // so we want it to be at 32B offset in payload annotations (first 32B are for inline data)
+                            offsetCorrection = offset - inlineDataSize - constantBufferStart;
+                        }
+                    }
+
                     // And now actually tell vISA we need this space.
                     // (Except for r0, which is a predefined variable, and should never be allocated as input!)
                     const llvm::Argument* A = arg.getArg();
@@ -1818,9 +1870,12 @@ namespace IGC
                     // or else we would just need to increase an offset
                 }
 
+                const uint offsetInPayload = offset - constantBufferStart - offsetCorrection;
+
                 // Create annotations for the kernel argument
                 // If an arg is unused, don't generate patch token for it.
-                CreateAnnotations(&arg, offset - constantBufferStart);
+                CreateAnnotations(&arg, offsetInPayload);
+
                 if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
                     m_Context->getCompilerOption().EnableZEBinary) {
                     // FIXME: once we transit to zebin completely, we don't need to do
@@ -1828,7 +1883,8 @@ namespace IGC
 
                     // During the transition, we disable ZEBinary if there are unsupported
                     // arguments
-                    bool success = CreateZEPayloadArguments(&arg, offset - constantBufferStart);
+                    bool success = CreateZEPayloadArguments(&arg, offsetInPayload);
+
                     if (!success) {
                         // assertion tests if we force to EnableZEBinary but encounter unsupported features
                         IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary),
@@ -1903,7 +1959,7 @@ namespace IGC
         bool passInlineData = false;
         const bool loadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
         const bool inlineDataSupportEnabled =
-            (m_Platform->supportInlineDataOCL() &&
+            (m_Platform->supportInlineData() &&
             (m_DriverInfo->UseInlineData() || IGC_IS_FLAG_ENABLED(EnablePassInlineData)));
         if (loadThreadPayload &&
             inlineDataSupportEnabled)

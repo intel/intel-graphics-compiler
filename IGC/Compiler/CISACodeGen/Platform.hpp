@@ -1003,13 +1003,6 @@ bool supportAIParameterCombiningWithLODBiasEnabled() const
            GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID);
 }
 
-//todo: delete this once it's not true!!!
-//temporary solution!
-bool supportInlineDataOCL() const
-{
-        return isProductChildOf(IGFX_XE_HP_SDV);
-}
-
 bool useScratchSpaceForOCL() const
 {
     // Disable using scratch surface for private memory on XeHP_SDV
