@@ -690,13 +690,13 @@ namespace vISA
     class GlobalRA
     {
     private:
-        std::unordered_set<G4_INST*> EUFusionWAInsts;
-        bool m_EUFusionWANeeded;
+        std::unordered_set<G4_INST*> EUFusionCallWAInsts;
+        bool m_EUFusionCallWANeeded;
     public:
-        bool EUFusionWANeeded() const { return m_EUFusionWANeeded; }
-        void addEUFusionWAInsts(G4_INST* inst);
-        void removeEUFusionWAInst(G4_INST* inst) { EUFusionWAInsts.erase(inst); }
-        const std::unordered_set<G4_INST*>& getEUFusionWAInsts() { return EUFusionWAInsts; }
+        bool EUFusionCallWANeeded() const { return m_EUFusionCallWANeeded; }
+        void addEUFusionCallWAInsts(G4_INST* inst);
+        void removeEUFusionCallWAInst(G4_INST* inst) { EUFusionCallWAInsts.erase(inst); }
+        const std::unordered_set<G4_INST*>& getEUFusionCallWAInsts() { return EUFusionCallWAInsts; }
     public:
         std::unique_ptr<VerifyAugmentation> verifyAugmentation;
         std::unique_ptr<RegChartDump> regChart;
@@ -1204,7 +1204,7 @@ namespace vISA
             }
 
             // Need call WA for EU Fusion for non-entry function
-            m_EUFusionWANeeded = builder.hasFusedEU()
+            m_EUFusionCallWANeeded = builder.hasFusedEU()
                 && builder.getOption(vISA_fusedCallWA)
                 && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall())
                 && !builder.getIsKernel();

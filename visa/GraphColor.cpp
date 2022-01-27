@@ -6917,10 +6917,10 @@ unsigned GlobalRA::getRegionDisp(
     return rowOffset + columnOffset;
 }
 
-void GlobalRA::addEUFusionWAInsts(G4_INST* inst)
+void GlobalRA::addEUFusionCallWAInsts(G4_INST* inst)
 {
-    if(EUFusionWANeeded())
-        EUFusionWAInsts.insert(inst);
+    if(EUFusionCallWANeeded())
+        EUFusionCallWAInsts.insert(inst);
 }
 
 unsigned GlobalRA::getRegionByteSize(
@@ -7670,14 +7670,14 @@ void GlobalRA::stackCallProlog()
         auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
         entryBB->insertBefore(iter, store);
 
-        if (EUFusionWANeeded())
+        if (EUFusionCallWANeeded())
         {
             auto oldSaveInst = builder.getPartFDSaveInst();
             builder.setPartFDSaveInst(store);
             entryBB->remove(oldSaveInst);
         }
 
-        addEUFusionWAInsts(store);
+        addEUFusionCallWAInsts(store);
 
         return;
     }
@@ -8371,10 +8371,10 @@ void GlobalRA::addCalleeStackSetupCode()
             builder.kernel.getKernelDebugInfo()->setFrameSize(frameSize * 16);
         }
 
-        addEUFusionWAInsts(createBEFP);
-        addEUFusionWAInsts(addInst);
+        addEUFusionCallWAInsts(createBEFP);
+        addEUFusionCallWAInsts(addInst);
 
-        if (EUFusionWANeeded())
+        if (EUFusionCallWANeeded())
         {
             builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(createBEFP);
         }
@@ -8696,7 +8696,7 @@ void GlobalRA::addStoreRestoreToReturn()
     auto iter = std::prev(fretBB->end());
     assert((*iter)->isFReturn() && "fret BB must end with fret");
 
-    if (!EUFusionWANeeded())
+    if (!EUFusionCallWANeeded())
     {
         restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
         fretBB->insertBefore(iter, restoreBE_FPInst);
@@ -8719,7 +8719,7 @@ void GlobalRA::addStoreRestoreToReturn()
             load = builder.createFill(dstData, G4_ExecSize(execSize), 1, 0, builder.getBEFP(), InstOpt_WriteEnable, false);
         }
         fretBB->insertBefore(iter, load);
-        addEUFusionWAInsts(load);
+        addEUFusionCallWAInsts(load);
         restoreBE_FPInst = load;
     }
 
@@ -8729,7 +8729,7 @@ void GlobalRA::addStoreRestoreToReturn()
     {
         builder.kernel.getKernelDebugInfo()->setCallerBEFPRestoreInst(restoreBE_FPInst);
         builder.kernel.getKernelDebugInfo()->setCallerSPRestoreInst(restoreBE_FPInst);
-        if(!EUFusionWANeeded())
+        if(!EUFusionCallWANeeded())
             builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(saveBE_FPInst);
     }
 

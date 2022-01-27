@@ -5135,11 +5135,11 @@ void GlobalRA::expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
         spillOffset += numGRFToWrite * getGRFSize();
     }
 
-    if (getEUFusionWAInsts().count(inst) > 0)
+    if (getEUFusionCallWAInsts().count(inst) > 0)
     {
-        removeEUFusionWAInst(inst);
+        removeEUFusionCallWAInst(inst);
         for (auto inst : builder->instList)
-            addEUFusionWAInsts(inst);
+            addEUFusionCallWAInsts(inst);
     }
 
     splice(bb, instIt, builder->instList, inst->getCISAOff());
@@ -5218,11 +5218,11 @@ void GlobalRA::expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
         fillOffset += responseLength * getGRFSize();
     }
 
-    if (getEUFusionWAInsts().count(inst) > 0)
+    if (getEUFusionCallWAInsts().count(inst) > 0)
     {
-        removeEUFusionWAInst(inst);
+        removeEUFusionCallWAInst(inst);
         for (auto inst : builder->instList)
-            addEUFusionWAInsts(inst);
+            addEUFusionCallWAInsts(inst);
     }
 
     splice(bb, instIt, builder->instList, inst->getCISAOff());
@@ -5397,12 +5397,12 @@ void GlobalRA::expandSpillStackcall(
 
         bb->insertBefore(spillIt, spillSends);
 
-        if (getEUFusionWAInsts().count(inst) > 0)
+        if (getEUFusionCallWAInsts().count(inst) > 0)
         {
-            removeEUFusionWAInst(inst);
-            addEUFusionWAInsts(spillSends);
+            removeEUFusionCallWAInst(inst);
+            addEUFusionCallWAInsts(spillSends);
             if (hdrSetInst)
-                addEUFusionWAInsts(hdrSetInst);
+                addEUFusionCallWAInsts(hdrSetInst);
         }
 
         if (kernel.getOption(vISA_GenerateDebugInfo))
@@ -5630,12 +5630,12 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
 
         auto fillSends = createOwordFill(respSizeInOwords, fillDst);
 
-        if (getEUFusionWAInsts().count(inst) > 0)
+        if (getEUFusionCallWAInsts().count(inst) > 0)
         {
-            removeEUFusionWAInst(inst);
-            addEUFusionWAInsts(fillSends);
+            removeEUFusionCallWAInst(inst);
+            addEUFusionCallWAInsts(fillSends);
             if (hdrSetInst)
-                addEUFusionWAInsts(hdrSetInst);
+                addEUFusionCallWAInsts(hdrSetInst);
         }
 
         std::stringstream comments;
