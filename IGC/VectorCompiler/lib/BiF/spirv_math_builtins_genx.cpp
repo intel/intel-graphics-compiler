@@ -11,6 +11,11 @@ SPDX-License-Identifier: MIT
 
 using namespace cm;
 
+// Scalar IGC builtins use this flag to switch between "__builtin_spirv" and "__spirv" form of builtins.
+// If it's defined, below wrappers are not required anymore. This is just a transitionary solution.
+// Once Scalar IGC is switched to Khronos SPIRV Translator by default, below wrappers can just get removed.
+#ifndef __USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC__
+
 extern "C" {
 #include "spirv_math.h"
 }
@@ -301,6 +306,8 @@ SPIRV_MATH_BUILTIN_DECL_2_SAME_ELEMENT_TYPES_POINTER_VECTOR(sincos, double, 8,
                                                             __local, p3, f64);
 SPIRV_MATH_BUILTIN_DECL_2_SAME_ELEMENT_TYPES_POINTER_VECTOR(sincos, double, 16,
                                                             __local, p3, f64);
+
+#endif // __USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC__
 
 CM_NODEBUG CM_INLINE int __spirv_Unordered(float src0, float src1) {
   return math::is_unordered(src0, src1);

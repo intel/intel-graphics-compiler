@@ -57,7 +57,7 @@ function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   cmake_parse_arguments(PARSE_ARGV 4
                         EXTRA
                         ""
-                        "CLANG_INCLUDES"
+                        "CLANG_INCLUDES;CLANG_FLAGS"
                         "DEPENDS")
 
   if(EXTRA_DEPENDS)
@@ -86,7 +86,8 @@ function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
      set(BIF_CLANG_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CLANG_BC_NAME})
 
      add_custom_command(OUTPUT "${BIF_CLANG_BC_PATH}"
-      COMMAND clang-tool -cc1 ${CMCL_INCLUDES} ${VC_INCLUDES} ${UTILS_HEADERS} ${EXTRA_CLANG_INCLUDES}
+      COMMAND clang-tool -cc1 ${CMCL_INCLUDES} ${VC_INCLUDES} ${UTILS_HEADERS}
+               ${EXTRA_CLANG_INCLUDES} ${EXTRA_CLANG_FLAGS}
       -x cl -cl-std=clc++ -triple=${SPIR_TARGET}
       -O2 -disable-llvm-passes -emit-llvm-bc -o "${BIF_CLANG_BC_NAME}" ${CMCL_SRC}
       COMMENT "vc_embed_bif: Compiling CMCL source ${CMCL_SRC} to BC ${BIF_CLANG_BC_NAME}"
@@ -141,10 +142,16 @@ get_target_property(DIVREM_EXTRA_SOURCES VCEmuDivremBoilerplate SOURCES)
 vc_embed_bif(EMULATION_CPP_PATH "${FP2UI_SRC_PATH};${EMU_DIVREM_SRC_PATH}" VCEmulation 64
     DEPENDS "${DIVREM_EXTRA_SOURCES}")
 
+#Define the macro if Khronos SPIR-V translator is used.
+if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+  set(CLANG_FLAGS_FOR_SPIRV_BUILTINS "-D__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC__")
+endif()
+
 get_target_include_opt_list(IGC_SPIRV_HEADERS_INCLUDES IGCSPIRVHeaders)
+
 vc_embed_bif(SPIRV_BUILTINS_CPP_PATH
              "${SPIRV_MATH_BUILTINS_SRC_PATH};${SPIRV_ATOMIC_BUILTINS_SRC_PATH};${SPIRV_EXEC_BUILTINS_SRC_PATH}"
-             VCSPIRVBuiltins 64 CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES})
+             VCSPIRVBuiltins 64 CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES} CLANG_FLAGS ${CLANG_FLAGS_FOR_SPIRV_BUILTINS})
 
 add_custom_target(VCBiFPreparation
   DEPENDS ${PRINTF_OCL_32_CPP_PATH}
