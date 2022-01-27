@@ -52,9 +52,9 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Value.h"
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/Intrinsics.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstVisitor.h>
@@ -99,9 +99,9 @@ public:
 void GenXTrampolineInsertion::visitFunction(Function &F) {
   if (GenXIntrinsic::isAnyNonTrivialIntrinsic(&F))
     return;
-  if (genx::isEmulationFunction(F))
+  if (vc::isEmulationFunction(F))
     return;
-  if (genx::isKernel(&F))
+  if (vc::isKernel(&F))
     return;
 
   if (!F.hasLocalLinkage()) {
@@ -145,7 +145,7 @@ static void createTrampoline(Function &F,
   Trampoline->copyAttributesFrom(&F);
   // Trampoline function is an indirect stack call regardless of what type of
   // transformation we are doing.
-  if (!genx::requiresStackCall(Trampoline))
+  if (!vc::requiresStackCall(Trampoline))
     Trampoline->addFnAttr(genx::FunctionMD::CMStackCall);
 
   createCallToOrigFunc(*Trampoline, F, IRB);
@@ -156,10 +156,10 @@ static void createTrampoline(Function &F,
     return !CI || CI->getCalledFunction() != &F;
   });
 
-  IGC_ASSERT_MESSAGE(genx::isIndirect(Trampoline) ||
+  IGC_ASSERT_MESSAGE(vc::isIndirect(Trampoline) ||
                          Trampoline->hasExternalLinkage(),
                      "Trampoline function must be indirect");
-  IGC_ASSERT_MESSAGE(!genx::isIndirect(F), "Must be direct");
+  IGC_ASSERT_MESSAGE(!vc::isIndirect(F), "Must be direct");
 }
 
 bool GenXTrampolineInsertion::runOnModule(Module &M) {
@@ -182,9 +182,9 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
 
   for (auto *F : ExternalFuncs) {
     if (F->isDeclaration()) {
-      if (!genx::requiresStackCall(F))
+      if (!vc::requiresStackCall(F))
         F->addFnAttr(genx::FunctionMD::CMStackCall);
-      IGC_ASSERT_MESSAGE(genx::isIndirect(F) || F->hasExternalLinkage(),
+      IGC_ASSERT_MESSAGE(vc::isIndirect(F) || F->hasExternalLinkage(),
                          "Must be indirect");
       continue;
     }
@@ -199,10 +199,10 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
     if (llvm::none_of(F->users(), CheckDirectCall)) {
       // If the function is not called directly, there is no need to create a
       // trampoline function.
-      if (!genx::requiresStackCall(F))
+      if (!vc::requiresStackCall(F))
         F->addFnAttr(genx::FunctionMD::CMStackCall);
 
-      IGC_ASSERT_MESSAGE(genx::isIndirect(F), "Must be indirect");
+      IGC_ASSERT_MESSAGE(vc::isIndirect(F), "Must be indirect");
       continue;
     }
 

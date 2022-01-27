@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef VCOPT_LIB_GENXCODEGEN_GENXOCLRUNTIMEINFO_H
 #define VCOPT_LIB_GENXCODEGEN_GENXOCLRUNTIMEINFO_H
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include "llvm/ADT/Optional.h"
 #include "llvm/Pass.h"
@@ -185,10 +185,9 @@ public:
   private:
     void setInstructionUsageProperties(const FunctionGroup &FG,
                                        const GenXBackendConfig &BC);
-    void setMetadataProperties(genx::KernelMetadata &KM,
-                               const GenXSubtarget &ST);
+    void setMetadataProperties(vc::KernelMetadata &KM, const GenXSubtarget &ST);
     void setArgumentProperties(const Function &Kernel,
-                               const genx::KernelMetadata &KM,
+                               const vc::KernelMetadata &KM,
                                const GenXSubtarget &ST,
                                const GenXBackendConfig &BC);
     void setPrintStrings(const Module &KernelModule);

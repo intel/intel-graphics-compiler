@@ -26,9 +26,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/General/BiF.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
@@ -1715,7 +1715,7 @@ bool GenXEmulate::runOnModule(Module &M) {
   // Delete unused builtins, make used ones internal.
   for (auto I = M.begin(); I != M.end();) {
     Function &F = *I++;
-    if (genx::isEmulationFunction(F) || IsOldEmulationFunction(&F)) {
+    if (vc::isEmulationFunction(F) || IsOldEmulationFunction(&F)) {
       Changed = true;
       if (F.use_empty())
         F.eraseFromParent();
@@ -1787,7 +1787,7 @@ void GenXEmulate::buildEmuFunCache(Module &M) {
   };
 
   for (Function &F : M.getFunctionList()) {
-    if (!genx::isEmulationFunction(F))
+    if (!vc::isEmulationFunction(F))
       continue;
     for (auto &PrOp : DivRemPrefixes)
       UpdateCacheIfMatch(F, PrOp.Prefix, PrOp.Opcode);
@@ -1801,7 +1801,7 @@ void GenXEmulate::buildEmuFunCache(Module &M) {
 Value *GenXEmulate::emulateInst(Instruction *Inst) {
   Function *EmuFn = getEmulationFunction(Inst);
   if (EmuFn) {
-    IGC_ASSERT(genx::isEmulationFunction(*EmuFn));
+    IGC_ASSERT(vc::isEmulationFunction(*EmuFn));
     IGC_ASSERT_MESSAGE(!isa<CallInst>(Inst), "call emulation not supported yet");
     llvm::IRBuilder<> Builder(Inst);
     SmallVector<Value *, 8> Args(Inst->operands());
@@ -2041,7 +2041,7 @@ private:
       if (!IsLibraryFunction(F))
         continue;
 
-      F.addFnAttr(genx::FunctionMD::VCEmulationRoutine);
+      F.addFnAttr(vc::FunctionMD::VCEmulationRoutine);
       DeriveRoundingAttributes(F);
     }
 

@@ -103,7 +103,7 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "cmimpparam"
 
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/ImplicitArgsBuffer.h"
@@ -238,7 +238,7 @@ private:
   void ConvertToOCLPayload(Module &M);
 
   uint32_t MapToKind(unsigned IID) {
-    using namespace genx;
+    using namespace vc;
     switch (IID) {
       default:
         return KernelMetadata::AK_NORMAL;
@@ -358,7 +358,7 @@ public:
   std::pair<IntrIDSet, MaybeUndefFuncSeq>
   collectIndirectlyUsedImplArgs(Function &F) && {
     IGC_ASSERT_MESSAGE(
-        vc::isFixedSignatureDefinition(F) | genx::isKernel(&F),
+        vc::isFixedSignatureDefinition(F) | vc::isKernel(&F),
         "entry point must be a fixed signature function or a kernel");
     visitFunction</*IsEntry =*/true>(F);
     if (CalledFixedSignFuncs.hasValue()) {
@@ -468,7 +468,7 @@ void CMImpParam::processKernels(
     // argument which is not supported on CM RT.
     if (!IsCmRT)
       RequiredImplArgs.emplace(PseudoIntrinsic::PrivateBase);
-    genx::internal::createInternalMD(*Kernel);
+    vc::internal::createInternalMD(*Kernel);
     if (!RequiredImplArgs.empty())
       processKernel(Kernel, RequiredImplArgs);
   }
@@ -867,7 +867,7 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
   // able to pass an implicit argument as an additional argument there).
   // Entry is an external function by definition, don't stop on entry.
   if constexpr (!IsEntry) {
-    IGC_ASSERT_MESSAGE(!genx::isKernel(&F), "kernel call is unexpected");
+    IGC_ASSERT_MESSAGE(!vc::isKernel(&F), "kernel call is unexpected");
     if (vc::isFixedSignatureFunc(F)) {
       IGC_ASSERT_MESSAGE(!F.isDeclaration(),
                          "declarations are unexpected: call graph edge cannot "
@@ -913,7 +913,7 @@ CallGraphNode *CMImpParam::processKernel(Function *F,
                                          const IntrIDSet &UsedImplicits) {
   LLVMContext &Context = F->getContext();
 
-  IGC_ASSERT_MESSAGE(genx::isKernel(F),
+  IGC_ASSERT_MESSAGE(vc::isKernel(F),
                      "ProcessKernel invoked on non-kernel CallGraphNode");
 
   AttributeList AttrVec;
@@ -1010,16 +1010,16 @@ CallGraphNode *CMImpParam::processKernel(Function *F,
   }
 
   // Collect arguments linearization to store as metadata.
-  genx::ArgToImplicitLinearization LinearizedArgs;
+  vc::ArgToImplicitLinearization LinearizedArgs;
   if (!IsCmRT) {
     for (const auto &ArgLin : ArgsLin) {
       Argument *ExplicitArg = OldToNewArg[ArgLin.first];
-      genx::LinearizedArgInfo &LinearizedArg = LinearizedArgs[ExplicitArg];
+      vc::LinearizedArgInfo &LinearizedArg = LinearizedArgs[ExplicitArg];
       for (const auto &LinTy : ArgLin.second) {
         I2->setName("__arg_lin_" + ExplicitArg->getName() + "." +
                     std::to_string(LinTy.Offset));
-        ImpKinds.push_back(genx::KernelMetadata::AK_NORMAL |
-                           genx::KernelMetadata::IMP_OCL_LINEARIZATION);
+        ImpKinds.push_back(vc::KernelMetadata::AK_NORMAL |
+                           vc::KernelMetadata::IMP_OCL_LINEARIZATION);
         auto &Ctx = F->getContext();
         auto *I32Ty = Type::getInt32Ty(Ctx);
         ConstantInt *Offset = ConstantInt::get(I32Ty, LinTy.Offset);
@@ -1035,15 +1035,15 @@ CallGraphNode *CMImpParam::processKernel(Function *F,
   if (F->hasDLLExportStorageClass())
     NF->setDLLStorageClass(F->getDLLStorageClass());
 
-  genx::replaceFunctionRefMD(*F, *NF);
+  vc::replaceFunctionRefMD(*F, *NF);
 
   SmallVector<unsigned, 8> ArgKinds;
-  genx::KernelMetadata KM(NF);
+  vc::KernelMetadata KM{NF};
   // Update arg kinds for the NF.
   for (unsigned i = 0; i < KM.getNumArgs(); ++i) {
     if (LinearizedArgs.count(IGCLLVM::getArg(*NF, i)))
-      ArgKinds.push_back(genx::KernelMetadata::AK_NORMAL |
-                         genx::KernelMetadata::IMP_OCL_BYVALSVM);
+      ArgKinds.push_back(vc::KernelMetadata::AK_NORMAL |
+                         vc::KernelMetadata::IMP_OCL_BYVALSVM);
     else
       ArgKinds.push_back(KM.getArgKind(i));
   }

@@ -13,6 +13,7 @@ set(GENX_UTILS_SOURCES
   RegCategory.cpp
   Region.cpp
   ImplicitArgsBuffer.cpp
+  KernelInfo.cpp
   )
 
 add_library(VCGenXUtils ${GENX_UTILS_SOURCES})

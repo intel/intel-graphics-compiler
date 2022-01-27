@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "OCLRuntimeInfoPrinter.h"
 
-#include "vc/GenXOpts/Utils/InternalMetadata.h"
+#include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
@@ -84,13 +84,13 @@ class KernelArgBuilder final {
   using ArgKindType = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
   using ArgAccessKindType = GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
 
-  const genx::KernelMetadata &KM;
+  const vc::KernelMetadata &KM;
   const DataLayout &DL;
   const GenXSubtarget &ST;
   const GenXBackendConfig &BC;
 
 public:
-  KernelArgBuilder(const genx::KernelMetadata &KMIn, const DataLayout &DLIn,
+  KernelArgBuilder(const vc::KernelMetadata &KMIn, const DataLayout &DLIn,
                    const GenXSubtarget &STIn, const GenXBackendConfig &BCIn)
       : KM(KMIn), DL(DLIn), ST(STIn), BC(BCIn) {}
 
@@ -140,7 +140,7 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
   unsigned RawKind = KM.getArgKind(ArgNo);
 
   // Implicit arguments.
-  genx::KernelArgInfo KAI{RawKind};
+  vc::KernelArgInfo KAI{RawKind};
   if (KAI.isLocalSize())
     return ArgKindType::LocalSize;
   if (KAI.isGroupCount())
@@ -299,7 +299,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
 }
 
 void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
-    genx::KernelMetadata &KM, const GenXSubtarget &ST) {
+    vc::KernelMetadata &KM, const GenXSubtarget &ST) {
   Name = KM.getName().str();
   SLMSize = KM.getSLMSize();
 
@@ -308,7 +308,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
 }
 
 void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
-    const Function &Kernel, const genx::KernelMetadata &KM,
+    const Function &Kernel, const vc::KernelMetadata &KM,
     const GenXSubtarget &ST, const GenXBackendConfig &BC) {
   IGC_ASSERT_MESSAGE(Kernel.arg_size() == KM.getNumArgs(),
     "Expected same number of arguments");
@@ -317,7 +317,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
   auto NonPayloadArgs =
       make_filter_range(Kernel.args(), [&KM](const Argument &Arg) {
         uint32_t ArgKind = KM.getArgKind(Arg.getArgNo());
-        genx::KernelArgInfo KAI(ArgKind);
+        vc::KernelArgInfo KAI(ArgKind);
         return !KAI.isLocalIDs();
       });
   KernelArgBuilder ArgBuilder{KM, Kernel.getParent()->getDataLayout(), ST, BC};
@@ -357,11 +357,11 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
   GRFSizeInBytes = ST.getGRFByteSize();
 
   StatelessPrivateMemSize =
-      genx::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize());
+      vc::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize());
 
   SupportsDebugging = BC.emitDebuggableKernels();
 
-  genx::KernelMetadata KM{FG.getHead()};
+  vc::KernelMetadata KM{FG.getHead()};
   IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
   setMetadataProperties(KM, ST);
   setArgumentProperties(*FG.getHead(), KM, ST, BC);
@@ -537,7 +537,7 @@ static std::string getVISAAsmForFunction(const Function &F, VISABuilder &VB) {
 static std::string getVISAAsm(const FunctionGroup &FG, VISABuilder &VB) {
   std::string VISAAsm = getVISAAsmForFunction(*FG.getHead(), VB);
   const auto StackCalls = collectCalledFunctions(FG, [](const Function *F) {
-    return genx::requiresStackCall(F) && !genx::isIndirect(F);
+    return vc::requiresStackCall(F) && !vc::isIndirect(F);
   });
   return std::accumulate(StackCalls.begin(), StackCalls.end(), VISAAsm,
                          [&VB](std::string S, const Function *F) {
@@ -737,14 +737,14 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
   std::copy_if(FGA.subgroup_begin(), FGA.subgroup_end(),
                std::back_inserter(IndirectlyReferencedFuncs),
                [&BECfg = BC](const FunctionGroup *FG) {
-                 return genx::isIndirect(FG->getHead()) &&
+                 return vc::isIndirect(FG->getHead()) &&
                         !BECfg.directCallsOnly();
                });
   auto &&DeclsRange =
       llvm::make_filter_range(M.functions(), [](const Function &F) {
         if (!F.isDeclaration())
           return false;
-        return genx::isIndirect(F);
+        return vc::isIndirect(F);
       });
   if (!IndirectlyReferencedFuncs.empty() ||
       DeclsRange.begin() != DeclsRange.end())
@@ -774,7 +774,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   // calculation. This has to be redesign properly, maybe w/ multiple
   // KernelInfos or by introducing FunctionInfos
   const auto StackCalls = collectCalledFunctions(
-      FG, [](const Function *F) { return genx::requiresStackCall(F); });
+      FG, [](const Function *F) { return vc::requiresStackCall(F); });
   for (const Function *F : StackCalls) {
     const std::string FuncName = F->getName().str();
     VISAKernel *VF = VB.GetVISAKernel(FuncName);

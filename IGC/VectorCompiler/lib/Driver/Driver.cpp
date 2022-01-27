@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXCodeGen/GenXTarget.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/Status.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "llvm/GenXIntrinsics/GenXIntrOpts.h"
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
 

@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 
 #include "vc/GenXOpts/GenXAnalysis.h"
-#include "vc/GenXOpts/Utils/InternalMetadata.h"
+#include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -855,7 +855,7 @@ static bool isPredefinedVariable(SimpleValue SV) {
   IGC_ASSERT_MESSAGE(SV.getIndex() == 0,
                      "Expected single simple value for predefined variable");
   auto *GV = cast<GlobalVariable>(V);
-  return GV->hasAttribute(genx::VariableMD::VCPredefinedVariable);
+  return GV->hasAttribute(vc::VariableMD::VCPredefinedVariable);
 }
 
 /***********************************************************************

@@ -195,7 +195,7 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm/ADT/MapVector.h"
@@ -598,7 +598,7 @@ ModulePass *llvm::createGenXLateSimdCFConformanceWrapperPass() {
 
 static bool hasStackCall(const Module &M) {
   return std::any_of(M.begin(), M.end(),
-                     [](const auto &F) { return genx::requiresStackCall(&F); });
+                     [](const auto &F) { return vc::requiresStackCall(&F); });
 }
 
 /***********************************************************************

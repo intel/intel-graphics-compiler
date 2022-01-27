@@ -32,8 +32,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Utils/GenX/BreakConst.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/DebugInfo.h"
 #include "vc/Utils/General/FunctionAttrs.h"
@@ -675,7 +675,7 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
   if (F->hasDLLExportStorageClass())
     NF->setDLLStorageClass(F->getDLLStorageClass());
 
-  genx::replaceFunctionRefMD(*F, *NF);
+  vc::replaceFunctionRefMD(*F, *NF);
 
   // Now that the old function is dead, delete it. If there is a dangling
   // reference to the CallgraphNode, just leave the dead function around.

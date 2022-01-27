@@ -549,7 +549,7 @@ bool GenXLegalization::runOnFunction(Function &F) {
   // will be useful here.
   HasStackCalls =
       llvm::any_of(F.getParent()->functions(), [](const Function &MF) {
-        return genx::requiresStackCall(MF);
+        return vc::requiresStackCall(MF);
       });
   // Check args for illegal predicates.
   for (Function::arg_iterator fi = F.arg_begin(), fe = F.arg_end(); fi != fe;

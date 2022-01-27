@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
+
 #include "llvmWrapper/IR/Function.h"
 
-namespace llvm {
-namespace genx {
+using namespace llvm;
+using namespace vc;
 
 static MDNode *findNode(const Function &F, StringRef KernelsMDName,
                         unsigned KernelRefOp, unsigned MustExceed) {
@@ -35,12 +36,12 @@ static MDNode *findInternalNode(const Function &F) {
 }
 
 static MDNode *findExternalNode(const Function &F) {
-  return findNode(F, FunctionMD::GenXKernels, KernelMDOp::FunctionRef,
-                  KernelMDOp::ArgTypeDescs);
+  return findNode(F, genx::FunctionMD::GenXKernels,
+                  genx::KernelMDOp::FunctionRef,
+                  genx::KernelMDOp::ArgTypeDescs);
 }
 
-namespace internal {
-void createInternalMD(Function &F) {
+void vc::internal::createInternalMD(Function &F) {
   IGC_ASSERT_MESSAGE(!findInternalNode(F),
                      "Internal node has already been created!");
 
@@ -58,25 +59,25 @@ void createInternalMD(Function &F) {
   KernelMDs->addOperand(InternalNode);
 }
 
-void replaceInternalFunctionRef(const Function &From, Function &To) {
+void vc::internal::replaceInternalFunctionRef(const Function &From,
+                                              Function &To) {
   MDNode *Node = findInternalNode(From);
   IGC_ASSERT_MESSAGE(Node, "Replacement was called for non existing in kernel "
                            "internal metadata function");
   Node->replaceOperandWith(internal::KernelMDOp::FunctionRef,
                            ValueAsMetadata::get(&To));
 }
-} // namespace internal
 
-void replaceFunctionRefMD(const Function &From, Function &To) {
+void vc::replaceFunctionRefMD(const Function &From, Function &To) {
   Module *M = To.getParent();
-  NamedMDNode *Named = M->getNamedMetadata(FunctionMD::GenXKernels);
+  NamedMDNode *Named = M->getNamedMetadata(genx::FunctionMD::GenXKernels);
   IGC_ASSERT(Named);
 
   auto Res =
       std::find_if(Named->op_begin(), Named->op_end(), [&From](MDNode *Node) {
-        auto *NodeVal =
-            cast<ValueAsMetadata>(Node->getOperand(KernelMDOp::FunctionRef))
-                ->getValue();
+        auto *NodeVal = cast<ValueAsMetadata>(
+                            Node->getOperand(genx::KernelMDOp::FunctionRef))
+                            ->getValue();
         auto *F = cast<Function>(NodeVal);
         return &From == F;
       });
@@ -84,7 +85,7 @@ void replaceFunctionRefMD(const Function &From, Function &To) {
                      "Cannot find MD for 'From' function");
 
   MDNode *FromNode = *Res;
-  FromNode->replaceOperandWith(KernelMDOp::FunctionRef,
+  FromNode->replaceOperandWith(genx::KernelMDOp::FunctionRef,
                                ValueAsMetadata::get(&To));
 
   internal::replaceInternalFunctionRef(From, To);
@@ -160,8 +161,8 @@ extractLinearizationMD(const Function &F, const MDNode *LinearizationNode) {
   return Linearization;
 }
 
-KernelMetadata::KernelMetadata(const Function *F) {
-  if (!genx::isKernel(F))
+vc::KernelMetadata::KernelMetadata(const Function *F) {
+  if (!vc::isKernel(F))
     return;
 
   ExternalNode = findExternalNode(*F);
@@ -173,25 +174,25 @@ KernelMetadata::KernelMetadata(const Function *F) {
   this->F = F;
   IsKernel = true;
   if (MDString *MDS =
-          dyn_cast<MDString>(ExternalNode->getOperand(KernelMDOp::Name)))
+          dyn_cast<MDString>(ExternalNode->getOperand(genx::KernelMDOp::Name)))
     Name = MDS->getString();
   if (ConstantInt *Sz = getValueAsMetadata<ConstantInt>(
-          ExternalNode->getOperand(KernelMDOp::SLMSize)))
+          ExternalNode->getOperand(genx::KernelMDOp::SLMSize)))
     SLMSize = Sz->getZExtValue();
-  if (ExternalNode->getNumOperands() > KernelMDOp::NBarrierCnt)
+  if (ExternalNode->getNumOperands() > genx::KernelMDOp::NBarrierCnt)
     if (ConstantInt *Sz = getValueAsMetadata<ConstantInt>(
-            ExternalNode->getOperand(KernelMDOp::NBarrierCnt)))
+            ExternalNode->getOperand(genx::KernelMDOp::NBarrierCnt)))
       NBarrierCnt = Sz->getZExtValue();
   // Build the argument kinds and offsets arrays that should correspond to the
   // function arguments (both explicit and implicit)
   MDNode *KindsNode =
-      dyn_cast<MDNode>(ExternalNode->getOperand(KernelMDOp::ArgKinds));
+      dyn_cast<MDNode>(ExternalNode->getOperand(genx::KernelMDOp::ArgKinds));
   MDNode *OffsetsNode =
-      dyn_cast<MDNode>(ExternalNode->getOperand(KernelMDOp::ArgOffsets));
+      dyn_cast<MDNode>(ExternalNode->getOperand(genx::KernelMDOp::ArgOffsets));
   MDNode *InputOutputKinds =
-      dyn_cast<MDNode>(ExternalNode->getOperand(KernelMDOp::ArgIOKinds));
-  MDNode *ArgDescNode =
-      dyn_cast<MDNode>(ExternalNode->getOperand(KernelMDOp::ArgTypeDescs));
+      dyn_cast<MDNode>(ExternalNode->getOperand(genx::KernelMDOp::ArgIOKinds));
+  MDNode *ArgDescNode = dyn_cast<MDNode>(
+      ExternalNode->getOperand(genx::KernelMDOp::ArgTypeDescs));
 
   MDNode *IndexesNode = nullptr;
   MDNode *OffsetInArgsNode = nullptr;
@@ -251,7 +252,8 @@ static MDNode *createArgLinearizationMD(const ImplicitLinearizationInfo &Info) {
   return MDNode::get(Ctx, {ArgMD, OffsetMD});
 }
 
-void KernelMetadata::updateLinearizationMD(ArgToImplicitLinearization &&Lin) {
+void vc::KernelMetadata::updateLinearizationMD(
+    ArgToImplicitLinearization &&Lin) {
   Linearization = std::move(Lin);
 
   std::vector<Metadata *> LinMDs;
@@ -273,8 +275,8 @@ void KernelMetadata::updateLinearizationMD(ArgToImplicitLinearization &&Lin) {
 }
 
 template <typename InputIt>
-void KernelMetadata::updateArgsMD(InputIt Begin, InputIt End, MDNode *Node,
-                                  unsigned NodeOpNo) const {
+void vc::KernelMetadata::updateArgsMD(InputIt Begin, InputIt End, MDNode *Node,
+                                      unsigned NodeOpNo) const {
   IGC_ASSERT(F);
   IGC_ASSERT(Node);
   IGC_ASSERT_MESSAGE(std::distance(Begin, End) == getNumArgs(),
@@ -290,31 +292,35 @@ void KernelMetadata::updateArgsMD(InputIt Begin, InputIt End, MDNode *Node,
   Node->replaceOperandWith(NodeOpNo, NewNode);
 }
 
-void KernelMetadata::updateArgOffsetsMD(SmallVectorImpl<unsigned> &&Offsets) {
+void vc::KernelMetadata::updateArgOffsetsMD(
+    SmallVectorImpl<unsigned> &&Offsets) {
   ArgOffsets = std::move(Offsets);
   updateArgsMD(ArgOffsets.begin(), ArgOffsets.end(), ExternalNode,
-               KernelMDOp::ArgOffsets);
+               genx::KernelMDOp::ArgOffsets);
 }
-void KernelMetadata::updateArgKindsMD(SmallVectorImpl<unsigned> &&Kinds) {
+
+void vc::KernelMetadata::updateArgKindsMD(SmallVectorImpl<unsigned> &&Kinds) {
   ArgKinds = std::move(Kinds);
   updateArgsMD(ArgKinds.begin(), ArgKinds.end(), ExternalNode,
-               KernelMDOp::ArgKinds);
+               genx::KernelMDOp::ArgKinds);
 }
-void KernelMetadata::updateArgIndexesMD(SmallVectorImpl<unsigned> &&Indexes) {
+
+void vc::KernelMetadata::updateArgIndexesMD(
+    SmallVectorImpl<unsigned> &&Indexes) {
   ArgIndexes = std::move(Indexes);
   updateArgsMD(ArgIndexes.begin(), ArgIndexes.end(), InternalNode,
                internal::KernelMDOp::ArgIndexes);
 }
-void KernelMetadata::updateOffsetInArgsMD(SmallVectorImpl<unsigned> &&Offsets) {
+
+void vc::KernelMetadata::updateOffsetInArgsMD(
+    SmallVectorImpl<unsigned> &&Offsets) {
   OffsetInArgs = std::move(Offsets);
   updateArgsMD(OffsetInArgs.begin(), OffsetInArgs.end(), InternalNode,
                internal::KernelMDOp::OffsetInArgs);
 }
-void KernelMetadata::updateBTIndicesMD(std::vector<int> &&BTIndices) {
+
+void vc::KernelMetadata::updateBTIndicesMD(std::vector<int> &&BTIndices) {
   BTIs = std::move(BTIndices);
   updateArgsMD(BTIs.begin(), BTIs.end(), InternalNode,
                internal::KernelMDOp::BTIndices);
 }
-
-} // namespace genx
-} // namespace llvm

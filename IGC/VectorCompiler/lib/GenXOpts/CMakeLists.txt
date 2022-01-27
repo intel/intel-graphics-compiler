@@ -9,7 +9,6 @@
 set(OPT_SOURCES
   CMAnalysis/InstructionSimplifyGenX.cpp
   CMAnalysis/ConstantFoldingGenX.cpp
-  CMTrans/KernelInfo.cpp
   CMTrans/CMABI.cpp
   CMTrans/CMImpParam.cpp
   CMTrans/CMKernelArgOffset.cpp

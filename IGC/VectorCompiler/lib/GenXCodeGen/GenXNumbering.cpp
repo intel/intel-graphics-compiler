@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXBaling.h"
 #include "GenXLiveness.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
@@ -83,7 +83,7 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
     BBNumber->Index = BBNumbers.size() - 1;
     Numbers[Block] = Num++;
     // If this is the first block of a kernel, reserve kernel arg copy slots.
-    if (Block == &Func->front() && isKernel(Func))
+    if (Block == &Func->front() && vc::isKernel(Func))
       for (auto ai = Func->arg_begin(), ae = Func->arg_end(); ai != ae; ++ai)
         ++Num;
     // Iterate the instructions.
@@ -222,7 +222,7 @@ unsigned GenXNumbering::getArgIndirectionNumber(CallInst *CI, unsigned OperandNu
  */
 unsigned GenXNumbering::getKernelArgCopyNumber(Argument *Arg)
 {
-  IGC_ASSERT(genx::isKernel(Arg->getParent()));
+  IGC_ASSERT(vc::isKernel(Arg->getParent()));
   return Numbers[&Arg->getParent()->front()] + 1 + Arg->getArgNo();
 }
 

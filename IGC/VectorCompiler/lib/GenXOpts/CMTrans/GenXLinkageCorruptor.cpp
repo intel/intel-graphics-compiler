@@ -7,8 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include "Probe/Assertion.h"
 
@@ -70,11 +70,11 @@ bool GenXLinkageCorruptor::runOnModule(Module &M) {
     if (F.hasAddressTaken()) {
       F.addFnAttr(genx::FunctionMD::CMStackCall);
       Changed = true;
-      IGC_ASSERT(genx::isIndirect(F));
+      IGC_ASSERT(vc::isIndirect(F));
     }
 
     // Convert non-kernel to stack call if applicable
-    if (FCtrl == FunctionControl::StackCall && !genx::requiresStackCall(&F)) {
+    if (FCtrl == FunctionControl::StackCall && !vc::requiresStackCall(&F)) {
       LLVM_DEBUG(dbgs() << "Adding stack call to: " << F.getName() << "\n");
       F.addFnAttr(genx::FunctionMD::CMStackCall);
       Changed = true;
@@ -82,7 +82,7 @@ bool GenXLinkageCorruptor::runOnModule(Module &M) {
 
     // Do not change stack calls linkage as we may have both types of stack
     // calls.
-    if (genx::requiresStackCall(&F) && SaveStackCallLinkage)
+    if (vc::requiresStackCall(&F) && SaveStackCallLinkage)
       continue;
 
     F.setLinkage(GlobalValue::InternalLinkage);

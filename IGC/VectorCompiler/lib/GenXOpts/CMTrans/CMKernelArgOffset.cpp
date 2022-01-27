@@ -89,7 +89,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/Alignment.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
@@ -140,7 +140,7 @@ struct GrfParamZone {
 
 // CMKernelArgOffset pass
 class CMKernelArgOffset : public ModulePass {
-  genx::KernelMetadata *KM = nullptr;
+  vc::KernelMetadata *KM = nullptr;
 
   // Emit code for OCL runtime.
   bool OCLCodeGen = false;
@@ -193,8 +193,8 @@ Pass *llvm::createCMKernelArgOffsetPass(unsigned GrfByteSize, bool OCLCodeGen) {
 }
 
 // Check whether there is an input/output argument attribute.
-static bool canReorderArguments(const genx::KernelMetadata &KM) {
-  using ArgIOKind = genx::KernelMetadata::ArgIOKind;
+static bool canReorderArguments(const vc::KernelMetadata &KM) {
+  using ArgIOKind = vc::KernelMetadata::ArgIOKind;
   return llvm::all_of(KM.getArgIOKinds(),
                       [](ArgIOKind K) { return K == ArgIOKind::Normal; });
 }
@@ -233,7 +233,7 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
   // change the linkage attribute for the kernel
   F->setDLLStorageClass(llvm::GlobalValue::DLLExportStorageClass);
 
-  genx::KernelMetadata KM(F);
+  vc::KernelMetadata KM{F};
   this->KM = &KM;
 
   // Layout kernel arguments differently if to run on OpenCL runtime.
@@ -482,11 +482,11 @@ void CMKernelArgOffset::resolveByValArgs(Function *F) const {
 // ArgOffset = offset of Arg
 template <typename OutIterT>
 void setImplicitLinearizationOffset(Argument &Arg, unsigned ArgOffset,
-                                    const genx::KernelMetadata &KM,
+                                    const vc::KernelMetadata &KM,
                                     OutIterT OutIt) {
   IGC_ASSERT(KM.hasArgLinearization(&Arg));
   std::transform(KM.arg_lin_begin(&Arg), KM.arg_lin_end(&Arg), OutIt,
-                 [ArgOffset](const genx::ImplicitLinearizationInfo &Lin) {
+                 [ArgOffset](const vc::ImplicitLinearizationInfo &Lin) {
                    return std::make_pair(Lin.Arg, Lin.Offset->getZExtValue() +
                                                       ArgOffset);
                  });
@@ -508,7 +508,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     unsigned ThreadPayloads[] = {
         Offset // R1, local_id_x, local_id_y, local_id_z
     };
-    auto getImpOffset = [&](genx::KernelArgInfo AI) -> int {
+    auto getImpOffset = [&](vc::KernelArgInfo AI) -> int {
       if (AI.isLocalIDs())
         return ThreadPayloads[0];
       return -1;
@@ -533,7 +533,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
       if (StartGRF != EndGRF)
         Offset = alignTo(Offset, GrfByteSize);
       if (Arg->hasByValAttr()) {
-        PlacedArgs[Arg] = genx::KernelMetadata::SKIP_OFFSET_VAL;
+        PlacedArgs[Arg] = vc::KernelMetadata::SKIP_OFFSET_VAL;
         auto InsertIt = std::inserter(ImplicitLinearizationArgToOffset,
                                       ImplicitLinearizationArgToOffset.end());
         setImplicitLinearizationOffset(*Arg, Offset, *KM, InsertIt);
@@ -552,7 +552,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     auto ArgKinds = KM->getArgKinds();
     auto Kind = ArgKinds.begin();
     for (auto &Arg : F->args()) {
-      genx::KernelArgInfo AI(*Kind++);
+      vc::KernelArgInfo AI{*Kind++};
       int ImpOffset = getImpOffset(AI);
       if (ImpOffset > 0) {
         PlacedArgs[&Arg] = ImpOffset;
@@ -571,7 +571,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     Kind = ArgKinds.begin();
     unsigned Idx = 0;
     for (auto &Arg : F->args()) {
-      genx::KernelArgInfo AI(*Kind++);
+      vc::KernelArgInfo AI{*Kind++};
       bool IsBuffer = KM->isBufferType(Idx++);
 
       // Skip alaready assigned arguments.
@@ -581,7 +581,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
       // image/sampler arguments do not allocate vISA inputs
       // buffer arguments do allocate unused vISA inputs
       if (!AI.isNormalCategory() && !IsBuffer) {
-        PlacedArgs[&Arg] = genx::KernelMetadata::SKIP_OFFSET_VAL;
+        PlacedArgs[&Arg] = vc::KernelMetadata::SKIP_OFFSET_VAL;
         continue;
       }
 

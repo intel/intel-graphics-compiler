@@ -20,8 +20,8 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Utils/GenX/ImplicitArgsBuffer.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/General/DebugInfo.h"
 
 #include <llvm/CodeGen/TargetPassConfig.h>
@@ -134,7 +134,7 @@ bool GenXModule::runOnModule(Module &M) {
       }
       // recursive funcs must use stack
       if (Inst->getFunction() == &F) {
-        const bool UsesStack = genx::requiresStackCall(&F);
+        const bool UsesStack = vc::requiresStackCall(&F);
         IGC_ASSERT_MESSAGE(
             UsesStack,
             "Found recursive function without CMStackCall attribute");

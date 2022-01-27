@@ -35,10 +35,10 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXVisaRegAlloc.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
@@ -528,7 +528,7 @@ class GenXKernelBuilder {
 
   VISAKernel *MainKernel = nullptr;
   VISAFunction *Kernel = nullptr;
-  genx::KernelMetadata TheKernelMetadata;
+  vc::KernelMetadata TheKernelMetadata;
   LLVMContext &Ctx;
   const DataLayout &DL;
 
@@ -991,7 +991,8 @@ static bool isExtOperandBaled(Use &U, const GenXBaling *Baling) {
 
 // Args:
 //    HasBarrier - whether kernel has barrier or sbarrier
-void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
+void addKernelAttrsFromMetadata(VISAKernel &Kernel,
+                                const vc::KernelMetadata &KM,
                                 const GenXSubtarget *Subtarget,
                                 bool HasBarrier) {
   unsigned SLMSizeInKb = divideCeil(KM.getSLMSize(), 1024);
@@ -1112,13 +1113,13 @@ void GenXKernelBuilder::runOnKernel() {
     switch (TheKernelMetadata.getArgInputOutputKind(Idx++)) {
     default:
       break;
-    case KernelMetadata::ArgIOKind::Input:
+    case vc::KernelMetadata::ArgIOKind::Input:
       Kind = "Input";
       break;
-    case KernelMetadata::ArgIOKind::Output:
+    case vc::KernelMetadata::ArgIOKind::Output:
       Kind = "Output";
       break;
-    case KernelMetadata::ArgIOKind::InputOutput:
+    case vc::KernelMetadata::ArgIOKind::InputOutput:
       Kind = "Input_Output";
       break;
     }
@@ -1211,7 +1212,7 @@ bool GenXKernelBuilder::run() {
 }
 
 static bool PatchImpArgOffset(Function *F, const GenXSubtarget *ST,
-                              const KernelMetadata &KM) {
+                              const vc::KernelMetadata &KM) {
   IGC_ASSERT(ST);
   if (ST->isOCLRuntime())
     return false;
@@ -1312,7 +1313,7 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
     uint16_t Offset = Item.second;
     IGC_ASSERT(Offset > 0);
     uint16_t NumBytes = (GV->getValueType()->getPrimitiveSizeInBits() / 8U);
-    uint8_t Kind = KernelMetadata::IMP_PSEUDO_INPUT;
+    uint8_t Kind = vc::KernelMetadata::IMP_PSEUDO_INPUT;
     Register *Reg = getRegForValueUntypedAndSaveAlias(GV);
     CISA_CALL(Kernel->CreateVISAImplicitInputVar(Reg->GetVar<VISA_GenVar>(Kernel),
                                                  Offset, NumBytes, Kind >> 3));
@@ -1324,7 +1325,7 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
     Register *Reg = RegAlloc->getRetIPArgument();
     uint16_t Offset = (127 * GrfByteSize + 6 * 4); // r127.6
     uint16_t NumBytes = (64 / 8);
-    uint8_t Kind = KernelMetadata::IMP_PSEUDO_INPUT;
+    uint8_t Kind = vc::KernelMetadata::IMP_PSEUDO_INPUT;
     CISA_CALL(Kernel->CreateVISAImplicitInputVar(Reg->GetVar<VISA_GenVar>(Kernel),
                                                  Offset, NumBytes, Kind >> 3));
   }
@@ -1338,7 +1339,7 @@ static bool setNoMaskByDefault(Function *F,
   // makes scalar jmp to goto transformation and goto has width less than 32, NM
   // must be used by default. Otherwise, each legalized instruction that uses
   // M5-M8 will work incorrectly if at least one lane is disabled.
-  if (genx::requiresStackCall(F))
+  if (vc::requiresStackCall(F))
     return true;
 
   for (auto &BB : F->getBasicBlockList())
@@ -1371,7 +1372,7 @@ void GenXKernelBuilder::buildInstructions() {
 
     LastUsedAliasMap.clear();
 
-    if (genx::isKernel(Func) || genx::requiresStackCall(Func)) {
+    if (vc::isKernel(Func) || vc::requiresStackCall(Func)) {
       KernFunc = Func;
     } else {
       auto *FuncFG = FGA->getAnyGroup(Func);
@@ -2722,7 +2723,7 @@ static bool checkInsertToRetv(InsertValueInst *Inst) {
 
   if (auto RI = dyn_cast<ReturnInst>(Inst->use_begin()->getUser())) {
     const auto *F = RI->getFunction();
-    return genx::requiresStackCall(F);
+    return vc::requiresStackCall(F);
   }
 
   return false;
@@ -2767,7 +2768,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     if (auto *CI = dyn_cast<CallInst>(Inst->getOperand(0)))
       // translate extraction of structured type from retv
       if (!UseNewStackBuilder && !CI->isInlineAsm() &&
-          (genx::requiresStackCall(CI->getCalledFunction()) ||
+          (vc::requiresStackCall(CI->getCalledFunction()) ||
            IGCLLVM::isIndirectCall(*CI)))
         buildExtractRetv(EVI);
     // no code generated
@@ -3178,7 +3179,7 @@ bool GenXKernelBuilder::allowI64Ops() const {
 void GenXKernelBuilder::collectKernelInfo() {
   for (auto It = FG->begin(), E = FG->end(); It != E; ++It) {
     auto Func = *It;
-    HasStackcalls |= genx::requiresStackCall(Func);
+    HasStackcalls |= vc::requiresStackCall(Func);
     for (auto &BB : *Func) {
       for (auto &I : BB) {
         if (CallInst *CI = dyn_cast<CallInst>(&I)) {
@@ -3785,7 +3786,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     if (!Sz.isRet())
       V = CI->getArgOperand(Sz.getArgIdx());
     auto *EltType = V->getType()->getScalarType();
-    if (auto *MDType = CI->getMetadata(InstMD::SVMBlockType))
+    if (auto *MDType = CI->getMetadata(vc::InstMD::SVMBlockType))
       EltType = cast<ValueAsMetadata>(MDType->getOperand(0).get())->getType();
     ConstantInt *LogOp = cast<ConstantInt>(CI->getArgOperand(Num.getArgIdx()));
     unsigned LogNum = LogOp->getZExtValue();
@@ -5019,7 +5020,7 @@ bool GenXKernelBuilder::isInLoop(BasicBlock *BB) {
   Function *BBFunc = BB->getParent();
   // Cannot predict for stack calls and indirectly called functions.
   // Let's assume the function is in a loop.
-  if (genx::requiresStackCall(BBFunc))
+  if (vc::requiresStackCall(BBFunc))
     return true;
 
   IGC_ASSERT(LIs->getLoopInfo(BBFunc));
@@ -5393,7 +5394,7 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
       !Callee || !Callee->isDeclaration(),
       "Currently VC backend does not support modules with external functions");
 
-  if (!Callee || genx::requiresStackCall(Callee)) {
+  if (!Callee || vc::requiresStackCall(Callee)) {
     if (UseNewStackBuilder)
       buildStackCallLight(CI, DstDesc);
     else
@@ -5448,7 +5449,7 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
     if (DefaultFloatControl)
       buildControlRegUpdate(DefaultFloatControl, false);
   }
-  if (genx::requiresStackCall(Func)) {
+  if (vc::requiresStackCall(Func)) {
     CISA_CALL(Kernel->AppendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1,
                                                   EXEC_SIZE_16));
   } else {
@@ -5967,7 +5968,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
   CISA_CALL(
       Kernel->CreateVISASrcOperand(FpOpSrc, Fp, MODIFIER_NONE, 0, 1, 0, 0, 0));
 
-  if (genx::isKernel(Func) && (HasStackcalls || HasAlloca)) {
+  if (vc::isKernel(Func) && (HasStackcalls || HasAlloca)) {
     // init kernel stack
     VISA_GenVar *Hwtid = nullptr;
     CISA_CALL(Kernel->GetPredefinedVar(Hwtid, PREDEFINED_HW_TID));
@@ -6021,8 +6022,8 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
         EXEC_SIZE_1, FpOpDst, SpOpSrc));
     unsigned SMO = BackendConfig->getStackSurfaceMaxSize();
     Kernel->AddKernelAttribute("SpillMemOffset", 4, &SMO);
-  } else if (genx::requiresStackCall(Func)) {
-    if (genx::isIndirect(Func) && !BackendConfig->directCallsOnly()) {
+  } else if (vc::requiresStackCall(Func)) {
+    if (vc::isIndirect(Func) && !BackendConfig->directCallsOnly()) {
       int ExtVal = 1;
       Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
     }
@@ -6120,17 +6121,17 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
 }
 
 void GenXKernelBuilder::beginFunctionLight(Function *Func) {
-  if (genx::isKernel(Func))
+  if (vc::isKernel(Func))
     return;
-  if (!genx::requiresStackCall(Func))
+  if (!vc::requiresStackCall(Func))
     return;
-  if (genx::isIndirect(Func) && !BackendConfig->directCallsOnly()) {
+  if (vc::isIndirect(Func) && !BackendConfig->directCallsOnly()) {
     int ExtVal = 1;
     Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
   }
   // stack function prologue
-  auto *MDArg = Func->getMetadata(InstMD::FuncArgSize);
-  auto *MDRet = Func->getMetadata(InstMD::FuncRetSize);
+  auto *MDArg = Func->getMetadata(vc::InstMD::FuncArgSize);
+  auto *MDRet = Func->getMetadata(vc::InstMD::FuncRetSize);
   IGC_ASSERT(MDArg && MDRet);
   auto ArgSize =
       cast<ConstantInt>(
@@ -6158,7 +6159,7 @@ void GenXKernelBuilder::beginFunctionLight(Function *Func) {
  * also see build[Extract|Insert]Value).
  */
 void GenXKernelBuilder::endFunction(Function *Func, ReturnInst *RI) {
-  if (genx::requiresStackCall(Func)) {
+  if (vc::requiresStackCall(Func)) {
     VISA_GenVar *Sp = nullptr, *Fp = nullptr;
     CISA_CALL(Kernel->GetPredefinedVar(Sp, PREDEFINED_FE_SP));
     CISA_CALL(Kernel->GetPredefinedVar(Fp, PREDEFINED_FE_FP));
@@ -6304,8 +6305,8 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
   Function *Callee = CI->getCalledFunction();
 
   VISA_PredOpnd *Pred = nullptr;
-  auto *MDArg = CI->getMetadata(InstMD::FuncArgSize);
-  auto *MDRet = CI->getMetadata(InstMD::FuncRetSize);
+  auto *MDArg = CI->getMetadata(vc::InstMD::FuncArgSize);
+  auto *MDRet = CI->getMetadata(vc::InstMD::FuncRetSize);
   IGC_ASSERT(MDArg && MDRet);
   auto ArgSize =
       cast<ConstantInt>(

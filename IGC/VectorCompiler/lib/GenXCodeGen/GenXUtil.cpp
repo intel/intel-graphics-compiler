@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXIntrinsics.h"
 
-#include "vc/GenXOpts/Utils/InternalMetadata.h"
+#include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/Types.h"
 
@@ -2168,7 +2168,7 @@ unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
 bool genx::isRealGlobalVariable(const GlobalVariable &GV) {
   if (GV.hasAttribute("genx_volatile"))
     return false;
-  if (GV.hasAttribute(genx::VariableMD::VCPredefinedVariable))
+  if (GV.hasAttribute(vc::VariableMD::VCPredefinedVariable))
     return false;
   bool IsIndexedString =
       std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {

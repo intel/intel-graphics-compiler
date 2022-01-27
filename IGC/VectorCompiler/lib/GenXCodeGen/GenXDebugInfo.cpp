@@ -12,9 +12,9 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXVisaRegAlloc.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include "visa/include/visaBuilder_interface.h"
 
@@ -511,7 +511,7 @@ void ModuleToVisaTransformInfo::extractSubroutineInfo(
   for (const Function *SF : *Gr) {
     if (isKernelFunction(SF))
       continue;
-    if (genx::requiresStackCall(SF))
+    if (vc::requiresStackCall(SF))
       continue;
     checkedEmplace(SubroutineOwnersInfo, SF, &F);
   }
@@ -546,7 +546,7 @@ void ModuleToVisaTransformInfo::propagatePrimaryEmitter(
   const Function *F = CGNode.getFunction();
   if (!F)
     return;
-  if (genx::requiresStackCall(F) && !genx::isIndirect(F)) {
+  if (vc::requiresStackCall(F) && !vc::isIndirect(F)) {
     auto Range = FunctionOwnersInfo.equal_range(F);
     auto Res =
         std::find_if(Range.first, Range.second, [&PrimaryEmitter](auto Info) {
@@ -585,7 +585,7 @@ void ModuleToVisaTransformInfo::extractVisaFunctionsEmitters(
 
   for (const Function *F : OwnedFunctions) {
     // Skip "KernelFunctions" because they have already been processed.
-    if (genx::isIndirect(F) || genx::isKernel(F))
+    if (vc::isIndirect(F) || vc::isKernel(F))
       continue;
     VISAKernel *VF = VB.GetVISAKernel(F->getName().str());
     checkedEmplace(VisaSpawnerInfo, F, VF);
@@ -597,10 +597,10 @@ void ModuleToVisaTransformInfo::extractKernelFunctions(
     VISABuilder &VB, const FunctionGroupAnalysis &FGA) {
   for (const auto *FG : FGA.AllGroups()) {
     for (const Function *F : *FG) {
-      if (!genx::isIndirect(F) && !genx::isKernel(F))
+      if (!vc::isIndirect(F) && !vc::isKernel(F))
         continue;
       VISAKernel *VF = VB.GetVISAKernel(F->getName().str());
-      if (genx::isKernel(F))
+      if (vc::isKernel(F))
         checkedEmplace(SourceLevelKernels, F);
       checkedEmplace(KernelFunctionsInfo, F, VF);
       checkedEmplace(VisaSpawnerInfo, F, VF);

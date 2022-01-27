@@ -19,10 +19,10 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXVisa.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/BreakConst.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/ADT/StringRef.h"
@@ -663,7 +663,7 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
     ProperGather = LdVal;
   }
 
-  Gather->setMetadata(InstMD::SVMBlockType,
+  Gather->setMetadata(vc::InstMD::SVMBlockType,
                       MDNode::get(*m_ctx, llvm::ValueAsMetadata::get(
                                               UndefValue::get(LdEltTy))));
 
@@ -734,7 +734,7 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
   StI->eraseFromParent();
 
   Scatter->setMetadata(
-      InstMD::SVMBlockType,
+      vc::InstMD::SVMBlockType,
       MDNode::get(*m_ctx, llvm::ValueAsMetadata::get(
                               UndefValue::get(ValueOpTy->getScalarType()))));
 
@@ -1266,7 +1266,7 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
   std::unordered_set<Function *> Visited;
   std::queue<Function *> Worklist;
   std::for_each(M.begin(), M.end(), [&Worklist](Function &F) {
-    if (genx::isKernel(&F))
+    if (vc::isKernel(&F))
       Worklist.push(&F);
   });
 
@@ -1515,7 +1515,7 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   Changed |= processUsers();
 
   LLVM_DEBUG(dbgs() << "Processing args\n");
-  collectArgUsers(!genx::isKernel(&F));
+  collectArgUsers(!vc::isKernel(&F));
   Changed |= processUsers();
 
   for (auto Alloca : m_alloca) {
@@ -1536,7 +1536,7 @@ void GenXThreadPrivateMemory::visitFunction(Function &F) {
   LLVM_DEBUG(dbgs() << "Visiting func " << F.getName() << "\n");
   if (GenXIntrinsic::isAnyNonTrivialIntrinsic(&F))
     return;
-  // here we don't use genx::KernelMetadata as it's only able to
+  // here we don't use vc::KernelMetadata as it's only able to
   // deal with kernels while we want to look at functions as well
   NamedMDNode *Named =
       F.getParent()->getNamedMetadata(genx::FunctionMD::GenXKernels);
@@ -1547,7 +1547,8 @@ void GenXThreadPrivateMemory::visitFunction(Function &F) {
   auto NodeIt =
       std::find_if(Named->op_begin(), Named->op_end(), [&F](MDNode *N) {
         return N->getNumOperands() > KernelMDOp::ArgTypeDescs &&
-               getValueAsMetadata(N->getOperand(KernelMDOp::FunctionRef)) == &F;
+               vc::getValueAsMetadata(N->getOperand(KernelMDOp::FunctionRef)) ==
+                   &F;
       });
   if (NodeIt == Named->op_end()) {
     // not a kernel

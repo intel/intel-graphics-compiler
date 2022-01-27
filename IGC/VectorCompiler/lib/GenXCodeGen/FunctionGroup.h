@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 #ifndef LIB_GENXCODEGEN_FUNCTIONGROUP_H
 #define LIB_GENXCODEGEN_FUNCTIONGROUP_H
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallVector.h>
@@ -55,9 +55,9 @@ ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
 
 namespace genx {
 namespace fg {
-inline bool isGroupHead(const Function &F) { return genx::isKernel(&F); }
+inline bool isGroupHead(const Function &F) { return vc::isKernel(&F); }
 inline bool isSubGroupHead(const Function &F) {
-  return genx::requiresStackCall(F);
+  return vc::requiresStackCall(F);
 }
 inline bool isHead(const Function &F) {
   return isGroupHead(F) || isSubGroupHead(F);

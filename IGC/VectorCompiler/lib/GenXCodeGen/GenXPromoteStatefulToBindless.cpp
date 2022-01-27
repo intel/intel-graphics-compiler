@@ -38,9 +38,9 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXTargetMachine.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/Intrinsics.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -151,14 +151,14 @@ Optional<unsigned> PromoteToBindless::tryConvertBuffer(unsigned Kind,
   if (!BC.useBindlessBuffers())
     return None;
 
-  if (Kind != genx::KernelMetadata::AK_SURFACE)
+  if (Kind != vc::KernelMetadata::AK_SURFACE)
     return None;
 
-  if (!genx::isDescBufferType(Desc))
+  if (!vc::isDescBufferType(Desc))
     return None;
 
   // If this is a buffer, change argument kind to general value.
-  return genx::KernelMetadata::AK_NORMAL;
+  return vc::KernelMetadata::AK_NORMAL;
 }
 
 // Convert single stateful argument to bindless counterpart.
@@ -174,7 +174,7 @@ unsigned PromoteToBindless::convertSingleArg(unsigned Kind, StringRef Desc) {
 // Convert kernel arguments if there is any that need conversion.
 // Return true if metadata was modified.
 bool PromoteToBindless::convertKernelArguments(Function &F) {
-  genx::KernelMetadata KM{&F};
+  vc::KernelMetadata KM{&F};
 
   ArrayRef<unsigned> ArgKinds = KM.getArgKinds();
   ArrayRef<StringRef> ArgDescs = KM.getArgTypeDescs();
@@ -218,7 +218,7 @@ GlobalVariable &PromoteToBindless::createBSSVariable() {
   BSS = new GlobalVariable(M, I32Ty, /*isConstant=*/false,
                            GlobalValue::ExternalLinkage,
                            /*Initializer=*/nullptr, genx::BSSVariableName);
-  BSS->addAttribute(genx::VariableMD::VCPredefinedVariable);
+  BSS->addAttribute(vc::VariableMD::VCPredefinedVariable);
   return *BSS;
 }
 

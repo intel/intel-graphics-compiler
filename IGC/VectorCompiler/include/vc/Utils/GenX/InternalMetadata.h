@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef VC_GENXOPTS_UTILS_INTERNALMETADATA_H
-#define VC_GENXOPTS_UTILS_INTERNALMETADATA_H
-
-#include "llvm/IR/Function.h"
+#ifndef VC_UTILS_GENX_INTERNALMETADATA_H
+#define VC_UTILS_GENX_INTERNALMETADATA_H
 
 namespace llvm {
-namespace genx {
+class Function;
+} // namespace llvm
+
+namespace vc {
 
 namespace VariableMD {
 inline constexpr const char VCPredefinedVariable[] = "VCPredefinedVariable";
@@ -26,7 +27,7 @@ inline constexpr const char VCEmulationRoutine[] = "VC.Emulation.Routine";
 // no attribute means that GenXStackUsage pass failed (recursion, etc)
 // attribute created by GenXStackUsage and used to create patch token
 inline constexpr const char VCStackAmount[] = "VC.Stack.Amount";
-}
+} // namespace FunctionMD
 
 namespace InstMD {
 // SVMBlockType metadata serves interesting purpose:
@@ -38,7 +39,7 @@ inline constexpr const char SVMBlockType[] = "SVMBlockType";
 // These two are used in prologue/epilogue insertion
 inline constexpr const char FuncArgSize[] = "FuncArgSize";
 inline constexpr const char FuncRetSize[] = "FuncRetSize";
-}
+} // namespace InstMD
 
 namespace internal {
 
@@ -54,28 +55,19 @@ enum {
 };
 }
 namespace ArgLinearizationMDOp {
-enum {
-  Explicit,
-  Linearization,
-  Last
-};
+enum { Explicit, Linearization, Last };
 }
 namespace LinearizationMDOp {
-enum {
-  Argument,
-  Offset,
-  Last
-};
+enum { Argument, Offset, Last };
 }
 
 // ExternalMD is created by vc-intrinsics. Internal has to be created by VC BE.
 // This creates initial internal metadata structure. Definition in
 // KernelInfo.cpp
-void createInternalMD(Function &F);
-void replaceInternalFunctionRef(const Function &From, Function &To);
+void createInternalMD(llvm::Function &F);
+void replaceInternalFunctionRef(const llvm::Function &From, llvm::Function &To);
 
 } // namespace internal
-} // namespace genx
-} // namespace llvm
+} // namespace vc
 
-#endif // VC_GENXOPTS_UTILS_INTERNALMETADATA_H
+#endif // VC_UTILS_GENX_INTERNALMETADATA_H

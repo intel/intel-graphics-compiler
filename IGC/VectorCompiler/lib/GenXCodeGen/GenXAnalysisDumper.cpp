@@ -15,14 +15,13 @@ SPDX-License-Identifier: MIT
 
 #include "FunctionGroup.h"
 #include "GenX.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
-using namespace genx;
 
 namespace {
 
@@ -89,7 +88,7 @@ ModulePass *llvm::createGenXModuleAnalysisDumperPass(ModulePass *P,
 static std::string makeOutputName(const Function &F, StringRef DumpNamePrefix,
                                   StringRef DumpNameSuffix) {
 
-  KernelMetadata KM(&F);
+  vc::KernelMetadata KM{&F};
   StringRef Name = KM.getName();
   if (Name.empty())
     Name = F.getName();

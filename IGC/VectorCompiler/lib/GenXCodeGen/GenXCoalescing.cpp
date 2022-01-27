@@ -175,7 +175,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXVisitor.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
 #include "Probe/Assertion.h"
@@ -1519,10 +1519,10 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
 void GenXCoalescing::processKernelArgs(FunctionGroup *FG)
 {
   auto F = FG->getHead();
-  if (!genx::isKernel(F))
+  if (!vc::isKernel(F))
     return;
   Instruction *InsertBefore = F->front().getFirstNonPHIOrDbg();
-  KernelMetadata KM(F);
+  vc::KernelMetadata KM{F};
   unsigned Idx = 0;
   for (auto ai = F->arg_begin(), ae = F->arg_end(); ai != ae; ++ai) {
     if (KM.shouldSkipArg(Idx++))
@@ -1553,10 +1553,10 @@ void GenXCoalescing::processKernelArgs(FunctionGroup *FG)
 
 void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
   auto *F = FG->getHead();
-  if (!genx::isKernel(F))
+  if (!vc::isKernel(F))
     return;
 
-  KernelMetadata KM(F);
+  vc::KernelMetadata KM{F};
 
   SmallVector<Value*, 4> OutputArgs;
   for(unsigned i = 0; i < KM.getNumArgs(); ++i)
@@ -1662,8 +1662,8 @@ void GenXCoalescing::coalesceCallables() {
       CI->getContext().diagnose(Err);
     }
     Function *F = CI->getParent()->getParent();
-    IGC_ASSERT(genx::isKernel(F));
-    KernelMetadata KM(F);
+    IGC_ASSERT(vc::isKernel(F));
+    vc::KernelMetadata KM{F};
     unsigned Idx = 0; // kernel argument index
     unsigned i = 0;   // call argument index
     for (auto I = F->arg_begin(), E = F->arg_end(); I != E; ++I) {

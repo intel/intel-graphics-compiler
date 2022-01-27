@@ -20,10 +20,10 @@ SPDX-License-Identifier: MIT
 #include "GenXNumbering.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-#include "vc/GenXOpts/Utils/InternalMetadata.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/GenX/InternalMetadata.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
 #include "vc/Utils/General/Types.h"
 #include "visa_igc_common_header.h"
@@ -601,7 +601,7 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   Type *Ty = V.getType();
   if (auto *GV = dyn_cast<GlobalVariable>(V.getValue())) {
     // No register for predefined variable.
-    if (GV->hasAttribute(genx::VariableMD::VCPredefinedVariable))
+    if (GV->hasAttribute(vc::VariableMD::VCPredefinedVariable))
       return;
 
     if (GV->hasAttribute(genx::FunctionMD::GenXVolatile))

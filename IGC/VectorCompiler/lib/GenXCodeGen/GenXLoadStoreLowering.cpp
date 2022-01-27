@@ -29,11 +29,11 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXVisa.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/BreakConst.h"
 #include "vc/Utils/GenX/Intrinsics.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/TypeSize.h"
 #include "vc/Utils/General/IRBuilder.h"
 #include "vc/Utils/General/Types.h"
@@ -564,7 +564,7 @@ Instruction *GenXLoadStoreLowering::createSVMGather(LoadInst &LdI) const {
     ProperGather = extractFirstElement(*ProperGather, *LdTy, Builder);
 
   Gather->setMetadata(
-      InstMD::SVMBlockType,
+      vc::InstMD::SVMBlockType,
       MDNode::get(LdI.getContext(),
                   llvm::ValueAsMetadata::get(UndefValue::get(LdEltTy))));
   LLVM_DEBUG(dbgs() << "Replaced with: " << *Gather << "\n");
@@ -1131,7 +1131,7 @@ Instruction *GenXLoadStoreLowering::createSVMScatter(StoreInst &StI) const {
   Scatter->setDebugLoc(StI.getDebugLoc());
   Scatter->insertAfter(&StI);
   Scatter->setMetadata(
-      InstMD::SVMBlockType,
+      vc::InstMD::SVMBlockType,
       MDNode::get(StI.getContext(), llvm::ValueAsMetadata::get(UndefValue::get(
                                         ValueOpTy->getScalarType()))));
   return Scatter;

@@ -42,9 +42,9 @@ SPDX-License-Identifier: MIT
 #include "GenXModule.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
@@ -270,8 +270,8 @@ static void appendArgRetMetadata(T &AppendTo, unsigned ArgSize,
       MDNode::get(Ctx, ConstantAsMetadata::get(IRB.getInt32(ArgSize)));
   MDNode *RetMD =
       MDNode::get(Ctx, ConstantAsMetadata::get(IRB.getInt32(RetSize)));
-  AppendTo.setMetadata(InstMD::FuncArgSize, ArgMD);
-  AppendTo.setMetadata(InstMD::FuncRetSize, RetMD);
+  AppendTo.setMetadata(vc::InstMD::FuncArgSize, ArgMD);
+  AppendTo.setMetadata(vc::InstMD::FuncRetSize, RetMD);
 }
 
 void ArgsAnalyzer::clear() {
@@ -285,7 +285,7 @@ void ArgsAnalyzer::clear() {
 
 // FIXME: Revisit this after trampolineInsertion enabling
 static bool isInternalCC(const Function &F) {
-  return F.hasLocalLinkage() && !genx::isIndirect(&F);
+  return F.hasLocalLinkage() && !vc::isIndirect(&F);
 }
 
 static bool isInternalCC(const CallInst &CI) {
@@ -429,7 +429,7 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   // supported.
   emitPrivateMemoryAllocations();
 
-  if (genx::isKernel(&F))
+  if (vc::isKernel(&F))
     initializeStack(F);
   else
     // stack calls and subroutines
@@ -443,7 +443,7 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
 // FE_SP = PrivateBase + HWTID * PrivMemPerThread
 // FE_FP = FE_SP
 void GenXPrologEpilogInsertion::initializeStack(Function &F) {
-  IGC_ASSERT(genx::isKernel(&F));
+  IGC_ASSERT(vc::isKernel(&F));
   LLVM_DEBUG(dbgs() << "Initialize stack for kenrel " << F.getName() << "\n");
   IRBuilder<> IRB(&*F.getEntryBlock().getFirstInsertionPt());
 
@@ -452,7 +452,7 @@ void GenXPrologEpilogInsertion::initializeStack(Function &F) {
   auto *HWIDCall = IRB.CreateCall(HWID);
 
   int StackAmount =
-      genx::getStackAmount(&F, BEConf->getStatelessPrivateMemSize());
+      vc::getStackAmount(&F, BEConf->getStatelessPrivateMemSize());
 
   // Nothing to do. Stack is guaranteed not to be used.
   if (StackAmount == 0)
@@ -464,10 +464,10 @@ void GenXPrologEpilogInsertion::initializeStack(Function &F) {
   auto *Mul = IRB.CreateMul(HWIDCall, ThreadOffset);
   auto *MulCasted = IRB.CreateZExt(Mul, IRB.getInt64Ty());
 
-  KernelMetadata KM(&F);
+  vc::KernelMetadata KM{&F};
   auto *PrivBase =
       std::find_if(F.arg_begin(), F.arg_end(), [&KM](Argument &Arg) {
-        return KernelArgInfo(KM.getArgKind(Arg.getArgNo())).isPrivateBase();
+        return vc::KernelArgInfo{KM.getArgKind(Arg.getArgNo())}.isPrivateBase();
       });
   IGC_ASSERT_EXIT_MESSAGE(PrivBase != F.arg_end(), "No PrivBase arg found");
 
@@ -517,7 +517,7 @@ void GenXPrologEpilogInsertion::generatePrologEpilog(Function &F) {
   ArgsAnalyzer Info(ArgRegByteSize, RetRegByteSize, ST->getGRFByteSize(), *DL);
   Value *TmpFP = nullptr;
 
-  if (genx::requiresStackCall(&F)) {
+  if (vc::requiresStackCall(&F)) {
     Info.analyze(*F.getFunctionType(), isInternalCC(F));
     TmpFP = generateStackCallProlog(F, Info);
   } else
@@ -528,7 +528,7 @@ void GenXPrologEpilogInsertion::generatePrologEpilog(Function &F) {
     if (!RI)
       continue;
 
-    if (genx::requiresStackCall(&F))
+    if (vc::requiresStackCall(&F))
       generateStackCallEpilog(*RI, TmpFP, Info);
     else
       generateSubroutineEpilog(*RI, TmpFP);
@@ -706,7 +706,7 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
 
   bool IsStackCall =
       !IsIntrinsicIndirect &&
-      (IsIndirectCall || genx::requiresStackCall(I.getCalledFunction()));
+      (IsIndirectCall || vc::requiresStackCall(I.getCalledFunction()));
 
   // We have a subroutine or stack call that won't be correctly analyzed. The
   // analysis is supposed to answer a question of whether ARG, RET registers are

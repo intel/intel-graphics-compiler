@@ -126,7 +126,7 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
 #include "Probe/Assertion.h"
@@ -168,7 +168,7 @@ namespace {
   class GenXCategory : public FGPassImplInterface,
                        public IDMixin<GenXCategory> {
     Function *Func = nullptr;
-    KernelMetadata KM;
+    vc::KernelMetadata KM;
     GenXLiveness *Liveness = nullptr;
     DominatorTreeGroupWrapperPass *DTs = nullptr;
     const GenXSubtarget *Subtarget = nullptr;
@@ -397,7 +397,7 @@ namespace {
  */
 bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
 {
-  KM = KernelMetadata(FG.getHead());
+  KM = vc::KernelMetadata{FG.getHead()};
   DTs = &getAnalysis<DominatorTreeGroupWrapperPass>();
   Liveness = &getAnalysis<GenXLiveness>();
   Subtarget = &getAnalysis<TargetPassConfig>()
@@ -822,7 +822,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
     // determine arguments category if it cannot be deduced from the arg uses.
     // * calls from another function groups might help (but we do not have
     // liveness -> category for them). What about standalone stack calls?
-    IGC_ASSERT(genx::requiresStackCall(F));
+    IGC_ASSERT(vc::requiresStackCall(F));
     return getCategoryForCallArg(F, Arg->getArgNo());
   }
   // The def is a phi-instruction.

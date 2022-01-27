@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "FunctionGroup.h"
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Dominators.h"
@@ -255,7 +255,7 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
       for (auto &Callee : Callees[F]) {
         if (Callee == F)
           continue;
-        if (genx::requiresStackCall(Callee)) {
+        if (vc::requiresStackCall(Callee)) {
           LLVM_DEBUG(dbgs()
                      << "\tDo not process next callee " << Callee->getName()
                      << " because it's a stack call\n");
@@ -279,7 +279,7 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
       addToFunctionGroup(curGr, F, Type);
     }
     for (auto &Callee : Callees[F]) {
-      if (genx::requiresStackCall(Callee)) {
+      if (vc::requiresStackCall(Callee)) {
         LLVM_DEBUG(dbgs() << "\tDo not process next callee "
                           << Callee->getName()
                           << " because it's a stack call\n");

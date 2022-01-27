@@ -144,7 +144,7 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
 
-#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
 #include "vc/Utils/General/FunctionAttrs.h"
 
@@ -483,7 +483,7 @@ void GenXArgIndirection::gatherArgLRs()
     Seen.insert(Liveness->getLiveRange(&*ai));
   // For a subroutine arg, add its LR to the list if it is not already in Seen.
   for (auto fgi = FG->begin() + 1, fge = FG->end(); fgi != fge; ++fgi) {
-    if (genx::requiresStackCall(*fgi))
+    if (vc::requiresStackCall(*fgi))
       continue;
     for (auto ai = (*fgi)->arg_begin(), ae = (*fgi)->arg_end(); ai != ae; ++ai) {
       Argument *Arg = &*ai;
@@ -733,7 +733,7 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
  */
 Indirectability SubroutineArg::checkIndirectability()
 {
-  if (genx::requiresStackCall(F))
+  if (vc::requiresStackCall(F))
     return CANNOT_INDIRECT;
   // See if there is a return value that is coalesced with the arg.
   CoalescedRetIdx = -1;
@@ -1095,7 +1095,7 @@ void SubroutineArg::gatherBalesToModify(Alignment Align)
       if (auto CI = dyn_cast<CallInst>(User)) {
         Function *CF = CI->getCalledFunction();
         if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CF) &&
-            !genx::requiresStackCall(CF)) {
+            !vc::requiresStackCall(CF)) {
           // Non-intrinsic call. Ignore. (A call site using an arg being
           // indirected gets handled differently.)
           // Cannot indirect if there is a stack call. Do not ignore stack
@@ -1171,7 +1171,7 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
       }
     } else if (auto *CI = dyn_cast<CallInst>(MainInst->Inst)) {
       auto *Callee = CI->getCalledFunction();
-      IGC_ASSERT_MESSAGE(genx::requiresStackCall(Callee),
+      IGC_ASSERT_MESSAGE(vc::requiresStackCall(Callee),
                          "Expect a stack call to stop indirection. See "
                          "SubroutineArg::gatherBalesToModify");
       LLVM_DEBUG(dbgs() << *CI << "\n\tcalls stack call function\n");
