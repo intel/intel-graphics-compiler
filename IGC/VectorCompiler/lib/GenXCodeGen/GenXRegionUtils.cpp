@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "GenXBaling.h"
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
+#include "vc/Utils/General/IRBuilder.h"
 #include "vc/GenXOpts/GenXAnalysis.h"
 
 #include "llvm/ADT/SmallBitVector.h"
@@ -971,6 +972,7 @@ static Value *simplifyBitCastWithRegionWrite(Instruction *WrR,
     return nullptr;
   auto [NewVecTy, R] = *ConvertRes;
   IRBuilder<> IRB(WrR);
+  IGC_ASSERT(vc::isBitCastAllowed(*OldVal, *NewVecTy));
   auto *OldValCast =
       IRB.CreateBitCast(OldVal, NewVecTy, OldVal->getName() + ".cast");
   auto *NewWrR = R.createWrRegion(OldValCast, BCI->getOperand(0),
@@ -988,6 +990,7 @@ static Value *simplifyRegionWrite(Instruction *WrR, const DataLayout *DL) {
   // C = wrregion(A, B, R)
   if (auto R = makeRegionFromBaleInfo(WrR, BaleInfo());
       R.isWhole(WrR->getType(), DL) && !R.Mask &&
+      vc::isBitCastAllowed(*NewVal, *WrR->getType()) &&
       !isPredefRegDestination(WrR) && !isPredefRegSource(NewVal))
     return IRBuilder<>(WrR).CreateBitCast(NewVal, WrR->getType(), WrR->getName());
   // Replace C with A
@@ -1042,6 +1045,7 @@ static Value *simplifyBitCastFromRegionRead(BitCastInst *BCI,
   if (!ConvertRes)
     return nullptr;
   auto [NewVecTy, R] = *ConvertRes;
+  IGC_ASSERT(vc::isBitCastAllowed(*OldVal, *NewVecTy));
   auto *NewBCI =
       IRBuilder<>(BCI).CreateBitCast(OldVal, NewVecTy, BCI->getName());
   auto *NewRdR =
@@ -1053,8 +1057,10 @@ static Value *simplifyRegionRead(Instruction *Inst, const DataLayout *DL) {
   IGC_ASSERT(GenXIntrinsic::isRdRegion(Inst));
   Value *Input = Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
   if (makeRegionFromBaleInfo(Inst, BaleInfo()).isWhole(Input->getType(), DL) &&
+      vc::isBitCastAllowed(*Input, *Inst->getType()) &&
       !genx::isPredefRegSource(Inst))
-    return IRBuilder<>(Inst).CreateBitCast(Input, Inst->getType(), Inst->getName());
+    return IRBuilder<>(Inst).CreateBitCast(Input, Inst->getType(),
+                                           Inst->getName());
   if (isa<UndefValue>(Input))
     return UndefValue::get(Inst->getType());
   else if (auto C = dyn_cast<Constant>(Input)) {

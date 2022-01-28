@@ -87,3 +87,7 @@ Constant &vc::castArrayToFirstElemPtr(GlobalVariable &Array) {
   return *ConstantExpr::getInBoundsGetElementPtr(
       Array.getValueType(), &Array, ArrayRef<Constant *>{Zero, Zero});
 }
+
+bool vc::isBitCastAllowed(llvm::Value &Val, llvm::Type &DstType) {
+  return CastInst::castIsValid(Instruction::BitCast, &Val, &DstType);
+}

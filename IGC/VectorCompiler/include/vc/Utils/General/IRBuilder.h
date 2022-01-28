@@ -66,6 +66,8 @@ bool isCastToGenericAS(const llvm::Value &Op);
 // \p Array must be a global variable of an array type.
 llvm::Constant &castArrayToFirstElemPtr(llvm::GlobalVariable &Array);
 
+bool isBitCastAllowed(llvm::Value &Val, llvm::Type &DstType);
+
 } // namespace vc
 
 #endif // VC_UTILS_GENERAL_IRBUILDER_H
