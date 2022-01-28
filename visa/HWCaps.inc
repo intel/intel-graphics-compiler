@@ -585,6 +585,11 @@ SPDX-License-Identifier: MIT
         return getPlatform() >= Xe_XeHPSDV && hasRSForSpecificPlatform();
     }
 
+    bool hasRMWReadSuppressionIssue() const
+    {
+        return (getPlatform() == Xe_DG2) && hasRSForSpecificPlatform();;
+    }
+
     bool needToClearScratchWrites() const
     {
         return getPlatform() < Xe_XeHPSDV;
