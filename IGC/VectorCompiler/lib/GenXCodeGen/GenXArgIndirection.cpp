@@ -819,6 +819,7 @@ Indirectability SubroutineArg::checkIndirectability()
  *          otherwise object of some subclass of CallSite
  */
 ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
+  const DataLayout &DL = CI->getModule()->getDataLayout();
   // Check if this call site is in a function that is itself indirecting the
   // arg.
   if (auto SubrArg = Pass->FuncMap[CI->getParent()->getParent()])
@@ -835,9 +836,9 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
   // is the only use, try and parse it as a rd-wr sequence that reads a
   // contiguous region and writes the whole of Arg.
   RdWrRegionSequence ArgRWS;
-  if (!V->hasOneUse() || !GenXIntrinsic::isWrRegion(V)
-      || !ArgRWS.buildFromWr(cast<Instruction>(V), Pass->Baling)
-      || !ArgRWS.RdR.isContiguous() || !ArgRWS.WrR.isWhole(Arg->getType())) {
+  if (!V->hasOneUse() || !GenXIntrinsic::isWrRegion(V) ||
+      !ArgRWS.buildFromWr(cast<Instruction>(V), Pass->Baling) ||
+      !ArgRWS.RdR.isContiguous() || !ArgRWS.WrR.isWhole(Arg->getType(), &DL)) {
     // Failed to find such a rd-wr sequence. Set ArgRWS to null.
     ArgRWS = RdWrRegionSequence();
   }
@@ -870,13 +871,13 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
         // Attempt to parse as a rd-wr sequence that reads the whole of RetVal
         // and writes a contiguous region, so it is either a legalized copy, or
         // a legalized contiguous wrregion, and it is the only use of the input.
-        if (!GenXIntrinsic::isRdRegion(User)
-            || RetVal->use_begin()->getOperandNo()
-              != GenXIntrinsic::GenXRegion::OldValueOperandNum
-            || !RetRWS.buildFromRd(User, Pass->Baling)
-            || !RetRWS.WrR.isContiguous()
-            || !RetRWS.RdR.isWhole(RetVal->getType())
-            || !RetRWS.isOnlyUseOfInput()) {
+        if (!GenXIntrinsic::isRdRegion(User) ||
+            RetVal->use_begin()->getOperandNo() !=
+                GenXIntrinsic::GenXRegion::OldValueOperandNum ||
+            !RetRWS.buildFromRd(User, Pass->Baling) ||
+            !RetRWS.WrR.isContiguous() ||
+            !RetRWS.RdR.isWhole(RetVal->getType(), &DL) ||
+            !RetRWS.isOnlyUseOfInput()) {
           // That failed, so make RetRWS null.
           RetRWS = RdWrRegionSequence();
         }

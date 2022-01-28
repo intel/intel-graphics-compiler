@@ -2619,7 +2619,7 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
 
   // Convert WrRegion to a matching Select instruction
   // Also perform Min/Max optimization if enabled
-  if (R.isWhole(Inst->getType())) {
+  if (R.isWhole(Inst->getType(), DL)) {
     Value *OldV =
         Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
     Type *OldVTy = OldV->getType();

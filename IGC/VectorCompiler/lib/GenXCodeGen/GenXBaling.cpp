@@ -1680,13 +1680,14 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
     return;
   RdWrRegionSequence WrSeq;
   auto Rd = cast<Instruction>(CI->use_begin()->getUser());
+  const DataLayout &DL = CI->getModule()->getDataLayout();
   if (!GenXIntrinsic::isRdRegion(Rd))
     return;
   if (!WrSeq.buildFromRd(Rd, this))
     return;
-  if (!RdSeq.WrR.isWhole(CI->getType()))
+  if (!RdSeq.WrR.isWhole(CI->getType(), &DL))
     return;
-  if (!WrSeq.RdR.isWhole(CI->getType()))
+  if (!WrSeq.RdR.isWhole(CI->getType(), &DL))
     return;
   if (RdSeq.RdR.Indirect || WrSeq.WrR.Indirect)
     return;
