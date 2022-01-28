@@ -72,7 +72,6 @@ namespace IGC
         bool isIdentityMatrix(llvm::ExtractElementInst& I);
         void visitAnd(llvm::BinaryOperator& I);
         void visitXor(llvm::Instruction& XorInstr);
-
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
         // match that changes the order or paramters is unsafe.
@@ -97,6 +96,9 @@ namespace IGC
         template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
     private:
         bool psHasSideEffect;
+
+        bool lower64bto32b(llvm::BinaryOperator& AndInst);
+        llvm::Value* analyzeTreeForTrunc64bto32b(const llvm::Use& OperandUse, llvm::SmallVector<llvm::BinaryOperator*, 8>& OpsToDelete);
     };
 
 #if LLVM_VERSION_MAJOR >= 7

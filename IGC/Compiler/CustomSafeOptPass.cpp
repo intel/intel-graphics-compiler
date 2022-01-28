@@ -214,6 +214,11 @@ void CustomSafeOptPass::visitXor(Instruction& XorInstr) {
 void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
     using namespace llvm::PatternMatch;
 
+    //searching another pattern for And instruction
+    if (lower64bto32b(I)) {
+        return;
+    }
+
     if (!I.hasOneUse() ||
         !isa<BranchInst>(*I.user_begin()) ||
         !I.getType()->isIntegerTy(1)) {
@@ -235,6 +240,58 @@ void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
     BrInst->swapSuccessors();
 
     I.eraseFromParent();
+}
+
+//  Searches for following pattern:
+//    %mul = mul i64 %conv, %conv2
+//    % conv3 = and i64 %mul, 0xFFFFFFFF
+//
+//  And changes it to:
+//    %conv3 = trunc i64 %conv to i32
+//    %conv4 = trunc i64 %conv2 to i32
+//    % mul = mul i32 %conv3, % conv4
+//    % conv5 = zext i32 %mul to i64
+bool CustomSafeOptPass::lower64bto32b(BinaryOperator& AndInst) {
+    using namespace llvm::PatternMatch;
+
+    auto AndPattern = m_c_And(m_c_BinOp(m_Value(), m_Value()), m_SpecificInt(0xFFFFFFFF));
+
+    if (!match(&AndInst, AndPattern) || !AndInst.getType()->isIntegerTy(64) || !AndInst.getOperand(0)->hasOneUse()) {
+        return false;
+    }
+
+    SmallVector<BinaryOperator*, 8> OpsToDelete;
+
+    auto NewBinInst = analyzeTreeForTrunc64bto32b(AndInst.getOperandUse(0), OpsToDelete);
+    IRBuilder<> Builder(&AndInst);
+
+    auto Zext = Builder.CreateZExt(NewBinInst, Builder.getInt64Ty());
+
+    AndInst.replaceAllUsesWith(Zext);
+    AndInst.eraseFromParent();
+
+    for (BinaryOperator* BinOp : OpsToDelete) {
+        BinOp->eraseFromParent();
+    }
+    return true;
+}
+
+Value* CustomSafeOptPass::analyzeTreeForTrunc64bto32b(const Use& OperandUse, SmallVector<BinaryOperator*, 8>& OpsToDelete) {
+    Value* Operand = OperandUse.get();
+    BinaryOperator* BinInst = dyn_cast<BinaryOperator>(Operand);
+    if (BinInst && Operand->hasOneUse()) {
+        OpsToDelete.push_back(BinInst);
+
+        Value* NewBinArgValue1 = analyzeTreeForTrunc64bto32b(BinInst->getOperandUse(0), OpsToDelete);
+        Value* NewBinArgValue2 = analyzeTreeForTrunc64bto32b(BinInst->getOperandUse(1), OpsToDelete);
+
+        IRBuilder<> Builder(BinInst);
+        return Builder.CreateBinOp(BinInst->getOpcode(), NewBinArgValue1, NewBinArgValue2);
+    }
+
+    //add trunc for Inst
+    IRBuilder<> Builder(cast<Instruction>(OperandUse.getUser()));
+    return Builder.CreateTrunc(Operand, Builder.getInt32Ty());
 }
 
 /*
