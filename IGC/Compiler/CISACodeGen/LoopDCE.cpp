@@ -420,9 +420,8 @@ static bool isSameTopology(const BlockValueMap& BlockMapX, const BlockValueMap& 
                 if (BlockMapX.find(IncomingPHINodeX->getParent()) != BlockMapX.end()) {
                     for (unsigned int j = 0; j < ValueY->getNumIncomingValues(); ++j) {
                         auto IncomingValueY = ValueY->getIncomingValue(j);
-                        auto IncomingBlockY = ValueY->getIncomingBlock(j);
 
-                        if (IncomingValueX == IncomingValueY && IncomingBlockX != IncomingBlockY)
+                        if (IncomingValueX == IncomingValueY)
                             return false;
                     }
                     continue;
