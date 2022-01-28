@@ -55,6 +55,8 @@ int getAddrSpace(llvm::Type *PtrOrPtrVec);
 llvm::Type *getNewTypeForCast(llvm::Type *OldOutType, llvm::Type *OldInType,
                               llvm::Type *NewInType);
 
+bool isDegenerateVectorType(llvm::Type const &Ty);
+
 // If \p Ty is degenerate vector type <1 x ElTy>,
 // ElTy is returned, otherwise original type \p Ty is returned.
 const llvm::Type &fixDegenerateVectorType(const llvm::Type &Ty);

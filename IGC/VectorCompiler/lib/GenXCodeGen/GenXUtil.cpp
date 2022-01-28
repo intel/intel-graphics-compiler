@@ -1636,7 +1636,10 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
 
   Value *Ptr = LI ? LI->getPointerOperand() : SI->getPointerOperand();
   GlobalVariable *GV = getUnderlyingGlobalVariable(Ptr);
-  if (!GV)
+
+  // Folding bitcast of SEV can produce getelementptr instructions
+  // which must be avoided.
+  if (!GV || vc::isDegenerateVectorType(*GV->getValueType()))
     return nullptr;
 
   if (SI) {
