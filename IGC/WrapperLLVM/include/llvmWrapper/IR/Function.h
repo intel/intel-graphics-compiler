@@ -11,6 +11,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/IR/Function.h"
 
+#include "Probe/Assertion.h"
+
 namespace IGCLLVM {
 
 inline llvm::Argument *getArg(const llvm::Function &F, unsigned ArgNo) {
