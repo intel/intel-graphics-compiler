@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 #ifndef VC_PLATFORM_SELECTOR_H
 #define VC_PLATFORM_SELECTOR_H
 
+#include "llvm/Support/ErrorHandling.h"
+
 #include "Probe/Assertion.h"
 #include "StringMacros.hpp"
 #include "igfxfmid.h"
@@ -61,10 +63,9 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
       return "PVCXT";
     }
   default:
-    IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
   }
-  return "SKL";
+  llvm::report_fatal_error("unsupported platform");
 }
 
 } // namespace cmc
