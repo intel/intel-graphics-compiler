@@ -921,7 +921,7 @@ public:
         if (TheCurrTupleParts == 0)
             TheCurrTupleLead = nullptr;
     }
-    virtual void push(preNode* N)  = 0;
+    virtual void push(preNode* N) = 0;
     virtual preNode* pop() = 0;
 
 protected:
@@ -1368,7 +1368,7 @@ public:
 
     bool empty() const
     {
-        return pseudoKills.empty() && Q.empty();
+        return pseudoKills.empty() && ReadyList.empty();
     }
 
 private:
