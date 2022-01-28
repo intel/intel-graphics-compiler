@@ -477,10 +477,11 @@ Type *getCorrespondingVectorOrScalar(Type *Ty);
 unsigned getExecSizeAllowedBits(const Instruction *Inst,
                                 const GenXSubtarget *ST);
 
-// Get type that represents OldTy as vector of NewScalarType, e.g.
+// Get type that represents OldType as vector of NewScalarType, e.g.
 // <4 x i16> -> <2 x i32>, returns nullptr if it's inpossible.
-IGCLLVM::FixedVectorType *changeVectorType(const Type *OldTy,
-                                           Type *NewScalarType);
+IGCLLVM::FixedVectorType *changeVectorType(Type *OldType,
+                                           Type *NewScalarType,
+                                           const DataLayout *DL);
 
 // Check if V is reading form predfined register.
 bool isPredefRegSource(const Value *V);

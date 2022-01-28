@@ -1986,22 +1986,21 @@ unsigned genx::getExecSizeAllowedBits(const Instruction *Inst,
   }
 }
 
-// Get type that represents OldTy as vector of NewScalarType, e.g.
+// Get type that represents OldType as vector of NewScalarType, e.g.
 // <4 x i16> -> <2 x i32>, returns nullptr if it's impossible.
-IGCLLVM::FixedVectorType *genx::changeVectorType(const Type *OldTy,
-                                                 Type *NewScalarType) {
-  IGC_ASSERT(NewScalarType->isIntegerTy() || NewScalarType->isFloatTy());
-  if (!OldTy->isIntOrIntVectorTy() && !OldTy->isFPOrFPVectorTy())
-    return nullptr;
-  unsigned OldElemSize = OldTy->getScalarSizeInBits();
-  IGC_ASSERT(OldElemSize > 0);
-  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(OldTy);
-  unsigned OldNumElems = VTy ? VTy->getNumElements() : 1;
-  unsigned NewElemSize = NewScalarType->getPrimitiveSizeInBits();
-  if (OldElemSize * OldNumElems % NewElemSize)
+IGCLLVM::FixedVectorType *genx::changeVectorType(Type *OldType,
+                                                 Type *NewScalarType,
+                                                 const DataLayout *DL) {
+  IGC_ASSERT(DL);
+  IGC_ASSERT(NewScalarType->isFloatTy() ||
+             NewScalarType->isIntegerTy() ||
+             NewScalarType->isPointerTy());
+  auto OldTypeSize = vc::getTypeSize(OldType, DL).inBits();
+  auto NewScalarTypeSize = vc::getTypeSize(NewScalarType, DL).inBits();
+  if (OldTypeSize % NewScalarTypeSize)
     return nullptr;
   return IGCLLVM::FixedVectorType::get(NewScalarType,
-                                       OldElemSize * OldNumElems / NewElemSize);
+                                       OldTypeSize / NewScalarTypeSize);
 }
 
 // Check if V is reading form predfined register.

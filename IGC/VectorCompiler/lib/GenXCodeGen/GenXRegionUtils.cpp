@@ -932,7 +932,7 @@ convertRegionInstType(Instruction *Inst, Type *NewScalarTy,
   // Do not change register category to predicate.
   if (NewScalarTy->isIntegerTy(1))
     return None;
-  auto *NewVecTy = genx::changeVectorType(OldVal->getType(), NewScalarTy);
+  auto *NewVecTy = genx::changeVectorType(OldVal->getType(), NewScalarTy, &DL);
   if (!NewVecTy)
     return None;
   Region R = makeRegionFromBaleInfo(Inst, BaleInfo());

@@ -2628,12 +2628,12 @@ Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
   // are not supported in HW and require additional code for emulation.
   if (DstRgn.Stride != 1)
     return nullptr;
-  Type *NewSrcTy = genx::changeVectorType(Src->getType(), ToTy),
-       *NewDstTy = genx::changeVectorType(Dst->getType(), ToTy);
-  if (!NewSrcTy || !NewDstTy)
-    return nullptr;
 
   const auto *DL = &HeadInst->getModule()->getDataLayout();
+  Type *NewSrcTy = genx::changeVectorType(Src->getType(), ToTy, DL),
+       *NewDstTy = genx::changeVectorType(Dst->getType(), ToTy, DL);
+  if (!NewSrcTy || !NewDstTy)
+    return nullptr;
   if (!SrcRgn.changeElementType(ToTy, DL) ||
       !DstRgn.changeElementType(ToTy, DL))
     return nullptr;

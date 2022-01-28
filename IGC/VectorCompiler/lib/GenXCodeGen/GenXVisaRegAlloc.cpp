@@ -695,12 +695,8 @@ GenXVisaRegAlloc::getRegForValueOrNull(SimpleValue V, Signedness Signed,
       OverrideType = OverrideType->getPointerElementType();
   }
   OverrideType = &vc::fixDegenerateVectorType(*OverrideType);
-  if (R->Num < VISA_NUM_RESERVED_REGS) {
-    OverrideType = IGCLLVM::FixedVectorType::get(
-        OverrideType->getScalarType(),
-        R->Ty->getPrimitiveSizeInBits() /
-            DL->getTypeSizeInBits(OverrideType->getScalarType()));
-  }
+  if (R->Num < VISA_NUM_RESERVED_REGS)
+    OverrideType = genx::changeVectorType(R->Ty, OverrideType->getScalarType(), DL);
 
   Reg *LastAlias = R;
 
