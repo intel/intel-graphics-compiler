@@ -79,6 +79,9 @@ vector_impl<uint32_t, width> __cm_cl_bfrev(vector_impl<uint32_t, width> src);
 template <typename T> T __cm_cl_abs_int(T src);
 template <typename T> T __cm_cl_abs_float(T src);
 
+template <typename T> T __cm_cl_minnum(T src0, T src1);
+template <typename T> T __cm_cl_maxnum(T src0, T src1);
+
 template <typename T> T __cm_cl_sqrt(T src, bool use_fast);
 
 vector_impl<uint32_t, 3> __cm_cl_local_id();
@@ -299,6 +302,18 @@ template <typename T> T absolute(T src) {
   if constexpr (cl::is_signed<T>::value)
     return __cm_cl_abs_int(src);
   return src;
+}
+
+template <typename T> T min_float(T src0, T src1) {
+  static_assert(cl::is_floating_point<T>::value,
+                "illegal type provided in min_float");
+  return __cm_cl_minnum(src0, src1);
+}
+
+template <typename T> T max_float(T src0, T src1) {
+  static_assert(cl::is_floating_point<T>::value,
+                "illegal type provided in max_float");
+  return __cm_cl_maxnum(src0, src1);
 }
 
 template <bool use_fast, typename T> T sqrt(T src) {

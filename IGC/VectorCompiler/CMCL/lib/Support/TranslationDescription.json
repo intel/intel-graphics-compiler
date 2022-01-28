@@ -322,6 +322,36 @@
         ]
       }
     },
+    "MinNum": {
+      "Name": "minnum",
+      "Operands": [
+        {"Name": "Source0", "Kind": "Input"},
+        {"Name": "Source1", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "minnum",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source0"]},
+          {"GetBuiltinOperand": ["Source1"]}
+        ]
+      }
+    },
+    "MaxNum": {
+      "Name": "maxnum",
+      "Operands": [
+        {"Name": "Source0", "Kind": "Input"},
+        {"Name": "Source1", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "maxnum",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source0"]},
+          {"GetBuiltinOperand": ["Source1"]}
+        ]
+      }
+    },
     "AtomicRMW": {
         "Name": "atomicrmw",
         "Operands": [

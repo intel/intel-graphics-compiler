@@ -256,17 +256,39 @@ Value &createMainInst(const std::vector<Value *> &Operands, Type &RetTy,
   return *CI;
 }
 
+// Works only for intrinsics which are overloaded by the return value type.
+template <BuiltinID::Enum BiID>
+static Value &createLLVMIntrinsic(const std::vector<Value *> &Operands,
+                                  Type &RetTy, IRBuilder<> &IRB) {
+  auto IID = static_cast<Intrinsic::ID>(IntrinsicForBuiltin[BiID]);
+  assert(IID != Intrinsic::not_intrinsic && "Expected LLVM intrinsic");
+  Module *M = IRB.GetInsertBlock()->getModule();
+  auto *Decl = Intrinsic::getDeclaration(M, IID, {&RetTy});
+  return *IRB.CreateCall(Decl, Operands);
+}
+
 template <>
 Value &createMainInst<BuiltinID::AbsFloat>(const std::vector<Value *> &Operands,
                                            Type &RetTy, IRBuilder<> &IRB) {
-  auto IID =
-      static_cast<Intrinsic::ID>(IntrinsicForBuiltin[BuiltinID::AbsFloat]);
-  assert(IID != Intrinsic::not_intrinsic && "Expected LLVM intrinsic");
+  return createLLVMIntrinsic<BuiltinID::AbsFloat>(Operands, RetTy, IRB);
+}
 
-  Module *M = IRB.GetInsertBlock()->getModule();
-  auto *Decl = Intrinsic::getDeclaration(M, IID, {&RetTy});
+template <>
+Value &createMainInst<BuiltinID::MinNum>(const std::vector<Value *> &Operands,
+                                         Type &RetTy, IRBuilder<> &IRB) {
+  static_assert(MinNumOperand::Size == 2,
+                "builtin operands should be trasformed into LLVM minnum "
+                "intrinsic operands without changes");
+  return createLLVMIntrinsic<BuiltinID::MinNum>(Operands, RetTy, IRB);
+}
 
-  return *IRB.CreateCall(Decl, Operands, "cmcl.builtin");
+template <>
+Value &createMainInst<BuiltinID::MaxNum>(const std::vector<Value *> &Operands,
+                                         Type &RetTy, IRBuilder<> &IRB) {
+  static_assert(MaxNumOperand::Size == 2,
+                "builtin operands should be trasformed into LLVM maxnum "
+                "intrinsic operands without changes");
+  return createLLVMIntrinsic<BuiltinID::MaxNum>(Operands, RetTy, IRB);
 }
 
 template <>
@@ -294,10 +316,7 @@ Value &createMainInst<BuiltinID::Fma>(const std::vector<Value *> &Operands,
   static_assert(FmaOperand::Size == 3,
                 "builtin operands should be trasformed into LLVM fma "
                 "intrinsic operands without changes");
-  auto IID = static_cast<Intrinsic::ID>(IntrinsicForBuiltin[BuiltinID::Fma]);
-  Function *FMA =
-      Intrinsic::getDeclaration(IRB.GetInsertBlock()->getModule(), IID, &RetTy);
-  return *IRB.CreateCall(FMA, Operands);
+  return createLLVMIntrinsic<BuiltinID::Fma>(Operands, RetTy, IRB);
 }
 
 template <>
@@ -306,10 +325,8 @@ Value &createMainInst<BuiltinID::Sqrt>(const std::vector<Value *> &Operands,
   static_assert(SqrtOperand::Size == 2,
                 "builtin operands should be trasformed into LLVM sqrt "
                 "intrinsic operands without changes");
-  auto IID = static_cast<Intrinsic::ID>(IntrinsicForBuiltin[BuiltinID::Sqrt]);
-  Function *Sqrt =
-      Intrinsic::getDeclaration(IRB.GetInsertBlock()->getModule(), IID, &RetTy);
-  auto *InstSqrt = IRB.CreateCall(Sqrt, Operands[SqrtOperand::Source]);
+  auto *InstSqrt = cast<Instruction>(&createLLVMIntrinsic<BuiltinID::Sqrt>(
+      {Operands[SqrtOperand::Source]}, RetTy, IRB));
   if (cast<ConstantInt>(Operands[SqrtOperand::IsFast])->getSExtValue())
     InstSqrt->setFast(true);
   return *InstSqrt;

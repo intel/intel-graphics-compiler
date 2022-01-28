@@ -349,8 +349,21 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, char, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, short, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, int, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, long, cm::math::absolute)
+
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(fabs, float, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(fabs, double, cm::math::absolute)
+
+#define SPIRV_MATH_BUILTIN_DECL_2ARG_SCALAR_CUSTOM(FUNC_NAME, TYPE,            \
+                                                   CUSTOM_NAME)                \
+  CM_NODEBUG CM_INLINE TYPE __spirv_ocl_##FUNC_NAME(TYPE x1, TYPE x2) {        \
+    return CUSTOM_NAME(x1, x2);                                                \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_2ARG_SCALAR_CUSTOM(fmin, float, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_SCALAR_CUSTOM(fmin, double, cm::math::minimum)
+
+SPIRV_MATH_BUILTIN_DECL_2ARG_SCALAR_CUSTOM(fmax, float, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_SCALAR_CUSTOM(fmax, double, cm::math::maximum)
 
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(sqrt, float, cm::math::square_root)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(sqrt, double, cm::math::square_root)
@@ -584,6 +597,7 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 3, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 4, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 8, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(s_abs, long, 16, cm::math::absolute)
+
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, float, 2, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, float, 3, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, float, 4, cm::math::absolute)
@@ -594,6 +608,38 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 3, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 4, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 8, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 16, cm::math::absolute)
+
+#define SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(FUNC_NAME, ELEMENT_TYPE, N, \
+                                                   CUSTOM_NAME)                \
+  CM_NODEBUG CM_INLINE cl_vector<ELEMENT_TYPE, N> __spirv_ocl_##FUNC_NAME(     \
+      cl_vector<ELEMENT_TYPE, N> x1, cl_vector<ELEMENT_TYPE, N> x2) {          \
+    vector<ELEMENT_TYPE, N> x_vec1 = x1;                                       \
+    vector<ELEMENT_TYPE, N> x_vec2 = x2;                                       \
+    return static_cast<vector<ELEMENT_TYPE, N>>(CUSTOM_NAME(x_vec1, x_vec2))   \
+        .cl_vector();                                                          \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, float, 2, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, float, 3, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, float, 4, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, float, 8, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, float, 16, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, double, 2, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, double, 3, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, double, 4, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, double, 8, cm::math::minimum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmin, double, 16, cm::math::minimum)
+
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, float, 2, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, float, 3, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, float, 4, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, float, 8, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, float, 16, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, double, 2, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, double, 3, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, double, 4, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, double, 8, cm::math::maximum)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(fmax, double, 16, cm::math::maximum)
 
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(sqrt, float, 2,
                                            cm::math::square_root)
