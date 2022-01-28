@@ -1244,6 +1244,10 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
                 break;
             }
         }
+        if (inst->isWriteEnableInst() && coloring->getGRA().EUFusionNoMaskWANeeded())
+        {
+            coloring->getGRA().addEUFusionNoMaskWAInst(bb, inst);
+        }
     };
 
     // first copy full GRF rows

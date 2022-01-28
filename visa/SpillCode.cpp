@@ -198,6 +198,17 @@ void SpillManager::genRegMov(G4_BB* bb,
     }
     MUST_BE_TRUE(nRegs == 0, ERROR_SPILLCODE);
 
+    if (gra.EUFusionNoMaskWANeeded())
+    {
+        for (auto inst : builder.instList)
+        {
+            if (inst->isWriteEnableInst())
+            {
+                gra.addEUFusionNoMaskWAInst(bb, inst);
+            }
+        }
+    }
+
     //
     // insert newly created insts from builder to instList
     //
@@ -327,6 +338,11 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                 auto movDst = builder.createDstRegRegion(tmpDcl, 1);
                 G4_INST* movInst = builder.createMov(g4::SIMD1, movDst, movSrc, InstOpt_WriteEnable, false);
                 bb->insertBefore(it, movInst);
+
+                if (gra.EUFusionNoMaskWANeeded())
+                {
+                    gra.addEUFusionNoMaskWAInst(bb, movInst);
+                }
 
                 s = builder.createSrc(
                     tmpDcl->getRegVar(),

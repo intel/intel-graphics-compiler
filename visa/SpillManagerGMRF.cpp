@@ -4916,6 +4916,8 @@ void GlobalRA::saveRestoreA0(G4_BB * bb)
                 }
                auto a0SSO = a0SSOMove();
                bb->insertBefore(instIt, a0SSO);
+               // Need Call WA.
+               // NoMask WA: save/restore code does not need NoMask WA.
                if (EUFusionCallWANeeded())
                {
                    addEUFusionCallWAInst(a0SSO);
@@ -5139,11 +5141,21 @@ void GlobalRA::expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
         spillOffset += numGRFToWrite * getGRFSize();
     }
 
+    // Call WA and NoMask WA are mutual exclusive.
     if (getEUFusionCallWAInsts().count(inst) > 0)
     {
         removeEUFusionCallWAInst(inst);
         for (auto inst : builder->instList)
             addEUFusionCallWAInst(inst);
+    } else if (getEUFusionNoMaskWAInsts().count(inst) > 0)
+    {
+        // no NoMask WA needed for stack call spill/fill
+        removeEUFusionNoMaskWAInst(inst);
+        if (!inst->getFP() && inst->isWriteEnableInst())
+        {
+            for (auto inst : builder->instList)
+                addEUFusionNoMaskWAInst(bb, inst);
+        }
     }
 
     splice(bb, instIt, builder->instList, inst->getCISAOff());
@@ -5222,11 +5234,22 @@ void GlobalRA::expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
         fillOffset += responseLength * getGRFSize();
     }
 
+    // Call WA and NoMask WA are mutual exclusive.
     if (getEUFusionCallWAInsts().count(inst) > 0)
     {
         removeEUFusionCallWAInst(inst);
         for (auto inst : builder->instList)
             addEUFusionCallWAInst(inst);
+    }
+    else if (getEUFusionNoMaskWAInsts().count(inst) > 0)
+    {
+        removeEUFusionNoMaskWAInst(inst);
+        // no WA needed for stack call spill/fill
+        if (!inst->getFP() && inst->isWriteEnableInst())
+        {
+            for (auto inst : builder->instList)
+                addEUFusionNoMaskWAInst(bb, inst);
+        }
     }
 
     splice(bb, instIt, builder->instList, inst->getCISAOff());
@@ -5275,6 +5298,10 @@ void GlobalRA::expandSpillNonStackcall(
                 msgDesc, extDesc);
         }
         instIt = bb->insertBefore(instIt, sendInst);
+        if (EUFusionNoMaskWANeeded() && sendInst->isWriteEnableInst())
+        {
+            addEUFusionNoMaskWAInst(bb, sendInst);
+        }
     }
     else
     {
@@ -5301,6 +5328,11 @@ void GlobalRA::expandSpillNonStackcall(
             sendInst->addComment(comments.str());
 
             instIt = bb->insertBefore(instIt, sendInst);
+
+            if (EUFusionNoMaskWANeeded() && sendInst->isWriteEnableInst())
+            {
+                addEUFusionNoMaskWAInst(bb, sendInst);
+            }
 
             numRows -= getPayloadSizeGRF(numRows);
             offset += getPayloadSizeGRF(numRows);
@@ -5512,6 +5544,11 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
                  InstOpt_WriteEnable, msgDesc);
          }
          instIt = bb->insertBefore(instIt, sendInst);
+
+         if (EUFusionNoMaskWANeeded() && sendInst->isWriteEnableInst())
+         {
+             addEUFusionNoMaskWAInst(bb, sendInst);
+         }
      }
      else
      {
@@ -5539,6 +5576,11 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
              sendInst->addComment(comments.str());
 
              instIt = bb->insertBefore(instIt, sendInst);
+
+             if (EUFusionNoMaskWANeeded() && sendInst->isWriteEnableInst())
+             {
+                 addEUFusionNoMaskWAInst(bb, sendInst);
+             }
 
              numRows -= getPayloadSizeGRF(numRows);
              offset += getPayloadSizeGRF(numRows);

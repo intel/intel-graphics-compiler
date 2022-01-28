@@ -448,6 +448,11 @@ void SplitAlignedScalars::run()
                         g4::NOSAT, G4_ExecSize(execSize), dstRgnOfCopy, src, nullptr, InstOpt_WriteEnable);
                     newInstIt = bb->insertAfter(instIt, newInst);
 
+                    if (gra.EUFusionNoMaskWANeeded())
+                    {
+                        gra.addEUFusionNoMaskWAInst(bb, newInst);
+                    }
+
                     gra.addNoRemat(newInst);
 
                     numMovsAdded++;
@@ -501,6 +506,11 @@ void SplitAlignedScalars::run()
                             dclToUse->getRegVar(), srcRgn->getRegOff(), srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
                         inst->setSrc(newAlignedSrc, i);
                         bb->insertBefore(instIt, copy);
+
+                        if (gra.EUFusionNoMaskWANeeded())
+                        {
+                            gra.addEUFusionNoMaskWAInst(bb, copy);
+                        }
 
                         // this copy shouldnt be rematerialized
                         gra.addNoRemat(copy);

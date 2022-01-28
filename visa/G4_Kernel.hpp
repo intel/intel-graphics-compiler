@@ -446,6 +446,23 @@ public:
             }
         }
     }
+    void removeWAInst(G4_BB* aBB, G4_INST* aInst)
+    {
+        // Add aInst into the map for BB that needs to apply WA.
+        if ((aBB->getBBType() & G4_BB_NM_WA_TYPE) != 0)
+        {
+            std::list<G4_INST*>& alist = m_WAInstsPostRA[aBB];
+            auto tIter = std::find(alist.begin(), alist.end(), aInst);
+            if (tIter != alist.end())
+            {
+                alist.erase(tIter);
+            }
+            else
+            {
+                assert(false && "Remove inst that isn't in list!");
+            }
+        }
+    }
     void clearWAInst()
     {
         m_WAInstsPostRA.clear();

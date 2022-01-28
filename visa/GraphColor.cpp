@@ -6923,6 +6923,29 @@ void GlobalRA::addEUFusionCallWAInst(G4_INST* inst)
         EUFusionCallWAInsts.insert(inst);
 }
 
+void GlobalRA::addEUFusionNoMaskWAInst(G4_BB* BB, G4_INST* Inst)
+{
+    if (EUFusionNoMaskWANeeded())
+    {
+        EUFusionNoMaskWAInsts.insert(std::make_pair(Inst, BB));
+        kernel.addWAInst(BB, Inst);
+    }
+}
+
+void GlobalRA::removeEUFusionNoMaskWAInst(G4_INST* Inst)
+{
+    if (EUFusionNoMaskWANeeded())
+    {
+        auto MI = EUFusionNoMaskWAInsts.find(Inst);
+        if (MI != EUFusionNoMaskWAInsts.end())
+        {
+            G4_BB* tBB = MI->second;
+            kernel.removeWAInst(tBB, Inst);
+            EUFusionNoMaskWAInsts.erase(MI);
+        }
+    }
+}
+
 unsigned GlobalRA::getRegionByteSize(
     G4_DstRegRegion * region,
     unsigned          execSize
@@ -7676,7 +7699,6 @@ void GlobalRA::stackCallProlog()
             builder.setPartFDSaveInst(store);
             entryBB->remove(oldSaveInst);
         }
-
         addEUFusionCallWAInst(store);
 
         return;
@@ -9234,6 +9256,10 @@ void VarSplit::insertMovesToTemp(
                 (gra.getSubOffset(subDcl)) / numEltPerGRF<Type_UB>(), 0, builder.getRegionStride1(), oldDcl->getElemType());
             G4_INST* splitInst = builder.createMov(G4_ExecSize(subDcl->getTotalElems()), dst, src, maskFlag, false);
             bb->insertBefore(iter, splitInst);
+            if (splitInst->isWriteEnableInst() && gra.EUFusionNoMaskWANeeded())
+            {
+                gra.addEUFusionNoMaskWAInst(bb, splitInst);
+            }
         }
     }
 
@@ -9286,6 +9312,10 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                 G4_INST* movInst = kernel.fg.builder->createMov(
                     G4_ExecSize(subDcl->getTotalElems()), dst, src, InstOpt_WriteEnable, false);
                 bb->insertBefore(instIter, movInst);
+                if (gra.EUFusionNoMaskWANeeded())
+                {
+                    gra.addEUFusionNoMaskWAInst(bb, movInst);
+                }
             }
         }
         auto newSrc = kernel.fg.builder->createSrcRegRegion(oldSrc->getModifier(), Direct, newDcl->getRegVar(),

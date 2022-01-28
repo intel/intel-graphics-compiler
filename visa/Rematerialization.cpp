@@ -1268,6 +1268,10 @@ namespace vISA
                                 while (!newInsts.empty())
                                 {
                                     bb->insertBefore(instIt, newInsts.front());
+                                    if (newInsts.front()->isWriteEnableInst() && gra.EUFusionNoMaskWANeeded())
+                                    {
+                                        gra.addEUFusionNoMaskWAInst(bb, newInsts.front());
+                                    }
                                     newInsts.pop_front();
                                 }
 
