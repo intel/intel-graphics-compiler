@@ -1838,9 +1838,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(new SampleMultiversioning(pContext));
         }
 
-        // need to be before code sinking
-        mpm.add(createInsertBranchOptPass());
-
         bool disableGOPT = ( (IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
                                IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
                              (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT));
@@ -2064,6 +2061,11 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(new CustomUnsafeOptPass());
             }
             mpm.add(createGenOptLegalizer());
+        }
+
+        if (IGC_IS_FLAG_ENABLED(EnableAtomicBranch) || pContext->getModuleMetaData()->csInfo.atomicBranch)
+        {
+            mpm.add(createInsertBranchOptPass());
         }
 
         if (pContext->m_enableSubroutine &&
