@@ -477,6 +477,9 @@ Type *getCorrespondingVectorOrScalar(Type *Ty);
 unsigned getExecSizeAllowedBits(const Instruction *Inst,
                                 const GenXSubtarget *ST);
 
+// VC backend natively supports half, float and double data types
+bool isSupportedFloatingPointType(const Type *Ty);
+
 // Get type that represents OldType as vector of NewScalarType, e.g.
 // <4 x i16> -> <2 x i32>, returns nullptr if it's inpossible.
 IGCLLVM::FixedVectorType *changeVectorType(Type *OldType,

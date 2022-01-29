@@ -1989,15 +1989,22 @@ unsigned genx::getExecSizeAllowedBits(const Instruction *Inst,
   }
 }
 
+bool genx::isSupportedFloatingPointType(const Type *Ty) {
+  IGC_ASSERT(Ty);
+  auto *ScalarTy = Ty->getScalarType();
+  return ScalarTy->isFloatTy() || ScalarTy->isHalfTy() ||
+         ScalarTy->isDoubleTy();
+}
+
 // Get type that represents OldType as vector of NewScalarType, e.g.
 // <4 x i16> -> <2 x i32>, returns nullptr if it's impossible.
 IGCLLVM::FixedVectorType *genx::changeVectorType(Type *OldType,
                                                  Type *NewScalarType,
                                                  const DataLayout *DL) {
-  IGC_ASSERT(DL);
-  IGC_ASSERT(NewScalarType->isFloatTy() ||
-             NewScalarType->isIntegerTy() ||
-             NewScalarType->isPointerTy());
+  IGC_ASSERT(DL && OldType && NewScalarType);
+  IGC_ASSERT(!NewScalarType->isVectorTy());
+  IGC_ASSERT(isSupportedFloatingPointType(NewScalarType) ||
+             NewScalarType->isIntegerTy() || NewScalarType->isPointerTy());
   auto OldTypeSize = vc::getTypeSize(OldType, DL).inBits();
   auto NewScalarTypeSize = vc::getTypeSize(NewScalarType, DL).inBits();
   if (OldTypeSize % NewScalarTypeSize)
