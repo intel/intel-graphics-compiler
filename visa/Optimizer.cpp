@@ -14277,7 +14277,7 @@ void Optimizer::newDoNoMaskWA_postRA()
         return tI;
     };
 
-    const bool useRAWAInst = true;
+    const bool useRAWAInst = false;
     if (!useRAWAInst)
     {
         kernel.clearWAInst();
