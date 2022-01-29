@@ -664,7 +664,7 @@ void TimeStats::printTime( ShaderType type, ShaderHash hash, void* context ) con
 void TimeStats::printSumTime() const
 {
     // If using regkey to turn on timestats, CorpusName is not initialized properly
-    if (strnlen_s(IGC::Debug::GetShaderCorpusName(), sizeof(IGC::Debug::CorpusName)) == 0)
+    if (strnlen_s(IGC::Debug::GetShaderCorpusName(), 1) == 0)
     {
         std::stringstream corpusName;
         corpusName << m_totalShaderCount << " shaders";
@@ -1040,7 +1040,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
     IGC_ASSERT_MESSAGE(m_isPostProcessed, "Print functions should only be called on a Post-Processed TimeStats object");
 
     std::string subFile = "TimeStat_";
-    if (strnlen_s(IGC::Debug::GetShaderCorpusName(), sizeof(IGC::Debug::CorpusName)) == 0)
+    if (strnlen_s(IGC::Debug::GetShaderCorpusName(), 1) == 0)
         subFile += "Shaders";
     else
         subFile += IGC::Debug::GetShaderCorpusName();
@@ -1104,7 +1104,7 @@ void TimeStats::printPerPassTimeCSV(std::string const& corpusName) const
     }
 
     std::string subFile = "TimeStatPerPass_";
-    if (strnlen_s(IGC::Debug::GetShaderCorpusName(), sizeof(IGC::Debug::CorpusName)) == 0)
+    if (strnlen_s(IGC::Debug::GetShaderCorpusName(), 1) == 0)
         subFile += "Shaders";
     else
         subFile += IGC::Debug::GetShaderCorpusName();
