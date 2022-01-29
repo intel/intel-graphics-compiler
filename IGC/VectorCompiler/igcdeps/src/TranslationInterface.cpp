@@ -188,6 +188,21 @@ static void adjustStackCalls(vc::CompileOptions &Opts, BuildDiag &Diag) {
   }
 }
 
+static void adjustDebugStrippingPolicy(vc::CompileOptions &Opts) {
+  int DebugStripFlag = IGC_GET_FLAG_VALUE(StripDebugInfo);
+  switch (DebugStripFlag) {
+  default:
+    Opts.StripDebugInfoCtrl = vc::DebugInfoStripControl::None;
+    break;
+  case FLAG_DEBUG_INFO_STRIP_ALL:
+    Opts.StripDebugInfoCtrl = vc::DebugInfoStripControl::All;
+    break;
+  case FLAG_DEBUG_INFO_STRIP_NONLINE:
+    Opts.StripDebugInfoCtrl = vc::DebugInfoStripControl::NonLine;
+    break;
+  }
+}
+
 // Overwrite binary format option for backward compatibility with
 // environment variable approach.
 static void adjustBinaryFormat(vc::BinaryKind &Binary) {
@@ -217,8 +232,6 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
     Opts.DirectCallsOnly = true;
   if (IGC_IS_FLAG_ENABLED(DebugInfoValidation))
     Opts.ForceDebugInfoValidation = true;
-  if (IGC_IS_FLAG_ENABLED(VCStripDebugInfo))
-    Opts.StripDebugInfo = true;
 
   Opts.NoOptFinalizerMode =
       deriveDefaultableFlagValue<vc::NoOptFinalizerControl>(
@@ -250,6 +263,7 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
   adjustBinaryFormat(Opts.Binary);
   adjustDumpOptions(Opts);
   adjustStackCalls(Opts, Diag);
+  adjustDebugStrippingPolicy(Opts);
 
   adjustTransformationsAndOptimizations(Opts);
 }

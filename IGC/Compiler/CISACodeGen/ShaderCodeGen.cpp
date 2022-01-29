@@ -1589,9 +1589,13 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
         pContext->getModuleMetaData()->compOpt.OptDisable = true;
     }
 
-    if (IGC_IS_FLAG_ENABLED(StripDebugInfo))
+    if (IGC_GET_FLAG_VALUE(StripDebugInfo) == FLAG_DEBUG_INFO_STRIP_ALL)
     {
         StripDebugInfo(*pContext->getModule());
+    }
+    else if (IGC_GET_FLAG_VALUE(StripDebugInfo) == FLAG_DEBUG_INFO_STRIP_NONLINE)
+    {
+        stripNonLineTableDebugInfo(*pContext->getModule());
     }
 
     IGCPassManager mpm(pContext, "OPTPre");

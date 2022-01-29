@@ -57,6 +57,8 @@ enum class DisableExtraCoalescingControl { Default, Disable, Enable };
 
 enum class NoOptFinalizerControl { Default, Disable, Enable };
 
+enum class DebugInfoStripControl { None, All, NonLine };
+
 struct CompileOptions {
   FileType FType = FileType::SPIRV;
   std::string CPUStr;
@@ -126,7 +128,7 @@ struct CompileOptions {
   FunctionControl FCtrl = FunctionControl::Default;
   bool SaveStackCallLinkage = false;
   bool DirectCallsOnly = false;
-  bool StripDebugInfo = false;
+  DebugInfoStripControl StripDebugInfoCtrl = DebugInfoStripControl::None;
 };
 
 struct ExternalData {

@@ -451,9 +451,12 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpModule(M, "after_spirv_reader.ll");
 
-  vc::PassManager PerModulePasses;
-  if (Opts.StripDebugInfo)
+  if (Opts.StripDebugInfoCtrl == DebugInfoStripControl::All)
     llvm::StripDebugInfo(M);
+  else if (Opts.StripDebugInfoCtrl == DebugInfoStripControl::NonLine)
+    llvm::stripNonLineTableDebugInfo(M);
+
+  vc::PassManager PerModulePasses;
   PerModulePasses.add(createGenXSPIRVReaderAdaptorPass());
   PerModulePasses.add(createGenXRestoreIntrAttrPass());
   PerModulePasses.run(M);

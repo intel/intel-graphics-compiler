@@ -36,6 +36,11 @@ enum {
     DEFAULTABLE_FLAG_ENABLE = 1,
     DEFAULTABLE_FLAG_DISABLE = 2,
 
+    // Debug information strip control
+    FLAG_DEBUG_INFO_DONTSTRIP = 0, // default, do not strip debug information
+    FLAG_DEBUG_INFO_STRIP_ALL = 1, // discard all debug information
+    FLAG_DEBUG_INFO_STRIP_NONLINE = 2, // downgrade to line info only
+
     FLAG_LAST_Entry
 };
 

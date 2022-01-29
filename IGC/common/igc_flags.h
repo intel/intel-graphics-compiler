@@ -612,7 +612,10 @@ DECLARE_IGC_REGKEY(bool, UseOldSubRoutineAugIntf, false, "Use the old subroutine
 DECLARE_IGC_REGKEY(bool, DisableFastRAWA, true, "Disable Fast RA for hanging issues on large workloads", false)
 DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin path for RA, fail safe at first iteration", false)
 DECLARE_IGC_REGKEY(bool, HybridRAWithSpill, false, "Did Hybrid RA with Spill", false)
-DECLARE_IGC_REGKEY(bool, StripDebugInfo, false, "Strip debug info from llvm IR lowered from input to IGC", false)
+DECLARE_IGC_REGKEY(DWORD, StripDebugInfo, 0,
+    "Strip debug info from llvm IR lowered from input to IGC ."\
+    "Possible values: 0 - dont strip, 1 - strip all, 2 - strip non-line info",
+    false)
 DECLARE_IGC_REGKEY(bool, EmitPreDefinedForAllFunctions, false, "When enabled, pre-defined variables for gid, grid, lid are emitted for all functions. This causes those functions to be inlined even when stack calls is enabled.", true)
 DECLARE_IGC_REGKEY(bool, EnableGPUFenceScopeOnSingleTileGPUs, false, "Allow the use of `GPU` fence scope on single-tile GPUs. By default the `TILE` scope is used instead of `GPU` scope on single-tile GPUs.", true)
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, false,  "Enable output in ZE binary format", true)
@@ -644,4 +647,3 @@ DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, VCSaveStackCallLinkage, false,
                        "Do not override stack calls linkage as internal", true)
     DECLARE_IGC_REGKEY(bool, VCDirectCallsOnly, false, "Generate code under the assumption all unknown calls are direct", true)
-    DECLARE_IGC_REGKEY(bool, VCStripDebugInfo, false, "Discard all the debug infromation from the input IR", true)
