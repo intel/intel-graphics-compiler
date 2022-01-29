@@ -3406,19 +3406,6 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDeriveRTY_Fine(llv
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MAD(llvm::Value* float_src0, llvm::Value* float_src1, llvm::Value* float_src2)
-{
-    llvm::Module* const module = this->GetInsertBlock()->getParent()->getParent();
-    IGC_ASSERT(nullptr != float_src0);
-
-    llvm::Function* madFunc = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_nativeMad, float_src0->getType());
-    llvm::Value* args[] = { float_src0, float_src1, float_src2 };
-    llvm::Value* float_madres_s = this->CreateCall(madFunc, args);
-
-    return float_madres_s;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MAD_Scalar(llvm::Value* float_src0, llvm::Value* float_src1, llvm::Value* float_src2)
 {
     llvm::Module* const module = this->GetInsertBlock()->getParent()->getParent();
