@@ -12497,18 +12497,37 @@ void Optimizer::newDoNoMaskWA()
         return flagVar;
     };
 
-    auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII)
+    // Check if condMod or dst is full write. If so, add pseudo kill for it.
+    auto addPseudoKillIfFullWrite = [&](G4_BB* aBB, INST_LIST_ITER aII, bool isCondMod)
     {
         // Only NoMask Inst without predicate will call this function!
+        // isCondMod = true:   check condMod
+        //           = false:  check dst
         G4_INST* I = *aII;
-        G4_DstRegRegion* aDst = I->getDst();
-        if (!aDst || aDst->isNullReg() ||
-            I->getImplAccSrc() != nullptr || I->isSend() ||
-            !aDst->getBase()->isRegVar() || aDst->getBase()->asRegVar()->getPhyReg())
+        if (I->getImplAccSrc() != nullptr || I->isSend())
         {
             return;
         }
+        G4_CondMod* condMod = I->getCondMod();
+        G4_DstRegRegion* dst = I->getDst();
+        if (isCondMod)
+        {
+            if (!condMod || !condMod->getBase()->isRegVar() ||
+                condMod->getBase()->asRegVar()->getPhyReg())
+            {
+                return;
+            }
+        }
+        else
+        {
+            if (!dst || dst->isNullReg() ||
+                !dst->getBase()->isRegVar() || dst->getBase()->asRegVar()->getPhyReg())
+            {
+                return;
+            }
+        }
 
+        G4_Operand* D = isCondMod ? condMod : (G4_Operand*)dst;
         // Make sure dst var is not used in this inst.
         {
             G4_Operand* src0_0 = I->getSrc(0);
@@ -12516,40 +12535,40 @@ void Optimizer::newDoNoMaskWA()
             G4_Operand* src0_2 = I->getSrc(2);
             G4_Operand* src0_3 = I->getSrc(3);
 
-            if ((src0_0 && src0_0->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_1 && src0_1->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_2 && src0_2->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_3 && src0_3->compareOperand(aDst) != Rel_disjoint))
+            if ((src0_0 && src0_0->compareOperand(D) != Rel_disjoint) ||
+                (src0_1 && src0_1->compareOperand(D) != Rel_disjoint) ||
+                (src0_2 && src0_2->compareOperand(D) != Rel_disjoint) ||
+                (src0_3 && src0_3->compareOperand(D) != Rel_disjoint))
             {
                 return;
             }
         }
 
         bool needKill = false;
-        const G4_Declare* decl = ((const G4_RegVar*)aDst->getBase())->getDeclare();
+        const G4_Declare* decl = ((const G4_RegVar*)D->getBase())->getDeclare();
         const G4_Declare* primaryDcl = decl->getRootDeclare();
 
-        if (aDst->isFlag())
+        if (D->isFlag() || isCondMod)
         {
             // Using >= instead of = as dcl may be 8bits, but flag dst could be 16 bits
             // For example, "mov (1|M0) P3:uw 0"
-            needKill = (aDst->getRightBound() - aDst->getLeftBound() + 1) >=
-                aDst->getBase()->asRegVar()->getDeclare()->getNumberFlagElements();
+            needKill = (D->getRightBound() - D->getLeftBound() + 1) >=
+                D->getBase()->asRegVar()->getDeclare()->getNumberFlagElements();
         }
         else
         {
             if (decl->getAliasOffset() != 0 ||
-                aDst->getRegAccess() != Direct ||
-                aDst->getRegOff() != 0 ||
-                aDst->getSubRegOff() != 0 ||
-                aDst->getHorzStride() != 1 ||
+                dst->getRegAccess() != Direct ||
+                dst->getRegOff() != 0 ||
+                dst->getSubRegOff() != 0 ||
+                dst->getHorzStride() != 1 ||
                 I->isPartialWrite())
             {
                 return;
             }
             if (fg.isPseudoDcl(primaryDcl) ||
                 primaryDcl->getRegVar()->isRegVarTransient() ||
-                ((aDst->getTypeSize() * I->getExecSize()) ==
+                ((dst->getTypeSize() * I->getExecSize()) ==
                     (primaryDcl->getElemSize() * primaryDcl->getNumElems() * primaryDcl->getNumRows())))
             {
                 needKill = true;
@@ -12672,7 +12691,7 @@ void Optimizer::newDoNoMaskWA()
         assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
 
         // add pseudoKill
-        addPseudoKillIfFullDstWrite(aBB, aII);
+        addPseudoKillIfFullWrite(aBB, aII, false);  // dst
 
         // Create a temp that's big enough to hold data and possible gap
         // b/w data due to alignment/hw restriction.
@@ -12763,8 +12782,9 @@ void Optimizer::newDoNoMaskWA()
             return;
         }
 
-        // Add pseudo kill for dst
-        addPseudoKillIfFullDstWrite(aBB, aII);
+        // Add pseudo kill for dst and condMod
+        addPseudoKillIfFullWrite(aBB, aII, false);  // dst
+        addPseudoKillIfFullWrite(aBB, aII, true);   // condMod
 
         const bool condModGlb = fg.globalOpndHT.isOpndGlobal(P);
         G4_Declare* modDcl = P->getTopDcl();
@@ -13093,7 +13113,7 @@ void Optimizer::newDoNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    addPseudoKillIfFullDstWrite(BB, II);
+                    addPseudoKillIfFullWrite(BB, II, false);  // dst
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
@@ -13293,18 +13313,37 @@ void Optimizer::doNoMaskWA()
         return flagVar;
     };
 
-    auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII)
+    // Check if condMod or dst is full write. If so, add pseudo kill for it.
+    auto addPseudoKillIfFullWrite = [&](G4_BB* aBB, INST_LIST_ITER aII, bool isCondMod)
     {
         // Only NoMask Inst without predicate will call this function!
+        // isCondMod = true:   check condMod
+        //           = false:  check dst
         G4_INST* I = *aII;
-        G4_DstRegRegion* aDst = I->getDst();
-        if (!aDst || aDst->isNullReg() ||
-            I->getImplAccSrc() != nullptr || I->isSend() ||
-            aDst->getBase()->asRegVar()->getPhyReg())
+        if (I->getImplAccSrc() != nullptr || I->isSend())
         {
             return;
         }
+        G4_CondMod* condMod = I->getCondMod();
+        G4_DstRegRegion* dst = I->getDst();
+        if (isCondMod)
+        {
+            if (!condMod || !condMod->getBase()->isRegVar() ||
+                condMod->getBase()->asRegVar()->getPhyReg())
+            {
+                return;
+            }
+        }
+        else
+        {
+            if (!dst || dst->isNullReg() ||
+                !dst->getBase()->isRegVar() || dst->getBase()->asRegVar()->getPhyReg())
+            {
+                return;
+            }
+        }
 
+        G4_Operand* D = isCondMod ? condMod : (G4_Operand*)dst;
         // Make sure dst var is not used in this inst.
         {
             G4_Operand* src0_0 = I->getSrc(0);
@@ -13312,39 +13351,40 @@ void Optimizer::doNoMaskWA()
             G4_Operand* src0_2 = I->getSrc(2);
             G4_Operand* src0_3 = I->getSrc(3);
 
-            if ((src0_0 && src0_0->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_1 && src0_1->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_2 && src0_2->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_3 && src0_3->compareOperand(aDst) != Rel_disjoint))
+            if ((src0_0 && src0_0->compareOperand(D) != Rel_disjoint) ||
+                (src0_1 && src0_1->compareOperand(D) != Rel_disjoint) ||
+                (src0_2 && src0_2->compareOperand(D) != Rel_disjoint) ||
+                (src0_3 && src0_3->compareOperand(D) != Rel_disjoint))
             {
                 return;
             }
         }
 
         bool needKill = false;
-        const G4_Declare* decl = ((const G4_RegVar*)aDst->getBase())->getDeclare();
+        const G4_Declare* decl = ((const G4_RegVar*)D->getBase())->getDeclare();
         const G4_Declare* primaryDcl = decl->getRootDeclare();
-        if (aDst->isFlag())
+
+        if (D->isFlag() || isCondMod)
         {
             // Using >= instead of = as dcl may be 8bits, but flag dst could be 16 bits
             // For example, "mov (1|M0) P3:uw 0"
-            needKill = (aDst->getRightBound() - aDst->getLeftBound() + 1) >=
-                aDst->getBase()->asRegVar()->getDeclare()->getNumberFlagElements();
+            needKill = (D->getRightBound() - D->getLeftBound() + 1) >=
+                D->getBase()->asRegVar()->getDeclare()->getNumberFlagElements();
         }
         else
         {
             if (decl->getAliasOffset() != 0 ||
-                aDst->getRegAccess() != Direct ||
-                aDst->getRegOff() != 0 ||
-                aDst->getSubRegOff() != 0 ||
-                aDst->getHorzStride() != 1 ||
+                dst->getRegAccess() != Direct ||
+                dst->getRegOff() != 0 ||
+                dst->getSubRegOff() != 0 ||
+                dst->getHorzStride() != 1 ||
                 I->isPartialWrite())
             {
                 return;
             }
             if (fg.isPseudoDcl(primaryDcl) ||
                 primaryDcl->getRegVar()->isRegVarTransient() ||
-                ((aDst->getTypeSize() * I->getExecSize()) ==
+                ((dst->getTypeSize() * I->getExecSize()) ==
                     (primaryDcl->getElemSize() * primaryDcl->getNumElems() * primaryDcl->getNumRows())))
             {
                 needKill = true;
@@ -13447,7 +13487,7 @@ void Optimizer::doNoMaskWA()
         assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
 
         // add pseudoKill
-        addPseudoKillIfFullDstWrite(currBB, currII);
+        addPseudoKillIfFullWrite(currBB, currII, false); // dst
 
         // Create a temp that's big enough to hold data and possible gap
         // b/w data due to alignment/hw restriction.
@@ -13537,7 +13577,8 @@ void Optimizer::doNoMaskWA()
         }
 
         // Add pseudo kill for dst
-        addPseudoKillIfFullDstWrite(currBB, currII);
+        addPseudoKillIfFullWrite(currBB, currII, false);  // dst
+        addPseudoKillIfFullWrite(currBB, currII, true);   // condMod
 
         bool condModGlb = fg.globalOpndHT.isOpndGlobal(P);
         G4_Declare* modDcl = P->getTopDcl();
@@ -13808,7 +13849,7 @@ void Optimizer::doNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    addPseudoKillIfFullDstWrite(BB, II);
+                    addPseudoKillIfFullWrite(BB, II, false);  // dst
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
@@ -13906,7 +13947,7 @@ void Optimizer::doNoMaskWA()
                 if (!condmod && !pred)
                 {
                     // Add pseudo Kill
-                    addPseudoKillIfFullDstWrite(BB, II);
+                    addPseudoKillIfFullWrite(BB, II, false);
 
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
