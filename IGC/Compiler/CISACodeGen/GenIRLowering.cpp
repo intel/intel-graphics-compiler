@@ -20,11 +20,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/IR/PatternMatch.h>
-#include <llvm/Analysis/ScalarEvolution.h>
-#include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Analysis/TargetFolder.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
-#include <llvm/Transforms/Utils/Local.h>
+#include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -232,7 +229,6 @@ namespace {
         BuilderTy* Builder = nullptr;
         llvm::LoopInfo* m_LI = nullptr;
         ModuleMetaData* modMD = nullptr;
-        ScalarEvolution* SE = nullptr;
     public:
         static char ID;
 
@@ -249,15 +245,13 @@ namespace {
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<LoopInfoWrapperPass>();
-            AU.addRequired<ScalarEvolutionWrapperPass>();
         }
 
-    protected:
+    private:
         // Helpers
         Value* getSExtOrTrunc(Value*, Type*) const;
         Value* truncExpr(Value*, Type*) const;
 
-        bool simplifyGEP(BasicBlock &BB) const;
         bool lowerGetElementPtrInst(GetElementPtrInst* GEP) const;
     };
 
@@ -397,79 +391,6 @@ bool GenIRLowering::runOnFunction(Function& F) {
     return Changed;
 }
 
-// For each basic block, simplify GEPs based on the analysis result from SCEV.
-bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
-    struct BaseExpr {
-        GetElementPtrInst *GEP;
-        const SCEV *Expr;
-    };
-    struct Displacement {
-        BaseExpr *Base;
-        GetElementPtrInst *GEP;
-        const SCEVConstant *Offset;
-    };
-    // Each visited base pointer have a collection of base expr.
-    DenseMap<Value *, SmallVector<BaseExpr, 4>> Bases;
-    SmallVector<Displacement, 32> Displacements;
-
-    bool Changed = false;
-    for (auto BI = BB.begin(), BE = BB.end(); BI != BE; ++BI) {
-        auto *GEP = dyn_cast<GetElementPtrInst>(BI);
-        // So far, for simplicity, consider GEPs on the generic/global address
-        // with a single index only. It should be straight-forward to extend
-        // the support to other cases, where multiple indices are present.
-        if (!GEP || !GEP->isInBounds() || GEP->getNumIndices() != 1 ||
-            (GEP->getAddressSpace() != ADDRESS_SPACE_GLOBAL &&
-             GEP->getAddressSpace() != ADDRESS_SPACE_GENERIC))
-          continue;
-        // That index should be sign-extended; otherwise, there is little
-        // trouble to simplify further.
-        auto *SExt = dyn_cast<SExtInst>(GEP->getOperand(1));
-        if (!SExt) // TODO: zext may also be considered.
-          continue;
-        auto *Idx = SExt->getOperand(0);
-        auto *Op = dyn_cast<OverflowingBinaryOperator>(Idx);
-        // TODO: Add check for addition through OR.
-        if (!Op || !Op->hasNoSignedWrap())
-            continue;
-        const SCEV *E = SE->getSCEV(Idx);
-        // Skip if the offset to the base is already a constant.
-        if (isa<SCEVConstant>(E))
-          continue;
-        Value *Base = GEP->getPointerOperand();
-        auto &Exprs = Bases[Base];
-        // Check collected base expr to see whether it could be simplified as a
-        // constant offset to a collected base.
-        const SCEVConstant *Offset = nullptr;
-        auto EI = Exprs.begin();
-        auto EE = Exprs.end();
-        for (/*EMPTY*/; EI != EE; ++EI) {
-            // Skip if the result types do not match.
-            if (EI->GEP->getType() != GEP->getType())
-                continue;
-            Offset = dyn_cast<SCEVConstant>(SE->getMinusSCEV(E, EI->Expr));
-            if (Offset)
-                break;
-        }
-        // Not found, add this GEP as a potential base expr.
-        if (!Offset) {
-            Exprs.emplace_back(BaseExpr{GEP, E});
-            continue;
-        }
-        assert(EI != EE);
-        Displacements.emplace_back(Displacement{&*EI, GEP, Offset});
-    }
-    // Replace GEPs in displacements with the direct displacement.
-    for (auto &D : Displacements) {
-        Builder->SetInsertPoint(D.GEP);
-        auto *NewGEP = Builder->CreateInBoundsGEP(D.Base->GEP->getType(), D.Base->GEP, D.Offset->getValue());
-        D.GEP->replaceAllUsesWith(NewGEP);
-        RecursivelyDeleteTriviallyDeadInstructions(D.GEP);
-        Changed = true;
-    }
-    return Changed;
-}
-
 bool GEPLowering::runOnFunction(Function& F) {
     // Skip non-kernel function.
     modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -483,15 +404,11 @@ bool GEPLowering::runOnFunction(Function& F) {
     m_ctx = pCtxWrapper->getCodeGenContext();
 
     DL = &F.getParent()->getDataLayout();
-    SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
 
     BuilderTy TheBuilder(F.getContext(), TargetFolder(*DL));
     Builder = &TheBuilder;
 
     bool Changed = false;
-
-    for (auto &BB : F)
-        Changed |= simplifyGEP(BB);
 
     for (auto& BB : F) {
         for (auto BI = BB.begin(), BE = BB.end(); BI != BE;) {
@@ -1066,6 +983,5 @@ IGC_INITIALIZE_PASS_BEGIN(GEPLowering, PASS_FLAG2, PASS_DESCRIPTION2,
     IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-    IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass);
     IGC_INITIALIZE_PASS_END(GEPLowering, PASS_FLAG2, PASS_DESCRIPTION2,
         PASS_CFG_ONLY2, PASS_ANALYSIS2)
