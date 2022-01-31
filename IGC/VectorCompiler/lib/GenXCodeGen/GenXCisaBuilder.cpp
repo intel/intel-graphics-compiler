@@ -150,13 +150,13 @@ public:
     Description = (Twine("GENX IR generation error: ") + Desc).str();
   }
 
-  DiagnosticInfoCisaBuild(Instruction *Inst, const Twine &Desc,
+  DiagnosticInfoCisaBuild(const Instruction *Inst, const Twine &Desc,
                           DiagnosticSeverity Severity)
       : DiagnosticInfo(getKindID(), Severity) {
     std::string Str;
     vc::printToString(Str, *Inst);
     Description =
-        (Twine("CISA builder failed for intruction <") + Str + ">: " + Desc)
+        (Twine("CISA builder failed for instruction <") + Str + ">: " + Desc)
             .str();
   }
 
@@ -169,6 +169,8 @@ public:
 
 const int DiagnosticInfoCisaBuild::KindID =
     llvm::getNextAvailablePluginDiagnosticKind();
+
+using IRChecker = vc::IRChecker<DiagnosticInfoCisaBuild>;
 
 static VISA_Exec_Size getExecSizeFromValue(unsigned int Size) {
   int Res = genx::log2(Size);
@@ -3786,6 +3788,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     auto *EltType = V->getType()->getScalarType();
     if (auto *MDType = CI->getMetadata(vc::InstMD::SVMBlockType))
       EltType = cast<ValueAsMetadata>(MDType->getOperand(0).get())->getType();
+    IRChecker::argOperandIsConstantInt(*CI, Num.getArgIdx(), "log2 num blocks");
     ConstantInt *LogOp = cast<ConstantInt>(CI->getArgOperand(Num.getArgIdx()));
     unsigned LogNum = LogOp->getZExtValue();
     unsigned ElBytes = getResultedTypeSize(EltType, DL);

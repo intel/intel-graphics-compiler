@@ -17,9 +17,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/Twine.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
-#include "llvm/IR/Value.h"
 
 #include <string>
 
@@ -88,6 +88,18 @@ void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
 void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
               const llvm::Type *Ty, const llvm::Twine &Desc,
               llvm::DiagnosticSeverity Severity = llvm::DS_Error);
+
+template <typename Diag> struct IRChecker {
+  static void argOperandIsConstantInt(const llvm::CallInst &CI, unsigned Idx,
+                                      const llvm::Twine &ArgName) {
+    auto *Op = CI.getArgOperand(Idx);
+    if (llvm::isa<llvm::ConstantInt>(Op))
+      return;
+    Diag Err(&CI, "<" + ArgName + "> is expected to be constant",
+             llvm::DS_Error);
+    CI.getContext().diagnose(Err);
+  }
+};
 
 } // namespace vc
 

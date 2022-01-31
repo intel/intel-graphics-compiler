@@ -156,7 +156,7 @@ private:
   static int getKindID() { return KindID; }
 
 public:
-  DiagnosticInfoLowering(Instruction *Inst, const Twine &Desc,
+  DiagnosticInfoLowering(const Instruction *Inst, const Twine &Desc,
                          DiagnosticSeverity Severity = DS_Error);
   void print(DiagnosticPrinter &DP) const override;
   static bool classof(const DiagnosticInfo *DI) {
@@ -166,9 +166,10 @@ public:
 
 const int DiagnosticInfoLowering::KindID =
     llvm::getNextAvailablePluginDiagnosticKind();
-;
 
-DiagnosticInfoLowering::DiagnosticInfoLowering(Instruction *Inst,
+using IRChecker = vc::IRChecker<DiagnosticInfoLowering>;
+
+DiagnosticInfoLowering::DiagnosticInfoLowering(const Instruction *Inst,
                                                const Twine &Desc,
                                                DiagnosticSeverity Severity)
     : DiagnosticInfo(getKindID(), Severity), Line(0), Col(0) {
@@ -941,6 +942,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   IGC_ASSERT(!Widths.empty());
   unsigned NumChannels = NumVectorElements;
   if (MaskIdx != NONEED) {
+    IRChecker::argOperandIsConstantInt(*CI, MaskIdx, "channel mask");
     NumChannels = (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))
                       ->getZExtValue();
     NumChannels = (NumChannels & 1) + ((NumChannels & 2) >> 1) +
@@ -954,7 +956,10 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   unsigned NumBlks = 1;
   if (IID == GenXIntrinsic::genx_svm_scatter ||
       IID == GenXIntrinsic::genx_svm_gather) {
-    NumBlks = (unsigned)cast<ConstantInt>(CI->getArgOperand(1))->getZExtValue();
+    const unsigned NumBlocksOpIDX = 1;
+    IRChecker::argOperandIsConstantInt(*CI, NumBlocksOpIDX, "log2 num blocks");
+    NumBlks = (unsigned)cast<ConstantInt>(CI->getArgOperand(NumBlocksOpIDX))
+                  ->getZExtValue();
     NumBlks = (1 << NumBlks);
     auto ElmSz = CI->getArgOperand(DataIdx)->getType()->getScalarSizeInBits() / 8;
     if (ElmSz == 1 && NumBlks < 4)
