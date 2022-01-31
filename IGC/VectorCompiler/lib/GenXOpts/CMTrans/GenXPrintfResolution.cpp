@@ -164,12 +164,36 @@ static std::vector<CallInstRef> collectWorkload(Module &M) {
   return Workload;
 }
 
+// \p Workload must be a range of objects convertible to CallInst &. The range
+// must not be empty. The set of called by \p Workload elements functions is
+// returned. For the most case there should be only one printf declaration.
+// Though considering that some frontends tend to place strings in different
+// address spaces and that SPIR-V level linking is possible there may be cases
+// where more that one printf declaration is present.
+template <typename Range>
+static SmallPtrSet<Function *, 1> getPrintfDeclarations(const Range &Workload) {
+  IGC_ASSERT_MESSAGE(Workload.begin() != Workload.end(),
+                     "wrong argument: the input range must not be empty");
+  SmallPtrSet<Function *, 1> Declarations;
+  for (CallInst &CI : Workload)
+    Declarations.insert(CI.getCalledFunction());
+  IGC_ASSERT_MESSAGE(!Declarations.empty(),
+                     "must be at least 1 printf declaration");
+  IGC_ASSERT_MESSAGE(
+      llvm::all_of(Declarations,
+                   [](Function *F) { return F && F->isDeclaration(); }),
+      "printf must be a declaration");
+  return Declarations;
+}
+
 bool GenXPrintfResolution::runOnModule(Module &M) {
   DL = &M.getDataLayout();
 
   std::vector<CallInstRef> Workload = collectWorkload(M);
   if (Workload.empty())
     return false;
+  auto PrintfDecls = getPrintfDeclarations(Workload);
+
   addPrintfImplDeclarations(M);
   for (CallInst &CI : Workload)
     handlePrintfCall(CI);
@@ -183,6 +207,12 @@ bool GenXPrintfResolution::runOnModule(Module &M) {
   }
   updatePrintfImplDeclarations(M);
   preparePrintfImplForInlining();
+
+  IGC_ASSERT_MESSAGE(
+      llvm::all_of(PrintfDecls, [](Function *F) { return F->use_empty(); }),
+      "no users of printf function must be left");
+  for (Function *PrintfDecl : PrintfDecls)
+    PrintfDecl->eraseFromParent();
   return true;
 }
 
