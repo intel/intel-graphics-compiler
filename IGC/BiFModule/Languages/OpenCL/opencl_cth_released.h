@@ -5816,6 +5816,22 @@ double16 __attribute__((overloadable)) convert_double16_rtp(half16);
 double16 __attribute__((overloadable)) convert_double16_rtz(half16);
 #endif
 
+#if defined(cl_intel_bfloat16_conversions)
+ushort __attribute__((overloadable)) intel_convert_bfloat16_as_ushort(float source);
+ushort2 __attribute__((overloadable)) intel_convert_bfloat162_as_ushort2(float2 source);
+ushort3 __attribute__((overloadable)) intel_convert_bfloat163_as_ushort3(float3 source);
+ushort4 __attribute__((overloadable)) intel_convert_bfloat164_as_ushort4(float4 source);
+ushort8 __attribute__((overloadable)) intel_convert_bfloat168_as_ushort8(float8 source);
+ushort16 __attribute__((overloadable)) intel_convert_bfloat1616_as_ushort16(float16 source);
+
+float __attribute__((overloadable)) intel_convert_as_bfloat16_float(ushort source);
+float2 __attribute__((overloadable)) intel_convert_as_bfloat162_float2(ushort2 source);
+float3 __attribute__((overloadable)) intel_convert_as_bfloat163_float3(ushort3 source);
+float4 __attribute__((overloadable)) intel_convert_as_bfloat164_float4(ushort4 source);
+float8 __attribute__((overloadable)) intel_convert_as_bfloat168_float8(ushort8 source);
+float16  __attribute__((overloadable)) intel_convert_as_bfloat1616_float16(ushort16 source);
+#endif // defined(cl_intel_bfloat16_conversions)
+
 #if defined(cl_intel_simd_operations_placeholder) || defined(cl_intel_subgroups) || defined(cl_khr_subgroups) || defined(__opencl_c_subgroups)
 // Shared Sub Group Functions
 uint    __attribute__((overloadable)) get_sub_group_size( void );
