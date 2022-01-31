@@ -118,8 +118,12 @@ struct CompileOptions {
   bool DumpIR = false;
   bool DumpAsm = false;
   bool DumpDebugInfo = false;
+
   bool TimePasses = false;
   bool ShowStats = false;
+  bool ResetTimePasses = false;
+  bool ResetLLVMStats = false;
+
   std::string StatsFile;
   std::string LLVMOptions;
   bool UseBindlessBuffers = false;

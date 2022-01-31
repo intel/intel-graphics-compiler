@@ -47,9 +47,13 @@ def : PlainJoined<"runtime=">, Alias<binary_format>,
 
 def ftime_report : PlainFlag<"ftime-report">,
   HelpText<"Print timing summary of each stage of compilation">;
+def freset_time_report : PlainFlag<"freset-time-report">,
+  HelpText<"Reset timing summary before compilation">;
 
 def print_stats : PlainFlag<"print-stats">,
   HelpText<"Print performance metrics and statistics">;
+def freset_llvm_stats : PlainFlag<"freset-llvm-stats">,
+  HelpText<"Reset perfomance metrics before compilation">;
 
 def stats_file : PlainSeparate<"stats-file">,
   HelpText<"Filename to write statistics to">;

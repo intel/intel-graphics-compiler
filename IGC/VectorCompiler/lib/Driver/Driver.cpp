@@ -438,6 +438,43 @@ static void parseLLVMOptions(const std::string &Args) {
   cl::ParseCommandLineOptions(Argv.size(), Argv.data());
 }
 
+static void printLLVMStats(const vc::CompileOptions &Opts) {
+  // Print LLVM statistics if required.
+  if (Opts.ShowStats)
+    llvm::PrintStatistics(llvm::errs());
+
+  if (Opts.StatsFile.empty())
+    return;
+
+  // FIXME: it's not quite clear why we need StatsFile since we can
+  // just use shader dumper
+  std::error_code EC;
+  auto StatS = std::make_unique<llvm::raw_fd_ostream>(Opts.StatsFile, EC,
+                                                      llvm::sys::fs::OF_Text);
+  if (EC)
+    llvm::errs() << Opts.StatsFile << ": " << EC.message();
+  else
+    llvm::PrintStatisticsJSON(*StatS);
+}
+
+static void printLLVMTimers(const vc::CompileOptions &Opts) {
+  // Print timers if any and restore old TimePassesIsEnabled value.
+  std::string OutStr;
+  llvm::raw_string_ostream OS(OutStr);
+  TimerGroup::printAll(OS);
+  OS.flush();
+
+  if (OutStr.empty())
+    return;
+
+  if (Opts.Dumper)
+    Opts.Dumper->dumpText(OutStr, "time_passes.txt");
+
+  // FIXME: it's not quite clear why we need to print stats to errs(),
+  // if we have shader dumper
+  llvm::errs() << OutStr;
+}
+
 Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
                                         const vc::CompileOptions &Opts,
                                         const vc::ExternalData &ExtData,
@@ -481,14 +518,25 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   TargetMachine &TM = *ExpTargetMachine.get();
   M.setDataLayout(TM.createDataLayout());
 
-  // Save old value and restore at the end.
-  bool TimePassesIsEnabledLocal = TimePassesIsEnabled;
+  // Save the old value (to restore it once compilation process is finished)
+  const bool TimePassesIsEnabledOld = llvm::TimePassesIsEnabled;
+  const auto TimePassesReenableGuard =
+      llvm::make_scope_exit([TimePassesIsEnabledOld]() {
+        // WARNING (FIXME): we modify global variable here
+        llvm::TimePassesIsEnabled = TimePassesIsEnabledOld;
+      });
+
+  // Enable tracking of time needed for LLVM passes to run
+  if (Opts.ResetTimePasses)
+    TimerGroup::clearAll();
   if (Opts.TimePasses)
     TimePassesIsEnabled = true;
 
   // Enable LLVM statistics recording if required.
+  if (Opts.ResetLLVMStats)
+    llvm::ResetStatistics();
   if (Opts.ShowStats || !Opts.StatsFile.empty())
-    llvm::EnableStatistics(false);
+    llvm::EnableStatistics(false /*DoPrintOnExit = false */);
 
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpModule(M, "after_ir_adaptors.ll");
@@ -500,22 +548,8 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
 
   vc::CompileOutput Output = runCodeGen(Opts, ExtData, TM, M);
 
-  // Print timers if any and restore old TimePassesIsEnabled value.
-  TimerGroup::printAll(llvm::errs());
-  TimePassesIsEnabled = TimePassesIsEnabledLocal;
-
-  // Print LLVM statistics if required.
-  if (Opts.ShowStats)
-    llvm::PrintStatistics(llvm::errs());
-  if (!Opts.StatsFile.empty()) {
-    std::error_code EC;
-    auto StatS = std::make_unique<llvm::raw_fd_ostream>(
-        Opts.StatsFile, EC, llvm::sys::fs::OF_Text);
-    if (EC)
-      llvm::errs() << Opts.StatsFile << ": " << EC.message();
-    else
-      llvm::PrintStatisticsJSON(*StatS);
-  }
+  printLLVMStats(Opts);
+  printLLVMTimers(Opts);
   return Output;
 }
 
@@ -706,8 +740,12 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.DumpAsm = true;
   if (InternalOptions.hasArg(OPT_ftime_report))
     Opts.TimePasses = true;
+  if (InternalOptions.hasArg(OPT_freset_time_report))
+    Opts.ResetTimePasses = true;
   if (InternalOptions.hasArg(OPT_print_stats))
     Opts.ShowStats = true;
+  if (InternalOptions.hasArg(OPT_freset_llvm_stats))
+    Opts.ResetLLVMStats = true;
   Opts.StatsFile = InternalOptions.getLastArgValue(OPT_stats_file).str();
   if (InternalOptions.hasArg(OPT_intel_use_bindless_buffers_ze))
     Opts.UseBindlessBuffers = true;
