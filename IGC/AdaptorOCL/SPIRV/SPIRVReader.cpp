@@ -590,8 +590,11 @@ public:
 
       for (unsigned int i = 0; i != numDims; i++)
       {
-          auto val = BM->get<SPIRVConstant>(arrayType.getComponentCount(i))->getZExtIntValue();
-          subscripts.push_back(Builder.getOrCreateSubrange(0, val));
+          SPIRVConstant* c = BM->get<SPIRVConstant>(arrayType.getComponentCount(i));
+          auto val = c->getZExtIntValue();
+          c = BM->get<SPIRVConstant>(arrayType.getComponentCount(numDims - 1));
+          auto lowerBound = c->getZExtIntValue();
+          subscripts.push_back(Builder.getOrCreateSubrange(lowerBound, val));
           totalCount *= (uint64_t)(val);
       }
 
