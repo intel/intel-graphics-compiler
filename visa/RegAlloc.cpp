@@ -3658,13 +3658,16 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         jitInfo->numBytesScratchGtpin = kernel.getGTPinData()->getNumBytesScratchUse();
     }
 
-    // propagate address takens to gtpin info
-    const auto& addrTakenMap = pointsToAnalysis.getPointsToMap();
-    auto gtpinData = kernel.getGTPinData();
-    for (auto& indirRef : addrTakenMap)
+    if (!gra.isReRAPass())
     {
-        for (auto target : indirRef.second)
-            gtpinData->addIndirRef(indirRef.first, target);
+        // propagate address takens to gtpin info
+        const auto& addrTakenMap = pointsToAnalysis.getPointsToMap();
+        auto gtpinData = kernel.getGTPinData();
+        for (auto& indirRef : addrTakenMap)
+        {
+            for (auto target : indirRef.second)
+                gtpinData->addIndirRef(indirRef.first, target);
+        }
     }
 
     recordRAStats(builder, kernel, status);

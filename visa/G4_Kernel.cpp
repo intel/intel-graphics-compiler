@@ -319,11 +319,22 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
             {
                 t.grf_info = 1;
                 numTokens++;
+                // indirect info
+                numTokens++;
             }
 
             if (kernel.getOption(vISA_GTPinReRA))
             {
                 t.re_ra = 1;
+            }
+        }
+        else
+        {
+            // provide only indirect info for stack calls
+            if (kernel.getOption(vISA_GetFreeGRFInfo))
+            {
+                t.grf_info = 1;
+                numTokens++;
             }
         }
 
@@ -354,11 +365,22 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
             {
                 t.grf_info = 1;
                 numTokens++;
+                // indirect info
+                numTokens++;
             }
 
             if (gtpin_init->re_ra)
             {
                 t.re_ra = 1;
+            }
+        }
+        else
+        {
+            // provide only indirect info for stack calls
+            if (gtpin_init->grf_info)
+            {
+                t.grf_info = 1;
+                numTokens++;
             }
         }
 
