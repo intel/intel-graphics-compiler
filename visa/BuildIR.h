@@ -347,6 +347,8 @@ private:
 
     //The temp var for eu fusion W/A
     G4_Declare* euFusionWATmpVar = nullptr;
+    //The temp var for eu fusion W/A
+    G4_Declare* euFusionCallWATmpVar = nullptr;
 
     // Indicates that sampler header cache (builtinSamplerHeader) is correctly
     // initialized with r0 contents.
@@ -630,6 +632,8 @@ public:
     G4_Declare* getSpillFillHeader();
 
     G4_Declare* getEUFusionWATmpVar();
+    G4_Declare* createEUFusionCallWATmpVar(uint32_t nElts, G4_Type eltTy, G4_SubReg_Align srAlign);
+    G4_Declare* getEUFusionCallWATmpVar() { return euFusionCallWATmpVar; }
 
     G4_Declare* getOldA0Dot2Temp();
     bool hasValidOldA0Dot2() { return oldA0Dot2Temp; }
