@@ -595,8 +595,7 @@ unsigned GenXLegalization::adjustTwiceWidthOrFixed4(const Bale &B) {
   // Spot whether we have a FIXED operand and/or a TWICEWIDTH operand.
   if (GenXIntrinsic::isGenXIntrinsic(Main->Inst)) {
     GenXIntrinsicInfo II(GenXIntrinsic::getAnyIntrinsicID(Main->Inst));
-    for (auto i = II.begin(), e = II.end(); i != e; ++i) {
-      auto ArgInfo = *i;
+    for (auto ArgInfo : II.getInstDesc()) {
       if (!ArgInfo.isArgOrRet())
        continue;
       switch (ArgInfo.getRestriction()) {

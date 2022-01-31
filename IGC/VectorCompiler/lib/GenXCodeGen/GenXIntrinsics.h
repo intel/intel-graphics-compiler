@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXVisa.h"
 #include "Probe/Assertion.h"
+#include <unordered_map>
 
 #define GENX_ITR_CATVAL(v) ((v) << CATBASE)
 #define GENX_ITR_FLAGENUM(o, v) ((v) << ((o) + FLAGBASE))
@@ -28,14 +29,9 @@ SPDX-License-Identifier: MIT
 #define GENX_ITR_FLAGVAL(o) GENX_ITR_FLAGENUM(o, 1)
 
 namespace llvm {
-  class CallInst;
+class CallInst;
 
 class GenXIntrinsicInfo {
-public:
-  typedef uint32_t DescrElementType;
-private:
-  const DescrElementType *Args;
-  static const DescrElementType Table[];
 public:
   enum {
     // General format of intrinsic descriptor words:
@@ -71,7 +67,6 @@ public:
     OPNDMASK = ~(CATMASK | FLAGMASK),
 
     // A field that does not contain an operand number or literal value:
-    END =                   0, // end of instruction description
     IMPLICITPRED =          GENX_ITR_CATVAL(0x01), // implicit predication field
     NULLRAW =               GENX_ITR_CATVAL(0x02), // null raw operand
     ISBARRIER =             GENX_ITR_CATVAL(0x03), // intrinsic is barrier: suppress nobarrier attribute
@@ -174,9 +169,8 @@ public:
   };
   struct ArgInfo {
     unsigned Info;
-    // Default constructor, used in GenXBaling to construct an ArgInfo that
-    // represents an arg of a non-call instruction.
-    ArgInfo() : Info(GENERAL) {}
+    // Construct argument with empty info.
+    ArgInfo() : Info(0) {}
     // Construct from a field read from the intrinsics info table.
     ArgInfo(unsigned Info) : Info(Info) {}
     // getCategory : return field category
@@ -280,26 +274,17 @@ public:
       return Info & MODIFIER;
     }
   };
-  // GenXIntrinsics::iterator : iterate through the fields
-  class iterator {
-    const DescrElementType *p;
-  public:
-    iterator(const DescrElementType *p) : p(p) {}
-    iterator &operator++() { ++p; if (*p == END) p = 0; return *this; }
-    ArgInfo operator*() { return ArgInfo(*p); }
-    bool operator!=(iterator i) { return p != i.p; }
-  };
-  iterator begin() {
-    IGC_ASSERT_MESSAGE(isNotNull(), "iterating an intrinsic without info");
-    return iterator(Args);
-  }
-  iterator end() { return iterator(0); }
+
+  using DescrType = llvm::SmallVector<ArgInfo, 8>;
+
   // Construct a GenXIntrinsicInfo for a particular intrinsic
-  GenXIntrinsicInfo(unsigned IntrinId);
-  bool isNull() const { return *getInstDesc() == GenXIntrinsicInfo::END; }
+  GenXIntrinsicInfo(unsigned IntrinId) { InfoIt = Table.find(IntrinId); }
+  bool isNull() const { return InfoIt == Table.cend(); }
   bool isNotNull() const { return !isNull(); }
   // Return instruction description.
-  const DescrElementType *getInstDesc() const { return Args; }
+  ArrayRef<ArgInfo> getInstDesc() const {
+    return isNull() ? ArrayRef<ArgInfo>{} : ArrayRef<ArgInfo>{InfoIt->second};
+  }
   // Get the category and modifier for an arg idx
   ArgInfo getArgInfo(int Idx);
   // Get the trailing null zone, if any.
@@ -313,6 +298,11 @@ public:
   // Get The overrided execution size or 0.
   static unsigned getOverridedExecSize(CallInst *CI,
                                        const GenXSubtarget *ST = nullptr);
+
+private:
+  using TableType = std::unordered_map<unsigned, DescrType>;
+  static const TableType Table;
+  TableType::const_iterator InfoIt;
 };
 
 } // namespace llvm

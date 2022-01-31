@@ -49,28 +49,10 @@ using namespace llvm;
 // of near-identical code in the intrinsics look-up table and also to
 // aid readability.
 
-const GenXIntrinsicInfo::DescrElementType GenXIntrinsicInfo::Table[] = {
-
 // Region access intrinsics do not appear in this table
-
+const GenXIntrinsicInfo::TableType GenXIntrinsicInfo::Table = {
 #include "GenXIntrinsicInfoTable.inc"
-
-    END};
-
-GenXIntrinsicInfo::GenXIntrinsicInfo(unsigned IntrinId) : Args(0) {
-  const auto *p = Table;
-  for (;;) {
-    if (*p == END)
-      break; // intrinsic not found; leave Args pointing at END field
-    if (IntrinId == *p++)
-      break;
-    // Scan past the rest of this entry.
-    while (*p++ != END)
-      ;
-  }
-  // We have found the right entry.
-  Args = p;
-}
+};
 
 // Get the category and modifier for an arg idx (-1 means return value).
 // The returned ArgInfo struct contains just the short read from the table,
@@ -78,13 +60,11 @@ GenXIntrinsicInfo::GenXIntrinsicInfo(unsigned IntrinId) : Args(0) {
 GenXIntrinsicInfo::ArgInfo GenXIntrinsicInfo::getArgInfo(int Idx) {
   // Read through the fields in the table to find the one with the right
   // arg index...
-  for (const auto *p = Args; *p; p++) {
-    ArgInfo AI(*p);
+  for (auto AI : getInstDesc())
     if (AI.isRealArgOrRet() && AI.getArgIdx() == Idx)
       return AI;
-  }
   // Field with requested arg index was not found.
-  return END;
+  return ArgInfo{};
 }
 
 // Return the starting point of any trailing null (zero) arguments
@@ -92,33 +72,20 @@ GenXIntrinsicInfo::ArgInfo GenXIntrinsicInfo::getArgInfo(int Idx) {
 // this will always return the number of operands to the call (ie, there
 // is no trailing null zone), even if there are some trailing nulls.
 unsigned GenXIntrinsicInfo::getTrailingNullZoneStart(CallInst *CI) {
-  unsigned TrailingNullStart = CI->getNumArgOperands();
-
-  const auto *p = Args;
-  for (; *p; p++) {
-    ArgInfo AI(*p);
-    if (AI.getCategory() == ARGCOUNT)
-      break;
+  auto AI =
+      std::find_if(getInstDesc().begin(), getInstDesc().end(),
+                   [](auto Arg) { return Arg.getCategory() == ARGCOUNT; });
+  if (AI == getInstDesc().end())
+    return CI->getNumOperands();
+  unsigned BaseArg = AI->getArgIdx();
+  unsigned TrailingNullStart = BaseArg;
+  for (unsigned Idx = BaseArg; Idx < CI->getNumArgOperands(); ++Idx) {
+    if (auto CA = dyn_cast<Constant>(CI->getArgOperand(Idx)))
+      if (CA->isNullValue())
+        continue;
+    TrailingNullStart = Idx + 1;
   }
-
-  if (*p) {
-    ArgInfo ACI(*p);
-    unsigned BaseArg = ACI.getArgIdx();
-
-    TrailingNullStart = BaseArg;
-    for (unsigned Idx = BaseArg; Idx < CI->getNumArgOperands(); ++Idx) {
-      if (auto CA = dyn_cast<Constant>(CI->getArgOperand(Idx))) {
-        if (CA->isNullValue())
-          continue;
-      }
-      TrailingNullStart = Idx + 1;
-    }
-
-    if (TrailingNullStart < BaseArg + ACI.getArgCountMin())
-      TrailingNullStart = BaseArg + ACI.getArgCountMin();
-  }
-
-  return TrailingNullStart;
+  return std::max(TrailingNullStart, BaseArg + AI->getArgCountMin());
 }
 
 /***********************************************************************
@@ -128,8 +95,7 @@ unsigned GenXIntrinsicInfo::getTrailingNullZoneStart(CallInst *CI) {
  * Return:  bit N set if execution size 1<<N is allowed
  */
 unsigned GenXIntrinsicInfo::getExecSizeAllowedBits() {
-  for (const auto *p = Args; *p; p++) {
-    ArgInfo AI(*p);
+  for (auto AI : getInstDesc()) {
     if (!AI.isGeneral()) {
       switch (AI.getCategory()) {
       case EXECSIZE:
@@ -158,8 +124,7 @@ bool GenXIntrinsicInfo::getPredAllowed() {
   // Simply search the intrinsic description for an IMPLICITPRED
   // entry. Not very efficient, but the situations where this
   // check is needed are expected to be infrequent.
-  for (const auto *p = getInstDesc(); *p; ++p) {
-    ArgInfo AI(*p);
+  for (auto AI : getInstDesc()) {
     if (AI.getCategory() == IMPLICITPRED)
       return true;
   }

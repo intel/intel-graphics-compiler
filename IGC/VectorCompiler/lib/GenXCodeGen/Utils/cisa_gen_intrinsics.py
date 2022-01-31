@@ -131,27 +131,29 @@ def generate(dscr_filename, out_path):
             isalt = isinstance(opc_gen, unicode)
         return bool(isinstance(opc_gen, str) or isalt)
 
+    def getIntrinsicName(name):
+        if name == "fma":
+            return 'Intrinsic::{}'.format(name)
+        return 'GenXIntrinsic::{}'.format(name)
+
+    def getIntrinsicInfoStr(name, intr):
+        intr = list(filter(lambda arg: arg[0] not in special_keys, intr.items()))
+        args = []
+        for key, value in intr:
+            if key in ('opc'):
+                args.append('LITERAL | {}'.format(value))
+            elif isinstance(value, list):
+                should_skip_operand = lambda x: x == 'RAW_OPERANDS' or ('BUILD_ONLY::') in str(x)
+                args.append(' | '.join([str(x) for x in value if not should_skip_operand(x)]))
+
+        return '{{ {}, {{ {} }} }}'.format(getIntrinsicName(name), ', '.join(args))
+
+    should_skip_intrinsic = lambda intr: 'OPTIONS' in intr and 'disable' in intr['OPTIONS']
+    intrinsics = list(filter(lambda intr: not should_skip_intrinsic(intr[1]), intrinsics.items()))
+
     with open(out_path + '/GenXIntrinsicInfoTable.inc', 'w') as file:
         file.write(HEADER)
-        for name, intr in intrinsics.items():
-            if 'OPTIONS' in intr and 'disable' in intr['OPTIONS']:
-                continue
-            if name == "fma":
-                file.write('Intrinsic::{},\n'.format(name))
-            else:
-                file.write('GenXIntrinsic::{},\n'.format(name))
-            for key, value in intr.items():
-                if key in special_keys:
-                    continue
-                elif key in ('opc'):
-                    file.write('LITERAL | {},\n'.format(value))
-                elif isinstance(value, list):
-                    file.write('{},\n'.format(' | '.join([str(x) for x in value
-                        if (x != 'RAW_OPERANDS' and ('BUILD_ONLY::') not in str(x) )])))
-                else:
-                    # skip other
-                    pass
-            file.write('END,\n\n')
+        file.write(',\n'.join([getIntrinsicInfoStr(*intr) for intr in intrinsics]))
 
     def analyseForBuildMap(x):
         if isstrinst(x) and 'BUILD_ONLY::' not in str(x):
@@ -161,12 +163,11 @@ def generate(dscr_filename, out_path):
         else:
             return str(x)
 
-
     with open(out_path + '/GenXIntrinsicsBuildMap.inc', 'w') as file:
         file.write(HEADER)
         file.write('switch(IntrinID) {\n\n')
 
-        for name, intr in intrinsics.items():
+        for name, intr in intrinsics:
             gen_opc = intr.get('gen_opc')
             if not gen_opc:
                 gen_opc = intr['opc']
@@ -179,13 +180,7 @@ def generate(dscr_filename, out_path):
                 opc_gen = [opc_gen]
             assert isinstance(opc_gen, list)
 
-            if 'OPTIONS' in intr and 'disable' in intr['OPTIONS']:
-                continue
-
-            if name == "fma":
-                file.write('  case llvm::Intrinsic::' + name + ': {\n')
-            else:
-                file.write('  case llvm::GenXIntrinsic::' + name + ': {\n')
+            file.write('  case {}: {{\n'.format(getIntrinsicName(name)))
 
             for key, value in intr.items():
                 if key in special_keys:

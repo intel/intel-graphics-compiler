@@ -453,8 +453,7 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       if (II.isNull())
         return Modified;
       unsigned MaxRawOperands = II.getTrailingNullZoneStart(CI);
-      for (GenXIntrinsicInfo::iterator i = II.begin(), e = II.end(); i != e; ++i) {
-        GenXIntrinsicInfo::ArgInfo AI = *i;
+      for (auto AI : II.getInstDesc()) {
         if (!AI.isArgOrRet() || AI.isRet())
           continue;
         // This field relates to an operand.

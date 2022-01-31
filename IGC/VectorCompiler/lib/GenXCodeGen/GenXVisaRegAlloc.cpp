@@ -525,9 +525,7 @@ void GenXVisaRegAlloc::extraCoalescing()
           if (IntrinsicID == GenXIntrinsic::not_any_intrinsic)
             return false;
           GenXIntrinsicInfo Info(IntrinsicID);
-          const auto *descp = Info.getInstDesc();
-          for (const auto *p = descp; *p; ++p) {
-            GenXIntrinsicInfo::ArgInfo AI(*p);
+          for (auto AI : Info.getInstDesc()) {
             if (AI.getCategory() != GenXIntrinsicInfo::TWOADDR)
               continue;
             if (isa<UndefValue>(Inst->getOperand(AI.getArgIdx())))
