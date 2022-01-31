@@ -1211,8 +1211,8 @@ namespace vISA
             // Need call WA for EU Fusion for non-entry function
             m_EUFusionCallWANeeded = builder.hasFusedEU()
                 && builder.getOption(vISA_fusedCallWA)
-                && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall())
-                && !builder.getIsKernel();
+                && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall());
+                //&& !builder.getIsKernel(); // if caller save tmp is forced w/ M16, caller save/restore must be forced with M16.
         }
 
         void emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const;
