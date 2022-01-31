@@ -49,16 +49,19 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p1v2i32, )( flo
     float2 temp;
     int2 exp_temp;
     int temp_ptr;
-    float2 in, out1;
-    int2 out2;
-    in = x;
+    float in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -69,16 +72,22 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p1v3i32, )( flo
     float3 temp;
     int3 exp_temp;
     int temp_ptr;
-    float3 in, out1;
-    int3 out2;
-    in = x;
+    float in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -89,16 +98,25 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p1v4i32, )( flo
     float4 temp;
     int4 exp_temp;
     int temp_ptr;
-    float4 in, out1;
-    int4 out2;
-    in = x;
+    float in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -109,16 +127,37 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p1v8i32, )( flo
     float8 temp;
     int8 exp_temp;
     int temp_ptr;
-    float8 in, out1;
-    int8 out2;
-    in = x;
+    float in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -129,16 +168,61 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p1v16i32, )( 
     float16 temp;
     int16 exp_temp;
     int temp_ptr;
-    float16 in, out1;
-    int16 out2;
-    in = x;
+    float in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -183,16 +267,19 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p0v2i32, )( flo
     float2 temp;
     int2 exp_temp;
     int temp_ptr;
-    float2 in, out1;
-    int2 out2;
-    in = x;
+    float in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -203,16 +290,22 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p0v3i32, )( flo
     float3 temp;
     int3 exp_temp;
     int temp_ptr;
-    float3 in, out1;
-    int3 out2;
-    in = x;
+    float in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -223,16 +316,25 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p0v4i32, )( flo
     float4 temp;
     int4 exp_temp;
     int temp_ptr;
-    float4 in, out1;
-    int4 out2;
-    in = x;
+    float in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -243,16 +345,37 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p0v8i32, )( flo
     float8 temp;
     int8 exp_temp;
     int temp_ptr;
-    float8 in, out1;
-    int8 out2;
-    in = x;
+    float in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -263,16 +386,61 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p0v16i32, )( 
     float16 temp;
     int16 exp_temp;
     int temp_ptr;
-    float16 in, out1;
-    int16 out2;
-    in = x;
+    float in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -318,16 +486,19 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p3v2i32, )( flo
     float2 temp;
     int2 exp_temp;
     int temp_ptr;
-    float2 in, out1;
-    int2 out2;
-    in = x;
+    float in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -338,16 +509,22 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p3v3i32, )( flo
     float3 temp;
     int3 exp_temp;
     int temp_ptr;
-    float3 in, out1;
-    int3 out2;
-    in = x;
+    float in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -358,16 +535,25 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p3v4i32, )( flo
     float4 temp;
     int4 exp_temp;
     int temp_ptr;
-    float4 in, out1;
-    int4 out2;
-    in = x;
+    float in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -378,16 +564,37 @@ float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p3v8i32, )( float8    
     float8 temp;
     int8 exp_temp;
     int temp_ptr;
-    float8 in, out1;
-    int8 out2;
-    in = x;
+    float in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -398,16 +605,61 @@ float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p3v16i32, )( float16
     float16 temp;
     int16 exp_temp;
     int temp_ptr;
-    float16 in, out1;
-    int16 out2;
-    in = x;
+    float in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -454,16 +706,19 @@ INLINE float2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f32_p4v2i32, )( flo
     float2 temp;
     int2 exp_temp;
     int temp_ptr;
-    float2 in, out1;
-    int2 out2;
-    in = x;
+    float in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -474,16 +729,22 @@ INLINE float3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f32_p4v3i32, )( flo
     float3 temp;
     int3 exp_temp;
     int temp_ptr;
-    float3 in, out1;
-    int3 out2;
-    in = x;
+    float in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -494,16 +755,25 @@ INLINE float4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f32_p4v4i32, )( flo
     float4 temp;
     int4 exp_temp;
     int temp_ptr;
-    float4 in, out1;
-    int4 out2;
-    in = x;
+    float in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -514,16 +784,37 @@ INLINE float8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f32_p4v8i32, )( flo
     float8 temp;
     int8 exp_temp;
     int temp_ptr;
-    float8 in, out1;
-    int8 out2;
-    in = x;
+    float in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -534,16 +825,61 @@ INLINE float16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f32_p4v16i32, )( 
     float16 temp;
     int16 exp_temp;
     int temp_ptr;
-    float16 in, out1;
-    int16 out2;
-    in = x;
+    float in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f32_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -592,16 +928,19 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p1v2i32, )( half
     half2 temp;
     int2 exp_temp;
     int temp_ptr;
-    half2 in, out1;
-    int2 out2;
-    in = x;
+    half in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -612,16 +951,22 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p1v3i32, )( half
     half3 temp;
     int3 exp_temp;
     int temp_ptr;
-    half3 in, out1;
-    int3 out2;
-    in = x;
+    half in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -632,16 +977,25 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p1v4i32, )( half
     half4 temp;
     int4 exp_temp;
     int temp_ptr;
-    half4 in, out1;
-    int4 out2;
-    in = x;
+    half in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -652,16 +1006,37 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p1v8i32, )( half
     half8 temp;
     int8 exp_temp;
     int temp_ptr;
-    half8 in, out1;
-    int8 out2;
-    in = x;
+    half in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -672,16 +1047,61 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p1v16i32, )( h
     half16 temp;
     int16 exp_temp;
     int temp_ptr;
-    half16 in, out1;
-    int16 out2;
-    in = x;
+    half in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -726,16 +1146,19 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p0v2i32, )( half
     half2 temp;
     int2 exp_temp;
     int temp_ptr;
-    half2 in, out1;
-    int2 out2;
-    in = x;
+    half in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -746,16 +1169,22 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p0v3i32, )( half
     half3 temp;
     int3 exp_temp;
     int temp_ptr;
-    half3 in, out1;
-    int3 out2;
-    in = x;
+    half in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -766,16 +1195,25 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p0v4i32, )( half
     half4 temp;
     int4 exp_temp;
     int temp_ptr;
-    half4 in, out1;
-    int4 out2;
-    in = x;
+    half in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -786,16 +1224,37 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p0v8i32, )( half
     half8 temp;
     int8 exp_temp;
     int temp_ptr;
-    half8 in, out1;
-    int8 out2;
-    in = x;
+    half in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -806,16 +1265,61 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p0v16i32, )( h
     half16 temp;
     int16 exp_temp;
     int temp_ptr;
-    half16 in, out1;
-    int16 out2;
-    in = x;
+    half in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -860,16 +1364,19 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p3v2i32, )( half
     half2 temp;
     int2 exp_temp;
     int temp_ptr;
-    half2 in, out1;
-    int2 out2;
-    in = x;
+    half in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -880,16 +1387,22 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p3v3i32, )( half
     half3 temp;
     int3 exp_temp;
     int temp_ptr;
-    half3 in, out1;
-    int3 out2;
-    in = x;
+    half in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -900,16 +1413,25 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p3v4i32, )( half
     half4 temp;
     int4 exp_temp;
     int temp_ptr;
-    half4 in, out1;
-    int4 out2;
-    in = x;
+    half in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -920,16 +1442,37 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p3v8i32, )( half
     half8 temp;
     int8 exp_temp;
     int temp_ptr;
-    half8 in, out1;
-    int8 out2;
-    in = x;
+    half in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -940,16 +1483,61 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p3v16i32, )( h
     half16 temp;
     int16 exp_temp;
     int temp_ptr;
-    half16 in, out1;
-    int16 out2;
-    in = x;
+    half in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -998,16 +1586,19 @@ INLINE half2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f16_p4v2i32, )( half
     half2 temp;
     int2 exp_temp;
     int temp_ptr;
-    half2 in, out1;
-    int2 out2;
-    in = x;
+    half in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -1018,16 +1609,22 @@ INLINE half3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f16_p4v3i32, )( half
     half3 temp;
     int3 exp_temp;
     int temp_ptr;
-    half3 in, out1;
-    int3 out2;
-    in = x;
+    half in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -1038,16 +1635,25 @@ INLINE half4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f16_p4v4i32, )( half
     half4 temp;
     int4 exp_temp;
     int temp_ptr;
-    half4 in, out1;
-    int4 out2;
-    in = x;
+    half in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -1058,16 +1664,37 @@ INLINE half8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f16_p4v8i32, )( half
     half8 temp;
     int8 exp_temp;
     int temp_ptr;
-    half8 in, out1;
-    int8 out2;
-    in = x;
+    half in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -1078,16 +1705,61 @@ INLINE half16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f16_p4v16i32, )( h
     half16 temp;
     int16 exp_temp;
     int temp_ptr;
-    half16 in, out1;
-    int16 out2;
-    in = x;
+    half in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f16_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -1136,16 +1808,19 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p1v2i32, )( double2  
     double2 temp;
     int2 exp_temp;
     int temp_ptr;
-    double2 in, out1;
-    int2 out2;
-    in = x;
+    double in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -1156,16 +1831,22 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p1v3i32, )( double3  
     double3 temp;
     int3 exp_temp;
     int temp_ptr;
-    double3 in, out1;
-    int3 out2;
-    in = x;
+    double in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -1176,16 +1857,25 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p1v4i32, )( double4  
     double4 temp;
     int4 exp_temp;
     int temp_ptr;
-    double4 in, out1;
-    int4 out2;
-    in = x;
+    double in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -1196,16 +1886,37 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p1v8i32, )( double8  
     double8 temp;
     int8 exp_temp;
     int temp_ptr;
-    double8 in, out1;
-    int8 out2;
-    in = x;
+    double in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -1216,16 +1927,61 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p1v16i32, )( double
     double16 temp;
     int16 exp_temp;
     int temp_ptr;
-    double16 in, out1;
-    int16 out2;
-    in = x;
+    double in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -1270,16 +2026,19 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p0v2i32, )( double2  
     double2 temp;
     int2 exp_temp;
     int temp_ptr;
-    double2 in, out1;
-    int2 out2;
-    in = x;
+    double in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -1290,16 +2049,22 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p0v3i32, )( double3  
     double3 temp;
     int3 exp_temp;
     int temp_ptr;
-    double3 in, out1;
-    int3 out2;
-    in = x;
+    double in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -1310,16 +2075,25 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p0v4i32, )( double4  
     double4 temp;
     int4 exp_temp;
     int temp_ptr;
-    double4 in, out1;
-    int4 out2;
-    in = x;
+    double in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -1330,16 +2104,37 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p0v8i32, )( double8  
     double8 temp;
     int8 exp_temp;
     int temp_ptr;
-    double8 in, out1;
-    int8 out2;
-    in = x;
+    double in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -1350,16 +2145,61 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p0v16i32, )( double
     double16 temp;
     int16 exp_temp;
     int temp_ptr;
-    double16 in, out1;
-    int16 out2;
-    in = x;
+    double in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -1404,16 +2244,19 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p3v2i32, )( double2  
     double2 temp;
     int2 exp_temp;
     int temp_ptr;
-    double2 in, out1;
-    int2 out2;
-    in = x;
+    double in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -1424,16 +2267,22 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p3v3i32, )( double3  
     double3 temp;
     int3 exp_temp;
     int temp_ptr;
-    double3 in, out1;
-    int3 out2;
-    in = x;
+    double in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -1444,16 +2293,25 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p3v4i32, )( double4  
     double4 temp;
     int4 exp_temp;
     int temp_ptr;
-    double4 in, out1;
-    int4 out2;
-    in = x;
+    double in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -1464,16 +2322,37 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p3v8i32, )( double8  
     double8 temp;
     int8 exp_temp;
     int temp_ptr;
-    double8 in, out1;
-    int8 out2;
-    in = x;
+    double in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -1484,16 +2363,61 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p3v16i32, )( double
     double16 temp;
     int16 exp_temp;
     int temp_ptr;
-    double16 in, out1;
-    int16 out2;
-    in = x;
+    double in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p0i32, )( in[i], (__private int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
@@ -1540,16 +2464,19 @@ double2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v2f64_p4v2i32, )( double2  
     double2 temp;
     int2 exp_temp;
     int temp_ptr;
-    double2 in, out1;
-    int2 out2;
-    in = x;
+    double in[2], out1[2];
+    int out2[2];
+    in[0] = x.s0;
+    in[1] = x.s1;
     for(uint i = 0; i < 2; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
     *exp = exp_temp;
     return temp;
 }
@@ -1560,16 +2487,22 @@ double3 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v3f64_p4v3i32, )( double3  
     double3 temp;
     int3 exp_temp;
     int temp_ptr;
-    double3 in, out1;
-    int3 out2;
-    in = x;
+    double in[3], out1[3];
+    int out2[3];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
     for(uint i = 0; i < 3; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
     *exp = exp_temp;
     return temp;
 }
@@ -1580,16 +2513,25 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v4f64_p4v4i32, )( double4  
     double4 temp;
     int4 exp_temp;
     int temp_ptr;
-    double4 in, out1;
-    int4 out2;
-    in = x;
+    double in[4], out1[4];
+    int out2[4];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
     for(uint i = 0; i < 4; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
     *exp = exp_temp;
     return temp;
 }
@@ -1600,16 +2542,37 @@ double8 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v8f64_p4v8i32, )( double8  
     double8 temp;
     int8 exp_temp;
     int temp_ptr;
-    double8 in, out1;
-    int8 out2;
-    in = x;
+    double in[8], out1[8];
+    int out2[8];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
     for(uint i = 0; i < 8; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
     *exp = exp_temp;
     return temp;
 }
@@ -1620,16 +2583,61 @@ double16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(frexp, _v16f64_p4v16i32, )( double
     double16 temp;
     int16 exp_temp;
     int temp_ptr;
-    double16 in, out1;
-    int16 out2;
-    in = x;
+    double in[16], out1[16];
+    int out2[16];
+    in[0] = x.s0;
+    in[1] = x.s1;
+    in[2] = x.s2;
+    in[3] = x.s3;
+    in[4] = x.s4;
+    in[5] = x.s5;
+    in[6] = x.s6;
+    in[7] = x.s7;
+    in[8] = x.s8;
+    in[9] = x.s9;
+    in[10] = x.sa;
+    in[11] = x.sb;
+    in[12] = x.sc;
+    in[13] = x.sd;
+    in[14] = x.se;
+    in[15] = x.sf;
     for(uint i = 0; i < 16; i++)
     {
         out1[i] = SPIRV_OCL_BUILTIN(frexp, _f64_p4i32, )( in[i], (__generic int*)&temp_ptr );
         out2[i] = temp_ptr;
     }
-    temp = out1;
-    exp_temp = out2;
+    temp.s0 = out1[0];
+    temp.s1 = out1[1];
+    temp.s2 = out1[2];
+    temp.s3 = out1[3];
+    temp.s4 = out1[4];
+    temp.s5 = out1[5];
+    temp.s6 = out1[6];
+    temp.s7 = out1[7];
+    temp.s8 = out1[8];
+    temp.s9 = out1[9];
+    temp.sa = out1[10];
+    temp.sb = out1[11];
+    temp.sc = out1[12];
+    temp.sd = out1[13];
+    temp.se = out1[14];
+    temp.sf = out1[15];
+    exp_temp.s0 = out2[0];
+    exp_temp.s1 = out2[1];
+    exp_temp.s2 = out2[2];
+    exp_temp.s3 = out2[3];
+    exp_temp.s4 = out2[4];
+    exp_temp.s5 = out2[5];
+    exp_temp.s6 = out2[6];
+    exp_temp.s7 = out2[7];
+    exp_temp.s8 = out2[8];
+    exp_temp.s9 = out2[9];
+    exp_temp.sa = out2[10];
+    exp_temp.sb = out2[11];
+    exp_temp.sc = out2[12];
+    exp_temp.sd = out2[13];
+    exp_temp.se = out2[14];
+    exp_temp.sf = out2[15];
     *exp = exp_temp;
     return temp;
 }
