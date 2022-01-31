@@ -8235,6 +8235,7 @@ void GlobalRA::addCalleeSaveRestoreCode()
             builder.kernel.getKernelDebugInfo()->setOldInstList
             (builder.kernel.fg.getEntryBB());
         }
+        MUST_BE_TRUE(calleeSaveInsts.size() == 0, "Unexpected size of callee save set");
         saveActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
             builder.kernel.fg.getEntryBB(), insertSaveIt, calleeSaveInsts);
 
@@ -8264,7 +8265,7 @@ void GlobalRA::addCalleeSaveRestoreCode()
             builder.kernel.getKernelDebugInfo()->setOldInstList
             (builder.kernel.fg.getUniqueReturnBlock());
         }
-
+        MUST_BE_TRUE(calleeRestoreInsts.size() == 0, "Unexpected size of callee restore set");
         restoreActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
             builder.kernel.fg.getUniqueReturnBlock(), insertRestIt, calleeRestoreInsts, false);
 
@@ -8281,6 +8282,12 @@ void GlobalRA::addCalleeSaveRestoreCode()
     builder.kernel.fg.getUniqueReturnBlock()->erase(eraseIt);
 
     builder.instList.clear();
+
+    // mark instructions for EU Fusion WA
+    for(auto save : calleeSaveInsts)
+        addEUFusionCallWAInst(save);
+    for(auto restore : calleeRestoreInsts)
+        addEUFusionCallWAInst(restore);
 
     // caller-save starts after callee-save and is 64-byte aligned
     auto byteOffset = builder.kernel.fg.calleeSaveAreaOffset * 16 + calleeSaveRegsWritten * getGRFSize();
