@@ -498,16 +498,6 @@ static bool OCLBuiltinsRequired(const Module &M) {
                      [](const Function &F) { return isOCLBuiltinDecl(F); });
 }
 
-static void forceInlining(Module &M, const StringSet<> &GVS) {
-  for (auto &Entry : GVS) {
-    StringRef Name = Entry.getKey();
-    Value *GV = M.getValueSymbolTable().lookup(Name);
-    if (!isa<Function>(GV))
-      continue;
-    cast<Function>(GV)->addFnAttr(Attribute::AlwaysInline);
-  }
-}
-
 bool GenXImportOCLBiF::runOnModule(Module &M) {
   if (llvm::none_of(M, [](const Function &F) { return isOCLBuiltinDecl(F); }))
     return false;
@@ -519,8 +509,6 @@ bool GenXImportOCLBiF::runOnModule(Module &M) {
     internalizeModule(M, [&GVS](const GlobalValue &GV) {
       return !GV.hasName() || (GVS.count(GV.getName()) == 0);
     });
-    // FIXME: workaround to solve several issues in the backend, remove it
-    forceInlining(M, GVS);
   };
   if (Linker::linkModules(M, std::move(GenericBiFModule),
                           Linker::Flags::LinkOnlyNeeded, LinkerCallback)) {
