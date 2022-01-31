@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2011,6 +2011,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.UseBindlessMode = annotations.m_executionEnivronment.UseBindlessMode;
         patch.HasStackCalls = annotations.m_executionEnivronment.HasStackCalls;
         patch.SIMDInfo = annotations.m_executionEnivronment.SIMDInfo;
+        patch.RequireDisableEUFusion = annotations.m_executionEnivronment.RequireDisableEUFusion;
 
         retValue = AddPatchItem(
             patch,

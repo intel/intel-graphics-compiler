@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.10
+Version 1.11
 
 ## Grammar
 
@@ -99,6 +99,7 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | has_multi_scratch_spaces | bool | Optional | false | |
 | has_no_stateless_write | bool | Optional | false | |
 | has_stack_calls | bool | Optional | false | When this value is true, it indicates that program uses stack calls |
+| require_disable_eufusion | bool | Optional | false | When this value is true, it indicates that program requires EU fusion disable |
 | inline_data_payload_size | int32 | Optional | 0 | Size of inline data in cross-thread-payload in byte. The value is 0 when inline data is disabled (default). |
 | offset_to_skip_per_thread_data_load | int32 | Optional | 0 | |
 | offset_to_skip_set_ffid_gp | int32 | Optional | 0 | |
@@ -283,6 +284,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.11**: Add require_disable_eufusion attribute to execution env.
 - **Version 1.10**: Add thread_scheduling_mode to execution_env.
 - **Version 1.9**: Add source_offset to payload argument.
 - **Version 1.8**: Add inline_data_payload_size to execution_env.

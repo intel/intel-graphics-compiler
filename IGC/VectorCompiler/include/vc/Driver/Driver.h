@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -86,6 +86,8 @@ struct CompileOptions {
   bool DisableFinalizerMsg = false;
   // -fno-struct-splitting
   bool DisableStructSplitting = false;
+  // IGC_VCDisableEuFusion
+  bool DisableEUFusion = false;
 
   OptimizerLevel IROptLevel = OptimizerLevel::Full;
   OptimizerLevel CodegenOptLevel = OptimizerLevel::Full;

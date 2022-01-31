@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -74,6 +74,9 @@ struct GenXBackendOptions {
 
   // Flag to turn off StructSpliter pass
   bool DisableStructSplitting = false;
+
+  // Flag to disable EU fusion
+  bool DisableEUFusion = false;
 
   // Whether to enable finalizer dumps.
   bool EnableAsmDumps = false;
@@ -278,6 +281,8 @@ public:
   bool isDisableFinalizerMsg() const {
     return Options.DisableFinalizerMsg;
   }
+
+  bool isDisableEUFusion() const { return Options.DisableEUFusion; }
 
   FunctionControl getFCtrl() const { return Options.FCtrl; }
 

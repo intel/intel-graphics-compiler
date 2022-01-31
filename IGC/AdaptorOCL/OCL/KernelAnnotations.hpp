@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -316,7 +316,8 @@ struct ExecutionEnivronment
     DWORD StatelessWritesCount                        = 0;
     DWORD IndirectStatelessCount                      = 0;
     DWORD numThreads                                  = 0;
-    bool  HasStackCalls = false;
+    bool  HasStackCalls                               = false;
+    bool  RequireDisableEUFusion                      = false;
 };
 
 struct KernelTypeProgramBinaryInfo

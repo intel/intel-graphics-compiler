@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -174,6 +174,7 @@ public:
     unsigned SLMSize = 0;
     unsigned ThreadPrivateMemSize = 0;
     unsigned StatelessPrivateMemSize = 0;
+    bool DisableEUFusion = false;
 
     unsigned GRFSizeInBytes;
 
@@ -234,6 +235,7 @@ public:
 
     int getNumBarriers() const { return NumBarriers; }
     bool usesReadWriteImages() const { return UsesReadWriteImages; }
+    bool requireDisableEUFusion() const { return DisableEUFusion; }
 
     // Arguments accessors.
     arg_iterator arg_begin() { return ArgInfos.begin(); }

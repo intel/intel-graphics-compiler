@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -360,6 +360,7 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
       vc::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize());
 
   SupportsDebugging = BC.emitDebuggableKernels();
+  DisableEUFusion = BC.isDisableEUFusion();
 
   vc::KernelMetadata KM{FG.getHead()};
   IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
