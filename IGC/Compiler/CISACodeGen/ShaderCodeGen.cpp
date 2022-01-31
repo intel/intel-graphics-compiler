@@ -2023,6 +2023,10 @@ void OptimizeIR(CodeGenContext* const pContext)
             {
                 mpm.add(CreateEarlyOutPatternsPass());
             }
+
+            // need to be before code sinking
+            mpm.add(createInsertBranchOptPass());
+
             if (pContext->type == ShaderType::PIXEL_SHADER)
             {
                 // insert early output in case sampleC returns 0
@@ -2061,10 +2065,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(new CustomUnsafeOptPass());
             }
             mpm.add(createGenOptLegalizer());
-        }
-
-        if (IGC_IS_FLAG_ENABLED(EnableAtomicBranch) || pContext->getModuleMetaData()->csInfo.atomicBranch)
-        {
             mpm.add(createInsertBranchOptPass());
         }
 
