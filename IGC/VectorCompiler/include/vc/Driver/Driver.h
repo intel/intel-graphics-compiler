@@ -62,7 +62,7 @@ enum class DebugInfoStripControl { None, All, NonLine };
 struct CompileOptions {
   FileType FType = FileType::SPIRV;
   std::string CPUStr;
-  int RevId;
+  int RevId = -1;
   // Non-owning pointer to WA table.
   const WA_TABLE *WATable = nullptr;
   // Optional shader dumper.
