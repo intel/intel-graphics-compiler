@@ -637,7 +637,11 @@ static GenXDebugInfo::ElfBin getDebugInfoForIndirectFunctions(
 }
 
 ModuleDataT::ModuleDataT(const Module &M) {
-  for (auto &GV : M.globals()) {
+  auto RealGlobals =
+      make_filter_range(M.globals(), [](const GlobalVariable &GV) {
+        return genx::isRealGlobalVariable(GV);
+      });
+  for (auto &GV : RealGlobals) {
     if (GV.isConstant()) {
       if (GV.hasAttribute(vc::PrintfStringVariable))
         // This section is always empty for oclbin flow. This happens because
