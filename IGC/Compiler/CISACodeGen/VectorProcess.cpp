@@ -434,9 +434,15 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             {
                 V = Builder.CreateBitCast(StoreVal, newVTy);
             }
-            StoreInst* store = Builder.CreateAlignedStore(V, newPtr,
-                IGCLLVM::getAlign(SI->getAlignment()),
-                SI->isVolatile());
+            StoreInst* store = nullptr;
+            if (SI->getAlignment() == 0)
+            {
+                store = Builder.CreateStore(V, newPtr, SI->isVolatile());
+            }
+            else
+            {
+                store = Builder.CreateAlignedStore(V, newPtr, IGCLLVM::getAlign(SI->getAlignment()), SI->isVolatile());
+            }
             store->copyMetadata(*SI);
             SI->eraseFromParent();
         }

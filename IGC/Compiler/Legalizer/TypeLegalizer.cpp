@@ -314,8 +314,6 @@ TypeSeq* TypeLegalizer::getElementizedTypeSeq(Type* Ty) {
 
 std::pair<ValueSeq*, LegalizeAction>
 TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
-    IGC_ASSERT(!V->getType()->isVoidTy());
-
     LegalizeAction Act = getTypeLegalizeAction(V->getType());
 
     if (Act == Legal)
@@ -369,7 +367,6 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
 void
 TypeLegalizer::setLegalizedValues(Value* OVal,
     ArrayRef<Value*> LegalizedVals) {
-    IGC_ASSERT(!OVal->getType()->isVoidTy());
 
     ValueMapTy::iterator VMI; bool New;
     std::tie(VMI, New) = ValueMap.insert(std::make_pair(OVal, ValueSeq()));
