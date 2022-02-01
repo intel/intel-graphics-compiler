@@ -125,6 +125,24 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(int Execut
     }
 }
 
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrierArriveINTEL, _i32_i32_i32, )(int Execution, int Memory, int Semantics)
+{
+    if( Execution == Workgroup )
+    {
+        __intel_atomic_work_item_fence( Memory, Semantics );
+        __builtin_IB_thread_group_barrier_signal();
+    }
+}
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrierWaitINTEL, _i32_i32_i32, )(int Execution, int Memory, int Semantics)
+{
+    if( Execution == Workgroup )
+    {
+        __intel_atomic_work_item_fence( Memory, Semantics );
+        __builtin_IB_thread_group_barrier_wait();
+    }
+}
+
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(MemoryBarrier, _i32_i32, )(int Memory, int Semantics)
 {
     __intel_atomic_work_item_fence( Memory, Semantics );

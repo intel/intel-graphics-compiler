@@ -1907,6 +1907,8 @@ _SPIRV_OP(MemoryNamedBarrier, false /*HasId*/, 4 /*WC*/, false /*VariWC*/)
       SPIRV##x;
 _SPIRV_OP(MemoryBarrier, false /*HasId*/, 3 /*WC*/, false /*VariWC*/)
 _SPIRV_OP(ControlBarrier, false /*HasId*/, 4 /*WC*/, false /*VariWC*/)
+_SPIRV_OP(ControlBarrierArriveINTEL, false /*HasId*/, 4 /*WC*/, false /*VariWC*/)
+_SPIRV_OP(ControlBarrierWaitINTEL, false /*HasId*/, 4 /*WC*/, false /*VariWC*/)
 _SPIRV_OP(UMulExtended, true, 5)
 _SPIRV_OP(SMulExtended, true, 5)
 _SPIRV_OP(BitReverse, true, 4)

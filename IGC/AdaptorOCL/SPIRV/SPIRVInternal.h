@@ -335,6 +335,9 @@ _SPIRV_OP(OpGetKernelMaxNumSubgroups)
 // Barriers
 _SPIRV_OP(OpMemoryBarrier)
 _SPIRV_OP(OpControlBarrier)
+// SPV_INTEL_split_barrier
+_SPIRV_OP(OpControlBarrierArriveINTEL)
+_SPIRV_OP(OpControlBarrierWaitINTEL)
 _SPIRV_OP(OpNamedBarrierInitialize)
 _SPIRV_OP(OpMemoryNamedBarrier)
 // CL 2.0 pipe builtins

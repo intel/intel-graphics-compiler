@@ -535,3 +535,6 @@ _SPIRV_OP(GroupBitwiseXor, 6405)
 _SPIRV_OP(GroupLogicalAnd, 6406)
 _SPIRV_OP(GroupLogicalOr, 6407)
 _SPIRV_OP(GroupLogicalXor, 6408)
+// SPV_INTEL_split_barrier
+_SPIRV_OP(ControlBarrierArriveINTEL, 6142)
+_SPIRV_OP(ControlBarrierWaitINTEL, 6143)
