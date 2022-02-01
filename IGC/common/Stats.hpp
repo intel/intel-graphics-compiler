@@ -229,6 +229,9 @@ public:
     /// Print the accumulated times for a single shader
     void printTime( ShaderType type, ShaderHash hash, void* context) const;
     void printTime( ShaderType type, ShaderHash hash ) const;
+    void printTime( ShaderType type, ShaderHash hash, UINT64 psoDDIHash) const;
+    void printTime( ShaderType type, ShaderHash hash, void* context, UINT64 psoDDIHash) const;
+
     /// Print the aggregated times for multiple shaders
     void printSumTime() const;
     /// Print the times for all passes
@@ -263,7 +266,7 @@ private:
     bool skipTimer( int i ) const;
 
     /// \deprecated Print the currently accumulated times in csv format
-    void printTimeCSV( std::string const& corpusName ) const;
+    void printTimeCSV( std::string const& corpusName, UINT64 psoDDIHash ) const;
     void printPerPassTimeCSV( std::string const& corpusName ) const;
     void printPerPassSumTimeCSV(const char* fileName) const;
 
