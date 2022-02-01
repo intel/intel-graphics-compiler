@@ -154,6 +154,12 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
     Features.AddFeature("has_l1_read_only_cache");
   if (Opts.HasLocalMemFenceSupress)
     Features.AddFeature("supress_local_mem_fence");
+  if (Opts.HasMultiTile)
+    Features.AddFeature("multi_tile");
+  if (Opts.HasL3CacheCoherentCrossTiles)
+    Features.AddFeature("l3_cache_coherent_cross_tiles");
+  if (Opts.HasL3FlushOnGPUScopeInvalidate)
+    Features.AddFeature("l3_flush_on_gpu_scope_invalidate");
   if (Opts.NoVecDecomp)
     Features.AddFeature("disable_vec_decomp");
   if (Opts.NoJumpTables)
@@ -249,6 +255,10 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.SaveStackCallLinkage = true;
   BackendOpts.UsePlain2DImages = Opts.UsePlain2DImages;
   BackendOpts.EnablePreemption = Opts.EnablePreemption;
+  if (Opts.HasL3FlushForGlobal)
+    BackendOpts.L3FlushForGlobal = true;
+  if (Opts.HasGPUFenceScopeOnSingleTileGPUs)
+    BackendOpts.GPUFenceScopeOnSingleTileGPUs = true;
 
   BackendOpts.DisableLiveRangesCoalescing =
       getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, false);
@@ -704,6 +714,10 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.EmitZebinVisaSections = true;
   if (InternalOptions.hasArg(OPT_fdisable_debuggable_kernels))
     Opts.EmitDebuggableKernels = false;
+  if (InternalOptions.hasArg(OPT_gpu_scope_fence))
+    Opts.HasGPUFenceScopeOnSingleTileGPUs = true;
+  if (InternalOptions.hasArg(OPT_flush_l3_for_global))
+    Opts.HasL3FlushForGlobal = true;
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_binary_format)) {
     StringRef Val = A->getValue();

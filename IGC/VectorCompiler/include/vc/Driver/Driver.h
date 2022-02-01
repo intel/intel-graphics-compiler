@@ -124,6 +124,11 @@ struct CompileOptions {
   bool EmitZebinVisaSections = false;
   bool HasL1ReadOnlyCache = false;
   bool HasLocalMemFenceSupress = false;
+  bool HasMultiTile = false;
+  bool HasL3CacheCoherentCrossTiles = false;
+  bool HasL3FlushOnGPUScopeInvalidate = false;
+  bool HasL3FlushForGlobal = false;
+  bool HasGPUFenceScopeOnSingleTileGPUs = false;
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;
   bool SaveStackCallLinkage = false;

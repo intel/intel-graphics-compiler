@@ -158,6 +158,15 @@ private:
   /// True if subtarget supports LSC messages
   bool HasLSCMessages = false;
 
+  // Has multi-tile.
+  bool HasMultiTile = false;
+
+  // Has L3 cache-coherent cross tiles.
+  bool HasL3CacheCoherentCrossTiles = false;
+
+  // Has L3 flush on GPU-scope invalidate.
+  bool HasL3FlushOnGPUScopeInvalidate = false;
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -373,6 +382,13 @@ public:
 
   bool hasL1ReadOnlyCache() const { return HasL1ReadOnlyCache; }
   bool hasLocalMemFenceSupress() const { return HasLocalMemFenceSupress; }
+  bool hasMultiTile() const { return HasMultiTile; };
+  bool hasL3CacheCoherentCrossTiles() const {
+    return HasL3CacheCoherentCrossTiles;
+  }
+  bool hasL3FlushOnGPUScopeInvalidate() const {
+    return HasL3FlushOnGPUScopeInvalidate;
+  }
 
   /// * getsHWTIDFromPredef - some subtargets get HWTID from
   // predefined variable instead of sr0, returns *true* for such ones.

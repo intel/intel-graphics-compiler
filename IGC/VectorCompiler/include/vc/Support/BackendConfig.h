@@ -126,6 +126,11 @@ struct GenXBackendOptions {
   // Treat "image2d_t" as non-media 2d images.
   bool UsePlain2DImages = false;
 
+  // Enable/disable flushing L3 cache for globals.
+  bool L3FlushForGlobal = false;
+
+  // Allow the use of `GPU` fence scope on single-tile GPUs.
+  bool GPUFenceScopeOnSingleTileGPUs = false;
 
   // Enable preemption (to be switched on by default)
   bool EnablePreemption = false;

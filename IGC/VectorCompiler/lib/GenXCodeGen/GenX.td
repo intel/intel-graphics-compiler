@@ -110,6 +110,20 @@ def FeatureHasPackedFloat : SubtargetFeature<"has_packed_float",
                                              "HasPackedFloat",
                                              "true",
                                              "true if packed float immediate vector operands are supported">;
+def FeatureMultiTile: SubtargetFeature<"multi_tile",
+                                       "HasMultiTile",
+                                       "true",
+                                       "Multi-tile">;
+
+def FeatureL3CacheCoherentCrossTiles: SubtargetFeature<"l3_cache_coherent_cross_tiles",
+                                                       "HasL3CacheCoherentCrossTiles",
+                                                       "true",
+                                                       "Has L3 cache coherent cross tiles">;
+
+def FeatureL3FlushOnGPUScopeInvalidate: SubtargetFeature<"l3_flush_on_gpu_scope_invalidate",
+                                                         "HasL3FlushOnGPUScopeInvalidate",
+                                                         "true",
+                                                         "Has L3 flush on GPU scope invalidate">;
 // Targets that use compute walker command require loading of thread
 // payload by compiler.
 def FeatureThreadPayloadInMemory : SubtargetFeature<"thread_payload_in_memory",

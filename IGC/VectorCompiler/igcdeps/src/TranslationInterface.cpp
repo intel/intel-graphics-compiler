@@ -142,6 +142,10 @@ static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
   Opts.RevId = RevId;
   Opts.HasL1ReadOnlyCache = IGCPlatform.hasL1ReadOnlyCache();
   Opts.HasLocalMemFenceSupress = IGCPlatform.localMemFenceSupress();
+  Opts.HasMultiTile = IGCPlatform.hasMultiTile();
+  Opts.HasL3CacheCoherentCrossTiles = IGCPlatform.L3CacheCoherentCrossTiles();
+  Opts.HasL3FlushOnGPUScopeInvalidate =
+      IGCPlatform.hasL3FlushOnGPUScopeInvalidate();
   Opts.WATable = &IGCPlatform.getWATable();
 }
 
@@ -232,6 +236,10 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
     Opts.DirectCallsOnly = true;
   if (IGC_IS_FLAG_ENABLED(DebugInfoValidation))
     Opts.ForceDebugInfoValidation = true;
+  if (IGC_IS_FLAG_ENABLED(EnableL3FlushForGlobal))
+    Opts.HasL3FlushForGlobal = true;
+  if (IGC_IS_FLAG_ENABLED(EnableGPUFenceScopeOnSingleTileGPUs))
+    Opts.HasGPUFenceScopeOnSingleTileGPUs = true;
 
   Opts.NoOptFinalizerMode =
       deriveDefaultableFlagValue<vc::NoOptFinalizerControl>(

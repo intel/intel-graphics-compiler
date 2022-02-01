@@ -119,6 +119,13 @@ static cl::opt<bool> UsePlain2DImagesOpt(
     "vc-use-plain-2d-images", cl::Hidden,
     cl::desc("Treat \"image2d_t\" annotation as non-media image"));
 
+static cl::opt<bool>
+    L3FlushForGlobalOpt("vc-flush-l3-for-global", cl::Hidden,
+                        cl::desc("Enable flushing L3 cache for globals"));
+
+static cl::opt<bool> GPUFenceScopeOnSingleTileGPUsOpt(
+    "vc-gpu-scope-fence-on-single-tile", cl::Hidden,
+    cl::desc("Allow the use of \"GPU\" fence scope on single-tile GPUs."));
 
 static cl::opt<bool> DirectCallsOnlyOpt(
     "direct-calls-only", cl::Hidden,
@@ -160,6 +167,9 @@ void GenXBackendOptions::enforceLLVMOptions() {
   enforceOptionIfSpecified(StatelessPrivateMemSize, StatelessPrivateMemSizeOpt);
   enforceOptionIfSpecified(SaveStackCallLinkage, SaveStackCallLinkageOpt);
   enforceOptionIfSpecified(UsePlain2DImages, UsePlain2DImagesOpt);
+  enforceOptionIfSpecified(L3FlushForGlobal, L3FlushForGlobalOpt);
+  enforceOptionIfSpecified(GPUFenceScopeOnSingleTileGPUs,
+                           GPUFenceScopeOnSingleTileGPUsOpt);
   enforceOptionIfSpecified(EnablePreemption, EnablePreemptionOpt);
   enforceOptionIfSpecified(DirectCallsOnly, DirectCallsOnlyOpt);
 }
