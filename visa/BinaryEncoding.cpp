@@ -2924,7 +2924,7 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
 
 void BinaryEncoding::DoAll()
 {
-    InitPlatform(getGenxPlatform());
+    InitPlatform(kernel.getPlatform());
     FixInst();
     ProduceBinaryInstructions();
 }

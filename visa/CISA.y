@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "VISAKernel.h"
 
 static int lscCheckExecSize(
+    CISA_IR_Builder* pBuilder,
     LSC_SFID sfid,
     LSC_OP op,
     LSC_DATA_ORDER data_order,
@@ -34,7 +35,7 @@ extern int CISAlineno;
 static bool ParseAlign(CISA_IR_Builder* pBuilder, const char *sym, VISA_Align &value);
 static VISA_Align AlignBytesToVisaAlignment(int bytes);
 static int DataTypeSizeOf(VISA_Type type);
-static bool ParseEMask(CISA_IR_Builder* pBuilder, const char* sym, VISA_EMask_Ctrl &emask);
+static bool ParseEMask(const char* sym, VISA_EMask_Ctrl &emask);
 
 
 
@@ -1544,7 +1545,7 @@ LscUntypedLoad:
     LscDataOperand  LscUntypedAddrOperand
     {
         $5.exec_size =
-            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
         pBuilder->CISA_create_lsc_untyped_inst(
             $1,  // predicate
             $2,  // subop
@@ -1575,7 +1576,7 @@ LscUntypedStridedLoad:
     LscDataOperand  LscUntypedStridedAddrOperand
     {
         $5.exec_size =
-            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
         pBuilder->CISA_create_lsc_untyped_strided_inst(
             $1,  // predicate
             $2,  // subop
@@ -1604,7 +1605,7 @@ LscUntypedBlock2dLoad:
     LscDataOperand2D  LscUntypedBlock2dAddrOperand
     {
         $5.exec_size =
-            lscCheckExecSize($3, $2, $6.shape2D.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $6.shape2D.order, $5.exec_size);
         pBuilder->CISA_create_lsc_untyped_block2d_inst(
             $1,  // predicate
             $2,  // subop
@@ -1629,7 +1630,7 @@ LscUntypedStore:
     LscUntypedAddrOperand  LscDataOperand
     {
         $5.exec_size =
-            lscCheckExecSize($3, $2, $7.shape.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $7.shape.order, $5.exec_size);
         pBuilder->CISA_create_lsc_untyped_inst(
             $1,  // predicate
             $2,  // subop
@@ -1653,7 +1654,7 @@ LscUntypedStridedStore:
     LscUntypedStridedAddrOperand  LscDataOperand
     {
         $5.exec_size =
-            lscCheckExecSize($3, $2, $7.shape.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $7.shape.order, $5.exec_size);
         pBuilder->CISA_create_lsc_untyped_strided_inst(
             $1,  // predicate
             $2,  // subop
@@ -1680,7 +1681,7 @@ LscUntypedBlock2dStore:
     LscUntypedBlock2dAddrOperand LscDataOperand2D
     {
         $5.exec_size =
-            lscCheckExecSize($3, $2, $7.shape2D.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $7.shape2D.order, $5.exec_size);
         pBuilder->CISA_create_lsc_untyped_block2d_inst(
             $1,  // predicate
             $2,  // subop
@@ -1706,7 +1707,7 @@ LscUntypedAtomic:
     LscDataOperand  LscUntypedAddrOperand  LscPayloadReg  LscPayloadReg
     {
         $5.exec_size =
-            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
         pBuilder->CISA_create_lsc_untyped_inst(
             $1,  // predicate
             $2,                // op
@@ -1743,7 +1744,7 @@ LscTypedLoad:
             PARSE_ERROR("unsupported load operation for .tgm");
         }
         $5.exec_size =
-            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
         pBuilder->CISA_create_lsc_typed_inst(
             $1,  // predicate
             $2,  // subop
@@ -1783,7 +1784,7 @@ LscTypedStore:
             PARSE_ERROR("unsupported store operation for .tgm");
         }
         $5.exec_size =
-            lscCheckExecSize($3, $2, $7.shape.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $7.shape.order, $5.exec_size);
         pBuilder->CISA_create_lsc_typed_inst(
             $1,  // predicate
             $2,  // subop
@@ -1820,7 +1821,7 @@ LscTypedAtomic:
     LscDataOperand  LscTypedAddrOperand  LscPayloadReg  LscPayloadReg
     {
         $5.exec_size =
-            lscCheckExecSize($3, $2, $6.shape.order, $5.exec_size);
+            lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
         pBuilder->CISA_create_lsc_typed_inst(
             $1,  // predicate
             $2,  // subop
@@ -2733,7 +2734,7 @@ ExecSize:
     |
     LPAREN Var COMMA ExecSizeInt RPAREN
     {
-        if (!ParseEMask(pBuilder, $2, $$.emask)) {
+        if (!ParseEMask($2, $$.emask)) {
             PARSE_ERROR("invalid execution offset info");
         }
         $$.exec_size = (int)$4;
@@ -2920,7 +2921,6 @@ static VISA_Align AlignBytesToVisaAlignment(int bytes)
 
 
 static bool ParseEMask(
-    CISA_IR_Builder* pBuilder,
     const char* sym,
     VISA_EMask_Ctrl &emask)
 {
@@ -2942,6 +2942,7 @@ static bool ParseEMask(
 }
 
 static int lscCheckExecSize(
+    CISA_IR_Builder* pBuilder,
     LSC_SFID sfid,
     LSC_OP op,
     LSC_DATA_ORDER data_order,
@@ -2955,9 +2956,9 @@ static int lscCheckExecSize(
         exec_size = 1;
     } else if (data_order == LSC_DATA_ORDER_NONTRANSPOSE && is_vector_op) {
         if (exec_size == UNDEFINED_EXEC_SIZE) {
-            if (getGenxPlatform() == Xe_DG2) // for DG2 typed is 8, untyped is 16
+            if (pBuilder->getPlatform() == Xe_DG2) // for DG2 typed is 8, untyped is 16
                 exec_size = sfid == LSC_TGM ? 8 : 16;
-            else if (getGenxPlatform() >= Xe_PVC) // on PVC typed is 16, untyped is 32
+            else if (pBuilder->getPlatform() >= Xe_PVC) // on PVC typed is 16, untyped is 32
                 exec_size = sfid == LSC_TGM ? 16 : 32;
             else
                 exec_size = 32; // the world is finally sane

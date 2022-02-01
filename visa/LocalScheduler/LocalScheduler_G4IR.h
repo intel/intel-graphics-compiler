@@ -351,7 +351,7 @@ private:
 class GRFMode
 {
 public:
-    GRFMode();
+    GRFMode(TARGET_PLATFORM platform);
     void setCurrentMode(unsigned newMode) { currentMode = newMode; }
     unsigned getNumThreads() const { return configurations[currentMode].second; }
     unsigned getMinGRF() const { return configurations[0].first; }

@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define _COMMON_BINARYENCODING_H_
 
 #include "FlowGraph.h"
+#include "G4_Kernel.hpp"
 #include "Timer.h"
 
 extern "C" void* allocCodeBlock(size_t sz);
@@ -1247,9 +1248,8 @@ namespace vISA
             return false;
         }
 
-        _CompactControl3Src_()
+        _CompactControl3Src_(TARGET_PLATFORM platform)
         {
-            TARGET_PLATFORM platform = getGenxPlatform();
             if (platform == GENX_BDW)
             {
                 for (int i = 0; i < (int)COMPACT_TABLE_SIZE_3SRC; i++)
@@ -1322,9 +1322,8 @@ namespace vISA
         }
 
 
-        _CompactSourceTable3Src_()
+        _CompactSourceTable3Src_(TARGET_PLATFORM platform)
         {
-            TARGET_PLATFORM platform = getGenxPlatform();
             if (platform == GENX_BDW)
             {
                 for (int i = 0; i < (int)COMPACT_TABLE_SIZE_3SRC; i++)
@@ -1382,9 +1381,8 @@ namespace vISA
             return false;
         }
 
-        _CompactSourceTable3SrcCHV_()
+        _CompactSourceTable3SrcCHV_(TARGET_PLATFORM platform)
         {
-            TARGET_PLATFORM platform = getGenxPlatform();
             if (platform >= GENX_CHV)
             {
                 // CHV is the same as BDW, except for:
@@ -1420,6 +1418,9 @@ namespace vISA
             BDWCompactSourceTable(m),
             BDWCompactSubRegTable(m),
             BDWCompactDataTypeTableStr(m),
+            CompactControlTable3Src(k.getPlatform()),
+            CompactSourceTable3Src(k.getPlatform()),
+            CompactSourceTable3SrcCHV(k.getPlatform()),
             mem(m),
             fileName(fname),
             kernel(k),

@@ -490,7 +490,7 @@ inline G4_Type floatToSameWidthIntType(G4_Type floatTy)
 }
 
 // size is the number of byte
-inline G4_SubReg_Align Get_G4_SubRegAlign_From_Size(uint16_t size)
+inline G4_SubReg_Align Get_G4_SubRegAlign_From_Size(uint16_t size, TARGET_PLATFORM platform)
 {
     switch (size)
     {
@@ -500,7 +500,7 @@ inline G4_SubReg_Align Get_G4_SubRegAlign_From_Size(uint16_t size)
     case 4:
         return Even_Word;
     case 8:
-        if (getGenxPlatform() != GENX_BXT)
+        if (platform != GENX_BXT)
             return Four_Word;
         // FALL THROUGH
         // WA: It's a workaround where a potential HW issue needs

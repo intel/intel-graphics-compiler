@@ -2832,7 +2832,7 @@ void GlobalRA::updateSubRegAlignment(G4_SubReg_Align subAlign)
 
 bool GlobalRA::evenAlignNeeded(G4_Declare* dcl)
 {
-    if (GlobalRA::useGenericAugAlign())
+    if (GlobalRA::useGenericAugAlign(builder.getPlatform()))
     {
         // Return true if even alignment is needed
         // Even align needed if for given SIMD size and elem type,
@@ -3802,7 +3802,7 @@ bool Augmentation::markNonDefaultMaskDef()
         bool checkLRAAlign = false;
         if (liveAnalysis.livenessClass(G4_GRF))
         {
-            if ((GlobalRA::useGenericAugAlign() && gra.evenAlignNeeded(dcl)))
+            if ((GlobalRA::useGenericAugAlign(kernel.getPlatform()) && gra.evenAlignNeeded(dcl)))
                 checkLRAAlign = true;
             else if (gra.getAugmentationMask(dcl) == AugmentationMasks::Default32Bit &&
                 kernel.getSimdSize() > numEltPerGRF<Type_UD>())
@@ -4813,7 +4813,7 @@ bool Interference::isStrongEdgeBetween(const G4_Declare* dcl1, const G4_Declare*
 
 bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask, AugmentationMasks newDclMask)
 {
-    if (GlobalRA::useGenericAugAlign())
+    if (GlobalRA::useGenericAugAlign(kernel.getPlatform()))
     {
         // Weak edge needed in case #GRF exceeds 2
         if (newDclMask == AugmentationMasks::Default64Bit)
@@ -5307,8 +5307,8 @@ void Augmentation::augmentIntfGraph()
 
         if (liveAnalysis.livenessClass(G4_GRF))
         {
-            if ((GlobalRA::useGenericAugAlign() && kernel.getSimdSize() >= numEltPerGRF<Type_UD>()) ||
-                (!GlobalRA::useGenericAugAlign() && kernel.getSimdSize() > numEltPerGRF<Type_UD>()))
+            if ((GlobalRA::useGenericAugAlign(kernel.getPlatform()) && kernel.getSimdSize() >= numEltPerGRF<Type_UD>()) ||
+                (!GlobalRA::useGenericAugAlign(kernel.getPlatform()) && kernel.getSimdSize() > numEltPerGRF<Type_UD>()))
             {
                 // Set alignment of all GRF candidates
                 // to 2GRF except for NoMask variables

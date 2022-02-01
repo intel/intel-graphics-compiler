@@ -1718,7 +1718,7 @@ bool vISA::doSendFusion(FlowGraph* aCFG, Mem_Manager* aMMgr)
     // SendFusion uses both src0 and src1 for addresses (load), but messages
     // based on LSC does not support that (it requires addresses to be in src0 only)
     // and SendFusion does not support it. Just skip.
-    if (getGenxPlatform() >= Xe_DG2)
+    if (aCFG->builder->getPlatform() >= Xe_DG2)
     {
         return false;
     }

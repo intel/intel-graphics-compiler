@@ -159,6 +159,7 @@ public:
     using RelocationTableTy = std::vector<RelocationEntry>;
 
 private:
+    const TARGET_PLATFORM platform;
     const char* name;
     unsigned numRegTotal;
     unsigned numThreads;
@@ -219,10 +220,12 @@ public:
     unsigned char major_version;
     unsigned char minor_version;
 
-    G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
+    G4_Kernel(TARGET_PLATFORM genPlatform, INST_LIST_NODE_ALLOCATOR& alloc,
         Mem_Manager& m, Options* options, Attributes* anAttr,
         unsigned char major, unsigned char minor);
     ~G4_Kernel();
+
+    TARGET_PLATFORM getPlatform() const {return platform;}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 

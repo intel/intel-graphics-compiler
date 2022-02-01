@@ -53,7 +53,7 @@ static bool isCompressedInst(G4_INST* inst) {
 
 G4_SubReg_Align HWConformity::getDclAlignment(int opndBytes, G4_INST* inst, bool isScalar)
 {
-    auto subAlign = Get_G4_SubRegAlign_From_Size((uint16_t)opndBytes);
+    auto subAlign = Get_G4_SubRegAlign_From_Size((uint16_t)opndBytes, builder.getPlatform());
     bool hasAccSrc = inst->hasACCSrc();
 
     if (hasAccSrc && subAlign < GRFALIGN)

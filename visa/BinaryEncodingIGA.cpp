@@ -367,7 +367,7 @@ BinaryEncodingIGA::BinaryEncodingIGA(
     : mem(m), kernel(k), fileName(fname), m_kernelBuffer(nullptr),
     m_kernelBufferSize(0), platform(k.fg.builder->getPlatform())
 {
-    platformModel = Model::LookupModel(getIGAInternalPlatform(getGenxPlatform()));
+    platformModel = Model::LookupModel(getIGAInternalPlatform(platform));
     IGAKernel = new Kernel(*platformModel);
 }
 

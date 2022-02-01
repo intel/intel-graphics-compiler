@@ -114,7 +114,7 @@ CISA_opnd_type getOperandType(const CISA_INST* inst, unsigned i);
 
 int64_t typecastVals(const void *value, VISA_Type isaType);
 
-int Get_PreDefined_Surf_Index(int index);
+int Get_PreDefined_Surf_Index(int index, TARGET_PLATFORM platform);
 
 inline bool isShiftOp(ISA_Opcode op)
 {

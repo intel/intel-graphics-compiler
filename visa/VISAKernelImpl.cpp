@@ -388,7 +388,7 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
     {
         BinaryEncodingBase* pBinaryEncoding = NULL;
 
-        if (getGenxPlatform() >= GENX_ICLLP && m_options->getOption(vISA_BXMLEncoder))
+        if (m_kernel->getPlatform() >= GENX_ICLLP && m_options->getOption(vISA_BXMLEncoder))
         {
             pBinaryEncoding = new BinaryEncodingCNL(*m_kernelMem, *m_kernel, m_asmName);
         }
@@ -540,6 +540,7 @@ int VISAKernelImpl::InitializeFastPath()
     m_kernelMem = new vISA::Mem_Manager(4096);
 
     m_kernel = new (m_mem) G4_Kernel(
+        getCISABuilder()->getPlatform(),
         m_instListNodeAllocator,
         *m_kernelMem,
         m_options,
@@ -560,7 +561,7 @@ int VISAKernelImpl::InitializeFastPath()
     m_jitInfo = (FINALIZER_INFO*)m_mem.alloc(sizeof(FINALIZER_INFO));
 
     void* addr = m_kernelMem->alloc(sizeof(class IR_Builder));
-    m_builder = new(addr)IR_Builder(getGenxPlatform(), m_instListNodeAllocator,
+    m_builder = new(addr)IR_Builder(m_instListNodeAllocator,
         *m_kernel,
         *m_kernelMem,
         m_options,
@@ -2326,7 +2327,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
             if (opndClass == STATE_OPND_SURFACE &&
                 decl->index < Get_CISA_PreDefined_Surf_Count())
             {
-                int64_t immVal = Get_PreDefined_Surf_Index(decl->index);
+                int64_t immVal = Get_PreDefined_Surf_Index(decl->index, m_builder->getPlatform());
                 if (immVal == PREDEF_SURF_252)
                 {
                     // we have to keep it as a variable
@@ -2528,7 +2529,7 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
             }
             else
             {
-                int64_t immVal = Get_PreDefined_Surf_Index(decl->index);
+                int64_t immVal = Get_PreDefined_Surf_Index(decl->index, m_builder->getPlatform());
                 if (m_options->getOption(vISA_noncoherentStateless) && immVal == PREDEF_SURF_255)
                 {
                     immVal = PREDEF_SURF_253;

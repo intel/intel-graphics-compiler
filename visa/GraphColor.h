@@ -706,9 +706,9 @@ namespace vISA
         std::unique_ptr<VerifyAugmentation> verifyAugmentation;
         std::unique_ptr<RegChartDump> regChart;
         std::unique_ptr<SpillAnalysis> spillAnalysis;
-        static bool useGenericAugAlign()
+        static bool useGenericAugAlign(TARGET_PLATFORM platform)
         {
-            auto gen = getPlatformGeneration(getGenxPlatform());
+            auto gen = getPlatformGeneration(platform);
             if (gen == PlatformGen::GEN9 ||
                 gen == PlatformGen::GEN8)
                 return false;

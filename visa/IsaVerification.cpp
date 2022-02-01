@@ -988,7 +988,7 @@ void vISAVerifier::verifyInstructionMove(
         }
         case ISA_BF_CVT:
         {
-            REPORT_INSTRUCTION(options, getGenxPlatform() >= Xe_XeHPSDV,
+            REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= Xe_XeHPSDV,
                 "BF_CVT is only supported on this platform");
             REPORT_INSTRUCTION(options, operand_class_dst == OPERAND_GENERAL,
                 "Destination operand of BF_CVT instruction only "
@@ -1030,7 +1030,7 @@ void vISAVerifier::verifyInstructionMove(
         }
         case ISA_FCVT:
         {
-            REPORT_INSTRUCTION(options, getGenxPlatform() >= Xe_PVC,
+            REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= Xe_PVC,
                 "fcvt is not supported on the selected platform");
 
             REPORT_INSTRUCTION(options, operand_class_dst == OPERAND_GENERAL,
@@ -1401,43 +1401,47 @@ void vISAVerifier::verifyInstructionMisc(
                 return (Ty == ISA_TYPE_UD || Ty == ISA_TYPE_D);
             };
             auto FNIsIntOrFloat = [](VISA_Type Ty) -> bool {
-                bool isHFOrBF = false;
-                if (getGenxPlatform() >= Xe_PVC)
-                {
-                    // W or UW means BF
-                    isHFOrBF = (Ty == ISA_TYPE_HF || Ty == ISA_TYPE_UW || Ty == ISA_TYPE_W);
-                }
+                return (Ty == ISA_TYPE_UD || Ty == ISA_TYPE_D || Ty == ISA_TYPE_F);
+            };
+            auto FNIsIntOrFloatXePVC = [](VISA_Type Ty) -> bool {
+                // W or UW means BF
+                bool isHFOrBF = (Ty == ISA_TYPE_HF || Ty == ISA_TYPE_UW || Ty == ISA_TYPE_W);
                 return (Ty == ISA_TYPE_UD || Ty == ISA_TYPE_D || Ty == ISA_TYPE_F || isHFOrBF);
             };
-
             // No predicate
             REPORT_INSTRUCTION(options, inst->pred.isNullPred(), "%s inst does not support predicate", ISA_Inst_Table[opcode].str);
 
             // execsize must be simd8 for XeHP_SDV and simd16 for PVC
-            if (getGenxPlatform() >= Xe_PVC)
+            if (irBuilder->getPlatform() >= Xe_PVC)
             {
                 REPORT_INSTRUCTION(options, opcode != ISA_DPASW,
                     "%s instuction is not supported on selected platform", ISA_Inst_Table[opcode].str);
                 REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_16,
                     "Only execution size of 16 is supported for %s on platform %s",
-                    ISA_Inst_Table[opcode].str, getGenxPlatformString(getGenxPlatform()));
+                    ISA_Inst_Table[opcode].str, getGenxPlatformString(irBuilder->getPlatform()));
             }
             else
             {
                 REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_8,
                     "Only execution size of 8 is supported for %s on platform %s",
-                    ISA_Inst_Table[opcode].str, getGenxPlatformString(getGenxPlatform()));
+                    ISA_Inst_Table[opcode].str, getGenxPlatformString(irBuilder->getPlatform()));
             }
 
             // dst
             verifyRawOperand(inst, i);
             const raw_opnd&  dst = getRawOperand(inst, i);
-            verifyRawOperandType(inst, dst, FNIsIntOrFloat);
+            if (irBuilder->getPlatform() >= Xe_PVC)
+                verifyRawOperandType(inst, dst, FNIsIntOrFloatXePVC);
+            else
+                verifyRawOperandType(inst, dst, FNIsIntOrFloat);
 
             // src0
             verifyRawOperand(inst, ++i);
             const raw_opnd&  src0 = getRawOperand(inst, i);
-            verifyRawOperandType(inst, src0, FNIsIntOrFloat);
+            if (irBuilder->getPlatform() >= Xe_PVC)
+                verifyRawOperandType(inst, src0, FNIsIntOrFloatXePVC);
+            else
+                verifyRawOperandType(inst, src0, FNIsIntOrFloat);
 
             // src1
             verifyRawOperand(inst, ++i);
@@ -1581,7 +1585,7 @@ void vISAVerifier::verifyInstructionArith(
     const vector_opnd& dst = getVectorOperand(inst, i);
     VISA_Type         dstType = getVectorOperandType(header, dst);
     VISA_Modifier dstModifier = dst.getOperandModifier();
-    auto platform = getGenxPlatform();
+    auto platform = irBuilder->getPlatform();
 
     REPORT_INSTRUCTION(options, dst.getOperandClass() == OPERAND_GENERAL ||
         dst.getOperandClass() == OPERAND_INDIRECT,
@@ -1686,7 +1690,7 @@ void vISAVerifier::verifyInstructionArith(
     case ISA_SAD2ADD:
         /// dst must be w or uw
         REPORT_INSTRUCTION(options, dstType == ISA_TYPE_W || dstType == ISA_TYPE_UW, "sad2/sad2add only supports W/UW dst type.");
-        REPORT_INSTRUCTION(options, getPlatformGeneration(getGenxPlatform()) != PlatformGen::XE, "sad2/sad2add is not supported on Xe.");
+        REPORT_INSTRUCTION(options, getPlatformGeneration(irBuilder->getPlatform()) != PlatformGen::XE, "sad2/sad2add is not supported on Xe.");
         break;
     case ISA_ADDC:
     case ISA_SUBB:
@@ -1869,7 +1873,7 @@ void vISAVerifier::verifyInstructionLogic(
             case ISA_TYPE_UQ:
             case ISA_TYPE_Q:
                 // This string was changed from "ror/rol only support i64 types on PVC+" due to IP leak concers.
-                REPORT_INSTRUCTION(options, getGenxPlatform() >= Xe_PVC,
+                REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= Xe_PVC,
                     "ror/rol does not support i64 types on the selected platform");
                 break;
             default:
@@ -2101,7 +2105,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST* inst)
 
             if (pixelNullMask)
             {
-                REPORT_INSTRUCTION(options, getGenxPlatform() >= GENX_SKL,
+                REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= GENX_SKL,
                                    "Pixel Null Mask Enable only valid for SKL+");
             }
 
@@ -2134,7 +2138,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST* inst)
 
             if (pixelNullMask)
             {
-                REPORT_INSTRUCTION(options, getGenxPlatform() >= GENX_SKL,
+                REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= GENX_SKL,
                                    "Pixel Null Mask Enable only valid for SKL+");
             }
             break;
@@ -2888,7 +2892,7 @@ void vISAVerifier::verifyInstructionDataport(
              }
 
              surface = getPrimitiveOperand<uint8_t>(inst, i++);
-             if (getGenxPlatform() < GENX_ICLLP)
+             if (irBuilder->getPlatform() < GENX_ICLLP)
              {
                  REPORT_INSTRUCTION(options, 0 != surface, "Surface T0 (the SLM surface) is not allowed for OWORD_LD*/OWORD_ST");
              }
@@ -3174,16 +3178,19 @@ struct LscInstVerifier {
     LSC_SFID                          sfid;
 
     int                               currOpIx = 0;
+    TARGET_PLATFORM                   platform;
 
     LscInstVerifier(
         const common_isa_header& _isaHeader,
         const print_format_provider_t* _header,
         const CISA_INST* _inst,
-        Options *_options)
+        Options *_options,
+        TARGET_PLATFORM _platform)
         : isaHeader(_isaHeader)
         , header(_header)
         , inst(_inst)
         , options(_options)
+        , platform(_platform)
     {
         if (_inst->opcode == ISA_LSC_FENCE) {
             subOp = LSC_FENCE;
@@ -3881,7 +3888,7 @@ void vISAVerifier::verifyInstructionLsc(const CISA_INST *inst)
 {
     // This mostly comes from: https://gfxspecs.intel.com/Predator/Home/Index/53578
     // But there's also a spreadsheet floating around
-    LscInstVerifier verifier(isaHeader, header, inst, options);
+    LscInstVerifier verifier(isaHeader, header, inst, options, irBuilder->getPlatform());
     verifier.verify();
     if (verifier.errorStream.tellp() > 0) {
         std::stringstream ss;
@@ -4134,7 +4141,7 @@ void vISAVerifier::verifyInstruction(
     {
         // We assume instructions are backward compatible
         // instructions that are not should have their own checks elsewhere
-        REPORT_INSTRUCTION(options, getGenxPlatform() >= instPlatform, "vISA instruction not supported on this platform");
+        REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= instPlatform, "vISA instruction not supported on this platform");
     }
 
     for (unsigned i = 0; i < inst->opnd_count; i++)

@@ -1488,9 +1488,9 @@ int64_t typecastVals(const void* value, VISA_Type isaType)
 }
 
 // convert binary vISA surface id to GEN surface index
-int Get_PreDefined_Surf_Index(int index)
+int Get_PreDefined_Surf_Index(int index, TARGET_PLATFORM platform)
 {
-    if (getGenxPlatform() < GENX_SKL)
+    if (platform < GENX_SKL)
     {
         switch (index)
         {

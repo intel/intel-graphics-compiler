@@ -762,7 +762,6 @@ G4_Declare* IR_Builder::getOldA0Dot2Temp()
 }
 
 IR_Builder::IR_Builder(
-    TARGET_PLATFORM genPlatform,
     INST_LIST_NODE_ALLOCATOR& alloc,
     G4_Kernel& k,
     Mem_Manager& m,
@@ -770,7 +769,7 @@ IR_Builder::IR_Builder(
     CISA_IR_Builder* parent,
     FINALIZER_INFO* jitInfo,
     const WA_TABLE* pWaTable)
-    : platform(genPlatform), curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
+    : curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
     type(VISA_BUILD_TYPE::KERNEL), parentBuilder(parent),
     builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
     CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),

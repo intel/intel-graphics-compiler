@@ -1952,7 +1952,7 @@ unsigned SpillManagerGRF::scatterSendBlockSizeCode(unsigned size) const
     return code << getSendDescDataSizeBitOffset();
 }
 
-static uint32_t getScratchBlocksizeEncoding(int numGRF)
+static uint32_t getScratchBlocksizeEncoding(int numGRF, TARGET_PLATFORM platform)
 {
 
     int size = (numGRF * getGRFSize()) / 32; // in HWwords
@@ -1971,7 +1971,7 @@ static uint32_t getScratchBlocksizeEncoding(int numGRF)
     }
     else if (size == 8)
     {
-        assert(getGenxPlatform() >= GENX_SKL);
+        assert(platform >= GENX_SKL);
         blocksize_encoding = 0x3;
     }
     else
@@ -2021,7 +2021,7 @@ G4_Imm * SpillManagerGRF::createSpillSendMsgDesc(
         message |= (1 << SCRATCH_MSG_DESC_CATEORY);
         message |= (1 << SCRATCH_MSG_DESC_CHANNEL_MODE);
         message |= (1 << SCRATCH_MSG_DESC_OPERATION_MODE);
-        unsigned blocksize_encoding = getScratchBlocksizeEncoding(height);
+        unsigned blocksize_encoding = getScratchBlocksizeEncoding(height, builder_->getPlatform());
         message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
         int offset = getDisp(base);
         getSpillOffset(offset);
@@ -2080,7 +2080,7 @@ SpillManagerGRF::createSpillSendMsgDesc(
         message |= (1 << SCRATCH_MSG_DESC_OPERATION_MODE); // write operation
         unsigned numGRFs = cdiv(segmentByteSize, numEltPerGRF<Type_UB>());
 
-        unsigned blocksize_encoding = getScratchBlocksizeEncoding(numGRFs);
+        unsigned blocksize_encoding = getScratchBlocksizeEncoding(numGRFs, builder_->getPlatform());
 
         message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
         int offset = getRegionDisp(spilledRangeRegion);
@@ -2186,9 +2186,9 @@ G4_INST * SpillManagerGRF::createSendInst(
 
 // Create the send instructions to fill in the value of spillRangeDcl into
 // fillRangeDcl in aligned portions.
-static int getNextSize(int height, bool useHWordMsg)
+static int getNextSize(int height, bool useHWordMsg, TARGET_PLATFORM platform)
 {
-    bool has8GRFMessage = useHWordMsg && getGenxPlatform() >= GENX_SKL &&
+    bool has8GRFMessage = useHWordMsg && platform >= GENX_SKL &&
         getGRFSize() == 32;
     if (has8GRFMessage && height >= 8)
     {
@@ -2246,7 +2246,7 @@ SpillManagerGRF::sendInSpilledRegVarPortions(
     }
 
     // Read in the portions using a greedy approach.
-    int currentStride = getNextSize(height, useScratchMsg_);
+    int currentStride = getNextSize(height, useScratchMsg_, builder_->getPlatform());
 
     if (currentStride)
     {
@@ -2529,7 +2529,7 @@ G4_Imm *SpillManagerGRF::createFillSendMsgDesc(
 
         message |= (1 << SCRATCH_MSG_DESC_CATEORY);
         message |= (0 << SCRATCH_MSG_INVALIDATE_AFTER_READ);
-        unsigned blocksize_encoding = getScratchBlocksizeEncoding(height);
+        unsigned blocksize_encoding = getScratchBlocksizeEncoding(height, builder_->getPlatform());
 
         message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
 
@@ -2588,7 +2588,7 @@ G4_Imm *SpillManagerGRF::createFillSendMsgDesc(
         message |= (SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT << getSendMsgLengthBitOffset());
         message |= (1 << SCRATCH_MSG_DESC_CATEORY);
         message |= (0 << SCRATCH_MSG_INVALIDATE_AFTER_READ);
-        unsigned blocksize_encoding = getScratchBlocksizeEncoding(responseLength);
+        unsigned blocksize_encoding = getScratchBlocksizeEncoding(responseLength, builder_->getPlatform());
 
         message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
         int offset = getRegionDisp(filledRangeRegion);
@@ -2966,7 +2966,7 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions (
 
 
     // Write out the portions using a greedy approach.
-    int currentStride = getNextSize(height, useScratchMsg_);
+    int currentStride = getNextSize(height, useScratchMsg_, builder_->getPlatform());
 
     if (currentStride)
     {
@@ -4943,7 +4943,7 @@ void GlobalRA::saveRestoreA0(G4_BB * bb)
     }
 }
 
-uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUnits)
+static uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUnits, TARGET_PLATFORM platform)
 {
     // Compute msg descriptor given payload size and offset.
     unsigned headerPresent = 0x80000;
@@ -4953,7 +4953,7 @@ uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfU
     message |= (1 << SCRATCH_MSG_DESC_CATEORY);
     message |= (1 << SCRATCH_MSG_DESC_CHANNEL_MODE);
     message |= (1 << SCRATCH_MSG_DESC_OPERATION_MODE);
-    unsigned blocksize_encoding = getScratchBlocksizeEncoding(payloadSize);
+    unsigned blocksize_encoding = getScratchBlocksizeEncoding(payloadSize, platform);
     message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
     int offset = offsetInGrfUnits;
     message |= offset;
@@ -4961,7 +4961,7 @@ uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfU
     return message;
 }
 
-uint32_t computeFillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUnits)
+static uint32_t computeFillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUnits, TARGET_PLATFORM platform)
 {
     // Compute msg descriptor given payload size and offset.
     unsigned headerPresent = 0x80000;
@@ -4970,7 +4970,7 @@ uint32_t computeFillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUn
     message |= (msgLength << getSendMsgLengthBitOffset());
     message |= (1 << SCRATCH_MSG_DESC_CATEORY);
     message |= (0 << SCRATCH_MSG_INVALIDATE_AFTER_READ);
-    unsigned blocksize_encoding = getScratchBlocksizeEncoding(payloadSize);
+    unsigned blocksize_encoding = getScratchBlocksizeEncoding(payloadSize, platform);
     message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
     message |= offsetInGrfUnits;
 
@@ -5311,7 +5311,7 @@ void GlobalRA::expandSpillNonStackcall(
 
             auto region = builder->getRegionStride1();
 
-            uint32_t spillMsgDesc = computeSpillMsgDesc(getPayloadSizeGRF(numRows), offset);
+            uint32_t spillMsgDesc = computeSpillMsgDesc(getPayloadSizeGRF(numRows), offset, builder->getPlatform());
             auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC0, spillMsgDesc, getPayloadSizeGRF(numRows));
             G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
@@ -5560,7 +5560,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
              auto region = builder->getRegionStride1();
              G4_SrcRegRegion* headerOpnd = builder->createSrcRegRegion(builder->getBuiltinR0(), region);
 
-             uint32_t fillMsgDesc = computeFillMsgDesc(getPayloadSizeGRF(numRows), offset);
+             uint32_t fillMsgDesc = computeFillMsgDesc(getPayloadSizeGRF(numRows), offset, builder->getPlatform());
 
              G4_SendDescRaw* msgDesc = kernel.fg.builder->createSendMsgDesc(fillMsgDesc,
                  getPayloadSizeGRF(numRows), 1, SFID::DP_DC0, 0, 0, SendAccess::READ_ONLY);

@@ -14,17 +14,17 @@ using namespace vISA;
 static const unsigned MESSAGE_PRECISION_SUBTYPE_OFFSET  = 30;
 static const unsigned SIMD_MODE_2_OFFSET  = 29;
 
-static bool isSamplerMsgWithPO(
-    VISASampler3DSubOpCode samplerOp) {
+bool IR_Builder::isSamplerMsgWithPO(
+    VISASampler3DSubOpCode samplerOp) const {
 
     return false;
 }
 
-static uint32_t createSamplerMsgDesc(
+uint32_t IR_Builder::createSamplerMsgDesc(
     VISASampler3DSubOpCode samplerOp,
     bool isNativeSIMDSize,
     bool isFP16Return,
-    bool isFP16Input)
+    bool isFP16Input) const
 {
     // Now create message descriptor
     // 7:0 - BTI

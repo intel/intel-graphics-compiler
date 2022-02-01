@@ -1057,9 +1057,9 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
     //
     unsigned i = 0;   // avail reg number
 
-    auto getAlignToUse = [](BankAlign align, BankAlign bankAlign)
+    auto getAlignToUse = [this](BankAlign align, BankAlign bankAlign)
     {
-        if (GlobalRA::useGenericAugAlign())
+        if (GlobalRA::useGenericAugAlign(builder.getPlatform()))
             return (align != BankAlign::Either ? align : bankAlign);
         else
             return (bankAlign != BankAlign::Either ? bankAlign : align);

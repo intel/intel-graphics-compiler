@@ -304,8 +304,6 @@ private:
 
     GlobalImmPool immPool;
 
-    const TARGET_PLATFORM platform;
-
     //allocator pools
     USE_DEF_ALLOCATOR     useDefAllocator;
 
@@ -639,7 +637,6 @@ public:
     bool hasValidOldA0Dot2() { return oldA0Dot2Temp; }
 
     IR_Builder(
-        TARGET_PLATFORM genPlatform,
         INST_LIST_NODE_ALLOCATOR &alloc,
         G4_Kernel &k,
         Mem_Manager &m,
@@ -654,7 +651,7 @@ public:
         phyregpool.rebuildRegPool(mem, numRegisters);
     }
 
-    TARGET_PLATFORM getPlatform() const {return platform;}
+    TARGET_PLATFORM getPlatform() const {return kernel.getPlatform();}
     FINALIZER_INFO* getJitInfo() {return metaData;}
     CompilerStats &getcompilerStats() {return compilerStats;}
 
@@ -2716,6 +2713,12 @@ public:
 
 private:
     G4_SrcRegRegion* createBindlessExDesc(uint32_t exdesc);
+    bool isSamplerMsgWithPO(VISASampler3DSubOpCode samplerOp) const;
+    uint32_t createSamplerMsgDesc(
+        VISASampler3DSubOpCode samplerOp,
+        bool isNativeSIMDSize,
+        bool isFP16Return,
+        bool isFP16Input) const;
 };
 } // namespace vISA
 

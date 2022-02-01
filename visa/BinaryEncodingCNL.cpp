@@ -2409,7 +2409,7 @@ void BinaryEncodingCNL::DoAll()
         BDWCompactSubRegTable.AddIndex(IVBCompactSubRegTable[i], i);
         BDWCompactSubRegTable.AddIndex1(IVBCompactSubRegTable[i] & 0x1F, i);
         BDWCompactSubRegTable.AddIndex2(IVBCompactSubRegTable[i] & 0x3FF, i);
-        if (getGenxPlatform() >= GENX_ICLLP)
+        if (kernel.getPlatform() >= GENX_ICLLP)
         {
             BDWCompactDataTypeTableStr.AddIndex(ICLCompactDataTypeTable[i], i);
         }

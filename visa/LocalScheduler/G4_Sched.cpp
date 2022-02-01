@@ -658,9 +658,9 @@ bool preRA_Scheduler::run()
 }
 
 // Automatic selection of GRF mode
-GRFMode::GRFMode()
+GRFMode::GRFMode(TARGET_PLATFORM platform)
 {
-    switch (getGenxPlatform())
+    switch (platform)
     {
     case Xe_DG2:
         configurations.resize(2);
@@ -722,7 +722,7 @@ bool preRA_RegSharing::run()
     unsigned SchedCtrl = kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleCtrl);
     SchedConfig config(SchedCtrl);
 
-    GRFMode GrfMode;
+    GRFMode GrfMode(kernel.getPlatform());
     RegisterPressure rp(kernel, mem, rpe);
 
     std::unordered_map<G4_BB*, unsigned int> rpBB;

@@ -536,10 +536,10 @@ uint32_t gtPinData::getNumBytesScratchUse() const
 }
 
 
-G4_Kernel::G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
+G4_Kernel::G4_Kernel(TARGET_PLATFORM genPlatform, INST_LIST_NODE_ALLOCATOR& alloc,
     Mem_Manager& m, Options* options, Attributes* anAttr,
     unsigned char major, unsigned char minor)
-    : m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
+    : platform(genPlatform), m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
     asmInstCount(0), kernelID(0), fg(alloc, this, m),
     major_version(major), minor_version(minor)
 {
@@ -736,7 +736,7 @@ void G4_Kernel::calculateSimdSize()
         }
     }
 
-    if (GlobalRA::useGenericAugAlign())
+    if (GlobalRA::useGenericAugAlign(getPlatform()))
         computeChannelSlicing();
 }
 
@@ -818,10 +818,10 @@ static std::vector<std::string> split(
     return v;
 }
 
-static iga_gen_t getIGAPlatform()
+static iga_gen_t getIGAPlatform(TARGET_PLATFORM genPlatform)
 {
     iga_gen_t platform = IGA_GEN_INVALID;
-    switch (getGenxPlatform())
+    switch (genPlatform)
     {
     case GENX_BDW: platform = IGA_GEN8; break;
     case GENX_CHV: platform = IGA_GEN8lp; break;
@@ -975,7 +975,7 @@ void G4_Kernel::setKernelParameters()
     unsigned overrideGRFNum = 0;
     unsigned overrideNumThreads = 0;
 
-    TARGET_PLATFORM platform = getGenxPlatform();
+    TARGET_PLATFORM platform = getPlatform();
     overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
 
     overrideNumThreads = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
@@ -1322,13 +1322,13 @@ void G4_Kernel::emitDeviceAsm(
 
     emitDeviceAsmInstructionsIga(os, binary, binarySize);
 
-    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE) {
+    if (getPlatformGeneration(getPlatform()) >= PlatformGen::XE) {
         os << "\n\n";
         os << "//.BankConflicts: " <<  fg.XeBCStats.BCNum << "\n";
         os << "//.BankConflicts.SameBank: " <<  fg.XeBCStats.sameBankConflicts << "\n";
         os << "//.BankConflicts.TwoSrc: " <<  fg.XeBCStats.twoSrcBC << "\n";
         int nativeSimdSize = 8;
-        if (getGenxPlatform() >= Xe_PVC)
+        if (getPlatform() >= Xe_PVC)
             nativeSimdSize = 16;
         os << "//.SIMD" << 2*nativeSimdSize << "ReadSuppressions: " <<  fg.XeBCStats.simd16ReadSuppression << "\n";
         os << "//.SIMD" << nativeSimdSize << "s: " <<  fg.XeBCStats.simd8 << "\n//\n";
@@ -1363,7 +1363,7 @@ void G4_Kernel::emitRegInfo()
 
 void G4_Kernel::emitRegInfoKernel(std::ostream& output)
 {
-    output << "//.platform " << getGenxPlatformString(fg.builder->getPlatform());
+    output << "//.platform " << getGenxPlatformString(getPlatform());
     output << "\n" << "//.kernel ID 0x" << std::hex << getKernelID() << "\n";
     output << std::dec << "\n";
     int instOffset = 0;
@@ -1598,7 +1598,7 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream& os)
         os << name;
     }
 
-    os << "\n" << "//.platform " << getGenxPlatformString(getGenxPlatform());
+    os << "\n" << "//.platform " << getGenxPlatformString(getPlatform());
     os << "\n" << "//.thread_config " << "numGRF=" << numRegTotal << ", numAcc=" << numAcc;
     if (fg.builder->hasSWSB())
     {
@@ -1773,7 +1773,7 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream& os)
     }
     os << border << "\n";
 
-    if (getPlatformGeneration(getGenxPlatform()) < PlatformGen::XE)
+    if (getPlatformGeneration(getPlatform()) < PlatformGen::XE)
     {
         fg.BCStats.clear();
     }
@@ -1876,7 +1876,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
     if (!errBuf)
         return;
     KernelView kv(
-        getIGAPlatform(), binary, binarySize,
+        getIGAPlatform(getPlatform()), binary, binarySize,
         GetIGASWSBEncodeMode(*fg.builder),
         errBuf, ERROR_STRING_MAX_LENGTH);
     const auto errorMap =
