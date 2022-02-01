@@ -8129,6 +8129,10 @@ void GlobalRA::addCallerSaveRestoreCode()
                 saveActiveRegs(callerSaveRegsMap[bb], 0, builder.kernel.fg.callerSaveAreaOffset,
                     bb, insertSaveIt, callerSaveInsts[callInst]);
 
+                // mark instructions for EU Fusion WA
+                for (auto save : callerSaveInsts[callInst])
+                    addEUFusionCallWAInst(save);
+
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
                     auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions(bb);
@@ -8151,6 +8155,11 @@ void GlobalRA::addCallerSaveRestoreCode()
 
                 restoreActiveRegs(callerSaveRegsMap[bb], 0, builder.kernel.fg.callerSaveAreaOffset,
                     afterFCallBB, insertRestIt, callerRestoreInsts[callInst], true);
+
+                // mark instructions for EU Fusion WA
+                for (auto restore : callerRestoreInsts[callInst])
+                    addEUFusionCallWAInst(restore);
+
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
@@ -8461,6 +8470,8 @@ void GraphColor::addA0SaveRestoreCode()
                         G4_ExecSize(numA0Elements), dst, src, InstOpt_WriteEnable, false);
                     INST_LIST_ITER insertIt = std::prev(bb->end());
                     bb->insertBefore(insertIt, saveInst);
+
+                    gra.addEUFusionCallWAInst(saveInst);
                 }
 
                 {
@@ -8474,6 +8485,8 @@ void GraphColor::addA0SaveRestoreCode()
                         G4_ExecSize(numA0Elements), dst, src, InstOpt_WriteEnable, false);
                     auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
                     succ->insertBefore(insertIt, restoreInst);
+
+                    gra.addEUFusionCallWAInst(restoreInst);
                 }
             }
         }
@@ -8532,6 +8545,8 @@ void GraphColor::addFlagSaveRestoreCode()
                     {
                         auto saveInst = createFlagSaveInst(i);
                         bb->insertBefore(iter, saveInst);
+
+                        gra.addEUFusionCallWAInst(saveInst);
                     }
                 }
 
@@ -8553,6 +8568,8 @@ void GraphColor::addFlagSaveRestoreCode()
                     {
                         auto restoreInst = createRestoreFlagInst(i);
                         succ->insertBefore(insertIt, restoreInst);
+
+                        gra.addEUFusionCallWAInst(restoreInst);
                     }
                 }
             }
