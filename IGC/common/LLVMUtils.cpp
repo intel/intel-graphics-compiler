@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/SourceMgr.h>
 #include <llvmWrapper/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvm/IR/IRPrintingPasses.h>
 
 using namespace IGC;
 using namespace IGC::Debug;
@@ -725,7 +726,11 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
     // stack, then that reference would go bad as soon as we exit this scope, and then
     // the printer pass would access an invalid pointer later on when we call PassManager::run()
     m_irDumps.emplace_front(name, IGC::Debug::DumpType::PASS_IR_TEXT);
-    PassManager::add(P->createPrinterPass(m_irDumps.front().stream(), ""));
+    auto printerPass = P->createPrinterPass(m_irDumps.front().stream(), "");
+    if (printerPass->getPassKind() == PT_Function) //Enabling debug info for -O2
+        printerPass = llvm::createPrintModulePass(m_irDumps.front().stream(), "");
+    PassManager::add(printerPass);
+
 
     llvm::Pass* flushPass = createFlushPass(P, m_irDumps.front());
     if (nullptr != flushPass)
