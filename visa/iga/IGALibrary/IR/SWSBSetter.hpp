@@ -155,6 +155,31 @@ namespace iga
         void addSWSBToInst(Instruction& inst, const SWSB& swsb,
                            Block& block, InstListIterator inst_it);
 
+        /// ------------ HW Workaround Information ------------ ///
+        // MathWAInfo: For a math instruction, when the following instruction has different
+        // predication to the math, should assume the math taking the entire GRF in it's
+        // dst no matter the access region and channels are.
+        struct MathWAInfo {
+            bool previous_is_math = false;
+            DepSet* dep_set = nullptr;
+            // a special id to identify this DepSet when trying to clean it from buckets
+            const InstIDs math_id = {std::numeric_limits<uint32_t>::max(), 0};
+            Instruction* math_inst = nullptr;
+            SBID math_sbid = {0, true, DEP_TYPE::NONE};
+
+            void reset() {
+                previous_is_math = false;
+                dep_set = nullptr;
+                math_inst = nullptr;
+                math_sbid = {0, true, DEP_TYPE::NONE};
+            }
+        } math_wa_info;
+
+        // When double precision or Math instructions write a register, and the same register is reused by
+        // following instructions going to any pipe, the instruction is considered to occupy the full register
+        // irrespective of sub register number
+        bool needReadSuppressionWA(const Instruction& inst);
+
     private:
         const uint32_t MAX_GRF_BUCKETS = 128;
         // Instruction having 64-bit type destination having 14 latency

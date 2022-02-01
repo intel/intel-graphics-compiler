@@ -926,7 +926,7 @@ void DepSet::setOutputsFlagDep()
     }
 }
 
-void DepSet::setOutputsDstcDep()
+void DepSet::setOutputsDstDep()
 {
     int execOff = 4 * (static_cast<int>(m_instruction->getChannelOffset()));
     int execSize = static_cast<int>(m_instruction->getExecSize()); //1 << (static_cast<int>(m_instruction->getExecSize()) - 1);
@@ -1069,14 +1069,14 @@ DepSet* DepSetBuilder::createDstDepSet(
     oups->setDepType(DEP_TYPE::WRITE);
 
     oups->setOutputsFlagDep();
-    oups->setOutputsDstcDep();
+    oups->setOutputsDstDep();
     return oups;
 }
 
 
-DepSet* DepSetBuilder::createMathDstWADepSet(
+DepSet* DepSetBuilder::createDstDepSetFullGrf(
     const Instruction &i, const InstIDs& inst_id_counter,
-    SWSB_ENCODE_MODE enc_mode) {
+    SWSB_ENCODE_MODE enc_mode, bool setFlagDep) {
     DepSet *oups = new DepSet(inst_id_counter, *this);
     mAllDepSet.push_back(oups);
 
@@ -1084,12 +1084,13 @@ DepSet* DepSetBuilder::createMathDstWADepSet(
     setDEPPipeClass(enc_mode, *oups, i, mPlatformModel);
 
     oups->setDepType(DEP_TYPE::WRITE);
-    oups->setMathWAOutputsDstcDep();
-
+    if (setFlagDep)
+        oups->setOutputsFlagDep();
+    oups->setOutputsDstDepFullGrf();
     return oups;
 }
 
-void DepSet::setMathWAOutputsDstcDep()
+void DepSet::setOutputsDstDepFullGrf()
 {
     size_t execSize = static_cast<size_t>(m_instruction->getExecSize()); //1 << (static_cast<int>(m_instruction->getExecSize()) - 1);
 

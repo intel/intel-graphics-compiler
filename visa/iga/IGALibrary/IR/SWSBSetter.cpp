@@ -867,6 +867,20 @@ void SWSBAnalyzer::addSWSBToInst(Instruction& inst,
                "Invalid swsb dist/token combination after merge");
 }
 
+bool SWSBAnalyzer::needReadSuppressionWA(const Instruction& inst)
+{
+    if (m_kernel.getModel().platform != Platform::XE_HPG)
+        return false;
+
+    if (inst.getOpSpec().is(Op::MATH))
+        return true;
+
+    if (inst.isDF())
+        return true;
+
+    return false;
+}
+
 static bool isSyncNop(const Instruction &i) {
     return i.is(Op::SYNC) && i.getSyncFc() == SyncFC::NOP;
 };
@@ -1076,26 +1090,7 @@ void SWSBAnalyzer::run()
     m_InstIdCounter.intPipe = 1;
     m_InstIdCounter.longPipe = 1;
     m_InstIdCounter.mathPipe = 1;
-
-    // init the math WA struct
-    // When there is a math instruction, when the following instruction has different
-    // predication to the math, should assume the math taking the entire GRF in it's
-    // dst no matter the access region and channels are.
-    struct MathWAInfo {
-        bool previous_is_math = false;
-        DepSet* dep_set = nullptr;
-        // a special id to identify this DepSet when trying to clean it from buckets
-        const InstIDs math_id = {std::numeric_limits<uint32_t>::max(), 0};
-        Instruction* math_inst = nullptr;
-        SBID math_sbid = {0, true, DEP_TYPE::NONE};
-
-        void reset() {
-            previous_is_math = false;
-            dep_set = nullptr;
-            math_inst = nullptr;
-            math_sbid = {0, true, DEP_TYPE::NONE};
-        }
-    } math_wa_info;
+    math_wa_info.reset();
 
     Instruction* inst = nullptr;
     Block * lastBB = nullptr;
@@ -1141,7 +1136,10 @@ void SWSBAnalyzer::run()
                 inst = *instIter;
             } else {
                 input = m_DB->createSrcDepSet(*inst, m_InstIdCounter, m_swsbMode);
-                output = m_DB->createDstDepSet(*inst, m_InstIdCounter, m_swsbMode);
+                if (needReadSuppressionWA(*inst))
+                    output = m_DB->createDstDepSetFullGrf(*inst, m_InstIdCounter, m_swsbMode, true);
+                else
+                    output = m_DB->createDstDepSet(*inst, m_InstIdCounter, m_swsbMode);
             }
             input->setCompanion(output);
             output->setCompanion(input);
@@ -1216,7 +1214,7 @@ void SWSBAnalyzer::run()
                 // Add the WA math dst region to Buckets
                 if (math_wa_info.math_inst->getPredication().function != inst->getPredication().function) {
                     math_wa_info.dep_set =
-                        m_DB->createMathDstWADepSet(*math_wa_info.math_inst, math_wa_info.math_id, m_swsbMode);
+                        m_DB->createDstDepSetFullGrf(*math_wa_info.math_inst, math_wa_info.math_id, m_swsbMode, false);
                     math_wa_info.dep_set->setSBID(math_wa_info.math_sbid);
                     for (auto bucketID : math_wa_info.dep_set->getBuckets())
                     {

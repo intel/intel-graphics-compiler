@@ -206,6 +206,8 @@ namespace iga
 
         // true for madm or math.invm and math.rsqrtm
         bool               isMacro()           const;
+        // true if any of dst or src uses DF type
+        bool               isDF()              const;
         // execution width info
         ExecSize           getExecSize()       const {return m_execSize;}
         ChannelOffset      getChannelOffset()  const {return m_chOff;}

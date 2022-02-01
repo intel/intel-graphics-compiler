@@ -195,8 +195,12 @@ private:
     void setInputsSrcDep();
 
     void setOutputsFlagDep();
-    void setOutputsDstcDep();
-    void setMathWAOutputsDstcDep();
+    void setOutputsDstDep();
+    // set the register footpring on full registers for all register
+    // the given dst has touched. For example, consider the entire r2 as
+    // its footpring for a dst register "r2.2:d"
+    // This is a helper setter for some Workarounds
+    void setOutputsDstDepFullGrf();
 
     typedef std::pair<uint32_t, uint32_t> RegRangeType;
     typedef std::vector<RegRangeType> RegRangeListType;
@@ -292,9 +296,12 @@ public:
     /// mathDstWA - this will return the DepSet with math's dst region, and force to occupy the
     /// entire registers no matter what the region and channel are. e.g. if dst is r1.3, it'll
     /// occupy the entire r1
+    /// @input setFlagDep - True if this is a full DepSet creation and would like to set the dep
+    ///                     for flag registers. False if the DepSet is an additional dependecny for
+    ///                     an instruction which already has DepSet created (e.g. for MathWA)
     /// This is the WA to fix the HW read suppression issue
-    DepSet* createMathDstWADepSet(const Instruction &i, const InstIDs& inst_id_counter,
-        SWSB_ENCODE_MODE enc_mode);
+    DepSet* createDstDepSetFullGrf(const Instruction &i, const InstIDs& inst_id_counter,
+        SWSB_ENCODE_MODE enc_mode, bool setFlagDep);
 
 
     // Register File Size Info
