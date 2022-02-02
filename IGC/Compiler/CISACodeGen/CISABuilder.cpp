@@ -7352,12 +7352,6 @@ namespace IGC
 
     LSC_ADDR_TYPE CEncoder::getLSCAddrType(const ResourceDescriptor* resource)
     {
-        if (resource->m_surfaceType == ESURFACE_STATELESS &&
-            resource->m_resource &&
-            resource->m_isA32_BTI_255 &&
-            resource->m_resource->IsImmediate() &&
-            resource->m_resource->GetImmediateValue() == 255)
-            return LSC_ADDR_TYPE_BTI;
         return getLSCAddrType(resource->m_surfaceType);
     }
 

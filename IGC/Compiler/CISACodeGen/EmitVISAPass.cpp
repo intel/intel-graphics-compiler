@@ -18151,21 +18151,6 @@ void EmitPass::emitLSCVectorLoad(
     // 2. Handle uniform load
     if (srcUniform && resource.m_resource->IsUniform())
     {
-        if (resource.m_isA32_BTI_255)
-        {
-            // the intention is to read kernel thread argument:
-            // and (1) tmp    r0.0:ud    0xffffffc0:ud
-            // add (1) src0Addr    src0Addr    tmp
-            auto tmp = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, "r0Mask");
-            auto maskImm = m_currShader->ImmToVariable(0xffffffc0, ISA_TYPE_UD);
-            m_encoder->SetSimdSize(SIMDMode::SIMD1);
-            m_encoder->SetNoMask();
-            m_encoder->And(tmp, m_currShader->GetR0(), maskImm);
-            m_encoder->Push();
-            m_encoder->Add(eOffset, eOffset, tmp);
-            m_encoder->Push();
-        }
-
         emitLSCVectorLoad_uniform(
             cacheOpts, useA32,
             resource, destCVar, eOffset, immOffsetInt, elts, eltBytes, align,
@@ -18181,8 +18166,6 @@ void EmitPass::emitLSCVectorLoad(
 
     eOffset = BroadcastIfUniform(eOffset);
 
-    IGC_ASSERT_MESSAGE(!resource.m_isA32_BTI_255, "unexpected path");
-
     ResourceLoop(resource, [&](CVariable* flag) {
         for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
         {
@@ -18196,7 +18179,7 @@ void EmitPass::emitLSCVectorLoad(
             uint32_t instElts = instTotalBytes / eltBytes;
             uint32_t nbelts = instElts * width;
 
-            CVariable* rawAddrVar = nullptr;
+            CVariable* rawAddrVar;
             if (i > 0)
             {
                 // Calculate the new element offset
@@ -19261,9 +19244,6 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
         bool directIndexing = false;
 
         bufType = DecodeAS4GFXResource(as, directIndexing, bufferIndex);
-
-        if (as == ADDRESS_SPACE_A32)
-            resource.m_isA32_BTI_255 = true;
 
         if (IsBindless(bufType) || !directIndexing)
         {
