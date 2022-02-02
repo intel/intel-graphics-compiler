@@ -33,6 +33,8 @@ static G4_Operand *lscTryPromoteSurfaceImmToExDesc(
         auto surfaceImm = (uint32_t)surface->asImm()->getImm();
         if (addrModel == LSC_ADDR_TYPE_BTI) {
             // promote the immediate BTI to the descriptor
+            if (surfaceImm == PREDEFINED_SURFACE_T255)
+                surfaceImm = 255;
             exDesc |= surfaceImm << 24;
             surface = nullptr;
         } else if (

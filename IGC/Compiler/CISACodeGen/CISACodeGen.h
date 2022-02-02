@@ -167,7 +167,12 @@ namespace IGC
     {
         CVariable* m_resource;
         e_predefSurface m_surfaceType;
-        ResourceDescriptor() : m_resource(nullptr), m_surfaceType(ESURFACE_NORMAL) {}
+        // this flag is set whenever addrspace is set to ADDRESS_SPACE_A32
+        // to access thread arguments. we need to lower such a32 messages
+        // using BTI 255.
+        bool m_isA32_BTI_255 = false;
+        ResourceDescriptor() : m_resource(nullptr), m_surfaceType(ESURFACE_NORMAL),
+            m_isA32_BTI_255(false) {}
     };
 
     struct SamplerDescriptor
