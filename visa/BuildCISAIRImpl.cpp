@@ -288,6 +288,20 @@ int CISA_IR_Builder::CreateBuilder(
         return VISA_FAILURE;
     }
 
+    // Set visa platform in the internal option for the case that IR_Builder or
+    // G4_Kernel object are not easily available. However, getting platform
+    // through options probably would be slower as it requires a hash table
+    // lookup, so it should be used with caution.
+    // Check if the given platform from function argument is valid.
+    assert(platform != GENX_NONE && platform < TARGET_PLATFORM::ALL);
+    TARGET_PLATFORM platformSet =
+        static_cast<TARGET_PLATFORM>(builder->m_options.getuInt32Option(vISA_PlatformSet));
+    // If the platform is specified in both the function argument and the
+    // cmdline argument, the 2 values probably should be same.
+    assert(platformSet == GENX_NONE || platformSet == platform);
+    if (platformSet == GENX_NONE)
+        builder->m_options.setOptionInternally(vISA_PlatformSet, static_cast<uint32_t>(platform));
+
 #if defined(_DEBUG) || defined(_INTERNAL)
     builder->m_options.getOptionsFromEV();
 #endif

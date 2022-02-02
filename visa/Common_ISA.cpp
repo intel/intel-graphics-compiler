@@ -126,7 +126,7 @@ const char* emask_str[vISA_NUM_EMASK+1] =
 };
 
 
-static const char* getSampleOp3DNameOrNull(VISASampler3DSubOpCode opcode)
+static const char* getSampleOp3DNameOrNull(VISASampler3DSubOpCode opcode, TARGET_PLATFORM platform)
 {
     switch (opcode)
     {
@@ -178,18 +178,18 @@ static const char* getSampleOp3DNameOrNull(VISASampler3DSubOpCode opcode)
         return nullptr;
     }
 }
-const char* getSampleOp3DName(VISASampler3DSubOpCode opcode)
+const char* getSampleOp3DName(VISASampler3DSubOpCode opcode, TARGET_PLATFORM platform)
 {
-    const char *name = getSampleOp3DNameOrNull(opcode);
+    const char *name = getSampleOp3DNameOrNull(opcode, platform);
     assert(name && "invalid sampler opcode");
     if (!name)
         return "sampler_unknown";
     return name;
 }
-VISASampler3DSubOpCode getSampleOpFromName(const char *str)
+VISASampler3DSubOpCode getSampleOpFromName(const char *str, TARGET_PLATFORM platform)
 {
     for (int i = 0; i < ISA_NUM_OPCODE; i++) {
-        const char *symI = getSampleOp3DNameOrNull((VISASampler3DSubOpCode)i);
+        const char *symI = getSampleOp3DNameOrNull((VISASampler3DSubOpCode)i, platform);
         if (symI && strcmp(symI, str) == 0)
             return (VISASampler3DSubOpCode)i;
     }

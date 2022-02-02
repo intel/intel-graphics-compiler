@@ -42,7 +42,7 @@ static GenPrecision            str2Precision(const char *str, int str_len);
 static LSC_OP                  str2lscop(const char *str);
 static LSC_DATA_SIZE           decodeDataSizePrefix(const char *str,int *off);
 static LSC_DATA_ELEMS          decodeDataElems(const char *str,int *off);
-static VISASampler3DSubOpCode  str2SampleOpcode(const char* str);
+static VISASampler3DSubOpCode  str2SampleOpcode(const char* str, TARGET_PLATFORM platform);
 static int64_t                 hexToInt(const char *hex_str, int str_len);
 static MEDIA_LD_mod            mediaMode(const char* str);
 static OutputFormatControl     avs_control(const char* str);
@@ -732,7 +732,7 @@ avs {
 
 sample_3d|sample_b|sample_l|sample_c|sample_d|sample_b_c|sample_l_c|sample_d_c|sample_lz|sample_c_lz {
         TRACE("** SAMPLE_3D");
-        CISAlval.sample3DOp = str2SampleOpcode(yytext);
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
         return SAMPLE_3D_OP;
     }
 
@@ -741,19 +741,19 @@ sample_3d|sample_b|sample_l|sample_c|sample_d|sample_b_c|sample_l_c|sample_d_c|s
 
 load_3d|load_mcs|load_2dms_w|load_lz {
         TRACE("** LOAD_3D");
-        CISAlval.sample3DOp = str2SampleOpcode(yytext);
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
         return LOAD_3D_OP;
     }
 
 sample4|sample4_c {
         TRACE("** SAMPLE4_3D");
-        CISAlval.sample3DOp = str2SampleOpcode(yytext);
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
         return SAMPLE4_3D_OP;
     }
 
 sample4_po|sample4_po_c {
         TRACE("** SAMPLE4_3D");
-        CISAlval.sample3DOp = str2SampleOpcode(yytext);
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
         return SAMPLE4_3D_OP;
     }
 
@@ -1444,9 +1444,9 @@ static ISA_Opcode str2opcode(const char *op_str)
     return ISA_RESERVED_0;
 }
 
-static VISASampler3DSubOpCode str2SampleOpcode(const char *str)
+static VISASampler3DSubOpCode str2SampleOpcode(const char *str, TARGET_PLATFORM platform)
 {
-    VISASampler3DSubOpCode op = getSampleOpFromName(str);
+    VISASampler3DSubOpCode op = getSampleOpFromName(str, platform);
     if (op >= 0)
         return op;
 

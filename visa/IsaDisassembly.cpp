@@ -1498,7 +1498,9 @@ static std::string printInstructionSampler(
             //   <dst> <u> <v> <r> <ai>
             auto subop = getSubOpcodeByte(inst, i++);
 
-            sstr << getSampleOp3DName(subop.opcode) << ".";
+            TARGET_PLATFORM platform =
+                static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
+            sstr << getSampleOp3DName(subop.opcode, platform) << ".";
             // Print the pixel null mask if it is enabled.
             if (subop.pixelNullMask)
             {
@@ -1549,7 +1551,9 @@ static std::string printInstructionSampler(
         {
             auto subop = getSubOpcodeByte(inst, i++);
 
-            sstr << getSampleOp3DName(subop.opcode) << ".";
+            TARGET_PLATFORM platform =
+                static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
+            sstr << getSampleOp3DName(subop.opcode, platform) << ".";
             // Print the pixel null mask if it is enabled.
             // The last '.' is for the channels.
             if (subop.pixelNullMask)
@@ -1588,7 +1592,9 @@ static std::string printInstructionSampler(
         {
             auto subop = getSubOpcodeByte(inst, i++);
 
-            sstr << getSampleOp3DName(subop.opcode) << ".";
+            TARGET_PLATFORM platform =
+                static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
+            sstr << getSampleOp3DName(subop.opcode, platform) << ".";
             // Print the pixel null mask if it is enabled.
             // The last '.' is for the channels.
             if (subop.pixelNullMask)
@@ -1645,7 +1651,9 @@ static std::string printInstructionSampler(
         case ISA_3D_INFO:
         {
             VISASampler3DSubOpCode subop = (VISASampler3DSubOpCode)getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << getSampleOp3DName(subop);
+            TARGET_PLATFORM platform =
+                static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
+            sstr << getSampleOp3DName(subop, platform);
             if (subop == VISA_3D_RESINFO || subop == VISA_3D_SAMPLEINFO)
             {
                 // channelMask
