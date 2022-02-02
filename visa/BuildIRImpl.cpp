@@ -739,6 +739,16 @@ G4_Declare* IR_Builder::getEUFusionWATmpVar()
     return euFusionWATmpVar;
 }
 
+G4_Declare* IR_Builder::createEUFusionCallWATmpVar(uint32_t nElts, G4_Type eltTy, G4_SubReg_Align srAlign)
+{
+    // UD Temp, used for call's target
+    if (!euFusionCallWATmpVar)
+    {
+        euFusionCallWATmpVar = createTempVar(nElts, eltTy, srAlign, "euFusionCallWATmp");
+    }
+    return euFusionCallWATmpVar;
+}
+
 G4_Declare* IR_Builder::getOldA0Dot2Temp()
 {
     if (!oldA0Dot2Temp)
