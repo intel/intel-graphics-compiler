@@ -5900,8 +5900,11 @@ namespace IGC
                 for (auto& sym : pOutput->m_symbols.function) {
                     void* buffer = nullptr;
                     unsigned size = 0;
-                    vbuilder->GetVISAKernel(sym.s_name)->GetGTPinBuffer(buffer, size);
-                    pOutput->m_FuncGTPinInfoList.push_back({sym.s_name, buffer, size});
+                    if (sym.s_type != vISA::GenSymType::S_UNDEF) {
+                        IGC_ASSERT(vbuilder->GetVISAKernel(sym.s_name) != nullptr);
+                        vbuilder->GetVISAKernel(sym.s_name)->GetGTPinBuffer(buffer, size);
+                        pOutput->m_FuncGTPinInfoList.push_back({sym.s_name, buffer, size});
+                    }
                 }
             }
             else
