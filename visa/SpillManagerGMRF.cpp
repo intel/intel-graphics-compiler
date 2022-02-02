@@ -3991,7 +3991,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
                 lr->getTopDcl()->getRegVar()))
         {
             unsigned int numrows = lr->getTopDcl()->getNumRows();
-            G4_Declare* temp = getOrCreateAddrSpillFillDcl(lr->getTopDcl(), kernel);
+            G4_Declare* temp = getOrCreateSpillFillDcl(lr->getTopDcl(), kernel);
 
             if (failSafeSpill_ &&
                 temp->getRegVar()->getPhyReg() == NULL)
