@@ -1328,11 +1328,10 @@ static bool acceptableMainInst(Instruction *Inst) {
 /***********************************************************************
  * processMainInst : set up baling info for potential main instruction
  */
-void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
-{
-  BaleInfo BI(BaleInfo::MAININST);
-  if (IntrinID == Intrinsic::dbg_value)
+void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
+  if (isa<DbgInfoIntrinsic>(Inst))
     return;
+  BaleInfo BI(BaleInfo::MAININST);
   if (IntrinID == GenXIntrinsic::not_any_intrinsic) {
     if (!acceptableMainInst(Inst))
       return;

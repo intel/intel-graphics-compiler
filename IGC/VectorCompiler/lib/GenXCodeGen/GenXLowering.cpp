@@ -3283,10 +3283,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerWrPredRegion(Inst);
     case GenXIntrinsic::not_any_intrinsic:
       break;
-    case Intrinsic::dbg_value:
     case GenXIntrinsic::genx_absf:
     case GenXIntrinsic::genx_absi:
-      break;
+      break; // ignore
     case GenXIntrinsic::genx_thread_x:
     case GenXIntrinsic::genx_thread_y:
     case GenXIntrinsic::genx_get_color:
