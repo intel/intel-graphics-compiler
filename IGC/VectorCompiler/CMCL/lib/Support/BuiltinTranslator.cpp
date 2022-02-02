@@ -270,33 +270,36 @@ static Value &createLLVMIntrinsic(const std::vector<Value *> &Operands,
 template <>
 Value &createMainInst<BuiltinID::AbsFloat>(const std::vector<Value *> &Operands,
                                            Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == AbsFloatOperand::Size &&
+         "builtin operands should be trasformed into LLVM fabs "
+         "intrinsic operands without changes");
   return createLLVMIntrinsic<BuiltinID::AbsFloat>(Operands, RetTy, IRB);
 }
 
 template <>
 Value &createMainInst<BuiltinID::MinNum>(const std::vector<Value *> &Operands,
                                          Type &RetTy, IRBuilder<> &IRB) {
-  static_assert(MinNumOperand::Size == 2,
-                "builtin operands should be trasformed into LLVM minnum "
-                "intrinsic operands without changes");
+  assert(Operands.size() == MinNumOperand::Size &&
+         "builtin operands should be trasformed into LLVM minnum "
+         "intrinsic operands without changes");
   return createLLVMIntrinsic<BuiltinID::MinNum>(Operands, RetTy, IRB);
 }
 
 template <>
 Value &createMainInst<BuiltinID::MaxNum>(const std::vector<Value *> &Operands,
                                          Type &RetTy, IRBuilder<> &IRB) {
-  static_assert(MaxNumOperand::Size == 2,
-                "builtin operands should be trasformed into LLVM maxnum "
-                "intrinsic operands without changes");
+  assert(Operands.size() == MaxNumOperand::Size &&
+         "builtin operands should be trasformed into LLVM maxnum "
+         "intrinsic operands without changes");
   return createLLVMIntrinsic<BuiltinID::MaxNum>(Operands, RetTy, IRB);
 }
 
 template <>
 Value &createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands,
                                          Type &, IRBuilder<> &IRB) {
-  static_assert(SelectOperand::Size == 3,
-                "builtin operands should be trasformed into LLVM select "
-                "instruction operands without changes");
+  assert(Operands.size() == SelectOperand::Size &&
+         "builtin operands should be trasformed into LLVM select instruction "
+         "operands without changes");
   // trunc <iW x N> to <i1 x N> for mask
   auto &WrongTypeCond = *Operands[SelectOperand::Condition];
   auto Width =
@@ -313,18 +316,18 @@ Value &createMainInst<BuiltinID::Select>(const std::vector<Value *> &Operands,
 template <>
 Value &createMainInst<BuiltinID::Fma>(const std::vector<Value *> &Operands,
                                       Type &RetTy, IRBuilder<> &IRB) {
-  static_assert(FmaOperand::Size == 3,
-                "builtin operands should be trasformed into LLVM fma "
-                "intrinsic operands without changes");
+  assert(Operands.size() == FmaOperand::Size &&
+         "builtin operands should be trasformed into LLVM fma "
+         "intrinsic operands without changes");
   return createLLVMIntrinsic<BuiltinID::Fma>(Operands, RetTy, IRB);
 }
 
 template <>
 Value &createMainInst<BuiltinID::Sqrt>(const std::vector<Value *> &Operands,
                                        Type &RetTy, IRBuilder<> &IRB) {
-  static_assert(SqrtOperand::Size == 2,
-                "builtin operands should be trasformed into LLVM sqrt "
-                "intrinsic operands without changes");
+  assert(Operands.size() == SqrtOperand::Size &&
+         "builtin operands should be trasformed into LLVM sqrt "
+         "intrinsic operands without changes");
   auto *InstSqrt = cast<Instruction>(&createLLVMIntrinsic<BuiltinID::Sqrt>(
       {Operands[SqrtOperand::Source]}, RetTy, IRB));
   if (cast<ConstantInt>(Operands[SqrtOperand::IsFast])->getSExtValue())
@@ -383,9 +386,9 @@ template <>
 Value &
 createMainInst<BuiltinID::AtomicRMW>(const std::vector<Value *> &Operands,
                                      Type &, IRBuilder<> &IRB) {
-  static_assert(AtomicRMWOperand::Size == 5,
-                "builtin operands should be trasformed into LLVM atomicrmw "
-                "instruction operands without changes");
+  assert(Operands.size() == AtomicRMWOperand::Size &&
+         "builtin operands should be trasformed into LLVM atomicrmw "
+         "instruction operands without changes");
   auto &Ctx = IRB.getContext();
   auto *Ptr = Operands[AtomicRMWOperand::Ptr];
   auto Ordering = getLLVMAtomicOrderingFromCMCL(static_cast<CMCLSemantics>(
@@ -406,9 +409,9 @@ createMainInst<BuiltinID::AtomicRMW>(const std::vector<Value *> &Operands,
 template <>
 Value &createMainInst<BuiltinID::CmpXchg>(const std::vector<Value *> &Operands,
                                           Type &, IRBuilder<> &IRB) {
-  static_assert(CmpXchgOperand::Size == 6,
-                "builtin operands should be trasformed into LLVM cmpxchg "
-                "instruction operands without changes");
+  assert(Operands.size() == CmpXchgOperand::Size &&
+         "builtin operands should be trasformed into LLVM cmpxchg "
+         "instruction operands without changes");
   auto *Ptr = Operands[CmpXchgOperand::Ptr];
   auto &Ctx = IRB.getContext();
   auto OrderingSuccess =
