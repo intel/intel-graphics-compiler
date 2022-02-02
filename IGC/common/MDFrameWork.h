@@ -475,6 +475,11 @@ namespace IGC
         bool hasVertexHeader = true;
     };
 
+    struct SPIRVCapabilities
+    {
+        bool globalVariableDecorationsINTEL = false;
+    };
+
     //metadata for the entire module
     struct ModuleMetaData
     {
@@ -517,6 +522,9 @@ namespace IGC
         bool disableMixMode = false;
 
         unsigned int privateMemoryPerWI = 0;
+
+        SPIRVCapabilities capabilities;
+
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask{};
         unsigned int computedDepthMode = 0; //Defaults to 0 meaning depth mode is off
         bool isHDCFastClearShader = false;

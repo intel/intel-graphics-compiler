@@ -112,7 +112,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         if (globalVar->use_empty())
         {
             // If compiler requests global symbol for external/common linkage, add it reguardless if it is used
-            bool requireGlobalSymbol = m_pModuleMd->compOpt.EnableTakeGlobalAddress &&
+            bool requireGlobalSymbol = Ctx->enableTakeGlobalAddress() &&
                 (globalVar->hasCommonLinkage() || globalVar->hasExternalLinkage());
 
             if (!requireGlobalSymbol)

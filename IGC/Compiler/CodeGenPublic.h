@@ -1134,6 +1134,7 @@ namespace IGC
         virtual bool allocatePrivateAsGlobalBuffer() const;
         virtual bool hasNoLocalToGenericCast() const;
         virtual bool hasNoPrivateToGenericCast() const;
+        virtual bool enableTakeGlobalAddress() const;
         virtual int16_t getVectorCoalescingControl() const;
         bool isPOSH() const;
 
@@ -1594,6 +1595,7 @@ namespace IGC
         bool allocatePrivateAsGlobalBuffer() const override;
         bool hasNoLocalToGenericCast() const override;
         bool hasNoPrivateToGenericCast() const override;
+        bool enableTakeGlobalAddress() const override;
         int16_t getVectorCoalescingControl() const override;
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;

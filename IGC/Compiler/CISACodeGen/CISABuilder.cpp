@@ -5259,12 +5259,14 @@ namespace IGC
 
             // Export the symbol if global is external/common linkage, or has uses in the module
             bool needSymbol = pGlobal->use_empty()
-                ? (modMD->compOpt.EnableTakeGlobalAddress && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage()))
+                ? (m_program->GetContext()->enableTakeGlobalAddress() && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage()))
                 : true;
 
             if (needSymbol)
             {
-                StringRef name = pGlobal->getName();
+                StringRef name = pGlobal->hasAttribute("host_var_name") ?
+                    pGlobal->getAttribute("host_var_name").getValueAsString()
+                    : pGlobal->getName();
                 unsigned addrSpace = pGlobal->getType()->getAddressSpace();
                 IGC_ASSERT(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
 

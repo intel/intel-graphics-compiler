@@ -120,6 +120,14 @@ operator>>(const SPIRVDecoder& I, std::vector<T> &V) {
   return I;
 }
 
+template <typename T>
+const SPIRVDecoder&
+operator>>(const SPIRVDecoder& I, llvm::Optional<T>& V) {
+  if (V)
+    I >> V.getValue();
+  return I;
+}
+
 #define SPIRV_DEC_DEC(Type) \
     const SPIRVDecoder& operator>>(const SPIRVDecoder& I, Type &V);
 

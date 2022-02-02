@@ -248,6 +248,24 @@ public:
             AliasList) {};
 };
 
+class SPIRVDecorateHostAccessINTEL : public SPIRVDecorate {
+public:
+  // Complete constructor for SPIRVHostAccessINTEL
+  SPIRVDecorateHostAccessINTEL(SPIRVEntry* TheTarget, SPIRVWord AccessMode,
+    const std::string& VarName)
+    : SPIRVDecorate(DecorationHostAccessINTEL, TheTarget) {
+    Literals.push_back(AccessMode);
+    for (auto& I : getVec(VarName))
+        Literals.push_back(I);
+    WordCount += Literals.size();
+  };
+
+  SPIRVWord getAccessMode() const { return Literals.front(); }
+  std::string getVarName() const {
+    return getString(Literals.cbegin() + 1, Literals.cend());
+  }
+};
+
 }
 
 

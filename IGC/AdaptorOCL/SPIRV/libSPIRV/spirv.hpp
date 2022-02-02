@@ -401,6 +401,7 @@ enum Decoration {
     DecorationAliasScopeINTEL = 5914,
     DecorationNoAliasINTEL = 5915,
     DecorationArgumentAttributeINTEL = 6409,
+    DecorationHostAccessINTEL = 6147,
 };
 
 enum BuiltIn {
@@ -625,6 +626,7 @@ enum Capability {
     CapabilityDebugInfoModuleINTEL = 6114,
     CapabilityJointMatrixINTEL = 6118,
     CapabilityHWThreadQueryINTEL = 6134,
+    CapabilityGlobalVariableDecorationsINTEL = 6146,
 };
 
 enum PackedVectorFormat {

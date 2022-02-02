@@ -1452,6 +1452,7 @@ public:
   bool transFPContractMetadata();
   bool transKernelMetadata();
   bool transNonTemporalMetadata(Instruction* I);
+  void transCapsIntoMetadata(IGC::ModuleMetaData& MD);
   template <typename SPIRVInstType>
   void transAliasingMemAccess(SPIRVInstType* BI, Instruction* I);
   void addMemAliasMetadata(Instruction* I, SPIRVId AliasListId,
@@ -1622,6 +1623,7 @@ private:
   Type  *truncBoolType(SPIRVType *SPVType, Type *LLType);
 
   void transMemAliasingINTELDecorations(SPIRVValue* BV, Value* V);
+  void transHostAccessINTELDecorations(SPIRVValue* BV, Value* V);
 };
 
 DIGlobalVariableExpression* SPIRVToLLVMDbgTran::createGlobalVar(SPIRVExtInst* inst)
@@ -1764,6 +1766,18 @@ void SPIRVToLLVM::transMemAliasingINTELDecorations(SPIRVValue* BV, Value* V) {
     IGC_ASSERT_MESSAGE(AliasListIds.size() == 1,
       "Memory aliasing decorations must have one argument");
     addMemAliasMetadata(Inst, AliasListIds[0], LLVMContext::MD_noalias);
+  }
+}
+
+void SPIRVToLLVM::transHostAccessINTELDecorations(SPIRVValue* BV, Value* V) {
+  if (auto GV = dyn_cast<GlobalVariable>(V)) {
+    if (BV->hasDecorate(DecorationHostAccessINTEL)) {
+      std::vector<SPIRVDecorate const*> Decorates = BV->getDecorations(DecorationHostAccessINTEL);
+      IGC_ASSERT(Decorates.size() == 1);
+      const auto* const HostAccDeco =
+        static_cast<const SPIRVDecorateHostAccessINTEL*>(Decorates[0]);
+      GV->addAttribute("host_var_name", HostAccDeco->getVarName());
+    }
   }
 }
 
@@ -4475,6 +4489,7 @@ SPIRVToLLVM::transDecoration(SPIRVValue *BV, Value *V) {
   if (!transAlign(BV, V))
     return false;
   transMemAliasingINTELDecorations(BV, V);
+  transHostAccessINTELDecorations(BV, V);
   DbgTran.transDbgInfo(BV, V);
   return true;
 }
@@ -4597,10 +4612,25 @@ SPIRVToLLVM::transNonTemporalMetadata(Instruction* I) {
     return true;
 }
 
+void
+SPIRVToLLVM::transCapsIntoMetadata(IGC::ModuleMetaData& MD) {
+  for (auto& Cap : BM->getCapability())
+  {
+    if (Cap == CapabilityGlobalVariableDecorationsINTEL)
+      MD.capabilities.globalVariableDecorationsINTEL = true;
+  }
+}
+
 bool
 SPIRVToLLVM::transKernelMetadata()
 {
     IGC::ModuleMetaData MD;
+
+    // TODO: Once IGC is switched to use Khronos SPIRV-LLVM Translator,
+    // special API to query capabilities should be used to produce metadata.
+    // (https://github.com/KhronosGroup/SPIRV-LLVM-Translator/pull/1178)
+    transCapsIntoMetadata(MD);
+
     NamedMDNode *KernelMDs = M->getOrInsertNamedMetadata(SPIR_MD_KERNELS);
     for (unsigned I = 0, E = BM->getNumFunctions(); I != E; ++I)
     {

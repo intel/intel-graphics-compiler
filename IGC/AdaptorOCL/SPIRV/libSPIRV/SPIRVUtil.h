@@ -351,6 +351,25 @@ inline std::vector<std::string> getVecString(const std::vector<uint32_t> &V) {
   return Result;
 }
 
+inline std::vector<uint32_t> getVec(const std::string& Str) {
+  std::vector<uint32_t> V;
+  auto StrSize = Str.size();
+  uint32_t CurrentWord = 0u;
+  for (unsigned I = 0u; I < StrSize; ++I) {
+    if (I % 4u == 0u && I != 0u) {
+      V.push_back(CurrentWord);
+      CurrentWord = 0u;
+    }
+    IGC_ASSERT_MESSAGE(Str[I], "0 is not allowed in string");
+    CurrentWord += ((uint32_t)Str[I]) << ((I % 4u) * 8u);
+  }
+  if (CurrentWord != 0u)
+    V.push_back(CurrentWord);
+  if (StrSize % 4 == 0)
+    V.push_back(0);
+  return V;
+}
+
 template<typename T>
 inline std::vector<T>
 getVec(T Op1) {

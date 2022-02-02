@@ -418,7 +418,7 @@ bool EmitPass::compileSymbolTableKernel(llvm::Function* F)
         {
             GlobalVariable* pGlobal = it.first;
             // Export the symbol if global is external/common linkage
-            if (m_moduleMD->compOpt.EnableTakeGlobalAddress && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage()))
+            if (m_pCtx->enableTakeGlobalAddress() && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage()))
             {
                 return true;
             }

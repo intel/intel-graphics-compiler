@@ -588,6 +588,11 @@ namespace IGC
         return getModuleMetaData()->hasNoPrivateToGenericCast;
     }
 
+    bool OpenCLProgramContext::enableTakeGlobalAddress() const
+    {
+        return m_Options.EnableTakeGlobalAddress || getModuleMetaData()->capabilities.globalVariableDecorationsINTEL;
+    }
+
     int16_t OpenCLProgramContext::getVectorCoalescingControl() const
     {
         // cmdline option > registry key
@@ -1271,6 +1276,11 @@ namespace IGC
     }
 
     bool CodeGenContext::hasNoPrivateToGenericCast() const
+    {
+        return false;
+    }
+
+    bool CodeGenContext::enableTakeGlobalAddress() const
     {
         return false;
     }
