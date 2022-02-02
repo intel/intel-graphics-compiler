@@ -14183,9 +14183,11 @@ void Optimizer::newDoNoMaskWA_postRA()
         }
 #endif
     };
-    auto verifyBBWAInsts = [&verifyBBInst](G4_BB* aBB, std::list<G4_INST*>& aWAInsts)
+    auto verifyBBWAInsts = [&](G4_BB* aBB, std::list<G4_INST*>& aWAInsts)
     {
 #if defined(_DEBUG) || defined(_INTERNAL)
+        auto BI = std::find(kernel.fg.getBBList().begin(), kernel.fg.getBBList().end(), aBB);
+        assert(BI != kernel.fg.getBBList().end());
         for (auto VI : aWAInsts)
         {
             G4_INST* tI = VI;
