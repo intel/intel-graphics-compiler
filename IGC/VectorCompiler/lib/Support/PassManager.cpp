@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/Mutex.h>
 #include <llvm/Support/Regex.h>
 #include <llvm/Support/raw_ostream.h>
 
@@ -36,6 +37,10 @@ using namespace llvm;
 static cl::opt<bool> OverridePassManagerOpt(
     "vc-choose-pass-manager-override", cl::init(true), cl::Hidden,
     cl::desc("Take pass manager overrideing over addPass func"));
+
+static cl::opt<bool>
+    SplitIRDumps("vc-dump-ir-split", cl::init(false), cl::Hidden,
+                 cl::desc("Split IR dumps into separate files"));
 
 namespace {
 struct PassNumber {
@@ -128,16 +133,63 @@ public:
   bool empty() { return getValue().empty(); }
 };
 
+using OutputStreamHandle = std::unique_ptr<llvm::raw_fd_ostream>;
+static OutputStreamHandle createOutputStream(const llvm::Twine &Name) {
+  // no error handling since this is debug output
+  std::error_code EC;
+  auto Result = std::make_unique<llvm::raw_fd_ostream>(Name.str(), EC);
+  Result->SetUnbuffered();
+  return Result;
+}
+
+// global (!!!) variable storing output stream handles for IR printer,
+// guarded by mutex
+static ManagedStatic<std::vector<OutputStreamHandle>> IRDumpStreams;
+static ManagedStatic<sys::SmartMutex<true>> IRDumpsLock;
+
+llvm::raw_fd_ostream &getFileStreamForIRDump(const Twine &Name) {
+  sys::SmartScopedLock<true> Writer(*IRDumpsLock);
+  OutputStreamHandle OS = createOutputStream(Name);
+  IRDumpStreams->push_back(std::move(OS));
+  return *IRDumpStreams->back();
+}
+
+enum class IRDumpType { Before, After };
+
+llvm::raw_ostream &getOutputStreamForIRDump(IRDumpType DumpType,
+                                            StringRef PassArg, PassNumber N) {
+  // FIXME: this won't work well for online compilations and multi-theaded
+  // compilations. We need extra facilities to ensure that created
+  // files are unique for every compilation process
+  if (!SplitIRDumps)
+    return llvm::errs();
+  std::string DumpName =
+      (((DumpType == IRDumpType::Before) ? Twine("before_") : Twine("after_")) +
+       PassArg + N.str() + ".ll")
+          .str();
+  std::replace_if(DumpName.begin(), DumpName.end(),
+                  [](unsigned char c) { return !std::isalnum(c) && c != '.'; },
+                  '_');
+  return getFileStreamForIRDump(DumpName);
+}
+
+std::string getIRDumpBanner(StringRef PassName, StringRef PassArg, PassNumber N,
+                            IRDumpType Type) {
+  return ("; *** " +
+          (Type == IRDumpType::Before ? Twine("IR Dump Before ")
+                                      : Twine("IR Dump After")) +
+          "*** (" + PassArg + N.str() + ")")
+      .str();
+}
+
 struct ExtraIRDumpBeforePass {
   static PassSetOption option;
   static auto createPass(const PassInfo *PI, PassKind PassKindID,
                          PassNumber N) {
-    auto PassName = PI->getPassName();
     auto PassArg = PI->getPassArgument();
     return createPrintModulePass(
-        llvm::errs(), ("*** IR Dump Before " + PI->getPassArgument() +
-                       " *** (" + PassArg + N.str() + ")")
-                          .str());
+        getOutputStreamForIRDump(IRDumpType::Before, PassArg, N),
+        getIRDumpBanner(PassArg, PassArg, N, IRDumpType::Before));
   }
 };
 PassSetOption ExtraIRDumpBeforePass::option{
@@ -161,12 +213,10 @@ struct ExtraIRDumpAfterPass {
   static PassSetOption option;
   static auto createPass(const PassInfo *PI, PassKind PassKindID,
                          PassNumber N) {
-    auto PassName = PI->getPassName();
     auto PassArg = PI->getPassArgument();
-    return createPrintModulePass(llvm::errs(),
-                                 ("*** IR Dump After " + PI->getPassArgument() +
-                                  " *** (" + PassArg + N.str() + ")")
-                                     .str());
+    return createPrintModulePass(
+        getOutputStreamForIRDump(IRDumpType::After, PassArg, N),
+        getIRDumpBanner(PassArg, PassArg, N, IRDumpType::After));
   }
 };
 PassSetOption ExtraIRDumpAfterPass::option{
