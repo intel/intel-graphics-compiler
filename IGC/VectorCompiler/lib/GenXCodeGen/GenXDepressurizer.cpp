@@ -660,6 +660,8 @@ void GenXDepressurizer::processInstruction(Instruction *Inst) {
     return;
   if (Baling->isBaled(Inst))
     return; // Not head of bale, ignore
+  if (isa<DbgInfoIntrinsic>(Inst))
+    return; // debug info intrinsics are ignored
   if (isa<ExtractValueInst>(Inst))
     return; // Too confusing to consider sinking when we get to an extractvalue
             // out of a goto/join, so ignore.
