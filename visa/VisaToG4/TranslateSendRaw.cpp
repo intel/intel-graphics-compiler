@@ -51,7 +51,7 @@ int IR_Builder::translateVISARawSendInst(
 
     // bit[0-3] of the exDesc (always imm) holds the SFID
     G4_SendDescRaw *sendMsgDesc = createSendMsgDesc(
-        intToSFID(exDesc & 0xF), desc, exDesc, 0,
+        intToSFID(exDesc & 0xF, getPlatform()), desc, exDesc, 0,
         getSendAccessType(isRead, isWrite), nullptr, isValidFuncCtrl);
 
     if (isExDescEOT(exDesc))
@@ -114,7 +114,7 @@ int IR_Builder::translateVISARawSendsInst(
 
         if (exDescVal == 0)
         {
-            exDescVal = G4_SendDescRaw::createExtDesc(intToSFID(ffid), false, numSrc1);
+            exDescVal = G4_SendDescRaw::createExtDesc(intToSFID(ffid, getPlatform()), false, numSrc1);
         }
     }
 
@@ -131,7 +131,7 @@ int IR_Builder::translateVISARawSendsInst(
     }
 
     G4_SendDescRaw * sendMsgDesc = createSendMsgDesc(
-        intToSFID(ffid), descVal, exDescVal, numSrc1,
+        intToSFID(ffid, getPlatform()), descVal, exDescVal, numSrc1,
         SendAccess::READ_WRITE, nullptr, isValidFuncCtrl);
 
     if (hasEOT)

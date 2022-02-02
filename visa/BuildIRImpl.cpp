@@ -1340,7 +1340,7 @@ G4_SendDescRaw * IR_Builder::createGeneralMsgDesc(
     G4_Operand* bti,
     G4_Operand* sti)
 {
-    return new (mem) G4_SendDescRaw(desc, extDesc, access, bti, sti);
+    return new (mem) G4_SendDescRaw(desc, extDesc, access, bti, sti, *this);
 }
 
 G4_SendDescRaw * IR_Builder::createSendMsgDesc(
@@ -1353,7 +1353,7 @@ G4_SendDescRaw * IR_Builder::createSendMsgDesc(
     G4_ExecSize execSize,
     bool isValidFuncCtrl)
 {
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, execSize, isValidFuncCtrl);
+    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, execSize, isValidFuncCtrl, *this);
 }
 
 G4_SendDescRaw* IR_Builder::createSendMsgDesc(
@@ -1365,7 +1365,7 @@ G4_SendDescRaw* IR_Builder::createSendMsgDesc(
     G4_Operand* bti,
     bool isValidFuncCtrl)
 {
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, isValidFuncCtrl);
+    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, isValidFuncCtrl, *this);
 }
 
 G4_SendDescRaw * IR_Builder::createSendMsgDesc(
@@ -1394,7 +1394,7 @@ G4_SendDescRaw* IR_Builder::createReadMsgDesc(
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendDescRaw::createExtDesc(sfid);
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, 0, SendAccess::READ_ONLY, bti, true);
+    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, 0, SendAccess::READ_ONLY, bti, true, *this);
 }
 
 G4_SendDescRaw* IR_Builder::createWriteMsgDesc(
@@ -1405,14 +1405,14 @@ G4_SendDescRaw* IR_Builder::createWriteMsgDesc(
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendDescRaw::createExtDesc(sfid, false, src1Len);
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, SendAccess::WRITE_ONLY, bti, true);
+    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, SendAccess::WRITE_ONLY, bti, true, *this);
 }
 
 G4_SendDescRaw* IR_Builder::createSyncMsgDesc(SFID sfid, uint32_t desc)
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendDescRaw::createExtDesc(sfid);
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, 0, SendAccess::READ_WRITE, nullptr, true);
+    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, 0, SendAccess::READ_WRITE, nullptr, true, *this);
 }
 
 G4_SendDescRaw* IR_Builder::createSampleMsgDesc(
@@ -1429,7 +1429,7 @@ G4_SendDescRaw* IR_Builder::createSampleMsgDesc(
     {
         extDesc |= 1 << CPS_LOD_COMPENSATION_ENABLE;
     }
-    return new (mem) G4_SendDescRaw(desc, extDesc, SendAccess::READ_ONLY, bti, sti);
+    return new (mem) G4_SendDescRaw(desc, extDesc, SendAccess::READ_ONLY, bti, sti, *this);
 }
 
 G4_Operand* IR_Builder::emitSampleIndexGE16(
@@ -2764,7 +2764,7 @@ G4_SendDescRaw * IR_Builder::createLscDesc(
     SendAccess access,
     G4_Operand* bti)
 {
-    auto msgDesc = new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, true);
+    auto msgDesc = new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, true, *this);
     return msgDesc;
 }
 

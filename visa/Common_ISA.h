@@ -862,9 +862,9 @@ namespace vISA
         return static_cast<int>(id);
     };
 
-    inline SFID intToSFID(int id)
+    inline SFID intToSFID(int id, TARGET_PLATFORM platform)
     {
-        if (getGenxPlatform() >= Xe_DG2)
+        if (platform >= Xe_DG2)
         {
             switch (id)
             {

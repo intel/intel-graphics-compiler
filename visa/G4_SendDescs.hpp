@@ -184,6 +184,7 @@ static inline ElemsPerAddr::Chs operator|(
 
 
 class G4_Operand;
+class IR_Builder;
 
 // Base class for all send descriptors.
 // (Note that G4_SendDesc could be reused by more than one instruction.)
@@ -205,11 +206,18 @@ public:
 
     SFID        sfid;
 
-    G4_SendDesc(Kind k, SFID _sfid) : kind(k), sfid(_sfid), execSize(g4::SIMD_UNDEFINED) { }
-    G4_SendDesc(Kind k, SFID _sfid, G4_ExecSize _execSize)
+    const IR_Builder& irb;
+
+    G4_SendDesc(Kind k, SFID _sfid, const IR_Builder& builder)
         : kind(k),
           sfid(_sfid),
-          execSize(_execSize)
+          execSize(g4::SIMD_UNDEFINED),
+          irb(builder) { }
+    G4_SendDesc(Kind k, SFID _sfid, G4_ExecSize _execSize, const IR_Builder& builder)
+        : kind(k),
+          sfid(_sfid),
+          execSize(_execSize),
+          irb(builder)
     {}
 
     SFID getSFID() const {return sfid;}
@@ -376,7 +384,8 @@ struct G4_SendDescLdSt : G4_SendDesc {
         Caching _l1, Caching _l3,
         G4_Operand *surf,
         ImmOff _immOff,
-        LdStAttrs _attrs);
+        LdStAttrs _attrs,
+        const IR_Builder& builder);
 
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
@@ -435,8 +444,6 @@ struct G4_SendDescLdSt : G4_SendDesc {
 
 
 ////////////////////////////////////////////////////////////////////////////
-class IR_Builder;
-
 class G4_SendDescRaw : public G4_SendDesc
 {
 private:
@@ -505,13 +512,13 @@ public:
     G4_SendDescRaw(
         uint32_t fCtrl, uint32_t regs2rcv, uint32_t regs2snd,
         SFID fID, uint16_t extMsgLength, uint32_t extFCtrl,
-        SendAccess access, G4_Operand* bti, G4_Operand* sti, IR_Builder& builder);
+        SendAccess access, G4_Operand* bti, G4_Operand* sti, const IR_Builder& builder);
 
     /// Construct a object with descriptor and extended descriptor values.
     /// used in IR_Builder::createSendMsgDesc(uint32_t desc, uint32_t extDesc, SendAccess access)
     G4_SendDescRaw(
         uint32_t desc, uint32_t extDesc, SendAccess access,
-        G4_Operand* bti, G4_Operand* sti);
+        G4_Operand* bti, G4_Operand* sti, const IR_Builder& builder);
 
     /// Preferred constructor takes an explicit SFID and src1 length
     G4_SendDescRaw(
@@ -521,7 +528,8 @@ public:
         int src1Len,
         SendAccess access,
         G4_Operand *bti,
-        bool isValidFuncCtrl);
+        bool isValidFuncCtrl,
+        const IR_Builder& builder);
 
     // Preferred constructor takes an explicit SFID and src1 length
     // Need execSize, so it is created for a particular send.
@@ -533,7 +541,8 @@ public:
         SendAccess access,
         G4_Operand* bti,
         G4_ExecSize execSize,
-        bool isValidFuncCtrl);
+        bool isValidFuncCtrl,
+        const IR_Builder& builder);
 
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 

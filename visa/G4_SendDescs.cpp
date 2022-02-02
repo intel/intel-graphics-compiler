@@ -184,8 +184,9 @@ G4_SendDescLdSt::G4_SendDescLdSt(
     Caching _l1, Caching _l3,
     G4_Operand *surf,
     ImmOff _immOff,
-    LdStAttrs _attrs)
-    : G4_SendDesc(G4_SendDesc::Kind::LDST, sfid, _execSize),
+    LdStAttrs _attrs,
+    const IR_Builder& builder)
+    : G4_SendDesc(G4_SendDesc::Kind::LDST, sfid, _execSize, builder),
     op(_op),
     //
     addrType(at), addrBits(_addrBits), addrDims(_addrDims),
@@ -198,10 +199,10 @@ G4_SendDescLdSt::G4_SendDescLdSt(
 {
 }
 
-static size_t toExecSlots(const G4_SendDescLdSt &d)
+static size_t toExecSlots(const G4_SendDescLdSt &d, TARGET_PLATFORM platform)
 {
     int minExecSize = 8;
-    if (getGenxPlatform() >= TARGET_PLATFORM::Xe_PVC)
+    if (platform >= TARGET_PLATFORM::Xe_PVC)
         minExecSize = 16;
     MUST_BE_TRUE(false, "TODO: needs to deal with half size LSC messages");
     MUST_BE_TRUE(false, "TODO: need to deal with varying typed message sizes");
@@ -249,7 +250,7 @@ size_t G4_SendDescLdSt::getSrc1LenBytes() const
         // transpose messages send one address only
         return elemPerAddr / 8;
     } else {
-        return toExecSlots(*this) * elemBitsReg;
+        return toExecSlots(*this, irb.getPlatform()) * elemBitsReg;
     }
     MUST_BE_TRUE(false, "TODO: compute data bytes sent");
     return (size_t)-1;
@@ -394,8 +395,8 @@ G4_SendDescRaw::G4_SendDescRaw(
     uint32_t regs2snd, SFID fID, uint16_t extMsgLen,
     uint32_t extFCtrl, SendAccess access,
     G4_Operand *bti, G4_Operand *sti,
-    IR_Builder& builder)
-    : G4_SendDesc(G4_SendDesc::Kind::RAW, fID)
+    const IR_Builder& builder)
+    : G4_SendDesc(G4_SendDesc::Kind::RAW, fID, builder)
 {
     // All unnamed bits should be passed with those control bits.
     // Otherwise, need to be set individually.
@@ -437,9 +438,10 @@ G4_SendDescRaw::G4_SendDescRaw(
     uint32_t descBits, uint32_t extDescBits,
     SendAccess access,
     G4_Operand *bti,
-    G4_Operand *sti)
+    G4_Operand *sti,
+    const IR_Builder& builder)
     : G4_SendDesc(G4_SendDesc::Kind::RAW,
-        intToSFID(extDescBits & 0xF)), // [3:0]
+        intToSFID(extDescBits & 0xF, builder.getPlatform()), builder), // [3:0]
     accessType(access), m_sti(sti), m_bti(bti), funcCtrlValid(true)
 {
     desc.value = descBits;
@@ -465,9 +467,10 @@ G4_SendDescRaw::G4_SendDescRaw(
     int _src1Len,
     SendAccess access,
     G4_Operand* bti,
-    bool isValidFuncCtrl)
+    bool isValidFuncCtrl,
+    const IR_Builder& builder)
     : G4_SendDescRaw(_sfid, _desc, _extDesc, _src1Len, access, bti,
-                     g4::SIMD_UNDEFINED, isValidFuncCtrl)
+                     g4::SIMD_UNDEFINED, isValidFuncCtrl, builder)
 {}
 
 G4_SendDescRaw::G4_SendDescRaw(
@@ -478,8 +481,9 @@ G4_SendDescRaw::G4_SendDescRaw(
     SendAccess access,
     G4_Operand *bti,
     G4_ExecSize execSize,
-    bool isValidFuncCtrl)
-    : G4_SendDesc(G4_SendDesc::Kind::RAW, _sfid, execSize),
+    bool isValidFuncCtrl,
+    const IR_Builder& builder)
+    : G4_SendDesc(G4_SendDesc::Kind::RAW, _sfid, execSize, builder),
     accessType(access), m_sti(nullptr), m_bti(bti), funcCtrlValid(isValidFuncCtrl)
 {
     isLscDescriptor =
@@ -568,7 +572,7 @@ void G4_SendDescRaw::setEOT() {
     extDesc.layout.eot = true;
 }
 
-static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType)
+static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType, TARGET_PLATFORM platform)
 {
     if (funcID != SFID::DP_DC1)
         return false;
@@ -577,12 +581,12 @@ static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType)
     {
         return true;
     }
-    if (getGenxPlatform() >= GENX_SKL)
+    if (platform >= GENX_SKL)
     {
         if (msgType == DC1_TYPED_ATOMIC)
             return true;
     }
-    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
+    if (getPlatformGeneration(platform) >= PlatformGen::XE)
     {
         if (msgType == DC1_TYPED_HALF_INTEGER_ATOMIC ||
             msgType == DC1_TYPED_HALF_COUNTER_ATOMIC ||
@@ -593,18 +597,18 @@ static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType)
     return false;
 }
 
-static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType)
+static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType, TARGET_PLATFORM platform)
 {
     if (funcID != SFID::DP_DC1)
         return false;
 
-    if (getGenxPlatform() >= GENX_SKL)
+    if (platform >= GENX_SKL)
     {
         if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
             msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
             return true;
     }
-    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
+    if (getPlatformGeneration(platform) >= PlatformGen::XE)
     {
         if (msgType == DC1_UNTYPED_HALF_FLOAT_ATOMIC ||
             msgType == DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC)
@@ -626,8 +630,8 @@ bool G4_SendDescRaw::isAtomicMessage() const
     if (!isHDC())
         return false; // guard getMessageType() on SFID without a message type
     uint16_t msgType = getHdcMessageType();
-    return isHdcIntAtomicMessage(funcID,msgType) ||
-        isHdcFloatAtomicMessage(funcID,msgType);
+    return isHdcIntAtomicMessage(funcID, msgType, irb.getPlatform()) ||
+        isHdcFloatAtomicMessage(funcID, msgType, irb.getPlatform());
 }
 
 uint16_t G4_SendDescRaw::getHdcAtomicOp() const
@@ -635,7 +639,7 @@ uint16_t G4_SendDescRaw::getHdcAtomicOp() const
     MUST_BE_TRUE(isHDC(), "must be HDC message");
     MUST_BE_TRUE(isAtomicMessage(), "getting atomicOp from non-atomic message!");
     uint32_t funcCtrl = getFuncCtrl();
-    if (isHdcIntAtomicMessage(getSFID(), getHdcMessageType()))
+    if (isHdcIntAtomicMessage(getSFID(), getHdcMessageType(), irb.getPlatform()))
     {
         // bits: 11:8
         return (uint16_t)((funcCtrl >> 8) & 0xF);
