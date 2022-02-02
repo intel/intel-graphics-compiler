@@ -101,6 +101,10 @@ static cl::opt<bool> DisableNoMaskWA(
     "vc-cg-disable-no-mask-wa", cl::init(false), cl::Hidden,
     cl::desc("do not apply noMask WA (fusedEU)"));
 
+static cl::opt<bool>
+    OptDisableVisaLOC("vc-cg-disable-visa-loc", cl::init(false), cl::Hidden,
+                      cl::desc("do not emit LOC and FILE instructions"));
+
 static cl::opt<bool> OptStrictI64Check(
         "genx-cisa-builder-noi64-check", cl::init(false), cl::Hidden,
         cl::desc("strict check to ensure we produce no 64-bit operations"));
@@ -5130,6 +5134,8 @@ void GenXKernelBuilder::addLifetimeStartInst(Instruction *Inst) {
  *
  */
 void GenXKernelBuilder::emitFileAndLocVisa(Instruction *CurrentInst) {
+  if (OptDisableVisaLOC)
+    return;
   // Make the source location pending, so it is output as vISA FILE and LOC
   // instructions next time an opcode is written.
   const DebugLoc &DL = CurrentInst->getDebugLoc();
