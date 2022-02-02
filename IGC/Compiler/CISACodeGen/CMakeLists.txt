@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2021 Intel Corporation
+# Copyright (C) 2017-2022 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -93,6 +93,7 @@ set(IGC_BUILD__SRC__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/TranslationTable.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/VectorPreProcess.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/VectorProcess.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/RuntimeValueLegalizationPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/InsertGenericPtrArithmeticMetadata.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/VertexShaderCodeGen.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/VertexShaderLowering.cpp"
@@ -195,6 +196,7 @@ set(IGC_BUILD__HDR__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/URBPartialWrites.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/VariableReuseAnalysis.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/VectorProcess.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/RuntimeValueLegalizationPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/InsertGenericPtrArithmeticMetadata.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/VertexShaderCodeGen.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/VertexShaderLowering.hpp"

@@ -55,6 +55,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/MergeURBReads.hpp"
 #include "Compiler/CISACodeGen/URBPartialWrites.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
+#include "Compiler/CISACodeGen/RuntimeValueLegalizationPass.h"
 #include "Compiler/CISACodeGen/InsertGenericPtrArithmeticMetadata.hpp"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
@@ -884,6 +885,9 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(new GenSpecificPattern());
         }
     }
+
+    // Legalize RuntimeValue calls for push analysis
+    mpm.add(new RuntimeValueLegalizationPass());
 
     mpm.add(createInstSimplifyLegacyPass());
     // This pass inserts bitcasts for vector loads/stores.
