@@ -720,15 +720,13 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
     goto binop;
   case Instruction::Sub: {
     Value *A;
-    const APInt *Val;
-    // Transforms (sub (zext A), (zext B)) to (zext (sub A, B)) if A is proved
-    // to be greater than B.
-    if (match(Inst, m_Sub(m_APInt(Val), m_ZExt(m_Value(A))))) {
+    Value *B;
+    // Transforms (sub nuw (zext A), (zext B)) to (zext (sub A, B))
+    if (match(Inst, m_NUWSub(m_ZExt(m_Value(A)), m_ZExt(m_Value(B))))) {
       unsigned ASize = A->getType()->getScalarSizeInBits();
-      if (ASize <= 16 && Val->trunc(ASize).isMaxValue()) {
-        TruncBits = 16;
-        goto binop;
-      }
+      unsigned BSize = B->getType()->getScalarSizeInBits();
+      TruncBits = std::max(ASize, BSize);
+      goto binop;
     }
     break;
   }
