@@ -4824,10 +4824,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
         G4_SrcRegRegion* srcrgn = opnd->asSrcRegRegion();
         addrdcl = GetTopDclFromRegRegion(srcrgn);
     }
-    else
-    {
-        assert(0);
-    }
+    MUST_BE_TRUE(addrdcl != nullptr, "address declare can not be nullptr");
 
 #ifdef DEBUG_VERBOSE_ON
     std::cerr << addrdcl->getName() << ":" << std::endl;
@@ -4836,52 +4833,36 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
     std::cerr << "Point to: ";
 #endif
 
-    if (addrdcl == nullptr)
-    {
-        assert(0);
-        return;
-    }
-
-    G4_RegVar* ptvar = NULL;
+    G4_RegVar* ptvar = nullptr;
     int vid = 0;
-
     unsigned char offset = 0;
-    while ((ptvar = p.getPointsTo(addrdcl->getRegVar(), vid++, offset)) != NULL)
+    while ((ptvar = p.getPointsTo(addrdcl->getRegVar(), vid++, offset)) != nullptr)
     {
 
         uint32_t varID = ptvar->getId();
-        G4_Declare* dcl = ptvar->getDeclare();
-        G4_RegVar* var = NULL;
+        G4_Declare* dcl = ptvar->getDeclare()->getRootDeclare();
+        G4_RegVar* var = nullptr;
 
-        while (dcl->getAliasDeclare())
+        if (dcl->isSpilled())
         {
-            dcl = dcl->getAliasDeclare();
-        }
-
-
-        int linearizedStart = 0;
-        int linearizedEnd = 0;
-
-        if (dcl->isSpilled()) //FIXME: Lost point analysis tracking due to spill, assume all registers are touched
-        {
-            linearizedEnd = totalGRFNum * numEltPerGRF<Type_UB>() - 1;
+            var = dcl->getAddrTakenSpillFill()->getRegVar();
         }
         else
         {
             var = dcl->getRegVar();
-
-            MUST_BE_TRUE(var->getId() == varID, "RA verification error: Invalid regVar ID!");
-            MUST_BE_TRUE(var->getPhyReg()->isGreg(), "RA verification error: Invalid dst reg!");
-
-            uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
-            uint32_t regOff = var->getPhyRegOff();
-
-            {
-                linearizedStart = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
-                linearizedEnd = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType()) + dcl->getByteSize() - 1;
-            }
         }
+        MUST_BE_TRUE(var->getId() == varID, "RA verification error: Invalid regVar ID!");
+        MUST_BE_TRUE(var->getPhyReg()->isGreg(), "RA verification error: Invalid dst reg!");
 
+        int linearizedStart = 0;
+        int linearizedEnd = 0;
+        uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
+        uint32_t regOff = var->getPhyRegOff();
+
+        {
+            linearizedStart = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
+            linearizedEnd = linearizedStart + dcl->getByteSize() - 1;
+        }
 
         void* allocedMem = mem.alloc(sizeof(SBFootprint));
         footprint = new (allocedMem)SBFootprint(GRF_T, type, (unsigned short)linearizedStart, (unsigned short)linearizedEnd, node->GetInstruction());
