@@ -51,6 +51,17 @@ bool InstPromoter::promote(Instruction* I) {
     return true;
 }
 
+Value* InstPromoter::getSinglePromotedValueIfExist(Value* OriginalValue)
+{
+    if (TL->ValueMap.find(OriginalValue) != TL->ValueMap.end())
+    {
+        const ValueSeq LegalizedValues = TL->ValueMap[OriginalValue];
+        // Instruction should be promoted only by one instruction, not by combination
+        if (LegalizedValues.size() == 1) return (*LegalizedValues.begin());
+    }
+    return nullptr;
+}
+
 // By default, capture all missing instructions!
 bool InstPromoter::visitInstruction(Instruction& I) {
     LLVM_DEBUG(dbgs() << "PROMOTE: " << I << '\n');
@@ -183,7 +194,33 @@ bool InstPromoter::visitBinaryOperator(BinaryOperator& I) {
 /// Memory operators
 ///
 
+bool InstPromoter::visitAllocaInst(AllocaInst& I) {
+    Type* OrigTy = I.getAllocatedType();
+    TypeSeq* TySeq = TL->getPromotedTypeSeq(OrigTy);
+    IGC_ASSERT(TySeq != nullptr);
+
+    Type* PromotedTy = TySeq->front();
+
+    AllocaInst* PromotedVal = IRB->CreateAlloca(PromotedTy);
+    PromotedVal->setAlignment(IGCLLVM::getAlign(I.getAlignment()));
+    PromotedVal->setName(Twine(I.getName(), ".promotedAlloca"));
+
+    Promoted = PromotedVal;
+    return true;
+}
+
 bool InstPromoter::visitLoadInst(LoadInst& I) {
+    Value* OldPtr = I.getPointerOperand();
+
+    // Check if Load operand was legalized before
+    if (Value* LegalizedNewPtr = getSinglePromotedValueIfExist(OldPtr))
+    {
+        LoadInst* NewLoad = IRB->CreateLoad(LegalizedNewPtr, Twine(I.getName(), ".promotedLoad"));
+        NewLoad->setAlignment(IGCLLVM::getAlign(I.getAlignment()));
+        Promoted = NewLoad;
+        return true;
+    }
+
     Type* OrigTy = I.getType();
 
     TypeSeq* TySeq;
@@ -192,7 +229,6 @@ bool InstPromoter::visitLoadInst(LoadInst& I) {
 
     unsigned AS = I.getPointerAddressSpace();
 
-    Value* OldPtr = I.getPointerOperand();
     Type* PromotedTy = TySeq->front();
 
     Value* NewBasePtr =
@@ -242,6 +278,36 @@ bool InstPromoter::visitLoadInst(LoadInst& I) {
 
 bool InstPromoter::visitStoreInst(StoreInst& I) {
     Value* OrigVal = I.getValueOperand();
+    Value* OldPtr = I.getPointerOperand();
+
+    // Check if Store operands were legalized before, or stored value is constant
+    if (Value* LegalizedNewPtr = getSinglePromotedValueIfExist(OldPtr))
+    {
+        Value* NewStoredValue = nullptr;
+        if (NewStoredValue != getSinglePromotedValueIfExist(OrigVal))
+        {
+            if (auto* ConstantIntAsStoredValue = dyn_cast<ConstantInt>(OrigVal))
+            {
+                auto NumberStoredInValue = ConstantIntAsStoredValue->getSExtValue();
+                Type* OrigConstTy = ConstantIntAsStoredValue->getType();
+                TypeSeq* TySeq = TL->getPromotedTypeSeq(OrigConstTy);
+                IGC_ASSERT(TySeq != nullptr);
+                Type* PromotedConstTy = TySeq->front();
+                auto* NewConstInt = ConstantInt::get(PromotedConstTy, NumberStoredInValue, false);
+                NewStoredValue = NewConstInt;
+            }
+        }
+
+        if (NewStoredValue)
+        {
+            StoreInst* NewStore = nullptr;
+            NewStore = IRB->CreateStore(NewStoredValue, LegalizedNewPtr);
+            NewStore->setAlignment(IGCLLVM::getAlign(I.getAlignment()));
+            Promoted = NewStore;
+            return true;
+        }
+    }
+
     Type* OrigTy = OrigVal->getType();
 
     ValueSeq* ValSeq;
@@ -250,7 +316,6 @@ bool InstPromoter::visitStoreInst(StoreInst& I) {
 
     unsigned AS = I.getPointerAddressSpace();
 
-    Value* OldPtr = I.getPointerOperand();
     Value* PromotedVal = ValSeq->front();
 
     Value* NewBasePtr =
@@ -321,11 +386,35 @@ bool InstPromoter::visitTruncInst(TruncInst& I) {
     return true;
 }
 
+bool InstPromoter::visitSExtInst(SExtInst& I) {
+    auto* ExtendedValue = I.getOperand(0);
+    // Check if SExt operand was legalized before
+    if (Value* LegalizedSingleValue = getSinglePromotedValueIfExist(ExtendedValue))
+    {
+        if (LegalizedSingleValue->getType() == I.getDestTy())
+        {
+            Promoted = LegalizedSingleValue;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool InstPromoter::visitZExtInst(ZExtInst& I) {
+    Value* Val = I.getOperand(0);
+    // Check if ZExt operand was legalized before
+    if (Value* LegalizedSingleValue = getSinglePromotedValueIfExist(Val))
+    {
+        if (LegalizedSingleValue->getType() == I.getDestTy())
+        {
+            Promoted = LegalizedSingleValue;
+            return true;
+        }
+    }
+
     ValueSeq* ValSeq; LegalizeAction ValAct;
     std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
 
-    Value* Val = I.getOperand(0);
     if (ValAct != Legal)
         Val = ValSeq->front();
 
