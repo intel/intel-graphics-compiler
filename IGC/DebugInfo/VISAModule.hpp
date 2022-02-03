@@ -345,7 +345,6 @@ namespace IGC
 
         /// Constants represents VISA register encoding in DWARF
         static constexpr unsigned int LOCAL_SURFACE_BTI = (254);
-        static constexpr unsigned int GENERAL_REGISTER_BEGIN = (0);
         static constexpr unsigned int GENERAL_REGISTER_NUM = (65536);
         static constexpr unsigned int SAMPLER_REGISTER_BEGIN = (73728);
         static constexpr unsigned int SAMPLER_REGISTER_NUM = (16);

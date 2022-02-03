@@ -588,14 +588,16 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
 
         if (isInSurface)
         {
-            return VISAVariableLocation(surfaceReg, GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), this);
+            return VISAVariableLocation(surfaceReg, reg, true /*isRegister*/, isDbgDclInst,
+                                        vectorNumElements, !pVar->IsUniform(), this);
         }
-        VISAVariableLocation genReg(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this);
+        VISAVariableLocation genReg(reg, true /*isRegister*/, isDbgDclInst, vectorNumElements,
+                                    !pVar->IsUniform(), isGlobalAddrSpace, this);
         // SIMD32 locations can't into one register. See VISAVariableLocation::m_locationSecondReg field description for more information
         if (GetSIMDSize() == 32 && pVar->visaGenVariable[1] && !pVar->IsUniform())
         {
             unsigned int reg2 = m_pShader->GetDebugInfoData().getVISADclId(pVar, 1);
-            genReg.AddSecondReg(GENERAL_REGISTER_BEGIN + reg2);
+            genReg.AddSecondReg(reg2);
         }
         return genReg;
     }

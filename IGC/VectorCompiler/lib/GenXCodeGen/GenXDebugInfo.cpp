@@ -972,9 +972,8 @@ public:
     unsigned NumElements = VTy ? VTy->getNumElements() : 1;
     const bool IsVectorized = false;
 
-    // Source/IGC/DebugInfo/VISAModule.hpp:128
-    return Location(GENERAL_REGISTER_BEGIN + Reg->Num, IsRegister, IsMemory,
-                    NumElements, IsVectorized, IsGlobalASI, this);
+    return Location(Reg->Num, IsRegister, IsMemory, NumElements, IsVectorized,
+                    IsGlobalASI, this);
   }
 
   void UpdateVisaId() override {
