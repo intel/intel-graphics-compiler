@@ -6925,7 +6925,7 @@ void GlobalRA::addEUFusionCallWAInst(G4_INST* inst)
 
 void GlobalRA::addEUFusionNoMaskWAInst(G4_BB* BB, G4_INST* Inst)
 {
-    if (EUFusionNoMaskWANeeded())
+    if (EUFusionNoMaskWANeeded() && (BB->getBBType() & G4_BB_NM_WA_TYPE) != 0)
     {
         EUFusionNoMaskWAInsts.insert(std::make_pair(Inst, BB));
         kernel.addWAInst(BB, Inst);
