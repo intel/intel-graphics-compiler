@@ -41,15 +41,11 @@ entry:
 }
 
 ; CHECK-LABEL: @testkernel2
-; CHECK: [[L1:%[a-zA-Z0-9]+]] = trunc i64 %x to i32
-; CHECK: [[ADD:%[a-zA-Z0-9]+]] = add i32 [[L1]], 22
-; CHECK: [[L2:%[a-zA-Z0-9]+]] = trunc i64 %y to i32
-; CHECK: [[SUB:%[a-zA-Z0-9]+]] = sub i32 [[L2]], 53
-; CHECK: [[UDIV:%[a-zA-Z0-9]+]] = udiv i32 [[ADD]], [[SUB]]
 ; CHECK: [[L3:%[a-zA-Z0-9]+]] = trunc i64 %x to i32
 ; CHECK: [[L4:%[a-zA-Z0-9]+]] = trunc i64 %y to i32
 ; CHECK: [[MUL1:%[a-zA-Z0-9]+]] = mul i32 [[L3]], [[L4]]
-; CHECK: [[MUL2:%[a-zA-Z0-9]+]] = mul i32 [[UDIV]], [[MUL1]]
+; CHECK: [[L1:%[a-zA-Z0-9]+]] = trunc i64 %div to i32
+; CHECK: [[MUL2:%[a-zA-Z0-9]+]] = mul i32 [[L1]], [[MUL1]]
 ; CHECK: [[ZEXT:%[a-zA-Z0-9]+]] = zext i32 [[MUL2]] to i64
 
 define void @testkernel3(i64 %x, i64 %y) nounwind {
