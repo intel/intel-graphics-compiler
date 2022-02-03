@@ -500,6 +500,34 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                     childFuncs.insert(childF);
                 }
             }
+            // To get a better estimate for indirect calls, we also count address-taken
+            // references as a callee by checking if the current function uses the function address
+            // of an indirectly-called function.
+            // This will not always be accurate, as it won't account for external function calls,
+            // or if the callee function pointer is loaded from a buffer/argument.
+            // However it does provide a better estimate than not counting them altogether.
+            if (Ctx.m_enableFunctionPointer)
+            {
+                for (auto& FI : M)
+                {
+                    if (!FI.isDeclaration() && FI.hasFnAttribute("referenced-indirectly"))
+                    {
+                        for (auto user : FI.users())
+                        {
+                            if (Instruction* inst = dyn_cast<Instruction>(user))
+                            {
+                                // Ignore direct calls, it's already handled above
+                                if (isa<CallInst>(inst)) continue;
+                                // Check if the caller matches the current function being processed,
+                                // if so add the function whose address is taken as a callee.
+                                Function* parentFunc = inst->getParent()->getParent();
+                                if (F == parentFunc)
+                                    childFuncs.insert(&FI);
+                            }
+                        }
+                    }
+                }
+            }
 
             // Recursively calculate the private mem usage of all callees
             uint32_t maxSize = currFuncPrivateMem;
@@ -535,11 +563,11 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                 // Analyze call depth for stack memory required
                 maxPrivateMem = AnalyzeCGPrivateMemUsage(pKernel);
 
-                // If indirect calls or recursions exist, set a minimum of 8KB, or calculated size + 4KB,
-                // and hope we don't run out.
+                // If indirect calls or recursions exist, add another 4KB to account for the stack size
+                // needed and hope we don't run out.
                 if (FG->hasIndirectCall() || FG->hasRecursion())
                 {
-                    maxPrivateMem = std::max(maxPrivateMem + (unsigned)4096, (unsigned)8192);
+                    maxPrivateMem += (4 * 1024);
                 }
             }
             if (FG->hasVariableLengthAlloca())
