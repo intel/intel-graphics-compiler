@@ -349,7 +349,7 @@ DEF_VISA_OPTION(vISA_HashMovsAtPrologue,  ET_BOOL, "-hashatprologue", UNUSED, fa
 DEF_VISA_OPTION(vISA_AddKernelID,         ET_BOOL,  "-addKernelID", UNUSED, false)
 DEF_VISA_OPTION(vISA_zeroSomeARF,         ET_BOOL, "-zeroSomeARF",  "Zero address reg, acc, etc. on entry to kernel.", false)
 DEF_VISA_OPTION(vISA_dumpPayload,         ET_BOOL, "-dumpPayload",        UNUSED, false)
-DEF_VISA_OPTION(vISA_ScratchAllocForStackInKB, ET_INT32, "-scratchAllocForStackInKB", UNUSED, 64)
+DEF_VISA_OPTION(vISA_ScratchAllocForStackInKB, ET_INT32, "-scratchAllocForStackInKB", UNUSED, 80)
 
 DEF_VISA_OPTION(vISA_dumpToCurrentDir,    ET_BOOL, "-dumpToCurrentDir",   UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpTimer,           ET_BOOL, "-timestats",          UNUSED, false)
