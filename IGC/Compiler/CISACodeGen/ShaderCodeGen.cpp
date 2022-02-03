@@ -89,6 +89,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/Optimizer/IntDivRemCombine.hpp"
 #include "Compiler/Optimizer/SynchronizationObjectCoalescing.hpp"
+#include "Compiler/Optimizer/RuntimeValueVectorExtractPass.h"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
@@ -1808,6 +1809,9 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(new BreakConstantExpr());
         mpm.add(new IGCConstProp());
+
+        // Optimize extracts from RuntimeValue vectors
+        mpm.add(new RuntimeValueVectorExtractPass());
 
         mpm.add(new CustomSafeOptPass());
         if (!pContext->m_DriverInfo.WADisableCustomPass())
