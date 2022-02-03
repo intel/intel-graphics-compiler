@@ -87,7 +87,8 @@ namespace Utils {
             llvm::DIGlobalVariable* GV = GVs[j]->getVariable();
             llvm::DIScope* scopeToUse = GV->getScope();
             llvm::DILocation* locToUse = llvm::DILocation::get(scopeToUse->getContext(), GV->getLine(), 0, scopeToUse, loc);
-            if (llvm::isa<llvm::DICompileUnit>(GV->getScope()))
+            if (llvm::isa<llvm::DICompileUnit>(scopeToUse) ||
+                llvm::isa<llvm::DINamespace>(scopeToUse))
             {
                 // Function has no DebugLoc so it is either internal
                 // or optimized. So there is no point inserting
