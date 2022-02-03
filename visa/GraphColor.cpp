@@ -11945,6 +11945,7 @@ void FlagSpillCleanup::regFillClean(
                     {
                         if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess))
                         {
+                            gra.removeEUFusionNoMaskWAInst(*scratchAccess->inst_it);
                             bb->erase(scratchAccess->inst_it);
                             scratchAccess->instKilled = true;
                             scratchAccess->preScratchAccess->useCount--;
@@ -11959,6 +11960,7 @@ void FlagSpillCleanup::regFillClean(
                 {
                     if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess))
                     {
+                        gra.removeEUFusionNoMaskWAInst(*scratchAccess->inst_it);
                         bb->erase(scratchAccess->inst_it);
                         scratchAccess->instKilled = true;
                         scratchAccess->preScratchAccess->useCount--;
@@ -11994,6 +11996,7 @@ void FlagSpillCleanup::regSpillClean(
             scratchAccess->evicted &&
             scratchAccess->useCount == 0)
         {
+            gra.removeEUFusionNoMaskWAInst(*scratchAccess->inst_it);
             bb->erase(scratchAccess->inst_it);
             scratchAccess->instKilled = true;
             clean_num_profile->spill_clean_num[0]++;
