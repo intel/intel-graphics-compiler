@@ -265,6 +265,8 @@ private:
   bool lowerBitreverse(CallInst *CI);
   bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
   bool lowerFAbs(CallInst *CI);
+  bool lowerF32MathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
+  bool lowerF32FastMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -3382,7 +3384,22 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerFunnelShift(CI, IntrinsicID);
     case Intrinsic::fabs:
       return lowerFAbs(CI);
-      break;
+    case Intrinsic::ceil:
+      return lowerF32MathIntrinsic(CI, GenXIntrinsic::genx_rndu);
+    case Intrinsic::floor:
+      return lowerF32MathIntrinsic(CI, GenXIntrinsic::genx_rndd);
+    case Intrinsic::trunc:
+      return lowerF32MathIntrinsic(CI, GenXIntrinsic::genx_rndz);
+    case Intrinsic::exp2:
+      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_exp);
+    case Intrinsic::log2:
+      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_log);
+    case Intrinsic::pow:
+      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_pow);
+    case Intrinsic::sin:
+      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_sin);
+    case Intrinsic::cos:
+      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_cos);
     }
     return false;
   }
@@ -5492,6 +5509,31 @@ bool GenXLowering::lowerFAbs(CallInst *CI) {
   CI->replaceAllUsesWith(Res);
   ToErase.push_back(CI);
   return true;
+}
+
+bool GenXLowering::lowerF32MathIntrinsic(CallInst *CI,
+                                         GenXIntrinsic::ID GenXID) {
+  IGC_ASSERT(CI);
+  auto *ResTy = CI->getType();
+  if (!ResTy->getScalarType()->isFloatTy())
+    vc::diagnose(CI->getContext(), "GenXLowering", CI,
+                 "Sorry there is only f32 native instruction");
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), GenXID,
+                                                 {CI->getType()});
+  SmallVector<Value *, 2> Args{CI->args()};
+  IRBuilder<> Builder{CI};
+  auto *Res = Builder.CreateCall(Decl, Args, CI->getName());
+  CI->replaceAllUsesWith(Res);
+  ToErase.push_back(CI);
+  return true;
+}
+
+bool GenXLowering::lowerF32FastMathIntrinsic(CallInst *CI,
+                                             GenXIntrinsic::ID GenXID) {
+  if (!CI->getFastMathFlags().isFast())
+    vc::diagnose(CI->getContext(), "GenXLowering", CI,
+                 "Sorry there is only low precision native instruction");
+  return lowerF32MathIntrinsic(CI, GenXID);
 }
 
 /***********************************************************************
