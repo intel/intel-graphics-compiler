@@ -109,7 +109,7 @@ void parseBinary(
     }
     fclose(isafile);
 
-    TARGET_PLATFORM platform = getGenxPlatform();
+    TARGET_PLATFORM platform = static_cast<TARGET_PLATFORM>(opt.getuInt32Option(vISA_PlatformSet));
     VISA_BUILDER_OPTION builderOption =
         (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
     CISA_IR_Builder* cisa_builder = NULL;
@@ -142,7 +142,7 @@ int JITCompileAllOptions(const char* kernelName,
     unsigned int kernelIsaSize,
     void* &genBinary,
     unsigned int& genBinarySize,
-    const char* platform,
+    const char* platformStr,
     int majorVersion,
     int minorVersion,
     int numArgs,
@@ -158,7 +158,8 @@ int JITCompileAllOptions(const char* kernelName,
     }
     // This must be done before processing the options,
     // as some options depend on the platform
-    if (SetVisaPlatform(platform) != 0)
+    TARGET_PLATFORM platform = getVisaPlatformFromStr(platformStr);
+    if (platform == GENX_NONE)
     {
         return JIT_INVALID_PLATFORM;
     }
@@ -171,7 +172,7 @@ int JITCompileAllOptions(const char* kernelName,
     // HW mode: default: GEN path; if dump/verify: Both path
     VISA_BUILDER_OPTION builderOption = VISA_BUILDER_GEN;
 
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption, getGenxPlatform(), numArgs, args);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption, platform, numArgs, args);
     cisa_builder->setGtpinInit(gtpin_init);
 
     if (!cisa_builder)
@@ -325,22 +326,23 @@ int main(int argc, const char *argv[])
         exit(0);
     }
 
-    bool platformIsSet = false;
+    TARGET_PLATFORM platform = static_cast<TARGET_PLATFORM>(opt.getuInt32Option(vISA_PlatformSet));
     bool dumpCommonIsa = false;
     bool generateBinary = false;
-    opt.getOption(vISA_PlatformIsSet, platformIsSet);
     opt.getOption(vISA_GenerateISAASM, dumpCommonIsa);
 
     if (opt.getOption(vISA_isParseMode))
         parserMode = true;
 
     opt.getOption(vISA_GenerateBinary, generateBinary);
-    if (!platformIsSet && ((!dumpCommonIsa && !parserMode) || generateBinary))
+    if (platform == GENX_NONE && ((!dumpCommonIsa && !parserMode) || generateBinary))
     {
         std::cerr << "USAGE: must specify platform\n";
         Options::showUsage(COUT_ERROR);
         return 1;
     }
+    // TODO: Will need to adjust the platform from option for parseBinary() and
+    // parseText() if not specifying platform is allowed at this point.
 
     //
     // for debug print lex results to stdout (default)
@@ -488,13 +490,13 @@ void parseText(std::string fileName, int argc, const char *argv[], Options &opt)
     //used to ignore duplicate file names
     std::map<std::string, bool> files_parsed;
 
-    TARGET_PLATFORM platform = getGenxPlatform();
+    TARGET_PLATFORM platform = static_cast<TARGET_PLATFORM>(opt.getuInt32Option(vISA_PlatformSet));
     VISA_BUILDER_OPTION builderOption =
         (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
 
     CISA_IR_Builder *cisa_builder = nullptr;
 
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_ASM_READER, builderOption, getGenxPlatform(), argc, argv);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_ASM_READER, builderOption, platform, argc, argv);
 
     for (int i = 0; i < num_kernels; i++)
     {

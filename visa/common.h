@@ -199,7 +199,7 @@ int SetVisaPlatform(TARGET_PLATFORM vPlatform);
 // generally the symbol suffix is the preferred name:
 //   e.g. GENX_SKL  means "SKL"
 //             ^^^
-int SetVisaPlatform(const char *platformName);
+TARGET_PLATFORM getVisaPlatformFromStr(const char *platformName);
 
 /*************** internal jitter functions ********************/
 // returns the HW platform for this jitter invocation

@@ -75,7 +75,7 @@ int SetVisaPlatform(TARGET_PLATFORM vPlatform)
     return VISA_SUCCESS;
 }
 
-int SetVisaPlatform(const char * str)
+TARGET_PLATFORM getVisaPlatformFromStr(const char * str)
 {
     auto toUpperStr = [](const char *str) {
         std::string upper;
@@ -98,8 +98,7 @@ int SetVisaPlatform(const char * str)
         if (platform != GENX_NONE)
             break;
     }
-    visaPlatform = platform;
-    return platform != GENX_NONE ? VISA_SUCCESS : VISA_FAILURE;
+    return platform;
 }
 
 TARGET_PLATFORM getGenxPlatform()

@@ -284,16 +284,16 @@ bool Options::parseOptions(int argc, const char* argv[])
             return false;
         }
 
-        int status = SetVisaPlatform(platformStr);
-        if (status != VISA_SUCCESS) {
+        TARGET_PLATFORM platform = getVisaPlatformFromStr(platformStr);
+        if (platform == GENX_NONE) {
             std::cerr << platformStr << ": unrecognized platform string\n" <<
                 "supported platforms are: " << makePlatformsString() << "\n";
             return false;
         }
-        m_vISAOptions.setBool(vISA_PlatformIsSet, true);   //platformIsSet = true;
+        m_vISAOptions.setUint32(vISA_PlatformSet, platform);
         if (GetStepping() == Step_A)
         {
-            if (getGenxPlatform() == GENX_TGLLP)
+            if (platform == GENX_TGLLP)
             {
                 m_vISAOptions.setBool(vISA_HasEarlyGRFRead, true);
             }

@@ -121,7 +121,7 @@ std::string printVariableDeclName(
         {   case STATE_OPND_SURFACE : sstr << printSurfaceName(declID); break;
             case STATE_OPND_SAMPLER : sstr << "S"   << declID; break;
             default                 :
-                if (!options->getOption(vISA_PlatformIsSet))
+                if (options->getuInt32Option(vISA_PlatformSet) == GENX_NONE)
                 {
                     // If platform is not set then dcl instances are
                     // not created causing a crash. So print dcl name

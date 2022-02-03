@@ -284,7 +284,7 @@ DEF_VISA_OPTION(vISA_CISAbinary,        ET_CSTR, "-CISAbinary",            "USAG
 DEF_VISA_OPTION(vISA_DumpRegInfo, ET_BOOL, "-dumpRegInfo",            UNUSED, false)
 
 //=== misc options ===
-DEF_VISA_OPTION(vISA_PlatformIsSet,       ET_BOOL,  NULLSTR,              UNUSED, false)
+DEF_VISA_OPTION(vISA_PlatformSet,         ET_INT32, NULLSTR,              UNUSED, -1 /*GENX_NONE*/)
 DEF_VISA_OPTION(vISA_NoVerifyvISA,        ET_BOOL,  "-noverifyCISA",      UNUSED, false)
 DEF_VISA_OPTION(vISA_InitPayload,         ET_BOOL,  "-initializePayload", UNUSED, false)
 DEF_VISA_OPTION(vISA_isParseMode,         ET_BOOL,  NULLSTR,              UNUSED, false)
