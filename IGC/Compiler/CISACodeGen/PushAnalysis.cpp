@@ -280,7 +280,6 @@ namespace IGC
                         {
                             offset = 0;
                             pAddress = genIntr2->getOperand(0);
-                            GetPotentialPushableAddresses(pAddress);
                         }
 
                         if (genIntr2->getIntrinsicID() == GenISAIntrinsic::GenISA_add_pair)
@@ -1123,7 +1122,6 @@ namespace IGC
             else
             {
                 info = CollectAllSimplePushInfoArr[simplePushBufferId];
-                iter = simplePushBufferId;
             }
             SimplePushInfo& newChunk = pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed];
             if (sizePushed + info.size <= cthreshold)
@@ -1140,7 +1138,7 @@ namespace IGC
                 pushInfo.simplePushBufferUsed++;
                 sizePushed += info.size;
             }
-            CollectAllSimplePushInfoArr.erase(iter);
+            CollectAllSimplePushInfoArr.erase(simplePushBufferId);
             simplePushBufferId++;
         }
     }
