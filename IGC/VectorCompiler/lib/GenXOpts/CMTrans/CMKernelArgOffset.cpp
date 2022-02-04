@@ -160,7 +160,7 @@ public:
   bool runOnModule(Module &M) override;
 
 private:
-  void processKernel(MDNode *Node);
+  void processKernel(Function &Kernel);
   void processKernelOnOCLRT(Function *F);
   void resolveByValArgs(Function *F) const;
 
@@ -203,16 +203,12 @@ static bool canReorderArguments(const vc::KernelMetadata &KM) {
  * runOnModule : run the CM kernel arg offset pass
  */
 bool CMKernelArgOffset::runOnModule(Module &M) {
-  NamedMDNode *Named = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
-  if (!Named)
-    return 0;
+  if (!vc::hasKernel(M))
+    return false;
 
   // Process each kernel in the CM kernel metadata.
-  for (unsigned i = 0, e = Named->getNumOperands(); i != e; ++i) {
-    MDNode *KernelNode = Named->getOperand(i);
-    if (KernelNode)
-      processKernel(KernelNode);
-  }
+  for (Function &Kernel : vc::kernels(M))
+    processKernel(Kernel);
 
   return true;
 }
@@ -220,30 +216,25 @@ bool CMKernelArgOffset::runOnModule(Module &M) {
 /***********************************************************************
  * processKernel : process one kernel
  *
- * Enter:   Node = metadata node for one kernel
+ * Enter:   Kernel = reference for a kernel function
  *
  * See GenXMetadata.h for complete list of kernel metadata
  */
-void CMKernelArgOffset::processKernel(MDNode *Node) {
-  Function *F = dyn_cast_or_null<Function>(
-      getValue(Node->getOperand(genx::KernelMDOp::FunctionRef)));
-  if (!F)
-    return;
-
+void CMKernelArgOffset::processKernel(Function &Kernel) {
   // change the linkage attribute for the kernel
-  F->setDLLStorageClass(llvm::GlobalValue::DLLExportStorageClass);
+  Kernel.setDLLStorageClass(llvm::GlobalValue::DLLExportStorageClass);
 
-  vc::KernelMetadata KM{F};
+  vc::KernelMetadata KM{&Kernel};
   this->KM = &KM;
 
   // Layout kernel arguments differently if to run on OpenCL runtime.
   if (enableOCLCodeGen()) {
-    resolveByValArgs(F);
-    return processKernelOnOCLRT(F);
+    resolveByValArgs(&Kernel);
+    return processKernelOnOCLRT(&Kernel);
   }
 
-  auto getTypeSizeInBytes = [=](Type *Ty) {
-    const DataLayout &DL = F->getParent()->getDataLayout();
+  auto getTypeSizeInBytes = [&Kernel](Type *Ty) {
+    const DataLayout &DL = Kernel.getParent()->getDataLayout();
     if (auto PT = dyn_cast<PointerType>(Ty))
       return DL.getPointerTypeSize(Ty);
     return static_cast<unsigned>(Ty->getPrimitiveSizeInBits() / 8);
@@ -284,8 +275,8 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
 
       auto ArgKinds = KM.getArgKinds();
       auto Kind = ArgKinds.begin();
-      for (Function::arg_iterator i = F->arg_begin(), e = F->arg_end(); i != e;
-           ++i, ++Kind) {
+      for (Function::arg_iterator i = Kernel.arg_begin(), e = Kernel.arg_end();
+           i != e; ++i, ++Kind) {
         Argument *Arg = &*i;
         if (*Kind & 0xf8)
           continue; // implicit arg
@@ -370,8 +361,8 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
       bool FirstThreadImplicit = WantThreadImplicit;
       auto ArgKinds = KM.getArgKinds();
       auto Kind = ArgKinds.begin();
-      for (Function::arg_iterator i = F->arg_begin(), e = F->arg_end(); i != e;
-           ++i, ++Kind) {
+      for (Function::arg_iterator i = Kernel.arg_begin(), e = Kernel.arg_end();
+           i != e; ++i, ++Kind) {
         Argument *Arg = &*i;
         if (!(*Kind & 0xf8))
           continue;                               // not implicit arg
@@ -403,7 +394,7 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
     // boundary.
 
     // kernel input start offset
-    auto &DL = F->getParent()->getDataLayout();
+    auto &DL = Kernel.getParent()->getDataLayout();
     Offset = GrfStartOffset;
 
     // Place an argument and update offset.
@@ -420,7 +411,7 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
       Offset += ByteSize;
     };
 
-    for (auto &Arg : F->args()) {
+    for (auto &Arg : Kernel.args()) {
       unsigned Alignment = getValueAlignmentInBytes(Arg, DL);
       Type *Ty = Arg.getType();
       unsigned Bytes = DL.getTypeSizeInBits(Ty) / 8;
@@ -430,15 +421,16 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
 
   SmallVector<unsigned, 8> ArgOffsets;
   std::transform(
-      F->arg_begin(), F->arg_end(), std::back_inserter(ArgOffsets),
+      Kernel.arg_begin(), Kernel.arg_end(), std::back_inserter(ArgOffsets),
       [&PlacedArgs](const Argument &Arg) { return PlacedArgs[&Arg]; });
   KM.updateArgOffsetsMD(std::move(ArgOffsets));
 
-  SmallVector<unsigned, 8> OffsetInArgs(F->arg_size(), 0);
+  SmallVector<unsigned, 8> OffsetInArgs(Kernel.arg_size(), 0);
   KM.updateOffsetInArgsMD(std::move(OffsetInArgs));
 
   SmallVector<unsigned, 8> Indexes;
-  std::transform(F->arg_begin(), F->arg_end(), std::back_inserter(Indexes),
+  std::transform(Kernel.arg_begin(), Kernel.arg_end(),
+                 std::back_inserter(Indexes),
                  [](const Argument &Arg) { return Arg.getArgNo(); });
   KM.updateArgIndexesMD(std::move(Indexes));
 

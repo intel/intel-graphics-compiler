@@ -70,19 +70,9 @@ bool GenXModule::CheckForInlineAsm(Module &M) const {
 }
 
 static bool isImplicitArgsBufferUsed(const Module &M) {
-  NamedMDNode *Named = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
-  if (!Named)
-    return false;
-  // FIXME: use std::any_of.
-  for (unsigned I = 0, E = Named->getNumOperands(); I != E; ++I) {
-    MDNode *Node = Named->getOperand(I);
-    auto *F = cast<Function>(
-        cast<ValueAsMetadata>(Node->getOperand(genx::KernelMDOp::FunctionRef))
-            ->getValue());
-    if (F->hasFnAttribute(vc::ImplicitArgs::KernelAttr))
-      return true;
-  }
-  return false;
+  return llvm::any_of(vc::kernels(M), [](const Function &F) {
+    return F.hasFnAttribute(vc::ImplicitArgs::KernelAttr);
+  });
 }
 
 /***********************************************************************

@@ -303,17 +303,9 @@ bool BTIAssignment::processKernel(Function &F) {
 }
 
 bool BTIAssignment::run() {
-  NamedMDNode *KernelsMD = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
-  // There can be no kernels in module.
-  if (!KernelsMD)
-    return false;
-
   bool Changed = false;
-  for (MDNode *Kernel : KernelsMD->operands()) {
-    Metadata *FuncRef = Kernel->getOperand(genx::KernelMDOp::FunctionRef);
-    Function *F = cast<Function>(cast<ValueAsMetadata>(FuncRef)->getValue());
-    Changed |= processKernel(*F);
-  }
+  for (Function &Kernel : vc::kernels(M))
+    Changed |= processKernel(Kernel);
 
   return Changed;
 }

@@ -130,6 +130,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
+#include <functional>
 #include <iterator>
 #include <map>
 #include <numeric>
@@ -156,6 +157,7 @@ static cl::opt<bool>
 // defined but it is just empty.
 template <typename T> using MaybeUndefSeq = Optional<std::vector<T>>;
 using MaybeUndefFuncSeq = MaybeUndefSeq<Function *>;
+using FunctionRef = std::reference_wrapper<Function>;
 
 // Checks whether the provided vector \p has unique elements.
 template <typename T> static bool isUnique(const std::vector<T> &V) {
@@ -215,7 +217,7 @@ private:
   ArgLinearization GenerateArgsLinearizationInfo(Function &F);
 
   void
-  processKernels(const std::vector<Function *> &Kernels,
+  processKernels(const std::vector<FunctionRef> &Kernels,
                  const IntrIDMap &UsedIntrInfo,
                  const std::unordered_set<Function *> &RequireImplArgsBuffer);
   CallGraphNode *processKernel(Function *F, const IntrIDSet &UsedImplicits);
@@ -381,22 +383,6 @@ static bool isPseudoIntrinsic(unsigned IID) {
   return IID >= PseudoIntrinsic::First && IID < PseudoIntrinsic::Last;
 }
 
-// Collect all CM kernels from named metadata.
-static std::vector<Function *> collectKernels(Module &M) {
-  NamedMDNode *Named = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
-  if (!Named)
-    return {};
-  std::vector<Function *> Kernels;
-  for (unsigned I = 0, E = Named->getNumOperands(); I != E; ++I) {
-    MDNode *Node = Named->getOperand(I);
-    auto *F = cast<Function>(
-        cast<ValueAsMetadata>(Node->getOperand(genx::KernelMDOp::FunctionRef))
-            ->getValue());
-    Kernels.push_back(F);
-  }
-  return Kernels;
-}
-
 // Checks whether kernel calls some function with a fixed signature that uses
 // implicit args or may call such function (in case of some externally defined
 // function, or indirect call). In this case kernel should have access to
@@ -422,7 +408,7 @@ bool CMImpParam::runOnModule(Module &M) {
 
   // Analyze functions for implicit use intrinsic invocation
   ImplArgIntrSeq Workload = collectImplicitArgIntrinsics(M, IsCmRT);
-  auto Kernels = collectKernels(M);
+  std::vector<FunctionRef> Kernels{vc::kernel_begin(M), vc::kernel_end(M)};
   IntrIDMap UsedIntrInfo = fillUsedIntrMap(Workload);
   auto [FixedSignFuncInfo, RequireImplArgsBuffer] =
       analyzeFixedSignatureFunctions(M, UsedIntrInfo);
@@ -451,26 +437,26 @@ bool CMImpParam::runOnModule(Module &M) {
 }
 
 void CMImpParam::processKernels(
-    const std::vector<Function *> &Kernels, const IntrIDMap &UsedIntrInfo,
+    const std::vector<FunctionRef> &Kernels, const IntrIDMap &UsedIntrInfo,
     const std::unordered_set<Function *> &RequireImplArgsBuffer) {
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
 
-  for (Function *Kernel : Kernels) {
+  for (Function &Kernel : Kernels) {
     // Traverse the call graph to determine what the total implicit uses are for
     // the top level kernels.
     auto [RequiredImplArgs, CalledFixedSignFuncs] =
         CallGraphTraverser{CG, UsedIntrInfo}.collectIndirectlyUsedImplArgs(
-            *Kernel);
+            Kernel);
     if (kernelRequiresImplArgBuffer(CalledFixedSignFuncs,
                                     RequireImplArgsBuffer))
-      Kernel->addFnAttr(vc::ImplicitArgs::KernelAttr);
+      Kernel.addFnAttr(vc::ImplicitArgs::KernelAttr);
     // For OCL/L0 RT we should unconditionally add implicit PRIVATE_BASE
     // argument which is not supported on CM RT.
     if (!IsCmRT)
       RequiredImplArgs.emplace(PseudoIntrinsic::PrivateBase);
-    vc::internal::createInternalMD(*Kernel);
+    vc::internal::createInternalMD(Kernel);
     if (!RequiredImplArgs.empty())
-      processKernel(Kernel, RequiredImplArgs);
+      processKernel(&Kernel, RequiredImplArgs);
   }
 }
 

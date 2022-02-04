@@ -14,6 +14,8 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/ADT/StringRef.h"
+
+#include "llvm/ADT/iterator_range.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
@@ -21,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 
+#include <type_traits>
 #include <unordered_map>
 
 namespace vc {
@@ -334,6 +337,137 @@ struct KernelArgInfo {
 };
 
 void replaceFunctionRefMD(const llvm::Function &From, llvm::Function &To);
+
+// Returns whether the provided module \p M has at least one kernel according
+// to metadata.
+bool hasKernel(const llvm::Module &M);
+
+namespace detail {
+
+// FIXME: Cannot support conversion from const iterator to mutable iterator,
+//        because llvm::NamedMDNode::const_op_iterator doesn't support it.
+//        Support it once LLVM does it too.
+template <bool IsConst> class KernelIteratorImpl final {
+  using ValueType =
+      std::conditional_t<IsConst, const llvm::Function, llvm::Function>;
+  using InnerIter =
+      std::conditional_t<IsConst, llvm::NamedMDNode::const_op_iterator,
+                         llvm::NamedMDNode::op_iterator>;
+  using ModuleT = std::conditional_t<IsConst, const llvm::Module, llvm::Module>;
+  using NamedMDNodeT =
+      std::conditional_t<IsConst, const llvm::NamedMDNode, llvm::NamedMDNode>;
+
+  InnerIter MDNodeIt{};
+
+  KernelIteratorImpl(InnerIter It) : MDNodeIt{It} {}
+
+public:
+  using difference_type = typename InnerIter::difference_type;
+  using value_type = std::remove_cv_t<ValueType>;
+  using pointer = ValueType *;
+  using reference = ValueType &;
+  using iterator_category = typename InnerIter::iterator_category;
+
+  KernelIteratorImpl() = default;
+
+  static KernelIteratorImpl CreateBegin(ModuleT &M) {
+    NamedMDNodeT *KernelsMD =
+        M.getNamedMetadata(llvm::genx::FunctionMD::GenXKernels);
+    if (!KernelsMD)
+      return {};
+    return {KernelsMD->op_begin()};
+  }
+
+  static KernelIteratorImpl CreateEnd(ModuleT &M) {
+    NamedMDNodeT *KernelsMD =
+        M.getNamedMetadata(llvm::genx::FunctionMD::GenXKernels);
+    if (!KernelsMD)
+      return {};
+    return {KernelsMD->op_end()};
+  }
+
+  KernelIteratorImpl &operator++() {
+    ++MDNodeIt;
+    return *this;
+  }
+
+  KernelIteratorImpl operator++(int) {
+    auto Tmp = *this;
+    operator++();
+    return Tmp;
+  }
+
+  KernelIteratorImpl &operator--() {
+    --MDNodeIt;
+    return *this;
+  }
+
+  KernelIteratorImpl operator--(int) {
+    auto Tmp = *this;
+    operator--();
+    return Tmp;
+  }
+
+  pointer operator->() {
+    // InnerIter returns pointer in operator*.
+    auto *KernelNode = *MDNodeIt;
+    pointer Kernel = getValueAsMetadata<ValueType>(
+        KernelNode->getOperand(llvm::genx::KernelMDOp::FunctionRef));
+    IGC_ASSERT_MESSAGE(
+        Kernel, "Kernel MD must hold a valid pointer to kernel function");
+    return Kernel;
+  }
+
+  reference operator*() { return *operator->(); }
+
+  friend bool operator==(const KernelIteratorImpl &LHS,
+                         const KernelIteratorImpl &RHS) {
+    return LHS.MDNodeIt == RHS.MDNodeIt;
+  }
+
+  friend bool operator!=(const KernelIteratorImpl &LHS,
+                         const KernelIteratorImpl &RHS) {
+    return !(LHS == RHS);
+  }
+};
+} // namespace detail
+
+// Bidirectional iterator to iterate over module kernels based on the info in
+// kernel metadata. Iterator dereferencing returns either const or mutable
+// reference for llvm::Function depeneding on whether the iterator is const.
+// The iterator correctly handles case when there's no metadata in the module.
+//
+// Usage example:
+// for (Function &Kernel : vc::kernels(M))
+using KernelIterator = detail::KernelIteratorImpl</* IsConst =*/false>;
+using ConstKernelIterator = detail::KernelIteratorImpl</* IsConst =*/true>;
+
+inline KernelIterator kernel_begin(llvm::Module &M) {
+  return KernelIterator::CreateBegin(M);
+}
+
+inline KernelIterator kernel_end(llvm::Module &M) {
+  return KernelIterator::CreateEnd(M);
+}
+
+inline ConstKernelIterator kernel_begin(const llvm::Module &M) {
+  return ConstKernelIterator::CreateBegin(M);
+}
+
+inline ConstKernelIterator kernel_end(const llvm::Module &M) {
+  return ConstKernelIterator::CreateEnd(M);
+}
+
+using KernelRange = llvm::iterator_range<KernelIterator>;
+using ConstKernelRange = llvm::iterator_range<ConstKernelIterator>;
+
+inline KernelRange kernels(llvm::Module &M) {
+  return llvm::make_range(kernel_begin(M), kernel_end(M));
+}
+
+inline ConstKernelRange kernels(const llvm::Module &M) {
+  return llvm::make_range(kernel_begin(M), kernel_end(M));
+}
 
 } // namespace vc
 

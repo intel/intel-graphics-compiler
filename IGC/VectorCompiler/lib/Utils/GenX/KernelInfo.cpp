@@ -324,3 +324,10 @@ void vc::KernelMetadata::updateBTIndicesMD(std::vector<int> &&BTIndices) {
   updateArgsMD(BTIs.begin(), BTIs.end(), InternalNode,
                internal::KernelMDOp::BTIndices);
 }
+
+bool vc::hasKernel(const Module &M) {
+  NamedMDNode *KernelsMD = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
+  if (!KernelsMD)
+    return false;
+  return KernelsMD->getNumOperands();
+}

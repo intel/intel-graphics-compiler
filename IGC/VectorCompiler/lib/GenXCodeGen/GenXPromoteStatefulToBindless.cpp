@@ -194,15 +194,9 @@ bool PromoteToBindless::convertKernelArguments(Function &F) {
 // First part of transformation: conversion of arguments to SSO.
 // Return true if IR was modified.
 bool PromoteToBindless::convertArguments() {
-  NamedMDNode *KernelsMD = M.getNamedMetadata(genx::FunctionMD::GenXKernels);
-  if (!KernelsMD)
-    return false;
-
   bool Changed = false;
-  for (MDNode *Kernel : KernelsMD->operands()) {
-    Metadata *FuncRef = Kernel->getOperand(genx::KernelMDOp::FunctionRef);
-    Function *F = cast<Function>(cast<ValueAsMetadata>(FuncRef)->getValue());
-    Changed |= convertKernelArguments(*F);
+  for (Function &Kernel : vc::kernels(M)) {
+    Changed |= convertKernelArguments(Kernel);
   }
 
   return Changed;
