@@ -234,10 +234,12 @@ namespace {
 // Diagnostic information for error/warning relating to SIMD control flow.
 class DiagnosticInfoSimdCF : public DiagnosticInfoOptimizationBase {
 private:
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
-
+  static int KindID;
+  static int getKindID() {
+    if (KindID == 0)
+      KindID = llvm::getNextAvailablePluginDiagnosticKind();
+    return KindID;
+  }
 public:
   static void emit(Instruction *Inst, StringRef Msg, DiagnosticSeverity Severity = DS_Error);
   DiagnosticInfoSimdCF(DiagnosticSeverity Severity, const Function &Fn,
@@ -253,9 +255,7 @@ public:
   // TODO: consider changing format
   void print(DiagnosticPrinter &DP) const override { DP << "GenXSimdCFConformance: " << RemarkName; }
 };
-
-const int DiagnosticInfoSimdCF::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
+int DiagnosticInfoSimdCF::KindID = 0;
 
 // GenX SIMD control flow conformance pass -- common data between early and
 // late passes.

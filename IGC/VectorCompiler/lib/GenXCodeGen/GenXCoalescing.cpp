@@ -221,11 +221,12 @@ private:
   StringRef Filename;
   unsigned Line;
   unsigned Col;
-
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
-
+  static int KindID;
+  static int getKindID() {
+    if (KindID == 0)
+      KindID = llvm::getNextAvailablePluginDiagnosticKind();
+    return KindID;
+  }
 public:
   // Initialize from an Instruction and an Argument.
   DiagnosticInfoFastComposition(Instruction *Inst,
@@ -236,9 +237,7 @@ public:
     return DI->getKind() == getKindID();
   }
 };
-
-const int DiagnosticInfoFastComposition::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
+int DiagnosticInfoFastComposition::KindID = 0;
 
 namespace {
 

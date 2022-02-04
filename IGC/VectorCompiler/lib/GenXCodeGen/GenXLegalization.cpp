@@ -455,10 +455,12 @@ class DiagnosticInfoLegalization : public DiagnosticInfoWithLocationBase {
 private:
   const Instruction *Inst;
   std::string Description;
-
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
+  static int KindID;
+  static int getKindID() {
+    if (KindID == 0)
+      KindID = llvm::getNextAvailablePluginDiagnosticKind();
+    return KindID;
+  }
 
 public:
   DiagnosticInfoLegalization(const Instruction *Inst, const Twine &Desc,
@@ -467,9 +469,7 @@ public:
   void print(DiagnosticPrinter &DP) const override;
   std::string getDescription() const;
 };
-
-const int DiagnosticInfoLegalization::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
+int DiagnosticInfoLegalization::KindID = 0;
 
 DiagnosticInfoLegalization::DiagnosticInfoLegalization(const Instruction *I,
                                                        const Twine &Desc,

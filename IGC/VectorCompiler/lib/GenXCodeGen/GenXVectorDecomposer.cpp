@@ -63,9 +63,12 @@ private:
   const Twine &Description;
   Instruction *Inst;
 
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
+  static int KindID;
+  static int getKindID() {
+    if (KindID == 0)
+      KindID = llvm::getNextAvailablePluginDiagnosticKind();
+    return KindID;
+  }
 
 public:
   DiagnosticVectorDecomposition(Instruction *I, const Twine &Desc,
@@ -90,8 +93,7 @@ public:
   }
 };
 
-const int DiagnosticVectorDecomposition::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
+int DiagnosticVectorDecomposition::KindID = 0;
 
 } // end anonymous namespace
 

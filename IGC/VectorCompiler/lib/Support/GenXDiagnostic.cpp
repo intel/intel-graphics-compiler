@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 namespace vc {
 
-const int DiagnosticInfo::KindID = llvm::getNextAvailablePluginDiagnosticKind();
+int DiagnosticInfo::KindID = 0;
 
 void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
               const llvm::Twine &Desc, llvm::DiagnosticSeverity Severity) {

@@ -150,10 +150,12 @@ private:
   StringRef Filename;
   unsigned Line;
   unsigned Col;
-
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
+  static int KindID;
+  static int getKindID() {
+    if (KindID == 0)
+      KindID = llvm::getNextAvailablePluginDiagnosticKind();
+    return KindID;
+  }
 
 public:
   DiagnosticInfoLowering(const Instruction *Inst, const Twine &Desc,
@@ -164,8 +166,7 @@ public:
   }
 };
 
-const int DiagnosticInfoLowering::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
+int DiagnosticInfoLowering::KindID = 0;
 
 using IRChecker = vc::IRChecker<DiagnosticInfoLowering>;
 
