@@ -682,11 +682,13 @@ void IR_Builder::createBuiltinDecls()
         1,
         Type_UD);
     realR0->getRegVar()->setPhyReg(phyregpool.getGreg(0), 0);
+    realR0->setBuiltin();
 
     // builtinR0 either gets allocated to r0 or to a different
     // register depending on conditions in RA.
     builtinR0 = createTempVar(numR0DW, Type_UD, GRFALIGN, "R0_Copy");
     builtinR0->setDoNotSpill();
+    builtinR0->setBuiltin();
 
     builtinA0 = createDeclareNoLookup(
         "BuiltinA0",
@@ -695,6 +697,7 @@ void IR_Builder::createBuiltinDecls()
         1,
         Type_UD);
     builtinA0->getRegVar()->setPhyReg(phyregpool.getAddrReg(), 0);
+    builtinA0->setBuiltin();
 
     builtinA0Dot2 = createDeclareNoLookup(
         "BuiltinA0Dot2",  //a0.2
@@ -703,15 +706,22 @@ void IR_Builder::createBuiltinDecls()
         1,
         Type_UD);
     builtinA0Dot2->getRegVar()->setPhyReg(phyregpool.getAddrReg(), 2);
+    builtinA0Dot2->setBuiltin();
 
     builtinHWTID = createDeclareNoLookup("hw_tid", G4_GRF, 1, 1, Type_UD);
+    builtinHWTID->setBuiltin();
+
 
     builtinT252 = createDeclareNoLookup(vISAPreDefSurf[PREDEFINED_SURFACE_T252].name, G4_GRF, 1, 1, Type_UD);
+    builtinT252->setBuiltin();
     builtinBindlessSampler = createDeclareNoLookup("B_S", G4_GRF, 1, 1, Type_UD);
+    builtinBindlessSampler->setBuiltin();
 
     builtinSamplerHeader = createDeclareNoLookup("samplerHeader", G4_GRF, numEltPerGRF<Type_UD>(), 1, Type_UD);
+    builtinSamplerHeader->setBuiltin();
 
     builtinScratchSurface = createDeclareNoLookup(vISAPreDefSurf[PREDEFINED_SURFACE_SCRATCH].name, G4_GRF, 1, 1, Type_UD);
+    builtinScratchSurface->setBuiltin();
 }
 
 

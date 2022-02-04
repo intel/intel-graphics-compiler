@@ -737,6 +737,7 @@ public:
     void emitDefUse(std::ostream& output) const;
     void emitInstIds(std::ostream& output) const;
     void print(std::ostream& OS) const;
+    void dump(std::ostream& OS) const;
     void dump() const;
     bool isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const;
     const char *getLabelStr() const;
@@ -1853,6 +1854,7 @@ class G4_Declare
 
     uint16_t doNotSpill : 1;    // indicates that this declare should never be spilled
 
+    uint16_t builtin : 1;  // indicate if this varaible is a builtin
     uint16_t liveIn : 1;   // indicate if this varaible has "Input" or "Input_Output" attribute
     uint16_t liveOut : 1;  // indicate if this varaible has "Output" or "Input_Output" attribute
     uint16_t payloadLiveOut : 1;  // indicate if this varaible has "Output" attribute for the payload section
@@ -1901,7 +1903,7 @@ public:
                uint32_t numElems,
                G4_Type        ty,
                std::vector<G4_Declare*>& dcllist) :
-      name(n), regFile(k), elemType(ty), addressed(false), liveIn(false),
+      name(n), regFile(k), elemType(ty), addressed(false), builtin(false), liveIn(false),
       liveOut(false), payloadLiveOut(false), noWidening(false), isSplittedDcl(false), isPartialDcl(false),
       refInSend(false), PreDefinedVar(false), numElements(numElems), offsetFromBase(-1)
     {
@@ -1945,6 +1947,8 @@ public:
     void setGRFBaseOffset(unsigned int offset) { GRFBaseOffset = offset; }
     unsigned int getGRFBaseOffset() const { return GRFBaseOffset; }
 
+    void setBuiltin() { builtin = true; }
+    bool isBuiltin() const { return builtin; }
     void setLiveIn() { liveIn = true; }
     bool isLiveIn() const { return liveIn; }
     void setLiveOut() { liveOut = true; }

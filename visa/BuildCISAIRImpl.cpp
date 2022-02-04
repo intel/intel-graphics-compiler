@@ -1045,6 +1045,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
             auto callerDclCount = caller->Declares.size();
             for (auto curDcl : callee->Declares)
             {
+                if (curDcl->isBuiltin())
+                {
+                    continue;
+                }
                 if (!curDcl->isPreDefinedVar())
                 {
                     // we only need to separate ID for local vars
@@ -1059,7 +1063,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 {
                     curDcl->setAliasDeclare(caller->fg.builder->getStackCallRet(), curDcl->getAliasOffset());
                 }
-                caller->Declares.push_back(curDcl);
+                if (!curDcl->isPreDefinedVar())
+                {
+                    caller->Declares.push_back(curDcl);
+                }
             }
             // We don't need calleeLabel (first instruction) anymore after inlining
             calleeInsts.pop_front();
