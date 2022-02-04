@@ -405,6 +405,24 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(sqrt, double, cm::math::square_root)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM_FAST(native_sqrt, float,
                                                 cm::math::square_root)
 
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM_FAST(native_log2, float,
+                                                cm::math::log_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM_FAST(native_exp2, float,
+                                                cm::math::exp_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM_FAST(native_sin, float,
+                                                cm::math::sine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM_FAST(native_cos, float,
+                                                cm::math::cosine)
+
+#define SPIRV_MATH_BUILTIN_DECL_2ARG_SCALAR_CUSTOM_FAST(FUNC_NAME, TYPE,       \
+                                                        CUSTOM_NAME)           \
+  CM_NODEBUG CM_INLINE TYPE __spirv_ocl_##FUNC_NAME(TYPE x0, TYPE x1) {        \
+    return CUSTOM_NAME(x0, x1, cm::tag::fast);                                 \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_2ARG_SCALAR_CUSTOM_FAST(native_powr, float,
+                                                cm::math::power_absolute_base)
+
 #define SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CAST(FUNC_NAME, TYPE, CAST_TYPE,   \
                                                  CUSTOM_NAME)                  \
   CM_NODEBUG CM_INLINE TYPE __spirv_ocl_##FUNC_NAME(TYPE x) {                  \
@@ -711,11 +729,77 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, float, 8,
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sqrt, float, 16,
                                                 cm::math::square_root)
 
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_log2, float, 2,
+                                                cm::math::log_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_log2, float, 3,
+                                                cm::math::log_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_log2, float, 4,
+                                                cm::math::log_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_log2, float, 8,
+                                                cm::math::log_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_log2, float, 16,
+                                                cm::math::log_base_2)
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_exp2, float, 2,
+                                                cm::math::exp_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_exp2, float, 3,
+                                                cm::math::exp_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_exp2, float, 4,
+                                                cm::math::exp_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_exp2, float, 8,
+                                                cm::math::exp_base_2)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_exp2, float, 16,
+                                                cm::math::exp_base_2)
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sin, float, 2,
+                                                cm::math::sine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sin, float, 3,
+                                                cm::math::sine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sin, float, 4,
+                                                cm::math::sine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sin, float, 8,
+                                                cm::math::sine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_sin, float, 16,
+                                                cm::math::sine)
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_cos, float, 2,
+                                                cm::math::cosine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_cos, float, 3,
+                                                cm::math::cosine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_cos, float, 4,
+                                                cm::math::cosine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_cos, float, 8,
+                                                cm::math::cosine)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM_FAST(native_cos, float, 16,
+                                                cm::math::cosine)
+
+#define SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM_FAST(                       \
+    FUNC_NAME, ELEMENT_TYPE, N, CUSTOM_NAME)                                   \
+  CM_NODEBUG CM_INLINE cl_vector<ELEMENT_TYPE, N> __spirv_ocl_##FUNC_NAME(     \
+      cl_vector<ELEMENT_TYPE, N> x0, cl_vector<ELEMENT_TYPE, N> x1) {          \
+    vector<ELEMENT_TYPE, N> x0_vec = x0;                                       \
+    vector<ELEMENT_TYPE, N> x1_vec = x1;                                       \
+    return static_cast<vector<ELEMENT_TYPE, N>>(                               \
+               CUSTOM_NAME(x0_vec, x1_vec, cm::tag::fast))                     \
+        .cl_vector();                                                          \
+  }
+
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM_FAST(native_powr, float, 2,
+                                                cm::math::power_absolute_base)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM_FAST(native_powr, float, 3,
+                                                cm::math::power_absolute_base)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM_FAST(native_powr, float, 4,
+                                                cm::math::power_absolute_base)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM_FAST(native_powr, float, 8,
+                                                cm::math::power_absolute_base)
+SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM_FAST(native_powr, float, 16,
+                                                cm::math::power_absolute_base)
+
 #define SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CAST(FUNC_NAME, TYPE, CAST_TYPE,   \
                                                  N, CUSTOM_NAME)               \
   CM_NODEBUG CM_INLINE cl_vector<CAST_TYPE, N> __spirv_ocl_##FUNC_NAME(        \
       cl_vector<TYPE, N> x) {                                                  \
-    vector<CAST_TYPE, N> x_vec{x};                                                \
+    vector<CAST_TYPE, N> x_vec{x};                                             \
     return static_cast<vector<CAST_TYPE, N>>(CUSTOM_NAME(x_vec)).cl_vector();  \
   }
 

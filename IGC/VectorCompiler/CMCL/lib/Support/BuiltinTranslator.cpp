@@ -335,6 +335,73 @@ Value &createMainInst<BuiltinID::Sqrt>(const std::vector<Value *> &Operands,
   return *InstSqrt;
 }
 
+template <>
+Value &createMainInst<BuiltinID::Log2>(const std::vector<Value *> &Operands,
+                                       Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == Log2Operand::Size &&
+         "builtin operands should be trasformed into LLVM log2 "
+         "intrinsic operands without changes");
+  auto *InstLog2 = cast<Instruction>(&createLLVMIntrinsic<BuiltinID::Log2>(
+      {Operands[Log2Operand::Source]}, RetTy, IRB));
+  if (cast<ConstantInt>(Operands[Log2Operand::IsFast])->getSExtValue())
+    InstLog2->setFast(true);
+  return *InstLog2;
+}
+
+template <>
+Value &createMainInst<BuiltinID::Exp2>(const std::vector<Value *> &Operands,
+                                       Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == Exp2Operand::Size &&
+         "builtin operands should be trasformed into LLVM exp2 "
+         "intrinsic operands without changes");
+  auto *InstExp2 = cast<Instruction>(&createLLVMIntrinsic<BuiltinID::Exp2>(
+      {Operands[Exp2Operand::Source]}, RetTy, IRB));
+  if (cast<ConstantInt>(Operands[Exp2Operand::IsFast])->getSExtValue())
+    InstExp2->setFast(true);
+  return *InstExp2;
+}
+
+template <>
+Value &createMainInst<BuiltinID::Powr>(const std::vector<Value *> &Operands,
+                                       Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == PowrOperand::Size &&
+         "builtin operands should be trasformed into LLVM pow "
+         "intrinsic operands without changes");
+  std::vector<Value*> Args{ Operands[PowrOperand::Base],
+                            Operands[PowrOperand::Exponent] };
+  auto *InstPow = cast<Instruction>(&createLLVMIntrinsic<BuiltinID::Powr>(
+      Args, RetTy, IRB));
+  if (cast<ConstantInt>(Operands[PowrOperand::IsFast])->getSExtValue())
+    InstPow->setFast(true);
+  return *InstPow;
+}
+
+template <>
+Value &createMainInst<BuiltinID::Sin>(const std::vector<Value *> &Operands,
+                                       Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == SinOperand::Size &&
+         "builtin operands should be trasformed into LLVM sin "
+         "intrinsic operands without changes");
+  auto *InstSin = cast<Instruction>(&createLLVMIntrinsic<BuiltinID::Sin>(
+      {Operands[SinOperand::Source]}, RetTy, IRB));
+  if (cast<ConstantInt>(Operands[SinOperand::IsFast])->getSExtValue())
+    InstSin->setFast(true);
+  return *InstSin;
+}
+
+template <>
+Value &createMainInst<BuiltinID::Cos>(const std::vector<Value *> &Operands,
+                                       Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == CosOperand::Size &&
+         "builtin operands should be trasformed into LLVM cos "
+         "intrinsic operands without changes");
+  auto *InstCos = cast<Instruction>(&createLLVMIntrinsic<BuiltinID::Cos>(
+      {Operands[CosOperand::Source]}, RetTy, IRB));
+  if (cast<ConstantInt>(Operands[CosOperand::IsFast])->getSExtValue())
+    InstCos->setFast(true);
+  return *InstCos;
+}
+
 using CMCLSemantics = cmcl::atomic::MemorySemantics::Enum;
 using CMCLMemoryScope = cmcl::atomic::MemoryScope::Enum;
 using CMCLOperation = cmcl::atomic::Operation::Enum;

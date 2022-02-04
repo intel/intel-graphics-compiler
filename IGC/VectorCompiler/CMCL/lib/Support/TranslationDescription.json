@@ -352,6 +352,83 @@
         ]
       }
     },
+    "Log2": {
+      "Name": "log2",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "IsFast", "Kind": "Constant"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "log2",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["IsFast"]}
+        ]
+      }
+    },
+    "Exp2": {
+      "Name": "exp2",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "IsFast", "Kind": "Constant"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "exp2",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["IsFast"]}
+        ]
+      }
+    },
+    "Powr": {
+      "Name": "powr",
+      "Operands": [
+        {"Name": "Base", "Kind": "Input"},
+        {"Name": "Exponent", "Kind": "Input"},
+        {"Name": "IsFast", "Kind": "Constant"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "pow",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Base"]},
+          {"GetBuiltinOperand": ["Exponent"]},
+          {"GetBuiltinOperand": ["IsFast"]}
+        ]
+      }
+    },
+    "Sin": {
+      "Name": "sin",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "IsFast", "Kind": "Constant"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "sin",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["IsFast"]}
+        ]
+      }
+    },
+    "Cos": {
+      "Name": "cos",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"},
+        {"Name": "IsFast", "Kind": "Constant"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "cos",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]},
+          {"GetBuiltinOperand": ["IsFast"]}
+        ]
+      }
+    },
     "AtomicRMW": {
         "Name": "atomicrmw",
         "Operands": [

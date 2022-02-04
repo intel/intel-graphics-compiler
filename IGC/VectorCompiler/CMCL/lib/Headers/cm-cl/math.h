@@ -272,6 +272,87 @@ template <typename T> T maximum(T src0, T src1) {
   return detail::max_float(src0, src1);
 }
 
+/*====================== log_base_2 =====================*/
+
+template <typename T> T log_base_2(T src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "log2 expects floating point type");
+  return detail::log2</* is fast */ true>(src);
+}
+
+template <typename T, int width>
+vector<T, width> log_base_2(vector<T, width> src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "log2 expects floating point type");
+  return detail::log2</* is fast */ true>(src.cl_vector());
+}
+
+/*====================== exp_base_2 =====================*/
+
+template <typename T> T exp_base_2(T src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "exp2 expects floating point type");
+  return detail::exp2</* is fast */ true>(src);
+}
+
+template <typename T, int width>
+vector<T, width> exp_base_2(vector<T, width> src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "exp2 expects floating point type");
+  return detail::exp2</* is fast */ true>(src.cl_vector());
+}
+
+/*======================= power =========================*/
+
+// when fast power instruction is implemented on GPU using
+// native log2 and exp2, we take the absolute value of the base.
+template <typename T>
+T power_absolute_base(T base, T exponent, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "power expects floating point type");
+  return detail::powr</* is fast */ true>(base, exponent);
+}
+
+template <typename T, int width>
+vector<T, width> power_absolute_base(vector<T, width> base,
+                                     vector<T, width> exponent,
+                                     cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "power expects floating point type");
+  return detail::powr</* is fast */ true>(base.cl_vector(),
+                                          exponent.cl_vector());
+}
+
+/*======================= sine ==========================*/
+
+template <typename T> T sine(T src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "sine expects floating point type");
+  return detail::sin</* is fast */ true>(src);
+}
+
+template <typename T, int width>
+vector<T, width> sine(vector<T, width> src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "sine expects floating point type");
+  return detail::sin</* is fast */ true>(src.cl_vector());
+}
+
+/*======================= cosine ========================*/
+
+template <typename T> T cosine(T src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "cosine expects floating point type");
+  return detail::cos</* is fast */ true>(src);
+}
+
+template <typename T, int width>
+vector<T, width> cosine(vector<T, width> src, cm::tag::fast_t) {
+  static_assert(cl::is_floating_point<T>::value,
+                "cosine expects floating point type");
+  return detail::cos</* is fast */ true>(src.cl_vector());
+}
+
 /*==========================================================*/
 
 } // namespace math
