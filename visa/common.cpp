@@ -174,9 +174,9 @@ unsigned char getGRFSize()
 // 14 PVC
 // 15 PVC_XT
 // Note that encoding is not linearized.
-int getGenxPlatformEncoding()
+int getGenxPlatformEncoding(TARGET_PLATFORM platform)
 {
-    if (const auto *pi = LookupPlatformInfo(getGenxPlatform())) {
+    if (const auto *pi = LookupPlatformInfo(platform)) {
         return pi->encoding;
     } else {
         assert(false && "invalid platform");

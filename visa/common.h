@@ -231,7 +231,7 @@ PlatformGen getPlatformGeneration(TARGET_PLATFORM platform);
 
 // returns the vISA encoding bits for encoding
 // NOTE: encoding values are not necessarily in order
-int getGenxPlatformEncoding();
+int getGenxPlatformEncoding(TARGET_PLATFORM platform);
 
 // Error types
 #define ERROR_UNKNOWN               "ERROR: Unknown fatal internal error"
