@@ -1454,19 +1454,22 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         std::list<std::list<G4_INST*>::iterator> sgInvokeList;
         CollectCallSites(m_kernelsAndFunctions, callSites, sgInvokeList);
 
-        assert(callSites.begin()->first == mainFunc);
-        CheckHazardFeatures(sgInvokeList, callSites);
+        if (sgInvokeList.size())
+        {
+            assert(callSites.begin()->first == mainFunc);
+            CheckHazardFeatures(sgInvokeList, callSites);
 
-        ResetHasStackCall(sgInvokeList, callSites);
+            ResetHasStackCall(sgInvokeList, callSites);
 
-        RemoveOptimizingFunction(m_kernelsAndFunctions, sgInvokeList);
+            RemoveOptimizingFunction(m_kernelsAndFunctions, sgInvokeList);
 
-        std::unordered_map<G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>> callee2Callers;
-        ProcessSgInvokeList(sgInvokeList, callee2Callers);
+            std::unordered_map<G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>> callee2Callers;
+            ProcessSgInvokeList(sgInvokeList, callee2Callers);
 
-        // Copy callees' context to callers and convert to subroutine calls
-        LinkTimeOptimization(callee2Callers,
-                m_options.getuInt32Option(vISA_Linker));
+            // Copy callees' context to callers and convert to subroutine calls
+            LinkTimeOptimization(callee2Callers,
+                    m_options.getuInt32Option(vISA_Linker));
+        }
     }
 
 
