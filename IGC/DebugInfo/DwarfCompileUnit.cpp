@@ -25,6 +25,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/Support/Debug.h"
 #if LLVM_VERSION_MAJOR >= 11
 #include "llvm/CodeGen/DIE.h"
 #endif
@@ -1702,6 +1703,30 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, const DbgVariable& DV,
     }
 }
 
+// addSimdLaneRegionBase - add a sequence of attributes to calculate location of region base address
+// variable for vc-backend
+void CompileUnit::addSimdLaneRegionBase(IGC::DIEBlock* Block, const DbgVariable& DV,
+                                        const VISAVariableLocation& Loc,
+                                        const DbgDecoder::LiveIntervalsVISA* lr)
+{
+    auto OffsetsCount = Loc.GetRegionOffsetsCount();
+    IGC_ASSERT(OffsetsCount);
+    // Calculate size of register piece
+    auto PieceSizeInBits = DV.getRegisterValueSizeInBits(DD) / OffsetsCount;
+    if (DD->getEmitterSettings().EnableDebugInfoValidation)
+        DD->getStreamEmitter().verifyRegisterLocationExpr(DV, *DD);
+    LLVM_DEBUG(dbgs() << "  addSimdLaneRegionBase(PieceSizeInBits: " << PieceSizeInBits << ")\n");
+    // TODO Support special logic for "sequential" regions
+    for (size_t i = 0; i < OffsetsCount; ++i) {
+        const auto Offset = Loc.GetRegionOffset(i);
+        IGC_ASSERT(Offset < Loc.GetVISAModule()->getGRFSizeInBits());
+        // Generate piece for each element of address:
+        // DW_OP_reg N; DW_OP_bit_piece: size: Size offset: Offset ;
+        addRegisterLoc(Block, lr->getGRF().regNum, 0, DV.getDbgInst());
+        addBitPiece(Block, PieceSizeInBits, Offset);
+    }
+}
+
 /// getParentContextString - Walks the metadata parent chain in a language
 /// specific manner (using the compile unit language) and returns
 /// it as a string. This is done at the metadata level because DIEs may
@@ -3079,12 +3104,17 @@ bool CompileUnit::buildValidVar(const DbgVariable& var, IGC::DIEBlock* Block,
 
             if (loc.IsVectorized() == false)
             {
-                unsigned int subReg = lrToUse.getGRF().subRegNum;
-                addRegisterLoc(Block, regNum, 0, var.getDbgInst());
-                // Emit GT-relative location expression
-                isSLM = addGTRelativeLocation(Block, var, loc);
-                if (!isSLM && loc.IsRegister())
-                  addSimdLaneScalar(Block, var, loc, &lrToUse, subReg);
+                if (loc.isRegionBasedAddress()) {
+                    // VC-backend specific addressing model
+                    addSimdLaneRegionBase(Block, var, loc, &lrToUse);
+                } else {
+                    unsigned int subReg = lrToUse.getGRF().subRegNum;
+                    addRegisterLoc(Block, regNum, 0, var.getDbgInst());
+                    // Emit GT-relative location expression
+                    isSLM = addGTRelativeLocation(Block, var, loc);
+                    if (!isSLM && loc.IsRegister())
+                        addSimdLaneScalar(Block, var, loc, &lrToUse, subReg);
+                }
                 var.emitExpression(this, Block);
                 return false;
             }

@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 
 #include "visa/include/visaBuilder_interface.h"
 
+#include "DebugInfo/DwarfCompileUnit.hpp"
 #include "DebugInfo/StreamEmitter.hpp"
 #include "DebugInfo/VISAIDebugEmitter.hpp"
 #include "DebugInfo/VISAModule.hpp"
@@ -835,11 +836,12 @@ class GenXFunction final : public IGC::VISAModule {
 
 public:
   GenXFunction(const GenXSubtarget &STIn, const GenXVisaRegAlloc &RAIn,
-               const Function &F, CompiledVisaWrapper &&CW,
-               const genx::di::VisaMapping &V2I,
+               const GenXBaling &BAn, const Function &F,
+               CompiledVisaWrapper &&CW, const genx::di::VisaMapping &V2I,
                const ModuleToVisaTransformInfo &MVTI, bool IsPrimary)
-      : F{F}, ST{STIn}, VisaMapping{V2I}, CompiledVisa{std::move(CW)}, RA{RAIn},
-        MVTI(MVTI), VISAModule(const_cast<Function *>(&F), IsPrimary) {
+      : F{F}, ST{STIn}, VisaMapping{V2I},
+        CompiledVisa{std::move(CW)}, RA{RAIn}, BA{BAn}, MVTI(MVTI),
+        VISAModule(const_cast<Function *>(&F), IsPrimary) {
 
     if (MVTI.isSubroutine(&F))
        SetType(ObjectType::SUBROUTINE);
@@ -913,33 +915,97 @@ public:
 
   const genx::di::VisaMapping &getVisaMapping() const { return VisaMapping; }
 
+  static constexpr unsigned RdIndex =
+      GenXIntrinsic::GenXRegion::RdIndexOperandNum;
+  static constexpr unsigned RdVstride =
+      GenXIntrinsic::GenXRegion::RdVStrideOperandNum;
+  static constexpr unsigned RdWidth =
+      GenXIntrinsic::GenXRegion::RdWidthOperandNum;
+  static constexpr unsigned RdStride =
+      GenXIntrinsic::GenXRegion::RdStrideOperandNum;
+  static constexpr unsigned RdNumOp =
+      GenXIntrinsic::GenXRegion::OldValueOperandNum;
+
+  static const Value *
+  CalculateBaledLocation(const CallInst *UseInst,
+                         llvm::SmallVector<unsigned, 0> *Offsets,
+                         const GenXBaling &BA, const DataLayout &DL) {
+    IGC_ASSERT(UseInst);
+    IGC_ASSERT(Offsets);
+    if (!GenXIntrinsic::isRdRegion(UseInst))
+      return UseInst;
+    auto BI = BA.getBaleInfo(UseInst);
+
+    if (BI.Type != genx::BaleInfo::RDREGION ||
+        !dyn_cast<ConstantInt>(UseInst->getOperand(RdIndex)) ||
+        BI.isOperandBaled(RdNumOp) || !BA.isBaled(UseInst))
+      return UseInst;
+
+    auto getSignConstant = [](Value *operand) {
+      auto *CI = cast<ConstantInt>(operand);
+      return CI->getSExtValue();
+    };
+
+    // In this place comes rdregion, whose operand is not baled - here we
+    // build location for its operand
+    LLVM_DEBUG(dbgs() << "   Found Bale candidate for propagation:\n";
+               UseInst->dump(););
+    auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(UseInst->getType());
+    // TODO: Investigate scalar
+    if (!VTy)
+      return UseInst;
+    auto Vstride = getSignConstant(UseInst->getOperand(RdVstride));
+    auto Width = getSignConstant(UseInst->getOperand(RdWidth));
+    auto Stride = getSignConstant(UseInst->getOperand(RdStride));
+    auto StartIdx = getSignConstant(UseInst->getOperand(RdIndex));
+    auto ElSize = vc::getTypeSize(VTy->getElementType(), &DL).inBits();
+    IGC_ASSERT(Width);
+    unsigned NumElements = VTy->getNumElements() / Width;
+
+    for (unsigned i = 0; i < NumElements; ++i) {
+      for (unsigned j = 0; j < Width; ++j) {
+        auto CurrOffset = StartIdx + i * Vstride * ElSize + j * Stride * ElSize;
+        // Check type overflow
+        IGC_ASSERT(CurrOffset <= std::numeric_limits<unsigned>::max());
+        Offsets->push_back(CurrOffset);
+      }
+    }
+    // Replace value to source of rdregion
+    return UseInst->getOperand(RdNumOp);
+  }
+
   IGC::VISAVariableLocation
   GetVariableLocation(const Instruction *DbgInst) const override {
-
     using Location = IGC::VISAVariableLocation;
     auto EmptyLoc = [this](StringRef Reason) {
       LLVM_DEBUG(dbgs() << "  Empty Location Returned (" << Reason
                         << ")\n <<<\n");
       return Location(this);
     };
-    auto ConstantLoc = [this](const Constant *C) {
-      LLVM_DEBUG(dbgs() << "  ConstantLoc\n <<<\n");
-      return Location(C, this);
-    };
 
     IGC_ASSERT(isa<DbgInfoIntrinsic>(DbgInst));
 
     LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst << "\n");
-    const Value *DbgValue = nullptr;
     const DIVariable *VarDescr = nullptr;
     if (const auto *pDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {
-      DbgValue = pDbgAddrInst->getAddress();
       VarDescr = pDbgAddrInst->getVariable();
     } else if (const auto *pDbgValInst = dyn_cast<DbgValueInst>(DbgInst)) {
-      DbgValue = pDbgValInst->getValue();
       VarDescr = pDbgValInst->getVariable();
     } else {
       return EmptyLoc("unsupported Debug Intrinsic");
+    }
+    const Value *DbgValue =
+        IGCLLVM::getVariableLocation(cast<DbgVariableIntrinsic>(DbgInst));
+
+    llvm::SmallVector<unsigned, 0> Offsets;
+    if (auto *UseInst = dyn_cast_or_null<CallInst>(DbgValue)) {
+      DbgValue = CalculateBaledLocation(UseInst, &Offsets, BA,
+                                        F.getParent()->getDataLayout());
+      if (!Offsets.empty() &&
+          !std::any_of(Offsets.begin(), Offsets.end(),
+                       [&](auto off) { return off < getGRFSizeInBits(); })) {
+        return EmptyLoc("Unsupported cross-GRF offset\n");
+      }
     }
 
     IGC_ASSERT(VarDescr);
@@ -957,7 +1023,8 @@ public:
       return EmptyLoc("UndefValue");
     }
     if (auto *ConstVal = dyn_cast<Constant>(DbgValue)) {
-      return ConstantLoc(ConstVal);
+      LLVM_DEBUG(dbgs() << "  ConstantLoc\n <<<\n");
+      return Location(ConstVal, this);
     }
 
     auto *Reg = getRegisterForValue(DbgValue);
@@ -965,15 +1032,7 @@ public:
       return EmptyLoc("could not find virtual register");
     }
 
-    const bool IsRegister = true;
-    const bool IsMemory = false;
-    const bool IsGlobalASI = false;
-    auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(DbgValue->getType());
-    unsigned NumElements = VTy ? VTy->getNumElements() : 1;
-    const bool IsVectorized = false;
-
-    return Location(Reg->Num, IsRegister, IsMemory, NumElements, IsVectorized,
-                    IsGlobalASI, this);
+    return Location(Reg->Num, std::move(Offsets), this);
   }
 
   void UpdateVisaId() override {
@@ -1063,6 +1122,7 @@ private:
   const genx::di::VisaMapping &VisaMapping;
   CompiledVisaWrapper CompiledVisa;
   const GenXVisaRegAlloc &RA;
+  const GenXBaling &BA;
   const ModuleToVisaTransformInfo &MVTI;
 };
 
@@ -1146,7 +1206,8 @@ GenXObjectHolder buildGenXFunctionObject(const ModuleToVisaTransformInfo &MVTI,
                                          const GenObjectWrapper &GOW,
                                          const ProgramInfo::FunctionInfo &FI,
                                          const GenXSubtarget &ST,
-                                         const GenXVisaRegAlloc &RA) {
+                                         const GenXVisaRegAlloc &RA,
+                                         const GenXBaling &BA) {
   StringRef CompiledObjectName = FI.F.getName();
   if (MVTI.isSubroutine(&FI.F))
     CompiledObjectName = MVTI.getSubroutineOwner(&FI.F)->getName();
@@ -1157,22 +1218,26 @@ GenXObjectHolder buildGenXFunctionObject(const ModuleToVisaTransformInfo &MVTI,
 
   bool IsPrimaryFunction = &GOW.getEntryPoint() == &FI.F;
   return std::make_unique<GenXFunction>(
-      ST, RA, FI.F, std::move(CW), FI.VisaMapping, MVTI, IsPrimaryFunction);
+      ST, RA, BA, FI.F, std::move(CW), FI.VisaMapping, MVTI, IsPrimaryFunction);
 }
 
 using GenXObjectHolderList = std::vector<GenXObjectHolder>;
 GenXObjectHolderList translateProgramInfoToGenXFunctionObjects(
     const GenObjectWrapper &GOW, const ProgramInfo &PI, const GenXSubtarget &ST,
-    const std::vector<const GenXVisaRegAlloc *> &RAs) {
+    const std::vector<const GenXVisaRegAlloc *> &RAs,
+    const std::vector<const GenXBaling *> &BAs) {
   const auto &MVTI = PI.MVTI;
   GenXObjectHolderList GenXFunctionHolders;
   IGC_ASSERT(PI.FIs.size() == RAs.size());
-  std::transform(
-      PI.FIs.begin(), PI.FIs.end(), RAs.begin(),
-      std::back_inserter(GenXFunctionHolders),
-      [&ST, &MVTI, &GOW](const auto &FI, const GenXVisaRegAlloc *const RA) {
-        return buildGenXFunctionObject(MVTI, GOW, FI, ST, *RA);
-      });
+  IGC_ASSERT(BAs.size() == RAs.size());
+  auto Zippy = llvm::zip(RAs, BAs);
+  std::transform(PI.FIs.begin(), PI.FIs.end(), Zippy.begin(),
+                 std::back_inserter(GenXFunctionHolders),
+                 [&ST, &MVTI, &GOW](const auto &FI, const auto &ZIP) {
+                   const GenXVisaRegAlloc *RA = std::get<0>(ZIP);
+                   const GenXBaling *BA = std::get<1>(ZIP);
+                   return buildGenXFunctionObject(MVTI, GOW, FI, ST, *RA, *BA);
+                 });
   return GenXFunctionHolders;
 }
 
@@ -1365,15 +1430,20 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
       .getGenXSubtarget();
   auto *FGA = &getAnalysis<FunctionGroupAnalysis>();
   std::vector<const GenXVisaRegAlloc *> VisaRegAllocs;
+  std::vector<const GenXBaling *> BalingList;
   for (const auto &FP : PI.FIs) {
     FunctionGroup *currentFG = FGA->getAnyGroup(&FP.F);
     VisaRegAllocs.push_back(
         &(getAnalysis<GenXVisaRegAllocWrapper>().getFGPassImpl(currentFG)));
+    GenXBaling *Baling =
+        &(getAnalysis<GenXGroupBalingWrapper>().getFGPassImpl(currentFG));
+    BalingList.push_back(Baling);
   }
 
-  GenXFunctionPtrList GFPointers = initializeDebugEmitter(
-      *Emitter, DebugOpts, PI,
-      translateProgramInfoToGenXFunctionObjects(GOW, PI, ST, VisaRegAllocs));
+  GenXFunctionPtrList GFPointers =
+      initializeDebugEmitter(*Emitter, DebugOpts, PI,
+                             translateProgramInfoToGenXFunctionObjects(
+                                 GOW, PI, ST, VisaRegAllocs, BalingList));
 
   auto &KF = GOW.getEntryPoint();
   IGC_ASSERT(ElfOutputs.count(&KF) == 0);
@@ -1421,6 +1491,7 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetPassConfig>();
   AU.addRequired<GenXVisaRegAllocWrapper>();
   AU.addRequired<CallGraphWrapperPass>();
+  AU.addRequired<GenXGroupBaling>();
   AU.setPreservesAll();
 }
 

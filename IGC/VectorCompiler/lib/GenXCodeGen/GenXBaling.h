@@ -410,9 +410,9 @@ public:
   void setBaleInfo(const Instruction *Inst, genx::BaleInfo BI);
   // isBaled : test whether all uses of an instruction would be baled in to
   // users
-  bool isBaled(Instruction *Inst) const { return getBaleParent(Inst); }
+  bool isBaled(const Instruction *Inst) const { return getBaleParent(Inst); }
   // getBaleParent : return the instruction baled into, 0 if none
-  Instruction *getBaleParent(Instruction *Inst) const;
+  Instruction *getBaleParent(const Instruction *Inst) const;
   // unbale : unbale an instruction from its bale parent
   void unbale(Instruction *Inst);
   // getBaleHead : return the head of the bale containing this instruction

@@ -308,6 +308,12 @@ namespace IGC
                                     const DbgDecoder::LiveIntervalsVISA& lr,
                                     uint64_t varSizeInBits, uint64_t offsetInBits);
 
+        // addSimdLaneRegionBase - add a sequence of attributes to calculate location of region base
+        // address variable for vc-backend
+        void addSimdLaneRegionBase(IGC::DIEBlock* Block, const DbgVariable& DV,
+                                   const VISAVariableLocation& Loc,
+                                   const DbgDecoder::LiveIntervalsVISA* lr);
+
         // Decode line number, file name and location from a string, where a line no. and file name
         // (including directory) are separated by '-' character: lineNumber-fileNameIncludingDirectory
         // There is a workaround for DIModule creation in earlier LLVM versions, where a line and a file

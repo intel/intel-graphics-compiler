@@ -124,6 +124,21 @@ namespace IGC
             m_pVISAModule = m;
         }
 
+        /// @brief Constructor. Creates register location with possible region-based addressing.
+        ///        VC-backend specific constructor.
+        /// @param locationValue value indicates the address/register of the location.
+        /// @param offsets list of offsets for each piece of location
+        /// @param m points to VISAModule corresponding to this location
+        VISAVariableLocation(unsigned int locationValue, llvm::SmallVector<unsigned, 0> &&offsets,
+             const VISAModule* m) : m_offsets(std::move(offsets))
+        {
+            m_hasLocation = true;
+            m_isRegister = true;
+            m_locationReg = locationValue;
+            m_vectorNumElements = offsets.size();
+            m_pVISAModule = m;
+        }
+
         /// @brief Copy Constructor.
         /// @param copied value.
         VISAVariableLocation(const VISAVariableLocation&) = default;
@@ -163,6 +178,11 @@ namespace IGC
         bool HasLocationSecondReg() const { return m_locationSecondReg != ~0; }
         unsigned int GetSecondReg() const { IGC_ASSERT(HasLocationSecondReg()); return m_locationSecondReg; }
 
+        // Regon-base addressing data (vc-backend specific)
+        bool isRegionBasedAddress() const { return m_offsets.size() > 0; }
+        unsigned GetRegionOffset(size_t i) const { IGC_ASSERT(m_offsets.size() > i); return m_offsets[i];}
+        size_t GetRegionOffsetsCount() const { return m_offsets.size(); }
+
         void dump() const;
         void print (llvm::raw_ostream &OS) const;
 
@@ -185,6 +205,8 @@ namespace IGC
         unsigned int m_locationOffset = ~0;
         unsigned int m_vectorNumElements = ~0;
         const VISAModule* m_pVISAModule = nullptr;
+        // Regon-base addressing info (vc-backend specific)
+        llvm::SmallVector<unsigned, 0> m_offsets;
     };
 
     typedef uint64_t GfxAddress;

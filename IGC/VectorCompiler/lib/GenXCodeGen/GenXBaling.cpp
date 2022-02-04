@@ -1990,7 +1990,7 @@ void GenXBaling::print(raw_ostream &OS) const {
 /***********************************************************************
  * getBaleParent : return the instruction baled into, 0 if none
  */
-Instruction *GenXBaling::getBaleParent(Instruction *Inst) const {
+Instruction *GenXBaling::getBaleParent(const Instruction *Inst) const {
   // We can rely on the fact that a baled in instruction always has exactly
   // one use. The exception is llvm.genx.simdcf.goto/join, which is baled in
   // to the extractvalue that extracts the !any(EM) value. Rather than check
