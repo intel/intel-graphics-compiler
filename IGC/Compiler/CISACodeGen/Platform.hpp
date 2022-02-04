@@ -1016,6 +1016,13 @@ bool useScratchSpaceForOCL() const
 }
 
 
+// Check if byte ALU operations are well supported. If not, promote byte to i16/i32.
+bool supportByteALUOperation() const
+{
+    return m_platformInfo.eProductFamily != IGFX_PVC;
+}
+
+
 bool has64BMediaBlockRW() const
 {
     return IGC_IS_FLAG_ENABLED(Enable64BMediaBlockRW) && isProductChildOf(IGFX_XE_HP_SDV);
@@ -1079,11 +1086,6 @@ bool supportMixMode() const {
             m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
 }
 bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
-
-bool supportByteALUOperation() const
-{
-    return true;
-}
 
 bool NeedsHDCFenceBeforeEOTInPixelShader() const
 {
