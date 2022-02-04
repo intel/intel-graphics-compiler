@@ -10248,7 +10248,7 @@ int GlobalRA::coloringRegAlloc()
     if (!isReRAPass())
     {
         //Global linear scan RA
-        if (builder.getOption(vISA_LinearScan))
+        if (builder.getOption(vISA_LinearScan) && builder.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D)
         {
             copyMissingAlignment();
             BankConflictPass bc(*this, false);

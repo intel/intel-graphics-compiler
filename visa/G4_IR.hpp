@@ -3639,18 +3639,24 @@ class G4_AddrExp final : public G4_Operand
 {
     G4_RegVar* const m_addressedReg;
     int m_offset;  //current implementation: byte offset
+    G4_Declare* addrTakenSpillFillDcl; // dcl to use for address taken spill/fill temp
 
 public:
     G4_AddrExp(G4_RegVar *reg, int offset, G4_Type ty)
-      : G4_Operand(G4_Operand::addrExp, ty), m_addressedReg(reg),
+      : G4_Operand(G4_Operand::addrExp, ty), m_addressedReg(reg), addrTakenSpillFillDcl(nullptr),
         m_offset(offset) {}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
     const G4_RegVar* getRegVar() const { return m_addressedReg; }
-          G4_RegVar* getRegVar()       { return m_addressedReg; }
+          G4_RegVar* getRegVar() { return m_addressedReg; }
     int getOffset() const { return m_offset; }
     void setOffset(int tOffset) { m_offset = tOffset; }
+    G4_Declare* getAddrTakenSpillFill() { return addrTakenSpillFillDcl; }
+    void setAddrTakenSpillFill(G4_Declare* dcl)
+    {
+        addrTakenSpillFillDcl = dcl;
+    }
 
     int eval();
     bool isRegAllocPartaker() const { return m_addressedReg->isRegAllocPartaker(); }

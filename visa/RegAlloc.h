@@ -47,7 +47,13 @@ struct pointInfo {
     unsigned char off;
 };
 
+struct addrExpInfo {
+    vISA::G4_AddrExp* exp;
+    unsigned char off;
+};
+
 typedef std::vector<pointInfo> REGVAR_VECTOR;
+typedef std::vector<addrExpInfo> ADDREXP_VECTOR;
 typedef std::vector<vISA::G4_RegVar*> ORG_REGVAR_VECTOR;
 
 /*
@@ -69,6 +75,8 @@ private:
     const std::unique_ptr<REGVAR_VECTOR[]> indirectUses;
     // vector of points-to set for each address variable
     std::vector<REGVAR_VECTOR> pointsToSets;
+    // vector of address expression for each address variable
+    std::vector<ADDREXP_VECTOR> addrExpSets;
     // index of an address's points-to set in the pointsToSets vector
     std::vector<unsigned> addrPointsToSetIndex;
     // original regvar ptrs
@@ -84,7 +92,7 @@ private:
         // Number of basic blocks is assumed to be unchanged.
 
         pointsToSets.resize(newsize);
-
+        addrExpSets.resize(newsize);
         addrPointsToSetIndex.resize(newsize);
         for (unsigned i = numAddrs; i < newsize; i++)
         {
@@ -123,21 +131,30 @@ private:
         }
     }
 
-    void addToPointsToSet(const G4_RegVar* addr, G4_RegVar* var, unsigned char offset)
+    void addToPointsToSet(const G4_RegVar* addr, G4_AddrExp* opnd, unsigned char offset)
     {
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
             "expect address variable");
         MUST_BE_TRUE(addr->getId() < numAddrs, "addr id is not set");
         int addrPTIndex = addrPointsToSetIndex[addr->getId()];
         REGVAR_VECTOR& vec = pointsToSets[addrPTIndex];
-        pointInfo pi = { var, offset };
+        pointInfo pi = { opnd->getRegVar(), offset };
+
         auto it = std::find_if(vec.begin(), vec.end(),
             [&pi](const pointInfo& element) {return element.var == pi.var && element.off == pi.off; });
-
         if (it == vec.end())
         {
             vec.push_back(pi);
             DEBUG_VERBOSE("Addr " << addr->getId() << " <-- " << var->getDeclare()->getName() << "\n");
+        }
+
+        addrExpInfo pi1 = { opnd, offset };
+        ADDREXP_VECTOR& vec1 = addrExpSets[addrPTIndex];
+        auto it1 = std::find_if(vec1.begin(), vec1.end(),
+            [&pi1](addrExpInfo& element) {return element.exp == pi1.exp && element.off == pi1.off; });
+        if (it1 == vec1.end())
+        {
+            vec1.push_back(pi1);
         }
     }
 
@@ -150,10 +167,10 @@ private:
              addr2->getDeclare()->getRegFile() == G4_ADDRESS,
              "expect address variable");
          int addr2PTIndex = addrPointsToSetIndex[addr2->getId()];
-         REGVAR_VECTOR& vec = pointsToSets[addr2PTIndex];
+         ADDREXP_VECTOR& vec = addrExpSets[addr2PTIndex];
          for (int i = 0; i < (int)vec.size(); i++)
          {
-             addToPointsToSet(addr1, vec[i].var, vec[i].off);
+             addToPointsToSet(addr1, vec[i].exp, vec[i].off);
          }
          int addr1PTIndex = addrPointsToSetIndex[addr1->getId()];
          addrPointsToSetIndex[addr2->getId()] = addr1PTIndex;
@@ -212,6 +229,20 @@ public:
             return nullptr;
 
         const REGVAR_VECTOR* vec = &pointsToSets[addrPointsToSetIndex[id]];
+
+        return vec;
+    }
+
+    ADDREXP_VECTOR* getAllInPointsToAddrExps(G4_RegVar* addr)
+    {
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,
+            "expect address variable");
+        unsigned int id = getIndexOfRegVar(addr);
+
+        if (id == UINT_MAX)
+            return nullptr;
+
+        ADDREXP_VECTOR* vec = &addrExpSets[addrPointsToSetIndex[id]];
 
         return vec;
     }
@@ -327,6 +358,21 @@ public:
             if (cur.var->getId() == vartoremove->getId())
             {
                 vec.erase(it);
+                removed = true;
+                break;
+            }
+        }
+
+        ADDREXP_VECTOR& vec1 = addrExpSets[addrPointsToSetIndex[id]];
+        for (ADDREXP_VECTOR::iterator it = vec1.begin();
+            it != vec1.end();
+            it++)
+        {
+            addrExpInfo cur = (*it);
+
+            if (cur.exp->getRegVar()->getId() == vartoremove->getId())
+            {
+                vec1.erase(it);
                 removed = true;
                 break;
             }

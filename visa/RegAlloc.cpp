@@ -70,6 +70,7 @@ PointsToAnalysis::PointsToAnalysis(const DECLARE_LIST &declares, unsigned int nu
         }
 
         pointsToSets.resize(numAddrs);
+        addrExpSets.resize(numAddrs);
         addrPointsToSetIndex.resize(numAddrs);
         // initially each address variable has its own points-to set
         for (unsigned i = 0; i < numAddrs; i++)
@@ -146,8 +147,8 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
 
     // keep a list of address taken variables
     std::vector<G4_RegVar*> addrTakenDsts;
-    std::map<G4_RegVar*, std::vector<std::pair<G4_RegVar*, unsigned char>> > addrTakenMapping;
-    std::vector< std::pair<G4_RegVar*, unsigned char>> addrTakenVariables;
+    std::map<G4_RegVar*, std::vector<std::pair<G4_AddrExp*, unsigned char>> > addrTakenMapping;
+    std::vector< std::pair<G4_AddrExp*, unsigned char>> addrTakenVariables;
 
     for (G4_BB* bb : fg)
     {
@@ -168,9 +169,9 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                         {
                             offset = src->asAddrExp()->getOffset();
                         }
-                        addrTakenMapping[ptr->asRegVar()].push_back(std::make_pair(src->asAddrExp()->getRegVar(), offset));
+                        addrTakenMapping[ptr->asRegVar()].push_back(std::make_pair(src->asAddrExp(), offset));
                         addrTakenDsts.push_back(ptr->asRegVar());
-                        addrTakenVariables.push_back(std::make_pair(src->asAddrExp()->getRegVar(), offset));
+                        addrTakenVariables.push_back(std::make_pair(src->asAddrExp(), offset));
                     }
                 }
             }
@@ -219,7 +220,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                                     {
                                         offset = src->asAddrExp()->getOffset();
                                     }
-                                    addToPointsToSet(ptr->asRegVar(), addrTaken, offset);
+                                    addToPointsToSet(ptr->asRegVar(), src->asAddrExp(), offset);
                                 }
                             }
                             else
@@ -309,8 +310,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                             if (src->isAddrExp())
                             {
                                 // case 5:  add/mul A0 &GRF src1
-                                G4_RegVar* addrTaken = src->asAddrExp()->getRegVar();
-                                addToPointsToSet(ptr->asRegVar(), addrTaken, 0);
+                                addToPointsToSet(ptr->asRegVar(), src->asAddrExp(), 0);
                             }
                             else
                             {
@@ -2050,7 +2050,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             //
             else if (src->isAddrExp())
             {
-                const G4_RegVar* reg = static_cast<const G4_AddrExp*>(src)->getRegVar();
+                G4_RegVar* reg = static_cast<G4_AddrExp*>(src)->getRegVar();
                 if (reg->isRegAllocPartaker() && reg->isSpilled() == false)
                 {
                     unsigned srcId = reg->getId();

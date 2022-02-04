@@ -3673,21 +3673,60 @@ G4_Declare* getOrCreateSpillFillDcl(
     return temp;
 }
 
-G4_Declare* SpillManagerGRF::getOrCreateAddrSpillFillDcl(
-    G4_Declare* spilledAddrTakenDcl, G4_Kernel* kernel)
+G4_Declare* SpillManagerGRF::getOrCreateAddrSpillFillDcl(G4_RegVar* addrDcl, G4_Declare* spilledAddrTakenDcl, G4_Kernel* kernel)
 {
-    // If spilledAddrTakenDcl already has a spill/fill range created, return it.
-    // Else create new one and return it.
-#define ADDR_SPILL_FILL_NAME_SIZE 32
-    const char* dclName = kernel->fg.builder->getNameString(kernel->fg.mem, ADDR_SPILL_FILL_NAME_SIZE,
-        "ADDR_SP_FL_V%d_%d", spilledAddrTakenDcl->getDeclId(), getAddrSpillFillIndex(spilledAddrTakenDcl->getRegVar()));
+    auto pointsToSet = gra.pointsToAnalysis.getAllInPointsToAddrExps(addrDcl);
+    G4_Declare* temp = nullptr;
+    bool created = false;
 
-    // temp is created of sub-class G4_RegVarTmp so that is
-    // assigned infinite spill cost when coloring.
-    G4_Declare* temp = kernel->fg.builder->createDeclareNoLookup(dclName,
-        G4_GRF, spilledAddrTakenDcl->getNumElems(),
-        spilledAddrTakenDcl->getNumRows(), spilledAddrTakenDcl->getElemType(), DeclareType::Tmp, spilledAddrTakenDcl->getRegVar());
-    spilledAddrTakenDcl->setAddrTakenSpillFill(temp);
+    //Create a spill/fill declare for the AddrExps which are assigned to same address varaible and with same addressed varaible.
+    //Note that we are trying to capture senorious (A1, 1:&V1), (A2, 2::&V1), where "1:" and "2:" means different AddrExp. IGC is trying to use different address registers.
+    //Scenarios   (A1, 1:&V1), (A1, 2:&V1) may happen, by should be rare. In this case, only one declare will be created.
+    for (auto pt : *pointsToSet)
+    {
+        G4_AddrExp* addrExp = pt.exp;
+        G4_Declare* dcl = addrExp->getRegVar()->getDeclare();
+
+        //The variable V is spilled
+        if (dcl == spilledAddrTakenDcl)
+        {
+            G4_Declare *currentDcl = addrExp->getAddrTakenSpillFill();
+
+            //Either all are created, or none.
+            if (created)
+            {
+                //Either all addr expressoins are null, or all are not null.
+                assert(currentDcl == nullptr);
+            }
+
+            if (currentDcl != nullptr)
+            {
+                return currentDcl;
+            }
+
+            //Create the spill fill variable
+            if (!created)
+            {
+                // If spilledAddrTakenDcl already has a spill/fill range created, return it.
+                // Else create new one and return it.
+#define ADDR_SPILL_FILL_NAME_SIZE 32
+                const char* dclName = kernel->fg.builder->getNameString(kernel->fg.mem, ADDR_SPILL_FILL_NAME_SIZE,
+                    "ADDR_SP_FL_V%d_%d", spilledAddrTakenDcl->getDeclId(), getAddrSpillFillIndex(spilledAddrTakenDcl->getRegVar()));
+
+                // temp is created of sub-class G4_RegVarTmp so that is
+                // assigned infinite spill cost when coloring.
+                temp = kernel->fg.builder->createDeclareNoLookup(dclName,
+                    G4_GRF, spilledAddrTakenDcl->getNumElems(),
+                    spilledAddrTakenDcl->getNumRows(), spilledAddrTakenDcl->getElemType(), DeclareType::Tmp, spilledAddrTakenDcl->getRegVar());
+                addrExp->setAddrTakenSpillFill(temp);
+                created = true;
+            }
+            else
+            {
+                addrExp->setAddrTakenSpillFill(temp);
+            }
+        }
+    }
 
     return temp;
 }
@@ -3755,18 +3794,6 @@ unsigned int SpillManagerGRF::handleAddrTakenLSSpills(
         insertAddrTakenLSSpillFill(kernel, pointsToAnalysis);
         prunePointsToLS(kernel, pointsToAnalysis);
     }
-
-#ifdef _DEBUG
-    if (numAddrTakenSpills)
-    {
-        // Verify that each spilled address taken has a spill/fill registers assigned
-        for (LSLiveRange* lr : *spilledLSLRs_)
-        {
-            if (lr->getTopDcl()->getAddressed())
-                MUST_BE_TRUE(lr->getTopDcl()->getAddrTakenSpillFill() != NULL, "Spilled addr taken does not have assigned spill/fill GRF");
-        }
-    }
-#endif
 
     return numAddrTakenSpills;
 }
@@ -3991,8 +4018,8 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
                 lr->getTopDcl()->getRegVar()))
         {
             unsigned int numrows = lr->getTopDcl()->getNumRows();
-            G4_Declare* temp = getOrCreateSpillFillDcl(lr->getTopDcl(), kernel);
-
+            G4_Declare* temp = getOrCreateAddrSpillFillDcl(var, lr->getTopDcl(), kernel);
+            MUST_BE_TRUE(temp != nullptr, "Failed to get the fill variable for indirect GRF access");
             if (failSafeSpill_ &&
                 temp->getRegVar()->getPhyReg() == NULL)
             {
@@ -4327,14 +4354,14 @@ void SpillManagerGRF::prunePointsToLS(
             inst_it++)
         {
             G4_INST* curInst = (*inst_it);
-            std::stack<G4_Operand*> st;
+            std::stack<std::pair<G4_Operand*, int>> st;
 
             // Handle indirect destination
             G4_DstRegRegion* dst = curInst->getDst();
 
             if (dst && dst->getRegAccess() == IndirGRF)
             {
-                st.push(dst);
+                st.push(std::make_pair(dst, 0));
             }
 
             for (int i = 0; i < G4_MAX_SRCS; i++)
@@ -4343,19 +4370,39 @@ void SpillManagerGRF::prunePointsToLS(
 
                 if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() == IndirGRF)
                 {
-                    st.push(src);
+                    st.push(std::make_pair(src, i));
+                }
+
+                if (src && src->isAddrExp())
+                {
+                    st.push(std::make_pair(src, i));
                 }
             }
 
             while (st.size() > 0)
             {
-                G4_Operand* cur = st.top();
+                G4_Operand* cur = st.top().first;
+                int opnd_num = st.top().second;
                 st.pop();
 
                 // Check whether spill operand points to any spilled range
                 for (LSLiveRange* lr : *spilledLSLRs_)
                 {
                     G4_RegVar* var = nullptr;
+
+                    //Replace the variable in the address expression with fill variable
+                    if (cur->isAddrExp())
+                    {
+                        if (lr->getTopDcl()->getRegVar() == cur->asAddrExp()->getRegVar())
+                        {
+#ifdef _DEBUG
+                            MUST_BE_TRUE(cur->asAddrExp()->getAddrTakenSpillFill() != nullptr, "Spilled addr taken does not have assigned spill/fill GRF");
+#endif
+                            G4_AddrExp* addExp = builder_->createAddrExp(cur->asAddrExp()->getAddrTakenSpillFill()->getRegVar(), cur->asAddrExp()->getOffset(), cur->asAddrExp()->getType());
+                            curInst->setSrc(addExp, opnd_num);
+                        }
+                        continue;
+                    }
 
                     if (cur->isDstRegRegion() && cur->asDstRegRegion()->getBase()->asRegVar())
                         var = cur->asDstRegRegion()->getBase()->asRegVar();
