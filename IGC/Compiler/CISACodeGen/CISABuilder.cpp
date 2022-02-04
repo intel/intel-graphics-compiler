@@ -4126,8 +4126,10 @@ namespace IGC
             }
         }
 
+        // Debugging sets OptDisable and disables EU fusion, no need to apply call wa
         if (m_program->m_Platform->hasFusedEU()
             && IGC_IS_FLAG_ENABLED(EnableCallWA)
+            && !context->getModuleMetaData()->compOpt.OptDisable
             && (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram()))
         {
             SaveOption(vISA_fusedCallWA, true);
