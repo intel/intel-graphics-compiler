@@ -202,8 +202,6 @@ int SetVisaPlatform(TARGET_PLATFORM vPlatform);
 TARGET_PLATFORM getVisaPlatformFromStr(const char *platformName);
 
 /*************** internal jitter functions ********************/
-// returns the HW platform for this jitter invocation
-TARGET_PLATFORM getGenxPlatform();
 
 // returns an array of all supported platforms
 const TARGET_PLATFORM *getGenxAllPlatforms(int *num);

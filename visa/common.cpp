@@ -101,11 +101,6 @@ TARGET_PLATFORM getVisaPlatformFromStr(const char * str)
     return platform;
 }
 
-TARGET_PLATFORM getGenxPlatform()
-{
-    return visaPlatform;
-}
-
 PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
 {
     if (const auto *pi = LookupPlatformInfo(platform)) {
@@ -154,7 +149,7 @@ unsigned char getGRFSize()
 {
     unsigned int size = 32;
 
-    if (getGenxPlatform() >= Xe_PVC)
+    if (visaPlatform >= Xe_PVC)
         size = 64;
 
     return size;
