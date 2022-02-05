@@ -474,6 +474,8 @@ bool hasPredicate(ISA_Opcode op)
         return true;
     case ISA_Inst_SIMD_Flow:
         return op == ISA_GOTO;
+    case ISA_Inst_SVM:
+        return true;
     default:
         return false;
     }

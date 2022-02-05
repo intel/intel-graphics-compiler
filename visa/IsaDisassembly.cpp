@@ -680,7 +680,10 @@ static std::string printInstructionSVM(
 
     SVMSubOpcode subOpcode = (SVMSubOpcode)getPrimitiveOperand<uint8_t>(inst, i++);
 
-    /// TODO: Print out the predicate here
+    if ((subOpcode != SVM_BLOCK_LD) && (subOpcode != SVM_BLOCK_ST)) {
+        sstr << printPredicate(inst->opcode, inst->pred);
+    }
+
     sstr << "svm_";
     switch (subOpcode)
     {
