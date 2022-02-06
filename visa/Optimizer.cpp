@@ -15169,7 +15169,7 @@ void Optimizer::applyFusedCallWA()
         G4_ExecSize simdsz = fg.getKernel()->getSimdSize();
         G4_SrcRegRegion* Target = callI->getSrc(0)->asSrcRegRegion();
 
-        // I0:  mov tmp  sr0.0
+        // I0:  (W) mov tmp  sr0.0
         G4_VarBase* V_sr0 = builder.phyregpool.getSr0Reg();
         G4_SrcRegRegion* I0_Src0 = builder.createSrc(V_sr0, 0, 0, builder.getRegionScalar(), Type_UD);
         G4_Declare* tmp = builder.createTempVar(1, Type_UD, Any, "tmpSr0");
@@ -15177,7 +15177,7 @@ void Optimizer::applyFusedCallWA()
         G4_INST* I0 = builder.createInternalInst(nullptr, G4_mov, nullptr, g4::NOSAT, g4::SIMD1,
             I0_Dst, I0_Src0, nullptr, InstOpt_WriteEnable);
 
-        // I1:  and  (e)F   tmp  0x80
+        // I1:  (W) and  (e)F   tmp  0x80
         G4_Declare* F = builder.createTempFlag(simdsz > g4::SIMD16 ? 2 : 1, "euid2");
         G4_CondMod* F_cm = builder.createCondMod(Mod_e, F->getRegVar(), 0);
         G4_SrcRegRegion* I1_Src0 = builder.createSrc(tmp->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UW);
@@ -15187,11 +15187,14 @@ void Optimizer::applyFusedCallWA()
             builder.createNullDst(Type_UW), I1_Src0, Bit7, InstOpt_WriteEnable);
 
         // I2:  (!flag) mov cr0.2  callee
+        //   Only active SmallEU will run this inst. If smallEU is off, flag in smallEU
+        //   is undefined, which isn't an issue as call will be skipped in smallEU under
+        //   the control-flow.
         G4_VarBase* V_cr0 = builder.phyregpool.getCr0Reg();
         G4_DstRegRegion* I2_Dst = builder.createDst(V_cr0, 0, 2, 1, Type_UD);
         G4_SrcRegRegion* I2_Src0 = builder.createSrc(Target->getBase(), 0, 0, builder.getRegionScalar(), Type_UD);
         G4_Predicate* pred_m = builder.createPredicate(PredState_Minus, F->getRegVar(), 0);
-        G4_INST* I2 = builder.createMov(g4::SIMD1, I2_Dst, I2_Src0, InstOpt_WriteEnable, false);
+        G4_INST* I2 = builder.createMov(g4::SIMD1, I2_Dst, I2_Src0, InstOpt_NoOpt, false);
         I2->setPredicate(pred_m);
 
         // I3:   mov smallEUTarget  cr0.2
