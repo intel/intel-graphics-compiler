@@ -26,7 +26,7 @@ class G4_Declare;
  */
 #define COMMON_ISA_MAGIC_NUM 0x41534943
 
-#define COMMON_ISA_MAJOR_VER 3
+#define COMMON_ISA_MAJOR_VER 4
 #define COMMON_ISA_MINOR_VER 8
 
 #define COMMON_ISA_MAX_ADDRESS_SIZE     16
@@ -1150,18 +1150,18 @@ struct VISA3DSamplerOp
     bool cpsEnable;
     bool nonUniformSampler;
 
-    // Bit 0-4: subOpcode
-    // Bit 5  : pixelNullMask
-    // Bit 6  : cpsEnable
-    // Bit 7  : non-uniform sampler
-    static VISA3DSamplerOp extractSamplerOp(uint8_t val)
+    // Bit 0-7: subOpcode
+    // Bit 8  : pixelNullMask
+    // Bit 9  : cpsEnable
+    // Bit 10  : non-uniform sampler
+    static VISA3DSamplerOp extractSamplerOp(uint16_t val)
     {
         VISA3DSamplerOp op;
-        op.pixelNullMask = (val & (1 << 5)) != 0;
-        op.cpsEnable = (val & (1 << 6)) != 0;
-        op.nonUniformSampler = (val & (1 << 7)) != 0;
-        // val & 0b00011111
-        op.opcode = static_cast<VISASampler3DSubOpCode>(val & 0x1F);
+        op.pixelNullMask = (val & (1 << 8)) != 0;
+        op.cpsEnable = (val & (1 << 9)) != 0;
+        op.nonUniformSampler = (val & (1 << 10)) != 0;
+        // val & 0b11111111
+        op.opcode = static_cast<VISASampler3DSubOpCode>(val & 0xFF);
         return op;
     }
 };
