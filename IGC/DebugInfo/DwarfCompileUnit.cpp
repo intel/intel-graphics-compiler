@@ -576,6 +576,10 @@ static uint64_t getBaseTypeSize(DwarfDebug* DD, DIDerivedType* Ty)
 
     DIType* BaseType = DD->resolve(Ty->getBaseType());
 
+    // Void type is represented as null
+    if (!BaseType)
+        return 0;
+
     // If this type is not derived from any type then take conservative approach.
     if (isa<DIBasicType>(BaseType))
     {
@@ -3231,7 +3235,10 @@ void CompileUnit::constructMemberDIE(DIE& Buffer, DIDerivedType* DT)
         addString(MemberDie, dwarf::DW_AT_name, Name);
     }
 
-    addType(MemberDie, resolve(DT->getBaseType()));
+    DIType* BaseTy = resolve(DT->getBaseType());
+    // Void type is represented as null
+    if(BaseTy)
+        addType(MemberDie, BaseTy);
 
     addSourceLine(MemberDie, DT);
 
