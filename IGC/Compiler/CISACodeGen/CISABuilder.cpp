@@ -4124,6 +4124,11 @@ namespace IGC
                 // Turn off jmpi as there is no wa for jmpi
                 SaveOption(vISA_EnableScalarJmp, false);
             }
+
+            // temp for testing
+            if (IGC_IS_FLAG_ENABLED(EnableNewNoMaskWA)) {
+                SaveOption(vISA_newTmpNoMaskWA, true);
+            }
         }
 
         if (m_program->m_Platform->hasFusedEU()
