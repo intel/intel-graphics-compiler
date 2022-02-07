@@ -1034,6 +1034,12 @@ static Value *simplifyBitCastFromRegionRead(BitCastInst *BCI,
                                             const DataLayout &DL,
                                             const GenXSubtarget &ST) {
   using namespace GenXIntrinsic::GenXRegion;
+  // TODO: fix this, as rdregion can return scalar
+  // for cases
+  //%2 =  <1 x i32> rdregion
+  //%3 = bitcast <1 x i32> %2 to i32
+  if(!BCI->getType()->isVectorTy())
+    return nullptr;
   Instruction *RdR = dyn_cast<Instruction>(BCI->getOperand(0));
   if (!RdR || !GenXIntrinsic::isRdRegion(RdR) || !RdR->hasOneUse())
     return nullptr;
