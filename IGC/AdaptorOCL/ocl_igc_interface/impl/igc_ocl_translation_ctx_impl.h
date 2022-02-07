@@ -33,7 +33,9 @@ extern bool ProcessElfInput(
   STB_TranslateInputArgs &InputArgs,
   STB_TranslateOutputArgs &OutputArgs,
   IGC::OpenCLProgramContext &Context,
-  PLATFORM &platform, bool isOutputLlvmBinary);
+  PLATFORM &platform,
+  const TB_DATA_FORMAT& outType,
+  float profilingTimerResolution);
 
 extern bool ParseInput(
   llvm::Module*& pKernelModule,
@@ -129,6 +131,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             {
                   // from                 // to
                 { CodeType::elf,      CodeType::llvmBc },
+                { CodeType::elf,      CodeType::oclGenBin },
                 { CodeType::llvmLl,   CodeType::oclGenBin },
                 { CodeType::llvmBc,   CodeType::oclGenBin },
                 { CodeType::spirV,    CodeType::oclGenBin },
@@ -319,7 +322,10 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             CDriverInfo dummyDriverInfo;
             IGC::OpenCLProgramContext oclContextTemp(oclLayout, igcPlatform, &inputArgs, dummyDriverInfo, nullptr, false);
             IGC::Debug::RegisterComputeErrHandlers(*oclContextTemp.getLLVMContext());
-            success = TC::ProcessElfInput(inputArgs, output, oclContextTemp, platform, this->outType == CodeType::llvmBc);
+            success = TC::ProcessElfInput(
+                inputArgs, output, oclContextTemp, platform,
+                toLegacyFormat(this->outType),
+                this->globalState.MiscOptions.ProfilingTimerResolution);
         }else
         {
             if ((this->inType == CodeType::llvmLl) ||

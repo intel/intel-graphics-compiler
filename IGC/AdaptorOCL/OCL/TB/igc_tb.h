@@ -52,7 +52,8 @@ protected:
     bool ProcessElfInput(
         STB_TranslateInputArgs &InputArgs,
         STB_TranslateOutputArgs &OutputArgs,
-        IGC::OpenCLProgramContext &Context);
+        IGC::OpenCLProgramContext &Context,
+        float ProfilingTimerResolution);
 
     // State
     PLATFORM m_Platform;

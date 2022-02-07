@@ -152,7 +152,9 @@ extern bool ProcessElfInput(
   STB_TranslateInputArgs &InputArgs,
   STB_TranslateOutputArgs &OutputArgs,
   IGC::OpenCLProgramContext &Context,
-  PLATFORM &platform, bool isOutputLlvmBinary);
+  PLATFORM &platform,
+  const TB_DATA_FORMAT& outType,
+  float profilingTimerResolution);
 
 extern bool ParseInput(
   llvm::Module*& pKernelModule,
@@ -171,8 +173,9 @@ bool TranslateBuild(
 bool CIGCTranslationBlock::ProcessElfInput(
   STB_TranslateInputArgs &InputArgs,
   STB_TranslateOutputArgs &OutputArgs,
-  IGC::OpenCLProgramContext &Context){
-    return TC::ProcessElfInput(InputArgs, OutputArgs, Context, m_Platform, m_DataFormatOutput == TB_DATA_FORMAT_LLVM_BINARY);
+  IGC::OpenCLProgramContext &Context,
+  float ProfilingTimerResolution) {
+    return TC::ProcessElfInput(InputArgs, OutputArgs, Context, m_Platform, m_DataFormatOutput, ProfilingTimerResolution);
 }
 
 CIGCTranslationBlock::CIGCTranslationBlock()
@@ -200,6 +203,13 @@ static void SetWarningMessage(const std::string& OutputMessage, STB_TranslateOut
 static void SetErrorMessage(const std::string& OutputMessage, STB_TranslateOutputArgs& pOutputArgs)
 {
     SetOutputMessage("error: " + OutputMessage, pOutputArgs);
+}
+
+static bool IsDeviceBinaryFormat(const TB_DATA_FORMAT& format)
+{
+    return (format == TB_DATA_FORMAT_DEVICE_BINARY)
+        || (format == TB_DATA_FORMAT_COHERENT_DEVICE_BINARY)
+        || (format == TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY);
 }
 
 bool CIGCTranslationBlock::Create(
@@ -270,7 +280,7 @@ bool CIGCTranslationBlock::Translate(
         IGC::OpenCLProgramContext oclContextTemp(oclLayout, IGCPlatform, &InputArgsCopy, driverInfo, nullptr,
                                                  m_DataFormatOutput == TC::TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY);
         RegisterComputeErrHandlers(*oclContextTemp.getLLVMContext());
-        bool success = ProcessElfInput(InputArgsCopy, *pOutputArgs, oclContextTemp);
+        bool success = ProcessElfInput(InputArgsCopy, *pOutputArgs, oclContextTemp, m_ProfilingTimerResolution);
 
         return success;
     }
@@ -449,7 +459,8 @@ bool ProcessElfInput(
   STB_TranslateOutputArgs &OutputArgs,
   IGC::OpenCLProgramContext &Context,
   PLATFORM &platform,
-  bool isOutputLlvmBinary)
+  const TB_DATA_FORMAT& outType,
+  float profilingTimerResolution)
 {
   ShaderHash previousHash;
   bool success = true;
@@ -628,10 +639,10 @@ bool ProcessElfInput(
         char *pBufResult = static_cast<char*>(operator new(OutputString.size(), std::nothrow));
         if (pBufResult != NULL)
         {
-          memcpy_s(pBufResult, OutputString.size(), OutputString.c_str(), OutputString.size());
-
-          if (isOutputLlvmBinary)
+          if (outType == TB_DATA_FORMAT_LLVM_BINARY)
           {
+            memcpy_s(pBufResult, OutputString.size(), OutputString.c_str(), OutputString.size());
+
             // The buffer is returned to the runtime. When the buffer is not
             // needed anymore the runtime ir responsible to call the module for
             // destroying it
@@ -676,6 +687,50 @@ bool ProcessElfInput(
             }
 #endif // defined(IGC_SPIRV_ENABLED)
 
+            if (success == true)
+            {
+              // if -dump-opt-llvm is enabled dump the llvm output to the file
+              std::string options = "";
+              if((InputArgs.pOptions != nullptr) && (InputArgs.OptionsSize > 0)){
+                  options.append(InputArgs.pOptions, InputArgs.pOptions + InputArgs.OptionsSize);
+              }
+              size_t dumpOptPosition = options.find("-dump-opt-llvm");
+              if (dumpOptPosition != std::string::npos)
+              {
+                std::string dumpFileName;
+                std::istringstream iss(options.substr(dumpOptPosition));
+                iss >> dumpFileName;
+                size_t equalSignPosition = dumpFileName.find('=');
+                if (equalSignPosition != std::string::npos)
+                {
+                  dumpFileName = dumpFileName.substr(equalSignPosition + 1);
+                  // dump the buffer
+                  FILE* file = fopen(dumpFileName.c_str(), "wb");
+                  if (file != NULL)
+                  {
+                    fwrite(pBufResult, OutputString.size(), 1, file);
+                    fclose(file);
+                  }
+                }
+                else
+                {
+                  std::string errorString = "File name not specified with the -dump-opt-llvm option.";
+                  SetWarningMessage(errorString, OutputArgs);
+                }
+              }
+            }
+
+          }
+          else if (IsDeviceBinaryFormat(outType))
+          {
+              InputArgs.pInput = OutputString.data();
+              InputArgs.InputSize = OutputString.size();
+              success = TC::TranslateBuild(
+                  &InputArgs,
+                  &OutputArgs,
+                  TB_DATA_FORMAT_LLVM_BINARY,
+                  Context.platform,
+                  profilingTimerResolution);
           }
           else
           {
@@ -688,38 +743,7 @@ bool ProcessElfInput(
           success = false;
         }
 
-        if (success == true)
-        {
-          // if -dump-opt-llvm is enabled dump the llvm output to the file
-          std::string options = "";
-          if((InputArgs.pOptions != nullptr) && (InputArgs.OptionsSize > 0)){
-              options.append(InputArgs.pOptions, InputArgs.pOptions + InputArgs.OptionsSize);
-          }
-          size_t dumpOptPosition = options.find("-dump-opt-llvm");
-          if (dumpOptPosition != std::string::npos)
-          {
-            std::string dumpFileName;
-            std::istringstream iss(options.substr(dumpOptPosition));
-            iss >> dumpFileName;
-            size_t equalSignPosition = dumpFileName.find('=');
-            if (equalSignPosition != std::string::npos)
-            {
-              dumpFileName = dumpFileName.substr(equalSignPosition + 1);
-              // dump the buffer
-              FILE* file = fopen(dumpFileName.c_str(), "wb");
-              if (file != NULL)
-              {
-                fwrite(pBufResult, OutputString.size(), 1, file);
-                fclose(file);
-              }
-            }
-            else
-            {
-              std::string errorString = "File name not specified with the -dump-opt-llvm option.";
-              SetWarningMessage(errorString, OutputArgs);
-            }
-          }
-        }
+
       }
     }
 
@@ -1480,12 +1504,7 @@ bool CIGCTranslationBlock::Initialize(
 
     bool validTBChain = false;
 
-    auto isDeviceBinaryFormat = [] (TB_DATA_FORMAT format)
-    {
-        return (format == TB_DATA_FORMAT_DEVICE_BINARY)
-            || (format == TB_DATA_FORMAT_COHERENT_DEVICE_BINARY)
-            || (format == TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY);
-    };
+
 
     validTBChain |=
         (m_DataFormatInput == TB_DATA_FORMAT_ELF) &&
@@ -1493,15 +1512,15 @@ bool CIGCTranslationBlock::Initialize(
 
     validTBChain |=
         (m_DataFormatInput == TB_DATA_FORMAT_LLVM_TEXT) &&
-        isDeviceBinaryFormat(m_DataFormatOutput);
+        IsDeviceBinaryFormat(m_DataFormatOutput);
 
     validTBChain |=
         (m_DataFormatInput == TB_DATA_FORMAT_LLVM_BINARY) &&
-        isDeviceBinaryFormat(m_DataFormatOutput);
+        IsDeviceBinaryFormat(m_DataFormatOutput);
 
     validTBChain |=
         (m_DataFormatInput == TB_DATA_FORMAT_SPIR_V) &&
-        isDeviceBinaryFormat(m_DataFormatOutput);
+        IsDeviceBinaryFormat(m_DataFormatOutput);
 
     IGC_ASSERT_MESSAGE(validTBChain, "Invalid TB Chain");
 
