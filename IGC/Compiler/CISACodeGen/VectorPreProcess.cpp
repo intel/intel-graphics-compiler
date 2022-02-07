@@ -1281,35 +1281,9 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         if (NBits < 32)
             return Inst;
 
-        BitCastInst* BC = nullptr;
-        Type* DstEltTy = nullptr;
-        // Handle bitcasts patterns like:
-        //
-        // %41 = call <4 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v4i32.p1v4f32(...)
-        // %bc = bitcast <4 x i32> %41 to <4 x float>
-        // %42 = extractelement <4 x float> %bc, i32 0
-        if (Inst->hasOneUse())
-        {
-            BC = dyn_cast<BitCastInst>(*Inst->users().begin());
-            if (BC)
-            {
-                IGCLLVM::FixedVectorType* DstVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getType());
-                IGCLLVM::FixedVectorType* SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getOperand(0)->getType());
-                if (IGC_IS_FLAG_DISABLED(EnableBitcastedLoadNarrowing) ||
-                    !DstVTy || !SrcVTy || DstVTy->getNumElements() != SrcVTy->getNumElements())
-                {
-                    BC = nullptr;
-                }
-                else
-                {
-                    DstEltTy = DstVTy->getElementType();
-                }
-            }
-        }
-
         SmallVector<ExtractElementInst*, 8> ConstEEIUses;
         unsigned MaxIndex = 0;
-        for (auto U : (BC ? BC : Inst)->users())
+        for (auto U : Inst->users())
         {
             auto EEI = dyn_cast<ExtractElementInst>(U);
             if (!EEI || !isa<ConstantInt>(EEI->getIndexOperand()))
@@ -1321,7 +1295,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         }
 
         // All uses are constant EEI.
-        IGC_ASSERT_MESSAGE(ConstEEIUses.size() == (BC ? BC : Inst)->getNumUses(), "out of sync");
+        IGC_ASSERT_MESSAGE(ConstEEIUses.size() == Inst->getNumUses(), "out of sync");
 
         // FIXME: this is to WA an issue that splitLoadStore does not split
         // vectors of size 5, 6, 7.
@@ -1342,19 +1316,11 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         IRBuilder<> Builder(Inst);
         auto ldrawvec = dyn_cast<LdRawIntrinsic>(Inst);
         bool canSimplifyOneUse = ldrawvec && isa<VectorType>(ldrawvec->getType()) &&
-            (BC ? BC : Inst)->hasOneUse() &&
+            ldrawvec->hasOneUse() &&
             !ConstEEIUses.empty();
 
         bool canSimplifyOneUseZeroIndex = canSimplifyOneUse &&
             cast<ConstantInt>(ConstEEIUses.front()->getIndexOperand())->getZExtValue() == 0;
-
-        // There is a known case where narrowing bitcasted ldrawvector to ldraw
-        // leads to a corruption. We can still simplify a vector load to
-        // a narrow one (e.g. <4 x i32> to <2 x i32> when only 0th elt is used
-        // as a float).
-        // TODO: remove WA when issue is resolved.
-        bool skipSimplifyBitcastedOneUse = canSimplifyOneUse &&
-            BC && IGC_IS_FLAG_DISABLED(EnableBitcastedLoadNarrowingToScalar);
 
         auto simplifyLDVecToLDRaw = [&](bool calc_offset)
         {
@@ -1386,45 +1352,28 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
                 GenISAIntrinsic::getDeclaration(ldrawvec->getModule(), GenISAIntrinsic::GenISA_ldraw_indexed, types);
             NewLI = Builder.CreateCall(newLdRawFunction, args);
             NewLI->setDebugLoc(EE_user->getDebugLoc());
-            Value* NewBC = nullptr;
-            if (BC)
-            {
-                NewBC = Builder.CreateBitCast(NewLI, DstEltTy);
-            }
-            EE_user->replaceAllUsesWith(BC ? NewBC : NewLI);
+            EE_user->replaceAllUsesWith(NewLI);
             EE_user->eraseFromParent();
-            if (BC) {
-                BC->eraseFromParent();
-            }
-            Inst->eraseFromParent();
         };
 
-        if (canSimplifyOneUseZeroIndex && !skipSimplifyBitcastedOneUse)
+        if (canSimplifyOneUseZeroIndex)
         {
             simplifyLDVecToLDRaw(false);
             return NewLI;
         }
-        else if (canSimplifyOneUse && !skipSimplifyBitcastedOneUse)
+        else if (canSimplifyOneUse)
         {
             simplifyLDVecToLDRaw(true);
             return NewLI;
         }
         else
         {
-            // WA: Do not narrow a bitcasted vector load to 1 elt vector load,
-            // choose at least 2 elts vector.
-            if (canSimplifyOneUseZeroIndex && skipSimplifyBitcastedOneUse)
-            {
-                MaxIndex = 1;
-            }
-
             Type* NewVecTy = FixedVectorType::get(cast<VectorType>(Inst->getType())->getElementType(),
                 MaxIndex + 1);
             NewLI = ALI.Create(NewVecTy);
 
             // Loop and replace all uses.
             SmallVector<Value*, 8> NewEEI(MaxIndex + 1, nullptr);
-            SmallVector<Value*, 8> NewBC(MaxIndex + 1, nullptr);
             for (auto EEI : ConstEEIUses)
             {
                 auto CI = cast<ConstantInt>(EEI->getIndexOperand());
@@ -1432,20 +1381,12 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
                 if (NewEEI[Idx] == nullptr)
                 {
                     NewEEI[Idx] = Builder.CreateExtractElement(NewLI, CI);
-                    if (BC)
-                    {
-                        NewBC[Idx] = Builder.CreateBitCast(NewEEI[Idx], DstEltTy);
-                        dyn_cast<BitCastInst>(NewBC[Idx])->setDebugLoc(BC->getDebugLoc());
-                    }
                 }
                 dyn_cast<ExtractElementInst>(NewEEI[Idx])->setDebugLoc(EEI->getDebugLoc());
-                EEI->replaceAllUsesWith(BC ? NewBC[Idx] : NewEEI[Idx]);
+                EEI->replaceAllUsesWith(NewEEI[Idx]);
                 EEI->eraseFromParent();
             }
             IGC_ASSERT_MESSAGE(Inst->use_empty(), "out of sync");
-            if (BC) {
-                BC->eraseFromParent();
-            }
             Inst->eraseFromParent();
             return NewLI;
         }
