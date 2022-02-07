@@ -43,7 +43,21 @@ if(LLVM_ON_WIN32)
 endif()
 
 # --- VC Intrinsics ---
-include(cmake/handle_vc_intrinsics.cmake)
+
+if(DEFINED VC_INTRINSICS_SRC)
+  set(INTRSRC "${VC_INTRINSICS_SRC}/GenXIntrinsics")
+endif()
+
+if(NOT DEFINED INTRSRC)
+  set(INTRSRC "${CMAKE_CURRENT_SOURCE_DIR}/../../../vc-intrinsics/GenXIntrinsics")
+endif()
+
+message(STATUS "[VC] Using vc-intrinsics source from: ${INTRSRC}")
+# Trick intrinsics.
+set(BUILD_EXTERNAL YES)
+# We are using prebuilt SPIRV and building intrinsics.
+set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
+add_subdirectory(${INTRSRC} ${INTRBUILD} EXCLUDE_FROM_ALL)
 
 # --- VC Opt ---
 
