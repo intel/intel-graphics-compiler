@@ -15369,6 +15369,10 @@ void Optimizer::applyFusedCallWA()
         fg.addPredSuccEdges(smallB0, smallB1);
         fg.addPredSuccEdges(smallB1, nextBB, true);
 
+        // To make RA know that the real inst can flow from bigB1 to smallB0
+        // an edge is added from bigB1 to smallB0
+        fg.addPredSuccEdges(bigB1, smallB0);
+
         // save new call to make sure its target isn't defined inside smallB0
         kernel.m_waCallInsts.push_back(nCallI);
         kernel.m_instToBBs[nCallI] = smallB0;  // ok to reset for non-calla.
