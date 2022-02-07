@@ -155,4 +155,20 @@ void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst& AI)
 
 void PrivateMemoryUsageAnalysis::visitBinaryOperator(llvm::BinaryOperator& I)
 {
+    // If we encountered Alloca, then the function uses private memory
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (pCtx->platform.Enable32BitIntDivRemEmu())
+    {
+        switch (I.getOpcode())
+        {
+        case Instruction::UDiv:
+        case Instruction::URem:
+        case Instruction::SDiv:
+        case Instruction::SRem:
+            m_hasPrivateMem = true;
+            break;
+        default:
+            break;
+        }
+    }
 }
