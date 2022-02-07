@@ -242,27 +242,47 @@ void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
     I.eraseFromParent();
 }
 
+// Check if Lower 64b to 32b transformation is applicable for binary operator
+// i.e. trunc(a op b) == trunc(a) op trunc(b)
+static bool isTruncInvariant(unsigned Opcode) {
+    switch (Opcode) {
+    case Instruction::Add:
+    case Instruction::Sub:
+    case Instruction::Mul:
+    case Instruction::And:
+    case Instruction::Or:
+    case Instruction::Xor:
+        return true;
+    default:
+        return false;
+    }
+}
+
 //  Searches for following pattern:
 //    %mul = mul i64 %conv, %conv2
-//    % conv3 = and i64 %mul, 0xFFFFFFFF
+//    %conv3 = and i64 %mul, 0xFFFFFFFF
 //
 //  And changes it to:
 //    %conv3 = trunc i64 %conv to i32
 //    %conv4 = trunc i64 %conv2 to i32
-//    % mul = mul i32 %conv3, % conv4
-//    % conv5 = zext i32 %mul to i64
+//    %mul = mul i32 %conv3, %conv4
+//    %conv5 = zext i32 %mul to i64
 bool CustomSafeOptPass::lower64bto32b(BinaryOperator& AndInst) {
     using namespace llvm::PatternMatch;
 
+    auto& AndUse = AndInst.getOperandUse(0);
     auto AndPattern = m_c_And(m_c_BinOp(m_Value(), m_Value()), m_SpecificInt(0xFFFFFFFF));
 
-    if (!match(&AndInst, AndPattern) || !AndInst.getType()->isIntegerTy(64) || !AndInst.getOperand(0)->hasOneUse()) {
+    if (!match(&AndInst, AndPattern) || !AndInst.getType()->isIntegerTy(64) || !AndUse->hasOneUse()) {
         return false;
     }
 
-    SmallVector<BinaryOperator*, 8> OpsToDelete;
+    auto BinOp = dyn_cast<BinaryOperator>(AndUse);
+    if (!BinOp || !isTruncInvariant(BinOp->getOpcode()))
+        return false;
 
-    auto NewBinInst = analyzeTreeForTrunc64bto32b(AndInst.getOperandUse(0), OpsToDelete);
+    SmallVector<BinaryOperator*, 8> OpsToDelete;
+    auto NewBinInst = analyzeTreeForTrunc64bto32b(AndUse, OpsToDelete);
     IRBuilder<> Builder(&AndInst);
 
     auto Zext = Builder.CreateZExt(NewBinInst, Builder.getInt64Ty());
@@ -279,7 +299,7 @@ bool CustomSafeOptPass::lower64bto32b(BinaryOperator& AndInst) {
 Value* CustomSafeOptPass::analyzeTreeForTrunc64bto32b(const Use& OperandUse, SmallVector<BinaryOperator*, 8>& OpsToDelete) {
     Value* Operand = OperandUse.get();
     BinaryOperator* BinInst = dyn_cast<BinaryOperator>(Operand);
-    if (BinInst && Operand->hasOneUse()) {
+    if (BinInst && Operand->hasOneUse() && isTruncInvariant(BinInst->getOpcode())) {
         OpsToDelete.push_back(BinInst);
 
         Value* NewBinArgValue1 = analyzeTreeForTrunc64bto32b(BinInst->getOperandUse(0), OpsToDelete);
