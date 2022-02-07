@@ -22,7 +22,10 @@ inline void * aligned_malloc(size_t nBytes, size_t alignBytes)
 #elif defined(ANDROID)
     kernel = memalign(alignBytes, nBytes);
 #else // !defined(_WIN32) && !defined(ANDROID)
-    posix_memalign(&kernel, alignBytes, nBytes);
+    if (posix_memalign(&kernel, alignBytes, nBytes))
+    {
+        kernel = nullptr;
+    }
 #endif
     return kernel;
 }
