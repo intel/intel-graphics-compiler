@@ -4962,15 +4962,15 @@ bool GenXLowering::lowerMul64(Instruction *Inst) {
   return true;
 }
 
-struct MadwRes {
-  Value *Hi;
+struct LoHiRes {
   Value *Lo;
+  Value *Hi;
 };
 
 // Result of madw is a single vector with width == 2GRF/sizeof(i32),
 // first GRF contains hi part of result, second -- lo part.
-// This function extract hi and lo parts and return those as struct {Hi, Lo}.
-static MadwRes getMadwRes(CallInst *Madw, IRBuilder<> &IRB) {
+// This function extract hi and lo parts and return those as struct {Lo, Hi}.
+static LoHiRes getLoHiFromMadw(CallInst *Madw, IRBuilder<> &IRB) {
   IGC_ASSERT(Madw);
   IGC_ASSERT_MESSAGE(Madw->getType()->isVectorTy(),
                      "result of madw must be i32 vector type");
@@ -4993,21 +4993,21 @@ static MadwRes getMadwRes(CallInst *Madw, IRBuilder<> &IRB) {
                                       &*IRB.GetInsertPoint(),
                                       IRB.getCurrentDebugLocation());
 
-  return {RdrHi, RdrLo};
+  return {RdrLo, RdrHi};
 }
 
 CallInst *buildLegalMadw(ArrayRef<Value *> Args, bool Signed, const Twine &Name,
                          const GenXSubtarget &ST, IRBuilder<> &IRB) {
   IGC_ASSERT_MESSAGE(Args.size() == 3, "madw must have 3 arguments");
-  IGC_ASSERT_MESSAGE(Args[0]->getType() == Args[1]->getType() &&
-                         (Args[1]->getType() == Args[2]->getType()),
-                     "args must have the same type");
   IGC_ASSERT_MESSAGE(Args[0]->getType()->isVectorTy() &&
                          Args[0]->getType()->isIntOrIntVectorTy(),
                      "madw support only i32 vector types");
 
   unsigned TargetWidth = ST.getGRFByteSize() / genx::DWordBytes;
   auto *VecTy = cast<IGCLLVM::FixedVectorType>(Args[0]->getType());
+  IGC_ASSERT(std::all_of(Args.begin(), Args.end(), [VecTy](auto Arg) {
+    return Arg->getType() == VecTy;
+  }));
   unsigned OpWidth = VecTy->getNumElements();
   IGC_ASSERT_MESSAGE(OpWidth <= TargetWidth && isPowerOf2_32(OpWidth),
                      "attempt to build madw with incorrect argument width");
@@ -5023,9 +5023,9 @@ CallInst *buildLegalMadw(ArrayRef<Value *> Args, bool Signed, const Twine &Name,
 }
 
 // Join one result of madw to another.
-// Insert the JoinedRes.(Hi|Lo) vector into the Res.(Hi|Lo) vector starting
+// Insert the JoinedRes.(Lo|Hi) vector into the Res.(Lo|Hi) vector starting
 // from the StartIdx.
-static MadwRes joinMadwResults(MadwRes Res, const MadwRes JoinedRes,
+static LoHiRes joinLoHiResults(const LoHiRes &Res, const LoHiRes &JoinedRes,
                                unsigned StartIdx, IRBuilder<> &IRB) {
   IGC_ASSERT_MESSAGE(JoinedRes.Hi->getType() == JoinedRes.Lo->getType(),
                      "Lo and Hi parts of madw result must have the same type");
@@ -5052,7 +5052,7 @@ static MadwRes joinMadwResults(MadwRes Res, const MadwRes JoinedRes,
       JoinedRes.Lo->getName() + ".join.lo" + Twine(StartIdx),
       &*IRB.GetInsertPoint(), IRB.getCurrentDebugLocation());
 
-  return {Hi, Lo};
+  return {Lo, Hi};
 }
 
 Value *getSplitOperand(Value *Opnd, unsigned StartIdx, unsigned Size,
@@ -5067,42 +5067,41 @@ Value *getSplitOperand(Value *Opnd, unsigned StartIdx, unsigned Size,
                           IRB.getCurrentDebugLocation());
 }
 
-static MadwRes buildMadw(ArrayRef<Value *> Args, bool Signed, const Twine &Name,
-                         const GenXSubtarget &ST, IRBuilder<> &IRB) {
+static LoHiRes buildIMadWithMadw(ArrayRef<Value *> Args, bool Signed,
+                                 const Twine &Name, const GenXSubtarget &ST,
+                                 IRBuilder<> &IRB) {
   IGC_ASSERT_MESSAGE(Args.size() == 3, "madw must have 3 arguments");
-  IGC_ASSERT_MESSAGE(Args[0]->getType() == Args[1]->getType() &&
-                         (Args[1]->getType() == Args[2]->getType()),
-                     "args must have the same type");
   IGC_ASSERT_MESSAGE(Args[0]->getType()->isVectorTy() &&
                          Args[0]->getType()->isIntOrIntVectorTy(),
                      "madw support only i32 vector types");
 
   auto *OpTy = cast<IGCLLVM::FixedVectorType>(Args[0]->getType());
+  IGC_ASSERT(std::all_of(Args.begin(), Args.end(),
+                         [OpTy](auto Arg) { return Arg->getType() == OpTy; }));
+
   unsigned OpWidth = OpTy->getNumElements();
   unsigned TargetWidth = ST.getGRFByteSize() / genx::DWordBytes;
 
   if (OpWidth <= TargetWidth && isPowerOf2_32(OpWidth)) {
     CallInst *Madw = buildLegalMadw(Args, Signed, Name, ST, IRB);
-    return getMadwRes(Madw, IRB);
+    return getLoHiFromMadw(Madw, IRB);
   }
 
-  MadwRes Res = {UndefValue::get(OpTy), UndefValue::get(OpTy)};
+  LoHiRes Res = {UndefValue::get(OpTy), UndefValue::get(OpTy)};
   unsigned StartIdx = 0;
   while (StartIdx < OpWidth) {
     unsigned SplitWidth = std::min(
         TargetWidth, static_cast<unsigned>(PowerOf2Floor(OpWidth - StartIdx)));
 
     std::array<Value *, 3> SplitArgs;
-    std::transform(Args.begin(), Args.end(), SplitArgs.begin(),
-                   [StartIdx, SplitWidth, &IRB](Value *Arg) {
-                     return getSplitOperand(Arg, StartIdx, SplitWidth, IRB);
-                   });
+    for (unsigned i = 0; i < Args.size(); ++i)
+      SplitArgs[i] = getSplitOperand(Args[i], StartIdx, SplitWidth, IRB);
 
     CallInst *Madw = buildLegalMadw(SplitArgs, Signed,
                                     Name + ".split" + Twine(StartIdx), ST, IRB);
 
-    auto SplitRes = getMadwRes(Madw, IRB);
-    Res = joinMadwResults(Res, SplitRes, StartIdx, IRB);
+    auto SplitRes = getLoHiFromMadw(Madw, IRB);
+    Res = joinLoHiResults(Res, SplitRes, StartIdx, IRB);
 
     StartIdx += SplitWidth;
   }
@@ -5110,7 +5109,48 @@ static MadwRes buildMadw(ArrayRef<Value *> Args, bool Signed, const Twine &Name,
   return Res;
 }
 
-void replaceUsesOfIMad(CallInst *IMad, const MadwRes &Res, IRBuilder<> &IRB) {
+static LoHiRes buildIMadWithMulDDQ(ArrayRef<Value *> Args, bool Signed,
+                                   const Twine &Name, IRBuilder<> &IRB) {
+  IGC_ASSERT_MESSAGE(Args.size() == 3, "imad must have 3 arguments");
+  IGC_ASSERT_MESSAGE(Args[0]->getType()->isVectorTy() &&
+                         Args[0]->getType()->isIntOrIntVectorTy(32),
+                     "i32 vector type expected");
+
+  auto *OpTy = Args[0]->getType();
+  IGC_ASSERT(std::all_of(Args.begin(), Args.end(),
+                         [OpTy](auto Arg) { return Arg->getType() == OpTy; }));
+  unsigned Width = cast<IGCLLVM::FixedVectorType>(OpTy)->getNumElements();
+  auto *Int64Ty = Type::getInt64Ty(OpTy->getContext());
+  auto *VInt64Ty = IGCLLVM::FixedVectorType::get(Int64Ty, Width);
+
+  Type *Tys[] = {VInt64Ty, OpTy};
+  Module *M = IRB.GetInsertPoint()->getModule();
+  Function *I64MulFunc =
+      Signed
+          ? GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_ssmul, Tys)
+          : GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_uumul,
+                                              Tys);
+
+  Value *Res = IRB.CreateCall(I64MulFunc, {Args[0], Args[1]}, Name + ".mul64");
+
+  // If last argument of imad isn't zeroinitiliazer we should produce add
+  auto *C = dyn_cast<Constant>(Args[2]);
+  if (!(C && C->isZeroValue())) {
+    auto *Ext = CastInst::Create(
+        Signed ? Instruction::SExt : Instruction::ZExt, Args[2], VInt64Ty,
+        Args[2]->getName() + ".cast", &*IRB.GetInsertPoint());
+    Ext->setDebugLoc(IRB.getCurrentDebugLocation());
+    Res = IRB.CreateAdd(Res, Ext, Name + ".add64");
+  }
+
+  unsigned BaseOpIdx = 0;
+  IVSplitter SplitBuilder(*IRB.GetInsertPoint(), &BaseOpIdx);
+  auto Split = SplitBuilder.splitValueLoHi(*Res);
+
+  return {Split.Lo, Split.Hi};
+}
+
+void replaceUsesOfIMad(CallInst *IMad, const LoHiRes &Res, IRBuilder<> &IRB) {
   bool NeedsInsertValues = false;
   SmallVector<Instruction *, 2> ExtValsToErase;
   for (const auto &U : IMad->uses()) {
@@ -5151,28 +5191,26 @@ bool GenXLowering::lowerGenXIMad(CallInst *CI, unsigned IntrinsicID) {
   IGC_ASSERT_MESSAGE(IntrinsicID == GenXIntrinsic::genx_simad ||
                          IntrinsicID == GenXIntrinsic::genx_uimad,
                      "expected genx_*imad");
-  IGC_ASSERT_MESSAGE(
-      CI->getArgOperand(0)->getType() == CI->getArgOperand(1)->getType() &&
-          CI->getArgOperand(1)->getType() == CI->getArgOperand(1)->getType(),
-      "imad with a bad signature");
+
+  std::array<Value *, 3> Args = {CI->getArgOperand(0), CI->getArgOperand(1),
+                                 CI->getArgOperand(2)};
+  auto *OpTy = CI->getArgOperand(0)->getType();
+  IGC_ASSERT(std::all_of(Args.begin(), Args.end(),
+                         [OpTy](auto Arg) { return Arg->getType() == OpTy; }));
 
   IRBuilder<> Builder{CI};
-
-  auto *OpTy = CI->getArgOperand(0)->getType();
-  std::array<Value *, 3> MadwArgs = {CI->getArgOperand(0), CI->getArgOperand(1),
-                                     CI->getArgOperand(2)};
-
   if (!OpTy->isVectorTy()) {
     auto *VecTy = IGCLLVM::FixedVectorType::get(OpTy, 1);
-    std::transform(MadwArgs.begin(), MadwArgs.end(), MadwArgs.begin(),
-                   [VecTy, &Builder](Value *Arg) {
-                     return Builder.CreateBitCast(Arg, VecTy,
-                                                  Arg->getName() + ".bitcast");
-                   });
+    std::for_each(Args.begin(), Args.end(), [VecTy, &Builder](auto &Arg) {
+      Arg = Builder.CreateBitCast(Arg, VecTy, Arg->getName() + ".bitcast");
+    });
   }
 
   bool Signed = (IntrinsicID == GenXIntrinsic::genx_simad);
-  MadwRes Res = buildMadw(MadwArgs, Signed, CI->getName(), *ST, Builder);
+  LoHiRes Res =
+      ST->useMulDDQ()
+          ? buildIMadWithMulDDQ(Args, Signed, CI->getName(), Builder)
+          : buildIMadWithMadw(Args, Signed, CI->getName(), *ST, Builder);
 
   if (!OpTy->isVectorTy()) {
     Res.Hi =
