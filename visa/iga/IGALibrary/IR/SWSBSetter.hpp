@@ -178,7 +178,7 @@ namespace iga
         // When double precision or Math instructions write a register, and the same register is reused by
         // following instructions going to any pipe, the instruction is considered to occupy the full register
         // irrespective of sub register number
-        bool needReadSuppressionWA(const Instruction& inst);
+        bool needDstReadSuppressionWA(const Instruction& inst);
 
     private:
         const uint32_t MAX_GRF_BUCKETS = 128;

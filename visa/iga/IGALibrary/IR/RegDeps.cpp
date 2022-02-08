@@ -1139,9 +1139,12 @@ void DepSet::setOutputsDstDepFullGrf()
             addGrf(i);
             m_bucketList.push_back(i);
         }
+        addToBucket(m_DB.getBucketStart(RegName::ARF_CR));
         break;
     }
     default:
+        // if the dst is not a GRF, set dep as regular cases
+        setOutputsDstDep();
         break;
     }
 }
