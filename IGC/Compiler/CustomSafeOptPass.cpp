@@ -5711,6 +5711,7 @@ namespace {
             SelectInst* selInst[2][4];
             Instruction* toMovInst0[4], * toMovInst1[4], * toMovInst2[4];
             PHINode* newPhi[3][4];
+            GenIntrinsicInst* dclInst0, * dclInst1;
             uint num;
         };
 
@@ -5793,6 +5794,9 @@ void InsertBranchOpt::findOptCases(SelectInst* I)
         // only start when this is the first select in the sequence
         // skip over bitcast
         Instruction* tempNode = lg.selInst[1][0]->getPrevNode();
+        if (!tempNode)
+            return;
+
         if (dyn_cast<BitCastInst>(tempNode))
             tempNode = tempNode->getPrevNode();
 
@@ -5812,8 +5816,13 @@ void InsertBranchOpt::findOptCases(SelectInst* I)
             return;
 
         // cmpInst comes from inputVec and constant
-        if (dyn_cast<GenIntrinsicInst>(lg.cmpInst0->getOperand(0))->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_inputVec ||
-            dyn_cast<GenIntrinsicInst>(lg.cmpInst1->getOperand(0))->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_inputVec ||
+        lg.dclInst0 = dyn_cast<GenIntrinsicInst>(lg.cmpInst0->getOperand(0));
+        lg.dclInst1 = dyn_cast<GenIntrinsicInst>(lg.cmpInst1->getOperand(0));
+        if (!lg.dclInst0 || !lg.dclInst1)
+            return;
+
+        if (lg.dclInst0->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_inputVec ||
+            lg.dclInst1->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_inputVec ||
             !dyn_cast<Constant>(lg.cmpInst0->getOperand(1)) ||
             !dyn_cast<Constant>(lg.cmpInst1->getOperand(1)))
             return;
@@ -5974,12 +5983,12 @@ void InsertBranchOpt::ThreeWayLoadSpiltOpt(Function& F)
 
         if (!cmpInst0Moved)
         {
-            lg.cmpInst0->moveBefore(lg.toMovInst0[0]);
+            lg.cmpInst0->moveAfter(lg.dclInst0);
             movedCmpInst.push_back(lg.cmpInst0);
         }
         if (!cmpInst1Moved)
         {
-            lg.cmpInst1->moveBefore(lg.toMovInst0[0]);
+            lg.cmpInst1->moveAfter(lg.dclInst1);
             movedCmpInst.push_back(lg.cmpInst1);
         }
 
