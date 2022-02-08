@@ -1964,7 +1964,7 @@ namespace IGC
         bool passInlineData = false;
         const bool loadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
         const bool inlineDataSupportEnabled =
-            (m_Platform->supportInlineData() &&
+            (m_Platform->supportInlineDataOCL() &&
             (m_DriverInfo->UseInlineData() || IGC_IS_FLAG_ENABLED(EnablePassInlineData)));
         if (loadThreadPayload &&
             inlineDataSupportEnabled)

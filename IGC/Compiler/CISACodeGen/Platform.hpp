@@ -591,6 +591,16 @@ bool supportInlineData() const
     return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
+// TODO: temporary solution, remove this once it's not needed
+bool supportInlineDataOCL() const
+{
+    if (m_platformInfo.eProductFamily == IGFX_PVC)
+    {
+        return false;
+    }
+    return isProductChildOf(IGFX_XE_HP_SDV);
+}
+
 bool supportsAutoGRFSelection() const
 {
     return isProductChildOf(IGFX_PVC) || m_platformInfo.eProductFamily == IGFX_XE_HP_SDV || (m_platformInfo.eProductFamily == IGFX_DG2 && IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection));
