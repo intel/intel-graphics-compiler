@@ -1867,41 +1867,26 @@ G4_INST* IR_Builder::createInternalBfnInst(
     return ii;
 }
 
-//scratch surfaces, write r0.5 to message descriptor
-//exdesc holds the value of the extended message descriptor for bit [0:11]
-// kernel entry:
-//      and (1) tmp<1>:ud r0.5<0;1,0>:ud 0xFFFFFC00:ud {NoMask}
-// before send message:
-//  shl (1) a0.0<1>:ud tmp<1>:ud 0x2 {NoMask}
-//  (for old exDesc format) add (1) a0.0<1>:ud tmp<1>:ud exDesc:ud {NoMask}
-// returns a0.0<0;1,0>:ud
+// scratch surfaces, write the content of T251 to extended message descriptor
+// exdesc holds the value of the extended message descriptor for bit [0:11]
+// add (1) a0.2<1>:ud T251<1>:ud exDesc:ud {NoMask}
+// returns a0.2<0;1,0>:ud
 G4_SrcRegRegion* IR_Builder::createScratchExDesc(uint32_t exdesc)
 {
+    // virtual var for each exdesc
+    G4_SrcRegRegion* T251 = createSrcRegRegion(builtinScratchSurface, getRegionScalar());
     const char* buf = getNameString(mem, 20, "ExDesc%d", num_temp_dcl++);
     G4_Declare* exDescDecl = createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
     exDescDecl->setSubRegAlign(Four_Word);
 
-    // copy r0.5[10:31] to a0[12:31] or a0[6:31] for the new format
-    initScratchSurfaceOffset();
-
-    if (!useNewExtDescFormat())
+    G4_DstRegRegion* dst = createDstRegRegion(exDescDecl, 1);
+    if (useNewExtDescFormat())
     {
-
-        // (W) shl (1) a0.0 sso 0x2
-        auto shlSrc0 = createSrcRegRegion(scratchSurfaceOffset, getRegionScalar());
-        auto shlDst = createDstRegRegion(exDescDecl, 1);
-        createBinOp(G4_shl, g4::SIMD1, shlDst, shlSrc0, createImm(0x2, Type_UW), InstOpt_WriteEnable, true);
-
-        G4_DstRegRegion* dst = createDstRegRegion(exDescDecl, 1);
-        createBinOp(G4_add, g4::SIMD1, dst, createSrcRegRegion(exDescDecl, getRegionScalar()),
-            createImm(exdesc, Type_UD), InstOpt_WriteEnable, true);
+        createMov(g4::SIMD1, dst, T251, InstOpt_WriteEnable, true);
     }
     else
     {
-        // (W) shr (1) a0.0 ss0 0x4
-        auto shrSrc0 = createSrcRegRegion(scratchSurfaceOffset, getRegionScalar());
-        auto shrDst = createDstRegRegion(exDescDecl, 1);
-        createBinOp(G4_shr, g4::SIMD1, shrDst, shrSrc0, createImm(0x4, Type_UW), InstOpt_WriteEnable, true);
+        createBinOp(G4_add, g4::SIMD1, dst, T251, createImm(exdesc, Type_UD), InstOpt_WriteEnable, true);
     }
     return createSrcRegRegion(exDescDecl, getRegionScalar());
 }
