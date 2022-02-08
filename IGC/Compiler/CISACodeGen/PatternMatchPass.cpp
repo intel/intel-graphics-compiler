@@ -965,6 +965,7 @@ namespace IGC
             break;
         case Instruction::Sub:
             match = MatchMad(I) ||
+                MatchAdd3(I) ||
                 MatchAbsNeg(I) ||
                 MatchMulAdd16(I) ||
                 MatchModifier(I);
@@ -976,6 +977,7 @@ namespace IGC
             break;
         case Instruction::Add:
             match = MatchMad(I) ||
+                MatchAdd3(I) ||
                 MatchMulAdd16(I) ||
                 MatchModifier(I);
             break;
