@@ -1005,7 +1005,12 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
     bool mergeable = false;
     if (!arg_list.empty()) {
         zeInfoPayloadArgument& prev = arg_list.back();
-        mergeable = prev.arg_index == arg_index && (prev.source_offset + prev.size == source_offset);
+        // merge-able elements must be contiguous in payload and in the host data layout
+        // FIXME: It's possible that an element is contiguous in host data but is not in
+        // the payload. Cases seen in by-val nested struct argument.
+        mergeable = prev.arg_index == arg_index &&
+                    (prev.source_offset + prev.size == source_offset) &&
+                    (prev.offset + prev.size == offset);
     }
 
     if (!mergeable)
@@ -1014,7 +1019,6 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
     zeInfoPayloadArgument& arg = arg_list.back();
 
     if (mergeable) {
-        IGC_ASSERT_MESSAGE(arg.offset + arg.size == offset, "flattened aggregate elements should be contiguous");
         arg.size += size;
     } else  {
         arg.arg_type = PreDefinedAttrGetter::get(PreDefinedAttrGetter::ArgType::arg_byvalue);
