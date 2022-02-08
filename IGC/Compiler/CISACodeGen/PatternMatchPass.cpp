@@ -1011,16 +1011,19 @@ namespace IGC
             break;
         case Instruction::And:
             match =
+                MatchBfn(I) ||
                 MatchBoolOp(I) ||
                 MatchLogicAlu(I);
             break;
         case Instruction::Or:
             match =
+                MatchBfn(I) ||
                 MatchBoolOp(I) ||
                 MatchLogicAlu(I);
             break;
         case Instruction::Xor:
             match =
+                MatchBfn(I) ||
                 MatchLogicAlu(I);
             break;
         default:
