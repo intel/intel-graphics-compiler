@@ -4229,16 +4229,18 @@ public:
 
     void computeRightBound(G4_Operand* opnd)
     {
-        uint16_t numReg = 0;
-        if (opnd == getSrc(1))
-        {
-            numReg = asSpillIntrinsic()->getNumRows();
+        if (opnd) {
+            uint16_t numReg = 0;
+            if (opnd == getSrc(1))
+            {
+                numReg = asSpillIntrinsic()->getNumRows();
+            }
+            else if (opnd->isSrcRegRegion() && opnd == getSrc(0))
+            {
+                numReg = 1;
+            }
+            computeSpillFillOperandBound(opnd, opnd->left_bound, numReg);
         }
-        else if (opnd->isSrcRegRegion() && opnd == getSrc(0))
-        {
-            numReg = 1;
-        }
-        computeSpillFillOperandBound(opnd, opnd->left_bound, numReg);
     }
 
 private:
@@ -4303,17 +4305,16 @@ public:
 
     void computeRightBound(G4_Operand* opnd)
     {
-        uint16_t numReg = 0;
-        if (opnd == getDst())
-        {
-            numReg = asFillIntrinsic()->getNumRows();
+        if (opnd) {
+            uint16_t numReg = 0;
+            if (opnd == getDst()) {
+                numReg = asFillIntrinsic()->getNumRows();
+            } else if (opnd->isSrcRegRegion() &&
+                       (opnd == getSrc(0) || opnd == getSrc(1))) {
+                numReg = 1;
+            }
+            computeSpillFillOperandBound(opnd, opnd->left_bound, numReg);
         }
-        else if (opnd->isSrcRegRegion() &&
-            (opnd == getSrc(0) || opnd == getSrc(1)))
-        {
-            numReg = 1;
-        }
-        computeSpillFillOperandBound(opnd, opnd->left_bound, numReg);
     }
 
 private:
