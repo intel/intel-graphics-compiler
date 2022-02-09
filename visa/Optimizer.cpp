@@ -183,7 +183,7 @@ void Optimizer::setDMaskFusedCallWA()
         // or simd16 to simd32 by adding or instructions on the entry.  Note that the first
         // BB is not necessarily the kernel's entry when kernel needs to load its payload!
         //    (W) or (1|M0)  dmask(sr0.2)  dmasksr0.2  0xFFFF0000
-        if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
+        if (true /*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM */)
         {
             // Use M16 always.
             assert(kernel.getSimdSize() <= 16);
