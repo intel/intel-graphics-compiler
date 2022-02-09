@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 //
 /// CMRegion : region information
 /// -------------------------------
-/// 
+///
 /// An object of class CMRegion describes the region parameters of a Gen region.
 /// It is a transient object, in that a pass constructs it as needed and then
 /// forgets it. It does not persist between passes, as the region parameters are
@@ -45,11 +45,11 @@ SPDX-License-Identifier: MIT
 /// * Construct from a bitmap of which elements need to be in the region. This
 ///   is used from GenXConstants when constructing a splat region when loading
 ///   a constant in multiple stages.
-/// 
+///
 /// CMRegion is not used to represent the region parameters in predicate regions,
 /// since they are much simpler. But GenXRegion does contain static methods to create
 /// rdpredregion etc intrinsics given the predicate region parameters.
-/// 
+///
 //===----------------------------------------------------------------------===//
 
 #ifndef VC_UTILS_GENX_REGION_H
@@ -99,9 +99,9 @@ public:
   // Construct from a type.
   CMRegion(Type *Ty, const DataLayout *DL = nullptr);
   // Construct from a value.
-  CMRegion(Value *V, const DataLayout *DL = nullptr);
+  CMRegion(const Value *V, const DataLayout *DL = nullptr);
   // Construct from a rd/wr region/element
-  CMRegion(Instruction *Inst, bool WantParentWidth = false);
+  CMRegion(const Instruction *Inst, bool WantParentWidth = false);
   // Construct from a bitmap of which elements to set (legal 1D region)
   CMRegion(unsigned Bits, unsigned ElementBytes);
   // Create rdregion intrinsic from this Region
@@ -231,7 +231,7 @@ public:
   // Construct from a type.
   Region(Type *Ty, const DataLayout *DL = nullptr) : CMRegion(Ty, DL) {};
   // Construct from a value.
-  Region(Value *V, const DataLayout *DL = nullptr) : CMRegion(V, DL) {};
+  Region(const Value *V, const DataLayout *DL = nullptr) : CMRegion(V, DL){};
   // Construct from a bitmap of which elements to set (legal 1D region)
   Region(unsigned Bits, unsigned ElementBytes)
     : CMRegion(Bits, ElementBytes) {};
@@ -242,6 +242,6 @@ inline raw_ostream &operator<<(raw_ostream &OS, const CMRegion &R) {
   return OS;
 }
 
-} // end namespace llvm 
+} // end namespace llvm
 
 #endif // VC_UTILS_GENX_REGION_H

@@ -34,11 +34,12 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 // Find the datalayout if possible.
-const DataLayout *GetDL(Value *V) {
-  if (auto Inst = dyn_cast_or_null<Instruction>(V))
-    return &Inst->getParent()->getParent()->getParent()->getDataLayout();
-  if (auto Arg = dyn_cast_or_null<Argument>(V))
-      return &Arg->getParent()->getParent()->getDataLayout();
+static const DataLayout *getDL(const Value *V) {
+  IGC_ASSERT(V);
+  if (auto *Inst = dyn_cast_or_null<Instruction>(V))
+    return &Inst->getModule()->getDataLayout();
+  if (auto *Arg = dyn_cast_or_null<Argument>(V))
+    return &Arg->getParent()->getParent()->getDataLayout();
   return nullptr;
 }
 
@@ -73,23 +74,22 @@ CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
 /***********************************************************************
  * Region constructor from a value
  */
-CMRegion::CMRegion(Value *V, const DataLayout *DL)
-    : CMRegion(V->getType(), DL ? DL : GetDL(V)) {}
+CMRegion::CMRegion(const Value *V, const DataLayout *DL)
+    : CMRegion(V->getType(), DL ? DL : getDL(V)) {}
 
 /***********************************************************************
  * Region constructor from a rd/wr region and its BaleInfo
  * This also works with rdpredregion and wrpredregion, with Offset in
  * bits rather than bytes, and with ElementBytes set to 1.
  */
-CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
+CMRegion::CMRegion(const Instruction *Inst, bool WantParentWidth)
     : ElementBytes(0), ElementTy(0), NumElements(1), VStride(1), Width(1),
       Stride(1), Offset(0), Indirect(0), IndirectIdx(0), IndirectAddrOffset(0),
-      Mask(0), ParentWidth(0)
-{
+      Mask(0), ParentWidth(0) {
   // Determine where to get the subregion value from and which arg index
   // the region parameters start at.
   unsigned ArgIdx = 0;
-  Value *Subregion = 0;
+  const Value *Subregion = 0;
   IGC_ASSERT(isa<CallInst>(Inst));
   switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_rdpredregion:
