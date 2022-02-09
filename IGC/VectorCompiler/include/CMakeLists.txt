@@ -6,6 +6,9 @@
 #
 #============================ end_copyright_notice =============================
 
+# adding target VCInternalIntrinsicsGen - generation of internal intrinsic information
+add_subdirectory(vc/InternalIntrinsics)
+
 # Special common target for headers that propagates
 # needed include directories and dependencies.
 add_library(VCHeaders INTERFACE)
@@ -18,4 +21,5 @@ target_include_directories(VCHeaders
 
 add_dependencies(VCHeaders
   intrinsics_gen
+  VCInternalIntrinsicsGen
   )

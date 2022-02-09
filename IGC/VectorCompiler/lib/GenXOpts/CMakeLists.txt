@@ -46,4 +46,5 @@ target_link_libraries(VCTransforms
   VCGeneralUtils
   VCGenXUtils
   LLVMGenXIntrinsics
+  VCInternalIntrinsics
   )
