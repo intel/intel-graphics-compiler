@@ -528,11 +528,19 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
       platformStr = cmc::getPlatformStr(PlatformImpl->p, /* inout */ stepping);
     }
 
-    auto ShaderDumpData = getShaderDumpData(platformDescr, platformStr,
-                                            stepping, src, options,
-                                            internalOptions, tracingOptions);
+    // we need output shader dumps before reporting fatal error for
+    // unsupported/empty platform
+    auto ShaderDumpData = getShaderDumpData(
+        platformDescr, platformStr ? platformStr : "(empty)", stepping, src,
+        options, internalOptions, tracingOptions);
     if (ShaderDumpData)
         DoShaderDumpPreFE(*ShaderDumpData);
+
+    if (platformStr == nullptr) {
+      // llvm::report_fatal_error("TranslateCM: unsupported platform");
+      // this is temporary to unblock customers
+      platformStr = "SKL";
+    }
 
     OclTranslationOutputBase& Out = *outputInterface;
 

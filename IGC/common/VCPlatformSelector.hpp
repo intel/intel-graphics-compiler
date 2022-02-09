@@ -65,7 +65,7 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   default:
     break;
   }
-  llvm::report_fatal_error("unsupported platform");
+  return nullptr;
 }
 
 } // namespace cmc

@@ -138,7 +138,9 @@ static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
                            vc::CompileOptions &Opts) {
   auto &PlatformInfo = IGCPlatform.getPlatformInfo();
   unsigned RevId = PlatformInfo.usRevId;
-  Opts.CPUStr = cmc::getPlatformStr(PlatformInfo, /* inout */ RevId);
+  const char *PlatformStr =
+      cmc::getPlatformStr(PlatformInfo, /* inout */ RevId);
+  Opts.CPUStr = PlatformStr ? PlatformStr : "";
   Opts.RevId = RevId;
   Opts.HasL1ReadOnlyCache = IGCPlatform.hasL1ReadOnlyCache();
   Opts.HasLocalMemFenceSupress = IGCPlatform.localMemFenceSupress();
@@ -474,7 +476,9 @@ static void dumpPlatform(const vc::CompileOptions &Opts, PLATFORM Platform,
 
   Os << "NEO passed: DisplayCore = " << Core << ", RenderCore = " << RenderCore
      << ", Product = " << Product << ", Revision = " << RevId << "\n";
-  Os << "IGC translated into: " << Opts.CPUStr << ", " << Opts.RevId << "\n";
+  Os << "IGC translated into: "
+     << (Opts.CPUStr.empty() ? "(empty)" : Opts.CPUStr) << ", " << Opts.RevId
+     << "\n";
 
   Dumper.dumpText(Os.str(), "platform.be.txt");
 #endif
@@ -543,8 +547,14 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   adjustOptions(IGCPlatform, InputDataFormatTemp, Opts, Diag);
 
   // here we have Opts set and can dump what we got from runtime and how
-  // we understood it
+  // we understood it. We need to do it before output error on unknown platform
   dumpPlatform(Opts, IGCPlatform.getPlatformInfo(), *Dumper);
+
+  if (Opts.CPUStr.empty()) {
+    // llvm::report_fatal_error("unsupported platform");
+    // temporary to unblock our customers
+    Opts.CPUStr = "SKL";
+  }
 
   if (IGC_IS_FLAG_ENABLED(ShaderOverride))
     Opts.ShaderOverrider =
