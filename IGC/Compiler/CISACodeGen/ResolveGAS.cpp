@@ -411,9 +411,8 @@ bool GASPropagator::visitBitCastInst(BitCastInst& I) {
 }
 
 bool GASPropagator::visitPtrToIntInst(PtrToIntInst& I) {
-    // Don't propagate through `ptrtoint` as that conversion is different from
-    // various address spaces.
-    return false;
+    TheUse->set(TheVal);
+    return true;
 }
 
 bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst& I) {
@@ -473,11 +472,18 @@ bool GASPropagator::visitPHINode(PHINode& PN) {
                 continue;
             }
 
-            AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(V);
-            if (!ASCI || ASCI->getSrcTy() != NonGASTy)
-                return false;
+            Value* NewVal = nullptr;
+            if (isa<ConstantPointerNull>(V)) {
+                NewVal = ConstantPointerNull::get(cast<PointerType>(NonGASTy));
+            }
+            else if (AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(V)) {
+                if (ASCI->getSrcTy() == NonGASTy)
+                    NewVal = ASCI->getOperand(0);;
+            }
 
-            NewIncomingValues[i] = ASCI->getOperand(0);
+            if (!NewVal) return false;
+
+            NewIncomingValues[i] = NewVal;
         }
     }
 
