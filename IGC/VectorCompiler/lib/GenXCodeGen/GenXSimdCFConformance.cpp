@@ -395,9 +395,8 @@ private:
                      BasicBlock *PhiPredBlock = nullptr);
   Value *lowerPHIUse(PHINode *PN, SetVector<Value *> &ToRemove);
   Value *lowerArgumentUse(Argument *Arg);
-  Value *insertCond(Value *OldVal, Value *NewVal, const Twine &Name,
-                    IRBuilder<> &IRB);
-  Value *truncateCond(Value *In, Type *Ty, const Twine &Name, IRBuilder<> &IRB);
+  Value *insertCond(Value *OldVal, Value *NewVal, const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
+  Value *truncateCond(Value *In, Type *Ty, const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
   void lowerGoto(CallInst *Goto);
   void lowerJoin(CallInst *Join);
   void replaceGotoJoinUses(CallInst *GotoJoin, ArrayRef<Value *> Vals);
@@ -3485,7 +3484,8 @@ void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
  * Return:  value, possibly the same as the input value
  */
 Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
-                                         const Twine &Name, IRBuilder<> &IRB) {
+    const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
+{
   unsigned OldWidth =
       cast<IGCLLVM::FixedVectorType>(OldVal->getType())->getNumElements();
   unsigned NewWidth =
@@ -3497,24 +3497,27 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
   // GenXLowering decides whether this is suitable to lower to wrpredregion, or
   // needs to be lowered to something less efficient.
   SmallVector<Constant *, 32> Indices;
+  Type *I32Ty = Type::getInt32Ty(InsertBefore->getContext());
   unsigned i;
   for (i = 0; i != NewWidth; ++i)
-    Indices.push_back(IRB.getInt32(i));
-  auto UndefIndex = UndefValue::get(IRB.getInt32Ty());
+    Indices.push_back(ConstantInt::get(I32Ty, i));
+  auto UndefIndex = UndefValue::get(I32Ty);
   for (; i != OldWidth; ++i)
     Indices.push_back(UndefIndex);
-  auto SV = IRB.CreateShuffleVector(NewVal, UndefValue::get(NewVal->getType()),
-                                    ConstantVector::get(Indices),
-                                    NewVal->getName() + ".extend");
+  auto SV1 = new ShuffleVectorInst(NewVal, UndefValue::get(NewVal->getType()),
+      ConstantVector::get(Indices), NewVal->getName() + ".extend", InsertBefore);
+  SV1->setDebugLoc(DL);
   if (isa<UndefValue>(OldVal))
-    return SV;
+    return SV1;
   Indices.clear();
   for (i = 0; i != NewWidth; ++i)
-    Indices.push_back(IRB.getInt32(i + OldWidth));
+    Indices.push_back(ConstantInt::get(I32Ty, i + OldWidth));
   for (; i != OldWidth; ++i)
-    Indices.push_back(IRB.getInt32(i));
-  return IRB.CreateShuffleVector(OldVal, SV, ConstantVector::get(Indices),
-                                 Name);
+    Indices.push_back(ConstantInt::get(I32Ty, i));
+  auto SV2 = new ShuffleVectorInst(OldVal, SV1, ConstantVector::get(Indices),
+      Name, InsertBefore);
+  SV2->setDebugLoc(DL);
+  return SV2;
 }
 
 /***********************************************************************
@@ -3529,19 +3532,23 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
  * Return:  value, possibly the same as the input value
  */
 Value *GenXSimdCFConformance::truncateCond(Value *In, Type *Ty,
-                                           const Twine &Name,
-                                           IRBuilder<> &IRB) {
+    const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
+{
   unsigned InWidth =
       cast<IGCLLVM::FixedVectorType>(In->getType())->getNumElements();
   unsigned TruncWidth = cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
   if (InWidth == TruncWidth)
     return In;
   // Do the truncate with shufflevector. GenXLowering lowers it to rdpredregion.
-  SmallVector<Constant *, 32> Indices(TruncWidth);
-  for (unsigned i = 0; i < TruncWidth; ++i)
-    Indices.push_back(IRB.getInt32(i));
-  return IRB.CreateShuffleVector(In, UndefValue::get(In->getType()),
-                                 ConstantVector::get(Indices), Name);
+  SmallVector<Constant *, 32> Indices;
+  Type *I32Ty = Type::getInt32Ty(InsertBefore->getContext());
+  unsigned i;
+  for (i = 0; i != TruncWidth; ++i)
+    Indices.push_back(ConstantInt::get(I32Ty, i));
+  auto SV = new ShuffleVectorInst(In, UndefValue::get(In->getType()),
+      ConstantVector::get(Indices), Name, InsertBefore);
+  SV->setDebugLoc(DL);
+  return SV;
 }
 
 /***********************************************************************
@@ -3555,33 +3562,44 @@ Value *GenXSimdCFConformance::truncateCond(Value *In, Type *Ty,
 void GenXSimdCFConformance::lowerGoto(CallInst *Goto)
 {
   LLVM_DEBUG(dbgs() << "lowerGoto: " << *Goto << "\n");
-  IRBuilder<> IRB(Goto);
+  const DebugLoc &DL = Goto->getDebugLoc();
   if (EnableGenXGotoJoin && !lowerSimdCF)
     DiagnosticInfoSimdCF::emit(Goto, "failed to optimize SIMD branch", DS_Warning);
   Value *Results[3];
   auto EM = Goto->getOperand(0);
   auto Cond = Goto->getOperand(2);
   // EM is always 32 bit. Extract SubEM, of the same width as Cond, from it.
-  auto OldSubEM =
-      truncateCond(EM, Cond->getType(), EM->getName() + ".sub", IRB);
+  auto OldSubEM = truncateCond(EM, Cond->getType(),
+      EM->getName() + ".sub", Goto, DL);
   // Result 1: NewRM = OldRM | (SubEM & ~Cond)
-  auto NotCond = IRB.CreateXor(Cond, Constant::getAllOnesValue(Cond->getType()),
-                               Goto->getName() + ".notcond");
-  auto NotCondAndSubEM =
-      IRB.CreateAnd(NotCond, OldSubEM, Goto->getName() + ".disabling");
+  auto NotCond = BinaryOperator::Create(Instruction::Xor, Cond,
+      Constant::getAllOnesValue(Cond->getType()),
+      Goto->getName() + ".notcond", Goto);
+  NotCond->setDebugLoc(DL);
+  auto NotCondAndSubEM = BinaryOperator::Create(Instruction::And, NotCond,
+      OldSubEM, Goto->getName() + ".disabling", Goto);
+  NotCondAndSubEM->setDebugLoc(DL);
   Value *OldRM = Goto->getArgOperand(1);
-  auto NewRM = IRB.CreateOr(OldRM, NotCondAndSubEM, Goto->getName() + ".newRM");
+  auto NewRM = BinaryOperator::Create(Instruction::Or, OldRM, NotCondAndSubEM,
+      Goto->getName() + ".newRM", Goto);
+  NewRM->setDebugLoc(DL);
   Results[1] = NewRM;
   // And SubEM with Cond.
-  auto SubEM = IRB.CreateAnd(OldSubEM, Cond, Goto->getName() + ".subEM");
+  auto SubEM = BinaryOperator::Create(Instruction::And, OldSubEM, Cond,
+      Goto->getName() + ".subEM", Goto);
+  SubEM->setDebugLoc(DL);
   // Insert that back into EM. That is result 0.
-  Results[0] = EM = insertCond(EM, SubEM, Goto->getName() + ".EM", IRB);
+  Results[0] = EM = insertCond(EM, SubEM, Goto->getName() + ".EM", Goto, DL);
   // Result 2: BranchCond = !any(SubEM)
   Function *AnyFunc = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_any,
       SubEM->getType());
-  auto Any = IRB.CreateCall(AnyFunc, SubEM, SubEM->getName() + ".any");
-  auto Not = IRB.CreateXor(Any, Constant::getAllOnesValue(Any->getType()),
-                           Any->getName() + ".not");
+  auto Any = CallInst::Create(AnyFunc, SubEM,
+      SubEM->getName() + ".any", Goto);
+  Any->setDebugLoc(DL);
+  auto Not = BinaryOperator::Create(Instruction::Xor, Any,
+      Constant::getAllOnesValue(Any->getType()),
+      Any->getName() + ".not", Goto);
+  Not->setDebugLoc(DL);
   Results[2] = Not;
   // Replace uses.
   replaceGotoJoinUses(Goto, Results);
@@ -3595,22 +3613,29 @@ void GenXSimdCFConformance::lowerGoto(CallInst *Goto)
 void GenXSimdCFConformance::lowerJoin(CallInst *Join)
 {
   LLVM_DEBUG(dbgs() << "lowerJoin: " << *Join << "\n");
-  IRBuilder<> IRB(Join);
+  const DebugLoc &DL = Join->getDebugLoc();
   Value *Results[2];
   auto EM = Join->getOperand(0);
   auto RM = Join->getOperand(1);
   // EM is always 32 bit. Extract SubEM, of the same width as RM, from it.
-  auto OldSubEM = truncateCond(EM, RM->getType(), EM->getName() + ".sub", IRB);
+  auto OldSubEM = truncateCond(EM, RM->getType(), EM->getName() + ".sub",
+      Join, DL);
   // Or it with RM.
-  auto SubEM = IRB.CreateOr(OldSubEM, RM, Join->getName() + ".subEM");
+  auto SubEM = BinaryOperator::Create(Instruction::Or, OldSubEM, RM,
+      Join->getName() + ".subEM", Join);
+  SubEM->setDebugLoc(DL);
   // Insert that back into EM. That is result 0.
-  Results[0] = EM = insertCond(EM, SubEM, Join->getName() + ".EM", IRB);
+  Results[0] = EM = insertCond(EM, SubEM, Join->getName() + ".EM", Join, DL);
   // Result 1: BranchCond = !any(SubEM)
   Function *AnyFunc = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_any,
       SubEM->getType());
-  auto Any = IRB.CreateCall(AnyFunc, SubEM, SubEM->getName() + ".any");
-  auto Not = IRB.CreateXor(Any, Constant::getAllOnesValue(Any->getType()),
-                           Any->getName() + ".not");
+  auto Any = CallInst::Create(AnyFunc, SubEM,
+      SubEM->getName() + ".any", Join);
+  Any->setDebugLoc(DL);
+  auto Not = BinaryOperator::Create(Instruction::Xor, Any,
+      Constant::getAllOnesValue(Any->getType()),
+      Any->getName() + ".not", Join);
+  Not->setDebugLoc(DL);
   Results[1] = Not;
   // Replace uses.
   replaceGotoJoinUses(Join, Results);
