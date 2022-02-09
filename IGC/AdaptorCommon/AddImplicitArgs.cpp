@@ -81,7 +81,8 @@ bool AddImplicitArgs::runOnModule(Module &M)
         // skip non-entry functions
         if (m_pMdUtils->findFunctionsInfoItem(&func) == m_pMdUtils->end_FunctionsInfo()) continue;
         // Skip functions called from functions marked with stackcall attribute
-        if (hasStackCallInCG(&func))
+        // Also skip the dummy kernel if one was created
+        if (hasStackCallInCG(&func) || IGC::isIntelSymbolTableVoidProgram(&func))
         {
             FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(&func);
             funcInfo->clearImplicitArgInfoList();

@@ -402,16 +402,23 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
     return true;
 }
 
-bool EmitPass::compileSymbolTableKernel(llvm::Function* F)
+bool EmitPass::isSymbolTableRequired(llvm::Function* F)
 {
-    IGC_ASSERT(IGC::isIntelSymbolTableVoidProgram(F));
+    // Symbol table only needed either for the dummy kernel, or if there is an unique entry function
+    if (!isIntelSymbolTableVoidProgram(F) && !IGC::getUniqueEntryFunc(m_pCtx->getMetaDataUtils(), m_moduleMD))
+        return false;
 
     // Check has external functions attached
     if ((m_FGA && m_FGA->getGroup(F) && !m_FGA->getGroup(F)->isSingle()))
     {
-        return true;
+        auto FG = m_FGA->getGroup(F);
+        for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
+        {
+            if ((*FI)->hasFnAttribute("referenced-indirectly"))
+                return true;
+        }
     }
-    // Checl has global symbols attached
+    // Check has global symbols attached
     else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
     {
         for (auto it : m_moduleMD->inlineProgramScopeOffsets)
@@ -573,13 +580,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         return false;
     }
 
-    // Dummy program is only used for symbol table info, check if compilation is required
-    if (IGC::isIntelSymbolTableVoidProgram(&F))
+    // Dummy program is only used for symbol table info, so skip compilation if no symbol table is needed
+    if (IGC::isIntelSymbolTableVoidProgram(&F) && !isSymbolTableRequired(&F))
     {
-        if (!compileSymbolTableKernel(&F))
-        {
-            return false;
-        }
+        return false;
     }
 
     m_DL = &F.getParent()->getDataLayout();
@@ -1142,7 +1146,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         // for the dummy kernel with indirect functions attached.
         bool compileWithSymbolTable = false;
         Function* currHead = m_FGA ? m_FGA->getGroupHead(&F) : &F;
-        if (IGC::isIntelSymbolTableVoidProgram(currHead))
+        if (isSymbolTableRequired(currHead))
         {
             compileWithSymbolTable = true;
         }
@@ -1152,7 +1156,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
         m_pCtx->m_prevShader = m_currShader;
 
-        if (hasStackCall)
+        if (hasStackCall || IGC::isIntelSymbolTableVoidProgram(currHead))
         {
             // Disable retry when stackcalls are present
             m_pCtx->m_retryManager.Disable();

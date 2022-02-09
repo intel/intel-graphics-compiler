@@ -681,8 +681,8 @@ public:
     /// return true if succeeds, false otherwise.
     bool setCurrentShader(llvm::Function* F);
 
-    /// check if the dummy kernel requires compilation
-    bool compileSymbolTableKernel(llvm::Function* F);
+    /// check if symbol table is needed
+    bool isSymbolTableRequired(llvm::Function* F);
 
     // Arithmetic operations with constant folding
     // Src0 and Src1 are the input operands

@@ -560,15 +560,19 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
 {
     for (auto FG : Groups)
     {
-        // Ignore the Indirect Call Group, as there is no actual callgraph
-        if (FG == IndirectCallGroup) continue;
-
-        // Set stackcalls for function groups with more than one function
-        FG->m_hasStackCall = (FG->Functions.size() > 1);
-
         for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
         {
             Function* F = *FI;
+
+            // Ignore indirect functions
+            if (F->hasFnAttribute("referenced-indirectly"))
+            {
+                continue;
+            }
+            else if (F->hasFnAttribute("visaStackCall"))
+            {
+                FG->m_hasStackCall = true;
+            }
 
             // check all functions in the group to see if there's an vla alloca
             // function attribute "hasVLA" should be set at ProcessFuncAttributes pass
@@ -622,25 +626,43 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
 
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pModule)
 {
+    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    Function* defaultKernel = IGC::getIntelSymbolTableVoidProgram(pModule);
-    if (!defaultKernel)
-    {
-        return;
-    }
-
-    IGC_ASSERT(getGroup(defaultKernel) == nullptr);
-    setSubGroupMap(defaultKernel, defaultKernel);
-    IndirectCallGroup = createFunctionGroup(defaultKernel);
-
-    // Add all externally linked functions into the default kernel group
+    // Find all indirectly called functions that require a symbol
+    SmallVector<Function*, 16> IndirectFuncs;
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
     {
         Function* F = &(*I);
         if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
 
-        if (F->hasFnAttribute("referenced-indirectly") || F->use_empty())
+        if (F->hasFnAttribute("referenced-indirectly"))
+        {
+            IndirectFuncs.push_back(F);
+        }
+    }
+
+    if (!IndirectFuncs.empty())
+    {
+        // Find the kernel program group to attach the indirect functions to
+        Function* defaultKernel = IGC::getIntelSymbolTableVoidProgram(pModule);
+        if (!defaultKernel)
+        {
+            defaultKernel = IGC::getUniqueEntryFunc(pMdUtils, pCtx->getModuleMetaData());
+            IGC_ASSERT(defaultKernel);
+        }
+
+        if (getGroup(defaultKernel) == nullptr)
+        {
+            setSubGroupMap(defaultKernel, defaultKernel);
+            IndirectCallGroup = createFunctionGroup(defaultKernel);
+        }
+        else
+        {
+            IndirectCallGroup = getGroup(defaultKernel);
+        }
+
+        for (auto F : IndirectFuncs)
         {
             IGC_ASSERT(getGroup(F) == nullptr);
             addToFunctionGroup(F, IndirectCallGroup, F);

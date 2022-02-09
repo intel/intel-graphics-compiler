@@ -2081,7 +2081,6 @@ namespace IGC
     Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM, IGC::ModuleMetaData* pModMD)
     {
         Function* entryFunc = nullptr;
-        auto& FuncMD = pModMD->FuncMD;
         for (auto i = pM->begin_FunctionsInfo(), e = pM->end_FunctionsInfo(); i != e; ++i)
         {
             IGCMD::FunctionInfoMetaDataHandle Info = i->second;
@@ -2095,17 +2094,12 @@ namespace IGC
             {
                 entryFunc = F;
             }
-
-            auto fi = FuncMD.find(F);
-            if (fi != FuncMD.end() && fi->second.isUniqueEntry)
+            else
             {
-                return F;
+                // Multiple entries found, return null since there is no unique entry
+                return nullptr;
             }
         }
-        IGC_ASSERT_MESSAGE(nullptr != entryFunc, "No entry func!");
-        auto ei = FuncMD.find(entryFunc);
-        IGC_ASSERT(ei != FuncMD.end());
-        ei->second.isUniqueEntry = true;
         return entryFunc;
     }
 
