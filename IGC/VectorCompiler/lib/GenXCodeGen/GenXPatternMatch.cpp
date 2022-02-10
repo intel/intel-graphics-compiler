@@ -333,9 +333,6 @@ public:
   // Match integer mads that starts with binary operators.
   bool matchIntegerAdd3();
 
-  // Match integer mads that starts with genx_*add intrinsic calls.
-  bool matchIntegerAdd3(unsigned IID);
-
   bool isProfitable(Instruction *A2) const;
 
 private:
@@ -502,21 +499,11 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
 }
 
 void GenXPatternMatch::visitCallInst(CallInst &I) {
-  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
-                                 .getTM<GenXTargetMachine>()
-                                 .getGenXSubtarget();
   switch (unsigned ID = GenXIntrinsic::getGenXIntrinsicID(&I)) {
   default:
     break;
   case GenXIntrinsic::genx_inv:
     Changed |= matchInverseSqrt(&I);
-    break;
-  case GenXIntrinsic::genx_ssadd_sat:
-  case GenXIntrinsic::genx_suadd_sat:
-  case GenXIntrinsic::genx_usadd_sat:
-  case GenXIntrinsic::genx_uuadd_sat:
-    if (ST && (ST->hasAdd3Bfn()))
-      Changed |= EnableAdd3Matcher && Add3Matcher(&I).matchIntegerAdd3(ID);
     break;
   case GenXIntrinsic::genx_rdpredregion:
     Changed |= simplifyPredRegion(&I);
@@ -1714,62 +1701,6 @@ bool Add3Matcher::matchIntegerAdd3() {
   ID = GenXIntrinsic::genx_add3;
 
   // Emit add3 if matched and profitable.
-  return emit();
-}
-
-bool Add3Matcher::matchIntegerAdd3(unsigned IID) {
-  IGC_ASSERT_MESSAGE(GenXIntrinsic::getAnyIntrinsicID(AInst) == IID,
-    "input out of sync");
-  Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
-
-  if (Instruction *BI = dyn_cast<Instruction>(Ops[0])) {
-    if (BI->getOpcode() == Instruction::Add ||
-        BI->getOpcode() == Instruction::Sub) {
-      // Case X +/- Y + Z
-      Srcs[2] = Ops[1];
-      Srcs[1] = BI->getOperand(1);
-      Srcs[0] = BI->getOperand(0);
-      if (isProfitable(BI)) {
-        setA2Inst(BI);
-        Negs[1] = (A2Inst->getOpcode() == Instruction::Sub);
-      }
-    }
-  }
-
-  if (!A2Inst) {
-    if (Instruction *BI = dyn_cast<Instruction>(Ops[1])) {
-      if (BI->getOpcode() == Instruction::Add ||
-          BI->getOpcode() == Instruction::Sub) {
-        // Case Z + (X +/- Y)
-        Srcs[0] = Ops[0];
-        Srcs[1] = BI->getOperand(0);
-        Srcs[2] = BI->getOperand(1);
-        if (isProfitable(BI)) {
-          setA2Inst(BI);
-          Negs[2] = (A2Inst->getOpcode() == Instruction::Sub);
-        }
-      }
-    }
-  }
-
-  switch (IID) {
-  default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected intrinsic ID");
-  case GenXIntrinsic::genx_ssadd_sat:
-    ID = GenXIntrinsic::genx_ssadd3_sat;
-    break;
-  case GenXIntrinsic::genx_suadd_sat:
-    ID = GenXIntrinsic::genx_suadd3_sat;
-    break;
-  case GenXIntrinsic::genx_usadd_sat:
-    ID = GenXIntrinsic::genx_usadd3_sat;
-    break;
-  case GenXIntrinsic::genx_uuadd_sat:
-    ID = GenXIntrinsic::genx_uuadd3_sat;
-    break;
-  }
-
-  // Emit mad if matched and profitable.
   return emit();
 }
 
