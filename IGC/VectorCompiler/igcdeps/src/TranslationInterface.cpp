@@ -550,11 +550,8 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   // we understood it. We need to do it before output error on unknown platform
   dumpPlatform(Opts, IGCPlatform.getPlatformInfo(), *Dumper);
 
-  if (Opts.CPUStr.empty()) {
-    // llvm::report_fatal_error("unsupported platform");
-    // temporary to unblock our customers
-    Opts.CPUStr = "SKL";
-  }
+  if (Opts.CPUStr.empty())
+    llvm::report_fatal_error("vc::translateBuild: unsupported platform");
 
   if (IGC_IS_FLAG_ENABLED(ShaderOverride))
     Opts.ShaderOverrider =
