@@ -130,7 +130,20 @@ bool KernelFunctionCloning::runOnModule(Module& M) {
         NewF->setLinkage(GlobalValue::InternalLinkage);
         if (!F->getParent()->getFunction(NewF->getName()))
             F->getParent()->getFunctionList().push_back(NewF);
+
+        // Collect pointers to users (callsites) of the original kernel 
+        // function and loop through the collection. Otherwise when looping
+        // through F->users(), calling call->setCalledFunction(NewF) modifies
+        // the F->users() by removing the very first element (second element 
+        // becomes first) and the loop skips every second element.
+        SmallVector<User*, 8> originalKernelFunctionUsers;
         for (auto* U : F->users()) {
+              originalKernelFunctionUsers.push_back(U);
+        }
+
+        // Replace the original calls to kernel function with calls to user
+        // function clone at the callsites.
+        for (auto& U : originalKernelFunctionUsers) {
             IGCLLVM::CallSite* call = nullptr;
 #if LLVM_VERSION_MAJOR < 11
             IGCLLVM::CallSite callSite(U);
@@ -142,6 +155,7 @@ bool KernelFunctionCloning::runOnModule(Module& M) {
                 continue;
             call->setCalledFunction(NewF);
         }
+
         Changed = true;
     }
 
