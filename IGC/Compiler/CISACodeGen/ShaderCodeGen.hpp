@@ -436,7 +436,7 @@ public:
                 m_BindingTableEntryCount = m_pBtiLayout->GetBindingTableEntryCount();
                 m_BindingTableUsedEntriesBitmap |= BITMASK_RANGE(0, (m_BindingTableEntryCount / cBTEntriesPerCacheLine));
 
-                if (bufType == RESOURCE)
+                if (bufType == RESOURCE || bufType == BINDLESS_TEXTURE)
                 {
                     unsigned int MaxArray = m_pBtiLayout->GetTextureIndexSize() / 32;
                     for (unsigned int i = 0; i < MaxArray; i++)
@@ -449,11 +449,11 @@ public:
                         m_shaderResourceLoaded[MaxArray] = BIT(i % 32);
                     }
                 }
-                else if (bufType == CONSTANT_BUFFER)
+                else if (bufType == CONSTANT_BUFFER || bufType == BINDLESS_CONSTANT_BUFFER)
                 {
                     m_constantBufferLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetConstantBufferIndexSize());
                 }
-                else if (bufType == UAV)
+                else if (bufType == UAV || bufType == BINDLESS)
                 {
                     m_uavLoaded |= QWBITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
                 }
