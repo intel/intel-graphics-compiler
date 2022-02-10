@@ -306,6 +306,14 @@ llvm::Optional<unsigned> genx::getTwoAddressOperandNum(CallInst *CI)
 }
 
 /***********************************************************************
+ * isPredicate : test whether an instruction has predicate (i1 or vector of i1)
+ * type
+ */
+bool genx::isPredicate(Instruction *Inst) {
+  return Inst->getType()->isIntOrIntVectorTy(1);
+}
+
+/***********************************************************************
  * isNot : test whether an instruction is a "not" instruction (an xor with
  *    constant all ones)
  */
@@ -324,11 +332,7 @@ bool genx::isNot(Instruction *Inst)
  */
 bool genx::isPredNot(Instruction *Inst)
 {
-  if (Inst->getOpcode() == Instruction::Xor)
-    if (auto C = dyn_cast<Constant>(Inst->getOperand(1)))
-      if (C->isAllOnesValue() && C->getType()->getScalarType()->isIntegerTy(1))
-        return true;
-  return false;
+  return isPredicate(Inst) && isNot(Inst);
 }
 
 /***********************************************************************
@@ -337,11 +341,7 @@ bool genx::isPredNot(Instruction *Inst)
  */
 bool genx::isIntNot(Instruction *Inst)
 {
-  if (Inst->getOpcode() == Instruction::Xor)
-    if (auto C = dyn_cast<Constant>(Inst->getOperand(1)))
-      if (C->isAllOnesValue() && !C->getType()->getScalarType()->isIntegerTy(1))
-        return true;
-  return false;
+  return !isPredicate(Inst) && isNot(Inst);
 }
 
 /***********************************************************************

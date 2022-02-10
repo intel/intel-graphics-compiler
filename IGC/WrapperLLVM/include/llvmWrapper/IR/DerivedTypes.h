@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_DERIVEDTYPES_H
 #define IGCLLVM_IR_DERIVEDTYPES_H
 
+#include "Probe/Assertion.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
@@ -54,6 +55,18 @@ namespace IGCLLVM
 #endif
     }
 
+    inline llvm::Type *getWithNewBitWidth(const llvm::Type *Ty,
+                                          unsigned NewBitWidth) {
+#if LLVM_VERSION_MAJOR < 10
+      IGC_ASSERT(Ty && Ty->isIntOrIntVectorTy());
+      auto EltTy = llvm::Type::getIntNTy(Ty->getContext(), NewBitWidth);
+      if (auto *VTy = llvm::dyn_cast<llvm::VectorType>(Ty))
+        return llvm::VectorType::get(EltTy, VTy->getElementCount());
+      return EltTy;
+#else
+      return Ty->getWithNewBitWidth(NewBitWidth);
+#endif
+    }
 }
 
 #endif

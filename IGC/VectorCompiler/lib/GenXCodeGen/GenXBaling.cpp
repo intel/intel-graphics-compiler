@@ -692,30 +692,32 @@ void GenXBaling::processWrRegion(Instruction *Inst)
 // instruction, false otherwise.
 bool GenXBaling::processSelect(Instruction *Inst) {
   auto SI = dyn_cast<SelectInst>(Inst);
-  if (!SI || !SI->getType()->isVectorTy())
+  if (!SI)
     return false;
 
   // Only bale into a cmp instruction.
-  Value *Cond = SI->getCondition();
-  if (!isa<CmpInst>(Cond) || !Cond->getType()->isVectorTy() ||
-      !Cond->hasOneUse())
+  auto *Cmp = dyn_cast<CmpInst>(SI->getCondition());
+  if (!Cmp || !Cmp->hasOneUse())
     return false;
 
   // Only bale "select cond, -1, 0"
   Constant *Src0 = dyn_cast<Constant>(SI->getTrueValue());
   Constant *Src1 = dyn_cast<Constant>(SI->getFalseValue());
-  if (Src0 && Src0->isAllOnesValue() && Src1 && Src1->isNullValue()) {
-    BaleInfo BI(BaleInfo::CMPDST);
-    unsigned OperandNum = 0;
-    LLVM_DEBUG(llvm::dbgs()
-               << __FUNCTION__ << " setting operand #" << OperandNum
-               << " to bale in instruction " << *Inst << "\n");
-    setOperandBaled(Inst, OperandNum, &BI);
-    setBaleInfo(Inst, BI);
-  }
+  if (!Src0 || !Src0->isAllOnesValue() || !Src1 || !Src1->isNullValue())
+    return false;
 
-  // No baling.
-  return false;
+  // VISA supports only hf/f destination types for floating-point cmp, not bale
+  // select as CMPDST in this case.
+  if (Cmp->isFPPredicate())
+    return false;
+
+  BaleInfo BI(BaleInfo::CMPDST);
+  unsigned OperandNum = 0;
+  LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << OperandNum
+                          << " to bale in instruction " << *SI << "\n");
+  setOperandBaled(SI, OperandNum, &BI);
+  setBaleInfo(SI, BI);
+  return true;
 }
 
 // Process a store instruction.

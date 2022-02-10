@@ -187,6 +187,10 @@ bool skipOptWithLargeBlock(FunctionGroup &FG);
 // getTwoAddressOperandNum : get operand number of two address operand
 llvm::Optional<unsigned> getTwoAddressOperandNum(CallInst *II);
 
+// isPredicate : test whether an instruction has predicate (i1 or vector of i1)
+// type
+bool isPredicate(Instruction *Inst);
+
 // isNot : test whether an instruction is a "not" instruction (an xor with
 //    constant all ones)
 bool isNot(Instruction *Inst);
@@ -230,7 +234,6 @@ public:
   // getAsSlice : return start index of slice, or -1 if shufflevector is not
   //  slice
   int getAsSlice();
-
   // Replicated slice descriptor.
   // Replicated slice (e.g. 1 2 3 1 2 3) can be parametrized by
   // initial offset (1), slice size (3) and replication count (2).
