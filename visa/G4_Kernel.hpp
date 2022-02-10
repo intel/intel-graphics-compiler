@@ -160,6 +160,7 @@ public:
 
 private:
     const TARGET_PLATFORM platform;
+    unsigned char grfSize;
     const char* name;
     unsigned numRegTotal;
     unsigned numThreads;
@@ -226,6 +227,7 @@ public:
     ~G4_Kernel();
 
     TARGET_PLATFORM getPlatform() const {return platform;}
+    unsigned char getGRFSize() const {return grfSize;}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 

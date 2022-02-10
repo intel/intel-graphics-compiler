@@ -32,7 +32,7 @@ class G4_Declare;
 #define COMMON_ISA_MAX_ADDRESS_SIZE     16
 #define COMMON_ISA_MAX_SURFACE_SIZE     128
 #define COMMON_ISA_MAX_SAMPLER_SIZE     128
-#define COMMON_ISA_MAX_VARIABLE_SIZE    (256 * getGRFSize())
+#define COMMON_ISA_MAX_VARIABLE_SIZE    (256 * ::getGRFSize())
 #define COMMON_ISA_MAX_NUM_SURFACES     256
 #define COMMON_ISA_MAX_NUM_SAMPLERS     32
 #define COMMON_ISA_MAX_NUM_INPUTS       256
@@ -54,7 +54,7 @@ class G4_Declare;
 #define COMMON_ISA_MAX_MEDIA_BLOCK_WIDTH 32
 #define COMMON_ISA_MAX_MEDIA_BLOCK_HEIGHT 64
 
-#define  COMMON_ISA_GRF_REG_SIZE (getGRFSize()) /// # of bytes in a CISA GRF register
+#define  COMMON_ISA_GRF_REG_SIZE (::getGRFSize()) /// # of bytes in a CISA GRF register
 
 #define COMMON_ISA_MAX_FILENAME_LENGTH   1023
 
@@ -197,12 +197,12 @@ struct var_info_t {
         return (VISA_Align) ((bit_properties >> 4 ) & 0xF);
     }
 
-    VISA_Align getTypeAlignment() const
+    VISA_Align getTypeAlignment(unsigned grfSize) const
     {
         VISA_Align typeAlign = ALIGN_WORD;
-        if (getSize() >= getGRFSize())
+        if (getSize() >= grfSize)
         {
-            typeAlign = getGRFSize() == 64 ? ALIGN_32WORD : ALIGN_HWORD;
+            typeAlign = grfSize == 64 ? ALIGN_32WORD : ALIGN_HWORD;
         }
         else
         {

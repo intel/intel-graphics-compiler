@@ -448,13 +448,14 @@ public:
     void push(Node* node)
     {
         G4_INST* inst = node->getInstructions()->front();
-        int dstReg = int(inst->getDst()->getLinearizedStart() / getGRFSize());
-        int src0Reg = int(inst->getSrc(0)->getLinearizedStart() / getGRFSize());
+        unsigned grfSize = inst->getBuilder().getGRFSize();
+        int dstReg = int(inst->getDst()->getLinearizedStart() / grfSize);
+        int src0Reg = int(inst->getSrc(0)->getLinearizedStart() / grfSize);
 
         // set instruction GRF size
         if (instGRFSize == 0)
         {
-            instGRFSize = (inst->getDst()->getLinearizedEnd() - inst->getDst()->getLinearizedStart() + 1) / getGRFSize();
+            instGRFSize = (inst->getDst()->getLinearizedEnd() - inst->getDst()->getLinearizedStart() + 1) / grfSize;
         }
 
         // set instruction type
@@ -514,7 +515,8 @@ public:
             // For non-first block, the instruction order is decided by previous block
             // The instruction whose src0 in current block and the instruction whose dst in previous block have the same registers, and
             // these two instructions should have the same order in their own blocks
-            int src0RegStart = int(inst->getSrc(0)->getLinearizedStart() / getGRFSize());
+            unsigned grfSize = inst->getBuilder().getGRFSize();
+            int src0RegStart = int(inst->getSrc(0)->getLinearizedStart() / grfSize);
             std::vector<int> src0Regs;
             for (int src0Reg = src0RegStart; src0Reg < (src0RegStart + instGRFSize); src0Reg++)
             {
@@ -540,12 +542,14 @@ public:
     //Check GRF size to see if the instruction can be added the block or not
     bool checkGRFSize(Node* node)
     {
-        G4_Operand* newOpnd = node->getInstructions()->front()->getDst();
-        unsigned GRFSize = (newOpnd->getLinearizedEnd() - newOpnd->getLinearizedStart() + 1) / getGRFSize();
+        G4_INST* inst = node->getInstructions()->front();
+        G4_Operand* newOpnd = inst->getDst();
+        unsigned platGRFSize = inst->getBuilder().getGRFSize();
+        unsigned GRFSize = (newOpnd->getLinearizedEnd() - newOpnd->getLinearizedStart() + 1) / platGRFSize;
 
         // 2xSP/2xDP instruction should be 1 or 2 GRF size in destination
         // GRF aligned
-        if (!GRFSize || newOpnd->getLinearizedStart() % getGRFSize())
+        if (!GRFSize || newOpnd->getLinearizedStart() % platGRFSize)
         {
             return false;
         }
@@ -603,8 +607,9 @@ public:
     // Check if the src0 of the instruction has the same register as the dst of any instruction in previous block
     bool hasSameOperand(G4_INST* inst)
     {
-        int src0RegStart = int(inst->getSrc(0)->getLinearizedStart() / getGRFSize());
-        int tmpInstGRFSize = (this->instGRFSize == 0) ? int((inst->getDst()->getLinearizedEnd() - inst->getDst()->getLinearizedStart() + 1) / getGRFSize()) : this->instGRFSize;
+        unsigned grfSize = inst->getBuilder().getGRFSize();
+        int src0RegStart = int(inst->getSrc(0)->getLinearizedStart() / grfSize);
+        int tmpInstGRFSize = (this->instGRFSize == 0) ? int((inst->getDst()->getLinearizedEnd() - inst->getDst()->getLinearizedStart() + 1) / grfSize) : this->instGRFSize;
         std::vector<int> src0Regs;
         for (auto src0Reg = src0RegStart; src0Reg < (src0RegStart + tmpInstGRFSize); src0Reg++)
         {
@@ -708,7 +713,8 @@ public:
         }
 
         // 3, should have same dst GRF number.
-        int dstReg = int(dst->getLinearizedStart() / getGRFSize());
+        unsigned grfSize = inst->getBuilder().getGRFSize();
+        int dstReg = int(dst->getLinearizedStart() / grfSize);
         if (dstGRF != -1 && dstReg != dstGRF)
         {
             return false;
@@ -749,6 +755,7 @@ public:
         auto inst = node->getInstructions()->front();
         auto dst = inst->getDst();
         auto src = inst->getSrc(0);
+        auto grfSize = inst->getBuilder().getGRFSize();
 
         // set dst data type of the block
         if (dstType == Type_UNDEF)
@@ -759,7 +766,7 @@ public:
         // set dst GRF number
         if (dstGRF == -1)
         {
-            dstGRF = int(dst->getLinearizedStart() / getGRFSize());
+            dstGRF = int(dst->getLinearizedStart() / grfSize);
         }
 
         // set src data type of the block
@@ -775,7 +782,7 @@ public:
         }
 
         // record written bytes in the GRF
-        for (int offset = dst->getLinearizedStart() % getGRFSize(), i = 0; i < inst->getExecSize(); i++, offset += dst->getExecTypeSize())
+        for (int offset = dst->getLinearizedStart() % grfSize, i = 0; i < inst->getExecSize(); i++, offset += dst->getExecTypeSize())
         {
             for (int elementOffset = 0; elementOffset < dst->getElemSize(); elementOffset++)
             {
@@ -792,9 +799,10 @@ public:
     {
         auto inst = instList.back()->getInstructions()->front();
         auto dst = inst->getDst();
+        auto grfSize = inst->getBuilder().getGRFSize();
 
         // clear written bytes in the GRF
-        for (int offset = dst->getLinearizedStart() % getGRFSize(), i = 0; i < inst->getExecSize(); i++, offset += dst->getExecTypeSize())
+        for (int offset = dst->getLinearizedStart() % grfSize, i = 0; i < inst->getExecSize(); i++, offset += dst->getExecTypeSize())
         {
             for (int elementOffset = 0; elementOffset < dst->getElemSize(); elementOffset++)
             {

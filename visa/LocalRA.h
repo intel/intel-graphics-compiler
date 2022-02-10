@@ -93,7 +93,7 @@ namespace vISA
         static void getRowInfo(int size, int& nrows, int& lastRowSize);
         static unsigned int convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords);
         static unsigned int convertSubRegOffToWords(G4_Declare* dcl, int subregnum);
-        static void countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals);
+        static void countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals, unsigned grfSize);
         static void printLocalLiveIntervalDistribution(unsigned int numScalars,
             unsigned int numHalfGRF, unsigned int numOneGRF, unsigned int numTwoOrMoreGRF,
             unsigned int numTotal);

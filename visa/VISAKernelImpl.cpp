@@ -184,7 +184,7 @@ void replaceFCOpcodes(IR_Builder& builder)
     }
 }
 
-static void setDeclAlignment(G4_Declare* dcl, VISA_Align align)
+static void setDeclAlignment(G4_Declare* dcl, unsigned grfSize, VISA_Align align)
 {
     switch (align)
     {
@@ -203,13 +203,13 @@ static void setDeclAlignment(G4_Declare* dcl, VISA_Align align)
     case ALIGN_HWORD: dcl->setSubRegAlign(Sixteen_Word); break;
     case ALIGN_32WORD:
         dcl->setSubRegAlign(GRFALIGN);
-        if (getGRFSize() == 32)
+        if (grfSize == 32)
         {
             dcl->setEvenAlign();
         }
         break;
     case ALIGN_64WORD:  //64bytes GRF aligned
-        assert(getGRFSize() == 64);
+        assert(grfSize == 64);
         dcl->setSubRegAlign(ThirtyTwo_Word);
         dcl->setEvenAlign();
         break;
@@ -963,10 +963,10 @@ int VISAKernelImpl::CreateVISAGenVar(
 
         // force subalign to be GRF if total size is larger than or equal to GRF
         if ((info->dcl->getSubRegAlign() != GRFALIGN) ||
-            (varAlign == (getGRFSize() == 64 ? ALIGN_64WORD : ALIGN_32WORD)) ||
+            (varAlign == (m_builder->getGRFSize() == 64 ? ALIGN_64WORD : ALIGN_32WORD)) ||
             (varAlign == ALIGN_2_GRF))
         {
-            setDeclAlignment(info->dcl, varAlign);
+            setDeclAlignment(info->dcl, m_builder->getGRFSize(), varAlign);
         }
 
         info->name_index = -1;
@@ -1316,7 +1316,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             ASSERT_USER(false, "Unsupported attribute size");
             break;
         }
-        m_kernelAttrs->setKernelAttr(attrID, attr->value.intVal);
+        m_kernelAttrs->setKernelAttr(attrID, attr->value.intVal, *getIRBuilder());
     }
     else if (Attributes::isBool(attrID))
     {
@@ -1736,7 +1736,7 @@ int VISAKernelImpl::CreateVISAInputVar(
     }
 
     // save the G4_declare of "R1" input in builder
-    if (offset == getGRFSize() && size == getGRFSize() && m_builder)
+    if (m_builder && offset == m_builder->getGRFSize() && size == m_builder->getGRFSize())
     {
         m_builder->setInputR1(input->dcl);
     }
@@ -7340,9 +7340,10 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
 
     int status = VISA_SUCCESS;
 
-    auto setAlignIfLarger = [](var_info_t* varinfo, VISA_Align A) {
+    auto setAlignIfLarger = [this](var_info_t* varinfo, VISA_Align A) {
         VISA_Align oldA = varinfo->getAlignment();
-        if (getAlignInBytes(A) > getAlignInBytes(oldA))
+        unsigned grfSize = getIRBuilder()->getGRFSize();
+        if (getAlignInBytes(A, grfSize) > getAlignInBytes(oldA, grfSize))
         {
             varinfo->bit_properties = ((varinfo->bit_properties & ~0xF0) | (A << 4));
         }
@@ -7364,7 +7365,7 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
 
     // src1 : grf aligned
     dcl = &src1->decl->genVar;
-    setAlignIfLarger(dcl, getCISAAlign(getGRFSize()));
+    setAlignIfLarger(dcl, getCISAAlign(m_builder->getGRFSize()));
 
     if (IS_GEN_BOTH_PATH)
     {

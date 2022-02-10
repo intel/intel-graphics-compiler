@@ -239,6 +239,7 @@ void G4_BB::emitBasicInstructionComment(
     const G4_INST* inst = *it;
 
     auto platform = inst->getPlatform();
+    unsigned grfSize = inst->getBuilder().getGRFSize();
 
     if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE)
     {
@@ -812,6 +813,7 @@ uint32_t G4_BB::emitBankConflictXe(
     bool isFDFSrc1 = false;
     bool isSrc1Suppressed = false;
 
+    auto grfSize = inst->getBuilder().getGRFSize();
     //Get Dst
     G4_DstRegRegion* dstOpnd = inst->getDst();
     if (dstOpnd &&
@@ -821,7 +823,7 @@ uint32_t G4_BB::emitBankConflictXe(
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
         dstRegs[0] = byteAddress / numEltPerGRF<Type_UB>();
-        if (dstExecSize > getGRFSize())
+        if (dstExecSize > grfSize)
         {
             dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
             isCompressedInst = true;
@@ -849,7 +851,7 @@ uint32_t G4_BB::emitBankConflictXe(
                     {
                         isFDFSrc1 = IS_TYPE_F32_F64(srcOpnd->getType());
                     }
-                    if (currInstExecSize[i] > getGRFSize())
+                    if (currInstExecSize[i] > grfSize)
                     {
                         currInstRegs[1][i] = currInstRegs[0][i] + 1;
                         isCompressedInst = true;
@@ -1155,6 +1157,7 @@ uint32_t G4_BB::emitBankConflictXeLP(
     }
 
     bool instSplit = false;
+    auto grfSize = inst->getBuilder().getGRFSize();
 
     //Get Dst
     G4_DstRegRegion* dstOpnd = inst->getDst();
@@ -1165,7 +1168,7 @@ uint32_t G4_BB::emitBankConflictXeLP(
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
         dstRegs[0] = byteAddress / numEltPerGRF<Type_UB>();
-        if (dstExecSize > getGRFSize())
+        if (dstExecSize > grfSize)
         {
             dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
             instSplit = true;
@@ -1190,7 +1193,7 @@ uint32_t G4_BB::emitBankConflictXeLP(
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
 
-                    if (currInstExecSize[i] > getGRFSize())
+                    if (currInstExecSize[i] > grfSize)
                     {
                         currInstRegs[1][i] = currInstRegs[0][i] + (currInstExecSize[i] + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
                         instSplit = true;

@@ -220,7 +220,7 @@ public:
             for (unsigned i = 0; i < numRows; i++)
             {
                 availableGregs[regNum + i] = false;
-                if (getGRFSize() == 64)
+                if (builder.getGRFSize() == 64)
                     availableSubRegs[regNum + i] = 0;
                 else
                     availableSubRegs[regNum + i] = 0xffff0000;

@@ -2308,7 +2308,7 @@ bool G4_INST::canPropagateTo(
     {
         return false;
     }
-    if (getGRFSize() == 64 &&
+    if (getBuilder().getGRFSize() == 64 &&
         (useInst->opcode() == G4_dpas || useInst->opcode() == G4_dpasw) &&
         (opndNum == Opnd_src0 || opndNum == Opnd_src1))
     {
@@ -2941,7 +2941,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         return false;
     }
 
-    if (getGRFSize() == 64 &&
+    if (getBuilder().getGRFSize() == 64 &&
         (defInst->opcode() == G4_dpas || defInst->opcode() == G4_dpasw))
     {
         uint32_t leftBoundInBytes = dst->getLeftBound() * dst->getTypeSize();
@@ -4479,11 +4479,11 @@ void printRegVarOff(std::ostream&  output,
                     {
                         // This is before RA and getLineariedStart() only contains the left bound
                         // we have to add the declare's phyreg
-                        byteAddress += baseVar->getPhyReg()->asGreg()->getRegNum() * getGRFSize() + baseVar->getPhyRegOff() * TypeSize(type);
+                        byteAddress += baseVar->getPhyReg()->asGreg()->getRegNum() * ::getGRFSize() + baseVar->getPhyRegOff() * TypeSize(type);
                     }
 
-                    regNum = byteAddress / getGRFSize();
-                    subRegNum = (byteAddress % getGRFSize()) / TypeSize(type);
+                    regNum = byteAddress / ::getGRFSize();
+                    subRegNum = (byteAddress % ::getGRFSize()) / TypeSize(type);
 
 
                      output << "r" << regNum;
@@ -4836,7 +4836,7 @@ void G4_DstRegRegion::computeLeftBound()
         left_bound = subRegOff * TypeSize(type);
         if (base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1)
         {
-            left_bound += getGRFSize();
+            left_bound += ::getGRFSize();
         }
         byteOffset = left_bound;
     } else if (top_dcl) {
@@ -4970,7 +4970,7 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
             // result size, and also both low and high results are GRF-aligned.
             if (INST_WIDE_DST(inst->opcode()))
             {
-                unsigned totalBytesDstLow = (totalBytes + getGRFSize() - 1) & (~(getGRFSize() - 1)); // GRF-aligned
+                unsigned totalBytesDstLow = (totalBytes + ::getGRFSize() - 1) & (~(::getGRFSize() - 1)); // GRF-aligned
                 totalBytes = totalBytesDstLow * 2;
             }
 
@@ -5124,8 +5124,8 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
         {
             // First consider if any operand is > two GRFs. If so we just compare the bound
             // as such operands are assumed to touch every element within the bound.
-            bool meExceedTwoGRF = (myRightBound - myLeftBound) > 2u * getGRFSize();
-            bool opndExceedTwoGRF = (right_bound2 - left_bound2) > 2u * getGRFSize();
+            bool meExceedTwoGRF = (myRightBound - myLeftBound) > 2u * ::getGRFSize();
+            bool opndExceedTwoGRF = (right_bound2 - left_bound2) > 2u * ::getGRFSize();
             if (meExceedTwoGRF || opndExceedTwoGRF)
             {
                 if (left_bound2 >= myLeftBound && right_bound2 <= myRightBound)
@@ -5140,7 +5140,7 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
             }
 
             // Now both operands are within two GRFs, compare their footprint to get precise relations
-            int maskSize = 2 * getGRFSize();
+            int maskSize = 2 * ::getGRFSize();
             if (myDcl)
             {
                 maskSize = myDcl->getRegVar()->isFlag() ? myDcl->getNumberFlagElements()
@@ -5367,7 +5367,7 @@ static bool regionHasFixedSubreg(G4_Operand* opnd, uint32_t& offset)
     if (base->asRegVar()->isPhyRegAssigned())
     {
         offset = (subRegOff + base->asRegVar()->getPhyRegOff()) * TypeSize(opnd->getType());
-        offset %= getGRFSize();
+        offset %= ::getGRFSize();
         return true;
     }
 
@@ -5757,10 +5757,10 @@ void G4_Declare::emit(std::ostream &output) const
         else
         {
             // GRF spill
-            auto GRFOffset = getRegVar()->getDisp() / getGRFSize();
+            auto GRFOffset = getRegVar()->getDisp() / irb.getGRFSize();
             if (!AliasDCL)
             {
-                output << " (spilled -> Scratch[" << GRFOffset << "x" << (int)getGRFSize() << "])";
+                output << " (spilled -> Scratch[" << GRFOffset << "x" << (int)irb.getGRFSize() << "])";
             }
             else
             {
@@ -6446,7 +6446,7 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
     {
         // fast path
         int totalBytes = exec_size * typeSize;
-        MUST_BE_TRUE(totalBytes <= 2 * getGRFSize(), "total bytes exceed 2 GRFs");
+        MUST_BE_TRUE(totalBytes <= 2 * ::getGRFSize(), "total bytes exceed 2 GRFs");
 
         footPrint0 = totalBytes < 64 ? (1ULL << totalBytes) - 1 : ULLONG_MAX;
         if (totalBytes > 64)
@@ -6936,7 +6936,7 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
                 footprint.resetElt(idx, bitVal);
             }
         }
-        if (getGRFSize() > 32)
+        if (::getGRFSize() > 32)
         {
             for (int i = 0; i < 2 && idx <= endIdx; ++i, ++idx)
             {
@@ -6977,7 +6977,7 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
             if (mask0 & (1ULL << i))
                 footprint.set(j, isSet);
         }
-        if (getGRFSize() > 32)
+        if (::getGRFSize() > 32)
         {
             uint64_t mask1 = getBitVecH();
             for (unsigned i = 0; i < 64 && j <= rb; ++i, ++j)
@@ -6997,7 +6997,7 @@ void G4_Operand::setBitVecFromSize(uint32_t NBytes)
 {
     bitVec[0] = NBytes < 64 ? (1ULL << NBytes) - 1 : ULLONG_MAX;
     bitVec[1] = 0;
-    if (getGRFSize() > 32 && NBytes >= 64)
+    if (::getGRFSize() > 32 && NBytes >= 64)
     {
         bitVec[1] = (NBytes < 64 * 2) ? (1ULL << (NBytes - 64)) - 1 : ULLONG_MAX;
     }
@@ -7143,7 +7143,7 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
             // Compute right bound for dst operand
             const auto *desc = getMsgDesc();
             uint32_t dstBytes = desc->getDstLenBytes();
-            if (dstBytes < getGRFSize()) {
+            if (dstBytes < getBuilder().getGRFSize()) {
                 // e.g. OWord block read x1
                 opnd->setBitVecL((1ULL << dstBytes) - 1);
                 opnd->setRightBound(opnd->left_bound + dstBytes - 1);
@@ -8520,6 +8520,16 @@ G4_INST* G4_InstIntrinsic::cloneInst()
         src0, src1, src2, option);
 }
 
+uint32_t G4_SpillIntrinsic::getOffsetInBytes() const
+{
+    return offset * getBuilder().getGRFSize();
+}
+
+uint32_t G4_FillIntrinsic::getOffsetInBytes() const
+{
+    return offset * getBuilder().getGRFSize();
+}
+
 bool RegionDesc::isLegal(unsigned vs, unsigned w, unsigned hs)
 {
     auto isPositiveAndLegal = [](unsigned val, unsigned high) {
@@ -8766,3 +8776,4 @@ void G4_INST::inheritSWSBFrom(const G4_INST* inst)
     SWSBTokenType type = inst->getTokenType();
     setTokenType(type);
 }
+

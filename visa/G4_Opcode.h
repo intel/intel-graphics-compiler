@@ -39,7 +39,7 @@ SPDX-License-Identifier: MIT
 #define IS_TYPE_LONG(type)            (type == Type_DF || type == Type_UQ || type == Type_Q)
 #define IS_TYPE_INTEGER(type)         (type == Type_UW ||type == Type_W ||type == Type_B ||type == Type_UB ||type == Type_V ||type == Type_UV ||type == Type_UD ||type == Type_D)
 
-#define GENX_DATAPORT_IO_SZ (getGRFSize() == 64 ? 16 : 8)
+#define GENX_DATAPORT_IO_SZ (::getGRFSize() == 64 ? 16 : 8)
 #define GENX_SAMPLER_IO_SZ GENX_DATAPORT_IO_SZ
 
 #define ADDR_REG_TYPE        Type_UW
@@ -457,8 +457,8 @@ enum G4_AccRegSel
     ACC_UNDEFINED = 0xff
 };
 
-#define GRFALIGN (getGRFSize() == 64 ? ThirtyTwo_Word : Sixteen_Word)
-#define HALFGRFALIGN (getGRFSize() == 64 ? Sixteen_Word : Eight_Word)
+#define GRFALIGN (::getGRFSize() == 64 ? ThirtyTwo_Word : Sixteen_Word)
+#define HALFGRFALIGN (::getGRFSize() == 64 ? Sixteen_Word : Eight_Word)
 
 // global functions
 inline unsigned int getNumAddrRegisters(void) { return 16; }

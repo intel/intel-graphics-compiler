@@ -49,12 +49,12 @@ const char* Common_ISA_Get_Align_Name(VISA_Align align)
     return CISAAlignTable[align].AlignName;
 }
 
-uint32_t getAlignInBytes(VISA_Align A)
+uint32_t getAlignInBytes(VISA_Align A, unsigned grfSize)
 {
     switch (A)
     {
-    case ALIGN_GRF:   return getGRFSize();
-    case ALIGN_2_GRF: return 2 * getGRFSize();
+    case ALIGN_GRF:   return grfSize;
+    case ALIGN_2_GRF: return 2 * grfSize;
     default:
         break;
     }

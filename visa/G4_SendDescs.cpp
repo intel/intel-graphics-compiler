@@ -123,20 +123,20 @@ std::string ElemsPerAddr::str() const
 ///////////////////////////////////////////////////////////////////////////////
 // G4_SendDesc implementations
 ///////////////////////////////////////////////////////////////////////////////
-static inline int roundUpToGrf(int bytes) {
-    return g4::alignUp((int)getGRFSize(), bytes) / (int)getGRFSize();
+static inline int roundUpToGrf(int bytes, int grfSize) {
+    return g4::alignUp(grfSize, bytes) / grfSize;
 }
 
 size_t G4_SendDesc::getSrc0LenRegs() const {
-    return roundUpToGrf(getSrc0LenBytes());
+    return roundUpToGrf(getSrc0LenBytes(), irb.getGRFSize());
 }
 
 size_t G4_SendDesc::getDstLenRegs() const {
-    return roundUpToGrf(getDstLenBytes());
+    return roundUpToGrf(getDstLenBytes(), irb.getGRFSize());
 }
 
 size_t G4_SendDesc::getSrc1LenRegs() const {
-    return roundUpToGrf(getSrc1LenBytes());
+    return roundUpToGrf(getSrc1LenBytes(), irb.getGRFSize());
 }
 
 bool G4_SendDesc::isHDC() const
@@ -1183,7 +1183,7 @@ std::string G4_SendDescRaw::getDescription() const
 
 size_t G4_SendDescRaw::getSrc0LenBytes() const
 {
-    return MessageLength() * (size_t)getGRFSize();
+    return MessageLength() * (size_t)irb.getGRFSize();
 }
 
 size_t G4_SendDescRaw::getDstLenBytes() const
@@ -1217,7 +1217,7 @@ size_t G4_SendDescRaw::getDstLenBytes() const
 #endif
     } else {
         // fallback to the raw GRF count
-        return ResponseLength() * (size_t)getGRFSize();
+        return ResponseLength() * (size_t)irb.getGRFSize();
     }
 }
 
@@ -1229,7 +1229,7 @@ size_t G4_SendDescRaw::getSrc1LenBytes() const
     // we could support OW store here, but no one seems to need that and
     // we are phasing this class out; so ignore it for now
 
-    return extMessageLength() * (size_t)getGRFSize();
+    return extMessageLength() * (size_t)irb.getGRFSize();
 }
 
 bool G4_SendDescRaw::isFence() const

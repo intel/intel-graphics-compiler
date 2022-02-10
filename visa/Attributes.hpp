@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 namespace vISA
 {
+    class IR_Builder;
     class Attributes
     {
     public:
@@ -139,7 +140,7 @@ namespace vISA
 
         // Set attribute's value
         void setKernelAttr(ID kID, bool v);
-        void setKernelAttr(ID kID, int32_t v);
+        void setKernelAttr(ID kID, int32_t v, const IR_Builder& irb);
         void setKernelAttr(ID kID, int64_t v);
         void setKernelAttr(ID kID, const char* v);
 

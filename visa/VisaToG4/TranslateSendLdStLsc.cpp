@@ -241,7 +241,7 @@ int IR_Builder::translateLscUntypedInst(
         if (execSize < minExecSize)
         {
             // we may need to even-align src and data
-            auto evenAlignDcl = [](G4_Operand* opnd)
+            auto evenAlignDcl = [this](G4_Operand* opnd)
             {
                 G4_Declare* dcl = opnd->getTopDcl()->getRootDeclare();
                 if (dcl->getByteSize() <= getGRFSize())

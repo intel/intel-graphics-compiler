@@ -1217,9 +1217,9 @@ void Optimizer::cloneSampleInst()
                 }
                 if (sendInst->getMsgDescRaw()->isHeaderPresent())
                 {
-                    messageSizeInBytes -= getGRFSize();
+                    messageSizeInBytes -= builder.getGRFSize();
                 }
-                unsigned int numParams = messageSizeInBytes / getGRFSize() * builder.getNativeExecSize() / inst->getExecSize();
+                unsigned int numParams = messageSizeInBytes / builder.getGRFSize() * builder.getNativeExecSize() / inst->getExecSize();
                 bool isEval = sendInst->getMsgDesc()->getDstLenRegs() == 0;
                 uint32_t messageType = sendInst->getMsgDescRaw()->getSamplerMessageType();
                 assert(!inst->getPredicate() && "do not handle predicated sampler inst for now");
@@ -7443,8 +7443,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             unsigned int dst_l = dst->getLinearizedStart();
             unsigned int dst_r = dst->getLinearizedEnd();
-            unsigned int GRFSize = (dst_r - dst_l + 1) / getGRFSize();
-            assert(((dst_r - dst_l + 1) % getGRFSize() == 0) && "DPAS GRF size not aligned");
+            unsigned int GRFSize = (dst_r - dst_l + 1) / builder.getGRFSize();
+            assert(((dst_r - dst_l + 1) % builder.getGRFSize() == 0) && "DPAS GRF size not aligned");
             assert(!dst->isIndirect());
             newDst = builder.createDst(
                 dst->getBase(),
@@ -7482,8 +7482,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 unsigned int src_l = src[i]->getLinearizedStart();
                 unsigned int src_r = src[i]->getLinearizedEnd();
-                unsigned int GRFSize = (src_r - src_l + 1) / getGRFSize();
-                assert(((src_r - src_l + 1) % getGRFSize() == 0) && "DPAS GRF size not aligned");
+                unsigned int GRFSize = (src_r - src_l + 1) / builder.getGRFSize();
+                assert(((src_r - src_l + 1) % builder.getGRFSize() == 0) && "DPAS GRF size not aligned");
 
                 if (GRFSize >= 2)
                 {
@@ -7594,7 +7594,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             G4_Operand* srcOpnd2 = inst->getSrc(2);
 
-            if ((srcOpnd2->getLinearizedStart() % getGRFSize() != 0) ||  //Not GRF aligned
+            if ((srcOpnd2->getLinearizedStart() % builder.getGRFSize() != 0) ||  //Not GRF aligned
                 (builder.hasDPASSrc2ReadSuppressionIssue() && src2GRFCache->firstDpas))
             {
                 G4_INST* newInst = evenlySplitDPASInst(ii, bb);
@@ -8263,7 +8263,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return;
         }
 
-        const unsigned grfSize = getGRFSize();
+        const unsigned grfSize = builder.getGRFSize();
         unsigned inputEnd = grfSize;
         unsigned inputCount = kernel.fg.builder->getInputCount();
         for (unsigned id = 0; id < inputCount; id++)
@@ -8466,7 +8466,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         const uint32_t startGRF =
             kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
-        const uint32_t inputsStart = startGRF * getGRFSize();
+        const uint32_t inputsStart = startGRF * builder.getGRFSize();
         const uint32_t inputCount = kernel.fg.builder->getInputCount();
 
         const bool useInlineData = builder.getOption(vISA_useInlineData);
@@ -8586,7 +8586,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     // break load to 2+1 instead
                     numGRFToLoad = 2;
                 }
-                uint32_t numElts = (numGRFToLoad * getGRFSize()) / (useHword ? 32 : 16);
+                uint32_t numElts = (numGRFToLoad * builder.getGRFSize()) / (useHword ? 32 : 16);
                 uint32_t dataBlocks = useHword ? getHWordBlockEncoding(numElts) :
                     (numElts == 2 ? 2 : (numElts == 4 ? 3 : 4));
 
@@ -8638,7 +8638,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 addrInfo.immScale = 1;
                 addrInfo.immOffset = 0;
                 addrInfo.size = LSC_ADDR_SIZE_32b;
-                auto numDW = numGRFToLoad * (getGRFSize() / 4);
+                auto numDW = numGRFToLoad * (builder.getGRFSize() / 4);
                 LSC_DATA_SHAPE dataShape { };
                 dataShape.size = LSC_DATA_SIZE_32b; //in the unit of 32b
                 dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
@@ -8723,7 +8723,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             auto src0 = builder.createImm(0, Type_UD);
             auto dst = builder.createDstRegRegion(rtail, 1);
-            G4_ExecSize execSize(getGRFSize() / 4);
+            G4_ExecSize execSize(builder.getGRFSize() / 4);
             auto movInst = builder.createMov(execSize, dst, src0, InstOpt_WriteEnable, false);
             instBuffer.push_back(movInst);
         };
@@ -8735,7 +8735,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 return;
             }
-            uint32_t numDWord = getGRFSize() / 4;
+            uint32_t numDWord = builder.getGRFSize() / 4;
             G4_Declare* srcDcl = builder.createHardwiredDeclare(numDWord, Type_UD, srcGRF, 0);
             G4_Declare* dstDcl = builder.createHardwiredDeclare(numDWord, Type_UD, dstGRF, 0);
             auto movInst = builder.createMov(
@@ -8781,13 +8781,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 // Rest of payload is shifted in the buffer by N bytes.
                 // So payload args which start at N offset, now start at 0 offset.
                 // Because of this we need to calculate localID offset:
-                localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, getGRFSize());
+                localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, builder.getGRFSize());
                 localIDsOffset -= useInlineData ? inlineDataSize : 0;
             }
             else
             {
                 localIDsOffset = CTIS;
-                localIDsOffset -= useInlineData ? getGRFSize() : 0;
+                localIDsOffset -= useInlineData ? builder.getGRFSize() : 0;
             }
 
 
@@ -8921,8 +8921,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
                 if (CTIS < 0)
                 {
-                    numCrossThreadGRF = AlignUp(loadedCrossThreadInputSize, getGRFSize()) / numEltPerGRF<Type_UB>();
-                    crossThreadStart = crossThreadLoadStart / getGRFSize();
+                    numCrossThreadGRF = AlignUp(loadedCrossThreadInputSize, builder.getGRFSize()) / numEltPerGRF<Type_UB>();
+                    crossThreadStart = crossThreadLoadStart / builder.getGRFSize();
                 }
                 else
                 {
@@ -15571,7 +15571,7 @@ void Optimizer::expandMadwPostSchedule()
             hwConf.fixMulSrc1(startIter, bb);
 
             // 2, create a mach/macl inst
-            int DstHiRegOffset = (int)std::ceil((float)(execSize * TypeSize(tmpType)) / getGRFSize());
+            int DstHiRegOffset = (int)std::ceil((float)(execSize * TypeSize(tmpType)) / builder.getGRFSize());
             G4_DstRegRegion* dstHi32 = builder.createDst(dst->getBase(), dst->getRegOff() + DstHiRegOffset, dst->getSubRegOff(), 1, tmpType);
             G4_INST* machInst = builder.createMach(execSize,
                 dstHi32, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, tmpType);

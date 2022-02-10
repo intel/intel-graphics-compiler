@@ -1848,7 +1848,7 @@ void LocalRA::printInputLiveIntervals()
     DEBUG_VERBOSE(std::endl);
 }
 
-void LocalRA::countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals)
+void LocalRA::countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals, unsigned grfSize)
 {
     unsigned int numScalars = 0, numHalfGRF = 0, numOneGRF = 0, numTwoOrMoreGRF = 0, numTotal = 0;
 
@@ -1867,9 +1867,9 @@ void LocalRA::countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveInterval
         }
         else
         {
-            if (dcl->getNumElems() > 1 && size > (getGRFSize() / 2u) && size <= (unsigned int)getGRFSize())
+            if (dcl->getNumElems() > 1 && size > (grfSize / 2u) && size <= grfSize)
                 numOneGRF++;
-            else if (dcl->getNumElems() > 1 && size <= (getGRFSize() / 2u))
+            else if (dcl->getNumElems() > 1 && size <= (grfSize / 2u))
                 numHalfGRF++;
             else if (dcl->getNumElems() == 1)
                 numScalars++;
@@ -2019,7 +2019,7 @@ void PhyRegsLocalRA::setGRFBusy(int which)
     MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
 
     // all 1 word mask based on register size
-    uint64_t wordMask = (1ULL << (getGRFSize() / 2)) - 1;
+    uint64_t wordMask = (1ULL << (builder->getGRFSize() / 2)) - 1;
     regBusyVector[which] = (uint32_t) wordMask;
 
     if (twoBanksRA)

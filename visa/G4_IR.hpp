@@ -1117,7 +1117,7 @@ public:
 
     void inheritSWSBFrom(const G4_INST* inst);
 
-    const IR_Builder& getBuilder() { return builder; }
+    const IR_Builder& getBuilder() const { return builder; }
 
 private:
 
@@ -1810,7 +1810,7 @@ namespace vISA
 {
 
 template <G4_Type T>
-unsigned int numEltPerGRF() {return getGRFSize() / TypeSize(T);}
+unsigned int numEltPerGRF() {return ::getGRFSize() / TypeSize(T);}
 template unsigned int numEltPerGRF<Type_UD>();
 template unsigned int numEltPerGRF<Type_D>();
 template unsigned int numEltPerGRF<Type_UW>();
@@ -1831,13 +1831,14 @@ template unsigned int numEltPerGRF<Type_BF>();
 
 inline unsigned int numEltPerGRF(G4_Type t)
 {
-    return getGRFSize() / TypeSize(t);
+    return ::getGRFSize() / TypeSize(t);
 }
 
 class G4_Declare
 {
     friend class IR_Builder;
 
+    const IR_Builder& irb;
     const char*        name;        // Var_Name
     G4_RegFileKind     regFile;     // from which reg file
     G4_Type            elemType;    // element type
@@ -1898,12 +1899,13 @@ class G4_Declare
     }
 
 public:
-    G4_Declare(const char*    n,
+    G4_Declare(const IR_Builder& builder,
+               const char*    n,
                G4_RegFileKind k,
                uint32_t numElems,
                G4_Type        ty,
                std::vector<G4_Declare*>& dcllist) :
-      name(n), regFile(k), elemType(ty), addressed(false), builtin(false), liveIn(false),
+      irb(builder), name(n), regFile(k), elemType(ty), addressed(false), builtin(false), liveIn(false),
       liveOut(false), payloadLiveOut(false), noWidening(false), isSplittedDcl(false), isPartialDcl(false),
       refInSend(false), PreDefinedVar(false), numElements(numElems), offsetFromBase(-1)
     {
@@ -2454,7 +2456,7 @@ public:
             // computeRightBound also computes bitVec
             inst->computeRightBound(this);
         }
-        if (getGRFSize() == 32)
+        if (::getGRFSize() == 32)
         {
             assert(bitVec[1] == 0 && "upper bits should be 0");
         }
@@ -4216,7 +4218,7 @@ public:
 
     uint32_t getNumRows() const { return numRows; }
     uint32_t getOffset() const { return offset; }
-    uint32_t getOffsetInBytes() const { return offset * getGRFSize(); }
+    uint32_t getOffsetInBytes() const;
     G4_Declare* getFP() const { return fp; }
     G4_SrcRegRegion* getHeader() const { return getSrc(0)->asSrcRegRegion(); }
     G4_SrcRegRegion* getPayload() const { return getSrc(1)->asSrcRegRegion(); }
@@ -4293,7 +4295,7 @@ public:
 
     uint32_t getNumRows() const { return numRows; }
     uint32_t getOffset() const { return offset; }
-    uint32_t getOffsetInBytes() const { return offset * getGRFSize(); }
+    uint32_t getOffsetInBytes() const;
     G4_Declare* getFP() const { return fp; }
     G4_SrcRegRegion* getHeader() const { return getSrc(0)->asSrcRegRegion(); }
 

@@ -391,8 +391,8 @@ void vISAVerifier::verifyVariableDecl(
         {
             REPORT_HEADER(options,totalOffset < (currAliasVar->num_elements * (unsigned)CISATypeTable[currAliasVar->getType()].typeSize),
                               "Variable decl's alias offset exceeds the bounds of the aliased variable decl allocation size: %s", declError.c_str());
-            VISA_Align baseAlign = std::max(currAliasVar->getAlignment(), currAliasVar->getTypeAlignment());
-            REPORT_HEADER(options, baseAlign >= var->getTypeAlignment(),
+            VISA_Align baseAlign = std::max(currAliasVar->getAlignment(), currAliasVar->getTypeAlignment(irBuilder->getGRFSize()));
+            REPORT_HEADER(options, baseAlign >= var->getTypeAlignment(irBuilder->getGRFSize()),
                 "base variable must be at least type-aligned to this variable: %s", declError.c_str());
         }
     }
@@ -4038,7 +4038,7 @@ void vISAVerifier::verifyKernelHeader()
             auto pi = header->getInput(i);
             unsigned Begin = pi->offset;
             unsigned End = Begin + pi->size;
-            if (End >= (uint32_t) (getGRFSize() * (256 - 1)))
+            if (End >= (uint32_t) (irBuilder->getGRFSize() * (256 - 1)))
             {
                 REPORT_HEADER(options, false, "Input V%d is out of bound [%d, %d)", pi->index, Begin, End);
             }
@@ -4075,11 +4075,11 @@ void vISAVerifier::verifyKernelHeader()
                      int varSize = header->getVar(varId)->num_elements * CISATypeTable[header->getVar(varId)->getType()].typeSize;
                      REPORT_HEADER(options,varSize == header->getInput(i)->size,
                          "Input %d's size(%d) does not agree with its variable (V%d)'s", i, header->getInput(i)->size, varId + numPreDefinedVars);
-                     if (header->getInput(i)->size < getGRFSize())
+                     if (header->getInput(i)->size < irBuilder->getGRFSize())
                      {
                          // check that input does not straddle GRF boundary
-                         auto beginGRF = header->getInput(i)->offset / getGRFSize();
-                         auto endGRF = (header->getInput(i)->offset + header->getInput(i)->size - 1) / getGRFSize();
+                         auto beginGRF = header->getInput(i)->offset / irBuilder->getGRFSize();
+                         auto endGRF = (header->getInput(i)->offset + header->getInput(i)->size - 1) / irBuilder->getGRFSize();
                          REPORT_HEADER(options, beginGRF == endGRF, "Input %s is <1 GRF but straddles GRF boundary", header->getInput(i)->dcl->getName());
                      }
                  }

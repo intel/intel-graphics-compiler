@@ -270,7 +270,7 @@ int CISA_IR_Builder::CreateBuilder(
     startTimer(TimerID::TOTAL);
     startTimer(TimerID::BUILDER);  // builder time ends with we call compile (i.e., it covers the IR construction time)
     // TODO: Remove global APIs that get/set visa platform. Currently
-    // getGRFSize() still relies on this.
+    // ::getGRFSize() still relies on this.
     //this must be called before any other API.
     SetVisaPlatform(platform);
 
@@ -1964,7 +1964,7 @@ bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNum, const char *var, int64_
     auto *decl =  (VISA_GenVar*)m_kernel->getDeclFromName(var);
     if (!decl) {
         if (std::string(var) == "GRF") {
-            val = getGRFSize();
+            val = m_kernel->getIRBuilder()->getGRFSize();
             return true;
         }
         RecordParseError(lineNum, var, ": unbound variable");

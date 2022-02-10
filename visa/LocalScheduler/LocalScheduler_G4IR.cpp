@@ -762,7 +762,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
 
-                    if (opndSize > getGRFSize())
+                    if (opndSize > kernel->getGRFSize())
                     {
                         currInstRegs[1][i] = currInstRegs[0][i] + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
                     }
@@ -797,7 +797,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
 
                     liveSrc.set(nextInstRegs[0][i], true);  //Set live
 
-                    if (opndSize > getGRFSize())
+                    if (opndSize > kernel->getGRFSize())
                     {
                         int reg = nextInstRegs[0][i] + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
                         nextInstRegs[1][i] =  reg;
@@ -830,7 +830,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
         uint32_t byteAddress = nextDstOpnd->getLinearizedStart();
         dstReg0 = byteAddress / numEltPerGRF<Type_UB>();
         liveDst.set(dstReg0, true);
-        if (opndSize <= getGRFSize())
+        if (opndSize <= kernel->getGRFSize())
         {
             nextInstSimd8 = true;
         }
@@ -859,7 +859,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
             return false;
         }
 
-        if (opndSize <= getGRFSize())
+        if (opndSize <= kernel->getGRFSize())
         {
             curInstSimd8 = true;
         }
@@ -990,7 +990,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
 
-                    if (opndSize > getGRFSize())
+                    if (opndSize > kernel->getGRFSize())
                     {
                         currInstRegs[1][i] = currInstRegs[0][i] + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
                     }
@@ -1023,7 +1023,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     nextInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
 
-                    if (opndSize > getGRFSize())
+                    if (opndSize > kernel->getGRFSize())
                     {
                         int reg = nextInstRegs[0][i] + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
                         nextInstRegs[1][i] = reg;
@@ -1054,7 +1054,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
         opndSize = nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = nextDstOpnd->getLinearizedStart();
         dstReg0 = byteAddress / numEltPerGRF<Type_UB>();
-        if (opndSize <= getGRFSize())
+        if (opndSize <= kernel->getGRFSize())
         {
             nextInstSimd8 = true;
         }
@@ -1077,7 +1077,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
         dstReg0 = byteAddress / numEltPerGRF<Type_UB>();
 
-        if (opndSize <= getGRFSize())
+        if (opndSize <= kernel->getGRFSize())
         {
             curInstSimd8 = true;
         }

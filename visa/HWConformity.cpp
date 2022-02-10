@@ -2177,7 +2177,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
 
         //need extra move for dst
         if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
-            !builder.isOpndAligned(origDst, getGRFSize()))
+            !builder.isOpndAligned(origDst, builder.getGRFSize()))
         {
             // macl dst must be grf-aligned, packed D/UD as it is also used for the implicit acc source's region
             G4_DstRegRegion* tmpDst = insertMovAfter(it, origDst, tmpType, bb, GRFALIGN);
@@ -2224,7 +2224,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
         machIter = bb->insertBefore(++machIter, maclInst);
 
         if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
-            !builder.isOpndAligned(origDst, getGRFSize()))
+            !builder.isOpndAligned(origDst, builder.getGRFSize()))
         {
             // macl dst must be grf-aligned, packed D/UD as it is also used for the implicit acc source's region
             G4_DstRegRegion* tmpDst = insertMovAfter(machIter, origDst, tmpType, bb, GRFALIGN);
@@ -2734,7 +2734,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
         if (inst->getSaturate() ||
             dst->getExecTypeSize() > TypeSize(Type_D) ||
             isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
-            !builder.isOpndAligned(dst, getGRFSize()))
+            !builder.isOpndAligned(dst, builder.getGRFSize()))
         {
             // add a tmp mov
             inst->setDest(insertMovAfter(i, dst, dst->getType(), bb, GRFALIGN));
@@ -3806,7 +3806,7 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST* inst) const
         auto src2 = inst->getSrc(src2Pos);
         if (src2->isSrcRegRegion() && !src2->asSrcRegRegion()->isScalar())
         {
-            alignInBytes = getGRFSize();
+            alignInBytes = builder.getGRFSize();
         }
     }
 
@@ -5167,14 +5167,14 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     {
                         G4_Declare* copyDst = builder.createTempVar(src0Size * numEltPerGRF<Type_UD>(), Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(0)->getBase()->asRegVar()->getDeclare(),
-                            inst->getSrc(0)->asSrcRegRegion()->getRegOff() * getGRFSize(), src0Size, bb, i);
+                            inst->getSrc(0)->asSrcRegRegion()->getRegOff() * builder.getGRFSize(), src0Size, bb, i);
                         inst->setSrc(builder.createSrcRegRegion(copyDst, builder.getRegionStride1()), 0);
                     }
                     if (src1Overlap)
                     {
                         G4_Declare* copyDst = builder.createTempVar(src1Size * numEltPerGRF<Type_UD>(), Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(1)->getBase()->asRegVar()->getDeclare(),
-                            inst->getSrc(1)->asSrcRegRegion()->getRegOff() * getGRFSize(), src1Size, bb, i);
+                            inst->getSrc(1)->asSrcRegRegion()->getRegOff() * builder.getGRFSize(), src1Size, bb, i);
                         inst->setSrc(builder.createSrcRegRegion(copyDst, builder.getRegionStride1()), 1);
                     }
                 }
@@ -5186,7 +5186,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     auto copyIter = std::next(i);
                     G4_Declare* copySrc = builder.createTempVar(dstSize * numEltPerGRF<Type_UD>(), Type_UD, Any);
                     // speical case when send dst declare is <1 GRF (it must still be GRF-aligned)
-                    if (dstDcl->getByteSize() < getGRFSize())
+                    if (dstDcl->getByteSize() < builder.getGRFSize())
                     {
                         auto numDWords = dstDcl->getByteSize() / TypeSize(Type_UD);
                         assert(numDWords > 0);
@@ -5194,7 +5194,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     }
                     else
                     {
-                        copyRegs(dstDcl, dst->getRegOff() * getGRFSize(),
+                        copyRegs(dstDcl, dst->getRegOff() * builder.getGRFSize(),
                             copySrc, 0, dstSize, bb, copyIter);
                     }
                     inst->setDest(builder.createDstRegRegion(copySrc, 1));
@@ -5364,7 +5364,7 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb, PointsTo
 
     auto dstSize = inst->getExecSize() * dst->getTypeSize() * dst->getHorzStride();
     //Handle VxH
-    if (dstSize > getGRFSize())
+    if (dstSize > builder.getGRFSize())
     {
         // special check for 2-GRF instruction with VxH operands
         // strictly speaking dst and VxH src may overlap only if src's address may point to dst variable,
@@ -5457,7 +5457,7 @@ void HWConformity::fixCalla(INST_LIST_ITER it, G4_BB *bb)
     if (!src0->isSrcRegRegion())
         return;
 
-    if (builder.isOpndAligned(src0, getGRFSize()))
+    if (builder.isOpndAligned(src0, builder.getGRFSize()))
         return;
 
     // insert a mov before fcall(calla) to mov src to a grf aligned reg
@@ -5477,7 +5477,7 @@ void HWConformity::replaceHFBFwithFloat(INST_LIST_ITER it, G4_BB* bb)
     unsigned int src_l = src0->getLinearizedStart();
     unsigned int src_r = src0->getLinearizedEnd();
     unsigned int dstGRFSize = (src_r - src_l + 1) * (TypeSize(Type_F) / src0->getTypeSize());
-    unsigned movInstNum = (((dstGRFSize + getGRFSize() - 1) / getGRFSize()) + 1) / 2; //2 GRFs per instruction
+    unsigned movInstNum = (((dstGRFSize + builder.getGRFSize() - 1) / builder.getGRFSize()) + 1) / 2; //2 GRFs per instruction
 
     G4_Declare* dcl = builder.createTempVar(builder.getNativeExecSize() * C, Type_F, ThirtyTwo_Word);
 
@@ -5499,7 +5499,7 @@ void HWConformity::replaceHFBFwithFloat(INST_LIST_ITER it, G4_BB* bb)
             builder.getRegionStride1(),
             src0->asSrcRegRegion()->getType());
 
-        G4_ExecSize numOfF {(2 * getGRFSize()) / TypeSize(Type_F)};
+        G4_ExecSize numOfF {(2 * builder.getGRFSize()) / TypeSize(Type_F)};
         if (i == movInstNum - 1)
         {
             numOfF = G4_ExecSize((dstGRFSize / TypeSize(Type_F)) - i * numOfF);
@@ -6211,7 +6211,7 @@ void HWConformity::fixBFMixedMode()
             //         be splitted (currES * F" > 2 GRF); or
             //      2. Split if currES > nativeES for insts that support BF. (case 7)
             std::list<INST_LIST_ITER> instsToCheck;
-            if ((!isBFAllowedInst && (TypeSize(Type_F) * currES) > (getGRFSize() * 2))
+            if ((!isBFAllowedInst && (TypeSize(Type_F) * currES) > (builder.getGRFSize() * 2))
                 || (isBFAllowedInst && currES > nativeES))
             {
                 if (currES == g4::SIMD32)
@@ -7264,7 +7264,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
 
     auto u = builder.createSrcWithNewRegOff(src1, src1->getRegOff() + (secondHalf ? 2 : 0));
     auto v = builder.createSrcWithNewRegOff(src1, src1->getRegOff() + (secondHalf ? 3 : 1));
-    if (getGRFSize() == 64)
+    if (builder.getGRFSize() == 64)
     {
         u = builder.createSrcRegRegion(src1->getModifier(), Direct, src1->getBase(),
             src1->getRegOff() + (secondHalf ? 1 : 0), src1->getSubRegOff(), src1->getRegion(), src1->getType(), src1->getAccRegSel());
@@ -7313,7 +7313,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
         builder.createSrcRegRegion(tmpVal, builder.getRegionStride1());
     G4_DstRegRegion* newDst = builder.createDst(dst->getBase(),
         dst->getRegOff() + (secondHalf ? 1 : 0), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
-    if (getGRFSize() == 64)
+    if (builder.getGRFSize() == 64)
     {
         newDst = builder.createDst(dst->getBase(),
             dst->getRegOff(), dst->getSubRegOff() + (secondHalf ? 8 : 0), dst->getHorzStride(), dst->getType());
@@ -8017,7 +8017,7 @@ bool HWConformity::fixIntToHFMove(G4_BB* bb)
         if (inst->opcode() == G4_mov && inst->getDst()->getType() == Type_HF &&
             IS_INT(inst->getSrc(0)->getType()))
         {
-            if (inst->getExecSize() * 2 * 2 > getGRFSize() * 2)
+            if (inst->getExecSize() * 2 * 2 > builder.getGRFSize() * 2)
             {
                 evenlySplitInst(I, bb);
                 changed = true;
@@ -8309,8 +8309,8 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
             auto src0RR = inst->getSrc(0)->asSrcRegRegion();
             int dstStride = TypeSize(dstTy) * inst->getDst()->getHorzStride();
             int srcStride = getSrcStride(src0RR);
-            if (dstStride != srcStride || !builder.isOpndAligned(inst->getSrc(0), getGRFSize()) ||
-                !builder.isOpndAligned(inst->getDst(), getGRFSize()))
+            if (dstStride != srcStride || !builder.isOpndAligned(inst->getSrc(0), builder.getGRFSize()) ||
+                !builder.isOpndAligned(inst->getDst(), builder.getGRFSize()))
             {
                 bool isNoMaskInst = !inst->getPredicate() && (inst->isWriteEnableInst() || bb->isAllLaneActive());
                 if (execTyWidth < 8)
@@ -8440,7 +8440,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
     if ((builder.getMixModeType() == dstTy || canDoPackedFtoHFMove) && IS_FTYPE(execTy))
     {
         uint16_t offset = 0;
-        bool isAligned = builder.isOpndAligned(dst, offset, getGRFSize() / 2);
+        bool isAligned = builder.isOpndAligned(dst, offset, builder.getGRFSize() / 2);
         if (dst->getHorzStride() == 1)
         {
             isSpecialMixModeDst = isAligned;
@@ -8461,7 +8461,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
     }
 
     auto dstStride = TypeSize(dstTy) * dst->getHorzStride();
-    uint16_t dstAlign = inst->getSrc(0)->getType() == Type_VF ? 16 : getGRFSize();
+    uint16_t dstAlign = inst->getSrc(0)->getType() == Type_VF ? 16 : builder.getGRFSize();
     if (dst->getRegAccess() == Direct && !isSpecialMixModeDst &&
         (!builder.isOpndAligned(dst, dstAlign) || dstStride != execTyWidth))
     {
@@ -8590,7 +8590,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
                 auto srcStride = getSrcStride(src);
                 bool isMixModeSrc = isLowPrecisionFloatTy(src->getType()) && IS_FTYPE(execTy);
                 bool isMixModePackedSrc = isMixModeSrc && srcStride == 2;
-                uint16_t alignment = isMixModePackedSrc ? (getGRFSize() / 2) : getGRFSize();
+                uint16_t alignment = isMixModePackedSrc ? (builder.getGRFSize() / 2) : builder.getGRFSize();
                 // for mix mode the source must be packed, otherwise srcStride shoudl be == sizeof(exec type)
                 if (!builder.isOpndAligned(src, alignment) || (isMixModeSrc ? !isMixModePackedSrc : srcStride != execTyWidth))
                 {
@@ -8827,7 +8827,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
         }
     }
 
-    auto isDclGRFAligned = [](G4_Declare* dcl)
+    auto isDclGRFAligned = [this](G4_Declare* dcl)
     {
         if (!dcl)
         {
@@ -8835,7 +8835,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
         }
         uint32_t offset = 0;
         auto rootDcl = dcl->getRootDeclare(offset);
-        return rootDcl->getSubRegAlign() >= GRFALIGN && (offset % getGRFSize() == 0);
+        return rootDcl->getSubRegAlign() >= GRFALIGN && (offset % builder.getGRFSize() == 0);
     };
 
     bool needFix = false;
@@ -8914,8 +8914,8 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
         }
         for (int row = 0; row < numRows; ++row)
         {
-            srcSubRegOff = (srcSubRegOff + row * region->vertStride) % (getGRFSize() / TypeSize(srcTy));
-            dstSubRegOff = (dstSubRegOff + row * region->width * dst->getHorzStride()) % (getGRFSize() / TypeSize(dstTy));
+            srcSubRegOff = (srcSubRegOff + row * region->vertStride) % (builder.getGRFSize() / TypeSize(srcTy));
+            dstSubRegOff = (dstSubRegOff + row * region->width * dst->getHorzStride()) % (builder.getGRFSize() / TypeSize(dstTy));
             bool dstSubRegOffDwordAlign = ((dstSubRegOff % (4 / TypeSize(dstTy))) == 0);
             if (TypeSize(srcTy) == 2)
             {
@@ -9090,7 +9090,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
 
         auto scale = 4 / TypeSize(dstTy);
         const RegionDesc* unpackRegion = builder.createRegionDesc(scale, 1, 0);
-        dstSubRegOff = dst->getSubRegOff() % (getGRFSize() / TypeSize(dstTy));
+        dstSubRegOff = dst->getSubRegOff() % (builder.getGRFSize() / TypeSize(dstTy));
 
         // compute the sub-reg-offset we need to use
         short tmpSSR = 0;
@@ -9111,14 +9111,14 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                 tmpSSR = 4 * (dstSubRegOff % 16);
             }
         }
-        auto tempSize = std::max(inst->getExecSize() * scale + tmpSSR, getGRFSize() / TypeSize(dstTy));
+        auto tempSize = std::max(inst->getExecSize() * scale + tmpSSR, (int)builder.getGRFSize() / TypeSize(dstTy));
 
         // Replace the dest with a temp, same-type, offset == 0
         // stride == 2 for word-type; stride == 4 for byte-type
         // Add a B2B or W2W pack-move from temp.0(stride; 1, 0)  to the original-dest.sub(ds)
         // however, if the original-dest is NOT grf-aligned, we need another B2B or W2W
         // to shift the location of packed bytes or words after packing.
-        if (dstAligned && (tempSize <= (unsigned short)(getGRFSize() * 2)))
+        if (dstAligned && (tempSize <= (unsigned short)(builder.getGRFSize() * 2)))
         {
             G4_Declare* unpackDcl = builder.createTempVar(tempSize, dstTy, GRFALIGN);
 
@@ -9375,10 +9375,10 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
     if (madwInst->getSaturate() ||
         dst->getHorzStride() != 1 ||
         isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
-        !builder.isOpndAligned(dst, getGRFSize()))
+        !builder.isOpndAligned(dst, builder.getGRFSize()))
     {
         // add tmp mov instructions
-        int dstLowGRFNum = (int)std::ceil((float)(execSize * dst->getExecTypeSize()) / getGRFSize());
+        int dstLowGRFNum = (int)std::ceil((float)(execSize * dst->getExecTypeSize()) / builder.getGRFSize());
         int dstTotalGRFNum = dstLowGRFNum * 2;
 
         G4_Declare* newDstDcl = builder.createTempVar(numEltPerGRF(dst->getType()) * dstTotalGRFNum, dst->getType(), GRFALIGN);
@@ -9396,7 +9396,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
 
         // add a tmp mov for high results in dst
         G4_Declare* hiMovSrcDcl = builder.createTempVar(numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
-        hiMovSrcDcl->setAliasDeclare(newDstDcl, dstLowGRFNum * getGRFSize());
+        hiMovSrcDcl->setAliasDeclare(newDstDcl, dstLowGRFNum * builder.getGRFSize());
         G4_SrcRegRegion* hiMovSrc = builder.createSrcRegRegion(hiMovSrcDcl, builder.getRegionStride1());
         auto dstHi = builder.createDst(dst->getBase(), dst->getRegOff() + dstLowGRFNum, dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
         G4_INST* hiMovInst = builder.createMov(execSize, dstHi, hiMovSrc, madwInst->getMaskOption(), false);
@@ -9461,7 +9461,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
         fixMulSrc1(std::prev(it), bb);
 
         // 2, create a mach inst
-        int DstHiRegOffset = (int)std::ceil((float)(execSize * TypeSize(tmpType)) / getGRFSize());
+        int DstHiRegOffset = (int)std::ceil((float)(execSize * TypeSize(tmpType)) / builder.getGRFSize());
         G4_DstRegRegion* dstHi32 = builder.createDst(dst->getBase(), dst->getRegOff() + DstHiRegOffset, dst->getSubRegOff(), 1, tmpType);
         G4_INST* machInst = builder.createMach(execSize,
             dstHi32, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, tmpType);

@@ -485,8 +485,8 @@ void VarSplitPass::split()
         for (unsigned int i = 0; i != numIntrinInsts; i++)
         {
             unsigned int numRows = item.second.ag == VarProperties::AccessGranularity::TwoGrf ? 2 : 1;
-            unsigned int lb = getGRFSize() * i*numRows;
-            unsigned int rb = lb + (getGRFSize()*numRows)-1;
+            unsigned int lb = kernel.getGRFSize() * i*numRows;
+            unsigned int rb = lb + (kernel.getGRFSize()*numRows)-1;
 
             auto name = kernel.fg.builder->getNameString(kernel.fg.mem, 50, "%s_%d_%d_%d", dstDcl->getName(), i, lb, rb);
             auto splitDcl = kernel.fg.builder->createDeclareNoLookup(name,
@@ -505,7 +505,7 @@ void VarSplitPass::split()
             auto srcRgn = kernel.fg.builder->createSrc(dstDcl->getRegVar(),
                 item.second.def.first->getRegOff() + (i * numRows), item.second.def.first->getSubRegOff(),
                 kernel.fg.builder->getRegionStride1(), Type_UD);
-            G4_ExecSize execSize {(getGRFSize() / TypeSize(Type_UD)) * numRows};
+            G4_ExecSize execSize {(kernel.getGRFSize() / TypeSize(Type_UD)) * numRows};
             auto intrin = kernel.fg.builder->createIntrinsicInst(
                 nullptr, Intrinsic::Split, execSize, dstRgn, srcRgn, nullptr, nullptr,
                 item.second.def.first->getInst()->getOption() | G4_InstOption::InstOpt_WriteEnable, true);
@@ -1251,7 +1251,7 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
     };
 
     // first copy full GRF rows
-    if (numRows > 1 || (dst->getTotalElems() * dst->getElemSize() == getGRFSize()))
+    if (numRows > 1 || (dst->getTotalElems() * dst->getElemSize() == kernel.getGRFSize()))
     {
         // dcls are GRF sized so emit max SIMD size possible and copy 2 rows at
         // a time

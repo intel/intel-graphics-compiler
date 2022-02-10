@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "common.h"
 #include "Attributes.hpp"
+#include "BuildIR.h"
 
 #include <string>
 #include <utility>
@@ -94,7 +95,7 @@ void Attributes::setKernelAttr(ID kID, bool v)
     pAV->m_val.u.m_bool = v;
     pAV->m_isSet = true;
 }
-void Attributes::setKernelAttr(ID kID, int32_t v)
+void Attributes::setKernelAttr(ID kID, int32_t v, const IR_Builder& irb)
 {
     SAttrValue* pAV = getKernelAttrValue(kID);
     assert(pAV->m_val.m_attrType == AttrType::Int32);
@@ -103,7 +104,7 @@ void Attributes::setKernelAttr(ID kID, int32_t v)
     switch (kID) {
     case ATTR_SpillMemOffset:
     {
-        assert((v & (getGRFSize() - 1)) == 0 &&
+        assert((v & (irb.getGRFSize() - 1)) == 0 &&
             "Kernel attribute: SpillMemOffset is mis-aligned!");
         break;
     }

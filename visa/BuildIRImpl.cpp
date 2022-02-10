@@ -42,7 +42,7 @@ G4_Declare* DeclarePool::createDeclare(
     G4_Operand *   repRegion,
     G4_ExecSize    execSize)
 {
-    G4_Declare* dcl = new (mem) G4_Declare(name, regFile, nElems * nRows, ty, dcllist);
+    G4_Declare* dcl = new (mem) G4_Declare(irb, name, regFile, nElems * nRows, ty, dcllist);
     G4_RegVar * regVar;
     if (kind == DeclareType::Regular)
         regVar = new (mem) G4_RegVar(dcl, G4_RegVar::RegVarType::Default);
@@ -773,7 +773,7 @@ IR_Builder::IR_Builder(
     type(VISA_BUILD_TYPE::KERNEL), parentBuilder(parent),
     builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
     CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
-    mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
+    mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m, *this),
     instList(alloc), kernel(k), metadataMem(4096)
 {
     num_temp_dcl = 0;

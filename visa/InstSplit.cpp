@@ -94,18 +94,18 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
         G4_SrcRegRegion* src = opnd->asSrcRegRegion();
         uint32_t leftBound = 0, rightBound = 0;
         computeSrcBounds(src, leftBound, rightBound);
-        return (rightBound - leftBound) > (getGRFSize() * 2u);
+        return (rightBound - leftBound) > (m_builder->getGRFSize() * 2u);
     };
 
     auto cross2GRFDst = [inst, this](G4_DstRegRegion* dst)
     {
         if (dst->isNullReg())
         {
-            return ((unsigned)inst->getExecSize() * dst->getTypeSize() * dst->getHorzStride()) > (getGRFSize() * 2u);
+            return ((unsigned)inst->getExecSize() * dst->getTypeSize() * dst->getHorzStride()) > (m_builder->getGRFSize() * 2u);
         }
         uint32_t leftBound = 0, rightBound = 0;
         computeDstBounds(dst, leftBound, rightBound);
-        return (rightBound - leftBound) > (getGRFSize() * 2u);
+        return (rightBound - leftBound) > (m_builder->getGRFSize() * 2u);
     };
 
     auto useTmpForSrc = [&](G4_SrcRegRegion* src) -> G4_SrcRegRegion*
@@ -311,7 +311,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
 
 bool InstSplitPass::needSplitByExecSize(G4_ExecSize execSize) const
 {
-    if (getGRFSize() == 64)
+    if (m_builder->getGRFSize() == 64)
     {
         return execSize == g4::SIMD32;
     }
@@ -410,7 +410,7 @@ G4_CmpRelation InstSplitPass::compareSrcDstRegRegion(G4_DstRegRegion* dstRegion,
 
     // Lastly, check byte footprint for exact relation
     uint32_t srcLeftBound = 0, srcRightBound = 0;
-    int maskSize = 8 * getGRFSize();
+    int maskSize = 8 * m_builder->getGRFSize();
     BitSet srcBitSet(maskSize, false);
     computeSrcBounds(opnd->asSrcRegRegion(), srcLeftBound, srcRightBound);
     generateBitMask(opnd, srcBitSet);
@@ -488,7 +488,7 @@ void InstSplitPass::computeDstBounds(G4_DstRegRegion* dstRegion, uint32_t& leftB
             leftBound = subRegOff * typeSize;
             if (base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1)
             {
-                leftBound += getGRFSize();
+                leftBound += m_builder->getGRFSize();
             }
         }
         else if (topDcl)
@@ -561,7 +561,7 @@ void InstSplitPass::computeSrcBounds(G4_SrcRegRegion* srcRegion, uint32_t& leftB
             leftBound = subRegOff * typeSize;
             if (base->asAreg()->getArchRegType() == AREG_ACC1)
             {
-                leftBound += getGRFSize();
+                leftBound += m_builder->getGRFSize();
             }
         }
         else if (topDcl)

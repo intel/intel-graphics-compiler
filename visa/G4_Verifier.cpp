@@ -439,7 +439,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 unsigned int correctRB =
                     ((inst->getMsgDesc()->getDstLenRegs() + opnd->asDstRegRegion()->getRegOff()) * numEltPerGRF<Type_UB>()) - 1;
                 uint32_t dstLenBytes = inst->getMsgDesc()->getDstLenBytes();
-                if (dstLenBytes < getGRFSize()) {
+                if (dstLenBytes < kernel.getGRFSize()) {
                     correctRB = opnd->getLeftBound() + dstLenBytes - 1;
                 } else if (opnd->getTopDcl()->getByteSize() < numEltPerGRF<Type_UB>()) {
                     correctRB = opnd->getLeftBound() + opnd->getTopDcl()->getByteSize() - 1;

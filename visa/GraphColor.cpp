@@ -3270,7 +3270,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
                 elemSize = 1;
             }
 
-            startByte = (row * getGRFSize()) + (subReg * elemSize);
+            startByte = (row * kernel.getGRFSize()) + (subReg * elemSize);
 
             if (dst->isFlag())
             {
@@ -8065,7 +8065,7 @@ void GraphColor::getCallerSaveRegisters()
             {
                 std::ofstream optreport;
                 getOptReportStream(optreport, builder.kernel.getOptions());
-                optreport << "Caller save size: " << callerSaveRegCount * getGRFSize() <<
+                optreport << "Caller save size: " << callerSaveRegCount * builder.getGRFSize() <<
                     " bytes for fcall at cisa id " <<
                     (*it)->back()->getCISAOff() << std::endl;
                 closeOptReportStream(optreport);
@@ -8172,7 +8172,7 @@ void GlobalRA::addCallerSaveRestoreCode()
             }
             afterFCallBB->erase(insertRestIt);
 
-            maxCallerSaveSize = std::max(maxCallerSaveSize, callerSaveRegsWritten * getGRFSize());
+            maxCallerSaveSize = std::max(maxCallerSaveSize, callerSaveRegsWritten * builder.getGRFSize());
         }
     }
 
@@ -8299,13 +8299,13 @@ void GlobalRA::addCalleeSaveRestoreCode()
         addEUFusionCallWAInst(restore);
 
     // caller-save starts after callee-save and is 64-byte aligned
-    auto byteOffset = builder.kernel.fg.calleeSaveAreaOffset * 16 + calleeSaveRegsWritten * getGRFSize();
+    auto byteOffset = builder.kernel.fg.calleeSaveAreaOffset * 16 + calleeSaveRegsWritten * builder.getGRFSize();
     builder.kernel.fg.callerSaveAreaOffset = ROUND(byteOffset, 64) / 16;
     if (builder.kernel.getOption(vISA_OptReport))
     {
         std::ofstream optreport;
         getOptReportStream(optreport, builder.kernel.getOptions());
-        optreport << "Callee save size: " << calleeSaveRegCount * getGRFSize() <<
+        optreport << "Callee save size: " << calleeSaveRegCount * builder.getGRFSize() <<
             " bytes" << std::endl;
         closeOptReportStream(optreport);
     }

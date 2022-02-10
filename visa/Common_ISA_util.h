@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 #include "G4_IR.hpp"
 
  const char* Common_ISA_Get_Align_Name(VISA_Align);
- uint32_t getAlignInBytes(VISA_Align A);
+ uint32_t getAlignInBytes(VISA_Align A, unsigned grfSize);
  VISA_Align getCISAAlign(uint32_t AlignInBytes);
  const char* Common_ISA_Get_Modifier_Name(VISA_Modifier);
  G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode);

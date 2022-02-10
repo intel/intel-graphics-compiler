@@ -440,7 +440,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
         for (const pointInfo cur : vec)
         {
             unsigned indirectVarSize = cur.var->getDeclare()->getByteSize();
-            assert((indirectVarSize <= (unsigned)getGRFSize()* fg.getKernel()->getNumRegTotal()) && "indirected variables' size is larger than GRF file size");
+            assert((indirectVarSize <= fg.builder->getGRFSize()* fg.getKernel()->getNumRegTotal()) && "indirected variables' size is larger than GRF file size");
         }
     }
 #endif

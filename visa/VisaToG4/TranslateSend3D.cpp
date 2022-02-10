@@ -1785,10 +1785,10 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
 }
 
 // get the number of GRFs occupied by a sampler message's operand
-static uint32_t getNumGRF(bool isFP16, int execSize)
+static uint32_t getNumGRF(unsigned grfSize, bool isFP16, int execSize)
 {
     int numBytes = (isFP16 ? 2 : 4) * execSize;
-    return (numBytes + getGRFSize() - 1) / getGRFSize();
+    return (numBytes + grfSize - 1) / grfSize;
 }
 
 uint32_t IR_Builder::getSamplerResponseLength(
@@ -1799,7 +1799,7 @@ uint32_t IR_Builder::getSamplerResponseLength(
         hasNullReturnSampler = true;
         return 0;
     }
-    uint32_t responseLength = numChannels * getNumGRF(isFP16, execSize);
+    uint32_t responseLength = numChannels * getNumGRF(getGRFSize(), isFP16, execSize);
 
     if (pixelNullMask)
     {
@@ -1851,7 +1851,7 @@ int IR_Builder::translateVISASampler3DInst(
 
     bool useHeader = false;
 
-    unsigned int numRows = numParms * getNumGRF(FP16Input, execSize);
+    unsigned int numRows = numParms * getNumGRF(getGRFSize(), FP16Input, execSize);
 
     VISAChannelMask channels = chMask.getAPI();
     // For SKL+ channel mask R, RG, RGB, and RGBA may be derived from response length
@@ -1982,7 +1982,7 @@ int IR_Builder::translateVISALoad3DInst(
     const bool halfReturn = dst->getTypeSize() == 2;
     const bool halfInput = opndArray[0]->getTypeSize() == 2;
 
-    unsigned int numRows = numParms * getNumGRF(halfInput, execSize);
+    unsigned int numRows = numParms * getNumGRF(getGRFSize(), halfInput, execSize);
 
     VISAChannelMask channels = channelMask.getAPI();
     // For SKL+ channel mask R, RG, RGB, and RGBA may be derived from response length
@@ -2108,7 +2108,7 @@ int IR_Builder::translateVISAGather3dInst(
     const bool FP16Return = dst->getTypeSize() == 2;
     const bool FP16Input = opndArray[0]->getType() == Type_HF;
 
-    unsigned int numRows = numOpnds * getNumGRF(FP16Input, execSize);
+    unsigned int numRows = numOpnds * getNumGRF(getGRFSize(), FP16Input, execSize);
 
     bool nonZeroAoffImmi = !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);
     bool needHeaderForChannels = channelMask.getSingleChannel() != VISA_3D_GATHER4_CHANNEL_R;

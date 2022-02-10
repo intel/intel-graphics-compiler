@@ -548,7 +548,7 @@ G4_Kernel::G4_Kernel(TARGET_PLATFORM genPlatform, INST_LIST_NODE_ALLOCATOR& allo
         (major == COMMON_ISA_MAJOR_VER && minor <= COMMON_ISA_MINOR_VER),
         "CISA version not supported by this JIT-compiler");
 
-
+    grfSize = genPlatform >= Xe_PVC ? 64 : 32;
     name = NULL;
     numThreads = 0;
     hasAddrTaken = false;

@@ -227,10 +227,11 @@ public:
 class DeclarePool
 {
     Mem_Manager& mem;
+    const IR_Builder& irb;
     std::vector<G4_Declare*> dcllist;
     int addrSpillLocCount; //incremented in G4_RegVarAddrSpillLoc()
 public:
-    DeclarePool(Mem_Manager& m) : mem(m), addrSpillLocCount(0) { dcllist.reserve(2048); }
+    DeclarePool(Mem_Manager& m, const IR_Builder& builder) : mem(m), irb(builder), addrSpillLocCount(0) { dcllist.reserve(2048); }
     ~DeclarePool();
 
     G4_Declare* createDeclare(
@@ -251,7 +252,7 @@ public:
                               G4_Type        ty)
     {
 
-        G4_Declare* dcl = new (mem)G4_Declare(getPredefinedVarString(index), G4_INPUT, n_elems * n_rows, ty, dcllist);
+        G4_Declare* dcl = new (mem)G4_Declare(irb, getPredefinedVarString(index), G4_INPUT, n_elems * n_rows, ty, dcllist);
         G4_RegVar * regVar;
         regVar = new (mem) G4_RegVar(dcl, G4_RegVar::RegVarType::Default);
         dcl->setRegVar(regVar);
@@ -648,6 +649,7 @@ public:
     }
 
     TARGET_PLATFORM getPlatform() const {return kernel.getPlatform();}
+    unsigned char getGRFSize() const {return kernel.getGRFSize();}
     FINALIZER_INFO* getJitInfo() {return metaData;}
     CompilerStats &getcompilerStats() {return compilerStats;}
 
