@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-    llvm::FunctionPass* createResolveGASPass();
+    llvm::ModulePass* createResolveGASPass();
     void initializeGASResolvingPass(llvm::PassRegistry&);
 
     llvm::ModulePass* createLowerGPCallArg();
