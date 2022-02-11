@@ -386,7 +386,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     // update type of instructions to know what passes are needed.
     UpdateInstTypeHint(ctx);
-
     // check again after full inlining if subroutines are still present
     ctx.CheckEnableSubroutine(*ctx.getModule());
 
@@ -443,6 +442,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
+
 
 
     if (ctx.type == ShaderType::PIXEL_SHADER)

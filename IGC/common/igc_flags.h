@@ -300,6 +300,7 @@ DECLARE_IGC_REGKEY(bool, DPASReadSuppressionWA,    true, "Enable read suppressio
 DECLARE_IGC_REGKEY(DWORD, RSWARegNum,    0, "dummy register used for EnablerReadSuppressionWA", false)
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierCheck,   false,  "Uses WIAnalysis to find barriers in divergent flow control. May have false positives.", false)
 DECLARE_IGC_REGKEY(bool, EnableBitcastExtractInsertPattern,   true,  "Enable BitcastExtractInsertPattern in CustomSafeOptPass.", true)
+
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump", true)
 DECLARE_IGC_REGKEY(bool, EnableCisDump, false, "Enable cis dump", true)

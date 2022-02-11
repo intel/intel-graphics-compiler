@@ -1307,6 +1307,7 @@ unsigned forceQwAtSrc0ForQwShlWA() const
     // PVC XT A0: RevID==0X3==REVISION_B
     return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId == REVISION_B);
 }
+
 };
 
 }//namespace IGC
