@@ -1049,7 +1049,7 @@ public:
   uint64_t getFPOffset() const override { return 16; }
 
   const GenXVisaRegAlloc::Reg *getRegisterForValue(const Value *V) const {
-    return RA.getRegForValueUntyped(const_cast<Value *>(V));
+    return RA.getRegForValueOrNull(const_cast<Value *>(V));
   }
 
   void printVisaMapping(raw_ostream &OS, unsigned Level = 0) const {

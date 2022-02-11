@@ -190,7 +190,7 @@ namespace llvm {
     Reg *getRegForValue(genx::SimpleValue V,
                         genx::Signedness Signed = genx::DONTCARESIGNED,
                         Type *OverrideType = nullptr, bool IsBF = false) {
-      Reg *R = getRegForValueOrNull(V, Signed, OverrideType, IsBF);
+      Reg *R = getOrCreateRegForValue(V, Signed, OverrideType, IsBF);
       IGC_ASSERT_MESSAGE(R, "no register allocated for this value");
       return R;
     }
@@ -198,7 +198,15 @@ namespace llvm {
     // register associated with given value.
     Reg *getRegForValueOrNull(genx::SimpleValue V,
                               genx::Signedness Signed = genx::DONTCARESIGNED,
-                              Type *OverrideType = nullptr, bool IsBF = false);
+                              Type *OverrideType = nullptr,
+                              bool IsBF = false) const;
+
+    // Get the vISA virtual register for a value or create alias if there is no
+    // register associated with given value.
+    Reg *getOrCreateRegForValue(genx::SimpleValue V,
+                                genx::Signedness Signed = genx::DONTCARESIGNED,
+                                Type *OverrideType = nullptr,
+                                bool IsBF = false);
 
     // Get the vISA virtual register for a value (0 if none), ignoring type
     // and signedness so it can be a const method usable from print().
