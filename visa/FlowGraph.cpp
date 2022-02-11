@@ -3068,7 +3068,7 @@ void FlowGraph::insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip)
     {
         // insert join at the end
         G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt);
-        bb->push_back(jInst);
+        bb->push_back(jInst, false);
     }
     else
     {
@@ -3084,7 +3084,7 @@ void FlowGraph::insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip)
         else
         {
             G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt);
-            bb->insertBefore(iter, jInst);
+            bb->insertBefore(iter, jInst, false);
         }
     }
 }

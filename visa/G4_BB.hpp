@@ -119,18 +119,22 @@ public:
         return instList.insert(iter, first, last);
     }
 
-    INST_LIST_ITER insertBefore(INST_LIST::iterator iter, G4_INST* inst)
+    INST_LIST_ITER insertBefore(INST_LIST::iterator iter, G4_INST* inst,
+        bool inheritDI = true)
     {
-        if (iter != instList.end() && !inst->isCISAOffValid())
+        if (inheritDI &&
+            iter != instList.end() && !inst->isCISAOffValid())
             inst->inheritDIFrom(*iter);
         return instList.insert(iter, inst);
     }
 
-    INST_LIST_ITER insertAfter(INST_LIST::iterator iter, G4_INST* inst)
+    INST_LIST_ITER insertAfter(INST_LIST::iterator iter, G4_INST* inst,
+        bool inheritDI = true)
     {
         auto next = iter;
         ++next;
-        if (!inst->isCISAOffValid())
+        if (inheritDI &&
+            !inst->isCISAOffValid())
         {
             // Inheriting from iter seems more reasonable
             // since invoking invokeAfter on iter means
@@ -150,8 +154,8 @@ public:
     void clear() { instList.clear(); }
     void pop_back() { instList.pop_back(); }
     void pop_front() { instList.pop_front(); }
-    void push_back(G4_INST* inst) {insertBefore(instList.end(), inst);}
-    void push_front(G4_INST* inst) {insertBefore(instList.begin(), inst);}
+    void push_back(G4_INST* inst, bool inheritDI = true) {insertBefore(instList.end(), inst, inheritDI);}
+    void push_front(G4_INST* inst, bool inheritDI = true) {insertBefore(instList.begin(), inst, inheritDI);}
 
     size_t size() const { return instList.size(); }
     bool empty() const { return instList.empty(); }
