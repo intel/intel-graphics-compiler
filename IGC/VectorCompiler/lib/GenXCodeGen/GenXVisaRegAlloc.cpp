@@ -638,52 +638,6 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
 }
 
 /***********************************************************************
- * calcOverrideType : find type for searching aliases
- */
-static Type *calcOverrideType(Type *OverrideType, SimpleValue V,
-                              GenXVisaRegAlloc::Reg *R, const DataLayout *DL) {
-  if (!OverrideType)
-    OverrideType = V.getType();
-  if (OverrideType->isPointerTy()) {
-    auto GV = dyn_cast<GlobalVariable>(V.getValue());
-    if (GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile))
-      OverrideType = OverrideType->getPointerElementType();
-  }
-  OverrideType = &vc::fixDegenerateVectorType(*OverrideType);
-  if (R->Num < VISA_NUM_RESERVED_REGS)
-    OverrideType =
-        genx::changeVectorType(R->Ty, OverrideType->getScalarType(), DL);
-  return OverrideType;
-}
-
-/***********************************************************************
- * calcAlias : find suitable by type alias
- *    return flag, indicates success of search and alias:
- *    for success - return suitable one and for fail - last in linked list
- */
-static std::tuple<bool, GenXVisaRegAlloc::Reg *>
-calcAlias(Type *OverrideType, Signedness Signed, bool IsBF,
-          GenXVisaRegAlloc::Reg *R) {
-  GenXVisaRegAlloc::Reg *LastAlias = nullptr;
-  for (GenXVisaRegAlloc::Reg *CurAlias = R; CurAlias;
-       CurAlias = CurAlias->NextAlias) {
-    LastAlias = CurAlias;
-    Type *ExistingType = CurAlias->Ty;
-    ExistingType = &vc::fixDegenerateVectorType(*ExistingType);
-    if (ExistingType == OverrideType &&
-        CurAlias->Num >= VISA_NUM_RESERVED_REGS &&
-        (CurAlias->Signed == Signed || Signed == DONTCARESIGNED) &&
-        CurAlias->IsBF == IsBF) {
-      LLVM_DEBUG(dbgs() << "Using alias: "; CurAlias->print(dbgs());
-                 dbgs() << "\n");
-      return std::make_tuple(true, CurAlias);
-    }
-  }
-  return std::make_tuple(false, LastAlias);
-  ;
-}
-
-/***********************************************************************
  * getRegForValueUntyped : get the vISA reg allocated to a particular
  *    value, ignoring signedness and type
  *
@@ -692,8 +646,8 @@ calcAlias(Type *OverrideType, Signedness Signed, bool IsBF,
 GenXVisaRegAlloc::Reg *
 GenXVisaRegAlloc::getRegForValueUntyped(SimpleValue V) const {
   LLVM_DEBUG(dbgs() << "getRegForValueUntyped " << *(V.getValue()) << "\n");
-  const auto I = RegMap.find(V);
-  if (I == RegMap.end()) {
+  const auto i = RegMap.find(V);
+  if (i == RegMap.end()) {
     // Check if it's predefined variables.
     if (GenXIntrinsic::getGenXIntrinsicID(V.getValue()) ==
         GenXIntrinsic::genx_predefined_surface) {
@@ -712,7 +666,7 @@ GenXVisaRegAlloc::getRegForValueUntyped(SimpleValue V) const {
     }
     return nullptr;
   }
-  return I->second;
+  return i->second;
 }
 
 /***********************************************************************
@@ -730,7 +684,7 @@ GenXVisaRegAlloc::getRegForValueUntyped(SimpleValue V) const {
  */
 GenXVisaRegAlloc::Reg *
 GenXVisaRegAlloc::getRegForValueOrNull(SimpleValue V, Signedness Signed,
-                                       Type *OverrideType, bool IsBF) const {
+                                       Type *OverrideType, bool IsBF) {
   LLVM_DEBUG(dbgs() << "getRegForValueOrNull " << *(V.getValue()) << "\n");
   Reg *R = getRegForValueUntyped(V);
   if (!R)
@@ -739,48 +693,37 @@ GenXVisaRegAlloc::getRegForValueOrNull(SimpleValue V, Signedness Signed,
     return R;
   LLVM_DEBUG(dbgs() << "Found reg " << R->Num << "\n");
 
-  OverrideType = calcOverrideType(OverrideType, V, R, DL);
-  auto [AliasFound, LastAlias] = calcAlias(OverrideType, Signed, IsBF, R);
-  if (AliasFound)
-    return LastAlias;
-  return nullptr;
-}
+  if (!OverrideType)
+    OverrideType = V.getType();
+  if (OverrideType->isPointerTy()) {
+    auto GV = dyn_cast<GlobalVariable>(V.getValue());
+    if (GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile))
+      OverrideType = OverrideType->getPointerElementType();
+  }
+  OverrideType = &vc::fixDegenerateVectorType(*OverrideType);
+  if (R->Num < VISA_NUM_RESERVED_REGS)
+    OverrideType = genx::changeVectorType(R->Ty, OverrideType->getScalarType(), DL);
 
-/***********************************************************************
- * getOrCreateRegForValue : get or create the vISA reg allocated to a particular
- * Value
- *
- * Enter:   V = value (Argument or Instruction) to get register for
- *          Signed = request for signed or unsigned
- *          OverrideType = 0 else override type of value (used for bitcast)
- *
- * Called from GenXCisaBuilder to get the register for an
- * operand. The operand type might not match the register type (say a
- * bitcast has been coalesced, or the same integer value is used
- * unsigned in one place and signed in another), in which case we
- * find/create a vISA register alias.
- */
-GenXVisaRegAlloc::Reg *
-GenXVisaRegAlloc::getOrCreateRegForValue(SimpleValue V, Signedness Signed,
-                                         Type *OverrideType, bool IsBF) {
+  Reg *LastAlias = R;
 
-  LLVM_DEBUG(dbgs() << "getOrCreateRegForValue " << *(V.getValue()) << "\n");
-
-  Reg *R = getRegForValueOrNull(V, Signed, OverrideType, IsBF);
-  if (R)
-    return R;
-
-  R = getRegForValueUntyped(V);
-  if (!R)
-    return nullptr; // no register allocated
-
-  OverrideType = calcOverrideType(OverrideType, V, R, DL);
+  // std::find_if
+  for (Reg *CurAlias = R; CurAlias; CurAlias = CurAlias->NextAlias) {
+    LastAlias = CurAlias;
+    Type *ExistingType = CurAlias->Ty;
+    ExistingType = &vc::fixDegenerateVectorType(*ExistingType);
+    if (ExistingType == OverrideType &&
+        CurAlias->Num >= VISA_NUM_RESERVED_REGS &&
+        (CurAlias->Signed == Signed || Signed == DONTCARESIGNED) &&
+        CurAlias->IsBF == IsBF) {
+      LLVM_DEBUG(dbgs() << "Using alias: "; CurAlias->print(dbgs()); dbgs() << "\n");
+      return CurAlias;
+    }
+  }
   // Run out of aliases. Add a new one.
   Reg *NewReg =
       createReg(vc::RegCategory::General, OverrideType, Signed, 0, R, IsBF);
-  NewReg->NextAlias = R;
+  LastAlias->NextAlias = NewReg;
   LLVM_DEBUG(dbgs() << "New register: "; NewReg->print(dbgs()); dbgs() << "\n");
-
   return NewReg;
 }
 
