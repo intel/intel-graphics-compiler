@@ -1091,52 +1091,54 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
 
         Value* privateBase = nullptr;
+        ADDRESS_SPACE scratchMemoryAddressSpace = ADDRESS_SPACE_PRIVATE;
         if (modMD->compOpt.UseScratchSpacePrivateMemory)
         {
-            Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, m_pMdUtils);
-            Value* r0_5 = entryBuilder.CreateExtractElement(r0Val, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
-            privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
-        }
-
-        ADDRESS_SPACE scratchMemoryAddressSpace = ADDRESS_SPACE_PRIVATE;
-        if (Ctx.platform.hasScratchSurface())
-        {
-            if (modMD->compOpt.UseScratchSpacePrivateMemory)
+            if (Ctx.platform.hasScratchSurface())
             {
+                // when we use per-thread scratch-surface with SSH bindless
+                // R0_5[32:10] is the offset of the surface-state for scratch
+                // surface slot#0, NOT the offset into the surface.
                 privateBase = entryBuilder.getInt32(0);
             }
-            else if (nullptr == privateBase)
-            {
-                scratchMemoryAddressSpace = ADDRESS_SPACE_GLOBAL;
-                modMD->compOpt.UseStatelessforPrivateMemory = true;
-
-                const uint32_t dwordSizeInBits = 32;
-                const uint32_t pointerSizeInDwords = Ctx.getRegisterPointerSizeInBits(scratchMemoryAddressSpace) / dwordSizeInBits;
-                IGC_ASSERT(pointerSizeInDwords <= 2);
-                llvm::Type* resultType = entryBuilder.getInt32Ty();
-                if (pointerSizeInDwords > 1)
-                {
-                    resultType = IGCLLVM::FixedVectorType::get(resultType, 2);
-                }
-                Function* pFunc = GenISAIntrinsic::getDeclaration(
-                    m_currFunction->getParent(),
-                    GenISAIntrinsic::GenISA_RuntimeValue,
-                    resultType);
-                privateBase = entryBuilder.CreateCall(pFunc, entryBuilder.getInt32(modMD->MinNOSPushConstantSize - pointerSizeInDwords));
-                if (privateBase->getType()->isVectorTy())
-                {
-                    privateBase = entryBuilder.CreateBitCast(privateBase, entryBuilder.getInt64Ty());
-                }
-
-                ConstantInt* totalPrivateMemPerWIValue = ConstantInt::get(typeInt32, totalPrivateMemPerWI);
-                Value* totalPrivateMemPerThread = entryBuilder.CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"));
-
-                Function* pHWTIDFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_hw_thread_id_alloca, Type::getInt32Ty(C));
-                llvm::Value* threadId = entryBuilder.CreateCall(pHWTIDFunc);
-                llvm::Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
-                perThreadOffset = entryBuilder.CreateZExt(perThreadOffset, privateBase->getType());
-                privateBase = entryBuilder.CreateAdd(privateBase, perThreadOffset);
+            else
+            {   // the old mechanism
+                Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, m_pMdUtils);
+                Value* r0_5 = entryBuilder.CreateExtractElement(r0Val, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
+                privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
             }
+        }
+        else
+        {
+            scratchMemoryAddressSpace = ADDRESS_SPACE_GLOBAL;
+            modMD->compOpt.UseStatelessforPrivateMemory = true;
+
+            const uint32_t dwordSizeInBits = 32;
+            const uint32_t pointerSizeInDwords = Ctx.getRegisterPointerSizeInBits(scratchMemoryAddressSpace) / dwordSizeInBits;
+            IGC_ASSERT(pointerSizeInDwords <= 2);
+            llvm::Type* resultType = entryBuilder.getInt32Ty();
+            if (pointerSizeInDwords > 1)
+            {
+                resultType = IGCLLVM::FixedVectorType::get(resultType, 2);
+            }
+            Function* pFunc = GenISAIntrinsic::getDeclaration(
+                m_currFunction->getParent(),
+                GenISAIntrinsic::GenISA_RuntimeValue,
+                resultType);
+            privateBase = entryBuilder.CreateCall(pFunc, entryBuilder.getInt32(modMD->MinNOSPushConstantSize - pointerSizeInDwords));
+            if (privateBase->getType()->isVectorTy())
+            {
+                privateBase = entryBuilder.CreateBitCast(privateBase, entryBuilder.getInt64Ty());
+            }
+
+            ConstantInt* totalPrivateMemPerWIValue = ConstantInt::get(typeInt32, totalPrivateMemPerWI);
+            Value* totalPrivateMemPerThread = entryBuilder.CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"));
+
+            Function* pHWTIDFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_hw_thread_id_alloca, Type::getInt32Ty(C));
+            llvm::Value* threadId = entryBuilder.CreateCall(pHWTIDFunc);
+            llvm::Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
+            perThreadOffset = entryBuilder.CreateZExt(perThreadOffset, privateBase->getType());
+            privateBase = entryBuilder.CreateAdd(privateBase, perThreadOffset);
         }
 
         for (auto pAI : allocaInsts)
