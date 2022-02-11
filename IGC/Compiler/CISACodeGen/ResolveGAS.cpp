@@ -48,7 +48,7 @@ namespace {
     // 1) Find cast from non-GAS pointer to GAS pointer
     // 2) Propagate that non-GAS pointer to all users of that GAS pointer at best
     //    effort.
-    class GASResolving : public ModulePass {
+    class GASResolving : public FunctionPass {
         const unsigned GAS = ADDRESS_SPACE_GENERIC;
 
         BuilderType* IRB;
@@ -60,19 +60,17 @@ namespace {
     public:
         static char ID;
 
-        GASResolving() : ModulePass(ID), IRB(nullptr), Propagator(nullptr) {
+        GASResolving() : FunctionPass(ID), IRB(nullptr), Propagator(nullptr) {
             initializeGASResolvingPass(*PassRegistry::getPassRegistry());
         }
 
-        bool runOnModule(Module&) override;
+        bool runOnFunction(Function&) override;
 
         void getAnalysisUsage(AnalysisUsage& AU) const override {
             AU.setPreservesCFG();
             AU.addRequired<LoopInfoWrapperPass>();
             AU.addRequired<AAResultsWrapperPass>();
             AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<CallGraphWrapperPass>();
         }
 
         bool isResolvableLoopPHI(PHINode* PN) const {
@@ -80,16 +78,12 @@ namespace {
         }
 
     private:
-        void resolveGASForAllCallers(Function*);
-        bool processFunctionsRetValue(Module&);
-
-        bool processFunction(Function&);
         bool resolveOnFunction(Function*) const;
         bool resolveOnBasicBlock(BasicBlock*) const;
 
         bool resolveMemoryFromHost(Function&) const;
 
-        void populateResolvableLoopPHIs(Function&);
+        void populateResolvableLoopPHIs();
         void populateResolvableLoopPHIsForLoop(const Loop*);
 
         bool isAddrSpaceResolvable(PHINode* PN, const Loop* L,
@@ -138,30 +132,9 @@ namespace {
         bool visitCallInst(CallInst&);
     };
 
-    class GASRetValuePropagator {
-        Module& m_module;
-        IGCMD::MetaDataUtils* m_mdUtils;
-        CodeGenContext* m_ctx;
-
-    public:
-        GASRetValuePropagator(Module& M, IGCMD::MetaDataUtils* mdUtils, CodeGenContext* ctx) : m_module(M), m_mdUtils(mdUtils), m_ctx(ctx) {}
-
-        bool propagateReturnValue(Function*&);
-        std::vector<Function*> findCandidates(CallGraph&);
-
-    private:
-        std::vector<ReturnInst*> getAllRetInstructions(Function&);
-        void updateFunctionRetInstruction(Function*);
-        PointerType* getRetValueNonGASType(Function*);
-        void transferFunctionBody(Function*, Function*);
-        void updateAllUsesWithNewFunction(Function*, Function*);
-        void updateMetadata(Function*, Function*);
-        Function* createNewFunctionDecl(Function*, Type*);
-        Function* cloneFunctionWithModifiedRetType(Function*, PointerType*);
-    };
 } // End anonymous namespace
 
-ModulePass* IGC::createResolveGASPass() { return new GASResolving(); }
+FunctionPass* IGC::createResolveGASPass() { return new GASResolving(); }
 
 char GASResolving::ID = 0;
 
@@ -176,59 +149,11 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-        IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-        IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
         IGC_INITIALIZE_PASS_END(GASResolving, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY,
             PASS_ANALYSIS)
 }
 
-bool GASResolving::runOnModule(Module& M) {
-    bool changed = false;
-    for (auto& F : M) {
-        if (F.isDeclaration()) continue;
-        changed |= processFunction(F);
-    }
-
-    changed |= processFunctionsRetValue(M);
-
-    return changed;
-}
-
-void GASResolving::resolveGASForAllCallers(Function* F)
-{
-    std::unordered_set<Function*> callers;
-    for (auto U : F->users())
-        if (auto* CI = dyn_cast<CallInst>(U))
-            callers.insert(CI->getParent()->getParent());
-
-    for (auto caller : callers)
-        processFunction(*caller);
-}
-
-bool GASResolving::processFunctionsRetValue(Module& M)
-{
-    bool changed = false;
-    IGCMD::MetaDataUtils* mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
-    GASRetValuePropagator RVP(M, mdUtils, ctx);
-
-    CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    std::vector<Function*> candidates = RVP.findCandidates(CG);
-
-    for (auto& F : candidates)
-    {
-        if (RVP.propagateReturnValue(F))
-        {
-            resolveGASForAllCallers(F);
-            changed = true;
-        }
-    }
-
-    return changed;
-}
-
-bool GASResolving::processFunction(Function& F) {
+bool GASResolving::runOnFunction(Function& F) {
     BuilderType TheBuilder(F.getContext());
     GASPropagator ThePropagator(this, &TheBuilder);
     DenseSet<PHINode*> TheResolvableLoopPHIsSet;
@@ -238,7 +163,7 @@ bool GASResolving::processFunction(Function& F) {
 
     resolveMemoryFromHost(F);
 
-    populateResolvableLoopPHIs(F);
+    populateResolvableLoopPHIs();
 
     bool Changed = false;
     bool LocalChanged = false;
@@ -357,8 +282,8 @@ bool GASResolving::resolveOnBasicBlock(BasicBlock* BB) const {
     return Changed;
 }
 
-void GASResolving::populateResolvableLoopPHIs(Function& F) {
-    LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+void GASResolving::populateResolvableLoopPHIs() {
+    LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     for (auto& L : LI.getLoopsInPreorder()) {
         populateResolvableLoopPHIsForLoop(L);
     }
@@ -955,237 +880,6 @@ bool GASResolving::checkGenericArguments(Function& F) const {
     return false;
 }
 
-bool GASRetValuePropagator::propagateReturnValue(Function*& F) {
-    PointerType* nonGASPtr = getRetValueNonGASType(F);
-
-    if (!nonGASPtr) return false;
-
-    Function* newFunc = cloneFunctionWithModifiedRetType(F, nonGASPtr);
-
-    updateAllUsesWithNewFunction(F, newFunc);
-
-    IGC_ASSERT(nullptr != F);
-    IGC_ASSERT_MESSAGE(F->use_empty(), "All function uses should have been transfered to new function");
-    F->eraseFromParent();
-    F = newFunc;
-    return true;
-}
-
-std::vector<Function*> GASRetValuePropagator::findCandidates(CallGraph& CG) {
-    std::vector<Function*> candidates;
-
-    auto skip = [](Function* F)
-    {
-        // Skip functions with variable number of arguments, e.g. printf.
-        if (F->isVarArg())
-            return true;
-
-        // Only non-extern functions within the module are optimized
-        if (F->hasFnAttribute("referenced-indirectly") || F->isDeclaration()
-            || F->isIntrinsic() || F->user_empty())
-            return true;
-
-        return false;
-    };
-
-    auto isGenericPtrTy = [](Type* T)
-    {
-        return T->isPointerTy() && T->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC;
-    };
-
-    // Find the candidates, which are functions returning generic pointer args.
-    // Functions will be updated later in down-top ordering (starting from most nested function).
-    for (auto I = po_begin(CG.getExternalCallingNode()), E = po_end(CG.getExternalCallingNode()); I != E; ++I)
-    {
-        auto F = I->getFunction();
-        if (F == nullptr)
-            continue;
-        if (skip(F))
-            continue;
-        if (!isGenericPtrTy(F->getReturnType()))
-            continue;
-
-        candidates.push_back(F);
-    }
-
-    return candidates;
-}
-
-std::vector<ReturnInst*> GASRetValuePropagator::getAllRetInstructions(Function& F)
-{
-    std::vector<ReturnInst*> retInstructions;
-    for (auto& BB : F)
-    {
-        if (auto retInst = dyn_cast<ReturnInst>(BB.getTerminator()))
-        {
-            retInstructions.push_back(retInst);
-        }
-    }
-    return retInstructions;
-}
-
-PointerType* GASRetValuePropagator::getRetValueNonGASType(Function* F)
-{
-    std::vector<ReturnInst*> retInstructions = getAllRetInstructions(*F);
-
-    std::optional<unsigned> originAddrSpace = std::nullopt;
-    for (auto retInst : retInstructions)
-    {
-        Value* retValue = retInst->getReturnValue();
-
-        if (isa<ConstantPointerNull>(retValue))
-            continue;
-
-        if (!isa<AddrSpaceCastInst>(retValue))
-            return nullptr;
-
-        auto I = cast<AddrSpaceCastInst>(retValue);
-        IGC_ASSERT(I->getDestAddressSpace() == ADDRESS_SPACE_GENERIC);
-
-        unsigned AS = I->getSrcAddressSpace();
-        if (originAddrSpace && originAddrSpace.value() != AS)
-            return nullptr;
-
-        originAddrSpace.emplace(AS);
-    }
-
-    return originAddrSpace ?
-        PointerType::get(F->getReturnType()->getPointerElementType(), originAddrSpace.value()) :
-        nullptr;
-}
-
-Function* GASRetValuePropagator::createNewFunctionDecl(Function* oldFunc, Type* newRetTy)
-{
-    Module* M = oldFunc->getParent();
-    ArrayRef<Type*> params = oldFunc->getFunctionType()->params();
-    FunctionType* newFTy = FunctionType::get(newRetTy, params, oldFunc->isVarArg());
-
-    Function* newFunc = Function::Create(newFTy, oldFunc->getLinkage());
-    newFunc->copyAttributesFrom(oldFunc);
-    newFunc->setSubprogram(oldFunc->getSubprogram());
-    M->getFunctionList().insert(oldFunc->getIterator(), newFunc);
-    newFunc->takeName(oldFunc);
-    return newFunc;
-}
-
-void GASRetValuePropagator::transferFunctionBody(Function* oldFunc, Function* newFunc)
-{
-    newFunc->getBasicBlockList().splice(newFunc->begin(), oldFunc->getBasicBlockList());
-
-    Function::arg_iterator newArg = newFunc->arg_begin();
-    for (auto& oldArg : oldFunc->args())
-    {
-        oldArg.replaceAllUsesWith(newArg);
-        newArg->takeName(&oldArg);
-        newArg++;
-    }
-}
-
-void GASRetValuePropagator::updateFunctionRetInstruction(Function* F)
-{
-    std::vector<ReturnInst*> retInstructions = getAllRetInstructions(*F);
-
-    for (auto retInst : retInstructions)
-    {
-        Value* retValue = retInst->getReturnValue();
-
-        if (isa<ConstantPointerNull>(retValue))
-        {
-            retInst->setOperand(0, ConstantPointerNull::get(cast<PointerType>(F->getReturnType())));
-            continue;
-        }
-
-        IGC_ASSERT(isa<AddrSpaceCastInst>(retValue));
-
-        auto ASC = cast<AddrSpaceCastInst>(retValue);
-        IGC_ASSERT(ASC->getDestAddressSpace() == ADDRESS_SPACE_GENERIC);
-
-        retInst->setOperand(0, ASC->getPointerOperand());
-
-        if (ASC->use_empty()) ASC->eraseFromParent();
-    }
-}
-
-void GASRetValuePropagator::updateAllUsesWithNewFunction(Function* oldFunc, Function* newFunc)
-{
-    IGC_ASSERT(!oldFunc->use_empty());
-
-    // Keep track of old calls and addrspacecast to be deleted later
-    std::vector<CallInst*> callsToDelete;
-
-    for( auto U : oldFunc->users())
-    {
-        CallInst* cInst = dyn_cast<CallInst>(U);
-        if (!cInst)
-        {
-            IGC_ASSERT_MESSAGE(0, "Unknown function usage");
-            return;
-        }
-
-        // Prepare args for new call
-        std::vector<Value*> callArgs;
-        for (unsigned I = 0, E = cInst->getNumArgOperands(); I != E; ++I) {
-            callArgs.push_back(cInst->getArgOperand(I));
-        }
-
-        // Create new call and insert it before old one
-        CallInst* newCall = CallInst::Create(newFunc, callArgs, "", cInst);
-
-        newCall->setCallingConv(newFunc->getCallingConv());
-        newCall->setAttributes(cInst->getAttributes());
-        newCall->setDebugLoc(cInst->getDebugLoc());
-
-        IGC_ASSERT(oldFunc->getType()->isPointerTy() &&
-            newFunc->getReturnType()->isPointerTy());
-
-        auto* oldRetTy = dyn_cast<PointerType>(oldFunc->getReturnType());
-        auto* newRetTy = dyn_cast<PointerType>(newFunc->getReturnType());
-
-        IGC_ASSERT(
-            oldRetTy->getAddressSpace() == ADDRESS_SPACE_GENERIC &&
-            newRetTy->getAddressSpace() != ADDRESS_SPACE_GENERIC);
-
-        auto ASC = CastInst::Create(Instruction::AddrSpaceCast, newCall, oldFunc->getReturnType(), "", cInst);
-
-        cInst->replaceAllUsesWith(ASC);
-        callsToDelete.push_back(cInst);
-    }
-
-    // Delete old calls
-    for (auto call : callsToDelete)
-    {
-        call->eraseFromParent();
-    }
-}
-
-Function* GASRetValuePropagator::cloneFunctionWithModifiedRetType(Function* F, PointerType* newRetTy)
-{
-    Function* newFunc = createNewFunctionDecl(F, newRetTy);
-    transferFunctionBody(F, newFunc);
-    updateFunctionRetInstruction(newFunc);
-    updateMetadata(F, newFunc);
-    return newFunc;
-}
-
-void GASRetValuePropagator::updateMetadata(Function* oldFunc, Function* newFunc) {
-    MetadataBuilder mbuilder(&m_module);
-    auto& FuncMD = m_ctx->getModuleMetaData()->FuncMD;
-
-    auto oldFuncIter = m_mdUtils->findFunctionsInfoItem(oldFunc);
-    m_mdUtils->setFunctionsInfoItem(newFunc, oldFuncIter->second);
-    m_mdUtils->eraseFunctionsInfoItem(oldFuncIter);
-    mbuilder.UpdateShadingRate(oldFunc, newFunc);
-    auto loc = FuncMD.find(oldFunc);
-    if (loc != FuncMD.end())
-    {
-        auto funcInfo = loc->second;
-        FuncMD.erase(oldFunc);
-        FuncMD[newFunc] = funcInfo;
-    }
-
-    m_mdUtils->save(m_module.getContext());
-}
-
 namespace IGC
 {
     //
@@ -1411,7 +1105,7 @@ bool LowerGPCallArg::processCallArg(Module& M)
 
 
     // Step 3: update all call sites with the new pointers address space
-    for (auto& I : funcsToUpdate)
+    for (auto &I : funcsToUpdate)
     {
         updateAllUsesWithNewFunction(I);
     }
@@ -1420,7 +1114,7 @@ bool LowerGPCallArg::processCallArg(Module& M)
     // to be reflected in the metadata.
     MetadataBuilder mbuilder(&M);
     auto& FuncMD = m_ctx->getModuleMetaData()->FuncMD;
-    for (auto& I : funcsToUpdate)
+    for (auto &I : funcsToUpdate)
     {
         auto oldFuncIter = m_mdUtils->findFunctionsInfoItem(I.oldFunc);
         m_mdUtils->setFunctionsInfoItem(I.newFunc, oldFuncIter->second);
@@ -1439,7 +1133,7 @@ bool LowerGPCallArg::processCallArg(Module& M)
 
 
     // It's safe now to remove old functions
-    for (auto& I : funcsToUpdate)
+    for (auto &I : funcsToUpdate)
     {
         IGC_ASSERT(nullptr != I.oldFunc);
         IGC_ASSERT_MESSAGE(I.oldFunc->use_empty(), "All function uses should have been transfered to new function");
@@ -1562,7 +1256,7 @@ bool LowerGPCallArg::processGASInst(Module& M)
     return changed;
 }
 
-bool LowerGPCallArg::hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned& addrSpaceCallSite)
+bool LowerGPCallArg::hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned &addrSpaceCallSite)
 {
     unsigned verifiedCallSites = 0;
 
@@ -1653,7 +1347,7 @@ void LowerGPCallArg::fixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             // if not all operands are lowered, add to partiallyLowered list, and don't propagate
             bool partiallylowered = false;
             bool differentLoweredAddrSpaces = false;
-            for (unsigned i = 0; i < inst->getNumOperands(); ++i)
+            for(unsigned i = 0; i < inst->getNumOperands(); ++i)
             {
                 Value* srci = inst->getOperand(i);
 
@@ -2020,7 +1714,7 @@ bool CastToGASAnalysis::runOnModule(llvm::Module& M)
             (FI != FE) && !(hasPrivateCast && hasLocalCast); ++FI)
         {
             Instruction* I = &*FI;
-            if (auto* ASC = dyn_cast<AddrSpaceCastInst>(I))
+            if(auto* ASC = dyn_cast<AddrSpaceCastInst>(I))
             {
                 if (ASC->getDestAddressSpace() != ADDRESS_SPACE_GENERIC)
                     continue;
