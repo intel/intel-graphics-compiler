@@ -15339,6 +15339,32 @@ void Optimizer::applyFusedCallWA()
         {
             builder.addFcallInfo(nCallI, orig_fcallinfo->getArgSize(), orig_fcallinfo->getRetSize());
         }
+        // Might need to update subroutine table
+        if (int numFuncs = (int)fg.sortedFuncTable.size())
+        {
+            for (int i = 0; i < numFuncs; ++i)
+            {
+                FuncInfo* pFInfo = fg.sortedFuncTable[i];
+                assert(pFInfo);
+                auto& tBBs = pFInfo->getBBList();
+                auto tBI = std::find(tBBs.begin(), tBBs.end(), nextBB);
+                if (tBI != tBBs.end())
+                {
+                    // This is FuncInfo for the current func (including kernel entry func)
+                    // Make sure new BBs are in the FuncInfo's BBList.
+                    std::list<G4_BB*> toBeInserted;
+                    toBeInserted.push_back(bigB0);
+                    toBeInserted.push_back(bigB1);
+                    toBeInserted.push_back(smallB0);
+                    toBeInserted.push_back(smallB1);
+                    tBBs.insert(tBI, toBeInserted.begin(), toBeInserted.end());
+
+                    // inc call count as a call is duplicated
+                    pFInfo->incrementCallCount();
+                    break;
+                }
+            }
+        }
 
         // Need to insert a join in nextBB
         G4_INST* tjoin = nextBB->getFirstInst();
