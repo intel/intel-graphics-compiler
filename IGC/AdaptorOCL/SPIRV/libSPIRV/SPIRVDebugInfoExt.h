@@ -824,20 +824,18 @@ namespace igc_spv {
     class OpDebugInfoBase
     {
     public:
-        OpDebugInfoBase(SPIRVExtInst* i)
+        OpDebugInfoBase(SPIRVExtInst* i) : extInst(i)
         {
-            extInst = i;
         }
-        bool isOpDebugInfo() { return true; }
 
     protected:
-        SPIRVExtInst* extInst = nullptr;
+        SPIRVExtInst* const extInst;
         template <typename T>
-        T arg(unsigned int id)
+        T arg(unsigned int id) const
         {
             return static_cast<T>(extInst->getArguments()[id]);
         }
-        SPIRVString* str(SPIRVId id)
+        SPIRVString* str(SPIRVId id) const
         {
             auto item = extInst->getModule()->getEntry(arg<SPIRVId>(id));
             if (item->isString())
@@ -845,7 +843,7 @@ namespace igc_spv {
             else
                 return nullptr;
         }
-        uint64_t const_val(SPIRVId id)
+        uint64_t const_val(SPIRVId id) const
         {
             auto item = extInst->getModule()->getEntry(arg<SPIRVId>(id));
             if (item->isConstant())
@@ -853,7 +851,7 @@ namespace igc_spv {
             else
                 return (uint64_t)-1;
         }
-        unsigned int getNumArgs() { return extInst->getArguments().size(); }
+        unsigned int getNumArgs() const { return extInst->getArguments().size(); }
     };
 
     class OpCompilationUnit : OpDebugInfoBase
@@ -988,9 +986,24 @@ namespace igc_spv {
     {
     public:
         OpDebugTypeArray(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
-        SPIRVId getBaseType() { return arg<SPIRVId>(SPIRVDebug::Operand::TypeArray::BaseTypeIdx); }
-        SPIRVWord getNumDims() { return (getNumArgs() - SPIRVDebug::Operand::TypeArray::ComponentCountIdx); }
-        SPIRVId getComponentCount(unsigned int i) { return arg<SPIRVId>(i + SPIRVDebug::Operand::TypeArray::ComponentCountIdx); }
+        SPIRVId getBaseType() const { return arg<SPIRVId>(SPIRVDebug::Operand::TypeArray::BaseTypeIdx); }
+        bool hasLowerBounds() const
+        {
+            return (getNumArgs() - SPIRVDebug::Operand::TypeArray::ComponentCountIdx) % 2 == 0;
+        }
+        SPIRVWord getNumDims() const
+        {
+            unsigned int n = getNumArgs() - SPIRVDebug::Operand::TypeArray::ComponentCountIdx;
+            return hasLowerBounds() ? n / 2 : n;
+        }
+        SPIRVId getDimCount(unsigned int i) const { return arg<SPIRVId>(SPIRVDebug::Operand::TypeArray::ComponentCountIdx + i); }
+        SPIRVId getDimLowerBound(unsigned int i) const
+        {
+            if (hasLowerBounds()) {
+                return arg<SPIRVId>(SPIRVDebug::Operand::TypeArray::ComponentCountIdx + getNumDims() + i);
+            }
+            return SPIRVID_INVALID;
+        }
     };
 
     class OpDebugTypeVector : OpDebugInfoBase

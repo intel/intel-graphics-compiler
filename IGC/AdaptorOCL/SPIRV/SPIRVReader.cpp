@@ -575,6 +575,36 @@ public:
 
   DIType* createMember(SPIRVExtInst* inst);
 
+  Metadata* createArrayBound(SPIRVId id, int64_t& intResult)
+  {
+      SPIRVEntry* e = BM->get<SPIRVEntry>(id);
+      switch (e->getOpCode())
+      {
+      case OpConstant:
+          intResult = static_cast<SPIRVConstant*>(e)->getZExtIntValue();
+          return nullptr;
+      case OpExtInst:
+          {
+              SPIRVExtInst* ext = static_cast<SPIRVExtInst*>(e);
+              switch (ext->getExtOp())
+              {
+              case OCLExtOpDbgKind::DebugInfoNone:
+                  return nullptr;
+              case OCLExtOpDbgKind::LocalVariable:
+                  return createLocalVar(ext);
+              case OCLExtOpDbgKind::DbgExpr:
+                  return createExpression(ext);
+              default:
+                  llvm_unreachable("Unknown array bound");
+                  return nullptr;
+              }
+          }
+      default:
+          llvm_unreachable("Unknown array bound");
+          return nullptr;
+      }
+  }
+
   DIType* createTypeArray(SPIRVExtInst* inst)
   {
       if (auto n = getExistingNode<DIType*>(inst))
@@ -584,23 +614,40 @@ public:
 
       auto baseType = createType(BM->get<SPIRVExtInst>(arrayType.getBaseType()));
       auto numDims = arrayType.getNumDims();
-
       SmallVector<llvm::Metadata *, 8> subscripts;
-      uint64_t totalCount = 1;
+      uint64_t totalBits = getSizeInBits(baseType);
 
-      for (unsigned int i = 0; i != numDims; i++)
+      for (unsigned int i = 0; i < numDims; i++)
       {
-          SPIRVConstant* c = BM->get<SPIRVConstant>(arrayType.getComponentCount(i));
-          auto val = c->getZExtIntValue();
-          c = BM->get<SPIRVConstant>(arrayType.getComponentCount(numDims - 1));
-          auto lowerBound = c->getZExtIntValue();
-          subscripts.push_back(Builder.getOrCreateSubrange(lowerBound, val));
-          totalCount *= (uint64_t)(val);
+          int64_t loConst = 0;
+          Metadata* loExpr = arrayType.hasLowerBounds() ? createArrayBound(arrayType.getDimLowerBound(i), loConst) : nullptr;
+
+          int64_t countConst = 0;
+          Metadata* countExpr = createArrayBound(arrayType.getDimCount(i), countConst);
+
+          DISubrange* subrange;
+          (void) loExpr;
+#if LLVM_VERSION_MAJOR >= 11
+          if (loExpr)
+          {
+              if (countConst > 0)
+              {
+                  totalBits *= static_cast<uint64_t>(countConst);
+                  countExpr = ConstantAsMetadata::get(ConstantInt::get(Type::getInt64Ty(M->getContext()), countConst));
+              }
+              subrange = Builder.getOrCreateSubrange(nullptr, loExpr, countExpr, nullptr);
+          }
+          else
+#endif
+          if (countConst > 0)
+              subrange = Builder.getOrCreateSubrange(loConst, countConst);
+          else
+              subrange = Builder.getOrCreateSubrange(loConst, countExpr);
+          subscripts.push_back(subrange);
       }
 
       DINodeArray subscriptArray = Builder.getOrCreateArray(subscripts);
-
-      return addMDNode(inst, Builder.createArrayType(totalCount * getSizeInBits(baseType), 0, baseType, subscriptArray));
+      return addMDNode(inst, Builder.createArrayType(totalBits, 0, baseType, subscriptArray));
   }
 
   DIType* createTypeVector(SPIRVExtInst* inst)
