@@ -64,6 +64,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CrossPhaseConstProp.hpp"
 #include "Compiler/ConvertMSAAPayloadTo16Bit.hpp"
 #include "Compiler/MSAAInsertDiscard.hpp"
+#include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
+#include "Compiler/CISACodeGen/CalculateLocalIDs.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
@@ -289,6 +291,11 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     }
     // Peephole framework for generic type legalization
     mpm.add(new Legalizer::PeepholeTypeLegalizer());
+    if (IGC_IS_FLAG_ENABLED(ForcePromoteI8) ||
+        (IGC_IS_FLAG_ENABLED(EnablePromoteI8) && !ctx.platform.supportByteALUOperation()))
+    {
+        mpm.add(createPromoteInt8TypePass());
+    }
 
     // need this before WIAnalysis:
     // insert phi to prevent changing of WIAnalysis result by later code-motion
@@ -443,6 +450,11 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
 
 
+    if (ctx.type == ShaderType::COMPUTE_SHADER &&
+        (ctx.platform.HasKernelArguments() || IGC_IS_FLAG_ENABLED(EnableLocalIdCalculationInShader)))
+    {
+        mpm.add(createCalculateLocalIDsPass());
+    }
 
     if (ctx.type == ShaderType::PIXEL_SHADER)
     {

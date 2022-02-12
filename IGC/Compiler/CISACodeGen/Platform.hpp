@@ -1032,6 +1032,13 @@ bool supportByteALUOperation() const
     return m_platformInfo.eProductFamily != IGFX_PVC;
 }
 
+// Platform requires kernel arguments pulling.
+bool HasKernelArguments() const
+{
+    return false;
+}
+
+
 
 bool has64BMediaBlockRW() const
 {
