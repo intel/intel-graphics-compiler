@@ -1502,6 +1502,19 @@ void LivenessAnalysis::hierarchicalIPA(const SparseBitSet& kernelInput, const Sp
     std::unordered_map<FuncInfo*, SparseBitSet> args;
     std::unordered_map<FuncInfo*, SparseBitSet> retVal;
 
+#ifdef _DEBUG
+    auto verifyFuncTable = [&]()
+    {
+        auto accountedBBs = 0;
+        for (auto& sub : fg.sortedFuncTable)
+        {
+            accountedBBs += sub->getBBList().size();
+        }
+        MUST_BE_TRUE(fg.getBBList().size() == accountedBBs, "unaccounted bbs");
+    };
+    verifyFuncTable();
+#endif
+
     auto initKernelLiveOut = [this, &kernelOutput]()
     {
         for (auto&& bb : fg.kernelInfo->getBBList())
