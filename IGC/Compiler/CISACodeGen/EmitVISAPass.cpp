@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "ComputeShaderCodeGen.hpp"
 #include "HullShaderCodeGen.hpp"
 #include "DomainShaderCodeGen.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "DeSSA.hpp"
 #include "messageEncoding.hpp"
 #include "PayloadMapping.hpp"
@@ -332,6 +333,13 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
                 id == GenISAIntrinsic::GenISA_eu_thread_pause ||
                 id == GenISAIntrinsic::GenISA_simdBlockWrite ||
                 id == GenISAIntrinsic::GenISA_simdBlockWriteBindless)
+            {
+                numInstance = 1;
+                slicing = false;
+            }
+            else if (
+                id == GenISAIntrinsic::GenISA_threadgroupnamedbarriers_signal ||
+                id == GenISAIntrinsic::GenISA_threadgroupnamedbarriers_wait)
             {
                 numInstance = 1;
                 slicing = false;
@@ -822,6 +830,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    if (m_moduleMD->NBarrierCnt > 0)
+    {
+        m_encoder->GetVISAKernel()->AddKernelAttribute("NBarrierCnt", 1, &m_moduleMD->NBarrierCnt);
+        m_currShader->SetBarrierNumber(
+            NamedBarriersResolution::AlignNBCnt2BarrierNumber(
+                m_moduleMD->NBarrierCnt + 1 /* +1 for TG barrier */));
+    }
 
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
         ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
