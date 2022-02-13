@@ -426,10 +426,10 @@ bool DeSSA::runOnFunction(Function& MF)
     //  so it is likely for the algorithm to coalesce the phi's dst and the
     //  other src that is used in the loop, and therefore remove mov instrutions
     //  in the loop.
-  //
-  //  Note that isolating a value introduce additional copy, thus a threshold
-  //  is used here as a heuristic to try to make sure that a benefit is more
-  //  than the cost.
+    //
+    //  Note that isolating a value introduce additional copy, thus a threshold
+    //  is used here as a heuristic to try to make sure that a benefit is more
+    //  than the cost.
     enum { PHI_SRC_USE_THRESHOLD = 3 };  // arbitrary number
     DenseMap<Value*, int> PHILoopPreHeaderSrcs;
 

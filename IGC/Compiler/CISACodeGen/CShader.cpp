@@ -2182,6 +2182,35 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
                     return (pCtx->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
                 }
             }
+            GenISAIntrinsic::ID gid = GII->getIntrinsicID();
+            if (GII && (gid == GenISAIntrinsic::GenISA_dpas ||
+                gid == GenISAIntrinsic::GenISA_sub_group_dpas))
+            {
+                // Only oprd1 could be uniform and its alignment could
+                // be less than GRF. All the others are GRF-aligned.
+                if (aV == GII->getArgOperand(1)) {
+                    ConstantInt* pa = dyn_cast<ConstantInt>(GII->getOperand(3)); // oprd1's precision
+                    ConstantInt* sdepth = dyn_cast<ConstantInt>(GII->getOperand(5));
+
+                    int PA = (int)pa->getSExtValue();
+                    int SD = (int)sdepth->getSExtValue();
+                    uint32_t bits = getPrecisionInBits((PrecisionType)PA);
+                    uint32_t OPS_PER_CHAN = (GII->getType()->isFloatTy() ? 2 : 4);
+                    bits = bits * OPS_PER_CHAN;
+                    bits = bits * SD;
+                    uint32_t NDWs = bits / 32;
+                    switch (NDWs) {
+                    default:
+                        break;
+                    case 2:
+                        return EALIGN_QWORD;
+                    case 4:
+                        return EALIGN_OWORD;
+                    case 8:
+                        return EALIGN_HWORD;
+                    }
+                }
+            }
         }
         return EALIGN_AUTO;
     };

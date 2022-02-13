@@ -241,6 +241,49 @@ void VariableReuseAnalysis::mergeVariables(Function* F)
         if (GenIntrinsicInst * CI = dyn_cast<GenIntrinsicInst>(I))
         {
             switch (CI->getIntrinsicID()) {
+            case GenISAIntrinsic::GenISA_sub_group_dpas:
+            case GenISAIntrinsic::GenISA_dpas:
+            {
+                if (!m_DeSSA) {
+                    // Skip if no DeSSA
+                    break;
+                }
+
+                Value* out = CI;
+                Value* input = CI->getOperand(0);
+
+                if (!(isa<Instruction>(input) || isa<Argument>(input)))
+                {
+                    // input may be a constant for example
+                    break;
+                }
+                Type* OTy = out->getType();
+                Type* ITy = input->getType();
+                if (getTypeSizeInBits(OTy) != getTypeSizeInBits(ITy))
+                {
+                    // If out and input are different size, skip
+                    break;
+                }
+
+                // For now, coalescing out and input if at least one of them
+                // is local, and input is the last use.
+                if ((m_WIA && m_WIA->whichDepend(out) == m_WIA->whichDepend(input)) &&
+                    !hasBeenPayloadCoalesced(input) &&
+                    !hasBeenPayloadCoalesced(out) &&
+                    !m_DeSSA->interfere(out, input))
+                {
+                    // For dpas, alignment for out/input are the same
+                    e_alignment align = EALIGN_AUTO;
+                    if (m_WIA) {
+                        align = GetPreferredAlignment(out, m_WIA, m_pCtx);
+                    }
+                    // Make sure that nodes have been created before doing union
+                    m_DeSSA->addReg(out, align);
+                    m_DeSSA->addReg(input, align);
+                    m_DeSSA->unionRegs(out, input);
+                }
+                break;
+            }
             default:
                 break;
             }  // End of switch

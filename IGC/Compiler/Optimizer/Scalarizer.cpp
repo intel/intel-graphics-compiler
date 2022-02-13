@@ -629,6 +629,8 @@ void ScalarizeFunction::scalarizeInstruction(PHINode* PI)
                     {
                     default:
                         break;
+                    case GenISAIntrinsic::GenISA_sub_group_dpas:
+                    case GenISAIntrinsic::GenISA_dpas:
                     case GenISAIntrinsic::GenISA_simdBlockWrite:
                         recoverNonScalarizableInst(PI);
                         return;
