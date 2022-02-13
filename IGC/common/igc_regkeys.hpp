@@ -33,6 +33,11 @@ struct HashRange
 {
     unsigned long long start;
     unsigned long long end;
+    union
+    {
+        unsigned    m_Value;
+        debugString m_string;
+    };
 };
 
 struct SRegKeyVariableMetaData
@@ -98,7 +103,7 @@ struct SRegKeysList
 #include "igc_regkeys.h"
 };
 #undef DECLARE_IGC_REGKEY
-bool CheckHashRange(const SRegKeyVariableMetaData& varname);
+bool CheckHashRange(SRegKeyVariableMetaData& varname);
 extern SRegKeysList g_RegKeyList;
 #if defined(LINUX_RELEASE_MODE)
 #define IGC_GET_FLAG_VALUE(name)                 \

@@ -706,6 +706,7 @@ static void declareIGCKey(std::string& line, const char* dataType, const char* r
     {
         std::cout << std::endl << "** hashes ";
         for (size_t i = 0; i < hashes.size(); i++) {
+            memcpy_s(hashes[i].m_string, sizeof(value), value, sizeof(value));
             regKey->hashes.push_back(hashes[i]);
             if (hashes[i].end == hashes[i].start)
                 std::cout << std::hex << std::showbase << hashes[i].start << ", ";
@@ -759,7 +760,7 @@ void appendToOptionsLogFile(std::string const &message)
 }
 
 thread_local unsigned long long g_CurrentShaderHash = 0;
-bool CheckHashRange(const SRegKeyVariableMetaData& varname)
+bool CheckHashRange(SRegKeyVariableMetaData& varname)
 {
     std::vector<HashRange>hashes = varname.hashes;
     if(hashes.empty())
@@ -770,8 +771,9 @@ bool CheckHashRange(const SRegKeyVariableMetaData& varname)
     {
         if(g_CurrentShaderHash >= it.start && g_CurrentShaderHash <= it.end)
         {
+            varname.m_Value = it.m_Value;
             char msg[100];
-            int size = snprintf(msg, 100, "Shader %#0llx: %s=%d", g_CurrentShaderHash, varname.GetName(), varname.m_Value);
+            int size = snprintf(msg, 100, "Shader %#0llx: %s=%d", g_CurrentShaderHash, varname.GetName(), it.m_Value);
             if (size >=0 && size < 100)
             {
                 appendToOptionsLogFile(msg);
