@@ -1882,7 +1882,22 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                 auto zero = ConstantInt::get(src0->getType(), 0, true);
                 // Signed a - b overflows if the sign of a and -b are the same, but diffrent from the result
                 // Signed a + b overflows if the sign of a and b are the same, but diffrent from the result
-                isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_SLT, andOpt, zero, "", &I);
+                if (src0->getType()->getIntegerBitWidth() == 8 &&
+                    !m_ctx->platform.supportByteALUOperation())
+                {
+                    // The promotion char->short is breaking the current logic for overflow algorithm.
+                    // For ex. in PVC we are losing the sign bit here, if we are operating on signed char.
+                    // In first half of the short (the original char) we still have the correct sign bit -
+                    // so we are checking if original char has sign bit light-on.
+                    auto charSignBit = ConstantInt::get(Builder.getInt8Ty(), 1 << 7, true);
+                    andOpt = BinaryOperator::CreateAnd(andOpt, charSignBit, "", &I);
+                    andOpt->setDebugLoc(I.getDebugLoc());
+                    isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, andOpt, zero, "", &I);
+                }
+                else
+                {
+                    isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_SLT, andOpt, zero, "", &I);
+                }
             }
             break;
             case Intrinsic::umul_with_overflow:
