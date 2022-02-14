@@ -9270,7 +9270,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             if (bb->isLastInstEOT())
             {
                 auto iter = std::prev(bb->end());
-                if (getPlatformGeneration(builder.getPlatform()) >= PlatformGen::GEN10)
+                if (builder.getPlatformGeneration() >= PlatformGen::GEN10)
                 {
                     // an HDC fence is more efficient in this case
                     // fence with commit enable

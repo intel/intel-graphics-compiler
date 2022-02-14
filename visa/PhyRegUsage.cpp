@@ -1059,7 +1059,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 
     auto getAlignToUse = [this](BankAlign align, BankAlign bankAlign)
     {
-        if (GlobalRA::useGenericAugAlign(builder.getPlatform()))
+        if (GlobalRA::useGenericAugAlign(builder.getPlatformGeneration()))
             return (align != BankAlign::Either ? align : bankAlign);
         else
             return (bankAlign != BankAlign::Either ? bankAlign : align);

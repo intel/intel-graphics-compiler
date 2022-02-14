@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Timer.h"
 #include "G4_Opcode.h"          // temporarily add to support G4_MAX_SRCS == 3
 #include "DebugInfo.h"
+#include "PlatformInfo.h"
 #include "IGC/common/StringMacros.hpp"
 
 #include <cstring>
@@ -34,14 +35,15 @@ SPDX-License-Identifier: MIT
 static std::string makePlatformsString()
 {
     int n = 0;
-    auto platforms = getGenxAllPlatforms(&n);
+    auto platforms = vISA::PlatformInfo::getGenxAllPlatforms(&n);
     std::stringstream ss;
     for (int i = 0; i < n; i++) {
-        const char * const*names = getGenxPlatformStrings(platforms[i]);
         if (i > 0) {
             ss << ", ";
         }
-        ss << (names[0] ? names[0] : "???");
+        const char * name = vISA::PlatformInfo::getGenxPlatformString(platforms[i]);
+        assert(name);
+        ss << name;
     }
     return ss.str();
 }
@@ -284,7 +286,7 @@ bool Options::parseOptions(int argc, const char* argv[])
             return false;
         }
 
-        TARGET_PLATFORM platform = getVisaPlatformFromStr(platformStr);
+        TARGET_PLATFORM platform = vISA::PlatformInfo::getVisaPlatformFromStr(platformStr);
         if (platform == GENX_NONE) {
             std::cerr << platformStr << ": unrecognized platform string\n" <<
                 "supported platforms are: " << makePlatformsString() << "\n";

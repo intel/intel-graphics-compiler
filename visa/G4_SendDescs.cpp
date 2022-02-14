@@ -572,7 +572,7 @@ void G4_SendDescRaw::setEOT() {
     extDesc.layout.eot = true;
 }
 
-static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType, TARGET_PLATFORM platform)
+static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType, const IR_Builder& irb)
 {
     if (funcID != SFID::DP_DC1)
         return false;
@@ -581,12 +581,12 @@ static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType, TARGET_PLATFORM
     {
         return true;
     }
-    if (platform >= GENX_SKL)
+    if (irb.getPlatform() >= GENX_SKL)
     {
         if (msgType == DC1_TYPED_ATOMIC)
             return true;
     }
-    if (getPlatformGeneration(platform) >= PlatformGen::XE)
+    if (irb.getPlatformGeneration() >= PlatformGen::XE)
     {
         if (msgType == DC1_TYPED_HALF_INTEGER_ATOMIC ||
             msgType == DC1_TYPED_HALF_COUNTER_ATOMIC ||
@@ -597,18 +597,18 @@ static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType, TARGET_PLATFORM
     return false;
 }
 
-static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType, TARGET_PLATFORM platform)
+static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType, const IR_Builder& irb)
 {
     if (funcID != SFID::DP_DC1)
         return false;
 
-    if (platform >= GENX_SKL)
+    if (irb.getPlatform() >= GENX_SKL)
     {
         if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
             msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
             return true;
     }
-    if (getPlatformGeneration(platform) >= PlatformGen::XE)
+    if (irb.getPlatformGeneration() >= PlatformGen::XE)
     {
         if (msgType == DC1_UNTYPED_HALF_FLOAT_ATOMIC ||
             msgType == DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC)
@@ -630,8 +630,8 @@ bool G4_SendDescRaw::isAtomicMessage() const
     if (!isHDC())
         return false; // guard getMessageType() on SFID without a message type
     uint16_t msgType = getHdcMessageType();
-    return isHdcIntAtomicMessage(funcID, msgType, irb.getPlatform()) ||
-        isHdcFloatAtomicMessage(funcID, msgType, irb.getPlatform());
+    return isHdcIntAtomicMessage(funcID, msgType, irb) ||
+        isHdcFloatAtomicMessage(funcID, msgType, irb);
 }
 
 uint16_t G4_SendDescRaw::getHdcAtomicOp() const
@@ -639,7 +639,7 @@ uint16_t G4_SendDescRaw::getHdcAtomicOp() const
     MUST_BE_TRUE(isHDC(), "must be HDC message");
     MUST_BE_TRUE(isAtomicMessage(), "getting atomicOp from non-atomic message!");
     uint32_t funcCtrl = getFuncCtrl();
-    if (isHdcIntAtomicMessage(getSFID(), getHdcMessageType(), irb.getPlatform()))
+    if (isHdcIntAtomicMessage(getSFID(), getHdcMessageType(), irb))
     {
         // bits: 11:8
         return (uint16_t)((funcCtrl >> 8) & 0xF);

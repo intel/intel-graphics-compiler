@@ -1418,13 +1418,13 @@ void vISAVerifier::verifyInstructionMisc(
                     "%s instuction is not supported on selected platform", ISA_Inst_Table[opcode].str);
                 REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_16,
                     "Only execution size of 16 is supported for %s on platform %s",
-                    ISA_Inst_Table[opcode].str, getGenxPlatformString(irBuilder->getPlatform()));
+                    ISA_Inst_Table[opcode].str, irBuilder->getGenxPlatformString());
             }
             else
             {
                 REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_8,
                     "Only execution size of 8 is supported for %s on platform %s",
-                    ISA_Inst_Table[opcode].str, getGenxPlatformString(irBuilder->getPlatform()));
+                    ISA_Inst_Table[opcode].str, irBuilder->getGenxPlatformString());
             }
 
             // dst
@@ -1690,7 +1690,7 @@ void vISAVerifier::verifyInstructionArith(
     case ISA_SAD2ADD:
         /// dst must be w or uw
         REPORT_INSTRUCTION(options, dstType == ISA_TYPE_W || dstType == ISA_TYPE_UW, "sad2/sad2add only supports W/UW dst type.");
-        REPORT_INSTRUCTION(options, getPlatformGeneration(irBuilder->getPlatform()) != PlatformGen::XE, "sad2/sad2add is not supported on Xe.");
+        REPORT_INSTRUCTION(options, irBuilder->getPlatformGeneration() != PlatformGen::XE, "sad2/sad2add is not supported on Xe.");
         break;
     case ISA_ADDC:
     case ISA_SUBB:
@@ -1827,7 +1827,7 @@ void vISAVerifier::verifyInstructionArith(
             !(dstType == ISA_TYPE_DF && dfOpcodeIEEE) &&
                 !(dstType == ISA_TYPE_F && fOpcodeIEEE),
             "IEEE instruction %s is not supported on %s platform",
-            ISA_Inst_Table[opcode].str, getGenxPlatformString(platform));
+            ISA_Inst_Table[opcode].str, irBuilder->getGenxPlatformString());
     }
 }
 

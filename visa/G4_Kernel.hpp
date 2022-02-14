@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "G4_IR.hpp"
 #include "FlowGraph.h"
+#include "PlatformInfo.h"
 #include "RelocationEntry.hpp"
 #include "include/gtpin_IGC_interface.h"
 
@@ -159,7 +160,7 @@ public:
     using RelocationTableTy = std::vector<RelocationEntry>;
 
 private:
-    const TARGET_PLATFORM platform;
+    const PlatformInfo& platformInfo;
     unsigned char grfSize;
     const char* name;
     unsigned numRegTotal;
@@ -221,12 +222,14 @@ public:
     unsigned char major_version;
     unsigned char minor_version;
 
-    G4_Kernel(TARGET_PLATFORM genPlatform, INST_LIST_NODE_ALLOCATOR& alloc,
+    G4_Kernel(const PlatformInfo& pInfo, INST_LIST_NODE_ALLOCATOR& alloc,
         Mem_Manager& m, Options* options, Attributes* anAttr,
         unsigned char major, unsigned char minor);
     ~G4_Kernel();
 
-    TARGET_PLATFORM getPlatform() const {return platform;}
+    TARGET_PLATFORM getPlatform() const {return platformInfo.platform;}
+    PlatformGen getPlatformGeneration() const {return platformInfo.family;}
+    const char* getGenxPlatformString() const {return platformInfo.getGenxPlatformString();}
     unsigned char getGRFSize() const {return grfSize;}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}

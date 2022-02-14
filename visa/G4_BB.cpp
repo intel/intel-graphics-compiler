@@ -268,7 +268,7 @@ void G4_BB::emitBasicInstructionComment(
             output << ":%" << inst->getGenOffset();
         }
 
-        if (getPlatformGeneration(platform) < PlatformGen::XE)
+        if (inst->getBuilder().getPlatformGeneration() < PlatformGen::XE)
         {
             emitBankConflict(output, inst);
         }

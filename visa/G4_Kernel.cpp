@@ -536,10 +536,10 @@ uint32_t gtPinData::getNumBytesScratchUse() const
 }
 
 
-G4_Kernel::G4_Kernel(TARGET_PLATFORM genPlatform, INST_LIST_NODE_ALLOCATOR& alloc,
+G4_Kernel::G4_Kernel(const PlatformInfo& pInfo, INST_LIST_NODE_ALLOCATOR& alloc,
     Mem_Manager& m, Options* options, Attributes* anAttr,
     unsigned char major, unsigned char minor)
-    : platform(genPlatform), m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
+    : platformInfo(pInfo), m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
     asmInstCount(0), kernelID(0), fg(alloc, this, m),
     major_version(major), minor_version(minor)
 {
@@ -548,7 +548,7 @@ G4_Kernel::G4_Kernel(TARGET_PLATFORM genPlatform, INST_LIST_NODE_ALLOCATOR& allo
         (major == COMMON_ISA_MAJOR_VER && minor <= COMMON_ISA_MINOR_VER),
         "CISA version not supported by this JIT-compiler");
 
-    grfSize = genPlatform >= Xe_PVC ? 64 : 32;
+    grfSize = pInfo.platform >= Xe_PVC ? 64 : 32;
     name = NULL;
     numThreads = 0;
     hasAddrTaken = false;
@@ -736,7 +736,7 @@ void G4_Kernel::calculateSimdSize()
         }
     }
 
-    if (GlobalRA::useGenericAugAlign(getPlatform()))
+    if (GlobalRA::useGenericAugAlign(getPlatformGeneration()))
         computeChannelSlicing();
 }
 
@@ -1322,7 +1322,7 @@ void G4_Kernel::emitDeviceAsm(
 
     emitDeviceAsmInstructionsIga(os, binary, binarySize);
 
-    if (getPlatformGeneration(getPlatform()) >= PlatformGen::XE) {
+    if (getPlatformGeneration() >= PlatformGen::XE) {
         os << "\n\n";
         os << "//.BankConflicts: " <<  fg.XeBCStats.BCNum << "\n";
         os << "//.BankConflicts.SameBank: " <<  fg.XeBCStats.sameBankConflicts << "\n";
@@ -1363,7 +1363,7 @@ void G4_Kernel::emitRegInfo()
 
 void G4_Kernel::emitRegInfoKernel(std::ostream& output)
 {
-    output << "//.platform " << getGenxPlatformString(getPlatform());
+    output << "//.platform " << getGenxPlatformString();
     output << "\n" << "//.kernel ID 0x" << std::hex << getKernelID() << "\n";
     output << std::dec << "\n";
     int instOffset = 0;
@@ -1598,7 +1598,7 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream& os)
         os << name;
     }
 
-    os << "\n" << "//.platform " << getGenxPlatformString(getPlatform());
+    os << "\n" << "//.platform " << getGenxPlatformString();
     os << "\n" << "//.thread_config " << "numGRF=" << numRegTotal << ", numAcc=" << numAcc;
     if (fg.builder->hasSWSB())
     {
@@ -1773,7 +1773,7 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream& os)
     }
     os << border << "\n";
 
-    if (getPlatformGeneration(getPlatform()) < PlatformGen::XE)
+    if (getPlatformGeneration() < PlatformGen::XE)
     {
         fg.BCStats.clear();
     }

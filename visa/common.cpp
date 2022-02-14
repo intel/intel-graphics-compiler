@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 #include "common.h"
 #include "G4_Opcode.h"
+#include "PlatformInfo.h"
 #include <cctype>
 
 //for exception handling
@@ -18,27 +19,8 @@ std::stringstream errorMsgs;
 
 static _THREAD TARGET_PLATFORM visaPlatform;
 
-struct PlatformInfo {
-    TARGET_PLATFORM  platform;
-    PlatformGen      family;
-    int              encoding;
-    const char      *symbols[8];
-
-    constexpr PlatformInfo(
-        TARGET_PLATFORM p,
-        PlatformGen f,
-        int e,
-        const char *str0,
-        const char *str1 = nullptr,
-        const char *str2 = nullptr,
-        const char *str3 = nullptr,
-        const char *str4 = nullptr)
-        : platform(p), family(f), encoding(e), symbols{str0, str1, str2, str3, str4, nullptr}
-    {
-    }
-}; // PlatformInfo
-
-static const PlatformInfo ALL_PLATFORMS[] {
+using namespace vISA;
+const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
     PlatformInfo(GENX_BDW, PlatformGen::GEN8, 3, "BDW", "GEN8"),
     PlatformInfo(GENX_CHV, PlatformGen::GEN8, 4, "CHV", "GEN8LP"),
     PlatformInfo(GENX_SKL, PlatformGen::GEN9, 5, "SKL", "GEN9", "KBL", "CFL"),
@@ -58,7 +40,7 @@ static const PlatformInfo ALL_PLATFORMS[] {
         "PVCXT"),
 }; // ALL_PLATFORMS
 
-static const PlatformInfo *LookupPlatformInfo(TARGET_PLATFORM p)
+const PlatformInfo* PlatformInfo::LookupPlatformInfo(TARGET_PLATFORM p)
 {
     for (const auto &pi : ALL_PLATFORMS) {
         if (pi.platform == p)
@@ -75,7 +57,7 @@ int SetVisaPlatform(TARGET_PLATFORM vPlatform)
     return VISA_SUCCESS;
 }
 
-TARGET_PLATFORM getVisaPlatformFromStr(const char * str)
+TARGET_PLATFORM PlatformInfo::getVisaPlatformFromStr(const char * str)
 {
     auto toUpperStr = [](const char *str) {
         std::string upper;
@@ -101,7 +83,7 @@ TARGET_PLATFORM getVisaPlatformFromStr(const char * str)
     return platform;
 }
 
-PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
+PlatformGen PlatformInfo::getPlatformGeneration(TARGET_PLATFORM platform)
 {
     if (const auto *pi = LookupPlatformInfo(platform)) {
         return pi->family;
@@ -111,20 +93,27 @@ PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
     }
 }
 
-const char *getGenxPlatformString(TARGET_PLATFORM platform)
+const char* PlatformInfo::kUnknownPlatformStr = "???";
+
+const char* PlatformInfo::getGenxPlatformString() const
+{
+    return symbols[0] ? symbols[0] : kUnknownPlatformStr;
+}
+
+const char* PlatformInfo::getGenxPlatformString(TARGET_PLATFORM platform)
 {
     if (const auto *pi = LookupPlatformInfo(platform)) {
-        return pi->symbols[0] ? pi->symbols[0] : "???";
+        return pi->getGenxPlatformString();
     } else {
-        return "???";
+        return kUnknownPlatformStr;
     }
 }
 
 // returns an array of all supported platforms
-const TARGET_PLATFORM *getGenxAllPlatforms(int *num)
+const TARGET_PLATFORM* PlatformInfo::getGenxAllPlatforms(int *num)
 {
     const static int N_PLATFORMS =
-        sizeof(ALL_PLATFORMS)/sizeof(ALL_PLATFORMS[0]);
+        sizeof(ALL_PLATFORMS) / sizeof(ALL_PLATFORMS[0]);
     static TARGET_PLATFORM s_platforms[N_PLATFORMS];
     int i = 0;
     for (const auto &pi : ALL_PLATFORMS) {
@@ -135,7 +124,7 @@ const TARGET_PLATFORM *getGenxAllPlatforms(int *num)
 }
 
 // returns nullptr terminated string for a platform
-const char * const*getGenxPlatformStrings(TARGET_PLATFORM p)
+const char * const* PlatformInfo::getGenxPlatformStrings(TARGET_PLATFORM p)
 {
     if (const auto *pi = LookupPlatformInfo(p)) {
         return pi->symbols;
@@ -169,7 +158,7 @@ unsigned char getGRFSize()
 // 14 PVC
 // 15 PVC_XT
 // Note that encoding is not linearized.
-int getGenxPlatformEncoding(TARGET_PLATFORM platform)
+int PlatformInfo::getGenxPlatformEncoding(TARGET_PLATFORM platform)
 {
     if (const auto *pi = LookupPlatformInfo(platform)) {
         return pi->encoding;

@@ -1794,7 +1794,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 {
                     m_cisaBinary->patchKernel(
                         kernelCount, func->getGenxBinarySize(), func->getGenxBinaryBuffer(),
-                        getGenxPlatformEncoding(getPlatform()));
+                        m_platformInfo->encoding);
                     kernelCount++;
                 } else {
                     // functions be treated as "mainFunctions" will have its own binary, will need to

@@ -649,6 +649,8 @@ public:
     }
 
     TARGET_PLATFORM getPlatform() const {return kernel.getPlatform();}
+    PlatformGen getPlatformGeneration() const {return kernel.getPlatformGeneration();}
+    const char* getGenxPlatformString() const {return kernel.getGenxPlatformString();}
     unsigned char getGRFSize() const {return kernel.getGRFSize();}
     FINALIZER_INFO* getJitInfo() {return metaData;}
     CompilerStats &getcompilerStats() {return compilerStats;}

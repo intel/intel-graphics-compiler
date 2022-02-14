@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 namespace vISA
 {
     class Mem_Manager;
+    class PlatformInfo;
 }
 class CisaKernel;
 class CisaBinary;
@@ -29,6 +30,7 @@ extern int CISAdebug;
 
 #include "VISABuilderAPIDefinition.h"
 #include "inc/common/sku_wa.h"
+#include "PlatformInfo.h"
 
 class Options;
 
@@ -38,8 +40,10 @@ public:
     CISA_IR_Builder(
         TARGET_PLATFORM platform, VISA_BUILDER_OPTION buildOption, vISABuilderMode mode,
         int majorVersion, int minorVersion, const WA_TABLE *pWaTable)
-        : m_platform(platform), mBuildOption(buildOption), m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
+        : mBuildOption(buildOption), m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
     {
+        m_platformInfo = vISA::PlatformInfo::LookupPlatformInfo(platform);
+        assert(m_platformInfo != nullptr);
         m_header.major_version = majorVersion;
         m_header.minor_version = minorVersion;
         m_header.magic_number = COMMON_ISA_MAGIC_NUM;
@@ -811,7 +815,8 @@ public:
     void setGtpinInit(void* buf) { gtpin_init = buf; }
     void* getGtpinInit() { return gtpin_init; }
 
-    TARGET_PLATFORM getPlatform() const { return m_platform; }
+    const vISA::PlatformInfo* getPlatformInfo() const { return m_platformInfo; }
+    TARGET_PLATFORM getPlatform() const { return m_platformInfo->platform; }
     Options* getOptions() { return &m_options; }
     VISA_BUILDER_OPTION getBuilderOption() const { return mBuildOption; }
     vISABuilderMode getBuilderMode() const { return m_builderMode; }
@@ -939,7 +944,7 @@ public:
 
 
 private:
-    TARGET_PLATFORM m_platform;
+    const vISA::PlatformInfo* m_platformInfo;
 
     vISA::Mem_Manager m_mem;
     const VISA_BUILDER_OPTION mBuildOption;

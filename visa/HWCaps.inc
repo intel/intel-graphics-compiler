@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
         }
 
         return getPlatform() > GENX_BDW &&
-            getPlatformGeneration(getPlatform()) != PlatformGen::GEN11;
+            getPlatformGeneration() != PlatformGen::GEN11;
     }
 
     // True if it has bfloat16 mixed mode support.
@@ -36,7 +36,7 @@ SPDX-License-Identifier: MIT
 
     bool needsNoPreemptR2ForSend() const
     {
-        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN11;
+        return getPlatformGeneration() == PlatformGen::GEN11;
     }
 
     bool noDDAllowedPlatform() const
@@ -56,7 +56,7 @@ SPDX-License-Identifier: MIT
 
     bool favorFloatMov() const
     {
-        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN11 || isXeLP();
+        return getPlatformGeneration() == PlatformGen::GEN11 || isXeLP();
     }
 
     bool noScalarJmp() const
@@ -71,7 +71,7 @@ SPDX-License-Identifier: MIT
 
     bool encodeUnitStrideTernary() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
+        return getPlatformGeneration() >= PlatformGen::XE;
     }
 
     bool hasMacl() const
@@ -150,7 +150,7 @@ SPDX-License-Identifier: MIT
 
     bool lowHighBundle() const
     {
-        return getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11;
+        return getPlatformGeneration() <= PlatformGen::GEN11;
     }
 
     bool hasSendShootdown() const
@@ -249,7 +249,7 @@ SPDX-License-Identifier: MIT
 
     bool hasFdivPow() const
     {
-        return getPlatformGeneration(getPlatform()) < PlatformGen::XE;
+        return getPlatformGeneration() < PlatformGen::XE;
     }
 
     bool hasFdivPowWA() const
@@ -259,17 +259,17 @@ SPDX-License-Identifier: MIT
 
     bool hasCondModForTernary() const
     {
-        return getPlatformGeneration(getPlatform()) < PlatformGen::XE;
+        return getPlatformGeneration() < PlatformGen::XE;
     }
 
     bool hasSWSB() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
+        return getPlatformGeneration() >= PlatformGen::XE;
     }
 
     bool hasPartialMixMode() const
     {
-        return getPlatformGeneration(getPlatform()) == PlatformGen::XE;
+        return getPlatformGeneration() == PlatformGen::XE;
     }
 
     // whether EOT sources need to be assigned r112-r127
@@ -280,18 +280,18 @@ SPDX-License-Identifier: MIT
 
     bool hasSmov() const
     {
-        return getPlatformGeneration(getPlatform()) < PlatformGen::XE;
+        return getPlatformGeneration() < PlatformGen::XE;
     }
 
     bool doAccSub() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN11;
+        return getPlatformGeneration() >= PlatformGen::GEN11;
     }
 
     bool hasNFType() const
     {
         return getPlatform() >= GENX_ICLLP &&
-               getPlatformGeneration(getPlatform()) != PlatformGen::XE;
+               getPlatformGeneration() != PlatformGen::XE;
     }
 
     void getSSIDBits(uint32_t& width, uint32_t& start) const
@@ -325,13 +325,13 @@ SPDX-License-Identifier: MIT
 
     bool avoidWAWSubRegHazard() const
     {
-        return getPlatformGeneration(getPlatform()) < PlatformGen::XE &&
+        return getPlatformGeneration() < PlatformGen::XE &&
                getOption(vISA_WAWSubregHazardAvoidance);
     }
 
     bool newTernaryStride() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
+        return getPlatformGeneration() >= PlatformGen::XE;
     }
 
     // acc restrictions that are relaxed for Xe
@@ -339,7 +339,7 @@ SPDX-License-Identifier: MIT
     // -- the same acc may be used in both src0 and src1 of a three-source inst
     bool relaxedACCRestrictions2() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
+        return getPlatformGeneration() >= PlatformGen::XE;
     }
 
     bool fuseURBMessage() const
@@ -349,22 +349,22 @@ SPDX-License-Identifier: MIT
 
     bool supportSrcModforMul() const
     {
-        return getPlatformGeneration(getPlatform()) != PlatformGen::XE;
+        return getPlatformGeneration() != PlatformGen::XE;
     }
 
     bool doMultiAccSub() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
+        return getPlatformGeneration() >= PlatformGen::XE;
     }
 
     bool canMadHaveSrc0Acc() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
+        return getPlatformGeneration() >= PlatformGen::XE;
     }
 
     bool accDstforIndirectSrc() const
     {
-        return getPlatformGeneration(getPlatform()) != PlatformGen::XE;
+        return getPlatformGeneration() != PlatformGen::XE;
     }
 
     bool restrictedACCRestrictions() const
@@ -422,7 +422,7 @@ SPDX-License-Identifier: MIT
 
     bool alignBindlessSampler() const
     {
-        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN9;
+        return getPlatformGeneration() == PlatformGen::GEN9;
     }
 
     bool noL3Flush() const
@@ -438,7 +438,7 @@ SPDX-License-Identifier: MIT
     unsigned getCoIssueUints() const
     {
 #if 0
-        auto GEN = getPlatformGeneration(getPlatform());
+        auto GEN = getPlatformGeneration();
         return (GEN >= PlatformGen::XE) ? 1 : 2;
 #else
         return 2;
@@ -448,7 +448,7 @@ SPDX-License-Identifier: MIT
     bool useMultiThreadLatency() const
     {
 #if 0
-        auto GEN = getPlatformGeneration(getPlatform());
+        auto GEN = getPlatformGeneration();
         if (GEN >= PlatformGen::XE)
             return false;
 #endif
@@ -458,7 +458,7 @@ SPDX-License-Identifier: MIT
 
     bool useIGAEncoder() const
     {
-        return getOption(vISA_IGAEncoder) || getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
+        return getOption(vISA_IGAEncoder) || getPlatformGeneration() >= PlatformGen::XE;
     }
 
     bool needReplaceIndirectCallWithJmpi() const
@@ -527,7 +527,7 @@ SPDX-License-Identifier: MIT
         {
             return true;
         }
-        return (getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11) || getOption(vISA_forceBCR) ||
+        return (getPlatformGeneration() <= PlatformGen::GEN11) || getOption(vISA_forceBCR) ||
         (getOption(vISA_enableBCR) && !hasEarlyGRFRead());
     }
 

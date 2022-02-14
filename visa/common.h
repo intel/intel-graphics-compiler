@@ -192,25 +192,10 @@ extern std::stringstream errorMsgs;
 #endif
 
 
+/*************** internal jitter functions ********************/
 // sets the platform by enum value
 int SetVisaPlatform(TARGET_PLATFORM vPlatform);
-
-// currently the supported arguments are listed in the common.cpp table
-// generally the symbol suffix is the preferred name:
-//   e.g. GENX_SKL  means "SKL"
-//             ^^^
-TARGET_PLATFORM getVisaPlatformFromStr(const char *platformName);
-
-/*************** internal jitter functions ********************/
-
-// returns an array of all supported platforms
-const TARGET_PLATFORM *getGenxAllPlatforms(int *num);
-
-const char *getGenxPlatformString(TARGET_PLATFORM);
-
-// returns nullptr terminated array of strings that can be parsed
-// for the platform name; these will be accepted by SetPlatform()
-const char * const* getGenxPlatformStrings(TARGET_PLATFORM);
+unsigned char getGRFSize();
 
 enum class PlatformGen
 {
@@ -221,15 +206,6 @@ enum class PlatformGen
     GEN11 = 11,
     XE = 12,
 };
-
-unsigned char getGRFSize();
-
-// return the platform generation that can be used for comparison
-PlatformGen getPlatformGeneration(TARGET_PLATFORM platform);
-
-// returns the vISA encoding bits for encoding
-// NOTE: encoding values are not necessarily in order
-int getGenxPlatformEncoding(TARGET_PLATFORM platform);
 
 // Error types
 #define ERROR_UNKNOWN               "ERROR: Unknown fatal internal error"

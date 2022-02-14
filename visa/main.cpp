@@ -18,8 +18,8 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA.h"
 #include "BinaryCISAEmission.h"
 #include "Timer.h"
-
 #include "DebugInfo.h"
+#include "PlatformInfo.h"
 
 #ifndef DLL_MODE
 #include "EnumFiles.hpp"
@@ -158,7 +158,7 @@ int JITCompileAllOptions(const char* kernelName,
     }
     // This must be done before processing the options,
     // as some options depend on the platform
-    TARGET_PLATFORM platform = getVisaPlatformFromStr(platformStr);
+    TARGET_PLATFORM platform = vISA::PlatformInfo::getVisaPlatformFromStr(platformStr);
     if (platform == GENX_NONE)
     {
         return JIT_INVALID_PLATFORM;

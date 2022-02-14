@@ -915,6 +915,7 @@ void BinaryEncodingIGA::Encode()
         IGAKernel->appendBlock(currBB);
     }
 
+    auto platformGen = kernel.getPlatformGeneration();
     std::list<std::pair<Instruction*, G4_INST*>> encodedInsts;
     Block *bbNew = nullptr;
     for (auto bb : this->kernel.fg)
@@ -940,7 +941,7 @@ void BinaryEncodingIGA::Encode()
 
             igaInst->addInstOpts(getIGAInstOptSet(inst));
 
-            if (getPlatformGeneration(platform) >= PlatformGen::XE) {
+            if (platformGen >= PlatformGen::XE) {
                 SWSB sw;
                 SetSWSB(inst, sw);
 
@@ -1458,7 +1459,7 @@ static SendDesc encodeExDescSendUnary(
     exDescIga.type = SendDesc::Kind::IMM;
     uint32_t tVal = descG4->getExtendedDesc();
 
-    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::XE)
+    if (sendInst->getBuilder().getPlatformGeneration() >= PlatformGen::XE)
     {
         // We must clear the funcID in the extended message.
         // In Xe+ this is part of the EU encoding, not the descriptor.
@@ -1508,7 +1509,8 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     //    uint32_t unnamed2 : 5;     // bit 11:15
     //    uint32_t extFuncCtrl : 16; // bit 16:31
     // };
-    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::XE)
+    auto platformGen = sendInst->getBuilder().getPlatformGeneration();
+    if (platformGen >= PlatformGen::XE)
     {
         exDescIga.imm &= 0xFFFFFFC0;
     }
@@ -1532,7 +1534,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     // Note: ExBSO is never permitted for imm descriptors
 
     // clear the EOT bit which is not part of exDesc on XE+
-    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::XE)
+    if (platformGen >= PlatformGen::XE)
         exDescIga.imm &= ~(1 << 5);
 
     return exDescIga;
@@ -1936,7 +1938,7 @@ EncodeResult vISA::EncodeKernelIGA(
 }
 
 SWSB_ENCODE_MODE vISA::GetIGASWSBEncodeMode(const IR_Builder& builder) {
-    if (getPlatformGeneration(builder.getPlatform()) < PlatformGen::XE)
+    if (builder.getPlatformGeneration() < PlatformGen::XE)
         return SWSB_ENCODE_MODE::SWSBInvalidMode;
 
     if (builder.hasThreeALUPipes()) {

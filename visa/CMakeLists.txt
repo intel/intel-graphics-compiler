@@ -352,6 +352,7 @@ set(GenX_CISA_dis_Common_Headers
   IsaDisassembly.h
   IsaVerification.h
   Option.h
+  PlatformInfo.h
 )
 
 set(Jitter_Common_Headers

@@ -540,7 +540,7 @@ int VISAKernelImpl::InitializeFastPath()
     m_kernelMem = new vISA::Mem_Manager(4096);
 
     m_kernel = new (m_mem) G4_Kernel(
-        getCISABuilder()->getPlatform(),
+        *getCISABuilder()->getPlatformInfo(),
         m_instListNodeAllocator,
         *m_kernelMem,
         m_options,
