@@ -271,4 +271,34 @@ void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32_i32(loc
     __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(barrier, get_spirv_mem_scope(scope), AcquireRelease | get_spirv_mem_fence(flags));
 }
 
+__global volatile uchar* __builtin_IB_get_sync_buffer();
+
+void global_barrier()
+{
+    barrier(CLK_GLOBAL_MEM_FENCE);
+
+    __global volatile int* syncBuffer = (__global volatile int*)__builtin_IB_get_sync_buffer();
+
+    bool firstThreadPerWg = (get_local_id(0) == 0) && (get_local_id(1) == 0) && (get_local_id(2) == 0);
+    size_t numGroups = get_num_groups(0) * get_num_groups(1) * get_num_groups(2);
+
+    if (firstThreadPerWg) {
+        if (get_global_linear_id() == 0) {
+            atomic_sub(syncBuffer, numGroups-1);
+        }
+        else {
+            atomic_inc(syncBuffer);
+        }
+
+        while(atomic_or(syncBuffer, 0) != 0) {}
+    }
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
+}
+
+void system_memfence(char fence_typed_memory)
+{
+    return __builtin_IB_system_memfence(fence_typed_memory);
+}
+
 

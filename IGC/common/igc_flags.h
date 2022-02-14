@@ -627,6 +627,7 @@ DECLARE_IGC_REGKEY(bool, EnableLocalIdCalculationInShader, false,
     "Enables calcualtion of local thread IDs in shader. Valid only in compute"\
     "shaders on XeHP+. IDs are calculated only if HW generated IDs cannot be"\
     "used.", true)
+DECLARE_IGC_REGKEY(bool, EnableVector8LoadStore, false, "Enable Vectorizer to generate 8x32i and 4x64i loads and stores", true)
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, false,  "Enable output in ZE binary format", true)
 DECLARE_IGC_REGKEY(bool, ExcludeIRFromZEBinary, false, "Exclude IR sections from ZE binary", true)
 DECLARE_IGC_REGKEY(bool, AllocateZeroInitializedVarsInBss, false,  "Allocate zero initialized global variables in .bss section in ZEBinary", true)

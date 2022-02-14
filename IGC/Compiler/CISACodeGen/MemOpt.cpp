@@ -67,6 +67,7 @@ namespace {
         TargetLibraryInfo* TLI;
 
         bool AllowNegativeSymPtrsForLoad = false;
+        bool AllowVector8LoadStore = false;
 
         // Map of profit vector lengths per scalar type. Each entry specifies the
         // profit vector length of a given scalar type.
@@ -81,9 +82,11 @@ namespace {
     public:
         static char ID;
 
-        MemOpt(bool AllowNegativeSymPtrsForLoad = false) :
+        MemOpt(bool AllowNegativeSymPtrsForLoad = false, bool AllowVector8LoadStore = false) :
             FunctionPass(ID), DL(nullptr), AA(nullptr), SE(nullptr), WI(nullptr),
-            CGC(nullptr), AllowNegativeSymPtrsForLoad(AllowNegativeSymPtrsForLoad) {
+            CGC(nullptr), AllowNegativeSymPtrsForLoad(AllowNegativeSymPtrsForLoad),
+            AllowVector8LoadStore(AllowVector8LoadStore)
+        {
             initializeMemOptPass(*PassRegistry::getPassRegistry());
         }
 
@@ -367,8 +370,8 @@ namespace {
     };
 }
 
-FunctionPass* createMemOptPass(bool AllowNegativeSymPtrsForLoad) {
-    return new MemOpt(AllowNegativeSymPtrsForLoad);
+FunctionPass* createMemOptPass(bool AllowNegativeSymPtrsForLoad, bool AllowVector8LoadStore) {
+    return new MemOpt(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore);
 }
 
 #define PASS_FLAG     "igc-memopt"
@@ -388,6 +391,11 @@ char MemOpt::ID = 0;
 
 void MemOpt::buildProfitVectorLengths(Function& F) {
     ProfitVectorLengths.clear();
+    if (AllowVector8LoadStore)
+    {
+        ProfitVectorLengths[64].push_back(4);
+        ProfitVectorLengths[32].push_back(8);
+    }
 
     // 64-bit integer
     ProfitVectorLengths[64].push_back(2);

@@ -68,6 +68,7 @@ namespace IGC
         void CheckMediaBlockInstError(llvm::GenIntrinsicInst* inst, bool isRead);
 
         void subGroupArithmetic(llvm::CallInst& CI, WaveOps op, GroupOpType groupType);
+        void subGroup2DBlockRead(llvm::CallInst& CI, llvm::StringRef funcName);
 
         static const llvm::StringRef SUB_GROUP_BARRIER;
         static const llvm::StringRef GET_MAX_SUB_GROUP_SIZE;
@@ -207,7 +208,7 @@ namespace IGC
         static const llvm::StringRef SUB_GROUP_SCAN;
         static const llvm::StringRef SUB_GROUP_CLUSTERED_REDUCE;
 
-
+        static const llvm::StringRef SUBGROUP_BLOCK_READ;
 
     private:
         /// @brief  Container for instructions to be deleted after visiting a function.

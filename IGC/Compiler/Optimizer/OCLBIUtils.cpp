@@ -1366,6 +1366,10 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_memfence"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_memoryfence, false);
     m_CommandMap["__builtin_IB_flush_sampler_cache"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_flushsampler, false);
     m_CommandMap["__builtin_IB_typedmemfence"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_typedmemoryfence, false);
+    m_CommandMap["__builtin_IB_system_memfence"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_systemmemoryfence, false);
+
+    // surface compression - HDC flat CCS builtins
+    m_CommandMap["__builtin_IB_hdc_uncompressed_write_uchar"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_HDCuncompressedwrite, true);
     // internal hint builtin
     m_CommandMap["__builtin_IB_assume_uniform"] = CSimpleIntrinMapping::create( GenISAIntrinsic::GenISA_assume_uniform, true );
 

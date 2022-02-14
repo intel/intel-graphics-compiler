@@ -676,7 +676,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(createAdvMemOptPass());
         bool AllowNegativeSymPtrsForLoad =
             ctx.type == ShaderType::OPENCL_SHADER;
-        mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad));
+        bool AllowVector8LoadStore = IGC_IS_FLAG_ENABLED(EnableVector8LoadStore);
+        mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore));
         mpm.add(createIGCInstructionCombiningPass());
     }
 

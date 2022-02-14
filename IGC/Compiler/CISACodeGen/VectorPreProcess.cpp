@@ -314,6 +314,8 @@ namespace
             // With SPLIT_SIZE=32, we have the max vectors as below after this pass:
             //     <32 x i8>, 16xi16, 8xi32, or 4xi64!
             SPLIT_SIZE = 32,              // default, 32 bytes
+            LSC_D64_UNIFORM_SPLIT_SIZE = 512, // LSC transpose 64 x D64
+            LSC_D32_UNIFORM_SPLIT_SIZE = 256, // LSC transpose 64 x D32
             RAW_SPLIT_SIZE = 16
         };
 
@@ -583,10 +585,27 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
     if (LoadInst* LI = dyn_cast<LoadInst>(I))
     {
         bytes = (uint32_t)VPConst::SPLIT_SIZE;
+        if (WI.isUniform(LI->getPointerOperand()) &&
+            (m_CGCtx->platform.LSCEnabled() || IGC_GET_FLAG_VALUE(UniformMemOpt4OW)))
+        {
+            if (LI->getAlignment() >= 8)
+                bytes = (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE;
+            else if (LI->getAlignment() >= 4)
+                bytes = (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
+        }
     }
     else if (StoreInst* SI = dyn_cast<StoreInst>(I))
     {
         bytes = (uint32_t)VPConst::SPLIT_SIZE;
+        Value* Addr = SI->getPointerOperand();
+        Value* Data = SI->getValueOperand();
+        if (m_CGCtx->platform.LSCEnabled() && WI.isUniform(Addr) && WI.isUniform(Data))
+        {
+            if (SI->getAlignment() >= 8)
+                bytes = (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE;
+            else if (SI->getAlignment() >= 4)
+                bytes = (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
+        }
     }
     else if (isa<LdRawIntrinsic>(I) || isa<StoreRawIntrinsic>(I))
     {

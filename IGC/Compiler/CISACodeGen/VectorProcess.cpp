@@ -298,6 +298,11 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         bool useQW = useA64 && ((TBytes % 8) == 0) &&
             ((has_8Byte_A64_BS && align < 4) || (eTyBytes == 8U && align >= 8U));
 
+        if (cgCtx->platform.LSCEnabled())
+        {
+            // With LSC, want to use QW if element size is 8 bytes.
+            useQW = (eTyBytes == 8);
+        }
 
         const uint32_t new_eTyBytes = useQW ? 8 : 4;
         if (eTyBytes == new_eTyBytes)

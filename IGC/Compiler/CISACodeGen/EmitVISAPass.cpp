@@ -6010,12 +6010,22 @@ static uint32_t getLSCBlockMsgSize(uint32_t bytesRemaining, uint32_t maxSize)
 
 void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
 {
+    if (shouldGenerateLSC())
+    {
+        emitLSCSimdBlockWrite(inst, ptrVal);
+        return;
+    }
     emitLegacySimdBlockWrite(inst, ptrVal);
 
 }
 
 void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
 {
+    if (shouldGenerateLSC())
+    {
+        emitLSCSimdBlockRead(inst, ptrVal);
+        return;
+    }
     emitLegacySimdBlockRead(inst, ptrVal);
 }
 
@@ -6110,6 +6120,10 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
         data = BroadcastIfUniform(data);
     }
 
+    if (m_SimdMode == SIMDMode::SIMD32 && getGRFSize() == 64)
+    {
+        totalBytes = nbElements * typeSizeInBytes * numLanes(SIMDMode::SIMD16);
+    }
 
     // Special case for simd8 char block write, in which the total bytes = 8.
     // (All the other cases, the total bytes is multiple of 16 (OW).
@@ -6295,6 +6309,10 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
     uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
 
+    if (m_SimdMode == SIMDMode::SIMD32 && getGRFSize() == 64)
+    {
+        totalBytes = nbElements * typeSizeInBytes * numLanes(SIMDMode::SIMD16);
+    }
 
     bool needsTempDst = m_SimdMode == SIMDMode::SIMD32 &&
         m_encoder->GetSimdSize() == SIMDMode::SIMD16;
@@ -6507,6 +6525,141 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
     }
 }
 
+void EmitPass::emitLSCSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
+{
+    Value* llPtr = inst->getOperand(0);
+    Value* dataPtr = inst->getOperand(1);
+
+    PointerType* ptrType = cast<PointerType>(llPtr->getType());
+    ResourceDescriptor resource = GetResourceVariable(llPtr);
+
+    CVariable* src = nullptr;
+    if (ptrVal)
+    {
+        src = GetSymbol(ptrVal);
+        src = m_currShader->BitCast(src, GetUnsignedType(src->GetType()));
+    }
+    else
+    {
+        src = GetSymbol(llPtr);
+    }
+
+    CVariable* data = GetSymbol(dataPtr);
+    bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
+
+    Type* Ty = dataPtr->getType();
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    uint32_t nbElements = 0;
+    nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+
+    uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
+    uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
+
+    // Special case for uniform data. data is expected to be non-uniform.
+    data = BroadcastIfUniform(data);
+
+    uint32_t bytesRemaining = totalBytes;
+    uint32_t srcOffset = 0;
+    int32_t immOffset = 0;
+
+    // Emits instructions generating one or more A64 OWORD block write instructions
+    // The amount of data we need to write is n * Component Size OWORDs.
+    // We can write 8, 4, or 2 OWORDs at a time. We can also write 1 OWORD,
+    // but since this is a SIMD opcode and we're  compiling SIMD8, SIMD16,
+    // we don't expect to see a 1 OWORD write.
+
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetNoMask();
+    m_encoder->SetSrcRegion(0, 0, 1, 0);
+
+    CVariable* pTempVar = m_currShader->GetNewVariable(
+        numLanes(SIMDMode::SIMD1),
+        useA64 ? ISA_TYPE_UQ : ISA_TYPE_UD,
+        EALIGN_GRF,
+        true,
+        CName(src->getName(),"_64b"));
+
+    m_encoder->Copy(pTempVar, m_currShader->BitCast(src, pTempVar->GetType()));
+    m_encoder->Push();
+
+    while (bytesRemaining)
+    {
+        uint32_t bytesToRead = getLSCBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxLSCBlockMsgSize());
+        uint32_t blkBits = 64;
+        uint32_t nBlks = bytesToRead * 8 / 64;
+
+        emitLSCStore(inst, data, pTempVar, blkBits, nBlks, srcOffset, &resource, useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b, LSC_DATA_ORDER_TRANSPOSE, immOffset);
+        m_encoder->Push();
+
+        bytesRemaining -= bytesToRead;
+        srcOffset += bytesToRead;
+        immOffset += bytesToRead;
+    }
+}
+
+void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
+{
+    Value* llPtr = inst->getOperand(0);
+    PointerType* ptrType = cast<PointerType>(llPtr->getType());
+    ResourceDescriptor resource = GetResourceVariable(llPtr);
+
+    CVariable* src = nullptr;
+    if (ptrVal)
+    {
+        src = GetSymbol(ptrVal);
+        src = m_currShader->BitCast(src, GetUnsignedType(src->GetType()));
+    }
+    else
+    {
+        src = GetSymbol(llPtr);
+    }
+
+    bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
+
+    Type* Ty = inst->getType();
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+
+    uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
+    uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
+
+    uint32_t bytesRemaining = totalBytes;
+    uint32_t dstOffset = 0;
+    int32_t immOffset = 0;
+
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetNoMask();
+    m_encoder->SetSrcRegion(0, 0, 1, 0);
+
+    CVariable* pTempVar = m_currShader->GetNewVariable(
+        numLanes(SIMDMode::SIMD1),
+        src->GetType(),
+        EALIGN_GRF, true,
+        CName(src->getName(),"_64b"));
+
+    m_encoder->Copy(pTempVar, src);
+    m_encoder->Push();
+
+    // If type size >= 8 bytes, assume 8byte aligned and use D64 Transpose message;
+    // otherwise, use D32 transpose message.
+    // bool isD64 = (typeSizeInBytes >= 8);
+    bool isD64 = false;  // blk APIs only requires 4-byte alignment.
+    uint32_t blkBits = isD64 ? 64 : 32;
+    while (bytesRemaining)
+    {
+        uint32_t bytesToRead = getLSCBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxLSCBlockMsgSize(isD64));
+        uint32_t nBlks = (bytesToRead * 8) / blkBits;
+
+        emitLSCLoad(inst, m_destination, pTempVar, blkBits, nBlks, dstOffset, &resource, useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b, LSC_DATA_ORDER_TRANSPOSE, immOffset);
+        m_encoder->Push();
+
+        bytesRemaining -= bytesToRead;
+        dstOffset += bytesToRead;
+        immOffset += bytesToRead;
+    }
+
+    return;
+}
 
 void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
 {
@@ -6719,6 +6872,16 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
         blockWidth = maxWidth;
     }
 
+    if (m_currShader->m_Platform->has64BMediaBlockRW())
+    {
+        maxWidth = 64;
+        if (totalWidth > 32 && blockHeight <= 4 && (totalWidth % maxWidth == 0))
+        {
+            // do 64 byte wide read
+            numPasses = totalWidth / maxWidth;
+            blockWidth = maxWidth;
+        }
+    }
 
     CVariable* pTempVar0 = nullptr;
     CVariable* pTempVar = nullptr;
@@ -6959,6 +7122,16 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
         blockWidth = maxWidth;
     }
 
+    if (m_currShader->m_Platform->has64BMediaBlockRW())
+    {
+        maxWidth = 64;
+        if (totalWidth > 32 && blockHeight <= 4 && totalWidth % maxWidth == 0)
+        {
+            // do 64 byte wide read
+            numPasses = totalWidth / maxWidth;
+            blockWidth = maxWidth;
+        }
+    }
 
     CVariable* pTempVar0 = nullptr;
     CVariable* pTempVar = nullptr;
@@ -10933,6 +11106,20 @@ void EmitPass::emitLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
         emitFastClear(inst);
         return;
     }
+    if (shouldGenerateLSC(inst))
+    {
+        offset = immOffset ? offset : inst->getPointerOperand();
+        LSC_CACHE_OPTS cacheOpts =
+            translateLSCCacheControlsFromMetadata(inst, true);
+        emitLSCVectorLoad(
+            inst->getPointerOperand(),
+            offset,
+            immOffset,
+            inst->getType(),
+            cacheOpts,
+            inst->getAlignment());
+        return;
+    }
     emitVectorLoad(inst, offset, immOffset);
 }
 
@@ -11999,6 +12186,19 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
 
 void EmitPass::emitStore(StoreInst* inst, Value* varOffset, ConstantInt* immOffset)
 {
+    if (shouldGenerateLSC(inst))
+    {
+        LSC_CACHE_OPTS cacheOpts =
+            translateLSCCacheControlsFromMetadata(inst, false);
+        emitLSCVectorStore(
+            inst->getPointerOperand(),
+            varOffset,
+            immOffset,
+            inst->getValueOperand(),
+            cacheOpts,
+            inst->getAlignment());
+        return;
+    }
     emitVectorStore(inst, varOffset, immOffset);
 }
 
@@ -13991,6 +14191,10 @@ void EmitPass::emitPreOrPostFixOpScalar(
     }
 }
 
+static const LSC_CACHE_OPTS LSC_DEFAULT_CACHING {
+    LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT
+};
+
 /*
 ScalarAtomics: This optimization attempts to reduce the number of atomic instructions issued when
 the destination addresses and the source are both uniform. For example lets say we have an atomic
@@ -14126,6 +14330,22 @@ void EmitPass::emitScalarAtomics(
         pFinalAtomicSrcVal = pCastAtomicSrcVal;
     }
 
+    if (shouldGenerateLSC(pInst))
+    {
+        m_encoder->LSC_AtomicRaw(
+            uniformAtomicOp,
+            pReturnVal,
+            pDstAddr,
+            pFinalAtomicSrcVal,
+            nullptr,
+            bitWidth,
+            &resource,
+            isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b,
+            0,
+            LSC_DEFAULT_CACHING);
+    }
+    else
+    {
         if (isA64)
         {
             m_encoder->AtomicRawA64(
@@ -14142,6 +14362,7 @@ void EmitPass::emitScalarAtomics(
                 pFinalAtomicSrcVal,
                 nullptr, bitWidth == 16);
         }
+    }
     m_encoder->Push();
 
     if (returnsImmValue)
@@ -14209,6 +14430,22 @@ void EmitPass::emitScalarAtomicLoad(
             true,
             pDstAddr->getName()) : nullptr;
 
+    if (shouldGenerateLSC(pInst))
+    {
+        m_encoder->LSC_AtomicRaw(
+            EATOMIC_OR,
+            atomicDst,
+            pDstAddr,
+            pSrc,
+            nullptr,
+            bitWidth,
+            &resource,
+            isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b,
+            0,
+            LSC_DEFAULT_CACHING);
+    }
+    else
+    {
         if (isA64)
         {
             m_encoder->AtomicRawA64(
@@ -14225,6 +14462,7 @@ void EmitPass::emitScalarAtomicLoad(
                 pSrc,
                 nullptr, bitWidth == 16);
         }
+    }
     m_encoder->Push();
 
     if (!pInst->use_empty())
@@ -14451,7 +14689,22 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
             }
             else
             {
-                m_encoder->AtomicRawA64(atomic_op, resource, pDst, pDstAddr, pSrc0, pSrc1, bitwidth);
+                if (shouldGenerateLSC())
+                {
+                    m_encoder->LSC_AtomicRaw(
+                        atomic_op,
+                        pDst, pDstAddr,
+                        pSrc0, pSrc1,
+                        bitwidth,
+                        &resource,
+                        isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b,
+                        0,
+                        LSC_DEFAULT_CACHING);
+                }
+                else
+                {
+                    m_encoder->AtomicRawA64(atomic_op, resource, pDst, pDstAddr, pSrc0, pSrc1, bitwidth);
+                }
                 m_encoder->Push();
             }
 
@@ -14492,14 +14745,28 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
             uint label = 0;
             CVariable* flag = nullptr;
             bool needLoop = ResourceLoopHeader(resource, flag, label);
-            m_encoder->DwordAtomicRaw(
-                atomic_op,
-                resource,
-                pDst,
-                pDstAddr,
-                pSrc0,
-                pSrc1,
-                is16Bit);
+            if (shouldGenerateLSC(pInsn))
+            {
+                m_encoder->LSC_AtomicRaw(
+                    atomic_op,
+                    pDst, pDstAddr,
+                    pSrc0, pSrc1,
+                    bitwidth,
+                    &resource, isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b,
+                    0,
+                    LSC_DEFAULT_CACHING);
+            }
+            else
+            {
+                m_encoder->DwordAtomicRaw(
+                    atomic_op,
+                    resource,
+                    pDst,
+                    pDstAddr,
+                    pSrc0,
+                    pSrc1,
+                    is16Bit);
+            }
             m_encoder->Push();
             if (returnsImmValue)
             {
@@ -14598,7 +14865,10 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
             bti = (uint)resource.m_resource->GetImmediateValue();
         }
 
-        const auto messageType = EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_TYPED_ATOMIC_OPERATION;
+        const bool is16Bit = (pInsn->getType()->getScalarSizeInBits() == 16);
+        const auto messageType = is16Bit ?
+            EU_GEN12_DATA_CACHE_1_MESSAGE_TYPE_WORD_TYPED_ATOMIC_INTEGER :
+            EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_TYPED_ATOMIC_OPERATION;
 
         uint messageSpecificControl = encodeMessageDescriptorForAtomicUnaryOp(
             parameterLength,
@@ -14723,8 +14993,12 @@ void setSIMDSizeMask(CEncoder* m_encoder, const CShader* m_currShader, int i)
     m_encoder->SetSimdSize(SIMDMode::SIMD8);
     m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
 
-
-    return;
+    if (m_currShader->m_numberInstance == 1 &&
+        m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+    {
+        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->SetMask((i == 0) ? EMASK_H1 : EMASK_H2);
+    }
 }
 
 void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
@@ -14751,6 +15025,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
 
     uint numChannels = iSTD::BitCount(writeMask.getEM());
+    auto doLSC = shouldGenerateLSC(pInsn);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
@@ -14790,6 +15065,11 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
             m_currShader->m_Platform->supportsSIMD16TypedRW() ? SIMDMode::SIMD16 : SIMDMode::SIMD8,
             m_currShader->m_SIMDSize);
         bool needsSplit = m_currShader->m_SIMDSize > instWidth;
+        if (doLSC)
+        {
+            needsSplit = m_currShader->m_SIMDSize == SIMDMode::SIMD32;
+            instWidth = SIMDMode::SIMD16;
+        }
 
         if (!needsSplit)
         {
@@ -14882,6 +15162,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
             m_currShader->m_Platform->supportsSIMD16TypedRW() ? SIMDMode::SIMD16 : SIMDMode::SIMD8,
             m_currShader->m_SIMDSize);
         bool needsSplit = m_currShader->m_SIMDSize > instWidth;
+
 
         if (!needsSplit)
         {
@@ -16689,6 +16970,62 @@ unsigned int EmitPass::GetScalarTypeSizeInRegister(const Type* Ty) const
     return m_currShader->GetScalarTypeSizeInRegister(Ty);
 }
 
+static uint32_t getUGMLoadBlockVecSize(uint32_t totalBytes, uint32_t& eltBytes)
+{
+    uint32_t QWVecSize = totalBytes / sizeof(QWORD);
+
+    if (totalBytes % sizeof(QWORD) == 0)
+    {
+        if (QWVecSize == 2 ||
+            QWVecSize == 3 ||
+            QWVecSize == 4 ||
+            QWVecSize == 8 ||
+            QWVecSize == 16 ||
+            QWVecSize == 32 ||
+            QWVecSize == 64)
+        {
+            eltBytes = sizeof(QWORD);
+            return QWVecSize;
+        }
+    }
+
+    uint32_t DWVecSize = totalBytes / sizeof(DWORD);
+    if (totalBytes % sizeof(DWORD) == 0)
+    {
+        if (DWVecSize == 2 ||
+            DWVecSize == 3 ||
+            DWVecSize == 4 ||
+            DWVecSize == 8 ||
+            DWVecSize == 16 ||
+            DWVecSize == 32 ||
+            DWVecSize == 64)
+        {
+            eltBytes = sizeof(DWORD);
+            return DWVecSize;
+        }
+    }
+
+    eltBytes = 0;
+    return 0;
+}
+
+static uint32_t getNonTransposePayloadSize(SIMDMode SM, uint32_t elemByteSize, uint32_t numElems)
+{
+    if (SM == SIMDMode::SIMD32)
+    {
+        if (elemByteSize * 32 < 64)
+        {
+            return numElems;
+        }
+        else
+        {
+            uint32_t totalBytes = elemByteSize * numElems * 32;
+            return totalBytes / 64;
+        }
+    }
+    return 0;
+}
+
 
 void EmitPass::A64LSLoopHead(
     CVariable* addr, CVariable*& curMask, CVariable*& lsPred, uint& label)
@@ -17345,6 +17682,9 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             case VectorMessage::MESSAGE_A64_SCATTERED_RW:
                 emitGatherA64(inst, subLoadDst, addrVarSIMD8, blkBits, numBlks, true);
                 break;
+            case VectorMessage::MESSAGE_A32_QWORD_SCATTERED_RW:
+                m_encoder->QWGather(subLoadDst, resource, addrVarSIMD8, blkBits, numBlks);
+                break;
             default:
                 IGC_ASSERT_MESSAGE(0, "Somethings wrong!");
             }
@@ -17420,6 +17760,9 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             break;
         case VectorMessage::MESSAGE_A64_SCATTERED_RW:
             emitGatherA64(inst, gatherDst, rawAddrVar, blkBits, numBlks, false);
+            break;
+        case VectorMessage::MESSAGE_A32_QWORD_SCATTERED_RW:
+            m_encoder->QWGather(gatherDst, resource, rawAddrVar, blkBits, numBlks);
             break;
         default:
             IGC_ASSERT_MESSAGE(0, "Internal Error: unexpected message kind for load!");
@@ -17730,6 +18073,9 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 break;
             case VectorMessage::MESSAGE_A64_SCATTERED_RW:
                 emitScatterA64(subStoredVar, rawAddrVar, blkBits, numBlks, false);
+                break;
+            case VectorMessage::MESSAGE_A32_QWORD_SCATTERED_RW:
+                m_encoder->QWScatter(subStoredVar, resource, rawAddrVar, blkBits, numBlks);
                 break;
             default:
                 IGC_ASSERT_MESSAGE(0, "Internal Error: unexpected Message kind for store");

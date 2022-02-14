@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 void initializeMemOptPass(llvm::PassRegistry&);
-llvm::FunctionPass* createMemOptPass(bool AllowNegativeSymPtrsForLoad);
+llvm::FunctionPass* createMemOptPass(bool AllowNegativeSymPtrsForLoad, bool AllowVector8LoadStore);
+
 
 #endif // _CISA_MEMOPT_H_

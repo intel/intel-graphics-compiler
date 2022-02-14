@@ -1607,6 +1607,10 @@ namespace IGC
         switch(id)
         {
         case GenISAIntrinsic::GenISA_simdBlockRead:
+        case GenISAIntrinsic::GenISA_LSC2DBlockRead:
+        case GenISAIntrinsic::GenISA_LSCLoad:
+        case GenISAIntrinsic::GenISA_LSCLoadBlock:
+        case GenISAIntrinsic::GenISA_LSCPrefetch:
                 return true;
             default:
                 break;
@@ -1617,6 +1621,9 @@ namespace IGC
     bool IsStatelessMemStoreIntrinsic(llvm::GenISAIntrinsic::ID id)
     {
         switch (id) {
+        case GenISAIntrinsic::GenISA_HDCuncompressedwrite:
+        case GenISAIntrinsic::GenISA_LSCStore:
+        case GenISAIntrinsic::GenISA_LSCStoreBlock:
         case GenISAIntrinsic::GenISA_simdBlockWrite:
             return true;
         default:
@@ -1639,6 +1646,15 @@ namespace IGC
         if (IsAtomicIntrinsic(GetOpCode(&inst)))
             return true;
 
+        switch (id)
+        {
+        case GenISAIntrinsic::GenISA_LSCAtomicFP32:
+        case GenISAIntrinsic::GenISA_LSCAtomicFP64:
+        case GenISAIntrinsic::GenISA_LSCAtomicInts:
+            return true;
+        default:
+            break;
+        }
         return false;
     }
 
