@@ -729,6 +729,9 @@ enum LSC_ADDR_TYPE {
     LSC_ADDR_TYPE_BSS,  // bindless surface state offset
     LSC_ADDR_TYPE_SS,   // surface state offset
     LSC_ADDR_TYPE_BTI,  // binding table interface (legacy)
+    //
+    // Pseudo address types
+    LSC_ADDR_TYPE_ARG,  // built-in surface access to kernel arguments
 };
 
 //

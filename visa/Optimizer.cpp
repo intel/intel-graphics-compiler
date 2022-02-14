@@ -8708,10 +8708,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         auto getStartAddrInst = [this, &instBuffer, r0, rtail](int subreg)
         {
             // (W) and (1) r127.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFC0
-            uint32_t GRFMask = 0x3F;
             auto src0 = builder.createSrc(r0->getRegVar(), 0, 0,
                 builder.getRegionScalar(), Type_UD);
-            auto src1 = builder.createImm(~GRFMask, Type_UD);
+            const uint32_t ArgOffsetMask = 0xFFFFFFC0;
+            auto src1 = builder.createImm(ArgOffsetMask, Type_UD);
             auto dst = builder.createDst(rtail->getRegVar(), 0, subreg, 1, Type_UD);
             auto andInst = builder.createBinOp(G4_and, g4::SIMD1,
                 dst, src0, src1, InstOpt_WriteEnable, false);

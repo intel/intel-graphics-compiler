@@ -333,7 +333,7 @@ llvm::Value* LowerImplicitArgIntrinsics::BuildLoadInst(llvm::CallInst& CI, unsig
     unsigned int AddrSpace = ADDRESS_SPACE_GLOBAL;
     if (m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV))
     {
-        AddrSpace = ADDRESS_SPACE_A32;
+        AddrSpace = ADDRESS_SPACE_THREAD_ARG;
     }
 
     llvm::Value* LoadedData = nullptr;

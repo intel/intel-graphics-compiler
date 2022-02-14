@@ -7419,7 +7419,10 @@ namespace IGC
 
     LSC_ADDR_TYPE CEncoder::getLSCAddrType(const ResourceDescriptor* resource)
     {
-        return getLSCAddrType(resource->m_surfaceType);
+        if (resource->m_isThreadArg)
+            return LSC_ADDR_TYPE_ARG;
+        else
+            return getLSCAddrType(resource->m_surfaceType);
     }
 
     LSC_ADDR_TYPE CEncoder::getLSCAddrType(e_predefSurface surfaceType)
@@ -7476,6 +7479,11 @@ namespace IGC
             if (addr.type == LSC_ADDR_TYPE_FLAT)
             {
                 globalOffsetOpnd = nullptr;
+            }
+            else if (addr.type == LSC_ADDR_TYPE_ARG)
+            {
+                globalOffsetOpnd = nullptr;
+                addr.size = LSC_ADDR_SIZE_32b;
             }
             else
             {

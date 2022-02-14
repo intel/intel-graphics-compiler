@@ -593,6 +593,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token                         LSC_AM_BTI
 %token                         LSC_AM_BSS
 %token                         LSC_AM_SS
+%token                         LSC_AM_ARG
 //
 %token <lsc_fence_op>          LSC_FENCE_OP_TYPE
 %token <lsc_scope>             LSC_FENCE_SCOPE
@@ -1132,7 +1133,7 @@ MovInstruction:
     Predicate MOV_OP SatModOpt ExecSize VecDstOperand_A VecSrcOperand_G_I_IMM_A_AO
     {
         pBuilder->CISA_create_mov_instruction(
-            $1, $2, $4.emask, $4.exec_size, $3, 
+            $1, $2, $4.emask, $4.exec_size, $3,
             $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
     }
     |
@@ -2003,6 +2004,7 @@ LscAddrImmScaleOpt:
 LscAddrModelOpt:
     %empty       {$$ = {LSC_ADDR_TYPE_FLAT,nullptr};}
   | LSC_AM_FLAT  {$$ = {LSC_ADDR_TYPE_FLAT,nullptr};}
+  | LSC_AM_ARG   {$$ = {LSC_ADDR_TYPE_ARG,nullptr};}
   | LscRegAddrModel
 
 LscRegAddrModel:

@@ -79,7 +79,7 @@ namespace IGC
         }
         else if (bufType == STATELESS_A32)
         {
-            return ADDRESS_SPACE_A32;
+            return ADDRESS_SPACE_THREAD_ARG;
         }
         else if (auto *CI = dyn_cast<ConstantInt>(&bufIdx))
         {
@@ -110,7 +110,7 @@ namespace IGC
         {
             return SLM;
         }
-        else if (addrSpace == ADDRESS_SPACE_A32)
+        else if (addrSpace == ADDRESS_SPACE_THREAD_ARG)
         {
             return STATELESS_A32;
         }
@@ -207,7 +207,7 @@ namespace IGC
             return SLM;
         case ADDRESS_SPACE_GLOBAL:
             return STATELESS;
-        case ADDRESS_SPACE_A32:
+        case ADDRESS_SPACE_THREAD_ARG:
             return STATELESS_A32;
         default:
             break;

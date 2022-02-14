@@ -3512,6 +3512,7 @@ struct LscInstVerifier {
 
         switch (addrType) {
         case LSC_ADDR_TYPE_FLAT:
+        case LSC_ADDR_TYPE_ARG:
             verify(sfid != LSC_TGM, ".tgm may not use flat address model");
             switch (vo.tag & 0x7) {
             case OPERAND_IMMEDIATE:

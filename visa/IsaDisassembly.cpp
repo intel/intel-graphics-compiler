@@ -2683,6 +2683,7 @@ private:
         case LSC_ADDR_TYPE_BSS:   ss << "bss"; break;
         case LSC_ADDR_TYPE_SS:    ss << "ss"; break;
         case LSC_ADDR_TYPE_BTI:   ss << "bti"; break;
+        case LSC_ADDR_TYPE_ARG:   ss << "arg"; break;
         default: formatBadEnum(addrType); break;
         }
         switch (addrType) {

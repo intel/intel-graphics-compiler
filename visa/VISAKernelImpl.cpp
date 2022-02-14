@@ -741,9 +741,10 @@ void VISAKernelImpl::createReservedKeywordSet() {
     // specification
     reservedNames.insert("FILE");
     reservedNames.insert("LOC");
-    reservedNames.insert("flat");
-    reservedNames.insert("bti");
+    reservedNames.insert("arg");
     reservedNames.insert("bss");
+    reservedNames.insert("bti");
+    reservedNames.insert("flat");
     reservedNames.insert("ss");
 }
 

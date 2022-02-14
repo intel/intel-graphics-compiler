@@ -1082,6 +1082,7 @@ flat   {return LSC_AM_FLAT;}
 bti    {return LSC_AM_BTI;}
 ss     {return LSC_AM_SS;}
 bss    {return LSC_AM_BSS;}
+arg    {return LSC_AM_ARG;}
 
 ".none" {
         CISAlval.lsc_fence_op = LSC_FENCE_OP_NONE;

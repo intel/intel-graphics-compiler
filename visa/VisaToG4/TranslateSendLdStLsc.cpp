@@ -43,6 +43,10 @@ static G4_Operand *lscTryPromoteSurfaceImmToExDesc(
                 exDesc |= surfaceImm;
                 surface = nullptr;
             }
+        } else if (addrModel == LSC_ADDR_TYPE_ARG) {
+            MUST_BE_TRUE(false, "caller should have fixed this");
+            exDesc |= 0xFF << 24;
+            surface = nullptr;
         } else {
             // flat address type
             MUST_BE_TRUE(surface->isNullReg() ||
@@ -141,6 +145,34 @@ int IR_Builder::translateLscUntypedInst(
     const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
 
     const static uint32_t BYTES_PER_REG = COMMON_ISA_GRF_REG_SIZE;
+
+    if (addrInfo.type == LSC_ADDR_TYPE_ARG) {
+        // Translate argument loads to platform specific logic
+        MUST_BE_TRUE(addrInfo.size == LSC_ADDR_SIZE_32b,
+            "lsc_load... arg[...] must be :a32");
+        //
+        // (W)  and (1) TMP0:ud   r0.0:ud  0xFFFFFFC0:ud
+        // (W)  add (1) TMP1:ud   TMP0:ud  src0Addr:ud
+        // ... load.ugm.a32... bti[255][TMP]
+        G4_Declare *argBase = createTempVar(1, Type_UD, Even_Word);
+        auto andDst = createDst(argBase->getRegVar(), 0, 0, 1, Type_UD);
+        auto andSrc0 = createSrc(getBuiltinR0()->getRegVar(), 0, 0,
+            getRegionScalar(),Type_UD);
+        auto andSrc1 = createImm(0xFFFFFFC0, Type_UD);
+        (void)createBinOp(G4_and, g4::SIMD1,
+            andDst, andSrc0, andSrc1, InstOpt_WriteEnable, true);
+        auto addDst = createDst(src0Addr->getBase(), src0Addr->getRegOff(),
+            src0Addr->getSubRegOff(), 1, Type_UD);
+        auto addSrc0 = createSrc(src0Addr->getBase(), src0Addr->getRegOff(),
+            src0Addr->getSubRegOff(), src0Addr->getRegion(), src0Addr->getType());
+        auto addSrc1 =
+            createSrc(argBase->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+        (void)createBinOp(G4_add, g4::SIMD1,
+            addDst, addSrc0, addSrc1, InstOpt_WriteEnable, true);
+        //
+        addrInfo.type = LSC_ADDR_TYPE_BTI;
+        surface =  createImm(0xFF, Type_UD);
+    }
 
     // send descriptor
     uint32_t desc = 0;

@@ -974,7 +974,7 @@ namespace IGC
                 getModule()->getDataLayout().getPointerSizeInBits(AS);
             break;
         case ADDRESS_SPACE_LOCAL:
-        case ADDRESS_SPACE_A32:
+        case ADDRESS_SPACE_THREAD_ARG:
             pointerSizeInRegister = 32;
             break;
         case ADDRESS_SPACE_PRIVATE:

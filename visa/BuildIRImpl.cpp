@@ -2670,8 +2670,9 @@ G4_SendDescRaw* IR_Builder::createLscMsgDesc(
             // promote the immediate BTI to the descriptor
             exDesc |= surfaceImm << 24;
             surface = nullptr;
-        }
-        else if (
+        } else if (addr.type == LSC_ADDR_TYPE_ARG) {
+            MUST_BE_TRUE(false, "caller should have converted LSC_ADDR_TYPE_ARG to ...BTI");
+        } else if (
             addr.type == LSC_ADDR_TYPE_BSS ||
             addr.type == LSC_ADDR_TYPE_SS)
         {
@@ -2781,7 +2782,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
     if (surface && surface->isSrcRegRegion()) {
         if (emitA0RegDef)
         {
-            // This path is taken when caller hasnt defined a0.2 register for use
+            // This path is taken when caller hasn't defined a0.2 register for use
             // as ext msg descriptor of lsc. Currently, spill module defines a0.2
             // once per BB and reuses it in all spill msgs for that BB. Without this
             // check, each spill/fill msg would get its own computation of a0.2
