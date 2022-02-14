@@ -1452,6 +1452,7 @@ bool PixelShaderLowering::needsSingleSourceRTWWithDualSrcBlend() const
     bool needsSingleSourceMessage =
         m_cgCtx->m_DriverInfo.sendSingleSourceRTWAfterDualSourceRTW() ||
         m_cgCtx->getModuleMetaData()->psInfo.forceSingleSourceRTWAfterDualSourceRTW ||
+        m_hasDiscard ||
         IGC_IS_FLAG_ENABLED(ForceSingleSourceRTWAfterDualSourceRTW);
     return needsSingleSourceMessage;
 }
