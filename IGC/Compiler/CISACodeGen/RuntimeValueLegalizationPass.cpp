@@ -104,7 +104,8 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
             llvm::Value* const callToResolveOffsetInDwords = callToResolve->getArgOperand(0);
             if (llvm::isa<llvm::ConstantInt>(callToResolveOffsetInDwords))
             {
-                const uint32_t resolvedOffset = int_cast<uint32_t>(cast<ConstantInt>(callToResolveOffsetInDwords)->getZExtValue());
+                const uint32_t resolvedOffset = int_cast<uint32_t>(
+                    cast<ConstantInt>(callToResolveOffsetInDwords)->getZExtValue());
 
                 // Loop through all RuntimeValue vector calls
                 for (auto rvVectorCall : runtimeValueVectorCalls)
@@ -113,10 +114,13 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
                     IGC_ASSERT(nullptr != vecCall);
 
                     llvm::Value* const arrayOffsetInDwords = vecCall->getArgOperand(0);
-                    if (llvm::isa<llvm::ConstantInt>(arrayOffsetInDwords))
+                    if (llvm::isa<llvm::ConstantInt>(arrayOffsetInDwords) &&
+                        llvm::isa<IGCLLVM::FixedVectorType>(vecCall->getType()))
                     {
+                        IGCLLVM::FixedVectorType* const fixedVectorTy =
+                            cast<IGCLLVM::FixedVectorType>(vecCall->getType());
                         // Types of calls should match
-                        if (callToResolve->getType() == cast<IGCLLVM::FixedVectorType>(vecCall->getType())->getElementType())
+                        if (callToResolve->getType() == fixedVectorTy->getElementType())
                         {
                             // Only 32-bit and 64-bit values are supported at the moment
                             if (callToResolve->getType()->getPrimitiveSizeInBits() == 32 ||
@@ -124,8 +128,9 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
                             {
                                 bool is64bit = callToResolve->getType()->getPrimitiveSizeInBits() == 64;
 
-                                const uint32_t arrayOffset = int_cast<uint32_t>(cast<ConstantInt>(arrayOffsetInDwords)->getZExtValue());
-                                uint32_t numElements = int_cast<uint32_t>(cast<IGCLLVM::FixedVectorType>(vecCall->getType())->getNumElements());
+                                const uint32_t arrayOffset = int_cast<uint32_t>(
+                                    cast<ConstantInt>(arrayOffsetInDwords)->getZExtValue());
+                                uint32_t numElements = int_cast<uint32_t>(fixedVectorTy->getNumElements());
                                 if (is64bit)
                                 {
                                     numElements *= 2;

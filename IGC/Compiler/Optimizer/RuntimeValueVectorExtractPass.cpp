@@ -72,7 +72,8 @@ void RuntimeValueVectorExtractPass::visitExtractElementInst(llvm::ExtractElement
         GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I.getVectorOperand());
         if (GII &&
             GII->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue &&
-            isa<ConstantInt>(GII->getOperand(0)))
+            isa<ConstantInt>(GII->getOperand(0)) &&
+            isa<IGCLLVM::FixedVectorType>(GII->getType()))
         {
             IGCLLVM::FixedVectorType* giiVectorType = cast<IGCLLVM::FixedVectorType>(GII->getType());
             // Only 32-bit and 64-bit values are supported at the moment
