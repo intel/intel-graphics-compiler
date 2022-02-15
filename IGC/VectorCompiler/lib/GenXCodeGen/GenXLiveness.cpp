@@ -1557,13 +1557,15 @@ void LiveRange::dump() const
 }
 #endif
 
-void GenXLiveness::printValueLiveness(Value *V, raw_ostream &OS) const {
-  const LiveRange *LR = getLiveRangeOrNull(V);
+void GenXLiveness::printValueLiveness(SimpleValue SV, raw_ostream &OS) const {
+  const LiveRange *LR = getLiveRangeOrNull(SV);
   if (!LR)
     return;
   // Only show an LR if the map iterator is on the value that appears first
   // in the LR. That avoids printing the same LR multiple times.
-  if (V != LR->value_begin()->getValue())
+  IGC_ASSERT(LR->getLength(/*WithWeak=*/true) > 0);
+  auto &&ASV = *(LR->value_begin());
+  if (SV.getValue() != ASV.getValue() || SV.getIndex() != ASV.getIndex())
     return;
 
   LR->print(OS);
@@ -1581,14 +1583,24 @@ void GenXLiveness::print(raw_ostream &OS, const FunctionGroup *dummy) const {
     for (auto fi = Func->arg_begin(), fe = Func->arg_end(); fi != fe; ++fi)
       printValueLiveness(&*fi, OS);
     // Print live range(s) for unified return value.
-    if (i != FG->begin() && !Func->getReturnType()->isVoidTy()) {
+    if (!Func->getReturnType()->isVoidTy()) {
       auto Ret = getUnifiedRetIfExist(Func);
       if (Ret)
         printValueLiveness(Ret, OS);
     }
     // Print live ranges for code.
-    for (auto &Inst : instructions(Func))
-      printValueLiveness(&Inst, OS);
+    for (auto &Inst : instructions(Func)) {
+      auto *InstStructType = dyn_cast<StructType>(Inst.getType());
+      if (!InstStructType) {
+        printValueLiveness(&Inst, OS);
+        continue;
+      }
+      for (unsigned i = 0, e = IndexFlattener::getNumElements(InstStructType);
+           i != e; ++i) {
+        auto SV = SimpleValue(&Inst, i);
+        printValueLiveness(SV, OS);
+      }
+    }
   }
   OS << "\n";
 }

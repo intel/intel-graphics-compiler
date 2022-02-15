@@ -617,7 +617,7 @@ private:
   void rebuildLiveRangeForValue(genx::LiveRange *LR, genx::SimpleValue SV);
   genx::LiveRange *visitPropagateSLRs(Function *F);
   void merge(genx::LiveRange *LR1, genx::LiveRange *LR2);
-  void printValueLiveness(Value *V, raw_ostream &OS) const;
+  void printValueLiveness(genx::SimpleValue SV, raw_ostream &OS) const;
 };
 using GenXLivenessWrapper = FunctionGroupWrapperPass<GenXLiveness>;
 
