@@ -834,6 +834,13 @@ Imported_Intrinsics = \
     [],
     "None"]],
 ####################################################################################################
+# This is for generating a dummy instruction that won't be optimized away and can be used in cases
+# where no-op calls need to preserve their debug info.
+"GenISA_dummyInstID": ["used by compiler to preserve thread ID debug info",
+    [("void",                          "return thread ID"),
+    [("anyint",                        "thread ID")],
+    "None"]],
+####################################################################################################
 "GenISA_dwordatomicstructured": ["",
     [("int",                           ""),
     [("anyptr",                        "Dst Buffer"),

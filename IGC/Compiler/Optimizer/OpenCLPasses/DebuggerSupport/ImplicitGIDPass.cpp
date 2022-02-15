@@ -168,6 +168,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     SmallVector<uint64_t, 1> NewDIExpr;
 
     auto gidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Global, DebugLoc());
+
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
@@ -176,6 +177,17 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
             1, gid_di_type);
 
         m_pDIB->insertDbgValueIntrinsic(gidVals[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
+
+        Value* Args[1] = { gidVals[i] };
+        Instruction* intrinsicDummy = GenIntrinsicInst::Create(
+            GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_dummyInstID, Args[0]->getType()),
+            Args,
+            "",
+            insert_before);
+        intrinsicDummy->setDebugLoc(loc.get());
+        auto intrinsicDummyMD = MDNode::get(m_pModule->getContext(), nullptr);
+        intrinsicDummy->setMetadata("implicitGlobalID", intrinsicDummyMD);
+        intrinsicDummy->setMetadata(gidVals[i]->getName(), intrinsicDummyMD);
     }
 
     // Similar code for local id
@@ -189,6 +201,17 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
             1, lid_di_type);
 
         m_pDIB->insertDbgValueIntrinsic(lidVals[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
+
+        Value* Args[1] = { lidVals[i] };
+        Instruction* intrinsicDummy = GenIntrinsicInst::Create(
+            GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_dummyInstID, Args[0]->getType()),
+            Args,
+            "",
+            insert_before);
+        intrinsicDummy->setDebugLoc(loc.get());
+        auto intrinsicDummyMD = MDNode::get(m_pModule->getContext(), nullptr);
+        intrinsicDummy->setMetadata("implicitGlobalID", intrinsicDummyMD);
+        intrinsicDummy->setMetadata(lidVals[i]->getName(), intrinsicDummyMD);
     }
 
     // Similar code for work item id
@@ -201,6 +224,17 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
         llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, gridVals[i]->getName(), nullptr, 1, grid_di_type);
 
         m_pDIB->insertDbgValueIntrinsic(gridVals[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
+
+        Value* Args[1] = { gridVals[i] };
+        Instruction* intrinsicDummy = GenIntrinsicInst::Create(
+            GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_dummyInstID, Args[0]->getType()),
+            Args,
+            "",
+            insert_before);
+        intrinsicDummy->setDebugLoc(loc.get());
+        auto intrinsicDummyMD = MDNode::get(m_pModule->getContext(), nullptr);
+        intrinsicDummy->setMetadata("implicitGlobalID", intrinsicDummyMD);
+        intrinsicDummy->setMetadata(gridVals[i]->getName(), intrinsicDummyMD);
     }
 }
 
@@ -258,6 +292,7 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
         //Create one
         // Create parameters and return values
         Type* pResult = IGCLLVM::FixedVectorType::get(IntegerType::get(m_pModule->getContext(), m_uiSizeT), 3);
+
         std::vector<Type*> funcTyArgs;
 
         // Create function declaration
@@ -314,20 +349,34 @@ bool CleanImplicitIds::processFunc(Function& F)
     // inlined callees. This is redundant. This function cleans up all
     // redundant copies of pre-defined variables and their associated
     // computation.
-    SmallVector<std::pair<std::string, llvm::DbgValueInst*>, 9> PredefinedInsts;
+    DbgValueInst* PredefinedInsts[__OCL_DBG_VARIABLES] = {
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+    CallInst* PredefinedDummyInsts[__OCL_DBG_VARIABLES] = {
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
     SmallVector<DbgValueInst*, 10> ToErase;
+    SmallVector<CallInst*, 10> ToEraseDummy;
     auto DIB = std::unique_ptr<DIBuilder>(new DIBuilder(*F.getParent()));
 
     bool Changed = false;
 
     auto FindPredefinedInst = [](auto& PredefinedInsts, std::string& name)
     {
-        for (auto& Item : PredefinedInsts)
-        {
-            if (Item.first == name)
-                return Item.second;
-        }
+        unsigned int idx = Utils::GetSpecialDebugVariableHash(name);
+        IGC_ASSERT_MESSAGE(idx < 9, "Name __ocl_dbg_* not found ");
+        if (idx < __OCL_DBG_VARIABLES)
+            return PredefinedInsts[idx];
+
         return (llvm::DbgValueInst*)nullptr;
+    };
+
+    auto FindPredefinedDummyInst = [](auto& PredefinedDummyInsts, std::string& name)
+    {
+        unsigned int idx = Utils::GetSpecialDebugVariableHash(name);
+        IGC_ASSERT_MESSAGE(idx < 9, "Name __ocl_dbg_* not found ");
+        if (idx < __OCL_DBG_VARIABLES)
+            return PredefinedDummyInsts[idx];
+
+        return (llvm::CallInst*)nullptr;
     };
 
     for (auto& BB : F)
@@ -342,7 +391,11 @@ bool CleanImplicitIds::processFunc(Function& F)
                     auto PredefVar = FindPredefinedInst(PredefinedInsts, Name);
                     if (PredefVar == nullptr)
                     {
-                        PredefinedInsts.push_back(std::make_pair(Name, DbgVal));
+                        unsigned int idx = Utils::GetSpecialDebugVariableHash(Name);
+                        IGC_ASSERT_MESSAGE(idx < __OCL_DBG_VARIABLES, "Name __ocl_dbg_* not found ");
+
+                        if (idx < __OCL_DBG_VARIABLES)
+                            PredefinedInsts[idx] = DbgVal;
                     }
                     else
                     {
@@ -354,7 +407,51 @@ bool CleanImplicitIds::processFunc(Function& F)
                     }
                 }
             }
+            else if (dyn_cast_or_null<CallInst>(&I) &&
+                isa<GenIntrinsicInst>(&I) &&
+                (static_cast<GenIntrinsicInst*>(&I)->getIntrinsicID() == GenISAIntrinsic::GenISA_dummyInstID) &&
+                I.getMetadata("implicitGlobalID"))
+            {
+                auto CI = dyn_cast_or_null<CallInst>(&I);
+                auto Name = Utils::GetSpecialVariableMetaName(&I);
+                IGC_ASSERT_MESSAGE(!Name.empty(), "Unexpected dummy instruction");
+                if (!Name.empty())
+                {
+                    auto PredefVar = FindPredefinedDummyInst(PredefinedDummyInsts, Name);
+
+                    if (PredefVar == nullptr)
+                    {
+                        unsigned int idx = Utils::GetSpecialDebugVariableHash(Name);
+                        IGC_ASSERT_MESSAGE(idx < __OCL_DBG_VARIABLES, "Name __ocl_dbg_* not found ");
+
+                        if (idx < __OCL_DBG_VARIABLES)
+                            PredefinedDummyInsts[idx] = CI;
+                    }
+                    else
+                    {
+                        // Preserving CallInst from inlined function
+
+                        Value* Args[1] = { PredefVar->getArgOperand(0) };
+                        Instruction* intrinsicDummy = GenIntrinsicInst::Create(
+                            GenISAIntrinsic::getDeclaration(CI->getModule(), GenISAIntrinsic::GenISA_dummyInstID, Args[0]->getType()),
+                            Args,
+                            "",
+                            CI);
+                        intrinsicDummy->setDebugLoc(I.getDebugLoc());
+                        intrinsicDummy->copyMetadata(I);
+                        intrinsicDummy->copyIRFlags(&I);
+
+                        ToEraseDummy.push_back(CI);
+                    }
+                }
+            }
         }
+    }
+
+    // Erase all old dummy instructions, which have been replaced by new ones.
+    for (auto CI : ToEraseDummy)
+    {
+        CI->eraseFromParent();
     }
 
     for (auto DbgVal : ToErase)
@@ -378,7 +475,6 @@ bool CleanImplicitIds::processFunc(Function& F)
                     auto Opnd = Top->getOperand(I);
                     if (isa<Instruction>(Opnd))
                         WorkList.push_back(cast<Instruction>(Opnd));
-
                 }
                 Top->eraseFromParent();
             }

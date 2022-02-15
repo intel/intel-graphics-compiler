@@ -5199,15 +5199,6 @@ void GlobalRA::expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
         }
     }
 
-    if (inst->getFP() &&
-        kernel.getOption(vISA_GenerateDebugInfo))
-    {
-        for (auto newInst : builder->instList)
-        {
-            kernel.getKernelDebugInfo()->updateExpandedIntrinsic(inst->asSpillIntrinsic(), newInst);
-        }
-    }
-
     // Call WA and NoMask WA are mutual exclusive.
     if (getEUFusionCallWAInsts().count(inst) > 0)
     {
@@ -5300,15 +5291,6 @@ void GlobalRA::expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
         numRows -= responseLength;
         rowOffset += responseLength;
         fillOffset += responseLength * builder->getGRFSize();
-    }
-
-    if (inst->getFP() &&
-        kernel.getOption(vISA_GenerateDebugInfo))
-    {
-        for (auto newInst : builder->instList)
-        {
-            kernel.getKernelDebugInfo()->updateExpandedIntrinsic(inst->asFillIntrinsic(), newInst);
-        }
     }
 
     if (inst->getFP() &&

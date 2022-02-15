@@ -69,6 +69,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDRestoring.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
@@ -679,6 +680,11 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         bool AllowVector8LoadStore = IGC_IS_FLAG_ENABLED(EnableVector8LoadStore);
         mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore));
         mpm.add(createIGCInstructionCombiningPass());
+        if (ctx.type == ShaderType::OPENCL_SHADER &&
+            static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.KernelDebugEnable)
+        {
+            mpm.add(new ImplicitGIDRestoring());
+        }
     }
 
     if (ctx.type == ShaderType::OPENCL_SHADER &&
@@ -771,6 +777,11 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel)
         {
             mpm.add(createIGCInstructionCombiningPass());
+            if (ctx.type == ShaderType::OPENCL_SHADER &&
+                static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.KernelDebugEnable)
+            {
+                mpm.add(new ImplicitGIDRestoring());
+            }
         }
         mpm.add(new GenSpecificPattern());
         // Cases with DPDivSqrtEmu grow significantly.
@@ -1838,6 +1849,11 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(createIGCInstructionCombiningPass());
+        if (pContext->type == ShaderType::OPENCL_SHADER &&
+            static_cast<OpenCLProgramContext*>(pContext)->m_InternalOptions.KernelDebugEnable)
+        {
+            mpm.add(new ImplicitGIDRestoring());
+        }
         mpm.add(new FCmpPaternMatch());
         mpm.add(llvm::createDeadCodeEliminationPass()); // this should be done both before/after constant propagation
 
@@ -1895,6 +1911,11 @@ void OptimizeIR(CodeGenContext* const pContext)
                 }
 
                 mpm.add(createIGCInstructionCombiningPass());
+                if (pContext->type == ShaderType::OPENCL_SHADER &&
+                    static_cast<OpenCLProgramContext*>(pContext)->m_InternalOptions.KernelDebugEnable)
+                {
+                    mpm.add(new ImplicitGIDRestoring());
+                }
                 if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion) &&
                     pContext->type == ShaderType::OPENCL_SHADER &&
                     !pContext->m_instrTypes.hasSwitch)
@@ -2032,6 +2053,11 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             // run instruction combining to clean up the code after CFG optimizations
             mpm.add(createIGCInstructionCombiningPass());
+            if (pContext->type == ShaderType::OPENCL_SHADER &&
+                static_cast<OpenCLProgramContext*>(pContext)->m_InternalOptions.KernelDebugEnable)
+            {
+                mpm.add(new ImplicitGIDRestoring());
+            }
 
             mpm.add(llvm::createDeadCodeEliminationPass());
             mpm.add(llvm::createEarlyCSEPass());
