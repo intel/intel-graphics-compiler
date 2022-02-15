@@ -95,43 +95,6 @@ void GenXLiveness::releaseMemory() {
   BaseToArgAddrMap.clear();
 }
 
-static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
-  const unsigned Category =
-      llvm::StringSwitch<unsigned>(SV.getValue()->getName())
-          .Case(genx::BSSVariableName, vc::RegCategory::Surface)
-          .Default(vc::RegCategory::NumCategories);
-  IGC_ASSERT_MESSAGE(Category != vc::RegCategory::NumCategories,
-                     "Unhandled predefined variable");
-  return Category;
-}
-
-static bool isPredefinedVariable(SimpleValue SV) {
-  Value *V = SV.getValue();
-  IGC_ASSERT_MESSAGE(V, "Expected value");
-  if (!isa<GlobalVariable>(V))
-    return false;
-  IGC_ASSERT_MESSAGE(SV.getIndex() == 0,
-                     "Expected single simple value for predefined variable");
-  auto *GV = cast<GlobalVariable>(V);
-  return GV->hasAttribute(vc::VariableMD::VCPredefinedVariable);
-}
-
-/***********************************************************************
- * getDefaultCategory: get default category based on SimpleValue
- *
- * The default category is PREDICATE for i1 or a vector of i1, or GENERAL
- * for anything else.
- */
-static unsigned getDefaultCategory(SimpleValue SV) {
-  if (isPredefinedVariable(SV))
-    return getCategoryForPredefinedVariable(SV);
-  Type *Ty =
-      IndexFlattener::getElementType(SV.getValue()->getType(), SV.getIndex());
-  if (Ty->getScalarType()->isIntegerTy(1))
-    return vc::RegCategory::Predicate;
-  return vc::RegCategory::General;
-}
-
 /***********************************************************************
  * setLiveRange : add a SimpleValue to a LiveRange
  *
@@ -798,7 +761,8 @@ Value *GenXLiveness::createUnifiedRet(Function *F) {
   // return value.
   for (unsigned StructIdx = 0, NumElements = IndexFlattener::getNumElements(Ty);
        StructIdx != NumElements; ++StructIdx) {
-    auto Cat = getDefaultCategory(SimpleValue(RetVal, StructIdx));
+    int Cat = getOrCreateLiveRange(SimpleValue(RetVal, StructIdx))
+                  ->getOrDefaultCategory();
     SimpleValue SV(URet, StructIdx);
     getOrCreateLiveRange(SV)->setCategory(Cat);
   }
@@ -873,6 +837,27 @@ LiveRange::iterator LiveRange::find(unsigned Pos)
   return I;
 }
 
+static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
+  const unsigned Category =
+      llvm::StringSwitch<unsigned>(SV.getValue()->getName())
+          .Case(genx::BSSVariableName, vc::RegCategory::Surface)
+          .Default(vc::RegCategory::NumCategories);
+  IGC_ASSERT_MESSAGE(Category != vc::RegCategory::NumCategories,
+                     "Unhandled predefined variable");
+  return Category;
+}
+
+static bool isPredefinedVariable(SimpleValue SV) {
+  Value *V = SV.getValue();
+  IGC_ASSERT_MESSAGE(V, "Expected value");
+  if (!isa<GlobalVariable>(V))
+    return false;
+  IGC_ASSERT_MESSAGE(SV.getIndex() == 0,
+                     "Expected single simple value for predefined variable");
+  auto *GV = cast<GlobalVariable>(V);
+  return GV->hasAttribute(vc::VariableMD::VCPredefinedVariable);
+}
+
 /***********************************************************************
  * getOrDefaultCategory : get category; if none, set default
  *
@@ -885,7 +870,18 @@ unsigned LiveRange::getOrDefaultCategory()
   if (Cat != vc::RegCategory::None)
     return Cat;
   IGC_ASSERT(!value_empty());
-  Cat = getDefaultCategory(*value_begin());
+  SimpleValue SV = *value_begin();
+  if (isPredefinedVariable(SV)) {
+    Cat = getCategoryForPredefinedVariable(SV);
+    setCategory(Cat);
+    return Cat;
+  }
+  Type *Ty = IndexFlattener::getElementType(
+      SV.getValue()->getType(), SV.getIndex());
+  if (Ty->getScalarType()->isIntegerTy(1))
+    Cat = vc::RegCategory::Predicate;
+  else
+    Cat = vc::RegCategory::General;
   setCategory(Cat);
   return Cat;
 }
