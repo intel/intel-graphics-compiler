@@ -394,7 +394,6 @@ namespace IGCMetrics
 #endif
     }
 
-
     void IGCMetricImpl::CollectDataFromDebugInfo(IGC::DebugInfoData* pDebugInfo, IGC::DbgDecoder* pDebugDecoder)
     {
         if (!Enable()) return;
@@ -471,7 +470,7 @@ namespace IGCMetrics
                     continue;
                 }
 
-                auto varLocList = vISAData->GetVariableLocation(*instr);
+                auto varLoc = vISAData->GetVariableLocation(*instr);
 
                 // Extract debuginfo variable data
                 llvm::DIVariable* diVar = llvm::cast<llvm::DIVariable>(pNode);
@@ -490,9 +489,9 @@ namespace IGCMetrics
                 (*instr)->dump();
 #endif
 
-                if (!varLocList[0].IsRegister() &&
-                    !varLocList[0].IsImmediate() &&
-                    !varLocList[0].IsSLM())
+                if (!varLoc.IsRegister() &&
+                    !varLoc.IsImmediate() &&
+                    !varLoc.IsSLM())
                 {
                     if (var_db2metric.find(diVar) == var_db2metric.end())
                     {
@@ -561,16 +560,15 @@ namespace IGCMetrics
                     var_db2metric.insert(std::pair{ diVar, varInfo_m });
                 }
 
-                // Loop in case when we have simd32 splitted into two simd16
-                for (auto varLoc = varLocList.begin(); varLoc != varLocList.end(); ++varLoc)
+                auto fillRegister = [&](unsigned int reg)
                 {
-                    const auto* varInfo = vISAData->getVarInfo(*pDebugDecoder, varLoc->GetRegister());
+                    const auto* varInfo = vISAData->getVarInfo(*pDebugDecoder, reg);
                     auto varInfo_reg_m = varInfo_m->add_reg();
 
-                    varInfo_reg_m->set_addrmodel(varLoc->IsInGlobalAddrSpace() ?
+                    varInfo_reg_m->set_addrmodel(varLoc.IsInGlobalAddrSpace() ?
                         IGC_METRICS::VarInfo_AddressModel::VarInfo_AddressModel_GLOBAL :
                         IGC_METRICS::VarInfo_AddressModel::VarInfo_AddressModel_LOCAL);
-                    varInfo_reg_m->set_promoted2grf(varLoc->IsRegister());
+                    varInfo_reg_m->set_promoted2grf(varLoc.IsRegister());
 
                     //varInfo_m->set_memoryaccess((IGC_METRICS::VarInfo_MemAccess)varInfo->memoryAccess);
 
@@ -583,6 +581,13 @@ namespace IGCMetrics
                     }
                     varInfo_reg_m->set_isuniform(cvar->IsUniform());
                     varInfo_reg_m->set_isconst(cvar->IsImmediate());
+                };
+
+                fillRegister(varLoc.GetRegister());
+                // Special case when we have simd32 splitted into two simd16
+                if (varLoc.HasLocationSecondReg())
+                {
+                    fillRegister(varLoc.GetSecondReg());
                 }
             }
         }
