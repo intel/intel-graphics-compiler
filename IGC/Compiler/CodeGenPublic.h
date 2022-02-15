@@ -129,6 +129,7 @@ namespace IGC
         uint32_t        m_offsetToSkipSetFFIDGP = 0;
         bool            m_roundPower2KBytes = false;
         bool            m_UseScratchSpacePrivateMemory = true;
+        bool            m_SeparatingSpillAndPrivateScratchMemorySpace = false;
         unsigned int m_scratchSpaceSizeLimit = 0;
         unsigned int m_numGRFTotal = 128;
         std::string m_VISAAsm;
@@ -162,20 +163,20 @@ namespace IGC
             }
         }
 
-        void init(bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT, bool useScratchSpacePrivateMemory)
+        void init(bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT, bool useScratchSpacePrivateMemory, bool SepSpillPvtSS)
         {
             m_roundPower2KBytes = roundPower2KBytes;
             m_scratchSpaceSizeLimit = scratchSpaceSizeLimitT;
             m_UseScratchSpacePrivateMemory = useScratchSpacePrivateMemory;
+            m_SeparatingSpillAndPrivateScratchMemorySpace = SepSpillPvtSS;
         }
 
-        //InSlot0
-        //Todo: rename later
         unsigned int getScratchSpaceUsageInSlot0() const
         {
-            unsigned int privateMemoryScratchSpaceSize =
-                getScratchSpaceUsageInSlot1() > 0 || getScratchSpaceUsageInStateless() > 0 ? 0 : m_scratchSpaceUsedByShader;
-            unsigned int result = roundSize(m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + privateMemoryScratchSpaceSize);
+            unsigned int result = (m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
+            if (!m_SeparatingSpillAndPrivateScratchMemorySpace)
+                result += (m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
+            result = roundSize(result);
             IGC_ASSERT(result <= m_scratchSpaceSizeLimit);
             return result;
         }
@@ -183,8 +184,8 @@ namespace IGC
         unsigned int getScratchSpaceUsageInSlot1() const
         {
             unsigned int result = 0;
-            //FIXME: temporarily disable slot1, enable it again when IGC is ready to handle r0.5+1
-            // result = roundSize(m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
+            if (m_SeparatingSpillAndPrivateScratchMemorySpace)
+                result = roundSize(m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
             IGC_ASSERT(result <= m_scratchSpaceSizeLimit);
             return result;
         }

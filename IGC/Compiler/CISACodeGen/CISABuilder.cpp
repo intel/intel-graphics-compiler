@@ -3398,13 +3398,38 @@ namespace IGC
                     surfOpnd_r0_5,
                     andOpnd));
 
+                VISA_VectorOpnd* surfOpnd_r0_5_bits_31_10 = nullptr;
+                if (m_program->m_Platform->hasScratchSurface() &&
+                    m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace())
+                {
+                    uint32_t imm_0x400 = 0x400;
+                    VISA_VectorOpnd* incOpnd = nullptr;
+                    VISA_VectorOpnd* surfOpIncDst = nullptr;
+                    CVariable* surfOpIncVar = m_program->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "Surface1Opnd");
+                    V(vKernel->CreateVISADstOperand(surfOpIncDst, GetVISAVariable(surfOpIncVar), 1, 0, 0));
+                    surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpAndVar);
+                    V(vKernel->CreateVISAImmediate(incOpnd, &imm_0x400, ISA_TYPE_UD));
+                    V(vKernel->AppendVISAArithmeticInst(
+                        ISA_ADD,
+                        nullptr,
+                        false,
+                        vISA_EMASK_M1_NM,
+                        EXEC_SIZE_1,
+                        surfOpIncDst,
+                        surfOpnd_r0_5_bits_31_10,
+                        incOpnd));
+                    surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpIncVar);
+                }
+                else
+                {
+                    surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpAndVar);
+                }
+
                 // if use new extend message descriptor format
                 // (W) shr (1) a0.0 ss0 0x4
                 // else
                 // (W) shl (1) a0.0 ss0 0x2
-
                 VISA_VectorOpnd* surfOpndShiftDst = nullptr;
-                VISA_VectorOpnd* surfOpnd_r0_5_bits_31_10 = nullptr;
                 VISA_VectorOpnd* shiftOpnd = nullptr;
                 bool useNewExtMsgFormat = m_program->m_Platform->hasScratchSurface();
                 // Not sure that we have a case of using bindless scratch surface on
@@ -3414,7 +3439,6 @@ namespace IGC
                 uint16_t imm_data_w = useNewExtMsgFormat ? 4 : 2;
                 ISA_Opcode shiftOpcode = useNewExtMsgFormat ? ISA_SHR : ISA_SHL;
 
-                surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpAndVar);
                 V(vKernel->CreateVISAImmediate(shiftOpnd, &imm_data_w, ISA_TYPE_UW));
                 V(vKernel->CreateVISAStateOperand(surfOpndShiftDst, surfacevar, 0, true));
                 V(vKernel->AppendVISAArithmeticInst(
@@ -4991,8 +5015,13 @@ namespace IGC
         IGC_ASSERT(nullptr != vKernel);
         uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
 
-
-        if (scratchSpaceSizeTemp > 0) {
+        if (m_program->m_Platform->hasScratchSurface() &&
+            m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace())
+        {
+            scratchSpaceSizeTemp = 0;
+        }
+        else if (scratchSpaceSizeTemp > 0)
+        {
             V(vKernel->AddKernelAttribute("SpillMemOffset", 4, &scratchSpaceSizeTemp));
         }
     }
@@ -7375,12 +7404,38 @@ namespace IGC
             //      but the BSS/SS descriptor expects the offset in [31:6] bits, thus we must shift it right by 4
             VISA_GenVar* r0Var = nullptr;
             V(vKernel->GetPredefinedVar(r0Var, PREDEFINED_R0));
+
             VISA_VectorOpnd* surfOpnd = nullptr;
+            if (m_program->m_Platform->hasScratchSurface() &&
+                m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace())
+            {
+                uint32_t imm_0x400 = 0x400;
+                VISA_VectorOpnd* incOpnd = nullptr;
+                VISA_VectorOpnd* surfOpIncDst = nullptr;
+                CVariable* surfOpIncVar = m_program->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "Surface1Opnd");
+                V(vKernel->CreateVISADstOperand(surfOpIncDst, GetVISAVariable(surfOpIncVar), 1, 0, 0));
+                V(vKernel->CreateVISASrcOperand(surfOpnd, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
+                V(vKernel->CreateVISAImmediate(incOpnd, &imm_0x400, ISA_TYPE_UD));
+                V(vKernel->AppendVISAArithmeticInst(
+                    ISA_ADD,
+                    nullptr,
+                    false,
+                    vISA_EMASK_M1_NM,
+                    EXEC_SIZE_1,
+                    surfOpIncDst,
+                    surfOpnd,
+                    incOpnd));
+                surfOpnd = GetSourceOperandNoModifier(surfOpIncVar);
+            }
+            else
+            {
+                V(vKernel->CreateVISASrcOperand(surfOpnd, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
+            }
+
             VISA_VectorOpnd* surfOpndShrDst = nullptr;
             VISA_VectorOpnd* shrOpnd = nullptr;
             uint16_t imm_data = 4;
 
-            V(vKernel->CreateVISASrcOperand(surfOpnd, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
             V(vKernel->CreateVISAImmediate(shrOpnd, &imm_data, ISA_TYPE_UW));
             CVariable* surfOpndShrVar = m_program->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "SurfaceOpnd");
             V(vKernel->CreateVISADstOperand(surfOpndShrDst, GetVISAVariable(surfOpndShrVar), 1, 0, 0));

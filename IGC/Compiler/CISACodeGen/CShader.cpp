@@ -65,7 +65,12 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_HasConstantStatelessMemoryAccess = false;
     m_HasDPAS = false;
 
-    m_simdProgram.init(!m_ctx->platform.hasScratchSurface(), m_ctx->platform.maxPerThreadScratchSpace(), GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory);
+    bool SepSpillPvtSS = m_ctx->platform.hasScratchSurface() &&
+        m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace();
+    m_simdProgram.init(!m_ctx->platform.hasScratchSurface(),
+        m_ctx->platform.maxPerThreadScratchSpace(),
+        GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory,
+        SepSpillPvtSS);
 }
 
 void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
@@ -3570,7 +3575,15 @@ bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 {
     bool ret = (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());
     m_simdProgram.setScratchSpaceUsedByShader(m_ScratchSpaceSize);
-    if (m_ctx->platform.hasScratchSurface() && m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace()) {
+
+    if (m_ctx->platform.hasScratchSurface() &&
+        m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace())
+    {
+        ret = ((m_simdProgram.getScratchSpaceUsageInSlot0() <= m_ctx->platform.maxPerThreadScratchSpace()) &&
+            (m_simdProgram.getScratchSpaceUsageInSlot1() <= m_ctx->platform.maxPerThreadScratchSpace()));
+    }
+    else
+    {
         ret = (m_simdProgram.getScratchSpaceUsageInSlot0() <= m_ctx->platform.maxPerThreadScratchSpace());
     }
 
