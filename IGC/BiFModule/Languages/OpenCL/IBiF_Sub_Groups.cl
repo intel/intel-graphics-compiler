@@ -838,6 +838,29 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_ul8, ulong8, 
 
 #endif // cl_intel_subgroup_local_block_io
 
+#if defined(cl_intel_subgroup_extended_block_read)
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(FUNC_NAME, TYPE, INTERNAL_FUNC)                  \
+INLINE TYPE FUNC_NAME( __global void* base_address, int width, int height, int pitch, int2 coord ) \
+{                                                                                                  \
+    long baseoffset = as_long(base_address);                                                       \
+    int width_minus_one = width - 1;                                                               \
+    int height_minus_one = height - 1;                                                             \
+    int pitch_minus_one = pitch - 1;                                                               \
+    return INTERNAL_FUNC(baseoffset, width_minus_one, height_minus_one, pitch_minus_one, coord);   \
+}
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_u8_m1k32v2,   ushort2,  __builtin_IB_subgroup_block_read_flat_u8_m1k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_u8_m2k32v2,   ushort4,  __builtin_IB_subgroup_block_read_flat_u8_m2k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_u8_m4k32v2,   ushort8,  __builtin_IB_subgroup_block_read_flat_u8_m4k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_u8_m8k32v2,   ushort16, __builtin_IB_subgroup_block_read_flat_u8_m8k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_u16_m1k16v2,  ushort2,  __builtin_IB_subgroup_block_read_flat_u16_m1k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_u16_m2k16v2,  ushort4,  __builtin_IB_subgroup_block_read_flat_u16_m2k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_u16_m4k16v2,  ushort8,  __builtin_IB_subgroup_block_read_flat_u16_m4k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_u16_m8k16v2,  ushort16, __builtin_IB_subgroup_block_read_flat_u16_m8k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_transform_u8_k32,  uint8, __builtin_IB_subgroup_block_read_flat_transform_u8_k32)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_transform_u16_k16, uint8, __builtin_IB_subgroup_block_read_flat_transform_u16_k16)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_transpose_u32_k8,  uint8, __builtin_IB_subgroup_block_read_flat_transpose_u32_k8)
+
+#endif // defined(cl_intel_subgroup_extended_block_read)
 
 #if defined(cl_khr_subgroup_shuffle)
 #define DEFN_SUB_GROUP_SHUFFLE(TYPE, SPV_TYPE, TYPE_ABBR)                                                             \

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/ScaledNumber.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Process.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <cstring>

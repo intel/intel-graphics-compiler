@@ -78,6 +78,8 @@ namespace {
 
         SmallPtrSet<Instruction*, 32> DeadInsts;
 
+        SmallPtrSet<Instruction*, 16> Int64Insts;
+        bool doNotDeleteInstr = false;
     public:
 
         static char ID;
@@ -137,7 +139,17 @@ namespace {
 
         void copyKnownMetadata(Instruction* NewI, Instruction* OldI) const
         {
-            // Nothing needed yet
+            unsigned LscCacheCtrlID =
+                OldI->getContext().getMDKindID("lsc.cache.ctrl");
+            SmallVector<std::pair<unsigned, MDNode*>, 8> MD;
+            OldI->getAllMetadata(MD);
+            for (const auto& MDPair : MD)
+            {
+                unsigned ID = MDPair.first;
+                MDNode* N = MDPair.second;
+                if (ID == LscCacheCtrlID)
+                    NewI->setMetadata(ID, N);
+            }
         }
 
         void dupMemoryAttribute(LoadInst* NewLD, LoadInst* RefLD, unsigned Off) const {
@@ -165,6 +177,9 @@ namespace {
         bool expandInsts(Function& F);
         bool populatePHIs(Function& F);
         bool removeDeadInsts();
+        bool hasOpcodeInt64Support(unsigned int opcode) const;
+        void addInstToInt64InstrList(Instruction* inst) { Int64Insts.insert(inst); }
+        bool eraseInstrFromInt64InstrList(Instruction* inst) { return Int64Insts.erase(inst); }
     };
 
     class InstExpander : public InstVisitor<InstExpander, bool> {
@@ -246,6 +261,8 @@ namespace {
         bool visitLandingPad(LandingPadInst&);
 
         Value* convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruction* Pos);
+        bool hasHWSupport(BinaryOperator&);
+        bool needsLoHiSplitting(Instruction&);
     };
 
     class Preprocessor {
@@ -479,6 +496,7 @@ bool Emu64Ops::runOnFunction(Function& F) {
     ValueMap.clear();
     Arg64Casts.clear();
     DeadInsts.clear();
+    Int64Insts.clear();
 
     bool Changed = false;
     Changed |= ThePreprocessor.preprocess(F);
@@ -583,6 +601,7 @@ bool Emu64Ops::expandInsts(Function& F) {
     for (auto& BB : RPOT) {
         for (auto BI = BB->begin(), BE = BB->end(); BI != BE; /*EMPTY*/) {
             Instruction* I = &(*BI++);
+            doNotDeleteInstr = false;
             CGC->metrics.StatBeginEmuFunc(I);
             bool LocalChanged = Expander->expand(I);
             Changed |= LocalChanged;
@@ -593,6 +612,8 @@ bool Emu64Ops::expandInsts(Function& F) {
                 BE = I->getParent()->end();
                 DeadInsts.insert(I);
             }
+            if (doNotDeleteInstr)
+                BE = I->getParent()->end();
         }
     }
 
@@ -635,6 +656,15 @@ bool Emu64Ops::removeDeadInsts() {
     return Changed;
 }
 
+bool Emu64Ops::hasOpcodeInt64Support(unsigned int opcode) const
+{
+    // PVC-B0 only
+    return ((opcode == llvm::Instruction::Shl) ||
+            (opcode == llvm::Instruction::LShr) ||
+            (opcode == llvm::Instruction::AShr) ||
+            (CGC->platform.hasQWAddSupport() && (opcode == llvm::Instruction::Add)));
+}
+
 bool InstExpander::expand(Instruction* I) {
     IRB->SetInsertPoint(I);
 
@@ -675,6 +705,11 @@ bool InstExpander::visitAdd(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
+
+    if (Emu->CGC->platform.hasQWAddSupport()) {
+        if (hasHWSupport(BinOp))
+            return false;
+    }
 
     Value* L0 = nullptr, * H0 = nullptr;
     std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
@@ -761,6 +796,9 @@ bool InstExpander::visitURem(BinaryOperator& BinOp) {
 bool InstExpander::visitShl(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
+        return false;
+
+    if (hasHWSupport(BinOp))
         return false;
 
     Value* Lo = nullptr, * Hi = nullptr;
@@ -887,6 +925,9 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
 bool InstExpander::visitLShr(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
+        return false;
+
+    if (hasHWSupport(BinOp))
         return false;
 
     Value* Lo = nullptr, * Hi = nullptr;
@@ -1018,6 +1059,9 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
 bool InstExpander::visitAShr(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
+        return false;
+
+    if (hasHWSupport(BinOp))
         return false;
 
     Value* Lo = nullptr, * Hi = nullptr;
@@ -1276,6 +1320,9 @@ bool InstExpander::visitSExt(SExtInst& SEI) {
     if (!Emu->isInt64(&SEI))
         return false;
 
+    if (!needsLoHiSplitting(SEI))
+        return false;
+
     Value* Src = SEI.getOperand(0);
     Type* SrcTy = SEI.getSrcTy();
     IGC_ASSERT(nullptr != SrcTy);
@@ -1294,6 +1341,9 @@ bool InstExpander::visitSExt(SExtInst& SEI) {
 bool InstExpander::visitZExt(ZExtInst& ZEI) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&ZEI))
+        return false;
+
+    if (!needsLoHiSplitting(ZEI))
         return false;
 
     Value* Src = ZEI.getOperand(0);
@@ -2047,4 +2097,100 @@ bool InstExpander::visitLandingPad(LandingPadInst& LPI) {
     IGC_ASSERT(1 < LPI.getNumOperands());
     IGC_ASSERT_MESSAGE(false == Emu->isInt64(LPI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
     return false;
+}
+
+bool InstExpander::hasHWSupport(BinaryOperator& BinOp) {
+
+    if (Emu->CGC->platform.hasPartialInt64Support())
+    {
+        if (Emu->eraseInstrFromInt64InstrList(&BinOp))
+        {
+            // No need to reconstruct the 64b operands
+            // the former instruction SExt or ZExt has not been changed.
+
+            // Just do not delete an original instruction
+            // and split the result into Lo and Hi part.
+        }
+        else
+        {
+            // reconstruct the 64b operands
+            for (uint operandId = 0; operandId < 2; operandId++)
+            {
+                Value* Lo = nullptr, * Hi = nullptr;
+                std::tie(Lo, Hi)   = Emu->getExpandedValues(BinOp.getOperand(operandId));
+                Type* V2I32Ty = Emu->getV2Int32Ty();
+                Value* reconstrut64bOperands = UndefValue::get(V2I32Ty);
+                reconstrut64bOperands = IRB->CreateInsertElement(reconstrut64bOperands, Lo, IRB->getInt32(0));
+                reconstrut64bOperands = IRB->CreateInsertElement(reconstrut64bOperands, Hi, IRB->getInt32(1));
+                reconstrut64bOperands = IRB->CreateBitCast(reconstrut64bOperands, IRB->getInt64Ty());
+                BinOp.setOperand(operandId, reconstrut64bOperands);
+            }
+        }
+
+        // Leave, do not delete an original instruction
+        BasicBlock::iterator BI = std::next(BasicBlock::iterator(&BinOp));
+        IRB->SetInsertPoint(&*BI);
+
+        // Split the result into Lo and Hi part.
+        Value* V = IRB->CreateBitCast(&BinOp, Emu->getV2Int32Ty());
+        Value* outputLo = IRB->CreateExtractElement(V, IRB->getInt32(0));
+        Value* outputHi = IRB->CreateExtractElement(V, IRB->getInt32(1));
+        Emu->setExpandedValues(&BinOp, outputLo, outputHi);
+
+        Emu->doNotDeleteInstr = true;
+        return true;
+    }
+    return false;
+}
+
+bool InstExpander::needsLoHiSplitting(Instruction& inst) {
+
+    bool splittingRequired = true;
+    if (Emu->CGC->platform.hasPartialInt64Support())
+    {
+        bool doNextStep = true;
+
+        // Do not split into Lo and Hi parts if the result of CastInst:
+        // (A) is used only by the opcode with HW native Int64 support, AND
+        //      eg. %9 = shl nsw i64 %conv.i1, 1  ;  % 5 = add i64 % 4, % conv.i1
+        // (B) is used by the binary instr w/ HW Int64 support and all operands come from SExt,ZExt or
+        //     one is a constant value
+        //      eg. %1 = shl nsw i64 %conv.i1, 3  ;  %shr.i.i = lshr i64 % cond.i9.i, % shr.mask.i.i
+
+        for (auto* U : inst.users())
+        {
+            if (Instruction * _instr = dyn_cast<Instruction>(U))
+            {
+                if (!Emu->hasOpcodeInt64Support(_instr->getOpcode())) // (A)
+                {
+                    doNextStep = false;
+                    break;
+                }
+
+                for (auto& Op : _instr->operands())
+                {
+                    if (!isa<ConstantInt>(Op.get()) &&
+                        !isa<SExtInst>(Op.get()) &&
+                        !isa<ZExtInst>(Op.get())) // (B)
+                    {
+                        doNextStep = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (doNextStep)
+        {
+            for (auto* U : inst.users())
+            {
+                if (Instruction * binaryInstr = dyn_cast<BinaryOperator>(U))
+                {
+                    Emu->addInstToInt64InstrList(binaryInstr);
+                    splittingRequired = false;
+                }
+            }
+        }
+    }
+    return splittingRequired;
 }

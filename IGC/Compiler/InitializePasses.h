@@ -113,6 +113,7 @@ void initializeTransformUnmaskedFunctionsPassPass(llvm::PassRegistry&);
 void initializeIndirectCallOptimizationPass(llvm::PassRegistry&);
 void initializePromoteInt8TypePass(llvm::PassRegistry&);
 void initializeDpasFuncsResolutionPass(llvm::PassRegistry&);
+void initializeLSCFuncsResolutionPass(llvm::PassRegistry&);
 void initializePrepareLoadsStoresPassPass(llvm::PassRegistry&);
 void initializeVectorBitCastOptPass(llvm::PassRegistry&);
 void initializeVectorPreProcessPass(llvm::PassRegistry&);

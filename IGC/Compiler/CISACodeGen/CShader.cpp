@@ -100,6 +100,11 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     m_SIMDSize = (simdSize == SIMDMode::SIMD8 ? SIMDMode::SIMD8 : SIMDMode::SIMD16);
     m_ShaderDispatchMode = shaderMode;
     m_numberInstance = simdSize == SIMDMode::SIMD32 ? 2 : 1;
+    if (PVCLSCEnabled())
+    {
+        m_SIMDSize = simdSize;
+        m_numberInstance = 1;
+    }
     m_dispatchSize = simdSize;
     globalSymbolMapping.clear();
     symbolMapping.clear();
@@ -390,6 +395,11 @@ void CShader::CreateImplicitArgs()
         bool isUniform = WIAnalysis::isDepUniform(implictArg.getDependency());
         uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
 
+        if (implictArg.isLocalIDs() &&
+            PVCLSCEnabled() && (m_SIMDSize == SIMDMode::SIMD32))
+        {
+            nbElements = getGRFSize() / 2;
+        }
         CVariable* var = GetNewVariable(
             nbElements,
             implictArg.getVISAType(*m_DL),
@@ -2526,6 +2536,11 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                     bool isUniform = WIAnalysis::isDepUniform(implictArg.getDependency());
                     uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
 
+                    if (implictArg.isLocalIDs() &&
+                        PVCLSCEnabled() && (m_SIMDSize == SIMDMode::SIMD32))
+                    {
+                        nbElements = getGRFSize() / 2;
+                    }
 
                     var = GetNewVariable(nbElements,
                         implictArg.getVISAType(*m_DL),

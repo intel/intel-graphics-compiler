@@ -52,6 +52,9 @@ namespace IGC
         /// The driver supports using stateless space to store the private memory
         /// Driver must be able to use at least one way to store the private memory: either "scratch space" or "stateless space"
         /// and by default, driver only supports one of them.
+        /// NOTE: This method should only be used for XeHP and above to avoid changes to legacy GENs
+        ///         And this is the only place telling if one API supports statelesspvtmem or not.
+        ///         If this API doesn't support statelesspvtmem, IGC will error out if pvtmemusage > 256k in PrivateMemoryResolution
         virtual bool supportsStatelessSpacePrivateMemory() const { return !supportsScratchSpacePrivateMemory(); }
 
         /// The driver requires to align each entry (a workgroup item) of private scratch memory in a stateless

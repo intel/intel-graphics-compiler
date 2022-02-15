@@ -209,6 +209,10 @@ namespace IGC
             {
                 size = roundPower2KBbyte(size);
             }
+            else
+            {
+                size = roundPower2Byte(size);
+            }
             return size;
         }
 

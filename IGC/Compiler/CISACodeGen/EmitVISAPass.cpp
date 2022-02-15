@@ -5655,6 +5655,77 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         m_encoder->Push();
 
         CVariable* src = data;
+        if (m_currShader->m_numberInstance == 1 && m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+        {
+
+            if (!channelUniform)
+            {
+                CVariable* contiguousData = nullptr;
+
+                const uint16_t numElements = data->GetNumberElement();
+                const VISA_Type dataType = data->GetType();
+
+                IGC_ASSERT(numElements == 16 || numElements == 32);
+                IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
+
+                // Create a 32 element variable and copy both instances of data into it.
+                contiguousData = m_currShader->GetNewVariable(
+                    numElements,
+                    dataType,
+                    data->GetAlign(),
+                    false, // isUniform
+                    1,
+                    "ShuffleTmp"); // numberInstance
+
+                m_encoder->Copy(contiguousData, data);
+                m_encoder->Push();
+
+                m_encoder->SetSecondHalf(false);
+
+                src = contiguousData;
+            }
+
+            uint16_t addrSize = channelUniform ? 1 : numLanes(SIMDMode::SIMD16);
+
+            // VectorUniform for shuffle is true as all simd lanes will
+            // take the same data as the lane 0 !
+            CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
+                addrSize,
+                m_destination->GetType(),
+                channelUniform,
+                true,
+                m_destination->getName());
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+            m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+            m_encoder->Push();
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+            m_encoder->Copy(m_destination, pDstArrElm);
+            m_encoder->Push();
+
+            if (!channelUniform)
+            {
+
+                m_encoder->SetSimdSize(SIMDMode::SIMD16);
+                m_encoder->SetMask(EMASK_H2);
+                m_encoder->SetSrcSubReg(0, 16);
+                m_encoder->SetSrcSubReg(1, 16);
+                m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+                m_encoder->Push();
+
+                m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+                m_encoder->SetMask(EMASK_H2);
+                m_encoder->SetDstSubReg(16);
+                m_encoder->Copy(m_destination, pDstArrElm);
+                m_encoder->Push();
+                m_encoder->SetSecondHalf(false);
+            }
+            return;
+        }
 
         if (isSimd32)
         {
@@ -5906,6 +5977,40 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
         m_encoder->Push();
     }
 
+    if (m_currShader->m_numberInstance == 1 && m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+    {
+        // special handling for single SIMD32 since a0 is only SIMD16 wide
+
+        CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
+            16,
+            m_destination->GetType(),
+            false,
+            false,
+            m_destination->getName());
+
+        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->SetSrcRegion(1, 16, 8, 2);
+        m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
+        m_encoder->Push();
+        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->Copy(m_destination, pDstArrElm);
+        m_encoder->Push();
+
+        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->SetMask(EMASK_H2);
+        m_encoder->SetSrcSubReg(1, 32);
+        m_encoder->SetSrcRegion(1, 16, 8, 2);
+        m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
+        m_encoder->Push();
+        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->SetMask(EMASK_H2);
+        m_encoder->SetDstSubReg(16);
+        m_encoder->Copy(m_destination, pDstArrElm);
+        m_encoder->Push();
+        m_encoder->SetSecondHalf(false);
+
+        return;
+    }
 
     uint16_t addrSize = m_SimdMode == SIMDMode::SIMD32 ? numLanes(SIMDMode::SIMD16) : numLanes(m_SimdMode);
 
@@ -13264,6 +13369,14 @@ void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src
 
     CVariable* srcTmp = src;
     CVariable* pSrcTmp[2] = { pSrc[0], pSrc[1] };
+    const bool isFloatOrHalfFloat = type == ISA_TYPE_F || type == ISA_TYPE_HF;
+    if (m_currShader->m_Platform->doScalar64bScan() && isFloatOrHalfFloat)
+    {
+        VISA_Type tmpType = (type == ISA_TYPE_F) ? ISA_TYPE_UD : (type == ISA_TYPE_HF) ? ISA_TYPE_UW : type;
+        srcTmp = m_currShader->GetNewAlias(srcTmp, tmpType, 0, 0);
+        pSrcTmp[0] = m_currShader->GetNewAlias(pSrc[0], tmpType, 0, 0);
+        pSrcTmp[1] = m_currShader->GetNewAlias(pSrc[1], tmpType, 0, 0);
+    }
 
     IGC_ASSERT(nullptr != m_encoder);
     m_encoder->SetSecondHalf(secondHalf);
@@ -13388,6 +13501,10 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
 
     // For information on rearrangement see EmitPass::ReductionClusteredReduceHelper()
     bool isRearrangementRequired = isInt64Mul;
+    const bool isIntegerDwordMultiply = (op == EOPCODE_MUL) && (type == ISA_TYPE_D || type == ISA_TYPE_UD);
+    const bool isFloatOrHalfFloat = type == ISA_TYPE_F || type == ISA_TYPE_HF;
+    isRearrangementRequired |= m_currShader->m_Platform->doScalar64bScan() &&
+        (is64bitType || isIntegerDwordMultiply || isFloatOrHalfFloat);
     if (isRearrangementRequired)
     {
         // Rearrange src
@@ -13416,7 +13533,7 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
         m_encoder->SetSecondHalf(false);
 
         // In certain cases a 64-bit move may need to be split into two 32-bit uint moves
-        const bool use32BitMov = false;
+        const bool use32BitMov = m_currShader->m_Platform->doScalar64bScan() && is64bitType;
 
         // Broadcast to clusters
         // Example for a 4-clusters of QWORDs:
@@ -13456,6 +13573,13 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
 
                 CVariable* broadcastSrc = tempDst;
                 CVariable* broadcastDst = dst;
+                if (m_currShader->m_Platform->doScalar64bScan() && isFloatOrHalfFloat)
+                {
+                    VISA_Type tmpType = (type == ISA_TYPE_F) ? ISA_TYPE_UD : (type == ISA_TYPE_HF) ? ISA_TYPE_UW : type;
+                    broadcastSrc = m_currShader->GetNewAlias(broadcastSrc, tmpType, 0, 0);
+                    broadcastDst = m_currShader->GetNewAlias(broadcastDst, tmpType, 0, 0);
+                }
+                else
                 if (use32BitMov)
                 {
                     broadcastSrc = m_currShader->GetNewAlias(broadcastSrc, VISA_Type::ISA_TYPE_UD, 0, 0);
@@ -14517,6 +14641,14 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 
                 if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrWith0Atomic)
                     return true;
+            }
+        }
+        if (id == GenISAIntrinsic::GenISA_atomiccounterinc ||
+            id == GenISAIntrinsic::GenISA_atomiccounterpredec)
+        {
+            if (m_currShader->m_Platform->supportsBinaryAtomicCounterMessage())
+            {
+                return true;
             }
         }
     }
@@ -16564,6 +16696,17 @@ bool EmitPass::isUniformStoreOCL(Value* ptr, Value* storeVal)
     bool doUniformStore = (elts == 1 ||
         (m_currShader->GetIsUniform(storeVal) &&
             (totalBytes == 8 || totalBytes == 12 || totalBytes == 16)));
+    if (shouldGenerateLSC())
+    {
+        if (totalBytes < 4 || m_currShader->GetIsUniform(storeVal))
+        {
+            doUniformStore = true;
+        }
+        else
+        {
+            doUniformStore = false;
+        }
+    }
     return doUniformStore;
 }
 
