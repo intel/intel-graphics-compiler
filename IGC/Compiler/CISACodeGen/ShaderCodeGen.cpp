@@ -2143,7 +2143,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             // more efficient sequences of multiplies, shifts, and adds
             mpm.add(createIntDivConstantReductionPass());
         }
-        mpm.add(createMergeMemFromBranchOptPass());
 
         mpm.add(createConstantMergePass());
 

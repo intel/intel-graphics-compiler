@@ -250,5 +250,5 @@ namespace IGC
     llvm::FunctionPass* createLogicalAndToBranchPass();
     llvm::FunctionPass* createCleanPHINodePass();
     llvm::FunctionPass* createInsertBranchOptPass();
-    llvm::FunctionPass* createMergeMemFromBranchOptPass();
+
 } // namespace IGC
