@@ -4050,6 +4050,15 @@ namespace IGC
             {
                 SaveOption(vISA_ScheduleEndBBID, Val);
             }
+            if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPostScheduleStartBBID))
+            {
+                SaveOption(vISA_LocalSchedulingStartBB, Val);
+            }
+
+            if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPostScheduleEndBBID))
+            {
+                SaveOption(vISA_LocalSchedulingEndBB, Val);
+            }
         }
         else
         {

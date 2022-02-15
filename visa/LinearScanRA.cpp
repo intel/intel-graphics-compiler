@@ -979,7 +979,43 @@ int LinearScanRA::linearScanRA()
         globalLinearScan ra(gra, &l, globalLiveIntervals, &preAssignedLiveIntervals, inputIntervals, pregManager,
             mem, numRegLRA, numRowsEOT, latestLexID,
             doBCR, highInternalConflict);
-        if (!ra.runLinearScan(builder, globalLiveIntervals, spillLRs))
+
+        bool success = ra.runLinearScan(builder, globalLiveIntervals, spillLRs);
+
+        auto underSpillThreshold = [this](int numSpill, int asmCount)
+        {
+            int threshold = std::min(builder.getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold), 200u);
+            return (numSpill * 200) < (threshold * asmCount);
+        };
+
+        for (auto lr : spillLRs)
+        {
+            GRFSpillFillCount += lr->getNumRefs();
+        }
+
+        int instNum = 0;
+        for (auto bb : kernel.fg)
+        {
+            instNum += (int)bb->size();
+        }
+        if (GRFSpillFillCount && builder.getOption(vISA_AbortOnSpill) && !underSpillThreshold(GRFSpillFillCount, instNum))
+        {
+            // update jit metadata information
+            if (auto jitInfo = builder.getJitInfo())
+            {
+                jitInfo->isSpill = true;
+                jitInfo->spillMemUsed = 0;
+                jitInfo->numAsmCount = instNum;
+                jitInfo->numGRFSpillFill = GRFSpillFillCount;
+            }
+
+            // Early exit when -abortonspill is passed, instead of
+            // spending time inserting spill code and then aborting.
+            return VISA_SPILL;
+        }
+
+        //Try other graphcoloring
+        if (!success)
         {
             undoLinearScanRAAssignments();
             return VISA_FAILURE;
@@ -1019,10 +1055,6 @@ int LinearScanRA::linearScanRA()
             COUT_ERROR << "===== printSpillLiveIntervals============" << std::endl;
             printSpillLiveIntervals(spillLRs);
 #endif
-            for (auto lr : spillLRs)
-            {
-                GRFSpillFillCount += lr->getNumRefs();
-            }
 
             // update jit metadata information for spill
             if (auto jitInfo = builder.getJitInfo())
@@ -1064,33 +1096,6 @@ int LinearScanRA::linearScanRA()
             std::cout << "\titeration: " << iterator << "\n";
             std::cout << "\t\tnextSpillOffset: " << nextSpillOffset << "\n";
             std::cout << "\t\tGRFSpillFillCount: " << GRFSpillFillCount << "\n";
-        }
-
-        auto underSpillThreshold = [this](int numSpill, int asmCount)
-        {
-            int threshold = std::min(builder.getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold), 200u);
-            return (numSpill * 200) < (threshold * asmCount);
-        };
-
-        int instNum = 0;
-        for (auto bb : kernel.fg)
-        {
-            instNum += (int)bb->size();
-        }
-        if (GRFSpillFillCount && builder.getOption(vISA_AbortOnSpill) && !underSpillThreshold(GRFSpillFillCount, instNum))
-        {
-            // update jit metadata information
-            if (auto jitInfo = builder.getJitInfo())
-            {
-                jitInfo->isSpill = true;
-                jitInfo->spillMemUsed = 0;
-                jitInfo->numAsmCount = instNum;
-                jitInfo->numGRFSpillFill = GRFSpillFillCount;
-            }
-
-            // Early exit when -abortonspill is passed, instead of
-            // spending time inserting spill code and then aborting.
-            return VISA_SPILL;
         }
 
         iterator++;
@@ -2279,7 +2284,7 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
                 COUT_ERROR << "Failed to spill registers for " << lr->getTopDcl()->getName() << ", rows :" << lr->getTopDcl()->getNumRows() << std::endl;
                 printActives();
 #endif
-                spillLRs.push_back(lr);
+                return false;
             }
         }
     }
