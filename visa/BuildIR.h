@@ -652,6 +652,8 @@ public:
     PlatformGen getPlatformGeneration() const {return kernel.getPlatformGeneration();}
     const char* getGenxPlatformString() const {return kernel.getGenxPlatformString();}
     unsigned char getGRFSize() const {return kernel.getGRFSize();}
+    template <G4_Type T>
+    unsigned numEltPerGRF() const {return kernel.numEltPerGRF<T>();}
     FINALIZER_INFO* getJitInfo() {return metaData;}
     CompilerStats &getcompilerStats() {return compilerStats;}
 

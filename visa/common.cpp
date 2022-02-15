@@ -21,22 +21,22 @@ static _THREAD TARGET_PLATFORM visaPlatform;
 
 using namespace vISA;
 const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
-    PlatformInfo(GENX_BDW, PlatformGen::GEN8, 3, "BDW", "GEN8"),
-    PlatformInfo(GENX_CHV, PlatformGen::GEN8, 4, "CHV", "GEN8LP"),
-    PlatformInfo(GENX_SKL, PlatformGen::GEN9, 5, "SKL", "GEN9", "KBL", "CFL"),
-    PlatformInfo(GENX_BXT, PlatformGen::GEN9, 6, "BXT", "GEN9LP"),
-    PlatformInfo(GENX_ICLLP, PlatformGen::GEN11, 10,
+    PlatformInfo(GENX_BDW, PlatformGen::GEN8, 3, 32, "BDW", "GEN8"),
+    PlatformInfo(GENX_CHV, PlatformGen::GEN8, 4, 32, "CHV", "GEN8LP"),
+    PlatformInfo(GENX_SKL, PlatformGen::GEN9, 5, 32, "SKL", "GEN9", "KBL", "CFL"),
+    PlatformInfo(GENX_BXT, PlatformGen::GEN9, 6, 32, "BXT", "GEN9LP"),
+    PlatformInfo(GENX_ICLLP, PlatformGen::GEN11, 10, 32,
         "ICLLP", "ICL", "GEN11", "GEN11LP"),
-    PlatformInfo(GENX_TGLLP, PlatformGen::XE, 12,
+    PlatformInfo(GENX_TGLLP, PlatformGen::XE, 12, 32,
         "TGLLP", "DG1", "GEN12LP"
     ),
-    PlatformInfo(Xe_XeHPSDV, PlatformGen::XE, 11,
+    PlatformInfo(Xe_XeHPSDV, PlatformGen::XE, 11, 32,
         "XeHP_SDV"),
-    PlatformInfo(Xe_DG2, PlatformGen::XE, 13,
+    PlatformInfo(Xe_DG2, PlatformGen::XE, 13, 32,
         "DG2"),
-    PlatformInfo(Xe_PVC, PlatformGen::XE, 14,
+    PlatformInfo(Xe_PVC, PlatformGen::XE, 14, 64,
         "PVC"),
-    PlatformInfo(Xe_PVCXT, PlatformGen::XE, 15,
+    PlatformInfo(Xe_PVCXT, PlatformGen::XE, 15, 64,
         "PVCXT"),
 }; // ALL_PLATFORMS
 

@@ -161,7 +161,6 @@ public:
 
 private:
     const PlatformInfo& platformInfo;
-    unsigned char grfSize;
     const char* name;
     unsigned numRegTotal;
     unsigned numThreads;
@@ -230,7 +229,9 @@ public:
     TARGET_PLATFORM getPlatform() const {return platformInfo.platform;}
     PlatformGen getPlatformGeneration() const {return platformInfo.family;}
     const char* getGenxPlatformString() const {return platformInfo.getGenxPlatformString();}
-    unsigned char getGRFSize() const {return grfSize;}
+    unsigned char getGRFSize() const {return platformInfo.grfSize;}
+    template <G4_Type T>
+    unsigned numEltPerGRF() const {return platformInfo.numEltPerGRF<T>();}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 

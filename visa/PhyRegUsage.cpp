@@ -70,11 +70,12 @@ void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind,
     MUST_BE_TRUE(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
     MUST_BE_TRUE(regNum + numRows <= maxGRFCanBeUsed, ERROR_UNKNOWN);
 
-    unsigned start_GRF = (regNum * numEltPerGRF<Type_UW>() + regOff) / numEltPerGRF<Type_UW>();
-    unsigned end_GRF = (regNum * numEltPerGRF<Type_UW>() + regOff + nunits) / numEltPerGRF<Type_UW>();
+    unsigned uwordsPerGRF = builder.numEltPerGRF<Type_UW>();
+    unsigned start_GRF = (regNum * uwordsPerGRF + regOff) / uwordsPerGRF;
+    unsigned end_GRF = (regNum * uwordsPerGRF + regOff + nunits) / uwordsPerGRF;
 
-    unsigned start_sub_GRF = (regNum * numEltPerGRF<Type_UW>() + regOff) % numEltPerGRF<Type_UW>();
-    unsigned end_sub_GRF = (regNum * numEltPerGRF<Type_UW>() + regOff + nunits) % numEltPerGRF<Type_UW>();
+    unsigned start_sub_GRF = (regNum * uwordsPerGRF + regOff) % uwordsPerGRF;
+    unsigned end_sub_GRF = (regNum * uwordsPerGRF + regOff + nunits) % uwordsPerGRF;
 
     for (unsigned i = start_GRF; i < end_GRF; i++)
     {
@@ -268,8 +269,9 @@ int PhyRegUsage::findContiguousWords(
 
     int step = getSubAlignInWords(subAlign);
     int startWord = 0;
+    int uwordsPerGRF = builder.numEltPerGRF<Type_UW>();
 
-    for (int i = startWord; i + numWords <= (int)numEltPerGRF<Type_UW>(); i += step)
+    for (int i = startWord; i + numWords <= uwordsPerGRF; i += step)
     {
         uint32_t bitMask = getSubregBitMask(i, numWords);
         if ((bitMask & words) == bitMask)
@@ -745,7 +747,7 @@ bool PhyRegUsage::canGRFSubRegAlloc(G4_Declare* decl)
 {
     if (decl->getNumRows() != 1) // more than 1 row
         return false;
-    if (numAllocUnit(decl->getNumElems(), decl->getElemType()) < numEltPerGRF<Type_UW>())
+    if (numAllocUnit(decl->getNumElems(), decl->getElemType()) < builder.numEltPerGRF<Type_UW>())
         return true;
     return false;
 }
