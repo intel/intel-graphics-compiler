@@ -1333,7 +1333,11 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
             auto CallArgSV = SimpleValue(CallArg, StructIdx);
             // See if they are coalesced.
             auto DestLR = Liveness->getLiveRange(FuncArgSV);
-            auto SourceLR = Liveness->getLiveRange(CallArgSV);
+            auto SourceLR = Liveness->getLiveRangeOrNull(CallArgSV);
+            if (!SourceLR)
+              // This probably means that source is undef at this index,
+              // so no need to insert copies
+              continue;
             if (!DestLR || DestLR == SourceLR || F == CI->getFunction())
               continue;
             if (DestLR->getCategory() >= vc::RegCategory::NumRealCategories)
