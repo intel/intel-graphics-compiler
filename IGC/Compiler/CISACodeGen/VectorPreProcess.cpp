@@ -1460,10 +1460,10 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
                 EEI->replaceAllUsesWith(BC ? NewBC[Idx] : NewEEI[Idx]);
                 EEI->eraseFromParent();
             }
-            IGC_ASSERT_MESSAGE(Inst->use_empty(), "out of sync");
             if (BC) {
                 BC->eraseFromParent();
             }
+            IGC_ASSERT_MESSAGE(Inst->use_empty(), "out of sync");
             Inst->eraseFromParent();
             return NewLI;
         }
