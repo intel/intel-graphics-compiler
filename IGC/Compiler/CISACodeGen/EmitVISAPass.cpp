@@ -15422,14 +15422,19 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     bool CommitEnable = llvm::cast<llvm::ConstantInt>((inst->getOperand(0)))->getValue().getBoolValue();
-    bool L3_Flush_RW_Data = llvm::cast<llvm::ConstantInt>((inst->getOperand(1)))->getValue().getBoolValue();
+    bool L3_Flush_RW_Data = true;
     bool L3_Flush_Constant_Data = llvm::cast<llvm::ConstantInt>((inst->getOperand(2)))->getValue().getBoolValue();
     bool L3_Flush_Texture_Data = llvm::cast<llvm::ConstantInt>((inst->getOperand(3)))->getValue().getBoolValue();
     bool L3_Flush_Instructions = llvm::cast<llvm::ConstantInt>((inst->getOperand(4)))->getValue().getBoolValue();
     bool Global_Mem_Fence = true;
     bool L1_Invalidate = ctx->platform.hasL1ReadOnlyCache();
 
-    // If passed a non-constant parameter, be conservative and assume that the parameter is true
+    // If passed a non-constant value for L3_Flush_RW_Data or L1_Invalidate parameter,
+    // be conservative and assume that the parameter is true
+    if (ConstantInt* flushRW = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1)))
+    {
+        L3_Flush_RW_Data &= flushRW->getValue().getBoolValue();
+    }
     if (ConstantInt* globalConst = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(6)))
     {
         L1_Invalidate &= globalConst->getValue().getBoolValue();
