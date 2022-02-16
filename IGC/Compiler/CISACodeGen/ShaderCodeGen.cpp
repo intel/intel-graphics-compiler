@@ -450,7 +450,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
 
-
     if (ctx.type == ShaderType::COMPUTE_SHADER &&
         (ctx.platform.HasKernelArguments() || IGC_IS_FLAG_ENABLED(EnableLocalIdCalculationInShader)))
     {
