@@ -101,7 +101,6 @@ class GenXNumbering : public FGPassImplInterface,
 
 public:
   explicit GenXNumbering() : Baling(0) {}
-  ~GenXNumbering() { releaseMemory(); }
   static StringRef getPassName() { return "GenX numbering"; }
   static void getAnalysisUsage(AnalysisUsage &AU);
   bool runOnFunctionGroup(FunctionGroup &FG) override;
