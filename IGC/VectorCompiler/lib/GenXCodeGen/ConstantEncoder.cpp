@@ -10,9 +10,11 @@ SPDX-License-Identifier: MIT
 
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/TypeSize.h"
+#include "vc/Utils/General/Types.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Operator.h"
 
 using namespace llvm;
 
@@ -61,6 +63,42 @@ encodeConstExprImpl(const PtrToIntOperator &P2I, const DataLayout &DL) {
 }
 
 static std::pair<APInt, std::vector<vISA::ZERelocEntry>>
+encodeConstExprImpl(const BitCastOperator &BC, const DataLayout &DL) {
+  IGC_ASSERT_MESSAGE(!isa<IGCLLVM::FixedVectorType>(BC.getType()),
+                     "vector bitcast is not yet supported");
+  return vc::encodeGlobalValueOrConstantExpression(
+      *cast<Constant>(BC.getOperand(0)), DL);
+}
+
+static std::pair<APInt, std::vector<vISA::ZERelocEntry>>
+encodeConstExprImpl(const IGCLLVM::AddrSpaceCastOperator &ASC,
+                    const DataLayout &DL) {
+  IGC_ASSERT_MESSAGE(!isa<IGCLLVM::FixedVectorType>(ASC.getType()),
+                     "vector addrspacecast is not yet supported");
+  auto [Data, Relocs] = vc::encodeGlobalValueOrConstantExpression(
+      *cast<Constant>(ASC.getPointerOperand()), DL);
+
+  // FIXME: p3 to p4 cast should also be part of this case if we consider
+  //        p3 higher bits are marked from the beginning. Alternatively those
+  //        higher bits should be marked during addrspacecast, though it seems
+  //        like a less efficient solution. Fix it once p3 design is settled.
+  if (ASC.getSrcAddressSpace() == vc::AddrSpace::Global &&
+      ASC.getDestAddressSpace() == vc::AddrSpace::Generic) {
+    auto DstSize = vc::getTypeSize(ASC.getType(), &DL);
+    auto SrcSize = vc::getTypeSize(ASC.getPointerOperand()->getType(), &DL);
+    // Though not sure how generic pointer works for spir[32].
+    IGC_ASSERT_MESSAGE(DstSize == SrcSize,
+                       "Global and generic pointer sizes should match");
+    return {Data, Relocs};
+  }
+
+  vc::diagnose(
+      ASC.getContext(), "ConstantEncoder", &ASC,
+      "such addrspacecast constant expression is not supported or illegal");
+  return {Data, Relocs};
+}
+
+static std::pair<APInt, std::vector<vISA::ZERelocEntry>>
 encodeGlobalValue(const GlobalValue &GV, const DataLayout &DL) {
   auto RelType = vISA::GenRelocType::R_NONE;
   auto Size = vc::getTypeSize(GV.getType(), &DL);
@@ -85,6 +123,10 @@ encodeConstExpr(const ConstantExpr &CExpr, const DataLayout &DL) {
     return encodeConstExprImpl(cast<GEPOperator>(CExpr), DL);
   case Instruction::PtrToInt:
     return encodeConstExprImpl(cast<PtrToIntOperator>(CExpr), DL);
+  case Instruction::BitCast:
+    return encodeConstExprImpl(cast<BitCastOperator>(CExpr), DL);
+  case Instruction::AddrSpaceCast:
+    return encodeConstExprImpl(cast<IGCLLVM::AddrSpaceCastOperator>(CExpr), DL);
   default:
     IGC_ASSERT_MESSAGE(0, "Unsupported constant expression");
     return {APInt{}, {}};
