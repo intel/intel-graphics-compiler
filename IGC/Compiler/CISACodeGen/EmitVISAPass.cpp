@@ -15401,10 +15401,10 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
     }
 }
 
-LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence) const
+LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1) const
 {
     LSC_FENCE_OP op = LSC_FENCE_OP_NONE;
-    if (IsGlobalMemFence && m_currShader->m_Platform->getWATable().Wa_14012437816)
+    if (InvalidateL1 || (IsGlobalMemFence && m_currShader->m_Platform->getWATable().Wa_14012437816))
     {
         op = LSC_FENCE_OP_INVALIDATE;
     }
@@ -15487,7 +15487,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         {
             scope = LSC_SCOPE_TILE;
         }
-        LSC_FENCE_OP op = getLSCMemoryFenceOp(Global_Mem_Fence);
+        LSC_FENCE_OP op = getLSCMemoryFenceOp(Global_Mem_Fence, L1_Invalidate);
         if (inst->getMetadata("forceFlushNone"))
         {
             op = LSC_FENCE_OP_NONE;
@@ -15543,7 +15543,7 @@ void EmitPass::emitTypedMemoryFence(llvm::Instruction* inst)
 
     if (shouldGenerateLSC())
     {
-        auto flushOpt = m_currShader->m_Platform->hasSamplerSupport() ? LSC_FENCE_OP_EVICT : getLSCMemoryFenceOp(true);
+        auto flushOpt = m_currShader->m_Platform->hasSamplerSupport() ? LSC_FENCE_OP_EVICT : getLSCMemoryFenceOp(true, L1_Invalidate);
         LSC_SCOPE scope = LSC_SCOPE_GPU;
         if (!m_currShader->m_Platform->hasMultiTile() &&
             m_currShader->m_Platform->hasL3FlushOnGPUScopeInvalidate() &&
@@ -21561,7 +21561,7 @@ void EmitPass::emitSystemMemoryFence(llvm::GenIntrinsicInst* inst)
     if (fenceTGM)
     {
         // first fence TGM with GPU scope
-        auto flushOpt = m_currShader->m_Platform->hasSamplerSupport() ? LSC_FENCE_OP_EVICT : getLSCMemoryFenceOp(true);
+        auto flushOpt = m_currShader->m_Platform->hasSamplerSupport() ? LSC_FENCE_OP_EVICT : getLSCMemoryFenceOp(true, false);
         m_encoder->LSC_Fence(LSC_TGM, LSC_SCOPE_GPU, flushOpt);
         m_encoder->Push();
         // then emit the regular UGM fence
