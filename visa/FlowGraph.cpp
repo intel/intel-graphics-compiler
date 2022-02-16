@@ -3685,6 +3685,18 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
         return;
     }
 
+    // If -noMaskWAOnStackCall is prsent, all BBs inside stack functions are
+    // assumed to need NoMaskWA.
+    if (builder->getOption(vISA_noMaskWAOnFuncEntry) && !builder->getIsKernel())
+    {
+        for (auto bb : BBs)
+        {
+            nestedDivergentBBs[bb] = 2;
+            bb->setBBType(G4_BB_NM_WA_TYPE);
+        }
+        return;
+    }
+
     // Analyze subroutines in topological order. As there is no recursion
     // and no indirect call,  a subroutine will be analyzed only if all
     // its callers have been analyzed.

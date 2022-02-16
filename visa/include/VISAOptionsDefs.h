@@ -321,6 +321,7 @@ DEF_VISA_OPTION(vISA_replaceIndirectCallWithJmpi,   ET_BOOL,  "-replaceIndirectC
 DEF_VISA_OPTION(vISA_noMaskWA,                      ET_INT32, "-noMaskWA",  "USAGE: -noMaskWA <[0:1]=0 (off)|1|2|3(3=2), [2:2]=0|1>\n", 0)
 DEF_VISA_OPTION(vISA_forceNoMaskWA,                 ET_BOOL,  "-forceNoMaskWA",  UNUSED, false)
 DEF_VISA_OPTION(vISA_newNoMaskWA,                   ET_BOOL,  "-newNoMaskWA", UNUSED, true)
+DEF_VISA_OPTION(vISA_noMaskWAOnFuncEntry,           ET_BOOL,  "-noMaskWAOnFuncEntry", UNUSED, false)
 DEF_VISA_OPTION(vISA_newTmpNoMaskWA,                ET_BOOL,  "-newTmpNoMaskWA", "to control scalar IGC, temporary", false)
 DEF_VISA_OPTION(vISA_fusedCallWA,                   ET_BOOL,  "-fusedCallWA",   "EU Fusion call wa, to be deleted after using WA id", false)
 DEF_VISA_OPTION(vISA_DstSrcOverlapWA,               ET_BOOL,  "-dstSrcOverlapWA",  UNUSED, true)
