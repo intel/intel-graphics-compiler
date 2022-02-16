@@ -1131,8 +1131,3 @@ void ZEInfoBuilder::addExpPropertiesHasNonKernelArgLdSt(zeInfoKernel& zekernel,
     ep.has_non_kernel_arg_store = hasNonKernelArgStore;
     ep.has_non_kernel_arg_atomic = hasNonKernelArgAtomic;
 }
-
-void ZEInfoBuilder::addGlobalHostAccessSymbol(const std::string& device_name, const std::string& host_name)
-{
-    mContainer.global_host_access_table.push_back(zeInfoHostAccess{ device_name, host_name });
-}

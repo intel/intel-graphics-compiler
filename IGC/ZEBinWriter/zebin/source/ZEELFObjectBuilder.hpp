@@ -395,10 +395,6 @@ public:
     // createKernel - create a zeInfoKernel and add it into zeInfoContainer
     zeInfoKernel& createKernel(const std::string& name);
 
-    // addGlobalHostAccessSymbol - create a zeInfo global_host_access_table section
-    // which is used by Runtime to identify a global variable based on host name
-    void addGlobalHostAccessSymbol(const std::string& device_name, const std::string& host_name);
-
     // addPayloadArgumentByPointer - add explicit kernel argument with pointer
     // type into given arg_list
     static zeInfoPayloadArgument& addPayloadArgumentByPointer(

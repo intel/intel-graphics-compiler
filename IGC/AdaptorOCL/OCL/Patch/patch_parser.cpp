@@ -1583,32 +1583,6 @@ void DebugPatchList(
                 }
             }
             break;
-        case iOpenCL::PATCH_TOKEN_GLOBAL_HOST_ACCESS_TABLE:
-        {
-            const iOpenCL::SPatchGlobalHostAccessTableInfo* pPatchItem =
-                (const iOpenCL::SPatchGlobalHostAccessTableInfo*)pHeader;
-
-            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                "PATCH_TOKEN_GLOBAL_HOST_ACCESS_TABLE (%08X) (size = %d)\n",
-                pPatchItem->Token,
-                pPatchItem->Size);
-
-            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                "\tNumEntries = %d\n",
-                pPatchItem->NumEntries);
-
-            const vISA::HostAccessEntry* entryPtr = (const vISA::HostAccessEntry*)(ptr + sizeof(iOpenCL::SPatchFunctionTableInfo));
-            for (unsigned i = 0; i < pPatchItem->NumEntries; i++)
-            {
-                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                    "\tSymbol(Entry %02d): \n\t  DeviceName = %s\n\t  HostName = %s\n", i,
-                    entryPtr->device_name,
-                    entryPtr->host_name);
-
-                entryPtr++;
-            }
-        }
-        break;
 
         default:
             {

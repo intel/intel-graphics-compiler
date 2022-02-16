@@ -178,10 +178,6 @@ private:
 
     /// add visasm of the kernel
     void addKernelVISAAsm(const std::string& kernel, const std::string& visaasm);
-
-    /// add global_host_access_table section to .ze_info
-    void addGlobalHostAccessInfo(const IGC::SOpenCLProgramInfo& annotations);
-
 private:
     // mBuilder - Builder of a ZE ELF object
     zebin::ZEELFObjectBuilder mBuilder;

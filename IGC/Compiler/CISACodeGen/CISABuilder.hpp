@@ -606,14 +606,6 @@ namespace IGC
         // CreateFuncAttributeTable
         void CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs);
 
-        // CreateGlobalHostAccessTable
-        typedef std::vector<vISA::HostAccessEntry> HostAccessList;
-        void CreateGlobalHostAccessTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
-        // input/output: hostAccessMap: for patch-token-based format.
-        void CreateGlobalHostAccessTable(HostAccessList& hostAccessMap);
-        // input/output: global host access names: for ZEBinary format
-        void CreateGlobalHostAccessTable(SOpenCLProgramInfo::ZEBinGlobalHostAccessTable& globalHostAccessTable);
-
         uint32_t getGRFSize() const;
 
         bool needsSplitting(VISA_Exec_Size ExecSize) const

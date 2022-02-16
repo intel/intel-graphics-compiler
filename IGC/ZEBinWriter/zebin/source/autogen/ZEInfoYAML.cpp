@@ -23,7 +23,6 @@ void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
 {
     io.mapRequired("version", info.version);
     io.mapRequired("kernels", info.kernels);
-    io.mapRequired("global_host_access_table", info.global_host_access_table);
 }
 void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
 {
@@ -102,9 +101,4 @@ void MappingTraits<zeInfoDebugEnv>::mapping(IO& io, zeInfoDebugEnv& info)
 {
     io.mapOptional("sip_surface_bti", info.sip_surface_bti, -1);
     io.mapOptional("sip_surface_offset", info.sip_surface_offset, -1);
-}
-void MappingTraits<zeInfoHostAccess>::mapping(IO& io, zeInfoHostAccess& info)
-{
-    io.mapRequired("device_name", info.device_name);
-    io.mapRequired("host_name", info.host_name);
 }

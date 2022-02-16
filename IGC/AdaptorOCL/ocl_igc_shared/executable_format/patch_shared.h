@@ -563,17 +563,6 @@ struct SPatchFunctionTableInfo :
 // Update CURRENT_ICBE_VERSION when modifying the patch list
 static_assert(sizeof(SPatchFunctionTableInfo) == (4 + sizeof(SPatchItemHeader)), "The size of SPatchFunctionTableInfo is not what is expected");
 
-/*****************************************************************************\
- STRUCT: SPatchGlobalHostAccessTableInfo
- \*****************************************************************************/
-struct SPatchGlobalHostAccessTableInfo :
-    SPatchItemHeader
-{
-    uint32_t   NumEntries;
-};
-
-// Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchGlobalHostAccessTableInfo) == (4 + sizeof(SPatchItemHeader)), "The size of SPatchGlobalHostAccessTableInfo is not what is expected");
 
 } // namespace
 #pragma pack( pop )
