@@ -106,6 +106,54 @@ namespace llvm {
         return ADDRESS_SPACE_PRIVATE;
     }
 
+    /// Returns true if load instruction source address calculation
+    /// depends only on base address, constants, and loop induction variables
+    bool canReplaceWithRegisters(const LoadInst* LI, const Loop* L, ScalarEvolution& SE) {
+        auto Pointer = LI->getPointerOperand();
+        auto Base = LI->getPointerOperand()->stripInBoundsOffsets();
+
+        // Start with load source address
+        SmallVector<const Value*, 16> WorkList = { Pointer };
+
+        // Traverse the source address calculation dependency tree
+        while (!WorkList.empty()) {
+            auto V = WorkList.pop_back_val();
+
+            if (V == Base || isa<Constant>(V)) {
+                // Do nothing if we meet base address or some constant
+            }
+            else if (isa<CallBase>(V)) {
+                // Stop at calls
+                return false;
+            }
+            else if (auto U = dyn_cast<User>(V)) {
+                // In case of Instuction/Operator append
+                // all the operands to the work list,
+                // skip PHI nodes to prevent infinite while-loop
+                for (unsigned i = 0; i < U->getNumOperands(); ++i) {
+                    auto O = U->getOperand(i);
+                    if (auto P = dyn_cast<PHINode>(O)) {
+                        if (!L->isAuxiliaryInductionVariable(*P, SE)) {
+                            // Stop at non-auxilary IV
+                            return false;
+                        }
+                    }
+                    else
+                        WorkList.push_back(O);
+                }
+            }
+            else {
+                // Stop if we meet something apart from
+                // base address, constant value, IV
+                return false;
+            }
+        }
+
+        // If nothing was found above, consider load instruction source
+        // being a candidate to be replaced by registers
+        return true;
+    }
+
     void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop* L,
 #if LLVM_VERSION_MAJOR >= 7
         ScalarEvolution& SE,
@@ -152,8 +200,46 @@ namespace llvm {
 
         unsigned MaxTripCount = SE.getSmallConstantMaxTripCount(L);
         const unsigned MaxTripCountToUseUpperBound = 4;
-        if (MaxTripCount && MaxTripCount <= MaxTripCountToUseUpperBound)
+        if (MaxTripCount && MaxTripCount <= MaxTripCountToUseUpperBound) {
             UP.UpperBound = true;
+            UP.Force = true;
+        }
+
+        const unsigned MaxTripCountToUseUpperBoundForLoopWithLoads = 16;
+        if (MaxTripCount && MaxTripCount <= MaxTripCountToUseUpperBoundForLoopWithLoads) {
+            // Check if loop contains LoadInst from an array
+            // that can potentially be replaced by registers
+
+            // Group all load instructions by base address
+            // of the source posinter
+            DenseMap<Value*, SmallSet<LoadInst*, 4>> LoadInstructions;
+            for (auto BB : L->blocks()) {
+                for (auto& I : *BB) {
+                    if (auto LI = dyn_cast<LoadInst>(&I)) {
+                        auto Base = LI->getPointerOperand()->stripInBoundsOffsets();
+                        if (isa<AllocaInst>(Base)) {
+                            auto LIIterator = LoadInstructions.find(Base);
+                            if (LIIterator == LoadInstructions.end())
+                                LIIterator = LoadInstructions.insert(std::make_pair(Base, SmallSet<LoadInst*, 4>())).first;
+                            LIIterator->second.insert(LI);
+                        }
+                    }
+                }
+            }
+
+            // Find at least one base address, such that all loads
+            // from it can be replaced by registers
+            for (auto LIIterator : LoadInstructions) {
+                bool Found = true;
+                for (auto LI : LIIterator.second)
+                    Found &= canReplaceWithRegisters(LI, L, SE);
+                if (Found) {
+                    UP.UpperBound = true;
+                    UP.Force = true;
+                    break;
+                }
+            }
+        }
 
 #if LLVM_VERSION_MAJOR == 4
         ScalarEvolution* SE = &dummyPass->getAnalysisIfAvailable<ScalarEvolutionWrapperPass>()->getSE();
