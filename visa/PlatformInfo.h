@@ -50,6 +50,9 @@ public:
             return 64 / TypeSize(T);
         return 32 / TypeSize(T);
     }
+    unsigned numEltPerGRF(G4_Type t) const {
+        return grfSize / TypeSize(t);
+    }
 
     const char* getGenxPlatformString() const;
 

@@ -232,6 +232,7 @@ public:
     unsigned char getGRFSize() const {return platformInfo.grfSize;}
     template <G4_Type T>
     unsigned numEltPerGRF() const {return platformInfo.numEltPerGRF<T>();}
+    unsigned numEltPerGRF(G4_Type t) const {return platformInfo.numEltPerGRF(t);}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 

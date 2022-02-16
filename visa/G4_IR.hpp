@@ -1829,11 +1829,6 @@ template unsigned int numEltPerGRF<Type_HF>();
 template unsigned int numEltPerGRF<Type_NF>();
 template unsigned int numEltPerGRF<Type_BF>();
 
-inline unsigned int numEltPerGRF(G4_Type t)
-{
-    return ::getGRFSize() / TypeSize(t);
-}
-
 class G4_Declare
 {
     friend class IR_Builder;

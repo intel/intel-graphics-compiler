@@ -5382,9 +5382,9 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb, PointsTo
     if (dstDcl)
     {
         G4_DstRegRegion* dstRgn = dst;
-        int dstOpndNumRows = ((dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / numEltPerGRF(Type_UB)) + 1;
+        int dstOpndNumRows = ((dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / kernel.numEltPerGRF<Type_UB>()) + 1;
         int dstLeft = dstRgn->getLinearizedStart();
-        int dstRight = dstOpndNumRows > 1 ? ((dstLeft / numEltPerGRF(Type_UB) + 1) * numEltPerGRF(Type_UB) - 1) :
+        int dstRight = dstOpndNumRows > 1 ? ((dstLeft / kernel.numEltPerGRF<Type_UB>() + 1) * kernel.numEltPerGRF<Type_UB>() - 1) :
             dstRgn->getLinearizedEnd();
 
         for (int i = 0, nSrcs = inst->getNumSrc(); i < nSrcs; i++)
@@ -5407,13 +5407,13 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb, PointsTo
                     if (rel != Rel_disjoint && rel != Rel_undef) //Overlap
                     {
                         G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
-                        int srcOpndNumRows = ((srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / numEltPerGRF(Type_UB)) + 1;
+                        int srcOpndNumRows = ((srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / kernel.numEltPerGRF<Type_UB>()) + 1;
                         int srcLeft = srcRgn->getLinearizedStart();
                         int srcRight = srcRgn->getLinearizedEnd();
 
                         if (!srcRgn->isScalar() && srcOpndNumRows > 1)
                         {
-                            srcLeft = (srcRgn->getLinearizedStart() / numEltPerGRF(Type_UB) + 1) * numEltPerGRF(Type_UB);
+                            srcLeft = (srcRgn->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>() + 1) * kernel.numEltPerGRF<Type_UB>();
                         }
 
                         if (dstOpndNumRows > 1 || srcOpndNumRows > 1)
@@ -9381,10 +9381,10 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
         int dstLowGRFNum = (int)std::ceil((float)(execSize * dst->getExecTypeSize()) / builder.getGRFSize());
         int dstTotalGRFNum = dstLowGRFNum * 2;
 
-        G4_Declare* newDstDcl = builder.createTempVar(numEltPerGRF(dst->getType()) * dstTotalGRFNum, dst->getType(), GRFALIGN);
+        G4_Declare* newDstDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstTotalGRFNum, dst->getType(), GRFALIGN);
 
         // add a tmp mov for low results in dst
-        G4_Declare* lowMovSrcDcl = builder.createTempVar(numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
+        G4_Declare* lowMovSrcDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
         lowMovSrcDcl->setAliasDeclare(newDstDcl, 0);
         G4_SrcRegRegion* lowMovSrc = builder.createSrcRegRegion(lowMovSrcDcl, builder.getRegionStride1());
         auto dstLow = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
@@ -9395,7 +9395,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
         maintainDU4TempMov(madwInst, lowMovInst);
 
         // add a tmp mov for high results in dst
-        G4_Declare* hiMovSrcDcl = builder.createTempVar(numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
+        G4_Declare* hiMovSrcDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
         hiMovSrcDcl->setAliasDeclare(newDstDcl, dstLowGRFNum * builder.getGRFSize());
         G4_SrcRegRegion* hiMovSrc = builder.createSrcRegRegion(hiMovSrcDcl, builder.getRegionStride1());
         auto dstHi = builder.createDst(dst->getBase(), dst->getRegOff() + dstLowGRFNum, dst->getSubRegOff(), dst->getHorzStride(), dst->getType());

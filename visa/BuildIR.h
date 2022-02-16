@@ -654,6 +654,7 @@ public:
     unsigned char getGRFSize() const {return kernel.getGRFSize();}
     template <G4_Type T>
     unsigned numEltPerGRF() const {return kernel.numEltPerGRF<T>();}
+    unsigned numEltPerGRF(G4_Type t) const {return kernel.numEltPerGRF(t);}
     FINALIZER_INFO* getJitInfo() {return metaData;}
     CompilerStats &getcompilerStats() {return compilerStats;}
 
