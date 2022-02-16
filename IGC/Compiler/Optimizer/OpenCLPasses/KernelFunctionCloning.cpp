@@ -24,11 +24,11 @@ using namespace IGC::IGCMD;
 
 // OpenCL C specification states that a kernel function is just a regular
 // function call if a __kernel function is called by another kernel function.
-// But, it doesn't clarify what's the behaviro exactly. Under certain
-// conditions, such a call may be ambuious without separating kernel function
+// But, it doesn't clarify what's the behavior exactly. Under certain
+// conditions, such a call may be ambiguous without separating kernel function
 // and user functions, e.g.
 //
-// __kernel __atribute__((reqd_work_group_size(1, 1, 1)))
+// __kernel __attribute__((reqd_work_group_size(1, 1, 1)))
 // void bar(...) {
 //   ...
 // }
@@ -45,7 +45,7 @@ using namespace IGC::IGCMD;
 // functions, such as inline buffer resolution, which will resolve the first
 // local pointer argument at compilation time. If a function is used as both a
 // kernel function and a user function. The first local pointer argument is
-// ambugious for optimization to resolve it statically.
+// ambiguous for optimization to resolve it statically.
 //
 // OpenCL C++ specification already clarifies the issue and would not allow a
 // kernel function to called from another kernel function. However, we still
@@ -97,6 +97,27 @@ namespace IGC {
 
 char KernelFunctionCloning::ID = 0;
 
+#ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
+template <typename PatternTypeFirst, typename... PatternTypeRest>
+struct PatternChecker {
+    template <typename Checker>
+    static bool run(User* user, Checker check) {
+        auto casted = dyn_cast<PatternTypeFirst>(user);
+        if (!casted)
+            return false;
+
+        if constexpr (sizeof...(PatternTypeRest) > 0) {
+            for (auto user : casted->users()) {
+                if (!PatternChecker<PatternTypeRest...>::run(user, check)) {
+                    return false;
+                }
+            }
+        }
+        return check(casted);
+    }
+};
+#endif
+
 bool KernelFunctionCloning::runOnModule(Module& M) {
     MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
@@ -108,6 +129,31 @@ bool KernelFunctionCloning::runOnModule(Module& M) {
             continue;
         // Check this kernell function is called.
         for (auto* U : F.users()) {
+#ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
+            //
+            // Ignore if it's a user semantic decoration on function.
+            //
+            // GlobalVariable("llvm.global.annotations"):
+            //    ConstantArray:
+            //       ConstantStruct:
+            //          BitCastOperator:
+            //             Function = [ANNOTATED_FUNCTION]
+            //          GetElementPtr:
+            //             GlobalVariable = [ANNOTATION]
+            //       ConstantStruct:
+            //       ...
+            //
+            bool user_semantic = PatternChecker<BitCastOperator, ConstantStruct, ConstantArray, GlobalVariable>::run(U, [](User *user) {
+                if (auto casted = dyn_cast<GlobalVariable>(user)) {
+                    return casted->getName().compare("llvm.global.annotations") == 0;
+                }
+                return true;
+            });
+
+            if (user_semantic) {
+                continue;
+            }
+#endif
             IGCLLVM::CallSite* call = nullptr;
 #if LLVM_VERSION_MAJOR < 11
             IGCLLVM::CallSite callSite(U);
@@ -131,10 +177,10 @@ bool KernelFunctionCloning::runOnModule(Module& M) {
         if (!F->getParent()->getFunction(NewF->getName()))
             F->getParent()->getFunctionList().push_back(NewF);
 
-        // Collect pointers to users (callsites) of the original kernel 
+        // Collect pointers to users (callsites) of the original kernel
         // function and loop through the collection. Otherwise when looping
         // through F->users(), calling call->setCalledFunction(NewF) modifies
-        // the F->users() by removing the very first element (second element 
+        // the F->users() by removing the very first element (second element
         // becomes first) and the loop skips every second element.
         SmallVector<User*, 8> originalKernelFunctionUsers;
         for (auto* U : F->users()) {

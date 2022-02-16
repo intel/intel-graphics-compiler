@@ -105,7 +105,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/FixFastMathFlags.hpp"
 #include "Compiler/CustomUnsafeOptPass.hpp"
 #include "MoveStaticAllocas.h"
+#ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "PreprocessSPVIR.h"
+#include "ConvertUserSemanticDecoratorOnFunctions.h"
+#endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "LowerInvokeSIMD.hpp"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 
@@ -290,6 +293,9 @@ static void CommonOCLBasedPasses(
     mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpmSPIR.add(new CodeGenContextWrapper(pContext));
     mpmSPIR.add(new SPIRMetaDataTranslation());
+#ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
+    mpmSPIR.add(new ConvertUserSemanticDecoratorOnFunctions());
+#endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.run(*pContext->getModule());
 
     bool isOptDisabled = CompilerOpts.OptDisable;

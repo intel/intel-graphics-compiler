@@ -27,11 +27,17 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/sp_debug.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/UnifyIROCL.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/PreprocessSPVIR.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/LowerInvokeSIMD.cpp"
   )
+
+if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+  list(APPEND IGC_BUILD__SRC__DriverInterface
+      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/PreprocessSPVIR.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ConvertUserSemanticDecoratorOnFunctions.cpp"
+    )
+endif()
 
 
 if(IGC_BUILD__SPIRV_ENABLED)
