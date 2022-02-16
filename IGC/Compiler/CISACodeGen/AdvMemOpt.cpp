@@ -159,8 +159,9 @@ bool AdvMemOpt::runOnFunction(Function& F) {
                 if (!WI->isUniform(SI))
                     continue;
 
-                auto* PtrTy = SI->getPointerOperandType();
-                if (PtrTy->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+                unsigned AS = SI->getPointerAddressSpace();
+                if (AS != ADDRESS_SPACE_PRIVATE &&
+                    AS != ADDRESS_SPACE_GLOBAL)
                     continue;
 
                 IRB.SetInsertPoint(SI);
