@@ -562,7 +562,7 @@ CVariable* CPixelShader::GetInputDelta(uint index, bool loweredInput)
         {
             if (index % 2 == 0)
             {
-                inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true, CName::NONE);
+                inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true, "InputDelta" + std::to_string(index));
                 setup[index + 1] = GetNewAlias(inputVar, ISA_TYPE_F, 16, 4);
             }
             else
@@ -572,7 +572,7 @@ CVariable* CPixelShader::GetInputDelta(uint index, bool loweredInput)
         }
         else
         {
-            inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true, CName::NONE);
+            inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true, "InputDelta" + std::to_string(index));
         }
         setup[index] = inputVar;
     }
