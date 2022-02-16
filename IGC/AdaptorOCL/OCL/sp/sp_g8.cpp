@@ -311,6 +311,32 @@ static bool CreateSymbolTable(void* buffer, uint32_t size, uint32_t entries, Uti
     return true;
 }
 
+static bool CreateGlobalHostAccessTable(void* buffer, uint32_t size, uint32_t entries, Util::BinaryStream& membuf,
+    std::string& debugOut)
+{
+    IGC_ASSERT_MESSAGE(buffer && size != 0 && entries != 0, "wrong arguments");
+    iOpenCL::SPatchGlobalHostAccessTableInfo patch;
+    memset(&patch, 0, sizeof(patch));
+
+    patch.Token = PATCH_TOKEN_GLOBAL_HOST_ACCESS_TABLE;
+
+    patch.Size = sizeof(patch) + size;
+    patch.NumEntries = entries;
+
+    std::streamsize tokenStart = membuf.Size();
+    if (!membuf.Write(patch))
+        return false;
+    if (!membuf.Write((const char*)buffer, size))
+        return false;
+    free(buffer);
+
+#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)  || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
+    DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, debugOut);
+#endif
+    (void)debugOut;
+    return true;
+}
+
 void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& annotations,
                                                               Util::BinaryStream& membuf)
 {
@@ -2219,6 +2245,48 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 #if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)   || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
             DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
 #endif
+        }
+    }
+
+    // Patch for global host access table
+    if (retValue.Success)
+    {
+        uint32_t size = 0;
+        uint32_t entries = 0;
+        void* buffer = nullptr;
+        const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
+        if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
+        {
+            buffer = program->simd8.m_globalHostAccessTable;
+            size = program->simd8.m_globalHostAccessTableSize;
+            entries = program->simd8.m_globalHostAccessTableEntries;
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
+        {
+            buffer = program->simd16.m_globalHostAccessTable;
+            size = program->simd16.m_globalHostAccessTableSize;
+            entries = program->simd16.m_globalHostAccessTableEntries;
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
+        {
+            buffer = program->simd32.m_globalHostAccessTable;
+            size = program->simd32.m_globalHostAccessTableSize;
+            entries = program->simd32.m_globalHostAccessTableEntries;
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        {
+            buffer = program->simd1.m_globalHostAccessTable;
+            size = program->simd1.m_globalHostAccessTableSize;
+            entries = program->simd1.m_globalHostAccessTableEntries;
+        }
+
+        if (size > 0)
+        {
+            if (!CreateGlobalHostAccessTable(buffer, size, entries, membuf, m_oclStateDebugMessagePrintOut))
+            {
+                retValue.Success = false;
+                return retValue;
+            }
         }
     }
 

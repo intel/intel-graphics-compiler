@@ -123,6 +123,15 @@ struct zeInfoDebugEnv
     zeinfo_int32_t sip_surface_bti = -1;
     zeinfo_int32_t sip_surface_offset = -1;
 };
+struct zeInfoHostAccess
+{
+    bool operator==(const zeInfoHostAccess& other) const
+    {
+        return device_name == other.device_name && host_name == other.host_name;
+    }
+    zeinfo_str_t device_name;
+    zeinfo_str_t host_name;
+};
 typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;
 typedef std::vector<zeInfoBindingTableIndex> BindingTableIndicesTy;
@@ -139,10 +148,12 @@ struct zeInfoKernel
     zeInfoDebugEnv debug_env;
 };
 typedef std::vector<zeInfoKernel> KernelsTy;
+typedef std::vector<zeInfoHostAccess> GlobalHostAccessTableTy;
 struct zeInfoContainer
 {
     zeinfo_str_t version;
     KernelsTy kernels;
+    GlobalHostAccessTableTy global_host_access_table;
 };
 struct PreDefinedAttrGetter{
     static zeinfo_str_t getVersionNumber() { return "1.11"; }

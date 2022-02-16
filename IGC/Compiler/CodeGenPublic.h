@@ -125,6 +125,9 @@ namespace IGC
         unsigned int    m_funcAttributeTableSize = 0;
         unsigned int    m_funcAttributeTableEntries = 0;
         FuncAttrListTy  m_funcAttrs;               // duplicated information of m_funcAttributeTable, for zebin
+        void* m_globalHostAccessTable = nullptr;
+        unsigned int    m_globalHostAccessTableSize = 0;
+        unsigned int    m_globalHostAccessTableEntries = 0;
         unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
         uint32_t        m_offsetToSkipSetFFIDGP = 0;
         bool            m_roundPower2KBytes = false;
@@ -778,6 +781,8 @@ namespace IGC
             unsigned int m_entries = 0;
         };
 
+        typedef std::vector<vISA::ZEHostAccessEntry> ZEBinGlobalHostAccessTable;
+
         std::unique_ptr<iOpenCL::InitConstantAnnotation> m_initConstantAnnotation;
         std::unique_ptr<iOpenCL::InitConstantAnnotation> m_initConstantStringAnnotation;
         std::unique_ptr<iOpenCL::InitGlobalAnnotation> m_initGlobalAnnotation;
@@ -788,6 +793,7 @@ namespace IGC
         ZEBinRelocTable m_GlobalPointerAddressRelocAnnotation;
         ZEBinProgramSymbolTable m_zebinSymbolTable;
         LegacySymbolTable m_legacySymbolTable;
+        ZEBinGlobalHostAccessTable m_zebinGlobalHostAccessTable;
     };
 
     class CBTILayout

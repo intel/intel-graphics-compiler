@@ -5367,9 +5367,7 @@ namespace IGC
 
             if (needSymbol)
             {
-                StringRef name = pGlobal->hasAttribute("host_var_name") ?
-                    pGlobal->getAttribute("host_var_name").getValueAsString()
-                    : pGlobal->getName();
+                StringRef name = pGlobal->getName();
                 unsigned addrSpace = pGlobal->getType()->getAddressSpace();
                 IGC_ASSERT(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
 
@@ -5466,6 +5464,15 @@ namespace IGC
         }
     }
 
+    void CEncoder::CreateGlobalHostAccessTable(SOpenCLProgramInfo::ZEBinGlobalHostAccessTable& globalHostAccessTable)
+    {
+        HostAccessList hostAccessList;
+        CreateGlobalHostAccessTable(hostAccessList);
+
+        for (auto& I : hostAccessList)
+            globalHostAccessTable.push_back(vISA::ZEHostAccessEntry{ I.device_name, I.host_name });
+    }
+
     void CEncoder::CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
     {
         // for patch-token-based binary format
@@ -5533,6 +5540,50 @@ namespace IGC
             buffer = malloc(bufferSize);
             IGC_ASSERT_MESSAGE(nullptr != buffer, "Table cannot be allocated");
             memcpy_s(buffer, bufferSize, attribTable.data(), bufferSize);
+        }
+    }
+
+    void CEncoder::CreateGlobalHostAccessTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+    {
+        buffer = nullptr;
+        bufferSize = 0;
+        tableEntries = 0;
+
+        HostAccessList hostAccessList;
+        CreateGlobalHostAccessTable(hostAccessList);
+
+        if (!hostAccessList.empty())
+        {
+            tableEntries = hostAccessList.size();
+            bufferSize = tableEntries * sizeof(vISA::HostAccessEntry);
+            buffer = malloc(bufferSize);
+            IGC_ASSERT_MESSAGE(nullptr != buffer, "Host access table cannot be allocated");
+            memcpy_s(buffer, bufferSize, hostAccessList.data(), bufferSize);
+        }
+    }
+
+    void CEncoder::CreateGlobalHostAccessTable(HostAccessList& hostAccessList)
+    {
+        ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
+
+        for (auto global : modMD->inlineProgramScopeOffsets)
+        {
+            GlobalVariable* pGlobal = global.first;
+            if (pGlobal->hasAttribute("host_var_name"))
+            {
+                vISA::HostAccessEntry sEntry;
+
+                StringRef deviceName = pGlobal->getName();
+                StringRef hostName = pGlobal->getAttribute("host_var_name").getValueAsString();
+
+                memset(sEntry.device_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
+                strcpy_s(sEntry.device_name, vISA::MAX_SYMBOL_NAME_LENGTH, deviceName.str().c_str());
+
+                memset(sEntry.host_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
+                strcpy_s(sEntry.host_name, vISA::MAX_SYMBOL_NAME_LENGTH, hostName.str().c_str());
+
+                hostAccessList.push_back(sEntry);
+            }
         }
     }
 
@@ -6009,12 +6060,18 @@ namespace IGC
                         pOutput->m_FuncGTPinInfoList.push_back({sym.s_name, buffer, size});
                     }
                 }
+
+                CreateGlobalHostAccessTable(cl_context->m_programInfo.m_zebinGlobalHostAccessTable);
             }
             else
             {
                 CreateSymbolTable(pOutput->m_funcSymbolTable,
                     pOutput->m_funcSymbolTableSize,
                     pOutput->m_funcSymbolTableEntries);
+
+                CreateGlobalHostAccessTable(pOutput->m_globalHostAccessTable,
+                    pOutput->m_globalHostAccessTableSize,
+                    pOutput->m_globalHostAccessTableEntries);
             }
         }
 
