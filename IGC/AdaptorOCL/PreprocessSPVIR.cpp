@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Mangler.h>
+#include <llvm/Support/Regex.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <regex>
@@ -79,12 +80,10 @@ void PreprocessSPVIR::visitOpenCLEISPrintf(llvm::CallInst& CI)
 
 bool PreprocessSPVIR::isSPVIR(StringRef funcName)
 {
-    std::regex patternRegular("_Z[0-9]+__spirv_[A-Z].*");
-    // Pattern for SPV-IR produced from "OpenCL Extended Instruction Set" instruction
-    std::regex patternEIS("_Z[0-9]+__spirv_ocl_[a-z].*");
-    std::string name = funcName.str();
+    bool is_regular_pattern = Regex("_Z[0-9]+__spirv_[A-Z].*").match(funcName);
+    bool is_eis_pattern = Regex("_Z[0-9]+__spirv_ocl_[a-z].*").match(funcName);
 
-    return std::regex_search(name, patternRegular) || std::regex_search(name, patternEIS);
+    return is_regular_pattern || is_eis_pattern;
 }
 
 bool PreprocessSPVIR::hasArrayArg(llvm::Function& F)
