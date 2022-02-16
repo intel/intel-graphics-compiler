@@ -386,10 +386,10 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
 // the tree and looks for the alloca that stores a value used as a call instruction parameter.
 // Once alloca is found, the function findAllocaValue is called which is the second step
 // of the algorithm.
-Value* ValueTracker::trackValue(CallInst* CI, const uint index)
+Value* ValueTracker::trackValue(Value* I)
 {
-    Value* baseValue = CI->getOperand(index);
-    auto isFinalValue = [this](auto V) { return callInsts.empty() && (V == nullptr || llvm::isa<Argument>(V) || llvm::isa<ConstantInt>(V)); };
+    Value* baseValue = I;
+    auto isFinalValue = [this](auto V) { return callInsts.empty() && workList.empty() && (V == nullptr || llvm::isa<Argument>(V) || llvm::isa<ConstantInt>(V)); };
 
     while (true)
     {
@@ -469,6 +469,34 @@ Value* ValueTracker::trackValue(CallInst* CI, const uint index)
         {
             baseValue = handleConstExpr(I);
         }
+        else if (auto* I = llvm::dyn_cast<PHINode> (baseValue))
+        {
+            if (phiVisited.find(I) != phiVisited.end())
+            {
+                return phiVisited[I];
+            }
+            // For PHINode check if all operands are the same. That allows
+            // to continue tracking, otherwise stop tracking.
+            unsigned num = I->getNumIncomingValues();
+            bool foundFirst = false;
+
+            for (unsigned i = 0; i < num; ++i)
+            {
+                Value* op = trackValue(I->getIncomingValue(i));
+                if (!foundFirst)
+                {
+                    baseValue = op;
+                    foundFirst = true;
+                }
+                else if (op != baseValue)
+                {
+                    baseValue = nullptr;
+                    break;
+                }
+            }
+            phiVisited.insert(std::make_pair(I, baseValue));
+            return baseValue;
+        }
         else
         {
             baseValue = nullptr;
@@ -486,5 +514,6 @@ Value* ValueTracker::track(
     const IGC::ModuleMetaData* pModMD)
 {
     ValueTracker VT(pCallInst->getParent()->getParent(), pMdUtils, pModMD);
-    return VT.trackValue(pCallInst, index);
+    Value* baseValue = pCallInst->getOperand(index);
+    return VT.trackValue(baseValue);
 }

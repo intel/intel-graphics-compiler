@@ -30,7 +30,7 @@ namespace IGC
         ValueTracker(llvm::Function* F, const IGC::IGCMD::MetaDataUtils* pMdUtils, const IGC::ModuleMetaData* pModMD) :
             m_pMDUtils(pMdUtils), m_pModMD(pModMD), m_Function(F) {};
         // The first step of the algorithm
-        llvm::Value* trackValue(llvm::CallInst* CI, const uint index);
+        llvm::Value* trackValue(llvm::Value* I);
         llvm::Value* handleGenIntrinsic(llvm::GenIntrinsicInst* I);
         llvm::Value* handleExtractElement(llvm::ExtractElementInst* E);
         llvm::Value* handleGlobalVariable(llvm::GlobalVariable* G);
@@ -47,6 +47,7 @@ namespace IGC
         std::vector<llvm::CallInst*> callInsts;
         llvm::SmallPtrSet<llvm::Value*, 10> visitedValues;
         std::vector<llvm::Value*> workList;
+        std::map<llvm::Value*, llvm::Value*> phiVisited;
     public:
         static llvm::Value* track(
             llvm::CallInst* CI,
