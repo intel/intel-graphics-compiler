@@ -2867,11 +2867,6 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
         break;
 
     case WAR:
-        if (inst->isSend()) {
-            latency = WAR_SEND_LATENCY;
-            break;
-        }
-        // fall through
     case WAR_MEMORY:
     case WAW:
     case WAW_MEMORY:  //?? WAW have the same cycle as RAW?
