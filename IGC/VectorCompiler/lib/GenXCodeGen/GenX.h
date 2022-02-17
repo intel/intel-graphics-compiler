@@ -161,9 +161,6 @@ enum ImmIntVec : int8_t {
   MinSInt = -(1 << (ElemSize - 1))
 };
 
-// Name of BSS predefined VISA variable represented as a global.
-constexpr const char BSSVariableName[] = "llvm.genx.predefined.bss";
-
 } // End genx namespace
 } // End llvm namespace
 

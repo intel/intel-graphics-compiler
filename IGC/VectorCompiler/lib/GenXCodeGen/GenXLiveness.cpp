@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/Utils/GenX/InternalMetadata.h"
+#include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -840,7 +841,7 @@ LiveRange::iterator LiveRange::find(unsigned Pos)
 static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
   const unsigned Category =
       llvm::StringSwitch<unsigned>(SV.getValue()->getName())
-          .Case(genx::BSSVariableName, vc::RegCategory::Surface)
+          .Case(vc::PredefVar::BSSName, vc::RegCategory::Surface)
           .Default(vc::RegCategory::NumCategories);
   IGC_ASSERT_MESSAGE(Category != vc::RegCategory::NumCategories,
                      "Unhandled predefined variable");
@@ -850,12 +851,11 @@ static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
 static bool isPredefinedVariable(SimpleValue SV) {
   Value *V = SV.getValue();
   IGC_ASSERT_MESSAGE(V, "Expected value");
-  if (!isa<GlobalVariable>(V))
-    return false;
-  IGC_ASSERT_MESSAGE(SV.getIndex() == 0,
-                     "Expected single simple value for predefined variable");
-  auto *GV = cast<GlobalVariable>(V);
-  return GV->hasAttribute(vc::VariableMD::VCPredefinedVariable);
+  bool Result = vc::PredefVar::isPV(*V);
+  if (Result)
+    IGC_ASSERT_MESSAGE(SV.getIndex() == 0,
+                       "Expected single simple value for predefined variable");
+  return Result;
 }
 
 /***********************************************************************

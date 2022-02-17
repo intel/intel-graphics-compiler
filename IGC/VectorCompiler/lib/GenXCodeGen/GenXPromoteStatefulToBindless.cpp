@@ -41,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/GenX/KernelInfo.h"
+#include "vc/Utils/GenX/PredefinedVariable.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -81,7 +82,6 @@ private:
   bool convertKernelArguments(Function &F);
   bool convertArguments();
 
-  GlobalVariable &createBSSVariable();
   GlobalVariable &getOrCreateBSSVariable();
 
   CallInst *createBindlessSurfaceDataportIntrinsicChain(CallInst &CI);
@@ -202,27 +202,12 @@ bool PromoteToBindless::convertArguments() {
   return Changed;
 }
 
-// BSS variable represented by global variable with reserved name and
-// special attribute. Create it here.
-GlobalVariable &PromoteToBindless::createBSSVariable() {
-  IGC_ASSERT_MESSAGE(M.getNamedGlobal(genx::BSSVariableName) == nullptr,
-                     "Unexpected BSS global already created");
-  LLVMContext &Ctx = M.getContext();
-  auto *I32Ty = Type::getInt32Ty(Ctx);
-  BSS = new GlobalVariable(M, I32Ty, /*isConstant=*/false,
-                           GlobalValue::ExternalLinkage,
-                           /*Initializer=*/nullptr, genx::BSSVariableName);
-  BSS->addAttribute(vc::VariableMD::VCPredefinedVariable);
-  return *BSS;
-}
-
 // Lazily get BSS variable if this is needed. Create if nothing
 // was here before.
 GlobalVariable &PromoteToBindless::getOrCreateBSSVariable() {
-  if (BSS)
-    return *BSS;
-
-  return createBSSVariable();
+  if (!BSS)
+    BSS = &vc::PredefVar::createBSS(M);
+  return *BSS;
 }
 
 // Get surface operand number for given intrinsic.

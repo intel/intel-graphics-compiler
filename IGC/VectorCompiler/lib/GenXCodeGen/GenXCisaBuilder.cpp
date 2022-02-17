@@ -39,6 +39,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
 #include "vc/Utils/GenX/KernelInfo.h"
+#include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
@@ -4473,7 +4474,7 @@ GenXKernelBuilder::getPredefinedSurfaceVar(GlobalVariable &GV) {
   StringRef SurfName = GV.getName();
   PreDefined_Surface VisaSurfName =
       StringSwitch<PreDefined_Surface>(SurfName)
-          .Case(genx::BSSVariableName, PREDEFINED_SURFACE_T252)
+          .Case(vc::PredefVar::BSSName, PREDEFINED_SURFACE_T252)
           .Default(PREDEFINED_SURFACE_LAST);
   IGC_ASSERT_MESSAGE(VisaSurfName != PREDEFINED_SURFACE_LAST,
                      "Unexpected predefined surface");
