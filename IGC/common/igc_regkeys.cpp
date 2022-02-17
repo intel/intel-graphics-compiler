@@ -629,7 +629,11 @@ static void setRegkeyFromOption(
         if(!vstring.empty())
         {
             // assume vstring has the valid value!
-            int intval = atoi(vstring.c_str());
+            int intval;
+            if (vstring.find("0x", 0) == std::string::npos)
+                intval = stoi(vstring, nullptr, 10);
+            else
+                intval = stoi(vstring, nullptr, 16);
             *((int*)pRegkeyVar) = intval;
             isKeySet = true;
         }
