@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXDebugInfo.h"
 #include "GenXModule.h"
+#include "GenXSubtarget.h"
 
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/GenXOpts/GenXOpts.h"
@@ -156,8 +157,7 @@ void initializeGenXPasses(PassRegistry &registry) {
 }
 
 TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F) {
-  GenXTTIImpl GTTI(F.getParent()->getDataLayout());
-  return TargetTransformInfo(GTTI);
+  return TargetTransformInfo(GenXTTIImpl(this, F));
 }
 
 } // namespace llvm

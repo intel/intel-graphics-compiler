@@ -78,17 +78,25 @@ public:
                       CodeGenOpt::Level OL, bool JIT);
 };
 
-// This implementation allows us to define our own costs for
-// the GenX backend. Did not use BasicTTIImplBase because the overloaded
-// constructors have TragetMachine as an argument, so I inherited from
-// its parent which has only DL as its arguments
-class GenXTTIImpl : public TargetTransformInfoImplCRTPBase<GenXTTIImpl>
-{
-  typedef TargetTransformInfoImplCRTPBase<GenXTTIImpl> BaseT;
-  typedef TargetTransformInfo TTI;
+class GenXTTIImpl : public BasicTTIImplBase<GenXTTIImpl> {
+
+  using BaseT = BasicTTIImplBase<GenXTTIImpl>;
+  using TTI = TargetTransformInfo;
+
   friend BaseT;
+
+  const GenXSubtarget &ST;
+
+  const GenXSubtarget *getST() const { return &ST; }
+
+  const TargetLowering *getTLI() const {
+    // No target lowering in VC.
+    return nullptr;
+  }
+
 public:
-  GenXTTIImpl(const DataLayout& DL) : BaseT(DL) {}
+  explicit GenXTTIImpl(const GenXTargetMachine *TM, const Function &F)
+      : BaseT(TM, F.getParent()->getDataLayout()), ST(TM->getGenXSubtarget()) {}
 
   bool shouldBuildLookupTables() { return false; }
   unsigned getFlatAddressSpace() { return vc::AddrSpace::Generic; }
