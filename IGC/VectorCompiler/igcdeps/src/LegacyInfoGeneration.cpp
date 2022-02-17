@@ -68,7 +68,6 @@ vc::emitLegacyModuleSymbolTable(const GenXOCLRuntimeInfo::SymbolSeq &Constants,
 
 void vc::validateFunctionSymbolTable(
     const GenXOCLRuntimeInfo::SymbolSeq &Funcs) {
-  IGC_ASSERT_MESSAGE(Funcs.size() > 0u, "Must have at least one function");
   auto IsKernel = [](const vISA::ZESymEntry &Entry) {
     return Entry.s_type == vISA::GenSymType::S_KERNEL;
   };

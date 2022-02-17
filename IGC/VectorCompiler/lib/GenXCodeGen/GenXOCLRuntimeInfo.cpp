@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include <cctype>
 #include <functional>
 #include <iterator>
+#include <numeric>
 #include <stack>
 
 #include "Probe/Assertion.h"
@@ -531,24 +532,6 @@ std::vector<const Function *> collectCalledFunctions(const FunctionGroup &FG,
   return Collected;
 }
 
-// Returns vISA asm for function \p F.
-static std::string getVISAAsmForFunction(const Function &F, VISABuilder &VB) {
-  VISAKernel *VK = VB.GetVISAKernel(F.getName().str());
-  return VK->getVISAAsm();
-}
-
-// Returns vISA asm for the FG's head and its direct stack calls.
-static std::string getVISAAsm(const FunctionGroup &FG, VISABuilder &VB) {
-  std::string VISAAsm = getVISAAsmForFunction(*FG.getHead(), VB);
-  const auto StackCalls = collectCalledFunctions(FG, [](const Function *F) {
-    return vc::requiresStackCall(F) && !vc::isIndirect(F);
-  });
-  return std::accumulate(StackCalls.begin(), StackCalls.end(), VISAAsm,
-                         [&VB](std::string S, const Function *F) {
-                           return std::move(S += getVISAAsmForFunction(*F, VB));
-                         });
-}
-
 // Appends relocations of \p Func to \p SectionRelocations. Added relocations
 // are shifted by \p Offset.
 static void
@@ -565,11 +548,8 @@ appendTextRelocations(GenXOCLRuntimeInfo::RelocationSeq &SectionRelocations,
 }
 
 // Either loads binary from VISABuilder or overrides from file.
-// vISA assembly that corresponds to the obtained binary is appended to
-// \p VISAAsm when shader override is off.
-static void loadBinary(RawSectionInfo &TextSection, std::string &VISAAsm,
-                       VISABuilder &VB, const FunctionGroup &FG,
-                       const GenXBackendConfig &BC) {
+static void loadBinary(RawSectionInfo &TextSection, VISABuilder &VB,
+                       const FunctionGroup &FG, const GenXBackendConfig &BC) {
   const Function &F = *FG.getHead();
 
   // Attempt to override
@@ -584,9 +564,6 @@ static void loadBinary(RawSectionInfo &TextSection, std::string &VISAAsm,
   appendTextRelocations(TextSection.Relocations, *BuiltKernel,
                         TextSection.Data.getFullSize());
   appendFuncBinary(TextSection.Data, F, *BuiltKernel);
-
-  if (BC.emitZebinVisaSections())
-    VISAAsm += getVISAAsm(FG, VB);
 }
 
 static unsigned getAlignment(const GlobalVariable &GV) {
@@ -727,6 +704,8 @@ public:
 
 private:
   CompiledKernel collectFunctionGroupInfo(const FunctionGroup &FG) const;
+  // Collects all subgroups info in a dummy kernel. Also stores visaasm for the
+  // whole module in this dummy kernel.
   template <typename Range>
   CompiledKernel
   collectFunctionSubgroupsInfo(const std::vector<FunctionGroup *> &Subgroups,
@@ -741,6 +720,7 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
                  [this](const FunctionGroup *FG) {
                    return collectFunctionGroupInfo(*FG);
                  });
+
   std::vector<FunctionGroup *> IndirectlyReferencedFuncs;
   std::copy_if(FGA.subgroup_begin(), FGA.subgroup_end(),
                std::back_inserter(IndirectlyReferencedFuncs),
@@ -755,9 +735,10 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
         return vc::isIndirect(F);
       });
   if (!IndirectlyReferencedFuncs.empty() ||
-      DeclsRange.begin() != DeclsRange.end())
+      DeclsRange.begin() != DeclsRange.end() || BC.emitZebinVisaSections())
     Kernels.push_back(
         collectFunctionSubgroupsInfo(IndirectlyReferencedFuncs, DeclsRange));
+
   return {getModuleInfo(M), std::move(Kernels),
           M.getDataLayout().getPointerSize()};
 }
@@ -796,7 +777,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   }
 
   RawSectionInfo TextSection;
-  loadBinary(TextSection, Info.VISAAsm, VB, FG, BC);
+  loadBinary(TextSection, VB, FG, BC);
 
   auto DebugData = getDebugInformation(DBG, KernelFunction);
 
@@ -821,6 +802,18 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
                         std::move(DebugData)};
 }
 
+// Goes through function groups in FGRange and collects their vISA asms into a
+// string.
+template <typename Range>
+static std::string collectVISAAsm(const VISABuilder &VB, Range &&FGRange) {
+  return std::accumulate(
+      FGRange.begin(), FGRange.end(), std::string{},
+      [&VB](std::string S, const FunctionGroup *FG) {
+        return std::move(S +=
+                         VB.GetVISAKernel(FG->getName().str())->getVISAAsm());
+      });
+}
+
 template <typename Range>
 RuntimeInfoCollector::CompiledKernel
 RuntimeInfoCollector::collectFunctionSubgroupsInfo(
@@ -829,18 +822,21 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
   using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
 
-  IGC_ASSERT(!Subgroups.empty() || !(DeclsRange.begin() == DeclsRange.end()));
-  KernelInfo Info{ST};
+  IGC_ASSERT(!Subgroups.empty() || DeclsRange.begin() != DeclsRange.end() ||
+             BC.emitZebinVisaSections());
 
   RawSectionInfo TextSection;
   for (auto *FG : Subgroups) {
     auto *Func = FG->getHead();
     IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
-    loadBinary(TextSection, Info.VISAAsm, VB, *FG, BC);
+    loadBinary(TextSection, VB, *FG, BC);
   }
 
   auto DebugInfo = getDebugInfoForIndirectFunctions(DBG, Subgroups);
 
+  KernelInfo Info{ST};
+  if (BC.emitZebinVisaSections())
+    Info.VISAAsm = collectVISAAsm(VB, FGA.AllGroups());
   // FIXME: cannot initialize legacy relocations as the relocation structure is
   // opaque and cannot be modified. But having multiple functions inside a
   // section requires shifting (modifying) the relocations.
