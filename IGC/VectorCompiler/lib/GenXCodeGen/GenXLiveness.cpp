@@ -196,7 +196,7 @@ LiveRange *GenXLiveness::visitPropagateSLRs(Function *F)
 /***********************************************************************
  * buildLiveRange : build live range for one value (arg or non-baled inst)
  *
- * For a struct value, each element's live range is built separately, even
+ * For an aggregate value, each element's live range is built separately, even
  * though they are almost identical. They are not exactly identical,
  * differing at the def if it is the return value of a call, and at a use
  * that is a call arg.
@@ -204,14 +204,14 @@ LiveRange *GenXLiveness::visitPropagateSLRs(Function *F)
 void GenXLiveness::buildLiveRange(Value *V)
 {
   LLVM_DEBUG(dbgs() << "Building LiveRange for :" << *V << "\n");
-  auto ST = dyn_cast<StructType>(V->getType());
-  if (!ST) {
-    LLVM_DEBUG(dbgs() << "It is not struct, build for one\n");
+  Type *Ty = V->getType();
+  if (!Ty->isAggregateType()) {
+    LLVM_DEBUG(dbgs() << "It is not aggregate, build for one\n");
     buildLiveRange(SimpleValue(V));
     return;
   }
-  for (unsigned i = 0, e = IndexFlattener::getNumElements(ST); i != e; ++i) {
-    LLVM_DEBUG(dbgs() << "Bulding for struct Index " << i << " from " << e
+  for (unsigned i = 0, e = IndexFlattener::getNumElements(Ty); i != e; ++i) {
+    LLVM_DEBUG(dbgs() << "Bulding for aggregate Index " << i << " from " << e
                       << "\n");
     buildLiveRange(SimpleValue(V, i));
   }
@@ -638,17 +638,17 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V, unsigned Cat, unsig
 
 /***********************************************************************
  * eraseLiveRange : get rid of live range for a Value, possibly multiple
- *  ones if it is a struct value
+ *  ones if it is an aggregate value
  */
 void GenXLiveness::eraseLiveRange(Value *V)
 {
   LLVM_DEBUG(dbgs() << "Erasing LiveRange for Value: " << *V << "\n");
-  auto ST = dyn_cast<StructType>(V->getType());
-  if (!ST) {
+  Type *Ty = V->getType();
+  if (!Ty->isAggregateType()) {
     eraseLiveRange(SimpleValue(V));
     return;
   }
-  for (unsigned i = 0, e = IndexFlattener::getNumElements(ST); i != e; ++i)
+  for (unsigned i = 0, e = IndexFlattener::getNumElements(Ty); i != e; ++i)
     eraseLiveRange(SimpleValue(V, i));
 }
 
@@ -741,8 +741,8 @@ Value *GenXLiveness::getUnifiedRetIfExist(Function *F) const {
  * Cannot be called on a function with void return type.
  *
  * This also creates the LiveRange for the unified return value, or
- * multiple ones if it is struct type, and sets the category to the same as in
- * one of the return instructions.
+ * multiple ones if it is aggregate type, and sets the category to the same as
+ * in one of the return instructions.
  */
 Value *GenXLiveness::createUnifiedRet(Function *F) {
   IGC_ASSERT_MESSAGE(!F->isDeclaration(), "must be a function definition");
@@ -760,11 +760,11 @@ Value *GenXLiveness::createUnifiedRet(Function *F) {
   Value *RetVal = Ret->getOperand(0);
   // Use the categories of its operand to set the categories of the unified
   // return value.
-  for (unsigned StructIdx = 0, NumElements = IndexFlattener::getNumElements(Ty);
-       StructIdx != NumElements; ++StructIdx) {
-    int Cat = getOrCreateLiveRange(SimpleValue(RetVal, StructIdx))
+  for (unsigned AggrIdx = 0, NumElements = IndexFlattener::getNumElements(Ty);
+       AggrIdx != NumElements; ++AggrIdx) {
+    int Cat = getOrCreateLiveRange(SimpleValue(RetVal, AggrIdx))
                   ->getOrDefaultCategory();
-    SimpleValue SV(URet, StructIdx);
+    SimpleValue SV{URet, AggrIdx};
     getOrCreateLiveRange(SV)->setCategory(Cat);
   }
 
@@ -1205,7 +1205,7 @@ bool GenXLiveness::wrapsAround(Value *V1, Value *V2)
 }
 
 /***********************************************************************
- * insertCopy : insert a copy of a non-struct value
+ * insertCopy : insert a copy of a non-aggregate value
  *
  * Enter:   InputVal = value to copy
  *          LR = live range to add the new value to (0 to avoid adjusting
@@ -1508,13 +1508,13 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
     "base register not found for address");
   Value *BaseV = i->second;
   LiveRange *LR = getLiveRange(BaseV);
-  // Find a SimpleValue in the live range that is not a struct member.
+  // Find a SimpleValue in the live range that is not an aggregate member.
   for (auto vi = LR->value_begin(), ve = LR->value_end(); vi != ve; ++vi) {
     Value *V = vi->getValue();
-    if (!isa<StructType>(V->getType()))
+    if (!V->getType()->isAggregateType())
       return V;
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "non-struct value not found");
+  IGC_ASSERT_EXIT_MESSAGE(0, "non-aggregate value not found");
 }
 
 /***********************************************************************
@@ -1836,59 +1836,79 @@ void LiveRange::printSegments(raw_ostream &OS) const
   }
 }
 
+// Returns the type of an aggregate's element at specific index. This is a
+// generalization for structures and arrays.
+static Type *getElementTypeOfAggregate(Type *AggrTy, unsigned Index) {
+  IGC_ASSERT_MESSAGE(AggrTy->isAggregateType(), "unexpected type");
+  if (isa<StructType>(AggrTy))
+    return cast<StructType>(AggrTy)->getTypeAtIndex(Index);
+  IGC_ASSERT_MESSAGE(Index < cast<ArrayType>(AggrTy)->getNumElements(),
+                     "invalid array index");
+  return cast<ArrayType>(AggrTy)->getElementType();
+}
+
+// Returns the number of elements of an aggregate. This is a generalization for
+// structures and arrays.
+static unsigned getNumElementsOfAggregate(Type *AggrTy) {
+  IGC_ASSERT_MESSAGE(AggrTy->isAggregateType(), "unexpected type");
+  if (isa<StructType>(AggrTy))
+    return cast<StructType>(AggrTy)->getNumElements();
+  return cast<ArrayType>(AggrTy)->getNumElements();
+}
+
 /***********************************************************************
- * IndexFlattener::flatten : convert struct indices into a flattened index
+ * IndexFlattener::flatten : convert aggregate indices into a flattened index
  *
  * This has a special case of Indices having a single element that is the
- * number of elements in ST, which returns the total number of flattened
- * indices in the struct.
+ * number of elements in AggrTy, which returns the total number of flattened
+ * indices in the aggregate.
  *
- * This involves scanning through the struct layout each time it is called.
+ * This involves scanning through the aggregate layout each time it is called.
  * If it is used a lot, it might benefit from some cacheing of the results.
  */
-unsigned IndexFlattener::flatten(StructType *ST, ArrayRef<unsigned> Indices)
-{
+unsigned IndexFlattener::flatten(Type *AggrTy, ArrayRef<unsigned> Indices) {
+  IGC_ASSERT_MESSAGE(AggrTy->isAggregateType(), "unexpected type");
   if (!Indices.size())
     return 0;
   unsigned Flattened = 0;
   unsigned i = 0;
   for (; i != Indices[0]; ++i) {
-    Type *ElTy = ST->getElementType(i);
-    if (auto ElST = dyn_cast<StructType>(ElTy))
-      Flattened += flatten(ElST, ElST->getNumElements());
+    Type *ElTy = getElementTypeOfAggregate(AggrTy, i);
+    if (ElTy->isAggregateType())
+      Flattened += flatten(ElTy, getNumElementsOfAggregate(ElTy));
     else
       ++Flattened;
   }
-  if (i == ST->getNumElements())
+  if (i == getNumElementsOfAggregate(AggrTy))
     return Flattened; // handle special case noted at the top
-  Type *ElTy = ST->getElementType(i);
-  if (auto ElST = dyn_cast<StructType>(ElTy))
-    Flattened += flatten(ElST, Indices.slice(1));
+  Type *ElTy = getElementTypeOfAggregate(AggrTy, i);
+  if (ElTy->isAggregateType())
+    Flattened += flatten(ElTy, Indices.slice(1));
   return Flattened;
 }
 
 /***********************************************************************
- * IndexFlattener::unflatten : convert flattened index into struct indices
+ * IndexFlattener::unflatten : convert flattened index into aggregate indices
  *
  * Enter:   Indices = vector to put unflattened indices into
  *
  * Return:  number left over from flattened index if it goes off the end
- *          of the struct (used internally when recursing). If this is
+ *          of the aggregate (used internally when recursing). If this is
  *          non-zero, nothing has been pushed into Indices
  *
- * This involves scanning through the struct layout each time it is called.
+ * This involves scanning through the aggregate layout each time it is called.
  * If it is used a lot, it might benefit from some cacheing of the results.
  */
-unsigned IndexFlattener::unflatten(StructType *ST, unsigned Flattened,
-    SmallVectorImpl<unsigned> *Indices)
-{
+unsigned IndexFlattener::unflatten(Type *AggrTy, unsigned Flattened,
+                                   SmallVectorImpl<unsigned> *Indices) {
+  IGC_ASSERT_MESSAGE(AggrTy->isAggregateType(), "unexpected type");
   ++Flattened;
-  for (unsigned i = 0, e = ST->getNumElements(); i != e; ++i) {
+  for (unsigned i = 0, e = getNumElementsOfAggregate(AggrTy); i != e; ++i) {
     --Flattened;
-    Type *ElTy = ST->getElementType(i);
-    if (auto ElST = dyn_cast<StructType>(ElTy)) {
+    Type *ElTy = getElementTypeOfAggregate(AggrTy, i);
+    if (ElTy->isAggregateType()) {
       Indices->push_back(i);
-      Flattened = unflatten(ElST, Flattened, Indices);
+      Flattened = unflatten(ElTy, Flattened, Indices);
       if (!Flattened)
         return 0;
       Indices->pop_back();
@@ -1901,36 +1921,42 @@ unsigned IndexFlattener::unflatten(StructType *ST, unsigned Flattened,
 }
 
 /***********************************************************************
- * IndexFlattener::getElementType : get type of struct element from
+ * IndexFlattener::getElementType : get type of aggregate element from
  *    flattened index
  *
- * Enter:   Ty = type, possibly struct type
- *          FlattenedIndex = flattened index in the struct, 0 if not struct
+ * Enter:   Ty = type, possibly aggregate type
+ *          FlattenedIndex = flattened index in the aggregate, 0 if not
+ *     aggregate
  *
  * Return:  type of that element
  */
 Type *IndexFlattener::getElementType(Type *Ty, unsigned FlattenedIndex)
 {
-  auto ST = dyn_cast<StructType>(Ty);
-  if (!ST)
+  if (!Ty->isAggregateType())
     return Ty;
   SmallVector<unsigned, 4> Indices;
-  IndexFlattener::unflatten(ST, FlattenedIndex, &Indices);
-  IGC_ASSERT(IndexFlattener::flatten(ST, Indices) == FlattenedIndex);
+  IndexFlattener::unflatten(Ty, FlattenedIndex, &Indices);
+  IGC_ASSERT(IndexFlattener::flatten(Ty, Indices) == FlattenedIndex);
   Type *T = 0;
   for (unsigned i = 0;;) {
-    T = ST->getElementType(Indices[i]);
+    T = getElementTypeOfAggregate(Ty, Indices[i]);
     if (++i == Indices.size())
       return T;
-    ST = cast<StructType>(T);
+    Ty = T;
   }
+}
+
+unsigned IndexFlattener::getNumElements(Type *Ty) {
+  if (Ty->isAggregateType())
+    return flatten(Ty, getNumElementsOfAggregate(Ty));
+  return !Ty->isVoidTy();
 }
 
 /***********************************************************************
  * IndexFlattener::flattenArg : flatten an arg in a function or call
  *
  * This calculates the total number of flattened indices used up by previous
- * args. If all previous args are not struct type, then this just returns the
+ * args. If all previous args are not aggregate type, then this just returns the
  * arg index.
  */
 unsigned IndexFlattener::flattenArg(FunctionType *FT, unsigned ArgIndex)
@@ -1962,13 +1988,13 @@ void SimpleValue::dump() const
 void SimpleValue::print(raw_ostream &OS) const
 {
   OS << V->getName();
-  if (Index || isa<StructType>(V->getType()))
+  if (Index || V->getType()->isAggregateType())
     OS << "#" << Index;
 }
 void SimpleValue::printName(raw_ostream &OS) const
 {
   OS << V->getName();
-  if (Index || isa<StructType>(V->getType()))
+  if (Index || V->getType()->isAggregateType())
     OS << "#" << Index;
 }
 

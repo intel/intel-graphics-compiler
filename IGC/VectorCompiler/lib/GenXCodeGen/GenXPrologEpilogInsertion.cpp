@@ -306,7 +306,7 @@ static unsigned getTypeSizeNoPadding(Type *Ty, const DataLayout *DL) {
   return TotalSize;
 }
 
-// FIXME: bool InternalCC might be replaced with llvm::CallingConv but firslty
+// FIXME: bool InternalCC might be replaced with llvm::CallingConv but firstly
 // we should create/adapt some stack analyzes.
 void ArgsAnalyzer::analyze(const FunctionType &FTy, bool InternalCC) {
   clear();
@@ -319,8 +319,8 @@ void ArgsAnalyzer::analyze(const FunctionType &FTy, bool InternalCC) {
     IGC_ASSERT_MESSAGE(calcPadding(StackBytesUsedForArgs, OWordBytes) == 0,
                        "Must be oword aligned");
     Type *ArgTy = FTy.getParamType(i);
-    // FIXME: Do we have a way to unambiguously understand whether a struct type
-    // satisfies the IGC calling conv or not?
+    // FIXME: Do we have a way to unambiguously understand whether an aggregate
+    // type satisfies the IGC calling conv or not?
     unsigned ArgSize = getTypeSizeNoPadding(ArgTy, &DL);
     IGC_ASSERT_MESSAGE(ArgSize, "Arg size cannot be zero");
     bool Overflow = ArgRegBytesUsed + ArgSize > ArgRegByteSize;
@@ -338,7 +338,7 @@ void ArgsAnalyzer::analyze(const FunctionType &FTy, bool InternalCC) {
         IGC_ASSERT_MESSAGE(InternalCC,
                            "IGC calling convention does not allow passing "
                            "aggregate operands by value on stack");
-        // Do not pack structs when passing on stack.
+        // Do not pack aggregates when passing on stack.
         ArgSize = vc::getTypeSize(ArgTy, &DL).inBytes();
       }
       StackBytesUsedForArgs += ArgSize;
@@ -933,19 +933,15 @@ Value *GenXPrologEpilogInsertion::readAggrFromReg(Type &Ty,
                                                   PreDefined_Vars RegID,
                                                   unsigned RegSize) const {
   IGC_ASSERT(Ty.isAggregateType());
-  IGC_ASSERT_MESSAGE(
-      Ty.isStructTy(),
-      "Passing non-struct aggregates on register is not supported");
-  auto &STy = cast<StructType>(Ty);
 
-  unsigned AggrNumElts = IndexFlattener::getNumElements(&STy);
+  unsigned AggrNumElts = IndexFlattener::getNumElements(&Ty);
   unsigned OffsetInAggr = 0;
-  Value *StructRes = UndefValue::get(&STy);
+  Value *AggrRes = UndefValue::get(&Ty);
   for (unsigned i = 0; i < AggrNumElts; ++i) {
-    Type *EltTy = IndexFlattener::getElementType(&STy, i);
+    Type *EltTy = IndexFlattener::getElementType(&Ty, i);
     auto EltTySize = vc::getTypeSize(EltTy, DL);
 
-    // Reading each struct elements as a vector of bytes.
+    // Reading each aggregate element as a vector of bytes.
     Type *EltTyAsBytes =
         IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), EltTySize.inBytes());
     Value *Read = readNonAggrFromReg(*EltTyAsBytes, OffsetInReg + OffsetInAggr,
@@ -958,12 +954,12 @@ Value *GenXPrologEpilogInsertion::readAggrFromReg(Type &Ty,
     OffsetInAggr += EltTySize.inBytes();
 
     SmallVector<unsigned, 4> Indices;
-    IndexFlattener::unflatten(&STy, i, &Indices);
+    IndexFlattener::unflatten(&Ty, i, &Indices);
 
-    StructRes = IRB.CreateInsertValue(StructRes, Read, Indices);
+    AggrRes = IRB.CreateInsertValue(AggrRes, Read, Indices);
   }
 
-  return StructRes;
+  return AggrRes;
 }
 
 void GenXPrologEpilogInsertion::passArgsInReg(CallInst &CI,
@@ -1039,21 +1035,18 @@ void GenXPrologEpilogInsertion::passAggrInReg(Value &Op, unsigned OffsetInReg,
                                               PreDefined_Vars RegID,
                                               unsigned RegSize) const {
   IGC_ASSERT(Op.getType()->isAggregateType());
-  auto *OpTy = dyn_cast<StructType>(Op.getType());
-  IGC_ASSERT_MESSAGE(
-      OpTy, "Passing non-struct aggregates on register is not supported");
 
-  unsigned AggrNumElts = IndexFlattener::getNumElements(OpTy);
+  unsigned AggrNumElts = IndexFlattener::getNumElements(Op.getType());
   unsigned OffsetInAggr = 0;
   for (unsigned i = 0; i < AggrNumElts; ++i) {
     SmallVector<unsigned, 4> Indices;
-    IndexFlattener::unflatten(OpTy, i, &Indices);
+    IndexFlattener::unflatten(Op.getType(), i, &Indices);
 
     Value *Elt = IRB.CreateExtractValue(&Op, Indices);
     IGC_ASSERT_MESSAGE(!Elt->getType()->isAggregateType(),
                        "Stack call argument was not flattened correctly");
 
-    // Passing each struct element as a vector of bytes.
+    // Passing each aggregate element as a vector of bytes.
     auto EltTySize = vc::getTypeSize(Elt->getType(), DL);
     Type *EltTyAsBytes =
         IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), EltTySize.inBytes());
