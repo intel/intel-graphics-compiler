@@ -60,6 +60,7 @@ namespace IGC
             LIBMOD_DP_CONV_SP,       // dp_to_sp & sp_to_dp
             LIBMOD_DP_SQRT,          // dp_sqrt
             LIBMOD_SP_DIV,           // sp_div
+            LIBMOD_DP_CONV_I64,      // dp_to_[u]int64 & [u]int64_to_dp
 
             // This must be the last entry
             NUM_LIBMODS
@@ -83,6 +84,10 @@ namespace IGC
             FUNCTION_SP_TO_DP,
             FUNCTION_DP_SQRT,
             FUNCTION_SP_DIV,
+            FUNCTION_DP_TO_I64,
+            FUNCTION_DP_TO_UI64,
+            FUNCTION_I64_TO_DP,
+            FUNCTION_UI64_TO_DP,
 
             NUM_FUNCTION_IDS
         };
