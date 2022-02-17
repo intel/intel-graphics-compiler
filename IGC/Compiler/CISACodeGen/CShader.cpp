@@ -3098,7 +3098,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         if (IntrinsicInstruction && IntrinsicInstruction->getIntrinsicID() == Intrinsic::stacksave && hasSP())
         {
             auto pSP = GetSP();
-            var = GetNewVariable(pSP->GetNumberElement(), pSP->GetType(), pSP->GetAlign(), value->getName());
+            var = GetNewVariable(pSP->GetNumberElement(), pSP->GetType(), pSP->GetAlign(), pSP->IsUniform(), value->getName());
         }
         else
         {
