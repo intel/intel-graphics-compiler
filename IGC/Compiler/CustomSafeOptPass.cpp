@@ -3408,8 +3408,8 @@ Constant* IGCConstProp::replaceShaderConstant(Instruction* inst)
     bool directBuf = false;
     bool statelessBuf = false;
     bool bindlessBuf = false;
-
-    if (getConstantAddress(*inst, cl, ctx, directBuf, statelessBuf, bindlessBuf))
+    unsigned int tableOffset = 0;
+    if (getConstantAddress(*inst, cl, ctx, directBuf, statelessBuf, bindlessBuf, tableOffset))
     {
         if (size_in_bytes)
         {
