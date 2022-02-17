@@ -289,19 +289,27 @@ const ged_ins_field_position_fragment_t FragmentsTable48[2] =
     {  44,  45,   1,  12,     0x3000 }, // 0
     {  64,  91,   2,  -2,  0xfffffff } // 1
 }; // FragmentsTable48[]
-const ged_ins_field_position_fragment_t FragmentsTable49[2] =
+const ged_ins_field_position_fragment_t FragmentsTable49[5] =
 {
-    {  26,  28,   0,  26, 0x1c000000 }, // 0
-    {  30,  31,   0,  27, 0xc0000000 } // 1
+    {  34,  35,   1,   2,        0xc }, // 0
+    {  44,  45,   1,  10,     0x3000 }, // 1
+    {  47,  49,   1,  11,    0x38000 }, // 2
+    {  64,  65,   2,  -7,        0x3 }, // 3
+    {  80,  95,   2,   7, 0xffff0000 } // 4
 }; // FragmentsTable49[]
 const ged_ins_field_position_fragment_t FragmentsTable50[2] =
 {
+    {  26,  28,   0,  26, 0x1c000000 }, // 0
+    {  30,  31,   0,  27, 0xc0000000 } // 1
+}; // FragmentsTable50[]
+const ged_ins_field_position_fragment_t FragmentsTable51[2] =
+{
     {  43,  45,   1,  11,     0x3800 }, // 0
     {  35,  35,   1,   0,        0x8 } // 1
-}; // FragmentsTable50[]
-const ged_ins_field_position_fragment_t FragmentsTable51[3] =
+}; // FragmentsTable51[]
+const ged_ins_field_position_fragment_t FragmentsTable52[3] =
 {
     {  64,  65,   2,   0,        0x3 }, // 0
     {  83,  83,   2,  17,    0x80000 }, // 1
     {  96,  97,   3,  -3,        0x3 } // 2
-}; // FragmentsTable51[]
+}; // FragmentsTable52[]

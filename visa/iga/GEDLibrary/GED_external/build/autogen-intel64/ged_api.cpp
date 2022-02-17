@@ -2399,14 +2399,6 @@ const char* GED_GetEOTString(GED_EOT EOTValue)
 }
 #endif // GED_EOT_HIDDEN
 
-#ifndef GED_EVICT_HINT_HIDDEN
-const char* GED_GetEvictHintString(GED_EVICT_HINT EvictHintValue)
-{
-    return EvictHintEnumeration[EvictHintValue];
-
-}
-#endif // GED_EVICT_HINT_HIDDEN
-
 #ifndef GED_EXEC_MASK_OFFSET_CTRL_HIDDEN
 const char* GED_GetExecMaskOffsetCtrlString(GED_EXEC_MASK_OFFSET_CTRL ExecMaskOffsetCtrlValue)
 {
@@ -2574,14 +2566,6 @@ const char* GED_GetSrcModString(GED_SRC_MOD SrcModValue)
 
 }
 #endif // GED_SRC_MOD_HIDDEN
-
-#ifndef GED_STORE_HINT_HIDDEN
-const char* GED_GetStoreHintString(GED_STORE_HINT StoreHintValue)
-{
-    return StoreHintEnumeration[StoreHintValue];
-
-}
-#endif // GED_STORE_HINT_HIDDEN
 
 #ifndef GED_SUB_BYTE_PRECISION_HIDDEN
 const char* GED_GetSubBytePrecisionString(GED_SUB_BYTE_PRECISION SubBytePrecisionValue)

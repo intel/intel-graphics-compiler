@@ -427,7 +427,6 @@ EXPORTS
   GED_GetDpVectSizeString
   GED_GetDstChanEnString
   GED_GetEOTString
-  GED_GetEvictHintString
   GED_GetExecMaskOffsetCtrlString
   GED_GetExecutionDataTypeString
   GED_GetFusionCtrlString
@@ -449,7 +448,6 @@ EXPORTS
   GED_GetSIMDModeString
   GED_GetSlotGroupString
   GED_GetSrcModString
-  GED_GetStoreHintString
   GED_GetSubBytePrecisionString
   GED_GetSubFuncIDString
   GED_GetSwizzleString

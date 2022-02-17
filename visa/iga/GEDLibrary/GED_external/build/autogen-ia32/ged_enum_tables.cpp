@@ -1355,7 +1355,7 @@ const GED_DATA_TYPE* DataTypeTable33[8] =
     &DataTypeVar17, // 0
     &DataTypeVar10, // 1
     NULL, // 2
-    NULL, // 3
+    &DataTypeVar6, // 3
     NULL, // 4
     &DataTypeVar15, // 5
     &DataTypeVar18, // 6
@@ -1755,38 +1755,6 @@ const GED_EOT* EOTTable0[2] =
     &EOTVar0, // 0
     &EOTVar1 // 1
 }; // EOTTable0[]
-static GED_EVICT_HINT EvictHintVar0 = (GED_EVICT_HINT)0;
-static GED_EVICT_HINT EvictHintVar1 = (GED_EVICT_HINT)1;
-static GED_EVICT_HINT EvictHintVar2 = (GED_EVICT_HINT)2;
-static GED_EVICT_HINT EvictHintVar3 = (GED_EVICT_HINT)3;
-static GED_EVICT_HINT EvictHintVar4 = (GED_EVICT_HINT)4;
-static GED_EVICT_HINT EvictHintVar5 = (GED_EVICT_HINT)5;
-static GED_EVICT_HINT EvictHintVar6 = (GED_EVICT_HINT)6;
-const GED_EVICT_HINT* EvictHintTable0[8] =
-{
-    &EvictHintVar0, // 0
-    &EvictHintVar1, // 1
-    &EvictHintVar2, // 2
-    &EvictHintVar3, // 3
-    &EvictHintVar4, // 4
-    &EvictHintVar5, // 5
-    &EvictHintVar6, // 6
-    NULL // 7
-}; // EvictHintTable0[]
-const GED_EVICT_HINT* EvictHintTable1[4] =
-{
-    &EvictHintVar0, // 0
-    &EvictHintVar1, // 1
-    &EvictHintVar2, // 2
-    &EvictHintVar3 // 3
-}; // EvictHintTable1[]
-const GED_EVICT_HINT* EvictHintTable2[4] =
-{
-    &EvictHintVar0, // 0
-    &EvictHintVar1, // 1
-    &EvictHintVar4, // 2
-    &EvictHintVar5 // 3
-}; // EvictHintTable2[]
 static GED_EXEC_MASK_OFFSET_CTRL ExecMaskOffsetCtrlVar0 = (GED_EXEC_MASK_OFFSET_CTRL)0;
 static GED_EXEC_MASK_OFFSET_CTRL ExecMaskOffsetCtrlVar1 = (GED_EXEC_MASK_OFFSET_CTRL)1;
 static GED_EXEC_MASK_OFFSET_CTRL ExecMaskOffsetCtrlVar2 = (GED_EXEC_MASK_OFFSET_CTRL)2;
@@ -1930,6 +1898,25 @@ const GED_MATH_FC* MathFCTable2[16] =
     &MathFCVar5, // 6
     &MathFCVar6, // 7
     NULL, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    &MathFCVar12, // 14
+    &MathFCVar13 // 15
+}; // MathFCTable2[]
+const GED_MATH_FC* MathFCTable3[16] =
+{
+    NULL, // 0
+    &MathFCVar0, // 1
+    &MathFCVar1, // 2
+    &MathFCVar2, // 3
+    &MathFCVar3, // 4
+    &MathFCVar4, // 5
+    &MathFCVar5, // 6
+    &MathFCVar6, // 7
+    NULL, // 8
     &MathFCVar7, // 9
     &MathFCVar8, // 10
     &MathFCVar9, // 11
@@ -1937,7 +1924,7 @@ const GED_MATH_FC* MathFCTable2[16] =
     &MathFCVar11, // 13
     NULL, // 14
     NULL // 15
-}; // MathFCTable2[]
+}; // MathFCTable3[]
 static GED_MATH_MACRO_EXT MathMacroExtVar0 = (GED_MATH_MACRO_EXT)0;
 static GED_MATH_MACRO_EXT MathMacroExtVar1 = (GED_MATH_MACRO_EXT)1;
 static GED_MATH_MACRO_EXT MathMacroExtVar2 = (GED_MATH_MACRO_EXT)2;
@@ -3921,6 +3908,7 @@ static GED_PRECISION PrecisionVar8 = (GED_PRECISION)8;
 static GED_PRECISION PrecisionVar9 = (GED_PRECISION)9;
 static GED_PRECISION PrecisionVar10 = (GED_PRECISION)10;
 static GED_PRECISION PrecisionVar11 = (GED_PRECISION)11;
+static GED_PRECISION PrecisionVar12 = (GED_PRECISION)12;
 const GED_PRECISION* PrecisionTable0[32] =
 {
     &PrecisionVar0, // 0
@@ -4005,7 +3993,7 @@ const GED_PRECISION* PrecisionTable2[32] =
     NULL, // 9
     NULL, // 10
     NULL, // 11
-    NULL, // 12
+    &PrecisionVar11, // 12
     NULL, // 13
     NULL, // 14
     NULL, // 15
@@ -4017,7 +4005,7 @@ const GED_PRECISION* PrecisionTable2[32] =
     NULL, // 21
     NULL, // 22
     NULL, // 23
-    &PrecisionVar11, // 24
+    &PrecisionVar12, // 24
     NULL, // 25
     NULL, // 26
     NULL, // 27
@@ -4358,36 +4346,6 @@ const GED_SRC_MOD* SrcModTable1[4] =
     NULL, // 2
     NULL // 3
 }; // SrcModTable1[]
-static GED_STORE_HINT StoreHintVar0 = (GED_STORE_HINT)0;
-static GED_STORE_HINT StoreHintVar1 = (GED_STORE_HINT)1;
-static GED_STORE_HINT StoreHintVar2 = (GED_STORE_HINT)2;
-static GED_STORE_HINT StoreHintVar3 = (GED_STORE_HINT)3;
-static GED_STORE_HINT StoreHintVar4 = (GED_STORE_HINT)4;
-const GED_STORE_HINT* StoreHintTable0[8] =
-{
-    &StoreHintVar0, // 0
-    &StoreHintVar1, // 1
-    &StoreHintVar2, // 2
-    &StoreHintVar3, // 3
-    &StoreHintVar4, // 4
-    NULL, // 5
-    NULL, // 6
-    NULL // 7
-}; // StoreHintTable0[]
-const GED_STORE_HINT* StoreHintTable1[4] =
-{
-    &StoreHintVar0, // 0
-    &StoreHintVar1, // 1
-    &StoreHintVar2, // 2
-    &StoreHintVar3 // 3
-}; // StoreHintTable1[]
-const GED_STORE_HINT* StoreHintTable2[4] =
-{
-    &StoreHintVar0, // 0
-    &StoreHintVar1, // 1
-    &StoreHintVar4, // 2
-    &StoreHintVar3 // 3
-}; // StoreHintTable2[]
 static GED_SUB_BYTE_PRECISION SubBytePrecisionVar0 = (GED_SUB_BYTE_PRECISION)0;
 static GED_SUB_BYTE_PRECISION SubBytePrecisionVar1 = (GED_SUB_BYTE_PRECISION)1;
 static GED_SUB_BYTE_PRECISION SubBytePrecisionVar2 = (GED_SUB_BYTE_PRECISION)2;

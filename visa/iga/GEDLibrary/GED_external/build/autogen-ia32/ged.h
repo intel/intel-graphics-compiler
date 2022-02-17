@@ -5347,16 +5347,6 @@ extern const char* GED_CALLCONV GED_GetDstChanEnString(GED_DST_CHAN_EN DstChanEn
 extern const char* GED_CALLCONV GED_GetEOTString(GED_EOT EOTValue);
 
 /*!
- * Get the string representation for the given GED_EVICT_HINT enumerator. The function returns a NULL pointer for
- * GED_EVICT_HINT_INVALID.
- *
- * @param[in]       EvictHintValue The given GED_EVICT_HINT enumerator.
- *
- * @return      The requested string.
- */
-extern const char* GED_CALLCONV GED_GetEvictHintString(GED_EVICT_HINT EvictHintValue);
-
-/*!
  * Get the string representation for the given GED_EXEC_MASK_OFFSET_CTRL enumerator. The function returns a NULL pointer for
  * GED_EXEC_MASK_OFFSET_CTRL_INVALID.
  *
@@ -5556,16 +5546,6 @@ extern const char* GED_CALLCONV GED_GetSlotGroupString(GED_SLOT_GROUP SlotGroupV
  * @return      The requested string.
  */
 extern const char* GED_CALLCONV GED_GetSrcModString(GED_SRC_MOD SrcModValue);
-
-/*!
- * Get the string representation for the given GED_STORE_HINT enumerator. The function returns a NULL pointer for
- * GED_STORE_HINT_INVALID.
- *
- * @param[in]       StoreHintValue The given GED_STORE_HINT enumerator.
- *
- * @return      The requested string.
- */
-extern const char* GED_CALLCONV GED_GetStoreHintString(GED_STORE_HINT StoreHintValue);
 
 /*!
  * Get the string representation for the given GED_SUB_BYTE_PRECISION enumerator. The function returns a NULL pointer for

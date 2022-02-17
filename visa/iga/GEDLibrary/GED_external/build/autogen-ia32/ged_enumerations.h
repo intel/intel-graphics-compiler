@@ -288,17 +288,6 @@ typedef enum
 } GED_EOT;
 typedef enum
 {
-    GED_EVICT_HINT_None,     ///< XE.HPC.A, XE.HPC
-    GED_EVICT_HINT_Src0,     ///< XE.HPC.A, XE.HPC
-    GED_EVICT_HINT_Acc0,     ///< XE.HPC.A, XE.HPC
-    GED_EVICT_HINT_Src0Acc0, ///< XE.HPC.A, XE.HPC
-    GED_EVICT_HINT_Src1,     ///< XE.HPC.A, XE.HPC
-    GED_EVICT_HINT_Src0Src1, ///< XE.HPC.A, XE.HPC
-    GED_EVICT_HINT_Acc0Src1, ///< XE.HPC.A, XE.HPC
-    GED_EVICT_HINT_INVALID
-} GED_EVICT_HINT;
-typedef enum
-{
     GED_EXEC_MASK_OFFSET_CTRL_N1,      ///< 10, 11, 7, 7.5, 8, 8.1, 9
     GED_EXEC_MASK_OFFSET_CTRL_N2,      ///< 10, 11, 7, 7.5, 8, 8.1, 9
     GED_EXEC_MASK_OFFSET_CTRL_N3,      ///< 10, 11, 7, 7.5, 8, 8.1, 9
@@ -350,9 +339,9 @@ typedef enum
     GED_MATH_FC_COS,               ///< all
     GED_MATH_FC_FDIV,              ///< 10, 11, 7, 7.5, 8, 8.1, 9
     GED_MATH_FC_POW,               ///< 10, 11, 7, 7.5, 8, 8.1, 9
-    GED_MATH_FC_INT_DIV_BOTH,      ///< all
-    GED_MATH_FC_INT_DIV_QUOTIENT,  ///< all
-    GED_MATH_FC_INT_DIV_REMAINDER, ///< all
+    GED_MATH_FC_INT_DIV_BOTH,      ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
+    GED_MATH_FC_INT_DIV_QUOTIENT,  ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
+    GED_MATH_FC_INT_DIV_REMAINDER, ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
     GED_MATH_FC_INVM,              ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
     GED_MATH_FC_RSQRTM,            ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
     GED_MATH_FC_INVALID
@@ -555,6 +544,7 @@ typedef enum
     GED_PRECISION_f16,     ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
     GED_PRECISION_bf16,    ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
     GED_PRECISION_bf8,     ///< XE.HPC
+    GED_PRECISION_df,      ///< XE.HPC
     GED_PRECISION_tf32,    ///< XE.HPC
     GED_PRECISION_INVALID
 } GED_PRECISION;
@@ -660,15 +650,6 @@ typedef enum
     GED_SRC_MOD_Negative_Absolute, ///< all
     GED_SRC_MOD_INVALID
 } GED_SRC_MOD;
-typedef enum
-{
-    GED_STORE_HINT_None,    ///< XE.HPC.A, XE.HPC
-    GED_STORE_HINT_Src0,    ///< XE.HPC.A, XE.HPC
-    GED_STORE_HINT_Acc0,    ///< XE.HPC.A, XE.HPC
-    GED_STORE_HINT_Dst,     ///< XE.HPC.A, XE.HPC
-    GED_STORE_HINT_Src1,    ///< XE.HPC.A, XE.HPC
-    GED_STORE_HINT_INVALID
-} GED_STORE_HINT;
 typedef enum
 {
     GED_SUB_BYTE_PRECISION_None,    ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC

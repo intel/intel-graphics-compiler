@@ -357,20 +357,6 @@ const char* EOTEnumeration[3] =
 }; // EOTEnumeration[]
 #endif // GED_EOT_HIDDEN
 
-#ifndef GED_EVICT_HINT_HIDDEN
-const char* EvictHintEnumeration[8] =
-{
-    "None", // 0
-    "Src0", // 1
-    "Acc0", // 2
-    "Src0Acc0", // 3
-    "Src1", // 4
-    "Src0Src1", // 5
-    "Acc0Src1", // 6
-    NULL // 7
-}; // EvictHintEnumeration[]
-#endif // GED_EVICT_HINT_HIDDEN
-
 #ifndef GED_EXEC_MASK_OFFSET_CTRL_HIDDEN
 const char* ExecMaskOffsetCtrlEnumeration[15] =
 {
@@ -647,7 +633,7 @@ const char* OpcodeEnumeration[82] =
 #endif // GED_OPCODE_HIDDEN
 
 #ifndef GED_PRECISION_HIDDEN
-const char* PrecisionEnumeration[13] =
+const char* PrecisionEnumeration[14] =
 {
     "u8", // 0
     "u4", // 1
@@ -660,8 +646,9 @@ const char* PrecisionEnumeration[13] =
     "f16", // 8
     "bf16", // 9
     "bf8", // 10
-    "tf32", // 11
-    NULL // 12
+    "df", // 11
+    "tf32", // 12
+    NULL // 13
 }; // PrecisionEnumeration[]
 #endif // GED_PRECISION_HIDDEN
 
@@ -796,18 +783,6 @@ const char* SrcModEnumeration[5] =
     NULL // 4
 }; // SrcModEnumeration[]
 #endif // GED_SRC_MOD_HIDDEN
-
-#ifndef GED_STORE_HINT_HIDDEN
-const char* StoreHintEnumeration[6] =
-{
-    "None", // 0
-    "Src0", // 1
-    "Acc0", // 2
-    "Dst", // 3
-    "Src1", // 4
-    NULL // 5
-}; // StoreHintEnumeration[]
-#endif // GED_STORE_HINT_HIDDEN
 
 #ifndef GED_SUB_BYTE_PRECISION_HIDDEN
 const char* SubBytePrecisionEnumeration[8] =

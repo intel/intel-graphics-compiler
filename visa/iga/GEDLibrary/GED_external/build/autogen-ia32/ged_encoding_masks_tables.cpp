@@ -2166,24 +2166,35 @@ const ged_instruction_masks_entry_t EncodingMasksTable165[6] =
 }; // EncodingMasksTable165[]
 const ged_instruction_masks_entry_t EncodingMasksTable166[2] =
 {
-    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffff0003, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0x0000fffc, (void*)(g_uintptr_t)0xffffffff } }, // 0
-    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable127, (void*)GED_INS_FIELD_Src1RegFile } } // 1
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0x00000000 } }, // 0
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x0000fffc, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffff0003, (void*)(g_uintptr_t)0xffffffff } } // 1
 }; // EncodingMasksTable166[]
-const ged_instruction_masks_entry_t EncodingMasksTable167[4] =
+const ged_instruction_masks_entry_t EncodingMasksTable167[3] =
 {
-    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000080, (void*)(g_uintptr_t)0x0003300c, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffff7f, (void*)(g_uintptr_t)0xfffccff3, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff } }, // 0
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000080, (void*)(g_uintptr_t)0x0003b00c, (void*)(g_uintptr_t)0xffff0003, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffff7f, (void*)(g_uintptr_t)0xfffc4ff3, (void*)(g_uintptr_t)0x0000fffc, (void*)(g_uintptr_t)0xffffffff } }, // 0
     { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable166, (void*)GED_INS_FIELD_Src0IsImm } }, // 1
-    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable148, (void*)GED_INS_FIELD_Src0IsImm } }, // 2
-    { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff } } // 3
+    { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff } } // 2
 }; // EncodingMasksTable167[]
 const ged_instruction_masks_entry_t EncodingMasksTable168[2] =
 {
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffff0003, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0x0000fffc, (void*)(g_uintptr_t)0xffffffff } }, // 0
+    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable127, (void*)GED_INS_FIELD_Src1RegFile } } // 1
+}; // EncodingMasksTable168[]
+const ged_instruction_masks_entry_t EncodingMasksTable169[4] =
+{
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000080, (void*)(g_uintptr_t)0x0003300c, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffff7f, (void*)(g_uintptr_t)0xfffccff3, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff } }, // 0
+    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable168, (void*)GED_INS_FIELD_Src0IsImm } }, // 1
+    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable148, (void*)GED_INS_FIELD_Src0IsImm } }, // 2
+    { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff } } // 3
+}; // EncodingMasksTable169[]
+const ged_instruction_masks_entry_t EncodingMasksTable170[2] =
+{
     { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00030000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xfffcffff } }, // 0
     { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff } } // 1
-}; // EncodingMasksTable168[]
-const ged_instruction_masks_entry_t EncodingMasksTable169[3] =
+}; // EncodingMasksTable170[]
+const ged_instruction_masks_entry_t EncodingMasksTable171[3] =
 {
     { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x00000080, (void*)(g_uintptr_t)0x00000002, (void*)(g_uintptr_t)0x00080003, (void*)(g_uintptr_t)0x00000003, (void*)(g_uintptr_t)0xffffff7f, (void*)(g_uintptr_t)0xfffffffd, (void*)(g_uintptr_t)0xfff7fffc, (void*)(g_uintptr_t)0xfffffffc } }, // 0
-    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable168, (void*)GED_INS_FIELD_Src2IsImm } }, // 1
+    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable170, (void*)GED_INS_FIELD_Src2IsImm } }, // 1
     { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0x00000000, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff, (void*)(g_uintptr_t)0xffffffff } } // 2
-}; // EncodingMasksTable169[]
+}; // EncodingMasksTable171[]

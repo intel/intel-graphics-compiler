@@ -2166,24 +2166,35 @@ const ged_instruction_masks_entry_t EncodingMasksTable165[6] =
 }; // EncodingMasksTable165[]
 const ged_instruction_masks_entry_t EncodingMasksTable166[2] =
 {
-    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x00000000ffff0003, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xffffffff0000fffc } }, // 0
-    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable127, (void*)GED_INS_FIELD_Src1RegFile } } // 1
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0xffffffff00000000, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0x00000000ffffffff } }, // 0
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x000000000000fffc, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xffffffffffff0003 } } // 1
 }; // EncodingMasksTable166[]
-const ged_instruction_masks_entry_t EncodingMasksTable167[4] =
+const ged_instruction_masks_entry_t EncodingMasksTable167[3] =
 {
-    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0003300c00000080, (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0xfffccff3ffffff7f, (void*)(g_uintptr_t)0xffffffffffffffff } }, // 0
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0003b00c00000080, (void*)(g_uintptr_t)0x00000000ffff0003, (void*)(g_uintptr_t)0xfffc4ff3ffffff7f, (void*)(g_uintptr_t)0xffffffff0000fffc } }, // 0
     { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable166, (void*)GED_INS_FIELD_Src0IsImm } }, // 1
-    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable148, (void*)GED_INS_FIELD_Src0IsImm } }, // 2
-    { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xffffffffffffffff } } // 3
+    { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xffffffffffffffff } } // 2
 }; // EncodingMasksTable167[]
 const ged_instruction_masks_entry_t EncodingMasksTable168[2] =
 {
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x00000000ffff0003, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xffffffff0000fffc } }, // 0
+    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable127, (void*)GED_INS_FIELD_Src1RegFile } } // 1
+}; // EncodingMasksTable168[]
+const ged_instruction_masks_entry_t EncodingMasksTable169[4] =
+{
+    { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0003300c00000080, (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0xfffccff3ffffff7f, (void*)(g_uintptr_t)0xffffffffffffffff } }, // 0
+    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable168, (void*)GED_INS_FIELD_Src0IsImm } }, // 1
+    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable148, (void*)GED_INS_FIELD_Src0IsImm } }, // 2
+    { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xffffffffffffffff } } // 3
+}; // EncodingMasksTable169[]
+const ged_instruction_masks_entry_t EncodingMasksTable170[2] =
+{
     { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x0003000000000000, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xfffcffffffffffff } }, // 0
     { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xffffffffffffffff } } // 1
-}; // EncodingMasksTable168[]
-const ged_instruction_masks_entry_t EncodingMasksTable169[3] =
+}; // EncodingMasksTable170[]
+const ged_instruction_masks_entry_t EncodingMasksTable171[3] =
 {
     { GED_MASKS_TABLE_ENTRY_TYPE_MASKS,      { (void*)(g_uintptr_t)0x0000000200000080, (void*)(g_uintptr_t)0x0000000300080003, (void*)(g_uintptr_t)0xfffffffdffffff7f, (void*)(g_uintptr_t)0xfffffffcfff7fffc } }, // 0
-    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable168, (void*)GED_INS_FIELD_Src2IsImm } }, // 1
+    { GED_MASKS_TABLE_ENTRY_TYPE_NEXT_TABLE, { (void*)EncodingMasksTable170, (void*)GED_INS_FIELD_Src2IsImm } }, // 1
     { GED_MASKS_TABLE_ENTRY_TYPE_NO_MASKS,   { (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0x0000000000000000, (void*)(g_uintptr_t)0xffffffffffffffff, (void*)(g_uintptr_t)0xffffffffffffffff } } // 2
-}; // EncodingMasksTable169[]
+}; // EncodingMasksTable171[]

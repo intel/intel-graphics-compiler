@@ -61,7 +61,7 @@ static ged_field_restriction_t RestrictionVar43 = { GED_FIELD_RESTRICTIONS_TYPE_
 static ged_field_restriction_t RestrictionVar44 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { EOTTable0 } };
 static ged_field_restriction_t RestrictionVar45 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable35 } };
 static ged_field_restriction_t RestrictionVar46 = { GED_FIELD_RESTRICTIONS_TYPE_VALUE,      { (void*)(g_uintptr_t)16 } };
-static ged_field_restriction_t RestrictionVar47 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MathFCTable2 } };
+static ged_field_restriction_t RestrictionVar47 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MathFCTable3 } };
 static ged_field_restriction_t RestrictionVar48 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { RegFileTable4 } };
 static ged_field_restriction_t RestrictionVar49 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MaskCtrlTable1 } };
 static ged_field_restriction_t RestrictionVar50 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable1 } };
@@ -189,42 +189,43 @@ static ged_field_restriction_t RestrictionVar171 = { GED_FIELD_RESTRICTIONS_TYPE
 static ged_field_restriction_t RestrictionVar172 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MessageTypeTable10 } };
 static ged_field_restriction_t RestrictionVar173 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { SFIDTable1 } };
 static ged_field_restriction_t RestrictionVar174 = { GED_FIELD_RESTRICTIONS_TYPE_PADDING,    { (void*)(g_uintptr_t)0, (void*)(g_uintptr_t)2047 } };
-static ged_field_restriction_t RestrictionVar175 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpOpcodeTable0 } };
-static ged_field_restriction_t RestrictionVar176 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpAddrTypeTable0 } };
-static ged_field_restriction_t RestrictionVar177 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpVectSizeTable0 } };
-static ged_field_restriction_t RestrictionVar178 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpFlushTypeTable0 } };
-static ged_field_restriction_t RestrictionVar179 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpTransposeTable0 } };
-static ged_field_restriction_t RestrictionVar180 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpDataSizeTable0 } };
-static ged_field_restriction_t RestrictionVar181 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpFenceScopeTable0 } };
-static ged_field_restriction_t RestrictionVar182 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpAddrSizeTable0 } };
-static ged_field_restriction_t RestrictionVar183 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MessageTypeTable11 } };
-static ged_field_restriction_t RestrictionVar184 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MessageTypeTable12 } };
-static ged_field_restriction_t RestrictionVar185 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { ChannelOffsetTable1 } };
-static ged_field_restriction_t RestrictionVar186 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { PredCtrlTable2 } };
-static ged_field_restriction_t RestrictionVar187 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable22 } };
-static ged_field_restriction_t RestrictionVar188 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable27 } };
-static ged_field_restriction_t RestrictionVar189 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable25 } };
-static ged_field_restriction_t RestrictionVar190 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable24 } };
-static ged_field_restriction_t RestrictionVar191 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable26 } };
-static ged_field_restriction_t RestrictionVar192 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { SyncFCTable1 } };
-static ged_field_restriction_t RestrictionVar193 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable16 } };
-static ged_field_restriction_t RestrictionVar194 = { GED_FIELD_RESTRICTIONS_TYPE_RANGE,      { (void*)(g_uintptr_t)0, (void*)(g_uintptr_t)3 } };
-static ged_field_restriction_t RestrictionVar195 = { GED_FIELD_RESTRICTIONS_TYPE_RANGE,      { (void*)(g_uintptr_t)0, (void*)(g_uintptr_t)1 } };
-static ged_field_restriction_t RestrictionVar196 = { GED_FIELD_RESTRICTIONS_TYPE_RANGE,      { (void*)(g_uintptr_t)48, (void*)(g_uintptr_t)51 } };
-static ged_field_restriction_t RestrictionVar197 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable29 } };
-static ged_field_restriction_t RestrictionVar198 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable28 } };
-static ged_field_restriction_t RestrictionVar199 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { SubBytePrecisionTable4 } };
-static ged_field_restriction_t RestrictionVar200 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { SubBytePrecisionTable3 } };
-static ged_field_restriction_t RestrictionVar201 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpOpcodeTable1 } };
-static ged_field_restriction_t RestrictionVar202 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpFlushTypeTable1 } };
-static ged_field_restriction_t RestrictionVar203 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpFenceScopeTable1 } };
-static ged_field_restriction_t RestrictionVar204 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable31 } };
-static ged_field_restriction_t RestrictionVar205 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable32 } };
-static ged_field_restriction_t RestrictionVar206 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable30 } };
-static ged_field_restriction_t RestrictionVar207 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable18 } };
-static ged_field_restriction_t RestrictionVar208 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable17 } };
-static ged_field_restriction_t RestrictionVar209 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable33 } };
-static ged_field_restriction_t RestrictionVar210 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { PrecisionTable2 } };
+static ged_field_restriction_t RestrictionVar175 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MathFCTable2 } };
+static ged_field_restriction_t RestrictionVar176 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpOpcodeTable0 } };
+static ged_field_restriction_t RestrictionVar177 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpAddrTypeTable0 } };
+static ged_field_restriction_t RestrictionVar178 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpVectSizeTable0 } };
+static ged_field_restriction_t RestrictionVar179 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpFlushTypeTable0 } };
+static ged_field_restriction_t RestrictionVar180 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpTransposeTable0 } };
+static ged_field_restriction_t RestrictionVar181 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpDataSizeTable0 } };
+static ged_field_restriction_t RestrictionVar182 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpFenceScopeTable0 } };
+static ged_field_restriction_t RestrictionVar183 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpAddrSizeTable0 } };
+static ged_field_restriction_t RestrictionVar184 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MessageTypeTable11 } };
+static ged_field_restriction_t RestrictionVar185 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { MessageTypeTable12 } };
+static ged_field_restriction_t RestrictionVar186 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { ChannelOffsetTable1 } };
+static ged_field_restriction_t RestrictionVar187 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { PredCtrlTable2 } };
+static ged_field_restriction_t RestrictionVar188 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable22 } };
+static ged_field_restriction_t RestrictionVar189 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable27 } };
+static ged_field_restriction_t RestrictionVar190 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable25 } };
+static ged_field_restriction_t RestrictionVar191 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable24 } };
+static ged_field_restriction_t RestrictionVar192 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable26 } };
+static ged_field_restriction_t RestrictionVar193 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { SyncFCTable1 } };
+static ged_field_restriction_t RestrictionVar194 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable16 } };
+static ged_field_restriction_t RestrictionVar195 = { GED_FIELD_RESTRICTIONS_TYPE_RANGE,      { (void*)(g_uintptr_t)0, (void*)(g_uintptr_t)3 } };
+static ged_field_restriction_t RestrictionVar196 = { GED_FIELD_RESTRICTIONS_TYPE_RANGE,      { (void*)(g_uintptr_t)0, (void*)(g_uintptr_t)1 } };
+static ged_field_restriction_t RestrictionVar197 = { GED_FIELD_RESTRICTIONS_TYPE_RANGE,      { (void*)(g_uintptr_t)48, (void*)(g_uintptr_t)51 } };
+static ged_field_restriction_t RestrictionVar198 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable29 } };
+static ged_field_restriction_t RestrictionVar199 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable28 } };
+static ged_field_restriction_t RestrictionVar200 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { SubBytePrecisionTable4 } };
+static ged_field_restriction_t RestrictionVar201 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { SubBytePrecisionTable3 } };
+static ged_field_restriction_t RestrictionVar202 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpOpcodeTable1 } };
+static ged_field_restriction_t RestrictionVar203 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpFlushTypeTable1 } };
+static ged_field_restriction_t RestrictionVar204 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DpFenceScopeTable1 } };
+static ged_field_restriction_t RestrictionVar205 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable31 } };
+static ged_field_restriction_t RestrictionVar206 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable32 } };
+static ged_field_restriction_t RestrictionVar207 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable30 } };
+static ged_field_restriction_t RestrictionVar208 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable18 } };
+static ged_field_restriction_t RestrictionVar209 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { unsignedTable17 } };
+static ged_field_restriction_t RestrictionVar210 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable33 } };
+static ged_field_restriction_t RestrictionVar211 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { PrecisionTable2 } };
 const ged_field_restriction_t* RestrictionTable0[2] =
 {
     &RestrictionVar0, // 0
@@ -1280,3 +1281,8 @@ const ged_field_restriction_t* RestrictionTable210[2] =
     &RestrictionVar210, // 0
     NULL // 1
 }; // RestrictionTable210[]
+const ged_field_restriction_t* RestrictionTable211[2] =
+{
+    &RestrictionVar211, // 0
+    NULL // 1
+}; // RestrictionTable211[]
