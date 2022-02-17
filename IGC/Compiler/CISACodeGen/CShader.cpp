@@ -2450,7 +2450,7 @@ CVariable* CShader::getOrCreateReturnSymbol(llvm::Function* F)
     if (F->isDeclaration() || retType->isVoidTy())
         return nullptr;
 
-    IGC_ASSERT(retType->isSingleValueType());
+    IGC_ASSERT(retType->isSingleValueType() || retType->isStructTy());
     VISA_Type type = GetType(retType);
     uint16_t nElts = (uint16_t)GetNumElts(retType, false);
     e_alignment align = getGRFAlignment();

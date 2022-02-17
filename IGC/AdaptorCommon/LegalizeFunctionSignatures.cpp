@@ -73,6 +73,7 @@ LegalizeFunctionSignatures::LegalizeFunctionSignatures()
 
 static const unsigned int MAX_STACKCALL_RETVAL_SIZE_IN_BITS = 64;
 static const unsigned int MAX_STRUCT_ARGUMENT_SIZE_IN_BITS = 128;
+static const unsigned int MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS = 512;
 
 bool LegalizeFunctionSignatures::runOnModule(Module& M)
 {
@@ -137,7 +138,7 @@ inline Type* LegalizedIntVectorType(const Module& M, Type* ty)
 }
 
 // Returns true for small structures that only contain primitive types
-inline bool isPromotableStructType(const Module& M, const Type* ty, bool isReturnValue = false)
+inline bool isPromotableStructType(const Module& M, const Type* ty, bool isStackCall, bool isReturnValue = false)
 {
     if (IGC_IS_FLAG_DISABLED(EnableByValStructArgPromotion))
         return false;
@@ -145,13 +146,15 @@ inline bool isPromotableStructType(const Module& M, const Type* ty, bool isRetur
     // We can separate promoting argument and return value sizes.
     // Return value is limited to 64-bits due to vISA stackcall conventions.
     // Argument is not limited to 64-bits, but can be adjusted to minimize spill.
-    const unsigned int maxSize = isReturnValue ? MAX_STACKCALL_RETVAL_SIZE_IN_BITS : MAX_STRUCT_ARGUMENT_SIZE_IN_BITS;
+    const unsigned int maxSize = isStackCall ? (isReturnValue ? MAX_STACKCALL_RETVAL_SIZE_IN_BITS : MAX_STRUCT_ARGUMENT_SIZE_IN_BITS)
+        : MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS;
+
     const DataLayout& DL = M.getDataLayout();
 
     if (ty->isPointerTy())
     {
         StructType* sTy = dyn_cast<StructType>(ty->getPointerElementType());
-        if (sTy && DL.getStructLayout(sTy)->getSizeInBits() < maxSize)
+        if (sTy && DL.getStructLayout(sTy)->getSizeInBits() <= maxSize)
         {
             for (const auto* EltTy : sTy->elements())
             {
@@ -175,7 +178,7 @@ inline bool FunctionHasPromotableSRetArg(const Module& M, const Function* F)
     if (F->getReturnType()->isVoidTy() &&
         !F->arg_empty() &&
         F->arg_begin()->hasStructRetAttr() &&
-        isPromotableStructType(M, F->arg_begin()->getType(), true))
+        isPromotableStructType(M, F->arg_begin()->getType(), F->hasFnAttribute("visaStackCall"), true))
     {
         return true;
     }
@@ -262,7 +265,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
             legalizeReturnType = true;
             argTypes.push_back(PointerType::get(pFunc->getReturnType(), 0));
         }
-        else if (isStackCall && FunctionHasPromotableSRetArg(M, pFunc))
+        else if (FunctionHasPromotableSRetArg(M, pFunc))
         {
             promoteSRetType = true;
             ai++; // Skip adding the first arg
@@ -275,9 +278,8 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
                 fixArgType = true;
                 argTypes.push_back(LegalizedIntVectorType(M, ai->getType()));
             }
-            else if (isStackCall &&
-                ai->hasByValAttr() &&
-                isPromotableStructType(M, ai->getType()))
+            else if (ai->hasByValAttr() &&
+                isPromotableStructType(M, ai->getType(), isStackCall))
             {
                 fixArgType = true;
                 argTypes.push_back(PromotedStructValueType(M, ai->getType()));
@@ -341,7 +343,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 legalizeReturnType = true;
                 ++NewArgIt; // Skip first argument that we added.
             }
-            else if (isStackCall && FunctionHasPromotableSRetArg(M, pFunc)) {
+            else if (FunctionHasPromotableSRetArg(M, pFunc)) {
                 promoteSRetType = true;
             }
 
@@ -366,9 +368,8 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                     Value* trunc = builder.CreateTrunc(&*NewArgIt, OldArgIt->getType());
                     VMap[&*OldArgIt] = trunc;
                 }
-                else if (isStackCall &&
-                    OldArgIt->hasByValAttr() &&
-                    isPromotableStructType(M, OldArgIt->getType()))
+                else if (OldArgIt->hasByValAttr() &&
+                    isPromotableStructType(M, OldArgIt->getType(), isStackCall))
                 {
                     // remove "byval" attrib since it is now pass-by-value
                     NewArgIt->removeAttr(llvm::Attribute::ByVal);
@@ -514,11 +515,10 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         ArgAttrVec.push_back(retAttrib);
         legalizeReturnType = true;
     }
-    else if (isStackCall &&
-        callInst->getType()->isVoidTy() &&
+    else if (callInst->getType()->isVoidTy() &&
         callInst->getNumArgOperands() > 0 &&
         callInst->paramHasAttr(0, llvm::Attribute::StructRet) &&
-        isPromotableStructType(M, callInst->getArgOperand(0)->getType(), true /* retval */))
+        isPromotableStructType(M, callInst->getArgOperand(0)->getType(), isStackCall, true /* retval */))
     {
         opNum++; // Skip the first call operand
         promoteSRetType = true;
@@ -537,9 +537,8 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             ArgAttrVec.push_back(AttributeSet());
             fixArgType = true;
         }
-        else if (isStackCall &&
-            callInst->paramHasAttr(opNum, llvm::Attribute::ByVal) &&
-            isPromotableStructType(M, arg->getType()))
+        else if (callInst->paramHasAttr(opNum, llvm::Attribute::ByVal) &&
+            isPromotableStructType(M, arg->getType(), isStackCall))
         {
             // Map the new operand to the loaded value of the struct pointer
             IGCLLVM::IRBuilder<> builder(callInst);
