@@ -173,6 +173,13 @@ public:
   bool runOnFunction(Function &F) override;
 };
 
+// Creates ptrtoint instruction that truncates pointer to i32
+// Instructions are inserted via the provided \p Builder.
+Value *createPtrToInt32(Value &V, IRBuilder<> &IRB) {
+  auto *IntPtrTy = IRB.getInt32Ty();
+  return IRB.CreatePtrToInt(&V, IntPtrTy, V.getName() + ".p2i32");
+}
+
 } // end namespace
 
 char GenXLoadStoreLowering::ID = 0;
@@ -736,8 +743,7 @@ Instruction *GenXLoadStoreLowering::createGatherScaled(
                      "number of blocks can only be 1, 2 or 4");
   Constant *Predicate = IGCLLVM::ConstantFixedVector::getSplat(
       GatherTy->getNumElements(), IRB.getTrue());
-  Value *GlobalOffset =
-      vc::createNopPtrToInt(*OrigLoad.getPointerOperand(), IRB, *DL_);
+  Value *GlobalOffset = createPtrToInt32(*OrigLoad.getPointerOperand(), IRB);
   Value *ElementOffsets =
       FormEltsOffsetVector(GatherTy->getNumElements(), NumBlocks, IRB);
 
@@ -837,7 +843,7 @@ Instruction *GenXLoadStoreLowering::createScatterScaled(
       ValueOpTy->getNumElements(), Builder.getTrue());
 
   Value *GlobalOffset =
-      vc::createNopPtrToInt(*OrigStore.getPointerOperand(), Builder, *DL_);
+      createPtrToInt32(*OrigStore.getPointerOperand(), Builder);
   Value *ElementOffsets =
       FormEltsOffsetVector(ValueOpTy->getNumElements(), NumBlocks, Builder);
 
