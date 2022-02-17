@@ -1828,13 +1828,15 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f32_i32_i32_f32, )( __g
 
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f32_i32_i32_f32, )( __local float *Pointer, int Scope, int Semantics, float Value)
 {
+    // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     float orig;
-    FENCE_PRE_OP(Scope, Semantics, false)
-    LOCAL_SPINLOCK_START()
-    orig = *Pointer;
-    *Pointer = orig + Value;
-    LOCAL_SPINLOCK_END()
-    FENCE_POST_OP(Scope, Semantics, false)
+    float desired;
+    do {
+        orig = as_float(SPIRV_BUILTIN(AtomicLoad, _p3i32_i32_i32, )((__local int*)Pointer, Scope, Semantics));
+        desired = orig + Value;
+    } while(as_int(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )(
+                                (__local int*)Pointer, Scope, Semantics, Semantics,
+                                as_int(desired), as_int(orig)));
     return orig;
 }
 
