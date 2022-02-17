@@ -2161,13 +2161,4 @@ void CoalesceSpillFills::dumpKernel(unsigned int v1, unsigned int v2)
     }
 }
 
-void CoalesceSpillFills::computeAddressTakenDcls()
-{
-    for (auto dcl : kernel.Declares)
-    {
-        auto addrSpillFill = dcl->getAddrTakenSpillFill();
-        if (addrSpillFill)
-            addrTakenSpillFillDcl.insert(addrSpillFill);
-    }
-}
 }

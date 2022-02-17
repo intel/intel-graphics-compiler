@@ -6301,19 +6301,9 @@ int G4_AddrExp::eval()
 {
     int byteAddr = 0;
 
-    if (m_addressedReg->getPhyReg() == NULL)
-    {
-        // address taken range is spilled
-        G4_Declare* addrTakenSpillFillDcl = m_addressedReg->getDeclare()->getAddrTakenSpillFill();
-        MUST_BE_TRUE(addrTakenSpillFillDcl != NULL, "No addr taken spill fill register found!");
-        byteAddr = addrTakenSpillFillDcl->getGRFBaseOffset();
-    }
-    else
-    {
-        byteAddr = m_addressedReg->getByteAddr(); //let's assume the unsigned=>int won't overflow for now.
-    }
+    MUST_BE_TRUE(m_addressedReg->getPhyReg()  != NULL, "No addr takenregister found!");
 
-    // byteAddr += offsetInEle * addressedReg->getDeclare()->getElemSize();
+    byteAddr = m_addressedReg->getByteAddr(); //let's assume the unsigned=>int won't overflow for now.
     byteAddr += m_offset;
 
     return byteAddr;

@@ -1887,8 +1887,6 @@ class G4_Declare
     // ToDo: they should be moved out of G4_Declare and stored as maps in RA/spill
     G4_Declare* spillDCL;  // if an addr/flag var is spilled, SpillDCL is the location (GRF) holding spilled value
 
-    G4_Declare* addrTakenSpillFillDcl; // dcl to use for address taken spill/fill temp
-
     // this should only be called by builder
     void setNumberFlagElements(uint8_t numEl)
     {
@@ -1927,8 +1925,6 @@ public:
 
         spillFlag = false;
         spillDCL = NULL;
-
-        addrTakenSpillFillDcl = NULL;
 
         startID = 0;
 
@@ -1985,14 +1981,6 @@ public:
         int byteSize = numrows * numEltPerGRF<Type_UB>();
         setTotalElems(byteSize / getElemSize());
     }
-
-    void setAddrTakenSpillFill(G4_Declare* dcl)
-    {
-        addrTakenSpillFillDcl = dcl;
-    }
-
-    const G4_Declare* getAddrTakenSpillFill() const { return addrTakenSpillFillDcl; }
-          G4_Declare* getAddrTakenSpillFill()       { return addrTakenSpillFillDcl; }
 
     // declare this to be aliased to dcl+offset
     // This is an error if dcl+offset is not aligned to the type of this dcl
@@ -3639,11 +3627,11 @@ class G4_AddrExp final : public G4_Operand
 {
     G4_RegVar* const m_addressedReg;
     int m_offset;  //current implementation: byte offset
-    G4_Declare* addrTakenSpillFillDcl; // dcl to use for address taken spill/fill temp
+    G4_AddrExp* addrTakenSpillFill; // dcl to use for address taken spill/fill temp
 
 public:
     G4_AddrExp(G4_RegVar *reg, int offset, G4_Type ty)
-      : G4_Operand(G4_Operand::addrExp, ty), m_addressedReg(reg), addrTakenSpillFillDcl(nullptr),
+      : G4_Operand(G4_Operand::addrExp, ty), m_addressedReg(reg), addrTakenSpillFill(nullptr),
         m_offset(offset) {}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
@@ -3652,10 +3640,10 @@ public:
           G4_RegVar* getRegVar() { return m_addressedReg; }
     int getOffset() const { return m_offset; }
     void setOffset(int tOffset) { m_offset = tOffset; }
-    G4_Declare* getAddrTakenSpillFill() { return addrTakenSpillFillDcl; }
-    void setAddrTakenSpillFill(G4_Declare* dcl)
+    G4_AddrExp* getAddrTakenSpillFill() { return addrTakenSpillFill; }
+    void setAddrTakenSpillFill(G4_AddrExp* addrExp)
     {
-        addrTakenSpillFillDcl = dcl;
+        addrTakenSpillFill = addrExp;
     }
 
     int eval();
