@@ -249,6 +249,7 @@ namespace IGC
     llvm::FunctionPass* createMarkReadOnlyLoadPass();
     llvm::FunctionPass* createLogicalAndToBranchPass();
     llvm::FunctionPass* createCleanPHINodePass();
+    llvm::FunctionPass* createMergeMemFromBranchOptPass();
     llvm::FunctionPass* createInsertBranchOptPass();
 
 } // namespace IGC

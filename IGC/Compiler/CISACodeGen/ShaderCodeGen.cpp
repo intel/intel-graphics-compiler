@@ -2169,6 +2169,8 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createIntDivConstantReductionPass());
         }
 
+        mpm.add(createMergeMemFromBranchOptPass());
+
         mpm.add(createConstantMergePass());
 
         mpm.add(CreateMCSOptimization());
