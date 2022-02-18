@@ -801,7 +801,7 @@ namespace IGC
     }
 
     // Get constant address from load/ldraw instruction
-    bool getConstantAddress(llvm::Instruction& I, ConstantAddress& cl, CodeGenContext* pContext, bool& directBuf, bool& statelessBuf, bool& bindlessBuf, unsigned int& TableOffset)
+    bool getConstantAddress(llvm::Instruction& I, ConstantAddress& cl, CodeGenContext* pContext, bool& directBuf, bool& statelessBuf, bool& bindlessBuf)
     {
         // Check if the load instruction is with constant buffer address
         unsigned as;
@@ -829,23 +829,7 @@ namespace IGC
             as = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
             ptrVal = ldRaw->getResourceValue();
             offsetVal = ldRaw->getOffsetValue();
-            bindlessBuf = (DecodeBufferType(as) == SSH_BINDLESS_CONSTANT_BUFFER) ||
-                                    (DecodeBufferType(as) == BINDLESS_CONSTANT_BUFFER);
-            if (bindlessBuf)
-            {
-                if (IntToPtrInst* ptrToInt = dyn_cast<IntToPtrInst>(ptrVal))
-                {
-                    if (Instruction* instr = dyn_cast<Instruction>(ptrToInt->getOperand(0)))
-                    {
-                        if (instr->getOpcode() == Instruction::Add &&
-                            isa<ConstantInt>(instr->getOperand(1)))
-                        {
-                            ConstantInt* src1 = cast<ConstantInt>(instr->getOperand(1));
-                            TableOffset = int_cast<unsigned int>(src1->getZExtValue()) >> pContext->platform.getBSOLocInExtDescriptor();
-                        }
-                    }
-                }
-            }
+            bindlessBuf = (DecodeBufferType(as) == SSH_BINDLESS_CONSTANT_BUFFER);
         }
         else
             return false;
