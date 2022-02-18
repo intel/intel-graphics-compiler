@@ -1600,8 +1600,8 @@ static void readInstructionSVM(unsigned& bytePos, const char* buf, ISA_Opcode op
 static VISA3DSamplerOp
 readSubOpcodeByteNG(unsigned& bytePos, const char* buf)
 {
-    uint16_t val = 0;
-    READ_CISA_FIELD(val, uint16_t, bytePos, buf);
+    uint8_t val = 0;
+    READ_CISA_FIELD(val, uint8_t, bytePos, buf);
     return VISA3DSamplerOp::extractSamplerOp(val);
 }
 

@@ -1366,7 +1366,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     9,
     0,
     {
-        {OPND_OTHER, ISA_TYPE_UW, 0},
+        {OPND_OTHER, ISA_TYPE_UB, 0},
         {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
         {OPND_PRED, ISA_TYPE_UW, 0},
         {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
@@ -1384,7 +1384,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     8,
     0,
     {
-        {OPND_OTHER, ISA_TYPE_UW, 0},
+        {OPND_OTHER, ISA_TYPE_UB, 0},
         {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
         {OPND_PRED, ISA_TYPE_UW, 0},
         {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
@@ -1401,7 +1401,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     9,
     0,
     {
-        {OPND_OTHER, ISA_TYPE_UW, 0},
+        {OPND_OTHER, ISA_TYPE_UB, 0},
         {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
         {OPND_PRED, ISA_TYPE_UW, 0},
         {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
@@ -1417,7 +1417,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
      /// 112
     { ALL, ISA_3D_INFO, ISA_Inst_Sampler, "3d_info", 5, 0,
     {
-        {OPND_OTHER, ISA_TYPE_UW, 0}, /// subOpcode
+        {OPND_OTHER, ISA_TYPE_UB, 0}, /// subOpcode
         {OPND_EXECSIZE, ISA_TYPE_UB, 0},
         {OPND_OTHER, ISA_TYPE_UB, 0 },
         {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
