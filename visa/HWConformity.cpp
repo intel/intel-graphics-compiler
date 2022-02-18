@@ -2182,7 +2182,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
 
     G4_DstRegRegion* origDst = mulInst->getDst();
     G4_Type tmpType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
-    if (builder.noMulOrMadwExpandingBeforeScheduler() && builder.getOption(vISA_expandMulPostSchedule))
+    if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013677893) && builder.getOption(vISA_expandMulPostSchedule))
     {
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul+Macl expanding will
         // be done in expandMulPostSchedule pass.
@@ -2721,7 +2721,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
     assert(IS_DTYPE(src0->getType()) && "src0 must be DW type");
 
 
-    if (builder.noMulOrMadwExpandingBeforeScheduler() && builder.getOption(vISA_expandMulPostSchedule))
+    if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013677893) && builder.getOption(vISA_expandMulPostSchedule))
     {
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul + Macl expanding will
         // be done in expandMulPostSchedule pass.
@@ -9434,7 +9434,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
     }
 
     INST_LIST_ITER retIter = it;
-    if (builder.noMulOrMadwExpandingBeforeScheduler() && builder.getOption(vISA_expandMadwPostSchedule))
+    if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013677893) && builder.getOption(vISA_expandMadwPostSchedule))
     {
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Madw->Mul+Mach+Addc+Add expanding
         // will be done in expandMadwPostSchedule pass.

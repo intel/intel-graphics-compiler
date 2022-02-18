@@ -15435,7 +15435,7 @@ void Optimizer::applyFusedCallWA()
 //    macl dst:d src0:d src1:d
 void Optimizer::expandMulPostSchedule()
 {
-    if (!builder.noMulOrMadwExpandingBeforeScheduler())
+    if (!VISA_WA_CHECK(builder.getPWaTable(), Wa_14013677893))
     {
         return;
     }
@@ -15525,7 +15525,7 @@ void Optimizer::expandMulPostSchedule()
 //     mov  (16) dst_lo32<1>:d  acc0.0<1;1,0>:d                // Low 32 bits
 void Optimizer::expandMadwPostSchedule()
 {
-    if (!builder.noMulOrMadwExpandingBeforeScheduler())
+    if (!VISA_WA_CHECK(builder.getPWaTable(), Wa_14013677893))
     {
         return;
     }

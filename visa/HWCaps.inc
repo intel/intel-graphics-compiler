@@ -1009,10 +1009,6 @@ SPDX-License-Identifier: MIT
         return getPlatform() >= Xe_PVC;
    }
 
-   bool noMulOrMadwExpandingBeforeScheduler()
-   {
-        return getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT;
-   }
    bool hasA0WARHWissue()
    {
        return (getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_DG2 || getPlatform() == Xe_PVC);
