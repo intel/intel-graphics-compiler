@@ -12404,7 +12404,9 @@ void Optimizer::newDoNoMaskWA()
         if (!Inst->isWriteEnableInst() ||
             Inst->isCFInst() ||
             Inst->isPseudoLogic() ||
-            Inst->isPseudoKill())
+            Inst->isPseudoKill() ||
+            Inst->isWait() ||          // predicate not supported
+            Inst->opcode() == G4_nop)  // predicate not supported
         {
             return false;
         }
