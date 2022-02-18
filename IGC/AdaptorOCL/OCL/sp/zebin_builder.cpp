@@ -91,6 +91,14 @@ void ZEBinaryBuilder::createKernel(
         addKernelDebugEnv(annotations, layout, zeKernel);
 }
 
+void ZEBinaryBuilder::addGlobalHostAccessInfo(const SOpenCLProgramInfo& annotations)
+{
+    for (auto& info : annotations.m_zebinGlobalHostAccessTable)
+    {
+        mZEInfoBuilder.addGlobalHostAccessSymbol(info.device_name, info.host_name);
+    }
+}
+
 void ZEBinaryBuilder::addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations)
 {
     const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
@@ -122,6 +130,7 @@ void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& program
     addRuntimeSymbols();
     addProgramSymbols(programInfo);
     addProgramRelocations(programInfo);
+    addGlobalHostAccessInfo(programInfo);
 }
 
 void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)

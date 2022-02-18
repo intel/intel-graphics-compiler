@@ -67,6 +67,12 @@ typedef struct {
     char       f_name[MAX_SYMBOL_NAME_LENGTH]; // The function's name
 } GenFuncAttribEntry;
 
+// HostAccessEntry - per global variable host access entry
+typedef struct {
+    char       device_name[MAX_SYMBOL_NAME_LENGTH];
+    char       host_name[MAX_SYMBOL_NAME_LENGTH];
+} HostAccessEntry;
+
 /// FIXME: ZE*Entry information should be moved to upper level (e.g. IGC or runtime interface)
 
 /// ZESymEntry - An symbol entry that will later be transformed to ZE binary format
@@ -116,6 +122,14 @@ struct ZEFuncAttribEntry {
           f_spillMemPerThread(spillMemPerThread),
           f_name(funcName)
     {}
+};
+
+/// ZEHostAccessEntry - A host access entry that will later be transformed to ZE binary format.
+/// It contains a global variable host name that can be used by Runtime to identify a global variable.
+/// It gives an ability to read/write from/to global variables from host level.
+struct ZEHostAccessEntry {
+    std::string device_name;
+    std::string host_name;
 };
 
 } //namespace vISA
