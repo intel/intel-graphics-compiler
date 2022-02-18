@@ -842,6 +842,8 @@ static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
   const unsigned Category =
       llvm::StringSwitch<unsigned>(SV.getValue()->getName())
           .Case(vc::PredefVar::BSSName, vc::RegCategory::Surface)
+          .Case(vc::PredefVar::ImplicitArgsBufferName, vc::RegCategory::General)
+          .Case(vc::PredefVar::LocalIDBufferName, vc::RegCategory::General)
           .Default(vc::RegCategory::NumCategories);
   IGC_ASSERT_MESSAGE(Category != vc::RegCategory::NumCategories,
                      "Unhandled predefined variable");

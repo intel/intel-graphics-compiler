@@ -42,8 +42,19 @@ constexpr const char Attribute[] = "VCPredefinedVariable";
 // The name of a global variable that represents predefined VISA variable BSS.
 constexpr const char BSSName[] = "llvm.vc.predef.var.bss";
 
+// The name of a global variable that represents predefined VISA variable
+// IMPL_ARG_BUF_PTR.
+constexpr const char ImplicitArgsBufferName[] =
+    "llvm.vc.predef.var.impl.args.buf";
+
+// The name of a global variable that represents predefined VISA variable
+// LOCAL_ID_BUF_PTR.
+constexpr const char LocalIDBufferName[] = "llvm.vc.predef.var.impl.args.buf";
+
 enum class ID {
   BSS,
+  ImplicitArgsBuffer,
+  LocalIDBuffer,
 };
 
 // Get the name of a predefined variable defined by the provided ID.
@@ -51,11 +62,29 @@ template <enum ID PVID> const char *getName();
 
 template <> inline const char *getName<ID::BSS>() { return BSSName; }
 
+template <> inline const char *getName<ID::ImplicitArgsBuffer>() {
+  return ImplicitArgsBufferName;
+}
+
+template <> inline const char *getName<ID::LocalIDBuffer>() {
+  return LocalIDBufferName;
+}
+
 // Get the type of a predefined variable defined by the provided ID.
 template <enum ID PVID> llvm::Type *getType(llvm::LLVMContext &C);
 
 template <> inline llvm::Type *getType<ID::BSS>(llvm::LLVMContext &C) {
   return llvm::Type::getInt32Ty(C);
+}
+
+template <>
+inline llvm::Type *getType<ID::ImplicitArgsBuffer>(llvm::LLVMContext &C) {
+  return llvm::Type::getInt64Ty(C);
+}
+
+template <>
+inline llvm::Type *getType<ID::LocalIDBuffer>(llvm::LLVMContext &C) {
+  return llvm::Type::getInt64Ty(C);
 }
 
 // Checks whether a global variable \p GV is a predefined variable.
@@ -88,6 +117,17 @@ template <enum ID PVID> llvm::GlobalVariable &createPV(llvm::Module &M) {
 // Creates BSS predefined variable. Matches \p createPV restrictions.
 inline llvm::GlobalVariable &createBSS(llvm::Module &M) {
   return createPV<ID::BSS>(M);
+}
+
+// Creates ImplicitArgsBuffer predefined variable. Matches \p createPV
+// restrictions.
+inline llvm::GlobalVariable &createImplicitArgsBuffer(llvm::Module &M) {
+  return createPV<ID::ImplicitArgsBuffer>(M);
+}
+
+// Creates LocalIDBuffer predefined variable. Matches \p createPV restrictions.
+inline llvm::GlobalVariable &createLocalIDBuffer(llvm::Module &M) {
+  return createPV<ID::LocalIDBuffer>(M);
 }
 
 } // namespace PredefVar
