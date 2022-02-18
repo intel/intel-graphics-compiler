@@ -270,12 +270,13 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
 }
 
 namespace IGC {
-#define PASS_FLAG "optimize ld2ms message assuming resources are always compressed"
+// Optimize ld2ms message assuming resources are always compressed"
+#define PASS_FLAG "igc-mcs-optimization"
 #define PASS_DESCRIPTION "This is an optimization pass for ld2dms message "
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
     IGC_INITIALIZE_PASS_BEGIN(MCSOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-        IGC_INITIALIZE_PASS_END(MCSOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_END(MCSOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
         FunctionPass* CreateMCSOptimization()
     {

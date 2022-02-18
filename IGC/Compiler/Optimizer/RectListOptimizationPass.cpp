@@ -442,7 +442,8 @@ void RectListOptimizationPass::visitCallInst(llvm::CallInst& I)
 
 
 namespace IGC {
-#define PASS_FLAG "identifies rectangle from 4 vertices and replaces TOPOLOGY to RECTLIST"
+// Identifies rectangle from 4 vertices and replaces TOPOLOGY to RECTLIST
+#define PASS_FLAG "igc-rectlist-opt"
 #define PASS_DESCRIPTION "This is an optimization pass for inserting RECTLIST topology "
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true

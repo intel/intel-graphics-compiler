@@ -354,7 +354,7 @@ static void CommonOCLBasedPasses(
         mpm.add(new HandleFRemInstructions());
     }
 
-    mpm.add(new JointMatrixFuncsResolutionPass(pContext));
+    mpm.add(new JointMatrixFuncsResolutionPass());
 
     mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eProductFamily));
     mpm.add(new PreBIImportAnalysis());

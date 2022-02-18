@@ -2519,6 +2519,19 @@ private:
     unsigned int m_ShaderLength;
 };
 
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+
+#define PASS_FLAG "igc-early-out-patterns-pass"
+#define PASS_DESCRIPTION "Early out to avoid heavy computation"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(EarlyOutPatterns, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(EarlyOutPatterns, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
 char EarlyOutPatterns::ID = 0;
 
 FunctionPass* IGC::CreateEarlyOutPatternsPass()

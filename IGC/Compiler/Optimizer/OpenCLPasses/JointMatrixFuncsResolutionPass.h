@@ -27,7 +27,7 @@ namespace IGC
     public:
         static char ID;
 
-        JointMatrixFuncsResolutionPass(OpenCLProgramContext *Context);
+        JointMatrixFuncsResolutionPass();
         ~JointMatrixFuncsResolutionPass() {}
 
         virtual llvm::StringRef getPassName() const override
@@ -66,7 +66,7 @@ namespace IGC
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
 
         ModuleMetaData* MMD = nullptr;
-        OpenCLProgramContext* Context = nullptr;
+        CodeGenContext* m_Ctx = nullptr;
         bool Changed = false;
     };
 };

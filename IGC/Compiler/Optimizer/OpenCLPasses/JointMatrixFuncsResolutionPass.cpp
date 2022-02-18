@@ -30,13 +30,25 @@ using namespace IGC;
 
 char JointMatrixFuncsResolutionPass::ID = 0;
 
-JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass(OpenCLProgramContext *Context) : FunctionPass(ID)
+
+#define PASS_FLAG     "igc-joint-matrix-resolution"
+#define PASS_DESC     "Lowering of INTEL Joint Matrix SPIR-V instructions"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+
+IGC_INITIALIZE_PASS_BEGIN(JointMatrixFuncsResolutionPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(JointMatrixFuncsResolutionPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass() : FunctionPass(ID)
 {
-    this->Context = Context;
+    initializeJointMatrixFuncsResolutionPassPass(*PassRegistry::getPassRegistry());
 }
 
 bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
 {
+    m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     ResolvedValues.clear();
     InstsToErase.clear();
     Changed = false;
@@ -142,7 +154,7 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
 
     /* On PVC due to SIMD16 different SIMD lane contribution is used for matrix A.
      * Therefore different load function is required. */
-    if (Context->platform.hasExecSize16DPAS() && matrixLayout == LayoutPackedA) {
+    if (m_Ctx->platform.hasExecSize16DPAS() && matrixLayout == LayoutPackedA) {
         name += "SG16_";
     }
 
@@ -227,7 +239,7 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointM
 
     if (desc.layout == LayoutPackedA) {
         Type *baseType = Type::getInt32Ty(ctx);
-        if (Context->platform.hasExecSize16DPAS()) {
+        if (m_Ctx->platform.hasExecSize16DPAS()) {
             baseType = Type::getInt16Ty(ctx);
         }
         return IGCLLVM::FixedVectorType::get(baseType, desc.rows);

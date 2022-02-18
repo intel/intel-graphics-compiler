@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;
 
@@ -38,6 +39,13 @@ namespace IGC
         virtual StringRef getPassName() const override { return "FixSampleDInputs"; }
         static char ID;
     };
+
+#define PASS_FLAG "igc-fix-sampled-inputs"
+#define PASS_DESCRIPTION "Fix sample_d inputs"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(FixSampleDInputsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(FixSampleDInputsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
     bool FixSampleDInputsPass::runOnFunction(Function& F)
     {

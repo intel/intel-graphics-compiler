@@ -51,6 +51,7 @@ private:
 
     llvm::BasicBlock* FindSinkTarget(llvm::Instruction* I);
 };
+void initializeAddressArithmeticSinkingPass(llvm::PassRegistry&);
 
 } // namespace IGC
 

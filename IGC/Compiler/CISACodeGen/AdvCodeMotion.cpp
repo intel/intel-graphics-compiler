@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Verifier.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -31,6 +32,10 @@ using namespace llvm;
 using namespace llvm::PatternMatch;
 using namespace IGC;
 using namespace IGC::IGCMD;
+
+static cl::opt<unsigned> CustomControlMask(
+    "adv-codemotion-cm", cl::init(0), cl::Hidden,
+    cl::desc("Option to initialize ControlMask for testing"));
 
 namespace {
 
@@ -67,7 +72,7 @@ namespace {
     public:
         static char ID;
 
-        AdvCodeMotion(unsigned C = 0) : FunctionPass(ID), ControlMask(C) {}
+        AdvCodeMotion(unsigned C = CustomControlMask) : FunctionPass(ID), ControlMask(C) {}
 
         bool runOnFunction(Function& F) override;
 
@@ -234,7 +239,7 @@ bool AdvCodeMotion::hoistUniform(BasicBlock* Src, BasicBlock* Dst) const {
     auto Pos = Dst->getTerminator();
     for (auto BI = Src->begin(), BE = Src->end(); BI != BE; /*EMPTY*/) {
         Instruction* Inst = &*BI++;
-        if (!WI->isUniform(Inst))
+        if (!WI->isUniform(Inst) || Inst->isTerminator())
             break;
         Inst->moveBefore(Pos);
         Changed = true;

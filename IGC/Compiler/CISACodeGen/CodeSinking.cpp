@@ -57,7 +57,7 @@ using namespace IGC::Debug;
 namespace IGC {
 
     // Register pass to igc-opt
-#define PASS_FLAG "code sinking"
+#define PASS_FLAG "igc-code-sinking"
 #define PASS_DESCRIPTION "code sinking"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false

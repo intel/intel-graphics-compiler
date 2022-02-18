@@ -134,6 +134,7 @@ namespace IGC {
         void ProcessDbgValueInst(llvm::BasicBlock& blk);
 
     };
+    void initializeCodeSinkingPass(llvm::PassRegistry&);
 
 }
 

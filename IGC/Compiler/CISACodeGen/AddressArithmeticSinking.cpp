@@ -31,7 +31,7 @@ using namespace IGC::Debug;
 
 namespace IGC {
 
-#define PASS_FLAG "address arithmetic sinking"
+#define PASS_FLAG "igc-address-arith-sinking"
 #define PASS_DESCRIPTION "IGC Address Arithmetic Sinking"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false

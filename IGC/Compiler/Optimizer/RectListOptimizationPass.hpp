@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 namespace IGC
 {
     llvm::Pass* createRectListOptimizationPass();
+    void initializeRectListOptimizationPassPass(llvm::PassRegistry&);
 }
 
 

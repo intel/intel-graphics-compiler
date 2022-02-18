@@ -15,4 +15,5 @@ SPDX-License-Identifier: MIT
 namespace IGC
 {
     llvm::FunctionPass* createFixSampleDInputsPass();
+    void initializeFixSampleDInputsPassPass(llvm::PassRegistry&);
 }
