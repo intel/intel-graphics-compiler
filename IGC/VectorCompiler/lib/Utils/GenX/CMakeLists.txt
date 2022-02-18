@@ -15,6 +15,7 @@ set(GENX_UTILS_SOURCES
   ImplicitArgsBuffer.cpp
   KernelInfo.cpp
   IntrinsicsWrapper.cpp
+  IRBuilder.cpp
   )
 
 add_library(VCGenXUtils ${GENX_UTILS_SOURCES})

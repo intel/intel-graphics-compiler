@@ -10,14 +10,15 @@ SPDX-License-Identifier: MIT
 #define VC_UTILS_GENERAL_IRBUILDER_H
 
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/IRBuilder.h>
 
+#include <numeric>
+
 namespace llvm {
-class Value;
-class Type;
 class DataLayout;
-class Constant;
 class GlobalVariable;
 } // namespace llvm
 
@@ -67,6 +68,34 @@ bool isCastToGenericAS(const llvm::Value &Op);
 llvm::Constant &castArrayToFirstElemPtr(llvm::GlobalVariable &Array);
 
 bool isBitCastAllowed(llvm::Value &Val, llvm::Type &DstType);
+
+// Creates a vector with \p VectorWidth elements that consist of values that
+// are provided in \p Elements range.
+// Arguments:
+//    \p Elements - a range of llvm::Value* or elements that are convertable
+//                  to llvm::Value*, all values must have the same type, the
+//                  range size must match \p VectorWidth.
+//    \p VectorWidth - a width of a requested vector.
+//    \p IRB - IR builder used to produce the value.
+//    \p Name - a name for the generated vector, and prefix for other
+//              constructed value names.
+template <typename ForwardRange>
+llvm::Value *accumulateVector(ForwardRange &&Elements, int VectorWidth,
+                              llvm::IRBuilder<> &IRB,
+                              const llvm::Twine &Name = "vec") {
+  llvm::Value *Result = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(
+      (*Elements.begin())->getType(), VectorWidth));
+  auto ElementsWithIndices = enumerate(Elements);
+  Result = std::accumulate(
+      ElementsWithIndices.begin(), ElementsWithIndices.end(), Result,
+      [&IRB, &Name](llvm::Value *Accumulator, auto ElementWithIndex) {
+        return IRB.CreateInsertElement(
+            Accumulator, ElementWithIndex.value(), ElementWithIndex.index(),
+            Name + ".insert." + llvm::Twine(ElementWithIndex.index()));
+      });
+  Result->setName(Name);
+  return Result;
+}
 
 } // namespace vc
 

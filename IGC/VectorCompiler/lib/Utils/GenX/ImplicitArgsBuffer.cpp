@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/GenX/ImplicitArgsBuffer.h"
+
+#include "vc/Utils/GenX/IRBuilder.h"
 #include "vc/Utils/General/Types.h"
 
 #include "Probe/Assertion.h"
@@ -80,7 +82,8 @@ Value &vc::ImplicitArgs::Buffer::getPointer(IRBuilder<> &IRB) {
 
 Value &vc::ImplicitArgs::Buffer::loadField(Value &BufferPtr,
                                            Indices::Enum FieldIdx,
-                                           IRBuilder<> &IRB, StringRef Name) {
+                                           IRBuilder<> &IRB,
+                                           const Twine &Name) {
   IGC_ASSERT_MESSAGE(BufferPtr.getType() ==
                          &vc::ImplicitArgs::Buffer::getPtrType(
                              *IRB.GetInsertBlock()->getModule()),
@@ -91,4 +94,49 @@ Value &vc::ImplicitArgs::Buffer::loadField(Value &BufferPtr,
   auto *FieldVal = IRB.CreateLoad(FieldPtr->getType()->getPointerElementType(),
                                   FieldPtr, Name);
   return *FieldVal;
+}
+
+StructType &vc::ImplicitArgs::LocalID::getType(Module &M) {
+  auto *MaybeResult = IGCLLVM::getTypeByName(M, TypeName);
+  if (MaybeResult)
+    return *MaybeResult;
+
+  auto &C = M.getContext();
+  auto *Int16Ty = IntegerType::getInt16Ty(C);
+  return *StructType::create(C, {Int16Ty, Int16Ty, Int16Ty},
+                             vc::ImplicitArgs::LocalID::TypeName);
+}
+
+PointerType &vc::ImplicitArgs::LocalID::getPtrType(Module &M) {
+  return *PointerType::get(&vc::ImplicitArgs::LocalID::getType(M),
+                           vc::AddrSpace::Global);
+}
+
+Value &vc::ImplicitArgs::LocalID::getBasePtr(Value &BufferPtr, IRBuilder<> &IRB,
+                                             const Twine &Name) {
+  auto &IntPtr = vc::ImplicitArgs::Buffer::loadField(
+      BufferPtr, vc::ImplicitArgs::Buffer::Indices::LocalIDTablePtr, IRB,
+      Name + ".int");
+  return *IRB.CreateIntToPtr(&IntPtr,
+                             &vc::ImplicitArgs::LocalID::getPtrType(
+                                 *IRB.GetInsertBlock()->getModule()),
+                             Name);
+}
+
+Value &vc::ImplicitArgs::LocalID::getPointer(Value &BufferPtr, IRBuilder<> &IRB,
+                                             const Twine &Name) {
+  auto &BasePtr =
+      vc::ImplicitArgs::LocalID::getBasePtr(BufferPtr, IRB, Name + ".base");
+  Value *Index = vc::getGroupThreadIDForPIM(IRB);
+  return *IRB.CreateGEP(BasePtr.getType()->getPointerElementType(), &BasePtr,
+                        Index, Name);
+}
+
+Value &vc::ImplicitArgs::LocalID::loadField(
+    Value &LIDStructPtr, vc::ImplicitArgs::LocalID::Indices::Enum FieldIdx,
+    IRBuilder<> &IRB, const Twine &Name) {
+  auto *Ptr = IRB.CreateInBoundsGEP(
+      LIDStructPtr.getType()->getPointerElementType(), &LIDStructPtr,
+      {IRB.getInt32(0), IRB.getInt32(FieldIdx)}, Name + ".ptr");
+  return *IRB.CreateLoad(Ptr->getType()->getPointerElementType(), Ptr, Name);
 }

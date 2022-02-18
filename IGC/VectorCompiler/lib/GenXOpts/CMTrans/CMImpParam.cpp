@@ -109,6 +109,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/ImplicitArgsBuffer.h"
 #include "vc/Utils/General/DebugInfo.h"
 #include "vc/Utils/General/FunctionAttrs.h"
+#include "vc/Utils/General/IRBuilder.h"
 
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/STLExtras.h"
@@ -547,17 +548,29 @@ Value &loadVec3ArgFromIABuffer(Value &ImplArgsBufferPtr, IRBuilder<> &IRB) {
         return &vc::ImplicitArgs::Buffer::loadField(ImplArgsBufferPtr, Idx, IRB,
                                                     "impl.arg.vec.elem");
       });
-  Value *Result = UndefValue::get(
-      IGCLLVM::FixedVectorType::get(VectorElements.front()->getType(), 3));
-  auto VectorElementsWithIndices = enumerate(VectorElements);
-  Result = std::accumulate(
-      VectorElementsWithIndices.begin(), VectorElementsWithIndices.end(),
-      Result, [&IRB](Value *Accumulator, auto VectorElementWithIndex) {
-        return IRB.CreateInsertElement(
-            Accumulator, VectorElementWithIndex.value(),
-            VectorElementWithIndex.index(), "impl.arg.vec.combine");
-      });
-  return *Result;
+  return *vc::accumulateVector(VectorElements, VectorElements.size(), IRB,
+                               "impl.arg.vec");
+}
+
+// Inserts a code that loads local IDs from the buffer and represents them as
+// a 3-component vector.
+// Arguments:
+//    \p ImplArgsBufferPtr - a pointer to implicit args buffer structure;
+//    \p IRB - IR builder used to insert the code.
+static Value &loadLocalIDFromIABuffer(Value &ImplArgsBufferPtr,
+                                      IRBuilder<> &IRB) {
+  using namespace vc::ImplicitArgs;
+  std::array<LocalID::Indices::Enum, 3> Indices = {
+      LocalID::Indices::X, LocalID::Indices::Y, LocalID::Indices::Z};
+  auto &LIDStructPtr = LocalID::getPointer(ImplArgsBufferPtr, IRB);
+  std::array<Value *, 3> VectorElements;
+  std::transform(Indices.begin(), Indices.end(), VectorElements.begin(),
+                 [&LIDStructPtr, &IRB](LocalID::Indices::Enum Idx) {
+                   return &LocalID::loadField(LIDStructPtr, Idx, IRB,
+                                              "ia.local.id.elem");
+                 });
+  return *vc::accumulateVector(VectorElements, VectorElements.size(), IRB,
+                               "impl.arg.vec");
 }
 
 // Inserts a code that loads implicit argument from the buffer.
@@ -573,9 +586,7 @@ static Value &loadArgFromIABuffer(unsigned IID, Value &ImplArgsBufferPtr,
     IGC_ASSERT_MESSAGE(0, "unexpected intrinsic id");
     return ImplArgsBufferPtr;
   case GenXIntrinsic::genx_local_id16:
-    vc::diagnose(
-        IRB.getContext(), "GenXImplicitParameters",
-        "Local IDs aren't yet supported for external and indirect functions");
+    return loadLocalIDFromIABuffer(ImplArgsBufferPtr, IRB);
   case GenXIntrinsic::genx_local_id:
     IGC_ASSERT_MESSAGE(0, "IA buffer is supported only for OCL/L0 so local.id "
                           "must have been already transformed into local.id16");
