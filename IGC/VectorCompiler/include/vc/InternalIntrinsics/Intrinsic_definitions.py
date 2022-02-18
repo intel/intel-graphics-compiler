@@ -53,46 +53,4 @@ Imported_Intrinsics = \
                      "attributes" :  "NoMem"
                    },
 
-## ``llvm.vc.internal.read.variable.region`` : read a vISA variable region
-## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-##
-## * arg0: ptr pointer to a global variable that corresponds to a vISA variable
-##         (overloaded)
-## * arg1: i32 vstride in elements, constant
-## * arg2: i32 width in elements, constant
-## * arg3: i32 stride in elements, constant
-## * arg4: i32 offset in elements, constant
-##
-## * Return value: iN, fN, vXiN, vXfN the read value (overloaded)
-##
-## This corresponds to MOV instruction or a general source operand in visa.
-## Utilizes technique of using global variable in LLVM IR for predefined
-## vISA variables.
-##
-    "read_variable_region" : { "result": "any",
-                               "arguments" : ["anyptr", "int", "int", "int",
-                                              "int"],
-                               "attributes" : "ReadMem",
-                              },
-
-## ``llvm.vc.internal.write.variable.region`` : write a vISA variable region
-## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-##
-## * arg0: ptr pointer to a global variable that corresponds to a vISA variable
-##         (overloaded)
-## * arg1: iN, fN, vXiN, vXfN value to write (overloaded)
-## * arg2: i32 stride in elements, constant
-## * arg3: i32 offset in elements, constant
-## * arg4: i1 or vXi1 mask (overloaded)
-##
-## This corresponds to MOV instruction or a general destination operand in visa.
-## Utilizes technique of using global variable in LLVM IR for predefined
-## vISA variables.
-##
-    "write_variable_region" : { "result": "void",
-                                "arguments" : ["anyptr", "any", "int",
-                                               "int", "anyint"],
-                                "attributes" : "WriteMem",
-                              },
-
 }
