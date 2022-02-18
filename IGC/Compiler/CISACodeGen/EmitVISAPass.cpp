@@ -10142,16 +10142,34 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         CVariable* opVar = opnds[i];
         StringRef constraint = constraints[i];
 
+        if (!opVar) continue;
+
         // All uniform variables must be broadcasted if 'rw' constraint was specified
-        if (opVar && opVar->IsUniform() && constraint.equals("rw"))
+        if (opVar->IsUniform() && constraint.equals("rw"))
         {
             opnds[i] = BroadcastIfUniform(opVar);
         }
         // Special handling if LLVM replaces a variable with an immediate, we need to insert an extra move
-        else if (opVar && opVar->IsImmediate() && !constraint.equals("i"))
+        else if (opVar->IsImmediate() && !constraint.equals("i"))
         {
             CVariable* tempMov = m_currShader->GetNewVariable(
                 1, opVar->GetType(), EALIGN_GRF, true, opVar->getName());
+            m_encoder->Copy(tempMov, opVar);
+            m_encoder->Push();
+            opnds[i] = tempMov;
+        }
+        // WA: If the operand is an alias of another variable but gets mapped to the same variable name,
+        // we have to copy the alias into another register. This is because regioning info is determined by
+        // the user, and two variables that share the base register but reference different regions are not
+        // distinguishable to the inline asm string parser. Thus, a variable pointing to a subregion needs
+        // to be copied first before being used as an inline asm input.
+        // TODO: To avoid the extra move, we need to be able to explicity define an alias variable with offset
+        // instead of a region within the base value.
+        if (opVar->GetAlias() && opVar->GetAliasOffset() > 0 &&
+            m_encoder->GetVariableName(opVar) == m_encoder->GetVariableName(opVar->GetAlias()))
+        {
+            CVariable* tempMov = m_currShader->GetNewVariable(
+                opVar->GetNumberElement(), opVar->GetType(), EALIGN_GRF, opVar->IsUniform(), "");
             m_encoder->Copy(tempMov, opVar);
             m_encoder->Push();
             opnds[i] = tempMov;
