@@ -1512,6 +1512,8 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
 //    Use two instructions and a WORD or DWORD intermediate type respectively.
 // -- There is no direct conversion from HF to Integer (DWORD or WORD).
 //    Use two instructions and F (Float) as an intermediate type.
+// -- There is no direct conversion from DF with conditional modifier.
+//    Instead convert from DF to dst type and then compare with zero with conditional modifier in another mov instruction.
 // returns true if a move is inserted
 bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
 {
@@ -1562,6 +1564,25 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
     {
         // mov W/DW HF
         replaceDst(i, Type_F);
+        return true;
+    }
+
+    // mov (16|M0)    (eq)f0.0   r10.0<1>:q     r20.0<1;1,0>:df
+    // =>
+    // mov (16|M0)    r10.0<1>:q     r20.0<1;1,0>:df
+    // mov (16|M0)    (eq)f0.0   null.0<1>:q     r10.0<1;1,0>:q
+    if (VISA_WA_CHECK(builder.getPWaTable(), Wa_16011698357) && srcType == Type_DF && inst->getCondMod())
+    {
+        auto newMovSrc = builder.createSrc(inst->getDst()->getBase(),
+            inst->getDst()->getRegOff(), inst->getDst()->getSubRegOff(),
+            inst->getExecSize() == g4::SIMD1 ? builder.getRegionScalar() : builder.createRegionDesc(inst->getDst()->getHorzStride(),1,0),
+            dstType);
+        G4_INST* newMov = builder.createMov(inst->getExecSize(), builder.createNullDst(dstType),
+            newMovSrc, inst->getOption(), false);
+        newMov->setPredicate(inst->getPredicate());
+        newMov->setCondMod(inst->getCondMod());
+        inst->setCondMod(nullptr);
+        bb->insertAfter(i, newMov);
         return true;
     }
     return false;
