@@ -14,7 +14,6 @@ set(GENX_UTILS_SOURCES
   Region.cpp
   ImplicitArgsBuffer.cpp
   KernelInfo.cpp
-  IntrinsicsWrapper.cpp
   )
 
 add_library(VCGenXUtils ${GENX_UTILS_SOURCES})
@@ -26,7 +25,6 @@ igc_get_llvm_targets(LLVM_LIBS
 target_link_libraries(VCGenXUtils
   VCHeaders
   LLVMGenXIntrinsics
-  VCInternalIntrinsics
   VCGeneralUtils
   ${LLVM_LIBS}
   )

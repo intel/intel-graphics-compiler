@@ -9,14 +9,14 @@ SPDX-License-Identifier: MIT
 //
 /// GenXLowerJmpTableSwitchPass
 /// ---------------------------
-/// This pass replaces switch instructions with a internal_jump_table intrinsic
-/// and indirect branch instruction. Then at CisaBuilder stage,
-/// internal_jump_table and indirect branch will be emitted as visa switchjmp
-/// instruction. The internal_jump_table intrinsic is required because indirect
-/// branch takes the address of the BB to jump to and the full set of possible
-/// destinations as blockaddresses that the address may point to. But the visa
-/// switchjmp takes the full set of possible destinations and the index of
-/// destination in this set. Hence, internal_jump_table is a helper that
+/// This pass replaces switch instructions with a genx_jump_table intrinsic and
+/// indirect branch instruction. Then at CisaBuilder stage, genx_jump_table and
+/// indirect branch will be emitted as visa switchjmp instruction. The
+/// genx_jump_table intrinsic is required because indirect branch takes the
+/// address of the BB to jump to and the full set of possible destinations as
+/// blockaddresses that the address may point to. But the visa switchjmp takes
+/// the full set of possible destinations and the index of destination in this
+/// set. Hence, genx_jump_table is a helper that
 ///   * makes llvm ir legal because it takes the full set of destinations and
 ///   returns a pointer to the selected label;
 ///   * holds the index of the BB that must be used in the visa switchjmp.
@@ -37,8 +37,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-
-#include "vc/InternalIntrinsics/InternalIntrinsics.h"
 
 using namespace llvm;
 using namespace genx;
@@ -195,16 +193,16 @@ bool GenXLowerJmpTableSwitch::processSwitchCandidates(
     // Collect blockaddresses in sorted order.
     std::vector<BlockAddress *> BAs = collectBlockAddresses(SI, Min);
 
-    auto IID = vc::InternalIntrinsic::vc_internal_jump_table;
+    auto IID = GenXIntrinsic::genx_jump_table;
     // Collect output and input Idx types as well as blockaddress type repeated
-    // NumCases times to create internal_jump_table decl.
+    // NumCases times to create genx_jump_table decl.
     std::vector<Type *> InTys(NumCases + 2, BAs[0]->getType());
     // Return type
     InTys[0] = Builder.getInt8PtrTy();
     // Index in jump table. Only this arg will be really needed.
     InTys[1] = JTIdx->getType();
-    Function *JTDecl = vc::InternalIntrinsic::getInternalDeclaration(
-        SI->getModule(), IID, InTys);
+    Function *JTDecl =
+        GenXIntrinsic::getGenXDeclaration(SI->getModule(), IID, InTys);
 
     // Collect args.
     std::vector<Value *> InArgs;

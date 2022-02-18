@@ -115,8 +115,6 @@ target_link_libraries(VCCodeGen
 
   LLVMGenXIntrinsics
 
-  VCInternalIntrinsics
-
   VCHeaders
   VCTransforms
   VCTargetInfo

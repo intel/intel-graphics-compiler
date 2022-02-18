@@ -9,7 +9,6 @@
 add_subdirectory(GenXOpts)
 add_subdirectory(GenXCodeGen)
 add_subdirectory(Support)
-add_subdirectory(InternalIntrinsics)
 add_subdirectory(BiF)
 add_subdirectory(Driver)
 add_subdirectory(Utils)
