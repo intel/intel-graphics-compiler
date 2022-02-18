@@ -344,9 +344,9 @@ bool GenXDeadVectorRemoval::nullOutInstructions(Function *F) {
         if (R.Mask || R.Indirect)
           bypass = false;
         else {
-          for (unsigned RowIdx = R.Offset / R.ElementBytes, Row = 0,
-            NumRows = R.NumElements / R.Width; Row != NumRows && bypass;
-            RowIdx += R.VStride, ++Row) {
+          for (unsigned RowIdx = R.getOffsetInElements(), Row = 0,
+                        NumRows = R.NumElements / R.Width;
+               Row != NumRows && bypass; RowIdx += R.VStride, ++Row) {
             for (unsigned Idx = RowIdx, Col = 0; Col != R.Width && bypass;
               Idx += R.Stride, ++Col) {
               if (Idx < LB.getNumElements() && LB.get(Idx))
@@ -436,9 +436,9 @@ void GenXDeadVectorRemoval::processRdRegion(Instruction *Inst, LiveBits LB)
   // rdregion.
   bool Modified = false;
   LiveBits InLB = createLiveBits(InInst);
-  for (unsigned RowIdx = R.Offset / R.ElementBytes, Row = 0,
-      NumRows = R.NumElements / R.Width; Row != NumRows;
-      RowIdx += R.VStride, ++Row)
+  for (unsigned RowIdx = R.getOffsetInElements(), Row = 0,
+                NumRows = R.NumElements / R.Width;
+       Row != NumRows; RowIdx += R.VStride, ++Row)
     for (unsigned Idx = RowIdx, Col = 0; Col != R.Width; Idx += R.Stride, ++Col)
       if (LB.get(Row * R.Width + Col))
         if (Idx < InLB.getNumElements())
@@ -480,9 +480,9 @@ void GenXDeadVectorRemoval::processWrRegion(Instruction *Inst, LiveBits LB)
     // the wrregion in the "new value" input.
     bool Modified = false;
     LiveBits NewInLB = createLiveBits(NewInInst);
-    for (unsigned RowIdx = R.Offset / R.ElementBytes, Row = 0,
-        NumRows = R.NumElements / R.Width; Row != NumRows;
-        RowIdx += R.VStride, ++Row)
+    for (unsigned RowIdx = R.getOffsetInElements(), Row = 0,
+                  NumRows = R.NumElements / R.Width;
+         Row != NumRows; RowIdx += R.VStride, ++Row)
       for (unsigned Idx = RowIdx, Col = 0; Col != R.Width;
           Idx += R.Stride, ++Col)
         if (Idx < LB.getNumElements() && LB.get(Idx))
@@ -513,7 +513,7 @@ void GenXDeadVectorRemoval::processWrRegion(Instruction *Inst, LiveBits LB)
     // Set bits in OldLB (OldInInst's livebits) for live elements read by the
     // wrregion in the "old value" input, excluding ones that come from the
     // "new value" input.
-    unsigned NextRow = 0, NextCol = 0, NextIdx = R.Offset / R.ElementBytes,
+    unsigned NextRow = 0, NextCol = 0, NextIdx = R.getOffsetInElements(),
              NextRowIdx = NextIdx, NumRows = R.NumElements / R.Width;
     for (unsigned Idx = 0, End = LB.getNumElements(); Idx != End; ++Idx) {
       if (Idx == NextIdx) {

@@ -1813,8 +1813,7 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
 
   if (Reg && (Reg->Category == vc::RegCategory::Sampler ||
               Reg->Category == vc::RegCategory::Surface)) {
-    IGC_ASSERT(R.ElementBytes);
-    return createState(Reg, R.Offset / R.ElementBytes, true /*IsDest*/);
+    return createState(Reg, R.getOffsetInElements(), true /*IsDest*/);
   } else {
     IGC_ASSERT(!Reg || Reg->Category == vc::RegCategory::General);
     auto Decl = Reg ? Reg->GetVar<VISA_GenVar>(Kernel) : nullptr;

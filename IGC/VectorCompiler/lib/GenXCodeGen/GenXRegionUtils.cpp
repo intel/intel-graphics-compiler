@@ -375,10 +375,10 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
       // Calculate number of elements up to the boundary imposed by GRF
       // crossing rules.
       unsigned ElementsPerGRF = GRFByteSize / R.ElementBytes;
-      unsigned OffsetElements = R.Offset / R.ElementBytes;
       unsigned ElementsToBoundary = 1;
       unsigned RealIdx = Idx / R.Width * R.VStride + Idx % R.Width * R.Stride;
       if (!R.Indirect) {
+        unsigned OffsetElements = R.getOffsetInElements();
         // For a direct operand, just use the constant offset of the
         // region and the index so far to calculate how far into a GRF this
         // subregion starts, and set the boundary at the next-but-one GRF

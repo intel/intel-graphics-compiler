@@ -1310,7 +1310,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
         return true;
       if ((R.Offset % R.ElementBytes) != 0)
         return true;
-      unsigned Base = R.Offset / R.ElementBytes;
+      unsigned Base = R.getOffsetInElements();
       for (unsigned Offset = 0; Offset < R.NumElements; /*EMPTY*/) {
         unsigned NumElts = std::min(MaxElt, R.NumElements - Offset);
         // Round NumElts down to power of 2. That is how many elements we

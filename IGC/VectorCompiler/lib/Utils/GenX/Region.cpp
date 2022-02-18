@@ -747,7 +747,7 @@ Constant *CMRegion::evaluateConstantRdRegion(Constant *Input, bool AllowScalar)
                   : IGCLLVM::FixedVectorType::get(ElementTy, NumElements));
   if (isa<UndefValue>(Input))
     return Undef;
-  unsigned RowIdx = Offset / ElementBytes;
+  unsigned RowIdx = getOffsetInElements();
   unsigned Idx = RowIdx;
   unsigned NextRow = Width;
   for (unsigned i = 0; i != NumElements; ++i) {
@@ -782,7 +782,8 @@ Constant *CMRegion::evaluateConstantWrRegion(Constant *OldVal, Constant *NewVal)
                                ->getNumElements();
        i != e; ++i)
     Vec.push_back(OldVal->getAggregateElement(i));
-  unsigned Off = Offset / ElementBytes, Row = Off;
+  unsigned Off = getOffsetInElements();
+  unsigned Row = Off;
   auto NewVT = dyn_cast<IGCLLVM::FixedVectorType>(NewVal->getType());
   unsigned NewNumEls = !NewVT ? 1 : NewVT->getNumElements();
   for (unsigned i = 0;;) {
@@ -965,3 +966,13 @@ void CMRegion::print(raw_ostream &OS) const
     OS << " {mask=" << *Mask << "}";
 }
 
+unsigned CMRegion::getOffsetInElements() const {
+  IGC_ASSERT_MESSAGE(!Indirect,
+                     "the method should not be requested for indirect region");
+  IGC_ASSERT_MESSAGE(
+      ElementBytes,
+      "the class is in invalid state: ElementBytes must not be zero");
+  IGC_ASSERT_MESSAGE(Offset % ElementBytes == 0,
+                     "offset must be in element bytes");
+  return Offset / ElementBytes;
+}

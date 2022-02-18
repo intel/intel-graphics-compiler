@@ -553,7 +553,7 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd)
       InnerR.ElementTy = Extend->getOperand(0)->getType()->getScalarType();
       unsigned ExtInputElementBytes
             = InnerR.ElementTy->getPrimitiveSizeInBits() / 8U;
-      InnerR.Offset = InnerR.Offset / InnerR.ElementBytes * ExtInputElementBytes;
+      InnerR.Offset = InnerR.getOffsetInElements() * ExtInputElementBytes;
       InnerR.ElementBytes = ExtInputElementBytes;
     }
     // See if the regions can be combined. We call normalizeElementType with
@@ -1154,7 +1154,7 @@ bool GenXRegionCollapsing::combineRegions(const Region *OuterR,
   CombinedR->Indirect = OuterR->Indirect;
   CombinedR->Stride *= OuterR->Stride;
   CombinedR->VStride *= OuterR->Stride;
-  unsigned ElOffset = InnerR->Offset / InnerR->ElementBytes;
+  unsigned ElOffset = InnerR->getOffsetInElements();
   if (OuterR->is2D()) {
     // Outer region is 2D: create the combined offset. For outer 2D
     // and inner indirect, what CombinedR->Offset is set to here is
@@ -1192,7 +1192,7 @@ bool GenXRegionCollapsing::combineRegions(const Region *OuterR,
     return false;
   }
   // Inner region is not indirect.
-  unsigned StartEl = InnerR->Offset / InnerR->ElementBytes;
+  unsigned StartEl = InnerR->getOffsetInElements();
   unsigned StartRow = StartEl / OuterR->Width;
   if (!InnerR->is2D()) {
     // Inner region is 1D but outer region is 2D.
@@ -1234,7 +1234,7 @@ bool GenXRegionCollapsing::combineRegions(const Region *OuterR,
     CombinedR->VStride = OuterR->VStride * InnerR->VStride / (int)OuterR->Width;
     if (!InnerR->Indirect) {
       // For a direct inner region, calculate whether we can combine.
-      unsigned StartEl = InnerR->Offset / InnerR->ElementBytes;
+      unsigned StartEl = InnerR->getOffsetInElements();
       unsigned StartRow = StartEl / OuterR->Width;
       unsigned EndRowOfFirstRow = (StartEl + (InnerR->Width - 1) * InnerR->Stride)
             / OuterR->Width;

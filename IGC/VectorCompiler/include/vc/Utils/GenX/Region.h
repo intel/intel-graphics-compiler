@@ -207,6 +207,10 @@ public:
                 getRowLength();
   }
 
+  // Returns the region offset in muber of elements.
+  // This method cannot be called for (multi-)indirect regions.
+  unsigned getOffsetInElements() const;
+
 protected:
   // Create wrregion or wrconstregion intrinsic from this Region
   Instruction *createWrCommonRegion(GenXIntrinsic::ID, Value *OldVal,
