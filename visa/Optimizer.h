@@ -270,6 +270,8 @@ private:
     void finishFusedCallWA();
     void doNoMaskWA_postRA();
     void newDoNoMaskWA_postRA();
+    void verifyRANoMaskWAList();
+    bool NoMaskWAUseRAList() const { return false; }
     void insertFenceAtEntry();
     void expandMulPostSchedule();
     void expandMadwPostSchedule();

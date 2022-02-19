@@ -1356,6 +1356,15 @@ void Optimizer::runPass(PassIndex Index)
         verifyG4Kernel(kernel, Index, true, G4Verifier::VC_ASSERT);
     }
 #endif
+
+#if defined(_DEBUG) || defined(_INTERNAL)
+    if (Index == PI_regAlloc && RAFail == false &&
+        NoMaskWAUseRAList() && builder.useNewNoMaskWA() && builder.hasFusedEUNoMaskWA())
+    {
+        // for NoMask WA
+        verifyRANoMaskWAList();
+    }
+#endif
 }
 
 void Optimizer::initOptimizations()
@@ -13954,6 +13963,32 @@ void Optimizer::doNoMaskWA()
     }
 }
 
+// Make sure the inst provided by ra is valid
+void Optimizer::verifyRANoMaskWAList()
+{
+#if defined(_DEBUG) || defined(_INTERNAL)
+    std::unordered_map<G4_BB*, std::list<G4_INST*> >& postRA_WAInsts = kernel.getWAInsts();
+    for (auto MI : postRA_WAInsts)
+    {
+        G4_BB* BB = MI.first;
+        if ((BB->getBBType() & G4_BB_NM_WA_TYPE) == 0)
+        {
+            continue;
+        }
+
+        std::list<G4_INST*>& waInsts = MI.second;
+        for (auto VI : waInsts)
+        {
+            G4_INST* tI = VI;
+            if (tI == nullptr || std::find(BB->begin(), BB->end(), tI) == BB->end())
+            {
+                assert(false && "ICE[NoMaskWA] : inst provided by RA not in BB!");
+            }
+        }
+    }
+#endif
+}
+
 // Need to apply NoMaskWA on spill.  For example,
 //   Think of scenario that fusedMask should be off, but it is on due to the HW bug.
 //   Instruction with NoMask will run, and all the others do not.
@@ -14185,18 +14220,7 @@ void Optimizer::newDoNoMaskWA_postRA()
         }
 #endif
     };
-    auto verifyBBWAInsts = [&](G4_BB* aBB, std::list<G4_INST*>& aWAInsts)
-    {
-#if defined(_DEBUG) || defined(_INTERNAL)
-        auto BI = std::find(kernel.fg.getBBList().begin(), kernel.fg.getBBList().end(), aBB);
-        assert(BI != kernel.fg.getBBList().end());
-        for (auto VI : aWAInsts)
-        {
-            G4_INST* tI = VI;
-            verifyBBInst(aBB, tI);
-        }
-#endif
-    };
+
     auto verifyBBWAInfo = [&verifyBBInst](G4_BB* aBB, NoMaskWA_info_t* aWAInfo)
     {
 #if defined(_DEBUG) || defined(_INTERNAL)
@@ -14209,6 +14233,23 @@ void Optimizer::newDoNoMaskWA_postRA()
             verifyBBInst(aBB, aWAInfo->WAFlag_allOne);
         }
 #endif
+    };
+
+    auto eraseDeadWAInsts = [&](G4_BB* aBB, std::list<G4_INST*>& aWAInsts)
+    {
+        auto BI = std::find(kernel.fg.getBBList().begin(), kernel.fg.getBBList().end(), aBB);
+        assert(BI != kernel.fg.getBBList().end());
+        auto NextI = aWAInsts.begin();
+        auto VE = aWAInsts.end();
+        for (auto VI = NextI; VI != VE; VI = NextI)
+        {
+            ++NextI;
+            G4_INST* tI = *VI;
+            if (tI == nullptr || std::find(aBB->begin(), aBB->end(), tI) == aBB->end())
+            {
+                aWAInsts.erase(VI);
+            }
+        }
     };
 
     auto isSpillLdSt = [](G4_INST* I)
@@ -14281,8 +14322,7 @@ void Optimizer::newDoNoMaskWA_postRA()
         return tI;
     };
 
-    const bool useRAWAInst = false;
-    if (!useRAWAInst)
+    if (!NoMaskWAUseRAList())
     {
         kernel.clearWAInst();
 
@@ -14389,7 +14429,9 @@ void Optimizer::newDoNoMaskWA_postRA()
         }
         std::list<G4_INST*>& waInsts = MI.second;
 
-        verifyBBWAInsts(BB, waInsts);
+        // waInsts have been verified after RA.  But some passes, such as removeRedundMov, etc,
+        // might remove some insts. Here, it is safe to erase insts that are not in the list.
+        eraseDeadWAInsts(BB, waInsts);
 
         // Reset local ids so we can check instruction order.
         BB->resetLocalIds();
