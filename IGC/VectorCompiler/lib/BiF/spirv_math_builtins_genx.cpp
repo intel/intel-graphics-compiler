@@ -373,10 +373,6 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, long,
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, ulong,
                                            cm::math::count_population)
 
-SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ceil, float, cm::math::ceil)
-SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(floor, float, cm::math::floor)
-SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(trunc, float, cm::math::truncate)
-
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, char, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, short, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, int, cm::math::absolute)
@@ -658,24 +654,6 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 3, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 4, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 8, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(fabs, double, 16, cm::math::absolute)
-
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ceil, float, 2, cm::math::ceil)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ceil, float, 3, cm::math::ceil)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ceil, float, 4, cm::math::ceil)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ceil, float, 8, cm::math::ceil)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(ceil, float, 16, cm::math::ceil)
-
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(floor, float, 2, cm::math::floor)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(floor, float, 3, cm::math::floor)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(floor, float, 4, cm::math::floor)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(floor, float, 8, cm::math::floor)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(floor, float, 16, cm::math::floor)
-
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 2, cm::math::truncate)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 3, cm::math::truncate)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 4, cm::math::truncate)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 8, cm::math::truncate)
-SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 16, cm::math::truncate)
 
 #define SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(FUNC_NAME, ELEMENT_TYPE, N, \
                                                    CUSTOM_NAME)                \
