@@ -227,6 +227,10 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         }
 
         // set VISA dbg info to nullptr to indicate 1-step debug is enabled
+        if (currShader->ProgramOutput()->m_debugDataGenISA)
+        {
+            IGC::aligned_free(currShader->ProgramOutput()->m_debugDataGenISA);
+        }
         currShader->ProgramOutput()->m_debugDataGenISASize = 0;
         currShader->ProgramOutput()->m_debugDataGenISA = nullptr;
 
