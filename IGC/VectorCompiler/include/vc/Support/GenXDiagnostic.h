@@ -39,13 +39,9 @@ template <typename T> void printToString(std::string &Str, T &V) {
 class DiagnosticInfo : public llvm::DiagnosticInfo {
 private:
   std::string Description;
-  static int KindID;
+  static const int KindID;
 
-  static int getKindID() {
-    if (KindID == 0)
-      KindID = llvm::getNextAvailablePluginDiagnosticKind();
-    return KindID;
-  }
+  static int getKindID() { return KindID; }
 
 public:
   // Initialize from description

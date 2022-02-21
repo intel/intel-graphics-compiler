@@ -146,13 +146,10 @@ namespace {
 class DiagnosticInfoCisaBuild : public DiagnosticInfo {
 private:
   std::string Description;
-  static int KindID;
 
-  static int getKindID() {
-    if (KindID == 0)
-      KindID = llvm::getNextAvailablePluginDiagnosticKind();
-    return KindID;
-  }
+  static const int KindID;
+
+  static int getKindID() { return KindID; }
 
 public:
   DiagnosticInfoCisaBuild(const Twine &Desc, DiagnosticSeverity Severity)
@@ -176,8 +173,9 @@ public:
     return DI->getKind() == getKindID();
   }
 };
-int DiagnosticInfoCisaBuild::KindID = 0;
 
+const int DiagnosticInfoCisaBuild::KindID =
+    llvm::getNextAvailablePluginDiagnosticKind();
 
 using IRChecker = vc::IRChecker<DiagnosticInfoCisaBuild>;
 

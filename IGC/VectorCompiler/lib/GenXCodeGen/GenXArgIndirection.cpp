@@ -183,12 +183,11 @@ private:
   StringRef Filename;
   unsigned Line;
   unsigned Col;
-  static int KindID;
-  static int getKindID() {
-    if (KindID == 0)
-      KindID = llvm::getNextAvailablePluginDiagnosticKind();
-    return KindID;
-  }
+
+  static const int KindID;
+
+  static int getKindID() { return KindID; }
+
 public:
   // Initialize from an Instruction and an Argument.
   DiagnosticInfoArgIndirection(Instruction *Inst, Argument *Arg,
@@ -199,7 +198,9 @@ public:
     return DI->getKind() == getKindID();
   }
 };
-int DiagnosticInfoArgIndirection::KindID = 0;
+
+const int DiagnosticInfoArgIndirection::KindID =
+    llvm::getNextAvailablePluginDiagnosticKind();
 
 // processArgLR relies on these being in this order.
 // checkIndirectability relies on these being powers of 2 (except
