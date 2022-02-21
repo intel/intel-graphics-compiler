@@ -1031,12 +1031,13 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
         Function* pFunc = &(*I);
 
         StringRef funcName = pFunc->getName();
-        if (funcName == OCL_GET_GLOBAL_OFFSET ||
+        bool isFuncNameToSearch = (funcName == OCL_GET_GLOBAL_OFFSET ||
             funcName == OCL_GET_LOCAL_ID ||
             funcName == OCL_GET_GROUP_ID ||
             funcName == OCL_GET_SUBGROUP_ID_IGC_SPVIR ||
             funcName == OCL_GET_SUBGROUP_ID_KHR_SPVIR ||
-            funcName == OCL_GET_SUBGROUP_ID)
+            funcName == OCL_GET_SUBGROUP_ID);
+        if (isFuncNameToSearch)
         {
             MetaDataUtils* pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
             ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
