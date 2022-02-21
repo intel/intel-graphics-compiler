@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <algorithm>
 #include <fstream>
 #include <functional>
+#include <limits>
 #include <sstream>
 #include <queue>
 
