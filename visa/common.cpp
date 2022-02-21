@@ -38,6 +38,7 @@ const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
         "PVC"),
     PlatformInfo(Xe_PVCXT, PlatformGen::XE, 15, 64,
         "PVCXT"),
+
 }; // ALL_PLATFORMS
 
 const PlatformInfo* PlatformInfo::LookupPlatformInfo(TARGET_PLATFORM p)

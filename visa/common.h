@@ -200,11 +200,11 @@ unsigned char getGRFSize();
 enum class PlatformGen
 {
     GEN_UNKNOWN = 0,
-    GEN8 = 8,
-    GEN9 = 9,
-    GEN10 = 10,
-    GEN11 = 11,
-    XE = 12,
+    GEN8   = 8,
+    GEN9   = 9,
+    GEN10  = 10,
+    GEN11  = 11,
+    XE     = 12,
 };
 
 // Error types

@@ -72,9 +72,8 @@ IGA_API const char *iga_status_to_string(iga_status_t st);
 
 
 /*
-* Returns a NUL-terminated version string corresponding to the version of
-* IGA.
-*/
+ * Returns a NUL-terminated version string corresponding to the version of IGA.
+ */
 IGA_API const char *iga_version_string();
 
 
@@ -137,6 +136,7 @@ IGA_API iga_status_t iga_platforms_list(
   size_t gens_length_bytes,
   iga_gen_t *gens,
   size_t *gens_length_bytes_required);
+
 /*
  * Returns the platform suffix name of a given platform.
  *
@@ -154,6 +154,7 @@ IGA_API iga_status_t iga_platforms_list(
 IGA_API iga_status_t iga_platform_symbol_suffix(
     iga_gen_t gen,
     const char **suffix);
+
 /*
  * Returns the names for a given platform.  E.g. IGA_GEN9 returns "skl".
  *
@@ -183,7 +184,7 @@ IGA_API iga_status_t iga_platform_names(
 /*****************************************************************************/
 
 /*
- * Context options
+ * Context creation options
  */
 typedef struct {
     size_t        cb;   /* set to sizeof(iga_context_options_t) */
@@ -260,11 +261,14 @@ typedef struct {
      * historically something else
      */
 
-    // number of sbid used for auto dependency setting. This value is effective
-    // only when IGA_ENCODER_OPT_AUTO_DEPENDENCIES is given
+    /* number of sbid used for auto dependency setting. This value is effective
+     * only when IGA_ENCODER_OPT_AUTO_DEPENDENCIES is given */
     uint32_t sbid_count;
-    // force the swsb_encode_mode. If not given, the encode mode will be
-    // derived from platform
+
+    /*
+     * Force the swsb_encode_mode.  If not given (SWSBInvalidMode),
+     * then encode mode will be derived from platform.
+     */
     iga::SWSB_ENCODE_MODE swsb_encode_mode;
 } iga_assemble_options_t;
 

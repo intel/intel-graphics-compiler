@@ -28,8 +28,8 @@ public:
     constexpr PlatformInfo(
         TARGET_PLATFORM p,
         PlatformGen f,
-        int e,
-        unsigned char size,
+        int enc,
+        unsigned char grf_size,
         const char* str0,
         const char* str1 = nullptr,
         const char* str2 = nullptr,
@@ -37,8 +37,8 @@ public:
         const char* str4 = nullptr)
         : platform(p),
           family(f),
-          encoding(e),
-          grfSize(size),
+          encoding(enc),
+          grfSize(grf_size),
           symbols{str0, str1, str2, str3, str4, nullptr}
     {
     }

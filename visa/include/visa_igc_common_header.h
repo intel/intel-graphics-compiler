@@ -664,6 +664,8 @@ enum LSC_DATA_SIZE {
     // data types supporting conversion on load
     // 8c32b reads load (8) bits, (c)onvert to (32) bits (zero extending)
     // store truncates
+    //
+    // In DG2 and PVC the upper bits are undefined.
     LSC_DATA_SIZE_8c32b,    // DATA:u8c32...   (zero-extend / truncate)
     LSC_DATA_SIZE_16c32b,   // DATA:u16c32..   (zero-extend / truncate)
     LSC_DATA_SIZE_16c32bH,  // DATA:u16c32h..  h means load to (h)igh 16

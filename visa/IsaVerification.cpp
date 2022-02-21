@@ -1690,7 +1690,7 @@ void vISAVerifier::verifyInstructionArith(
     case ISA_SAD2ADD:
         /// dst must be w or uw
         REPORT_INSTRUCTION(options, dstType == ISA_TYPE_W || dstType == ISA_TYPE_UW, "sad2/sad2add only supports W/UW dst type.");
-        REPORT_INSTRUCTION(options, irBuilder->getPlatformGeneration() != PlatformGen::XE, "sad2/sad2add is not supported on Xe.");
+        REPORT_INSTRUCTION(options, irBuilder->getPlatformGeneration() >= PlatformGen::XE, "sad2/sad2add is not supported on Xe.");
         break;
     case ISA_ADDC:
     case ISA_SUBB:
