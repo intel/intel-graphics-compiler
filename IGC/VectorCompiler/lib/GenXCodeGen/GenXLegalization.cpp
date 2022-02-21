@@ -594,7 +594,7 @@ unsigned GenXLegalization::adjustTwiceWidthOrFixed4(const Bale &B) {
     return 0x3f;
   // Spot whether we have a FIXED operand and/or a TWICEWIDTH operand.
   if (GenXIntrinsic::isGenXIntrinsic(Main->Inst)) {
-    GenXIntrinsicInfo II(GenXIntrinsic::getAnyIntrinsicID(Main->Inst));
+    GenXIntrinsicInfo II(vc::getAnyIntrinsicID(Main->Inst));
     for (auto ArgInfo : II.getInstDesc()) {
       if (!ArgInfo.isArgOrRet())
        continue;
@@ -875,7 +875,7 @@ bool GenXLegalization::processInst(Instruction *Inst) {
       // No legalization for inline asm
       if (cast<CallInst>(MainInst->Inst)->isInlineAsm())
         return false;
-      unsigned IntrinID = GenXIntrinsic::getAnyIntrinsicID(MainInst->Inst);
+      unsigned IntrinID = vc::getAnyIntrinsicID(MainInst->Inst);
       switch (IntrinID) {
       case GenXIntrinsic::not_any_intrinsic:
         return false; // non-intrinsic call, ignore
@@ -1105,7 +1105,7 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
   // It needs to be split. For each part, we have an all/any on that part, and
   // use it to do a select on a scalar that keeps track of whether all/any set
   // bits have been found.
-  unsigned IID = GenXIntrinsic::getAnyIntrinsicID(Inst);
+  unsigned IID = vc::getAnyIntrinsicID(Inst);
   Type *I16Ty = Type::getInt16Ty(Inst->getContext());
   Value *Zero = Constant::getNullValue(I16Ty);
   Value *One = ConstantInt::get(I16Ty, 1);
@@ -2320,7 +2320,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   IGC_ASSERT(CI);
   auto CalledF = CI->getCalledFunction();
   IGC_ASSERT(CalledF);
-  unsigned IntrinID = GenXIntrinsic::getAnyIntrinsicID(CalledF);
+  unsigned IntrinID = vc::getAnyIntrinsicID(CalledF);
   IGC_ASSERT(GenXIntrinsic::isAnyNonTrivialIntrinsic(IntrinID));
   if (IntrinID == GenXIntrinsic::genx_constanti ||
       IntrinID == GenXIntrinsic::genx_constantf) {

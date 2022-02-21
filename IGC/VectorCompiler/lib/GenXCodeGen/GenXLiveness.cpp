@@ -365,7 +365,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
         if (CI->isInlineAsm() || IGCLLVM::isIndirectCall(*CI))
           Num = Numbering->getNumber(UserHead);
         else {
-        switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {
+        switch (vc::getAnyIntrinsicID(CI)) {
           case GenXIntrinsic::not_any_intrinsic:
             // Use as a call arg. We say that the use is at the arg pre-copy
             // slot, where the arg copy will be inserted in coalescing. This
@@ -606,7 +606,7 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
     std::string NameBuf;
     StringRef Name = "arg";
     if (auto Inst = dyn_cast<Instruction>(V.getValue())) {
-      unsigned IID = GenXIntrinsic::getAnyIntrinsicID(V.getValue());
+      unsigned IID = vc::getAnyIntrinsicID(V.getValue());
       if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IID)) {
         // For an intrinsic call, use the intrinsic name after the
         // final period.

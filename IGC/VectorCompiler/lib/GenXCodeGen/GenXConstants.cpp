@@ -163,7 +163,7 @@ bool genx::loadNonSimpleConstants(
   auto CI = dyn_cast<CallInst>(Inst);
   if (CI)
     NumArgs = CI->getNumArgOperands();
-  unsigned IID = GenXIntrinsic::getAnyIntrinsicID(Inst);
+  unsigned IID = vc::getAnyIntrinsicID(Inst);
   // Do not proceed loading of genx.alloca argument since its value doesn't
   // needed (only type matters) and always null.
   if (IID == GenXIntrinsic::genx_alloca)
@@ -334,7 +334,7 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
     return Modified;
   if (CI->isInlineAsm())
     return loadConstantsForInlineAsm(CI, Subtarget, DL, nullptr);
-  int IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(CI);
+  int IntrinsicID = vc::getAnyIntrinsicID(CI);
   switch (IntrinsicID) {
     case GenXIntrinsic::not_any_intrinsic:
     case Intrinsic::fma:
@@ -592,7 +592,7 @@ bool genx::cleanupConstantLoads(Function *F) {
     auto *CI = dyn_cast<CallInst>(&*I++);
     if (!CI)
       continue;
-    auto IID = GenXIntrinsic::getAnyIntrinsicID(CI);
+    auto IID = vc::getAnyIntrinsicID(CI);
     if (IID != GenXIntrinsic::genx_constanti &&
         IID != GenXIntrinsic::genx_constantf &&
         IID != GenXIntrinsic::genx_constantpred)

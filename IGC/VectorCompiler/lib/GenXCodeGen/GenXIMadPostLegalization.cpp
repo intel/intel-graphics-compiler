@@ -225,7 +225,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
     Instruction *In = nullptr;
     // Collect operand instructions not baled yet.
     for (auto I = B.begin(), E = B.end(); I != E; ++I) {
-      bool isFMA = GenXIntrinsic::getAnyIntrinsicID(I->Inst) == Intrinsic::fma;
+      bool isFMA = vc::getAnyIntrinsicID(I->Inst) == Intrinsic::fma;
       for (unsigned i = 0, e = I->Inst->getNumOperands(); i != e; ++i) {
         // Skip if that operand is baled.
         if (I->Info.isOperandBaled(i))
@@ -271,7 +271,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
       continue;
     auto CandidateInsn = OutB.getMainInst()->Inst;
     IGC_ASSERT(CandidateInsn);
-    if (GenXIntrinsic::getAnyIntrinsicID(CandidateInsn) != Intrinsic::fma)
+    if (vc::getAnyIntrinsicID(CandidateInsn) != Intrinsic::fma)
       continue;
     // Skip if it's already handled.
     if (FMAs.count(CandidateInsn))
@@ -348,7 +348,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
         break;
       auto CandidateInst = InB.getMainInst()->Inst;
       IGC_ASSERT(CandidateInst);
-      if (GenXIntrinsic::getAnyIntrinsicID(CandidateInst) != Intrinsic::fma)
+      if (vc::getAnyIntrinsicID(CandidateInst) != Intrinsic::fma)
         break;
       FMAs.insert(CandidateInst);
     } while (1);

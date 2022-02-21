@@ -919,7 +919,7 @@ bool GenXPatternMatch::matchInverseSqrt(Instruction *I) {
 
   // Generate inverse sqrt only if fast flag for llvm intrinsic is used or
   // genx sqrt intrinsics is specified
-  auto IID = GenXIntrinsic::getAnyIntrinsicID(OpInst);
+  auto IID = vc::getAnyIntrinsicID(OpInst);
   if (!(IID == GenXIntrinsic::genx_sqrt ||
         (IID == Intrinsic::sqrt && OpInst->getFastMathFlags().isFast())))
     return false;
@@ -2218,7 +2218,7 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
   // TODO: This can be removed if pattern match is applied
   // incrementally: first match reciprocal, then generate rsqrt
   // when visiting it
-  auto IID = GenXIntrinsic::getAnyIntrinsicID(Divisor);
+  auto IID = vc::getAnyIntrinsicID(Divisor);
   if ((IID == GenXIntrinsic::genx_sqrt ||
        (IID == Intrinsic::sqrt && Divisor->getFastMathFlags().isFast())) &&
       match(Op0, m_FPOne()) && Divisor->hasOneUse()) {
@@ -2485,7 +2485,7 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
     auto *Parent = NewV;
     while (isa<BitCastInst>(Parent))
       Parent = cast<Instruction>(Parent)->getOperand(0);
-    if (GenXIntrinsic::getAnyIntrinsicID(Parent) == GenXIntrinsic::genx_faddr)
+    if (vc::getAnyIntrinsicID(Parent) == GenXIntrinsic::genx_faddr)
       return false;
 
     if (NewVTy->isVectorTy() &&

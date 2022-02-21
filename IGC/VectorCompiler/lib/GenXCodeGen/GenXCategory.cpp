@@ -844,7 +844,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
   // The def is a call-inst
   if (CallInst *CI = dyn_cast<CallInst>(V)) {
     if (Function *Callee = CI->getCalledFunction()) {
-      unsigned IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(Callee);
+      unsigned IntrinsicID = vc::getAnyIntrinsicID(Callee);
       // We should not see genx_convert, as it is inserted into a value after
       // using this function to determine its category.
       IGC_ASSERT(IntrinsicID != GenXIntrinsic::genx_convert);
@@ -948,7 +948,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
       Function *Callee = CI->getCalledFunction();
       unsigned IntrinID = GenXIntrinsic::not_any_intrinsic;
       if (Callee)
-        IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
+        IntrinID = vc::getAnyIntrinsicID(Callee);
       // We should not see genx_convert, as it is inserted into a value after
       // using this function to determine its category.
       IGC_ASSERT(IntrinID != GenXIntrinsic::genx_convert);

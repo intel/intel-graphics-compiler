@@ -1150,7 +1150,7 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
       LLVM_DEBUG(dbgs() << "execution size bigger than GRF\n");
       return false;
     }
-    unsigned IID = GenXIntrinsic::getAnyIntrinsicID(MainInst->Inst);
+    unsigned IID = vc::getAnyIntrinsicID(MainInst->Inst);
     if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IID)) {
       auto IntrInfo = GenXIntrinsicInfo(IID);
       // Cannot indirect a raw or direct only operand.

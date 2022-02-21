@@ -1138,7 +1138,7 @@ Instruction *GenXLoadStoreLowering::createSVMScatter(StoreInst &StI) const {
 }
 
 void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Intrinsic) const {
-  unsigned ID = GenXIntrinsic::getAnyIntrinsicID(&Intrinsic);
+  unsigned ID = vc::getAnyIntrinsicID(&Intrinsic);
   switch (ID) {
   case Intrinsic::lifetime_start:
   case Intrinsic::lifetime_end:

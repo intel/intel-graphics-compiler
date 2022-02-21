@@ -3235,7 +3235,7 @@ bool GenXLowering::processInst(Instruction *Inst) {
     processTwoAddressOpnd(CI);
     unsigned IntrinsicID = GenXIntrinsic::not_any_intrinsic;
     if (Function *Callee = CI->getCalledFunction()) {
-      IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(Callee);
+      IntrinsicID = vc::getAnyIntrinsicID(Callee);
       IGC_ASSERT(CI->getNumArgOperands() < GenXIntrinsicInfo::OPNDMASK);
     }
     if (ST) {
@@ -3471,7 +3471,7 @@ bool GenXLowering::lowerRdPredRegion(Instruction *Inst) {
     auto User = cast<Instruction>(ui->getUser());
     if (isa<SelectInst>(User))
       continue;
-    unsigned IID = GenXIntrinsic::getAnyIntrinsicID(User);
+    unsigned IID = vc::getAnyIntrinsicID(User);
     if (GenXIntrinsic::isWrRegion(IID))
       continue;
     if (IID == GenXIntrinsic::genx_wrpredpredregion)
@@ -4803,7 +4803,7 @@ bool GenXLowering::lowerMinMax(CallInst *CI, unsigned IntrinsicID) {
 
 // Lower llvm.sqrt to genx.ieee.sqrt equivalent.
 bool GenXLowering::lowerSqrt(CallInst *CI) {
-  IGC_ASSERT_MESSAGE(GenXIntrinsic::getAnyIntrinsicID(CI) == Intrinsic::sqrt,
+  IGC_ASSERT_MESSAGE(vc::getAnyIntrinsicID(CI) == Intrinsic::sqrt,
     "llvm.sqrt expected");
   auto *ResTy = CI->getType();
 

@@ -107,7 +107,7 @@ bool GenXPostLegalization::runOnFunction(Function &F)
     BasicBlock *BB = &*fi;
     for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
       Instruction *Inst = &*bi;
-      switch (GenXIntrinsic::getAnyIntrinsicID(Inst)) {
+      switch (vc::getAnyIntrinsicID(Inst)) {
       default:
         // Lower non-simple constant operands.
         Modified |= loadNonSimpleConstants(Inst, *ST, *DL, nullptr);

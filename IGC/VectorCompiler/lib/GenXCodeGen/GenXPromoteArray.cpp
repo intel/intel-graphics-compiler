@@ -418,7 +418,7 @@ static bool CheckPtrToIntCandidate(PtrToIntInst *PTI) {
   for (auto *MemOp : BinOp->users()) {
     if (!isa<CallInst>(MemOp))
       return false;
-    auto IID = GenXIntrinsic::getAnyIntrinsicID(MemOp);
+    auto IID = vc::getAnyIntrinsicID(MemOp);
     if (IID != GenXIntrinsic::genx_svm_gather &&
         IID != GenXIntrinsic::genx_svm_scatter)
       return false;
@@ -509,7 +509,7 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
       // Not a candidate.
       return false;
     } else if (IntrinsicInst *intr = dyn_cast<IntrinsicInst>(*use_it)) {
-      auto IID = GenXIntrinsic::getAnyIntrinsicID(intr);
+      auto IID = vc::getAnyIntrinsicID(intr);
       if (IID == llvm::Intrinsic::lifetime_start ||
           IID == llvm::Intrinsic::lifetime_end ||
           IID == GenXIntrinsic::genx_gather_private ||
@@ -723,7 +723,7 @@ void TransposeHelper::handleAllocaSources(Instruction &Inst,
     } else if (PHINode *pPhi = llvm::dyn_cast<PHINode>(User)) {
       handlePHINode(pPhi, Idx, Inst.getParent());
     } else if (IntrinsicInst *IntrInst = dyn_cast<IntrinsicInst>(User)) {
-      auto IID = GenXIntrinsic::getAnyIntrinsicID(IntrInst);
+      auto IID = vc::getAnyIntrinsicID(IntrInst);
       if (IID == llvm::Intrinsic::lifetime_start ||
           IID == llvm::Intrinsic::lifetime_end)
         IntrInst->eraseFromParent();

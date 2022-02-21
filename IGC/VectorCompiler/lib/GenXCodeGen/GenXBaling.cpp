@@ -196,7 +196,7 @@ bool GenXBaling::processFunction(Function *F)
  */
 void GenXBaling::processInst(Instruction *Inst)
 {
-  unsigned IntrinID = GenXIntrinsic::getAnyIntrinsicID(Inst);
+  unsigned IntrinID = vc::getAnyIntrinsicID(Inst);
   if (GenXIntrinsic::isWrRegion(IntrinID))
     processWrRegion(Inst);
   else if (IntrinID == GenXIntrinsic::genx_wrpredregion)
@@ -543,7 +543,7 @@ void GenXBaling::processWrPredRegion(Instruction *Inst)
   Value *V = Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
   BaleInfo BI(BaleInfo::WRPREDREGION);
   bool isRdPredR =
-      GenXIntrinsic::getAnyIntrinsicID(V) == GenXIntrinsic::genx_rdpredregion;
+      vc::getAnyIntrinsicID(V) == GenXIntrinsic::genx_rdpredregion;
   if (isa<CmpInst>(V) || isRdPredR) {
     LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #"
                             << GenXIntrinsic::GenXRegion::NewValueOperandNum
@@ -637,7 +637,7 @@ void GenXBaling::processWrRegion(Instruction *Inst)
   if (std::any_of(Inst->user_begin(), Inst->user_end(), [](User *U) {
         return GenXIntrinsic::isReadWritePredefReg(U);
       })) {
-    unsigned ValIntrinID = GenXIntrinsic::getAnyIntrinsicID(V);
+    unsigned ValIntrinID = vc::getAnyIntrinsicID(V);
     GenXIntrinsicInfo II(ValIntrinID);
     if (GenXIntrinsic::isGenXIntrinsic(ValIntrinID) &&
         (II.getRetInfo().getCategory() == GenXIntrinsicInfo::RAW)) {
@@ -656,7 +656,7 @@ void GenXBaling::processWrRegion(Instruction *Inst)
       // Ensure the wrregion's result has an
       // alignment of 32 if intrinsic with
       // raw result was baled into
-      unsigned ValIntrinID = GenXIntrinsic::getAnyIntrinsicID(V);
+      unsigned ValIntrinID = vc::getAnyIntrinsicID(V);
       GenXIntrinsicInfo II(ValIntrinID);
       if (GenXIntrinsic::isGenXIntrinsic(ValIntrinID) &&
           (ValIntrinID != GenXIntrinsic::genx_sat) &&
@@ -788,7 +788,7 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
   if (Kind == BalingKind::BK_CodeGen && !isa<VectorType>(Mask->getType())) {
     if (auto Extract = dyn_cast<ExtractValueInst>(Mask)) {
       auto *GotoJoin = cast<Instruction>(Extract->getAggregateOperand());
-      auto IID = GenXIntrinsic::getAnyIntrinsicID(GotoJoin);
+      auto IID = vc::getAnyIntrinsicID(GotoJoin);
       if (IID == GenXIntrinsic::genx_simdcf_goto
           || IID == GenXIntrinsic::genx_simdcf_join) {
         // Second pass: Mask is the extractvalue of the !any(EM) result out of
@@ -885,7 +885,7 @@ void GenXBaling::processSat(Instruction *Inst)
   if (V && V->hasOneUse()) {
     // It is an instruction where we are the only use. We can bale it in, if
     // it is a suitable instruction.
-    auto ValIntrinID = GenXIntrinsic::getAnyIntrinsicID(V);
+    auto ValIntrinID = vc::getAnyIntrinsicID(V);
     if (GenXIntrinsic::isRdRegion(ValIntrinID)) {
       LLVM_DEBUG(llvm::dbgs()
                  << __FUNCTION__ << " setting operand #" << OperandNum
@@ -1239,7 +1239,7 @@ bool GenXBaling::isBalableNewValueIntoWrr(Value *V, const Region &WrrR) {
 
   // It is an instruction. We can bale it in, if it is a suitable
   // instruction.
-  unsigned ValIntrinID = GenXIntrinsic::getAnyIntrinsicID(Inst);
+  unsigned ValIntrinID = vc::getAnyIntrinsicID(Inst);
   if (ValIntrinID == GenXIntrinsic::genx_sat ||
       GenXIntrinsic::isRdRegion(ValIntrinID))
     return true;
@@ -1540,7 +1540,7 @@ bool GenXBaling::processSelectToPredicate(SelectInst *SI) {
     auto CI = dyn_cast<CallInst>(Val);
     if (!CI)
       return false;
-    auto IntrinID = GenXIntrinsic::getAnyIntrinsicID(CI);
+    auto IntrinID = vc::getAnyIntrinsicID(CI);
     return IntrinID == GenXIntrinsic::genx_constanti ||
            IntrinID == GenXIntrinsic::genx_constantf;
   };
@@ -1616,10 +1616,10 @@ void GenXBaling::processBranch(BranchInst *Branch)
 void GenXBaling::processTwoAddrSend(CallInst *CI)
 {
   unsigned TwoAddrOperandNum = CI->getNumArgOperands() - 1;
-  IGC_ASSERT(GenXIntrinsicInfo(GenXIntrinsic::getAnyIntrinsicID(CI))
+  IGC_ASSERT(GenXIntrinsicInfo(vc::getAnyIntrinsicID(CI))
       .getArgInfo(TwoAddrOperandNum)
       .getCategory() == GenXIntrinsicInfo::TWOADDR);
-  IGC_ASSERT(GenXIntrinsicInfo(GenXIntrinsic::getAnyIntrinsicID(CI))
+  IGC_ASSERT(GenXIntrinsicInfo(vc::getAnyIntrinsicID(CI))
       .getRetInfo()
       .getCategory() == GenXIntrinsicInfo::RAW);
   // First check the case where legalization did not need to split the rdregion

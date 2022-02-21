@@ -386,7 +386,7 @@ AccumulatorUsageLocalizer::getArithmeticChainRange(Iter InstBegin,
 }
 
 bool AccumulatorUsageLocalizer::isArithmeticChainInst(const Value *V) {
-  unsigned ID = GenXIntrinsic::getAnyIntrinsicID(V);
+  unsigned ID = vc::getAnyIntrinsicID(V);
   switch (ID) {
   case Intrinsic::fma:
     return true;
@@ -497,7 +497,7 @@ void GenXVisaRegAlloc::extraCoalescing()
             UseInNonAluIntrinsic = true;
             break;
           }
-          unsigned IID = GenXIntrinsic::getAnyIntrinsicID(user);
+          unsigned IID = vc::getAnyIntrinsicID(user);
           switch (IID) {
             case GenXIntrinsic::not_any_intrinsic:
             case GenXIntrinsic::genx_rdregioni:
@@ -522,7 +522,7 @@ void GenXVisaRegAlloc::extraCoalescing()
         // input. Otherwise logic is broken on lifetime marker in vISA emission.
         //
         auto skipTwoAddrCoalesce = [](Instruction *Inst) {
-          unsigned IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(Inst);
+          unsigned IntrinsicID = vc::getAnyIntrinsicID(Inst);
           if (IntrinsicID == GenXIntrinsic::not_any_intrinsic)
             return false;
           GenXIntrinsicInfo Info(IntrinsicID);

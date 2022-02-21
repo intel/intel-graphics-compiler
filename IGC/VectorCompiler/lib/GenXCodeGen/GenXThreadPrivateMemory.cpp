@@ -460,9 +460,9 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
     }
   } else if (auto *CI = dyn_cast<CallInst>(Ptr)) {
     if (!IGCLLVM::isIndirectCall(*CI) &&
-        (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
+        (vc::getAnyIntrinsicID(CI->getCalledFunction()) ==
              GenXIntrinsic::genx_svm_block_ld ||
-         GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
+         vc::getAnyIntrinsicID(CI->getCalledFunction()) ==
              GenXIntrinsic::genx_svm_gather)) {
       return Ptr;
     }
@@ -1110,7 +1110,7 @@ public:
     if (isa<LoadInst>(V)) {
       ++LoadsMet;
     } else if (auto *CI = dyn_cast<CallInst>(V)) {
-      auto IID = GenXIntrinsic::getAnyIntrinsicID(CI);
+      auto IID = vc::getAnyIntrinsicID(CI);
       if (IID == GenXIntrinsic::genx_gather_private ||
           IID == GenXIntrinsic::genx_scatter_private ||
           // TODO: make this analysis interprocedural
@@ -1153,7 +1153,7 @@ void GenXThreadPrivateMemory::addUsers(Value *V, bool ProcessCalls) {
   IGC_ASSERT(isa<Instruction>(V) || isa<Argument>(V));
   if (ProcessCalls) {
     if (auto *CI = dyn_cast<CallInst>(V)) {
-      auto IID = GenXIntrinsic::getAnyIntrinsicID(CI);
+      auto IID = vc::getAnyIntrinsicID(CI);
       switch (IID) {
       case GenXIntrinsic::genx_svm_gather:
       case GenXIntrinsic::genx_svm_scatter:
@@ -1174,7 +1174,7 @@ void GenXThreadPrivateMemory::addUsers(Value *V, bool ProcessCalls) {
     if (auto *CI = dyn_cast<CallInst>(ToAdd)) {
       Function *Callee = nullptr;
       if ((Callee = CI->getCalledFunction()) &&
-          GenXIntrinsic::getAnyIntrinsicID(Callee) ==
+          vc::getAnyIntrinsicID(Callee) ==
               GenXIntrinsic::not_any_intrinsic &&
           V->getType()->isPointerTy() && ProcessCalls) {
         m_Calls[CI->getCalledFunction()].Calls.insert(CI);
@@ -1220,7 +1220,7 @@ void GenXThreadPrivateMemory::collectArgUsers(bool ProcessCalls) {
 void GenXThreadPrivateMemory::addUsersIfNeeded(Value *V, bool ProcessCalls) {
   bool isGatherScatterPrivate = false;
   if (IntrinsicInst *CI = dyn_cast<IntrinsicInst>(V)) {
-    unsigned ID = GenXIntrinsic::getAnyIntrinsicID(CI);
+    unsigned ID = vc::getAnyIntrinsicID(CI);
     switch (ID) {
     case GenXIntrinsic::genx_gather_private:
     case GenXIntrinsic::genx_scatter_private:
@@ -1279,7 +1279,7 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
     Result |= runOnFunction(*F);
     for (auto &N : *CG[F]) {
       if (N.second->getFunction() &&
-          GenXIntrinsic::getAnyIntrinsicID(N.second->getFunction()) ==
+          vc::getAnyIntrinsicID(N.second->getFunction()) ==
               GenXIntrinsic::not_any_intrinsic) {
         Worklist.push(N.second->getFunction());
         LLVM_DEBUG(dbgs() << "Adding func "
@@ -1389,7 +1389,7 @@ bool GenXThreadPrivateMemory::processUsers() {
         Changed = true;
       }
     } else if (auto *CI = dyn_cast<CallInst>(I)) {
-      unsigned ID = GenXIntrinsic::getAnyIntrinsicID(CI);
+      unsigned ID = vc::getAnyIntrinsicID(CI);
       if (ID == GenXIntrinsic::genx_gather_private) {
         Changed |= replaceGatherPrivate(CI);
         ChangeRequired = true;
@@ -1463,7 +1463,7 @@ void GenXThreadPrivateMemory::processUnchangedCall(CallInst &CI) {
 bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   // skip function which is not a kernel or stackfunc
   // typically it's an emulation-related func (__cm_intrinsic_impl_*)
-  if (GenXIntrinsic::getAnyIntrinsicID(&F) != GenXIntrinsic::not_any_intrinsic)
+  if (vc::getAnyIntrinsicID(&F) != GenXIntrinsic::not_any_intrinsic)
     return false;
   LLVM_DEBUG(dbgs() << "Running TPM on " << F.getName() << "\n");
   m_stack = m_ST->stackSurface();

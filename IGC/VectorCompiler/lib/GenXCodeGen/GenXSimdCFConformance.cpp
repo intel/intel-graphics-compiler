@@ -501,7 +501,7 @@ bool testIsValidEMUse(const llvm::Value *const User,
   const llvm::Value::use_iterator& ui) {
   bool Result = false;
   IGC_ASSERT(User);
-  const unsigned int ID = llvm::GenXIntrinsic::getAnyIntrinsicID(User);
+  const unsigned int ID = vc::getAnyIntrinsicID(User);
   switch(ID)
   {
     case llvm::GenXIntrinsic::genx_rdpredregion:
@@ -2426,7 +2426,7 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
       }
     }
 
-    unsigned IID = GenXIntrinsic::getAnyIntrinsicID(User2);
+    unsigned IID = vc::getAnyIntrinsicID(User2);
     if (GenXIntrinsic::isWrRegion(IID))
       continue;
     if (IID == GenXIntrinsic::genx_wrpredpredregion
@@ -2545,7 +2545,7 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
     // shufflevector: add the EM use
     ConnectedVals->push_back(SimpleValue(SVI->getOperand(0), 0));
   } else if (auto CI = dyn_cast<CallInst>(Val.getValue())) {
-    switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {
+    switch (vc::getAnyIntrinsicID(CI)) {
       case GenXIntrinsic::genx_simdcf_goto:
         // goto: invalid unless it is the EM/RM result of goto as applicable
         if (Val.getIndex() != (Cat == vc::RegCategory::EM ? 0U : 1U))
@@ -2727,7 +2727,7 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
       continue;
     }
     if (auto CI = dyn_cast<CallInst>(User)) {
-      switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {
+      switch (vc::getAnyIntrinsicID(CI)) {
         case GenXIntrinsic::genx_simdcf_get_em:
           IGC_ASSERT(Cat == vc::RegCategory::EM);
           // Skip it if the category is right. This
@@ -3810,7 +3810,7 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
         Selects.push_back(Sel);
       } else {
         IGC_ASSERT(testIsValidEMUse(User, ui));
-        if (GenXIntrinsic::getAnyIntrinsicID(User) ==
+        if (vc::getAnyIntrinsicID(User) ==
           GenXIntrinsic::genx_rdpredregion) {
           // An rdpredregion of the EM. Find its uses in select too.
           EMs.push_back(User);

@@ -38,11 +38,13 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
+#include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 
 #include "visaBuilder_interface.h"
@@ -2812,14 +2814,14 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       buildCall(CI, DstDesc);
     } else {
       Function *Callee = CI->getCalledFunction();
-      unsigned IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
+      unsigned IntrinID = vc::getAnyIntrinsicID(Callee);
       switch (IntrinID) {
       case Intrinsic::dbg_value:
       case Intrinsic::dbg_declare:
       case GenXIntrinsic::genx_predefined_surface:
       case GenXIntrinsic::genx_output:
       case GenXIntrinsic::genx_output_1:
-      case GenXIntrinsic::genx_jump_table:
+      case vc::InternalIntrinsic::vc_internal_jump_table:
         // ignore
         break;
       case GenXIntrinsic::genx_simdcf_goto:
@@ -2863,7 +2865,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
                         // fall through...
       default:
         if (!(CI->user_empty() &&
-              GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
+              vc::getAnyIntrinsicID(CI->getCalledFunction()) ==
                   GenXIntrinsic::genx_any))
           buildIntrinsic(CI, IntrinID, BI, Mod, DstDesc);
         break;
@@ -4069,8 +4071,8 @@ void GenXKernelBuilder::buildIndirectBr(IndirectBrInst *Br) {
   IGC_ASSERT(Subtarget->hasSwitchjmp());
   Value *Addr = Br->getAddress();
   auto JumpTable = cast<IntrinsicInst>(Addr);
-  unsigned IID = GenXIntrinsic::getAnyIntrinsicID(JumpTable);
-  IGC_ASSERT(IID == GenXIntrinsic::genx_jump_table);
+  unsigned IID = vc::getAnyIntrinsicID(JumpTable);
+  IGC_ASSERT(IID == vc::InternalIntrinsic::vc_internal_jump_table);
   Value *Idx = JumpTable->getArgOperand(0);
 
   VISA_VectorOpnd *JMPIdx = createSource(Idx, UNSIGNED);

@@ -203,7 +203,7 @@ static Instruction *buildGaddr(IRBuilder<> &Builder, GlobalValue &GV) {
 void GenXGlobalValueLowering::fillWorkListForGVInstUse(Use &GVUse) {
   auto *Usr = cast<Instruction>(GVUse.getUser());
   auto *ConstWithGV = cast<Constant>(GVUse.get());
-  IGC_ASSERT_MESSAGE(GenXIntrinsic::getAnyIntrinsicID(Usr) !=
+  IGC_ASSERT_MESSAGE(vc::getAnyIntrinsicID(Usr) !=
                          GenXIntrinsic::genx_gaddr,
                      "llvm.gaddr must be inserted by this pass, but someone "
                      "inserted it before");

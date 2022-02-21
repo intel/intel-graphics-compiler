@@ -1434,7 +1434,7 @@ Substituter::getInstUses(Instruction &I) {
       UsesPTI.push_back(PTI);
     else if (BitCastInst *BC = dyn_cast<BitCastInst>(U.getUser())) {
       auto UnsupportedBCUser = llvm::find_if_not(BC->users(), [](User *BCU) {
-        auto IID = GenXIntrinsic::getAnyIntrinsicID(BCU);
+        auto IID = vc::getAnyIntrinsicID(BCU);
         return IID == llvm::Intrinsic::lifetime_start ||
                IID == llvm::Intrinsic::lifetime_end;
       });

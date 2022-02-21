@@ -181,7 +181,7 @@ static Value *createPredWithICmp(Value &ConvertToPred, IRBuilder<> &IRB) {
 }
 
 void GenXPredRegionLowering::processRdPredRegion(Instruction &RdPredRegion) {
-  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(&RdPredRegion) ==
+  IGC_ASSERT(vc::getAnyIntrinsicID(&RdPredRegion) ==
              GenXIntrinsic::genx_rdpredregion);
   IRBuilder<> IRB(RdPredRegion.getNextNode());
   IRB.SetCurrentDebugLocation(RdPredRegion.getDebugLoc());
@@ -216,7 +216,7 @@ void GenXPredRegionLowering::processWrPredRegionBales() {
 }
 
 void GenXPredRegionLowering::processWrPredRegion(Instruction &WrPredRegion) {
-  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(&WrPredRegion) ==
+  IGC_ASSERT(vc::getAnyIntrinsicID(&WrPredRegion) ==
              GenXIntrinsic::genx_wrpredregion);
   IRBuilder<> IRB(&WrPredRegion);
 
@@ -240,7 +240,7 @@ void GenXPredRegionLowering::processRdWrPredRegionBales() {
     processRdPredRegion(*RdPredRegion);
 
     Instruction *WrPredRegion = B.getHead()->Inst;
-    IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(WrPredRegion) ==
+    IGC_ASSERT(vc::getAnyIntrinsicID(WrPredRegion) ==
                GenXIntrinsic::genx_wrpredregion);
     Baling->unbale(WrPredRegion);
     Baling->processInst(WrPredRegion);

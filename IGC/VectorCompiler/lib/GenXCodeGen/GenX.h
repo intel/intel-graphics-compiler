@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/LoopInfo.h"
 
 #include "vc/Utils/GenX/TypeSize.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 
 #include <string>
 

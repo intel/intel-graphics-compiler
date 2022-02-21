@@ -381,7 +381,7 @@ class GenXEmulate : public ModulePass {
     Value *visitICmp(ICmpInst &Cmp) { return E.visitICmp(Cmp); }
     Value *visitInstruction(Instruction &I) { return nullptr; }
     Value *visitCallInst(CallInst &CI) {
-      switch (GenXIntrinsic::getAnyIntrinsicID(&CI)) {
+      switch (vc::getAnyIntrinsicID(&CI)) {
         // saturated add
         case GenXIntrinsic::genx_suadd_sat:
         case GenXIntrinsic::genx_usadd_sat:
@@ -460,7 +460,7 @@ bool GenXEmulate::Emu64Expander::isConvertOfI64(const Instruction &I) {
   if (GenXEmulate::Emu64Expander::isI64ToFP(I))
     return true;
 
-  auto IID = GenXIntrinsic::getAnyIntrinsicID(&I);
+  auto IID = vc::getAnyIntrinsicID(&I);
   switch (IID) {
   case GenXIntrinsic::genx_uutrunc_sat:
   case GenXIntrinsic::genx_sstrunc_sat:
@@ -484,7 +484,7 @@ bool GenXEmulate::Emu64Expander::isI64Cmp(const Instruction &I) {
 }
 bool GenXEmulate::Emu64Expander::isI64AddSat(const Instruction &I) {
   if (auto *CI = dyn_cast<CallInst>(&I)) {
-    switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {
+    switch (vc::getAnyIntrinsicID(CI)) {
     case GenXIntrinsic::genx_suadd_sat:
     case GenXIntrinsic::genx_usadd_sat:
     case GenXIntrinsic::genx_uuadd_sat:
@@ -754,7 +754,7 @@ Value *GenXEmulate::Emu64Expander::visitICmp(ICmpInst &Cmp) {
 
   const bool PartialPredicate =
       std::any_of(Cmp.user_begin(), Cmp.user_end(), [](const User *U) {
-        auto IID = GenXIntrinsic::getAnyIntrinsicID(U);
+        auto IID = vc::getAnyIntrinsicID(U);
         return IID == GenXIntrinsic::genx_wrpredregion ||
                IID == GenXIntrinsic::genx_wrpredpredregion;
       });
@@ -945,7 +945,7 @@ Value *GenXEmulate::Emu64Expander::visitIntToPtr(IntToPtrInst &I) {
 }
 Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
 
-  auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
+  auto IID = vc::getAnyIntrinsicID(&Inst);
   unsigned DstSize = CI.getType()->getScalarType()->getPrimitiveSizeInBits();
   IGC_ASSERT(DstSize == 8 || DstSize == 16 || DstSize == 32 || DstSize == 64);
 
@@ -1056,7 +1056,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxMinMax(CallInst &CI) {
   // We create 2 64-bit operations:
   // compare and select.
   // Then we replace those with yet-another expander instance
-  auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
+  auto IID = vc::getAnyIntrinsicID(&Inst);
   switch (IID) {
   case GenXIntrinsic::genx_umax:
     CondVal = Builder.CreateICmpUGT(Lhs, Rhs);
@@ -1106,7 +1106,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
   ConstantEmitter K(Src0.Lo);
 
   Value *Result = nullptr;
-  auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
+  auto IID = vc::getAnyIntrinsicID(&Inst);
   switch (IID) {
   case GenXIntrinsic::genx_uuadd_sat: {
     if (!SplitBuilder.IsI64Operation()) {
@@ -1200,7 +1200,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
     vc::diagnose(CI.getContext(), "GenXEmulate", &CI,
                  "double->UI conversions are not supported");
 
-  auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
+  auto IID = vc::getAnyIntrinsicID(&Inst);
   IGC_ASSERT_MESSAGE(IID == GenXIntrinsic::genx_fptosi_sat ||
                          IID == GenXIntrinsic::genx_fptoui_sat,
                      "unknown intrinsic passed to fptoi_sat emu");
@@ -1229,7 +1229,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
 }
 
 Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
-  switch (GenXIntrinsic::getAnyIntrinsicID(&Inst)) {
+  switch (vc::getAnyIntrinsicID(&Inst)) {
   case GenXIntrinsic::genx_uutrunc_sat:
   case GenXIntrinsic::genx_sstrunc_sat:
   case GenXIntrinsic::genx_ustrunc_sat:
@@ -1631,10 +1631,10 @@ bool GenXEmulate::Emu64Expander::hasStrictEmulationRequirement(
   }
 
   // skip constants
-  if (GenXIntrinsic::getAnyIntrinsicID(Inst) == GenXIntrinsic::genx_constanti)
+  if (vc::getAnyIntrinsicID(Inst) == GenXIntrinsic::genx_constanti)
     return OptStricterConst;
 
-  switch (GenXIntrinsic::getAnyIntrinsicID(Inst)) {
+  switch (vc::getAnyIntrinsicID(Inst)) {
   case GenXIntrinsic::genx_svm_scatter:
   case GenXIntrinsic::genx_svm_gather:
   case GenXIntrinsic::genx_svm_scatter4_scaled:

@@ -193,7 +193,7 @@ void GenXLiveRanges::buildLiveRanges()
           // result is marked RAW_NULLALLOWED. If so, don't create a live range,
           // so no register gets allocated.
           if (Inst->use_empty()) {
-            unsigned IID = GenXIntrinsic::getAnyIntrinsicID(Inst);
+            unsigned IID = vc::getAnyIntrinsicID(Inst);
             switch (IID) {
               case GenXIntrinsic::not_any_intrinsic:
               case GenXIntrinsic::genx_rdregioni:

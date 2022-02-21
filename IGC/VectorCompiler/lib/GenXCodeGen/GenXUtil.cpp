@@ -281,7 +281,7 @@ Instruction *genx::findClosestCommonDominator(DominatorTree *DT,
  */
 llvm::Optional<unsigned> genx::getTwoAddressOperandNum(CallInst *CI)
 {
-  auto IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(CI);
+  auto IntrinsicID = vc::getAnyIntrinsicID(CI);
   if (IntrinsicID == GenXIntrinsic::not_any_intrinsic)
     return None; // not intrinsic
   // wr(pred(pred))region has operand 0 as two address operand
@@ -1976,7 +1976,7 @@ unsigned genx::getExecSizeAllowedBits(const Instruction *Inst,
     return ST->hasIntDivRem32() ? 0x1f : 0x3f;
   }
 
-  unsigned ID = GenXIntrinsic::getAnyIntrinsicID(Inst);
+  unsigned ID = vc::getAnyIntrinsicID(Inst);
   switch (ID) {
   case GenXIntrinsic::genx_ssmad:
   case GenXIntrinsic::genx_sumad:
