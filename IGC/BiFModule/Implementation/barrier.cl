@@ -24,18 +24,19 @@ void __attribute__((optnone)) __intel_memfence_optnone(bool flushRW, bool isGlob
 if (flushRW == V1 && isGlobal == V5 && invalidateL1 == V6)         \
 {                                                                  \
     __builtin_IB_memfence(true, V1, false, false, false, V5, V6);  \
-}
+} else
 
-    MEMFENCE_IF(false, false, false)
-    else MEMFENCE_IF(false, false, true)
-    else MEMFENCE_IF(false, true, false)
-    else MEMFENCE_IF(false, true, true)
-    else MEMFENCE_IF(true, false, false)
-    else MEMFENCE_IF(true, false, true)
-    else MEMFENCE_IF(true, true, false)
-    else MEMFENCE_IF(true, true, true)
+// Generate combinations for all MEMFENCE_IF cases, e.g.:
+// true, true, true
+// true, true, false etc.
+#define MF_L2(...) MF_L1(__VA_ARGS__,false) MF_L1(__VA_ARGS__,true)
+#define MF_L1(...) MEMFENCE_IF(__VA_ARGS__,false) MEMFENCE_IF(__VA_ARGS__,true)
+MF_L2(false)
+MF_L2(true) {}
 
 #undef MEMFENCE_IF
+#undef MF_L2
+#undef MF_L1
 }
 void __intel_memfence(bool flushRW, bool isGlobal, bool invalidateL1)
 {

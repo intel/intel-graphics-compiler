@@ -15569,42 +15569,44 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool Invalidat
 
 void EmitPass::emitMemoryFence(llvm::Instruction* inst)
 {
+    static constexpr int ExpectedNumberOfArguments = 7;
+    IGC_ASSERT(cast<CallInst>(inst)->getNumArgOperands() == ExpectedNumberOfArguments);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    bool CommitEnable = llvm::cast<llvm::ConstantInt>((inst->getOperand(0)))->getValue().getBoolValue();
+    // If passed a non-constant value for any of the parameters,
+    // be conservative and assume that the parameter is true.
+    // This could happen in "optnone" scenarios.
+    bool CommitEnable = true;
     bool L3_Flush_RW_Data = true;
-    bool L3_Flush_Constant_Data = llvm::cast<llvm::ConstantInt>((inst->getOperand(2)))->getValue().getBoolValue();
-    bool L3_Flush_Texture_Data = llvm::cast<llvm::ConstantInt>((inst->getOperand(3)))->getValue().getBoolValue();
-    bool L3_Flush_Instructions = llvm::cast<llvm::ConstantInt>((inst->getOperand(4)))->getValue().getBoolValue();
+    bool L3_Flush_Constant_Data = true;
+    bool L3_Flush_Texture_Data = true;
+    bool L3_Flush_Instructions = true;
     bool Global_Mem_Fence = true;
     bool L1_Invalidate = ctx->platform.hasL1ReadOnlyCache();
 
-    // If passed a non-constant value for L3_Flush_RW_Data or L1_Invalidate parameter,
-    // be conservative and assume that the parameter is true
-    if (ConstantInt* flushRW = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1)))
-    {
-        L3_Flush_RW_Data &= flushRW->getValue().getBoolValue();
-    }
-    if (ConstantInt* globalConst = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(6)))
-    {
-        L1_Invalidate &= globalConst->getValue().getBoolValue();
+    std::array<reference_wrapper<bool>, ExpectedNumberOfArguments> MemFenceArguments{
+      CommitEnable,
+      L3_Flush_RW_Data,
+      L3_Flush_Constant_Data,
+      L3_Flush_Texture_Data,
+      L3_Flush_Instructions,
+      Global_Mem_Fence,
+      L1_Invalidate,
+    };
+
+    for (size_t i = 0; i < MemFenceArguments.size(); ++i) {
+        if (ConstantInt* CI = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(i)))
+        {
+            MemFenceArguments[i] &= CI->getValue().getBoolValue();
+        }
     }
 
     bool EmitFence = true;
-    // If passed a non-constant parameter, be conservative and emit a fence.
-    // We really don't want to add control-flow at this point.
-    if (ConstantInt* globalConst = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(5)))
-    {
-        Global_Mem_Fence = globalConst->getValue().getBoolValue();
-        if (globalConst->isZero())
-        {
-            // Check whether we know this is a local fence. If we do, don't emit fence for a BDW+SKL/BXT only.
-            // case CLK_LOCAL_MEM_FENCE:
 
-            if (ctx->platform.localMemFenceSupress())
-            {
-                EmitFence = false;
-            }
+    // Check whether we know this is a local fence. If we do, don't emit fence for a BDW+SKL/BXT only.
+    if (!Global_Mem_Fence) {
+        if (ctx->platform.localMemFenceSupress()) {
+            EmitFence = false;
         }
     }
 
