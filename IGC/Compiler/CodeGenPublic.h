@@ -1681,9 +1681,7 @@ namespace IGC
                 IntelHasPositivePointerOffset(false),
                 IntelHasBufferOffsetArg(false),
                 IntelBufferOffsetArgOptional(true),
-                IntelHasSubDWAlignedPtrArg(false),
-                LargeGRFKernels(),
-                RegularGRFKernels()
+                IntelHasSubDWAlignedPtrArg(false)
             {
                 if (pInputArgs == nullptr)
                     return;
@@ -1755,9 +1753,6 @@ namespace IGC
             bool IntelForceInt32DivRemEmu = false;
             bool IntelForceInt32DivRemEmuSP = false;
             bool IntelForceDisable4GBBuffer = false;
-
-            std::vector<std::string> LargeGRFKernels;
-            std::vector<std::string> RegularGRFKernels;
 
             bool AllowRelocAdd = true;
 
