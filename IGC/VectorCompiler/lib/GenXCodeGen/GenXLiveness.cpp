@@ -96,14 +96,14 @@ void GenXLiveness::releaseMemory() {
   BaseToArgAddrMap.clear();
 }
 
-static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
-  const unsigned Category =
-      llvm::StringSwitch<unsigned>(SV.getValue()->getName())
+static vc::RegCategory getCategoryForPredefinedVariable(SimpleValue SV) {
+  const vc::RegCategory Category =
+      llvm::StringSwitch<vc::RegCategory>(SV.getValue()->getName())
           .Case(vc::PredefVar::BSSName, vc::RegCategory::Surface)
           .Case(vc::PredefVar::ImplicitArgsBufferName, vc::RegCategory::General)
           .Case(vc::PredefVar::LocalIDBufferName, vc::RegCategory::General)
-          .Default(vc::RegCategory::NumCategories);
-  IGC_ASSERT_MESSAGE(Category != vc::RegCategory::NumCategories,
+          .Default(vc::RegCategory::None);
+  IGC_ASSERT_MESSAGE(Category != vc::RegCategory::None,
                      "Unhandled predefined variable");
   return Category;
 }
@@ -124,7 +124,7 @@ static bool isPredefinedVariable(SimpleValue SV) {
  * The default category is PREDICATE for i1 or a vector of i1,
  * Surface for BSSName predefined variable or GENERAL for anything else.
  */
-static unsigned getDefaultCategory(SimpleValue SV) {
+static vc::RegCategory getDefaultCategory(SimpleValue SV) {
   if (isPredefinedVariable(SV))
     return getCategoryForPredefinedVariable(SV);
   Type *Ty =
@@ -663,10 +663,12 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
   return LR;
 }
 
-LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V, unsigned Cat, unsigned LogAlign) {
+LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V,
+                                              vc::RegCategory Cat,
+                                              unsigned LogAlign) {
   LLVM_DEBUG(dbgs() << "getOrCreateLiveRange with SimpleValue: " << V
-                    << " Category: " << Cat << " LogAlign: " << LogAlign
-                    << "\n");
+                    << " Category: " << vc::getRegCategoryName(Cat)
+                    << " LogAlign: " << LogAlign << "\n");
   auto LR = getOrCreateLiveRange(V);
   LR->setCategory(Cat);
   LR->setLogAlignment(LogAlign);
@@ -884,9 +886,8 @@ LiveRange::iterator LiveRange::find(unsigned Pos)
  * The default category is PREDICATE for i1 or a vector of i1, or GENERAL
  * for anything else.
  */
-unsigned LiveRange::getOrDefaultCategory()
-{
-  unsigned Cat = getCategory();
+vc::RegCategory LiveRange::getOrDefaultCategory() {
+  vc::RegCategory Cat = getCategory();
   if (Cat != vc::RegCategory::None)
     return Cat;
   IGC_ASSERT(!value_empty());

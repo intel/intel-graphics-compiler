@@ -367,7 +367,10 @@ private:
   bool checkGotoJoin(SimpleValue EMVal);
   void removeBadEMVal(SimpleValue EMVal);
   void pushValues(Value *V);
-  bool getConnectedVals(SimpleValue Val, int Cat, bool IncludeOptional, CallInst *OkJoin, SmallVectorImpl<SimpleValue> *ConnectedVals, bool LowerBadUsers = false);
+  bool getConnectedVals(SimpleValue Val, vc::RegCategory Cat,
+                        bool IncludeOptional, CallInst *OkJoin,
+                        SmallVectorImpl<SimpleValue> *ConnectedVals,
+                        bool LowerBadUsers = false);
   void checkEMInterference();
   void checkInterference(SetVector<SimpleValue> *Vals, SetVector<Value *> *BadDefs, Instruction *ConstStop);
   bool hoistGotoUser(Instruction *Inst, CallInst *Goto, unsigned operandNo);
@@ -383,8 +386,11 @@ private:
   void addNewPhisIncomings(BasicBlock *BranchingBlock, BasicBlock *TrueSucc, BasicBlock *FalseSucc);
   void collectCondEVUsers(ExtractValueInst *CondEV, std::vector<Value *> &BadUsers, BranchInst *&CorrectUser);
   void updateBadCondEVUsers(GotoJoinEVs &GotoJoinData, std::vector<Value *> &BadUsers, BasicBlock *TrueSucc, BasicBlock *FalseSucc);
-  Value *findGotoJoinVal(int Cat, BasicBlock *Loc, Instruction *CondEV, BasicBlockEdge &TrueEdge, BasicBlockEdge &FalseEdge, Value *TrueVal,
-    Value *FalseVal, std::map<BasicBlock *, Value *> &foundVals);
+  Value *findGotoJoinVal(vc::RegCategory Cat, BasicBlock *Loc,
+                         Instruction *CondEV, BasicBlockEdge &TrueEdge,
+                         BasicBlockEdge &FalseEdge, Value *TrueVal,
+                         Value *FalseVal,
+                         std::map<BasicBlock *, Value *> &foundVals);
   bool canUseLoweredEM(Instruction *Val);
   bool canUseRealEM(Instruction *Inst, unsigned opNo);
   void replaceUseWithLoweredEM(Instruction *Val, unsigned opNo, SetVector<Value *> &ToRemove);
@@ -851,9 +857,10 @@ void GenXSimdCFConformance::gatherRMVals()
  * set proper name for instruction and doesn't affect reg category
  * that is used in reg alloc. It only shows what we are dealing with.
  */
-Value *GenXSimdCFConformance::findGotoJoinVal(int Cat, BasicBlock *Loc, Instruction *GotoJoinEV,
-  BasicBlockEdge &TrueEdge, BasicBlockEdge &FalseEdge, Value *TrueVal, Value *FalseVal, std::map<BasicBlock *, Value *>& foundVals)
-{
+Value *GenXSimdCFConformance::findGotoJoinVal(
+    vc::RegCategory Cat, BasicBlock *Loc, Instruction *GotoJoinEV,
+    BasicBlockEdge &TrueEdge, BasicBlockEdge &FalseEdge, Value *TrueVal,
+    Value *FalseVal, std::map<BasicBlock *, Value *> &foundVals) {
   IGC_ASSERT(TrueEdge.getStart() == FalseEdge.getStart());
   IGC_ASSERT(TrueEdge.getEnd() != FalseEdge.getEnd());
   IGC_ASSERT_MESSAGE(
@@ -2476,10 +2483,10 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
  *       CF with many different actions. Also some of these actions
  *       are repeated in different situations.
  */
-bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
-    bool IncludeOptional, CallInst *OkJoin,
-    SmallVectorImpl<SimpleValue> *ConnectedVals, bool LowerBadUsers)
-{
+bool GenXSimdCFConformance::getConnectedVals(
+    SimpleValue Val, vc::RegCategory Cat, bool IncludeOptional,
+    CallInst *OkJoin, SmallVectorImpl<SimpleValue> *ConnectedVals,
+    bool LowerBadUsers) {
   // Check the def first.
   if (auto Arg = dyn_cast<Argument>(Val.getValue())) {
     if (Cat != vc::RegCategory::EM)

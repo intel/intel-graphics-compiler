@@ -106,8 +106,10 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
   DL = &FG->getModule()->getDataLayout();
-  for (unsigned i = 0; i != vc::RegCategory::NumRealCategories; ++i) {
-    CurrentRegId[i] = 0;
+  for (auto Category : vc::RegCategoryView()) {
+    if (!vc::isRealOrNoneCategory(Category))
+      continue;
+    vc::accessContainer(CurrentRegId, Category) = 0;
   }
   for (unsigned i = 0; i < VISA_NUM_RESERVED_SURFACES; ++i) {
     RegStorage.emplace_back(vc::RegCategory::Surface, i);
@@ -136,9 +138,12 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   PredefinedRegs.push_back(&RegStorage.back());
 
   // Reserve the reserved registers.
-  CurrentRegId[vc::RegCategory::General] = VISA_NUM_RESERVED_REGS;
-  CurrentRegId[vc::RegCategory::Predicate] = VISA_NUM_RESERVED_PREDICATES;
-  CurrentRegId[vc::RegCategory::Surface] = VISA_NUM_RESERVED_SURFACES;
+  vc::accessContainer(CurrentRegId, vc::RegCategory::General) =
+      VISA_NUM_RESERVED_REGS;
+  vc::accessContainer(CurrentRegId, vc::RegCategory::Predicate) =
+      VISA_NUM_RESERVED_PREDICATES;
+  vc::accessContainer(CurrentRegId, vc::RegCategory::Surface) =
+      VISA_NUM_RESERVED_SURFACES;
   // Do some extra coalescing.
   if (!BackendConfig->disableExtraCoalescing())
     extraCoalescing();
@@ -190,8 +195,8 @@ void GenXVisaRegAlloc::getLiveRanges(std::vector<LiveRange *> &LRs) const {
   }
 }
 
-void GenXVisaRegAlloc::reportVisaVarableNumberLimitError(unsigned Category,
-                                                         unsigned ID) const {
+void GenXVisaRegAlloc::reportVisaVarableNumberLimitError(
+    vc::RegCategory Category, unsigned ID) const {
   vc::diagnose(FGA->getModule()->getContext(), "GenXVisaRegAlloc",
                "vISA variable limit reached for [" +
                    categoryToString(Category) + "], ID = " + Twine(ID));
@@ -199,7 +204,8 @@ void GenXVisaRegAlloc::reportVisaVarableNumberLimitError(unsigned Category,
   return;
 }
 
-static unsigned getMaximumNumberOfVariablesForCategory(unsigned Category) {
+static unsigned
+getMaximumNumberOfVariablesForCategory(vc::RegCategory Category) {
   if (Category == vc::RegCategory::General)
     return VISA_MAX_GENERAL_REGS;
   if (Category == vc::RegCategory::Address)
@@ -214,7 +220,8 @@ static unsigned getMaximumNumberOfVariablesForCategory(unsigned Category) {
   return 0;
 }
 
-unsigned GenXVisaRegAlloc::getMaximumVariableIDForCategory(unsigned Category) {
+unsigned
+GenXVisaRegAlloc::getMaximumVariableIDForCategory(vc::RegCategory Category) {
   const unsigned Result = getMaximumNumberOfVariablesForCategory(Category);
   IGC_ASSERT_MESSAGE(Result > 0, "could not detect maximum number of variables "
                                  "for the specified category");
@@ -593,7 +600,7 @@ void GenXVisaRegAlloc::extraCoalescing()
 void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   if (LR->value_empty())
     return;
-  if (LR->getCategory() >= vc::RegCategory::NumRealCategories)
+  if (!vc::isRealOrNoneCategory(LR->getCategory()))
     return; // don't allocate register to EM or RM value
   LLVM_DEBUG(dbgs() << "Allocating "; LR->print(dbgs()); dbgs() << "\n");
   SimpleValue V = *LR->value_begin();

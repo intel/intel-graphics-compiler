@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace vc;
 
-StringRef vc::getRegCategoryName(unsigned Category) {
+StringRef vc::getRegCategoryName(RegCategory Category) {
   switch (Category) {
   case vc::RegCategory::None:
     return "none";
@@ -36,7 +36,7 @@ StringRef vc::getRegCategoryName(unsigned Category) {
   }
 }
 
-StringRef vc::getRegCategoryShortName(unsigned Category) {
+StringRef vc::getRegCategoryShortName(RegCategory Category) {
   switch (Category) {
   case RegCategory::None:
     return "-";

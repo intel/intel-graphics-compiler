@@ -71,10 +71,10 @@ namespace llvm {
   public:
     inline static const char *Prefix[] = {"ERR", "V", "A", "P", "S", "T"};
 
-    static StringRef categoryToString(unsigned Category) {
-      if (Category >= array_lengthof(Prefix))
-        Category = 0;
-      return Prefix[Category];
+    static StringRef categoryToString(vc::RegCategory Category) {
+      if (static_cast<unsigned>(Category) >= array_lengthof(Prefix))
+        Category = vc::RegCategory::None;
+      return accessContainer(Prefix, Category);
     }
     static void getAnalysisUsage(AnalysisUsage &Info);
     static StringRef getPassName() {
@@ -84,7 +84,7 @@ namespace llvm {
     // Reg : a virtual register
     class Reg {
     public:
-      unsigned short Category = vc::RegCategory::None;
+      vc::RegCategory Category = vc::RegCategory::None;
       // Register ID. First value of it depends on count of predefined
       // variablse in category. F.e. for general var it is 32.
       unsigned Num = 0;
@@ -108,14 +108,13 @@ namespace llvm {
       // VISA variables for all registers in RegMap.
       std::unordered_map<VISAKernel*, void*> GenVar;
 
-      Reg(unsigned Category, unsigned Num, Type *Ty = 0,
+      Reg(vc::RegCategory Category, unsigned Num, Type *Ty = 0,
           genx::Signedness Signed = genx::DONTCARESIGNED,
           unsigned LogAlignment = 0, Reg *AliasTo = nullptr,
           bool ArgIsBF = false)
           : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
             Ty(Ty), Alignment(LogAlignment), IsBF(ArgIsBF) {
-        IGC_ASSERT(Category);
-        IGC_ASSERT(Category < vc::RegCategory::NumRealCategories);
+        IGC_ASSERT(vc::isRealCategory(Category));
         NameStr = (Twine(categoryToString(Category)) + Twine(Num)).str();
       }
 
@@ -169,7 +168,7 @@ namespace llvm {
     std::vector<Reg*> PredefinedRegs;
 
     // Array of current indexes being assigned to new register.
-    unsigned CurrentRegId[vc::RegCategory::NumRealCategories];
+    unsigned CurrentRegId[vc::numRegCategories()];
 
     struct RegAllocStats {
       const LRCPtrVect *getLRs(const FunctionGroup *FG) const;
@@ -215,12 +214,12 @@ namespace llvm {
       TheRegPushHookObject = Object;
     }
 
-    void reportVisaVarableNumberLimitError(unsigned Category,
+    void reportVisaVarableNumberLimitError(vc::RegCategory Category,
                                            unsigned ID) const;
 
-    static unsigned getMaximumVariableIDForCategory(unsigned Category);
+    static unsigned getMaximumVariableIDForCategory(vc::RegCategory Category);
 
-    static bool isVisaVaribleLimitExceeded(unsigned Category,
+    static bool isVisaVaribleLimitExceeded(vc::RegCategory Category,
                                            unsigned CurrentID) {
       const auto IDLimit = getMaximumVariableIDForCategory(Category);
       return CurrentID > IDLimit;
@@ -230,13 +229,15 @@ namespace llvm {
     // If RegPushHook was specified it will be called with created register as
     // parameter. Thus, all needed register's variables must be specified
     // at this moment, for example AliasTo.
-    template<class ... Args>
-    Reg* createReg(unsigned Category, Args&& ... args) {
-      if (isVisaVaribleLimitExceeded(Category, CurrentRegId[Category])) {
-        reportVisaVarableNumberLimitError(Category, CurrentRegId[Category]);
+    template <class... Args>
+    Reg *createReg(vc::RegCategory Category, Args &&... args) {
+      if (isVisaVaribleLimitExceeded(
+              Category, vc::accessContainer(CurrentRegId, Category))) {
+        reportVisaVarableNumberLimitError(
+            Category, vc::accessContainer(CurrentRegId, Category));
       }
-      auto NewID = CurrentRegId[Category]++;
-      IGC_ASSERT(CurrentRegId[Category] != 0);
+      auto NewID = vc::accessContainer(CurrentRegId, Category)++;
+      IGC_ASSERT(vc::accessContainer(CurrentRegId, Category) != 0);
       RegStorage.emplace_back(Category, NewID, std::forward<Args>(args)...);
       Reg& R = RegStorage.back();
       if (TheRegPushHook)

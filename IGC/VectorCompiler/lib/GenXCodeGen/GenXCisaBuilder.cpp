@@ -301,7 +301,7 @@ bool testPhiNodeHasNoMismatchedRegs(const llvm::PHINode *const Phi,
       const genx::SimpleValue SVI(const_cast<llvm::Value *> (Incoming));
       const genx::LiveRange *const LRI = Liveness->getLiveRangeOrNull(SVI);
       if (LRI) {
-        if (LRI->getCategory() < vc::RegCategory::NumRealCategories) {
+        if (vc::isRealOrNoneCategory(LRI->getCategory())) {
           const genx::SimpleValue SVP(const_cast<llvm::PHINode *> (Phi));
           const genx::LiveRange *const LRP = Liveness->getLiveRangeOrNull(SVP);
           Result = (LRI == LRP);
@@ -1247,7 +1247,8 @@ static unsigned getStateVariableSizeInBytes(const Type *Ty,
 }
 
 static unsigned getInputSizeInBytes(const DataLayout &DL,
-                                    const unsigned ArgCategory, Type *Ty) {
+                                    const vc::RegCategory ArgCategory,
+                                    Type *Ty) {
   switch (ArgCategory) {
   case vc::RegCategory::General:
     return DL.getTypeSizeInBits(Ty) / genx::ByteBits;

@@ -233,7 +233,7 @@ public:
   }
 
   enum { AK_NORMAL, AK_SAMPLER, AK_SURFACE };
-  unsigned getArgCategory(unsigned Idx) const {
+  RegCategory getArgCategory(unsigned Idx) const {
     switch (getArgKind(Idx) & 7) {
     case AK_SAMPLER:
       return vc::RegCategory::Sampler;

@@ -357,11 +357,13 @@ class LiveRange {
   Values_t Values;
 
 public:
-  unsigned Category :8;
+  vc::RegCategory Category;
   unsigned LogAlignment :7;
   bool DisallowCASC: 1; // disallow call arg special coalescing
   unsigned Offset :12; // kernel arg offset, else 0
-  LiveRange() : Category(0), LogAlignment(0), DisallowCASC(false), Offset(0) {}
+  LiveRange()
+      : Category(vc::RegCategory::None), LogAlignment(0), DisallowCASC(false),
+        Offset(0) {}
   // Iterator forwarders for Segments
   typedef Segments_t::iterator iterator;
   typedef Segments_t::const_iterator const_iterator;
@@ -396,11 +398,11 @@ public:
     return i != end() && i->getEnd() != Num && i->getStart() <= Num;
   }
   // getCategory : get the LR's register category
-  unsigned getCategory() const { return Category; }
+  vc::RegCategory getCategory() const { return Category; }
   // setCategory : set the LR's register category
-  void setCategory(unsigned Cat) { Category = Cat; }
+  void setCategory(vc::RegCategory Cat) { Category = Cat; }
   // getOrDefaultCategory : return category; if none, set default
-  unsigned getOrDefaultCategory();
+  vc::RegCategory getOrDefaultCategory();
   // getLogAlignment : get log alignment
   unsigned getLogAlignment() const { return LogAlignment; }
   // setAlignmentFromValue : increase alignment if necessary from a value
@@ -524,7 +526,8 @@ public:
   // getOrCreateLiveRange : get the live range for a Value, or create
   // a new one if none
   genx::LiveRange *getOrCreateLiveRange(genx::SimpleValue V);
-  genx::LiveRange *getOrCreateLiveRange(genx::SimpleValue V, unsigned Cat, unsigned LogAlign);
+  genx::LiveRange *getOrCreateLiveRange(genx::SimpleValue V,
+                                        vc::RegCategory Cat, unsigned LogAlign);
   // eraseLiveRange : get rid of live range for a Value, possibly multiple
   //  ones if it is an aggregate value
   void eraseLiveRange(Value *V);

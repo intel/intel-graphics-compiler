@@ -157,9 +157,10 @@ namespace {
   // CategoryAndAlignment : values returned from getCategoryAndAlignment*
   // functions
   struct CategoryAndAlignment {
-    unsigned Cat;
+    vc::RegCategory Cat;
     unsigned Align;
-    CategoryAndAlignment(unsigned Cat, unsigned Align = 0) : Cat(Cat), Align(Align) {}
+    CategoryAndAlignment(vc::RegCategory Cat, unsigned Align = 0)
+        : Cat(Cat), Align(Align) {}
   };
 
   class UsesCatInfo;
@@ -188,22 +189,23 @@ namespace {
     static StringRef getPassName() { return "GenX category conversion"; }
     static void getAnalysisUsage(AnalysisUsage &AU);
     bool runOnFunctionGroup(FunctionGroup &FG) override;
-    unsigned getCategoryForPhiIncomings(PHINode *Phi) const;
-    unsigned getCategoryForCallArg(Function *Callee, unsigned ArgNo) const;
-    unsigned getCategoryForInlasmConstraintedOp(CallInst *CI, unsigned ArgNo,
-                                                bool IsOutput) const;
+    vc::RegCategory getCategoryForPhiIncomings(PHINode *Phi) const;
+    vc::RegCategory getCategoryForCallArg(Function *Callee,
+                                          unsigned ArgNo) const;
+    vc::RegCategory getCategoryForInlasmConstraintedOp(CallInst *CI,
+                                                       unsigned ArgNo,
+                                                       bool IsOutput) const;
     CategoryAndAlignment getCategoryAndAlignmentForDef(Value *V) const;
     CategoryAndAlignment getCategoryAndAlignmentForUse(Value::use_iterator U) const;
 
   private:
-    using ConvListT =
-        std::array<llvm::Instruction *, vc::RegCategory::NumCategories>;
+    using ConvListT = std::array<llvm::Instruction *, vc::numRegCategories()>;
 
     bool processFunction(Function *F);
     bool fixCircularPhis(Function *F);
     bool processValue(Value *V);
     bool handleLeftover();
-    Instruction *createConversion(Value *V, unsigned Cat);
+    Instruction *createConversion(Value *V, vc::RegCategory Cat);
     ConvListT buildConversions(Value *Def, CategoryAndAlignment DefInfo, const UsesCatInfo &UsesInfo);
   };
 
@@ -211,37 +213,40 @@ namespace {
   struct AUse {
     Instruction *user;
     unsigned OperandNum;
-    unsigned Cat;
-    AUse(Value::use_iterator U, unsigned Cat)
-      : user(cast<Instruction>(U->getUser())),
-        OperandNum(U->getOperandNo()), Cat(Cat) {}
+    vc::RegCategory Cat;
+    AUse(Value::use_iterator U, vc::RegCategory Cat)
+        : user(cast<Instruction>(U->getUser())), OperandNum(U->getOperandNo()),
+          Cat(Cat) {}
   };
 
   // almost real input iterator, minimum for range for was implemented
   class Iterator final {
-    unsigned ShiftedMask_;
-    unsigned CurCat_;
+    unsigned ShiftedMask_ = 0;
+    vc::RegCategoryIterator CurCatIt_;
 
   public:
-    Iterator(unsigned Mask, unsigned Cat) : ShiftedMask_(Mask), CurCat_(Cat) {
+    Iterator() = default;
+
+    Iterator(unsigned Mask, vc::RegCategory Cat)
+        : ShiftedMask_(Mask), CurCatIt_(Cat) {
       validate();
     }
 
-    unsigned operator*() const {
+    vc::RegCategory operator*() const {
       validate();
-      return CurCat_;
+      return *CurCatIt_;
     }
 
     Iterator &operator++() {
       validate();
       ShiftedMask_ /= 2;
-      ++CurCat_;
+      ++CurCatIt_;
       if (ShiftedMask_ == 0) {
-        CurCat_ = vc::RegCategory::NumCategories;
+        CurCatIt_ = vc::end(vc::RegCategoryView{});
         validate();
         return *this;
       }
-      for (; ShiftedMask_ % 2 == 0; ShiftedMask_ /= 2, ++CurCat_)
+      for (; ShiftedMask_ % 2 == 0; ShiftedMask_ /= 2, ++CurCatIt_)
         ;
       validate();
       return *this;
@@ -249,7 +254,7 @@ namespace {
 
     friend bool operator==(const Iterator &lhs, const Iterator &rhs) {
       return (lhs.ShiftedMask_ == rhs.ShiftedMask_ &&
-              lhs.CurCat_ == rhs.CurCat_);
+              lhs.CurCatIt_ == rhs.CurCatIt_);
     }
 
     friend bool operator!=(const Iterator &lhs, const Iterator &rhs) {
@@ -258,9 +263,9 @@ namespace {
 
   private:
     void validate() const {
-      IGC_ASSERT_MESSAGE(
-          (ShiftedMask_ % 2 == 1 || CurCat_ == vc::RegCategory::NumCategories),
-          "invalid state");
+      IGC_ASSERT_MESSAGE((ShiftedMask_ % 2 == 1 ||
+                          CurCatIt_ == vc::end(vc::RegCategoryView{})),
+                         "invalid state");
     }
   };
 
@@ -278,14 +283,14 @@ namespace {
         return end();
       // we have NONE category
       if (Mask_ % 2 == 1)
-        return Iterator(Mask_, 0);
+        return Iterator(Mask_, vc::RegCategory::None);
       // we adding NONE category
-      Iterator FalseBegin(Mask_ + 1, 0);
+      Iterator FalseBegin(Mask_ + 1, vc::RegCategory::None);
       // and now we get the real first category
       return ++FalseBegin;
     }
 
-    Iterator end() const { return Iterator(0, vc::RegCategory::NumCategories); }
+    Iterator end() const { return {}; }
   };
 
   // Encapsulates Category'n'Alignment analysis of value uses.
@@ -294,28 +299,30 @@ namespace {
     UsesT Uses_;
     unsigned Mask_;
     unsigned MaxAlign_;
-    unsigned MostUsedCat_;
+    vc::RegCategory MostUsedCat_;
 
   public:
     UsesCatInfo() : Uses_(), Mask_(0), MaxAlign_(0) {}
 
     UsesCatInfo(const GenXCategory &PassInfo, Value *V) : UsesCatInfo() {
-      std::array<int, vc::RegCategory::NumCategories> Stat = {0};
+      std::array<int, vc::numRegCategories()> Stat = {0};
       for (auto ui = V->use_begin(), ue = V->use_end(); ui != ue; ++ui) {
         auto CatAlign = PassInfo.getCategoryAndAlignmentForUse(ui);
         MaxAlign_ = std::max(MaxAlign_, CatAlign.Align);
         Uses_.push_back(AUse(ui, CatAlign.Cat));
-        Mask_ |= 1 << CatAlign.Cat;
+        Mask_ |= 1 << static_cast<unsigned>(CatAlign.Cat);
         if (CatAlign.Cat != vc::RegCategory::None)
-          ++Stat[CatAlign.Cat];
+          ++vc::accessContainer(Stat, CatAlign.Cat);
       }
       auto MaxInStatIt = std::max_element(Stat.begin(), Stat.end());
-      MostUsedCat_ = MaxInStatIt - Stat.begin();
+      MostUsedCat_ = static_cast<vc::RegCategory>(MaxInStatIt - Stat.begin());
     }
 
     bool empty() const { return !Mask_; }
 
-    bool allHaveCat(unsigned cat) const { return !(Mask_ & ~(1 << cat)); }
+    bool allHaveCat(vc::RegCategory cat) const {
+      return !(Mask_ & ~(1 << static_cast<unsigned>(cat)));
+    }
 
     const UsesT &getUses() const { return Uses_; }
 
@@ -323,7 +330,7 @@ namespace {
 
     // When there's no real category uses (real is anything but NONE)
     // behavior is undefined.
-    unsigned getMostUsedCat() const {
+    vc::RegCategory getMostUsedCat() const {
       IGC_ASSERT_MESSAGE(!empty(),
         "works only for cases when there are uses with real categories");
       IGC_ASSERT_MESSAGE(
@@ -671,7 +678,7 @@ bool GenXCategory::processValue(Value *V)
         Liveness->getOrCreateLiveRange(Conv)->setCategory(UseInfo.Cat);
       }
       else
-        Conv = Convs[UseInfo.Cat];
+        Conv = vc::accessContainer(Convs, UseInfo.Cat);
       IGC_ASSERT_MESSAGE(Conv, "must have such conversion");
       UseInfo.user->setOperand(UseInfo.OperandNum, Conv);
     }
@@ -693,8 +700,7 @@ bool GenXCategory::processValue(Value *V)
  * to an address, we instead create an llvm.genx.add.addr of the input
  * to the add/sub.
  */
-Instruction *GenXCategory::createConversion(Value *V, unsigned Cat)
-{
+Instruction *GenXCategory::createConversion(Value *V, vc::RegCategory Cat) {
   IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(),
     "createConversion expects int type");
   if (Cat == vc::RegCategory::Address) {
@@ -756,7 +762,7 @@ GenXCategory::buildConversions(Value *Def, CategoryAndAlignment DefInfo,
       auto Conv = createConversion(Def, Cat);
       placeConvAfterDef(Func, Conv, Def);
       Liveness->getOrCreateLiveRange(Conv)->setCategory(Cat);
-      Convs[Cat] = Conv;
+      vc::accessContainer(Convs, Cat) = Conv;
     }
   }
   return Convs;
@@ -770,8 +776,7 @@ GenXCategory::buildConversions(Value *Def, CategoryAndAlignment DefInfo,
  * GenXIntrinsicInfo::ArgInfo::getCategory(), into a register category
  * as stored in a live range.
  */
-static unsigned intrinsicCategoryToRegCategory(unsigned ICat)
-{
+static vc::RegCategory intrinsicCategoryToRegCategory(unsigned ICat) {
   switch (ICat) {
     case GenXIntrinsicInfo::ADDRESS:
       return vc::RegCategory::Address;
@@ -883,9 +888,9 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
  *                            operand depends on its constraint.
  *
  */
-unsigned GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI,
-                                                          unsigned ArgNo,
-                                                          bool IsOutput) const {
+vc::RegCategory
+GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI, unsigned ArgNo,
+                                                 bool IsOutput) const {
   IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
   InlineAsm *IA = dyn_cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
   IGC_ASSERT_MESSAGE(!IA->getConstraintString().empty(), "Here should be constraints");
@@ -937,7 +942,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
     }
     return getCategoryForPhiIncomings(Phi);
   }
-  unsigned Category = vc::RegCategory::General;
+  auto Category = vc::RegCategory::General;
   if (CallInst *CI = dyn_cast<CallInst>(user)) {
     if (CI->isInlineAsm())
       Category = getCategoryForInlasmConstraintedOp(CI, U->getOperandNo(),
@@ -1009,7 +1014,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
  * We will not have disagreement among the incomings, since whichever one gets
  * a category first forces the category of all the others.
  */
-unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
+vc::RegCategory GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
   IGC_ASSERT_MESSAGE(!Phi->getType()->isIntOrIntVectorTy(1),
                      "pregicate phis should've been already considered");
   if (llvm::all_of(Phi->incoming_values(),
@@ -1062,15 +1067,15 @@ unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
  * call args, since whichever one gets a category first forces the category of
  * all the others.
  */
-unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) const
-{
+vc::RegCategory GenXCategory::getCategoryForCallArg(Function *Callee,
+                                                    unsigned ArgNo) const {
   IGC_ASSERT(Callee);
   // First try the subroutine arg.
   auto ai = Callee->arg_begin();
   for (unsigned i = 0; i != ArgNo; ++i, ++ai)
     ;
   if (auto LR = Liveness->getLiveRangeOrNull(&*ai)) {
-    unsigned Cat = LR->getCategory();
+    auto Cat = LR->getCategory();
     if (Cat != vc::RegCategory::None)
       return Cat;
   }
@@ -1079,7 +1084,7 @@ unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) c
     if (auto *CI = checkFunctionCall(U, Callee)) {
       auto ArgV = CI->getArgOperand(ArgNo);
         if (auto LR = Liveness->getLiveRangeOrNull(ArgV)) {
-          unsigned Cat = LR->getCategory();
+          auto Cat = LR->getCategory();
           if (Cat != vc::RegCategory::None)
             return Cat;
         }
@@ -1091,4 +1096,3 @@ unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) c
   return EnforceCategoryPromotion ? vc::RegCategory::General
                                   : vc::RegCategory::None;
 }
-
