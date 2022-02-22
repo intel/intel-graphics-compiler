@@ -9,6 +9,7 @@
 import os
 import sys
 import errno
+import re
 from typing import List
 
 
@@ -51,13 +52,6 @@ def parseCmdArgs():
                 sys.exit("Failed to create the directory " + __genDir__)
 
     return __MDFrameWorkFile__ , __genFile__
-
-
-def skipLine(line):
-    lineNoComment = line.split("//")[0]
-    if lineNoComment.find("};") != -1:
-        return True
-    return False
 
 
 def storeVars(line, declHeader):
@@ -113,6 +107,7 @@ def parseFile(fileName, insideIGCNameSpace):
 
     # with statement automatically closes the file
     with inputFile as file:
+        pcount = 0
         for line in file:
             line = line.split("//")[0]
 
@@ -120,38 +115,41 @@ def parseFile(fileName, insideIGCNameSpace):
                 while line.find("{") == -1:
                     line = next(file, None)
                 insideIGCNameSpace = True
+                pcount += 1
                 #
             if insideIGCNameSpace:
-                if line.find("struct") != -1:
+                blockType = re.search("struct|enum", line)
+                if blockType:
                     words = line.split()
-                    found_struct = DeclHeader(line, words[1], [])
-                    while line.find("};") == -1:
+                    idx = 2 if 'class' in words else 1
+                    foundDecl = DeclHeader(line, words[idx], [])
+                    opcount = pcount
+                    namesList = structureNames
+                    extractFunc = extractVars
+                    if blockType[0] == 'enum':
+                        namesList = enumNames
+                        extractFunc = extractEnumVal
+                    while True:
                         line = next(file, None)
-                        if not skipLine(line):
-                            line = line.split("//")[0]
-                            extractVars(line, found_struct)
-                    structureNames.append(found_struct)
-                    #
-                if line.find("enum") != -1:
-                    words = line.split()
-                    nameIdx = 2 if 'class' in words else 1
-                    found_enum = DeclHeader(line, words[nameIdx], [])
-                    while line.find("};") == -1:
-                        line = next(file, None)
-                        if not skipLine(line):
-                            line = line.split("//")[0]
-                            extractEnumVal(line, found_enum)
-                    enumNames.append(found_enum)
-                    #
-                if line.lstrip().startswith("#include") == True:
+                        assert line, "EOF reached with unclosed enum or struct, check " + fileName + " formatting"
+                        assert re.search("/\*", line) == None, "Multi-line comments are not supported yet"
+                        line = line.split("//")[0]
+                        pcount += line.count("{") - line.count("}")
+                        if pcount <= opcount:
+                            break
+                        extractFunc(re.sub("{|}","", line), foundDecl)
+                    assert pcount == opcount, "Unexpected struct/enum ending, check " + fileName + " formatting"
+                    namesList.append(foundDecl)
+                elif line.lstrip().startswith("#include") == True:
                     words = line.split()
                     parent_dir = os.path.dirname(fileName)
                     include_file = words[1][1:-1]  # cut off the "" or <> surrounding the file name
                     include_file_path = os.path.join(parent_dir, include_file)
                     parseFile(include_file_path, True)
-                if line.find("}") != -1 and line.find("};") == -1:
+                elif line.find("}") != -1 and line.find("};") == -1:
                     insideIGCNameSpace = False
-
+                    pcount -= 1
+        assert pcount == 0, "EOF reached, with unclosed IGC namespace, check " + fileName + " formatting"
 
 def printStructCalls(structDecl, outputFile):
     outputFile.write("    Metadata* v[] = \n")
