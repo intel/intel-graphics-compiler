@@ -3865,14 +3865,6 @@ namespace IGC
             };
 
             QWORD AssemblyHash = context->hash.getAsmHash();
-
-            if (context->type == ShaderType::RAYTRACING_SHADER && AssemblyHash == 0)
-            {
-                auto* Ctx = static_cast<RayDispatchShaderContext*>(context);
-                if (QWORD Hash = Ctx->getShaderHash(m_program))
-                    AssemblyHash = Hash;
-            }
-
             addHash("-hashmovs", AssemblyHash);
 
             QWORD NosHash = context->hash.getNosHash();
@@ -3973,7 +3965,6 @@ namespace IGC
         // need to fold ret into the previous RTWrite/URBWrite/etc
         if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
         {
-            if (context->type != ShaderType::RAYTRACING_SHADER)
             {
                 SaveOption(vISA_foldEOTtoPrevSend, true);
             }
@@ -4000,22 +3991,12 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(EnableLSCFenceUGMBeforeEOT) && m_program->m_Platform->NeedsLSCFenceUGMBeforeEOT())
         {
             bool doUGMFence = true;
-            if (context->type == ShaderType::RAYTRACING_SHADER)
-            {
-                doUGMFence = IGC_IS_FLAG_ENABLED(EnableRTLSCFenceUGMBeforeEOT);
-            }
-
             if (doUGMFence)
             {
                 SaveOption(vISA_clearLSCUGMWritesBeforeEOT, true);
             }
         }
 
-        if (context->type == ShaderType::RAYTRACING_SHADER)
-        {
-            if (IGC_IS_FLAG_DISABLED(DisableRTFenceElision))
-                SaveOption(vISA_removeFence, true);
-        }
 
         // Disable multi-threaded latencies in the vISA scheduler when not in 3D
         if (context->type == ShaderType::OPENCL_SHADER)
@@ -4366,10 +4347,6 @@ namespace IGC
         {
             SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum));
         }
-        else if (context->hasSyncRTCalls() && IGC_GET_FLAG_VALUE(TotalGRFNum4RQ) != 0)
-        {
-            SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum4RQ));
-        }
         else if (context->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
         {
             SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum4CS));
@@ -4594,11 +4571,6 @@ namespace IGC
         else
         {
             SaveOption(vISA_loadThreadPayload, false);
-        }
-
-        if (m_program->needsEntryFence())
-        {
-            SaveOption(vISA_InjectEntryFences, true);
         }
 
         if (m_program->m_Platform->WaEnableLSCBackupMode())
@@ -5366,15 +5338,6 @@ namespace IGC
                 strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
 
                 bool isTrue = false;
-
-                if (!F.isDeclaration())
-                {
-                    auto& funcMD = modMD->FuncMD;
-                    auto MD = funcMD.find(&F);
-                    IGC_ASSERT_MESSAGE(MD != funcMD.end(), "Missing metadata?");
-                    isTrue = IGC::isContinuation(MD->second);
-                }
-
                 if (F.isDeclaration() || isTrue)
                 {
                     // If the function is only declared, set as undefined type

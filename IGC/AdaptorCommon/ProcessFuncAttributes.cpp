@@ -361,7 +361,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
         // Always inline for non-compute
         if (pCtx->type != ShaderType::OPENCL_SHADER &&
-            pCtx->type != ShaderType::RAYTRACING_SHADER &&
             pCtx->type != ShaderType::COMPUTE_SHADER)
         {
             SetAlwaysInline(F);
@@ -422,12 +421,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
 
         bool istrue = false;
-
-        auto funcIt = modMD->FuncMD.find(F);
-        if (funcIt != modMD->FuncMD.end())
-        {
-            istrue = IGC::isContinuation(funcIt->second);
-        }
 
         // set hasVLA function attribute
         {

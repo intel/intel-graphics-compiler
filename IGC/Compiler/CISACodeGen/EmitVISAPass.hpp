@@ -367,7 +367,6 @@ public:
 
     void emitHSTessFactors(llvm::Instruction* pInst);
     void emitHSSGV(llvm::GenIntrinsicInst* inst);
-    void emitBindlessShaderSGV(llvm::GenIntrinsicInst* inst);
     void emitf32tof16_rtz(llvm::GenIntrinsicInst* inst);
     void emitfitof(llvm::GenIntrinsicInst* inst);
     void emitFPOrtz(llvm::GenIntrinsicInst* inst);
@@ -453,24 +452,6 @@ public:
     void emitLLVMStackRestore(llvm::IntrinsicInst* inst);
 
     void emitUnmaskedRegionBoundary(bool start);
-    LSC_CACHE_OPTS getDefaultRaytracingCachePolicy(bool isLoad) const;
-    void emitAsyncStackID(llvm::GenIntrinsicInst* I);
-    void emitSyncStackID(llvm::GenIntrinsicInst* I);
-    void emitTraceRay(llvm::TraceRayIntrinsic *I, bool RayQueryEnable);
-    void emitReadTraceRaySync(llvm::GenIntrinsicInst* I);
-    void emitBTD(
-        CVariable* GlobalBufferPtr,
-        CVariable* StackID,
-        CVariable* ShaderRecord,
-        bool releaseStackID);
-    void emitBindlessThreadDispatch(llvm::BTDIntrinsic *I);
-    void emitStackIDRelease(llvm::StackIDReleaseIntrinsic *I);
-    void emitGetShaderRecordPtr(llvm::GetShaderRecordPtrIntrinsic *I);
-    void emitGlobalBufferPtr(llvm::GenIntrinsicInst *I);
-    void emitLocalBufferPtr(llvm::GenIntrinsicInst *I);
-    void emitInlinedDataValue(llvm::GenIntrinsicInst *I);
-    void emitTileXOffset(llvm::TileXIntrinsic *I);
-    void emitTileYOffset(llvm::TileYIntrinsic *I);
     void emitDpas(llvm::GenIntrinsicInst *GII,
                   const SSource* source,
                   const DstModifier& modifier);

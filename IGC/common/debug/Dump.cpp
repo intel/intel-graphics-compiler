@@ -211,7 +211,6 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         case ShaderType::VERTEX_SHADER: ss << "VS"; break;
         case ShaderType::GEOMETRY_SHADER: ss << "GS"; break;
         case ShaderType::COMPUTE_SHADER: ss << "CS"; break;
-        case ShaderType::RAYTRACING_SHADER: ss << "RT"; break;
         case ShaderType::UNKNOWN:
         default: IGC_ASSERT_MESSAGE(0, "Unknown Shader Type"); break;
         }
@@ -732,26 +731,11 @@ std::string GetDumpName(const IGC::CShader* pProgram, const char* ext)
 DumpName GetDumpNameObj(const IGC::CShader* pProgram, const char* ext)
 {
     IGC::CodeGenContext* context = pProgram->GetContext();
-
-    bool overrideHash = false;
-    if (context->type == ShaderType::RAYTRACING_SHADER && context->hash.asmHash == 0)
-    {
-        auto* RayCtx = static_cast<RayDispatchShaderContext*>(context);
-        if (QWORD Hash = RayCtx->getShaderHash(pProgram))
-        {
-            context->hash.asmHash = Hash;
-            overrideHash = true;
-        }
-    }
-
     DumpName dumpName =
         IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
         .Type(context->type)
         .Hash(context->hash)
         .StagedInfo(context);
-
-    if (overrideHash)
-        context->hash.asmHash = 0;
 
     if(pProgram->entry->getName() != "entry")
     {

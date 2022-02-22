@@ -321,24 +321,6 @@ namespace IGC
         virtual bool DisableDual8WithDiscard() const { return false; }
         // support force routing to HDC and LCS caching options
         virtual bool SupportForceRouteAndCache() const { return false; }
-        // If enabled, IGC must provide the corresponding UMD info on how much
-        // memory to allocate for the RTGlobals + global root signature.
-        virtual bool supportsExpandedRTGlobals() const { return false; }
-        // If enabled, UMD must support setting up threadgroup according to
-        // RayTracingCustomTileXDim* and RayTracingCustomTileYDim*. If you want
-        // to experiment with non-power-of-2 x dimensions, you also have to
-        // support filling local IDs in the indirect state for the shader to
-        // read (not required otherwise).
-        virtual bool supportsRaytracingTiling() const { return false; }
-        // Enables the use of scratch space in raytracing shaders when possible
-        virtual bool supportsRTScratchSpace() const { return false; }
-        // Enables Raytracing printf
-        virtual bool SupportsRTPrintf() const { return false; }
-        // enables stateful accesses to the RTAsyncStack, SWHotZone, SWStack and RTSyncStack
-        virtual bool supportsRaytracingStatefulAccesses() const { return false; }
-        // To support this, the compiler output must be able to express a
-        // raygen shader identifier with continuation KSPs after it.
-        virtual bool supportsRaytracingContinuationPromotion() const { return false; }
 
         // Enable LSC on DG2 for the following:
         //   GenISAIntrinsic::GenISA_ldraw_indexed

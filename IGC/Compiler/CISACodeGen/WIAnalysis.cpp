@@ -1308,11 +1308,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_srnd ||
         GII_id == GenISAIntrinsic::GenISA_ftotf32 ||
         GII_id == GenISAIntrinsic::GenISA_tf32tof ||
-        GII_id == GenISAIntrinsic::GenISA_GlobalBufferPointer ||
-        GII_id == GenISAIntrinsic::GenISA_LocalBufferPointer ||
-        GII_id == GenISAIntrinsic::GenISA_InlinedData ||
-        GII_id == GenISAIntrinsic::GenISA_TileYOffset ||
-        GII_id == GenISAIntrinsic::GenISA_GetShaderRecordPtr ||
         GII_id == GenISAIntrinsic::GenISA_URBWrite ||
         GII_id == GenISAIntrinsic::GenISA_URBRead ||
         GII_id == GenISAIntrinsic::GenISA_URBReadOutput ||
@@ -1401,26 +1396,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             }
         }
 
-        if (GII_id == GenISAIntrinsic::GenISA_TileYOffset)
-        {
-            IGC_ASSERT(m_CGCtx->type == ShaderType::RAYTRACING_SHADER);
-            auto* Ctx = static_cast<RayDispatchShaderContext*>(m_CGCtx);
-            if (auto Mode = Ctx->knownSIMDSize())
-            {
-                // We currently tile along the x-dim first. If the SIMD size
-                // perfectly divides the x-dim, then the y-dim must be uniform.
-                uint32_t XDim1D = Ctx->opts().TileXDim1D;
-                uint32_t XDim2D = Ctx->opts().TileXDim2D;
-                return (XDim1D % numLanes(*Mode) == 0 &&
-                        XDim2D % numLanes(*Mode) == 0) ?
-                    WIAnalysis::UNIFORM_THREAD :
-                    WIAnalysis::RANDOM;
-            }
-            else
-            {
-                return WIAnalysis::RANDOM;
-            }
-        }
 
         if (intrinsic_name == llvm_sgv)
         {
@@ -1476,7 +1451,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             case DISPATCH_DIMENSION_Y: // dispatch size Y from MS payload
             case DISPATCH_DIMENSION_Z: // dispatch size Z from MS payload
             case INDIRECT_DATA_ADDRESS: // indirect data address from MS payload
-            case SHADER_TYPE:
             {
                 return WIAnalysis::UNIFORM_GLOBAL;
             }

@@ -204,7 +204,6 @@ namespace IGC {
         if (CTX->type != ShaderType::PIXEL_SHADER &&
             CTX->type != ShaderType::DOMAIN_SHADER &&
             CTX->type != ShaderType::OPENCL_SHADER &&
-            CTX->type != ShaderType::RAYTRACING_SHADER &&
             CTX->type != ShaderType::COMPUTE_SHADER)
         {
             return false;

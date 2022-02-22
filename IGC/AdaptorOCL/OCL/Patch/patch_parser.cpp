@@ -369,10 +369,6 @@ void DebugPatchList(
                         ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                             "\tType = LOCAL_ID\n" );
                         break;
-                    case iOpenCL::DATA_PARAMETER_RT_STACK_ID:
-                        ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                            "\tType = RT_STACK_ID\n");
-                        break;
                     case iOpenCL::DATA_PARAMETER_EXECUTION_MASK:
                         ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                             "\tType = EXECUTION_MASK\n" );
@@ -795,9 +791,6 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tLocalIDZPresent = %s\n",
                     pPatchItem->LocalIDZPresent ? "true" : "false" );
-                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                    "\tRTStackIDPresent = %s\n",
-                    pPatchItem->RTStackIDPresent ? "true" : "false");
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tLocalIDFlattenedPresent = %s\n",
                     pPatchItem->LocalIDFlattenedPresent ? "true" : "false" );
@@ -919,9 +912,6 @@ void DebugPatchList(
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tHasDPAS = %s\n",
                     pPatchItem->HasDPAS ? "true" : "false");
-                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                    "\tHasRTCalls = %s\n",
-                    pPatchItem->HasRTCalls ? "true" : "false");
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tNumThreadsRequired = %d\n",
                     pPatchItem->NumThreadsRequired);
@@ -1064,26 +1054,6 @@ void DebugPatchList(
 
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_SYNC_BUFFER (%08X) (size = %d)\n",
-                    pPatchItem->Token,
-                    pPatchItem->Size);
-                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                    "\tSurfaceStateHeapOffset = %d\n",
-                    pPatchItem->SurfaceStateHeapOffset);
-                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                    "\tDataParamOffset = %d\n",
-                    pPatchItem->DataParamOffset);
-                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                    "\tDataParamSize = %d\n",
-                    pPatchItem->DataParamSize);
-            }
-            break;
-        case iOpenCL::PATCH_TOKEN_ALLOCATE_RT_GLOBAL_BUFFER:
-            {
-                const iOpenCL::SPatchAllocateRTGlobalBuffer* pPatchItem =
-                    (const iOpenCL::SPatchAllocateRTGlobalBuffer*)pHeader;
-
-                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                    "PATCH_TOKEN_ALLOCATE_RT_GLOBAL_BUFFER (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size);
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,

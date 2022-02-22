@@ -932,31 +932,6 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
             IGC_SET_FLAG_VALUE(DisableScalarAtomics, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(DisableRayTracingOptimizations))
-        {
-            IGC_SET_FLAG_VALUE(DisablePayloadSinking, true);
-            IGC_SET_FLAG_VALUE(DisablePromoteToScratch, true);
-            IGC_SET_FLAG_VALUE(DisableEarlyRemat, true);
-            IGC_SET_FLAG_VALUE(DisableLateRemat, true);
-            IGC_SET_FLAG_VALUE(DisableRTGlobalsKnownValues, true);
-            IGC_SET_FLAG_VALUE(DisablePreSplitOpts, true);
-            IGC_SET_FLAG_VALUE(DisableInvariantLoad, true);
-            IGC_SET_FLAG_VALUE(DisableRTStackOpts, true);
-            IGC_SET_FLAG_VALUE(DisablePrepareLoadsStores, true);
-            IGC_SET_FLAG_VALUE(DisableRayTracingConstantCoalescing, true);
-            IGC_SET_FLAG_VALUE(DisableMatchRegisterRegion, true);
-            IGC_SET_FLAG_VALUE(DisableFuseContinuations, true);
-            IGC_SET_FLAG_VALUE(DisableRaytracingIntrinsicAttributes, true);
-            IGC_SET_FLAG_VALUE(DisableShaderFusion, true);
-            IGC_SET_FLAG_VALUE(DisableExamineRayFlag, true);
-            IGC_SET_FLAG_VALUE(DisableSpillReorder, true);
-            IGC_SET_FLAG_VALUE(DisablePromoteContinuation, true);
-            IGC_SET_FLAG_VALUE(DisableRTAliasAnalysis, true);
-            IGC_SET_FLAG_VALUE(DisableRTFenceElision, true);
-            IGC_SET_FLAG_VALUE(DisableRTMemDSE, true);
-            IGC_SET_FLAG_VALUE(RematThreshold, 0);
-            IGC_SET_FLAG_VALUE(DisableDPSE, true);
-        }
 
         if (IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
         {
@@ -975,7 +950,6 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
             IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
             IGC_SET_FLAG_VALUE(EnableCapsDump, true);
             IGC_SET_FLAG_VALUE(DumpPatchTokens, true);
-            IGC_SET_FLAG_VALUE(RayTracingDumpYaml, true);
         }
 
         if (IGC_IS_FLAG_ENABLED(DumpTimeStatsPerPass) ||

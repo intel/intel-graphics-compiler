@@ -112,12 +112,6 @@ namespace IGC
 
             SYNC_BUFFER,
 
-            // Raytracing args
-            RT_GLOBAL_BUFFER_POINTER,
-            RT_LOCAL_BUFFER_POINTER,
-            RT_INLINED_DATA,
-            RT_STACK_ID,
-
             // Bindless buffer (for stateless to bindless optim)
             BINDLESS_OFFSET,
 

@@ -469,20 +469,6 @@ void IGC::serialize(const IGC::ModuleMetaData &moduleMD, Module* module)
     LLVMMetadata->addOperand(node);
 }
 
-bool IGC::isBindless(const IGC::FunctionMetaData &funcMD)
-{
-    return funcMD.functionType == IGC::CallableShader;
-}
-
-bool IGC::isContinuation(const IGC::FunctionMetaData& funcMD)
-{
-    return funcMD.rtInfo.isContinuation;
-}
-
-bool IGC::isCallStackHandler(const IGC::FunctionMetaData &funcMD)
-{
-    return funcMD.rtInfo.callableShaderType == IGC::CallStackHandler;
-}
 
 unsigned IGC::extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD)
 {

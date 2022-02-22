@@ -35,16 +35,6 @@ namespace IGCLLVM
         {
             return llvm::Module::getOrInsertFunction(Name, Ty, attributeList).getCallee();
         }
-
-        inline llvm::StructType* getTypeByName(llvm::StringRef Name)
-        {
-#if LLVM_VERSION_MAJOR < 12
-            return llvm::Module::getTypeByName(Name);
-#else
-            return llvm::StructType::getTypeByName(llvm::Module::getContext(), Name);
-#endif
-        }
-
     };
 #endif
 

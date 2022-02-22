@@ -27,7 +27,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"
-#include "AdaptorCommon/RayTracing/RTBuilder.h"
 #include "PrepareLoadsStoresUtils.h"
 
 #include "common/LLVMWarningsPush.hpp"

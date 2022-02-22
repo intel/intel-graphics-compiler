@@ -62,7 +62,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderLowering.hpp"
 #include "Compiler/CISACodeGen/CrossPhaseConstProp.hpp"
-#include "Compiler/CISACodeGen/BindlessShaderCodeGen.hpp"
 #include "Compiler/ConvertMSAAPayloadTo16Bit.hpp"
 #include "Compiler/MSAAInsertDiscard.hpp"
 #include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
@@ -1558,24 +1557,6 @@ void FillProgram(ContextType* ctx, CShaderProgram* shaderProgram)
     shaderProgram->FillProgram(&ctx->programOutput);
 }
 
-void FillProgram(RayDispatchShaderContext* ctx, CShaderProgram* shaderProgram)
-{
-    SBindlessProgram bindlessProgram;
-    CBindlessShader* shader = shaderProgram->FillProgram(&bindlessProgram);
-    if (shader->isBindless())
-    {
-        if (shader->isCallStackHandler())
-            ctx->programOutput.callStackHandler = bindlessProgram;
-        else if (shader->isContinuation())
-            ctx->programOutput.m_Continuations.push_back(bindlessProgram);
-        else
-            ctx->programOutput.m_CallableShaders.push_back(bindlessProgram);
-    }
-    else
-    {
-        ctx->programOutput.m_DispatchPrograms.push_back(bindlessProgram);
-    }
-}
 
 template<typename ContextType>
 void CodeGenCommon(ContextType* ctx)
@@ -1616,10 +1597,6 @@ void CodeGen(VertexShaderContext* ctx)
     CodeGenCommon(ctx);
 }
 void CodeGen(GeometryShaderContext* ctx)
-{
-    CodeGenCommon(ctx);
-}
-void CodeGen(RayDispatchShaderContext* ctx)
 {
     CodeGenCommon(ctx);
 }
