@@ -34,21 +34,15 @@ SPDX-License-Identifier: MIT
 
 namespace IGCMetrics
 {
-    const char* const funcTrackValue = "llvm.igc.metric.trackValue";
-
     class IGCMetricImpl
     {
     private:
-        friend class CollectDataMetrics;
 
         bool isEnabled;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         IGC_METRICS::Program oclProgram;
-        IGCLLVM::Module* pModule;
 
         // Helpers
-        // Map user-variables
-        std::map<llvm::MetadataAsValue*, IGC_METRICS::VarInfo*> map_Var;
         // Map Function debuginfo to Function metrics
         std::map<llvm::DISubprogram*, IGC_METRICS::Function*> map_Func;
         // helpers for emulated calls
@@ -60,19 +54,15 @@ namespace IGCMetrics
 
         int CountInstInFunc(llvm::Function* pFunc);
 
-        void GetFunctionData(IGC_METRICS::Function* func_m, llvm::Function& func);
-        void UpdateFunctionArgumentsList();
-
-        inline IGC_METRICS::VarInfo* GetVarMetric(llvm::Value* pValue);
-        inline IGC_METRICS::VarInfo* AddVarMetric(llvm::DbgVariableIntrinsic* pInstr);
+        void GetFunctionCalls(IGC_METRICS::Function* func_m, llvm::Function& func);
 
         inline IGC_METRICS::Function* GetFuncMetric(const llvm::Instruction* const pInstr);
         inline IGC_METRICS::Function* GetFuncMetric(llvm::Instruction* pInstr);
         inline IGC_METRICS::Function* GetFuncMetric(llvm::Loop* pLoop);
-        inline IGC_METRICS::Function* GetFuncMetric(llvm::DISubprogram* pFunc);
-        inline IGC_METRICS::Function* GetFuncMetric(const llvm::DebugLoc* pLoc);
 
         inline IGC_METRICS::Function* GetFuncMetric(llvm::Function* pFunc);
+
+        void CollectInstructions(llvm::Module* pModule);
 
         void UpdateLoopsInfo();
         void UpdateModelCost();
@@ -86,6 +76,7 @@ namespace IGCMetrics
         static inline const std::string GetFullPath(const char* dir, const char* fileName);
         static inline const std::string GetFullPath(const std::string& dir, const std::string& fileName);
 
+        void UpdateCollectInstructions(llvm::Function* func);
 #endif
     public:
         IGCMetricImpl();
@@ -105,8 +96,6 @@ namespace IGCMetrics
         void StatIncCoalesced(llvm::Instruction* coalescedAccess);
 
         void CollectRegStats(KERNEL_INFO* vISAstats);
-
-        void CollectMem2Reg(llvm::AllocaInst* pAllocaInst, IGC::StatusPrivArr2Reg status);
 
         void CollectLoopCyclomaticComplexity(
             llvm::Function* pFunc,
@@ -130,33 +119,6 @@ namespace IGCMetrics
             bool IsGeminiLakeWithDoubles);
 
         void CollectDataFromDebugInfo(IGC::DebugInfoData* pDebugInfo, IGC::DbgDecoder* pDebugDecoder);
-
-        void CollectInstructionCnt(
-            llvm::Function* pFunc,
-            int InstCnt,
-            int InstCntMax);
-
-        void CollectThreadGroupSize(
-            llvm::Function* pFunc,
-            int ThreadGroupSize,
-            int ThreadGroupSizeMax);
-
-        void CollectThreadGroupSizeHint(
-            llvm::Function* pFunc,
-            int ThreadGroupSizeHint,
-            int ThreadGroupSizeHintMax);
-
-        void CollectIsSubGroupFuncIn(
-            llvm::Function* pFunc,
-            bool flag);
-
-        void CollectGen9Gen10WithIEEESqrtDivFunc(
-            llvm::Function* pFunc,
-            bool flag);
-
-        void CollectNonUniformLoop(
-            llvm::Function* pFunc,
-            short LoopCount, llvm::Loop* problematicLoop);
 
         void FinalizeStats();
 

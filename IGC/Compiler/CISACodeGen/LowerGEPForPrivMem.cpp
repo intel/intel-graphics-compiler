@@ -70,7 +70,7 @@ namespace IGC {
             llvm::Type* pBaseType);
         void handleAllocaInst(llvm::AllocaInst* pAlloca);
 
-        StatusPrivArr2Reg CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
+        bool CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
         bool IsNativeType(Type* type);
 
     public:
@@ -261,12 +261,12 @@ bool LowerGEPForPrivMem::IsNativeType(Type* type)
     return true;
 }
 
-StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
+bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 {
     // vla is not promotable
     IGC_ASSERT(pAlloca != nullptr);
     if (IsVariableSizeAlloca(*pAlloca))
-        return StatusPrivArr2Reg::IsDynamicAlloca;
+        return false;
 
     bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
     bool useAssumeUniform = pAlloca->getMetadata("UseAssumeUniform") != nullptr;
@@ -298,11 +298,11 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     Type* baseType = nullptr;
     if (!CanUseSOALayout(pAlloca, baseType))
     {
-        return StatusPrivArr2Reg::CannotUseSOALayout;
+        return false;
     }
     if (!IsNativeType(baseType))
     {
-        return StatusPrivArr2Reg::IsNotNativeType;
+        return false;
     }
     if (isUniformAlloca)
     {
@@ -313,13 +313,13 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
 
     if (useAssumeUniform || allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
     {
-        return StatusPrivArr2Reg::OK;
+        return true;
     }
 
     // if alloca size exceeds alloc size threshold, return false
     if (allocaSize > allowedAllocaSizeInBytes)
     {
-        return StatusPrivArr2Reg::OutOfAllocSizeLimit;
+        return false;
     }
 
     // get all the basic blocks that contain the uses of the alloca
@@ -350,14 +350,14 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
 
     if (allocaSize + pressure > maxGRFPressure)
     {
-        return StatusPrivArr2Reg::OutOfMaxGRFPressure;
+        return false;
     }
     PromotedLiverange liverange;
     liverange.lowId = lowestAssignedNumber;
     liverange.highId = highestAssignedNumber;
     liverange.varSize = allocaSize;
     m_promotedLiveranges.push_back(liverange);
-    return StatusPrivArr2Reg::OK;
+    return true;
 }
 
 static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
@@ -468,13 +468,7 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst& I)
     // Alloca should always be private memory
     IGC_ASSERT(nullptr != I.getType());
     IGC_ASSERT(I.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE);
-
-    StatusPrivArr2Reg status = CheckIfAllocaPromotable(&I);
-    if (I.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE)
-    {
-        m_ctx->metrics.CollectMem2Reg(&I, status);
-    }
-    if (status != StatusPrivArr2Reg::OK)
+    if (!CheckIfAllocaPromotable(&I))
     {
         // alloca size extends remain per-lane-reg space
         return;

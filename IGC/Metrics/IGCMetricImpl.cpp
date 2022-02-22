@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DebugInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 
-//#define DEBUG_METRIC
+#define DEBUG_METRIC 0
 
 namespace IGCMetrics
 {
@@ -222,7 +222,6 @@ namespace IGCMetrics
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
 
-        this->pModule = (IGCLLVM::Module*)pModule;
         for (auto func_i = pModule->begin(); func_i != pModule->end(); ++func_i)
         {
             llvm::Function& func = *func_i;
@@ -253,7 +252,8 @@ namespace IGCMetrics
                 IGC_METRICS::CodeRef* func_m_loc = func_m->mutable_funcloc();
                 FillCodeRef(func_m_loc, func_dbinfo);
 
-                GetFunctionData(func_m, func);
+                GetFunctionCalls(func_m, func);
+                CollectInstructions(pModule);
             }
         }
 #endif
@@ -391,7 +391,6 @@ namespace IGCMetrics
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         UpdateLoopsInfo();
         UpdateModelCost();
-        UpdateFunctionArgumentsList();
 #endif
     }
 
@@ -429,15 +428,19 @@ namespace IGCMetrics
 #endif
 
             const llvm::Value* pVal = nullptr;
+            llvm::MDNode* pNode = nullptr;
 
             // Iterate over all instruction ported to vISA
             for (auto instr = vISAData->begin(); instr != vISAData->end(); ++instr)
             {
+                llvm::DebugLoc* dbLoc = nullptr;
                 if (const llvm::DbgDeclareInst* pDbgAddrInst =
                     llvm::dyn_cast<llvm::DbgDeclareInst>(*instr))
                 {
                     // Get : call void @llvm.dbg.value
+                    dbLoc = (llvm::DebugLoc*) & pDbgAddrInst->getDebugLoc();
                     pVal = pDbgAddrInst->getAddress();
+                    pNode = pDbgAddrInst->getVariable();
                 }
                 else if (const llvm::DbgValueInst* pDbgValInst =
                     llvm::dyn_cast<llvm::DbgValueInst>(*instr))
@@ -458,7 +461,9 @@ namespace IGCMetrics
                         }
                     }
 
+                    dbLoc = (llvm::DebugLoc*) & pDbgValInst->getDebugLoc();
                     pVal = pDbgValInst->getValue();
+                    pNode = pDbgValInst->getVariable();
                 }
                 else
                 {
@@ -467,20 +472,20 @@ namespace IGCMetrics
 
                 auto varLoc = vISAData->GetVariableLocation(*instr);
 
-                IGC_METRICS::VarInfo* varInfo_m = GetVarMetric((llvm::Value*)pVal);
+                // Extract debuginfo variable data
+                llvm::DIVariable* diVar = llvm::cast<llvm::DIVariable>(pNode);
 
-                if (varInfo_m == nullptr)
-                {
-                    continue;
-                }
-
+                std::string varName = diVar->getName().str();
                 // Get CVariable data for this user variable
                 auto cvar = pDebugInfo->getMapping(*pFunc, pVal);
+
+                IGC_METRICS::VarInfo* varInfo_m = nullptr;
+                IGC_METRICS::Function* func_m = GetFuncMetric(*instr);
 
 #ifdef DEBUG_METRIC
                 int users_count = (int)std::distance(pVal->user_begin(), pVal->user_end());
                 pVal->dump();
-                std::printf("\ninstr (varname:%s, pointer:%p, usage count:%d) :\n", varInfo_m->name().c_str(), pVal, users_count);
+                std::printf("\ninstr (varname:%s, pointer:%p, usage count:%d) :\n", varName.c_str(), pVal, users_count);
                 (*instr)->dump();
 #endif
 
@@ -488,6 +493,16 @@ namespace IGCMetrics
                     !varLoc.IsImmediate() &&
                     !varLoc.IsSLM())
                 {
+                    if (var_db2metric.find(diVar) == var_db2metric.end())
+                    {
+                        varInfo_m = func_m->add_variables();
+
+                        varInfo_m->set_name(varName);
+                        FillCodeRef(varInfo_m->mutable_varloc(),
+                            diVar);
+
+                        var_db2metric.insert(std::pair{ diVar, varInfo_m });
+                    }
                     continue;
                 }
                 // As for now support only registers, immediates and slm memory to report
@@ -523,8 +538,27 @@ namespace IGCMetrics
                     cvar = pDebugInfo->m_pShader->GetSymbol((llvm::Value*)pVal, false);
                 }
 
+                if (var_db2metric.find(diVar) != var_db2metric.end())
+                {
+                    // Already added user variable
+
+                    // It is for case when one of the user variables
+                    // is referenced in many places and requires new registers
+                    varInfo_m = var_db2metric[diVar];
+                }
+                else
+                {
+                    // New user variable
+                    varInfo_m = func_m->add_variables();
+
+                    varInfo_m->set_name(varName);
                     varInfo_m->set_size(cvar->GetSize());
                     varInfo_m->set_type((IGC_METRICS::VarInfo_VarType)cvar->GetType());
+                    FillCodeRef(varInfo_m->mutable_varloc(),
+                        diVar);
+
+                    var_db2metric.insert(std::pair{ diVar, varInfo_m });
+                }
 
                 auto fillRegister = [&](unsigned int reg)
                 {
@@ -534,6 +568,7 @@ namespace IGCMetrics
                     varInfo_reg_m->set_addrmodel(varLoc.IsInGlobalAddrSpace() ?
                         IGC_METRICS::VarInfo_AddressModel::VarInfo_AddressModel_GLOBAL :
                         IGC_METRICS::VarInfo_AddressModel::VarInfo_AddressModel_LOCAL);
+                    varInfo_reg_m->set_promoted2grf(varLoc.IsRegister());
 
                     //varInfo_m->set_memoryaccess((IGC_METRICS::VarInfo_MemAccess)varInfo->memoryAccess);
 
@@ -559,222 +594,7 @@ namespace IGCMetrics
 #endif
     }
 
-
-    void IGCMetricImpl::CollectInstructionCnt(
-        llvm::Function* pFunc,
-        int InstCnt,
-        int InstCntMax)
-    {
-        if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
-
-        if (func_metric)
-        {
-            auto costmodel = func_metric->mutable_costmodel_stats();
-            auto simd32cost = costmodel->mutable_simd32();
-
-            simd32cost->set_instructioncount(InstCnt);
-            simd32cost->set_instructioncount_max(InstCntMax);
-            simd32cost->set_instructioncount_status(InstCnt < InstCntMax ?
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK :
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
-        }
-#endif
-    }
-
-    void IGCMetricImpl::CollectThreadGroupSize(
-        llvm::Function* pFunc,
-        int ThreadGroupSize,
-        int ThreadGroupSizeMax)
-    {
-        if (!Enable()) return;
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
-
-        if (func_metric)
-        {
-            auto costmodel = func_metric->mutable_costmodel_stats();
-            auto simd32cost = costmodel->mutable_simd32();
-
-            simd32cost->set_threadgroupsize(ThreadGroupSize);
-            simd32cost->set_threadgroupsize_max(ThreadGroupSizeMax);
-            simd32cost->set_threadgroupsize_status(ThreadGroupSize < ThreadGroupSizeMax ?
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK :
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
-        }
-#endif
-    }
-
-    void IGCMetricImpl::CollectThreadGroupSizeHint(
-        llvm::Function* pFunc,
-        int ThreadGroupSizeHint,
-        int ThreadGroupSizeHintMax)
-    {
-        if (!Enable()) return;
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
-
-        if (func_metric)
-        {
-            auto costmodel = func_metric->mutable_costmodel_stats();
-            auto simd32cost = costmodel->mutable_simd32();
-
-            simd32cost->set_threadgroupsizehint(ThreadGroupSizeHint);
-            simd32cost->set_threadgroupsizehint_max(ThreadGroupSizeHintMax);
-            simd32cost->set_threadgroupsizehint_status(ThreadGroupSizeHint < ThreadGroupSizeHintMax ?
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK :
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
-        }
-#endif
-    }
-
-    void IGCMetricImpl::CollectIsSubGroupFuncIn(
-        llvm::Function* pFunc,
-        bool flag)
-    {
-        if (!Enable()) return;
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
-
-        if (func_metric)
-        {
-            auto costmodel = func_metric->mutable_costmodel_stats();
-            auto simd32cost = costmodel->mutable_simd32();
-
-            simd32cost->set_subgroupfunctionarepresent_status(!flag ?
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK :
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
-        }
-#endif
-    }
-
-    void IGCMetricImpl::CollectGen9Gen10WithIEEESqrtDivFunc(
-        llvm::Function* pFunc,
-        bool flag)
-    {
-        if (!Enable()) return;
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
-
-        if (func_metric)
-        {
-            auto costmodel = func_metric->mutable_costmodel_stats();
-            auto simd32cost = costmodel->mutable_simd32();
-
-            simd32cost->set_gen9orgen10withieeesqrtordivfunc_status(!flag ?
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK :
-                IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
-        }
-#endif
-    }
-
-    enum {
-        LOOPCOUNT_LIKELY_SMALL,
-        LOOPCOUNT_LIKELY_LARGE,
-        LOOPCOUNT_UNKNOWN
-    };
-
-    void IGCMetricImpl::CollectNonUniformLoop(
-        llvm::Function* pFunc,
-        short LoopCount,
-        llvm::Loop* problematicLoop)
-    {
-        if (!Enable()) return;
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        IGC_METRICS::Function* func_metric = GetFuncMetric(pFunc);
-
-        if (func_metric)
-        {
-            auto costmodel = func_metric->mutable_costmodel_stats();
-            auto simd32cost = costmodel->mutable_simd32();
-
-            if (problematicLoop == nullptr)
-            {
-                simd32cost->set_nonuniformloop_status(
-                    IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_OK);
-                simd32cost->set_nonuniformloop_count(
-                    IGC_METRICS::CostModelStats_CostSIMD32_LoopCount::CostModelStats_CostSIMD32_LoopCount_LIKELY_SMALL);
-            }
-            else
-            {
-                simd32cost->set_nonuniformloop_status(
-                    IGC_METRICS::CostModelStats_CostStatus::CostModelStats_CostStatus_BAD);
-                simd32cost->set_nonuniformloop_count(
-                    (IGC_METRICS::CostModelStats_CostSIMD32_LoopCount)LoopCount);
-                auto codeRefloop = simd32cost->mutable_nonuniformloop_problematicloop();
-                FillCodeRef(codeRefloop, problematicLoop->getStartLoc());
-            }
-        }
-#endif
-    }
-
-    void IGCMetricImpl::CollectMem2Reg(llvm::AllocaInst* pAllocaInst, IGC::StatusPrivArr2Reg status)
-    {
-        if (!Enable()) return;
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        IGC_METRICS::Function* func_metric = GetFuncMetric(pAllocaInst);
-        if (func_metric)
-        {
-            IGC_METRICS::VarInfo* var_m = GetVarMetric(pAllocaInst);
-
-            if (var_m)
-            {
-                var_m->set_status_privarr2reg(
-                    (IGC_METRICS::VarInfo_PrivArr2Reg)status);
-            }
-        }
-#endif
-    }
-
-#ifdef IGC_METRICS__PROTOBUF_ATTACHED
-
-    void IGCMetricImpl::UpdateFunctionArgumentsList()
-    {
-        for (auto func_i = pModule->begin();
-            func_i != pModule->end(); ++func_i)
-        {
-            llvm::Function* func = &*func_i;
-
-            auto func_m = GetFuncMetric(func);
-
-            if (func_m)
-            {
-                for (auto arg_i = func->arg_begin();
-                    arg_i != func->arg_end(); ++arg_i)
-                {
-                    llvm::Argument* arg = &*arg_i;
-                    bool foundInMetric = false;
-
-                    // Check if we are looking on the explicit argument
-                    // which is already added in the metrics for the function
-                    if (arg->hasName())
-                    {
-                        for (int i = 0; i < func_m->arguments_size(); ++i)
-                        {
-                            if (func_m->arguments(i).name() == arg->getName().str())
-                            {
-                                foundInMetric = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    // Not found - add it as implict argument
-                    if (!foundInMetric)
-                    {
-                        auto func_arg_m = func_m->add_arguments();
-                        if (arg->hasName())
-                        {
-                            func_arg_m->set_name(arg->getName().str());
-                        }
-                        func_arg_m->set_compilesize(arg->getType()->getPrimitiveSizeInBits());
-                        func_arg_m->set_type(IGC_METRICS::KernelArg_ArgumentType::KernelArg_ArgumentType_IMPLICIT);
-                    }
-                }
-            }
-        }
-    }
 
     void IGCMetricImpl::UpdateModelCost()
     {
@@ -821,6 +641,11 @@ namespace IGCMetrics
         }
     }
 
+    void IGCMetricImpl::UpdateCollectInstructions(llvm::Function* func)
+    {
+
+    }
+
     void IGCMetricImpl::CollectLoop(llvm::Loop* loop)
     {
         if (loop->getStartLoc() && loop->getStartLoc()->getScope())
@@ -850,83 +675,91 @@ namespace IGCMetrics
         //TODO
     }
 
-    class CollectDataMetrics : public llvm::InstVisitor<CollectDataMetrics>
+    void IGCMetricImpl::GetFunctionCalls(IGC_METRICS::Function* func_m, llvm::Function& func)
     {
-        IGCMetricImpl* metric;
-
-    public:
-
-        CollectDataMetrics(IGCMetricImpl* metric)
+        for (auto bbIt = func.begin(); bbIt != func.end(); bbIt++)
         {
-            this->metric = metric;
-        }
-
-        void visitDbgVariableIntrinsic(llvm::DbgVariableIntrinsic& dbValInst)
-        {
-            metric->AddVarMetric(&dbValInst);
-        }
-
-        void visitCallInst(llvm::CallInst& callInst)
-        {
-            auto calledFuncName = callInst.getCalledFunction()->getName();
-            if (calledFuncName.startswith("llvm.dbg") ||
-                calledFuncName.startswith("llvm.genx.GenISA.CatchAllDebugLine"))
+            for (auto instIt = bbIt->begin(); instIt != bbIt->end(); instIt++)
             {
-                // Ignore debugInfo calls
-                return;
-            }
+                auto instr_call = llvm::dyn_cast<llvm::CallInst>(instIt);
 
-
-            auto func_m = metric->GetFuncMetric(&callInst);
-            auto funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_INLINE;
-
-            if (calledFuncName.startswith("__builtin_IB"))
-            {
-                funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_LIBRARY;
-            }
-            else if (calledFuncName.startswith("llvm."))
-            {
-                funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_LIBRARY;
-            }
-            else if (calledFuncName.startswith("__builtin_spirv"))
-            {
-                funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_LIBRARY;
-            }
-
-            // Get data about this function call
-            IGC_METRICS::FuncCalls* callFunc_m = nullptr;
-
-            for (int i = 0; i < func_m->functioncalls_size(); ++i)
-            {
-                if (calledFuncName.equals(
-                    func_m->functioncalls(i).name()))
+                if (instr_call != nullptr)
                 {
-                    // For case if we have already record created
-                    callFunc_m = (IGC_METRICS::FuncCalls*) & func_m->functioncalls(i);
-                    callFunc_m->set_count(callFunc_m->count() + 1);
-                    break;
+                    auto calledFunc = instr_call->getCalledFunction();
+
+                    if (calledFunc == nullptr)
+                    {
+                        // TODO: Handle function pointers
+                        continue;
+                    }
+
+                    auto calledFuncName = calledFunc->getName();
+                    auto funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_INLINE;
+
+                    // Check if this is function call which we wanted to track
+                    if (calledFuncName.startswith("llvm.dbg") ||
+                        calledFuncName.startswith("llvm.genx.GenISA.CatchAllDebugLine"))
+                    {
+                        // Ignore debugInfo calls
+                        continue;
+                    }
+                    else if (calledFuncName.startswith("__builtin_IB"))
+                    {
+                        funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_LIBRARY;
+                    }
+                    else if (calledFuncName.startswith("llvm."))
+                    {
+                        funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_LIBRARY;
+                    }
+                    else if (calledFuncName.startswith("__builtin_spirv"))
+                    {
+                        funcCallType = IGC_METRICS::FuncCalls_FuncCallsType::FuncCalls_FuncCallsType_LIBRARY;
+                    }
+
+                    // Get data about this function call
+                    IGC_METRICS::FuncCalls* callFunc_m = nullptr;
+
+                    for (int i = 0; i < func_m->functioncalls_size(); ++i)
+                    {
+                        if (calledFuncName.equals(
+                            func_m->functioncalls(i).name()))
+                        {
+                            // For case if we have already record created
+                            callFunc_m = (IGC_METRICS::FuncCalls*) & func_m->functioncalls(i);
+                            callFunc_m->set_count(callFunc_m->count() + 1);
+                            break;
+                        }
+                    }
+                    if (callFunc_m == nullptr)
+                    {
+                        // For new case
+                        callFunc_m = func_m->add_functioncalls();
+                        callFunc_m->set_name(calledFuncName.str());
+                        callFunc_m->set_count(1);
+                        callFunc_m->set_type(funcCallType);
+                    }
+
+                    auto instr_call_dbinfo = instr_call->getDebugLoc();
+                    auto callFunc_m_loc = callFunc_m->add_funccallloc();
+                    FillCodeRef(callFunc_m_loc, instr_call_dbinfo);
                 }
             }
-            if (callFunc_m == nullptr)
+        }
+    }
+
+    void IGCMetricImpl::CollectInstructions(llvm::Module* pModule)
+    {
+        for (auto func = pModule->begin(); func != pModule->end(); ++func)
+        {
+            llvm::DISubprogram* subProg = func->getSubprogram();
+
+            if (map_Func.find(subProg) == map_Func.end())
             {
-                // For new case
-                callFunc_m = func_m->add_functioncalls();
-                callFunc_m->set_name(calledFuncName.str());
-                callFunc_m->set_count(1);
-                callFunc_m->set_type(funcCallType);
+                continue;
             }
 
-            auto instr_call_dbinfo = callInst.getDebugLoc();
-            auto callFunc_m_loc = callFunc_m->add_funccallloc();
-            metric->FillCodeRef(callFunc_m_loc, instr_call_dbinfo);
+            UpdateCollectInstructions(&*func);
         }
-    };
-
-    void IGCMetricImpl::GetFunctionData(IGC_METRICS::Function* func_m, llvm::Function& func)
-    {
-        CollectDataMetrics metricPass(this);
-
-        metricPass.visit(func);
     }
 
     int IGCMetricImpl::CountInstInFunc(llvm::Function* pFunc)
@@ -940,177 +773,31 @@ namespace IGCMetrics
         return instCount;
     }
 
-    IGC_METRICS::VarInfo* IGCMetricImpl::AddVarMetric(llvm::DbgVariableIntrinsic* pInstr)
-    {
-        llvm::MDNode* pNode = nullptr;
-        llvm::Value* value = nullptr;
-        llvm::MetadataAsValue* MDValue = llvm::dyn_cast<llvm::MetadataAsValue>(pInstr->getArgOperand(0));
-        llvm::MetadataAsValue* MDDILocalVariable = llvm::dyn_cast<llvm::MetadataAsValue>(pInstr->getArgOperand(1));
-        IGC_METRICS::VarInfo* var_m = nullptr;
-
-        if (MDValue != nullptr)
-        {
-            llvm::ValueAsMetadata* vAsMD = llvm::dyn_cast<llvm::ValueAsMetadata>(MDValue->getMetadata());
-            pNode = pInstr->getVariable();
-            if (vAsMD != nullptr &&
-                vAsMD->getValue() != nullptr)
-            {
-                value = vAsMD->getValue();
-            }
-        }
-
-        if (pNode && value)
-        {
-            // Map only once user variable in metrics
-            if (map_Var.find(MDDILocalVariable) == map_Var.end())
-            {
-                // Extract debuginfo variable data to metrics
-                llvm::DIVariable* diVar = llvm::cast<llvm::DIVariable>(pNode);
-
-                std::string varName = diVar->getName().str();
-
-                auto func_m = GetFuncMetric(pInstr);
-
-                var_m = func_m->add_variables();
-                var_m->set_name(varName);
-                FillCodeRef(var_m->mutable_varloc(), diVar);
-
-                // If variable is an argument of function/kernel
-                // make a record of this information in metric too
-                if (llvm::isa<llvm::Argument>(value))
-                {
-                    auto func_arg_m = func_m->add_arguments();
-                    func_arg_m->set_name(varName);
-                    func_arg_m->set_compilesize(value->getType()->getPrimitiveSizeInBits());
-                    func_arg_m->set_type(IGC_METRICS::KernelArg_ArgumentType::KernelArg_ArgumentType_EXPLICIT);
-                }
-
-                // The user variables are identified by the MDAsVal,
-                // because they are unique in whole module and aren't
-                // recreated/changed during compilation of shader (it doesn't change pointer)
-                map_Var[MDDILocalVariable] = var_m;
-            }
-            else
-            {
-                var_m = map_Var[MDDILocalVariable];
-            }
-
-            // Map in code any refrence to this variable (for metrics)
-            // by adding callinstr llvm.igc.metric.trackValue in module for tracking
-            llvm::AttributeList atrr;
-            atrr.addAttribute(pModule->getContext(), 0, llvm::Attribute::AttrKind::OptimizeNone);
-            atrr.addAttribute(pModule->getContext(), 1, llvm::Attribute::AttrKind::NoInline);
-            atrr.addAttribute(pModule->getContext(), 2, llvm::Attribute::AttrKind::ReadNone);
-            atrr.addAttribute(pModule->getContext(), 3, llvm::Attribute::AttrKind::NoAlias);
-
-            auto funcType = llvm::FunctionType::get(
-                llvm::Type::getVoidTy(pModule->getContext()),
-                { llvm::Type::getMetadataTy(pModule->getContext()), llvm::Type::getMetadataTy(pModule->getContext()) }, false);
-
-            auto funcVal = pModule->getOrInsertFunction(funcTrackValue, funcType, atrr);
-
-            llvm::Function* func = llvm::cast<llvm::Function>(funcVal);
-
-            llvm::CallInst::Create(func, { MDValue, MDDILocalVariable }, "", pInstr);
-
-            return var_m;
-        }
-        // Cannot find associated user-variable with this instruction
-        return nullptr;
-    }
-
-    IGC_METRICS::VarInfo* IGCMetricImpl::GetVarMetric(llvm::Value* pValue)
-    {
-        map_Var.begin();
-        // iterate over all user variables which we found
-        for (auto trackerVal_i = map_Var.begin();
-            trackerVal_i != map_Var.end();
-            ++trackerVal_i)
-        {
-            // The user variables are identified by the MDAsVal,
-            // because they are unique in whole module and aren't
-            // recreated/changed during compilation of shader (it doesn't change pointer)
-            llvm::MetadataAsValue* tracker = (*trackerVal_i).first;
-
-            for (auto user : tracker->users())
-            {
-                // Check all usage of this MDAsVal and look for the metrics call functions:
-                // call void @llvm.igc.metric.trackValue(...)
-                if (llvm::CallInst* callInst = dyn_cast<llvm::CallInst>(user))
-                {
-                    if (callInst->getCalledFunction()->getName().startswith(funcTrackValue))
-                    {
-                        llvm::Value* trackedValue = callInst->getArgOperand(0);
-
-                        llvm::MetadataAsValue* MDValue = llvm::dyn_cast<llvm::MetadataAsValue>(trackedValue);
-                        llvm::ValueAsMetadata* vAsMD = llvm::dyn_cast<llvm::ValueAsMetadata>(MDValue->getMetadata());
-
-                        // Found tracker which looks at defined user variable
-                        if (vAsMD && vAsMD->getValue() == pValue)
-                        {
-                            return map_Var[tracker];
-                        }
-                    }
-                }
-            }
-        }
-        // Cannot find associated user-variable with this instruction/value
-        return nullptr;
-    }
-
     IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(const llvm::Instruction* const pInstr)
     {
-        return GetFuncMetric((llvm::Instruction*)pInstr);
+        return map_Func[
+            pInstr->getDebugLoc()->getScope()->getSubprogram()];
     }
 
     IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(llvm::Instruction* pInstr)
     {
-        auto func_m = GetFuncMetric(&pInstr->getDebugLoc());
-        if (func_m != nullptr)
-        {
-            return func_m;
-        }
         return GetFuncMetric(pInstr->getParent()->getParent());
     }
 
     IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(llvm::Loop* pLoop)
     {
-        auto func_m = GetFuncMetric(&pLoop->getStartLoc());
-        if (func_m != nullptr)
-        {
-            return func_m;
-        }
         return GetFuncMetric(pLoop->getBlocks()[0]->getParent());
     }
 
     IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(llvm::Function* pFunc)
     {
-        return GetFuncMetric(pFunc->getSubprogram());
-    }
-
-    IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(const llvm::DebugLoc* pLoc)
-    {
-        if (pLoc == nullptr || !pLoc->get())
-        {
-            return nullptr;
-        }
-        const MDNode* Scope = pLoc->getInlinedAtScope();
-        if (auto* SP = llvm::getDISubprogram(Scope))
-        {
-            return GetFuncMetric(SP);
-        }
-        return nullptr;
-    }
-
-    IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(llvm::DISubprogram* pFunc)
-    {
-        if (map_Func.find(pFunc) == map_Func.end())
+        if (map_Func.find(pFunc->getSubprogram()) == map_Func.end())
         {
             return nullptr;
         }
         else
         {
-            return map_Func[pFunc];
+            return map_Func[pFunc->getSubprogram()];
         }
     }
 
@@ -1169,5 +856,4 @@ namespace IGCMetrics
     }
 
 #endif
-
 }
