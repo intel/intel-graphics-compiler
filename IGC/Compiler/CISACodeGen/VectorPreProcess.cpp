@@ -305,8 +305,9 @@ namespace
     public:
         typedef SmallVector<Instruction*, 32> InstWorkVector;
         typedef SmallVector<Value*, 16> ValVector;
-        // map from Vector value to its Component Values
-        typedef DenseMap<Value*, ValVector> V2SMap;
+
+        // vector value -> (split size in bytes -> vector's component values)
+        typedef DenseMap<Value*, DenseMap<uint32_t, ValVector>> V2SMap;
 
         enum class VPConst {
             // If a vector's size is bigger than SPLIT_SIZE, split it into multiple
@@ -692,7 +693,7 @@ bool VectorPreProcess::splitStore(
         return false;
     }
 
-    ValVector& svals = vecToSubVec[StoredVal];
+    ValVector& svals = vecToSubVec[StoredVal][splitSize];
     if (svals.size() == 0)
     {
         // Need to create splitted values.
@@ -870,7 +871,7 @@ bool VectorPreProcess::splitLoad(
     uint32_t EBytes = int_cast<unsigned int>(m_DL->getTypeAllocSize(ETy));
 
     // Create a map entry for LI
-    ValVector& svals = vecToSubVec[LI];
+    ValVector& svals = vecToSubVec[LI][splitSize];
 
     for (uint32_t i = 0; i < len; ++i)
     {
@@ -1660,83 +1661,85 @@ bool VectorPreProcess::runOnFunction(Function& F)
                 continue;
             }
             Instruction* LI = ALI.getValue().getInst();
-            ValVector& svals = vecToSubVec[V];
-            if (!LI->use_empty())
-            {
-                ValVector Scalars;
-                IRBuilder<> Builder(LI);
-                for (uint32_t j = 0; j < svals.size(); ++j)
+            for (auto& it : vecToSubVec[V]) {
+                ValVector& svals = it.second;
+                if (!LI->use_empty())
                 {
-                    Type* Ty1 = svals[j]->getType();
-                    IGCLLVM::FixedVectorType* VTy1 = dyn_cast<IGCLLVM::FixedVectorType>(Ty1);
-                    if (VTy1) {
-                        for (uint32_t k = 0; k < VTy1->getNumElements(); ++k)
-                        {
-                            Value* S = Builder.CreateExtractElement(
-                                svals[j], Builder.getInt32(k), "split");
-                            Scalars.push_back(S);
-                        }
-                    }
-                    else
+                    ValVector Scalars;
+                    IRBuilder<> Builder(LI);
+                    for (uint32_t j = 0; j < svals.size(); ++j)
                     {
-                        Scalars.push_back(svals[j]);
-
-                        // svals[j] will be no long needed, set it to null
-                        // to prevent double-deleting later
-                        svals[j] = nullptr;
-                    }
-                }
-                // Replace LI and erase LI.
-                replaceAllVectorUsesWithScalars(LI, Scalars);
-
-                // Remove any dead scalars
-                for (uint32_t j = 0; j < Scalars.size(); ++j)
-                {
-                    if (Scalars[j]->use_empty())
-                    {
-                        Instruction* tInst = cast<Instruction>(Scalars[j]);
-                        tInst->eraseFromParent();
-                    }
-                }
-            }
-            else
-            {
-                LI->eraseFromParent();
-            }
-
-            // Remove any dead sub vectors
-            for (uint32_t j = 0; j < svals.size(); ++j)
-            {
-                if (svals[j] == nullptr)
-                {
-                    continue;
-                }
-                Instruction* tInst = cast<Instruction>(svals[j]);
-                if (tInst->use_empty())
-                {
-                    // If this is a 3-element vector load, remove it
-                    // from m_Vector3List as well.
-                    if (isAbstractLoadInst(tInst) && tInst->getType()->isVectorTy() &&
-                        cast<IGCLLVM::FixedVectorType>(tInst->getType())->getNumElements() == 3)
-                    {
-                        InstWorkVector::iterator
-                            tI = m_Vector3List.begin(),
-                            tE = m_Vector3List.end();
-                        for (; tI != tE; ++tI)
-                        {
-                            Instruction* tmp = *tI;
-                            if (tmp == tInst)
+                        Type* Ty1 = svals[j]->getType();
+                        IGCLLVM::FixedVectorType* VTy1 = dyn_cast<IGCLLVM::FixedVectorType>(Ty1);
+                        if (VTy1) {
+                            for (uint32_t k = 0; k < VTy1->getNumElements(); ++k)
                             {
-                                break;
+                                Value* S = Builder.CreateExtractElement(
+                                    svals[j], Builder.getInt32(k), "split");
+                                Scalars.push_back(S);
                             }
                         }
-                        if (tI != m_Vector3List.end())
+                        else
                         {
-                            m_Vector3List.erase(tI);
+                            Scalars.push_back(svals[j]);
+
+                            // svals[j] will be no long needed, set it to null
+                            // to prevent double-deleting later
+                            svals[j] = nullptr;
                         }
                     }
+                    // Replace LI and erase LI.
+                    replaceAllVectorUsesWithScalars(LI, Scalars);
 
-                    tInst->eraseFromParent();
+                    // Remove any dead scalars
+                    for (uint32_t j = 0; j < Scalars.size(); ++j)
+                    {
+                        if (Scalars[j]->use_empty())
+                        {
+                            Instruction* tInst = cast<Instruction>(Scalars[j]);
+                            tInst->eraseFromParent();
+                        }
+                    }
+                }
+                else
+                {
+                    LI->eraseFromParent();
+                }
+
+                // Remove any dead sub vectors
+                for (uint32_t j = 0; j < svals.size(); ++j)
+                {
+                    if (svals[j] == nullptr)
+                    {
+                        continue;
+                    }
+                    Instruction* tInst = cast<Instruction>(svals[j]);
+                    if (tInst->use_empty())
+                    {
+                        // If this is a 3-element vector load, remove it
+                        // from m_Vector3List as well.
+                        if (isAbstractLoadInst(tInst) && tInst->getType()->isVectorTy() &&
+                            cast<IGCLLVM::FixedVectorType>(tInst->getType())->getNumElements() == 3)
+                        {
+                            InstWorkVector::iterator
+                                tI = m_Vector3List.begin(),
+                                tE = m_Vector3List.end();
+                            for (; tI != tE; ++tI)
+                            {
+                                Instruction* tmp = *tI;
+                                if (tmp == tInst)
+                                {
+                                    break;
+                                }
+                            }
+                            if (tI != m_Vector3List.end())
+                            {
+                                m_Vector3List.erase(tI);
+                            }
+                        }
+
+                        tInst->eraseFromParent();
+                    }
                 }
             }
         }
