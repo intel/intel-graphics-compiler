@@ -2821,7 +2821,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case GenXIntrinsic::genx_predefined_surface:
       case GenXIntrinsic::genx_output:
       case GenXIntrinsic::genx_output_1:
-      case vc::InternalIntrinsic::vc_internal_jump_table:
+      case vc::InternalIntrinsic::jump_table:
         // ignore
         break;
       case GenXIntrinsic::genx_simdcf_goto:
@@ -4072,7 +4072,7 @@ void GenXKernelBuilder::buildIndirectBr(IndirectBrInst *Br) {
   Value *Addr = Br->getAddress();
   auto JumpTable = cast<IntrinsicInst>(Addr);
   unsigned IID = vc::getAnyIntrinsicID(JumpTable);
-  IGC_ASSERT(IID == vc::InternalIntrinsic::vc_internal_jump_table);
+  IGC_ASSERT(IID == vc::InternalIntrinsic::jump_table);
   Value *Idx = JumpTable->getArgOperand(0);
 
   VISA_VectorOpnd *JMPIdx = createSource(Idx, UNSIGNED);

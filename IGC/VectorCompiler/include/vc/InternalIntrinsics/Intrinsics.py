@@ -144,7 +144,7 @@ def generateEnums():
             "#ifdef GET_INTRINSIC_ENUM_VALUES\n")
     for i in range(len(ID_array)):
         pretty_indent = 40 - len(ID_array[i])
-        f.write("  vc_internal_" + ID_array[i]+",")
+        f.write( ID_array[i]+",")
         f.write((" "*pretty_indent)+'// llvm.vc.internal.'+ID_array[i].replace("_",".")+'\n')
     f.write("#endif\n\n")
     f.close()
@@ -208,7 +208,7 @@ def createOverloadRetTable():
                 if "any" in ret[j]:
                     isOverloadable = True
         if isOverloadable:
-            f.write("case InternalIntrinsic::vc_internal_" + ID_array[i] + ":\n")
+            f.write("case InternalIntrinsic::" + ID_array[i] + ":\n")
         isOverloadable = False
     f.write("  return true;\n")
     f.write("}\n")
@@ -222,7 +222,7 @@ def createOverloadArgsTable():
             "switch(IntrinID) {\n"
             "default: IGC_ASSERT_MESSAGE(0, \"Unknown intrinsic ID\");\n")
     for i in range(len(ID_array)):
-        f.write("case InternalIntrinsic::vc_internal_" + ID_array[i]+": ")
+        f.write("case InternalIntrinsic::" + ID_array[i]+": ")
         argNums = []
         genISA_Intrinsic = Intrinsics[ID_array[i]]
         args  = genISA_Intrinsic["arguments"]

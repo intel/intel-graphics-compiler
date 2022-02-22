@@ -195,7 +195,7 @@ bool GenXLowerJmpTableSwitch::processSwitchCandidates(
     // Collect blockaddresses in sorted order.
     std::vector<BlockAddress *> BAs = collectBlockAddresses(SI, Min);
 
-    auto IID = vc::InternalIntrinsic::vc_internal_jump_table;
+    auto IID = vc::InternalIntrinsic::jump_table;
     // Collect output and input Idx types as well as blockaddress type repeated
     // NumCases times to create internal_jump_table decl.
     std::vector<Type *> InTys(NumCases + 2, BAs[0]->getType());
