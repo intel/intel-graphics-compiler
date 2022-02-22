@@ -55,6 +55,7 @@ uint64_t GetImmediateVal(llvm::Value* Const);
 e_alignment GetPreferredAlignment(llvm::Value* Val, WIAnalysis* WIA, CodeGenContext* pContext);
 
 class CShaderProgram;
+class CBindlessShader;
 
 ///--------------------------------------------------------------------------------------------------------
 class CShader
@@ -117,6 +118,13 @@ public:
         IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
         return nullptr;
     }
+
+    virtual CVariable* GetGlobalBufferPtr() { IGC_ASSERT(0); return nullptr; }
+    virtual CVariable* GetLocalBufferPtr() { IGC_ASSERT(0); return nullptr; }
+    virtual CVariable* GetStackID() { IGC_ASSERT(0); return nullptr; }
+    virtual CVariable* GetInlinedDataPtr() { IGC_ASSERT(0); return nullptr; }
+    // if true, HW will pass one GRF NOS of inlinedata to payload, (compute only right now)
+
     virtual bool passNOSInlineData() { return false; }
     virtual bool loadThreadPayload() { return false; }
     virtual unsigned getAnnotatedNumThreads() { return 0; }
@@ -311,6 +319,7 @@ public:
 
     /// Return true if we are sure that all lanes are active at the begging of the thread
     virtual bool HasFullDispatchMask() { return false; }
+    bool needsEntryFence() const;
 
     llvm::Function* entry;
     const CBTILayout* m_pBtiLayout;
@@ -697,6 +706,7 @@ public:
     void FillProgram(SPixelShaderKernelProgram* pKernelProgram);
     void FillProgram(SComputeShaderKernelProgram* pKernelProgram);
     void FillProgram(SOpenCLProgramInfo* pKernelProgram);
+    CBindlessShader* FillProgram(SBindlessProgram* pKernelProgram);
     ShaderStats* m_shaderStats;
 
 protected:

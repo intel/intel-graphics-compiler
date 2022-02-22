@@ -2381,5 +2381,309 @@ Imported_Intrinsics = \
     [("float4",                        ""),
     [("int",                           "usage"),
      ("int",                           "owordOffset")],
-    "ReadMem"]]
+    "ReadMem"]],
+####################################################################################################
+"GenISA_AcceptHitAndEndSearchHL": ["Raytracing: equivalent to DXR AcceptHitAndEndSearch()",
+    [("void",                          ""),
+    [],
+    "None"]],
+####################################################################################################
+"GenISA_AllocaNumber": ["Raytracing: Temporary marker that will be lowered to an RTStack offset.",
+    [("anyptr",                        ""),
+    [("int",                           "")],
+    "None"]],
+####################################################################################################
+"GenISA_AllocateRayQuery": ["Raytracing: Allocation for RayQuery Object",
+    [("int",                           ""),
+    [("int",                           "rayFlags")],
+    "None"]],
+####################################################################################################
+"GenISA_AsyncStackID": ["Raytracing: lane Async stack id",
+    [("short",                         ""),
+    [],
+    "NoMem"]],
+####################################################################################################
+"GenISA_AsyncStackPtr": ["Raytracing: Intrinsic used as marker in later passes to find per lane " +
+                         "async stack base. It is just a cast and will be lowered prior to codegen",
+    [("anyptr",                         ""),
+    [("anyint",                         "")],
+    "NoMem,NoDuplicate"]],
+####################################################################################################
+"GenISA_SyncStackPtr": ["Raytracing: Intrinsic used as marker in later passes to find per lane " +
+                         "sync stack base. It is just a cast and will be lowered prior to codegen",
+    [("anyptr",                         ""),
+    [("anyint",                         "")],
+    "NoMem,NoDuplicate"]],
+####################################################################################################
+"GenISA_BindlessThreadDispatch": ["Raytracing: codegens to send.btd",
+    [("void",                          ""),
+    [("anyptr",                        "global buffer pointer"),
+     ("short",                         "stack id"),
+     ("long",                          "shader record address")],
+    "None"]],
+####################################################################################################
+"GenISA_CallShaderHL": ["Raytracing: equivalent to DXR CallShader() (HL = high level)",
+    [("void",                          ""),
+    [("int",                           "continuation ID"),
+     ("anyptr",                        "continuation fn"),
+     ("int",                           "ShaderIndex"),
+     ("anyptr",                        "User defined attributes struct")],
+    "None"]],
+####################################################################################################
+"GenISA_DispatchDimensions": ["Raytracing: Dispatch Dimensions",
+    [("int",                           ""),
+    [("int",                           "")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_DispatchRayIndex": ["Raytracing: Dispatch Ray Index - input: 'Dimension'",
+    [("int",                           ""),
+    [("int",                           "")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_FillValue": ["Raytracing: Fill value from the stack",
+    [("anyint",                        ""),
+    [("long",                          "")],
+    "None"]],
+####################################################################################################
+"GenISA_GetShaderRecordPtr": ["Raytracing: Get the shader record pointer for the given continuation",
+    [("ptr_global",                    ""),
+    [("ptr_private",                   "")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_GlobalBufferPointer": ["Raytracing: per lane stack size",
+    [("anyptr",                        ""),
+    [],
+    "NoMem"]],
+####################################################################################################
+"GenISA_GlobalRootSignatureValue": ["Raytracing: ephemeral intrinsic later lowered to GlobalBufferPointer + offset",
+    [("any:float",                     "the value at that address"),
+    [
+        ("int",                        "dword offset in the global root signature from the base"),
+        ("bool",                       "true if the root signature value is a constant buffer pointer"),
+    ],
+    "NoMem"]],
+####################################################################################################
+"GenISA_HitKind": ["Raytracing: equivalent to DXR HitKind()",
+    [("int",                           ""),
+    [],
+    "NoMem"]],
+####################################################################################################
+"GenISA_IgnoreHitHL": ["Raytracing: equivalent to DXR IgnoreHit()",
+    [("void",                          ""),
+    [],
+    "None"]],
+####################################################################################################
+"GenISA_InlinedData": ["Raytracing: Used in raygen shaders data loaded inline directly to register",
+    [("anyptr",                        ""),
+    [("int",                           "")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_LocalBufferPointer": ["Raytracing: Pointer to local args in shader record",
+    [("anyptr",                        ""),
+    [],
+    "NoMem"]],
+####################################################################################################
+"GenISA_LocalRootSignatureValue": ["Raytracing: ephemeral intrinsic later lowered to LocalBufferPointer/InlinedData",
+    [("any:float",                     "the value at that address"),
+    [
+        ("int",                           "byte offset in the local root signature from the base"),
+        ("int",                           "size of local root signature dereferenceable data")
+    ],
+    "NoMem"]],
+####################################################################################################
+"GenISA_PayloadPtr": ["Raytracing: Temporary used to mark payload pointer after intrinsic lowering",
+    [("anyptr",                     "Returns the first argument"),
+    [(0,                            "The payload pointer")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_ContinuationSignpost": ["Raytracing: Temporary used to mark continuation entry points",
+    [("anyptr",                     "Returns the first argument"),
+    [(0,                            "The SWStack base pointer"),
+     ("int",                        "Offset from continuation stack frame pointer to payload address")],
+    "None"]],
+####################################################################################################
+"GenISA_RTStatefulBTIAndOffset": ["Raytracing: Used for indirect stateful accesses",
+    [("anyptr",                     "Just returns the second argument (the pointer)"),
+    [("int",                        "Binding table index for the memory region"),
+     (0,                            "The pointer itself (which is just an offset from the surface state base address)")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_RayInfo": ["Raytracing: Query for different ray info. Input is query type, and dimension which " +\
+                   "is used for certain types - used for Async Raytracing",
+    [("any:float",                     ""),
+    [("int",                           ""),
+     ("int",                           "")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_RayTCurrent": ["Raytracing: Signature retained so it is processed the same as the RayInfo intrinsic.",
+    [("any:float",                     ""),
+    [("int",                           ""),
+     ("int",                           "")],
+    "ReadMem"]],
+####################################################################################################
+"GenISA_ReportHitHL": ["Raytracing: equivalent to DXR ReportHit()",
+    [("bool",                          ""),
+    [("float",                         "THit - Parametric distance of the intersection"),
+     ("int",                           "HitKind"),
+     ("anyptr",                        "User defined intersection attributes struct")],
+    "None"]],
+####################################################################################################
+"GenISA_TileXOffset": ["Raytracing: returns the X-offset within a raytracing tile",
+    [("short",                        "The offset"),
+    [("short",                        "TID (r0.4:uw & 0xff)"),
+     ("short",                        "X Dimension Size")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_TileYOffset": ["Raytracing: returns the Y-offset within a raytracing tile",
+    [("short",                        "The offset"),
+    [("short",                        "TID (r0.4:uw & 0xff)"),
+     ("short",                        "X Dimension Size")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_SpillValue": ["Raytracing: Spill a value onto the stack",
+    [("void",                          ""),
+    [("anyint",                        ""),
+     ("long",                          "")],
+    "None"]],
+####################################################################################################
+"GenISA_StackIDRelease": ["Raytracing: codegens to send.btd and sets stack id release bit",
+    [("void",                          ""),
+    [("short",                         "stack id")],
+    "WriteMem"]],
+####################################################################################################
+"GenISA_StackSize": ["Raytracing: per lane stack size in bytes",
+    [("short",                         ""),
+    [],
+    "NoMem"]],
+####################################################################################################
+"GenISA_SWHotZonePtr": ["Raytracing: Intrinsic used as marker in later passes to find hot zone base address." +
+                        " It is just a cast and will be lowered prior to codegen",
+    [("anyptr",                         ""),
+    [("anyint",                         "")],
+    "NoMem,NoDuplicate"]],
+####################################################################################################
+"GenISA_SWStackPtr": ["Raytracing: Intrinsic used as marker in later passes to find SWStack base address." +
+                         " It is just a cast and will be lowered prior to codegen",
+    [("anyptr",                         ""),
+    [(0,                                "")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_SyncStackID": ["Raytracing: lane Syncstack id",
+    [("short",                         ""),
+    [],
+    "NoMem"]],
+####################################################################################################
+"GenISA_TraceRayAsync": ["Raytracing: codegens to send.rta (sync bit not set)",
+    [("void",                          ""),
+    [("anyptr",                        "global buffer pointer"),
+     ("int",                           "Trace data: bitfield containg bvhLevel, stackID and trcCtrl")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRaySync": ["Raytracing: codegens to send.rta (with the sync bit set)",
+    [("int",                           "dst is used to sync the message"),
+    [("anyptr",                        "global buffer pointer"),
+     ("int",                           "Trace data: bitfield containg bvhLevel, stackID and trcCtrl")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRaySyncProceed": ["Raytracing: codegens to ShadowMemoryToSyncStack AND send.rta (sync bit set)",
+    [("int",                          ""),
+    [("int",                           "")],
+    "None"]],
+####################################################################################################
+"GenISA_ShadowMemoryToSyncStack": ["Raytracing: Read sync RTStack to shadowmemory.",
+    [("void",                          ""),
+    [("int",                           "RayQuery object index")],
+    "None"]],
+####################################################################################################
+"GenISA_SyncStackToShadowMemory": ["Raytracing: Read sync RTStack to shadowmemory.",
+    [("bool",                          ""),
+    [("int",                           "RayQuery object index"),
+    ("int",                            "return value of TraceRaySyncProceed")],
+    "None"]],
+####################################################################################################
+"GenISA_ReadTraceRaySync": ["Raytracing: Intrinsic used as a marker in later passes to find where to read return value of GenISA_TraceRaySync",
+    [("void",                          ""),
+    [("int",                           "return value of TraceRaySyncProceed")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRayAsyncHL": ["Raytracing: equivalent to DXR TraceRay(), lowers to GenISA_TraceRayAsync and RTStack IO operations",
+    [("void",                          ""),
+    [("int",                           "continuation id"),
+     ("anyptr",                        "continuation fn"),
+     ("anyptr",                        "BVH ptr"),
+     ("int",                           "flag"),
+     ("int",                           "mask"),
+     ("int",                           "RayContributionToHitGroupIndex"),
+     ("int",                           "hitgroup index multiplier"),
+     ("int",                           "miss shader index"),
+     ("float",                         "rayOrig x"),
+     ("float",                         "rayOrig y"),
+     ("float",                         "rayOrig z"),
+     ("float",                         "rayDir  x"),
+     ("float",                         "rayDir  y"),
+     ("float",                         "rayDir  z"),
+     ("float",                         "ray     Tmin"),
+     ("float",                         "ray     Tmax"),
+     ("anyptr",                        "payload"),
+     ("int",                           "reserved")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRayInlineAbort": ["Raytracing: Abort operation for RayQuery object at index taken in the input",
+    [("void",                          ""),
+    [("int",                           "")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRayInlineCandidateType": ["Raytracing: Candidate Type Query for RayQuery object at index "+\
+                                       "taken in the input",
+    [("int",                           ""),
+    [("int",                           "")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRayInlineCommitNonOpaqueTriangleHit": ["Raytracing: Commit Non Opaque Triangle Hit For "+\
+                                                    "RayQuery object at index taken in the input",
+    [("void",                          ""),
+    [("int",                           "")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRayInlineCommitProceduralPrimitiveHit": ["Raytracing: Commit procedural primitive Hit For "+\
+                                                      "RayQuery object at index taken in the input",
+    [("void",                          ""),
+    [("int",                           ""),
+     ("float",                         "")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRayInlineCommittedStatus": ["Raytracing: Commited status Query for RayQuery object at index "+\
+                                         "taken in the input",
+    [("int",                           ""),
+    [("int",                           "")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRayInlineHL": ["Raytracing: equivalent to DXR TraceRayInline",
+    [("void",                          ""),
+    [("int",                           "Query Object Index"),
+     ("anyptr",                        "BVH ptr"),
+     ("int",                           "flag"),
+     ("int",                           "mask"),
+     ("float",                         "rayOrig x"),
+     ("float",                         "rayOrig y"),
+     ("float",                         "rayOrig z"),
+     ("float",                         "rayDir  x"),
+     ("float",                         "rayDir  y"),
+     ("float",                         "rayDir  z"),
+     ("float",                         "ray     Tmin"),
+     ("float",                         "ray     Tmax"),
+     ("int",                           "reserved")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRaySyncProceedHL": ["Raytracing: Proceed operation for RayQuery object at index taken in the input",
+    [("bool",                          ""),
+    [("int",                           "")],
+    "None"]],
+####################################################################################################
+"GenISA_TraceRayInlineRayInfo": ["Raytracing: Query for different ray info.",
+    [("any:float",                     ""),
+    [("int",                           "Query Object Index"),
+     ("int",                           "Info Type"),
+     ("int",                           "Dimension used for certain types")],
+    "None"]]
 }

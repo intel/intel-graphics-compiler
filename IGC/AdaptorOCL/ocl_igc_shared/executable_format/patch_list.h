@@ -16,7 +16,7 @@ Abstract:   Contains common patch structure definitions
 
 namespace iOpenCL
 {
-const uint32_t CURRENT_ICBE_VERSION = 1080;
+const uint32_t CURRENT_ICBE_VERSION = 1081;
 const uint32_t MAGIC_CL = 0x494E5443;      // 'I', 'N', 'T', 'C'
 const uint32_t INVALID_INDEX = 0xFFFFFFFF;
 
@@ -134,12 +134,13 @@ enum PATCH_TOKEN
     PATCH_TOKEN_MEDIA_VFE_STATE_SLOT1,                            // 55  @SPatchMediaVFEState of slot1@
     PATCH_TOKEN_ALLOCATE_SYNC_BUFFER,                             // 56  @SPatchAllocateSyncBuffer@
     PATCH_TOKEN_GLOBAL_HOST_ACCESS_TABLE,                         // 57  @SPatchHostAccessTableInfo@
+    PATCH_TOKEN_ALLOCATE_RT_GLOBAL_BUFFER,                        // 58  @SPatchAllocateRTGlobalBuffer@
 
     NUM_PATCH_TOKENS
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( NUM_PATCH_TOKENS == 58, "NUM_PATCH_TOKENS has invalid value");
+static_assert( NUM_PATCH_TOKENS == 59, "NUM_PATCH_TOKENS has invalid value");
 
 /*****************************************************************************\
 ENUM: IMAGE_MEMORY_OBJECT_TYPE
@@ -247,13 +248,14 @@ enum DATA_PARAMETER_TOKEN
     DATA_PARAMETER_FLAT_IMAGE_WIDTH,                                // 45
     DATA_PARAMETER_FLAT_IMAGE_HEIGHT,                               // 46
     DATA_PARAMETER_FLAT_IMAGE_PITCH,                                // 47
+    DATA_PARAMETER_RT_STACK_ID,                                     // 48
     DATA_PARAMETER_IMPL_ARG_BUFFER,                                 // 49
     DATA_PARAMETER_LOCAL_ID_BUFFER,                                 // 50
     NUM_DATA_PARAMETER_TOKENS
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(NUM_DATA_PARAMETER_TOKENS == 50, "NUM_DATA_PARAMETER_TOKENS has invalid value");
+static_assert(NUM_DATA_PARAMETER_TOKENS == 51, "NUM_DATA_PARAMETER_TOKENS has invalid value");
 
 /*****************************************************************************\
 ENUM: CONSTANT_BUFFER_TYPE

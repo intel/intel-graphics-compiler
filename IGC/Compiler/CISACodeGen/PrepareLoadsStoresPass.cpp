@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"
+#include "AdaptorCommon/RayTracing/RTBuilder.h"
 #include "PrepareLoadsStoresUtils.h"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -89,6 +90,23 @@ bool PrepareLoadsStoresPass::shouldSplit(uint32_t AddrSpace) const
 bool PrepareLoadsStoresPass::runOnFunction(Function &F)
 {
     auto *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto& rtInfo = Ctx->getModuleMetaData()->rtInfo;
+
+    if (rtInfo.RTAsyncStackSurfaceStateOffset)
+    {
+        RTAsyncStackAddrSpace =
+            RTBuilder::getRTAsyncStackStatefulAddrSpace(*Ctx->getModuleMetaData());
+    }
+    if (rtInfo.SWStackSurfaceStateOffset)
+    {
+        SWStackAddrSpace =
+            RTBuilder::getSWStackStatefulAddrSpace(*Ctx->getModuleMetaData());
+    }
+    if (rtInfo.RTSyncStackSurfaceStateOffset)
+    {
+        RTSyncStackAddrSpace =
+            RTBuilder::getRTSyncStackStatefulAddrSpace(*Ctx->getModuleMetaData());
+    }
 
     bool Changed = false;
     auto& DL = F.getParent()->getDataLayout();
