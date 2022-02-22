@@ -22,6 +22,16 @@ namespace llvm
 
 namespace IGC
 {
+    enum StatusPrivArr2Reg
+    {
+        OK,
+        IsDynamicAlloca,
+        CannotUseSOALayout,
+        IsNotNativeType,
+        OutOfAllocSizeLimit,
+        OutOfMaxGRFPressure
+    };
+
     /// Tries to promote array in private memory to indexable vector
     /// Uses register pressure to make sure it won't cause spilling
     llvm::FunctionPass* createPromotePrivateArrayToReg();

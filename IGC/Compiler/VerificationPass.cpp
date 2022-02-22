@@ -211,7 +211,15 @@ bool VerificationPass::verifyInstCall(Instruction& inst)
     if (dyn_cast<IntrinsicInst>(instCall))
     {
         IGCLLVM::Intrinsic intrinID = (IGCLLVM::Intrinsic) instCall->getCalledFunction()->getIntrinsicID();
-        if (!m_IGC_IR_spec.IGCLLVMIntrinsics.count(intrinID))
+        if (m_IGC_IR_spec.IGCLLVMIntrinsics.count(intrinID))
+        {
+            return true;
+        }
+        else if (IGCMetrics::IGCMetric::isMetricFuncCall(instCall))
+        {
+            return true;
+        }
+        else
         {
             m_messagesToDump << "Unsupported LLVM intrinsic:\n";
             printValue(&inst);
