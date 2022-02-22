@@ -411,7 +411,6 @@ private:
     //   PreRA WA creates WA flag and applies WA. This map keeps info around.
     //   storage used will be freed after postRA WA is done.
     std::unordered_map<G4_BB*, NoMaskWA_info_t*> m_noMaskWAInfo;
-    std::unordered_map<G4_BB*, std::list<G4_INST*> > m_WAInstsPostRA; // post RA insts that need WAs
 public:
     void addNoMaskWAInfo(G4_BB* aBB,
         G4_INST* aInstKill, G4_INST* aInstSave, G4_INST* aInstRestore,
@@ -440,47 +439,6 @@ public:
             delete pinfo;
         }
         m_noMaskWAInfo.clear();
-    }
-    void addWAInst(G4_BB* aBB, G4_INST* aInst)
-    {
-        // Add aInst into the map for BB that needs to apply WA.
-        if ((aBB->getBBType() & G4_BB_NM_WA_TYPE) != 0)
-        {
-            std::list<G4_INST*>& alist = m_WAInstsPostRA[aBB];
-            if (std::find(alist.begin(), alist.end(), aInst) == alist.end())
-            {
-                alist.push_back(aInst);
-            }
-            else
-            {
-                assert(false && "Should not add a WA inst more than once!");
-            }
-        }
-    }
-    void removeWAInst(G4_BB* aBB, G4_INST* aInst)
-    {
-        // Add aInst into the map for BB that needs to apply WA.
-        if ((aBB->getBBType() & G4_BB_NM_WA_TYPE) != 0)
-        {
-            std::list<G4_INST*>& alist = m_WAInstsPostRA[aBB];
-            auto tIter = std::find(alist.begin(), alist.end(), aInst);
-            if (tIter != alist.end())
-            {
-                alist.erase(tIter);
-            }
-            else
-            {
-                assert(false && "Remove inst that isn't in list!");
-            }
-        }
-    }
-    void clearWAInst()
-    {
-        m_WAInstsPostRA.clear();
-    }
-    std::unordered_map<G4_BB*, std::list<G4_INST*> >& getWAInsts()
-    {
-        return m_WAInstsPostRA;
     }
 
     // Call WA under EU fusion

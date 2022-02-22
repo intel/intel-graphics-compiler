@@ -332,7 +332,8 @@ protected:
     // during optimization, an inst may become redundant and be marked dead
     unsigned short dead : 1;
     unsigned short evenlySplitInst : 1;
-    unsigned short skipPostRA : 1;  // for NoMaskWA
+    unsigned short skipPostRA : 1;  // for NoMaskWA; to be deleted
+    unsigned short doPostRA : 1;  // for NoMaskWA
     G4_ExecSize    execSize;
 
     BinInst *bin;
@@ -1088,6 +1089,8 @@ public:
     // apply on new instructions created by RA only.
     bool getSkipPostRA() const { return skipPostRA; }
     void setSkipPostRA(bool V) { skipPostRA = V; }
+    bool getNeedPostRA() const { return doPostRA; }
+    void setNeedPostRA(bool V) { doPostRA = V; }
 
     std::string getComments() const
     {

@@ -692,7 +692,7 @@ namespace vISA
     private:
         std::unordered_set<G4_INST*> EUFusionCallWAInsts;
         bool m_EUFusionCallWANeeded;
-        std::unordered_map<G4_INST*, G4_BB*> EUFusionNoMaskWAInsts;
+        std::unordered_set<G4_INST*> EUFusionNoMaskWAInsts;
     public:
         bool EUFusionCallWANeeded() const { return m_EUFusionCallWANeeded; }
         void addEUFusionCallWAInst(G4_INST* inst);
@@ -701,7 +701,7 @@ namespace vISA
         bool EUFusionNoMaskWANeeded() const { return builder.hasFusedEUNoMaskWA(); }
         void addEUFusionNoMaskWAInst(G4_BB* BB, G4_INST* Inst);
         void removeEUFusionNoMaskWAInst(G4_INST* Inst);
-        const std::unordered_map<G4_INST*, G4_BB*>& getEUFusionNoMaskWAInsts() { return EUFusionNoMaskWAInsts; }
+        const std::unordered_set<G4_INST*>& getEUFusionNoMaskWAInsts() { return EUFusionNoMaskWAInsts; }
     public:
         std::unique_ptr<VerifyAugmentation> verifyAugmentation;
         std::unique_ptr<RegChartDump> regChart;

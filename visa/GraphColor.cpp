@@ -6927,8 +6927,8 @@ void GlobalRA::addEUFusionNoMaskWAInst(G4_BB* BB, G4_INST* Inst)
 {
     if (EUFusionNoMaskWANeeded() && (BB->getBBType() & G4_BB_NM_WA_TYPE) != 0)
     {
-        EUFusionNoMaskWAInsts.insert(std::make_pair(Inst, BB));
-        kernel.addWAInst(BB, Inst);
+        EUFusionNoMaskWAInsts.insert(Inst);
+        Inst->setNeedPostRA(true);
     }
 }
 
@@ -6936,12 +6936,9 @@ void GlobalRA::removeEUFusionNoMaskWAInst(G4_INST* Inst)
 {
     if (EUFusionNoMaskWANeeded())
     {
-        auto MI = EUFusionNoMaskWAInsts.find(Inst);
-        if (MI != EUFusionNoMaskWAInsts.end())
+        if (EUFusionNoMaskWAInsts.erase(Inst) > 0)
         {
-            G4_BB* tBB = MI->second;
-            kernel.removeWAInst(tBB, Inst);
-            EUFusionNoMaskWAInsts.erase(MI);
+            Inst->setNeedPostRA(false);
         }
     }
 }

@@ -3708,5 +3708,16 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         // inst->dump();
     }
 
+#if defined(_DEBUG)
+    for (auto inst : gra.getEUFusionNoMaskWAInsts())
+    {
+        if (inst->getPredicate() != nullptr ||
+            inst->getCondMod() != nullptr)
+        {
+            assert(false && "Don't expect either predicate nor condmod for WA insts!");
+        }
+    }
+#endif
+
     return status;
 }
