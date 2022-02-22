@@ -4805,6 +4805,11 @@ namespace IGC
             SaveOption(vISA_lscEnableImmOffsFor, (uint32_t)0);
         }
 
+        if (IGC_IS_FLAG_ENABLED(DisableWriteCombine))
+        {
+            SaveOption(vISA_writeCombine, false);
+        }
+
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

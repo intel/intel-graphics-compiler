@@ -113,6 +113,8 @@ DECLARE_IGC_REGKEY(bool, Use16ByteBindlessSampler,      false, "True if 16-byte 
 DECLARE_IGC_REGKEY(bool, AvoidDstSrcGRFOverlap,               false,  "avoid GRF overlap for destination and source operands of an SIMD16/SIMD32 instruction ", false)
 DECLARE_IGC_REGKEY(bool, AvoidSrc1Src2Overlap,               false,  "avoid src1 and src2 GRF overlap to avoid the conflict without read suppression ", false)
 DECLARE_IGC_REGKEY(bool, UseLinearScanRA,               false,  "use Linear Scan as default register allocation algorithm ", false)
+DECLARE_IGC_REGKEY(bool, DisableWriteCombine, false, "Disable write combine. PVC+ only", false)
+
 DECLARE_IGC_GROUP("IGC Optimization")
 DECLARE_IGC_REGKEY(bool, AllowMem2Reg,                  false, "Setting this to true makes IGC run mem2reg even when optimizations are disabled", true)
 DECLARE_IGC_REGKEY(bool, DisableIGCOptimizations,       false, "Setting this to 1/true adds a compiler switch to disables all the above IGC optimizations", false)
