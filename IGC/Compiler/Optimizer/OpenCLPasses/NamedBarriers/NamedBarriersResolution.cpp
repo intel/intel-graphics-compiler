@@ -241,6 +241,7 @@ void NamedBarriersResolution::HandleNamedBarrierSyncPVC(CallInst& NBarrierSyncCa
             falseValue, // bool flushIcache
             isGlobal,   // bool isGlobal
             falseValue, // bool invalidateL1
+            falseValue, // bool evictL1
         },
         "",
         &(NBarrierSyncCall));

@@ -15551,12 +15551,17 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
     }
 }
 
-LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1) const
+LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1, bool EvictL1) const
 {
     LSC_FENCE_OP op = LSC_FENCE_OP_NONE;
     if (InvalidateL1 || (IsGlobalMemFence && m_currShader->m_Platform->getWATable().Wa_14012437816))
     {
         op = LSC_FENCE_OP_INVALIDATE;
+    }
+
+    if (EvictL1)
+    {
+        op = LSC_FENCE_OP_EVICT;
     }
 
     // For experiment on XeHP SDV
@@ -15569,7 +15574,7 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool Invalidat
 
 void EmitPass::emitMemoryFence(llvm::Instruction* inst)
 {
-    static constexpr int ExpectedNumberOfArguments = 7;
+    static constexpr int ExpectedNumberOfArguments = 8;
     IGC_ASSERT(cast<CallInst>(inst)->getNumArgOperands() == ExpectedNumberOfArguments);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
@@ -15583,6 +15588,9 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     bool L3_Flush_Instructions = true;
     bool Global_Mem_Fence = true;
     bool L1_Invalidate = ctx->platform.hasL1ReadOnlyCache();
+    // Note: this flag is respected only for LSC case currently.
+    // TODO: add support for non-LSC and typed fence.
+    bool L1_Evict = true;
 
     std::array<reference_wrapper<bool>, ExpectedNumberOfArguments> MemFenceArguments{
       CommitEnable,
@@ -15592,6 +15600,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
       L3_Flush_Instructions,
       Global_Mem_Fence,
       L1_Invalidate,
+      L1_Evict
     };
 
     for (size_t i = 0; i < MemFenceArguments.size(); ++i) {
@@ -15639,7 +15648,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         {
             scope = LSC_SCOPE_TILE;
         }
-        LSC_FENCE_OP op = getLSCMemoryFenceOp(Global_Mem_Fence, L1_Invalidate);
+        LSC_FENCE_OP op = getLSCMemoryFenceOp(Global_Mem_Fence, L1_Invalidate, L1_Evict);
         if (inst->getMetadata("forceFlushNone"))
         {
             op = LSC_FENCE_OP_NONE;
@@ -15695,7 +15704,7 @@ void EmitPass::emitTypedMemoryFence(llvm::Instruction* inst)
 
     if (shouldGenerateLSC())
     {
-        auto flushOpt = m_currShader->m_Platform->hasSamplerSupport() ? LSC_FENCE_OP_EVICT : getLSCMemoryFenceOp(true, L1_Invalidate);
+        auto flushOpt = getLSCMemoryFenceOp(true, L1_Invalidate, m_currShader->m_Platform->hasSamplerSupport());
         LSC_SCOPE scope = LSC_SCOPE_GPU;
         if (!m_currShader->m_Platform->hasMultiTile() &&
             m_currShader->m_Platform->hasL3FlushOnGPUScopeInvalidate() &&
@@ -21724,7 +21733,7 @@ void EmitPass::emitSystemMemoryFence(llvm::GenIntrinsicInst* inst)
     if (fenceTGM)
     {
         // first fence TGM with GPU scope
-        auto flushOpt = m_currShader->m_Platform->hasSamplerSupport() ? LSC_FENCE_OP_EVICT : getLSCMemoryFenceOp(true, false);
+        auto flushOpt = getLSCMemoryFenceOp(true, false, m_currShader->m_Platform->hasSamplerSupport());
         m_encoder->LSC_Fence(LSC_TGM, LSC_SCOPE_GPU, flushOpt);
         m_encoder->Push();
         // then emit the regular UGM fence

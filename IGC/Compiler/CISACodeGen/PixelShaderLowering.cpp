@@ -571,6 +571,7 @@ void PixelShaderLowering::EmitMemoryFence(IRBuilder<>& builder, bool forceFlushN
         falseValue,
         trueValue,
         falseValue,
+        falseValue,
     };
 
     CallInst* memFence = GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_memoryfence),
