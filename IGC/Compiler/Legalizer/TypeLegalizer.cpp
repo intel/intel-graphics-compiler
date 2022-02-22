@@ -174,7 +174,7 @@ TypeLegalizer::getLegalizeAction(Instruction* I) const {
 }
 
 std::pair<TypeSeq*, LegalizeAction>
-TypeLegalizer::getLegalizedTypes(Type* Ty) {
+TypeLegalizer::getLegalizedTypes(Type* Ty, bool legalizeToScalar) {
     LegalizeAction Act = getTypeLegalizeAction(Ty);
     TypeSeq* TySeq = nullptr;
 
@@ -182,7 +182,7 @@ TypeLegalizer::getLegalizedTypes(Type* Ty) {
     case Legal:
         break;
     case Promote:
-        TySeq = getPromotedTypeSeq(Ty);
+        TySeq = getPromotedTypeSeq(Ty, legalizeToScalar);
         break;
     case Expand:
         TySeq = getExpandedTypeSeq(Ty);
@@ -201,7 +201,7 @@ TypeLegalizer::getLegalizedTypes(Type* Ty) {
     return std::make_pair(TySeq, Act);
 }
 
-TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty) {
+TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty, bool legalizeToScalar) {
     IGC_ASSERT(Ty->isIntOrIntVectorTy());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == Promote);
 
@@ -213,11 +213,18 @@ TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty) {
     }
 
     Type* PromotedTy =
-        DL->getSmallestLegalIntType(Ty->getContext(), getTypeSizeInBits(Ty));
+        DL->getSmallestLegalIntType(Ty->getContext(),
+            getTypeSizeInBits(legalizeToScalar ? Ty : Ty->getScalarType()));
 
     if (!PromotedTy && getTypeSizeInBits(Ty) < MAX_LEGAL_INT_SIZE_IN_BITS)
     {
         PromotedTy = Type::getIntNTy(Ty->getContext(), MAX_LEGAL_INT_SIZE_IN_BITS);
+    }
+
+    if (!legalizeToScalar && Ty->isVectorTy())
+    {
+        unsigned Elems = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
+        PromotedTy = IGCLLVM::FixedVectorType::get(PromotedTy, Elems);
     }
 
     TMI->second.push_back(PromotedTy);

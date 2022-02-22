@@ -1058,6 +1058,7 @@ _SPIRV_OP(All)
 _SPIRV_OP(ConvertFToBF16INTEL)
 _SPIRV_OP(ConvertBF16ToFINTEL)
 _SPIRV_OP(ArithmeticFenceINTEL)
+_SPIRV_OP(BitReverse)
 #undef _SPIRV_OP
 
 class SPIRVAccessChainBase :public SPIRVInstTemplateBase {
@@ -1911,7 +1912,6 @@ _SPIRV_OP(ControlBarrierArriveINTEL, false /*HasId*/, 4 /*WC*/, false /*VariWC*/
 _SPIRV_OP(ControlBarrierWaitINTEL, false /*HasId*/, 4 /*WC*/, false /*VariWC*/)
 _SPIRV_OP(UMulExtended, true, 5)
 _SPIRV_OP(SMulExtended, true, 5)
-_SPIRV_OP(BitReverse, true, 4)
 _SPIRV_OP(BitCount, true, 4)
 #undef _SPIRV_OP
 

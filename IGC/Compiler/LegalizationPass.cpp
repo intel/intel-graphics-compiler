@@ -2123,6 +2123,66 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         I.eraseFromParent();
     }
     break;
+    case Intrinsic::bitreverse:
+    {
+        Value* src0 = I.getArgOperand(0);
+        Type* instrType = I.getType();
+        IGC_ASSERT(nullptr != instrType);
+        IGC_ASSERT_MESSAGE(instrType->isIntOrIntVectorTy(), "Unsupported type");
+        Type* const intType = instrType->getScalarType();
+        unsigned BitWidth = intType->getIntegerBitWidth();
+        unsigned Elems = 1;
+        if (instrType->isVectorTy())
+            Elems = (unsigned)cast<IGCLLVM::FixedVectorType>(instrType)->getNumElements();
+
+        Function* bfrevFunc = GenISAIntrinsic::getDeclaration(
+            m_ctx->getModule(), GenISAIntrinsic::GenISA_bfrev, Builder.getInt32Ty());
+
+        Value* newValue = Elems == 1 ? nullptr : UndefValue::get(instrType);
+        for (unsigned i = 0; i < Elems; i++) {
+            Value* ElVal = src0;
+            Value* ElRes = nullptr;
+            if (Elems > 1) {
+                ElVal = Builder.CreateExtractElement(src0,
+                    ConstantInt::get(Type::getInt32Ty(I.getContext()), i));
+            }
+            if (BitWidth == 64)
+            {
+                auto* Lo = Builder.CreateTrunc(ElVal, Builder.getInt32Ty());
+                auto* Hi64 = Builder.CreateLShr(ElVal, 32);
+                auto* Hi = Builder.CreateTrunc(Hi64, Builder.getInt32Ty());
+                auto* RevLo = Builder.CreateCall(bfrevFunc, Lo);
+                auto* RevHi = Builder.CreateCall(bfrevFunc, Hi);
+                auto* NewVal = Builder.CreateZExt(RevLo, intType);
+                auto* ShlVal = Builder.CreateShl(NewVal, 32);
+                auto* RevHiExt = Builder.CreateZExt(RevHi, intType);
+                ElRes = Builder.CreateOr(ShlVal, RevHiExt);
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(BitWidth == 32 || BitWidth == 16 || BitWidth == 8, "Unexpected type");
+                if (BitWidth == 16 || BitWidth == 8)
+                    ElVal = Builder.CreateZExt(ElVal, Builder.getInt32Ty());
+                auto* Call = Builder.CreateCall(bfrevFunc, ElVal);
+                if (BitWidth == 16 || BitWidth == 8)
+                {
+                    auto* LShr = Builder.CreateLShr(Call, 32 - BitWidth);
+                    ElRes = Builder.CreateTrunc(LShr, intType);
+                }
+                else
+                    ElRes = Call;
+            }
+            if (Elems > 1) {
+                newValue = Builder.CreateInsertElement(newValue, ElRes, Builder.getInt32(i));
+            }
+            else
+                newValue = ElRes;
+        }
+        IGC_ASSERT(nullptr != newValue);
+        I.replaceAllUsesWith(newValue);
+        I.eraseFromParent();
+    }
+    break;
     default:
         break;
     }

@@ -168,6 +168,7 @@ LegalizeAction InstLegalChecker::visitIntrinsicInst(IntrinsicInst& I) {
     case Intrinsic::usub_with_overflow:
     case Intrinsic::smul_with_overflow:
     case Intrinsic::umul_with_overflow:
+    case Intrinsic::bitreverse:
         return TL->getTypeLegalizeAction(I.getType());
     default:
         // By default, all intrinsics are regarded as being legal.

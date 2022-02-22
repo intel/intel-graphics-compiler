@@ -378,10 +378,14 @@ bool InstPromoter::visitTruncInst(TruncInst& I) {
 
     Type* PromotedTy = TySeq->front();
 
-    IGC_ASSERT(cast<IntegerType>(PromotedTy)->getBitWidth() <= cast<IntegerType>(Val->getType())->getBitWidth());
+    unsigned PromotedBitWidth = cast<IntegerType>(PromotedTy->getScalarType())->getBitWidth();
+    unsigned ValBitWidth = cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
+    IGC_ASSERT(PromotedBitWidth <= ValBitWidth);
 
-    Promoted =
+    Value* PromVal =
         IRB->CreateTrunc(Val, PromotedTy, Twine(I.getName(), getSuffix()));
+    uint64_t mask = (1ULL << I.getType()->getScalarType()->getIntegerBitWidth()) - 1;
+    Promoted = IRB->CreateAnd(PromVal, mask);
 
     return true;
 }
@@ -463,7 +467,7 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
 
     TypeSeq* TySeq;
     LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
+    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy(), true);
     IGC_ASSERT(Act == Legal || Act == Promote);
 
     // Promote bitcast i24 %0 to <3 x i8>
@@ -536,7 +540,7 @@ bool InstPromoter::visitExtractElementInst(ExtractElementInst& I) {
         Val = ValSeq->front();
 
     TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType());
+    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType(), true);
     IGC_ASSERT(Act == Legal || Act == Promote);
 
     auto SetBits = [](uint64_t& Data, uint32_t From, uint32_t To) {
@@ -617,7 +621,7 @@ bool InstPromoter::visitInsertElementInst(InsertElementInst& I) {
     }
 
     TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType());
+    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType(), true);
     IGC_ASSERT(Act == Legal || Act == Promote);
 
     if (Act == Promote && Val->getType()->isIntegerTy()) {
@@ -655,9 +659,44 @@ bool InstPromoter::visitGenIntrinsicInst(GenIntrinsicInst& I) {
     return false;
 }
 
+bool InstPromoter::visitLLVMIntrinsicInst(IntrinsicInst& I) {
+    switch (I.getIntrinsicID()) {
+    case Intrinsic::bitreverse: {
+        ValueSeq* ValSeq; LegalizeAction ValAct;
+        std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
+
+        Value* Val = I.getOperand(0);
+        if (ValAct != Legal)
+            Val = ValSeq->front();
+
+        TypeSeq* TySeq; LegalizeAction Act;
+        std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType());
+        IGC_ASSERT(Act == Promote);
+        IGC_ASSERT(TySeq->size() == 1);
+        Type* PromotedTy = TySeq->front();
+        unsigned PromotedBitWidth = cast<IntegerType>(PromotedTy->getScalarType())->getBitWidth();
+        unsigned ValBitWidth = cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
+        IGC_ASSERT(PromotedBitWidth == ValBitWidth);
+
+        Function* Func = Intrinsic::getDeclaration(I.getModule(), I.getIntrinsicID(), PromotedTy);
+        Value* Call = IRB->CreateCall(Func, Val);
+        unsigned shift = PromotedBitWidth
+            - cast<IntegerType>(I.getType()->getScalarType())->getBitWidth();
+        IGC_ASSERT(shift > 0);
+        Promoted = IRB->CreateLShr(Call, shift);
+    }
+    break;
+    default:
+        IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN INSTRINSIC INSTRUCTION IS BEING PROMOTED!");
+    }
+    return true;
+}
+
 bool InstPromoter::visitCallInst(CallInst& I) {
     if (isa<GenIntrinsicInst>(&I))
         return visitGenIntrinsicInst(static_cast<GenIntrinsicInst&>(I));
+    if (isa<IntrinsicInst>(&I))
+        return visitLLVMIntrinsicInst(static_cast<IntrinsicInst&>(I));
     IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }

@@ -72,6 +72,7 @@ namespace IGC {
             bool visitExtractElementInst(ExtractElementInst& I);
             bool visitInsertElementInst(InsertElementInst& I);
             bool visitGenIntrinsicInst(GenIntrinsicInst& I);
+            bool visitLLVMIntrinsicInst(IntrinsicInst& I);
             bool visitCallInst(CallInst& I);
         };
 

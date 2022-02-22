@@ -123,9 +123,9 @@ namespace IGC {
             LegalizeAction getLegalizeAction(Value* V) const;
             LegalizeAction getLegalizeAction(Instruction* I) const;
 
-            std::pair<TypeSeq*, LegalizeAction> getLegalizedTypes(Type* Ty);
+            std::pair<TypeSeq*, LegalizeAction> getLegalizedTypes(Type* Ty, bool legalizeToScalar = false);
 
-            TypeSeq* getPromotedTypeSeq(Type* Ty);
+            TypeSeq* getPromotedTypeSeq(Type* Ty, bool legalizeToScalar = false);
             TypeSeq* getExpandedTypeSeq(Type* Ty);
             TypeSeq* getSoftenedTypeSeq(Type* Ty);
             TypeSeq* getScalarizedTypeSeq(Type* Ty);

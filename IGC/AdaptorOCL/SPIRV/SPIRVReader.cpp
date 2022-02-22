@@ -3765,6 +3765,15 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         BV, Builder.CreateCall(ExpectFn, {Val, ExpVal}));
   }
 
+  case OpBitReverse: {
+    SPIRVUnary* BR = static_cast<SPIRVUnary*>(BV);
+    IGC_ASSERT_MESSAGE(BR->getType()->isTypeInt(), "Unsupported type");
+    IntegerType* IntTy = static_cast<IntegerType*>(transType(BR->getType()));
+    Function* intr = Intrinsic::getDeclaration(M, Intrinsic::bitreverse, IntTy);
+    auto* Call = CallInst::Create(intr, transValue(BR->getOperand(0), F, BB), BR->getName(), BB);
+    return mapValue(BV, Call);
+  }
+
   case OpFunctionCall: {
     SPIRVFunctionCall *BC = static_cast<SPIRVFunctionCall *>(BV);
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
