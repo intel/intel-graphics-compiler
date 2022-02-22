@@ -1572,7 +1572,7 @@ void GenXLiveness::printValueLiveness(SimpleValue SV, raw_ostream &OS) const {
     return;
   // Only show an LR if the map iterator is on the value that appears first
   // in the LR. That avoids printing the same LR multiple times.
-  IGC_ASSERT(LR->getLength(/*WithWeak=*/true) > 0);
+  IGC_ASSERT(!LR->value_empty());
   auto &&ASV = *(LR->value_begin());
   if (SV.getValue() != ASV.getValue() || SV.getIndex() != ASV.getIndex())
     return;

@@ -380,8 +380,8 @@ public:
   const_value_iterator value_begin() const { return Values.begin(); }
   const_value_iterator value_end() const { return Values.end(); }
 
-  unsigned value_size() { return Values.size(); }
-  bool value_empty() { return Values.empty(); }
+  unsigned value_size() const { return Values.size(); }
+  bool value_empty() const { return Values.empty(); }
   // find : return iterator to segment containing Num (including the case
   // of being equal to the segment's End), or, if in a hole, the
   // iterator of the next segment, or, if at end, end().
