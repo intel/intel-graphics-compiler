@@ -96,6 +96,44 @@ void GenXLiveness::releaseMemory() {
   BaseToArgAddrMap.clear();
 }
 
+static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
+  const unsigned Category =
+      llvm::StringSwitch<unsigned>(SV.getValue()->getName())
+          .Case(vc::PredefVar::BSSName, vc::RegCategory::Surface)
+          .Case(vc::PredefVar::ImplicitArgsBufferName, vc::RegCategory::General)
+          .Case(vc::PredefVar::LocalIDBufferName, vc::RegCategory::General)
+          .Default(vc::RegCategory::NumCategories);
+  IGC_ASSERT_MESSAGE(Category != vc::RegCategory::NumCategories,
+                     "Unhandled predefined variable");
+  return Category;
+}
+
+static bool isPredefinedVariable(SimpleValue SV) {
+  Value *V = SV.getValue();
+  IGC_ASSERT_MESSAGE(V, "Expected value");
+  bool Result = vc::PredefVar::isPV(*V);
+  if (Result)
+    IGC_ASSERT_MESSAGE(SV.getIndex() == 0,
+                       "Expected single simple value for predefined variable");
+  return Result;
+}
+
+/***********************************************************************
+ * getDefaultCategory: get default category based on SimpleValue
+ *
+ * The default category is PREDICATE for i1 or a vector of i1,
+ * Surface for BSSName predefined variable or GENERAL for anything else.
+ */
+static unsigned getDefaultCategory(SimpleValue SV) {
+  if (isPredefinedVariable(SV))
+    return getCategoryForPredefinedVariable(SV);
+  Type *Ty =
+      IndexFlattener::getElementType(SV.getValue()->getType(), SV.getIndex());
+  if (Ty->getScalarType()->isIntegerTy(1))
+    return vc::RegCategory::Predicate;
+  return vc::RegCategory::General;
+}
+
 /***********************************************************************
  * setLiveRange : add a SimpleValue to a LiveRange
  *
@@ -762,10 +800,12 @@ Value *GenXLiveness::createUnifiedRet(Function *F) {
   // return value.
   for (unsigned AggrIdx = 0, NumElements = IndexFlattener::getNumElements(Ty);
        AggrIdx != NumElements; ++AggrIdx) {
-    int Cat = getOrCreateLiveRange(SimpleValue(RetVal, AggrIdx))
-                  ->getOrDefaultCategory();
-    SimpleValue SV{URet, AggrIdx};
-    getOrCreateLiveRange(SV)->setCategory(Cat);
+    auto RetValSV = SimpleValue(RetVal, AggrIdx);
+    auto *RetValLR = getLiveRangeOrNull(RetValSV);
+    auto URetSV = SimpleValue(URet, AggrIdx);
+    auto Cat = RetValLR ? RetValLR->getOrDefaultCategory()
+                        : getDefaultCategory(RetValSV);
+    getOrCreateLiveRange(URetSV)->setCategory(Cat);
   }
 
   UnifiedRets[F] = URet;
@@ -838,28 +878,6 @@ LiveRange::iterator LiveRange::find(unsigned Pos)
   return I;
 }
 
-static unsigned getCategoryForPredefinedVariable(SimpleValue SV) {
-  const unsigned Category =
-      llvm::StringSwitch<unsigned>(SV.getValue()->getName())
-          .Case(vc::PredefVar::BSSName, vc::RegCategory::Surface)
-          .Case(vc::PredefVar::ImplicitArgsBufferName, vc::RegCategory::General)
-          .Case(vc::PredefVar::LocalIDBufferName, vc::RegCategory::General)
-          .Default(vc::RegCategory::NumCategories);
-  IGC_ASSERT_MESSAGE(Category != vc::RegCategory::NumCategories,
-                     "Unhandled predefined variable");
-  return Category;
-}
-
-static bool isPredefinedVariable(SimpleValue SV) {
-  Value *V = SV.getValue();
-  IGC_ASSERT_MESSAGE(V, "Expected value");
-  bool Result = vc::PredefVar::isPV(*V);
-  if (Result)
-    IGC_ASSERT_MESSAGE(SV.getIndex() == 0,
-                       "Expected single simple value for predefined variable");
-  return Result;
-}
-
 /***********************************************************************
  * getOrDefaultCategory : get category; if none, set default
  *
@@ -872,18 +890,7 @@ unsigned LiveRange::getOrDefaultCategory()
   if (Cat != vc::RegCategory::None)
     return Cat;
   IGC_ASSERT(!value_empty());
-  SimpleValue SV = *value_begin();
-  if (isPredefinedVariable(SV)) {
-    Cat = getCategoryForPredefinedVariable(SV);
-    setCategory(Cat);
-    return Cat;
-  }
-  Type *Ty = IndexFlattener::getElementType(
-      SV.getValue()->getType(), SV.getIndex());
-  if (Ty->getScalarType()->isIntegerTy(1))
-    Cat = vc::RegCategory::Predicate;
-  else
-    Cat = vc::RegCategory::General;
+  Cat = getDefaultCategory(*value_begin());
   setCategory(Cat);
   return Cat;
 }
