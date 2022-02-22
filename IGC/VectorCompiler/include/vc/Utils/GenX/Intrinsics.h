@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
 
 namespace llvm {
@@ -54,6 +55,22 @@ llvm::Function *getGenXDeclarationForIdFromArgs(llvm::Type *RetTy, Range &&Args,
 
   return GenXIntrinsic::getGenXDeclaration(&M, Id, Types);
 }
+
+// Routine for creating a new GenXIntrinsic.
+// Arguments:
+//  \p Builder - IRBuilder, need to create a new GenXIntrinsic;
+//  \p IID - GenXIntrinsic::ID - the ID of intrinsic;
+//  \p Types - additional input/output types for choosing right GenXIntrinsic
+//    from several with the same ID;
+//  \p Operands - the expected arguments of intrinsic;
+// Return:
+//  A pointer to created GenXIntrinsic, with ID == IID and arguments from
+//    \p Operands;
+llvm::CallInst *createGenXIntrinsic(llvm::IRBuilder<> &Builder,
+                                    llvm::ArrayRef<llvm::Value *> Operands,
+                                    llvm::GenXIntrinsic::ID IID,
+                                    llvm::ArrayRef<llvm::Type *> Types = {},
+                                    const llvm::Twine &Name = "");
 
 } // namespace vc
 
