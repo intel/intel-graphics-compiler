@@ -44,12 +44,6 @@ include(llvm_spirv_source_hook)
 # LLD source hook.
 if(IGC_OPTION__LLVM_LLD)
   include(llvm_lld_source_hook)
-  if(NOT EXISTS "${IGC_LLVM_WORKSPACE_SRC}/libunwind/include/mach-o" AND ${IGC_OPTION__LLVM_PREFERRED_VERSION} GREATER_EQUAL "12.0.0")
-    # Need to copy one header from unwind package for LLD (only for building from sources)
-    file(MAKE_DIRECTORY ${IGC_LLVM_WORKSPACE_SRC}/libunwind/include/mach-o)
-    file(COPY ${DEFAULT_IGC_LLVM_SOURCES_DIR}/libunwind/include/mach-o/compact_unwind_encoding.h
-         DESTINATION ${IGC_LLVM_WORKSPACE_SRC}/libunwind/include/mach-o/)
-  endif()
 endif()
 
 # Process LLVM.

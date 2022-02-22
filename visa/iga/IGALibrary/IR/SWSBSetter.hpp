@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Operand.hpp"
 #include "../ErrorHandler.hpp"
 #include "RegDeps.hpp"
+#include <limits>
 
 namespace iga
 {

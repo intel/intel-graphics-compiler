@@ -45,8 +45,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ 18, 20 ]
+        ubuntu_version: [ '18.04', '20.04']
         llvm_ver: [ 10, 11 ]
+        include:
+          - ubuntu_version: '20.04'
+            llvm_ver: 12
+          - ubuntu_version: '22.04'
+            llvm_ver: 12
+            experimental: true
+          - ubuntu_version: '22.04'
+            llvm_ver: 13
+            experimental: true
     steps:
       - uses: actions/checkout@v2
       - name: cloning SPIRV-LLVM-Translator repository
@@ -72,7 +81,7 @@ jobs:
             --env DEBIAN_FRONTEND="noninteractive" \
             --env UBUNTU_VERSION=${{ matrix.ubuntu_version }} \
             --env LLVM_VERSION=${{ matrix.llvm_ver }} \
-            ubuntu:${{ matrix.ubuntu_version }}.04 \
+            ubuntu:${{ matrix.ubuntu_version }} \
             sh /buildSLT.sh
       - name: creating folders to store SPIRV-LLVM-Translator build outputs
         if: steps.cache-spirv-llvm-translator.outputs.cache-hit != 'true'
@@ -91,9 +100,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ 18, 20 ]
+        ubuntu_version: [ '18.04', '20.04' ]
         llvm_ver: [ 10, 11 ]
         compiler: [ gcc, clang ]
+        exclude:
+          - ubuntu_version: '18.04'
+            compiler: clang
+        include:
+          - ubuntu_version: '20.04'
+            llvm_ver: 12
+            compiler: gcc
+          - ubuntu_version: '20.04'
+            llvm_ver: 12
+            compiler: clang
+          - ubuntu_version: '22.04'
+            llvm_ver: 12
+            compiler: gcc
+            experimental: true
+          - ubuntu_version: '22.04'
+            llvm_ver: 13
+            compiler: gcc
+            experimental: true
     steps:
       - uses: actions/checkout@v2
 
@@ -140,7 +167,7 @@ jobs:
             --env UBUNTU_VERSION=${{ matrix.ubuntu_version }} \
             --env LLVM_VERSION=${{ matrix.llvm_ver }} \
             --env COMPILER=${{ matrix.compiler }} \
-            ubuntu:${{ matrix.ubuntu_version }}.04 \
+            ubuntu:${{ matrix.ubuntu_version }} \
             sh /buildIGC.sh
       - name: creating folder to store output artifacts
         run: mkdir Artifacts

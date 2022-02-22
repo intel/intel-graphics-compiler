@@ -19,7 +19,7 @@ echo "====================BUILD IGC========================="
 echo "[Build Status] build script started"
 if [ -z ${UBUNTU_VERSION+x} ]; then
     echo "[Build Status] UBUNTU_VERSION is unset, use default 20";
-    UBUNTU_VERSION="20"
+    UBUNTU_VERSION="20.04"
 else
     echo "[Build Status] UBUNTU_VERSION = ${UBUNTU_VERSION}"
 fi
@@ -44,10 +44,10 @@ fi
 
 
 apt-get update
-apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip
-echo "[Build Status] flex bison libz-dev cmake curl wget build-essential git software-properties-common INSTALLED"
+apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip file
+echo "[Build Status] flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip file INSTALLED"
 
-if [ "$UBUNTU_VERSION" = "18" ]; then
+if [ "$UBUNTU_VERSION" = "18.04" ]; then
     wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
     apt-add-repository "deb https://apt.kitware.com/ubuntu/ bionic main"
     apt update
@@ -61,7 +61,7 @@ fi
 apt-get install -y llvm-"$LLVM_VERSION" llvm-"$LLVM_VERSION"-dev clang-"$LLVM_VERSION" liblld-"$LLVM_VERSION" liblld-"$LLVM_VERSION"-dev
 echo "[Build Status] LLVM INSTALLED"
 
-if [ "$UBUNTU_VERSION" = "18" ] && [ "$LLVM_VERSION" = "11" ]; then
+if [ "$UBUNTU_VERSION" = "18.04" ] && [ "$LLVM_VERSION" = "11" ]; then
     LLVM_VERSION_PREFERRED="$LLVM_VERSION".1.0
 else
     LLVM_VERSION_PREFERRED="$LLVM_VERSION".0.0

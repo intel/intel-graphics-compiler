@@ -47,5 +47,12 @@ if(NOT EXISTS "${IGC_COPIED_LLD_DIR}")
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__lld_SOURCES_DIR} ${IGC_COPIED_LLD_DIR})
 endif()
 
+if(NOT EXISTS "${IGC_LLVM_WORKSPACE_SRC}/libunwind/include/mach-o" AND ${IGC_OPTION__LLVM_PREFERRED_VERSION} GREATER_EQUAL "12.0.0")
+    # Need to copy one header from unwind package for LLD (only for building from sources)
+    file(MAKE_DIRECTORY ${IGC_LLVM_WORKSPACE_SRC}/libunwind/include/mach-o)
+    file(COPY ${DEFAULT_IGC_LLVM_SOURCES_DIR}/libunwind/include/mach-o/compact_unwind_encoding.h
+         DESTINATION ${IGC_LLVM_WORKSPACE_SRC}/libunwind/include/mach-o/)
+endif()
+
 # Just register lld as external llvm project.
 register_llvm_external_project(lld ${IGC_COPIED_LLD_DIR})
