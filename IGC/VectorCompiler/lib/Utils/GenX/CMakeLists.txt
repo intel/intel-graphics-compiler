@@ -14,7 +14,6 @@ set(GENX_UTILS_SOURCES
   Region.cpp
   ImplicitArgsBuffer.cpp
   KernelInfo.cpp
-  Intrinsics.cpp
   IntrinsicsWrapper.cpp
   )
 
