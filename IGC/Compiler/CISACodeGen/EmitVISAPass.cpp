@@ -5327,8 +5327,8 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     }
 
     CVariable* invertedWAMask = nullptr;
-    bool needCPSOMaskWA = oMask && psProgram->GetPhase() == PSPHASE_COARSE && IGC_IS_FLAG_ENABLED(EnableCPSOmaskWA) &&
-        m_currShader->m_Platform->getWATable().Wa_22012766191;
+    bool needCPSOMaskWA = IGC_IS_FLAG_ENABLED(EnableCPSOmaskWA) && IGC_IS_FLAG_DISABLED(EnableCPSMSAAOMaskWA) &&
+        oMask && psProgram->GetPhase() == PSPHASE_COARSE && m_currShader->m_Platform->getWATable().Wa_22012766191;
     if (needCPSOMaskWA)
     {
         VISA_Type maskAsIntType = GetTypeFromSize(numLanes(m_currShader->m_dispatchSize) / 8);

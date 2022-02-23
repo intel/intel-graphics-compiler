@@ -125,6 +125,7 @@ void initializeWIAnalysisPass(llvm::PassRegistry&);
 void initializeWIFuncResolutionPass(llvm::PassRegistry&);
 void initializeWIFuncsAnalysisPass(llvm::PassRegistry&);
 void initializeWorkaroundAnalysisPass(llvm::PassRegistry&);
+void initializeCPSMSAAOMaskWAPass(llvm::PassRegistry&);
 void initializeWAFMinFMaxPass(llvm::PassRegistry&);
 void initializePingPongTexturesAnalysisPass(llvm::PassRegistry&);
 void initializePingPongTexturesOptPass(llvm::PassRegistry&);

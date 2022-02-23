@@ -356,7 +356,6 @@ void CPixelShader::AllocatePSPayload()
         return;
     }
 
-    offset = payloadEnd;
 
     // create output registers for coarse phase
     for (const auto& it : m_CoarseOutput)
@@ -1616,8 +1615,8 @@ void CodeGen(PixelShaderContext* ctx)
 
         if (coarsePhase && pixelPhase)
         {
-            SPixelShaderKernelProgram outputs[2];
-            memset(&outputs, 0, 2 * sizeof(SPixelShaderKernelProgram));
+            SPixelShaderKernelProgram outputs[2] = { SPixelShaderKernelProgram(), SPixelShaderKernelProgram() };
+            //memset(&outputs, 0, 2 * sizeof(SPixelShaderKernelProgram));
 
             for (unsigned int i = 0; i < numStage; i++)
             {

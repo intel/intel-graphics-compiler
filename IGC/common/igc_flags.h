@@ -444,6 +444,7 @@ DECLARE_IGC_REGKEY(DWORD, EnableMeshSLMCache,           0,     "Enables caching 
                                                                        data is only mirrored in SLM", true)
 DECLARE_IGC_REGKEY(bool, EnableL3FlushForGlobal,        false, "Enable/disable flushing L3 cache for globals", false)
 DECLARE_IGC_REGKEY(bool, EnableCPSOmaskWA,              true,  "Enable workaround for oMask with CPS", false)
+DECLARE_IGC_REGKEY(bool, EnableCPSMSAAOMaskWA,          false, "Enable WA which forces rt writes to happen at pixel rate when cps, msaa, and omask are present.", true)
 DECLARE_IGC_REGKEY(bool, EnableSampleBMLODWA,           true, "Enable workaround for sample_b messages that use the mlod parameter", false)
 DECLARE_IGC_REGKEY(bool, EnableFallbackToBindless,      true,  "This key enables fallback to bindless mode on all shaders", false)
 DECLARE_IGC_REGKEY(bool, EnableFallbackToStateless,     true,  "This key enables fallback to stateless mode on all shaders", false)
