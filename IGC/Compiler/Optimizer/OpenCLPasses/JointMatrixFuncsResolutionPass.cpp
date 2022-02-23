@@ -232,6 +232,10 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointM
     JointMatrixTypeDescription desc;
     parseMatrixTypeName(opaqueType, &desc);
 
+    if (desc.layout == LayoutRowMajor && desc.bitWidth <= 16) {
+        desc.layout = LayoutPackedA;
+    }
+
     if (outDesc != nullptr)
       *outDesc = desc;
 
