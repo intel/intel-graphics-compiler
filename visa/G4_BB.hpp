@@ -313,10 +313,10 @@ public:
 
     void addEOTSend(G4_INST* lastInst = NULL);
 
-    /// Dump instructions into the standard error.
-    const char* getBBTypeStr() const;
+    std::string getBBTypeStr() const;
 
     void print(std::ostream& os = std::cerr) const;
+    /// Dump instructions into the standard error.
     void dump() const;  // used in debugger
     void dumpDefUse(std::ostream& os = std::cerr) const;
 

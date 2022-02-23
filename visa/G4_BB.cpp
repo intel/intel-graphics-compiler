@@ -1487,25 +1487,35 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     }
 }
 
-const char* G4_BB::getBBTypeStr() const
+std::string G4_BB::getBBTypeStr() const
 {
-    switch (getBBType()) {
-    default:
-        break;
-    case G4_BB_CALL_TYPE:
-        return "CALL";
-    case G4_BB_RETURN_TYPE:
-        return "RETURN";
-    case G4_BB_INIT_TYPE:
-        return "INIT";
-    case G4_BB_EXIT_TYPE:
-        return "EXIT";
-    case G4_BB_NM_WA_TYPE:
-        return "NoMaskWA";
-    case G4_BB_FCALL_TYPE:
-        return "FCALL";
-    }
-    return " ";
+    std::stringstream ss;
+    bool isFirst = true;
+    auto addTyString = [&ss, &isFirst](const char* aS) {
+        if (!isFirst) {
+            ss << ",";
+        }
+        isFirst = false;
+        ss << aS;
+    };
+
+    uint32_t bbTy = getBBType();
+    if (bbTy == 0)
+        return " ";
+
+    if ((bbTy & G4_BB_CALL_TYPE) != 0)
+        addTyString("CALL");
+    if ((bbTy & G4_BB_RETURN_TYPE) != 0)
+        addTyString("RETURN");
+    if ((bbTy & G4_BB_INIT_TYPE) != 0)
+        addTyString("INIT");
+    if ((bbTy & G4_BB_EXIT_TYPE) != 0)
+        addTyString("EXIT");
+    if ((bbTy & G4_BB_FCALL_TYPE) != 0)
+        addTyString("FCALL");
+    if ((bbTy & G4_BB_NM_WA_TYPE) != 0)
+        addTyString("NoMaskWA");
+    return ss.str();
 }
 
 void G4_BB::dump() const
