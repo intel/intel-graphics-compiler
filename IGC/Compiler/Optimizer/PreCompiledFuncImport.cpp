@@ -2192,6 +2192,7 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
                 if (DPDivSqrtEmu && I->getOperand(0)->getType()->isDoubleTy())
                 {
                     m_enableSubroutineCallForEmulation = true;
+                    m_pCtx->m_hasDPDivSqrtEmu = true;
                 }
             case Instruction::FMul:
             case Instruction::FAdd:
@@ -2227,6 +2228,7 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
                 IInst && IInst->getIntrinsicID() == Intrinsic::sqrt)
             {
                 m_enableSubroutineCallForEmulation = true;
+                m_pCtx->m_hasDPDivSqrtEmu = true;
             }
             else
             if (DPEmu && I->getType()->isDoubleTy() &&

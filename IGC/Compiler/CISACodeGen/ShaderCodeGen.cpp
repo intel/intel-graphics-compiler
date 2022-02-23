@@ -784,9 +784,9 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         }
         mpm.add(new GenSpecificPattern());
         // Cases with DPDivSqrtEmu grow significantly.
-        // We can disable EarlyCSE when hasDPDivSqrtEmu is true,
+        // We can disable EarlyCSE when m_hasDPDivSqrtEmu is true,
         // what causes the values will have shorter lifetime and we can avoid spills.
-        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && !hasDPDivSqrtEmu)
+        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && !ctx.m_hasDPDivSqrtEmu)
         {
             mpm.add(createEarlyCSEPass());
         }
