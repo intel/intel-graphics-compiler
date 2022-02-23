@@ -587,7 +587,7 @@ SPDX-License-Identifier: MIT
 
     bool hasRMWReadSuppressionIssue() const
     {
-        return (getPlatform() == Xe_DG2) && hasRSForSpecificPlatform();;
+        return (getPlatform() == Xe_DG2 || getPlatform() == Xe_XeHPSDV) && hasRSForSpecificPlatform();
     }
 
     bool needToClearScratchWrites() const
