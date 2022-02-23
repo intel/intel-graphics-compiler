@@ -3746,9 +3746,9 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
     for (int i = 0; i < numFuncs; ++i)
     {
         // each function: [IT, IE)
-        BB_LIST_ITER& IT = allFuncs[i].StartI;
+        BB_LIST_ITER& IB = allFuncs[i].StartI;
         BB_LIST_ITER& IE = allFuncs[i].EndI;
-        if (IT == IE)
+        if (IB == IE)
         {
             // Sanity check
             continue;
@@ -3764,7 +3764,14 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
             cfs.pushJoin(EndBB);
         }
 
-        for (; IT != IE; ++IT)
+        // FusedMask does not correct itself. Once the fusedMask goes wrong, it stays
+        // wrong until the control-flow reaches non-divergent BB. Thus, some BBs, which
+        // are not nested-divergent, may need NoMask WA as they might inherit the wrong
+        // fusedMask from the previous nested-divergent BBs.
+        //
+        // Here, we make adjustment for this reason.
+        bool seenNestedDivergent = false;
+        for (BB_LIST_ITER IT = IB; IT != IE; ++IT)
         {
             G4_BB* BB = *IT;
 
@@ -3802,19 +3809,30 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
             if (cfs.isInNestedDivergentBranch())
             {
                 nestedDivergentBBs[BB] = 2;
+                seenNestedDivergent = true;
             }
             else if (cfs.isInDivergentBranch())
             {
-                nestedDivergentBBs[BB] = 1;
+                if (seenNestedDivergent)
+                {
+                    // divergent and might inherit wrong fusedMask
+                    // set it to nested divergent so we can apply WA.
+                    nestedDivergentBBs[BB] = 2;
+                }
+                else
+                {
+                    nestedDivergentBBs[BB] = 1;
+                }
+            }
+            else
+            {
+                // Reach non-divergent BB
+                seenNestedDivergent = false;
             }
 
             G4_INST* lastInst = BB->back();
 
             // Need to check whether to propagate WA marking to entire loop!
-            //
-            // Do it for CM now, need to apply to all!
-            // if (nestedDivergentBBs.count(BB) > 0 && nestedDivergentBBs[BB] >= 2 &&
-            //    getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
             if (nestedDivergentBBs.count(BB) > 0 && nestedDivergentBBs[BB] >= 2)
             {
                 if (lastInst->opcode() == G4_while ||
