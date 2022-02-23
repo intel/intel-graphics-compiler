@@ -47,8 +47,17 @@ message VarInfo {
     ATOMIC = 4;
   }
 
+  enum PrivArr2Reg
+  {
+    Promotable = 0;
+    IsDynamicAlloca = 1;
+    CannotUseSOALayout = 2;
+    IsNotNativeType = 3;
+    OutOfAllocSizeLimit = 4;
+    OutOfMaxGRFPressure = 5;
+  }
+
   message RegUsage {
-    bool promoted2GRF = 1;
     AddressModel addrModel = 2;
     MemAccess memoryAccess = 3;
     bool isSpill = 4;
@@ -72,5 +81,7 @@ message VarInfo {
 
   BankConflictInfo bc_stats = 5;
 
-  optional CodeRef varLoc = 6;
+  optional PrivArr2Reg status_privarr2reg = 6;
+
+  optional CodeRef varLoc = 7;
 }

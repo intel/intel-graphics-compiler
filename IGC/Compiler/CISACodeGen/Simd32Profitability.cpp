@@ -733,13 +733,15 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
     // even without simd32; and simd32 would have more visa variables than
     // 64K limit (ocl c99 64 bit PrintHalf/half8.c for example); thus make
     // sense to skip simd32.
+    size_t programSizeLimit = 8000;
     size_t programSize = 0;
     for (Function::iterator FI = F->begin(), FE = F->end(); FI != FE; ++FI)
     {
         BasicBlock* BB = &*FI;
         programSize += BB->size();
     }
-    if (programSize > 8000)
+    ctx->metrics.CollectInstructionCnt(F, programSize, programSizeLimit);
+    if (programSize > programSizeLimit)
     {
         return false;
     }
@@ -752,18 +754,26 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
     {
         ThreadGroupSizeMetaDataHandle tgSize = funcInfoMD->second->getThreadGroupSize();
         ThreadGroupSizeMetaDataHandle tgSizeHint = funcInfoMD->second->getThreadGroupSizeHint();
+        const int tgSizeLimit = 16;
+        int tgSizeCal = tgSize->getXDim() * tgSize->getYDim() * tgSize->getZDim();
+        int tgSizeHintCal = tgSizeHint->getXDim() * tgSizeHint->getYDim() * tgSizeHint->getZDim();
 
-        if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize && ctx->getModuleMetaData()->csInfo.maxWorkGroupSize <= 16)
+        ctx->metrics.CollectThreadGroupSize(F, tgSizeCal, tgSizeLimit);
+        ctx->metrics.CollectThreadGroupSizeHint(F, tgSizeHintCal, tgSizeLimit);
+
+        if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize && ctx->getModuleMetaData()->csInfo.maxWorkGroupSize <= tgSizeLimit)
             return false;
 
-        if ((tgSize->hasValue() && (tgSize->getXDim() * tgSize->getYDim() * tgSize->getZDim()) <= 16) ||
-            (tgSizeHint->hasValue() && (tgSizeHint->getXDim() * tgSizeHint->getYDim() * tgSizeHint->getZDim()) <= 16)) {
+        if ((tgSize->hasValue() && tgSizeCal <= tgSizeLimit) ||
+            (tgSizeHint->hasValue() && tgSizeHintCal <= tgSizeLimit)) {
             return false;
         }
     }
 
     // WORKAROUND - Skip SIMD32 if subgroup functions are present.
-    if (hasSubGroupFunc(*F)) {
+    bool hasSubGrFunc = hasSubGroupFunc(*F);
+    ctx->metrics.CollectIsSubGroupFuncIn(F, hasSubGrFunc);
+    if (hasSubGrFunc) {
         return false;
     }
 
@@ -775,12 +785,14 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
          // FALL THROUGH
     case IGFX_GEN10_CORE:
         if (hasIEEESqrtOrDivFunc(*F)) {
+            ctx->metrics.CollectGen9Gen10WithIEEESqrtDivFunc(F, true);
             return false;
         }
         break;
     default:
         break;
     }
+    ctx->metrics.CollectGen9Gen10WithIEEESqrtDivFunc(F, false);
     // END OF WORKAROUND
 
     // Ok, that's not the case.
@@ -849,15 +861,18 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
             }
         }
         if (!AllUniform) {
-            switch (estimateLoopCount(loop)) {
+            unsigned int estLoopCnt = estimateLoopCount(loop);
+            switch (estLoopCnt) {
             case LOOPCOUNT_LIKELY_LARGE:
             case LOOPCOUNT_UNKNOWN:
+                ctx->metrics.CollectNonUniformLoop(F, estLoopCnt, loop);
                 return false;
             case LOOPCOUNT_LIKELY_SMALL:
                 break;
             }
         }
     }
+    ctx->metrics.CollectNonUniformLoop(F, LOOPCOUNT_LIKELY_SMALL, nullptr);
 
     return true;
 }
