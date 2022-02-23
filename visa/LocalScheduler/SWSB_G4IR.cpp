@@ -4842,16 +4842,8 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
 
         uint32_t varID = ptvar->getId();
         G4_Declare* dcl = ptvar->getDeclare()->getRootDeclare();
-        G4_RegVar* var = nullptr;
+        G4_RegVar* var = dcl->getRegVar();
 
-        if (dcl->isSpilled())
-        {
-            var = dcl->getAddrTakenSpillFill()->getRegVar();
-        }
-        else
-        {
-            var = dcl->getRegVar();
-        }
         MUST_BE_TRUE(var->getId() == varID, "RA verification error: Invalid regVar ID!");
         MUST_BE_TRUE(var->getPhyReg()->isGreg(), "RA verification error: Invalid dst reg!");
 

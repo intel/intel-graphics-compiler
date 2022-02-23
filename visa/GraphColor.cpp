@@ -10124,9 +10124,6 @@ void GlobalRA::assignRegForAliasDcl()
                 }
             }
             else {
-                // Propagate addr taken spill/fill to aliases
-                CurrentRegVar->getDeclare()->setAddrTakenSpillFill(AliasRegVar->getDeclare()->getAddrTakenSpillFill());
-
                 if (dcl->isSpilled() == false)
                     dcl->setSpillFlag();
             }

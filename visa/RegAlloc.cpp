@@ -2064,7 +2064,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             else if (src->isAddrExp())
             {
                 G4_RegVar* reg = static_cast<G4_AddrExp*>(src)->getRegVar();
-                if (reg->isRegAllocPartaker() && reg->isSpilled() == false)
+                if (reg->isRegAllocPartaker() &&  !reg->isRegVarTmp())
                 {
                     unsigned srcId = reg->getId();
                     use_gen.set(srcId, true);
