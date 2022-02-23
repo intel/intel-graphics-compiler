@@ -878,13 +878,13 @@ Output:
     None
 
 \*****************************************************************************/
-void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
+void LoadRegistryKeys(const std::string& options, bool* RegFlagNameError)
 {
     // only load the debug flags once before compiling to avoid any multi-threading issue
     static std::mutex loadFlags;
     static volatile bool flagsSet = false;
     loadFlags.lock();
-    if(!flagsSet)
+    if (!flagsSet)
     {
         flagsSet = true;
         // dump out IGC.xml for the registry manager
@@ -902,89 +902,92 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
         //DumpIGCRegistryKeyDefinitions();
         LoadDebugFlagsFromFile();
         LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
-
-        if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))
-        {
-            std::vector<char*> args;
-            args.push_back((char *)("IGC"));
-            ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
-            llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
-        }
-
-        if(IGC_IS_FLAG_ENABLED(DisableIGCOptimizations))
-        {
-            IGC_SET_FLAG_VALUE(DisableLLVMGenericOptimizations, true);
-            IGC_SET_FLAG_VALUE(DisableCodeSinking, true);
-            IGC_SET_FLAG_VALUE(DisableDeSSA, true);
-            //disable now until we figure out the issue
-            //IGC_SET_FLAG_VALUE(DisablePayloadCoalescing, true);
-            IGC_SET_FLAG_VALUE(DisableSendS, true);
-            IGC_SET_FLAG_VALUE(EnableVISANoSchedule, true);
-            IGC_SET_FLAG_VALUE(DisableUniformAnalysis, true);
-            IGC_SET_FLAG_VALUE(DisablePushConstant, true);
-            IGC_SET_FLAG_VALUE(DisableConstantCoalescing, true);
-            IGC_SET_FLAG_VALUE(DisableURBWriteMerge, true);
-            IGC_SET_FLAG_VALUE(DisableCodeHoisting, true);
-            IGC_SET_FLAG_VALUE(DisableEmptyBlockRemoval, true);
-            IGC_SET_FLAG_VALUE(DisableSIMD32Slicing, true);
-            IGC_SET_FLAG_VALUE(DisableCSEL, true);
-            IGC_SET_FLAG_VALUE(DisableFlagOpt, true);
-            IGC_SET_FLAG_VALUE(DisableScalarAtomics, true);
-        }
-
-
-        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
-        {
-            IGC_SET_FLAG_VALUE(ShaderDumpEnable, true);
-            IGC_SET_FLAG_VALUE(EnableVISASlowpath, true);
-            IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-        {
-            IGC_SET_FLAG_VALUE(DumpLLVMIR, true);
-            IGC_SET_FLAG_VALUE(EnableCosDump, true);
-            IGC_SET_FLAG_VALUE(DumpOCLProgramInfo, true);
-            IGC_SET_FLAG_VALUE(EnableVISAOutput, true);
-            IGC_SET_FLAG_VALUE(EnableVISABinary, true);
-            IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
-            IGC_SET_FLAG_VALUE(EnableCapsDump, true);
-            IGC_SET_FLAG_VALUE(DumpPatchTokens, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(DumpTimeStatsPerPass) ||
-            IGC_IS_FLAG_ENABLED(DumpTimeStatsCoarse))
-        {
-            IGC_SET_FLAG_VALUE(DumpTimeStats, true);
-            IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(DumpTimeStats))
-        {
-            // Need to turn on this setting so per-shader .csv is generated
-            IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
-        }
-
-        switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth))
-        {
-        case 32:
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, true);
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
-            break;
-        case 16:
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, true);
-            break;
-        case 8:
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
-            break;
-        default:
-            // Non-valid value is ignored (using default).
-            IGC_SET_FLAG_VALUE(ForceOCLSIMDWidth, 0);
-        }
     }
     loadFlags.unlock();
+}
+
+void LookupRegistryKeys()
+{
+    if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))
+    {
+        std::vector<char*> args;
+        args.push_back((char *)("IGC"));
+        ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
+        llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
+    }
+
+    if(IGC_IS_FLAG_ENABLED(DisableIGCOptimizations))
+    {
+        IGC_SET_FLAG_VALUE(DisableLLVMGenericOptimizations, true);
+        IGC_SET_FLAG_VALUE(DisableCodeSinking, true);
+        IGC_SET_FLAG_VALUE(DisableDeSSA, true);
+        //disable now until we figure out the issue
+        //IGC_SET_FLAG_VALUE(DisablePayloadCoalescing, true);
+        IGC_SET_FLAG_VALUE(DisableSendS, true);
+        IGC_SET_FLAG_VALUE(EnableVISANoSchedule, true);
+        IGC_SET_FLAG_VALUE(DisableUniformAnalysis, true);
+        IGC_SET_FLAG_VALUE(DisablePushConstant, true);
+        IGC_SET_FLAG_VALUE(DisableConstantCoalescing, true);
+        IGC_SET_FLAG_VALUE(DisableURBWriteMerge, true);
+        IGC_SET_FLAG_VALUE(DisableCodeHoisting, true);
+        IGC_SET_FLAG_VALUE(DisableEmptyBlockRemoval, true);
+        IGC_SET_FLAG_VALUE(DisableSIMD32Slicing, true);
+        IGC_SET_FLAG_VALUE(DisableCSEL, true);
+        IGC_SET_FLAG_VALUE(DisableFlagOpt, true);
+        IGC_SET_FLAG_VALUE(DisableScalarAtomics, true);
+    }
+
+
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
+    {
+        IGC_SET_FLAG_VALUE(ShaderDumpEnable, true);
+        IGC_SET_FLAG_VALUE(EnableVISASlowpath, true);
+        IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
+    }
+
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+    {
+        IGC_SET_FLAG_VALUE(DumpLLVMIR, true);
+        IGC_SET_FLAG_VALUE(EnableCosDump, true);
+        IGC_SET_FLAG_VALUE(DumpOCLProgramInfo, true);
+        IGC_SET_FLAG_VALUE(EnableVISAOutput, true);
+        IGC_SET_FLAG_VALUE(EnableVISABinary, true);
+        IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
+        IGC_SET_FLAG_VALUE(EnableCapsDump, true);
+        IGC_SET_FLAG_VALUE(DumpPatchTokens, true);
+    }
+
+    if (IGC_IS_FLAG_ENABLED(DumpTimeStatsPerPass) ||
+        IGC_IS_FLAG_ENABLED(DumpTimeStatsCoarse))
+    {
+        IGC_SET_FLAG_VALUE(DumpTimeStats, true);
+        IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
+    }
+
+    if (IGC_IS_FLAG_ENABLED(DumpTimeStats))
+    {
+        // Need to turn on this setting so per-shader .csv is generated
+        IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
+    }
+
+    switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth))
+    {
+    case 32:
+        IGC_SET_FLAG_VALUE(EnableOCLSIMD32, true);
+        IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
+        break;
+    case 16:
+        IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
+        IGC_SET_FLAG_VALUE(EnableOCLSIMD16, true);
+        break;
+    case 8:
+        IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
+        IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
+        break;
+    default:
+        // Non-valid value is ignored (using default).
+        IGC_SET_FLAG_VALUE(ForceOCLSIMDWidth, 0);
+    }
 }
 
 // Get all keys that have been set explicitly with a non-default value. Return
