@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 #include "HullShaderCodeGen.hpp"
 #include "DomainShaderCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
+#include "BindlessShaderCodeGen.hpp"
+#include "AdaptorCommon/RayTracing/RTStackFormat.h"
 #include "DeSSA.hpp"
 #include "messageEncoding.hpp"
 #include "PayloadMapping.hpp"
@@ -9307,6 +9309,9 @@ void EmitPass::emitSGV(SGVIntrinsic* inst)
     case ShaderType::HULL_SHADER:
         emitHSSGV(inst);
         break;
+    case ShaderType::RAYTRACING_SHADER:
+        emitBindlessShaderSGV(inst);
+        break;
     case ShaderType::GEOMETRY_SHADER:
         emitGS_SGV(inst);
         break;
@@ -9915,6 +9920,45 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_getStageInGridSize:
     case GenISAIntrinsic::GenISA_getSyncBuffer:
         emitImplicitArgIntrinsic(inst);
+        break;
+    case GenISAIntrinsic::GenISA_AsyncStackID:
+        emitAsyncStackID(inst);
+        break;
+    case GenISAIntrinsic::GenISA_SyncStackID:
+        emitSyncStackID(inst);
+        break;
+    case GenISAIntrinsic::GenISA_GlobalBufferPointer:
+        emitGlobalBufferPtr(inst);
+        break;
+    case GenISAIntrinsic::GenISA_LocalBufferPointer:
+        emitLocalBufferPtr(inst);
+        break;
+    case GenISAIntrinsic::GenISA_TraceRaySync:
+        emitTraceRay(cast<TraceRayIntrinsic>(inst), true);
+        break;
+    case GenISAIntrinsic::GenISA_TraceRayAsync:
+        emitTraceRay(cast<TraceRayIntrinsic>(inst), false);
+        break;
+    case GenISAIntrinsic::GenISA_ReadTraceRaySync:
+        emitReadTraceRaySync(inst);
+        break;
+    case GenISAIntrinsic::GenISA_BindlessThreadDispatch:
+        emitBindlessThreadDispatch(cast<BTDIntrinsic>(inst));
+        break;
+    case GenISAIntrinsic::GenISA_StackIDRelease:
+        emitStackIDRelease(cast<StackIDReleaseIntrinsic>(inst));
+        break;
+    case GenISAIntrinsic::GenISA_GetShaderRecordPtr:
+        emitGetShaderRecordPtr(cast<GetShaderRecordPtrIntrinsic>(inst));
+        break;
+    case GenISAIntrinsic::GenISA_InlinedData:
+        emitInlinedDataValue(inst);
+        break;
+    case GenISAIntrinsic::GenISA_TileXOffset:
+        emitTileXOffset(cast<TileXIntrinsic>(inst));
+        break;
+    case GenISAIntrinsic::GenISA_TileYOffset:
+        emitTileYOffset(cast<TileYIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_LSCStore:
     case GenISAIntrinsic::GenISA_LSCStoreBlock:
@@ -20565,6 +20609,90 @@ void EmitPass::emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
 }
 
 
+void EmitPass::emitBindlessShaderSGV(llvm::GenIntrinsicInst* inst)
+{
+    CBindlessShader* bsProgram = static_cast<CBindlessShader*>(m_currShader);
+    SGVUsage usage = static_cast<SGVUsage>(
+        dyn_cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
+    CVariable* pThreadIdInGroup = nullptr;
+
+    switch (usage)
+    {
+    case THREAD_GROUP_ID_X:
+    {
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 1);
+        m_encoder->Copy(m_destination, bsProgram->GetR0());
+        m_encoder->Push();
+        break;
+    }
+    case THREAD_GROUP_ID_Y:
+    {
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 6);
+        m_encoder->Copy(m_destination, bsProgram->GetR0());
+        m_encoder->Push();
+        break;
+    }
+    case THREAD_GROUP_ID_Z:
+    {
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 7);
+        m_encoder->Copy(m_destination, bsProgram->GetR0());
+        m_encoder->Push();
+        break;
+    }
+    case SHADER_TYPE:
+    {
+        // r0.3, bits [3:0] 'BTD Shader Type'
+        CVariable* Mask =
+            m_currShader->ImmToVariable(0b1111, ISA_TYPE_UD);
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 3);
+        m_encoder->And(m_destination, bsProgram->GetR0(), Mask);
+        m_encoder->Push();
+        break;
+    }
+    case THREAD_ID_IN_GROUP_X:
+    {
+        IGC_ASSERT_MESSAGE(inst->getType() == Type::getInt16Ty(inst->getContext()),
+            "only 16bit ThreadID is supported now.");
+        pThreadIdInGroup = bsProgram->CreateThreadIDinGroup(THREAD_ID_IN_GROUP_X);
+        m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
+        break;
+    }
+    case THREAD_ID_IN_GROUP_Y:
+    {
+        IGC_ASSERT_MESSAGE(inst->getType() == Type::getInt16Ty(inst->getContext()),
+            "only 16bit ThreadID is supported now.");
+        pThreadIdInGroup = bsProgram->CreateThreadIDinGroup(THREAD_ID_IN_GROUP_Y);
+        m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
+        break;
+    }
+    case THREAD_ID_IN_GROUP_Z:
+    {
+        IGC_ASSERT_MESSAGE(inst->getType() == Type::getInt16Ty(inst->getContext()),
+            "only 16bit ThreadID is supported now.");
+        pThreadIdInGroup = bsProgram->CreateThreadIDinGroup(THREAD_ID_IN_GROUP_Z);
+        m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
+        break;
+    }
+    case THREAD_ID_WITHIN_THREAD_GROUP:
+    {
+        CVariable* threadIDwithinThreadGroup = m_currShader->GetNewAlias(
+            bsProgram->GetR0(), ISA_TYPE_UW, sizeof(uint) * 2, 1, true);
+        CVariable* Mask = m_currShader->ImmToVariable(0xff, ISA_TYPE_UD);
+        m_encoder->And(m_destination, threadIDwithinThreadGroup, Mask);
+        m_encoder->Push();
+        break;
+    }
+    default:
+        IGC_ASSERT_MESSAGE(0, "Not implemented");
+        break;
+    }
+
+}
+
 
 void EmitPass::emitDpas(GenIntrinsicInst* GII, const SSource* Sources, const DstModifier& modifier)
 {
@@ -21069,6 +21197,16 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
         return {LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
     }
 
+    // RT specific handling
+    bool hasRQCall = (m_pCtx->type == ShaderType::RAYTRACING_SHADER);
+    if (!hasRQCall && inst)
+    {
+        hasRQCall = m_pCtx->hasSyncRTCalls(inst->getFunction());
+    }
+    if (hasRQCall)
+    {
+        cacheOpts = getDefaultRaytracingCachePolicy(isLoad);
+    }
 
 
     return cacheOpts;
@@ -21763,6 +21901,572 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst* GII)
             IGC_ASSERT_EXIT_MESSAGE(0, "unmapped intrinsic");
         }
     }
+}
+LSC_CACHE_OPTS EmitPass::getDefaultRaytracingCachePolicy(bool isLoad) const
+{
+    LSC_CACHE_OPTS DefaultCacheCtrl {LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
+
+    if (IGC_IS_FLAG_ENABLED(ForceGenMemDefaultCacheCtrl))
+        return DefaultCacheCtrl;
+
+    LSC_L1_L3_CC Opts;
+
+    if (isLoad)
+    {
+        Opts = IGC_IS_FLAG_ENABLED(ForceGenMemLoadCacheCtrl) ?
+            (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(GenMemLoadCacheCtrl) :
+            LSC_L1C_WT_L3C_WB;
+    }
+    else
+    {
+        Opts = IGC_IS_FLAG_ENABLED(ForceGenMemStoreCacheCtrl) ?
+            (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(GenMemStoreCacheCtrl) :
+            LSC_L1IAR_WB_L3C_WB;
+    }
+
+    return translateLSCCacheControlsEnum(Opts, isLoad);
+}
+
+void EmitPass::emitAsyncStackID(llvm::GenIntrinsicInst *I)
+{
+    CVariable* stack = m_currShader->GetStackID();
+    m_encoder->Copy(m_destination, stack);
+    m_encoder->Push();
+}
+
+void EmitPass::emitSyncStackID(llvm::GenIntrinsicInst* I)
+{
+    IGC_ASSERT_MESSAGE(m_currShader->m_SIMDSize <= SIMDMode::SIMD16, "Invalid SIMD Size");
+
+    // With fused EUs (e.g. DG2)
+    //  SyncStackID = (EUID[3:0] << 7) | (ThreadID[2:0] << 4) | SIMDLaneID[3:0];
+    // With natively wide EUs (e.g. PVC)
+    //  SyncStackID = (EUID[2:0] << 8) | (ThreadID[2:0] << 4) | SIMDLaneID[3:0];
+
+    // Note: bits sr0.0[7:4] in DG2, PVC are not the actual EUID within a DSS:
+
+    // To calculate the true EUID you need to replace bit 6 with
+    // the subslice ID (bit 8 of sr0.0).
+    //
+    // sr0.0 layout:
+    //
+    // DG2:
+    // bits [5:4] = EUID within a row (EUID[1:0])
+    // bit     6  = Must be zero
+    // bit     7  = row ID            (EUID[3])
+    // bit     8  = subslice ID       (EUID[2])
+    //
+    // EUID[3:0]     = sr0.0[7:8:5:4]
+    // ThreadID[2:0] = sr0.0[2:0]
+    //
+    // PVC:
+    // bits [5:4] = EUID within a row (EUID [1:0])
+    // bit     6  = Must be zero
+    // bit     7  = Must be zero (no row ID)
+    // bit     8  = EUID[2]
+    //
+    // EUID[2:0]     = sr0.0[8:5:4]
+    // ThreadID[2:0] = sr0.0[2:0]
+
+    uint32_t euid_and_imm = 0x0;
+    uint32_t euid_shl_imm = 0x0;
+    uint32_t euid_offset  = 0x0;
+    Optional<uint32_t> ssid_shl_imm;
+
+    constexpr uint32_t tid_and_imm = BITMASK_RANGE(0, 2);
+    constexpr uint32_t tid_shl_imm = 0x4;
+    constexpr uint32_t ssid_bit_loc = 8;
+    constexpr uint32_t ssid_mask = BIT(ssid_bit_loc);
+
+    if (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2)
+    {
+        euid_offset = 7;
+        euid_and_imm = BITMASK_RANGE(4, 7);
+        euid_shl_imm = -4 + 7;
+
+        ssid_shl_imm = euid_offset + 2 - ssid_bit_loc;
+    }
+    else if (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC)
+    {
+        euid_offset = 8;
+        euid_and_imm = BITMASK_RANGE(4, 5);
+        euid_shl_imm = -4 + 8;
+
+        ssid_shl_imm = euid_offset + 2 - ssid_bit_loc;
+    }
+    else
+    {
+        IGC_ASSERT_MESSAGE(0, "Invalid Product Family for SyncStackID");
+    }
+
+    //Start with the SIMDLaneID[3:0]
+    CVariable* SyncStackID = m_currShader->GetNewVariable(
+        numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "SyncStackID");
+    m_currShader->GetSimdOffsetBase(SyncStackID);
+
+    //Continue with (ThreadID[2:0] << 4)
+    CVariable* ThreadID = m_currShader->GetNewVariable(
+        numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "ThreadID");
+    m_encoder->And(
+        ThreadID,
+        m_currShader->GetSR0(),
+        m_currShader->ImmToVariable(tid_and_imm, ISA_TYPE_UD));
+    m_encoder->Shl(
+        ThreadID,
+        ThreadID,
+        m_currShader->ImmToVariable(tid_shl_imm, ISA_TYPE_UD));
+
+    //finish up with (EUID[3:0] << 7) (or EUID[2:0] << 8)
+    CVariable* EUID = m_currShader->GetNewVariable(
+        numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "EUID");
+    m_encoder->And(
+        EUID,
+        m_currShader->GetSR0(),
+        m_currShader->ImmToVariable(euid_and_imm, ISA_TYPE_UD));
+    m_encoder->Shl(
+        EUID,
+        EUID,
+        m_currShader->ImmToVariable(euid_shl_imm, ISA_TYPE_UD));
+    if (ssid_shl_imm)
+    {
+        // Now place the subslice id in the bit 6 slot
+        CVariable* SSID = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "SSID");
+        m_encoder->And(
+            SSID,
+            m_currShader->GetSR0(),
+            m_currShader->ImmToVariable(ssid_mask, ISA_TYPE_UD));
+        m_encoder->Shl(
+            SSID,
+            SSID,
+            m_currShader->ImmToVariable(*ssid_shl_imm, ISA_TYPE_UD));
+        //Or them
+        m_encoder->Or(EUID, EUID, SSID);
+    }
+
+    //Or them
+    m_encoder->Or(SyncStackID, SyncStackID, ThreadID);
+    m_encoder->Or(m_destination, SyncStackID, EUID);
+    m_encoder->Push();
+}
+
+void EmitPass::emitGlobalBufferPtr(llvm::GenIntrinsicInst* I)
+{
+    CVariable* globalBuffer = m_currShader->GetGlobalBufferPtr();
+    m_encoder->Copy(m_destination, globalBuffer);
+    m_encoder->Push();
+}
+
+void EmitPass::emitLocalBufferPtr(llvm::GenIntrinsicInst* I)
+{
+    CVariable* globalBuffer = m_currShader->GetLocalBufferPtr();
+    m_encoder->Copy(m_destination, globalBuffer);
+    m_encoder->Push();
+}
+
+void EmitPass::emitInlinedDataValue(llvm::GenIntrinsicInst* I)
+{
+    uint32_t inlinedDataOffset = static_cast<unsigned int>(cast<ConstantInt>(I->getOperand(0))->getZExtValue());
+    CVariable* inlinedDataPtrValue = m_currShader->GetInlinedDataPtr();
+
+    // Right now, we only inline global and local pointers.
+    IGC_ASSERT_MESSAGE(inlinedDataOffset < 2, "new parameter?");
+
+    CVariable* alias = m_currShader->GetNewAlias(
+        inlinedDataPtrValue,
+        inlinedDataPtrValue->GetType(),
+        inlinedDataOffset * sizeof(uint64_t),
+        2 - inlinedDataOffset);
+    m_encoder->Copy(m_destination, alias);
+    m_encoder->Push();
+}
+
+void EmitPass::emitTileXOffset(TileXIntrinsic* I)
+{
+    const uint32_t XDim = I->getXDim();
+    IGC_ASSERT(iSTD::IsPowerOfTwo(XDim));
+
+    uint32_t lanes = numLanes(m_currShader->m_SIMDSize);
+
+    if (XDim >= lanes)
+    {
+        CVariable* TID = GetSymbol(I->getTID());
+        if (!TID->IsUniform())
+            TID = UniformCopy(TID);
+
+        uint32_t Ratio = XDim / lanes;
+        CVariable* Mask = m_currShader->ImmToVariable(Ratio - 1, ISA_TYPE_UW);
+        CVariable* XCnt = m_currShader->GetNewVariable(TID);
+
+        // xcnt = tid & (ratio - 1)
+        m_encoder->And(XCnt, TID, Mask);
+        m_encoder->Push();
+
+        CVariable* XVals = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
+
+        m_currShader->GetSimdOffsetBase(XVals);
+
+        // xidx = xvals + simdsize * xcnt
+        CVariable* Tmp = m_currShader->GetNewVariable(XCnt);
+        CVariable* ShiftAmt = m_currShader->ImmToVariable(
+            llvm::countTrailingZeros(lanes), ISA_TYPE_UW);
+        m_encoder->Shl(Tmp, XCnt, ShiftAmt);
+        m_encoder->Add(m_destination, XVals, Tmp);
+        m_encoder->Push();
+    }
+    else
+    {
+        uint32_t Cnt = lanes / 8;
+        IGC_ASSERT_MESSAGE(Cnt <= 2, "unhandled simd size!");
+        uint32_t Vector = 0;
+
+        // xidx = range(XDim) repeated over simdsize
+        // for example (4x4 in simd8):
+        // xidx = mov 0x32103210:v
+        for (uint32_t j = 0; j < 8; j++)
+            Vector |= (j & (XDim - 1)) << (j * 4);
+
+        for (uint32_t i = 0; i < Cnt; i++)
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetDstSubReg(i * 8);
+            m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+            m_encoder->Cast(m_destination, m_currShader->ImmToVariable(Vector, ISA_TYPE_V));
+            m_encoder->Push();
+        }
+    }
+}
+
+void EmitPass::emitTileYOffset(TileYIntrinsic* I)
+{
+    const uint32_t XDim = I->getXDim();
+    IGC_ASSERT(iSTD::IsPowerOfTwo(XDim));
+
+    uint32_t lanes = numLanes(m_currShader->m_SIMDSize);
+
+    CVariable* TID = GetSymbol(I->getTID());
+    if (!TID->IsUniform())
+        TID = UniformCopy(TID);
+
+    if (XDim >= lanes)
+    {
+        // yidx = tid / ratio
+        uint32_t Ratio = XDim / lanes;
+        CVariable* ShiftAmt = m_currShader->ImmToVariable(
+            llvm::countTrailingZeros(Ratio), ISA_TYPE_UW);
+        m_encoder->Shr(m_destination, TID, ShiftAmt);
+        m_encoder->Push();
+    }
+    else
+    {
+        uint32_t Cnt = lanes / 8;
+        IGC_ASSERT_MESSAGE(Cnt <= 2, "unhandled simd size!");
+
+        CVariable* YVals = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
+
+        for (uint32_t i = 0; i < Cnt; i++)
+        {
+            uint32_t Vector = 0;
+            // for example (4x4 in simd8):
+            // yvals = mov 0x11110000
+            // for example (4x4 in simd16):
+            // yvals_lo = mov 0x11110000
+            // yvals_hi = mov 0x33332222
+            for (uint32_t j = 0; j < 8; j++)
+                Vector |= ((j + i*8) / XDim) << (j * 4);
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetDstSubReg(i * 8);
+            m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+            m_encoder->Cast(YVals, m_currShader->ImmToVariable(Vector, ISA_TYPE_V));
+            m_encoder->Push();
+        }
+
+        uint32_t Ratio = lanes / XDim;
+        // yidx = yvals + tid * ratio
+        CVariable* Tmp = m_currShader->GetNewVariable(TID);
+        CVariable* ShiftAmt = m_currShader->ImmToVariable(
+            llvm::countTrailingZeros(Ratio), ISA_TYPE_UW);
+        m_encoder->Shl(Tmp, TID, ShiftAmt);
+        m_encoder->Add(m_destination, YVals, Tmp);
+        m_encoder->Push();
+    }
+}
+
+void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
+{
+    // We emit a SW fence here to prevent motion of other sends across this
+    // send.rta until we have VISA support. An actual fence was previously
+    // inserted in the RayTracingShaderLowering pass.
+    m_encoder->Fence(false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true);
+    m_encoder->Push();
+
+    CVariable* Dst = nullptr;
+    if (RayQueryEnable) {
+        Dst = m_destination;
+    }
+
+    // 'payload' contains bvhLevel, traceRayCtrl, and stackID as per
+    // TraceRayMessage::Payload in RTStackFormat.h.
+    CVariable* payload = BroadcastIfUniform(GetSymbol(I->getPayload()));
+    CVariable* globalBufferPtr = GetSymbol(I->getGlobalBufferPointer());
+    if (!globalBufferPtr->IsUniform())
+        globalBufferPtr = UniformCopy(globalBufferPtr);
+    unsigned int extDescriptor = EU_MESSAGE_TARGET_SFID_RTA;
+    CVariable* exDesc = m_currShader->ImmToVariable(extDescriptor, ISA_TYPE_UD);
+    uint messageSpecificControl = BindlessThreadDispatch(
+        1,
+        m_currShader->m_dispatchSize == SIMDMode::SIMD16 ? 1 : 0,
+        true,
+        RayQueryEnable);
+
+    CVariable* header =
+        m_currShader->GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
+
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetNoMask();
+    m_encoder->Copy(m_currShader->BitCast(header, globalBufferPtr->GetType()), globalBufferPtr);
+    m_encoder->Push();
+
+    {
+        // Initialize RayQuery Enable bit
+        constexpr uint32_t RayQueryDword =
+            offsetof(RTStackFormat::TraceRayMessage::Header, rayQueryLocation) / sizeof(DWORD);
+        static_assert(RayQueryDword == 4, "header change?");
+
+        CVariable* RayQueryVal =
+            m_currShader->ImmToVariable(RayQueryEnable ? 1 : 0, ISA_TYPE_UD);
+
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->SetDstSubReg(RayQueryDword);
+        m_encoder->Copy(header, RayQueryVal);
+        m_encoder->Push();
+    }
+
+    if (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC ||
+        (getGRFSize() == 64 && IGC_IS_FLAG_ENABLED(DisableWideTraceRay)))
+    {
+        // PVC SIMD16 TraceRay payload needs to be expanded to two registers
+        // since RTA expects the same payload format as DG2 (which has 32-byte
+        // registers).
+        //
+        IGC_ASSERT_MESSAGE(payload->GetNumberElement() == 16, "not simd16?");
+        CVariable* expandedPayload = m_currShader->GetNewVariable(
+            getGRFSize() * 2 / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->Copy(expandedPayload, payload);
+
+        m_encoder->SetSrcSubReg(0,8);
+        m_encoder->SetDstSubVar(1);
+        m_encoder->SetMask(EMASK_Q2);
+        m_encoder->Copy(expandedPayload, payload);
+        m_encoder->Push();
+
+        payload = expandedPayload;
+    }
+
+    CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
+    m_encoder->Sends(
+        Dst,
+        header,
+        payload,
+        EU_MESSAGE_TARGET_SFID_RTA,
+        exDesc,
+        pMessDesc);
+    m_encoder->Push();
+
+    // Insert a software fence after the send.rta so no IO operations get
+    // scheduled across the send from below.  We should be able to remove this
+    // once we have VISA support for raytracing rather than emitting a
+    // raw_sends.
+    m_encoder->Fence(false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true);
+    m_encoder->Push();
+}
+
+void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst* I)
+{
+    // Insert a software fence before and after the ReadTraceRaySync so no IO operations get
+    // scheduled across it.
+    m_encoder->Fence(false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true);
+    m_encoder->Push();
+
+    auto Var = GetSymbol(I->getOperand(0));
+    m_encoder->Cast(m_currShader->GetNULL(), Var);
+    m_encoder->Push();
+
+    m_encoder->Fence(false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true);
+    m_encoder->Push();
+}
+
+void EmitPass::emitBTD(
+    CVariable* GlobalBufferPtr,
+    CVariable* StackID,
+    CVariable* ShaderRecord,
+    bool releaseStackID)
+{
+
+    CVariable* payload = m_currShader->GetNewVariable(
+        2 * getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
+
+    // Global Pointer [63:6]
+    if (GlobalBufferPtr)
+    {
+        if (!GlobalBufferPtr->IsUniform())
+            GlobalBufferPtr = UniformCopy(GlobalBufferPtr);
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->Copy(
+            m_currShader->BitCast(payload, GlobalBufferPtr->GetType()),
+            GlobalBufferPtr);
+        m_encoder->Push();
+    }
+
+
+    StackID = BroadcastIfUniform(StackID);
+    // StackID[15:0]
+    m_encoder->SetDstSubVar(1);
+    m_encoder->Copy(m_currShader->BitCast(payload, ISA_TYPE_W), StackID);
+    m_encoder->Push();
+
+    // the lsb of the global pointer set to '1' indicates the stack ID
+    // should be released.
+    if (releaseStackID)
+    {
+        // StackID Release           [0]
+        CVariable* Alias = m_currShader->GetNewAlias(payload, ISA_TYPE_UD, 0, 1);
+        CVariable* Bit = m_currShader->ImmToVariable(0x1, ISA_TYPE_UD);
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->Copy(Alias, Bit);
+        m_encoder->Push();
+    }
+
+    uint messageSpecificControl = BindlessThreadDispatch(
+        2,
+        m_currShader->m_dispatchSize == SIMDMode::SIMD16 ? 1 : 0,
+        false,
+        false);
+    CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
+
+    unsigned int extDescriptor = EU_MESSAGE_TARGET_SFID_BTD;
+    CVariable* exDesc = m_currShader->ImmToVariable(extDescriptor, ISA_TYPE_UD);
+
+    if (ShaderRecord)
+    {
+        ShaderRecord = BroadcastIfUniform(ShaderRecord);
+    }
+    else
+    {
+        ShaderRecord = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UQ, EALIGN_GRF, CName::NONE);
+    }
+
+    // We emit a SW fence here to prevent motion of other sends across this
+    // send.btd until we have VISA support. An actual fence was previously
+    // inserted in the RayTracingShaderLowering pass.
+    m_encoder->Fence(false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true);
+    m_encoder->Push();
+
+    m_encoder->Sends(
+        nullptr,
+        payload,
+        ShaderRecord,
+        EU_MESSAGE_TARGET_SFID_BTD,
+        exDesc,
+        pMessDesc);
+    m_encoder->Push();
+
+    // Insert a software fence after the send.btd so no IO operations get
+    // scheduled across the send from below.  We should be able to remove this
+    // once we have VISA support for raytracing rather than emitting a
+    // raw_sends.
+    m_encoder->Fence(false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true);
+    m_encoder->Push();
+}
+
+void EmitPass::emitBindlessThreadDispatch(BTDIntrinsic* I)
+{
+    CVariable* globalBufferPtr = GetSymbol(I->getGlobalBufferPointer());
+    CVariable* stackID = GetSymbol(I->getStackID());
+    CVariable* shaderRecord = GetSymbol(I->getShaderRecordAddress());
+
+    emitBTD(globalBufferPtr, stackID, shaderRecord, false);
+}
+
+void EmitPass::emitStackIDRelease(StackIDReleaseIntrinsic* I)
+{
+    CVariable* stackID = GetSymbol(I->getStackID());
+
+    emitBTD(nullptr, stackID, nullptr, true);
+}
+
+void EmitPass::emitGetShaderRecordPtr(GetShaderRecordPtrIntrinsic* I)
+{
+    // Functions currently reside in the default address space (0) which, for
+    // DX, has 32-bit pointers.  LLVM 8 introduced the ability to set the
+    // address space for functions.  We may move to using that once we upgrade.
+    // For now, we go through this intrinsic to ensure that we have a 64-bit
+    // value going out so the to 32-bits are not truncated away.
+
+    IGC_ASSERT(nullptr != I);
+    auto* Fn = I->getContinuationFn();
+
+    IGC_ASSERT(nullptr != Fn);
+    auto* Var = GetSymbol(Fn);
+
+    IGC_ASSERT(nullptr != Var);
+    IGC_ASSERT(Var->GetType() == ISA_TYPE_UQ);
+    IGC_ASSERT(nullptr != m_destination);
+    IGC_ASSERT(m_destination->GetType() == ISA_TYPE_UQ);
+    IGC_ASSERT(nullptr != m_encoder);
+
+    m_encoder->Copy(m_destination, Var);
+    m_encoder->Push();
 }
 
 void EmitPass::emitSystemMemoryFence(llvm::GenIntrinsicInst* inst)

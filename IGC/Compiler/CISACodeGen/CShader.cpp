@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/HullShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/DomainShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+#include "Compiler/CISACodeGen/BindlessShaderCodeGen.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
@@ -3674,6 +3675,10 @@ bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
         ret = (m_simdProgram.getScratchSpaceUsageInSlot0() <= m_ctx->platform.maxPerThreadScratchSpace());
     }
 
+    if (ret && m_ctx->hasSyncRTCalls(entry))
+    {
+        ret = (m_Platform->getMaxRayQuerySIMDSize() >= simdMode);
+    }
 
     return ret;
 }
@@ -3684,6 +3689,10 @@ uint32_t CShader::GetShaderThreadUsageRate()
     if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
     {
         grfNum = IGC_GET_FLAG_VALUE(TotalGRFNum);
+    }
+    else if (GetContext()->hasSyncRTCalls() && IGC_GET_FLAG_VALUE(TotalGRFNum4RQ) != 0)
+    {
+        grfNum = IGC_GET_FLAG_VALUE(TotalGRFNum4RQ);
     }
     else if (GetContext()->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
     {
@@ -3772,6 +3781,9 @@ CShader* CShaderProgram::CreateNewShader(SIMDMode simd)
             break;
         case ShaderType::COMPUTE_SHADER:
             pShader = new CComputeShader(m_kernel, this);
+            break;
+        case ShaderType::RAYTRACING_SHADER:
+            pShader = new CBindlessShader(m_kernel, this);
             break;
         default:
             IGC_ASSERT_MESSAGE(0, "wrong shader type");
@@ -3869,3 +3881,22 @@ unsigned int CShader::GetScalarTypeSizeInRegister(const Type* Ty) const
     return GetScalarTypeSizeInRegisterInBits(Ty) / 8;
 }
 
+bool CShader::needsEntryFence() const
+{
+    if (IGC_IS_FLAG_ENABLED(DisableEntryFences))
+        return false;
+
+    // Only RayTracing related shaders require the UGM fences at the beginning
+    // of each shader for the A0 WA.
+    if (!m_Platform->WaEnableLSCBackupMode())
+        return false;
+
+    auto* Ctx = GetContext();
+    if (Ctx->type == ShaderType::RAYTRACING_SHADER) {
+       auto* ModuleMD = Ctx->getModuleMetaData();
+       auto FI = ModuleMD->FuncMD.find(entry);
+       IGC_ASSERT_MESSAGE(FI != ModuleMD->FuncMD.end(), "Missing shader info!");
+       return FI->second.functionType == IGC::CallableShader;
+    }
+    return false;
+}

@@ -158,6 +158,7 @@ struct SPatchThreadPayload :
     uint32_t OffsetToSkipPerThreadDataLoad;
     uint32_t OffsetToSkipSetFFIDGP;
     uint32_t PassInlineData;
+    uint32_t RTStackIDPresent;
     uint32_t generateLocalID;
     uint32_t emitLocalMask;
     uint32_t walkOrder;
@@ -165,7 +166,7 @@ struct SPatchThreadPayload :
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchThreadPayload) == (76 + sizeof(SPatchItemHeader)), "The size of SPatchThreadPayload is not what is expected");
+static_assert(sizeof(SPatchThreadPayload) == (80 + sizeof(SPatchItemHeader)), "The size of SPatchThreadPayload is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchExecutionEnvironment
@@ -197,7 +198,7 @@ struct SPatchExecutionEnvironment :
     uint32_t    WorkgroupWalkOrderDims; // dim0 : [0 : 1]; dim1 : [2 : 3]; dim2 : [4 : 5]
     uint32_t    HasGlobalAtomics;
     uint32_t    HasDPAS;
-    uint32_t    reserved1;
+    uint32_t    HasRTCalls; // Raytracing extensions used in kernel.
     uint32_t    NumThreadsRequired;
     uint32_t    StatelessWritesCount;
     uint32_t    IndirectStatelessCount;
@@ -448,6 +449,18 @@ struct SPatchAllocateSyncBuffer :
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
 static_assert( sizeof( SPatchAllocateSyncBuffer ) == ( 12 + sizeof( SPatchItemHeader ) ), "The size of SPatchAllocateSyncBuffer is not what is expected" );
+
+// Raytracing
+struct SPatchAllocateRTGlobalBuffer :
+    SPatchItemHeader
+{
+    uint32_t   SurfaceStateHeapOffset;
+    uint32_t   DataParamOffset;
+    uint32_t   DataParamSize;
+};
+
+// Update CURRENT_ICBE_VERSION when modifying the patch list
+static_assert( sizeof( SPatchAllocateRTGlobalBuffer ) == ( 12 + sizeof( SPatchItemHeader ) ), "The size of SPatchAllocateRTGlobalBuffer is not what is expected" );
 
 /*****************************************************************************\
 STRUCT: SPatchAllocateStatelessPrivateSurface

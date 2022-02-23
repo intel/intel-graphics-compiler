@@ -39,6 +39,14 @@ if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
     )
 endif()
 
+  set(IGC_BUILD__SRC__RAYTRACING
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/MemRegionAnalysis.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTArgs.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTBuilder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTLoggingManager.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTStackFormat.cpp"
+    )
+  list(APPEND IGC_BUILD__SRC__DriverInterface ${IGC_BUILD__SRC__RAYTRACING})
 
 if(IGC_BUILD__SPIRV_ENABLED)
   list(APPEND IGC_BUILD__SRC__DriverInterface
@@ -101,6 +109,22 @@ set(IGC_BUILD__HDR__DriverInterface
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/usc_gen9.h"
   )
 
+  set(IGC_BUILD__HDR__RAYTRACING
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/HitGroups.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/MemRegionAnalysis.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingConstantsEnums.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingRayDispatchGlobalData.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTArgs.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTBuilder.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTCompileOptions.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTLoggingManager.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTStackFormat.h"
+    )
+
+  set(IGC_BUILD__HDR__RAYTRACING_ADT
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/ADT/Array.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/ADT/Optional.h"
+    )
 
 list(APPEND IGC_BUILD__SRC__DriverInterface
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_features_and_workarounds_impl.cpp"
@@ -134,6 +158,19 @@ set(IGC_BUILD__HDR__IGC_DriverInterface__igc_dll
     ${IGC_BUILD__HDR__DriverInterface}
     ${IGC_BUILD__HDR_OGL__DriverInterface}
     PARENT_SCOPE
+  )
+  igc_sg_register(
+    IGC__RayTracing
+    "DriverInterface\\RayTracing"
+    FILES
+      ${IGC_BUILD__SRC__RAYTRACING}
+      ${IGC_BUILD__HDR__RAYTRACING}
+  )
+  igc_sg_register(
+    IGC__RayTracing__ADT
+    "DriverInterface\\RayTracing\\ADT"
+    FILES
+      ${IGC_BUILD__HDR__RAYTRACING_ADT}
   )
 
 igc_regex_escape(_reSrcDir "${CMAKE_CURRENT_SOURCE_DIR}")

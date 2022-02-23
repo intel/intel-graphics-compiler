@@ -818,6 +818,21 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
                     false)));
     }
 
+    if (annotations.m_rtGlobalBufferAnnotation != NULL)
+    {
+        unsigned int bti = annotations.m_argIndexMap.at(annotations.m_rtGlobalBufferAnnotation->ArgumentNumber);
+        context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
+
+        SurfaceStates.insert(
+            std::make_pair(
+                bti,
+                SurfaceState(
+                    SURFACE_BUFFER,
+                    SURFACE_FORMAT_RAW,
+                    0,
+                    false)));
+    }
+
     // Fill up the SSH with BTI offsets increasing.  The runtime currently
     // expects this format.
     for (const auto& kv : SurfaceStates)
@@ -1681,6 +1696,32 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         }
     }
 
+    // Patch for Raytracing Global Buffer
+    if (retValue.Success)
+    {
+        if (annotations.m_rtGlobalBufferAnnotation != nullptr)
+        {
+            const auto& rtGlobalBufAnn = annotations.m_rtGlobalBufferAnnotation;
+
+            iOpenCL::SPatchAllocateRTGlobalBuffer patch;
+            memset(&patch, 0, sizeof(patch));
+
+            unsigned int bti = annotations.m_argIndexMap.at(rtGlobalBufAnn->ArgumentNumber);
+
+            patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_RT_GLOBAL_BUFFER;
+            patch.Size = sizeof(patch);
+            patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+            patch.DataParamOffset = rtGlobalBufAnn->PayloadPosition;
+            patch.DataParamSize = rtGlobalBufAnn->DataSize;
+
+            dataParameterStreamSize = std::max(
+                dataParameterStreamSize,
+                rtGlobalBufAnn->PayloadPosition + rtGlobalBufAnn->DataSize);
+
+            retValue = AddPatchItem(patch, membuf);
+        }
+    }
+
     // Pointer inputs with initializer
     if( retValue.Success )
     {
@@ -1952,6 +1993,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.OffsetToSkipPerThreadDataLoad = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;
         patch.OffsetToSkipSetFFIDGP = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;
         patch.PassInlineData = annotations.m_threadPayload.PassInlineDataSize ? true : false;
+        patch.RTStackIDPresent = annotations.m_threadPayload.HasRTStackID;
         patch.generateLocalID = annotations.m_threadPayload.generateLocalID;
         patch.emitLocalMask   = annotations.m_threadPayload.emitLocalMask;
         patch.walkOrder       = annotations.m_threadPayload.walkOrder;
@@ -2030,6 +2072,9 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.HasGlobalAtomics = annotations.m_executionEnivronment.HasGlobalAtomics;
 
         patch.HasDPAS = annotations.m_executionEnivronment.HasDPAS;
+
+        patch.HasRTCalls = annotations.m_executionEnivronment.HasRTCalls;
+
         patch.NumThreadsRequired = annotations.m_executionEnivronment.numThreads;
         patch.StatelessWritesCount = annotations.m_executionEnivronment.StatelessWritesCount;
         patch.IndirectStatelessCount = annotations.m_executionEnivronment.IndirectStatelessCount;

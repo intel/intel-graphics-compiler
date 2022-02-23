@@ -47,6 +47,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "CodeGenPublicEnums.h"
 #include "AdaptorOCL/TranslationBlock.h"
+#include "AdaptorCommon/RayTracing/HitGroups.h"
+#include "AdaptorCommon/RayTracing/RTLoggingManager.h"
+#include "AdaptorCommon/RayTracing/RTCompileOptions.h"
 #include "common/MDFrameWork.h"
 #include "CompilerStats.h"
 #include <unordered_set>
@@ -701,6 +704,71 @@ namespace IGC
     };
 
 
+    struct SBindlessProgram : SKernelProgram
+    {
+        SProgramOutput simdProgram;
+        USC::GFXMEDIA_GPUWALKER_SIMD SimdWidth;
+        std::string name;
+        uint32_t ShaderStackSize = 0;
+        CallableShaderTypeMD ShaderType = NumberOfCallableShaderTypes;
+        bool isContinuation = false;
+        // if 'isContinuation' is true, this will contain the name of the
+        // original shader.
+        std::string ParentName;
+        // if 'isContinuation' is true, this may contain the slot num for the
+        // shader identifier it has been promoted to.
+        std::optional<uint32_t> SlotNum;
+        uint64_t ShaderHash = 0;
+
+        // raygen specific fields
+        // TODO: need to separate out bindless and raygen into two structs
+        // for both DX and Vulkan.
+
+        void*         ThreadPayloadData = nullptr;
+        unsigned int  TotalDataLength   = 0;
+        // dynamically select between the 1D and 2D layout at runtime based
+        // on the size of the dispatch.
+        uint32_t      DimX1D            = 0;
+        uint32_t      DimY1D            = 0;
+        uint32_t      DimX2D            = 0;
+        uint32_t      DimY2D            = 0;
+
+        // Shaders that satisfy `isPrimaryShaderIdentifier()` can also have
+        // a collection of other names that they go by.
+        std::vector<std::string> Aliases;
+
+        // We maintain this information to provide to GTPin. These are all
+        // offsets in bytes from the base of GRF.
+        uint32_t GlobalPtrOffset = 0; // pointer to RTGlobals
+        uint32_t LocalPtrOffset  = 0; // pointer to local root sig (except for raygen!)
+        uint32_t StackIDsOffset  = 0; // stack ID vector base
+    };
+
+    struct SRayTracingShadersGroup
+    {
+        // This is the default shader that is executed when the RTUnit
+        // encounters a null shader. It is optional because there is
+        // no need to compile it for collection state objects.
+        llvm::Optional<SBindlessProgram> callStackHandler;
+        // These are the raygen shaders
+        llvm::SmallVector<SBindlessProgram, 4> m_DispatchPrograms;
+        // Non raygen shaders
+        llvm::SmallVector<SBindlessProgram, 8> m_CallableShaders;
+        // Continuation shaders
+        llvm::SmallVector<SBindlessProgram, 8> m_Continuations;
+    };
+
+    struct SRayTracingPipelineConfig
+    {
+        unsigned int maxTraceRecursionDepth = 0;
+        unsigned int pipelineFlags = 0;
+    };
+
+    struct SRayTracingShaderConfig
+    {
+        unsigned MaxPayloadSizeInBytes = 0;
+        unsigned MaxAttributeSizeInBytes = 0;
+    };
 
     struct SOpenCLKernelInfo
     {
@@ -728,6 +796,7 @@ namespace IGC
 
         std::unique_ptr<iOpenCL::PrintfBufferAnnotation>    m_printfBufferAnnotation = nullptr;
         std::unique_ptr<iOpenCL::SyncBufferAnnotation>      m_syncBufferAnnotation = nullptr;
+        std::unique_ptr<iOpenCL::RTGlobalBufferAnnotation>  m_rtGlobalBufferAnnotation = nullptr;
         std::unique_ptr<iOpenCL::StartGASAnnotation>        m_startGAS = nullptr;
         std::unique_ptr<iOpenCL::WindowSizeGASAnnotation>   m_WindowSizeGAS = nullptr;
         std::unique_ptr<iOpenCL::PrivateMemSizeAnnotation>  m_PrivateMemSize = nullptr;
@@ -1216,6 +1285,24 @@ namespace IGC
             uint32_t &CurVal = getModuleMetaData()->CurUniqueIndirectIdx;
             CurVal = std::max(CurVal, NewVal);
         }
+
+        // Use this when you want to know about a particular function's
+        // rayquery usage.
+        bool hasSyncRTCalls(llvm::Function *F) const
+        {
+            auto* MMD = getModuleMetaData();
+            auto funcMDItr = MMD->FuncMD.find(F);
+            bool hasRQCall =
+                (funcMDItr != MMD->FuncMD.end() && funcMDItr->second.hasSyncRTCalls);
+
+            return hasRQCall;
+        }
+
+        // Use this to determine if any shaders in the module use rayquery.
+        bool hasSyncRTCalls() const
+        {
+            return (getModuleMetaData()->rtInfo.RayQueryAllocSizeInBytes != 0);
+        }
     };
 
     class VertexShaderContext : public CodeGenContext
@@ -1401,6 +1488,144 @@ namespace IGC
     };
 
 
+    class RayDispatchShaderContext : public CodeGenContext
+    {
+    private:
+        template <typename T>
+        using Identity = T;
+
+        using RTCompileOptionsKnown = RTCompileOptionsT<Identity>;
+
+        template <typename T>
+        T getOptVal(
+            const Interface::Optional<T> &InputVal, T RegkeyVal, T DefaultVal)
+        {
+            if (RegkeyVal != DefaultVal)
+                return RegkeyVal;
+            else
+                return InputVal ? *InputVal : RegkeyVal;
+        }
+    public:
+        void setOptions(const IGC::RTCompileOptions& Opts)
+        {
+#define GET(Name, RegkeyName) \
+    getOptVal(Opts.Name, IGC_GET_FLAG_VALUE(RegkeyName), IGC_GET_FLAG_DEFAULT_VALUE(RegkeyName))
+            CompOptions.TileXDim1D = GET(TileXDim1D, RayTracingCustomTileXDim1D);
+            CompOptions.TileYDim1D = GET(TileYDim1D, RayTracingCustomTileYDim1D);
+            CompOptions.TileXDim2D = GET(TileXDim2D, RayTracingCustomTileXDim2D);
+            CompOptions.TileYDim2D = GET(TileYDim2D, RayTracingCustomTileYDim2D);
+            CompOptions.RematThreshold = GET(RematThreshold, RematThreshold);
+#undef GET
+        }
+
+        const RTCompileOptionsKnown& opts() const { return CompOptions; }
+
+        SRayTracingShadersGroup programOutput;
+        SRayTracingPipelineConfig pipelineConfig;
+        SRayTracingShaderConfig shaderConfig;
+        // This hash can be mixed with the names of shaders to derive a per
+        // shader hash.
+        uint64_t BitcodeHash = 0;
+        RayDispatchShaderContext(
+            const CBTILayout& btiLayout,
+            const CPlatform& platform,
+            const CDriverInfo& driverInfo,
+            const bool createResourceDimTypes = true,
+            LLVMContextWrapper* llvmCtxWrapper = nullptr)
+            : CodeGenContext(ShaderType::RAYTRACING_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
+              LogMgr(driverInfo)
+        {
+            setOptions({});
+        }
+
+        void setShaderHash(llvm::Function* F) const;
+        // Returns the hash for the given shader.
+        uint64_t getShaderHash(const CShader *Prog) const;
+
+        void takeHitGroupTable(std::vector<HitGroupInfo>&& Table);
+        const std::vector<HitGroupInfo>& hitgroups() const;
+        const std::vector<HitGroupInfo*>* hitgroupRefs(const std::string &Name) const;
+        llvm::Optional<RTStackFormat::HIT_GROUP_TYPE>
+            getHitGroupType(const std::string &Name) const;
+        llvm::Optional<std::string> getIntersectionAnyHit(
+            const std::string &IntersectionName) const;
+
+        // Return the SIMD size that we known we will compile for upfront.
+        // This is optional in the event that we want to do late determination
+        // in the future. Right now, we always know that we will, e.g., compile
+        // for SIMD8 in DG2.
+        llvm::Optional<SIMDMode> knownSIMDSize() const override;
+
+        // Returns true if the tile dimensions can be computed rather than
+        // loaded from per thread constant data.
+        bool canEfficientTile() const;
+
+        // We can't inline continuations and switch on them because there are
+        // continuations that haven't been compiled yet that we could jump to
+        // in the case of a collection state object.
+        //
+        // Note: We may relax this by some pointer tagging mechanism that
+        // allows a hybrid approach of indirect and inlined continuations.
+        bool requiresIndirectContinuationHandling() const;
+
+        // Have indirect continuations been requested?
+        bool forcedIndirectContinuations() const;
+
+        // If this is true, you can assume that you can look inter-procedurally
+        // across shaders and functions knowing that you see everything that is
+        // possibly reachable in execution.
+        bool canWholeProgramCompile() const;
+
+        // Can we see all the shaders upfront?
+        bool canWholeShaderCompile() const;
+
+        // Can we see all the functions upfront?
+        bool canWholeFunctionCompile() const;
+
+        // If this is true, attempt to sink payload writes into inlined
+        // continuations for better IO coalescing.
+        bool tryPayloadSinking() const;
+
+        // Returns true if an RTPSO (i.e., not a collection state object).
+        bool isRTPSO() const;
+
+        enum class CompileConfig
+        {
+            // An RTPSO that could have shaders added to it later on
+            // (via AddToStateObject() in DXR).
+            MUTABLE_RTPSO,
+            // An RTPSO that can't be added to after it is created.
+            IMMUTABLE_RTPSO,
+            // A collection. Collection state objects limit some optimizations
+            // because we can't see all the shaders upfront.
+            CSO,
+        } config = CompileConfig::IMMUTABLE_RTPSO;
+
+        // This lets the compiler know that it must compile with code to handle
+        // indirect continuations.  This is true if any imported collections
+        // have compiled anything beforehand.
+        bool hasPrecompiledObjects = false;
+
+        // Vulkan only. Needed to support pipeline libraries.
+        // This instructs compiler to use indirect continuations. Aside from
+        // just meaning that continuations should be invoked via BTD, this
+        // implies that shaders were compiled separately (ala DXR collection
+        // state objects).
+        bool forceIndirectContinuations = false;
+
+        // see PayloadSinkingPass.cpp
+        bool hasUnsupportedPayloadSinkingCaseWAenabled = false;
+        bool hasUnsupportedPayloadSinkingCase = false;
+    public:
+        mutable RTLoggingManager LogMgr;
+    private:
+        std::vector<HitGroupInfo> HitGroups;
+        // Maps a given shader name to the collection of hitgroups it is
+        // referenced in.
+        std::unordered_map<std::string, std::vector<HitGroupInfo*>> HitGroupRefs;
+
+        RTCompileOptionsKnown CompOptions{};
+    };
 
     class OpenCLProgramContext : public CodeGenContext
     {
@@ -1621,6 +1846,7 @@ namespace IGC
     void CodeGen(GeometryShaderContext* ctx);
     void CodeGen(OpenCLProgramContext* ctx);
     void CodeGen(MeshShaderContext* ctx);
+    void CodeGen(RayDispatchShaderContext* ctx);
 
     void OptimizeIR(CodeGenContext* ctx);
 
