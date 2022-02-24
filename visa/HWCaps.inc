@@ -269,7 +269,7 @@ SPDX-License-Identifier: MIT
 
     bool hasPartialMixMode() const
     {
-        return getPlatformGeneration() == PlatformGen::XE;
+        return getPlatformGeneration() >= PlatformGen::XE;
     }
 
     // whether EOT sources need to be assigned r112-r127
@@ -349,7 +349,7 @@ SPDX-License-Identifier: MIT
 
     bool supportSrcModforMul() const
     {
-        return getPlatformGeneration() != PlatformGen::XE;
+        return getPlatformGeneration() < PlatformGen::XE;
     }
 
     bool doMultiAccSub() const
@@ -364,7 +364,7 @@ SPDX-License-Identifier: MIT
 
     bool accDstforIndirectSrc() const
     {
-        return getPlatformGeneration() != PlatformGen::XE;
+        return getPlatformGeneration() < PlatformGen::XE;
     }
 
     bool restrictedACCRestrictions() const
