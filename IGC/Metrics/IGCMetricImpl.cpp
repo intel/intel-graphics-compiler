@@ -1075,7 +1075,7 @@ namespace IGCMetrics
 
     IGC_METRICS::Function* IGCMetricImpl::GetFuncMetric(llvm::Loop* pLoop)
     {
-        auto func_m = GetFuncMetric(&pLoop->getStartLoc());
+        auto func_m = GetFuncMetric(pLoop->getStartLoc());
         if (func_m != nullptr)
         {
             return func_m;
