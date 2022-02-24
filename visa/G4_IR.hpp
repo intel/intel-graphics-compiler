@@ -3642,7 +3642,7 @@ public:
 
 class G4_AddrExp final : public G4_Operand
 {
-    G4_RegVar* const m_addressedReg;
+    G4_RegVar* m_addressedReg;
     int m_offset;  //current implementation: byte offset
     G4_Declare* addrTakenSpillFillDcl; // dcl to use for address taken spill/fill temp
 
@@ -3655,6 +3655,7 @@ public:
 
     const G4_RegVar* getRegVar() const { return m_addressedReg; }
           G4_RegVar* getRegVar() { return m_addressedReg; }
+    void setRegVar(G4_RegVar* var) { m_addressedReg = var; }
     int getOffset() const { return m_offset; }
     void setOffset(int tOffset) { m_offset = tOffset; }
     G4_Declare* getAddrTakenSpillFill() { return addrTakenSpillFillDcl; }

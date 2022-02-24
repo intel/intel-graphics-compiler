@@ -31,6 +31,39 @@ DeclarePool::~DeclarePool()
     dcllist.clear();
 }
 
+G4_Declare* DeclarePool::cloneDeclare(G4_Kernel& kernel, std::map<G4_Declare*, G4_Declare*>& dclMap, const char* newDclName, G4_Declare* dcl)
+{
+    if (dclMap.find(dcl) != dclMap.end())
+    {
+        return dclMap[dcl];
+    }
+    G4_Declare* topDcl = dcl->getAliasDeclare();
+    G4_Declare* cloneTopDcl;
+    G4_Declare* cloneDcl = new (mem) G4_Declare(
+            irb,
+            newDclName,
+            dcl->getRegFile(),
+            dcl->getTotalElems(),
+            dcl->getElemType(),
+            dcllist);
+    cloneDcl->setName(newDclName);
+    G4_RegVar* regVar = new (mem) G4_RegVar(cloneDcl, G4_RegVar::RegVarType::Default);
+    cloneDcl->setRegVar(regVar);
+    cloneDcl->setSubRegAlign(dcl->getSubRegAlign());
+    if (topDcl)
+    {
+        assert(dcl != topDcl);
+        cloneTopDcl =
+            (dclMap.find(topDcl) == dclMap.end()) ?
+            cloneDeclare(kernel, dclMap, dcl->getName(), topDcl) :
+            dclMap[topDcl];
+        cloneDcl->setAliasDeclare(cloneTopDcl, dcl->getAliasOffset());
+    }
+    kernel.Declares.push_back(cloneDcl);
+    dclMap[dcl] = cloneDcl;
+    return cloneDcl;
+}
+
 G4_Declare* DeclarePool::createDeclare(
     const char*    name,
     G4_RegFileKind regFile,
@@ -825,6 +858,13 @@ IR_Builder::~IR_Builder()
     {
         fcPatchInfo->~FCPatchingInfo();
     }
+}
+
+G4_Declare* IR_Builder::cloneDeclare(std::map<G4_Declare*, G4_Declare*>& dclMap, G4_Declare* dcl)
+{
+    static int uid = 0;
+    const char* newDclName = getNameString(mem, 16, "copy_%d_%s", uid++, dcl->getName());
+    return dclpool.cloneDeclare(kernel, dclMap, newDclName, dcl);
 }
 
 G4_Declare* IR_Builder::createDeclareNoLookup(

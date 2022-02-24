@@ -1055,57 +1055,66 @@ void CISA_IR_Builder::LinkTimeOptimization(
             std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
             G4_Label *raLabel = builder->createLabel(funcName + "_ret" + std::to_string(raUID++), LABEL_BLOCK);
             G4_INST* ra = caller->fg.createNewLabelInst(raLabel);
-            // Append declarations from callee to caller
-            auto callerDclCount = caller->Declares.size();
-            for (auto curDcl : callee->Declares)
-            {
-                if (curDcl->isBuiltin())
-                {
-                    continue;
-                }
-                if (!curDcl->isPreDefinedVar())
-                {
-                    // we only need to separate ID for local vars
-                    curDcl->setDeclId(curDcl->getDeclId() + callerDclCount);
-                }
-                auto alias = curDcl->getAliasDeclare();
-                if (alias == callee->fg.builder->getStackCallArg())
-                {
-                    curDcl->setAliasDeclare(caller->fg.builder->getStackCallArg(), curDcl->getAliasOffset());
-                }
-                else if (alias == callee->fg.builder->getStackCallRet())
-                {
-                    curDcl->setAliasDeclare(caller->fg.builder->getStackCallRet(), curDcl->getAliasOffset());
-                }
-                if (!curDcl->isPreDefinedVar())
-                {
-                    caller->Declares.push_back(curDcl);
-                }
-            }
             // We don't need calleeLabel (first instruction) anymore after inlining
             calleeInsts.pop_front();
+            std::map<G4_Declare*, G4_Declare*> newDclMap;
             for (G4_INST* fret : calleeInsts)
             {
                 G4_INST* inst = fret->cloneInst();
-                auto replaceTopDcl = [&](G4_INST* inst, G4_Declare* fromTopDcl, G4_Declare* toTopDcl)
+                auto cloneDcl = [&](G4_Operand* opd)
                 {
-                    G4_Operand *opd;
-                    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                    if (opd)
                     {
-                        opd = inst->getSrc(i);
-                        if (opd && opd->getTopDcl() == fromTopDcl)
+                        G4_Declare* topDcl = opd->getTopDcl();
+                        G4_RegVar* var =
+                            opd->isAddrExp() ?
+                            opd->asAddrExp()->getRegVar() :
+                            opd->getBase() && opd->getBase()->isRegVar()?
+                                opd->getBase()->asRegVar() :
+                                nullptr;
+                        if (!var)
+                            return;
+                        G4_Declare* dcl = var->getDeclare();
+                        if (topDcl && topDcl == callee->fg.builder->getStackCallArg())
                         {
-                            opd->setTopDcl(toTopDcl);
+                            G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
+                            opd->setTopDcl(caller->fg.builder->getStackCallArg());
+                            opd->setBase(newDcl->getRegVar());
+                            newDcl->setAliasDeclare(caller->fg.builder->getStackCallArg(), newDcl->getAliasOffset());
+                        }
+                        else if (topDcl && topDcl == callee->fg.builder->getStackCallRet())
+                        {
+                            G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
+                            opd->setTopDcl(caller->fg.builder->getStackCallRet());
+                            opd->setBase(newDcl->getRegVar());
+                            newDcl->setAliasDeclare(caller->fg.builder->getStackCallRet(), newDcl->getAliasOffset());
+                        }
+                        else
+                        {
+                            G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
+                            if (opd->isAddrExp())
+                            {
+                                assert(topDcl == nullptr);
+                                opd->asAddrExp()->setRegVar(newDcl->getRegVar());
+                            }
+                            else
+                            {
+                                opd->setTopDcl(newDcl->getAliasDeclare() ? newDcl->getAliasDeclare() : newDcl);
+                                opd->setBase(newDcl->getRegVar());
+                            }
                         }
                     }
-                    opd = inst->getDst();
-                    if (opd && opd->getTopDcl() == fromTopDcl)
-                    {
-                        opd->setTopDcl(toTopDcl);
-                    }
                 };
-                replaceTopDcl(inst, callee->fg.builder->getStackCallArg(), caller->fg.builder->getStackCallArg());
-                replaceTopDcl(inst, callee->fg.builder->getStackCallRet(), caller->fg.builder->getStackCallRet());
+                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                {
+                    cloneDcl(inst->getSrc(i));
+                }
+                cloneDcl(inst->getDst());
+                // add predicate into declaration list
+                if (G4_VarBase* flag = inst->getCondModBase())
+                {
+                    caller->Declares.push_back(flag->asRegVar()->getDeclare());
+                }
                 callerInsts.insert(it, inst);
                 if (inst->opcode() != G4_pseudo_fret)
                     continue;

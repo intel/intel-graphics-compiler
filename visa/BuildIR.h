@@ -234,6 +234,8 @@ public:
     DeclarePool(Mem_Manager& m, const IR_Builder& builder) : mem(m), irb(builder), addrSpillLocCount(0) { dcllist.reserve(2048); }
     ~DeclarePool();
 
+    G4_Declare* cloneDeclare(G4_Kernel& kernel, std::map<G4_Declare*, G4_Declare*>& dclMap, const char* newDclName, G4_Declare* dcl);
+
     G4_Declare* createDeclare(
         const char*    name,
         G4_RegFileKind regFile,
@@ -657,6 +659,8 @@ public:
     unsigned numEltPerGRF(G4_Type t) const {return kernel.numEltPerGRF(t);}
     FINALIZER_INFO* getJitInfo() {return metaData;}
     CompilerStats &getcompilerStats() {return compilerStats;}
+
+    G4_Declare* cloneDeclare(std::map<G4_Declare*, G4_Declare*>& dclMap, G4_Declare* dcl);
 
     G4_Declare* createDeclareNoLookup(
         const char*    name,
