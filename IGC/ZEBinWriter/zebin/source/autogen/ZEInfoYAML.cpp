@@ -23,7 +23,6 @@ void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
 {
     io.mapRequired("version", info.version);
     io.mapRequired("kernels", info.kernels);
-    io.mapOptional("functions", info.functions, FunctionsTy());
     io.mapOptional("global_host_access_table", info.global_host_access_table, HostAccessesTy());
 }
 void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
@@ -36,11 +35,6 @@ void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
     io.mapOptional("per_thread_memory_buffers", info.per_thread_memory_buffers, PerThreadMemoryBuffersTy());
     io.mapOptional("experimental_properties", info.experimental_properties, zeInfoExperimentalProperties());
     io.mapOptional("debug_env", info.debug_env, zeInfoDebugEnv());
-}
-void MappingTraits<zeInfoFunction>::mapping(IO& io, zeInfoFunction& info)
-{
-    io.mapRequired("name", info.name);
-    io.mapRequired("execution_env", info.execution_env);
 }
 void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info)
 {

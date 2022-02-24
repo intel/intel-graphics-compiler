@@ -942,15 +942,6 @@ zeInfoKernel& ZEInfoBuilder::createKernel(const std::string& name)
     return k;
 }
 
-// createFunction - create a zeInfoFunction and add it into zeInfoContainer
-zeInfoFunction& ZEInfoBuilder::createFunction(const std::string& name)
-{
-    mContainer.functions.emplace_back();
-    zeInfoFunction& f = mContainer.functions.back();
-    f.name = name;
-    return f;
-}
-
 bool ZEInfoBuilder::empty() const
 {
     return mContainer.kernels.empty();

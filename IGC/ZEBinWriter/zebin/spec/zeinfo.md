@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.13
+Version 1.12
 
 ## Grammar
 
@@ -35,7 +35,6 @@ All **literals** have one of the following types:
 | ----- | ----- | ----- | ----- |
 | version | str | Required | ZE Info version number. See Version above. |
 | kernels | KernelsTy | Required | vector |
-| functions | FunctionsTy | Optional | vector |
 | global_host_access_table | HostAccessesTy | Optional | vector |
 <!--- Container --->
 
@@ -67,20 +66,15 @@ functions:
     attribute_seq
 ~~~
 
-| Attribute | Type | Required/Optional | Description |
-| ----- | ----- | ------ | ----- |
-| name | str | Required | |
-| execution_env | ExecutionEnv | Required | |
-<!--- Function Functions --->
-
 Function attribute represents a non-kernel function's information. A ze_info
 section may contains more than one function's attributes, each is
 represented in a function attribute. The name attribute in function represent the
-function name.
+kernel's name.
 
-Function attributes may only present when the function can be externally called.
+Function attributes may only present when the function can be externally or
+indirectly called.
 
-The attributes that are supported in function are: **name** and **Execution Environment**.
+The attributes that are supported in function are: **name** and **Memory Buffer**.
 
 ## Execution Environment
 
@@ -299,7 +293,6 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
-- **Version 1.13**: Add functions with the name and execution env.
 - **Version 1.12**: Add global_host_access_table to container.
 - **Version 1.11**: Add require_disable_eufusion attribute.
 - **Version 1.10**: Add thread_scheduling_mode to execution_env.

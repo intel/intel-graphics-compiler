@@ -30,7 +30,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #endif
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKernel)
-LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoFunction)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPayloadArgument)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPerThreadPayloadArgument)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoBindingTableIndex)
@@ -45,10 +44,6 @@ namespace llvm {
         template<>
         struct MappingTraits<zebin::zeInfoKernel> {
             static void mapping(IO& io, zebin::zeInfoKernel& info);
-        };
-        template<>
-        struct MappingTraits<zebin::zeInfoFunction> {
-            static void mapping(IO& io, zebin::zeInfoFunction& info);
         };
         template<>
         struct MappingTraits<zebin::zeInfoExecutionEnv> {
