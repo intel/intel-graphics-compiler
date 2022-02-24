@@ -20580,13 +20580,15 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
 
 void EmitPass::emitStoreImplBufferPtr(llvm::GenIntrinsicInst* I)
 {
-    if (m_currShader->HasStackCalls())
+    if (m_currShader->HasStackCalls() &&
+        !m_encoder->IsSecondHalf())
         m_currShader->CopyVariable(m_currShader->GetImplArgBufPtr(), GetSymbol(I->getArgOperand(0)));
 }
 
 void EmitPass::emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
 {
-    if(m_currShader->HasStackCalls())
+    if(m_currShader->HasStackCalls() &&
+        !m_encoder->IsSecondHalf())
         m_currShader->CopyVariable(m_currShader->GetLocalIdBufPtr(), GetSymbol(I->getArgOperand(0)));
 }
 

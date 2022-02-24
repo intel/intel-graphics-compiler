@@ -108,7 +108,6 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
             if (m_hasStackCalls)
             {
                 implicitArgs.push_back(ImplicitArg::ArgType::IMPLICIT_ARG_BUFFER_PTR);
-                implicitArgs.push_back(ImplicitArg::ArgType::IMPLICIT_ARG_LOCALID);
             }
         }
     }

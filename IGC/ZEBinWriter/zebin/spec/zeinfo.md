@@ -162,7 +162,6 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | buffer_offset | | The extra offset for buffer reference to satisfy the alignment requirement of stateful memory access. |
 | printf_buffer | | The address of printf_buffer which holds the printf strings information. |
 | implicit_arg_buffer | int64 | The base address of implicit arg buffer |
-| implicit_local_id_buffer | int64x25 | Local Id buffer passed in to kernel |
 | arg_byvalue | | Explicit kernel argument |
 | arg_bypointer | | Explicit kernel argument |
 <!--- <argument_type> ArgType -->

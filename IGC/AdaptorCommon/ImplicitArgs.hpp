@@ -124,9 +124,6 @@ namespace IGC
             // Pointer to implicit arguments prepared by runtime
             IMPLICIT_ARG_BUFFER_PTR,
 
-            // Inlined local id buffer prepared by runtime
-            IMPLICIT_ARG_LOCALID,
-
             NUM_IMPLICIT_ARGS
         };
 
