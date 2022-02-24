@@ -335,33 +335,6 @@ public:
         addIndirectUseToBB(bbid, pt);
     }
 
-    void patchPointsToSet(const G4_RegVar* addr, G4_AddrExp* opnd, unsigned char offset)
-    {
-        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
-            "expect address variable");
-        unsigned int id = getIndexOfRegVar(addr);
-        int addrPTIndex = addrPointsToSetIndex[id];
-        REGVAR_VECTOR& vec = pointsToSets[addrPTIndex];
-        pointInfo pi = { opnd->getRegVar(), offset };
-
-        auto it = std::find_if(vec.begin(), vec.end(),
-            [&pi](const pointInfo& element) {return element.var == pi.var && element.off == pi.off; });
-        if (it == vec.end())
-        {
-            vec.push_back(pi);
-            DEBUG_VERBOSE("Addr " << addr->getId() << " <-- " << var->getDeclare()->getName() << "\n");
-        }
-
-        addrExpInfo pi1 = { opnd, offset };
-        ADDREXP_VECTOR& vec1 = addrExpSets[addrPTIndex];
-        auto it1 = std::find_if(vec1.begin(), vec1.end(),
-            [&pi1](addrExpInfo& element) {return element.exp == pi1.exp && element.off == pi1.off; });
-        if (it1 == vec1.end())
-        {
-            vec1.push_back(pi1);
-        }
-    }
-
     void removeFromPointsTo(G4_RegVar* addr, G4_RegVar* vartoremove)
     {
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS || addr->getDeclare()->getRegFile() == G4_SCALAR,

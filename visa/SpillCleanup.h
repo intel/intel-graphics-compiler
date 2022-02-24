@@ -83,6 +83,7 @@ namespace vISA
         void populateSendDstDcl();
         void spillFillCleanup();
         void removeRedundantWrites();
+        void computeAddressTakenDcls();
 
     public:
         CoalesceSpillFills(G4_Kernel& k, LivenessAnalysis& l, GraphColor& g,
@@ -97,6 +98,8 @@ namespace vISA
             fillWindowSizeThreshold = scale(cFillWindowThreshold128GRF);
             spillWindowSizeThreshold = scale(cSpillWindowThreshold128GRF);
             highRegPressureForCleanup = scale(cHighRegPressureForCleanup);
+
+            computeAddressTakenDcls();
         }
 
         void run();
