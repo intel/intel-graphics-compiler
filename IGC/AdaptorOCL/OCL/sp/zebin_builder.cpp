@@ -85,6 +85,7 @@ void ZEBinaryBuilder::createKernel(
     addPayloadArgsAndBTI(annotations, zeKernel);
     addMemoryBuffer(annotations, zeKernel);
     addGTPinInfo(annotations);
+    addFunctionAttrs(annotations);
     if (!visaasm.empty())
         addKernelVISAAsm(annotations.m_kernelName, visaasm);
     if (isProgramDebuggable)
@@ -120,6 +121,29 @@ void ZEBinaryBuilder::addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations)
         size = funcGTPin.bufferSize;
         if (buffer != nullptr && size)
             mBuilder.addSectionGTPinInfo(funcGTPin.name, buffer, size);
+    }
+}
+
+void ZEBinaryBuilder::addFunctionAttrs(const IGC::SOpenCLKernelInfo& annotations)
+{
+    // get function attribute list from the current process SKernelProgram
+    auto funcAttrs = [](int simdSize, const IGC::SKernelProgram& program) {
+        if (simdSize == 8)
+            return program.simd8.m_funcAttrs;
+        else if (simdSize == 16)
+            return program.simd16.m_funcAttrs;
+        else if (simdSize == 32)
+            return program.simd32.m_funcAttrs;
+        else
+            return program.simd1.m_funcAttrs;
+    } (annotations.m_executionEnivronment.CompiledSIMDSize,
+       annotations.m_kernelProgram);
+
+    for (auto& funcAttr : funcAttrs) {
+        if (!funcAttr.f_isKernel && funcAttr.f_isExternal) {
+            zeInfoFunction& zeFunction = mZEInfoBuilder.createFunction(funcAttr.f_name);
+            addFunctionExecEnv(annotations, funcAttr, zeFunction);
+        }
     }
 }
 
@@ -491,6 +515,18 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnivronment.WorkgroupWalkOrder[1]);
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnivronment.WorkgroupWalkOrder[2]);
     }
+}
+
+void ZEBinaryBuilder::addFunctionExecEnv(const SOpenCLKernelInfo& annotations,
+    const vISA::ZEFuncAttribEntry& zeFuncAttr,
+    zeInfoFunction& zeFunction)
+{
+    // TODO: Currently we only set barrier count and other required information
+    // such as GRF count and SIMD size in per-function execution environment.
+    zeInfoExecutionEnv& env = zeFunction.execution_env;
+    env.grf_count = annotations.m_executionEnivronment.NumGRFRequired;
+    env.simd_size = annotations.m_executionEnivronment.CompiledSIMDSize;
+    env.barrier_count = zeFuncAttr.f_BarrierCount;
 }
 
 void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,
