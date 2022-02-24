@@ -1018,7 +1018,9 @@ bool useScratchSpaceForOCL() const
     // Disable using scratch surface for private memory on XeHP_SDV
     // because it does not support byte-aligned (byte-scattered) messages.
     if (hasScratchSurface()) {
-        return LSCEnabled() && IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemoryForDG2Plus);
+        return LSCEnabled() &&
+               IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemoryForDG2Plus) &&
+               m_platformInfo.eProductFamily == IGFX_PVC;
     }
     else {
         return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);

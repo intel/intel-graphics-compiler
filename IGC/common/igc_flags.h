@@ -411,7 +411,7 @@ DECLARE_IGC_REGKEY(bool, Enable16BitLDMCS,              true, "Enable 16-bit ld_
 DECLARE_IGC_REGKEY(bool, EnableDualSIMD8,               true, "enable dual SIMD8 on supported platforms", true)
 DECLARE_IGC_REGKEY(bool, EnableSampleDEmulation,        true, "Enable emulation of sample_d.", true)
 DECLARE_IGC_REGKEY(bool, EnableSampleDEmulationForTesting, false, "Enable emulation of sample_d on pre-XeHP platforms.", true)
-DECLARE_IGC_REGKEY(bool, EnableOCLScratchPrivateMemoryForDG2Plus, false,  "Enable the use of scratch space for private memory in XeHP and above [OCL only]", true)
+DECLARE_IGC_REGKEY(bool, EnableOCLScratchPrivateMemoryForDG2Plus, true,  "Enable the use of scratch space for private memory in XeHP and above [OCL only]", true)
 DECLARE_IGC_REGKEY(bool, RemoveLegacyOCLStatelessPrivateMemoryCases, false,  "Remove cases where OCL uses stateless private memory. XeHP and above only! [OCL only]", true)
 DECLARE_IGC_REGKEY(DWORD, SkipPsSimdWithDualSimd,       1,     "Setting it to values def in igc.h will force SIMD mode to skip if the dual-SIMD8 kernel exists", true)
 DECLARE_IGC_REGKEY(bool, EnablePostCullPatchFIFOLP,     true,  "Enable Post-Cull Patch Decoupling FIFO. GEN12LP.", true)
