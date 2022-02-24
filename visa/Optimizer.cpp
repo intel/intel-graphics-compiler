@@ -4609,7 +4609,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
         return false;
     }
 
-    auto isSafeToSink = [](INST_LIST_ITER defIter,
+    auto isSafeToSink = [this](INST_LIST_ITER defIter,
         INST_LIST_ITER beforeIter, int maxDist)
     {
         G4_INST *inst = *defIter;
@@ -4623,6 +4623,19 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
                 return false;
             if (!checkLifetime(inst, *it))
                 return false;
+            if (inst->isAccSrcInst() &&
+                builder.hasMacl() &&
+                (*it)->opcode() == G4_mul &&
+                IS_DTYPE((*it)->getSrc(0)->getType()) &&
+                IS_DTYPE((*it)->getSrc(1)->getType()))
+            {
+                // Do not sink instructions with explicit ACC src over mul
+                // instructions as mul can be changed to:
+                //   mul (8) acc0.0<1>:d src0:d src1:w
+                //   mach (8) dst:d src0:d src1:d
+                // see HWConformity::generateMacl()
+                return false;
+            }
         }
         return true;
     };
