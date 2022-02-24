@@ -161,9 +161,9 @@ struct Mask {
         : LeftB(LB), RightB(RB), nonContiguousStride(NCS), specialAcc(Acc) {
     }
 
-    bool killsBucket(unsigned int bucket) const {
-        unsigned short bucketLB = bucket * numEltPerGRF<Type_UB>();
-        unsigned short bucketRB = (bucket + 1) * numEltPerGRF<Type_UB>() - 1;
+    bool killsBucket(unsigned int bucket, const IR_Builder& irb) const {
+        unsigned short bucketLB = bucket * irb.numEltPerGRF<Type_UB>();
+        unsigned short bucketRB = (bucket + 1) * irb.numEltPerGRF<Type_UB>() - 1;
         return !nonContiguousStride && !withSpecialAcc() &&
                LeftB <= bucketLB && RightB >= bucketRB;
     }

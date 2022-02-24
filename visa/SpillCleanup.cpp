@@ -30,7 +30,7 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(G4_SrcRegRegion* hea
     unsigned int option = useNoMask ? InstOpt_WriteEnable : 0;
     auto spillInst = kernel.fg.builder->createSpill(
         kernel.fg.builder->createNullDst(Type_UW), header, spillSrcPayload, g4::SIMD16, payloadSize,
-        GlobalRA::GRFToHwordSize(scratchOffset), fp, static_cast<G4_InstOption>(option), false);
+        GlobalRA::GRFToHwordSize(scratchOffset, *kernel.fg.builder), fp, static_cast<G4_InstOption>(option), false);
 
     if (!useNoMask)
     {
@@ -49,7 +49,7 @@ G4_INST* CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion* header, unsi
     const char* dclName = kernel.fg.builder->getNameString(kernel.fg.mem, 32,
         "COAL_FILL_%d", kernel.Declares.size());
     auto fillDcl = kernel.fg.builder->createDeclareNoLookup(dclName, G4_GRF,
-        numEltPerGRF<Type_UD>(), dclSize, Type_UD, DeclareType::CoalescedFill);
+        kernel.numEltPerGRF<Type_UD>(), dclSize, Type_UD, DeclareType::CoalescedFill);
 
     if (evenAlignDst)
     {
@@ -66,7 +66,7 @@ G4_INST* CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion* header, unsi
         fp = kernel.fg.getFramePtrDcl();
 
     auto fillInst = kernel.fg.builder->createFill(header, fillDst, g4::SIMD16, payloadSize,
-        GlobalRA::GRFToHwordSize(scratchOffset), fp, InstOpt_WriteEnable, false);
+        GlobalRA::GRFToHwordSize(scratchOffset, *kernel.fg.builder), fp, InstOpt_WriteEnable, false);
     return fillInst;
 }
 
@@ -81,7 +81,7 @@ void CoalesceSpillFills::copyToOldFills(
     for (auto oldFill : indFills)
     {
         unsigned int numGRFs = (oldFill.first->getRightBound() - oldFill.first->getLeftBound()
-            + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
+            + kernel.numEltPerGRF<Type_UB>() - 1) / kernel.numEltPerGRF<Type_UB>();
         unsigned int rowOff = 0;
         // TODO: Check for > 2 GRF dst
         while (numGRFs > 0)
@@ -132,7 +132,7 @@ G4_Declare* CoalesceSpillFills::createCoalescedSpillDcl(unsigned int payloadSize
     dclName = kernel.fg.builder->getNameString(kernel.fg.mem, 32,
         "COAL_SPILL_%d", kernel.Declares.size());
     spillDcl = kernel.fg.builder->createDeclareNoLookup(dclName, G4_GRF,
-        numEltPerGRF<Type_UD>(), payloadSize, Type_UD, DeclareType::CoalescedSpill);
+        kernel.numEltPerGRF<Type_UD>(), payloadSize, Type_UD, DeclareType::CoalescedSpill);
 
     spillDcl->setDoNotSpill();
 
@@ -157,7 +157,7 @@ void CoalesceSpillFills::coalesceSpills(
     for (auto d : coalesceableSpills)
     {
         auto src1Opnd = (*d)->getSrc(1)->asSrcRegRegion();
-        auto curRow = src1Opnd->getLeftBound() / numEltPerGRF<Type_UB>();
+        auto curRow = src1Opnd->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
         declares.insert(src1Opnd->getTopDcl());
         minRow = minRow > curRow ? curRow : minRow;
     }
@@ -1401,7 +1401,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
                     const char* dclName = kernel.fg.builder->getNameString(kernel.fg.mem, 32,
                         "COPY_%d", kernel.Declares.size());
                     G4_Declare* copyDcl = kernel.fg.builder->createDeclareNoLookup(dclName, G4_GRF,
-                        numEltPerGRF<Type_UD>(), src1->getTopDcl()->getNumRows(),
+                        kernel.numEltPerGRF<Type_UD>(), src1->getTopDcl()->getNumRows(),
                         Type_UD);
 
                     unsigned int elems = copyDcl->getNumElems();
@@ -1497,7 +1497,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
                 unsigned int lb = inst->getSrc(1)->getLeftBound();
                 unsigned int rb = inst->getSrc(1)->getRightBound();
                 std::set<unsigned int> rows;
-                for (unsigned int k = lb / numEltPerGRF<Type_UB>(); k != (rb + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>(); k++)
+                for (unsigned int k = lb / kernel.numEltPerGRF<Type_UB>(); k != (rb + kernel.numEltPerGRF<Type_UB>() - 1) / kernel.numEltPerGRF<Type_UB>(); k++)
                 {
                     rows.insert(k);
                 }
@@ -1528,11 +1528,11 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
                     unsigned int prb = pInst->getDst()->getRightBound();
 
                     // Check whether complete row(s) defined
-                    if ((prb - plb + 1) % numEltPerGRF<Type_UB>() != 0)
+                    if ((prb - plb + 1) % kernel.numEltPerGRF<Type_UB>() != 0)
                         break;
 
-                    unsigned int rowStart = plb / numEltPerGRF<Type_UB>();
-                    unsigned int numRows = (prb - plb + 1) / numEltPerGRF<Type_UB>();
+                    unsigned int rowStart = plb / kernel.numEltPerGRF<Type_UB>();
+                    unsigned int numRows = (prb - plb + 1) / kernel.numEltPerGRF<Type_UB>();
                     bool punt = false;
                     for (unsigned int k = rowStart; k != (rowStart + numRows); k++)
                     {
@@ -1558,7 +1558,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
                         break;
 
                     // mov src should be GRF aligned
-                    if (pSrc0->getLeftBound() % numEltPerGRF<Type_UB>() != 0)
+                    if (pSrc0->getLeftBound() % kernel.numEltPerGRF<Type_UB>() != 0)
                         break;
 
                     unsigned int src0lb = pSrc0->getLeftBound();
@@ -1568,7 +1568,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
                     if ((src0rb - src0lb) != (prb - plb))
                         break;
 
-                    unsigned int pStartRow = pSrc0->getLeftBound() / numEltPerGRF<Type_UB>();
+                    unsigned int pStartRow = pSrc0->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
                     for (unsigned int k = rowStart; k != (rowStart + numRows); k++)
                     {
                         auto it = dstSrcRowMapping.find(k);
@@ -1591,7 +1591,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
                 if (dstSrcRowMapping.size() > 0)
                 {
                     // Now check whether each entry of src1 has a corresponding src offset
-                    unsigned int dstRowStart = lb / numEltPerGRF<Type_UB>();
+                    unsigned int dstRowStart = lb / kernel.numEltPerGRF<Type_UB>();
                     bool success = true;
                     auto baseIt = dstSrcRowMapping.find(dstRowStart);
                     if (baseIt != dstSrcRowMapping.end())

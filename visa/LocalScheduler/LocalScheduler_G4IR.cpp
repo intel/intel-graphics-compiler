@@ -370,7 +370,7 @@ void DDD::getBucketsForOperand(G4_INST* inst, Gen4_Operand_Number opnd_num,
 
     switch (phyReg->getKind()) {
     case G4_VarBase::VK_phyGReg:
-        startingBucket = opnd->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        startingBucket = opnd->getLinearizedStart() / kernel->numEltPerGRF<Type_UB>();
         canSpanMultipleBuckets = true;
         break;
     case G4_VarBase::VK_phyAReg: {
@@ -409,7 +409,7 @@ void DDD::getBucketsForOperand(G4_INST* inst, Gen4_Operand_Number opnd_num,
     if (startingBucket != UNINIT_BUCKET) {
         if (canSpanMultipleBuckets) {
             assert(base->isGreg());
-            unsigned divisor = numEltPerGRF<Type_UB>();
+            unsigned divisor = kernel->numEltPerGRF<Type_UB>();
             int baseBucket = GRF_BUCKET;
             int endingBucket = baseBucket + opnd->getLinearizedEnd() / divisor;
             MUST_BE_TRUE(endingBucket >= startingBucket, "Ending bucket less than starting bucket");
@@ -760,11 +760,11 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
                 opndSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
+                    currInstRegs[0][i] = byteAddress / kernel->numEltPerGRF<Type_UB>();
 
                     if (opndSize > kernel->getGRFSize())
                     {
-                        currInstRegs[1][i] = currInstRegs[0][i] + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+                        currInstRegs[1][i] = currInstRegs[0][i] + (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) / kernel->numEltPerGRF<Type_UB>() - 1;
                     }
                     else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
                     {
@@ -793,13 +793,13 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
                 opndSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    nextInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
+                    nextInstRegs[0][i] = byteAddress / kernel->numEltPerGRF<Type_UB>();
 
                     liveSrc.set(nextInstRegs[0][i], true);  //Set live
 
                     if (opndSize > kernel->getGRFSize())
                     {
-                        int reg = nextInstRegs[0][i] + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+                        int reg = nextInstRegs[0][i] + (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) / kernel->numEltPerGRF<Type_UB>() - 1;
                         nextInstRegs[1][i] =  reg;
                         liveSrc.set(reg, true);  //Set live
                     }
@@ -828,7 +828,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
     {
         opndSize = nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = nextDstOpnd->getLinearizedStart();
-        dstReg0 = byteAddress / numEltPerGRF<Type_UB>();
+        dstReg0 = byteAddress / kernel->numEltPerGRF<Type_UB>();
         liveDst.set(dstReg0, true);
         if (opndSize <= kernel->getGRFSize())
         {
@@ -836,7 +836,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
         }
         else
         {
-            dstReg1 = dstReg0 + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+            dstReg1 = dstReg0 + (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) / kernel->numEltPerGRF<Type_UB>() - 1;
             liveDst.set(dstReg1, true);
         }
     }
@@ -852,7 +852,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
     {
         opndSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        dstReg0 = byteAddress / numEltPerGRF<Type_UB>();
+        dstReg0 = byteAddress / kernel->numEltPerGRF<Type_UB>();
         //If there is RAW and WAW dependence
         if (liveSrc.isSet(dstReg0) || liveDst.isSet(dstReg0))
         {
@@ -865,7 +865,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
         }
         else
         {
-            dstReg1 = dstReg0 + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+            dstReg1 = dstReg0 + (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) / kernel->numEltPerGRF<Type_UB>() - 1;
 
             //If there is RAW and WAW dependence
             if (liveSrc.isSet(dstReg1) || liveDst.isSet(dstReg1))
@@ -988,11 +988,11 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
                 opndSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
+                    currInstRegs[0][i] = byteAddress / kernel->numEltPerGRF<Type_UB>();
 
                     if (opndSize > kernel->getGRFSize())
                     {
-                        currInstRegs[1][i] = currInstRegs[0][i] + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+                        currInstRegs[1][i] = currInstRegs[0][i] + (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) / kernel->numEltPerGRF<Type_UB>() - 1;
                     }
                     else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
                     {
@@ -1021,11 +1021,11 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
                 opndSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    nextInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
+                    nextInstRegs[0][i] = byteAddress / kernel->numEltPerGRF<Type_UB>();
 
                     if (opndSize > kernel->getGRFSize())
                     {
-                        int reg = nextInstRegs[0][i] + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+                        int reg = nextInstRegs[0][i] + (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) / kernel->numEltPerGRF<Type_UB>() - 1;
                         nextInstRegs[1][i] = reg;
                     }
                     if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
@@ -1053,14 +1053,14 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
     {
         opndSize = nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = nextDstOpnd->getLinearizedStart();
-        dstReg0 = byteAddress / numEltPerGRF<Type_UB>();
+        dstReg0 = byteAddress / kernel->numEltPerGRF<Type_UB>();
         if (opndSize <= kernel->getGRFSize())
         {
             nextInstSimd8 = true;
         }
         else
         {
-            dstReg1 = dstReg0 + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+            dstReg1 = dstReg0 + (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) / kernel->numEltPerGRF<Type_UB>() - 1;
         }
     }
 
@@ -1075,7 +1075,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
     {
         opndSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        dstReg0 = byteAddress / numEltPerGRF<Type_UB>();
+        dstReg0 = byteAddress / kernel->numEltPerGRF<Type_UB>();
 
         if (opndSize <= kernel->getGRFSize())
         {
@@ -1083,7 +1083,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
         }
         else
         {
-            dstReg1 = dstReg0 + (opndSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+            dstReg1 = dstReg0 + (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) / kernel->numEltPerGRF<Type_UB>() - 1;
         }
     }
 
@@ -1192,11 +1192,11 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst, BitSet &live
         unsigned short c_dstRB = c_dst->getLinearizedEnd();
         unsigned short n_dstLB = n_dst->getLinearizedStart();
         unsigned short n_dstRB = n_dst->getLinearizedEnd();
-        int c_dstReg = c_dstLB /numEltPerGRF<Type_UB>();
-        int n_dstReg = n_dstLB /numEltPerGRF<Type_UB>();
+        int c_dstReg = c_dstLB / kernel->numEltPerGRF<Type_UB>();
+        int n_dstReg = n_dstLB / kernel->numEltPerGRF<Type_UB>();
 
         //Set destination live for current instruction
-        while (c_dstReg * numEltPerGRF<Type_UB>() < c_dstRB)
+        while (c_dstReg * kernel->numEltPerGRF<Type_UB>() < c_dstRB)
         {
             liveDst.set(c_dstReg, true);
             c_dstReg++;
@@ -1211,8 +1211,8 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst, BitSet &live
             unsigned short n_srcLB = n_src->getLinearizedStart();
 
             //Set source live for current instruction
-            int srcReg = c_srcLB / numEltPerGRF<Type_UB>();
-            while (srcReg * numEltPerGRF<Type_UB>() < c_srcRB)
+            int srcReg = c_srcLB / kernel->numEltPerGRF<Type_UB>();
+            while (srcReg * kernel->numEltPerGRF<Type_UB>() < c_srcRB)
             {
                 liveSrc.set(srcReg, true);
                 srcReg++;
@@ -1226,7 +1226,7 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst, BitSet &live
         }
 
         //If there is RAW, WAW dependence
-        while (n_dstReg * numEltPerGRF<Type_UB>() < n_dstRB)
+        while (n_dstReg * kernel->numEltPerGRF<Type_UB>() < n_dstRB)
         {
             if (liveDst.isSet(n_dstReg) || liveSrc.isSet(n_dstReg))
             {
@@ -1252,8 +1252,8 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst, BitSet &live
             }
 #endif
             //If there is WAR dependence
-            int srcReg = n_srcLB / numEltPerGRF<Type_UB>();
-            while (srcReg * numEltPerGRF<Type_UB>() < n_srcRB)
+            int srcReg = n_srcLB / kernel->numEltPerGRF<Type_UB>();
+            while (srcReg * kernel->numEltPerGRF<Type_UB>() < n_srcRB)
             {
                 if (liveDst.isSet(srcReg))
                 {
@@ -1443,7 +1443,7 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
                 // Kill type 1: When the current destination region completely
                 //              covers the whole register from the first bit
                 //              to the last bit.
-                bool curKillsBucket = curMask.killsBucket(curBucket);
+                bool curKillsBucket = curMask.killsBucket(curBucket, *kernel->fg.builder);
 
                 // For each live curBucket node:
                 // i)  create edge if required
@@ -3076,6 +3076,7 @@ bool Node::hasConflict(Node* node2)
 
     //Get the sources of current instruction
     bool instSplit = false;
+    const IR_Builder& irb = inst1->getBuilder();
     for (int i = 0; i < inst1->getNumSrc(); i++)
     {
         prevInstRegs[0][i] = -1;
@@ -3091,11 +3092,11 @@ bool Node::hasConflict(Node* node2)
                 prevInstExecSize[i] = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    prevInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
+                    prevInstRegs[0][i] = byteAddress / irb.numEltPerGRF<Type_UB>();
 
                     if (prevInstExecSize[i] > 32)
                     {
-                        prevInstRegs[1][i] = prevInstRegs[0][i] + (prevInstExecSize[i] + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+                        prevInstRegs[1][i] = prevInstRegs[0][i] + (prevInstExecSize[i] + irb.numEltPerGRF<Type_UB>() - 1) / irb.numEltPerGRF<Type_UB>() - 1;
                         instSplit = true;
                     }
                     else
@@ -3147,7 +3148,7 @@ bool Node::hasConflict(Node* node2)
             G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
             if (baseVar->isGreg()) {
                 uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                firstRegCandidate[candidateNum] = byteAddress / numEltPerGRF<Type_UB>();
+                firstRegCandidate[candidateNum] = byteAddress / irb.numEltPerGRF<Type_UB>();
                 candidateNum++;
             }
         }

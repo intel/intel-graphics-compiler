@@ -209,7 +209,7 @@ public:
         //
         // sub reg allocation (allocation unit is word)
         //
-        if (numRows == 1 && regOff + nunits < numEltPerGRF<Type_UW>())
+        if (numRows == 1 && regOff + nunits < builder.numEltPerGRF<Type_UW>())
         {
             availableGregs[regNum] = false;
             auto subregMask = getSubregBitMask(regOff, nunits);
@@ -271,7 +271,7 @@ public:
 
     uint32_t getSubregBitMask(uint32_t start, uint32_t num) const
     {
-        MUST_BE_TRUE(num > 0 && start+num <= numEltPerGRF<Type_UW>(), "illegal number of words");
+        MUST_BE_TRUE(num > 0 && start+num <= builder.numEltPerGRF<Type_UW>(), "illegal number of words");
         uint32_t mask = ((1 << num) - 1) << start;
 
         return (uint32_t) mask;

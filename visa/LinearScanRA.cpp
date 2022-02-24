@@ -158,9 +158,9 @@ bool LinearScanRA::hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegi
         G4_Declare* dstDcl = dst->getBase()->asRegVar()->getDeclare();
         if (dstDcl != nullptr)
         {
-            int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / numEltPerGRF<Type_UB>();
+            int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / builder.numEltPerGRF<Type_UB>();
             G4_DstRegRegion* dstRgn = dst;
-            dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > numEltPerGRF<Type_UB>();
+            dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > builder.numEltPerGRF<Type_UB>();
 
             if (src != NULL &&
                 src->isSrcRegRegion() &&
@@ -168,8 +168,8 @@ bool LinearScanRA::hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegi
             {
                 G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
                 G4_Declare* srcDcl = src->getBase()->asRegVar()->getDeclare();
-                int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / numEltPerGRF<Type_UB>();
-                bool srcOpndNumRows = srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > numEltPerGRF<Type_UB>();
+                int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / builder.numEltPerGRF<Type_UB>();
+                bool srcOpndNumRows = srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > builder.numEltPerGRF<Type_UB>();
 
                 if (dstOpndNumRows || srcOpndNumRows)
                 {
@@ -187,27 +187,27 @@ bool LinearScanRA::hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegi
     return false;
 }
 
-void LinearScanRA::getRowInfo(int size, int& nrows, int& lastRowSize)
+void LinearScanRA::getRowInfo(int size, int& nrows, int& lastRowSize, const IR_Builder& builder)
 {
-    if (size <= (int)numEltPerGRF<Type_UW>())
+    if (size <= (int)builder.numEltPerGRF<Type_UW>())
     {
         nrows = 1;
     }
     else
     {
         // nrows is total number of rows, including last row even if it is partial
-        nrows = size / numEltPerGRF<Type_UW>();
+        nrows = size / builder.numEltPerGRF<Type_UW>();
         // lastrowsize is number of words actually used in last row
-        lastRowSize = size % numEltPerGRF<Type_UW>();
+        lastRowSize = size % builder.numEltPerGRF<Type_UW>();
 
-        if (size % numEltPerGRF<Type_UW>() != 0)
+        if (size % builder.numEltPerGRF<Type_UW>() != 0)
         {
             nrows++;
         }
 
         if (lastRowSize == 0)
         {
-            lastRowSize = numEltPerGRF<Type_UW>();
+            lastRowSize = builder.numEltPerGRF<Type_UW>();
         }
     }
 
@@ -260,7 +260,7 @@ bool LSLiveRange::isGRFRegAssigned()
     return isPhyRegAssigned;
 }
 
-unsigned int LSLiveRange::getSizeInWords()
+unsigned int LSLiveRange::getSizeInWords(const IR_Builder& builder)
 {
     int nrows = getTopDcl()->getNumRows();
     int elemsize = getTopDcl()->getElemSize();
@@ -275,7 +275,7 @@ unsigned int LSLiveRange::getSizeInWords()
         if (sizeInWords > 0)
             words = sizeInWords;
         else
-            words = nrows * numEltPerGRF<Type_UW>();
+            words = nrows * builder.numEltPerGRF<Type_UW>();
     }
     else if (nrows == 1)
     {
@@ -306,7 +306,7 @@ void globalLinearScan::freeAllocedRegs(LSLiveRange* lr, bool setInstID)
     {
         pregManager.freeRegs(preg->asGreg()->getRegNum(),
             sregnum,
-            lr->getSizeInWords(),
+            lr->getSizeInWords(builder),
             idx);
     }
 }
@@ -333,7 +333,7 @@ void globalLinearScan::printActives()
 
             if (lr->getTopDcl()->getWordSize() > 0)
             {
-                endsregnum = lr->getTopDcl()->getWordSize() % numEltPerGRF<Type_UW>() - 1;
+                endsregnum = lr->getTopDcl()->getWordSize() % builder.numEltPerGRF<Type_UW>() - 1;
                 if (endsregnum < 0) endsregnum = 15;
             }
             else
@@ -381,7 +381,7 @@ void globalLinearScan::printActives()
 
                     if (lr->getTopDcl()->getWordSize() > 0)
                     {
-                        endsregnum = lr->getTopDcl()->getWordSize() % numEltPerGRF<Type_UW>() - 1;
+                        endsregnum = lr->getTopDcl()->getWordSize() % builder.numEltPerGRF<Type_UW>() - 1;
                         if (endsregnum < 0) endsregnum = 15;
                     }
                     else
@@ -412,7 +412,7 @@ void globalLinearScan::printActives()
 
                     if (lr->getTopDcl()->getWordSize() > 0)
                     {
-                        endsregnum = lr->getTopDcl()->getWordSize() % numEltPerGRF<Type_UW>() - 1;
+                        endsregnum = lr->getTopDcl()->getWordSize() % builder.numEltPerGRF<Type_UW>() - 1;
                         if (endsregnum < 0) endsregnum = 15;
                     }
                     else
@@ -975,7 +975,7 @@ int LinearScanRA::linearScanRA()
         COUT_ERROR << "===== preAssignedLiveIntervals============" << std::endl;
         printLiveIntervals(preAssignedLiveIntervals);
 #endif
-        PhyRegsManager pregManager(initPregs, doBCR);
+        PhyRegsManager pregManager(builder, initPregs, doBCR);
         globalLinearScan ra(gra, &l, globalLiveIntervals, &preAssignedLiveIntervals, inputIntervals, pregManager,
             mem, numRegLRA, numRowsEOT, latestLexID,
             doBCR, highInternalConflict);
@@ -1146,7 +1146,7 @@ int LinearScanRA::doLinearScanRA()
         std::cout << "--Global linear Scan RA--\n";
     }
     //Initial pregs which will be used in the preRAAnalysis
-    PhyRegsLocalRA phyRegs(&builder, kernel.getNumRegTotal());
+    PhyRegsLocalRA phyRegs(builder, kernel.getNumRegTotal());
     pregs = &phyRegs;
     preRAAnalysis();
 
@@ -1402,14 +1402,14 @@ void LinearScanRA::generateInputIntervals(G4_Declare *topdcl, G4_INST* inst, std
     G4_RegVar* var = topdcl->getRegVar();
     unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
     unsigned int regOff = var->getPhyRegOff();
-    unsigned int idx = regNum * numEltPerGRF<Type_UW>() +
+    unsigned int idx = regNum * builder.numEltPerGRF<Type_UW>() +
         (regOff * topdcl->getElemSize()) / G4_WSIZE + topdcl->getWordSize() - 1;
 
     unsigned int numWords = topdcl->getWordSize();
     for (int i = numWords - 1; i >= 0; --i, --idx)
     {
         if ((inputRegLastRef[idx] == UINT_MAX || inputRegLastRef[idx] < instID) &&
-            initPregs.isGRFAvailable(idx / numEltPerGRF<Type_UW>()))
+            initPregs.isGRFAvailable(idx / builder.numEltPerGRF<Type_UW>()))
         {
             inputRegLastRef[idx] = instID;
             if (avoidSameInstOverlap)
@@ -1439,7 +1439,7 @@ void LinearScanRA::generateInputIntervals(G4_Declare *topdcl, G4_INST* inst, std
 void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs)
 {
     int numGRF = kernel.getNumRegTotal();
-    std::vector<uint32_t> inputRegLastRef(numGRF * numEltPerGRF<Type_UW>(), UINT_MAX);
+    std::vector<uint32_t> inputRegLastRef(numGRF * builder.numEltPerGRF<Type_UW>(), UINT_MAX);
     G4_INST* lastInst = nullptr;
 
     for (BB_LIST_RITER bb_it = kernel.fg.rbegin(), bb_rend = kernel.fg.rend();
@@ -1871,8 +1871,8 @@ void LinearScanRA::printInputLiveIntervalsGlobal()
         LSInputLiveRange* lr = (*it);
 
         regWordIdx = lr->getRegWordIdx();
-        regNum = regWordIdx / numEltPerGRF<Type_UW>();
-        subRegInWord = regWordIdx % numEltPerGRF<Type_UW>();
+        regNum = regWordIdx / builder.numEltPerGRF<Type_UW>();
+        subRegInWord = regWordIdx % builder.numEltPerGRF<Type_UW>();
         lrEndIdx = lr->getLrEndIdx();
 
         COUT_ERROR << "r" << regNum << "." << subRegInWord << " " << lrEndIdx;
@@ -1882,7 +1882,7 @@ void LinearScanRA::printInputLiveIntervalsGlobal()
     COUT_ERROR << std::endl;
 }
 
-static inline void printLiveInterval(LSLiveRange* lr, bool assign)
+static inline void printLiveInterval(LSLiveRange* lr, bool assign, const IR_Builder& builder)
 {
     int startregnum, endregnum, startsregnum=0, endsregnum;
     G4_VarBase* op;
@@ -1896,7 +1896,7 @@ static inline void printLiveInterval(LSLiveRange* lr, bool assign)
 
         if (lr->getTopDcl()->getWordSize() > 0)
         {
-            endsregnum = lr->getTopDcl()->getWordSize() % numEltPerGRF<Type_UW>() - 1;
+            endsregnum = lr->getTopDcl()->getWordSize() % builder.numEltPerGRF<Type_UW>() - 1;
             if (endsregnum < 0) endsregnum = 15;
         }
         else
@@ -1939,7 +1939,7 @@ globalLinearScan::globalLinearScan(GlobalRA& g, LivenessAnalysis* l, std::vector
     activeGRF.resize(g.kernel.getNumRegTotal());
     for (auto lr : inputLivelIntervals)
     {
-        unsigned int regnum = lr->getRegWordIdx() / numEltPerGRF<Type_UW>();
+        unsigned int regnum = lr->getRegWordIdx() / builder.numEltPerGRF<Type_UW>();
         activeGRF[regnum].activeInput.push_back(lr);
     }
 }
@@ -2016,7 +2016,7 @@ void globalLinearScan::getCallerSaveGRF(
 
     for (auto inputlr : inputIntervals)
     {
-        unsigned int regnum = inputlr->getRegWordIdx() / numEltPerGRF<Type_UW>();
+        unsigned int regnum = inputlr->getRegWordIdx() / builder.numEltPerGRF<Type_UW>();
         std::vector<unsigned int>::iterator it = std::find(regNum.begin(), regNum.end(), regnum);
         if (it == regNum.end())
         {
@@ -2063,7 +2063,7 @@ bool LinearScanRA::assignEOTLiveRanges(IR_Builder& builder, std::vector<LSLiveRa
             assert(0);
         }
 #ifdef DEBUG_VERBOSE_ON
-        printLiveInterval(lr, true);
+        printLiveInterval(lr, true, builder);
 #endif
     }
 
@@ -2215,7 +2215,7 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
 #ifdef DEBUG_VERBOSE_ON
             if (allocateRegResult)
             {
-                printLiveInterval(lr, true);
+                printLiveInterval(lr, true, builder);
             }
 #endif
         }
@@ -2230,14 +2230,14 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
             endsregnum = subregnum + (lr->getTopDcl()->getNumElems() * lr->getTopDcl()->getElemSize() / 2) - 1;
             int nrows = 0;
             int lastRowSize = 0;
-            int size = lr->getSizeInWords();
-            LinearScanRA::getRowInfo(size, nrows, lastRowSize);
+            int size = lr->getSizeInWords(builder);
+            LinearScanRA::getRowInfo(size, nrows, lastRowSize, builder);
 
             if (!lr->isUseUnAvailableReg())
             {
-                if ((unsigned)size >= numEltPerGRF<Type_UW>())
+                if ((unsigned)size >= builder.numEltPerGRF<Type_UW>())
                 {
-                    if (size % numEltPerGRF<Type_UW>() == 0)
+                    if (size % builder.numEltPerGRF<Type_UW>() == 0)
                     {
                         pregManager.getAvailableRegs()->setGRFBusy(startregnum, lr->getTopDcl()->getNumRows());
                     }
@@ -2276,7 +2276,7 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
                 {
                     updateGlobalActiveList(lr);
 #ifdef DEBUG_VERBOSE_ON
-                    printLiveInterval(lr, true);
+                    printLiveInterval(lr, true, builder);
 #endif
                 }
             }
@@ -2581,7 +2581,7 @@ void globalLinearScan::freeSelectedRegistsers(int startGRF, LSLiveRange* tlr, st
             }
 
 #ifdef DEBUG_VERBOSE_ON
-            printLiveInterval(lr, false);
+            printLiveInterval(lr, false, builder);
 #endif
 
             //Free the allocated register
@@ -2659,7 +2659,7 @@ void globalLinearScan::expireGlobalRanges(unsigned int idx)
             }
 
 #ifdef DEBUG_VERBOSE_ON
-            printLiveInterval(lr, false);
+            printLiveInterval(lr, false, builder);
 #endif
             if (preg)
             {
@@ -2722,8 +2722,8 @@ void globalLinearScan::expireInputRanges(unsigned int global_idx)
 
         if (endIdx <= global_idx)
         {
-            unsigned int regnum = lr->getRegWordIdx() / numEltPerGRF<Type_UW>();
-            unsigned int subRegInWord = lr->getRegWordIdx() % numEltPerGRF<Type_UW>();
+            unsigned int regnum = lr->getRegWordIdx() / builder.numEltPerGRF<Type_UW>();
+            unsigned int subRegInWord = lr->getRegWordIdx() % builder.numEltPerGRF<Type_UW>();
 
             // Free physical regs marked for this range
             pregManager.freeRegs(regnum, subRegInWord, 1, endIdx);
@@ -2771,7 +2771,7 @@ bool globalLinearScan::allocateRegsLinearScan(LSLiveRange* lr, IR_Builder& build
     // as it can make a better judgement by considering the
     // spill cost.
     int nrows = 0;
-    int size = lr->getSizeInWords();
+    int size = lr->getSizeInWords(builder);
     G4_Declare* dcl = lr->getTopDcl();
     G4_SubReg_Align subalign = gra.getSubRegAlign(dcl);
     localRABound = numRegLRA - 1;
@@ -2841,7 +2841,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
     int grfRows = 0;
     bool multiSteps = nrows > 1;
 
-    if (lastRowSize % numEltPerGRF<Type_UW>() == 0)
+    if (lastRowSize % builder.numEltPerGRF<Type_UW>() == 0)
     {
         grfRows = nrows;
     }
@@ -2871,7 +2871,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
 
         if (foundItem == grfRows)
         {
-            if (lastRowSize % numEltPerGRF<Type_UW>() == 0)
+            if (lastRowSize % builder.numEltPerGRF<Type_UW>() == 0)
             {
                 regnum = startReg;
                 return true;
@@ -2953,20 +2953,20 @@ int PhyRegsManager::findFreeRegs(int size, BankAlign align, G4_SubReg_Align suba
 {
     int nrows = 0;
     int lastRowSize = 0;
-    LocalRA::getRowInfo(size, nrows, lastRowSize);
+    LocalRA::getRowInfo(size, nrows, lastRowSize, builder);
 
     int startReg = startRegNum;
     int endReg = endRegNum - nrows + 1;
 
     bool found = false;
 
-    if (size >= (int)numEltPerGRF<Type_UW>())
+    if (size >= (int)builder.numEltPerGRF<Type_UW>())
     {
         found = availableRegs.findFreeMultipleRegsForward(startReg, align, regnum, nrows, lastRowSize, endReg, instID, forbidden);
         if (found)
         {
             subregnum = 0;
-            if (size % numEltPerGRF<Type_UW>() == 0)
+            if (size % builder.numEltPerGRF<Type_UW>() == 0)
             {
                 availableRegs.setGRFBusy(regnum, nrows);
             }

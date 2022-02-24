@@ -90,7 +90,7 @@ namespace vISA
         G4_BB* curBB = nullptr;
 
     public:
-        static void getRowInfo(int size, int& nrows, int& lastRowSize);
+        static void getRowInfo(int size, int& nrows, int& lastRowSize, const IR_Builder& builder);
         static unsigned int convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords);
         static unsigned int convertSubRegOffToWords(G4_Declare* dcl, int subregnum);
         static void countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals, unsigned grfSize);
@@ -249,7 +249,7 @@ namespace vISA
 class PhyRegsLocalRA
 {
 private:
-    IR_Builder* builder;
+    const IR_Builder& builder;
     unsigned int numRegs;
     // nth bit represents whether the register's nth word is free/busy
     // 1 - busy, 0 - free
@@ -272,7 +272,7 @@ private:
     int LraFFWindowSize;
 
 public:
-    PhyRegsLocalRA(IR_Builder* _builder, uint32_t nregs) : builder(_builder), numRegs(nregs)
+    PhyRegsLocalRA(const IR_Builder& _builder, uint32_t nregs) : builder(_builder), numRegs(nregs)
     {
         uint32_t grfFree = 0;
 
@@ -296,7 +296,7 @@ public:
         simpleGRFAvailable = false;
         r0Forbidden = false;
         r1Forbidden = false;
-       LraFFWindowSize = (int)builder->getOptions()->getuInt32Option(vISA_LraFFWindowSize);
+       LraFFWindowSize = (int)builder.getOptions()->getuInt32Option(vISA_LraFFWindowSize);
     }
 
     void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
@@ -449,11 +449,12 @@ public:
 class PhyRegsManager
 {
 private:
+    const IR_Builder& builder;
     PhyRegsLocalRA availableRegs;
     bool twoBanksRA;
 
 public:
-    PhyRegsManager(PhyRegsLocalRA pregs, bool _twoBanksRA) : availableRegs(pregs), twoBanksRA(_twoBanksRA)
+    PhyRegsManager(const IR_Builder& irb, PhyRegsLocalRA pregs, bool _twoBanksRA) : builder(irb), availableRegs(pregs), twoBanksRA(_twoBanksRA)
     {
         availableRegs.setTwoBanksRA(_twoBanksRA);
     }
@@ -521,13 +522,14 @@ public:
 class PhyRegSummary
 {
 private:
+    const IR_Builder* builder = nullptr;
     uint32_t totalNumGRF = 0;
     std::vector<bool> GRFUsage;
 
 public:
     PhyRegSummary() {}
 
-    PhyRegSummary(uint32_t numGRF) : totalNumGRF(numGRF)
+    PhyRegSummary(const IR_Builder* irb, uint32_t numGRF) : builder(irb), totalNumGRF(numGRF)
     {
         GRFUsage.resize(totalNumGRF, false);
     }

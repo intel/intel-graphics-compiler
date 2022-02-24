@@ -666,6 +666,7 @@ namespace vISA
         void populateBBLexId();
         bool interfereBetween(G4_Declare*, G4_Declare*);
         void verifyAlign(G4_Declare* dcl);
+        unsigned getGRFBaseOffset(const G4_Declare* dcl) const;
 
     public:
         void verify();
@@ -716,7 +717,7 @@ namespace vISA
         static const char StackCallStr[];
 
     private:
-        template <class REGION_TYPE> static unsigned getRegionDisp(REGION_TYPE * region);
+        template <class REGION_TYPE> static unsigned getRegionDisp(REGION_TYPE * region, const IR_Builder& irb);
         unsigned getRegionByteSize(G4_DstRegRegion * region, unsigned execSize);
         static bool owordAligned(unsigned offset) { return offset % 16 == 0; }
         template <class REGION_TYPE> bool isUnalignedRegion(REGION_TYPE * region, unsigned execSize);
@@ -872,10 +873,10 @@ namespace vISA
         G4_INST* getBEFPSetupInst() { return setupBE_FP; }
         void setBEFPSetupInst(G4_INST* i) { setupBE_FP = i; }
 
-        static unsigned owordToGRFSize(unsigned numOwords);
-        static unsigned hwordToGRFSize(unsigned numHwords);
-        static unsigned GRFToHwordSize(unsigned numGRFs);
-        static unsigned GRFSizeToOwords(unsigned numGRFs);
+        static unsigned owordToGRFSize(unsigned numOwords, const IR_Builder& builder);
+        static unsigned hwordToGRFSize(unsigned numHwords, const IR_Builder& builder);
+        static unsigned GRFToHwordSize(unsigned numGRFs, const IR_Builder& builder);
+        static unsigned GRFSizeToOwords(unsigned numGRFs, const IR_Builder& builder);
         static unsigned getHWordByteSize();
 
         // RA specific fields
@@ -1316,7 +1317,7 @@ namespace vISA
 
         VarRange* splitVarRange(VarRange *src1, VarRange *src2, std::stack<VarRange*> *toDelete);
         void rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, std::stack<VarRange*> *toDelete);
-        static void getHeightWidth(G4_Type type, unsigned numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
+        void getHeightWidth(G4_Type type, unsigned numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize) const;
         void createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<G4_Declare*> &splitDclList);
         void insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
         void insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);

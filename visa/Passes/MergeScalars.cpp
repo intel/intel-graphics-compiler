@@ -253,7 +253,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
                     // operand's type instead of rootDcl, so we pass srcType into getInputDeclare().
                     G4_Type srcType = newInst->getSrc(i)->getType();
                     int firstEltOffset =
-                        src->getRegOff() * numEltPerGRF<Type_UB>() +
+                        src->getRegOff() * builder.numEltPerGRF<Type_UB>() +
                             src->getSubRegOff() * TypeSize(srcType);
                     G4_Declare* newInputDcl = getInputDeclare(builder, newInputs, rootDcl, srcType, size, firstEltOffset);
                     src = builder.createSrcRegRegion(
@@ -314,9 +314,10 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
 //
 static bool checkContiguous(
     unsigned offset1, unsigned offset2,
-    G4_Type type, OPND_PATTERN& pattern, unsigned origOffset)
+    G4_Type type, OPND_PATTERN& pattern, unsigned origOffset,
+    const IR_Builder& builder)
 {
-    if (origOffset + numEltPerGRF<Type_UB>() <= offset2)
+    if (origOffset + builder.numEltPerGRF<Type_UB>() <= offset2)
         return false;
     if (offset1 + TypeSize(type) == offset2)
     {
@@ -443,7 +444,7 @@ static bool isScalarNaturalAlignedVar(G4_Declare* dcl)
 // CONTIGUOUS: the dsts together form a contiguous region
 // DISJOINT: all dsts are distinct scalar, naturally aligned root variables
 //
-bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion* dst)
+bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion* dst, const IR_Builder& builder)
 {
     // src must be either Imm or SrcRegRegion
 
@@ -470,7 +471,7 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion* dst)
         }
 
         if (!checkContiguous(prevDst->getLeftBound(), dst->getLeftBound(),
-            dst->getType(), dstPattern, firstDst->getLeftBound()))
+            dst->getType(), dstPattern, firstDst->getLeftBound(), builder))
         {
             return false;
         }
@@ -480,7 +481,7 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion* dst)
         unsigned firstDstGRFOffset = firstDst->getLeftBound() + firstDst->getTopDcl()->getRegVar()->getByteAddr();
         unsigned prevDstGRFOffset = prevDst->getLeftBound() + prevDstDcl->getRegVar()->getByteAddr();
         unsigned dstGRFOffset = dst->getLeftBound() + dstDcl->getRegVar()->getByteAddr();
-        if (!checkContiguous(prevDstGRFOffset, dstGRFOffset, dst->getType(), dstPattern, firstDstGRFOffset))
+        if (!checkContiguous(prevDstGRFOffset, dstGRFOffset, dst->getType(), dstPattern, firstDstGRFOffset, builder))
         {
             return false;
         }
@@ -547,7 +548,7 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion* dst)
 // CONTIGUOUS: the sources together form a contiguous region
 // DISJOINT: all sources are distinct scalar, naturally aligned root variables
 //
-bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos)
+bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos, const IR_Builder& builder)
 {
     // src must be either Imm or SrcRegRegion
 
@@ -619,7 +620,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos)
                 }
             }
             else if (!checkContiguous(prevSrc->getLeftBound(), src->getLeftBound(),
-                src->getType(), srcPattern[srcPos], firstSrc->getLeftBound()))
+                src->getType(), srcPattern[srcPos], firstSrc->getLeftBound(), builder))
             {
                 return false;
             }
@@ -629,11 +630,11 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos)
             unsigned firstSrcGRFOffset = firstSrc->getLeftBound() + firstSrc->getTopDcl()->getRegVar()->getByteAddr();
             unsigned prevSrcGRFOffset = prevSrc->getLeftBound() + prevSrcDcl->getRegVar()->getByteAddr();
             unsigned srcGRFOffset = src->getLeftBound() + srcDcl->getRegVar()->getByteAddr();
-            if (!checkContiguous(prevSrcGRFOffset, srcGRFOffset, src->getType(), srcPattern[srcPos], firstSrcGRFOffset))
+            if (!checkContiguous(prevSrcGRFOffset, srcGRFOffset, src->getType(), srcPattern[srcPos], firstSrcGRFOffset, builder))
             {
                 return false;
             }
-            else if (prevSrcGRFOffset / numEltPerGRF<Type_UB>() != srcGRFOffset / 32)
+            else if (prevSrcGRFOffset / builder.numEltPerGRF<Type_UB>() != srcGRFOffset / 32)
             {
                 // resulting input would cross GRF boundary, and our RA does not like it one bit
                 return false;
@@ -709,7 +710,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos)
 // -- inst must have same opcode/dst modifier/src modifier as all other instructions in the bundle
 // -- dst and src operand for the inst must form one of the legal patterns with the instructions in the bundle
 //
-bool BUNDLE_INFO::canMerge(G4_INST* inst)
+bool BUNDLE_INFO::canMerge(G4_INST* inst, const IR_Builder& builder)
 {
     G4_INST* firstInst = this->inst[0];
     if (firstInst->opcode() != inst->opcode())
@@ -740,7 +741,7 @@ bool BUNDLE_INFO::canMerge(G4_INST* inst)
         return false;
     }
 
-    if (!canMergeDst(inst->getDst()))
+    if (!canMergeDst(inst->getDst(), builder))
     {
         return false;
     }
@@ -748,7 +749,7 @@ bool BUNDLE_INFO::canMerge(G4_INST* inst)
 
     for (int i = 0; i < inst->getNumSrc(); ++i)
     {
-        if (!canMergeSource(inst->getSrc(i), i))
+        if (!canMergeSource(inst->getSrc(i), i, builder))
         {
             return false;
         }
@@ -775,7 +776,7 @@ void BUNDLE_INFO::findInstructionToMerge(
             break;
         }
 
-        if (!canMerge(nextInst))
+        if (!canMerge(nextInst, builder))
         {
             break;
         }

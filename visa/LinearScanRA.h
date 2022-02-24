@@ -140,7 +140,7 @@ namespace vISA
         uint32_t scratchOffset = 0;
 
     public:
-        static void getRowInfo(int size, int& nrows, int& lastRowSize);
+        static void getRowInfo(int size, int& nrows, int& lastRowSize, const IR_Builder& builder);
         static unsigned int convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords);
 
         LinearScanRA(BankConflictPass&, GlobalRA&, LivenessAnalysis&);
@@ -278,7 +278,7 @@ public:
     G4_VarBase* getPhyReg(int& subreg) { subreg = pregoff; return preg; }
     void        resetPhyReg() { preg = NULL; pregoff = 0; }
 
-    unsigned int getSizeInWords();
+    unsigned int getSizeInWords(const IR_Builder& builder);
 
     bool isLiveRangeGlobal() const;
 

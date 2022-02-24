@@ -686,7 +686,7 @@ inline void BinaryEncoding::EncodeDstRegNum(G4_INST* inst, BinInst *mybin, G4_Ds
     {
         uint32_t byteAddress = dst->getLinearizedStart();
 
-        MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * numEltPerGRF<Type_UB>(), "dst exceeds total GRF number");
+        MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(), "dst exceeds total GRF number");
 
         if (inst->isAligned1Inst())
         {
@@ -1353,7 +1353,7 @@ inline void BinaryEncoding::EncodeSrc0RegNum(G4_INST* inst, BinInst *mybin, G4_O
     {
         bool repControl = EncodingHelper::GetRepControl(src0);
         uint32_t byteAddress = src0->getLinearizedStart();
-        MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * numEltPerGRF<Type_UB>(), "src0 exceeds total GRF number");
+        MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(), "src0 exceeds total GRF number");
 
         if (mybin->GetIs3Src())
         {
@@ -2050,7 +2050,7 @@ inline void BinaryEncoding::EncodeSrc1RegNum(G4_INST *inst, BinInst *mybin, G4_O
     {
         bool repControl = EncodingHelper::GetRepControl(src1);
         uint32_t byteAddress = src1->getLinearizedStart();
-        MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * numEltPerGRF<Type_UB>(), "src1 exceeds total GRF number");
+        MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(), "src1 exceeds total GRF number");
 
         if (mybin->GetIs3Src())
         {
@@ -2510,7 +2510,7 @@ inline void BinaryEncoding::EncodeSrc2RegNum(G4_INST* inst, BinInst *mybin, G4_O
         EncodingHelper::GetSrcAddrMode(src2) == ADDR_MODE_IMMED)
     {
         uint32_t byteAddress = src2->getLinearizedStart();
-        MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * numEltPerGRF<Type_UB>(), "src2 exceeds total GRF number");
+        MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(), "src2 exceeds total GRF number");
 
         // encode dwords
         mybin->SetBits(bits3SrcSrc2RegDWord_H, bits3SrcSrc2RegDWord_L, byteAddress >> 2);

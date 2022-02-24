@@ -273,19 +273,19 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
         RB = (unsigned short)opnd->getLinearizedEnd();
         if (inst->isSend())
         {
-            assert((LB % numEltPerGRF<Type_UB>()) == 0);
+            assert((LB % builder.numEltPerGRF<Type_UB>()) == 0);
             //For the operands of the send instructions,
             //we are using the message length to avoid the in-consistence with the HW requirement.
             //
             if (opnd_num == Opnd_src0)
             {
-                RB = LB + numEltPerGRF<Type_UB>() * inst->getMsgDesc()->getSrc0LenRegs() - 1;
+                RB = LB + builder.numEltPerGRF<Type_UB>() * inst->getMsgDesc()->getSrc0LenRegs() - 1;
             }
 
             if (inst->isSplitSend() &&
                 opnd_num == Opnd_src1)
             {
-                RB = LB + numEltPerGRF<Type_UB>() * inst->getMsgDesc()->getSrc1LenRegs() - 1;
+                RB = LB + builder.numEltPerGRF<Type_UB>() * inst->getMsgDesc()->getSrc1LenRegs() - 1;
             }
 
             if (opnd_num == Opnd_dst)
@@ -295,19 +295,19 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
                 if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14012562260) &&
                     inst->getExecSize() <= 8 && isSLMMsg(inst) && dstSize == 1)
                 {
-                    if ((LB / numEltPerGRF<Type_UB>()) < 127)
+                    if ((LB / builder.numEltPerGRF<Type_UB>()) < 127)
                     {
                         dstSize = 2;
                     }
                 }
 
-                if ((LB / numEltPerGRF<Type_UB>()) < (unsigned short)(totalGRFNum - 1))
+                if ((LB / builder.numEltPerGRF<Type_UB>()) < (unsigned short)(totalGRFNum - 1))
                 {
-                    RB = LB + numEltPerGRF<Type_UB>() * dstSize - 1;
+                    RB = LB + builder.numEltPerGRF<Type_UB>() * dstSize - 1;
                 }
             }
 
-            assert(RB < (numEltPerGRF<Type_UB>() * aregOffset) && "Out of register bound");
+            assert(RB < (builder.numEltPerGRF<Type_UB>() * aregOffset) && "Out of register bound");
         }
         //HW WA for DPAS src2, treat all source 2 as 8x8 source 2 to avoid the read suppression issue
         if (builder.hasDPASSrc2ReadSuppressionDepIssue() &&
@@ -323,7 +323,7 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
         if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013341720) &&
             inst->opcode() == G4_dpas && opnd_num == Opnd_src1)
         {
-            uint32_t bytes = numEltPerGRF<Type_UB>() * 8;
+            uint32_t bytes = builder.numEltPerGRF<Type_UB>() * 8;
             RB = LB + bytes - 1;
         }
         break;
@@ -334,16 +334,16 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     if (startingBucket >= aregOffset)
     {
-        LB = startingBucket * numEltPerGRF<Type_UB>() + LB;
-        RB = startingBucket * numEltPerGRF<Type_UB>() + RB;
+        LB = startingBucket * builder.numEltPerGRF<Type_UB>() + LB;
+        RB = startingBucket * builder.numEltPerGRF<Type_UB>() + RB;
     }
 
     //This is WA which assumes whole GRF will be touched in send instruction, not matter the occupation of real valid value.
     //FIXME: But this is not true in media block read/write, which can specify the byte level size in descriptor, no GRF align required.
     if (mustBeWholeGRF)
     {
-        LB = (LB / numEltPerGRF<Type_UB>()) * numEltPerGRF<Type_UB>();
-        RB = ((RB / numEltPerGRF<Type_UB>()) + 1) * numEltPerGRF<Type_UB>() - 1;
+        LB = (LB / builder.numEltPerGRF<Type_UB>()) * builder.numEltPerGRF<Type_UB>();
+        RB = ((RB / builder.numEltPerGRF<Type_UB>()) + 1) * builder.numEltPerGRF<Type_UB>() - 1;
     }
 
     SBFootprint* footprint = new (allocedMem)SBFootprint(GRF_T, type, LB, RB, inst);
@@ -394,9 +394,9 @@ SBFootprint* G4_BB_SB::getFootprintForACC(G4_Operand* opnd,
 
     if (needBothAcc(builder, inst, opnd))
     {
-        if (((RB - LB + 1) / numEltPerGRF<Type_UB>()) < 2)
+        if (((RB - LB + 1) / builder.numEltPerGRF<Type_UB>()) < 2)
         {
-            RB = LB + numEltPerGRF<Type_UB>() * 2 - 1;
+            RB = LB + builder.numEltPerGRF<Type_UB>() * 2 - 1;
         }
     }
     int regNum = 0;
@@ -407,8 +407,8 @@ SBFootprint* G4_BB_SB::getFootprintForACC(G4_Operand* opnd,
 
     regNum += builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters();
 
-    LB += regNum * numEltPerGRF<Type_UB>();
-    RB += regNum * numEltPerGRF<Type_UB>();
+    LB += regNum * builder.numEltPerGRF<Type_UB>();
+    RB += regNum * builder.numEltPerGRF<Type_UB>();
 
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     SBFootprint* footprint = nullptr;
@@ -426,6 +426,8 @@ SBFootprint* G4_BB_SB::getFootprintForFlag(G4_Operand* opnd,
     Gen4_Operand_Number opnd_num,
     G4_INST* inst)
 {
+    //1 GRF map to 1 flag: bytes per bit
+    unsigned FLAG_TO_GRF_MAP = builder.numEltPerGRF<Type_UB>() / 16;
     unsigned short LB = 0;
     unsigned short RB = 0;
     G4_Type type = opnd->getType();
@@ -434,8 +436,8 @@ SBFootprint* G4_BB_SB::getFootprintForFlag(G4_Operand* opnd,
     LB = (unsigned short)(opnd->getLeftBound() + subRegOff * 16) * FLAG_TO_GRF_MAP;
     RB = (unsigned short)(opnd->getRightBound() + subRegOff * 16) * FLAG_TO_GRF_MAP;
 
-    LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() + builder.kernel.getNumAcc()) * numEltPerGRF<Type_UB>();
-    RB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() + builder.kernel.getNumAcc()) * numEltPerGRF<Type_UB>();
+    LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() + builder.kernel.getNumAcc()) * builder.numEltPerGRF<Type_UB>();
+    RB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() + builder.kernel.getNumAcc()) * builder.numEltPerGRF<Type_UB>();
 
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     SBFootprint* footprint = nullptr;
@@ -944,9 +946,10 @@ static unsigned getRegAccessPipe(G4_INST* Inst) {
 
 static void updateRegAccess(FCPatchingInfo* FCPI, SBNode* Node,
     Gen4_Operand_Number OpndNo, unsigned NumRegs) {
+    const IR_Builder& builder = Node->GetInstruction()->getBuilder();
     for (auto F = Node->getFirstFootprint(OpndNo); F != nullptr; F = F->next) {
-        unsigned L = F->LeftB / numEltPerGRF<Type_UB>();
-        unsigned R = F->RightB / numEltPerGRF<Type_UB>();
+        unsigned L = F->LeftB / builder.numEltPerGRF<Type_UB>();
+        unsigned R = F->RightB / builder.numEltPerGRF<Type_UB>();
         if (F->fType != GRF_T)
         {
             continue;
@@ -4853,7 +4856,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
         uint32_t regOff = var->getPhyRegOff();
 
         {
-            linearizedStart = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
+            linearizedStart = regNum * builder.numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
             linearizedEnd = linearizedStart + dcl->getByteSize() - 1;
         }
 
@@ -4861,8 +4864,8 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
         footprint = new (allocedMem)SBFootprint(GRF_T, type, (unsigned short)linearizedStart, (unsigned short)linearizedEnd, node->GetInstruction());
         node->setFootprint(footprint, opnd_num);
 #ifdef DEBUG_VERBOSE_ON
-        int startingBucket = linearizedStart / numEltPerGRF<Type_UB>();
-        int endingBucket = linearizedEnd / numEltPerGRF<Type_UB>();
+        int startingBucket = linearizedStart / builder.numEltPerGRF<Type_UB>();
+        int endingBucket = linearizedEnd / builder.numEltPerGRF<Type_UB>();
         std::cerr << dcl->getName() << "<" << startingBucket << "," << endingBucket << ">";
 #endif
     }
@@ -4885,8 +4888,8 @@ void G4_BB_SB::getGRFBuckets(const SBFootprint* footprint,
             continue;
         }
 
-        int startingBucket = curFootprint->LeftB / numEltPerGRF<Type_UB>();
-        int endingBucket = curFootprint->RightB / numEltPerGRF<Type_UB>();
+        int startingBucket = curFootprint->LeftB / builder.numEltPerGRF<Type_UB>();
+        int endingBucket = curFootprint->RightB / builder.numEltPerGRF<Type_UB>();
         for (int j = startingBucket; j <= endingBucket ; j++)
         {
             BDvec.push_back(SBBucketDesc(j, opndNum, curFootprint));
@@ -5316,8 +5319,8 @@ bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
 
     for (const SBFootprint* fp = curNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
     {
-        unsigned short leftB = fp->LeftB / numEltPerGRF<Type_UB>();
-        unsigned short rightB = fp->RightB / numEltPerGRF<Type_UB>();
+        unsigned short leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
+        unsigned short rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
         for (unsigned short i = leftB; i <= rightB; i++)
         {
             cachedGRF.set(i, true);
@@ -5326,8 +5329,8 @@ bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
 
     for (const SBFootprint* fp = nextNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
     {
-        unsigned short leftB = fp->LeftB / numEltPerGRF<Type_UB>();
-        unsigned short rightB = fp->RightB / numEltPerGRF<Type_UB>();
+        unsigned short leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
+        unsigned short rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
         for (unsigned short i = leftB; i <= rightB; i++)
         {
             cachedGRF.set(i, true);
@@ -5343,21 +5346,21 @@ bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
         }
     }
 
-    return cachedGRFNum <= (SRC2_CACHE_SIZE + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
+    return cachedGRFNum <= (SRC2_CACHE_SIZE + builder.numEltPerGRF<Type_UB>() - 1) / builder.numEltPerGRF<Type_UB>();
 }
 
 bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) const
 {
     for (const SBFootprint* fp = curNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
     {
-        unsigned short leftB = fp->LeftB / numEltPerGRF<Type_UB>();
-        unsigned short rightB = fp->RightB / numEltPerGRF<Type_UB>();
+        unsigned short leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
+        unsigned short rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
         G4_Type type = fp->type;
 
         for (const SBFootprint* nextfp = nextNode->getFirstFootprint(Opnd_src2); nextfp; nextfp = nextfp->next)
         {
-            unsigned short nextLeftB = nextfp->LeftB / numEltPerGRF<Type_UB>();
-            unsigned short nextRightB = nextfp->RightB / numEltPerGRF<Type_UB>();
+            unsigned short nextLeftB = nextfp->LeftB / builder.numEltPerGRF<Type_UB>();
+            unsigned short nextRightB = nextfp->RightB / builder.numEltPerGRF<Type_UB>();
             G4_Type nextType = nextfp->type;
 
             if (!(nextLeftB > rightB || nextRightB < leftB))
@@ -5407,8 +5410,8 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     unsigned short leftBound2 = srcOpnd2->getLinearizedStart();
     uint8_t curD = dpasInst->getSystolicDepth();
     uint8_t curC = dpasInst->getRepeatCount();
-    int curSrc1Reg = leftBound1 / numEltPerGRF<Type_UB>();
-    int curSrc2Reg = leftBound2 / numEltPerGRF<Type_UB>();
+    int curSrc1Reg = leftBound1 / builder.numEltPerGRF<Type_UB>();
+    int curSrc2Reg = leftBound2 / builder.numEltPerGRF<Type_UB>();
 
     G4_InstDpas* nextDpasInst = nextInst->asDpasInst();
     uint8_t nextD = nextDpasInst->getSystolicDepth();
@@ -5434,8 +5437,8 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     srcOpnd2 = nextDpasInst->getSrc(2);
     leftBound1 = srcOpnd1->getLinearizedStart();
     leftBound2 = srcOpnd2->getLinearizedStart();
-    int nextSrc1Reg = leftBound1 / numEltPerGRF<Type_UB>();
-    int nextSrc2Reg = leftBound2 / numEltPerGRF<Type_UB>();
+    int nextSrc1Reg = leftBound1 / builder.numEltPerGRF<Type_UB>();
+    int nextSrc2Reg = leftBound2 / builder.numEltPerGRF<Type_UB>();
 
     if (builder.hasSrc2ReadSupression() &&
         builder.hasSrc2ReadSupressionSameRegSameType() &&
@@ -5676,13 +5679,13 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 {
                     break;
                 }
-                if (depDistance >= numEltPerGRF<Type_UB>() * 8)
+                if (depDistance >= builder.numEltPerGRF<Type_UB>() * 8)
                 {
                     break;
                 }
             }
 
-            if (depDistance >= numEltPerGRF<Type_UB>() * 8)
+            if (depDistance >= builder.numEltPerGRF<Type_UB>() * 8)
             {
                 curInst->setNoACCSBSet();
             }
@@ -6685,8 +6688,8 @@ void G4_BB_SB::getLiveBucketsFromFootprint(const SBFootprint* firstFootprint, SB
             continue;
         }
 
-        int startBucket = footprint->LeftB / numEltPerGRF<Type_UB>();
-        int endBucket = footprint->RightB / numEltPerGRF<Type_UB>();
+        int startBucket = footprint->LeftB / builder.numEltPerGRF<Type_UB>();
+        int endBucket = footprint->RightB / builder.numEltPerGRF<Type_UB>();
         for (int j = startBucket; j < endBucket + 1; j++)
         {
             send_use_kills->add(sBucketNode, j);
@@ -7463,7 +7466,7 @@ void G4_BB::emitRegInfo(std::ostream& output, G4_INST* inst, int offset)
         dstOpnd->isGreg())
     {
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        unsigned dstReg0 = byteAddress / numEltPerGRF<Type_UB>();
+        unsigned dstReg0 = byteAddress / parent->builder->numEltPerGRF<Type_UB>();
         output << " {";
         output << "D:" << dstReg0;
         output << "}";
@@ -7482,7 +7485,7 @@ void G4_BB::emitRegInfo(std::ostream& output, G4_INST* inst, int offset)
                 G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    unsigned srcReg = byteAddress / numEltPerGRF<Type_UB>();
+                    unsigned srcReg = byteAddress / parent->builder->numEltPerGRF<Type_UB>();
                     output << " {";
                     output << "S" << i;
                     output << ":" << srcReg;

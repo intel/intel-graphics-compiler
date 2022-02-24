@@ -1976,11 +1976,7 @@ public:
 
     unsigned int getWordSize() const {return (getByteSize() + 1)/2;}
 
-    void resizeNumRows(unsigned int numrows)
-    {
-        int byteSize = numrows * numEltPerGRF<Type_UB>();
-        setTotalElems(byteSize / getElemSize());
-    }
+    void resizeNumRows(unsigned int numrows);
 
     // declare this to be aliased to dcl+offset
     // This is an error if dcl+offset is not aligned to the type of this dcl
@@ -2079,14 +2075,8 @@ public:
     G4_RegFileKind getRegFile() const {return regFile;}
 
     // returns number of elements per row
-    unsigned short getNumElems() const
-    {
-        return getNumRows() > 1 ? numEltPerGRF<Type_UB>() / getElemSize() : numElements;
-    }
-    unsigned short getNumRows() const
-    {
-        return (getByteSize() + (numEltPerGRF<Type_UB>() - 1))/numEltPerGRF<Type_UB>();
-    }
+    unsigned short getNumElems() const;
+    unsigned short getNumRows() const;
     unsigned short getTotalElems() const
     {
         return (unsigned short)numElements;

@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_framework.h"
 #include "Common_ISA_util.h"
 #include "VISADefines.h"
+#include "G4_Kernel.hpp"
 #include "IsaDisassembly.h"
 
 #include "VISAKernel.h"
@@ -383,7 +384,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             {
                 VISA_Type vType = decl->genVar.getType();
                 G4_Type gType = GetGenTypeFromVISAType(vType);
-                unsigned int offset  = colOffset * TypeSize(gType) + rowOffset * numEltPerGRF<Type_UB>();
+                unsigned int offset  = colOffset * TypeSize(gType) + rowOffset * kernelBuilderImpl->getKernel()->numEltPerGRF<Type_UB>();
                 kernelBuilderImpl->CreateVISAAddressOfOperand(opnd, decl, offset);
             }
             else

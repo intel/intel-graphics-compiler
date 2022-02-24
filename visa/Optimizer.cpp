@@ -1217,9 +1217,9 @@ void Optimizer::cloneSampleInst()
                 }
                 if (sendInst->getMsgDescRaw()->isHeaderPresent())
                 {
-                    messageSizeInBytes -= builder.getGRFSize();
+                    messageSizeInBytes -= kernel.getGRFSize();
                 }
-                unsigned int numParams = messageSizeInBytes / builder.getGRFSize() * builder.getNativeExecSize() / inst->getExecSize();
+                unsigned int numParams = messageSizeInBytes / kernel.getGRFSize() * builder.getNativeExecSize() / inst->getExecSize();
                 bool isEval = sendInst->getMsgDesc()->getDstLenRegs() == 0;
                 uint32_t messageType = sendInst->getMsgDescRaw()->getSamplerMessageType();
                 assert(!inst->getPredicate() && "do not handle predicated sampler inst for now");
@@ -1266,7 +1266,7 @@ void Optimizer::cloneSampleInst()
                         G4_Declare* maskAlias = builder.createTempVar(1, Type_UW, Any);
                         maskAlias->setAliasDeclare(
                             inst->getDst()->getBase()->asRegVar()->getDeclare(),
-                            (inst->getDst()->getRegOff() + rspLen - 1) * numEltPerGRF<Type_UB>());
+                            (inst->getDst()->getRegOff() + rspLen - 1) * kernel.numEltPerGRF<Type_UB>());
                         G4_SrcRegRegion* src = builder.createSrcRegRegion(
                             maskAlias, builder.getRegionScalar());
                         G4_DstRegRegion* dst = builder.createDst(maskCopy->getRegVar(), Type_UW);
@@ -1486,7 +1486,7 @@ void replaceAllSpilledRegions(G4_Kernel& kernel, G4_Declare* oldDcl, G4_Declare*
     }
 }
 
-void getPhyRegs(G4_Operand* opnd, unsigned int& start, unsigned int& end)
+void getPhyRegs(G4_Operand* opnd, unsigned int& start, unsigned int& end, const IR_Builder& builder)
 {
     // start/end are inclusive, ie both offsets are referenced by the variable
     start = 0;
@@ -1514,7 +1514,7 @@ void getPhyRegs(G4_Operand* opnd, unsigned int& start, unsigned int& end)
                 r = r->getDeclare()->getRootDeclare()->getRegVar();
                 auto phyReg = r->getPhyReg()->asGreg();
                 auto subRegOff = r->getPhyRegOff();
-                start = phyReg->getRegNum() * numEltPerGRF<Type_UB>();
+                start = phyReg->getRegNum() * builder.numEltPerGRF<Type_UB>();
                 start += subRegOff * r->getDeclare()->getElemSize();
                 end = start + r->getDeclare()->getRootDeclare()->getByteSize() - 1;
             }
@@ -1526,12 +1526,12 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
 {
     auto gtpin = kernel.getGTPinData();
     gtpin->clearFreeGlobalRegs();
-    std::vector<bool> freeGRFs(kernel.getNumRegTotal() * numEltPerGRF<Type_UB>(), true);
+    std::vector<bool> freeGRFs(kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(), true);
     unsigned int start = 0, end = 0;
 
     // Mark r0 as busy. Done explicitly because move from r0 is inserted
     // after reRA pass.
-    for (unsigned int i = 0; i < numEltPerGRF<Type_UB>(); i++)
+    for (unsigned int i = 0; i < kernel.numEltPerGRF<Type_UB>(); i++)
     {
         freeGRFs[i] = false;
     }
@@ -1551,7 +1551,7 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
             auto phyReg = dcl->getRegVar()->getPhyReg()->asGreg();
             auto regNum = phyReg->getRegNum();
             auto subReg = dcl->getRegVar()->getPhyRegOff();
-            start = regNum * numEltPerGRF<Type_UB>();
+            start = regNum * kernel.numEltPerGRF<Type_UB>();
             start += subReg * dcl->getElemSize();
             end = start + dcl->getByteSize() - 1;
             for (unsigned int i = start; i <= end; i++)
@@ -1570,7 +1570,7 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
                 dst->getBase() &&
                 dst->getBase()->isRegVar())
             {
-                getPhyRegs(dst, start, end);
+                getPhyRegs(dst, start, end, *kernel.fg.builder);
                 for (unsigned int i = start; i <= end; i++)
                 {
                     freeGRFs[i] = false;
@@ -1587,7 +1587,7 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
                 if (src->isSrcRegRegion() &&
                     src->asSrcRegRegion()->getBase()->isRegVar())
                 {
-                    getPhyRegs(src, start, end);
+                    getPhyRegs(src, start, end, *kernel.fg.builder);
                     for (unsigned int i = start; i <= end; i++)
                     {
                         freeGRFs[i] = false;
@@ -1595,7 +1595,7 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
                 }
                 else if (src->isAddrExp())
                 {
-                    getPhyRegs(src, start, end);
+                    getPhyRegs(src, start, end, *kernel.fg.builder);
                     for (unsigned int i = start; i <= end; i++)
                     {
                         freeGRFs[i] = false;
@@ -2815,10 +2815,10 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
                 // length of subregoff part
                 tempLen = dstRegion->getSubRegOff() * dstElSize + dist * dstHS;
 
-                if (tempLen >= numEltPerGRF<Type_UB>())
+                if (tempLen >= fg.builder->numEltPerGRF<Type_UB>())
                 {
                     regOff = dst->getRegOff() + 1;
-                    subRegOff = (unsigned short)((tempLen - numEltPerGRF<Type_UB>()) / defDstElSize);
+                    subRegOff = (unsigned short)((tempLen - fg.builder->numEltPerGRF<Type_UB>()) / defDstElSize);
                 }
                 else
                 {
@@ -2870,9 +2870,9 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
                 dstDist = FirstEltIndex * dstElSize * dstHS;
                 tempLen = dstDist + dst->getSubRegOff() * dstElSize;
                 regOff = (unsigned short)(dst->getRegOff() +
-                    tempLen / numEltPerGRF<Type_UB>());
+                    tempLen / fg.builder->numEltPerGRF<Type_UB>());
 
-                subRegOff = (unsigned short)(tempLen % numEltPerGRF<Type_UB>()) / defDstElSize;
+                subRegOff = (unsigned short)(tempLen % fg.builder->numEltPerGRF<Type_UB>()) / defDstElSize;
             }
 
             unsigned short defDstHS = defDstRegion->getHorzStride();
@@ -4188,11 +4188,11 @@ void Optimizer::cselPeepHoleOpt()
                             //check elsewhere guarantees this is float.
                             G4_Type type = opnd2->getType();
                             unsigned short typeSize = TypeSize(type);
-                            unsigned offset = opnd2->getRegOff() * numEltPerGRF<Type_UB>() + opnd2->getSubRegOff() * typeSize;
+                            unsigned offset = opnd2->getRegOff() * kernel.numEltPerGRF<Type_UB>() + opnd2->getSubRegOff() * typeSize;
                             offset += useInst->getExecSize() * src0Stride * typeSize;
 
                             auto newSrc2 = builder.createSrcRegRegion(opnd2->getModifier(), Direct, opnd2->getBase(),
-                                offset / numEltPerGRF<Type_UB>(), (offset % numEltPerGRF<Type_UB>()) / typeSize, opnd2->getRegion(),
+                                offset / kernel.numEltPerGRF<Type_UB>(), (offset % kernel.numEltPerGRF<Type_UB>()) / typeSize, opnd2->getRegion(),
                                 opnd2->getType());
                             useInst->setSrc(newSrc2, 2);
                         }
@@ -6376,7 +6376,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 // header is hard-coded to be 32 bytes
                 if (header->getTopDcl()    == dst->getTopDcl()         &&
                     dst->getLeftBound() >= header->getLeftBound()      &&
-                    dst->getRightBound() <= header->getLeftBound() + numEltPerGRF<Type_UB>() -1)
+                    dst->getRightBound() <= header->getLeftBound() + kernel.numEltPerGRF<Type_UB>() -1)
                 {
                     return true;
                 }
@@ -7262,9 +7262,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // If subreg crosses GRF size, update reg and subreg offset accordingly
         newSubRegOffByte = subRegOffByte + newEleOffByte;
-        crossGRF = newSubRegOffByte / numEltPerGRF<Type_UB>();
+        crossGRF = newSubRegOffByte / kernel.numEltPerGRF<Type_UB>();
 
-        newSubRegOffByte = newSubRegOffByte - crossGRF * numEltPerGRF<Type_UB>();
+        newSubRegOffByte = newSubRegOffByte - crossGRF * kernel.numEltPerGRF<Type_UB>();
 
         // Compute final reg and subreg offsets
         regOff = src->getRegOff() + crossGRF;
@@ -7336,8 +7336,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             newSubRegOff = dst->getSubRegOff() + start * hs;
             newSubRegOffByte = newSubRegOff * TypeSize(dstType);
 
-            crossGRF = newSubRegOffByte / numEltPerGRF<Type_UB>();
-            newSubRegOffByte = newSubRegOffByte - crossGRF * numEltPerGRF<Type_UB>();
+            crossGRF = newSubRegOffByte / kernel.numEltPerGRF<Type_UB>();
+            newSubRegOffByte = newSubRegOffByte - crossGRF * kernel.numEltPerGRF<Type_UB>();
 
             // Compute final reg and subreg offsets
             regOff = dst->getRegOff() + crossGRF;
@@ -7443,8 +7443,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             unsigned int dst_l = dst->getLinearizedStart();
             unsigned int dst_r = dst->getLinearizedEnd();
-            unsigned int GRFSize = (dst_r - dst_l + 1) / builder.getGRFSize();
-            assert(((dst_r - dst_l + 1) % builder.getGRFSize() == 0) && "DPAS GRF size not aligned");
+            unsigned int GRFSize = (dst_r - dst_l + 1) / kernel.getGRFSize();
+            assert(((dst_r - dst_l + 1) % kernel.getGRFSize() == 0) && "DPAS GRF size not aligned");
             assert(!dst->isIndirect());
             newDst = builder.createDst(
                 dst->getBase(),
@@ -7482,8 +7482,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 unsigned int src_l = src[i]->getLinearizedStart();
                 unsigned int src_r = src[i]->getLinearizedEnd();
-                unsigned int GRFSize = (src_r - src_l + 1) / builder.getGRFSize();
-                assert(((src_r - src_l + 1) % builder.getGRFSize() == 0) && "DPAS GRF size not aligned");
+                unsigned int GRFSize = (src_r - src_l + 1) / kernel.getGRFSize();
+                assert(((src_r - src_l + 1) % kernel.getGRFSize() == 0) && "DPAS GRF size not aligned");
 
                 if (GRFSize >= 2)
                 {
@@ -7548,8 +7548,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         int LB = opnd->getLinearizedStart();
         int RB = opnd->getLinearizedEnd();
 
-        int startReg = LB / numEltPerGRF<Type_UB>();
-        int endReg = RB / numEltPerGRF<Type_UB>();
+        int startReg = LB / kernel.numEltPerGRF<Type_UB>();
+        int endReg = RB / kernel.numEltPerGRF<Type_UB>();
         //Cached?
         for (int i = 0; i < 16; i++)
         {
@@ -7594,7 +7594,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             G4_Operand* srcOpnd2 = inst->getSrc(2);
 
-            if ((srcOpnd2->getLinearizedStart() % builder.getGRFSize() != 0) ||  //Not GRF aligned
+            if ((srcOpnd2->getLinearizedStart() % kernel.getGRFSize() != 0) ||  //Not GRF aligned
                 (builder.hasDPASSrc2ReadSuppressionIssue() && src2GRFCache->firstDpas))
             {
                 G4_INST* newInst = evenlySplitDPASInst(ii, bb);
@@ -7788,7 +7788,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     if (Src0 && Src0->isGreg())
                     {
                         unsigned LB = Src0->getLinearizedStart();
-                        if (LB == 2 * numEltPerGRF<Type_UB>())
+                        if (LB == 2 * kernel.numEltPerGRF<Type_UB>())
                         {
                             inst->setOptionOn(InstOpt_NoPreempt);
                         }
@@ -8134,7 +8134,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             ++iter;
         }
 
-        int regOffset = (inputEnd + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
+        int regOffset = (inputEnd + kernel.numEltPerGRF<Type_UB>() - 1) / kernel.numEltPerGRF<Type_UB>();
 
         static const unsigned SCRATCH_MSG_DESC_CATEGORY = 18;
         static const unsigned SCRATCH_MSG_DESC_OPERATION_MODE = 17;
@@ -8263,7 +8263,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return;
         }
 
-        const unsigned grfSize = builder.getGRFSize();
+        const unsigned grfSize = kernel.getGRFSize();
         unsigned inputEnd = grfSize;
         unsigned inputCount = kernel.fg.builder->getInputCount();
         for (unsigned id = 0; id < inputCount; id++)
@@ -8466,7 +8466,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         const uint32_t startGRF =
             kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
-        const uint32_t inputsStart = startGRF * builder.getGRFSize();
+        const uint32_t inputsStart = startGRF * kernel.getGRFSize();
         const uint32_t inputCount = kernel.fg.builder->getInputCount();
 
         const bool useInlineData = builder.getOption(vISA_useInlineData);
@@ -8586,7 +8586,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     // break load to 2+1 instead
                     numGRFToLoad = 2;
                 }
-                uint32_t numElts = (numGRFToLoad * builder.getGRFSize()) / (useHword ? 32 : 16);
+                uint32_t numElts = (numGRFToLoad * kernel.getGRFSize()) / (useHword ? 32 : 16);
                 uint32_t dataBlocks = useHword ? getHWordBlockEncoding(numElts) :
                     (numElts == 2 ? 2 : (numElts == 4 ? 3 : 4));
 
@@ -8608,7 +8608,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     // (W) add (1) loadAddress.2 loadAddress.2 numGRFToLoad*32
                     auto addSrc0 = builder.createSrc(loadAddress->getRegVar(),
                         0, 2, builder.getRegionScalar(), Type_UD);
-                    auto addSrc1 = builder.createImm(numGRFToLoad * numEltPerGRF<Type_UB>(), Type_UW);
+                    auto addSrc1 = builder.createImm(numGRFToLoad * kernel.numEltPerGRF<Type_UB>(), Type_UW);
                     auto addDst = builder.createDst(loadAddress->getRegVar(), 0, 2, 1, Type_UD);
                     auto addInst = builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0,
                         addSrc1, InstOpt_WriteEnable, false);
@@ -8638,7 +8638,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 addrInfo.immScale = 1;
                 addrInfo.immOffset = 0;
                 addrInfo.size = LSC_ADDR_SIZE_32b;
-                auto numDW = numGRFToLoad * (builder.getGRFSize() / 4);
+                auto numDW = numGRFToLoad * (kernel.getGRFSize() / 4);
                 LSC_DATA_SHAPE dataShape { };
                 dataShape.size = LSC_DATA_SIZE_32b; //in the unit of 32b
                 dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
@@ -8681,7 +8681,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     // advance the address offset
                     // (W) add (1) loadAddress.0 loadAddress.0 numGRFToLoad*32
                     auto addSrc0 = builder.createSrcRegRegion(loadAddress, builder.getRegionScalar());
-                    auto addSrc1 = builder.createImm(numGRFToLoad * numEltPerGRF<Type_UB>(), Type_UW);
+                    auto addSrc1 = builder.createImm(numGRFToLoad * kernel.numEltPerGRF<Type_UB>(), Type_UW);
                     auto addDst = builder.createDst(loadAddress->getRegVar(), 0, 0, 1, Type_UD);
                     auto addInst = builder.createBinOp(G4_add, g4::SIMD1, addDst,
                         addSrc0, addSrc1, InstOpt_WriteEnable, false);
@@ -8723,7 +8723,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             auto src0 = builder.createImm(0, Type_UD);
             auto dst = builder.createDstRegRegion(rtail, 1);
-            G4_ExecSize execSize(builder.getGRFSize() / 4);
+            G4_ExecSize execSize(kernel.getGRFSize() / 4);
             auto movInst = builder.createMov(execSize, dst, src0, InstOpt_WriteEnable, false);
             instBuffer.push_back(movInst);
         };
@@ -8735,7 +8735,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 return;
             }
-            uint32_t numDWord = builder.getGRFSize() / 4;
+            uint32_t numDWord = kernel.getGRFSize() / 4;
             G4_Declare* srcDcl = builder.createHardwiredDeclare(numDWord, Type_UD, srcGRF, 0);
             G4_Declare* dstDcl = builder.createHardwiredDeclare(numDWord, Type_UD, dstGRF, 0);
             auto movInst = builder.createMov(
@@ -8768,7 +8768,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             const int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
             const uint32_t inlineDataSize = builder.getInlineDataSize();
 
-            uint32_t numPerThreadGRF = PTIS / numEltPerGRF<Type_UB>();
+            uint32_t numPerThreadGRF = PTIS / kernel.numEltPerGRF<Type_UB>();
 
             uint32_t localIDsOffset = 0;
 
@@ -8781,13 +8781,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 // Rest of payload is shifted in the buffer by N bytes.
                 // So payload args which start at N offset, now start at 0 offset.
                 // Because of this we need to calculate localID offset:
-                localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, builder.getGRFSize());
+                localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, kernel.getGRFSize());
                 localIDsOffset -= useInlineData ? inlineDataSize : 0;
             }
             else
             {
                 localIDsOffset = CTIS;
-                localIDsOffset -= useInlineData ? builder.getGRFSize() : 0;
+                localIDsOffset -= useInlineData ? kernel.getGRFSize() : 0;
             }
 
 
@@ -8850,7 +8850,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 builder.getRegionScalar(), Type_UD);
             auto madSrc1 = builder.createSrc(rtail->getRegVar(), 0, 0,
                 builder.getRegionScalar(), Type_UW);
-            auto madSrc2 = builder.createImm(numPerThreadGRF * numEltPerGRF<Type_UB>(), Type_UW);
+            auto madSrc2 = builder.createImm(numPerThreadGRF * kernel.numEltPerGRF<Type_UB>(), Type_UW);
             auto madDst = builder.createDst(rtail->getRegVar(), 0, addrSubreg, 1, Type_UD);
             auto madInst = builder.createInternalInst(
                 nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD1,
@@ -8915,18 +8915,18 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
                 int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
 
-                uint32_t numPerThreadGRF = PTIS / numEltPerGRF<Type_UB>();
+                uint32_t numPerThreadGRF = PTIS / kernel.numEltPerGRF<Type_UB>();
                 uint32_t numCrossThreadGRF = 0;
                 uint32_t crossThreadStart = 0;
 
                 if (CTIS < 0)
                 {
-                    numCrossThreadGRF = AlignUp(loadedCrossThreadInputSize, builder.getGRFSize()) / numEltPerGRF<Type_UB>();
-                    crossThreadStart = crossThreadLoadStart / builder.getGRFSize();
+                    numCrossThreadGRF = AlignUp(loadedCrossThreadInputSize, kernel.getGRFSize()) / kernel.numEltPerGRF<Type_UB>();
+                    crossThreadStart = crossThreadLoadStart / kernel.getGRFSize();
                 }
                 else
                 {
-                    numCrossThreadGRF = CTIS / numEltPerGRF<Type_UB>();
+                    numCrossThreadGRF = CTIS / kernel.numEltPerGRF<Type_UB>();
                     crossThreadStart = startGRF + numPerThreadGRF;
                     if (useInlineData)
                     {
@@ -9352,12 +9352,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // GlobalRA::setABIForStackCallFunctionCalls.
         assert(fcall->getDst()->isGreg());
         // call dst must not be overlapped with r2 which is hardcoded as the new jump target
-        assert((fcall->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>()) != 2);
+        assert((fcall->getDst()->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>()) != 2);
 
 
         // hardcoded add's dst to r2
         // the reg offset must be the same as call's dst reg, and must be 0 (HW restriction)
-        uint32_t reg_off = fcall->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()
+        uint32_t reg_off = fcall->getDst()->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()
             / fcall->getDst()->getTypeSize();
 
         G4_Declare* add_dst_decl =
@@ -9405,8 +9405,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //    ret    dst                           // jump to the next instruction
         //    add    dst     -dst    call_target   // at this intruction dst is the ip value
 
-        uint32_t reg_num = add_with_ip->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
-        uint32_t reg_off = add_with_ip->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()
+        uint32_t reg_num = add_with_ip->getDst()->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
+        uint32_t reg_off = add_with_ip->getDst()->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()
             / add_with_ip->getDst()->getTypeSize();
         // call's dst must have sub-reg num 0 (HW restriction)
         assert(reg_off == 0);
@@ -9460,8 +9460,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // calculate the reserved register's num and offset from fcall's dst register (shoud be r125.0)
         assert(fcall->getDst()->isGreg());
-        uint32_t reg_num = fcall->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
-        uint32_t reg_off = fcall->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()
+        uint32_t reg_num = fcall->getDst()->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
+        uint32_t reg_off = fcall->getDst()->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()
             / fcall->getDst()->getTypeSize();
 
         G4_Declare* new_target_decl = createInstsForCallTargetOffset(insts, fcall, -64);
@@ -10446,7 +10446,7 @@ static bool checkMadDst(G4_INST *inst, IR_Builder &builder)
     // FIXME: This acc type size is only for simd 16.
     unsigned Sz = TypeSize(Type_W);
     Sz *= dst->getHorzStride() * inst->getExecSize();
-    return Sz <= numEltPerGRF<Type_UB>();
+    return Sz <= builder.numEltPerGRF<Type_UB>();
 }
 
 // Check whether this mad sequence can be turned into a MAC sequence.
@@ -11013,7 +11013,7 @@ static bool isCandidateDecl(G4_Declare *Dcl, const IR_Builder& builder)
 
     // Only split 4GRF variables. We should be able to split > 4GRF variables,
     // but this should have been done in FE.
-    if (RootDcl->getByteSize() != 4 * numEltPerGRF<Type_UB>())
+    if (RootDcl->getByteSize() != 4 * builder.numEltPerGRF<Type_UB>())
         return false;
 
     if (RootDcl->getAddressed())
@@ -11172,11 +11172,11 @@ void Optimizer::split4GRFVars()
             }
             else
             {
-                auto cross2GRF = [](G4_Operand* opnd)
+                auto cross2GRF = [this](G4_Operand* opnd)
                 {
                     uint32_t lb = opnd->getLeftBound();
                     uint32_t rb = opnd->getRightBound();
-                    return (lb < 2u * numEltPerGRF<Type_UB>()) && (rb >= 2u * numEltPerGRF<Type_UB>());
+                    return (lb < 2u * kernel.numEltPerGRF<Type_UB>()) && (rb >= 2u * kernel.numEltPerGRF<Type_UB>());
                 };
                 // check and remove decls with operands that cross 2GRF boundary
                 if (inst->getDst())
@@ -11234,7 +11234,7 @@ void Optimizer::split4GRFVars()
                 G4_Declare* dstRootDcl = dst->getTopDcl()->getRootDeclare();
                 if (DclMap.count(dstRootDcl))
                 {
-                    bool isLow = dst->getLeftBound() < 2u * numEltPerGRF<Type_UB>();
+                    bool isLow = dst->getLeftBound() < 2u * kernel.numEltPerGRF<Type_UB>();
                     auto NewDcl = DclMap[dstRootDcl]->getDcl(builder, dst->getType(), isLow);
                     auto NewDst = builder.createDst(NewDcl->getRegVar(),
                         dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(),
@@ -11252,7 +11252,7 @@ void Optimizer::split4GRFVars()
                     G4_Declare* srcRootDcl = src->getTopDcl()->getRootDeclare();
                     if (DclMap.count(srcRootDcl))
                     {
-                        bool isLow = src->getLeftBound() < 2u * numEltPerGRF<Type_UB>();
+                        bool isLow = src->getLeftBound() < 2u * kernel.numEltPerGRF<Type_UB>();
                         auto NewSrcDcl = DclMap[srcRootDcl]->getDcl(builder, src->getType(), isLow);
                         auto NewSrc = builder.createSrcRegRegion(
                             srcRegion->getModifier(), src->getRegAccess(),
@@ -11522,7 +11522,7 @@ void Optimizer::changeMoveType()
         }
     };
 
-    auto isCandidateMov = [](G4_INST* inst)
+    auto isCandidateMov = [this](G4_INST* inst)
     {
         if (inst->opcode() != G4_mov || inst->getSaturate() || inst->getCondMod())
         {
@@ -11586,8 +11586,8 @@ void Optimizer::changeMoveType()
             bool hasSimpleRegion = src0R->isScalar() ||
                 (src0R->getRegion()->isContiguous(inst->getExecSize()) &&
                     inst->getDst()->getHorzStride() == 1);
-            bool dstSrcAligned = src0R->getLinearizedStart() % numEltPerGRF<Type_UB>() ==
-                inst->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>();
+            bool dstSrcAligned = src0R->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>() ==
+                inst->getDst()->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>();
             return hasNoModifier && hasSimpleRegion && dstSrcAligned;
         }
         else if (src0->isImm())
@@ -12099,15 +12099,17 @@ void Optimizer::dce()
 
 static bool retires(G4_Operand* Opnd, G4_INST* SI)
 {
+    assert(SI);
+    const IR_Builder& builder = SI->getBuilder();
     assert(Opnd && Opnd->isGreg());
-    unsigned LB = Opnd->getLinearizedStart() / numEltPerGRF<Type_UB>();
-    unsigned RB = Opnd->getLinearizedEnd() / numEltPerGRF<Type_UB>();
+    unsigned LB = Opnd->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
+    unsigned RB = Opnd->getLinearizedEnd() / builder.numEltPerGRF<Type_UB>();
 
-    auto overlaps = [=](G4_Operand* A) {
+    auto overlaps = [=, &builder](G4_Operand* A) {
         if (A == nullptr || A->isNullReg() || !A->isGreg())
             return false;
-        unsigned LB1 = A->getLinearizedStart() / numEltPerGRF<Type_UB>();
-        unsigned RB1 = A->getLinearizedEnd() / numEltPerGRF<Type_UB>();
+        unsigned LB1 = A->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
+        unsigned RB1 = A->getLinearizedEnd() / builder.numEltPerGRF<Type_UB>();
         return (RB >= LB1 && RB1 >= LB);
     };
 
@@ -12135,9 +12137,9 @@ static G4_INST* emitRetiringMov(IR_Builder& builder, G4_BB* BB, G4_INST* SI,
     assert(SI && SI->isSend());
     G4_Operand* Src0 = SI->getSrc(0);
 
-    unsigned RegNum = Src0->getLinearizedStart() / numEltPerGRF<Type_UB>();
+    unsigned RegNum = Src0->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
     G4_Declare* Dcl = builder.createTempVar(16, Type_F, Any);
-    Dcl->setGRFBaseOffset(RegNum * numEltPerGRF<Type_UB>());
+    Dcl->setGRFBaseOffset(RegNum * builder.numEltPerGRF<Type_UB>());
     Dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(RegNum), 0);
 
     G4_DstRegRegion* MovDst = builder.createDst(Dcl->getRegVar(), 0, 0, 1, Type_F);
@@ -15567,7 +15569,7 @@ void Optimizer::expandMadwPostSchedule()
             hwConf.fixMulSrc1(startIter, bb);
 
             // 2, create a mach/macl inst
-            int DstHiRegOffset = (int)std::ceil((float)(execSize * TypeSize(tmpType)) / builder.getGRFSize());
+            int DstHiRegOffset = (int)std::ceil((float)(execSize * TypeSize(tmpType)) / kernel.getGRFSize());
             G4_DstRegRegion* dstHi32 = builder.createDst(dst->getBase(), dst->getRegOff() + DstHiRegOffset, dst->getSubRegOff(), 1, tmpType);
             G4_INST* machInst = builder.createMach(execSize,
                 dstHi32, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, tmpType);

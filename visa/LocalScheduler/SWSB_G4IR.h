@@ -61,9 +61,6 @@ enum SBDependenceAttr
 #define DPAS_8x2_GRFREAD_CYCLE 2
 #define DPAS_8x1_GRFREAD_CYCLE 1
 
-//1 GRF map to 1 flag: bytes per bit
-#define FLAG_TO_GRF_MAP  (numEltPerGRF<Type_UB>() / 16)
-
 typedef enum  _DPAS_DEP
 {
     REP_1 = 1,
@@ -202,6 +199,8 @@ namespace vISA
 
         bool hasGRFGrainOverlap(const SBFootprint *liveFootprint) const
         {
+            assert(inst != nullptr);
+            const IR_Builder& irb = inst->getBuilder();
             for (const SBFootprint *curFootprintPtr = this; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
             {
                 FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
@@ -209,8 +208,8 @@ namespace vISA
                 for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
                 {
                     if (curFType == curFootprint2Ptr->fType &&
-                        ((curFootprintPtr->LeftB  / numEltPerGRF<Type_UB>()) <= (curFootprint2Ptr->RightB  / numEltPerGRF<Type_UB>())) &&
-                        ((curFootprintPtr->RightB  / numEltPerGRF<Type_UB>()) >= (curFootprint2Ptr->LeftB  / numEltPerGRF<Type_UB>())))
+                        ((curFootprintPtr->LeftB  / irb.numEltPerGRF<Type_UB>()) <= (curFootprint2Ptr->RightB  / irb.numEltPerGRF<Type_UB>())) &&
+                        ((curFootprintPtr->RightB  / irb.numEltPerGRF<Type_UB>()) >= (curFootprint2Ptr->LeftB  / irb.numEltPerGRF<Type_UB>())))
                     {
                         return true;
                     }
@@ -1257,8 +1256,10 @@ namespace vISA
             //Kill the same node in other bucket.
             for (const SBFootprint *footprint = bucketNode->node->getFirstFootprint(bucketNode->opndNum); footprint; footprint = footprint->next)
             {
-                unsigned int startBucket = footprint->LeftB / numEltPerGRF<Type_UB>();
-                unsigned int endBucket = footprint->RightB / numEltPerGRF<Type_UB>();
+                assert(footprint->inst != nullptr);
+                const IR_Builder& irb = footprint->inst->getBuilder();
+                unsigned int startBucket = footprint->LeftB / irb.numEltPerGRF<Type_UB>();
+                unsigned int endBucket = footprint->RightB / irb.numEltPerGRF<Type_UB>();
 
                 if (footprint->inst == bucketNode->footprint->inst)
                 {

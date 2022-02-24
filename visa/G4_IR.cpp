@@ -1590,11 +1590,11 @@ G4_Type G4_INST::getOpExecType(int& extypesize)
     }
     if (IS_VINTTYPE(extype))
     {
-        extypesize = numEltPerGRF<Type_UB>()/2;
+        extypesize = getBuilder().numEltPerGRF<Type_UB>()/2;
     }
     else if (IS_VFTYPE(extype))
     {
-        extypesize = numEltPerGRF<Type_UB>();
+        extypesize = getBuilder().numEltPerGRF<Type_UB>();
     }
     else
     {
@@ -2315,7 +2315,7 @@ bool G4_INST::canPropagateTo(
     {
         uint32_t leftBoundInBytes = src->getLeftBound() * src->getTypeSize();
         // left bound should be 2grf aligned to propagate into dpas.
-        if (leftBoundInBytes % (numEltPerGRF<Type_UB>()*2))
+        if (leftBoundInBytes % (getBuilder().numEltPerGRF<Type_UB>()*2))
         {
             return false;
         }
@@ -2947,7 +2947,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     {
         uint32_t leftBoundInBytes = dst->getLeftBound() * dst->getTypeSize();
         // left bound should be 2grf aligned to hoist dst into dpas.
-        if (leftBoundInBytes % (numEltPerGRF<Type_UB>() * 2))
+        if (leftBoundInBytes % (getBuilder().numEltPerGRF<Type_UB>() * 2))
         {
             return false;
         }
@@ -3191,7 +3191,7 @@ bool G4_INST::detectComprInst() const
              dst->getType() != Type_UNDEF)
     {
         if ((unsigned)execSize * dst->getTypeSize() * dst->getHorzStride() >
-            numEltPerGRF<Type_UB>())
+            getBuilder().numEltPerGRF<Type_UB>())
         {
             comprInst = ComprInstStates::T;
         }
@@ -3204,7 +3204,7 @@ bool G4_INST::detectComprInst() const
     // Uncompressed instructions can only operate on a max of 4 DFs or
     // 8 DF4/F/DWs or 16 W/Bs (the only exception being packed byte
     // moves which always have destinations).
-    else if ((unsigned)execSize * TypeSize(execType) > numEltPerGRF<Type_UB>())
+    else if ((unsigned)execSize * TypeSize(execType) > getBuilder().numEltPerGRF<Type_UB>())
     {
         comprInst = ComprInstStates::T;
     }
@@ -3305,7 +3305,7 @@ G4_INST::isComprInvariantSrcRegion(G4_SrcRegRegion* src, int srcPos)
                 return false;
             }
         }
-        if (byte_size == 2 * numEltPerGRF<Type_UB>()) {
+        if (byte_size == 2 * getBuilder().numEltPerGRF<Type_UB>()) {
             return true;
         }
         else {
@@ -3594,7 +3594,7 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         if (isSpillIntrinsic())
         {
             output << ' ';
-            output << "Scratch[" << asSpillIntrinsic()->getOffset() << "x" << numEltPerGRF<Type_UB>() << "]";
+            output << "Scratch[" << asSpillIntrinsic()->getOffset() << "x" << getBuilder().numEltPerGRF<Type_UB>() << "]";
         }
         else if (dst)
         {
@@ -3624,7 +3624,7 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         if (isFillIntrinsic())
         {
             output << "  ";
-            output << "Scratch[" << asFillIntrinsic()->getOffset() << "x" << numEltPerGRF<Type_UB>() << "] ";
+            output << "Scratch[" << asFillIntrinsic()->getOffset() << "x" << getBuilder().numEltPerGRF<Type_UB>() << "] ";
         }
 
         if (isFlowControl() && asCFInst()->getJip())
@@ -3915,8 +3915,8 @@ bool G4_InstSend::isDirectSplittableSend()
         case DC1_A64_UNTYPED_SURFACE_READ:  //SVM gather 4: emask can be reused if the per-channel data is larger than 1 GRF
         case DC1_UNTYPED_SURFACE_READ:   //VISA gather 4
         case DC1_TYPED_SURFACE_READ:   //Gather 4 typed
-            if (elemSize * execSize > (int)numEltPerGRF<Type_UB>() &&
-                elemSize * execSize % numEltPerGRF<Type_UB>() == 0)
+            if (elemSize * execSize > (int)getBuilder().numEltPerGRF<Type_UB>() &&
+                elemSize * execSize % getBuilder().numEltPerGRF<Type_UB>() == 0)
             {
                 return true;
             }
@@ -3932,8 +3932,8 @@ bool G4_InstSend::isDirectSplittableSend()
         {
         case DC2_UNTYPED_SURFACE_READ:   //gather 4 scaled :  emask can be reused if the per-channel data is larger than 1 GRF
         case DC2_A64_UNTYPED_SURFACE_READ: //SVM gather 4 scaled
-            if (elemSize * execSize > (int)numEltPerGRF<Type_UB>() &&
-                elemSize * execSize % numEltPerGRF<Type_UB>() == 0)
+            if (elemSize * execSize > (int)getBuilder().numEltPerGRF<Type_UB>() &&
+                elemSize * execSize % getBuilder().numEltPerGRF<Type_UB>() == 0)
             {
                 return true;
             }
@@ -5695,6 +5695,21 @@ void G4_Declare::copyAlign(G4_Declare* dcl)
     regVar->setSubRegAlignment(dcl->getSubRegAlign());
 }
 
+void G4_Declare::resizeNumRows(unsigned int numrows)
+{
+    int byteSize = numrows * irb.numEltPerGRF<Type_UB>();
+    setTotalElems(byteSize / getElemSize());
+}
+
+unsigned short G4_Declare::getNumElems() const
+{
+    return getNumRows() > 1 ? irb.numEltPerGRF<Type_UB>() / getElemSize() : numElements;
+}
+unsigned short G4_Declare::getNumRows() const
+{
+    return (getByteSize() + (irb.numEltPerGRF<Type_UB>() - 1)) / irb.numEltPerGRF<Type_UB>();
+}
+
 void G4_Declare::emit(std::ostream &output) const
 {
 
@@ -7101,7 +7116,7 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
 
     if (opnd && !opnd->isImm() && !opnd->isNullReg())
     {
-        auto computeSendOperandBound = [](G4_Operand* opnd, int numReg)
+        auto computeSendOperandBound = [this](G4_Operand* opnd, int numReg)
         {
             if (numReg == 0)
             {
@@ -7114,7 +7129,7 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
             // bound up to the variable size.
             unsigned LB = opnd->left_bound;
             unsigned RB = std::min(opnd->getTopDcl()->getByteSize(),
-                LB + numReg * numEltPerGRF<Type_UB>()) - 1;
+                LB + numReg * getBuilder().numEltPerGRF<Type_UB>()) - 1;
 
             unsigned NBytes = RB - LB + 1;
             opnd->setBitVecFromSize(NBytes);
@@ -8291,7 +8306,7 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const
     G4_SrcRegRegion* src = getSrc(srcId)->asSrcRegRegion();
 
     // dst must be GRF-aligned
-    if ((getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
+    if ((getDst()->getLinearizedStart() % getBuilder().numEltPerGRF<Type_UB>()) != 0)
     {
         if (!(isMixedMode() && builder.getPlatform() == Xe_XeHPSDV))
             return false;
@@ -8310,7 +8325,7 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const
         {
             //When source is float or half float from accumulator register and destination is half float with a stride of 1,
             //the source must register aligned. i.e., source must have offset zero.
-            if ((src->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
+            if ((src->getLinearizedStart() % getBuilder().numEltPerGRF<Type_UB>()) != 0)
             {
                 return false;
             }

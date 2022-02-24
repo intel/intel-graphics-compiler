@@ -224,7 +224,7 @@ void HWConformity::broadcast(
     uint32_t instMask = inst->getMaskOption();
 
     // avoid simd16 Qword moves
-    MUST_BE_TRUE((unsigned)execSize * TypeSize(type) <= 2u * numEltPerGRF<Type_UB>(),
+    MUST_BE_TRUE((unsigned)execSize * TypeSize(type) <= 2u * kernel.numEltPerGRF<Type_UB>(),
         "move can't exceed 2 GRFs");
 
     G4_Declare* dcl = builder.createTempVar(execSize, type, align);
@@ -288,8 +288,8 @@ G4_SrcRegRegion* HWConformity::insertCopyAtBBEntry(G4_BB* bb, G4_ExecSize execSi
     auto lb = src->getLinearizedStart();
     auto rb = src->getLinearizedEnd();
 
-    unsigned int regNum = lb / numEltPerGRF<Type_UB>();
-    unsigned int numRegs = (rb + numEltPerGRF<Type_UB>() - 1 - lb) / numEltPerGRF<Type_UB>();
+    unsigned int regNum = lb / kernel.numEltPerGRF<Type_UB>();
+    unsigned int numRegs = (rb + kernel.numEltPerGRF<Type_UB>() - 1 - lb) / kernel.numEltPerGRF<Type_UB>();
     if (regNum == -1 || numRegs == 0)
     {
         return nullptr;
@@ -383,9 +383,9 @@ G4_Operand* HWConformity::insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4
     }
 
     int opExecWidthBytes = IS_VINTTYPE(src->getType()) ?
-        numEltPerGRF<Type_UB>() / 2 * (execSize > 8 ? execSize / 8 : 1) :
+        kernel.numEltPerGRF<Type_UB>() / 2 * (execSize > 8 ? execSize / 8 : 1) :
         (src->getType() == Type_VF ?
-            numEltPerGRF<Type_UB>() / 2 * (execSize > 4 ? execSize / 4 : 1) :
+            kernel.numEltPerGRF<Type_UB>() / 2 * (execSize > 4 ? execSize / 4 : 1) :
             newExecSize * TypeSize(type) * scale);
 
     subAlign = getDclAlignment(opExecWidthBytes, inst, newExecSize == 1);
@@ -634,7 +634,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
             }
             else if (!srcRegion->isScalar())
             {
-                if (!hasSameOffset && !builder.isOpndAligned(srcRegion, numEltPerGRF<Type_UB>()))
+                if (!hasSameOffset && !builder.isOpndAligned(srcRegion, kernel.numEltPerGRF<Type_UB>()))
                 {
                     return true;
                 }
@@ -695,7 +695,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
     G4_Type extype = inst->getExecType2();
     bool cond1 = (dst->getType() != extype && !(dst->getType() == Type_UD && extype == Type_D));
     if (dst->getRegAccess() != Direct || dst->getHorzStride() != 1 || cond1 ||
-        (!hasSameOffset && inst->getExecSize() != g4::SIMD1 && !builder.isOpndAligned(dst, numEltPerGRF<Type_UB>())))
+        (!hasSameOffset && inst->getExecSize() != g4::SIMD1 && !builder.isOpndAligned(dst, kernel.numEltPerGRF<Type_UB>())))
     {
         mov_dst = true;
         replaceDst(it, extype);
@@ -709,14 +709,14 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
 
         if (dst && !dst->isNullReg() && dst->getType() == Type_HF && dst->getHorzStride() == 1)
         {
-            if (!builder.isOpndAligned(dst, numEltPerGRF<Type_UB>()))
+            if (!builder.isOpndAligned(dst, kernel.numEltPerGRF<Type_UB>()))
             {
                 mov_dst = true;
                 replaceDst(it, dst->getType(), GRFALIGN);
             }
             if (src0 && !src0->isNullReg() && src0->getType() == Type_HF)
             {
-                if (!builder.isOpndAligned(src0, numEltPerGRF<Type_UB>()))
+                if (!builder.isOpndAligned(src0, kernel.numEltPerGRF<Type_UB>()))
                 {
                     G4_Operand* newSrc0 = insertMovBefore(it, 0, src0->getType(), bb, GRFALIGN);
                     inst->setSrc(newSrc0, 0);
@@ -725,7 +725,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
 
             if (src1 && !src1->isNullReg() && src1->getType() == Type_HF)
             {
-                if (!builder.isOpndAligned(src0, numEltPerGRF<Type_UB>()))
+                if (!builder.isOpndAligned(src0, kernel.numEltPerGRF<Type_UB>()))
                 {
                     G4_Operand* newSrc0 = insertMovBefore(it, 1, src0->getType(), bb, GRFALIGN);
                     inst->setSrc(newSrc0, 1);
@@ -1017,7 +1017,7 @@ bool HWConformity::fixLine(INST_LIST_ITER it, G4_BB* bb)
             badRegion = (rd->vertStride != 0 || rd->width != 4 || rd->horzStride != 1);
         }
         if (!IS_FTYPE(src0->getType()) || src0->isImm() || badRegion ||
-            !builder.isOpndAligned(src0, numEltPerGRF<Type_UB>() / 2))
+            !builder.isOpndAligned(src0, kernel.numEltPerGRF<Type_UB>() / 2))
         {
             // insertMovBefore()  is not used here
             // due to the special region <0;4,1> of src0 of line
@@ -2045,7 +2045,7 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB* bb)
         dst->getBase() &&
         dst->getBase()->isRegVar())
     {
-        if (!builder.isOpndAligned(dst, numEltPerGRF<Type_UB>()))
+        if (!builder.isOpndAligned(dst, kernel.numEltPerGRF<Type_UB>()))
         {
             inst->setDest(insertMovAfter(iter, dst, dst->getType(), bb, GRFALIGN));
             changed = true;
@@ -2508,7 +2508,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
         G4_Declare* dstAlias = builder.createTempVar(execSize * 2, Type_D, Any);
         if (!needsExtraMov)
         {
-            uint32_t aliasOffset = origDst->getRegOff() * numEltPerGRF<Type_UB>() + origDst->getSubRegOff() * 8;
+            uint32_t aliasOffset = origDst->getRegOff() * kernel.numEltPerGRF<Type_UB>() + origDst->getSubRegOff() * 8;
             dstAlias->setAliasDeclare(origDst->getBase()->asRegVar()->getDeclare(), aliasOffset);
         }
         G4_INST* lowMove = builder.createMov(execSize,
@@ -2893,19 +2893,19 @@ void HWConformity::copyDwords(G4_Declare* dst,
     }
 
     G4_SrcRegRegion* srcOpnd = builder.createSrc(
-        newSrc->getRegVar(), srcOffset / numEltPerGRF<Type_UB>(),
-        (srcOffset % numEltPerGRF<Type_UB>()) / TypeSize(Type_UD),
+        newSrc->getRegVar(), srcOffset / kernel.numEltPerGRF<Type_UB>(),
+        (srcOffset % kernel.numEltPerGRF<Type_UB>()) / TypeSize(Type_UD),
         builder.getRegionStride1(), Type_UD);
     G4_DstRegRegion* dstOpnd = builder.createDst(newDst->getRegVar(),
-        dstOffset / numEltPerGRF<Type_UB>(),
-        (dstOffset % numEltPerGRF<Type_UB>()) / TypeSize(Type_UD), 1, Type_UD);
+        dstOffset / kernel.numEltPerGRF<Type_UB>(),
+        (dstOffset % kernel.numEltPerGRF<Type_UB>()) / TypeSize(Type_UD), 1, Type_UD);
 
     G4_INST* movInst = builder.createMov(G4_ExecSize(numDwords), dstOpnd, srcOpnd, InstOpt_WriteEnable, false);
 
     INST_LIST_ITER movPos = bb->insertBefore(iter, movInst);
 
-    if (numDwords == numEltPerGRF<Type_UD>() * 2 &&
-        ((dstOffset % numEltPerGRF<Type_UB>()) != 0 || (srcOffset % numEltPerGRF<Type_UB>()) != 0))
+    if (numDwords == kernel.numEltPerGRF<Type_UD>() * 2 &&
+        ((dstOffset % kernel.numEltPerGRF<Type_UB>()) != 0 || (srcOffset % kernel.numEltPerGRF<Type_UB>()) != 0))
     {
         // move crosses 2 GRF boundary, needs splitting
         evenlySplitInst(movPos, bb);
@@ -2974,13 +2974,13 @@ void HWConformity::copyRegs(G4_Declare* dst,
     INST_LIST_ITER iter)
 {
     int numByteCopied = 0;
-    for (; numRegs >= 2; numRegs -= 2, numByteCopied += numEltPerGRF<Type_UB>() * 2)
+    for (; numRegs >= 2; numRegs -= 2, numByteCopied += kernel.numEltPerGRF<Type_UB>() * 2)
     {
-        copyDwords(dst, dstOffset + numByteCopied, src, srcOffset + numByteCopied, numEltPerGRF<Type_UD>() * 2, bb, iter);
+        copyDwords(dst, dstOffset + numByteCopied, src, srcOffset + numByteCopied, kernel.numEltPerGRF<Type_UD>() * 2, bb, iter);
     }
     if (numRegs != 0)
     {
-        copyDwords(dst, dstOffset + numByteCopied, src, srcOffset + numByteCopied, numEltPerGRF<Type_UD>(), bb, iter);
+        copyDwords(dst, dstOffset + numByteCopied, src, srcOffset + numByteCopied, kernel.numEltPerGRF<Type_UD>(), bb, iter);
     }
 }
 
@@ -3473,7 +3473,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                     G4_INST* movInst = builder.createMov(inst->getExecSize(), tmpDst, src, inst->getOption(), false);
                     bb->insertBefore(iter, movInst);
                     uint16_t width = exSize;
-                    if (width * 8u > numEltPerGRF<Type_UB>())
+                    if (width * 8u > kernel.numEltPerGRF<Type_UB>())
                     {
                         // can't have width cross GRF
                         width = 4;
@@ -3551,7 +3551,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                         if (src->crossGRF())
                         {
                             // Make sure the new hs does not cross GRF
-                            uint32_t nbytesIn1stGRF = numEltPerGRF<Type_UB>() - (src->getLeftBound() % numEltPerGRF<Type_UB>());
+                            uint32_t nbytesIn1stGRF = kernel.numEltPerGRF<Type_UB>() - (src->getLeftBound() % kernel.numEltPerGRF<Type_UB>());
                             uint32_t eltBytes = srcAsRegion->getTypeSize();
                             uint32_t neltsIn1stGRF = nbytesIn1stGRF / eltBytes;
 
@@ -4008,7 +4008,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
             else
             {
                 // not a scalar, src2 must be GRF aligned.
-                if (!builder.isOpndAligned(src, numEltPerGRF<Type_UB>()))
+                if (!builder.isOpndAligned(src, kernel.numEltPerGRF<Type_UB>()))
                 {
                     return false;
                 }
@@ -4970,7 +4970,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
 
             G4_SubReg_Align sad2TmpSubAlign = Get_G4_SubRegAlign_From_Type(dst->getType());
 
-            if ((unsigned)inst->getExecSize() * dst->getTypeSize() > numEltPerGRF<Type_UB>())
+            if ((unsigned)inst->getExecSize() * dst->getTypeSize() > kernel.numEltPerGRF<Type_UB>())
             {
                 // align to GRF
                 sad2TmpSubAlign = GRFALIGN;
@@ -5052,14 +5052,14 @@ void HWConformity::fixSendInst(G4_BB* bb)
             G4_Declare* src0Dcl = inst->getSrc(0)->getTopDcl();
             // ToDo: check if dst/src1 may also exhibit such size mismatch
             bool sizeMismatch = inst->getMsgDesc()->getSrc0LenRegs() == 2 &&
-                (src0Dcl && src0Dcl->getRootDeclare()->getByteSize() < 2u * numEltPerGRF<Type_UB>());
-            auto doEvenAlign = [](G4_Declare* dcl)
+                (src0Dcl && src0Dcl->getRootDeclare()->getByteSize() < 2u * kernel.numEltPerGRF<Type_UB>());
+            auto doEvenAlign = [this](G4_Declare* dcl)
             {
                 if (dcl)
                 {
                     dcl = dcl->getRootDeclare();
                     // variables >= 2 GRF don't need even alignment since they can't possibly overlap
-                    if (dcl->getByteSize() < 2u * numEltPerGRF<Type_UB>())
+                    if (dcl->getByteSize() < 2u * kernel.numEltPerGRF<Type_UB>())
                     {
                         dcl->setEvenAlign();
                     }
@@ -5080,7 +5080,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
         }
 
         uint16_t offset = 0;
-        if (!builder.isOpndAligned(inst->getDst(), offset, numEltPerGRF<Type_UB>()))
+        if (!builder.isOpndAligned(inst->getDst(), offset, kernel.numEltPerGRF<Type_UB>()))
         {
             replaceDst(i, inst->getDst()->getType(), GRFALIGN);
         }
@@ -5141,7 +5141,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
         if (inst->isSplitSend() && !inst->getSrc(1)->isNullReg())
         {
             // src1 may be null because some messages (e.g., CPS) require split send
-            if (!builder.isOpndAligned(inst->getSrc(1), numEltPerGRF<Type_UB>()))
+            if (!builder.isOpndAligned(inst->getSrc(1), kernel.numEltPerGRF<Type_UB>()))
             {
                 inst->setSrc(insertMovBefore(i, 1, inst->getSrc(1)->getType(), bb, GRFALIGN), 1);
             }
@@ -5186,14 +5186,14 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     //but IR verifier might complain about OOB.
                     if (src0Overlap)
                     {
-                        G4_Declare* copyDst = builder.createTempVar(src0Size * numEltPerGRF<Type_UD>(), Type_UD, Any);
+                        G4_Declare* copyDst = builder.createTempVar(src0Size * kernel.numEltPerGRF<Type_UD>(), Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(0)->getBase()->asRegVar()->getDeclare(),
                             inst->getSrc(0)->asSrcRegRegion()->getRegOff() * builder.getGRFSize(), src0Size, bb, i);
                         inst->setSrc(builder.createSrcRegRegion(copyDst, builder.getRegionStride1()), 0);
                     }
                     if (src1Overlap)
                     {
-                        G4_Declare* copyDst = builder.createTempVar(src1Size * numEltPerGRF<Type_UD>(), Type_UD, Any);
+                        G4_Declare* copyDst = builder.createTempVar(src1Size * kernel.numEltPerGRF<Type_UD>(), Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(1)->getBase()->asRegVar()->getDeclare(),
                             inst->getSrc(1)->asSrcRegRegion()->getRegOff() * builder.getGRFSize(), src1Size, bb, i);
                         inst->setSrc(builder.createSrcRegRegion(copyDst, builder.getRegionStride1()), 1);
@@ -5205,7 +5205,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     auto dst = inst->getDst();
                     auto dstDcl = dst->getBase()->asRegVar()->getDeclare();
                     auto copyIter = std::next(i);
-                    G4_Declare* copySrc = builder.createTempVar(dstSize * numEltPerGRF<Type_UD>(), Type_UD, Any);
+                    G4_Declare* copySrc = builder.createTempVar(dstSize * kernel.numEltPerGRF<Type_UD>(), Type_UD, Any);
                     // speical case when send dst declare is <1 GRF (it must still be GRF-aligned)
                     if (dstDcl->getByteSize() < builder.getGRFSize())
                     {
@@ -5297,7 +5297,7 @@ void HWConformity::fixOverlapInst(G4_BB* bb)
             G4_Operand* dst = inst->getDst();
             if (dst != NULL && dst->isDstRegRegion() && dst->getTopDcl() && dst->getTopDcl()->getRegFile() == G4_GRF)
             {
-                int dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() + 1) / numEltPerGRF<Type_UB>();
+                int dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() + 1) / kernel.numEltPerGRF<Type_UB>();
                 int srcSize = 1;
 
                 bool srcOverlap = false;
@@ -5309,7 +5309,7 @@ void HWConformity::fixOverlapInst(G4_BB* bb)
                         srcOverlap |= inst->getDst()->compareOperand(inst->getSrc(i)) == Rel_interfere;
                         if (srcOverlap)
                         {
-                            srcSize = (src->getLinearizedEnd() - src->getLinearizedStart() + 1) / numEltPerGRF<Type_UB>();
+                            srcSize = (src->getLinearizedEnd() - src->getLinearizedStart() + 1) / kernel.numEltPerGRF<Type_UB>();
                             break;
                         }
                     }
@@ -6843,16 +6843,16 @@ G4_INST* HWConformity::splitInstWithByteDst(G4_INST* expand_op)
                 expandSrcRegion->setRegion(newRegion);
 
                 bool directSrc = (expandSrcRegion->getRegAccess() == Direct);
-                if (secondAddrImmedDiff >= (int)numEltPerGRF<Type_UB>())
+                if (secondAddrImmedDiff >= (int)kernel.numEltPerGRF<Type_UB>())
                 {
                     secondSubRegOffDiff =
-                        (short)((secondAddrImmedDiff - numEltPerGRF<Type_UB>()) / expand_src->getTypeSize());
+                        (short)((secondAddrImmedDiff - kernel.numEltPerGRF<Type_UB>()) / expand_src->getTypeSize());
                 }
                 G4_SrcRegRegion* secondSrcOpnd = builder.createSrcRegRegion(
                     expandSrcRegion->getModifier(),
                     expandSrcRegion->getRegAccess(),
                     expandSrcRegion->getBase(),
-                    expandSrcRegion->getRegOff() + ((directSrc && secondAddrImmedDiff >= (int)numEltPerGRF<Type_UB>()) ? 1 : 0),
+                    expandSrcRegion->getRegOff() + ((directSrc && secondAddrImmedDiff >= (int)kernel.numEltPerGRF<Type_UB>()) ? 1 : 0),
                     expandSrcRegion->getSubRegOff() + (directSrc ? secondSubRegOffDiff : 0),
                     newRegion,
                     expandSrcRegion->getType());
@@ -6966,7 +6966,7 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
                     continue;
                 // check number of elements in first GRF.
                 uint16_t execTypeSize = hs * src->getElemSize();
-                uint16_t sizeInFirstGRF = numEltPerGRF<Type_UB>() - src->getLeftBound() % numEltPerGRF<Type_UB>();
+                uint16_t sizeInFirstGRF = kernel.numEltPerGRF<Type_UB>() - src->getLeftBound() % kernel.numEltPerGRF<Type_UB>();
                 uint16_t vertSize = vs * src->getTypeSize();
                 uint16_t numEle = (sizeInFirstGRF + execTypeSize - 1) / execTypeSize;
                 uint16_t rowSize = wd * execTypeSize;
@@ -7069,9 +7069,9 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             unsigned int leftBound = opnd->asDstRegRegion()->getLeftBound();
             unsigned int rightBound = opnd->asDstRegRegion()->getRightBound();
 
-            if (((rightBound * 2 / numEltPerGRF<Type_UB>() - leftBound * 2 / numEltPerGRF<Type_UB>()) > 1) ||
+            if (((rightBound * 2 / kernel.numEltPerGRF<Type_UB>() - leftBound * 2 / kernel.numEltPerGRF<Type_UB>()) > 1) ||
                 (builder.getPlatform() == GENX_BDW &&
-                (rightBound * 2 / numEltPerGRF<Type_UB>() != leftBound * 2 / numEltPerGRF<Type_UB>())))
+                (rightBound * 2 / kernel.numEltPerGRF<Type_UB>() != leftBound * 2 / kernel.numEltPerGRF<Type_UB>())))
             {
                 setAccessPattern(topdcl, ACCESS_PATTERN_INVALID);
             }
@@ -7094,9 +7094,9 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             unsigned int leftBound = opnd->asSrcRegRegion()->getLeftBound();
             unsigned int rightBound = opnd->asSrcRegRegion()->getRightBound();
 
-            if (((rightBound * 2 / numEltPerGRF<Type_UB>() - leftBound * 2 / numEltPerGRF<Type_UB>()) > 1) ||
+            if (((rightBound * 2 / kernel.numEltPerGRF<Type_UB>() - leftBound * 2 / kernel.numEltPerGRF<Type_UB>()) > 1) ||
                 (builder.getPlatform() == GENX_BDW &&
-                (rightBound * 2 / numEltPerGRF<Type_UB>() != leftBound * 2 / numEltPerGRF<Type_UB>())))
+                (rightBound * 2 / kernel.numEltPerGRF<Type_UB>() != leftBound * 2 / kernel.numEltPerGRF<Type_UB>())))
             {
                 setAccessPattern(topdcl, ACCESS_PATTERN_INVALID);
             }
@@ -7128,10 +7128,10 @@ G4_Operand* HWConformity::fixPackedByteReference(IR_Builder& builder, G4_Operand
         {
             short dst_regoff = opnd->asDstRegRegion()->getRegOff();
             short dst_subregoff = opnd->asDstRegRegion()->getSubRegOff();
-            short off = (dst_regoff * numEltPerGRF<Type_UB>() + dst_subregoff) * 2;
+            short off = (dst_regoff * kernel.numEltPerGRF<Type_UB>() + dst_subregoff) * 2;
 
-            dst_regoff = off / numEltPerGRF<Type_UB>();
-            dst_subregoff = off % numEltPerGRF<Type_UB>();
+            dst_regoff = off / kernel.numEltPerGRF<Type_UB>();
+            dst_subregoff = off % kernel.numEltPerGRF<Type_UB>();
 
             G4_DstRegRegion* newDstOpnd = builder.createDst(
                 opnd->getBase()->asRegVar(),
@@ -7145,10 +7145,10 @@ G4_Operand* HWConformity::fixPackedByteReference(IR_Builder& builder, G4_Operand
         {
             short src_regoff = opnd->asSrcRegRegion()->getRegOff();
             short src_subregoff = opnd->asSrcRegRegion()->getSubRegOff();
-            short off = (src_regoff * numEltPerGRF<Type_UB>() + src_subregoff) * 2;
+            short off = (src_regoff * kernel.numEltPerGRF<Type_UB>() + src_subregoff) * 2;
 
-            src_regoff = off / numEltPerGRF<Type_UB>();
-            src_subregoff = off % numEltPerGRF<Type_UB>();
+            src_regoff = off / kernel.numEltPerGRF<Type_UB>();
+            src_subregoff = off % kernel.numEltPerGRF<Type_UB>();
 
             const RegionDesc* rd = builder.getRegionStride2();
             G4_SrcRegRegion* newSrcOpnd = builder.createSrcRegRegion(opnd->asSrcRegRegion()->getModifier(),
@@ -7467,7 +7467,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
             // When exec_size = 16, src2 is 2 GRFs after src1 with size = 2 GRFs
             unsigned short numGRFsToCopy = inst->getExecSize() == g4::SIMD8 ? 2 : 4;
 
-            G4_Declare* tmpDcl = builder.createTempVar((unsigned short)(numEltPerGRF<Type_UB>() / TypeSize(Type_F) * numGRFsToCopy), Type_F,
+            G4_Declare* tmpDcl = builder.createTempVar((unsigned short)(kernel.numEltPerGRF<Type_UB>() / TypeSize(Type_F) * numGRFsToCopy), Type_F,
                 Any);
 
             // Before:
@@ -7812,11 +7812,11 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
                         !inst->getSrc(2)->asSrcRegRegion()->getRegion()->isScalar();
                     if (nonScalarSrc2)
                     {
-                        if (!builder.isOpndAligned(inst->getDst(), numEltPerGRF<Type_UB>()))
+                        if (!builder.isOpndAligned(inst->getDst(), kernel.numEltPerGRF<Type_UB>()))
                         {
                             replaceDst(instIter, Type_F, GRFALIGN);
                         }
-                        if (!builder.isOpndAligned(inst->getSrc(2), numEltPerGRF<Type_UB>()))
+                        if (!builder.isOpndAligned(inst->getSrc(2), kernel.numEltPerGRF<Type_UB>()))
                         {
                             inst->setSrc(insertMovBefore(instIter, 2, inst->getSrc(2)->getType(), bb, GRFALIGN), 2);
                         }

@@ -239,7 +239,7 @@ void G4_BB::emitBasicInstructionComment(
     const G4_INST* inst = *it;
 
     auto platform = inst->getPlatform();
-    unsigned grfSize = inst->getBuilder().getGRFSize();
+    unsigned grfSize = parent->builder->getGRFSize();
 
     if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE)
     {
@@ -384,7 +384,7 @@ void G4_BB::emitBankConflict(std::ostream& output, const G4_INST *inst)
                     if (baseVar->isGreg()) {
                         uint32_t byteAddress = srcOpnd->getLinearizedStart();
                         if (byteAddress != 0) {
-                            regNum[0][i] = byteAddress / numEltPerGRF<Type_UB>();
+                            regNum[0][i] = byteAddress / parent->builder->numEltPerGRF<Type_UB>();
                         }
                         else {
                             // before RA, use the value in Greg directly
@@ -428,10 +428,11 @@ void G4_BB::emitBankConflict(std::ostream& output, const G4_INST *inst)
         }
         else
         { //EVEN EVEN/ODD ODD
+            const IR_Builder* builder = parent->builder;
             for (int i = 0; i < 3; i++)
             {
                 output << i << "=";
-                for (int j = 0; j < (execSize[i] + (int)numEltPerGRF<Type_UB>() - 1) / (int)numEltPerGRF<Type_UB>(); j++)
+                for (int j = 0; j < (execSize[i] + (int)builder->numEltPerGRF<Type_UB>() - 1) / (int)builder->numEltPerGRF<Type_UB>(); j++)
                 {
                     int reg_num = regNum[0][i] + j;
                     if (!(reg_num & 0x02) && reg_num < SECOND_HALF_BANK_START_GRF)
@@ -455,8 +456,8 @@ void G4_BB::emitBankConflict(std::ostream& output, const G4_INST *inst)
                         regNum[1][i] = reg_num;
                     }
                 }
-                maxGRFNum = ((execSize[i] + (int)numEltPerGRF<Type_UB>() - 1) / (int)numEltPerGRF<Type_UB>()) > maxGRFNum ?
-                    ((execSize[i] + (int)numEltPerGRF<Type_UB>() - 1) / (int)numEltPerGRF<Type_UB>()) : maxGRFNum;
+                maxGRFNum = ((execSize[i] + (int)builder->numEltPerGRF<Type_UB>() - 1) / (int)builder->numEltPerGRF<Type_UB>()) > maxGRFNum ?
+                    ((execSize[i] + (int)builder->numEltPerGRF<Type_UB>() - 1) / (int)builder->numEltPerGRF<Type_UB>()) : maxGRFNum;
             }
         }
         output << "BC=";
@@ -813,7 +814,8 @@ uint32_t G4_BB::emitBankConflictXe(
     bool isFDFSrc1 = false;
     bool isSrc1Suppressed = false;
 
-    auto grfSize = inst->getBuilder().getGRFSize();
+    const IR_Builder* builder = parent->builder;
+    auto grfSize = builder->getGRFSize();
     //Get Dst
     G4_DstRegRegion* dstOpnd = inst->getDst();
     if (dstOpnd &&
@@ -822,10 +824,10 @@ uint32_t G4_BB::emitBankConflictXe(
     {
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        dstRegs[0] = byteAddress / numEltPerGRF<Type_UB>();
+        dstRegs[0] = byteAddress / builder->numEltPerGRF<Type_UB>();
         if (dstExecSize > grfSize)
         {
-            dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+            dstRegs[1] = dstRegs[0] + (dstExecSize + builder->numEltPerGRF<Type_UB>() - 1) / builder->numEltPerGRF<Type_UB>() - 1;
             isCompressedInst = true;
         }
     }
@@ -846,7 +848,7 @@ uint32_t G4_BB::emitBankConflictXe(
                 currInstExecSize[i] = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
+                    currInstRegs[0][i] = byteAddress / builder->numEltPerGRF<Type_UB>();
                     if (i == 1)
                     {
                         isFDFSrc1 = IS_TYPE_F32_F64(srcOpnd->getType());
@@ -1157,7 +1159,8 @@ uint32_t G4_BB::emitBankConflictXeLP(
     }
 
     bool instSplit = false;
-    auto grfSize = inst->getBuilder().getGRFSize();
+    const IR_Builder* builder = parent->builder;
+    auto grfSize = builder->getGRFSize();
 
     //Get Dst
     G4_DstRegRegion* dstOpnd = inst->getDst();
@@ -1167,10 +1170,10 @@ uint32_t G4_BB::emitBankConflictXeLP(
     {
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        dstRegs[0] = byteAddress / numEltPerGRF<Type_UB>();
+        dstRegs[0] = byteAddress / builder->numEltPerGRF<Type_UB>();
         if (dstExecSize > grfSize)
         {
-            dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+            dstRegs[1] = dstRegs[0] + (dstExecSize + builder->numEltPerGRF<Type_UB>() - 1) / builder->numEltPerGRF<Type_UB>() - 1;
             instSplit = true;
 
         }
@@ -1191,11 +1194,11 @@ uint32_t G4_BB::emitBankConflictXeLP(
                 currInstExecSize[i] = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
+                    currInstRegs[0][i] = byteAddress / builder->numEltPerGRF<Type_UB>();
 
                     if (currInstExecSize[i] > grfSize)
                     {
-                        currInstRegs[1][i] = currInstRegs[0][i] + (currInstExecSize[i] + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
+                        currInstRegs[1][i] = currInstRegs[0][i] + (currInstExecSize[i] + builder->numEltPerGRF<Type_UB>() - 1) / builder->numEltPerGRF<Type_UB>() - 1;
                         instSplit = true;
                     }
                     else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
@@ -1444,12 +1447,12 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // mov (8) r1.0<1>:ud r0.0<8;8,1>:ud {NoMask}
     // send (8) null r1 0x27 desc
     IR_Builder* builder = parent->builder;
-    G4_Declare *dcl = builder->createSendPayloadDcl(numEltPerGRF<Type_UD>(), Type_UD);
+    G4_Declare *dcl = builder->createSendPayloadDcl(builder->numEltPerGRF<Type_UD>(), Type_UD);
     G4_DstRegRegion* movDst = builder->createDstRegRegion(dcl, 1);
     G4_SrcRegRegion* r0Src = builder->createSrcRegRegion(
         builder->getBuiltinR0(), builder->getRegionStride1());
     G4_INST *movInst = builder->createMov(
-        G4_ExecSize(numEltPerGRF<Type_UD>()), movDst, r0Src, InstOpt_WriteEnable, false);
+        G4_ExecSize(builder->numEltPerGRF<Type_UD>()), movDst, r0Src, InstOpt_WriteEnable, false);
     if (lastInst)
     {
         movInst->inheritDIFrom(lastInst);

@@ -71,9 +71,9 @@ struct BUNDLE_INFO
         inst[--size] = nullptr;
     }
 
-    bool canMergeDst(G4_DstRegRegion* dst);
-    bool canMergeSource(G4_Operand* src, int srcPos);
-    bool canMerge(G4_INST* inst);
+    bool canMergeDst(G4_DstRegRegion* dst, const IR_Builder& builder);
+    bool canMergeSource(G4_Operand* src, int srcPos, const IR_Builder& builder);
+    bool canMerge(G4_INST* inst, const IR_Builder& builder);
 
     bool doMerge(IR_Builder& builder,
         std::unordered_set<G4_Declare*>& modifiedDcl,

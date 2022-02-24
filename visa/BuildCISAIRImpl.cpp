@@ -725,8 +725,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
             auto& calleeBuilder = callee->fg.builder;
             auto& callerBuilder = caller->fg.builder;
             const RegionDesc *rDesc = callerBuilder->getRegionStride1();
-            G4_Declare *replacedArgDcl = callerBuilder->createDeclareNoLookup("newArg", G4_GRF, numEltPerGRF<Type_UD>(), 32, Type_UD);
-            G4_Declare *replacedRetDcl = callerBuilder->createDeclareNoLookup("newRet", G4_GRF, numEltPerGRF<Type_UD>(), 12, Type_UD);
+            G4_Declare *replacedArgDcl = callerBuilder->createDeclareNoLookup("newArg", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(), 32, Type_UD);
+            G4_Declare *replacedRetDcl = callerBuilder->createDeclareNoLookup("newRet", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(), 12, Type_UD);
 
             for (G4_INST* inst : calleeInsts)
             {

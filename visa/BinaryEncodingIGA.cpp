@@ -159,9 +159,9 @@ private:
         if (base->isGreg())
         {
             uint32_t byteAddress = opnd->getLinearizedStart();
-            regRef.regNum = byteAddress / numEltPerGRF<Type_UB>();
+            regRef.regNum = byteAddress / kernel.numEltPerGRF<Type_UB>();
             regRef.subRegNum =
-                (byteAddress % numEltPerGRF<Type_UB>()) / opnd->getTypeSize();
+                (byteAddress % kernel.numEltPerGRF<Type_UB>()) / opnd->getTypeSize();
         }
         else if (opnd->isSrcRegRegion())
         {

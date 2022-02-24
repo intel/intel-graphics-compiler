@@ -3907,7 +3907,7 @@ void FlowGraph::addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool)
     }
     if (scratchRegDcl == NULL)
     {
-        scratchRegDcl = builder.createDeclareNoLookup("SR", G4_GRF, numEltPerGRF<Type_UD>(), 1, Type_UD);
+        scratchRegDcl = builder.createDeclareNoLookup("SR", G4_GRF, builder.numEltPerGRF<Type_UD>(), 1, Type_UD);
         scratchRegDcl->getRegVar()->setPhyReg(regPool.getGreg(builder.kernel.getSpillHeaderGRF()), 0);
     }
 }
@@ -3925,7 +3925,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     if (pseudoVCEDcl == NULL)
     {
         unsigned numRowsVCE = getKernel()->getNumCalleeSaveRegs();
-        pseudoVCEDcl = builder.createDeclareNoLookup("VCE_SAVE", G4_GRF, numEltPerGRF<Type_UD>(), static_cast<unsigned short>(numRowsVCE), Type_UD);
+        pseudoVCEDcl = builder.createDeclareNoLookup("VCE_SAVE", G4_GRF, builder.numEltPerGRF<Type_UD>(), static_cast<unsigned short>(numRowsVCE), Type_UD);
     }
     else
     {
@@ -3952,7 +3952,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
         const char* nameBase = "VCA_SAVE";  // sizeof(nameBase) = 9, including ending 0
         const int maxIdLen = 3;
         const char* name = builder.getNameString(mem, sizeof(nameBase) + maxIdLen, "%s_%d", nameBase, i);
-        G4_Declare* VCA = builder.createDeclareNoLookup(name, G4_GRF, numEltPerGRF<Type_UD>(), builder.kernel.getCallerSaveLastGRF(), Type_UD);
+        G4_Declare* VCA = builder.createDeclareNoLookup(name, G4_GRF, builder.numEltPerGRF<Type_UD>(), builder.kernel.getCallerSaveLastGRF(), Type_UD);
         name = builder.getNameString(mem, 50, "SA0_%d", i);
         G4_Declare* saveA0 = builder.createDeclareNoLookup(name, G4_ADDRESS, (uint16_t)getNumAddrRegisters(), 1, Type_UW);
         name = builder.getNameString(mem, 64, "SFLAG_%d", i);
