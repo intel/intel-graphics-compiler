@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "TargetInfo/GenXTargetInfo.h"
 
+#include "vc/Support/BackendConfig.h"
 #include "vc/Utils/General/Types.h"
 
 #include "llvm/IR/DataLayout.h"
@@ -34,14 +35,25 @@ class raw_pwrite_stream;
 class MachineModuleInfo;
 
 class GenXTargetMachine : public IGCLLVM::LLVMTargetMachine {
+  // FIXME: regarding backend config: target machine shouldn't include a pass.
+  // Should split current GenXBackendConfig into an implementation and a
+  // pass-wrapper.
+  std::unique_ptr<GenXBackendConfig> BC;
   bool Is64Bit;
   GenXSubtarget Subtarget;
-
 public:
   GenXTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
                     StringRef FS, const TargetOptions &Options,
                     Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
-                    CodeGenOpt::Level OL, bool Is64Bit);
+                    CodeGenOpt::Level OL, bool Is64Bit)
+      : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, Is64Bit,
+                          std::make_unique<GenXBackendConfig>()) {}
+
+  GenXTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
+                    StringRef FS, const TargetOptions &Options,
+                    Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
+                    CodeGenOpt::Level OL, bool Is64Bit,
+                    std::unique_ptr<GenXBackendConfig> BC);
 
   ~GenXTargetMachine() override;
 
@@ -67,7 +79,15 @@ public:
   GenXTargetMachine32(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, const TargetOptions &Options,
                       Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
-                      CodeGenOpt::Level OL, bool JIT);
+                      CodeGenOpt::Level OL, bool JIT)
+      : GenXTargetMachine32(T, TT, CPU, FS, Options, RM, CM, OL, JIT,
+                            std::make_unique<GenXBackendConfig>()) {}
+
+  GenXTargetMachine32(const Target &T, const Triple &TT, StringRef CPU,
+                      StringRef FS, const TargetOptions &Options,
+                      Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
+                      CodeGenOpt::Level OL, bool JIT,
+                      std::unique_ptr<GenXBackendConfig> BC);
 };
 
 class GenXTargetMachine64 : public GenXTargetMachine {
@@ -75,20 +95,32 @@ public:
   GenXTargetMachine64(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, const TargetOptions &Options,
                       Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
-                      CodeGenOpt::Level OL, bool JIT);
+                      CodeGenOpt::Level OL, bool JIT)
+      : GenXTargetMachine64(T, TT, CPU, FS, Options, RM, CM, OL, JIT,
+                            std::make_unique<GenXBackendConfig>()) {}
+
+  GenXTargetMachine64(const Target &T, const Triple &TT, StringRef CPU,
+                      StringRef FS, const TargetOptions &Options,
+                      Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
+                      CodeGenOpt::Level OL, bool JIT,
+                      std::unique_ptr<GenXBackendConfig> BC);
 };
 
 // This implementation allows us to define our own costs for
-// the GenX backend. Did not use BasicTTIImplBase because the overloaded
-// constructors have TragetMachine as an argument, so I inherited from
-// its parent which has only DL as its arguments
+// the GenX backend.
+// FIXME: inherit from BasicTTImpl. This requires introducing
+// TargetLowering in VC.
 class GenXTTIImpl : public TargetTransformInfoImplCRTPBase<GenXTTIImpl>
 {
-  typedef TargetTransformInfoImplCRTPBase<GenXTTIImpl> BaseT;
-  typedef TargetTransformInfo TTI;
+  using BaseT = TargetTransformInfoImplCRTPBase<GenXTTIImpl>;
+  using TTI = TargetTransformInfo;
   friend BaseT;
+
+  const GenXBackendConfig &BC;
+
 public:
-  GenXTTIImpl(const DataLayout& DL) : BaseT(DL) {}
+  GenXTTIImpl(const DataLayout &DL, const GenXBackendConfig &BC)
+      : BaseT(DL), BC(BC) {}
 
   bool shouldBuildLookupTables() { return false; }
   unsigned getFlatAddressSpace() { return vc::AddrSpace::Generic; }

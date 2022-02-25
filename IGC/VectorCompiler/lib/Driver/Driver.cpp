@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "igc/Options/Options.h"
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/GenXCodeGen/GenXTarget.h"
+#include "vc/GenXCodeGen/TargetMachine.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/Status.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -185,27 +186,6 @@ static TargetOptions getTargetOptions(const vc::CompileOptions &Opts) {
   return Options;
 }
 
-static Expected<std::unique_ptr<TargetMachine>>
-createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
-  std::string Error;
-  const Target *TheTarget = TargetRegistry::lookupTarget(
-      TheTriple.getArchName().str(), TheTriple, Error);
-  IGC_ASSERT_MESSAGE(TheTarget, "vc target was not registered");
-
-  const std::string FeaturesStr = getSubtargetFeatureString(Opts);
-
-  const TargetOptions Options = getTargetOptions(Opts);
-
-  CodeGenOpt::Level OptLevel = getCodeGenOptLevel(Opts);
-  std::unique_ptr<TargetMachine> TM{
-      TheTarget->createTargetMachine(TheTriple.getTriple(), Opts.CPUStr,
-                                     FeaturesStr, Options, /*RelocModel=*/None,
-                                     /*CodeModel=*/None, OptLevel)};
-  if (!TM)
-    return make_error<vc::TargetMachineError>();
-  return {std::move(TM)};
-}
-
 template <typename T> bool getDefaultOverridableFlag(T OptFlag, bool Default) {
   switch (OptFlag) {
   default:
@@ -292,6 +272,30 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
     BackendData.BiFModule[BiFKind::VCPrintf] =
         IGCLLVM::makeMemoryBufferRef(*Data.VCPrintf32BIFModule);
   return std::move(BackendData);
+}
+
+static Expected<std::unique_ptr<TargetMachine>>
+createTargetMachine(const vc::CompileOptions &Opts,
+                    const vc::ExternalData &ExtData, Triple &TheTriple) {
+  std::string Error;
+  const Target *TheTarget = TargetRegistry::lookupTarget(
+      TheTriple.getArchName().str(), TheTriple, Error);
+  IGC_ASSERT_MESSAGE(TheTarget, "vc target was not registered");
+
+  const std::string FeaturesStr = getSubtargetFeatureString(Opts);
+
+  const TargetOptions Options = getTargetOptions(Opts);
+
+  CodeGenOpt::Level OptLevel = getCodeGenOptLevel(Opts);
+  auto BC = std::make_unique<GenXBackendConfig>(
+      createBackendOptions(Opts),
+      createBackendData(ExtData, vc::is32BitArch(TheTriple) ? 32 : 64));
+  std::unique_ptr<TargetMachine> TM{vc::createGenXTargetMachine(
+      *TheTarget, TheTriple, Opts.CPUStr, FeaturesStr, Options,
+      /*RelocModel=*/None, /*CodeModel=*/None, OptLevel, std::move(BC))};
+  if (!TM)
+    return make_error<vc::TargetMachineError>();
+  return {std::move(TM)};
 }
 
 static void optimizeIR(const vc::CompileOptions &Opts,
@@ -512,7 +516,7 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   Triple TheTriple = overrideTripleWithVC(M.getTargetTriple());
   M.setTargetTriple(TheTriple.getTriple());
 
-  auto ExpTargetMachine = createTargetMachine(Opts, TheTriple);
+  auto ExpTargetMachine = createTargetMachine(Opts, ExtData, TheTriple);
   if (!ExpTargetMachine)
     return ExpTargetMachine.takeError();
   TargetMachine &TM = *ExpTargetMachine.get();

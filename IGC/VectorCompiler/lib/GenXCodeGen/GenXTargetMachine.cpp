@@ -39,6 +39,7 @@ SPDX-License-Identifier: MIT
 #include "GenXModule.h"
 
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
+#include "vc/GenXCodeGen/TargetMachine.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/PassManager.h"
@@ -156,7 +157,7 @@ void initializeGenXPasses(PassRegistry &registry) {
 }
 
 TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F) {
-  GenXTTIImpl GTTI(F.getParent()->getDataLayout());
+  GenXTTIImpl GTTI(F.getParent()->getDataLayout(), *BC);
   return TargetTransformInfo(GTTI);
 }
 
@@ -201,12 +202,13 @@ GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                      const TargetOptions &Options,
                                      Optional<Reloc::Model> RM,
                                      Optional<CodeModel::Model> CM,
-                                     CodeGenOpt::Level OL, bool Is64Bit)
+                                     CodeGenOpt::Level OL, bool Is64Bit,
+                                     std::unique_ptr<GenXBackendConfig> BC)
     : IGCLLVM::LLVMTargetMachine(T, getDL(Is64Bit), TT, CPU, FS, Options,
                                  RM ? RM.getValue() : Reloc::Model::Static,
                                  CM ? CM.getValue() : CodeModel::Model::Small,
                                  OL),
-      Is64Bit(Is64Bit), Subtarget(TT, CPU.str(), FS.str()) {}
+      BC(std::move(BC)), Is64Bit(Is64Bit), Subtarget(TT, CPU.str(), FS.str()) {}
 
 GenXTargetMachine::~GenXTargetMachine() = default;
 
@@ -224,16 +226,38 @@ GenXTargetMachine32::GenXTargetMachine32(const Target &T, const Triple &TT,
                                          const TargetOptions &Options,
                                          Optional<Reloc::Model> RM,
                                          Optional<CodeModel::Model> CM,
-                                         CodeGenOpt::Level OL, bool JIT)
-    : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, false) {}
+                                         CodeGenOpt::Level OL, bool JIT,
+                                         std::unique_ptr<GenXBackendConfig> BC)
+    : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, false,
+                        std::move(BC)) {}
 
 GenXTargetMachine64::GenXTargetMachine64(const Target &T, const Triple &TT,
                                          StringRef CPU, StringRef FS,
                                          const TargetOptions &Options,
                                          Optional<Reloc::Model> RM,
                                          Optional<CodeModel::Model> CM,
-                                         CodeGenOpt::Level OL, bool JIT)
-    : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, true) {}
+                                         CodeGenOpt::Level OL, bool JIT,
+                                         std::unique_ptr<GenXBackendConfig> BC)
+    : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, true,
+                        std::move(BC)) {}
+
+namespace vc {
+std::unique_ptr<llvm::TargetMachine>
+createGenXTargetMachine(const Target &T, Triple TT, StringRef CPU,
+                        StringRef Features, const TargetOptions &Options,
+                        Optional<Reloc::Model> RM,
+                        Optional<CodeModel::Model> CM, CodeGenOpt::Level OL,
+                        std::unique_ptr<GenXBackendConfig> BC) {
+  if (is32BitArch(TT))
+    return std::make_unique<GenXTargetMachine32>(T, TT, CPU, Features, Options,
+                                                 RM, CM, OL, false /*JIT*/,
+                                                 std::move(BC));
+  else
+    return std::make_unique<GenXTargetMachine64>(T, TT, CPU, Features, Options,
+                                                 RM, CM, OL, false /*JIT*/,
+                                                 std::move(BC));
+}
+} // namespace vc
 
 //===----------------------------------------------------------------------===//
 //                       External Interface declaration
