@@ -9,13 +9,18 @@ SPDX-License-Identifier: MIT
 #ifndef VC_UTILS_GENX_INTRINSICS_H
 #define VC_UTILS_GENX_INTRINSICS_H
 
-#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
+#include "vc/InternalIntrinsics/InternalIntrinsics.h"
 
 #include "Probe/Assertion.h"
 
+#include <llvm/GenXIntrinsics/GenXIntrinsics.h>
+
+#include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/Value.h>
+
+#include <utility>
 
 namespace llvm {
 class Function;
@@ -24,6 +29,34 @@ class Type;
 } // namespace llvm
 
 namespace vc {
+
+namespace detail {
+template <typename Range, typename IsIntrinsicFunc,
+          typename IsOverloadedRetFunc, typename IsOverloadedArgFunc,
+          typename GetDeclarationFunc>
+llvm::Function *getDeclarationForIdFromArgs(llvm::Type *RetTy, Range &&Args,
+                                            unsigned Id, llvm::Module &M,
+                                            IsIntrinsicFunc IsIntrinsic,
+                                            IsOverloadedRetFunc IsOverloadedRet,
+                                            IsOverloadedArgFunc IsOverloadedArg,
+                                            GetDeclarationFunc GetDeclaration) {
+  using namespace llvm;
+
+  IGC_ASSERT_MESSAGE(IsIntrinsic(Id), "Expected genx intrinsic id");
+
+  SmallVector<Type *, 4> Types;
+  if (IsOverloadedRet(Id)) {
+    IGC_ASSERT_MESSAGE(RetTy, "Expected return type because it is overloaded");
+    Types.push_back(RetTy);
+  }
+  for (auto &&EnumArg : llvm::enumerate(Args)) {
+    if (IsOverloadedArg(Id, EnumArg.index()))
+      Types.push_back(EnumArg.value()->getType());
+  }
+
+  return GetDeclaration(M, Id, Types);
+}
+} // namespace detail
 
 // Return declaration for intrinsics with provided parameters.
 // This is helper function to get genx intrinsic declaration for given
@@ -38,21 +71,39 @@ llvm::Function *getGenXDeclarationForIdFromArgs(llvm::Type *RetTy, Range &&Args,
                                                 llvm::GenXIntrinsic::ID Id,
                                                 llvm::Module &M) {
   using namespace llvm;
+  return detail::getDeclarationForIdFromArgs(
+      RetTy, std::forward<Range>(Args), Id, M,
+      [](unsigned Id) { return GenXIntrinsic::isGenXIntrinsic(Id); },
+      [](unsigned Id) { return GenXIntrinsic::isOverloadedRet(Id); },
+      [](unsigned Id, unsigned ArgIdx) {
+        return GenXIntrinsic::isOverloadedArg(Id, ArgIdx);
+      },
+      [](Module &M, unsigned Id, ArrayRef<Type *> Types) {
+        return GenXIntrinsic::getGenXDeclaration(
+            &M, static_cast<GenXIntrinsic::ID>(Id), Types);
+      });
+}
 
-  IGC_ASSERT_MESSAGE(GenXIntrinsic::isGenXIntrinsic(Id),
-                     "Expected genx intrinsic id");
-
-  SmallVector<Type *, 4> Types;
-  if (GenXIntrinsic::isOverloadedRet(Id)) {
-    IGC_ASSERT_MESSAGE(RetTy, "Expected return type because it is overloaded");
-    Types.push_back(RetTy);
-  }
-  for (auto &&EnumArg : llvm::enumerate(Args)) {
-    if (GenXIntrinsic::isOverloadedArg(Id, EnumArg.index()))
-      Types.push_back(EnumArg.value()->getType());
-  }
-
-  return GenXIntrinsic::getGenXDeclaration(&M, Id, Types);
+// The same as \p getGenXDeclarationForIdFromArgs but for internal intrinisics.
+template <typename Range>
+llvm::Function *
+getInternalDeclarationForIdFromArgs(llvm::Type *RetTy, Range &&Args,
+                                    vc::InternalIntrinsic::ID Id,
+                                    llvm::Module &M) {
+  using namespace llvm;
+  return detail::getDeclarationForIdFromArgs(
+      RetTy, std::forward<Range>(Args), Id, M,
+      [](unsigned Id) {
+        return vc::InternalIntrinsic::isInternalIntrinsic(Id);
+      },
+      [](unsigned Id) { return vc::InternalIntrinsic::isOverloadedRet(Id); },
+      [](unsigned Id, unsigned ArgIdx) {
+        return vc::InternalIntrinsic::isOverloadedArg(Id, ArgIdx);
+      },
+      [](Module &M, unsigned Id, ArrayRef<Type *> Types) {
+        return vc::InternalIntrinsic::getInternalDeclaration(
+            &M, static_cast<vc::InternalIntrinsic::ID>(Id), Types);
+      });
 }
 
 } // namespace vc
