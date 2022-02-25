@@ -43,7 +43,6 @@ This file defines the CEncoder class which is used to generate CISA instructions
 // macro to check the result of VISA API calls
 #define V(x) do { int result = (x); IGC_ASSERT_MESSAGE((0 == result), "call to VISA API failed"); } while(0)
 
-static const unsigned  int g_cScratchSpaceMsglimit = (128 * 1024);
 using namespace llvm;
 
 #define DEBUG_TYPE "cisa-builder"
@@ -3399,31 +3398,7 @@ namespace IGC
                     andOpnd));
 
                 VISA_VectorOpnd* surfOpnd_r0_5_bits_31_10 = nullptr;
-                if (m_program->m_Platform->hasScratchSurface() &&
-                    m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace())
-                {
-                    uint32_t imm_0x400 = 0x400;
-                    VISA_VectorOpnd* incOpnd = nullptr;
-                    VISA_VectorOpnd* surfOpIncDst = nullptr;
-                    CVariable* surfOpIncVar = m_program->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "Surface1Opnd");
-                    V(vKernel->CreateVISADstOperand(surfOpIncDst, GetVISAVariable(surfOpIncVar), 1, 0, 0));
-                    surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpAndVar);
-                    V(vKernel->CreateVISAImmediate(incOpnd, &imm_0x400, ISA_TYPE_UD));
-                    V(vKernel->AppendVISAArithmeticInst(
-                        ISA_ADD,
-                        nullptr,
-                        false,
-                        vISA_EMASK_M1_NM,
-                        EXEC_SIZE_1,
-                        surfOpIncDst,
-                        surfOpnd_r0_5_bits_31_10,
-                        incOpnd));
-                    surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpIncVar);
-                }
-                else
-                {
-                    surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpAndVar);
-                }
+                surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpAndVar);
 
                 // if use new extend message descriptor format
                 // (W) shr (1) a0.0 ss0 0x4
@@ -5046,12 +5021,16 @@ namespace IGC
         IGC_ASSERT(nullptr != vKernel);
         uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
 
+        if (scratchSpaceSizeTemp == 0)
+            return;
+        // slot1 is used for spilling only when SeparatingSpillAndPrivateScratchMemorySpace is on
+        // and Slot0 is used for IGC private memory
         if (m_program->m_Platform->hasScratchSurface() &&
             m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace())
         {
-            scratchSpaceSizeTemp = 0;
+            V(vKernel->AddKernelAttribute("SepSpillPvtSS", 0, nullptr));
         }
-        else if (scratchSpaceSizeTemp > 0)
+        else
         {
             V(vKernel->AddKernelAttribute("SpillMemOffset", 4, &scratchSpaceSizeTemp));
         }
@@ -7503,31 +7482,7 @@ namespace IGC
             V(vKernel->GetPredefinedVar(r0Var, PREDEFINED_R0));
 
             VISA_VectorOpnd* surfOpnd = nullptr;
-            if (m_program->m_Platform->hasScratchSurface() &&
-                m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace())
-            {
-                uint32_t imm_0x400 = 0x400;
-                VISA_VectorOpnd* incOpnd = nullptr;
-                VISA_VectorOpnd* surfOpIncDst = nullptr;
-                CVariable* surfOpIncVar = m_program->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "Surface1Opnd");
-                V(vKernel->CreateVISADstOperand(surfOpIncDst, GetVISAVariable(surfOpIncVar), 1, 0, 0));
-                V(vKernel->CreateVISASrcOperand(surfOpnd, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
-                V(vKernel->CreateVISAImmediate(incOpnd, &imm_0x400, ISA_TYPE_UD));
-                V(vKernel->AppendVISAArithmeticInst(
-                    ISA_ADD,
-                    nullptr,
-                    false,
-                    vISA_EMASK_M1_NM,
-                    EXEC_SIZE_1,
-                    surfOpIncDst,
-                    surfOpnd,
-                    incOpnd));
-                surfOpnd = GetSourceOperandNoModifier(surfOpIncVar);
-            }
-            else
-            {
-                V(vKernel->CreateVISASrcOperand(surfOpnd, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
-            }
+            V(vKernel->CreateVISASrcOperand(surfOpnd, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
 
             VISA_VectorOpnd* surfOpndShrDst = nullptr;
             VISA_VectorOpnd* shrOpnd = nullptr;

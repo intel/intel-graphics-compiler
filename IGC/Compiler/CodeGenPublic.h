@@ -177,21 +177,44 @@ namespace IGC
             m_SeparatingSpillAndPrivateScratchMemorySpace = SepSpillPvtSS;
         }
 
+        // if IGC needs scratch for private memory, we use slot0 for private
+        // if IGC does not need scratch for private, slot0 is used for spill
+        // if we want to use both private and spill in single slot, we need
+        // to add them together
         unsigned int getScratchSpaceUsageInSlot0() const
         {
-            unsigned int result = (m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
-            if (!m_SeparatingSpillAndPrivateScratchMemorySpace)
-                result += (m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
+            unsigned int result = (m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
+            if (result == 0)
+            {
+                result = (m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
+            }
+            else if (!m_SeparatingSpillAndPrivateScratchMemorySpace)
+            {
+                result += (m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
+            }
+            else
+            {
+                // \TODO: doubts about driver-compiler interface, conservatively set the size
+                // to the max of two slots
+                result = std::max(result, m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
+            }
             result = roundSize(result);
             IGC_ASSERT(result <= m_scratchSpaceSizeLimit);
             return result;
         }
-
+        // slot1 is used for spilling only when m_SeparatingSpillAndPrivateScratchMemorySpace is on
+        // and Slot0 is used for IGC private memory
         unsigned int getScratchSpaceUsageInSlot1() const
         {
+            unsigned int slot0_offset = (m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
             unsigned int result = 0;
-            if (m_SeparatingSpillAndPrivateScratchMemorySpace)
-                result = roundSize(m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
+            if (m_SeparatingSpillAndPrivateScratchMemorySpace && slot0_offset > 0)
+            {
+                // \TODO: doubts about driver-compiler interface, conservatively set the size
+                // to the max of two slots
+                result = std::max(slot0_offset, m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
+            }
+            result = roundSize(result);
             IGC_ASSERT(result <= m_scratchSpaceSizeLimit);
             return result;
         }
