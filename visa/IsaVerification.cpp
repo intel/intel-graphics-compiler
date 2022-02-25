@@ -2098,10 +2098,10 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST* inst)
         }
         case ISA_3D_SAMPLE:
         {
-            uint8_t value = getPrimitiveOperand<uint8_t>(inst, i++);
-            bool pixelNullMask = (value & (1<<5)) != 0;
-            bool cpsEnable = (value & (1<<6)) != 0;
-            VISASampler3DSubOpCode subOp = VISASampler3DSubOpCode(value & 0x1F);
+            uint16_t value = getPrimitiveOperand<uint16_t>(inst, i++);
+            bool pixelNullMask = (value & (1<<8)) != 0;
+            bool cpsEnable = (value & (1<<9)) != 0;
+            VISASampler3DSubOpCode subOp = VISASampler3DSubOpCode(value & 0xFF);
 
             if (pixelNullMask)
             {
@@ -2133,8 +2133,8 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST* inst)
         case ISA_3D_LOAD:
         case ISA_3D_GATHER4:
         {
-            uint8_t value = getPrimitiveOperand<uint8_t>(inst, i++);
-            bool pixelNullMask = (value >> 5) != 0;
+            uint16_t value = getPrimitiveOperand<uint16_t>(inst, i++);
+            bool pixelNullMask = (value >> 8) != 0;
 
             if (pixelNullMask)
             {

@@ -1598,12 +1598,13 @@ static void readInstructionSVM(unsigned& bytePos, const char* buf, ISA_Opcode op
     }
 }
 
+template <class T>
 static VISA3DSamplerOp
 readSubOpcodeByteNG(unsigned& bytePos, const char* buf)
 {
-    uint8_t val = 0;
-    READ_CISA_FIELD(val, uint8_t, bytePos, buf);
-    return VISA3DSamplerOp::extractSamplerOp(val);
+    T val = 0;
+    READ_CISA_FIELD(val, T, bytePos, buf);
+    return VISA3DSamplerOp::extractSamplerOp<T>(val);
 }
 
 static VISA_VectorOpnd* readAoffimmi(uint32_t& bytePos, const char* buf, RoutineContainer& container)
@@ -1715,7 +1716,13 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
         {
             // 0x6D <op> <pixel_null_mask> <cps_enable> <exec_size> <pred>
             // <channels> <aoffimmi> <sampler> <surface> <dst> <numParams> <params>
-            auto op = readSubOpcodeByteNG(bytePos, buf);
+            // The vISA version that widens the opcode field is 4
+            // the below check is necessary to pick the correct
+            // width during decoding based on input binary version
+            const int WIDE_OPCODE_ISA_VER = 4;
+            auto op = (container.majorVersion >= WIDE_OPCODE_ISA_VER) ?
+                readSubOpcodeByteNG<uint16_t>(bytePos, buf):
+                readSubOpcodeByteNG<uint8_t>(bytePos, buf);
 
             VISA_EMask_Ctrl emask = vISA_EMASK_M1;
             VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
@@ -1751,7 +1758,14 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             // 0x6E <op> <pixel_null_mask> <exec_size> <pred> <channels>
             // <aoffimmi> <surface> <dst> <numParams> <params>
             // same as 3D_SAMPLE, except that sampler is missing.
-            auto op = readSubOpcodeByteNG(bytePos, buf);
+
+            // The vISA version that widens the opcode field is 4
+            // the below check is necessary to pick the correct
+            // width during decoding based on input binary version
+            const int WIDE_OPCODE_ISA_VER = 4;
+            auto op = (container.majorVersion >= WIDE_OPCODE_ISA_VER) ?
+                readSubOpcodeByteNG<uint16_t>(bytePos, buf):
+                readSubOpcodeByteNG<uint8_t>(bytePos, buf);
 
             VISA_EMask_Ctrl emask = vISA_EMASK_M1;
             VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
@@ -1781,7 +1795,13 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
         }
     case ISA_3D_GATHER4:
         {
-            auto op = readSubOpcodeByteNG(bytePos, buf);
+            // The vISA version that widens the opcode field is 4
+            // the below check is necessary to pick the correct
+            // width during decoding based on input binary version
+            const int WIDE_OPCODE_ISA_VER = 4;
+            auto op = (container.majorVersion >= WIDE_OPCODE_ISA_VER) ?
+                readSubOpcodeByteNG<uint16_t>(bytePos, buf):
+                readSubOpcodeByteNG<uint8_t>(bytePos, buf);
 
             VISA_EMask_Ctrl emask = vISA_EMASK_M1;
             VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;

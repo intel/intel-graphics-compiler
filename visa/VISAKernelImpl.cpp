@@ -5362,11 +5362,11 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
         int num_operands = 0;
 
         // subOP, pixel null mask and CPS LOD compensation enable.
-        // Bit 0-4 : subOp
-        // Bit 5   : pixelNullMask
-        // Bit 6   : cpsEnable
-        int value = subOpcode + (pixelNullMask ? 1 << 5 : 0)
-                              + (cpsEnable ? 1 << 6 : 0);
+        // Bit 0-7 : subOp
+        // Bit 8   : pixelNullMask
+        // Bit 9   : cpsEnable
+        int value = subOpcode + (pixelNullMask ? 1 << 8 : 0)
+                              + (cpsEnable ? 1 << 9 : 0);
         ADD_OPND(num_operands, opnd, CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, value));
 
         num_pred_desc_operands = 2;
