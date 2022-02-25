@@ -1385,7 +1385,17 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
               IsStage1FastestCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
               IGC_GET_FLAG_VALUE(ForceFastestSIMD)))
     {
-        AddCodeGenPasses(*ctx, shaders, PassMgr, minSimdModeAllowed, false);
+        SIMDMode simdSize = minSimdModeAllowed;
+        if (IGC_IS_FLAG_DISABLED(ForceMinSimdSizeForFastestCS))
+        {
+            simdSize =
+                (minSimdModeAllowed <= SIMDMode::SIMD16 &&
+                 maxSimdModeAllowed >= SIMDMode::SIMD16) ?
+                SIMDMode::SIMD16 :
+                minSimdModeAllowed;
+        }
+
+        AddCodeGenPasses(*ctx, shaders, PassMgr, simdSize, false);
     }
     else
     {
