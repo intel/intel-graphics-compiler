@@ -289,16 +289,14 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
       StartIdx, // start index (in bytes)
       ParentWidthArg // parent width (if variable start index)
   };
-  Type *ElTy =
-      cast<IGCLLVM::FixedVectorType>(Args[0]->getType())->getElementType();
-  Type *RegionTy;
-  if (NumElements != 1 || !AllowScalar)
-    RegionTy = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
-  else
-    RegionTy = ElTy;
+  IGC_ASSERT_MESSAGE(
+      ElementTy ==
+          cast<IGCLLVM::FixedVectorType>(Args[0]->getType())->getElementType(),
+      "Region and rdregion input operand types mismatch");
+  Type *RegionTy = getRegionType(!AllowScalar);
   Module *M = InsertBefore->getParent()->getParent()->getParent();
-  auto IID = ElTy->isFloatingPointTy()
-      ? GenXIntrinsic::genx_rdregionf : GenXIntrinsic::genx_rdregioni;
+  auto IID = ElementTy->isFloatingPointTy() ? GenXIntrinsic::genx_rdregionf
+                                            : GenXIntrinsic::genx_rdregioni;
   Function *Decl = getGenXRegionDeclaration(M, IID, RegionTy, Args);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
   NewInst->setDebugLoc(DL);
@@ -967,12 +965,49 @@ void CMRegion::print(raw_ostream &OS) const
 }
 
 unsigned CMRegion::getOffsetInElements() const {
-  IGC_ASSERT_MESSAGE(!Indirect,
-                     "the method should not be requested for indirect region");
   IGC_ASSERT_MESSAGE(
       ElementBytes,
       "the class is in invalid state: ElementBytes must not be zero");
   IGC_ASSERT_MESSAGE(Offset % ElementBytes == 0,
                      "offset must be in element bytes");
   return Offset / ElementBytes;
+}
+
+Type *CMRegion::getRegionType(bool UseDegenerateVectorType) const {
+  IGC_ASSERT_MESSAGE(ElementTy && NumElements, "the class is in invalid state");
+  if (UseDegenerateVectorType)
+    return IGCLLVM::FixedVectorType::get(ElementTy, NumElements);
+  if (NumElements == 1)
+    return ElementTy;
+  return IGCLLVM::FixedVectorType::get(ElementTy, NumElements);
+}
+
+// Analyzes region. Returns whether the region is 1D and what stride this 1D
+// region has. The second return value is unspecified when the region is not
+// 1D.
+static std::pair<bool, int> analyze1DRegion(int NumElements, int VStride,
+                                            int Width, int Stride) {
+  if (Width == NumElements)
+    return {true, Stride};
+  if (Width == 1)
+    return {true, VStride};
+  // Don't care what stride to return when the region is not 1D.
+  return {VStride == Width * Stride, Stride};
+}
+
+bool CMRegion::is1D() const {
+  return analyze1DRegion(NumElements, VStride, Width, Stride).first;
+}
+
+int CMRegion::get1DStride() const {
+  IGC_ASSERT_MESSAGE(is1D(), "the method can only be called for 1D region");
+  return analyze1DRegion(NumElements, VStride, Width, Stride).second;
+}
+
+int CMRegion::getDstStride() const {
+  auto Stride = get1DStride();
+  if (Width == 1)
+    return 1;
+  IGC_ASSERT_MESSAGE(Stride > 0, "stride cannot be zero");
+  return Stride;
 }

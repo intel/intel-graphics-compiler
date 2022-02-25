@@ -1144,9 +1144,9 @@ bool GenXRegionCollapsing::combineRegions(const Region *OuterR,
   LLVM_DEBUG(dbgs() << "GenXRegionCollapsing::combineRegions\n"
       "  OuterR: " << *OuterR << "\n"
       "  InnerR: " << *InnerR << "\n");
-  if (InnerR->Indirect && isa<VectorType>(InnerR->Indirect->getType()))
+  if (InnerR->isMultiIndirect())
     return false; // multi indirect not supported
-  if (OuterR->Indirect && isa<VectorType>(OuterR->Indirect->getType()))
+  if (OuterR->isMultiIndirect())
     return false; // multi indirect not supported
   if (OuterR->Mask)
     return false; // outer region predicated, cannot combine

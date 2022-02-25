@@ -85,6 +85,9 @@ public:
   int VStride;
   unsigned Width;
   int Stride;
+  // NOTE: with the current design region may have both non-zero \p Offset and
+  //       set \p Indirect, which means indirect access + constant offset, which
+  //       is a form of indirect access.
   int Offset;
   Value *Indirect;
   unsigned IndirectIdx; // start index in vector Indirect
@@ -168,6 +171,16 @@ public:
   bool isScalar() const {
     return !Stride && (Width == NumElements || !VStride);
   }
+  // Checks whether region <vstride;width;stride> can really be represented as
+  // 1D region <stride'>.
+  bool is1D() const;
+  // For 1D region (can be represented as <stride>) return the stride.
+  // The behavior is undefined for not 1D regions.
+  int get1DStride() const;
+  // For destination region (1D region) returns its stride. Unlike get1DStride
+  // cannot return 0 stride.
+  // The behavior is undefined for not 1D regions.
+  int getDstStride() const;
   // Test whether a region is 2D
   bool is2D() const { return !isScalar() && Width != NumElements; }
   // Test whether a region is contiguous.
@@ -210,6 +223,11 @@ public:
   // Returns the region offset in muber of elements.
   // This method cannot be called for (multi-)indirect regions.
   unsigned getOffsetInElements() const;
+
+  // Returns selected region type. Corresonds to rdregion return value type or
+  // wrregion new value operand type.
+  // Set \p UseDegenerateVectorType to produce <1 x Ty> instead of Ty.
+  llvm::Type *getRegionType(bool UseDegenerateVectorType = false) const;
 
 protected:
   // Create wrregion or wrconstregion intrinsic from this Region

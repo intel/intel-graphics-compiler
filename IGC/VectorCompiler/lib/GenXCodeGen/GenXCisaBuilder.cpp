@@ -4936,7 +4936,7 @@ GenXKernelBuilder::createGeneralOperand(Region *R, VISA_GenVar *Decl,
         (R->Offset & (GrfByteSize - 1)) / R->ElementBytes);
   } else {
     ResultOperand = createCisaDstOperand(
-        Decl, R->Stride, R->Offset >> genx::log2(GrfByteSize),
+        Decl, R->getDstStride(), R->Offset >> genx::log2(GrfByteSize),
         (R->Offset & (GrfByteSize - 1)) / R->ElementBytes);
   }
   return ResultOperand;
@@ -4987,8 +4987,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createIndirectOperand(Region *R,
   VISA_AddrVar *AddrDecl = IdxReg->GetVar<VISA_AddrVar>(Kernel);
   if (IsDest) {
     CISA_CALL(Kernel->CreateVISAIndirectDstOperand(
-        ResultOperand, AddrDecl, R->IndirectAddrOffset, R->Offset, R->Stride,
-        (VISA_Type)TD.VisaType));
+        ResultOperand, AddrDecl, R->IndirectAddrOffset, R->Offset,
+        R->getDstStride(), (VISA_Type)TD.VisaType));
   } else {
     CISA_CALL(Kernel->CreateVISAIndirectSrcOperand(
         ResultOperand, AddrDecl, static_cast<VISA_Modifier>(Mod),
