@@ -570,13 +570,20 @@ namespace IGC
     //   simd16, simd32, simd8
     bool CComputeShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {
+        ComputeShaderContext* ctx = (ComputeShaderContext*)GetContext();
+
         if (!CompileSIMDSizeInCommon(simdMode))
-            return false;
+        {
+            // Even if the determination is that we shouldn't compile this
+            // SIMD, if it's forced then that must be honored.
+            return ctx->m_ForceOneSIMD;
+        }
+
+        if (ctx->m_ForceOneSIMD)
+            return true;
 
         // this can be changed to SIMD32 if that is better after testing on HW
         SIMDMode DefaultSimdMode = SIMDMode::SIMD16;
-
-        ComputeShaderContext* ctx = (ComputeShaderContext*)GetContext();
 
         CShader* simd8Program = getSIMDEntry(ctx, SIMDMode::SIMD8);
         CShader* simd16Program = getSIMDEntry(ctx, SIMDMode::SIMD16);
@@ -585,9 +592,6 @@ namespace IGC
         bool hasSimd8 = simd8Program && simd8Program->ProgramOutput()->m_programSize > 0;
         bool hasSimd16 = simd16Program && simd16Program->ProgramOutput()->m_programSize > 0;
         bool hasSimd32 = simd32Program && simd32Program->ProgramOutput()->m_programSize > 0;
-
-        if (ctx->m_ForceOneSIMD)
-            return true;
 
         if (simdMode == SIMDMode::SIMD8 && !hasSimd16 && !hasSimd32)
             return true;

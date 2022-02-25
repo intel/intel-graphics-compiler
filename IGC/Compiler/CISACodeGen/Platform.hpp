@@ -710,6 +710,8 @@ bool hasNoFullI64Support() const
     return (hasNoInt64Inst() || hasPartialInt64Support());
 }
 
+// This returns the current maximum size that we recommend for performance.
+// SIMD32 is still allowed and we may relax this in the future.
 SIMDMode getMaxRayQuerySIMDSize() const
 {
     if (m_platformInfo.eProductFamily <= IGFX_PVC)

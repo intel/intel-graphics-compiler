@@ -12977,11 +12977,11 @@ CVariable* EmitPass::GetExecutionMask()
 /// UniformCopy - Copy a non-uniform source into a uniform variable by copying
 /// ANY active elements.
 
-CVariable* EmitPass::UniformCopy(CVariable* var)
+CVariable* EmitPass::UniformCopy(CVariable* var, bool doSub)
 {
     CVariable* offset = nullptr;
     CVariable* eMask = nullptr;
-    return UniformCopy(var, offset, eMask);
+    return UniformCopy(var, offset, eMask, doSub);
 }
 
 /// Uniform copy allowing to reuse the off calculated by a previous call
@@ -21936,8 +21936,6 @@ void EmitPass::emitAsyncStackID(llvm::GenIntrinsicInst *I)
 
 void EmitPass::emitSyncStackID(llvm::GenIntrinsicInst* I)
 {
-    IGC_ASSERT_MESSAGE(m_currShader->m_SIMDSize <= SIMDMode::SIMD16, "Invalid SIMD Size");
-
     // With fused EUs (e.g. DG2)
     //  SyncStackID = (EUID[3:0] << 7) | (ThreadID[2:0] << 4) | SIMDLaneID[3:0];
     // With natively wide EUs (e.g. PVC)
@@ -22002,7 +22000,9 @@ void EmitPass::emitSyncStackID(llvm::GenIntrinsicInst* I)
     //Start with the SIMDLaneID[3:0]
     CVariable* SyncStackID = m_currShader->GetNewVariable(
         numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "SyncStackID");
-    m_currShader->GetSimdOffsetBase(SyncStackID);
+    // Since we have two separate stacks, we actually want to compute the
+    // same lane IDs for the upper and lower instances.
+    m_currShader->GetSimdOffsetBase(SyncStackID, true);
 
     //Continue with (ThreadID[2:0] << 4)
     CVariable* ThreadID = m_currShader->GetNewVariable(
@@ -22210,80 +22210,137 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
         true);
     m_encoder->Push();
 
-    CVariable* Dst = nullptr;
-    if (RayQueryEnable) {
-        Dst = m_destination;
-    }
+    const uint32_t NumSend =
+        (m_currShader->m_SIMDSize == SIMDMode::SIMD32) ? 2 : 1;
 
-    // 'payload' contains bvhLevel, traceRayCtrl, and stackID as per
-    // TraceRayMessage::Payload in RTStackFormat.h.
-    CVariable* payload = BroadcastIfUniform(GetSymbol(I->getPayload()));
-    CVariable* globalBufferPtr = GetSymbol(I->getGlobalBufferPointer());
-    if (!globalBufferPtr->IsUniform())
-        globalBufferPtr = UniformCopy(globalBufferPtr);
-    unsigned int extDescriptor = EU_MESSAGE_TARGET_SFID_RTA;
-    CVariable* exDesc = m_currShader->ImmToVariable(extDescriptor, ISA_TYPE_UD);
-    uint messageSpecificControl = BindlessThreadDispatch(
-        1,
-        m_currShader->m_dispatchSize == SIMDMode::SIMD16 ? 1 : 0,
-        true,
-        RayQueryEnable);
-
-    CVariable* header =
-        m_currShader->GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
-
-    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-    m_encoder->SetNoMask();
-    m_encoder->Copy(m_currShader->BitCast(header, globalBufferPtr->GetType()), globalBufferPtr);
-    m_encoder->Push();
-
+    for (uint32_t Cnt = 0; Cnt < NumSend; Cnt++)
     {
-        // Initialize RayQuery Enable bit
-        constexpr uint32_t RayQueryDword =
-            offsetof(RTStackFormat::TraceRayMessage::Header, rayQueryLocation) / sizeof(DWORD);
-        static_assert(RayQueryDword == 4, "header change?");
+        // 'payload' contains bvhLevel, traceRayCtrl, and stackID as per
+        // TraceRayMessage::Payload in RTStackFormat.h.
+        CVariable* payload = BroadcastIfUniform(GetSymbol(I->getPayload()));
+        CVariable* globalBufferPtr = GetSymbol(I->getGlobalBufferPointer());
+        if (!globalBufferPtr->IsUniform())
+            globalBufferPtr = UniformCopy(globalBufferPtr);
 
-        CVariable* RayQueryVal =
-            m_currShader->ImmToVariable(RayQueryEnable ? 1 : 0, ISA_TYPE_UD);
+        if (m_encoder->IsSecondHalf() || Cnt == 1)
+        {
+            // UMD will allocate back-to-back RTGlobals if requested. The upper
+            // 16 lanes will get the pointer to the second one.
+            constexpr uint32_t GlobalsSize = sizeof(RayDispatchGlobalData);
+            CVariable* Offset = m_currShader->ImmToVariable(GlobalsSize, ISA_TYPE_UD);
+            CVariable* TmpGP = m_currShader->GetNewVariable(globalBufferPtr);
+            if (m_currShader->m_Platform->hasNoInt64AddInst())
+            {
+                emitAddPair(TmpGP, globalBufferPtr, Offset);
+            }
+            else
+            {
+                m_encoder->Add(TmpGP, globalBufferPtr, Offset);
+                m_encoder->Push();
+            }
+            globalBufferPtr = TmpGP;
+        }
+
+        CVariable* header = m_currShader->GetNewVariable(
+            getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, "RTHeader");
 
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        m_encoder->SetDstSubReg(RayQueryDword);
-        m_encoder->Copy(header, RayQueryVal);
-        m_encoder->Push();
-    }
-
-    if (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC ||
-        (getGRFSize() == 64 && IGC_IS_FLAG_ENABLED(DisableWideTraceRay)))
-    {
-        // PVC SIMD16 TraceRay payload needs to be expanded to two registers
-        // since RTA expects the same payload format as DG2 (which has 32-byte
-        // registers).
-        //
-        IGC_ASSERT_MESSAGE(payload->GetNumberElement() == 16, "not simd16?");
-        CVariable* expandedPayload = m_currShader->GetNewVariable(
-            getGRFSize() * 2 / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-        m_encoder->Copy(expandedPayload, payload);
-
-        m_encoder->SetSrcSubReg(0,8);
-        m_encoder->SetDstSubVar(1);
-        m_encoder->SetMask(EMASK_Q2);
-        m_encoder->Copy(expandedPayload, payload);
+        m_encoder->Copy(
+            m_currShader->BitCast(header, globalBufferPtr->GetType()),
+            globalBufferPtr);
         m_encoder->Push();
 
-        payload = expandedPayload;
-    }
+        {
+            // Initialize RayQuery Enable bit
+            constexpr uint32_t RayQueryDword =
+                offsetof(RTStackFormat::TraceRayMessage::Header, rayQueryLocation) / sizeof(DWORD);
+            static_assert(RayQueryDword == 4, "header change?");
 
-    CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
-    m_encoder->Sends(
-        Dst,
-        header,
-        payload,
-        EU_MESSAGE_TARGET_SFID_RTA,
-        exDesc,
-        pMessDesc);
-    m_encoder->Push();
+            CVariable* RayQueryVal =
+                m_currShader->ImmToVariable(RayQueryEnable ? 1 : 0, ISA_TYPE_UD);
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
+            m_encoder->SetNoMask();
+            m_encoder->SetDstSubReg(RayQueryDword);
+            m_encoder->Copy(header, RayQueryVal);
+            m_encoder->Push();
+        }
+
+        const bool WideTraceRay =
+            m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC ||
+            (getGRFSize() == 64 && IGC_IS_FLAG_ENABLED(DisableWideTraceRay));
+
+        if (WideTraceRay)
+        {
+            // PVC SIMD16 TraceRay payload needs to be expanded to two registers
+            // since RTA expects the same payload format as DG2 (which has 32-byte
+            // registers).
+            //
+            if (Cnt == 1)
+                m_encoder->SetSrcSubVar(0, 1);
+            IGC_ASSERT_MESSAGE(payload->GetNumberElement() >= 16, "not simd16?");
+            CVariable* expandedPayload = m_currShader->GetNewVariable(
+                getGRFSize() * 2 / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF,
+                "ExpandedPayload");
+            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->Copy(expandedPayload, payload);
+
+            m_encoder->SetSrcSubReg(0, 8);
+            m_encoder->SetDstSubVar(1);
+            m_encoder->SetMask(EMASK_Q2);
+            m_encoder->Copy(expandedPayload, payload);
+            m_encoder->Push();
+
+            payload = expandedPayload;
+        }
+
+        const unsigned int extDescriptor = EU_MESSAGE_TARGET_SFID_RTA;
+        CVariable* exDesc = m_currShader->ImmToVariable(extDescriptor, ISA_TYPE_UD);
+
+        uint messageSpecificControl = BindlessThreadDispatch(
+            1,
+            m_currShader->m_SIMDSize >= SIMDMode::SIMD16 ? 1 : 0,
+            true,
+            RayQueryEnable);
+        CVariable* pMessDesc =
+            m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
+
+        CVariable* Dst = RayQueryEnable ? m_destination : nullptr;
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            if (Cnt == 1)
+                m_encoder->SetMask(EMASK_H2);
+
+            if (!WideTraceRay)
+            {
+                payload = m_currShader->GetNewAlias(
+                    payload,
+                    payload->GetType(),
+                    CEncoder::GetCISADataTypeSize(payload->GetType()) * 16 * Cnt,
+                    16);
+            }
+
+            if (Dst)
+            {
+                Dst = m_currShader->GetNewAlias(
+                    Dst,
+                    Dst->GetType(),
+                    CEncoder::GetCISADataTypeSize(Dst->GetType()) * 16 * Cnt,
+                    16);
+            }
+        }
+
+        m_encoder->Sends(
+            Dst,
+            header,
+            payload,
+            extDescriptor,
+            exDesc,
+            pMessDesc);
+        m_encoder->Push();
+    }
 
     // Insert a software fence after the send.rta so no IO operations get
     // scheduled across the send from below.  We should be able to remove this
@@ -22315,6 +22372,7 @@ void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst* I)
     m_encoder->Push();
 
     auto Var = GetSymbol(I->getOperand(0));
+    m_encoder->SetUniformSIMDSize(m_currShader->m_SIMDSize);
     m_encoder->Cast(m_currShader->GetNULL(), Var);
     m_encoder->Push();
 

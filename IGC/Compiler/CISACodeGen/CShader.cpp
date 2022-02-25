@@ -1379,7 +1379,7 @@ uint16_t CShader::AdjustExtractIndex(llvm::Value* vecVal, uint16_t index)
     }
 }
 
-void CShader::GetSimdOffsetBase(CVariable*& pVar)
+void CShader::GetSimdOffsetBase(CVariable*& pVar, bool dup)
 {
     encoder.SetSimdSize(SIMDMode::SIMD8);
     encoder.SetNoMask();
@@ -1397,9 +1397,12 @@ void CShader::GetSimdOffsetBase(CVariable*& pVar)
 
     if (encoder.IsSecondHalf())
     {
-        encoder.SetNoMask();
-        encoder.Add(pVar, pVar, ImmToVariable(16, ISA_TYPE_W));
-        encoder.Push();
+        if (!dup)
+        {
+            encoder.SetNoMask();
+            encoder.Add(pVar, pVar, ImmToVariable(16, ISA_TYPE_W));
+            encoder.Push();
+        }
     }
     else if (m_SIMDSize == SIMDMode::SIMD32)
     {
@@ -1407,7 +1410,10 @@ void CShader::GetSimdOffsetBase(CVariable*& pVar)
         encoder.SetSimdSize(SIMDMode::SIMD16);
         encoder.SetNoMask();
         encoder.SetDstSubReg(16);
-        encoder.Add(pVar, pVar, ImmToVariable(16, ISA_TYPE_W));
+        if (dup)
+            encoder.Copy(pVar, pVar);
+        else
+            encoder.Add(pVar, pVar, ImmToVariable(16, ISA_TYPE_W));
         encoder.Push();
     }
 }

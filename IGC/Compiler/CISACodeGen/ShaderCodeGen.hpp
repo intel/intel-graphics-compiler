@@ -293,7 +293,7 @@ public:
     void        SetBarrierNumber(int BarrierNumber) { m_BarrierNumber = BarrierNumber; }
     int         GetBarrierNumber() const { return m_BarrierNumber; }
 
-    void        GetSimdOffsetBase(CVariable*& pVar);
+    void        GetSimdOffsetBase(CVariable*& pVar, bool dup = false);
     /// Returns a simd8 register filled with values [24, 20, 16, 12, 8, 4, 0]
     /// that are used to index subregisters of a GRF when counting offsets in bytes.
     /// Used e.g. for indirect addressing via a0 register.
