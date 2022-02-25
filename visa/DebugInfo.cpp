@@ -1158,18 +1158,22 @@ void emitDataSubroutines(VISAKernelImpl* visaKernel, T& t)
                     }
                 }
 
-                calleeBB = bb->BBAfterCall()->Preds.front();
+                calleeBB = bb->BBAfterCall();
                 while (lastInst == NULL && calleeBB != NULL)
                 {
+                    calleeBB = calleeBB->Preds.front();
+
                     if (calleeBB->size() > 0)
                     {
+                        if(calleeBB->size() == 1 && calleeBB->front()->isLabel())
+                            continue;
+
                         lastInst = calleeBB->back();
                         end = lastInst->getCISAOff();
                         MUST_BE_TRUE(lastInst->isReturn(), "Expecting to see G4_return as last inst in sub-routine");
                         retval = lastInst->getSrc(0)->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare();
                     }
 
-                    calleeBB = calleeBB->Preds.front();
                 }
                 emitDataName(subLabel->getLabel(), t);
                 emitDataUInt32(start, t);
