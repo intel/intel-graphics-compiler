@@ -374,6 +374,21 @@ static void combineBitCastWithUser(Value *PossibleBC)
 }
 
 /***********************************************************************
+ * debugPrintInnerOuter : debug print inner/outer of region with debug-locations
+ */
+static void debugPrintInnerOuter(std::string FuncName, Instruction *Inner,
+                                 Instruction *Outer) {
+  std::string OuterLine = Outer->getDebugLoc()
+                              ? std::to_string(Outer->getDebugLoc().getLine())
+                              : "not-defined";
+  std::string InnerLine = Inner->getDebugLoc()
+                              ? std::to_string(Inner->getDebugLoc().getLine())
+                              : "not-defined";
+  dbgs() << FuncName << "  Outer (line " << OuterLine << "): " << *Outer
+         << "\n  Inner (line " << InnerLine << "): " << *Inner << "\n";
+}
+
+/***********************************************************************
  * processBitCast : process a bitcast whose input is rdregion
  *
  * We put the bitcast before the rdregion, in the hope that it will enable
@@ -562,9 +577,8 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd)
     // InnerR as the first arg so it prefers to normalize to that region's
     // element type if possible. That can avoid a bitcast being put after the
     // combined rdregion, which can help baling later on.
-    LLVM_DEBUG(dbgs() << "GenXRegionCollapsing::processRdRegion:\n"
-        "  OuterRd (line " << OuterRd->getDebugLoc().getLine() << "): " << *OuterRd << "\n"
-        "  InnerRd (line " << InnerRd->getDebugLoc().getLine() << "): " << *InnerRd << "\n");
+    LLVM_DEBUG(debugPrintInnerOuter("GenXRegionCollapsing::processRdRegion:\n",
+                                    InnerRd, OuterRd));
     if (!normalizeElementType(&InnerR, &OuterR, /*PreferFirst=*/true)) {
       LLVM_DEBUG(dbgs() << "Cannot normalize element type\n");
       return;
@@ -924,9 +938,8 @@ Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
   if (OuterR != genx::makeRegionWithOffset(OuterRd))
     return OuterWr;
   // See if the regions can be combined.
-  LLVM_DEBUG(dbgs() << "GenXRegionCollapsing::processWrRegion:\n"
-      "  OuterWr (line " << OuterWr->getDebugLoc().getLine() << "): " << *OuterWr << "\n"
-      "  InnerWr (line " << InnerWr->getDebugLoc().getLine() << "): " << *InnerWr << "\n");
+  LLVM_DEBUG(debugPrintInnerOuter("GenXRegionCollapsing::processWrRegion\n",
+                                  InnerWr, OuterWr));
   if (!normalizeElementType(&OuterR, &InnerR)) {
     LLVM_DEBUG(dbgs() << "Cannot normalize element type\n");
     return OuterWr;
