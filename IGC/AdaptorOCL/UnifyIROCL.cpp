@@ -106,8 +106,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CustomUnsafeOptPass.hpp"
 #include "MoveStaticAllocas.h"
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
-#include "PreprocessSPVIR.h"
-#include "ConvertUserSemanticDecoratorOnFunctions.h"
+#include "preprocess_spvir/PreprocessSPVIR.h"
+#include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "LowerInvokeSIMD.hpp"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"

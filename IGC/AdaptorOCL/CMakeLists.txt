@@ -22,8 +22,8 @@ set(IGC_BUILD__SRC__AdaptorOCL
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
   list(APPEND IGC_BUILD__SRC__AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/PreprocessSPVIR.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/ConvertUserSemanticDecoratorOnFunctions.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
     )
 endif()
 
@@ -140,8 +140,8 @@ set(IGC_BUILD__HDR__AdaptorOCL
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
   list(APPEND IGC_BUILD__HDR__AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/PreprocessSPVIR.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/ConvertUserSemanticDecoratorOnFunctions.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
     )
 endif()
 
