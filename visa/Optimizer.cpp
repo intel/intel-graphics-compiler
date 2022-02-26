@@ -8973,11 +8973,14 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         bool needLscUgmFence = false;  // true if fence is needed.
         // for scalar path option was used and is still used
         bool clearHdcWritesLSCUGM = builder.getOption(vISA_clearLSCUGMWritesBeforeEOT);
+        bool clearHDCWritesBeforeEOT = builder.getOption(vISA_clearHDCWritesBeforeEOT);
         // for vector path we need this WA always, so just use table
         if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+        {
             clearHdcWritesLSCUGM = clearHdcWritesLSCUGM || VISA_WA_CHECK(builder.getPWaTable(), Wa_22013689345);
+        }
         if (!toRemoveFence
-            && !builder.getOption(vISA_clearHDCWritesBeforeEOT)
+            && !clearHDCWritesBeforeEOT
             && !(builder.supportsLSC() && clearHdcWritesLSCUGM))
         {
             return;
@@ -9094,7 +9097,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             toBeRemoved.clear();
         }
 
-        if ((!builder.getOption(vISA_clearHDCWritesBeforeEOT) && !(builder.supportsLSC() && clearHdcWritesLSCUGM))
+        if ((!clearHDCWritesBeforeEOT && !(builder.supportsLSC() && clearHdcWritesLSCUGM))
             || !(hasUAVWrites || hasSLMWrites || hasTypedWrites))
         {
             return;
@@ -9124,7 +9127,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     }
                 }
 
-                if (builder.getOption(vISA_clearHDCWritesBeforeEOT))
+                if (clearHDCWritesBeforeEOT)
                 {
                     if (builder.supportsLSC())
                     {
