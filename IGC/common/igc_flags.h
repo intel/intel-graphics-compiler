@@ -581,7 +581,6 @@ DECLARE_IGC_REGKEY(DWORD, FirstStagedSIMD,              0,      "Force Pixel sha
 DECLARE_IGC_REGKEY(DWORD, FastestS1Experiments,         0,      "Select configs for fastest compilation by bits.", false)
 DECLARE_IGC_REGKEY(bool, EnableFastestForVulkan,        false,   "Enable Fastest/LinearScanRA to run on Vulkan unit test case.", false)
 DECLARE_IGC_REGKEY(bool, FastestWALinearScanForCS,      false,   "WA LinearScanRA for fastest in CS due to regressions.", false)
-DECLARE_IGC_REGKEY(bool, ForceMinSimdSizeForFastestCS,  false,   "WA a functional issue where SIMD8 for fastest caused regressionss.", false)
 DECLARE_IGC_REGKEY(bool, ForceFastestSIMD, false,  "Force pixel shader to return SIMD8 as fast as possible.", false)
 DECLARE_IGC_REGKEY(bool, ForceBestSIMD, false,  "Force pixel shader to return the best SIMD, either SIMD16 or SIMD8.", false)
 DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit check in ShaderCodeGen", false)
