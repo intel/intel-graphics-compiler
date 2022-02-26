@@ -1836,10 +1836,30 @@ class G4_Declare
 {
     friend class IR_Builder;
 
+    class ElemInfo {
+        G4_Type type;                  // element type
+        unsigned numElements;          // total elements
+        unsigned short numRows;
+        unsigned short numElemsPerRow; // number of elements per row
+    public:
+        ElemInfo() = delete;
+        ElemInfo(G4_Type t, unsigned n, const IR_Builder& irb)
+          : type(t) {
+            reset(n, irb);
+        }
+        G4_Type getType() const { return type; }
+        unsigned short getElemSize() const { return TypeSize(type); }
+        unsigned short getNumElems() const { return numElements; }
+        unsigned short getNumRows() const { return numRows; }
+        unsigned short getNumElemsPerRow() const { return numElemsPerRow; }
+        unsigned getByteSize() const { return numElements * getElemSize(); }
+        void reset(unsigned numElems, const IR_Builder& irb);
+    };
+
     const IR_Builder& irb;
     const char*        name;        // Var_Name
     G4_RegFileKind     regFile;     // from which reg file
-    G4_Type            elemType;    // element type
+    ElemInfo           elemInfo;
 
     G4_RegVar*        regVar;        // corresponding reg var
 
@@ -1853,10 +1873,10 @@ class G4_Declare
 
     uint16_t doNotSpill : 1;    // indicates that this declare should never be spilled
 
-    uint16_t builtin : 1;  // indicate if this varaible is a builtin
-    uint16_t liveIn : 1;   // indicate if this varaible has "Input" or "Input_Output" attribute
-    uint16_t liveOut : 1;  // indicate if this varaible has "Output" or "Input_Output" attribute
-    uint16_t payloadLiveOut : 1;  // indicate if this varaible has "Output" attribute for the payload section
+    uint16_t builtin : 1;  // indicate if this variable is a builtin
+    uint16_t liveIn : 1;   // indicate if this variable has "Input" or "Input_Output" attribute
+    uint16_t liveOut : 1;  // indicate if this variable has "Output" or "Input_Output" attribute
+    uint16_t payloadLiveOut : 1;  // indicate if this variable has "Output" attribute for the payload section
 
     // This is an optimization *hint* to indicate if optimizer should skip
     // widening this variable or not (e.g. byte to word).
@@ -1870,14 +1890,13 @@ class G4_Declare
 
     unsigned declId;     // global decl id for this builder
 
-    uint32_t numElements;
     unsigned numFlagElements;
 
     // byte offset of this declare from the base declare.  For top-level declares this value is 0
     int offsetFromBase;
 
     // if set to nonzero, indicates the declare is only used by subroutine "scopeID".
-    // it is used to prevent a subroutin-local declare from escaping its subroutine when doing liveness
+    // it is used to prevent a subroutine-local declare from escaping its subroutine when doing liveness
     unsigned scopeID;
 
     // For GRFs, store byte offset of allocated GRF
@@ -1903,9 +1922,9 @@ public:
                uint32_t numElems,
                G4_Type        ty,
                std::vector<G4_Declare*>& dcllist) :
-      irb(builder), name(n), regFile(k), elemType(ty), addressed(false), builtin(false), liveIn(false),
-      liveOut(false), payloadLiveOut(false), noWidening(false), isSplittedDcl(false), isPartialDcl(false),
-      refInSend(false), PreDefinedVar(false), numElements(numElems), offsetFromBase(-1)
+      irb(builder), name(n), regFile(k), elemInfo(ty, numElems, builder), addressed(false), builtin(false),
+      liveIn(false), liveOut(false), payloadLiveOut(false), noWidening(false), isSplittedDcl(false),
+      isPartialDcl(false), refInSend(false), PreDefinedVar(false), offsetFromBase(-1)
     {
         //
         // set the rest values to default uninitialized values
@@ -1976,7 +1995,7 @@ public:
         name = newName;
     }
 
-    unsigned int getByteSize() const { return numElements * getElemSize(); }
+    unsigned int getByteSize() const { return elemInfo.getByteSize(); }
 
     unsigned int getWordSize() const {return (getByteSize() + 1)/2;}
 
@@ -2037,8 +2056,7 @@ public:
     {
         // we only consider subalign here
         unsigned byteAlign = getSubRegAlign() * TypeSize(Type_UW);
-        return byteAlign < TypeSize(elemType) ?
-            TypeSize(elemType) : byteAlign;
+        return byteAlign < getElemSize() ? getElemSize() : byteAlign;
     }
 
     void setRegFile(G4_RegFileKind rfile) { regFile = rfile; }
@@ -2087,22 +2105,19 @@ public:
     G4_RegFileKind getRegFile() const {return regFile;}
 
     // returns number of elements per row
-    unsigned short getNumElems() const;
-    unsigned short getNumRows() const;
-    unsigned short getTotalElems() const
-    {
-        return (unsigned short)numElements;
-    }
+    unsigned short getNumElems() const { return elemInfo.getNumElemsPerRow(); }
+    unsigned short getNumRows() const { return elemInfo.getNumRows(); }
+    unsigned short getTotalElems() const { return elemInfo.getNumElems(); }
 
-    void setTotalElems(uint32_t numElems) { numElements = numElems; }
+    void setTotalElems(uint32_t numElems) { elemInfo.reset(numElems, irb); }
     unsigned short getNumberFlagElements() const
     {
         assert(regFile == G4_FLAG && "should only be called for flag vars");
         return numFlagElements;
     }
 
-    G4_Type          getElemType() const {return elemType;}
-    uint16_t         getElemSize() const {return TypeSize(elemType);}
+    G4_Type          getElemType() const {return elemInfo.getType();}
+    uint16_t         getElemSize() const {return elemInfo.getElemSize();}
     const G4_RegVar *getRegVar() const {return regVar;}
           G4_RegVar *getRegVar()       {return regVar;}
 
@@ -2141,7 +2156,7 @@ public:
     void setDoNotSpill()      { doNotSpill = true; }
     bool isDoNotSpill() const { return doNotSpill; }
 
-    bool isMsgDesc() const { return regFile == G4_ADDRESS && elemType == Type_UD; }
+    bool isMsgDesc() const { return regFile == G4_ADDRESS && elemInfo.getType() == Type_UD; }
 
     void setCapableOfReuse()       { capableOfReuse = true; }
     bool getCapableOfReuse() const { return capableOfReuse; }

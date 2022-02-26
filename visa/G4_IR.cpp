@@ -5695,19 +5695,17 @@ void G4_Declare::copyAlign(G4_Declare* dcl)
     regVar->setSubRegAlignment(dcl->getSubRegAlign());
 }
 
-void G4_Declare::resizeNumRows(unsigned int numrows)
+void G4_Declare::ElemInfo::reset(unsigned numElems, const IR_Builder& irb)
 {
-    int byteSize = numrows * irb.numEltPerGRF<Type_UB>();
-    setTotalElems(byteSize / getElemSize());
+    numElements = numElems;
+    numRows = (getByteSize() + (irb.numEltPerGRF<Type_UB>() - 1)) / irb.numEltPerGRF<Type_UB>();
+    numElemsPerRow = numRows > 1 ? irb.numEltPerGRF<Type_UB>() / getElemSize() : numElements;
 }
 
-unsigned short G4_Declare::getNumElems() const
+void G4_Declare::resizeNumRows(unsigned int numrows)
 {
-    return getNumRows() > 1 ? irb.numEltPerGRF<Type_UB>() / getElemSize() : numElements;
-}
-unsigned short G4_Declare::getNumRows() const
-{
-    return (getByteSize() + (irb.numEltPerGRF<Type_UB>() - 1)) / irb.numEltPerGRF<Type_UB>();
+    unsigned byteSize = numrows * irb.numEltPerGRF<Type_UB>();
+    setTotalElems(byteSize / getElemSize());
 }
 
 void G4_Declare::emit(std::ostream &output) const
@@ -5737,9 +5735,9 @@ void G4_Declare::emit(std::ostream &output) const
     }
 
     output << " size=" << getByteSize();
-    if (Type_UNDEF != elemType)
+    if (Type_UNDEF != elemInfo.getType())
     {
-        output << " type=" << TypeSymbol(elemType);
+        output << " type=" << TypeSymbol(elemInfo.getType());
     }
     if (AliasDCL)
     {
