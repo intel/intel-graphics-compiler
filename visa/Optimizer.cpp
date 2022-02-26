@@ -8977,6 +8977,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // for vector path we need this WA always, so just use table
         if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
         {
+            clearHDCWritesBeforeEOT = clearHDCWritesBeforeEOT || VISA_WA_CHECK(builder.getPWaTable(), Wa_1807084924);
             clearHdcWritesLSCUGM = clearHdcWritesLSCUGM || VISA_WA_CHECK(builder.getPWaTable(), Wa_22013689345);
         }
         if (!toRemoveFence
