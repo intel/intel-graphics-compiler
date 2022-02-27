@@ -1000,7 +1000,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 
     // For non-kernel function, always invoke markDivergentBBs to
     // conservatively assume divergence.
-    if ((hasSIMDCF || hasGoto || !builder->getIsKernel()) &&
+    if ((hasSIMDCF || hasGoto || builder->getIsFunction()) &&
         builder->getOption(vISA_divergentBB))
     {
         markDivergentBBs();
@@ -2629,7 +2629,7 @@ void FlowGraph::markDivergentBBs()
     // fcall'ed Function:  to be conservative and assume that any function
     // that is fcall'ed is divergent on entry
     // (Note that each function has its own CFG)
-    if (!builder->getIsKernel())
+    if (builder->getIsFunction())
     {
         for (G4_BB* BB : BBs)
         {
@@ -3687,7 +3687,7 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
 
     // If -noMaskWAOnStackCall is prsent, all BBs inside stack functions are
     // assumed to need NoMaskWA.
-    if (builder->getOption(vISA_noMaskWAOnFuncEntry) && !builder->getIsKernel())
+    if (builder->getOption(vISA_noMaskWAOnFuncEntry) && builder->getIsFunction())
     {
         for (auto bb : BBs)
         {
