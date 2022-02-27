@@ -357,7 +357,6 @@ bool SampleMultiversioning::runOnFunction(Function& F)
                 Parent);
             DT->recalculate(F);
         }
-        pContext->m_instrTypes.hasMultipleBB = true;
         return true;
     }
     return false;

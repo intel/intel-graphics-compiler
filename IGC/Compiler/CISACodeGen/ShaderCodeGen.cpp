@@ -351,6 +351,8 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     }
     mpm.add(createFixInvalidFuncNamePass());
 
+    // Update the InstrTypes one last time to collect stats for dumping to cos file
+    mpm.add(new CheckInstrTypes(&(ctx.m_instrTypes), &(ctx.metrics)));
     //
     // Generally, passes that change IR should be prior to this place!
     //
@@ -372,6 +374,7 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
     unsigned int numBB = ctx.m_instrTypes.numBB;
     unsigned int numSample = ctx.m_instrTypes.numSample;
     unsigned int numInsts = ctx.m_instrTypes.numInsts;
+    unsigned int numLoadStore = ctx.m_instrTypes.numLoadStore;
     bool hasUnmaskedRegion = ctx.m_instrTypes.hasUnmaskedRegion;
     IGCPassManager mpm(&ctx, "UpdateOptPre");
     mpm.add(new CheckInstrTypes(&(ctx.m_instrTypes), nullptr));
@@ -379,7 +382,7 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
     ctx.m_instrTypes.numBB = numBB;
     ctx.m_instrTypes.numSample = numSample;
     ctx.m_instrTypes.numInsts = numInsts;
-    ctx.m_instrTypes.hasLoadStore = true;
+    ctx.m_instrTypes.numLoadStore = numLoadStore;
     ctx.m_instrTypes.hasUnmaskedRegion = hasUnmaskedRegion;
 }
 
@@ -639,7 +642,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         }
     }
 
-    if (ctx.m_instrTypes.hasLoop)
+    if (ctx.m_instrTypes.numOfLoop)
     {
         // need to run loop simplify to canonicalize loop and merge latches
         mpm.add(createLoopCanonicalization());
@@ -670,7 +673,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     // Run MemOpt
     if (!isOptDisabled &&
-        ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) && !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
+        ctx.m_instrTypes.numLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) && !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
         // run AdvMemOpt and MemOPt back-to-back so that we only
         // need to run WIAnalysis once
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
@@ -695,7 +698,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     }
 
     if (!isOptDisabled &&
-        ctx.m_instrTypes.hasLoadStore &&
+        ctx.m_instrTypes.numLoadStore &&
         ctx.m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
         !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
         IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
@@ -1659,27 +1662,6 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
     // indirect calls are the only way to detect function pointers usage.
     if (pContext->m_instrTypes.hasIndirectCall)
         pContext->m_enableFunctionPointer = true;
-
-    if (pContext->getMetaDataUtils()->size_FunctionsInfo() == 1 &&
-        !pContext->m_instrTypes.hasSubroutines)
-    {
-        pContext->m_instrTypes.numBB =
-            pContext->getMetaDataUtils()->begin_FunctionsInfo()->first->getBasicBlockList().size();
-        pContext->m_instrTypes.hasMultipleBB = (pContext->m_instrTypes.numBB != 1);
-    }
-    else
-    {
-        pContext->m_instrTypes.hasMultipleBB = true;
-    }
-
-    pContext->m_instrTypes.hasLoadStore = true;
-
-    pContext->m_instrTypes.CorrelatedValuePropagationEnable =
-        (pContext->m_instrTypes.hasMultipleBB &&
-        (pContext->m_instrTypes.hasSel ||
-        pContext->m_instrTypes.hasCmp ||
-        pContext->m_instrTypes.hasSwitch ||
-            pContext->m_instrTypes.hasLoadStore));
 }
 
 static bool extensiveShader(CodeGenContext* pContext)
@@ -1839,7 +1821,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(createAddressSpaceAAWrapperPass());
         mpm.add(createExternalAAWrapperPass(&addAddressSpaceAAResult));
 
-        if (pContext->m_instrTypes.hasLoadStore)
+        if (pContext->m_instrTypes.numLoadStore)
         {
             mpm.add(llvm::createDeadStoreEliminationPass());
             mpm.add(createMarkReadOnlyLoadPass());
@@ -1848,7 +1830,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(createLogicalAndToBranchPass());
         mpm.add(llvm::createEarlyCSEPass());
 
-        if (pContext->m_instrTypes.CorrelatedValuePropagationEnable)
+        if (pContext->m_instrTypes.numBB)
         {
             mpm.add(llvm::createCorrelatedValuePropagationPass());
         }
@@ -1889,7 +1871,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         if (IGC_IS_FLAG_ENABLED(SampleMultiversioning) || pContext->m_enableSampleMultiversioning)
         {
-            if (!pContext->m_instrTypes.hasLoop)
+            if (!pContext->m_instrTypes.numOfLoop)
                 mpm.add(new SampleMultiversioning(pContext));
         }
 
@@ -1897,10 +1879,10 @@ void OptimizeIR(CodeGenContext* const pContext)
                                IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
                              (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT));
 
-        if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
+        if (pContext->m_instrTypes.numBB && !disableGOPT)
         {
             // disable loop unroll for excessive large shaders
-            if (pContext->m_instrTypes.hasLoop)
+            if (pContext->m_instrTypes.numOfLoop)
             {
                 mpm.add(createLoopDeadCodeEliminationPass());
                 mpm.add(createLoopCanonicalization());
@@ -2028,7 +2010,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             mpm.add(new GenUpdateCB());
 
-            if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
+            if (!pContext->m_instrTypes.numAtomics && !extensiveShader(pContext))
             {
                 if (pContext->type == ShaderType::OPENCL_SHADER)
                 {
@@ -2067,7 +2049,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             // Conditions apply just as above due to problems with atomics
             // (see comment above for details).
-            if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
+            if (!pContext->m_instrTypes.numAtomics && !extensiveShader(pContext))
             {
                 // After lowering 'switch', run jump threading to remove redundant jumps.
                 mpm.add(llvm::createJumpThreadingPass());
@@ -2163,7 +2145,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
         mpm.add(createGenSimplificationPass());
 
-        if (pContext->m_instrTypes.hasLoadStore)
+        if (pContext->m_instrTypes.numLoadStore)
         {
             mpm.add(llvm::createDeadStoreEliminationPass());
             mpm.add(llvm::createMemCpyOptPass());
@@ -2215,7 +2197,7 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(new InlineUnmaskedFunctionsPass());
         }
 
-        if (pContext->m_instrTypes.hasLoop)
+        if (pContext->m_instrTypes.numOfLoop)
         {
             mpm.add(createDeadPHINodeEliminationPass());
         }

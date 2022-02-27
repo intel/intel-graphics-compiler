@@ -914,7 +914,7 @@ bool PreRAScheduler::runOnFunction(Function& F) {
 
     if (!IGC_IS_FLAG_ENABLED(SetMaxPreRASchedulerRegPressureThreshold))
     {
-        if (ctx->m_instrTypes.hasDiscard ||
+        if (ctx->m_instrTypes.numDiscard ||
             (ctx->m_instrTypes.numBB == 1 && ctx->m_instrTypes.numSample && ctx->m_instrTypes.numInsts / ctx->m_instrTypes.numSample < 30) ||
             (ctx->m_instrTypes.numBB != 1 && ctx->m_instrTypes.numBB && ctx->m_instrTypes.numInsts / ctx->m_instrTypes.numBB > 100))
         {

@@ -677,7 +677,7 @@ namespace IGC
                 if (!ctx->isSecondCompile &&
                     (occu32 > occu16 ||
                     (occu32 == occu16 && m_Platform->loosenSimd32occu()) ||
-                    (occu32 == occu16 && ctx->m_instrTypes.hasBarrier)))
+                    (occu32 == occu16 && ctx->m_instrTypes.numBarrier)))
                 {
                     return true;
                 }
