@@ -1122,6 +1122,7 @@ namespace IGC
             else
             {
                 info = CollectAllSimplePushInfoArr[simplePushBufferId];
+                iter = simplePushBufferId;
             }
             SimplePushInfo& newChunk = pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed];
             if (sizePushed + info.size <= cthreshold)
@@ -1138,7 +1139,7 @@ namespace IGC
                 pushInfo.simplePushBufferUsed++;
                 sizePushed += info.size;
             }
-            CollectAllSimplePushInfoArr.erase(simplePushBufferId);
+            CollectAllSimplePushInfoArr.erase(iter);
             simplePushBufferId++;
         }
     }
