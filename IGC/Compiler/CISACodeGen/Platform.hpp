@@ -1118,6 +1118,11 @@ bool canFuseTypedWrite() const
     return false;
 }
 
+bool enableSetDefaultTileYWalk() const
+{
+    return false;
+}
+
 // max block size for legacy OWord block messages
 uint32_t getMaxBlockMsgSize(bool isSLM) const
 {
