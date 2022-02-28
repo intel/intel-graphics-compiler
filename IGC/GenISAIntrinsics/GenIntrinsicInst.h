@@ -275,8 +275,33 @@ public:
 
 class SamplerLoadIntrinsic : public GenIntrinsicInst {
 public:
+    inline unsigned int getCoordinateIndex(unsigned int i) const
+    {
+        if (i == 2)
+        {
+            return 3;
+        }
+        else if (i < 2)
+        {
+            return i;
+        }
+        else
+        {
+            IGC_ASSERT(0);
+            return UINT_MAX;
+        }
+    }
     inline unsigned int getTextureIndex() const { return getNumOperands() - 5; }
+    inline unsigned int getOffsetIndex(unsigned int i) const
+    {
+        return 5 + i;
+    }
+
     inline Value* getTextureValue() const { return getOperand(getTextureIndex()); }
+    inline Value* getCoordinateValue(unsigned int i) const { return getOperand(getCoordinateIndex(i)); }
+    inline void   setCoordinateValue(unsigned int i, Value* val) { setOperand(getCoordinateIndex(i), val); }
+    inline Value* getOffsetValue(unsigned int i) const { return getOperand(getOffsetIndex(i)); }
+    inline void   setOffsetValue(unsigned int i, Value* val) { setOperand(getOffsetIndex(i), val); }
 
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {
