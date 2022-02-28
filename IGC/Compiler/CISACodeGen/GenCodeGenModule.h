@@ -204,7 +204,7 @@ namespace IGC {
         /// \brief Properties for each function
         llvm::DenseMap<const llvm::Function*, uint32_t> FuncProperties;
 
-        /// \brief Special group that contains indirect call functions and the dummy kernel
+        /// \brief Special group that contains all indirect call functions
         FunctionGroup* IndirectCallGroup = nullptr;
 
     public:
@@ -302,6 +302,9 @@ namespace IGC {
                 FuncProperties[To] = II->second;
             }
         }
+
+        /// get or create the function group that holds all indirectly-called functions
+        FunctionGroup* getOrCreateIndirectCallGroup(llvm::Module* pModule);
 
         /// check if function is stack-called
         bool useStackCall(llvm::Function* F);

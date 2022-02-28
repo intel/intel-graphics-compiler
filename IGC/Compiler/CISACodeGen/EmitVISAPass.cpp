@@ -599,8 +599,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         return false;
     }
 
+    bool isDummyKernel = IGC::isIntelSymbolTableVoidProgram(&F);
+
     // Dummy program is only used for symbol table info, so skip compilation if no symbol table is needed
-    if (IGC::isIntelSymbolTableVoidProgram(&F) && !isSymbolTableRequired(&F))
+    if (isDummyKernel && !isSymbolTableRequired(&F))
     {
         return false;
     }
@@ -640,7 +642,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             m_currShader->SetHasStackCalls();
         }
-        if (isIntelSymbolTableVoidProgram(&F))
+        if (isDummyKernel)
         {
             m_currShader->SetIsIntelSymbolTableVoidProgram();
         }
@@ -762,7 +764,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
         // initialize stack if having stack usage
         bool hasVLA = (m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasVariableLengthAlloca()) || F.hasFnAttribute("hasVLA");
-        if (hasStackCall || hasVLA)
+        if (!isDummyKernel && (hasStackCall || hasVLA))
         {
             m_encoder->InitFuncAttribute(&F, true);
             InitializeKernelStack(&F);

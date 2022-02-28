@@ -156,16 +156,17 @@ void GenXCodeGenModule::processFunction(Function& F)
     // its address for each caller. This greatly saves on compile time when there are many function
     // groups that all call the same function.
     auto cloneTheshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
-    if (F.hasFnAttribute("visaStackCall") &&
-        cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
+    if (F.hasFnAttribute("visaStackCall") && cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        auto IFG = FGA->getIndirectCallGroup();
-        IGC_ASSERT(IFG);
-        F.addFnAttr("referenced-indirectly");
-        pCtx->m_enableFunctionPointer = true;
-        FGA->addToFunctionGroup(&F, IFG, &F);
-        return;
+        auto IFG = FGA->getOrCreateIndirectCallGroup(F.getParent());
+        if (IFG)
+        {
+            F.addFnAttr("referenced-indirectly");
+            pCtx->m_enableFunctionPointer = true;
+            FGA->addToFunctionGroup(&F, IFG, &F);
+            return;
+        }
     }
 
     bool FirstPair = true;
@@ -229,22 +230,25 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
     }
     IGC_ASSERT(CallerFGs.size() >= 1);
 
-    // Use the same cloning threshold for single function SCCs, but making every stack function
+    // Use the same cloning threshold for single function SCCs, but making every function
     // in the SCC indirect calls to prevent cloning the entire SCC N times.
     auto cloneTheshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
     if (cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        for (CallGraphNode* Node : (*SCCNodes))
+        auto Mod = (*SCCNodes).front()->getFunction()->getParent();
+        auto IFG = FGA->getOrCreateIndirectCallGroup(Mod);
+        if (IFG)
         {
-            Function* F = Node->getFunction();
-            auto IFG = FGA->getIndirectCallGroup();
-            IGC_ASSERT(IFG && F->hasFnAttribute("visaStackCall"));
-            F->addFnAttr("referenced-indirectly");
-            pCtx->m_enableFunctionPointer = true;
-            FGA->addToFunctionGroup(F, IFG, F);
+            for (CallGraphNode* Node : (*SCCNodes))
+            {
+                Function* F = Node->getFunction();
+                F->addFnAttr("referenced-indirectly");
+                pCtx->m_enableFunctionPointer = true;
+                FGA->addToFunctionGroup(F, IFG, F);
+            }
+            return;
         }
-        return;
     }
 
     bool FirstPair = true;
@@ -551,6 +555,31 @@ bool GenXFunctionGroupAnalysis::verify()
     return true;
 }
 
+FunctionGroup* GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module* pModule)
+{
+    if (IndirectCallGroup) return IndirectCallGroup;
+
+    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    // Use the dummy kernel if it exists. Otherwise use the unique entry function.
+    // OCL shaders should always use the dummy kernel.
+    llvm::Function* defaultKernel = IGC::getIntelSymbolTableVoidProgram(pModule);
+    if (!defaultKernel && pCtx->type != ShaderType::OPENCL_SHADER)
+    {
+        defaultKernel = IGC::getUniqueEntryFunc(pCtx->getMetaDataUtils(), pCtx->getModuleMetaData());
+    }
+    // No default kernel found
+    if (!defaultKernel) return nullptr;
+
+    IndirectCallGroup = getGroup(defaultKernel);
+    if (!IndirectCallGroup)
+    {
+        setSubGroupMap(defaultKernel, defaultKernel);
+        IndirectCallGroup = createFunctionGroup(defaultKernel);
+    }
+    return IndirectCallGroup;
+}
+
 bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function* F)
 {
     return (F->hasFnAttribute("visaStackCall"));
@@ -626,11 +655,12 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
 
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pModule)
 {
-    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto IFG = getOrCreateIndirectCallGroup(pModule);
+
+    if (!IFG) return;
 
     // Find all indirectly called functions that require a symbol
-    SmallVector<Function*, 16> IndirectFuncs;
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
     {
         Function* F = &(*I);
@@ -638,34 +668,8 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
 
         if (F->hasFnAttribute("referenced-indirectly"))
         {
-            IndirectFuncs.push_back(F);
-        }
-    }
-
-    if (!IndirectFuncs.empty())
-    {
-        // Find the kernel program group to attach the indirect functions to
-        Function* defaultKernel = IGC::getIntelSymbolTableVoidProgram(pModule);
-        if (!defaultKernel)
-        {
-            defaultKernel = IGC::getUniqueEntryFunc(pMdUtils, pCtx->getModuleMetaData());
-            IGC_ASSERT(defaultKernel);
-        }
-
-        if (getGroup(defaultKernel) == nullptr)
-        {
-            setSubGroupMap(defaultKernel, defaultKernel);
-            IndirectCallGroup = createFunctionGroup(defaultKernel);
-        }
-        else
-        {
-            IndirectCallGroup = getGroup(defaultKernel);
-        }
-
-        for (auto F : IndirectFuncs)
-        {
             IGC_ASSERT(getGroup(F) == nullptr);
-            addToFunctionGroup(F, IndirectCallGroup, F);
+            addToFunctionGroup(F, IFG, F);
         }
     }
 }
