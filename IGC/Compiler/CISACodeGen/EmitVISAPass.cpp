@@ -15371,6 +15371,13 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
             m_currShader->m_SIMDSize);
         bool needsSplit = m_currShader->m_SIMDSize > instWidth;
 
+        auto doLSC = shouldGenerateLSC(pInsn);
+
+        if (doLSC)  // Reset if the SIMD32 is enabled
+        {
+            needsSplit = m_currShader->m_SIMDSize == SIMDMode::SIMD32;
+            instWidth = SIMDMode::SIMD16;
+        }
 
         if (!needsSplit)
         {
