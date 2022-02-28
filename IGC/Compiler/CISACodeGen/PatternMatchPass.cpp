@@ -1230,6 +1230,9 @@ namespace IGC
             match = MatchPow(I) ||
                 MatchModifier(I);
             break;
+#if LLVM_VERSION_MAJOR >= 12
+        case Intrinsic::abs:
+#endif
         case Intrinsic::fabs:
             match = MatchAbsNeg(I);
             break;
@@ -5226,6 +5229,14 @@ namespace IGC
                 mod = EMOD_ABS;
                 return true;
             }
+#if LLVM_VERSION_MAJOR >= 12
+            if (intrinsicInst->getIntrinsicID() == Intrinsic::abs)
+            {
+                source = intrinsicInst->getOperand(0);
+                mod = EMOD_ABS;
+                return true;
+            }
+#endif
         }
 
         llvm::SelectInst* select = llvm::dyn_cast<llvm::SelectInst>(abs);
