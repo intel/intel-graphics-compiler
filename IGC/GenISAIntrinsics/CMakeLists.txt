@@ -30,6 +30,7 @@ set(IGC_BUILD__HDR__GenISAIntrinsics
 add_library("${IGC_BUILD__PROJ__GenISAIntrinsics}" STATIC
     ${IGC_BUILD__SRC__GenISAIntrinsics}
     ${IGC_BUILD__HDR__GenISAIntrinsics}
+    "${CMAKE_CURRENT_SOURCE_DIR}/Intrinsic_definitions.py"
   )
 set_property(TARGET "${IGC_BUILD__PROJ__GenISAIntrinsics}" PROPERTY
     PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__GenISAIntrinsics}")
