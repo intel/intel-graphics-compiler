@@ -1098,6 +1098,8 @@ int LinearScanRA::linearScanRA()
             std::cout << "\t\tGRFSpillFillCount: " << GRFSpillFillCount << "\n";
         }
 
+       kernel.dumpToFile("after.Spill_GRF." + std::to_string(iterator));
+
         iterator++;
     } while (spillLRs.size() && iterator < MAXIMAL_ITERATIONS);
 

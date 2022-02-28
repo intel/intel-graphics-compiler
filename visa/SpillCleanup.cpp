@@ -303,8 +303,7 @@ bool CoalesceSpillFills::fillHeuristic(std::list<INST_LIST_ITER>& coalesceableFi
             return false;
         }
 
-        if (addrTakenSpillFillDcl.find((*f)->getDst()->getTopDcl()) !=
-            addrTakenSpillFillDcl.end())
+        if ((*f)->getDst()->getTopDcl()->isAddrSpillFill())
         {
             return false;
         }
@@ -465,8 +464,7 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER>& instList,
             isFirstNoMask = inst->isWriteEnableInst();
             mask = inst->getMaskOption();
 
-            if (addrTakenSpillFillDcl.find(inst->getDst()->getTopDcl()) !=
-                addrTakenSpillFillDcl.end())
+            if (inst->getDst()->getTopDcl()->isAddrSpillFill())
             {
                 return;
             }
@@ -591,9 +589,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(std::list<INST_LIST_ITER>& instLi
                 getScratchMsgInfo(*(*spillIt), scratchOffset, scratchSize);
 
                 auto src1 = (*(*spillIt))->getSrc(1);
-                if (src1 &&
-                    addrTakenSpillFillDcl.find(src1->getTopDcl()) !=
-                    addrTakenSpillFillDcl.end())
+                if (src1 &&src1->getTopDcl()->isAddrSpillFill())
                 {
                     // Address taken dcls should not be coalesed with others.
                     // This is dangerous because nothing ties indirect opnd
@@ -2161,13 +2157,4 @@ void CoalesceSpillFills::dumpKernel(unsigned int v1, unsigned int v2)
     }
 }
 
-void CoalesceSpillFills::computeAddressTakenDcls()
-{
-    for (auto dcl : kernel.Declares)
-    {
-        auto addrSpillFill = dcl->getAddrTakenSpillFill();
-        if (addrSpillFill)
-            addrTakenSpillFillDcl.insert(addrSpillFill);
-    }
-}
 }

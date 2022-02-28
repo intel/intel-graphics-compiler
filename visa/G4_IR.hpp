@@ -1887,6 +1887,7 @@ class G4_Declare
     uint16_t isPartialDcl : 1;
     uint16_t refInSend : 1;
     uint16_t PreDefinedVar : 1;  // indicate if this dcl is created from preDefinedVars.
+    uint16_t addrSpillFill : 1;
 
     unsigned declId;     // global decl id for this builder
 
@@ -1905,8 +1906,6 @@ class G4_Declare
     // fields that are only ever referenced by RA and spill code
     // ToDo: they should be moved out of G4_Declare and stored as maps in RA/spill
     G4_Declare* spillDCL;  // if an addr/flag var is spilled, SpillDCL is the location (GRF) holding spilled value
-
-    G4_Declare* addrTakenSpillFillDcl; // dcl to use for address taken spill/fill temp
 
     // this should only be called by builder
     void setNumberFlagElements(uint8_t numEl)
@@ -1947,12 +1946,11 @@ public:
         spillFlag = false;
         spillDCL = NULL;
 
-        addrTakenSpillFillDcl = NULL;
-
         startID = 0;
 
         doNotSpill = false;
         capableOfReuse = false;
+        addrSpillFill = false;
 
         scopeID = 0;
 
@@ -2000,14 +1998,6 @@ public:
     unsigned int getWordSize() const {return (getByteSize() + 1)/2;}
 
     void resizeNumRows(unsigned int numrows);
-
-    void setAddrTakenSpillFill(G4_Declare* dcl)
-    {
-        addrTakenSpillFillDcl = dcl;
-    }
-
-    const G4_Declare* getAddrTakenSpillFill() const { return addrTakenSpillFillDcl; }
-          G4_Declare* getAddrTakenSpillFill()       { return addrTakenSpillFillDcl; }
 
     // declare this to be aliased to dcl+offset
     // This is an error if dcl+offset is not aligned to the type of this dcl
@@ -2155,6 +2145,9 @@ public:
 
     void setDoNotSpill()      { doNotSpill = true; }
     bool isDoNotSpill() const { return doNotSpill; }
+
+    void setAddrSpillFill()      { addrSpillFill = true; }
+    bool isAddrSpillFill() const { return addrSpillFill; }
 
     bool isMsgDesc() const { return regFile == G4_ADDRESS && elemInfo.getType() == Type_UD; }
 
@@ -3644,11 +3637,11 @@ class G4_AddrExp final : public G4_Operand
 {
     G4_RegVar* m_addressedReg;
     int m_offset;  //current implementation: byte offset
-    G4_Declare* addrTakenSpillFillDcl; // dcl to use for address taken spill/fill temp
+    G4_AddrExp* addrTakenSpillFill; // dcl to use for address taken spill/fill temp
 
 public:
     G4_AddrExp(G4_RegVar *reg, int offset, G4_Type ty)
-      : G4_Operand(G4_Operand::addrExp, ty), m_addressedReg(reg), addrTakenSpillFillDcl(nullptr),
+      : G4_Operand(G4_Operand::addrExp, ty), m_addressedReg(reg), addrTakenSpillFill(nullptr),
         m_offset(offset) {}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
@@ -3658,10 +3651,10 @@ public:
     void setRegVar(G4_RegVar* var) { m_addressedReg = var; }
     int getOffset() const { return m_offset; }
     void setOffset(int tOffset) { m_offset = tOffset; }
-    G4_Declare* getAddrTakenSpillFill() { return addrTakenSpillFillDcl; }
-    void setAddrTakenSpillFill(G4_Declare* dcl)
+    G4_AddrExp* getAddrTakenSpillFill() { return addrTakenSpillFill; }
+    void setAddrTakenSpillFill(G4_AddrExp* addrExp)
     {
-        addrTakenSpillFillDcl = dcl;
+        addrTakenSpillFill = addrExp;
     }
 
     int eval();
