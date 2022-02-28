@@ -3485,7 +3485,16 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
         }
 
         if (deref)
+        {
             write(data1, (uint8_t)llvm::dwarf::DW_OP_deref);
+            // DW_OP_deref reads as many bytes as size of address on target machine.
+            // We set address size to 64 bits in CIE. However, this expression
+            // refers to a slot in scratch space which uses 32-bit addressing. So
+            // mask upper 32 bits read from VISA frame descriptor.
+            write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
+            write(data1, (uint32_t)0xffffffff);
+            write(data1, (uint8_t)llvm::dwarf::DW_OP_and);
+        }
 
         if (EmitSettings.ScratchOffsetInOW &&
             normalizeResult)
