@@ -381,12 +381,8 @@ public:
 private:
   static bool checkBfnTypes(const Value *V) {
     IGC_ASSERT_MESSAGE(V, "Error: nullptr input");
-    if (!V->getType()->isIntOrIntVectorTy())
-      return false;
-    unsigned BitSize = V->getType()->getScalarSizeInBits();
-    if (BitSize != 32 && BitSize != 16)
-      return false;
-    return true;
+    return V->getType()->isIntOrIntVectorTy(16) ||
+           V->getType()->isIntOrIntVectorTy(32);
   }
   // These constants are from VISA docs for calculating bfn constant.
   // Combine these constants with any logical operations to get the function
@@ -1793,11 +1789,7 @@ bool BfnMatcher::match() {
           return false;
         if (!I->hasOneUse())
           return false;
-        unsigned Opcode = I->getOpcode();
-        if (Opcode == Instruction::And || Opcode == Instruction::Xor ||
-            Opcode == Instruction::Or)
-          return true;
-        return false;
+        return I->isBitwiseLogicOp();
       });
   if (U == MainBfnInst->op_end())
     return false;
@@ -1809,10 +1801,7 @@ bool BfnMatcher::match() {
 void BfnMatcher::growPattern(const Use *U) {
   IGC_ASSERT(U);
   Instruction *I = cast<Instruction>(U->get());
-  IGC_ASSERT(I);
-  IGC_ASSERT(I->getOpcode() == Instruction::And ||
-             I->getOpcode() == Instruction::Xor ||
-             I->getOpcode() == Instruction::Or);
+  IGC_ASSERT(I && I->isBitwiseLogicOp());
 
   unsigned SrcIdx = U->getOperandNo();
   // we do not work with this operand
