@@ -1929,9 +1929,6 @@ int CISA_IR_Builder::verifyVISAIR()
             ss << "\t" << name << "\n";
         }
         ss << "for the exact error messages\n";
-#ifndef  DLL_MODE
-        std::cerr << ss.str();
-#endif //DLL_MODE
         criticalMsgStream() << ss.str();
         return VISA_FAILURE;
     }
