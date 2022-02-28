@@ -115,6 +115,8 @@ static cl::opt<bool> OptStrictI64Check(
 STATISTIC(NumVisaInsts, "Number of VISA instructions");
 STATISTIC(NumAsmInsts, "Number of Gen asm instructions");
 STATISTIC(SpillMemUsed, "Spill memory size used");
+STATISTIC(NumFlagSpillStore, "Number of flag spills");
+STATISTIC(NumFlagSpillLoad, "Number of flag fills");
 
 /// For VISA_PREDICATE_CONTROL & VISA_PREDICATE_STATE
 template <class T> T &operator^=(T &a, T b) {
@@ -6574,6 +6576,8 @@ public:
       IGC_ASSERT(jitInfo);
       NumAsmInsts += jitInfo->numAsmCount;
       SpillMemUsed += jitInfo->spillMemUsed;
+      NumFlagSpillStore += jitInfo->numFlagSpillStore;
+      NumFlagSpillLoad += jitInfo->numFlagSpillLoad;
     }
     return false;
   }
