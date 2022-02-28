@@ -1364,7 +1364,7 @@ include(igc_find_protobuf)
 set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
 
 if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
-    add_subdirectory("${IGC_SOURCE_DIR}/../external/SPIRV-Tools" "${IGC_OPTION__OUTPUT_DIR}/external/SPIRV-Tools/config" EXCLUDE_FROM_ALL)
+    include("${IGC_SOURCE_DIR}/../external/SPIRV-Tools/CMakeLists.txt")
     include_directories("${IGC_BUILD__SPIRV-Headers_DIR}/include")
     include_directories("${IGC_BUILD__SPIRV-Tools_DIR}/include")
     add_compile_definitions("$<$<CONFIG:Debug>:IGC_SPIRV_TOOLS_ENABLED>")

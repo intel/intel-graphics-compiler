@@ -50,6 +50,7 @@ Installing LLVM, Clang, and OpenCL Clang components means you no longer have to 
       |- SPIRV-Tools                  https://github.com/KhronosGroup/SPIRV-Tools
       |- SPIRV-Headers                https://github.com/KhronosGroup/SPIRV-Headers
 ```
+Additionaly, you can use **SPIRV-Tools** prebuild pacakge. In order to do that be sure to pass to cmake command `IGC\_OPTION\_\_VC\_INTRINSICS\_MODE=Prebuilds`.
 
 #### Build from sources
 
