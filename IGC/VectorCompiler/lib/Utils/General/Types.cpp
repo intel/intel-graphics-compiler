@@ -130,3 +130,18 @@ IGCLLVM::FixedVectorType &vc::getVectorType(Type &Ty) {
     return cast<IGCLLVM::FixedVectorType>(Ty);
   return *IGCLLVM::FixedVectorType::get(&Ty, 1);
 }
+
+Type *vc::setScalarType(Type &OrigTy, Type &ScalarTy) {
+  IGC_ASSERT_MESSAGE(OrigTy.isFPOrFPVectorTy() || OrigTy.isIntOrIntVectorTy() ||
+                         OrigTy.isPtrOrPtrVectorTy(),
+                     "wrong argument: OrigType must be an int, float, pointer "
+                     "or vector of those");
+  IGC_ASSERT_MESSAGE(
+      ScalarTy.isFloatingPointTy() || ScalarTy.isIntegerTy() ||
+          ScalarTy.isPointerTy(),
+      "wrong argument: ScalarTy must be an int, float or pointer");
+  if (!isa<IGCLLVM::FixedVectorType>(OrigTy))
+    return &ScalarTy;
+  return IGCLLVM::FixedVectorType::get(
+      &ScalarTy, cast<IGCLLVM::FixedVectorType>(OrigTy).getNumElements());
+}

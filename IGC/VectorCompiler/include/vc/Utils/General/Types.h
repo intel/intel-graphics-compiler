@@ -67,6 +67,16 @@ llvm::Type &fixDegenerateVectorType(llvm::Type &Ty);
 // To some extend this function is the opposite of vc::fixDegenerateVectorType.
 IGCLLVM::FixedVectorType &getVectorType(llvm::Type &Ty);
 
+// Takes \p OrigTy, replaces its scalar type with \p ScalarTy. The produced type
+// is returned.
+// \p OrigTy must be an integer, floating point, pointer type or vector of those
+// types. \p ScalarTy must be an integer, floating point or pointer type.
+// Examples:
+//    (<3 x i32>, i1) -> <3 x i1>
+//    (float, i16) -> i16
+//    (<4 x double>, double) -> <4 x double>
+llvm::Type *setScalarType(llvm::Type &OrigTy, llvm::Type &ScalarTy);
+
 } // namespace vc
 
 #endif // VC_UTILS_GENERAL_TYPES_H

@@ -8,7 +8,10 @@ SPDX-License-Identifier: MIT
 
 #include "vc/Utils/GenX/IRBuilder.h"
 
+#include "vc/InternalIntrinsics/InternalIntrinsics.h"
+#include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/GenX/TypeSize.h"
+#include "vc/Utils/General/Types.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -37,4 +40,35 @@ Value *vc::getGroupThreadIDForPIM(IRBuilder<> &IRB) {
       R0, IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), UsedR0Bytes),
       "r0.bytes");
   return IRB.CreateExtractElement(R0InBytes, TIDIndexInBytes, "r0.tid");
+}
+
+CallInst *vc::createReadVariableRegion(GlobalVariable &Variable,
+                                       const CMRegion &R, IRBuilder<> &IRB,
+                                       const Twine &Name) {
+  IGC_ASSERT_MESSAGE(R.ElementTy == Variable.getValueType()->getScalarType(),
+                     "wrong arguments: region and variable types don't match");
+  Value *Args[] = {&Variable, IRB.getInt32(R.VStride), IRB.getInt32(R.Width),
+                   IRB.getInt32(R.Stride),
+                   IRB.getInt32(R.getOffsetInElements())};
+  Function *Decl = vc::getInternalDeclarationForIdFromArgs(
+      R.getRegionType(), Args, vc::InternalIntrinsic::read_variable_region,
+      *IRB.GetInsertPoint()->getModule());
+  return IRB.CreateCall(Decl, Args, Name);
+}
+
+CallInst *vc::createWriteVariableRegion(GlobalVariable &Variable, Value &Input,
+                                        const CMRegion &R, IRBuilder<> &IRB) {
+  IGC_ASSERT_MESSAGE(R.ElementTy == Variable.getValueType()->getScalarType(),
+                     "wrong arguments: region and variable types don't match");
+  IGC_ASSERT_MESSAGE(R.getRegionType() == Input.getType(),
+                     "wrong arguments: region and input types don't match");
+  IGC_ASSERT_MESSAGE(R.is1D(), "wrong arguments: region must be 1D");
+  auto *Mask = Constant::getAllOnesValue(
+      vc::setScalarType(*Input.getType(), *IRB.getInt1Ty()));
+  Value *Args[] = {&Variable, &Input, IRB.getInt32(R.getDstStride()),
+                   IRB.getInt32(R.getOffsetInElements()), Mask};
+  Function *Decl = vc::getInternalDeclarationForIdFromArgs(
+      IRB.getVoidTy(), Args, vc::InternalIntrinsic::write_variable_region,
+      *IRB.GetInsertPoint()->getModule());
+  return IRB.CreateCall(Decl, Args);
 }
