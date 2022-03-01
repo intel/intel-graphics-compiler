@@ -417,7 +417,7 @@ SPDX-License-Identifier: MIT
 
     bool hasFPU0ReadSuppressionIssue() const
     {
-       return getPlatform() == Xe_PVCXT && hasRSForSpecificPlatform();
+        return getPlatform() == Xe_PVCXT && hasRSForSpecificPlatform();
     }
 
     bool alignBindlessSampler() const
@@ -915,7 +915,7 @@ SPDX-License-Identifier: MIT
 
     bool hasSrc2ReadSupression() const
     {
-        return getPlatform() >= Xe_PVCXT;;
+        return getPlatform() >= Xe_PVCXT;
     }
 
     bool hasSrc2ReadSupressionSameRegSameType() const

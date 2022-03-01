@@ -8743,7 +8743,7 @@ void G4_InstDpas::computeRightBound(G4_Operand* opnd)
         if (opnd == dst || (opnd == srcs[0] && !opnd->isNullReg()))
         {
             // dst and src0 are always packed, and RB is exec_size * type_size * rep_count
-            auto opndSize = builder.getNativeExecSize() * opnd->getTypeSize() * C;
+            auto opndSize = dpasInst->getExecSize() * opnd->getTypeSize() * C;
             computeDpasOperandBound(opnd, opnd->left_bound, opnd->left_bound + opndSize - 1);
         }
         else if (opnd == srcs[1])
@@ -8755,7 +8755,7 @@ void G4_InstDpas::computeRightBound(G4_Operand* opnd)
             uint32_t bytesPerLaneForAllDepth = bytesPerLane * src1_D;
             bytesPerLaneForAllDepth = ((bytesPerLaneForAllDepth + 3) / 4) * 4;
 
-            uint32_t bytes = bytesPerLaneForAllDepth * builder.getNativeExecSize();
+            uint32_t bytes = bytesPerLaneForAllDepth * dpasInst->getExecSize();
             computeDpasOperandBound(opnd, opnd->left_bound, opnd->left_bound + bytes - 1);
         }
         else if (opnd == srcs[2])

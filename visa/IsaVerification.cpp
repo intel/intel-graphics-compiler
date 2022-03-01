@@ -1411,49 +1411,66 @@ void vISAVerifier::verifyInstructionMisc(
             // No predicate
             REPORT_INSTRUCTION(options, inst->pred.isNullPred(), "%s inst does not support predicate", ISA_Inst_Table[opcode].str);
 
-            // execsize must be simd8 for XeHP_SDV and simd16 for PVC
-            if (irBuilder->getPlatform() >= Xe_PVC)
-            {
-                REPORT_INSTRUCTION(options, opcode != ISA_DPASW,
-                    "%s instuction is not supported on selected platform", ISA_Inst_Table[opcode].str);
-                REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_16,
-                    "Only execution size of 16 is supported for %s on platform %s",
-                    ISA_Inst_Table[opcode].str, irBuilder->getGenxPlatformString());
-            }
-            else
-            {
-                REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_8,
-                    "Only execution size of 8 is supported for %s on platform %s",
-                    ISA_Inst_Table[opcode].str, irBuilder->getGenxPlatformString());
-            }
-
             // dst
             verifyRawOperand(inst, i);
             const raw_opnd&  dst = getRawOperand(inst, i);
-            if (irBuilder->getPlatform() >= Xe_PVC)
-                verifyRawOperandType(inst, dst, FNIsIntOrFloatXePVC);
-            else
+            if (irBuilder->getPlatform() < Xe_PVC)
+            {
                 verifyRawOperandType(inst, dst, FNIsIntOrFloat);
+            }
+            else
+            {
+                verifyRawOperandType(inst, dst, FNIsIntOrFloatXePVC);
+            }
 
             // src0
             verifyRawOperand(inst, ++i);
             const raw_opnd&  src0 = getRawOperand(inst, i);
-            if (irBuilder->getPlatform() >= Xe_PVC)
-                verifyRawOperandType(inst, src0, FNIsIntOrFloatXePVC);
-            else
+            if (irBuilder->getPlatform() < Xe_PVC)
+            {
                 verifyRawOperandType(inst, src0, FNIsIntOrFloat);
+            }
+            else
+            {
+                verifyRawOperandType(inst, src0, FNIsIntOrFloatXePVC);
+            }
 
             // src1
             verifyRawOperand(inst, ++i);
             const raw_opnd&  src1 = getRawOperand(inst, i);
-            verifyRawOperandType(inst, src1, FNIsInt);
+            {
+                verifyRawOperandType(inst, src1, FNIsInt);
+            }
 
             // src2
             const vector_opnd&  src2 = getVectorOperand(inst, ++i);
             VISA_Type  src2Ty = getVectorOperandType(header, src2);
             VISA_Modifier src2Mod = src2.getOperandModifier();
             REPORT_INSTRUCTION(options, src2Mod == MODIFIER_NONE,  "Modifier not allowed for %s", ISA_Inst_Table[opcode].str);
-            REPORT_INSTRUCTION(options, FNIsInt(src2Ty), "Only U/UD allowed for %s", ISA_Inst_Table[opcode].str);
+            {
+                REPORT_INSTRUCTION(options, FNIsInt(src2Ty), "Only U/UD allowed for %s", ISA_Inst_Table[opcode].str);
+            }
+
+
+            if (irBuilder->getPlatform() >= Xe_PVC)
+            {
+                REPORT_INSTRUCTION(options, opcode != ISA_DPASW,
+                    "%s instuction is not supported on selected platform", ISA_Inst_Table[opcode].str);
+
+                {
+                    // execsize must be simd16 for PVC
+                    REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_16,
+                        "Only execution size of 16 is supported for %s on platform %s",
+                        ISA_Inst_Table[opcode].str, irBuilder->getGenxPlatformString());
+                }
+            }
+            else
+            {
+                // execsize must be simd8 for XeHP_SDV
+                REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_8,
+                    "Only execution size of 8 is supported for %s on platform %s",
+                    ISA_Inst_Table[opcode].str, irBuilder->getGenxPlatformString());
+            }
 
             break;
         }

@@ -7368,8 +7368,10 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
 
     if (IS_GEN_BOTH_PATH)
     {
-        MUST_BE_TRUE(Get_VISA_Exec_Size(executionSize) == m_builder->getNativeExecSize(),
-                     "execution size of DPAS must be equal to native execution size!");
+        {
+            MUST_BE_TRUE(Get_VISA_Exec_Size(executionSize) == m_builder->getNativeExecSize(),
+                "execution size of DPAS must be equal to native execution size!");
+        }
 
         // src2 : QW/OW/half-grf/GRF-aligned (vectorOpnd, g4opnd has been created)
         G4_RegVar* src2RegVar = src2->g4opnd->getTopDcl()->getRegVar();
