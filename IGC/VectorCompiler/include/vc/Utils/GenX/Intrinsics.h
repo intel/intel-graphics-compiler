@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
 
 #include <utility>
@@ -105,6 +106,24 @@ getInternalDeclarationForIdFromArgs(llvm::Type *RetTy, Range &&Args,
             &M, static_cast<vc::InternalIntrinsic::ID>(Id), Types);
       });
 }
+
+// Routine for creating a new llvm::Intrinsic, InternalIntrinsic or
+//   GenXIntrinsic.
+// Arguments:
+//  \p Builder - IRBuilder, need to create a new GenXIntrinsic;
+//  \p IID - Intrinsic::ID, GenXIntrinsic::ID or vc::IntrenalIntrinsic::ID - the
+//    ID of intrinsic;
+//  \p Types - additional input/output types for choosing right
+//  GenXIntrinsic/InternalIntrinsic/Intrinsic from several with the same ID;
+//  \p Operands - the expected arguments of intrinsic;
+// Return:
+//  A pointer to created Intrinsic/GenXIntrinsic/InternalIntrinsic, with
+//    ID == IID and arguments from \p Operands;
+llvm::CallInst *createAnyIntrinsic(llvm::IRBuilder<> &Builder,
+                                    llvm::ArrayRef<llvm::Value *> Operands,
+                                    unsigned IID,
+                                    llvm::ArrayRef<llvm::Type *> Types = {},
+                                    const llvm::Twine &Name = "");
 
 } // namespace vc
 
