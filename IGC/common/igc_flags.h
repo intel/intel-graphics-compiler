@@ -301,7 +301,7 @@ DECLARE_IGC_REGKEY(DWORD, MSAAClearedKernel,            0,     "Insert the disca
 DECLARE_IGC_REGKEY(bool, EnablerReadSuppressionWA,    true, "Enable read suppression WA for the send and indirect access", false)
 DECLARE_IGC_REGKEY(bool, EnableLSCFenceUGMBeforeEOT,    true, "Enable inserting fence.ugm.06.tile before EOT if a kernel has any write to UGM [XeHPC, PVC].", true)
 DECLARE_IGC_REGKEY(bool, EnableRTLSCFenceUGMBeforeEOT,  true, "[tmp]Enable inserting fence.ugm.06.tile before EOT for RT shader [XeHPC, PVC].", false)
-DECLARE_IGC_REGKEY(bool, manualEnableRSWA,    true, "Enable read suppression WA for the send and indirect access", false)
+DECLARE_IGC_REGKEY(bool, manualEnableRSWA,    false, "Enable read suppression WA for the send and indirect access", false)
 DECLARE_IGC_REGKEY(bool, DPASReadSuppressionWA,    true, "Enable read suppression WA for the send and indirect access", false)
 DECLARE_IGC_REGKEY(DWORD, RSWARegNum,    0, "dummy register used for EnablerReadSuppressionWA", false)
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierCheck,   false,  "Uses WIAnalysis to find barriers in divergent flow control. May have false positives.", false)
