@@ -51,6 +51,7 @@ set(IGC_BUILD__SRC__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ErrorCheckPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/JointMatrixFuncsResolutionPass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResolvePointersComparison.cpp"
   )
 set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses}
@@ -103,6 +104,7 @@ set(IGC_BUILD__HDR__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ErrorCheckPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/JointMatrixFuncsResolutionPass.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResolvePointersComparison.h"
   )
 set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses}

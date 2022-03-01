@@ -97,6 +97,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/JointMatrixFuncsResolutionPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/ResolvePointersComparison.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/FixResourcePtr.hpp"
@@ -288,6 +289,7 @@ static void CommonOCLBasedPasses(
     mpmSPIR.add(new PreprocessSPVIR());
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new TypesLegalizationPass());
+    mpmSPIR.add(new ResolvePointersComparison());
     mpmSPIR.add(new TargetLibraryInfoWrapperPass());
     mpmSPIR.add(createDeadCodeEliminationPass());
     mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
