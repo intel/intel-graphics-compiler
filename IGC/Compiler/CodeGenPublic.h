@@ -321,6 +321,10 @@ namespace IGC
         unsigned int numAllInsts;
         unsigned int numAllocaInsts;
         unsigned int numPsInputs;
+        unsigned int numDouble;
+        unsigned int RTWriteMask;
+        unsigned int numStencilOutput;
+        unsigned int numDualBlendSource;
         bool hasDynamicGenericLoadStore;
         bool hasUnmaskedRegion;
         unsigned int numGlobalInsts;

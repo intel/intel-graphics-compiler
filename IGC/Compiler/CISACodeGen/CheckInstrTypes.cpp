@@ -85,6 +85,10 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMet
     instrList->numAllocaInsts = 0;
     instrList->numGlobalInsts = 0;
     instrList->numLocalInsts = 0;
+    instrList->numDouble = 0;
+    instrList->RTWriteMask = 0;
+    instrList->numStencilOutput = 0;
+    instrList->numDualBlendSource = 0;
     instrList->sampleCmpToDiscardOptimizationPossible = false;
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
     instrList->hasPullBary = false;
@@ -164,6 +168,11 @@ void CheckInstrTypes::visitInstruction(llvm::Instruction& I)
     if (PT && PT->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
     {
         g_InstrTypes->hasGenericAddressSpacePointers = true;
+    }
+
+    if (I.getType()->isDoubleTy())
+    {
+        g_InstrTypes->numDouble++;
     }
 }
 
@@ -302,6 +311,20 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             }
             break;
         }
+        case GenISAIntrinsic::GenISA_RTDualBlendSource:
+            g_InstrTypes->numDualBlendSource++;
+            break;
+        case GenISAIntrinsic::GenISA_RTWrite:
+            if (cast<RTWritIntrinsic>(CI)->getRTIndexImm() != -1)
+            {
+                g_InstrTypes->RTWriteMask |= 1 << cast<RTWritIntrinsic>(CI)->getRTIndexImm();
+            }
+            if (cast<RTWritIntrinsic>(CI)->hasStencil())
+            {
+                g_InstrTypes->numStencilOutput++;
+            }
+
+            break;
         default:
             break;
         }
