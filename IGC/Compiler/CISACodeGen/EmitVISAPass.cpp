@@ -22085,17 +22085,19 @@ void EmitPass::emitInlinedDataValue(llvm::GenIntrinsicInst* I)
 
 void EmitPass::emitTileXOffset(TileXIntrinsic* I)
 {
-    const uint32_t XDim = I->getXDim();
+    const bool UseSubtile =
+        (I->getSubtileXDim() != 0 && I->getSubtileYDim() != 0);
+    const uint32_t XDim = UseSubtile ? I->getSubtileXDim() : I->getTileXDim();
     IGC_ASSERT(iSTD::IsPowerOfTwo(XDim));
 
-    uint32_t lanes = numLanes(m_currShader->m_SIMDSize);
+    const uint32_t lanes = numLanes(m_currShader->m_SIMDSize);
+
+    CVariable* TID = GetSymbol(I->getTID());
+    if (!TID->IsUniform())
+        TID = UniformCopy(TID);
 
     if (XDim >= lanes)
     {
-        CVariable* TID = GetSymbol(I->getTID());
-        if (!TID->IsUniform())
-            TID = UniformCopy(TID);
-
         uint32_t Ratio = XDim / lanes;
         CVariable* Mask = m_currShader->ImmToVariable(Ratio - 1, ISA_TYPE_UW);
         CVariable* XCnt = m_currShader->GetNewVariable(TID);
@@ -22105,7 +22107,7 @@ void EmitPass::emitTileXOffset(TileXIntrinsic* I)
         m_encoder->Push();
 
         CVariable* XVals = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
+            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, "XVals");
 
         m_currShader->GetSimdOffsetBase(XVals);
 
@@ -22138,14 +22140,55 @@ void EmitPass::emitTileXOffset(TileXIntrinsic* I)
             m_encoder->Push();
         }
     }
+
+    if (UseSubtile)
+    {
+        IGC_ASSERT(I->getTileXDim() % I->getSubtileXDim() == 0);
+        IGC_ASSERT((I->getSubtileXDim() * I->getSubtileYDim()) % lanes == 0);
+        uint32_t SubtilesInRow = I->getTileXDim() / I->getSubtileXDim();
+        uint32_t ThreadsInSubtile =
+            (I->getSubtileXDim() * I->getSubtileYDim()) / lanes;
+        IGC_ASSERT(iSTD::IsPowerOfTwo(ThreadsInSubtile));
+        IGC_ASSERT(iSTD::IsPowerOfTwo(SubtilesInRow));
+
+        // subtile_linear_idx = tid / threads_in_subtile
+        CVariable* ShiftAmt = m_currShader->ImmToVariable(
+            llvm::countTrailingZeros(ThreadsInSubtile), ISA_TYPE_UW);
+
+        CVariable* SubtileLinearIdx = m_currShader->GetNewVariable(
+            1, ISA_TYPE_UW, EALIGN_WORD, true, "SubtileLinearIdx");
+
+        m_encoder->Shr(SubtileLinearIdx, TID, ShiftAmt);
+
+        // subtile_idx.x = subtile_linear_idx % subtiles_in_row
+        CVariable* Mask = m_currShader->ImmToVariable(
+            SubtilesInRow - 1, ISA_TYPE_UW);
+
+        CVariable* SubtileIdxX = m_currShader->GetNewVariable(
+            1, ISA_TYPE_UW, EALIGN_WORD, true, "SubtileIdx.x");
+
+        m_encoder->And(SubtileIdxX, SubtileLinearIdx, Mask);
+
+        // m_destination = subtile_idx.x * subtile_dim.x + m_destination
+        CVariable* ShiftAmt2 = m_currShader->ImmToVariable(
+            llvm::countTrailingZeros(I->getSubtileXDim()), ISA_TYPE_UW);
+
+        CVariable* Base = m_currShader->GetNewVariable(
+            1, ISA_TYPE_UW, EALIGN_WORD, true, "BaseX");
+
+        m_encoder->Shl(Base, SubtileIdxX, ShiftAmt2);
+        m_encoder->Add(m_destination, Base, m_destination);
+    }
 }
 
 void EmitPass::emitTileYOffset(TileYIntrinsic* I)
 {
-    const uint32_t XDim = I->getXDim();
+    const bool UseSubtile =
+        (I->getSubtileXDim() != 0 && I->getSubtileYDim() != 0);
+    const uint32_t XDim = UseSubtile ? I->getSubtileXDim() : I->getTileXDim();
     IGC_ASSERT(iSTD::IsPowerOfTwo(XDim));
 
-    uint32_t lanes = numLanes(m_currShader->m_SIMDSize);
+    const uint32_t lanes = numLanes(m_currShader->m_SIMDSize);
 
     CVariable* TID = GetSymbol(I->getTID());
     if (!TID->IsUniform())
@@ -22166,7 +22209,7 @@ void EmitPass::emitTileYOffset(TileYIntrinsic* I)
         IGC_ASSERT_MESSAGE(Cnt <= 2, "unhandled simd size!");
 
         CVariable* YVals = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
+            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, "YVals");
 
         for (uint32_t i = 0; i < Cnt; i++)
         {
@@ -22194,6 +22237,47 @@ void EmitPass::emitTileYOffset(TileYIntrinsic* I)
         m_encoder->Shl(Tmp, TID, ShiftAmt);
         m_encoder->Add(m_destination, YVals, Tmp);
         m_encoder->Push();
+    }
+
+    if (UseSubtile)
+    {
+        // Need to wrap the initial grid first with:
+        // m_destination = m_destination % subtile_dim.y.
+        IGC_ASSERT(iSTD::IsPowerOfTwo(I->getSubtileYDim()));
+
+        CVariable* Mask = m_currShader->ImmToVariable(
+            I->getSubtileYDim() - 1, ISA_TYPE_UW);
+        m_encoder->And(m_destination, m_destination, Mask);
+
+        IGC_ASSERT(I->getTileXDim() % I->getSubtileXDim() == 0);
+        IGC_ASSERT((I->getSubtileXDim() * I->getSubtileYDim()) % lanes == 0);
+        uint32_t SubtilesInRow = I->getTileXDim() / I->getSubtileXDim();
+        uint32_t ThreadsInSubtile =
+            (I->getSubtileXDim() * I->getSubtileYDim()) / lanes;
+        IGC_ASSERT(iSTD::IsPowerOfTwo(ThreadsInSubtile));
+        IGC_ASSERT(iSTD::IsPowerOfTwo(SubtilesInRow));
+
+        uint32_t ThreadsInRow = ThreadsInSubtile * SubtilesInRow;
+        IGC_ASSERT(iSTD::IsPowerOfTwo(ThreadsInRow));
+
+        // subtile_idx.y = tid / threads_in_row
+        CVariable* ShiftAmt = m_currShader->ImmToVariable(
+            llvm::countTrailingZeros(ThreadsInRow), ISA_TYPE_UW);
+
+        CVariable* SubtileIdxY = m_currShader->GetNewVariable(
+            1, ISA_TYPE_UW, EALIGN_WORD, true, "SubtileIdx.y");
+
+        m_encoder->Shr(SubtileIdxY, TID, ShiftAmt);
+
+        // m_destination = subtile_idx.y * subtile_dim.y + m_destination
+        CVariable* ShiftAmt2 = m_currShader->ImmToVariable(
+            llvm::countTrailingZeros(I->getSubtileYDim()), ISA_TYPE_UW);
+
+        CVariable* Base = m_currShader->GetNewVariable(
+            1, ISA_TYPE_UW, EALIGN_WORD, true, "BaseY");
+
+        m_encoder->Shl(Base, SubtileIdxY, ShiftAmt2);
+        m_encoder->Add(m_destination, Base, m_destination);
     }
 }
 

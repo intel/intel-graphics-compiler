@@ -1147,7 +1147,22 @@ public:
     }
 };
 
-class TileXIntrinsic : public GenIntrinsicInst {
+// Common methods for X and Y components
+class TileIntrinsic : public GenIntrinsicInst {
+public:
+    Value* getTID() const { return getOperand(0); }
+    uint32_t getTileXDim() const {
+        return (uint32_t)cast<ConstantInt>(getOperand(1))->getZExtValue();
+    }
+    uint32_t getSubtileXDim() const {
+        return (uint32_t)cast<ConstantInt>(getOperand(2))->getZExtValue();
+    }
+    uint32_t getSubtileYDim() const {
+        return (uint32_t)cast<ConstantInt>(getOperand(3))->getZExtValue();
+    }
+};
+
+class TileXIntrinsic : public TileIntrinsic {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
     static inline bool classof(const GenIntrinsicInst* I) {
@@ -1158,14 +1173,9 @@ public:
     static inline bool classof(const Value* V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
-
-    Value* getTID() const { return getOperand(0); }
-    uint32_t getXDim() const {
-        return (uint32_t)cast<ConstantInt>(getOperand(1))->getZExtValue();
-    }
 };
 
-class TileYIntrinsic : public GenIntrinsicInst {
+class TileYIntrinsic : public TileIntrinsic {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
     static inline bool classof(const GenIntrinsicInst* I) {
@@ -1175,12 +1185,6 @@ public:
 
     static inline bool classof(const Value* V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
-    }
-
-    Value* getTID() const { return getOperand(0); }
-    // Yes, TileY also needs the XDim, not the YDim. See EmitVISAPass.
-    uint32_t getXDim() const {
-        return (uint32_t)cast<ConstantInt>(getOperand(1))->getZExtValue();
     }
 };
 

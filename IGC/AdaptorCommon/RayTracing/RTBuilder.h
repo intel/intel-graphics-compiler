@@ -271,29 +271,35 @@ public:
         return subgroupId;
     }
 
-    inline Value* createTileXOffset(uint32_t XDim)
+    inline Value* createTileXOffset(
+        uint32_t TileXDim, uint32_t SubtileXDim, uint32_t SubtileYDim)
     {
         Module* module = this->GetInsertBlock()->getModule();
         Function* pFunc = GenISAIntrinsic::getDeclaration(
             module,
             GenISAIntrinsic::GenISA_TileXOffset);
-        return this->CreateCall2(
+        return this->CreateCall4(
             pFunc,
             this->createSubgroupId(),
-            this->getInt16(int_cast<uint16_t>(XDim)),
+            this->getInt16(int_cast<uint16_t>(TileXDim)),
+            this->getInt16(int_cast<uint16_t>(SubtileXDim)),
+            this->getInt16(int_cast<uint16_t>(SubtileYDim)),
             VALUE_NAME("TileXOffset"));
     }
 
-    inline Value* createTileYOffset(uint32_t XDim)
+    inline Value* createTileYOffset(
+        uint32_t TileXDim, uint32_t SubtileXDim, uint32_t SubtileYDim)
     {
         Module* module = this->GetInsertBlock()->getModule();
         Function* pFunc = GenISAIntrinsic::getDeclaration(
             module,
             GenISAIntrinsic::GenISA_TileYOffset);
-        return this->CreateCall2(
+        return this->CreateCall4(
             pFunc,
             this->createSubgroupId(),
-            this->getInt16(int_cast<uint16_t>(XDim)),
+            this->getInt16(int_cast<uint16_t>(TileXDim)),
+            this->getInt16(int_cast<uint16_t>(SubtileXDim)),
+            this->getInt16(int_cast<uint16_t>(SubtileYDim)),
             VALUE_NAME("TileYOffset"));
     }
 

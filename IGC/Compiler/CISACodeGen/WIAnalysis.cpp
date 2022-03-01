@@ -1407,12 +1407,14 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             auto* Ctx = static_cast<RayDispatchShaderContext*>(m_CGCtx);
             if (auto Mode = Ctx->knownSIMDSize())
             {
+                auto* TYI = cast<TileYIntrinsic>(inst);
+                uint32_t TileXDim = TYI->getTileXDim();
+                uint32_t SubtileXDim = TYI->getSubtileXDim();
+                const uint32_t Lanes = numLanes(*Mode);
                 // We currently tile along the x-dim first. If the SIMD size
                 // perfectly divides the x-dim, then the y-dim must be uniform.
-                uint32_t XDim1D = Ctx->opts().TileXDim1D;
-                uint32_t XDim2D = Ctx->opts().TileXDim2D;
-                return (XDim1D % numLanes(*Mode) == 0 &&
-                        XDim2D % numLanes(*Mode) == 0) ?
+                return (TileXDim % Lanes == 0 &&
+                        (SubtileXDim == 0 || SubtileXDim % Lanes == 0)) ?
                     WIAnalysis::UNIFORM_THREAD :
                     WIAnalysis::RANDOM;
             }
