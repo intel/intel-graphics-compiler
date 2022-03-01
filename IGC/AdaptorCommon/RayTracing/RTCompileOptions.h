@@ -27,6 +27,7 @@ struct RTCompileOptionsT
     T<uint32_t> TileXDim2D;
     T<uint32_t> TileYDim2D;
     T<uint32_t> RematThreshold;
+    T<bool>     HoistRemat;
 };
 
 using RTCompileOptions = RTCompileOptionsT<Interface::Optional>;

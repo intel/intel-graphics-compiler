@@ -1517,9 +1517,9 @@ namespace IGC
 
         using RTCompileOptionsKnown = RTCompileOptionsT<Identity>;
 
-        template <typename T>
+        template <typename T, typename U>
         T getOptVal(
-            const Interface::Optional<T> &InputVal, T RegkeyVal, T DefaultVal)
+            const Interface::Optional<T> &InputVal, U RegkeyVal, U DefaultVal)
         {
             if (RegkeyVal != DefaultVal)
                 return RegkeyVal;
@@ -1536,6 +1536,7 @@ namespace IGC
             CompOptions.TileXDim2D = GET(TileXDim2D, RayTracingCustomTileXDim2D);
             CompOptions.TileYDim2D = GET(TileYDim2D, RayTracingCustomTileYDim2D);
             CompOptions.RematThreshold = GET(RematThreshold, RematThreshold);
+            CompOptions.HoistRemat = GET(HoistRemat, EnableHoistRemat);
 #undef GET
         }
 
