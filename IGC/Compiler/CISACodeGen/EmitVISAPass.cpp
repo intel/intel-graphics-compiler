@@ -22180,6 +22180,8 @@ void EmitPass::emitTileXOffset(TileXIntrinsic* I)
 
         m_encoder->Shl(Base, SubtileIdxX, ShiftAmt2);
         m_encoder->Add(m_destination, Base, m_destination);
+
+        m_encoder->Push();
     }
 }
 
@@ -22280,6 +22282,8 @@ void EmitPass::emitTileYOffset(TileYIntrinsic* I)
 
         m_encoder->Shl(Base, SubtileIdxY, ShiftAmt2);
         m_encoder->Add(m_destination, Base, m_destination);
+
+        m_encoder->Push();
     }
 }
 
