@@ -347,9 +347,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   ///
   vc::addPass(PM, createSROAPass());
 
-  if (!ExperimentalEnforceLateEmulationImports)
-    vc::addPass(PM, createGenXEmulationImportPass());
-
   vc::addPass(PM, createGenXLowerJmpTableSwitchPass());
   /// LowerSwitch
   /// -----------
@@ -445,8 +442,19 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXBaling.h
   vc::addPass(
       PM, createGenXFuncBalingPass(BalingKind::BK_Legalization, &Subtarget));
+
+  // BIF compilation mode stops here.
+  // TODO: currently, we do not have mechanism to remove redundant functions
+  //       from emulation BiF. EmulationImportPass should be extended otherwise
+  //       legalization will fail.
+  if (BackendConfig.isBiFEmulationCompilation())
+    return false;
+  if (!ExperimentalEnforceLateEmulationImports)
+    vc::addPass(PM, createGenXEmulationImportPass());
+
   /// .. include:: GenXLegalization.cpp
   vc::addPass(PM, createGenXLegalizationPass());
+
   if (ExperimentalEnforceLateEmulationImports)
     vc::addPass(PM, createGenXEmulationImportPass());
   /// .. include:: GenXEmulate.cpp

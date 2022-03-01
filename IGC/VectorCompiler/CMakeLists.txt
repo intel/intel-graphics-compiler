@@ -56,5 +56,7 @@ add_subdirectory(lib)
 add_subdirectory(igcdeps)
 
 
+add_subdirectory(utils)
+
 # --- CMCL  ---
 add_subdirectory(CMCL)

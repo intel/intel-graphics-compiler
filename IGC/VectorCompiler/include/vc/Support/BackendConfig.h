@@ -62,6 +62,11 @@ struct GenXBackendOptions {
   // Enable strict debug info validation
   bool DebuggabilityValidateDWARF = false;
 
+  // Special mode of operation for emulation BiF precompilation.
+  // It is expected that this mode is set only by specialized tools and should
+  // not be touched during standard compilation flow.
+  bool BiFEmulationCompilation = false;
+
   // Enable/disable regalloc dump.
   bool DumpRegAlloc = false;
   // Maximum available memory for stack (in bytes).
@@ -201,6 +206,11 @@ public:
 
   // Return whether regalloc results should be printed.
   bool enableRegAllocDump() const { return Options.DumpRegAlloc; }
+
+  // Return whether emulation BiF compilation mode is enabled.
+  bool isBiFEmulationCompilation() const {
+    return Options.BiFEmulationCompilation;
+  }
 
   // Return maximum available space in bytes for stack purposes.
   unsigned getStackSurfaceMaxSize() const {

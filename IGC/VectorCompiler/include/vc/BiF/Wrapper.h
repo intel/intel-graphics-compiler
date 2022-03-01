@@ -57,9 +57,8 @@ inline llvm::StringRef getPrintfZE64RawData() {
           VCBiFPrintfZE64RawData_size};
 }
 
-inline llvm::StringRef getVCEmulationRawData() {
-  return {reinterpret_cast<char *>(VCEmulation64RawData),
-          VCEmulation64RawData_size};
+inline llvm::StringRef getVCEmulationRawData(llvm::StringRef CPUStr) {
+  return getVCEmulation64RawDataImpl(CPUStr);
 }
 
 inline llvm::StringRef getSPIRVBuiltinsRawData() {
@@ -68,9 +67,12 @@ inline llvm::StringRef getSPIRVBuiltinsRawData() {
 }
 
 template <enum RawKind> llvm::StringRef getRawData();
+template <enum RawKind>
+llvm::StringRef getRawDataForArch(llvm::StringRef CPUStr);
 
-template <> llvm::StringRef getRawData<RawKind::Emulation>() {
-  return getVCEmulationRawData();
+template <>
+llvm::StringRef getRawDataForArch<RawKind::Emulation>(llvm::StringRef CPUStr) {
+  return getVCEmulationRawData(CPUStr);
 }
 
 template<>

@@ -129,6 +129,14 @@ getGenericModuleBuffer(int ResourceID) {
 }
 
 template <enum vc::bif::RawKind Kind>
+std::unique_ptr<llvm::MemoryBuffer>
+getVCModuleBufferForArch(llvm::StringRef CPUStr = "") {
+  return llvm::MemoryBuffer::getMemBuffer(
+      vc::bif::getRawDataForArch<Kind>(CPUStr), "",
+      false /* RequiresNullTerminator */);
+}
+
+template <enum vc::bif::RawKind Kind>
 std::unique_ptr<llvm::MemoryBuffer> getVCModuleBuffer() {
   return llvm::MemoryBuffer::getMemBuffer(vc::bif::getRawData<Kind>(), "",
                                           false /* RequiresNullTerminator */);
@@ -428,7 +436,7 @@ bool fillPrintfData(vc::ExternalData &ExtData) {
 }
 
 static llvm::Optional<vc::ExternalData>
-fillExternalData(vc::BinaryKind Binary) {
+fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr) {
   vc::ExternalData ExtData;
   ExtData.OCLGenericBIFModule =
       getGenericModuleBuffer(OCL_BC);
@@ -452,7 +460,7 @@ fillExternalData(vc::BinaryKind Binary) {
     break;
   }
   ExtData.VCEmulationBIFModule =
-      getVCModuleBuffer<vc::bif::RawKind::Emulation>();
+      getVCModuleBufferForArch<vc::bif::RawKind::Emulation>(CPUStr);
   if (!ExtData.VCEmulationBIFModule)
     return {};
   ExtData.VCSPIRVBuiltinsBIFModule =
@@ -559,7 +567,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   Opts.Dumper = std::move(Dumper);
 
-  auto ExtData = fillExternalData(Opts.Binary);
+  auto ExtData = fillExternalData(Opts.Binary, Opts.CPUStr);
   if (!ExtData)
     return getError(vc::make_error_code(vc::errc::bif_load_fail),
                     OutputArgs);
