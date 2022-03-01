@@ -236,7 +236,7 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
     Opts.SaveStackCallLinkage = true;
   if (IGC_IS_FLAG_ENABLED(VCDirectCallsOnly))
     Opts.DirectCallsOnly = true;
-  if (IGC_IS_FLAG_ENABLED(VCDisableEuFusion))
+  if (IGC_IS_FLAG_ENABLED(DisableEuFusion))
     Opts.DisableEUFusion = true;
   if (IGC_IS_FLAG_ENABLED(DebugInfoValidation))
     Opts.ForceDebugInfoValidation = true;

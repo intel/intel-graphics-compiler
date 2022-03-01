@@ -86,7 +86,7 @@ struct CompileOptions {
   bool DisableFinalizerMsg = false;
   // -fno-struct-splitting
   bool DisableStructSplitting = false;
-  // IGC_VCDisableEuFusion
+  // IGC_DisableEuFusion
   bool DisableEUFusion = false;
 
   OptimizerLevel IROptLevel = OptimizerLevel::Full;
