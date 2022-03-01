@@ -117,9 +117,10 @@ int parseBinary(
     MUST_BE_TRUE(cisa_builder, "cisa_builder is NULL.");
 
     std::vector<VISAKernel*> kernels;
-    int err = readIsaBinaryNG(isafilebuf, cisa_builder, kernels, NULL, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER);
-    if (err)
-        return err;
+    bool success = readIsaBinaryNG(
+        isafilebuf, cisa_builder, kernels, NULL, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER);
+    if (!success)
+        return EXIT_FAILURE;
     std::string binFileName;
 
     if (cisa_builder->m_options.getOption(vISA_OutputvISABinaryName))
