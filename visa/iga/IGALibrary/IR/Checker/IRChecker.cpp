@@ -36,10 +36,12 @@ struct LOCChecker : Checker {
     { }
 
     void warning(const char *msg) {
-        m_errHandler->reportWarning(m_loc, msg);
+        std::string msgstr = "IGA: " + std::string(msg);
+        m_errHandler->reportWarning(m_loc, msgstr);
     }
     void error(const char *msg) {
-        m_errHandler->reportError(m_loc, msg);
+        std::string msgstr = "IGA: " + std::string(msg);
+        m_errHandler->reportError(m_loc, msgstr);
     }
 };
 
@@ -229,6 +231,7 @@ struct SemanticChecker : LOCChecker {
         {
             warning("src type is not binary normal form");
         }
+
     }
 
     void checkRegRegioningRestrictions(
