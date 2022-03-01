@@ -746,7 +746,7 @@ public:
             }
         }
 
-        // 7, if the dst is packed, we should not do write combine as there is no performance advantage and will trigger a HW bug.
+        // 7, no performance advantage if the dst is packed
         if (dst->getHorzStride() == 1 && execSize != 1)
         {
             return false;

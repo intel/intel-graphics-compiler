@@ -1006,7 +1006,7 @@ SPDX-License-Identifier: MIT
 
    bool hasWriteCombine() const
    {
-        return getPlatform() >= Xe_PVC;
+        return false;
    }
 
    bool hasA0WARHWissue()
