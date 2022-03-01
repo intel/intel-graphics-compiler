@@ -141,6 +141,11 @@ def FeatureHasLSC : SubtargetFeature<"feature_has_lsc",
                                      "true",
                                      "Target supports LSC messages">;
 
+def FeatureHasHalfSIMDLSC : SubtargetFeature<"feature_has_half_simd_lsc",
+                                     "HasHalfSIMDLSC",
+                                     "true",
+                                     "Target supports half simd lsc">;
+
 def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
                                     "true", "warn instead of error on callable violation">;
 

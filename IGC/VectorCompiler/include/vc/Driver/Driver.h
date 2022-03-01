@@ -135,6 +135,7 @@ struct CompileOptions {
   bool HasL3FlushOnGPUScopeInvalidate = false;
   bool HasL3FlushForGlobal = false;
   bool HasGPUFenceScopeOnSingleTileGPUs = false;
+  bool HasHalfSIMDLSC = false;
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;
   bool SaveStackCallLinkage = false;

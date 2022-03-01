@@ -158,6 +158,9 @@ private:
   /// True if subtarget supports LSC messages
   bool HasLSCMessages = false;
 
+  /// True if subtarget supports half SIMD LSC messages
+  bool HasHalfSIMDLSC = false;
+
   // Has multi-tile.
   bool HasMultiTile = false;
 
@@ -286,6 +289,8 @@ public:
   bool translateLegacyMessages() const {
     return (HasLSCMessages && TranslateLegacyMessages);
   }
+
+  bool hasHalfSIMDLSC() const { return HasHalfSIMDLSC; }
 
   bool partialI64Emulation() const { return PartialI64Emulation; }
 

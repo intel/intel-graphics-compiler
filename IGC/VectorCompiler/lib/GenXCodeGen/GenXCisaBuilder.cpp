@@ -6606,6 +6606,10 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-enablePreemption");
 
   addArgument("-dumpvisa");
+
+  if (ST.hasHalfSIMDLSC())
+    addArgument("-enableHalfLSC");
+
   for (const auto &Fos : FinalizerOpts)
     cl::TokenizeGNUCommandLine(Fos, Saver, Argv);
 

@@ -170,6 +170,8 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
   if (Opts.Binary == vc::BinaryKind::OpenCL ||
       Opts.Binary == vc::BinaryKind::ZE)
     Features.AddFeature("ocl_runtime");
+  if (Opts.HasHalfSIMDLSC)
+    Features.AddFeature("feature_has_half_simd_lsc");
 
   return Features.getString();
 }

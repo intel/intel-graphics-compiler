@@ -156,6 +156,7 @@ static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
   Opts.HasL3CacheCoherentCrossTiles = IGCPlatform.L3CacheCoherentCrossTiles();
   Opts.HasL3FlushOnGPUScopeInvalidate =
       IGCPlatform.hasL3FlushOnGPUScopeInvalidate();
+  Opts.HasHalfSIMDLSC = IGCPlatform.hasHalfSIMDLSC();
   Opts.WATable = &IGCPlatform.getWATable();
 }
 
