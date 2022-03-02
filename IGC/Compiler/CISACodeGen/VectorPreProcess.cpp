@@ -613,6 +613,23 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
         bytes = (uint32_t)VPConst::RAW_SPLIT_SIZE;
         if (EmitPass::shouldGenerateLSCQuery(*m_CGCtx, I) == Tristate::True)
             bytes = (uint32_t)VPConst::SPLIT_SIZE;
+        else
+        {
+            Type* ValueTy = nullptr;
+            if (StoreRawIntrinsic* SRI = dyn_cast<StoreRawIntrinsic>(I))
+            {
+                ValueTy = SRI->getArgOperand(2)->getType();
+            }
+            else
+            {
+                ValueTy = I->getType();
+            }
+            IGCLLVM::FixedVectorType* vecType = dyn_cast_or_null<IGCLLVM::FixedVectorType>(ValueTy);
+            if (vecType && vecType->getScalarType()->getPrimitiveSizeInBits() == 64)
+            {
+                bytes = 8;  // use QW load/store
+            }
+        }
     }
     else
     {

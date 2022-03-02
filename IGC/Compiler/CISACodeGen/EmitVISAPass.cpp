@@ -11226,6 +11226,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             "load type must be 1/2/4/8/12/16 bytes long");
         IGC::CVariable* visaOffset = BroadcastIfUniform(src_offset);
         unsigned int alignment = inst->getAlignment();
+        Type* loadType = inst->getType();
         if (sizeInBits == 32 && resource.m_surfaceType == ESURFACE_STATELESS &&
             m_currShader->m_Platform->getWATable().WaNoA32ByteScatteredStatelessMessages)
         {
@@ -11245,6 +11246,18 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             uint numElems = 4;
             m_encoder->SetPredicate(flag);
             m_encoder->ByteGather(m_destination, resource, visaOffset, elementSize, numElems);
+            m_encoder->Push();
+        }
+        else if (sizeInBits == 64 && (loadType->getScalarType()->getPrimitiveSizeInBits() == 64))
+        {
+            // QW load
+            IGCLLVM::FixedVectorType* vecType = dyn_cast<IGCLLVM::FixedVectorType>(loadType);
+            uint elementSize = 64;
+            uint numElems = (uint)(vecType ? vecType->getNumElements() : 1);
+            IGC_ASSERT_MESSAGE(numElems == 1, "QW vector load not supported yet!");
+
+            m_encoder->SetPredicate(flag);
+            m_encoder->QWGather(m_destination, resource, visaOffset, elementSize, numElems);
             m_encoder->Push();
         }
         else if (sizeInBits >= 32)
@@ -12255,6 +12268,7 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
     ResourceDescriptor resource = GetResourceVariable(pllDstPtr);
 
     uint sizeInBits = GetPrimitiveTypeSizeInRegisterInBits(pllValToStore->getType());
+    Type* storeType = pllValToStore->getType();
 
     IGC_ASSERT_MESSAGE((sizeInBits == 8) || (sizeInBits == 16) || (sizeInBits == 32) || (sizeInBits == 64) || (sizeInBits == 96) || (sizeInBits == 128),
         "Stored type must be 1/2/4/8/12/16 bytes long");
@@ -12350,6 +12364,16 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
             ptr,
             elementSize,
             numElems);
+        m_encoder->Push();
+    }
+    else if (sizeInBits == 64 && storeType->getScalarType()->getPrimitiveSizeInBits() == 64)
+    {
+        // QW scatter
+        IGCLLVM::FixedVectorType* vecType = dyn_cast<IGCLLVM::FixedVectorType>(storeType);
+        uint32_t numElems = (uint32_t)(vecType ? vecType->getNumElements() : 1);
+        IGC_ASSERT_MESSAGE(numElems == 1, "QW vector store not supported yet!");
+        setPredicateForDiscard(flag);
+        m_encoder->QWScatter(storedVal, resource, ptr, sizeInBits, numElems);
         m_encoder->Push();
     }
     else  // (sizeInBits > 32)
