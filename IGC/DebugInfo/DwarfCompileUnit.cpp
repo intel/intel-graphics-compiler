@@ -3032,7 +3032,9 @@ bool CompileUnit::buildSlicedLoc(const DbgVariable& var, IGC::DIEBlock* Block,
     offsetTaken = Block->ComputeSizeOnTheFly(Asm);
     cast<DIEInteger>(secondHalfOff)->setValue(offsetTaken - offsetNotTaken);
 
-    // second register from location)
+    // The second register is taken from the original location, then a new
+    // location is created with this 2nd register to play a role of the 1st
+    // register in buildValidVar(), which always processes the 1st register only.
     VISAVariableLocation second_loc(loc);
     second_loc.SetRegister(loc.GetSecondReg());
     if (!buildValidVar(var, Block, second_loc, vars, false))
@@ -3093,7 +3095,9 @@ bool CompileUnit::buildValidVar(const DbgVariable& var, IGC::DIEBlock* Block,
                     isSLM = addGTRelativeLocation(Block, var, loc); // Emit GT-relative location expression
                     // Emit SIMD lane for GRF (unpacked)
                     const auto MaxUI16 = std::numeric_limits<uint16_t>::max();
-                    auto SimdOffset = DD->simdWidth * vectorElem;
+                    const auto registerSizeInBits = DD->GetVISAModule()->getGRFSizeInBits();
+                    const auto instrSimdWidth = (DD->simdWidth > 16 && registerSizeInBits == 256) ? 16 : DD->simdWidth;
+                    auto SimdOffset = instrSimdWidth * vectorElem;
                     IGC_ASSERT(DD->simdWidth <= 32 && vectorElem < MaxUI16 && SimdOffset < MaxUI16);
                     if (!isSLM && loc.IsRegister())
                         addSimdLane(Block, var, loc, &lrToUse, (uint16_t)(SimdOffset), false, !firstHalf);

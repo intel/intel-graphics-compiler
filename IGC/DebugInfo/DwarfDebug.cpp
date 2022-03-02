@@ -1658,11 +1658,15 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                          uint64_t startRange, uint64_t endRange,
                          uint32_t pointerSize, DbgVariable* RegVar,
                          VISAVariableLocation &Loc,
-                         DbgDecoder::LiveIntervalsVISA& visaRange)
+                         DbgDecoder::LiveIntervalsVISA& visaRange,
+                         DbgDecoder::LiveIntervalsVISA& visaRange2nd)
     {
         auto allCallerSave = m_pModule->getAllCallerSave(*decodedDbg,
                                                          startRange, endRange, visaRange);
         std::vector<DbgDecoder::LiveIntervalsVISA> vars = { visaRange };
+
+        if (Loc.HasLocationSecondReg())
+            vars.push_back(visaRange2nd);  // SIMD32 2nd register
 
         auto oldSize = dotLoc.loc.size();
         dotLoc.start = startRange;
@@ -1911,6 +1915,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
                 VISAVariableLocation Loc;
                 DbgDecoder::LiveIntervalsVISA visaRange;
+                DbgDecoder::LiveIntervalsVISA visaRange2nd;  // In a case of SIMD32
             };
 
             PrevLoc p;
@@ -1927,7 +1932,8 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 }
                 else
                 {
-                    encodeReg(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.Loc, p.visaRange);
+                    encodeReg(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.Loc,
+                        p.visaRange, p.visaRange2nd);
                 }
                 p.t = PrevLoc::Type::Empty;
             };
@@ -2046,6 +2052,13 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                         p.dbgVar = RegVar;
                         p.Loc = CurLoc;
                         p.visaRange = visaRange;
+                        if (CurLoc.HasLocationSecondReg())
+                        {
+                            auto regNum2nd = CurLoc.GetSecondReg();
+                            const auto* VarInfo2nd = m_pModule->getVarInfo(*decodedDbg, regNum2nd);
+                            if (VarInfo2nd)
+                                p.visaRange2nd = (*VarInfo2nd->lrs.rbegin());
+                        }
                         p.pInst = pInst;
 
                         LLVM_DEBUG(dbgs() << "  Fix IP Range to: [0x";
