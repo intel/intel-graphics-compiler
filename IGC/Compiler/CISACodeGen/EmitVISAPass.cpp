@@ -22319,25 +22319,38 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
         CVariable* payload = BroadcastIfUniform(GetSymbol(I->getPayload()));
         CVariable* globalBufferPtr = GetSymbol(I->getGlobalBufferPointer());
         if (!globalBufferPtr->IsUniform())
-            globalBufferPtr = UniformCopy(globalBufferPtr);
-
-        if (m_encoder->IsSecondHalf() || Cnt == 1)
         {
-            // UMD will allocate back-to-back RTGlobals if requested. The upper
-            // 16 lanes will get the pointer to the second one.
-            constexpr uint32_t GlobalsSize = sizeof(RayDispatchGlobalData);
-            CVariable* Offset = m_currShader->ImmToVariable(GlobalsSize, ISA_TYPE_UD);
-            CVariable* TmpGP = m_currShader->GetNewVariable(globalBufferPtr);
-            if (m_currShader->m_Platform->hasNoInt64AddInst())
+            // since the global pointer has been split between the upper and
+            // lower lanes in the SIMD32 case, we need to extract each half out.
+            CVariable* TmpGP = globalBufferPtr;
+            if (globalBufferPtr->GetNumberInstance() == 2)
             {
-                emitAddPair(TmpGP, globalBufferPtr, Offset);
+                TmpGP = m_currShader->GetNewVariable(
+                    globalBufferPtr->GetNumberElement(),
+                    globalBufferPtr->GetType(),
+                    EALIGN_GRF,
+                    "TmpGP");
+                m_encoder->Copy(TmpGP, globalBufferPtr);
+                globalBufferPtr = UniformCopy(TmpGP, true);
+            }
+            else if (m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+            {
+                auto *Src = m_currShader->GetNewAlias(
+                    globalBufferPtr,
+                    globalBufferPtr->GetType(),
+                    CEncoder::GetCISADataTypeSize(
+                        globalBufferPtr->GetType()) * 16 * Cnt,
+                    16);
+                auto* eMask = GetExecutionMask();
+                eMask = m_currShader->GetNewAlias(
+                    eMask, ISA_TYPE_UW, 2 * Cnt, 1);
+                CVariable* off = nullptr;
+                globalBufferPtr = UniformCopy(Src, off, eMask);
             }
             else
             {
-                m_encoder->Add(TmpGP, globalBufferPtr, Offset);
-                m_encoder->Push();
+                globalBufferPtr = UniformCopy(TmpGP);
             }
-            globalBufferPtr = TmpGP;
         }
 
         CVariable* header = m_currShader->GetNewVariable(
