@@ -17,7 +17,6 @@ set(IGA_IR_Open
   ${CMAKE_CURRENT_SOURCE_DIR}/EnumSendOpInfo.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ImmVal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ImmVal.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/InstBuilder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/InstBuilder.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Instruction.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Instruction.hpp

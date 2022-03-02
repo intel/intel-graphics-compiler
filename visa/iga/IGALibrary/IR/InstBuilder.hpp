@@ -202,17 +202,44 @@ public:
     };
 
 private:
-    SWSBInfo m_depInfo;
+    SWSBInfo                    m_depInfo;
 
-private:
-    Platform platform() const
-    { return m_model.platform; }
+    Platform platform() const {return m_model.platform;}
 
-    void clearInstState();
+    void clearInstState() {
+        m_predication.function = PredCtrl::NONE;
+        m_predication.inverse = false;
 
-    void validateOperandInfo(const OperandInfo& opInfo);
+        m_flagReg = REGREF_ZERO_ZERO;
 
-    void validateScrImmType(Type ty, const Loc& loc);
+        m_opSpec = nullptr;
+
+        m_execSize = ExecSize::SIMD1;
+        m_chOff = ChannelOffset::M0;
+        m_subfunc = InvalidFC::INVALID; // invalid
+        m_maskCtrl = MaskCtrl::NORMAL;
+
+        m_flagModifier = FlagModifier::NONE;
+
+        m_dstModifier = DstModifier::NONE;
+
+        m_dst.reset();
+        for (auto &m_src : m_srcs) {
+            m_src.reset();
+        }
+        m_nSrcs = 0;
+
+        m_exDesc.imm = 0;
+        m_desc.imm = 0;
+
+        m_sendSrc0Len = m_sendSrc1Len = -1;
+
+        m_instOpts.clear();
+
+        m_depInfo = SWSBInfo();
+
+        m_comment.clear();
+    }
 
 public:
     InstBuilder(Kernel *kernel, ErrorHandler &e)
@@ -223,9 +250,9 @@ public:
         m_swsbEncodeMode = m_model.getSWSBEncodeMode();
     }
 
-    InstList &getInsts() { return m_insts; }
+    InstList &getInsts() {return m_insts;}
 
-    ErrorHandler &errorHandler() { return m_errorHandler; }
+    ErrorHandler &errorHandler() {return m_errorHandler;}
 
     ///////////////////////////////////////////////////////////////////////////
     // specific IR accessors
@@ -234,8 +261,8 @@ public:
             (m_opSpec->is(Op::MATH) && IsMacro(m_subfunc.math));
     }
 
-    const SendDesc getExDesc()   const { return m_exDesc; }
-    Subfunction getSubfunction() const { return m_subfunc; }
+    const SendDesc getExDesc() const {return m_exDesc;}
+    Subfunction getSubfunction() const {return m_subfunc;}
 
     ///////////////////////////////////////////////////////////////////////////
     // specific IR setters
@@ -764,7 +791,6 @@ public:
         src.immValue = val;
         src.type = ty;
 
-        validateScrImmType(ty, loc);
         InstSrcOp(srcOpIx, src);
     }
 
@@ -832,6 +858,23 @@ public:
 
         validateOperandInfo(opInfo);
         m_srcs[srcOpIx] = opInfo;
+    }
+
+    void validateOperandInfo(const OperandInfo &opInfo) {
+#ifdef _DEBUG
+        // some sanity validation
+        switch (opInfo.kind) {
+        case Operand::Kind::DIRECT:
+        case Operand::Kind::MACRO:
+        case Operand::Kind::INDIRECT:
+        case Operand::Kind::IMMEDIATE:
+        case Operand::Kind::LABEL:
+            break;
+        default:
+            IGA_ASSERT_FALSE("OperandInfo::kind: invalid value");
+            break;
+        }
+#endif
     }
 
     // send descriptors
