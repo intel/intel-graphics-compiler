@@ -414,7 +414,7 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload(
     auto payloadDstRgn = createDst(payload->getRegVar(), (short)regOff, 0, 1, payload->getElemType());
 
     G4_SrcRegRegion* srcRgn = createSrcRegRegion(*src);
-    srcRgn->setType(payload->getElemType());
+    srcRgn->setType(*this, payload->getElemType());
     createMov(execSize, payloadDstRgn, srcRgn, emask, true);
     if (TypeSize(payload->getElemType()) == 2)
     {

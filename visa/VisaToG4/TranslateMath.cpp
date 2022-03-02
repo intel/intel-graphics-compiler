@@ -28,7 +28,7 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
                 // for VxH regions we can't directly broadcast if new exec size is wider
                 if (oldSize == g4::SIMD1)
                 {
-                    srcRegion->setRegion(builder.getRegionScalar());
+                    srcRegion->setRegion(builder, builder.getRegionScalar());
                     builder.createMov(newSize, builder.createDstRegRegion(dcl, 1), srcRegion,
                         InstOpt_WriteEnable, true);
                 }
@@ -242,13 +242,13 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
     inst = createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13, tmpFlag }, PseudoKillType::Src);
 
-    G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
-    G4_SrcRegRegion tsrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
+    G4_SrcRegRegion tsrc0(*this, Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
+    G4_SrcRegRegion tsrc1(*this, Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
 
     if (!src0Opnd)
     {
         // those are for drcp
-        G4_SrcRegRegion valueOneScalarReg(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, getRegionScalar(), Type_DF);
+        G4_SrcRegRegion valueOneScalarReg(*this, Mod_src_undef, Direct, t1->getRegVar(), 0, 0, getRegionScalar(), Type_DF);
         G4_Operand* valueOneOpnd = createSrcRegRegion(valueOneScalarReg); // it is used in drcp
         src0Opnd = valueOneOpnd;
     }
@@ -264,8 +264,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, G4_ExecSize(element_size), instExecSize);
 
     // src operand registers
-    G4_DstRegRegion tdst_src0(Direct, t6->getRegVar(), 0, 0, 1, Type_DF);
-    G4_DstRegRegion tdst_src1(Direct, t7->getRegVar(), 0, 0, 1, Type_DF);
+    G4_DstRegRegion tdst_src0(*this, Direct, t6->getRegVar(), 0, 0, 1, Type_DF);
+    G4_DstRegRegion tdst_src1(*this, Direct, t7->getRegVar(), 0, 0, 1, Type_DF);
 
     bool needsSrc0Move = src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef;
     if (needsSrc0Move)
@@ -301,29 +301,29 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         instOpt |= isNoMask(emask) ? InstOpt_WriteEnable : 0; // setting channels for non-mad insts
         unsigned int madmInstOpt = instOpt; // setting channels for mad insts
 
-        G4_DstRegRegion tdst6(Direct, t6->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst7(Direct, t7->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst8(Direct, noDstMove ? dstOpnd->getBase() : t8->getRegVar(),
+        G4_DstRegRegion tdst6(*this, Direct, t6->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst7(*this, Direct, t7->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst8(*this, Direct, noDstMove ? dstOpnd->getBase() : t8->getRegVar(),
             noDstMove ? dstOpnd->getRegOff() + regIndex : regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst9(Direct, t9->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst10(Direct, t10->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst11(Direct, t11->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst12(Direct, t12->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst13(Direct, t13->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst9(*this, Direct, t9->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst10(*this, Direct, t10->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst11(*this, Direct, t11->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst12(*this, Direct, t12->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst13(*this, Direct, t13->getRegVar(), regIndex, 0, 1, Type_DF);
 
         /* below 2 are prepared for G4_math with Align16, so the region 2;2,1 is used not 4;4,1.*/
-        G4_SrcRegRegion tsrc6_0(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, rdAlign16, Type_DF);
-        G4_SrcRegRegion tsrc7_0(Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, rdAlign16, Type_DF);
+        G4_SrcRegRegion tsrc6_0(*this, Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, rdAlign16, Type_DF);
+        G4_SrcRegRegion tsrc7_0(*this, Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, rdAlign16, Type_DF);
 
-        G4_SrcRegRegion tsrc6(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc7(Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, noDstMove ? dstOpnd->getBase() : t8->getRegVar(),
+        G4_SrcRegRegion tsrc6(*this, Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc7(*this, Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc8(*this, Mod_src_undef, Direct, noDstMove ? dstOpnd->getBase() : t8->getRegVar(),
             noDstMove ? dstOpnd->getRegOff() + regIndex : regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc11(Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc12(Mod_src_undef, Direct, t12->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc13(Mod_src_undef, Direct, t13->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc9(*this, Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc10(*this, Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc11(*this, Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc12(*this, Mod_src_undef, Direct, t12->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc13(*this, Mod_src_undef, Direct, t13->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
 
         G4_DstRegRegion *t8DstOpnd0 = createDstRegRegion(tdst8);
         G4_DstRegRegion *t8DstOpnd1 = createDstRegRegion(tdst8);
@@ -341,11 +341,11 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         // src oprands passed by function calls
         // for INV instruction, src0 should be 1, contant value.
         /* below 2 are prepared for G4_math with Align16, so the region 2;2,1 is used not 4;4,1.*/
-        G4_SrcRegRegion fsrc0_0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + ((opcode == ISA_INV) ? 0 : regIndex), 0, rdAlign16, Type_DF);
-        G4_SrcRegRegion fsrc1_0(Mod_src_undef, Direct, src1RR->getBase(), src1RR->getRegOff() + regIndex, 0, rdAlign16, Type_DF);
+        G4_SrcRegRegion fsrc0_0(*this, Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + ((opcode == ISA_INV) ? 0 : regIndex), 0, rdAlign16, Type_DF);
+        G4_SrcRegRegion fsrc1_0(*this, Mod_src_undef, Direct, src1RR->getBase(), src1RR->getRegOff() + regIndex, 0, rdAlign16, Type_DF);
 
-        G4_SrcRegRegion fsrc0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + ((opcode == ISA_INV) ? 0 : regIndex), 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion fsrc1(Mod_src_undef, Direct, src1RR->getBase(), src1RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion fsrc0(*this, Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + ((opcode == ISA_INV) ? 0 : regIndex), 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion fsrc1(*this, Mod_src_undef, Direct, src1RR->getBase(), src1RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_DF);
 
         G4_SrcRegRegion *t6SrcOpnd0 = NULL;
         G4_SrcRegRegion *t6SrcOpnd1 = NULL;
@@ -411,7 +411,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         }
 
         // create -r7.noacc
-        G4_SrcRegRegion tsrc7_neg(Mod_Minus,
+        G4_SrcRegRegion tsrc7_neg(
+            *this,
+            Mod_Minus,
             t7SrcOpnd0->getRegAccess(),
             t7SrcOpnd0->getBase(),
             t7SrcOpnd0->getRegOff(),
@@ -572,7 +574,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         // make final copy to dst
         // dst = r8:df     mov (instExecSize) dstOpnd, t8_src_opnd_final {Q1/N1}
         // final result is at r8.noacc
-        G4_SrcRegRegion tsrc8_final(Mod_src_undef, Direct, t8->getRegVar(), 0, 0, getRegionStride1(), Type_DF);
+        G4_SrcRegRegion tsrc8_final(*this, Mod_src_undef, Direct, t8->getRegVar(), 0, 0, getRegionStride1(), Type_DF);
         G4_SrcRegRegion *t8_src_opnd_final = createSrcRegRegion(tsrc8_final);
         t8_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
         inst = createInst(
@@ -635,7 +637,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     inst = createPseudoKills({ t1, t4, t6, t8, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
 
     // those are for drcp
-    G4_SrcRegRegion valueOneScalarReg(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, getRegionScalar(), Type_F);
+    G4_SrcRegRegion valueOneScalarReg(*this, Mod_src_undef, Direct, t2->getRegVar(), 0, 0, getRegionScalar(), Type_F);
     G4_Operand *valueOneOpnd = createSrcRegRegion(valueOneScalarReg); // it is used in drcp
 
     if (src0Opnd == NULL)
@@ -662,10 +664,10 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     }
 
     // t2 and t5 are constants
-    G4_SrcRegRegion tsrc2(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_F);
-    G4_SrcRegRegion tsrc5(Mod_src_undef, Direct, t5->getRegVar(), 0, 0, srcRegionDesc, Type_F);
+    G4_SrcRegRegion tsrc2(*this, Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_F);
+    G4_SrcRegRegion tsrc5(*this, Mod_src_undef, Direct, t5->getRegVar(), 0, 0, srcRegionDesc, Type_F);
 
-    G4_SrcRegRegion tsrc8_final(Mod_src_undef, Direct, t8->getRegVar(), 0, 0,
+    G4_SrcRegRegion tsrc8_final(*this, Mod_src_undef, Direct, t8->getRegVar(), 0, 0,
         getRegionStride1(), t8->getElemType());
     G4_SrcRegRegion *t8_src_opnd_final = createSrcRegRegion(tsrc8_final);
 
@@ -685,20 +687,20 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         madmInstOpt = instOpt; // setting channels for mad insts
 
                                //1, 6, 8, 9, 10, 11
-        G4_DstRegRegion tdst1(Direct, t1->getRegVar(), regIndex, 0, 1, Type_F);
-        G4_DstRegRegion tdst6(Direct, t6->getRegVar(), regIndex, 0, 1, Type_F);
-        G4_DstRegRegion tdst8(Direct, t8->getRegVar(), regIndex, 0, 1, Type_F);
-        G4_DstRegRegion tdst9(Direct, t9->getRegVar(), regIndex, 0, 1, Type_F);
-        G4_DstRegRegion tdst10(Direct, t10->getRegVar(), regIndex, 0, 1, Type_F);
-        G4_DstRegRegion tdst11(Direct, t11->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst1(*this, Direct, t1->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst6(*this, Direct, t6->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst8(*this, Direct, t8->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst9(*this, Direct, t9->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst10(*this, Direct, t10->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst11(*this, Direct, t11->getRegVar(), regIndex, 0, 1, Type_F);
 
-        G4_SrcRegRegion tsrc1(Mod_src_undef, Direct, t1->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc4(Mod_src_undef, Direct, t4->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc6(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, t8->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc11(Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc1(*this, Mod_src_undef, Direct, t1->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc4(*this, Mod_src_undef, Direct, t4->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc6(*this, Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc8(*this, Mod_src_undef, Direct, t8->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc9(*this, Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc10(*this, Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc11(*this, Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
 
         G4_DstRegRegion *t8DstOpnd0 = createDstRegRegion(tdst8);
         G4_DstRegRegion *t9DstOpnd0 = createDstRegRegion(tdst9);
@@ -710,8 +712,8 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         G4_DstRegRegion *t8DstOpnd1 = createDstRegRegion(tdst8);
 
         // src oprands passed by function calls
-        G4_SrcRegRegion fsrc0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion fsrc1(Mod_src_undef, Direct, src1RR->getBase(), src1RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion fsrc0(*this, Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion fsrc1(*this, Mod_src_undef, Direct, src1RR->getBase(), src1RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_F);
 
         G4_SrcRegRegion *t4SrcOpnd0 = NULL;
         G4_SrcRegRegion *t6SrcOpnd0 = NULL;
@@ -745,7 +747,9 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
 
 
         // create -r4.noacc
-        G4_SrcRegRegion tsrc4_neg(Mod_Minus,
+        G4_SrcRegRegion tsrc4_neg(
+            *this,
+            Mod_Minus,
             t4SrcOpnd0->getRegAccess(),
             t4SrcOpnd0->getBase(),
             t4SrcOpnd0->getRegOff(),
@@ -937,11 +941,11 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         src0RR = createSrcRegRegion(t6, getRegionStride1());
     }
 
-    G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_F);
-    G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, t8->getRegVar(), 0, 0, srcRegionDesc, Type_F);
+    G4_SrcRegRegion tsrc0(*this, Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_F);
+    G4_SrcRegRegion tsrc8(*this, Mod_src_undef, Direct, t8->getRegVar(), 0, 0, srcRegionDesc, Type_F);
 
 
-    G4_SrcRegRegion tsrc7_final(Mod_src_undef, Direct, t7->getRegVar(), 0, 0,
+    G4_SrcRegRegion tsrc7_final(*this, Mod_src_undef, Direct, t7->getRegVar(), 0, 0,
         getRegionStride1(), t7->getElemType());
     G4_SrcRegRegion *t7_src_opnd_final = createSrcRegRegion(tsrc7_final);
 
@@ -960,15 +964,15 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         madmInstOpt = instOpt;
 
         //7, 9, 10, 11
-        G4_DstRegRegion tdst7(Direct, t7->getRegVar(), regIndex, 0, 1, Type_F);
-        G4_DstRegRegion tdst9(Direct, t9->getRegVar(), regIndex, 0, 1, Type_F);
-        G4_DstRegRegion tdst10(Direct, t10->getRegVar(), regIndex, 0, 1, Type_F);
-        G4_DstRegRegion tdst11(Direct, t11->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst7(*this, Direct, t7->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst9(*this, Direct, t9->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst10(*this, Direct, t10->getRegVar(), regIndex, 0, 1, Type_F);
+        G4_DstRegRegion tdst11(*this, Direct, t11->getRegVar(), regIndex, 0, 1, Type_F);
 
-        G4_SrcRegRegion tsrc7(Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
-        G4_SrcRegRegion tsrc11(Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc7(*this, Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc9(*this, Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc10(*this, Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion tsrc11(*this, Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_F);
 
         G4_DstRegRegion *t7DstOpnd0 = createDstRegRegion(tdst7);
         G4_DstRegRegion *t7DstOpnd1 = createDstRegRegion(tdst7);
@@ -980,7 +984,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         G4_DstRegRegion *t11DstOpnd0 = createDstRegRegion(tdst11);
 
         // src oprands passed by function calls
-        G4_SrcRegRegion fsrc0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_F);
+        G4_SrcRegRegion fsrc0(*this, Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_F);
 
         G4_SrcRegRegion *t6SrcOpnd0 = NULL;
         G4_SrcRegRegion *t6SrcOpnd1 = NULL;
@@ -1064,7 +1068,9 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
 
         // create -r11.noacc
-        G4_SrcRegRegion tsrc11_neg(Mod_Minus,
+        G4_SrcRegRegion tsrc11_neg(
+            *this,
+            Mod_Minus,
             t11SrcOpnd0->getRegAccess(),
             t11SrcOpnd0->getBase(),
             t11SrcOpnd0->getRegOff(),
@@ -1101,7 +1107,9 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
 
         // create -r7.noacc
-        G4_SrcRegRegion tsrc7_neg(Mod_Minus,
+        G4_SrcRegRegion tsrc7_neg(
+            *this,
+            Mod_Minus,
             t7SrcOpnd2x0->getRegAccess(),
             t7SrcOpnd2x0->getBase(),
             t7SrcOpnd2x0->getRegOff(),
@@ -1229,10 +1237,10 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     // initialized without 'NoMask'.
 
     // one GRF
-    G4_SrcRegRegion csrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
-    G4_SrcRegRegion csrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
-    G4_SrcRegRegion csrc2(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
-    G4_SrcRegRegion csrc3(Mod_src_undef, Direct, t3->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
+    G4_SrcRegRegion csrc0(*this, Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
+    G4_SrcRegRegion csrc1(*this, Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
+    G4_SrcRegRegion csrc2(*this, Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
+    G4_SrcRegRegion csrc3(*this, Mod_src_undef, Direct, t3->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
 
     bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
     // cr0.0 register
@@ -1250,26 +1258,26 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         unsigned int madmInstOpt = instOpt; // setting channels for mad insts
 
                                             // dst : 7, 8, 9, 10 11
-        G4_DstRegRegion tdst7(Direct, noDstMove ? dstOpnd->getBase() : t7->getRegVar(),
+        G4_DstRegRegion tdst7(*this, Direct, noDstMove ? dstOpnd->getBase() : t7->getRegVar(),
             noDstMove ? dstOpnd->getRegOff() + regIndex : regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst8(Direct, t8->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst9(Direct, t9->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst10(Direct, t10->getRegVar(), regIndex, 0, 1, Type_DF);
-        G4_DstRegRegion tdst11(Direct, t11->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst8(*this, Direct, t8->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst9(*this, Direct, t9->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst10(*this, Direct, t10->getRegVar(), regIndex, 0, 1, Type_DF);
+        G4_DstRegRegion tdst11(*this, Direct, t11->getRegVar(), regIndex, 0, 1, Type_DF);
 
         // source of inst.
-        G4_SrcRegRegion fsrc0_math(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, rdAlign16, Type_DF);
+        G4_SrcRegRegion fsrc0_math(*this, Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, rdAlign16, Type_DF);
 
 
         // src : 6, 7, 8, 9, 10, 11
-        G4_SrcRegRegion fsrc0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc6(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc7(Mod_src_undef, Direct, noDstMove ? dstOpnd->getBase() : t7->getRegVar(),
+        G4_SrcRegRegion fsrc0(*this, Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc6(*this, Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc7(*this, Mod_src_undef, Direct, noDstMove ? dstOpnd->getBase() : t7->getRegVar(),
             noDstMove ? dstOpnd->getRegOff() + regIndex : regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, t8->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc11(Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc8(*this, Mod_src_undef, Direct, t8->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc9(*this, Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc10(*this, Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc11(*this, Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
 
         // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
         setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
@@ -1345,7 +1353,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(csrc2); src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(tsrc11); src1->setAccRegSel(ACC4);
             src2 = createSrcRegRegion(tsrc9); src2->setAccRegSel(ACC3);
-            G4_SrcRegRegion neg_srcRegion(Mod_Minus,
+            G4_SrcRegRegion neg_srcRegion(
+                *this,
+                Mod_Minus,
                 src1->getRegAccess(),
                 src1->getBase(),
                 src1->getRegOff(),
@@ -1410,7 +1420,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(tsrc7); src1->setAccRegSel(ACC8);
             src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC8);
-            G4_SrcRegRegion neg_srcRegion1(Mod_Minus,
+            G4_SrcRegRegion neg_srcRegion1(
+                *this,
+                Mod_Minus,
                 src1->getRegAccess(),
                 src1->getBase(),
                 src1->getRegOff(),
@@ -1456,7 +1468,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         // make final copy to dst
         // src = r7:df
         // final result is at r7.noacc
-        G4_SrcRegRegion tsrc7_final(Mod_src_undef, Direct, t7->getRegVar(), 0, 0, getRegionStride1(), t7->getElemType());
+        G4_SrcRegRegion tsrc7_final(*this, Mod_src_undef, Direct, t7->getRegVar(), 0, 0, getRegionStride1(), t7->getElemType());
         G4_SrcRegRegion *t7_src_opnd_final = createSrcRegRegion(tsrc7_final); t7_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
         // mov (instExecSize) r20.0<1>:df r7.0<8;8,1>:df {Q1/H1}
         inst = createInst(

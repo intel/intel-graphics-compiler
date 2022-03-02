@@ -1031,7 +1031,7 @@ void FlowGraph::normalizeRegionDescriptors()
                 auto normDesc = builder->getNormalizedRegion(execSize, desc);
                 if (normDesc && normDesc != desc)
                 {
-                    srcRegion->setRegion(normDesc, /*invariant*/ true);
+                    srcRegion->setRegion(*builder, normDesc, /*invariant*/ true);
                 }
             }
         }

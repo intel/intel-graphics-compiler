@@ -218,7 +218,7 @@ bool IR_Builder::isOpndAligned(
 
             if (dcl && dcl->getRegVar() && dcl->getRegVar()->isPhyRegAssigned())
             {
-                offset += static_cast<unsigned short>(dcl->getRegVar()->getByteAddr());
+                offset += static_cast<unsigned short>(dcl->getRegVar()->getByteAddr(*this));
             }
         }
         if (!isAligned)
@@ -2352,7 +2352,7 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
  *  -- If send has exec size 16, its destination must have Type W.
  *  -- avoid using Q/UQ type on CHV/BXT
  */
-static void fixSendDstType(G4_DstRegRegion* dst, G4_ExecSize execSize)
+static void fixSendDstType(G4_DstRegRegion* dst, G4_ExecSize execSize, const IR_Builder& builder)
 {
     MUST_BE_TRUE(dst->getRegAccess() == Direct, "Send dst must be a direct operand");
 
@@ -2362,12 +2362,12 @@ static void fixSendDstType(G4_DstRegRegion* dst, G4_ExecSize execSize)
     // type mismatch between operand and decl should not matter
     if (execSize == g4::SIMD16 && dst->getType() != Type_W && dst->getType() != Type_UW)
     {
-        dst->setType(Type_W);
+        dst->setType(builder, Type_W);
     }
 
     if (dst->getType() == Type_HF)
     {
-        dst->setType(Type_W);
+        dst->setType(builder, Type_W);
     }
 }
 
@@ -2383,7 +2383,7 @@ G4_InstSend *IR_Builder::createSendInst(
 {
     G4_opcode send_opcode= is_sendc ? G4_sendc : G4_send;
 
-    fixSendDstType(postDst, execsize);
+    fixSendDstType(postDst, execsize, *this);
 
     uint32_t desc = msgDesc->getDesc();
     G4_Operand *bti = msgDesc->getSurface();
@@ -2519,7 +2519,7 @@ G4_InstSend *IR_Builder::createSplitSendInst(
 {
     G4_opcode send_opcode = is_sendc ? G4_sendsc : G4_sends;
 
-    fixSendDstType(dst, execsize);
+    fixSendDstType(dst, execsize, *this);
 
     uint32_t desc = msgDesc->getDesc();
     uint32_t exdesc = msgDesc->getExtendedDesc();
@@ -2970,7 +2970,7 @@ G4_InstSend *IR_Builder::createSplitSendToRenderTarget(
 {
     G4_opcode send_opcode = G4_sendsc;
 
-    fixSendDstType(dst, execSize);
+    fixSendDstType(dst, execSize, *this);
 
     uint32_t desc = msgDesc->getDesc();
     G4_Operand* descOpnd = nullptr;
@@ -3334,6 +3334,7 @@ G4_DstRegRegion* IR_Builder::checkSendDst(G4_DstRegRegion *dst_opnd)
             new_SubRegOff = dst_opnd->getSubRegOff() / SIZEOF_DW;
         }
         G4_DstRegRegion new_dst(
+            *this,
             dst_opnd->getRegAccess(),
             dst_opnd->getBase(),
             dst_opnd->getRegOff(),
@@ -3618,7 +3619,7 @@ void IR_Builder::doSimplification(G4_INST *inst)
     // - destination stride in bytes must be equal to the source element size in bytes.
     bool canConvertMovToMovi = inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD8 &&
         inst->isRawMov() && inst->getDst() &&
-        !inst->getDst()->asDstRegRegion()->isCrossGRFDst() &&
+        !inst->getDst()->asDstRegRegion()->isCrossGRFDst(*this) &&
         inst->getSrc(0) && inst->getSrc(0)->isSrcRegRegion() &&
         inst->getSrc(0)->asSrcRegRegion()->isIndirect() &&
         inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH() &&
@@ -3675,7 +3676,7 @@ void IR_Builder::doSimplification(G4_INST *inst)
                         Dcl->setSubRegAlign(SubAlign);
                     }
                     const RegionDesc *rd = getRegionStride1();
-                    inst->getSrc(0)->asSrcRegRegion()->setRegion(rd);
+                    inst->getSrc(0)->asSrcRegRegion()->setRegion(*this, rd);
                     // Set subreg alignment for the address variable.
                     Dcl =
                         LEA->getDst()->getBase()->asRegVar()->getDeclare();

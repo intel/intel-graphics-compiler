@@ -902,7 +902,7 @@ bool SpillManagerGRF::isMultiRegComprSource(
     else if (inst->getExecSize() <= 8) {
         return false;
     }
-    else if (!src->asSrcRegRegion()->crossGRF())
+    else if (!src->asSrcRegRegion()->crossGRF(*builder_))
     {
         return false;
     }
@@ -1127,7 +1127,7 @@ G4_Declare * SpillManagerGRF::createTransientGRFRangeDeclare(
         (region->isDstRegRegion ())? DeclareType::Spill : DeclareType::Fill;
     unsigned short width, height;
 
-    if (segmentByteSize > REG_BYTE_SIZE || region->crossGRF()) {
+    if (segmentByteSize > REG_BYTE_SIZE || region->crossGRF(*builder_)) {
         assert(REG_BYTE_SIZE % region->getElemSize () == 0);
         width = REG_BYTE_SIZE / region->getElemSize ();
         assert(segmentByteSize / REG_BYTE_SIZE <= 2);
@@ -2582,7 +2582,7 @@ G4_Imm *SpillManagerGRF::createFillSendMsgDesc(
     {
         unsigned segmentByteSize =
             getSegmentByteSize(filledRangeRegion, execSize);
-        if (filledRangeRegion->crossGRF()) {
+        if (filledRangeRegion->crossGRF(*builder_)) {
             segmentByteSize = 2 * REG_BYTE_SIZE;
         }
 
@@ -2719,7 +2719,7 @@ G4_INST * SpillManagerGRF::createFillSendInstr(
             createFillSendMsgDesc(filledRangeRegion, oldExecSize);
 
         off = (messageDescImm->getInt() & 0xfff);
-        if (filledRangeRegion->crossGRF())
+        if (filledRangeRegion->crossGRF(*builder_))
         {
             segmentByteSize = 2 * REG_BYTE_SIZE;
         }
@@ -3321,8 +3321,8 @@ void SpillManagerGRF::insertSpillRangeCode(
             {
                 // use int copy when possible as floating-point copy moves may need further legalization
                 auto equivIntTy = floatToSameWidthIntType(tmpRangeSrcRegion->getType());
-                tmpRangeSrcRegion->setType(equivIntTy);
-                spillRangeDstRegion->setType(equivIntTy);
+                tmpRangeSrcRegion->setType(*builder_, equivIntTy);
+                spillRangeDstRegion->setType(*builder_, equivIntTy);
             }
 
             createMovInst(

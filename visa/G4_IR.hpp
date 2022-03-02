@@ -2411,11 +2411,7 @@ public:
 
     bool isScalarSrc() const;
 
-    bool crossGRF()
-    {
-        return getRightBound() / numEltPerGRF<Type_UB>() !=
-               getLeftBound() / numEltPerGRF<Type_UB>();
-    }
+    bool crossGRF(const IR_Builder& builder);
 
     unsigned getLeftBound()
     {
@@ -2917,7 +2913,7 @@ namespace vISA
         bool        isScalarAddr()  const { return decl->getRegFile() == G4_SCALAR; }
         const G4_VarBase* getPhyReg() const { return reg.phyReg; }
               G4_VarBase* getPhyReg()       { return reg.phyReg; }
-        unsigned    getByteAddr() const;
+        unsigned    getByteAddr(const IR_Builder& builder) const;
         unsigned    getPhyRegOff() const { return reg.subRegOff; }
         void        setPhyReg(G4_VarBase* pr, unsigned off)
         {
@@ -3070,7 +3066,9 @@ namespace vISA
         const short    subRegOff;    // sub reg offset related to the regVar in "base"
         short          immAddrOff;    // imm addr offset
 
-        G4_SrcRegRegion(G4_SrcModifier m,
+        G4_SrcRegRegion(
+            const IR_Builder& builder,
+            G4_SrcModifier m,
             G4_RegAccess   a,
             G4_VarBase*    b,
             short roff,
@@ -3085,7 +3083,7 @@ namespace vISA
             swizzle[0] = '\0';
             accRegSel = regSel;
 
-            computeLeftBound();
+            computeLeftBound(builder);
             right_bound = 0;
         }
 
@@ -3114,7 +3112,7 @@ namespace vISA
             return true;
         }
 
-        void computeLeftBound();
+        void computeLeftBound(const IR_Builder& builder);
         short getRegOff() const { return regOff; }
         short getSubRegOff() const { return subRegOff; }
 
@@ -3160,14 +3158,14 @@ namespace vISA
         unsigned short             ExIndSubRegNum(bool&);
         short                      ExIndImmVal(void);
 
-        void                       computePReg();
+        void                       computePReg(const IR_Builder& builder);
 
         bool isIndirect() const { return acc != Direct; }
 
         unsigned computeRightBound(uint8_t exec_size) override;
         G4_CmpRelation compareOperand(G4_Operand *opnd) override;
 
-        void setType(G4_Type ty)
+        void setType(const IR_Builder& builder, G4_Type ty)
         {
             // FIXME: we should forbid setType() where ty has a different size than old type
             bool recomputeLeftBound = false;
@@ -3182,17 +3180,17 @@ namespace vISA
 
             if (recomputeLeftBound)
             {
-                computeLeftBound();
+                computeLeftBound(builder);
             }
         }
 
-        void setRegion(const RegionDesc* rd, bool isInvariant = false)
+        void setRegion(const IR_Builder& builder, const RegionDesc* rd, bool isInvariant = false)
         {
             if (!isInvariant && !desc->isEqual(rd))
             {
                 unsetRightBound();
                 desc = rd;
-                computeLeftBound();
+                computeLeftBound(builder);
             }
             else
             {
@@ -3203,13 +3201,13 @@ namespace vISA
         bool isNativeType() const;
         bool isNativePackedRowRegion() const;
         bool isNativePackedRegion() const;
-        bool evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff, bool &vertCrossGRF, bool &contRegion, uint8_t &eleInFirstGRF);
-        bool evenlySplitCrossGRF(uint8_t execSize);
-        bool coverTwoGRF();
-        bool checkGRFAlign();
-        bool hasFixedSubregOffset(uint32_t& offset);
+        bool evenlySplitCrossGRF(const IR_Builder& builder, uint8_t execSize, bool &sameSubRegOff, bool &vertCrossGRF, bool &contRegion, uint8_t &eleInFirstGRF);
+        bool evenlySplitCrossGRF(const IR_Builder& builder, uint8_t execSize);
+        bool coverTwoGRF(const IR_Builder& builder);
+        bool checkGRFAlign(const IR_Builder& builder);
+        bool hasFixedSubregOffset(const IR_Builder& builder, uint32_t& offset);
         bool isNativePackedSrcRegion();
-        uint8_t getMaxExecSize(int pos, uint8_t maxExSize, bool allowCrossGRF, uint16_t &vs, uint16_t &wd, bool &twoGRFsrc);
+        uint8_t getMaxExecSize(const IR_Builder& builder, int pos, uint8_t maxExSize, bool allowCrossGRF, uint16_t &vs, uint16_t &wd, bool &twoGRFsrc);
 
         bool isSpilled() const
         {
@@ -3258,7 +3256,9 @@ class G4_DstRegRegion final : public G4_Operand
     short          immAddrOff;    // imm addr offset for indirect dst
     unsigned short horzStride;    // <DstRegion> has only horzStride
 
-    G4_DstRegRegion(G4_RegAccess a,
+    G4_DstRegRegion(
+        const IR_Builder& builder,
+        G4_RegAccess a,
         G4_VarBase* b,
         short roff,
         short sroff,
@@ -3274,7 +3274,7 @@ class G4_DstRegRegion final : public G4_Operand
         regOff = (roff == ((short)UNDEFINED_SHORT)) ? 0 : roff;
         subRegOff = sroff;
 
-        computeLeftBound();
+        computeLeftBound(builder);
         right_bound = 0;
     }
 
@@ -3283,29 +3283,15 @@ class G4_DstRegRegion final : public G4_Operand
 
 public:
     G4_DstRegRegion(G4_DstRegRegion& rgn);
-    G4_DstRegRegion(G4_DstRegRegion& rgn, G4_VarBase* new_base);
+    G4_DstRegRegion(const IR_Builder& builder, G4_DstRegRegion& rgn, G4_VarBase* new_base);
 
-    void computeLeftBound();
+    void computeLeftBound(const IR_Builder& builder);
 
     G4_RegAccess   getRegAccess() const { return acc; }
     short          getRegOff() const { return regOff; }
     short          getSubRegOff() const { return subRegOff; }
 
-    bool isCrossGRFDst()
-    {
-        if (isNullReg())
-        {
-            return inst != NULL &&
-                (unsigned)inst->getExecSize() * getTypeSize() * horzStride > numEltPerGRF<Type_UB>();
-        }
-        if (isRightBoundSet() == false)
-        {
-            // computeRightBound populates crossGRFDst field
-            getInst()->computeRightBound(this);
-        }
-
-        return (left_bound / numEltPerGRF<Type_UB>()) != right_bound / numEltPerGRF<Type_UB>();
-    }
+    bool isCrossGRFDst(const IR_Builder& builder);
     unsigned short getHorzStride() const { return horzStride; }
     ChannelEnable  getWriteMask() const { return writeMask; }
     void           setWriteMask(ChannelEnable channels);
@@ -3340,11 +3326,11 @@ public:
     unsigned short             ExSubRegNum(bool&);
     unsigned short             ExIndSubRegNum(bool&);
     short                      ExIndImmVal(void);
-    void                       computePReg();
+    void                       computePReg(const IR_Builder& builder);
 
     bool isIndirect() const { return acc != Direct; }
 
-    void setType(G4_Type ty)
+    void setType(const IR_Builder& builder, G4_Type ty)
     {
         bool recomputeLeftBound = false;
 
@@ -3358,7 +3344,7 @@ public:
 
         if (recomputeLeftBound)
         {
-            computeLeftBound();
+            computeLeftBound(builder);
 
             if (getInst())
             {
@@ -3383,13 +3369,13 @@ public:
     bool isNativeType() const;
     bool isNativePackedRowRegion() const;
     bool isNativePackedRegion() const;
-    bool coverGRF(uint16_t numGRF, uint8_t execSize);
-    bool goodOneGRFDst(uint8_t execSize);
-    bool goodtwoGRFDst(uint8_t execSize);
-    bool evenlySplitCrossGRF(uint8_t execSize);
-    bool checkGRFAlign() const;
-    bool hasFixedSubregOffset(uint32_t& offset);
-    uint8_t getMaxExecSize(int pos, uint8_t maxExSize, bool twoGRFsrc);
+    bool coverGRF(const IR_Builder& builder, uint16_t numGRF, uint8_t execSize);
+    bool goodOneGRFDst(const IR_Builder& builder, uint8_t execSize);
+    bool goodtwoGRFDst(const IR_Builder& builder, uint8_t execSize);
+    bool evenlySplitCrossGRF(const IR_Builder& builder, uint8_t execSize);
+    bool checkGRFAlign(const IR_Builder& builder) const;
+    bool hasFixedSubregOffset(const IR_Builder& builder, uint32_t& offset);
+    uint8_t getMaxExecSize(const IR_Builder& builder, int pos, uint8_t maxExSize, bool twoGRFsrc);
     bool isSpilled() const
     {
         if (getBase() && getBase()->isRegVar())
@@ -3657,7 +3643,7 @@ public:
         addrTakenSpillFill = addrExp;
     }
 
-    int eval();
+    int eval(const IR_Builder& builder);
     bool isRegAllocPartaker() const { return m_addressedReg->isRegAllocPartaker(); }
 
     void emit(std::ostream& output, bool symbolreg = false);
@@ -4175,22 +4161,6 @@ inline bool G4_InstCF::isIndirectCall() const
     return op == G4_pseudo_fcall && !getSrc(0)->isLabel();
 }
 
-static void computeSpillFillOperandBound(G4_Operand* opnd, unsigned int LB, int numReg)
-{
-    if (numReg == 0)
-    {
-        return;
-    }
-
-    // read/write in units of GRF.
-    unsigned RB = std::min(opnd->getTopDcl()->getByteSize(),
-        LB + numReg * numEltPerGRF<Type_UB>()) - 1;
-
-    unsigned NBytes = RB - LB + 1;
-    opnd->setBitVecFromSize(NBytes);
-    opnd->setRightBound(RB);
-}
-
 class G4_SpillIntrinsic : public G4_InstIntrinsic
 {
 public:
@@ -4226,21 +4196,7 @@ public:
 
     bool isOffsetValid() const { return offset != InvalidOffset; }
 
-    void computeRightBound(G4_Operand* opnd)
-    {
-        if (opnd) {
-            uint16_t numReg = 0;
-            if (opnd == getSrc(1))
-            {
-                numReg = asSpillIntrinsic()->getNumRows();
-            }
-            else if (opnd->isSrcRegRegion() && opnd == getSrc(0))
-            {
-                numReg = 1;
-            }
-            computeSpillFillOperandBound(opnd, opnd->left_bound, numReg);
-        }
-    }
+    void computeRightBound(G4_Operand* opnd);
 
 private:
     G4_Declare* fp = nullptr;
@@ -4302,19 +4258,7 @@ public:
 
     bool isOffsetValid() { return offset != InvalidOffset; }
 
-    void computeRightBound(G4_Operand* opnd)
-    {
-        if (opnd) {
-            uint16_t numReg = 0;
-            if (opnd == getDst()) {
-                numReg = asFillIntrinsic()->getNumRows();
-            } else if (opnd->isSrcRegRegion() &&
-                       (opnd == getSrc(0) || opnd == getSrc(1))) {
-                numReg = 1;
-            }
-            computeSpillFillOperandBound(opnd, opnd->left_bound, numReg);
-        }
-    }
+    void computeRightBound(G4_Operand* opnd);
 
 private:
     G4_Declare* fp = nullptr;

@@ -418,7 +418,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
 
         for (int i = 0; i < numOut; i++)
         {
-            G4_DstRegRegion payloadTypedRegRowi(Direct, payloadF->getRegVar(), regOff++, 0, 1, Type_F);
+            G4_DstRegRegion payloadTypedRegRowi(*this, Direct, payloadF->getRegVar(), regOff++, 0, 1, Type_F);
             G4_DstRegRegion* payloadTypedRegRowRgni = createDstRegRegion(payloadTypedRegRowi);
 
             G4_SrcRegRegion* vertexSrcRegRgnRowi = createSrc(vertexDataDcl->getRegVar(), startSrcRow++, 0, getRegionStride1(), Type_F);
@@ -674,7 +674,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         movInst->setOptionOn(InstOpt_WriteEnable);
 
         payloadRegRgn = createDst(msg->getRegVar(), 1, 0, 1, Type_UD);
-        r1HeaderOpnd->setType(Type_UD);
+        r1HeaderOpnd->setType(*this, Type_UD);
         movInst = createMov(g4::SIMD8, payloadRegRgn, r1HeaderOpnd, InstOpt_NoOpt, true);
         movInst->setOptionOn(InstOpt_WriteEnable);
 
@@ -1444,7 +1444,7 @@ int IR_Builder::splitSampleInst(
             // mov (8) dst<1>:hf src.0<8;8,1>:hf
             G4_DstRegRegion* dstHF = createDst(
                 payloadHF->getRegVar(), regOff++, 0, 1, temp->getType());
-            temp->setRegion(getRegionStride1());
+            temp->setRegion(*this, getRegionStride1());
             createMov(g4::SIMD8, dstHF, temp, MovInstOpt, true);
         }
         else
@@ -2444,6 +2444,7 @@ int IR_Builder::translateVISASamplerInst(
                 new_SubRegOff = (dstOpnd->asDstRegRegion()->getSubRegOff() * dstOpnd->getTypeSize()) / TypeSize(Type_W);
             }
             G4_DstRegRegion new_dst(
+                *this,
                 dstOpnd->getRegAccess(),
                 dstOpnd->asDstRegRegion()->getBase(),
                 dstOpnd->asDstRegRegion()->getRegOff(),

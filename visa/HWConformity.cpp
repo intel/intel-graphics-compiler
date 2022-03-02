@@ -300,7 +300,7 @@ G4_SrcRegRegion* HWConformity::insertCopyAtBBEntry(G4_BB* bb, G4_ExecSize execSi
     G4_SrcModifier modifier = origSrc->getModifier();
     origSrc->setModifier(Mod_src_undef);
     G4_DstRegRegion* dst = builder.createDstRegRegion(dcl, 1);
-    dst->computePReg();
+    dst->computePReg(builder);
 
     G4_INST* movInst = builder.createMov(execSize, dst, origSrc, InstOpt_WriteEnable, false);
 
@@ -318,7 +318,7 @@ G4_SrcRegRegion* HWConformity::insertCopyAtBBEntry(G4_BB* bb, G4_ExecSize execSi
     G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(modifier, Direct, dcl->getRegVar(),
         0, 0, execSize == 1 ? builder.getRegionScalar() : builder.getRegionStride1(),
         dcl->getElemType());
-    newSrc->asSrcRegRegion()->computePReg();
+    newSrc->asSrcRegRegion()->computePReg(builder);
     return newSrc;
 }
 
@@ -759,7 +759,7 @@ bool HWConformity::hasSameSubregOffset(G4_INST* inst, uint32_t& byteOffset) cons
         {
             // do nothing
         }
-        else if (dst->hasFixedSubregOffset(byteOffset))
+        else if (dst->hasFixedSubregOffset(builder, byteOffset))
         {
             anyOffset = false;
         }
@@ -780,7 +780,7 @@ bool HWConformity::hasSameSubregOffset(G4_INST* inst, uint32_t& byteOffset) cons
             {
                 continue;
             }
-            else if (srcRegion->hasFixedSubregOffset(srcOffset))
+            else if (srcRegion->hasFixedSubregOffset(builder, srcOffset))
             {
                 if (anyOffset)
                 {
@@ -1129,13 +1129,13 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB* bb)
         auto dst = inst->getDst();
         if (dst->getType() == Type_D || dst->getType() == Type_W)
         {
-            dst->setType(dst->getType() == Type_D ? Type_UD : Type_UW);
+            dst->setType(builder, dst->getType() == Type_D ? Type_UD : Type_UW);
         }
-        auto changeSrcToUnsigned = [](G4_Operand* opnd)
+        auto changeSrcToUnsigned = [this](G4_Operand* opnd)
         {
             if (opnd->isSrcRegRegion() && (opnd->getType() == Type_D || opnd->getType() == Type_W))
             {
-                opnd->asSrcRegRegion()->setType(opnd->getType() == Type_D ? Type_UD : Type_UW);
+                opnd->asSrcRegRegion()->setType(builder, opnd->getType() == Type_D ? Type_UD : Type_UW);
             }
         };
         changeSrcToUnsigned(inst->getSrc(0));
@@ -1377,7 +1377,7 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB* bb)
             !(inst->getExecType() == Type_HF &&
                 inst->getOperand(Opnd_src1)->isSrcRegRegion() &&
                 inst->getOperand(Opnd_src1)->getType() == Type_HF &&
-                !inst->getOperand(Opnd_src1)->asSrcRegRegion()->crossGRF()));
+                !inst->getOperand(Opnd_src1)->asSrcRegRegion()->crossGRF(builder)));
 
         if (wa3rc)
         {
@@ -1616,28 +1616,28 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB* bb)
 
     if (dst->getType() == Type_W)
     {
-        dst->setType(Type_UW);
+        dst->setType(builder, Type_UW);
     }
     else if (dst->getType() == Type_D)
     {
-        dst->setType(Type_UD);
+        dst->setType(builder, Type_UD);
     }
     else if (builder.getPlatform() >= Xe_PVC && dst->getType() == Type_Q)
     {
-        dst->setType(Type_UQ);
+        dst->setType(builder, Type_UQ);
     }
 
     if (src->getType() == Type_W)
     {
-        src->setType(Type_UW);
+        src->setType(builder, Type_UW);
     }
     else if (src->getType() == Type_D)
     {
-        src->setType(Type_UD);
+        src->setType(builder, Type_UD);
     }
     else if (builder.getPlatform() >= Xe_PVC && src->getType() == Type_Q)
     {
-        src->setType(Type_UQ);
+        src->setType(builder, Type_UQ);
     }
     return changed;
 }
@@ -1670,7 +1670,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
                     src0->isSrcRegRegion() && !src0->asSrcRegRegion()->hasModifier())
                 {
                     // Just set src to be the same type as dst
-                    src0->asSrcRegRegion()->setType(dst->getType());
+                    src0->asSrcRegRegion()->setType(builder, dst->getType());
                 }
                 else
                 {
@@ -2944,16 +2944,16 @@ void HWConformity::copyDwordsIndirect(G4_Declare* dst,
 
     G4_SrcRegRegion* newSrc = builder.duplicateOperand(src);
     MUST_BE_TRUE(newSrc->getTypeSize() == 8, "only support 64-bit type source so far");
-    newSrc->setType(Type_UD);
+    newSrc->setType(builder, Type_UD);
     newSrc->setModifier(Mod_src_undef);
     if (newSrc->getRegion()->isRegionWH())
     {
         MUST_BE_TRUE(newSrc->getRegion()->width == 1, "only handle <1,0> region for now");
-        newSrc->setRegion(builder.createRegionDesc(UNDEFINED_SHORT, 2, 1));
+        newSrc->setRegion(builder, builder.createRegionDesc(UNDEFINED_SHORT, 2, 1));
     }
     else
     {
-        newSrc->setRegion(builder.getRegionStride1());
+        newSrc->setRegion(builder, builder.getRegionStride1());
     }
 
     G4_DstRegRegion* dstOpnd = builder.createDst(newDst->getRegVar(), 0, 0, 1, Type_UD);
@@ -3539,7 +3539,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                     if (region->width == inst->getExecSize())
                     {
                         // vs is a don't care, change to <w*hs, w, hz>
-                        srcAsRegion->setRegion(builder.createRegionDesc(region->width * region->horzStride, region->width, region->horzStride));
+                        srcAsRegion->setRegion(builder, builder.createRegionDesc(region->width * region->horzStride, region->width, region->horzStride));
                     }
                     else if (region->width == 1)
                     {
@@ -3548,7 +3548,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
 
                         uint16_t wd = inst->getExecSize();
                         uint16_t hs = region->vertStride;
-                        if (src->crossGRF())
+                        if (src->crossGRF(builder))
                         {
                             // Make sure the new hs does not cross GRF
                             uint32_t nbytesIn1stGRF = kernel.numEltPerGRF<Type_UB>() - (src->getLeftBound() % kernel.numEltPerGRF<Type_UB>());
@@ -3563,7 +3563,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                             wd = wd & (-wd);
                             //MUST_BE_TRUE(wd > 1, "Cannot select non-1 width w/o crossing GRF");
                         }
-                        srcAsRegion->setRegion(builder.createRegionDesc(wd * hs, wd, hs));
+                        srcAsRegion->setRegion(builder, builder.createRegionDesc(wd * hs, wd, hs));
                     }
 
                     else
@@ -3633,7 +3633,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                             movInst->getSrc(0)->isSrcRegRegion(),
                             "unexpected instruction created by insertMovAfter");
                         MUST_BE_TRUE(dst->getHorzStride() == 1, "only stride 1 is supported for now");
-                        dst->setType(Type_UD);
+                        dst->setType(builder, Type_UD);
                         G4_SrcRegRegion* src = movInst->getSrc(0)->asSrcRegRegion();
                         G4_Declare* tmpAsUD = builder.createTempVar(tmpDstDcl->getNumElems() * 2, Type_UD, Any);
                         tmpAsUD->setAliasDeclare(tmpDstDcl, 0);
@@ -3943,7 +3943,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
                 // Normalize the region if it is not.
                 if (srcRegion->width != 1)
                 {
-                    src->setRegion(builder.getRegionStride1(), /*invariant*/ true);
+                    src->setRegion(builder, builder.getRegionStride1(), /*invariant*/ true);
                 }
                 if (!builder.encodeUnitStrideTernary())
                 {
@@ -5271,8 +5271,8 @@ void HWConformity::fixsrc1src2Overlap(G4_BB* bb)
                     INST_LIST_ITER prev_it = i;
                     prev_it--;
                     G4_INST* movInst = (*prev_it);
-                    movInst->getSrc(0)->asSrcRegRegion()->setType(movType);
-                    opnd->asSrcRegRegion()->setType(src2->getType());
+                    movInst->getSrc(0)->asSrcRegRegion()->setType(builder, movType);
+                    opnd->asSrcRegRegion()->setType(builder, src2->getType());
                     inst->setSrc(opnd, 2);
                 }
             }
@@ -5901,7 +5901,7 @@ void HWConformity::conformBB(G4_BB* bb)
             }
 
             // WA-2
-            if (hasQTypeDst && inst->getDst()->isCrossGRFDst())
+            if (hasQTypeDst && inst->getDst()->isCrossGRFDst(builder))
             {
                 hasQTypeSrc = false;
                 for (int i = 0; i < inst->getNumSrc(); i++)
@@ -6330,7 +6330,7 @@ void HWConformity::fixBFMixedMode()
                         G4_Declare* newDcl = builder.createTempVar(nelts,
                             Type_UD, (nelts == 1) ? Even_Word : GRFALIGN, "cvtF", false);
                         G4_DstRegRegion* newDst = builder.createDst(newDcl->getRegVar(), Type_UD);
-                        srcReg->setType(Type_UW);
+                        srcReg->setType(builder, Type_UW);
                         G4_INST* shlInst = builder.createBinOp(G4_shl,
                             (nelts== 1) ? g4::SIMD1 : currES,
                             newDst, S, builder.createImm(16, Type_UD), InstOpt_WriteEnable, false);
@@ -6840,7 +6840,7 @@ G4_INST* HWConformity::splitInstWithByteDst(G4_INST* expand_op)
                         newWD, (newWD == 1) ? 0 : origRegion->horzStride * 2);
                 }
                 secondAddrImmedDiff = (short)(secondSubRegOffDiff * expand_src->getTypeSize());
-                expandSrcRegion->setRegion(newRegion);
+                expandSrcRegion->setRegion(builder, newRegion);
 
                 bool directSrc = (expandSrcRegion->getRegAccess() == Direct);
                 if (secondAddrImmedDiff >= (int)kernel.numEltPerGRF<Type_UB>())
@@ -6909,7 +6909,7 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
                 if (srcRegion->isRegionWH() && srcRegion->width == inst->getExecSize())
                 {
                     // r[a0.0]<E, S> -> r[a0.0]<S;1,0>
-                    src->setRegion(builder.createRegionDesc(srcRegion->horzStride, 1, 0));
+                    src->setRegion(builder, builder.createRegionDesc(srcRegion->horzStride, 1, 0));
                 }
                 // ToDo: add other legalization
                 continue;
@@ -6959,7 +6959,7 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
             // TODO! for the following two cases, split the instruction:
             // source region is like <8;4,1>
             // source region is like <2;4,1>
-            if (src->getRegAccess() == Direct && src->crossGRF() && hs != 0)
+            if (src->getRegAccess() == Direct && src->crossGRF(builder) && hs != 0)
             {
                 // TODO: this is a temp fix
                 if ((builder.getPlatform() == GENX_BDW || builder.getPlatform() == GENX_CHV) && vs < wd * hs)
@@ -7003,7 +7003,7 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
             if (vs != srcRegion->vertStride || wd != srcRegion->width || hs != srcRegion->horzStride)
             {
                 G4_SrcRegRegion* origSrc = inst->getSrc(i)->asSrcRegRegion();
-                origSrc->setRegion(builder.createRegionDesc(vs, wd, hs));
+                origSrc->setRegion(builder, builder.createRegionDesc(vs, wd, hs));
             }
         }
     }
@@ -7995,8 +7995,8 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
             if (inst->isRawMov())
             {
                 // directly change the dst/src type to int
-                inst->getDst()->setType(intType);
-                src0->setType(intType);
+                inst->getDst()->setType(builder, intType);
+                src0->setType(builder, intType);
             }
             else
             {
@@ -8005,10 +8005,10 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
                 // so that we could specify the move type
                 auto origType = src0->getType();
                 auto origMod = src0->getModifier();
-                src0->setType(intType);
+                src0->setType(builder, intType);
                 src0->setModifier(Mod_src_undef);
                 auto newSrc = insertMovBefore(it, 0, intType, bb);
-                newSrc->asSrcRegRegion()->setType(origType);
+                newSrc->asSrcRegRegion()->setType(builder, origType);
                 newSrc->asSrcRegRegion()->setModifier(origMod);
                 inst->setSrc(newSrc, 0);
             }
@@ -8133,8 +8133,8 @@ bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB* bb)
         if (src0->getType() == Type_BF)
         {
             // change type of copy move to uw
-            inst->getDst()->setType(Type_UW);
-            src0->asSrcRegRegion()->setType(Type_UW);
+            inst->getDst()->setType(builder, Type_UW);
+            src0->asSrcRegRegion()->setType(builder, Type_UW);
         }
         return false;
     }
@@ -8151,10 +8151,10 @@ bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB* bb)
 
         auto src0RR = src0->asSrcRegRegion();
 
-        src0RR->setType(Type_UW);
+        src0RR->setType(builder, Type_UW);
         G4_SrcRegRegion* newSrc0 = src0RR;
 
-        inst->getDst()->setType(Type_UD);
+        inst->getDst()->setType(builder, Type_UD);
         auto newDst = inst->getDst();
 
         auto shlInst = builder.createBinOp(G4_shl,
@@ -8337,8 +8337,8 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
                 if (execTyWidth < 8)
                 {
                     auto intType = TypeSize(dstTy) == 4 ? Type_UD : Type_UW;
-                    inst->getDst()->setType(intType);
-                    src0RR->setType(intType);
+                    inst->getDst()->setType(builder, intType);
+                    src0RR->setType(builder, intType);
                 }
                 else if (isNoMaskInst && inst->getDst()->getHorzStride() == 1 && srcStride != 0)
                 {
@@ -8560,7 +8560,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
         auto tmp = builder.createTempVar(inst->getExecSize() * stride, tmpTy, GRFALIGN);
         auto movSrc = builder.createSrcRegRegion(*src);
         movSrc->setModifier(Mod_src_undef);
-        movSrc->setType(movSrcTy);
+        movSrc->setType(builder, movSrcTy);
         auto movInst = builder.createMov(inst->getExecSize(),
             builder.createDstRegRegion(tmp, stride), movSrc, inst->getOption(), false);
         if (movSrc->getTypeSize() == 8)
@@ -8648,20 +8648,20 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
             "BF8<->HF move does not support source modifier");
 
-        if (!inst->getSrc(0)->asSrcRegRegion()->checkGRFAlign() || //case 3
+        if (!inst->getSrc(0)->asSrcRegRegion()->checkGRFAlign(builder) || //case 3
             (inst->getSrc(0)->getType() == Type_UB && !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))) // case 2
         {
             inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, GRFALIGN), 0);
             G4_INST* newMovInst = *(std::prev(i));
             if (newMovInst->getSrc(0)->getType() == Type_HF)
             {
-                newMovInst->getSrc(0)->asSrcRegRegion()->setType(Type_UW);
-                newMovInst->getDst()->asDstRegRegion()->setType(Type_UW);
+                newMovInst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UW);
+                newMovInst->getDst()->asDstRegRegion()->setType(builder, Type_UW);
             }
             newMovInst->getDst()->setHorzStride(1);
             if (inst->getExecSize() != g4::SIMD1)
             {
-                inst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionStride1());
+                inst->getSrc(0)->asSrcRegRegion()->setRegion(builder, builder.getRegionStride1());
             }
             inst->setOptionOn(InstOpt_WriteEnable);
         }
@@ -8685,18 +8685,18 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         }
 
         if ((inst->getDst()->getType() == Type_UB && inst->getDst()->getHorzStride() != 1) ||  //case 2
-            !inst->getDst()->checkGRFAlign())  // case 3
+            !inst->getDst()->checkGRFAlign(builder))  // case 3
         {
             replaceDst(i, inst->getDst()->getType(), GRFALIGN);
             G4_INST* newMovInst = *(std::next(i));
             if (newMovInst->getDst()->getType() == Type_HF)
             {
-                newMovInst->getSrc(0)->asSrcRegRegion()->setType(Type_UW);
-                newMovInst->getDst()->asDstRegRegion()->setType(Type_UW);
+                newMovInst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UW);
+                newMovInst->getDst()->asDstRegRegion()->setType(builder, Type_UW);
             }
             if (inst->getExecSize() != g4::SIMD1)
             {
-                newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(builder.getRegionStride1());
+                newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(builder, builder.getRegionStride1());
             }
             inst->getDst()->setHorzStride(1);
             inst->setOptionOn(InstOpt_WriteEnable);
@@ -8708,7 +8708,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         // (W)  shl (1|M0)   r10.0<1>:uw   r12.0<0;1,0>:ub   0x8:uw
         if (inst->getExecSize() == g4::SIMD1 && inst->getSrc(0)->getType() == Type_UB)
         {
-            inst->getDst()->setType(Type_UW);
+            inst->getDst()->setType(builder, Type_UW);
             auto newShlInst = builder.createBinOp(G4_shl,
                 inst->getExecSize(), inst->getDst(), inst->getSrc(0)->asSrcRegRegion(), builder.createImm(8, Type_UW), inst->getOption(), false);
             bb->insertBefore(i, newShlInst);
@@ -8731,7 +8731,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         else
         {
             G4_SrcRegRegion* regSrc = inst->getSrc(0)->asSrcRegRegion();
-            regSrc->setType(Type_F);
+            regSrc->setType(builder, Type_F);
             newSrc = regSrc;
         }
         auto newDst = inst->getDst();
@@ -8760,16 +8760,16 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             if (srcSingleStride != regDst->getHorzStride() || !hasSameSubregOffset(inst))
             {
                 // Need to force GRF-alignment and stride = 1
-                if (srcSingleStride != 1 || !regSrc0->checkGRFAlign())
+                if (srcSingleStride != 1 || !regSrc0->checkGRFAlign(builder))
                 {
                     // Make sure to do UD copy for src
-                    regSrc0->setType(Type_UD);
+                    regSrc0->setType(builder, Type_UD);
                     // Insert mov before i
                     replaceSrc(i, 0, Type_UD, bb, ThirtyTwo_Word);
                     // must have the original type (float) for i
-                    inst->getSrc(0)->asSrcRegRegion()->setType(Type_F);
+                    inst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_F);
                 }
-                if (regDst->getHorzStride() != 1 || !regDst->checkGRFAlign())
+                if (regDst->getHorzStride() != 1 || !regDst->checkGRFAlign(builder))
                 {
                     replaceDst(i, regDst->getType(), ThirtyTwo_Word);
                 }
@@ -9260,7 +9260,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
     G4_DstRegRegion* dst = inst->getDst();
     uint32_t execsize = inst->getExecSize();
     bool Packed = (dst->getType() == Type_UB);
-    if (!dst->checkGRFAlign() ||                // case 2
+    if (!dst->checkGRFAlign(builder) ||                // case 2
         (Packed && dst->getHorzStride() != 1))  // case 3
     {
         G4_Declare* dcl = builder.createTempVar(execsize, dst->getType(), GRFALIGN);
@@ -9278,7 +9278,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
 
     G4_Operand* opnd0 = inst->getSrc(0);
     if (opnd0->isImm() || // case 1
-        !opnd0->asSrcRegRegion()->checkGRFAlign() ||  // case 2
+        !opnd0->asSrcRegRegion()->checkGRFAlign(builder) ||  // case 2
         (Packed && !opnd0->asSrcRegRegion()->getRegion()->isContiguous(execsize))) // case 3
     {
         G4_Operand* newSrc0 = insertMovBefore(it, 0, opnd0->getType(), bb, GRFALIGN);
@@ -9290,7 +9290,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
 
     G4_Operand* opnd1 = inst->getSrc(1);
     if (opnd1->isSrcRegRegion() &&
-        (!opnd1->asSrcRegRegion()->checkGRFAlign() || // case 2
+        (!opnd1->asSrcRegRegion()->checkGRFAlign(builder) || // case 2
          (Packed && !opnd1->asSrcRegRegion()->getRegion()->isContiguous(execsize)))) // case 3
     {
         G4_Operand* newSrc1 = insertMovBefore(it, 1, opnd1->getType(), bb, GRFALIGN);
@@ -9615,13 +9615,13 @@ void HWConformity::fixFloatARFDst(INST_LIST_ITER it, G4_BB* bb)
     {
         // For raw MOV and raw predicate-based SEL (w/o conditional modifier),
         // we can just flip the types.
-        dst->setType(intTy);
+        dst->setType(builder, intTy);
         for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
         {
             auto src = inst->getSrc(i);
             if (src->isSrcRegRegion())
             {
-                src->asSrcRegRegion()->setType(intTy);
+                src->asSrcRegRegion()->setType(builder, intTy);
             }
             else if (src->isImm())
             {
@@ -9644,7 +9644,7 @@ void HWConformity::fixFloatARFDst(INST_LIST_ITER it, G4_BB* bb)
         const RegionDesc* rd = inst->getExecSize() == 1 ?
             builder.getRegionScalar() : builder.getRegionStride1();
         G4_SrcRegRegion* newSrcRegion = builder.createSrcRegRegion(newUseDcl, rd);
-        dst->setType(intTy);
+        dst->setType(builder, intTy);
         G4_INST* movInst = builder.createMov(inst->getExecSize(), dst, newSrcRegion, inst->getMaskOption(), false);
         bb->insertAfter(it, movInst);
     }

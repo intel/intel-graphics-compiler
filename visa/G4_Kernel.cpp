@@ -777,7 +777,7 @@ void G4_Kernel::evalAddrExp()
 
                 if (opnd->isAddrExp())
                 {
-                    int val = opnd->asAddrExp()->eval();
+                    int val = opnd->asAddrExp()->eval(*fg.builder);
                     G4_Type ty = opnd->asAddrExp()->getType();
 
                     G4_Imm* imm = fg.builder->createImm(val, ty);

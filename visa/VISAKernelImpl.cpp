@@ -4909,7 +4909,7 @@ int VISAKernelImpl::AppendVISAMiscRawSend(
         CreateGenRawSrcOperand(src);
         CreateGenRawDstOperand(dst);
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
-        dst->g4opnd->asDstRegRegion()->setType(executionSize == EXEC_SIZE_16 ? Type_UW : Type_UD);
+        dst->g4opnd->asDstRegRegion()->setType(*getIRBuilder(), executionSize == EXEC_SIZE_16 ? Type_UW : Type_UD);
 
         status = m_builder->translateVISARawSendInst(g4Pred, executionSize,
             emask, modifiers, exMsgDesc, srcSize, dstSize, desc->g4opnd,
@@ -4978,7 +4978,7 @@ int VISAKernelImpl::AppendVISAMiscRawSends(
         CreateGenRawSrcOperand(src1);
         CreateGenRawDstOperand(dst);
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
-        dst->g4opnd->asDstRegRegion()->setType(Type_UD);
+        dst->g4opnd->asDstRegRegion()->setType(*getIRBuilder(), Type_UD);
 
         status = m_builder->translateVISARawSendsInst(g4Pred, executionSize,
             emask, modifiers, exMsgDesc->g4opnd,

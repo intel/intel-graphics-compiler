@@ -3010,7 +3010,7 @@ bool G4_INST::goodTwoGRFDst(bool& evenSplitDst)
     }
     else
     {
-        evenSplitDst = dst->evenlySplitCrossGRF(execSize);
+        evenSplitDst = dst->evenlySplitCrossGRF(getBuilder(), execSize);
         // check if elements evenly split between two GRFs
         if (evenSplitDst)
         {
@@ -4139,7 +4139,7 @@ bool G4_SrcRegRegion::sameSrcRegRegion(G4_SrcRegRegion& rgn)
 // compute max execution size starting from the current pos.
 // power of two. cross-GRF boundary is allowed if the region is evenly split.
 // cross half-GRF should guaranttee evenly split
-uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCrossGRF, uint16_t &vs, uint16_t &wd, bool &twoGRFsrc)
+uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder& builder, int pos, uint8_t maxExSize, bool allowCrossGRF, uint16_t &vs, uint16_t &wd, bool &twoGRFsrc)
 {
     if (isRightBoundSet() == false)
     {
@@ -4179,7 +4179,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
         uint32_t prevPos = pos * elSize;
         uint8_t numEleInFristGRF = 0, numEleInSecondGRF = 0;
         uint32_t newLB = getLeftBound() + prevPos;
-        bool crossGRF = (newLB / numEltPerGRF<Type_UB>() != getRightBound() / numEltPerGRF<Type_UB>()),
+        bool crossGRF = (newLB / builder.numEltPerGRF<Type_UB>() != getRightBound() / builder.numEltPerGRF<Type_UB>()),
             inFirstGRF = true;
 
         for (int i = pos + 4; i < (pos + maxExSize); i += 4)
@@ -4190,7 +4190,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
             if (crossGRF && inFirstGRF)
             {
                 uint32_t newRB = getLeftBound() + currPos - 1;
-                uint32_t leftGRF = newLB / numEltPerGRF<Type_UB>(), rightGRF = newRB / numEltPerGRF<Type_UB>();
+                uint32_t leftGRF = newLB / builder.numEltPerGRF<Type_UB>(), rightGRF = newRB / builder.numEltPerGRF<Type_UB>();
                 if (leftGRF != rightGRF)
                 {
                     inFirstGRF = false;
@@ -4241,7 +4241,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
         // with pos 8 and maxExSize 8
         // the region is considered single stride in this case, but is not with the original exsize (16),
         // so we can't just multiply stride with type size to get starting offset
-        uint32_t startByte = (getLeftBound() + getByteOffset(pos)) % numEltPerGRF<Type_UB>();
+        uint32_t startByte = (getLeftBound() + getByteOffset(pos)) % builder.numEltPerGRF<Type_UB>();
         int retExecSize = 1;
         int execTypeSize = vStride * getElemSize();
         int exSizes[] = { 32, 16, 8, 4, 2 };
@@ -4252,7 +4252,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
             {
                 continue;
             }
-            if (startByte + (size - 1) * execTypeSize + getElemSize() <= numEltPerGRF<Type_UB>())
+            if (startByte + (size - 1) * execTypeSize + getElemSize() <= builder.numEltPerGRF<Type_UB>())
             {
                 // no GRF crossing (we don't count the padding bytes after the last element)
                 retExecSize = size;
@@ -4260,9 +4260,9 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
             }
             else if (allowCrossGRF)
             {
-                int numEltInFirstGRF = (numEltPerGRF<Type_UB>() - startByte) / execTypeSize;
+                int numEltInFirstGRF = (builder.numEltPerGRF<Type_UB>() - startByte) / execTypeSize;
                 // startByte may not be aligned to exec type size (e.g., r1.1<2;1,0>:b).  We need to increment by 1 in this case
-                if ((numEltPerGRF<Type_UB>() - startByte) % execTypeSize != 0)
+                if ((builder.numEltPerGRF<Type_UB>() - startByte) % execTypeSize != 0)
                 {
                     numEltInFirstGRF += 1;
                 }
@@ -4303,7 +4303,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
         // FIXME: fix other places with this logic.
         unsigned firstPos = getLeftBound() + computeOffset((unsigned)pos);
         unsigned lastPos = getLeftBound() + computeOffset((unsigned)(pos + wd - 1));
-        twoGRFsrc = firstPos / numEltPerGRF<Type_UB>() != lastPos / numEltPerGRF<Type_UB>();
+        twoGRFsrc = firstPos / builder.numEltPerGRF<Type_UB>() != lastPos / builder.numEltPerGRF<Type_UB>();
 
         return (uint8_t)wd;
     }
@@ -4322,7 +4322,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
     uint8_t numEleInFristGRF = 0, numEleInSecondGRF = 0;
     bool crossRow = false;
     uint32_t newLB = getLeftBound() + prevPos;
-    bool crossGRF = (newLB / numEltPerGRF<Type_UB>() != getRightBound() / numEltPerGRF<Type_UB>()),
+    bool crossGRF = (newLB / builder.numEltPerGRF<Type_UB>() != getRightBound() / builder.numEltPerGRF<Type_UB>()),
         inFirstGRF = true;
     bool negVS = (desc->vertStride < desc->horzStride * desc->width);
 
@@ -4364,7 +4364,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
         if (crossGRF && inFirstGRF)
         {
             uint32_t newRB = getLeftBound() + currPos + elSize - 1;
-            uint32_t leftGRF = newLB / numEltPerGRF<Type_UB>(), rightGRF = newRB / numEltPerGRF<Type_UB>();
+            uint32_t leftGRF = newLB / builder.numEltPerGRF<Type_UB>(), rightGRF = newRB / builder.numEltPerGRF<Type_UB>();
             if (leftGRF != rightGRF)
             {
                 inFirstGRF = false;
@@ -4373,7 +4373,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
                 // if number of element in first GRF is not power of 2, or
                 // subregister offset of two GRFs are different and not contiguous(too conservative?)
                 if (pow2Val != maxSize ||
-                    (!contRegion && !(alignToRow && maxSize <= desc->width) && newLB % numEltPerGRF<Type_UB>() != (getLeftBound() + currPos) % numEltPerGRF<Type_UB>()))
+                    (!contRegion && !(alignToRow && maxSize <= desc->width) && newLB % builder.numEltPerGRF<Type_UB>() != (getLeftBound() + currPos) % builder.numEltPerGRF<Type_UB>()))
                 {
                     maxSize = pow2Val;
                     if (wd == 0)
@@ -4787,7 +4787,7 @@ G4_DstRegRegion::G4_DstRegRegion(G4_DstRegRegion &rgn)
     rightBoundSet = rgn.rightBoundSet;
 }
 
-void G4_DstRegRegion::computeLeftBound()
+void G4_DstRegRegion::computeLeftBound(const IR_Builder& builder)
 {
     top_dcl = NULL;
     uint32_t newregoff = regOff, offset = 0;
@@ -4842,8 +4842,8 @@ void G4_DstRegRegion::computeLeftBound()
         byteOffset = left_bound;
     } else if (top_dcl) {
         if (acc == Direct) {
-            left_bound = offset + newregoff * numEltPerGRF<Type_UB>() + subRegOff * TypeSize(type);
-            if (top_dcl->getTotalElems() * top_dcl->getElemSize() >= (int)numEltPerGRF<Type_UB>()) {
+            left_bound = offset + newregoff * builder.numEltPerGRF<Type_UB>() + subRegOff * TypeSize(type);
+            if (top_dcl->getTotalElems() * top_dcl->getElemSize() >= (int)builder.numEltPerGRF<Type_UB>()) {
                 byteOffset = left_bound;
             }
             else {
@@ -4866,12 +4866,13 @@ void G4_DstRegRegion::computeLeftBound()
         byteOffset = left_bound;
     }
 }
+
 //
 // Initialize all values idential to rgn's, except for the base operand.
 // Caller is responsible for allocating base operand and making sure it doesn't
 // mess up the operands' hash table.
 //
-G4_DstRegRegion::G4_DstRegRegion(G4_DstRegRegion &rgn, G4_VarBase *new_base)
+G4_DstRegRegion::G4_DstRegRegion(const IR_Builder& builder, G4_DstRegRegion &rgn, G4_VarBase *new_base)
     : G4_Operand(G4_Operand::dstRegRegion)
 {
     acc = rgn.acc;
@@ -4883,8 +4884,24 @@ G4_DstRegRegion::G4_DstRegRegion(G4_DstRegRegion &rgn, G4_VarBase *new_base)
     writeMask = rgn.writeMask;
     base = new_base;
 
-    computeLeftBound();
+    computeLeftBound(builder);
     rightBoundSet = false;
+}
+
+bool G4_DstRegRegion::isCrossGRFDst(const IR_Builder& builder)
+{
+    if (isNullReg())
+    {
+        return inst != NULL &&
+            (unsigned)inst->getExecSize() * getTypeSize() * horzStride > builder.numEltPerGRF<Type_UB>();
+    }
+    if (isRightBoundSet() == false)
+    {
+        // computeRightBound populates crossGRFDst field
+        getInst()->computeRightBound(this);
+    }
+
+    return (left_bound / builder.numEltPerGRF<Type_UB>()) != right_bound / builder.numEltPerGRF<Type_UB>();
 }
 
 void G4_DstRegRegion::setDstBitVec(uint8_t exec_size)
@@ -5203,9 +5220,9 @@ bool G4_DstRegRegion::isNativePackedRegion() const
     return isNativePackedRowRegion();
 }
 
-bool G4_DstRegRegion::coverGRF(uint16_t numGRF, uint8_t execSize)
+bool G4_DstRegRegion::coverGRF(const IR_Builder& builder, uint16_t numGRF, uint8_t execSize)
 {
-    uint32_t size = numEltPerGRF<Type_UB>() * numGRF;
+    uint32_t size = builder.numEltPerGRF<Type_UB>() * numGRF;
     uint32_t range = getRightBound() - getLeftBound() + 1;
     if (acc == Direct)
     {
@@ -5236,31 +5253,31 @@ bool G4_DstRegRegion::coverGRF(uint16_t numGRF, uint8_t execSize)
 //The destination region is entirely contained in the upper OWord of a register.
 //The destination elements are evenly split between the two OWords of a register.
 
-bool G4_DstRegRegion::goodOneGRFDst(uint8_t execSize)
+bool G4_DstRegRegion::goodOneGRFDst(const IR_Builder& builder, uint8_t execSize)
 {
     if (acc != Direct)
     {
-        return horzStride * TypeSize(type) * execSize == numEltPerGRF<Type_UB>();
+        return horzStride * TypeSize(type) * execSize == builder.numEltPerGRF<Type_UB>();
     }
     uint32_t halfSize = (getRightBound() - getLeftBound() + 1 + (horzStride - 1) * getTypeSize()) / 2;
     uint32_t middle = getLeftBound() + halfSize;
-    if (getLeftBound()/(numEltPerGRF<Type_UB>()/2) == getRightBound()/(numEltPerGRF<Type_UB>()/2) ||
-        (getLeftBound()/(numEltPerGRF<Type_UB>()/2) == (getRightBound()/(numEltPerGRF<Type_UB>()/2) - 1) &&
-        getLeftBound()%(numEltPerGRF<Type_UB>()/2) == middle%(numEltPerGRF<Type_UB>()/2)))
+    if (getLeftBound() / (builder.numEltPerGRF<Type_UB>() / 2) == getRightBound() / (builder.numEltPerGRF<Type_UB>() / 2) ||
+        (getLeftBound() / (builder.numEltPerGRF<Type_UB>() / 2) == (getRightBound() / (builder.numEltPerGRF<Type_UB>() / 2) - 1) &&
+        getLeftBound() % (builder.numEltPerGRF<Type_UB>() / 2) == middle % (builder.numEltPerGRF<Type_UB>() / 2)))
     {
         return true;
     }
     return false;
 }
 
-bool G4_DstRegRegion::goodtwoGRFDst(uint8_t execSize)
+bool G4_DstRegRegion::goodtwoGRFDst(const IR_Builder& builder, uint8_t execSize)
 {
-    return evenlySplitCrossGRF(execSize);
+    return evenlySplitCrossGRF(builder, execSize);
 }
 
 // this is true if dst crosses GRF and has same number of elements in both GRFs
 // (i.e, the middle element has same GRF offset as the start element)
-bool G4_DstRegRegion::evenlySplitCrossGRF(uint8_t execSize)
+bool G4_DstRegRegion::evenlySplitCrossGRF(const IR_Builder& builder, uint8_t execSize)
 {
     // check number of elements in first GRF.
     MUST_BE_TRUE(acc == Direct, "Indirect operand can not cross GRF boundary.");
@@ -5271,8 +5288,8 @@ bool G4_DstRegRegion::evenlySplitCrossGRF(uint8_t execSize)
     }
 
     int halfBytes = left_bound + horzStride * TypeSize(type) * (execSize / 2);
-    int halfOffset = halfBytes % numEltPerGRF<Type_UB>();
-    int startOffset = left_bound % numEltPerGRF<Type_UB>();
+    int halfOffset = halfBytes % builder.numEltPerGRF<Type_UB>();
+    int startOffset = left_bound % builder.numEltPerGRF<Type_UB>();
     return halfOffset == startOffset;
 }
 
@@ -5281,12 +5298,12 @@ bool G4_DstRegRegion::evenlySplitCrossGRF(uint8_t execSize)
  * if the first level dcl is not aligned to GRF or sub register offset of this opnd is not multiple GRFs, including 0,
  * return true.
  */
-bool G4_DstRegRegion::checkGRFAlign() const
+bool G4_DstRegRegion::checkGRFAlign(const IR_Builder& builder) const
 {
     bool GRF_aligned = false;
     unsigned byte_subregoff = subRegOff * TypeSize(type);
 
-    if (byte_subregoff  % numEltPerGRF<Type_UB>() != 0)
+    if (byte_subregoff % builder.numEltPerGRF<Type_UB>() != 0)
     {
         return false;
     }
@@ -5307,18 +5324,18 @@ bool G4_DstRegRegion::checkGRFAlign() const
                     aliasOffset += aliasdcl->getAliasOffset();
                     aliasdcl = aliasdcl->getAliasDeclare();
                 }
-                if (aliasOffset % numEltPerGRF<Type_UB>() != 0)
+                if (aliasOffset % builder.numEltPerGRF<Type_UB>() != 0)
                 {
                     return false;
                 }
 
                 if (aliasdcl->getSubRegAlign() >= GRFALIGN ||
-                    aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= (int)numEltPerGRF<Type_UB>()) {
-                        return true;
+                    aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= (int)builder.numEltPerGRF<Type_UB>()) {
+                    return true;
                 }
             }
             else if (base->asRegVar()->isPhyRegAssigned() &&
-                base->asRegVar()->getByteAddr() % numEltPerGRF<Type_UB>() == 0)
+                base->asRegVar()->getByteAddr(builder) % builder.numEltPerGRF<Type_UB>() == 0)
             {
                     return true;
             }
@@ -5337,7 +5354,7 @@ bool G4_DstRegRegion::checkGRFAlign() const
 // if true, the subreg offset is also returned via offset in bytes
 // Note this always returns false for ARFs (flag, addr, etc.)
 //
-static bool regionHasFixedSubreg(G4_Operand* opnd, uint32_t& offset)
+static bool regionHasFixedSubreg(const IR_Builder& builder, G4_Operand* opnd, uint32_t& offset)
 {
     assert(opnd->isSrcRegRegion() || opnd->isDstRegRegion());
     short subRegOff = 0;
@@ -5380,22 +5397,22 @@ static bool regionHasFixedSubreg(G4_Operand* opnd, uint32_t& offset)
     {
         return false;
     }
-    offset = subregByte % numEltPerGRF<Type_UB>();
+    offset = subregByte % builder.numEltPerGRF<Type_UB>();
 
     return true;
 }
 
 
-bool G4_DstRegRegion::hasFixedSubregOffset(uint32_t& offset)
+bool G4_DstRegRegion::hasFixedSubregOffset(const IR_Builder& builder, uint32_t& offset)
 {
-    return regionHasFixedSubreg(this, offset);
+    return regionHasFixedSubreg(builder, this, offset);
 }
 
 // compute max execution size starting from the current pos.
 // power of two. no cross GRF boundary is allowed now.
 // TODO: cross GRF is allowed in BDW+.
 // cross half-GRF should guaranttee evenly split
-uint8_t G4_DstRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool twoGRFsrc)
+uint8_t G4_DstRegRegion::getMaxExecSize(const IR_Builder& builder, int pos, uint8_t maxExSize, bool twoGRFsrc)
 {
     if (acc != Direct)
     {
@@ -5407,14 +5424,14 @@ uint8_t G4_DstRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool twoGRFs
     uint8_t maxSize = roundDownPow2(maxExSize);
     uint32_t newLB = getLeftBound() + pos * exTypeSize,
         newRB = newLB + (maxExSize - 1) * exTypeSize + elSize - 1;
-    uint32_t leftGRF = newLB / numEltPerGRF<Type_UB>(), rightGRF = newRB / numEltPerGRF<Type_UB>();
+    uint32_t leftGRF = newLB / builder.numEltPerGRF<Type_UB>(), rightGRF = newRB / builder.numEltPerGRF<Type_UB>();
     // pre-BDW does not allow cross GRF dst except full 2-GRF dst.
     // BDW+ allows if elements are evenly split between two GRFs
     bool crossGRF = false;
-    if (isCrossGRFDst())
+    if (isCrossGRFDst(builder))
     {
         // check cross GRF boundary
-        uint8_t byteInFirstGRF = ((leftGRF + 1) * numEltPerGRF<Type_UB>() - newLB);
+        uint8_t byteInFirstGRF = ((leftGRF + 1) * builder.numEltPerGRF<Type_UB>() - newLB);
         uint8_t eleInFirstGRF = byteInFirstGRF / exTypeSize +
             // v20(0,17)<2>:ub and simd size is 16
             ((byteInFirstGRF % exTypeSize != 0) && (byteInFirstGRF % exTypeSize >= elSize) ? 1 : 0);
@@ -5432,7 +5449,7 @@ uint8_t G4_DstRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool twoGRFs
                 // number of elements in first GRF is power of 2 and HS is not used to cross GRF
                 // search into second GRF
                 // if number of elements in second GRF >= numbr of elements in first GRF
-                uint8_t byteInSecondGRF = (newRB + 1) % numEltPerGRF<Type_UB>();
+                uint8_t byteInSecondGRF = (newRB + 1) % builder.numEltPerGRF<Type_UB>();
                 uint8_t eleInSecondGRF = byteInSecondGRF / exTypeSize + (horzStride > 1 ? 1 : 0);
                 if (eleInSecondGRF >= eleInFirstGRF)
                 {
@@ -5446,7 +5463,7 @@ uint8_t G4_DstRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool twoGRFs
     // FIXME: if we know that the new srcs are all in one GRF, we do not have to do the following check.
     if (!crossGRF && twoGRFsrc)
     {
-        uint32_t halfGRFSize = numEltPerGRF<Type_UB>() / 2;
+        uint32_t halfGRFSize = builder.numEltPerGRF<Type_UB>() / 2;
         if (newLB / halfGRFSize != newRB / halfGRFSize)
         {
             uint32_t middlePoint = (newRB + (horzStride - 1) * elSize - newLB + 1) / 2;
@@ -5454,7 +5471,7 @@ uint8_t G4_DstRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool twoGRFs
             if ((middlePoint + newLB) % halfGRFSize != 0)
             {
                 // check size before half-GRF
-                uint8_t sizeBeforeMidGRF = ((leftGRF * numEltPerGRF<Type_UB>() + halfGRFSize) - newLB + exTypeSize - 1) / exTypeSize;
+                uint8_t sizeBeforeMidGRF = ((leftGRF * builder.numEltPerGRF<Type_UB>() + halfGRFSize) - newLB + exTypeSize - 1) / exTypeSize;
                 uint8_t pow2Size = roundDownPow2(sizeBeforeMidGRF);
                 // V36(0,1)<4>:ud is slipt into 2x2
                 if (sizeBeforeMidGRF <= (maxSize >> 1) && pow2Size == sizeBeforeMidGRF)
@@ -6310,13 +6327,13 @@ G4_RegVar::emit(std::ostream& output, bool symbolreg)
             TypeSymbol(getDeclare()->getElemType()) << ")";
     }
 }
-int G4_AddrExp::eval()
+int G4_AddrExp::eval(const IR_Builder& builder)
 {
     int byteAddr = 0;
 
     MUST_BE_TRUE(m_addressedReg->getPhyReg()  != NULL, "No addr takenregister found!");
 
-    byteAddr = m_addressedReg->getByteAddr(); //let's assume the unsigned=>int won't overflow for now.
+    byteAddr = m_addressedReg->getByteAddr(builder); //let's assume the unsigned=>int won't overflow for now.
     byteAddr += m_offset;
 
     return byteAddr;
@@ -6328,7 +6345,7 @@ void G4_AddrExp::emit(std::ostream& output, bool symbolreg)
     output << '+' << m_offset;
 }
 
-void G4_SrcRegRegion::computeLeftBound()
+void G4_SrcRegRegion::computeLeftBound(const IR_Builder& builder)
 {
     top_dcl = NULL;
     unsigned newregoff = regOff, offset = 0;
@@ -6390,8 +6407,8 @@ void G4_SrcRegRegion::computeLeftBound()
     {
         if (acc == Direct)
         {
-            left_bound = offset + newregoff * numEltPerGRF<Type_UB>() + subRegOff * TypeSize(type);
-            if (top_dcl->getTotalElems() * top_dcl->getElemSize() >= (int)numEltPerGRF<Type_UB>())
+            left_bound = offset + newregoff * builder.numEltPerGRF<Type_UB>() + subRegOff * TypeSize(type);
+            if (top_dcl->getTotalElems() * top_dcl->getElemSize() >= (int)builder.numEltPerGRF<Type_UB>())
             {
                 byteOffset = left_bound;
             }
@@ -6610,16 +6627,16 @@ bool G4_SrcRegRegion::isNativePackedRegion() const
     return isNativePackedRowRegion() && desc->vertStride == desc->width;
 }
 
-bool G4_SrcRegRegion::coverTwoGRF()
+bool G4_SrcRegRegion::coverTwoGRF(const IR_Builder& builder)
 {
     uint16_t range = getRightBound() - getLeftBound() + 1;
-    if (range < numEltPerGRF<Type_UB>())
+    if (range < builder.numEltPerGRF<Type_UB>())
         return false;
     if (desc->horzStride > 1)
     {
         range += (desc->horzStride - 1) * TypeSize(type);
     }
-    if (range == numEltPerGRF<Type_UB>() * 2 &&
+    if (range == builder.numEltPerGRF<Type_UB>() * 2 &&
         (desc->vertStride == desc->horzStride * desc->width ||
          desc->isContiguous(getInst()->getExecSize())))
     {
@@ -6629,7 +6646,7 @@ bool G4_SrcRegRegion::coverTwoGRF()
 }
 // Assumption:
 // operand crosses GRF boundary
-bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
+bool G4_SrcRegRegion::evenlySplitCrossGRF(const IR_Builder& builder, uint8_t execSize, bool &sameSubRegOff,
     bool &vertCrossGRF, bool &contRegion, uint8_t &eleInFirstGRF)
 {
     // always return true since all align16 instructions are generated by JIT
@@ -6646,7 +6663,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
     vertCrossGRF = true;
     contRegion = desc->isSingleStride(getInst()->getExecSize());
     MUST_BE_TRUE(acc == Direct, "Indirect operand can not cross GRF boundary.");
-    uint8_t firstSubRegOff = getLeftBound() % numEltPerGRF<Type_UB>();
+    uint8_t firstSubRegOff = getLeftBound() % builder.numEltPerGRF<Type_UB>();
     uint8_t left = firstSubRegOff;
     uint8_t typeSize = (uint8_t)TypeSize(type);
     uint8_t execTySize = (desc->horzStride == 0 ? 1 : desc->horzStride) * typeSize;
@@ -6654,9 +6671,9 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
     uint8_t realRowSize = lastEltEndByte;
     // check number of elements in first GRF.
     eleInFirstGRF = 0;
-    while (left < numEltPerGRF<Type_UB>())
+    while (left < builder.numEltPerGRF<Type_UB>())
     {
-        if (left + realRowSize  <= (int)numEltPerGRF<Type_UB>())
+        if (left + realRowSize  <= (int)builder.numEltPerGRF<Type_UB>())
         {
             // realRowSize is used to handle V12(0,17)<32;8,2>:b
             eleInFirstGRF += desc->width;
@@ -6669,12 +6686,12 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
             eleInFirstGRF++;
             uint8_t newLeft = left + typeSize;
             newLeft += execTySize;
-            while (newLeft < numEltPerGRF<Type_UB>())
+            while (newLeft < builder.numEltPerGRF<Type_UB>())
             {
                 eleInFirstGRF++;
                 newLeft += execTySize;
             }
-            if (newLeft == numEltPerGRF<Type_UB>())
+            if (newLeft == builder.numEltPerGRF<Type_UB>())
             {
                 eleInFirstGRF++;
                 if (eleInFirstGRF % desc->width == 0)
@@ -6700,7 +6717,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
             }
         }
     }
-    uint8_t secondSubRegOff = left % numEltPerGRF<Type_UB>();
+    uint8_t secondSubRegOff = left % builder.numEltPerGRF<Type_UB>();
 
     sameSubRegOff = (firstSubRegOff == secondSubRegOff);
     // TODO: this guaranttees that there are equal number fo elements in each GRF, but not the distribution of elements in each of them.
@@ -6711,11 +6728,11 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
     return false;
 }
 
-bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize)
+bool G4_SrcRegRegion::evenlySplitCrossGRF(const IR_Builder& builder, uint8_t execSize)
 {
     // check number of elements in first GRF.
     MUST_BE_TRUE(acc == Direct, "Indirect operand can not cross GRF boundary.");
-    uint16_t sizeInFirstGRF = numEltPerGRF<Type_UB>() - getLeftBound() % numEltPerGRF<Type_UB>();
+    uint16_t sizeInFirstGRF = builder.numEltPerGRF<Type_UB>() - getLeftBound() % builder.numEltPerGRF<Type_UB>();
     uint16_t vertSize = desc->vertStride * getElemSize();
     uint16_t execTypeSize = desc->horzStride == 0 ? getElemSize() : desc->horzStride * getElemSize();
     uint16_t numEle = (sizeInFirstGRF + execTypeSize - 1)/ execTypeSize;
@@ -6753,12 +6770,12 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize)
  * if the first level dcl is not aligned to GRF or sub register offset of this opnd is not multiple GRFs, including 0,
  * return true.
  */
-bool G4_SrcRegRegion::checkGRFAlign() {
+bool G4_SrcRegRegion::checkGRFAlign(const IR_Builder& builder) {
 
     bool GRF_aligned = false;
     uint32_t byte_subregoff = subRegOff * getTypeSize();
 
-    if (byte_subregoff  % numEltPerGRF<Type_UB>() != 0) {
+    if (byte_subregoff  % builder.numEltPerGRF<Type_UB>() != 0) {
         return false;
     }
 
@@ -6775,17 +6792,17 @@ bool G4_SrcRegRegion::checkGRFAlign() {
                     aliasOffset += aliasdcl->getAliasOffset();
                     aliasdcl = aliasdcl->getAliasDeclare();
                 }
-                if (aliasOffset % numEltPerGRF<Type_UB>() != 0)
+                if (aliasOffset % builder.numEltPerGRF<Type_UB>() != 0)
                 {
                     return false;
                 }
 
                 if (aliasdcl->getSubRegAlign() >= GRFALIGN ||
-                    aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= (int)numEltPerGRF<Type_UB>()) {
+                    aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= (int)builder.numEltPerGRF<Type_UB>()) {
                         return true;
                 }
-            }else if (base->asRegVar()->isPhyRegAssigned() &&
-                base->asRegVar()->getByteAddr() % numEltPerGRF<Type_UB>() == 0) {
+            } else if (base->asRegVar()->isPhyRegAssigned() &&
+                base->asRegVar()->getByteAddr(builder) % builder.numEltPerGRF<Type_UB>() == 0) {
                     return true;
             }
         }
@@ -6802,9 +6819,9 @@ bool G4_SrcRegRegion::checkGRFAlign() {
 // if true, the subreg offset is also returned via offset
 // Note this always returns false for ARFs (flag, addr, etc.)
 //
-bool G4_SrcRegRegion::hasFixedSubregOffset(uint32_t& offset)
+bool G4_SrcRegRegion::hasFixedSubregOffset(const IR_Builder& builder, uint32_t& offset)
 {
-    return regionHasFixedSubreg(this, offset);
+    return regionHasFixedSubreg(builder, this, offset);
 }
 
 /*
@@ -6838,12 +6855,12 @@ void G4_Label::emit(std::ostream& output, bool symbolreg)
     output << label;
 }
 
-unsigned G4_RegVar::getByteAddr() const
+unsigned G4_RegVar::getByteAddr(const IR_Builder& builder) const
 {
     MUST_BE_TRUE(reg.phyReg != NULL, ERROR_UNKNOWN);
     if (reg.phyReg->isGreg())
     {
-        return reg.phyReg->asGreg()->getRegNum() * numEltPerGRF<Type_UB>() +
+        return reg.phyReg->asGreg()->getRegNum() * builder.numEltPerGRF<Type_UB>() +
             reg.subRegOff * decl->getElemSize();
     }
     if (reg.phyReg->isA0())
@@ -6898,14 +6915,20 @@ void G4_INST::computeLeftBoundForImplAcc(G4_Operand* opnd)
         {
             if (opnd->isSrcRegRegion())
             {
-                opnd->asSrcRegRegion()->computeLeftBound();
+                opnd->asSrcRegRegion()->computeLeftBound(getBuilder());
             }
             else if (opnd->isDstRegRegion())
             {
-                opnd->asDstRegRegion()->computeLeftBound();
+                opnd->asDstRegRegion()->computeLeftBound(getBuilder());
             }
         }
     }
+}
+
+bool G4_Operand::crossGRF(const IR_Builder& builder)
+{
+    return getRightBound() / builder.numEltPerGRF<Type_UB>() !=
+           getLeftBound() / builder.numEltPerGRF<Type_UB>();
 }
 
 //
@@ -7556,7 +7579,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
         return;
     }
     uint32_t eltSize = getTypeSize();
-    uint32_t subRegOffset = getLinearizedStart() % numEltPerGRF<Type_UB>();
+    uint32_t subRegOffset = getLinearizedStart() % builder.numEltPerGRF<Type_UB>();
     uint32_t endOffset = subRegOffset + inst->getExecSize() * eltSize;
 
     bool isAlign1Ternary = builder.hasAlign1Ternary() && inst->getNumSrc() == 3;
@@ -7565,7 +7588,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
     {
         // 2-src and 3-src src0/1: normalize region to <1;1,0>
         // 3-src src2: normalize region to <2;2,1> since it only supports horz stride
-        setRegion(isAlign1Ternary && opNum == 2 ? builder.createRegionDesc(2, 2, 1) : builder.getRegionStride1(), true);
+        setRegion(builder, isAlign1Ternary && opNum == 2 ? builder.createRegionDesc(2, 2, 1) : builder.getRegionStride1(), true);
         return;
     }
 
@@ -7574,13 +7597,13 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
         // do <16;16,1> for HF/W if possible
         if (subRegOff == 0 && execSize == 16 && eltSize == 2)
         {
-            setRegion(builder.createRegionDesc(16, 16, 1), true);
+            setRegion(builder, builder.createRegionDesc(16, 16, 1), true);
             return;
         }
     }
 
     // Find a width that does not cross GRF from <8;8,1>, <4;4,1>, to <2;2,1>
-    auto getWidth = [=](unsigned offset, unsigned eltSize) -> unsigned
+    auto getWidth = [=, &builder](unsigned offset, unsigned eltSize) -> unsigned
     {
         unsigned Widths[] = { 8, 4, 2 };
         for (auto w : Widths)
@@ -7588,13 +7611,13 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
             if (w > inst->getExecSize())
                 continue;
 
-            if (w * eltSize > numEltPerGRF<Type_UB>())
+            if (w * eltSize > builder.numEltPerGRF<Type_UB>())
             {
                 // <8;8,1> is not allowed for 64-bit type
                 continue;
             }
 
-            if (endOffset <= numEltPerGRF<Type_UB>() ||
+            if (endOffset <= builder.numEltPerGRF<Type_UB>() ||
                 subRegOffset % (w * eltSize) == 0)
             {
                 return w;
@@ -7609,18 +7632,18 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
 
     if (builder.newTernaryStride() && isAlign1Ternary && (w == 2 || w == 0) && opNum != 2)
     {
-        setRegion(builder.getRegionStride1(), true);
+        setRegion(builder, builder.getRegionStride1(), true);
         return;
     }
 
     if (w)
     {
-        setRegion(builder.createRegionDesc(w, w, 1), true);
+        setRegion(builder, builder.createRegionDesc(w, w, 1), true);
     }
     else if (isAlign1Ternary)
     {
         // binary encoding asserts on <1;1,0> region for 3-src inst, so force change it to <2;2,1>
-        setRegion(builder.createRegionDesc(2, 2, 1), true);
+        setRegion(builder, builder.createRegionDesc(2, 2, 1), true);
     }
 }
 
@@ -8524,14 +8547,60 @@ G4_INST* G4_InstIntrinsic::cloneInst()
         src0, src1, src2, option);
 }
 
+static void computeSpillFillOperandBound(G4_Operand* opnd, unsigned int LB, int numReg, const IR_Builder& builder)
+{
+    if (numReg == 0)
+    {
+        return;
+    }
+
+    // read/write in units of GRF.
+    unsigned RB = std::min(opnd->getTopDcl()->getByteSize(),
+        LB + numReg * builder.numEltPerGRF<Type_UB>()) - 1;
+
+    unsigned NBytes = RB - LB + 1;
+    opnd->setBitVecFromSize(NBytes);
+    opnd->setRightBound(RB);
+}
+
 uint32_t G4_SpillIntrinsic::getOffsetInBytes() const
 {
     return offset * getBuilder().getGRFSize();
 }
 
+void G4_SpillIntrinsic::computeRightBound(G4_Operand* opnd)
+{
+    if (opnd) {
+        uint16_t numReg = 0;
+        if (opnd == getSrc(1))
+        {
+            numReg = asSpillIntrinsic()->getNumRows();
+        }
+        else if (opnd->isSrcRegRegion() && opnd == getSrc(0))
+        {
+            numReg = 1;
+        }
+        computeSpillFillOperandBound(opnd, opnd->left_bound, numReg, getBuilder());
+    }
+}
+
 uint32_t G4_FillIntrinsic::getOffsetInBytes() const
 {
     return offset * getBuilder().getGRFSize();
+}
+
+void G4_FillIntrinsic::computeRightBound(G4_Operand* opnd)
+{
+    if (opnd) {
+        uint16_t numReg = 0;
+        if (opnd == getDst()) {
+            numReg = asFillIntrinsic()->getNumRows();
+        } else if (opnd->isSrcRegRegion() &&
+                   (opnd == getSrc(0) || opnd == getSrc(1))) {
+            numReg = 1;
+        }
+        computeSpillFillOperandBound(opnd, opnd->left_bound, numReg, getBuilder());
+    }
 }
 
 bool RegionDesc::isLegal(unsigned vs, unsigned w, unsigned hs)

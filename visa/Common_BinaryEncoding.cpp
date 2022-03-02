@@ -158,11 +158,11 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
             switch (inst->getSrc(k)->getType())
             {
             case Type_DF:
-                src->setRegion(kernel.fg.builder->createRegionDesc(2, 2, 1));
+                src->setRegion(*kernel.fg.builder, kernel.fg.builder->createRegionDesc(2, 2, 1));
                 break;
             case Type_F:
             case Type_HF:
-                src->setRegion(kernel.fg.builder->createRegionDesc(4, 4, 1));
+                src->setRegion(*kernel.fg.builder, kernel.fg.builder->createRegionDesc(4, 4, 1));
                 break;
             default:
                 MUST_BE_TRUE(false, "Not implemented");
@@ -268,7 +268,7 @@ void BinaryEncodingBase::FixMathInst(G4_INST* inst)
                 region->vertStride == 1 && region->width == 1 && region->horzStride == 0)
             {
                 // rewrite <1;1,0> to <2;2,1> to avoid simulator warning
-                srcRegion->setRegion(kernel.fg.builder->createRegionDesc(2, 2, 1));
+                srcRegion->setRegion(*kernel.fg.builder, kernel.fg.builder->createRegionDesc(2, 2, 1));
             }
         }
     }

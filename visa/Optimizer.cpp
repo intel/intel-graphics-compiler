@@ -3916,13 +3916,13 @@ void Optimizer::localCopyPropagation()
                     {
                         new_src_opnd = src;
                         new_src_opnd->asSrcRegRegion()->setModifier(new_mod);
-                        new_src_opnd->asSrcRegRegion()->setType(propType);
+                        new_src_opnd->asSrcRegRegion()->setType(builder, propType);
                     }
                     else
                     {
                         new_src_opnd = builder.duplicateOperand(src);
                         new_src_opnd->asSrcRegRegion()->setModifier(new_mod);
-                        new_src_opnd->asSrcRegRegion()->setType(propType);
+                        new_src_opnd->asSrcRegRegion()->setType(builder, propType);
                     }
                     useInst->setSrc(new_src_opnd, opndNum - 1);
                 }
@@ -4679,7 +4679,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
             return false;
         };
         if (honorSignedness(inst->getCondMod()->getMod()))
-            inst->getDst()->setType(T2);
+            inst->getDst()->setType(builder, T2);
 
         // update def-use
         // since cmp is deleted, we have to
@@ -7022,7 +7022,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
             // create a new rd for src0
             const RegionDesc *new_rd = builder.getRegionScalar();
-            src->asSrcRegRegion()->setRegion(new_rd);
+            src->asSrcRegRegion()->setRegion(builder, new_rd);
         }
     }
 
@@ -7175,7 +7175,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 newDesc = builder.createRegionDesc(execSize, execSize, 1);
             }
-            inst->getSrc(0)->asSrcRegRegion()->setRegion(newDesc);
+            inst->getSrc(0)->asSrcRegRegion()->setRegion(builder, newDesc);
         }
     }
 
@@ -7231,7 +7231,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             else
             {
                 G4_SrcRegRegion* newSrc = duplicateOperand(src);
-                newSrc->setRegion(rd);
+                newSrc->setRegion(*this, rd);
                 return newSrc;
             }
         }
@@ -7820,7 +7820,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     }
                     // check next inst
                     G4_INST *nextInst = *nextIter;
-                    if (!nextInst->isSend() && nextInst->getDst() && !nextInst->hasNULLDst() && nextInst->getDst()->crossGRF())
+                    if (!nextInst->isSend() && nextInst->getDst() && !nextInst->hasNULLDst() && nextInst->getDst()->crossGRF(builder))
                     {
                         // insert a nop
                         G4_INST *nopInst = builder.createNop(inst->getOption());
@@ -7839,13 +7839,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     G4_DstRegRegion* dst = inst->getDst();
                     if (dst != nullptr && dst->getTypeSize() == 8)
                     {
-                        dst->setType(Type_D);
+                        dst->setType(builder, Type_D);
                     }
 
                     G4_Operand *src0 = inst->getSrc(0);
                     if (src0 != nullptr && src0->getTypeSize() == 8)
                     {
-                        src0->asSrcRegRegion()->setType(Type_D);
+                        src0->asSrcRegRegion()->setType(builder, Type_D);
                     }
 
                     if (inst->isSplitSend())
@@ -7853,7 +7853,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         G4_Operand *src1 = inst->getSrc(1);
                         if (src1 != nullptr && src1->getTypeSize() == 8)
                         {
-                            src1->asSrcRegRegion()->setType(Type_D);
+                            src1->asSrcRegRegion()->setType(builder, Type_D);
                         }
                     }
                 }
@@ -8072,7 +8072,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                                 if (srcRegion->getRegion()->isSingleNonUnitStride(inst->getExecSize(), stride))
                                 {
                                     MUST_BE_TRUE(stride <= 4, "illegal stride for align1 ternary region");
-                                    srcRegion->setRegion(kernel.fg.builder->createRegionDesc(stride * 2, 2, stride));
+                                    srcRegion->setRegion(builder, kernel.fg.builder->createRegionDesc(stride * 2, 2, stride));
                                 }
                             }
                         }
@@ -8247,7 +8247,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             0,
             1,
             Type_UD);
-        R0CopyOpnd->computePReg();
+        R0CopyOpnd->computePReg(builder);
 
         unsigned int options = InstOpt_WriteEnable;
         G4_INST *movInst =
@@ -9498,7 +9498,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // update jump target (src0) to add's dst
         G4_SrcRegRegion* jump_target = builder.createSrcRegRegion(
             new_target_decl, builder.getRegionScalar());
-        jump_target->setType(Type_D);
+        jump_target->setType(builder, Type_D);
         insts.push_back(builder.createJmp(nullptr, jump_target, InstOpt_NoCompact, false));
     }
 
@@ -9613,7 +9613,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 // jmpi r125.0
                 G4_SrcRegRegion* jmpi_target = builder.createSrcRegRegion(
                     ret_reg, builder.getRegionScalar());
-                jmpi_target->setType(Type_D);
+                jmpi_target->setType(builder, Type_D);
                 G4_INST* jmpi = builder.createJmp(nullptr, jmpi_target, InstOpt_NoCompact, false);
 
                 // remove the ret
@@ -10077,7 +10077,7 @@ void Optimizer::recomputeBound(std::unordered_set<G4_Declare*>& declares)
                 if (dst->getTopDcl() != NULL && declares.find(dst->getTopDcl()) != declares.end())
                 {
                     bool isGlobal = builder.kernel.fg.globalOpndHT.isOpndGlobal(dst);
-                    dst->computeLeftBound();
+                    dst->computeLeftBound(builder);
                     inst->computeRightBound(dst);
                     if (isGlobal)
                     {
@@ -10093,7 +10093,7 @@ void Optimizer::recomputeBound(std::unordered_set<G4_Declare*>& declares)
                     if (src->getTopDcl() != NULL && declares.find(src->getTopDcl()) != declares.end())
                     {
                         bool isGlobal = builder.kernel.fg.globalOpndHT.isOpndGlobal(src);
-                        src->computeLeftBound();
+                        src->computeLeftBound(builder);
                         inst->computeRightBound(src);
                         if (isGlobal)
                         {
@@ -11346,13 +11346,13 @@ void Optimizer::legalizeType()
                     if (hasFP64 && builder.noFP64())
                     {
                         assert(!builder.noInt64() && "can't change DF to UQ");
-                        inst->getDst()->setType(Type_UQ);
-                        inst->getSrc(0)->asSrcRegRegion()->setType(Type_UQ);
+                        inst->getDst()->setType(builder, Type_UQ);
+                        inst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UQ);
                     }
                     if (hasInt64 && builder.noInt64() && !builder.noFP64())
                     {
-                        inst->getDst()->setType(Type_DF);
-                        inst->getSrc(0)->asSrcRegRegion()->setType(Type_DF);
+                        inst->getDst()->setType(builder, Type_DF);
+                        inst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_DF);
                     }
                 }
             }
@@ -11518,7 +11518,7 @@ void Optimizer::changeMoveType()
 
     auto changeType = [this](G4_INST* movInst, G4_Type newTy)
     {
-        movInst->getDst()->setType(newTy);
+        movInst->getDst()->setType(builder, newTy);
         auto src0 = movInst->getSrc(0);
         if (src0->isImm())
         {
@@ -11535,7 +11535,7 @@ void Optimizer::changeMoveType()
         }
         else
         {
-            movInst->getSrc(0)->asSrcRegRegion()->setType(newTy);
+            movInst->getSrc(0)->asSrcRegRegion()->setType(builder, newTy);
         }
     };
 
@@ -11703,7 +11703,7 @@ void Optimizer::changeMoveType()
                 canDoubleExecSize = true;
 
                 // convert both <0;1,0> and <1;1,0>
-                src0ASR->setRegion(fg.builder->getRegionStride1());
+                src0ASR->setRegion(builder, fg.builder->getRegionStride1());
 
                 // just create copy of src region to second mov
                 secondMovSrc0 = fg.builder->createSubSrcOperand(src0ASR, 0, 2 * execSize, 1, prevReg->width);
@@ -11724,8 +11724,8 @@ void Optimizer::changeMoveType()
                 // change to stride2 now
                 auto newReg = fg.builder->createRegionDesc(execSize, prevReg->vertStride * 2, prevReg->width, prevReg->horzStride);
 
-                src0ASR->setRegion(newReg);
-                secondMovSrc0->asSrcRegRegion()->setRegion(newReg);
+                src0ASR->setRegion(builder, newReg);
+                secondMovSrc0->asSrcRegRegion()->setRegion(builder, newReg);
             }
 
         }
@@ -11799,10 +11799,10 @@ void Optimizer::changeMoveType()
 
     if (builder.balanceIntFloatMoves())
     {
-        auto dstOrAnySrcIs2GRF = [](G4_INST *inst)
+        auto dstOrAnySrcIs2GRF = [this](G4_INST *inst)
         {
             auto dst = inst->getDst();
-            bool dstIs2GRF = dst && !dst->isNullReg() && dst->isCrossGRFDst();
+            bool dstIs2GRF = dst && !dst->isNullReg() && dst->isCrossGRFDst(builder);
             if (dstIs2GRF)
                 return true;
 
@@ -11811,7 +11811,7 @@ void Optimizer::changeMoveType()
                 auto curSrc = inst->getSrc(i);
                 if (inst->getSrc(i) == nullptr)
                     continue;
-                if (curSrc->isGreg() && curSrc->asSrcRegRegion()->crossGRF())
+                if (curSrc->isGreg() && curSrc->asSrcRegRegion()->crossGRF(builder))
                     return true;
             }
             return false;

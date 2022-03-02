@@ -224,7 +224,7 @@ bool HWConformity::checkSrcCrossGRF(INST_LIST_ITER& iter, G4_BB* bb)
             const RegionDesc* srcRegion = src->getRegion();
             uint16_t vs = srcRegion->vertStride, wd = srcRegion->width, hs = srcRegion->horzStride;
             uint8_t exSize = inst->getExecSize();
-            if (src->getRegAccess() == Direct && src->crossGRF())
+            if (src->getRegAccess() == Direct && src->crossGRF(builder))
             {
                 int elementSize = src->getTypeSize();
                 int startOffset = src->getLeftBound() % kernel.numEltPerGRF<Type_UB>();
@@ -265,7 +265,7 @@ bool HWConformity::checkSrcCrossGRF(INST_LIST_ITER& iter, G4_BB* bb)
                 if (srcRegion->isSingleStride(exSize, stride))
                 {
                     // replace <v;w,h> with <h;1,0>
-                    src->setRegion(builder.createRegionDesc(stride, 1, 0), true);
+                    src->setRegion(builder, builder.createRegionDesc(stride, 1, 0), true);
                 }
                 else
                 {
@@ -280,7 +280,7 @@ bool HWConformity::checkSrcCrossGRF(INST_LIST_ITER& iter, G4_BB* bb)
                 // may be not equipped to deal with them later
                 const RegionDesc* region = src->getRegion();
                 if (!region->isScalar() && !region->isContiguous(inst->getExecSize()) &&
-                    src->crossGRF())
+                    src->crossGRF(builder))
                 {
                     doSplit(false);
                     return true;
@@ -353,7 +353,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
 
     unsigned char execSize = inst->getExecSize();
     bool splitOp = false, goodOneGRFDst = false;
-    bool crossGRFDst = dst && dst->isCrossGRFDst();
+    bool crossGRFDst = dst && dst->isCrossGRFDst(builder);
     bool goodTwoGRFDst = false;
     // for all platforms, if execution size is 8 or less and the destination register is 2, flag updates are not supported.
     bool specialCondForComprInst = (execSize < 8 && dst && dst->getHorzStride() != 1 &&
@@ -434,7 +434,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                         continue;
                     }
 
-                    if (srcs[i]->crossGRF())
+                    if (srcs[i]->crossGRF(builder))
                     {
                         twoGRFSrc[i] = true;
 
@@ -474,8 +474,8 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                                 // check if src is evenly split across the two GRFs
                                 bool sameSubregOff, vertCrossGRF, contRegion;
                                 evenTwoGRFSrc[i] = srcs[i]->asSrcRegRegion()->evenlySplitCrossGRF(
-                                    execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i]);
-                                bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF();
+                                    builder, execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i]);
+                                bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF(builder);
                                 const RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
                                 uint16_t stride = 0;
                                 fullTwoGRFSrc[i] = coverTwoGRF && rd->isSingleStride(inst->getExecSize(), stride) && (stride == 1);
@@ -576,13 +576,13 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                         splitOp = true;
                     }
                 }
-                else if (srcs[i]->crossGRF())
+                else if (srcs[i]->crossGRF(builder))
                 {
                     twoGRFSrc[i] = true;
                     bool sameSubregOff, vertCrossGRF, contRegion;
                     evenTwoGRFSrc[i] = srcs[i]->asSrcRegRegion()->evenlySplitCrossGRF(
-                        execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i]);
-                    bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF();
+                        builder, execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i]);
+                    bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF(builder);
                     const RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
                     uint16_t stride = 0;
                     fullTwoGRFSrc[i] = coverTwoGRF && rd->isSingleStride(inst->getExecSize(), stride) && (stride == 1);
@@ -608,7 +608,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                         else
                         {
                             // if we can't, it may still be in one OWord or evenly split
-                            goodOneGRFDst = dst->goodOneGRFDst(execSize);
+                            goodOneGRFDst = dst->goodOneGRFDst(builder, execSize);
                         }
                     }
 
@@ -620,7 +620,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                     // 2. Same subregister number in the two GRFs(occupy whole two GRFs) if dst is two-GRF.
                     if (!evenTwoGRFSrc[i] ||
                         (((goodTwoGRFDst || (goodOneGRFDst && !contRegion)) && !sameSubregOff) ||
-                        (goodTwoGRFDst && IS_WTYPE(srcs[i]->getType()) && !(srcs[i]->asSrcRegRegion()->checkGRFAlign() && coverTwoGRF))))
+                        (goodTwoGRFDst && IS_WTYPE(srcs[i]->getType()) && !(srcs[i]->asSrcRegRegion()->checkGRFAlign(builder) && coverTwoGRF))))
                     {
                         splitOp = true;
                         // compensation OPT
@@ -1064,7 +1064,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
                 continue;
             }
             bool twoGRFsrc = false;
-            opndExSize[j+1] = srcs[j]->asSrcRegRegion()->getMaxExecSize(i, currExSize, canSrcCrossGRF, vs[j], wd[j], twoGRFsrc);
+            opndExSize[j+1] = srcs[j]->asSrcRegRegion()->getMaxExecSize(builder, i, currExSize, canSrcCrossGRF, vs[j], wd[j], twoGRFsrc);
 
             if (opndExSize[j + 1] > 8 && rule4_11)
             {
@@ -1080,7 +1080,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
 
         if (dst && !nullDst)
         {
-            opndExSize[0] = dst->getMaxExecSize(i, currExSize, crossGRFsrc);
+            opndExSize[0] = dst->getMaxExecSize(builder, i, currExSize, crossGRFsrc);
 
             if (opndExSize[0] > 8 && rule4_11)
                 opndExSize[0] = 8;
@@ -1531,8 +1531,8 @@ void HWConformity::moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t num
 
     if (def_inst && def_inst->getDst()->getType() == tmpType &&
         (def_inst->getExecSize() == execSize) &&
-        def_inst->getDst()->coverGRF(numGRF, execSize) &&
-        def_inst->getDst()->checkGRFAlign() &&
+        def_inst->getDst()->coverGRF(builder, numGRF, execSize) &&
+        def_inst->getDst()->checkGRFAlign(builder) &&
         (bb->isAllLaneActive() || def_inst->isWriteEnableInst()))
     {
 

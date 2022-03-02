@@ -29,7 +29,7 @@ static G4_Declare* getInputDeclare(
     for (auto dcl : declares)
     {
         MUST_BE_TRUE(dcl->isInput() && dcl->getAliasDeclare() == NULL, "declare must be root input variable");
-        if (dcl->getRegVar()->getByteAddr() == input->getRegVar()->getByteAddr() &&
+        if (dcl->getRegVar()->getByteAddr(builder) == input->getRegVar()->getByteAddr(builder) &&
             dcl->getElemType() == eltType &&
             dcl->getTotalElems() >= bundleSize)
         {
@@ -244,7 +244,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
 
                 if (sameInput)
                 {
-                    src->setRegion(builder.getRegionStride1());
+                    src->setRegion(builder, builder.getRegionStride1());
                 }
                 else
                 {
@@ -264,7 +264,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             }
             else
             {
-                src->setRegion(builder.getRegionStride1());
+                src->setRegion(builder, builder.getRegionStride1());
             }
         }
         else
@@ -478,9 +478,9 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion* dst, const IR_Builder& builder)
     }
     else if (prevDstDcl->isInput() && dstDcl->isInput())
     {
-        unsigned firstDstGRFOffset = firstDst->getLeftBound() + firstDst->getTopDcl()->getRegVar()->getByteAddr();
-        unsigned prevDstGRFOffset = prevDst->getLeftBound() + prevDstDcl->getRegVar()->getByteAddr();
-        unsigned dstGRFOffset = dst->getLeftBound() + dstDcl->getRegVar()->getByteAddr();
+        unsigned firstDstGRFOffset = firstDst->getLeftBound() + firstDst->getTopDcl()->getRegVar()->getByteAddr(builder);
+        unsigned prevDstGRFOffset = prevDst->getLeftBound() + prevDstDcl->getRegVar()->getByteAddr(builder);
+        unsigned dstGRFOffset = dst->getLeftBound() + dstDcl->getRegVar()->getByteAddr(builder);
         if (!checkContiguous(prevDstGRFOffset, dstGRFOffset, dst->getType(), dstPattern, firstDstGRFOffset, builder))
         {
             return false;
@@ -627,9 +627,9 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos, const IR_Builder& 
         }
         else if (prevSrcDcl->isInput() && srcDcl->isInput())
         {
-            unsigned firstSrcGRFOffset = firstSrc->getLeftBound() + firstSrc->getTopDcl()->getRegVar()->getByteAddr();
-            unsigned prevSrcGRFOffset = prevSrc->getLeftBound() + prevSrcDcl->getRegVar()->getByteAddr();
-            unsigned srcGRFOffset = src->getLeftBound() + srcDcl->getRegVar()->getByteAddr();
+            unsigned firstSrcGRFOffset = firstSrc->getLeftBound() + firstSrc->getTopDcl()->getRegVar()->getByteAddr(builder);
+            unsigned prevSrcGRFOffset = prevSrc->getLeftBound() + prevSrcDcl->getRegVar()->getByteAddr(builder);
+            unsigned srcGRFOffset = src->getLeftBound() + srcDcl->getRegVar()->getByteAddr(builder);
             if (!checkContiguous(prevSrcGRFOffset, srcGRFOffset, src->getType(), srcPattern[srcPos], firstSrcGRFOffset, builder))
             {
                 return false;

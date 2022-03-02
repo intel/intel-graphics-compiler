@@ -326,6 +326,7 @@ int IR_Builder::translateVISAOwordLoadInst(
                 new_SubRegOff = (dstOpnd->asDstRegRegion()->getSubRegOff() * dstOpnd->getTypeSize()) / TypeSize(Type_W);
             }
             G4_DstRegRegion new_dst(
+                *this,
                 dstOpnd->getRegAccess(),
                 dstOpnd->asDstRegRegion()->getBase(),
                 dstOpnd->asDstRegRegion()->getRegOff(),
@@ -2595,7 +2596,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     desc = setOwordForDesc(desc, numOword);
 
     G4_ExecSize sendExecSize {FIX_OWORD_SEND_EXEC_SIZE(numOword)};
-    dst->setType(Type_UD);
+    dst->setType(*this, Type_UD);
 
     createSendInst(
         NULL, dst, src, 1, rspLength, sendExecSize, desc,
@@ -2658,7 +2659,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     if (src->getElemSize() < TypeSize(Type_UD))
     {
         // use D for size computation. Src is guaranteed to be GRF-aligend per vISA spec
-        src->setType(Type_UD);
+        src->setType(*this, Type_UD);
     }
     sources[len].opnd = src;
 
@@ -2857,12 +2858,12 @@ int IR_Builder::translateVISASVMScatterWriteInst(
     if ((blockSize == SVM_BLOCK_TYPE_BYTE) &&
         (numBlocks == SVM_BLOCK_NUM_1 || numBlocks == SVM_BLOCK_NUM_2) &&
         (TypeSize(srcType) != 4))
-        src->setType(Type_UD);
+        src->setType(*this, Type_UD);
 
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
     // set the type back in case we changed it for preparePayload
-    src->setType(srcType);
+    src->setType(*this, srcType);
 
     unsigned desc = 0;
     desc |= getA64BTI();

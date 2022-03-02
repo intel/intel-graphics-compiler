@@ -213,7 +213,7 @@ int IR_Builder::translateVISACFSymbolInst(
     {
         // Relocation for runtime-calculated private memory size
         auto* privateMemPatch = createRelocImm(Type_UD);
-        dst->setType(Type_UD);
+        dst->setType(*this, Type_UD);
         G4_INST* mov = createMov(g4::SIMD1, dst, privateMemPatch, InstOpt_WriteEnable, true);
         RelocationEntry::createRelocation(kernel, *mov, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
     }

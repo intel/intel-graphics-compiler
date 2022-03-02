@@ -788,7 +788,7 @@ int IR_Builder::translateVISASamplerVAGenericInst(
         /// Reuse for non-constant exec/control modes.
         if (mmfMode && !mmfMode->isImm())
         {
-            G4_DstRegRegion  media_payload_dst(Direct, dcl1->getRegVar(), 0, 7, 1, Type_UD);
+            G4_DstRegRegion  media_payload_dst(*this, Direct, dcl1->getRegVar(), 0, 7, 1, Type_UD);
             mediaPayld_var = createSrc(dcl1->getRegVar(), 0, 7, getRegionScalar(), Type_UD);
             createBinOp(G4_shl, g4::SIMD1,
                 createDstRegRegion(media_payload_dst), mmfMode, createImm(23, Type_UD), InstOpt_WriteEnable, true);
@@ -1343,12 +1343,12 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         1,
         1,
         Type_UD);
-    G4_SrcRegRegion temp_src(Mod_src_undef,Direct,dcl_temp->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
-    G4_DstRegRegion temp_dst(Direct, dcl_temp->getRegVar(), 0, 0,1, Type_UD);
+    G4_SrcRegRegion temp_src(*this, Mod_src_undef,Direct,dcl_temp->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+    G4_DstRegRegion temp_dst(*this, Direct, dcl_temp->getRegVar(), 0, 0,1, Type_UD);
 
     //creating a src and for m1.0
-    G4_SrcRegRegion m1_0_src(Mod_src_undef,Direct,dcl_payload_UD->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
-    G4_DstRegRegion m1_0_dst(Direct, dcl_payload_UD->getRegVar(), 0, 0, 1, Type_UD);
+    G4_SrcRegRegion m1_0_src(*this, Mod_src_undef,Direct,dcl_payload_UD->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+    G4_DstRegRegion m1_0_dst(*this, Direct, dcl_payload_UD->getRegVar(), 0, 0, 1, Type_UD);
 
     G4_Operand * shift_immed = NULL;
 

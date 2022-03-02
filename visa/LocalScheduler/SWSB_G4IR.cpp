@@ -5957,7 +5957,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     (builder.hasSrc1ReadSuppressionIssue() &&
                         distanceHonourInstruction(curInst) &&
                         curOpnd == Opnd_src1 && curInst->getSrc(1) && curInst->getSrc(1)->asSrcRegRegion() &&
-                        curInst->getSrc(1)->asSrcRegRegion()->crossGRF()) ||
+                        curInst->getSrc(1)->asSrcRegRegion()->crossGRF(builder)) ||
                         (builder.hasRMWReadSuppressionIssue() && (liveInst->isMathPipeInst()))))
                 {
                     hasOverlap = curFootprint->hasGRFGrainOverlap(liveFootprint);

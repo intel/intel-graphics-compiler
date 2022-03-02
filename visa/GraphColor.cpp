@@ -7192,7 +7192,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                     {
                         if (dst->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_GRF)
                         {
-                            if (dst->isCrossGRFDst())
+                            if (dst->isCrossGRFDst(builder))
                             {
                                 dstSpillRegSize = 2;
                             }
@@ -7247,7 +7247,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                     {
                         if (src->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_GRF)
                         {
-                            if (src->asSrcRegRegion()->crossGRF())
+                            if (src->asSrcRegRegion()->crossGRF(builder))
                             {
                                 srcFillRegSize += 2;
                             }
@@ -12223,7 +12223,7 @@ void GlobalRA::computePhyReg()
                     currDstRegion->getBase()->asRegVar()->getDeclare()->getGRFBaseOffset() == 0)
                 {
                     // Need to compute linearized offset only once per dcl
-                    currDstRegion->computePReg();
+                    currDstRegion->computePReg(builder);
                 }
             }
 
@@ -12242,7 +12242,7 @@ void GlobalRA::computePhyReg()
                     curr_src->asSrcRegRegion()->getBase()->isRegVar() &&
                     curr_src->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getGRFBaseOffset() == 0)
                 {
-                    curr_src->asSrcRegRegion()->computePReg();
+                    curr_src->asSrcRegRegion()->computePReg(builder);
                 }
             }
         }

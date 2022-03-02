@@ -509,7 +509,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             G4_SrcRegRegion newRgn(*(opnd->asSrcRegRegion()));
 
             newRgn.setInst(inst);
-            newRgn.computeLeftBound();
+            newRgn.computeLeftBound(*kernel.fg.builder);
             newRgn.computeRightBound(execSize);
 
             if (inst->isPseudoUse())
@@ -606,7 +606,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
         {
             G4_DstRegRegion newRgn(*(opnd->asDstRegRegion()));
             newRgn.setInst(inst);
-            newRgn.computeLeftBound();
+            newRgn.computeLeftBound(*kernel.fg.builder);
             newRgn.computeRightBound(execSize);
 
             if (inst->isPseudoKill())

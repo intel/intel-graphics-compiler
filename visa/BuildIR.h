@@ -981,7 +981,7 @@ public:
         G4_Type        ty,
         G4_AccRegSel regSel = ACC_UNDEFINED)
     {
-        G4_SrcRegRegion* rgn = new (mem)G4_SrcRegRegion(m, a, b, roff, sroff, rd, ty, regSel);
+        G4_SrcRegRegion* rgn = new (mem)G4_SrcRegRegion(*this, m, a, b, roff, sroff, rd, ty, regSel);
         return rgn;
     }
 
@@ -998,7 +998,7 @@ public:
         G4_Type ty,
         short immAddrOff)
     {
-        G4_SrcRegRegion* rgn = new (mem) G4_SrcRegRegion(m, IndirGRF, b, roff, sroff, rd, ty, ACC_UNDEFINED);
+        G4_SrcRegRegion* rgn = new (mem) G4_SrcRegRegion(*this, m, IndirGRF, b, roff, sroff, rd, ty, ACC_UNDEFINED);
         rgn->setImmAddrOff(immAddrOff);
         return rgn;
     }
@@ -1164,7 +1164,7 @@ public:
         G4_Type        ty,
         G4_AccRegSel regSel = ACC_UNDEFINED)
     {
-        G4_DstRegRegion* rgn = new (mem) G4_DstRegRegion(a, b, roff, sroff, hstride, ty, regSel);
+        G4_DstRegRegion* rgn = new (mem) G4_DstRegRegion(*this, a, b, roff, sroff, hstride, ty, regSel);
         return rgn;
     }
 

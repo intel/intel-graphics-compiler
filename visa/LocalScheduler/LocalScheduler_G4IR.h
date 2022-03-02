@@ -699,7 +699,7 @@ public:
 
         auto dst = inst->getDst();
         // 1, dst cannot be null and cannot cross GRF boundary
-        if (!dst || dst->asDstRegRegion()->isCrossGRFDst())
+        if (!dst || dst->asDstRegRegion()->isCrossGRFDst(inst->getBuilder()))
         {
             return false;
         }

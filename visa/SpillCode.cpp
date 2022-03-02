@@ -237,7 +237,7 @@ void SpillManager::replaceSpilledDst(G4_BB* bb,
         if (dst->getRegAccess() == Direct)
         {
 
-            G4_DstRegRegion rgn(*dst, spDcl->getRegVar()); // using spDcl as new base
+            G4_DstRegRegion rgn(builder, *dst, spDcl->getRegVar()); // using spDcl as new base
             if (rgn.getHorzStride() == UNDEFINED_SHORT &&
                 dst->isFlag())
             {
@@ -286,7 +286,7 @@ void SpillManager::replaceSpilledDst(G4_BB* bb,
                     tmpDcl->getNumElems());
             }
 
-            G4_DstRegRegion rgn(*dst, tmpDcl->getRegVar()); // using tmpDcl as new base
+            G4_DstRegRegion rgn(builder, *dst, tmpDcl->getRegVar()); // using tmpDcl as new base
             G4_DstRegRegion* d = match_found ? builder.createDstWithNewSubRegOff(&rgn, 0) : builder.createDstRegRegion(rgn);
             inst->setDest(d);
 
