@@ -285,6 +285,13 @@ namespace IGC
             CVariable* flatImageBaseoffset, CVariable* flatImageWidth,
             CVariable* flatImageHeight, CVariable* flatImagePitch);
         void NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1);
+        void LSC_TypedReadWrite(
+            LSC_OP subOp, ResourceDescriptor* resource,
+            CVariable* pU, CVariable* pV, CVariable* pR, CVariable* pLOD,
+            CVariable* pSrcDst,
+            unsigned elemSize, unsigned numElems,
+            LSC_ADDR_SIZE addr_size, int chMask);
+
         void ScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteGather(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteScatter(CVariable* src, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);

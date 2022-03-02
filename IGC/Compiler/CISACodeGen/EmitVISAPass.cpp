@@ -15281,7 +15281,16 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         m_encoder->SetSimdSize(nativeDispatchMode);
         m_encoder->SetPredicate(nullptr);
         m_encoder->SetNoMask();
-        m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst, writeMask.getEM());
+
+        if (doLSC)
+        {
+            m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst, 4 * 8,
+                numLanes(nativeDispatchMode), LSC_ADDR_SIZE_32b, writeMask.getEM());
+        }
+        else
+        {
+            m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst, writeMask.getEM());
+        }
 
         m_encoder->Push();
 
@@ -15316,7 +15325,16 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         if (!needsSplit)
         {
             m_encoder->SetPredicate(flag);
-            m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, m_destination, writeMask.getEM());
+
+            if (doLSC)
+            {
+                m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, m_destination, 4 * 8,
+                    numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM());
+            }
+            else
+            {
+                m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, m_destination, writeMask.getEM());
+            }
 
             m_encoder->Push();
         }
@@ -15339,7 +15357,17 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
                 m_encoder->SetSrcSubVar(1, i);
                 m_encoder->SetSrcSubVar(2, i);
                 m_encoder->SetPredicate(flag);
-                m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst[i], writeMask.getEM());
+
+                if (doLSC)
+                {
+                    m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst[i], 4 * 8,
+                        numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM());
+                }
+                else
+                {
+                    m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst[i], writeMask.getEM());
+                }
+
                 m_encoder->Push();
             }
         }

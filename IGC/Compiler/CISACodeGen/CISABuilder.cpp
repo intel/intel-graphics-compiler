@@ -8201,6 +8201,69 @@ namespace IGC
 
     }
 
+    void CEncoder::LSC_TypedReadWrite(
+        LSC_OP subOp,
+        ResourceDescriptor* resource,
+        CVariable* pU,
+        CVariable* pV,
+        CVariable* pR,
+        CVariable* pLOD,
+        CVariable* pSrcDst,
+        unsigned elemSize, // in bits
+        unsigned numElems,
+        LSC_ADDR_SIZE addr_size,
+        int  chMask)
+    {
+        // DG2: SIMD8, PVC: SIMD16
+        VISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
+        VISA_RawOpnd* pSrc = nullptr;
+        VISA_RawOpnd* pDst = nullptr;
+
+        if (subOp == LSC_STORE_QUAD)
+        {
+            pSrc = GetRawSource(pSrcDst, 0);
+        }
+        else
+        {
+            pDst = GetRawSource(pSrcDst, 0);
+        }
+        // TODO unify the way we calculate offset for raw sources, maybe we shouldn't use offset at all
+        VISA_RawOpnd* pUOffset = GetRawSource(pU, m_encoderState.m_srcOperand[0].subVar * getGRFSize());
+        VISA_RawOpnd* pVOffset = GetRawSource(pV, m_encoderState.m_srcOperand[1].subVar * getGRFSize());
+        VISA_RawOpnd* pROffset = GetRawSource(pR, m_encoderState.m_srcOperand[2].subVar * getGRFSize());
+        VISA_RawOpnd* pLODOffset = GetRawSource(pLOD, m_encoderState.m_srcOperand[3].subVar * getGRFSize());
+
+        VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
+        IGC_ASSERT(m_encoderState.m_dstOperand.subVar == 0);
+
+        VISA_EMask_Ctrl mask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
+        VISA_VectorOpnd* globalOffsetOpnd = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
+        LSC_CACHE_OPTS cache{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+        LSC_DATA_SHAPE dataShape{};
+        dataShape.size = LSC_GetElementSize(elemSize);
+        dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
+        dataShape.elems = LSC_GetElementNum(numElems);
+        dataShape.chmask = chMask;
+
+        V(vKernel->AppendVISALscTypedInst(
+            subOp,
+            predOpnd,
+            execSize,
+            mask,
+            cache,
+            getLSCAddrType(resource),
+            addr_size,
+            dataShape,
+            globalOffsetOpnd,
+            pDst,
+            pUOffset,
+            pVOffset,
+            pROffset,
+            pLODOffset,
+            pSrc,
+            nullptr));
+    }
+
     void CEncoder::ReportCompilerStatistics(VISAKernel* pMainKernel, SProgramOutput* pOutput)
     {
         CompilerStats compilerStats;
