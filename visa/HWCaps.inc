@@ -291,7 +291,7 @@ SPDX-License-Identifier: MIT
     bool hasNFType() const
     {
         return getPlatform() >= GENX_ICLLP &&
-               getPlatformGeneration() != PlatformGen::XE;
+               getPlatformGeneration() < PlatformGen::XE;
     }
 
     void getSSIDBits(uint32_t& width, uint32_t& start) const
