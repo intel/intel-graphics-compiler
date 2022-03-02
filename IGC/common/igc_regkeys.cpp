@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include <mutex>
 #include <algorithm>
 #include "Probe/Assertion.h"
+#include "common/Types.hpp"
 
 // path for IGC registry keys
 #define IGC_REGISTRY_KEY "SOFTWARE\\INTEL\\IGFX\\IGC"
@@ -334,12 +335,34 @@ static bool ReadIGCEnv(
             if( size >= sizeof( unsigned int ) )
             {
                 // Try integer conversion
-                char* pStopped = nullptr;
-                unsigned int *puVal = (unsigned int *)pValue;
-                *puVal = strtoul(envVal, &pStopped, 0);
-                if( pStopped == envVal + strlen(envVal) )
+                if (std::strstr(envVal, "0b") == envVal || std::strstr(envVal, "0B") == envVal)
                 {
-                    return true;
+                    // Example: 0b0110'11'01
+                    std::string str(envVal + 2); // -> 0110'11'01
+                    // Remove optional C++14 digit separators and squeeze the result
+                    str.erase(std::remove(str.begin(), str.end(), '\''), str.end()); // -> 01101101
+                    std::size_t pos = 0;
+                    int val = std::stoi(str, &pos, 2);
+                    if (pos > 0 && pos == str.size())
+                    {
+                        *reinterpret_cast<unsigned int*>(pValue) = int_cast<unsigned int>(val);
+                        return true;
+                    }
+                    else
+                    {
+                        // Like "0b", "0b1EFF", "0b''"
+                        IGC_ASSERT_MESSAGE(0, "Invalid binary literal.");
+                    }
+                }
+                else
+                {
+                    char* pStopped = nullptr;
+                    unsigned int* puVal = (unsigned int*)pValue;
+                    *puVal = strtoul(envVal, &pStopped, 0);
+                    if (pStopped == envVal + std::strlen(envVal))
+                    {
+                        return true;
+                    }
                 }
             }
 
@@ -590,7 +613,7 @@ static void setRegkeyFromOption(
     {
         return;
     }
-    size_t pos = sPos + strlen(regkeyName);
+    size_t pos = sPos + std::strlen(regkeyName);
     pos = (pos < optionValue.size()) ? pos : std::string::npos;
     std::string vstring, exactNameStr;
     if(pos != std::string::npos && optionValue.at(pos) == '=')
@@ -836,7 +859,7 @@ static void LoadFromRegKeyOrEnvVarOrOptions(const std::string& options = "", boo
                             char* pStopped = nullptr;
                             unsigned int* puValFromOptions = (unsigned int*)pValueFromOptions;
                             *puValFromOptions = strtoul(envValFromOptions, &pStopped, 0);
-                            if (pStopped == envValFromOptions + strlen(envValFromOptions))
+                            if (pStopped == envValFromOptions + std::strlen(envValFromOptions))
                             {
                                 valueIsInt = true;
                             }
