@@ -40,9 +40,14 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMet
     initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
 
     g_metrics = metrics;
+    instrList->CorrelatedValuePropagationEnable = false;
+    instrList->hasLoop = false;
+    instrList->hasMultipleBB = false;
     instrList->hasCmp = false;
     instrList->hasSwitch = false;
     instrList->hasPhi = false;
+    instrList->hasLoadStore = false;
+    instrList->hasCall = false;
     instrList->hasIndirectCall = false;
     instrList->hasInlineAsm = false;
     instrList->hasInlineAsmPointerAccess = false;
@@ -64,31 +69,24 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMet
     instrList->hasFRem = false;
     instrList->psHasSideEffect = false;
     instrList->hasDebugInfo = false;
-    instrList->numCall = 0;
-    instrList->numAtomics = 0;
-    instrList->numBarrier = 0;
-    instrList->numDiscard = 0;
-    instrList->numTypedRead = 0;
-    instrList->numTypedwrite = 0;
-    instrList->numLoadStore = 0;
+    instrList->hasAtomics = false;
+    instrList->hasBarrier = false;
+    instrList->hasDiscard = false;
+    instrList->hasTypedRead = false;
+    instrList->hasTypedwrite = false;
     instrList->mayHaveIndirectOperands = false;
     instrList->mayHaveIndirectResources = false;
     instrList->hasUniformAssumptions = false;
-    instrList->numWaveIntrinsics = 0;
+    instrList->hasWaveIntrinsics = false;
     instrList->numPsInputs = 0;
     instrList->numSample = 0;
     instrList->numBB = 0;
     instrList->numLoopInsts = 0;
     instrList->numOfLoop = 0;
     instrList->numInsts = 0;
-    instrList->numAllInsts = 0;
     instrList->numAllocaInsts = 0;
     instrList->numGlobalInsts = 0;
     instrList->numLocalInsts = 0;
-    instrList->numDouble = 0;
-    instrList->RTWriteMask = 0;
-    instrList->numStencilOutput = 0;
-    instrList->numDualBlendSource = 0;
     instrList->sampleCmpToDiscardOptimizationPossible = false;
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
     instrList->hasPullBary = false;
@@ -120,15 +118,10 @@ bool CheckInstrTypes::runOnFunction(Function& F)
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     if (g_metrics != nullptr)
         g_metrics->CollectLoops(LI);
+    g_InstrTypes->hasLoop |= !(LI->empty());
 
     // check if module has debug info
     g_InstrTypes->hasDebugInfo = F.getParent()->getNamedMetadata("llvm.dbg.cu") != nullptr;
-
-    for (auto BI = F.begin(), BE = F.end(); BI != BE; BI++)
-    {
-        g_InstrTypes->numBB++;
-        g_InstrTypes->numAllInsts += BI->size();
-    }
 
     visit(F);
     SetLoopFlags(F);
@@ -169,18 +162,13 @@ void CheckInstrTypes::visitInstruction(llvm::Instruction& I)
     {
         g_InstrTypes->hasGenericAddressSpacePointers = true;
     }
-
-    if (I.getType()->isDoubleTy())
-    {
-        g_InstrTypes->numDouble++;
-    }
 }
 
 void CheckInstrTypes::visitCallInst(CallInst& C)
 {
     g_InstrTypes->numInsts++;
     checkGlobalLocal(C);
-    g_InstrTypes->numCall++;
+    g_InstrTypes->hasCall = true;
 
     Function* calledFunc = C.getCalledFunction();
 
@@ -249,26 +237,26 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_floatatomicraw:
         case GenISAIntrinsic::GenISA_floatatomicrawA64:
         case GenISAIntrinsic::GenISA_floatatomicstructured:
-            g_InstrTypes->numAtomics++;
+            g_InstrTypes->hasAtomics = true;
             break;
         case GenISAIntrinsic::GenISA_discard:
-            g_InstrTypes->numDiscard++;
+            g_InstrTypes->hasDiscard = true;
             break;
         case GenISAIntrinsic::GenISA_WaveShuffleIndex:
             g_InstrTypes->mayHaveIndirectOperands = true;
-            g_InstrTypes->numWaveIntrinsics++;
+            g_InstrTypes->hasWaveIntrinsics = true;
             break;
         case GenISAIntrinsic::GenISA_threadgroupbarrier:
-            g_InstrTypes->numBarrier++;
+            g_InstrTypes->hasBarrier = true;
             break;
         case GenISAIntrinsic::GenISA_is_uniform:
             g_InstrTypes->hasUniformAssumptions = true;
             break;
         case GenISAIntrinsic::GenISA_typedread:
-            g_InstrTypes->numTypedRead++;
+            g_InstrTypes->hasTypedRead = true;
             break;
         case GenISAIntrinsic::GenISA_typedwrite:
-            g_InstrTypes->numTypedwrite++;
+            g_InstrTypes->hasTypedwrite = true;
             break;
         case GenISAIntrinsic::GenISA_WaveAll:
         case GenISAIntrinsic::GenISA_WaveBallot:
@@ -278,7 +266,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_WaveClustered:
         case GenISAIntrinsic::GenISA_QuadPrefix:
         case GenISAIntrinsic::GenISA_simdShuffleDown:
-            g_InstrTypes->numWaveIntrinsics++;
+            g_InstrTypes->hasWaveIntrinsics = true;
             break;
         case GenISAIntrinsic::GenISA_DCL_inputVec:
         case GenISAIntrinsic::GenISA_DCL_ShaderInputVec:
@@ -311,20 +299,6 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             }
             break;
         }
-        case GenISAIntrinsic::GenISA_RTDualBlendSource:
-            g_InstrTypes->numDualBlendSource++;
-            break;
-        case GenISAIntrinsic::GenISA_RTWrite:
-            if (cast<RTWritIntrinsic>(CI)->getRTIndexImm() != -1)
-            {
-                g_InstrTypes->RTWriteMask |= 1 << cast<RTWritIntrinsic>(CI)->getRTIndexImm();
-            }
-            if (cast<RTWritIntrinsic>(CI)->hasStencil())
-            {
-                g_InstrTypes->numStencilOutput++;
-            }
-
-            break;
         default:
             break;
         }
@@ -412,7 +386,7 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
 {
     g_InstrTypes->numInsts++;
     checkGlobalLocal(I);
-    g_InstrTypes->numLoadStore++;
+    g_InstrTypes->hasLoadStore = true;
     uint as = I.getPointerAddressSpace();
     switch (as)
     {
@@ -468,7 +442,7 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
 {
     g_InstrTypes->numInsts++;
     checkGlobalLocal(I);
-    g_InstrTypes->numLoadStore++;
+    g_InstrTypes->hasLoadStore = true;
     uint as = I.getPointerAddressSpace();
     if (as != ADDRESS_SPACE_PRIVATE)
     {

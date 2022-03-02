@@ -118,7 +118,7 @@ bool BlendToDiscard::runOnFunction(Function& F)
     IGC_ASSERT(m_cgCtx->type == ShaderType::PIXEL_SHADER);
 
     std::vector<int>& blendOpt = m_modMD->psInfo.blendOptimizationMode;
-    if (!blendOpt.size() || m_cgCtx->m_instrTypes.numDiscard)
+    if (!blendOpt.size() || m_cgCtx->m_instrTypes.hasDiscard)
     {
         return false;
     }

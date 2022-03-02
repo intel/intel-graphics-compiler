@@ -273,9 +273,14 @@ namespace IGC
 
     struct SInstrTypes
     {
+        bool CorrelatedValuePropagationEnable;
+        bool hasLoop;
+        bool hasMultipleBB;
         bool hasCmp;
         bool hasSwitch;
         bool hasPhi;
+        bool hasLoadStore;
+        bool hasCall;
         bool hasIndirectCall;
         bool hasInlineAsm;
         bool hasInlineAsmPointerAccess;
@@ -297,34 +302,27 @@ namespace IGC
         bool psHasSideEffect;     //<! only relevant to pixel shader, has other memory writes besides RTWrite
         bool hasGenericAddressSpacePointers;
         bool hasDebugInfo;        //<! true only if module contains debug info !llvm.dbg.cu
+        bool hasAtomics;
+        bool hasBarrier;        //<! true if module has thread group barrier
+        bool hasDiscard;
+        bool hasTypedRead;
+        bool hasTypedwrite;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
         // true if shader may have indirect texture or buffer.
         // Note: does not check for indirect sampler
         bool mayHaveIndirectResources;
         bool hasUniformAssumptions;
+        bool hasWaveIntrinsics;
         bool hasPullBary;
         bool sampleCmpToDiscardOptimizationPossible;
-        unsigned int numWaveIntrinsics;
-        unsigned int numLoadStore;
-        unsigned int numCall;
-        unsigned int numAtomics;
-        unsigned int numBarrier;        //<! true if module has thread group barrier
-        unsigned int numDiscard;
-        unsigned int numTypedRead;
-        unsigned int numTypedwrite;
         unsigned int sampleCmpToDiscardOptimizationSlot;
         unsigned int numSample;
         unsigned int numBB;
         unsigned int numLoopInsts;
         unsigned int numOfLoop;
         unsigned int numInsts;    //<! measured after optimization, used as a compiler heuristic
-        unsigned int numAllInsts;
         unsigned int numAllocaInsts;
         unsigned int numPsInputs;
-        unsigned int numDouble;
-        unsigned int RTWriteMask;
-        unsigned int numStencilOutput;
-        unsigned int numDualBlendSource;
         bool hasDynamicGenericLoadStore;
         bool hasUnmaskedRegion;
         unsigned int numGlobalInsts;
