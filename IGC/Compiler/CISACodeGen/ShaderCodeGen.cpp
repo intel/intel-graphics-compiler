@@ -1334,11 +1334,16 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
     SIMDMode maxSimdModeAllowed = ctx->GetMaxSIMDMode();
     IGC_ASSERT(minSimdModeAllowed <= maxSimdModeAllowed);
 
+    const unsigned forcedRQSimdMode = ctx->hasSyncRTCalls() ?
+        IGC_GET_FLAG_VALUE(ForceCSSimdSize4RQ) : 0;
 
     SIMDMode forceWASimdMode = SIMDMode::UNKNOWN;
     unsigned int waveSize = ctx->getModuleMetaData()->csInfo.waveSize;
 
-    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32 || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
+    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32)                    ||
+        waveSize == 32                                        ||
+        ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 32 ||
+        forcedRQSimdMode == 32)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, false);
         ctx->m_ForceOneSIMD = true;
@@ -1383,6 +1388,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
     }
     else
     {
+        ctx->m_ForceOneSIMD = (minSimdModeAllowed == maxSimdModeAllowed);
         AddCodeGenPasses(*ctx, shaders, PassMgr, minSimdModeAllowed, maxSimdModeAllowed, setEarlyExit16Stat);
     }
 

@@ -729,9 +729,9 @@ DECLARE_IGC_GROUP("Raytracing Options")
     DECLARE_IGC_REGKEY(bool, EnableSingleRQMemRayStore, true, "Store RayQuery MemRay[TOP] only once.", false)
     DECLARE_IGC_REGKEY(DWORD,TotalGRFNum4RQ,                0,     "Total GRF used for register allocation for RayQuery only. Test only. Delete later.", false)
     DECLARE_IGC_REGKEY(bool, ForceCSLeastSIMD4RQ,           false, "Force computer shader with RayQuery to the lowest allowed SIMD mode", false)
-    DECLARE_IGC_REGKEY(DWORD, ForceCSSimdSize4RQ, 8, "Force RayQuery compute shader simd size,\
-                                                                valid values are 0 (not set), 8, 16 and 32\
-                                                                ignored if produces invalid cofiguration, e.g. simd size too small for workgroup size", true)
+    DECLARE_IGC_REGKEY(DWORD, ForceCSSimdSize4RQ, 0, "Force RayQuery compute shader simd size,\
+                                                      valid values are 0 (not set), 8, 16 and 32\
+                                                      ignored if produces invalid cofiguration, e.g. simd size too small for workgroup size", true)
     DECLARE_IGC_REGKEY(bool, EnableRQHideLatency, false, "Hide RayQuery Proceed latency.", false)
     DECLARE_IGC_REGKEY(bool, DisableShaderFusion, false, "Don't check for duplicate, renamed shaders", false)
     DECLARE_IGC_REGKEY(DWORD, ShaderFusionThrehold, 1000, "If there are less shaders than this, don't spend time checking duplicates", false)
