@@ -276,6 +276,35 @@ Value &createMainInst<BuiltinID::AbsFloat>(const std::vector<Value *> &Operands,
   return createLLVMIntrinsic<BuiltinID::AbsFloat>(Operands, RetTy, IRB);
 }
 
+//----------------------- Rounding operations ----------------------------//
+template <>
+Value &createMainInst<BuiltinID::Ceil>(const std::vector<Value *> &Operands,
+                                           Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == CeilOperand::Size &&
+         "builtin operands should be trasformed into LLVM ceil "
+         "intrinsic operands without changes");
+  return createLLVMIntrinsic<BuiltinID::Ceil>(Operands, RetTy, IRB);
+}
+
+template <>
+Value &createMainInst<BuiltinID::Floor>(const std::vector<Value *> &Operands,
+                                            Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == FloorOperand::Size &&
+         "builtin operands should be trasformed into LLVM floor "
+         "intrinsic operands without changes");
+  return createLLVMIntrinsic<BuiltinID::Floor>(Operands, RetTy, IRB);
+}
+
+template <>
+Value &createMainInst<BuiltinID::Trunc>(const std::vector<Value *> &Operands,
+                                            Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == TruncOperand::Size &&
+         "builtin operands should be trasformed into LLVM trunc "
+         "intrinsic operands without changes");
+  return createLLVMIntrinsic<BuiltinID::Trunc>(Operands, RetTy, IRB);
+}
+//------------------------------------------------------------------------//
+
 template <>
 Value &createMainInst<BuiltinID::MinNum>(const std::vector<Value *> &Operands,
                                          Type &RetTy, IRBuilder<> &IRB) {

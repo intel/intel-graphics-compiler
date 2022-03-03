@@ -216,6 +216,24 @@ vector<T, width> absolute(vector<T, width> src) {
   return detail::absolute(src.cl_vector());
 }
 
+/*================== Rounding operations ===================*/
+
+template <typename T> T ceil(T src) { return detail::ceil(src); }
+template <typename T, int width> vector<T, width> ceil(vector<T, width> src) {
+  return detail::ceil(src.cl_vector());
+}
+
+template <typename T> T floor(T src) { return detail::floor(src); }
+template <typename T, int width> vector<T, width> floor(vector<T, width> src) {
+  return detail::floor(src.cl_vector());
+}
+
+template <typename T> T truncate(T src) { return detail::trunc(src); }
+template <typename T, int width>
+vector<T, width> truncate(vector<T, width> src) {
+  return detail::trunc(src.cl_vector());
+}
+
 /*================== Square root ===========================*/
 
 template <typename T> T square_root(T src) {
