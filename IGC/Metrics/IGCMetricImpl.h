@@ -78,6 +78,7 @@ namespace IGCMetrics
         void UpdateModelCost();
         void CollectLoop(llvm::Loop* loop);
 
+        inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DILexicalBlock* Loc);
         inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DISubprogram* Loc);
         inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DILocation* Loc);
         inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DIVariable* Var);
@@ -104,7 +105,7 @@ namespace IGCMetrics
 
         void StatIncCoalesced(llvm::Instruction* coalescedAccess);
 
-        void CollectRegStats(KERNEL_INFO* vISAstats);
+        void CollectRegStats(KERNEL_INFO* vISAstats, llvm::Function* pFunc);
 
         void CollectMem2Reg(llvm::AllocaInst* pAllocaInst, IGC::StatusPrivArr2Reg status);
 

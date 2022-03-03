@@ -499,9 +499,40 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
 
     if (getOptions()->getOption(vISA_GenerateKernelInfo))
     {
-        //auto kernel = getKernel();
-        //m_kernelInfo = new KERNEL_INFO();
-        // TODO check if this will be needed anymore
+        auto kernel = getKernel();
+        m_kernelInfo = new KERNEL_INFO();
+
+        //bool hasSpillFills = false;
+        //int wholeGRFbyteSize =
+        //    kernel->getGRFSize() * kernel->getNumRegTotal();
+
+        for (auto decl : kernel->Declares)
+        {
+            auto regVar = decl->getRegVar();
+            kernel->emitRegInfo();
+            if (regVar != nullptr)
+            {
+                if (regVar->isRegVar())
+                {
+                    m_kernelInfo->numReg++;
+                }
+                else if (regVar->isRegVarTmp())
+                {
+                    m_kernelInfo->numTmpReg++;
+                    m_kernelInfo->bytesOfTmpReg += decl->getByteSize();
+                }
+                else if (regVar->isRegVarSpill())
+                {
+                    //hasSpillFills = true;
+                    m_kernelInfo->numSpillReg++;
+                }
+                else if (regVar->isRegVarFill())
+                {
+                    //hasSpillFills = true;
+                    m_kernelInfo->numFillReg++;
+                }
+            }
+        }
     }
 
     if (m_options->getOption(vISA_outputToFile))

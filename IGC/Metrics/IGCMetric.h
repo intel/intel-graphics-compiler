@@ -51,7 +51,7 @@ namespace IGCMetrics
 
         void StatIncCoalesced(llvm::Instruction* coalescedAccess);
 
-        void CollectRegStats(KERNEL_INFO* vISAstats);
+        void CollectRegStats(KERNEL_INFO* vISAstats, llvm::Function* pFunc);
 
         void CollectMem2Reg(llvm::AllocaInst* pAllocaInst, IGC::StatusPrivArr2Reg status);
 

@@ -206,13 +206,34 @@ namespace IGCMetrics
 #endif
     }
 
-    void IGCMetricImpl::CollectRegStats(KERNEL_INFO* kernelInfo)
+    void IGCMetricImpl::CollectRegStats(KERNEL_INFO* kernelInfo, llvm::Function* pFunc)
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        if (kernelInfo == nullptr)
+        if (kernelInfo != nullptr)
         {
-            return;
+            auto func_m = GetFuncMetric(pFunc);
+            if (func_m != nullptr)
+            {
+                auto func_reg_stats_m = func_m->mutable_local_reg_stats();
+
+                func_reg_stats_m->set_percentgrfusage(
+                    kernelInfo->precentGRFUsage);
+
+                func_reg_stats_m->set_countregspillsallocated(
+                    kernelInfo->numSpillReg);
+
+                func_reg_stats_m->set_countregfillsallocated(
+                    kernelInfo->numFillReg);
+
+                func_reg_stats_m->set_countregallocated(
+                    kernelInfo->numReg);
+
+                func_reg_stats_m->set_countregtmpallocated(
+                    kernelInfo->numTmpReg);
+                func_reg_stats_m->set_countbytesregtmpallocated(
+                    kernelInfo->bytesOfTmpReg);
+            }
         }
 #endif
     }
@@ -716,6 +737,19 @@ namespace IGCMetrics
         IGC_METRICS::Function* func_metric = GetFuncMetric(pAllocaInst);
         if (func_metric)
         {
+            auto reg_stats = func_metric->mutable_local_reg_stats();
+
+            if (status == IGC::StatusPrivArr2Reg::OK)
+            {
+                reg_stats->set_countprvarray2grfpromoted(
+                    reg_stats->countprvarray2grfpromoted() + 1);
+            }
+            else
+            {
+                reg_stats->set_countprvarray2grfnotpromoted(
+                    reg_stats->countprvarray2grfnotpromoted() + 1);
+            }
+
             IGC_METRICS::VarInfo* var_m = GetVarMetric(pAllocaInst);
 
             if (var_m)
@@ -927,6 +961,24 @@ namespace IGCMetrics
         CollectDataMetrics metricPass(this);
 
         metricPass.visit(func);
+
+        for (auto bb_i = func.begin(); bb_i != func.end(); ++bb_i)
+        {
+            llvm::BasicBlock* bb = &*bb_i;
+
+            if (bb->hasName() && (bb->getName().startswith("if.then") ||
+                bb->getName().startswith("if.else")))
+            {
+                auto func_cfg_stats = func_m->mutable_cfg_stats();
+                auto ifelse_m = func_cfg_stats->add_ifelsebr_stats();
+
+                ifelse_m->set_countbrtaken((int)std::distance(
+                    bb->users().begin(), bb->users().end()));
+
+                auto ifelse_block_db = llvm::dyn_cast<DILexicalBlock>(bb->getTerminator()->getDebugLoc().getScope());
+                FillCodeRef(ifelse_m->mutable_brloc(), ifelse_block_db);
+            }
+        }
     }
 
     int IGCMetricImpl::CountInstInFunc(llvm::Function* pFunc)
@@ -1126,6 +1178,16 @@ namespace IGCMetrics
         {
             return map_Func[pFunc];
         }
+    }
+
+    void IGCMetricImpl::FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DILexicalBlock* Loc)
+    {
+        if (Loc == nullptr || Loc->getDirectory().empty() || Loc->getFilename().empty())
+        {
+            return;
+        }
+        FillCodeRef(codeRef, GetFullPath(Loc->getDirectory().str(), Loc->getFilename().str()),
+            Loc->getLine());
     }
 
     void IGCMetricImpl::FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DISubprogram* Loc)

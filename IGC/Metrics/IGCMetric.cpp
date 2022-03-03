@@ -56,9 +56,9 @@ namespace IGCMetrics
         get(igcMetric)->StatIncCoalesced(coalescedAccess);
     }
 
-    void IGCMetric::CollectRegStats(KERNEL_INFO* kernelInfo)
+    void IGCMetric::CollectRegStats(KERNEL_INFO* kernelInfo, llvm::Function* pFunc)
     {
-        get(igcMetric)->CollectRegStats(kernelInfo);
+        get(igcMetric)->CollectRegStats(kernelInfo, pFunc);
     }
 
     void IGCMetric::CollectFunctions(llvm::Module* pModule)

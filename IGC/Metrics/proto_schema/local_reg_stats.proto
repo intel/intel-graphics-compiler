@@ -16,11 +16,12 @@ message LocalRegStats {
   int32 countRegTmpAllocated = 2;
   int32 countBytesRegTmpAllocated = 3;
   int32 countRegSpillsAllocated = 4;
-  int32 percentGRFUsage = 5;
+  int32 countRegFillsAllocated = 5;
+  int32 percentGRFUsage = 6;
 
-  int32 EstimatedSpillTraffic = 6;
-  int32 SpillFootprint = 7;
+  int32 EstimatedSpillTraffic = 7;
+  int32 SpillFootprint = 8;
 
-  int32 countPrvArray2GRFPromoted = 8;
-  int32 countPrvArray2GRFNotPromoted = 9;
+  int32 countPrvArray2GRFPromoted = 9;
+  int32 countPrvArray2GRFNotPromoted = 10;
 }

@@ -51,7 +51,22 @@ class KERNEL_INFO
 public:
     std::map<int, VarInfo*> variables;
 
-    KERNEL_INFO() { }
+    int numReg;
+    int numTmpReg;
+    int bytesOfTmpReg;
+    int numSpillReg;
+    int numFillReg;
+    int precentGRFUsage;
+
+    KERNEL_INFO()
+    {
+        numReg = 0;
+        numTmpReg = 0;
+        bytesOfTmpReg = 0;
+        numSpillReg = 0;
+        numFillReg = 0;
+        precentGRFUsage = 0;
+    }
     ~KERNEL_INFO()
     {
         for (auto i = variables.begin(); i != variables.end(); ++i)

@@ -5855,7 +5855,7 @@ namespace IGC
         KERNEL_INFO* vISAstats;
         pMainKernel->GetKernelInfo(vISAstats);
         // Collect metrics from vISA
-        context->metrics.CollectRegStats(vISAstats);
+        context->metrics.CollectRegStats(vISAstats, m_program->entry);
 
         FINALIZER_INFO* jitInfo = nullptr;
         pMainKernel->GetJitInfo(jitInfo);
