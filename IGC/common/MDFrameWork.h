@@ -388,6 +388,7 @@ namespace IGC
         bool disableMathRefactoring                     = false;
         bool atomicBranch                               = false;
         bool ForceMinSimdSizeForFastestCS               = false;
+        bool EnableFastestLinearScan                    = false;
         //if PTSS is enabled and if PrivateData is too large (>256k in XeHP_SDV+),
         //we might use stateless memory to hold privatedata instead of using PTSS.
         //this flag is for this scenario.
