@@ -100,8 +100,8 @@ public:
   uint64_t callStackHandlerKSP;        // this is the KSP of the continuation handler that is invoked by BTD when the read KSP is 0
   uint32_t stackSizePerRay;            // maximal stack size of a ray in 64 byte blocks
   uint32_t numDSSRTStacks;             // number of stacks per DSS
+  /* : 3; TODO: should this be a bitfield here?*/
   uint32_t maxBVHLevels;               // the maximal number of supported instancing levels, 0->8, 1->1, 2->2, etc.
-  uint32_t flags;                      // per context control flags
 
   // Not cached by HW
 public:
