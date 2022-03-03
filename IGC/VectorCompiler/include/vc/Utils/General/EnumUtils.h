@@ -27,59 +27,59 @@ private:
       std::is_same_v<std::remove_cv_t<std::remove_reference_t<Enum>>, Enum>);
   static_assert(std::is_integral_v<std::underlying_type_t<Enum>>);
 
-  Enum CurVal_;
+  Enum CurVal;
 
 public:
   using difference_type = std::ptrdiff_t;
   using value_type = Enum;
-  using pointer = Enum const *;
+  using pointer = void;
   using reference = Enum const &;
   using iterator_category = std::bidirectional_iterator_tag;
 
 public:
   constexpr EnumIterator()
-      : CurVal_(static_cast<Enum>(
+      : CurVal(static_cast<Enum>(
             static_cast<std::underlying_type_t<Enum>>(LastValue) + 1)) {}
-  constexpr EnumIterator(Enum Value) : CurVal_(Value) {
-    IGC_ASSERT(checkEnumValue(CurVal_));
+  constexpr EnumIterator(Enum Value) : CurVal(Value) {
+    IGC_ASSERT(checkEnumValue(CurVal));
   }
 
   constexpr reference operator*() const {
-    IGC_ASSERT(checkEnumValue(CurVal_));
-    return CurVal_;
+    IGC_ASSERT(checkEnumValue(CurVal));
+    return CurVal;
   }
 
   constexpr EnumIterator &operator++() {
-    IGC_ASSERT(checkEnumValue(CurVal_));
-    CurVal_ = static_cast<Enum>(
-        static_cast<std::underlying_type_t<Enum>>(CurVal_) + 1);
+    IGC_ASSERT(checkEnumValue(CurVal));
+    CurVal = static_cast<Enum>(
+        static_cast<std::underlying_type_t<Enum>>(CurVal) + 1);
     return *this;
   }
 
   constexpr EnumIterator operator++(int) {
-    IGC_ASSERT(checkEnumValue(CurVal_));
-    auto RetVal = CurVal_;
+    IGC_ASSERT(checkEnumValue(CurVal));
+    auto RetVal = CurVal;
     operator++();
     return RetVal;
   }
 
   constexpr EnumIterator &operator--() {
-    CurVal_ = static_cast<Enum>(
-        static_cast<std::underlying_type_t<Enum>>(CurVal_) - 1);
-    IGC_ASSERT(checkEnumValue(CurVal_));
+    CurVal = static_cast<Enum>(
+        static_cast<std::underlying_type_t<Enum>>(CurVal) - 1);
+    IGC_ASSERT(checkEnumValue(CurVal));
     return *this;
   }
 
   constexpr EnumIterator operator--(int) {
-    auto RetVal = CurVal_;
+    auto RetVal = CurVal;
     operator--();
-    IGC_ASSERT(checkEnumValue(CurVal_));
+    IGC_ASSERT(checkEnumValue(CurVal));
     return RetVal;
   }
 
   constexpr friend bool operator==(const EnumIterator &lhs,
                                    const EnumIterator &rhs) {
-    return lhs.CurVal_ == rhs.CurVal_;
+    return lhs.CurVal == rhs.CurVal;
   }
   constexpr friend bool operator!=(const EnumIterator &lhs,
                                    const EnumIterator &rhs) {
