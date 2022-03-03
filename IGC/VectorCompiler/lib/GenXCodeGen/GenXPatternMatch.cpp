@@ -154,6 +154,10 @@ public:
 
   void visitSDiv(BinaryOperator &I);
 
+  void visitURem(BinaryOperator &I);
+
+  void visitUDiv(BinaryOperator &I);
+
 #if LLVM_VERSION_MAJOR >= 10
   void visitFreezeInst(FreezeInst &I);
 #endif
@@ -2819,6 +2823,34 @@ static Constant *getFloorLog2(const Constant *C) {
   }
 }
 
+enum class DivRemOptimize {
+  // No optimization can be applied.
+  Not,
+  // Power of 2 case optimization.
+  Pow2,
+};
+
+// Check if unsigned UDiv/URem can be optimized,
+// based on its divisor \p Operand.
+static DivRemOptimize isSuitableUDivURemOperand(Value *Operand) {
+  IGC_ASSERT(Operand);
+  // Constant data vector or constant.
+  if (!isa<Constant>(Operand))
+    return DivRemOptimize::Not;
+  Type *OperandTy = Operand->getType();
+  // TODO support i8, i16 & i64 cases
+  // for pow2 case just turning on the same pattern as i32 width
+  // Not int and not vector of int, or width wrong( not 32).
+  if (!OperandTy->isIntOrIntVectorTy(genx::DWordBits))
+    return DivRemOptimize::Not;
+  // TODO: Remove this as we have tests for this pattern.
+  if (PatternMatch::match(Operand, PatternMatch::m_Negative()))
+    return DivRemOptimize::Not;
+  if (PatternMatch::match(Operand, PatternMatch::m_Power2()))
+    return DivRemOptimize::Pow2;
+  return DivRemOptimize::Not;
+}
+
 // a helper routine for decomposeSdivPow2, decomposeSremPow2
 // return true if Value is constant data power 2 value
 // input operand - value
@@ -2897,6 +2929,32 @@ void GenXPatternMatch::visitSDiv(BinaryOperator &I) {
   }
 }
 
+// Optimization for unsigned x / 2^p.
+// p = log2(2^p)
+// x / 2 ^ p = x >> p (lshr)
+static void decomposeUDivPow2(BinaryOperator &UDivOp) {
+  IGC_ASSERT(UDivOp.getOpcode() == Instruction::UDiv);
+  Value *Dividend = UDivOp.getOperand(0);
+  IGC_ASSERT(isSuitableUDivURemOperand(UDivOp.getOperand(1)) ==
+             DivRemOptimize::Pow2);
+  Constant *Divisor = cast<Constant>(UDivOp.getOperand(1));
+  IRBuilder<> Builder{&UDivOp};
+  Constant *Log2Divisor = getFloorLog2(Divisor);
+  IGC_ASSERT(Log2Divisor);
+  Value *Res = Builder.CreateLShr(Dividend, Log2Divisor);
+  UDivOp.replaceAllUsesWith(Res);
+  Res->takeName(&UDivOp);
+}
+
+void GenXPatternMatch::visitUDiv(BinaryOperator &I) {
+  auto CheckRes = isSuitableUDivURemOperand(I.getOperand(1));
+  if (CheckRes == DivRemOptimize::Not)
+    return;
+  IGC_ASSERT(CheckRes == DivRemOptimize::Pow2);
+  Changed = true;
+  return decomposeUDivPow2(I);
+}
+
 // Srem - only srem binary operator
 // suppose that later sdiv operation will be optimized by decomposeSdivPow2
 // x % y = x - y * (x / y)
@@ -2929,6 +2987,34 @@ void GenXPatternMatch::visitSRem(BinaryOperator &I) {
     decomposeSremPow2(I);
     Changed = true;
   }
+}
+
+// Optimization for unsigned x % 2^p.
+// p = log2(2^p)
+// x % 2^p = (x & ((1<<p)-1)) = x & (2^p - 1)
+static void decomposeURemPow2(BinaryOperator &URemOp) {
+  IGC_ASSERT(URemOp.getOpcode() == Instruction::URem);
+  Value *Dividend = URemOp.getOperand(0);
+  IGC_ASSERT(isSuitableUDivURemOperand(URemOp.getOperand(1)) ==
+             DivRemOptimize::Pow2);
+  Constant *Divisor = cast<Constant>(URemOp.getOperand(1));
+  Type *OperationTy = Dividend->getType();
+
+  IRBuilder<> Builder{&URemOp};
+
+  Constant *One = Constant::getIntegerValue(OperationTy, APInt{32, 1});
+  Value *Res = Builder.CreateAnd(Dividend, Builder.CreateSub(Divisor, One));
+  URemOp.replaceAllUsesWith(Res);
+  Res->takeName(&URemOp);
+}
+
+void GenXPatternMatch::visitURem(BinaryOperator &I) {
+  auto CheckRes = isSuitableUDivURemOperand(I.getOperand(1));
+  if (CheckRes == DivRemOptimize::Not)
+    return;
+  IGC_ASSERT(CheckRes == DivRemOptimize::Pow2);
+  Changed = true;
+  return decomposeURemPow2(I);
 }
 
 #if LLVM_VERSION_MAJOR >= 10
