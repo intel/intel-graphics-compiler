@@ -73,6 +73,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -194,8 +195,6 @@ private:
   bool simplifyNullDst(CallInst *Inst);
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
-
-  bool clearDeadInstructions(Function &F);
 };
 
 } // namespace
@@ -238,11 +237,13 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
 
   Changed |= simplifyVolatileGlobals(&F);
 
-  Changed |= clearDeadInstructions(F);
-
   Changed |= simplifySelect(&F);
   // Break big predicate variables and run after min/max pattern match.
   Changed |= decomposeSelect(&F);
+
+  // Simplify instructions after select decomposition and clear dead ones.
+  for (auto &BB : F)
+    Changed |= SimplifyInstructionsInBlock(&BB);
 
   return Changed;
 }
@@ -2765,20 +2766,6 @@ bool GenXPatternMatch::simplifySelect(Function *F) {
         SI->eraseFromParent();
       }
     }
-  }
-  return Changed;
-}
-
-bool GenXPatternMatch::clearDeadInstructions(Function &F) {
-  bool Changed = false;
-  SmallVector<WeakTrackingVH, 8> ToErase;
-  for (auto &Inst : instructions(F))
-    if (isInstructionTriviallyDead(&Inst))
-      ToErase.push_back(WeakTrackingVH(&Inst));
-  if (!ToErase.empty()) {
-    Changed = true;
-
-    IGCLLVM::RecursivelyDeleteTriviallyDeadInstructions(ToErase);
   }
   return Changed;
 }
