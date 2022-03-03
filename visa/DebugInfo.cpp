@@ -214,9 +214,9 @@ void DbgDecoder::ddCalleeCallerSave(uint32_t relocOffset)
             if (!retval)
                 return;
 
-            uint8_t subReg = srcReg%numEltPerGRF<Type_UB>();
+            uint8_t subReg = srcReg % platInfo->numEltPerGRF<Type_UB>();
             MUST_BE_TRUE(subReg == 0, "Not expecting non-zero sub-reg in callee/caller save");
-            std::cout << "\tr" << (srcReg) / numEltPerGRF<Type_UB>() << "." <<
+            std::cout << "\tr" << (srcReg) / platInfo->numEltPerGRF<Type_UB>() << "." <<
                 (uint32_t)subReg << ":ub (" << numBytes << " bytes) -> ";
 
             uint8_t dstInReg;
@@ -476,9 +476,9 @@ int DbgDecoder::ddDbg()
     return 0;
 }
 
-DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY int decodeAndDumpDebugInfo(char* filename)
+DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY int decodeAndDumpDebugInfo(char* filename, TARGET_PLATFORM platform)
 {
-    DbgDecoder dd(filename);
+    DbgDecoder dd(filename, platform);
     return dd.ddDbg();
 }
 
@@ -1199,6 +1199,7 @@ void emitDataPhyRegSaveInfoPerIP(VISAKernelImpl* visaKernel, SaveRestoreManager&
 {
     auto& srInfo = mgr.getSRInfo();
     auto relocOffset = visaKernel->getKernel()->getKernelDebugInfo()->getRelocOffset();
+    const IR_Builder* builder = visaKernel->getIRBuilder();
 
     for (auto sr : srInfo)
     {
@@ -1212,8 +1213,8 @@ void emitDataPhyRegSaveInfoPerIP(VISAKernelImpl* visaKernel, SaveRestoreManager&
         emitDataUInt16((uint16_t) sr.saveRestoreMap.size(), t);
         for (auto mapIt : sr.saveRestoreMap)
         {
-            emitDataUInt16((uint16_t)mapIt.first * numEltPerGRF<Type_UB>(), t);
-            emitDataUInt16((uint16_t)numEltPerGRF<Type_UB>(), t);
+            emitDataUInt16((uint16_t)mapIt.first * builder->numEltPerGRF<Type_UB>(), t);
+            emitDataUInt16((uint16_t)builder->numEltPerGRF<Type_UB>(), t);
 
             if (mapIt.second.first == SaveRestoreInfo::RegOrMem::Reg)
             {
@@ -2298,6 +2299,7 @@ INST_LIST KernelDebugInfo::getDeltaInstructions(G4_BB* bb)
 
 void SaveRestoreManager::addInst(G4_INST* inst)
 {
+    const IR_Builder& builder = inst->getBuilder();
     SaveRestoreInfo newSVInfo;
     srInfo.push_back(newSVInfo);
     if (srInfo.size() > 1)
@@ -2316,7 +2318,7 @@ void SaveRestoreManager::addInst(G4_INST* inst)
         GetTopDclFromRegRegion(inst->getSrc(0)) == visaKernel->getKernel()->fg.builder->getBEFP())
     {
         memOffset = (int32_t)inst->getSrc(1)->asImm()->getImm();
-        regWithMemOffset = inst->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        regWithMemOffset = inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
         absOffset = false;
     }
 
@@ -2325,10 +2327,10 @@ void SaveRestoreManager::addInst(G4_INST* inst)
         inst->getSrc(0)->isImm() &&
         inst->getExecSize() == g4::SIMD1 &&
         inst->getDst() &&
-        inst->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>() == 8)
+        inst->getDst()->getLinearizedStart() % builder.numEltPerGRF<Type_UB>() == 8)
     {
         memOffset = (int32_t)inst->getSrc(0)->asImm()->getImm();
-        regWithMemOffset = inst->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        regWithMemOffset = inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
         absOffset = true;
     }
 
@@ -2366,11 +2368,12 @@ void SaveRestoreManager::emitAll()
 void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithMemOffset, bool isOffAbs)
 {
     i = inst;
+    const IR_Builder& builder = inst->getBuilder();
 
     if (inst->getDst() &&
         inst->getDst()->isDstRegRegion())
     {
-        auto dstreg = inst->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        auto dstreg = inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
 
         // Remove any item in map that is saved as storage for some other reg.
         for (auto mapIt : saveRestoreMap)
@@ -2390,8 +2393,8 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
         inst->getSrc(0)->isSrcRegRegion())
     {
         unsigned int srcreg, dstreg;
-        srcreg = inst->getSrc(0)->getLinearizedStart() / numEltPerGRF<Type_UB>();
-        dstreg = inst->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        srcreg = inst->getSrc(0)->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
+        dstreg = inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
 
         bool done = false;
         for (auto mapIt : saveRestoreMap)
@@ -2431,10 +2434,10 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
         if (inst->getMsgDesc()->isWrite())
         {
             uint32_t srcreg, extsrcreg = 0;
-            srcreg = inst->getSrc(0)->getLinearizedStart() / numEltPerGRF<Type_UB>();
+            srcreg = inst->getSrc(0)->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
             if (inst->getMsgDesc()->getSrc1LenRegs() > 0)
             {
-                extsrcreg = inst->getSrc(1)->getLinearizedStart()/numEltPerGRF<Type_UB>();
+                extsrcreg = inst->getSrc(1)->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
             }
 
             MUST_BE_TRUE(memOffset != 0xffff, "Invalid mem offset");
@@ -2454,7 +2457,7 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
             {
                 uint32_t payloadReg = payloadRegs[i];
                 RegMap m;
-                m.offset = (int32_t)((memOffset * numEltPerGRF<Type_UB>()/2) + (i * numEltPerGRF<Type_UB>()));
+                m.offset = (int32_t)((memOffset * builder.numEltPerGRF<Type_UB>()/2) + (i * builder.numEltPerGRF<Type_UB>()));
                 m.isAbs = isOffAbs;
                 saveRestoreMap.insert(std::make_pair(payloadReg,
                     std::make_pair(isOffAbs ? RegOrMem::MemAbs : RegOrMem::MemOffBEFP, m)));
@@ -2470,19 +2473,19 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
         else if (inst->getMsgDesc()->isRead())
         {
             uint32_t srcreg, dstreg;
-            srcreg = inst->getSrc(0)->getLinearizedStart() / numEltPerGRF<Type_UB>();
-            dstreg = inst->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
+            srcreg = inst->getSrc(0)->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
+            dstreg = inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
 
             MUST_BE_TRUE(memOffset != 0xffff, "Invalid mem offset");
             MUST_BE_TRUE(regWithMemOffset == srcreg, "Send src not initialized with offset");
 
             auto responselen = inst->getMsgDesc()->getDstLenRegs();
             int32_t startoff;
-            startoff = memOffset * numEltPerGRF<Type_UB>() / 2;
+            startoff = memOffset * builder.numEltPerGRF<Type_UB>() / 2;
 
             for (auto reg = dstreg; reg < (responselen + dstreg); reg++)
             {
-                int32_t offsetForReg = startoff + ((reg - dstreg) * numEltPerGRF<Type_UB>());
+                int32_t offsetForReg = startoff + ((reg - dstreg) * builder.numEltPerGRF<Type_UB>());
 
                 for (auto mapIt : saveRestoreMap)
                 {

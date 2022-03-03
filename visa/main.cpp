@@ -321,13 +321,6 @@ int main(int argc, const char *argv[])
     {
         return 1;
     }
-    if (opt.getOptionCstr(vISA_DecodeDbg))
-    {
-        const char* dbgName;
-        opt.getOption(vISA_DecodeDbg, dbgName);
-        decodeAndDumpDebugInfo((char*)dbgName);
-        return EXIT_SUCCESS;
-    }
 
     TARGET_PLATFORM platform = static_cast<TARGET_PLATFORM>(opt.getuInt32Option(vISA_PlatformSet));
     bool dumpCommonIsa = false;
@@ -344,6 +337,15 @@ int main(int argc, const char *argv[])
         Options::showUsage(COUT_ERROR);
         return EXIT_FAILURE;
     }
+
+    if (opt.getOptionCstr(vISA_DecodeDbg))
+    {
+        const char* dbgName;
+        opt.getOption(vISA_DecodeDbg, dbgName);
+        decodeAndDumpDebugInfo((char*)dbgName, platform);
+        return EXIT_SUCCESS;
+    }
+
     // TODO: Will need to adjust the platform from option for parseBinary() and
     // parseText() if not specifying platform is allowed at this point.
 

@@ -34,7 +34,7 @@ class DebugInfoState;
 #define DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY
 #endif
 
-DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY int decodeAndDumpDebugInfo(char* filename);
+DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY int decodeAndDumpDebugInfo(char* filename, TARGET_PLATFORM platform);
 void emitDebugInfo(CISA_IR_Builder* builder, std::string filename);
 void emitDebugInfo(VISAKernelImpl* curKernel, std::string filename);
 void emitDebugInfo(VISAKernelImpl* kernel, std::list<VISAKernelImpl*>& functions, std::string filename);
@@ -404,13 +404,17 @@ class DbgDecoder
 private:
     const char* const filename;
     std::FILE* dbgFile = nullptr;
+    const PlatformInfo* platInfo = nullptr;
 
     void ddName();
     template<class T> void ddLiveInterval();
     void ddCalleeCallerSave(uint32_t relocOffset);
 
 public:
-    DbgDecoder(const char* f) : filename(f) {}
+    DbgDecoder(const char* f, TARGET_PLATFORM platform) : filename(f) {
+        platInfo = PlatformInfo::LookupPlatformInfo(platform);
+        ASSERT_USER(platInfo != nullptr, "failed to look up platform");
+    }
 
     int ddDbg();
 };
