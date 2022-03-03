@@ -1840,6 +1840,18 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it)
     }
 }
 
+void LVN::invalidate()
+{
+    // invalidate all values cached in value table
+    for (auto& bucket : lvnTable)
+    {
+        for (auto& lvnItem : bucket.second)
+        {
+            lvnItem->active = false;
+        }
+    }
+}
+
 void LVN::doLVN()
 {
     bb->resetLocalIds();
@@ -1849,6 +1861,13 @@ void LVN::doLVN()
     {
         G4_INST* inst = (*inst_it);
         bool negMatch = false;
+
+        if (inst->isOptBarrier())
+        {
+            // disallow optimization across opt barrier
+            invalidate();
+            continue;
+        }
 
         if (inst->getDst() == NULL)
         {

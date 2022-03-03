@@ -154,6 +154,7 @@ namespace vISA
             toDtor.push_back(instance);
             return instance;
         }
+        void invalidate();
 
     public:
         LVN(FlowGraph& flowGraph, G4_BB* curBB, vISA::Mem_Manager& mmgr, IR_Builder& irBuilder, PointsToAnalysis& p) :
