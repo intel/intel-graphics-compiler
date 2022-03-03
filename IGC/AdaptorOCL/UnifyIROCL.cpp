@@ -444,6 +444,8 @@ static void CommonOCLBasedPasses(
             mpm.add(createLowerGPCallArg());
         }
 
+        mpm.add(createGASRetValuePropagatorPass());
+
         // Run another round of constant breaking as GAS resolving may generate constants (constant address)
         mpm.add(new BreakConstantExpr());
     }

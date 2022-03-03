@@ -19,6 +19,9 @@ namespace IGC {
     llvm::FunctionPass* createResolveGASPass();
     void initializeGASResolvingPass(llvm::PassRegistry&);
 
+    llvm::ModulePass* createGASRetValuePropagatorPass();
+    void initializeGASRetValuePropagatorPass(llvm::PassRegistry&);
+
     llvm::ModulePass* createLowerGPCallArg();
     void initializeLowerGPCallArgPass(llvm::PassRegistry&);
 
