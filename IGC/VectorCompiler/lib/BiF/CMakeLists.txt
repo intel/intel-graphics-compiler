@@ -24,24 +24,6 @@ function(get_target_include_opt_list RES_LIST REQUIRED_TARGET)
   set(${RES_LIST} "$<$<BOOL:${INCLUDE_DIRS}>:-I$<JOIN:${INCLUDE_DIRS},$<SEMICOLON>-I>>" PARENT_SCOPE)
 endfunction()
 
-set(PLATFORM_LIST
-    "BDW"
-    "SKL"
-    "BXT"
-    "KBL"
-    "GLK"
-    "ICLLP"
-    "TGLLP"
-    "RKL"
-    "DG1"
-    "XEHP"
-    "ADLP"
-    "ADLS"
-    "DG2"
-    "PVC"
-    "PVCXT"
-    )
-
 # Takes CMCL source code and compiles it to LLVM bitcode.
 # The compilation flow is as follows:
 #   1. Each source file is processed by clang tool to obtain not optimized
@@ -186,7 +168,7 @@ function(vc_generate_emulation_bif RES_FILE BIF_OPT_BC_NAME MANGLED_BIF_NAME)
   set(EMULATION_CONF_NAME "${MANGLED_BIF_NAME}.conf")
   set(EMULATION_CONF_PATH  ${CMAKE_CURRENT_BINARY_DIR}/${EMULATION_CONF_NAME})
   set(PLTF_BC_PATH_LIST "")
-  foreach(PLTF IN LISTS PLATFORM_LIST)
+  foreach(PLTF IN LISTS SUPPORTED_VC_PLATFORMS)
       set(PLTF_BC_NAME "${MANGLED_BIF_NAME}_${PLTF}.vccg.bc")
       set(PLTF_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${PLTF_BC_NAME})
       add_custom_command(OUTPUT ${PLTF_BC_PATH}

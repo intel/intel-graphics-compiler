@@ -42,6 +42,9 @@ if(LLVM_ON_WIN32)
   add_compile_options(/wd4141)
 endif()
 
+# --- VC platforms ---
+include(cmake/supported_platforms_list.cmake)
+
 # --- VC Intrinsics ---
 include(cmake/handle_vc_intrinsics.cmake)
 
