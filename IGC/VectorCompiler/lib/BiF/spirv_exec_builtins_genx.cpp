@@ -32,3 +32,7 @@ CM_NODEBUG CM_INLINE ulong __spirv_BuiltInGlobalSize(int dim) {
   return static_cast<ulong>(cm::exec::get_local_size(dim)) *
          cm::exec::get_group_count(dim);
 }
+
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInNumWorkgroups(int dim) {
+  return cm::exec::get_group_count(dim);
+}
