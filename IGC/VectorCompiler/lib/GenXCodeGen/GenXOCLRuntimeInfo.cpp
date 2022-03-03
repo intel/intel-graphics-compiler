@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "OCLRuntimeInfoPrinter.h"
 
+#include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/GenX/RegCategory.h"
@@ -639,7 +640,7 @@ static GenXDebugInfo::ElfBin getDebugInfoForIndirectFunctions(
 ModuleDataT::ModuleDataT(const Module &M) {
   auto RealGlobals =
       make_filter_range(M.globals(), [](const GlobalVariable &GV) {
-        return genx::isRealGlobalVariable(GV);
+        return vc::isRealGlobalVariable(GV);
       });
   for (auto &GV : RealGlobals) {
     if (GV.isConstant()) {

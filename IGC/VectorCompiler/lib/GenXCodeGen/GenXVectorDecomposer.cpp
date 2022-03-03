@@ -18,6 +18,8 @@ SPDX-License-Identifier: MIT
 #include "GenXBaling.h"
 #include "GenXUtil.h"
 
+#include "vc/Utils/GenX/GlobalVariable.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -918,7 +920,7 @@ bool SelectDecomposer::processStartSelect(Instruction *Inst) {
 template <typename T> bool isGlobalVarOperand(const Value *V) {
   const T *Inst = dyn_cast<T>(V);
   return Inst &&
-         getUnderlyingGlobalVariable(Inst->getPointerOperand()) != nullptr;
+         vc::getUnderlyingGlobalVariable(Inst->getPointerOperand()) != nullptr;
 }
 
 bool SelectDecomposer::determineDecomposition(Instruction *Inst) {

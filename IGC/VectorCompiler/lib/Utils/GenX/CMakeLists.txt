@@ -17,6 +17,7 @@ set(GENX_UTILS_SOURCES
   Intrinsics.cpp
   IntrinsicsWrapper.cpp
   IRBuilder.cpp
+  GlobalVariable.cpp
   )
 
 add_library(VCGenXUtils ${GENX_UTILS_SOURCES})

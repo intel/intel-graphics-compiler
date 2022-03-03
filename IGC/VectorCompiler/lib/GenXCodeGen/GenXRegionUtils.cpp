@@ -15,8 +15,10 @@ SPDX-License-Identifier: MIT
 #include "GenXBaling.h"
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
-#include "vc/Utils/General/IRBuilder.h"
+
 #include "vc/GenXOpts/GenXAnalysis.h"
+#include "vc/Utils/GenX/GlobalVariable.h"
+#include "vc/Utils/General/IRBuilder.h"
 
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/Analysis/ConstantFolding.h"
@@ -1168,13 +1170,13 @@ bool llvm::genx::cleanupLoads(Function *F) {
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
       if (auto SI = dyn_cast<StoreInst>(Inst)) {
-        auto GV = getUnderlyingGlobalVariable(SI->getPointerOperand());
+        auto *GV = vc::getUnderlyingGlobalVariable(SI->getPointerOperand());
         if (!GV)
           continue;
         // Kill all live loads on this variable.
         DomLoads[GV].clear();
       } else if (auto LI = dyn_cast<LoadInst>(Inst)) {
-        auto GV = getUnderlyingGlobalVariable(LI->getPointerOperand());
+        auto *GV = vc::getUnderlyingGlobalVariable(LI->getPointerOperand());
         if (!GV)
           continue;
         auto &Loads = DomLoads[GV];

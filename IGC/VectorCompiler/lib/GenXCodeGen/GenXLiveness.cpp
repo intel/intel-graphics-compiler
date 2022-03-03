@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 
 #include "vc/GenXOpts/GenXAnalysis.h"
+#include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/GenX/RegCategory.h"
@@ -306,8 +307,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
   Value *V = SV.getValue();
 
   // This value is a global variable. Its live range is the entire kernel.
-  if (auto GV = getUnderlyingGlobalVariable(V)) {
-    (void)GV;
+  if (vc::getUnderlyingGlobalVariable(V)) {
     LR->push_back(0, Numbering->getLastNumber());
     LLVM_DEBUG(dbgs() << "It is global value, rebuilded LR: " << *LR << "\n");
     return;
@@ -1503,7 +1503,7 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
     auto Head = Baling->getBaleHead(user);
     if (Head && isa<StoreInst>(Head)) {
       Value *V = Head->getOperand(1);
-      V = getUnderlyingGlobalVariable(V);
+      V = vc::getUnderlyingGlobalVariable(V);
       IGC_ASSERT_MESSAGE(V, "null base not expected");
       return V;
     }

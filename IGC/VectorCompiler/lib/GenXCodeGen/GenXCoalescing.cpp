@@ -175,6 +175,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXVisitor.h"
 
+#include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
@@ -1729,7 +1730,7 @@ void GenXCoalescing::coalesceGlobalLoads(FunctionGroup *FG) {
           LoadsInGroup.insert(LI);
       }
       // Global variable is used in a constexpr.
-      if (&GV != getUnderlyingGlobalVariable(UI))
+      if (&GV != vc::getUnderlyingGlobalVariable(UI))
         continue;
       for (auto U : UI->users())
         if (auto LI = dyn_cast<LoadInst>(U)) {

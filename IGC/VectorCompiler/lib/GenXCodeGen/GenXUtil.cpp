@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXIntrinsics.h"
 
+#include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/GenX/Printf.h"
@@ -1579,7 +1580,7 @@ Value *genx::getBitCastedValue(Value *V) {
 bool genx::normalizeGloads(Instruction *Inst) {
   IGC_ASSERT(isa<LoadInst>(Inst));
   auto LI = cast<LoadInst>(Inst);
-  if (getUnderlyingGlobalVariable(LI->getPointerOperand()) == nullptr)
+  if (vc::getUnderlyingGlobalVariable(LI->getPointerOperand()) == nullptr)
     return false;
 
   // collect all uses connected by bitcasts.
@@ -1642,7 +1643,7 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
   auto SI = dyn_cast<StoreInst>(Inst);
 
   Value *Ptr = LI ? LI->getPointerOperand() : SI->getPointerOperand();
-  GlobalVariable *GV = getUnderlyingGlobalVariable(Ptr);
+  GlobalVariable *GV = vc::getUnderlyingGlobalVariable(Ptr);
 
   // Folding bitcast of SEV can produce getelementptr instructions
   // which must be avoided.
@@ -1680,31 +1681,6 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
   return nullptr;
 }
 
-const GlobalVariable *genx::getUnderlyingGlobalVariable(const Value *V) {
-  while (auto *BI = dyn_cast<BitCastInst>(V))
-    V = BI->getOperand(0);
-  while (auto *CE = dyn_cast_or_null<ConstantExpr>(V)) {
-    if (CE->getOpcode() == CastInst::BitCast)
-      V = CE->getOperand(0);
-    else
-      break;
-  }
-  return dyn_cast_or_null<GlobalVariable>(V);
-}
-
-GlobalVariable *genx::getUnderlyingGlobalVariable(Value *V) {
-  return const_cast<GlobalVariable *>(
-      getUnderlyingGlobalVariable(const_cast<const Value *>(V)));
-}
-
-const GlobalVariable *genx::getUnderlyingGlobalVariable(const LoadInst *LI) {
-  return getUnderlyingGlobalVariable(LI->getPointerOperand());
-}
-
-GlobalVariable *genx::getUnderlyingGlobalVariable(LoadInst *LI) {
-  return getUnderlyingGlobalVariable(LI->getPointerOperand());
-}
-
 bool genx::isGlobalStore(Instruction *I) {
   IGC_ASSERT(I);
   if (auto *SI = dyn_cast<StoreInst>(I))
@@ -1714,7 +1690,7 @@ bool genx::isGlobalStore(Instruction *I) {
 
 bool genx::isGlobalStore(StoreInst *ST) {
   IGC_ASSERT(ST);
-  return getUnderlyingGlobalVariable(ST->getPointerOperand()) != nullptr;
+  return vc::getUnderlyingGlobalVariable(ST->getPointerOperand()) != nullptr;
 }
 
 bool genx::isGlobalLoad(Instruction *I) {
@@ -1726,7 +1702,7 @@ bool genx::isGlobalLoad(Instruction *I) {
 
 bool genx::isGlobalLoad(LoadInst *LI) {
   IGC_ASSERT(LI);
-  return getUnderlyingGlobalVariable(LI->getPointerOperand()) != nullptr;
+  return vc::getUnderlyingGlobalVariable(LI->getPointerOperand()) != nullptr;
 }
 
 bool genx::isLegalValueForGlobalStore(Value *V, Value *StorePtr) {
@@ -1739,8 +1715,8 @@ bool genx::isLegalValueForGlobalStore(Value *V, Value *StorePtr) {
   Value *OldVal =
       Wrr->getArgOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
   auto *LI = dyn_cast<LoadInst>(getBitCastedValue(OldVal));
-  return LI && (getUnderlyingGlobalVariable(LI->getPointerOperand()) ==
-                getUnderlyingGlobalVariable(StorePtr));
+  return LI && (vc::getUnderlyingGlobalVariable(LI->getPointerOperand()) ==
+                vc::getUnderlyingGlobalVariable(StorePtr));
 }
 
 bool genx::isGlobalStoreLegal(StoreInst *ST) {
@@ -1766,19 +1742,19 @@ bool genx::isIdentityBale(const Bale &B) {
   if (B.size() == 1) {
     // The value to be stored should be a load from the same global.
     auto LI = dyn_cast<LoadInst>(ST->getOperand(0));
-    return LI && getUnderlyingGlobalVariable(LI->getOperand(0)) ==
-                     getUnderlyingGlobalVariable(ST->getOperand(1));
+    return LI && vc::getUnderlyingGlobalVariable(LI->getOperand(0)) ==
+                     vc::getUnderlyingGlobalVariable(ST->getOperand(1));
   }
   if (B.size() != 3)
     return false;
 
   CallInst *B1 = dyn_cast<CallInst>(ST->getValueOperand());
-  GlobalVariable *GV = getUnderlyingGlobalVariable(ST->getPointerOperand());
+  GlobalVariable *GV = vc::getUnderlyingGlobalVariable(ST->getPointerOperand());
   if (!GenXIntrinsic::isWrRegion(B1) || !GV)
     return false;
   IGC_ASSERT(B1);
   auto B0 = dyn_cast<LoadInst>(B1->getArgOperand(0));
-  if (!B0 || GV != getUnderlyingGlobalVariable(B0->getPointerOperand()))
+  if (!B0 || GV != vc::getUnderlyingGlobalVariable(B0->getPointerOperand()))
     return false;
 
   CallInst *A1 = dyn_cast<CallInst>(B1->getArgOperand(1));
@@ -1786,7 +1762,7 @@ bool genx::isIdentityBale(const Bale &B) {
     return false;
   IGC_ASSERT(A1);
   LoadInst *A0 = dyn_cast<LoadInst>(A1->getArgOperand(0));
-  if (!A0 || GV != getUnderlyingGlobalVariable(A0->getPointerOperand()))
+  if (!A0 || GV != vc::getUnderlyingGlobalVariable(A0->getPointerOperand()))
     return false;
 
   Region R1 = makeRegionFromBaleInfo(A1, BaleInfo());
@@ -2181,28 +2157,6 @@ unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
   return 1;
 }
 
-bool genx::isRealGlobalVariable(const GlobalVariable &GV) {
-  if (GV.hasAttribute("genx_volatile"))
-    return false;
-  if (vc::PredefVar::isPV(GV))
-    return false;
-  bool IsIndexedString =
-      std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {
-        return vc::isLegalPrintFormatIndexGEP(*Usr);
-      });
-  if (IsIndexedString) {
-    IGC_ASSERT_MESSAGE(std::all_of(GV.user_begin(), GV.user_end(),
-                                   [](const User *Usr) {
-                                     return vc::isLegalPrintFormatIndexGEP(
-                                         *Usr);
-                                   }),
-                       "when global is an indexed string, its users can only "
-                       "be print format index GEPs");
-    return false;
-  }
-  return true;
-}
-
 std::size_t genx::getStructElementPaddedSize(unsigned ElemIdx,
                                              unsigned NumOperands,
                                              const StructLayout &Layout) {
@@ -2282,7 +2236,7 @@ bool genx::hasMemoryDeps(Instruction *L1, Instruction *L2, Value *Addr,
     Instruction *Inst = &I;
     if ((GenXIntrinsic::isVStore(Inst) || genx::isGlobalStore(Inst)) &&
         (Addr == Inst->getOperand(1) ||
-         Addr == getUnderlyingGlobalVariable(Inst->getOperand(1))))
+         Addr == vc::getUnderlyingGlobalVariable(Inst->getOperand(1))))
       return true;
     // OK.
     return false;

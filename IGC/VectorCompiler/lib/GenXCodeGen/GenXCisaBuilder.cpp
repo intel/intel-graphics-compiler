@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
+#include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/PredefinedVariable.h"
@@ -1795,7 +1796,7 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
 
   Value *V = nullptr;
   if (DstDesc.GStore) {
-    auto GV = getUnderlyingGlobalVariable(DstDesc.GStore->getOperand(1));
+    auto *GV = vc::getUnderlyingGlobalVariable(DstDesc.GStore->getOperand(1));
     IGC_ASSERT_MESSAGE(GV, "out of sync");
     if (OverrideType == nullptr)
       OverrideType = DstDesc.GStore->getOperand(0)->getType();
@@ -2312,7 +2313,7 @@ std::string GenXKernelBuilder::createInlineAsmDestinationOperand(
 
   Value *V = nullptr;
   if (DstDesc.GStore) {
-    auto GV = getUnderlyingGlobalVariable(DstDesc.GStore->getOperand(1));
+    auto *GV = vc::getUnderlyingGlobalVariable(DstDesc.GStore->getOperand(1));
     IGC_ASSERT_MESSAGE(GV, "out of sync");
     if (OverrideType == nullptr)
       OverrideType = DstDesc.GStore->getOperand(0)->getType();
@@ -5659,7 +5660,7 @@ GenXKernelBuilder::createRawDestination(Value *V, const DstOpndDesc &DstDesc,
   }
   Type *OverrideType = nullptr;
   if (DstDesc.GStore) {
-    V = getUnderlyingGlobalVariable(DstDesc.GStore->getOperand(1));
+    V = vc::getUnderlyingGlobalVariable(DstDesc.GStore->getOperand(1));
     IGC_ASSERT_MESSAGE(V, "out of sync");
     OverrideType = DstDesc.GStore->getOperand(0)->getType();
   }

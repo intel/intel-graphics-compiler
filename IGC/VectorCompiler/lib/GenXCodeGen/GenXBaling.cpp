@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 #include "GenXLiveness.h"
 #include "GenXUtil.h"
 
+#include "vc/Utils/GenX/GlobalVariable.h"
+
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/InstructionSimplify.h"
@@ -627,8 +629,8 @@ void GenXBaling::processWrRegion(Instruction *Inst)
         Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
     auto *LI2 = cast<LoadInst>(cast<Instruction>(V)->getOperand(
         GenXIntrinsic::GenXRegion::OldValueOperandNum));
-    auto *GV1 = getUnderlyingGlobalVariable(LI1);
-    auto *GV2 = getUnderlyingGlobalVariable(LI2);
+    auto *GV1 = vc::getUnderlyingGlobalVariable(LI1);
+    auto *GV2 = vc::getUnderlyingGlobalVariable(LI2);
     if ((GV1 == GV2) && genx::hasMemoryDeps(LI1, LI2, GV1, DT))
       V = nullptr;
   }
@@ -2393,8 +2395,8 @@ bool GenXBaling::prologue(Function *F) {
         IGC_ASSERT(Val);
         if (auto LI = dyn_cast<LoadInst>(Val)) {
           Value *Ptr = ST->getPointerOperand();
-          auto GV1 = getUnderlyingGlobalVariable(Ptr);
-          auto GV2 = getUnderlyingGlobalVariable(LI->getPointerOperand());
+          auto *GV1 = vc::getUnderlyingGlobalVariable(Ptr);
+          auto *GV2 = vc::getUnderlyingGlobalVariable(LI->getPointerOperand());
           if (GV1 && GV1 == GV2) {
             ST->eraseFromParent();
             Changed = true;

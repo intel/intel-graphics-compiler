@@ -134,12 +134,6 @@ bool normalizeGloads(Instruction *Inst);
 // Return this new instruction or nullptr.
 Instruction *foldBitCastInst(Instruction *Inst);
 
-// Return the underlying global variable. Return nullptr if it does not exist.
-GlobalVariable *getUnderlyingGlobalVariable(Value *V);
-const GlobalVariable *getUnderlyingGlobalVariable(const Value *V);
-GlobalVariable *getUnderlyingGlobalVariable(LoadInst *LI);
-const GlobalVariable *getUnderlyingGlobalVariable(const LoadInst *LI);
-
 class Bale;
 
 bool isGlobalStore(Instruction *I);
@@ -726,14 +720,6 @@ public:
   std::vector<DataT> emitConsolidatedData() const & { return Data; }
   std::vector<DataT> emitConsolidatedData() && { return std::move(Data); }
 };
-
-// Not every global variable is a real global variable and should be eventually
-// encoded as a global variable.
-// GenX volatile and printf strings are exclusion for now.
-// Printf strings should be already legalized to make it possible to use this
-// function. Which should already be done in middle-end so no problem for
-// calling it in codegen.
-bool isRealGlobalVariable(const GlobalVariable &GV);
 
 // Get size of an struct field including the size of padding for the next field,
 // or the tailing padding.

@@ -124,6 +124,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/TypeSize.h"
 
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/GenX/GlobalVariable.h"
 
 #include <algorithm>
 #include <iterator>
@@ -5867,7 +5868,7 @@ bool LoadStoreResolver::isSupported() const {
       Ptr = LI->getPointerOperand();
     if (auto SI = dyn_cast<StoreInst>(Inst))
       Ptr = SI->getPointerOperand();
-    return getUnderlyingGlobalVariable(Ptr) != nullptr;
+    return vc::getUnderlyingGlobalVariable(Ptr) != nullptr;
   };
 
   if (IsGlobalLoadStore())

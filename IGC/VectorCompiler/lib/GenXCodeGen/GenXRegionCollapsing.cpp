@@ -38,6 +38,8 @@ SPDX-License-Identifier: MIT
 #include "GenXBaling.h"
 #include "GenXUtil.h"
 
+#include "vc/Utils/GenX/GlobalVariable.h"
+
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/InstructionSimplify.h"
@@ -402,7 +404,7 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
     while (auto CI = dyn_cast<BitCastInst>(OldValue))
       OldValue = CI->getOperand(0);
     auto LI = dyn_cast<LoadInst>(OldValue);
-    if (LI && getUnderlyingGlobalVariable(LI->getPointerOperand()))
+    if (LI && vc::getUnderlyingGlobalVariable(LI->getPointerOperand()))
       return false;
 
     // skip otherwise;
@@ -846,8 +848,8 @@ static bool isBitwiseIdentical(Value *V1, Value *V2, const DominatorTree *DT) {
     auto L2 = cast<CallInst>(V2);
 
     // Loads from global variables.
-    auto GV1 = getUnderlyingGlobalVariable(L1->getOperand(0));
-    auto GV2 = getUnderlyingGlobalVariable(L2->getOperand(0));
+    auto *GV1 = vc::getUnderlyingGlobalVariable(L1->getOperand(0));
+    auto *GV2 = vc::getUnderlyingGlobalVariable(L2->getOperand(0));
     Value *Addr = L1->getOperand(0);
     if (GV1 && GV1 == GV2)
       // OK.

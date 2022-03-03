@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include "GenXRegionUtils.h"
 
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/GlobalVariable.h"
 
 #include "Probe/Assertion.h"
 
@@ -151,7 +152,7 @@ bool GenXGlobalValueLowering::runOnModule(Module &M) {
   DL = &M.getDataLayout();
   auto &&BECfg = getAnalysis<GenXBackendConfig>();
   for (auto &GV : M.globals())
-    if (genx::isRealGlobalVariable(GV))
+    if (vc::isRealGlobalVariable(GV))
       fillWorkListForGV(GV);
   for (auto &F : M)
     if (vc::isIndirect(F) && !BECfg.directCallsOnly())

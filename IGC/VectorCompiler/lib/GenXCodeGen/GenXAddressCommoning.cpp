@@ -79,6 +79,7 @@ SPDX-License-Identifier: MIT
 #include "GenXNumbering.h"
 #include "GenXUtil.h"
 
+#include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
 #include "llvm-c/Core.h"
@@ -325,7 +326,8 @@ bool GenXAddressCommoning::processFunction(Function *F)
             auto SI = dyn_cast<StoreInst>(Inst->user_back());
             if (!SI)
               continue;
-            Value *GV = getUnderlyingGlobalVariable(SI->getPointerOperand());
+            Value *GV =
+                vc::getUnderlyingGlobalVariable(SI->getPointerOperand());
             if (!GV)
               continue;
             LR = Liveness->getLiveRange(GV);
@@ -399,7 +401,8 @@ bool GenXAddressCommoning::processBaseReg(LiveRange *LR)
           return false;
         StoreInst *SI = dyn_cast<StoreInst>(user->user_back());
         GlobalVariable *GV =
-            SI ? getUnderlyingGlobalVariable(SI->getPointerOperand()) : nullptr;
+            SI ? vc::getUnderlyingGlobalVariable(SI->getPointerOperand())
+               : nullptr;
         if (!GV)
           return false;
         // make sure the base is the right global variable.
