@@ -1291,7 +1291,9 @@ static unsigned short getSpillRowSizeForSendSrc(
     }
     else
     {
-        nRows = (filledRegion->getLinearizedEnd() - filledRegion->getLinearizedStart() + 1) / builder.numEltPerGRF<Type_UB>();
+        unsigned int rangeSize = filledRegion->getLinearizedEnd() - filledRegion->getLinearizedStart() + 1;
+        unsigned int grfSize = builder.numEltPerGRF<Type_UB>();
+        nRows = (rangeSize / grfSize) + ((rangeSize % grfSize) == 0 ? 0 : 1);
     }
 
     return nRows;
