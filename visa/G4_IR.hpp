@@ -1812,26 +1812,6 @@ typedef enum class AugmentationMasks
 namespace vISA
 {
 
-template <G4_Type T>
-unsigned int numEltPerGRF() {return ::getGRFSize() / TypeSize(T);}
-template unsigned int numEltPerGRF<Type_UD>();
-template unsigned int numEltPerGRF<Type_D>();
-template unsigned int numEltPerGRF<Type_UW>();
-template unsigned int numEltPerGRF<Type_W>();
-template unsigned int numEltPerGRF<Type_UB>();
-template unsigned int numEltPerGRF<Type_B>();
-template unsigned int numEltPerGRF<Type_F>();
-template unsigned int numEltPerGRF<Type_VF>();
-template unsigned int numEltPerGRF<Type_V>();
-template unsigned int numEltPerGRF<Type_DF>();
-template unsigned int numEltPerGRF<Type_BOOL>();
-template unsigned int numEltPerGRF<Type_UV>();
-template unsigned int numEltPerGRF<Type_Q>();
-template unsigned int numEltPerGRF<Type_UQ>();
-template unsigned int numEltPerGRF<Type_HF>();
-template unsigned int numEltPerGRF<Type_NF>();
-template unsigned int numEltPerGRF<Type_BF>();
-
 class G4_Declare
 {
     friend class IR_Builder;

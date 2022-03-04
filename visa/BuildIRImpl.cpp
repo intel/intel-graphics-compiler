@@ -102,7 +102,7 @@ G4_Declare* DeclarePool::createDeclare(
     }
     else if (regFile != G4_FLAG)
     {
-        if ((unsigned int)nElems * nRows * TypeSize(ty) >= numEltPerGRF<Type_UB>())
+        if ((unsigned int)nElems * nRows * TypeSize(ty) >= irb.numEltPerGRF<Type_UB>())
         {
             dcl->setSubRegAlign(GRFALIGN);
         }

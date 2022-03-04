@@ -518,6 +518,10 @@ void* gtPinData::getGTPinInfoBuffer(unsigned &bufferSize)
     return gtpinBuffer;
 }
 
+void gtPinData::setScratchNextFree(unsigned next) {
+    nextScratchFree = ((next + kernel.numEltPerGRF<Type_UB>() - 1) / kernel.numEltPerGRF<Type_UB>()) * kernel.numEltPerGRF<Type_UB>();
+}
+
 uint32_t gtPinData::getNumBytesScratchUse() const
 {
     if (gtpin_init)

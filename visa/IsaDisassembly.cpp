@@ -48,6 +48,7 @@ SPDX-License-Identifier: MIT
 #include "VISABuilderAPIDefinition.h"
 #include "PreDefinedVars.h"
 #include "VISAKernel.h"
+#include "PlatformInfo.h"
 
 using namespace vISA;
 
@@ -761,6 +762,14 @@ static std::string printInstructionCommon(
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
+    // TODO: Revisit to see if there's a better way to access platform info in
+    // this file. Now it should be fine to get platform and PlatformInfo from
+    // the option as this is not a performance critical path.
+    TARGET_PLATFORM platform =
+        static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
+    const PlatformInfo* platInfo = PlatformInfo::LookupPlatformInfo(platform);
+    ASSERT_USER(platInfo != nullptr, "Failed to look up platform");
+
     std::stringstream sstr;
     sstr << printPredicate(inst->opcode, inst->pred);
 
@@ -839,7 +848,7 @@ static std::string printInstructionCommon(
                         sstr << "&" << printVariableDeclName(header, opnd_index, opt);
                         int offset =
                             curOpnd.opnd_val.gen_opnd.col_offset * CISATypeTable[type].typeSize +
-                            curOpnd.opnd_val.gen_opnd.row_offset * numEltPerGRF<Type_UB>();
+                            curOpnd.opnd_val.gen_opnd.row_offset * platInfo->numEltPerGRF<Type_UB>();
                         if (offset) {
                             sstr << "[" << offset << "]";
                         }

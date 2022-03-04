@@ -104,9 +104,8 @@ public:
     // return igc_info_t format buffer. caller casts it to igc_info_t.
     void* getGTPinInfoBuffer(unsigned &bufferSize);
 
-    void setScratchNextFree(unsigned next) {
-        nextScratchFree = ((next + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>()) * numEltPerGRF<Type_UB>();
-    }
+    void setScratchNextFree(unsigned next);
+
     uint32_t getNumBytesScratchUse() const;
 
     void setGTPinInitFromL0(bool val) { gtpinInitFromL0 = val; }

@@ -2493,7 +2493,7 @@ int PhyRegsManager::findFreeRegs(int size, BankAlign align, G4_SubReg_Align suba
 
     bool found = false;
 
-    if (size >= (int)numEltPerGRF<Type_UW>())
+    if (size >= (int)builder.numEltPerGRF<Type_UW>())
     {
         if (!hintSet)
         {
