@@ -135,7 +135,7 @@ static void createCallToOrigFunc(Function &Trampoline, Function &Orig,
 static void createTrampoline(Function &F,
                              GlobalValue::LinkageTypes TrampolineLinkage,
                              IRBuilder<> &IRB) {
-  StringRef Name = F.getName();
+  std::string Name = F.getName().str();
   F.setName(Name + "_direct");
   // Direct function is always internal
   F.setLinkage(GlobalValue::InternalLinkage);
