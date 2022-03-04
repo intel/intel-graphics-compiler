@@ -423,55 +423,67 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
 
 bool EmitPass::isSymbolTableRequired(llvm::Function* F)
 {
-    // Symbol table only needed either for the dummy kernel, or if there is an unique entry function
-    if (!isIntelSymbolTableVoidProgram(F) && !IGC::getUniqueEntryFunc(m_pCtx->getMetaDataUtils(), m_moduleMD))
-        return false;
-
-    // Check has external functions attached
-    if ((m_FGA && m_FGA->getGroup(F) && !m_FGA->getGroup(F)->isSingle()))
+    bool canOutputSymbolTable = false;
+    if (isIntelSymbolTableVoidProgram(F))
     {
-        auto FG = m_FGA->getGroup(F);
-        for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
-        {
-            if ((*FI)->hasFnAttribute("referenced-indirectly"))
-                return true;
-        }
+        // If the current function is the dummy kernel, we can attach the symbol table to it
+        canOutputSymbolTable = true;
     }
-    // Check has global symbols attached
-    else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
+    else if (m_pCtx->type != ShaderType::OPENCL_SHADER &&
+        F == IGC::getUniqueEntryFunc(m_pCtx->getMetaDataUtils(), m_moduleMD))
     {
-        for (auto it : m_moduleMD->inlineProgramScopeOffsets)
+        // For non-OCL shaders, we can still output a symbol table for the unique entry function
+        canOutputSymbolTable = true;
+    }
+
+    if (canOutputSymbolTable)
+    {
+        // Check has external functions attached to current function group
+        if ((m_FGA && m_FGA->getGroup(F) && !m_FGA->getGroup(F)->isSingle()))
         {
-            GlobalVariable* pGlobal = it.first;
-            // Export the symbol if global is external/common linkage
-            if (m_pCtx->enableTakeGlobalAddress() && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage()))
+            auto FG = m_FGA->getGroup(F);
+            for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
             {
-                return true;
+                if ((*FI)->hasFnAttribute("referenced-indirectly"))
+                    return true;
             }
-
-            // Remove dead users at this point
-            pGlobal->removeDeadConstantUsers();
-
-            // Check if relocation is required by checking uses
-            for (auto user : pGlobal->users())
+        }
+        // Check has global symbols attached
+        else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
+        {
+            for (auto it : m_moduleMD->inlineProgramScopeOffsets)
             {
-                if (isa<Instruction>(user))
+                GlobalVariable* pGlobal = it.first;
+                // Export the symbol if global is external/common linkage
+                if (m_pCtx->enableTakeGlobalAddress() && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage()))
                 {
                     return true;
                 }
+
+                // Remove dead users at this point
+                pGlobal->removeDeadConstantUsers();
+
+                // Check if relocation is required by checking uses
+                for (auto user : pGlobal->users())
+                {
+                    if (isa<Instruction>(user))
+                    {
+                        return true;
+                    }
+                }
             }
         }
-    }
-    // Check if requiring symbol for imported function calls
-    else
-    {
-        for (auto& FI : F->getParent()->getFunctionList())
+        // Check if requiring symbol for imported function calls
+        else
         {
-            if (FI.isDeclaration() &&
-                FI.hasFnAttribute("referenced-indirectly") &&
-                !FI.use_empty())
+            for (auto& FI : F->getParent()->getFunctionList())
             {
-                return true;
+                if (FI.isDeclaration() &&
+                    FI.hasFnAttribute("referenced-indirectly") &&
+                    !FI.use_empty())
+                {
+                    return true;
+                }
             }
         }
     }
@@ -762,12 +774,15 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         initDefaultRoundingMode();
         m_currShader->PreCompile();
 
-        // initialize stack if having stack usage
-        bool hasVLA = (m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasVariableLengthAlloca()) || F.hasFnAttribute("hasVLA");
-        if (!isDummyKernel && (hasStackCall || hasVLA))
+        if (!isDummyKernel)
         {
-            m_encoder->InitFuncAttribute(&F, true);
-            InitializeKernelStack(&F);
+            // initialize stack if having stack usage
+            bool hasVLA = (m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasVariableLengthAlloca()) || F.hasFnAttribute("hasVLA");
+            if (hasStackCall || hasVLA)
+            {
+                m_encoder->InitFuncAttribute(&F, true);
+                InitializeKernelStack(&F);
+            }
         }
         if (m_encoder->IsCodePatchCandidate())
         {
@@ -1183,13 +1198,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_encoder->Compile(compileWithSymbolTable);
         }
         m_pCtx->m_prevShader = m_currShader;
-
-        if (hasStackCall || IGC::isIntelSymbolTableVoidProgram(currHead))
-        {
-            // Disable retry when stackcalls are present
-            m_pCtx->m_retryManager.Disable();
-            m_pCtx->m_retryManager.kernelSkip.insert(F.getName().str());
-        }
     }
 
     if (destroyVISABuilder)

@@ -5943,7 +5943,8 @@ namespace IGC
             m_program->m_staticCycle = staticCycle;
         }
 
-        if (jitInfo->isSpill && (AvoidRetryOnSmallSpill() || jitInfo->avoidRetry))
+        if ((jitInfo->isSpill && (AvoidRetryOnSmallSpill() || jitInfo->avoidRetry)) ||
+            (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram()))
         {
             context->m_retryManager.Disable();
             context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
