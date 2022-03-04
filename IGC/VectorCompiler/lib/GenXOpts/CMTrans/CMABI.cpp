@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Utils/GenX/BreakConst.h"
+#include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/DebugInfo.h"
@@ -1404,8 +1405,7 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   auto ToLocalize =
       make_filter_range(M.globals(), [](const GlobalVariable &GV) {
         return GV.getAddressSpace() == vc::AddrSpace::Private &&
-               !GV.hasAttribute(genx::FunctionMD::GenXVolatile) &&
-               !vc::isConstantString(GV);
+               vc::isRealGlobalVariable(GV) && !vc::isConstantString(GV);
       });
 
   // Collect direct and indirect (GV is used in a called function)
