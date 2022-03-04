@@ -4727,7 +4727,7 @@ namespace IGC
                 SaveOption(vISA_LVN, false);
                 SaveOption(vISA_QuickTokenAllocation, true);
                 if (context->getModuleMetaData()->compOpt.EnableFastestLinearScan ||
-                    IGC_IS_FLAG_DISABLED(EnableFastestLinearScan))
+                    IGC_IS_FLAG_ENABLED(EnableFastestLinearScan))
                 {
                     SaveOption(vISA_LinearScan, true);
                 }
