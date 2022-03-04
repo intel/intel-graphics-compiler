@@ -9802,8 +9802,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN12_CORE ||
                  m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HP_CORE)
             emitStateRegID(9, 10);
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE)
+        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE) {
             emitStateRegID(9, 11);
+        }
         else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPG_CORE)
             emitStateRegID(9, 10);
         else

@@ -862,6 +862,7 @@ CVariable* CShader::GetHWTID()
                 return m_HW_TID;
             }
 
+
             // XeHP_SDV
             // [13:11] Slice ID.
             // [10:9] Dual - SubSlice ID
