@@ -132,6 +132,10 @@ static cl::opt<bool> DirectCallsOnlyOpt(
     cl::desc(
         "Generate code under the assumption all unknown calls are direct"));
 
+static cl::opt<unsigned> VCLoopUnrollThreshold(
+    "vc-loop-unroll-threshold", cl::Hidden,
+    cl::desc("Threshold value for LLVM loop unroll pass"));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -172,6 +176,7 @@ void GenXBackendOptions::enforceLLVMOptions() {
                            GPUFenceScopeOnSingleTileGPUsOpt);
   enforceOptionIfSpecified(EnablePreemption, EnablePreemptionOpt);
   enforceOptionIfSpecified(DirectCallsOnly, DirectCallsOnlyOpt);
+  enforceOptionIfSpecified(LoopUnrollThreshold, VCLoopUnrollThreshold);
 }
 
 static std::unique_ptr<MemoryBuffer>

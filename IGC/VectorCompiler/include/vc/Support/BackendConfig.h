@@ -147,6 +147,9 @@ struct GenXBackendOptions {
   // calls are direct. Extern call are still extern in LLVM IR.
   bool DirectCallsOnly = false;
 
+  // Loop unroll threshold. Value 0 means to keep default threshold.
+  unsigned LoopUnrollThreshold = 0;
+
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
   // Note: current implementation allows backend options to be configured by
@@ -316,6 +319,10 @@ public:
   bool enablePreemption() const { return Options.EnablePreemption; }
 
   bool directCallsOnly() const { return Options.DirectCallsOnly; }
+
+  unsigned getLoopUnrollThreshold() const {
+    return Options.LoopUnrollThreshold;
+  }
 };
 } // namespace llvm
 

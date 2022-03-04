@@ -254,6 +254,9 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(EnableGPUFenceScopeOnSingleTileGPUs))
     Opts.HasGPUFenceScopeOnSingleTileGPUs = true;
 
+  if (unsigned LoopUnrollThreshold = IGC_GET_FLAG_VALUE(VCLoopUnrollThreshold))
+    Opts.ForceLoopUnrollThreshold = LoopUnrollThreshold;
+
   Opts.NoOptFinalizerMode =
       deriveDefaultableFlagValue<vc::NoOptFinalizerControl>(
           IGC_GET_FLAG_VALUE(VCNoOptFinalizerControl));

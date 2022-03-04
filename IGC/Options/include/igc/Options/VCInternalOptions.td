@@ -67,5 +67,10 @@ def gpu_scope_fence : PlainFlag<"gpu-scope-fence-on-single-tile">,
   HelpText<"Allow the use of \"GPU\" fence scope on single-tile GPUs">;
 def flush_l3_for_global : PlainFlag<"flush-l3-for-global">,
   HelpText<"Enable flushing L3 cache for globals">;
+
+def vc_loop_unroll_threshold : PlainSeparate<"vc-loop-unroll-threshold">,
+  HelpText<"Loop unroll threhsold for VC">;
+def : PlainJoined<"vc-loop-unroll-threshold=">, Alias<vc_loop_unroll_threshold>,
+  HelpText<"Alias for -vc-loop-unroll-threshold <value>">;
 }
 // }} VC internal options

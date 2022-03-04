@@ -242,6 +242,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.L3FlushForGlobal = true;
   if (Opts.HasGPUFenceScopeOnSingleTileGPUs)
     BackendOpts.GPUFenceScopeOnSingleTileGPUs = true;
+  BackendOpts.LoopUnrollThreshold = Opts.ForceLoopUnrollThreshold;
 
   BackendOpts.DisableLiveRangesCoalescing =
       getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, false);
@@ -774,6 +775,11 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     if (!MaybeBinary)
       return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
     Opts.Binary = MaybeBinary.getValue();
+  }
+
+  if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_loop_unroll_threshold)) {
+    StringRef Val = A->getValue();
+    Val.getAsInteger(/*Radix=*/0, Opts.ForceLoopUnrollThreshold);
   }
 
   Opts.FeaturesString =
