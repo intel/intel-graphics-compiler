@@ -5948,6 +5948,7 @@ namespace IGC
         if (jitInfo->isSpill && (AvoidRetryOnSmallSpill() || jitInfo->avoidRetry))
         {
             context->m_retryManager.Disable();
+            context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
         }
 
 #if (GET_SHADER_STATS && !PRINT_DETAIL_SHADER_STATS)

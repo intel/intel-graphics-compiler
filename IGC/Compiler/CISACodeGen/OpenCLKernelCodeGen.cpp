@@ -2304,11 +2304,7 @@ namespace IGC
         pShader->FillKernel();
         SProgramOutput* pOutput = pShader->ProgramOutput();
 
-        //  Need a better heuristic for NoRetry
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
-        int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
-        bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
-            ctx->m_instrTypes.mayHaveIndirectOperands);
 
         bool optDisable = false;
         if (ctx->getModuleMetaData()->compOpt.OptDisable)
@@ -2316,9 +2312,11 @@ namespace IGC
             optDisable = true;
         }
 
-        if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
-            noRetry ||
+        //  Need a better heuristic for NoRetry. Currently spill size is used
+        if (pOutput->m_scratchSpaceUsedBySpills < 1000 ||
             ctx->m_retryManager.IsLastTry() ||
+            (!ctx->m_retryManager.kernelSkip.empty() &&
+             ctx->m_retryManager.kernelSkip.count(pFunc->getName().str())) ||
             optDisable)
         {
             // Save the shader program to the state processor to be handled later
@@ -2427,6 +2425,7 @@ namespace IGC
             }
         }
 
+        // Clear the retry set and collect kernels for retry in the loop below.
         ctx->m_retryManager.kernelSet.clear();
 
         // gather data to send back to the driver
@@ -2460,6 +2459,10 @@ namespace IGC
                     GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
             }
         }
+
+        // The skip set to avoid retry is not needed. Clear it and collect a new set
+        // during retry compilation.
+        ctx->m_retryManager.kernelSkip.clear();
     }
 
     bool COpenCLKernel::hasReadWriteImage(llvm::Function& F)

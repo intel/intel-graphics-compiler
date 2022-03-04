@@ -1188,6 +1188,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             // Disable retry when stackcalls are present
             m_pCtx->m_retryManager.Disable();
+            m_pCtx->m_retryManager.kernelSkip.insert(F.getName().str());
         }
     }
 
